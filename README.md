@@ -1,5 +1,6 @@
 # MyKTAMap
-<img width="770" height="526" alt="image" src="https://github.com/user-attachments/assets/c1413a82-a0f0-42c8-bef2-225a3f60d4bc" />
+<img width="1390" height="966" text-align:"center" alt="image" src="https://github.com/user-attachments/assets/11b4f935-d41f-4e19-aa24-601e1d46db87" />
+
 
 Outil d'annotation pour cavité souterraine 
 
