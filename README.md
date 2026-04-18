@@ -78,17 +78,29 @@ Chaque fichier a un rôle précis.
 Rôle : Centralise toutes les constantes du projet.
 
 Contenu
+
 Dimensions du plan (imageHeight, imageWidth)
+
 Échelle (scale)
+
 Taille d’un pas (stepLength)
+
 Position initiale (startX, startY)
+
 Paramètres de détection de mouvement :
+
 stepThreshold
+
 stepCooldown
+
 motionDebug
+
 Fonctionnement
+
 DEFAULT_CONFIG → valeurs d’origine
+
 APP_CONFIG → valeurs modifiables en temps réel
+
 Sauvegarde via localStorage
 
 👉 Permet de calibrer l’application sans modifier le code.
