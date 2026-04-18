@@ -419,32 +419,6 @@ function choisirIcone(p) {
 }
 ```
 
----
-##  Tracking
-[En cours de DEV]
-Via l’accélérometre, permet de donnée une position aproximative dans la cavité.
-
-## Ajout de point / Export
-Permet ajouter des nouveaux point (curiosité)
-
-## Mesure de distance
-Porté par le fichier measure.js
-Permet de selectionner une suite de point et de calculer en metre la distance.
-Basé sur la constance d’echelle Xpixel=1 metre
-
-
-## 🧠 Conclusion
-
-Ce projet repose sur 3 concepts clés :
-
-1. **Leaflet + image overlay**
-2. **Données JSON dynamiques**
-3. **Gestion des calques interactifs**
-
-👉 L’ensemble permet de créer une cartographie personnalisée flexible et évolutive.
-
----
-
 ## 📄 Licence
 
 Projet personnel – à adapter selon vos besoins.
