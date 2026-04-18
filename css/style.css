@@ -1,0 +1,59 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: #9fc3f5;
+}
+
+#map {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.map-title {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 8px 15px;
+  border-radius: 8px;
+  margin: 10px;
+  width: fit-content;
+  margin: 10px auto;
+  backdrop-filter: blur(5px);
+}
+
+.map-title-text {
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+}
+
+@media (max-width: 600px) {
+  .map-title-text {
+    font-size: 14px;
+  }
+}
+
+.leaflet-control a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 16px;
+}
+.leaflet-popup-content input,
+.leaflet-popup-content textarea {
+  font-size: 16px !important;
+  padding: 6px;
+}
+
+.leaflet-top.leaflet-left {
+  width: 100%;
+}
+
+.map-title {
+  width: fit-content;
+  margin: 10px auto;
+}

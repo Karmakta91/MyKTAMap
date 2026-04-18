@@ -1,0 +1,77 @@
+{
+  "plan": {
+    "name": "TEST",
+    "version": "V1",
+    "author": "KARMA",
+    "imageWidth": 1044,
+    "imageHeight": 610,
+    "baseImage": "data/TestMAP.png",
+    "collisionImage": "data/collision.png"
+  },
+  "imageLayers": [
+    {
+      "id": "legende",
+      "label": "Legende",
+      "file": "data/TestMAP_LEGENDE.png",
+      "visible": true,
+      "order": 10
+    }
+  ],
+  "dataLayers": [
+  {
+    "id": "puits",
+    "label": "Puits",
+    "file": "data/puit.json",
+    "visible": true
+  },
+  {
+    "id": "vehicule",
+    "label": "Vehicule",
+    "file": "data/vehicule.json",
+    "visible": true
+  },
+  {
+    "id": "cataphile",
+    "label": "Cataphile",
+    "file": "data/cataphile.json",
+    "visible": true
+  },
+  {
+    "id": "carry",
+    "label": "Carriére",
+    "file": "data/carry.json",
+    "visible": true
+  },
+  {
+    "id": "editor",
+    "label": "Ajouts",
+    "file": "data/editor.json",
+    "visible": true
+  }
+],
+  "tracking": {
+    "startX": 345,
+    "startY": 519,
+    "scale": 4.9,
+    "stepLength": 0.7,
+    "stepThreshold": 13,
+    "stepCooldown": 400
+  },
+  "icons": {
+    "default": "icon/iconetrack.png",
+    "salle": "icon/house.png",
+    "pa": "icon/pa.png",
+    "pc": "icon/pc.png",
+    "pb": "icon/pb.png",
+    "vehicule": "icon/vehicule.png",
+    "elec": "icon/elec.png",
+    "epure": "icon/epure.png",
+    "ps": "icon/ps.png",
+    "info": "icon/info.png",
+    "chatiere": "icon/chatiere.png",
+    "passage": "icon/passage.png",
+    "danger": "icon/danger.png",
+    "pe": "icon/pe.png",
+    "track": "icon/iconetrack.png"
+  }
+}

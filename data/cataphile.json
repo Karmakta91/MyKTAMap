@@ -1,0 +1,39 @@
+{
+  "type": "cataphile",
+  "version": 1,
+  "data": [
+    {
+      "id": "Rail",
+      "nom": "Rail au sol",
+      "x": 600,
+      "y": 430,
+      "tags": ["info"],
+      "etat": "NC",
+      "description": "Rail rouillé au sol sur quelques metres",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "Salle1",
+      "nom": "Salle",
+      "x": 552,
+      "y": 122,
+      "tags": ["salle"],
+      "etat": "En construction",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "danger",
+      "nom": "Effondrement",
+      "x": 266,
+      "y": 266,
+      "tags": ["danger"],
+      "etat": "dangereux",
+      "description": "fontis en cours",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    }
+  ]
+}

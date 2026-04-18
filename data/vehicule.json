@@ -1,0 +1,17 @@
+{
+  "type": "vehicule",
+  "version": 1,
+  "data": [
+    {
+      "id": "Triporteur01",
+      "nom": "Triporteur",
+      "x": 587,
+      "y": 392,
+      "tags": ["vehicule", "Triporteur"],
+      "etat": "mauvais",
+      "description": "triporteur de champignogniste",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    }
+  ]
+}

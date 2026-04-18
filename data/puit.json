@@ -1,0 +1,50 @@
+{
+  "type": "puits",
+  "version": 1,
+  "data": [
+    {
+      "id": "PA1",
+      "nom": "Puits aérage 1",
+      "x": 231,
+      "y": 157,
+      "tags": ["pa"],
+      "etat": "ouvert",
+      "description": "Puit aérage du rond point",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "PC1",
+      "nom": "Puit comblé 1",
+      "x": 224,
+      "y": 248,
+      "tags": ["pc"],
+      "etat": "Non inspectée",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "PB1",
+      "nom": "Puits bouché 1",
+      "x": 539,
+      "y": 303,
+      "tags": ["pb"],
+      "etat": "Non inspectée",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "PE",
+      "nom": "Puits extraction",
+      "x": 552,
+      "y": 184,
+      "tags": ["ps"],
+      "etat": "Non inspectée",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    }
+  ]
+}

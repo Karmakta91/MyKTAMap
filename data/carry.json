@@ -1,0 +1,61 @@
+{
+  "type": "carriere",
+  "version": 1,
+  "data": [
+    {
+      "id": "civet",
+      "nom": "civet pommier",
+      "x": 487,
+      "y": 413,
+      "tags": ["epure"],
+      "etat": "bon",
+      "description": "Epure en haut",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "danger",
+      "nom": "Effondrement",
+      "x": 266,
+      "y": 266,
+      "tags": ["danger"],
+      "etat": "dangereux",
+      "description": "fontis en cours",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "Chatiere01",
+      "nom": "Chatière 01",
+      "x": 245,
+      "y": 257,
+      "tags": ["chatiere", "carriere"],
+      "etat": "ok",
+      "description": "Chatiere dans les remblais",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "Passage01",
+      "nom": "Passage 01",
+      "x": 573,
+      "y": 363,
+      "tags": ["passage", "carriere"],
+      "etat": "ok",
+      "description": "Mur de champi eboulé",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    },
+    {
+      "id": "cable",
+      "nom": "cable au sol",
+      "x": 3187,
+      "y": 3974,
+      "tags": ["elec"],
+      "etat": "ok",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-04-03"
+    }                                   
+  ]
+}
