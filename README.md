@@ -39,7 +39,417 @@ L’application est pensée pour une utilisation <strong>terrain</strong>, y com
 <hr>
 
 <h2>⚙️ Configuration de l’application</h2>
+<hr>
 
+<h2>🗂️ Configuration avancée du plan : <code>plan-config.js</code></h2>
+
+<p>
+En complément de <code>config.js</code>, le projet peut utiliser un fichier dédié au <strong>chargement complet d’un plan</strong>.
+</p>
+
+<p>
+L’objectif de <code>plan-config.js</code> est de centraliser, dans une seule structure, toutes les informations nécessaires
+pour charger un plan donné :
+</p>
+
+<ul>
+  <li>les métadonnées du plan</li>
+  <li>l’image de base</li>
+  <li>la carte de collision</li>
+  <li>les calques image supplémentaires</li>
+  <li>les couches de données JSON</li>
+  <li>les paramètres de tracking</li>
+  <li>les icônes à utiliser</li>
+</ul>
+
+<p>
+Cette approche permet d’adapter l’application à plusieurs plans sans devoir modifier directement le code métier.
+</p>
+
+<h3>Exemple de structure</h3>
+
+<pre><code>{
+  "plan": {
+    "name": "TEST",
+    "version": "V1",
+    "author": "KARMA",
+    "imageWidth": 1044,
+    "imageHeight": 610,
+    "baseImage": "data/TestMAP.png",
+    "collisionImage": "data/collision.png"
+  },
+  "imageLayers": [
+    {
+      "id": "legende",
+      "label": "Legende",
+      "file": "data/TestMAP_LEGENDE.png",
+      "visible": true,
+      "order": 10
+    }
+  ],
+  "dataLayers": [
+    {
+      "id": "puits",
+      "label": "Puits",
+      "file": "data/puit.json",
+      "visible": true
+    },
+    {
+      "id": "vehicule",
+      "label": "Vehicule",
+      "file": "data/vehicule.json",
+      "visible": true
+    },
+    {
+      "id": "cataphile",
+      "label": "Cataphile",
+      "file": "data/cataphile.json",
+      "visible": true
+    },
+    {
+      "id": "carry",
+      "label": "Carriére",
+      "file": "data/carry.json",
+      "visible": true
+    },
+    {
+      "id": "editor",
+      "label": "Ajouts",
+      "file": "data/editor.json",
+      "visible": true
+    }
+  ],
+  "tracking": {
+    "startX": 345,
+    "startY": 519,
+    "scale": 4.9,
+    "stepLength": 0.7,
+    "stepThreshold": 13,
+    "stepCooldown": 400
+  },
+  "icons": {
+    "default": "icon/iconetrack.png",
+    "salle": "icon/house.png",
+    "pa": "icon/pa.png",
+    "pc": "icon/pc.png",
+    "pb": "icon/pb.png",
+    "vehicule": "icon/vehicule.png",
+    "elec": "icon/elec.png",
+    "epure": "icon/epure.png",
+    "ps": "icon/ps.png",
+    "info": "icon/info.png",
+    "chatiere": "icon/chatiere.png",
+    "passage": "icon/passage.png",
+    "danger": "icon/danger.png",
+    "pe": "icon/pe.png",
+    "track": "icon/iconetrack.png"
+  }
+}</code></pre>
+
+<h3>Rôle de <code>plan-config.js</code></h3>
+
+<p>
+Le fichier <code>plan-config.js</code> a pour rôle de :
+</p>
+
+<ul>
+  <li>charger ce JSON de configuration</li>
+  <li>rendre ses valeurs accessibles au reste de l’application</li>
+  <li>alimenter les modules <code>map.js</code>, <code>tracking.js</code>, <code>editor.js</code> et <code>interface.js</code></li>
+</ul>
+
+<p>
+En pratique, il sert de <strong>pont entre un plan donné et le moteur de l’application</strong>.
+</p>
+
+<h3>Section <code>plan</code></h3>
+
+<p>
+La section <code>plan</code> décrit les informations générales du plan.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Clé</th>
+      <th>Utilité</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>name</code></td>
+      <td>Nom du plan affiché ou utilisé comme référence.</td>
+    </tr>
+    <tr>
+      <td><code>version</code></td>
+      <td>Version du plan.</td>
+    </tr>
+    <tr>
+      <td><code>author</code></td>
+      <td>Auteur ou source de la cartographie.</td>
+    </tr>
+    <tr>
+      <td><code>imageWidth</code></td>
+      <td>Largeur de l’image principale en pixels.</td>
+    </tr>
+    <tr>
+      <td><code>imageHeight</code></td>
+      <td>Hauteur de l’image principale en pixels.</td>
+    </tr>
+    <tr>
+      <td><code>baseImage</code></td>
+      <td>Chemin vers l’image principale du plan.</td>
+    </tr>
+    <tr>
+      <td><code>collisionImage</code></td>
+      <td>Chemin vers l’image de collision utilisée pour bloquer les déplacements.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+Cette section est utilisée principalement par <code>map.js</code> et par les fonctions de conversion de coordonnées.
+</p>
+
+<h3>Section <code>imageLayers</code></h3>
+
+<p>
+Cette section contient la liste des <strong>calques image supplémentaires</strong> qui peuvent être affichés par-dessus le plan principal.
+</p>
+
+<p>
+Exemple : légende, calque d’aide, tracé secondaire, annotations visuelles.
+</p>
+
+<p>Chaque objet contient :</p>
+
+<ul>
+  <li><code>id</code> : identifiant interne</li>
+  <li><code>label</code> : nom affiché dans l’interface</li>
+  <li><code>file</code> : image à charger</li>
+  <li><code>visible</code> : état initial du calque</li>
+  <li><code>order</code> : ordre d’affichage</li>
+</ul>
+
+<p>
+Le champ <code>order</code> permet de définir la superposition des couches, comme dans un logiciel de retouche ou un SIG.
+</p>
+
+<h3>Section <code>dataLayers</code></h3>
+
+<p>
+Cette section liste les <strong>couches de données JSON</strong> à charger.
+</p>
+
+<p>
+Chaque couche correspond à un ensemble d’objets métier :
+</p>
+
+<ul>
+  <li>puits</li>
+  <li>véhicules</li>
+  <li>cataphiles</li>
+  <li>zones ou objets de carrière</li>
+  <li>ajouts réalisés par l’utilisateur</li>
+</ul>
+
+<p>Chaque entrée contient :</p>
+
+<ul>
+  <li><code>id</code> : identifiant technique</li>
+  <li><code>label</code> : nom visible dans l’interface</li>
+  <li><code>file</code> : chemin vers le fichier JSON</li>
+  <li><code>visible</code> : état initial</li>
+</ul>
+
+<p>
+Cette partie permet de rendre le chargement des données beaucoup plus modulaire.
+</p>
+
+<h3>Section <code>tracking</code></h3>
+
+<p>
+Cette section regroupe les <strong>paramètres liés au déplacement simulé</strong>.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Clé</th>
+      <th>Utilité</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>startX</code></td>
+      <td>Position initiale X du tracker.</td>
+    </tr>
+    <tr>
+      <td><code>startY</code></td>
+      <td>Position initiale Y du tracker.</td>
+    </tr>
+    <tr>
+      <td><code>scale</code></td>
+      <td>Échelle utilisée pour convertir les pixels en distance réelle.</td>
+    </tr>
+    <tr>
+      <td><code>stepLength</code></td>
+      <td>Longueur moyenne d’un pas en mètres.</td>
+    </tr>
+    <tr>
+      <td><code>stepThreshold</code></td>
+      <td>Seuil de détection du mouvement assimilé à un pas.</td>
+    </tr>
+    <tr>
+      <td><code>stepCooldown</code></td>
+      <td>Temps minimal entre deux pas détectés.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>
+Cette partie est utilisée par <code>tracking.js</code> pour initialiser et régler le comportement du tracker.
+</p>
+
+<h3>Section <code>icons</code></h3>
+
+<p>
+La section <code>icons</code> centralise les chemins de toutes les icônes utilisées par l’application.
+</p>
+
+<p>
+Cela permet :
+</p>
+
+<ul>
+  <li>d’éviter les chemins codés en dur dans plusieurs fichiers</li>
+  <li>de changer un set d’icônes plus facilement</li>
+  <li>d’adapter rapidement l’interface à un autre plan ou un autre style</li>
+</ul>
+
+<p>
+Chaque clé correspond à un type logique d’objet :
+</p>
+
+<ul>
+  <li><code>pa</code>, <code>pb</code>, <code>pc</code>, <code>pe</code> pour les puits</li>
+  <li><code>salle</code> pour les salles</li>
+  <li><code>vehicule</code> pour les véhicules</li>
+  <li><code>danger</code>, <code>info</code>, <code>passage</code>, etc.</li>
+  <li><code>track</code> pour l’icône du tracker</li>
+</ul>
+
+<h3>Fonctionnement global</h3>
+
+<p>
+Le rôle de <code>plan-config.js</code> est donc de lire ce fichier de configuration et de distribuer les informations
+vers les autres modules.
+</p>
+
+<p>En pratique, cela permet de :</p>
+
+<ul>
+  <li>changer de plan sans modifier les scripts métier</li>
+  <li>charger automatiquement les bonnes images et les bons JSON</li>
+  <li>adapter les paramètres de tracking à chaque cartographie</li>
+  <li>gérer plusieurs versions ou variantes d’un même plan</li>
+</ul>
+
+<h3>Intérêt de cette approche</h3>
+
+<p>
+Cette architecture permet de séparer clairement :
+</p>
+
+<ul>
+  <li>le <strong>moteur de l’application</strong></li>
+  <li>la <strong>configuration d’un plan donné</strong></li>
+</ul>
+
+<p>
+Autrement dit :
+</p>
+
+<ul>
+  <li>les scripts gèrent le fonctionnement</li>
+  <li>le JSON de plan décrit le contenu à charger</li>
+</ul>
+
+<p>
+Cela rend le projet plus modulaire, plus maintenable et plus facilement réutilisable.
+</p>
+<h2>📁 Description des scripts du dossier <code>js/</code></h2>
+
+<h3><code>config.js</code></h3>
+
+<p>
+Ce fichier centralise les <strong>constantes et paramètres de configuration</strong> de l’application.
+</p>
+
+<p>Il contient notamment :</p>
+
+<ul>
+  <li>les dimensions du plan</li>
+  <li>l’échelle de conversion pixels / mètres</li>
+  <li>la taille d’un pas simulé</li>
+  <li>la position initiale du tracker</li>
+  <li>les paramètres de détection de mouvement</li>
+</ul>
+
+<p>
+Deux objets y sont utilisés :
+</p>
+
+<ul>
+  <li><code>DEFAULT_CONFIG</code> : valeurs d’origine</li>
+  <li><code>APP_CONFIG</code> : valeurs effectivement utilisées par l’application</li>
+</ul>
+
+<p>
+Cela permet de modifier certains réglages sans perdre les valeurs par défaut.
+</p>
+
+<hr>
+
+<h3><code>utils.js</code></h3>
+
+<p>
+Ce fichier contient les <strong>fonctions utilitaires communes</strong>.
+</p>
+
+<p>
+La fonction principale est <code>convertCoord(x, y)</code>, qui convertit les coordonnées internes
+du plan vers le système utilisé par Leaflet.
+</p>
+
+<p>
+Cette conversion est nécessaire car l’origine et l’axe Y d’une image classique
+ne correspondent pas directement à ceux de Leaflet.
+</p>
+
+<hr>
+
+<h3><code>map.js</code></h3>
+
+<p>
+Ce fichier gère l’<strong>initialisation de la carte</strong>.
+</p>
+
+<p>Il s’occupe notamment de :</p>
+
+<ul>
+  <li>créer l’instance Leaflet</li>
+  <li>définir les limites du plan</li>
+  <li>charger l’image principale du plan</li>
+  <li>créer les différents calques de données</li>
+  <li>charger la carte de collision (image invisible utilisée pour les zones interdites)</li>
+</ul>
+
+<p>
+C’est le fichier qui pose les fondations de toute l’application.
+</p>
+
+<hr>
 <p>
 L’application repose sur un système de configuration centralisé, chargé depuis le fichier
 <code>config.js</code>.
@@ -217,78 +627,6 @@ L’intérêt de ce système est de pouvoir :
 Cette architecture permet de garder un projet souple, facilement modifiable et plus maintenable.
 </p>
 
-<h2>📁 Description des scripts du dossier <code>js/</code></h2>
-
-<h3><code>config.js</code></h3>
-
-<p>
-Ce fichier centralise les <strong>constantes et paramètres de configuration</strong> de l’application.
-</p>
-
-<p>Il contient notamment :</p>
-
-<ul>
-  <li>les dimensions du plan</li>
-  <li>l’échelle de conversion pixels / mètres</li>
-  <li>la taille d’un pas simulé</li>
-  <li>la position initiale du tracker</li>
-  <li>les paramètres de détection de mouvement</li>
-</ul>
-
-<p>
-Deux objets y sont utilisés :
-</p>
-
-<ul>
-  <li><code>DEFAULT_CONFIG</code> : valeurs d’origine</li>
-  <li><code>APP_CONFIG</code> : valeurs effectivement utilisées par l’application</li>
-</ul>
-
-<p>
-Cela permet de modifier certains réglages sans perdre les valeurs par défaut.
-</p>
-
-<hr>
-
-<h3><code>utils.js</code></h3>
-
-<p>
-Ce fichier contient les <strong>fonctions utilitaires communes</strong>.
-</p>
-
-<p>
-La fonction principale est <code>convertCoord(x, y)</code>, qui convertit les coordonnées internes
-du plan vers le système utilisé par Leaflet.
-</p>
-
-<p>
-Cette conversion est nécessaire car l’origine et l’axe Y d’une image classique
-ne correspondent pas directement à ceux de Leaflet.
-</p>
-
-<hr>
-
-<h3><code>map.js</code></h3>
-
-<p>
-Ce fichier gère l’<strong>initialisation de la carte</strong>.
-</p>
-
-<p>Il s’occupe notamment de :</p>
-
-<ul>
-  <li>créer l’instance Leaflet</li>
-  <li>définir les limites du plan</li>
-  <li>charger l’image principale du plan</li>
-  <li>créer les différents calques de données</li>
-  <li>charger la carte de collision (image invisible utilisée pour les zones interdites)</li>
-</ul>
-
-<p>
-C’est le fichier qui pose les fondations de toute l’application.
-</p>
-
-<hr>
 
 <h3><code>measure.js</code></h3>
 
