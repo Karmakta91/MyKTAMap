@@ -3,8 +3,8 @@ const DEFAULT_CONFIG = {
   imageWidth: 1044,
   scale: 4.9,
   stepLength: 0.7,
-  startX: 560,
-  startY: 2891,
+  startX: 345,
+  startY: 519,
   stepThreshold: 13,      // seuil de détection
   stepCooldown: 400,     // ms entre 2 pas
   motionDebug: false     // logs console
