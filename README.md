@@ -1,270 +1,292 @@
 # MyKTAMap
 <img width="1390" height="966" alt="image" src="https://github.com/user-attachments/assets/11b4f935-d41f-4e19-aa24-601e1d46db87" />
 
+<h1>🗺️ Documentation du projet</h1>
 
-Outil d'annotation pour cavité souterraine 
+<h2>🧭 Introduction générale</h2>
 
-# 🗺️ Projet Cartographie – Documentation
+<p>
+Ce projet est une application web permettant de <strong>visualiser, annoter et exploiter un plan de carrière</strong>
+(ou tout autre environnement cartographié) à partir d’une image.
+</p>
 
-🧭 Introduction
+<p>
+L’outil repose sur <strong>Leaflet</strong> en projection simple (<code>L.CRS.Simple</code>) et permet de travailler
+sur une carte personnalisée sans utiliser de coordonnées GPS classiques.
+</p>
 
-Ce projet est une application web permettant de visualiser, annoter et explorer un plan de carrière (ou tout autre environnement cartographié) à partir d’une image.
+<p>Les objectifs principaux sont les suivants :</p>
 
-L’outil repose sur la librairie Leaflet et fonctionne avec un système de coordonnées personnalisé (projection simple), ce qui permet de :
+<ul>
+  <li>Afficher un plan sous forme d’image haute résolution</li>
+  <li>Ajouter et consulter des points d’intérêt</li>
+  <li>Mesurer des distances directement sur le plan</li>
+  <li>Simuler un déplacement via les capteurs du téléphone</li>
+  <li>Exporter les données créées ou mesurées</li>
+</ul>
 
-afficher un plan (image géoréférencée en coordonnées locales)
-positionner des points d’intérêt (POI)
-mesurer des distances directement sur le plan
-simuler un déplacement basé sur les capteurs du téléphone (accéléromètre + boussole)
-exporter les données (points, tracés)
+<p>
+L’application est pensée pour une utilisation <strong>terrain</strong>, y compris sur mobile.
+</p>
 
-🎯 Objectifs de l’outil
+<p>
+⚠️ La fonctionnalité de localisation basée sur les capteurs du téléphone est actuellement
+<strong>en cours de développement</strong> et ne doit pas être considérée comme fiable en l’état.
+</p>
 
-Cet outil a été conçu pour :
+<hr>
 
-🗺️ Explorer un plan de carrière
-📍 Ajouter et gérer des points d’intérêt
-📏 Mesurer des distances manuellement
-🚶 Simuler un déplacement en environnement souterrain
-💾 Exporter des données pour analyse ou archivage
+<h2>📁 Description des scripts du dossier <code>js/</code></h2>
 
-⚠️ La fonctionnalité de localisation via capteurs est actuellement en cours de développement et reste expérimentale.
+<h3><code>config.js</code></h3>
 
-🧱 Architecture du projet (JS)
+<p>
+Ce fichier centralise les <strong>constantes et paramètres de configuration</strong> de l’application.
+</p>
 
-```
-/project
-│── index.html
-│── css/
-│   └── style.css
-│── js/
-│   └── main.js
-│   └── map.js
-│   └── util.js
-│   └── tracking.js
-│   └── interface.js
-│   └── editor.js
-│   └── measure.js
-│   └── config.js
-│   └── sw.js
-│── data/
-│   └── puit.json
-│   └── vehicule.json
-│   └── carry.json
-│   └── cataphile.json
-│   └── plan-config.json
-│   └── TestMAP.png
-    └── TestMAP_LEGENDE.png
-    └── collision.png
-│── icon/
-│   └── pa.png
-│   └── pb.png
-│   └── epure.png
-│   └── danger.png
-│   └── info.png
-│   └── pe.png
-│   └── voiture.png
-│── lib/
-│   └── leaflet/
-```
+<p>Il contient notamment :</p>
 
----
+<ul>
+  <li>les dimensions du plan</li>
+  <li>l’échelle de conversion pixels / mètres</li>
+  <li>la taille d’un pas simulé</li>
+  <li>la position initiale du tracker</li>
+  <li>les paramètres de détection de mouvement</li>
+</ul>
 
-Le dossier js/ contient l’ensemble de la logique de l’application.
-Chaque fichier a un rôle précis.
+<p>
+Deux objets y sont utilisés :
+</p>
 
-⚙️ config.js
+<ul>
+  <li><code>DEFAULT_CONFIG</code> : valeurs d’origine</li>
+  <li><code>APP_CONFIG</code> : valeurs effectivement utilisées par l’application</li>
+</ul>
 
-Rôle : Centralise toutes les constantes du projet.
+<p>
+Cela permet de modifier certains réglages sans perdre les valeurs par défaut.
+</p>
 
-Contenu
+<hr>
 
-Dimensions du plan (imageHeight, imageWidth)
+<h3><code>utils.js</code></h3>
 
-Échelle (scale)
+<p>
+Ce fichier contient les <strong>fonctions utilitaires communes</strong>.
+</p>
 
-Taille d’un pas (stepLength)
+<p>
+La fonction principale est <code>convertCoord(x, y)</code>, qui convertit les coordonnées internes
+du plan vers le système utilisé par Leaflet.
+</p>
 
-Position initiale (startX, startY)
+<p>
+Cette conversion est nécessaire car l’origine et l’axe Y d’une image classique
+ne correspondent pas directement à ceux de Leaflet.
+</p>
 
-Paramètres de détection de mouvement :
+<hr>
 
-stepThreshold
+<h3><code>map.js</code></h3>
 
-stepCooldown
+<p>
+Ce fichier gère l’<strong>initialisation de la carte</strong>.
+</p>
 
-motionDebug
-
-Fonctionnement
+<p>Il s’occupe notamment de :</p>
 
-DEFAULT_CONFIG → valeurs d’origine
+<ul>
+  <li>créer l’instance Leaflet</li>
+  <li>définir les limites du plan</li>
+  <li>charger l’image principale du plan</li>
+  <li>créer les différents calques de données</li>
+  <li>charger la carte de collision (image invisible utilisée pour les zones interdites)</li>
+</ul>
 
-APP_CONFIG → valeurs modifiables en temps réel
+<p>
+C’est le fichier qui pose les fondations de toute l’application.
+</p>
 
-Sauvegarde via localStorage
-
-👉 Permet de calibrer l’application sans modifier le code.
-
-🧰 utils.js
-Rôle :Fonctions utilitaires communes.
-
-Fonction principale
-convertCoord(x, y)
-
-Permet de convertir les coordonnées internes (type GIMP/image) vers le système Leaflet.
-
-👉 Important : inverse l’axe Y pour correspondre à l’image.
-
-🗺️ map.js
-Rôle : Initialise la carte et les couches.
-
-Contenu
-Création de la carte Leaflet (L.map)
-Chargement du plan (image overlay)
-Définition des bounds
-Création des layers :
-puits
-véhicules
-cataphiles
-carrières
-Chargement de la map de collision (canvas invisible)
-Particularité
-
-Utilise :
-
-crs: L.CRS.Simple
-
-👉 projection personnalisée (pas de coordonnées GPS)
-
-📏 measure.js
-Rôle : Gérer la mesure de distance sur le plan.
-
-Fonctionnalités
-Mode mesure (activation via interface)
-Ajout de points par clic
-Tracé d’une polyligne
-Calcul de distance basé sur l’échelle
-Affichage en temps réel
-Reset de la mesure
-Export JSON du tracé
-Fonction clé
-calculDistance()
-
-👉 convertit les pixels en mètres via APP_CONFIG.scale
-
-🚶 tracking.js
-Rôle : Simuler un déplacement dans la carte à partir des capteurs du téléphone.
-
-Fonctionnalités
-Détection d’orientation (deviceorientation)
-Détection de mouvement (devicemotion)
-Estimation de pas via accéléromètre
-Déplacement du marqueur
-Gestion des collisions (zones interdites)
-Recalage manuel via clic
-Affichage du tracé
-Fonctionnement
-Détection d’un “pas”
-Calcul de direction
-Déplacement en fonction :
-de la taille du pas
-de l’échelle
-Vérification collision
-Mise à jour carte
-Limites
-
-⚠️ Système expérimental :
-
-sensible au bruit
-dépend du téléphone
-nécessite calibration
-
-✏️ editor.js
-Rôle : Permet d’ajouter des points d’intérêt (POI).
-
-Fonctionnalités
-Activation du mode édition
-Clic sur carte → ouverture d’un formulaire
-Saisie :
-nom
-type
-description
-Création d’un objet JSON
-Ajout d’un marker sur la carte
-Export des points créés
-🧩 interface.js
-Rôle : Gérer toute l’interface utilisateur Leaflet.
-
-Fonctionnalités
-
-Création des boutons (contrôles Leaflet)
-
-Organisation en blocs :
-Tracking
-Mesure
-Plan (download)
-Édition
-Réglages ⚙️
-Aide ❓
-
-Ouverture de popups :
-aide
-configuration
-Importance
-
-👉 centralise toute l’UI → évite la dispersion dans les autres fichiers
-
-🚀 main.js
-Rôle : Point d’entrée de l’application.
-
-Fonctionnalités
-Chargement des données JSON
-Initialisation :
-carte
-tracking
-mesure
-édition
-interface
-
-Gestion des permissions capteurs (iOS)
-
-🧠 Résumé de l’architecture
-
-Fichier        	Rôle principal
-config.js    	Configuration globale
-utils.js	    Fonctions utilitaires
-map.js        	Initialisation carte
-measure.js	    Outil de mesure
-tracking.js	    Déplacement / capteurs
-editor.js	    Ajout de points
-interface.js	Interface utilisateur
-main.js        	Initialisation globale
-
-
-🔧 État actuel du projet
-
-✔️ Visualisation du plan
-✔️ Ajout de points
-✔️ Mesure de distance
-✔️ Export JSON
-✔️ Interface complète
-✔️ Configuration dynamique
-
-⚠️ Tracking :
-
-- fonctionnel mais non fiable
-- nécessite calibration terrain
-- en cours d’amélioration
-
-🚧 Améliorations futures possibles :
-
-- calibration automatique de l’échelle
-- amélioration détection de pas
-- correction des dérives
-- snapping intelligent dans les galeries
-- export combiné (points + tracé)
-- interface mobile optimisée
+<hr>
 
+<h3><code>measure.js</code></h3>
+
+<p>
+Ce fichier gère le <strong>module de mesure de distance</strong>.
+</p>
+
+<p>Il permet de :</p>
+
+<ul>
+  <li>activer un mode mesure</li>
+  <li>poser plusieurs points sur la carte</li>
+  <li>tracer une ligne entre ces points</li>
+  <li>calculer la distance totale</li>
+  <li>réinitialiser la mesure</li>
+  <li>exporter le tracé au format JSON</li>
+</ul>
+
+<p>
+Le calcul repose sur l’échelle définie dans <code>APP_CONFIG</code>, ce qui permet de comparer
+les résultats avec des mesures réelles ou d’autres outils.
+</p>
+
+<hr>
+
+<h3><code>tracking.js</code></h3>
+
+<p>
+Ce fichier gère le <strong>module de déplacement simulé</strong>.
+</p>
+
+<p>Son rôle est de :</p>
+
+<ul>
+  <li>écouter les capteurs du téléphone</li>
+  <li>détecter les mouvements assimilés à des pas</li>
+  <li>récupérer l’orientation</li>
+  <li>déplacer un marqueur sur la carte</li>
+  <li>dessiner la trace du déplacement</li>
+  <li>empêcher le passage dans certaines zones grâce à la carte de collision</li>
+  <li>permettre un recalage manuel</li>
+</ul>
+
+<p>
+Cette partie du projet est expérimentale. Elle fonctionne comme une aide visuelle
+et un support de recherche, mais pas comme un système de localisation fiable.
+</p>
+
+<hr>
+
+<h3><code>editor.js</code></h3>
+
+<p>
+Ce fichier gère le <strong>mode édition</strong>.
+</p>
+
+<p>Il permet :</p>
+
+<ul>
+  <li>d’activer un mode d’ajout de point</li>
+  <li>de cliquer sur la carte pour ouvrir un formulaire</li>
+  <li>de renseigner un nom, un type et une description</li>
+  <li>d’ajouter le point à la carte</li>
+  <li>d’exporter les points créés au format JSON</li>
+</ul>
+
+<p>
+Il sert donc à enrichir progressivement la carte avec de nouvelles informations.
+</p>
+
+<hr>
+
+<h3><code>interface.js</code></h3>
+
+<p>
+Ce fichier centralise la <strong>construction de l’interface utilisateur</strong>.
+</p>
+
+<p>Il crée les boutons Leaflet organisés en plusieurs blocs fonctionnels, par exemple :</p>
+
+<ul>
+  <li>tracking</li>
+  <li>mesure</li>
+  <li>édition</li>
+  <li>téléchargement du plan</li>
+  <li>aide</li>
+  <li>réglages</li>
+</ul>
+
+<p>
+Son rôle est d’éviter de disperser la logique d’interface dans plusieurs fichiers.
+</p>
+
+<hr>
+
+<h3><code>main.js</code></h3>
+
+<p>
+Ce fichier joue le rôle de <strong>point d’entrée</strong> de l’application.
+</p>
+
+<p>Il s’occupe notamment de :</p>
+
+<ul>
+  <li>charger les données JSON existantes</li>
+  <li>initialiser les différents modules</li>
+  <li>définir la vue de départ</li>
+  <li>gérer certaines permissions nécessaires sur mobile</li>
+</ul>
+
+<p>
+C’est lui qui lance l’ensemble de l’application une fois les scripts disponibles.
+</p>
+
+<hr>
+
+<h2>🧠 Résumé de l’architecture</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Fichier</th>
+      <th>Rôle principal</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>config.js</code></td>
+      <td>Configuration globale</td>
+    </tr>
+    <tr>
+      <td><code>utils.js</code></td>
+      <td>Fonctions utilitaires</td>
+    </tr>
+    <tr>
+      <td><code>map.js</code></td>
+      <td>Initialisation de la carte et des calques</td>
+    </tr>
+    <tr>
+      <td><code>measure.js</code></td>
+      <td>Mesure de distance</td>
+    </tr>
+    <tr>
+      <td><code>tracking.js</code></td>
+      <td>Déplacement simulé et collision</td>
+    </tr>
+    <tr>
+      <td><code>editor.js</code></td>
+      <td>Ajout de points et export JSON</td>
+    </tr>
+    <tr>
+      <td><code>interface.js</code></td>
+      <td>Interface utilisateur</td>
+    </tr>
+    <tr>
+      <td><code>main.js</code></td>
+      <td>Initialisation globale</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr>
+
+<h2>🚧 État actuel</h2>
+
+<ul>
+  <li>✅ Affichage du plan</li>
+  <li>✅ Gestion de calques et d’icônes</li>
+  <li>✅ Ajout de points d’intérêt</li>
+  <li>✅ Export JSON</li>
+  <li>✅ Mesure de distance</li>
+  <li>✅ Interface dédiée</li>
+  <li>⚠️ Localisation / tracking en cours de développement</li>
+</ul>
+
+<p>
+La base est fonctionnelle, modulaire et évolutive, avec une architecture pensée pour permettre
+des améliorations progressives.
+</p>
 ## 
 ## ⚙️ Fonctionnement global 
 
