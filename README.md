@@ -36,6 +36,187 @@ L’application est pensée pour une utilisation <strong>terrain</strong>, y com
 
 <hr>
 
+<hr>
+
+<h2>⚙️ Configuration de l’application</h2>
+
+<p>
+L’application repose sur un système de configuration centralisé, chargé depuis le fichier
+<code>config.js</code>.
+</p>
+
+<p>
+Ce fichier contient les <strong>valeurs de référence</strong> utilisées par les différents modules
+de l’application, notamment :
+</p>
+
+<ul>
+  <li>la taille du plan</li>
+  <li>l’échelle de conversion</li>
+  <li>la taille d’un pas</li>
+  <li>la position initiale du tracker</li>
+  <li>les paramètres de détection de mouvement</li>
+</ul>
+
+<h3>Structure générale</h3>
+
+<p>
+Le système de configuration repose sur deux objets :
+</p>
+
+<ul>
+  <li><code>DEFAULT_CONFIG</code> : contient les valeurs d’origine du projet</li>
+  <li><code>APP_CONFIG</code> : contient les valeurs réellement utilisées par l’application</li>
+</ul>
+
+<p>
+Cela permet de modifier la configuration en cours d’utilisation sans perdre les valeurs par défaut.
+</p>
+
+<h3>Exemple de configuration</h3>
+
+<pre><code>const DEFAULT_CONFIG = {
+  imageHeight: 6105,
+  imageWidth: 10441,
+  scale: 5.4,
+  stepLength: 0.7,
+  startX: 560,
+  startY: 2891,
+  stepThreshold: 13,
+  stepCooldown: 400,
+  motionDebug: false
+};
+
+let savedConfig = localStorage.getItem("app_config");
+let APP_CONFIG = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };</code></pre>
+
+<h3>Description des paramètres</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Clé</th>
+      <th>Utilité</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>imageHeight</code></td>
+      <td>Hauteur du plan en pixels. Utilisée notamment pour convertir les coordonnées Y.</td>
+    </tr>
+    <tr>
+      <td><code>imageWidth</code></td>
+      <td>Largeur du plan en pixels.</td>
+    </tr>
+    <tr>
+      <td><code>scale</code></td>
+      <td>Échelle utilisée pour convertir les déplacements ou mesures entre pixels et mètres.</td>
+    </tr>
+    <tr>
+      <td><code>stepLength</code></td>
+      <td>Longueur moyenne d’un pas, exprimée en mètres.</td>
+    </tr>
+    <tr>
+      <td><code>startX</code></td>
+      <td>Coordonnée X initiale du tracker.</td>
+    </tr>
+    <tr>
+      <td><code>startY</code></td>
+      <td>Coordonnée Y initiale du tracker.</td>
+    </tr>
+    <tr>
+      <td><code>stepThreshold</code></td>
+      <td>Seuil utilisé pour détecter un mouvement assimilable à un pas.</td>
+    </tr>
+    <tr>
+      <td><code>stepCooldown</code></td>
+      <td>Temps minimal entre deux pas détectés, en millisecondes.</td>
+    </tr>
+    <tr>
+      <td><code>motionDebug</code></td>
+      <td>Active ou non les logs de debug liés à la détection de mouvement.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Fonctionnement</h3>
+
+<p>
+Au démarrage, l’application vérifie si une configuration utilisateur a été sauvegardée dans le
+<code>localStorage</code>.
+</p>
+
+<ul>
+  <li>Si oui, elle charge cette configuration</li>
+  <li>Sinon, elle utilise les valeurs par défaut</li>
+</ul>
+
+<p>
+Cette logique permet de conserver les réglages personnalisés entre deux sessions.
+</p>
+
+<h3>Réglages dans l’interface</h3>
+
+<p>
+Une interface de réglage est accessible via un bouton dédié dans l’application.
+Elle permet de modifier dynamiquement certaines valeurs sans toucher au code source.
+</p>
+
+<p>
+Les paramètres modifiables sont notamment :
+</p>
+
+<ul>
+  <li>l’échelle</li>
+  <li>la taille d’un pas</li>
+  <li>la taille du plan</li>
+  <li>la position initiale du tracker</li>
+  <li>les seuils de détection de mouvement</li>
+</ul>
+
+<p>
+Deux actions sont disponibles :
+</p>
+
+<ul>
+  <li><strong>Appliquer</strong> : enregistre les nouvelles valeurs dans <code>APP_CONFIG</code> et dans le <code>localStorage</code></li>
+  <li><strong>Reset</strong> : restaure les valeurs de <code>DEFAULT_CONFIG</code></li>
+</ul>
+
+<h3>Impact sur les modules</h3>
+
+<p>
+La configuration est utilisée dans plusieurs parties du projet :
+</p>
+
+<ul>
+  <li><strong>utils.js</strong> : conversion des coordonnées</li>
+  <li><strong>tracking.js</strong> : position initiale, longueur de pas, détection de mouvement</li>
+  <li><strong>measure.js</strong> : calcul de distance</li>
+  <li><strong>map.js</strong> : cohérence avec les dimensions du plan</li>
+</ul>
+
+<p>
+La configuration joue donc un rôle central dans la cohérence du projet.
+</p>
+
+<h3>Objectif de cette approche</h3>
+
+<p>
+L’intérêt de ce système est de pouvoir :
+</p>
+
+<ul>
+  <li>adapter facilement l’application à un autre plan</li>
+  <li>ajuster les paramètres sans recoder</li>
+  <li>calibrer les outils de mesure et de déplacement</li>
+  <li>tester rapidement plusieurs réglages sur le terrain</li>
+</ul>
+
+<p>
+Cette architecture permet de garder un projet souple, facilement modifiable et plus maintenable.
+</p>
+
 <h2>📁 Description des scripts du dossier <code>js/</code></h2>
 
 <h3><code>config.js</code></h3>
