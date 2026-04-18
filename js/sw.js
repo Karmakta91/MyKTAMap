@@ -21,8 +21,8 @@ const assetsToCache = [
   "/data/plan-config.json",
 
   // Images
-  "/data/four_a_chaux_int.png",
-  "/data/four_a_chaux_legende.png",
+  "/data/TestMAP.png",
+  "/data/TestMAP_LEGENDE.png",
   "/icon/vehicule.png",
   "/icon/pc.png",
   "/icon/pb.png",
