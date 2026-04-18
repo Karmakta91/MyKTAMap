@@ -1,6 +1,6 @@
 const DEFAULT_CONFIG = {
-  imageHeight: 6105,
-  imageWidth: 10441,
+  imageHeight: 610,
+  imageWidth: 1044,
   scale: 4.9,
   stepLength: 0.7,
   startX: 560,
