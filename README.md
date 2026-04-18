@@ -4,6 +4,10 @@
 <h1>https://devmap.is-underground.fr/</h1>
 !! Ne contient aucune DATA réel, donnée de principe !!
 
+!! Service Worker en commentaire du a des latance dans index.html !!
+!! Debug en cours !!
+!! Pour du Horsligne, ouvrir l'application avant de perdre la conection et la garder en background !!
+
 <h1>🗺️ Documentation du projet</h1>
 
 <h2>🧭 Introduction générale</h2>
