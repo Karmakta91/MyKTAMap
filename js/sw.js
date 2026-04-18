@@ -6,7 +6,7 @@ const assetsToCache = [
   "/js/utils.js",
   "/js/main.js",
   "/js/sw.js",
-  "/jstracking.js",
+  "/js/tracking.js",
   "/js/measure.js",
   "/js/editor.js",
   "/js/interface.js",
