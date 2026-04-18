@@ -41,14 +41,14 @@ L’application est pensée pour une utilisation <strong>terrain</strong>, y com
 <h2>⚙️ Configuration de l’application</h2>
 <hr>
 
-<h2>🗂️ Configuration avancée du plan : <code>plan-config.js</code></h2>
+<h2>🗂️ Configuration avancée du plan : <code>plan-config.json</code></h2>
 
 <p>
 En complément de <code>config.js</code>, le projet peut utiliser un fichier dédié au <strong>chargement complet d’un plan</strong>.
 </p>
 
 <p>
-L’objectif de <code>plan-config.js</code> est de centraliser, dans une seule structure, toutes les informations nécessaires
+L’objectif de <code>plan-config.json</code> est de centraliser, dans une seule structure, toutes les informations nécessaires
 pour charger un plan donné :
 </p>
 
