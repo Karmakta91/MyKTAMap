@@ -17,6 +17,7 @@ positionner des points d’intérêt (POI)
 mesurer des distances directement sur le plan
 simuler un déplacement basé sur les capteurs du téléphone (accéléromètre + boussole)
 exporter les données (points, tracés)
+
 🎯 Objectifs de l’outil
 
 Cet outil a été conçu pour :
@@ -73,9 +74,8 @@ Le dossier js/ contient l’ensemble de la logique de l’application.
 Chaque fichier a un rôle précis.
 
 ⚙️ config.js
-Rôle
 
-Centralise toutes les constantes du projet.
+Rôle : Centralise toutes les constantes du projet.
 
 Contenu
 Dimensions du plan (imageHeight, imageWidth)
@@ -94,9 +94,7 @@ Sauvegarde via localStorage
 👉 Permet de calibrer l’application sans modifier le code.
 
 🧰 utils.js
-Rôle
-
-Fonctions utilitaires communes.
+Rôle :Fonctions utilitaires communes.
 
 Fonction principale
 convertCoord(x, y)
@@ -106,9 +104,7 @@ Permet de convertir les coordonnées internes (type GIMP/image) vers le système
 👉 Important : inverse l’axe Y pour correspondre à l’image.
 
 🗺️ map.js
-Rôle
-
-Initialise la carte et les couches.
+Rôle : Initialise la carte et les couches.
 
 Contenu
 Création de la carte Leaflet (L.map)
@@ -129,9 +125,7 @@ crs: L.CRS.Simple
 👉 projection personnalisée (pas de coordonnées GPS)
 
 📏 measure.js
-Rôle
-
-Gérer la mesure de distance sur le plan.
+Rôle : Gérer la mesure de distance sur le plan.
 
 Fonctionnalités
 Mode mesure (activation via interface)
@@ -147,9 +141,7 @@ calculDistance()
 👉 convertit les pixels en mètres via APP_CONFIG.scale
 
 🚶 tracking.js
-Rôle
-
-Simuler un déplacement dans la carte à partir des capteurs du téléphone.
+Rôle : Simuler un déplacement dans la carte à partir des capteurs du téléphone.
 
 Fonctionnalités
 Détection d’orientation (deviceorientation)
@@ -174,10 +166,9 @@ Limites
 sensible au bruit
 dépend du téléphone
 nécessite calibration
-✏️ editor.js
-Rôle
 
-Permet d’ajouter des points d’intérêt (POI).
+✏️ editor.js
+Rôle : Permet d’ajouter des points d’intérêt (POI).
 
 Fonctionnalités
 Activation du mode édition
@@ -190,12 +181,12 @@ Création d’un objet JSON
 Ajout d’un marker sur la carte
 Export des points créés
 🧩 interface.js
-Rôle
-
-Gérer toute l’interface utilisateur Leaflet.
+Rôle : Gérer toute l’interface utilisateur Leaflet.
 
 Fonctionnalités
+
 Création des boutons (contrôles Leaflet)
+
 Organisation en blocs :
 Tracking
 Mesure
@@ -203,6 +194,7 @@ Plan (download)
 Édition
 Réglages ⚙️
 Aide ❓
+
 Ouverture de popups :
 aide
 configuration
@@ -211,9 +203,7 @@ Importance
 👉 centralise toute l’UI → évite la dispersion dans les autres fichiers
 
 🚀 main.js
-Rôle
-
-Point d’entrée de l’application.
+Rôle : Point d’entrée de l’application.
 
 Fonctionnalités
 Chargement des données JSON
@@ -223,17 +213,22 @@ tracking
 mesure
 édition
 interface
+
 Gestion des permissions capteurs (iOS)
+
 🧠 Résumé de l’architecture
-Fichier	Rôle principal
-config.js	Configuration globale
-utils.js	Fonctions utilitaires
-map.js	Initialisation carte
-measure.js	Outil de mesure
-tracking.js	Déplacement / capteurs
-editor.js	Ajout de points
+
+Fichier        	Rôle principal
+config.js    	Configuration globale
+utils.js	    Fonctions utilitaires
+map.js        	Initialisation carte
+measure.js	    Outil de mesure
+tracking.js	    Déplacement / capteurs
+editor.js	    Ajout de points
 interface.js	Interface utilisateur
-main.js	Initialisation globale
+main.js        	Initialisation globale
+
+
 🔧 État actuel du projet
 
 ✔️ Visualisation du plan
@@ -245,16 +240,18 @@ main.js	Initialisation globale
 
 ⚠️ Tracking :
 
-fonctionnel mais non fiable
-nécessite calibration terrain
-en cours d’amélioration
-🚧 Améliorations futures possibles
-calibration automatique de l’échelle
-amélioration détection de pas
-correction des dérives
-snapping intelligent dans les galeries
-export combiné (points + tracé)
-interface mobile optimisée
+- fonctionnel mais non fiable
+- nécessite calibration terrain
+- en cours d’amélioration
+
+🚧 Améliorations futures possibles :
+
+- calibration automatique de l’échelle
+- amélioration détection de pas
+- correction des dérives
+- snapping intelligent dans les galeries
+- export combiné (points + tracé)
+- interface mobile optimisée
 
 ## 
 ## ⚙️ Fonctionnement global 
