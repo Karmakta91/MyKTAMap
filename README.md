@@ -1,4 +1,6 @@
 # MyKTAMap
+<img width="385" height="263" alt="image" src="https://github.com/user-attachments/assets/c1413a82-a0f0-42c8-bef2-225a3f60d4bc" />
+
 Outil d'annotation pour cavité souterraine 
 
 # 🗺️ Projet Cartographie – Documentation
