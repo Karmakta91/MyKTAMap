@@ -58,22 +58,10 @@ Ce projet permet d’afficher une carte personnalisée (image) avec des points i
 
 La carte est initialisée avec Leaflet en mode image :
 
-```js
-var map = L.map('map', {
-  crs: L.CRS.Simple,
-  minZoom: -2
-});
-```
-
-👉 On utilise `L.CRS.Simple` car il ne s'agit pas d'une carte GPS mais d'une image personnalisée.
-
----
-
-
 👉 L’image est positionnée avec des coordonnées fixes récupéré sur GIMP.
 ATTENTION a a la fonction qui corrige l'inversion de l'axe Y telle que Y=Ymax-Y si vousc utiliser un autre programme
 
----
+
 
 ### 3. Gestion des calques (layers)
 
@@ -165,14 +153,23 @@ function ajouterPointsDepuisJSON(url, layer) {
 Les icônes sont définies en amont dans le plan-config.js:
 
 ```json
- "imageLayers": [
-    {
-      "id": "legende",
-      "label": "Legende",
-      "file": "data/TestMAP_LEGENDE.png",
-      "visible": true,
-      "order": 10
-    }
+ "icons": {
+    "default": "icon/iconetrack.png",
+    "salle": "icon/house.png",
+    "pa": "icon/pa.png",
+    "pc": "icon/pc.png",
+    "pb": "icon/pb.png",
+    "vehicule": "icon/vehicule.png",
+    "elec": "icon/elec.png",
+    "epure": "icon/epure.png",
+    "ps": "icon/ps.png",
+    "info": "icon/info.png",
+    "chatiere": "icon/chatiere.png",
+    "passage": "icon/passage.png",
+    "danger": "icon/danger.png",
+    "pe": "icon/pe.png",
+    "track": "icon/iconetrack.png"
+  }
 ```
 
 Puis sélectionnées dynamiquement depuis util.js :
