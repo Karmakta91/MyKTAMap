@@ -6,13 +6,30 @@ Outil d'annotation pour cavité souterraine
 
 # 🗺️ Projet Cartographie – Documentation
 
-## 📌 Objectif
+🧭 Introduction
 
-Ce projet permet d’afficher une carte personnalisée (image) avec des points interactifs (puits, salles, objets, etc.) en utilisant **Leaflet.js** et des données dynamiques stockées en **JSON**.
+Ce projet est une application web permettant de visualiser, annoter et explorer un plan de carrière (ou tout autre environnement cartographié) à partir d’une image.
 
----
+L’outil repose sur la librairie Leaflet et fonctionne avec un système de coordonnées personnalisé (projection simple), ce qui permet de :
 
-## 🧱 Architecture du projet
+afficher un plan (image géoréférencée en coordonnées locales)
+positionner des points d’intérêt (POI)
+mesurer des distances directement sur le plan
+simuler un déplacement basé sur les capteurs du téléphone (accéléromètre + boussole)
+exporter les données (points, tracés)
+🎯 Objectifs de l’outil
+
+Cet outil a été conçu pour :
+
+🗺️ Explorer un plan de carrière
+📍 Ajouter et gérer des points d’intérêt
+📏 Mesurer des distances manuellement
+🚶 Simuler un déplacement en environnement souterrain
+💾 Exporter des données pour analyse ou archivage
+
+⚠️ La fonctionnalité de localisation via capteurs est actuellement en cours de développement et reste expérimentale.
+
+🧱 Architecture du projet (JS)
 
 ```
 /project
@@ -52,6 +69,194 @@ Ce projet permet d’afficher une carte personnalisée (image) avec des points i
 
 ---
 
+Le dossier js/ contient l’ensemble de la logique de l’application.
+Chaque fichier a un rôle précis.
+
+⚙️ config.js
+Rôle
+
+Centralise toutes les constantes du projet.
+
+Contenu
+Dimensions du plan (imageHeight, imageWidth)
+Échelle (scale)
+Taille d’un pas (stepLength)
+Position initiale (startX, startY)
+Paramètres de détection de mouvement :
+stepThreshold
+stepCooldown
+motionDebug
+Fonctionnement
+DEFAULT_CONFIG → valeurs d’origine
+APP_CONFIG → valeurs modifiables en temps réel
+Sauvegarde via localStorage
+
+👉 Permet de calibrer l’application sans modifier le code.
+
+🧰 utils.js
+Rôle
+
+Fonctions utilitaires communes.
+
+Fonction principale
+convertCoord(x, y)
+
+Permet de convertir les coordonnées internes (type GIMP/image) vers le système Leaflet.
+
+👉 Important : inverse l’axe Y pour correspondre à l’image.
+
+🗺️ map.js
+Rôle
+
+Initialise la carte et les couches.
+
+Contenu
+Création de la carte Leaflet (L.map)
+Chargement du plan (image overlay)
+Définition des bounds
+Création des layers :
+puits
+véhicules
+cataphiles
+carrières
+Chargement de la map de collision (canvas invisible)
+Particularité
+
+Utilise :
+
+crs: L.CRS.Simple
+
+👉 projection personnalisée (pas de coordonnées GPS)
+
+📏 measure.js
+Rôle
+
+Gérer la mesure de distance sur le plan.
+
+Fonctionnalités
+Mode mesure (activation via interface)
+Ajout de points par clic
+Tracé d’une polyligne
+Calcul de distance basé sur l’échelle
+Affichage en temps réel
+Reset de la mesure
+Export JSON du tracé
+Fonction clé
+calculDistance()
+
+👉 convertit les pixels en mètres via APP_CONFIG.scale
+
+🚶 tracking.js
+Rôle
+
+Simuler un déplacement dans la carte à partir des capteurs du téléphone.
+
+Fonctionnalités
+Détection d’orientation (deviceorientation)
+Détection de mouvement (devicemotion)
+Estimation de pas via accéléromètre
+Déplacement du marqueur
+Gestion des collisions (zones interdites)
+Recalage manuel via clic
+Affichage du tracé
+Fonctionnement
+Détection d’un “pas”
+Calcul de direction
+Déplacement en fonction :
+de la taille du pas
+de l’échelle
+Vérification collision
+Mise à jour carte
+Limites
+
+⚠️ Système expérimental :
+
+sensible au bruit
+dépend du téléphone
+nécessite calibration
+✏️ editor.js
+Rôle
+
+Permet d’ajouter des points d’intérêt (POI).
+
+Fonctionnalités
+Activation du mode édition
+Clic sur carte → ouverture d’un formulaire
+Saisie :
+nom
+type
+description
+Création d’un objet JSON
+Ajout d’un marker sur la carte
+Export des points créés
+🧩 interface.js
+Rôle
+
+Gérer toute l’interface utilisateur Leaflet.
+
+Fonctionnalités
+Création des boutons (contrôles Leaflet)
+Organisation en blocs :
+Tracking
+Mesure
+Plan (download)
+Édition
+Réglages ⚙️
+Aide ❓
+Ouverture de popups :
+aide
+configuration
+Importance
+
+👉 centralise toute l’UI → évite la dispersion dans les autres fichiers
+
+🚀 main.js
+Rôle
+
+Point d’entrée de l’application.
+
+Fonctionnalités
+Chargement des données JSON
+Initialisation :
+carte
+tracking
+mesure
+édition
+interface
+Gestion des permissions capteurs (iOS)
+🧠 Résumé de l’architecture
+Fichier	Rôle principal
+config.js	Configuration globale
+utils.js	Fonctions utilitaires
+map.js	Initialisation carte
+measure.js	Outil de mesure
+tracking.js	Déplacement / capteurs
+editor.js	Ajout de points
+interface.js	Interface utilisateur
+main.js	Initialisation globale
+🔧 État actuel du projet
+
+✔️ Visualisation du plan
+✔️ Ajout de points
+✔️ Mesure de distance
+✔️ Export JSON
+✔️ Interface complète
+✔️ Configuration dynamique
+
+⚠️ Tracking :
+
+fonctionnel mais non fiable
+nécessite calibration terrain
+en cours d’amélioration
+🚧 Améliorations futures possibles
+calibration automatique de l’échelle
+amélioration détection de pas
+correction des dérives
+snapping intelligent dans les galeries
+export combiné (points + tracé)
+interface mobile optimisée
+
+## 
 ## ⚙️ Fonctionnement global 
 
 ### 1. Initialisation de la carte
@@ -196,12 +401,6 @@ Porté par le fichier measure.js
 Permet de selectionner une suite de point et de calculer en metre la distance.
 Basé sur la constance d’echelle Xpixel=1 metre
 
--------------------------------------------------------------------------------------------------------------------------
-## 🚀 Évolutions possibles
-
-* recherche de points
-* import de point
----
 
 ## 🧠 Conclusion
 
