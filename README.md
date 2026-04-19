@@ -11,8 +11,6 @@ Les données sur ce site sont fictive, c'est un simple exemple de principe.
 
 <h2>🧭 Introduction générale</h2>
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/5fd17111-2d13-4f34-b8e0-f4f6255cd6ca" />
-
 <p>
 Ce projet est une application web permettant de <strong>visualiser, annoter et exploiter un plan de carrière</strong>
 (ou tout autre environnement cartographié) à partir d’une image.
