@@ -4,8 +4,7 @@
 <h1>https://devmap.is-underground.fr/</h1>
 Les données sur ce site sont fictive, c'est un simple exemple de principe.
 
-<h1>🗺️ Documentation du projet</h1>
-<p> Derniére mise a jours </p>
+<h1>Derniére mise a jours</h1>
 <h2>19/04/2026</h2>
 <p></p>
 <h3>Modification</h3>
