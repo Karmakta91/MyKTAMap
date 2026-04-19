@@ -807,9 +807,9 @@ C’est lui qui lance l’ensemble de l’application une fois les scripts dispo
   <li>✅ Mesure de distance</li>
   <li>✅ Interface dédiée</li>
   <li>⚠️ Localisation / tracking en cours de développement</li>
-  <li>⚠️ ServiceWorker (sw.js) désactivité (commentaire dans le index.html)</li>
-  <li>   La gestion du cache et du hors connection est donc moin bonne, pour éviter tout soucis sous terre en l'etat : </li>
-  <li>   charger la webapp sur son tel et la garder en background. (Certain telephone moin embété que d'autre sur ce point) </li>
+  <li>⚠️ ServiceWorker (sw.js) désactivité (commentaire dans le index.html)
+         La gestion du cache et du hors connection est donc moin bonne, pour éviter tout soucis sous terre en l'etat :
+         charger la webapp sur son tel et la garder en background. (Certain telephone moin embété que d'autre sur ce point) </li>
 </ul>
 
 <p>
