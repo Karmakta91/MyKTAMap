@@ -36,8 +36,6 @@ sur une carte personnalisée sans utiliser de coordonnées GPS classiques.
 <p>
 L’application est pensée pour une utilisation <strong>terrain</strong>, y compris sur mobile en hors connexion.
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/d8791fa0-2924-43c9-a37c-e42570f75520" />
-
 
 </p>
 
