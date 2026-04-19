@@ -20,9 +20,9 @@ async function initDataFromConfig() {
   // init
   initTracking();
   initEditor();
+  initRoad();
   initMeasure();
   initInterface();
-  L.control.titleControl().addTo(map);
 
   // permission capteurs iPhone
   document.body.addEventListener('click', function() {
