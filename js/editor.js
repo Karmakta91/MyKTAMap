@@ -52,11 +52,11 @@ function afficherFormulaire(latlng, x, y) {
         <option value="pb">Puits Bouché</option>
         <option value="pe">Puits au sol/bassin</option>
         <option value="passage">Passage</option>
-        <option value="chatiere">Chatiére</option>
+        <option value="chatiere">Chatière</option>
         <option value="vehicule">Véhicule</option>
         <option value="danger">Danger</option>
         <option value="info">Info</option>
-        <option value="epure">Epure</option>
+        <option value="epure">Épure</option>
       </select><br>
 
       Description :<br>
@@ -80,52 +80,40 @@ function validerPoint(x, y) {
   let type = document.getElementById("poi_type").value;
   let desc = document.getElementById("poi_desc").value;
 
- let point = {
-  id: nom,
-  nom: nom,
-  x: x,
-  y: y,
-  tags: [type],
-  etat: "Non inspectée",
-  description: desc,
-  profondeur: null,
-  date_update: new Date().toISOString().split("T")[0],
-  source: "editor"
-};
+  if (!nom.trim()) {
+    alert("Le nom est obligatoire");
+    return;
+  }
+
+  if (!window.layerEditor) {
+    console.error("layerEditor non défini");
+    return;
+  }
+
+  let point = {
+    id: nom,
+    nom: nom,
+    x: x,
+    y: y,
+    tags: [type],
+    etat: "Non inspectée",
+    description: desc,
+    profondeur: null,
+    date_update: new Date().toISOString().split("T")[0],
+    source: "editor"
+  };
 
   listePoints.push(point);
 
   console.log("Points :", listePoints);
 
-  // on privilégie le layer carry s’il existe, sinon premier layer dispo
-  let targetLayer = window.layerEditor;
-
-let marker = L.marker(convertCoord(x, y), {
-  icon: choisirIcone(point)
-}).addTo(window.layerEditor);
+  let marker = L.marker(convertCoord(x, y), {
+    icon: choisirIcone(point)
+  }).addTo(window.layerEditor);
 
   marker.bindPopup("<b>" + nom + "</b><br>" + desc);
 
   window.map.closePopup();
-}
-
-// =========================
-// DOWNLOAD JSON
-// =========================
-function telechargerJSON() {
-  let data = { data: listePoints };
-
-  let json = JSON.stringify(data, null, 2);
-
-  let blob = new Blob([json], { type: "application/json" });
-  let url = URL.createObjectURL(blob);
-
-  let a = document.createElement("a");
-  a.href = url;
-  a.download = "points.json";
-  a.click();
-
-  URL.revokeObjectURL(url);
 }
 
 // =========================
@@ -140,8 +128,32 @@ function resetZoomIOS() {
 }
 
 // =========================
+// RENDU DES POINTS IMPORTES
+// =========================
+window.renderEditorPoints = function() {
+  if (!window.layerEditor) return;
+
+  window.layerEditor.clearLayers();
+
+  listePoints.forEach(point => {
+    let marker = L.marker(convertCoord(point.x, point.y), {
+      icon: choisirIcone(point)
+    }).addTo(window.layerEditor);
+
+    marker.bindPopup("<b>" + point.nom + "</b><br>" + (point.description || ""));
+  });
+};
+
+// =========================
 // EXPORT GLOBAL
 // =========================
 window.toggleEdition = toggleEdition;
 window.initEditor = initEditor;
-window.telechargerJSON = telechargerJSON;
+
+window.getEditorPoints = function() {
+  return listePoints;
+};
+
+window.setEditorPoints = function(points) {
+  listePoints = points || [];
+};
