@@ -4,8 +4,17 @@
 <h1>https://devmap.is-underground.fr/</h1>
 Les données sur ce site sont fictive, c'est un simple exemple de principe.
 
-
-
+<h1>🗺️ Documentation du projet</h1>
+<p> Derniére mise a jours </p>
+<h2>19/04/2026</h2>
+<p></p>
+<h3>Modification</h3>
+<p>Interface modifié pour inclure un import/export global de donnée JSON</p>
+<p>Modification de tracker pour inclure la bousole / erreur echelle constaté peut etre une histoire de countdown (A investiguer) </p>
+<p></p>
+<h3>A Investiguer</h3>
+<p> Bug affichage constaté sur des plan de petite dimension pour modifier les paramétres (BUG ZOOM)</p>
+<p></p>
 <h1>🗺️ Documentation du projet</h1>
 
 
