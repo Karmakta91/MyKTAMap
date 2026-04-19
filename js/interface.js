@@ -1,7 +1,8 @@
 // =========================
 // INTERFACE LEAFLET
 // =========================
-// Head
+
+// ---------- TITRE ----------
 L.control.titleControl = function() {
   let control = L.control({ position: 'topleft' });
 
@@ -23,32 +24,122 @@ L.control.titleControl = function() {
   return control;
 };
 
-// ---------- BLOC AIDE ----------
+// =========================
+// EXPORT GLOBAL
+// =========================
+
+function telechargerSessionJSON() {
+  const data = {
+    type: "devmap-session",
+    version: 1,
+    editorPoints: window.getEditorPoints ? window.getEditorPoints() : [],
+    measure: {
+      points: window.getMeasurePoints ? window.getMeasurePoints() : []
+    }
+  };
+
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "devmap-session.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+// =========================
+// IMPORT GLOBAL
+// =========================
+
+function importerSessionJSON(file) {
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      if (data.type !== "devmap-session") {
+        alert("Fichier invalide");
+        return;
+      }
+
+      // points éditeur
+      if (window.setEditorPoints) {
+        window.setEditorPoints(data.editorPoints || []);
+      }
+
+      if (window.renderEditorPoints) {
+        window.renderEditorPoints();
+      }
+
+      // mesure
+      if (window.resetMesure) {
+        window.resetMesure();
+      }
+
+      if (window.setMeasurePoints) {
+        const measurePoints = data.measure && data.measure.points ? data.measure.points : [];
+        window.setMeasurePoints(measurePoints);
+      }
+
+      alert("Import terminé");
+    } catch (err) {
+      console.error(err);
+      alert("Erreur lors de l'import");
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+// =========================
+// SELECTEUR FICHIER
+// =========================
+
+function ouvrirImportSession() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      importerSessionJSON(file);
+    }
+  };
+
+  input.click();
+}
+
+// =========================
+// INIT INTERFACE
+// =========================
 
 function initInterface() {
   // ---------- BLOC AIDE ----------
-const helpControl = L.control({ position: 'topright' });
+  const helpControl = L.control({ position: 'topright' });
 
-helpControl.onAdd = function () {
-  const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+  helpControl.onAdd = function () {
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
 
-  const btnHelp = L.DomUtil.create('a', '', div);
-  btnHelp.innerHTML = "❓";
-  btnHelp.href = "#";
-  btnHelp.title = "Aide";
+    const btnHelp = L.DomUtil.create('a', '', div);
+    btnHelp.innerHTML = "❓";
+    btnHelp.href = "#";
+    btnHelp.title = "Aide";
 
-  L.DomEvent.on(btnHelp, 'click', function (e) {
-    L.DomEvent.stop(e);
+    L.DomEvent.on(btnHelp, 'click', function (e) {
+      L.DomEvent.stop(e);
+      afficherAide();
+    });
 
-    afficherAide();
-  });
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
 
-  L.DomEvent.disableClickPropagation(div);
-
-  return div;
-};
-
-helpControl.addTo(window.map);
+  helpControl.addTo(window.map);
 
   // ---------- BLOC REGLAGES ----------
   const settingsControl = L.control({ position: 'topright' });
@@ -185,11 +276,6 @@ helpControl.addTo(window.map);
     btnEdit.href = "#";
     btnEdit.title = "Mode ajout de point";
 
-    const btnSave = L.DomUtil.create('a', '', div);
-    btnSave.innerHTML = "💾";
-    btnSave.href = "#";
-    btnSave.title = "Exporter les points ajoutés";
-
     L.DomEvent.on(btnEdit, 'click', function (e) {
       L.DomEvent.stop(e);
 
@@ -197,19 +283,48 @@ helpControl.addTo(window.map);
       btnEdit.style.backgroundColor = modeEdition ? "#4CAF50" : "";
     });
 
-    L.DomEvent.on(btnSave, 'click', function (e) {
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
+
+  editorControl.addTo(window.map);
+
+  // ---------- BLOC IMPORT / EXPORT ----------
+  const ioControl = L.control({ position: 'topright' });
+
+  ioControl.onAdd = function () {
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+
+    const btnImport = L.DomUtil.create('a', '', div);
+    btnImport.innerHTML = "📂";
+    btnImport.href = "#";
+    btnImport.title = "Importer une session";
+
+    const btnExport = L.DomUtil.create('a', '', div);
+    btnExport.innerHTML = "💾";
+    btnExport.href = "#";
+    btnExport.title = "Exporter la session";
+
+    L.DomEvent.on(btnImport, 'click', function (e) {
       L.DomEvent.stop(e);
-      telechargerJSON();
+      ouvrirImportSession();
+    });
+
+    L.DomEvent.on(btnExport, 'click', function (e) {
+      L.DomEvent.stop(e);
+      telechargerSessionJSON();
     });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
 
-  editorControl.addTo(window.map);
+  ioControl.addTo(window.map);
 }
 
-// FonctionAide
+// =========================
+// AIDE
+// =========================
 
 function afficherAide() {
   const contenu = `
@@ -224,13 +339,13 @@ function afficherAide() {
 
       🖼️ : Télécharger le plan<br><br>
 
-      ✏️ : Ajouter un point<br>
-      💾 : Exporter les points<br><br>
+      ✏️ : Ajouter un point<br><br>
+
+      📂 : Importer une session<br>
+      💾 : Exporter la session<br><br>
 
       ❓ : Afficher cette aide<br>
-
       ⚙️ : Configuration
-
     </div>
   `;
 
@@ -239,6 +354,10 @@ function afficherAide() {
     .setContent(contenu)
     .openOn(window.map);
 }
+
+// =========================
+// CONFIG
+// =========================
 
 function afficherConfig() {
   const c = APP_CONFIG;
@@ -295,8 +414,6 @@ function appliquerConfig() {
   APP_CONFIG.imageWidth = parseInt(document.getElementById("cfg_imageWidth").value, 10);
   APP_CONFIG.startX = parseInt(document.getElementById("cfg_startX").value, 10);
   APP_CONFIG.startY = parseInt(document.getElementById("cfg_startY").value, 10);
-
-  // ✅ nouveaux champs
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   APP_CONFIG.stepCooldown = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
   APP_CONFIG.motionDebug = document.getElementById("cfg_motionDebug").value === "true";
