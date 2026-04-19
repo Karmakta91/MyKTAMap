@@ -652,6 +652,7 @@ Cette architecture permet de garder un projet souple, facilement modifiable et p
 </p>
 
 
+
 <h3><code>measure.js</code></h3>
 
 <p>
@@ -800,6 +801,10 @@ C’est lui qui lance l’ensemble de l’application une fois les scripts dispo
     <tr>
       <td><code>editor.js</code></td>
       <td>Ajout de points et export JSON</td>
+    </tr>
+        <tr>
+      <td><code>road.js</code></td>
+      <td>Ajout de route Principal/Secondaire/Chemin</td>
     </tr>
     <tr>
       <td><code>interface.js</code></td>
