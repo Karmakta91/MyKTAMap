@@ -2,15 +2,16 @@
 <img width="1390" height="966" alt="image" src="https://github.com/user-attachments/assets/11b4f935-d41f-4e19-aa24-601e1d46db87" />
 
 <h1>https://devmap.is-underground.fr/</h1>
-!! Ne contient aucune DATA réel, donnée de principe !!
+Les données sur ce site sont fictive, c'est un simple exemple de principe.
 
-!! Service Worker en commentaire du a des latance dans index.html !!
-!! Debug en cours !!
-!! Pour du Horsligne, ouvrir l'application avant de perdre la conection et la garder en background !!
+
 
 <h1>🗺️ Documentation du projet</h1>
 
+
 <h2>🧭 Introduction générale</h2>
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/5fd17111-2d13-4f34-b8e0-f4f6255cd6ca" />
 
 <p>
 Ce projet est une application web permettant de <strong>visualiser, annoter et exploiter un plan de carrière</strong>
