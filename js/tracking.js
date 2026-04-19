@@ -158,8 +158,8 @@ function avancer() {
 
   let rad = direction * Math.PI / 180;
 
-  let newX = position.x + distance * Math.cos(rad);
-  let newY = position.y + distance * Math.sin(rad);
+  let newX = position.x + distance * Math.sin(rad);
+  let newY = position.y - distance * Math.cos(rad);
 
   if (estAccessible(newX, newY)) {
     position.x = newX;
