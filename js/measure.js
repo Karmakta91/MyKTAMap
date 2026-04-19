@@ -76,8 +76,10 @@ function afficherDistance(d) {
     window.measureLabel.addTo(window.map);
   }
 
-  document.getElementById("measureLabel").innerHTML =
-    "Distance : " + d.toFixed(2) + " m";
+  const label = document.getElementById("measureLabel");
+  if (label) {
+    label.innerHTML = "Distance : " + d.toFixed(2) + " m";
+  }
 }
 
 function telechargerMesureJSON() {
@@ -108,6 +110,16 @@ function telechargerMesureJSON() {
   URL.revokeObjectURL(url);
 }
 
+// EXPORT GLOBAL
 window.initMeasure = initMeasure;
 window.resetMesure = resetMesure;
 window.telechargerMesureJSON = telechargerMesureJSON;
+
+window.getMeasurePoints = function() {
+  return pointsMesure;
+};
+
+window.setMeasurePoints = function(points) {
+  pointsMesure = points || [];
+  updateMesure();
+};
