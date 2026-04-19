@@ -8,6 +8,7 @@ Les données sur ce site sont fictive, c'est un simple exemple de principe.
 <h2>19/04/2026</h2>
 <p></p>
 <h3> Modification</h3>
+<p>     Ajout de l'option de tracé de route Principal/Secondaire/Chemin </p>
 <p>     Interface modifié pour inclure un import/export global de donnée JSON</p>
 <p>     Modification de tracker pour inclure la bousole </p>
 <p></p>
