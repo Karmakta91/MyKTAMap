@@ -234,10 +234,20 @@ async function telechargerPlan() {
     }
 
     // ---------- export ----------
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = (config.plan.name || "plan") + "_complet.png";
-    link.click();
+    canvas.toBlob((blob) => {
+  if (!blob) {
+    alert("Impossible de générer l'image");
+    return;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = (config.plan.name || "plan") + "_complet.png";
+  link.click();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}, "image/png");
 
   } catch (err) {
     console.error(err);
