@@ -10,10 +10,6 @@ const DEFAULT_CONFIG = {
   motionDebug: false     // logs console
 };
 
-function convertCoord(x, y) {
-  return [APP_CONFIG.imageHeight - y, x];
-}
-
 let savedConfig = localStorage.getItem("app_config");
 let APP_CONFIG = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };
 
