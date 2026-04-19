@@ -48,7 +48,8 @@ L’application est pensée pour une utilisation <strong>terrain</strong>, y com
 
 <h2> Architecture applicative </h2>
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/dc86a0fd-991a-47f7-90a0-7e881b1f5f24" />
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dc6ace2-de02-4bd4-8edd-83fd748ae190" />
+
 
 
 <h2>⚙️ Configuration de l’application</h2>
