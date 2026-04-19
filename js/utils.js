@@ -255,4 +255,4 @@ async function telechargerPlan() {
   }
 }
 
-window.telechargerPlanComplet = telechargerPlanComplet;
+window.telechargerPlan = telechargerPlan;
