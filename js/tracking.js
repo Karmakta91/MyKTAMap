@@ -99,10 +99,36 @@ function estAccessible(x, y) {
 // =========================
 // ORIENTATION
 // =========================
+
+function getHeading(alpha, beta, gamma) {
+  const a = alpha * Math.PI / 180;
+  const b = beta  * Math.PI / 180;
+  const g = gamma * Math.PI / 180;
+
+  // vecteur "nez" du tel dans le repère monde
+  const x = Math.sin(a) * Math.cos(b)
+          + Math.cos(a) * Math.sin(g) * Math.sin(b)
+          - Math.cos(a) * Math.cos(g) * Math.sin(b);
+  const y = Math.cos(a) * Math.cos(b)
+          - Math.sin(a) * Math.sin(g) * Math.sin(b)
+          + Math.sin(a) * Math.cos(g) * Math.sin(b);
+
+  let heading = Math.atan2(x, y) * 180 / Math.PI;
+  if (heading < 0) heading += 360;
+  return heading;
+}
+
 function initOrientation() {
   window.addEventListener("deviceorientation", function(event) {
-    if (event.alpha !== null) {
-      direction = event.alpha;
+    if (event.alpha !== null
+        && event.beta  !== null
+        && event.gamma !== null) {
+
+      direction = getHeading(
+        event.alpha,
+        event.beta,
+        event.gamma
+      );
     }
   });
 }
