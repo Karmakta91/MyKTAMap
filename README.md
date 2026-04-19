@@ -652,7 +652,81 @@ L’intérêt de ce système est de pouvoir :
 Cette architecture permet de garder un projet souple, facilement modifiable et plus maintenable.
 </p>
 
+<h2>road.js</h2>
 
+<p>
+Ce fichier gère le module de tracé de routes sur le plan.
+</p>
+
+<p>
+Il permet de :
+</p>
+
+<ul>
+  <li>activer un mode de tracé directement sur la carte</li>
+  <li>choisir entre plusieurs types de routes</li>
+  <li>enregistrer les points cliqués pour construire un tracé</li>
+  <li>afficher visuellement les routes sous forme de lignes colorées</li>
+  <li>réinitialiser tous les tracés</li>
+  <li>exporter et réimporter les routes dans une session JSON</li>
+</ul>
+
+<p>
+Trois types de tracés sont actuellement disponibles :
+</p>
+
+<ul>
+  <li><b>principal</b> : route principale</li>
+  <li><b>secondaire</b> : route secondaire</li>
+  <li><b>chemin</b> : chemin ou passage annexe</li>
+</ul>
+
+<p>
+Chaque type possède son propre style visuel afin de les différencier facilement sur la carte.
+</p>
+
+<p>
+Le fonctionnement repose sur un mode actif sélectionné dans l’interface. 
+Lorsque l’utilisateur choisit un type de route, chaque clic sur la carte ajoute un point au tracé courant.
+Les coordonnées sont enregistrées dans le système interne du plan, puis converties pour l’affichage dans Leaflet.
+</p>
+
+<p>
+Les tracés sont stockés sous forme de tableaux d’objets contenant :
+</p>
+
+<ul>
+  <li>le type de route</li>
+  <li>la liste des points qui composent le tracé</li>
+</ul>
+
+<p>
+Ce module est utilisé pour enrichir la lecture du plan en représentant des itinéraires utiles, des axes principaux de circulation ou des chemins secondaires.
+</p>
+
+<p>
+Il est également compatible avec le système d’import/export global, ce qui permet de sauvegarder une session complète incluant :
+</p>
+
+<ul>
+  <li>les points ajoutés en mode édition</li>
+  <li>les mesures de distance</li>
+  <li>les tracés de routes</li>
+</ul>
+
+<p>
+Le fichier <code>road.js</code> joue donc un rôle complémentaire aux modules d’édition et de mesure :
+</p>
+
+<ul>
+  <li><code>editor.js</code> ajoute des points d’intérêt</li>
+  <li><code>measure.js</code> calcule des distances</li>
+  <li><code>road.js</code> dessine des itinéraires structurés sur la carte</li>
+</ul>
+
+<p>
+Il permet ainsi de mieux préparer un parcours, annoter une progression ou représenter une organisation spatiale directement sur le plan.
+</p>
 
 <h3><code>measure.js</code></h3>
 
