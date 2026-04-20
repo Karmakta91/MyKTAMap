@@ -3,7 +3,9 @@ let bounds;
 let collisionCanvas;
 let collisionCtx;
 
-// icônes globales
+// =========================
+// ICÔNES GLOBALS
+// =========================
 let iconeDefault;
 let iconeSalle;
 let iconepa;
@@ -20,6 +22,9 @@ let iconeDanger;
 let iconepe;
 let iconeTrack;
 
+// =========================
+// CRÉATION DES ICÔNES
+// =========================
 function creerIcones(iconConfig) {
   iconeDefault = L.icon({
     iconUrl: iconConfig.default,
@@ -128,6 +133,9 @@ function creerIcones(iconConfig) {
   window.iconeTrack = iconeTrack;
 }
 
+// =========================
+// INITIALISATION DE LA CARTE
+// =========================
 async function initMapFromConfig() {
   const response = await fetch('data/plan-config.json');
   const config = await response.json();

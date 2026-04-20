@@ -18,11 +18,11 @@ async function initDataFromConfig() {
   map.fitBounds(bounds);
 
   // init
-  initTracking();
   initEditor();
   initRoad();
   initMeasure();
   initInterface();
+  initTracking();
 
   // permission capteurs iPhone
   document.body.addEventListener('click', function() {
