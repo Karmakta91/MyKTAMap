@@ -66,4 +66,4 @@ async function loadAppConfig() {
 // =========================
 window.loadAppConfig = loadAppConfig;
 window.APP_CONFIG = APP_CONFIG;
-window.DEFAULT_CONFIG = APP_CONFIG;
+window.DEFAULT_CONFIG = DEFAULT_CONFIG;
