@@ -13,26 +13,27 @@
 
 
     <!-- CHARGEUR DE PLAN -->
-  <div id="planLoaderOverlay">
-    <div id="planLoaderBox">
-      <h2>Charger un plan</h2>
-      <p style="margin-top:0;">
-        Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
-      </p>
+ <div id="planLoaderOverlay">
+  <div id="planLoaderBox">
+    <h2>Charger un plan</h2>
+    <p style="margin-top:0;">
+      Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
+    </p>
 
-      <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
-      <input id="planConfigFile" type="file" accept=".json,application/json">
+    <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
+    <input id="planConfigFile" type="file" accept=".json,application/json">
 
-      <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
-      <input id="assetFiles" type="file" multiple>
+    <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
+    <input id="assetFiles" type="file" multiple>
 
-      <div class="loaderActions">
-        <button id="loadPlanBtn" type="button">Charger le plan</button>
-      </div>
-
-      <div id="loaderStatus"></div>
+    <div class="loaderActions">
+      <button id="loadPlanBtn" type="button">Charger le plan</button>
+      <button type="button" onclick="window.location.href='index.html'">← Retour</button>
     </div>
+
+    <div id="loaderStatus"></div>
   </div>
+</div>
   <!-- CARTE -->
   <div id="map"></div>
 
