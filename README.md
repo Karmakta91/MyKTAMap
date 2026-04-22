@@ -9,6 +9,11 @@
 Les données sur ce site sont fictive, c'est un simple exemple de principe.
 
 <h1>Derniére mise a jours</h1>
+<h2>22/04/2026</h2>
+<p></p>
+<h3> Modification</h3>
+<p>Ajout de la fonction import local</p>
+
 <h2>19/04/2026</h2>
 <p></p>
 <h3> Modification</h3>
@@ -862,12 +867,16 @@ C’est lui qui lance l’ensemble de l’application une fois les scripts dispo
       <td>Configuration globale</td>
     </tr>
     <tr>
+      <td><code>config_import.js</code></td>
+      <td>Configuration globale en mode live (import depuis navigateur)</td>
+    </tr>
+    <tr>
       <td><code>utils.js</code></td>
       <td>Fonctions utilitaires</td>
     </tr>
     <tr>
-      <td><code>map.js</code></td>
-      <td>Initialisation de la carte et des calques</td>
+      <td><code>map_import.js</code></td>
+      <td>Initialisation de la carte et des calques en mode live (import depuis navigateur)</td>
     </tr>
     <tr>
       <td><code>measure.js</code></td>
@@ -892,6 +901,8 @@ C’est lui qui lance l’ensemble de l’application une fois les scripts dispo
     <tr>
       <td><code>main.js</code></td>
       <td>Initialisation globale</td>
+       <td><code>main_import.js</code></td>
+      <td>Initialisation globale en mode live (import depuis navigateur)</td>
     </tr>
   </tbody>
 </table>
