@@ -901,8 +901,10 @@ C’est lui qui lance l’ensemble de l’application une fois les scripts dispo
     <tr>
       <td><code>main.js</code></td>
       <td>Initialisation globale</td>
-       <td><code>main_import.js</code></td>
+       <tr>
+      <td>main_import.js</td>
       <td>Initialisation globale en mode live (import depuis navigateur)</td>
+          </tr>
     </tr>
   </tbody>
 </table>
