@@ -6,6 +6,7 @@ html, body {
 }
 
 #map {
+  display: block;
   position: fixed;
   top: 0;
   left: 0;
@@ -56,4 +57,79 @@ html, body {
 .map-title {
   width: fit-content;
   margin: 10px auto;
+}
+
+
+
+
+
+
+#planLoaderOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: rgba(10, 15, 25, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+#planLoaderBox {
+  width: 100%;
+  max-width: 560px;
+  background: #ffffff;
+  color: #111;
+  border-radius: 14px;
+  padding: 22px;
+  box-sizing: border-box;
+  box-shadow: 0 10px 35px rgba(0,0,0,0.35);
+  font-family: Arial, sans-serif;
+}
+
+#planLoaderBox h2 {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.loaderLabel {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+#planLoaderBox input[type="file"] {
+  width: 100%;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+
+.loaderActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+#loadPlanBtn {
+  border: 0;
+  border-radius: 8px;
+  background: #1f6feb;
+  color: white;
+  padding: 10px 16px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#loadPlanBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#loaderStatus {
+  margin-top: 14px;
+  font-size: 14px;
+  min-height: 20px;
+  color: #333;
 }
