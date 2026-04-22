@@ -20,15 +20,18 @@ let stepCount = 0;
 // INIT
 // =========================
 function initTracking() {
-  // récupère l’icône après initMapFromConfig
-  const iconeTracker = window.iconeTrack;
+  // Lire APP_CONFIG au moment de l'init, pas au chargement du script
+  position.x = APP_CONFIG.startX;
+  position.y = APP_CONFIG.startY;
 
+  const iconeTracker = window.iconeTrack;
   let latlng = convertCoord(position.x, position.y);
 
   markerPosition = L.marker(latlng, {
     icon: iconeTracker
   }).addTo(window.map);
 
+  // ... reste inchangé
   polyline = L.polyline([], { weight: 3 }).addTo(window.map);
 
   window.map.setView(latlng, 0);
