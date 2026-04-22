@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>MyKTAMap_import</title>
+
+  <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+</head>
+
+<body>
+
+
+    <!-- CHARGEUR DE PLAN -->
+  <div id="planLoaderOverlay">
+    <div id="planLoaderBox">
+      <h2>Charger un plan</h2>
+      <p style="margin-top:0;">
+        Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
+      </p>
+
+      <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
+      <input id="planConfigFile" type="file" accept=".json,application/json">
+
+      <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
+      <input id="assetFiles" type="file" multiple>
+
+      <div class="loaderActions">
+        <button id="loadPlanBtn" type="button">Charger le plan</button>
+      </div>
+
+      <div id="loaderStatus"></div>
+    </div>
+  </div>
+  <!-- CARTE -->
+  <div id="map"></div>
+
+  
+  <!-- Leaflet -->
+  <script src="lib/leaflet/leaflet.js"></script>
+
+  <!-- TON JS -->
+  <script src="js/config_import.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/measure.js"></script>
+  <script src="js/map_import.js"></script>
+  <script src="js/tracking.js"></script>
+  <script src="js/editor.js"></script>
+  <script src="js/road.js"></script>
+  <script src="js/interface.js"></script>
+  <script src="js/main_import.js"></script>
+
+  <!-- SCRIPT DU LOADER -->
+  <script>
+    window.addEventListener("load", function () {
+      console.log("[Loader] script prêt");
+
+      const overlay = document.getElementById("planLoaderOverlay");
+      const planConfigInput = document.getElementById("planConfigFile");
+      const assetFilesInput = document.getElementById("assetFiles");
+      const loadBtn = document.getElementById("loadPlanBtn");
+      const statusBox = document.getElementById("loaderStatus");
+
+      if (!overlay) console.error("[Loader] planLoaderOverlay introuvable");
+      if (!planConfigInput) console.error("[Loader] planConfigFile introuvable");
+      if (!assetFilesInput) console.error("[Loader] assetFiles introuvable");
+      if (!loadBtn) console.error("[Loader] loadPlanBtn introuvable");
+      if (!statusBox) console.error("[Loader] loaderStatus introuvable");
+
+      console.log("[Loader] startImportedPlan =", typeof window.startImportedPlan);
+
+      function setStatus(message, isError) {
+        if (!statusBox) return;
+        statusBox.textContent = message || "";
+        statusBox.style.color = isError ? "#b00020" : "#333";
+      }
+
+      async function onLoadPlanClick() {
+        console.log("[Loader] clic sur CHARGER");
+
+        const planConfigFile = planConfigInput?.files?.[0];
+        const assetFiles = assetFilesInput?.files;
+
+        console.log("[Loader] planConfigFile =", planConfigFile);
+        console.log("[Loader] assetFiles count =", assetFiles ? assetFiles.length : 0);
+        console.log("[Loader] startImportedPlan type =", typeof window.startImportedPlan);
+
+        if (!planConfigFile) {
+          setStatus("Sélectionne d'abord un fichier plan-config.json", true);
+          return;
+        }
+
+        if (!assetFiles || assetFiles.length === 0) {
+          setStatus("Ajoute aussi les fichiers associés au plan.", true);
+          return;
+        }
+
+        if (typeof window.startImportedPlan !== "function") {
+          setStatus("startImportedPlan est introuvable", true);
+          console.error("[Loader] startImportedPlan n'est pas défini");
+          return;
+        }
+
+        loadBtn.disabled = true;
+        setStatus("Chargement du plan en cours...", false);
+
+        try {
+        await window.startImportedPlan(planConfigFile, assetFiles);
+        // startImportedPlan cache l'overlay lui-même avant initMapFromConfig
+          setStatus("Plan chargé avec succès.");
+        } catch (err) {
+          console.error("[Loader] erreur pendant le chargement :", err);
+          setStatus("Erreur : " + (err.message || err), true);
+          loadBtn.disabled = false;
+        }
+      }
+
+      if (loadBtn) {
+        loadBtn.addEventListener("click", onLoadPlanClick);
+        console.log("[Loader] listener attaché au bouton");
+      }
+    });
+  </script>
+
+</body>
+</html>
