@@ -13,7 +13,7 @@
 
 
     <!-- CHARGEUR DE PLAN -->
- <div id="planLoaderOverlay">
+<div id="planLoaderOverlay">
   <div id="planLoaderBox">
     <h2>Charger un plan</h2>
     <p style="margin-top:0;">
@@ -29,6 +29,12 @@
     <div class="loaderActions">
       <button id="loadPlanBtn" type="button">Charger le plan</button>
       <button type="button" onclick="window.location.href='index.html'">← Retour</button>
+      <button type="button" onclick="
+        const a = document.createElement('a');
+        a.href = 'data/myktamap.zip';
+        a.download = 'myktamap.zip';
+        a.click();
+      ">Conf Exemple</button>
     </div>
 
     <div id="loaderStatus"></div>
