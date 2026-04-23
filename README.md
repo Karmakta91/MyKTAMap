@@ -1,5 +1,5 @@
 # MyKTAMap
-
+<img width="1345" height="673" alt="image" src="https://github.com/user-attachments/assets/77559b0d-9fb0-49e6-97a8-d9b1f9073d1d" />
 > Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
 
 **Environnements :**
@@ -33,6 +33,9 @@ MyKTAMap est une application web permettant de **visualiser, annoter et exploite
 
 L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS**.
 
+## Principe fonctionnel et architecture serveur
+
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dc6ace2-de02-4bd4-8edd-83fd748ae190" />
 
 ### Fonctionnalités principales
 
