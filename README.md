@@ -1,108 +1,108 @@
 # MyKTAMap
-<img width="1345" height="673" alt="image" src="https://github.com/user-attachments/assets/77559b0d-9fb0-49e6-97a8-d9b1f9073d1d" />
 
-<h1>PROD Environnement</h1>
-<h2>https://myktamap.is-underground.fr</h2>
-<h1>DEV Environnement </h1>
-<h2>https://devmap.is-underground.fr/</h2>
+> Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
 
-Les données sur ce site sont fictive, c'est un simple exemple de principe.
+**Environnements :**
+- 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
+- 🔧 Développement : [devmap.is-underground.fr](https://devmap.is-underground.fr)
 
-<h1>Derniére mise a jours</h1>
-<h2>22/04/2026</h2>
-<p></p>
-<h3> Modification</h3>
-<p>Ajout de la fonction import local</p>
+> ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-<h2>19/04/2026</h2>
-<p></p>
-<h3> Modification</h3>
-<p>     Le bouton télécharger rajoute tout les calques présent </p>
-<p>     Ajout de l'option de tracé de route Principal/Secondaire/Chemin </p>
-<p>     Interface modifié pour inclure un import/export global de donnée JSON</p>
-<p>     Modification de tracker pour inclure la bousole </p>
-<p></p>
-<h3> A Investiguer</h3>
-<p>     Erreur echelle constaté sur le tracker peut etre une histoire de countdown (A investiguer)</p>
-<p>     Bug affichage constaté sur des plan de petite dimension pour modifier les paramétres (BUG ZOOM)</p>
-<p></p>
-<h1>🗺️ Documentation du projet</h1>
+---
 
+## 📋 Journal des modifications
 
-<h2>🧭 Introduction générale</h2>
+### 22/04/2026
+- Ajout du mode import local (chargement d'un plan depuis le navigateur sans serveur)
 
-<p>
-Ce projet est une application web permettant de <strong>visualiser, annoter et exploiter un plan de carrière</strong>
-(ou tout autre environnement cartographié) à partir d’une image.
-</p>
+### 19/04/2026
+- Le bouton télécharger intègre désormais tous les calques visibles
+- Ajout du tracé de routes : Principal / Secondaire / Chemin
+- Interface mise à jour avec import/export global de session JSON
+- Correction du tracker : intégration de la boussole via `alpha`, `beta`, `gamma`
 
-<p>
-L’outil repose sur <strong>Leaflet</strong> en projection simple (<code>L.CRS.Simple</code>) et permet de travailler
-sur une carte personnalisée sans utiliser de coordonnées GPS classiques.
-</p>
+**Points en cours d'investigation :**
+- Erreur d'échelle constatée sur le tracker — possible problème de cooldown (à investiguer)
+- Bug d'affichage sur les plans de petites dimensions dans les réglages (bug zoom)
 
-<p>Les objectifs principaux sont les suivants :</p>
+---
 
-<ul>
-  <li>Afficher un plan sous forme d’image haute résolution</li>
-  <li>Ajouter et consulter des points d’intérêt</li>
-  <li>Mesurer des distances directement sur le plan</li>
-  <li>Simuler un déplacement via les capteurs du téléphone</li>
-  <li>Exporter les données créées ou mesurées</li>
-</ul>
+## 🧭 Introduction générale
 
-<p>
-L’application est pensée pour une utilisation <strong>terrain</strong>, y compris sur mobile en hors connexion.
+MyKTAMap est une application web permettant de **visualiser, annoter et exploiter un plan** (carrière souterraine, bâtiment, site industriel…) à partir d'une image haute résolution.
+
+L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS**.
 
 
-</p>
+### Fonctionnalités principales
 
-<p>
-⚠️ La fonctionnalité de localisation basée sur les capteurs du téléphone est actuellement
-<strong>en cours de développement</strong> et ne doit pas être considérée comme fiable en l’état.
-</p>
+| Fonctionnalité | État |
+|---|---|
+| Affichage du plan (image haute résolution) | ✅ Disponible |
+| Gestion de calques et d'icônes | ✅ Disponible |
+| Ajout de points d'intérêt | ✅ Disponible |
+| Mesure de distances | ✅ Disponible |
+| Tracé de routes (Principal / Secondaire / Chemin) | ✅ Disponible |
+| Export / import JSON de session | ✅ Disponible |
+| Déplacement simulé via capteurs mobile | ⚠️ Expérimental |
+| Mode hors-connexion (ServiceWorker) | ⚠️ Désactivé |
 
-<hr>
+> ⚠️ Le ServiceWorker (`sw.js`) est actuellement commenté dans `index.html`. En attendant sa réactivation, charger la webapp sur le téléphone et la laisser en arrière-plan reste la solution recommandée pour une utilisation sous terre.
 
-<hr>
+---
 
-<h2> Architecture applicative </h2>
+## 🏗️ Architecture applicative
 
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dc6ace2-de02-4bd4-8edd-83fd748ae190" />
+```
+index.html / import.html
+        │
+        ├── config.js          ← Configuration globale (APP_CONFIG, DEFAULT_CONFIG)
+        ├── utils.js           ← Fonctions utilitaires (convertCoord, choisirIcone)
+        ├── map.js             ← Initialisation Leaflet + calques + collision
+        ├── tracking.js        ← Déplacement simulé via capteurs
+        ├── measure.js         ← Mesure de distance
+        ├── editor.js          ← Ajout de points d'intérêt
+        ├── road.js            ← Tracé de routes
+        ├── interface.js       ← Construction de l'interface Leaflet
+        └── main.js            ← Point d'entrée, orchestration
+```
 
+### Résumé des fichiers
 
+| Fichier | Rôle principal |
+|---|---|
+| `config.js` | Configuration globale (mode fichier local) |
+| `config_import.js` *(import)* | Configuration globale en mode import navigateur |
+| `utils.js` | Fonctions utilitaires partagées |
+| `map.js` | Initialisation de la carte et des calques |
+| `map_import.js` *(import)* | Idem, adapté au mode import navigateur |
+| `measure.js` | Mesure de distance |
+| `tracking.js` | Déplacement simulé et détection de collision |
+| `editor.js` | Ajout de points et export JSON |
+| `road.js` | Tracé de routes Principal / Secondaire / Chemin |
+| `interface.js` | Interface utilisateur Leaflet |
+| `main.js` | Initialisation globale (mode fichier local) |
+| `main_import.js` *(import)* | Initialisation globale en mode import navigateur |
 
-<h2>⚙️ Configuration de l’application</h2>
-<hr>
+---
 
-<h2>🗂️ Configuration avancée du plan : <code>plan-config.json</code></h2>
+## ⚙️ Configuration — `plan-config.json`
 
-<p>
-En complément de <code>config.js</code>, le projet peut utiliser un fichier dédié au <strong>chargement complet d’un plan</strong>.
-</p>
+Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes les informations nécessaires au chargement :
 
-<p>
-L’objectif de <code>plan-config.json</code> est de centraliser, dans une seule structure, toutes les informations nécessaires
-pour charger un plan donné :
-</p>
+- Les métadonnées du plan (nom, dimensions, auteur)
+- L'image de base et la carte de collision
+- Les calques image supplémentaires
+- Les couches de données JSON
+- Les paramètres de tracking
+- Les icônes
 
-<ul>
-  <li>les métadonnées du plan</li>
-  <li>l’image de base</li>
-  <li>la carte de collision</li>
-  <li>les calques image supplémentaires</li>
-  <li>les couches de données JSON</li>
-  <li>les paramètres de tracking</li>
-  <li>les icônes à utiliser</li>
-</ul>
+Cette approche permet de **changer de plan sans modifier le code**.
 
-<p>
-Cette approche permet d’adapter l’application à plusieurs plans sans devoir modifier directement le code métier.
-</p>
+### Exemple complet
 
-<h3>Exemple de structure</h3>
-
-<pre><code>{
+```json
+{
   "plan": {
     "name": "TEST",
     "version": "V1",
@@ -122,36 +122,11 @@ Cette approche permet d’adapter l’application à plusieurs plans sans devoir
     }
   ],
   "dataLayers": [
-    {
-      "id": "puits",
-      "label": "Puits",
-      "file": "data/puit.json",
-      "visible": true
-    },
-    {
-      "id": "vehicule",
-      "label": "Vehicule",
-      "file": "data/vehicule.json",
-      "visible": true
-    },
-    {
-      "id": "cataphile",
-      "label": "Cataphile",
-      "file": "data/cataphile.json",
-      "visible": true
-    },
-    {
-      "id": "carry",
-      "label": "Carriére",
-      "file": "data/carry.json",
-      "visible": true
-    },
-    {
-      "id": "editor",
-      "label": "Ajouts",
-      "file": "data/editor.json",
-      "visible": true
-    }
+    { "id": "puits",     "label": "Puits",    "file": "data/puit.json",      "visible": true },
+    { "id": "vehicule",  "label": "Vehicule", "file": "data/vehicule.json",  "visible": true },
+    { "id": "cataphile", "label": "Cataphile","file": "data/cataphile.json", "visible": true },
+    { "id": "carry",     "label": "Carrière", "file": "data/carry.json",     "visible": true },
+    { "id": "editor",    "label": "Ajouts",   "file": "data/editor.json",    "visible": true }
   ],
   "tracking": {
     "startX": 345,
@@ -162,800 +137,330 @@ Cette approche permet d’adapter l’application à plusieurs plans sans devoir
     "stepCooldown": 400
   },
   "icons": {
-    "default": "icon/iconetrack.png",
-    "salle": "icon/house.png",
-    "pa": "icon/pa.png",
-    "pc": "icon/pc.png",
-    "pb": "icon/pb.png",
+    "default":  "icon/iconetrack.png",
+    "salle":    "icon/house.png",
+    "pa":       "icon/pa.png",
+    "pc":       "icon/pc.png",
+    "pb":       "icon/pb.png",
     "vehicule": "icon/vehicule.png",
-    "elec": "icon/elec.png",
-    "epure": "icon/epure.png",
-    "ps": "icon/ps.png",
-    "info": "icon/info.png",
+    "elec":     "icon/elec.png",
+    "epure":    "icon/epure.png",
+    "ps":       "icon/ps.png",
+    "info":     "icon/info.png",
     "chatiere": "icon/chatiere.png",
-    "passage": "icon/passage.png",
-    "danger": "icon/danger.png",
-    "pe": "icon/pe.png",
-    "track": "icon/iconetrack.png"
+    "passage":  "icon/passage.png",
+    "danger":   "icon/danger.png",
+    "pe":       "icon/pe.png",
+    "track":    "icon/iconetrack.png"
   }
-}</code></pre>
-
-<h3>Rôle de <code>plan-config.js</code></h3>
-
-<p>
-Le fichier <code>plan-config.js</code> a pour rôle de :
-</p>
-
-<ul>
-  <li>charger ce JSON de configuration</li>
-  <li>rendre ses valeurs accessibles au reste de l’application</li>
-  <li>alimenter les modules <code>map.js</code>, <code>tracking.js</code>, <code>editor.js</code> et <code>interface.js</code></li>
-</ul>
-
-<p>
-En pratique, il sert de <strong>pont entre un plan donné et le moteur de l’application</strong>.
-</p>
-
-<h3>Section <code>plan</code></h3>
-
-<p>
-La section <code>plan</code> décrit les informations générales du plan.
-</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Clé</th>
-      <th>Utilité</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>name</code></td>
-      <td>Nom du plan affiché ou utilisé comme référence.</td>
-    </tr>
-    <tr>
-      <td><code>version</code></td>
-      <td>Version du plan.</td>
-    </tr>
-    <tr>
-      <td><code>author</code></td>
-      <td>Auteur ou source de la cartographie.</td>
-    </tr>
-    <tr>
-      <td><code>imageWidth</code></td>
-      <td>Largeur de l’image principale en pixels.</td>
-    </tr>
-    <tr>
-      <td><code>imageHeight</code></td>
-      <td>Hauteur de l’image principale en pixels.</td>
-    </tr>
-    <tr>
-      <td><code>baseImage</code></td>
-      <td>Chemin vers l’image principale du plan.</td>
-    </tr>
-    <tr>
-      <td><code>collisionImage</code></td>
-      <td>Chemin vers l’image de collision utilisée pour bloquer les déplacements.</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>
-Cette section est utilisée principalement par <code>map.js</code> et par les fonctions de conversion de coordonnées.
-</p>
-
-<h3>Section <code>imageLayers</code></h3>
-
-<p>
-Cette section contient la liste des <strong>calques image supplémentaires</strong> qui peuvent être affichés par-dessus le plan principal.
-</p>
-
-<p>
-Exemple : légende, calque d’aide, tracé secondaire, annotations visuelles.
-</p>
-
-<p>Chaque objet contient :</p>
-
-<ul>
-  <li><code>id</code> : identifiant interne</li>
-  <li><code>label</code> : nom affiché dans l’interface</li>
-  <li><code>file</code> : image à charger</li>
-  <li><code>visible</code> : état initial du calque</li>
-  <li><code>order</code> : ordre d’affichage</li>
-</ul>
-
-<p>
-Le champ <code>order</code> permet de définir la superposition des couches, comme dans un logiciel de retouche ou un SIG.
-</p>
-
-<h3>Section <code>dataLayers</code></h3>
-
-<p>
-Cette section liste les <strong>couches de données JSON</strong> à charger.
-</p>
-
-<p>
-Chaque couche correspond à un ensemble d’objets métier :
-</p>
-
-<ul>
-  <li>puits</li>
-  <li>véhicules</li>
-  <li>cataphiles</li>
-  <li>zones ou objets de carrière</li>
-  <li>ajouts réalisés par l’utilisateur</li>
-</ul>
-
-<p>Chaque entrée contient :</p>
-
-<ul>
-  <li><code>id</code> : identifiant technique</li>
-  <li><code>label</code> : nom visible dans l’interface</li>
-  <li><code>file</code> : chemin vers le fichier JSON</li>
-  <li><code>visible</code> : état initial</li>
-</ul>
-
-<p>
-Cette partie permet de rendre le chargement des données beaucoup plus modulaire.
-</p>
-
-<h3>Section <code>tracking</code></h3>
-
-<p>
-Cette section regroupe les <strong>paramètres liés au déplacement simulé</strong>.
-</p>
-
-<table>
-  <thead>
-    <tr>
-      <th>Clé</th>
-      <th>Utilité</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>startX</code></td>
-      <td>Position initiale X du tracker.</td>
-    </tr>
-    <tr>
-      <td><code>startY</code></td>
-      <td>Position initiale Y du tracker.</td>
-    </tr>
-    <tr>
-      <td><code>scale</code></td>
-      <td>Échelle utilisée pour convertir les pixels en distance réelle.</td>
-    </tr>
-    <tr>
-      <td><code>stepLength</code></td>
-      <td>Longueur moyenne d’un pas en mètres.</td>
-    </tr>
-    <tr>
-      <td><code>stepThreshold</code></td>
-      <td>Seuil de détection du mouvement assimilé à un pas.</td>
-    </tr>
-    <tr>
-      <td><code>stepCooldown</code></td>
-      <td>Temps minimal entre deux pas détectés.</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>
-Cette partie est utilisée par <code>tracking.js</code> pour initialiser et régler le comportement du tracker.
-</p>
-
-<h3>Section <code>icons</code></h3>
-
-<p>
-La section <code>icons</code> centralise les chemins de toutes les icônes utilisées par l’application.
-</p>
-
-<p>
-Cela permet :
-</p>
-
-<ul>
-  <li>d’éviter les chemins codés en dur dans plusieurs fichiers</li>
-  <li>de changer un set d’icônes plus facilement</li>
-  <li>d’adapter rapidement l’interface à un autre plan ou un autre style</li>
-</ul>
-
-<p>
-Chaque clé correspond à un type logique d’objet :
-</p>
-
-<ul>
-  <li><code>pa</code>, <code>pb</code>, <code>pc</code>, <code>pe</code> pour les puits</li>
-  <li><code>salle</code> pour les salles</li>
-  <li><code>vehicule</code> pour les véhicules</li>
-  <li><code>danger</code>, <code>info</code>, <code>passage</code>, etc.</li>
-  <li><code>track</code> pour l’icône du tracker</li>
-</ul>
-
-<h3>Fonctionnement global</h3>
-
-<p>
-Le rôle de <code>plan-config.js</code> est donc de lire ce fichier de configuration et de distribuer les informations
-vers les autres modules.
-</p>
-
-<p>En pratique, cela permet de :</p>
-
-<ul>
-  <li>changer de plan sans modifier les scripts métier</li>
-  <li>charger automatiquement les bonnes images et les bons JSON</li>
-  <li>adapter les paramètres de tracking à chaque cartographie</li>
-  <li>gérer plusieurs versions ou variantes d’un même plan</li>
-</ul>
-
-<h3>Intérêt de cette approche</h3>
-
-<p>
-Cette architecture permet de séparer clairement :
-</p>
-
-<ul>
-  <li>le <strong>moteur de l’application</strong></li>
-  <li>la <strong>configuration d’un plan donné</strong></li>
-</ul>
-
-<p>
-Autrement dit :
-</p>
-
-<ul>
-  <li>les scripts gèrent le fonctionnement</li>
-  <li>le JSON de plan décrit le contenu à charger</li>
-</ul>
-
-<p>
-Cela rend le projet plus modulaire, plus maintenable et plus facilement réutilisable.
-</p>
-<h2>📁 Description des scripts du dossier <code>js/</code></h2>
-
-<h3><code>config.js</code></h3>
-
-<p>
-Ce fichier centralise les <strong>constantes et paramètres de configuration</strong> de l’application.
-</p>
-
-<p>Il contient notamment :</p>
-
-<ul>
-  <li>les dimensions du plan</li>
-  <li>l’échelle de conversion pixels / mètres</li>
-  <li>la taille d’un pas simulé</li>
-  <li>la position initiale du tracker</li>
-  <li>les paramètres de détection de mouvement</li>
-</ul>
-
-<p>
-Deux objets y sont utilisés :
-</p>
-
-<ul>
-  <li><code>DEFAULT_CONFIG</code> : valeurs d’origine</li>
-  <li><code>APP_CONFIG</code> : valeurs effectivement utilisées par l’application</li>
-</ul>
-
-<p>
-Cela permet de modifier certains réglages sans perdre les valeurs par défaut.
-</p>
-
-<hr>
-
-<h3><code>utils.js</code></h3>
-
-<p>
-Ce fichier contient les <strong>fonctions utilitaires communes</strong>.
-</p>
-
-<p>
-La fonction principale est <code>convertCoord(x, y)</code>, qui convertit les coordonnées internes
-du plan vers le système utilisé par Leaflet.
-</p>
-
-<p>
-Cette conversion est nécessaire car l’origine et l’axe Y d’une image classique
-ne correspondent pas directement à ceux de Leaflet.
-</p>
-
-<hr>
-
-<h3><code>map.js</code></h3>
-
-<p>
-Ce fichier gère l’<strong>initialisation de la carte</strong>.
-</p>
-
-<p>Il s’occupe notamment de :</p>
-
-<ul>
-  <li>créer l’instance Leaflet</li>
-  <li>définir les limites du plan</li>
-  <li>charger l’image principale du plan</li>
-  <li>créer les différents calques de données</li>
-  <li>charger la carte de collision (image invisible utilisée pour les zones interdites)</li>
-</ul>
-
-<p>
-C’est le fichier qui pose les fondations de toute l’application.
-</p>
-
-<hr>
-<p>
-L’application repose sur un système de configuration centralisé, chargé depuis le fichier
-<code>config.js</code>.
-</p>
-
-<p>
-Ce fichier contient les <strong>valeurs de référence</strong> utilisées par les différents modules
-de l’application, notamment :
-</p>
-
-<ul>
-  <li>la taille du plan</li>
-  <li>l’échelle de conversion</li>
-  <li>la taille d’un pas</li>
-  <li>la position initiale du tracker</li>
-  <li>les paramètres de détection de mouvement</li>
-</ul>
-
-<h3>Structure générale</h3>
-
-<p>
-Le système de configuration repose sur deux objets :
-</p>
-
-<ul>
-  <li><code>DEFAULT_CONFIG</code> : contient les valeurs d’origine du projet</li>
-  <li><code>APP_CONFIG</code> : contient les valeurs réellement utilisées par l’application</li>
-</ul>
-
-<p>
-Cela permet de modifier la configuration en cours d’utilisation sans perdre les valeurs par défaut.
-</p>
-
-<h3>Exemple de configuration</h3>
-
-<pre><code>const DEFAULT_CONFIG = {
-  imageHeight: 6105,
-  imageWidth: 10441,
-  scale: 5.4,
+}
+```
+
+### Section `plan`
+
+| Clé | Type | Utilité |
+|---|---|---|
+| `name` | string | Nom affiché dans l'interface |
+| `version` | string | Version du plan |
+| `author` | string | Auteur ou source de la cartographie |
+| `imageWidth` | number | Largeur de l'image en pixels |
+| `imageHeight` | number | Hauteur de l'image en pixels |
+| `baseImage` | string | Chemin vers l'image principale |
+| `collisionImage` | string | Chemin vers l'image de collision (zones interdites) |
+
+### Section `imageLayers`
+
+Liste des calques image superposés au plan principal (légende, annotations visuelles, tracés secondaires…).
+
+| Champ | Utilité |
+|---|---|
+| `id` | Identifiant interne |
+| `label` | Nom affiché dans le contrôle de couches |
+| `file` | Chemin vers l'image |
+| `visible` | Visibilité au chargement |
+| `order` | Ordre de superposition (plus grand = dessus) |
+
+### Section `dataLayers`
+
+Liste des couches de données JSON à charger (points d'intérêt, objets métier).
+
+| Champ | Utilité |
+|---|---|
+| `id` | Identifiant technique utilisé dans le code |
+| `label` | Nom affiché dans le contrôle de couches |
+| `file` | Chemin vers le fichier JSON |
+| `visible` | Visibilité au chargement |
+
+### Section `tracking`
+
+Paramètres du module de déplacement simulé.
+
+| Clé | Type | Utilité |
+|---|---|---|
+| `startX` | number | Position X initiale du tracker (pixels) |
+| `startY` | number | Position Y initiale du tracker (pixels) |
+| `scale` | number | Facteur de conversion pixels → mètres |
+| `stepLength` | number | Longueur moyenne d'un pas (mètres) |
+| `stepThreshold` | number | Seuil d'accélération pour détecter un pas |
+| `stepCooldown` | number | Délai minimum entre deux pas (ms) |
+
+### Section `icons`
+
+Centralise les chemins de toutes les icônes. Permet de changer un set d'icônes sans toucher au code.
+
+| Clé | Correspond à |
+|---|---|
+| `pa`, `pb`, `pc`, `pe` | Types de puits |
+| `salle` | Salles |
+| `vehicule` | Véhicules |
+| `danger`, `info`, `passage` | Signalétique |
+| `elec`, `epure`, `ps` | Infrastructures |
+| `chatiere` | Chatières |
+| `track` | Icône du marqueur de position |
+| `default` | Icône par défaut (fallback) |
+
+---
+
+## 📁 Description des modules
+
+### `config.js`
+
+Centralise les constantes de configuration. Deux objets coexistent :
+
+- `DEFAULT_CONFIG` : valeurs d'origine, jamais modifiées
+- `APP_CONFIG` : valeurs actives, éventuellement surchargées par l'utilisateur
+
+```js
+const DEFAULT_CONFIG = {
+  imageHeight: 610,
+  imageWidth: 1044,
+  scale: 4.9,
   stepLength: 0.7,
-  startX: 560,
-  startY: 2891,
+  startX: 345,
+  startY: 519,
   stepThreshold: 13,
   stepCooldown: 400,
   motionDebug: false
 };
 
-let savedConfig = localStorage.getItem("app_config");
-let APP_CONFIG = savedConfig ? JSON.parse(savedConfig) : { ...DEFAULT_CONFIG };</code></pre>
-
-<h3>Description des paramètres</h3>
-
-<table>
-  <thead>
-    <tr>
-      <th>Clé</th>
-      <th>Utilité</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>imageHeight</code></td>
-      <td>Hauteur du plan en pixels. Utilisée notamment pour convertir les coordonnées Y.</td>
-    </tr>
-    <tr>
-      <td><code>imageWidth</code></td>
-      <td>Largeur du plan en pixels.</td>
-    </tr>
-    <tr>
-      <td><code>scale</code></td>
-      <td>Échelle utilisée pour convertir les déplacements ou mesures entre pixels et mètres.</td>
-    </tr>
-    <tr>
-      <td><code>stepLength</code></td>
-      <td>Longueur moyenne d’un pas, exprimée en mètres.</td>
-    </tr>
-    <tr>
-      <td><code>startX</code></td>
-      <td>Coordonnée X initiale du tracker.</td>
-    </tr>
-    <tr>
-      <td><code>startY</code></td>
-      <td>Coordonnée Y initiale du tracker.</td>
-    </tr>
-    <tr>
-      <td><code>stepThreshold</code></td>
-      <td>Seuil utilisé pour détecter un mouvement assimilable à un pas.</td>
-    </tr>
-    <tr>
-      <td><code>stepCooldown</code></td>
-      <td>Temps minimal entre deux pas détectés, en millisecondes.</td>
-    </tr>
-    <tr>
-      <td><code>motionDebug</code></td>
-      <td>Active ou non les logs de debug liés à la détection de mouvement.</td>
-    </tr>
-  </tbody>
-</table>
-
-<h3>Fonctionnement</h3>
-
-<p>
-Au démarrage, l’application vérifie si une configuration utilisateur a été sauvegardée dans le
-<code>localStorage</code>.
-</p>
-
-<ul>
-  <li>Si oui, elle charge cette configuration</li>
-  <li>Sinon, elle utilise les valeurs par défaut</li>
-</ul>
-
-<p>
-Cette logique permet de conserver les réglages personnalisés entre deux sessions.
-</p>
-
-<h3>Réglages dans l’interface</h3>
-
-<p>
-Une interface de réglage est accessible via un bouton dédié dans l’application.
-Elle permet de modifier dynamiquement certaines valeurs sans toucher au code source.
-</p>
-
-<p>
-Les paramètres modifiables sont notamment :
-</p>
-
-<ul>
-  <li>l’échelle</li>
-  <li>la taille d’un pas</li>
-  <li>la taille du plan</li>
-  <li>la position initiale du tracker</li>
-  <li>les seuils de détection de mouvement</li>
-</ul>
-
-<p>
-Deux actions sont disponibles :
-</p>
-
-<ul>
-  <li><strong>Appliquer</strong> : enregistre les nouvelles valeurs dans <code>APP_CONFIG</code> et dans le <code>localStorage</code></li>
-  <li><strong>Reset</strong> : restaure les valeurs de <code>DEFAULT_CONFIG</code></li>
-</ul>
-
-<h3>Impact sur les modules</h3>
-
-<p>
-La configuration est utilisée dans plusieurs parties du projet :
-</p>
-
-<ul>
-  <li><strong>utils.js</strong> : conversion des coordonnées</li>
-  <li><strong>tracking.js</strong> : position initiale, longueur de pas, détection de mouvement</li>
-  <li><strong>measure.js</strong> : calcul de distance</li>
-  <li><strong>map.js</strong> : cohérence avec les dimensions du plan</li>
-</ul>
-
-<p>
-La configuration joue donc un rôle central dans la cohérence du projet.
-</p>
-
-<h3>Objectif de cette approche</h3>
-
-<p>
-L’intérêt de ce système est de pouvoir :
-</p>
-
-<ul>
-  <li>adapter facilement l’application à un autre plan</li>
-  <li>ajuster les paramètres sans recoder</li>
-  <li>calibrer les outils de mesure et de déplacement</li>
-  <li>tester rapidement plusieurs réglages sur le terrain</li>
-</ul>
-
-<p>
-Cette architecture permet de garder un projet souple, facilement modifiable et plus maintenable.
-</p>
-
-<h3>road.js</h3>
-
-<p>
-Ce fichier gère le module de tracé de routes sur le plan.
-</p>
-
-<p>
-Il permet de :
-</p>
-
-<ul>
-  <li>activer un mode de tracé directement sur la carte</li>
-  <li>choisir entre plusieurs types de routes</li>
-  <li>enregistrer les points cliqués pour construire un tracé</li>
-  <li>afficher visuellement les routes sous forme de lignes colorées</li>
-  <li>réinitialiser tous les tracés</li>
-  <li>exporter et réimporter les routes dans une session JSON</li>
-</ul>
-
-<p>
-Trois types de tracés sont actuellement disponibles :
-</p>
-
-<ul>
-  <li><b>principal</b> : route principale</li>
-  <li><b>secondaire</b> : route secondaire</li>
-  <li><b>chemin</b> : chemin ou passage annexe</li>
-</ul>
-
-<p>
-Chaque type possède son propre style visuel afin de les différencier facilement sur la carte.
-</p>
-
-<p>
-Le fonctionnement repose sur un mode actif sélectionné dans l’interface. 
-Lorsque l’utilisateur choisit un type de route, chaque clic sur la carte ajoute un point au tracé courant.
-Les coordonnées sont enregistrées dans le système interne du plan, puis converties pour l’affichage dans Leaflet.
-</p>
-
-<p>
-Les tracés sont stockés sous forme de tableaux d’objets contenant :
-</p>
-
-<ul>
-  <li>le type de route</li>
-  <li>la liste des points qui composent le tracé</li>
-</ul>
-
-<p>
-Ce module est utilisé pour enrichir la lecture du plan en représentant des itinéraires utiles, des axes principaux de circulation ou des chemins secondaires.
-</p>
-
-<p>
-Il est également compatible avec le système d’import/export global, ce qui permet de sauvegarder une session complète incluant :
-</p>
-
-<ul>
-  <li>les points ajoutés en mode édition</li>
-  <li>les mesures de distance</li>
-  <li>les tracés de routes</li>
-</ul>
-
-<p>
-Le fichier <code>road.js</code> joue donc un rôle complémentaire aux modules d’édition et de mesure :
-</p>
-
-<ul>
-  <li><code>editor.js</code> ajoute des points d’intérêt</li>
-  <li><code>measure.js</code> calcule des distances</li>
-  <li><code>road.js</code> dessine des itinéraires structurés sur la carte</li>
-</ul>
-
-<p>
-Il permet ainsi de mieux préparer un parcours, annoter une progression ou représenter une organisation spatiale directement sur le plan.
-</p>
-
-<h3><code>measure.js</code></h3>
-
-<p>
-Ce fichier gère le <strong>module de mesure de distance</strong>.
-</p>
-
-<p>Il permet de :</p>
-
-<ul>
-  <li>activer un mode mesure</li>
-  <li>poser plusieurs points sur la carte</li>
-  <li>tracer une ligne entre ces points</li>
-  <li>calculer la distance totale</li>
-  <li>réinitialiser la mesure</li>
-  <li>exporter le tracé au format JSON</li>
-</ul>
-
-<p>
-Le calcul repose sur l’échelle définie dans <code>APP_CONFIG</code>, ce qui permet de comparer
-les résultats avec des mesures réelles ou d’autres outils.
-</p>
-
-<hr>
-
-<h3><code>tracking.js</code></h3>
-
-<p>
-Ce fichier gère le <strong>module de déplacement simulé</strong>.
-</p>
-
-<p>Son rôle est de :</p>
-
-<ul>
-  <li>écouter les capteurs du téléphone</li>
-  <li>détecter les mouvements assimilés à des pas</li>
-  <li>récupérer l’orientation</li>
-  <li>déplacer un marqueur sur la carte</li>
-  <li>dessiner la trace du déplacement</li>
-  <li>empêcher le passage dans certaines zones grâce à la carte de collision</li>
-  <li>permettre un recalage manuel</li>
-</ul>
-
-<p>
-Cette partie du projet est expérimentale. Elle fonctionne comme une aide visuelle
-et un support de recherche, mais pas comme un système de localisation fiable.
-</p>
-
-<hr>
-
-<h3><code>editor.js</code></h3>
-
-<p>
-Ce fichier gère le <strong>mode édition</strong>.
-</p>
-
-<p>Il permet :</p>
-
-<ul>
-  <li>d’activer un mode d’ajout de point</li>
-  <li>de cliquer sur la carte pour ouvrir un formulaire</li>
-  <li>de renseigner un nom, un type et une description</li>
-  <li>d’ajouter le point à la carte</li>
-  <li>d’exporter les points créés au format JSON</li>
-</ul>
-
-<p>
-Il sert donc à enrichir progressivement la carte avec de nouvelles informations.
-</p>
-
-<hr>
-
-<h3><code>interface.js</code></h3>
-
-<p>
-Ce fichier centralise la <strong>construction de l’interface utilisateur</strong>.
-</p>
-
-<p>Il crée les boutons Leaflet organisés en plusieurs blocs fonctionnels, par exemple :</p>
-
-<ul>
-  <li>tracking</li>
-  <li>mesure</li>
-  <li>édition</li>
-  <li>téléchargement du plan</li>
-  <li>aide</li>
-  <li>réglages</li>
-</ul>
-
-<p>
-Son rôle est d’éviter de disperser la logique d’interface dans plusieurs fichiers.
-</p>
-
-<hr>
-
-<h3><code>main.js</code></h3>
-
-<p>
-Ce fichier joue le rôle de <strong>point d’entrée</strong> de l’application.
-</p>
-
-<p>Il s’occupe notamment de :</p>
-
-<ul>
-  <li>charger les données JSON existantes</li>
-  <li>initialiser les différents modules</li>
-  <li>définir la vue de départ</li>
-  <li>gérer certaines permissions nécessaires sur mobile</li>
-</ul>
-
-<p>
-C’est lui qui lance l’ensemble de l’application une fois les scripts disponibles.
-</p>
-
-<hr>
-
-<h2>🧠 Résumé de l’architecture</h2>
-
-<table>
-  <thead>
-    <tr>
-      <th>Fichier</th>
-      <th>Rôle principal</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td><code>config.js</code></td>
-      <td>Configuration globale</td>
-    </tr>
-    <tr>
-      <td><code>config_import.js</code></td>
-      <td>Configuration globale en mode live (import depuis navigateur)</td>
-    </tr>
-    <tr>
-      <td><code>utils.js</code></td>
-      <td>Fonctions utilitaires</td>
-    </tr>
-    <tr>
-      <td><code>map_import.js</code></td>
-      <td>Initialisation de la carte et des calques en mode live (import depuis navigateur)</td>
-    </tr>
-    <tr>
-      <td><code>measure.js</code></td>
-      <td>Mesure de distance</td>
-    </tr>
-    <tr>
-      <td><code>tracking.js</code></td>
-      <td>Déplacement simulé et collision</td>
-    </tr>
-    <tr>
-      <td><code>editor.js</code></td>
-      <td>Ajout de points et export JSON</td>
-    </tr>
-        <tr>
-      <td><code>road.js</code></td>
-      <td>Ajout de route Principal/Secondaire/Chemin</td>
-    </tr>
-    <tr>
-      <td><code>interface.js</code></td>
-      <td>Interface utilisateur</td>
-    </tr>
-    <tr>
-      <td><code>main.js</code></td>
-      <td>Initialisation globale</td>
-       <tr>
-      <td>main_import.js</td>
-      <td>Initialisation globale en mode live (import depuis navigateur)</td>
-          </tr>
-    </tr>
-  </tbody>
-</table>
-
-<hr>
-
-<h2>🚧 État actuel</h2>
-
-<ul>
-  <li>✅ Affichage du plan</li>
-  <li>✅ Gestion de calques et d’icônes</li>
-  <li>✅ Ajout de points d’intérêt</li>
-  <li>✅ Export JSON</li>
-  <li>✅ Mesure de distance</li>
-  <li>✅ Interface dédiée</li>
-  <li>⚠️ Localisation / tracking en cours de développement</li>
-  <li>⚠️ ServiceWorker (sw.js) désactivité (commentaire dans le index.html)
-         La gestion du cache et du hors connection est donc moin bonne, pour éviter tout soucis sous terre en l'etat :
-         charger la webapp sur son tel et la garder en background. (Certain telephone moin embété que d'autre sur ce point) </li>
-</ul>
-
-<p>
-La base est fonctionnelle, modulaire et évolutive, avec une architecture pensée pour permettre
-des améliorations progressives.
-</p>
-## 
-## ⚙️ Fonctionnement global 
-
-### 1. Initialisation de la carte
-
-La carte est initialisée avec Leaflet en mode image :
-
-👉 L’image est positionnée avec des coordonnées fixes récupéré sur GIMP.
-ATTENTION a a la fonction qui corrige l'inversion de l'axe Y telle que Y=Ymax-Y si vousc utiliser un autre programme
-
-
-
-### 3. Gestion des calques (layers)
-
-Chaque type d’objet est placé dans un calque :
-
-```js
-var layerPuits = L.layerGroup().addTo(map);
-var layerVehicule = L.layerGroup().addTo(map);
+let APP_CONFIG = { ...DEFAULT_CONFIG };
 ```
 
-👉 Cela permet d’activer/désactiver l’affichage via un contrôle :
+Les réglages modifiés via l'interface sont persistés dans le `localStorage` et rechargés à la prochaine session.
+
+---
+
+### `utils.js`
+
+Contient les fonctions partagées entre modules.
+
+#### `convertCoord(x, y)`
+
+Convertit les coordonnées internes du plan (origine en haut à gauche, comme GIMP) vers le système Leaflet (origine en bas à gauche).
 
 ```js
-L.control.layers(null, overlays).addTo(map);
+function convertCoord(x, y) {
+  return [APP_CONFIG.imageHeight - y, x];
+}
 ```
+
+> ⚠️ Si vous utilisez un logiciel autre que GIMP pour relever vos coordonnées, vérifiez l'origine de l'axe Y. Adaptez `imageHeight` en conséquence.
+
+#### `choisirIcone(point)`
+
+Sélectionne l'icône Leaflet appropriée en fonction des tags du point.
+
+```js
+function choisirIcone(p) {
+  if (!p.tags) return iconeDefault;
+  if (p.tags.includes("pa")) return iconepa;
+  if (p.tags.includes("vehicule")) return iconeVehicule;
+  return iconeDefault;
+}
+```
+
+---
+
+### `map.js`
+
+Initialise la carte Leaflet et tous ses calques.
+
+**Responsabilités :**
+- Créer l'instance `L.map` en mode `L.CRS.Simple`
+- Charger l'image principale du plan
+- Créer les `L.layerGroup` pour chaque couche de données
+- Charger les calques image supplémentaires
+- Charger et initialiser la carte de collision
+
+```js
+map = L.map('map', {
+  crs: L.CRS.Simple,
+  minZoom: -2,
+  maxBounds: bounds,
+  maxBoundsViscosity: 1.0
+});
+```
+
+#### Carte de collision
+
+L'image de collision est chargée dans un `<canvas>` hors-DOM. Les pixels rouges (`r > 200, g < 50, b < 50`) représentent les zones interdites au déplacement.
+
+---
+
+### `tracking.js`
+
+Gère le déplacement simulé via les capteurs du téléphone (PDR — *Pedestrian Dead Reckoning*).
+
+**Flux de fonctionnement :**
+1. `requestPermission()` — demande les permissions capteurs (obligatoire sur iOS 13+)
+2. `initOrientation()` — écoute `deviceorientation` pour récupérer le cap
+3. `initMotion()` — écoute `devicemotion` pour détecter les pas
+4. `avancer()` — calcule la nouvelle position et vérifie la collision
+5. `updateMap()` — déplace le marqueur et trace la polyline
+
+#### Calcul du cap (`getHeading`)
+
+La direction de marche est calculée à partir des trois angles de rotation du téléphone (`alpha`, `beta`, `gamma`), ce qui la rend indépendante de l'orientation du téléphone dans la main :
+
+```js
+function getHeading(alpha, beta, gamma) {
+  const a = alpha * Math.PI / 180;
+  const b = beta  * Math.PI / 180;
+  const g = gamma * Math.PI / 180;
+
+  const x = Math.sin(a) * Math.cos(b)
+          + Math.cos(a) * Math.sin(g) * Math.sin(b)
+          - Math.cos(a) * Math.cos(g) * Math.sin(b);
+  const y = Math.cos(a) * Math.cos(b)
+          - Math.sin(a) * Math.sin(g) * Math.sin(b)
+          + Math.sin(a) * Math.cos(g) * Math.sin(b);
+
+  let heading = Math.atan2(x, y) * 180 / Math.PI;
+  if (heading < 0) heading += 360;
+  return heading;
+}
+```
+
+> ⚠️ Cette fonctionnalité est **expérimentale**. Elle fonctionne comme aide visuelle, mais ne constitue pas un système de localisation fiable.
+
+#### Recalage manuel
+
+En mode recalage, un clic sur la carte repositionne le marqueur à l'emplacement cliqué et remet la trace à zéro. Utile pour corriger la dérive du PDR.
+
+---
+
+### `measure.js`
+
+Module de mesure de distance.
+
+**Fonctionnement :** en mode mesure actif, chaque clic sur la carte pose un point. Une ligne est tracée entre les points et la distance totale est calculée et affichée.
+
+Le calcul repose sur `APP_CONFIG.scale` pour convertir les pixels en mètres.
+
+---
+
+### `editor.js`
+
+Module d'ajout de points d'intérêt.
+
+En mode édition, un clic sur la carte ouvre un formulaire permettant de saisir :
+- Nom du point
+- Type (utilisé pour choisir l'icône via les tags)
+- Description
+
+Les points sont ajoutés au calque `editor` et peuvent être exportés en JSON.
+
+---
+
+### `road.js`
+
+Module de tracé de routes.
+
+Trois types de tracés disponibles, chacun avec son propre style visuel :
+
+| Type | Description |
+|---|---|
+| `principal` | Route principale (trait plein, largeur importante) |
+| `secondaire` | Route secondaire |
+| `chemin` | Chemin ou passage annexe |
+
+Chaque tracé est une liste de points cliqués sur la carte. Les routes sont incluses dans l'export/import de session JSON.
+
+---
+
+### `interface.js`
+
+Construit tous les contrôles Leaflet de l'interface. Chaque bloc fonctionnel est un `L.control` indépendant.
+
+| Bouton | Action |
+|---|---|
+| ▶️ / ⏹️ | Démarrer / arrêter le tracking |
+| 📍 | Activer le mode recalage |
+| 📏 | Activer la mesure de distance |
+| ❌ | Réinitialiser la mesure |
+| 🖼️ | Télécharger le plan |
+| ✏️ | Activer le mode ajout de point |
+| 🟩 🟪 🟨 | Tracer route principale / secondaire / chemin |
+| 🧹 | Réinitialiser les tracés |
+| 📂 | Importer une session JSON |
+| 💾 | Exporter la session JSON |
+| ❓ | Afficher l'aide |
+| 🗂️ | Changer de plan |
+| ⚙️ | Ouvrir les réglages |
+
+---
+
+### `main.js`
+
+Point d'entrée de l'application. Orchestre le chargement dans le bon ordre :
+
+```
+loadAppConfig()
+  → initMapFromConfig()
+    → initDataFromConfig()
+      → map.fitBounds()
+      → initEditor()
+      → initRoad()
+      → initMeasure()
+      → initInterface()
+      → initTracking()
+      → requestPermission()  (au premier clic, pour iOS)
+```
+
+---
+
+## 📦 Structure des données JSON
+
+Chaque fichier de données contient un tableau `data` d'objets points :
+
+```json
+{
+  "data": [
+    {
+      "id": "PA1",
+      "nom": "Puits Aération",
+      "x": 4843,
+      "y": 2002,
+      "tags": ["aeration", "ouvert", "pa"],
+      "etat": "Non inspectée",
+      "description": "Puits avec courant d'air",
+      "profondeur": 12,
+      "date_update": "2026-04-03"
+    }
+  ]
+}
+```
+
+| Champ | Type | Utilité |
+|---|---|---|
+| `id` | string | Identifiant unique du point |
+| `nom` | string | Nom affiché dans le popup |
+| `x`, `y` | number | Coordonnées en pixels (origine haut-gauche, style GIMP) |
+| `tags` | array | Détermine l'icône et les filtres possibles |
+| `etat` | string | État courant (libre, selon le type d'objet) |
+| `description` | string | Texte affiché dans le popup |
+| `profondeur` | number | (optionnel) Profondeur en mètres |
+| `date_update` | string | Date de dernière mise à jour |
 
 ---
 
@@ -963,46 +468,24 @@ L.control.layers(null, overlays).addTo(map);
 
 ### Problème
 
-* GIMP → origine en haut à gauche
-* Leaflet → origine en bas à gauche
+- **GIMP** (et la plupart des logiciels image) : origine en **haut à gauche**, axe Y vers le bas
+- **Leaflet** (`L.CRS.Simple`) : origine en **bas à gauche**, axe Y vers le haut
 
 ### Solution
-adapter la constante a votre Y max de votre plan
 
 ```js
 function convertCoord(x, y) {
-  const hauteur = 6105;
-  return [hauteur - y, x];
+  return [APP_CONFIG.imageHeight - y, x];
 }
 ```
 
-👉 On inverse l’axe Y pour correspondre au système Leaflet.
-
----
-
-## 📦 Structure des données JSON
-
-Exemple :
-
-```json
-{
-  "id": "PA1",
-  "nom": "Puits Aération",
-  "x": 4843,
-  "y": 2002,
-  "tags": ["aeration", "ouvert", "pa"],
-  "etat": "Non inspectée",
-  "description": "Puits avec courant d'air",
-  "profondeur": 12,
-  "date_update": "2026-04-03"
-}
-```
+> ⚠️ La valeur `imageHeight` doit correspondre exactement à la hauteur en pixels de votre image. Vérifiez-la dans `plan-config.json`.
 
 ---
 
 ## 🔄 Chargement dynamique des données
 
-Les données sont chargées via `fetch()` :
+Les données JSON sont chargées via `fetch()` au démarrage :
 
 ```js
 function ajouterPointsDepuisJSON(url, layer) {
@@ -1010,7 +493,7 @@ function ajouterPointsDepuisJSON(url, layer) {
     .then(res => res.json())
     .then(json => {
       json.data.forEach(p => {
-        var marker = L.marker(convertCoord(p.x, p.y), {
+        const marker = L.marker(convertCoord(p.x, p.y), {
           icon: choisirIcone(p)
         });
 
@@ -1025,43 +508,24 @@ function ajouterPointsDepuisJSON(url, layer) {
 }
 ```
 
+En mode import navigateur, les fichiers JSON sont lus depuis les `File` sélectionnés par l'utilisateur, convertis en Blob URLs, puis passés à la même fonction.
+
 ---
 
-## 🎨 Gestion des icônes
+## 🗂️ Mode import navigateur
 
-Les icônes sont définies en amont dans le plan-config.js:
+Ce mode permet de charger un plan complet depuis le navigateur, sans serveur web ni accès réseau.
 
-```json
- "icons": {
-    "default": "icon/iconetrack.png",
-    "salle": "icon/house.png",
-    "pa": "icon/pa.png",
-    "pc": "icon/pc.png",
-    "pb": "icon/pb.png",
-    "vehicule": "icon/vehicule.png",
-    "elec": "icon/elec.png",
-    "epure": "icon/epure.png",
-    "ps": "icon/ps.png",
-    "info": "icon/info.png",
-    "chatiere": "icon/chatiere.png",
-    "passage": "icon/passage.png",
-    "danger": "icon/danger.png",
-    "pe": "icon/pe.png",
-    "track": "icon/iconetrack.png"
-  }
-```
+**Procédure :**
+1. Ouvrir la page d'import
+2. Sélectionner le fichier `plan-config.json`
+3. Sélectionner tous les fichiers associés (images, JSONs)
+4. Cliquer sur **Charger le plan**
 
-Puis sélectionnées dynamiquement depuis util.js :
+L'application résout automatiquement les chemins définis dans `plan-config.json` en cherchant les fichiers par nom parmi ceux sélectionnés. Les images sont converties en Blob URLs temporaires pour l'affichage.
 
-```js
-function choisirIcone(p) {
-  if (!p.tags) return iconeDefault;
-  if (p.tags.includes("pa")) return iconepa;
-  if (p.tags.includes("vehicule")) return iconeVehicule;
-  return iconeDefault;
-}
-```
+---
 
 ## 📄 Licence
 
-Projet personnel – à adapter selon vos besoins.
+Projet personnel — libre d'adaptation selon vos besoins.
