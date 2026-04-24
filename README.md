@@ -23,6 +23,7 @@
 - Correction du tracker : intégration de la boussole via `alpha`, `beta`, `gamma`
 
 **Points en cours d'investigation :**
+- Init tracker au démarrage de l'applis KO en mode import (obligé de recaler)
 - Erreur d'échelle constatée sur le tracker — possible problème de cooldown (à investiguer)
 - Bug d'affichage sur les plans de petites dimensions dans les réglages (bug zoom)
 
