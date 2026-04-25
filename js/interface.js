@@ -33,7 +33,111 @@ L.control.titleControl = function () {
 };
 
 // =========================
-// EXPORT GLOBAL
+// PANNEAU ANCRÉ AUX BOUTONS
+// Remplace les L.popup() pour les contrôles de la barre latérale.
+// Usage : ouvrirPanneauAncre(btnElement, htmlContenu, titreOptionnel)
+// =========================
+(function () {
+  let _panneauActif = null;
+  let _closeOnOutside = null;
+
+  function fermerPanneau() {
+    if (_panneauActif) {
+      _panneauActif.remove();
+      _panneauActif = null;
+    }
+    if (_closeOnOutside) {
+      document.removeEventListener("mousedown", _closeOnOutside);
+      _closeOnOutside = null;
+    }
+  }
+
+  window.fermerPanneau = fermerPanneau;
+
+  window.ouvrirPanneauAncre = function (btnEl, html, titre) {
+    // Fermer un éventuel panneau déjà ouvert
+    fermerPanneau();
+
+    const panneau = document.createElement("div");
+    panneau.className = "kta-panneau";
+
+    // Flèche
+    const fleche = document.createElement("div");
+    fleche.className = "kta-panneau-fleche";
+    panneau.appendChild(fleche);
+
+    // En-tête avec titre + bouton fermer
+    if (titre) {
+      const header = document.createElement("div");
+      header.className = "kta-panneau-header";
+      header.innerHTML = `<span class="kta-panneau-titre">${titre}</span>`;
+
+      const btnClose = document.createElement("button");
+      btnClose.className = "kta-panneau-close";
+      btnClose.innerHTML = "✕";
+      btnClose.addEventListener("click", fermerPanneau);
+      header.appendChild(btnClose);
+
+      panneau.appendChild(header);
+    }
+
+    // Corps
+    const corps = document.createElement("div");
+    corps.className = "kta-panneau-corps";
+    corps.innerHTML = html;
+    panneau.appendChild(corps);
+
+    document.body.appendChild(panneau);
+    _panneauActif = panneau;
+
+    // Positionner à gauche du bouton
+    const rect = btnEl.getBoundingClientRect();
+    const panH = panneau.offsetHeight || 400; // estimation initiale
+
+    // Horizontal : à gauche du bouton avec un petit gap
+    const left = rect.left - panneau.offsetWidth - 10;
+    // Vertical : aligné sur le centre du bouton, clampé dans la fenêtre
+    let top = rect.top + rect.height / 2 - panH / 2;
+    top = Math.max(10, Math.min(top, window.innerHeight - panH - 10));
+
+    panneau.style.left = Math.max(8, left) + "px";
+    panneau.style.top = top + "px";
+
+    // Recalculer après rendu réel
+    requestAnimationFrame(() => {
+      const realH = panneau.offsetHeight;
+      let realTop = rect.top + rect.height / 2 - realH / 2;
+      realTop = Math.max(10, Math.min(realTop, window.innerHeight - realH - 10));
+      panneau.style.top = realTop + "px";
+
+      // Positionner la flèche verticalement au niveau du bouton
+      const arrowTop = (rect.top + rect.height / 2) - panneau.getBoundingClientRect().top;
+      fleche.style.top = Math.max(16, arrowTop) + "px";
+    });
+
+    // Fermer en cliquant dehors (délai pour éviter le clic d'ouverture)
+    setTimeout(() => {
+      _closeOnOutside = function (ev) {
+        if (!panneau.contains(ev.target) && ev.target !== btnEl) {
+          fermerPanneau();
+        }
+      };
+      document.addEventListener("mousedown", _closeOnOutside);
+    }, 150);
+  };
+})();
+
+// Surcharge appliquerConfig / resetConfig pour fermer le panneau au lieu de closePopup
+// (les fonctions originales appellent window.map.closePopup() — on le garde intact,
+//  on ajoute juste fermerPanneau() en plus)
+const _origAppliquerConfig_wrap = window.appliquerConfig;
+const _origResetConfig_wrap = window.resetConfig;
+
+// Ces surcharges seront appliquées après que les fonctions originales soient définies
+// (voir bas du fichier, section "patch post-définition")
+
+// =========================
+// EXPORT SESSION JSON
 // =========================
 function telechargerSessionJSON() {
   const data = {
@@ -59,7 +163,7 @@ function telechargerSessionJSON() {
 }
 
 // =========================
-// IMPORT GLOBAL
+// IMPORT SESSION JSON
 // =========================
 function importerSessionJSON(file) {
   const reader = new FileReader();
@@ -73,7 +177,6 @@ function importerSessionJSON(file) {
         return;
       }
 
-      // POINTS EDITEUR
       if (window.setEditorPoints) {
         window.setEditorPoints(data.editorPoints || []);
       }
@@ -82,7 +185,6 @@ function importerSessionJSON(file) {
         window.renderEditorPoints();
       }
 
-      // MESURE
       if (window.resetMesure) {
         window.resetMesure();
       }
@@ -93,7 +195,6 @@ function importerSessionJSON(file) {
         window.setMeasurePoints(measurePoints);
       }
 
-      // ROUTES
       if (window.resetRoads) {
         window.resetRoads();
       }
@@ -113,7 +214,7 @@ function importerSessionJSON(file) {
 }
 
 // =========================
-// SELECTEUR IMPORT
+// SÉLECTEUR IMPORT
 // =========================
 function ouvrirImportSession() {
   const input = document.createElement("input");
@@ -131,45 +232,33 @@ function ouvrirImportSession() {
 }
 
 // =========================
-// AIDE
+// AIDE — panneau ancré
 // =========================
-function afficherAide() {
-  const contenu = `
-    <div style="font-size:16px; line-height:1.5;">
-      <b>Aide - Interface</b><br><br>
-
-      ▶️ : Démarrer / arrêter le tracking<br>
-      📍 : Recalage de position<br><br>
-
-      📏 : Mesurer une distance<br>
-      ❌ : Réinitialiser la mesure<br><br>
-
-      🖼️ : Télécharger le plan<br><br>
-
-      ✏️ : Ajouter un point<br><br>
-
-      🟩 : Route principale<br>
-      🟪 : Route secondaire<br>
-      🟨 : Chemin<br>
-      🧹 : Réinitialiser les tracés routes<br><br>
-
-      📂 : Importer une session<br>
-      💾 : Exporter la session<br><br>
-
-      ❓ : Afficher cette aide<br>
-      🗂️ : Changer de plan<br>
-      ⚙️ : Configuration
+function afficherAide(btnEl) {
+  const html = `
+    <div class="kta-aide-grille">
+      <span class="kta-aide-icone">▶️ / ⏹️</span><span>Démarrer / arrêter le tracking</span>
+      <span class="kta-aide-icone">📍</span><span>Recalage de position</span>
+      <span class="kta-aide-icone">📏</span><span>Mesurer une distance</span>
+      <span class="kta-aide-icone">❌</span><span>Réinitialiser la mesure</span>
+      <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan</span>
+      <span class="kta-aide-icone">✏️</span><span>Ajouter un point</span>
+      <span class="kta-aide-icone">🟩</span><span>Route principale</span>
+      <span class="kta-aide-icone">🟪</span><span>Route secondaire</span>
+      <span class="kta-aide-icone">🟨</span><span>Chemin</span>
+      <span class="kta-aide-icone">🧹</span><span>Réinitialiser les tracés</span>
+      <span class="kta-aide-icone">📂</span><span>Importer une session</span>
+      <span class="kta-aide-icone">💾</span><span>Exporter la session</span>
+      <span class="kta-aide-icone">❓</span><span>Cette aide</span>
+      <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
+      <span class="kta-aide-icone">⚙️</span><span>Configuration</span>
     </div>
   `;
-
-  L.popup()
-    .setLatLng(window.map.getCenter())
-    .setContent(contenu)
-    .openOn(window.map);
+  ouvrirPanneauAncre(btnEl, html, "Aide");
 }
 
 // =========================
-// CHANGER DE PLAN
+// CHANGER DE PLAN — overlay modal (inchangé)
 // =========================
 function afficherPopupChangerPlan() {
   const existing = document.getElementById("popupChangerPlan");
@@ -243,66 +332,65 @@ function afficherPopupChangerPlan() {
 }
 
 // =========================
-// CONFIG
+// CONFIG — panneau ancré
 // =========================
-function afficherConfig() {
+function afficherConfig(btnEl) {
   const c = APP_CONFIG;
 
-  const contenu = `
-    <div style="font-size:16px; width:240px;">
-      <b>Réglages</b><br><br>
+  const html = `
+    <div class="kta-cfg-grille">
 
-      Échelle :<br>
-      <input id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Échelle</label>
+      <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}">
 
-      Taille d'un pas (m) :<br>
-      <input id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Taille d'un pas (m)</label>
+      <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
 
-      Hauteur image :<br>
-      <input id="cfg_imageHeight" type="number" value="${c.imageHeight}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Hauteur image (px)</label>
+      <input class="kta-cfg-input" id="cfg_imageHeight" type="number" value="${c.imageHeight}">
 
-      Largeur image :<br>
-      <input id="cfg_imageWidth" type="number" value="${c.imageWidth}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Largeur image (px)</label>
+      <input class="kta-cfg-input" id="cfg_imageWidth" type="number" value="${c.imageWidth}">
 
-      Position initiale X :<br>
-      <input id="cfg_startX" type="number" value="${c.startX}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Position initiale X</label>
+      <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
 
-      Position initiale Y :<br>
-      <input id="cfg_startY" type="number" value="${c.startY}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Position initiale Y</label>
+      <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
 
-      Seuil de détection pas :<br>
-      <input id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Seuil détection pas</label>
+      <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
 
-      Cooldown pas (ms) :<br>
-      <input id="cfg_stepCooldown" type="number" value="${c.stepCooldown}" style="font-size:16px;"><br>
+      <label class="kta-cfg-label">Cooldown pas (ms)</label>
+      <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
 
-      Debug mouvement :<br>
-      <select id="cfg_motionDebug" style="font-size:16px;">
-        <option value="true" ${c.motionDebug ? "selected" : ""}>Oui</option>
+      <label class="kta-cfg-label">Debug mouvement</label>
+      <select class="kta-cfg-input" id="cfg_motionDebug">
+        <option value="true"  ${c.motionDebug ? "selected" : ""}>Oui</option>
         <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
-      </select><br><br>
+      </select>
 
-      <button onclick="appliquerConfig()">Appliquer</button>
-      <button onclick="resetConfig()">Reset</button>
+    </div>
+
+    <div class="kta-cfg-actions">
+      <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
+      <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
     </div>
   `;
 
-  L.popup()
-    .setLatLng(window.map.getCenter())
-    .setContent(contenu)
-    .openOn(window.map);
+  ouvrirPanneauAncre(btnEl, html, "Réglages");
 }
 
 function appliquerConfig() {
-  APP_CONFIG.scale = parseFloat(document.getElementById("cfg_scale").value);
-  APP_CONFIG.stepLength = parseFloat(document.getElementById("cfg_stepLength").value);
-  APP_CONFIG.imageHeight = parseInt(document.getElementById("cfg_imageHeight").value, 10);
-  APP_CONFIG.imageWidth = parseInt(document.getElementById("cfg_imageWidth").value, 10);
-  APP_CONFIG.startX = parseInt(document.getElementById("cfg_startX").value, 10);
-  APP_CONFIG.startY = parseInt(document.getElementById("cfg_startY").value, 10);
-  APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
-  APP_CONFIG.stepCooldown = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  APP_CONFIG.motionDebug = document.getElementById("cfg_motionDebug").value === "true";
+  APP_CONFIG.scale          = parseFloat(document.getElementById("cfg_scale").value);
+  APP_CONFIG.stepLength     = parseFloat(document.getElementById("cfg_stepLength").value);
+  APP_CONFIG.imageHeight    = parseInt(document.getElementById("cfg_imageHeight").value, 10);
+  APP_CONFIG.imageWidth     = parseInt(document.getElementById("cfg_imageWidth").value, 10);
+  APP_CONFIG.startX         = parseInt(document.getElementById("cfg_startX").value, 10);
+  APP_CONFIG.startY         = parseInt(document.getElementById("cfg_startY").value, 10);
+  APP_CONFIG.stepThreshold  = parseFloat(document.getElementById("cfg_stepThreshold").value);
+  APP_CONFIG.stepCooldown   = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
+  APP_CONFIG.motionDebug    = document.getElementById("cfg_motionDebug").value === "true";
 
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
 
@@ -310,7 +398,9 @@ function appliquerConfig() {
     window.resetTrackingPosition();
   }
 
-  window.map.closePopup();
+  // Ferme le panneau ancré (+ closePopup pour compatibilité)
+  if (window.fermerPanneau) window.fermerPanneau();
+  if (window.map) window.map.closePopup();
 }
 
 function resetConfig() {
@@ -322,7 +412,8 @@ function resetConfig() {
     window.resetTrackingPosition();
   }
 
-  window.map.closePopup();
+  if (window.fermerPanneau) window.fermerPanneau();
+  if (window.map) window.map.closePopup();
 }
 
 // =========================
@@ -350,7 +441,7 @@ function initInterface() {
     L.DomEvent.on(btnHelp, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherAide();
+      afficherAide(btnHelp);          // ← ancré au bouton
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -373,7 +464,7 @@ function initInterface() {
     L.DomEvent.on(btnChangePlan, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherPopupChangerPlan();
+      afficherPopupChangerPlan();     // reste modal (inchangé)
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -382,7 +473,7 @@ function initInterface() {
 
   changePlanControl.addTo(window.map);
 
-  // ---------- BLOC REGLAGES ----------
+  // ---------- BLOC RÉGLAGES ----------
   const settingsControl = L.control({ position: "topright" });
 
   settingsControl.onAdd = function () {
@@ -396,7 +487,7 @@ function initInterface() {
     L.DomEvent.on(btnSettings, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherConfig();
+      afficherConfig(btnSettings);   // ← ancré au bouton
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -571,37 +662,29 @@ function initInterface() {
     btnResetRoads.title = "Réinitialiser les tracés routes";
 
     function refreshRoadButtons() {
-      btnPrincipal.style.backgroundColor = window.modeRoad === "principal" ? "#4CAF50" : "";
+      btnPrincipal.style.backgroundColor  = window.modeRoad === "principal"  ? "#4CAF50" : "";
       btnSecondaire.style.backgroundColor = window.modeRoad === "secondaire" ? "#4CAF50" : "";
-      btnChemin.style.backgroundColor = window.modeRoad === "chemin" ? "#4CAF50" : "";
+      btnChemin.style.backgroundColor     = window.modeRoad === "chemin"     ? "#4CAF50" : "";
     }
 
     L.DomEvent.on(btnPrincipal, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      toggleRoadMode("principal");
-      refreshRoadButtons();
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      toggleRoadMode("principal"); refreshRoadButtons();
     });
 
     L.DomEvent.on(btnSecondaire, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      toggleRoadMode("secondaire");
-      refreshRoadButtons();
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      toggleRoadMode("secondaire"); refreshRoadButtons();
     });
 
     L.DomEvent.on(btnChemin, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      toggleRoadMode("chemin");
-      refreshRoadButtons();
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      toggleRoadMode("chemin"); refreshRoadButtons();
     });
 
     L.DomEvent.on(btnResetRoads, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      resetRoads();
-      refreshRoadButtons();
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      resetRoads(); refreshRoadButtons();
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -627,14 +710,12 @@ function initInterface() {
     btnExport.title = "Exporter la session";
 
     L.DomEvent.on(btnImport, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       ouvrirImportSession();
     });
 
     L.DomEvent.on(btnExport, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       telechargerSessionJSON();
     });
 
@@ -648,7 +729,7 @@ function initInterface() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.afficherConfig = afficherConfig;
-window.appliquerConfig = appliquerConfig;
-window.resetConfig = resetConfig;
-window.initInterface = initInterface;
+window.afficherConfig    = afficherConfig;
+window.appliquerConfig   = appliquerConfig;
+window.resetConfig       = resetConfig;
+window.initInterface     = initInterface;
