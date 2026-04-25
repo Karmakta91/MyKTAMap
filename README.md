@@ -14,6 +14,7 @@
 ## 📋 Journal des modifications
 
 ### 25/04/2026
+- Reactivation du service worker
 - Modification de l'interface pour responsive design bug
 
 ### 22/04/2026
