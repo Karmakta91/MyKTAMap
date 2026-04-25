@@ -668,6 +668,38 @@ function viderCacheAppli() {
 }
 
 // =========================
+// GESTIONNAIRE DE MODES EXCLUSIFS
+// Un seul mode actif à la fois parmi : mesure, édition, recalage, routes
+// Le tracking (▶️/⏹️) est volontairement exclu
+// =========================
+const _modesActifs = {};
+
+function _desactiverTousLesModes() {
+  Object.values(_modesActifs).forEach(function(m) {
+    try { m.desactiverFn(); } catch(e) {}
+    m.btnEl.classList.remove("kta-actif");
+  });
+  Object.keys(_modesActifs).forEach(function(k) { delete _modesActifs[k]; });
+}
+
+function _activerMode(cle, btnEl, activerFn, desactiverFn) {
+  const dejaActif = !!_modesActifs[cle];
+
+  // Tout désactiver d'abord
+  _desactiverTousLesModes();
+
+  if (dejaActif) {
+    // C'était un toggle : on ne réactive pas
+    return;
+  }
+
+  // Activer le nouveau mode
+  activerFn();
+  btnEl.classList.add("kta-actif");
+  _modesActifs[cle] = { btnEl, desactiverFn };
+}
+
+// =========================
 // INIT INTERFACE
 // =========================
 function initInterface() {
@@ -778,10 +810,14 @@ function initInterface() {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
 
-      if (typeof modeRecalage !== "undefined") {
-        modeRecalage = !modeRecalage;
-        btnRecal.style.backgroundColor = modeRecalage ? "#4CAF50" : "";
-      }
+      if (typeof modeRecalage === "undefined") return;
+
+      _activerMode(
+        "recalage",
+        btnRecal,
+        function () { modeRecalage = true; },
+        function () { modeRecalage = false; }
+      );
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -810,13 +846,20 @@ function initInterface() {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
 
-      if (typeof modeMesure !== "undefined") {
-        modeMesure = !modeMesure;
-        btnMeasure.style.backgroundColor = modeMesure ? "#4CAF50" : "";
-      } else if (typeof window.modeMesure !== "undefined") {
-        window.modeMesure = !window.modeMesure;
-        btnMeasure.style.backgroundColor = window.modeMesure ? "#4CAF50" : "";
-      }
+      const varMesure = typeof modeMesure !== "undefined" ? "local" : "window";
+
+      _activerMode(
+        "mesure",
+        btnMeasure,
+        function () {
+          if (varMesure === "local") modeMesure = true;
+          else window.modeMesure = true;
+        },
+        function () {
+          if (varMesure === "local") modeMesure = false;
+          else window.modeMesure = false;
+        }
+      );
     });
 
     L.DomEvent.on(btnResetMeasure, "click", function (e) {
@@ -873,8 +916,13 @@ function initInterface() {
     L.DomEvent.on(btnEdit, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      toggleEdition();
-      btnEdit.style.backgroundColor = window.modeEdition ? "#4CAF50" : "";
+
+      _activerMode(
+        "edition",
+        btnEdit,
+        function () { window.modeEdition = true; },
+        function () { window.modeEdition = false; }
+      );
     });
 
     L.DomEvent.on(btnResetEditor, "click", function (e) {
@@ -925,25 +973,42 @@ function initInterface() {
     btnResetRoads.href = "javascript:void(0)";
     btnResetRoads.title = "Réinitialiser les tracés routes";
 
-    function refreshRoadButtons() {
-      btnPrincipal.style.backgroundColor  = window.modeRoad === "principal"  ? "#4CAF50" : "";
-      btnSecondaire.style.backgroundColor = window.modeRoad === "secondaire" ? "#4CAF50" : "";
-      btnChemin.style.backgroundColor     = window.modeRoad === "chemin"     ? "#4CAF50" : "";
+    function _desactiverRoute() {
+      // toggleRoadMode remet currentRoad = null dans road.js
+      if (window.modeRoad) toggleRoadMode(window.modeRoad);
+      btnPrincipal.classList.remove("kta-actif");
+      btnSecondaire.classList.remove("kta-actif");
+      btnChemin.classList.remove("kta-actif");
+    }
+
+    function activerRoute(type, btnCible) {
+      const dejaActif = window.modeRoad === type;
+
+      // Désactiver tout
+      _desactiverTousLesModes();
+      _desactiverRoute();
+
+      if (dejaActif) return; // toggle off
+
+      // Activer via toggleRoadMode qui gère currentRoad dans road.js
+      toggleRoadMode(type);
+      btnCible.classList.add("kta-actif");
+      _modesActifs["road"] = { btnEl: btnCible, desactiverFn: _desactiverRoute };
     }
 
     L.DomEvent.on(btnPrincipal, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      toggleRoadMode("principal"); refreshRoadButtons();
+      activerRoute("principal", btnPrincipal);
     });
 
     L.DomEvent.on(btnSecondaire, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      toggleRoadMode("secondaire"); refreshRoadButtons();
+      activerRoute("secondaire", btnSecondaire);
     });
 
     L.DomEvent.on(btnChemin, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      toggleRoadMode("chemin"); refreshRoadButtons();
+      activerRoute("chemin", btnChemin);
     });
 
     L.DomEvent.on(btnResetRoads, "click", function (e) {
@@ -1015,7 +1080,7 @@ const LEGENDE_LABELS = {
   vehicule: "Véhicule",
   elec:     "Électricité",
   epure:    "Épure",
-  ps:       "Puit extraction",
+  ps:       "Poste de secours",
   info:     "Information",
   chatiere: "Chatière",
   passage:  "Passage",
