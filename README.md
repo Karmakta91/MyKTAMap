@@ -14,6 +14,8 @@
 ## 📋 Journal des modifications
 
 ### 25/04/2026
+- Ajout de la doc a l'interface
+- Ajout de reset cache a l'interface
 - Reactivation du service worker
 - Modification de l'interface pour responsive design bug
 
