@@ -54,7 +54,7 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 | Déplacement simulé via capteurs mobile | ⚠️ Expérimental |
 | Mode hors-connexion (ServiceWorker) | ⚠️ Re activer depuis le push du 25/04 12:25 (Test en cours) |
 
-> ⚠️ Le ServiceWorker (`sw.js`) est actuellement commenté dans `index.html`. En attendant sa réactivation, charger la webapp sur le téléphone et la laisser en arrière-plan reste la solution recommandée pour une utilisation sous terre.
+> ⚠️ Le ServiceWorker n'étant pas encore au point, charger la webapp sur le téléphone et la laisser en arrière-plan reste la solution recommandée pour une utilisation sous terre.
 
 ---
 
