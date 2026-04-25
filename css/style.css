@@ -60,9 +60,237 @@ html, body {
 }
 
 
+/* ==============================================
+   PANNEAU ANCRÉ AUX BOUTONS (aide, réglages…)
+   ============================================== */
+
+.kta-panneau {
+  position: fixed;
+  z-index: 9000;
+  width: 280px;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: #1a1f2e;
+  color: #e8eaf0;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  animation: kta-fadein 0.15s ease;
+  overflow-x: hidden 
+}
+
+@keyframes kta-fadein {
+  from { opacity: 0; transform: translateX(8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Flèche pointant vers la droite (vers les boutons) */
+.kta-panneau-fleche {
+  position: absolute;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 8px solid #1a1f2e;
+  transform: translateY(-50%);
+  filter: drop-shadow(2px 0 2px rgba(0,0,0,0.3));
+}
+
+/* En-tête */
+.kta-panneau-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.kta-panneau-titre {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #8cb4ff;
+}
+
+.kta-panneau-close {
+  background: none;
+  border: none;
+  color: #8892a4;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+.kta-panneau-close:hover {
+  color: #e8eaf0;
+  background: rgba(255,255,255,0.08);
+}
+
+/* Corps */
+.kta-panneau-corps {
+  padding: 12px 14px 14px;
+}
+
+/* ----- Grille aide ----- */
+.kta-aide-grille {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.kta-aide-icone {
+  font-size: 16px;
+  text-align: center;
+}
+
+/* ----- Grille réglages ----- */
+.kta-cfg-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.kta-cfg-label {
+  font-size: 12px;
+  color: #8892a4;
+  line-height: 1.3;
+}
+
+.kta-cfg-input {
+  min-width: 0
+  width: 100%;
+  box-sizing: border-box;
+  background: #0d1117;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: #e8eaf0;
+  font-size: 13px;
+  padding: 5px 7px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.kta-cfg-input:focus {
+  border-color: #4d8aff;
+}
+
+.kta-cfg-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin-top: 2px;
+}
+
+/* ----- Boutons génériques dans le panneau ----- */
+.kta-btn {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s, background 0.15s;
+}
+.kta-btn:hover { opacity: 0.85; }
+
+.kta-btn-primary {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.kta-btn-ghost {
+  background: rgba(255,255,255,0.07);
+  color: #c0c8d8;
+  border: 1px solid rgba(255,255,255,0.12);
+}
 
 
+/* ==============================================
+   POPUPS LEAFLET STYLÉES (marqueurs de curiosités)
+   ============================================== */
 
+.leaflet-popup-content-wrapper {
+  background: #1a1f2e !important;
+  color: #e8eaf0 !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  color: #e8eaf0 !important;
+}
+
+/* Titre en gras dans les popups */
+.leaflet-popup-content b {
+  color: #8cb4ff;
+  font-size: 15px;
+}
+
+/* Queue de la popup */
+.leaflet-popup-tip-container .leaflet-popup-tip {
+  background: #1a1f2e !important;
+  box-shadow: none !important;
+}
+
+/* Bouton de fermeture Leaflet */
+.leaflet-popup-close-button {
+  color: #8892a4 !important;
+  font-size: 18px !important;
+  top: 6px !important;
+  right: 8px !important;
+}
+.leaflet-popup-close-button:hover {
+  color: #e8eaf0 !important;
+}
+
+/* Inputs dans les popups Leaflet (formulaire ajout de point) */
+.leaflet-popup-content input,
+.leaflet-popup-content textarea,
+.leaflet-popup-content select {
+  font-size: 14px !important;
+  padding: 6px 8px !important;
+  background: #0d1117 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 6px !important;
+  color: #e8eaf0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-top: 2px !important;
+}
+
+.leaflet-popup-content button {
+  margin-top: 10px !important;
+  padding: 7px 14px !important;
+  background: #1f6feb !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 7px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+.leaflet-popup-content button:hover {
+  opacity: 0.85 !important;
+}
+
+
+/* ==============================================
+   LOADER (inchangé)
+   ============================================== */
 
 #planLoaderOverlay {
   position: fixed;
