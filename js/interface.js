@@ -1015,7 +1015,7 @@ const LEGENDE_LABELS = {
   vehicule: "Véhicule",
   elec:     "Électricité",
   epure:    "Épure",
-  ps:       "Poste de secours",
+  ps:       "Puit extraction",
   info:     "Information",
   chatiere: "Chatière",
   passage:  "Passage",
