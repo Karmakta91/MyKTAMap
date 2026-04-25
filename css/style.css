@@ -705,3 +705,76 @@ html, body {
   min-height: 20px;
   color: #333;
 }
+
+/* Onglets loader */
+.loader-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.loader-tab {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: #f0f0f0;
+  color: #555;
+  transition: background 0.15s, color 0.15s;
+}
+
+.loader-tab.active {
+  background: #1f6feb;
+  color: #fff;
+}
+
+.loader-panel {
+  display: none;
+}
+
+.loader-panel.active {
+  display: block;
+}
+
+/* Zone de drop ZIP */
+.zip-drop-zone {
+  border: 2px dashed #bbb;
+  border-radius: 10px;
+  padding: 28px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.zip-drop-zone:hover,
+.zip-drop-zone.dragover {
+  border-color: #1f6feb;
+  background: #f0f6ff;
+  color: #1f6feb;
+}
+
+.zip-drop-zone .zip-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.zip-drop-zone input[type="file"] {
+  display: none;
+}
+
+#zipFileName {
+  font-size: 13px;
+  color: #1f6feb;
+  font-weight: 600;
+  margin-top: 4px;
+  min-height: 18px;
+}
