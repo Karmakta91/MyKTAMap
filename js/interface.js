@@ -232,6 +232,124 @@ function ouvrirImportSession() {
 }
 
 // =========================
+// HELPER — modale de confirmation simple (1 clic)
+// _confirmerAction(titre, texte, callbackOui)
+// =========================
+function _confirmerAction(titre, texte, callback) {
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML = `
+    <div class="kta-modal">
+      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-titre">${titre}</div>
+      <div class="kta-modal-texte">${texte}</div>
+      <div class="kta-modal-actions">
+        <button class="kta-btn kta-btn-ghost" id="_conf-annuler">Annuler</button>
+        <button class="kta-btn kta-btn-danger" id="_conf-ok">Confirmer</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  document.getElementById("_conf-annuler").addEventListener("click", function () {
+    overlay.remove();
+  });
+  document.getElementById("_conf-ok").addEventListener("click", function () {
+    overlay.remove();
+    callback();
+  });
+}
+
+// =========================
+// README — modale plein écran
+// =========================
+function afficherReadme() {
+  console.log("[README] afficherReadme appelé");
+
+  // Si déjà ouverte, fermer
+  const existing = document.getElementById("kta-readme-modal");
+  if (existing) { existing.remove(); return; }
+
+  // Ouvrir immédiatement avec état de chargement
+  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement du README…</p>");
+
+  console.log("[README] modale ouverte, lancement fetch");
+
+  fetch("README.md")
+    .then(function(res) {
+      console.log("[README] fetch status:", res.status, res.ok);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.text();
+    })
+    .then(function(md) {
+      console.log("[README] contenu reçu, longueur:", md.length);
+      const html = _renderMarkdown(md);
+      const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
+      if (corps) corps.innerHTML = "<p>" + html + "</p>";
+    })
+    .catch(function(err) {
+      console.error("[README] erreur fetch:", err);
+      const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
+      if (corps) corps.innerHTML = `
+        <p class="kta-readme-erreur">
+          ❌ Impossible de charger README.md<br><br>
+          <code>${err.message}</code><br><br>
+          Vérifiez que <code>README.md</code> est à la racine du serveur.
+        </p>`;
+    });
+}
+
+function _renderMarkdown(md) {
+  return md
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/```[\w]*\n([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/^#### (.+)$/gm, "<h4>$1</h4>")
+    .replace(/^### (.+)$/gm,  "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm,   "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm,    "<h1>$1</h1>")
+    .replace(/^---$/gm, "<hr>")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g,     "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g,         "<em>$1</em>")
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
+    .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
+    .replace(/\n\n+/g, "</p><p>")
+    .replace(/\n/g, "<br>");
+}
+
+function _ouvrirReadmeModal(html) {
+  console.log("[README] _ouvrirReadmeModal appelé");
+  const modal = document.createElement("div");
+  modal.id = "kta-readme-modal";
+  modal.className = "kta-readme-modal-overlay";
+
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📖 Documentation</span>
+        <button class="kta-panneau-close" id="kta-readme-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+        <div class="kta-readme-corps"><p>${html}</p></div>
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+
+  document.getElementById("kta-readme-close").addEventListener("click", function () {
+    modal.remove();
+  });
+
+  // Clic sur l'overlay pour fermer
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) modal.remove();
+  });
+}
+
+// =========================
 // AIDE — panneau ancré
 // =========================
 function afficherAide(btnEl) {
@@ -243,12 +361,14 @@ function afficherAide(btnEl) {
       <span class="kta-aide-icone">❌</span><span>Réinitialiser la mesure</span>
       <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan</span>
       <span class="kta-aide-icone">✏️</span><span>Ajouter un point</span>
+      <span class="kta-aide-icone">🗑️</span><span>Effacer les points ajoutés</span>
       <span class="kta-aide-icone">🟩</span><span>Route principale</span>
       <span class="kta-aide-icone">🟪</span><span>Route secondaire</span>
       <span class="kta-aide-icone">🟨</span><span>Chemin</span>
       <span class="kta-aide-icone">🧹</span><span>Réinitialiser les tracés</span>
       <span class="kta-aide-icone">📂</span><span>Importer une session</span>
       <span class="kta-aide-icone">💾</span><span>Exporter la session</span>
+      <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
       <span class="kta-aide-icone">❓</span><span>Cette aide</span>
       <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
       <span class="kta-aide-icone">⚙️</span><span>Configuration</span>
@@ -376,6 +496,10 @@ function afficherConfig(btnEl) {
       <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
       <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
     </div>
+
+    <div class="kta-cfg-cache">
+      <button class="kta-btn kta-btn-danger" onclick="viderCacheAppli()">🗑️ Vider le cache</button>
+    </div>
   `;
 
   ouvrirPanneauAncre(btnEl, html, "Réglages");
@@ -417,6 +541,120 @@ function resetConfig() {
 }
 
 // =========================
+// VIDER LE CACHE APPLICATIF
+// Double confirmation avant de désinscrire le SW et vider le Cache API
+// =========================
+function viderCacheAppli() {
+
+  // — Première confirmation —
+  const overlay1 = document.createElement("div");
+  overlay1.className = "kta-modal-overlay";
+  overlay1.innerHTML = `
+    <div class="kta-modal">
+      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-titre">Vider le cache ?</div>
+      <div class="kta-modal-texte">
+        Le cache applicatif sera entièrement supprimé.<br><br>
+        <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
+      </div>
+      <div class="kta-modal-actions">
+        <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">Annuler</button>
+        <button class="kta-btn kta-btn-danger" id="cache-continuer-1">Continuer →</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay1);
+
+  document.getElementById("cache-annuler-1").addEventListener("click", function () {
+    overlay1.remove();
+  });
+
+  document.getElementById("cache-continuer-1").addEventListener("click", function () {
+    overlay1.remove();
+
+    // — Deuxième confirmation —
+    const overlay2 = document.createElement("div");
+    overlay2.className = "kta-modal-overlay";
+    overlay2.innerHTML = `
+      <div class="kta-modal kta-modal-danger">
+        <div class="kta-modal-icon">🚨</div>
+        <div class="kta-modal-titre">Confirmation finale</div>
+        <div class="kta-modal-texte">
+          ⚠️ <strong>ATTENTION</strong> ⚠️<br><br>
+          Cette action vide intégralement le cache du navigateur pour cette application.<br><br>
+          <strong>Hors connexion → l'application sera hors service.</strong><br><br>
+          Confirmez uniquement si vous êtes connecté à Internet.
+        </div>
+        <div class="kta-modal-actions">
+          <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">Annuler</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">🗑️ Vider maintenant</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay2);
+
+    document.getElementById("cache-annuler-2").addEventListener("click", function () {
+      overlay2.remove();
+    });
+
+    document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
+      overlay2.remove();
+
+      // — Feedback pendant l'opération —
+      const overlayWait = document.createElement("div");
+      overlayWait.className = "kta-modal-overlay";
+      overlayWait.innerHTML = `
+        <div class="kta-modal">
+          <div class="kta-modal-icon">⏳</div>
+          <div class="kta-modal-titre">Nettoyage en cours…</div>
+          <div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div>
+        </div>
+      `;
+      document.body.appendChild(overlayWait);
+
+      try {
+        // 1. Désinscrire tous les Service Workers
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(r => r.unregister()));
+        }
+
+        // 2. Vider tous les caches du Cache API
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+
+        // 3. Rechargement forcé depuis le réseau
+        overlayWait.remove();
+        window.location.reload(true);
+
+      } catch (err) {
+        console.error("Erreur lors du vidage du cache :", err);
+        overlayWait.remove();
+
+        const overlayErr = document.createElement("div");
+        overlayErr.className = "kta-modal-overlay";
+        overlayErr.innerHTML = `
+          <div class="kta-modal">
+            <div class="kta-modal-icon">❌</div>
+            <div class="kta-modal-titre">Erreur</div>
+            <div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div>
+            <div class="kta-modal-actions">
+              <button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(overlayErr);
+        document.getElementById("cache-err-ok").addEventListener("click", function () {
+          overlayErr.remove();
+        });
+      }
+    });
+  });
+}
+
+// =========================
 // INIT INTERFACE
 // =========================
 function initInterface() {
@@ -441,7 +679,7 @@ function initInterface() {
     L.DomEvent.on(btnHelp, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherAide(btnHelp);          // ← ancré au bouton
+      afficherAide(btnHelp);
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -449,6 +687,29 @@ function initInterface() {
   };
 
   helpControl.addTo(window.map);
+
+  // ---------- BLOC README ----------
+  const readmeControl = L.control({ position: "topright" });
+
+  readmeControl.onAdd = function () {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+
+    const btnReadme = L.DomUtil.create("a", "", div);
+    btnReadme.innerHTML = "📖";
+    btnReadme.href = "javascript:void(0)";
+    btnReadme.title = "Documentation";
+
+    L.DomEvent.on(btnReadme, "click", function (e) {
+      L.DomEvent.stop(e);
+      L.DomEvent.preventDefault(e);
+      afficherReadme();
+    });
+
+    L.DomEvent.disableClickPropagation(div);
+    return div;
+  };
+
+  readmeControl.addTo(window.map);
 
   // ---------- BLOC CHANGER DE PLAN ----------
   const changePlanControl = L.control({ position: "topright" });
@@ -464,7 +725,7 @@ function initInterface() {
     L.DomEvent.on(btnChangePlan, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherPopupChangerPlan();     // reste modal (inchangé)
+      afficherPopupChangerPlan();
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -487,7 +748,7 @@ function initInterface() {
     L.DomEvent.on(btnSettings, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-      afficherConfig(btnSettings);   // ← ancré au bouton
+      afficherConfig(btnSettings);
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -610,7 +871,7 @@ function initInterface() {
 
   imageControl.addTo(window.map);
 
-  // ---------- BLOC ÉDITION ----------
+  // ---------- BLOC ÉDITION + RESET POINTS (même barre) ----------
   const editorControl = L.control({ position: "topright" });
 
   editorControl.onAdd = function () {
@@ -621,12 +882,32 @@ function initInterface() {
     btnEdit.href = "javascript:void(0)";
     btnEdit.title = "Mode ajout de point";
 
+    const btnResetEditor = L.DomUtil.create("a", "", div);
+    btnResetEditor.innerHTML = "🗑️";
+    btnResetEditor.href = "javascript:void(0)";
+    btnResetEditor.title = "Effacer les points ajoutés";
+
     L.DomEvent.on(btnEdit, "click", function (e) {
       L.DomEvent.stop(e);
       L.DomEvent.preventDefault(e);
-
       toggleEdition();
       btnEdit.style.backgroundColor = window.modeEdition ? "#4CAF50" : "";
+    });
+
+    L.DomEvent.on(btnResetEditor, "click", function (e) {
+      L.DomEvent.stop(e);
+      L.DomEvent.preventDefault(e);
+
+      if (!window.getEditorPoints || window.getEditorPoints().length === 0) return;
+
+      _confirmerAction(
+        "Effacer les points ajoutés ?",
+        "Tous les points ajoutés manuellement seront supprimés.<br>Cette action est irréversible.",
+        function () {
+          if (window.setEditorPoints) window.setEditorPoints([]);
+          if (window.renderEditorPoints) window.renderEditorPoints();
+        }
+      );
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -684,7 +965,17 @@ function initInterface() {
 
     L.DomEvent.on(btnResetRoads, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      resetRoads(); refreshRoadButtons();
+
+      if (!window.getRoads || window.getRoads().length === 0) return;
+
+      _confirmerAction(
+        "Effacer les tracés ?",
+        "Tous les tracés de routes seront supprimés.<br>Cette action est irréversible.",
+        function () {
+          resetRoads();
+          refreshRoadButtons();
+        }
+      );
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -732,4 +1023,6 @@ function initInterface() {
 window.afficherConfig    = afficherConfig;
 window.appliquerConfig   = appliquerConfig;
 window.resetConfig       = resetConfig;
+window.viderCacheAppli   = viderCacheAppli;
+window.afficherReadme    = afficherReadme;
 window.initInterface     = initInterface;
