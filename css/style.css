@@ -18,7 +18,6 @@ html, body {
   background: rgba(0, 0, 0, 0.7);
   padding: 8px 15px;
   border-radius: 8px;
-  margin: 10px;
   width: fit-content;
   margin: 10px auto;
   backdrop-filter: blur(5px);
@@ -44,19 +43,15 @@ html, body {
   text-align: center;
   font-size: 16px;
 }
-.leaflet-popup-content input,
-.leaflet-popup-content textarea {
-  font-size: 16px !important;
-  padding: 6px;
-}
 
 .leaflet-top.leaflet-left {
   width: 100%;
 }
 
-.map-title {
-  width: fit-content;
-  margin: 10px auto;
+.leaflet-popup-content input,
+.leaflet-popup-content textarea {
+  font-size: 16px !important;
+  padding: 6px;
 }
 
 
@@ -70,6 +65,7 @@ html, body {
   width: 280px;
   max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
   background: #1a1f2e;
   color: #e8eaf0;
   border-radius: 12px;
@@ -77,7 +73,6 @@ html, body {
   font-family: Arial, sans-serif;
   font-size: 14px;
   animation: kta-fadein 0.15s ease;
-  overflow-x: hidden 
 }
 
 @keyframes kta-fadein {
@@ -85,7 +80,6 @@ html, body {
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* Flèche pointant vers la droite (vers les boutons) */
 .kta-panneau-fleche {
   position: absolute;
   right: -8px;
@@ -98,7 +92,6 @@ html, body {
   filter: drop-shadow(2px 0 2px rgba(0,0,0,0.3));
 }
 
-/* En-tête */
 .kta-panneau-header {
   display: flex;
   align-items: center;
@@ -130,12 +123,11 @@ html, body {
   background: rgba(255,255,255,0.08);
 }
 
-/* Corps */
 .kta-panneau-corps {
   padding: 12px 14px 14px;
 }
 
-/* ----- Grille aide ----- */
+/* Grille aide */
 .kta-aide-grille {
   display: grid;
   grid-template-columns: 28px 1fr;
@@ -148,7 +140,7 @@ html, body {
   text-align: center;
 }
 
-/* ----- Grille réglages ----- */
+/* Grille réglages */
 .kta-cfg-grille {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -164,7 +156,7 @@ html, body {
 }
 
 .kta-cfg-input {
-  min-width: 0
+  min-width: 0;
   width: 100%;
   box-sizing: border-box;
   background: #0d1117;
@@ -189,7 +181,27 @@ html, body {
   margin-top: 2px;
 }
 
-/* ----- Boutons génériques dans le panneau ----- */
+/* Section cache dans le panneau réglages */
+.kta-cfg-cache {
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: center;
+}
+
+.kta-cfg-cache .kta-btn {
+  width: 100%;
+  text-align: center;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+
+/* ==============================================
+   BOUTONS GÉNÉRIQUES
+   ============================================== */
+
 .kta-btn {
   padding: 7px 14px;
   border-radius: 7px;
@@ -212,9 +224,20 @@ html, body {
   border: 1px solid rgba(255,255,255,0.12);
 }
 
+.kta-btn-danger {
+  background: #8b1a1a;
+  color: #ffd0d0;
+  border: 1px solid #c0392b;
+}
+.kta-btn-danger:hover {
+  background: #c0392b;
+  color: #fff;
+  opacity: 1;
+}
+
 
 /* ==============================================
-   POPUPS LEAFLET STYLÉES (marqueurs de curiosités)
+   POPUPS LEAFLET STYLÉES
    ============================================== */
 
 .leaflet-popup-content-wrapper {
@@ -234,19 +257,16 @@ html, body {
   color: #e8eaf0 !important;
 }
 
-/* Titre en gras dans les popups */
 .leaflet-popup-content b {
   color: #8cb4ff;
   font-size: 15px;
 }
 
-/* Queue de la popup */
 .leaflet-popup-tip-container .leaflet-popup-tip {
   background: #1a1f2e !important;
   box-shadow: none !important;
 }
 
-/* Bouton de fermeture Leaflet */
 .leaflet-popup-close-button {
   color: #8892a4 !important;
   font-size: 18px !important;
@@ -257,7 +277,6 @@ html, body {
   color: #e8eaf0 !important;
 }
 
-/* Inputs dans les popups Leaflet (formulaire ajout de point) */
 .leaflet-popup-content input,
 .leaflet-popup-content textarea,
 .leaflet-popup-content select {
@@ -289,7 +308,175 @@ html, body {
 
 
 /* ==============================================
-   LOADER (inchangé)
+   MODALES DE CONFIRMATION
+   ============================================== */
+
+.kta-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(5, 8, 15, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: kta-fadein 0.15s ease;
+}
+
+.kta-modal {
+  background: #1a1f2e;
+  color: #e8eaf0;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  padding: 24px 22px 20px;
+  max-width: 360px;
+  width: 100%;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.kta-modal-danger {
+  border-color: #8b1a1a;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px #8b1a1a;
+}
+
+.kta-modal-icon {
+  font-size: 36px;
+  margin-bottom: 10px;
+}
+
+.kta-modal-titre {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #fff;
+}
+
+.kta-modal-texte {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #a0aabb;
+  margin-bottom: 20px;
+}
+
+.kta-modal-texte strong {
+  color: #ffb3b3;
+}
+
+.kta-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+
+/* ==============================================
+   README — modale plein écran
+   ============================================== */
+
+.kta-readme-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(5, 8, 15, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  animation: kta-fadein 0.18s ease;
+}
+
+.kta-readme-modal-boite {
+  background: #1a1f2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+  width: min(900px, 96vw);
+  height: min(88vh, 900px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.kta-readme-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+
+.kta-readme-modal-titre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #8cb4ff;
+  letter-spacing: 0.04em;
+}
+
+.kta-readme-modal-corps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+}
+
+.kta-readme-corps {
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #c8d0e0;
+}
+
+.kta-readme-corps h1 { font-size: 22px; color: #8cb4ff; margin: 0 0 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+.kta-readme-corps h2 { font-size: 17px; color: #8cb4ff; margin: 22px 0 8px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px; }
+.kta-readme-corps h3 { font-size: 15px; color: #a0c4ff; margin: 16px 0 6px; }
+.kta-readme-corps h4 { font-size: 14px; color: #b0c8d8; margin: 12px 0 4px; }
+.kta-readme-corps hr  { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 18px 0; }
+.kta-readme-corps p   { margin: 0 0 10px; }
+.kta-readme-corps ul  { padding-left: 20px; margin: 6px 0 10px; }
+.kta-readme-corps li  { margin-bottom: 4px; }
+.kta-readme-corps a   { color: #5ba3f5; text-decoration: none; }
+.kta-readme-corps a:hover { text-decoration: underline; }
+
+.kta-readme-corps code {
+  background: #0d1117;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #e06c75;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.kta-readme-corps pre {
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 10px 0;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.kta-readme-corps pre code {
+  background: none;
+  padding: 0;
+  border: none;
+  color: #abb2bf;
+  font-size: 13px;
+}
+
+.kta-readme-corps strong { color: #e8eaf0; }
+.kta-readme-corps em     { color: #b0c8d8; }
+.kta-readme-erreur       { color: #ffb3b3; font-style: italic; }
+
+
+/* ==============================================
+   LOADER
    ============================================== */
 
 #planLoaderOverlay {
