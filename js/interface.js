@@ -12,19 +12,30 @@ L.control.titleControl = function () {
   let control = L.control({ position: "topleft" });
 
   control.onAdd = function () {
-    let div = L.DomUtil.create("div", "map-title leaflet-control");
+    // Conteneur Leaflet vide — le vrai titre est injecté en fixed hors Leaflet
+    let div = L.DomUtil.create("div", "");
+    div.style.display = "none";
 
-    const planName = window.PLAN_CONFIG?.plan?.name || "DEVMAP";
+    const planName    = window.PLAN_CONFIG?.plan?.name    || "DEVMAP";
+    const planAuthor  = window.PLAN_CONFIG?.plan?.author  || "";
     const planVersion = window.PLAN_CONFIG?.plan?.version || "";
 
-    div.innerHTML = `
+    const parts = [planAuthor, planVersion].filter(Boolean);
+    const sousTitre = parts.join(" — ");
+
+    // Supprimer un éventuel titre existant
+    const existing = document.getElementById("kta-titre-fixe");
+    if (existing) existing.remove();
+
+    const titre = document.createElement("div");
+    titre.id = "kta-titre-fixe";
+    titre.innerHTML = `
       <div class="map-title-text">
-        ${planName}<br>
-        <span style="font-size:12px; opacity:0.7;">
-          ${planVersion}
-        </span>
+        ${planName}
+        ${sousTitre ? `<span class="map-title-sub">${sousTitre}</span>` : ""}
       </div>
     `;
+    document.body.appendChild(titre);
 
     return div;
   };
@@ -368,7 +379,9 @@ function afficherAide(btnEl) {
       <span class="kta-aide-icone">🧹</span><span>Réinitialiser les tracés</span>
       <span class="kta-aide-icone">📂</span><span>Importer une session</span>
       <span class="kta-aide-icone">💾</span><span>Exporter la session</span>
+      <span class="kta-aide-icone">🗺️</span><span>Légende des icônes</span>
       <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
+      <span class="kta-aide-icone">🗺️</span><span>Légende des icônes</span>
       <span class="kta-aide-icone">❓</span><span>Cette aide</span>
       <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
       <span class="kta-aide-icone">⚙️</span><span>Configuration</span>
@@ -665,10 +678,10 @@ function initInterface() {
   // ---------- TITRE ----------
   L.control.titleControl().addTo(window.map);
 
-  // ---------- BLOC AIDE ----------
-  const helpControl = L.control({ position: "topright" });
+  // ---------- BLOC INFOS (aide, doc, plan, config, légende) ----------
+  const infosControl = L.control({ position: "topright" });
 
-  helpControl.onAdd = function () {
+  infosControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnHelp = L.DomUtil.create("a", "", div);
@@ -676,86 +689,56 @@ function initInterface() {
     btnHelp.href = "javascript:void(0)";
     btnHelp.title = "Aide";
 
-    L.DomEvent.on(btnHelp, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      afficherAide(btnHelp);
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-
-  helpControl.addTo(window.map);
-
-  // ---------- BLOC README ----------
-  const readmeControl = L.control({ position: "topright" });
-
-  readmeControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
     const btnReadme = L.DomUtil.create("a", "", div);
     btnReadme.innerHTML = "📖";
     btnReadme.href = "javascript:void(0)";
     btnReadme.title = "Documentation";
-
-    L.DomEvent.on(btnReadme, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      afficherReadme();
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-
-  readmeControl.addTo(window.map);
-
-  // ---------- BLOC CHANGER DE PLAN ----------
-  const changePlanControl = L.control({ position: "topright" });
-
-  changePlanControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnChangePlan = L.DomUtil.create("a", "", div);
     btnChangePlan.innerHTML = "🗂️";
     btnChangePlan.href = "javascript:void(0)";
     btnChangePlan.title = "Changer de plan";
 
-    L.DomEvent.on(btnChangePlan, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      afficherPopupChangerPlan();
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-
-  changePlanControl.addTo(window.map);
-
-  // ---------- BLOC RÉGLAGES ----------
-  const settingsControl = L.control({ position: "topright" });
-
-  settingsControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
     const btnSettings = L.DomUtil.create("a", "", div);
     btnSettings.innerHTML = "⚙️";
     btnSettings.href = "javascript:void(0)";
     btnSettings.title = "Réglages";
 
+    const btnLegende = L.DomUtil.create("a", "", div);
+    btnLegende.innerHTML = "🗺️";
+    btnLegende.href = "javascript:void(0)";
+    btnLegende.title = "Légende";
+
+    L.DomEvent.on(btnHelp, "click", function (e) {
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      afficherAide(btnHelp);
+    });
+
+    L.DomEvent.on(btnReadme, "click", function (e) {
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      afficherReadme();
+    });
+
+    L.DomEvent.on(btnChangePlan, "click", function (e) {
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      afficherPopupChangerPlan();
+    });
+
     L.DomEvent.on(btnSettings, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       afficherConfig(btnSettings);
+    });
+
+    L.DomEvent.on(btnLegende, "click", function (e) {
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      afficherLegende(btnLegende);
     });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
 
-  settingsControl.addTo(window.map);
+  infosControl.addTo(window.map);
 
   // ---------- BLOC TRACKING ----------
   const trackingControl = L.control({ position: "topright" });
@@ -1018,6 +1001,81 @@ function initInterface() {
 }
 
 // =========================
+// LÉGENDE — panneau ancré
+// Affiche les icônes du plan et leur label
+// =========================
+
+// Labels lisibles pour chaque clé d'icône
+const LEGENDE_LABELS = {
+  salle:    "Salle",
+  pa:       "Puits Aération",
+  pc:       "Puits Comblé",
+  pb:       "Puits Bouché",
+  pe:       "Puits au sol / Bassin",
+  vehicule: "Véhicule",
+  elec:     "Électricité",
+  epure:    "Épure",
+  ps:       "Poste de secours",
+  info:     "Information",
+  chatiere: "Chatière",
+  passage:  "Passage",
+  danger:   "Danger"
+};
+
+// Clés à exclure (icônes système, pas des types de points)
+const LEGENDE_EXCLURE = ["default", "track"];
+
+function afficherLegende(btnEl) {
+  const icons = window.PLAN_CONFIG?.icons;
+
+  if (!icons) {
+    ouvrirPanneauAncre(btnEl, `<p style="color:#8892a4;">Aucune configuration d'icônes disponible.</p>`, "Légende");
+    return;
+  }
+
+  // Lignes de tracés toujours présentes
+  const lignesTracés = `
+    <div class="kta-legende-separateur">Tracés</div>
+    <div class="kta-legende-ligne">
+      <span class="kta-legende-trait" style="background:#00ff00;"></span>
+      <span class="kta-legende-label">Route principale</span>
+    </div>
+    <div class="kta-legende-ligne">
+      <span class="kta-legende-trait" style="background:#b000ff;"></span>
+      <span class="kta-legende-label">Route secondaire</span>
+    </div>
+    <div class="kta-legende-ligne">
+      <span class="kta-legende-trait" style="background:#ffff00;"></span>
+      <span class="kta-legende-label">Chemin</span>
+    </div>
+  `;
+
+  // Icônes du plan
+  const entrees = Object.entries(icons)
+    .filter(function(e) { return !LEGENDE_EXCLURE.includes(e[0]); });
+
+  const lignesIcones = entrees.map(function(entry) {
+    const cle = entry[0];
+    const url = entry[1];
+    const label = LEGENDE_LABELS[cle] || cle;
+    return `
+      <div class="kta-legende-ligne">
+        <img class="kta-legende-icone" src="${url}" alt="${label}" onerror="this.style.opacity='0.3'">
+        <span class="kta-legende-label">${label}</span>
+      </div>
+    `;
+  }).join("");
+
+  const html = `
+    <div class="kta-legende-separateur">Points d'intérêt</div>
+    ${lignesIcones}
+    ${lignesTracés}
+  `;
+
+  ouvrirPanneauAncre(btnEl, html, "Légende");
+}
+
+// =========================
 // EXPORT GLOBAL
 // =========================
 window.afficherConfig    = afficherConfig;
@@ -1025,4 +1083,5 @@ window.appliquerConfig   = appliquerConfig;
 window.resetConfig       = resetConfig;
 window.viderCacheAppli   = viderCacheAppli;
 window.afficherReadme    = afficherReadme;
+window.afficherLegende   = afficherLegende;
 window.initInterface     = initInterface;

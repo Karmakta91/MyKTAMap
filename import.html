@@ -7,24 +7,50 @@
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
 </head>
 
 <body>
-
 
     <!-- CHARGEUR DE PLAN -->
 <div id="planLoaderOverlay">
   <div id="planLoaderBox">
     <h2>Charger un plan</h2>
-    <p style="margin-top:0;">
-      Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
-    </p>
 
-    <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
-    <input id="planConfigFile" type="file" accept=".json,application/json">
+    <!-- Onglets de sélection du mode -->
+    <div class="loader-tabs">
+      <button class="loader-tab active" id="tabFichiers" type="button">📁 Fichiers séparés</button>
+      <button class="loader-tab"        id="tabZip"      type="button">📦 Archive ZIP</button>
+    </div>
 
-    <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
-    <input id="assetFiles" type="file" multiple>
+    <!-- Panel fichiers séparés — comportement original inchangé -->
+    <div class="loader-panel active" id="panelFichiers">
+      <p style="margin-top:0;">
+        Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
+      </p>
+
+      <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
+      <input id="planConfigFile" type="file" accept=".json,application/json">
+
+      <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
+      <input id="assetFiles" type="file" multiple>
+    </div>
+
+    <!-- Panel ZIP -->
+    <div class="loader-panel" id="panelZip">
+      <p style="margin-top:0;">
+        Importe une archive <code>.zip</code> contenant <code>plan-config.json</code>
+        et tous les fichiers associés (images, JSON…).
+      </p>
+
+      <div class="zip-drop-zone" id="zipDropZone">
+        <span class="zip-icon">📦</span>
+        Glisse ton archive ici<br>
+        <span style="font-size:12px; opacity:0.7;">ou clique pour sélectionner</span>
+        <input id="zipFile" type="file" accept=".zip,application/zip">
+      </div>
+      <div id="zipFileName"></div>
+    </div>
 
     <div class="loaderActions">
       <button id="loadPlanBtn" type="button">Charger le plan</button>
@@ -40,12 +66,15 @@
     <div id="loaderStatus"></div>
   </div>
 </div>
+
   <!-- CARTE -->
   <div id="map"></div>
 
-  
   <!-- Leaflet -->
   <script src="lib/leaflet/leaflet.js"></script>
+
+  <!-- JSZip — requis uniquement pour le mode ZIP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <!-- TON JS -->
   <script src="js/config_import.js"></script>
@@ -63,11 +92,18 @@
     window.addEventListener("load", function () {
       console.log("[Loader] script prêt");
 
-      const overlay = document.getElementById("planLoaderOverlay");
+      const overlay         = document.getElementById("planLoaderOverlay");
       const planConfigInput = document.getElementById("planConfigFile");
       const assetFilesInput = document.getElementById("assetFiles");
-      const loadBtn = document.getElementById("loadPlanBtn");
-      const statusBox = document.getElementById("loaderStatus");
+      const loadBtn         = document.getElementById("loadPlanBtn");
+      const statusBox       = document.getElementById("loaderStatus");
+      const tabFichiers     = document.getElementById("tabFichiers");
+      const tabZip          = document.getElementById("tabZip");
+      const panelFichiers   = document.getElementById("panelFichiers");
+      const panelZip        = document.getElementById("panelZip");
+      const zipDropZone     = document.getElementById("zipDropZone");
+      const zipFileInput    = document.getElementById("zipFile");
+      const zipFileName     = document.getElementById("zipFileName");
 
       if (!overlay) console.error("[Loader] planLoaderOverlay introuvable");
       if (!planConfigInput) console.error("[Loader] planConfigFile introuvable");
@@ -77,31 +113,118 @@
 
       console.log("[Loader] startImportedPlan =", typeof window.startImportedPlan);
 
+      let modeActif = "fichiers"; // "fichiers" | "zip"
+
+      // ── Onglets ──────────────────────────────────────────────
+      tabFichiers.addEventListener("click", function () {
+        modeActif = "fichiers";
+        tabFichiers.classList.add("active");
+        tabZip.classList.remove("active");
+        panelFichiers.classList.add("active");
+        panelZip.classList.remove("active");
+        setStatus("");
+      });
+
+      tabZip.addEventListener("click", function () {
+        modeActif = "zip";
+        tabZip.classList.add("active");
+        tabFichiers.classList.remove("active");
+        panelZip.classList.add("active");
+        panelFichiers.classList.remove("active");
+        setStatus("");
+      });
+
+      // ── Zone de drop ZIP ─────────────────────────────────────
+      zipDropZone.addEventListener("click", function () {
+        zipFileInput.click();
+      });
+
+      zipFileInput.addEventListener("change", function () {
+        const f = zipFileInput.files[0];
+        zipFileName.textContent = f ? "✅ " + f.name : "";
+      });
+
+      zipDropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        zipDropZone.classList.add("dragover");
+      });
+
+      zipDropZone.addEventListener("dragleave", function () {
+        zipDropZone.classList.remove("dragover");
+      });
+
+      zipDropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        zipDropZone.classList.remove("dragover");
+        const f = e.dataTransfer.files[0];
+        if (f && f.name.toLowerCase().endsWith(".zip")) {
+          const dt = new DataTransfer();
+          dt.items.add(f);
+          zipFileInput.files = dt.files;
+          zipFileName.textContent = "✅ " + f.name;
+        } else {
+          setStatus("Le fichier doit être une archive .zip", true);
+        }
+      });
+
+      // ── Helpers ──────────────────────────────────────────────
       function setStatus(message, isError) {
         if (!statusBox) return;
         statusBox.textContent = message || "";
         statusBox.style.color = isError ? "#b00020" : "#333";
       }
 
-      async function onLoadPlanClick() {
-        console.log("[Loader] clic sur CHARGER");
+      function guessMime(filename) {
+        const ext = filename.split(".").pop().toLowerCase();
+        const map = {
+          json: "application/json",
+          png:  "image/png",
+          jpg:  "image/jpeg",
+          jpeg: "image/jpeg",
+          gif:  "image/gif",
+          webp: "image/webp",
+          svg:  "image/svg+xml"
+        };
+        return map[ext] || "application/octet-stream";
+      }
 
-        const planConfigFile = planConfigInput?.files?.[0];
-        const assetFiles = assetFilesInput?.files;
+      async function extraireZip(zipFile) {
+        if (typeof JSZip === "undefined") {
+          throw new Error("JSZip non chargé. Vérifiez votre connexion Internet.");
+        }
 
-        console.log("[Loader] planConfigFile =", planConfigFile);
-        console.log("[Loader] assetFiles count =", assetFiles ? assetFiles.length : 0);
-        console.log("[Loader] startImportedPlan type =", typeof window.startImportedPlan);
+        const zip = await JSZip.loadAsync(zipFile);
+        let planConfigFile = null;
+        const assetFiles = [];
+
+        const entries = Object.values(zip.files).filter(function(f) { return !f.dir; });
+
+        for (const entry of entries) {
+          // Ignorer les sous-dossiers dans le nom, ne garder que le nom de fichier
+          const name = entry.name.split("/").pop();
+          if (!name) continue;
+
+          const blob = await entry.async("blob");
+          const file = new File([blob], name, { type: guessMime(name) });
+
+          if (name === "plan-config.json") {
+            planConfigFile = file;
+          } else {
+            assetFiles.push(file);
+          }
+        }
 
         if (!planConfigFile) {
-          setStatus("Sélectionne d'abord un fichier plan-config.json", true);
-          return;
+          throw new Error("plan-config.json introuvable dans l'archive ZIP");
         }
 
-        if (!assetFiles || assetFiles.length === 0) {
-          setStatus("Ajoute aussi les fichiers associés au plan.", true);
-          return;
-        }
+        console.log("[Loader] ZIP extrait :", assetFiles.length + 1, "fichiers");
+        return { planConfigFile, assetFiles };
+      }
+
+      // ── Chargement principal ─────────────────────────────────
+      async function onLoadPlanClick() {
+        console.log("[Loader] clic sur CHARGER, mode =", modeActif);
 
         if (typeof window.startImportedPlan !== "function") {
           setStatus("startImportedPlan est introuvable", true);
@@ -110,12 +233,50 @@
         }
 
         loadBtn.disabled = true;
-        setStatus("Chargement du plan en cours...", false);
 
         try {
-        await window.startImportedPlan(planConfigFile, assetFiles);
-        // startImportedPlan cache l'overlay lui-même avant initMapFromConfig
+          let planConfigFile, assetFiles;
+
+          if (modeActif === "zip") {
+            // ── Mode ZIP ──────────────────────────────────────
+            const zipFile = zipFileInput.files[0];
+            if (!zipFile) {
+              setStatus("Sélectionne d'abord une archive .zip", true);
+              loadBtn.disabled = false;
+              return;
+            }
+
+            setStatus("Extraction de l'archive en cours…", false);
+            const extracted = await extraireZip(zipFile);
+            planConfigFile  = extracted.planConfigFile;
+            assetFiles      = extracted.assetFiles;
+
+          } else {
+            // ── Mode fichiers séparés (original) ─────────────
+            planConfigFile = planConfigInput?.files?.[0];
+            assetFiles     = assetFilesInput?.files;
+
+            console.log("[Loader] planConfigFile =", planConfigFile);
+            console.log("[Loader] assetFiles count =", assetFiles ? assetFiles.length : 0);
+
+            if (!planConfigFile) {
+              setStatus("Sélectionne d'abord un fichier plan-config.json", true);
+              loadBtn.disabled = false;
+              return;
+            }
+
+            if (!assetFiles || assetFiles.length === 0) {
+              setStatus("Ajoute aussi les fichiers associés au plan.", true);
+              loadBtn.disabled = false;
+              return;
+            }
+          }
+
+          setStatus("Chargement du plan en cours...", false);
+          await window.startImportedPlan(planConfigFile, assetFiles);
+          // startImportedPlan cache l'overlay lui-même avant initMapFromConfig
           setStatus("Plan chargé avec succès.");
+
         } catch (err) {
           console.error("[Loader] erreur pendant le chargement :", err);
           setStatus("Erreur : " + (err.message || err), true);

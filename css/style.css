@@ -15,24 +15,42 @@ html, body {
 }
 
 .map-title {
-  background: rgba(0, 0, 0, 0.7);
-  padding: 8px 15px;
-  border-radius: 8px;
+  background: #1a1f2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  padding: 8px 18px;
+  border-radius: 10px;
   width: fit-content;
   margin: 10px auto;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
 .map-title-text {
-  color: white;
-  font-size: 18px;
-  font-weight: bold;
+  color: #e8eaf0;
+  font-size: 15px;
+  font-weight: 700;
   text-align: center;
+  font-family: Arial, sans-serif;
+  letter-spacing: 0.04em;
+}
+
+.map-title-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: #8cb4ff;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  opacity: 0.85;
 }
 
 @media (max-width: 600px) {
   .map-title-text {
-    font-size: 14px;
+    font-size: 13px;
+  }
+  .map-title-sub {
+    font-size: 10px;
   }
 }
 
@@ -44,8 +62,96 @@ html, body {
   font-size: 16px;
 }
 
+/* Zone topleft — zoom Leaflet, comportement natif préservé */
 .leaflet-top.leaflet-left {
-  width: 100%;
+  pointer-events: auto;
+}
+
+/* Titre fixe centré en haut, hors Leaflet */
+#kta-titre-fixe {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  background: #1a1f2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  padding: 7px 18px;
+  border-radius: 10px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ==============================================
+   CHARTE GRAPHIQUE — boutons de contrôle Leaflet
+   ============================================== */
+
+/* Barre de boutons */
+.leaflet-bar {
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+}
+
+/* Séparateurs entre boutons */
+.leaflet-bar a {
+  background: #1a1f2e !important;
+  color: #e8eaf0 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 16px !important;
+  text-align: center !important;
+  display: block !important;
+  text-decoration: none !important;
+  transition: background 0.15s !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+.leaflet-bar a:hover {
+  background: #252c3f !important;
+  color: #fff !important;
+}
+
+/* Contrôle de calques Leaflet — bouton icône */
+.leaflet-control-layers-toggle {
+  background-color: #1a1f2e !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='%23e8eaf0' d='M1 1h16v2H1zm0 4h16v2H1zm0 4h16v2H1zm0 4h16v2H1z'/%3E%3C/svg%3E") !important;
+  background-size: 16px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 0 !important;
+}
+
+/* Panneau de calques déroulant */
+.leaflet-control-layers {
+  background: #1a1f2e !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45) !important;
+  border-radius: 10px !important;
+  color: #e8eaf0 !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 13px !important;
+}
+
+.leaflet-control-layers-expanded {
+  padding: 8px 12px !important;
+}
+
+.leaflet-control-layers label {
+  color: #c8d0e0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 4px !important;
 }
 
 .leaflet-popup-content input,
@@ -473,6 +579,54 @@ html, body {
 .kta-readme-corps strong { color: #e8eaf0; }
 .kta-readme-corps em     { color: #b0c8d8; }
 .kta-readme-erreur       { color: #ffb3b3; font-style: italic; }
+
+
+/* ==============================================
+   LÉGENDE — panneau ancré
+   ============================================== */
+
+.kta-legende-separateur {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8cb4ff;
+  margin: 10px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.kta-legende-separateur:first-child {
+  margin-top: 0;
+}
+
+.kta-legende-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.kta-legende-icone {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.kta-legende-trait {
+  display: inline-block;
+  width: 28px;
+  height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.kta-legende-label {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.3;
+}
 
 
 /* ==============================================
