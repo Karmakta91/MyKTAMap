@@ -13,6 +13,9 @@
 
 ## 📋 Journal des modifications
 
+### 25/04/2026
+- Modification de l'interface pour responsive design bug
+
 ### 22/04/2026
 - Ajout du mode import local (chargement d'un plan depuis le navigateur sans serveur)
 
