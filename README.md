@@ -13,6 +13,10 @@
 
 ## 📋 Journal des modifications
 
+### 26/04/2026
+- Modification style interface
+- Import via ZIP
+
 ### 25/04/2026
 - Ajout de la doc a l'interface
 - Ajout de reset cache a l'interface
