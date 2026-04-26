@@ -584,6 +584,58 @@ html, body {
 .kta-readme-corps em     { color: #b0c8d8; }
 .kta-readme-erreur       { color: #ffb3b3; font-style: italic; }
 
+.kta-readme-corps blockquote {
+  border-left: 3px solid #4d8aff;
+  margin: 8px 0;
+  padding: 6px 12px;
+  background: rgba(77,138,255,0.07);
+  border-radius: 0 6px 6px 0;
+  color: #8892a4;
+  font-style: italic;
+}
+
+.kta-readme-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.kta-readme-table th {
+  background: rgba(255,255,255,0.06);
+  color: #8cb4ff;
+  font-weight: 700;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+
+.kta-readme-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: #c8d0e0;
+  vertical-align: top;
+}
+
+.kta-readme-table tr:last-child td {
+  border-bottom: none;
+}
+
+.kta-readme-table tr:hover td {
+  background: rgba(255,255,255,0.03);
+}
+
+.kta-readme-img-skip {
+  display: inline-block;
+  font-size: 12px;
+  color: #8892a4;
+  background: rgba(255,255,255,0.04);
+  border: 1px dashed rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 4px 10px;
+  margin: 4px 0;
+}
+
 
 /* ==============================================
    AIDE — sections groupées

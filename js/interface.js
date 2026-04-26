@@ -466,23 +466,84 @@ function _chargerReadme(fichier) {
 }
 
 function _renderMarkdown(md) {
-  return md
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/```[\w]*\n([\s\S]*?)```/g, "<pre><code>$1</code></pre>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
+  // 1. Protéger les blocs de code fenced AVANT tout traitement
+  const codeBlocks = [];
+  md = md.replace(/```[\w]*\n([\s\S]*?)```/g, function(_, code) {
+    codeBlocks.push(code);
+    return "%%CODE" + (codeBlocks.length - 1) + "%%";
+  });
+
+  // 2. Échapper le HTML (hors blocs protégés)
+  md = md.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  // 3. Code inline
+  md = md.replace(/`([^`]+)`/g, "<code>$1</code>");
+
+  // 4. Images ![alt](url) — avant les liens
+  md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, function(_, alt, url) {
+    // Ignorer les images GitHub (assets) qui ne sont pas accessibles hors contexte
+    if (url.includes("github.com") || url.includes("user-attachments")) {
+      return '<span class="kta-readme-img-skip">📷 <em>' + (alt || "Image") + '</em></span>';
+    }
+    return '<img src="' + url + '" alt="' + alt + '" style="max-width:100%;border-radius:6px;margin:8px 0;">';
+  });
+
+  // 5. Liens [texte](url)
+  md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+  // 6. Tableaux Markdown |---|
+  md = md.replace(/((?:^\|.+\|\n?)+)/gm, function(block) {
+    const lines = block.trim().split("\n").filter(function(l) { return l.trim(); });
+    if (lines.length < 2) return block;
+
+    let html = '<table class="kta-readme-table">';
+    lines.forEach(function(line, i) {
+      // Ignorer la ligne de séparation |---|
+      if (/^\|[\s\-:|]+\|/.test(line)) return;
+      const cells = line.split("|").filter(function(_, ci) { return ci > 0 && ci < line.split("|").length - 1; });
+      const tag = (i === 0) ? "th" : "td";
+      html += "<tr>" + cells.map(function(c) { return "<" + tag + ">" + c.trim() + "</" + tag + ">"; }).join("") + "</tr>";
+    });
+    html += "</table>";
+    return html;
+  });
+
+  // 7. Blockquotes
+  md = md.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
+  md = md.replace(/(<\/blockquote>\n?<blockquote>)/g, "<br>");
+
+  // 8. Titres
+  md = md
     .replace(/^#### (.+)$/gm, "<h4>$1</h4>")
     .replace(/^### (.+)$/gm,  "<h3>$1</h3>")
     .replace(/^## (.+)$/gm,   "<h2>$1</h2>")
-    .replace(/^# (.+)$/gm,    "<h1>$1</h1>")
-    .replace(/^---$/gm, "<hr>")
+    .replace(/^# (.+)$/gm,    "<h1>$1</h1>");
+
+  // 9. HR
+  md = md.replace(/^---$/gm, "<hr>");
+
+  // 10. Gras / italique
+  md = md
     .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
     .replace(/\*\*(.+?)\*\*/g,     "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g,         "<em>$1</em>")
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
-    .replace(/^[-*] (.+)$/gm, "<li>$1</li>")
-    .replace(/(<li>.*<\/li>\n?)+/g, "<ul>$&</ul>")
-    .replace(/\n\n+/g, "</p><p>")
-    .replace(/\n/g, "<br>");
+    .replace(/\*(.+?)\*/g,         "<em>$1</em>");
+
+  // 11. Listes
+  md = md.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
+  md = md.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, "<ul>$&</ul>");
+
+  // 12. Paragraphes
+  md = md.replace(/\n\n+/g, "</p><p>");
+  md = md.replace(/\n/g, "<br>");
+
+  // 13. Restaurer les blocs de code
+  md = md.replace(/%%CODE(\d+)%%/g, function(_, i) {
+    const escaped = codeBlocks[parseInt(i)]
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return "<pre><code>" + escaped + "</code></pre>";
+  });
+
+  return md;
 }
 
 function _ouvrirReadmeModal(html) {
