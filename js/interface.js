@@ -207,7 +207,6 @@ function ouvrirImportSession() {
 
 // =========================
 // CONVERTISSEUR JSON — modale plein écran
-// Conversion bidirectionnelle : data ↔ devmap-session (editorPoints)
 // =========================
 function afficherConvertisseur() {
   const existing = document.getElementById("kta-conv-modal");
@@ -225,7 +224,6 @@ function afficherConvertisseur() {
       </div>
       <div class="kta-readme-modal-corps">
 
-        <!-- Sélection du sens -->
         <div class="kta-conv-sens-wrap">
           <button class="kta-conv-sens-btn active" id="kta-conv-btn-ed2data">
             <span class="kta-conv-sens-label">✏️ → 🗂️ Vers calque de données</span>
@@ -237,7 +235,6 @@ function afficherConvertisseur() {
           </button>
         </div>
 
-        <!-- Champ type (pour session→data uniquement) -->
         <div id="kta-conv-type-wrap" class="kta-conv-champ">
           <label class="kta-conv-label">
             Type du fichier de sortie
@@ -246,7 +243,6 @@ function afficherConvertisseur() {
           <input class="kta-cfg-input" id="kta-conv-type" type="text" placeholder="carriere" value="carriere">
         </div>
 
-        <!-- Sélection du fichier -->
         <div class="kta-conv-champ">
           <label class="kta-conv-label">Fichier source</label>
           <div class="kta-conv-drop" id="kta-conv-drop">
@@ -255,13 +251,11 @@ function afficherConvertisseur() {
           </div>
         </div>
 
-        <!-- Aperçu -->
         <div class="kta-conv-champ" id="kta-conv-apercu-wrap" style="display:none;">
           <label class="kta-conv-label">Aperçu</label>
           <div class="kta-conv-apercu" id="kta-conv-apercu"></div>
         </div>
 
-        <!-- Actions -->
         <div class="kta-conv-actions">
           <button class="kta-btn kta-btn-ghost" id="kta-conv-annuler">Annuler</button>
           <button class="kta-btn kta-btn-primary" id="kta-conv-telecharger" disabled>⬇️ Télécharger</button>
@@ -274,27 +268,24 @@ function afficherConvertisseur() {
 
   document.documentElement.appendChild(modal);
 
-  // ── État interne ──────────────────────────────────────────
-  let sens = "ed2data"; // "ed2data" | "data2ed"
+  let sens = "ed2data";
   let jsonSource = null;
   let nomFichierSource = "";
 
-  // ── Refs DOM ─────────────────────────────────────────────
-  const btnClose     = document.getElementById("kta-conv-close");
-  const btnEd2Data   = document.getElementById("kta-conv-btn-ed2data");
-  const btnData2Ed   = document.getElementById("kta-conv-btn-data2ed");
-  const typeWrap     = document.getElementById("kta-conv-type-wrap");
-  const inputType    = document.getElementById("kta-conv-type");
-  const dropZone     = document.getElementById("kta-conv-drop");
-  const fileInput    = document.getElementById("kta-conv-file");
-  const dropLabel    = document.getElementById("kta-conv-drop-label");
-  const apercuWrap   = document.getElementById("kta-conv-apercu-wrap");
-  const apercuEl    = document.getElementById("kta-conv-apercu");
-  const btnDl        = document.getElementById("kta-conv-telecharger");
-  const btnAnnuler   = document.getElementById("kta-conv-annuler");
-  const erreurEl     = document.getElementById("kta-conv-erreur");
+  const btnClose   = document.getElementById("kta-conv-close");
+  const btnEd2Data = document.getElementById("kta-conv-btn-ed2data");
+  const btnData2Ed = document.getElementById("kta-conv-btn-data2ed");
+  const typeWrap   = document.getElementById("kta-conv-type-wrap");
+  const inputType  = document.getElementById("kta-conv-type");
+  const dropZone   = document.getElementById("kta-conv-drop");
+  const fileInput  = document.getElementById("kta-conv-file");
+  const dropLabel  = document.getElementById("kta-conv-drop-label");
+  const apercuWrap = document.getElementById("kta-conv-apercu-wrap");
+  const apercuEl   = document.getElementById("kta-conv-apercu");
+  const btnDl      = document.getElementById("kta-conv-telecharger");
+  const btnAnnuler = document.getElementById("kta-conv-annuler");
+  const erreurEl   = document.getElementById("kta-conv-erreur");
 
-  // ── Helpers ───────────────────────────────────────────────
   function afficherErreur(msg) {
     erreurEl.textContent = msg;
     erreurEl.style.display = msg ? "block" : "none";
@@ -335,88 +326,49 @@ function afficherConvertisseur() {
     reader.readAsText(file);
   }
 
-  // ── Conversion ────────────────────────────────────────────
   function convertir(json, direction, typeLabel) {
     if (direction === "ed2data") {
-      // session (editorPoints) → data
       let points = [];
-      if (Array.isArray(json.editorPoints)) {
-        points = json.editorPoints;
-      } else if (Array.isArray(json.data)) {
-        points = json.data; // déjà au bon format, on adapte juste l'enveloppe
-      } else {
-        throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
-      }
-      return {
-        type: typeLabel,
-        version: 1,
-        data: points
-      };
+      if (Array.isArray(json.editorPoints)) points = json.editorPoints;
+      else if (Array.isArray(json.data)) points = json.data;
+      else throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
+      return { type: typeLabel, version: 1, data: points };
     } else {
-      // data → session (editorPoints)
       let points = [];
-      if (Array.isArray(json.data)) {
-        points = json.data;
-      } else if (Array.isArray(json.editorPoints)) {
-        points = json.editorPoints;
-      } else {
-        throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
-      }
-      return {
-        type: "devmap-session",
-        version: 1,
-        editorPoints: points,
-        measure: { points: [] },
-        roads: []
-      };
+      if (Array.isArray(json.data)) points = json.data;
+      else if (Array.isArray(json.editorPoints)) points = json.editorPoints;
+      else throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
+      return { type: "devmap-session", version: 1, editorPoints: points, measure: { points: [] }, roads: [] };
     }
   }
 
   function nomFichierSortie() {
     const base = nomFichierSource.replace(/\.json$/i, "");
-    return sens === "ed2data"
-      ? base + "_data.json"
-      : base + "_session.json";
+    return sens === "ed2data" ? base + "_data.json" : base + "_session.json";
   }
 
-  // ── Événements ────────────────────────────────────────────
   btnClose.addEventListener("click", function() { modal.remove(); });
   btnAnnuler.addEventListener("click", function() { modal.remove(); });
   modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
 
   btnEd2Data.addEventListener("click", function() {
     sens = "ed2data";
-    btnEd2Data.classList.add("active");
-    btnData2Ed.classList.remove("active");
-    typeWrap.style.display = "block";
-    mettreAJourApercu();
+    btnEd2Data.classList.add("active"); btnData2Ed.classList.remove("active");
+    typeWrap.style.display = "block"; mettreAJourApercu();
   });
-
   btnData2Ed.addEventListener("click", function() {
     sens = "data2ed";
-    btnData2Ed.classList.add("active");
-    btnEd2Data.classList.remove("active");
-    typeWrap.style.display = "none";
-    mettreAJourApercu();
+    btnData2Ed.classList.add("active"); btnEd2Data.classList.remove("active");
+    typeWrap.style.display = "none"; mettreAJourApercu();
   });
 
   inputType.addEventListener("input", mettreAJourApercu);
-
   dropZone.addEventListener("click", function() { fileInput.click(); });
-  fileInput.addEventListener("change", function() {
-    if (fileInput.files[0]) chargerFichier(fileInput.files[0]);
-  });
-
-  dropZone.addEventListener("dragover", function(e) {
-    e.preventDefault();
-    dropZone.classList.add("dragover");
-  });
-  dropZone.addEventListener("dragleave", function() {
-    dropZone.classList.remove("dragover");
-  });
+  fileInput.addEventListener("change", function() { if (fileInput.files[0]) chargerFichier(fileInput.files[0]); });
+  dropZone.addEventListener("dragover", function(e) { e.preventDefault(); dropZone.classList.add("dragover"); });
+  dropZone.addEventListener("dragleave", function() { dropZone.classList.remove("dragover"); });
   dropZone.addEventListener("drop", function(e) {
-    e.preventDefault();
-    dropZone.classList.remove("dragover");
+    e.preventDefault(); dropZone.classList.remove("dragover");
     const f = e.dataTransfer.files[0];
     if (f && f.name.endsWith(".json")) chargerFichier(f);
     else afficherErreur("Le fichier doit être un .json");
@@ -430,13 +382,9 @@ function afficherConvertisseur() {
       const blob = new Blob([json], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
-      a.download = nomFichierSortie();
-      a.click();
+      a.href = url; a.download = nomFichierSortie(); a.click();
       URL.revokeObjectURL(url);
-    } catch(err) {
-      afficherErreur("❌ " + err.message);
-    }
+    } catch(err) { afficherErreur("❌ " + err.message); }
   });
 }
 
@@ -458,7 +406,6 @@ function _confirmerAction(titre, texte, callback) {
     </div>
   `;
   document.documentElement.appendChild(overlay);
-
   document.getElementById("_conf-annuler").addEventListener("click", function () { overlay.remove(); });
   document.getElementById("_conf-ok").addEventListener("click", function () { overlay.remove(); callback(); });
 }
@@ -467,11 +414,9 @@ function _confirmerAction(titre, texte, callback) {
 // README — modale plein écran
 // =========================
 function afficherReadme() {
-  // Si une modale README est déjà ouverte, fermer
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  // Modale de choix doc
   const choix = document.createElement("div");
   choix.id = "kta-readme-choix";
   choix.className = "kta-readme-modal-overlay";
@@ -499,45 +444,24 @@ function afficherReadme() {
   `;
 
   document.documentElement.appendChild(choix);
-
   document.getElementById("kta-choix-close").addEventListener("click", function () { choix.remove(); });
   choix.addEventListener("click", function (e) { if (e.target === choix) choix.remove(); });
-
-  document.getElementById("kta-choix-user").addEventListener("click", function () {
-    choix.remove();
-    _chargerReadme("README_USER.md");
-  });
-
-  document.getElementById("kta-choix-dev").addEventListener("click", function () {
-    choix.remove();
-    _chargerReadme("README.md");
-  });
+  document.getElementById("kta-choix-user").addEventListener("click", function () { choix.remove(); _chargerReadme("README_USER.md"); });
+  document.getElementById("kta-choix-dev").addEventListener("click",  function () { choix.remove(); _chargerReadme("README.md"); });
 }
 
 function _chargerReadme(fichier) {
-  console.log("[README] chargement de :", fichier);
-
   _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>");
-
   fetch(fichier)
-    .then(function(res) {
-      if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier);
-      return res.text();
-    })
+    .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
       const html = _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (corps) corps.innerHTML = "<p>" + html + "</p>";
     })
     .catch(function(err) {
-      console.error("[README] erreur fetch:", err);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-      if (corps) corps.innerHTML = `
-        <p class="kta-readme-erreur">
-          ❌ Impossible de charger <code>${fichier}</code><br><br>
-          <code>${err.message}</code><br><br>
-          Vérifiez que le fichier est bien à la racine du serveur.
-        </p>`;
+      if (corps) corps.innerHTML = `<p class="kta-readme-erreur">❌ Impossible de charger <code>${fichier}</code><br><br><code>${err.message}</code></p>`;
     });
 }
 
@@ -562,11 +486,9 @@ function _renderMarkdown(md) {
 }
 
 function _ouvrirReadmeModal(html) {
-  console.log("[README] _ouvrirReadmeModal appelé");
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
-
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
@@ -578,15 +500,13 @@ function _ouvrirReadmeModal(html) {
       </div>
     </div>
   `;
-
   document.documentElement.appendChild(modal);
-
   document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
 
 // =========================
-// AIDE — panneau ancré
+// AIDE — modale plein écran
 // =========================
 function afficherAide() {
   const existing = document.getElementById("kta-aide-modal");
@@ -652,10 +572,12 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">ℹ️ Informations & Réglages</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
-            <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
-            <span class="kta-aide-icone">⚙️</span><span>Réglages & configuration</span>
             <span class="kta-aide-icone">❓</span><span>Cette aide</span>
+            <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
+            <span class="kta-aide-icone">📦</span><span>Créer un nouveau plan (ZIP)</span>
+            <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
+            <span class="kta-aide-icone">⚙️</span><span>Réglages & configuration</span>
+            <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
           </div>
         </div>
 
@@ -702,7 +624,7 @@ function afficherPopupChangerPlan() {
 }
 
 // =========================
-// CONFIG — panneau ancré
+// CONFIG — modale plein écran
 // =========================
 function afficherConfig() {
   const existing = document.getElementById("kta-cfg-modal");
@@ -798,7 +720,6 @@ function appliquerConfig() {
 
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
   if (window.resetTrackingPosition) window.resetTrackingPosition();
-
   const modal = document.getElementById("kta-cfg-modal");
   if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
@@ -817,9 +738,9 @@ function resetConfig() {
 // VIDER LE CACHE APPLICATIF
 // =========================
 function viderCacheAppli() {
-  // Fermer la modale config si elle est ouverte
   const cfgModal = document.getElementById("kta-cfg-modal");
   if (cfgModal) cfgModal.remove();
+
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `
@@ -926,30 +847,31 @@ function initInterface() {
   L.control.titleControl().addTo(window.map);
 
   // ---------- BLOC INFOS ----------
+  // Ordre : ❓ 📖 📦 🗂️ ⚙️ 🗺️
   const infosControl = L.control({ position: "topright" });
   infosControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
-    const btnHelp = L.DomUtil.create("a", "", div);
-    btnHelp.innerHTML = "❓"; btnHelp.href = "javascript:void(0)"; btnHelp.title = "Aide";
-
-    const btnReadme = L.DomUtil.create("a", "", div);
-    btnReadme.innerHTML = "📖"; btnReadme.href = "javascript:void(0)"; btnReadme.title = "Documentation";
-
+    const btnHelp       = L.DomUtil.create("a", "", div);
+    const btnReadme     = L.DomUtil.create("a", "", div);
+    const btnPlanner    = L.DomUtil.create("a", "", div);
     const btnChangePlan = L.DomUtil.create("a", "", div);
+    const btnSettings   = L.DomUtil.create("a", "", div);
+    const btnLegende    = L.DomUtil.create("a", "", div);
+
+    btnHelp.innerHTML       = "❓"; btnHelp.href       = "javascript:void(0)"; btnHelp.title       = "Aide";
+    btnReadme.innerHTML     = "📖"; btnReadme.href     = "javascript:void(0)"; btnReadme.title     = "Documentation";
+    btnPlanner.innerHTML    = "📦"; btnPlanner.href    = "javascript:void(0)"; btnPlanner.title    = "Créer un nouveau plan";
     btnChangePlan.innerHTML = "🗂️"; btnChangePlan.href = "javascript:void(0)"; btnChangePlan.title = "Changer de plan";
+    btnSettings.innerHTML   = "⚙️"; btnSettings.href   = "javascript:void(0)"; btnSettings.title   = "Réglages";
+    btnLegende.innerHTML    = "🗺️"; btnLegende.href    = "javascript:void(0)"; btnLegende.title    = "Légende";
 
-    const btnSettings = L.DomUtil.create("a", "", div);
-    btnSettings.innerHTML = "⚙️"; btnSettings.href = "javascript:void(0)"; btnSettings.title = "Réglages";
-
-    const btnLegende = L.DomUtil.create("a", "", div);
-    btnLegende.innerHTML = "🗺️"; btnLegende.href = "javascript:void(0)"; btnLegende.title = "Légende";
-
-    L.DomEvent.on(btnHelp,      "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherAide(); });
-    L.DomEvent.on(btnReadme,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherReadme(); });
-    L.DomEvent.on(btnChangePlan,"click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPopupChangerPlan(); });
-    L.DomEvent.on(btnSettings,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(); });
-    L.DomEvent.on(btnLegende,   "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherLegende(); });
+    L.DomEvent.on(btnHelp,       "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherAide(); });
+    L.DomEvent.on(btnReadme,     "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherReadme(); });
+    L.DomEvent.on(btnPlanner,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPlanner(); });
+    L.DomEvent.on(btnChangePlan, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPopupChangerPlan(); });
+    L.DomEvent.on(btnSettings,   "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(); });
+    L.DomEvent.on(btnLegende,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherLegende(); });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
@@ -1125,13 +1047,12 @@ function initInterface() {
   ioControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
-    const btnImport = L.DomUtil.create("a", "", div);
-    btnImport.innerHTML = "📂"; btnImport.href = "javascript:void(0)"; btnImport.title = "Importer une session";
-
-    const btnExport = L.DomUtil.create("a", "", div);
-    btnExport.innerHTML = "💾"; btnExport.href = "javascript:void(0)"; btnExport.title = "Exporter la session";
-
+    const btnImport  = L.DomUtil.create("a", "", div);
+    const btnExport  = L.DomUtil.create("a", "", div);
     const btnConvert = L.DomUtil.create("a", "", div);
+
+    btnImport.innerHTML  = "📂"; btnImport.href  = "javascript:void(0)"; btnImport.title  = "Importer une session";
+    btnExport.innerHTML  = "💾"; btnExport.href  = "javascript:void(0)"; btnExport.title  = "Exporter la session";
     btnConvert.innerHTML = "🔄"; btnConvert.href = "javascript:void(0)"; btnConvert.title = "Convertisseur JSON";
 
     L.DomEvent.on(btnImport,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); ouvrirImportSession(); });
@@ -1145,7 +1066,7 @@ function initInterface() {
 }
 
 // =========================
-// LÉGENDE — panneau ancré
+// LÉGENDE — modale plein écran
 // =========================
 const LEGENDE_LABELS = {
   salle:    "Salle",
@@ -1175,29 +1096,18 @@ function afficherLegende() {
   modal.id = "kta-legende-modal";
   modal.className = "kta-readme-modal-overlay";
 
-  // Construire le contenu selon disponibilité des icônes
   let contenuIcones = "";
 
   if (!icons) {
     contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">Aucune configuration d'icônes disponible.</p>`;
   } else {
-
-    // Groupes thématiques
     const GROUPES = [
-      {
-        titre: "🕳️ Puits",
-        cles: ["pa", "pb", "pc", "pe", "ps"]
-      },
-      {
-        titre: "⚠️ Signalétique",
-        cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"]
-      }
+      { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
+      { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
     ];
 
-    // Clés déjà affectées à un groupe
     const clesDansGroupe = GROUPES.flatMap(function(g) { return g.cles; });
 
-    // Générer les sections groupées
     GROUPES.forEach(function(groupe) {
       const entrees = groupe.cles
         .filter(function(cle) { return icons[cle]; })
@@ -1210,38 +1120,23 @@ function afficherLegende() {
         }).join("");
 
       if (entrees) {
-        contenuIcones += `
-          <div class="kta-aide-section">
-            <div class="kta-aide-section-titre">${groupe.titre}</div>
-            ${entrees}
-          </div>`;
+        contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.titre}</div>${entrees}</div>`;
       }
     });
 
-    // Icônes hors groupes (non catégorisées, hors exclues)
     const autresEntrees = Object.entries(icons)
-      .filter(function(e) {
-        return !LEGENDE_EXCLURE.includes(e[0]) && !clesDansGroupe.includes(e[0]);
-      })
+      .filter(function(e) { return !LEGENDE_EXCLURE.includes(e[0]) && !clesDansGroupe.includes(e[0]); })
       .map(function(entry) {
         const cle = entry[0];
         const label = LEGENDE_LABELS[cle] || cle;
-        return `<div class="kta-legende-ligne">
-          <img class="kta-legende-icone" src="${entry[1]}" alt="${label}" onerror="this.style.opacity='0.3'">
-          <span class="kta-legende-label">${label}</span>
-        </div>`;
+        return `<div class="kta-legende-ligne"><img class="kta-legende-icone" src="${entry[1]}" alt="${label}" onerror="this.style.opacity='0.3'"><span class="kta-legende-label">${label}</span></div>`;
       }).join("");
 
     if (autresEntrees) {
-      contenuIcones += `
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📌 Autres</div>
-          ${autresEntrees}
-        </div>`;
+      contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">📌 Autres</div>${autresEntrees}</div>`;
     }
   }
 
-  // Section tracés — toujours présente
   const contenuTracés = `
     <div class="kta-aide-section">
       <div class="kta-aide-section-titre">🛣️ Tracés</div>
@@ -1272,11 +1167,11 @@ function afficherLegende() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.afficherConfig      = afficherConfig;
-window.appliquerConfig     = appliquerConfig;
-window.resetConfig         = resetConfig;
-window.viderCacheAppli     = viderCacheAppli;
-window.afficherReadme      = afficherReadme;
-window.afficherLegende     = afficherLegende;
+window.afficherConfig        = afficherConfig;
+window.appliquerConfig       = appliquerConfig;
+window.resetConfig           = resetConfig;
+window.viderCacheAppli       = viderCacheAppli;
+window.afficherReadme        = afficherReadme;
+window.afficherLegende       = afficherLegende;
 window.afficherConvertisseur = afficherConvertisseur;
-window.initInterface       = initInterface;
+window.initInterface         = initInterface;

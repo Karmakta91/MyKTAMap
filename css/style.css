@@ -936,3 +936,183 @@ html, body {
   margin-top: 4px;
   min-height: 18px;
 }
+
+
+/* ==============================================
+   PLANNER — créateur de plan ZIP
+   ============================================== */
+
+.kta-planner-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.kta-planner-req {
+  color: #e06c75;
+  margin-left: 2px;
+}
+
+.kta-planner-hint {
+  color: #8892a4;
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.kta-planner-info {
+  font-size: 12px;
+  color: #8892a4;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.kta-planner-info code {
+  background: #0d1117;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #e06c75;
+  font-size: 11px;
+}
+
+.kta-planner-upload-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.kta-planner-upload-ligne .kta-cfg-label {
+  flex: 0 0 auto;
+  margin: 0;
+  min-width: 160px;
+}
+
+.kta-planner-upload-btn {
+  display: inline-block;
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  color: #c0c8d8;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.kta-planner-upload-btn:hover {
+  background: rgba(255,255,255,0.12);
+}
+
+.kta-planner-upload-nom {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Liste des calques */
+.kta-planner-layers-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kta-planner-empty {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 0;
+  text-align: center;
+  padding: 10px 0;
+}
+
+.kta-planner-layer-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.kta-planner-layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.kta-planner-layer-num {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8cb4ff;
+  letter-spacing: 0.04em;
+}
+
+.kta-planner-remove-btn {
+  background: none;
+  border: none;
+  color: #8892a4;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.kta-planner-remove-btn:hover {
+  color: #ffd0d0;
+  background: rgba(139,26,26,0.3);
+}
+
+.kta-planner-add-btn {
+  float: right;
+  background: rgba(31,111,235,0.2);
+  border: 1px solid rgba(31,111,235,0.4);
+  border-radius: 5px;
+  color: #8cb4ff;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.kta-planner-add-btn:hover {
+  background: rgba(31,111,235,0.35);
+}
+
+/* Aperçu icônes */
+.kta-planner-icons-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.kta-planner-icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 44px;
+}
+
+.kta-planner-icon-item img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.kta-planner-icon-item span {
+  font-size: 9px;
+  color: #8892a4;
+  text-align: center;
+  word-break: break-all;
+}
