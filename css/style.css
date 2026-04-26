@@ -845,14 +845,14 @@ html, body {
 
 
 /* ==============================================
-   LOADER
+   LOADER — charte dark
    ============================================== */
 
 #planLoaderOverlay {
   position: fixed;
   inset: 0;
   z-index: 5000;
-  background: rgba(10, 15, 25, 0.88);
+  background: rgba(5, 8, 15, 0.92);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -862,38 +862,82 @@ html, body {
 
 #planLoaderBox {
   width: 100%;
-  max-width: 560px;
-  background: #ffffff;
-  color: #111;
+  max-width: 520px;
+  background: #1a1f2e;
+  color: #e8eaf0;
   border-radius: 14px;
-  padding: 22px;
+  padding: 24px;
   box-sizing: border-box;
-  box-shadow: 0 10px 35px rgba(0,0,0,0.35);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.08);
   font-family: Arial, sans-serif;
 }
 
-#planLoaderBox h2 {
-  margin-top: 0;
-  margin-bottom: 10px;
+.loader-header {
+  margin-bottom: 18px;
+}
+
+.loader-titre {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e8eaf0;
+  letter-spacing: 0.02em;
+}
+
+.loader-desc {
+  font-size: 13px;
+  color: #8892a4;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.loader-desc code {
+  background: #0d1117;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #e06c75;
+  font-size: 12px;
 }
 
 .loaderLabel {
   display: block;
-  margin-top: 14px;
-  margin-bottom: 6px;
-  font-weight: bold;
+  margin-top: 12px;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #8892a4;
+  letter-spacing: 0.04em;
 }
 
 #planLoaderBox input[type="file"] {
   width: 100%;
-  font-size: 15px;
-  margin-bottom: 8px;
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #c8d0e0;
+  background: #0d1117;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 6px 8px;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+#planLoaderBox input[type="file"]::-webkit-file-upload-button {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px;
+  color: #c0c8d8;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 8px;
 }
 
 .loaderActions {
   display: flex;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 20px;
+  flex-wrap: wrap;
 }
 
 #loadPlanBtn {
@@ -901,47 +945,72 @@ html, body {
   border-radius: 8px;
   background: #1f6feb;
   color: white;
-  padding: 10px 16px;
-  font-size: 15px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
+  transition: opacity 0.15s;
 }
 
+#loadPlanBtn:hover { opacity: 0.85; }
+
 #loadPlanBtn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: wait;
+}
+
+.loader-btn-ghost {
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #c0c8d8;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.loader-btn-ghost:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 #loaderStatus {
   margin-top: 14px;
-  font-size: 14px;
-  min-height: 20px;
-  color: #333;
+  font-size: 13px;
+  min-height: 18px;
+  color: #8cb4ff;
 }
 
+/* Onglets loader */
 .loader-tabs {
   display: flex;
   gap: 0;
   margin-bottom: 16px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid #ddd;
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .loader-tab {
   flex: 1;
   padding: 9px 12px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   border: none;
-  background: #f0f0f0;
-  color: #555;
+  background: rgba(255,255,255,0.04);
+  color: #8892a4;
   transition: background 0.15s, color 0.15s;
 }
 
 .loader-tab.active {
   background: #1f6feb;
   color: #fff;
+}
+
+.loader-tab:hover:not(.active) {
+  background: rgba(255,255,255,0.08);
+  color: #c8d0e0;
 }
 
 .loader-panel {
@@ -952,29 +1021,31 @@ html, body {
   display: block;
 }
 
+/* Zone de drop ZIP */
 .zip-drop-zone {
-  border: 2px dashed #bbb;
+  border: 2px dashed rgba(255,255,255,0.15);
   border-radius: 10px;
-  padding: 28px 16px;
+  padding: 24px 16px;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
-  color: #666;
+  color: #8892a4;
   font-size: 14px;
   margin-bottom: 8px;
+  background: rgba(255,255,255,0.02);
 }
 
 .zip-drop-zone:hover,
 .zip-drop-zone.dragover {
-  border-color: #1f6feb;
-  background: #f0f6ff;
-  color: #1f6feb;
+  border-color: #4d8aff;
+  background: rgba(77,138,255,0.07);
+  color: #8cb4ff;
 }
 
 .zip-drop-zone .zip-icon {
-  font-size: 32px;
+  font-size: 28px;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .zip-drop-zone input[type="file"] {
@@ -982,11 +1053,11 @@ html, body {
 }
 
 #zipFileName {
-  font-size: 13px;
-  color: #1f6feb;
+  font-size: 12px;
+  color: #8cb4ff;
   font-weight: 600;
-  margin-top: 4px;
-  min-height: 18px;
+  margin-top: 6px;
+  min-height: 16px;
 }
 
 
