@@ -23,7 +23,6 @@ Ces données, si elles étaient rendues publiques, pourraient :
 - Ne jamais publier de captures d'écran montrant des coordonnées ou des localisations précises
 - Ne jamais laisser l'application ouverte et visible sur un appareil accessible à des tiers
 
-
 > Ces lieux appartiennent à leur histoire. Leur préservation dépend de la discrétion de ceux qui les fréquentent.
 
 ---
@@ -112,6 +111,8 @@ Inévitablement, la position calculée dérivera par rapport à votre position r
 
 Recalez le plus souvent possible pour maintenir une estimation correcte.
 
+> Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage. Activer l'un désactive automatiquement les autres.
+
 ### Réglages du tracker
 
 Accédez aux réglages via **⚙️**. Les paramètres importants pour le tracker :
@@ -133,8 +134,6 @@ Accédez aux réglages via **⚙️**. Les paramètres importants pour le tracke
 
 La distance est calculée en utilisant l'échelle définie dans les réglages. Si les distances affichées semblent incorrectes, vérifiez la valeur **Échelle (px/m)** dans ⚙️.
 
-> Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage. Activer l'un désactive automatiquement les autres.
-
 ---
 
 ## ✏️ Ajouter des points
@@ -146,7 +145,7 @@ La distance est calculée en utilisant l'échelle définie dans les réglages. S
 
 Ces points sont temporaires et propres à votre session. Pour les conserver, **exportez votre session** avant de fermer l'application.
 
-Pour effacer tous les points ajoutés manuellement, appuyez sur **🗑️** (à côté du bouton ✏️).
+Pour effacer tous les points ajoutés manuellement, appuyez sur **🗑️** (à côté du bouton ✏️). Une confirmation vous sera demandée.
 
 ---
 
@@ -194,19 +193,59 @@ Appuyez sur **🖼️** pour télécharger une image PNG du plan tel qu'il appar
 
 ## 🔄 Convertisseur de données
 
-Le convertisseur permet de transformer des fichiers entre deux formats :
+Le convertisseur permet de transformer des fichiers entre deux formats, sans passer par un serveur.
 
 **✏️ → 🗂️ Vers calque de données**
-Convertit un fichier session (points ajoutés via le mode édition) en calque de données réutilisable dans le plan. Pratique pour intégrer vos annotations dans la configuration permanente.
+Convertit un fichier session (points ajoutés via le mode édition) en calque de données permanent, rechargeable dans la configuration du plan. Utile pour intégrer vos annotations de terrain dans la cartographie officielle du groupe.
 
 **🗂️ → ✏️ Vers mode édition**
-Convertit un calque de données existant en session importable via **📂**. Permet d'éditer des données existantes dans le mode ajout de points.
+Convertit un calque de données existant en session importable via **📂**. Permet de reprendre et modifier des données existantes dans le mode ajout de points.
+
+Pour utiliser le convertisseur :
+
+1. Appuyez sur **🔄**
+2. Choisissez le sens de conversion
+3. Pour le sens "vers calque de données", saisissez le type de sortie (ex : `puits`, `vehicule`…)
+4. Glissez votre fichier JSON dans la zone ou cliquez pour le sélectionner
+5. Vérifiez l'aperçu, puis téléchargez le fichier converti
+
+---
+
+## 📦 Créer un nouveau plan
+
+Le générateur de plan permet de préparer une archive ZIP complète et prête à l'emploi, sans avoir à éditer manuellement les fichiers de configuration.
+
+Appuyez sur **📦** pour ouvrir le formulaire, puis renseignez :
+
+**Informations du plan**
+- Nom, version et auteur du plan
+- Dimensions de l'image principale en pixels (largeur × hauteur)
+
+**Images principales**
+- L'image du plan (obligatoire) — votre fond de carte
+- La carte de collision (optionnelle) — zones interdites au tracker, en rouge sur fond transparent
+
+**Calques image supplémentaires** (jusqu'à 10)
+Ajoutez des calques superposés au plan principal : légendes, annotations visuelles, tracés secondaires. Pour chaque calque, renseignez un identifiant, un label affiché et l'image correspondante.
+
+**Calques de données JSON** (jusqu'à 10)
+Ajoutez les couches de points d'intérêt. Pour chaque calque :
+- Un identifiant technique (ex : `puits`, `vehicule`)
+- Un label affiché dans le contrôle de couches
+- Un fichier JSON existant — ou laissez vide pour créer un fichier vide automatiquement
+
+Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement — il reçoit les points créés via le mode ✏️.
+
+**Paramètres de tracking**
+Position de départ de l'icône, échelle et paramètres de détection des pas.
+
+Une fois le formulaire rempli, cliquez sur **📦 Générer le ZIP**. L'archive téléchargée contient le `plan-config.json` généré et tous les fichiers que vous avez fournis, prêts à être chargés dans l'application.
 
 ---
 
 ## 🗺️ Légende
 
-Appuyez sur **🗺️** pour afficher la légende complète des icônes et des tracés utilisés sur le plan.
+Appuyez sur **🗺️** pour afficher la légende complète des icônes et des tracés utilisés sur le plan, regroupés par catégorie.
 
 ---
 
@@ -214,7 +253,7 @@ Appuyez sur **🗺️** pour afficher la légende complète des icônes et des t
 
 Appuyez sur **⚙️** pour accéder aux paramètres de l'application, regroupés en sections :
 
-- **Dimensions du plan** : hauteur et largeur en pixels (normalement déjà configurées)
+- **Dimensions du plan** : hauteur et largeur en pixels (normalement déjà configurées via le plan-config)
 - **Position initiale du tracker** : coordonnées de départ de l'icône de position
 - **Détection des pas** : paramètres de sensibilité du tracker
 - **Debug** : activer les logs de mouvement (pour diagnostic uniquement)
@@ -236,6 +275,8 @@ En cas de mise à jour de l'application qui ne se reflète pas dans votre naviga
 2. Vide intégralement le cache du navigateur
 3. Recharge l'application depuis le serveur
 
+Une double confirmation vous sera demandée avant l'exécution.
+
 > ⚠️ Cette action rend l'application inutilisable hors connexion jusqu'au prochain chargement complet. Effectuez-la uniquement lorsque vous avez accès à Internet.
 
 ---
@@ -243,7 +284,7 @@ En cas de mise à jour de l'application qui ne se reflète pas dans votre naviga
 ## 🆘 En cas de problème
 
 **Le plan ne se charge pas**
-Vérifiez que le fichier `plan-config.json` est bien sélectionné, et que tous les fichiers associés sont inclus (images, données). En mode ZIP, assurez-vous que le fichier `plan-config.json` est présent à la racine de l'archive.
+Vérifiez que le fichier `plan-config.json` est bien sélectionné, et que tous les fichiers associés sont inclus (images, données). En mode ZIP, assurez-vous que `plan-config.json` est présent à la racine de l'archive.
 
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
@@ -256,6 +297,9 @@ Si vous avez vidé le cache ou fermé l'onglet, rechargez l'application avant vo
 
 **Les distances semblent incorrectes**
 Vérifiez la valeur **Échelle (px/m)** dans les réglages. Elle doit correspondre au ratio entre les pixels du plan et les mètres réels du terrain.
+
+**Le générateur de plan ne fonctionne pas**
+Vérifiez que tous les champs obligatoires sont remplis (nom, dimensions, image principale). Le fichier `lib/jszip/jszip.min.js` doit être présent sur le serveur — il est requis pour la génération de l'archive.
 
 ---
 
