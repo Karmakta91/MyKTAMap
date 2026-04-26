@@ -4,7 +4,6 @@
 <img width="1345" height="673" alt="image" src="https://github.com/user-attachments/assets/77559b0d-9fb0-49e6-97a8-d9b1f9073d1d" />
 
 **Environnements :**
-
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
 - 🔧 Développement : [devmap.is-underground.fr](https://devmap.is-underground.fr)
 
@@ -52,10 +51,6 @@ MyKTAMap est une application web permettant de **visualiser, annoter et exploite
 
 L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS**.
 
-## Principe fonctionnel et architecture serveur
-
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/4dc6ace2-de02-4bd4-8edd-83fd748ae190" />
-
 ### Fonctionnalités principales
 
 | Fonctionnalité | État |
@@ -66,10 +61,11 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 | Mesure de distances | ✅ Disponible |
 | Tracé de routes (Principal / Secondaire / Chemin) | ✅ Disponible |
 | Export / import JSON de session | ✅ Disponible |
+| Import de plan via ZIP | ✅ Disponible |
+| Convertisseur JSON (editor ↔ data) | ✅ Disponible |
+| Générateur de plan ZIP | ✅ Disponible |
 | Déplacement simulé via capteurs mobile | ⚠️ Expérimental |
-| Mode hors-connexion (ServiceWorker) | ⚠️ Re activer depuis le push du 25/04 12:25 (Test en cours) |
-
-> ⚠️ Le ServiceWorker n'étant pas encore au point, charger la webapp sur le téléphone et la laisser en arrière-plan reste la solution recommandée pour une utilisation sous terre.
+| Mode hors-connexion (ServiceWorker) | ⚠️ Test en cours |
 
 ---
 
@@ -79,14 +75,22 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 index.html / import.html
         │
         ├── config.js          ← Configuration globale (APP_CONFIG, DEFAULT_CONFIG)
+        ├── config_import.js   ← Configuration en mode import navigateur
         ├── utils.js           ← Fonctions utilitaires (convertCoord, choisirIcone)
         ├── map.js             ← Initialisation Leaflet + calques + collision
+        ├── map_import.js      ← Idem, adapté au mode import navigateur
         ├── tracking.js        ← Déplacement simulé via capteurs
         ├── measure.js         ← Mesure de distance
         ├── editor.js          ← Ajout de points d'intérêt
         ├── road.js            ← Tracé de routes
+        ├── createConf.js         ← Générateur de plan ZIP
         ├── interface.js       ← Construction de l'interface Leaflet
-        └── main.js            ← Point d'entrée, orchestration
+        ├── main.js            ← Point d'entrée (mode serveur)
+        └── main_import.js     ← Point d'entrée (mode import navigateur)
+
+lib/
+        ├── leaflet/           ← Leaflet.js (local)
+        └── jszip/             ← JSZip 3.10.1 (local, requis pour ZIP)
 ```
 
 ### Résumé des fichiers
@@ -94,32 +98,24 @@ index.html / import.html
 | Fichier | Rôle principal |
 |---|---|
 | `config.js` | Configuration globale (mode fichier local) |
-| `config_import.js` *(import)* | Configuration globale en mode import navigateur |
-| `utils.js` | Fonctions utilitaires partagées |
+| `config_import.js` | Configuration globale en mode import navigateur |
+| `utils.js` | Fonctions utilitaires partagées + normalisation JSON |
 | `map.js` | Initialisation de la carte et des calques |
-| `map_import.js` *(import)* | Idem, adapté au mode import navigateur |
+| `map_import.js` | Idem, adapté au mode import navigateur |
 | `measure.js` | Mesure de distance |
 | `tracking.js` | Déplacement simulé et détection de collision |
 | `editor.js` | Ajout de points et export JSON |
 | `road.js` | Tracé de routes Principal / Secondaire / Chemin |
-| `interface.js` | Interface utilisateur Leaflet |
+| `createConf.js` | Générateur de plan ZIP complet |
+| `interface.js` | Interface utilisateur Leaflet + toutes les modales |
 | `main.js` | Initialisation globale (mode fichier local) |
-| `main_import.js` *(import)* | Initialisation globale en mode import navigateur |
+| `main_import.js` | Initialisation globale en mode import navigateur |
 
 ---
 
 ## ⚙️ Configuration — `plan-config.json`
 
-Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes les informations nécessaires au chargement :
-
-- Les métadonnées du plan (nom, dimensions, auteur)
-- L'image de base et la carte de collision
-- Les calques image supplémentaires
-- Les couches de données JSON
-- Les paramètres de tracking
-- Les icônes
-
-Cette approche permet de **changer de plan sans modifier le code**.
+Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes les informations nécessaires au chargement.
 
 ### Exemple complet
 
@@ -146,8 +142,6 @@ Cette approche permet de **changer de plan sans modifier le code**.
   "dataLayers": [
     { "id": "puits",     "label": "Puits",    "file": "data/puit.json",      "visible": true },
     { "id": "vehicule",  "label": "Vehicule", "file": "data/vehicule.json",  "visible": true },
-    { "id": "cataphile", "label": "Cataphile","file": "data/cataphile.json", "visible": true },
-    { "id": "carry",     "label": "Carrière", "file": "data/carry.json",     "visible": true },
     { "id": "editor",    "label": "Ajouts",   "file": "data/editor.json",    "visible": true }
   ],
   "tracking": {
@@ -160,6 +154,7 @@ Cette approche permet de **changer de plan sans modifier le code**.
   },
   "icons": {
     "default":  "icon/iconetrack.png",
+    "track":    "icon/iconetrack.png",
     "salle":    "icon/house.png",
     "pa":       "icon/pa.png",
     "pc":       "icon/pc.png",
@@ -172,8 +167,7 @@ Cette approche permet de **changer de plan sans modifier le code**.
     "chatiere": "icon/chatiere.png",
     "passage":  "icon/passage.png",
     "danger":   "icon/danger.png",
-    "pe":       "icon/pe.png",
-    "track":    "icon/iconetrack.png"
+    "pe":       "icon/pe.png"
   }
 }
 ```
@@ -182,7 +176,7 @@ Cette approche permet de **changer de plan sans modifier le code**.
 
 | Clé | Type | Utilité |
 |---|---|---|
-| `name` | string | Nom affiché dans l'interface |
+| `name` | string | Nom affiché dans le titre de l'interface |
 | `version` | string | Version du plan |
 | `author` | string | Auteur ou source de la cartographie |
 | `imageWidth` | number | Largeur de l'image en pixels |
@@ -191,8 +185,6 @@ Cette approche permet de **changer de plan sans modifier le code**.
 | `collisionImage` | string | Chemin vers l'image de collision (zones interdites) |
 
 ### Section `imageLayers`
-
-Liste des calques image superposés au plan principal (légende, annotations visuelles, tracés secondaires…).
 
 | Champ | Utilité |
 |---|---|
@@ -204,8 +196,6 @@ Liste des calques image superposés au plan principal (légende, annotations vis
 
 ### Section `dataLayers`
 
-Liste des couches de données JSON à charger (points d'intérêt, objets métier).
-
 | Champ | Utilité |
 |---|---|
 | `id` | Identifiant technique utilisé dans le code |
@@ -213,33 +203,18 @@ Liste des couches de données JSON à charger (points d'intérêt, objets métie
 | `file` | Chemin vers le fichier JSON |
 | `visible` | Visibilité au chargement |
 
-### Section `tracking`
+> Le calque `editor` doit toujours être présent — il reçoit les points créés via le mode ajout.
 
-Paramètres du module de déplacement simulé.
+### Section `tracking`
 
 | Clé | Type | Utilité |
 |---|---|---|
 | `startX` | number | Position X initiale du tracker (pixels) |
 | `startY` | number | Position Y initiale du tracker (pixels) |
-| `scale` | number | Facteur de conversion pixels → mètres |
+| `scale` | number | Facteur de conversion pixels/mètres |
 | `stepLength` | number | Longueur moyenne d'un pas (mètres) |
 | `stepThreshold` | number | Seuil d'accélération pour détecter un pas |
 | `stepCooldown` | number | Délai minimum entre deux pas (ms) |
-
-### Section `icons`
-
-Centralise les chemins de toutes les icônes. Permet de changer un set d'icônes sans toucher au code.
-
-| Clé | Correspond à |
-|---|---|
-| `pa`, `pb`, `pc`, `pe` | Types de puits |
-| `salle` | Salles |
-| `vehicule` | Véhicules |
-| `danger`, `info`, `passage` | Signalétique |
-| `elec`, `epure`, `ps` | Infrastructures |
-| `chatiere` | Chatières |
-| `track` | Icône du marqueur de position |
-| `default` | Icône par défaut (fallback) |
 
 ---
 
@@ -250,27 +225,9 @@ Centralise les chemins de toutes les icônes. Permet de changer un set d'icônes
 Centralise les constantes de configuration. Deux objets coexistent :
 
 - `DEFAULT_CONFIG` : valeurs d'origine, jamais modifiées
-- `APP_CONFIG` : valeurs actives, éventuellement surchargées par l'utilisateur
+- `APP_CONFIG` : valeurs actives, surchargées par l'utilisateur via l'interface
 
-```js
-const DEFAULT_CONFIG = {
-  imageHeight: 610,
-  imageWidth: 1044,
-  scale: 4.9,
-  stepLength: 0.7,
-  startX: 345,
-  startY: 519,
-  stepThreshold: 13,
-  stepCooldown: 400,
-  motionDebug: false
-};
-
-let APP_CONFIG = { ...DEFAULT_CONFIG };
-```
-
-Les réglages modifiés via l'interface sont persistés dans le `localStorage` et rechargés à la prochaine session.
-
----
+Les réglages modifiés via l'interface sont persistés dans le `localStorage`.
 
 ### `utils.js`
 
@@ -278,7 +235,7 @@ Contient les fonctions partagées entre modules.
 
 #### `convertCoord(x, y)`
 
-Convertit les coordonnées internes du plan (origine en haut à gauche, comme GIMP) vers le système Leaflet (origine en bas à gauche).
+Convertit les coordonnées internes du plan (origine haut-gauche, style GIMP) vers le système Leaflet (origine bas-gauche).
 
 ```js
 function convertCoord(x, y) {
@@ -286,33 +243,24 @@ function convertCoord(x, y) {
 }
 ```
 
-> ⚠️ Si vous utilisez un logiciel autre que GIMP pour relever vos coordonnées, vérifiez l'origine de l'axe Y. Adaptez `imageHeight` en conséquence.
+> Si vous utilisez un logiciel autre que GIMP, vérifiez l'origine de l'axe Y.
 
 #### `choisirIcone(point)`
 
 Sélectionne l'icône Leaflet appropriée en fonction des tags du point.
 
-```js
-function choisirIcone(p) {
-  if (!p.tags) return iconeDefault;
-  if (p.tags.includes("pa")) return iconepa;
-  if (p.tags.includes("vehicule")) return iconeVehicule;
-  return iconeDefault;
-}
-```
+#### `ajouterPointsDepuisJSON(url, layer)`
 
----
+Charge un fichier JSON et ajoute les marqueurs sur le layer Leaflet. Accepte deux formats :
 
-### `map.js`
+- Format standard : `{ "data": [...] }`
+- Format session exportée : `{ "editorPoints": [...] }`
 
-Initialise la carte Leaflet et tous ses calques.
+La détection est automatique via `normaliserPoints(json)`.
 
-**Responsabilités :**
-- Créer l'instance `L.map` en mode `L.CRS.Simple`
-- Charger l'image principale du plan
-- Créer les `L.layerGroup` pour chaque couche de données
-- Charger les calques image supplémentaires
-- Charger et initialiser la carte de collision
+### `map.js` / `map_import.js`
+
+Initialise la carte Leaflet en mode `L.CRS.Simple` et charge tous les calques.
 
 ```js
 map = L.map('map', {
@@ -325,24 +273,15 @@ map = L.map('map', {
 
 #### Carte de collision
 
-L'image de collision est chargée dans un `<canvas>` hors-DOM. Les pixels rouges (`r > 200, g < 50, b < 50`) représentent les zones interdites au déplacement.
-
----
+Chargée dans un `<canvas>` hors-DOM. Les pixels rouges (`r > 200, g < 50, b < 50`) représentent les zones interdites au déplacement du tracker.
 
 ### `tracking.js`
 
 Gère le déplacement simulé via les capteurs du téléphone (PDR — *Pedestrian Dead Reckoning*).
 
-**Flux de fonctionnement :**
-1. `requestPermission()` — demande les permissions capteurs (obligatoire sur iOS 13+)
-2. `initOrientation()` — écoute `deviceorientation` pour récupérer le cap
-3. `initMotion()` — écoute `devicemotion` pour détecter les pas
-4. `avancer()` — calcule la nouvelle position et vérifie la collision
-5. `updateMap()` — déplace le marqueur et trace la polyline
+Flux : `requestPermission()` → `initOrientation()` → `initMotion()` → `avancer()` → `updateMap()`
 
-#### Calcul du cap (`getHeading`)
-
-La direction de marche est calculée à partir des trois angles de rotation du téléphone (`alpha`, `beta`, `gamma`), ce qui la rend indépendante de l'orientation du téléphone dans la main :
+#### Calcul du cap
 
 ```js
 function getHeading(alpha, beta, gamma) {
@@ -363,137 +302,134 @@ function getHeading(alpha, beta, gamma) {
 }
 ```
 
-> ⚠️ Cette fonctionnalité est **expérimentale**. Elle fonctionne comme aide visuelle, mais ne constitue pas un système de localisation fiable.
-
-#### Recalage manuel
-
-En mode recalage, un clic sur la carte repositionne le marqueur à l'emplacement cliqué et remet la trace à zéro. Utile pour corriger la dérive du PDR.
-
----
-
-### `measure.js`
-
-Module de mesure de distance.
-
-**Fonctionnement :** en mode mesure actif, chaque clic sur la carte pose un point. Une ligne est tracée entre les points et la distance totale est calculée et affichée.
-
-Le calcul repose sur `APP_CONFIG.scale` pour convertir les pixels en mètres.
-
----
+> Fonctionnalité expérimentale. Aide visuelle uniquement, pas un système de localisation fiable.
 
 ### `editor.js`
 
-Module d'ajout de points d'intérêt.
+Module d'ajout de points d'intérêt. Expose :
 
-En mode édition, un clic sur la carte ouvre un formulaire permettant de saisir :
-- Nom du point
-- Type (utilisé pour choisir l'icône via les tags)
-- Description
-
-Les points sont ajoutés au calque `editor` et peuvent être exportés en JSON.
-
----
+| Fonction | Rôle |
+|---|---|
+| `window.getEditorPoints()` | Retourne le tableau des points |
+| `window.setEditorPoints(arr)` | Remplace le tableau |
+| `window.renderEditorPoints()` | Redessine tous les points sur le calque |
 
 ### `road.js`
 
-Module de tracé de routes.
+Module de tracé de routes. Trois types : `principal`, `secondaire`, `chemin`. Expose :
 
-Trois types de tracés disponibles, chacun avec son propre style visuel :
-
-| Type | Description |
+| Fonction | Rôle |
 |---|---|
-| `principal` | Route principale (trait plein, largeur importante) |
-| `secondaire` | Route secondaire |
-| `chemin` | Chemin ou passage annexe |
+| `window.getRoads()` | Retourne le tableau des tracés |
+| `window.setRoads(arr)` | Restaure des tracés |
+| `window.resetRoads()` | Efface tous les tracés |
+| `window.toggleRoadMode(type)` | Active/désactive un type de tracé |
 
-Chaque tracé est une liste de points cliqués sur la carte. Les routes sont incluses dans l'export/import de session JSON.
+### `createConf.js`
 
----
+Génère un ZIP plan complet à partir d'un formulaire. Dépend de **JSZip** (`lib/jszip.min.js`).
+
+Contenu du ZIP généré :
+
+```
+plan_nom.zip
+├── plan-config.json        ← généré automatiquement
+├── data/
+│   ├── image_principale.png
+│   ├── calque_image.png    ← calques image ajoutés
+│   ├── donnees.json        ← calques données (fournis ou créés vides)
+│   └── editor.json         ← toujours présent, vide
+```
+
+Les icônes ne sont **pas embarquées** dans le ZIP — elles référencent `icon/*.png` du serveur, commun à tous les plans.
 
 ### `interface.js`
 
-Construit tous les contrôles Leaflet de l'interface. Chaque bloc fonctionnel est un `L.control` indépendant.
+Construit tous les contrôles Leaflet et les modales. Chaque bloc fonctionnel est un `L.control` indépendant.
 
-| Bouton | Action |
+#### Blocs de contrôles
+
+| Bloc | Boutons |
 |---|---|
-| ▶️ / ⏹️ | Démarrer / arrêter le tracking |
-| 📍 | Activer le mode recalage |
-| 📏 | Activer la mesure de distance |
-| ❌ | Réinitialiser la mesure |
-| 🖼️ | Télécharger le plan |
-| ✏️ | Activer le mode ajout de point |
-| 🟩 🟪 🟨 | Tracer route principale / secondaire / chemin |
-| 🧹 | Réinitialiser les tracés |
-| 📂 | Importer une session JSON |
-| 💾 | Exporter la session JSON |
-| ❓ | Afficher l'aide |
-| 🗂️ | Changer de plan |
-| ⚙️ | Ouvrir les réglages |
+| Infos | ❓ 📖 📦 🗂️ ⚙️ 🗺️ |
+| Tracking | ▶️/⏹️ 📍 |
+| Mesure | 📏 ❌ |
+| Plan | 🖼️ |
+| Édition | ✏️ 🗑️ |
+| Routes | 🟩 🟪 🟨 🧹 |
+| Import/Export | 📂 💾 🔄 |
 
----
+#### Gestionnaire de modes exclusifs
 
-### `main.js`
+Un seul mode peut être actif à la fois (mesure, édition, recalage, routes). Géré par `_activerMode(cle, btn, activerFn, desactiverFn)` et `_desactiverTousLesModes()`.
 
-Point d'entrée de l'application. Orchestre le chargement dans le bon ordre :
+#### Modales disponibles
 
-```
-loadAppConfig()
-  → initMapFromConfig()
-    → initDataFromConfig()
-      → map.fitBounds()
-      → initEditor()
-      → initRoad()
-      → initMeasure()
-      → initInterface()
-      → initTracking()
-      → requestPermission()  (au premier clic, pour iOS)
-```
+| Fonction | Description |
+|---|---|
+| `afficherAide()` | Référence des boutons par section |
+| `afficherConfig()` | Réglages APP_CONFIG |
+| `afficherLegende()` | Icônes et tracés du plan actif |
+| `afficherReadme()` | Choix doc utilisateur / développeur |
+| `afficherConvertisseur()` | Conversion JSON bidirectionnelle |
+| `afficherPlanner()` | Générateur de plan ZIP |
 
 ---
 
 ## 📦 Structure des données JSON
 
-Chaque fichier de données contient un tableau `data` d'objets points :
+### Format standard (calques de données)
 
 ```json
 {
+  "type": "puits",
+  "version": 1,
   "data": [
     {
       "id": "PA1",
       "nom": "Puits Aération",
       "x": 4843,
       "y": 2002,
-      "tags": ["aeration", "ouvert", "pa"],
+      "tags": ["pa"],
       "etat": "Non inspectée",
       "description": "Puits avec courant d'air",
       "profondeur": 12,
-      "date_update": "2026-04-03"
+      "date_update": "2026-04-26"
     }
   ]
 }
 ```
 
-| Champ | Type | Utilité |
+### Format session exportée
+
+```json
+{
+  "type": "devmap-session",
+  "version": 1,
+  "editorPoints": [ ... ],
+  "measure": { "points": [] },
+  "roads": []
+}
+```
+
+| Champ point | Type | Utilité |
 |---|---|---|
-| `id` | string | Identifiant unique du point |
+| `id` | string | Identifiant unique |
 | `nom` | string | Nom affiché dans le popup |
-| `x`, `y` | number | Coordonnées en pixels (origine haut-gauche, style GIMP) |
-| `tags` | array | Détermine l'icône et les filtres possibles |
-| `etat` | string | État courant (libre, selon le type d'objet) |
+| `x`, `y` | number | Coordonnées pixels (origine haut-gauche, GIMP) |
+| `tags` | array | Détermine l'icône via `choisirIcone()` |
+| `etat` | string | État courant |
 | `description` | string | Texte affiché dans le popup |
-| `profondeur` | number | (optionnel) Profondeur en mètres |
+| `profondeur` | number | Optionnel |
 | `date_update` | string | Date de dernière mise à jour |
+
+> `ajouterPointsDepuisJSON()` accepte les deux formats automatiquement — la détection repose sur la présence de `data` ou `editorPoints`.
 
 ---
 
 ## 📍 Gestion des coordonnées
 
-### Problème
-
-- **GIMP** (et la plupart des logiciels image) : origine en **haut à gauche**, axe Y vers le bas
-- **Leaflet** (`L.CRS.Simple`) : origine en **bas à gauche**, axe Y vers le haut
-
-### Solution
+GIMP et la plupart des logiciels image utilisent une origine **haut-gauche** (axe Y vers le bas). Leaflet `L.CRS.Simple` utilise une origine **bas-gauche** (axe Y vers le haut).
 
 ```js
 function convertCoord(x, y) {
@@ -501,50 +437,45 @@ function convertCoord(x, y) {
 }
 ```
 
-> ⚠️ La valeur `imageHeight` doit correspondre exactement à la hauteur en pixels de votre image. Vérifiez-la dans `plan-config.json`.
-
----
-
-## 🔄 Chargement dynamique des données
-
-Les données JSON sont chargées via `fetch()` au démarrage :
-
-```js
-function ajouterPointsDepuisJSON(url, layer) {
-  fetch(url)
-    .then(res => res.json())
-    .then(json => {
-      json.data.forEach(p => {
-        const marker = L.marker(convertCoord(p.x, p.y), {
-          icon: choisirIcone(p)
-        });
-
-        marker.bindPopup(
-          "<b>" + p.nom + "</b><br>" +
-          (p.description || "")
-        );
-
-        marker.addTo(layer);
-      });
-    });
-}
-```
-
-En mode import navigateur, les fichiers JSON sont lus depuis les `File` sélectionnés par l'utilisateur, convertis en Blob URLs, puis passés à la même fonction.
+> `imageHeight` doit correspondre exactement à la hauteur en pixels de l'image. La valeur est lue depuis `plan-config.json`.
 
 ---
 
 ## 🗂️ Mode import navigateur
 
-Ce mode permet de charger un plan complet depuis le navigateur, sans serveur web ni accès réseau.
+Permet de charger un plan complet depuis le navigateur, sans serveur web.
 
-**Procédure :**
-1. Ouvrir la page d'import
-2. Sélectionner le fichier `plan-config.json`
-3. Sélectionner tous les fichiers associés (images, JSONs)
-4. Cliquer sur **Charger le plan**
+**Deux méthodes :**
 
-L'application résout automatiquement les chemins définis dans `plan-config.json` en cherchant les fichiers par nom parmi ceux sélectionnés. Les images sont converties en Blob URLs temporaires pour l'affichage.
+1. **Fichiers séparés** — sélection manuelle de `plan-config.json` + fichiers associés
+2. **Archive ZIP** — décompression via JSZip en mémoire, résolution automatique des chemins
+
+Dans les deux cas, `startImportedPlan(planConfigFile, assetFiles)` dans `main_import.js` orchestre le chargement. Les assets sont enregistrés comme Blob URLs via `RUNTIME_ASSETS` dans `config_import.js`.
+
+---
+
+## 🔄 Convertisseur JSON
+
+Conversion bidirectionnelle entre formats, sans serveur. Accessible via le bouton 🔄 dans l'interface.
+
+| Sens | Entrée | Sortie |
+|---|---|---|
+| edition → data | `{ editorPoints: [...] }` | `{ type, version, data: [...] }` |
+| data → edition | `{ data: [...] }` | `{ type: "devmap-session", editorPoints: [...] }` |
+
+---
+
+## 📦 Générateur de plan (planner.js)
+
+Dépendance : **JSZip** — doit être servi localement (`lib/jszip.min.js`).
+
+
+---
+
+## 📄 Licence
+
+Projet personnel — libre d'adaptation selon vos besoins non commerciaux.
+
 
 ---
 
