@@ -544,4 +544,4 @@ L'application résout automatiquement les chemins définis dans `plan-config.jso
 
 ## 📄 Licence
 
-Projet personnel — libre d'adaptation selon vos besoins.
+Projet personnel — libre d'adaptation selon vos besoins non commerciale.
