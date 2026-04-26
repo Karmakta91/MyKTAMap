@@ -24,6 +24,9 @@ function initTracking() {
   position.x = APP_CONFIG.startX;
   position.y = APP_CONFIG.startY;
 
+  // Charger le cache collision une seule fois
+  initCollisionCache();
+
   const iconeTracker = window.iconeTrack;
   let latlng = convertCoord(position.x, position.y);
 
@@ -59,40 +62,43 @@ function initTracking() {
   });
 }
 
-// =========================
-// COLLISION
-// =========================
-function estAccessible(x, y) {
-  if (!window.collisionCtx || !window.collisionCanvas) return true;
+// Cache de collision — pixels lus une seule fois au chargement
+let _collisionData = null;
+let _collisionWidth = 0;
+let _collisionHeight = 0;
 
-  if (x < 0 || y < 0 || x >= window.collisionCanvas.width || y >= window.collisionCanvas.height) {
-    return false;
+function initCollisionCache() {
+  if (!window.collisionCtx || !window.collisionCanvas) return;
+  try {
+    _collisionWidth  = window.collisionCanvas.width;
+    _collisionHeight = window.collisionCanvas.height;
+    _collisionData   = window.collisionCtx.getImageData(0, 0, _collisionWidth, _collisionHeight).data;
+    console.log("[Collision] Cache chargé :", _collisionWidth, "x", _collisionHeight);
+  } catch(e) {
+    console.warn("[Collision] Impossible de lire le canvas :", e);
+    _collisionData = null;
   }
+}
 
-  let rayon = 2;
-  let ok = 0;
-  let total = 0;
+function estAccessible(x, y) {
+  if (!_collisionData) return true;
+  if (x < 0 || y < 0 || x >= _collisionWidth || y >= _collisionHeight) return false;
+
+  const rayon = 2;
+  let ok = 0, total = 0;
 
   for (let dx = -rayon; dx <= rayon; dx++) {
     for (let dy = -rayon; dy <= rayon; dy++) {
       total++;
+      const px = Math.round(x + dx);
+      const py = Math.round(y + dy);
+      if (px < 0 || py < 0 || px >= _collisionWidth || py >= _collisionHeight) continue;
 
-      let px = Math.round(x + dx);
-      let py = Math.round(y + dy);
-
-      if (px < 0 || py < 0 || px >= window.collisionCanvas.width || py >= window.collisionCanvas.height) {
-        continue;
-      }
-
-      let pixel = window.collisionCtx.getImageData(px, py, 1, 1).data;
-
-      let r = pixel[0];
-      let g = pixel[1];
-      let b = pixel[2];
-
-      if (!(r > 200 && g < 50 && b < 50)) {
-        ok++;
-      }
+      const idx = (py * _collisionWidth + px) * 4;
+      const r = _collisionData[idx];
+      const g = _collisionData[idx + 1];
+      const b = _collisionData[idx + 2];
+      if (!(r > 200 && g < 50 && b < 50)) ok++;
     }
   }
 
@@ -277,3 +283,4 @@ window.initTracking = initTracking;
 window.requestPermission = requestPermission;
 window.resetTrackingPosition = resetTrackingPosition;
 window.getStepCount = getStepCount;
+window.initCollisionCache = initCollisionCache;

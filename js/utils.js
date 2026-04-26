@@ -36,30 +36,40 @@ function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
     .then(json => {
-      // Charger les points
       const points = normaliserPoints(json);
-      points.forEach(function(p) {
-        var marker = L.marker(convertCoord(p.x, p.y), {
-          icon: choisirIcone(p)
-        });
-        marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`);
-        marker.addTo(layer);
-      });
 
-      // Charger les routes embarquées en lecture seule dans le même layer
+      // Ajout par batch de 50 pour éviter de freezer le thread UI
+      const BATCH = 50;
+      let index = 0;
+
+      function ajouterBatch() {
+        const fin = Math.min(index + BATCH, points.length);
+        for (let i = index; i < fin; i++) {
+          const p = points[i];
+          var marker = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
+          marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`);
+          marker.addTo(layer);
+        }
+        index = fin;
+        if (index < points.length) {
+          requestAnimationFrame(ajouterBatch);
+        }
+      }
+
+      requestAnimationFrame(ajouterBatch);
+
+      // Routes embarquées en lecture seule dans le même layer
       if (Array.isArray(json.roads) && json.roads.length > 0) {
         json.roads.forEach(function(road) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
-          const latlngs = road.points.map(function(p) {
-            return convertCoord(p.x, p.y);
-          });
-          L.polyline(latlngs, {
-            ...style,
-            interactive: false
-          }).addTo(layer);
+          const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
+          L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
         });
       }
+    })
+    .catch(function(err) {
+      console.warn("[Data] Erreur chargement", url, err);
     });
 }
 
