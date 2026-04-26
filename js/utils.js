@@ -26,6 +26,12 @@ function normaliserPoints(json) {
   return [];
 }
 
+const ROAD_STYLES_DATA = {
+  principal:  { color: "#00ff00", weight: 5, opacity: 1 },
+  secondaire: { color: "#b000ff", weight: 5, opacity: 1 },
+  chemin:     { color: "#ffff00", weight: 5, opacity: 1 }
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
@@ -40,12 +46,19 @@ function ajouterPointsDepuisJSON(url, layer) {
         marker.addTo(layer);
       });
 
-      // Charger les routes embarquées si présentes
+      // Charger les routes embarquées en lecture seule dans le même layer
       if (Array.isArray(json.roads) && json.roads.length > 0) {
-        if (window.setRoads) {
-          const existing = window.getRoads ? window.getRoads() : [];
-          window.setRoads([...existing, ...json.roads]);
-        }
+        json.roads.forEach(function(road) {
+          if (!road.points || road.points.length < 2) return;
+          const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
+          const latlngs = road.points.map(function(p) {
+            return convertCoord(p.x, p.y);
+          });
+          L.polyline(latlngs, {
+            ...style,
+            interactive: false
+          }).addTo(layer);
+        });
       }
     });
 }
