@@ -457,7 +457,7 @@ function _confirmerAction(titre, texte, callback) {
       </div>
     </div>
   `;
-  document.body.appendChild(overlay);
+  document.documentElement.appendChild(overlay);
 
   document.getElementById("_conf-annuler").addEventListener("click", function () { overlay.remove(); });
   document.getElementById("_conf-ok").addEventListener("click", function () { overlay.remove(); callback(); });
@@ -695,7 +695,7 @@ function afficherPopupChangerPlan() {
     </div>
   `;
 
-  document.body.appendChild(overlay);
+  document.documentElement.appendChild(overlay);
   document.getElementById("popupResterIci").addEventListener("click", function () { overlay.remove(); });
   document.getElementById("popupChargerPlan").addEventListener("click", function () { window.location.href = "import.html"; });
   overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
@@ -817,6 +817,9 @@ function resetConfig() {
 // VIDER LE CACHE APPLICATIF
 // =========================
 function viderCacheAppli() {
+  // Fermer la modale config si elle est ouverte
+  const cfgModal = document.getElementById("kta-cfg-modal");
+  if (cfgModal) cfgModal.remove();
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `
@@ -833,7 +836,7 @@ function viderCacheAppli() {
       </div>
     </div>
   `;
-  document.body.appendChild(overlay1);
+  document.documentElement.appendChild(overlay1);
 
   document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
   document.getElementById("cache-continuer-1").addEventListener("click", function () {
@@ -857,7 +860,7 @@ function viderCacheAppli() {
         </div>
       </div>
     `;
-    document.body.appendChild(overlay2);
+    document.documentElement.appendChild(overlay2);
 
     document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
@@ -865,7 +868,7 @@ function viderCacheAppli() {
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
       overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
-      document.body.appendChild(overlayWait);
+      document.documentElement.appendChild(overlayWait);
 
       try {
         if ("serviceWorker" in navigator) {
@@ -883,7 +886,7 @@ function viderCacheAppli() {
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
         overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
-        document.body.appendChild(overlayErr);
+        document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }
     });
