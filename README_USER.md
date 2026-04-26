@@ -22,7 +22,7 @@ Ces données, si elles étaient rendues publiques, pourraient :
 - Ne jamais partager les fichiers de données (`data/*.json`) en dehors de votre groupe de confiance
 - Ne jamais publier de captures d'écran montrant des coordonnées ou des localisations précises
 - Ne jamais laisser l'application ouverte et visible sur un appareil accessible à des tiers
-- En cas de perte ou vol de l'appareil contenant les données, avertir les personnes concernées
+
 
 > Ces lieux appartiennent à leur histoire. Leur préservation dépend de la discrétion de ceux qui les fréquentent.
 
@@ -48,7 +48,6 @@ Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez 
 - Une carte papier ou une version imprimée du plan
 - Une boussole physique
 - Une lampe frontale avec piles de rechange
-- De quoi communiquer avec le reste du groupe
 
 ---
 
