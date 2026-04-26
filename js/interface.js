@@ -45,8 +45,6 @@ L.control.titleControl = function () {
 
 // =========================
 // PANNEAU ANCRÉ AUX BOUTONS
-// Remplace les L.popup() pour les contrôles de la barre latérale.
-// Usage : ouvrirPanneauAncre(btnElement, htmlContenu, titreOptionnel)
 // =========================
 (function () {
   let _panneauActif = null;
@@ -66,18 +64,15 @@ L.control.titleControl = function () {
   window.fermerPanneau = fermerPanneau;
 
   window.ouvrirPanneauAncre = function (btnEl, html, titre) {
-    // Fermer un éventuel panneau déjà ouvert
     fermerPanneau();
 
     const panneau = document.createElement("div");
     panneau.className = "kta-panneau";
 
-    // Flèche
     const fleche = document.createElement("div");
     fleche.className = "kta-panneau-fleche";
     panneau.appendChild(fleche);
 
-    // En-tête avec titre + bouton fermer
     if (titre) {
       const header = document.createElement("div");
       header.className = "kta-panneau-header";
@@ -92,7 +87,6 @@ L.control.titleControl = function () {
       panneau.appendChild(header);
     }
 
-    // Corps
     const corps = document.createElement("div");
     corps.className = "kta-panneau-corps";
     corps.innerHTML = html;
@@ -101,32 +95,26 @@ L.control.titleControl = function () {
     document.body.appendChild(panneau);
     _panneauActif = panneau;
 
-    // Positionner à gauche du bouton
     const rect = btnEl.getBoundingClientRect();
-    const panH = panneau.offsetHeight || 400; // estimation initiale
+    const panH = panneau.offsetHeight || 400;
 
-    // Horizontal : à gauche du bouton avec un petit gap
     const left = rect.left - panneau.offsetWidth - 10;
-    // Vertical : aligné sur le centre du bouton, clampé dans la fenêtre
     let top = rect.top + rect.height / 2 - panH / 2;
     top = Math.max(10, Math.min(top, window.innerHeight - panH - 10));
 
     panneau.style.left = Math.max(8, left) + "px";
     panneau.style.top = top + "px";
 
-    // Recalculer après rendu réel
     requestAnimationFrame(() => {
       const realH = panneau.offsetHeight;
       let realTop = rect.top + rect.height / 2 - realH / 2;
       realTop = Math.max(10, Math.min(realTop, window.innerHeight - realH - 10));
       panneau.style.top = realTop + "px";
 
-      // Positionner la flèche verticalement au niveau du bouton
       const arrowTop = (rect.top + rect.height / 2) - panneau.getBoundingClientRect().top;
       fleche.style.top = Math.max(16, arrowTop) + "px";
     });
 
-    // Fermer en cliquant dehors (délai pour éviter le clic d'ouverture)
     setTimeout(() => {
       _closeOnOutside = function (ev) {
         if (!panneau.contains(ev.target) && ev.target !== btnEl) {
@@ -138,14 +126,8 @@ L.control.titleControl = function () {
   };
 })();
 
-// Surcharge appliquerConfig / resetConfig pour fermer le panneau au lieu de closePopup
-// (les fonctions originales appellent window.map.closePopup() — on le garde intact,
-//  on ajoute juste fermerPanneau() en plus)
 const _origAppliquerConfig_wrap = window.appliquerConfig;
 const _origResetConfig_wrap = window.resetConfig;
-
-// Ces surcharges seront appliquées après que les fonctions originales soient définies
-// (voir bas du fichier, section "patch post-définition")
 
 // =========================
 // EXPORT SESSION JSON
@@ -188,31 +170,14 @@ function importerSessionJSON(file) {
         return;
       }
 
-      if (window.setEditorPoints) {
-        window.setEditorPoints(data.editorPoints || []);
-      }
-
-      if (window.renderEditorPoints) {
-        window.renderEditorPoints();
-      }
-
-      if (window.resetMesure) {
-        window.resetMesure();
-      }
-
+      if (window.setEditorPoints) window.setEditorPoints(data.editorPoints || []);
+      if (window.renderEditorPoints) window.renderEditorPoints();
+      if (window.resetMesure) window.resetMesure();
       if (window.setMeasurePoints) {
-        const measurePoints =
-          data.measure && data.measure.points ? data.measure.points : [];
-        window.setMeasurePoints(measurePoints);
+        window.setMeasurePoints(data.measure && data.measure.points ? data.measure.points : []);
       }
-
-      if (window.resetRoads) {
-        window.resetRoads();
-      }
-
-      if (window.setRoads) {
-        window.setRoads(data.roads || []);
-      }
+      if (window.resetRoads) window.resetRoads();
+      if (window.setRoads) window.setRoads(data.roads || []);
 
       alert("Import terminé");
     } catch (err) {
@@ -234,17 +199,249 @@ function ouvrirImportSession() {
 
   input.onchange = function (e) {
     const file = e.target.files[0];
-    if (file) {
-      importerSessionJSON(file);
-    }
+    if (file) importerSessionJSON(file);
   };
 
   input.click();
 }
 
 // =========================
+// CONVERTISSEUR JSON — modale plein écran
+// Conversion bidirectionnelle : data ↔ devmap-session (editorPoints)
+// =========================
+function afficherConvertisseur() {
+  const existing = document.getElementById("kta-conv-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-conv-modal";
+  modal.className = "kta-readme-modal-overlay";
+
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">🔄 Convertisseur JSON</span>
+        <button class="kta-panneau-close" id="kta-conv-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <!-- Sélection du sens -->
+        <div class="kta-conv-sens-wrap">
+          <button class="kta-conv-sens-btn active" id="kta-conv-btn-ed2data">
+            <span class="kta-conv-sens-label">✏️ → 🗂️ Vers calque de données</span>
+            <span class="kta-conv-sens-desc">Convertit les points du mode édition en calque chargeable dans le plan</span>
+          </button>
+          <button class="kta-conv-sens-btn" id="kta-conv-btn-data2ed">
+            <span class="kta-conv-sens-label">🗂️ → ✏️ Vers mode édition</span>
+            <span class="kta-conv-sens-desc">Convertit un calque de données en session importable dans le mode édition</span>
+          </button>
+        </div>
+
+        <!-- Champ type (pour session→data uniquement) -->
+        <div id="kta-conv-type-wrap" class="kta-conv-champ">
+          <label class="kta-conv-label">
+            Type du fichier de sortie
+            <span class="kta-conv-hint">ex: carriere, puits, vehicule…</span>
+          </label>
+          <input class="kta-cfg-input" id="kta-conv-type" type="text" placeholder="carriere" value="carriere">
+        </div>
+
+        <!-- Sélection du fichier -->
+        <div class="kta-conv-champ">
+          <label class="kta-conv-label">Fichier source</label>
+          <div class="kta-conv-drop" id="kta-conv-drop">
+            <span id="kta-conv-drop-label">📂 Cliquer ou glisser un fichier .json</span>
+            <input type="file" id="kta-conv-file" accept=".json" style="display:none">
+          </div>
+        </div>
+
+        <!-- Aperçu -->
+        <div class="kta-conv-champ" id="kta-conv-apercu-wrap" style="display:none;">
+          <label class="kta-conv-label">Aperçu</label>
+          <div class="kta-conv-apercu" id="kta-conv-apercu"></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="kta-conv-actions">
+          <button class="kta-btn kta-btn-ghost" id="kta-conv-annuler">Annuler</button>
+          <button class="kta-btn kta-btn-primary" id="kta-conv-telecharger" disabled>⬇️ Télécharger</button>
+        </div>
+
+        <div id="kta-conv-erreur" class="kta-conv-erreur" style="display:none;"></div>
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+
+  // ── État interne ──────────────────────────────────────────
+  let sens = "ed2data"; // "ed2data" | "data2ed"
+  let jsonSource = null;
+  let nomFichierSource = "";
+
+  // ── Refs DOM ─────────────────────────────────────────────
+  const btnClose     = document.getElementById("kta-conv-close");
+  const btnEd2Data   = document.getElementById("kta-conv-btn-ed2data");
+  const btnData2Ed   = document.getElementById("kta-conv-btn-data2ed");
+  const typeWrap     = document.getElementById("kta-conv-type-wrap");
+  const inputType    = document.getElementById("kta-conv-type");
+  const dropZone     = document.getElementById("kta-conv-drop");
+  const fileInput    = document.getElementById("kta-conv-file");
+  const dropLabel    = document.getElementById("kta-conv-drop-label");
+  const apercuWrap   = document.getElementById("kta-conv-apercu-wrap");
+  const apercuEl    = document.getElementById("kta-conv-apercu");
+  const btnDl        = document.getElementById("kta-conv-telecharger");
+  const btnAnnuler   = document.getElementById("kta-conv-annuler");
+  const erreurEl     = document.getElementById("kta-conv-erreur");
+
+  // ── Helpers ───────────────────────────────────────────────
+  function afficherErreur(msg) {
+    erreurEl.textContent = msg;
+    erreurEl.style.display = msg ? "block" : "none";
+  }
+
+  function mettreAJourApercu() {
+    if (!jsonSource) return;
+    try {
+      const converti = convertir(jsonSource, sens, inputType.value.trim() || "data");
+      const preview = JSON.stringify(converti, null, 2);
+      const lignes = preview.split("\n").slice(0, 12).join("\n");
+      apercuEl.textContent = lignes + (preview.split("\n").length > 12 ? "\n  …" : "");
+      apercuWrap.style.display = "block";
+      btnDl.disabled = false;
+      afficherErreur("");
+    } catch (err) {
+      afficherErreur("❌ " + err.message);
+      apercuWrap.style.display = "none";
+      btnDl.disabled = true;
+    }
+  }
+
+  function chargerFichier(file) {
+    nomFichierSource = file.name;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        jsonSource = JSON.parse(e.target.result);
+        dropLabel.textContent = "✅ " + file.name;
+        afficherErreur("");
+        mettreAJourApercu();
+      } catch(err) {
+        afficherErreur("❌ JSON invalide : " + err.message);
+        jsonSource = null;
+        btnDl.disabled = true;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ── Conversion ────────────────────────────────────────────
+  function convertir(json, direction, typeLabel) {
+    if (direction === "ed2data") {
+      // session (editorPoints) → data
+      let points = [];
+      if (Array.isArray(json.editorPoints)) {
+        points = json.editorPoints;
+      } else if (Array.isArray(json.data)) {
+        points = json.data; // déjà au bon format, on adapte juste l'enveloppe
+      } else {
+        throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
+      }
+      return {
+        type: typeLabel,
+        version: 1,
+        data: points
+      };
+    } else {
+      // data → session (editorPoints)
+      let points = [];
+      if (Array.isArray(json.data)) {
+        points = json.data;
+      } else if (Array.isArray(json.editorPoints)) {
+        points = json.editorPoints;
+      } else {
+        throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
+      }
+      return {
+        type: "devmap-session",
+        version: 1,
+        editorPoints: points,
+        measure: { points: [] },
+        roads: []
+      };
+    }
+  }
+
+  function nomFichierSortie() {
+    const base = nomFichierSource.replace(/\.json$/i, "");
+    return sens === "ed2data"
+      ? base + "_data.json"
+      : base + "_session.json";
+  }
+
+  // ── Événements ────────────────────────────────────────────
+  btnClose.addEventListener("click", function() { modal.remove(); });
+  btnAnnuler.addEventListener("click", function() { modal.remove(); });
+  modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
+
+  btnEd2Data.addEventListener("click", function() {
+    sens = "ed2data";
+    btnEd2Data.classList.add("active");
+    btnData2Ed.classList.remove("active");
+    typeWrap.style.display = "block";
+    mettreAJourApercu();
+  });
+
+  btnData2Ed.addEventListener("click", function() {
+    sens = "data2ed";
+    btnData2Ed.classList.add("active");
+    btnEd2Data.classList.remove("active");
+    typeWrap.style.display = "none";
+    mettreAJourApercu();
+  });
+
+  inputType.addEventListener("input", mettreAJourApercu);
+
+  dropZone.addEventListener("click", function() { fileInput.click(); });
+  fileInput.addEventListener("change", function() {
+    if (fileInput.files[0]) chargerFichier(fileInput.files[0]);
+  });
+
+  dropZone.addEventListener("dragover", function(e) {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+  dropZone.addEventListener("dragleave", function() {
+    dropZone.classList.remove("dragover");
+  });
+  dropZone.addEventListener("drop", function(e) {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.endsWith(".json")) chargerFichier(f);
+    else afficherErreur("Le fichier doit être un .json");
+  });
+
+  btnDl.addEventListener("click", function() {
+    if (!jsonSource) return;
+    try {
+      const converti = convertir(jsonSource, sens, inputType.value.trim() || "data");
+      const json = JSON.stringify(converti, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomFichierSortie();
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      afficherErreur("❌ " + err.message);
+    }
+  });
+}
+
+// =========================
 // HELPER — modale de confirmation simple (1 clic)
-// _confirmerAction(titre, texte, callbackOui)
 // =========================
 function _confirmerAction(titre, texte, callback) {
   const overlay = document.createElement("div");
@@ -262,13 +459,8 @@ function _confirmerAction(titre, texte, callback) {
   `;
   document.body.appendChild(overlay);
 
-  document.getElementById("_conf-annuler").addEventListener("click", function () {
-    overlay.remove();
-  });
-  document.getElementById("_conf-ok").addEventListener("click", function () {
-    overlay.remove();
-    callback();
-  });
+  document.getElementById("_conf-annuler").addEventListener("click", function () { overlay.remove(); });
+  document.getElementById("_conf-ok").addEventListener("click", function () { overlay.remove(); callback(); });
 }
 
 // =========================
@@ -277,11 +469,9 @@ function _confirmerAction(titre, texte, callback) {
 function afficherReadme() {
   console.log("[README] afficherReadme appelé");
 
-  // Si déjà ouverte, fermer
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  // Ouvrir immédiatement avec état de chargement
   _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement du README…</p>");
 
   console.log("[README] modale ouverte, lancement fetch");
@@ -350,48 +540,95 @@ function _ouvrirReadmeModal(html) {
 
   document.documentElement.appendChild(modal);
 
-  document.getElementById("kta-readme-close").addEventListener("click", function () {
-    modal.remove();
-  });
-
-  // Clic sur l'overlay pour fermer
-  modal.addEventListener("click", function (e) {
-    if (e.target === modal) modal.remove();
-  });
+  document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
 
 // =========================
 // AIDE — panneau ancré
 // =========================
-function afficherAide(btnEl) {
-  const html = `
-    <div class="kta-aide-grille">
-      <span class="kta-aide-icone">▶️ / ⏹️</span><span>Démarrer / arrêter le tracking</span>
-      <span class="kta-aide-icone">📍</span><span>Recalage de position</span>
-      <span class="kta-aide-icone">📏</span><span>Mesurer une distance</span>
-      <span class="kta-aide-icone">❌</span><span>Réinitialiser la mesure</span>
-      <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan</span>
-      <span class="kta-aide-icone">✏️</span><span>Ajouter un point</span>
-      <span class="kta-aide-icone">🗑️</span><span>Effacer les points ajoutés</span>
-      <span class="kta-aide-icone">🟩</span><span>Route principale</span>
-      <span class="kta-aide-icone">🟪</span><span>Route secondaire</span>
-      <span class="kta-aide-icone">🟨</span><span>Chemin</span>
-      <span class="kta-aide-icone">🧹</span><span>Réinitialiser les tracés</span>
-      <span class="kta-aide-icone">📂</span><span>Importer une session</span>
-      <span class="kta-aide-icone">💾</span><span>Exporter la session</span>
-      <span class="kta-aide-icone">🗺️</span><span>Légende des icônes</span>
-      <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
-      <span class="kta-aide-icone">🗺️</span><span>Légende des icônes</span>
-      <span class="kta-aide-icone">❓</span><span>Cette aide</span>
-      <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
-      <span class="kta-aide-icone">⚙️</span><span>Configuration</span>
+function afficherAide() {
+  const existing = document.getElementById("kta-aide-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-aide-modal";
+  modal.className = "kta-readme-modal-overlay";
+
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:560px;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">❓ Aide — Référence des boutons</span>
+        <button class="kta-panneau-close" id="kta-aide-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Navigation & Carte</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
+            <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan (image)</span>
+            <span class="kta-aide-icone">📏</span><span>Mesurer une distance</span>
+            <span class="kta-aide-icone">❌</span><span>Réinitialiser la mesure</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📍 Tracking & Déplacement</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">▶️ / ⏹️</span><span>Démarrer / arrêter le tracking</span>
+            <span class="kta-aide-icone">📍</span><span>Mode recalage de position</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">✏️ Points d'intérêt</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point</span>
+            <span class="kta-aide-icone">🗑️</span><span>Effacer tous les points ajoutés</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🛣️ Tracés & Routes</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🟩</span><span>Tracer une route principale</span>
+            <span class="kta-aide-icone">🟪</span><span>Tracer une route secondaire</span>
+            <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
+            <span class="kta-aide-icone">🧹</span><span>Effacer tous les tracés</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">💾 Import / Export</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📂</span><span>Importer une session</span>
+            <span class="kta-aide-icone">💾</span><span>Exporter la session en cours</span>
+            <span class="kta-aide-icone">🔄</span><span>Convertir édition ↔ calque de données</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">ℹ️ Informations & Réglages</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
+            <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
+            <span class="kta-aide-icone">⚙️</span><span>Réglages & configuration</span>
+            <span class="kta-aide-icone">❓</span><span>Cette aide</span>
+          </div>
+        </div>
+
+      </div>
     </div>
   `;
-  ouvrirPanneauAncre(btnEl, html, "Aide");
+
+  document.documentElement.appendChild(modal);
+  document.getElementById("kta-aide-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
 
 // =========================
-// CHANGER DE PLAN — overlay modal (inchangé)
+// CHANGER DE PLAN — overlay modal
 // =========================
 function afficherPopupChangerPlan() {
   const existing = document.getElementById("popupChangerPlan");
@@ -400,68 +637,27 @@ function afficherPopupChangerPlan() {
   const overlay = document.createElement("div");
   overlay.id = "popupChangerPlan";
   overlay.style.cssText = `
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
+    position: fixed; inset: 0; z-index: 9999;
     background: rgba(10, 15, 25, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    box-sizing: border-box;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; box-sizing: border-box;
   `;
 
   overlay.innerHTML = `
-    <div style="
-      background: #fff;
-      color: #111;
-      border-radius: 14px;
-      padding: 24px;
-      max-width: 380px;
-      width: 100%;
-      font-family: Arial, sans-serif;
-      box-shadow: 0 10px 35px rgba(0,0,0,0.35);
-    ">
-      <h2 style="margin: 0 0 10px; font-size: 18px;">Changer de plan</h2>
-      <p style="margin: 0 0 20px; font-size: 14px; color: #555;">
-        Tu vas quitter la session en cours. Les données non exportées seront perdues.
-      </p>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
-        <button id="popupResterIci" style="
-          padding: 10px 16px;
-          border-radius: 8px;
-          border: 1px solid #ccc;
-          background: #f5f5f5;
-          color: #333;
-          font-size: 14px;
-          cursor: pointer;
-        ">Rester ici</button>
-        <button id="popupChargerPlan" style="
-          padding: 10px 16px;
-          border-radius: 8px;
-          border: 0;
-          background: #1f6feb;
-          color: #fff;
-          font-size: 14px;
-          cursor: pointer;
-        ">Charger un plan</button>
+    <div style="background:#fff;color:#111;border-radius:14px;padding:24px;max-width:380px;width:100%;font-family:Arial,sans-serif;box-shadow:0 10px 35px rgba(0,0,0,0.35);">
+      <h2 style="margin:0 0 10px;font-size:18px;">Changer de plan</h2>
+      <p style="margin:0 0 20px;font-size:14px;color:#555;">Tu vas quitter la session en cours. Les données non exportées seront perdues.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="popupResterIci" style="padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;color:#333;font-size:14px;cursor:pointer;">Rester ici</button>
+        <button id="popupChargerPlan" style="padding:10px 16px;border-radius:8px;border:0;background:#1f6feb;color:#fff;font-size:14px;cursor:pointer;">Charger un plan</button>
       </div>
     </div>
   `;
 
   document.body.appendChild(overlay);
-
-  document.getElementById("popupResterIci").addEventListener("click", function () {
-    overlay.remove();
-  });
-
-  document.getElementById("popupChargerPlan").addEventListener("click", function () {
-    window.location.href = "import.html";
-  });
-
-  overlay.addEventListener("click", function (e) {
-    if (e.target === overlay) overlay.remove();
-  });
+  document.getElementById("popupResterIci").addEventListener("click", function () { overlay.remove(); });
+  document.getElementById("popupChargerPlan").addEventListener("click", function () { window.location.href = "import.html"; });
+  overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
 }
 
 // =========================
@@ -472,44 +668,32 @@ function afficherConfig(btnEl) {
 
   const html = `
     <div class="kta-cfg-grille">
-
       <label class="kta-cfg-label">Échelle</label>
       <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}">
-
       <label class="kta-cfg-label">Taille d'un pas (m)</label>
       <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
-
       <label class="kta-cfg-label">Hauteur image (px)</label>
       <input class="kta-cfg-input" id="cfg_imageHeight" type="number" value="${c.imageHeight}">
-
       <label class="kta-cfg-label">Largeur image (px)</label>
       <input class="kta-cfg-input" id="cfg_imageWidth" type="number" value="${c.imageWidth}">
-
       <label class="kta-cfg-label">Position initiale X</label>
       <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
-
       <label class="kta-cfg-label">Position initiale Y</label>
       <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
-
       <label class="kta-cfg-label">Seuil détection pas</label>
       <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
-
       <label class="kta-cfg-label">Cooldown pas (ms)</label>
       <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
-
       <label class="kta-cfg-label">Debug mouvement</label>
       <select class="kta-cfg-input" id="cfg_motionDebug">
         <option value="true"  ${c.motionDebug ? "selected" : ""}>Oui</option>
         <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
       </select>
-
     </div>
-
     <div class="kta-cfg-actions">
       <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
       <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
     </div>
-
     <div class="kta-cfg-cache">
       <button class="kta-btn kta-btn-danger" onclick="viderCacheAppli()">🗑️ Vider le cache</button>
     </div>
@@ -519,47 +703,34 @@ function afficherConfig(btnEl) {
 }
 
 function appliquerConfig() {
-  APP_CONFIG.scale          = parseFloat(document.getElementById("cfg_scale").value);
-  APP_CONFIG.stepLength     = parseFloat(document.getElementById("cfg_stepLength").value);
-  APP_CONFIG.imageHeight    = parseInt(document.getElementById("cfg_imageHeight").value, 10);
-  APP_CONFIG.imageWidth     = parseInt(document.getElementById("cfg_imageWidth").value, 10);
-  APP_CONFIG.startX         = parseInt(document.getElementById("cfg_startX").value, 10);
-  APP_CONFIG.startY         = parseInt(document.getElementById("cfg_startY").value, 10);
-  APP_CONFIG.stepThreshold  = parseFloat(document.getElementById("cfg_stepThreshold").value);
-  APP_CONFIG.stepCooldown   = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  APP_CONFIG.motionDebug    = document.getElementById("cfg_motionDebug").value === "true";
+  APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
+  APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
+  APP_CONFIG.imageHeight   = parseInt(document.getElementById("cfg_imageHeight").value, 10);
+  APP_CONFIG.imageWidth    = parseInt(document.getElementById("cfg_imageWidth").value, 10);
+  APP_CONFIG.startX        = parseInt(document.getElementById("cfg_startX").value, 10);
+  APP_CONFIG.startY        = parseInt(document.getElementById("cfg_startY").value, 10);
+  APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
+  APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
+  APP_CONFIG.motionDebug   = document.getElementById("cfg_motionDebug").value === "true";
 
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
-
-  if (window.resetTrackingPosition) {
-    window.resetTrackingPosition();
-  }
-
-  // Ferme le panneau ancré (+ closePopup pour compatibilité)
+  if (window.resetTrackingPosition) window.resetTrackingPosition();
   if (window.fermerPanneau) window.fermerPanneau();
   if (window.map) window.map.closePopup();
 }
 
 function resetConfig() {
   Object.assign(APP_CONFIG, DEFAULT_CONFIG);
-
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
-
-  if (window.resetTrackingPosition) {
-    window.resetTrackingPosition();
-  }
-
+  if (window.resetTrackingPosition) window.resetTrackingPosition();
   if (window.fermerPanneau) window.fermerPanneau();
   if (window.map) window.map.closePopup();
 }
 
 // =========================
 // VIDER LE CACHE APPLICATIF
-// Double confirmation avant de désinscrire le SW et vider le Cache API
 // =========================
 function viderCacheAppli() {
-
-  // — Première confirmation —
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `
@@ -578,14 +749,10 @@ function viderCacheAppli() {
   `;
   document.body.appendChild(overlay1);
 
-  document.getElementById("cache-annuler-1").addEventListener("click", function () {
-    overlay1.remove();
-  });
-
+  document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
   document.getElementById("cache-continuer-1").addEventListener("click", function () {
     overlay1.remove();
 
-    // — Deuxième confirmation —
     const overlay2 = document.createElement("div");
     overlay2.className = "kta-modal-overlay";
     overlay2.innerHTML = `
@@ -606,62 +773,32 @@ function viderCacheAppli() {
     `;
     document.body.appendChild(overlay2);
 
-    document.getElementById("cache-annuler-2").addEventListener("click", function () {
-      overlay2.remove();
-    });
-
+    document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
       overlay2.remove();
-
-      // — Feedback pendant l'opération —
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `
-        <div class="kta-modal">
-          <div class="kta-modal-icon">⏳</div>
-          <div class="kta-modal-titre">Nettoyage en cours…</div>
-          <div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div>
-        </div>
-      `;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
       document.body.appendChild(overlayWait);
 
       try {
-        // 1. Désinscrire tous les Service Workers
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map(r => r.unregister()));
         }
-
-        // 2. Vider tous les caches du Cache API
         if ("caches" in window) {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map(name => caches.delete(name)));
         }
-
-        // 3. Rechargement forcé depuis le réseau
         overlayWait.remove();
         window.location.reload(true);
-
       } catch (err) {
-        console.error("Erreur lors du vidage du cache :", err);
         overlayWait.remove();
-
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `
-          <div class="kta-modal">
-            <div class="kta-modal-icon">❌</div>
-            <div class="kta-modal-titre">Erreur</div>
-            <div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div>
-            <div class="kta-modal-actions">
-              <button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button>
-            </div>
-          </div>
-        `;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
         document.body.appendChild(overlayErr);
-        document.getElementById("cache-err-ok").addEventListener("click", function () {
-          overlayErr.remove();
-        });
+        document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }
     });
   });
@@ -669,8 +806,6 @@ function viderCacheAppli() {
 
 // =========================
 // GESTIONNAIRE DE MODES EXCLUSIFS
-// Un seul mode actif à la fois parmi : mesure, édition, recalage, routes
-// Le tracking (▶️/⏹️) est volontairement exclu
 // =========================
 const _modesActifs = {};
 
@@ -684,16 +819,8 @@ function _desactiverTousLesModes() {
 
 function _activerMode(cle, btnEl, activerFn, desactiverFn) {
   const dejaActif = !!_modesActifs[cle];
-
-  // Tout désactiver d'abord
   _desactiverTousLesModes();
-
-  if (dejaActif) {
-    // C'était un toggle : on ne réactive pas
-    return;
-  }
-
-  // Activer le nouveau mode
+  if (dejaActif) return;
   activerFn();
   btnEl.classList.add("kta-actif");
   _modesActifs[cle] = { btnEl, desactiverFn };
@@ -707,114 +834,63 @@ function initInterface() {
   if (window.interfaceInitialized) return;
   window.interfaceInitialized = true;
 
-  // ---------- TITRE ----------
   L.control.titleControl().addTo(window.map);
 
-  // ---------- BLOC INFOS (aide, doc, plan, config, légende) ----------
+  // ---------- BLOC INFOS ----------
   const infosControl = L.control({ position: "topright" });
-
   infosControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnHelp = L.DomUtil.create("a", "", div);
-    btnHelp.innerHTML = "❓";
-    btnHelp.href = "javascript:void(0)";
-    btnHelp.title = "Aide";
+    btnHelp.innerHTML = "❓"; btnHelp.href = "javascript:void(0)"; btnHelp.title = "Aide";
 
     const btnReadme = L.DomUtil.create("a", "", div);
-    btnReadme.innerHTML = "📖";
-    btnReadme.href = "javascript:void(0)";
-    btnReadme.title = "Documentation";
+    btnReadme.innerHTML = "📖"; btnReadme.href = "javascript:void(0)"; btnReadme.title = "Documentation";
 
     const btnChangePlan = L.DomUtil.create("a", "", div);
-    btnChangePlan.innerHTML = "🗂️";
-    btnChangePlan.href = "javascript:void(0)";
-    btnChangePlan.title = "Changer de plan";
+    btnChangePlan.innerHTML = "🗂️"; btnChangePlan.href = "javascript:void(0)"; btnChangePlan.title = "Changer de plan";
 
     const btnSettings = L.DomUtil.create("a", "", div);
-    btnSettings.innerHTML = "⚙️";
-    btnSettings.href = "javascript:void(0)";
-    btnSettings.title = "Réglages";
+    btnSettings.innerHTML = "⚙️"; btnSettings.href = "javascript:void(0)"; btnSettings.title = "Réglages";
 
     const btnLegende = L.DomUtil.create("a", "", div);
-    btnLegende.innerHTML = "🗺️";
-    btnLegende.href = "javascript:void(0)";
-    btnLegende.title = "Légende";
+    btnLegende.innerHTML = "🗺️"; btnLegende.href = "javascript:void(0)"; btnLegende.title = "Légende";
 
-    L.DomEvent.on(btnHelp, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      afficherAide(btnHelp);
-    });
-
-    L.DomEvent.on(btnReadme, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      afficherReadme();
-    });
-
-    L.DomEvent.on(btnChangePlan, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      afficherPopupChangerPlan();
-    });
-
-    L.DomEvent.on(btnSettings, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      afficherConfig(btnSettings);
-    });
-
-    L.DomEvent.on(btnLegende, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      afficherLegende(btnLegende);
-    });
+    L.DomEvent.on(btnHelp,      "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherAide(); });
+    L.DomEvent.on(btnReadme,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherReadme(); });
+    L.DomEvent.on(btnChangePlan,"click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPopupChangerPlan(); });
+    L.DomEvent.on(btnSettings,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(btnSettings); });
+    L.DomEvent.on(btnLegende,   "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherLegende(); });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   infosControl.addTo(window.map);
 
   // ---------- BLOC TRACKING ----------
   const trackingControl = L.control({ position: "topright" });
-
   trackingControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnTrack = L.DomUtil.create("a", "", div);
-    btnTrack.innerHTML = "▶️";
-    btnTrack.href = "javascript:void(0)";
-    btnTrack.title = "Démarrer / arrêter le tracking";
+    btnTrack.innerHTML = "▶️"; btnTrack.href = "javascript:void(0)"; btnTrack.title = "Démarrer / arrêter le tracking";
 
     const btnRecal = L.DomUtil.create("a", "", div);
-    btnRecal.innerHTML = "📍";
-    btnRecal.href = "javascript:void(0)";
-    btnRecal.title = "Mode recalage";
+    btnRecal.innerHTML = "📍"; btnRecal.href = "javascript:void(0)"; btnRecal.title = "Mode recalage";
 
     let isTracking = false;
 
     L.DomEvent.on(btnTrack, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-
-      if (!isTracking) {
-        requestPermission();
-        startTracking();
-        btnTrack.innerHTML = "⏹️";
-      } else {
-        stopTracking();
-        btnTrack.innerHTML = "▶️";
-      }
-
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      if (!isTracking) { requestPermission(); startTracking(); btnTrack.innerHTML = "⏹️"; }
+      else { stopTracking(); btnTrack.innerHTML = "▶️"; }
       isTracking = !isTracking;
     });
 
     L.DomEvent.on(btnRecal, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       if (typeof modeRecalage === "undefined") return;
-
-      _activerMode(
-        "recalage",
-        btnRecal,
+      _activerMode("recalage", btnRecal,
         function () { modeRecalage = true; },
         function () { modeRecalage = false; }
       );
@@ -823,114 +899,72 @@ function initInterface() {
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   trackingControl.addTo(window.map);
 
   // ---------- BLOC MESURE ----------
   const measureControl = L.control({ position: "topright" });
-
   measureControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnMeasure = L.DomUtil.create("a", "", div);
-    btnMeasure.innerHTML = "📏";
-    btnMeasure.href = "javascript:void(0)";
-    btnMeasure.title = "Activer la mesure";
+    btnMeasure.innerHTML = "📏"; btnMeasure.href = "javascript:void(0)"; btnMeasure.title = "Activer la mesure";
 
     const btnResetMeasure = L.DomUtil.create("a", "", div);
-    btnResetMeasure.innerHTML = "❌";
-    btnResetMeasure.href = "javascript:void(0)";
-    btnResetMeasure.title = "Réinitialiser la mesure";
+    btnResetMeasure.innerHTML = "❌"; btnResetMeasure.href = "javascript:void(0)"; btnResetMeasure.title = "Réinitialiser la mesure";
 
     L.DomEvent.on(btnMeasure, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       const varMesure = typeof modeMesure !== "undefined" ? "local" : "window";
-
-      _activerMode(
-        "mesure",
-        btnMeasure,
-        function () {
-          if (varMesure === "local") modeMesure = true;
-          else window.modeMesure = true;
-        },
-        function () {
-          if (varMesure === "local") modeMesure = false;
-          else window.modeMesure = false;
-        }
+      _activerMode("mesure", btnMeasure,
+        function () { if (varMesure === "local") modeMesure = true; else window.modeMesure = true; },
+        function () { if (varMesure === "local") modeMesure = false; else window.modeMesure = false; }
       );
     });
 
     L.DomEvent.on(btnResetMeasure, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       resetMesure();
     });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   measureControl.addTo(window.map);
 
   // ---------- BLOC PLAN ----------
   const imageControl = L.control({ position: "topright" });
-
   imageControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
     const btnDownloadPlan = L.DomUtil.create("a", "", div);
-    btnDownloadPlan.innerHTML = "🖼️";
-    btnDownloadPlan.href = "javascript:void(0)";
-    btnDownloadPlan.title = "Télécharger le plan";
-
-    L.DomEvent.on(btnDownloadPlan, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-      telechargerPlan();
-    });
-
+    btnDownloadPlan.innerHTML = "🖼️"; btnDownloadPlan.href = "javascript:void(0)"; btnDownloadPlan.title = "Télécharger le plan";
+    L.DomEvent.on(btnDownloadPlan, "click", function (e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); telechargerPlan(); });
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   imageControl.addTo(window.map);
 
-  // ---------- BLOC ÉDITION + RESET POINTS (même barre) ----------
+  // ---------- BLOC ÉDITION + RESET POINTS ----------
   const editorControl = L.control({ position: "topright" });
-
   editorControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnEdit = L.DomUtil.create("a", "", div);
-    btnEdit.innerHTML = "✏️";
-    btnEdit.href = "javascript:void(0)";
-    btnEdit.title = "Mode ajout de point";
+    btnEdit.innerHTML = "✏️"; btnEdit.href = "javascript:void(0)"; btnEdit.title = "Mode ajout de point";
 
     const btnResetEditor = L.DomUtil.create("a", "", div);
-    btnResetEditor.innerHTML = "🗑️";
-    btnResetEditor.href = "javascript:void(0)";
-    btnResetEditor.title = "Effacer les points ajoutés";
+    btnResetEditor.innerHTML = "🗑️"; btnResetEditor.href = "javascript:void(0)"; btnResetEditor.title = "Effacer les points ajoutés";
 
     L.DomEvent.on(btnEdit, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-
-      _activerMode(
-        "edition",
-        btnEdit,
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+      _activerMode("edition", btnEdit,
         function () { window.modeEdition = true; },
         function () { window.modeEdition = false; }
       );
     });
 
     L.DomEvent.on(btnResetEditor, "click", function (e) {
-      L.DomEvent.stop(e);
-      L.DomEvent.preventDefault(e);
-
+      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
       if (!window.getEditorPoints || window.getEditorPoints().length === 0) return;
-
       _confirmerAction(
         "Effacer les points ajoutés ?",
         "Tous les points ajoutés manuellement seront supprimés.<br>Cette action est irréversible.",
@@ -944,37 +978,24 @@ function initInterface() {
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   editorControl.addTo(window.map);
 
   // ---------- BLOC ROUTES ----------
   const roadControl = L.control({ position: "topright" });
-
   roadControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
-    const btnPrincipal = L.DomUtil.create("a", "", div);
-    btnPrincipal.innerHTML = "🟩";
-    btnPrincipal.href = "javascript:void(0)";
-    btnPrincipal.title = "Tracer une route principale";
-
+    const btnPrincipal  = L.DomUtil.create("a", "", div);
     const btnSecondaire = L.DomUtil.create("a", "", div);
-    btnSecondaire.innerHTML = "🟪";
-    btnSecondaire.href = "javascript:void(0)";
-    btnSecondaire.title = "Tracer une route secondaire";
-
-    const btnChemin = L.DomUtil.create("a", "", div);
-    btnChemin.innerHTML = "🟨";
-    btnChemin.href = "javascript:void(0)";
-    btnChemin.title = "Tracer un chemin";
-
+    const btnChemin     = L.DomUtil.create("a", "", div);
     const btnResetRoads = L.DomUtil.create("a", "", div);
-    btnResetRoads.innerHTML = "🧹";
-    btnResetRoads.href = "javascript:void(0)";
-    btnResetRoads.title = "Réinitialiser les tracés routes";
+
+    btnPrincipal.innerHTML  = "🟩"; btnPrincipal.href  = "javascript:void(0)"; btnPrincipal.title  = "Tracer une route principale";
+    btnSecondaire.innerHTML = "🟪"; btnSecondaire.href = "javascript:void(0)"; btnSecondaire.title = "Tracer une route secondaire";
+    btnChemin.innerHTML     = "🟨"; btnChemin.href     = "javascript:void(0)"; btnChemin.title     = "Tracer un chemin";
+    btnResetRoads.innerHTML = "🧹"; btnResetRoads.href = "javascript:void(0)"; btnResetRoads.title = "Réinitialiser les tracés routes";
 
     function _desactiverRoute() {
-      // toggleRoadMode remet currentRoad = null dans road.js
       if (window.modeRoad) toggleRoadMode(window.modeRoad);
       btnPrincipal.classList.remove("kta-actif");
       btnSecondaire.classList.remove("kta-actif");
@@ -983,94 +1004,60 @@ function initInterface() {
 
     function activerRoute(type, btnCible) {
       const dejaActif = window.modeRoad === type;
-
-      // Désactiver tout
       _desactiverTousLesModes();
       _desactiverRoute();
-
-      if (dejaActif) return; // toggle off
-
-      // Activer via toggleRoadMode qui gère currentRoad dans road.js
+      if (dejaActif) return;
       toggleRoadMode(type);
       btnCible.classList.add("kta-actif");
       _modesActifs["road"] = { btnEl: btnCible, desactiverFn: _desactiverRoute };
     }
 
-    L.DomEvent.on(btnPrincipal, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      activerRoute("principal", btnPrincipal);
-    });
-
-    L.DomEvent.on(btnSecondaire, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      activerRoute("secondaire", btnSecondaire);
-    });
-
-    L.DomEvent.on(btnChemin, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      activerRoute("chemin", btnChemin);
-    });
+    L.DomEvent.on(btnPrincipal,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("principal",  btnPrincipal); });
+    L.DomEvent.on(btnSecondaire, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("secondaire", btnSecondaire); });
+    L.DomEvent.on(btnChemin,     "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("chemin",     btnChemin); });
 
     L.DomEvent.on(btnResetRoads, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-
       if (!window.getRoads || window.getRoads().length === 0) return;
-
       _confirmerAction(
         "Effacer les tracés ?",
         "Tous les tracés de routes seront supprimés.<br>Cette action est irréversible.",
-        function () {
-          resetRoads();
-          refreshRoadButtons();
-        }
+        function () { resetRoads(); }
       );
     });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   roadControl.addTo(window.map);
 
-  // ---------- BLOC IMPORT / EXPORT ----------
+  // ---------- BLOC IMPORT / EXPORT / CONVERTISSEUR ----------
   const ioControl = L.control({ position: "topright" });
-
   ioControl.onAdd = function () {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
     const btnImport = L.DomUtil.create("a", "", div);
-    btnImport.innerHTML = "📂";
-    btnImport.href = "javascript:void(0)";
-    btnImport.title = "Importer une session";
+    btnImport.innerHTML = "📂"; btnImport.href = "javascript:void(0)"; btnImport.title = "Importer une session";
 
     const btnExport = L.DomUtil.create("a", "", div);
-    btnExport.innerHTML = "💾";
-    btnExport.href = "javascript:void(0)";
-    btnExport.title = "Exporter la session";
+    btnExport.innerHTML = "💾"; btnExport.href = "javascript:void(0)"; btnExport.title = "Exporter la session";
 
-    L.DomEvent.on(btnImport, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      ouvrirImportSession();
-    });
+    const btnConvert = L.DomUtil.create("a", "", div);
+    btnConvert.innerHTML = "🔄"; btnConvert.href = "javascript:void(0)"; btnConvert.title = "Convertisseur JSON";
 
-    L.DomEvent.on(btnExport, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      telechargerSessionJSON();
-    });
+    L.DomEvent.on(btnImport,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); ouvrirImportSession(); });
+    L.DomEvent.on(btnExport,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); telechargerSessionJSON(); });
+    L.DomEvent.on(btnConvert, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConvertisseur(); });
 
     L.DomEvent.disableClickPropagation(div);
     return div;
   };
-
   ioControl.addTo(window.map);
 }
 
 // =========================
 // LÉGENDE — panneau ancré
-// Affiche les icônes du plan et leur label
 // =========================
-
-// Labels lisibles pour chaque clé d'icône
 const LEGENDE_LABELS = {
   salle:    "Salle",
   pa:       "Puits Aération",
@@ -1087,66 +1074,132 @@ const LEGENDE_LABELS = {
   danger:   "Danger"
 };
 
-// Clés à exclure (icônes système, pas des types de points)
 const LEGENDE_EXCLURE = ["default", "track"];
 
-function afficherLegende(btnEl) {
+function afficherLegende() {
+  const existing = document.getElementById("kta-legende-modal");
+  if (existing) { existing.remove(); return; }
+
   const icons = window.PLAN_CONFIG?.icons;
 
+  const modal = document.createElement("div");
+  modal.id = "kta-legende-modal";
+  modal.className = "kta-readme-modal-overlay";
+
+  // Construire le contenu selon disponibilité des icônes
+  let contenuIcones = "";
+
   if (!icons) {
-    ouvrirPanneauAncre(btnEl, `<p style="color:#8892a4;">Aucune configuration d'icônes disponible.</p>`, "Légende");
-    return;
+    contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">Aucune configuration d'icônes disponible.</p>`;
+  } else {
+
+    // Groupes thématiques
+    const GROUPES = [
+      {
+        titre: "🕳️ Puits",
+        cles: ["pa", "pb", "pc", "pe", "ps"]
+      },
+      {
+        titre: "🏛️ Lieux",
+        cles: ["salle", "chatiere", "passage"]
+      },
+      {
+        titre: "⚠️ Signalétique",
+        cles: ["danger", "info"]
+      },
+      {
+        titre: "⚙️ Infrastructure",
+        cles: ["elec", "epure"]
+      },
+      {
+        titre: "🚗 Véhicules",
+        cles: ["vehicule"]
+      }
+    ];
+
+    // Clés déjà affectées à un groupe
+    const clesDansGroupe = GROUPES.flatMap(function(g) { return g.cles; });
+
+    // Générer les sections groupées
+    GROUPES.forEach(function(groupe) {
+      const entrees = groupe.cles
+        .filter(function(cle) { return icons[cle]; })
+        .map(function(cle) {
+          const label = LEGENDE_LABELS[cle] || cle;
+          return `<div class="kta-legende-ligne">
+            <img class="kta-legende-icone" src="${icons[cle]}" alt="${label}" onerror="this.style.opacity='0.3'">
+            <span class="kta-legende-label">${label}</span>
+          </div>`;
+        }).join("");
+
+      if (entrees) {
+        contenuIcones += `
+          <div class="kta-aide-section">
+            <div class="kta-aide-section-titre">${groupe.titre}</div>
+            ${entrees}
+          </div>`;
+      }
+    });
+
+    // Icônes hors groupes (non catégorisées, hors exclues)
+    const autresEntrees = Object.entries(icons)
+      .filter(function(e) {
+        return !LEGENDE_EXCLURE.includes(e[0]) && !clesDansGroupe.includes(e[0]);
+      })
+      .map(function(entry) {
+        const cle = entry[0];
+        const label = LEGENDE_LABELS[cle] || cle;
+        return `<div class="kta-legende-ligne">
+          <img class="kta-legende-icone" src="${entry[1]}" alt="${label}" onerror="this.style.opacity='0.3'">
+          <span class="kta-legende-label">${label}</span>
+        </div>`;
+      }).join("");
+
+    if (autresEntrees) {
+      contenuIcones += `
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📌 Autres</div>
+          ${autresEntrees}
+        </div>`;
+    }
   }
 
-  // Lignes de tracés toujours présentes
-  const lignesTracés = `
-    <div class="kta-legende-separateur">Tracés</div>
-    <div class="kta-legende-ligne">
-      <span class="kta-legende-trait" style="background:#00ff00;"></span>
-      <span class="kta-legende-label">Route principale</span>
-    </div>
-    <div class="kta-legende-ligne">
-      <span class="kta-legende-trait" style="background:#b000ff;"></span>
-      <span class="kta-legende-label">Route secondaire</span>
-    </div>
-    <div class="kta-legende-ligne">
-      <span class="kta-legende-trait" style="background:#ffff00;"></span>
-      <span class="kta-legende-label">Chemin</span>
+  // Section tracés — toujours présente
+  const contenuTracés = `
+    <div class="kta-aide-section">
+      <div class="kta-aide-section-titre">🛣️ Tracés</div>
+      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#00ff00;"></span><span class="kta-legende-label">Route principale</span></div>
+      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#b000ff;"></span><span class="kta-legende-label">Route secondaire</span></div>
+      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ffff00;"></span><span class="kta-legende-label">Chemin</span></div>
     </div>
   `;
 
-  // Icônes du plan
-  const entrees = Object.entries(icons)
-    .filter(function(e) { return !LEGENDE_EXCLURE.includes(e[0]); });
-
-  const lignesIcones = entrees.map(function(entry) {
-    const cle = entry[0];
-    const url = entry[1];
-    const label = LEGENDE_LABELS[cle] || cle;
-    return `
-      <div class="kta-legende-ligne">
-        <img class="kta-legende-icone" src="${url}" alt="${label}" onerror="this.style.opacity='0.3'">
-        <span class="kta-legende-label">${label}</span>
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:480px;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">🗺️ Légende</span>
+        <button class="kta-panneau-close" id="kta-legende-close">✕</button>
       </div>
-    `;
-  }).join("");
-
-  const html = `
-    <div class="kta-legende-separateur">Points d'intérêt</div>
-    ${lignesIcones}
-    ${lignesTracés}
+      <div class="kta-readme-modal-corps">
+        ${contenuIcones}
+        ${contenuTracés}
+      </div>
+    </div>
   `;
 
-  ouvrirPanneauAncre(btnEl, html, "Légende");
+  document.documentElement.appendChild(modal);
+  document.getElementById("kta-legende-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
 
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.afficherConfig    = afficherConfig;
-window.appliquerConfig   = appliquerConfig;
-window.resetConfig       = resetConfig;
-window.viderCacheAppli   = viderCacheAppli;
-window.afficherReadme    = afficherReadme;
-window.afficherLegende   = afficherLegende;
-window.initInterface     = initInterface;
+window.afficherConfig      = afficherConfig;
+window.appliquerConfig     = appliquerConfig;
+window.resetConfig         = resetConfig;
+window.viderCacheAppli     = viderCacheAppli;
+window.afficherReadme      = afficherReadme;
+window.afficherLegende     = afficherLegende;
+window.afficherConvertisseur = afficherConvertisseur;
+window.initInterface       = initInterface;
