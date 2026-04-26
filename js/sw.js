@@ -16,6 +16,7 @@ const assetsToCache = [
   "/js/config.js",
   "/js/config_import.js",
   "/js/road.js",
+  "/js/createConf.js",
 
   // Données JSON
 

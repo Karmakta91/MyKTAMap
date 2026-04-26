@@ -660,20 +660,19 @@ function afficherPopupChangerPlan() {
 
   const overlay = document.createElement("div");
   overlay.id = "popupChangerPlan";
-  overlay.style.cssText = `
-    position: fixed; inset: 0; z-index: 9999;
-    background: rgba(10, 15, 25, 0.75);
-    display: flex; align-items: center; justify-content: center;
-    padding: 20px; box-sizing: border-box;
-  `;
+  overlay.className = "kta-readme-modal-overlay";
 
   overlay.innerHTML = `
-    <div style="background:#fff;color:#111;border-radius:14px;padding:24px;max-width:380px;width:100%;font-family:Arial,sans-serif;box-shadow:0 10px 35px rgba(0,0,0,0.35);">
-      <h2 style="margin:0 0 10px;font-size:18px;">Changer de plan</h2>
-      <p style="margin:0 0 20px;font-size:14px;color:#555;">Tu vas quitter la session en cours. Les données non exportées seront perdues.</p>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button id="popupResterIci" style="padding:10px 16px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;color:#333;font-size:14px;cursor:pointer;">Rester ici</button>
-        <button id="popupChargerPlan" style="padding:10px 16px;border-radius:8px;border:0;background:#1f6feb;color:#fff;font-size:14px;cursor:pointer;">Charger un plan</button>
+    <div class="kta-modal" style="max-width:400px;">
+      <div class="kta-modal-icon">🗂️</div>
+      <div class="kta-modal-titre">Changer de plan</div>
+      <div class="kta-modal-texte">
+        Tu vas quitter la session en cours.<br>
+        <strong>Les données non exportées seront perdues.</strong>
+      </div>
+      <div class="kta-modal-actions">
+        <button class="kta-btn kta-btn-ghost" id="popupResterIci">Rester ici</button>
+        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">Charger un plan</button>
       </div>
     </div>
   `;
