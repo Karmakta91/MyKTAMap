@@ -1,7 +1,5 @@
 # MyKTAMap
-
 > Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
-<img width="1345" height="673" alt="image" src="https://github.com/user-attachments/assets/77559b0d-9fb0-49e6-97a8-d9b1f9073d1d" />
 
 **Environnements :**
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
@@ -18,7 +16,7 @@
 - Documentation utilisateur séparée du README DEV (`README_USER.md`)
 - Aide, Légende, Réglages, Légende en modales plein écran
 - Ajout du convertisseur JSON bidirectionnel (`editor ↔ data`)
-- Ajout du générateur de plan ZIP (`planner.js`)
+- Ajout du générateur de plan ZIP (`createConf.js`)
 - Refonte graphique de l'interface (charte dark cohérente)
 - Import de plan via archive ZIP
 - Normalisation des formats JSON dans `utils.js`
@@ -465,7 +463,7 @@ Conversion bidirectionnelle entre formats, sans serveur. Accessible via le bouto
 
 ---
 
-## 📦 Générateur de plan (planner.js)
+## 📦 Générateur de plan (createConf.js)
 
 Dépendance : **JSZip** — doit être servi localement (`lib/jszip.min.js`).
 
@@ -475,10 +473,3 @@ Dépendance : **JSZip** — doit être servi localement (`lib/jszip.min.js`).
 ## 📄 Licence
 
 Projet personnel — libre d'adaptation selon vos besoins non commerciaux.
-
-
----
-
-## 📄 Licence
-
-Projet personnel — libre d'adaptation selon vos besoins non commerciale.
