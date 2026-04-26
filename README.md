@@ -1,8 +1,6 @@
 # MyKTAMap
 > Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
 <img width="1345" height="673" alt="image" src="https://github.com/user-attachments/assets/77559b0d-9fb0-49e6-97a8-d9b1f9073d1d" />
-
-
 **Environnements :**
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
 - 🔧 Développement : [devmap.is-underground.fr](https://devmap.is-underground.fr)
@@ -14,17 +12,22 @@
 ## 📋 Journal des modifications
 
 ### 26/04/2026
-- Documentation Utilisateur séparer du DEV
-- LEGENDE, AIDE, CONFIGURATION en mode plein ecran
-- Ajout d'un mode de conversion JSON
-- Modification style interface
-- Import via ZIP
+- Ajout du mode de creation de plan
+- Documentation utilisateur séparée du README DEV (`README_USER.md`)
+- Aide, Légende, Réglages, Légende en modales plein écran
+- Ajout du convertisseur JSON bidirectionnel (`editor ↔ data`)
+- Ajout du générateur de plan ZIP (`planner.js`)
+- Refonte graphique de l'interface (charte dark cohérente)
+- Import de plan via archive ZIP
+- Normalisation des formats JSON dans `utils.js`
+- Gestion des modes exclusifs (un seul mode actif à la fois)
+- Bouton vider le cache avec double confirmation
 
 ### 25/04/2026
-- Ajout de la doc a l'interface
-- Ajout de reset cache a l'interface
-- Reactivation du service worker
-- Modification de l'interface pour responsive design bug
+- Documentation intégrée à l'interface (README + README_USER)
+- Bouton vider le cache dans les réglages
+- Réactivation du Service Worker (test en cours)
+- Correction du responsive design (interface mobile)
 
 ### 22/04/2026
 - Ajout du mode import local (chargement d'un plan depuis le navigateur sans serveur)
