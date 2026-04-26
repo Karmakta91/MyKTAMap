@@ -227,11 +227,11 @@ function afficherConvertisseur() {
         <div class="kta-conv-sens-wrap">
           <button class="kta-conv-sens-btn active" id="kta-conv-btn-ed2data">
             <span class="kta-conv-sens-label">✏️ → 🗂️ Vers calque de données</span>
-            <span class="kta-conv-sens-desc">Convertit les points du mode édition en calque chargeable dans le plan</span>
+            <span class="kta-conv-sens-desc">Convertit les points et tracés de la session en calque chargeable dans le plan</span>
           </button>
           <button class="kta-conv-sens-btn" id="kta-conv-btn-data2ed">
             <span class="kta-conv-sens-label">🗂️ → ✏️ Vers mode édition</span>
-            <span class="kta-conv-sens-desc">Convertit un calque de données en session importable dans le mode édition</span>
+            <span class="kta-conv-sens-desc">Convertit un calque de données (points + tracés) en session importable</span>
           </button>
         </div>
 
@@ -328,17 +328,34 @@ function afficherConvertisseur() {
 
   function convertir(json, direction, typeLabel) {
     if (direction === "ed2data") {
+      // session → data : points + routes embarquées
       let points = [];
-      if (Array.isArray(json.editorPoints)) points = json.editorPoints;
-      else if (Array.isArray(json.data)) points = json.data;
+      if (Array.isArray(json.editorPoints))   points = json.editorPoints;
+      else if (Array.isArray(json.data))       points = json.data;
       else throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
-      return { type: typeLabel, version: 1, data: points };
+
+      const roads = Array.isArray(json.roads) ? json.roads : [];
+
+      const result = { type: typeLabel, version: 1, data: points };
+      if (roads.length > 0) result.roads = roads;
+      return result;
+
     } else {
+      // data → session : points + routes restaurées
       let points = [];
-      if (Array.isArray(json.data)) points = json.data;
+      if (Array.isArray(json.data))            points = json.data;
       else if (Array.isArray(json.editorPoints)) points = json.editorPoints;
       else throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
-      return { type: "devmap-session", version: 1, editorPoints: points, measure: { points: [] }, roads: [] };
+
+      const roads = Array.isArray(json.roads) ? json.roads : [];
+
+      return {
+        type: "devmap-session",
+        version: 1,
+        editorPoints: points,
+        measure: { points: [] },
+        roads: roads
+      };
     }
   }
 

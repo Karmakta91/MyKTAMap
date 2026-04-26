@@ -20,22 +20,33 @@ function choisirIcone(p) {
   return iconeDefault;
 }
 
+function normaliserPoints(json) {
+  if (Array.isArray(json.data))          return json.data;
+  if (Array.isArray(json.editorPoints))  return json.editorPoints;
+  return [];
+}
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
     .then(json => {
-      json.data.forEach(p => {
-
+      // Charger les points
+      const points = normaliserPoints(json);
+      points.forEach(function(p) {
         var marker = L.marker(convertCoord(p.x, p.y), {
           icon: choisirIcone(p)
         });
-
-        marker.bindPopup(
-          `<b>${p.nom}</b><br>${p.description || ""}`
-        );
-
+        marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`);
         marker.addTo(layer);
       });
+
+      // Charger les routes embarquées si présentes
+      if (Array.isArray(json.roads) && json.roads.length > 0) {
+        if (window.setRoads) {
+          const existing = window.getRoads ? window.getRoads() : [];
+          window.setRoads([...existing, ...json.roads]);
+        }
+      }
     });
 }
 
