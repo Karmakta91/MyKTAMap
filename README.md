@@ -14,6 +14,8 @@
 ## 📋 Journal des modifications
 
 ### 26/04/2026
+- LEGENDE et AIDE en mode plein ecran
+- Ajout d'un mode de conversion JSON
 - Modification style interface
 - Import via ZIP
 
