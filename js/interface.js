@@ -467,23 +467,64 @@ function _confirmerAction(titre, texte, callback) {
 // README — modale plein écran
 // =========================
 function afficherReadme() {
-  console.log("[README] afficherReadme appelé");
-
+  // Si une modale README est déjà ouverte, fermer
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement du README…</p>");
+  // Modale de choix doc
+  const choix = document.createElement("div");
+  choix.id = "kta-readme-choix";
+  choix.className = "kta-readme-modal-overlay";
 
-  console.log("[README] modale ouverte, lancement fetch");
+  choix.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:380px; height:auto;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📖 Documentation</span>
+        <button class="kta-panneau-close" id="kta-choix-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+        <p style="color:#8892a4; font-size:13px; margin:0 0 16px;">Quelle documentation souhaitez-vous consulter ?</p>
+        <div style="display:flex; gap:10px; flex-direction:column;">
+          <button class="kta-btn kta-btn-primary" id="kta-choix-user" style="text-align:left; padding:12px 16px;">
+            📗 Documentation Utilisateur
+            <span style="display:block; font-size:11px; opacity:0.7; font-weight:400; margin-top:3px;">Guide d'utilisation de l'application</span>
+          </button>
+          <button class="kta-btn kta-btn-ghost" id="kta-choix-dev" style="text-align:left; padding:12px 16px;">
+            📘 Documentation Développeur
+            <span style="display:block; font-size:11px; opacity:0.7; font-weight:400; margin-top:3px;">Architecture technique et configuration</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 
-  fetch("README.md")
+  document.documentElement.appendChild(choix);
+
+  document.getElementById("kta-choix-close").addEventListener("click", function () { choix.remove(); });
+  choix.addEventListener("click", function (e) { if (e.target === choix) choix.remove(); });
+
+  document.getElementById("kta-choix-user").addEventListener("click", function () {
+    choix.remove();
+    _chargerReadme("README_USER.md");
+  });
+
+  document.getElementById("kta-choix-dev").addEventListener("click", function () {
+    choix.remove();
+    _chargerReadme("README.md");
+  });
+}
+
+function _chargerReadme(fichier) {
+  console.log("[README] chargement de :", fichier);
+
+  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>");
+
+  fetch(fichier)
     .then(function(res) {
-      console.log("[README] fetch status:", res.status, res.ok);
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier);
       return res.text();
     })
     .then(function(md) {
-      console.log("[README] contenu reçu, longueur:", md.length);
       const html = _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (corps) corps.innerHTML = "<p>" + html + "</p>";
@@ -493,9 +534,9 @@ function afficherReadme() {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
       if (corps) corps.innerHTML = `
         <p class="kta-readme-erreur">
-          ❌ Impossible de charger README.md<br><br>
+          ❌ Impossible de charger <code>${fichier}</code><br><br>
           <code>${err.message}</code><br><br>
-          Vérifiez que <code>README.md</code> est à la racine du serveur.
+          Vérifiez que le fichier est bien à la racine du serveur.
         </p>`;
     });
 }
@@ -663,43 +704,85 @@ function afficherPopupChangerPlan() {
 // =========================
 // CONFIG — panneau ancré
 // =========================
-function afficherConfig(btnEl) {
+function afficherConfig() {
+  const existing = document.getElementById("kta-cfg-modal");
+  if (existing) { existing.remove(); return; }
+
   const c = APP_CONFIG;
 
-  const html = `
-    <div class="kta-cfg-grille">
-      <label class="kta-cfg-label">Échelle</label>
-      <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}">
-      <label class="kta-cfg-label">Taille d'un pas (m)</label>
-      <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
-      <label class="kta-cfg-label">Hauteur image (px)</label>
-      <input class="kta-cfg-input" id="cfg_imageHeight" type="number" value="${c.imageHeight}">
-      <label class="kta-cfg-label">Largeur image (px)</label>
-      <input class="kta-cfg-input" id="cfg_imageWidth" type="number" value="${c.imageWidth}">
-      <label class="kta-cfg-label">Position initiale X</label>
-      <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
-      <label class="kta-cfg-label">Position initiale Y</label>
-      <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
-      <label class="kta-cfg-label">Seuil détection pas</label>
-      <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
-      <label class="kta-cfg-label">Cooldown pas (ms)</label>
-      <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
-      <label class="kta-cfg-label">Debug mouvement</label>
-      <select class="kta-cfg-input" id="cfg_motionDebug">
-        <option value="true"  ${c.motionDebug ? "selected" : ""}>Oui</option>
-        <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
-      </select>
-    </div>
-    <div class="kta-cfg-actions">
-      <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
-      <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
-    </div>
-    <div class="kta-cfg-cache">
-      <button class="kta-btn kta-btn-danger" onclick="viderCacheAppli()">🗑️ Vider le cache</button>
+  const modal = document.createElement("div");
+  modal.id = "kta-cfg-modal";
+  modal.className = "kta-readme-modal-overlay";
+
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:440px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">⚙️ Réglages</span>
+        <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📐 Dimensions du plan</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Hauteur image (px)</label>
+            <input class="kta-cfg-input" id="cfg_imageHeight" type="number" value="${c.imageHeight}">
+            <label class="kta-cfg-label">Largeur image (px)</label>
+            <input class="kta-cfg-input" id="cfg_imageWidth" type="number" value="${c.imageWidth}">
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Position X</label>
+            <input class="kta-cfg-input" id="cfg_startX" type="number" value="${c.startX}">
+            <label class="kta-cfg-label">Position Y</label>
+            <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">👣 Détection des pas</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Échelle (px/m)</label>
+            <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}">
+            <label class="kta-cfg-label">Taille d'un pas (m)</label>
+            <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
+            <label class="kta-cfg-label">Seuil de détection</label>
+            <input class="kta-cfg-input" id="cfg_stepThreshold" type="number" step="0.1" value="${c.stepThreshold}">
+            <label class="kta-cfg-label">Cooldown (ms)</label>
+            <input class="kta-cfg-input" id="cfg_stepCooldown" type="number" value="${c.stepCooldown}">
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🛠️ Debug</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Debug mouvement</label>
+            <select class="kta-cfg-input" id="cfg_motionDebug">
+              <option value="true"  ${c.motionDebug ? "selected" : ""}>Oui</option>
+              <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="kta-cfg-actions" style="margin-top:4px;">
+          <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
+          <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
+        </div>
+
+        <div class="kta-cfg-cache">
+          <button class="kta-btn kta-btn-danger" onclick="viderCacheAppli()">🗑️ Vider le cache applicatif</button>
+        </div>
+
+      </div>
     </div>
   `;
 
-  ouvrirPanneauAncre(btnEl, html, "Réglages");
+  document.documentElement.appendChild(modal);
+  document.getElementById("kta-cfg-close").addEventListener("click", function () { modal.remove(); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
 
 function appliquerConfig() {
@@ -715,16 +798,19 @@ function appliquerConfig() {
 
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
   if (window.resetTrackingPosition) window.resetTrackingPosition();
+
+  const modal = document.getElementById("kta-cfg-modal");
+  if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
-  if (window.map) window.map.closePopup();
 }
 
 function resetConfig() {
   Object.assign(APP_CONFIG, DEFAULT_CONFIG);
   localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
   if (window.resetTrackingPosition) window.resetTrackingPosition();
+  const modal = document.getElementById("kta-cfg-modal");
+  if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
-  if (window.map) window.map.closePopup();
 }
 
 // =========================
@@ -859,7 +945,7 @@ function initInterface() {
     L.DomEvent.on(btnHelp,      "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherAide(); });
     L.DomEvent.on(btnReadme,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherReadme(); });
     L.DomEvent.on(btnChangePlan,"click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPopupChangerPlan(); });
-    L.DomEvent.on(btnSettings,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(btnSettings); });
+    L.DomEvent.on(btnSettings,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(); });
     L.DomEvent.on(btnLegende,   "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherLegende(); });
 
     L.DomEvent.disableClickPropagation(div);
@@ -1100,20 +1186,8 @@ function afficherLegende() {
         cles: ["pa", "pb", "pc", "pe", "ps"]
       },
       {
-        titre: "🏛️ Lieux",
-        cles: ["salle", "chatiere", "passage"]
-      },
-      {
         titre: "⚠️ Signalétique",
-        cles: ["danger", "info"]
-      },
-      {
-        titre: "⚙️ Infrastructure",
-        cles: ["elec", "epure"]
-      },
-      {
-        titre: "🚗 Véhicules",
-        cles: ["vehicule"]
+        cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"]
       }
     ];
 
