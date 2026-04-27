@@ -615,7 +615,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">📍 Tracking & Déplacement</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">▶️ / ⏹️</span><span>Démarrer / arrêter le tracking</span>
+            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking</span>
             <span class="kta-aide-icone">📍</span><span>Mode recalage de position</span>
           </div>
         </div>

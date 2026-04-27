@@ -1,8 +1,27 @@
 // =========================
-// ETAT
+// ÉTAT
 // =========================
 window.modeEdition = false;
 let listePoints = [];
+
+// Labels d'affichage pour les tags connus
+const EDITOR_TAG_LABELS = {
+  salle:    "Salle",
+  pa:       "Puits Aération",
+  pc:       "Puits Comblé",
+  pb:       "Puits Bouché",
+  pe:       "Puits au sol / Bassin",
+  ps:       "Puits extraction",
+  passage:  "Passage",
+  chatiere: "Chatière",
+  vehicule: "Véhicule",
+  danger:   "Danger",
+  info:     "Information",
+  elec:     "Électricité",
+  epure:    "Épure"
+};
+
+const EDITOR_EXCLURE = ["default", "track"];
 
 // =========================
 // ACTIVER / DESACTIVER
@@ -16,57 +35,74 @@ function toggleEdition() {
 // INIT
 // =========================
 function initEditor() {
-  window.map.on('click', function(e) {
+  window.map.on("click", function(e) {
     if (!window.modeEdition) return;
 
-    let lat = e.latlng.lat;
-    let lng = e.latlng.lng;
-
-    let x = Math.round(lng);
-    let y = Math.round(APP_CONFIG.imageHeight - lat);
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
+    const x   = Math.round(lng);
+    const y   = Math.round(APP_CONFIG.imageHeight - lat);
 
     afficherFormulaire(e.latlng, x, y);
   });
 
-  window.map.on('popupclose', function() {
+  window.map.on("popupclose", function() {
     resetZoomIOS();
   });
+}
+
+// =========================
+// OPTIONS DYNAMIQUES
+// =========================
+function _buildTypeOptions() {
+  const icons = window.PLAN_CONFIG?.icons || {};
+  const tags  = Object.keys(icons).filter(function(k) { return !EDITOR_EXCLURE.includes(k); });
+
+  // Fallback si pas de config
+  if (tags.length === 0) {
+    return Object.entries(EDITOR_TAG_LABELS)
+      .map(function(e) { return `<option value="${e[0]}">${e[1]}</option>`; })
+      .join("");
+  }
+
+  return tags.map(function(tag) {
+    const label = EDITOR_TAG_LABELS[tag] || tag;
+    return `<option value="${tag}">${label}</option>`;
+  }).join("");
 }
 
 // =========================
 // FORMULAIRE
 // =========================
 function afficherFormulaire(latlng, x, y) {
-  let contenu = `
-    <div style="width:200px; font-size:16px;">
-      <b>Ajouter un point</b><br><br>
+  const options = _buildTypeOptions();
 
-      Nom :<br>
-      <input type="text" id="poi_nom" style="font-size:16px;"><br>
-
-      Type :<br>
-      <select id="poi_type" style="font-size:16px;">
-        <option value="salle">Salle</option>
-        <option value="pa">Puits Aération</option>
-        <option value="pc">Puits comblé</option>
-        <option value="pb">Puits Bouché</option>
-        <option value="pe">Puits au sol/bassin</option>
-        <option value="passage">Passage</option>
-        <option value="chatiere">Chatière</option>
-        <option value="vehicule">Véhicule</option>
-        <option value="danger">Danger</option>
-        <option value="info">Info</option>
-        <option value="epure">Épure</option>
-      </select><br>
-
-      Description :<br>
-      <textarea id="poi_desc" style="font-size:16px;"></textarea><br><br>
-
-      <button onclick="validerPoint(${x}, ${y})">Ajouter</button>
+  const contenu = `
+    <div style="width:220px; font-size:15px; font-family:Arial,sans-serif;">
+      <b style="font-size:16px;">Ajouter un point</b>
+      <div style="margin-top:10px;">
+        <label style="display:block; margin-bottom:3px; font-size:13px; color:#666;">Nom *</label>
+        <input type="text" id="poi_nom" style="width:100%; font-size:15px; padding:4px 6px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+      </div>
+      <div style="margin-top:8px;">
+        <label style="display:block; margin-bottom:3px; font-size:13px; color:#666;">Type</label>
+        <select id="poi_type" style="width:100%; font-size:15px; padding:4px 6px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px;">
+          ${options}
+        </select>
+      </div>
+      <div style="margin-top:8px;">
+        <label style="display:block; margin-bottom:3px; font-size:13px; color:#666;">Description</label>
+        <textarea id="poi_desc" style="width:100%; font-size:14px; padding:4px 6px; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; resize:vertical; min-height:60px;"></textarea>
+      </div>
+      <div style="margin-top:10px;">
+        <button onclick="validerPoint(${x}, ${y})" style="width:100%; padding:8px; font-size:15px; background:#1f6feb; color:white; border:0; border-radius:6px; cursor:pointer;">
+          ✅ Ajouter
+        </button>
+      </div>
     </div>
   `;
 
-  L.popup()
+  L.popup({ maxWidth: 260 })
     .setLatLng(latlng)
     .setContent(contenu)
     .openOn(window.map);
@@ -76,9 +112,9 @@ function afficherFormulaire(latlng, x, y) {
 // VALIDATION
 // =========================
 function validerPoint(x, y) {
-  let nom = document.getElementById("poi_nom").value;
-  let type = document.getElementById("poi_type").value;
-  let desc = document.getElementById("poi_desc").value;
+  const nom  = document.getElementById("poi_nom").value;
+  const type = document.getElementById("poi_type").value;
+  const desc = document.getElementById("poi_desc").value;
 
   if (!nom.trim()) {
     alert("Le nom est obligatoire");
@@ -90,28 +126,26 @@ function validerPoint(x, y) {
     return;
   }
 
-  let point = {
-    id: nom,
-    nom: nom,
-    x: x,
-    y: y,
-    tags: [type],
-    etat: "Non inspectée",
+  const point = {
+    id:          nom,
+    nom:         nom,
+    x:           x,
+    y:           y,
+    tags:        [type],
+    etat:        "Non inspectée",
     description: desc,
-    profondeur: null,
+    profondeur:  null,
     date_update: new Date().toISOString().split("T")[0],
-    source: "editor"
+    source:      "editor"
   };
 
   listePoints.push(point);
 
-  console.log("Points :", listePoints);
-
-  let marker = L.marker(convertCoord(x, y), {
+  const marker = L.marker(convertCoord(x, y), {
     icon: choisirIcone(point)
   }).addTo(window.layerEditor);
 
-  marker.bindPopup("<b>" + nom + "</b><br>" + desc);
+  marker.bindPopup("<b>" + nom + "</b><br>" + (desc || ""));
 
   window.map.closePopup();
 }
@@ -121,25 +155,19 @@ function validerPoint(x, y) {
 // =========================
 function resetZoomIOS() {
   window.scrollTo(0, 0);
-
-  setTimeout(() => {
-    window.map.invalidateSize();
-  }, 200);
+  setTimeout(function() { window.map.invalidateSize(); }, 200);
 }
 
 // =========================
-// RENDU DES POINTS IMPORTES
+// RENDU DES POINTS IMPORTÉS
 // =========================
 window.renderEditorPoints = function() {
   if (!window.layerEditor) return;
-
   window.layerEditor.clearLayers();
-
-  listePoints.forEach(point => {
-    let marker = L.marker(convertCoord(point.x, point.y), {
+  listePoints.forEach(function(point) {
+    const marker = L.marker(convertCoord(point.x, point.y), {
       icon: choisirIcone(point)
     }).addTo(window.layerEditor);
-
     marker.bindPopup("<b>" + point.nom + "</b><br>" + (point.description || ""));
   });
 };
@@ -147,13 +175,7 @@ window.renderEditorPoints = function() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.toggleEdition = toggleEdition;
-window.initEditor = initEditor;
-
-window.getEditorPoints = function() {
-  return listePoints;
-};
-
-window.setEditorPoints = function(points) {
-  listePoints = points || [];
-};
+window.toggleEdition  = toggleEdition;
+window.initEditor     = initEditor;
+window.getEditorPoints = function() { return listePoints; };
+window.setEditorPoints = function(points) { listePoints = points || []; };

@@ -3,21 +3,16 @@ function convertCoord(x, y) {
 }
 
 function choisirIcone(p) {
-  if (!p.tags) return iconeDefault;
-  if (p.tags.includes("salle")) return iconeSalle;
-  if (p.tags.includes("pa")) return iconepa;
-  if (p.tags.includes("pc")) return iconepc;
-  if (p.tags.includes("pb")) return iconepb;
-  if (p.tags.includes("vehicule")) return iconeVehicule;
-  if (p.tags.includes("elec")) return iconeElec;
-  if (p.tags.includes("epure")) return iconeEpure;
-  if (p.tags.includes("ps")) return iconePS;
-  if (p.tags.includes("info")) return iconeInfo;
-  if (p.tags.includes("passage")) return iconePassage;
-  if (p.tags.includes("chatiere")) return iconeChatiere;
-  if (p.tags.includes("danger")) return iconeDanger;
-  if (p.tags.includes("pe")) return iconepe;
-  return iconeDefault;
+  if (!p.tags || !p.tags.length) return window.iconeDefault || iconeDefault;
+
+  // Priorité : map dynamique construit par creerIcones depuis PLAN_CONFIG.icons
+  if (window._iconMap) {
+    for (const tag of p.tags) {
+      if (window._iconMap[tag]) return window._iconMap[tag];
+    }
+  }
+
+  return window.iconeDefault || iconeDefault;
 }
 
 function normaliserPoints(json) {

@@ -21,7 +21,7 @@ function creerIcones(iconConfig) {
   iconepa       = mk(iconConfig.pa,       50, 50, 25, 25);
   iconepc       = mk(iconConfig.pc,       50, 50, 25, 25);
   iconepb       = mk(iconConfig.pb,       50, 50, 25, 25);
-  iconeVehicule = mk(iconConfig.vehicule, 50, 50, 25, 25);
+  iconeVehicule = mk(iconConfig.vehicule, 50, 25, 25, 13);
   iconeElec     = mk(iconConfig.elec,     50, 50, 25, 25);
   iconeEpure    = mk(iconConfig.epure,    50, 50, 25, 25);
   iconePS       = mk(iconConfig.ps,       50, 50, 25, 25);
@@ -47,6 +47,18 @@ function creerIcones(iconConfig) {
   window.iconeDanger   = iconeDanger;
   window.iconepe       = iconepe;
   window.iconeTrack    = iconeTrack;
+
+  // Map dynamique : tag → L.icon — supporte tous les tags définis dans plan-config.json
+  window._iconMap = {};
+  Object.keys(iconConfig).forEach(function(tag) {
+    if (!iconConfig[tag]) return;
+    const isVehicule = (tag === "vehicule");
+    window._iconMap[tag] = L.icon({
+      iconUrl:    iconConfig[tag],
+      iconSize:   isVehicule ? [50, 25] : [50, 50],
+      iconAnchor: isVehicule ? [25, 13] : [25, 25]
+    });
+  });
 }
 
 // =========================
@@ -116,13 +128,14 @@ async function initMapFromConfig() {
   window.map    = map;
   window.bounds = bounds;
 
-  // Image principale — tiling si nécessaire
-  const baseAsset = window.RUNTIME_ASSETS
-    ? Object.values(window.RUNTIME_ASSETS).find(function(a) { return a.url === config.plan.baseImage; })
-    : null;
-  const baseSize = baseAsset?.file?.size || null;
+  // Récupérer le File source si disponible (mode import)
+  const baseAsset = Object.values(window.RUNTIME_ASSETS || {}).find(function(a) {
+    return a.url === config.plan.baseImage;
+  });
+  const baseFile = baseAsset?.file || null;
+  const baseSize = baseFile?.size  || null;
 
-  window._baseTiles = await chargerImage(config.plan.baseImage, bounds, map, baseSize);
+  window._baseTiles = await chargerImage(config.plan.baseImage, bounds, map, baseSize, baseFile);
 
   // Calques données
   const dataLayerGroups = {};
