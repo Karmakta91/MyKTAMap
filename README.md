@@ -12,6 +12,8 @@
 ## 📋 Journal des modifications
 
 ### 27/04/2026
+- Mise a jours du set icone par default
+- Ajout de l'import ZIP pour la creation de plan pour partir d'une base existante (Optionnel)
 - **Refonte architecture complète** — fusion `index.html` + `import.html` en une seule page PWA
 - Suppression de `import.html`, `config_import.js`, `map_import.js`, `main_import.js`
 - `config.js`, `map.js`, `main.js` unifiés : gèrent les deux modes (serveur + import navigateur)
