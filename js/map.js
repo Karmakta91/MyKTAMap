@@ -21,7 +21,7 @@ function creerIcones(iconConfig) {
   iconepa       = mk(iconConfig.pa,       50, 50, 25, 25);
   iconepc       = mk(iconConfig.pc,       50, 50, 25, 25);
   iconepb       = mk(iconConfig.pb,       50, 50, 25, 25);
-  iconeVehicule = mk(iconConfig.vehicule, 50, 25, 25, 13);
+  iconeVehicule = mk(iconConfig.vehicule, 50, 50, 25, 25);
   iconeElec     = mk(iconConfig.elec,     50, 50, 25, 25);
   iconeEpure    = mk(iconConfig.epure,    50, 50, 25, 25);
   iconePS       = mk(iconConfig.ps,       50, 50, 25, 25);
