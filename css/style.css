@@ -636,6 +636,13 @@ html, body {
   margin: 4px 0;
 }
 
+/* Tuiles tiling — pas de lissage CSS entre tuiles adjacentes */
+.kta-tile-overlay {
+  image-rendering: auto;
+  /* Supprime le gap sub-pixel entre tuiles sur certains navigateurs */
+  margin: -0.5px;
+}
+
 
 /* ==============================================
    AIDE — sections groupées
@@ -854,10 +861,11 @@ html, body {
   z-index: 5000;
   background: rgba(5, 8, 15, 0.92);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 #planLoaderBox {
@@ -871,6 +879,7 @@ html, body {
   box-shadow: 0 16px 48px rgba(0,0,0,0.65);
   border: 1px solid rgba(255,255,255,0.08);
   font-family: Arial, sans-serif;
+  margin: auto 0;
 }
 
 .loader-header {
@@ -934,10 +943,11 @@ html, body {
 }
 
 .loaderActions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
   gap: 8px;
   margin-top: 20px;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
 #loadPlanBtn {
@@ -1058,6 +1068,45 @@ html, body {
   font-weight: 600;
   margin-top: 6px;
   min-height: 16px;
+}
+
+/* Toggle mode performance dans le loader */
+.loader-perf-wrap {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-direction: column;
+}
+
+.loader-perf-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eaf0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.loader-perf-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #1f6feb;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.loader-perf-hint {
+  font-size: 11px;
+  color: #8892a4;
+  line-height: 1.4;
+  padding-left: 24px;
 }
 
 
@@ -1212,30 +1261,70 @@ html, body {
 }
 
 /* Aperçu icônes */
-.kta-planner-icons-preview {
+.kta-planner-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding: 0 20px;
+  background: rgba(0,0,0,0.2);
 }
 
-.kta-planner-icon-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  width: 44px;
-}
-
-.kta-planner-icon-item img {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-}
-
-.kta-planner-icon-item span {
-  font-size: 9px;
+.kta-planner-tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
   color: #8892a4;
-  text-align: center;
-  word-break: break-all;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.kta-planner-tab.active {
+  color: #e8eaf0;
+  border-bottom-color: #4a90d9;
+}
+
+.kta-planner-icon-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: #8892a4;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 4px;
+}
+
+.kta-planner-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.kta-planner-icon-row:last-child { border-bottom: none; }
+
+.kta-planner-icon-thumb {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.kta-planner-icon-path {
+  font-size: 11px;
+  color: #8892a4;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 4px;
 }
