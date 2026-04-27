@@ -55,8 +55,8 @@ function creerIcones(iconConfig) {
     const isVehicule = (tag === "vehicule");
     window._iconMap[tag] = L.icon({
       iconUrl:    iconConfig[tag],
-      iconSize:   isVehicule ? [50, 25] : [50, 50],
-      iconAnchor: isVehicule ? [25, 13] : [25, 25]
+      iconSize:   isVehicule ? [50, 50] : [50, 50],
+      iconAnchor: isVehicule ? [25, 25] : [25, 25]
     });
   });
 }
