@@ -110,36 +110,46 @@
   <script>
     // Exposé globalement pour le bouton "Changer de plan > Charger un plan"
     // Important sur iPhone/PWA : ne pas dépendre d'une fonction définie ailleurs.
-    window.afficherLoader = function () {
-      const overlay = document.getElementById("planLoaderOverlay");
-      const statusBox = document.getElementById("loaderStatus");
-      const mapEl = document.getElementById("map");
+window.afficherLoader = function () {
+  const overlay = document.getElementById("planLoaderOverlay");
+  const statusBox = document.getElementById("loaderStatus");
+  const mapEl = document.getElementById("map");
+  const loadBtn = document.getElementById("loadPlanBtn");
 
-      if (!overlay) {
-        console.error("planLoaderOverlay introuvable");
-        return;
-      }
+  if (!overlay) {
+    console.error("planLoaderOverlay introuvable");
+    return;
+  }
 
-      if (statusBox) {
-        statusBox.textContent = "";
-      }
+  if (statusBox) {
+    statusBox.textContent = "";
+  }
 
-      // L'overlay est déjà dans le DOM : on le réaffiche simplement.
-      overlay.style.display = "flex";
+  // ✅ IMPORTANT : réactiver le bouton à chaque réouverture
+  if (loadBtn) {
+    loadBtn.disabled = false;
+  }
 
-      // On garde la carte derrière, mais on évite qu'elle capte le toucher.
-      if (mapEl) {
-        mapEl.style.pointerEvents = "none";
-      }
-    };
+  overlay.style.display = "flex";
 
-    window.masquerLoader = function () {
-      const overlay = document.getElementById("planLoaderOverlay");
-      const mapEl = document.getElementById("map");
+  if (mapEl) {
+    mapEl.style.pointerEvents = "none";
+  }
+};
 
-      if (overlay) overlay.style.display = "none";
-      if (mapEl) mapEl.style.pointerEvents = "auto";
-    };
+window.masquerLoader = function () {
+  const overlay = document.getElementById("planLoaderOverlay");
+  const mapEl = document.getElementById("map");
+  const loadBtn = document.getElementById("loadPlanBtn");
+
+  if (overlay) overlay.style.display = "none";
+  if (mapEl) mapEl.style.pointerEvents = "auto";
+
+  // ✅ Sécurité pour le prochain chargement
+  if (loadBtn) {
+    loadBtn.disabled = false;
+  }
+};
 
     window.addEventListener("load", function () {
       const planConfigInput = document.getElementById("planConfigFile");
