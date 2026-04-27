@@ -696,7 +696,10 @@ function afficherPopupChangerPlan() {
 
   document.documentElement.appendChild(overlay);
   document.getElementById("popupResterIci").addEventListener("click", function () { overlay.remove(); });
-  document.getElementById("popupChargerPlan").addEventListener("click", function () { window.location.href = "import.html"; });
+  document.getElementById("popupChargerPlan").addEventListener("click", function () {
+    overlay.remove();
+    if (window.afficherLoader) window.afficherLoader();
+  });
   overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
 }
 
@@ -720,16 +723,6 @@ function afficherConfig() {
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
-
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📐 Dimensions du plan</div>
-          <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Hauteur image (px)</label>
-            <input class="kta-cfg-input" id="cfg_imageHeight" type="number" value="${c.imageHeight}">
-            <label class="kta-cfg-label">Largeur image (px)</label>
-            <input class="kta-cfg-input" id="cfg_imageWidth" type="number" value="${c.imageWidth}">
-          </div>
-        </div>
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
@@ -766,13 +759,28 @@ function afficherConfig() {
           </div>
         </div>
 
-        <div class="kta-cfg-actions" style="margin-top:4px;">
-          <button class="kta-btn kta-btn-ghost" onclick="resetConfig()">Reset</button>
-          <button class="kta-btn kta-btn-primary" onclick="appliquerConfig()">Appliquer</button>
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⚡ Mode Performance</div>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 10px; line-height:1.5;">
+            Découpe le plan en tuiles pour éviter les crashes sur les images lourdes (&gt;60 Mo).<br>
+            <strong style="color:#8cb4ff;">Auto</strong> = activé uniquement si l'image dépasse 60 Mo.<br>
+            <span style="color:#ffb3b3;">⚠️ Un rechargement du plan est nécessaire pour appliquer ce changement.</span>
+          </p>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Mode performance</label>
+            <select class="kta-cfg-input" id="cfg_perfMode">
+              <option value="null"  ${c.perfMode === null  || c.perfMode === undefined ? "selected" : ""}>Auto (≥ 60 Mo)</option>
+              <option value="true"  ${c.perfMode === true  ? "selected" : ""}>Toujours activé</option>
+              <option value="false" ${c.perfMode === false ? "selected" : ""}>Désactivé</option>
+            </select>
+          </div>
         </div>
 
-        <div class="kta-cfg-cache">
-          <button class="kta-btn kta-btn-danger" onclick="viderCacheAppli()">🗑️ Vider le cache applicatif</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
+          <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
+          <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
+          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
+          <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
         </div>
 
       </div>
@@ -787,15 +795,16 @@ function afficherConfig() {
 function appliquerConfig() {
   APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
   APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
-  APP_CONFIG.imageHeight   = parseInt(document.getElementById("cfg_imageHeight").value, 10);
-  APP_CONFIG.imageWidth    = parseInt(document.getElementById("cfg_imageWidth").value, 10);
   APP_CONFIG.startX        = parseInt(document.getElementById("cfg_startX").value, 10);
   APP_CONFIG.startY        = parseInt(document.getElementById("cfg_startY").value, 10);
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
   APP_CONFIG.motionDebug   = document.getElementById("cfg_motionDebug").value === "true";
 
-  localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
+  const perfVal = document.getElementById("cfg_perfMode").value;
+  APP_CONFIG.perfMode = perfVal === "null" ? null : perfVal === "true";
+
+  if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
   const modal = document.getElementById("kta-cfg-modal");
   if (modal) modal.remove();
@@ -804,12 +813,85 @@ function appliquerConfig() {
 
 function resetConfig() {
   Object.assign(APP_CONFIG, DEFAULT_CONFIG);
-  localStorage.setItem("app_config", JSON.stringify(APP_CONFIG));
+  if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
   const modal = document.getElementById("kta-cfg-modal");
   if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
 }
+
+/// VERIF INTERNET
+
+// =========================
+// CHECK CONNEXION AVANT RESET CACHE
+// =========================
+function verifierConnexionInternet(timeoutMs = 5000) {
+  return new Promise(function(resolve) {
+    if (!navigator.onLine) {
+      resolve(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(function() {
+      controller.abort();
+      resolve(false);
+    }, timeoutMs);
+
+    fetch("https://www.google.com/generate_204?_=" + Date.now(), {
+      method: "GET",
+      mode: "no-cors",
+      cache: "no-store",
+      signal: controller.signal
+    })
+      .then(function() {
+        clearTimeout(timeout);
+        resolve(true);
+      })
+      .catch(function() {
+        clearTimeout(timeout);
+        resolve(false);
+      });
+  });
+}
+
+function afficherConfirmationOffline(callbackContinuer) {
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML = `
+    <div class="kta-modal kta-modal-danger">
+      <div class="kta-modal-icon">📡</div>
+      <div class="kta-modal-titre">Mode hors connexion détecté</div>
+      <div class="kta-modal-texte">
+        Impossible de joindre Internet.<br><br>
+        Si tu vides le cache maintenant, l'application sera inutilisable.<br><br>
+        <strong>Mais bon, chacun ses choix de vie.</strong>
+      </div>
+      <div class="kta-modal-actions">
+        <button class="kta-btn kta-btn-danger" id="offline-continuer">
+          Je suis très con et je continue
+        </button>
+        <button class="kta-btn kta-btn-ghost" id="offline-annuler">
+          Oups, j'annule
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(overlay);
+
+  document.getElementById("offline-annuler").addEventListener("click", function () {
+    overlay.remove();
+  });
+
+  document.getElementById("offline-continuer").addEventListener("click", function () {
+    overlay.remove();
+    callbackContinuer();
+  });
+}
+
+
+
 
 // =========================
 // VIDER LE CACHE APPLICATIF
@@ -834,9 +916,13 @@ function viderCacheAppli() {
       </div>
     </div>
   `;
+
   document.documentElement.appendChild(overlay1);
 
-  document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
+  document.getElementById("cache-annuler-1").addEventListener("click", function () {
+    overlay1.remove();
+  });
+
   document.getElementById("cache-continuer-1").addEventListener("click", function () {
     overlay1.remove();
 
@@ -858,38 +944,87 @@ function viderCacheAppli() {
         </div>
       </div>
     `;
+
     document.documentElement.appendChild(overlay2);
 
-    document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
+    document.getElementById("cache-annuler-2").addEventListener("click", function () {
+      overlay2.remove();
+    });
+
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
       overlay2.remove();
-      const overlayWait = document.createElement("div");
-      overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
-      document.documentElement.appendChild(overlayWait);
 
-      try {
-        if ("serviceWorker" in navigator) {
-          const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(r => r.unregister()));
-        }
-        if ("caches" in window) {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(name => caches.delete(name)));
-        }
-        overlayWait.remove();
-        window.location.reload(true);
-      } catch (err) {
-        overlayWait.remove();
-        const overlayErr = document.createElement("div");
-        overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
-        document.documentElement.appendChild(overlayErr);
-        document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
+      const okInternet = await verifierConnexionInternet(5000);
+
+      if (!okInternet) {
+        afficherConfirmationOffline(function () {
+          executerVidageCache();
+        });
+        return;
       }
+
+      executerVidageCache();
     });
   });
 }
+// =========================
+// EXÉCUTION RÉELLE DU RESET CACHE
+// =========================
+async function executerVidageCache() {
+  const overlayWait = document.createElement("div");
+  overlayWait.className = "kta-modal-overlay";
+  overlayWait.innerHTML = `
+    <div class="kta-modal">
+      <div class="kta-modal-icon">⏳</div>
+      <div class="kta-modal-titre">Nettoyage en cours…</div>
+      <div class="kta-modal-texte">
+        Suppression des caches et désinscription du Service Worker.
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(overlayWait);
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map(r => r.unregister()));
+    }
+
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+    }
+
+    overlayWait.remove();
+    window.location.reload(true);
+
+  } catch (err) {
+    overlayWait.remove();
+
+    const overlayErr = document.createElement("div");
+    overlayErr.className = "kta-modal-overlay";
+    overlayErr.innerHTML = `
+      <div class="kta-modal">
+        <div class="kta-modal-icon">❌</div>
+        <div class="kta-modal-titre">Erreur</div>
+        <div class="kta-modal-texte">
+          Impossible de vider le cache :<br>${err.message || err}
+        </div>
+        <div class="kta-modal-actions">
+          <button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button>
+        </div>
+      </div>
+    `;
+    document.documentElement.appendChild(overlayErr);
+
+    document.getElementById("cache-err-ok").addEventListener("click", function () {
+      overlayErr.remove();
+    });
+  }
+}
+
+
+
 
 // =========================
 // GESTIONNAIRE DE MODES EXCLUSIFS

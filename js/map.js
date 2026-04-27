@@ -1,156 +1,102 @@
-let map;
-let bounds;
-let collisionCanvas;
-let collisionCtx;
+// =========================
+// MAP.JS — unifié serveur + import navigateur
+// =========================
+
+let map, bounds, collisionCanvas, collisionCtx;
+
+// Icônes globales
+let iconeDefault, iconeSalle, iconepa, iconepc, iconepb;
+let iconeVehicule, iconeElec, iconeEpure, iconePS;
+let iconeInfo, iconeChatiere, iconePassage, iconeDanger, iconepe, iconeTrack;
 
 // =========================
-// ICÔNES GLOBALS
-// =========================
-let iconeDefault;
-let iconeSalle;
-let iconepa;
-let iconepc;
-let iconepb;
-let iconeVehicule;
-let iconeElec;
-let iconeEpure;
-let iconePS;
-let iconeInfo;
-let iconeChatiere;
-let iconePassage;
-let iconeDanger;
-let iconepe;
-let iconeTrack;
-
-// =========================
-// CRÉATION DES ICÔNES
+// ICÔNES
 // =========================
 function creerIcones(iconConfig) {
-  iconeDefault = L.icon({
-    iconUrl: iconConfig.default,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
+  const mk = function(url, w, h, ax, ay) {
+    return L.icon({ iconUrl: url, iconSize: [w, h], iconAnchor: [ax, ay] });
+  };
+  iconeDefault  = mk(iconConfig.default,  50, 50, 25, 25);
+  iconeSalle    = mk(iconConfig.salle,    50, 50, 25, 25);
+  iconepa       = mk(iconConfig.pa,       50, 50, 25, 25);
+  iconepc       = mk(iconConfig.pc,       50, 50, 25, 25);
+  iconepb       = mk(iconConfig.pb,       50, 50, 25, 25);
+  iconeVehicule = mk(iconConfig.vehicule, 50, 25, 25, 13);
+  iconeElec     = mk(iconConfig.elec,     50, 50, 25, 25);
+  iconeEpure    = mk(iconConfig.epure,    50, 50, 25, 25);
+  iconePS       = mk(iconConfig.ps,       50, 50, 25, 25);
+  iconeInfo     = mk(iconConfig.info,     50, 50, 25, 25);
+  iconeChatiere = mk(iconConfig.chatiere, 50, 50, 25, 25);
+  iconePassage  = mk(iconConfig.passage,  50, 50, 25, 25);
+  iconeDanger   = mk(iconConfig.danger,   50, 50, 25, 25);
+  iconepe       = mk(iconConfig.pe,       50, 50, 25, 25);
+  iconeTrack    = mk(iconConfig.track,    50, 50, 25, 25);
 
-  iconeSalle = L.icon({
-    iconUrl: iconConfig.salle,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconepa = L.icon({
-    iconUrl: iconConfig.pa,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconepc = L.icon({
-    iconUrl: iconConfig.pc,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconepb = L.icon({
-    iconUrl: iconConfig.pb,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeVehicule = L.icon({
-    iconUrl: iconConfig.vehicule,
-    iconSize: [50, 25],
-    iconAnchor: [25, 13]
-  });
-
-  iconeElec = L.icon({
-    iconUrl: iconConfig.elec,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeEpure = L.icon({
-    iconUrl: iconConfig.epure,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconePS = L.icon({
-    iconUrl: iconConfig.ps,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeInfo = L.icon({
-    iconUrl: iconConfig.info,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeChatiere = L.icon({
-    iconUrl: iconConfig.chatiere,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconePassage = L.icon({
-    iconUrl: iconConfig.passage,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeDanger = L.icon({
-    iconUrl: iconConfig.danger,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconepe = L.icon({
-    iconUrl: iconConfig.pe,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  iconeTrack = L.icon({
-    iconUrl: iconConfig.track,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25]
-  });
-
-  window.iconeDefault = iconeDefault;
-  window.iconeSalle = iconeSalle;
-  window.iconepa = iconepa;
-  window.iconepc = iconepc;
-  window.iconepb = iconepb;
+  window.iconeDefault  = iconeDefault;
+  window.iconeSalle    = iconeSalle;
+  window.iconepa       = iconepa;
+  window.iconepc       = iconepc;
+  window.iconepb       = iconepb;
   window.iconeVehicule = iconeVehicule;
-  window.iconeElec = iconeElec;
-  window.iconeEpure = iconeEpure;
-  window.iconePS = iconePS;
-  window.iconeInfo = iconeInfo;
+  window.iconeElec     = iconeElec;
+  window.iconeEpure    = iconeEpure;
+  window.iconePS       = iconePS;
+  window.iconeInfo     = iconeInfo;
   window.iconeChatiere = iconeChatiere;
-  window.iconePassage = iconePassage;
-  window.iconeDanger = iconeDanger;
-  window.iconepe = iconepe;
-  window.iconeTrack = iconeTrack;
+  window.iconePassage  = iconePassage;
+  window.iconeDanger   = iconeDanger;
+  window.iconepe       = iconepe;
+  window.iconeTrack    = iconeTrack;
 }
 
 // =========================
-// INITIALISATION DE LA CARTE
+// NETTOYAGE CARTE EXISTANTE
+// =========================
+function cleanupExistingMap() {
+  if (window.map) {
+    try { window.map.remove(); } catch(e) {}
+  }
+  let mapContainer = document.getElementById("map");
+  if (!mapContainer) {
+    mapContainer = document.createElement("div");
+    mapContainer.id = "map";
+    document.body.appendChild(mapContainer);
+  }
+  mapContainer._leaflet_id = undefined;
+  mapContainer.innerHTML   = "";
+  mapContainer.style.display = "block";
+  window.map = null;
+  map        = null;
+}
+
+// =========================
+// INITIALISATION CARTE
 // =========================
 async function initMapFromConfig() {
-  const response = await fetch('data/plan-config.json');
-  const config = await response.json();
+  const config = window.PLAN_CONFIG;
+  if (!config?.plan) throw new Error("PLAN_CONFIG non chargé");
 
-  window.PLAN_CONFIG = config;
+  cleanupExistingMap();
+  await new Promise(function(resolve) { requestAnimationFrame(resolve); });
 
+  const mapContainer = document.getElementById("map");
+  if (!mapContainer) throw new Error("#map introuvable");
+
+  // Afficher #map maintenant que le loader est masqué
+  mapContainer.style.display = "block";
+  mapContainer.style.width   = "100%";
+  mapContainer.style.height  = "100%";
+
+  // Appliquer APP_CONFIG
   Object.assign(APP_CONFIG, {
-    imageHeight: config.plan.imageHeight,
-    imageWidth: config.plan.imageWidth,
-    startX: config.tracking.startX,
-    startY: config.tracking.startY,
-    scale: config.tracking.scale,
-    stepLength: config.tracking.stepLength,
-    stepThreshold: config.tracking.stepThreshold,
-    stepCooldown: config.tracking.stepCooldown
+    imageHeight:   config.plan.imageHeight,
+    imageWidth:    config.plan.imageWidth,
+    startX:        config.tracking?.startX       ?? 0,
+    startY:        config.tracking?.startY       ?? 0,
+    scale:         config.tracking?.scale        ?? 1,
+    stepLength:    config.tracking?.stepLength   ?? 0.7,
+    stepThreshold: config.tracking?.stepThreshold ?? 13,
+    stepCooldown:  config.tracking?.stepCooldown  ?? 400
   });
 
   creerIcones(config.icons);
@@ -163,87 +109,97 @@ async function initMapFromConfig() {
     maxBounds: bounds,
     maxBoundsViscosity: 1.0
   });
-
   map.setMaxBounds(bounds);
   map.setMinZoom(-2);
   map.setMaxZoom(2);
-  map.options.maxBoundsViscosity = 1.0;
 
-  window.map = map;
+  window.map    = map;
   window.bounds = bounds;
 
-  // image principale
-  L.imageOverlay(config.plan.baseImage, bounds).addTo(map);
+  // Image principale — tiling si nécessaire
+  const baseAsset = window.RUNTIME_ASSETS
+    ? Object.values(window.RUNTIME_ASSETS).find(function(a) { return a.url === config.plan.baseImage; })
+    : null;
+  const baseSize = baseAsset?.file?.size || null;
 
-  // layers de données
+  window._baseTiles = await chargerImage(config.plan.baseImage, bounds, map, baseSize);
+
+  // Calques données
   const dataLayerGroups = {};
   const overlays = {};
 
-  config.dataLayers.forEach(layerConfig => {
+  (config.dataLayers || []).forEach(function(layerConfig) {
     const group = L.layerGroup();
-
-    if (layerConfig.visible) {
-      group.addTo(map);
-    }
-
+    if (layerConfig.visible) group.addTo(map);
     dataLayerGroups[layerConfig.id] = group;
-    overlays[layerConfig.label] = group;
+    overlays[layerConfig.label]     = group;
   });
 
-  // overlays image
-  const sortedImageLayers = [...config.imageLayers].sort((a, b) => a.order - b.order);
+  // Calques image
+  const sortedImageLayers = [...(config.imageLayers || [])].sort(function(a, b) {
+    return (a.order || 0) - (b.order || 0);
+  });
 
-  sortedImageLayers.forEach(layerConfig => {
+  sortedImageLayers.forEach(function(layerConfig) {
     const overlay = L.imageOverlay(layerConfig.file, bounds);
-
-    if (layerConfig.visible) {
-      overlay.addTo(map);
-    }
-
+    if (layerConfig.visible) overlay.addTo(map);
     overlays[layerConfig.label] = overlay;
   });
 
   L.control.layers(null, overlays).addTo(map);
 
-  // collision map
+  // Collision
   await initCollisionMap(config.plan.collisionImage);
 
-  // exports compatibles avec ton existant
-  window.layerPuits = dataLayerGroups.puits;
+  window.layerPuits    = dataLayerGroups.puits;
   window.layerVehicule = dataLayerGroups.vehicule;
   window.layerCataphile = dataLayerGroups.cataphile;
-  window.layerCarry = dataLayerGroups.carry;
-
+  window.layerCarry    = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
-  window.layerEditor = dataLayerGroups.editor;
+  window.layerEditor   = dataLayerGroups.editor;
+
+  console.log("[Map] Carte initialisée");
 }
 
+// =========================
+// COLLISION
+// =========================
 function initCollisionMap(imagePath) {
-  return new Promise((resolve) => {
-    const collisionImage = new Image();
-    collisionImage.src = imagePath;
-
-    collisionCanvas = document.createElement('canvas');
-    collisionCtx = collisionCanvas.getContext('2d');
-
-    collisionImage.onload = function() {
-      collisionCanvas.width = collisionImage.width;
-      collisionCanvas.height = collisionImage.height;
-
-      collisionCtx.drawImage(collisionImage, 0, 0);
-
-      console.log("Collision map chargée");
-
-      window.collisionCtx = collisionCtx;
-      window.collisionCanvas = collisionCanvas;
-
-      resolve();
-    };
-
-    collisionImage.onerror = function() {
-      console.warn("Impossible de charger la collision map :", imagePath);
+  const MAX_CANVAS_DIM = 4096;
+  return new Promise(function(resolve) {
+    if (!imagePath) {
       window.collisionCtx = null;
-      window.collisionCanvas = collisionCanvas;
+      window.collisionCanvas = null;
+      resolve(); return;
+    }
+    const img = new Image();
+    requestAnimationFrame(function() { img.src = imagePath; });
+    img.onload = function() {
+      try {
+        let w = img.width, h = img.height;
+        if (w > MAX_CANVAS_DIM || h > MAX_CANVAS_DIM) {
+          const r = Math.min(MAX_CANVAS_DIM / w, MAX_CANVAS_DIM / h);
+          w = Math.round(w * r); h = Math.round(h * r);
+        }
+        collisionCanvas = document.createElement('canvas');
+        collisionCanvas.width  = w;
+        collisionCanvas.height = h;
+        collisionCtx = collisionCanvas.getContext('2d', { willReadFrequently: true });
+        collisionCtx.drawImage(img, 0, 0, w, h);
+        img.src = "";
+        window.collisionCtx    = collisionCtx;
+        window.collisionCanvas = collisionCanvas;
+        resolve();
+      } catch(err) {
+        console.error("[Collision] OOM :", err);
+        window.collisionCtx = null;
+        window.collisionCanvas = null;
+        resolve();
+      }
+    };
+    img.onerror = function() {
+      window.collisionCtx = null;
+      window.collisionCanvas = null;
       resolve();
     };
   });

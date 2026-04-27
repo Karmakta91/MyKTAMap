@@ -62,10 +62,12 @@ function initTracking() {
   });
 }
 
-// Cache de collision — pixels lus une seule fois au chargement
-let _collisionData = null;
-let _collisionWidth = 0;
+// Cache de collision
+let _collisionData   = null;
+let _collisionWidth  = 0;
 let _collisionHeight = 0;
+let _collisionScaleX = 1; // ratio coordonnées plan → canvas collision
+let _collisionScaleY = 1;
 
 function initCollisionCache() {
   if (!window.collisionCtx || !window.collisionCanvas) return;
@@ -73,7 +75,14 @@ function initCollisionCache() {
     _collisionWidth  = window.collisionCanvas.width;
     _collisionHeight = window.collisionCanvas.height;
     _collisionData   = window.collisionCtx.getImageData(0, 0, _collisionWidth, _collisionHeight).data;
-    console.log("[Collision] Cache chargé :", _collisionWidth, "x", _collisionHeight);
+
+    // Calculer le ratio entre les coordonnées plan (APP_CONFIG) et le canvas collision
+    // Le canvas peut être downscalé (max 4096px) par rapport au plan original
+    _collisionScaleX = _collisionWidth  / APP_CONFIG.imageWidth;
+    _collisionScaleY = _collisionHeight / APP_CONFIG.imageHeight;
+
+    console.log("[Collision] Cache chargé :", _collisionWidth, "x", _collisionHeight,
+                "| Scale:", _collisionScaleX.toFixed(3), "x", _collisionScaleY.toFixed(3));
   } catch(e) {
     console.warn("[Collision] Impossible de lire le canvas :", e);
     _collisionData = null;
@@ -82,7 +91,12 @@ function initCollisionCache() {
 
 function estAccessible(x, y) {
   if (!_collisionData) return true;
-  if (x < 0 || y < 0 || x >= _collisionWidth || y >= _collisionHeight) return false;
+
+  // Convertir les coordonnées plan → coordonnées canvas collision
+  const cx = x * _collisionScaleX;
+  const cy = y * _collisionScaleY;
+
+  if (cx < 0 || cy < 0 || cx >= _collisionWidth || cy >= _collisionHeight) return false;
 
   const rayon = 2;
   let ok = 0, total = 0;
@@ -90,8 +104,8 @@ function estAccessible(x, y) {
   for (let dx = -rayon; dx <= rayon; dx++) {
     for (let dy = -rayon; dy <= rayon; dy++) {
       total++;
-      const px = Math.round(x + dx);
-      const py = Math.round(y + dy);
+      const px = Math.round(cx + dx);
+      const py = Math.round(cy + dy);
       if (px < 0 || py < 0 || px >= _collisionWidth || py >= _collisionHeight) continue;
 
       const idx = (py * _collisionWidth + px) * 4;
