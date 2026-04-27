@@ -4,8 +4,8 @@
 // =========================
 
 const PLANNER_DEFAULT_ICONS = {
-  default:  "icon/iconetrack.png",
-  track:    "lib/leaflet/images/marker-icon.png",
+  default:  "lib/leaflet/images/marker-icon.png",
+  track:    "icon/iconetrack.png",
   salle:    "icon/house.png",
   pa:       "icon/pa.png",
   pc:       "icon/pc.png",
