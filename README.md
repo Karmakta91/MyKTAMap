@@ -11,10 +11,25 @@
 
 ## 📋 Journal des modifications
 
+### 27/04/2026
+- **Refonte architecture complète** — fusion `index.html` + `import.html` en une seule page PWA
+- Suppression de `import.html`, `config_import.js`, `map_import.js`, `main_import.js`
+- `config.js`, `map.js`, `main.js` unifiés : gèrent les deux modes (serveur + import navigateur)
+- Auto-détection au démarrage : charge `data/plan-config.json` si disponible, sinon affiche le loader
+- Bouton 🗂️ "Changer de plan" reste dans la même page — PWA standalone préservée
+- Ajout du mode performance (tiling) pour les plans JPEG volumineux sur Safari iOS
+- `tiling.js` — nouveau module de découpage en tuiles via `<img>` HTML + canvas
+- Préférences utilisateur (`perfMode`, `motionDebug`) persistées séparément du plan dans `app_user_prefs`
+- Panneau de logs de débogage intégré (🐛 dans ⚙️) avec persistance `localStorage`
+- Optimisation collision : cache pixel en mémoire (`initCollisionCache`) — plus de `getImageData` à chaque pas
+- Chargement des markers par batch de 50 via `requestAnimationFrame` — évite le freeze UI
+- Routes embarquées dans les calques de données (`roads[]` dans le JSON data)
+- Métadonnées PWA ajoutées (`apple-mobile-web-app-capable`) — mode standalone sur iPhone
+- `debug.js` — capture silencieuse des logs, accessible via ⚙️ → Logs
+
 ### 26/04/2026
-- Ajout du mode de creation de plan
 - Documentation utilisateur séparée du README DEV (`README_USER.md`)
-- Aide, Légende, Réglages, Légende en modales plein écran
+- Aide, Légende, Réglages en modales plein écran
 - Ajout du convertisseur JSON bidirectionnel (`editor ↔ data`)
 - Ajout du générateur de plan ZIP (`createConf.js`)
 - Refonte graphique de l'interface (charte dark cohérente)
@@ -26,7 +41,6 @@
 ### 25/04/2026
 - Documentation intégrée à l'interface (README + README_USER)
 - Bouton vider le cache dans les réglages
-- Réactivation du Service Worker (test en cours)
 - Correction du responsive design (interface mobile)
 
 ### 22/04/2026
@@ -40,6 +54,7 @@
 
 **Points en cours d'investigation :**
 - Erreur d'échelle constatée sur le tracker — possible problème de cooldown (à investiguer)
+- Tiling JPEG sur Safari iOS : qualité réduite par contrainte mémoire GPU (MAX_WORK_DIM = 8192)
 
 ---
 
@@ -62,58 +77,140 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 | Import de plan via ZIP | ✅ Disponible |
 | Convertisseur JSON (editor ↔ data) | ✅ Disponible |
 | Générateur de plan ZIP | ✅ Disponible |
+| Mode performance (tiling JPEG volumineux) | ✅ Disponible |
+| Application PWA — mode standalone iOS | ✅ Disponible |
+| Panneau de logs de débogage | ✅ Disponible |
 | Déplacement simulé via capteurs mobile | ⚠️ Expérimental |
-| Mode hors-connexion (ServiceWorker) | ⚠️ Test en cours |
+| Mode hors-connexion (ServiceWorker) | ⚠️ Désactivé |
 
 ---
 
 ## 🏗️ Architecture applicative
 
 ```
-index.html / import.html
+index.html                  ← Page unique (loader intégré + carte)
         │
-        ├── config.js          ← Configuration globale (APP_CONFIG, DEFAULT_CONFIG)
-        ├── config_import.js   ← Configuration en mode import navigateur
-        ├── utils.js           ← Fonctions utilitaires (convertCoord, choisirIcone)
-        ├── map.js             ← Initialisation Leaflet + calques + collision
-        ├── map_import.js      ← Idem, adapté au mode import navigateur
-        ├── tracking.js        ← Déplacement simulé via capteurs
+        ├── debug.js           ← Capture logs + modale débogage
+        ├── config.js          ← Configuration unifiée (serveur + import)
+        ├── utils.js           ← Fonctions utilitaires + normalisation JSON
         ├── measure.js         ← Mesure de distance
+        ├── tiling.js          ← Mode performance : découpage en tuiles
+        ├── map.js             ← Initialisation Leaflet (unifié)
+        ├── tracking.js        ← Déplacement simulé via capteurs
         ├── editor.js          ← Ajout de points d'intérêt
         ├── road.js            ← Tracé de routes
-        ├── createConf.js         ← Générateur de plan ZIP
-        ├── interface.js       ← Construction de l'interface Leaflet
-        ├── main.js            ← Point d'entrée (mode serveur)
-        └── main_import.js     ← Point d'entrée (mode import navigateur)
+        ├── createConf.js      ← Générateur de plan ZIP
+        ├── interface.js       ← Interface Leaflet + toutes les modales
+        └── main.js            ← Point d'entrée unique avec auto-détection
 
 lib/
         ├── leaflet/           ← Leaflet.js (local)
-        └── jszip/             ← JSZip 3.10.1 (local, requis pour ZIP)
+        └── jszip.min.js       ← JSZip 3.10.1 (local, requis pour ZIP)
 ```
+
+> `import.html`, `config_import.js`, `map_import.js` et `main_import.js` sont **supprimés**. Toute leur logique est absorbée dans les fichiers unifiés.
 
 ### Résumé des fichiers
 
 | Fichier | Rôle principal |
 |---|---|
-| `config.js` | Configuration globale (mode fichier local) |
-| `config_import.js` | Configuration globale en mode import navigateur |
-| `utils.js` | Fonctions utilitaires partagées + normalisation JSON |
-| `map.js` | Initialisation de la carte et des calques |
-| `map_import.js` | Idem, adapté au mode import navigateur |
+| `debug.js` | Capture silencieuse des logs, persistance localStorage, modale débogage |
+| `config.js` | Configuration unifiée : DEFAULT_CONFIG, APP_CONFIG, RUNTIME_ASSETS, préférences |
+| `utils.js` | Fonctions utilitaires partagées + batch markers + routes embarquées |
+| `tiling.js` | Mode performance : découpage image en tuiles 1024px via `<img>` + canvas |
+| `map.js` | Initialisation carte Leaflet, calques, collision (unifié serveur + import) |
 | `measure.js` | Mesure de distance |
-| `tracking.js` | Déplacement simulé et détection de collision |
+| `tracking.js` | Déplacement simulé, cache collision pixel, PDR |
 | `editor.js` | Ajout de points et export JSON |
 | `road.js` | Tracé de routes Principal / Secondaire / Chemin |
 | `createConf.js` | Générateur de plan ZIP complet |
 | `interface.js` | Interface utilisateur Leaflet + toutes les modales |
-| `main.js` | Initialisation globale (mode fichier local) |
-| `main_import.js` | Initialisation globale en mode import navigateur |
+| `main.js` | Point d'entrée unique : auto-détection, startImportedPlan, lancerApplication |
+
+---
+
+## 🚀 Démarrage — auto-détection du mode
+
+`main.js` orchestre le démarrage en deux branches :
+
+```
+initApp()
+  → loadAppConfig()          ← tente fetch('data/plan-config.json')
+      → succès               → lancerApplication()   (mode serveur)
+      → échec                → afficherLoader()       (mode import)
+
+startImportedPlan()          ← appelé par le loader HTML
+  → resetRuntimeAssets()
+  → registerAsset() × N      ← enregistre les fichiers comme Blob URLs
+  → cloneAndResolvePlanConfig()
+  → buildAppConfigFromPlan() ← applique perfMode du loader
+  → lancerApplication()
+```
+
+Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affiche uniquement si aucun plan serveur n'est détecté, ou quand l'utilisateur clique 🗂️.
+
+---
+
+## ⚡ Mode Performance (tiling.js)
+
+Pour les plans JPEG volumineux (> 60 Mo) qui crashent Safari iOS, le mode performance découpe l'image en tuiles.
+
+### Activation
+
+| `APP_CONFIG.perfMode` | Comportement |
+|---|---|
+| `null` (Auto) | Activé si `fileSize > 60Mo` |
+| `true` | Toujours activé |
+| `false` | Désactivé — imageOverlay classique |
+
+Le choix dans le loader (checkbox ⚡) est passé explicitement à `startImportedPlan(file, assets, perfChoisi)` et écrase le localStorage — garantissant que le choix au chargement est toujours respecté.
+
+### Flux technique
+
+```
+chargerImage(url, bounds, map, fileSize, sourceFile)
+  → perfModeActif() ?
+      → chargerImageTuillee()
+          → _obtenirBlob()          ← File direct si mode import, fetch sinon
+          → _imageVersCanvasReduit() ← <img> HTML → canvas (max 8192px)
+          → _tilerDepuisCanvas()    ← découpe en tuiles 1024×1024
+              → _canvasToBlob()     ← JPEG 0.88 par tuile
+              → L.imageOverlay()    ← placement Leaflet
+      → L.imageOverlay()            ← mode normal
+```
+
+### Limites Safari iOS
+
+- `drawImage` sur un JPEG > 8192px échoue silencieusement → canvas noir
+- Détection automatique : `getImageData(1,1,1,1)` après drawImage
+- Fallback : re-essai avec `setTimeout(100ms)`, puis `imageOverlay` classique si toujours noir
+- La Blob URL est créée et révoquée **à l'intérieur** de `_imageVersCanvasReduit` pour éviter l'expiration sandbox Safari
+
+---
+
+## 💾 Préférences utilisateur
+
+Les préférences sont séparées de la config plan pour survivre aux changements de plan :
+
+```js
+// Sauvegarde
+localStorage.setItem("app_user_prefs", JSON.stringify({
+  motionDebug: APP_CONFIG.motionDebug,
+  perfMode:    APP_CONFIG.perfMode
+}));
+
+// Restauration (dans buildAppConfigFromPlan)
+const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
+if ("perfMode" in saved) cfg.perfMode = saved.perfMode;
+```
+
+Les dimensions du plan et paramètres tracking viennent toujours du `plan-config.json`.
 
 ---
 
 ## ⚙️ Configuration — `plan-config.json`
 
-Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes les informations nécessaires au chargement.
+Chaque plan est décrit par un fichier `plan-config.json`.
 
 ### Exemple complet
 
@@ -138,9 +235,9 @@ Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes 
     }
   ],
   "dataLayers": [
-    { "id": "puits",     "label": "Puits",    "file": "data/puit.json",      "visible": true },
-    { "id": "vehicule",  "label": "Vehicule", "file": "data/vehicule.json",  "visible": true },
-    { "id": "editor",    "label": "Ajouts",   "file": "data/editor.json",    "visible": true }
+    { "id": "puits",    "label": "Puits",   "file": "data/puit.json",    "visible": true },
+    { "id": "vehicule", "label": "Vehicule","file": "data/vehicule.json","visible": true },
+    { "id": "editor",   "label": "Ajouts",  "file": "data/editor.json",  "visible": true }
   ],
   "tracking": {
     "startX": 345,
@@ -174,176 +271,68 @@ Chaque plan est décrit par un fichier `plan-config.json` qui centralise toutes 
 
 | Clé | Type | Utilité |
 |---|---|---|
-| `name` | string | Nom affiché dans le titre de l'interface |
+| `name` | string | Nom affiché dans le titre |
 | `version` | string | Version du plan |
-| `author` | string | Auteur ou source de la cartographie |
-| `imageWidth` | number | Largeur de l'image en pixels |
-| `imageHeight` | number | Hauteur de l'image en pixels |
+| `author` | string | Auteur ou source |
+| `imageWidth` | number | Largeur en pixels |
+| `imageHeight` | number | Hauteur en pixels |
 | `baseImage` | string | Chemin vers l'image principale |
-| `collisionImage` | string | Chemin vers l'image de collision (zones interdites) |
-
-### Section `imageLayers`
-
-| Champ | Utilité |
-|---|---|
-| `id` | Identifiant interne |
-| `label` | Nom affiché dans le contrôle de couches |
-| `file` | Chemin vers l'image |
-| `visible` | Visibilité au chargement |
-| `order` | Ordre de superposition (plus grand = dessus) |
-
-### Section `dataLayers`
-
-| Champ | Utilité |
-|---|---|
-| `id` | Identifiant technique utilisé dans le code |
-| `label` | Nom affiché dans le contrôle de couches |
-| `file` | Chemin vers le fichier JSON |
-| `visible` | Visibilité au chargement |
-
-> Le calque `editor` doit toujours être présent — il reçoit les points créés via le mode ajout.
+| `collisionImage` | string | Chemin vers l'image de collision |
 
 ### Section `tracking`
 
 | Clé | Type | Utilité |
 |---|---|---|
-| `startX` | number | Position X initiale du tracker (pixels) |
-| `startY` | number | Position Y initiale du tracker (pixels) |
-| `scale` | number | Facteur de conversion pixels/mètres |
-| `stepLength` | number | Longueur moyenne d'un pas (mètres) |
-| `stepThreshold` | number | Seuil d'accélération pour détecter un pas |
+| `startX` | number | Position X initiale du tracker |
+| `startY` | number | Position Y initiale du tracker |
+| `scale` | number | Facteur pixels/mètres |
+| `stepLength` | number | Longueur d'un pas (mètres) |
+| `stepThreshold` | number | Seuil détection pas |
 | `stepCooldown` | number | Délai minimum entre deux pas (ms) |
+
+> Le calque `editor` doit toujours être présent dans `dataLayers`.
 
 ---
 
 ## 📁 Description des modules
 
-### `config.js`
+### `config.js` (unifié)
 
-Centralise les constantes de configuration. Deux objets coexistent :
+Remplace `config.js` + `config_import.js`. Gère :
 
-- `DEFAULT_CONFIG` : valeurs d'origine, jamais modifiées
-- `APP_CONFIG` : valeurs actives, surchargées par l'utilisateur via l'interface
+- `DEFAULT_CONFIG` / `APP_CONFIG` — configuration active
+- `RUNTIME_ASSETS` — registre des fichiers importés (Blob URLs)
+- `buildAppConfigFromPlan()` — construit APP_CONFIG depuis un plan + préférences
+- `loadAppConfig()` — charge `data/plan-config.json` (mode serveur)
+- `sauvegarderPrefsUtilisateur()` — persiste `motionDebug` et `perfMode`
+- Helpers : `registerAsset()`, `findMatchingFile()`, `cloneAndResolvePlanConfig()`, `validateImportedPlan()`
 
-Les réglages modifiés via l'interface sont persistés dans le `localStorage`.
+### `map.js` (unifié)
 
-### `utils.js`
+Remplace `map.js` + `map_import.js`. Gère :
 
-Contient les fonctions partagées entre modules.
+- `cleanupExistingMap()` — destruction propre de la carte existante avant rechargement
+- `initMapFromConfig()` — initialisation Leaflet, calques, tiling si nécessaire
+- `initCollisionMap()` — canvas collision avec downscale automatique (max 4096px) et `willReadFrequently: true`
 
-#### `convertCoord(x, y)`
+### `main.js` (unifié)
 
-Convertit les coordonnées internes du plan (origine haut-gauche, style GIMP) vers le système Leaflet (origine bas-gauche).
+Remplace `main.js` + `main_import.js`. Gère :
 
-```js
-function convertCoord(x, y) {
-  return [APP_CONFIG.imageHeight - y, x];
-}
-```
-
-> Si vous utilisez un logiciel autre que GIMP, vérifiez l'origine de l'axe Y.
-
-#### `choisirIcone(point)`
-
-Sélectionne l'icône Leaflet appropriée en fonction des tags du point.
-
-#### `ajouterPointsDepuisJSON(url, layer)`
-
-Charge un fichier JSON et ajoute les marqueurs sur le layer Leaflet. Accepte deux formats :
-
-- Format standard : `{ "data": [...] }`
-- Format session exportée : `{ "editorPoints": [...] }`
-
-La détection est automatique via `normaliserPoints(json)`.
-
-### `map.js` / `map_import.js`
-
-Initialise la carte Leaflet en mode `L.CRS.Simple` et charge tous les calques.
-
-```js
-map = L.map('map', {
-  crs: L.CRS.Simple,
-  minZoom: -2,
-  maxBounds: bounds,
-  maxBoundsViscosity: 1.0
-});
-```
-
-#### Carte de collision
-
-Chargée dans un `<canvas>` hors-DOM. Les pixels rouges (`r > 200, g < 50, b < 50`) représentent les zones interdites au déplacement du tracker.
+- `lancerApplication()` — reset complet + init carte + init modules
+- `startImportedPlan(planConfigFile, assetFiles, perfChoisi)` — chargement depuis le loader
+- `afficherLoader()` / `afficherLoader()` — affiche/masque le loader intégré
+- Auto-détection au démarrage via `loadAppConfig()`
 
 ### `tracking.js`
 
-Gère le déplacement simulé via les capteurs du téléphone (PDR — *Pedestrian Dead Reckoning*).
+Cache collision initialisé une seule fois à l'init (`initCollisionCache`) — stocke le tableau RGBA complet en mémoire. Les vérifications de collision lisent un index tableau au lieu d'appeler `getImageData` à chaque pas.
 
-Flux : `requestPermission()` → `initOrientation()` → `initMotion()` → `avancer()` → `updateMap()`
+### `utils.js`
 
-#### Calcul du cap
-
-```js
-function getHeading(alpha, beta, gamma) {
-  const a = alpha * Math.PI / 180;
-  const b = beta  * Math.PI / 180;
-  const g = gamma * Math.PI / 180;
-
-  const x = Math.sin(a) * Math.cos(b)
-          + Math.cos(a) * Math.sin(g) * Math.sin(b)
-          - Math.cos(a) * Math.cos(g) * Math.sin(b);
-  const y = Math.cos(a) * Math.cos(b)
-          - Math.sin(a) * Math.sin(g) * Math.sin(b)
-          + Math.sin(a) * Math.cos(g) * Math.sin(b);
-
-  let heading = Math.atan2(x, y) * 180 / Math.PI;
-  if (heading < 0) heading += 360;
-  return heading;
-}
-```
-
-> Fonctionnalité expérimentale. Aide visuelle uniquement, pas un système de localisation fiable.
-
-### `editor.js`
-
-Module d'ajout de points d'intérêt. Expose :
-
-| Fonction | Rôle |
-|---|---|
-| `window.getEditorPoints()` | Retourne le tableau des points |
-| `window.setEditorPoints(arr)` | Remplace le tableau |
-| `window.renderEditorPoints()` | Redessine tous les points sur le calque |
-
-### `road.js`
-
-Module de tracé de routes. Trois types : `principal`, `secondaire`, `chemin`. Expose :
-
-| Fonction | Rôle |
-|---|---|
-| `window.getRoads()` | Retourne le tableau des tracés |
-| `window.setRoads(arr)` | Restaure des tracés |
-| `window.resetRoads()` | Efface tous les tracés |
-| `window.toggleRoadMode(type)` | Active/désactive un type de tracé |
-
-### `createConf.js`
-
-Génère un ZIP plan complet à partir d'un formulaire. Dépend de **JSZip** (`lib/jszip.min.js`).
-
-Contenu du ZIP généré :
-
-```
-plan_nom.zip
-├── plan-config.json        ← généré automatiquement
-├── data/
-│   ├── image_principale.png
-│   ├── calque_image.png    ← calques image ajoutés
-│   ├── donnees.json        ← calques données (fournis ou créés vides)
-│   └── editor.json         ← toujours présent, vide
-```
-
-Les icônes ne sont **pas embarquées** dans le ZIP — elles référencent `icon/*.png` du serveur, commun à tous les plans.
+Chargement des markers par batch (`requestAnimationFrame`) — 50 markers par frame. Routes embarquées (`roads[]`) dans les calques de données chargées via `ajouterPointsDepuisJSON`.
 
 ### `interface.js`
-
-Construit tous les contrôles Leaflet et les modales. Chaque bloc fonctionnel est un `L.control` indépendant.
 
 #### Blocs de contrôles
 
@@ -357,20 +346,21 @@ Construit tous les contrôles Leaflet et les modales. Chaque bloc fonctionnel es
 | Routes | 🟩 🟪 🟨 🧹 |
 | Import/Export | 📂 💾 🔄 |
 
-#### Gestionnaire de modes exclusifs
-
-Un seul mode peut être actif à la fois (mesure, édition, recalage, routes). Géré par `_activerMode(cle, btn, activerFn, desactiverFn)` et `_desactiverTousLesModes()`.
-
 #### Modales disponibles
 
 | Fonction | Description |
 |---|---|
 | `afficherAide()` | Référence des boutons par section |
-| `afficherConfig()` | Réglages APP_CONFIG |
+| `afficherConfig()` | Réglages APP_CONFIG + logs + réinitialiser |
 | `afficherLegende()` | Icônes et tracés du plan actif |
 | `afficherReadme()` | Choix doc utilisateur / développeur |
 | `afficherConvertisseur()` | Conversion JSON bidirectionnelle |
 | `afficherPlanner()` | Générateur de plan ZIP |
+| `afficherLogsDebug()` | Panneau logs de débogage |
+
+### `debug.js`
+
+Capture silencieuse de tous les `console.log/warn/error` + erreurs non catchées. Persistance dans `localStorage("kta_debug_logs")` — les logs survivent au crash du tab. Accessible via ⚙️ → 🐛 Logs.
 
 ---
 
@@ -382,21 +372,12 @@ Un seul mode peut être actif à la fois (mesure, édition, recalage, routes). G
 {
   "type": "puits",
   "version": 1,
-  "data": [
-    {
-      "id": "PA1",
-      "nom": "Puits Aération",
-      "x": 4843,
-      "y": 2002,
-      "tags": ["pa"],
-      "etat": "Non inspectée",
-      "description": "Puits avec courant d'air",
-      "profondeur": 12,
-      "date_update": "2026-04-26"
-    }
-  ]
+  "data": [ ... ],
+  "roads": []
 }
 ```
+
+Le champ `roads[]` est optionnel — s'il est présent, les tracés sont affichés en lecture seule dans le même calque Leaflet que les points (non modifiables via 🧹).
 
 ### Format session exportée
 
@@ -410,63 +391,28 @@ Un seul mode peut être actif à la fois (mesure, édition, recalage, routes). G
 }
 ```
 
-| Champ point | Type | Utilité |
-|---|---|---|
-| `id` | string | Identifiant unique |
-| `nom` | string | Nom affiché dans le popup |
-| `x`, `y` | number | Coordonnées pixels (origine haut-gauche, GIMP) |
-| `tags` | array | Détermine l'icône via `choisirIcone()` |
-| `etat` | string | État courant |
-| `description` | string | Texte affiché dans le popup |
-| `profondeur` | number | Optionnel |
-| `date_update` | string | Date de dernière mise à jour |
+---
 
-> `ajouterPointsDepuisJSON()` accepte les deux formats automatiquement — la détection repose sur la présence de `data` ou `editorPoints`.
+## 🔄 Convertisseur JSON
+
+| Sens | Entrée | Sortie |
+|---|---|---|
+| edition → data | `{ editorPoints, roads }` | `{ type, version, data, roads }` |
+| data → edition | `{ data, roads }` | `{ type: "devmap-session", editorPoints, roads }` |
+
+Les routes sont préservées dans les deux sens.
 
 ---
 
 ## 📍 Gestion des coordonnées
 
-GIMP et la plupart des logiciels image utilisent une origine **haut-gauche** (axe Y vers le bas). Leaflet `L.CRS.Simple` utilise une origine **bas-gauche** (axe Y vers le haut).
+GIMP : origine haut-gauche (Y vers le bas). Leaflet `L.CRS.Simple` : origine bas-gauche (Y vers le haut).
 
 ```js
 function convertCoord(x, y) {
   return [APP_CONFIG.imageHeight - y, x];
 }
 ```
-
-> `imageHeight` doit correspondre exactement à la hauteur en pixels de l'image. La valeur est lue depuis `plan-config.json`.
-
----
-
-## 🗂️ Mode import navigateur
-
-Permet de charger un plan complet depuis le navigateur, sans serveur web.
-
-**Deux méthodes :**
-
-1. **Fichiers séparés** — sélection manuelle de `plan-config.json` + fichiers associés
-2. **Archive ZIP** — décompression via JSZip en mémoire, résolution automatique des chemins
-
-Dans les deux cas, `startImportedPlan(planConfigFile, assetFiles)` dans `main_import.js` orchestre le chargement. Les assets sont enregistrés comme Blob URLs via `RUNTIME_ASSETS` dans `config_import.js`.
-
----
-
-## 🔄 Convertisseur JSON
-
-Conversion bidirectionnelle entre formats, sans serveur. Accessible via le bouton 🔄 dans l'interface.
-
-| Sens | Entrée | Sortie |
-|---|---|---|
-| edition → data | `{ editorPoints: [...] }` | `{ type, version, data: [...] }` |
-| data → edition | `{ data: [...] }` | `{ type: "devmap-session", editorPoints: [...] }` |
-
----
-
-## 📦 Générateur de plan (createConf.js)
-
-Dépendance : **JSZip** — doit être servi localement (`lib/jszip.min.js`).
-
 
 ---
 

@@ -52,41 +52,58 @@ Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez 
 
 ## 🚀 Premiers pas
 
+### Installer l'application sur iPhone (recommandé)
+
+MyKTAMap peut être installée comme application native sur iPhone — sans passer par l'App Store :
+
+1. Ouvrez `myktamap.is-underground.fr` dans **Safari**
+2. Appuyez sur le bouton de partage ↑ en bas de l'écran
+3. Sélectionnez **"Sur l'écran d'accueil"**
+4. Confirmez — une icône apparaît sur votre écran d'accueil
+5. Lancez toujours l'application depuis cette icône
+
+> L'application fonctionne ainsi en mode plein écran, sans la barre Safari. C'est la méthode recommandée pour une utilisation terrain.
+
 ### Charger un plan
 
-Au démarrage, l'application vous propose de charger un plan. Deux méthodes sont disponibles :
+Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un formulaire de chargement. Deux méthodes sont disponibles :
 
 **📁 Fichiers séparés**
-Sélectionnez d'abord le fichier `plan-config.json`, puis tous les fichiers associés (images `.png`, données `.json`, icônes). Cette méthode est utile si vous gérez vos fichiers manuellement.
+Sélectionnez d'abord le fichier `plan-config.json`, puis tous les fichiers associés (images, données JSON). Cette méthode est utile si vous gérez vos fichiers manuellement.
 
 **📦 Archive ZIP**
 Sélectionnez une archive `.zip` contenant l'ensemble des fichiers du plan. C'est la méthode recommandée : un seul fichier à transmettre et à ouvrir. Glissez-déposez le ZIP sur la zone prévue, ou cliquez pour le sélectionner.
 
+### Mode performance ⚡
+
+Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performance** avant de charger. Ce mode découpe l'image en tuiles pour éviter les crashes sur iPhone. La qualité est légèrement réduite mais l'image s'affiche correctement.
+
+> Le mode performance se coche automatiquement si votre archive ZIP dépasse 50 Mo.
+
 ### Utilisation hors connexion
 
-MyKTAMap est conçu pour fonctionner **sans connexion Internet** une fois le plan chargé. En souterrain, là où aucun réseau n'est disponible, l'application continue de fonctionner normalement.
+MyKTAMap fonctionne **sans connexion Internet** une fois le plan chargé.
 
 **Pour préparer une sortie hors connexion :**
 
 1. Ouvrez l'application **avant de partir**, avec une connexion disponible
 2. Chargez votre plan complet (ZIP ou fichiers séparés)
-3. Une fois le plan affiché, **laissez l'onglet ouvert** sur votre téléphone — ne le fermez pas
+3. Une fois le plan affiché, **ne fermez pas l'application** — laissez-la en arrière-plan
 4. Passez en mode avion ou entrez en zone sans réseau : l'application reste fonctionnelle
-5. Si vous devez quitter l'onglet, notez que le plan devra être rechargé à votre retour
 
-> Le Service Worker (mode hors-ligne automatique) est actuellement désactivé. La méthode ci-dessus est la solution recommandée.
+> Si vous avez installé l'application depuis l'écran d'accueil, elle reste disponible entre les sessions sans avoir à recharger le plan.
 
 ---
 
 ## 🗺️ Lire le plan
 
-Une fois le plan chargé, vous naviguez sur une carte à défilement libre :
+Une fois le plan chargé :
 
 - **Pincer / zoomer** pour agrandir ou réduire la vue
 - **Glisser** pour se déplacer sur le plan
 - **Cliquer sur une icône** pour afficher les informations du point (nom, description, état)
 
-Les boutons **+** et **−** en haut à gauche permettent de zoomer, et le contrôle de calques (icône en haut à droite) permet d'afficher ou masquer des couches d'informations.
+Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôle de calques en haut à droite permet d'afficher ou masquer des couches d'informations.
 
 ---
 
@@ -96,13 +113,13 @@ Les boutons **+** et **−** en haut à gauche permettent de zoomer, et le contr
 
 Appuyez sur **▶️** pour démarrer. Sur iPhone, une demande de permission s'affiche — acceptez-la pour autoriser l'accès aux capteurs de mouvement.
 
-Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé bleu enregistre votre chemin parcouru.
+Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
 Appuyez sur **⏹️** pour arrêter.
 
 ### Recaler sa position
 
-Inévitablement, la position calculée dérivera par rapport à votre position réelle. Dès que vous reconnaissez un repère sur le plan (une salle, un carrefour, un puits), utilisez le recalage :
+La position calculée dérive inévitablement. Dès que vous reconnaissez un repère sur le plan (une salle, un carrefour, un puits), recalez :
 
 1. Appuyez sur **📍** — le bouton s'allume en vert
 2. Appuyez sur le point du plan correspondant à votre position réelle
@@ -115,13 +132,13 @@ Recalez le plus souvent possible pour maintenir une estimation correcte.
 
 ### Réglages du tracker
 
-Accédez aux réglages via **⚙️**. Les paramètres importants pour le tracker :
+Accédez aux réglages via **⚙️** :
 
-- **Échelle (px/m)** : rapport entre les pixels du plan et les mètres réels. Si votre déplacement semble trop lent ou trop rapide sur le plan, ajustez cette valeur. Une valeur plus grande = déplacement plus lent sur le plan.
+- **Échelle (px/m)** : rapport pixels/mètres réels. Si le déplacement semble trop lent ou rapide, ajustez.
 - **Taille d'un pas (m)** : longueur estimée de votre foulée. En moyenne 0,7 m.
-- **Seuil de détection** : sensibilité du détecteur de pas. Augmentez si des pas sont détectés au repos, diminuez si des pas réels ne sont pas détectés.
-- **Cooldown (ms)** : délai minimum entre deux pas. Empêche les doubles détections.
-- **Position initiale X / Y** : point de départ de l'icône au chargement du plan.
+- **Seuil de détection** : sensibilité du détecteur de pas.
+- **Cooldown (ms)** : délai minimum entre deux pas.
+- **Position initiale X / Y** : point de départ de l'icône au chargement.
 
 ---
 
@@ -130,9 +147,7 @@ Accédez aux réglages via **⚙️**. Les paramètres importants pour le tracke
 1. Appuyez sur **📏** — le mode mesure s'active (bouton vert)
 2. Cliquez sur le plan pour poser des points
 3. La distance totale s'affiche en bas à gauche, en mètres
-4. Appuyez sur **❌** pour effacer la mesure et recommencer
-
-La distance est calculée en utilisant l'échelle définie dans les réglages. Si les distances affichées semblent incorrectes, vérifiez la valeur **Échelle (px/m)** dans ⚙️.
+4. Appuyez sur **❌** pour effacer et recommencer
 
 ---
 
@@ -140,29 +155,20 @@ La distance est calculée en utilisant l'échelle définie dans les réglages. S
 
 1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité
-3. Un formulaire s'ouvre : saisissez le nom, le type (détermine l'icône) et une description
+3. Saisissez le nom, le type et une description
 4. Validez — le point apparaît sur la carte
 
-Ces points sont temporaires et propres à votre session. Pour les conserver, **exportez votre session** avant de fermer l'application.
-
-Pour effacer tous les points ajoutés manuellement, appuyez sur **🗑️** (à côté du bouton ✏️). Une confirmation vous sera demandée.
+Pour effacer tous les points ajoutés, appuyez sur **🗑️** (à côté du bouton ✏️). Une confirmation vous sera demandée.
 
 ---
 
 ## 🛣️ Tracer des routes
 
-Trois types de tracés sont disponibles, chacun avec une couleur différente :
-
 - **🟩 Route principale** — vert vif
 - **🟪 Route secondaire** — violet
 - **🟨 Chemin** — jaune
 
-Pour tracer :
-
-1. Appuyez sur le bouton correspondant — il s'allume en vert
-2. Cliquez sur le plan pour poser des points de passage
-3. Chaque clic prolonge le tracé
-4. Appuyez à nouveau sur le même bouton pour arrêter le tracé en cours
+Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
 
 Pour effacer tous les tracés, appuyez sur **🧹**. Une confirmation vous sera demandée.
 
@@ -172,134 +178,98 @@ Pour effacer tous les tracés, appuyez sur **🧹**. Une confirmation vous sera 
 
 ### Exporter une session
 
-Appuyez sur **💾** pour télécharger un fichier `devmap-session.json` contenant :
-- Tous les points ajoutés manuellement
-- Les tracés de routes
-- Les points de mesure
-
-Ce fichier peut être réimporté lors d'une prochaine session avec **📂**.
-
-### Importer une session
-
-Appuyez sur **📂** et sélectionnez un fichier `devmap-session.json` précédemment exporté. Les points et tracés seront restaurés sur le plan.
+Appuyez sur **💾** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés et les points de mesure. Réimportable via **📂**.
 
 ### Télécharger le plan en image
 
-Appuyez sur **🖼️** pour télécharger une image PNG du plan tel qu'il apparaît à l'écran, incluant tous les calques visibles, les points et les tracés. Utile pour partager un état du plan ou l'imprimer.
+Appuyez sur **🖼️** pour télécharger une image PNG du plan avec tous les calques visibles, points et tracés.
 
-> ⚠️ Avant de partager cette image, assurez-vous qu'elle ne révèle pas d'informations sensibles sur des lieux confidentiels.
+> ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
 
 ---
 
 ## 🔄 Convertisseur de données
 
-Le convertisseur permet de transformer des fichiers entre deux formats, sans passer par un serveur.
+Permet de transformer des fichiers entre le format édition et le format calque de données.
 
-**✏️ → 🗂️ Vers calque de données**
-Convertit un fichier session (points ajoutés via le mode édition) en calque de données permanent, rechargeable dans la configuration du plan. Utile pour intégrer vos annotations de terrain dans la cartographie officielle du groupe.
+**✏️ → 🗂️ Vers calque de données** — convertit vos annotations en calque permanent rechargeable dans le plan.
 
-**🗂️ → ✏️ Vers mode édition**
-Convertit un calque de données existant en session importable via **📂**. Permet de reprendre et modifier des données existantes dans le mode ajout de points.
+**🗂️ → ✏️ Vers mode édition** — convertit un calque existant en session importable pour le modifier.
 
-Pour utiliser le convertisseur :
-
-1. Appuyez sur **🔄**
-2. Choisissez le sens de conversion
-3. Pour le sens "vers calque de données", saisissez le type de sortie (ex : `puits`, `vehicule`…)
-4. Glissez votre fichier JSON dans la zone ou cliquez pour le sélectionner
-5. Vérifiez l'aperçu, puis téléchargez le fichier converti
+Les tracés de routes sont préservés dans les deux sens.
 
 ---
 
 ## 📦 Créer un nouveau plan
 
-Le générateur de plan permet de préparer une archive ZIP complète et prête à l'emploi, sans avoir à éditer manuellement les fichiers de configuration.
+Appuyez sur **📦** pour ouvrir le générateur. Renseignez :
 
-Appuyez sur **📦** pour ouvrir le formulaire, puis renseignez :
+- **Informations** : nom, version, auteur, dimensions de l'image
+- **Image principale** (obligatoire) et carte de collision (optionnelle)
+- **Calques image** supplémentaires (légendes, annotations) — jusqu'à 10
+- **Calques de données** JSON — jusqu'à 10 (créés vides si non fournis)
+- **Paramètres de tracking** : position de départ, échelle, sensibilité
 
-**Informations du plan**
-- Nom, version et auteur du plan
-- Dimensions de l'image principale en pixels (largeur × hauteur)
+Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement.
 
-**Images principales**
-- L'image du plan (obligatoire) — votre fond de carte
-- La carte de collision (optionnelle) — zones interdites au tracker, en rouge sur fond transparent
-
-**Calques image supplémentaires** (jusqu'à 10)
-Ajoutez des calques superposés au plan principal : légendes, annotations visuelles, tracés secondaires. Pour chaque calque, renseignez un identifiant, un label affiché et l'image correspondante.
-
-**Calques de données JSON** (jusqu'à 10)
-Ajoutez les couches de points d'intérêt. Pour chaque calque :
-- Un identifiant technique (ex : `puits`, `vehicule`)
-- Un label affiché dans le contrôle de couches
-- Un fichier JSON existant — ou laissez vide pour créer un fichier vide automatiquement
-
-Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement — il reçoit les points créés via le mode ✏️.
-
-**Paramètres de tracking**
-Position de départ de l'icône, échelle et paramètres de détection des pas.
-
-Une fois le formulaire rempli, cliquez sur **📦 Générer le ZIP**. L'archive téléchargée contient le `plan-config.json` généré et tous les fichiers que vous avez fournis, prêts à être chargés dans l'application.
+Cliquez sur **📦 Générer le ZIP** — l'archive est prête à être chargée dans l'application.
 
 ---
 
 ## 🗺️ Légende
 
-Appuyez sur **🗺️** pour afficher la légende complète des icônes et des tracés utilisés sur le plan, regroupés par catégorie.
+Appuyez sur **🗺️** pour afficher la légende complète des icônes et tracés, regroupés par catégorie.
 
 ---
 
 ## ⚙️ Réglages
 
-Appuyez sur **⚙️** pour accéder aux paramètres de l'application, regroupés en sections :
+Accédez aux paramètres via **⚙️** :
 
-- **Dimensions du plan** : hauteur et largeur en pixels (normalement déjà configurées via le plan-config)
-- **Position initiale du tracker** : coordonnées de départ de l'icône de position
-- **Détection des pas** : paramètres de sensibilité du tracker
-- **Debug** : activer les logs de mouvement (pour diagnostic uniquement)
-- **Vider le cache** : forcer le rechargement complet de l'application depuis le serveur
+- **Position initiale du tracker** : coordonnées de départ
+- **Détection des pas** : sensibilité, taille du pas, cooldown
+- **Debug** : activer les logs de mouvement
+- **Mode Performance** : gestion du tiling pour les plans volumineux (Auto / Toujours / Désactivé)
+- **🗑️ Réinitialiser** : vide le cache et recharge l'application depuis le serveur
+- **🐛 Logs** : affiche les journaux de débogage (utile en cas de problème)
+
+> Le changement de Mode Performance prend effet au prochain chargement de plan.
 
 ---
 
 ## 🗂️ Changer de plan
 
-Appuyez sur **🗂️** pour revenir à l'écran de chargement et charger un autre plan. Les données de la session en cours non exportées seront perdues — pensez à exporter avant.
+Appuyez sur **🗂️** pour charger un autre plan. Les données non exportées seront perdues — exportez avant de changer.
 
 ---
 
-## 🔧 Vider le cache
+## 🔧 Réinitialiser
 
-En cas de mise à jour de l'application qui ne se reflète pas dans votre navigateur, utilisez le bouton **Vider le cache** dans ⚙️. Cette action :
+En cas de problème ou de mise à jour, utilisez **🗑️ Réinitialiser** dans ⚙️. Cette action vide le cache du navigateur et recharge l'application.
 
-1. Désinscrit le Service Worker
-2. Vide intégralement le cache du navigateur
-3. Recharge l'application depuis le serveur
-
-Une double confirmation vous sera demandée avant l'exécution.
-
-> ⚠️ Cette action rend l'application inutilisable hors connexion jusqu'au prochain chargement complet. Effectuez-la uniquement lorsque vous avez accès à Internet.
+> ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible.
 
 ---
 
 ## 🆘 En cas de problème
 
 **Le plan ne se charge pas**
-Vérifiez que le fichier `plan-config.json` est bien sélectionné, et que tous les fichiers associés sont inclus (images, données). En mode ZIP, assurez-vous que `plan-config.json` est présent à la racine de l'archive.
+Vérifiez que `plan-config.json` est sélectionné et que tous les fichiers associés sont inclus. En mode ZIP, `plan-config.json` doit être à la racine de l'archive.
+
+**L'image du plan est floue en mode performance**
+C'est normal — le mode performance réduit la résolution de l'image pour éviter les crashes. Si vous avez suffisamment de mémoire, désactivez-le dans ⚙️.
 
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
 
+**L'application crash sur iPhone avec un JPEG volumineux**
+Activez le **⚡ Mode performance** avant de charger le plan.
+
 **Un mode reste actif sans le vouloir**
-Un seul mode peut être actif à la fois. Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
+Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
 
-**L'application ne fonctionne plus hors connexion**
-Si vous avez vidé le cache ou fermé l'onglet, rechargez l'application avant votre prochaine sortie, avec une connexion disponible.
-
-**Les distances semblent incorrectes**
-Vérifiez la valeur **Échelle (px/m)** dans les réglages. Elle doit correspondre au ratio entre les pixels du plan et les mètres réels du terrain.
-
-**Le générateur de plan ne fonctionne pas**
-Vérifiez que tous les champs obligatoires sont remplis (nom, dimensions, image principale). Le fichier `lib/jszip/jszip.min.js` doit être présent sur le serveur — il est requis pour la génération de l'archive.
+**Problème non résolu**
+Ouvrez ⚙️ → 🐛 Logs, copiez les journaux et transmettez-les à l'équipe technique.
 
 ---
 
