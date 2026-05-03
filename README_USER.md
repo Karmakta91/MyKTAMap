@@ -41,7 +41,7 @@ Le module de déplacement simulé est **expérimental**. Il repose sur les capte
 
 **Le tracker est une aide visuelle, pas un système de navigation fiable.**
 
-Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez un repère connu sur le plan. En cas de doute sur votre position, arrêtez-vous et reprenez à pied depuis un point certain.
+Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez un repère connu sur le plan.
 
 **Pour toute sortie souterraine, emportez toujours :**
 - Une carte papier ou une version imprimée du plan
@@ -62,17 +62,13 @@ MyKTAMap peut être installée comme application native sur iPhone — sans pass
 4. Confirmez — une icône apparaît sur votre écran d'accueil
 5. Lancez toujours l'application depuis cette icône
 
-> L'application fonctionne ainsi en mode plein écran, sans la barre Safari. C'est la méthode recommandée pour une utilisation terrain.
+> L'application fonctionne ainsi en mode plein écran, sans la barre Safari.
 
 ### Charger un plan
 
-Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un formulaire de chargement. Deux méthodes sont disponibles :
+Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un formulaire de chargement.
 
-**📁 Fichiers séparés**
-Sélectionnez d'abord le fichier `plan-config.json`, puis tous les fichiers associés (images, données JSON). Cette méthode est utile si vous gérez vos fichiers manuellement.
-
-**📦 Archive ZIP**
-Sélectionnez une archive `.zip` contenant l'ensemble des fichiers du plan. C'est la méthode recommandée : un seul fichier à transmettre et à ouvrir. Glissez-déposez le ZIP sur la zone prévue, ou cliquez pour le sélectionner.
+Importez une archive `.zip` contenant `plan-config.json` et tous les fichiers associés. Glissez-déposez le ZIP sur la zone prévue, ou cliquez pour le sélectionner.
 
 ### Mode performance ⚡
 
@@ -82,16 +78,18 @@ Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performanc
 
 ### Utilisation hors connexion
 
-MyKTAMap fonctionne **sans connexion Internet** une fois le plan chargé.
+MyKTAMap fonctionne **entièrement hors connexion** une fois le plan chargé une première fois.
+
+L'application utilise un **Service Worker** qui met en cache automatiquement tous les fichiers nécessaires (interface, images, données). Au premier chargement avec connexion Internet, tout est sauvegardé localement.
 
 **Pour préparer une sortie hors connexion :**
 
 1. Ouvrez l'application **avant de partir**, avec une connexion disponible
-2. Chargez votre plan complet (ZIP ou fichiers séparés)
-3. Une fois le plan affiché, **ne fermez pas l'application** — laissez-la en arrière-plan
-4. Passez en mode avion ou entrez en zone sans réseau : l'application reste fonctionnelle
+2. Chargez votre plan complet
+3. Naviguez quelques secondes pour que tous les fichiers soient mis en cache
+4. Vous pouvez maintenant fermer l'application et passer en zone sans réseau — elle restera fonctionnelle
 
-> Si vous avez installé l'application depuis l'écran d'accueil, elle reste disponible entre les sessions sans avoir à recharger le plan.
+> Si une nouvelle version est disponible avec connexion, l'application se mettra à jour automatiquement au prochain chargement.
 
 ---
 
@@ -101,7 +99,7 @@ Une fois le plan chargé :
 
 - **Pincer / zoomer** pour agrandir ou réduire la vue
 - **Glisser** pour se déplacer sur le plan
-- **Cliquer sur une icône** pour afficher les informations du point (nom, description, état)
+- **Cliquer sur une icône** pour afficher les informations du point
 
 Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôle de calques en haut à droite permet d'afficher ou masquer des couches d'informations.
 
@@ -119,26 +117,24 @@ Appuyez sur **⏹️** pour arrêter.
 
 ### Recaler sa position
 
-La position calculée dérive inévitablement. Dès que vous reconnaissez un repère sur le plan (une salle, un carrefour, un puits), recalez :
+La position calculée dérive inévitablement. Dès que vous reconnaissez un repère sur le plan :
 
 1. Appuyez sur **📍** — le bouton s'allume en vert
 2. Appuyez sur le point du plan correspondant à votre position réelle
 3. L'icône se déplace à l'emplacement choisi et le tracé repart de zéro
 4. Appuyez à nouveau sur **📍** pour désactiver le mode recalage
 
-Recalez le plus souvent possible pour maintenir une estimation correcte.
-
-> Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage. Activer l'un désactive automatiquement les autres.
+> Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage.
 
 ### Réglages du tracker
 
 Accédez aux réglages via **⚙️** :
 
-- **Échelle (px/m)** : rapport pixels/mètres réels. Si le déplacement semble trop lent ou rapide, ajustez.
-- **Taille d'un pas (m)** : longueur estimée de votre foulée. En moyenne 0,7 m.
-- **Seuil de détection** : sensibilité du détecteur de pas.
-- **Cooldown (ms)** : délai minimum entre deux pas.
-- **Position initiale X / Y** : point de départ de l'icône au chargement.
+- **Échelle (px/m)** : rapport pixels/mètres réels
+- **Taille d'un pas (m)** : longueur estimée de votre foulée (≈ 0,7 m)
+- **Seuil de détection** : sensibilité du détecteur de pas
+- **Cooldown (ms)** : délai minimum entre deux pas
+- **Position initiale X / Y** : point de départ de l'icône au chargement
 
 ---
 
@@ -147,7 +143,18 @@ Accédez aux réglages via **⚙️** :
 1. Appuyez sur **📏** — le mode mesure s'active (bouton vert)
 2. Cliquez sur le plan pour poser des points
 3. La distance totale s'affiche en bas à gauche, en mètres
-4. Appuyez sur **❌** pour effacer et recommencer
+
+### Effacer la mesure
+
+Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
+
+| Option | Effet |
+|---|---|
+| **↩️ Dernier point** | Annule uniquement le dernier point cliqué (idéal en cas d'erreur de clic) |
+| **🗑️ Toute la mesure** | Efface tous les points et remet la distance à zéro |
+| Annuler | Ferme la fenêtre sans rien supprimer |
+
+> Tu peux retirer plusieurs points un par un en cliquant successivement **❌ → ↩️ Dernier point**.
 
 ---
 
@@ -155,10 +162,31 @@ Accédez aux réglages via **⚙️** :
 
 1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité
-3. Saisissez le nom, le type et une description
-4. Validez — le point apparaît sur la carte
+3. Une fenêtre s'ouvre. Renseignez :
+   - **Nom** (obligatoire)
+   - **Type** : choisissez parmi les tags existants, **— Aucun tag —** (icône par défaut), ou **➕ Créer un nouveau tag…**
+   - **Description** (optionnel)
+4. Validez avec **✅ Ajouter**
 
-Pour effacer tous les points ajoutés, appuyez sur **🗑️** (à côté du bouton ✏️). Une confirmation vous sera demandée.
+### Créer un nouveau tag
+
+Si le type que vous voulez n'existe pas encore, sélectionnez **➕ Créer un nouveau tag…**. Saisissez un nom court (lettres, chiffres, underscore ou tiret uniquement) — par exemple `fontaine`, `arche` ou `ruine_2`.
+
+Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **📦** (voir ci-dessous).
+
+### Effacer les points
+
+Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux options :
+
+| Option | Effet |
+|---|---|
+| **↩️ Dernier point** | Supprime le point le plus récemment ajouté |
+| **🗑️ Tous les points** | Efface tous les points ajoutés manuellement (irréversible) |
+| Annuler | Ferme la fenêtre sans rien supprimer |
+
+> Tu peux retirer plusieurs points un par un en cliquant successivement **🗑️ → ↩️ Dernier point**.
+
+> ⚠️ **Tous les points** ne supprime que les points que **tu** as ajoutés — les points du plan original restent intacts.
 
 ---
 
@@ -170,7 +198,18 @@ Pour effacer tous les points ajoutés, appuyez sur **🗑️** (à côté du bou
 
 Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
 
-Pour effacer tous les tracés, appuyez sur **🧹**. Une confirmation vous sera demandée.
+### Effacer un tracé
+
+Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
+
+| Option | Effet |
+|---|---|
+| **↩️ Dernier point du tracé** | Annule uniquement le dernier point cliqué sur le tracé en cours (idéal pour corriger un point mal placé) |
+| **✂️ Dernier tracé entier** | Supprime le dernier tracé complet (utile si tu veux refaire un tracé sans toucher aux précédents) |
+| **🗑️ Tous les tracés** | Efface absolument tous les tracés (irréversible) |
+| Annuler | Ferme la fenêtre sans rien supprimer |
+
+> Exemple d'usage : tu traces une route principale, tu te trompes sur le dernier virage. Clique **🧹 → ↩️ Dernier point du tracé** pour reculer d'un point, puis continue ton tracé normalement.
 
 ---
 
@@ -200,19 +239,34 @@ Les tracés de routes sont préservés dans les deux sens.
 
 ---
 
-## 📦 Créer un nouveau plan
+## 📦 Créer ou modifier un plan
 
-Appuyez sur **📦** pour ouvrir le générateur. Renseignez :
+Appuyez sur **📦** pour ouvrir le générateur. Deux onglets disponibles :
+
+### 📄 Nouveau plan
+
+Formulaire vierge. Renseignez :
 
 - **Informations** : nom, version, auteur, dimensions de l'image
 - **Image principale** (obligatoire) et carte de collision (optionnelle)
 - **Calques image** supplémentaires (légendes, annotations) — jusqu'à 10
 - **Calques de données** JSON — jusqu'à 10 (créés vides si non fournis)
 - **Paramètres de tracking** : position de départ, échelle, sensibilité
+- **Icônes & Tags** : gestionnaire dynamique
+  - Cliquez **↺ Charger défauts** pour pré-remplir avec les icônes standards
+  - Cliquez **+ Ajouter un tag** pour créer un type personnalisé
+  - Pour chaque tag, choisissez une icône personnalisée ou laissez le chemin par défaut
+  - Les tags `default` et `track` sont obligatoires (système)
 
 Le calque **Ajouts** (`editor.json`) est toujours inclus automatiquement.
 
-Cliquez sur **📦 Générer le ZIP** — l'archive est prête à être chargée dans l'application.
+Cliquez sur **📦 Générer le ZIP** — l'archive est prête.
+
+### 📂 Modifier existant
+
+Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec sa configuration. Modifiez ce que vous voulez (ajouter des tags, changer les icônes, ajouter des calques, etc.) et cliquez sur **📦 Générer le ZIP** pour télécharger la version modifiée.
+
+> Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
 
 ---
 
@@ -229,11 +283,9 @@ Accédez aux paramètres via **⚙️** :
 - **Position initiale du tracker** : coordonnées de départ
 - **Détection des pas** : sensibilité, taille du pas, cooldown
 - **Debug** : activer les logs de mouvement
-- **Mode Performance** : gestion du tiling pour les plans volumineux (Auto / Toujours / Désactivé)
-- **🗑️ Réinitialiser** : vide le cache et recharge l'application depuis le serveur
+- **Mode Performance** : affiché en lecture seule (modifiable au prochain chargement de plan)
+- **🗑️ Réinitialiser** : vide le cache et recharge l'application
 - **🐛 Logs** : affiche les journaux de débogage (utile en cas de problème)
-
-> Le changement de Mode Performance prend effet au prochain chargement de plan.
 
 ---
 
@@ -245,19 +297,19 @@ Appuyez sur **🗂️** pour charger un autre plan. Les données non exportées 
 
 ## 🔧 Réinitialiser
 
-En cas de problème ou de mise à jour, utilisez **🗑️ Réinitialiser** dans ⚙️. Cette action vide le cache du navigateur et recharge l'application.
+En cas de problème ou pour forcer une mise à jour, utilisez **🗑️ Réinitialiser** dans ⚙️. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
 
-> ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible.
+> ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible. Sans réseau, l'application sera inutilisable jusqu'au prochain rechargement complet.
 
 ---
 
 ## 🆘 En cas de problème
 
 **Le plan ne se charge pas**
-Vérifiez que `plan-config.json` est sélectionné et que tous les fichiers associés sont inclus. En mode ZIP, `plan-config.json` doit être à la racine de l'archive.
+Vérifiez que `plan-config.json` est bien à la racine de votre archive ZIP, et que tous les fichiers référencés sont présents.
 
 **L'image du plan est floue en mode performance**
-C'est normal — le mode performance réduit la résolution de l'image pour éviter les crashes. Si vous avez suffisamment de mémoire, désactivez-le dans ⚙️.
+C'est normal — le mode performance réduit la résolution pour éviter les crashes. Si vous avez suffisamment de mémoire, désactivez-le au prochain chargement.
 
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
@@ -268,8 +320,11 @@ Activez le **⚡ Mode performance** avant de charger le plan.
 **Un mode reste actif sans le vouloir**
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
 
+**L'application ne se met pas à jour après une nouvelle version**
+Utilisez **⚙️ → 🗑️ Réinitialiser** avec une connexion Internet pour forcer le rechargement complet.
+
 **Problème non résolu**
-Ouvrez ⚙️ → 🐛 Logs, copiez les journaux et transmettez-les à l'équipe technique.
+Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'équipe technique.
 
 ---
 
