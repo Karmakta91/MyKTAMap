@@ -12,15 +12,18 @@
 ## 📋 Journal des modifications
 
 ### 03/05/2026
+- **Icône PWA pour écran d'accueil iOS** — ajout des balises `<link rel="apple-touch-icon">` dans `index.html` (4 tailles + fallback)
 - **Modale d'ajout de point en plein écran** (style cohérent avec les autres modales)
 - **Création de tags à la volée** depuis le formulaire d'ajout — le tag est ajouté dynamiquement à `PLAN_CONFIG.icons` avec l'icône par défaut
-- **Option "Aucun tag"** disponible — utilise l'icône `default`
+- **Option "Aucun tag"** disponible — utilise l'icône `default` (pin Leaflet natif si pas configuré)
+- **Légende refondue** — fusion des sections custom + tracker + default dans une seule rubrique "📌 Autres", URL réelle de chaque icône résolue depuis `_iconMap`
 - **Suppression granulaire** :
   - Mesure : *Dernier point* ou *Toute la mesure*
   - Points : *Dernier point ajouté* ou *Tous les points*
   - Tracés : *Dernier point du tracé* / *Dernier tracé entier* / *Tous les tracés*
 - Nouveau helper `_choixSuppression()` dans `interface.js` — modale avec liste d'options
 - Nouvelles fonctions API : `removeLastEditorPoint`, `removeLastRoad`, `removeLastRoadPoint`, `removeLastMeasurePoint`
+- `creerIcones()` sécurisé : aucune icône avec `iconUrl: undefined`, fallback `L.Icon.Default` natif Leaflet si `default` manquant dans la config
 
 ### 02/05/2026
 - **Service Worker réactivé** — mode hors-ligne fonctionnel via `sw.js`
@@ -28,6 +31,7 @@
 - **Gestionnaire d'icônes & tags dynamique** dans le générateur — création de tags personnalisés avec icônes custom
 - Le mode ajout de point ✏️ utilise maintenant la liste de tags **dynamique** depuis `PLAN_CONFIG.icons`
 - `choisirIcone()` et `getIconForPoint()` (export PNG) refactorisés pour parcourir dynamiquement `_iconMap` — supporte tous les tags personnalisés
+- Suppression du mode "Fichiers séparés" du loader — **ZIP uniquement**
 - Correction icône véhicule à l'export (était étirée 50×25 → maintenant 50×50 comme l'affichage)
 
 ### 30/04/2026
@@ -137,6 +141,65 @@ lib/
 ```
 
 > `import.html`, `config_import.js`, `map_import.js` et `main_import.js` ont été **supprimés**. Toute leur logique est absorbée dans les fichiers unifiés.
+
+---
+
+## 📱 PWA — Application installable
+
+MyKTAMap est une **PWA installable** sur mobile et desktop. Sur iOS, elle peut être ajoutée à l'écran d'accueil via Safari (Partager ↑ → Sur l'écran d'accueil) et fonctionne ensuite en mode standalone (sans la barre Safari).
+
+### Métadonnées dans `<head>`
+
+```html
+<!-- Mode standalone -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MyKTAMap">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- Icône écran d'accueil iOS -->
+<link rel="apple-touch-icon" href="icon/mkm.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon/mkm.png">
+<link rel="apple-touch-icon" sizes="167x167" href="icon/mkm.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon/mkm.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icon/mkm.png">
+
+<!-- Favicon classique navigateur -->
+<link rel="icon" type="image/png" href="icon/mkm.png">
+```
+
+### Pourquoi 5 balises `apple-touch-icon`
+
+Safari iOS **ignore complètement** la balise `<link rel="icon">` standard pour le bouton "Sur l'écran d'accueil". Il cherche **uniquement** `apple-touch-icon`. On déclare plusieurs tailles pour qu'iOS choisisse la plus proche selon l'appareil :
+
+| Taille | Appareil cible |
+|---|---|
+| 180×180 | iPhone Retina (récents) |
+| 167×167 | iPad Pro |
+| 152×152 | iPad standard |
+| 120×120 | iPhone non-Retina |
+| sans taille | Fallback universel |
+
+En pratique on peut servir le même fichier (Safari redimensionne) — l'important c'est que la balise existe.
+
+### Contraintes du fichier icône
+
+- **PNG carré** (idéalement 180×180 minimum, 512×512 recommandé)
+- **Fond opaque** — pas de transparence, sinon iOS met du noir
+- **Pas d'arrondi** dans l'image — iOS arrondit les coins automatiquement
+- **Marge interne 10-15%** — iOS rogne légèrement les bords
+
+### Mise à jour de l'icône
+
+iOS cache l'icône PWA de manière agressive. Pour forcer le rafraîchissement après changement :
+
+1. Sur l'iPhone : appui long sur l'icône MyKTAMap → Supprimer l'app
+2. Réglages → Safari → Effacer historique et données
+3. Ferme Safari complètement (swipe up dans le sélecteur d'apps)
+4. Rouvre `myktamap.is-underground.fr` dans Safari
+5. Partager ↑ → Sur l'écran d'accueil
+
+L'icône est servie depuis `icon/mkm.png` — vérifier sa disponibilité directe avec `https://devmap.is-underground.fr/icon/mkm.png`.
 
 ---
 
