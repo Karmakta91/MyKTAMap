@@ -666,7 +666,7 @@ function afficherAide() {
           <div class="kta-aide-section-titre">✏️ Points d'intérêt</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point</span>
-            <span class="kta-aide-icone">🗑️</span><span>Effacer tous les points ajoutés</span>
+            <span class="kta-aide-icone">🗑️</span><span>Effacer les points ajoutés</span>
           </div>
         </div>
 
@@ -676,7 +676,7 @@ function afficherAide() {
             <span class="kta-aide-icone">🟩</span><span>Tracer une route principale</span>
             <span class="kta-aide-icone">🟪</span><span>Tracer une route secondaire</span>
             <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
-            <span class="kta-aide-icone">🧹</span><span>Effacer tous les tracés</span>
+            <span class="kta-aide-icone">🧹</span><span>Effacer les tracés</span>
           </div>
         </div>
 
