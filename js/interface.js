@@ -428,6 +428,48 @@ function _confirmerAction(titre, texte, callback) {
 }
 
 // =========================
+// HELPER — modale de choix de suppression (plusieurs options)
+// options = [{ label, icon, onClick, danger }]
+// =========================
+function _choixSuppression(titre, texte, options) {
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+
+  const boutonsHtml = options.map(function(opt, i) {
+    const cls = opt.danger ? "kta-btn-danger" : (opt.ghost ? "kta-btn-ghost" : "kta-btn-primary");
+    const ic  = opt.icon ? opt.icon + " " : "";
+    return `<button class="kta-btn ${cls}" id="_choix-${i}" style="text-align:left; padding:10px 14px;">
+      ${ic}${opt.label}
+      ${opt.desc ? `<span style="display:block; font-size:11px; opacity:0.7; font-weight:400; margin-top:2px;">${opt.desc}</span>` : ""}
+    </button>`;
+  }).join("");
+
+  overlay.innerHTML = `
+    <div class="kta-modal" style="max-width:420px;">
+      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-titre">${titre}</div>
+      <div class="kta-modal-texte">${texte || ""}</div>
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:14px;">
+        ${boutonsHtml}
+        <button class="kta-btn kta-btn-ghost" id="_choix-annuler" style="margin-top:4px;">Annuler</button>
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(overlay);
+
+  options.forEach(function(opt, i) {
+    document.getElementById("_choix-" + i).addEventListener("click", function() {
+      overlay.remove();
+      try { opt.onClick(); } catch(e) { console.error(e); }
+    });
+  });
+
+  document.getElementById("_choix-annuler").addEventListener("click", function() { overlay.remove(); });
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+// =========================
 // README — modale plein écran
 // =========================
 function afficherReadme() {
@@ -761,18 +803,18 @@ function afficherConfig() {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⚡ Mode Performance</div>
-          <p style="font-size:12px; color:#8892a4; margin:0 0 10px; line-height:1.5;">
-            Découpe le plan en tuiles pour éviter les crashes sur les images lourdes (&gt;60 Mo).<br>
-            <strong style="color:#8cb4ff;">Auto</strong> = activé uniquement si l'image dépasse 60 Mo.<br>
-            <span style="color:#ffb3b3;">⚠️ Un rechargement du plan est nécessaire pour appliquer ce changement.</span>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            Découpe le plan en tuiles pour les images volumineuses (&gt;60 Mo).<br>
+            Le mode s'active automatiquement selon la taille du fichier au chargement.
           </p>
-          <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Mode performance</label>
-            <select class="kta-cfg-input" id="cfg_perfMode">
-              <option value="null"  ${c.perfMode === null  || c.perfMode === undefined ? "selected" : ""}>Auto (≥ 60 Mo)</option>
-              <option value="true"  ${c.perfMode === true  ? "selected" : ""}>Toujours activé</option>
-              <option value="false" ${c.perfMode === false ? "selected" : ""}>Désactivé</option>
-            </select>
+          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+            <span style="font-size:18px;">${c.perfMode === true ? '⚡' : c.perfMode === false ? '💤' : '🔄'}</span>
+            <div>
+              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">
+                ${c.perfMode === true ? 'Activé (forcé)' : c.perfMode === false ? 'Désactivé' : 'Auto (≥ 60 Mo)'}
+              </div>
+              <div style="font-size:11px; color:#8892a4;">Modifiable au chargement du plan (checkbox ⚡)</div>
+            </div>
           </div>
         </div>
 
@@ -801,9 +843,6 @@ function appliquerConfig() {
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
   APP_CONFIG.motionDebug   = document.getElementById("cfg_motionDebug").value === "true";
 
-  const perfVal = document.getElementById("cfg_perfMode").value;
-  APP_CONFIG.perfMode = perfVal === "null" ? null : perfVal === "true";
-
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
   const modal = document.getElementById("kta-cfg-modal");
@@ -819,79 +858,6 @@ function resetConfig() {
   if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
 }
-
-/// VERIF INTERNET
-
-// =========================
-// CHECK CONNEXION AVANT RESET CACHE
-// =========================
-function verifierConnexionInternet(timeoutMs = 5000) {
-  return new Promise(function(resolve) {
-    if (!navigator.onLine) {
-      resolve(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const timeout = setTimeout(function() {
-      controller.abort();
-      resolve(false);
-    }, timeoutMs);
-
-    fetch("https://www.google.com/generate_204?_=" + Date.now(), {
-      method: "GET",
-      mode: "no-cors",
-      cache: "no-store",
-      signal: controller.signal
-    })
-      .then(function() {
-        clearTimeout(timeout);
-        resolve(true);
-      })
-      .catch(function() {
-        clearTimeout(timeout);
-        resolve(false);
-      });
-  });
-}
-
-function afficherConfirmationOffline(callbackContinuer) {
-  const overlay = document.createElement("div");
-  overlay.className = "kta-modal-overlay";
-  overlay.innerHTML = `
-    <div class="kta-modal kta-modal-danger">
-      <div class="kta-modal-icon">📡</div>
-      <div class="kta-modal-titre">Mode hors connexion détecté</div>
-      <div class="kta-modal-texte">
-        Impossible de joindre Internet.<br><br>
-        Si tu vides le cache maintenant, l'application sera inutilisable.<br><br>
-        <strong>Mais bon, chacun ses choix de vie.</strong>
-      </div>
-      <div class="kta-modal-actions">
-        <button class="kta-btn kta-btn-danger" id="offline-continuer">
-          Je suis très con et je continue
-        </button>
-        <button class="kta-btn kta-btn-ghost" id="offline-annuler">
-          Oups, j'annule
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.documentElement.appendChild(overlay);
-
-  document.getElementById("offline-annuler").addEventListener("click", function () {
-    overlay.remove();
-  });
-
-  document.getElementById("offline-continuer").addEventListener("click", function () {
-    overlay.remove();
-    callbackContinuer();
-  });
-}
-
-
-
 
 // =========================
 // VIDER LE CACHE APPLICATIF
@@ -916,13 +882,9 @@ function viderCacheAppli() {
       </div>
     </div>
   `;
-
   document.documentElement.appendChild(overlay1);
 
-  document.getElementById("cache-annuler-1").addEventListener("click", function () {
-    overlay1.remove();
-  });
-
+  document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
   document.getElementById("cache-continuer-1").addEventListener("click", function () {
     overlay1.remove();
 
@@ -944,87 +906,38 @@ function viderCacheAppli() {
         </div>
       </div>
     `;
-
     document.documentElement.appendChild(overlay2);
 
-    document.getElementById("cache-annuler-2").addEventListener("click", function () {
-      overlay2.remove();
-    });
-
+    document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
     document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
       overlay2.remove();
+      const overlayWait = document.createElement("div");
+      overlayWait.className = "kta-modal-overlay";
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
+      document.documentElement.appendChild(overlayWait);
 
-      const okInternet = await verifierConnexionInternet(5000);
-
-      if (!okInternet) {
-        afficherConfirmationOffline(function () {
-          executerVidageCache();
-        });
-        return;
+      try {
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(r => r.unregister()));
+        }
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+        overlayWait.remove();
+        window.location.reload(true);
+      } catch (err) {
+        overlayWait.remove();
+        const overlayErr = document.createElement("div");
+        overlayErr.className = "kta-modal-overlay";
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
+        document.documentElement.appendChild(overlayErr);
+        document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }
-
-      executerVidageCache();
     });
   });
 }
-// =========================
-// EXÉCUTION RÉELLE DU RESET CACHE
-// =========================
-async function executerVidageCache() {
-  const overlayWait = document.createElement("div");
-  overlayWait.className = "kta-modal-overlay";
-  overlayWait.innerHTML = `
-    <div class="kta-modal">
-      <div class="kta-modal-icon">⏳</div>
-      <div class="kta-modal-titre">Nettoyage en cours…</div>
-      <div class="kta-modal-texte">
-        Suppression des caches et désinscription du Service Worker.
-      </div>
-    </div>
-  `;
-  document.documentElement.appendChild(overlayWait);
-
-  try {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map(r => r.unregister()));
-    }
-
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
-    }
-
-    overlayWait.remove();
-    window.location.reload(true);
-
-  } catch (err) {
-    overlayWait.remove();
-
-    const overlayErr = document.createElement("div");
-    overlayErr.className = "kta-modal-overlay";
-    overlayErr.innerHTML = `
-      <div class="kta-modal">
-        <div class="kta-modal-icon">❌</div>
-        <div class="kta-modal-titre">Erreur</div>
-        <div class="kta-modal-texte">
-          Impossible de vider le cache :<br>${err.message || err}
-        </div>
-        <div class="kta-modal-actions">
-          <button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button>
-        </div>
-      </div>
-    `;
-    document.documentElement.appendChild(overlayErr);
-
-    document.getElementById("cache-err-ok").addEventListener("click", function () {
-      overlayErr.remove();
-    });
-  }
-}
-
-
-
 
 // =========================
 // GESTIONNAIRE DE MODES EXCLUSIFS
@@ -1146,7 +1059,27 @@ function initInterface() {
 
     L.DomEvent.on(btnResetMeasure, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      resetMesure();
+      const pts = window.getMeasurePoints ? window.getMeasurePoints() : [];
+      if (pts.length === 0) return;
+
+      _choixSuppression(
+        "Mesure",
+        "Que veux-tu effacer ?",
+        [
+          {
+            label: "Dernier point",
+            icon:  "↩️",
+            desc:  pts.length + " point(s) au total",
+            onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
+          },
+          {
+            label:  "Toute la mesure",
+            icon:   "🗑️",
+            danger: true,
+            onClick: function() { if (window.resetMesure) window.resetMesure(); }
+          }
+        ]
+      );
     });
 
     L.DomEvent.disableClickPropagation(div);
@@ -1187,14 +1120,32 @@ function initInterface() {
 
     L.DomEvent.on(btnResetEditor, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      if (!window.getEditorPoints || window.getEditorPoints().length === 0) return;
-      _confirmerAction(
-        "Effacer les points ajoutés ?",
-        "Tous les points ajoutés manuellement seront supprimés.<br>Cette action est irréversible.",
-        function () {
-          if (window.setEditorPoints) window.setEditorPoints([]);
-          if (window.renderEditorPoints) window.renderEditorPoints();
-        }
+      const pts = window.getEditorPoints ? window.getEditorPoints() : [];
+      if (pts.length === 0) return;
+
+      _choixSuppression(
+        "Points ajoutés",
+        "Que veux-tu effacer ?",
+        [
+          {
+            label: "Dernier point",
+            icon:  "↩️",
+            desc:  pts.length + " point(s) au total — supprime le plus récent",
+            onClick: function() {
+              if (window.removeLastEditorPoint) window.removeLastEditorPoint();
+            }
+          },
+          {
+            label:  "Tous les points",
+            icon:   "🗑️",
+            danger: true,
+            desc:   "Action irréversible",
+            onClick: function() {
+              if (window.setEditorPoints) window.setEditorPoints([]);
+              if (window.renderEditorPoints) window.renderEditorPoints();
+            }
+          }
+        ]
       );
     });
 
@@ -1241,11 +1192,37 @@ function initInterface() {
 
     L.DomEvent.on(btnResetRoads, "click", function (e) {
       L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      if (!window.getRoads || window.getRoads().length === 0) return;
-      _confirmerAction(
-        "Effacer les tracés ?",
-        "Tous les tracés de routes seront supprimés.<br>Cette action est irréversible.",
-        function () { resetRoads(); }
+      const roads = window.getRoads ? window.getRoads() : [];
+      if (roads.length === 0) return;
+
+      const dernier = roads[roads.length - 1];
+      const nbPts   = dernier?.points?.length || 0;
+      const totalTraces = roads.length;
+
+      _choixSuppression(
+        "Tracés",
+        "Que veux-tu effacer ?",
+        [
+          {
+            label: "Dernier point du tracé",
+            icon:  "↩️",
+            desc:  nbPts + " point(s) sur le dernier tracé",
+            onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); }
+          },
+          {
+            label: "Dernier tracé entier",
+            icon:  "✂️",
+            desc:  totalTraces + " tracé(s) au total",
+            onClick: function() { if (window.removeLastRoad) window.removeLastRoad(); }
+          },
+          {
+            label:  "Tous les tracés",
+            icon:   "🗑️",
+            danger: true,
+            desc:   "Action irréversible",
+            onClick: function() { if (window.resetRoads) window.resetRoads(); }
+          }
+        ]
       );
     });
 
@@ -1293,10 +1270,12 @@ const LEGENDE_LABELS = {
   info:     "Information",
   chatiere: "Chatière",
   passage:  "Passage",
-  danger:   "Danger"
+  danger:   "Danger",
+  track:    "Position du tracker",
+  default:  "Point sans tag (défaut)"
 };
 
-const LEGENDE_EXCLURE = ["default", "track"];
+// Tag default → label spécial (pas dans la config par défaut)
 
 function afficherLegende() {
   const existing = document.getElementById("kta-legende-modal");
@@ -1310,39 +1289,67 @@ function afficherLegende() {
 
   let contenuIcones = "";
 
+  // Helper pour générer une ligne d'icône
+  function ligneIcone(cle, url) {
+    const label = LEGENDE_LABELS[cle] || cle;
+    return `<div class="kta-legende-ligne">
+      <img class="kta-legende-icone" src="${url}" alt="${label}" onerror="this.style.opacity='0.3'">
+      <span class="kta-legende-label">${label}</span>
+    </div>`;
+  }
+
   if (!icons) {
     contenuIcones = `<p style="color:#8892a4; text-align:center; padding:20px;">Aucune configuration d'icônes disponible.</p>`;
   } else {
     const GROUPES = [
-      { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
-      { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
+      { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
+      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
     ];
 
-    const clesDansGroupe = GROUPES.flatMap(function(g) { return g.cles; });
+    const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });
 
+    // Sections groupées
     GROUPES.forEach(function(groupe) {
       const entrees = groupe.cles
         .filter(function(cle) { return icons[cle]; })
-        .map(function(cle) {
-          const label = LEGENDE_LABELS[cle] || cle;
-          return `<div class="kta-legende-ligne">
-            <img class="kta-legende-icone" src="${icons[cle]}" alt="${label}" onerror="this.style.opacity='0.3'">
-            <span class="kta-legende-label">${label}</span>
-          </div>`;
-        }).join("");
+        .map(function(cle) { return ligneIcone(cle, icons[cle]); })
+        .join("");
 
       if (entrees) {
         contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">${groupe.titre}</div>${entrees}</div>`;
       }
     });
 
-    const autresEntrees = Object.entries(icons)
-      .filter(function(e) { return !LEGENDE_EXCLURE.includes(e[0]) && !clesDansGroupe.includes(e[0]); })
-      .map(function(entry) {
-        const cle = entry[0];
-        const label = LEGENDE_LABELS[cle] || cle;
-        return `<div class="kta-legende-ligne"><img class="kta-legende-icone" src="${entry[1]}" alt="${label}" onerror="this.style.opacity='0.3'"><span class="kta-legende-label">${label}</span></div>`;
-      }).join("");
+    // Helper : récupérer l'URL réellement utilisée par Leaflet pour un tag
+    function getIconUrl(cle) {
+      const iconObj = window._iconMap?.[cle] || (cle === "default" ? window.iconeDefault : null);
+
+      if (iconObj) {
+        // Cas 1 : icône custom L.icon({ iconUrl }) → récupération directe
+        if (iconObj.options && iconObj.options.iconUrl) {
+          return iconObj.options.iconUrl;
+        }
+        // Cas 2 : L.Icon.Default natif → utiliser sa méthode interne pour obtenir l'URL
+        if (typeof iconObj._getIconUrl === "function") {
+          try { return iconObj._getIconUrl("icon"); } catch(e) {}
+        }
+        // Cas 3 : fallback chemin standard Leaflet
+        return "lib/leaflet/images/marker-icon.png";
+      }
+
+      // Fallback ultime : URL définie dans PLAN_CONFIG.icons
+      return (icons || {})[cle];
+    }
+
+    // Section "Autres" — tous les tags non groupés (custom + tracker + default)
+    const tousLesTags = new Set(Object.keys(icons || {}));
+    if (window._iconMap) Object.keys(window._iconMap).forEach(function(t) { tousLesTags.add(t); });
+
+    const autresEntrees = Array.from(tousLesTags)
+      .filter(function(cle) { return !clesGroupees.includes(cle); })
+      .sort()
+      .map(function(cle) { return ligneIcone(cle, getIconUrl(cle)); })
+      .join("");
 
     if (autresEntrees) {
       contenuIcones += `<div class="kta-aide-section"><div class="kta-aide-section-titre">📌 Autres</div>${autresEntrees}</div>`;

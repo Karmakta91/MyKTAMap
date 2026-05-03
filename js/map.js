@@ -13,15 +13,40 @@ let iconeInfo, iconeChatiere, iconePassage, iconeDanger, iconepe, iconeTrack;
 // ICÔNES
 // =========================
 function creerIcones(iconConfig) {
+  // URL pour le tracker (toujours iconetrack.png)
+  const trackUrl = iconConfig.track || "icon/iconetrack.png";
+
+  // Si pas d'icône default fournie, on utilisera le marker natif Leaflet
+  // (pin bleu standard) pour bien différencier des points custom
+  const useLeafletDefault = !iconConfig.default;
+
+  function makeDefaultIcon() {
+    if (useLeafletDefault) {
+      // Icône native Leaflet (pin bleu classique)
+      return new L.Icon.Default();
+    }
+    return L.icon({
+      iconUrl:    iconConfig.default,
+      iconSize:   [50, 50],
+      iconAnchor: [25, 25]
+    });
+  }
+
   const mk = function(url, w, h, ax, ay) {
-    return L.icon({ iconUrl: url, iconSize: [w, h], iconAnchor: [ax, ay] });
+    if (!url) return makeDefaultIcon();
+    return L.icon({
+      iconUrl:    url,
+      iconSize:   [w, h],
+      iconAnchor: [ax, ay]
+    });
   };
-  iconeDefault  = mk(iconConfig.default,  50, 50, 25, 25);
+
+  iconeDefault  = makeDefaultIcon();
   iconeSalle    = mk(iconConfig.salle,    50, 50, 25, 25);
   iconepa       = mk(iconConfig.pa,       50, 50, 25, 25);
   iconepc       = mk(iconConfig.pc,       50, 50, 25, 25);
   iconepb       = mk(iconConfig.pb,       50, 50, 25, 25);
-  iconeVehicule = mk(iconConfig.vehicule, 50, 25, 25, 13);
+  iconeVehicule = mk(iconConfig.vehicule, 50, 50, 25, 25);
   iconeElec     = mk(iconConfig.elec,     50, 50, 25, 25);
   iconeEpure    = mk(iconConfig.epure,    50, 50, 25, 25);
   iconePS       = mk(iconConfig.ps,       50, 50, 25, 25);
@@ -30,7 +55,7 @@ function creerIcones(iconConfig) {
   iconePassage  = mk(iconConfig.passage,  50, 50, 25, 25);
   iconeDanger   = mk(iconConfig.danger,   50, 50, 25, 25);
   iconepe       = mk(iconConfig.pe,       50, 50, 25, 25);
-  iconeTrack    = mk(iconConfig.track,    50, 50, 25, 25);
+  iconeTrack    = L.icon({ iconUrl: trackUrl, iconSize: [50, 50], iconAnchor: [25, 25] });
 
   window.iconeDefault  = iconeDefault;
   window.iconeSalle    = iconeSalle;
@@ -51,14 +76,26 @@ function creerIcones(iconConfig) {
   // Map dynamique : tag → L.icon — supporte tous les tags définis dans plan-config.json
   window._iconMap = {};
   Object.keys(iconConfig).forEach(function(tag) {
-    if (!iconConfig[tag]) return;
-    const isVehicule = (tag === "vehicule");
+    const url = iconConfig[tag];
+    if (!url) {
+      // Tag défini mais sans URL → icône par défaut
+      window._iconMap[tag] = makeDefaultIcon();
+      return;
+    }
     window._iconMap[tag] = L.icon({
-      iconUrl:    iconConfig[tag],
-      iconSize:   isVehicule ? [50, 50] : [50, 50],
-      iconAnchor: isVehicule ? [25, 25] : [25, 25]
+      iconUrl:    url,
+      iconSize:   [50, 50],
+      iconAnchor: [25, 25]
     });
   });
+
+  // Garantir que "default" est toujours présent dans _iconMap
+  if (!window._iconMap.default) {
+    window._iconMap.default = iconeDefault;
+  }
+
+  console.log("[Map] Icônes créées —", Object.keys(window._iconMap).length, "tags |",
+              useLeafletDefault ? "default = pin Leaflet natif" : "default = " + iconConfig.default);
 }
 
 // =========================
@@ -164,12 +201,12 @@ async function initMapFromConfig() {
   // Collision
   await initCollisionMap(config.plan.collisionImage);
 
-  window.layerPuits    = dataLayerGroups.puits;
-  window.layerVehicule = dataLayerGroups.vehicule;
+  window.layerPuits     = dataLayerGroups.puits;
+  window.layerVehicule  = dataLayerGroups.vehicule;
   window.layerCataphile = dataLayerGroups.cataphile;
-  window.layerCarry    = dataLayerGroups.carry;
+  window.layerCarry     = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
-  window.layerEditor   = dataLayerGroups.editor;
+  window.layerEditor    = dataLayerGroups.editor;
 
   console.log("[Map] Carte initialisée");
 }

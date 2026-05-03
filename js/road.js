@@ -1,5 +1,5 @@
 // =========================
-// ROADS / TRAÇÉS
+// ROADS / TRACÉS
 // =========================
 
 window.modeRoad = null;
@@ -50,7 +50,7 @@ function initRoad() {
 }
 
 // =========================
-// ACTIVER / DESACTIVER UN TYPE
+// ACTIVER / DÉSACTIVER UN TYPE
 // =========================
 function toggleRoadMode(type) {
   if (window.modeRoad === type) {
@@ -78,10 +78,7 @@ function renderRoads() {
     if (!road.points || road.points.length === 0) return;
 
     const latlngs = road.points.map(p => convertCoord(p.x, p.y));
-    console.log("latlngs =", latlngs);
-
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
-    console.log("style =", style);
 
     const polyline = L.polyline(latlngs, style).addTo(window.map);
     roadLayers.push(polyline);
@@ -89,7 +86,7 @@ function renderRoads() {
 }
 
 // =========================
-// RESET
+// RESET COMPLET
 // =========================
 function resetRoads() {
   roadsData = [];
@@ -98,6 +95,39 @@ function resetRoads() {
 
   roadLayers.forEach(layer => window.map.removeLayer(layer));
   roadLayers = [];
+}
+
+// =========================
+// SUPPRIMER LE DERNIER TRACÉ ENTIER
+// =========================
+function removeLastRoad() {
+  if (roadsData.length === 0) return false;
+  const removed = roadsData.pop();
+  if (currentRoad === removed) currentRoad = null;
+  renderRoads();
+  return true;
+}
+
+// =========================
+// SUPPRIMER LE DERNIER POINT DU DERNIER TRACÉ
+// =========================
+function removeLastRoadPoint() {
+  if (roadsData.length === 0) return false;
+  const last = roadsData[roadsData.length - 1];
+  if (!last.points || last.points.length === 0) {
+    // Tracé vide → supprimer le tracé entier
+    roadsData.pop();
+    if (currentRoad === last) currentRoad = null;
+  } else {
+    last.points.pop();
+    // Si plus aucun point dans ce tracé, le retirer aussi
+    if (last.points.length === 0) {
+      roadsData.pop();
+      if (currentRoad === last) currentRoad = null;
+    }
+  }
+  renderRoads();
+  return true;
 }
 
 // =========================
@@ -116,7 +146,9 @@ window.setRoads = function(roads) {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.initRoad = initRoad;
-window.toggleRoadMode = toggleRoadMode;
-window.resetRoads = resetRoads;
-window.renderRoads = renderRoads;
+window.initRoad             = initRoad;
+window.toggleRoadMode       = toggleRoadMode;
+window.resetRoads           = resetRoads;
+window.removeLastRoad       = removeLastRoad;
+window.removeLastRoadPoint  = removeLastRoadPoint;
+window.renderRoads          = renderRoads;

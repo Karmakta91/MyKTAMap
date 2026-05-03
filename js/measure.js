@@ -58,6 +58,16 @@ function resetMesure() {
   afficherDistance(0);
 }
 
+// =========================
+// SUPPRIMER LE DERNIER POINT DE MESURE
+// =========================
+function removeLastMeasurePoint() {
+  if (pointsMesure.length === 0) return false;
+  pointsMesure.pop();
+  updateMesure();
+  return true;
+}
+
 function afficherDistance(d) {
   if (!window.measureLabel) {
     window.measureLabel = L.control({ position: 'bottomleft' });
@@ -111,9 +121,10 @@ function telechargerMesureJSON() {
 }
 
 // EXPORT GLOBAL
-window.initMeasure = initMeasure;
-window.resetMesure = resetMesure;
-window.telechargerMesureJSON = telechargerMesureJSON;
+window.initMeasure              = initMeasure;
+window.resetMesure              = resetMesure;
+window.removeLastMeasurePoint   = removeLastMeasurePoint;
+window.telechargerMesureJSON    = telechargerMesureJSON;
 
 window.getMeasurePoints = function() {
   return pointsMesure;

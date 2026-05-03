@@ -3,16 +3,22 @@ function convertCoord(x, y) {
 }
 
 function choisirIcone(p) {
-  if (!p.tags || !p.tags.length) return window.iconeDefault || iconeDefault;
-
-  // Priorité : map dynamique construit par creerIcones depuis PLAN_CONFIG.icons
-  if (window._iconMap) {
+  // Map dynamique : essayer les tags d'abord
+  if (p.tags && p.tags.length && window._iconMap) {
     for (const tag of p.tags) {
       if (window._iconMap[tag]) return window._iconMap[tag];
     }
   }
 
-  return window.iconeDefault || iconeDefault;
+  // Fallback 1 : icône default du _iconMap
+  if (window._iconMap && window._iconMap.default) return window._iconMap.default;
+
+  // Fallback 2 : variable globale iconeDefault
+  if (window.iconeDefault) return window.iconeDefault;
+
+  // Fallback 3 : pin Leaflet natif
+  console.warn("[choisirIcone] Aucune icône disponible — pin Leaflet natif");
+  return new L.Icon.Default();
 }
 
 function normaliserPoints(json) {
@@ -167,23 +173,17 @@ async function telechargerPlan() {
     const iconCache = {};
 
     async function getIconForPoint(point) {
-      const tag = point.tags && point.tags.length ? point.tags[0] : "default";
       let iconPath = config.icons.default;
 
-      if (point.tags) {
-        if (point.tags.includes("salle")) iconPath = config.icons.salle;
-        else if (point.tags.includes("pa")) iconPath = config.icons.pa;
-        else if (point.tags.includes("pc")) iconPath = config.icons.pc;
-        else if (point.tags.includes("pb")) iconPath = config.icons.pb;
-        else if (point.tags.includes("vehicule")) iconPath = config.icons.vehicule;
-        else if (point.tags.includes("elec")) iconPath = config.icons.elec;
-        else if (point.tags.includes("epure")) iconPath = config.icons.epure;
-        else if (point.tags.includes("ps")) iconPath = config.icons.ps;
-        else if (point.tags.includes("info")) iconPath = config.icons.info;
-        else if (point.tags.includes("passage")) iconPath = config.icons.passage;
-        else if (point.tags.includes("chatiere")) iconPath = config.icons.chatiere;
-        else if (point.tags.includes("danger")) iconPath = config.icons.danger;
-        else if (point.tags.includes("pe")) iconPath = config.icons.pe;
+      // Parcourir les tags du point et prendre la première icône définie dans config.icons
+      // — supporte n'importe quel tag personnalisé défini dans plan-config.json
+      if (point.tags && point.tags.length) {
+        for (const tag of point.tags) {
+          if (config.icons[tag]) {
+            iconPath = config.icons[tag];
+            break;
+          }
+        }
       }
 
       if (!iconCache[iconPath]) {
@@ -197,21 +197,10 @@ async function telechargerPlan() {
     }
 
     async function drawPoint(point) {
-      const { img, path } = await getIconForPoint(point);
+      const { img } = await getIconForPoint(point);
 
-      let w = 50;
-      let h = 50;
-      let anchorX = 25;
-      let anchorY = 25;
-
-      if (path === config.icons.vehicule) {
-        w = 50;
-        h = 25;
-        anchorX = 25;
-        anchorY = 13;
-      }
-
-      drawMarkerImage(img, point.x, point.y, w, h, anchorX, anchorY);
+      // Toutes les icônes sont en 50×50 avec ancrage centré
+      drawMarkerImage(img, point.x, point.y, 50, 50, 25, 25);
     }
 
     // ---------- couches JSON visibles ----------
@@ -264,19 +253,19 @@ async function telechargerPlan() {
 
     // ---------- export ----------
     canvas.toBlob((blob) => {
-  if (!blob) {
-    alert("Impossible de générer l'image");
-    return;
-  }
+      if (!blob) {
+        alert("Impossible de générer l'image");
+        return;
+      }
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = (config.plan.name || "plan") + "_complet.png";
-  link.click();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = (config.plan.name || "plan") + "_complet.png";
+      link.click();
 
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}, "image/png");
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }, "image/png");
 
   } catch (err) {
     console.error(err);

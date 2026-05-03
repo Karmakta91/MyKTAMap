@@ -14,7 +14,10 @@ const assetsToCache = [
   "/js/road.js",
   "/js/createConf.js",
   "/js/tiling.js",
+  "/README.MD",
+  "/README_USER.MD",
 
+  
   // Données JSON
 
   "/data/cataphile.json",
