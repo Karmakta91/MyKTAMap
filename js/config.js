@@ -2,7 +2,10 @@
 // CONFIG.JS — unifié serveur + import navigateur
 // =========================
 
-const DEFAULT_CONFIG = {
+// DEFAULT_CONFIG = valeurs de fallback initiales, mais MUTABLES :
+// elles sont mises à jour à chaque chargement de plan pour refléter
+// la config réelle du plan en cours (utilisé par resetConfig())
+let DEFAULT_CONFIG = {
   imageHeight:   610,
   imageWidth:    1044,
   scale:         4.9,
@@ -148,8 +151,13 @@ async function loadAppConfig() {
 
     window.PLAN_CONFIG = config;
     const cfg = buildAppConfigFromPlan(config);
-    window.DEFAULT_CONFIG = { ...cfg };
-    window.APP_CONFIG = APP_CONFIG = cfg;
+
+    // Muter DEFAULT_CONFIG en place pour que resetConfig() utilise les valeurs du plan
+    Object.assign(DEFAULT_CONFIG, cfg);
+    window.DEFAULT_CONFIG = DEFAULT_CONFIG;
+
+    APP_CONFIG = { ...cfg };
+    window.APP_CONFIG = APP_CONFIG;
 
     console.log("[Config] Chargée depuis serveur", APP_CONFIG);
     return true;

@@ -20,33 +20,42 @@ let stepCount = 0;
 // INIT
 // =========================
 function initTracking() {
-  // Lire APP_CONFIG au moment de l'init, pas au chargement du script
+  // Reset complet — la map a peut-être changé (changement de plan)
+  // On re-crée tout depuis zéro avec les nouvelles valeurs APP_CONFIG
   position.x = APP_CONFIG.startX;
   position.y = APP_CONFIG.startY;
+  stepCount  = 0;
+  lastStepTime = 0;
+  direction  = 0;
+  tracking   = false;
+  window.modeRecalage = false;
 
-  // Charger le cache collision une seule fois
+  // Vider l'ancien cache collision (les dimensions/scales peuvent différer)
+  _collisionData   = null;
+  _collisionWidth  = 0;
+  _collisionHeight = 0;
+  _collisionScaleX = 1;
+  _collisionScaleY = 1;
+
+  // Charger le cache collision avec les bonnes dimensions du nouveau plan
   initCollisionCache();
 
   const iconeTracker = window.iconeTrack;
-  let latlng = convertCoord(position.x, position.y);
+  const latlng = convertCoord(position.x, position.y);
 
-  markerPosition = L.marker(latlng, {
-    icon: iconeTracker
-  }).addTo(window.map);
-
-  // ... reste inchangé
-  polyline = L.polyline([], { weight: 3 }).addTo(window.map);
+  markerPosition = L.marker(latlng, { icon: iconeTracker }).addTo(window.map);
+  polyline       = L.polyline([], { weight: 3 }).addTo(window.map);
 
   window.map.setView(latlng, 0);
 
   window.map.on('click', function(e) {
     if (!window.modeRecalage) return;
 
-    let lat = e.latlng.lat;
-    let lng = e.latlng.lng;
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
 
-    let x = lng;
-    let y = APP_CONFIG.imageHeight - lat;
+    const x = lng;
+    const y = APP_CONFIG.imageHeight - lat;
 
     position.x = x;
     position.y = y;
@@ -54,10 +63,7 @@ function initTracking() {
     updateMap();
     console.log("Recalé en :", x, y);
 
-    if (polyline) {
-      polyline.setLatLngs([]);
-    }
-
+    if (polyline) polyline.setLatLngs([]);
     stepCount = 0;
   });
 }

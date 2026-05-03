@@ -130,13 +130,20 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
   window.PLAN_CONFIG = cloneAndResolvePlanConfig(rawConfig);
 
   const cfg = buildAppConfigFromPlan(rawConfig);
-  window.DEFAULT_CONFIG = { ...cfg };
-  window.APP_CONFIG = APP_CONFIG = cfg;
+
+  // Muter DEFAULT_CONFIG en place pour que resetConfig() utilise les valeurs du plan importé
+  Object.assign(DEFAULT_CONFIG, cfg);
+  window.DEFAULT_CONFIG = DEFAULT_CONFIG;
+
+  APP_CONFIG = { ...cfg };
+  window.APP_CONFIG = APP_CONFIG;
 
   // Appliquer le choix explicite du loader AVANT lancerApplication
   // pour que chargerImage() lise la bonne valeur de perfMode
   if (typeof perfChoisi === "boolean") {
-    window.APP_CONFIG.perfMode = APP_CONFIG.perfMode = perfChoisi;
+    APP_CONFIG.perfMode = perfChoisi;
+    DEFAULT_CONFIG.perfMode = perfChoisi;
+    window.APP_CONFIG = APP_CONFIG;
     console.log("[Loader] perfMode imposé :", perfChoisi);
   }
 
