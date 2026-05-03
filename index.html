@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>MyKTAMap</title>
@@ -13,6 +13,16 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Icône écran d'accueil iOS — Safari iOS lit UNIQUEMENT apple-touch-icon -->
+  <link rel="apple-touch-icon" href="icon/mkm.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icon/mkm.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="icon/mkm.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icon/mkm.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="icon/mkm.png">
+
+  <!-- Favicon classique pour navigateur desktop -->
+  <link rel="icon" type="image/png" href="icon/mkm.png">
 </head>
 
 <body>
@@ -58,12 +68,7 @@
 
       <div class="loaderActions">
         <button id="loadPlanBtn" type="button">Charger le plan</button>
-        <button class="loader-btn-ghost" type="button" onclick="
-          const a = document.createElement('a');
-          a.href = 'data/myktamap.zip';
-          a.download = 'myktamap.zip';
-          a.click();
-        ">Conf Exemple</button>
+        <button class="loader-btn-ghost" type="button" id="loaderConfExempleBtn">Conf Exemple</button>
       </div>
 
       <!-- Mode performance -->
@@ -82,11 +87,6 @@
   <!-- CARTE -->
   <div id="map" style="display:none;"></div>
 
-  <!-- DEBUG — panneau de logs mobile, actif uniquement si ?debug=1 dans l'URL -->
-
-</body>
-
-  <!-- JSZip -->
   <!-- Leaflet -->
   <script src="lib/leaflet/leaflet.js"></script>
 
@@ -109,47 +109,32 @@
   <!-- LOADER SCRIPT -->
   <script>
     // Exposé globalement pour le bouton "Changer de plan > Charger un plan"
-    // Important sur iPhone/PWA : ne pas dépendre d'une fonction définie ailleurs.
-window.afficherLoader = function () {
-  const overlay = document.getElementById("planLoaderOverlay");
-  const statusBox = document.getElementById("loaderStatus");
-  const mapEl = document.getElementById("map");
-  const loadBtn = document.getElementById("loadPlanBtn");
+    window.afficherLoader = function () {
+      const overlay   = document.getElementById("planLoaderOverlay");
+      const statusBox = document.getElementById("loaderStatus");
+      const mapEl     = document.getElementById("map");
+      const loadBtn   = document.getElementById("loadPlanBtn");
 
-  if (!overlay) {
-    console.error("planLoaderOverlay introuvable");
-    return;
-  }
+      if (!overlay) {
+        console.error("planLoaderOverlay introuvable");
+        return;
+      }
+      if (statusBox) statusBox.textContent = "";
+      if (loadBtn)   loadBtn.disabled = false;
 
-  if (statusBox) {
-    statusBox.textContent = "";
-  }
+      overlay.style.display = "flex";
+      if (mapEl) mapEl.style.pointerEvents = "none";
+    };
 
-  // ✅ IMPORTANT : réactiver le bouton à chaque réouverture
-  if (loadBtn) {
-    loadBtn.disabled = false;
-  }
+    window.masquerLoader = function () {
+      const overlay = document.getElementById("planLoaderOverlay");
+      const mapEl   = document.getElementById("map");
+      const loadBtn = document.getElementById("loadPlanBtn");
 
-  overlay.style.display = "flex";
-
-  if (mapEl) {
-    mapEl.style.pointerEvents = "none";
-  }
-};
-
-window.masquerLoader = function () {
-  const overlay = document.getElementById("planLoaderOverlay");
-  const mapEl = document.getElementById("map");
-  const loadBtn = document.getElementById("loadPlanBtn");
-
-  if (overlay) overlay.style.display = "none";
-  if (mapEl) mapEl.style.pointerEvents = "auto";
-
-  // ✅ Sécurité pour le prochain chargement
-  if (loadBtn) {
-    loadBtn.disabled = false;
-  }
-};
+      if (overlay) overlay.style.display = "none";
+      if (mapEl)   mapEl.style.pointerEvents = "auto";
+      if (loadBtn) loadBtn.disabled = false;
+    };
 
     window.addEventListener("load", function () {
       const planConfigInput = document.getElementById("planConfigFile");
@@ -163,6 +148,7 @@ window.masquerLoader = function () {
       const zipDropZone     = document.getElementById("zipDropZone");
       const zipFileInput    = document.getElementById("zipFile");
       const zipFileName     = document.getElementById("zipFileName");
+      const confExBtn       = document.getElementById("loaderConfExempleBtn");
 
       let modeActif = "fichiers";
 
@@ -180,11 +166,19 @@ window.masquerLoader = function () {
         setStatus("");
       });
 
+      if (confExBtn) {
+        confExBtn.addEventListener("click", function() {
+          const a = document.createElement("a");
+          a.href = "data/myktamap.zip";
+          a.download = "myktamap.zip";
+          a.click();
+        });
+      }
+
       zipDropZone.addEventListener("click", function () { zipFileInput.click(); });
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         zipFileName.textContent = f ? "✅ " + f.name : "";
-        // Suggérer mode perf si ZIP > 50Mo
         const cb = document.getElementById("loaderPerfMode");
         if (f && cb && f.size > 50 * 1024 * 1024) cb.checked = true;
       });
@@ -286,8 +280,6 @@ window.masquerLoader = function () {
       } catch(e) {}
     });
   </script>
-
-  <!-- DEBUG — panneau de logs mobile, actif uniquement si ?debug=1 dans l'URL -->
 
 </body>
 </html>
