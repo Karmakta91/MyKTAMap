@@ -1142,7 +1142,7 @@ function ouvrirCalibrageEchelle() {
       return;
     }
 
-    nouveauScale = scaleActuel * (reel / aff);
+    nouveauScale = scaleActuel * ( aff / reel );
     resultatEl.textContent = nouveauScale.toFixed(3) + " px/m";
     formuleEl.textContent  = scaleActuel + " × (" + reel + " / " + aff + ") = " + nouveauScale.toFixed(3);
     btnAppliquer.disabled  = false;
