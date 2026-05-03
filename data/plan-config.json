@@ -58,11 +58,13 @@
     "stepCooldown": 400
   },
   "icons": {
-    "default": "icon/iconetrack.png",
+    "default": "lib/leaflet/images/marker-icon.png",
+    "track": "icon/iconetrack.png",
     "salle": "icon/house.png",
     "pa": "icon/pa.png",
     "pc": "icon/pc.png",
     "pb": "icon/pb.png",
+    "pe": "icon/pe.png",
     "vehicule": "icon/vehicule.png",
     "elec": "icon/elec.png",
     "epure": "icon/epure.png",
@@ -70,8 +72,6 @@
     "info": "icon/info.png",
     "chatiere": "icon/chatiere.png",
     "passage": "icon/passage.png",
-    "danger": "icon/danger.png",
-    "pe": "icon/pe.png",
-    "track": "icon/iconetrack.png"
+    "danger": "icon/danger.png"
   }
 }
