@@ -4,24 +4,35 @@
 
 window.modeMesure = false;
 let pointsMesure = [];
-let polylineMesure;
+let polylineMesure = null;
+let _measureClickHandler = null;
 
 function initMeasure() {
+  // Reset complet : nouvelle map = nouveau polyline + nouveau handler
+  pointsMesure = [];
+
   polylineMesure = L.polyline([], { color: 'red', weight: 3 }).addTo(window.map);
 
-  window.map.on('click', function(e) {
+  // Définir le handler une fois et le réutiliser pour pouvoir le retirer
+  // (la map est nouvelle à chaque init, donc le handler est forcément frais)
+  _measureClickHandler = function(e) {
     if (!window.modeMesure) return;
 
-    let lat = e.latlng.lat;
-    let lng = e.latlng.lng;
+    const lat = e.latlng.lat;
+    const lng = e.latlng.lng;
 
-    let x = lng;
-    let y = APP_CONFIG.imageHeight - lat;
+    // Conversion coords Leaflet → coords plan (style GIMP)
+    const x = lng;
+    const y = APP_CONFIG.imageHeight - lat;
 
-    pointsMesure.push({ x, y });
-
+    pointsMesure.push({ x: x, y: y });
     updateMesure();
-  });
+  };
+
+  window.map.on('click', _measureClickHandler);
+
+  // Reset l'affichage de la distance
+  afficherDistance(0);
 }
 
 function updateMesure() {
@@ -69,11 +80,17 @@ function removeLastMeasurePoint() {
 }
 
 function afficherDistance(d) {
-  if (!window.measureLabel) {
+  // Recréer le label si la map a changé (ex: changement de plan)
+  // ou s'il n'existe pas encore
+  const labelEl = document.getElementById("measureLabel");
+  if (!labelEl || !window.measureLabel || !window.measureLabel._map) {
+    if (window.measureLabel && window.measureLabel.remove) {
+      try { window.measureLabel.remove(); } catch(e) {}
+    }
     window.measureLabel = L.control({ position: 'bottomleft' });
 
     window.measureLabel.onAdd = function() {
-      let div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+      const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
       div.id = "measureLabel";
       div.style.background = "rgba(0,0,0,0.8)";
       div.style.color = "white";
