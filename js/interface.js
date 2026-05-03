@@ -860,9 +860,9 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📌 Édition de points</div>
+          <div class="kta-aide-section-titre">✏️ Édition de points</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📌</span><span>Activer le mode ajout de point</span>
+            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point</span>
             <span class="kta-aide-icone">🗑️</span><span>Effacer (dernier point ou tous les points)</span>
           </div>
         </div>
@@ -1594,11 +1594,11 @@ function initInterface() {
   // 8. ÉDITION
   _creerGroupeAccordeon({
     id: "edition",
-    iconePrincipale: "📌",
+    iconePrincipale: "✏️",
     titre: "Édition de points",
     sousActions: [
       {
-        icone: "📌",
+        icone: "✏️",
         titre: "Activer le mode ajout de point",
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
