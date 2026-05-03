@@ -105,7 +105,34 @@ Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôl
 
 ---
 
+## 🧭 Présentation de l'interface
+
+Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 9 groupes :
+
+| Groupe | Icône | À quoi ça sert |
+|---|---|---|
+| **Aide / Doc / Légende** | 📚 | Aide, documentation, légende des icônes |
+| **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
+| **Charger / Import** | ⬇️ | Importer une session ou changer de plan |
+| **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
+| **Enregistrer** | ⬆️ | Exporter ta session, télécharger le plan, convertisseur |
+| **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
+| **Mesure** | 📐 | Mesurer une distance, effacer |
+| **Édition de points** | 📌 | Ajouter tes propres points, effacer |
+| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins |
+
+**Comment ça marche :**
+
+- **Un seul groupe ouvert à la fois** — appuyer sur un autre groupe ferme le précédent
+- **Quand un mode est actif** (mesure, ajout, route, recalage), le groupe **reste ouvert** pour que tu puisses accéder rapidement aux actions associées (effacer un point, etc.). L'icône principale change pour refléter le mode en cours
+- **Toucher en dehors** du groupe ouvert le ferme automatiquement
+- **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
+
+---
+
 ## 📍 Tracker de position
+
+> Tous les boutons du tracker se trouvent dans le groupe **🧭 Tracker** de la barre latérale.
 
 ### Démarrer le tracking
 
@@ -128,9 +155,9 @@ La position calculée dérive inévitablement. Dès que vous reconnaissez un rep
 
 ### Réglages du tracker
 
-Accédez aux réglages via **⚙️** :
+Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latérale :
 
-- **Échelle (px/m)** : rapport pixels/mètres réels
+- **Échelle (px/m)** : rapport pixels/mètres réels — bouton **🎯** à côté pour calibrer
 - **Taille d'un pas (m)** : longueur estimée de votre foulée (≈ 0,7 m)
 - **Seuil de détection** : sensibilité du détecteur de pas
 - **Cooldown (ms)** : délai minimum entre deux pas
@@ -138,9 +165,11 @@ Accédez aux réglages via **⚙️** :
 
 ---
 
-## 📏 Mesure de distance
+## 📐 Mesure de distance
 
-1. Appuyez sur **📏** — le mode mesure s'active (bouton vert)
+> Tous les boutons de mesure se trouvent dans le groupe **📐 Mesure** de la barre latérale.
+
+1. Appuyez sur **📐** — le mode mesure s'active (bouton vert)
 2. Cliquez sur le plan pour poser des points
 3. La distance totale s'affiche en bas à gauche, en mètres
 
@@ -158,9 +187,11 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 ---
 
-## ✏️ Ajouter des points
+## 📌 Ajouter des points
 
-1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
+> Tous les boutons d'édition se trouvent dans le groupe **📌 Édition** de la barre latérale.
+
+1. Appuyez sur **📌** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité
 3. Une fenêtre s'ouvre. Renseignez :
    - **Nom** (obligatoire)
@@ -172,11 +203,11 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 Si le type que vous voulez n'existe pas encore, sélectionnez **➕ Créer un nouveau tag…**. Saisissez un nom court (lettres, chiffres, underscore ou tiret uniquement) — par exemple `fontaine`, `arche` ou `ruine_2`.
 
-Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **📦** (voir ci-dessous).
+Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **🏗️** (voir ci-dessous).
 
 ### Effacer les points
 
-Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux options :
+Appuyez sur **🗑️** (à côté de 📌). Une fenêtre s'ouvre avec deux options :
 
 | Option | Effet |
 |---|---|
@@ -191,6 +222,8 @@ Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux op
 ---
 
 ## 🛣️ Tracer des routes
+
+> Tous les boutons de tracé se trouvent dans le groupe **🛣️ Tracés** de la barre latérale.
 
 - **🟩 Route principale** — vert vif
 - **🟪 Route secondaire** — violet
@@ -213,21 +246,44 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 ---
 
-## 💾 Sauvegarder et partager
+## ⬆️ Sauvegarder et partager
+
+> Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
 ### Exporter une session
 
-Appuyez sur **💾** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés et les points de mesure. Réimportable via **📂**.
+Appuyez sur **⬆️ → 💾 Session JSON** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés et les points de mesure. Réimportable via le groupe **⬇️ Charger / Import → 📥 Importer une session**.
 
 ### Télécharger le plan en image
 
-Appuyez sur **🖼️** pour télécharger une image PNG du plan avec tous les calques visibles, points et tracés.
+Appuyez sur **⬆️ → 🖼️ Plan en image** pour télécharger une image PNG du plan avec tous les calques visibles, points et tracés.
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
 
 ---
 
+## ⬇️ Charger / Import
+
+> Le groupe **⬇️ Charger / Import** de la barre latérale contient les actions d'import.
+
+### 📥 Importer une session
+
+Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'import. Une modale s'affiche :
+
+1. **Glissez-déposez** votre fichier `devmap-session.json` dans la zone, ou cliquez pour le sélectionner
+2. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de points de mesure
+3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
+4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
+
+### 🗂️ Changer de plan
+
+Appuyez sur **⬇️ → 🗂️ Changer de plan** pour charger un autre plan complet. Les données non exportées seront perdues — exportez avant de changer.
+
+---
+
 ## 🔄 Convertisseur de données
+
+> Accessible via le groupe **⬆️ Enregistrer → 🔄 Convertisseur**.
 
 Permet de transformer des fichiers entre le format édition et le format calque de données.
 
@@ -239,9 +295,11 @@ Les tracés de routes sont préservés dans les deux sens.
 
 ---
 
-## 📦 Créer ou modifier un plan
+## 🏗️ Créer ou modifier un plan
 
-Appuyez sur **📦** pour ouvrir le générateur. Deux onglets disponibles :
+> Accessible directement via le bouton **🏗️** de la barre latérale (clic direct, pas de sous-menu).
+
+Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
 ### 📄 Nouveau plan
 
@@ -272,32 +330,45 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 ## 🗺️ Légende
 
-Appuyez sur **🗺️** pour afficher la légende complète des icônes et tracés, regroupés par catégorie.
+> Accessible via le groupe **📚 Aide / Doc / Légende → 🗺️ Légende**.
+
+Affiche la légende complète des icônes et tracés, regroupés par catégorie.
 
 ---
 
 ## ⚙️ Réglages
 
-Accédez aux paramètres via **⚙️** :
+> Accessible directement via le bouton **⚙️** de la barre latérale (clic direct, pas de sous-menu).
+
+Accédez aux paramètres en cliquant sur **⚙️** :
 
 - **Position initiale du tracker** : coordonnées de départ
 - **Détection des pas** : sensibilité, taille du pas, cooldown
-- **Debug** : activer les logs de mouvement
-- **Mode Performance** : affiché en lecture seule (modifiable au prochain chargement de plan)
+- **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
+- **Debug** : activer les logs de mouvement + état du Mode Performance (Auto / Activé / Désactivé)
 - **🗑️ Réinitialiser** : vide le cache et recharge l'application
 - **🐛 Logs** : affiche les journaux de débogage (utile en cas de problème)
 
----
+> Le Mode Performance ne se modifie qu'au chargement du plan (case ⚡ dans le formulaire de chargement).
 
-## 🗂️ Changer de plan
+### Calibrer l'échelle (🎯)
 
-Appuyez sur **🗂️** pour charger un autre plan. Les données non exportées seront perdues — exportez avant de changer.
+Si l'appli te donne une distance différente de la réalité (par exemple 100 m affichés alors que tu sais qu'il y a 150 m sur le terrain) :
+
+1. Mesure la distance dans l'appli avec **📐**
+2. Ouvre **⚙️ → 🎯 Calibrer**
+3. Saisis la **distance affichée** (100) et la **distance réelle** (150)
+4. La nouvelle échelle s'affiche en temps réel
+5. Clique **Appliquer** → la valeur est injectée dans le champ Échelle
+6. Clique **Appliquer** dans la modale Réglages pour valider
+
+> Plus tu calibres sur une longue distance, plus le résultat sera précis.
 
 ---
 
 ## 🔧 Réinitialiser
 
-En cas de problème ou pour forcer une mise à jour, utilisez **🗑️ Réinitialiser** dans ⚙️. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
+En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ → 🗑️ Réinitialiser**. Cette action désinscrit le Service Worker, vide le cache et recharge l'application.
 
 > ⚠️ Effectuez cette action uniquement avec une connexion Internet disponible. Sans réseau, l'application sera inutilisable jusqu'au prochain rechargement complet.
 

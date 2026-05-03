@@ -7,9 +7,21 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
----
-
 ## 📋 Journal des modifications
+
+### 03/05/2026 (suite) — Refonte interface
+- **Barre latérale refondue en 9 groupes** (accordéon vertical, exclusivité)
+  - Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
+  - **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
+  - Les autres groupes sont des accordéons déroulables verticalement
+- **Set d'icônes cohérent** : 📚 Aide / ⚙️ Paramètres / ⬇️ Charger / 🏗️ Créer / ⬆️ Enregistrer / 🧭 Tracker / 📐 Mesure / 📌 Édition / 🛣️ Tracés
+- **Mode actif → groupe verrouillé ouvert** + icône principale reflète le mode actif (ex: 🟩 sur Tracés quand Principal en cours, ⏹️/📍 sur Tracker)
+- **Clic en dehors** d'un groupe ouvert le ferme automatiquement (sauf si mode actif)
+- **Modale d'import de session** (`📥`) en plein écran avec drag & drop, aperçu du contenu (nb points / tracés / mesure) et avertissement avant écrasement
+- **Bouton 🎯 de calibrage d'échelle** dans ⚙️ — calcul par produit en croix avec aperçu live de la formule
+- **Mode Performance** déplacé dans la section Debug, affichage compact horizontal (label à gauche + indicateur encadré à droite)
+- **Fix mobile paysage** : barre latérale scrollable verticalement quand `max-height ≤ 500px`, scrollbar masquée, boutons réduits à 28×28px
+- **Modale d'aide** entièrement refondue selon la nouvelle structure 9 groupes
 
 ### 03/05/2026
 - **Icône PWA pour écran d'accueil iOS** — ajout des balises `<link rel="apple-touch-icon">` dans `index.html` (4 tailles + fallback)
@@ -448,35 +460,85 @@ Cache collision initialisé une seule fois à l'init (`initCollisionCache`) — 
 
 ### `interface.js`
 
-#### Blocs de contrôles
+#### Structure de l'interface — barre latérale 9 groupes
 
-| Bloc | Boutons |
-|---|---|
-| Infos | ❓ 📖 📦 🗂️ ⚙️ 🗺️ |
-| Tracking | ▶️/⏹️ 📍 |
-| Mesure | 📏 ❌ |
-| Plan | 🖼️ |
-| Édition | ✏️ 🗑️ |
-| Routes | 🟩 🟪 🟨 🧹 |
-| Import/Export | 📂 💾 🔄 |
+L'interface est organisée en **9 groupes** dans la barre latérale droite. Un seul groupe peut être ouvert à la fois — ouvrir un groupe ferme automatiquement les autres (sauf ceux qui ont un mode actif).
+
+| # | Groupe | Icône | Type | Sous-actions |
+|---|---|---|---|---|
+| 1 | Aide / Doc / Légende | 📚 | Accordéon | Aide → Documentation → Légende |
+| 2 | Paramètres | ⚙️ | **Solo** | (clic direct, ouvre la modale Réglages) |
+| 3 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 🗂️ Changer de plan |
+| 4 | Créer / Modifier plan | 🏗️ | **Solo** | (clic direct, ouvre le générateur) |
+| 5 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG → 🔄 Convertisseur |
+| 6 | Tracker | 🧭 | Accordéon | ▶️/⏹️ Tracking → 📍 Recalage |
+| 7 | Mesure | 📐 | Accordéon | 📐 Activer mesure → ❌ Effacer |
+| 8 | Édition | 📌 | Accordéon | 📌 Activer ajout → 🗑️ Effacer |
+| 9 | Tracés | 🛣️ | Accordéon | 🟩 Principale → 🟪 Secondaire → 🟨 Chemin → 🧹 Effacer |
+
+#### Règles de comportement
+
+- **Sens de déroulement** : accordéon vertical — les sous-actions apparaissent en dessous de l'icône principale et repoussent les groupes suivants
+- **Exclusivité** : un seul groupe ouvert à la fois ; ouvrir un groupe ferme automatiquement le précédent
+- **Mode actif** : si un mode du groupe est actif (mesure, ajout, route, recalage, tracking), le groupe **reste verrouillé ouvert** pour permettre l'accès direct aux sous-actions
+- **Icône principale active** : l'icône principale du groupe **reflète visuellement le mode actif**
+  - Tracker : 🧭 → ⏹️ (tracking en cours) ou 📍 (recalage actif)
+  - Tracés : 🛣️ → 🟩 / 🟪 / 🟨 selon le type actif
+- **Clic hors d'un groupe ouvert** → ferme le groupe automatiquement
+- **Modes exclusifs préservés** : Mesure / Édition / Recalage / Tracés restent mutuellement exclusifs
+
+#### Architecture du code
+
+- **`_creerGroupeAccordeon(config)`** — fonction unique qui crée un groupe (solo ou accordéon)
+- **`_groupes`** — registry global de tous les groupes avec leur état (`{ container, btnPrincipal, subActions, modeActif }`)
+- **`_ouvrirGroupe`, `_fermerGroupe`, `_toggleGroupe`** — gestion centralisée de l'état accordéon
+- **`_setGroupeModeActif(id, actif, iconeReflet)`** — verrouille un groupe ouvert et change l'icône principale
+- **`_initClickExterieur`** — listener global qui ferme le groupe ouvert au clic en dehors
 
 #### Modales disponibles
 
 | Fonction | Description |
 |---|---|
-| `afficherAide()` | Référence des boutons par section |
-| `afficherConfig()` | Réglages APP_CONFIG + logs + réinitialiser |
+| `afficherAide()` | Référence des boutons par groupe |
+| `afficherConfig()` | Réglages APP_CONFIG + 🎯 calibrage + logs + réinitialiser |
 | `afficherLegende()` | Icônes et tracés du plan actif |
 | `afficherReadme()` | Choix doc utilisateur / développeur |
 | `afficherConvertisseur()` | Conversion JSON bidirectionnelle |
 | `afficherPlanner()` | Générateur de plan ZIP (Nouveau / Modifier) |
 | `afficherLogsDebug()` | Panneau logs de débogage |
 | `afficherFormulaire(x, y)` | Modale ajout de point (editor.js) |
+| `ouvrirImportSession()` | **Modale d'import de session** plein écran avec drag & drop et aperçu |
+| `ouvrirCalibrageEchelle()` | Modale de calibrage par produit en croix |
 
 #### Helpers de suppression
 
 - `_confirmerAction(titre, texte, callback)` — modale simple Annuler/Confirmer
-- `_choixSuppression(titre, texte, options[])` — modale avec liste d'options labellées (chacune avec icône, description, callback)
+- `_choixSuppression(titre, texte, options[])` — modale avec liste d'options labellées (chacune avec icône, description, callback). Utilisée pour : effacer mesure, points, tracés.
+
+#### Calibrage de l'échelle
+
+`ouvrirCalibrageEchelle()` ouvre une modale dédiée accessible via le bouton 🎯 à côté du champ Échelle dans ⚙️.
+
+Calcul : `nouveau_scale = scale_actuel × (distance_réelle / distance_affichée)`
+
+L'utilisateur saisit la distance affichée par l'appli et la distance réelle mesurée au sol. La modale calcule la nouvelle échelle en temps réel et l'injecte dans le champ Échelle quand on valide.
+
+#### Modale d'import de session
+
+`ouvrirImportSession()` remplace l'ancien sélecteur de fichier brut par une modale plein écran cohérente avec les autres modales :
+- Zone drag & drop pour fichier `.json`
+- Validation du type (`devmap-session` requis)
+- Aperçu du contenu : nombre de points, tracés et points de mesure
+- Avertissement explicite : *"l'import remplacera tes points/tracés/mesure actuels"*
+- Bouton "Importer" désactivé tant que le fichier n'est pas validé
+
+#### Adaptation mobile paysage
+
+CSS `@media (max-height: 500px)` :
+- `.leaflet-top.leaflet-right { max-height: calc(100vh - 16px); overflow-y: auto }` — barre scrollable verticalement
+- Scrollbar masquée (Webkit + Firefox)
+- Boutons réduits à 28×28px / font 14px
+- Espacement entre groupes réduit à 1px
 
 ### `debug.js`
 

@@ -1328,3 +1328,84 @@ html, body {
   white-space: nowrap;
   padding-left: 4px;
 }
+
+/* =========================
+   GROUPES ACCORDÉON — barre latérale 8 groupes
+   ========================= */
+
+/* Boutons principaux : tailles d'origine (32×32, 16px) — voir bloc général .leaflet-bar a */
+
+/* Coller les groupes verticalement au maximum */
+.leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
+  margin-top: 2px !important;
+}
+
+/* Sous-action : même taille que les boutons principaux, fond plus sombre */
+.leaflet-bar a.kta-sub {
+  background: #141823 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+.leaflet-bar a.kta-sub:hover {
+  background: #1f2638 !important;
+}
+
+/* Classe pour cacher les sous-actions (force priority sur display: block !important) */
+.leaflet-bar a.kta-hidden {
+  display: none !important;
+}
+
+/* Animation d'apparition des sous-actions */
+.kta-sub-anim {
+  animation: kta-slide-in 0.18s ease-out;
+}
+
+@keyframes kta-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Bouton principal d'un groupe quand il est ouvert (sous-actions visibles) */
+.leaflet-bar a.kta-group-open {
+  background: #2a3145 !important;
+  color: #8cb4ff !important;
+}
+
+/* =========================
+   FIX MOBILE PAYSAGE — barre dans le cadre
+   ========================= */
+
+/* Sur mobile en mode paysage, la hauteur est très réduite (≤ 500px).
+   On scrollifie la zone des contrôles à droite pour qu'aucune icône ne sorte du cadre. */
+@media (max-height: 500px) {
+  .leaflet-top.leaflet-right {
+    max-height: calc(100vh - 16px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* Cacher la scrollbar pour rester propre */
+    scrollbar-width: none;
+  }
+  .leaflet-top.leaflet-right::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Réduire légèrement les boutons en paysage pour gagner de la place */
+  .leaflet-bar a {
+    width: 28px !important;
+    height: 28px !important;
+    line-height: 28px !important;
+    font-size: 14px !important;
+  }
+
+  /* Réduire l'espacement entre groupes */
+  .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
+    margin-top: 1px !important;
+  }
+}

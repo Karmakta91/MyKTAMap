@@ -190,19 +190,167 @@ function importerSessionJSON(file) {
 }
 
 // =========================
-// SÉLECTEUR IMPORT
+// IMPORT SESSION — modale plein écran
 // =========================
 function ouvrirImportSession() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json";
+  const existing = document.getElementById("kta-import-modal");
+  if (existing) { existing.remove(); return; }
 
-  input.onchange = function (e) {
-    const file = e.target.files[0];
-    if (file) importerSessionJSON(file);
-  };
+  const modal = document.createElement("div");
+  modal.id = "kta-import-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📥 Importer une session</span>
+        <button class="kta-panneau-close" id="kta-import-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
 
-  input.click();
+        <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+          Charge un fichier <code>devmap-session.json</code> exporté depuis l'application.
+          Il contient tes points ajoutés, tes tracés et ta mesure en cours.
+        </p>
+
+        <div class="kta-conv-champ">
+          <label class="kta-conv-label">Fichier session</label>
+          <div class="kta-conv-drop" id="kta-import-drop">
+            <span id="kta-import-drop-label">📂 Cliquer ou glisser un fichier .json</span>
+            <input type="file" id="kta-import-file" accept=".json,application/json" style="display:none">
+          </div>
+        </div>
+
+        <div id="kta-import-apercu-wrap" class="kta-conv-champ" style="display:none;">
+          <label class="kta-conv-label">Aperçu</label>
+          <div id="kta-import-apercu" style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-size:13px; color:#e8eaf0;"></div>
+        </div>
+
+        <div class="kta-aide-section" id="kta-import-warn" style="display:none; border-color:rgba(255,200,100,0.3); background:rgba(255,180,80,0.06);">
+          <div style="font-size:13px; color:#ffd28a;">
+            ⚠️ <strong>Attention</strong> — l'import remplacera tes points, tracés et mesure actuels.
+            Pense à exporter ta session en cours avant si tu veux la conserver.
+          </div>
+        </div>
+
+        <div id="kta-import-erreur" class="kta-conv-erreur" style="display:none;"></div>
+
+        <div class="kta-conv-actions" style="margin-top:14px;">
+          <button class="kta-btn kta-btn-ghost"   id="kta-import-annuler">Annuler</button>
+          <button class="kta-btn kta-btn-primary"  id="kta-import-valider" disabled>Importer</button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+
+  const dropZone   = document.getElementById("kta-import-drop");
+  const fileInput  = document.getElementById("kta-import-file");
+  const dropLabel  = document.getElementById("kta-import-drop-label");
+  const apercuWrap = document.getElementById("kta-import-apercu-wrap");
+  const apercuEl   = document.getElementById("kta-import-apercu");
+  const warnEl     = document.getElementById("kta-import-warn");
+  const erreurEl   = document.getElementById("kta-import-erreur");
+  const btnValider = document.getElementById("kta-import-valider");
+  const btnAnnuler = document.getElementById("kta-import-annuler");
+  const btnClose   = document.getElementById("kta-import-close");
+
+  let fichierCharge = null;
+  let dataParsee    = null;
+
+  function fermer() { modal.remove(); }
+
+  function setErr(msg) {
+    erreurEl.textContent = msg || "";
+    erreurEl.style.display = msg ? "block" : "none";
+  }
+
+  function chargerFichier(file) {
+    fichierCharge = file;
+    dropLabel.textContent = "✅ " + file.name;
+    setErr("");
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (data.type !== "devmap-session") {
+          setErr("❌ Fichier invalide — il doit s'agir d'une session devmap-session");
+          dataParsee = null;
+          apercuWrap.style.display = "none";
+          warnEl.style.display = "none";
+          btnValider.disabled = true;
+          return;
+        }
+
+        dataParsee = data;
+        const nbPoints  = (data.editorPoints || []).length;
+        const nbMesure  = (data.measure && data.measure.points) ? data.measure.points.length : 0;
+        const nbTraces  = (data.roads || []).length;
+
+        apercuEl.innerHTML = `
+          <div style="display:flex; gap:14px; flex-wrap:wrap;">
+            <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
+            <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
+            <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
+          </div>
+        `;
+        apercuWrap.style.display = "block";
+        warnEl.style.display = "block";
+        btnValider.disabled = false;
+
+      } catch(err) {
+        setErr("❌ JSON invalide : " + err.message);
+        dataParsee = null;
+        apercuWrap.style.display = "none";
+        warnEl.style.display = "none";
+        btnValider.disabled = true;
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // Drop zone
+  dropZone.addEventListener("click", function() { fileInput.click(); });
+  fileInput.addEventListener("change", function() {
+    if (fileInput.files[0]) chargerFichier(fileInput.files[0]);
+  });
+  dropZone.addEventListener("dragover", function(e) {
+    e.preventDefault(); dropZone.classList.add("dragover");
+  });
+  dropZone.addEventListener("dragleave", function() { dropZone.classList.remove("dragover"); });
+  dropZone.addEventListener("drop", function(e) {
+    e.preventDefault(); dropZone.classList.remove("dragover");
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.toLowerCase().endsWith(".json")) chargerFichier(f);
+    else setErr("Le fichier doit être un .json");
+  });
+
+  // Boutons
+  btnClose.addEventListener("click", fermer);
+  btnAnnuler.addEventListener("click", fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  btnValider.addEventListener("click", function() {
+    if (!dataParsee) return;
+
+    try {
+      if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
+      if (window.renderEditorPoints) window.renderEditorPoints();
+      if (window.resetMesure)        window.resetMesure();
+      if (window.setMeasurePoints) {
+        window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
+      }
+      if (window.resetRoads)         window.resetRoads();
+      if (window.setRoads)           window.setRoads(dataParsee.roads || []);
+
+      fermer();
+    } catch(err) {
+      console.error(err);
+      setErr("Erreur lors de l'import : " + (err.message || err));
+    }
+  });
 }
 
 // =========================
@@ -637,25 +785,66 @@ function afficherAide() {
   modal.className = "kta-readme-modal-overlay";
 
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:560px;">
+    <div class="kta-readme-modal-boite" style="max-width:580px;">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">❓ Aide — Référence des boutons</span>
         <button class="kta-panneau-close" id="kta-aide-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
 
+        <p style="color:#8892a4; font-size:13px; margin:0 0 14px; line-height:1.5;">
+          La barre latérale droite est organisée en groupes déroulables.
+          Un seul groupe peut être ouvert à la fois — cliquer sur un autre referme le précédent.
+        </p>
+
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Navigation & Carte</div>
+          <div class="kta-aide-section-titre">📚 Aide / Doc / Légende</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
-            <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan (image)</span>
-            <span class="kta-aide-icone">📏</span><span>Mesurer une distance</span>
-            <span class="kta-aide-icone">❌</span><span>Réinitialiser la mesure</span>
+            <span class="kta-aide-icone">❓</span><span>Cette aide — référence des boutons</span>
+            <span class="kta-aide-icone">📖</span><span>Documentation utilisateur ou développeur</span>
+            <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📍 Tracking & Déplacement</div>
+          <div class="kta-aide-section-titre">⚙️ Paramètres</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug (clic direct)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs et 🗑️ pour réinitialiser le cache.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
+            <span class="kta-aide-icone">🗂️</span><span>Changer de plan (recharger un autre plan)</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏗️ Créer / Modifier un plan</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🏗️</span><span>Ouvrir le générateur de plan (clic direct)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Permet de créer un nouveau plan ou de modifier un plan existant à partir d'une archive ZIP.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">💾</span><span>Exporter la session en JSON</span>
+            <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan en image (PNG)</span>
+            <span class="kta-aide-icone">🔄</span><span>Convertir un fichier édition ↔ calque de données</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Tracker</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking</span>
             <span class="kta-aide-icone">📍</span><span>Mode recalage de position</span>
@@ -663,10 +852,18 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">✏️ Points d'intérêt</div>
+          <div class="kta-aide-section-titre">📐 Mesure</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point</span>
-            <span class="kta-aide-icone">🗑️</span><span>Effacer les points ajoutés</span>
+            <span class="kta-aide-icone">📐</span><span>Activer la mesure de distance</span>
+            <span class="kta-aide-icone">❌</span><span>Effacer (dernier point ou toute la mesure)</span>
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📌 Édition de points</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📌</span><span>Activer le mode ajout de point</span>
+            <span class="kta-aide-icone">🗑️</span><span>Effacer (dernier point ou tous les points)</span>
           </div>
         </div>
 
@@ -676,29 +873,24 @@ function afficherAide() {
             <span class="kta-aide-icone">🟩</span><span>Tracer une route principale</span>
             <span class="kta-aide-icone">🟪</span><span>Tracer une route secondaire</span>
             <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
-            <span class="kta-aide-icone">🧹</span><span>Effacer les tracés</span>
+            <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernier tracé ou tous)</span>
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">💾 Import / Export</div>
-          <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📂</span><span>Importer une session</span>
-            <span class="kta-aide-icone">💾</span><span>Exporter la session en cours</span>
-            <span class="kta-aide-icone">🔄</span><span>Convertir édition ↔ calque de données</span>
-          </div>
-        </div>
-
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">ℹ️ Informations & Réglages</div>
-          <div class="kta-aide-grille">
-            <span class="kta-aide-icone">❓</span><span>Cette aide</span>
-            <span class="kta-aide-icone">📖</span><span>Documentation (README)</span>
-            <span class="kta-aide-icone">📦</span><span>Créer un nouveau plan (ZIP)</span>
-            <span class="kta-aide-icone">🗂️</span><span>Changer de plan</span>
-            <span class="kta-aide-icone">⚙️</span><span>Réglages & configuration</span>
-            <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
-          </div>
+          <div class="kta-aide-section-titre">💡 Astuces</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Modes exclusifs</strong> : Mesure, Ajout de point, Recalage et Tracés sont mutuellement
+            exclusifs — activer l'un désactive automatiquement les autres.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>Mode actif</strong> : tant qu'un mode est actif, son groupe reste ouvert pour permettre
+            l'accès direct aux actions secondaires (effacer le dernier point par exemple).
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
+            <strong>Icône qui change</strong> : l'icône principale du groupe reflète le mode actif (par exemple
+            🟩 sur le bouton Tracés quand un tracé principal est en cours, ou 📍 sur le Tracker pendant le recalage).
+          </p>
         </div>
 
       </div>
@@ -780,7 +972,13 @@ function afficherConfig() {
           <div class="kta-aide-section-titre">👣 Détection des pas</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">Échelle (px/m)</label>
-            <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}">
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input class="kta-cfg-input" id="cfg_scale" type="number" step="0.1" value="${c.scale}" style="flex:1;">
+              <button type="button" class="kta-btn kta-btn-ghost"
+                onclick="ouvrirCalibrageEchelle()"
+                style="padding:6px 10px; font-size:13px; white-space:nowrap;"
+                title="Calculer l'échelle à partir d'une mesure réelle">🎯</button>
+            </div>
             <label class="kta-cfg-label">Taille d'un pas (m)</label>
             <input class="kta-cfg-input" id="cfg_stepLength" type="number" step="0.1" value="${c.stepLength}">
             <label class="kta-cfg-label">Seuil de détection</label>
@@ -799,21 +997,17 @@ function afficherConfig() {
               <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
             </select>
           </div>
-        </div>
 
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">⚡ Mode Performance</div>
-          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
-            Découpe le plan en tuiles pour les images volumineuses (&gt;60 Mo).<br>
-            Le mode s'active automatiquement selon la taille du fichier au chargement.
-          </p>
-          <div style="display:flex; align-items:center; gap:10px; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
-            <span style="font-size:18px;">${c.perfMode === true ? '⚡' : c.perfMode === false ? '💤' : '🔄'}</span>
-            <div>
-              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">
-                ${c.perfMode === true ? 'Activé (forcé)' : c.perfMode === false ? 'Désactivé' : 'Auto (≥ 60 Mo)'}
-              </div>
-              <div style="font-size:11px; color:#8892a4;">Modifiable au chargement du plan (checkbox ⚡)</div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
+            <div style="flex:1;">
+              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">Mode Performance ⚡</div>
+              <div style="font-size:11px; color:#8892a4; margin-top:2px;">Modifiable au chargement du plan</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
+              <span style="font-size:22px;">${c.perfMode === true ? '⚡' : c.perfMode === false ? '💤' : '🔄'}</span>
+              <span style="font-size:15px; font-weight:600; color:#e8eaf0;">
+                ${c.perfMode === true ? 'Activé' : c.perfMode === false ? 'Désactivé' : 'Auto'}
+              </span>
             </div>
           </div>
         </div>
@@ -857,6 +1051,121 @@ function resetConfig() {
   const modal = document.getElementById("kta-cfg-modal");
   if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
+}
+
+// =========================
+// CALIBRAGE D'ÉCHELLE — produit en croix
+// =========================
+function ouvrirCalibrageEchelle() {
+  const existing = document.getElementById("kta-calib-modal");
+  if (existing) { existing.remove(); return; }
+
+  // Lire la valeur actuelle du champ (pas APP_CONFIG, au cas où on l'a modifiée sans appliquer)
+  const champScale = document.getElementById("cfg_scale");
+  const scaleActuel = champScale ? parseFloat(champScale.value) : APP_CONFIG.scale;
+
+  const modal = document.createElement("div");
+  modal.id = "kta-calib-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:420px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">🎯 Calibrer l'échelle</span>
+        <button class="kta-panneau-close" id="kta-calib-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+          Mesure une distance connue avec <strong>📐</strong>, puis renseigne ici la distance
+          <strong>réelle</strong> (mesurée au sol). L'échelle sera recalculée automatiquement.
+        </p>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📐 Valeurs</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Échelle actuelle (px/m)</label>
+            <input class="kta-cfg-input" id="calib_actuel" type="number" step="0.01" value="${scaleActuel}" readonly style="opacity:0.6;">
+
+            <label class="kta-cfg-label">Distance affichée (m)</label>
+            <input class="kta-cfg-input" id="calib_affichee" type="number" step="0.1" placeholder="ex: 100">
+
+            <label class="kta-cfg-label">Distance réelle (m)</label>
+            <input class="kta-cfg-input" id="calib_reelle" type="number" step="0.1" placeholder="ex: 150">
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧮 Résultat</div>
+          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
+            <div style="color:#8892a4;">Nouvelle échelle :</div>
+            <div id="calib_resultat" style="font-size:22px; color:#8cb4ff; font-weight:600; margin-top:4px;">—</div>
+            <div id="calib_formule" style="font-size:11px; color:#6a7488; margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <div id="calib_erreur" class="kta-conv-erreur" style="display:none;"></div>
+
+        <div class="kta-conv-actions" style="margin-top:14px;">
+          <button class="kta-btn kta-btn-ghost"   id="calib_annuler">Annuler</button>
+          <button class="kta-btn kta-btn-primary"  id="calib_appliquer" disabled>Appliquer</button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+
+  const inputAffichee = document.getElementById("calib_affichee");
+  const inputReelle   = document.getElementById("calib_reelle");
+  const resultatEl    = document.getElementById("calib_resultat");
+  const formuleEl     = document.getElementById("calib_formule");
+  const erreurEl      = document.getElementById("calib_erreur");
+  const btnAppliquer  = document.getElementById("calib_appliquer");
+  const btnAnnuler    = document.getElementById("calib_annuler");
+  const btnClose      = document.getElementById("kta-calib-close");
+
+  function fermer() { modal.remove(); }
+
+  let nouveauScale = null;
+
+  function recalculer() {
+    erreurEl.style.display = "none";
+    const aff = parseFloat(inputAffichee.value);
+    const reel = parseFloat(inputReelle.value);
+
+    if (!aff || !reel || aff <= 0 || reel <= 0) {
+      resultatEl.textContent = "—";
+      formuleEl.textContent  = "";
+      btnAppliquer.disabled  = true;
+      nouveauScale = null;
+      return;
+    }
+
+    nouveauScale = scaleActuel * (reel / aff);
+    resultatEl.textContent = nouveauScale.toFixed(3) + " px/m";
+    formuleEl.textContent  = scaleActuel + " × (" + reel + " / " + aff + ") = " + nouveauScale.toFixed(3);
+    btnAppliquer.disabled  = false;
+  }
+
+  inputAffichee.addEventListener("input", recalculer);
+  inputReelle.addEventListener("input", recalculer);
+
+  btnClose.addEventListener("click", fermer);
+  btnAnnuler.addEventListener("click", fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  btnAppliquer.addEventListener("click", function() {
+    if (nouveauScale === null || nouveauScale <= 0) {
+      erreurEl.textContent = "Valeur invalide";
+      erreurEl.style.display = "block";
+      return;
+    }
+    if (champScale) champScale.value = nouveauScale.toFixed(3);
+    fermer();
+  });
+
+  setTimeout(function() { inputAffichee.focus(); }, 50);
 }
 
 // =========================
@@ -964,294 +1273,446 @@ function _activerMode(cle, btnEl, activerFn, desactiverFn) {
 // =========================
 // INIT INTERFACE
 // =========================
+// =========================
+// HELPER ACCORDÉON
+// =========================
+// Gère l'ouverture/fermeture exclusive des groupes
+// + maintien forcé en ouvert si un mode est actif
+
+const _groupes = {}; // { groupeId: { container, btnPrincipal, subActions: [], modeActif: false } }
+let _groupeOuvert = null;
+
+function _fermerGroupe(id) {
+  const g = _groupes[id];
+  if (!g) return;
+  g.subActions.forEach(function(el) { el.classList.add("kta-hidden"); });
+  if (g.btnPrincipal) g.btnPrincipal.classList.remove("kta-group-open");
+  if (_groupeOuvert === id) _groupeOuvert = null;
+}
+
+function _ouvrirGroupe(id) {
+  // Fermer tous les autres groupes (sauf ceux qui ont un mode actif)
+  Object.keys(_groupes).forEach(function(autreId) {
+    if (autreId === id) return;
+    if (_groupes[autreId].modeActif) return; // ne pas fermer si mode actif
+    _fermerGroupe(autreId);
+  });
+
+  const g = _groupes[id];
+  if (!g) return;
+  g.subActions.forEach(function(el) {
+    el.classList.remove("kta-hidden");
+    el.classList.add("kta-sub-anim");
+    setTimeout(function() { el.classList.remove("kta-sub-anim"); }, 200);
+  });
+  if (g.btnPrincipal) g.btnPrincipal.classList.add("kta-group-open");
+  _groupeOuvert = id;
+}
+
+function _toggleGroupe(id) {
+  if (_groupeOuvert === id) {
+    // Si on referme un groupe avec mode actif, on ne ferme pas
+    if (_groupes[id]?.modeActif) return;
+    _fermerGroupe(id);
+  } else {
+    _ouvrirGroupe(id);
+  }
+}
+
+// Marque un groupe comme ayant un mode actif → reste ouvert
+function _setGroupeModeActif(id, actif, iconeReflet) {
+  const g = _groupes[id];
+  if (!g) return;
+  g.modeActif = actif;
+  if (actif) {
+    if (iconeReflet && g.btnPrincipal) {
+      g.btnPrincipal.dataset.iconeOriginale = g.btnPrincipal.dataset.iconeOriginale || g.btnPrincipal.innerHTML;
+      g.btnPrincipal.innerHTML = iconeReflet;
+    }
+    _ouvrirGroupe(id);
+  } else {
+    if (g.btnPrincipal && g.btnPrincipal.dataset.iconeOriginale) {
+      g.btnPrincipal.innerHTML = g.btnPrincipal.dataset.iconeOriginale;
+    }
+  }
+}
+
+// Clic en dehors → ferme le groupe ouvert (si pas de mode actif)
+function _initClickExterieur() {
+  if (window._clickExterieurInit) return;
+  window._clickExterieurInit = true;
+
+  document.addEventListener("click", function(e) {
+    if (!_groupeOuvert) return;
+    const g = _groupes[_groupeOuvert];
+    if (!g || g.modeActif) return;
+    if (g.container.contains(e.target)) return;
+    _fermerGroupe(_groupeOuvert);
+  });
+}
+
+// =========================
+// HELPER : créer un groupe accordéon
+// =========================
+// config = {
+//   id, iconePrincipale, titre, soloAction (function|null si pas solo),
+//   sousActions: [ { icone, titre, onClick, refClassName? } ]
+// }
+function _creerGroupeAccordeon(config) {
+  const ctrl = L.control({ position: "topright" });
+  ctrl.onAdd = function() {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+
+    const btnPrincipal = L.DomUtil.create("a", "kta-group-toggle", div);
+    btnPrincipal.innerHTML = config.iconePrincipale;
+    btnPrincipal.href      = "javascript:void(0)";
+    btnPrincipal.title     = config.titre;
+
+    const subActions = [];
+
+    // Solo : clic direct sur l'action principale, pas d'accordéon
+    if (config.soloAction) {
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+        // Si un autre groupe est ouvert, le fermer
+        if (_groupeOuvert) {
+          const autre = _groupes[_groupeOuvert];
+          if (autre && !autre.modeActif) _fermerGroupe(_groupeOuvert);
+        }
+        config.soloAction();
+      });
+    } else {
+      // Créer les sous-actions (cachées par défaut)
+      (config.sousActions || []).forEach(function(sub) {
+        const btnSub = L.DomUtil.create("a", "kta-sub kta-hidden", div);
+        btnSub.innerHTML = sub.icone;
+        btnSub.href      = "javascript:void(0)";
+        btnSub.title     = sub.titre;
+        if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
+
+        L.DomEvent.on(btnSub, "click", function(e) {
+          L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+          sub.onClick(btnSub);
+        });
+
+        // Référence directe pour pouvoir manipuler après création
+        if (sub.id) btnSub.dataset.subId = sub.id;
+        subActions.push(btnSub);
+      });
+
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+        _toggleGroupe(config.id);
+      });
+    }
+
+    L.DomEvent.disableClickPropagation(div);
+
+    _groupes[config.id] = {
+      container:    div,
+      btnPrincipal: btnPrincipal,
+      subActions:   subActions,
+      modeActif:    false
+    };
+
+    return div;
+  };
+  ctrl.addTo(window.map);
+}
+
+// =========================
+// INIT INTERFACE — barre 9 groupes (accordéons)
+// =========================
 function initInterface() {
   console.log("initInterface appelé");
   if (window.interfaceInitialized) return;
   window.interfaceInitialized = true;
 
+  // Reset état accordéons (au cas où on recharge un plan)
+  Object.keys(_groupes).forEach(function(k) { delete _groupes[k]; });
+  _groupeOuvert = null;
+
   L.control.titleControl().addTo(window.map);
 
-  // ---------- BLOC INFOS ----------
-  // Ordre : ❓ 📖 📦 🗂️ ⚙️ 🗺️
-  const infosControl = L.control({ position: "topright" });
-  infosControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+  // 1. AIDE / DOC / LÉGENDE
+  _creerGroupeAccordeon({
+    id: "aide",
+    iconePrincipale: "📚",
+    titre: "Aide / Documentation / Légende",
+    sousActions: [
+      { icone: "❓", titre: "Aide",          onClick: afficherAide },
+      { icone: "📖", titre: "Documentation", onClick: afficherReadme },
+      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende }
+    ]
+  });
 
-    const btnHelp       = L.DomUtil.create("a", "", div);
-    const btnReadme     = L.DomUtil.create("a", "", div);
-    const btnPlanner    = L.DomUtil.create("a", "", div);
-    const btnChangePlan = L.DomUtil.create("a", "", div);
-    const btnSettings   = L.DomUtil.create("a", "", div);
-    const btnLegende    = L.DomUtil.create("a", "", div);
+  // 2. PARAMÈTRES (solo)
+  _creerGroupeAccordeon({
+    id: "settings",
+    iconePrincipale: "⚙️",
+    titre: "Paramètres",
+    soloAction: afficherConfig
+  });
 
-    btnHelp.innerHTML       = "❓"; btnHelp.href       = "javascript:void(0)"; btnHelp.title       = "Aide";
-    btnReadme.innerHTML     = "📖"; btnReadme.href     = "javascript:void(0)"; btnReadme.title     = "Documentation";
-    btnPlanner.innerHTML    = "📦"; btnPlanner.href    = "javascript:void(0)"; btnPlanner.title    = "Créer un nouveau plan";
-    btnChangePlan.innerHTML = "🗂️"; btnChangePlan.href = "javascript:void(0)"; btnChangePlan.title = "Changer de plan";
-    btnSettings.innerHTML   = "⚙️"; btnSettings.href   = "javascript:void(0)"; btnSettings.title   = "Réglages";
-    btnLegende.innerHTML    = "🗺️"; btnLegende.href    = "javascript:void(0)"; btnLegende.title    = "Légende";
+  // 3. CHARGER / IMPORT
+  _creerGroupeAccordeon({
+    id: "charger",
+    iconePrincipale: "⬇️",
+    titre: "Charger / Import",
+    sousActions: [
+      { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
+      { icone: "🗂️", titre: "Changer de plan",     onClick: afficherPopupChangerPlan }
+    ]
+  });
 
-    L.DomEvent.on(btnHelp,       "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherAide(); });
-    L.DomEvent.on(btnReadme,     "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherReadme(); });
-    L.DomEvent.on(btnPlanner,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPlanner(); });
-    L.DomEvent.on(btnChangePlan, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherPopupChangerPlan(); });
-    L.DomEvent.on(btnSettings,   "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConfig(); });
-    L.DomEvent.on(btnLegende,    "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherLegende(); });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  infosControl.addTo(window.map);
-
-  // ---------- BLOC TRACKING ----------
-  const trackingControl = L.control({ position: "topright" });
-  trackingControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
-    const btnTrack = L.DomUtil.create("a", "", div);
-    btnTrack.innerHTML = "▶️"; btnTrack.href = "javascript:void(0)"; btnTrack.title = "Démarrer / arrêter le tracking";
-
-    const btnRecal = L.DomUtil.create("a", "", div);
-    btnRecal.innerHTML = "📍"; btnRecal.href = "javascript:void(0)"; btnRecal.title = "Mode recalage";
-
-    let isTracking = false;
-
-    L.DomEvent.on(btnTrack, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      if (!isTracking) { requestPermission(); startTracking(); btnTrack.innerHTML = "⏹️"; }
-      else { stopTracking(); btnTrack.innerHTML = "▶️"; }
-      isTracking = !isTracking;
-    });
-
-    L.DomEvent.on(btnRecal, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      if (typeof modeRecalage === "undefined") return;
-      _activerMode("recalage", btnRecal,
-        function () { modeRecalage = true; },
-        function () { modeRecalage = false; }
-      );
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  trackingControl.addTo(window.map);
-
-  // ---------- BLOC MESURE ----------
-  const measureControl = L.control({ position: "topright" });
-  measureControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
-    const btnMeasure = L.DomUtil.create("a", "", div);
-    btnMeasure.innerHTML = "📏"; btnMeasure.href = "javascript:void(0)"; btnMeasure.title = "Activer la mesure";
-
-    const btnResetMeasure = L.DomUtil.create("a", "", div);
-    btnResetMeasure.innerHTML = "❌"; btnResetMeasure.href = "javascript:void(0)"; btnResetMeasure.title = "Réinitialiser la mesure";
-
-    L.DomEvent.on(btnMeasure, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      const varMesure = typeof modeMesure !== "undefined" ? "local" : "window";
-      _activerMode("mesure", btnMeasure,
-        function () { if (varMesure === "local") modeMesure = true; else window.modeMesure = true; },
-        function () { if (varMesure === "local") modeMesure = false; else window.modeMesure = false; }
-      );
-    });
-
-    L.DomEvent.on(btnResetMeasure, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      const pts = window.getMeasurePoints ? window.getMeasurePoints() : [];
-      if (pts.length === 0) return;
-
-      _choixSuppression(
-        "Mesure",
-        "Que veux-tu effacer ?",
-        [
-          {
-            label: "Dernier point",
-            icon:  "↩️",
-            desc:  pts.length + " point(s) au total",
-            onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
-          },
-          {
-            label:  "Toute la mesure",
-            icon:   "🗑️",
-            danger: true,
-            onClick: function() { if (window.resetMesure) window.resetMesure(); }
-          }
-        ]
-      );
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  measureControl.addTo(window.map);
-
-  // ---------- BLOC PLAN ----------
-  const imageControl = L.control({ position: "topright" });
-  imageControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-    const btnDownloadPlan = L.DomUtil.create("a", "", div);
-    btnDownloadPlan.innerHTML = "🖼️"; btnDownloadPlan.href = "javascript:void(0)"; btnDownloadPlan.title = "Télécharger le plan";
-    L.DomEvent.on(btnDownloadPlan, "click", function (e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); telechargerPlan(); });
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  imageControl.addTo(window.map);
-
-  // ---------- BLOC ÉDITION + RESET POINTS ----------
-  const editorControl = L.control({ position: "topright" });
-  editorControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
-    const btnEdit = L.DomUtil.create("a", "", div);
-    btnEdit.innerHTML = "✏️"; btnEdit.href = "javascript:void(0)"; btnEdit.title = "Mode ajout de point";
-
-    const btnResetEditor = L.DomUtil.create("a", "", div);
-    btnResetEditor.innerHTML = "🗑️"; btnResetEditor.href = "javascript:void(0)"; btnResetEditor.title = "Effacer les points ajoutés";
-
-    L.DomEvent.on(btnEdit, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      _activerMode("edition", btnEdit,
-        function () { window.modeEdition = true; },
-        function () { window.modeEdition = false; }
-      );
-    });
-
-    L.DomEvent.on(btnResetEditor, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      const pts = window.getEditorPoints ? window.getEditorPoints() : [];
-      if (pts.length === 0) return;
-
-      _choixSuppression(
-        "Points ajoutés",
-        "Que veux-tu effacer ?",
-        [
-          {
-            label: "Dernier point",
-            icon:  "↩️",
-            desc:  pts.length + " point(s) au total — supprime le plus récent",
-            onClick: function() {
-              if (window.removeLastEditorPoint) window.removeLastEditorPoint();
-            }
-          },
-          {
-            label:  "Tous les points",
-            icon:   "🗑️",
-            danger: true,
-            desc:   "Action irréversible",
-            onClick: function() {
-              if (window.setEditorPoints) window.setEditorPoints([]);
-              if (window.renderEditorPoints) window.renderEditorPoints();
-            }
-          }
-        ]
-      );
-    });
-
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  editorControl.addTo(window.map);
-
-  // ---------- BLOC ROUTES ----------
-  const roadControl = L.control({ position: "topright" });
-  roadControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
-
-    const btnPrincipal  = L.DomUtil.create("a", "", div);
-    const btnSecondaire = L.DomUtil.create("a", "", div);
-    const btnChemin     = L.DomUtil.create("a", "", div);
-    const btnResetRoads = L.DomUtil.create("a", "", div);
-
-    btnPrincipal.innerHTML  = "🟩"; btnPrincipal.href  = "javascript:void(0)"; btnPrincipal.title  = "Tracer une route principale";
-    btnSecondaire.innerHTML = "🟪"; btnSecondaire.href = "javascript:void(0)"; btnSecondaire.title = "Tracer une route secondaire";
-    btnChemin.innerHTML     = "🟨"; btnChemin.href     = "javascript:void(0)"; btnChemin.title     = "Tracer un chemin";
-    btnResetRoads.innerHTML = "🧹"; btnResetRoads.href = "javascript:void(0)"; btnResetRoads.title = "Réinitialiser les tracés routes";
-
-    function _desactiverRoute() {
-      if (window.modeRoad) toggleRoadMode(window.modeRoad);
-      btnPrincipal.classList.remove("kta-actif");
-      btnSecondaire.classList.remove("kta-actif");
-      btnChemin.classList.remove("kta-actif");
+  // 4. CRÉER / MODIFIER PLAN (solo)
+  _creerGroupeAccordeon({
+    id: "planner",
+    iconePrincipale: "🏗️",
+    titre: "Créer ou modifier un plan",
+    soloAction: function() {
+      if (typeof afficherPlanner === "function") afficherPlanner();
     }
+  });
 
-    function activerRoute(type, btnCible) {
-      const dejaActif = window.modeRoad === type;
-      _desactiverTousLesModes();
-      _desactiverRoute();
-      if (dejaActif) return;
-      toggleRoadMode(type);
-      btnCible.classList.add("kta-actif");
-      _modesActifs["road"] = { btnEl: btnCible, desactiverFn: _desactiverRoute };
-    }
+  // 5. ENREGISTRER
+  _creerGroupeAccordeon({
+    id: "save",
+    iconePrincipale: "⬆️",
+    titre: "Enregistrer",
+    sousActions: [
+      { icone: "💾", titre: "Exporter la session JSON",    onClick: telechargerSessionJSON },
+      { icone: "🖼️", titre: "Télécharger le plan en image", onClick: telechargerPlan },
+      { icone: "🔄", titre: "Convertisseur JSON",          onClick: afficherConvertisseur }
+    ]
+  });
 
-    L.DomEvent.on(btnPrincipal,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("principal",  btnPrincipal); });
-    L.DomEvent.on(btnSecondaire, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("secondaire", btnSecondaire); });
-    L.DomEvent.on(btnChemin,     "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); activerRoute("chemin",     btnChemin); });
-
-    L.DomEvent.on(btnResetRoads, "click", function (e) {
-      L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
-      const roads = window.getRoads ? window.getRoads() : [];
-      if (roads.length === 0) return;
-
-      const dernier = roads[roads.length - 1];
-      const nbPts   = dernier?.points?.length || 0;
-      const totalTraces = roads.length;
-
-      _choixSuppression(
-        "Tracés",
-        "Que veux-tu effacer ?",
-        [
-          {
-            label: "Dernier point du tracé",
-            icon:  "↩️",
-            desc:  nbPts + " point(s) sur le dernier tracé",
-            onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); }
-          },
-          {
-            label: "Dernier tracé entier",
-            icon:  "✂️",
-            desc:  totalTraces + " tracé(s) au total",
-            onClick: function() { if (window.removeLastRoad) window.removeLastRoad(); }
-          },
-          {
-            label:  "Tous les tracés",
-            icon:   "🗑️",
-            danger: true,
-            desc:   "Action irréversible",
-            onClick: function() { if (window.resetRoads) window.resetRoads(); }
+  // 6. TRACKER
+  let isTracking = false;
+  _creerGroupeAccordeon({
+    id: "tracker",
+    iconePrincipale: "🧭",
+    titre: "Tracker",
+    sousActions: [
+      {
+        icone: "▶️",
+        titre: "Démarrer / arrêter le tracking",
+        onClick: function(btnSub) {
+          if (!isTracking) {
+            requestPermission(); startTracking();
+            btnSub.innerHTML = "⏹️";
+            _setGroupeModeActif("tracker", true, "⏹️");
+          } else {
+            stopTracking();
+            btnSub.innerHTML = "▶️";
+            _setGroupeModeActif("tracker", false);
           }
-        ]
-      );
-    });
+          isTracking = !isTracking;
+        }
+      },
+      {
+        icone: "📍",
+        titre: "Mode recalage",
+        onClick: function(btnSub) {
+          if (typeof modeRecalage === "undefined") return;
+          const dejaActif = btnSub.classList.contains("kta-actif");
+          _desactiverTousLesModes();
+          if (dejaActif) {
+            modeRecalage = false;
+            _setGroupeModeActif("tracker", isTracking, isTracking ? "⏹️" : null);
+            return;
+          }
+          modeRecalage = true;
+          btnSub.classList.add("kta-actif");
+          _modesActifs["recalage"] = {
+            btnEl: btnSub,
+            desactiverFn: function() {
+              modeRecalage = false;
+              btnSub.classList.remove("kta-actif");
+              _setGroupeModeActif("tracker", isTracking, isTracking ? "⏹️" : null);
+            }
+          };
+          _setGroupeModeActif("tracker", true, "📍");
+        }
+      }
+    ]
+  });
 
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  roadControl.addTo(window.map);
+  // 7. MESURE
+  _creerGroupeAccordeon({
+    id: "mesure",
+    iconePrincipale: "📐",
+    titre: "Mesure",
+    sousActions: [
+      {
+        icone: "📐",
+        titre: "Activer la mesure",
+        onClick: function(btnSub) {
+          const dejaActif = btnSub.classList.contains("kta-actif");
+          _desactiverTousLesModes();
+          if (dejaActif) {
+            window.modeMesure = false;
+            _setGroupeModeActif("mesure", false);
+            return;
+          }
+          window.modeMesure = true;
+          btnSub.classList.add("kta-actif");
+          _modesActifs["mesure"] = {
+            btnEl: btnSub,
+            desactiverFn: function() {
+              window.modeMesure = false;
+              btnSub.classList.remove("kta-actif");
+              _setGroupeModeActif("mesure", false);
+            }
+          };
+          _setGroupeModeActif("mesure", true);
+        }
+      },
+      {
+        icone: "❌",
+        titre: "Effacer (dernier point ou tout)",
+        onClick: function() {
+          const pts = window.getMeasurePoints ? window.getMeasurePoints() : [];
+          if (pts.length === 0) return;
+          _choixSuppression(
+            "Mesure", "Que veux-tu effacer ?",
+            [
+              { label: "Dernier point", icon: "↩️",
+                desc: pts.length + " point(s) au total",
+                onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
+              },
+              { label: "Toute la mesure", icon: "🗑️", danger: true,
+                onClick: function() { if (window.resetMesure) window.resetMesure(); }
+              }
+            ]
+          );
+        }
+      }
+    ]
+  });
 
-  // ---------- BLOC IMPORT / EXPORT / CONVERTISSEUR ----------
-  const ioControl = L.control({ position: "topright" });
-  ioControl.onAdd = function () {
-    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
+  // 8. ÉDITION
+  _creerGroupeAccordeon({
+    id: "edition",
+    iconePrincipale: "📌",
+    titre: "Édition de points",
+    sousActions: [
+      {
+        icone: "📌",
+        titre: "Activer le mode ajout de point",
+        onClick: function(btnSub) {
+          const dejaActif = btnSub.classList.contains("kta-actif");
+          _desactiverTousLesModes();
+          if (dejaActif) {
+            window.modeEdition = false;
+            _setGroupeModeActif("edition", false);
+            return;
+          }
+          window.modeEdition = true;
+          btnSub.classList.add("kta-actif");
+          _modesActifs["edition"] = {
+            btnEl: btnSub,
+            desactiverFn: function() {
+              window.modeEdition = false;
+              btnSub.classList.remove("kta-actif");
+              _setGroupeModeActif("edition", false);
+            }
+          };
+          _setGroupeModeActif("edition", true);
+        }
+      },
+      {
+        icone: "🗑️",
+        titre: "Effacer (dernier point ou tous)",
+        onClick: function() {
+          const pts = window.getEditorPoints ? window.getEditorPoints() : [];
+          if (pts.length === 0) return;
+          _choixSuppression(
+            "Points ajoutés", "Que veux-tu effacer ?",
+            [
+              { label: "Dernier point", icon: "↩️",
+                desc: pts.length + " point(s) au total — supprime le plus récent",
+                onClick: function() { if (window.removeLastEditorPoint) window.removeLastEditorPoint(); }
+              },
+              { label: "Tous les points", icon: "🗑️", danger: true,
+                desc: "Action irréversible",
+                onClick: function() {
+                  if (window.setEditorPoints) window.setEditorPoints([]);
+                  if (window.renderEditorPoints) window.renderEditorPoints();
+                }
+              }
+            ]
+          );
+        }
+      }
+    ]
+  });
 
-    const btnImport  = L.DomUtil.create("a", "", div);
-    const btnExport  = L.DomUtil.create("a", "", div);
-    const btnConvert = L.DomUtil.create("a", "", div);
+  // 9. TRACÉS
+  // Helper local : active un type de tracé
+  function _activerRoute(type, btnCible, iconeReflet) {
+    const dejaActif = window.modeRoad === type;
+    _desactiverTousLesModes();
 
-    btnImport.innerHTML  = "📂"; btnImport.href  = "javascript:void(0)"; btnImport.title  = "Importer une session";
-    btnExport.innerHTML  = "💾"; btnExport.href  = "javascript:void(0)"; btnExport.title  = "Exporter la session";
-    btnConvert.innerHTML = "🔄"; btnConvert.href = "javascript:void(0)"; btnConvert.title = "Convertisseur JSON";
+    // Désactivation interne route
+    if (window.modeRoad) toggleRoadMode(window.modeRoad);
+    const grp = _groupes["traces"];
+    if (grp) grp.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+    _setGroupeModeActif("traces", false);
 
-    L.DomEvent.on(btnImport,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); ouvrirImportSession(); });
-    L.DomEvent.on(btnExport,  "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); telechargerSessionJSON(); });
-    L.DomEvent.on(btnConvert, "click", function(e) { L.DomEvent.stop(e); L.DomEvent.preventDefault(e); afficherConvertisseur(); });
+    if (dejaActif) return;
 
-    L.DomEvent.disableClickPropagation(div);
-    return div;
-  };
-  ioControl.addTo(window.map);
+    toggleRoadMode(type);
+    btnCible.classList.add("kta-actif");
+    _modesActifs["road"] = {
+      btnEl: btnCible,
+      desactiverFn: function() {
+        if (window.modeRoad) toggleRoadMode(window.modeRoad);
+        if (grp) grp.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+        _setGroupeModeActif("traces", false);
+      }
+    };
+    _setGroupeModeActif("traces", true, iconeReflet);
+  }
+
+  _creerGroupeAccordeon({
+    id: "traces",
+    iconePrincipale: "🛣️",
+    titre: "Tracés / Routes",
+    sousActions: [
+      { icone: "🟩", titre: "Route principale",
+        onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
+      { icone: "🟪", titre: "Route secondaire",
+        onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
+      { icone: "🟨", titre: "Chemin",
+        onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } },
+      { icone: "🧹", titre: "Effacer",
+        onClick: function() {
+          const roads = window.getRoads ? window.getRoads() : [];
+          if (roads.length === 0) return;
+          const dernier = roads[roads.length - 1];
+          const nbPts = dernier?.points?.length || 0;
+          _choixSuppression(
+            "Tracés", "Que veux-tu effacer ?",
+            [
+              { label: "Dernier point du tracé", icon: "↩️",
+                desc: nbPts + " point(s) sur le dernier tracé",
+                onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); } },
+              { label: "Dernier tracé entier", icon: "✂️",
+                desc: roads.length + " tracé(s) au total",
+                onClick: function() { if (window.removeLastRoad) window.removeLastRoad(); } },
+              { label: "Tous les tracés", icon: "🗑️", danger: true,
+                desc: "Action irréversible",
+                onClick: function() { if (window.resetRoads) window.resetRoads(); } }
+            ]
+          );
+        }
+      }
+    ]
+  });
+
+  // Initialiser le clic extérieur (une seule fois)
+  _initClickExterieur();
 }
 
 // =========================
@@ -1386,9 +1847,10 @@ function afficherLegende() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-window.afficherConfig        = afficherConfig;
-window.appliquerConfig       = appliquerConfig;
-window.resetConfig           = resetConfig;
+window.afficherConfig         = afficherConfig;
+window.appliquerConfig        = appliquerConfig;
+window.resetConfig            = resetConfig;
+window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
 window.viderCacheAppli       = viderCacheAppli;
 window.afficherReadme        = afficherReadme;
 window.afficherLegende       = afficherLegende;
