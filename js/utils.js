@@ -70,15 +70,14 @@ function ajouterPointsDepuisJSON(url, layer) {
       }
 
       // Zones embarquées en lecture seule dans le même layer
-      // Tri : eau d'abord (en arrière), remblais, effondrements (au-dessus)
+      // Tri : remblais d'abord, effondrements au-dessus
       if (Array.isArray(json.zones) && json.zones.length > 0) {
         const ZONE_STYLES_DATA = {
-          eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-          remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+          remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
           effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
         };
         const zonesTriees = [...json.zones].sort(function(a, b) {
-          const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+          const ordre = { remblais: 0, effondrement: 1 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
         zonesTriees.forEach(function(zone) {
@@ -276,12 +275,11 @@ async function telechargerPlan() {
     // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
     const zones = window.getZones ? window.getZones() : [];
     const ZONE_STYLES_EXPORT = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
       effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
     };
     for (const zone of [...zones].sort(function(a, b) {
-      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+      const ordre = { remblais: 0, effondrement: 1 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
       const style = ZONE_STYLES_EXPORT[zone.type] || ZONE_STYLES_EXPORT.remblais;

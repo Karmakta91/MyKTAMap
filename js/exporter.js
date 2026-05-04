@@ -764,7 +764,7 @@
       const zones = window.getZones();
       const ZS = {
         eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-        remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
         effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
       };
       const ordre = { eau: 0, remblais: 1, effondrement: 2 };
@@ -976,7 +976,7 @@
     if (leg.contenu.zones) {
       entrees.push({ section: "Zones", lignes: [
         { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
-        { label: "Remblais",     fillColor: "#888888", borderColor: "#666666" },
+        { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
         { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" }
       ]});
     }

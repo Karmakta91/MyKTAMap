@@ -826,6 +826,17 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🔍 Rechercher un point</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🔍</span><span>Trouver un point par nom, id, tag ou description (clic direct)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Cherche dans tous les calques de données et tes points ajoutés. Au clic sur un résultat,
+            la carte se centre sur le point avec un flash visuel et le popup s'ouvre.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
@@ -888,9 +899,9 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🟫 Zones (remblais / effondrements / eau)</div>
+          <div class="kta-aide-section-titre">⬛ Zones (remblais / effondrements / eau)</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🟫</span><span>Tracer une zone de remblais (gris)</span>
+            <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais (gris)</span>
             <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement (rouge)</span>
             <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau (bleu)</span>
             <span class="kta-aide-icone">✅</span><span>Fermer la zone en cours (au moins 3 points)</span>
@@ -1166,7 +1177,7 @@ function ouvrirCalibrageEchelle() {
       return;
     }
 
-    nouveauScale = scaleActuel * ( aff / reel);
+    nouveauScale = scaleActuel * ( aff / reel );
     resultatEl.textContent = nouveauScale.toFixed(3) + " px/m";
     formuleEl.textContent  = scaleActuel + " × (" + aff + " / " + reel + ") = " + nouveauScale.toFixed(3);
     btnAppliquer.disabled  = false;
@@ -1478,6 +1489,17 @@ function initInterface() {
     soloAction: afficherConfig
   });
 
+  // 2bis. RECHERCHE (solo)
+  _creerGroupeAccordeon({
+    id: "recherche",
+    iconePrincipale: "🔍",
+    titre: "Rechercher un point",
+    soloAction: function() {
+      if (window.ouvrirRecherche) window.ouvrirRecherche();
+      else alert("Module recherche indisponible");
+    }
+  });
+
   // 3. CHARGER / IMPORT
   _creerGroupeAccordeon({
     id: "charger",
@@ -1770,11 +1792,11 @@ function initInterface() {
 
   _creerGroupeAccordeon({
     id: "zones",
-    iconePrincipale: "🟫",
+    iconePrincipale: "⬛",
     titre: "Zones (remblais / effondrements)",
     sousActions: [
-      { icone: "🟫", titre: "Zone de remblais",
-        onClick: function(btn) { _activerZone("remblais",     btn, "🟫"); } },
+      { icone: "⬛", titre: "Zone de remblais",
+        onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
       { icone: "🟥", titre: "Zone d'effondrement",
         onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
       { icone: "🟦", titre: "Zone d'eau",
@@ -1935,13 +1957,13 @@ function afficherLegende() {
 
   const contenuZones = `
     <div class="kta-aide-section">
-      <div class="kta-aide-section-titre">🟫 Zones</div>
+      <div class="kta-aide-section-titre">⬛ Zones</div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#3aa9e8; opacity:0.7; height:14px; border:2px solid #0066aa;"></span>
         <span class="kta-legende-label">Eau (bleu)</span>
       </div>
       <div class="kta-legende-ligne">
-        <span class="kta-legende-trait" style="background:#888888; opacity:0.7; height:14px; border:2px solid #666666;"></span>
+        <span class="kta-legende-trait" style="background:#5a5a68; opacity:0.7; height:14px; border:2px solid #3a3a44;"></span>
         <span class="kta-legende-label">Remblais (gris)</span>
       </div>
       <div class="kta-legende-ligne">

@@ -27,8 +27,8 @@ const ZONE_STYLES = {
     opacity:     1
   },
   remblais:     {
-    color:       "#666666",
-    fillColor:   "#888888",
+    color:       "#3a3a44",
+    fillColor:   "#5a5a68",
     fillOpacity: 0.7,
     weight:      3,
     opacity:     1

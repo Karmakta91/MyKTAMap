@@ -1,0 +1,555 @@
+// =========================
+// SEARCH POINTS — Recherche rapide d'un point
+// =========================
+// Permet à l'utilisateur de chercher un point par son nom, id, tag,
+// description ou état dans tous les calques de données + la session.
+//
+// Workflow :
+//   1. Modale ouverte par window.ouvrirRecherche()
+//   2. Champ de recherche live debounced 200ms
+//   3. Liste de résultats avec icône + métadonnées
+//   4. Clic sur un résultat → carte centrée + popup + flash visuel
+// =========================
+
+(function() {
+  "use strict";
+
+  // ========== ÉTAT ==========
+  let _modal       = null;
+  let _pointsCache = null;          // [{point, layerId, layerLabel}]
+  let _planSignature = null;        // pour invalider le cache au changement de plan
+  let _filtreTimer = null;
+  let _flashLayer  = null;          // pour l'animation visuelle
+
+  // ========== STYLES INJECTÉS ==========
+  function _injecterStyles() {
+    if (document.getElementById("kta-search-styles")) return;
+    const s = document.createElement("style");
+    s.id = "kta-search-styles";
+    s.textContent = `
+      #kta-search-modal .kta-readme-modal-boite {
+        max-width: 560px; width: 95%; height: auto; max-height: 85vh;
+        display:flex; flex-direction:column;
+      }
+      #kta-search-modal .kta-readme-modal-corps {
+        display:flex; flex-direction:column; flex:1; min-height:0; padding-bottom:14px;
+      }
+
+      .kta-search-input-wrap {
+        position: sticky; top: 0; z-index: 2;
+        background: var(--bg-modal, #1a1f2e);
+        padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .kta-search-input-wrap input {
+        width: 100%; box-sizing: border-box;
+        padding: 10px 14px;
+        background: rgba(255,255,255,0.06);
+        color: #e8eaf0;
+        border: 1px solid rgba(140,180,255,0.3);
+        border-radius: 8px;
+        outline: none;
+        font-size: 14px;
+        font-family: inherit;
+      }
+      .kta-search-input-wrap input:focus {
+        border-color: rgba(140,180,255,0.6);
+        background: rgba(255,255,255,0.08);
+      }
+
+      .kta-search-info {
+        font-size: 12px; color: #8892a4;
+        padding: 8px 0;
+      }
+
+      .kta-search-results {
+        flex: 1; min-height: 0;
+        overflow-y: auto;
+        margin: 0 -4px;
+      }
+
+      .kta-search-result {
+        display: flex; gap: 12px; align-items: center;
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background 0.12s;
+        border-bottom: 1px solid rgba(255,255,255,0.04);
+      }
+      .kta-search-result:hover {
+        background: rgba(140,180,255,0.1);
+      }
+      .kta-search-result:last-child { border-bottom: none; }
+
+      .kta-search-icon {
+        flex-shrink: 0;
+        width: 36px; height: 36px;
+        display: flex; align-items: center; justify-content: center;
+        background: rgba(255,255,255,0.04);
+        border-radius: 4px;
+      }
+      .kta-search-icon img {
+        width: 28px; height: 28px; object-fit: contain;
+      }
+
+      .kta-search-content {
+        flex: 1; min-width: 0;
+      }
+      .kta-search-name {
+        font-size: 14px; font-weight: 600; color: #e8eaf0;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .kta-search-name .kta-search-id {
+        color: #8cb4ff; font-weight: 500; margin-right: 6px;
+      }
+      .kta-search-meta {
+        font-size: 12px; color: #8892a4;
+        margin-top: 2px;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .kta-search-meta .layer-tag {
+        display: inline-block;
+        padding: 1px 6px;
+        background: rgba(140,180,255,0.12);
+        border: 1px solid rgba(140,180,255,0.25);
+        border-radius: 8px;
+        color: #c0c8d8;
+        margin-right: 6px;
+        font-size: 11px;
+      }
+      .kta-search-meta .tag-chip {
+        display: inline-block;
+        padding: 1px 5px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 6px;
+        margin-right: 4px;
+        font-size: 11px;
+        color: #c0c8d8;
+      }
+      .kta-search-coords {
+        font-size: 11px; color: #6a7488;
+        font-family: 'Courier New', monospace;
+      }
+
+      .kta-search-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #8892a4;
+        font-size: 13px;
+      }
+      .kta-search-empty .empty-icon {
+        font-size: 36px; opacity: 0.5;
+        margin-bottom: 10px;
+      }
+
+      .kta-search-more {
+        text-align: center;
+        padding: 10px;
+        color: #8892a4;
+        font-size: 12px;
+        font-style: italic;
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  // ========== ENTRÉE PUBLIQUE ==========
+  window.ouvrirRecherche = function() {
+    _injecterStyles();
+    if (_modal) { _modal.remove(); _modal = null; }
+    _afficherModal();
+  };
+
+  // ========== INVALIDATION CACHE ==========
+  function _signaturePlan() {
+    const c = window.PLAN_CONFIG;
+    if (!c) return null;
+    return (c.plan?.name || "") + "|" + (c.plan?.version || "") + "|" + (c.plan?.baseImage || "");
+  }
+
+  // ========== AFFICHAGE MODALE ==========
+  function _afficherModal() {
+    const modal = document.createElement("div");
+    modal.id = "kta-search-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.innerHTML = `
+      <div class="kta-readme-modal-boite">
+        <div class="kta-readme-modal-header">
+          <span class="kta-readme-modal-titre">🔍 Rechercher un point</span>
+          <button class="kta-panneau-close" id="kta-search-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps">
+
+          <div class="kta-search-input-wrap">
+            <input type="text" id="kta-search-input"
+              placeholder="🔍 Tape un nom, un id, un tag, une description..."
+              autocomplete="off">
+          </div>
+
+          <div class="kta-search-info" id="kta-search-info">Chargement des points…</div>
+
+          <div class="kta-search-results" id="kta-search-results"></div>
+
+        </div>
+      </div>
+    `;
+    document.documentElement.appendChild(modal);
+    _modal = modal;
+
+    const input    = document.getElementById("kta-search-input");
+    const infoEl   = document.getElementById("kta-search-info");
+    const resEl    = document.getElementById("kta-search-results");
+    const btnClose = document.getElementById("kta-search-close");
+
+    function fermer() {
+      if (_modal) _modal.remove();
+      _modal = null;
+      if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
+    }
+    btnClose.addEventListener("click", fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+    document.addEventListener("keydown", function onEsc(e) {
+      if (e.key === "Escape" && _modal) {
+        fermer();
+        document.removeEventListener("keydown", onEsc);
+      }
+    });
+
+    // Charger le cache au besoin
+    _chargerCache().then(function() {
+      infoEl.textContent = _pointsCache.length + " point(s) disponible(s)";
+      _renderResultats("");
+      input.focus();
+    }).catch(function(err) {
+      infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + err.message + '</span>';
+    });
+
+    input.addEventListener("input", function() {
+      if (_filtreTimer) clearTimeout(_filtreTimer);
+      _filtreTimer = setTimeout(function() {
+        _renderResultats(input.value.trim());
+      }, 200);
+    });
+
+    // Sélection au clavier (flèches haut/bas + Enter)
+    input.addEventListener("keydown", function(e) {
+      const items = resEl.querySelectorAll(".kta-search-result");
+      if (items.length === 0) return;
+
+      let active = resEl.querySelector(".kta-search-result.active");
+      let idx = active ? Array.from(items).indexOf(active) : -1;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        idx = Math.min(idx + 1, items.length - 1);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        idx = Math.max(idx - 1, 0);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        const target = active || items[0];
+        if (target) target.click();
+        return;
+      } else {
+        return;
+      }
+
+      if (active) active.classList.remove("active");
+      items[idx].classList.add("active");
+      items[idx].scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  // ========== CHARGEMENT DU CACHE DE POINTS ==========
+  async function _chargerCache() {
+    const sig = _signaturePlan();
+    if (sig === _planSignature && _pointsCache) return;
+
+    _pointsCache    = [];
+    _planSignature  = sig;
+
+    const config = window.PLAN_CONFIG;
+    if (!config) throw new Error("Plan non chargé");
+
+    // Calques de données
+    if (Array.isArray(config.dataLayers)) {
+      for (const lc of config.dataLayers) {
+        try {
+          if (lc.id === "editor") {
+            // Points de session
+            const pts = window.getEditorPoints ? window.getEditorPoints() : [];
+            pts.forEach(function(p) {
+              _pointsCache.push({ point: p, layerId: lc.id, layerLabel: lc.label || lc.id });
+            });
+          } else {
+            const r = await fetch(lc.file);
+            const j = await r.json();
+            const pts = Array.isArray(j.data) ? j.data : [];
+            pts.forEach(function(p) {
+              _pointsCache.push({ point: p, layerId: lc.id, layerLabel: lc.label || lc.id });
+            });
+          }
+        } catch(e) {
+          console.warn("[Search] Erreur chargement", lc.file, e);
+        }
+      }
+    }
+
+    // Si "editor" n'est pas dans les dataLayers, l'ajouter manuellement
+    const aDejaEditor = (_pointsCache.some(function(it) { return it.layerId === "editor"; }));
+    if (!aDejaEditor && window.getEditorPoints) {
+      const pts = window.getEditorPoints();
+      pts.forEach(function(p) {
+        _pointsCache.push({ point: p, layerId: "editor", layerLabel: "Mes ajouts" });
+      });
+    }
+  }
+
+  // ========== NORMALISATION POUR RECHERCHE ==========
+  function _normalize(s) {
+    if (s === null || s === undefined) return "";
+    return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  }
+
+  // ========== RECHERCHE & TRI ==========
+  function _filtrer(query) {
+    if (!query) return _pointsCache.slice();
+
+    const q = _normalize(query);
+    const matches = [];
+
+    for (const it of _pointsCache) {
+      const p = it.point;
+      const nom  = _normalize(p.nom || "");
+      const id   = _normalize(p.id || "");
+      const desc = _normalize(p.description || "");
+      const etat = _normalize(p.etat || "");
+      const tags = (Array.isArray(p.tags) ? p.tags.map(_normalize).join(" ") : "");
+
+      let score = 0;
+
+      // Match exact dans nom → 100
+      if (nom === q) score = 100;
+      // Match au début du nom → 80
+      else if (nom.startsWith(q)) score = 80;
+      // Match dans le nom → 60
+      else if (nom.includes(q)) score = 60;
+      // Match exact dans id → 50
+      else if (id === q) score = 50;
+      // Match au début de l'id → 40
+      else if (id.startsWith(q)) score = 40;
+      // Match dans l'id → 30
+      else if (id.includes(q)) score = 30;
+      // Match dans tags → 20
+      else if (tags.includes(q)) score = 20;
+      // Match dans description ou état → 10
+      else if (desc.includes(q) || etat.includes(q)) score = 10;
+
+      if (score > 0) matches.push({ item: it, score: score });
+    }
+
+    matches.sort(function(a, b) {
+      if (a.score !== b.score) return b.score - a.score;
+      return _normalize(a.item.point.nom || a.item.point.id || "")
+        .localeCompare(_normalize(b.item.point.nom || b.item.point.id || ""));
+    });
+
+    return matches.map(function(m) { return m.item; });
+  }
+
+  // ========== RENDU DES RÉSULTATS ==========
+  function _renderResultats(query) {
+    const resEl = document.getElementById("kta-search-results");
+    const infoEl = document.getElementById("kta-search-info");
+    if (!resEl) return;
+
+    const filtered = _filtrer(query);
+    const LIMITE = 50;
+    const visibles = filtered.slice(0, LIMITE);
+    const surplus = filtered.length - visibles.length;
+
+    if (query) {
+      infoEl.textContent = filtered.length === 0
+        ? "Aucun résultat"
+        : filtered.length + " résultat(s)";
+    } else {
+      infoEl.textContent = _pointsCache.length + " point(s) disponible(s)";
+    }
+
+    if (filtered.length === 0) {
+      resEl.innerHTML = `
+        <div class="kta-search-empty">
+          <div class="empty-icon">🔍</div>
+          ${query
+            ? 'Aucun point ne correspond à <strong>' + _escapeHtml(query) + '</strong>'
+            : 'Tape une recherche pour trouver un point'}
+        </div>
+      `;
+      return;
+    }
+
+    let html = "";
+    visibles.forEach(function(it, idx) {
+      const p = it.point;
+      const iconUrl = _getIconUrl(p);
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      const xy = (typeof p.x === "number" && typeof p.y === "number")
+        ? '<span class="kta-search-coords">x:' + p.x + ' y:' + p.y + '</span>'
+        : '';
+
+      html += '<div class="kta-search-result' + (idx === 0 && query ? " active" : "") + '" data-cache-idx="' + _pointsCache.indexOf(it) + '">';
+      html += '<div class="kta-search-icon">';
+      if (iconUrl) html += '<img src="' + _escapeAttr(iconUrl) + '" alt="">';
+      else         html += '<span style="font-size:18px; opacity:0.4;">📍</span>';
+      html += '</div>';
+      html += '<div class="kta-search-content">';
+      html += '<div class="kta-search-name">';
+      if (p.id) html += '<span class="kta-search-id">' + _escapeHtml(p.id) + '</span>';
+      html += _escapeHtml(p.nom || "(sans nom)");
+      html += '</div>';
+      html += '<div class="kta-search-meta">';
+      html += '<span class="layer-tag">' + _escapeHtml(it.layerLabel) + '</span>';
+      tags.slice(0, 4).forEach(function(t) {
+        html += '<span class="tag-chip">' + _escapeHtml(t) + '</span>';
+      });
+      if (tags.length > 4) html += '<span class="tag-chip">+' + (tags.length - 4) + '</span>';
+      if (xy) html += ' ' + xy;
+      html += '</div>';
+      html += '</div>';
+      html += '</div>';
+    });
+
+    if (surplus > 0) {
+      html += '<div class="kta-search-more">+ ' + surplus + ' autre(s) résultat(s) — affine ta recherche</div>';
+    }
+
+    resEl.innerHTML = html;
+
+    // Listeners
+    resEl.querySelectorAll(".kta-search-result").forEach(function(el) {
+      el.addEventListener("click", function() {
+        const idx = parseInt(el.dataset.cacheIdx);
+        const it = _pointsCache[idx];
+        if (it) _aller(it);
+      });
+    });
+  }
+
+  // ========== RÉCUPÉRATION DE L'ICÔNE ==========
+  function _getIconUrl(p) {
+    const config = window.PLAN_CONFIG;
+    if (!config || !config.icons) return null;
+    if (Array.isArray(p.tags)) {
+      for (const t of p.tags) {
+        if (config.icons[t]) return config.icons[t];
+      }
+    }
+    return config.icons.default || null;
+  }
+
+  // ========== ALLER À UN POINT ==========
+  function _aller(item) {
+    const p = item.point;
+    if (typeof p.x !== "number" || typeof p.y !== "number") {
+      alert("Ce point n'a pas de coordonnées valides");
+      return;
+    }
+
+    if (!window.map || !APP_CONFIG) return;
+
+    // Fermer la modale
+    if (_modal) _modal.remove();
+    _modal = null;
+    if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
+
+    const latlng = convertCoord(p.x, p.y);
+
+    // setView (sans animation) plutôt que flyTo : évite toute dérive cumulative.
+    // L'animation flyTo peut introduire des erreurs d'arrondi qui s'accumulent
+    // d'une recherche à l'autre.
+    window.map.setView(latlng, window.map.getZoom(), { animate: false });
+
+    // Forcer Leaflet à recalculer ses dimensions internes (au cas où)
+    window.map.invalidateSize();
+
+    // Ouvrir popup et entourer immédiatement (pas besoin d'attendre l'animation)
+    _ouvrirPopupEtFlash(item, latlng);
+  }
+
+  // ========== POPUP + ENTOURAGE STATIQUE ==========
+  function _ouvrirPopupEtFlash(item, latlng) {
+    const p = item.point;
+
+    // Cleanup d'un éventuel entourage précédent
+    if (_flashLayer) {
+      try { window.map.removeLayer(_flashLayer); } catch(e) {}
+      _flashLayer = null;
+    }
+
+    // Tenter d'ouvrir le popup du marker existant si on le trouve
+    // Matching par coordonnées plan x/y exactes (pas par latlng dérivé)
+    const targetLayer = window.dataLayerGroups && window.dataLayerGroups[item.layerId];
+    let foundMarker = null;
+    if (targetLayer && targetLayer.eachLayer) {
+      targetLayer.eachLayer(function(m) {
+        if (foundMarker) return;
+        if (m.getLatLng) {
+          const ll = m.getLatLng();
+          // Reconvertir en coords plan pour comparer à p.x, p.y
+          const mx = ll.lng;
+          const my = APP_CONFIG.imageHeight - ll.lat;
+          if (Math.abs(mx - p.x) < 0.5 && Math.abs(my - p.y) < 0.5) {
+            foundMarker = m;
+          }
+        }
+      });
+    }
+
+    if (foundMarker && foundMarker.openPopup) {
+      foundMarker.openPopup();
+    } else {
+      // Pas de marker direct (ex: layer pas visible) → popup temporaire
+      L.popup({ autoClose: true, closeOnClick: true })
+        .setLatLng(latlng)
+        .setContent(
+          "<b>" + _escapeHtml(p.nom || p.id || "?") + "</b>" +
+          (p.description ? "<br>" + _escapeHtml(p.description) : "") +
+          '<br><small style="opacity:0.6;">' + _escapeHtml(item.layerLabel) +
+          (Array.isArray(p.tags) && p.tags.length ? " — " + _escapeHtml(p.tags.join(", ")) : "") +
+          '</small>'
+        )
+        .openOn(window.map);
+    }
+
+    // Cercle d'entourage statique (pas d'animation, juste pour aider à repérer)
+    _flashLayer = L.circleMarker(latlng, {
+      radius: 24,
+      color: "#ffaa00",
+      fillColor: "#ffcc44",
+      fillOpacity: 0,
+      weight: 3,
+      opacity: 0.9,
+      interactive: false
+    }).addTo(window.map);
+
+    // Le cercle disparaît après 3 secondes
+    setTimeout(function() {
+      if (_flashLayer) {
+        try { window.map.removeLayer(_flashLayer); } catch(e) {}
+        _flashLayer = null;
+      }
+    }, 3000);
+  }
+
+  // ========== UTILS ==========
+  function _escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  function _escapeAttr(s) { return _escapeHtml(s).replace(/"/g, "&quot;"); }
+
+  // ========== INVALIDATION DU CACHE AU CHANGEMENT DE PLAN ==========
+  // (le cache se réinitialise automatiquement via _signaturePlan() à chaque ouverture)
+
+})();
