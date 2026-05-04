@@ -304,3 +304,21 @@ window.requestPermission = requestPermission;
 window.resetTrackingPosition = resetTrackingPosition;
 window.getStepCount = getStepCount;
 window.initCollisionCache = initCollisionCache;
+
+// =========================
+// EXPORT POUR L'EXPORT PNG ET LA RECHERCHE
+// =========================
+window.getTrackingPosition = function() {
+  // Position courante du tracker (en coords plan)
+  return { x: position.x, y: position.y };
+};
+
+window.getTrackingPath = function() {
+  // Liste des points (coords plan) tracés depuis le démarrage du tracking
+  if (!polyline) return [];
+  const latlngs = polyline.getLatLngs();
+  if (!latlngs || latlngs.length === 0) return [];
+  return latlngs.map(function(ll) {
+    return { x: ll.lng, y: APP_CONFIG.imageHeight - ll.lat };
+  });
+};

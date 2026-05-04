@@ -70,14 +70,15 @@ function ajouterPointsDepuisJSON(url, layer) {
       }
 
       // Zones embarquées en lecture seule dans le même layer
-      // Tri : remblais d'abord, effondrements au-dessus
+      // Tri : eau (arrière) → remblais → effondrement (avant)
       if (Array.isArray(json.zones) && json.zones.length > 0) {
         const ZONE_STYLES_DATA = {
+          eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
           remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
           effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
         };
         const zonesTriees = [...json.zones].sort(function(a, b) {
-          const ordre = { remblais: 0, effondrement: 1 };
+          const ordre = { eau: 0, remblais: 1, effondrement: 2 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
         zonesTriees.forEach(function(zone) {
@@ -222,29 +223,6 @@ async function telechargerPlan() {
       drawMarkerImage(img, point.x, point.y, 50, 50, 25, 25);
     }
 
-    // ---------- couches JSON visibles ----------
-    if (config.dataLayers && Array.isArray(config.dataLayers)) {
-      for (const layerConfig of config.dataLayers) {
-        const leafletLayer = window.dataLayerGroups?.[layerConfig.id];
-        if (!leafletLayer || !isLayerVisible(leafletLayer)) continue;
-
-        if (layerConfig.id === "editor") {
-          const editorPoints = window.getEditorPoints ? window.getEditorPoints() : [];
-          for (const point of editorPoints) {
-            await drawPoint(point);
-          }
-        } else {
-          const response = await fetch(layerConfig.file);
-          const json = await response.json();
-          const points = json.data || [];
-
-          for (const point of points) {
-            await drawPoint(point);
-          }
-        }
-      }
-    }
-
     // ---------- helpers polygones (pour zones) ----------
     function drawPolygon(points, style) {
       if (!points || points.length < 3) return;
@@ -270,6 +248,61 @@ async function telechargerPlan() {
       ctx.stroke();
 
       ctx.restore();
+    }
+
+    // ---------- couches JSON visibles ----------
+    // Pour chaque calque : data[] (markers) + roads[] + zones[] embarqués
+    // (cohérent avec ajouterPointsDepuisJSON qui les affiche à l'écran)
+    const ZONE_STYLES_EMBED = {
+      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+    };
+    const ROAD_STYLES_EMBED = {
+      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
+      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
+      chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+    };
+
+    if (config.dataLayers && Array.isArray(config.dataLayers)) {
+      for (const layerConfig of config.dataLayers) {
+        const leafletLayer = window.dataLayerGroups?.[layerConfig.id];
+        if (!leafletLayer || !isLayerVisible(leafletLayer)) continue;
+
+        if (layerConfig.id === "editor") {
+          const editorPoints = window.getEditorPoints ? window.getEditorPoints() : [];
+          for (const point of editorPoints) {
+            await drawPoint(point);
+          }
+        } else {
+          const response = await fetch(layerConfig.file);
+          const json = await response.json();
+
+          // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement
+          if (Array.isArray(json.zones) && json.zones.length > 0) {
+            const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
+            [...json.zones].sort(function(a, b) {
+              return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
+            }).forEach(function(z) {
+              drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
+            });
+          }
+
+          // Routes embarquées
+          if (Array.isArray(json.roads) && json.roads.length > 0) {
+            json.roads.forEach(function(r) {
+              if (!r.points || r.points.length < 2) return;
+              drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+            });
+          }
+
+          // Markers
+          const points = json.data || [];
+          for (const point of points) {
+            await drawPoint(point);
+          }
+        }
+      }
     }
 
     // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
@@ -302,7 +335,13 @@ async function telechargerPlan() {
     const measurePoints = window.getMeasurePoints ? window.getMeasurePoints() : [];
     drawPolyline(measurePoints, { color: "red", weight: 3, opacity: 1 });
 
-    // ---------- tracker ----------
+    // ---------- tracker (chemin parcouru + position courante) ----------
+    if (window.getTrackingPath) {
+      const trackerPath = window.getTrackingPath();
+      if (trackerPath && trackerPath.length > 1) {
+        drawPolyline(trackerPath, { color: "#3388ff", weight: 3, opacity: 1 });
+      }
+    }
     if (window.getTrackingPosition) {
       const trackerPos = window.getTrackingPosition();
       if (trackerPos && typeof trackerPos.x === "number" && typeof trackerPos.y === "number") {
