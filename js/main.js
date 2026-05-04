@@ -68,9 +68,6 @@ async function lancerApplication() {
   initInterface();
   initTracking();
 
-  document.body.addEventListener('click', function() {
-    requestPermission();
-  }, { once: true });
 
   console.log("[Main] Application lancée");
   } finally {
