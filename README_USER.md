@@ -1,4 +1,4 @@
-# MyKTAMap — Guide Utilisateur
+# 📗 MyKTAMap — Guide Utilisateur
 
 > Ce guide est destiné aux utilisateurs de l'application. Il explique comment utiliser chaque fonction, comment préparer votre téléphone pour une sortie terrain, et rappelle les règles essentielles concernant la discrétion des données.
 
@@ -6,7 +6,7 @@
 
 ## 🔴 Avertissements importants
 
-### Confidentialité des données — à lire en premier
+### 🔐 Confidentialité des données — à lire en premier
 
 MyKTAMap est un outil de cartographie de terrain qui peut contenir des informations sensibles : **localisation précise d'entrées, de puits, de passages, de structures souterraines.**
 
@@ -52,7 +52,7 @@ Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez 
 
 ## 🚀 Premiers pas
 
-### Installer l'application sur iPhone (recommandé)
+### 📱 Installer l'application sur iPhone (recommandé)
 
 MyKTAMap peut être installée comme application native sur iPhone — sans passer par l'App Store :
 
@@ -64,7 +64,7 @@ MyKTAMap peut être installée comme application native sur iPhone — sans pass
 
 > L'application fonctionne ainsi en mode plein écran, sans la barre Safari.
 
-### Charger un plan
+### 📦 Charger un plan
 
 Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un **formulaire de chargement**.
 
@@ -74,13 +74,13 @@ Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affi
 2. **🏗️ Générer un plan** — bouton en bas du formulaire. Ouvre directement le générateur sans avoir besoin de charger un plan existant. Pratique si vous voulez créer un nouveau plan from scratch.
 3. **🌐 Charger le plan serveur** — bouton en bas du formulaire. Tente de charger un plan déposé directement sur le serveur (fichier `plan-config.json` à la racine). Affiche une erreur si aucun plan serveur n'est trouvé.
 
-### Mode performance ⚡
+### ⚡ Mode performance
 
 Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performance** avant de charger. Ce mode découpe l'image en tuiles pour éviter les crashes sur iPhone. La qualité est légèrement réduite mais l'image s'affiche correctement.
 
 > Le mode performance se coche automatiquement si votre archive ZIP dépasse 50 Mo.
 
-### Utilisation hors connexion
+### 📡 Utilisation hors connexion
 
 MyKTAMap fonctionne **entièrement hors connexion** une fois le plan chargé une première fois.
 
@@ -111,20 +111,21 @@ Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôl
 
 ## 🧭 Présentation de l'interface
 
-Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 10 groupes :
+Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 11 groupes :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
 | **Aide / Doc / Légende** | 📚 | Aide, documentation, légende des icônes |
 | **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
+| **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
 | **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
 | **Enregistrer** | ⬆️ | Exporter ta session, exporter le plan en image, convertisseur |
 | **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
-| **Édition de points** | 📌 | Ajouter tes propres points, effacer |
+| **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins |
-| **Zones** | 🟫 | Tracer des zones de remblais, effondrement ou eau |
+| **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
 
@@ -135,11 +136,43 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 
 ---
 
+## 🔍 Rechercher un point
+
+Le bouton **🔍** dans la barre latérale ouvre une fenêtre de recherche rapide pour trouver n'importe quel point du plan.
+
+### 🔎 Ce qu'on peut chercher
+
+- Le **nom** du point (ex: "Puits Aération")
+- Son **identifiant** (ex: "PA1")
+- Un **tag** (ex: "pa", "danger", "elec")
+- Sa **description**
+- Son **état**
+
+La recherche est **insensible aux accents et à la casse** — taper "aeration" trouvera aussi "Aération".
+
+### ⚙️ Comment ça marche
+
+1. Cliquez sur **🔍** dans la barre latérale
+2. Tapez votre recherche dans le champ — les résultats s'affichent en temps réel
+3. Naviguez avec les flèches **↑** / **↓** ou avec le curseur
+4. Validez avec **Entrée** ou par un clic sur le résultat
+5. La carte se centre sur le point avec un **cercle orange** autour pour le repérer, et le popup d'information s'ouvre
+
+### 🧭 Périmètre
+
+La recherche couvre **tous les calques de données du plan** (puits, véhicules, etc.) ainsi que **tes points ajoutés**. Les résultats incluent :
+- Une miniature de l'icône du point
+- Son ID en bleu et son nom
+- Le calque d'origine (chip "Puits", "Véhicule"...)
+- Ses tags et coordonnées
+
+---
+
 ## 📍 Tracker de position
 
 > Tous les boutons du tracker se trouvent dans le groupe **🧭 Tracker** de la barre latérale.
 
-### Démarrer le tracking
+### ▶️ Démarrer le tracking
 
 Appuyez sur **▶️** pour démarrer. Sur iPhone, une demande de permission s'affiche — acceptez-la pour autoriser l'accès aux capteurs de mouvement.
 
@@ -147,7 +180,7 @@ Une icône apparaît sur le plan à votre position de départ. Elle se déplace 
 
 Appuyez sur **⏹️** pour arrêter.
 
-### Recaler sa position
+### 📍 Recaler sa position
 
 La position calculée dérive inévitablement. Dès que vous reconnaissez un repère sur le plan :
 
@@ -158,7 +191,7 @@ La position calculée dérive inévitablement. Dès que vous reconnaissez un rep
 
 > Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage.
 
-### Réglages du tracker
+### ⚙️ Réglages du tracker
 
 Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latérale :
 
@@ -178,7 +211,7 @@ Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latéral
 2. Cliquez sur le plan pour poser des points
 3. La distance totale s'affiche en bas à gauche, en mètres
 
-### Effacer la mesure
+### ❌ Effacer la mesure
 
 Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
@@ -192,11 +225,11 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 ---
 
-## 📌 Ajouter des points
+## ✏️ Ajouter des points
 
-> Tous les boutons d'édition se trouvent dans le groupe **📌 Édition** de la barre latérale.
+> Tous les boutons d'édition se trouvent dans le groupe **✏️ Édition** de la barre latérale.
 
-1. Appuyez sur **📌** — le mode ajout s'active (bouton vert)
+1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité
 3. Une fenêtre s'ouvre. Renseignez :
    - **Nom** (obligatoire)
@@ -204,15 +237,15 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
    - **Description** (optionnel)
 4. Validez avec **✅ Ajouter**
 
-### Créer un nouveau tag
+### 🏷️ Créer un nouveau tag
 
 Si le type que vous voulez n'existe pas encore, sélectionnez **➕ Créer un nouveau tag…**. Saisissez un nom court (lettres, chiffres, underscore ou tiret uniquement) — par exemple `fontaine`, `arche` ou `ruine_2`.
 
 Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **🏗️ Créer / Modifier plan**.
 
-### Effacer les points
+### 🗑️ Effacer les points
 
-Appuyez sur **🗑️** (à côté de 📌). Une fenêtre s'ouvre avec deux options :
+Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux options :
 
 | Option | Effet |
 |---|---|
@@ -236,7 +269,7 @@ Appuyez sur **🗑️** (à côté de 📌). Une fenêtre s'ouvre avec deux opti
 
 Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
 
-### Effacer un tracé
+### 🧹 Effacer un tracé
 
 Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
@@ -251,21 +284,21 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 ---
 
-## 🟫 Tracer des zones
+## ⬛ Tracer des zones
 
-> Tous les boutons de zones se trouvent dans le groupe **🟫 Zones** de la barre latérale.
+> Tous les boutons de zones se trouvent dans le groupe **⬛ Zones** de la barre latérale.
 
 Permet de dessiner des **surfaces fermées** pour annoter des espaces particuliers du plan : remblais, zones effondrées, plans d'eau, etc.
 
 | Type | Icône | Couleur |
 |---|---|---|
-| **Remblais** | 🟫 | Gris |
+| **Remblais** | ⬛ | Gris foncé |
 | **Effondrement** | 🟥 | Rouge |
 | **Eau** | 🟦 | Bleu |
 
-### Comment tracer une zone
+### ✏️ Comment tracer une zone
 
-1. Appuyez sur l'icône du type voulu (🟫, 🟥 ou 🟦) — le mode s'active
+1. Appuyez sur l'icône du type voulu (⬛, 🟥 ou 🟦) — le mode s'active
 2. Cliquez sur le plan pour poser les points (au moins 3)
 3. Pour fermer la zone, **deux options** :
    - **Re-cliquer sur le premier point** (un cercle apparaît dessus dès que 3 points sont posés)
@@ -274,7 +307,7 @@ Permet de dessiner des **surfaces fermées** pour annoter des espaces particulie
 
 > Pendant le tracé, les segments apparaissent en pointillé. Une fois fermée, la zone devient pleine.
 
-### Ordre d'affichage
+### 🧱 Ordre d'affichage
 
 Les zones se superposent dans cet ordre, indépendamment de l'ordre de tracé :
 
@@ -284,7 +317,7 @@ Les zones se superposent dans cet ordre, indépendamment de l'ordre de tracé :
 
 Cela permet par exemple de tracer un effondrement par-dessus un remblais sans qu'il soit masqué.
 
-### Effacer une zone
+### 🧹 Effacer une zone
 
 Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
@@ -300,7 +333,7 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 > Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
-### Exporter une session
+### 💾 Exporter une session
 
 Appuyez sur **⬆️ → 💾 Session JSON** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés, les zones et les points de mesure. Réimportable via le groupe **⬇️ Charger / Import → 📥 Importer une session**.
 
@@ -464,7 +497,7 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 
 > Le Mode Performance ne se modifie qu'au chargement du plan (case ⚡ dans le formulaire de chargement).
 
-### Calibrer l'échelle (🎯)
+### 🎯 Calibrer l'échelle
 
 Si l'appli te donne une distance différente de la réalité (par exemple 100 m affichés alors que tu sais qu'il y a 150 m sur le terrain) :
 

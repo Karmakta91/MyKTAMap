@@ -1,7 +1,7 @@
-# MyKTAMap
+# 📘 MyKTAMap
 > Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
 
-**Environnements :**
+**🌍 Environnements :**
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
 - 🔧 Développement : [devmap.is-underground.fr](https://devmap.is-underground.fr)
 
@@ -9,7 +9,20 @@
 
 ## 📋 Journal des modifications
 
-### 04/05/2026 — Éditeur tableau JSON
+### 🗓️ 04/05/2026 — Recherche de point + ajustements
+- **Nouveau module `searchPoints.js`** — recherche rapide d'un point par nom, id, tag, description ou état
+  - Bouton **🔍 Rechercher un point** ajouté en position solo dans la barre latérale, après ⚙️ Paramètres
+  - Recherche live debounced 200ms, normalisation NFD (insensible aux accents et à la casse)
+  - Tri par pertinence : match exact nom (100) → début nom (80) → dans nom (60) → exact id (50) → début id (40) → dans id (30) → tags (20) → description/état (10)
+  - Limite 50 résultats avec compteur "+ N autres"
+  - Affichage : icône miniature + ID en bleu + nom + chip layer + tags + coordonnées
+  - Navigation clavier : ↑/↓ entre résultats, Entrée pour valider, Échap pour fermer
+  - **Cache de points** par signature de plan (name|version|baseImage), invalidation auto au changement de plan
+  - Au clic sur un résultat : `setView` instantané (pas `flyTo` pour éviter dérive cumulée), popup ouvert sur le marker existant ou popup temporaire si layer non visible, **cercle d'entourage statique orange** (3s puis disparition)
+- **Couleur des remblais** : passage à `#3a3a44` (bordure) / `#5a5a68` (remplissage) — gris franc qui ne se confond plus avec les fonds beiges/marron des plans
+- **Icône du groupe Zones** : 🟫 → **⬛** (Large Brown Square → Black Large Square) car 🟫 est marron par définition Unicode et ne reflétait pas la couleur réelle des remblais. Synchronisé dans le bouton principal, les sous-actions, l'aide et les modes actifs.
+
+### 🗓️ 04/05/2026 — Éditeur tableau JSON
 - **Nouveau module `tableEditor.js`** — éditeur de fichier JSON sous forme de tableau interactif
   - Bouton **📊 Éditer un fichier JSON** ajouté en 2e position dans le groupe ⬇️ Charger
   - Auto-détection du format (`data` calque ou `editorPoints` session)
@@ -26,14 +39,14 @@
   - Module autonome — styles CSS injectés dynamiquement au premier appel
   - Branchement : `<script src="js/tableEditor.js">` ajouté dans `index.html` après `exporter.js`
 
-### 04/05/2026 — Charte graphique légende exportée
+### 🗓️ 04/05/2026 — Charte graphique légende exportée
 - **Légende exportée alignée sur le dark theme des modales** (fond `#1a1f2e`, accents bleu vif `#8cb4ff`)
 - **Titre "Légende" en Georgia italique**, taille réduite (compact 13 / standard 17 / large 22) pour ne plus dominer
 - **Date au format FR `JJ/MM/AAAA`** (suppression de "Exporté :" devant la date)
 - **Layout en 2 colonnes** : Icônes à gauche, Tracés + Zones à droite — légende plus large mais moins haute
 - Métadonnées et titre restent en pleine largeur en haut
 
-### 04/05/2026 — Zones, eau, page d'accueil, calibrage
+### 🗓️ 04/05/2026 — Zones, eau, page d'accueil, calibrage
 - **Eau (3e type de zone)** — bouton 🟦 dans le groupe Zones, couleurs `#0066aa` / `#3aa9e8`
   - Tri d'affichage : eau (0) → remblais (1) → effondrement (2)
   - Synchronisé partout : `zones.js` (renderZones), `utils.js` × 2 (export PNG + lecture data layer), `exporter.js`
@@ -43,7 +56,7 @@
 - **Calibrage d'échelle — formule corrigée** : `nouveau = scale × (affichée / réelle)` (au lieu de `réelle / affichée`)
 - **Onglet "Fichiers séparés" supprimé** du loader — ZIP uniquement
 
-### 03/05/2026 — Export plan avancé
+### 🗓️ 03/05/2026 — Export plan avancé
 - **Nouveau module `exporter.js`** — modale d'export avec deux modes : ⚡ Rapide (export historique inchangé) et 🎨 Avancé
 - **Mode avancé** :
   - Choix précis des calques d'image / calques de données / annotations à inclure
@@ -54,7 +67,7 @@
   - Aperçu mini-canvas 320×200 px (debounced 300ms)
 - Bouton 🖼️ ouvre maintenant la modale au lieu de télécharger directement
 
-### 03/05/2026 — Module Zones
+### 🗓️ 03/05/2026 — Module Zones
 - **Nouveau module `zones.js`** — zones polygonales remplies (remblais / effondrement)
 - **Nouveau groupe Zones** dans la barre latérale (10e position, après Tracés)
 - Sous-actions : 🟫 Remblais / 🟥 Effondrement / 🟦 Eau / ✅ Fermer / 🧹 Effacer
@@ -64,7 +77,7 @@
 - Préservation dans : session JSON (`zones[]`), data layer embarqué (`zones[]`), export PNG
 - Convertisseur JSON préserve `zones` dans les 2 sens
 
-### 03/05/2026 — Refonte interface
+### 🗓️ 03/05/2026 — Refonte interface
 - **Barre latérale refondue en 9 groupes** (accordéon vertical, exclusivité)
   - Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
   - **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
@@ -159,7 +172,7 @@ MyKTAMap est une application web permettant de **visualiser, annoter et exploite
 
 L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`L.CRS.Simple`), ce qui permet de travailler sur une carte personnalisée **sans coordonnées GPS**.
 
-### Fonctionnalités principales
+### 🧩 Fonctionnalités principales
 
 | Fonctionnalité | État |
 |---|---|
@@ -200,6 +213,7 @@ sw.js                       ← Service Worker (mode hors-ligne)
         ├── zones.js           ← Zones polygonales remplies (eau / remblais / effondrement)
         ├── exporter.js        ← Modale d'export plan avancé (rapide / avancé + légende intégrée)
         ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
+        ├── searchPoints.js    ← Recherche rapide d'un point (nom / id / tag / description)
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
         ├── interface.js       ← Interface Leaflet + toutes les modales
         └── main.js            ← Point d'entrée unique avec auto-détection
@@ -217,7 +231,7 @@ lib/
 
 MyKTAMap est une **PWA installable** sur mobile et desktop. Sur iOS, elle peut être ajoutée à l'écran d'accueil via Safari (Partager ↑ → Sur l'écran d'accueil) et fonctionne ensuite en mode standalone (sans la barre Safari).
 
-### Métadonnées dans `<head>`
+### 🧾 Métadonnées dans `<head>`
 
 ```html
 <!-- Mode standalone -->
@@ -237,7 +251,7 @@ MyKTAMap est une **PWA installable** sur mobile et desktop. Sur iOS, elle peut �
 <link rel="icon" type="image/png" href="icon/mkm.png">
 ```
 
-### Pourquoi 5 balises `apple-touch-icon`
+### 🍎 Pourquoi 5 balises `apple-touch-icon`
 
 Safari iOS **ignore complètement** la balise `<link rel="icon">` standard pour le bouton "Sur l'écran d'accueil". Il cherche **uniquement** `apple-touch-icon`. On déclare plusieurs tailles pour qu'iOS choisisse la plus proche selon l'appareil :
 
@@ -251,14 +265,14 @@ Safari iOS **ignore complètement** la balise `<link rel="icon">` standard pour 
 
 En pratique on peut servir le même fichier (Safari redimensionne) — l'important c'est que la balise existe.
 
-### Contraintes du fichier icône
+### 🖼️ Contraintes du fichier icône
 
 - **PNG carré** (idéalement 180×180 minimum, 512×512 recommandé)
 - **Fond opaque** — pas de transparence, sinon iOS met du noir
 - **Pas d'arrondi** dans l'image — iOS arrondit les coins automatiquement
 - **Marge interne 10-15%** — iOS rogne légèrement les bords
 
-### Mise à jour de l'icône
+### 🔁 Mise à jour de l'icône
 
 iOS cache l'icône PWA de manière agressive. Pour forcer le rafraîchissement après changement :
 
@@ -315,7 +329,7 @@ Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affi
 
 Les icônes sont entièrement **pilotées par `PLAN_CONFIG.icons`** — aucune liste hard-codée dans le code.
 
-### `_iconMap` (map.js)
+### 🗺️ `_iconMap` (map.js)
 
 Construit dynamiquement par `creerIcones()` à partir de `iconConfig` :
 
@@ -333,11 +347,11 @@ Object.keys(iconConfig).forEach(function(tag) {
 
 Toutes les icônes sont en **50×50 avec ancrage centré** (auparavant `vehicule` était une exception en 50×25 qui causait un export PNG étiré).
 
-### `choisirIcone(point)` (utils.js)
+### 🧭 `choisirIcone(point)` (utils.js)
 
 Parcourt `point.tags` et retourne la première icône définie dans `_iconMap`. Permet à `editor.js` de gérer des tags personnalisés sans modifier le code.
 
-### `getIconForPoint(point)` (utils.js, export PNG)
+### 🖼️ `getIconForPoint(point)` (utils.js, export PNG)
 
 Même logique que `choisirIcone` mais pour le canvas d'export. Charge l'image en cache et retourne le couple `{img, path}`.
 
@@ -347,7 +361,7 @@ Même logique que `choisirIcone` mais pour le canvas d'export. Charge l'image en
 
 Pour les plans JPEG volumineux (> 60 Mo) qui crashent Safari iOS, le mode performance découpe l'image en tuiles.
 
-### Activation
+### ✅ Activation
 
 | `APP_CONFIG.perfMode` | Comportement |
 |---|---|
@@ -357,7 +371,7 @@ Pour les plans JPEG volumineux (> 60 Mo) qui crashent Safari iOS, le mode perfor
 
 Le choix dans le loader (checkbox ⚡) est passé explicitement à `startImportedPlan(file, assets, perfChoisi)` et écrase le localStorage.
 
-### Flux technique
+### 🔁 Flux technique
 
 ```
 chargerImage(url, bounds, map, fileSize, sourceFile)
@@ -371,7 +385,7 @@ chargerImage(url, bounds, map, fileSize, sourceFile)
       → L.imageOverlay()            ← mode normal
 ```
 
-### Limites Safari iOS
+### 🍎 Limites Safari iOS
 
 - `drawImage` sur un JPEG > 8192px échoue silencieusement → canvas noir
 - Détection automatique : `getImageData(1,1,1,1)` après drawImage
@@ -404,7 +418,7 @@ Les dimensions du plan et paramètres tracking viennent toujours du `plan-config
 
 Chaque plan est décrit par un fichier `plan-config.json`.
 
-### Exemple complet
+### 🧾 Exemple complet
 
 ```json
 {
@@ -512,7 +526,7 @@ Module dédié aux zones polygonales remplies. Trois types : `eau`, `remblais`, 
 | Type | Bordure | Remplissage | Opacité bordure | Fill opacity |
 |---|---|---|---|---|
 | Eau | `#0066aa` | `#3aa9e8` | 1 | 0.7 |
-| Remblais | `#666666` | `#888888` | 1 | 0.7 |
+| Remblais | `#3a3a44` | `#5a5a68` | 1 | 0.7 |
 | Effondrement | `#cc0000` | `#ff3333` | 1 | 0.7 |
 
 **API exposée :**
@@ -606,6 +620,51 @@ let _data, _colonnes, _modifie, _selection, _tri, _filtre,
     _format, _sourceMeta, _lastSelectedIdx;
 ```
 
+### `searchPoints.js`
+
+Recherche rapide d'un point. Entrée publique : `window.ouvrirRecherche()`.
+
+**Périmètre :** tous les calques `dataLayers` du plan + points de session (`editor`).
+
+**Cache :**
+- Au premier appel, charge tous les fichiers JSON via `fetch()` + récupère les `editorPoints` via `getEditorPoints()`
+- Stocké dans `_pointsCache` sous forme `[{ point, layerId, layerLabel }]`
+- Invalidé automatiquement au changement de plan via `_signaturePlan()` qui combine `name|version|baseImage`
+
+**Recherche :**
+- Champ live debounced 200ms
+- Normalisation NFD + lowercase → insensible aux accents et à la casse
+- Champs cherchés : `nom`, `id`, `description`, `tags`, `etat`
+- **Tri par pertinence** :
+  - Match exact dans `nom` → score 100
+  - Début du `nom` → 80
+  - Dans le `nom` → 60
+  - Match exact dans `id` → 50
+  - Début de l'`id` → 40
+  - Dans l'`id` → 30
+  - Dans `tags` → 20
+  - Dans `description` ou `etat` → 10
+- Limite : 50 résultats affichés + compteur "+ N autre(s)"
+
+**Affichage des résultats :**
+- Icône miniature 28×28 (résolue depuis `PLAN_CONFIG.icons` via les tags du point)
+- ID en bleu vif (`#8cb4ff`) suivi du nom en gras
+- Chip de calque (label) + tags (max 4 + "+N") + coordonnées en monospace
+- 1er résultat pré-sélectionné (classe `.active`) → Enter valide directement
+
+**Navigation clavier :**
+- ↑ / ↓ : naviguer entre résultats
+- Entrée : ouvrir le résultat actif
+- Échap : fermer la modale
+
+**Au clic sur un résultat (`_aller(item)`) :**
+1. Modale fermée
+2. **`map.setView(latlng, zoomCourant, { animate: false })`** — pas de `flyTo` pour éviter dérive cumulée d'arrondi sur plusieurs recherches successives
+3. `map.invalidateSize()` pour sécurité
+4. Recherche du marker existant dans `dataLayerGroups[layerId]` par comparaison **coords plan x/y** (reconvertit le `latlng` du marker en plan via `imageHeight - lat`) — pas par latlng direct, plus robuste
+5. Si marker trouvé → `openPopup()`, sinon popup temporaire avec nom/description/layer/tags
+6. **Cercle d'entourage statique** (pas d'animation) : `circleMarker` orange `#ffaa00`, rayon 24, fillOpacity 0, weight 3 — disparaît après 3 secondes
+
 ### `measure.js`
 
 API exposée :
@@ -627,7 +686,7 @@ Cache collision initialisé une seule fois à l'init (`initCollisionCache`) — 
 
 ### `interface.js`
 
-#### Structure de l'interface — barre latérale 10 groupes
+#### 🧱 Structure de l'interface — barre latérale 10 groupes
 
 L'interface est organisée en **10 groupes** dans la barre latérale droite. Un seul groupe peut être ouvert à la fois — ouvrir un groupe ferme automatiquement les autres (sauf ceux qui ont un mode actif).
 
@@ -635,16 +694,17 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 |---|---|---|---|---|
 | 1 | Aide / Doc / Légende | 📚 | Accordéon | Aide → Documentation → Légende |
 | 2 | Paramètres | ⚙️ | **Solo** | (clic direct, ouvre la modale Réglages) |
-| 3 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 📊 Éditer un fichier JSON → 🗂️ Changer de plan |
-| 4 | Créer / Modifier plan | 🏗️ | **Solo** | (clic direct, ouvre le générateur) |
-| 5 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG (export avancé) → 🔄 Convertisseur |
-| 6 | Tracker | 🧭 | Accordéon | ▶️/⏹️ Tracking → 📍 Recalage |
-| 7 | Mesure | 📐 | Accordéon | 📐 Activer mesure → ❌ Effacer |
-| 8 | Édition | 📌 | Accordéon | 📌 Activer ajout → 🗑️ Effacer |
-| 9 | Tracés | 🛣️ | Accordéon | 🟩 Principale → 🟪 Secondaire → 🟨 Chemin → 🧹 Effacer |
-| 10 | Zones | 🟫 | Accordéon | 🟫 Remblais → 🟥 Effondrement → 🟦 Eau → ✅ Fermer → 🧹 Effacer |
+| 3 | Recherche | 🔍 | **Solo** | (clic direct, ouvre la modale de recherche) |
+| 4 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 📊 Éditer un fichier JSON → 🗂️ Changer de plan |
+| 5 | Créer / Modifier plan | 🏗️ | **Solo** | (clic direct, ouvre le générateur) |
+| 6 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG (export avancé) → 🔄 Convertisseur |
+| 7 | Tracker | 🧭 | Accordéon | ▶️/⏹️ Tracking → 📍 Recalage |
+| 8 | Mesure | 📐 | Accordéon | 📐 Activer mesure → ❌ Effacer |
+| 9 | Édition | 📌 | Accordéon | 📌 Activer ajout → 🗑️ Effacer |
+| 10 | Tracés | 🛣️ | Accordéon | 🟩 Principale → 🟪 Secondaire → 🟨 Chemin → 🧹 Effacer |
+| 11 | Zones | ⬛ | Accordéon | ⬛ Remblais → 🟥 Effondrement → 🟦 Eau → ✅ Fermer → 🧹 Effacer |
 
-#### Règles de comportement
+#### ⚙️ Règles de comportement
 
 - **Sens de déroulement** : accordéon vertical — les sous-actions apparaissent en dessous de l'icône principale et repoussent les groupes suivants
 - **Exclusivité** : un seul groupe ouvert à la fois ; ouvrir un groupe ferme automatiquement le précédent
@@ -652,11 +712,11 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 - **Icône principale active** : l'icône principale du groupe **reflète visuellement le mode actif**
   - Tracker : 🧭 → ⏹️ (tracking en cours) ou 📍 (recalage actif)
   - Tracés : 🛣️ → 🟩 / 🟪 / 🟨 selon le type actif
-  - Zones : 🟫 → 🟫 / 🟥 / 🟦 selon le type actif
+  - Zones : ⬛ → ⬛ / 🟥 / 🟦 selon le type actif
 - **Clic hors d'un groupe ouvert** → ferme le groupe automatiquement
 - **Modes exclusifs préservés** : Mesure / Édition / Recalage / Tracés / Zones restent mutuellement exclusifs
 
-#### Architecture du code
+#### 🏗️ Architecture du code
 
 - **`_creerGroupeAccordeon(config)`** — fonction unique qui crée un groupe (solo ou accordéon)
 - **`_groupes`** — registry global de tous les groupes avec leur état (`{ container, btnPrincipal, subActions, modeActif }`)
@@ -664,7 +724,7 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 - **`_setGroupeModeActif(id, actif, iconeReflet)`** — verrouille un groupe ouvert et change l'icône principale
 - **`_initClickExterieur`** — listener global qui ferme le groupe ouvert au clic en dehors
 
-#### Modales disponibles
+#### 🪟 Modales disponibles
 
 | Fonction | Description |
 |---|---|
@@ -681,12 +741,12 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 | `ouvrirExportModal()` | **Modale d'export plan avancé** (exporter.js) |
 | `ouvrirTableEditor()` | **Éditeur de fichier JSON sous forme de tableau** (tableEditor.js) |
 
-#### Helpers de suppression
+#### 🧹 Helpers de suppression
 
 - `_confirmerAction(titre, texte, callback)` — modale simple Annuler/Confirmer
 - `_choixSuppression(titre, texte, options[])` — modale avec liste d'options labellées (chacune avec icône, description, callback). Utilisée pour : effacer mesure, points, tracés, zones.
 
-#### Calibrage de l'échelle
+#### 🎯 Calibrage de l'échelle
 
 `ouvrirCalibrageEchelle()` ouvre une modale dédiée accessible via le bouton 🎯 à côté du champ Échelle dans ⚙️.
 
@@ -696,7 +756,7 @@ Calcul (formule corrigée) : `nouveau_scale = scale_actuel × (distance_AFFICHÉ
 
 L'utilisateur saisit la distance affichée par l'appli et la distance réelle mesurée au sol. La modale calcule la nouvelle échelle en temps réel et l'injecte dans le champ Échelle quand on valide.
 
-#### Modale d'import de session
+#### 📥 Modale d'import de session
 
 `ouvrirImportSession()` ouvre une modale plein écran cohérente avec les autres modales :
 - Zone drag & drop pour fichier `.json`
@@ -706,7 +766,7 @@ L'utilisateur saisit la distance affichée par l'appli et la distance réelle me
 - Bouton "Importer" désactivé tant que le fichier n'est pas validé
 - Restauration via `setEditorPoints`, `setRoads`, `setZones`, `setMeasurePoints`
 
-#### Page d'accueil — boutons supplémentaires
+#### 🏠 Page d'accueil — boutons supplémentaires
 
 Le loader (`#planLoaderOverlay` dans `index.html`) propose en bas, sous le mode performance :
 - **🏗️ Générer un plan** — toujours visible, ouvre `window.afficherPlanner()`
@@ -714,7 +774,7 @@ Le loader (`#planLoaderOverlay` dans `index.html`) propose en bas, sous le mode 
 
 L'onglet "Fichiers séparés" du loader a été supprimé — seul le mode ZIP est conservé.
 
-#### Adaptation mobile paysage
+#### 📱 Adaptation mobile paysage
 
 CSS `@media (max-height: 500px)` :
 - `.leaflet-top.leaflet-right { max-height: calc(100vh - 16px); overflow-y: auto }` — barre scrollable verticalement
@@ -748,7 +808,7 @@ Sections du formulaire :
 
 ## 📦 Structure des données JSON
 
-### Format standard (calques de données)
+### 🗂️ Format standard (calques de données)
 
 ```json
 {
@@ -761,7 +821,7 @@ Sections du formulaire :
 
 Le champ `roads[]` est optionnel — s'il est présent, les tracés sont affichés en lecture seule dans le même calque Leaflet (non modifiables via 🧹).
 
-### Format session exportée
+### 💾 Format session exportée
 
 ```json
 {
@@ -773,7 +833,7 @@ Le champ `roads[]` est optionnel — s'il est présent, les tracés sont affich�
 }
 ```
 
-### Format point
+### 📍 Format point
 
 ```json
 {
