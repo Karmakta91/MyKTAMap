@@ -140,7 +140,8 @@ function telechargerSessionJSON() {
     measure: {
       points: window.getMeasurePoints ? window.getMeasurePoints() : []
     },
-    roads: window.getRoads ? window.getRoads() : []
+    roads: window.getRoads ? window.getRoads() : [],
+    zones: window.getZones ? window.getZones() : []
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -288,11 +289,13 @@ function ouvrirImportSession() {
         const nbPoints  = (data.editorPoints || []).length;
         const nbMesure  = (data.measure && data.measure.points) ? data.measure.points.length : 0;
         const nbTraces  = (data.roads || []).length;
+        const nbZones   = (data.zones || []).length;
 
         apercuEl.innerHTML = `
           <div style="display:flex; gap:14px; flex-wrap:wrap;">
             <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
             <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
+            <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
             <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
           </div>
         `;
@@ -344,6 +347,8 @@ function ouvrirImportSession() {
       }
       if (window.resetRoads)         window.resetRoads();
       if (window.setRoads)           window.setRoads(dataParsee.roads || []);
+      if (window.resetZones)         window.resetZones();
+      if (window.setZones)           window.setZones(dataParsee.zones || []);
 
       fermer();
     } catch(err) {
@@ -476,33 +481,37 @@ function afficherConvertisseur() {
 
   function convertir(json, direction, typeLabel) {
     if (direction === "ed2data") {
-      // session → data : points + routes embarquées
+      // session → data : points + routes + zones embarquées
       let points = [];
       if (Array.isArray(json.editorPoints))   points = json.editorPoints;
       else if (Array.isArray(json.data))       points = json.data;
       else throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
 
       const roads = Array.isArray(json.roads) ? json.roads : [];
+      const zones = Array.isArray(json.zones) ? json.zones : [];
 
       const result = { type: typeLabel, version: 1, data: points };
       if (roads.length > 0) result.roads = roads;
+      if (zones.length > 0) result.zones = zones;
       return result;
 
     } else {
-      // data → session : points + routes restaurées
+      // data → session : points + routes + zones restaurées
       let points = [];
       if (Array.isArray(json.data))            points = json.data;
       else if (Array.isArray(json.editorPoints)) points = json.editorPoints;
       else throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
 
       const roads = Array.isArray(json.roads) ? json.roads : [];
+      const zones = Array.isArray(json.zones) ? json.zones : [];
 
       return {
         type: "devmap-session",
         version: 1,
         editorPoints: points,
         measure: { points: [] },
-        roads: roads
+        roads: roads,
+        zones: zones
       };
     }
   }
@@ -820,6 +829,7 @@ function afficherAide() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
+            <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (recharger un autre plan)</span>
           </div>
         </div>
@@ -875,6 +885,20 @@ function afficherAide() {
             <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernier tracé ou tous)</span>
           </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🟫 Zones (remblais / effondrements / eau)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🟫</span><span>Tracer une zone de remblais (gris)</span>
+            <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement (rouge)</span>
+            <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau (bleu)</span>
+            <span class="kta-aide-icone">✅</span><span>Fermer la zone en cours (au moins 3 points)</span>
+            <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernière zone ou toutes)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Pose au moins 3 points puis re-clique sur le 1er point pour fermer la zone, ou utilise le bouton ✅.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1142,9 +1166,9 @@ function ouvrirCalibrageEchelle() {
       return;
     }
 
-    nouveauScale = scaleActuel * ( aff / reel );
+    nouveauScale = scaleActuel * ( aff / reel);
     resultatEl.textContent = nouveauScale.toFixed(3) + " px/m";
-    formuleEl.textContent  = scaleActuel + " × (" + reel + " / " + aff + ") = " + nouveauScale.toFixed(3);
+    formuleEl.textContent  = scaleActuel + " × (" + aff + " / " + reel + ") = " + nouveauScale.toFixed(3);
     btnAppliquer.disabled  = false;
   }
 
@@ -1461,6 +1485,10 @@ function initInterface() {
     titre: "Charger / Import",
     sousActions: [
       { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
+      { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
+          if (window.ouvrirTableEditor) window.ouvrirTableEditor();
+          else alert("Module éditeur de tableau indisponible");
+        } },
       { icone: "🗂️", titre: "Changer de plan",     onClick: afficherPopupChangerPlan }
     ]
   });
@@ -1482,7 +1510,10 @@ function initInterface() {
     titre: "Enregistrer",
     sousActions: [
       { icone: "💾", titre: "Exporter la session JSON",    onClick: telechargerSessionJSON },
-      { icone: "🖼️", titre: "Télécharger le plan en image", onClick: telechargerPlan },
+      { icone: "🖼️", titre: "Exporter le plan en image", onClick: function() {
+          if (window.ouvrirExportModal) window.ouvrirExportModal();
+          else if (window.telechargerPlan) window.telechargerPlan();
+        } },
       { icone: "🔄", titre: "Convertisseur JSON",          onClick: afficherConvertisseur }
     ]
   });
@@ -1711,6 +1742,82 @@ function initInterface() {
     ]
   });
 
+  // 10. ZONES (polygones remplis : remblais / effondrement)
+  function _activerZone(type, btnCible, iconeReflet) {
+    const dejaActif = window.modeZone === type;
+    _desactiverTousLesModes();
+
+    // Désactivation interne zone
+    if (window.modeZone) toggleZoneMode(window.modeZone);
+    const grpZ = _groupes["zones"];
+    if (grpZ) grpZ.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+    _setGroupeModeActif("zones", false);
+
+    if (dejaActif) return;
+
+    toggleZoneMode(type);
+    btnCible.classList.add("kta-actif");
+    _modesActifs["zone"] = {
+      btnEl: btnCible,
+      desactiverFn: function() {
+        if (window.modeZone) toggleZoneMode(window.modeZone);
+        if (grpZ) grpZ.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+        _setGroupeModeActif("zones", false);
+      }
+    };
+    _setGroupeModeActif("zones", true, iconeReflet);
+  }
+
+  _creerGroupeAccordeon({
+    id: "zones",
+    iconePrincipale: "🟫",
+    titre: "Zones (remblais / effondrements)",
+    sousActions: [
+      { icone: "🟫", titre: "Zone de remblais",
+        onClick: function(btn) { _activerZone("remblais",     btn, "🟫"); } },
+      { icone: "🟥", titre: "Zone d'effondrement",
+        onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
+      { icone: "🟦", titre: "Zone d'eau",
+        onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
+      { icone: "✅", titre: "Fermer la zone en cours",
+        onClick: function() {
+          if (!window.modeZone) {
+            alert("Activez d'abord un type de zone (remblais ou effondrement)");
+            return;
+          }
+          if (window.fermerZoneEnCours) {
+            const ok = window.fermerZoneEnCours();
+            if (!ok) alert("Pose au moins 3 points avant de fermer la zone");
+          }
+        }
+      },
+      { icone: "🧹", titre: "Effacer",
+        onClick: function() {
+          const zones = window.getZones ? window.getZones() : [];
+          if (zones.length === 0) return;
+
+          // Compter les zones fermées (différentes de currentZone)
+          const nbZonesFermees = zones.length;
+
+          _choixSuppression(
+            "Zones", "Que veux-tu effacer ?",
+            [
+              { label: "Annuler le dernier point", icon: "↩️",
+                desc: "Sur la zone en cours ou la dernière zone",
+                onClick: function() { if (window.removeLastZonePoint) window.removeLastZonePoint(); } },
+              { label: "Dernière zone fermée", icon: "✂️",
+                desc: nbZonesFermees + " zone(s) au total",
+                onClick: function() { if (window.removeLastZone) window.removeLastZone(); } },
+              { label: "Toutes les zones", icon: "🗑️", danger: true,
+                desc: "Action irréversible",
+                onClick: function() { if (window.resetZones) window.resetZones(); } }
+            ]
+          );
+        }
+      }
+    ]
+  });
+
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 }
@@ -1826,6 +1933,24 @@ function afficherLegende() {
     </div>
   `;
 
+  const contenuZones = `
+    <div class="kta-aide-section">
+      <div class="kta-aide-section-titre">🟫 Zones</div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#3aa9e8; opacity:0.7; height:14px; border:2px solid #0066aa;"></span>
+        <span class="kta-legende-label">Eau (bleu)</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#888888; opacity:0.7; height:14px; border:2px solid #666666;"></span>
+        <span class="kta-legende-label">Remblais (gris)</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#ff3333; opacity:0.7; height:14px; border:2px solid #cc0000;"></span>
+        <span class="kta-legende-label">Effondrement (rouge)</span>
+      </div>
+    </div>
+  `;
+
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:480px;">
       <div class="kta-readme-modal-header">
@@ -1835,6 +1960,7 @@ function afficherLegende() {
       <div class="kta-readme-modal-corps">
         ${contenuIcones}
         ${contenuTracés}
+        ${contenuZones}
       </div>
     </div>
   `;

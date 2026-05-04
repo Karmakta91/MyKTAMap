@@ -984,6 +984,38 @@ html, body {
   background: rgba(255,255,255,0.1);
 }
 
+.loader-secondary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.loader-btn-secondary {
+  border: 1px solid rgba(140,180,255,0.25);
+  border-radius: 8px;
+  background: rgba(140,180,255,0.08);
+  color: #c0c8d8;
+  padding: 10px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-weight: 500;
+}
+
+.loader-btn-secondary:hover {
+  background: rgba(140,180,255,0.14);
+  border-color: rgba(140,180,255,0.4);
+  color: #e8eaf0;
+}
+
+.loader-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 #loaderStatus {
   margin-top: 14px;
   font-size: 13px;

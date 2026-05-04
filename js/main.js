@@ -39,6 +39,7 @@ async function lancerApplication() {
   // Reset complet de l'interface
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
+  window.zonesInitialized     = false;
 
   // Nettoyer les modales orphelines
   ["kta-aide-modal","kta-legende-modal","kta-cfg-modal","kta-readme-modal",
@@ -62,6 +63,7 @@ async function lancerApplication() {
 
   initEditor();
   initRoad();
+  initZones();
   initMeasure();
   initInterface();
   initTracking();
@@ -101,6 +103,7 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
   // Réinitialiser les états des modules
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
+  window.zonesInitialized     = false;
 
   resetRuntimeAssets();
 

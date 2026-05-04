@@ -66,9 +66,13 @@ MyKTAMap peut être installée comme application native sur iPhone — sans pass
 
 ### Charger un plan
 
-Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un formulaire de chargement.
+Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un **formulaire de chargement**.
 
-Importez une archive `.zip` contenant `plan-config.json` et tous les fichiers associés. Glissez-déposez le ZIP sur la zone prévue, ou cliquez pour le sélectionner.
+**Trois manières de démarrer :**
+
+1. **Importer une archive ZIP** — glissez-déposez votre archive `.zip` (qui contient `plan-config.json` et tous les fichiers associés) sur la zone prévue, ou cliquez pour la sélectionner. Cliquez ensuite sur **Charger le plan**.
+2. **🏗️ Générer un plan** — bouton en bas du formulaire. Ouvre directement le générateur sans avoir besoin de charger un plan existant. Pratique si vous voulez créer un nouveau plan from scratch.
+3. **🌐 Charger le plan serveur** — bouton en bas du formulaire. Tente de charger un plan déposé directement sur le serveur (fichier `plan-config.json` à la racine). Affiche une erreur si aucun plan serveur n'est trouvé.
 
 ### Mode performance ⚡
 
@@ -107,24 +111,25 @@ Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôl
 
 ## 🧭 Présentation de l'interface
 
-Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 9 groupes :
+Tous les outils sont accessibles depuis la **barre latérale droite**, organisée en 10 groupes :
 
 | Groupe | Icône | À quoi ça sert |
 |---|---|---|
 | **Aide / Doc / Légende** | 📚 | Aide, documentation, légende des icônes |
 | **Paramètres** | ⚙️ | Réglages, calibrage de l'échelle, debug *(clic direct)* |
-| **Charger / Import** | ⬇️ | Importer une session ou changer de plan |
+| **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
 | **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
-| **Enregistrer** | ⬆️ | Exporter ta session, télécharger le plan, convertisseur |
+| **Enregistrer** | ⬆️ | Exporter ta session, exporter le plan en image, convertisseur |
 | **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | 📌 | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins |
+| **Zones** | 🟫 | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
 
 - **Un seul groupe ouvert à la fois** — appuyer sur un autre groupe ferme le précédent
-- **Quand un mode est actif** (mesure, ajout, route, recalage), le groupe **reste ouvert** pour que tu puisses accéder rapidement aux actions associées (effacer un point, etc.). L'icône principale change pour refléter le mode en cours
+- **Quand un mode est actif** (mesure, ajout, route, zone, recalage), le groupe **reste ouvert** pour que tu puisses accéder rapidement aux actions associées (effacer un point, etc.). L'icône principale change pour refléter le mode en cours
 - **Toucher en dehors** du groupe ouvert le ferme automatiquement
 - **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
 
@@ -203,7 +208,7 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 Si le type que vous voulez n'existe pas encore, sélectionnez **➕ Créer un nouveau tag…**. Saisissez un nom court (lettres, chiffres, underscore ou tiret uniquement) — par exemple `fontaine`, `arche` ou `ruine_2`.
 
-Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **🏗️** (voir ci-dessous).
+Le nouveau tag est ajouté à votre session et utilisera l'icône par défaut. Pour personnaliser son icône définitivement, modifiez le plan via **🏗️ Créer / Modifier plan**.
 
 ### Effacer les points
 
@@ -246,19 +251,86 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 ---
 
+## 🟫 Tracer des zones
+
+> Tous les boutons de zones se trouvent dans le groupe **🟫 Zones** de la barre latérale.
+
+Permet de dessiner des **surfaces fermées** pour annoter des espaces particuliers du plan : remblais, zones effondrées, plans d'eau, etc.
+
+| Type | Icône | Couleur |
+|---|---|---|
+| **Remblais** | 🟫 | Gris |
+| **Effondrement** | 🟥 | Rouge |
+| **Eau** | 🟦 | Bleu |
+
+### Comment tracer une zone
+
+1. Appuyez sur l'icône du type voulu (🟫, 🟥 ou 🟦) — le mode s'active
+2. Cliquez sur le plan pour poser les points (au moins 3)
+3. Pour fermer la zone, **deux options** :
+   - **Re-cliquer sur le premier point** (un cercle apparaît dessus dès que 3 points sont posés)
+   - **Appuyer sur ✅** — ferme la zone à l'endroit du dernier point
+4. La zone se remplit automatiquement avec sa couleur
+
+> Pendant le tracé, les segments apparaissent en pointillé. Une fois fermée, la zone devient pleine.
+
+### Ordre d'affichage
+
+Les zones se superposent dans cet ordre, indépendamment de l'ordre de tracé :
+
+1. **Eau** (en arrière-plan)
+2. **Remblais** (au-dessus de l'eau)
+3. **Effondrement** (au-dessus de tout)
+
+Cela permet par exemple de tracer un effondrement par-dessus un remblais sans qu'il soit masqué.
+
+### Effacer une zone
+
+Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
+
+| Option | Effet |
+|---|---|
+| **↩️ Annuler le dernier point** | Sur la zone en cours, ou sur la dernière zone fermée |
+| **✂️ Supprimer la dernière zone** | Retire la dernière zone fermée |
+| **🗑️ Effacer toutes les zones** | Efface absolument tout (irréversible) |
+
+---
+
 ## ⬆️ Sauvegarder et partager
 
 > Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
 ### Exporter une session
 
-Appuyez sur **⬆️ → 💾 Session JSON** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés et les points de mesure. Réimportable via le groupe **⬇️ Charger / Import → 📥 Importer une session**.
+Appuyez sur **⬆️ → 💾 Session JSON** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés, les zones et les points de mesure. Réimportable via le groupe **⬇️ Charger / Import → 📥 Importer une session**.
 
-### Télécharger le plan en image
+### 🖼️ Exporter le plan en image
 
-Appuyez sur **⬆️ → 🖼️ Plan en image** pour télécharger une image PNG du plan avec tous les calques visibles, points et tracés.
+Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :
+
+#### ⚡ Export rapide
+Tout est inclus automatiquement : plan complet, tous les calques visibles, points, tracés, zones, format PNG résolution originale. Un seul clic sur **Télécharger**.
+
+#### 🎨 Export avancé
+Pour un contrôle précis sur tout ce que tu exportes :
+
+- **Calques d'image** — coche/décoche chaque calque (légende du plan, annotations, etc.)
+- **Calques de données** — coche les couches à inclure (puits, véhicules, etc.)
+- **Annotations** — choisis quoi inclure parmi tes points, tracés, zones, mesure, position du tracker
+- **Légende intégrée** 🆕 — ajoute une légende stylisée directement sur le plan exporté :
+  - **Position** : 4 coins (haut-gauche, haut-droit, bas-gauche, bas-droit) ou **personnalisée** (clique 🎯 puis sur le plan pour placer le coin haut-gauche de la légende)
+  - **Style** : Opaque / Semi-transparent / Filigrane
+  - **Taille** : Compact / Standard / Large
+  - **Contenu** : Icônes / Tracés / Zones / Tag tracker / Métadonnées du plan (nom, version, auteur, date)
+- **Format** : PNG ou JPEG (qualité 90%, fichier plus léger)
+- **Résolution** : Originale, ½ ou ¼ (utile pour les très gros plans)
+- **Aperçu** : un mini-canvas se met à jour en temps réel pour visualiser le résultat
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
+
+### 🔄 Convertisseur
+
+Voir la section dédiée plus bas.
 
 ---
 
@@ -271,9 +343,50 @@ Appuyez sur **⬆️ → 🖼️ Plan en image** pour télécharger une image PN
 Appuyez sur **⬇️ → 📥 Importer une session** pour ouvrir la fenêtre d'import. Une modale s'affiche :
 
 1. **Glissez-déposez** votre fichier `devmap-session.json` dans la zone, ou cliquez pour le sélectionner
-2. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de points de mesure
+2. Un **aperçu** s'affiche : nombre de points ajoutés, nombre de tracés, nombre de zones, nombre de points de mesure
 3. Un **avertissement** vous prévient que l'import remplacera votre session en cours — pensez à exporter avant si nécessaire
 4. Cliquez sur **Importer** pour valider, ou **Annuler** pour fermer sans rien changer
+
+### 📊 Éditer un fichier JSON
+
+Appuyez sur **⬇️ → 📊 Éditer un fichier JSON** pour ouvrir l'éditeur de tableau. Permet de modifier en masse les points d'un calque ou d'une session.
+
+#### Ouverture
+
+1. **Glissez-déposez** un fichier `.json` (calque de données type `puit.json`, ou session `devmap-session.json`)
+2. Le format est détecté automatiquement
+3. Le tableau s'affiche avec une colonne par champ détecté
+
+#### Édition
+
+- **Cliquez sur une cellule** pour la modifier (sauf l'ID, en lecture seule)
+- **Tab** : passe à la cellule suivante
+- **Entrée** : passe à la ligne suivante (même colonne)
+- **Échap** : annule la modification en cours
+- **Coordonnées** : si X ou Y est hors du plan, la cellule devient rouge avec un avertissement ⚠
+- **Tags** : cliquez sur la cellule pour ouvrir un sélecteur multi-tags avec aperçu des icônes. Tu peux aussi créer un nouveau tag à la volée
+
+#### Actions
+
+- **🔍 Recherche** : filtre toutes les colonnes
+- **Trier** : clique sur l'en-tête d'une colonne (asc → desc → annulé)
+- **Sélection multiple** : checkbox + Maj+clic pour une plage
+- **+ Ajouter ligne** : nouvelle ligne vide en bas
+- **📋 Dupliquer** : copie les lignes sélectionnées
+- **🗑️ Supprimer** : retire les lignes sélectionnées (confirmation requise)
+- **📍 Voir sur la carte** : affiche les points sélectionnés en orange clignotant sur le plan
+
+#### Sauvegarde
+
+Bouton **💾 Sauvegarder** → 3 choix :
+
+| Option | Effet |
+|---|---|
+| **📥 Télécharger** | Récupère le fichier `.json` modifié |
+| **🗺️ Remplacer le calque** | Met à jour le calque correspondant en mémoire (si format `data` et calque chargé sur le plan en cours) |
+| **✏️ Remplacer la session** | Remplace les points ajoutés de la session en cours (si format `editorPoints`) |
+
+> ⚠️ Si vous fermez la fenêtre avec des modifications non sauvegardées, une confirmation vous propose de sauvegarder, quitter sans sauvegarder, ou continuer l'édition.
 
 ### 🗂️ Changer de plan
 
@@ -285,13 +398,13 @@ Appuyez sur **⬇️ → 🗂️ Changer de plan** pour charger un autre plan co
 
 > Accessible via le groupe **⬆️ Enregistrer → 🔄 Convertisseur**.
 
-Permet de transformer des fichiers entre le format édition et le format calque de données.
+Permet de transformer des fichiers entre le format édition (session) et le format calque de données.
 
-**✏️ → 🗂️ Vers calque de données** — convertit vos annotations en calque permanent rechargeable dans le plan.
+**Session → Calque de données** — convertit vos annotations en calque permanent rechargeable dans le plan (utile si vous voulez intégrer durablement vos points dans la prochaine version du plan).
 
-**🗂️ → ✏️ Vers mode édition** — convertit un calque existant en session importable pour le modifier.
+**Calque de données → Session** — convertit un calque existant en session importable pour le modifier dans l'application.
 
-Les tracés de routes sont préservés dans les deux sens.
+Les **tracés de routes et les zones** (remblais, effondrement, eau) sont préservés dans les deux sens.
 
 ---
 

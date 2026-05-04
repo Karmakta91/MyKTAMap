@@ -68,6 +68,26 @@ function ajouterPointsDepuisJSON(url, layer) {
           L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
         });
       }
+
+      // Zones embarquées en lecture seule dans le même layer
+      // Tri : eau d'abord (en arrière), remblais, effondrements (au-dessus)
+      if (Array.isArray(json.zones) && json.zones.length > 0) {
+        const ZONE_STYLES_DATA = {
+          eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+          remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+          effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+        };
+        const zonesTriees = [...json.zones].sort(function(a, b) {
+          const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+          return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+        });
+        zonesTriees.forEach(function(zone) {
+          if (!zone.points || zone.points.length < 3) return;
+          const style = ZONE_STYLES_DATA[zone.type] || ZONE_STYLES_DATA.remblais;
+          const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
+          L.polygon(latlngs, { ...style, interactive: false }).addTo(layer);
+        });
+      }
     })
     .catch(function(err) {
       console.warn("[Data] Erreur chargement", url, err);
@@ -224,6 +244,48 @@ async function telechargerPlan() {
           }
         }
       }
+    }
+
+    // ---------- helpers polygones (pour zones) ----------
+    function drawPolygon(points, style) {
+      if (!points || points.length < 3) return;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, toCanvasY(points[0].y));
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x, toCanvasY(points[i].y));
+      }
+      ctx.closePath();
+
+      // Remplissage
+      ctx.fillStyle   = style.fillColor || style.color || "#888888";
+      ctx.globalAlpha = style.fillOpacity ?? 0.35;
+      ctx.fill();
+
+      // Bordure
+      ctx.strokeStyle = style.color || "#888888";
+      ctx.lineWidth   = style.weight || 2;
+      ctx.globalAlpha = style.opacity ?? 0.6;
+      ctx.lineJoin    = "round";
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
+    const zones = window.getZones ? window.getZones() : [];
+    const ZONE_STYLES_EXPORT = {
+      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+    };
+    for (const zone of [...zones].sort(function(a, b) {
+      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+      return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+    })) {
+      const style = ZONE_STYLES_EXPORT[zone.type] || ZONE_STYLES_EXPORT.remblais;
+      drawPolygon(zone.points || [], style);
     }
 
     // ---------- routes ----------

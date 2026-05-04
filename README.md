@@ -9,7 +9,62 @@
 
 ## 📋 Journal des modifications
 
-### 03/05/2026 (suite) — Refonte interface
+### 04/05/2026 — Éditeur tableau JSON
+- **Nouveau module `tableEditor.js`** — éditeur de fichier JSON sous forme de tableau interactif
+  - Bouton **📊 Éditer un fichier JSON** ajouté en 2e position dans le groupe ⬇️ Charger
+  - Auto-détection du format (`data` calque ou `editorPoints` session)
+  - Détection automatique des colonnes avec ordre privilégié (id, nom, x, y, tags, etat...)
+  - Édition inline : Tab/Enter/Échap, validation typée (number pour x/y/profondeur)
+  - **ID en lecture seule** (cellule grisée)
+  - **Validation des coordonnées** : cellule rouge ⚠ si hors `imageWidth`/`imageHeight` + tooltip
+  - **Tags multi-select** avec dropdown : icônes en preview, tags existants + champ "Créer un tag"
+  - Recherche live debounced 200ms, tri asc/desc/none, sélection multi (shift+clic)
+  - Aperçu sur la carte : modale masquée, markers cercles oranges + banner retour
+  - Avertissement si > 1000 lignes
+  - Sauvegarde via menu : 📥 Téléchargement / 🗺️ Remplacer le calque actif / ✏️ Remplacer la session
+  - Confirmation à la fermeture si modifications non sauvées (Sauvegarder / Quitter / Continuer)
+  - Module autonome — styles CSS injectés dynamiquement au premier appel
+  - Branchement : `<script src="js/tableEditor.js">` ajouté dans `index.html` après `exporter.js`
+
+### 04/05/2026 — Charte graphique légende exportée
+- **Légende exportée alignée sur le dark theme des modales** (fond `#1a1f2e`, accents bleu vif `#8cb4ff`)
+- **Titre "Légende" en Georgia italique**, taille réduite (compact 13 / standard 17 / large 22) pour ne plus dominer
+- **Date au format FR `JJ/MM/AAAA`** (suppression de "Exporté :" devant la date)
+- **Layout en 2 colonnes** : Icônes à gauche, Tracés + Zones à droite — légende plus large mais moins haute
+- Métadonnées et titre restent en pleine largeur en haut
+
+### 04/05/2026 — Zones, eau, page d'accueil, calibrage
+- **Eau (3e type de zone)** — bouton 🟦 dans le groupe Zones, couleurs `#0066aa` / `#3aa9e8`
+  - Tri d'affichage : eau (0) → remblais (1) → effondrement (2)
+  - Synchronisé partout : `zones.js` (renderZones), `utils.js` × 2 (export PNG + lecture data layer), `exporter.js`
+- **Page d'accueil — boutons supplémentaires en bas du loader** :
+  - 🏗️ Générer un plan (toujours visible) → ouvre `afficherPlanner()`
+  - 🌐 Charger le plan serveur (toujours visible) → tente `loadAppConfig()` avec message d'erreur si plan absent
+- **Calibrage d'échelle — formule corrigée** : `nouveau = scale × (affichée / réelle)` (au lieu de `réelle / affichée`)
+- **Onglet "Fichiers séparés" supprimé** du loader — ZIP uniquement
+
+### 03/05/2026 — Export plan avancé
+- **Nouveau module `exporter.js`** — modale d'export avec deux modes : ⚡ Rapide (export historique inchangé) et 🎨 Avancé
+- **Mode avancé** :
+  - Choix précis des calques d'image / calques de données / annotations à inclure
+  - Légende intégrée positionnable (4 coins ou point custom via 🎯 sélection sur la carte)
+  - 3 styles de légende : Opaque / Semi-transparent / Filigrane
+  - 3 tailles : Compact / Standard / Large
+  - Format PNG ou JPEG 90%, résolution Originale / ½ / ¼
+  - Aperçu mini-canvas 320×200 px (debounced 300ms)
+- Bouton 🖼️ ouvre maintenant la modale au lieu de télécharger directement
+
+### 03/05/2026 — Module Zones
+- **Nouveau module `zones.js`** — zones polygonales remplies (remblais / effondrement)
+- **Nouveau groupe Zones** dans la barre latérale (10e position, après Tracés)
+- Sous-actions : 🟫 Remblais / 🟥 Effondrement / 🟦 Eau / ✅ Fermer / 🧹 Effacer
+- Aperçu pointillé pendant le tracé + cercle visible sur 1er point dès 3 points posés
+- Fermeture par re-clic sur 1er point (tolérance 5px) OU bouton ✅
+- Tri d'affichage : eau → remblais → effondrement (effondrement toujours visible)
+- Préservation dans : session JSON (`zones[]`), data layer embarqué (`zones[]`), export PNG
+- Convertisseur JSON préserve `zones` dans les 2 sens
+
+### 03/05/2026 — Refonte interface
 - **Barre latérale refondue en 9 groupes** (accordéon vertical, exclusivité)
   - Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
   - **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
@@ -17,11 +72,10 @@
 - **Set d'icônes cohérent** : 📚 Aide / ⚙️ Paramètres / ⬇️ Charger / 🏗️ Créer / ⬆️ Enregistrer / 🧭 Tracker / 📐 Mesure / 📌 Édition / 🛣️ Tracés
 - **Mode actif → groupe verrouillé ouvert** + icône principale reflète le mode actif (ex: 🟩 sur Tracés quand Principal en cours, ⏹️/📍 sur Tracker)
 - **Clic en dehors** d'un groupe ouvert le ferme automatiquement (sauf si mode actif)
-- **Modale d'import de session** (`📥`) en plein écran avec drag & drop, aperçu du contenu (nb points / tracés / mesure) et avertissement avant écrasement
-- **Bouton 🎯 de calibrage d'échelle** dans ⚙️ — calcul par produit en croix avec aperçu live de la formule
-- **Mode Performance** déplacé dans la section Debug, affichage compact horizontal (label à gauche + indicateur encadré à droite)
-- **Fix mobile paysage** : barre latérale scrollable verticalement quand `max-height ≤ 500px`, scrollbar masquée, boutons réduits à 28×28px
-- **Modale d'aide** entièrement refondue selon la nouvelle structure 9 groupes
+- **Modale d'import de session** (`📥`) en plein écran avec drag & drop, aperçu du contenu (nb points / tracés / zones / mesure) et avertissement avant écrasement
+- **Bouton 🎯 de calibrage d'échelle** dans ⚙️
+- **Mode Performance** déplacé dans la section Debug, affichage compact horizontal
+- **Fix mobile paysage** : barre latérale scrollable quand `max-height ≤ 500px`
 
 ### 03/05/2026
 - **Icône PWA pour écran d'accueil iOS** — ajout des balises `<link rel="apple-touch-icon">` dans `index.html` (4 tailles + fallback)
@@ -136,13 +190,16 @@ sw.js                       ← Service Worker (mode hors-ligne)
         │
         ├── debug.js           ← Capture logs + modale débogage
         ├── config.js          ← Configuration unifiée (serveur + import)
-        ├── utils.js           ← Fonctions utilitaires + export PNG dynamique
+        ├── utils.js           ← Fonctions utilitaires + export PNG dynamique (rapide)
         ├── measure.js         ← Mesure de distance + suppression granulaire
         ├── tiling.js          ← Mode performance : découpage en tuiles
         ├── map.js             ← Initialisation Leaflet + _iconMap dynamique
         ├── tracking.js        ← Déplacement simulé via capteurs
         ├── editor.js          ← Modale plein écran + tags custom
         ├── road.js            ← Tracé de routes + suppression granulaire
+        ├── zones.js           ← Zones polygonales remplies (eau / remblais / effondrement)
+        ├── exporter.js        ← Modale d'export plan avancé (rapide / avancé + légende intégrée)
+        ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
         ├── interface.js       ← Interface Leaflet + toutes les modales
         └── main.js            ← Point d'entrée unique avec auto-détection
@@ -413,10 +470,11 @@ Gère :
 
 ### `main.js` (unifié)
 
-- `lancerApplication()` — reset complet + init carte + init modules
+- `lancerApplication()` — reset complet + init carte + init modules dans l'ordre : `initEditor → initRoad → initZones → initMeasure → initInterface → initTracking`
 - `startImportedPlan(planConfigFile, assetFiles, perfChoisi)` — chargement depuis le loader
 - `afficherLoader()` — affiche le loader intégré
 - Auto-détection au démarrage via `loadAppConfig()`
+- Reset des flags `interfaceInitialized`, `roadInitialized`, `zonesInitialized` au changement de plan
 
 ### `editor.js`
 
@@ -439,6 +497,115 @@ API exposée :
 - `removeLastRoadPoint()` — supprime le dernier point du dernier tracé (et le tracé s'il devient vide)
 - `toggleRoadMode(type)` — active/désactive un mode de tracé
 
+### `zones.js`
+
+Module dédié aux zones polygonales remplies. Trois types : `eau`, `remblais`, `effondrement`.
+
+**Comportement :**
+- Tracé avec aperçu pointillé pendant l'édition + cercle visible sur le 1er point dès 3 points posés
+- Fermeture par re-clic sur le 1er point (tolérance **5 px**) OU bouton ✅ Fermer
+- Mode exclusif : activer une zone désactive les autres modes (mesure, ajout, route, recalage, autre zone)
+
+**Tri d'affichage :** `{ eau: 0, remblais: 1, effondrement: 2 }` — eau toujours en arrière-plan, effondrement toujours visible. Tri appliqué à 3 endroits : `renderZones()` (zones.js), export PNG (utils.js + exporter.js), data layer embarqué (utils.js).
+
+**Styles :**
+| Type | Bordure | Remplissage | Opacité bordure | Fill opacity |
+|---|---|---|---|---|
+| Eau | `#0066aa` | `#3aa9e8` | 1 | 0.7 |
+| Remblais | `#666666` | `#888888` | 1 | 0.7 |
+| Effondrement | `#cc0000` | `#ff3333` | 1 | 0.7 |
+
+**API exposée :**
+- `getZones()` / `setZones(zones)`
+- `resetZones()` — supprime tout
+- `toggleZoneMode(type)` — active/désactive un type
+- `fermerZoneEnCours()` — ferme manuellement la zone (min 3 points)
+- `removeLastZone()` — supprime la dernière zone fermée
+- `removeLastZonePoint()` — supprime le dernier point (zone en cours OU dernière fermée)
+
+**Format de stockage :**
+```json
+{ "type": "remblais", "points": [{"x":100,"y":200}, ...] }
+```
+Le point de fermeture est implicite (1er point répété). Inclus dans : session JSON (`zones[]`), data layer embarqué (`zones[]`), export PNG.
+
+### `exporter.js`
+
+Module dédié à la modale d'export du plan. Entrée publique : `window.ouvrirExportModal()`.
+
+**Deux modes :**
+- ⚡ **Rapide** — appelle `window.telechargerPlan()` (utils.js, comportement historique inchangé)
+- 🎨 **Avancé** — modale détaillée avec choix par calque + légende intégrée
+
+**Mode avancé — sections :**
+1. Calques d'image (checkboxes pré-cochées selon visibilité)
+2. Calques de données (checkboxes pré-cochés selon visibilité)
+3. Annotations de session (points / tracés / zones / mesure / tracker)
+4. **Légende intégrée** — toggle ON/OFF avec sous-options :
+   - Position : 4 coins ou custom (bouton 🎯 sélection sur la carte)
+   - Style : Opaque / Semi-transparent / Filigrane (dark theme cohérent avec les modales)
+   - Taille : Compact / Standard / Large
+   - Contenu : Icônes / Tracés / Zones / Tag tracker / Métadonnées (nom, version, auteur, date)
+5. Format (PNG / JPEG 90%) + Résolution (1 / ½ / ¼)
+6. Aperçu mini-canvas 320×200 (debounced 300ms)
+
+**Sélection 🎯 sur la carte :** capture l'état de la modale, ferme temporairement la modale, attend le clic sur la carte, capture les coords plan (`x = lng`, `y = imageHeight - lat`), rouvre la modale en restaurant l'état + coords remplies. Échap pour annuler.
+
+**Légende dessinée :**
+- Layout en **2 colonnes** : Icônes à gauche, Tracés + Zones à droite (titre et méta en pleine largeur)
+- Titre "Légende" en **Georgia italique**
+- Date au format FR `JJ/MM/AAAA`
+- Largeur ajustée au libellé le plus long, anti-débordement clamp aux bords du canvas
+- Fond avec coins arrondis 6px
+
+**Pas de persistance** des réglages — chaque ouverture repart sur les défauts (mode rapide, calques visibles cochés).
+
+### `tableEditor.js`
+
+Éditeur de fichier JSON sous forme de tableau interactif. Entrée publique : `window.ouvrirTableEditor()`.
+
+**Workflow :**
+1. Modale d'import (drag & drop ou file picker `.json`)
+2. Auto-détection du format (`data` calque ou `editorPoints` session)
+3. Tableau plein écran (~1100 px de large) avec édition inline
+4. Sauvegarde via menu : 📥 Téléchargement / 🗺️ Remplacer le calque actif / ✏️ Remplacer la session
+5. Confirmation à la fermeture si modifications non sauvées
+
+**Détection des colonnes :** automatique avec ordre privilégié `id, nom, x, y, tags, etat, description, profondeur, date_update` puis le reste alphabétiquement.
+
+**Édition inline :**
+- Clic sur cellule → input avec focus auto
+- **Tab** → cellule suivante (skip `id` lecture seule)
+- **Entrée** → valide et passe à la ligne suivante (même colonne)
+- **Échap** → annule la modification
+- Validation typée : `x`/`y`/`profondeur` → input number ; `id` → lecture seule (cellule grisée) ; autres → text
+
+**Validation des coordonnées :** cellule rouge avec ⚠ si `x < 0` ou `x > imageWidth` (idem pour `y`/`imageHeight`), tooltip avec la limite, compteur global "⚠️ N coordonnée(s) hors plan".
+
+**Tags multi-select :**
+- Affichage en chips avec × pour retirer
+- Clic sur la cellule → dropdown avec :
+  - Tags existants dans `PLAN_CONFIG.icons` (avec icône en preview)
+  - Tags utilisés ailleurs dans le fichier
+  - Champ "Créer un tag" (sanitization `/[^a-z0-9_-]/g`)
+- Positionnement auto avec recadrage si dépasse de l'écran
+
+**Autres fonctionnalités :**
+- Recherche live (debounced 200ms) sur tous les champs textuels
+- Tri par colonne (clic en-tête : asc → desc → none)
+- Sélection multiple avec checkboxes + Maj+clic pour plage
+- Ajouter ligne (vide en bas), Supprimer (avec confirmation), Dupliquer (suffixe `_copie` à l'id)
+- 📍 **Aperçu sur la carte** : modale masquée, markers cercles oranges + banner "↩️ Retour à l'éditeur"
+- Avertissement visuel si > 1000 lignes
+
+**Sauvegarde — préservation totale du JSON original :** les champs `type`, `version`, `roads`, `zones`, `measure` du fichier source sont conservés tels quels au save.
+
+**État interne :**
+```js
+let _data, _colonnes, _modifie, _selection, _tri, _filtre,
+    _format, _sourceMeta, _lastSelectedIdx;
+```
+
 ### `measure.js`
 
 API exposée :
@@ -455,37 +622,39 @@ Cache collision initialisé une seule fois à l'init (`initCollisionCache`) — 
 
 - `convertCoord(x, y)` — coordonnées plan → Leaflet
 - `choisirIcone(p)` — sélection dynamique depuis `_iconMap`
-- `ajouterPointsDepuisJSON(url, layer)` — chargement par batch de 50
-- `telechargerPlan()` — export PNG complet (calques visibles + points + tracés + tracker)
+- `ajouterPointsDepuisJSON(url, layer)` — chargement par batch de 50, dessine les `roads[]` et `zones[]` embarqués (en lecture seule)
+- `telechargerPlan()` — export PNG complet (calques visibles + points + zones triées + tracés + mesure + tracker). Cette fonction est appelée par le mode **Rapide** de la modale d'export. Le mode **Avancé** est géré par `exporter.js`.
 
 ### `interface.js`
 
-#### Structure de l'interface — barre latérale 9 groupes
+#### Structure de l'interface — barre latérale 10 groupes
 
-L'interface est organisée en **9 groupes** dans la barre latérale droite. Un seul groupe peut être ouvert à la fois — ouvrir un groupe ferme automatiquement les autres (sauf ceux qui ont un mode actif).
+L'interface est organisée en **10 groupes** dans la barre latérale droite. Un seul groupe peut être ouvert à la fois — ouvrir un groupe ferme automatiquement les autres (sauf ceux qui ont un mode actif).
 
 | # | Groupe | Icône | Type | Sous-actions |
 |---|---|---|---|---|
 | 1 | Aide / Doc / Légende | 📚 | Accordéon | Aide → Documentation → Légende |
 | 2 | Paramètres | ⚙️ | **Solo** | (clic direct, ouvre la modale Réglages) |
-| 3 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 🗂️ Changer de plan |
+| 3 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 📊 Éditer un fichier JSON → 🗂️ Changer de plan |
 | 4 | Créer / Modifier plan | 🏗️ | **Solo** | (clic direct, ouvre le générateur) |
-| 5 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG → 🔄 Convertisseur |
+| 5 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG (export avancé) → 🔄 Convertisseur |
 | 6 | Tracker | 🧭 | Accordéon | ▶️/⏹️ Tracking → 📍 Recalage |
 | 7 | Mesure | 📐 | Accordéon | 📐 Activer mesure → ❌ Effacer |
 | 8 | Édition | 📌 | Accordéon | 📌 Activer ajout → 🗑️ Effacer |
 | 9 | Tracés | 🛣️ | Accordéon | 🟩 Principale → 🟪 Secondaire → 🟨 Chemin → 🧹 Effacer |
+| 10 | Zones | 🟫 | Accordéon | 🟫 Remblais → 🟥 Effondrement → 🟦 Eau → ✅ Fermer → 🧹 Effacer |
 
 #### Règles de comportement
 
 - **Sens de déroulement** : accordéon vertical — les sous-actions apparaissent en dessous de l'icône principale et repoussent les groupes suivants
 - **Exclusivité** : un seul groupe ouvert à la fois ; ouvrir un groupe ferme automatiquement le précédent
-- **Mode actif** : si un mode du groupe est actif (mesure, ajout, route, recalage, tracking), le groupe **reste verrouillé ouvert** pour permettre l'accès direct aux sous-actions
+- **Mode actif** : si un mode du groupe est actif (mesure, ajout, route, zone, recalage, tracking), le groupe **reste verrouillé ouvert** pour permettre l'accès direct aux sous-actions
 - **Icône principale active** : l'icône principale du groupe **reflète visuellement le mode actif**
   - Tracker : 🧭 → ⏹️ (tracking en cours) ou 📍 (recalage actif)
   - Tracés : 🛣️ → 🟩 / 🟪 / 🟨 selon le type actif
+  - Zones : 🟫 → 🟫 / 🟥 / 🟦 selon le type actif
 - **Clic hors d'un groupe ouvert** → ferme le groupe automatiquement
-- **Modes exclusifs préservés** : Mesure / Édition / Recalage / Tracés restent mutuellement exclusifs
+- **Modes exclusifs préservés** : Mesure / Édition / Recalage / Tracés / Zones restent mutuellement exclusifs
 
 #### Architecture du code
 
@@ -501,36 +670,49 @@ L'interface est organisée en **9 groupes** dans la barre latérale droite. Un s
 |---|---|
 | `afficherAide()` | Référence des boutons par groupe |
 | `afficherConfig()` | Réglages APP_CONFIG + 🎯 calibrage + logs + réinitialiser |
-| `afficherLegende()` | Icônes et tracés du plan actif |
+| `afficherLegende()` | Icônes, tracés et zones du plan actif |
 | `afficherReadme()` | Choix doc utilisateur / développeur |
-| `afficherConvertisseur()` | Conversion JSON bidirectionnelle |
+| `afficherConvertisseur()` | Conversion JSON bidirectionnelle (préserve `roads` et `zones`) |
 | `afficherPlanner()` | Générateur de plan ZIP (Nouveau / Modifier) |
 | `afficherLogsDebug()` | Panneau logs de débogage |
 | `afficherFormulaire(x, y)` | Modale ajout de point (editor.js) |
-| `ouvrirImportSession()` | **Modale d'import de session** plein écran avec drag & drop et aperçu |
+| `ouvrirImportSession()` | Modale d'import de session avec drag & drop et aperçu |
 | `ouvrirCalibrageEchelle()` | Modale de calibrage par produit en croix |
+| `ouvrirExportModal()` | **Modale d'export plan avancé** (exporter.js) |
+| `ouvrirTableEditor()` | **Éditeur de fichier JSON sous forme de tableau** (tableEditor.js) |
 
 #### Helpers de suppression
 
 - `_confirmerAction(titre, texte, callback)` — modale simple Annuler/Confirmer
-- `_choixSuppression(titre, texte, options[])` — modale avec liste d'options labellées (chacune avec icône, description, callback). Utilisée pour : effacer mesure, points, tracés.
+- `_choixSuppression(titre, texte, options[])` — modale avec liste d'options labellées (chacune avec icône, description, callback). Utilisée pour : effacer mesure, points, tracés, zones.
 
 #### Calibrage de l'échelle
 
 `ouvrirCalibrageEchelle()` ouvre une modale dédiée accessible via le bouton 🎯 à côté du champ Échelle dans ⚙️.
 
-Calcul : `nouveau_scale = scale_actuel × (distance_réelle / distance_affichée)`
+Calcul (formule corrigée) : `nouveau_scale = scale_actuel × (distance_AFFICHÉE / distance_RÉELLE)`
+
+> **Vérification :** scale=4.9, l'appli affiche 100m, en réalité 150m → l'appli surestime → il faut **réduire** scale → `4.9 × (100/150) = 3.27` ✅
 
 L'utilisateur saisit la distance affichée par l'appli et la distance réelle mesurée au sol. La modale calcule la nouvelle échelle en temps réel et l'injecte dans le champ Échelle quand on valide.
 
 #### Modale d'import de session
 
-`ouvrirImportSession()` remplace l'ancien sélecteur de fichier brut par une modale plein écran cohérente avec les autres modales :
+`ouvrirImportSession()` ouvre une modale plein écran cohérente avec les autres modales :
 - Zone drag & drop pour fichier `.json`
 - Validation du type (`devmap-session` requis)
-- Aperçu du contenu : nombre de points, tracés et points de mesure
-- Avertissement explicite : *"l'import remplacera tes points/tracés/mesure actuels"*
+- Aperçu du contenu : nombre de points, tracés, **zones**, et points de mesure
+- Avertissement explicite : *"l'import remplacera tes points/tracés/zones/mesure actuels"*
 - Bouton "Importer" désactivé tant que le fichier n'est pas validé
+- Restauration via `setEditorPoints`, `setRoads`, `setZones`, `setMeasurePoints`
+
+#### Page d'accueil — boutons supplémentaires
+
+Le loader (`#planLoaderOverlay` dans `index.html`) propose en bas, sous le mode performance :
+- **🏗️ Générer un plan** — toujours visible, ouvre `window.afficherPlanner()`
+- **🌐 Charger le plan serveur** — toujours visible, tente `loadAppConfig()` au clic. Affiche un message d'erreur clair si aucun `plan-config.json` n'existe à la racine.
+
+L'onglet "Fichiers séparés" du loader a été supprimé — seul le mode ZIP est conservé.
 
 #### Adaptation mobile paysage
 

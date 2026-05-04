@@ -1,0 +1,1252 @@
+// =========================
+// EXPORTER.JS — Modale d'export plan avancée
+// =========================
+// Permet d'exporter le plan en PNG/JPEG avec contrôle fin sur :
+//  - les calques d'image inclus
+//  - les calques de données inclus
+//  - les annotations de session (points / tracés / zones / mesure / tracker)
+//  - une légende intégrée positionnable et stylisable
+//  - le format et la résolution
+// =========================
+
+(function() {
+  "use strict";
+
+  // ÉTAT global de la modale courante
+  let _currentModal = null;
+  let _previewTimer = null;
+  let _previewBusy  = false;
+
+  // =========================
+  // INJECTION DES STYLES (au premier appel)
+  // =========================
+  function _injecterStyles() {
+    if (document.getElementById("kta-export-styles")) return;
+    const style = document.createElement("style");
+    style.id = "kta-export-styles";
+    style.textContent = `
+      .kta-export-cb-row,
+      .kta-export-radio-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #c0c8d8;
+        padding: 4px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s;
+      }
+      .kta-export-cb-row:hover,
+      .kta-export-radio-row:hover {
+        background: rgba(255,255,255,0.04);
+      }
+      .kta-export-cb-row input[type="checkbox"],
+      .kta-export-radio-row input[type="radio"] {
+        margin: 0;
+        cursor: pointer;
+      }
+      .kta-export-cb-row input:disabled {
+        cursor: not-allowed;
+      }
+      .kta-export-cb-row input:disabled + span {
+        color: #666;
+      }
+      #kta-export-modal .kta-aide-section {
+        margin-bottom: 12px;
+      }
+      #kta-export-modal .kta-aide-section-titre {
+        margin-bottom: 8px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // =========================
+  // ENTRÉE PUBLIQUE
+  // =========================
+  window.ouvrirExportModal = function() {
+    _injecterStyles();
+    if (_currentModal) { _currentModal.remove(); _currentModal = null; }
+    _afficherModal("rapide");
+  };
+
+  // =========================
+  // CONSTRUIRE ET AFFICHER LA MODALE
+  // =========================
+  function _afficherModal(modeInitial, etatPrecedent) {
+    const config = window.PLAN_CONFIG;
+    if (!config || !config.plan) {
+      alert("Configuration du plan introuvable");
+      return;
+    }
+
+    // Compter les éléments de session
+    const nbPoints  = window.getEditorPoints  ? window.getEditorPoints().length  : 0;
+    const nbRoads   = window.getRoads         ? window.getRoads().length         : 0;
+    const nbZones   = window.getZones         ? window.getZones().length         : 0;
+    const nbMesure  = window.getMeasurePoints ? window.getMeasurePoints().length : 0;
+    const trackerOk = window.getTrackingPosition && window.getTrackingPosition() !== null;
+
+    // Visibilité courante des calques (pour pré-cocher)
+    const imageLayersVisibles = _getVisibleImageLayerIds(config);
+    const dataLayersVisibles  = _getVisibleDataLayerIds(config);
+
+    const modal = document.createElement("div");
+    modal.id = "kta-export-modal";
+    modal.className = "kta-readme-modal-overlay";
+
+    modal.innerHTML = `
+      <div class="kta-readme-modal-boite" style="max-width:580px; height:auto; max-height:92vh;">
+        <div class="kta-readme-modal-header">
+          <span class="kta-readme-modal-titre">🖼️ Exporter le plan</span>
+          <button class="kta-panneau-close" id="kta-export-close">✕</button>
+        </div>
+        <div class="kta-readme-modal-corps">
+
+          <!-- TOGGLE MODE -->
+          <div class="kta-conv-sens-wrap">
+            <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
+              <span class="kta-conv-sens-label">⚡ Export rapide</span>
+              <span class="kta-conv-sens-desc">Tout inclus, format PNG, résolution originale</span>
+            </button>
+            <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
+              <span class="kta-conv-sens-label">🎨 Avancé</span>
+              <span class="kta-conv-sens-desc">Choix des calques, légende intégrée, format personnalisable</span>
+            </button>
+          </div>
+
+          <!-- MODE RAPIDE -->
+          <div id="kta-export-rapide" style="display:${modeInitial === 'rapide' ? 'block' : 'none'};">
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">📋 Contenu</div>
+              <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
+                ✓ Plan complet (image + tous calques visibles)<br>
+                ✓ Annotations de la session (${nbPoints} point(s), ${nbRoads} tracé(s), ${nbZones} zone(s))<br>
+                ✓ Format PNG, résolution originale<br>
+                ${nbMesure > 0 ? '✓ Mesure de distance (' + nbMesure + ' points)<br>' : ''}
+              </p>
+            </div>
+          </div>
+
+          <!-- MODE AVANCÉ -->
+          <div id="kta-export-avance" style="display:${modeInitial === 'avance' ? 'block' : 'none'};">
+
+            <!-- Calques d'image -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">🖼️ Calques d'image</div>
+              <div id="kta-export-image-layers"></div>
+            </div>
+
+            <!-- Calques de données -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">🗂️ Calques de données</div>
+              <div id="kta-export-data-layers"></div>
+            </div>
+
+            <!-- Annotations -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">📌 Annotations de session</div>
+              <div id="kta-export-annotations"></div>
+            </div>
+
+            <!-- Légende intégrée -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">📋 Légende intégrée</div>
+              <label class="kta-export-cb-row" style="font-weight:600;">
+                <input type="checkbox" id="kta-export-legende-on">
+                <span>Inclure la légende sur le plan</span>
+              </label>
+              <div id="kta-export-legende-options" style="display:none; margin-top:10px;">
+
+                <div style="margin-top:8px;">
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Position</div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-gauche" checked><span>Coin haut-gauche</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="haut-droit"><span>Coin haut-droit</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-gauche"><span>Coin bas-gauche</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_pos" value="bas-droit"><span>Coin bas-droit</span></label>
+                    <label class="kta-export-radio-row" style="grid-column: span 2;"><input type="radio" name="leg_pos" value="custom"><span>Position personnalisée</span></label>
+                  </div>
+
+                  <div id="kta-export-leg-custom" style="display:none; margin-top:8px;">
+                    <button class="kta-btn kta-btn-ghost" id="kta-export-leg-pick" style="width:100%; margin-bottom:6px;">
+                      🎯 Sélectionner sur la carte
+                    </button>
+                    <div style="display:grid; grid-template-columns:auto 1fr auto 1fr; gap:6px; align-items:center;">
+                      <label class="kta-cfg-label" style="margin:0;">X</label>
+                      <input class="kta-cfg-input" type="number" id="kta-export-leg-x" placeholder="0">
+                      <label class="kta-cfg-label" style="margin:0;">Y</label>
+                      <input class="kta-cfg-input" type="number" id="kta-export-leg-y" placeholder="0">
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Style</div>
+                  <div style="display:flex; gap:6px;">
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="opaque" checked><span>Opaque</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="semi"><span>Semi-transparent</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_style" value="filigrane"><span>Filigrane</span></label>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Taille</div>
+                  <div style="display:flex; gap:6px;">
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="compact"><span>Compact</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="standard" checked><span>Standard</span></label>
+                    <label class="kta-export-radio-row"><input type="radio" name="leg_size" value="large"><span>Large</span></label>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px;">
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Contenu de la légende</div>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_icones" checked><span>Icônes (puits, signalétique, etc.)</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_traces" checked><span>Tracés (routes / chemins)</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_zones" checked><span>Zones (remblais / effondrements)</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_track"><span>Tag du tracker</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_meta" checked><span>Métadonnées du plan (nom, version, auteur, date)</span></label>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Format & qualité -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">⚙️ Format &amp; qualité</div>
+              <div style="display:flex; gap:14px; flex-wrap:wrap;">
+                <div>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Format</div>
+                  <label class="kta-export-radio-row"><input type="radio" name="format" value="png" checked><span>PNG</span></label>
+                  <label class="kta-export-radio-row"><input type="radio" name="format" value="jpeg"><span>JPEG (qualité 90%)</span></label>
+                </div>
+                <div>
+                  <div class="kta-cfg-label" style="margin-bottom:4px;">Résolution</div>
+                  <label class="kta-export-radio-row"><input type="radio" name="resol" value="1" checked><span>Originale</span></label>
+                  <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.5"><span>½</span></label>
+                  <label class="kta-export-radio-row"><input type="radio" name="resol" value="0.25"><span>¼</span></label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Aperçu -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">👁️ Aperçu</div>
+              <div style="display:flex; justify-content:center; background:rgba(255,255,255,0.04); border-radius:6px; padding:8px;">
+                <canvas id="kta-export-preview" width="320" height="200" style="max-width:100%; border:1px solid rgba(255,255,255,0.1); border-radius:4px;"></canvas>
+              </div>
+              <p id="kta-export-preview-info" style="font-size:11px; color:#8892a4; margin:6px 0 0; text-align:center;"></p>
+            </div>
+
+          </div>
+
+          <!-- ACTIONS -->
+          <div class="kta-conv-actions" style="margin-top:14px;">
+            <button class="kta-btn kta-btn-ghost"   id="kta-export-annuler">Annuler</button>
+            <button class="kta-btn kta-btn-primary" id="kta-export-go">⬇️ Télécharger</button>
+          </div>
+
+          <div id="kta-export-erreur" class="kta-conv-erreur" style="display:none;"></div>
+
+        </div>
+      </div>
+    `;
+
+    document.documentElement.appendChild(modal);
+    _currentModal = modal;
+
+    // Construire les checkboxes calques dynamiquement
+    _peuplerCalquesImage(config, imageLayersVisibles);
+    _peuplerCalquesData(config, dataLayersVisibles);
+    _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk);
+
+    // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
+    if (etatPrecedent) _restaurerEtat(etatPrecedent);
+
+    _attacherListeners(modal, modeInitial);
+
+    // Premier rendu de l'aperçu (en mode avancé)
+    if (modeInitial === "avance") {
+      _planifierApercu();
+    }
+  }
+
+  // =========================
+  // CONSTRUIRE LES CHECKBOXES
+  // =========================
+  function _peuplerCalquesImage(config, visibles) {
+    const cont = document.getElementById("kta-export-image-layers");
+    if (!cont) return;
+    const layers = config.imageLayers || [];
+    if (layers.length === 0) {
+      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque image</p>';
+      return;
+    }
+    cont.innerHTML = layers.map(function(l) {
+      const checked = visibles.includes(l.id) ? "checked" : "";
+      return `<label class="kta-export-cb-row">
+        <input type="checkbox" data-layer-id="${l.id}" data-layer-type="image" ${checked}>
+        <span>${l.label || l.id}</span>
+      </label>`;
+    }).join("");
+  }
+
+  function _peuplerCalquesData(config, visibles) {
+    const cont = document.getElementById("kta-export-data-layers");
+    if (!cont) return;
+    const layers = config.dataLayers || [];
+    if (layers.length === 0) {
+      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque de données</p>';
+      return;
+    }
+    cont.innerHTML = layers.map(function(l) {
+      const checked = visibles.includes(l.id) ? "checked" : "";
+      return `<label class="kta-export-cb-row">
+        <input type="checkbox" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
+        <span>${l.label || l.id}</span>
+      </label>`;
+    }).join("");
+  }
+
+  function _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk) {
+    const cont = document.getElementById("kta-export-annotations");
+    if (!cont) return;
+
+    function row(id, label, count, defaultChecked) {
+      const disabled = count === 0 ? "disabled" : "";
+      const checked = (count > 0 && defaultChecked) ? "checked" : "";
+      const dim = count === 0 ? "opacity:0.4;" : "";
+      return `<label class="kta-export-cb-row" style="${dim}">
+        <input type="checkbox" id="ann_${id}" ${checked} ${disabled}>
+        <span>${label} ${count !== null ? '<span style="color:#8892a4;">(' + count + ')</span>' : ''}</span>
+      </label>`;
+    }
+
+    cont.innerHTML =
+      row("points",  "Points ajoutés",          nbPoints,  true) +
+      row("roads",   "Tracés / routes",         nbRoads,   true) +
+      row("zones",   "Zones",                   nbZones,   true) +
+      row("mesure",  "Mesure de distance",      nbMesure,  false) +
+      `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
+        <input type="checkbox" id="ann_tracker" ${trackerOk ? '' : 'disabled'}>
+        <span>Position du tracker</span>
+      </label>`;
+  }
+
+  // =========================
+  // ATTACHER LES LISTENERS
+  // =========================
+  function _attacherListeners(modal, modeInitial) {
+    const btnRapide = document.getElementById("kta-export-mode-rapide");
+    const btnAvance = document.getElementById("kta-export-mode-avance");
+    const panRapide = document.getElementById("kta-export-rapide");
+    const panAvance = document.getElementById("kta-export-avance");
+    const btnClose  = document.getElementById("kta-export-close");
+    const btnAnnul  = document.getElementById("kta-export-annuler");
+    const btnGo     = document.getElementById("kta-export-go");
+
+    function fermer() {
+      if (_currentModal) _currentModal.remove();
+      _currentModal = null;
+      if (_previewTimer) { clearTimeout(_previewTimer); _previewTimer = null; }
+    }
+
+    btnClose.addEventListener("click", fermer);
+    btnAnnul.addEventListener("click", fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+    btnRapide.addEventListener("click", function() {
+      btnRapide.classList.add("active"); btnAvance.classList.remove("active");
+      panRapide.style.display = "block"; panAvance.style.display = "none";
+    });
+    btnAvance.addEventListener("click", function() {
+      btnAvance.classList.add("active"); btnRapide.classList.remove("active");
+      panAvance.style.display = "block"; panRapide.style.display = "none";
+      _planifierApercu();
+    });
+
+    // Toggle légende
+    const legOn = document.getElementById("kta-export-legende-on");
+    const legOpts = document.getElementById("kta-export-legende-options");
+    legOn.addEventListener("change", function() {
+      legOpts.style.display = legOn.checked ? "block" : "none";
+      _planifierApercu();
+    });
+
+    // Position légende
+    const radiosPos = modal.querySelectorAll('input[name="leg_pos"]');
+    const customWrap = document.getElementById("kta-export-leg-custom");
+    radiosPos.forEach(function(r) {
+      r.addEventListener("change", function() {
+        customWrap.style.display = (r.value === "custom" && r.checked) ? "block" : "none";
+        _planifierApercu();
+      });
+    });
+
+    // Bouton 🎯 Sélectionner sur la carte
+    const btnPick = document.getElementById("kta-export-leg-pick");
+    btnPick.addEventListener("click", function() {
+      const etat = _capturerEtat();
+      _activerSelectionPosition(etat);
+    });
+
+    // Champs X / Y manuels
+    const xInput = document.getElementById("kta-export-leg-x");
+    const yInput = document.getElementById("kta-export-leg-y");
+    xInput.addEventListener("input", _planifierApercu);
+    yInput.addEventListener("input", _planifierApercu);
+
+    // Tous les autres inputs déclenchent l'aperçu
+    modal.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(function(el) {
+      el.addEventListener("change", _planifierApercu);
+    });
+
+    // Action Télécharger
+    btnGo.addEventListener("click", async function() {
+      const modeRapideActif = btnRapide.classList.contains("active");
+      btnGo.disabled = true;
+      btnGo.textContent = "⏳ Génération…";
+      try {
+        if (modeRapideActif) {
+          // Appeler la fonction historique inchangée
+          if (window.telechargerPlan) {
+            await window.telechargerPlan();
+          }
+        } else {
+          await _exporterAvance();
+        }
+        fermer();
+      } catch(err) {
+        console.error("[Export] Erreur :", err);
+        const erreurEl = document.getElementById("kta-export-erreur");
+        if (erreurEl) {
+          erreurEl.textContent = "Erreur : " + (err.message || err);
+          erreurEl.style.display = "block";
+        }
+        btnGo.disabled = false;
+        btnGo.textContent = "⬇️ Télécharger";
+      }
+    });
+  }
+
+  // =========================
+  // CAPTURE / RESTAURATION D'ÉTAT
+  // (utilisé quand on ouvre la sélection 🎯 sur la carte
+  //  pour rouvrir la modale dans son état précédent)
+  // =========================
+  function _capturerEtat() {
+    if (!_currentModal) return null;
+    const etat = {
+      mode: document.getElementById("kta-export-mode-avance").classList.contains("active") ? "avance" : "rapide",
+      imageLayers: {},
+      dataLayers:  {},
+      ann:         {},
+      legende:     null,
+      format:      _radioVal("format"),
+      resol:       _radioVal("resol")
+    };
+    document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
+      etat.imageLayers[cb.dataset.layerId] = cb.checked;
+    });
+    document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
+      etat.dataLayers[cb.dataset.layerId] = cb.checked;
+    });
+    ["points","roads","zones","mesure","tracker"].forEach(function(k) {
+      const cb = document.getElementById("ann_" + k);
+      etat.ann[k] = cb ? cb.checked : false;
+    });
+    const legOn = document.getElementById("kta-export-legende-on");
+    if (legOn && legOn.checked) {
+      etat.legende = {
+        position: _radioVal("leg_pos"),
+        customX: parseFloat(document.getElementById("kta-export-leg-x").value) || 0,
+        customY: parseFloat(document.getElementById("kta-export-leg-y").value) || 0,
+        style:   _radioVal("leg_style"),
+        size:    _radioVal("leg_size"),
+        contenu: {
+          icones: document.getElementById("leg_c_icones").checked,
+          traces: document.getElementById("leg_c_traces").checked,
+          zones:  document.getElementById("leg_c_zones").checked,
+          track:  document.getElementById("leg_c_track").checked,
+          meta:   document.getElementById("leg_c_meta").checked
+        }
+      };
+    }
+    return etat;
+  }
+
+  function _restaurerEtat(etat) {
+    if (!etat) return;
+    Object.keys(etat.imageLayers || {}).forEach(function(id) {
+      const cb = document.querySelector('[data-layer-id="' + id + '"][data-layer-type="image"]');
+      if (cb) cb.checked = etat.imageLayers[id];
+    });
+    Object.keys(etat.dataLayers || {}).forEach(function(id) {
+      const cb = document.querySelector('[data-layer-id="' + id + '"][data-layer-type="data"]');
+      if (cb) cb.checked = etat.dataLayers[id];
+    });
+    Object.keys(etat.ann || {}).forEach(function(k) {
+      const cb = document.getElementById("ann_" + k);
+      if (cb && !cb.disabled) cb.checked = etat.ann[k];
+    });
+    if (etat.format) _setRadio("format", etat.format);
+    if (etat.resol)  _setRadio("resol",  etat.resol);
+
+    if (etat.legende) {
+      document.getElementById("kta-export-legende-on").checked = true;
+      document.getElementById("kta-export-legende-options").style.display = "block";
+      _setRadio("leg_pos",   etat.legende.position);
+      _setRadio("leg_style", etat.legende.style);
+      _setRadio("leg_size",  etat.legende.size);
+      document.getElementById("kta-export-leg-x").value = etat.legende.customX || "";
+      document.getElementById("kta-export-leg-y").value = etat.legende.customY || "";
+      if (etat.legende.position === "custom") {
+        document.getElementById("kta-export-leg-custom").style.display = "block";
+      }
+      Object.keys(etat.legende.contenu || {}).forEach(function(k) {
+        const cb = document.getElementById("leg_c_" + k);
+        if (cb) cb.checked = etat.legende.contenu[k];
+      });
+    }
+  }
+
+  function _radioVal(name) {
+    const el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : null;
+  }
+  function _setRadio(name, val) {
+    const el = document.querySelector('input[name="' + name + '"][value="' + val + '"]');
+    if (el) el.checked = true;
+  }
+
+  // =========================
+  // SÉLECTION DE LA POSITION 🎯 SUR LA CARTE
+  // =========================
+  function _activerSelectionPosition(etatPrecedent) {
+    // Fermer la modale temporairement
+    if (_currentModal) { _currentModal.remove(); _currentModal = null; }
+
+    // Banner d'instruction
+    const banner = document.createElement("div");
+    banner.id = "kta-export-pick-banner";
+    banner.style.cssText = "position:fixed; top:60px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.9); color:#fff; padding:10px 18px; border-radius:8px; font-size:14px; z-index:9999; box-shadow:0 4px 12px rgba(0,0,0,0.4); border:1px solid rgba(140,180,255,0.5);";
+    banner.innerHTML = "🎯 Cliquez sur le plan pour placer la légende (coin haut-gauche). Échap pour annuler.";
+    document.body.appendChild(banner);
+
+    // Mode crosshair
+    const mapEl = document.getElementById("map");
+    const oldCursor = mapEl.style.cursor;
+    mapEl.style.cursor = "crosshair";
+
+    function nettoyer() {
+      banner.remove();
+      mapEl.style.cursor = oldCursor;
+      window.map.off("click", onClic);
+      document.removeEventListener("keydown", onEchap);
+    }
+
+    function onClic(e) {
+      const x = Math.round(e.latlng.lng);
+      const y = Math.round(APP_CONFIG.imageHeight - e.latlng.lat);
+      nettoyer();
+
+      // Rouvrir la modale avec position custom + coords remplies
+      etatPrecedent.legende = etatPrecedent.legende || {};
+      etatPrecedent.legende.position = "custom";
+      etatPrecedent.legende.customX = x;
+      etatPrecedent.legende.customY = y;
+      _afficherModal("avance", etatPrecedent);
+    }
+
+    function onEchap(e) {
+      if (e.key === "Escape") {
+        nettoyer();
+        _afficherModal("avance", etatPrecedent);
+      }
+    }
+
+    window.map.on("click", onClic);
+    document.addEventListener("keydown", onEchap);
+  }
+
+  // =========================
+  // PLANIFICATION DE L'APERÇU (debounced)
+  // =========================
+  function _planifierApercu() {
+    if (_previewTimer) clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(_genererApercu, 300);
+  }
+
+  // =========================
+  // GÉNÉRATION DE L'APERÇU MINI-CANVAS
+  // =========================
+  async function _genererApercu() {
+    if (_previewBusy) return;
+    const canvas = document.getElementById("kta-export-preview");
+    if (!canvas) return;
+    _previewBusy = true;
+
+    try {
+      const opts = _lireOptions();
+      const tmpCanvas = await _genererCanvasExport(opts, true);
+
+      // Dessiner le tmpCanvas dans le mini-canvas (320×200)
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#1a1f2e";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const ratio = Math.min(canvas.width / tmpCanvas.width, canvas.height / tmpCanvas.height);
+      const w = tmpCanvas.width  * ratio;
+      const h = tmpCanvas.height * ratio;
+      const dx = (canvas.width  - w) / 2;
+      const dy = (canvas.height - h) / 2;
+      ctx.drawImage(tmpCanvas, dx, dy, w, h);
+
+      // Info textuelle
+      const info = document.getElementById("kta-export-preview-info");
+      if (info) {
+        const config = window.PLAN_CONFIG;
+        const finalW = Math.round(config.plan.imageWidth  * opts.resol);
+        const finalH = Math.round(config.plan.imageHeight * opts.resol);
+        info.textContent = opts.format.toUpperCase() + " — " + finalW + "×" + finalH + " px";
+      }
+    } catch(err) {
+      console.warn("[Export] Aperçu erreur :", err);
+    } finally {
+      _previewBusy = false;
+    }
+  }
+
+  // =========================
+  // LECTURE DES OPTIONS DEPUIS LA MODALE
+  // =========================
+  function _lireOptions() {
+    const opts = {
+      imageLayers: {},
+      dataLayers:  {},
+      ann:         {},
+      legende:     null,
+      format:      _radioVal("format") || "png",
+      resol:       parseFloat(_radioVal("resol") || "1")
+    };
+    document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
+      opts.imageLayers[cb.dataset.layerId] = cb.checked;
+    });
+    document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
+      opts.dataLayers[cb.dataset.layerId] = cb.checked;
+    });
+    ["points","roads","zones","mesure","tracker"].forEach(function(k) {
+      const cb = document.getElementById("ann_" + k);
+      opts.ann[k] = cb ? cb.checked : false;
+    });
+    const legOn = document.getElementById("kta-export-legende-on");
+    if (legOn && legOn.checked) {
+      opts.legende = {
+        position: _radioVal("leg_pos") || "haut-gauche",
+        customX:  parseFloat(document.getElementById("kta-export-leg-x").value) || 0,
+        customY:  parseFloat(document.getElementById("kta-export-leg-y").value) || 0,
+        style:    _radioVal("leg_style") || "opaque",
+        size:     _radioVal("leg_size")  || "standard",
+        contenu: {
+          icones: document.getElementById("leg_c_icones").checked,
+          traces: document.getElementById("leg_c_traces").checked,
+          zones:  document.getElementById("leg_c_zones").checked,
+          track:  document.getElementById("leg_c_track").checked,
+          meta:   document.getElementById("leg_c_meta").checked
+        }
+      };
+    }
+    return opts;
+  }
+
+  // =========================
+  // EXPORT AVANCÉ — GÉNÉRATION + DOWNLOAD
+  // =========================
+  async function _exporterAvance() {
+    const opts = _lireOptions();
+    const canvas = await _genererCanvasExport(opts, false);
+
+    const config = window.PLAN_CONFIG;
+    const ext = opts.format === "jpeg" ? "jpg" : "png";
+    const mime = opts.format === "jpeg" ? "image/jpeg" : "image/png";
+    const quality = opts.format === "jpeg" ? 0.9 : undefined;
+
+    return new Promise(function(resolve, reject) {
+      canvas.toBlob(function(blob) {
+        if (!blob) { reject(new Error("Impossible de générer l'image")); return; }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (config.plan.name || "plan") + "_export." + ext;
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        resolve();
+      }, mime, quality);
+    });
+  }
+
+  // =========================
+  // GÉNÉRATION DU CANVAS — cœur de l'export
+  // =========================
+  async function _genererCanvasExport(opts, isApercu) {
+    const config = window.PLAN_CONFIG;
+    const baseW = config.plan.imageWidth;
+    const baseH = config.plan.imageHeight;
+
+    // Pour l'aperçu : taille modeste pour rapidité
+    const scale = isApercu ? Math.min(800 / baseW, 1) : opts.resol;
+    const W = Math.round(baseW * scale);
+    const H = Math.round(baseH * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+
+    // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
+    const sc = function(v) { return v * scale; };
+
+    // ---------- helpers ----------
+    function loadImage(src) {
+      return new Promise(function(res, rej) {
+        const img = new Image();
+        img.onload = function() { res(img); };
+        img.onerror = function() { rej(new Error("Image non chargée : " + src)); };
+        img.src = src;
+      });
+    }
+
+    // ---------- image principale ----------
+    try {
+      const baseImg = await loadImage(config.plan.baseImage);
+      ctx.drawImage(baseImg, 0, 0, W, H);
+    } catch(e) { console.warn("[Export] base image :", e); }
+
+    // ---------- calques d'image cochés ----------
+    const layers = (config.imageLayers || []).slice().sort(function(a, b) {
+      return (a.order || 0) - (b.order || 0);
+    });
+    for (const layerCfg of layers) {
+      if (!opts.imageLayers[layerCfg.id]) continue;
+      try {
+        const img = await loadImage(layerCfg.file);
+        ctx.drawImage(img, 0, 0, W, H);
+      } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
+    }
+
+    // ---------- icônes (cache) ----------
+    const iconCache = {};
+    async function getIconUrl(p) {
+      let url = config.icons.default;
+      if (p.tags && p.tags.length) {
+        for (const tag of p.tags) {
+          if (config.icons[tag]) { url = config.icons[tag]; break; }
+        }
+      }
+      if (!url) return null;
+      if (!iconCache[url]) iconCache[url] = await loadImage(url);
+      return iconCache[url];
+    }
+
+    function drawMarker(img, x, y, size) {
+      if (!img) return;
+      const half = size / 2;
+      ctx.drawImage(img, sc(x) - half, sc(y) - half, size, size);
+    }
+
+    // ---------- zones (avant les tracés) ----------
+    if (opts.ann.zones && window.getZones) {
+      const zones = window.getZones();
+      const ZS = {
+        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+        remblais:     { color: "#666666", fillColor: "#888888", fillOpacity: 0.7, weight: 3, opacity: 1 },
+        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+      };
+      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+      const triees = [...zones].sort(function(a, b) {
+        return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+      });
+      for (const z of triees) {
+        if (!z.points || z.points.length < 3) continue;
+        const s = ZS[z.type] || ZS.remblais;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
+        for (let i = 1; i < z.points.length; i++) {
+          ctx.lineTo(sc(z.points[i].x), sc(z.points[i].y));
+        }
+        ctx.closePath();
+        ctx.fillStyle = s.fillColor;
+        ctx.globalAlpha = s.fillOpacity;
+        ctx.fill();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.weight * scale;
+        ctx.globalAlpha = s.opacity;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ---------- couches data ----------
+    for (const layerCfg of (config.dataLayers || [])) {
+      if (!opts.dataLayers[layerCfg.id]) continue;
+
+      let pts = [];
+      if (layerCfg.id === "editor") {
+        if (opts.ann.points && window.getEditorPoints) pts = window.getEditorPoints();
+      } else {
+        try {
+          const r = await fetch(layerCfg.file);
+          const j = await r.json();
+          pts = j.data || [];
+        } catch(e) { console.warn("[Export] data :", layerCfg.file, e); }
+      }
+      for (const p of pts) {
+        const img = await getIconUrl(p);
+        drawMarker(img, p.x, p.y, 50 * scale);
+      }
+    }
+
+    // ---------- routes ----------
+    if (opts.ann.roads && window.getRoads) {
+      const roads = window.getRoads();
+      const RS = {
+        principal:   { color: "#00ff00", weight: 5 },
+        secondaire:  { color: "#b000ff", weight: 5 },
+        chemin:      { color: "#ffff00", weight: 5 }
+      };
+      for (const r of roads) {
+        if (!r.points || r.points.length === 0) continue;
+        const s = RS[r.type] || { color: "white", weight: 5 };
+        ctx.save();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.weight * scale;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
+        for (let i = 1; i < r.points.length; i++) {
+          ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ---------- mesure ----------
+    if (opts.ann.mesure && window.getMeasurePoints) {
+      const m = window.getMeasurePoints();
+      if (m && m.length > 0) {
+        ctx.save();
+        ctx.strokeStyle = "red";
+        ctx.lineWidth = 3 * scale;
+        ctx.beginPath();
+        ctx.moveTo(sc(m[0].x), sc(m[0].y));
+        for (let i = 1; i < m.length; i++) {
+          ctx.lineTo(sc(m[i].x), sc(m[i].y));
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ---------- tracker ----------
+    if (opts.ann.tracker && window.getTrackingPosition) {
+      const t = window.getTrackingPosition();
+      if (t && typeof t.x === "number" && typeof t.y === "number") {
+        try {
+          const img = await loadImage(config.icons.track);
+          drawMarker(img, t.x, t.y, 50 * scale);
+        } catch(e) {}
+      }
+    }
+
+    // ---------- légende intégrée ----------
+    if (opts.legende) {
+      await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache);
+    }
+
+    return canvas;
+  }
+
+  // =========================
+  // DESSIN DE LA LÉGENDE INTÉGRÉE
+  // =========================
+  async function _dessinerLegende(ctx, leg, canvasW, canvasH, scale, iconCache) {
+    const config = window.PLAN_CONFIG;
+
+    // Tailles selon mode — titre plus modeste, plus proche des libellés
+    const TAILLES = {
+      compact:  { font: 11, line: 18, icon: 16, padding: 6,  titleFont: 13 },
+      standard: { font: 14, line: 24, icon: 22, padding: 10, titleFont: 17 },
+      large:    { font: 18, line: 32, icon: 30, padding: 14, titleFont: 22 }
+    };
+    const T = TAILLES[leg.size] || TAILLES.standard;
+    const fs = T.font * scale;
+    const lh = T.line * scale;
+    const ic = T.icon * scale;
+    const pad = T.padding * scale;
+    const tfs = T.titleFont * scale;
+
+    // Dark theme — cohérent avec les modales de l'application
+    // Fond sombre, accent bleu vif, texte clair
+    const STYLES = {
+      opaque:    {
+        bg:           "rgba(26,31,46,1)",         // #1a1f2e (fond modale)
+        border:       "rgba(140,180,255,0.5)",    // bleu vif
+        borderW:      2,
+        text:         "#e8eaf0",                  // texte clair
+        titreSection: "#8cb4ff",                  // bleu vif
+        titrePrincipal: "#e8eaf0",
+        meta:         "#8892a4"                   // gris bleuté discret
+      },
+      semi:      {
+        bg:           "rgba(26,31,46,0.78)",
+        border:       "rgba(140,180,255,0.4)",
+        borderW:      1,
+        text:         "#e8eaf0",
+        titreSection: "#8cb4ff",
+        titrePrincipal: "#e8eaf0",
+        meta:         "#8892a4"
+      },
+      filigrane: {
+        bg:           "rgba(26,31,46,0.45)",
+        border:       "rgba(140,180,255,0.25)",
+        borderW:      1,
+        text:         "#c0c8d8",
+        titreSection: "#8cb4ff",
+        titrePrincipal: "#c0c8d8",
+        meta:         "#7a8298"
+      }
+    };
+    const S = STYLES[leg.style] || STYLES.opaque;
+
+    // Construire la liste des entrées
+    const entrees = [];
+
+    // Métadonnées — rendues à part (pas de section "Plan", juste les infos)
+    let metaLignes = [];
+    if (leg.contenu.meta && config.plan) {
+      const titre  = (config.plan.name || "Plan");
+      const ver    = config.plan.version ? " " + config.plan.version : "";
+      const auteur = config.plan.author  ? " — " + config.plan.author : "";
+      // Date au format FR : jj/mm/aaaa
+      const d = new Date();
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const aaaa = d.getFullYear();
+      metaLignes = [titre + ver + auteur, dd + "/" + mm + "/" + aaaa];
+    }
+
+    // Icônes
+    if (leg.contenu.icones && config.icons) {
+      const lignes = [];
+      const LBL = {
+        salle: "Salle", pa: "Puits Aération", pc: "Puits Comblé",
+        pb: "Puits Bouché", pe: "Puits au sol / Bassin", ps: "Puits extraction",
+        passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
+        danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure"
+      };
+      const exclu = ["default"];
+      if (!leg.contenu.track) exclu.push("track");
+      Object.keys(config.icons).forEach(function(tag) {
+        if (exclu.includes(tag)) return;
+        if (!config.icons[tag]) return;
+        lignes.push({ label: LBL[tag] || tag, iconUrl: config.icons[tag] });
+      });
+      if (lignes.length > 0) entrees.push({ section: "Icônes", lignes: lignes });
+    }
+
+    // Tracés
+    if (leg.contenu.traces) {
+      entrees.push({ section: "Tracés", lignes: [
+        { label: "Route principale",  lineColor: "#00ff00" },
+        { label: "Route secondaire",  lineColor: "#b000ff" },
+        { label: "Chemin",            lineColor: "#ffff00" }
+      ]});
+    }
+
+    // Zones
+    if (leg.contenu.zones) {
+      entrees.push({ section: "Zones", lignes: [
+        { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
+        { label: "Remblais",     fillColor: "#888888", borderColor: "#666666" },
+        { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" }
+      ]});
+    }
+
+    if (entrees.length === 0 && metaLignes.length === 0) return;
+
+    // ─────────────────────────────────────────────────
+    // SÉPARATION EN COLONNES
+    // Colonne gauche : Icônes (souvent la plus longue)
+    // Colonne droite : Tracés + Zones
+    // ─────────────────────────────────────────────────
+    const colGauche = entrees.filter(function(s) { return s.section === "Icônes"; });
+    const colDroite = entrees.filter(function(s) { return s.section !== "Icônes"; });
+
+    // Si pas d'icônes, tout va à gauche pour éviter une colonne vide
+    if (colGauche.length === 0 && colDroite.length > 0) {
+      colGauche.push(colDroite.shift());
+    }
+
+    // Calculer la largeur max d'une colonne (mesurer libellés + titres de section)
+    function _largeurColonne(sections) {
+      let maxW = 0;
+      ctx.save();
+      sections.forEach(function(sec) {
+        ctx.font = fs + "px sans-serif";
+        sec.lignes.forEach(function(l) {
+          const w = ctx.measureText(l.label).width;
+          if (w > maxW) maxW = w;
+        });
+        ctx.font = "bold " + fs + "px sans-serif";
+        const wt = ctx.measureText(sec.section).width;
+        if (wt > maxW) maxW = wt;
+      });
+      ctx.restore();
+      return maxW;
+    }
+
+    function _hauteurColonne(sections) {
+      let h = 0;
+      sections.forEach(function(sec) {
+        h += lh;                            // titre section
+        h += sec.lignes.length * lh;        // lignes
+        h += pad * 0.5;                     // espace inter-section
+      });
+      return h;
+    }
+
+    // Largeur de chaque colonne (libellé + icône + padding interne)
+    const colInnerW_g = _largeurColonne(colGauche);
+    const colInnerW_d = _largeurColonne(colDroite);
+    const colW_g = colInnerW_g + ic + pad;   // icône + label
+    const colW_d = colInnerW_d + ic + pad;
+
+    // Largeur titre principal et méta (ils s'étalent en pleine largeur)
+    ctx.save();
+    let titreMetaW = 0;
+    ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
+    const wTitre = ctx.measureText("Légende").width;
+    if (wTitre > titreMetaW) titreMetaW = wTitre;
+    ctx.font = "italic " + (fs * 0.92) + "px Georgia, 'Times New Roman', serif";
+    metaLignes.forEach(function(l) {
+      const w = ctx.measureText(l).width;
+      if (w > titreMetaW) titreMetaW = w;
+    });
+    ctx.restore();
+
+    // Espace entre les 2 colonnes
+    const colGap = pad * 1.5;
+
+    // Largeur de la boîte = max entre (titre/méta) et (col gauche + gap + col droite)
+    const colsW = colDroite.length > 0
+      ? colW_g + colGap + colW_d
+      : colW_g;
+    const contentW = Math.max(titreMetaW, colsW);
+    const boiteW = contentW + pad * 2;
+
+    // Hauteur :
+    let totalH = pad;
+    totalH += tfs * 1.2;                  // titre "Légende"
+    totalH += pad * 0.8;                  // espace après titre
+    if (metaLignes.length > 0) {
+      totalH += metaLignes.length * lh * 0.8;
+      totalH += pad * 0.6;
+    }
+    // Hauteur des colonnes (max des 2)
+    const hCol_g = _hauteurColonne(colGauche);
+    const hCol_d = _hauteurColonne(colDroite);
+    totalH += Math.max(hCol_g, hCol_d);
+    totalH += pad;
+    const boiteH = totalH;
+
+    // Position
+    let bx, by;
+    const margin = 20 * scale;
+    switch (leg.position) {
+      case "haut-gauche":  bx = margin;                  by = margin;                   break;
+      case "haut-droit":   bx = canvasW - boiteW - margin; by = margin;                 break;
+      case "bas-gauche":   bx = margin;                  by = canvasH - boiteH - margin; break;
+      case "bas-droit":    bx = canvasW - boiteW - margin; by = canvasH - boiteH - margin; break;
+      case "custom":       bx = leg.customX * scale;     by = leg.customY * scale;       break;
+      default:             bx = margin;                  by = margin;
+    }
+    bx = Math.max(0, Math.min(bx, canvasW - boiteW));
+    by = Math.max(0, Math.min(by, canvasH - boiteH));
+
+    // Fond avec coins légèrement arrondis (cohérent avec les modales)
+    const radius = 6 * scale;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(bx + radius, by);
+    ctx.lineTo(bx + boiteW - radius, by);
+    ctx.quadraticCurveTo(bx + boiteW, by, bx + boiteW, by + radius);
+    ctx.lineTo(bx + boiteW, by + boiteH - radius);
+    ctx.quadraticCurveTo(bx + boiteW, by + boiteH, bx + boiteW - radius, by + boiteH);
+    ctx.lineTo(bx + radius, by + boiteH);
+    ctx.quadraticCurveTo(bx, by + boiteH, bx, by + boiteH - radius);
+    ctx.lineTo(bx, by + radius);
+    ctx.quadraticCurveTo(bx, by, bx + radius, by);
+    ctx.closePath();
+    ctx.fillStyle = S.bg;
+    ctx.fill();
+    ctx.strokeStyle = S.border;
+    ctx.lineWidth = S.borderW;
+    ctx.stroke();
+    ctx.restore();
+
+    // Titre principal "Légende"
+    let cy = by + pad;
+    ctx.save();
+    ctx.fillStyle = S.titrePrincipal;
+    ctx.font = "italic 600 " + tfs + "px Georgia, 'Times New Roman', serif";
+    ctx.textBaseline = "top";
+    ctx.fillText("Légende", bx + pad, cy);
+    cy += tfs * 1.2;
+    ctx.restore();
+
+    // Trait fin sous le titre
+    ctx.save();
+    ctx.strokeStyle = S.titreSection;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(bx + pad, cy);
+    ctx.lineTo(bx + boiteW - pad, cy);
+    ctx.stroke();
+    ctx.restore();
+    cy += pad * 0.4;
+
+    // Métadonnées en pleine largeur (style discret, Georgia)
+    if (metaLignes.length > 0) {
+      ctx.save();
+      ctx.fillStyle = S.meta;
+      ctx.font = "italic " + (fs * 0.92) + "px Georgia, 'Times New Roman', serif";
+      ctx.textBaseline = "top";
+      metaLignes.forEach(function(l) {
+        ctx.fillText(l, bx + pad, cy);
+        cy += lh * 0.8;
+      });
+      ctx.restore();
+      cy += pad * 0.4;
+    }
+
+    // ─────────────────────────────────────────────────
+    // RENDU DES 2 COLONNES
+    // ─────────────────────────────────────────────────
+    const cyColStart = cy;
+    const xColGauche = bx + pad;
+    const xColDroite = bx + pad + colW_g + colGap;
+
+    async function _dessinerSections(sections, xCol, yStart) {
+      let cyLocal = yStart;
+
+      for (const sec of sections) {
+        // Titre de section
+        ctx.save();
+        ctx.fillStyle = S.titreSection;
+        ctx.font = "bold " + fs + "px sans-serif";
+        ctx.textBaseline = "top";
+        ctx.fillText(sec.section, xCol, cyLocal);
+        cyLocal += lh;
+        ctx.restore();
+
+        // Lignes
+        for (const l of sec.lignes) {
+          const yLine = cyLocal + (lh - ic) / 2;
+
+          if (l.iconUrl) {
+            if (!iconCache[l.iconUrl]) {
+              try {
+                iconCache[l.iconUrl] = await new Promise(function(res, rej) {
+                  const im = new Image();
+                  im.onload = function() { res(im); };
+                  im.onerror = rej;
+                  im.src = l.iconUrl;
+                });
+              } catch(e) { iconCache[l.iconUrl] = null; }
+            }
+            if (iconCache[l.iconUrl]) {
+              ctx.drawImage(iconCache[l.iconUrl], xCol, yLine, ic, ic);
+            }
+          } else if (l.lineColor) {
+            ctx.save();
+            ctx.strokeStyle = l.lineColor;
+            ctx.lineWidth = Math.max(3, ic / 5);
+            ctx.beginPath();
+            ctx.moveTo(xCol, cyLocal + lh / 2);
+            ctx.lineTo(xCol + ic, cyLocal + lh / 2);
+            ctx.stroke();
+            ctx.restore();
+          } else if (l.fillColor) {
+            ctx.save();
+            ctx.fillStyle = l.fillColor;
+            ctx.globalAlpha = 0.7;
+            ctx.fillRect(xCol, yLine, ic, ic);
+            ctx.globalAlpha = 1;
+            if (l.borderColor) {
+              ctx.strokeStyle = l.borderColor;
+              ctx.lineWidth = 2;
+              ctx.strokeRect(xCol, yLine, ic, ic);
+            }
+            ctx.restore();
+          }
+
+          ctx.save();
+          ctx.fillStyle = S.text;
+          ctx.font = fs + "px sans-serif";
+          ctx.textBaseline = "middle";
+          ctx.fillText(l.label, xCol + ic + pad, cyLocal + lh / 2);
+          ctx.restore();
+
+          cyLocal += lh;
+        }
+
+        cyLocal += pad * 0.5;
+      }
+    }
+
+    await _dessinerSections(colGauche, xColGauche, cyColStart);
+    if (colDroite.length > 0) {
+      await _dessinerSections(colDroite, xColDroite, cyColStart);
+    }
+  }
+
+  // =========================
+  // HELPERS — visibilité actuelle des calques
+  // =========================
+  function _getVisibleImageLayerIds(config) {
+    const ids = [];
+    (config.imageLayers || []).forEach(function(l) {
+      if (window.map) {
+        let visible = false;
+        window.map.eachLayer(function(layer) {
+          if (layer instanceof L.ImageOverlay && layer._url === l.file) visible = true;
+        });
+        if (visible) ids.push(l.id);
+      } else if (l.visible) {
+        ids.push(l.id);
+      }
+    });
+    return ids;
+  }
+
+  function _getVisibleDataLayerIds(config) {
+    const ids = [];
+    (config.dataLayers || []).forEach(function(l) {
+      const lg = window.dataLayerGroups?.[l.id];
+      if (lg && window.map && window.map.hasLayer(lg)) ids.push(l.id);
+      else if (!lg && l.visible) ids.push(l.id);
+    });
+    return ids;
+  }
+
+})();

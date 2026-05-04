@@ -37,22 +37,7 @@
         <span class="loader-titre">📦 Charger un plan</span>
       </div>
 
-      <div class="loader-tabs">
-        <button class="loader-tab active" id="tabFichiers" type="button">📁 Fichiers séparés</button>
-        <button class="loader-tab"        id="tabZip"      type="button">📦 Archive ZIP</button>
-      </div>
-
-      <div class="loader-panel active" id="panelFichiers">
-        <p class="loader-desc">
-          Importe le fichier <code>plan-config.json</code> puis tous les fichiers associés.
-        </p>
-        <label class="loaderLabel" for="planConfigFile">Fichier plan-config.json</label>
-        <input id="planConfigFile" type="file" accept=".json,application/json">
-        <label class="loaderLabel" for="assetFiles">Fichiers associés</label>
-        <input id="assetFiles" type="file" multiple>
-      </div>
-
-      <div class="loader-panel" id="panelZip">
+      <div class="loader-panel active" id="panelZip">
         <p class="loader-desc">
           Importe une archive <code>.zip</code> contenant <code>plan-config.json</code>
           et tous les fichiers associés.
@@ -80,6 +65,12 @@
         <span class="loader-perf-hint">Recommandé pour les plans &gt; 50 Mo (JPEG volumineux)</span>
       </div>
 
+      <!-- Actions secondaires : générateur + plan serveur -->
+      <div class="loader-secondary-actions">
+        <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
+        <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Charger le plan serveur</button>
+      </div>
+
       <div id="loaderStatus"></div>
     </div>
   </div>
@@ -102,6 +93,9 @@
   <script src="js/tracking.js"></script>
   <script src="js/editor.js"></script>
   <script src="js/road.js"></script>
+  <script src="js/zones.js"></script>
+  <script src="js/exporter.js"></script>
+  <script src="js/tableEditor.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
@@ -137,34 +131,12 @@
     };
 
     window.addEventListener("load", function () {
-      const planConfigInput = document.getElementById("planConfigFile");
-      const assetFilesInput = document.getElementById("assetFiles");
       const loadBtn         = document.getElementById("loadPlanBtn");
       const statusBox       = document.getElementById("loaderStatus");
-      const tabFichiers     = document.getElementById("tabFichiers");
-      const tabZip          = document.getElementById("tabZip");
-      const panelFichiers   = document.getElementById("panelFichiers");
-      const panelZip        = document.getElementById("panelZip");
       const zipDropZone     = document.getElementById("zipDropZone");
       const zipFileInput    = document.getElementById("zipFile");
       const zipFileName     = document.getElementById("zipFileName");
       const confExBtn       = document.getElementById("loaderConfExempleBtn");
-
-      let modeActif = "fichiers";
-
-      tabFichiers.addEventListener("click", function () {
-        modeActif = "fichiers";
-        tabFichiers.classList.add("active"); tabZip.classList.remove("active");
-        panelFichiers.classList.add("active"); panelZip.classList.remove("active");
-        setStatus("");
-      });
-
-      tabZip.addEventListener("click", function () {
-        modeActif = "zip";
-        tabZip.classList.add("active"); tabFichiers.classList.remove("active");
-        panelZip.classList.add("active"); panelFichiers.classList.remove("active");
-        setStatus("");
-      });
 
       if (confExBtn) {
         confExBtn.addEventListener("click", function() {
@@ -235,20 +207,14 @@
         }
         loadBtn.disabled = true;
         try {
-          let planConfigFile, assetFiles;
-          if (modeActif === "zip") {
-            const zipFile = zipFileInput.files[0];
-            if (!zipFile) { setStatus("Sélectionne d'abord une archive .zip", true); loadBtn.disabled = false; return; }
-            setStatus("Extraction en cours…", false);
-            const extracted = await extraireZip(zipFile);
-            planConfigFile = extracted.planConfigFile;
-            assetFiles     = extracted.assetFiles;
-          } else {
-            planConfigFile = planConfigInput?.files?.[0];
-            assetFiles     = assetFilesInput?.files;
-            if (!planConfigFile) { setStatus("Sélectionne d'abord plan-config.json", true); loadBtn.disabled = false; return; }
-            if (!assetFiles || assetFiles.length === 0) { setStatus("Ajoute les fichiers associés", true); loadBtn.disabled = false; return; }
+          const zipFile = zipFileInput.files[0];
+          if (!zipFile) {
+            setStatus("Sélectionne d'abord une archive .zip", true);
+            loadBtn.disabled = false;
+            return;
           }
+          setStatus("Extraction en cours…", false);
+          const { planConfigFile, assetFiles } = await extraireZip(zipFile);
 
           setStatus("Chargement en cours…", false);
 
@@ -278,6 +244,50 @@
         const cb = document.getElementById("loaderPerfMode");
         if (cb && saved.perfMode === true) cb.checked = true;
       } catch(e) {}
+
+      // ─────────────────────────────────────────────────
+      // BOUTONS SECONDAIRES : 🏗️ Générer un plan / 🌐 Charger plan serveur
+      // ─────────────────────────────────────────────────
+
+      // Bouton 🏗️ — ouvrir le générateur de plan depuis le loader
+      const plannerBtn = document.getElementById("loaderPlannerBtn");
+      if (plannerBtn) {
+        plannerBtn.addEventListener("click", function() {
+          if (typeof window.afficherPlanner === "function") {
+            window.afficherPlanner();
+          } else {
+            setStatus("Le générateur n'est pas disponible (créateConf.js manquant ?)", true);
+          }
+        });
+      }
+
+      // Bouton 🌐 — charger le plan serveur s'il existe
+      const serverBtn = document.getElementById("loaderServerBtn");
+      if (serverBtn) {
+        serverBtn.addEventListener("click", async function() {
+          serverBtn.disabled = true;
+          setStatus("Tentative de chargement depuis le serveur…", false);
+          try {
+            // Réutilise loadAppConfig qui fait le bon boulot
+            if (typeof window.loadAppConfig === "function") {
+              const ok = await window.loadAppConfig();
+              if (ok) {
+                if (window.lancerApplication) {
+                  await window.lancerApplication();
+                  if (window.masquerLoader) window.masquerLoader();
+                  return;
+                }
+              }
+            }
+            setStatus("Aucun plan trouvé sur le serveur (plan-config.json absent)", true);
+            serverBtn.disabled = false;
+          } catch(err) {
+            console.error("[Loader serveur]", err);
+            setStatus("Erreur : " + (err.message || err), true);
+            serverBtn.disabled = false;
+          }
+        });
+      }
     });
   </script>
 
