@@ -228,7 +228,9 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 ```
 index.html                  ← Page unique (loader intégré + carte)
 sw.js                       ← Service Worker (mode hors-ligne)
-manifest.json               ← PWA google chrome
+manifest.json              ← PWA google chrome
+
+js/
         │
         ├── debug.js           ← Capture logs + modale débogage
         ├── config.js          ← Configuration unifiée (serveur + import)
