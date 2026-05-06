@@ -461,6 +461,149 @@ Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affi
 
 ---
 
+## 📚 Système multi-plans (`planRegistry.js`)
+
+Module dédié à la gestion de **N plans simultanés** côté utilisateur, avec persistance localStorage + IndexedDB.
+
+### 🗂️ Format de stockage `localStorage["myktamap_plans"]`
+
+```json
+{
+  "version": "1.0",
+  "lastPlanId": "server_data_test1",
+  "plans": [
+    {
+      "id":         "server_data_test1",
+      "type":       "server",
+      "path":       "data/test1",
+      "name":       "Test 1",
+      "version":    "V1",
+      "author":     "Karma",
+      "discovered": true,
+      "lastOpened": "2026-05-06T10:23:00Z",
+      "addedAt":    "2026-05-06T10:00:00Z"
+    },
+    {
+      "id":               "local_planmarseille_v1",
+      "type":             "local",
+      "name":             "Plan Marseille",
+      "version":          "V1",
+      "author":           "...",
+      "originalFilename": "plan_marseille.zip",
+      "fileSize":         24592384,
+      "fsHandleId":       "local_planmarseille_v1",
+      "storedBlob":       false,
+      "lastOpened":       "2026-05-06T11:10:00Z",
+      "addedAt":          "2026-05-04T08:00:00Z"
+    }
+  ]
+}
+```
+
+### 📂 Auto-discovery serveur — `data/index.json`
+
+Pour exposer plusieurs plans côté serveur, créer `data/index.json` à la racine :
+
+**Format minimal** (l'app lit le `name` dans chaque `plan-config.json` à la volée) :
+
+```json
+{ "plans": ["test1", "test2", "demo"] }
+```
+
+Avec ce format, l'app cherche `data/test1/plan-config.json`, `data/test2/plan-config.json`, etc.
+
+**Format détaillé** (évite N fetches au démarrage, recommandé en prod) :
+
+```json
+{
+  "plans": [
+    { "id": "test1", "path": "data/test1", "name": "Test 1", "version": "V1", "author": "..." },
+    { "id": "test2", "path": "data/test2", "name": "Test 2", "version": "V2", "author": "..." }
+  ]
+}
+```
+
+### 🔐 Persistance des plans locaux — 3 stratégies
+
+L'UI propose **automatiquement la meilleure méthode disponible** selon la plateforme :
+
+#### 1. File System Access API (Chrome / Edge desktop)
+
+- Bouton **🔐 Autoriser l'accès permanent** sous la zone de drop
+- L'utilisateur sélectionne le ZIP via `showOpenFilePicker()`
+- Le `FileSystemFileHandle` est sauvé en IndexedDB store `handles`
+- Au rechargement futur : `getHandle(id)` + `ensureHandlePermission()` (`queryPermission` puis `requestPermission` si besoin)
+- Au pire 1 clic Chrome ("Voir le fichier") après refresh ; 0 clic en session courante
+- **Limites** : pas supporté Firefox / Safari / mobile
+
+#### 2. Stockage Blob IndexedDB (mobile + fallback)
+
+- Checkbox **💾 Mémoriser ce plan dans l'app** sous la zone de drop
+- Au chargement, le `File` (Blob ZIP entier) est copié dans IndexedDB store `blobs`
+- `navigator.storage.persist()` appelé avant pour empêcher la purge auto (iOS Safari, Chrome Android)
+- Au rechargement futur : `getBlob(id)` retourne directement le Blob → reconstruction d'un `File` → flux normal
+- **Fonctionne hors-ligne** et sur **mobile**
+- **Limites de stockage** :
+  - iOS Safari (navigateur) : ~50 Mo, peut être purgé après inactivité
+  - iOS Safari (PWA installée) : jusqu'à 1 Go, persistant
+  - Android Chrome : plusieurs Go (% de l'espace disque)
+  - Desktop : très large (Go)
+
+#### 3. Re-sélection (fallback)
+
+- Aucune persistance enregistrée
+- Au clic sur un plan local du registre, ouverture du sélecteur de fichier
+- Validation : si `cfg.plan.name !== plan.name` du registre → `confirm()` "Charger quand même ?"
+
+### 🏷️ Indicateurs visuels (badges)
+
+Chaque ligne de plan local affiche un badge selon sa stratégie de persistance :
+
+| Badge | Signification | Couleur |
+|---|---|---|
+| ✅ | `storedBlob: true` — ZIP mémorisé en IDB | Vert |
+| 🔐 | `fsHandleId` présent — FS handle en IDB | Bleu |
+| 📁 | Aucune persistance — re-sélection requise | Gris |
+
+### 🔄 Hiérarchie de chargement
+
+Quand l'utilisateur clique sur un plan local depuis le home, l'app tente dans cet ordre :
+
+1. **Blob IDB** si `plan.storedBlob === true`
+2. **FS Handle** si `plan.fsHandleId` + `hasFsAccess()`
+3. **Re-sélection** via `showOpenFilePicker` (avec capture du handle pour persistance future) ou `<input type="file">`
+
+Cet ordre est volontairement structuré pour optimiser l'UX : le blob donne 0 clic et fonctionne hors-ligne, le handle FS demande au pire 1 clic, la re-sélection est le dernier recours.
+
+### 💾 Export / Import de la liste
+
+L'utilisateur peut exporter sa liste pour la migrer entre appareils ou la partager :
+
+- **Export** : génère `myktamap_plans_AAAAMMJJ.config` (JSON, type `myktamap-plans-list`). Les `fsHandleId` sont volontairement retirés (non portables entre machines).
+- **Import** : modale 3 modes
+  - **Remplacer** : écrase la liste actuelle
+  - **Fusionner** : ajoute les plans non déjà présents (par id), conserve les existants
+  - **Annuler**
+
+`statsImport(file)` retourne `{ ok, total, newOnes, duplicates }` pour pré-afficher un résumé avant action.
+
+### 🗄️ Schéma IndexedDB
+
+Base `myktamap_handles` (version 2) :
+
+```
+└── ObjectStore "handles"   ← FileSystemFileHandle, clé = id du plan
+└── ObjectStore "blobs"     ← Blob ZIP, clé = id du plan
+```
+
+À la suppression d'un plan via `remove(id)` :
+
+1. Suppression de l'entrée localStorage
+2. `removeHandle(id)` sur store `handles`
+3. `removeBlob(id)` sur store `blobs` (libère l'espace disque)
+
+---
+
 ## 🎨 Système d'icônes dynamique
 
 Les icônes sont entièrement **pilotées par `PLAN_CONFIG.icons`** — aucune liste hard-codée dans le code.
