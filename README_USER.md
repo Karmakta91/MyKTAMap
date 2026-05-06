@@ -52,17 +52,27 @@ Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez 
 
 ## 🚀 Premiers pas
 
-### 📱 Installer l'application sur iPhone (recommandé)
+### 📱 Installer l'application sur Mobile (Iphone/Android)
 
-MyKTAMap peut être installée comme application native sur iPhone — sans passer par l'App Store :
+MyKTAMap peut être installée comme application native sur Mobile — sans passer par l'App Store/Play Store :
 
-1. Ouvrez `myktamap.is-underground.fr` dans **Safari**
+1. Ouvrez `myktamap.is-underground.fr` dans **chrome/safari**
 2. Appuyez sur le bouton de partage ↑ en bas de l'écran
 3. Sélectionnez **"Sur l'écran d'accueil"**
 4. Confirmez — une icône apparaît sur votre écran d'accueil
 5. Lancez toujours l'application depuis cette icône
 
-> L'application fonctionne ainsi en mode plein écran, sans la barre Safari.
+> L'application fonctionne ainsi en mode plein écran, sans la barre du navigateur.
+
+### 📥 Installer l'application sur PC
+
+MyKTAMap peut être installée comme application native sur PC egalement — sans installer un exécutable.
+
+1. Ouvrez `myktamap.is-underground.fr` dans **chrome**
+2. Appuyez sur le bouton "Installer" à coté de l'URL
+3. Confirmez — une icône apparaît sur votre bureau
+4. Lancez toujours l'application depuis cette icône
+
 
 ### 📦 Charger un plan
 
@@ -76,7 +86,7 @@ Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affi
 
 ### ⚡ Mode performance
 
-Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performance** avant de charger. Ce mode découpe l'image en tuiles pour éviter les crashes sur iPhone. La qualité est légèrement réduite mais l'image s'affiche correctement.
+Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performance** avant de charger. Ce mode découpe l'image en tuiles pour éviter les crashes sur Mobile. La qualité est légèrement réduite mais l'image s'affiche correctement.
 
 > Le mode performance se coche automatiquement si votre archive ZIP dépasse 50 Mo.
 
@@ -120,7 +130,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Recherche** | 🔍 | Trouver rapidement un point sur le plan *(clic direct)* |
 | **Charger / Import** | ⬇️ | Importer une session, éditer un fichier JSON, changer de plan |
 | **Créer / Modifier plan** | 🏗️ | Générateur de plan *(clic direct)* |
-| **Enregistrer** | ⬆️ | Exporter ta session, exporter le plan en image, convertisseur |
+| **Enregistrer** | ⬆️ | Enregistrer ta session (3 modes), exporter le plan en image |
 | **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
@@ -174,7 +184,7 @@ La recherche couvre **tous les calques de données du plan** (puits, véhicules,
 
 ### ▶️ Démarrer le tracking
 
-Appuyez sur **▶️** pour démarrer. Sur iPhone, une demande de permission s'affiche — acceptez-la pour autoriser l'accès aux capteurs de mouvement.
+Appuyez sur **▶️** pour démarrer. Sur Mobile, une demande de permission s'affiche — acceptez-la pour autoriser l'accès aux capteurs de mouvement.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
@@ -333,24 +343,55 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 > Tous les boutons d'export se trouvent dans le groupe **⬆️ Enregistrer** de la barre latérale.
 
-### 💾 Exporter une session
+### 💾 Enregistrer une session
 
-Appuyez sur **⬆️ → 💾 Session JSON** pour télécharger un fichier `devmap-session.json` contenant les points ajoutés, les tracés, les zones et les points de mesure. Réimportable via le groupe **⬇️ Charger / Import → 📥 Importer une session**.
+Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **3 onglets** au choix :
+
+#### 🚀 Full
+Exporte tout en un seul fichier `devmap-session` (points ajoutés, tracés, zones).
+Pratique pour sauvegarder ta session et la reprendre plus tard.
+
+> 📌 La mesure de distance et la position du tracker ne sont **pas** incluses en mode Full.
+
+#### 🎨 Avancé
+Sélection précise de ce que tu veux exporter :
+
+- ✏️ **Points ajoutés** + cases par tag (avec icône miniature) + une catégorie spéciale `(sans tag)` pour les points sans tags. Tu peux donc exporter par exemple uniquement les points avec le tag `pa` ou `danger`.
+- 🛣️ **Tracés** + cases par type (principaux, secondaires, chemins)
+- ⬛ **Zones** + cases par type (eau, remblais, effondrement)
+- 🧭 **Position du tracker** *(en option)* — inclut aussi le chemin parcouru s'il existe
+
+**Format de sortie** au choix :
+- 📄 **Un seul fichier session** (.json — réimportable comme une sauvegarde classique)
+- 📦 **ZIP multi-fichiers** (un fichier par catégorie : `session_points.json`, `session_roads.json`, etc.)
+
+#### 🔄 Conversion
+Convertit ta session en **calque de données** prêt à intégrer dans un plan définitif via le fichier `plan-config.json`.
+
+Cases à cocher : Points / Tracés / Zones (avec **filtrage par tag** pour les points, comme en Avancé). Pas de tracker en conversion.
+
+**Granularité** au choix :
+- 📄 **Basique** : 1 fichier par catégorie (`points.json`, `roads.json`, `zones.json`)
+- 🔬 **Fine** : 1 fichier par type (`zones_eau.json`, `zones_remblais.json`, `roads_principal.json`, etc.)
+
+Téléchargement direct si 1 seul fichier, ZIP sinon.
+
+> 💡 La conversion est utile pour figer une partie de ton travail dans un plan permanent. Une fois converties en data layer, ces données ne sont plus modifiables depuis l'application.
 
 ### 🖼️ Exporter le plan en image
 
 Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :
 
 #### ⚡ Export rapide
-Tout est inclus automatiquement : plan complet, tous les calques visibles, points, tracés, zones, format PNG résolution originale. Un seul clic sur **Télécharger**.
+Tout est inclus automatiquement : plan complet, tous les calques visibles, points, tracés, zones, position et chemin du tracker. Format PNG résolution originale. Un seul clic sur **Télécharger**.
 
 #### 🎨 Export avancé
 Pour un contrôle précis sur tout ce que tu exportes :
 
 - **Calques d'image** — coche/décoche chaque calque (légende du plan, annotations, etc.)
-- **Calques de données** — coche les couches à inclure (puits, véhicules, etc.)
-- **Annotations** — choisis quoi inclure parmi tes points, tracés, zones, mesure, position du tracker
-- **Légende intégrée** 🆕 — ajoute une légende stylisée directement sur le plan exporté :
+- **Calques de données** — coche les couches à inclure (puits, véhicules, etc.). Les zones et tracés embarqués dans ces calques sont aussi exportés.
+- **Annotations** — choisis quoi inclure parmi tes points, tracés, zones, mesure, position et chemin du tracker
+- **Légende intégrée** — ajoute une légende stylisée directement sur le plan exporté :
   - **Position** : 4 coins (haut-gauche, haut-droit, bas-gauche, bas-droit) ou **personnalisée** (clique 🎯 puis sur le plan pour placer le coin haut-gauche de la légende)
   - **Style** : Opaque / Semi-transparent / Filigrane
   - **Taille** : Compact / Standard / Large
@@ -360,10 +401,6 @@ Pour un contrôle précis sur tout ce que tu exportes :
 - **Aperçu** : un mini-canvas se met à jour en temps réel pour visualiser le résultat
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
-
-### 🔄 Convertisseur
-
-Voir la section dédiée plus bas.
 
 ---
 
@@ -424,20 +461,6 @@ Bouton **💾 Sauvegarder** → 3 choix :
 ### 🗂️ Changer de plan
 
 Appuyez sur **⬇️ → 🗂️ Changer de plan** pour charger un autre plan complet. Les données non exportées seront perdues — exportez avant de changer.
-
----
-
-## 🔄 Convertisseur de données
-
-> Accessible via le groupe **⬆️ Enregistrer → 🔄 Convertisseur**.
-
-Permet de transformer des fichiers entre le format édition (session) et le format calque de données.
-
-**Session → Calque de données** — convertit vos annotations en calque permanent rechargeable dans le plan (utile si vous voulez intégrer durablement vos points dans la prochaine version du plan).
-
-**Calque de données → Session** — convertit un calque existant en session importable pour le modifier dans l'application.
-
-Les **tracés de routes et les zones** (remblais, effondrement, eau) sont préservés dans les deux sens.
 
 ---
 
@@ -531,7 +554,7 @@ C'est normal — le mode performance réduit la résolution pour éviter les cra
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
 
-**L'application crash sur iPhone avec un JPEG volumineux**
+**L'application crash sur Mobile avec un JPEG volumineux**
 Activez le **⚡ Mode performance** avant de charger le plan.
 
 **Un mode reste actif sans le vouloir**

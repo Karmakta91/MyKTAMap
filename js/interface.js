@@ -133,15 +133,15 @@ const _origResetConfig_wrap = window.resetConfig;
 // EXPORT SESSION JSON
 // =========================
 function telechargerSessionJSON() {
+  // Fonction conservée comme fallback si sessionExporter.js n'est pas chargé.
+  // Format Full (sans mesure, sans tracker) — voir sessionExporter.js pour la modale complète.
   const data = {
     type: "devmap-session",
-    version: 1,
+    version: "1.0",
+    date_export: new Date().toISOString(),
     editorPoints: window.getEditorPoints ? window.getEditorPoints() : [],
-    measure: {
-      points: window.getMeasurePoints ? window.getMeasurePoints() : []
-    },
-    roads: window.getRoads ? window.getRoads() : [],
-    zones: window.getZones ? window.getZones() : []
+    roads:        window.getRoads        ? window.getRoads()        : [],
+    zones:        window.getZones        ? window.getZones()        : []
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -633,37 +633,48 @@ function afficherReadme() {
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  const choix = document.createElement("div");
-  choix.id = "kta-readme-choix";
-  choix.className = "kta-readme-modal-overlay";
+  // Chargement direct de la doc utilisateur
+  _chargerReadme("README_USER.md");
+}
 
-  choix.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:380px; height:auto;">
-      <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">📖 Documentation</span>
-        <button class="kta-panneau-close" id="kta-choix-close">✕</button>
-      </div>
-      <div class="kta-readme-modal-corps">
-        <p style="color:#8892a4; font-size:13px; margin:0 0 16px;">Quelle documentation souhaitez-vous consulter ?</p>
-        <div style="display:flex; gap:10px; flex-direction:column;">
-          <button class="kta-btn kta-btn-primary" id="kta-choix-user" style="text-align:left; padding:12px 16px;">
-            📗 Documentation Utilisateur
-            <span style="display:block; font-size:11px; opacity:0.7; font-weight:400; margin-top:3px;">Guide d'utilisation de l'application</span>
-          </button>
-          <button class="kta-btn kta-btn-ghost" id="kta-choix-dev" style="text-align:left; padding:12px 16px;">
-            📘 Documentation Développeur
-            <span style="display:block; font-size:11px; opacity:0.7; font-weight:400; margin-top:3px;">Architecture technique et configuration</span>
-          </button>
-        </div>
-      </div>
+function _ajouterSommaireReadme(html) {
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+
+  const titrePrincipal = temp.querySelector("h1");
+  const titres = Array.from(temp.querySelectorAll("h2"));
+
+  if (titres.length === 0) return temp.innerHTML;
+
+  let sommaire = `
+    <div class="kta-readme-toc">
+      <h2 class="kta-readme-toc-title">📚 Sommaire</h2>
+      <ul>
+  `;
+
+  titres.forEach(function(titre, index) {
+    const id = "section-readme-" + index;
+    titre.id = id;
+
+    sommaire += `
+      <li><a href="#${id}">${titre.textContent}</a></li>
+    `;
+  });
+
+  sommaire += `
+      </ul>
     </div>
   `;
 
-  document.documentElement.appendChild(choix);
-  document.getElementById("kta-choix-close").addEventListener("click", function () { choix.remove(); });
-  choix.addEventListener("click", function (e) { if (e.target === choix) choix.remove(); });
-  document.getElementById("kta-choix-user").addEventListener("click", function () { choix.remove(); _chargerReadme("README_USER.md"); });
-  document.getElementById("kta-choix-dev").addEventListener("click",  function () { choix.remove(); _chargerReadme("README.md"); });
+  const premierH2 = temp.querySelector("h2");
+
+  if (premierH2) {
+    premierH2.insertAdjacentHTML("beforebegin", sommaire);
+  } else if (titrePrincipal) {
+    titrePrincipal.insertAdjacentHTML("afterend", sommaire);
+  }
+
+  return temp.innerHTML;
 }
 
 function _chargerReadme(fichier) {
@@ -673,7 +684,9 @@ function _chargerReadme(fichier) {
     .then(function(md) {
       const html = _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-      if (corps) corps.innerHTML = "<p>" + html + "</p>";
+      if (corps) {
+  corps.innerHTML = _ajouterSommaireReadme(html);
+}
     })
     .catch(function(err) {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
@@ -858,9 +871,8 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Exporter la session en JSON</span>
-            <span class="kta-aide-icone">🖼️</span><span>Télécharger le plan en image (PNG)</span>
-            <span class="kta-aide-icone">🔄</span><span>Convertir un fichier édition ↔ calque de données</span>
+            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 3 modes : Full / Avancé / Conversion</span>
+            <span class="kta-aide-icone">🖼️</span><span>Exporter le plan en image — modale avec mode Rapide / Avancé</span>
           </div>
         </div>
 
@@ -1531,12 +1543,14 @@ function initInterface() {
     iconePrincipale: "⬆️",
     titre: "Enregistrer",
     sousActions: [
-      { icone: "💾", titre: "Exporter la session JSON",    onClick: telechargerSessionJSON },
+      { icone: "💾", titre: "Enregistrer la session", onClick: function() {
+          if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal();
+          else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
+        } },
       { icone: "🖼️", titre: "Exporter le plan en image", onClick: function() {
           if (window.ouvrirExportModal) window.ouvrirExportModal();
           else if (window.telechargerPlan) window.telechargerPlan();
-        } },
-      { icone: "🔄", titre: "Convertisseur JSON",          onClick: afficherConvertisseur }
+        } }
     ]
   });
 

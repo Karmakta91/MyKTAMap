@@ -1441,3 +1441,55 @@ html, body {
     margin-top: 1px !important;
   }
 }
+
+
+.kta-readme-toc {
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 14px 0 22px;
+}
+
+.kta-readme-toc-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  margin: 0 0 10px;
+  font-size: 18px; /* ou laisse le style h2 global */
+  color: #8cb4ff;
+}
+
+.kta-readme-toc-icon {
+  font-size: 18px;
+}
+
+.kta-readme-toc ul {
+  margin: 0;
+  padding-left: 18px;
+  columns: 2;
+}
+
+.kta-readme-toc li {
+  margin: 6px 0;
+  break-inside: avoid;
+}
+
+.kta-readme-toc a {
+  color: #c0c8d8;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.kta-readme-toc a:hover {
+  color: #8cb4ff;
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .kta-readme-toc ul {
+    columns: 1;
+  }
+}

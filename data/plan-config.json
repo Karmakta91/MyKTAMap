@@ -6,7 +6,7 @@
     "imageWidth": 4000,
     "imageHeight": 2251,
     "baseImage": "data/TestMAP.png",
-    "collisionImage": ""
+    "collisionImage": "data/collision.png"
   },
   "imageLayers": [],
   "dataLayers": [

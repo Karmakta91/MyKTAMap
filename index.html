@@ -23,6 +23,10 @@
 
   <!-- Favicon classique pour navigateur desktop -->
   <link rel="icon" type="image/png" href="icon/mkm.png">
+
+  <!-- ICON CHROME INSTALL-->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
 </head>
 
 <body>
@@ -96,6 +100,8 @@
   <script src="js/zones.js"></script>
   <script src="js/exporter.js"></script>
   <script src="js/tableEditor.js"></script>
+  <script src="js/searchPoints.js"></script>
+  <script src="js/sessionExporter.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
@@ -290,6 +296,19 @@
       }
     });
   </script>
-
+<script>
+  // Enregistrement Service Worker (PWA)
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js")
+        .then(function (reg) {
+          console.log("[PWA] Service Worker enregistré", reg);
+        })
+        .catch(function (err) {
+          console.warn("[PWA] Erreur SW :", err);
+        });
+    });
+  }
+</script>
 </body>
 </html>

@@ -9,35 +9,63 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 05/05/2026 — Export session avancé + filtrage par tag + bugs résolus
+
+- Sommaire dans la documentation
+- Documentation Utilisateur afficher uniquement
+
+- **Nouveau module `sessionExporter.js`** — modale d'export de session avec 3 onglets
+  - 🚀 **Full** : export complet sans tracker (équivalent ancien comportement, mais sans la mesure)
+  - 🎨 **Avancé** : sélection fine par catégorie + sous-types, format de sortie au choix (1 fichier session OU ZIP multi-fichiers), case optionnelle "Position du tracker" (path + position)
+  - 🔄 **Conversion** : convertit la session en data layer(s) au format `devmap-data`, granularité au choix (basique = 3 fichiers max, fine = 1 fichier par type)
+- **Sélection des points par tag** (dans Avancé ET Conversion)
+  - Liste dynamique des tags présents dans les points, avec compteur et **icône miniature** depuis `PLAN_CONFIG.icons`
+  - Catégorie spéciale `(sans tag)` pour les points sans tags
+  - Synchronisation parent ↔ enfants : décocher Points ajoutés décoche tous les tags, et inversement
+  - Filtrage : un point est inclus s'il a **au moins un de ses tags coché** (ou s'il n'a pas de tag et que `(sans tag)` est coché)
+  - Helpers : `_listerTagsPoints()`, `_filtrerPointsParTags()`, `_lireTagsCoches()`, `_slugTagId()`, `_iconePourTag()`
+- **Suppression du bouton 🔄 Convertisseur** séparé du menu ⬆️ Enregistrer — la conversion se fait maintenant exclusivement via la modale 💾 → onglet Conversion
+- **Suppression de la mesure** dans l'export session (Full)
+- **Bouton 💾** : "Exporter la session JSON" → "Enregistrer la session" (ouvre la modale)
+- **Format JSON** : `version` passe de `1` (number) à `"1.0"` (string) + ajout du champ `date_export`
+- **Bug eau résolu** : dans `utils.js` → `ajouterPointsDepuisJSON`, l'objet `ZONE_STYLES_DATA` ne contenait pas l'`eau` → les zones d'eau d'un calque de données s'affichaient en remblais à l'écran (mais étaient correctement exportées en eau). Ajout de l'eau + tri eau → remblais → effondrement.
+- **Bug zones/routes embarquées dans dataLayers** : à l'export PNG, les `roads[]` et `zones[]` lus depuis un fichier de calque étaient ignorés. Fix dans `exporter.js` (mode Avancé) et `utils.js` (mode Rapide) : on dessine maintenant zones embarquées (arrière-plan) → routes embarquées → markers, comme à l'écran.
+- **Bug tracker non exporté** : `tracking.js` n'exposait pas les fonctions appelées par les exporters. Ajout de `window.getTrackingPosition()` (renvoie `{x, y}`) et `window.getTrackingPath()` (renvoie la liste des points du tracé en coords plan, reconvertie depuis la polyline Leaflet).
+- **Tracker complet** : à l'export, dessine le tracé parcouru (polyline bleu `#3388ff` weight 3) + position courante (icône). Label de la case "Position du tracker" enrichi avec `(+ tracé N pts)` quand path > 1 point.
+- **Permission capteurs au play uniquement** : suppression du listener `document.body.click` dans `main.js` et `main_import.js` qui demandait la permission au tout premier clic global. Maintenant la popup iOS de permission n'apparaît qu'au clic sur ▶️ Play du tracker (cohérent avec la directive Apple "permission dans une tâche utilisateur directe").
+- **Icône groupe Édition** : confirmation que ✏️ est bien en place partout (vs. 📌 punaise testé puis abandonné)
+
 ### 🗓️ 04/05/2026 — Recherche de point + ajustements
 - **Nouveau module `searchPoints.js`** — recherche rapide d'un point par nom, id, tag, description ou état
-  - Bouton **🔍 Rechercher un point** ajouté en position solo dans la barre latérale, après ⚙️ Paramètres
-  - Recherche live debounced 200ms, normalisation NFD (insensible aux accents et à la casse)
-  - Tri par pertinence : match exact nom (100) → début nom (80) → dans nom (60) → exact id (50) → début id (40) → dans id (30) → tags (20) → description/état (10)
-  - Limite 50 résultats avec compteur "+ N autres"
-  - Affichage : icône miniature + ID en bleu + nom + chip layer + tags + coordonnées
-  - Navigation clavier : ↑/↓ entre résultats, Entrée pour valider, Échap pour fermer
-  - **Cache de points** par signature de plan (name|version|baseImage), invalidation auto au changement de plan
-  - Au clic sur un résultat : `setView` instantané (pas `flyTo` pour éviter dérive cumulée), popup ouvert sur le marker existant ou popup temporaire si layer non visible, **cercle d'entourage statique orange** (3s puis disparition)
+
+  . Bouton **🔍 Rechercher un point** ajouté en position solo dans la barre latérale, après ⚙️ Paramètres
+  . Recherche live debounced 200ms, normalisation NFD (insensible aux accents et à la casse)
+  . Tri par pertinence : match exact nom (100) → début nom (80) → dans nom (60) → exact id (50) → début id (40) → dans id (30) → tags (20) → description/état (10)
+  . Limite 50 résultats avec compteur "+ N autres"
+  . Affichage : icône miniature + ID en bleu + nom + chip layer + tags + coordonnées
+  . Navigation clavier : ↑/↓ entre résultats, Entrée pour valider, Échap pour fermer
+  . **Cache de points** par signature de plan (name|version|baseImage), invalidation auto au changement de plan
+  . Au clic sur un résultat : `setView` instantané (pas `flyTo` pour éviter dérive cumulée), popup ouvert sur le marker existant ou popup temporaire si layer non visible, **cercle d'entourage statique orange** (3s puis disparition)
+
 - **Couleur des remblais** : passage à `#3a3a44` (bordure) / `#5a5a68` (remplissage) — gris franc qui ne se confond plus avec les fonds beiges/marron des plans
 - **Icône du groupe Zones** : 🟫 → **⬛** (Large Brown Square → Black Large Square) car 🟫 est marron par définition Unicode et ne reflétait pas la couleur réelle des remblais. Synchronisé dans le bouton principal, les sous-actions, l'aide et les modes actifs.
 
 ### 🗓️ 04/05/2026 — Éditeur tableau JSON
 - **Nouveau module `tableEditor.js`** — éditeur de fichier JSON sous forme de tableau interactif
-  - Bouton **📊 Éditer un fichier JSON** ajouté en 2e position dans le groupe ⬇️ Charger
-  - Auto-détection du format (`data` calque ou `editorPoints` session)
-  - Détection automatique des colonnes avec ordre privilégié (id, nom, x, y, tags, etat...)
-  - Édition inline : Tab/Enter/Échap, validation typée (number pour x/y/profondeur)
-  - **ID en lecture seule** (cellule grisée)
-  - **Validation des coordonnées** : cellule rouge ⚠ si hors `imageWidth`/`imageHeight` + tooltip
-  - **Tags multi-select** avec dropdown : icônes en preview, tags existants + champ "Créer un tag"
-  - Recherche live debounced 200ms, tri asc/desc/none, sélection multi (shift+clic)
-  - Aperçu sur la carte : modale masquée, markers cercles oranges + banner retour
-  - Avertissement si > 1000 lignes
-  - Sauvegarde via menu : 📥 Téléchargement / 🗺️ Remplacer le calque actif / ✏️ Remplacer la session
-  - Confirmation à la fermeture si modifications non sauvées (Sauvegarder / Quitter / Continuer)
-  - Module autonome — styles CSS injectés dynamiquement au premier appel
-  - Branchement : `<script src="js/tableEditor.js">` ajouté dans `index.html` après `exporter.js`
+  . Bouton **📊 Éditer un fichier JSON** ajouté en 2e position dans le groupe ⬇️ Charger
+  . Auto-détection du format (`data` calque ou `editorPoints` session)
+  . Détection automatique des colonnes avec ordre privilégié (id, nom, x, y, tags, etat...)
+  . Édition inline : Tab/Enter/Échap, validation typée (number pour x/y/profondeur)
+  . **ID en lecture seule** (cellule grisée)
+  . **Validation des coordonnées** : cellule rouge ⚠ si hors `imageWidth`/`imageHeight` + tooltip
+  . **Tags multi-select** avec dropdown : icônes en preview, tags existants + champ "Créer un tag"
+  . Recherche live debounced 200ms, tri asc/desc/none, sélection multi (shift+clic)
+  . Aperçu sur la carte : modale masquée, markers cercles oranges + banner retour
+  . Avertissement si > 1000 lignes
+  . Sauvegarde via menu : 📥 Téléchargement / 🗺️ Remplacer le calque actif / ✏️ Remplacer la session
+  . Confirmation à la fermeture si modifications non sauvées (Sauvegarder / Quitter / Continuer)
+  . Module autonome — styles CSS injectés dynamiquement au premier appel
+  . Branchement : `<script src="js/tableEditor.js">` ajouté dans `index.html` après `exporter.js`
 
 ### 🗓️ 04/05/2026 — Charte graphique légende exportée
 - **Légende exportée alignée sur le dark theme des modales** (fond `#1a1f2e`, accents bleu vif `#8cb4ff`)
@@ -48,23 +76,23 @@
 
 ### 🗓️ 04/05/2026 — Zones, eau, page d'accueil, calibrage
 - **Eau (3e type de zone)** — bouton 🟦 dans le groupe Zones, couleurs `#0066aa` / `#3aa9e8`
-  - Tri d'affichage : eau (0) → remblais (1) → effondrement (2)
-  - Synchronisé partout : `zones.js` (renderZones), `utils.js` × 2 (export PNG + lecture data layer), `exporter.js`
+  . Tri d'affichage : eau (0) → remblais (1) → effondrement (2)
+  . Synchronisé partout : `zones.js` (renderZones), `utils.js` × 2 (export PNG + lecture data layer), `exporter.js`
 - **Page d'accueil — boutons supplémentaires en bas du loader** :
-  - 🏗️ Générer un plan (toujours visible) → ouvre `afficherPlanner()`
-  - 🌐 Charger le plan serveur (toujours visible) → tente `loadAppConfig()` avec message d'erreur si plan absent
+  . 🏗️ Générer un plan (toujours visible) → ouvre `afficherPlanner()`
+  . 🌐 Charger le plan serveur (toujours visible) → tente `loadAppConfig()` avec message d'erreur si plan absent
 - **Calibrage d'échelle — formule corrigée** : `nouveau = scale × (affichée / réelle)` (au lieu de `réelle / affichée`)
 - **Onglet "Fichiers séparés" supprimé** du loader — ZIP uniquement
 
 ### 🗓️ 03/05/2026 — Export plan avancé
 - **Nouveau module `exporter.js`** — modale d'export avec deux modes : ⚡ Rapide (export historique inchangé) et 🎨 Avancé
 - **Mode avancé** :
-  - Choix précis des calques d'image / calques de données / annotations à inclure
-  - Légende intégrée positionnable (4 coins ou point custom via 🎯 sélection sur la carte)
-  - 3 styles de légende : Opaque / Semi-transparent / Filigrane
-  - 3 tailles : Compact / Standard / Large
-  - Format PNG ou JPEG 90%, résolution Originale / ½ / ¼
-  - Aperçu mini-canvas 320×200 px (debounced 300ms)
+  . Choix précis des calques d'image / calques de données / annotations à inclure
+  . Légende intégrée positionnable (4 coins ou point custom via 🎯 sélection sur la carte)
+  . 3 styles de légende : Opaque / Semi-transparent / Filigrane
+  . 3 tailles : Compact / Standard / Large
+  . Format PNG ou JPEG 90%, résolution Originale / ½ / ¼
+  . Aperçu mini-canvas 320×200 px (debounced 300ms)
 - Bouton 🖼️ ouvre maintenant la modale au lieu de télécharger directement
 
 ### 🗓️ 03/05/2026 — Module Zones
@@ -79,9 +107,9 @@
 
 ### 🗓️ 03/05/2026 — Refonte interface
 - **Barre latérale refondue en 9 groupes** (accordéon vertical, exclusivité)
-  - Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
-  - **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
-  - Les autres groupes sont des accordéons déroulables verticalement
+  . Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
+  . **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
+  . Les autres groupes sont des accordéons déroulables verticalement
 - **Set d'icônes cohérent** : 📚 Aide / ⚙️ Paramètres / ⬇️ Charger / 🏗️ Créer / ⬆️ Enregistrer / 🧭 Tracker / 📐 Mesure / 📌 Édition / 🛣️ Tracés
 - **Mode actif → groupe verrouillé ouvert** + icône principale reflète le mode actif (ex: 🟩 sur Tracés quand Principal en cours, ⏹️/📍 sur Tracker)
 - **Clic en dehors** d'un groupe ouvert le ferme automatiquement (sauf si mode actif)
@@ -97,9 +125,9 @@
 - **Option "Aucun tag"** disponible — utilise l'icône `default` (pin Leaflet natif si pas configuré)
 - **Légende refondue** — fusion des sections custom + tracker + default dans une seule rubrique "📌 Autres", URL réelle de chaque icône résolue depuis `_iconMap`
 - **Suppression granulaire** :
-  - Mesure : *Dernier point* ou *Toute la mesure*
-  - Points : *Dernier point ajouté* ou *Tous les points*
-  - Tracés : *Dernier point du tracé* / *Dernier tracé entier* / *Tous les tracés*
+  . Mesure : *Dernier point* ou *Toute la mesure*
+  . Points : *Dernier point ajouté* ou *Tous les points*
+  . Tracés : *Dernier point du tracé* / *Dernier tracé entier* / *Tous les tracés*
 - Nouveau helper `_choixSuppression()` dans `interface.js` — modale avec liste d'options
 - Nouvelles fonctions API : `removeLastEditorPoint`, `removeLastRoad`, `removeLastRoadPoint`, `removeLastMeasurePoint`
 - `creerIcones()` sécurisé : aucune icône avec `iconUrl: undefined`, fallback `L.Icon.Default` natif Leaflet si `default` manquant dans la config
@@ -184,7 +212,7 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 | Suppression granulaire (dernier point / dernier tracé / tout) | ✅ Disponible |
 | Export / import JSON de session | ✅ Disponible |
 | Import de plan via ZIP | ✅ Disponible |
-| Convertisseur JSON (editor ↔ data) | ✅ Disponible |
+| Conversion session → data layer (intégrée à 💾) | ✅ Disponible |
 | Générateur de plan ZIP avec gestion des tags | ✅ Disponible |
 | Modification d'un plan existant | ✅ Disponible |
 | Mode performance (tiling JPEG volumineux) | ✅ Disponible |
@@ -212,6 +240,7 @@ sw.js                       ← Service Worker (mode hors-ligne)
         ├── road.js            ← Tracé de routes + suppression granulaire
         ├── zones.js           ← Zones polygonales remplies (eau / remblais / effondrement)
         ├── exporter.js        ← Modale d'export plan avancé (rapide / avancé + légende intégrée)
+        ├── sessionExporter.js ← Modale d'export de session (Full / Avancé / Conversion + filtrage par tag)
         ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
         ├── searchPoints.js    ← Recherche rapide d'un point (nom / id / tag / description)
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
@@ -677,12 +706,22 @@ API exposée :
 
 Cache collision initialisé une seule fois à l'init (`initCollisionCache`) — stocke le tableau RGBA complet en mémoire avec ratio `_collisionScaleX/Y` pour la conversion plan → canvas.
 
+**API exposée** :
+- `initTracking()` — reset complet, recrée marker + polyline + handlers (appelé à chaque chargement de plan)
+- `startTracking()` / `stopTracking()` — active/désactive la lecture des capteurs
+- `requestPermission()` — demande la permission iOS (appelé uniquement au clic sur ▶️ Play, plus au premier clic global)
+- `resetTrackingPosition()` — repositionne le tracker à `startX/startY` et vide la polyline
+- `getStepCount()` — nombre de pas détectés
+- `initCollisionCache()` — recharge le cache collision après changement de plan
+- **`getTrackingPosition()`** → `{ x, y }` — position courante en coords plan, **utilisé par les exporters et la recherche**
+- **`getTrackingPath()`** → `[{x, y}, ...]` — liste des points du tracé depuis le démarrage (reconvertis depuis la polyline Leaflet en coords plan), **utilisé par les exporters**
+
 ### `utils.js`
 
 - `convertCoord(x, y)` — coordonnées plan → Leaflet
 - `choisirIcone(p)` — sélection dynamique depuis `_iconMap`
-- `ajouterPointsDepuisJSON(url, layer)` — chargement par batch de 50, dessine les `roads[]` et `zones[]` embarqués (en lecture seule)
-- `telechargerPlan()` — export PNG complet (calques visibles + points + zones triées + tracés + mesure + tracker). Cette fonction est appelée par le mode **Rapide** de la modale d'export. Le mode **Avancé** est géré par `exporter.js`.
+- `ajouterPointsDepuisJSON(url, layer)` — chargement par batch de 50, dessine les `roads[]` et **`zones[]`** embarqués (en lecture seule). `ZONE_STYLES_DATA` contient eau, remblais, effondrement avec tri eau → remblais → effondrement.
+- `telechargerPlan()` — export PNG complet (mode Rapide). Lit les `roads[]` et `zones[]` embarqués depuis chaque calque actif (cohérence avec ce qui est affiché à l'écran). Dessine le tracker complet : path (polyline `#3388ff`) + position. Le mode **Avancé** est géré par `exporter.js`.
 
 ### `interface.js`
 
@@ -697,7 +736,7 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 | 3 | Recherche | 🔍 | **Solo** | (clic direct, ouvre la modale de recherche) |
 | 4 | Charger / Import | ⬇️ | Accordéon | 📥 Importer une session → 📊 Éditer un fichier JSON → 🗂️ Changer de plan |
 | 5 | Créer / Modifier plan | 🏗️ | **Solo** | (clic direct, ouvre le générateur) |
-| 6 | Enregistrer | ⬆️ | Accordéon | 💾 Session JSON → 🖼️ Plan PNG (export avancé) → 🔄 Convertisseur |
+| 6 | Enregistrer | ⬆️ | Accordéon | 💾 Session (modale 3 modes) → 🖼️ Plan PNG (export avancé) |
 | 7 | Tracker | 🧭 | Accordéon | ▶️/⏹️ Tracking → 📍 Recalage |
 | 8 | Mesure | 📐 | Accordéon | 📐 Activer mesure → ❌ Effacer |
 | 9 | Édition | 📌 | Accordéon | 📌 Activer ajout → 🗑️ Effacer |
@@ -732,7 +771,7 @@ L'interface est organisée en **10 groupes** dans la barre latérale droite. Un 
 | `afficherConfig()` | Réglages APP_CONFIG + 🎯 calibrage + logs + réinitialiser |
 | `afficherLegende()` | Icônes, tracés et zones du plan actif |
 | `afficherReadme()` | Choix doc utilisateur / développeur |
-| `afficherConvertisseur()` | Conversion JSON bidirectionnelle (préserve `roads` et `zones`) |
+| `ouvrirExportSessionModal()` | **Modale d'export de session — 3 modes (Full / Avancé / Conversion)** (sessionExporter.js) |
 | `afficherPlanner()` | Générateur de plan ZIP (Nouveau / Modifier) |
 | `afficherLogsDebug()` | Panneau logs de débogage |
 | `afficherFormulaire(x, y)` | Modale ajout de point (editor.js) |
@@ -853,14 +892,91 @@ Un point peut avoir un tableau `tags` vide → utilise l'icône `default`.
 
 ---
 
-## 🔄 Convertisseur JSON
+## 💾 Export de session — `sessionExporter.js`
 
-| Sens | Entrée | Sortie |
-|---|---|---|
-| edition → data | `{ editorPoints, roads }` | `{ type, version, data, roads }` |
-| data → edition | `{ data, roads }` | `{ type: "devmap-session", editorPoints, roads }` |
+Module autonome activé par `window.ouvrirExportSessionModal()`. Modale avec 3 onglets.
 
-Les routes sont préservées dans les deux sens.
+### Mode 🚀 Full
+- Inclus : `editorPoints`, `roads`, `zones`
+- **Exclu** : tracker, mesure
+- Format de sortie : 1 fichier `devmap-session` (JSON)
+- Nom : `session_<plan>_AAAAMMJJ.json`
+
+### Mode 🎨 Avancé
+Cases à cocher hiérarchiques :
+- ✏️ **Points ajoutés** + sous-cases par tag (avec icône miniature) + `(sans tag)`
+- 🛣️ **Tracés** + sous-cases par type (principal / secondaire / chemin)
+- ⬛ **Zones** + sous-cases par type (eau / remblais / effondrement)
+- 🧭 **Position du tracker** (case unique avec mention `(+ tracé N pts)` si path > 1)
+
+Format de sortie au choix :
+- 📄 Un seul fichier `devmap-session` (réimportable, contient tout en un bloc)
+- 📦 ZIP multi-fichiers (`session_points.json`, `session_roads.json`, `session_zones.json`, `session_tracker.json`)
+
+### Mode 🔄 Conversion
+Convertit la session en data layer(s) au format `devmap-data`. Pas de tracker.
+
+Cases à cocher :
+- ✏️ **Points ajoutés** + sous-cases par tag (idem Avancé)
+- 🛣️ **Tracés**
+- ⬛ **Zones**
+
+Granularité au choix :
+- 📄 **Basique** : 1 fichier par catégorie (`points.json`, `roads.json`, `zones.json`)
+- 🔬 **Fine** :
+  - Points : 1 fichier `points.json` (les tags peuvent être multiples → séparation ambiguë)
+  - Tracés : 1 par type (`roads_principal.json`, `roads_secondaire.json`, `roads_chemin.json`)
+  - Zones : 1 par type (`zones_eau.json`, `zones_remblais.json`, `zones_effondrement.json`)
+
+Sortie : fichier unique si 1 seul, ZIP sinon.
+
+### Filtrage par tag (Avancé + Conversion)
+
+**Logique d'inclusion** : un point est inclus s'il a **au moins un de ses tags coché**, OU s'il n'a pas de tag et que `(sans tag)` est coché.
+
+**Synchronisation parent ↔ tags** :
+- Décocher Points ajoutés → décoche tous les tags
+- Cocher au moins 1 tag → recoche le parent
+- Tout décocher → décoche le parent
+
+**Helpers internes** :
+- `_listerTagsPoints(points)` — retourne `[{tag, count, isUntagged}]` trié alphabétiquement
+- `_filtrerPointsParTags(points, tagsCoches, untaggedCoche)` — filtre selon les tags cochés
+- `_lireTagsCoches(prefix, tagsList)` — lit les sous-cases du DOM (préfixes `adv_points_tag_` ou `conv_points_tag_`)
+- `_slugTagId(tag)` — sécurise un nom de tag pour servir d'id CSS
+- `_iconePourTag(tag)` — récupère le chemin de l'icône depuis `PLAN_CONFIG.icons`
+
+### Format `devmap-session` (Full / Avancé)
+```json
+{
+  "type": "devmap-session",
+  "version": "1.0",
+  "date_export": "2026-05-05T...",
+  "editorPoints": [...],
+  "roads": [...],
+  "zones": [...],
+  "tracker": { "position": {x,y}, "path": [...] }   // optionnel, mode Avancé
+}
+```
+
+### Format `devmap-data` (Conversion)
+```json
+{
+  "type": "devmap-data",
+  "version": "1.0",
+  "date_export": "2026-05-05T...",
+  "data": [...],         // ex-editorPoints
+  "roads": [...],        // optionnel
+  "zones": [...]         // optionnel
+}
+```
+Lecture par `ajouterPointsDepuisJSON()` (utils.js) qui rend les markers, les routes et les zones.
+
+### Permission capteurs (tracking)
+
+Avant : listener `document.body.click({once:true})` dans `main.js` et `main_import.js` qui appelait `requestPermission()` au tout premier clic global → popup iOS gênante (interférait avec l'import, l'édition, etc.).
+
+Maintenant : `requestPermission()` est appelé **uniquement** au clic sur ▶️ Play du tracker (interface.js ligne 1555). Cohérent avec la directive Apple : la permission `DeviceMotionEvent.requestPermission()` doit être appelée dans une tâche utilisateur directe.
 
 ---
 

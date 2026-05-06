@@ -31,20 +31,6 @@
       "source": "editor"
     },
     {
-      "id": "Puit bouché 01",
-      "nom": "Puit bouché 01",
-      "x": 3403,
-      "y": 216,
-      "tags": [
-        "pb"
-      ],
-      "etat": "Non inspectée",
-      "description": "",
-      "profondeur": null,
-      "date_update": "2026-05-04",
-      "source": "editor"
-    },
-    {
       "id": "Puit comblé 01",
       "nom": "Puit comblé 01",
       "x": 2882,

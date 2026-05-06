@@ -69,6 +69,7 @@
   window.ouvrirExportModal = function() {
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
+    if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();
     _afficherModal("rapide");
   };
 
@@ -87,6 +88,7 @@
     const nbRoads   = window.getRoads         ? window.getRoads().length         : 0;
     const nbZones   = window.getZones         ? window.getZones().length         : 0;
     const nbMesure  = window.getMeasurePoints ? window.getMeasurePoints().length : 0;
+    const nbTrackerPath = window.getTrackingPath ? window.getTrackingPath().length : 0;
     const trackerOk = window.getTrackingPosition && window.getTrackingPosition() !== null;
 
     // Visibilité courante des calques (pour pré-cocher)
@@ -147,7 +149,7 @@
 
             <!-- Annotations -->
             <div class="kta-aide-section">
-              <div class="kta-aide-section-titre">📌 Annotations de session</div>
+              <div class="kta-aide-section-titre">✏️ Annotations de session</div>
               <div id="kta-export-annotations"></div>
             </div>
 
@@ -260,7 +262,7 @@
     // Construire les checkboxes calques dynamiquement
     _peuplerCalquesImage(config, imageLayersVisibles);
     _peuplerCalquesData(config, dataLayersVisibles);
-    _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk);
+    _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath);
 
     // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
     if (etatPrecedent) _restaurerEtat(etatPrecedent);
@@ -301,16 +303,186 @@
       cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque de données</p>';
       return;
     }
+
+    // Rendu initial avec un placeholder par calque (la liste de tags arrive en async)
     cont.innerHTML = layers.map(function(l) {
       const checked = visibles.includes(l.id) ? "checked" : "";
-      return `<label class="kta-export-cb-row">
-        <input type="checkbox" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
-        <span>${l.label || l.id}</span>
-      </label>`;
+      const safeId = _slugLayerId(l.id);
+      return `<div class="kta-export-data-layer-block" data-layer-id="${l.id}">
+        <label class="kta-export-cb-row">
+          <input type="checkbox" id="export_layer_${safeId}" data-layer-id="${l.id}" data-layer-type="data" ${checked}>
+          <span>${l.label || l.id}</span>
+        </label>
+        <div class="kta-export-layer-tags" id="export_layer_tags_${safeId}"></div>
+      </div>`;
     }).join("");
+
+    // Charger les tags de chaque calque en async
+    layers.forEach(function(l) {
+      _chargerTagsCalque(l).then(function(tagsList) {
+        _renderTagsCalque(l, tagsList);
+      }).catch(function(e) {
+        console.warn("[Export] Tags " + l.id + " :", e);
+      });
+    });
   }
 
-  function _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk) {
+  // Identifiant CSS-safe pour un calque
+  function _slugLayerId(id) {
+    return String(id).replace(/[^a-z0-9_-]/gi, "_");
+  }
+
+  // Identifiant CSS-safe pour un tag
+  function _slugTagId(tag) {
+    return String(tag).replace(/[^a-z0-9_-]/gi, "_");
+  }
+
+  // Liste les tags présents dans les points d'un calque
+  // Retourne [{ tag, count, isUntagged }] trié alphabétiquement
+  function _listerTagsPoints(points) {
+    const tagCounts = {};
+    let untaggedCount = 0;
+    (points || []).forEach(function(p) {
+      const tags = Array.isArray(p.tags) ? p.tags.filter(function(t) { return t && String(t).trim(); }) : [];
+      if (tags.length === 0) untaggedCount++;
+      else tags.forEach(function(t) {
+        const k = String(t);
+        tagCounts[k] = (tagCounts[k] || 0) + 1;
+      });
+    });
+    const list = Object.keys(tagCounts).sort().map(function(t) {
+      return { tag: t, count: tagCounts[t], isUntagged: false };
+    });
+    if (untaggedCount > 0) {
+      list.push({ tag: "__untagged__", count: untaggedCount, isUntagged: true });
+    }
+    return list;
+  }
+
+  // Charge les points d'un calque pour en lister les tags (avec petit cache local à la session de modale)
+  const _layerPointsCache = {};
+  async function _chargerTagsCalque(layerCfg) {
+    if (_layerPointsCache[layerCfg.id]) return _layerPointsCache[layerCfg.id];
+
+    let points = [];
+    if (layerCfg.id === "editor") {
+      points = window.getEditorPoints ? window.getEditorPoints() : [];
+    } else {
+      try {
+        const r = await fetch(layerCfg.file);
+        const j = await r.json();
+        points = j.data || [];
+      } catch(e) {
+        return [];
+      }
+    }
+    const tags = _listerTagsPoints(points);
+    _layerPointsCache[layerCfg.id] = tags;
+    return tags;
+  }
+
+  // Récupère le chemin de l'icône pour un tag depuis PLAN_CONFIG.icons
+  function _iconePourTag(tag) {
+    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.icons) return null;
+    return window.PLAN_CONFIG.icons[tag] || null;
+  }
+
+  function _escapeHtmlExport(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // Affiche les sous-cases tags pour un calque + branche la synchro parent/enfants
+  function _renderTagsCalque(layerCfg, tagsList) {
+    const safeId = _slugLayerId(layerCfg.id);
+    const cont = document.getElementById("export_layer_tags_" + safeId);
+    if (!cont) return;
+    if (!tagsList || tagsList.length === 0) {
+      cont.innerHTML = "";
+      return;
+    }
+
+    const html = tagsList.map(function(item) {
+      const safeTag = _slugTagId(item.tag);
+      const id = "export_layer_" + safeId + "_tag_" + safeTag;
+      const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
+      const iconHtml = iconUrl
+        ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
+        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+      const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
+      return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
+        <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
+        <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
+      </label>`;
+    }).join("");
+    cont.innerHTML = html;
+
+    // Synchronisation parent ↔ enfants
+    const parent = document.getElementById("export_layer_" + safeId);
+    const subs = tagsList.map(function(item) {
+      const safeTag = _slugTagId(item.tag);
+      return document.getElementById("export_layer_" + safeId + "_tag_" + safeTag);
+    }).filter(Boolean);
+
+    if (parent && subs.length > 0) {
+      parent.addEventListener("change", function() {
+        subs.forEach(function(s) { if (!s.disabled) s.checked = parent.checked; });
+        if (typeof _planifierApercu === "function") _planifierApercu();
+      });
+      subs.forEach(function(s) {
+        s.addEventListener("change", function() {
+          parent.checked = subs.some(function(x) { return x.checked; });
+          if (typeof _planifierApercu === "function") _planifierApercu();
+        });
+      });
+    }
+  }
+
+  // Lit les tags cochés pour un calque donné. Retourne { tagsCoches: Set, untaggedCoche: bool, tousActifs: bool }
+  // tousActifs = true si AUCUNE sous-case n'est présente (= calque sans tags identifiables)
+  // → dans ce cas, on inclut tous les points sans filtrage.
+  function _lireTagsCochesCalque(layerId) {
+    const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
+    const inputs = cont ? cont.querySelectorAll('input[type="checkbox"]') : [];
+    if (inputs.length === 0) {
+      return { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
+    }
+    const tagsCoches = new Set();
+    let untaggedCoche = false;
+    inputs.forEach(function(cb) {
+      if (!cb.checked) return;
+      const id = cb.id;
+      // L'id se termine par "_tag_<safeTag>"
+      const m = id.match(/_tag_(.+)$/);
+      if (!m) return;
+      // Le safeTag peut différer du tag original ; on retrouve l'item dans le cache
+      const cache = _layerPointsCache[layerId] || [];
+      const item = cache.find(function(it) { return _slugTagId(it.tag) === m[1]; });
+      if (!item) return;
+      if (item.isUntagged) untaggedCoche = true;
+      else tagsCoches.add(item.tag);
+    });
+    return { tagsCoches: tagsCoches, untaggedCoche: untaggedCoche, tousActifs: false };
+  }
+
+  // Filtre une liste de points selon les tags cochés d'un calque
+  function _filtrerPointsParTagsCalque(points, layerId) {
+    const sel = _lireTagsCochesCalque(layerId);
+    if (sel.tousActifs) return points; // calque sans tags identifiables → tout inclure
+    return (points || []).filter(function(p) {
+      const tags = Array.isArray(p.tags) ? p.tags.filter(function(t) { return t && String(t).trim(); }) : [];
+      if (tags.length === 0) return sel.untaggedCoche;
+      return tags.some(function(t) { return sel.tagsCoches.has(String(t)); });
+    });
+  }
+
+  // Réinitialiser le cache (à appeler à chaque ouverture de modale)
+  function _resetLayerPointsCache() {
+    Object.keys(_layerPointsCache).forEach(function(k) { delete _layerPointsCache[k]; });
+  }
+
+  function _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath) {
     const cont = document.getElementById("kta-export-annotations");
     if (!cont) return;
 
@@ -324,15 +496,78 @@
       </label>`;
     }
 
+    function rowSub(id, label, count, defaultChecked) {
+      const disabled = count === 0 ? "disabled" : "";
+      const checked = (count > 0 && defaultChecked) ? "checked" : "";
+      const dim = count === 0 ? "opacity:0.4;" : "";
+      return `<label class="kta-export-cb-row" style="${dim}margin-left:24px;font-size:12px;">
+        <input type="checkbox" id="ann_${id}" ${checked} ${disabled}>
+        <span>${label} <span style="color:#8892a4;">(${count})</span></span>
+      </label>`;
+    }
+
+    // Compter les routes et zones par type
+    const roads = (window.getRoads ? window.getRoads() : []) || [];
+    const zones = (window.getZones ? window.getZones() : []) || [];
+    const roadsByType = {
+      principal:  roads.filter(function(r) { return r.type === "principal";  }).length,
+      secondaire: roads.filter(function(r) { return r.type === "secondaire"; }).length,
+      chemin:     roads.filter(function(r) { return r.type === "chemin";     }).length
+    };
+    const zonesByType = {
+      eau:          zones.filter(function(z) { return z.type === "eau";          }).length,
+      remblais:     zones.filter(function(z) { return z.type === "remblais";     }).length,
+      effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length
+    };
+
+    // Position du tracker : toujours active (la position courante existe au minimum)
+    // Inclut le tracé parcouru si > 1 point
+    const trackerLabel = (nbTrackerPath && nbTrackerPath > 1)
+      ? 'Position du tracker <span style="color:#8892a4;">(+ tracé ' + nbTrackerPath + ' pts)</span>'
+      : 'Position du tracker';
+
     cont.innerHTML =
       row("points",  "Points ajoutés",          nbPoints,  true) +
+
       row("roads",   "Tracés / routes",         nbRoads,   true) +
+      rowSub("roads_principal",  "🟩 Principaux",  roadsByType.principal,  true) +
+      rowSub("roads_secondaire", "🟪 Secondaires", roadsByType.secondaire, true) +
+      rowSub("roads_chemin",     "🟨 Chemins",     roadsByType.chemin,     true) +
+
       row("zones",   "Zones",                   nbZones,   true) +
+      rowSub("zones_eau",          "🟦 Eau",           zonesByType.eau,          true) +
+      rowSub("zones_remblais",     "⬛ Remblais",      zonesByType.remblais,     true) +
+      rowSub("zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement, true) +
+
       row("mesure",  "Mesure de distance",      nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
         <input type="checkbox" id="ann_tracker" ${trackerOk ? '' : 'disabled'}>
-        <span>Position du tracker</span>
+        <span>${trackerLabel}</span>
       </label>`;
+
+    // Synchronisation parent ↔ enfants
+    setTimeout(function() {
+      _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]);
+      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement"]);
+    }, 0);
+  }
+
+  function _syncAnnotParent(parentId, subIds) {
+    const parent = document.getElementById(parentId);
+    const subs = subIds.map(function(id) { return document.getElementById(id); }).filter(Boolean);
+    if (!parent || subs.length === 0) return;
+
+    parent.addEventListener("change", function() {
+      subs.forEach(function(s) { if (!s.disabled) s.checked = parent.checked; });
+      if (typeof _planifierApercu === "function") _planifierApercu();
+    });
+    subs.forEach(function(s) {
+      s.addEventListener("change", function() {
+        const anyChecked = subs.some(function(x) { return x.checked; });
+        parent.checked = anyChecked;
+        if (typeof _planifierApercu === "function") _planifierApercu();
+      });
+    });
   }
 
   // =========================
@@ -456,6 +691,15 @@
     ["points","roads","zones","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
+    });
+    // Sauver les sous-types
+    ["principal","secondaire","chemin"].forEach(function(t) {
+      const cb = document.getElementById("ann_roads_" + t);
+      etat.ann["roads_" + t] = cb ? cb.checked : true;
+    });
+    ["eau","remblais","effondrement"].forEach(function(t) {
+      const cb = document.getElementById("ann_zones_" + t);
+      etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
     const legOn = document.getElementById("kta-export-legende-on");
     if (legOn && legOn.checked) {
@@ -641,6 +885,17 @@
       const cb = document.getElementById("ann_" + k);
       opts.ann[k] = cb ? cb.checked : false;
     });
+    // Sous-types pour roads et zones (filtrage fin)
+    opts.ann.roadsTypes = {
+      principal:  document.getElementById("ann_roads_principal")?.checked  ?? true,
+      secondaire: document.getElementById("ann_roads_secondaire")?.checked ?? true,
+      chemin:     document.getElementById("ann_roads_chemin")?.checked     ?? true
+    };
+    opts.ann.zonesTypes = {
+      eau:          document.getElementById("ann_zones_eau")?.checked          ?? true,
+      remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
+      effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true
+    };
     const legOn = document.getElementById("kta-export-legende-on");
     if (legOn && legOn.checked) {
       opts.legende = {
@@ -759,45 +1014,106 @@
       ctx.drawImage(img, sc(x) - half, sc(y) - half, size, size);
     }
 
-    // ---------- zones (avant les tracés) ----------
-    if (opts.ann.zones && window.getZones) {
-      const zones = window.getZones();
-      const ZS = {
-        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
-      };
-      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
-      const triees = [...zones].sort(function(a, b) {
-        return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
-      });
-      for (const z of triees) {
-        if (!z.points || z.points.length < 3) continue;
-        const s = ZS[z.type] || ZS.remblais;
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
-        for (let i = 1; i < z.points.length; i++) {
-          ctx.lineTo(sc(z.points[i].x), sc(z.points[i].y));
-        }
-        ctx.closePath();
-        ctx.fillStyle = s.fillColor;
-        ctx.globalAlpha = s.fillOpacity;
-        ctx.fill();
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = s.weight * scale;
-        ctx.globalAlpha = s.opacity;
-        ctx.lineJoin = "round";
-        ctx.stroke();
-        ctx.restore();
+
+
+    // ---------- helpers polygones / polylignes ----------
+    function _drawPolygon(points, style) {
+      if (!points || points.length < 3) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(sc(points[0].x), sc(points[0].y));
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(sc(points[i].x), sc(points[i].y));
       }
+      ctx.closePath();
+      ctx.fillStyle = style.fillColor;
+      ctx.globalAlpha = style.fillOpacity;
+      ctx.fill();
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = style.weight * scale;
+      ctx.globalAlpha = style.opacity;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+      ctx.restore();
+    }
+    function _drawPolyline(points, style) {
+      if (!points || points.length < 2) return;
+      ctx.save();
+      ctx.strokeStyle = style.color;
+      ctx.lineWidth = (style.weight || 5) * scale;
+      ctx.globalAlpha = style.opacity ?? 1;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(sc(points[0].x), sc(points[0].y));
+      for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(sc(points[i].x), sc(points[i].y));
+      }
+      ctx.stroke();
+      ctx.restore();
     }
 
-    // ---------- couches data ----------
+// ---------- ORDRE GLOBAL DES COUCHES ----------
+const drawQueue = [];
+
+const PRIORITY_ZONE = {
+  eau: 0,
+  remblais: 1,
+  effondrement: 2
+};
+
+const PRIORITY_ROAD = {
+  chemin: 3,
+  secondaire: 4,
+  principal: 5
+};
+
+function _queueZone(zone) {
+  if (!zone || !zone.points || zone.points.length < 3) return;
+  drawQueue.push({
+    kind: "zone",
+    priority: PRIORITY_ZONE[zone.type] ?? 99,
+    data: zone
+  });
+}
+
+function _queueRoad(road) {
+  if (!road || !road.points || road.points.length < 2) return;
+  drawQueue.push({
+    kind: "road",
+    priority: PRIORITY_ROAD[road.type] ?? 99,
+    data: road
+  });
+}
+
+function _queuePoint(point) {
+  if (!point) return;
+  drawQueue.push({
+    kind: "point",
+    priority: 6,
+    data: point
+  });
+}
+
+    const ZS_EMBED = {
+      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
+      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+    };
+    const RS_EMBED = {
+      principal:   { color: "#00ff00", weight: 5, opacity: 1 },
+      secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
+      chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+    };
+
+    // ---------- couches data (markers + roads/zones embarqués) ----------
     for (const layerCfg of (config.dataLayers || [])) {
       if (!opts.dataLayers[layerCfg.id]) continue;
 
       let pts = [];
+      let embeddedRoads = [];
+      let embeddedZones = [];
+
       if (layerCfg.id === "editor") {
         if (opts.ann.points && window.getEditorPoints) pts = window.getEditorPoints();
       } else {
@@ -805,39 +1121,88 @@
           const r = await fetch(layerCfg.file);
           const j = await r.json();
           pts = j.data || [];
+          embeddedRoads = Array.isArray(j.roads) ? j.roads : [];
+          embeddedZones = Array.isArray(j.zones) ? j.zones : [];
         } catch(e) { console.warn("[Export] data :", layerCfg.file, e); }
       }
-      for (const p of pts) {
-        const img = await getIconUrl(p);
-        drawMarker(img, p.x, p.y, 50 * scale);
+
+      // Filtrer les points selon les tags cochés du calque (si la modale est ouverte)
+      // Si la fonction n'existe pas (mode rapide), on prend tout.
+      if (typeof _filtrerPointsParTagsCalque === "function") {
+        pts = _filtrerPointsParTagsCalque(pts, layerCfg.id);
       }
+
+      // Zones embarquées (arrière-plan, triées eau → remblais → effondrement)
+// Zones embarquées
+embeddedZones.forEach(function(z) {
+  _queueZone(z);
+});
+
+// Routes embarquées
+embeddedRoads.forEach(function(r) {
+  _queueRoad(r);
+});
+
+// Points
+pts.forEach(function(p) {
+  _queuePoint(p);
+});
     }
 
-    // ---------- routes ----------
-    if (opts.ann.roads && window.getRoads) {
-      const roads = window.getRoads();
-      const RS = {
-        principal:   { color: "#00ff00", weight: 5 },
-        secondaire:  { color: "#b000ff", weight: 5 },
-        chemin:      { color: "#ffff00", weight: 5 }
-      };
-      for (const r of roads) {
-        if (!r.points || r.points.length === 0) continue;
-        const s = RS[r.type] || { color: "white", weight: 5 };
-        ctx.save();
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = s.weight * scale;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
-        for (let i = 1; i < r.points.length; i++) {
-          ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
+    // ---------- annotations session : zones ----------
+if (opts.ann.zones && window.getZones) {
+  const filtreZ = opts.ann.zonesTypes || {
+    eau: true,
+    remblais: true,
+    effondrement: true
+  };
+
+  window.getZones().forEach(function(z) {
+    if (filtreZ[z.type] === false) return;
+    _queueZone(z);
+  });
+}
+
+// ---------- annotations session : routes ----------
+if (opts.ann.roads && window.getRoads) {
+  const filtreR = opts.ann.roadsTypes || {
+    principal: true,
+    secondaire: true,
+    chemin: true
+  };
+
+  window.getRoads().forEach(function(r) {
+    if (filtreR[r.type] === false) return;
+    _queueRoad(r);
+  });
+}
+
+// ---------- DESSIN GLOBAL DANS LE BON ORDRE ----------
+drawQueue.sort(function(a, b) {
+  return a.priority - b.priority;
+});
+
+for (const item of drawQueue) {
+  if (item.kind === "zone") {
+    _drawPolygon(
+      item.data.points || [],
+      ZS_EMBED[item.data.type] || ZS_EMBED.remblais
+    );
+  }
+
+  else if (item.kind === "road") {
+    _drawPolyline(
+      item.data.points || [],
+      RS_EMBED[item.data.type] || { color: "#ffffff", weight: 5, opacity: 1 }
+    );
+  }
+
+  else if (item.kind === "point") {
+    const img = await getIconUrl(item.data);
+    drawMarker(img, item.data.x, item.data.y, 50 * scale);
+  }
+}
+
 
     // ---------- mesure ----------
     if (opts.ann.mesure && window.getMeasurePoints) {
@@ -856,14 +1221,35 @@
       }
     }
 
-    // ---------- tracker ----------
-    if (opts.ann.tracker && window.getTrackingPosition) {
-      const t = window.getTrackingPosition();
-      if (t && typeof t.x === "number" && typeof t.y === "number") {
-        try {
-          const img = await loadImage(config.icons.track);
-          drawMarker(img, t.x, t.y, 50 * scale);
-        } catch(e) {}
+    // ---------- tracker (chemin parcouru + position courante) ----------
+    if (opts.ann.tracker) {
+      // 1) Tracé parcouru (polyline bleu Leaflet par défaut)
+      if (window.getTrackingPath) {
+        const path = window.getTrackingPath();
+        if (path && path.length > 1) {
+          ctx.save();
+          ctx.strokeStyle = "#3388ff";
+          ctx.lineWidth = 3 * scale;
+          ctx.lineJoin = "round";
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(sc(path[0].x), sc(path[0].y));
+          for (let i = 1; i < path.length; i++) {
+            ctx.lineTo(sc(path[i].x), sc(path[i].y));
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      // 2) Position courante (icône tracker)
+      if (window.getTrackingPosition) {
+        const t = window.getTrackingPosition();
+        if (t && typeof t.x === "number" && typeof t.y === "number") {
+          try {
+            const img = await loadImage(config.icons.track);
+            drawMarker(img, t.x, t.y, 50 * scale);
+          } catch(e) {}
+        }
       }
     }
 

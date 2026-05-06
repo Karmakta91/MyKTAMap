@@ -13,6 +13,7 @@ const assetsToCache = [
   "js/road.js",
   "js/zones.js",
   "js/exporter.js",
+  "js/sessionExporter.js",
   "js/tableEditor.js",
   "js/searchPoints.js",
   "js/createConf.js",
