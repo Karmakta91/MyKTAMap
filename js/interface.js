@@ -854,8 +854,50 @@ function afficherAide() {
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
             <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
-            <span class="kta-aide-icone">🗂️</span><span>Changer de plan (recharger un autre plan)</span>
+            <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Multi-plans :</strong> chaque plan que tu charges (serveur ou ZIP local) est mémorisé
+            dans ta liste personnelle. Au retour sur le home, tu retrouves :
+          </p>
+          <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
+            <li><strong style="color:#a8b3c8;">▶️ Reprendre</strong> — relance le dernier plan ouvert en 1 clic.</li>
+            <li><strong style="color:#a8b3c8;">📅 Récents</strong> — les 5 derniers plans utilisés.</li>
+            <li><strong style="color:#a8b3c8;">📂 Tous</strong> — l'ensemble de tes plans connus.</li>
+            <li><strong style="color:#a8b3c8;">🌐</strong> = plan serveur · <strong style="color:#a8b3c8;">💾</strong> = plan ZIP local.</li>
+            <li><strong style="color:#a8b3c8;">💾 Exporter / 📂 Importer</strong> ta liste pour la partager ou la migrer.</li>
+          </ul>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Plans serveur</strong> — l'app détecte automatiquement les sous-dossiers
+            de <code style="color:#cfd6e4;">data/</code> via <code style="color:#cfd6e4;">data/index.json</code>.
+            Format minimal : <code style="color:#cfd6e4;">{ "plans": ["test1", "test2"] }</code>.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Plans locaux</strong> — au clic sur un plan local, l'app utilise
+            la méthode de persistance choisie au chargement initial :
+          </p>
+          <ul style="font-size:12px; color:#8892a4; margin:4px 0 0 18px; line-height:1.6;">
+            <li>
+              <strong style="color:#6ce28a;">✅ Mémorisé</strong> — le ZIP est copié dans le navigateur
+              (cochez <strong>« 💾 Mémoriser ce plan dans l'app »</strong> à l'import).
+              Recharge en 0 clic, fonctionne <strong>même hors-ligne</strong> et sur <strong>mobile</strong>.
+              Limite de stockage selon le navigateur (~50 Mo iOS, plusieurs Go Android/desktop).
+            </li>
+            <li>
+              <strong style="color:#8cb4ff;">🔐 Accès permanent</strong> — Chrome/Edge desktop uniquement,
+              via le bouton <strong>« 🔐 Autoriser l'accès permanent »</strong>. Le navigateur garde
+              une référence vers le ZIP sur le disque (1 clic max après refresh).
+            </li>
+            <li>
+              <strong style="color:#c0c8d8;">📁 Re-sélection</strong> — le ZIP est demandé à chaque clic
+              (drag & drop ou clic sur la zone). Comportement par défaut sans persistance.
+            </li>
+          </ul>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📱 Mobile</strong> — préférez <strong>« 💾 Mémoriser dans l'app »</strong>
+            qui fonctionne partout. Pour une persistance maximale sur iPhone, installez l'app en
+            <strong>PWA</strong> (Partager → Sur l'écran d'accueil) avant de mémoriser le plan.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -965,12 +1007,12 @@ function afficherPopupChangerPlan() {
       <div class="kta-modal-icon">🗂️</div>
       <div class="kta-modal-titre">Changer de plan</div>
       <div class="kta-modal-texte">
-        Tu vas quitter la session en cours.<br>
+        Tu vas quitter la session en cours pour revenir à la liste de tes plans.<br>
         <strong>Les données non exportées seront perdues.</strong>
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="popupResterIci">Rester ici</button>
-        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">Charger un plan</button>
+        <button class="kta-btn kta-btn-primary" id="popupChargerPlan">📚 Mes plans</button>
       </div>
     </div>
   `;

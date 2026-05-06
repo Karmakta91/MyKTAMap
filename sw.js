@@ -29,6 +29,7 @@ const ASSETS_TO_CACHE = [
   "./js/createConf.js",
   "./js/interface.js",
   "./js/main.js",
+  "./js/planRegistry.js",
 
   // Librairies
   "./lib/jszip.min.js",
@@ -45,14 +46,23 @@ const ASSETS_TO_CACHE = [
   "./lib/leaflet/images/marker-shadow.png",
 
   // Données JSON
-  "./data/editor.json",
-  "./data/carriere.json",
-  "./data/puits.json",
-  "./data/chemin.json",
-  "./data/plan-config.json",
-  "./data/zone.json",
-  "./data/TestMAP.png",
-  "./data/collision.png",
+  "./data/index.json",
+  "./data/test1/editor.json",
+  "./data/test1/carriere.json",
+  "./data/test1/puits.json",
+  "./data/test1/chemin.json",
+  "./data/test1/plan-config.json",
+  "./data/test1/zone.json",
+  "./data/test1/TestMAP.png",
+  "./data/test1/collision.png",
+  "./data/test2/editor.json",
+  "./data/test2/carriere.json",
+  "./data/test2/puits.json",
+  "./data/test2/chemin.json",
+  "./data/test2/plan-config.json",
+  "./data/test2/zone.json",
+  "./data/test2/TestMAP.png",
+  "./data/test2/collision.png",
 
   // Icônes app / points
   "./icon/mkm.png",

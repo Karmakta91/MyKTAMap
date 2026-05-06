@@ -76,13 +76,92 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 
 ### 📦 Charger un plan
 
-Au démarrage, si aucun plan n'est configuré sur le serveur, l'application affiche un **formulaire de chargement**.
+Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 
-**Trois manières de démarrer :**
+- **▶️ Reprendre [nom]** — relance le dernier plan utilisé en 1 clic.
+- **📚 Mes plans** — la liste de tous les plans que vous avez déjà chargés (serveur ou ZIP local), triée du plus récemment ouvert au plus ancien.
+- **📦 Charger un nouveau plan** — pour ajouter un ZIP à votre liste.
+- **🏗️ Générer un plan** — ouvre le générateur de plan from scratch.
+- **🌐 Charger le plan serveur (racine)** — charge un éventuel `plan-config.json` à la racine de `data/` (rétro-compatibilité).
 
-1. **Importer une archive ZIP** — glissez-déposez votre archive `.zip` (qui contient `plan-config.json` et tous les fichiers associés) sur la zone prévue, ou cliquez pour la sélectionner. Cliquez ensuite sur **Charger le plan**.
-2. **🏗️ Générer un plan** — bouton en bas du formulaire. Ouvre directement le générateur sans avoir besoin de charger un plan existant. Pratique si vous voulez créer un nouveau plan from scratch.
-3. **🌐 Charger le plan serveur** — bouton en bas du formulaire. Tente de charger un plan déposé directement sur le serveur (fichier `plan-config.json` à la racine). Affiche une erreur si aucun plan serveur n'est trouvé.
+**Trois manières d'ajouter un plan :**
+
+1. **Importer un ZIP local** — glissez-déposez votre archive sur la zone prévue, ou cliquez pour la sélectionner. Cliquez ensuite sur **Charger le plan**. Le plan s'ajoute automatiquement à votre liste pour les prochaines fois.
+2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert.
+3. **🌐 / 🏗️** — boutons en bas pour le plan serveur racine ou le générateur.
+
+### 📚 Gestion de votre liste de plans
+
+L'application mémorise tous les plans que vous chargez, qu'ils viennent du serveur ou de votre disque local.
+
+**Sur l'écran d'accueil :**
+
+| Symbole | Signification |
+|---|---|
+| 🌐 | Plan serveur (sous-dossier de `data/`) |
+| 💾 | Plan ZIP local |
+| ✅ | Plan local **mémorisé dans l'app** (rechargement instantané, fonctionne hors-ligne) |
+| 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
+| 📁 | Plan local sans persistance — re-sélection requise au chargement |
+
+**Actions disponibles** sur chaque ligne :
+
+- **▶️** — charge le plan
+- **✕** — retire le plan de la liste (ne supprime pas le fichier ZIP sur votre disque, juste l'entrée dans la liste)
+
+**Boutons en haut de la liste :**
+
+- **💾 Exporter ma liste** — télécharge un fichier `myktamap_plans_AAAAMMJJ.config` que vous pouvez sauvegarder ou partager.
+- **📂 Charger une liste** — importe un fichier de liste précédemment exporté. Trois choix : Remplacer, Fusionner, ou Annuler.
+
+> 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil).
+
+### 🔐 Éviter de re-sélectionner le ZIP à chaque ouverture
+
+Selon votre plateforme, deux options de persistance s'affichent sous la zone d'import :
+
+#### Sur Chrome / Edge (PC)
+
+Cliquez sur **🔐 Autoriser l'accès permanent au fichier**. Le navigateur retient une référence vers votre ZIP. Aux prochaines ouvertures du plan depuis votre liste, le rechargement se fait en **0 ou 1 clic** (Chrome peut redemander une confirmation rapide après un redémarrage du navigateur).
+
+#### Sur mobile, Firefox, Safari
+
+Cochez **💾 Mémoriser ce plan dans l'app** avant de cliquer sur Charger. Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
+
+- **0 clic**, le plan se charge directement
+- Fonctionne **hors-ligne** (le ZIP est dans le navigateur, pas besoin de retrouver le fichier)
+- Recommandé sur **mobile**
+
+> ⚠️ **Limites de stockage** :
+> - **iPhone (Safari classique)** : ~50 Mo, peut être effacé après inactivité prolongée
+> - **iPhone (PWA installée)** : jusqu'à 1 Go, persistant
+> - **Android Chrome** : plusieurs Go disponibles
+> - **PC** : très large
+>
+> Pour une persistance maximale sur iPhone, **installez l'application en PWA** (voir section 📱) avant de mémoriser vos plans.
+
+> ⚠️ Si le quota est dépassé, un avertissement s'affiche et le plan reste utilisable mais demandera une re-sélection à chaque ouverture.
+
+### 🗂️ Découverte automatique des plans serveur
+
+Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/` (par exemple `data/test1/`, `data/test2/`...), elle peut les détecter automatiquement via un fichier `data/index.json` :
+
+**Format minimal** :
+```json
+{ "plans": ["test1", "test2"] }
+```
+
+**Format détaillé** (recommandé pour afficher les noms tout de suite) :
+```json
+{
+  "plans": [
+    { "id": "test1", "path": "data/test1", "name": "Plan Test 1", "version": "V1" },
+    { "id": "test2", "path": "data/test2", "name": "Plan Test 2", "version": "V1" }
+  ]
+}
+```
+
+Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
 ### ⚡ Mode performance
 
@@ -99,7 +178,7 @@ L'application utilise un **Service Worker** qui met en cache automatiquement tou
 **Pour préparer une sortie hors connexion :**
 
 1. Ouvrez l'application **avant de partir**, avec une connexion disponible
-2. Chargez votre plan complet
+2. Chargez votre plan complet — sur mobile, **cochez « 💾 Mémoriser dans l'app »** pour pouvoir le ré-ouvrir sans re-sélectionner le fichier
 3. Naviguez quelques secondes pour que tous les fichiers soient mis en cache
 4. Vous pouvez maintenant fermer l'application et passer en zone sans réseau — elle restera fonctionnelle
 
@@ -460,7 +539,14 @@ Bouton **💾 Sauvegarder** → 3 choix :
 
 ### 🗂️ Changer de plan
 
-Appuyez sur **⬇️ → 🗂️ Changer de plan** pour charger un autre plan complet. Les données non exportées seront perdues — exportez avant de changer.
+Appuyez sur **⬇️ → 🗂️ Changer de plan** pour revenir à votre liste de plans (l'écran d'accueil **📚 Mes plans**) et en charger un autre. Les données non exportées seront perdues — **exportez votre session avant de changer**.
+
+Depuis cet écran, vous pouvez :
+
+- Cliquer sur **▶️ Reprendre** pour relancer le plan que vous venez de quitter
+- Choisir un autre plan dans **Mes plans** (clic direct ou bouton ▶️ de la ligne)
+- Charger un nouveau ZIP via la zone d'import
+- Importer/Exporter votre liste de plans
 
 ---
 

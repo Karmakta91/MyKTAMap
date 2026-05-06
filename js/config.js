@@ -140,14 +140,49 @@ function buildAppConfigFromPlan(planConfig) {
 }
 
 // =========================
-// CHARGEMENT SERVEUR (data/plan-config.json)
+// CHARGEMENT SERVEUR (data/plan-config.json ou data/<dossier>/plan-config.json)
 // =========================
-async function loadAppConfig() {
+// loadAppConfig() — comportement historique, tente data/plan-config.json (rétro-compat)
+// loadAppConfig("data/test1") — tente data/test1/plan-config.json
+//                               + résout les chemins relatifs au dossier
+// =========================
+
+// Résout un chemin relatif au dossier du plan, en respectant la rétro-compat.
+// - http(s):, blob:, data: → tel quel
+// - chemin absolu / commence par / → tel quel
+// - commence par "data/" ou "icon/" → tel quel (formats actuels)
+// - sinon → préfixé par baseDir
+function resolveServerPath(p, baseDir) {
+  if (!p) return p;
+  if (/^(https?:|blob:|data:)/.test(p)) return p;
+  if (p.charAt(0) === "/") return p;
+  if (p.indexOf("data/") === 0) return p;
+  if (p.indexOf("icon/") === 0) return p;
+  return baseDir.replace(/\/$/, "") + "/" + p;
+}
+
+function resolveServerPaths(config, baseDir) {
+  if (!baseDir || baseDir === "data") return config; // racine = pas de réécriture
+  if (config.plan?.baseImage)      config.plan.baseImage      = resolveServerPath(config.plan.baseImage, baseDir);
+  if (config.plan?.collisionImage) config.plan.collisionImage = resolveServerPath(config.plan.collisionImage, baseDir);
+  (config.imageLayers || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
+  (config.dataLayers  || []).forEach(function(l) { if (l.file) l.file = resolveServerPath(l.file, baseDir); });
+  // Note : icons.* déjà gérés par resolveServerPath (icon/ → tel quel)
+  return config;
+}
+
+async function loadAppConfig(planPath) {
+  const baseDir   = planPath || "data";
+  const configUrl = baseDir.replace(/\/$/, "") + "/plan-config.json";
+
   try {
-    const response = await fetch('data/plan-config.json');
+    const response = await fetch(configUrl);
     if (!response.ok) throw new Error("HTTP " + response.status);
-    const config = await response.json();
+    let config = await response.json();
     if (!config?.plan) throw new Error("plan-config.json invalide");
+
+    // Résoudre les chemins relatifs au dossier du plan
+    config = resolveServerPaths(config, baseDir);
 
     window.PLAN_CONFIG = config;
     const cfg = buildAppConfigFromPlan(config);
@@ -159,10 +194,13 @@ async function loadAppConfig() {
     APP_CONFIG = { ...cfg };
     window.APP_CONFIG = APP_CONFIG;
 
-    console.log("[Config] Chargée depuis serveur", APP_CONFIG);
+    // Mémoriser le chemin pour le registre
+    window._SERVER_PLAN_PATH = baseDir;
+
+    console.log("[Config] Chargée depuis", configUrl, APP_CONFIG);
     return true;
   } catch(err) {
-    console.warn("[Config] Pas de plan serveur :", err.message);
+    console.warn("[Config] Pas de plan à", configUrl, ":", err.message);
     return false;
   }
 }

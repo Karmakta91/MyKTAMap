@@ -1,0 +1,76 @@
+{
+  "type": "puit",
+  "version": 1,
+  "data": [
+    {
+      "id": "Puit aérage 01",
+      "nom": "Puit aérage 01",
+      "x": 2178,
+      "y": 1928,
+      "tags": [
+        "pa"
+      ],
+      "etat": "Non inspectée",
+      "description": "Puit aérage du centre ville",
+      "profondeur": null,
+      "date_update": "2026-05-04",
+      "source": "editor"
+    },
+    {
+      "id": "Puit aérage 02",
+      "nom": "Puit aérage 02",
+      "x": 3893,
+      "y": 798,
+      "tags": [
+        "pa"
+      ],
+      "etat": "Non inspectée",
+      "description": "Plaque a coté de l'arrêt de bus de la mairie",
+      "profondeur": null,
+      "date_update": "2026-05-04",
+      "source": "editor"
+    },
+    {
+      "id": "Puit comblé 01",
+      "nom": "Puit comblé 01",
+      "x": 2882,
+      "y": 806,
+      "tags": [
+        "pc"
+      ],
+      "etat": "Non inspectée",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-05-04",
+      "source": "editor"
+    },
+    {
+      "id": "Puit extraction 01",
+      "nom": "Puit extraction 01",
+      "x": 1792,
+      "y": 1040,
+      "tags": [
+        "ps"
+      ],
+      "etat": "Non inspectée",
+      "description": "Dans la casse auto",
+      "profondeur": null,
+      "date_update": "2026-05-04",
+      "source": "editor"
+    },
+    {
+      "id": "Puit bouché 02",
+      "nom": "Puit bouché 02",
+      "x": 1295,
+      "y": 283,
+      "tags": [
+        "pb"
+      ],
+      "etat": "Non inspectée",
+      "description": "",
+      "profondeur": null,
+      "date_update": "2026-05-04",
+      "source": "editor"
+    }
+  ]
+}

@@ -37,43 +37,97 @@
   <!-- CHARGEUR DE PLAN (masqué par défaut, affiché si pas de plan serveur) -->
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
+
+      <!-- HEADER : titre + aide -->
       <div class="loader-header">
-        <span class="loader-titre">📦 Charger un plan</span>
+        <span class="loader-titre">📦 MyKTAMap</span>
+        <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
+      </div>
+
+      <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
+      <div id="resumeBox" style="display:none; margin-bottom:14px;">
+        <button id="resumeBtn" class="loader-btn-resume">
+          ▶️ Reprendre <strong id="resumeName"></strong>
+        </button>
+      </div>
+
+      <!-- 📚 MES PLANS -->
+      <div id="myPlansBox" style="display:none; margin-bottom:14px;">
+        <div class="loader-section-head">
+          <span>📚 Mes plans</span>
+          <div class="loader-section-actions">
+            <button class="loader-btn-mini" id="exportListBtn" title="Exporter ma liste">💾</button>
+            <button class="loader-btn-mini" id="importListBtn" title="Charger une liste">📂</button>
+          </div>
+        </div>
+
+        <div id="allPlansList" class="loader-plans-list"></div>
+      </div>
+
+      <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
+      <div class="loader-section-head">
+        <span>📦 Ajouter un plan</span>
       </div>
 
       <div class="loader-panel active" id="panelZip">
-        <p class="loader-desc">
-          Importe une archive <code>.zip</code> contenant <code>plan-config.json</code>
-          et tous les fichiers associés.
-        </p>
         <div class="zip-drop-zone" id="zipDropZone">
           <span class="zip-icon">📦</span>
-          Glisse ton archive ici<br>
+          Glisse ton archive ZIP ici<br>
           <span style="font-size:12px; opacity:0.6;">ou clique pour sélectionner</span>
           <input id="zipFile" type="file" accept=".zip,application/zip">
         </div>
         <div id="zipFileName"></div>
+
+        <!-- Options : 🔐 FS Access (Chrome/Edge desktop) -->
+        <div id="fsAccessHint" class="fs-access-hint" style="display:none;">
+          <button class="loader-btn-fs" id="fsAccessBtn" type="button">
+            🔐 Autoriser l'accès permanent au fichier
+          </button>
+          <span class="fs-access-info">
+            Sur Chrome/Edge, autorise une fois et l'app pourra rouvrir ce ZIP en 1 clic ensuite.
+          </span>
+        </div>
+
+        <!-- Options : 💾 stockage app (mobile / Firefox / Safari) -->
+        <div id="storeBlobHint" class="fs-access-hint" style="display:none;">
+          <label class="loader-store-blob">
+            <input type="checkbox" id="storeBlobCb">
+            <span>💾 Mémoriser ce plan dans l'app</span>
+          </label>
+          <span class="fs-access-info" id="storeBlobInfo">
+            Le ZIP sera copié dans l'espace local du navigateur et rechargé en 1 clic.
+            Recommandé sur mobile.
+          </span>
+        </div>
+
+        <!-- ⚡ Mode performance (lié à l'import en cours) -->
+        <div class="loader-perf-wrap">
+          <label class="loader-perf-label">
+            <input type="checkbox" id="loaderPerfMode">
+            <span>⚡ Mode performance</span>
+          </label>
+          <span class="loader-perf-hint">Recommandé pour les plans &gt; 50 Mo (JPEG volumineux)</span>
+        </div>
+
+        <!-- Bouton principal Charger -->
+        <div class="loaderActions">
+          <button id="loadPlanBtn" type="button">▶️ Charger ce plan</button>
+        </div>
       </div>
 
-      <div class="loaderActions">
-        <button id="loadPlanBtn" type="button">Charger le plan</button>
-        <button class="loader-btn-ghost" type="button" id="loaderConfExempleBtn">Conf Exemple</button>
+      <!-- ACTIONS AVANCÉES — en bas, groupe discret -->
+      <div class="loader-section-head loader-section-head-collapse" id="advancedHead">
+        <span>⚙️ Plus d'options</span>
+        <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
       </div>
-
-      <!-- Mode performance -->
-      <div class="loader-perf-wrap">
-        <label class="loader-perf-label">
-          <input type="checkbox" id="loaderPerfMode">
-          <span>⚡ Mode performance</span>
-        </label>
-        <span class="loader-perf-hint">Recommandé pour les plans &gt; 50 Mo (JPEG volumineux)</span>
-      </div>
-
-      <!-- Actions secondaires : générateur + plan serveur -->
-      <div class="loader-secondary-actions">
+      <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
+        <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Plan serveur racine</button>
         <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
-        <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Charger le plan serveur</button>
+        <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
       </div>
+
+      <!-- Input caché pour import de liste -->
+      <input id="importListFile" type="file" accept=".config,.json,application/json" style="display:none;">
 
       <div id="loaderStatus"></div>
     </div>
@@ -103,28 +157,14 @@
   <script src="js/searchPoints.js"></script>
   <script src="js/sessionExporter.js"></script>
   <script src="js/createConf.js"></script>
+  <script src="js/planRegistry.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
 
   <!-- LOADER SCRIPT -->
   <script>
-    // Exposé globalement pour le bouton "Changer de plan > Charger un plan"
-    window.afficherLoader = function () {
-      const overlay   = document.getElementById("planLoaderOverlay");
-      const statusBox = document.getElementById("loaderStatus");
-      const mapEl     = document.getElementById("map");
-      const loadBtn   = document.getElementById("loadPlanBtn");
-
-      if (!overlay) {
-        console.error("planLoaderOverlay introuvable");
-        return;
-      }
-      if (statusBox) statusBox.textContent = "";
-      if (loadBtn)   loadBtn.disabled = false;
-
-      overlay.style.display = "flex";
-      if (mapEl) mapEl.style.pointerEvents = "none";
-    };
+    // afficherLoader est défini dans main.js (avec refresh de la liste de plans)
+    // On définit ici uniquement masquerLoader (utilisé par les boutons d'import)
 
     window.masquerLoader = function () {
       const overlay = document.getElementById("planLoaderOverlay");
@@ -132,7 +172,10 @@
       const loadBtn = document.getElementById("loadPlanBtn");
 
       if (overlay) overlay.style.display = "none";
-      if (mapEl)   mapEl.style.pointerEvents = "auto";
+      if (mapEl) {
+        mapEl.style.display = "block";
+        mapEl.style.pointerEvents = "auto";
+      }
       if (loadBtn) loadBtn.disabled = false;
     };
 
@@ -144,39 +187,10 @@
       const zipFileName     = document.getElementById("zipFileName");
       const confExBtn       = document.getElementById("loaderConfExempleBtn");
 
-      if (confExBtn) {
-        confExBtn.addEventListener("click", function() {
-          const a = document.createElement("a");
-          a.href = "data/myktamap.zip";
-          a.download = "myktamap.zip";
-          a.click();
-        });
-      }
+      // Handle FS Access courant (si l'utilisateur a sélectionné via showOpenFilePicker)
+      let _currentFsHandle = null;
 
-      zipDropZone.addEventListener("click", function () { zipFileInput.click(); });
-      zipFileInput.addEventListener("change", function () {
-        const f = zipFileInput.files[0];
-        zipFileName.textContent = f ? "✅ " + f.name : "";
-        const cb = document.getElementById("loaderPerfMode");
-        if (f && cb && f.size > 50 * 1024 * 1024) cb.checked = true;
-      });
-
-      zipDropZone.addEventListener("dragover",  function(e) { e.preventDefault(); zipDropZone.classList.add("dragover"); });
-      zipDropZone.addEventListener("dragleave", function()  { zipDropZone.classList.remove("dragover"); });
-      zipDropZone.addEventListener("drop", function(e) {
-        e.preventDefault(); zipDropZone.classList.remove("dragover");
-        const f = e.dataTransfer.files[0];
-        if (f && f.name.toLowerCase().endsWith(".zip")) {
-          const dt = new DataTransfer(); dt.items.add(f);
-          zipFileInput.files = dt.files;
-          zipFileName.textContent = "✅ " + f.name;
-          const cb = document.getElementById("loaderPerfMode");
-          if (cb && f.size > 50 * 1024 * 1024) cb.checked = true;
-        } else {
-          setStatus("Le fichier doit être une archive .zip", true);
-        }
-      });
-
+      // === HELPERS ===
       function setStatus(message, isError) {
         if (!statusBox) return;
         statusBox.textContent = message || "";
@@ -207,10 +221,116 @@
         return { planConfigFile, assetFiles };
       }
 
-      async function onLoadPlanClick() {
-        if (typeof window.startImportedPlan !== "function") {
-          setStatus("startImportedPlan introuvable", true); return;
+      // === CONF EXEMPLE ===
+      if (confExBtn) {
+        confExBtn.addEventListener("click", function() {
+          const a = document.createElement("a");
+          a.href = "data/myktamap.zip";
+          a.download = "myktamap.zip";
+          a.click();
+        });
+      }
+
+      // === DROP ZONE ZIP ===
+      zipDropZone.addEventListener("click", function (e) {
+        // Ne pas ouvrir le picker si l'utilisateur a cliqué sur le bouton FS Access
+        if (e.target.closest("#fsAccessHint")) return;
+        zipFileInput.click();
+      });
+      zipFileInput.addEventListener("change", function () {
+        const f = zipFileInput.files[0];
+        zipFileName.textContent = f ? "✅ " + f.name : "";
+        // Sélection via input classique : pas de handle FS
+        _currentFsHandle = null;
+        const cb = document.getElementById("loaderPerfMode");
+        if (f && cb && f.size > 50 * 1024 * 1024) cb.checked = true;
+      });
+
+      zipDropZone.addEventListener("dragover",  function(e) { e.preventDefault(); zipDropZone.classList.add("dragover"); });
+      zipDropZone.addEventListener("dragleave", function()  { zipDropZone.classList.remove("dragover"); });
+      zipDropZone.addEventListener("drop", function(e) {
+        e.preventDefault(); zipDropZone.classList.remove("dragover");
+        const f = e.dataTransfer.files[0];
+        if (f && f.name.toLowerCase().endsWith(".zip")) {
+          const dt = new DataTransfer(); dt.items.add(f);
+          zipFileInput.files = dt.files;
+          zipFileName.textContent = "✅ " + f.name;
+          // Drop : pas de handle FS
+          _currentFsHandle = null;
+          const cb = document.getElementById("loaderPerfMode");
+          if (cb && f.size > 50 * 1024 * 1024) cb.checked = true;
+        } else {
+          setStatus("Le fichier doit être une archive .zip", true);
         }
+      });
+
+      // === FS ACCESS — sélection via showOpenFilePicker (handle persistable) ===
+      const fsAccessHint = document.getElementById("fsAccessHint");
+      const fsAccessBtn  = document.getElementById("fsAccessBtn");
+      const storeBlobHint = document.getElementById("storeBlobHint");
+      const storeBlobCb   = document.getElementById("storeBlobCb");
+      const storeBlobInfo = document.getElementById("storeBlobInfo");
+
+      // Choix de l'affichage selon la plateforme :
+      //  - FS Access dispo (Chrome/Edge desktop) → bouton 🔐 visible, store-blob masqué
+      //  - Sinon (mobile, Firefox, Safari) → store-blob visible, FS Access masqué
+      const fsOk = window.PlanRegistry && window.PlanRegistry.hasFsAccess();
+      if (fsOk && fsAccessHint) {
+        fsAccessHint.style.display = "block";
+      } else if (storeBlobHint) {
+        storeBlobHint.style.display = "block";
+      }
+
+      if (fsAccessBtn) {
+        fsAccessBtn.addEventListener("click", async function(e) {
+          e.stopPropagation();
+          try {
+            const [handle] = await window.showOpenFilePicker({
+              types: [{ description: "Plan ZIP", accept: { "application/zip": [".zip"] } }],
+              excludeAcceptAllOption: false,
+              multiple: false
+            });
+            const file = await handle.getFile();
+            // Injecter dans l'input pour cohérence avec le flux de chargement existant
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            zipFileInput.files = dt.files;
+            zipFileName.textContent = "🔐 " + file.name + " (accès persistant)";
+            _currentFsHandle = handle;
+            const cb = document.getElementById("loaderPerfMode");
+            if (cb && file.size > 50 * 1024 * 1024) cb.checked = true;
+            setStatus("ZIP sélectionné. Clique sur « Charger » pour continuer.", false);
+          } catch(err) {
+            if (err && err.name !== "AbortError") {
+              setStatus("Erreur de sélection : " + (err.message || err), true);
+            }
+          }
+        });
+      }
+
+      // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
+      async function chargerZipFichier(zipFile, perfChoisi, meta) {
+        if (typeof window.startImportedPlan !== "function") {
+          throw new Error("startImportedPlan introuvable");
+        }
+        setStatus("Extraction en cours…", false);
+        const { planConfigFile, assetFiles } = await extraireZip(zipFile);
+        setStatus("Chargement en cours…", false);
+
+        try {
+          const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
+          saved.perfMode = perfChoisi;
+          localStorage.setItem("app_user_prefs", JSON.stringify(saved));
+        } catch(e) {}
+
+        await window.startImportedPlan(planConfigFile, assetFiles, perfChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
+        setStatus("Plan chargé avec succès.");
+        if (window.masquerLoader) window.masquerLoader();
+      }
+      // Exposer pour le bouton "Changer de plan"
+      window.chargerZipFichier = chargerZipFichier;
+
+      async function onLoadPlanClick() {
         loadBtn.disabled = true;
         try {
           const zipFile = zipFileInput.files[0];
@@ -219,22 +339,15 @@
             loadBtn.disabled = false;
             return;
           }
-          setStatus("Extraction en cours…", false);
-          const { planConfigFile, assetFiles } = await extraireZip(zipFile);
-
-          setStatus("Chargement en cours…", false);
-
           const cb = document.getElementById("loaderPerfMode");
           const perfChoisi = cb ? (cb.checked ? true : false) : null;
-          try {
-            const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-            saved.perfMode = perfChoisi;
-            localStorage.setItem("app_user_prefs", JSON.stringify(saved));
-          } catch(e) {}
 
-          await window.startImportedPlan(planConfigFile, assetFiles, perfChoisi);
-          setStatus("Plan chargé avec succès.");
-          if (window.masquerLoader) window.masquerLoader();
+          const meta = {};
+          if (_currentFsHandle) meta.fsHandle = _currentFsHandle;
+          // Stockage du blob ZIP demandé (case cochée)
+          if (storeBlobCb && storeBlobCb.checked) meta.storeBlob = true;
+
+          await chargerZipFichier(zipFile, perfChoisi, meta);
         } catch(err) {
           console.error("[Loader] Erreur :", err);
           setStatus("Erreur : " + (err.message || err), true);
@@ -244,48 +357,34 @@
 
       if (loadBtn) loadBtn.addEventListener("click", onLoadPlanClick);
 
-      // Pré-cocher si préférence sauvegardée
+      // Pré-cocher perfMode si préférence sauvegardée
       try {
         const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
         const cb = document.getElementById("loaderPerfMode");
         if (cb && saved.perfMode === true) cb.checked = true;
       } catch(e) {}
 
-      // ─────────────────────────────────────────────────
-      // BOUTONS SECONDAIRES : 🏗️ Générer un plan / 🌐 Charger plan serveur
-      // ─────────────────────────────────────────────────
-
-      // Bouton 🏗️ — ouvrir le générateur de plan depuis le loader
+      // === BOUTONS SECONDAIRES ===
       const plannerBtn = document.getElementById("loaderPlannerBtn");
       if (plannerBtn) {
         plannerBtn.addEventListener("click", function() {
-          if (typeof window.afficherPlanner === "function") {
-            window.afficherPlanner();
-          } else {
-            setStatus("Le générateur n'est pas disponible (créateConf.js manquant ?)", true);
-          }
+          if (typeof window.afficherPlanner === "function") window.afficherPlanner();
+          else setStatus("Le générateur n'est pas disponible", true);
         });
       }
 
-      // Bouton 🌐 — charger le plan serveur s'il existe
       const serverBtn = document.getElementById("loaderServerBtn");
       if (serverBtn) {
         serverBtn.addEventListener("click", async function() {
           serverBtn.disabled = true;
           setStatus("Tentative de chargement depuis le serveur…", false);
           try {
-            // Réutilise loadAppConfig qui fait le bon boulot
-            if (typeof window.loadAppConfig === "function") {
-              const ok = await window.loadAppConfig();
-              if (ok) {
-                if (window.lancerApplication) {
-                  await window.lancerApplication();
-                  if (window.masquerLoader) window.masquerLoader();
-                  return;
-                }
-              }
+            if (typeof window.chargerPlanServeur === "function") {
+              await window.chargerPlanServeur("data");
+              if (window.masquerLoader) window.masquerLoader();
+              return;
             }
-            setStatus("Aucun plan trouvé sur le serveur (plan-config.json absent)", true);
+            setStatus("Aucun plan trouvé (data/plan-config.json absent)", true);
             serverBtn.disabled = false;
           } catch(err) {
             console.error("[Loader serveur]", err);
@@ -294,6 +393,362 @@
           }
         });
       }
+
+      // ════════════════════════════════════════════════════════
+      // GESTION DU REGISTRE DES PLANS (Reprendre / Récents / Tous)
+      // ════════════════════════════════════════════════════════
+
+      function fmtDate(iso) {
+        if (!iso) return "";
+        try {
+          const d = new Date(iso);
+          return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }) +
+                 " " + d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        } catch(e) { return ""; }
+      }
+
+      function fmtSize(bytes) {
+        if (!bytes) return "";
+        const mo = bytes / 1024 / 1024;
+        return mo >= 1 ? mo.toFixed(1) + " Mo" : Math.round(bytes / 1024) + " Ko";
+      }
+
+      function planRowHTML(plan) {
+        let icon = plan.type === "server" ? "🌐" : "💾";
+        // Différencier visuellement les plans locaux selon leur mode de persistance
+        let badge = "";
+        if (plan.type === "local") {
+          if (plan.storedBlob) {
+            badge = '<span class="plan-row-badge plan-row-badge-stored" title="Plan mémorisé dans l\'app">✅</span>';
+          } else if (plan.fsHandleId) {
+            badge = '<span class="plan-row-badge plan-row-badge-fs" title="Accès permanent autorisé">🔐</span>';
+          } else {
+            badge = '<span class="plan-row-badge plan-row-badge-pick" title="Re-sélection requise au chargement">📁</span>';
+          }
+        }
+        const sub  = plan.type === "server"
+          ? plan.path
+          : (plan.originalFilename || "") + (plan.fileSize ? " · " + fmtSize(plan.fileSize) : "");
+        const meta = plan.lastOpened
+          ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
+          : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
+        return `
+          <div class="plan-row" data-id="${plan.id}">
+            <span class="plan-row-icon">${icon}</span>
+            <div class="plan-row-info">
+              <div class="plan-row-name">
+                ${escapeHtml(plan.name || plan.id)}${plan.version ? ' <span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
+                ${badge}
+              </div>
+              <div class="plan-row-sub">${escapeHtml(sub)}</div>
+              ${meta}
+            </div>
+            <div class="plan-row-actions">
+              <button class="plan-row-btn plan-row-load" title="Charger ce plan">▶️</button>
+              <button class="plan-row-btn plan-row-remove" title="Retirer de la liste">✕</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+          return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+        });
+      }
+
+      window.refreshPlansList = function() {
+        if (!window.PlanRegistry) return;
+        const all = window.PlanRegistry.getAll();
+        const last = window.PlanRegistry.getLastOpened();
+
+        // Bouton Reprendre
+        const resumeBox = document.getElementById("resumeBox");
+        const resumeName = document.getElementById("resumeName");
+        if (last && resumeBox && resumeName) {
+          resumeName.textContent = (last.name || last.id) + (last.version ? " (" + last.version + ")" : "");
+          resumeBox.style.display = "block";
+          resumeBox.dataset.planId = last.id;
+        } else if (resumeBox) {
+          resumeBox.style.display = "none";
+        }
+
+        // Liste unique
+        const myPlansBox = document.getElementById("myPlansBox");
+        if (all.length === 0) {
+          if (myPlansBox) myPlansBox.style.display = "none";
+          return;
+        }
+        if (myPlansBox) myPlansBox.style.display = "block";
+
+        const allPlansList = document.getElementById("allPlansList");
+        if (allPlansList) {
+          // Tri : par lastOpened desc, puis par name
+          const sorted = all.slice().sort(function(a, b) {
+            if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
+            if (a.lastOpened) return -1;
+            if (b.lastOpened) return 1;
+            return (a.name || "").localeCompare(b.name || "");
+          });
+          allPlansList.innerHTML = sorted.map(planRowHTML).join("");
+        }
+
+        // Brancher les listeners
+        document.querySelectorAll(".plan-row").forEach(function(row) {
+          const id = row.dataset.id;
+          row.querySelector(".plan-row-load").addEventListener("click", function(e) {
+            e.stopPropagation();
+            chargerPlanDuRegistre(id);
+          });
+          row.querySelector(".plan-row-remove").addEventListener("click", function(e) {
+            e.stopPropagation();
+            if (confirm("Retirer ce plan de votre liste ?")) {
+              window.PlanRegistry.remove(id);
+              window.refreshPlansList();
+            }
+          });
+          row.addEventListener("click", function() {
+            chargerPlanDuRegistre(id);
+          });
+        });
+      };
+
+      // === CHARGER UN PLAN DEPUIS LE REGISTRE ===
+      async function chargerPlanDuRegistre(id) {
+        const plan = window.PlanRegistry.findById(id);
+        if (!plan) return setStatus("Plan introuvable dans la liste", true);
+
+        if (plan.type === "server") {
+          setStatus("Chargement de " + plan.name + "…");
+          try {
+            await window.chargerPlanServeur(plan.path, plan);
+            if (window.masquerLoader) window.masquerLoader();
+          } catch(e) {
+            setStatus("Erreur : " + (e.message || e), true);
+          }
+          return;
+        }
+
+        if (plan.type === "local") {
+          // 1. Tenter le blob mémorisé (mobile + fallback)
+          if (plan.storedBlob) {
+            try {
+              const blob = await window.PlanRegistry.getBlob(plan.id);
+              if (blob) {
+                const file = new File([blob], plan.originalFilename || "plan.zip", { type: "application/zip" });
+                const cb = document.getElementById("loaderPerfMode");
+                const perfChoisi = cb ? (cb.checked ? true : false) : null;
+                setStatus("Chargement depuis le stockage local…", false);
+                await chargerZipFichier(file, perfChoisi, { planId: plan.id, fromStoredBlob: true });
+                return;
+              }
+              console.warn("[Loader] Blob mémorisé introuvable — fallback");
+            } catch(e) {
+              console.warn("[Loader] Erreur lecture blob :", e);
+            }
+          }
+
+          // 2. Tenter le FS handle (Chrome/Edge desktop)
+          if (plan.fsHandleId && window.PlanRegistry.hasFsAccess()) {
+            const handle = await window.PlanRegistry.getHandle(plan.fsHandleId);
+            if (handle) {
+              const ok = await window.PlanRegistry.ensureHandlePermission(handle);
+              if (ok) {
+                try {
+                  const file = await handle.getFile();
+                  const cb = document.getElementById("loaderPerfMode");
+                  const perfChoisi = cb ? (cb.checked ? true : false) : null;
+                  await chargerZipFichier(file, perfChoisi, { fsHandle: handle, planId: plan.id });
+                  return;
+                } catch(e) {
+                  console.warn("[Loader] FS handle invalide, fallback :", e);
+                }
+              }
+            }
+          }
+
+          // 3. Fallback : ouvrir le sélecteur de fichier
+          await reSelectionnerZipPourPlan(plan);
+        }
+      }
+
+      // === RE-SÉLECTION D'UN ZIP POUR UN PLAN LOCAL ===
+      async function reSelectionnerZipPourPlan(plan) {
+        let file = null;
+        let handle = null;
+
+        // Préférence : showOpenFilePicker (donne un handle persistable)
+        if (window.PlanRegistry.hasFsAccess()) {
+          try {
+            const [h] = await window.showOpenFilePicker({
+              types: [{ description: "Plan ZIP", accept: { "application/zip": [".zip"] } }],
+              excludeAcceptAllOption: false,
+              multiple: false
+            });
+            handle = h;
+            file = await handle.getFile();
+          } catch(e) {
+            // Annulation utilisateur ou erreur — fallback input file
+            if (e && e.name === "AbortError") return; // utilisateur a annulé
+          }
+        }
+
+        // Fallback input file classique
+        if (!file) {
+          file = await new Promise(function(resolve) {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".zip,application/zip";
+            input.onchange = function() { resolve(input.files[0] || null); };
+            input.click();
+          });
+        }
+
+        if (!file) return;
+
+        // Vérifier que le ZIP correspond bien (nom du plan)
+        try {
+          const { planConfigFile } = await extraireZip(file);
+          const text = await planConfigFile.text();
+          const cfg = JSON.parse(text);
+          const ziPName = (cfg.plan?.name || "").trim();
+          const planName = (plan.name || "").trim();
+
+          if (ziPName && planName && ziPName !== planName) {
+            const ok = confirm(
+              "⚠️ Ce ZIP contient le plan « " + ziPName + " » mais vous avez cliqué sur « " + planName + " ».\n\n" +
+              "Charger quand même ce ZIP ?"
+            );
+            if (!ok) return;
+          }
+        } catch(e) {
+          setStatus("ZIP invalide : " + (e.message || e), true);
+          return;
+        }
+
+        const cb = document.getElementById("loaderPerfMode");
+        const perfChoisi = cb ? (cb.checked ? true : false) : null;
+        try {
+          await chargerZipFichier(file, perfChoisi, { fsHandle: handle, planId: plan.id });
+        } catch(err) {
+          setStatus("Erreur : " + (err.message || err), true);
+        }
+      }
+
+      // === BOUTON REPRENDRE ===
+      const resumeBtn = document.getElementById("resumeBtn");
+      if (resumeBtn) {
+        resumeBtn.addEventListener("click", function() {
+          const id = document.getElementById("resumeBox").dataset.planId;
+          if (id) chargerPlanDuRegistre(id);
+        });
+      }
+
+      // === EXPORTER LA LISTE ===
+      const exportListBtn = document.getElementById("exportListBtn");
+      if (exportListBtn) {
+        exportListBtn.addEventListener("click", function() {
+          if (window.PlanRegistry) {
+            window.PlanRegistry.exportToFile();
+            setStatus("Liste exportée");
+          }
+        });
+      }
+
+      // === IMPORTER UNE LISTE ===
+      const importListBtn = document.getElementById("importListBtn");
+      const importListFile = document.getElementById("importListFile");
+      if (importListBtn && importListFile) {
+        importListBtn.addEventListener("click", function() {
+          importListFile.click();
+        });
+        importListFile.addEventListener("change", async function() {
+          const file = importListFile.files[0];
+          if (!file) return;
+          try {
+            const stats = await window.PlanRegistry.statsImport(file);
+            if (!stats.ok) {
+              setStatus("Erreur : " + stats.error, true);
+              importListFile.value = "";
+              return;
+            }
+            // Demander à l'utilisateur quel mode
+            const choix = await afficherChoixImportListe(stats);
+            if (!choix) { importListFile.value = ""; return; }
+            const r = await window.PlanRegistry.importFromFile(file, choix);
+            setStatus(choix === "replace"
+              ? "Liste remplacée — " + r.count + " plan(s)"
+              : "Liste fusionnée — " + (stats.newOnes) + " nouveau(x), " + stats.duplicates + " ignoré(s)");
+            window.refreshPlansList();
+          } catch(e) {
+            setStatus("Erreur : " + (e.message || e), true);
+          }
+          importListFile.value = "";
+        });
+      }
+
+      function afficherChoixImportListe(stats) {
+        return new Promise(function(resolve) {
+          // Modale simple avec 3 options
+          const modal = document.createElement("div");
+          modal.className = "kta-readme-modal-overlay";
+          modal.innerHTML = `
+            <div class="kta-readme-modal-boite" style="max-width:440px;">
+              <div class="kta-readme-modal-header">
+                <span class="kta-readme-modal-titre">📂 Charger une liste de plans</span>
+              </div>
+              <div class="kta-readme-modal-corps" style="padding:18px;">
+                <p style="font-size:13px; color:#c0c8d8; line-height:1.5;">
+                  Cette liste contient <strong>${stats.total}</strong> plan${stats.total > 1 ? "s" : ""}.<br>
+                  ${stats.newOnes > 0 ? '<strong style="color:#8cb4ff;">' + stats.newOnes + '</strong> nouveau(x), ' : ''}
+                  ${stats.duplicates > 0 ? '<span style="color:#8892a4;">' + stats.duplicates + ' déjà connu(s)</span>' : ''}
+                </p>
+                <p style="font-size:13px; color:#e8eaf0; margin-top:14px;">Que voulez-vous faire ?</p>
+                <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+                  <button class="kta-btn kta-btn-primary" data-mode="replace">🔁 Remplacer ma liste actuelle</button>
+                  <button class="kta-btn kta-btn-primary" data-mode="merge">➕ Fusionner (garder les deux)</button>
+                  <button class="kta-btn kta-btn-ghost"   data-mode="cancel">Annuler</button>
+                </div>
+              </div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+          modal.querySelectorAll("button").forEach(function(b) {
+            b.addEventListener("click", function() {
+              const m = b.dataset.mode;
+              modal.remove();
+              resolve(m === "cancel" ? null : m);
+            });
+          });
+        });
+      }
+
+      // === BOUTON 📖 DOCUMENTATION UTILISATEUR ===
+      const helpBtn = document.getElementById("loaderHelpBtn");
+      if (helpBtn) {
+        helpBtn.addEventListener("click", function() {
+          if (typeof window.afficherReadme === "function") {
+            window.afficherReadme();
+          } else {
+            setStatus("Documentation indisponible", true);
+          }
+        });
+      }
+
+      // === COLLAPSE "PLUS D'OPTIONS" ===
+      const advHead    = document.getElementById("advancedHead");
+      const advBox     = document.getElementById("advancedBox");
+      const advChevron = document.getElementById("advancedChevron");
+      if (advHead && advBox) {
+        advHead.addEventListener("click", function() {
+          const isOpen = advBox.style.display === "flex" || advBox.style.display === "block";
+          advBox.style.display = isOpen ? "none" : "flex";
+          if (advChevron) advChevron.textContent = isOpen ? "▾" : "▴";
+        });
+      }
+
+      // Premier rendu de la liste
+      if (window.refreshPlansList) window.refreshPlansList();
     });
   </script>
 <script>

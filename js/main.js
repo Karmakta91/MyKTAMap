@@ -1,6 +1,5 @@
 // =========================
-// MAIN.JS — unifié serveur + import navigateur
-// Point d'entrée unique avec auto-détection du mode
+// MAIN.JS — unifié serveur + import navigateur + registre de plans
 // =========================
 
 // =========================
@@ -24,6 +23,64 @@ async function initDataFromConfig() {
 let _appEnCours = false;
 // Flag : true = l'utilisateur a explicitement demandé un import
 let _importDemande = false;
+
+// =========================
+// AUTO-DISCOVERY SERVEUR (data/index.json)
+// =========================
+async function decouvrirPlansServeur() {
+  if (!window.PlanRegistry) return;
+  try {
+    const r = await fetch("data/index.json");
+    if (!r.ok) {
+      console.log("[Main] data/index.json absent — pas d'auto-discovery");
+      return;
+    }
+    const idx = await r.json();
+    const plans = Array.isArray(idx?.plans) ? idx.plans : [];
+    console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
+
+    plans.forEach(function(entry) {
+      // Format détaillé : { id, path, name, version?, author? }
+      // Format minimal : "test1" (string) → on déduit
+      let path, name, version, author, id;
+      if (typeof entry === "string") {
+        path = "data/" + entry;
+        name = entry;
+        id   = window.PlanRegistry.genServerId(path);
+      } else if (entry && typeof entry === "object") {
+        path = entry.path || ("data/" + (entry.id || ""));
+        name = entry.name || entry.id || path;
+        version = entry.version || null;
+        author  = entry.author  || null;
+        id   = entry.id ? "server_" + entry.id.replace(/[^a-z0-9_-]/gi, "_") : window.PlanRegistry.genServerId(path);
+      } else {
+        return;
+      }
+
+      window.PlanRegistry.addOrUpdate({
+        id: id,
+        type: "server",
+        path: path,
+        name: name,
+        version: version,
+        author: author,
+        discovered: true,
+        addedAt: new Date().toISOString()
+      });
+    });
+  } catch(e) {
+    console.warn("[Main] Erreur auto-discovery serveur :", e);
+  }
+}
+
+// =========================
+// ENREGISTRER DANS LE REGISTRE APRÈS CHARGEMENT
+// =========================
+function _enregistrerPlanCharge(infos) {
+  if (!window.PlanRegistry || !infos) return;
+  window.PlanRegistry.addOrUpdate(infos);
+  window.PlanRegistry.markOpened(infos.id);
+}
 
 // =========================
 // LANCEMENT DE LA CARTE (après config prête)
@@ -76,10 +133,55 @@ async function lancerApplication() {
 }
 
 // =========================
+// CHARGEMENT D'UN PLAN SERVEUR PARTICULIER (depuis le registre)
+// =========================
+async function chargerPlanServeur(planPath, registryEntry) {
+  // Détruire la carte existante
+  if (window._baseTiles && window._baseTiles.length > 0) {
+    libererTuiles(window._baseTiles, window.map);
+    window._baseTiles = [];
+  }
+  if (window.map) {
+    try { window.map.remove(); } catch(e) {}
+    window.map = null;
+  }
+
+  resetRuntimeAssets();
+
+  window.interfaceInitialized = false;
+  window.roadInitialized      = false;
+  window.zonesInitialized     = false;
+
+  const ok = await loadAppConfig(planPath);
+  if (!ok) throw new Error("Plan introuvable : " + planPath);
+
+  // Enregistrer dans le registre
+  if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
+    const id = registryEntry?.id || window.PlanRegistry.genServerId(planPath);
+    _enregistrerPlanCharge({
+      id: id,
+      type: "server",
+      path: planPath,
+      name:    window.PLAN_CONFIG.plan.name    || (registryEntry && registryEntry.name) || planPath,
+      version: window.PLAN_CONFIG.plan.version || (registryEntry && registryEntry.version) || null,
+      author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
+      discovered: registryEntry?.discovered || false
+    });
+  }
+
+  _appEnCours    = false;
+  _importDemande = false;
+  await lancerApplication();
+}
+
+// =========================
 // CHARGEMENT DEPUIS IMPORT NAVIGATEUR
 // =========================
-async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
+// meta = { zipFile?, fsHandle?, planId? }  (tout optionnel)
+async function startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta) {
   if (!planConfigFile) throw new Error("Aucun fichier plan-config.json fourni");
+
+  meta = meta || {};
 
   // Détruire proprement la carte existante (plan serveur éventuellement chargé)
   _importDemande = true;
@@ -139,7 +241,6 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
   window.APP_CONFIG = APP_CONFIG;
 
   // Appliquer le choix explicite du loader AVANT lancerApplication
-  // pour que chargerImage() lise la bonne valeur de perfMode
   if (typeof perfChoisi === "boolean") {
     APP_CONFIG.perfMode = perfChoisi;
     DEFAULT_CONFIG.perfMode = perfChoisi;
@@ -149,7 +250,62 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
 
   console.log("[Loader] APP_CONFIG.perfMode au lancement :", APP_CONFIG.perfMode);
 
-  // Forcer la réinitialisation du verrou pour permettre le rechargement
+  // ENREGISTREMENT DANS LE REGISTRE
+  if (window.PlanRegistry && rawConfig.plan) {
+    const planName = rawConfig.plan.name || "Plan importé";
+    const planVer  = rawConfig.plan.version || "";
+    const id = meta.planId || window.PlanRegistry.genLocalId(planName, planVer);
+
+    const entry = {
+      id: id,
+      type: "local",
+      name: planName,
+      version: planVer || null,
+      author: rawConfig.plan.author || null,
+      originalFilename: meta.zipFile?.name || null,
+      fileSize: meta.zipFile?.size || null
+    };
+
+    // Si on a un FileSystemFileHandle, le persister
+    if (meta.fsHandle && window.PlanRegistry.hasFsAccess()) {
+      entry.fsHandleId = id;
+      try { await window.PlanRegistry.saveHandle(id, meta.fsHandle); }
+      catch(e) { console.warn("[Loader] Sauvegarde FS handle échouée :", e); }
+    }
+
+    // Si l'utilisateur a demandé de mémoriser le ZIP en local, le sauver en IDB
+    if (meta.storeBlob && meta.zipFile) {
+      try {
+        // Demander la persistance du stockage (empêche purge auto par iOS/Chrome)
+        if (window.PlanRegistry.requestPersistentStorage) {
+          await window.PlanRegistry.requestPersistentStorage();
+        }
+        const result = await window.PlanRegistry.saveBlob(id, meta.zipFile);
+        if (result.ok) {
+          entry.storedBlob = true;
+          console.log("[Loader] ZIP mémorisé dans IndexedDB :", id);
+        } else {
+          console.error("[Loader] Mémorisation ZIP échouée :", result.error);
+          // Avertir l'utilisateur via le statut du loader
+          if (typeof window !== "undefined") {
+            const status = document.getElementById("loaderStatus");
+            if (status) {
+              status.textContent = "⚠️ Mémorisation impossible : " + result.error + " — le plan reste utilisable mais demandera une re-sélection au prochain chargement.";
+              status.style.color = "#ffb380";
+            }
+          }
+        }
+      } catch(e) {
+        console.error("[Loader] Erreur saveBlob :", e);
+      }
+    } else if (meta.fromStoredBlob) {
+      // Chargé depuis un blob mémorisé — préserver la flag
+      entry.storedBlob = true;
+    }
+
+    _enregistrerPlanCharge(entry);
+  }
+
   _appEnCours    = false;
   _importDemande = false;
 
@@ -157,7 +313,7 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi) {
 }
 
 // =========================
-// AFFICHER LE LOADER
+// AFFICHER LE LOADER (avec rafraîchissement de la liste)
 // =========================
 function afficherLoader() {
   const overlay = document.getElementById("planLoaderOverlay");
@@ -171,6 +327,11 @@ function afficherLoader() {
   // Masquer #map pendant que le loader est visible
   const mapEl = document.getElementById("map");
   if (mapEl) mapEl.style.display = "none";
+
+  // Rafraîchir la liste des plans dans le loader
+  if (typeof window.refreshPlansList === "function") {
+    window.refreshPlansList();
+  }
 }
 
 // =========================
@@ -179,30 +340,60 @@ function afficherLoader() {
 (async function initApp() {
   console.log("[Main] Démarrage…");
 
-  const chargéDepuisServeur = await loadAppConfig();
-
-  if (chargéDepuisServeur) {
-    console.log("[Main] Plan serveur détecté — chargement automatique");
-    try {
-      if (_importDemande) {
-        console.log("[Main] Import demandé entretemps — chargement serveur annulé");
-        return;
-      }
-      await lancerApplication();
-    } catch(err) {
-      console.error("[Main] Erreur chargement serveur :", err);
-      afficherLoader();
-    }
-  } else {
-    console.log("[Main] Aucun plan serveur — affichage du loader");
-    afficherLoader();
+  // Initialiser le registre
+  if (window.PlanRegistry) {
+    window.PlanRegistry.init();
   }
+
+  // Auto-discovery serveur (data/index.json)
+  await decouvrirPlansServeur();
+
+  // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
+  // le charger automatiquement comme avant
+  const registreVide = !window.PlanRegistry || window.PlanRegistry.getAll().length === 0;
+
+  if (registreVide) {
+    const chargéDepuisServeur = await loadAppConfig();
+    if (chargéDepuisServeur) {
+      console.log("[Main] Plan serveur racine détecté — chargement auto (rétro-compat)");
+
+      // L'enregistrer dans le registre comme plan "racine"
+      if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
+        const id = "server_root";
+        _enregistrerPlanCharge({
+          id: id,
+          type: "server",
+          path: "data",
+          name:    window.PLAN_CONFIG.plan.name    || "Plan racine",
+          version: window.PLAN_CONFIG.plan.version || null,
+          author:  window.PLAN_CONFIG.plan.author  || null,
+          discovered: true
+        });
+      }
+
+      try {
+        if (_importDemande) {
+          console.log("[Main] Import demandé entretemps — chargement serveur annulé");
+          return;
+        }
+        await lancerApplication();
+        return;
+      } catch(err) {
+        console.error("[Main] Erreur chargement serveur :", err);
+      }
+    }
+  }
+
+  console.log("[Main] Affichage du home avec liste des plans");
+  afficherLoader();
 })();
 
 // =========================
 // EXPORTS GLOBAUX
 // =========================
-window.startImportedPlan  = startImportedPlan;
-window.initDataFromConfig = initDataFromConfig;
-window.lancerApplication  = lancerApplication;
-window.afficherLoader     = afficherLoader;
+window.startImportedPlan   = startImportedPlan;
+window.chargerPlanServeur  = chargerPlanServeur;
+window.initDataFromConfig  = initDataFromConfig;
+window.lancerApplication   = lancerApplication;
+window.afficherLoader      = afficherLoader;
+window.decouvrirPlansServeur = decouvrirPlansServeur;

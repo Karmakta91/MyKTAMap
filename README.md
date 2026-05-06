@@ -9,6 +9,77 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 06/05/2026 — Système multi-plans + persistance ZIP locale
+
+- **Nouveau module `planRegistry.js`** — gestionnaire de la liste des plans connus (serveur découverts + locaux ZIP)
+  - Stockage dans `localStorage["myktamap_plans"]` (format JSON v1.0 avec `lastPlanId` + `plans[]`)
+  - `IndexedDB myktamap_handles` avec 2 stores : `handles` (FileSystemFileHandle) + `blobs` (ZIP entiers, mobile)
+  - API publique : `init`, `getAll`, `getRecents(n)`, `getLastOpened`, `findById`, `addOrUpdate`, `markOpened`, `remove`, `removeAll`, `exportToFile`, `importFromFile(file, mode)`, `statsImport`, `genServerId`, `genLocalId`, `saveHandle`/`getHandle`/`removeHandle`, `hasFsAccess`, `ensureHandlePermission`, `saveBlob`/`getBlob`/`removeBlob`, `requestPersistentStorage`, `getStorageEstimate`
+  - Fichier d'export `myktamap_plans_AAAAMMJJ.config` (sans `fsHandleId` qui n'est pas portable)
+
+- **Auto-discovery serveur via `data/index.json`** (format A — détaillé)
+  - L'app fetch `data/index.json` au démarrage, lit les plans listés et les ajoute au registre comme `discovered: true`
+  - Format minimal accepté : `{ "plans": ["test1", "test2"] }`
+  - Format détaillé : `{ "plans": [{ "id": "test1", "path": "data/test1", "name": "Plan Test 1", "version": "V1" }] }`
+  - Si absent → fallback rétro-compat sur `data/plan-config.json` racine (chargement auto comme avant)
+
+- **`config.js` — `loadAppConfig(planPath)` paramétrée**
+  - `loadAppConfig()` → comportement historique (data/plan-config.json racine)
+  - `loadAppConfig("data/test1")` → tente `data/test1/plan-config.json`
+  - Nouvelle fonction `resolveServerPath(p, baseDir)` qui résout les chemins relatifs au dossier du plan
+  - Rétro-compat préservée : `data/...` et `icon/...` non modifiés
+
+- **`main.js` — orchestration multi-plans**
+  - `decouvrirPlansServeur()` — auto-discovery au démarrage
+  - `chargerPlanServeur(planPath, registryEntry)` — charge un plan serveur depuis le registre + l'enregistre
+  - `startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta)` — 4ᵉ paramètre `meta = { zipFile, fsHandle, planId, storeBlob, fromStoredBlob }` qui pilote la persistance et l'enregistrement
+  - Enregistrement post-chargement : lecture des champs `plan.name` / `plan.version` / `plan.author` du plan-config et création/maj d'une entrée dans le registre
+  - Si `meta.storeBlob === true` : `navigator.storage.persist()` puis `saveBlob(id, file)` en IndexedDB
+  - `afficherLoader()` rafraîchit automatiquement la liste via `window.refreshPlansList()`
+
+- **Refonte `index.html` — home unifié**
+  - Bouton **▶️ Reprendre [nom]** visible si `lastPlanId` (recharge le dernier plan ouvert)
+  - Section unique **📚 Mes plans** triée par dernière ouverture descendante (plans jamais ouverts en bas, alphabétique)
+  - Boutons **💾 Exporter ma liste** / **📂 Charger une liste** (modale Replace / Merge / Cancel avec stats)
+  - Bouton **🔐 Autoriser l'accès permanent** (FS Access) — visible Chrome/Edge desktop uniquement
+  - Checkbox **💾 Mémoriser ce plan dans l'app** — visible mobile/Firefox/Safari (pas FS Access)
+  - Bouton **🌐 Charger le plan serveur (racine)** — appelle `chargerPlanServeur("data")` au lieu de `loadAppConfig()` direct
+  - Validation : si le ZIP contient un `plan.name` différent du plan cliqué dans la liste → confirm avant chargement
+  - Fonction `chargerZipFichier(file, perfChoisi, meta)` exposée globalement pour usage externe (bouton 🗂️ Changer de plan)
+  - **Suppression** des sections "Récents" / "Tous" — liste unique demandée par l'utilisateur
+
+- **Hiérarchie de chargement d'un plan local du registre**
+  1. Si `plan.storedBlob === true` → lecture IndexedDB → 0 clic (mobile + desktop, fonctionne hors-ligne)
+  2. Sinon si `plan.fsHandleId` + Chrome/Edge → `getHandle` + `ensureHandlePermission` → 0 ou 1 clic confirmation
+  3. Sinon → `reSelectionnerZipPourPlan(plan)` qui ouvre `showOpenFilePicker` ou `<input type="file">` selon dispo
+
+- **Badges visuels dans la liste des plans locaux**
+  - ✅ vert (`storedBlob`) — Plan mémorisé dans l'app
+  - 🔐 bleu (`fsHandleId`) — Accès FS permanent autorisé
+  - 📁 gris — Re-sélection requise au chargement
+
+- **Gestion du quota IndexedDB** — si `saveBlob` échoue (`QuotaExceededError`)
+  - Le plan se charge quand même
+  - Message orange dans le statut : "⚠️ Mémorisation impossible : Quota dépassé"
+  - Le plan apparaît avec le badge 📁 (re-sélection au prochain chargement)
+
+- **Nettoyage à la suppression** — `PlanRegistry.remove(id)` supprime aussi le `FileSystemFileHandle` ET le blob IndexedDB associés (libère l'espace)
+
+- **`interface.js` — AIDE enrichie**
+  - Section ⬇️ Charger / Import refondue avec encadré multi-plans
+  - Documentation des 3 modes de persistance (✅ Mémorisé / 🔐 Permanent / 📁 Re-sélection)
+  - Conseil PWA pour iOS (persistance jusqu'à 1 Go)
+  - Documentation du format `data/index.json`
+
+- **`style.css` — nouveaux styles**
+  - `.loader-btn-resume` — bouton Reprendre (gradient bleu nuit)
+  - `.loader-section-head` / `.loader-section-actions` / `.loader-btn-mini` — entête de section avec actions
+  - `.loader-plans-list` / `.plan-row` / `.plan-row-icon` / `.plan-row-info` / `.plan-row-name` / `.plan-row-version` / `.plan-row-sub` / `.plan-row-date` / `.plan-row-actions` / `.plan-row-btn` / `.plan-row-load` / `.plan-row-remove`
+  - `.plan-row-badge-stored` (vert) / `.plan-row-badge-fs` (bleu) / `.plan-row-badge-pick` (gris)
+  - `.fs-access-hint` / `.loader-btn-fs` / `.fs-access-info` / `.loader-store-blob` (checkbox + label)
+
+- **`sw.js`** — `js/planRegistry.js` ajouté à `assetsToCache`
+
 ### 🗓️ 05/05/2026 — Export session avancé + filtrage par tag + bugs résolus
 
 - Sommaire dans la documentation
@@ -226,14 +297,24 @@ L'outil repose sur **[Leaflet](https://leafletjs.com/)** en projection simple (`
 ## 🏗️ Architecture applicative
 
 ```
-index.html                  ← Page unique (loader intégré + carte)
+index.html                  ← Page unique (loader avec home multi-plans + carte)
 sw.js                       ← Service Worker (mode hors-ligne)
 manifest.json              ← PWA google chrome
+
+data/
+  index.json                ← (Optionnel) Liste des plans serveur disponibles
+  plan-config.json          ← (Optionnel) Plan racine (rétro-compat)
+  test1/
+    plan-config.json        ← Plan dans un sous-dossier
+    ...
+  test2/
+    plan-config.json
+    ...
 
 js/
         │
         ├── debug.js           ← Capture logs + modale débogage
-        ├── config.js          ← Configuration unifiée (serveur + import)
+        ├── config.js          ← Configuration unifiée + loadAppConfig(planPath) paramétrée
         ├── utils.js           ← Fonctions utilitaires + export PNG dynamique (rapide)
         ├── measure.js         ← Mesure de distance + suppression granulaire
         ├── tiling.js          ← Mode performance : découpage en tuiles
@@ -247,8 +328,9 @@ js/
         ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
         ├── searchPoints.js    ← Recherche rapide d'un point (nom / id / tag / description)
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
+        ├── planRegistry.js    ← Registre multi-plans (localStorage + IndexedDB blobs/handles)
         ├── interface.js       ← Interface Leaflet + toutes les modales
-        └── main.js            ← Point d'entrée unique avec auto-détection
+        └── main.js            ← Point d'entrée unique avec auto-détection + auto-discovery serveur
 
 lib/
         ├── leaflet/           ← Leaflet.js (local)
@@ -337,23 +419,45 @@ Le bouton 🗑️ Réinitialiser dans ⚙️ désinscrit le SW et vide tous les 
 
 ## 🚀 Démarrage — auto-détection du mode
 
-`main.js` orchestre le démarrage en deux branches :
+`main.js` orchestre le démarrage avec auto-discovery serveur + rétro-compat :
 
 ```
 initApp()
-  → loadAppConfig()          ← tente fetch('data/plan-config.json')
-      → succès               → lancerApplication()   (mode serveur)
-      → échec                → afficherLoader()       (mode import)
+  ├─ PlanRegistry.init()              ← charge la liste depuis localStorage
+  ├─ decouvrirPlansServeur()          ← fetch('data/index.json') si présent
+  │     → ajoute les plans découverts au registre (discovered: true)
+  │
+  ├─ Si registre vide ET data/plan-config.json racine existe :
+  │     → loadAppConfig()             ← rétro-compat ancien comportement
+  │     → registre += server_root     ← enregistre comme plan racine
+  │     → lancerApplication()
+  │
+  └─ Sinon :
+        → afficherLoader()             ← home avec liste de plans + import
+        → refreshPlansList()           ← rafraîchit l'UI
 
-startImportedPlan()          ← appelé par le loader HTML ou le ZIP modifier
-  → resetRuntimeAssets()
-  → registerAsset() × N      ← enregistre les fichiers comme Blob URLs
-  → cloneAndResolvePlanConfig()
-  → buildAppConfigFromPlan() ← applique perfMode du loader
-  → lancerApplication()
+# Chargement d'un plan serveur (depuis le registre)
+chargerPlanServeur(planPath, registryEntry)
+  ├─ libère tuiles + détruit map existante
+  ├─ resetRuntimeAssets()
+  ├─ loadAppConfig(planPath)          ← résout chemins relatifs au baseDir
+  ├─ enregistre dans registre + markOpened
+  └─ lancerApplication()
+
+# Chargement d'un ZIP (depuis import ou registre local)
+startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta)
+  ├─ resetRuntimeAssets()
+  ├─ registerAsset() × N
+  ├─ cloneAndResolvePlanConfig()
+  ├─ buildAppConfigFromPlan() + perfMode du loader
+  ├─ Enregistrement registre :
+  │     ├─ Si meta.fsHandle → saveHandle(id, handle)
+  │     ├─ Si meta.storeBlob → requestPersistentStorage() + saveBlob(id, file)
+  │     └─ markOpened(id)
+  └─ lancerApplication()
 ```
 
-Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affiche uniquement si aucun plan serveur n'est détecté, ou quand l'utilisateur clique 🗂️.
+Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affiche au démarrage si aucun plan racine n'est trouvé, ou à la demande via 🗂️ "Changer de plan".
 
 ---
 
@@ -845,6 +949,124 @@ Sections du formulaire :
    - Bouton "+ Ajouter un tag" — création d'un tag personnalisé
    - Upload d'icônes custom par tag (preview live)
    - Tags `default` et `track` en lecture seule (système)
+
+### `planRegistry.js` (Gestionnaire multi-plans)
+
+Module autonome chargé avant `interface.js`. Gère la liste des plans connus de l'utilisateur (serveur découverts + ZIP locaux) avec persistance localStorage et IndexedDB.
+
+#### Format de stockage `localStorage["myktamap_plans"]`
+
+```json
+{
+  "version": "1.0",
+  "lastPlanId": "server_data_test1",
+  "plans": [
+    {
+      "id": "server_data_test1",
+      "type": "server",
+      "path": "data/test1",
+      "name": "Plan Test 1",
+      "version": "V1",
+      "author": "Karma",
+      "discovered": true,
+      "addedAt": "2026-05-06T...",
+      "lastOpened": "2026-05-06T..."
+    },
+    {
+      "id": "local_planmarseille_v1",
+      "type": "local",
+      "name": "Plan Marseille",
+      "version": "V1",
+      "originalFilename": "plan_marseille.zip",
+      "fileSize": 24592384,
+      "fsHandleId": "local_planmarseille_v1",
+      "storedBlob": true,
+      "addedAt": "2026-05-04T...",
+      "lastOpened": "2026-05-06T..."
+    }
+  ]
+}
+```
+
+#### Format `data/index.json` (auto-discovery serveur)
+
+```json
+{
+  "plans": [
+    { "id": "test1", "path": "data/test1", "name": "Plan Test 1", "version": "V1" },
+    { "id": "test2", "path": "data/test2", "name": "Plan Test 2" }
+  ]
+}
+```
+
+Format minimal aussi accepté : `{ "plans": ["test1", "test2"] }` (le path devient `data/test1`).
+
+#### Format export `myktamap_plans_AAAAMMJJ.config`
+
+```json
+{
+  "type": "myktamap-plans-list",
+  "version": "1.0",
+  "exported_at": "2026-05-06T...",
+  "plans": [...]   // sans fsHandleId (non portables)
+}
+```
+
+#### IndexedDB `myktamap_handles` (v2)
+
+| Object Store | Clé | Valeur | Persistance |
+|---|---|---|---|
+| `handles` | `id` du plan | `FileSystemFileHandle` | Chrome/Edge desktop uniquement |
+| `blobs` | `id` du plan | `Blob` du ZIP entier | Toutes plateformes (mobile recommandé) |
+
+Demande `navigator.storage.persist()` avant `saveBlob` pour garantir la persistance (empêche purge auto par iOS Safari et Chrome Android).
+
+#### API publique (`window.PlanRegistry`)
+
+| Méthode | Description |
+|---|---|
+| `init()` | Charge les données depuis localStorage. Appelée automatiquement par `getAll`/`findById` etc. |
+| `getAll()` | Retourne le tableau complet des plans |
+| `findById(id)` | Retrouve un plan par son id |
+| `getRecents(n)` | n derniers plans ouverts (toujours dispo, pas utilisé par l'UI actuelle) |
+| `getLastOpened()` | Le dernier plan ouvert (basé sur `lastPlanId`) — utilisé par le bouton ▶️ Reprendre |
+| `addOrUpdate(plan)` | Crée ou met à jour une entrée (clé = `id`). Préserve `addedAt` et `lastOpened` existants si non fournis |
+| `markOpened(id)` | Met à jour `lastOpened` et `lastPlanId` |
+| `remove(id)` | Supprime l'entrée + son `FileSystemFileHandle` + son `blob` IDB |
+| `removeAll()` | Vide tout (mais ne supprime pas les blobs IDB — utiliser avec prudence) |
+| `exportToFile()` | Téléchargement `myktamap_plans_AAAAMMJJ.config` |
+| `importFromFile(file, mode)` | mode = `"replace"` ou `"merge"` |
+| `statsImport(file)` | Avant import : `{ ok, total, newOnes, duplicates, error? }` |
+| `genServerId(path)` | `server_<sluggified_path>` (ex: `server_data_test1`) |
+| `genLocalId(name, version)` | `local_<slug_name>_<slug_version>` (déterministe, pas de doublon si même ZIP rechargé) |
+| `saveHandle(id, handle)` / `getHandle(id)` / `removeHandle(id)` | Gestion des `FileSystemFileHandle` |
+| `hasFsAccess()` | Détection support `showOpenFilePicker` |
+| `ensureHandlePermission(handle)` | `queryPermission` puis `requestPermission` (mode read) |
+| `saveBlob(id, blob)` / `getBlob(id)` / `removeBlob(id)` | Gestion des ZIP en IndexedDB |
+| `requestPersistentStorage()` | Demande au navigateur de marquer le stockage comme persistant |
+| `getStorageEstimate()` | `navigator.storage.estimate()` — espace total et utilisé |
+
+#### Workflow de chargement (orchestré par `index.html` + `main.js`)
+
+1. **Démarrage** → `PlanRegistry.init()` → `decouvrirPlansServeur()` (lit `data/index.json` si présent, ajoute les plans en mode `discovered`)
+2. **Rétro-compat** → si registre vide ET `data/plan-config.json` racine existe → chargement auto direct + ajout `server_root` au registre
+3. Sinon → `afficherLoader()` qui appelle `refreshPlansList()` pour rendre la liste
+
+#### Hiérarchie de re-chargement d'un plan local du registre (`chargerPlanDuRegistre(id)`)
+
+```
+1. Si plan.storedBlob === true
+   → PlanRegistry.getBlob(id) → File(blob, originalFilename) → chargerZipFichier(file, perfChoisi, { planId, fromStoredBlob: true })
+
+2. Sinon si plan.fsHandleId && hasFsAccess()
+   → PlanRegistry.getHandle(id) → ensureHandlePermission → handle.getFile() → chargerZipFichier(file, perfChoisi, { fsHandle, planId })
+
+3. Sinon (fallback)
+   → reSelectionnerZipPourPlan(plan)
+     → showOpenFilePicker (si dispo) ou <input type="file">
+     → Validation : si plan.name dans le ZIP ≠ nom cliqué → confirm
+     → chargerZipFichier(file, perfChoisi, { fsHandle?, planId })
+```
 
 ---
 
