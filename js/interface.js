@@ -823,7 +823,7 @@ function afficherAide() {
           <div class="kta-aide-section-titre">📚 Aide / Doc / Légende</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">❓</span><span>Cette aide — référence des boutons</span>
-            <span class="kta-aide-icone">📖</span><span>Documentation utilisateur ou développeur</span>
+            <span class="kta-aide-icone">📖</span><span>Documentation utilisateur</span>
             <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
           </div>
         </div>
