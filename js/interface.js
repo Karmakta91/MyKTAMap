@@ -1104,7 +1104,7 @@ function afficherConfig() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
-          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
+          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">💥 Tout réinitialiser</button>
           <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
         </div>
 
@@ -1269,9 +1269,13 @@ function viderCacheAppli() {
   overlay1.innerHTML = `
     <div class="kta-modal">
       <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">Vider le cache ?</div>
+      <div class="kta-modal-titre">Tout réinitialiser ?</div>
       <div class="kta-modal-texte">
-        Le cache applicatif sera entièrement supprimé.<br><br>
+        L'application sera entièrement réinitialisée comme au premier lancement :<br><br>
+        • Cache applicatif vidé (Service Worker)<br>
+        • Liste de vos plans supprimée<br>
+        • ZIP mémorisés dans le navigateur perdus<br>
+        • Préférences utilisateur effacées<br><br>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
       </div>
       <div class="kta-modal-actions">
@@ -1294,13 +1298,14 @@ function viderCacheAppli() {
         <div class="kta-modal-titre">Confirmation finale</div>
         <div class="kta-modal-texte">
           ⚠️ <strong>ATTENTION</strong> ⚠️<br><br>
-          Cette action vide intégralement le cache du navigateur pour cette application.<br><br>
+          Cette action efface intégralement les données de l'application : cache, liste de plans, ZIP mémorisés, préférences.<br><br>
           <strong>Hors connexion → l'application sera hors service.</strong><br><br>
+          Pensez à <strong>exporter votre liste</strong> avant si vous voulez la conserver.<br><br>
           Confirmez uniquement si vous êtes connecté à Internet.
         </div>
         <div class="kta-modal-actions">
           <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">Annuler</button>
-          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">🗑️ Vider maintenant</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">💥 Tout réinitialiser</button>
         </div>
       </div>
     `;
@@ -1311,25 +1316,53 @@ function viderCacheAppli() {
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Réinitialisation en cours…</div><div class="kta-modal-texte">Suppression du cache, du Service Worker, de la liste de plans et des données locales.</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
+        // 1. Désinscrire le Service Worker
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map(r => r.unregister()));
         }
+        // 2. Vider tous les caches HTTP (PWA)
         if ("caches" in window) {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map(name => caches.delete(name)));
         }
+        // 3. Vider le localStorage (registre des plans, préférences, debug logs)
+        try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage :", e); }
+        try { sessionStorage.clear(); } catch(e) {}
+
+        // 4. Vider IndexedDB (blobs ZIP + FS handles + autres bases éventuelles)
+        if (indexedDB && indexedDB.databases) {
+          try {
+            const dbs = await indexedDB.databases();
+            await Promise.all((dbs || []).map(function(db) {
+              return new Promise(function(resolve) {
+                if (!db.name) return resolve();
+                const req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+              });
+            }));
+          } catch(e) { console.warn("[Reset] IndexedDB :", e); }
+        } else {
+          // Fallback Safari/iOS qui n'expose pas indexedDB.databases()
+          try {
+            await new Promise(function(resolve) {
+              const req = indexedDB.deleteDatabase("myktamap_handles");
+              req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+            });
+          } catch(e) {}
+        }
+
         overlayWait.remove();
         window.location.reload(true);
       } catch (err) {
         overlayWait.remove();
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de tout réinitialiser :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
         document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }

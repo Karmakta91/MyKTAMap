@@ -9,6 +9,68 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 06/05/2026 (suite) — Splash + ergonomie loader + gestion erreurs plan
+
+- **Splash screen au démarrage** (`index.html` + `style.css` + `main.js`)
+  - Bloc `<div id="splashOverlay">` placé en HTML statique tout en haut du `<body>` → s'affiche **instantanément** dès le parsing du DOM, avant tout JS
+  - Logo `icon/mkm-full.png` (rose des vents jaune) + signature `icon/karma.png`
+  - Titre `MyKTAMap` + sous-titre `CARTOGRAPHIE TERRAIN`
+  - Barre de progression dorée (gradient `#f4c542` + animation shine)
+  - Footer : "Par [signature KARMA]" + "Licence libre — usage non commercial"
+  - **Animation cumulée** : logo (zoom + rotation rebond), titre, sous-titre, barre, footer (delays 0.3s → 0.85s)
+  - **Comportement** :
+    - `_splashStart()` enregistre `Date.now()` au démarrage de `initApp`
+    - `_splashEnd()` attend que `SPLASH_MIN_DURATION_MS = 3000ms` soit écoulé
+    - Si chargement < 3s → splash reste visible 3s minimum
+    - Si chargement > 3s → splash s'efface dès la fin du chargement
+    - Lancement de l'app **en parallèle** de la fin du splash (pas de blocage)
+    - Ajout de la classe `.fading` (opacity 0 transition 0.4s) puis suppression du DOM
+  - **Une seule fois par session** : `initApp()` n'étant appelé qu'au chargement initial, le splash ne réapparaît jamais lors d'un changement de plan
+  - **Réapparaît à F5 / réouverture** : naturel puisque le HTML est re-parsé
+  - **Responsive** : tailles adaptées en mobile portrait (logo 130px) et paysage (logo 90px, layout compact)
+
+- **Refonte ergonomique du loader** (`index.html` + `style.css`)
+  - Header avec **bouton 📖 Documentation utilisateur** (top-right, toujours accessible) → appelle `window.afficherReadme()`
+  - Bloc **▶️ Reprendre** en haut si `lastPlanId` existe
+  - Bloc **📚 Mes plans** unique trié par dernière ouverture descendante (suppression des anciennes sections "Récents/Tous" — demande utilisateur)
+  - Bloc **📦 Ajouter un plan** cohérent regroupant : zone drop ZIP + options de persistance + ⚡ mode performance + bouton ▶️ Charger ce plan (pleine largeur)
+  - Section collapsable **⚙️ Plus d'options** (fermée par défaut, chevron ▾/▴) regroupant : 🌐 Plan serveur racine, 🏗️ Générer un plan, 📥 Conf exemple, 💥 Tout réinitialiser
+  - Le bouton **📖 Documentation utilisateur** ouvre la même modale que depuis l'app (avec sommaire complet)
+
+- **Bouton "💥 Tout réinitialiser" depuis le loader** (`index.html` + `interface.js`)
+  - Appelle la fonction existante `viderCacheAppli()` (rétro-compat de nom)
+  - Ajout d'une variante CSS `.loader-btn-secondary.loader-btn-danger` (rouge clair `#ffb3b3`)
+  - **Reset complet enrichi** dans `viderCacheAppli` :
+    1. Désinscription Service Worker
+    2. Vidage des caches HTTP/PWA
+    3. **`localStorage.clear()`** (registre + préférences + debug logs)
+    4. **`sessionStorage.clear()`**
+    5. **Suppression de TOUTES les bases IndexedDB** via `indexedDB.databases()` + `deleteDatabase` (avec fallback Safari/iOS qui n'expose pas `databases()`)
+    6. `window.location.reload(true)`
+  - Reset complet = retour à l'état "premier lancement" (splash réapparaît, registre vide, auto-discovery serveur s'exécute)
+  - **Double confirmation** conservée (modale 1 : explication détaillée, modale 2 : confirmation finale avec rappel "Pensez à exporter votre liste avant")
+  - Wording du bouton dans Réglages mis à jour : `🗑️ Réinitialiser` → `💥 Tout réinitialiser`
+
+- **Modale "Plan introuvable" pour la persistance cassée** (`index.html` + `main.js`)
+  - Scénario : utilisateur vide le cache puis ré-importe sa liste de plans → les blobs ZIP / FS handles n'existent plus
+  - Détection à la volée au clic sur un plan local du registre (pas de scan préventif → 0 coût au démarrage)
+  - 4 cas distincts avec wording adapté :
+    - `server` — Plan serveur 404 (dossier supprimé/renommé) → bouton **🔄 Réessayer**
+    - `local-blob` — `storedBlob: true` mais blob absent en IDB
+    - `local-fs` — `fsHandleId` mais handle introuvable / fichier ZIP supprimé du disque
+    - `local-fs-denied` — Permission FS refusée par le navigateur
+  - Modale **pédagogique** avec liste des causes possibles (vidage cache, autre appareil, réinstallation, quota dépassé, etc.)
+  - Actions disponibles :
+    - **🔄 Réessayer** (cas serveur uniquement)
+    - **📁 Re-sélectionner le ZIP** (cas locaux) avec **restauration auto de la persistance** (option 4:a) — si l'entrée originale avait `storedBlob: true`, le nouveau ZIP sera re-sauvé en IDB ; si FS Access dispo, le `fsHandle` est sauvé automatiquement
+    - **🗑️ Retirer de la liste** (rouge `#5e2828`) — supprime l'entrée + ses dépendances (handle + blob)
+    - **Annuler**
+  - `chargerPlanServeur()` lance maintenant une `Error` avec `code = "PLAN_NOT_FOUND"` pour distinguer une 404 d'une vraie erreur runtime
+  - Validation conservée (5:b) : si nom du plan dans le ZIP re-sélectionné ≠ nom cliqué → confirmation
+  - Réutilise 100% des classes CSS existantes (`kta-readme-modal-overlay`, `kta-readme-modal-boite`, `kta-btn`, etc.) — pas de styles supplémentaires nécessaires
+
+- **`sw.js`** — `icon/mkm-full.png` et `icon/karma.png` ajoutés au cache PWA pour que le splash fonctionne hors-ligne
+
 ### 🗓️ 06/05/2026 — Système multi-plans + persistance ZIP locale
 
 - **Nouveau module `planRegistry.js`** — gestionnaire de la liste des plans connus (serveur découverts + locaux ZIP)
@@ -458,6 +520,106 @@ startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta)
 ```
 
 Le loader HTML est intégré dans `index.html` avec `display:none` — il s'affiche au démarrage si aucun plan racine n'est trouvé, ou à la demande via 🗂️ "Changer de plan".
+
+---
+
+## 🎬 Splash screen (animation de bienvenue)
+
+Le splash s'affiche **uniquement au chargement initial de la page** (F5, ouverture d'onglet, démarrage PWA). Il ne réapparaît jamais lors d'un changement de plan via 🗂️ "Mes plans".
+
+### Architecture
+
+- **HTML statique** dans `<body>` (visible avant tout chargement JS)
+- **CSS d'animation** dans `style.css` (entrée en cascade : logo → titre → sous-titre → barre → footer)
+- **Logique de durée** dans `main.js` (3s minimum + parallèle au chargement)
+
+### Cycle de vie
+
+```
+HTML parsé → splashOverlay visible (animations CSS démarrent)
+   ↓
+initApp() → _splashStart() enregistre Date.now()
+   ↓
+   PlanRegistry.init() + decouvrirPlansServeur() en parallèle
+   ↓
+   afficherLoader() OU lancerApplication() (en parallèle de _splashEnd)
+   ↓
+_splashEnd() :
+   ├─ Attendre que (3000ms - elapsed) soit écoulé
+   ├─ Ajouter classe .fading (opacity 0 transition 0.4s)
+   └─ Retirer du DOM après 500ms
+```
+
+### Constantes et variables
+
+| Élément | Description |
+|---|---|
+| `SPLASH_MIN_DURATION_MS` | Durée minimum d'affichage (`main.js`, défaut 3000) |
+| `--splash-duration` | Variable CSS injectée dynamiquement pour synchroniser la barre |
+| `_splashShownAt` | Timestamp d'affichage pour calculer le temps restant |
+
+### Assets requis (cachés par le SW)
+
+- `icon/mkm-full.png` — logo principal (rose des vents)
+- `icon/karma.png` — signature
+
+---
+
+## 💥 Reset complet de l'application
+
+Fonction `viderCacheAppli()` (nom historique conservé) — accessible depuis :
+- **⚙️ Réglages** dans l'app (bouton rouge `💥 Tout réinitialiser`)
+- **⚙️ Plus d'options** dans le loader (bouton `loader-btn-secondary loader-btn-danger`)
+
+### Étapes du reset
+
+```
+1. navigator.serviceWorker.getRegistrations() + unregister  ← désinscrit le SW
+2. caches.keys() + caches.delete                             ← vide les caches HTTP/PWA
+3. localStorage.clear()                                      ← registre + préférences + debug
+4. sessionStorage.clear()
+5. indexedDB.databases() → deleteDatabase pour chaque        ← blobs ZIP + FS handles
+   (fallback Safari : deleteDatabase("myktamap_handles"))
+6. window.location.reload(true)                              ← redémarrage complet
+```
+
+### Sécurité — double confirmation
+
+| Étape | Modale |
+|---|---|
+| 1 | "⚠️ Tout réinitialiser ?" — liste les éléments effacés + boutons Annuler / Continuer |
+| 2 | "🚨 Confirmation finale" — rappel "Pensez à exporter votre liste avant" + boutons Annuler / 💥 Tout réinitialiser |
+| 3 | "⏳ Réinitialisation en cours…" (spinner pendant le nettoyage) |
+
+Après reload, l'app revient strictement à l'état "premier lancement" : splash s'affiche, registre vide, auto-discovery serveur s'exécute, etc.
+
+---
+
+## ⚠️ Gestion des erreurs "Plan introuvable"
+
+Détection à la volée au clic sur un plan du registre (pas de scan préventif).
+
+### Cas couverts
+
+| Cas | Détection | Reason |
+|---|---|---|
+| Plan serveur 404 | `chargerPlanServeur()` throw avec `e.code === "PLAN_NOT_FOUND"` | `server` |
+| Blob mémorisé absent | `getBlob(id)` retourne `null` (vidage cache, autre appareil) | `local-blob` |
+| FS handle perdu | `getHandle(id)` null OU `handle.getFile()` throw (ZIP supprimé du disque) | `local-fs` |
+| FS permission refusée | `ensureHandlePermission(handle)` retourne `false` | `local-fs-denied` |
+
+### Modale d'erreur (`afficherModalePlanIntrouvable`)
+
+Modale **pédagogique** dans `index.html` listant les causes possibles selon le `reason`, avec actions :
+
+- **🔄 Réessayer** — uniquement pour `server` (réessaye le chargement)
+- **📁 Re-sélectionner le ZIP** — pour les cas locaux, ouvre `showOpenFilePicker` avec **restauration auto de la persistance** :
+  - Si `plan.storedBlob === true` → réinjecte `meta.storeBlob = true` → re-sauvegarde IDB
+  - Si `showOpenFilePicker` utilisé → handle automatiquement persisté
+- **🗑️ Retirer de la liste** — supprime l'entrée + ses blobs/handles via `PlanRegistry.remove()`
+- **Annuler**
+
+Si le ZIP re-sélectionné a un `plan.name` différent du nom cliqué → confirmation conservée (5:b).
 
 ---
 

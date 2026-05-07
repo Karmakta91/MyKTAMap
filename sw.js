@@ -65,6 +65,8 @@ const ASSETS_TO_CACHE = [
   "./data/test2/collision.png",
 
   // Icônes app / points
+  "./icon/mkm-full.png",
+  "./icon/karma.png",
   "./icon/mkm.png",
   "./icon/mkm-192.png",
   "./icon/mkm-512.png",

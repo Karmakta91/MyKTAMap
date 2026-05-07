@@ -153,7 +153,11 @@ async function chargerPlanServeur(planPath, registryEntry) {
   window.zonesInitialized     = false;
 
   const ok = await loadAppConfig(planPath);
-  if (!ok) throw new Error("Plan introuvable : " + planPath);
+  if (!ok) {
+    const err = new Error("Plan serveur introuvable : " + planPath);
+    err.code = "PLAN_NOT_FOUND";
+    throw err;
+  }
 
   // Enregistrer dans le registre
   if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
@@ -335,10 +339,53 @@ function afficherLoader() {
 }
 
 // =========================
+// SPLASH SCREEN — animation de bienvenue au démarrage
+// =========================
+const SPLASH_MIN_DURATION_MS = 3000;
+let _splashShownAt = null;
+
+function _splashStart() {
+  // Le splash est affiché par défaut via index.html
+  // Cette fonction enregistre juste l'heure de début
+  const splash = document.getElementById("splashOverlay");
+  if (!splash) return;
+  _splashShownAt = Date.now();
+
+  // Synchroniser la durée CSS de remplissage avec notre constante
+  const bar = document.getElementById("splashProgressBar");
+  if (bar) {
+    bar.style.setProperty("--splash-duration", SPLASH_MIN_DURATION_MS + "ms");
+  }
+}
+
+async function _splashEnd() {
+  const splash = document.getElementById("splashOverlay");
+  if (!splash) return;
+
+  // Attendre que la durée minimale soit écoulée
+  if (_splashShownAt) {
+    const elapsed = Date.now() - _splashShownAt;
+    const remaining = SPLASH_MIN_DURATION_MS - elapsed;
+    if (remaining > 0) {
+      await new Promise(function(r) { setTimeout(r, remaining); });
+    }
+  }
+
+  // Fade out puis retrait du DOM
+  splash.classList.add("fading");
+  setTimeout(function() {
+    if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+  }, 500);
+}
+
+// =========================
 // POINT D'ENTRÉE — auto-détection
 // =========================
 (async function initApp() {
   console.log("[Main] Démarrage…");
+
+  // Démarrer le splash dès l'init
+  _splashStart();
 
   // Initialiser le registre
   if (window.PlanRegistry) {
@@ -374,9 +421,13 @@ function afficherLoader() {
       try {
         if (_importDemande) {
           console.log("[Main] Import demandé entretemps — chargement serveur annulé");
+          await _splashEnd();
           return;
         }
-        await lancerApplication();
+        // Lancer l'application en parallèle de la fin du splash
+        const appPromise = lancerApplication();
+        await _splashEnd();
+        await appPromise;
         return;
       } catch(err) {
         console.error("[Main] Erreur chargement serveur :", err);
@@ -385,7 +436,9 @@ function afficherLoader() {
   }
 
   console.log("[Main] Affichage du home avec liste des plans");
+  // Afficher le loader en parallèle de la fin du splash
   afficherLoader();
+  await _splashEnd();
 })();
 
 // =========================

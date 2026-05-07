@@ -851,6 +851,170 @@ html, body {
 }
 
 
+/* ══════════════════════════════════════════════
+   SPLASH SCREEN — animation de bienvenue
+   ══════════════════════════════════════════════ */
+
+#splashOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.4s ease-out;
+  pointer-events: all;
+}
+
+#splashOverlay.fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#splashBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 30px 40px;
+  max-width: 460px;
+  width: 90%;
+}
+
+#splashLogo {
+  width: 180px;
+  height: 180px;
+  object-fit: contain;
+  animation: splashLogoIn 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
+  filter: drop-shadow(0 0 24px rgba(255, 200, 60, 0.25));
+}
+
+@keyframes splashLogoIn {
+  from { opacity: 0; transform: scale(0.6) rotate(-25deg); }
+  to   { opacity: 1; transform: scale(1)   rotate(0deg); }
+}
+
+#splashTitle {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f4c542;
+  margin-top: 22px;
+  text-shadow: 0 2px 18px rgba(244, 197, 66, 0.25);
+  animation: splashTextIn 0.6s ease-out 0.3s both;
+}
+
+#splashSubtitle {
+  font-size: 14px;
+  color: #8892a4;
+  margin-top: 4px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  animation: splashTextIn 0.6s ease-out 0.45s both;
+}
+
+@keyframes splashTextIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+#splashProgressTrack {
+  width: 240px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  margin-top: 38px;
+  overflow: hidden;
+  animation: splashTextIn 0.6s ease-out 0.6s both;
+}
+
+#splashProgressBar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #f4c542 0%, #ffd970 50%, #f4c542 100%);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation:
+    splashFill var(--splash-duration, 3000ms) cubic-bezier(0.4, 0, 0.6, 1) forwards,
+    splashShine 1.5s linear infinite;
+  box-shadow: 0 0 12px rgba(244, 197, 66, 0.5);
+}
+
+@keyframes splashFill {
+  from { width: 0%;   }
+  to   { width: 100%; }
+}
+
+@keyframes splashShine {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+#splashFooter {
+  margin-top: 50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: splashTextIn 0.6s ease-out 0.85s both;
+}
+
+#splashAuthor {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8892a4;
+  font-size: 13px;
+}
+
+.splash-by {
+  font-style: italic;
+  opacity: 0.7;
+}
+
+#splashSignature {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 6px rgba(244, 197, 66, 0.3));
+}
+
+#splashLicense {
+  font-size: 11px;
+  color: #6c7689;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.splash-license-detail {
+  font-size: 10px;
+  color: #555c6e;
+  font-style: italic;
+}
+
+/* Mobile : adapter les tailles */
+@media (max-width: 480px) {
+  #splashLogo { width: 130px; height: 130px; }
+  #splashTitle { font-size: 28px; margin-top: 18px; }
+  #splashSubtitle { font-size: 12px; }
+  #splashProgressTrack { width: 200px; margin-top: 30px; }
+  #splashFooter { margin-top: 36px; }
+  #splashSignature { height: 26px; }
+}
+
+/* Mode paysage mobile : compact */
+@media (max-height: 500px) and (orientation: landscape) {
+  #splashLogo { width: 90px; height: 90px; }
+  #splashTitle { font-size: 22px; margin-top: 12px; }
+  #splashSubtitle { font-size: 10px; }
+  #splashProgressTrack { margin-top: 16px; }
+  #splashFooter { margin-top: 18px; gap: 6px; }
+  #splashSignature { height: 22px; }
+  #splashLicense { font-size: 10px; }
+}
+
 /* ==============================================
    LOADER — charte dark
    ============================================== */
@@ -1037,6 +1201,20 @@ html, body {
 .loader-btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Variante "danger" pour les actions destructives (reset complet) */
+.loader-btn-secondary.loader-btn-danger {
+  border-color: rgba(255, 110, 110, 0.3);
+  background: rgba(255, 110, 110, 0.08);
+  color: #ffb3b3;
+  margin-top: 6px;
+}
+
+.loader-btn-secondary.loader-btn-danger:hover {
+  background: rgba(255, 110, 110, 0.18);
+  border-color: rgba(255, 110, 110, 0.55);
+  color: #ffd0d0;
 }
 
 #loaderStatus {

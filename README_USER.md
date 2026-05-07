@@ -74,6 +74,19 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 4. Lancez toujours l'application depuis cette icône
 
 
+### 🎬 Animation au démarrage
+
+Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 3 secondes :
+
+- **Logo** MyKTAMap (rose des vents jaune)
+- **Titre** et sous-titre
+- **Barre de chargement** dorée
+- **Signature de l'auteur** et mention de licence
+
+Cette animation **n'apparaît qu'une seule fois par session**. Si vous changez de plan via 🗂️ ou ▶️ Reprendre, elle ne se ré-affiche pas — vous restez dans votre session active.
+
+> Pour la revoir, fermez l'application puis relancez-la depuis votre icône d'accueil (PWA) ou rafraîchissez la page (F5 sur PC).
+
 ### 📦 Charger un plan
 
 Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
@@ -183,6 +196,41 @@ L'application utilise un **Service Worker** qui met en cache automatiquement tou
 4. Vous pouvez maintenant fermer l'application et passer en zone sans réseau — elle restera fonctionnelle
 
 > Si une nouvelle version est disponible avec connexion, l'application se mettra à jour automatiquement au prochain chargement.
+
+### ⚠️ Si un plan ne charge plus
+
+Si vous cliquez sur un plan dans votre liste et qu'une fenêtre **« ⚠️ Plan introuvable »** apparaît, c'est que les données de ce plan ne sont plus accessibles. Causes typiques :
+
+- **Vidage du cache** du navigateur (les ZIP mémorisés ont été supprimés)
+- **Import d'une liste depuis un autre appareil** (la liste a été restaurée mais pas les ZIP eux-mêmes)
+- **Réinstallation de l'application** ou changement de navigateur
+- **Plan serveur déplacé/supprimé** (404)
+- **Quota de stockage atteint** (le navigateur a purgé les données automatiquement)
+
+La fenêtre vous propose 3 actions :
+
+- **🔄 Réessayer** (plans serveur uniquement) — utile si le serveur était temporairement indisponible
+- **📁 Re-sélectionner le ZIP** (plans locaux) — ouvre votre explorateur de fichiers pour retrouver le ZIP. Si vous avez activé "Mémoriser ce plan dans l'app" ou "Accès permanent", la persistance sera **automatiquement restaurée** après la nouvelle sélection
+- **🗑️ Retirer de la liste** — si vous ne possédez plus le plan, supprimez son entrée de votre liste
+
+> 💡 **Conseil** : exportez régulièrement votre liste via 💾 (icône en haut à droite de **📚 Mes plans**) pour pouvoir la restaurer en cas de souci.
+
+### 💥 Tout réinitialiser
+
+Si vous voulez remettre l'application **à l'état initial** (comme un premier lancement), un bouton **💥 Tout réinitialiser** est disponible à deux endroits :
+
+- Dans **⚙️ Réglages** depuis l'application
+- Dans **⚙️ Plus d'options** sur l'écran d'accueil (loader)
+
+⚠️ **Cette action est irréversible** et efface :
+- Le cache de l'application (mode hors-ligne désactivé jusqu'à reconnexion)
+- Votre **liste de plans** (entrées supprimées)
+- Les **ZIP mémorisés dans le navigateur** (perdus)
+- Vos **préférences** (mode performance, options de tracker, etc.)
+
+L'application demande **deux confirmations** avant d'exécuter le reset, et vous rappelle d'**exporter votre liste** au préalable si vous souhaitez la conserver.
+
+> Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
 
 ---
 

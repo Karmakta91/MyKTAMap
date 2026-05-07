@@ -31,6 +31,33 @@
 
 <body>
 
+  <!-- ════════════════════════════════════════════════════════
+       SPLASH SCREEN — Animation de bienvenue au démarrage
+       Affiché par défaut, fermé par main.js après init + 3s min
+       ════════════════════════════════════════════════════════ -->
+  <div id="splashOverlay">
+    <div id="splashBox">
+      <img src="icon/mkm-full.png" alt="MyKTAMap" id="splashLogo">
+      <div id="splashTitle">MyKTAMap</div>
+      <div id="splashSubtitle">Cartographie terrain</div>
+
+      <div id="splashProgressTrack">
+        <div id="splashProgressBar"></div>
+      </div>
+
+      <div id="splashFooter">
+        <div id="splashAuthor">
+          <span class="splash-by">Par</span>
+          <img src="icon/karma.png" alt="KARMA" id="splashSignature">
+        </div>
+        <div id="splashLicense">
+          Licence libre — usage non commercial<br>
+          <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>
 
@@ -124,6 +151,7 @@
         <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Plan serveur racine</button>
         <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
         <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
+        <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
       </div>
 
       <!-- Input caché pour import de liste -->
@@ -524,7 +552,12 @@
             await window.chargerPlanServeur(plan.path, plan);
             if (window.masquerLoader) window.masquerLoader();
           } catch(e) {
-            setStatus("Erreur : " + (e.message || e), true);
+            // Plan serveur introuvable (404 / dossier supprimé) → modale dédiée
+            if (e && e.code === "PLAN_NOT_FOUND") {
+              afficherModalePlanIntrouvable(plan, "server");
+            } else {
+              setStatus("Erreur : " + (e.message || e), true);
+            }
           }
           return;
         }
@@ -532,9 +565,11 @@
         if (plan.type === "local") {
           // 1. Tenter le blob mémorisé (mobile + fallback)
           if (plan.storedBlob) {
+            let blobOk = false;
             try {
               const blob = await window.PlanRegistry.getBlob(plan.id);
               if (blob) {
+                blobOk = true;
                 const file = new File([blob], plan.originalFilename || "plan.zip", { type: "application/zip" });
                 const cb = document.getElementById("loaderPerfMode");
                 const perfChoisi = cb ? (cb.checked ? true : false) : null;
@@ -542,9 +577,15 @@
                 await chargerZipFichier(file, perfChoisi, { planId: plan.id, fromStoredBlob: true });
                 return;
               }
-              console.warn("[Loader] Blob mémorisé introuvable — fallback");
             } catch(e) {
               console.warn("[Loader] Erreur lecture blob :", e);
+            }
+            // Blob attendu mais introuvable → modale "Plan introuvable"
+            // Cas typique : import d'une liste après vidage de cache
+            if (!blobOk) {
+              console.warn("[Loader] Blob mémorisé introuvable pour", plan.id);
+              afficherModalePlanIntrouvable(plan, "local-blob");
+              return;
             }
           }
 
@@ -561,19 +602,125 @@
                   await chargerZipFichier(file, perfChoisi, { fsHandle: handle, planId: plan.id });
                   return;
                 } catch(e) {
-                  console.warn("[Loader] FS handle invalide, fallback :", e);
+                  console.warn("[Loader] FS handle invalide :", e);
+                  // Handle attendu mais cassé → modale "Plan introuvable"
+                  afficherModalePlanIntrouvable(plan, "local-fs");
+                  return;
                 }
+              } else {
+                // Permission refusée
+                afficherModalePlanIntrouvable(plan, "local-fs-denied");
+                return;
               }
+            } else {
+              // Handle attendu mais introuvable en IDB
+              afficherModalePlanIntrouvable(plan, "local-fs");
+              return;
             }
           }
 
-          // 3. Fallback : ouvrir le sélecteur de fichier
+          // 3. Fallback : ouvrir le sélecteur de fichier (cas par défaut, pas d'erreur)
           await reSelectionnerZipPourPlan(plan);
         }
       }
 
+      // === MODALE "PLAN INTROUVABLE" ===
+      // reason : "server" | "local-blob" | "local-fs" | "local-fs-denied"
+      function afficherModalePlanIntrouvable(plan, reason) {
+        const existing = document.getElementById("planIntrouvableModal");
+        if (existing) existing.remove();
+
+        let titre = "⚠️ Plan introuvable";
+        let explication = "";
+        let canRetry = false;
+        let canReSelect = false;
+
+        if (reason === "server") {
+          titre = "⚠️ Plan serveur introuvable";
+          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> " +
+            "n'a pas été trouvé sur le serveur (chemin <code>" + escapeHtml(plan.path) + "</code>).<br><br>" +
+            "Causes possibles : le plan a été déplacé, renommé, supprimé, ou le serveur est temporairement indisponible.";
+          canRetry = true;
+        } else if (reason === "local-blob") {
+          titre = "⚠️ Données du plan introuvables";
+          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> était mémorisé " +
+            "localement dans le navigateur, mais ses données ont disparu.<br><br>" +
+            "<span style='color:#a8b3c8;'>Causes possibles :</span>" +
+            "<ul style='margin:6px 0 0 0; padding-left:20px; line-height:1.6; color:#8892a4; list-style-type:disc;'>" +
+            "<li style='color:#8892a4;'>Vidage du cache navigateur</li>" +
+            "<li style='color:#8892a4;'>Import d'une liste de plans depuis un autre appareil</li>" +
+            "<li style='color:#8892a4;'>Réinstallation de l'application</li>" +
+            "<li style='color:#8892a4;'>Quota de stockage atteint et purge automatique</li>" +
+            "</ul>";
+          canReSelect = true;
+        } else if (reason === "local-fs") {
+          titre = "⚠️ Accès au fichier perdu";
+          explication = "Le plan <strong>" + escapeHtml(plan.name || plan.id) + "</strong> avait un accès permanent " +
+            "configuré, mais celui-ci n'est plus valide.<br><br>" +
+            "Causes possibles : le ZIP a été déplacé/supprimé sur votre disque, ou les autorisations du navigateur " +
+            "ont été révoquées (vidage de cache, autre profil, autre navigateur).";
+          canReSelect = true;
+        } else if (reason === "local-fs-denied") {
+          titre = "⚠️ Permission refusée";
+          explication = "Le navigateur a refusé l'accès au fichier ZIP du plan <strong>" +
+            escapeHtml(plan.name || plan.id) + "</strong>.<br><br>" +
+            "Vous pouvez re-sélectionner le ZIP manuellement pour autoriser à nouveau l'accès.";
+          canReSelect = true;
+        }
+
+        const modal = document.createElement("div");
+        modal.id = "planIntrouvableModal";
+        modal.className = "kta-readme-modal-overlay";
+        modal.innerHTML = `
+          <div class="kta-readme-modal-boite" style="max-width:480px;">
+            <div class="kta-readme-modal-header">
+              <span class="kta-readme-modal-titre">${titre}</span>
+              <button class="kta-panneau-close" id="planIntrFermer">✕</button>
+            </div>
+            <div class="kta-readme-modal-corps" style="padding:18px;">
+              <p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">
+                ${explication}
+              </p>
+              <p style="font-size:13px; color:#e8eaf0; margin:0 0 12px;">Que souhaitez-vous faire ?</p>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${canRetry ? '<button class="kta-btn kta-btn-primary" data-action="retry">🔄 Réessayer</button>' : ''}
+                ${canReSelect ? '<button class="kta-btn kta-btn-primary" data-action="reselect">📁 Re-sélectionner le ZIP</button>' : ''}
+                <button class="kta-btn kta-btn-primary" data-action="remove" style="background:#5e2828; border-color:rgba(255,140,140,0.3);">🗑️ Retirer de la liste</button>
+                <button class="kta-btn kta-btn-ghost" data-action="cancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+
+        function fermer() { modal.remove(); }
+        document.getElementById("planIntrFermer").addEventListener("click", fermer);
+        modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+        modal.querySelectorAll("button[data-action]").forEach(function(btn) {
+          btn.addEventListener("click", async function() {
+            const action = btn.dataset.action;
+            fermer();
+            if (action === "retry") {
+              // Réessayer le chargement
+              chargerPlanDuRegistre(plan.id);
+            } else if (action === "reselect") {
+              // Ouvrir le sélecteur de fichier (avec restauration des options de persistance)
+              await reSelectionnerZipPourPlan(plan, { restorePersistance: true });
+            } else if (action === "remove") {
+              window.PlanRegistry.remove(plan.id);
+              window.refreshPlansList();
+              setStatus("Plan retiré de la liste");
+            }
+            // cancel → rien
+          });
+        });
+      }
+
       // === RE-SÉLECTION D'UN ZIP POUR UN PLAN LOCAL ===
-      async function reSelectionnerZipPourPlan(plan) {
+      // options = { restorePersistance: true } pour réactiver storeBlob/fsHandle si l'entrée originale les avait
+      async function reSelectionnerZipPourPlan(plan, options) {
+        options = options || {};
         let file = null;
         let handle = null;
 
@@ -628,8 +775,18 @@
 
         const cb = document.getElementById("loaderPerfMode");
         const perfChoisi = cb ? (cb.checked ? true : false) : null;
+
+        // Construire les meta — restaurer la persistance si demandé (option 4:a)
+        const meta = { planId: plan.id };
+        if (handle) meta.fsHandle = handle;
+        if (options.restorePersistance) {
+          // Restaurer storeBlob si l'entrée originale était mémorisée en IDB
+          if (plan.storedBlob) meta.storeBlob = true;
+          // Le fsHandle est déjà géré ci-dessus (handle est non-null si FS Access dispo + utilisateur a sélectionné via picker)
+        }
+
         try {
-          await chargerZipFichier(file, perfChoisi, { fsHandle: handle, planId: plan.id });
+          await chargerZipFichier(file, perfChoisi, meta);
         } catch(err) {
           setStatus("Erreur : " + (err.message || err), true);
         }
@@ -744,6 +901,18 @@
           const isOpen = advBox.style.display === "flex" || advBox.style.display === "block";
           advBox.style.display = isOpen ? "none" : "flex";
           if (advChevron) advChevron.textContent = isOpen ? "▾" : "▴";
+        });
+      }
+
+      // === BOUTON "💥 TOUT RÉINITIALISER" ===
+      const resetBtn = document.getElementById("loaderResetBtn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", function() {
+          if (typeof window.viderCacheAppli === "function") {
+            window.viderCacheAppli();
+          } else {
+            setStatus("Fonction de réinitialisation indisponible", true);
+          }
         });
       }
 
