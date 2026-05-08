@@ -1301,6 +1301,16 @@ function afficherConfig() {
 
   const c = APP_CONFIG;
 
+  // Métadonnées du preset perf actif (pour l'affichage read-only)
+  const _PRESET_LABELS = {
+    "off":         { emoji: "💤", label: "Désactivé" },
+    "auto":        { emoji: "🔄", label: "Auto" },
+    "quality":     { emoji: "🌟", label: "Qualité" },
+    "balanced":    { emoji: "🎯", label: "Équilibré" },
+    "performance": { emoji: "⚡", label: "Performance" }
+  };
+  const presetMeta = _PRESET_LABELS[c.perfPreset] || _PRESET_LABELS.auto;
+
   const modal = document.createElement("div");
   modal.id = "kta-cfg-modal";
   modal.className = "kta-readme-modal-overlay";
@@ -1346,23 +1356,21 @@ function afficherConfig() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🛠️ Debug</div>
           <div class="kta-cfg-grille">
-            <label class="kta-cfg-label">Debug mouvement</label>
-            <select class="kta-cfg-input" id="cfg_motionDebug">
-              <option value="true"  ${c.motionDebug ? "selected" : ""}>Oui</option>
-              <option value="false" ${!c.motionDebug ? "selected" : ""}>Non</option>
+            <label class="kta-cfg-label">Logs détaillés</label>
+            <select class="kta-cfg-input" id="cfg_debugMode">
+              <option value="true"  ${c.debugMode ? "selected" : ""}>Oui</option>
+              <option value="false" ${!c.debugMode ? "selected" : ""}>Non</option>
             </select>
           </div>
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:12px;">
             <div style="flex:1;">
-              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">Mode Performance ⚡</div>
+              <div style="font-size:13px; font-weight:600; color:#e8eaf0;">Mode performance</div>
               <div style="font-size:11px; color:#8892a4; margin-top:2px;">Modifiable au chargement du plan</div>
             </div>
             <div style="display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.04); border-radius:6px; border:1px solid rgba(255,255,255,0.08);">
-              <span style="font-size:22px;">${c.perfMode === true ? '⚡' : c.perfMode === false ? '💤' : '🔄'}</span>
-              <span style="font-size:15px; font-weight:600; color:#e8eaf0;">
-                ${c.perfMode === true ? 'Activé' : c.perfMode === false ? 'Désactivé' : 'Auto'}
-              </span>
+              <span style="font-size:22px;">${presetMeta.emoji}</span>
+              <span style="font-size:15px; font-weight:600; color:#e8eaf0;">${presetMeta.label}</span>
             </div>
           </div>
         </div>
@@ -1390,7 +1398,7 @@ function appliquerConfig() {
   APP_CONFIG.startY        = parseInt(document.getElementById("cfg_startY").value, 10);
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  APP_CONFIG.motionDebug   = document.getElementById("cfg_motionDebug").value === "true";
+  APP_CONFIG.debugMode     = document.getElementById("cfg_debugMode").value === "true";
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();

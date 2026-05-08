@@ -228,6 +228,67 @@ Double confirmation utilisateur avant exécution. Accessible depuis :
 - ⚙️ Réglages (dans l'app)
 - ⚙️ Plus d'options (dans le loader)
 
+### 8. Mode performance — 5 presets DLSS-like (depuis 08/05/2026)
+
+Remplace l'ancienne checkbox boolean `perfMode` par un **segmented control 5 boutons** dans le loader.
+
+**Table `PERF_PRESETS`** (dans `tiling.js`, exposée via `window.PERF_PRESETS`) :
+
+| Preset | `MAX_WORK_DIM` | `TILE_SIZE` | JPEG Q | Quand on tile |
+|---|---|---|---|---|
+| `off` | — | — | — | **JAMAIS** (rendu direct via `L.imageOverlay`, équivalent ancien `perfMode = false`) |
+| `auto` | (Équilibré quand tile) | — | — | si `fileSize > 60 Mo` (= `PERF_AUTO_TILE_THRESHOLD`) |
+| `quality` | 12288 | 1024 | 0.95 | si `imageW × imageH > 4096²` (= `tuilingNecessaire()`) |
+| `balanced` | 8192 | 1024 | 0.88 | idem |
+| `performance` | 6144 | 768 | 0.78 | idem |
+
+→ `off` = aucun tiling, choix utilisateur explicite (⚠️ risque de crash Safari iOS pour images > 8192 px). Métadonnées dans `PERF_OFF_META`.
+→ `auto` = comportement v1 (tile uniquement sur fichier énorme).
+→ Modes explicites = on tile dès que techniquement nécessaire (sécurité GPU mobile), avec leurs params propres.
+
+**Fonction centralisée** : `resoudrePerfPreset(preset, fileSize, W, H)` retourne `{tile: bool, params: {maxWorkDim, tileSize, jpegQuality} | null}`. Utilisée par `chargerImage()`.
+
+**Persistance par plan** :
+
+```
+PlanRegistry[planId].perfPreset    ← optionnel, valeur "auto"|"quality"|"balanced"|"performance"
+                                     absent = pas de pref → défaut "auto"
+```
+
+Helpers : `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Validation contre la liste valide, warn console en cas d'invalide.
+
+**`plan-config.json` n'est PAS modifié** — le preset est purement un choix utilisateur côté app, jamais dans le ZIP.
+
+**Cascade de résolution au chargement** :
+
+1. `presetChoisi` passé explicitement à `startImportedPlan` ou `chargerPlanServeur` (via le loader)
+2. Sinon `APP_CONFIG.perfPreset` (qui vient de `DEFAULT_CONFIG.perfPreset = "auto"`)
+3. `resoudrePerfPreset` décide ensuite si on tile et avec quels params
+
+**UI** : segmented control `.kta-perf-segmented` dans `index.html` (4 `.kta-perf-btn` avec `data-preset`). Bouton actif = fond `#f4c542` + texte `#1a1f2e`. Inactif = `rgba(255,255,255,0.04)` + texte `#c8d0e0`. Description italique `#8892a4` sous le segmented (texte du preset actif). Ligne debug technique cachée par défaut, visible si `APP_CONFIG.debugMode === true`.
+
+**Helpers exposés sur `window`** :
+- `getLoaderPerfPreset()` → string du preset actif dans le loader
+- `setLoaderPerfPreset(preset)` → met à jour le segmented + la description + la ligne debug
+
+### 9. Flag `debugMode` (renommage de `motionDebug`, depuis 08/05/2026)
+
+Le flag debug est désormais **global pour toute l'app**, pas uniquement le tracker.
+
+**Usage actuel** :
+- Logs verbose dans `tracking.js` (Magnitude + détection de pas)
+- Affichage de la ligne technique sous le segmented control du loader (`MAX:8192 / TILE:1024 / Q:0.88 / tile si > 60 Mo`)
+
+**Persistance** : `localStorage.app_user_prefs.debugMode` (boolean). Helper unique `window.setDebugMode(value)` — utilisé par :
+- Bouton 🐛 dans le loader (`#loaderDebugBtn`)
+- Toggle Réglages ⚙️ (`#cfg_debugMode`)
+
+**Migration silencieuse au boot** (dans `config.js`, IIFE `_migrerPrefsUtilisateur`) :
+- `motionDebug` → `debugMode` (préserve la valeur)
+- `perfMode` (globale) → SUPPRIMÉE (perfPreset est par plan désormais)
+
+Idempotente : peut tourner 100 fois sans effet de bord.
+
 ---
 
 ## 🚨 Pièges connus & règles importantes
@@ -264,6 +325,21 @@ Voir le fix de `tableEditor.js > _menuSauvegarde` (z-index 100001).
 ### Couleurs de texte dans les modales
 
 ⚠️ Toujours définir une `color` explicite sur le contenu d'une modale custom — sans ça, le texte hérite du noir par défaut du body. Le sélecteur `.kta-readme-modal-corps` a maintenant `color: #c8d0e0` par défaut.
+
+### Renommages anciens à connaître (depuis 08/05/2026)
+
+⚠️ Du code/doc plus ancien peut référencer ces noms — c'est qu'il n'a pas été migré :
+
+| Ancien nom | Nouveau nom | Notes |
+|---|---|---|
+| `APP_CONFIG.motionDebug` | `APP_CONFIG.debugMode` | Flag global (plus uniquement tracker) |
+| `APP_CONFIG.perfMode` (boolean tri-state) | `APP_CONFIG.perfPreset` (string) | Valeurs : `"auto"` / `"quality"` / `"balanced"` / `"performance"` |
+| `perfModeActif(fileSize)` | `resoudrePerfPreset(preset, fileSize, W, H)` | L'ancien est conservé en alias rétro-compat |
+| `localStorage.app_user_prefs.motionDebug` | `localStorage.app_user_prefs.debugMode` | Migré silencieusement au boot |
+| `localStorage.app_user_prefs.perfMode` | (supprimé — pref globale n'existe plus) | `perfPreset` est désormais par plan via `PlanRegistry[planId].perfPreset` |
+| `cfg_motionDebug` (id select Réglages) | `cfg_debugMode` | — |
+| label "Debug mouvement" (Réglages) | "Logs détaillés" | — |
+| Constante `TILE_SIZE = 1024` | `params.tileSize` (lu depuis le preset) | Idem `MAX_WORK_DIM` → `params.maxWorkDim`, `0.88` → `params.jpegQuality` |
 
 ### Coordonnées plan ↔ Leaflet
 

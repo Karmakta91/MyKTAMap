@@ -127,13 +127,28 @@
           </span>
         </div>
 
-        <!-- ⚡ Mode performance (lié à l'import en cours) -->
-        <div class="loader-perf-wrap">
-          <label class="loader-perf-label">
-            <input type="checkbox" id="loaderPerfMode">
-            <span>⚡ Mode performance</span>
-          </label>
-          <span class="loader-perf-hint">Recommandé pour les plans &gt; 50 Mo (JPEG volumineux)</span>
+        <!-- 🎚️ Mode performance — segmented control (lié à l'import en cours) -->
+        <div class="kta-perf-wrap">
+          <div class="kta-perf-titre">Mode performance</div>
+          <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
+            <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+              <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
+            </button>
+            <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
+              <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
+            </button>
+            <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
+              <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
+            </button>
+            <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
+              <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
+            </button>
+            <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
+              <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
+            </button>
+          </div>
+          <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
+          <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
         </div>
 
         <!-- Bouton principal Charger -->
@@ -151,6 +166,7 @@
         <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Plan serveur racine</button>
         <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
         <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
+        <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
         <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
       </div>
 
@@ -270,8 +286,8 @@
         zipFileName.textContent = f ? "✅ " + f.name : "";
         // Sélection via input classique : pas de handle FS
         _currentFsHandle = null;
-        const cb = document.getElementById("loaderPerfMode");
-        if (f && cb && f.size > 50 * 1024 * 1024) cb.checked = true;
+        // Note : pas d'auto-bascule de preset selon la taille — le mode "Auto" du
+        // segmented control s'occupe naturellement des gros fichiers (> 60 Mo)
       });
 
       zipDropZone.addEventListener("dragover",  function(e) { e.preventDefault(); zipDropZone.classList.add("dragover"); });
@@ -285,8 +301,6 @@
           zipFileName.textContent = "✅ " + f.name;
           // Drop : pas de handle FS
           _currentFsHandle = null;
-          const cb = document.getElementById("loaderPerfMode");
-          if (cb && f.size > 50 * 1024 * 1024) cb.checked = true;
         } else {
           setStatus("Le fichier doit être une archive .zip", true);
         }
@@ -325,8 +339,6 @@
             zipFileInput.files = dt.files;
             zipFileName.textContent = "🔐 " + file.name + " (accès persistant)";
             _currentFsHandle = handle;
-            const cb = document.getElementById("loaderPerfMode");
-            if (cb && file.size > 50 * 1024 * 1024) cb.checked = true;
             setStatus("ZIP sélectionné. Clique sur « Charger » pour continuer.", false);
           } catch(err) {
             if (err && err.name !== "AbortError") {
@@ -337,7 +349,8 @@
       }
 
       // === CHARGEMENT D'UN ZIP (utilisé par le bouton Charger ET les plans locaux du registre) ===
-      async function chargerZipFichier(zipFile, perfChoisi, meta) {
+      // presetChoisi : "auto" | "quality" | "balanced" | "performance" (string)
+      async function chargerZipFichier(zipFile, presetChoisi, meta) {
         if (typeof window.startImportedPlan !== "function") {
           throw new Error("startImportedPlan introuvable");
         }
@@ -345,13 +358,10 @@
         const { planConfigFile, assetFiles } = await extraireZip(zipFile);
         setStatus("Chargement en cours…", false);
 
-        try {
-          const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-          saved.perfMode = perfChoisi;
-          localStorage.setItem("app_user_prefs", JSON.stringify(saved));
-        } catch(e) {}
+        // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
+        // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
 
-        await window.startImportedPlan(planConfigFile, assetFiles, perfChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
+        await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
         setStatus("Plan chargé avec succès.");
         if (window.masquerLoader) window.masquerLoader();
       }
@@ -367,15 +377,17 @@
             loadBtn.disabled = false;
             return;
           }
-          const cb = document.getElementById("loaderPerfMode");
-          const perfChoisi = cb ? (cb.checked ? true : false) : null;
+          // Lire le preset choisi dans le segmented control
+          const presetChoisi = (typeof window.getLoaderPerfPreset === "function")
+            ? window.getLoaderPerfPreset()
+            : "auto";
 
           const meta = {};
           if (_currentFsHandle) meta.fsHandle = _currentFsHandle;
           // Stockage du blob ZIP demandé (case cochée)
           if (storeBlobCb && storeBlobCb.checked) meta.storeBlob = true;
 
-          await chargerZipFichier(zipFile, perfChoisi, meta);
+          await chargerZipFichier(zipFile, presetChoisi, meta);
         } catch(err) {
           console.error("[Loader] Erreur :", err);
           setStatus("Erreur : " + (err.message || err), true);
@@ -385,12 +397,8 @@
 
       if (loadBtn) loadBtn.addEventListener("click", onLoadPlanClick);
 
-      // Pré-cocher perfMode si préférence sauvegardée
-      try {
-        const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-        const cb = document.getElementById("loaderPerfMode");
-        if (cb && saved.perfMode === true) cb.checked = true;
-      } catch(e) {}
+      // Le segmented control est initialisé à "auto" via le HTML (classe .active sur le bouton Auto).
+      // L'ancienne pref globale `perfMode` n'est plus utilisée — perfPreset est désormais par plan.
 
       // === BOUTONS SECONDAIRES ===
       const plannerBtn = document.getElementById("loaderPlannerBtn");
@@ -549,7 +557,11 @@
         if (plan.type === "server") {
           setStatus("Chargement de " + plan.name + "…");
           try {
-            await window.chargerPlanServeur(plan.path, plan);
+            // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
+            // Sinon → on utilise le preset mémorisé pour ce plan (ou "auto" si jamais réglé).
+            const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+            const presetPlan = (segmented !== "auto") ? segmented : (plan.perfPreset || "auto");
+            await window.chargerPlanServeur(plan.path, plan, presetPlan);
             if (window.masquerLoader) window.masquerLoader();
           } catch(e) {
             // Plan serveur introuvable (404 / dossier supprimé) → modale dédiée
@@ -571,10 +583,12 @@
               if (blob) {
                 blobOk = true;
                 const file = new File([blob], plan.originalFilename || "plan.zip", { type: "application/zip" });
-                const cb = document.getElementById("loaderPerfMode");
-                const perfChoisi = cb ? (cb.checked ? true : false) : null;
+                // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
+                // Sinon → on utilise le preset mémorisé pour ce plan (ou "auto" si jamais réglé).
+                const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+                const presetPlan = (segmented !== "auto") ? segmented : (plan.perfPreset || "auto");
                 setStatus("Chargement depuis le stockage local…", false);
-                await chargerZipFichier(file, perfChoisi, { planId: plan.id, fromStoredBlob: true });
+                await chargerZipFichier(file, presetPlan, { planId: plan.id, fromStoredBlob: true });
                 return;
               }
             } catch(e) {
@@ -597,9 +611,11 @@
               if (ok) {
                 try {
                   const file = await handle.getFile();
-                  const cb = document.getElementById("loaderPerfMode");
-                  const perfChoisi = cb ? (cb.checked ? true : false) : null;
-                  await chargerZipFichier(file, perfChoisi, { fsHandle: handle, planId: plan.id });
+                  // Si l'utilisateur a fait un choix explicite (≠ "auto") → on l'applique en override.
+                  // Sinon → on utilise le preset mémorisé pour ce plan (ou "auto" si jamais réglé).
+                  const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+                  const presetPlan = (segmented !== "auto") ? segmented : (plan.perfPreset || "auto");
+                  await chargerZipFichier(file, presetPlan, { fsHandle: handle, planId: plan.id });
                   return;
                 } catch(e) {
                   console.warn("[Loader] FS handle invalide :", e);
@@ -773,8 +789,11 @@
           return;
         }
 
-        const cb = document.getElementById("loaderPerfMode");
-        const perfChoisi = cb ? (cb.checked ? true : false) : null;
+        // Re-sélection = même règle que le clic sur Mes plans :
+        // segmented explicite (≠ "auto") → override
+        // segmented = "auto" → preset mémorisé pour ce plan (ou "auto" si jamais réglé)
+        const segmented = (typeof window.getLoaderPerfPreset === "function") ? window.getLoaderPerfPreset() : "auto";
+        const presetPlan = (segmented !== "auto") ? segmented : (plan.perfPreset || "auto");
 
         // Construire les meta — restaurer la persistance si demandé (option 4:a)
         const meta = { planId: plan.id };
@@ -786,7 +805,7 @@
         }
 
         try {
-          await chargerZipFichier(file, perfChoisi, meta);
+          await chargerZipFichier(file, presetPlan, meta);
         } catch(err) {
           setStatus("Erreur : " + (err.message || err), true);
         }
@@ -918,6 +937,122 @@
 
       // Exposer chargerPlanDuRegistre globalement pour que le panneau "plan switcher" du titre puisse l'appeler
       window.chargerPlanDuRegistre = chargerPlanDuRegistre;
+
+      // ════════════════════════════════════════════════════════
+      // SEGMENTED CONTROL — MODE PERFORMANCE
+      // ════════════════════════════════════════════════════════
+      const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
+
+      function getLoaderPerfPreset() {
+        const active = document.querySelector("#loaderPerfSegmented .kta-perf-btn.active");
+        const v = active && active.dataset ? active.dataset.preset : "auto";
+        return (_PERF_VALID.indexOf(v) >= 0) ? v : "auto";
+      }
+
+      function setLoaderPerfPreset(preset) {
+        if (_PERF_VALID.indexOf(preset) < 0) preset = "auto";
+        const btns = document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn");
+        btns.forEach(function(b) {
+          const isActive = (b.dataset.preset === preset);
+          b.classList.toggle("active", isActive);
+          b.setAttribute("aria-checked", isActive ? "true" : "false");
+        });
+        // Mettre à jour la description sous le segmented
+        const descEl = document.getElementById("loaderPerfDesc");
+        if (descEl) {
+          let meta = null;
+          if (preset === "off") {
+            meta = window.PERF_OFF_META;
+          } else if (preset === "auto") {
+            meta = window.PERF_AUTO_META;
+          } else if (window.PERF_PRESETS) {
+            meta = window.PERF_PRESETS[preset];
+          }
+          descEl.textContent = (meta && meta.description) ? meta.description : "";
+        }
+        // Mettre à jour la ligne debug (chiffres techniques)
+        updatePerfDebugLine();
+      }
+
+      function updatePerfDebugLine() {
+        const debugEl = document.getElementById("loaderPerfDebug");
+        if (!debugEl) return;
+        const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+        if (!isDebug || !window.PERF_PRESETS) {
+          debugEl.style.display = "none";
+          debugEl.textContent = "";
+          return;
+        }
+        const preset = getLoaderPerfPreset();
+
+        // Mode "off" : pas de tiling — afficher l'info correspondante
+        if (preset === "off") {
+          debugEl.textContent = "Aucun tiling — L.imageOverlay direct (image brute)";
+          debugEl.style.display = "block";
+          return;
+        }
+
+        // En mode auto on affiche les params qui SERAIENT utilisés si on tilait (= Équilibré)
+        const params = (preset === "auto")
+          ? window.PERF_PRESETS.balanced
+          : window.PERF_PRESETS[preset];
+        const seuil = (preset === "auto") ? "tile si > 60 Mo" : "tile si image > 4096²";
+        if (params) {
+          debugEl.textContent =
+            "MAX:" + params.maxWorkDim + " / TILE:" + params.tileSize +
+            " / Q:" + params.jpegQuality + " / " + seuil;
+          debugEl.style.display = "block";
+        } else {
+          debugEl.style.display = "none";
+        }
+      }
+
+      // Brancher les clics du segmented
+      document.querySelectorAll("#loaderPerfSegmented .kta-perf-btn").forEach(function(b) {
+        b.addEventListener("click", function() {
+          setLoaderPerfPreset(b.dataset.preset);
+        });
+      });
+
+      // Exposer pour que onLoadPlanClick et reSelectionnerZipPourPlan puissent lire la valeur
+      window.getLoaderPerfPreset = getLoaderPerfPreset;
+      window.setLoaderPerfPreset = setLoaderPerfPreset;
+
+      // Initialisation : "auto" + description correspondante + ligne debug si applicable
+      setLoaderPerfPreset("auto");
+
+      // ════════════════════════════════════════════════════════
+      // BOUTON 🐛 LOGS DÉTAILLÉS (toggle debug mode)
+      // ════════════════════════════════════════════════════════
+      const debugBtn      = document.getElementById("loaderDebugBtn");
+      const debugStateEl  = document.getElementById("loaderDebugState");
+
+      function refreshDebugBtnUI() {
+        if (!debugBtn || !debugStateEl) return;
+        const on = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+        debugStateEl.textContent = on ? "ON" : "OFF";
+        debugBtn.classList.toggle("active", on);
+        debugBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        // Le segmented suit l'état (affiche/cache la ligne debug)
+        updatePerfDebugLine();
+      }
+
+      if (debugBtn) {
+        debugBtn.addEventListener("click", function() {
+          const cur = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+          if (typeof window.setDebugMode === "function") {
+            window.setDebugMode(!cur);
+          } else if (window.APP_CONFIG) {
+            // Fallback si setDebugMode pas exposé (ne devrait pas arriver)
+            window.APP_CONFIG.debugMode = !cur;
+          }
+          refreshDebugBtnUI();
+          setStatus(window.APP_CONFIG.debugMode ? "Logs détaillés activés" : "Logs détaillés désactivés", false);
+        });
+      }
+
+      // Init : refléter l'état courant (lu depuis localStorage par config.js au boot)
+      refreshDebugBtnUI();
 
       // Premier rendu de la liste
       if (window.refreshPlansList) window.refreshPlansList();

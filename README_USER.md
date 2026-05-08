@@ -176,11 +176,29 @@ Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/`
 
 Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
-### ⚡ Mode performance
+### 🎚️ Mode performance — 5 presets
 
-Si votre plan utilise un JPEG volumineux (> 50 Mo), cochez **⚡ Mode performance** avant de charger. Ce mode découpe l'image en tuiles pour éviter les crashes sur Mobile. La qualité est légèrement réduite mais l'image s'affiche correctement.
+Le bloc **Mode performance** dans le chargeur permet de choisir comment afficher votre plan, avec 5 modes présentés comme un sélecteur (à la manière du DLSS dans les jeux vidéo) :
 
-> Le mode performance se coche automatiquement si votre archive ZIP dépasse 50 Mo.
+| Bouton | Pour quel cas ? |
+|---|---|
+| 💤 **Désactivé** | **Aucun découpage du tout.** Image affichée brute (qualité native, mais ⚠️ peut planter sur mobile pour les très gros plans). À utiliser uniquement si vous savez que votre appareil tient. |
+| 🔄 **Auto** *(défaut)* | L'app décide selon la taille du fichier — activé si le plan dépasse 60 Mo. **Recommandé pour la plupart des cas.** |
+| 🌟 **Qualité** | Plans très détaillés à zoomer profondément. **Recommandé sur PC desktop** avec assez de RAM. Image plus nette. |
+| 🎯 **Équilibré** | Compromis entre netteté et fluidité. Reproduit le mode "Performance" historique de l'app. |
+| ⚡ **Performance** | **Mobile faible**, plans très lourds, urgence terrain. Image un peu plus floue mais charge bien plus vite. |
+
+Cliquez sur un bouton avant de charger — la description sous le sélecteur change pour vous expliquer ce qu'il fait.
+
+**Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
+
+### 🐛 Logs détaillés (mode debug)
+
+Le bouton **🐛 Logs détaillés** dans "Plus d'options" du chargeur active un mode verbose :
+- Logs supplémentaires dans la console (capteurs du tracker, étapes du tiling)
+- Affichage des **chiffres techniques** sous le sélecteur Mode performance (tailles de tuile, qualité JPEG, seuil de déclenchement)
+
+Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut. Réglage aussi accessible depuis ⚙️ Réglages > Logs détaillés.
 
 ### 📡 Utilisation hors connexion
 
@@ -226,7 +244,7 @@ Si vous voulez remettre l'application **à l'état initial** (comme un premier l
 - Le cache de l'application (mode hors-ligne désactivé jusqu'à reconnexion)
 - Votre **liste de plans** (entrées supprimées)
 - Les **ZIP mémorisés dans le navigateur** (perdus)
-- Vos **préférences** (mode performance, options de tracker, etc.)
+- Vos **préférences** (mode performance par plan, options de tracker, logs détaillés, etc.)
 
 L'application demande **deux confirmations** avant d'exécuter le reset, et vous rappelle d'**exporter votre liste** au préalable si vous souhaitez la conserver.
 
@@ -685,11 +703,11 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 - **Position initiale du tracker** : coordonnées de départ
 - **Détection des pas** : sensibilité, taille du pas, cooldown
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
-- **Debug** : activer les logs de mouvement + état du Mode Performance (Auto / Activé / Désactivé)
+- **Debug** : activer les **Logs détaillés** (logs verbeux capteurs + tiling) + voir le mode performance actuel du plan (💤 Désactivé / 🔄 Auto / 🌟 Qualité / 🎯 Équilibré / ⚡ Performance)
 - **🗑️ Réinitialiser** : vide le cache et recharge l'application
 - **🐛 Logs** : affiche les journaux de débogage (utile en cas de problème)
 
-> Le Mode Performance ne se modifie qu'au chargement du plan (case ⚡ dans le formulaire de chargement).
+> Le mode performance ne se modifie qu'au chargement du plan (sélecteur 4 modes dans le chargeur).
 
 ### 🎯 Calibrer l'échelle
 
@@ -719,14 +737,14 @@ En cas de problème ou pour forcer une mise à jour, utilisez **⚙️ → 🗑�
 **Le plan ne se charge pas**
 Vérifiez que `plan-config.json` est bien à la racine de votre archive ZIP, et que tous les fichiers référencés sont présents.
 
-**L'image du plan est floue en mode performance**
-C'est normal — le mode performance réduit la résolution pour éviter les crashes. Si vous avez suffisamment de mémoire, désactivez-le au prochain chargement.
+**L'image du plan est floue**
+Selon le preset choisi, la résolution de travail est réduite (`Performance` plus que `Équilibré`, qui est plus que `Qualité`). Si votre appareil a assez de mémoire, basculez en **🌟 Qualité** au prochain chargement pour une image plus nette.
 
 **Le tracker dérive trop vite**
 Recalez votre position fréquemment. Ajustez l'échelle et la taille du pas dans les réglages.
 
 **L'application crash sur Mobile avec un JPEG volumineux**
-Activez le **⚡ Mode performance** avant de charger le plan.
+Choisissez **⚡ Performance** dans le sélecteur Mode performance avant de charger le plan.
 
 **Un mode reste actif sans le vouloir**
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.

@@ -135,7 +135,11 @@ async function lancerApplication() {
 // =========================
 // CHARGEMENT D'UN PLAN SERVEUR PARTICULIER (depuis le registre)
 // =========================
-async function chargerPlanServeur(planPath, registryEntry) {
+// presetChoisi (optionnel) : "off" | "auto" | "quality" | "balanced" | "performance"
+//   → appliqué à APP_CONFIG.perfPreset et sauvegardé dans le registre pour ce plan
+const _PERF_VALID_PRESETS = ["off", "auto", "quality", "balanced", "performance"];
+
+async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   // Détruire la carte existante
   if (window._baseTiles && window._baseTiles.length > 0) {
     libererTuiles(window._baseTiles, window.map);
@@ -159,6 +163,14 @@ async function chargerPlanServeur(planPath, registryEntry) {
     throw err;
   }
 
+  // Appliquer le preset perf choisi (avant lancerApplication, donc avant rendu de l'image)
+  if (typeof presetChoisi === "string" && _PERF_VALID_PRESETS.indexOf(presetChoisi) >= 0) {
+    APP_CONFIG.perfPreset = presetChoisi;
+    DEFAULT_CONFIG.perfPreset = presetChoisi;
+    window.APP_CONFIG = APP_CONFIG;
+    console.log("[Loader] perfPreset (server) :", presetChoisi);
+  }
+
   // Enregistrer dans le registre
   if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
     const id = registryEntry?.id || window.PlanRegistry.genServerId(planPath);
@@ -169,7 +181,8 @@ async function chargerPlanServeur(planPath, registryEntry) {
       name:    window.PLAN_CONFIG.plan.name    || (registryEntry && registryEntry.name) || planPath,
       version: window.PLAN_CONFIG.plan.version || (registryEntry && registryEntry.version) || null,
       author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
-      discovered: registryEntry?.discovered || false
+      discovered: registryEntry?.discovered || false,
+      perfPreset: APP_CONFIG.perfPreset
     });
   }
 
@@ -181,8 +194,10 @@ async function chargerPlanServeur(planPath, registryEntry) {
 // =========================
 // CHARGEMENT DEPUIS IMPORT NAVIGATEUR
 // =========================
+// presetChoisi : "off" | "auto" | "quality" | "balanced" | "performance" (string)
+//   ← v2 : remplace l'ancien `perfChoisi` (boolean)
 // meta = { zipFile?, fsHandle?, planId? }  (tout optionnel)
-async function startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta) {
+async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta) {
   if (!planConfigFile) throw new Error("Aucun fichier plan-config.json fourni");
 
   meta = meta || {};
@@ -244,15 +259,16 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta) {
   APP_CONFIG = { ...cfg };
   window.APP_CONFIG = APP_CONFIG;
 
-  // Appliquer le choix explicite du loader AVANT lancerApplication
-  if (typeof perfChoisi === "boolean") {
-    APP_CONFIG.perfMode = perfChoisi;
-    DEFAULT_CONFIG.perfMode = perfChoisi;
+  // Appliquer le preset perf choisi par l'utilisateur dans le loader (string)
+  // AVANT lancerApplication → l'image est tilée selon le bon preset dès le 1er rendu
+  if (typeof presetChoisi === "string" && _PERF_VALID_PRESETS.indexOf(presetChoisi) >= 0) {
+    APP_CONFIG.perfPreset = presetChoisi;
+    DEFAULT_CONFIG.perfPreset = presetChoisi;
     window.APP_CONFIG = APP_CONFIG;
-    console.log("[Loader] perfMode imposé :", perfChoisi);
+    console.log("[Loader] perfPreset imposé :", presetChoisi);
   }
 
-  console.log("[Loader] APP_CONFIG.perfMode au lancement :", APP_CONFIG.perfMode);
+  console.log("[Loader] APP_CONFIG.perfPreset au lancement :", APP_CONFIG.perfPreset);
 
   // ENREGISTREMENT DANS LE REGISTRE
   if (window.PlanRegistry && rawConfig.plan) {
@@ -267,7 +283,8 @@ async function startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta) {
       version: planVer || null,
       author: rawConfig.plan.author || null,
       originalFilename: meta.zipFile?.name || null,
-      fileSize: meta.zipFile?.size || null
+      fileSize: meta.zipFile?.size || null,
+      perfPreset: APP_CONFIG.perfPreset
     };
 
     // Si on a un FileSystemFileHandle, le persister

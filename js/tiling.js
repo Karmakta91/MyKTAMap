@@ -2,31 +2,132 @@
 // TILING.JS
 // =========================
 
-const TILE_SIZE            = 1024;
-const MAX_WORK_DIM         = 8192;  // Limite GPU mobile — au dessus drawImage JPEG échoue
-const PERF_MODE_SIZE_BYTES = 60 * 1024 * 1024;
+// Seuil legacy : utilisé par le mode "auto" pour décider quand tile (basé sur taille fichier)
+const PERF_AUTO_TILE_THRESHOLD = 60 * 1024 * 1024;
+
+// Seuil "tile nécessaire" : quand l'image dépasse cette surface, le rendu direct
+// L.imageOverlay devient instable (mémoire GPU mobile) — on tile même en mode Qualité
+const TUILING_NECESSAIRE_PIXELS = 4096 * 4096;
 
 // =========================
-// ACTIVATION
+// PRESETS DE PERFORMANCE
 // =========================
-function perfModeActif(fileSize) {
-  if (typeof APP_CONFIG !== "undefined") {
-    if (APP_CONFIG.perfMode === true)  return true;
-    if (APP_CONFIG.perfMode === false) return false;
+// Chaque preset règle 3 leviers techniques en cascade :
+//   - maxWorkDim   : taille max du canvas de travail (downscale au-dessus)
+//   - tileSize     : taille des tuiles découpées
+//   - jpegQuality  : qualité JPEG d'encodage des tuiles
+const PERF_PRESETS = {
+  quality: {
+    label:        "Qualité",
+    emoji:        "🌟",
+    maxWorkDim:   12288,
+    tileSize:     1024,
+    jpegQuality:  0.95,
+    description:  "Plus net. Recommandé sur PC desktop."
+  },
+  balanced: {
+    label:        "Équilibré",
+    emoji:        "🎯",
+    maxWorkDim:   8192,
+    tileSize:     1024,
+    jpegQuality:  0.88,
+    description:  "Compromis recommandé. Défaut idéal."
+  },
+  performance: {
+    label:        "Performance",
+    emoji:        "⚡",
+    maxWorkDim:   6144,
+    tileSize:     768,
+    jpegQuality:  0.78,
+    description:  "Plans très lourds, mobile faible."
   }
-  if (typeof fileSize === "number") return fileSize > PERF_MODE_SIZE_BYTES;
-  return false;
+};
+
+// Métadonnées du mode "auto" — pas de params propres, utilise Équilibré quand il tile
+const PERF_AUTO_META = {
+  label:        "Auto",
+  emoji:        "🔄",
+  description:  "L'app décide selon la taille du plan."
+};
+
+// Métadonnées du mode "off" — rendu direct via L.imageOverlay, pas de tiling du tout
+// ⚠️ Risque de crash sur Safari iOS pour images > 8192 px (drawImage qui échoue)
+const PERF_OFF_META = {
+  label:        "Désactivé",
+  emoji:        "💤",
+  description:  "Aucun tiling. Image en direct (qualité brute, risqué sur mobile)."
+};
+
+// =========================
+// RÉSOLUTION DU PRESET
+// =========================
+// Décide si on tile et avec quels params, à partir du preset utilisateur,
+// de la taille du fichier et des dimensions de l'image.
+// Retourne { tile: bool, params: {maxWorkDim, tileSize, jpegQuality} | null }
+function resoudrePerfPreset(preset, fileSize, imageW, imageH) {
+  const p = (typeof preset === "string") ? preset : "auto";
+
+  // Mode off : aucun tiling, JAMAIS — rendu direct via L.imageOverlay
+  // ⚠️ Choix utilisateur explicite — risque de crash sur Safari iOS pour très gros plans
+  if (p === "off") {
+    return { tile: false, params: null };
+  }
+
+  // Mode auto : tile uniquement si fichier > seuil legacy, avec params Équilibré
+  if (p === "auto") {
+    const tile = (typeof fileSize === "number" && fileSize > PERF_AUTO_TILE_THRESHOLD);
+    return {
+      tile:   tile,
+      params: tile ? PERF_PRESETS.balanced : null
+    };
+  }
+
+  // Presets explicites : tile uniquement si l'image est techniquement trop grande
+  // pour un rendu direct (sécurité GPU mobile). Sinon rendu direct (qualité native).
+  const params = PERF_PRESETS[p];
+  if (!params) {
+    console.warn("[Tiling] Preset inconnu :", p, "— fallback auto");
+    return resoudrePerfPreset("auto", fileSize, imageW, imageH);
+  }
+
+  let tile = false;
+  if (typeof imageW === "number" && typeof imageH === "number") {
+    tile = (imageW * imageH) > TUILING_NECESSAIRE_PIXELS;
+  }
+  return {
+    tile:   tile,
+    params: tile ? params : null
+  };
+}
+
+// =========================
+// COMPAT ASCENDANTE
+// =========================
+// perfModeActif() est conservé pour les modules legacy qui l'appellent encore.
+// Lit APP_CONFIG.perfPreset et délègue à resoudrePerfPreset.
+function perfModeActif(fileSize) {
+  if (typeof APP_CONFIG === "undefined") return false;
+  const r = resoudrePerfPreset(APP_CONFIG.perfPreset, fileSize, null, null);
+  return r.tile;
 }
 
 // =========================
 // POINT D'ENTRÉE
 // =========================
 async function chargerImage(url, bounds, map, fileSize, sourceFile) {
-  if (perfModeActif(fileSize)) {
-    console.log("[Tiling] Mode performance —", fileSize ? Math.round(fileSize/1024/1024)+"Mo" : "forcé");
-    return await chargerImageTuillee(url, bounds, map, sourceFile);
+  const W = bounds[1][1];
+  const H = bounds[1][0];
+
+  const preset = (typeof APP_CONFIG !== "undefined") ? APP_CONFIG.perfPreset : "auto";
+  const r = resoudrePerfPreset(preset, fileSize, W, H);
+
+  if (r.tile && r.params) {
+    console.log("[Tiling] Mode", preset, "—",
+                fileSize ? Math.round(fileSize/1024/1024)+"Mo" : "taille inconnue",
+                "params:", r.params.maxWorkDim+"px / tile "+r.params.tileSize+" / Q "+r.params.jpegQuality);
+    return await chargerImageTuillee(url, bounds, map, sourceFile, r.params);
   }
-  console.log("[Tiling] Mode normal");
+  console.log("[Tiling] Rendu direct (mode "+preset+")");
   L.imageOverlay(url, bounds).addTo(map);
   return [];
 }
@@ -34,7 +135,10 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
 // =========================
 // TILING PRINCIPAL
 // =========================
-async function chargerImageTuillee(url, bounds, map, sourceFile) {
+async function chargerImageTuillee(url, bounds, map, sourceFile, params) {
+  // Sécurité : si appelé sans params (legacy), retombe sur Équilibré
+  if (!params) params = PERF_PRESETS.balanced;
+
   const W = bounds[1][1];
   const H = bounds[1][0];
 
@@ -51,8 +155,8 @@ async function chargerImageTuillee(url, bounds, map, sourceFile) {
   // Passer le blob directement — la Blob URL sera créée ET révoquée
   // à l'intérieur de _imageVersCanvasReduit, après chargement complet
   const workCanvas = srcBlob
-    ? await _imageVersCanvasReduit(null, W, H, srcBlob)
-    : await _imageVersCanvasReduit(url, W, H, null);
+    ? await _imageVersCanvasReduit(null, W, H, srcBlob, params.maxWorkDim)
+    : await _imageVersCanvasReduit(url, W, H, null, params.maxWorkDim);
 
   if (!workCanvas) {
     console.warn("[Tiling] Canvas impossible — fallback imageOverlay direct");
@@ -61,7 +165,7 @@ async function chargerImageTuillee(url, bounds, map, sourceFile) {
     return [];
   }
 
-  const overlays = await _tilerDepuisCanvas(workCanvas, W, H, map);
+  const overlays = await _tilerDepuisCanvas(workCanvas, W, H, map, params);
   workCanvas.width  = 0;
   workCanvas.height = 0;
 
@@ -74,7 +178,8 @@ async function chargerImageTuillee(url, bounds, map, sourceFile) {
 // Utilise un <img> HTML — Safari iOS gère mieux la mémoire
 // via l'élément img que via createImageBitmap sur les JPEG volumineux
 // =========================
-function _imageVersCanvasReduit(url, targetW, targetH, srcBlob) {
+function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
+  const dimMax = (typeof maxWorkDim === "number") ? maxWorkDim : 8192;
   return new Promise(function(resolve) {
     // Créer la Blob URL ICI — elle vivra jusqu'à la fin du onload
     let localUrl = url;
@@ -95,11 +200,11 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob) {
 
         let workW = naturalW;
         let workH = naturalH;
-        if (naturalW > MAX_WORK_DIM || naturalH > MAX_WORK_DIM) {
-          const ratio = Math.min(MAX_WORK_DIM / naturalW, MAX_WORK_DIM / naturalH);
+        if (naturalW > dimMax || naturalH > dimMax) {
+          const ratio = Math.min(dimMax / naturalW, dimMax / naturalH);
           workW = Math.round(naturalW * ratio);
           workH = Math.round(naturalH * ratio);
-          console.log("[Tiling] Réduction", naturalW+"×"+naturalH, "→", workW+"×"+workH);
+          console.log("[Tiling] Réduction", naturalW+"×"+naturalH, "→", workW+"×"+workH, "(max "+dimMax+")");
         }
 
         const canvas = document.createElement('canvas');
@@ -164,25 +269,29 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob) {
 // =========================
 // TUILER DEPUIS UN CANVAS
 // =========================
-async function _tilerDepuisCanvas(srcCanvas, W, H, map) {
+async function _tilerDepuisCanvas(srcCanvas, W, H, map, params) {
+  if (!params) params = PERF_PRESETS.balanced;
+  const tileSize    = params.tileSize;
+  const jpegQuality = params.jpegQuality;
+
   const workW  = srcCanvas.width;
   const workH  = srcCanvas.height;
   const scaleX = workW / W;
   const scaleY = workH / H;
-  const nbX    = Math.ceil(W / TILE_SIZE);
-  const nbY    = Math.ceil(H / TILE_SIZE);
+  const nbX    = Math.ceil(W / tileSize);
+  const nbY    = Math.ceil(H / tileSize);
 
-  console.log("[Tiling]", nbX+"×"+nbY, "=", nbX*nbY, "tuiles depuis canvas", workW+"×"+workH);
+  console.log("[Tiling]", nbX+"×"+nbY, "=", nbX*nbY, "tuiles depuis canvas", workW+"×"+workH,
+              "(tile "+tileSize+", Q "+jpegQuality+")");
 
-  const srcCtx  = srcCanvas.getContext('2d');
   const overlays = [];
 
   for (let row = 0; row < nbY; row++) {
     for (let col = 0; col < nbX; col++) {
-      const tileW = Math.min(TILE_SIZE, W - col * TILE_SIZE);
-      const tileH = Math.min(TILE_SIZE, H - row * TILE_SIZE);
-      const srcX  = Math.round(col * TILE_SIZE * scaleX);
-      const srcY  = Math.round(row * TILE_SIZE * scaleY);
+      const tileW = Math.min(tileSize, W - col * tileSize);
+      const tileH = Math.min(tileSize, H - row * tileSize);
+      const srcX  = Math.round(col * tileSize * scaleX);
+      const srcY  = Math.round(row * tileSize * scaleY);
       const srcW  = Math.max(1, Math.round(tileW * scaleX));
       const srcH  = Math.max(1, Math.round(tileH * scaleY));
 
@@ -196,7 +305,7 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map) {
       tCtx.fillRect(0, 0, tileW, tileH);
       tCtx.drawImage(srcCanvas, srcX, srcY, srcW, srcH, 0, 0, tileW, tileH);
 
-      const blobUrl = await _canvasToBlob(tuile, "image/jpeg", 0.88);
+      const blobUrl = await _canvasToBlob(tuile, "image/jpeg", jpegQuality);
 
       // Libérer le canvas de tuile immédiatement
       tuile.width = 0;
@@ -204,10 +313,10 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map) {
 
       if (!blobUrl) continue;
 
-      const lngMin = col * TILE_SIZE;
-      const lngMax = col * TILE_SIZE + tileW;
-      const latMin = H - (row * TILE_SIZE + tileH);
-      const latMax = H - row * TILE_SIZE;
+      const lngMin = col * tileSize;
+      const lngMax = col * tileSize + tileW;
+      const latMin = H - (row * tileSize + tileH);
+      const latMax = H - row * tileSize;
 
       const overlay = L.imageOverlay(blobUrl, [[latMin, lngMin], [latMax, lngMax]], {
         className: "kta-tile-overlay"
@@ -255,15 +364,22 @@ function libererTuiles(overlays, map) {
 }
 
 function tuilingNecessaire(imageWidth, imageHeight) {
-  return (imageWidth * imageHeight) > (4096 * 4096);
+  return (imageWidth * imageHeight) > TUILING_NECESSAIRE_PIXELS;
 }
 
 // =========================
 // EXPORTS
 // =========================
-window.chargerImage         = chargerImage;
-window.chargerImageTuillee  = chargerImageTuillee;
-window.libererTuiles        = libererTuiles;
-window.tuilingNecessaire    = tuilingNecessaire;
-window.perfModeActif        = perfModeActif;
-window.PERF_MODE_SIZE_BYTES = PERF_MODE_SIZE_BYTES;
+window.chargerImage             = chargerImage;
+window.chargerImageTuillee      = chargerImageTuillee;
+window.libererTuiles            = libererTuiles;
+window.tuilingNecessaire        = tuilingNecessaire;
+window.perfModeActif            = perfModeActif;
+window.resoudrePerfPreset       = resoudrePerfPreset;
+window.PERF_PRESETS             = PERF_PRESETS;
+window.PERF_AUTO_META           = PERF_AUTO_META;
+window.PERF_OFF_META            = PERF_OFF_META;
+window.PERF_AUTO_TILE_THRESHOLD = PERF_AUTO_TILE_THRESHOLD;
+
+// Conservé pour rétro-compat (alias de PERF_AUTO_TILE_THRESHOLD)
+window.PERF_MODE_SIZE_BYTES     = PERF_AUTO_TILE_THRESHOLD;
