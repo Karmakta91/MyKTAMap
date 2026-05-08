@@ -2608,7 +2608,7 @@ html, body {
   }
 }
 
-/* Footer du modal Documentation — crédit Leaflet (cohérence avec le splash) */
+/* Footer du modal Documentation — crédit Leaflet + signature auteur (cohérence avec le splash) */
 .kta-readme-modal-footer {
   flex-shrink: 0;
   padding: 9px 18px 10px;
@@ -2618,6 +2618,24 @@ html, body {
   letter-spacing: 0.02em;
   text-align: center;
   user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kta-readme-modal-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kta-readme-modal-by img {
+  height: 18px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 4px rgba(244, 197, 66, 0.25));
 }
 
 /* Bouton "↑ Retour en haut" — absolute, ancré bas-droite du layout (4:c) */
