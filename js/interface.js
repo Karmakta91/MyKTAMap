@@ -987,8 +987,8 @@ function _ouvrirReadmeModal(html) {
         <button class="kta-readme-back-top" id="kta-readme-back-top" type="button" aria-label="Retour en haut" title="Retour en haut">↑</button>
       </div>
       <div class="kta-readme-modal-footer">
-        <span>🍃 Cartographie propulsée par Leaflet</span>
-        <span class="kta-readme-modal-by">— Par <img src="icon/karma.png" alt="KARMA"></span>
+        <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
+        <span>— 🍃 Cartographie propulsée par Leaflet</span>
       </div>
     </div>
   `;
