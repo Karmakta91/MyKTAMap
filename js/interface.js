@@ -1825,8 +1825,15 @@ function initInterface() {
           else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
         } },
       { icone: "🖼️", titre: "Exporter le plan en image", onClick: function() {
-          if (window.ouvrirExportModal) window.ouvrirExportModal();
-          else if (window.telechargerPlan) window.telechargerPlan();
+          if (window.ouvrirExportModal) {
+            window.ouvrirExportModal();
+          } else if (window.telechargerPlan) {
+            // Fallback : telechargerPlan rethrow désormais — on l'attrape ici pour
+            // afficher un message visible au lieu d'une promesse rejetée silencieuse.
+            window.telechargerPlan().catch(function(err) {
+              alert("Erreur lors de l'export du plan : " + (err && err.message ? err.message : err));
+            });
+          }
         } }
     ]
   });

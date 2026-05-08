@@ -401,9 +401,18 @@ async function telechargerPlan() {
 
     // ---------- markers DIFFÉRÉS (icônes) — dessinés EN DERNIER (au-dessus des traits + cercles)
     // → respecte l'ordre demandé : ZONE (en bas) → TRAIT → CERCLE → ICÔNE (en haut)
+    // Chaque marker est try/catché individuellement : un icône qui rate à charger
+    // ne doit PAS faire échouer l'ensemble de l'export (on perd un point, pas le plan).
+    let _markerFails = 0;
     for (const point of deferredMarkers) {
-      await drawPoint(point);
+      try {
+        await drawPoint(point);
+      } catch (e) {
+        _markerFails++;
+        if (_debug) console.warn("[Export rapide] drawPoint échoué pour", point.id || point.nom, e);
+      }
     }
+    if (_markerFails > 0) console.warn("[Export rapide]", _markerFails, "icône(s) sur", deferredMarkers.length, "n'ont pas pu être dessinées");
 
     // ---------- mesure ----------
     const measurePoints = window.getMeasurePoints ? window.getMeasurePoints() : [];
@@ -419,30 +428,39 @@ async function telechargerPlan() {
     if (window.getTrackingPosition) {
       const trackerPos = window.getTrackingPosition();
       if (trackerPos && typeof trackerPos.x === "number" && typeof trackerPos.y === "number") {
-        const trackerImg = await loadImage(config.icons.track);
-        drawMarkerImage(trackerImg, trackerPos.x, trackerPos.y, 50, 50, 25, 25);
+        try {
+          const trackerImg = await loadImage(config.icons.track);
+          drawMarkerImage(trackerImg, trackerPos.x, trackerPos.y, 50, 50, 25, 25);
+        } catch (e) {
+          console.warn("[Export rapide] icône tracker non chargée :", e);
+        }
       }
     }
 
     // ---------- export ----------
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alert("Impossible de générer l'image");
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = (config.plan.name || "plan") + "_complet.png";
-      link.click();
-
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, "image/png");
+    // Promesse autour de toBlob pour que l'appelant (modale Export) puisse await
+    // proprement et voir le succès ou l'échec — sinon le download ratait silencieusement.
+    await new Promise(function(resolve, reject) {
+      canvas.toBlob(function(blob) {
+        if (!blob) {
+          reject(new Error("canvas.toBlob a retourné null (image trop grande ?)"));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (config.plan.name || "plan") + "_complet.png";
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        resolve();
+      }, "image/png");
+    });
 
   } catch (err) {
-    console.error(err);
-    alert("Erreur lors de l'export complet de l'image");
+    // Re-throw pour que l'appelant (modale Export) affiche l'erreur dans son zone
+    // dédiée plutôt qu'un alert qui peut être masqué par la fermeture de la modale.
+    console.error("[Export rapide]", err);
+    throw err;
   }
 }
 
