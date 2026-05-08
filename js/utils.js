@@ -96,6 +96,11 @@ function ajouterPointsDepuisJSON(url, layer) {
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
           L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
+          // Enregistrer dans road.js pour que le calcul d'intersection (cercles aux croisements)
+          // tienne compte de cette route, comme s'il s'agissait d'une route éditable
+          if (typeof window.registerEmbeddedRoad === "function") {
+            window.registerEmbeddedRoad(road);
+          }
         });
       }
 
@@ -287,19 +292,39 @@ async function telechargerPlan() {
       chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
     };
 
+    // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
+    const allRoadsForIntersect = [];
+    // Markers DIFFÉRÉS : collectés ici, dessinés APRÈS les routes + cercles
+    // → respecte l'ordre ZONE → TRAIT → CERCLE → ICÔNE
+    const deferredMarkers = []; // [{point, layerId}]
+
+    // Compteurs diagnostic (activés si APP_CONFIG.debugMode)
+    const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embPoints: 0, fetchFails: 0 };
+    const _debug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+
     if (config.dataLayers && Array.isArray(config.dataLayers)) {
       for (const layerConfig of config.dataLayers) {
         const leafletLayer = window.dataLayerGroups?.[layerConfig.id];
-        if (!leafletLayer || !isLayerVisible(leafletLayer)) continue;
+        const visible = !!(leafletLayer && isLayerVisible(leafletLayer));
+        if (_debug) console.log("[Export rapide] layer", layerConfig.id, "→ visible:", visible, "groupExist:", !!leafletLayer);
+        if (!visible) { _diag.layersSkipped++; continue; }
+        _diag.layersVisited++;
 
         if (layerConfig.id === "editor") {
           const editorPoints = window.getEditorPoints ? window.getEditorPoints() : [];
           for (const point of editorPoints) {
-            await drawPoint(point);
+            deferredMarkers.push(point);
           }
         } else {
-          const response = await fetch(layerConfig.file);
-          const json = await response.json();
+          let json = null;
+          try {
+            const response = await fetch(layerConfig.file);
+            json = await response.json();
+          } catch (e) {
+            _diag.fetchFails++;
+            console.warn("[Export rapide] fetch échoué pour", layerConfig.id, "→", layerConfig.file, e);
+            continue;
+          }
 
           // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement
           if (Array.isArray(json.zones) && json.zones.length > 0) {
@@ -308,6 +333,7 @@ async function telechargerPlan() {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
               drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
+              _diag.embZones++;
             });
           }
 
@@ -316,17 +342,21 @@ async function telechargerPlan() {
             json.roads.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+              allRoadsForIntersect.push(r);
+              _diag.embRoads++;
             });
           }
 
-          // Markers
+          // Markers DIFFÉRÉS (au lieu de drawPoint immédiat)
           const points = json.data || [];
           for (const point of points) {
-            await drawPoint(point);
+            deferredMarkers.push(point);
+            _diag.embPoints++;
           }
         }
       }
     }
+    if (_debug) console.log("[Export rapide] résumé layer loop :", _diag);
 
     // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
     const zones = window.getZones ? window.getZones() : [];
@@ -352,6 +382,27 @@ async function telechargerPlan() {
 
     for (const road of roads) {
       drawPolyline(road.points || [], ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 });
+      if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
+    }
+
+    // ---------- cercles d'intersection (dessinés APRÈS toutes les routes, AVANT les icônes) ----------
+    if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {
+      const radius = window.ROAD_INTERSECTION_RADIUS || 8;
+      const intersections = window.computeRoadIntersections(allRoadsForIntersect);
+      intersections.forEach(function(it) {
+        ctx.save();
+        ctx.fillStyle = it.color;
+        ctx.beginPath();
+        ctx.arc(it.point.x, toCanvasY(it.point.y), radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // ---------- markers DIFFÉRÉS (icônes) — dessinés EN DERNIER (au-dessus des traits + cercles)
+    // → respecte l'ordre demandé : ZONE (en bas) → TRAIT → CERCLE → ICÔNE (en haut)
+    for (const point of deferredMarkers) {
+      await drawPoint(point);
     }
 
     // ---------- mesure ----------
