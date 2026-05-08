@@ -70,10 +70,12 @@ console.info("[exporter.js] chargé — build 2026-05-09 (logs export modale)");
   // ENTRÉE PUBLIQUE
   // =========================
   window.ouvrirExportModal = function() {
+    console.info("[Export modale] ouvrirExportModal() appelée");
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
     if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();
     _afficherModal("rapide");
+    console.info("[Export modale] modale construite — bouton Télécharger :", !!document.getElementById("kta-export-go"));
   };
 
   // =========================
@@ -745,7 +747,12 @@ console.info("[exporter.js] chargé — build 2026-05-09 (logs export modale)");
 
     btnClose.addEventListener("click", fermer);
     btnAnnul.addEventListener("click", fermer);
-    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+    modal.addEventListener("click", function(e) {
+      // Trap diagnostic : log tout clic dans la modale pour voir où l'utilisateur clique vraiment
+      const t = e.target;
+      console.info("[Export modale] clic détecté sur :", t.tagName, "#" + (t.id || "(no-id)"), ".(" + (t.className || "(no-class)") + ")");
+      if (e.target === modal) fermer();
+    });
 
     btnRapide.addEventListener("click", function() {
       btnRapide.classList.add("active"); btnAvance.classList.remove("active");
