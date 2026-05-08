@@ -345,10 +345,25 @@ La recherche est **insensible aux accents et à la casse** — taper "aeration" 
 ### ⚙️ Comment ça marche
 
 1. Cliquez sur **🔍** dans la barre latérale
-2. Tapez votre recherche dans le champ — les résultats s'affichent en temps réel
-3. Naviguez avec les flèches **↑** / **↓** ou avec le curseur
-4. Validez avec **Entrée** ou par un clic sur le résultat
-5. La carte se centre sur le point avec un **cercle orange** autour pour le repérer, et le popup d'information s'ouvre
+2. (Optionnel) Cochez des **chips de filtre** sous le champ pour restreindre par calque ou par tag
+3. Tapez votre recherche dans le champ — les résultats s'affichent en temps réel
+4. Naviguez avec les flèches **↑** / **↓** ou avec le curseur
+5. Validez avec **Entrée** ou par un clic sur le résultat
+6. La carte se centre sur le point avec un **cercle orange** autour pour le repérer, et le popup d'information s'ouvre
+
+### 🎚️ Filtres (calques + tags)
+
+Sous le champ de recherche, deux lignes de chips :
+
+- **Calques** : un chip par calque (Puits, Carrière, Mes ajouts, etc.). Cliquez pour activer (jaune) ou désactiver. Aucun chip actif = tous les calques affichés.
+- **Tags** : un chip par tag rencontré dans les points (pa, ouvert, fermé, aeration, etc.). Mêmes règles.
+
+**Logique de combinaison** :
+- **Plusieurs chips dans la même ligne** = OR (n'importe lequel)
+- **Entre les deux lignes** = ET (calque ∈ {sélection} ET tag ∈ {sélection})
+- Le champ texte reste un filtre supplémentaire (en ET)
+
+Le bouton **✕ Effacer les filtres** apparaît à droite du compteur quand au moins un chip est actif. Les filtres sont **réinitialisés à chaque ouverture** de la fenêtre de recherche.
 
 ### 🧭 Périmètre
 

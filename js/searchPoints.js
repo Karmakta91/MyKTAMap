@@ -22,6 +22,10 @@
   let _visibles    = [];            // liste actuellement affichée (référence pour les clics)
   let _flashLayer  = null;          // pour l'animation visuelle
 
+  // Filtres actifs (réinitialisés à chaque ouverture de modale)
+  let _filterLayers = new Set();    // Set<layerId> — vide = tous les calques
+  let _filterTags   = new Set();    // Set<tag>     — vide = tous les tags
+
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
     if (document.getElementById("kta-search-styles")) return;
@@ -60,7 +64,86 @@
 
       .kta-search-info {
         font-size: 12px; color: #8892a4;
+      }
+      .kta-search-info-row {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px;
         padding: 8px 0;
+      }
+      .kta-search-clear-filters {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.10);
+        color: #c8d0e0;
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .kta-search-clear-filters:hover {
+        background: rgba(255, 110, 110, 0.10);
+        border-color: rgba(255, 110, 110, 0.40);
+        color: #ffb3b3;
+      }
+
+      /* === FILTRES — chips calques + tags === */
+      .kta-search-filters {
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+      }
+      .kta-search-filters:empty {
+        display: none;
+      }
+      .kta-search-filters-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+      .kta-search-filters-row:last-child {
+        margin-bottom: 0;
+      }
+      .kta-search-filters-label {
+        flex-shrink: 0;
+        font-size: 10px;
+        font-weight: 700;
+        color: #8cb4ff;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding-top: 5px;
+        min-width: 56px;
+      }
+      .kta-search-filters-chips {
+        flex: 1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .kta-search-chip {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.10);
+        color: #c0c8d8;
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        cursor: pointer;
+        font-family: inherit;
+        white-space: nowrap;
+        line-height: 1.4;
+        transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+      }
+      .kta-search-chip:hover:not(.active) {
+        background: rgba(255,255,255,0.08);
+        border-color: rgba(255,255,255,0.18);
+        color: #e8eaf0;
+      }
+      .kta-search-chip.active {
+        background: #f4c542;
+        border-color: #f4c542;
+        color: #1a1f2e;
+        font-weight: 600;
       }
 
       .kta-search-results {
@@ -158,8 +241,52 @@
   window.ouvrirRecherche = function() {
     _injecterStyles();
     if (_modal) { _modal.remove(); _modal = null; }
+    // Réinitialise les filtres à chaque ouverture (état "propre")
+    _filterLayers = new Set();
+    _filterTags   = new Set();
     _afficherModal();
   };
+
+  // ========== FILTRES — DONNÉES DISPO ==========
+  // Calques présents dans les points (data + editor)
+  function _availableLayers() {
+    const map = new Map();
+    _tousLesPoints().forEach(function(it) {
+      if (!map.has(it.layerId)) {
+        map.set(it.layerId, { id: it.layerId, label: it.layerLabel || it.layerId });
+      }
+    });
+    return Array.from(map.values()).sort(function(a, b) {
+      return a.label.localeCompare(b.label);
+    });
+  }
+
+  // Tags uniques rencontrés dans tous les points (triés alphabétique)
+  function _availableTags() {
+    const set = new Set();
+    _tousLesPoints().forEach(function(it) {
+      if (Array.isArray(it.point.tags)) {
+        it.point.tags.forEach(function(t) {
+          if (t) set.add(String(t));
+        });
+      }
+    });
+    return Array.from(set).sort(function(a, b) {
+      return a.localeCompare(b);
+    });
+  }
+
+  // Test si un point passe les filtres actifs
+  // Logique : AND entre catégories, OR à l'intérieur d'une catégorie
+  function _matchesFilters(it) {
+    if (_filterLayers.size > 0 && !_filterLayers.has(it.layerId)) return false;
+    if (_filterTags.size > 0) {
+      const tags = Array.isArray(it.point.tags) ? it.point.tags : [];
+      const hasMatch = tags.some(function(t) { return _filterTags.has(t); });
+      if (!hasMatch) return false;
+    }
+    return true;
+  }
 
   // ========== INVALIDATION CACHE ==========
   function _signaturePlan() {
@@ -187,7 +314,12 @@
               autocomplete="off">
           </div>
 
-          <div class="kta-search-info" id="kta-search-info">Chargement des points…</div>
+          <div class="kta-search-filters" id="kta-search-filters"></div>
+
+          <div class="kta-search-info-row">
+            <div class="kta-search-info" id="kta-search-info">Chargement des points…</div>
+            <button class="kta-search-clear-filters" id="kta-search-clear-filters" type="button" style="display:none;">✕ Effacer les filtres</button>
+          </div>
 
           <div class="kta-search-results" id="kta-search-results"></div>
 
@@ -219,11 +351,45 @@
     // Charger le cache au besoin
     _chargerCache().then(function() {
       infoEl.textContent = _tousLesPoints().length + " point(s) disponible(s)";
+      _renderFiltres();           // chips calques + tags
       _renderResultats("");
       input.focus();
     }).catch(function(err) {
       infoEl.innerHTML = '<span style="color:#ff8888;">❌ ' + err.message + '</span>';
     });
+
+    // Délégation : clic sur un chip de filtre → toggle + re-render
+    const filtersEl = document.getElementById("kta-search-filters");
+    if (filtersEl) {
+      filtersEl.addEventListener("click", function(e) {
+        const chip = e.target.closest(".kta-search-chip");
+        if (!chip) return;
+        const type  = chip.dataset.filterType;
+        const value = chip.dataset.filterValue;
+        if (type === "layer") {
+          if (_filterLayers.has(value)) _filterLayers.delete(value);
+          else _filterLayers.add(value);
+        } else if (type === "tag") {
+          if (_filterTags.has(value)) _filterTags.delete(value);
+          else _filterTags.add(value);
+        }
+        chip.classList.toggle("active");
+        _updateClearButton();
+        _renderResultats(input.value.trim());
+      });
+    }
+
+    // Bouton "Effacer les filtres"
+    const clearBtn = document.getElementById("kta-search-clear-filters");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", function() {
+        _filterLayers = new Set();
+        _filterTags   = new Set();
+        _renderFiltres();
+        _updateClearButton();
+        _renderResultats(input.value.trim());
+      });
+    }
 
     input.addEventListener("input", function() {
       if (_filtreTimer) clearTimeout(_filtreTimer);
@@ -327,9 +493,56 @@
     return String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   }
 
+  // ========== RENDU DES CHIPS DE FILTRE ==========
+  function _renderFiltres() {
+    const el = document.getElementById("kta-search-filters");
+    if (!el) return;
+
+    const layers = _availableLayers();
+    const tags   = _availableTags();
+
+    let html = "";
+
+    if (layers.length > 0) {
+      html += '<div class="kta-search-filters-row">';
+      html += '<span class="kta-search-filters-label">Calques</span>';
+      html += '<div class="kta-search-filters-chips">';
+      layers.forEach(function(l) {
+        const active = _filterLayers.has(l.id);
+        html += '<button type="button" class="kta-search-chip' + (active ? " active" : "") + '"'
+              + ' data-filter-type="layer" data-filter-value="' + _escapeAttr(l.id) + '">'
+              + _escapeHtml(l.label) + '</button>';
+      });
+      html += '</div></div>';
+    }
+
+    if (tags.length > 0) {
+      html += '<div class="kta-search-filters-row">';
+      html += '<span class="kta-search-filters-label">Tags</span>';
+      html += '<div class="kta-search-filters-chips">';
+      tags.forEach(function(t) {
+        const active = _filterTags.has(t);
+        html += '<button type="button" class="kta-search-chip' + (active ? " active" : "") + '"'
+              + ' data-filter-type="tag" data-filter-value="' + _escapeAttr(t) + '">'
+              + _escapeHtml(t) + '</button>';
+      });
+      html += '</div></div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  function _updateClearButton() {
+    const btn = document.getElementById("kta-search-clear-filters");
+    if (!btn) return;
+    const hasFilters = (_filterLayers.size > 0 || _filterTags.size > 0);
+    btn.style.display = hasFilters ? "inline-block" : "none";
+  }
+
   // ========== RECHERCHE & TRI ==========
   function _filtrer(query) {
-    const tousPoints = _tousLesPoints();
+    // Application des filtres calques + tags AVANT le filtrage textuel
+    const tousPoints = _tousLesPoints().filter(_matchesFilters);
     if (!query) return tousPoints.slice();
 
     const q = _normalize(query);
@@ -390,16 +603,29 @@
         ? "Aucun résultat"
         : filtered.length + " résultat(s)";
     } else {
-      infoEl.textContent = _tousLesPoints().length + " point(s) disponible(s)";
+      const total           = _tousLesPoints().length;
+      const filtersActive   = (_filterLayers.size > 0 || _filterTags.size > 0);
+      if (filtersActive) {
+        infoEl.textContent = filtered.length + " sur " + total + " point(s) (filtré)";
+      } else {
+        infoEl.textContent = total + " point(s) disponible(s)";
+      }
     }
 
     if (filtered.length === 0) {
+      const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0);
+      let msg;
+      if (query) {
+        msg = 'Aucun point ne correspond à <strong>' + _escapeHtml(query) + '</strong>';
+      } else if (filtersActive) {
+        msg = 'Aucun point ne correspond aux filtres actifs';
+      } else {
+        msg = 'Tape une recherche pour trouver un point';
+      }
       resEl.innerHTML = `
         <div class="kta-search-empty">
           <div class="empty-icon">🔍</div>
-          ${query
-            ? 'Aucun point ne correspond à <strong>' + _escapeHtml(query) + '</strong>'
-            : 'Tape une recherche pour trouver un point'}
+          ${msg}
         </div>
       `;
       return;

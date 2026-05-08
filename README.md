@@ -9,6 +9,24 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 08/05/2026 (suite 3) — Filtres calques + tags dans la recherche
+
+- **Filtres ajoutés** dans la modale `🔍 Rechercher un point` (`js/searchPoints.js`) :
+  - 2 lignes de chips compactes sous le champ de recherche : **Calques** (un chip par calque utilisé) + **Tags** (un chip par tag unique présent dans les points)
+  - **Multi-sélection** : clic sur un chip l'active (jaune `#f4c542` charte) ou le désactive
+  - **Logique** : AND entre catégories, OR à l'intérieur (ex: calques `[A, B]` + tags `[ouvert, fermé]` → points dans A ou B ET ayant ouvert ou fermé)
+  - **Bouton "✕ Effacer les filtres"** apparaît si au moins 1 chip actif
+  - **Auto-reset** des filtres à chaque ouverture de la modale (état propre)
+- **Empty states** mis à jour :
+  - Avec query + 0 match → "Aucun point ne correspond à `<query>`"
+  - Sans query + filtres actifs + 0 match → "Aucun point ne correspond aux filtres actifs"
+  - Sans query + sans filtre + 0 résultat → "Tape une recherche pour trouver un point"
+- **Compteur info** : indique "X sur Y point(s) (filtré)" quand au moins un filtre est actif, sinon "Y point(s) disponible(s)"
+- **Helpers internes** : `_availableLayers()` (calques uniques avec leurs labels), `_availableTags()` (tags uniques triés alpha), `_matchesFilters(it)` (test passe-filtre)
+- **Charte respectée** : chips fond `rgba(255,255,255,0.04)` inactif → `#f4c542` actif (texte `#1a1f2e` sombre, comme les segmented controls perf et debug)
+
+---
+
 ### 🗓️ 08/05/2026 (suite 2) — Convertisseur bidirectionnel dans le modal Export
 
 - **Onglet "🔄 Conversion"** du modal "💾 Enregistrer la session" (`sessionExporter.js`) gère désormais **les 2 sens** :
