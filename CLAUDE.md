@@ -164,9 +164,19 @@ Utilisée par : `searchPoints.js`, `utils.js > telechargerPlan`, `exporter.js`, 
 4. `interface.js > LEGENDE_LABELS` + groupe approprié dans le tableau `GROUPES`
 5. `exporter.js > LBL` local + groupe dans `GROUPES_ICONES`
 6. `createConf.js > PLANNER_DEFAULT_ICONS` : ajouter le chemin
-7. `sw.js > urlsToCache` : ajouter `"./icon/fontaine.png"`
+7. `sw.js > ASSETS_TO_CACHE` : ajouter `"./icon/fontaine.png"`
 
 → Le tag est utilisable sur les **plans existants** sans modifier leurs `plan-config.json`.
+
+### ⚠️ Maintenance du Service Worker (`sw.js` racine)
+
+Le SW met en cache la liste `ASSETS_TO_CACHE`. **Quand on ajoute** :
+- Un **nouveau fichier JS** dans `js/` chargé par `index.html` → l'ajouter à `ASSETS_TO_CACHE`
+- Une **nouvelle icône** dans `icon/` référencée par les built-ins → idem
+- Un fichier doc lu par l'app via `fetch()` (ex: `README_USER.md`) → idem
+- **Bumper la version** `CACHE_NAME` (`v3` → `v4`...) pour forcer la purge du vieux cache chez les utilisateurs
+
+Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js` (orphelin, le vrai SW est à la racine).
 
 ### 3. Multi-plans (depuis 06/05/2026)
 
@@ -271,7 +281,32 @@ Helpers : `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Valida
 - `getLoaderPerfPreset()` → string du preset actif dans le loader
 - `setLoaderPerfPreset(preset)` → met à jour le segmented + la description + la ligne debug
 
-### 9. Flag `debugMode` (renommage de `motionDebug`, depuis 08/05/2026)
+### 9. Auto-save de session (`sessionPersist.js`, depuis 08/05/2026)
+
+Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]`.
+
+**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental).
+
+**API** : `window.SessionPersist`
+- `onPlanLoaded(planId)` → appelé par `main.js > lancerApplication()` après init complète. Restaure si `saved.planId === planId`, purge si différent
+- `save()` / `clear()` / `getSaved()` → utilitaires
+
+**Workflow** :
+1. Plan chargé → `_currentLoadedPlanId` set dans `chargerPlanServeur` ou `startImportedPlan`
+2. `lancerApplication()` finit, appelle `SessionPersist.onPlanLoaded(window._currentLoadedPlanId)`
+3. Si match → restore via setters (`setEditorPoints`, `resetRoads + setRoads`, `resetZones + setZones`, `setMeasurePoints`) + toast "Session restaurée"
+4. Polling auto-save démarre (1.5s)
+
+**Modale** : `.kta-session-modal-overlay` (centrée pleine page, pattern `kta-readme-modal`), boîte `.kta-session-modal-boite` avec icône ↻ dans cercle jaune `#f4c542`, titre + détail + 2 boutons (🗑️ Effacer / ✓ Continuer). Backdrop click + Échap = Continuer. Animations fade-in overlay + pop-in box.
+
+**Format storage** :
+```json
+{ "version": 1, "planId": "...", "savedAt": "ISO", "editorPoints": [...], "roads": [...], "zones": [...], "measure": [...] }
+```
+
+**Pourquoi polling et pas hooks ?** : pas besoin de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible. Risque zéro d'oublier un point de modification.
+
+### 10. Flag `debugMode` (renommage de `motionDebug`, depuis 08/05/2026)
 
 Le flag debug est désormais **global pour toute l'app**, pas uniquement le tracker.
 

@@ -17,6 +17,11 @@
   let _modal = null;
   let _activeTab = "full"; // "full" | "advanced" | "conversion"
 
+  // État de l'onglet Conversion (bidirectionnel depuis 08/05/2026)
+  let _convDirection      = "ed2data"; // "ed2data" (session→data) | "data2ed" (data→session)
+  let _convUploadedJson   = null;      // JSON parsé du fichier uploadé (mode data2ed)
+  let _convUploadedName   = "";        // nom du fichier uploadé (mode data2ed)
+
   // ========== STYLES ==========
   function _injecterStyles() {
     if (document.getElementById("kta-session-export-styles")) return;
@@ -518,7 +523,25 @@
   }
 
   // ---------- ONGLET CONVERSION ----------
+  // Wrapper : choisit l'UI selon le sens courant + ajoute le toggle de direction
   function _renderConversion() {
+    return `
+      <div class="kta-conv-sens-wrap">
+        <button class="kta-conv-sens-btn ${_convDirection === "ed2data" ? "active" : ""}" data-conv-dir="ed2data" type="button">
+          <span class="kta-conv-sens-label">✏️ → 🗂️ Session vers data layer</span>
+          <span class="kta-conv-sens-desc">Convertit la session en cours en fichier(s) data layer chargeable(s) dans un plan</span>
+        </button>
+        <button class="kta-conv-sens-btn ${_convDirection === "data2ed" ? "active" : ""}" data-conv-dir="data2ed" type="button">
+          <span class="kta-conv-sens-label">🗂️ → ✏️ Data layer vers session</span>
+          <span class="kta-conv-sens-desc">Convertit un fichier data layer en session JSON ré-importable</span>
+        </button>
+      </div>
+      ${_convDirection === "ed2data" ? _renderConvSession2Data() : _renderConvData2Session()}
+    `;
+  }
+
+  // Sens 1 : session courante → fichiers data layer (logique existante)
+  function _renderConvSession2Data() {
     const d = _compter();
     const tagsList = _listerTagsPoints(d.points);
 
@@ -583,9 +606,95 @@
     `;
   }
 
+  // Sens 2 : fichier data layer uploadé → fichier session JSON (téléchargement)
+  function _renderConvData2Session() {
+    let apercu = "";
+    let stats = null;
+
+    if (_convUploadedJson) {
+      const points = Array.isArray(_convUploadedJson.data)         ? _convUploadedJson.data
+                   : Array.isArray(_convUploadedJson.editorPoints) ? _convUploadedJson.editorPoints
+                   : [];
+      const roads  = Array.isArray(_convUploadedJson.roads) ? _convUploadedJson.roads : [];
+      const zones  = Array.isArray(_convUploadedJson.zones) ? _convUploadedJson.zones : [];
+      stats = { points: points.length, roads: roads.length, zones: zones.length };
+      apercu = `
+        <div class="kta-ses-section">
+          <div class="kta-ses-section-title">📊 Aperçu du contenu détecté</div>
+          <div class="kta-ses-summary">
+            <div>✏️ <strong>${stats.points}</strong> point${stats.points > 1 ? "s" : ""}</div>
+            <div>🛣️ <strong>${stats.roads}</strong> tracé${stats.roads > 1 ? "s" : ""}</div>
+            <div>⬛ <strong>${stats.zones}</strong> zone${stats.zones > 1 ? "s" : ""}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="kta-ses-intro">
+        Charge un fichier <strong>data layer</strong> (<code>data.json</code>, <code>puits.json</code>, etc.) et obtient en retour un fichier <strong>session JSON</strong> que tu peux ré-importer pour éditer ses points / tracés / zones.
+        <br><span style="color:#8892a4;">Format de sortie : <code>devmap-session</code>. Le tracker n'est pas inclus.</span>
+      </div>
+
+      <div class="kta-ses-section">
+        <div class="kta-ses-section-title">📂 Fichier source</div>
+        <div class="kta-conv-drop" id="kta-conv-d2e-drop">
+          <span id="kta-conv-d2e-drop-label">${_convUploadedName ? "✅ " + _escapeHtml(_convUploadedName) : "📂 Cliquer ou glisser un fichier .json"}</span>
+          <input type="file" id="kta-conv-d2e-file" accept=".json" style="display:none">
+        </div>
+      </div>
+
+      ${apercu}
+
+      <div id="kta-conv-d2e-erreur" class="kta-conv-erreur" style="display:none;"></div>
+    `;
+  }
+
   // Listeners parent ↔ tags pour Conversion (post-DOM)
   function _attacherListenersConversion() {
     if (!_modal || _activeTab !== "conversion") return;
+
+    // Toggle de direction (ed2data ↔ data2ed)
+    _modal.querySelectorAll(".kta-conv-sens-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const dir = btn.dataset.convDir;
+        if (dir && dir !== _convDirection) {
+          _convDirection = dir;
+          _renderTab();
+        }
+      });
+    });
+
+    // Mode data2ed : drop zone + file picker
+    if (_convDirection === "data2ed") {
+      const dropZone  = document.getElementById("kta-conv-d2e-drop");
+      const fileInput = document.getElementById("kta-conv-d2e-file");
+      const labelEl   = document.getElementById("kta-conv-d2e-drop-label");
+      const erreurEl  = document.getElementById("kta-conv-d2e-erreur");
+
+      if (dropZone && fileInput) {
+        dropZone.addEventListener("click", function() { fileInput.click(); });
+        dropZone.addEventListener("dragover",  function(e) { e.preventDefault(); dropZone.classList.add("dragover"); });
+        dropZone.addEventListener("dragleave", function()  { dropZone.classList.remove("dragover"); });
+        dropZone.addEventListener("drop", function(e) {
+          e.preventDefault(); dropZone.classList.remove("dragover");
+          const f = e.dataTransfer.files[0];
+          if (f && f.name.toLowerCase().endsWith(".json")) _chargerFichierData2Ed(f);
+          else if (erreurEl) { erreurEl.textContent = "❌ Le fichier doit être un .json"; erreurEl.style.display = "block"; }
+        });
+        fileInput.addEventListener("change", function() {
+          if (fileInput.files[0]) _chargerFichierData2Ed(fileInput.files[0]);
+        });
+      }
+      // Si aucun fichier chargé → désactive le bouton Télécharger
+      const dlBtn = document.getElementById("kta-ses-download");
+      if (dlBtn) dlBtn.disabled = !_convUploadedJson;
+      return; // pas de syncParent à brancher dans ce mode
+    }
+
+    // Mode ed2data : réactive le bouton Télécharger
+    const dlBtn = document.getElementById("kta-ses-download");
+    if (dlBtn) dlBtn.disabled = false;
 
     function syncParent(parentId, subIds) {
       const parent = document.getElementById(parentId);
@@ -608,6 +717,37 @@
     if (tagSubIds.length > 0) {
       syncParent("conv_points", tagSubIds);
     }
+  }
+
+  // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
+  function _chargerFichierData2Ed(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const json = JSON.parse(e.target.result);
+        if (typeof json !== "object" || json === null) throw new Error("Le fichier ne contient pas un objet JSON valide.");
+        const hasPoints = Array.isArray(json.data) || Array.isArray(json.editorPoints);
+        const hasRoads  = Array.isArray(json.roads);
+        const hasZones  = Array.isArray(json.zones);
+        if (!hasPoints && !hasRoads && !hasZones) {
+          throw new Error("Aucun champ 'data', 'editorPoints', 'roads' ou 'zones' trouvé dans le fichier.");
+        }
+        _convUploadedJson = json;
+        _convUploadedName = file.name;
+        _renderTab(); // re-render pour afficher l'aperçu + activer le bouton
+      } catch(err) {
+        const erreurEl = document.getElementById("kta-conv-d2e-erreur");
+        if (erreurEl) {
+          erreurEl.textContent = "❌ " + (err.message || err);
+          erreurEl.style.display = "block";
+        }
+        _convUploadedJson = null;
+        _convUploadedName = "";
+        const dlBtn = document.getElementById("kta-ses-download");
+        if (dlBtn) dlBtn.disabled = true;
+      }
+    };
+    reader.readAsText(file);
   }
 
   // Re-render avec listeners post-DOM
@@ -729,7 +869,14 @@
   }
 
   // ---------- CONVERSION ----------
+  // Dispatcher selon le sens choisi
   function _exportConversion() {
+    if (_convDirection === "data2ed") return _exportConvData2Session();
+    return _exportConvSession2Data();
+  }
+
+  // Sens 1 : session courante → fichiers data layer (logique existante renommée)
+  function _exportConvSession2Data() {
     const d = _compter();
     const incPoints = document.getElementById("conv_points")?.checked;
     const incRoads  = document.getElementById("conv_roads")?.checked;
@@ -792,6 +939,39 @@
 
       _telechargerConversionFiles(files);
     }
+  }
+
+  // Sens 2 : fichier data layer uploadé → fichier session JSON
+  function _exportConvData2Session() {
+    if (!_convUploadedJson) {
+      alert("Aucun fichier source — glisse un fichier .json d'abord.");
+      return;
+    }
+    const j = _convUploadedJson;
+    const points = Array.isArray(j.data)         ? j.data
+                 : Array.isArray(j.editorPoints) ? j.editorPoints
+                 : [];
+    const roads  = Array.isArray(j.roads) ? j.roads : [];
+    const zones  = Array.isArray(j.zones) ? j.zones : [];
+
+    if (points.length === 0 && roads.length === 0 && zones.length === 0) {
+      alert("Le fichier source ne contient ni points, ni tracés, ni zones convertibles.");
+      return;
+    }
+
+    const session = {
+      type:        "devmap-session",
+      version:     "1.0",
+      date_export: new Date().toISOString()
+    };
+    if (points.length) session.editorPoints = points;
+    if (roads.length)  session.roads        = roads;
+    if (zones.length)  session.zones        = zones;
+
+    // Nom du fichier de sortie : basé sur le fichier source
+    const baseName = (_convUploadedName || "data").replace(/\.json$/i, "");
+    _telechargerJSON(session, baseName + "_session.json");
+    _fermer();
   }
 
   function _telechargerConversionFiles(files) {
@@ -867,6 +1047,9 @@
   function _fermer() {
     if (_modal) _modal.remove();
     _modal = null;
+    // Reset de l'état de la conversion data2ed pour la prochaine ouverture
+    _convUploadedJson = null;
+    _convUploadedName = "";
   }
 
 })();

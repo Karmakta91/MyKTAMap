@@ -166,7 +166,6 @@
         <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
       </div>
       <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
-        <button class="loader-btn-secondary" type="button" id="loaderServerBtn">🌐 Plan serveur racine</button>
         <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
         <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
         <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
@@ -205,6 +204,7 @@
   <script src="js/sessionExporter.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/planRegistry.js"></script>
+  <script src="js/sessionPersist.js"></script>
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
 
@@ -412,26 +412,8 @@
         });
       }
 
-      const serverBtn = document.getElementById("loaderServerBtn");
-      if (serverBtn) {
-        serverBtn.addEventListener("click", async function() {
-          serverBtn.disabled = true;
-          setStatus("Tentative de chargement depuis le serveur…", false);
-          try {
-            if (typeof window.chargerPlanServeur === "function") {
-              await window.chargerPlanServeur("data");
-              if (window.masquerLoader) window.masquerLoader();
-              return;
-            }
-            setStatus("Aucun plan trouvé (data/plan-config.json absent)", true);
-            serverBtn.disabled = false;
-          } catch(err) {
-            console.error("[Loader serveur]", err);
-            setStatus("Erreur : " + (err.message || err), true);
-            serverBtn.disabled = false;
-          }
-        });
-      }
+      // (Le bouton "🌐 Plan serveur racine" a été retiré le 08/05/2026 — les plans serveur
+      // sont déjà listés dans 📚 Mes plans via auto-discovery `data/index.json`.)
 
       // ════════════════════════════════════════════════════════
       // GESTION DU REGISTRE DES PLANS (Reprendre / Récents / Tous)

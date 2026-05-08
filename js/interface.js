@@ -625,208 +625,13 @@ function ouvrirImportSession() {
 }
 
 // =========================
-// CONVERTISSEUR JSON — modale plein écran
+// CONVERTISSEUR JSON — DÉPLACÉ
 // =========================
-function afficherConvertisseur() {
-  const existing = document.getElementById("kta-conv-modal");
-  if (existing) { existing.remove(); return; }
-
-  const modal = document.createElement("div");
-  modal.id = "kta-conv-modal";
-  modal.className = "kta-readme-modal-overlay";
-
-  modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
-      <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">🔄 Convertisseur JSON</span>
-        <button class="kta-panneau-close" id="kta-conv-close">✕</button>
-      </div>
-      <div class="kta-readme-modal-corps">
-
-        <div class="kta-conv-sens-wrap">
-          <button class="kta-conv-sens-btn active" id="kta-conv-btn-ed2data">
-            <span class="kta-conv-sens-label">✏️ → 🗂️ Vers calque de données</span>
-            <span class="kta-conv-sens-desc">Convertit les points et tracés de la session en calque chargeable dans le plan</span>
-          </button>
-          <button class="kta-conv-sens-btn" id="kta-conv-btn-data2ed">
-            <span class="kta-conv-sens-label">🗂️ → ✏️ Vers mode édition</span>
-            <span class="kta-conv-sens-desc">Convertit un calque de données (points + tracés) en session importable</span>
-          </button>
-        </div>
-
-        <div id="kta-conv-type-wrap" class="kta-conv-champ">
-          <label class="kta-conv-label">
-            Type du fichier de sortie
-            <span class="kta-conv-hint">ex: carriere, puits, vehicule…</span>
-          </label>
-          <input class="kta-cfg-input" id="kta-conv-type" type="text" placeholder="carriere" value="carriere">
-        </div>
-
-        <div class="kta-conv-champ">
-          <label class="kta-conv-label">Fichier source</label>
-          <div class="kta-conv-drop" id="kta-conv-drop">
-            <span id="kta-conv-drop-label">📂 Cliquer ou glisser un fichier .json</span>
-            <input type="file" id="kta-conv-file" accept=".json" style="display:none">
-          </div>
-        </div>
-
-        <div class="kta-conv-champ" id="kta-conv-apercu-wrap" style="display:none;">
-          <label class="kta-conv-label">Aperçu</label>
-          <div class="kta-conv-apercu" id="kta-conv-apercu"></div>
-        </div>
-
-        <div class="kta-conv-actions">
-          <button class="kta-btn kta-btn-ghost" id="kta-conv-annuler">Annuler</button>
-          <button class="kta-btn kta-btn-primary" id="kta-conv-telecharger" disabled>⬇️ Télécharger</button>
-        </div>
-
-        <div id="kta-conv-erreur" class="kta-conv-erreur" style="display:none;"></div>
-      </div>
-    </div>
-  `;
-
-  document.documentElement.appendChild(modal);
-
-  let sens = "ed2data";
-  let jsonSource = null;
-  let nomFichierSource = "";
-
-  const btnClose   = document.getElementById("kta-conv-close");
-  const btnEd2Data = document.getElementById("kta-conv-btn-ed2data");
-  const btnData2Ed = document.getElementById("kta-conv-btn-data2ed");
-  const typeWrap   = document.getElementById("kta-conv-type-wrap");
-  const inputType  = document.getElementById("kta-conv-type");
-  const dropZone   = document.getElementById("kta-conv-drop");
-  const fileInput  = document.getElementById("kta-conv-file");
-  const dropLabel  = document.getElementById("kta-conv-drop-label");
-  const apercuWrap = document.getElementById("kta-conv-apercu-wrap");
-  const apercuEl   = document.getElementById("kta-conv-apercu");
-  const btnDl      = document.getElementById("kta-conv-telecharger");
-  const btnAnnuler = document.getElementById("kta-conv-annuler");
-  const erreurEl   = document.getElementById("kta-conv-erreur");
-
-  function afficherErreur(msg) {
-    erreurEl.textContent = msg;
-    erreurEl.style.display = msg ? "block" : "none";
-  }
-
-  function mettreAJourApercu() {
-    if (!jsonSource) return;
-    try {
-      const converti = convertir(jsonSource, sens, inputType.value.trim() || "data");
-      const preview = JSON.stringify(converti, null, 2);
-      const lignes = preview.split("\n").slice(0, 12).join("\n");
-      apercuEl.textContent = lignes + (preview.split("\n").length > 12 ? "\n  …" : "");
-      apercuWrap.style.display = "block";
-      btnDl.disabled = false;
-      afficherErreur("");
-    } catch (err) {
-      afficherErreur("❌ " + err.message);
-      apercuWrap.style.display = "none";
-      btnDl.disabled = true;
-    }
-  }
-
-  function chargerFichier(file) {
-    nomFichierSource = file.name;
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        jsonSource = JSON.parse(e.target.result);
-        dropLabel.textContent = "✅ " + file.name;
-        afficherErreur("");
-        mettreAJourApercu();
-      } catch(err) {
-        afficherErreur("❌ JSON invalide : " + err.message);
-        jsonSource = null;
-        btnDl.disabled = true;
-      }
-    };
-    reader.readAsText(file);
-  }
-
-  function convertir(json, direction, typeLabel) {
-    if (direction === "ed2data") {
-      // session → data : points + routes + zones embarquées
-      let points = [];
-      if (Array.isArray(json.editorPoints))   points = json.editorPoints;
-      else if (Array.isArray(json.data))       points = json.data;
-      else throw new Error("Aucun champ 'editorPoints' ou 'data' trouvé dans le fichier source.");
-
-      const roads = Array.isArray(json.roads) ? json.roads : [];
-      const zones = Array.isArray(json.zones) ? json.zones : [];
-
-      const result = { type: typeLabel, version: 1, data: points };
-      if (roads.length > 0) result.roads = roads;
-      if (zones.length > 0) result.zones = zones;
-      return result;
-
-    } else {
-      // data → session : points + routes + zones restaurées
-      let points = [];
-      if (Array.isArray(json.data))            points = json.data;
-      else if (Array.isArray(json.editorPoints)) points = json.editorPoints;
-      else throw new Error("Aucun champ 'data' ou 'editorPoints' trouvé dans le fichier source.");
-
-      const roads = Array.isArray(json.roads) ? json.roads : [];
-      const zones = Array.isArray(json.zones) ? json.zones : [];
-
-      return {
-        type: "devmap-session",
-        version: 1,
-        editorPoints: points,
-        measure: { points: [] },
-        roads: roads,
-        zones: zones
-      };
-    }
-  }
-
-  function nomFichierSortie() {
-    const base = nomFichierSource.replace(/\.json$/i, "");
-    return sens === "ed2data" ? base + "_data.json" : base + "_session.json";
-  }
-
-  btnClose.addEventListener("click", function() { modal.remove(); });
-  btnAnnuler.addEventListener("click", function() { modal.remove(); });
-  modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
-
-  btnEd2Data.addEventListener("click", function() {
-    sens = "ed2data";
-    btnEd2Data.classList.add("active"); btnData2Ed.classList.remove("active");
-    typeWrap.style.display = "block"; mettreAJourApercu();
-  });
-  btnData2Ed.addEventListener("click", function() {
-    sens = "data2ed";
-    btnData2Ed.classList.add("active"); btnEd2Data.classList.remove("active");
-    typeWrap.style.display = "none"; mettreAJourApercu();
-  });
-
-  inputType.addEventListener("input", mettreAJourApercu);
-  dropZone.addEventListener("click", function() { fileInput.click(); });
-  fileInput.addEventListener("change", function() { if (fileInput.files[0]) chargerFichier(fileInput.files[0]); });
-  dropZone.addEventListener("dragover", function(e) { e.preventDefault(); dropZone.classList.add("dragover"); });
-  dropZone.addEventListener("dragleave", function() { dropZone.classList.remove("dragover"); });
-  dropZone.addEventListener("drop", function(e) {
-    e.preventDefault(); dropZone.classList.remove("dragover");
-    const f = e.dataTransfer.files[0];
-    if (f && f.name.endsWith(".json")) chargerFichier(f);
-    else afficherErreur("Le fichier doit être un .json");
-  });
-
-  btnDl.addEventListener("click", function() {
-    if (!jsonSource) return;
-    try {
-      const converti = convertir(jsonSource, sens, inputType.value.trim() || "data");
-      const json = JSON.stringify(converti, null, 2);
-      const blob = new Blob([json], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url; a.download = nomFichierSortie(); a.click();
-      URL.revokeObjectURL(url);
-    } catch(err) { afficherErreur("❌ " + err.message); }
-  });
-}
+// La fonction afficherConvertisseur (qui supportait les 2 sens ed2data / data2ed)
+// a été retirée le 08/05/2026. La conversion bidirectionnelle est maintenant
+// dans le modal "💾 Enregistrer la session" → onglet "🔄 Conversion" (sessionExporter.js).
+// Voir _renderConversion / _exportConversion dans sessionExporter.js
+// =========================
 
 // =========================
 // HELPER — modale de confirmation simple (1 clic)
@@ -903,44 +708,136 @@ function afficherReadme() {
   _chargerReadme("README_USER.md");
 }
 
-function _ajouterSommaireReadme(html) {
-  const temp = document.createElement("div");
-  temp.innerHTML = html;
+// Construit le sommaire latéral (sidebar desktop / haut sur mobile) avec H2 + sous-H3 collapsibles
+function _construireSommaireReadme(corpsEl) {
+  const sidebar = document.getElementById("kta-readme-toc-sidebar");
+  if (!sidebar || !corpsEl) return;
 
-  const titrePrincipal = temp.querySelector("h1");
-  const titres = Array.from(temp.querySelectorAll("h2"));
-
-  if (titres.length === 0) return temp.innerHTML;
-
-  let sommaire = `
-    <div class="kta-readme-toc">
-      <h2 class="kta-readme-toc-title">📚 Sommaire</h2>
-      <ul>
-  `;
-
-  titres.forEach(function(titre, index) {
-    const id = "section-readme-" + index;
-    titre.id = id;
-
-    sommaire += `
-      <li><a href="#${id}">${titre.textContent}</a></li>
-    `;
-  });
-
-  sommaire += `
-      </ul>
-    </div>
-  `;
-
-  const premierH2 = temp.querySelector("h2");
-
-  if (premierH2) {
-    premierH2.insertAdjacentHTML("beforebegin", sommaire);
-  } else if (titrePrincipal) {
-    titrePrincipal.insertAdjacentHTML("afterend", sommaire);
+  const h2List = Array.from(corpsEl.querySelectorAll("h2"));
+  if (h2List.length === 0) {
+    sidebar.style.display = "none";
+    return;
   }
 
-  return temp.innerHTML;
+  // Construire l'arbre H2 → [H3...] en parcourant le DOM dans l'ordre
+  const tree = h2List.map(function(h2, idx) {
+    h2.id = "kta-readme-h2-" + idx;
+    const children = [];
+    let next = h2.nextElementSibling;
+    let h3idx = 0;
+    while (next && next.tagName !== "H2") {
+      if (next.tagName === "H3") {
+        next.id = "kta-readme-h2-" + idx + "-h3-" + h3idx;
+        children.push(next);
+        h3idx++;
+      }
+      next = next.nextElementSibling;
+    }
+    return { h2: h2, children: children };
+  });
+
+  let html = '<div class="kta-readme-toc-title">📚 Sommaire</div>';
+  html += '<ul class="kta-readme-toc-list">';
+
+  tree.forEach(function(node) {
+    const hasChildren = node.children.length > 0;
+    html += '<li class="kta-readme-toc-item' + (hasChildren ? '' : ' kta-readme-toc-item-leaf') + '">';
+    html += '<div class="kta-readme-toc-row">';
+    if (hasChildren) {
+      html += '<button class="kta-readme-toc-toggle" type="button" aria-label="Plier ou déplier">▾</button>';
+    } else {
+      html += '<span class="kta-readme-toc-bullet">•</span>';
+    }
+    html += '<a href="#' + node.h2.id + '" class="kta-readme-toc-link kta-readme-toc-link-h2">';
+    html += node.h2.textContent;
+    html += '</a>';
+    html += '</div>';
+    if (hasChildren) {
+      html += '<ul class="kta-readme-toc-sublist">';
+      node.children.forEach(function(h3) {
+        html += '<li><a href="#' + h3.id + '" class="kta-readme-toc-link kta-readme-toc-link-h3">' + h3.textContent + '</a></li>';
+      });
+      html += '</ul>';
+    }
+    html += '</li>';
+  });
+  html += '</ul>';
+
+  sidebar.innerHTML = html;
+  sidebar.style.display = "";
+
+  // Brancher les toggles plier/déplier
+  sidebar.querySelectorAll(".kta-readme-toc-toggle").forEach(function(btn) {
+    btn.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const item = btn.closest(".kta-readme-toc-item");
+      if (item) item.classList.toggle("collapsed");
+    });
+  });
+}
+
+// Setup smooth scroll, active section highlighting, back-to-top
+function _setupReadmeNavigation() {
+  const corpsScroll = document.getElementById("kta-readme-corps-scroll");
+  const backBtn     = document.getElementById("kta-readme-back-top");
+  const sidebar     = document.getElementById("kta-readme-toc-sidebar");
+  if (!corpsScroll) return;
+
+  const tocLinks = sidebar ? sidebar.querySelectorAll(".kta-readme-toc-link") : [];
+  const sections = corpsScroll.querySelectorAll("h2[id], h3[id]");
+
+  // Smooth scroll personnalisé sur les liens du TOC (l'ancrage natif scrollerait la page entière, pas notre conteneur)
+  tocLinks.forEach(function(link) {
+    link.addEventListener("click", function(e) {
+      e.preventDefault();
+      const targetId = link.getAttribute("href").substring(1);
+      const target = corpsScroll.querySelector("#" + (window.CSS && CSS.escape ? CSS.escape(targetId) : targetId));
+      if (target) {
+        const containerTop = corpsScroll.getBoundingClientRect().top;
+        const targetTop    = target.getBoundingClientRect().top;
+        corpsScroll.scrollTo({
+          top: corpsScroll.scrollTop + (targetTop - containerTop) - 12,
+          behavior: "smooth"
+        });
+      }
+    });
+  });
+
+  // Active section highlighting via IntersectionObserver
+  if (typeof IntersectionObserver !== "undefined" && sections.length > 0 && tocLinks.length > 0) {
+    const observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (!entry.isIntersecting) return;
+        const id = entry.target.id;
+        tocLinks.forEach(function(link) {
+          const isActive = link.getAttribute("href") === "#" + id;
+          link.classList.toggle("active", isActive);
+          // Si c'est un H3 actif, déplier son parent H2 pour qu'on le voie
+          if (isActive && link.classList.contains("kta-readme-toc-link-h3")) {
+            const parentItem = link.closest(".kta-readme-toc-item");
+            if (parentItem) parentItem.classList.remove("collapsed");
+          }
+        });
+      });
+    }, {
+      root: corpsScroll,
+      rootMargin: "0px 0px -65% 0px",  // section "active" quand elle entre dans le tiers supérieur
+      threshold: 0
+    });
+    sections.forEach(function(s) { observer.observe(s); });
+  }
+
+  // Bouton retour-en-haut : visible après scroll > 250px
+  if (backBtn) {
+    const onScroll = function() {
+      backBtn.classList.toggle("visible", corpsScroll.scrollTop > 250);
+    };
+    corpsScroll.addEventListener("scroll", onScroll, { passive: true });
+    backBtn.addEventListener("click", function() {
+      corpsScroll.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 }
 
 function _chargerReadme(fichier) {
@@ -950,17 +847,28 @@ function _chargerReadme(fichier) {
     .then(function(md) {
       const html = _renderMarkdown(md);
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-      if (corps) {
-  corps.innerHTML = _ajouterSommaireReadme(html);
-}
+      if (!corps) return;
+      // Injection directe du HTML rendu (plus de <p> wrapper qui cassait le rendu)
+      corps.innerHTML = html;
+      // Construction du sommaire latéral à partir du DOM rendu
+      _construireSommaireReadme(corps);
+      // Activation des comportements de navigation
+      _setupReadmeNavigation();
     })
     .catch(function(err) {
       const corps = document.querySelector("#kta-readme-modal .kta-readme-corps");
-      if (corps) corps.innerHTML = `<p class="kta-readme-erreur">❌ Impossible de charger <code>${fichier}</code><br><br><code>${err.message}</code></p>`;
+      if (corps) corps.innerHTML = '<p class="kta-readme-erreur">❌ Impossible de charger <code>' + fichier + '</code><br><br><code>' + err.message + '</code></p>';
+      // Pas de sommaire si erreur
+      const sidebar = document.getElementById("kta-readme-toc-sidebar");
+      if (sidebar) sidebar.style.display = "none";
     });
 }
 
 function _renderMarkdown(md) {
+  // 0. Normaliser les fins de ligne — les fichiers markdown éditésur Windows ont
+  //    souvent CRLF, ce qui casse les regex \n (notamment celle des fenced code blocks)
+  md = md.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
   // 1. Protéger les blocs de code fenced AVANT tout traitement
   const codeBlocks = [];
   md = md.replace(/```[\w]*\n([\s\S]*?)```/g, function(_, code) {
@@ -1027,9 +935,24 @@ function _renderMarkdown(md) {
   md = md.replace(/^[-*] (.+)$/gm, "<li>$1</li>");
   md = md.replace(/(<li>[\s\S]*?<\/li>\n?)+/g, "<ul>$&</ul>");
 
-  // 12. Paragraphes
-  md = md.replace(/\n\n+/g, "</p><p>");
-  md = md.replace(/\n/g, "<br>");
+  // 12. Paragraphes — split sur double saut de ligne.
+  //  Pré-traitement : on isole les placeholders %%CODEN%% dans leurs propres blocs
+  //  pour éviter que le wrap <p> englobe un futur <pre> (HTML invalide → bug rendu).
+  md = md.replace(/(%%CODE\d+%%)/g, "\n\n$1\n\n");
+  md = md.replace(/\n{3,}/g, "\n\n");
+
+  //  - les blocs commençant par une balise block-level sont gardés tels quels
+  //  - les blocs qui SONT un placeholder de code fenced sont gardés tels quels
+  //  - les autres blocs (texte) sont enveloppés dans <p>, les sauts simples deviennent <br>
+  const _BLOCK_TAG = /^<(h[1-6]|ul|ol|li|table|tr|td|th|blockquote|hr|pre|div|img|figure)/i;
+  const _CODE_PLACEHOLDER = /^%%CODE\d+%%$/;
+  md = md.split(/\n{2,}/).map(function(block) {
+    block = block.trim();
+    if (!block) return "";
+    if (_BLOCK_TAG.test(block)) return block;
+    if (_CODE_PLACEHOLDER.test(block)) return block;
+    return "<p>" + block.replace(/\n/g, "<br>") + "</p>";
+  }).join("\n");
 
   // 13. Restaurer les blocs de code
   md = md.replace(/%%CODE(\d+)%%/g, function(_, i) {
@@ -1045,18 +968,56 @@ function _ouvrirReadmeModal(html) {
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
+  // Structure : header / [sidebar | corps scrollable] / footer
+  // - sidebar : sommaire desktop fixe / inline en haut sur mobile (CSS @media)
+  // - corps : contenu rendu, scroll-behavior: smooth, contient aussi le bouton retour-en-haut
+  // - footer : crédit Leaflet (cohérence avec le splash)
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
+        <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="Afficher ou masquer le sommaire" title="Afficher ou masquer le sommaire">📚</button>
         <span class="kta-readme-modal-titre">📖 Documentation</span>
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps">
-        <div class="kta-readme-corps"><p>${html}</p></div>
+      <div class="kta-readme-modal-layout" id="kta-readme-layout">
+        <aside class="kta-readme-toc-sidebar" id="kta-readme-toc-sidebar"></aside>
+        <div class="kta-readme-modal-corps" id="kta-readme-corps-scroll">
+          <div class="kta-readme-corps">${html}</div>
+        </div>
+        <button class="kta-readme-back-top" id="kta-readme-back-top" type="button" aria-label="Retour en haut" title="Retour en haut">↑</button>
       </div>
+      <div class="kta-readme-modal-footer">🍃 Cartographie propulsée par Leaflet</div>
     </div>
   `;
   document.documentElement.appendChild(modal);
+
+  // === ÉTAT INITIAL DU SOMMAIRE ===
+  // - Pref user mémorisée si présente
+  // - Sinon : visible par défaut sur écrans larges (≥ 1100px), masqué sur écrans étroits
+  const layout = modal.querySelector("#kta-readme-layout");
+  const toggleBtn = modal.querySelector("#kta-readme-toc-toggle");
+  let tocVisible;
+  try {
+    const saved = localStorage.getItem("kta_readme_toc_visible");
+    tocVisible = (saved !== null)
+      ? (saved === "true")
+      : (window.innerWidth >= 1100);
+  } catch(e) {
+    tocVisible = window.innerWidth >= 1100;
+  }
+  if (layout) layout.classList.toggle("toc-hidden", !tocVisible);
+  if (toggleBtn) toggleBtn.classList.toggle("active", tocVisible);
+
+  if (toggleBtn && layout) {
+    toggleBtn.addEventListener("click", function() {
+      const nowVisible = layout.classList.toggle("toc-hidden");
+      // toc-hidden true = sommaire CACHÉ (logique inversée de tocVisible)
+      const isVisibleNow = !nowVisible;
+      toggleBtn.classList.toggle("active", isVisibleNow);
+      try { localStorage.setItem("kta_readme_toc_visible", isVisibleNow ? "true" : "false"); } catch(e) {}
+    });
+  }
+
   document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
@@ -2353,5 +2314,6 @@ window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
 window.viderCacheAppli       = viderCacheAppli;
 window.afficherReadme        = afficherReadme;
 window.afficherLegende       = afficherLegende;
-window.afficherConvertisseur = afficherConvertisseur;
+// window.afficherConvertisseur retiré le 08/05/2026 — la conversion est maintenant
+// dans le modal "💾 Enregistrer la session" → onglet "🔄 Conversion" (sessionExporter.js)
 window.initInterface         = initInterface;
