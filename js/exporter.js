@@ -793,13 +793,19 @@
     // Action Télécharger
     btnGo.addEventListener("click", async function() {
       const modeRapideActif = btnRapide.classList.contains("active");
+      console.info("[Export modale] click Télécharger — mode :", modeRapideActif ? "rapide" : "avance");
       btnGo.disabled = true;
       btnGo.textContent = "⏳ Génération…";
       try {
         if (modeRapideActif) {
           // Appeler la fonction historique inchangée
           if (window.telechargerPlan) {
+            console.info("[Export modale] → window.telechargerPlan() trouvée, appel…");
             await window.telechargerPlan();
+            console.info("[Export modale] ✓ telechargerPlan() terminé sans erreur");
+          } else {
+            console.error("[Export modale] window.telechargerPlan introuvable — utils.js pas chargé ?");
+            throw new Error("window.telechargerPlan introuvable (utils.js manquant ?)");
           }
         } else {
           await _exporterAvance();

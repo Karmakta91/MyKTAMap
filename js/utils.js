@@ -130,12 +130,15 @@ function ajouterPointsDepuisJSON(url, layer) {
 }
 
 async function telechargerPlan() {
+  console.info("[Export rapide] début telechargerPlan()");
   try {
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
+      console.warn("[Export rapide] PLAN_CONFIG introuvable — abandon");
       alert("Configuration du plan introuvable");
       return;
     }
+    console.info("[Export rapide] plan :", config.plan.name, "| dim :", config.plan.imageWidth, "x", config.plan.imageHeight);
 
     const width = config.plan.imageWidth;
     const height = config.plan.imageHeight;
@@ -440,6 +443,7 @@ async function telechargerPlan() {
     // ---------- export ----------
     // Promesse autour de toBlob pour que l'appelant (modale Export) puisse await
     // proprement et voir le succès ou l'échec — sinon le download ratait silencieusement.
+    console.info("[Export rapide] canvas prêt, encodage PNG…");
     await new Promise(function(resolve, reject) {
       canvas.toBlob(function(blob) {
         if (!blob) {
@@ -452,6 +456,7 @@ async function telechargerPlan() {
         link.download = (config.plan.name || "plan") + "_complet.png";
         link.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        console.info("[Export rapide] download déclenché :", link.download, "(", Math.round(blob.size / 1024), "Ko )");
         resolve();
       }, "image/png");
     });
@@ -459,7 +464,7 @@ async function telechargerPlan() {
   } catch (err) {
     // Re-throw pour que l'appelant (modale Export) affiche l'erreur dans son zone
     // dédiée plutôt qu'un alert qui peut être masqué par la fermeture de la modale.
-    console.error("[Export rapide]", err);
+    console.error("[Export rapide] ERREUR :", err);
     throw err;
   }
 }
