@@ -12,6 +12,21 @@
 // Marqueur de version au chargement (cf. utils.js pour la justification)
 console.info("[exporter.js] chargé — build 2026-05-09 (logs export modale)");
 
+// ── Piège diagnostic : log TOUT clic au niveau document, peu importe quoi
+// avale l'événement plus haut. Permet de vérifier que le clic se déclenche
+// vraiment et de voir l'élément réel touché. À retirer une fois bug résolu.
+document.addEventListener("click", function(e) {
+  const t = e.target;
+  if (!t) return;
+  // On ne logge que si on clique près d'un bouton ou input pour éviter le spam
+  const interesting = t.closest && t.closest("button, input, [role='button'], a, label");
+  if (!interesting) return;
+  console.info("[Doc click trap] →", interesting.tagName,
+    "#" + (interesting.id || "(no-id)"),
+    "class=(" + (interesting.className || "(no-class)") + ")",
+    "text=\"" + (interesting.textContent || "").trim().slice(0, 30) + "\"");
+}, true);
+
 (function() {
   "use strict";
 
