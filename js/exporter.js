@@ -110,11 +110,11 @@
           <!-- TOGGLE MODE -->
           <div class="kta-conv-sens-wrap">
             <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
-              <span class="kta-conv-sens-label">⚡ Export rapide</span>
+              <span class="kta-conv-sens-label">⚡ Mode rapide</span>
               <span class="kta-conv-sens-desc">Tout inclus, format PNG, résolution originale</span>
             </button>
             <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
-              <span class="kta-conv-sens-label">🎨 Avancé</span>
+              <span class="kta-conv-sens-label">🎨 Mode avancé</span>
               <span class="kta-conv-sens-desc">Choix des calques, légende intégrée, format personnalisable</span>
             </button>
           </div>
@@ -523,7 +523,8 @@
   // tousActifs = true si AUCUNE sous-case tag n'est présente (= calque sans tags identifiables)
   // → dans ce cas, on inclut tous les points sans filtrage.
   function _lireTagsCochesCalque(layerId) {
-    const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
+    const safeId = _slugLayerId(layerId);
+    const cont = document.getElementById("export_layer_tags_" + safeId);
     const inputs = cont ? cont.querySelectorAll('input[data-layer-tag-of]') : [];
     if (inputs.length === 0) {
       return { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
@@ -532,11 +533,15 @@
     let untaggedCoche = false;
     const cache = _layerPointsCache[layerId];
     const tagsCache = cache && cache.tags ? cache.tags : [];
+    // Préfixe complet (ancré au début) — empêche la collision quand l'id du layer
+    // contient lui-même "_tag_" ou ressemble au mot. Les tags peuvent contenir des `_`
+    // (cf. _slugTagId), donc on ne peut pas utiliser `[^_]+$` ici.
+    const prefix = "export_layer_" + safeId + "_tag_";
     inputs.forEach(function(cb) {
       if (!cb.checked) return;
-      const m = cb.id.match(/_tag_(.+)$/);
-      if (!m) return;
-      const item = tagsCache.find(function(it) { return _slugTagId(it.tag) === m[1]; });
+      if (!cb.id.startsWith(prefix)) return;
+      const slug = cb.id.slice(prefix.length);
+      const item = tagsCache.find(function(it) { return _slugTagId(it.tag) === slug; });
       if (!item) return;
       if (item.isUntagged) untaggedCoche = true;
       else tagsCoches.add(item.tag);
@@ -546,6 +551,9 @@
 
   // Lit les types de routes cochés pour un calque
   // tousActifs = true si aucune sous-case road n'est présente (calque sans routes embarquées)
+  // ⚠️ Regex `[^_]+$` (et non `.+$`) pour éviter une fausse capture quand l'id du layer
+  //    contient lui-même "road" (ex: layer id="road" → checkbox id="export_layer_road_road_principal",
+  //    le 1er `_road_` est greedy gauche-droite et capturerait "road_principal" au lieu de "principal").
   function _lireRoadTypesCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
     const inputs = cont ? cont.querySelectorAll('input[data-layer-roadtype-of]') : [];
@@ -553,13 +561,16 @@
     const types = new Set();
     inputs.forEach(function(cb) {
       if (!cb.checked) return;
-      const m = cb.id.match(/_road_(.+)$/);
+      const m = cb.id.match(/_road_([^_]+)$/);
       if (m) types.add(m[1]);
     });
     return { types: types, tousActifs: false };
   }
 
   // Lit les types de zones cochés pour un calque
+  // ⚠️ Regex `[^_]+$` : voir explication identique sur `_lireRoadTypesCochesCalque`.
+  //    Bug observé sur layer id="zone" : id checkbox = "export_layer_zone_zone_eau",
+  //    le `.+$` capturait "zone_eau" au lieu de "eau" → toutes les zones filtrées.
   function _lireZoneTypesCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
     const inputs = cont ? cont.querySelectorAll('input[data-layer-zonetype-of]') : [];
@@ -567,7 +578,7 @@
     const types = new Set();
     inputs.forEach(function(cb) {
       if (!cb.checked) return;
-      const m = cb.id.match(/_zone_(.+)$/);
+      const m = cb.id.match(/_zone_([^_]+)$/);
       if (m) types.add(m[1]);
     });
     return { types: types, tousActifs: false };
@@ -786,9 +797,10 @@
       btnGo.textContent = "⏳ Génération…";
       try {
         if (modeRapideActif) {
-          // Appeler la fonction historique inchangée
           if (window.telechargerPlan) {
             await window.telechargerPlan();
+          } else {
+            throw new Error("window.telechargerPlan introuvable (utils.js manquant ?)");
           }
         } else {
           await _exporterAvance();
@@ -1256,9 +1268,20 @@
       chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
     };
 
+    // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
+    const allRoadsForIntersect = [];
+    // Markers DIFFÉRÉS : on les collecte pendant la boucle des calques mais on les dessine
+    // APRÈS toutes les routes + cercles, pour respecter l'ordre ZONE → TRAIT → CERCLE → ICÔNE
+    const deferredMarkers = []; // [{p, layerId}]
+
     // ---------- couches data (markers + roads/zones embarqués) ----------
+    const _diagAdv = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embPoints: 0, fetchFails: 0 };
+    const _debugAdv = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
     for (const layerCfg of (config.dataLayers || [])) {
-      if (!opts.dataLayers[layerCfg.id]) continue;
+      const cocheModale = !!opts.dataLayers[layerCfg.id];
+      if (_debugAdv) console.log("[Export avancé] layer", layerCfg.id, "→ coche modale:", cocheModale);
+      if (!cocheModale) { _diagAdv.layersSkipped++; continue; }
+      _diagAdv.layersVisited++;
 
       let pts = [];
       let embeddedRoads = [];
@@ -1273,7 +1296,11 @@
           pts = j.data || [];
           embeddedRoads = Array.isArray(j.roads) ? j.roads : [];
           embeddedZones = Array.isArray(j.zones) ? j.zones : [];
-        } catch(e) { console.warn("[Export] data :", layerCfg.file, e); }
+          if (_debugAdv) console.log("[Export avancé] fetch", layerCfg.id, "→ pts:", pts.length, "roads:", embeddedRoads.length, "zones:", embeddedZones.length);
+        } catch(e) {
+          _diagAdv.fetchFails++;
+          console.warn("[Export avancé] fetch échoué pour", layerCfg.id, "→", layerCfg.file, e);
+        }
       }
 
       // Filtrer les points selon les tags cochés du calque (si la modale est ouverte)
@@ -1305,6 +1332,12 @@
       let drawnZones = embeddedZones;
       if (typeof _lireZoneTypesCochesCalque === "function") {
         const zs = _lireZoneTypesCochesCalque(layerCfg.id);
+        if (_debugAdv && embeddedZones.length > 0) {
+          console.log("[Export avancé] zones filter for", layerCfg.id,
+            "→ embedded:", embeddedZones.length,
+            "tousActifs:", zs.tousActifs,
+            "types:", Array.from(zs.types));
+        }
         if (!zs.tousActifs) {
           drawnZones = embeddedZones.filter(function(z) { return zs.types.has(z.type); });
         }
@@ -1316,20 +1349,22 @@
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
         _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
+        _diagAdv.embZones++;
       });
 
       // Routes embarquées
       drawnRoads.forEach(function(r) {
         _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+        if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
+        _diagAdv.embRoads++;
       });
 
-      // Markers (filtrés par tags si modale)
+      // Markers (filtrés par tags si modale) — DIFFÉRÉS au dessin final pour passer
+      // au-dessus des routes + cercles d'intersection.
+      // Les tags sont collectés ici (pour la légende exportée) sans attendre.
       for (const p of pts) {
-        const img = await getIconUrl(p);
-        drawMarker(img, p.x, p.y, 50 * scale);
-
-        // Collecter les tags utilisés pour la légende exportée
-        // Si pas de tags → marqueur "défaut"
+        deferredMarkers.push(p);
+        _diagAdv.embPoints++;
         if (Array.isArray(p.tags) && p.tags.length > 0) {
           p.tags.forEach(function(t) {
             if (t && String(t).trim()) tagsUtilises.add(String(t));
@@ -1339,6 +1374,7 @@
         }
       }
     }
+    if (_debugAdv) console.log("[Export avancé] résumé layer loop :", _diagAdv);
 
     // ---------- routes ----------
     if (opts.ann.roads && window.getRoads) {
@@ -1365,7 +1401,29 @@
         }
         ctx.stroke();
         ctx.restore();
+        if (r.points.length >= 2) allRoadsForIntersect.push(r);
       }
+    }
+
+    // ---------- cercles d'intersection (dessinés APRÈS toutes les routes, AVANT les icônes) ----------
+    if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {
+      const baseRadius = window.ROAD_INTERSECTION_RADIUS || 8;
+      const intersections = window.computeRoadIntersections(allRoadsForIntersect);
+      intersections.forEach(function(it) {
+        ctx.save();
+        ctx.fillStyle = it.color;
+        ctx.beginPath();
+        ctx.arc(sc(it.point.x), sc(it.point.y), baseRadius * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // ---------- markers DIFFÉRÉS (icônes) — dessinés EN DERNIER (au-dessus des traits + cercles)
+    // → respecte l'ordre demandé : ZONE (en bas) → TRAIT → CERCLE → ICÔNE (en haut)
+    for (const p of deferredMarkers) {
+      const img = await getIconUrl(p);
+      drawMarker(img, p.x, p.y, 50 * scale);
     }
 
     // ---------- mesure ----------

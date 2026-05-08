@@ -96,6 +96,11 @@ function ajouterPointsDepuisJSON(url, layer) {
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
           L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
+          // Enregistrer dans road.js pour que le calcul d'intersection (cercles aux croisements)
+          // tienne compte de cette route, comme s'il s'agissait d'une route éditable
+          if (typeof window.registerEmbeddedRoad === "function") {
+            window.registerEmbeddedRoad(road);
+          }
         });
       }
 
@@ -287,19 +292,39 @@ async function telechargerPlan() {
       chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
     };
 
+    // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
+    const allRoadsForIntersect = [];
+    // Markers DIFFÉRÉS : collectés ici, dessinés APRÈS les routes + cercles
+    // → respecte l'ordre ZONE → TRAIT → CERCLE → ICÔNE
+    const deferredMarkers = []; // [{point, layerId}]
+
+    // Compteurs diagnostic (activés si APP_CONFIG.debugMode)
+    const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embPoints: 0, fetchFails: 0 };
+    const _debug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+
     if (config.dataLayers && Array.isArray(config.dataLayers)) {
       for (const layerConfig of config.dataLayers) {
         const leafletLayer = window.dataLayerGroups?.[layerConfig.id];
-        if (!leafletLayer || !isLayerVisible(leafletLayer)) continue;
+        const visible = !!(leafletLayer && isLayerVisible(leafletLayer));
+        if (_debug) console.log("[Export rapide] layer", layerConfig.id, "→ visible:", visible, "groupExist:", !!leafletLayer);
+        if (!visible) { _diag.layersSkipped++; continue; }
+        _diag.layersVisited++;
 
         if (layerConfig.id === "editor") {
           const editorPoints = window.getEditorPoints ? window.getEditorPoints() : [];
           for (const point of editorPoints) {
-            await drawPoint(point);
+            deferredMarkers.push(point);
           }
         } else {
-          const response = await fetch(layerConfig.file);
-          const json = await response.json();
+          let json = null;
+          try {
+            const response = await fetch(layerConfig.file);
+            json = await response.json();
+          } catch (e) {
+            _diag.fetchFails++;
+            console.warn("[Export rapide] fetch échoué pour", layerConfig.id, "→", layerConfig.file, e);
+            continue;
+          }
 
           // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement
           if (Array.isArray(json.zones) && json.zones.length > 0) {
@@ -308,6 +333,7 @@ async function telechargerPlan() {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
               drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
+              _diag.embZones++;
             });
           }
 
@@ -316,17 +342,21 @@ async function telechargerPlan() {
             json.roads.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+              allRoadsForIntersect.push(r);
+              _diag.embRoads++;
             });
           }
 
-          // Markers
+          // Markers DIFFÉRÉS (au lieu de drawPoint immédiat)
           const points = json.data || [];
           for (const point of points) {
-            await drawPoint(point);
+            deferredMarkers.push(point);
+            _diag.embPoints++;
           }
         }
       }
     }
+    if (_debug) console.log("[Export rapide] résumé layer loop :", _diag);
 
     // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
     const zones = window.getZones ? window.getZones() : [];
@@ -352,7 +382,37 @@ async function telechargerPlan() {
 
     for (const road of roads) {
       drawPolyline(road.points || [], ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 });
+      if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
+
+    // ---------- cercles d'intersection (dessinés APRÈS toutes les routes, AVANT les icônes) ----------
+    if (typeof window.computeRoadIntersections === "function" && allRoadsForIntersect.length >= 2) {
+      const radius = window.ROAD_INTERSECTION_RADIUS || 8;
+      const intersections = window.computeRoadIntersections(allRoadsForIntersect);
+      intersections.forEach(function(it) {
+        ctx.save();
+        ctx.fillStyle = it.color;
+        ctx.beginPath();
+        ctx.arc(it.point.x, toCanvasY(it.point.y), radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    // ---------- markers DIFFÉRÉS (icônes) — dessinés EN DERNIER (au-dessus des traits + cercles)
+    // → respecte l'ordre demandé : ZONE (en bas) → TRAIT → CERCLE → ICÔNE (en haut)
+    // Chaque marker est try/catché individuellement : un icône qui rate à charger
+    // ne doit PAS faire échouer l'ensemble de l'export (on perd un point, pas le plan).
+    let _markerFails = 0;
+    for (const point of deferredMarkers) {
+      try {
+        await drawPoint(point);
+      } catch (e) {
+        _markerFails++;
+        if (_debug) console.warn("[Export rapide] drawPoint échoué pour", point.id || point.nom, e);
+      }
+    }
+    if (_markerFails > 0) console.warn("[Export rapide]", _markerFails, "icône(s) sur", deferredMarkers.length, "n'ont pas pu être dessinées");
 
     // ---------- mesure ----------
     const measurePoints = window.getMeasurePoints ? window.getMeasurePoints() : [];
@@ -368,30 +428,39 @@ async function telechargerPlan() {
     if (window.getTrackingPosition) {
       const trackerPos = window.getTrackingPosition();
       if (trackerPos && typeof trackerPos.x === "number" && typeof trackerPos.y === "number") {
-        const trackerImg = await loadImage(config.icons.track);
-        drawMarkerImage(trackerImg, trackerPos.x, trackerPos.y, 50, 50, 25, 25);
+        try {
+          const trackerImg = await loadImage(config.icons.track);
+          drawMarkerImage(trackerImg, trackerPos.x, trackerPos.y, 50, 50, 25, 25);
+        } catch (e) {
+          console.warn("[Export rapide] icône tracker non chargée :", e);
+        }
       }
     }
 
     // ---------- export ----------
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        alert("Impossible de générer l'image");
-        return;
-      }
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = (config.plan.name || "plan") + "_complet.png";
-      link.click();
-
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, "image/png");
+    // Promesse autour de toBlob pour que l'appelant (modale Export) puisse await
+    // proprement et voir le succès ou l'échec — sinon le download ratait silencieusement.
+    await new Promise(function(resolve, reject) {
+      canvas.toBlob(function(blob) {
+        if (!blob) {
+          reject(new Error("canvas.toBlob a retourné null (image trop grande ?)"));
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = (config.plan.name || "plan") + "_complet.png";
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        resolve();
+      }, "image/png");
+    });
 
   } catch (err) {
-    console.error(err);
-    alert("Erreur lors de l'export complet de l'image");
+    // Re-throw pour que l'appelant (modale Export) affiche l'erreur dans son zone
+    // dédiée plutôt qu'un alert qui peut être masqué par la fermeture de la modale.
+    console.error("[Export rapide] ERREUR :", err);
+    throw err;
   }
 }
 

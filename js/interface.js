@@ -1504,9 +1504,15 @@ function viderCacheAppli() {
   overlay1.innerHTML = `
     <div class="kta-modal">
       <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">Vider le cache ?</div>
+      <div class="kta-modal-titre">Tout réinitialiser ?</div>
       <div class="kta-modal-texte">
-        Le cache applicatif sera entièrement supprimé.<br><br>
+        Cette action efface <strong>l'intégralité des données locales</strong> de l'application :
+        <ul style="text-align:left; margin:10px 0; padding-left:20px;">
+          <li>Cache PWA (assets, Service Worker)</li>
+          <li>Liste de plans mémorisés (registre + ZIPs locaux)</li>
+          <li>Session en cours (points / tracés / zones / mesures)</li>
+          <li>Préférences (mode performance, logs détaillés…)</li>
+        </ul>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
       </div>
       <div class="kta-modal-actions">
@@ -1546,18 +1552,51 @@ function viderCacheAppli() {
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression de tout le stockage local + désinscription du Service Worker.</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
+        // 1) Service Worker
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(registrations.map(r => r.unregister()));
+          await Promise.all(registrations.map(function(r) { return r.unregister(); }));
         }
+
+        // 2) Caches HTTP / PWA
         if ("caches" in window) {
           const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          await Promise.all(cacheNames.map(function(name) { return caches.delete(name); }));
         }
+
+        // 3) localStorage — wipe complet (tous les préfixes connus + clés inattendues)
+        try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage.clear :", e); }
+
+        // 4) sessionStorage
+        try { sessionStorage.clear(); } catch(e) { console.warn("[Reset] sessionStorage.clear :", e); }
+
+        // 5) IndexedDB — toutes les bases (avec fallback Safari/Firefox qui n'a pas indexedDB.databases())
+        try {
+          if (indexedDB.databases) {
+            const dbs = await indexedDB.databases();
+            await Promise.all((dbs || []).map(function(db) {
+              return new Promise(function(resolve) {
+                if (!db.name) return resolve();
+                const req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+              });
+            }));
+          } else {
+            // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues
+            const knownDbs = ["myktamap_handles"];
+            await Promise.all(knownDbs.map(function(name) {
+              return new Promise(function(resolve) {
+                const req = indexedDB.deleteDatabase(name);
+                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+              });
+            }));
+          }
+        } catch(e) { console.warn("[Reset] IndexedDB :", e); }
+
         overlayWait.remove();
         window.location.reload(true);
       } catch (err) {
@@ -1825,8 +1864,15 @@ function initInterface() {
           else if (window.telechargerSessionJSON) window.telechargerSessionJSON();
         } },
       { icone: "🖼️", titre: "Exporter le plan en image", onClick: function() {
-          if (window.ouvrirExportModal) window.ouvrirExportModal();
-          else if (window.telechargerPlan) window.telechargerPlan();
+          if (window.ouvrirExportModal) {
+            window.ouvrirExportModal();
+          } else if (window.telechargerPlan) {
+            // Fallback : telechargerPlan rethrow désormais — on l'attrape ici pour
+            // afficher un message visible au lieu d'une promesse rejetée silencieuse.
+            window.telechargerPlan().catch(function(err) {
+              alert("Erreur lors de l'export du plan : " + (err && err.message ? err.message : err));
+            });
+          }
         } }
     ]
   });

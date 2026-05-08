@@ -11,6 +11,11 @@ async function initDataFromConfig() {
     console.warn("[Main] Aucune dataLayer à charger");
     return;
   }
+  // Vider le registre des routes embarquées du plan précédent — elles seront re-remplies
+  // au fil du chargement des calques par ajouterPointsDepuisJSON > registerEmbeddedRoad
+  if (typeof window.clearEmbeddedRoads === "function") {
+    window.clearEmbeddedRoads();
+  }
   config.dataLayers.forEach(function(layerConfig) {
     const targetLayer = window.dataLayerGroups?.[layerConfig.id];
     if (targetLayer) {
