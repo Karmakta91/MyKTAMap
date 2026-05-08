@@ -1495,8 +1495,66 @@ html, body {
   to   { background-position: -200% 0; }
 }
 
+/* Échelle 0-100 sous la barre de chargement (style "barre d'échelle de carte")
+   Collée directement à la progress bar (pas de gap) */
+#splashScale {
+  width: 240px;
+  margin-top: 0;
+  animation: splashTextIn 0.6s ease-out 0.7s both;
+}
+
+.splash-scale-bar {
+  height: 7px;
+  border: 1px solid rgba(244, 197, 66, 0.45);
+  border-radius: 2px;
+  /* 10 segments alternés jaune (#f4c542) / sombre (#1a1f2e) */
+  background: linear-gradient(
+    to right,
+    #f4c542 0%,    #f4c542 10%,
+    #1a1f2e 10%,   #1a1f2e 20%,
+    #f4c542 20%,   #f4c542 30%,
+    #1a1f2e 30%,   #1a1f2e 40%,
+    #f4c542 40%,   #f4c542 50%,
+    #1a1f2e 50%,   #1a1f2e 60%,
+    #f4c542 60%,   #f4c542 70%,
+    #1a1f2e 70%,   #1a1f2e 80%,
+    #f4c542 80%,   #f4c542 90%,
+    #1a1f2e 90%,   #1a1f2e 100%
+  );
+}
+
+.splash-scale-labels {
+  position: relative;
+  height: 12px;
+  margin-top: 3px;
+  font-size: 9px;
+  color: #8892a4;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.04em;
+}
+
+.splash-scale-labels span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+/* Position chaque label centré sur son tick (sauf 0 = aligné gauche, 100 = aligné droit) */
+.splash-scale-labels span:nth-child(1)  { left: 0%;   transform: translateX(0);     }
+.splash-scale-labels span:nth-child(2)  { left: 10%;  }
+.splash-scale-labels span:nth-child(3)  { left: 20%;  }
+.splash-scale-labels span:nth-child(4)  { left: 30%;  }
+.splash-scale-labels span:nth-child(5)  { left: 40%;  }
+.splash-scale-labels span:nth-child(6)  { left: 50%;  }
+.splash-scale-labels span:nth-child(7)  { left: 60%;  }
+.splash-scale-labels span:nth-child(8)  { left: 70%;  }
+.splash-scale-labels span:nth-child(9)  { left: 80%;  }
+.splash-scale-labels span:nth-child(10) { left: 90%;  }
+/* "100" centré sur son tick comme les autres (au lieu de right-aligné qui le collait au "90") */
+.splash-scale-labels span:nth-child(11) { left: 100%; transform: translateX(-50%); }
+
 #splashFooter {
-  margin-top: 50px;
+  margin-top: 38px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1564,7 +1622,9 @@ html, body {
   #splashTitle { font-size: 28px; margin-top: 18px; }
   #splashSubtitle { font-size: 12px; }
   #splashProgressTrack { width: 200px; margin-top: 30px; }
-  #splashFooter { margin-top: 36px; }
+  #splashScale { width: 200px; margin-top: 0; }
+  .splash-scale-labels { font-size: 8px; }
+  #splashFooter { margin-top: 28px; }
   #splashSignature { height: 26px; }
   #splashLeafletCredit { font-size: 10px; bottom: 10px; }
 }
@@ -1575,7 +1635,9 @@ html, body {
   #splashTitle { font-size: 22px; margin-top: 12px; }
   #splashSubtitle { font-size: 10px; }
   #splashProgressTrack { margin-top: 16px; }
-  #splashFooter { margin-top: 18px; gap: 6px; }
+  #splashScale { margin-top: 0; }
+  .splash-scale-labels { font-size: 8px; height: 10px; }
+  #splashFooter { margin-top: 14px; gap: 6px; }
   #splashSignature { height: 22px; }
   #splashLicense { font-size: 10px; }
 }
