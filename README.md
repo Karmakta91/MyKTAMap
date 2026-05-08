@@ -9,6 +9,55 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 08/05/2026 (suite 2) — Convertisseur bidirectionnel dans le modal Export
+
+- **Onglet "🔄 Conversion"** du modal "💾 Enregistrer la session" (`sessionExporter.js`) gère désormais **les 2 sens** :
+  - **✏️ → 🗂️ Session vers data layer** (existant) : convertit la session en cours en fichier(s) data layer chargeable(s) dans un plan via `plan-config.json > dataLayers`. Granularité basique (1 fichier/catégorie) ou fine (1 fichier/type)
+  - **🗂️ → ✏️ Data layer vers session** (NOUVEAU) : prend un fichier data layer en entrée (drop zone + file picker), affiche un aperçu (compte points/tracés/zones), et produit un fichier session JSON ré-importable
+- **Toggle de direction** en haut de l'onglet via 2 boutons `.kta-conv-sens-btn` (charte existante du convertisseur)
+- **Reset de l'état uploadé** automatique à la fermeture du modal (pas de pollution entre ouvertures successives)
+- **Code mort supprimé** : ancienne fonction `afficherConvertisseur` dans `interface.js` retirée (~200 lignes) + son export `window.afficherConvertisseur`. Le pattern `convertir(json, direction, typeLabel)` est entièrement absorbé par `_exportConvSession2Data` + `_exportConvData2Session` du nouveau modal
+- **Fichiers modifiés** : `js/sessionExporter.js` (ajout des fonctions de rendu + dispatch), `js/interface.js` (suppression code mort)
+
+---
+
+### 🗓️ 08/05/2026 (suite) — Auto-save de la session active + toast de restauration
+
+- **Nouveau module `js/sessionPersist.js`** — auto-sauvegarde silencieuse de la session active dans `localStorage["myktamap_session_v1"]` :
+  - **Slot unique** : la dernière session active "gagne" — si tu charges un autre plan, l'auto-save écrase le slot avec le nouvel état
+  - **Polling 1.5s** : un hash de l'état (`getEditorPoints + getRoads + getZones + getMeasurePoints`) est comparé périodiquement ; si changement, sauvegarde
+  - **Safety nets** : `beforeunload` (fermeture page) + `visibilitychange` (mobile en arrière-plan)
+  - **Tracker path EXCLU** volontairement de la persistance (PDR expérimental — restaurer une trail morte est trompeur)
+- **Hook restore** dans `main.js > lancerApplication()` : après init complète, appelle `SessionPersist.onPlanLoaded(planId)` qui :
+  - Restaure la session si `saved.planId === currentPlanId`
+  - Purge la session sauvegardée si `saved.planId !== currentPlanId` (un autre plan a été chargé entre temps)
+  - Ne fait rien si pas de session sauvegardée
+- **Modale de feedback** centrée (pattern `kta-readme-modal`) après restore :
+  - Icône ↻ jaune dans un cercle (charte `#f4c542`), titre "Session précédente restaurée", détail *"N points · M tracés · K zones"*
+  - Bouton **🗑️ Effacer la session** (ghost) : vide la session restaurée + le slot localStorage (redémarrer ce plan vierge)
+  - Bouton **✓ Continuer** (primary jaune) : ferme la modale, garde la session
+  - Click sur le backdrop ou Échap = "Continuer" (pattern modal soft)
+  - Animations : fade-in overlay + pop-in box (cubic-bezier overshoot léger)
+- **Format storage** :
+  ```json
+  {
+    "version": 1,
+    "planId": "local_planmarseille_v1",
+    "savedAt": "2026-05-08T...",
+    "editorPoints": [...],
+    "roads": [...],
+    "zones": [...],
+    "measure": [...]
+  }
+  ```
+- **Volume typique** : <50 Ko (rentre largement dans la limite localStorage de ~5 Mo)
+- **Conditions de purge** : changement de plan + reset complet 💥 + bouton 🗑️ Effacer du toast
+- **Choix d'implémentation : polling vs hooks** : polling retenu (1 seul nouveau fichier + 1 hook dans main.js) au lieu de modifier editor/road/zones/measure individuellement. Lag de 1.5s imperceptible, pas de risque d'oublier un module.
+
+- **Fichiers modifiés** : `js/sessionPersist.js` (nouveau), `js/main.js`, `index.html` (loader le script), `css/style.css` (toast). **Inchangés** : editor/road/zones/measure (pas de hooks invasifs)
+
+---
+
 ### 🗓️ 08/05/2026 — Mode performance réglable (5 presets DLSS-like) + flag debug global
 
 - **Refonte du mode performance** : la simple checkbox boolean est remplacée par un **segmented control 5 boutons** dans le loader, à la manière du DLSS dans les jeux vidéo :
@@ -186,9 +235,9 @@
   - **Animation cumulée** : logo (zoom + rotation rebond), titre, sous-titre, barre, footer (delays 0.3s → 0.85s)
   - **Comportement** :
     - `_splashStart()` enregistre `Date.now()` au démarrage de `initApp`
-    - `_splashEnd()` attend que `SPLASH_MIN_DURATION_MS = 3000ms` soit écoulé
-    - Si chargement < 3s → splash reste visible 3s minimum
-    - Si chargement > 3s → splash s'efface dès la fin du chargement
+    - `_splashEnd()` attend que `SPLASH_MIN_DURATION_MS = 4000ms` soit écoulé
+    - Si chargement < 4s → splash reste visible 4s minimum
+    - Si chargement > 4s → splash s'efface dès la fin du chargement
     - Lancement de l'app **en parallèle** de la fin du splash (pas de blocage)
     - Ajout de la classe `.fading` (opacity 0 transition 0.4s) puis suppression du DOM
   - **Une seule fois par session** : `initApp()` n'étant appelé qu'au chargement initial, le splash ne réapparaît jamais lors d'un changement de plan
@@ -200,7 +249,8 @@
   - Bloc **▶️ Reprendre** en haut si `lastPlanId` existe
   - Bloc **📚 Mes plans** unique trié par dernière ouverture descendante (suppression des anciennes sections "Récents/Tous" — demande utilisateur)
   - Bloc **📦 Ajouter un plan** cohérent regroupant : zone drop ZIP + options de persistance + ⚡ mode performance + bouton ▶️ Charger ce plan (pleine largeur)
-  - Section collapsable **⚙️ Plus d'options** (fermée par défaut, chevron ▾/▴) regroupant : 🌐 Plan serveur racine, 🏗️ Générer un plan, 📥 Conf exemple, 💥 Tout réinitialiser
+  - Section collapsable **⚙️ Plus d'options** (fermée par défaut, chevron ▾/▴) regroupant : 🏗️ Générer un plan, 📥 Conf exemple, 🐛 Logs détaillés, 💥 Tout réinitialiser
+    *(Note : le bouton "🌐 Plan serveur racine" a été retiré le 08/05/2026 — les plans serveur sont déjà listés dans 📚 Mes plans via auto-discovery `data/index.json`)*
   - Le bouton **📖 Documentation utilisateur** ouvre la même modale que depuis l'app (avec sommaire complet)
 
 - **Bouton "💥 Tout réinitialiser" depuis le loader** (`index.html` + `interface.js`)
@@ -271,7 +321,7 @@
   - Boutons **💾 Exporter ma liste** / **📂 Charger une liste** (modale Replace / Merge / Cancel avec stats)
   - Bouton **🔐 Autoriser l'accès permanent** (FS Access) — visible Chrome/Edge desktop uniquement
   - Checkbox **💾 Mémoriser ce plan dans l'app** — visible mobile/Firefox/Safari (pas FS Access)
-  - Bouton **🌐 Charger le plan serveur (racine)** — appelle `chargerPlanServeur("data")` au lieu de `loadAppConfig()` direct
+  - ~~Bouton **🌐 Charger le plan serveur (racine)**~~ — *retiré le 08/05/2026 (les plans serveur sont auto-découverts dans Mes plans via `data/index.json`)*
   - Validation : si le ZIP contient un `plan.name` différent du plan cliqué dans la liste → confirm avant chargement
   - Fonction `chargerZipFichier(file, perfChoisi, meta)` exposée globalement pour usage externe (bouton 🗂️ Changer de plan)
   - **Suppression** des sections "Récents" / "Tous" — liste unique demandée par l'utilisateur
@@ -697,7 +747,7 @@ Le splash s'affiche **uniquement au chargement initial de la page** (F5, ouvertu
 
 - **HTML statique** dans `<body>` (visible avant tout chargement JS)
 - **CSS d'animation** dans `style.css` (entrée en cascade : logo → titre → sous-titre → barre → footer)
-- **Logique de durée** dans `main.js` (3s minimum + parallèle au chargement)
+- **Logique de durée** dans `main.js` (4s minimum + parallèle au chargement)
 
 ### Cycle de vie
 
@@ -711,7 +761,7 @@ initApp() → _splashStart() enregistre Date.now()
    afficherLoader() OU lancerApplication() (en parallèle de _splashEnd)
    ↓
 _splashEnd() :
-   ├─ Attendre que (3000ms - elapsed) soit écoulé
+   ├─ Attendre que (4000ms - elapsed) soit écoulé
    ├─ Ajouter classe .fading (opacity 0 transition 0.4s)
    └─ Retirer du DOM après 500ms
 ```
@@ -720,7 +770,7 @@ _splashEnd() :
 
 | Élément | Description |
 |---|---|
-| `SPLASH_MIN_DURATION_MS` | Durée minimum d'affichage (`main.js`, défaut 3000) |
+| `SPLASH_MIN_DURATION_MS` | Durée minimum d'affichage (`main.js`, défaut 4000) |
 | `--splash-duration` | Variable CSS injectée dynamiquement pour synchroniser la barre |
 | `_splashShownAt` | Timestamp d'affichage pour calculer le temps restant |
 

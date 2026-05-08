@@ -76,7 +76,7 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 
 ### 🎬 Animation au démarrage
 
-Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 3 secondes :
+Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 4 secondes :
 
 - **Logo** MyKTAMap (rose des vents jaune)
 - **Titre** et sous-titre
@@ -92,16 +92,15 @@ Cette animation **n'apparaît qu'une seule fois par session**. Si vous changez d
 Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 
 - **▶️ Reprendre [nom]** — relance le dernier plan utilisé en 1 clic.
-- **📚 Mes plans** — la liste de tous les plans que vous avez déjà chargés (serveur ou ZIP local), triée du plus récemment ouvert au plus ancien.
+- **📚 Mes plans** — la liste de tous les plans que vous avez déjà chargés (serveur ou ZIP local), triée du plus récemment ouvert au plus ancien. Les plans serveur disponibles sont **auto-découverts** au démarrage et apparaissent ici.
 - **📦 Charger un nouveau plan** — pour ajouter un ZIP à votre liste.
 - **🏗️ Générer un plan** — ouvre le générateur de plan from scratch.
-- **🌐 Charger le plan serveur (racine)** — charge un éventuel `plan-config.json` à la racine de `data/` (rétro-compatibilité).
 
 **Trois manières d'ajouter un plan :**
 
 1. **Importer un ZIP local** — glissez-déposez votre archive sur la zone prévue, ou cliquez pour la sélectionner. Cliquez ensuite sur **Charger le plan**. Le plan s'ajoute automatiquement à votre liste pour les prochaines fois.
-2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert.
-3. **🌐 / 🏗️** — boutons en bas pour le plan serveur racine ou le générateur.
+2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
+3. **🏗️ Générer un plan** — bouton en bas dans "Plus d'options" pour créer un plan from scratch.
 
 ### 📚 Gestion de votre liste de plans
 
@@ -191,6 +190,21 @@ Le bloc **Mode performance** dans le chargeur permet de choisir comment afficher
 Cliquez sur un bouton avant de charger — la description sous le sélecteur change pour vous expliquer ce qu'il fait.
 
 **Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
+
+### 💾 Sauvegarde automatique de votre session
+
+Vos **annotations en cours** (points ajoutés, tracés, zones, mesures) sont automatiquement sauvegardées en arrière-plan toutes les ~1,5 secondes. Ainsi, si vous fermez l'application et la rouvrez via **▶️ Reprendre**, votre travail est restauré.
+
+**Comment ça marche :**
+- À chaque modification, votre session est sauvegardée dans le navigateur (un seul "slot" — la session courante remplace la précédente)
+- Au prochain lancement, si vous cliquez sur **▶️ Reprendre [nom du plan]**, votre session est restaurée — une **fenêtre centrée** vous confirme avec le détail (*"3 points · 1 tracé · 2 zones"*)
+- La fenêtre vous propose deux actions : **🗑️ Effacer la session** (commencer ce plan avec une session vierge) ou **✓ Continuer** (garder la session restaurée). Cliquer en dehors ou appuyer sur Échap = Continuer.
+
+**Important :**
+- Si vous **chargez un autre plan** entre deux ouvertures, la session précédente est perdue (un seul slot, dernière session active "gagne")
+- Le **chemin du tracker** n'est pas restauré (le tracker étant expérimental, ressusciter une trail figée serait trompeur)
+- Le **💥 Tout réinitialiser** efface aussi votre session sauvegardée
+- Pour conserver une session importante au-delà de l'auto-save, utilisez **⬆️ Exporter la session JSON** (sauvegarde explicite que vous pouvez ré-importer plus tard)
 
 ### 🐛 Logs détaillés (mode debug)
 

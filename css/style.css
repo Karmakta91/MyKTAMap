@@ -667,8 +667,8 @@ html, body {
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 14px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.65);
-  width: min(900px, 96vw);
-  height: min(88vh, 900px);
+  width: min(960px, 96vw);
+  height: min(88vh, 920px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -688,12 +688,204 @@ html, body {
   font-weight: 700;
   color: #8cb4ff;
   letter-spacing: 0.04em;
+  flex: 1;
 }
 
+/* Bouton toggle sommaire (à gauche du titre dans le header) */
+.kta-readme-toc-toggle-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #c8d0e0;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.kta-readme-toc-toggle-btn:hover {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+  color: #e8eaf0;
+}
+
+.kta-readme-toc-toggle-btn.active {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.45);
+  color: #f4c542;
+}
+
+/* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
+.kta-readme-modal-layout {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;  /* point d'ancrage du bouton retour-haut */
+}
+
+/* Sidebar du sommaire (desktop) — masquable via toggle */
+.kta-readme-toc-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255,255,255,0.08);
+  overflow-y: auto;
+  padding: 16px 12px 18px;
+  background: rgba(0,0,0,0.16);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.15) transparent;
+  transition: width 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+}
+
+/* État masqué : la sidebar disparaît, le corps prend toute la largeur */
+.kta-readme-modal-layout.toc-hidden .kta-readme-toc-sidebar {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  opacity: 0;
+  border-right: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.kta-readme-toc-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8cb4ff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  padding-left: 8px;
+}
+
+.kta-readme-toc-list,
+.kta-readme-toc-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.kta-readme-toc-item {
+  margin: 0;
+}
+
+.kta-readme-toc-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 5px;
+  transition: background 0.15s ease;
+}
+
+.kta-readme-toc-row:hover {
+  background: rgba(140, 180, 255, 0.06);
+}
+
+.kta-readme-toc-toggle {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: #6c7689;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  width: 18px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, color 0.15s ease;
+}
+
+.kta-readme-toc-toggle:hover {
+  color: #c8d0e0;
+}
+
+.kta-readme-toc-bullet {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #4d5663;
+  font-size: 14px;
+  width: 18px;
+  height: 22px;
+}
+
+.kta-readme-toc-link {
+  display: block;
+  flex: 1;
+  padding: 5px 8px 5px 0;
+  color: #c0c8d8;
+  text-decoration: none;
+  font-size: 13px;
+  line-height: 1.35;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+  word-break: break-word;
+}
+
+.kta-readme-toc-link-h2 {
+  font-weight: 600;
+}
+
+.kta-readme-toc-link:hover {
+  color: #e8eaf0;
+}
+
+.kta-readme-toc-link.active {
+  color: #f4c542;
+}
+
+.kta-readme-toc-row:has(.kta-readme-toc-link.active) {
+  background: rgba(244, 197, 66, 0.10);
+}
+
+/* Sous-liste H3 */
+.kta-readme-toc-sublist {
+  margin: 2px 0 6px 22px;
+  padding: 0 0 0 8px;
+  border-left: 1px solid rgba(255,255,255,0.07);
+}
+
+.kta-readme-toc-sublist li {
+  margin: 0;
+}
+
+.kta-readme-toc-link-h3 {
+  font-size: 12px;
+  color: #8892a4;
+  padding: 3px 6px;
+  display: block;
+  border-radius: 4px;
+}
+
+.kta-readme-toc-link-h3:hover {
+  background: rgba(140, 180, 255, 0.06);
+  color: #c0c8d8;
+}
+
+.kta-readme-toc-link-h3.active {
+  background: rgba(244, 197, 66, 0.10);
+  color: #f4c542;
+}
+
+/* État replié (cliquer sur ▾ → -90°, masquer la sous-liste) */
+.kta-readme-toc-item.collapsed .kta-readme-toc-sublist { display: none; }
+.kta-readme-toc-item.collapsed .kta-readme-toc-toggle { transform: rotate(-90deg); }
+
+/* Corps scrollable du contenu */
 .kta-readme-modal-corps {
   flex: 1;
+  position: relative;
   overflow-y: auto;
-  padding: 20px 24px 24px;
+  padding: 22px 28px 28px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.15) transparent;
   color: #c8d0e0;
@@ -706,14 +898,59 @@ html, body {
   color: #c8d0e0;
 }
 
-.kta-readme-corps h1 { font-size: 22px; color: #8cb4ff; margin: 0 0 12px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
-.kta-readme-corps h2 { font-size: 17px; color: #8cb4ff; margin: 22px 0 8px; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 4px; }
-.kta-readme-corps h3 { font-size: 15px; color: #a0c4ff; margin: 16px 0 6px; }
-.kta-readme-corps h4 { font-size: 14px; color: #b0c8d8; margin: 12px 0 4px; }
-.kta-readme-corps hr  { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 18px 0; }
-.kta-readme-corps p   { margin: 0 0 10px; }
-.kta-readme-corps ul  { padding-left: 20px; margin: 6px 0 10px; }
-.kta-readme-corps li  { margin-bottom: 4px; }
+.kta-readme-corps h1 {
+  font-size: 22px;
+  color: #8cb4ff;
+  margin: 0 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(140, 180, 255, 0.15);
+}
+
+/* H2 — accent bar à gauche, plus de border-bottom (5:d) */
+.kta-readme-corps h2 {
+  font-size: 18px;
+  color: #8cb4ff;
+  margin: 32px 0 12px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid #8cb4ff;
+  scroll-margin-top: 12px;
+}
+
+.kta-readme-corps h3 {
+  font-size: 15px;
+  color: #a0c4ff;
+  margin: 22px 0 8px;
+  scroll-margin-top: 12px;
+}
+
+.kta-readme-corps h4 {
+  font-size: 14px;
+  color: #b0c8d8;
+  margin: 14px 0 6px;
+}
+
+/* HR — séparateur en dégradé (5:b) */
+.kta-readme-corps hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(140,180,255,0.22) 50%, transparent 100%);
+  margin: 24px 0;
+}
+
+.kta-readme-corps p { margin: 0 0 12px; }
+
+/* Listes — meilleur espacement (5:e) */
+.kta-readme-corps ul,
+.kta-readme-corps ol {
+  padding-left: 22px;
+  margin: 8px 0 14px;
+}
+
+.kta-readme-corps li {
+  margin-bottom: 6px;
+  line-height: 1.6;
+}
+
 .kta-readme-corps a   { color: #5ba3f5; text-decoration: none; }
 .kta-readme-corps a:hover { text-decoration: underline; }
 
@@ -748,14 +985,28 @@ html, body {
 .kta-readme-corps em     { color: #b0c8d8; }
 .kta-readme-erreur       { color: #ffb3b3; font-style: italic; }
 
+/* Blockquote — citation avec accent jaune charte (5:a) */
 .kta-readme-corps blockquote {
-  border-left: 3px solid #4d8aff;
-  margin: 8px 0;
-  padding: 6px 12px;
-  background: rgba(77,138,255,0.07);
+  position: relative;
+  border-left: 3px solid #f4c542;
+  margin: 14px 0;
+  padding: 10px 14px 10px 18px;
+  background: rgba(244, 197, 66, 0.06);
   border-radius: 0 6px 6px 0;
-  color: #8892a4;
+  color: #c0c8d8;
   font-style: italic;
+  line-height: 1.6;
+}
+
+.kta-readme-corps blockquote::before {
+  content: "❝";
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  color: rgba(244, 197, 66, 0.35);
+  font-size: 18px;
+  font-style: normal;
+  pointer-events: none;
 }
 
 .kta-readme-table {
@@ -805,6 +1056,122 @@ html, body {
   image-rendering: auto;
   /* Supprime le gap sub-pixel entre tuiles sur certains navigateurs */
   margin: -0.5px;
+}
+
+/* ==============================================
+   MODALE — "Session précédente restaurée"
+   Centrée plein écran, respect du pattern kta-readme-modal
+   ============================================== */
+.kta-session-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(5, 8, 15, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: kta-session-fade-in 0.22s ease-out;
+}
+
+.kta-session-modal-overlay.hiding {
+  animation: kta-session-fade-out 0.22s ease-in forwards;
+}
+
+@keyframes kta-session-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes kta-session-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+.kta-session-modal-boite {
+  width: min(440px, 96vw);
+  background: #1a1f2e;
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.70);
+  padding: 26px 24px 20px;
+  text-align: center;
+  color: #e8eaf0;
+  animation: kta-session-pop-in 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.18);
+}
+
+@keyframes kta-session-pop-in {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);   }
+}
+
+.kta-session-modal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: rgba(244, 197, 66, 0.14);
+  border: 1px solid rgba(244, 197, 66, 0.40);
+  color: #f4c542;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: 0 0 24px rgba(244, 197, 66, 0.18);
+}
+
+.kta-session-modal-titre {
+  font-size: 17px;
+  font-weight: 700;
+  color: #e8eaf0;
+  letter-spacing: 0.02em;
+  margin-bottom: 6px;
+}
+
+.kta-session-modal-plan {
+  font-size: 12px;
+  color: #f4c542;
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.kta-session-modal-detail {
+  font-size: 13px;
+  color: #8892a4;
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+
+.kta-session-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.kta-session-modal-actions .kta-btn {
+  flex: 1;
+  max-width: 200px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Mobile : actions empilées */
+@media (max-width: 480px) {
+  .kta-session-modal-boite {
+    padding: 22px 18px 18px;
+  }
+  .kta-session-modal-titre { font-size: 15px; }
+  .kta-session-modal-detail { font-size: 12px; }
+  .kta-session-modal-actions {
+    flex-direction: column;
+  }
+  .kta-session-modal-actions .kta-btn {
+    max-width: none;
+  }
 }
 
 
@@ -1051,13 +1418,25 @@ html, body {
   width: 180px;
   height: 180px;
   object-fit: contain;
-  animation: splashLogoIn 0.8s cubic-bezier(0.18, 0.89, 0.32, 1.28) both;
-  filter: drop-shadow(0 0 24px rgba(255, 200, 60, 0.25));
+  background: transparent;
+  animation: splashLogoIn 3.5s ease-out both;
+  /* Halo jaune doux derrière la rose — réduit pour ne pas créer de "zone carrée" perceptible */
+  filter: drop-shadow(0 0 18px rgba(244, 197, 66, 0.10));
 }
 
+/* Animation "boussole qui se calibre" :
+   1) entrée rapide avec 1 tour de rotation (0-25%)
+   2) oscillations amorties autour du nord (25-100%) — l'aiguille cherche son nord
+   3) immobilisation à 0°
+*/
 @keyframes splashLogoIn {
-  from { opacity: 0; transform: scale(0.6) rotate(-25deg); }
-  to   { opacity: 1; transform: scale(1)   rotate(0deg); }
+  0%   { opacity: 0; transform: scale(0.55) rotate(-360deg); }
+  25%  { opacity: 1; transform: scale(1.05) rotate(35deg);   }  /* swing : dépassement initial */
+  45%  { opacity: 1; transform: scale(1.00) rotate(-15deg);  }  /* contre-swing */
+  65%  { opacity: 1; transform: scale(1.00) rotate(7deg);    }  /* oscillation amortie */
+  82%  { opacity: 1; transform: scale(1.00) rotate(-3deg);   }  /* plus faible */
+  93%  { opacity: 1; transform: scale(1.00) rotate(1deg);    }  /* presque calibré */
+  100% { opacity: 1; transform: scale(1.00) rotate(0deg);    }  /* nord trouvé */
 }
 
 #splashTitle {
@@ -1158,6 +1537,27 @@ html, body {
   font-style: italic;
 }
 
+/* Crédit Leaflet — petit, discret, centré en bas du splash (pas un lien cliquable) */
+#splashLeafletCredit {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: #6c7689;
+  letter-spacing: 0.02em;
+  user-select: none;
+  pointer-events: none;
+  white-space: nowrap;
+  /* Animation custom (opacity uniquement, pour ne pas écraser le translateX) */
+  animation: splashLeafletFadeIn 0.6s ease-out 1.0s both;
+}
+
+@keyframes splashLeafletFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* Mobile : adapter les tailles */
 @media (max-width: 480px) {
   #splashLogo { width: 130px; height: 130px; }
@@ -1166,6 +1566,7 @@ html, body {
   #splashProgressTrack { width: 200px; margin-top: 30px; }
   #splashFooter { margin-top: 36px; }
   #splashSignature { height: 26px; }
+  #splashLeafletCredit { font-size: 10px; bottom: 10px; }
 }
 
 /* Mode paysage mobile : compact */
@@ -1372,7 +1773,6 @@ html, body {
   border-color: rgba(255, 110, 110, 0.3);
   background: rgba(255, 110, 110, 0.08);
   color: #ffb3b3;
-  margin-top: 6px;
 }
 
 .loader-btn-secondary.loader-btn-danger:hover {
@@ -2146,49 +2546,93 @@ html, body {
   }
 }
 
-.kta-readme-toc {
-  background: rgba(140, 180, 255, 0.08);
-  border: 1px solid rgba(140, 180, 255, 0.22);
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin: 14px 0 22px;
+/* Footer du modal Documentation — crédit Leaflet (cohérence avec le splash) */
+.kta-readme-modal-footer {
+  flex-shrink: 0;
+  padding: 9px 18px 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 11px;
+  color: #6c7689;
+  letter-spacing: 0.02em;
+  text-align: center;
+  user-select: none;
 }
 
-.kta-readme-toc-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+/* Bouton "↑ Retour en haut" — absolute, ancré bas-droite du layout (4:c) */
+.kta-readme-back-top {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #f4c542;
+  color: #1a1f2e;
+  border: none;
+  font-size: 17px;
   font-weight: 700;
-  margin-bottom: 10px;
-  margin: 0 0 10px;
-  font-size: 18px; /* ou laisse le style h2 global */
-  color: #8cb4ff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  z-index: 5;
 }
 
-.kta-readme-toc-icon {
-  font-size: 18px;
+.kta-readme-back-top.visible {
+  opacity: 0.92;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
-.kta-readme-toc ul {
-  margin: 0;
-  padding-left: 18px;
-  columns: 2;
+.kta-readme-back-top:hover { opacity: 1; }
+.kta-readme-back-top:active { transform: translateY(1px); }
+
+/* RESPONSIVE — sous 800px : sidebar bascule en haut (si visible) */
+@media (max-width: 800px) {
+  .kta-readme-modal-boite {
+    height: 92vh;
+  }
+  .kta-readme-modal-layout {
+    flex-direction: column;
+  }
+  .kta-readme-toc-sidebar {
+    width: auto;
+    max-height: 35vh;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 12px 14px;
+    transition: max-height 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+  }
+  /* En mode masqué sur mobile : on collapse la hauteur au lieu de la largeur */
+  .kta-readme-modal-layout.toc-hidden .kta-readme-toc-sidebar {
+    width: auto;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .kta-readme-modal-corps {
+    padding: 18px 18px 22px;
+  }
+  .kta-readme-back-top {
+    width: 40px;
+    height: 40px;
+    bottom: 12px;
+    font-size: 18px;
+  }
 }
 
-.kta-readme-toc li {
-  margin: 6px 0;
-  break-inside: avoid;
-}
-
-.kta-readme-toc a {
-  color: #c0c8d8;
-  text-decoration: none;
-  font-size: 13px;
-}
-
-.kta-readme-toc a:hover {
-  color: #8cb4ff;
-  text-decoration: underline;
+@media (max-width: 480px) {
+  .kta-readme-toc-sidebar {
+    max-height: 32vh;
+  }
+  .kta-readme-corps { font-size: 13px; }
+  .kta-readme-corps h1 { font-size: 19px; }
+  .kta-readme-corps h2 { font-size: 16px; margin-top: 24px; }
+  .kta-readme-corps h3 { font-size: 14px; }
 }
 
 @media (max-width: 640px) {

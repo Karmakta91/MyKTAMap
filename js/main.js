@@ -125,6 +125,10 @@ async function lancerApplication() {
   initInterface();
   initTracking();
 
+  // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
+  if (window.SessionPersist) {
+    window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
+  }
 
   console.log("[Main] Application lancée");
   } finally {
@@ -174,6 +178,7 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   // Enregistrer dans le registre
   if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
     const id = registryEntry?.id || window.PlanRegistry.genServerId(planPath);
+    window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
     _enregistrerPlanCharge({
       id: id,
       type: "server",
@@ -275,6 +280,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     const planName = rawConfig.plan.name || "Plan importé";
     const planVer  = rawConfig.plan.version || "";
     const id = meta.planId || window.PlanRegistry.genLocalId(planName, planVer);
+    window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
 
     const entry = {
       id: id,
@@ -358,7 +364,7 @@ function afficherLoader() {
 // =========================
 // SPLASH SCREEN — animation de bienvenue au démarrage
 // =========================
-const SPLASH_MIN_DURATION_MS = 3000;
+const SPLASH_MIN_DURATION_MS = 4000;
 let _splashShownAt = null;
 
 function _splashStart() {
@@ -424,6 +430,7 @@ async function _splashEnd() {
       // L'enregistrer dans le registre comme plan "racine"
       if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
         const id = "server_root";
+        window._currentLoadedPlanId = id;  // pour SessionPersist (sinon save() ne saurait pas qui sauvegarder)
         _enregistrerPlanCharge({
           id: id,
           type: "server",

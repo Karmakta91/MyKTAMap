@@ -1,12 +1,20 @@
 // =========================
 // SERVICE WORKER — MyKtaMAP
 // =========================
+// Liste des assets cachés pour utilisation offline.
+// NE PAS cacher README.md ni CLAUDE.md (réservés aux développeurs).
+// Cacher README_USER.md (utilisé par le modal Documentation in-app).
+// =========================
 
-const CACHE_NAME = "myktamap-cache-v2";
+const CACHE_NAME = "myktamap-cache-v3";
 
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
+  "./manifest.json",
+
+  // Doc utilisateur (consommée par le modal Documentation)
+  "./README_USER.md",
 
   // CSS
   "./css/style.css",
@@ -27,9 +35,10 @@ const ASSETS_TO_CACHE = [
   "./js/tableEditor.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
+  "./js/planRegistry.js",
+  "./js/sessionPersist.js",
   "./js/interface.js",
   "./js/main.js",
-  "./js/planRegistry.js",
 
   // Librairies
   "./lib/jszip.min.js",
