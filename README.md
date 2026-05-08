@@ -9,6 +9,50 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 08/05/2026 — Mode performance réglable (5 presets DLSS-like) + flag debug global
+
+- **Refonte du mode performance** : la simple checkbox boolean est remplacée par un **segmented control 5 boutons** dans le loader, à la manière du DLSS dans les jeux vidéo :
+  - 💤 **Désactivé** — aucun tiling, `L.imageOverlay` direct (qualité brute, équivalent de l'ancien `perfMode = false`). ⚠️ Risque de crash sur Safari iOS pour images > 8192 px
+  - 🔄 **Auto** — comportement legacy : tile uniquement si fichier > 60 Mo, avec params Équilibré (= défaut sain pour 90% des cas)
+  - 🌟 **Qualité** — `MAX_WORK_DIM 12288 / TILE 1024 / JPEG 0.95`. Plus net, recommandé sur PC desktop avec plans très grands à zoomer
+  - 🎯 **Équilibré** — `MAX_WORK_DIM 8192 / TILE 1024 / JPEG 0.88`. Reproduit le comportement v1 (mode performance forcé) — défaut idéal
+  - ⚡ **Performance** — `MAX_WORK_DIM 6144 / TILE 768 / JPEG 0.78`. Plans très lourds, mobile faible, urgence terrain
+- **Persistance par plan** : le preset choisi est sauvegardé dans `PlanRegistry[planId].perfPreset` (localStorage). Plus de pref globale `app_user_prefs.perfMode` — chaque plan a son propre réglage
+- **Tiling logic** :
+  - Mode `off` → JAMAIS de tiling (`L.imageOverlay` direct, choix utilisateur explicite)
+  - Mode `auto` → tile si `fileSize > 60 Mo` (= seuil legacy `PERF_AUTO_TILE_THRESHOLD`)
+  - Modes explicites (`quality`/`balanced`/`performance`) → tile si `imageWidth × imageHeight > 4096²` (= `tuilingNecessaire()` existant, sécurité GPU mobile). Sinon `L.imageOverlay` direct (qualité native)
+- **Nouvelle table `PERF_PRESETS`** dans `tiling.js` (export `window.PERF_PRESETS`) — chaque preset porte ses 3 leviers techniques + emoji + label + description
+- **Nouvelle fonction `resoudrePerfPreset(preset, fileSize, W, H)`** retournant `{tile: bool, params: {...}}`. Remplace l'ancien `perfModeActif(fileSize)` (conservé en alias rétro-compat)
+- **Pipeline de tiling rendu paramétrique** : `chargerImageTuillee`, `_imageVersCanvasReduit`, `_tilerDepuisCanvas` reçoivent désormais `params` (au lieu de lire les constantes globales). Permet à chaque preset d'utiliser ses propres réglages
+- **`plan-config.json` inchangé** — le mode performance est purement un choix utilisateur côté app, pas une donnée du plan
+
+- **Renommage du flag debug** : `motionDebug` → `debugMode` (flag global, plus uniquement tracker)
+  - Ce flag contrôlait UNIQUEMENT les logs du tracker auparavant — il sert maintenant aussi à afficher les **chiffres techniques** (`MAX:8192 / TILE:1024 / Q:0.88 / tile si > 60 Mo`) sous le segmented control du loader
+  - Migration silencieuse au boot : `localStorage.app_user_prefs.motionDebug` → `debugMode` (préserve la valeur)
+  - L'ancienne pref globale `perfMode` est SUPPRIMÉE de localStorage au boot (perfPreset est désormais par plan)
+  - Réglages ⚙️ : ligne "Debug mouvement" renommée en **"Logs détaillés"** (id `cfg_motionDebug` → `cfg_debugMode`)
+  - `tracking.js` met à jour ses 2 références (logs Magnitude + détection de pas)
+
+- **Nouveau bouton 🐛 dans le loader** (bloc "Plus d'options", inséré avant Reset)
+  - Toggle global pour `APP_CONFIG.debugMode` accessible avant tout chargement de plan
+  - Texte dynamique `🐛 Logs détaillés : ON/OFF` + état actif teinté avec la couleur d'accent `#f4c542`
+  - Helper unique `window.setDebugMode(value)` dans `config.js` — utilisé à la fois par le bouton du loader et par le toggle des Réglages ⚙️ (un seul point d'entrée)
+
+- **Nouveaux helpers `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`**
+  - Validation contre `["auto", "quality", "balanced", "performance"]` (toute autre valeur ignorée + warn console)
+  - Le champ `perfPreset` est ajouté au format de fiche plan (optionnel — absent = pas de pref → défaut "auto")
+
+- **Charte graphique respectée** :
+  - Boutons inactifs : fond `rgba(255,255,255,0.04)` / texte `#c8d0e0`
+  - Bouton actif : fond `#f4c542` (jaune doré accent) / texte `#1a1f2e` (sombre, contraste maximal)
+  - Hover inactif : fond `rgba(255,255,255,0.08)` / texte `#e8eaf0`
+  - Description sous segmented : italique `#8892a4` (couleur secondaire)
+
+- **Fichiers modifiés** : `index.html`, `css/style.css`, `js/tiling.js`, `js/config.js`, `js/main.js`, `js/planRegistry.js`, `js/interface.js`, `js/tracking.js`. **Inchangés** : `plan-config.json`, `js/createConf.js` (générateur ZIP), `js/exporter.js`, `js/sessionExporter.js`
+
+---
+
 ### 🗓️ 06/05/2026 (suite 3) — 6 nouveaux tags d'accès + refonte cascade icônes + légende 5 groupes
 
 - **Ajout de 6 nouveaux tags built-in** dans le set par défaut :
@@ -629,11 +673,11 @@ chargerPlanServeur(planPath, registryEntry)
   └─ lancerApplication()
 
 # Chargement d'un ZIP (depuis import ou registre local)
-startImportedPlan(planConfigFile, assetFiles, perfChoisi, meta)
+startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   ├─ resetRuntimeAssets()
   ├─ registerAsset() × N
   ├─ cloneAndResolvePlanConfig()
-  ├─ buildAppConfigFromPlan() + perfMode du loader
+  ├─ buildAppConfigFromPlan() + perfPreset du loader
   ├─ Enregistrement registre :
   │     ├─ Si meta.fsHandle → saveHandle(id, handle)
   │     ├─ Si meta.storeBlob → requestPersistentStorage() + saveBlob(id, file)
@@ -1026,32 +1070,45 @@ Même logique que `choisirIcone` mais pour le canvas d'export. Charge l'image en
 
 ---
 
-## ⚡ Mode Performance (tiling.js)
+## ⚡ Mode performance (tiling.js)
 
-Pour les plans JPEG volumineux (> 60 Mo) qui crashent Safari iOS, le mode performance découpe l'image en tuiles.
+Pour les plans JPEG volumineux qui crashent Safari iOS (`drawImage` > 8192px échoue silencieusement → canvas noir), le mode performance découpe l'image en tuiles. Depuis le **08/05/2026**, le mode est **réglable en 5 presets** (DLSS-like) au lieu d'un simple toggle.
 
-### ✅ Activation
+### ✅ Les 5 presets
 
-| `APP_CONFIG.perfMode` | Comportement |
-|---|---|
-| `null` (Auto) | Activé si `fileSize > 60Mo` |
-| `true` | Toujours activé |
-| `false` | Désactivé — imageOverlay classique |
+| `APP_CONFIG.perfPreset` | `MAX_WORK_DIM` | `TILE_SIZE` | JPEG Q | Quand on tile |
+|---|---|---|---|---|
+| `"off"` | — | — | — | **JAMAIS** (rendu direct, équivalent de l'ancien `perfMode = false`) |
+| `"auto"` (défaut) | (Équilibré quand tile) | — | — | si `fileSize > 60 Mo` |
+| `"quality"` | 12288 | 1024 | 0.95 | si `imageW × imageH > 4096²` |
+| `"balanced"` | 8192 | 1024 | 0.88 | si `imageW × imageH > 4096²` |
+| `"performance"` | 6144 | 768 | 0.78 | si `imageW × imageH > 4096²` |
 
-Le choix dans le loader (checkbox ⚡) est passé explicitement à `startImportedPlan(file, assets, perfChoisi)` et écrase le localStorage.
+> Mode `off` = aucun tiling, choix utilisateur explicite (⚠️ risque de crash Safari iOS pour images > 8192 px).
+> Mode `auto` = comportement v1 (tile uniquement sur fichier énorme, params Équilibré).
+> Modes explicites = on tile dès que techniquement nécessaire (sécurité GPU mobile), avec les params correspondants.
+
+### 💾 Persistance
+
+Le preset est **par plan** (pas une pref globale) — sauvegardé dans `PlanRegistry[planId].perfPreset` (localStorage). Le segmented control du loader reflète la valeur sauvée pour chaque plan.
+
+Le choix dans le loader est passé explicitement à `startImportedPlan(file, assets, presetChoisi, meta)` (ou `chargerPlanServeur(path, registryEntry, presetChoisi)`).
 
 ### 🔁 Flux technique
 
 ```
 chargerImage(url, bounds, map, fileSize, sourceFile)
-  → perfModeActif() ?
-      → chargerImageTuillee()
-          → _imageVersCanvasReduit() ← <img> HTML → canvas (max 8192px)
+  → resoudrePerfPreset(APP_CONFIG.perfPreset, fileSize, W, H)
+      → { tile: bool, params: PERF_PRESETS[preset] | null }
+  → si tile :
+      → chargerImageTuillee(url, bounds, map, sourceFile, params)
+          → _imageVersCanvasReduit(..., params.maxWorkDim)
               ↳ Blob URL créée et révoquée à l'intérieur (sécurité Safari)
               ↳ Détection canvas noir + re-essai 100ms
-          → _tilerDepuisCanvas()    ← découpe en tuiles 1024×1024 JPEG 0.88
-              → L.imageOverlay()    ← placement Leaflet
-      → L.imageOverlay()            ← mode normal
+          → _tilerDepuisCanvas(..., params)  ← params.tileSize / params.jpegQuality
+              → L.imageOverlay()             ← placement Leaflet
+  → sinon :
+      → L.imageOverlay(url, bounds)          ← rendu direct (qualité native)
 ```
 
 ### 🍎 Limites Safari iOS
@@ -1061,25 +1118,44 @@ chargerImage(url, bounds, map, fileSize, sourceFile)
 - Fallback : re-essai avec `setTimeout(100ms)`, puis `imageOverlay` classique si toujours noir
 - La Blob URL est créée et révoquée **à l'intérieur** de `_imageVersCanvasReduit` pour éviter l'expiration sandbox Safari
 
+### 🐛 Mode debug
+
+Si `APP_CONFIG.debugMode === true`, le segmented control du loader affiche une ligne supplémentaire avec les chiffres techniques courants (ex: `MAX:8192 / TILE:1024 / Q:0.88 / tile si > 60 Mo`). Activable via le bouton `🐛 Logs détaillés` dans "Plus d'options" du loader, OU via Réglages ⚙️ > Logs détaillés.
+
 ---
 
 ## 💾 Préférences utilisateur
 
-Les préférences sont séparées de la config plan pour survivre aux changements de plan :
+Deux niveaux de persistance :
+
+### 1. Globale — `localStorage.app_user_prefs`
 
 ```js
-// Sauvegarde
-localStorage.setItem("app_user_prefs", JSON.stringify({
-  motionDebug: APP_CONFIG.motionDebug,
-  perfMode:    APP_CONFIG.perfMode
-}));
-
-// Restauration (dans buildAppConfigFromPlan)
-const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-if ("perfMode" in saved) cfg.perfMode = saved.perfMode;
+{
+  "debugMode": true | false   // unique pref globale (logs détaillés tracker + chiffres perf)
+}
 ```
 
-Les dimensions du plan et paramètres tracking viennent toujours du `plan-config.json`.
+Géré par `sauvegarderPrefsUtilisateur()` (config.js). Helper unique `setDebugMode(value)` pour modifier (utilisé par le bouton 🐛 du loader ET le toggle Réglages ⚙️).
+
+### 2. Par plan — `PlanRegistry[planId].perfPreset`
+
+```js
+{
+  "id": "local_planmarseille_v1",
+  ...
+  "perfPreset": "balanced"   // optionnel — absent = défaut "auto"
+}
+```
+
+Géré par `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Validation contre la liste `["auto", "quality", "balanced", "performance"]`.
+
+### Migration v1 → v2 (au boot, idempotente)
+
+- Ancienne clé `motionDebug` → `debugMode` (préserve la valeur)
+- Ancienne clé `perfMode` (globale) → SUPPRIMÉE (perfPreset est par plan désormais)
+
+Les dimensions du plan et paramètres tracking viennent toujours du `plan-config.json` (inchangés).
 
 ---
 
@@ -1148,7 +1224,8 @@ Gère :
 - `RUNTIME_ASSETS` — registre des fichiers importés (Blob URLs)
 - `buildAppConfigFromPlan()` — construit APP_CONFIG depuis un plan + préférences
 - `loadAppConfig()` — charge `data/plan-config.json` (mode serveur)
-- `sauvegarderPrefsUtilisateur()` — persiste `motionDebug` et `perfMode`
+- `sauvegarderPrefsUtilisateur()` — persiste `debugMode` (la seule pref globale ; `perfPreset` est par plan via PlanRegistry)
+- `setDebugMode(value)` — helper unique pour modifier le flag debug (utilisé par loader + Réglages ⚙️)
 - Helpers : `registerAsset()`, `findMatchingFile()`, `cloneAndResolvePlanConfig()`, `validateImportedPlan()`
 
 ### `map.js` (unifié)

@@ -11,10 +11,14 @@
 //   version: "1.0",
 //   lastPlanId: "server_data_test1" | "local_planmarseille_v1" | null,
 //   plans: [
-//     { id, type:"server", path, name, version, author, discovered, lastOpened, addedAt },
-//     { id, type:"local",  name, version, originalFilename, fileSize, fsHandleId?, lastOpened, addedAt }
+//     { id, type:"server", path, name, version, author, discovered, lastOpened, addedAt, perfPreset? },
+//     { id, type:"local",  name, version, originalFilename, fileSize, fsHandleId?, lastOpened, addedAt, perfPreset? }
 //   ]
 // }
+//
+// `perfPreset` (optionnel) : "auto" | "quality" | "balanced" | "performance"
+//   → choix de mode performance mémorisé pour CE plan (champ ajouté en v2).
+//   → absent = aucun choix mémorisé, le loader affichera "auto" par défaut.
 //
 // API publique : window.PlanRegistry
 // =========================
@@ -156,6 +160,36 @@
     _data.plans = [];
     _data.lastPlanId = null;
     _save();
+  }
+
+  // ========== PERF PRESET (PAR PLAN) ==========
+  const _PERF_VALID = ["off", "auto", "quality", "balanced", "performance"];
+
+  // Récupère le preset perf mémorisé pour un plan, ou null si jamais réglé.
+  function getPerfPreset(id) {
+    init();
+    const p = findById(id);
+    return (p && typeof p.perfPreset === "string" && _PERF_VALID.indexOf(p.perfPreset) >= 0)
+      ? p.perfPreset
+      : null;
+  }
+
+  // Mémorise le preset perf pour un plan. Retourne true si modification appliquée.
+  function setPerfPreset(id, preset) {
+    init();
+    if (_PERF_VALID.indexOf(preset) < 0) {
+      console.warn("[PlanRegistry] perfPreset invalide :", preset, "— ignoré");
+      return false;
+    }
+    const p = findById(id);
+    if (!p) {
+      console.warn("[PlanRegistry] setPerfPreset : plan introuvable", id);
+      return false;
+    }
+    if (p.perfPreset === preset) return true; // pas de changement
+    p.perfPreset = preset;
+    _save();
+    return true;
   }
 
   // ========== EXPORT / IMPORT ==========
@@ -391,6 +425,8 @@
     markOpened:           markOpened,
     remove:               remove,
     removeAll:            removeAll,
+    getPerfPreset:        getPerfPreset,
+    setPerfPreset:        setPerfPreset,
     exportToFile:         exportToFile,
     importFromFile:       importFromFile,
     statsImport:          statsImport,

@@ -1726,43 +1726,123 @@ html, body {
   min-height: 16px;
 }
 
-/* Toggle mode performance dans le loader */
-.loader-perf-wrap {
+/* ==============================================
+   MODE PERFORMANCE — segmented control (loader)
+   ============================================== */
+.kta-perf-wrap {
   margin-top: 14px;
   padding: 10px 12px;
   background: rgba(255,255,255,0.03);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: 8px;
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
   flex-direction: column;
+  gap: 8px;
 }
 
-.loader-perf-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.kta-perf-titre {
   font-size: 13px;
   font-weight: 600;
   color: #e8eaf0;
-  cursor: pointer;
   user-select: none;
 }
 
-.loader-perf-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #1f6feb;
-  cursor: pointer;
-  flex-shrink: 0;
+.kta-perf-segmented {
+  display: flex;
+  width: 100%;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  overflow: hidden;
 }
 
-.loader-perf-hint {
+.kta-perf-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: rgba(255,255,255,0.04);
+  border: none;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  color: #c8d0e0;
+  cursor: pointer;
+  font-family: inherit;
+  line-height: 1.2;
+  text-align: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.kta-perf-btn:last-child {
+  border-right: none;
+}
+
+.kta-perf-btn:hover:not(.active) {
+  background: rgba(255,255,255,0.08);
+  color: #e8eaf0;
+}
+
+.kta-perf-btn.active {
+  background: #f4c542;
+  color: #1a1f2e;
+}
+
+.kta-perf-btn .kta-perf-emoji {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.kta-perf-btn .kta-perf-label {
   font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.kta-perf-btn.active .kta-perf-label {
+  font-weight: 700;
+}
+
+.kta-perf-desc {
+  font-size: 12px;
+  font-style: italic;
   color: #8892a4;
   line-height: 1.4;
-  padding-left: 24px;
+  padding: 0 2px;
+  min-height: 1.4em;
+}
+
+.kta-perf-debug {
+  font-size: 10px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color: rgba(244, 197, 66, 0.75);
+  padding: 4px 6px;
+  background: rgba(244, 197, 66, 0.06);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 4px;
+  word-break: break-word;
+}
+
+/* ==============================================
+   BOUTON DEBUG TOGGLE (loader, advancedBox)
+   Hérite de .loader-btn-secondary — ajout d'un état "actif"
+   teinté avec la couleur d'accent (#f4c542)
+   ============================================== */
+.loader-btn-secondary.kta-debug-toggle.active {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.45);
+  color: #f4c542;
+}
+
+.loader-btn-secondary.kta-debug-toggle.active:hover {
+  background: rgba(244, 197, 66, 0.20);
+  border-color: rgba(244, 197, 66, 0.65);
 }
 
 

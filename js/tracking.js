@@ -181,7 +181,7 @@ function initMotion() {
 
     magnitude = Math.round(magnitude * 10) / 10;
 
-    if (APP_CONFIG.motionDebug) {
+    if (APP_CONFIG.debugMode) {
       console.log("Magnitude:", magnitude.toFixed(2));
     }
 
@@ -191,7 +191,7 @@ function initMotion() {
     ) {
       stepCount++;
 
-      if (APP_CONFIG.motionDebug) {
+      if (APP_CONFIG.debugMode) {
         console.log("👣 Pas détecté :", stepCount);
       }
 
