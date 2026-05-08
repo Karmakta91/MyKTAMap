@@ -9,6 +9,9 @@
 //  - le format et la résolution
 // =========================
 
+// Marqueur de version au chargement (cf. utils.js pour la justification)
+console.info("[exporter.js] chargé — build 2026-05-09 (logs export modale)");
+
 (function() {
   "use strict";
 

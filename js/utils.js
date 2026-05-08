@@ -1,3 +1,9 @@
+// Marqueur de version au chargement — permet de vérifier au coup d'œil
+// dans la console (F12) si le navigateur sert bien la dernière version
+// après un bump SW. Si tu ne vois pas ce log, c'est que le cache sert
+// une vieille version → hard reload + check Application > Service Workers.
+console.info("[utils.js] chargé — build 2026-05-09 (export rapide instrumenté)");
+
 function convertCoord(x, y) {
   return [APP_CONFIG.imageHeight - y, x];
 }
