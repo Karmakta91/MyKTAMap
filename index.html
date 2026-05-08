@@ -916,6 +916,9 @@
         });
       }
 
+      // Exposer chargerPlanDuRegistre globalement pour que le panneau "plan switcher" du titre puisse l'appeler
+      window.chargerPlanDuRegistre = chargerPlanDuRegistre;
+
       // Premier rendu de la liste
       if (window.refreshPlansList) window.refreshPlansList();
     });

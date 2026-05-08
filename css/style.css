@@ -75,8 +75,171 @@ html, body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.45);
   padding: 7px 18px;
   border-radius: 10px;
-  pointer-events: none;
+  cursor: pointer;
+  user-select: none;
   white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+#kta-titre-fixe:hover {
+  background: #232838;
+  border-color: rgba(140,180,255,0.35);
+}
+
+#kta-titre-fixe.ouvert {
+  background: #232838;
+  border-color: rgba(140,180,255,0.55);
+}
+
+#kta-titre-fixe:active {
+  transform: translateX(-50%) scale(0.98);
+}
+
+.kta-titre-arrow {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  color: #8cb4ff;
+  opacity: 0.7;
+  transition: transform 0.15s, opacity 0.15s;
+  vertical-align: middle;
+}
+
+#kta-titre-fixe:hover .kta-titre-arrow {
+  opacity: 1;
+}
+
+#kta-titre-fixe.ouvert .kta-titre-arrow {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+/* ══════════════════════════════════════════════
+   PLAN SWITCHER — panneau déroulant ancré sous le titre
+   ══════════════════════════════════════════════ */
+
+#kta-plan-switcher {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1099;
+  min-width: 280px;
+  max-width: 360px;
+  background: #1a1f2e;
+  border: 1px solid rgba(140,180,255,0.25);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+  padding: 8px 0;
+  animation: ktaSwitcherIn 0.18s ease-out both;
+  overflow: hidden;
+}
+
+@keyframes ktaSwitcherIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.kta-switcher-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  padding: 6px 14px;
+  font-weight: 600;
+}
+
+.kta-switcher-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.kta-switcher-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.kta-switcher-row:hover {
+  background: rgba(140,180,255,0.12);
+}
+
+.kta-switcher-icon {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.kta-switcher-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.kta-switcher-name {
+  font-size: 13px;
+  color: #e8eaf0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kta-switcher-ver {
+  display: inline-block;
+  font-size: 10px;
+  color: #8cb4ff;
+  background: rgba(140,180,255,0.12);
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 4px;
+}
+
+.kta-switcher-sub {
+  font-size: 11px;
+  color: #8892a4;
+  margin-top: 1px;
+}
+
+.kta-switcher-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #6c7689;
+  font-style: italic;
+  text-align: center;
+}
+
+.kta-switcher-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 4px 0;
+}
+
+.kta-switcher-link {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #8cb4ff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.12s, color 0.12s;
+  text-align: center;
+}
+
+.kta-switcher-link:hover {
+  background: rgba(140,180,255,0.14);
+  color: #e8eaf0;
+}
+
+/* Mobile : adapter taille panneau */
+@media (max-width: 480px) {
+  #kta-plan-switcher {
+    min-width: 240px;
+    max-width: 92vw;
+  }
 }
 
 /* ==============================================
@@ -533,6 +696,7 @@ html, body {
   padding: 20px 24px 24px;
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.15) transparent;
+  color: #c8d0e0;
 }
 
 .kta-readme-corps {

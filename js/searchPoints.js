@@ -16,9 +16,10 @@
 
   // ========== ÉTAT ==========
   let _modal       = null;
-  let _pointsCache = null;          // [{point, layerId, layerLabel}]
+  let _pointsCache = null;          // [{point, layerId, layerLabel}] — UNIQUEMENT data layers externes (cache)
   let _planSignature = null;        // pour invalider le cache au changement de plan
   let _filtreTimer = null;
+  let _visibles    = [];            // liste actuellement affichée (référence pour les clics)
   let _flashLayer  = null;          // pour l'animation visuelle
 
   // ========== STYLES INJECTÉS ==========
@@ -217,7 +218,7 @@
 
     // Charger le cache au besoin
     _chargerCache().then(function() {
-      infoEl.textContent = _pointsCache.length + " point(s) disponible(s)";
+      infoEl.textContent = _tousLesPoints().length + " point(s) disponible(s)";
       _renderResultats("");
       input.focus();
     }).catch(function(err) {
@@ -261,6 +262,9 @@
   }
 
   // ========== CHARGEMENT DU CACHE DE POINTS ==========
+  // Le cache `_pointsCache` ne contient QUE les points externes (data.json).
+  // Les points editor sont récupérés à chaque appel via `_collecterPointsEditor()`
+  // car ils peuvent changer entre 2 ouvertures de la recherche (ajout, import session, etc.)
   async function _chargerCache() {
     const sig = _signaturePlan();
     if (sig === _planSignature && _pointsCache) return;
@@ -271,38 +275,50 @@
     const config = window.PLAN_CONFIG;
     if (!config) throw new Error("Plan non chargé");
 
-    // Calques de données
+    // Calques de données externes uniquement (on saute "editor")
     if (Array.isArray(config.dataLayers)) {
       for (const lc of config.dataLayers) {
+        if (lc.id === "editor") continue;       // editor traité séparément à chaque recherche
         try {
-          if (lc.id === "editor") {
-            // Points de session
-            const pts = window.getEditorPoints ? window.getEditorPoints() : [];
-            pts.forEach(function(p) {
-              _pointsCache.push({ point: p, layerId: lc.id, layerLabel: lc.label || lc.id });
-            });
-          } else {
-            const r = await fetch(lc.file);
-            const j = await r.json();
-            const pts = Array.isArray(j.data) ? j.data : [];
-            pts.forEach(function(p) {
-              _pointsCache.push({ point: p, layerId: lc.id, layerLabel: lc.label || lc.id });
-            });
-          }
+          const r = await fetch(lc.file);
+          const j = await r.json();
+          const pts = Array.isArray(j.data) ? j.data : [];
+          pts.forEach(function(p) {
+            _pointsCache.push({ point: p, layerId: lc.id, layerLabel: lc.label || lc.id });
+          });
         } catch(e) {
           console.warn("[Search] Erreur chargement", lc.file, e);
         }
       }
     }
+  }
 
-    // Si "editor" n'est pas dans les dataLayers, l'ajouter manuellement
-    const aDejaEditor = (_pointsCache.some(function(it) { return it.layerId === "editor"; }));
-    if (!aDejaEditor && window.getEditorPoints) {
-      const pts = window.getEditorPoints();
-      pts.forEach(function(p) {
-        _pointsCache.push({ point: p, layerId: "editor", layerLabel: "Mes ajouts" });
-      });
+  // Récupère les points editor à jour (jamais cachés)
+  // → garantit que les imports de session, ajouts/suppressions sont immédiatement
+  //   visibles dans la recherche sans avoir à recharger le plan.
+  function _collecterPointsEditor() {
+    const out = [];
+    if (!window.getEditorPoints) return out;
+
+    const config = window.PLAN_CONFIG;
+    // Trouver le label du calque editor (s'il est déclaré dans dataLayers)
+    let label = "Mes ajouts";
+    if (config && Array.isArray(config.dataLayers)) {
+      const lc = config.dataLayers.find(function(d) { return d.id === "editor"; });
+      if (lc && lc.label) label = lc.label;
     }
+
+    const pts = window.getEditorPoints() || [];
+    pts.forEach(function(p) {
+      out.push({ point: p, layerId: "editor", layerLabel: label });
+    });
+    return out;
+  }
+
+  // Renvoie l'ensemble complet (cache externe + editor frais)
+  function _tousLesPoints() {
+    const editor = _collecterPointsEditor();
+    return (_pointsCache || []).concat(editor);
   }
 
   // ========== NORMALISATION POUR RECHERCHE ==========
@@ -313,12 +329,13 @@
 
   // ========== RECHERCHE & TRI ==========
   function _filtrer(query) {
-    if (!query) return _pointsCache.slice();
+    const tousPoints = _tousLesPoints();
+    if (!query) return tousPoints.slice();
 
     const q = _normalize(query);
     const matches = [];
 
-    for (const it of _pointsCache) {
+    for (const it of tousPoints) {
       const p = it.point;
       const nom  = _normalize(p.nom || "");
       const id   = _normalize(p.id || "");
@@ -373,7 +390,7 @@
         ? "Aucun résultat"
         : filtered.length + " résultat(s)";
     } else {
-      infoEl.textContent = _pointsCache.length + " point(s) disponible(s)";
+      infoEl.textContent = _tousLesPoints().length + " point(s) disponible(s)";
     }
 
     if (filtered.length === 0) {
@@ -389,6 +406,7 @@
     }
 
     let html = "";
+    _visibles = visibles;  // mémoriser pour les listeners (les clics se fient à l'index local)
     visibles.forEach(function(it, idx) {
       const p = it.point;
       const iconUrl = _getIconUrl(p);
@@ -397,7 +415,9 @@
         ? '<span class="kta-search-coords">x:' + p.x + ' y:' + p.y + '</span>'
         : '';
 
-      html += '<div class="kta-search-result' + (idx === 0 && query ? " active" : "") + '" data-cache-idx="' + _pointsCache.indexOf(it) + '">';
+      // data-visible-idx référence l'index dans la liste actuellement affichée
+      // (et non plus _pointsCache, qui ne contient que les data layers externes)
+      html += '<div class="kta-search-result' + (idx === 0 && query ? " active" : "") + '" data-visible-idx="' + idx + '">';
       html += '<div class="kta-search-icon">';
       if (iconUrl) html += '<img src="' + _escapeAttr(iconUrl) + '" alt="">';
       else         html += '<span style="font-size:18px; opacity:0.4;">📍</span>';
@@ -428,15 +448,20 @@
     // Listeners
     resEl.querySelectorAll(".kta-search-result").forEach(function(el) {
       el.addEventListener("click", function() {
-        const idx = parseInt(el.dataset.cacheIdx);
-        const it = _pointsCache[idx];
+        const idx = parseInt(el.dataset.visibleIdx);
+        const it = _visibles[idx];
         if (it) _aller(it);
       });
     });
   }
 
   // ========== RÉCUPÉRATION DE L'ICÔNE ==========
+  // Cascade : plan-config.icons[tag] → _iconMap[tag] (built-in fallback) → default
   function _getIconUrl(p) {
+    if (typeof window.getIconUrlForPoint === "function") {
+      return window.getIconUrlForPoint(p);
+    }
+    // Fallback ancien comportement si utils.js pas chargé
     const config = window.PLAN_CONFIG;
     if (!config || !config.icons) return null;
     if (Array.isArray(p.tags)) {

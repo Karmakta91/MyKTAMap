@@ -12,6 +12,12 @@ const EDITOR_TAG_LABELS = {
   pb:       "Puits Bouché",
   pe:       "Puits au sol / Bassin",
   ps:       "Puits extraction",
+  peo:      "Puits à échelon ouvert",
+  pef:      "Puits à échelon fermé",
+  eso:      "Escalier service ouvert",
+  esf:      "Escalier service fermé",
+  cao:      "Cavage ouvert",
+  caf:      "Cavage fermé",
   passage:  "Passage",
   chatiere: "Chatière",
   vehicule: "Véhicule",
@@ -49,27 +55,35 @@ function initEditor() {
 }
 
 // =========================
-// OPTIONS DYNAMIQUES (tags existants)
+// OPTIONS DYNAMIQUES (fusion des tags connus + tags du plan-config)
 // =========================
 function _buildTypeOptionsHTML(selectedTag) {
   const icons = window.PLAN_CONFIG?.icons || {};
-  const tags  = Object.keys(icons).filter(function(k) { return !EDITOR_EXCLURE.includes(k); });
+
+  // Set des tags : on cumule
+  //   1. tous les tags définis dans EDITOR_TAG_LABELS (y compris les nouveaux : peo, pef, etc.)
+  //   2. + les tags du plan-config (pour les tags custom ajoutés à un plan particulier)
+  // → l'utilisateur peut TOUJOURS sélectionner un type, même si le plan-config
+  //   ne déclare pas son icône (l'app utilisera _iconMap[tag] ou l'icône par défaut)
+  const tagsSet = new Set(Object.keys(EDITOR_TAG_LABELS));
+  Object.keys(icons).forEach(function(k) {
+    if (!EDITOR_EXCLURE.includes(k)) tagsSet.add(k);
+  });
+  // Retirer les tags système
+  EDITOR_EXCLURE.forEach(function(k) { tagsSet.delete(k); });
+
+  // Trier : d'abord les tags labellisés (ordre de EDITOR_TAG_LABELS),
+  // puis les tags custom non labellisés en fin
+  const known   = Object.keys(EDITOR_TAG_LABELS).filter(function(k) { return tagsSet.has(k); });
+  const custom  = [...tagsSet].filter(function(k) { return !EDITOR_TAG_LABELS[k]; });
+  const orderedTags = known.concat(custom);
 
   let html = '<option value="">— Aucun tag (défaut) —</option>';
-
-  if (tags.length === 0) {
-    html += Object.entries(EDITOR_TAG_LABELS)
-      .map(function(e) {
-        const sel = e[0] === selectedTag ? ' selected' : '';
-        return `<option value="${e[0]}"${sel}>${e[1]}</option>`;
-      }).join("");
-  } else {
-    html += tags.map(function(tag) {
-      const label = EDITOR_TAG_LABELS[tag] || tag;
-      const sel   = tag === selectedTag ? ' selected' : '';
-      return `<option value="${tag}"${sel}>${label}</option>`;
-    }).join("");
-  }
+  html += orderedTags.map(function(tag) {
+    const label = EDITOR_TAG_LABELS[tag] || tag;
+    const sel   = tag === selectedTag ? ' selected' : '';
+    return `<option value="${tag}"${sel}>${label}</option>`;
+  }).join("");
 
   html += '<option value="__new__">➕ Créer un nouveau tag…</option>';
   return html;

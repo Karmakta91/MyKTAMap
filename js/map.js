@@ -89,6 +89,40 @@ function creerIcones(iconConfig) {
     });
   });
 
+  // Tags par défaut : si le plan-config ne les déclare pas, on les ajoute quand même
+  // (ils seront chargés depuis icon/<tag>.png si le PNG existe, sinon icône par défaut)
+  // Permet d'utiliser ces tags sur des plans existants sans modifier leur plan-config.json
+  const TAGS_BUILTIN = {
+    salle:    "icon/house.png",
+    pa:       "icon/pa.png",
+    pc:       "icon/pc.png",
+    pb:       "icon/pb.png",
+    pe:       "icon/pe.png",
+    ps:       "icon/ps.png",
+    peo:      "icon/peo.png",
+    pef:      "icon/pef.png",
+    eso:      "icon/eso.png",
+    esf:      "icon/esf.png",
+    cao:      "icon/cao.png",
+    caf:      "icon/caf.png",
+    vehicule: "icon/vehicule.png",
+    elec:     "icon/elec.png",
+    epure:    "icon/epure.png",
+    info:     "icon/info.png",
+    chatiere: "icon/chatiere.png",
+    passage:  "icon/passage.png",
+    danger:   "icon/danger.png"
+  };
+  Object.keys(TAGS_BUILTIN).forEach(function(tag) {
+    if (!window._iconMap[tag]) {
+      window._iconMap[tag] = L.icon({
+        iconUrl:    TAGS_BUILTIN[tag],
+        iconSize:   [50, 50],
+        iconAnchor: [25, 25]
+      });
+    }
+  });
+
   // Garantir que "default" est toujours présent dans _iconMap
   if (!window._iconMap.default) {
     window._iconMap.default = iconeDefault;

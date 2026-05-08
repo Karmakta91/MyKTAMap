@@ -290,10 +290,14 @@
     return String(tag).replace(/[^a-z0-9_-]/gi, "_");
   }
 
-  // Récupère l'icône miniature d'un tag depuis PLAN_CONFIG.icons (pour preview)
+  // Récupère l'icône miniature d'un tag avec cascade :
+  //   1. PLAN_CONFIG.icons[tag]  2. _iconMap[tag] (built-in fallback)
   function _iconePourTag(tag) {
-    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.icons) return null;
-    return window.PLAN_CONFIG.icons[tag] || null;
+    const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+    if (planIcons[tag]) return planIcons[tag];
+    const entry = window._iconMap && window._iconMap[tag];
+    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
+    return null;
   }
 
   // ========== AFFICHAGE MODALE ==========

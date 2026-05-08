@@ -192,10 +192,12 @@
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
+        color: #c8d0e0;
       }
       .kta-tbl-drop:hover, .kta-tbl-drop.dragover {
         background: rgba(140,180,255,0.06);
         border-color: rgba(140,180,255,0.5);
+        color: #e8eaf0;
       }
 
       /* Avertissement gros volume */
@@ -987,7 +989,7 @@
   function _confirmerSortie() {
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
-    overlay.style.zIndex = "10001";
+    overlay.style.zIndex = "100001"; // au-dessus de .kta-readme-modal-overlay (z-index 99999)
     overlay.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:420px; height:auto;">
         <div class="kta-readme-modal-header">
@@ -1029,7 +1031,7 @@
 
     const overlay = document.createElement("div");
     overlay.className = "kta-readme-modal-overlay";
-    overlay.style.zIndex = "10001";
+    overlay.style.zIndex = "100001"; // au-dessus de .kta-readme-modal-overlay (z-index 99999)
     overlay.innerHTML = `
       <div class="kta-readme-modal-boite" style="max-width:480px; height:auto;">
         <div class="kta-readme-modal-header">

@@ -317,12 +317,12 @@
       </div>`;
     }).join("");
 
-    // Charger les tags de chaque calque en async
+    // Charger les infos (tags + types roads/zones) de chaque calque en async
     layers.forEach(function(l) {
-      _chargerTagsCalque(l).then(function(tagsList) {
-        _renderTagsCalque(l, tagsList);
+      _chargerInfosCalque(l).then(function(infos) {
+        _renderInfosCalque(l, infos);
       }).catch(function(e) {
-        console.warn("[Export] Tags " + l.id + " :", e);
+        console.warn("[Export] Infos " + l.id + " :", e);
       });
     });
   }
@@ -359,32 +359,67 @@
     return list;
   }
 
-  // Charge les points d'un calque pour en lister les tags (avec petit cache local à la session de modale)
+  // Liste les types présents dans un tableau d'objets ayant un champ .type
+  // Retourne { type: count } uniquement pour les types qui apparaissent
+  function _compterTypes(arr, allTypes) {
+    const out = {};
+    allTypes.forEach(function(t) { out[t] = 0; });
+    (arr || []).forEach(function(item) {
+      if (out.hasOwnProperty(item.type)) out[item.type]++;
+    });
+    return out;
+  }
+
+  // Charge le contenu d'un calque (points + roads + zones) pour pré-construire les filtres
+  // Cache local à la modale pour ne pas refetch à chaque rendu
   const _layerPointsCache = {};
-  async function _chargerTagsCalque(layerCfg) {
+  async function _chargerInfosCalque(layerCfg) {
     if (_layerPointsCache[layerCfg.id]) return _layerPointsCache[layerCfg.id];
 
     let points = [];
+    let roads = [];
+    let zones = [];
+
     if (layerCfg.id === "editor") {
       points = window.getEditorPoints ? window.getEditorPoints() : [];
+      // Le calque éditeur n'a pas de roads/zones embarquées (gérées via session côté annotations)
     } else {
       try {
         const r = await fetch(layerCfg.file);
         const j = await r.json();
         points = j.data || [];
+        roads  = Array.isArray(j.roads) ? j.roads : [];
+        zones  = Array.isArray(j.zones) ? j.zones : [];
       } catch(e) {
-        return [];
+        const empty = { tags: [], roadTypes: {}, zoneTypes: {} };
+        _layerPointsCache[layerCfg.id] = empty;
+        return empty;
       }
     }
-    const tags = _listerTagsPoints(points);
-    _layerPointsCache[layerCfg.id] = tags;
-    return tags;
+
+    const infos = {
+      tags:      _listerTagsPoints(points),
+      roadTypes: _compterTypes(roads, ["principal", "secondaire", "chemin"]),
+      zoneTypes: _compterTypes(zones, ["eau", "remblais", "effondrement"])
+    };
+    _layerPointsCache[layerCfg.id] = infos;
+    return infos;
   }
 
-  // Récupère le chemin de l'icône pour un tag depuis PLAN_CONFIG.icons
+  // Compatibilité : ancienne fonction _chargerTagsCalque qui ne retournait que les tags
+  async function _chargerTagsCalque(layerCfg) {
+    const infos = await _chargerInfosCalque(layerCfg);
+    return infos.tags;
+  }
+
+  // Récupère le chemin de l'icône pour un tag, avec cascade :
+  //   1. PLAN_CONFIG.icons[tag]  2. _iconMap[tag] (built-in fallback)
   function _iconePourTag(tag) {
-    if (!window.PLAN_CONFIG || !window.PLAN_CONFIG.icons) return null;
-    return window.PLAN_CONFIG.icons[tag] || null;
+    const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+    if (planIcons[tag]) return planIcons[tag];
+    const entry = window._iconMap && window._iconMap[tag];
+    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
+    return null;
   }
 
   function _escapeHtmlExport(s) {
@@ -395,35 +430,79 @@
 
   // Affiche les sous-cases tags pour un calque + branche la synchro parent/enfants
   function _renderTagsCalque(layerCfg, tagsList) {
+    // Wrapper de compatibilité — appelle la nouvelle version sans roads/zones
+    _renderInfosCalque(layerCfg, { tags: tagsList || [], roadTypes: {}, zoneTypes: {} });
+  }
+
+  // Affiche les sous-cases (tags + types roads + types zones) pour un calque + branche les synchros
+  function _renderInfosCalque(layerCfg, infos) {
     const safeId = _slugLayerId(layerCfg.id);
     const cont = document.getElementById("export_layer_tags_" + safeId);
     if (!cont) return;
-    if (!tagsList || tagsList.length === 0) {
+
+    const tagsList   = (infos && infos.tags)      || [];
+    const roadTypes  = (infos && infos.roadTypes) || {};
+    const zoneTypes  = (infos && infos.zoneTypes) || {};
+
+    const hasTags  = tagsList.length > 0;
+    const hasRoads = ["principal","secondaire","chemin"].some(function(t) { return roadTypes[t] > 0; });
+    const hasZones = ["eau","remblais","effondrement"].some(function(t) { return zoneTypes[t] > 0; });
+
+    if (!hasTags && !hasRoads && !hasZones) {
       cont.innerHTML = "";
       return;
     }
 
-    const html = tagsList.map(function(item) {
-      const safeTag = _slugTagId(item.tag);
-      const id = "export_layer_" + safeId + "_tag_" + safeTag;
-      const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
-      const iconHtml = iconUrl
-        ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
-        : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
-      const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
-      return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
-        <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
-        <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
-      </label>`;
-    }).join("");
+    let html = "";
+
+    // Tags des points
+    if (hasTags) {
+      html += tagsList.map(function(item) {
+        const safeTag = _slugTagId(item.tag);
+        const id = "export_layer_" + safeId + "_tag_" + safeTag;
+        const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
+        const iconHtml = iconUrl
+          ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+        const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
+        return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
+          <input type="checkbox" id="${id}" data-layer-tag-of="${layerCfg.id}" checked>
+          <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
+        </label>`;
+      }).join("");
+    }
+
+    // Sous-cases types de routes embarquées
+    if (hasRoads) {
+      const roadLabels = { principal: "🟩 Principaux", secondaire: "🟪 Secondaires", chemin: "🟨 Chemins" };
+      ["principal","secondaire","chemin"].forEach(function(t) {
+        if (!roadTypes[t]) return;
+        const id = "export_layer_" + safeId + "_road_" + t;
+        html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
+          <input type="checkbox" id="${id}" data-layer-roadtype-of="${layerCfg.id}" checked>
+          <span>${roadLabels[t]} <span style="color:#8892a4;">(${roadTypes[t]})</span></span>
+        </label>`;
+      });
+    }
+
+    // Sous-cases types de zones embarquées
+    if (hasZones) {
+      const zoneLabels = { eau: "🟦 Eau", remblais: "⬛ Remblais", effondrement: "🟥 Effondrement" };
+      ["eau","remblais","effondrement"].forEach(function(t) {
+        if (!zoneTypes[t]) return;
+        const id = "export_layer_" + safeId + "_zone_" + t;
+        html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
+          <input type="checkbox" id="${id}" data-layer-zonetype-of="${layerCfg.id}" checked>
+          <span>${zoneLabels[t]} <span style="color:#8892a4;">(${zoneTypes[t]})</span></span>
+        </label>`;
+      });
+    }
+
     cont.innerHTML = html;
 
-    // Synchronisation parent ↔ enfants
+    // Synchronisation parent ↔ TOUS les enfants (tags + roads + zones)
     const parent = document.getElementById("export_layer_" + safeId);
-    const subs = tagsList.map(function(item) {
-      const safeTag = _slugTagId(item.tag);
-      return document.getElementById("export_layer_" + safeId + "_tag_" + safeTag);
-    }).filter(Boolean);
+    const subs = Array.from(cont.querySelectorAll('input[type="checkbox"]'));
 
     if (parent && subs.length > 0) {
       parent.addEventListener("change", function() {
@@ -439,31 +518,59 @@
     }
   }
 
+
   // Lit les tags cochés pour un calque donné. Retourne { tagsCoches: Set, untaggedCoche: bool, tousActifs: bool }
-  // tousActifs = true si AUCUNE sous-case n'est présente (= calque sans tags identifiables)
+  // tousActifs = true si AUCUNE sous-case tag n'est présente (= calque sans tags identifiables)
   // → dans ce cas, on inclut tous les points sans filtrage.
   function _lireTagsCochesCalque(layerId) {
     const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
-    const inputs = cont ? cont.querySelectorAll('input[type="checkbox"]') : [];
+    const inputs = cont ? cont.querySelectorAll('input[data-layer-tag-of]') : [];
     if (inputs.length === 0) {
       return { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
     }
     const tagsCoches = new Set();
     let untaggedCoche = false;
+    const cache = _layerPointsCache[layerId];
+    const tagsCache = cache && cache.tags ? cache.tags : [];
     inputs.forEach(function(cb) {
       if (!cb.checked) return;
-      const id = cb.id;
-      // L'id se termine par "_tag_<safeTag>"
-      const m = id.match(/_tag_(.+)$/);
+      const m = cb.id.match(/_tag_(.+)$/);
       if (!m) return;
-      // Le safeTag peut différer du tag original ; on retrouve l'item dans le cache
-      const cache = _layerPointsCache[layerId] || [];
-      const item = cache.find(function(it) { return _slugTagId(it.tag) === m[1]; });
+      const item = tagsCache.find(function(it) { return _slugTagId(it.tag) === m[1]; });
       if (!item) return;
       if (item.isUntagged) untaggedCoche = true;
       else tagsCoches.add(item.tag);
     });
     return { tagsCoches: tagsCoches, untaggedCoche: untaggedCoche, tousActifs: false };
+  }
+
+  // Lit les types de routes cochés pour un calque
+  // tousActifs = true si aucune sous-case road n'est présente (calque sans routes embarquées)
+  function _lireRoadTypesCochesCalque(layerId) {
+    const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
+    const inputs = cont ? cont.querySelectorAll('input[data-layer-roadtype-of]') : [];
+    if (inputs.length === 0) return { types: new Set(), tousActifs: true };
+    const types = new Set();
+    inputs.forEach(function(cb) {
+      if (!cb.checked) return;
+      const m = cb.id.match(/_road_(.+)$/);
+      if (m) types.add(m[1]);
+    });
+    return { types: types, tousActifs: false };
+  }
+
+  // Lit les types de zones cochés pour un calque
+  function _lireZoneTypesCochesCalque(layerId) {
+    const cont = document.getElementById("export_layer_tags_" + _slugLayerId(layerId));
+    const inputs = cont ? cont.querySelectorAll('input[data-layer-zonetype-of]') : [];
+    if (inputs.length === 0) return { types: new Set(), tousActifs: true };
+    const types = new Set();
+    inputs.forEach(function(cb) {
+      if (!cb.checked) return;
+      const m = cb.id.match(/_zone_(.+)$/);
+      if (m) types.add(m[1]);
+    });
+    return { types: types, tousActifs: false };
   }
 
   // Filtre une liste de points selon les tags cochés d'un calque
@@ -526,8 +633,30 @@
       ? 'Position du tracker <span style="color:#8892a4;">(+ tracé ' + nbTrackerPath + ' pts)</span>'
       : 'Position du tracker';
 
+    // Lister les tags présents dans les points de session
+    const sessionPoints = window.getEditorPoints ? window.getEditorPoints() : [];
+    const sessionTags = _listerTagsPoints(sessionPoints);
+
+    let pointsTagsHtml = "";
+    if (sessionTags.length > 0) {
+      pointsTagsHtml = sessionTags.map(function(item) {
+        const safeTag = _slugTagId(item.tag);
+        const id = "ann_points_tag_" + safeTag;
+        const iconUrl = item.isUntagged ? null : _iconePourTag(item.tag);
+        const iconHtml = iconUrl
+          ? '<img src="' + iconUrl + '" style="width:16px;height:16px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+        const label = item.isUntagged ? "<em>(sans tag)</em>" : _escapeHtmlExport(item.tag);
+        return `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
+          <input type="checkbox" id="${id}" data-session-tag="1" checked>
+          <span>${iconHtml}${label} <span style="color:#8892a4;">(${item.count})</span></span>
+        </label>`;
+      }).join("");
+    }
+
     cont.innerHTML =
       row("points",  "Points ajoutés",          nbPoints,  true) +
+      pointsTagsHtml +
 
       row("roads",   "Tracés / routes",         nbRoads,   true) +
       rowSub("roads_principal",  "🟩 Principaux",  roadsByType.principal,  true) +
@@ -545,12 +674,24 @@
         <span>${trackerLabel}</span>
       </label>`;
 
+    // Stocker les tags session pour la lecture à l'export
+    _sessionPointsTags = sessionTags;
+
     // Synchronisation parent ↔ enfants
     setTimeout(function() {
       _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]);
       _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement"]);
+
+      // Sync parent Points ↔ tags
+      const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
+      if (pointsTagIds.length > 0) {
+        _syncAnnotParent("ann_points", pointsTagIds);
+      }
     }, 0);
   }
+
+  // Cache des tags de points session (pour réutilisation dans la lecture des opts)
+  let _sessionPointsTags = [];
 
   function _syncAnnotParent(parentId, subIds) {
     const parent = document.getElementById(parentId);
@@ -896,6 +1037,20 @@
       remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true
     };
+    // Tags des points de session (filtrage fin)
+    opts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
+    if (_sessionPointsTags && _sessionPointsTags.length > 0) {
+      const tagsCoches = new Set();
+      let untaggedCoche = false;
+      _sessionPointsTags.forEach(function(item) {
+        const cb = document.getElementById("ann_points_tag_" + _slugTagId(item.tag));
+        if (cb && cb.checked) {
+          if (item.isUntagged) untaggedCoche = true;
+          else tagsCoches.add(item.tag);
+        }
+      });
+      opts.ann.pointsTags = { tagsCoches: tagsCoches, untaggedCoche: untaggedCoche, tousActifs: false };
+    }
     const legOn = document.getElementById("kta-export-legende-on");
     if (legOn && legOn.checked) {
       opts.legende = {
@@ -955,6 +1110,10 @@
     const W = Math.round(baseW * scale);
     const H = Math.round(baseH * scale);
 
+    // Set des tags effectivement utilisés sur le plan exporté
+    // (rempli au fil de la boucle data + editor, puis passé à la légende)
+    const tagsUtilises = new Set();
+
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
@@ -997,12 +1156,10 @@
     // ---------- icônes (cache) ----------
     const iconCache = {};
     async function getIconUrl(p) {
-      let url = config.icons.default;
-      if (p.tags && p.tags.length) {
-        for (const tag of p.tags) {
-          if (config.icons[tag]) { url = config.icons[tag]; break; }
-        }
-      }
+      // Cascade complète : plan-config.icons[tag] → _iconMap[tag] → default
+      let url = (typeof window.getIconUrlForPoint === "function")
+        ? window.getIconUrlForPoint(p)
+        : (config.icons && config.icons.default) || null;
       if (!url) return null;
       if (!iconCache[url]) iconCache[url] = await loadImage(url);
       return iconCache[url];
@@ -1014,7 +1171,42 @@
       ctx.drawImage(img, sc(x) - half, sc(y) - half, size, size);
     }
 
-
+    // ---------- zones (avant les tracés) ----------
+    if (opts.ann.zones && window.getZones) {
+      const zones = window.getZones();
+      const ZS = {
+        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
+        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
+        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+      };
+      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+      const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true };
+      const triees = [...zones]
+        .filter(function(z) { return filtreZ[z.type] !== false; })
+        .sort(function(a, b) {
+          return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
+        });
+      for (const z of triees) {
+        if (!z.points || z.points.length < 3) continue;
+        const s = ZS[z.type] || ZS.remblais;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
+        for (let i = 1; i < z.points.length; i++) {
+          ctx.lineTo(sc(z.points[i].x), sc(z.points[i].y));
+        }
+        ctx.closePath();
+        ctx.fillStyle = s.fillColor;
+        ctx.globalAlpha = s.fillOpacity;
+        ctx.fill();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.weight * scale;
+        ctx.globalAlpha = s.opacity;
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     // ---------- helpers polygones / polylignes ----------
     function _drawPolygon(points, style) {
@@ -1053,48 +1245,6 @@
       ctx.restore();
     }
 
-// ---------- ORDRE GLOBAL DES COUCHES ----------
-const drawQueue = [];
-
-const PRIORITY_ZONE = {
-  eau: 0,
-  remblais: 1,
-  effondrement: 2
-};
-
-const PRIORITY_ROAD = {
-  chemin: 3,
-  secondaire: 4,
-  principal: 5
-};
-
-function _queueZone(zone) {
-  if (!zone || !zone.points || zone.points.length < 3) return;
-  drawQueue.push({
-    kind: "zone",
-    priority: PRIORITY_ZONE[zone.type] ?? 99,
-    data: zone
-  });
-}
-
-function _queueRoad(road) {
-  if (!road || !road.points || road.points.length < 2) return;
-  drawQueue.push({
-    kind: "road",
-    priority: PRIORITY_ROAD[road.type] ?? 99,
-    data: road
-  });
-}
-
-function _queuePoint(point) {
-  if (!point) return;
-  drawQueue.push({
-    kind: "point",
-    priority: 6,
-    data: point
-  });
-}
-
     const ZS_EMBED = {
       eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
       remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
@@ -1132,77 +1282,91 @@ function _queuePoint(point) {
         pts = _filtrerPointsParTagsCalque(pts, layerCfg.id);
       }
 
+      // Pour le calque "editor", appliquer en plus le filtre des tags Annotations (intersection)
+      if (layerCfg.id === "editor" && opts.ann.pointsTags && !opts.ann.pointsTags.tousActifs) {
+        const sel = opts.ann.pointsTags;
+        pts = pts.filter(function(p) {
+          const tags = Array.isArray(p.tags) ? p.tags.filter(function(t) { return t && String(t).trim(); }) : [];
+          if (tags.length === 0) return sel.untaggedCoche;
+          return tags.some(function(t) { return sel.tagsCoches.has(String(t)); });
+        });
+      }
+
+      // Filtrer les routes embarquées par type (modale ouverte uniquement)
+      let drawnRoads = embeddedRoads;
+      if (typeof _lireRoadTypesCochesCalque === "function") {
+        const rs = _lireRoadTypesCochesCalque(layerCfg.id);
+        if (!rs.tousActifs) {
+          drawnRoads = embeddedRoads.filter(function(r) { return rs.types.has(r.type); });
+        }
+      }
+
+      // Filtrer les zones embarquées par type (modale ouverte uniquement)
+      let drawnZones = embeddedZones;
+      if (typeof _lireZoneTypesCochesCalque === "function") {
+        const zs = _lireZoneTypesCochesCalque(layerCfg.id);
+        if (!zs.tousActifs) {
+          drawnZones = embeddedZones.filter(function(z) { return zs.types.has(z.type); });
+        }
+      }
+
       // Zones embarquées (arrière-plan, triées eau → remblais → effondrement)
-// Zones embarquées
-embeddedZones.forEach(function(z) {
-  _queueZone(z);
-});
+      const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
+      [...drawnZones].sort(function(a, b) {
+        return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
+      }).forEach(function(z) {
+        _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
+      });
 
-// Routes embarquées
-embeddedRoads.forEach(function(r) {
-  _queueRoad(r);
-});
+      // Routes embarquées
+      drawnRoads.forEach(function(r) {
+        _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
+      });
 
-// Points
-pts.forEach(function(p) {
-  _queuePoint(p);
-});
+      // Markers (filtrés par tags si modale)
+      for (const p of pts) {
+        const img = await getIconUrl(p);
+        drawMarker(img, p.x, p.y, 50 * scale);
+
+        // Collecter les tags utilisés pour la légende exportée
+        // Si pas de tags → marqueur "défaut"
+        if (Array.isArray(p.tags) && p.tags.length > 0) {
+          p.tags.forEach(function(t) {
+            if (t && String(t).trim()) tagsUtilises.add(String(t));
+          });
+        } else {
+          tagsUtilises.add("default");
+        }
+      }
     }
 
-    // ---------- annotations session : zones ----------
-if (opts.ann.zones && window.getZones) {
-  const filtreZ = opts.ann.zonesTypes || {
-    eau: true,
-    remblais: true,
-    effondrement: true
-  };
-
-  window.getZones().forEach(function(z) {
-    if (filtreZ[z.type] === false) return;
-    _queueZone(z);
-  });
-}
-
-// ---------- annotations session : routes ----------
-if (opts.ann.roads && window.getRoads) {
-  const filtreR = opts.ann.roadsTypes || {
-    principal: true,
-    secondaire: true,
-    chemin: true
-  };
-
-  window.getRoads().forEach(function(r) {
-    if (filtreR[r.type] === false) return;
-    _queueRoad(r);
-  });
-}
-
-// ---------- DESSIN GLOBAL DANS LE BON ORDRE ----------
-drawQueue.sort(function(a, b) {
-  return a.priority - b.priority;
-});
-
-for (const item of drawQueue) {
-  if (item.kind === "zone") {
-    _drawPolygon(
-      item.data.points || [],
-      ZS_EMBED[item.data.type] || ZS_EMBED.remblais
-    );
-  }
-
-  else if (item.kind === "road") {
-    _drawPolyline(
-      item.data.points || [],
-      RS_EMBED[item.data.type] || { color: "#ffffff", weight: 5, opacity: 1 }
-    );
-  }
-
-  else if (item.kind === "point") {
-    const img = await getIconUrl(item.data);
-    drawMarker(img, item.data.x, item.data.y, 50 * scale);
-  }
-}
-
+    // ---------- routes ----------
+    if (opts.ann.roads && window.getRoads) {
+      const roads = window.getRoads();
+      const RS = {
+        principal:   { color: "#00ff00", weight: 5 },
+        secondaire:  { color: "#b000ff", weight: 5 },
+        chemin:      { color: "#ffff00", weight: 5 }
+      };
+      const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
+      for (const r of roads) {
+        if (!r.points || r.points.length === 0) continue;
+        if (filtreR[r.type] === false) continue;
+        const s = RS[r.type] || { color: "white", weight: 5 };
+        ctx.save();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = s.weight * scale;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(sc(r.points[0].x), sc(r.points[0].y));
+        for (let i = 1; i < r.points.length; i++) {
+          ctx.lineTo(sc(r.points[i].x), sc(r.points[i].y));
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     // ---------- mesure ----------
     if (opts.ann.mesure && window.getMeasurePoints) {
@@ -1255,7 +1419,7 @@ for (const item of drawQueue) {
 
     // ---------- légende intégrée ----------
     if (opts.legende) {
-      await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache);
+      await _dessinerLegende(ctx, opts.legende, W, H, scale, iconCache, tagsUtilises);
     }
 
     return canvas;
@@ -1264,7 +1428,7 @@ for (const item of drawQueue) {
   // =========================
   // DESSIN DE LA LÉGENDE INTÉGRÉE
   // =========================
-  async function _dessinerLegende(ctx, leg, canvasW, canvasH, scale, iconCache) {
+  async function _dessinerLegende(ctx, leg, canvasW, canvasH, scale, iconCache, tagsUtilises) {
     const config = window.PLAN_CONFIG;
 
     // Tailles selon mode — titre plus modeste, plus proche des libellés
@@ -1330,28 +1494,82 @@ for (const item of drawQueue) {
       metaLignes = [titre + ver + auteur, dd + "/" + mm + "/" + aaaa];
     }
 
-    // Icônes
+    // Icônes — découpées en 3 sous-groupes (cohérent avec la légende d'aide)
     if (leg.contenu.icones && config.icons) {
-      const lignes = [];
       const LBL = {
         salle: "Salle", pa: "Puits Aération", pc: "Puits Comblé",
         pb: "Puits Bouché", pe: "Puits au sol / Bassin", ps: "Puits extraction",
+        peo: "Puits à échelon ouvert", pef: "Puits à échelon fermé",
+        eso: "Escalier service ouvert", esf: "Escalier service fermé",
+        cao: "Cavage ouvert", caf: "Cavage fermé",
         passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
         danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure"
       };
+
       const exclu = ["default"];
       if (!leg.contenu.track) exclu.push("track");
-      Object.keys(config.icons).forEach(function(tag) {
-        if (exclu.includes(tag)) return;
-        if (!config.icons[tag]) return;
-        lignes.push({ label: LBL[tag] || tag, iconUrl: config.icons[tag] });
+
+      // 3 sous-groupes ordonnés (les autres tags inconnus iront en "Signalétique")
+      const GROUPES_ICONES = [
+        { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
+        { titre: "🪜 Accès",         cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
+        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
+      ];
+      const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
+
+      // Cumul : tags du plan-config + tags built-in (_iconMap) pour ne rien manquer
+      const tagsConnus = new Set();
+      Object.keys(config.icons || {}).forEach(function(t) { tagsConnus.add(t); });
+      Object.keys(window._iconMap || {}).forEach(function(t) { tagsConnus.add(t); });
+
+      // FILTRE PAR USAGE RÉEL : si on a la liste des tags utilisés, on ne garde
+      // que ceux qui sont effectivement présents sur le plan exporté.
+      // (tagsUtilises peut être null/undefined en mode preview rapide → pas de filtre)
+      const filtreUsage = tagsUtilises && tagsUtilises.size >= 0;
+
+      // Construire chaque sous-groupe
+      GROUPES_ICONES.forEach(function(groupe) {
+        const lignes = [];
+        groupe.cles.forEach(function(tag) {
+          if (exclu.includes(tag)) return;
+          if (!tagsConnus.has(tag)) return;
+          if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
+          const url = _iconePourTag(tag);
+          if (!url) return;
+          lignes.push({ label: LBL[tag] || tag, iconUrl: url });
+        });
+        if (lignes.length > 0) entrees.push({ section: groupe.titre, lignes: lignes });
       });
-      if (lignes.length > 0) entrees.push({ section: "Icônes", lignes: lignes });
+
+      // Tags custom non répertoriés dans les 3 groupes → "Autres"
+      // Option 5:a : on les affiche AVEC leur icône (custom ou défaut) si utilisés
+      const lignesAutres = [];
+      // Source des tags candidats : tagsConnus + tagsUtilises (pour capter les tags
+      // créés dans la session qui ne sont ni dans plan-config ni dans _iconMap)
+      const candidatsAutres = new Set(tagsConnus);
+      if (tagsUtilises) tagsUtilises.forEach(function(t) { candidatsAutres.add(t); });
+
+      candidatsAutres.forEach(function(tag) {
+        if (exclu.includes(tag)) return;
+        if (clesGroupees.has(tag)) return;
+        if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
+        // Récupérer l'URL : plan-config → _iconMap → default
+        let url = _iconePourTag(tag);
+        if (!url) {
+          // Tag custom sans icône dédiée → utiliser l'icône par défaut (5:a)
+          url = (config.icons && config.icons.default)
+             || (window._iconMap && window._iconMap.default && window._iconMap.default.options && window._iconMap.default.options.iconUrl)
+             || null;
+        }
+        if (!url) return;
+        lignesAutres.push({ label: LBL[tag] || tag, iconUrl: url });
+      });
+      if (lignesAutres.length > 0) entrees.push({ section: "🏷️ Autres", lignes: lignesAutres });
     }
 
     // Tracés
     if (leg.contenu.traces) {
-      entrees.push({ section: "Tracés", lignes: [
+      entrees.push({ section: "🛣️ Tracés", lignes: [
         { label: "Route principale",  lineColor: "#00ff00" },
         { label: "Route secondaire",  lineColor: "#b000ff" },
         { label: "Chemin",            lineColor: "#ffff00" }
@@ -1360,7 +1578,7 @@ for (const item of drawQueue) {
 
     // Zones
     if (leg.contenu.zones) {
-      entrees.push({ section: "Zones", lignes: [
+      entrees.push({ section: "⬛ Zones", lignes: [
         { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
         { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
         { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" }
@@ -1370,16 +1588,27 @@ for (const item of drawQueue) {
     if (entrees.length === 0 && metaLignes.length === 0) return;
 
     // ─────────────────────────────────────────────────
-    // SÉPARATION EN COLONNES
-    // Colonne gauche : Icônes (souvent la plus longue)
-    // Colonne droite : Tracés + Zones
+    // RÉPARTITION INTELLIGENTE EN 2 COLONNES
+    // Algorithme : on parcourt les groupes dans l'ordre d'ajout et on les place
+    // dans la colonne la moins remplie (en hauteur cumulée).
+    // → équilibre automatique quel que soit le nombre d'icônes.
     // ─────────────────────────────────────────────────
-    const colGauche = entrees.filter(function(s) { return s.section === "Icônes"; });
-    const colDroite = entrees.filter(function(s) { return s.section !== "Icônes"; });
+    function _hauteurEstimee(section) {
+      // Approximation : 1 unité pour le titre + 1 par ligne
+      return 1 + (section.lignes ? section.lignes.length : 0);
+    }
+    const colGauche = [];
+    const colDroite = [];
+    let hG = 0, hD = 0;
+    entrees.forEach(function(sec) {
+      const h = _hauteurEstimee(sec);
+      if (hG <= hD) { colGauche.push(sec); hG += h; }
+      else          { colDroite.push(sec); hD += h; }
+    });
 
-    // Si pas d'icônes, tout va à gauche pour éviter une colonne vide
-    if (colGauche.length === 0 && colDroite.length > 0) {
-      colGauche.push(colDroite.shift());
+    // Si une seule colonne est utilisée (cas extrême), équilibre forcé
+    if (colDroite.length === 0 && colGauche.length > 1) {
+      colDroite.push(colGauche.pop());
     }
 
     // Calculer la largeur max d'une colonne (mesurer libellés + titres de section)

@@ -84,7 +84,13 @@ const ASSETS_TO_CACHE = [
   "./icon/epure.png",
   "./icon/chatiere.png",
   "./icon/danger.png",
-  "./icon/iconetrack.png"
+  "./icon/iconetrack.png",
+  "./icon/peo.png",
+  "./icon/pef.png",
+  "./icon/eso.png",
+  "./icon/esf.png",
+  "./icon/cao.png",
+  "./icon/caf.png",
 ];
 
 // =========================

@@ -9,6 +9,128 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 06/05/2026 (suite 3) — 6 nouveaux tags d'accès + refonte cascade icônes + légende 5 groupes
+
+- **Ajout de 6 nouveaux tags built-in** dans le set par défaut :
+  - `peo` / `pef` — Puits à échelon ouvert / fermé
+  - `eso` / `esf` — Escalier service ouvert / fermé
+  - `cao` / `caf` — Cavage ouvert / fermé
+  - Convention : **vert = ouvert**, **rouge = fermé**, transparence 50% sur le fond du cercle
+  - PNG 50×50 avec transparence alpha (générés via Pillow), placés dans `icon/`
+
+- **Refonte de la cascade de résolution d'icônes**
+  - Nouveau **fallback built-in `TAGS_BUILTIN`** dans `map.js` (fonction `creerIcones`) : si un tag n'est pas déclaré dans `plan-config.json > icons`, l'app pointe automatiquement vers `icon/<tag>.png`
+  - Permet d'utiliser les nouveaux tags sur des plans existants **sans modifier leur `plan-config.json`**
+  - Tous les tags built-in sont précisés dans `TAGS_BUILTIN` : salle, pa, pb, pc, pe, ps, **peo, pef, eso, esf, cao, caf**, vehicule, elec, epure, info, chatiere, passage, danger
+  - `_iconMap` est désormais **toujours rempli** avec ces tags, même si le plan-config ne les déclare pas
+
+- **Nouvelle fonction utilitaire centralisée `getIconUrlForPoint(point)`** (`utils.js`)
+  - Cascade complète :
+    1. `PLAN_CONFIG.icons[tag]` (déclaré dans le plan)
+    2. `_iconMap[tag].options.iconUrl` (built-in fallback de `TAGS_BUILTIN`)
+    3. `PLAN_CONFIG.icons.default`
+    4. `_iconMap.default.options.iconUrl`
+    5. `null`
+  - Exposée globalement via `window.getIconUrlForPoint`
+  - **Utilisée maintenant par tous les modules** qui ont besoin d'une URL d'icône (au lieu d'un objet `L.icon`)
+
+- **Modules mis à jour pour utiliser la cascade complète** (correction de bugs visuels) :
+  - `searchPoints.js > _getIconUrl` — la recherche affichait l'icône par défaut pour les nouveaux tags
+  - `utils.js > telechargerPlan > getIconForPoint` — l'export PNG simple ratait les nouveaux tags
+  - `exporter.js > _iconePourTag` — l'export PNG avancé ratait les nouveaux tags
+  - `exporter.js > getIconUrl` (dessin canvas) — idem
+  - `exporter.js` (construction légende) — itère désormais sur `config.icons ∪ _iconMap`
+  - `sessionExporter.js > _iconePourTag` — preview session manquait les nouveaux tags
+
+- **Editor — modale d'ajout de point** (`editor.js > _buildTypeOptionsHTML`)
+  - Avant : la liste déroulante n'affichait **que les tags du `plan-config.json`**
+  - Après : fusion `EDITOR_TAG_LABELS` ∪ `plan-config.json` → l'utilisateur peut **toujours** sélectionner un type même si le plan-config ne le déclare pas (l'app utilise `_iconMap` ou l'icône par défaut)
+  - Tri : tags labellisés d'abord (ordre canonique), puis tags custom non labellisés en queue
+
+- **Légende d'aide** (`interface.js > LEGENDE_LABELS` + groupes)
+  - Ajout des 6 labels (peo/pef/eso/esf/cao/caf)
+  - Nouveau groupe **"🪜 Accès"** affiché entre "🕳️ Puits" et "⚠️ Signalétique"
+  - Lecture depuis `_iconMap` en fallback → les icônes apparaissent même si pas dans `plan-config.icons`
+
+- **Export PNG — Légende refondue en 5 groupes** (`exporter.js`)
+  - **Avant** : un seul gros bloc "Icônes" à gauche + Tracés/Zones à droite → déséquilibre énorme dès qu'on a 15+ icônes
+  - **Après** : 5 sections distinctes (cohérent avec la légende d'aide) :
+    - 🕳️ Puits, 🪜 Accès, ⚠️ Signalétique, 🛣️ Tracés, ⬛ Zones
+    - + 🏷️ Autres (auto, si tags custom créés via "➕ Créer un nouveau tag")
+  - **Algorithme de répartition équilibré** : chaque groupe est ajouté à la **colonne la moins remplie** (en lignes cumulées)
+  - Adaptation automatique selon le nombre d'icônes effectivement disponibles
+
+- **Générateur de plans** (`createConf.js > PLANNER_DEFAULT_ICONS`)
+  - Les 6 nouveaux tags apparaissent automatiquement dans le panneau "Icons" du générateur 🏗️
+  - Les nouveaux plans créés via le générateur incluent ces tags dans leur `plan-config.json`
+
+- **Service Worker** (`sw.js`)
+  - Les 6 nouveaux PNG ajoutés au cache PWA pour disponibilité hors-ligne
+
+- **Bug fix corollaire — Plan Switcher** (`interface.js > _chargerPlanDirect`)
+  - Suppression prématurée de `kta-titre-fixe` corrigée
+  - Si l'utilisateur clique sur un autre plan via le titre puis annule la modale "Plan introuvable", le titre du plan en cours reste désormais affiché
+
+### 🗓️ 06/05/2026 (suite 2) — Plan Switcher (titre cliquable)
+
+- **Titre du plan rendu cliquable** (`interface.js` + `style.css`)
+  - Suppression de `pointer-events: none` sur `#kta-titre-fixe`
+  - Ajout d'une flèche `▾` (`.kta-titre-arrow`) à côté du nom du plan
+  - Hover : fond légèrement plus clair, bordure bleutée, opacité de la flèche augmentée
+  - État `.ouvert` (panneau actif) : flèche pivotée à 180°, bordure plus marquée
+  - Animation `:active` (scale 0.98) au clic
+
+- **Nouveau panneau "Plan Switcher"** (`#kta-plan-switcher`)
+  - Affichage : ancré sous le titre, animation slide+fade-in 180ms
+  - Contenu : "📚 PLANS RÉCENTS" + 3 derniers plans **excluant le plan en cours** (filtre par `id`)
+  - Pour chaque plan : icône (🌐 ou 💾), nom + version (badge bleuté), date relative ("il y a 5 min", "hier", "04/05")
+  - Lien "📚 Tous mes plans…" en bas → revient au loader complet (avec confirmation si session active)
+  - Si aucun autre plan : message "Aucun autre plan dans votre liste" + lien "Tous mes plans…"
+  - Fermeture : clic ailleurs / Escape / re-clic sur le titre
+
+- **Détection automatique de la "session active"** (fonction `_sessionAModif`)
+  - Considère la session active si **au moins un** des éléments est non-vide :
+    - `getEditorPoints().length > 0` (points ajoutés)
+    - `getRoads().length > 0` (routes tracées)
+    - `getZones().length > 0` (zones)
+    - `getMeasurePoints().length > 0` (mesure)
+    - `getTrackingPath().length > 1` (parcours du tracker)
+  - Fonction `_resumeSession()` retourne la liste détaillée pour l'affichage : `["5 points ajoutés", "2 tracés", "1 zone", ...]`
+
+- **Comportement adaptatif au clic sur un plan du switcher**
+  - **Si session vierge** → chargement direct via `_chargerPlanDirect()` (pas de friction)
+  - **Si session active** → modale stylisée `kta-modal` :
+    ```
+    ⚠️ Session en cours
+    Vous avez des modifications non enregistrées sur le plan en cours :
+       • 5 points ajoutés
+       • 2 tracés
+       • 1 zone
+    Charger « Plan Test 1 » va vous faire perdre ces modifications.
+    [Annuler]   [Charger quand même]
+    ```
+
+- **Chargement direct sans repasser par le loader** (`_chargerPlanDirect`)
+  - Plans serveur → `window.chargerPlanServeur(plan.path, plan)` direct
+  - Plans locaux → `window.chargerPlanDuRegistre(plan.id)` (logique blob → fsHandle → re-sélection conservée)
+  - Si erreur → fallback `window.afficherLoader()` pour proposer la modale "Plan introuvable"
+  - **Nouvelle exposition** : `window.chargerPlanDuRegistre = chargerPlanDuRegistre` dans `index.html` pour que le switcher puisse l'appeler depuis `interface.js`
+
+- **Bouton 🗂️ "Changer de plan" dans ⬇️ Import conservé** (choix 6:b)
+  - Redondance utile pour les utilisateurs qui ne découvrent pas le titre cliquable
+  - Toujours accessible comme alternative
+
+- **Helpers ajoutés** dans `interface.js` :
+  - `_fmtDateRel(iso)` — date relative ("à l'instant", "il y a 5 min", "hier", "il y a 3 jours", "04/05")
+  - `escapeHtmlSwitcher(s)` — échappement HTML pour les noms de plan dans le panneau
+
+- **Styles CSS ajoutés** (`style.css`) — section "PLAN SWITCHER" :
+  - `#kta-plan-switcher` (panneau ancré + animation `ktaSwitcherIn`)
+  - `.kta-switcher-head` / `.kta-switcher-list` / `.kta-switcher-row` / `.kta-switcher-icon` / `.kta-switcher-info` / `.kta-switcher-name` / `.kta-switcher-ver` / `.kta-switcher-sub`
+  - `.kta-switcher-divider` / `.kta-switcher-link` / `.kta-switcher-empty`
+  - `.kta-titre-arrow` (flèche avec rotation à 180° en mode ouvert)
+  - Responsive mobile (`max-width: 92vw`)
+
 ### 🗓️ 06/05/2026 (suite) — Splash + ergonomie loader + gestion erreurs plan
 
 - **Splash screen au démarrage** (`index.html` + `style.css` + `main.js`)
@@ -623,6 +745,112 @@ Si le ZIP re-sélectionné a un `plan.name` différent du nom cliqué → confir
 
 ---
 
+## 🎨 Système d'icônes — cascade et fallback
+
+### Architecture en 4 niveaux
+
+L'app dispose d'un système de résolution d'icônes en cascade qui permet d'**ajouter de nouveaux types** sans modifier les `plan-config.json` existants.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. PLAN_CONFIG.icons[tag]                                       │
+│    Personnalisation par plan (chemin custom dans plan-config)   │
+├─────────────────────────────────────────────────────────────────┤
+│ 2. _iconMap[tag] (rempli par creerIcones() via TAGS_BUILTIN)    │
+│    Fallback built-in dans map.js → pointe vers icon/<tag>.png   │
+├─────────────────────────────────────────────────────────────────┤
+│ 3. PLAN_CONFIG.icons.default                                    │
+│    Icône par défaut déclarée dans le plan                       │
+├─────────────────────────────────────────────────────────────────┤
+│ 4. _iconMap.default / iconeDefault                              │
+│    Filet de sécurité ultime (pin Leaflet natif)                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### `TAGS_BUILTIN` (`map.js > creerIcones`)
+
+Liste des tags reconnus nativement par l'app et leurs PNG par défaut :
+
+```js
+const TAGS_BUILTIN = {
+  salle:    "icon/house.png",
+  pa:       "icon/pa.png",  pc: "icon/pc.png",  pb: "icon/pb.png",
+  pe:       "icon/pe.png",  ps: "icon/ps.png",
+  // === 6 nouveaux tags d'accès ===
+  peo:      "icon/peo.png", pef: "icon/pef.png",   // puits à échelon
+  eso:      "icon/eso.png", esf: "icon/esf.png",   // escalier service
+  cao:      "icon/cao.png", caf: "icon/caf.png",   // cavage
+  // === ===
+  vehicule: "icon/vehicule.png", elec: "icon/elec.png", epure: "icon/epure.png",
+  info:     "icon/info.png", chatiere: "icon/chatiere.png",
+  passage:  "icon/passage.png", danger: "icon/danger.png"
+};
+```
+
+À chaque chargement de plan, `_iconMap` est complété : si un tag built-in n'est pas dans `iconConfig`, l'app crée quand même son entrée pointant vers `icon/<tag>.png`.
+
+### Fonction centralisée `getIconUrlForPoint(point)` (`utils.js`)
+
+Implémente la cascade complète et expose une URL utilisable directement (canvas, recherche, légende, etc.).
+
+```js
+function getIconUrlForPoint(point) {
+  const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+  const map       = window._iconMap || {};
+
+  if (point && Array.isArray(point.tags)) {
+    for (const tag of point.tags) {
+      if (planIcons[tag]) return planIcons[tag];           // niveau 1
+      const u = urlFromMapEntry(map[tag]);
+      if (u) return u;                                     // niveau 2
+    }
+  }
+  if (planIcons.default) return planIcons.default;         // niveau 3
+  return urlFromMapEntry(map.default);                     // niveau 4
+}
+```
+
+**Modules qui l'utilisent** : `searchPoints.js`, `utils.js > telechargerPlan`, `exporter.js`, `sessionExporter.js`.
+
+### Ajouter un nouveau tag — checklist développeur
+
+Pour ajouter un nouveau type d'icône (ex: `fontaine`) sans casser la rétro-compat :
+
+1. **PNG 50×50** transparent dans `icon/fontaine.png`
+2. **`map.js`** — ajouter `fontaine: "icon/fontaine.png"` dans `TAGS_BUILTIN`
+3. **`editor.js`** — ajouter `fontaine: "Fontaine"` dans `EDITOR_TAG_LABELS`
+4. **`interface.js`** — ajouter `fontaine: "Fontaine"` dans `LEGENDE_LABELS` + dans le bon groupe du tableau `GROUPES`
+5. **`exporter.js`** — ajouter `fontaine: "Fontaine"` dans le `LBL` local + dans le bon groupe de `GROUPES_ICONES`
+6. **`createConf.js`** — ajouter `fontaine: "icon/fontaine.png"` dans `PLANNER_DEFAULT_ICONS`
+7. **`sw.js`** — ajouter `"./icon/fontaine.png"` dans `urlsToCache`
+
+→ Le tag est utilisable immédiatement, **même sur les plans existants** (sans modifier leur `plan-config.json`).
+
+### Légende exportée — répartition en 5 groupes (`exporter.js`)
+
+La légende du PNG exporté est désormais découpée en sections cohérentes avec la légende d'aide :
+
+| Groupe | Tags |
+|---|---|
+| 🕳️ Puits | pa, pb, pc, pe, ps |
+| 🪜 Accès | peo, pef, eso, esf, cao, caf |
+| ⚠️ Signalétique | salle, chatiere, passage, danger, info, elec, epure, vehicule |
+| 🛣️ Tracés | principal, secondaire, chemin |
+| ⬛ Zones | eau, remblais, effondrement |
+| 🏷️ Autres | tags custom créés via "➕ Créer un nouveau tag" (auto) |
+
+**Algorithme de répartition équilibré** : les 5 groupes sont parcourus dans l'ordre et chacun est ajouté à la **colonne la moins remplie** (en lignes cumulées). Garantit un visuel équilibré même avec un nombre variable d'icônes.
+
+```js
+entrees.forEach(function(sec) {
+  const h = _hauteurEstimee(sec); // 1 + nb lignes
+  if (hG <= hD) { colGauche.push(sec); hG += h; }
+  else          { colDroite.push(sec); hD += h; }
+});
+```
+
+---
+
 ## 📚 Système multi-plans (`planRegistry.js`)
 
 Module dédié à la gestion de **N plans simultanés** côté utilisateur, avec persistance localStorage + IndexedDB.
@@ -894,6 +1122,12 @@ Chaque plan est décrit par un fichier `plan-config.json`.
     "salle":    "icon/house.png",
     "pa":       "icon/pa.png",
     "vehicule": "icon/vehicule.png",
+    "peo":      "icon/peo.png",
+    "pef":      "icon/pef.png",
+    "eso":      "icon/eso.png",
+    "esf":      "icon/esf.png",
+    "cao":      "icon/cao.png",
+    "caf":      "icon/caf.png",
     "fontaine": "icon/iconetrack.png"
   }
 }
@@ -901,6 +1135,7 @@ Chaque plan est décrit par un fichier `plan-config.json`.
 
 > Le calque `editor` doit toujours être présent dans `dataLayers`.
 > Les tags `default` et `track` sont **obligatoires** dans `icons`. Les autres sont libres.
+> Depuis 06/05/2026, les tags listés dans `TAGS_BUILTIN` (`map.js`) sont **automatiquement résolus** vers `icon/<tag>.png` même si non déclarés ici — voir section "🎨 Système d'icônes".
 
 ---
 

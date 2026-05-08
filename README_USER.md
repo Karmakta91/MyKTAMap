@@ -271,6 +271,29 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 - **Toucher en dehors** du groupe ouvert le ferme automatiquement
 - **Sur mobile en paysage**, la barre devient scrollable verticalement si elle dépasse de l'écran
 
+### 🔄 Changer rapidement de plan via le titre
+
+Le **titre du plan en cours** affiché en haut de l'écran est **cliquable** : il ouvre un petit menu déroulant avec :
+
+- **📚 PLANS RÉCENTS** — les 3 derniers plans que tu as ouverts (hors plan en cours)
+- **📚 Tous mes plans…** — pour revenir à l'écran d'accueil avec la liste complète
+
+Au clic sur un plan dans le menu :
+
+- Si ta **session est vierge** (aucune annotation, route, zone ou mesure) → le plan se charge **directement** sans confirmation
+- Si tu as **des modifications en cours** → une fenêtre t'avertit avec la **liste exacte** de ce que tu vas perdre :
+  ```
+  ⚠️ Session en cours
+  Vous avez des modifications non enregistrées :
+     • 5 points ajoutés
+     • 2 tracés
+     • 1 zone
+  Charger « Plan Test 1 » va vous faire perdre ces modifications.
+  [Annuler]   [Charger quand même]
+  ```
+
+> 💡 Cette fonction te permet de basculer entre tes plans favoris en **2 clics** sans repasser par l'écran d'accueil. Pour fermer le menu sans rien faire : clique ailleurs ou appuie sur **Échap**.
+
 ---
 
 ## 🔍 Rechercher un point
@@ -373,6 +396,18 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
    - **Type** : choisissez parmi les tags existants, **— Aucun tag —** (icône par défaut), ou **➕ Créer un nouveau tag…**
    - **Description** (optionnel)
 4. Validez avec **✅ Ajouter**
+
+### 🎨 Types d'icônes disponibles
+
+L'application propose un set d'icônes par défaut, regroupées par catégorie :
+
+| Catégorie | Types disponibles |
+|---|---|
+| 🕳️ **Puits** | Aération, Bouché, Comblé, Au sol / Bassin, Extraction |
+| 🪜 **Accès** | Puits à échelon (ouvert / fermé), Escalier service (ouvert / fermé), Cavage (ouvert / fermé) |
+| ⚠️ **Signalétique** | Salle, Chatière, Passage, Danger, Information, Électricité, Épure, Véhicule |
+
+> 💡 Les icônes **Accès** suivent un code couleur intuitif : **vert = ouvert**, **rouge = fermé**. Pratique pour repérer en un coup d'œil les passages utilisables.
 
 ### 🏷️ Créer un nouveau tag
 
@@ -635,7 +670,9 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 > Accessible via le groupe **📚 Aide / Doc / Légende → 🗺️ Légende**.
 
-Affiche la légende complète des icônes et tracés, regroupés par catégorie.
+Affiche la légende complète des icônes et tracés, regroupés par catégorie : **🕳️ Puits**, **🪜 Accès** (puits à échelon, escaliers, cavages), **⚠️ Signalétique**, **🛣️ Tracés** et **⬛ Zones**.
+
+> 💡 La légende affiche **toutes les icônes que l'application sait reconnaître**, même si votre plan en cours ne les utilise pas. C'est pratique pour découvrir les types disponibles avant d'ajouter vos points.
 
 ---
 

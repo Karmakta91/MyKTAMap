@@ -29,19 +29,285 @@ L.control.titleControl = function () {
 
     const titre = document.createElement("div");
     titre.id = "kta-titre-fixe";
+    titre.title = "Cliquer pour changer de plan";
     titre.innerHTML = `
       <div class="map-title-text">
         ${planName}
+        <span class="kta-titre-arrow">▾</span>
         ${sousTitre ? `<span class="map-title-sub">${sousTitre}</span>` : ""}
       </div>
     `;
     document.body.appendChild(titre);
+
+    // Cliquable : ouvre/ferme le panneau de sélection rapide
+    titre.addEventListener("click", function(e) {
+      e.stopPropagation();
+      togglePlanSwitcher();
+    });
 
     return div;
   };
 
   return control;
 };
+
+// =========================
+// PANNEAU "PLAN SWITCHER" — sélection rapide depuis le titre
+// =========================
+function _sessionAModif() {
+  const editorPts = (window.getEditorPoints  && window.getEditorPoints())  || [];
+  const roads     = (window.getRoads         && window.getRoads())         || [];
+  const zones     = (window.getZones         && window.getZones())         || [];
+  const measure   = (window.getMeasurePoints && window.getMeasurePoints()) || [];
+  const trackPath = (window.getTrackingPath  && window.getTrackingPath())  || [];
+  return editorPts.length > 0 || roads.length > 0 || zones.length > 0
+      || measure.length > 0   || trackPath.length > 1;
+}
+
+function _resumeSession() {
+  // Liste détaillée des modifs en cours pour l'avertissement
+  const items = [];
+  const editorPts = (window.getEditorPoints  && window.getEditorPoints())  || [];
+  const roads     = (window.getRoads         && window.getRoads())         || [];
+  const zones     = (window.getZones         && window.getZones())         || [];
+  const measure   = (window.getMeasurePoints && window.getMeasurePoints()) || [];
+  const trackPath = (window.getTrackingPath  && window.getTrackingPath())  || [];
+
+  if (editorPts.length > 0) items.push(editorPts.length + " point" + (editorPts.length > 1 ? "s" : "") + " ajouté" + (editorPts.length > 1 ? "s" : ""));
+  if (roads.length     > 0) items.push(roads.length     + " tracé"  + (roads.length     > 1 ? "s" : ""));
+  if (zones.length     > 0) items.push(zones.length     + " zone"   + (zones.length     > 1 ? "s" : ""));
+  if (measure.length   > 0) items.push("une mesure de distance");
+  if (trackPath.length > 1) items.push("le parcours du tracker");
+  return items;
+}
+
+function _fmtDateRel(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    const diffMs = Date.now() - d.getTime();
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1)    return "à l'instant";
+    if (min < 60)   return "il y a " + min + " min";
+    const h = Math.floor(min / 60);
+    if (h < 24)     return "il y a " + h + " h";
+    const j = Math.floor(h / 24);
+    if (j === 1)    return "hier";
+    if (j < 7)      return "il y a " + j + " jours";
+    return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+  } catch(e) { return ""; }
+}
+
+function _ouvrirPlanSwitcher() {
+  // Fermer un panneau existant
+  _fermerPlanSwitcher();
+
+  if (!window.PlanRegistry) return;
+
+  const all = window.PlanRegistry.getAll();
+  const currentId = window.PlanRegistry.getLastOpened()?.id;
+
+  // 3 plans récents EXCLUANT le plan en cours
+  const recents = all
+    .filter(function(p) { return p.id !== currentId && p.lastOpened; })
+    .sort(function(a, b) { return (b.lastOpened || "").localeCompare(a.lastOpened || ""); })
+    .slice(0, 3);
+
+  const panneau = document.createElement("div");
+  panneau.id = "kta-plan-switcher";
+
+  let html = "";
+  if (recents.length > 0) {
+    html += '<div class="kta-switcher-head">📚 Plans récents</div>';
+    html += '<div class="kta-switcher-list">';
+    recents.forEach(function(p) {
+      const icon = p.type === "server" ? "🌐" : "💾";
+      const sub  = _fmtDateRel(p.lastOpened) || "";
+      const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
+      html +=
+        '<div class="kta-switcher-row" data-plan-id="' + p.id + '">' +
+          '<span class="kta-switcher-icon">' + icon + '</span>' +
+          '<div class="kta-switcher-info">' +
+            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(p.name || p.id) + ver + '</div>' +
+            (sub ? '<div class="kta-switcher-sub">' + sub + '</div>' : '') +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="kta-switcher-empty">Aucun autre plan dans votre liste</div>';
+  }
+
+  html += '<div class="kta-switcher-divider"></div>';
+  html += '<div class="kta-switcher-link" id="kta-switcher-tous">📚 Tous mes plans…</div>';
+
+  panneau.innerHTML = html;
+  document.body.appendChild(panneau);
+
+  // Marquer le titre comme "ouvert"
+  const titre = document.getElementById("kta-titre-fixe");
+  if (titre) titre.classList.add("ouvert");
+
+  // Listeners — clic sur une ligne plan
+  panneau.querySelectorAll(".kta-switcher-row").forEach(function(row) {
+    row.addEventListener("click", function(e) {
+      e.stopPropagation();
+      const id = row.dataset.planId;
+      _fermerPlanSwitcher();
+      _confirmEtChargerPlan(id);
+    });
+  });
+
+  // Listener — "Tous mes plans..."
+  const btnTous = panneau.querySelector("#kta-switcher-tous");
+  if (btnTous) {
+    btnTous.addEventListener("click", function(e) {
+      e.stopPropagation();
+      _fermerPlanSwitcher();
+      _retourLoaderAvecConfirm();
+    });
+  }
+
+  // Fermeture au clic ailleurs / Escape
+  setTimeout(function() {
+    document.addEventListener("click", _onClicAilleursPanneau, true);
+    document.addEventListener("keydown", _onEscapePanneau, true);
+  }, 0);
+}
+
+function _fermerPlanSwitcher() {
+  const panneau = document.getElementById("kta-plan-switcher");
+  if (panneau) panneau.remove();
+  const titre = document.getElementById("kta-titre-fixe");
+  if (titre) titre.classList.remove("ouvert");
+  document.removeEventListener("click", _onClicAilleursPanneau, true);
+  document.removeEventListener("keydown", _onEscapePanneau, true);
+}
+
+function _onClicAilleursPanneau(e) {
+  const panneau = document.getElementById("kta-plan-switcher");
+  const titre   = document.getElementById("kta-titre-fixe");
+  if (!panneau) return;
+  if (panneau.contains(e.target)) return;
+  if (titre && titre.contains(e.target)) return;
+  _fermerPlanSwitcher();
+}
+
+function _onEscapePanneau(e) {
+  if (e.key === "Escape") _fermerPlanSwitcher();
+}
+
+function togglePlanSwitcher() {
+  const existant = document.getElementById("kta-plan-switcher");
+  if (existant) {
+    _fermerPlanSwitcher();
+  } else {
+    _ouvrirPlanSwitcher();
+  }
+}
+
+// Confirmation puis chargement direct d'un plan depuis le panneau
+function _confirmEtChargerPlan(planId) {
+  if (!window.PlanRegistry) return;
+  const plan = window.PlanRegistry.findById(planId);
+  if (!plan) return;
+
+  const items = _resumeSession();
+
+  if (items.length === 0) {
+    // Session vierge → chargement direct
+    _chargerPlanDirect(plan);
+    return;
+  }
+
+  // Session active → modale d'avertissement
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">⚠️</div>' +
+      '<div class="kta-modal-titre">Session en cours</div>' +
+      '<div class="kta-modal-texte">' +
+        'Vous avez des modifications non enregistrées sur le plan en cours :' +
+        '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:24px; color:#a8b3c8; line-height:1.6; list-style-type:disc;">' +
+          items.map(function(it) { return '<li style="color:#a8b3c8;">' + escapeHtmlSwitcher(it) + '</li>'; }).join("") +
+        '</ul>' +
+        'Charger « <strong>' + escapeHtmlSwitcher(plan.name || plan.id) + '</strong> » va vous faire perdre ces modifications.' +
+      '</div>' +
+      '<div class="kta-modal-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">Charger quand même</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  document.getElementById("kta-switch-annuler").addEventListener("click", function() { overlay.remove(); });
+  document.getElementById("kta-switch-confirmer").addEventListener("click", function() {
+    overlay.remove();
+    _chargerPlanDirect(plan);
+  });
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+// Chargement effectif d'un plan depuis le panneau (sans repasser par le loader)
+async function _chargerPlanDirect(plan) {
+  // Fermer uniquement la popup "changer plan" éventuelle
+  // Ne PAS supprimer kta-titre-fixe ici : si le chargement échoue ou que
+  // l'utilisateur annule la modale "Plan introuvable", on doit conserver
+  // le titre du plan en cours. Le titre sera recréé par initInterface()
+  // si un nouveau plan se charge avec succès.
+  const popup = document.getElementById("popupChangerPlan");
+  if (popup) popup.remove();
+
+  if (plan.type === "server") {
+    try {
+      await window.chargerPlanServeur(plan.path, plan);
+    } catch(e) {
+      // Plan introuvable / erreur → revenir au loader pour proposer la modale d'erreur
+      console.error("[Switcher] Erreur chargement serveur :", e);
+      if (window.afficherLoader) window.afficherLoader();
+    }
+    return;
+  }
+
+  if (plan.type === "local") {
+    // Pour les plans locaux, on a besoin de la logique de chargerPlanDuRegistre
+    // qui gère blob → fsHandle → re-sélection. Cette fonction est dans index.html.
+    // On revient au loader pour que l'utilisateur puisse cliquer dessus,
+    // ou on peut l'appeler directement si elle est exposée globalement.
+    if (typeof window.chargerPlanDuRegistre === "function") {
+      try { await window.chargerPlanDuRegistre(plan.id); }
+      catch(e) {
+        console.error("[Switcher] Erreur chargement local :", e);
+        if (window.afficherLoader) window.afficherLoader();
+      }
+    } else {
+      // Fallback : revenir au loader
+      if (window.afficherLoader) window.afficherLoader();
+    }
+  }
+}
+
+// Retour au loader avec confirmation si session active
+function _retourLoaderAvecConfirm() {
+  const items = _resumeSession();
+  if (items.length === 0) {
+    if (window.afficherLoader) window.afficherLoader();
+    return;
+  }
+  // Réutilise la modale popupChangerPlan existante
+  if (typeof afficherPopupChangerPlan === "function") {
+    afficherPopupChangerPlan();
+  } else if (window.afficherLoader) {
+    window.afficherLoader();
+  }
+}
+
+function escapeHtmlSwitcher(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
 
 // =========================
 // PANNEAU ANCRÉ AUX BOUTONS
@@ -1104,7 +1370,7 @@ function afficherConfig() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
-          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">💥 Tout réinitialiser</button>
+          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
           <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
         </div>
 
@@ -1269,13 +1535,9 @@ function viderCacheAppli() {
   overlay1.innerHTML = `
     <div class="kta-modal">
       <div class="kta-modal-icon">⚠️</div>
-      <div class="kta-modal-titre">Tout réinitialiser ?</div>
+      <div class="kta-modal-titre">Vider le cache ?</div>
       <div class="kta-modal-texte">
-        L'application sera entièrement réinitialisée comme au premier lancement :<br><br>
-        • Cache applicatif vidé (Service Worker)<br>
-        • Liste de vos plans supprimée<br>
-        • ZIP mémorisés dans le navigateur perdus<br>
-        • Préférences utilisateur effacées<br><br>
+        Le cache applicatif sera entièrement supprimé.<br><br>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
       </div>
       <div class="kta-modal-actions">
@@ -1298,14 +1560,13 @@ function viderCacheAppli() {
         <div class="kta-modal-titre">Confirmation finale</div>
         <div class="kta-modal-texte">
           ⚠️ <strong>ATTENTION</strong> ⚠️<br><br>
-          Cette action efface intégralement les données de l'application : cache, liste de plans, ZIP mémorisés, préférences.<br><br>
+          Cette action vide intégralement le cache du navigateur pour cette application.<br><br>
           <strong>Hors connexion → l'application sera hors service.</strong><br><br>
-          Pensez à <strong>exporter votre liste</strong> avant si vous voulez la conserver.<br><br>
           Confirmez uniquement si vous êtes connecté à Internet.
         </div>
         <div class="kta-modal-actions">
           <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">Annuler</button>
-          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">💥 Tout réinitialiser</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">🗑️ Vider maintenant</button>
         </div>
       </div>
     `;
@@ -1316,53 +1577,25 @@ function viderCacheAppli() {
       overlay2.remove();
       const overlayWait = document.createElement("div");
       overlayWait.className = "kta-modal-overlay";
-      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Réinitialisation en cours…</div><div class="kta-modal-texte">Suppression du cache, du Service Worker, de la liste de plans et des données locales.</div></div>`;
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression des caches et désinscription du Service Worker.</div></div>`;
       document.documentElement.appendChild(overlayWait);
 
       try {
-        // 1. Désinscrire le Service Worker
         if ("serviceWorker" in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           await Promise.all(registrations.map(r => r.unregister()));
         }
-        // 2. Vider tous les caches HTTP (PWA)
         if ("caches" in window) {
           const cacheNames = await caches.keys();
           await Promise.all(cacheNames.map(name => caches.delete(name)));
         }
-        // 3. Vider le localStorage (registre des plans, préférences, debug logs)
-        try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage :", e); }
-        try { sessionStorage.clear(); } catch(e) {}
-
-        // 4. Vider IndexedDB (blobs ZIP + FS handles + autres bases éventuelles)
-        if (indexedDB && indexedDB.databases) {
-          try {
-            const dbs = await indexedDB.databases();
-            await Promise.all((dbs || []).map(function(db) {
-              return new Promise(function(resolve) {
-                if (!db.name) return resolve();
-                const req = indexedDB.deleteDatabase(db.name);
-                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
-              });
-            }));
-          } catch(e) { console.warn("[Reset] IndexedDB :", e); }
-        } else {
-          // Fallback Safari/iOS qui n'expose pas indexedDB.databases()
-          try {
-            await new Promise(function(resolve) {
-              const req = indexedDB.deleteDatabase("myktamap_handles");
-              req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
-            });
-          } catch(e) {}
-        }
-
         overlayWait.remove();
         window.location.reload(true);
       } catch (err) {
         overlayWait.remove();
         const overlayErr = document.createElement("div");
         overlayErr.className = "kta-modal-overlay";
-        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de tout réinitialiser :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
         document.documentElement.appendChild(overlayErr);
         document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
       }
@@ -1942,10 +2175,16 @@ const LEGENDE_LABELS = {
   pc:       "Puits Comblé",
   pb:       "Puits Bouché",
   pe:       "Puits au sol / Bassin",
+  ps:       "Puit extraction",
+  peo:      "Puits à échelon ouvert",
+  pef:      "Puits à échelon fermé",
+  eso:      "Escalier service ouvert",
+  esf:      "Escalier service fermé",
+  cao:      "Cavage ouvert",
+  caf:      "Cavage fermé",
   vehicule: "Véhicule",
   elec:     "Électricité",
   epure:    "Épure",
-  ps:       "Puit extraction",
   info:     "Information",
   chatiere: "Chatière",
   passage:  "Passage",
@@ -1982,16 +2221,31 @@ function afficherLegende() {
   } else {
     const GROUPES = [
       { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
+      { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
       { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
     ];
 
     const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });
 
+    // Helper : récupérer l'URL pour une clé — d'abord le plan-config, sinon _iconMap (fallback built-in)
+    function urlPourCle(cle) {
+      if (icons[cle]) return icons[cle];
+      const iconObj = window._iconMap?.[cle];
+      if (iconObj && iconObj.options && iconObj.options.iconUrl) {
+        return iconObj.options.iconUrl;
+      }
+      return null;
+    }
+
     // Sections groupées
     GROUPES.forEach(function(groupe) {
       const entrees = groupe.cles
-        .filter(function(cle) { return icons[cle]; })
-        .map(function(cle) { return ligneIcone(cle, icons[cle]); })
+        .map(function(cle) {
+          const url = urlPourCle(cle);
+          if (!url) return null;
+          return ligneIcone(cle, url);
+        })
+        .filter(Boolean)
         .join("");
 
       if (entrees) {

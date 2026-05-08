@@ -21,6 +21,36 @@ function choisirIcone(p) {
   return new L.Icon.Default();
 }
 
+// Récupère l'URL réelle de l'icône à utiliser pour un point donné, avec cascade complète :
+//   1. PLAN_CONFIG.icons[tag] (déclaré dans le plan-config)
+//   2. _iconMap[tag].options.iconUrl  (fallback built-in défini dans map.js > TAGS_BUILTIN)
+//   3. PLAN_CONFIG.icons.default
+//   4. _iconMap.default.options.iconUrl
+//   5. null (l'appelant fera son propre fallback ex: pin Leaflet)
+//
+// Utilisé par : recherche, export PNG, et tout endroit qui a besoin d'une URL et pas d'un L.icon
+function getIconUrlForPoint(point) {
+  const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
+  const map       = window._iconMap || {};
+
+  function urlFromMapEntry(entry) {
+    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
+    return null;
+  }
+
+  if (point && Array.isArray(point.tags)) {
+    for (const tag of point.tags) {
+      if (planIcons[tag]) return planIcons[tag];
+      const u = urlFromMapEntry(map[tag]);
+      if (u) return u;
+    }
+  }
+
+  if (planIcons.default) return planIcons.default;
+  return urlFromMapEntry(map.default);
+}
+window.getIconUrlForPoint = getIconUrlForPoint;
+
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
   if (Array.isArray(json.editorPoints))  return json.editorPoints;
@@ -193,18 +223,11 @@ async function telechargerPlan() {
     const iconCache = {};
 
     async function getIconForPoint(point) {
-      let iconPath = config.icons.default;
+      // Cascade complète : plan-config.icons[tag] → _iconMap[tag] → default → null
+      let iconPath = getIconUrlForPoint(point);
 
-      // Parcourir les tags du point et prendre la première icône définie dans config.icons
-      // — supporte n'importe quel tag personnalisé défini dans plan-config.json
-      if (point.tags && point.tags.length) {
-        for (const tag of point.tags) {
-          if (config.icons[tag]) {
-            iconPath = config.icons[tag];
-            break;
-          }
-        }
-      }
+      // Filet de sécurité ultime : icône par défaut classique
+      if (!iconPath) iconPath = "lib/leaflet/images/marker-icon.png";
 
       if (!iconCache[iconPath]) {
         iconCache[iconPath] = await loadImage(iconPath);
