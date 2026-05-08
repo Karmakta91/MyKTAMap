@@ -32,6 +32,28 @@
 <body>
 
   <!-- ════════════════════════════════════════════════════════
+       FIX VIEWPORT HEIGHT — iOS PWA bottom safe-area workaround
+       Sur iOS PWA, 100vh / 100dvh / position:fixed inset:0 peuvent
+       laisser une bande non couverte au-dessus du home-indicator.
+       window.innerHeight donne TOUJOURS la hauteur réellement visible.
+       Cette inline-script s'exécute AVANT que le CSS soit appliqué.
+       ════════════════════════════════════════════════════════ -->
+  <script>
+    (function() {
+      function setRealVh() {
+        // window.innerHeight = hauteur physiquement visible incluant la safe-area-bottom
+        document.documentElement.style.setProperty("--realvh", window.innerHeight + "px");
+      }
+      setRealVh();
+      window.addEventListener("resize", setRealVh);
+      window.addEventListener("orientationchange", function() {
+        // Petit délai pour laisser iOS finir l'animation de rotation avant de mesurer
+        setTimeout(setRealVh, 200);
+      });
+    })();
+  </script>
+
+  <!-- ════════════════════════════════════════════════════════
        SPLASH SCREEN — Animation de bienvenue au démarrage
        Affiché par défaut, fermé par main.js après init + 4s min
        ════════════════════════════════════════════════════════ -->
