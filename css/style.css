@@ -1,21 +1,32 @@
 html, body {
-  height: 100%;
+  /* iOS PWA + viewport-fit=cover : 100% / 100vh exclut la safe-area-bottom
+     (zone home-indicator). 100dvh = dynamic viewport height qui inclut tout
+     ce qui est physiquement visible. Fallback vh pour les vieux navigateurs. */
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
   overflow: hidden;
   /* Fond sombre pour iOS/Android edge-to-edge : ce qui apparaît sous la status bar
-     et le home indicator (rubber-band scroll, gestures) reste cohérent avec le thème.
-     Avant : #9fc3f5 (bleu) — cassait l'effet "intégré" sous la status bar transparente. */
+     et le home indicator reste cohérent avec le thème. */
   background-color: #0a0d18;
 }
 
 #map {
   display: block;
   position: fixed;
-  /* inset:0 force les 4 bords du viewport. height:100% sur iOS PWA avec
-     viewport-fit=cover laissait la zone home-indicator (safe-area-bottom)
-     non couverte → le body bg sombre remontait en bande visible.
-     inset:0 = top:0; right:0; bottom:0; left:0 → garantie d'occuper tout le viewport. */
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  /* Idem html/body : dvh inclut la zone home-indicator iOS, vh est le fallback */
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Force aussi le conteneur interne Leaflet à suivre, par défense (Leaflet
+   parfois fige une height absolue qui ne suit pas le resize/dvh) */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .map-title {
