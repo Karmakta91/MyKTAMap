@@ -358,7 +358,7 @@ function afficherLoader() {
 // =========================
 // SPLASH SCREEN — animation de bienvenue au démarrage
 // =========================
-const SPLASH_MIN_DURATION_MS = 3000;
+const SPLASH_MIN_DURATION_MS = 4000;
 let _splashShownAt = null;
 
 function _splashStart() {

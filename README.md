@@ -186,9 +186,9 @@
   - **Animation cumulée** : logo (zoom + rotation rebond), titre, sous-titre, barre, footer (delays 0.3s → 0.85s)
   - **Comportement** :
     - `_splashStart()` enregistre `Date.now()` au démarrage de `initApp`
-    - `_splashEnd()` attend que `SPLASH_MIN_DURATION_MS = 3000ms` soit écoulé
-    - Si chargement < 3s → splash reste visible 3s minimum
-    - Si chargement > 3s → splash s'efface dès la fin du chargement
+    - `_splashEnd()` attend que `SPLASH_MIN_DURATION_MS = 4000ms` soit écoulé
+    - Si chargement < 4s → splash reste visible 4s minimum
+    - Si chargement > 4s → splash s'efface dès la fin du chargement
     - Lancement de l'app **en parallèle** de la fin du splash (pas de blocage)
     - Ajout de la classe `.fading` (opacity 0 transition 0.4s) puis suppression du DOM
   - **Une seule fois par session** : `initApp()` n'étant appelé qu'au chargement initial, le splash ne réapparaît jamais lors d'un changement de plan
@@ -697,7 +697,7 @@ Le splash s'affiche **uniquement au chargement initial de la page** (F5, ouvertu
 
 - **HTML statique** dans `<body>` (visible avant tout chargement JS)
 - **CSS d'animation** dans `style.css` (entrée en cascade : logo → titre → sous-titre → barre → footer)
-- **Logique de durée** dans `main.js` (3s minimum + parallèle au chargement)
+- **Logique de durée** dans `main.js` (4s minimum + parallèle au chargement)
 
 ### Cycle de vie
 
@@ -711,7 +711,7 @@ initApp() → _splashStart() enregistre Date.now()
    afficherLoader() OU lancerApplication() (en parallèle de _splashEnd)
    ↓
 _splashEnd() :
-   ├─ Attendre que (3000ms - elapsed) soit écoulé
+   ├─ Attendre que (4000ms - elapsed) soit écoulé
    ├─ Ajouter classe .fading (opacity 0 transition 0.4s)
    └─ Retirer du DOM après 500ms
 ```
@@ -720,7 +720,7 @@ _splashEnd() :
 
 | Élément | Description |
 |---|---|
-| `SPLASH_MIN_DURATION_MS` | Durée minimum d'affichage (`main.js`, défaut 3000) |
+| `SPLASH_MIN_DURATION_MS` | Durée minimum d'affichage (`main.js`, défaut 4000) |
 | `--splash-duration` | Variable CSS injectée dynamiquement pour synchroniser la barre |
 | `_splashShownAt` | Timestamp d'affichage pour calculer le temps restant |
 

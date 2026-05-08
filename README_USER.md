@@ -76,7 +76,7 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 
 ### 🎬 Animation au démarrage
 
-Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 3 secondes :
+Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 4 secondes :
 
 - **Logo** MyKTAMap (rose des vents jaune)
 - **Titre** et sous-titre
