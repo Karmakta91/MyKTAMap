@@ -9,24 +9,6 @@
 //  - le format et la résolution
 // =========================
 
-// Marqueur de version au chargement (cf. utils.js pour la justification)
-console.info("[exporter.js] chargé — build 2026-05-09 (logs export modale)");
-
-// ── Piège diagnostic : log TOUT clic au niveau document, peu importe quoi
-// avale l'événement plus haut. Permet de vérifier que le clic se déclenche
-// vraiment et de voir l'élément réel touché. À retirer une fois bug résolu.
-document.addEventListener("click", function(e) {
-  const t = e.target;
-  if (!t) return;
-  // On ne logge que si on clique près d'un bouton ou input pour éviter le spam
-  const interesting = t.closest && t.closest("button, input, [role='button'], a, label");
-  if (!interesting) return;
-  console.info("[Doc click trap] →", interesting.tagName,
-    "#" + (interesting.id || "(no-id)"),
-    "class=(" + (interesting.className || "(no-class)") + ")",
-    "text=\"" + (interesting.textContent || "").trim().slice(0, 30) + "\"");
-}, true);
-
 (function() {
   "use strict";
 
@@ -85,12 +67,10 @@ document.addEventListener("click", function(e) {
   // ENTRÉE PUBLIQUE
   // =========================
   window.ouvrirExportModal = function() {
-    console.info("[Export modale] ouvrirExportModal() appelée");
     _injecterStyles();
     if (_currentModal) { _currentModal.remove(); _currentModal = null; }
     if (typeof _resetLayerPointsCache === "function") _resetLayerPointsCache();
     _afficherModal("rapide");
-    console.info("[Export modale] modale construite — bouton Télécharger :", !!document.getElementById("kta-export-go"));
   };
 
   // =========================
@@ -130,11 +110,11 @@ document.addEventListener("click", function(e) {
           <!-- TOGGLE MODE -->
           <div class="kta-conv-sens-wrap">
             <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
-              <span class="kta-conv-sens-label">⚡ Export rapide</span>
+              <span class="kta-conv-sens-label">⚡ Mode rapide</span>
               <span class="kta-conv-sens-desc">Tout inclus, format PNG, résolution originale</span>
             </button>
             <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
-              <span class="kta-conv-sens-label">🎨 Avancé</span>
+              <span class="kta-conv-sens-label">🎨 Mode avancé</span>
               <span class="kta-conv-sens-desc">Choix des calques, légende intégrée, format personnalisable</span>
             </button>
           </div>
@@ -762,12 +742,7 @@ document.addEventListener("click", function(e) {
 
     btnClose.addEventListener("click", fermer);
     btnAnnul.addEventListener("click", fermer);
-    modal.addEventListener("click", function(e) {
-      // Trap diagnostic : log tout clic dans la modale pour voir où l'utilisateur clique vraiment
-      const t = e.target;
-      console.info("[Export modale] clic détecté sur :", t.tagName, "#" + (t.id || "(no-id)"), ".(" + (t.className || "(no-class)") + ")");
-      if (e.target === modal) fermer();
-    });
+    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
 
     btnRapide.addEventListener("click", function() {
       btnRapide.classList.add("active"); btnAvance.classList.remove("active");
@@ -818,18 +793,13 @@ document.addEventListener("click", function(e) {
     // Action Télécharger
     btnGo.addEventListener("click", async function() {
       const modeRapideActif = btnRapide.classList.contains("active");
-      console.info("[Export modale] click Télécharger — mode :", modeRapideActif ? "rapide" : "avance");
       btnGo.disabled = true;
       btnGo.textContent = "⏳ Génération…";
       try {
         if (modeRapideActif) {
-          // Appeler la fonction historique inchangée
           if (window.telechargerPlan) {
-            console.info("[Export modale] → window.telechargerPlan() trouvée, appel…");
             await window.telechargerPlan();
-            console.info("[Export modale] ✓ telechargerPlan() terminé sans erreur");
           } else {
-            console.error("[Export modale] window.telechargerPlan introuvable — utils.js pas chargé ?");
             throw new Error("window.telechargerPlan introuvable (utils.js manquant ?)");
           }
         } else {

@@ -1,9 +1,3 @@
-// Marqueur de version au chargement — permet de vérifier au coup d'œil
-// dans la console (F12) si le navigateur sert bien la dernière version
-// après un bump SW. Si tu ne vois pas ce log, c'est que le cache sert
-// une vieille version → hard reload + check Application > Service Workers.
-console.info("[utils.js] chargé — build 2026-05-09 (export rapide instrumenté)");
-
 function convertCoord(x, y) {
   return [APP_CONFIG.imageHeight - y, x];
 }
@@ -136,15 +130,12 @@ function ajouterPointsDepuisJSON(url, layer) {
 }
 
 async function telechargerPlan() {
-  console.info("[Export rapide] début telechargerPlan()");
   try {
     const config = window.PLAN_CONFIG;
     if (!config || !config.plan) {
-      console.warn("[Export rapide] PLAN_CONFIG introuvable — abandon");
       alert("Configuration du plan introuvable");
       return;
     }
-    console.info("[Export rapide] plan :", config.plan.name, "| dim :", config.plan.imageWidth, "x", config.plan.imageHeight);
 
     const width = config.plan.imageWidth;
     const height = config.plan.imageHeight;
@@ -449,7 +440,6 @@ async function telechargerPlan() {
     // ---------- export ----------
     // Promesse autour de toBlob pour que l'appelant (modale Export) puisse await
     // proprement et voir le succès ou l'échec — sinon le download ratait silencieusement.
-    console.info("[Export rapide] canvas prêt, encodage PNG…");
     await new Promise(function(resolve, reject) {
       canvas.toBlob(function(blob) {
         if (!blob) {
@@ -462,7 +452,6 @@ async function telechargerPlan() {
         link.download = (config.plan.name || "plan") + "_complet.png";
         link.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        console.info("[Export rapide] download déclenché :", link.download, "(", Math.round(blob.size / 1024), "Ko )");
         resolve();
       }, "image/png");
     });
