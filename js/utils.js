@@ -81,10 +81,14 @@ function normaliserPoints(json) {
   return [];
 }
 
+// smoothFactor 2.5 : Leaflet simplifie en interne via Douglas-Peucker.
+// Reduit le nombre de points dessines au pan/zoom (gain perf significatif
+// sur les plans avec beaucoup de routes embedded), perte visuelle quasi
+// imperceptible aux niveaux de zoom usuels. Cf. ROAD_STYLES de road.js.
 const ROAD_STYLES_DATA = {
-  principal:  { color: "#00ff00", weight: 5, opacity: 1 },
-  secondaire: { color: "#b000ff", weight: 5, opacity: 1 },
-  chemin:     { color: "#ffff00", weight: 5, opacity: 1 }
+  principal:  { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
+  secondaire: { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
+  chemin:     { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 }
 };
 
 function ajouterPointsDepuisJSON(url, layer) {
