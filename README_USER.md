@@ -306,6 +306,8 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
+
+> 💡 **Calque "Mes annotations"** dans le contrôle des couches Leaflet (en haut à droite de la carte) : ce calque regroupe TOUTES tes annotations de session — points ajoutés, routes tracées, zones dessinées. Décocher la case les masque toutes en un clic, recocher les réaffiche. **L'itinéraire et la mesure ne sont PAS affectés** par ce toggle (ils ont leur propre cycle de vie).
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
