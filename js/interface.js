@@ -1178,6 +1178,7 @@ function afficherAide() {
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte, recherche par nom/id/tag, ou bouton <strong>🧭 Ma position</strong> qui prend ta position tracker actuelle),
             l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données, <strong>même les calques masqués</strong> — utile si les routes sont dessinées en dur sur le PNG et que tu veux gagner en perf).
+            Le label en bas-gauche affiche la <strong>distance</strong> et le <strong>⏱️ temps estimé</strong> (vitesse marche 5 km/h + 15 min de pause par point intermédiaire).
             Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
             <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
@@ -2590,7 +2591,33 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
 // =========================
 let _itiDistanceCtrl = null;
 
-function _afficherLabelDistanceItineraire(distanceM) {
+// Constantes pour l'estimation du temps de parcours.
+// Vitesse de marche normale (5 km/h ~ 83 m/min). En cataphilie le terrain
+// peut etre plus accidente mais l'estimation reste indicative.
+const VITESSE_MARCHE_KMH       = 5;
+// Temps de pause par point intermediaire (entre depart et arrivee).
+// 2 waypoints = 0 pauses (depart + arrivee). 3 waypoints = 1 pause. N = N-2.
+const TEMPS_PAUSE_PAR_POINT_MIN = 15;
+
+// Retourne le temps total estime en minutes : marche + pauses intermediaires.
+function _tempsItineraireMinutes(distanceM, nbWaypoints) {
+  if (typeof distanceM !== "number" || distanceM <= 0) return 0;
+  const tempsMarcheMin = distanceM / (VITESSE_MARCHE_KMH * 1000 / 60);  // m / (m/min)
+  const nbPausesInter  = Math.max(0, (nbWaypoints || 0) - 2);
+  const tempsPauseMin  = nbPausesInter * TEMPS_PAUSE_PAR_POINT_MIN;
+  return tempsMarcheMin + tempsPauseMin;
+}
+
+// Formate une duree en minutes : "X min" si < 60, "Xh YY" sinon.
+function _formatTempsMinutes(totalMin) {
+  if (!totalMin || totalMin < 1) return "<1 min";
+  if (totalMin < 60) return Math.round(totalMin) + " min";
+  const heures  = Math.floor(totalMin / 60);
+  const minutes = Math.round(totalMin - heures * 60);
+  return heures + "h" + (minutes < 10 ? "0" + minutes : minutes);
+}
+
+function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
   if (!window.map) return;
   // Détection d'un contrôle "détaché" : après un plan switch, map.remove()
   // a été appelé et le contrôle n'est plus rattaché à la map. _itiDistanceCtrl._map
@@ -2618,7 +2645,25 @@ function _afficherLabelDistanceItineraire(distanceM) {
   const el = document.querySelector(".kta-iti-distance");
   if (el) {
     el.style.display = "block";
-    el.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>Itinéraire : ' + window.formatDistance(distanceM, 1);
+    const tempsMin    = _tempsItineraireMinutes(distanceM, nbWaypoints);
+    const distFmt     = window.formatDistance(distanceM, 1);
+    const tempsFmt    = _formatTempsMinutes(tempsMin);
+    const nbPausesInter = Math.max(0, (nbWaypoints || 0) - 2);
+    el.innerHTML =
+      '<span class="kta-iti-distance-icon">🗺️</span>' +
+      '<span class="kta-iti-distance-val">' + distFmt + '</span>' +
+      '<span class="kta-iti-distance-sep">·</span>' +
+      '<span class="kta-iti-distance-time">⏱️ ' + tempsFmt + '</span>';
+    // Tooltip detaille pour la breakdown (vitesse + nb pauses)
+    el.title =
+      "Distance : " + distFmt + "\n" +
+      "Temps estimé : " + tempsFmt +
+      " (vitesse " + VITESSE_MARCHE_KMH + " km/h" +
+      (nbPausesInter > 0
+        ? " + " + nbPausesInter + " pause" + (nbPausesInter > 1 ? "s" : "") +
+          " de " + TEMPS_PAUSE_PAR_POINT_MIN + " min"
+        : "") +
+      ")\nCliquer pour ouvrir le menu Itinéraire";
   }
 }
 
@@ -2647,7 +2692,9 @@ function _majLabelDistanceItineraire() {
   if (!window.getRoads || !window.map) return;
   const itineraryRoad = window.getRoads().find(function(r) { return r.type === "itinerary"; });
   if (itineraryRoad) {
-    _afficherLabelDistanceItineraire(_distanceItineraireMeters(itineraryRoad));
+    const distM = _distanceItineraireMeters(itineraryRoad);
+    const nbWp  = Array.isArray(itineraryRoad.waypoints) ? itineraryRoad.waypoints.length : 2;
+    _afficherLabelDistanceItineraire(distM, nbWp);
   } else {
     _masquerLabelDistanceItineraire();
   }
@@ -2886,12 +2933,18 @@ window.ouvrirItinerairModal = function() {
   // Bouton "❌ Effacer" affiche uniquement si itineraire actif.
   // Statut Distance/Tronçons en haut si mode navigation.
   const computeBtnLabel = modeNavigation ? "🔄 Recalculer l'itinéraire" : "🎯 Calculer l'itinéraire";
-  const statusActuel = modeNavigation
-    ? '<div class="kta-iti-result" style="display:block; margin-bottom:10px;">' +
-        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(_distanceItineraireMeters(existingItinerary), 1) + '</div>' +
+  let statusActuel = '';
+  if (modeNavigation) {
+    const distActMeters = _distanceItineraireMeters(existingItinerary);
+    const nbWpAct       = Array.isArray(existingItinerary.waypoints) ? existingItinerary.waypoints.length : 2;
+    const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
+    statusActuel =
+      '<div class="kta-iti-result" style="display:block; margin-bottom:10px;">' +
+        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' + _formatTempsMinutes(tempsActMin) + '</div>' +
         '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
-      '</div>'
-    : '';
+      '</div>';
+  }
   const eraseBtn = modeNavigation
     ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">❌ Effacer l\'itinéraire</button>'
     : '';
@@ -3136,8 +3189,10 @@ window.ouvrirItinerairModal = function() {
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
       const distM = result.totalDistance / scale;
 
+      const tempsCalcMin = _tempsItineraireMinutes(distM, _itineraryWaypoints.length);
       resEl.innerHTML =
         '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distM, 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +
         '<div class="kta-iti-result-row"><strong>Tronçons traversés :</strong> ' + result.segmentCount + '</div>' +
         '<div class="kta-iti-result-actions">' +
           '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">💾 Enregistrer comme itinéraire</button>' +

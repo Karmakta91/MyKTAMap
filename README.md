@@ -9,6 +9,43 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 2) — Itinéraire : temps estimé (label bottomleft + modale)
+
+Le label distance bottomleft (`.kta-iti-distance`) affiche maintenant aussi un **temps estimé** à côté de la distance, et la modale itinéraire l'affiche dans le bloc résultat (mode calcul) et le statut actuel (mode navigation).
+
+**Formule** :
+```
+temps_marche  = distance_m / (5 km/h × 1000 / 60)        // m / (m/min)
+nb_pauses     = max(0, nbWaypoints - 2)                  // pauses entre départ et arrivée
+temps_pauses  = nb_pauses × 15 min
+total         = temps_marche + temps_pauses
+```
+
+- **Vitesse marche** : 5 km/h (vitesse normale, ajustable via constante `VITESSE_MARCHE_KMH`)
+- **Pause par point intermédiaire** : 15 min (constante `TEMPS_PAUSE_PAR_POINT_MIN`). Si l'itinéraire fait juste départ → arrivée (2 waypoints), pas de pause.
+
+**Format affiché** :
+- < 60 min → `"23 min"`
+- ≥ 60 min → `"1h25"` (avec h sans espace, minutes 0-padded à 2 chiffres si < 10)
+
+**Label bottomleft** :
+```
+🗺️ 1.23 km · ⏱️ 15 min
+```
+Tooltip hover (title) avec breakdown détaillé : `"Distance : 1.23 km · Temps estimé : 15 min (vitesse 5 km/h + 2 pauses de 15 min)"`.
+
+**Code** :
+- `js/interface.js` : nouvelles constantes `VITESSE_MARCHE_KMH` (5), `TEMPS_PAUSE_PAR_POINT_MIN` (15). Helpers `_tempsItineraireMinutes(distM, nbWaypoints)` et `_formatTempsMinutes(totalMin)`.
+- `js/interface.js > _afficherLabelDistanceItineraire(distanceM, nbWaypoints)` : signature étendue (paramètre nbWaypoints), HTML enrichi avec span `.kta-iti-distance-time`, tooltip détaillé.
+- `js/interface.js > _majLabelDistanceItineraire` : passe `road.waypoints.length` au label.
+- `js/interface.js > ouvrirItinerairModal` : `statusActuel` (mode navigation) et `resEl.innerHTML` (après calcul) affichent une ligne ⏱️ Temps estimé.
+- `css/style.css > .kta-iti-distance-sep` et `.kta-iti-distance-time` : style de la séparation distance/temps dans le label.
+- Aide in-app : section Itinéraire mise à jour pour mentionner le temps estimé.
+
+**`sw.js`** : `CACHE_NAME` v85 → v86.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 1) — Popup point : 3ème bouton "📍 Je suis ici" (recalage tracker)
 
 Dans la même logique que les boutons Y aller / Itinéraire ajoutés précédemment, nouveau bouton **📍 Je suis ici** dans la popup d'un point — recale ta position tracker sur les coords exactes du point.
