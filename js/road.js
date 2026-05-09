@@ -252,16 +252,18 @@ function renderRoads() {
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
 
+  // ⚠️ INSTANCE PARTAGEE de L.svg() pour TOUTES les roads + cercles d'intersection.
+  // Sans ce partage, chaque appel a L.svg() creait un NOUVEAU pane SVG dedie →
+  // sur un plan dense avec 50+ cercles d'intersection, on accumulait 50+ panes
+  // SVG distincts dans le DOM → crash memoire instantane apres chargement.
+  // Avec une seule instance partagee, tous les elements vectoriels SVG passent
+  // par le meme pane = 1 seul element <svg> dans le DOM, performant.
+  // (L'itineraire reste sur SON propre L.svg() pour pouvoir avoir un className
+  // CSS dedie pour le drop-shadow halo cyan — un seul tracé itineraire actif
+  // a la fois, donc 1 pane supplementaire negligeable.)
+  const _sharedSvgRenderer = L.svg();
+
   // Tracés
-  // ⚠️ On force le renderer SVG sur TOUTES les roads de session (depuis 09/05/2026,
-  // suite 18). Sans ça, avec preferCanvas:true, les polylines etaient rendues sur
-  // le canvas partage de la map et le toggle off du layerGroup parent ne les
-  // retirait pas systematiquement (bug Leaflet observe : polygons zones se
-  // retiraient bien, mais polylines roads restaient visibles). SVG = element DOM
-  // dedié, removed proprement avec son layerGroup parent. Impact perf negligeable
-  // car les roads SESSION sont peu nombreuses (<20 typiquement). Les routes
-  // EMBEDDED du JSON (potentiellement centaines) restent en canvas via
-  // ajouterPointsDepuisJSON, perf preservee.
   roadsData.forEach(road => {
     if (!road.points || road.points.length === 0) return;
 
@@ -278,8 +280,9 @@ function renderRoads() {
       const polyline = L.polyline(latlngs, opts).addTo(target);
       roadLayers.push(polyline);
     } else {
-      // Roads session normales : SVG force pour fiabilite du toggle layerEditor
-      const opts = Object.assign({}, style, { renderer: L.svg() });
+      // Roads session normales : SVG partage (instance unique) pour fiabilite
+      // du toggle layerEditor + perf (1 seul pane SVG pour toutes les roads).
+      const opts = Object.assign({}, style, { renderer: _sharedSvgRenderer });
       const polyline = L.polyline(latlngs, opts).addTo(target);
       roadLayers.push(polyline);
     }
@@ -299,8 +302,8 @@ function renderRoads() {
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
-    // Renderer SVG force aussi pour les cercles d'intersection (meme raison
-    // que les polylines roads ci-dessus : fiabilite du toggle layerEditor).
+    // Renderer SVG partage (meme instance que les polylines ci-dessus) pour
+    // la fiabilite du toggle layerEditor sans exploser le nombre de panes.
     const cercle = L.circleMarker(latlng, {
       radius:      ROAD_INTERSECTION_RADIUS,
       color:       color,
@@ -309,7 +312,7 @@ function renderRoads() {
       weight:      0,
       stroke:      false,
       interactive: false,
-      renderer:    L.svg()
+      renderer:    _sharedSvgRenderer
     }).addTo(intersectionsTarget);
     roadLayers.push(cercle);
   });

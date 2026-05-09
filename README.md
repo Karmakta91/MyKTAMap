@@ -9,6 +9,20 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 20) — Hotfix crash app : SVG renderer partagé pour les roads
+
+**Bug** : la suite 18 (forçage `renderer: L.svg()` sur roads + cercles d'intersection) faisait crasher l'app instantanément après chargement sur les plans denses.
+
+**Cause racine** : `L.svg()` **crée un nouveau pane SVG** à chaque appel. Avec N polylines + M cercles d'intersection, on instanciait N+M panes SVG distincts dans le DOM. Sur un plan avec 50+ cercles d'intersection, on saturait la mémoire.
+
+**Fix** : créer **UNE SEULE instance** `_sharedSvgRenderer = L.svg()` au début de `renderRoads`, et la réutiliser pour toutes les polylines roads + tous les cercles d'intersection. Résultat : **1 seul pane SVG** dans le DOM peu importe le nombre d'éléments.
+
+L'itinéraire garde son propre `L.svg()` car il a besoin d'un className CSS dédié pour le drop-shadow cyan (un seul tracé actif à la fois → 1 pane additionnel négligeable).
+
+**`sw.js`** : `CACHE_NAME` v69 → v70.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 19) — Toast copyright à l'activation du mode debug
 
 **Avant** : la popup copyright `.kta-devtools-warn` ne s'affichait que si la heuristique outerWidth/innerWidth détectait DevTools ouvert (polling 2s, threshold 240px). Le user ne voyait pas de feedback visuel s'il activait le mode debug **sans** F12 ouvert, ou si son setup DevTools tombait en dessous du threshold.
