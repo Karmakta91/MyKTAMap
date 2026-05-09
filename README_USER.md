@@ -776,6 +776,107 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 ---
 
+## 🚀 Optimiser ton plan pour la performance
+
+Un plan léger se charge plus vite, navigue plus fluide et **réduit fortement le risque de crash mémoire sur mobile**. Voici les bonnes pratiques par ordre d'impact.
+
+### 1. 🖼️ Image principale — limiter les dimensions
+
+L'image base est le **plus gros consommateur mémoire**. Sur mobile, le navigateur alloue un canvas de la taille de l'image entière.
+
+| Dimensions | Comportement | Recommandation |
+|---|---|---|
+| ≤ 4 000 × 4 000 px | OK partout | ✅ Idéal |
+| 4 000 - 8 000 px | OK desktop, dézoom limité sur mobile | ⚠️ Acceptable |
+| 8 000 - 16 000 px | Risque de crash sur mobile bas/moyenne gamme | ⚠️ Force le tuilage (mode Performance) |
+| > 16 000 px | Crash quasi-garanti sur mobile | ❌ À éviter |
+
+**Astuce** : si ton plan source est gigantesque, redimensionne à 6 000-8 000 px de côté max avec un éditeur d'image (GIMP, Photoshop, [Squoosh](https://squoosh.app/) en ligne). Tu perds un peu de détail au zoom maximum mais tu gagnes énormément en stabilité.
+
+### 2. 📦 Format de l'image — JPEG vs PNG
+
+| Format | Quand l'utiliser | Poids typique (8000×6000 px) |
+|---|---|---|
+| **JPEG** (qualité 80-90 %) | Photos, scans, plans avec dégradés | ~3-8 Mo ✅ |
+| **PNG** | Plans avec transparence ou aplats nets | ~15-50 Mo ⚠️ |
+| **WebP** | Compromis qualité/poids (Chrome/Firefox/Safari modernes) | ~2-5 Mo ✅✅ |
+
+> 💡 Pour un plan de carrière classique avec des routes dessinées par-dessus une couleur unie, le **JPEG qualité 85** divise le poids par 5 à 10 sans perte visuelle perceptible.
+
+### 3. 🗂️ Calques image — limiter le nombre
+
+Chaque calque image supplémentaire (légende, annotations, etc.) **multiplie la mémoire utilisée**. Le visiteur charge tous les calques même s'il en masque une partie.
+
+| Nombre de calques image | Recommandation |
+|---|---|
+| 1 (image base seule) | ✅ Optimal |
+| 2-3 | ⚠️ Acceptable si chacun est ≤ 2 Mo |
+| 4+ | ❌ À éviter — fusionne dans le PNG base |
+
+**Alternative** : si tu as des éléments décoratifs (légende, repères), **intègre-les directement dans l'image base** plutôt que d'en faire des calques séparés. Tu perds la possibilité de les masquer mais tu gagnes en perf.
+
+### 4. 🛣️ Routes — intégrer dans le PNG si nombreuses
+
+Les routes JSON (Principal/Secondaire/Chemin) sont rendues par Leaflet en surcouche vectorielle. Au-delà de **~50 routes**, le navigateur peut ramer au pan/zoom.
+
+**Stratégie pour les gros plans** :
+1. Trace les routes dans ton éditeur d'image (GIMP/Photoshop) **directement sur le PNG**
+2. Garde un calque JSON minimaliste avec les routes invisibles côté visuel mais utilisable par le module **🗺️ Itinéraire** (le pathfinder utilise toutes les routes du calque, **même masquées**)
+3. Dans le contrôle des couches Leaflet, **décoche le calque JSON des routes** → tu vois les routes via le PNG, l'app ne dessine pas les polylines vectorielles → gros gain perf
+4. L'itinéraire continue de fonctionner
+
+> 🎯 Cette technique permet d'avoir **des centaines de tronçons** sur le plan sans aucun impact perf au pan/zoom.
+
+### 5. 📍 Points — limiter les calques de données denses
+
+Chaque calque JSON de points (`puits.json`, `chatieres.json`, etc.) crée des markers Leaflet. Au-delà de **~500 markers visibles simultanément**, ça peut ralentir le rendu sur mobile.
+
+| Nombre de markers | Recommandation |
+|---|---|
+| ≤ 200 | ✅ OK |
+| 200-500 | ⚠️ OK desktop, prudence mobile |
+| 500-2000 | ⚠️ Sépare en plusieurs calques de données toggleables |
+| > 2000 | ❌ Considère un mode "regroupement" (clustering, future feature) |
+
+**Astuce** : sépare tes points en plusieurs calques de données (ex: `puits.json`, `passages.json`, `électricité.json`) pour que l'utilisateur puisse en masquer ceux qui l'intéressent moins.
+
+### 6. ⚡ Mode performance — choisir le bon preset
+
+Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
+
+| Preset | Pour quel cas |
+|---|---|
+| **💤 Désactivé** | Petit plan ≤ 4 000 px, desktop puissant. **Risque de crash sur Safari iOS au-delà de 8 000 px** |
+| **🔄 Auto** (défaut) | Comportement intelligent — tuile si fichier > 60 Mo. ✅ Bon choix par défaut |
+| **🌟 Qualité** | Images haute définition, perf à fond (desktop/laptop) |
+| **🎯 Équilibré** | Bon compromis qualité/perf, recommandé sur la plupart des mobiles modernes |
+| **⚡ Performance** | Vieux mobile, plan très gros, priorité absolue à la stabilité |
+
+> 💡 Le preset est mémorisé **par plan** : tu peux avoir un plan en mode Performance pour ton vieux téléphone et un autre en Qualité pour ton iPad.
+
+### 7. 📱 Spécifique mobile
+
+- **iPhone PWA** (installé sur écran d'accueil) gère mieux les gros plans qu'iPhone Safari direct
+- **Android Chrome** est généralement plus tolérant qu'iOS pour la mémoire
+- En cas de crash : ⚙️ Réglages → **🐛 Logs détaillés** → ON pour diagnostiquer
+
+### 8. 💾 Sauvegarde régulière
+
+Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur iOS — l'OS tue l'onglet sans prévenir pour récupérer de la RAM. L'app détecte ce kill au reboot et te montre un toast d'avertissement.
+
+> 📌 **Réflexe** : exporte ta session (💾 Enregistrer la session) tous les 10-15 minutes de travail intensif. L'auto-save localStorage protège déjà contre la plupart des cas, mais un export externe reste le plus sûr.
+
+### Récap rapide
+
+✅ **Pour un plan optimal** :
+- Image base **JPEG qualité 85** ≤ 8 000 px de côté
+- 1 ou 2 calques image max
+- Routes **dessinées dans le PNG** + calque JSON masqué pour le pathfinder
+- Points répartis dans 2-3 calques de données toggleables
+- Preset **🎯 Équilibré** par défaut, **⚡ Performance** pour les vieux mobiles
+
+---
+
 ## 🗺️ Légende
 
 > Accessible via le groupe **📚 Aide / Doc / Légende → 🗺️ Légende**.

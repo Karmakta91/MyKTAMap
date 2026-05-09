@@ -9,6 +9,26 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 27) — Tutoriel "Optimiser ton plan" dans la doc utilisateur
+
+Nouvelle section dans `README_USER.md` (consommée par la modale 📖 Documentation in-app) : un tutoriel concret pour optimiser un plan en termes de performance et stabilité mémoire.
+
+**Sujets couverts** (8 points avec recommandations chiffrées) :
+1. 🖼️ Image principale — limites de dimensions (4K / 8K / 16K) + comportement attendu
+2. 📦 Format image — JPEG vs PNG vs WebP avec poids typiques
+3. 🗂️ Calques image — limiter à 1-2 max
+4. 🛣️ Routes — stratégie "routes dessinées dans le PNG + calque JSON masqué" qui exploite la nouvelle API `getAllEmbeddedRoads`
+5. 📍 Points — split en plusieurs calques de données
+6. ⚡ Mode performance — quel preset choisir selon le device
+7. 📱 Spécifique mobile — iPhone PWA vs Safari, OOMGuard
+8. 💾 Sauvegarde régulière — protection contre les kills mémoire
+
+**Aussi côté in-app** : nouvelle section `🚀 Optimiser un plan` dans la modale d'aide (`afficherAide` dans `interface.js`) avec un résumé concis et un pointeur vers la doc complète.
+
+**`sw.js`** : `CACHE_NAME` v76 → v77 (force récupération du nouveau `README_USER.md` cached pour la modale Documentation).
+
+---
+
 ### 🗓️ 09/05/2026 (suite 26) — Pathfinder utilise toutes les routes embedded (visibles ou non)
 
 **Cas d'usage** : sur un plan où les routes sont dessinées en dur sur le PNG, l'utilisateur peut vouloir **masquer le calque des routes JSON** dans le contrôle des couches Leaflet pour gagner en perf de rendu (moins d'éléments vectoriels à redessiner). Mais avant ce fix, masquer le calque empêchait aussi le module **🗺️ Itinéraire** de trouver un chemin (le pathfinder ne voyait plus le réseau de routes).
