@@ -9,6 +9,24 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 32) — Décalage du titre fixe quand le contrôle des couches est ouvert
+
+Le z-index élevé sur `.leaflet-control-layers-expanded` (suite 31) **n'a pas suffi** : le `#map` est en `position: fixed`, ce qui crée un **stacking context isolé**. Le z-index du panneau Leaflet est piégé dans ce contexte et ne peut pas dépasser le titre fixe (dans le body, z-index 1100), même avec une valeur très élevée.
+
+**Solution alternative** : décaler le titre vers la gauche pendant que le contrôle des couches est ouvert.
+
+**Implémentation** :
+- `js/interface.js > _initLayersControlWatcher` : MutationObserver sur le contrôle des couches Leaflet. Détecte l'ajout/retrait de la classe `.leaflet-control-layers-expanded` (gérée par Leaflet au clic/hover du toggle). Bascule la classe `kta-layers-panel-open` sur `<body>` en conséquence.
+- `css/style.css` : règle `body.kta-layers-panel-open #kta-titre-fixe` qui retire le `transform: translateX(-50%)` et ancre le titre à `left: calc(70px + env(safe-area-inset-left, 0px))` (juste après la sidebar accordéon). Le `#kta-plan-switcher` (qui s'ancre sous le titre) suit le même décalage.
+
+Transition CSS douce déjà en place sur `transition: transform 0.1s` du titre.
+
+**Résultat** : ouvrir le contrôle des couches → titre glisse à gauche → panneau visible intégralement → fermer le contrôle → titre revient au centre.
+
+**`sw.js`** : `CACHE_NAME` v81 → v82.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 31) — Fix z-index contrôle des couches (passe derrière le titre sur mobile)
 
 **Bug mobile** : quand l'utilisateur ouvrait le contrôle des couches Leaflet (haut-droite) sur mobile, le panneau déplié (`.leaflet-control-layers-expanded`) passait **derrière le titre fixe** (`#kta-titre-fixe`, z-index 1100). Sur mobile le titre prend la pleine largeur en haut → chevauchement → le haut du panneau était caché par le titre.

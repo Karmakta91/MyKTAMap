@@ -1947,6 +1947,38 @@ function _creerGroupeAccordeon(config) {
 }
 
 // =========================
+// LEAFLET LAYERS CONTROL WATCHER
+// =========================
+// Observe la classe ".leaflet-control-layers-expanded" sur le contrôle des
+// couches Leaflet. Quand l'utilisateur ouvre le panneau, on ajoute une classe
+// sur <body> pour permettre au CSS de décaler le #kta-titre-fixe à gauche
+// (sinon le panneau passe derrière le titre, bug stacking context observé sur
+// mobile où le titre prend pleine largeur).
+function _initLayersControlWatcher() {
+  function _attachWatcher() {
+    const layersCtrl = document.querySelector(".leaflet-control-layers");
+    if (!layersCtrl) {
+      // Pas encore créé par Leaflet → retry dans 200ms (rare, mais safety net)
+      setTimeout(_attachWatcher, 200);
+      return;
+    }
+    const observer = new MutationObserver(function() {
+      document.body.classList.toggle(
+        "kta-layers-panel-open",
+        layersCtrl.classList.contains("leaflet-control-layers-expanded")
+      );
+    });
+    observer.observe(layersCtrl, { attributes: true, attributeFilter: ["class"] });
+    // Sync initial (au cas où expanded au boot)
+    document.body.classList.toggle(
+      "kta-layers-panel-open",
+      layersCtrl.classList.contains("leaflet-control-layers-expanded")
+    );
+  }
+  _attachWatcher();
+}
+
+// =========================
 // INIT INTERFACE — barre 9 groupes (accordéons)
 // =========================
 function initInterface() {
@@ -1959,6 +1991,16 @@ function initInterface() {
   _groupeOuvert = null;
 
   L.control.titleControl().addTo(window.map);
+
+  // ===== Watcher pour le contrôle des couches Leaflet =====
+  // Quand le panneau des couches s'ouvre (clic ou hover), il s'agrandit en haut-droite
+  // de la map. Mais le #map est position:fixed → stacking context isolé → le panneau
+  // ne peut pas passer au-dessus du titre fixe (z-index 1100, dans le body). Sur mobile
+  // avec un titre qui prend la pleine largeur, le panneau passe derriere le titre.
+  // Solution : MutationObserver qui detecte l'ouverture du panneau (classe
+  // "leaflet-control-layers-expanded" ajoutee/retiree par Leaflet) et ajoute une
+  // classe sur le body, qui declenche un decalage CSS du titre vers la gauche.
+  _initLayersControlWatcher();
 
   // 1. AIDE / DOC / LÉGENDE
   _creerGroupeAccordeon({
