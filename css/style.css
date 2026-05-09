@@ -3313,6 +3313,19 @@ html, body {
   margin-right: 6px;
 }
 
+/* Separation visuelle entre distance et temps estime dans le label bottomleft */
+.kta-iti-distance .kta-iti-distance-sep {
+  margin: 0 6px;
+  color: rgba(0, 212, 255, 0.4);
+  font-weight: 400;
+}
+
+.kta-iti-distance .kta-iti-distance-time {
+  /* Meme couleur que le reste du label, pas besoin de demarcation supplementaire */
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
 /* Bouton "aller à" sur chaque waypoint dans la liste */
 .kta-iti-wp-goto {
   flex-shrink: 0;
