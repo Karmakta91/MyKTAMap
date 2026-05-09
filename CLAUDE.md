@@ -341,10 +341,14 @@ Idempotente : peut tourner 100 fois sans effet de bord.
 
 ### 11. Gating centralisé des logs (`debug.js`, depuis 09/05/2026)
 
-`debug.js` proxie `console.log/info/warn/error` pour les capter dans un buffer (modale 🐛 Logs accessible depuis Réglages). Depuis 09/05, le proxy fait AUSSI :
+`debug.js` proxie `console.log/info/warn/error` pour les capter dans un buffer (modale 🐛 Logs accessible depuis Réglages). Le gating est en deux niveaux :
 
-- `console.log` / `console.info` → ne sortent dans la console DevTools **que si** `APP_CONFIG.debugMode === true`. Sinon ils sont **toujours bufferisés** mais invisibles dans la console (silence en prod).
-- `console.warn` / `console.error` → toujours visibles ET bufferisés (critiques).
+| | DevTools console | Buffer (modale 🐛) |
+|---|---|---|
+| `console.log` / `console.info` | Visible **si debugMode = true** | Bufferisé **si debugMode = true** |
+| `console.warn` / `console.error` | Toujours visible | Toujours bufferisé |
+
+**Pourquoi gater AUSSI le buffer ?** (changement le 09/05/2026, suite 16) — Sans ça, `tracking.js` (60 logs/s en mode actif via `[Tracking] Magnitude :`) pollue le localStorage et pousse les warn/error utiles hors du buffer (limite 300 entries). En debug OFF on ne garde que les warn/error : modale 🐛 reste lisible même après une session intensive de tracking.
 
 **Convention de tag** : préfixer chaque log avec `[Module]` (ex : `[Road] Mode :`, `[Tracking] Magnitude :`, `[Export rapide] résumé layer loop`). Plus de gating manuel `if (APP_CONFIG?.debugMode)` à coder dans les modules.
 

@@ -45,22 +45,34 @@
   const _origWarn  = console.warn.bind(console);
   const _origError = console.error.bind(console);
 
-  // Gating centralisé : en mode debug OFF, console.log/info ne ressortent PAS
-  // dans la console DevTools (silence en prod) mais sont TOUJOURS bufferisés
-  // pour la modale 🐛 Logs de débogage. warn/error restent toujours visibles
-  // car critiques. Lecture safe d'APP_CONFIG (pas encore chargé au tout début
-  // du boot → défaut silencieux).
+  // Gating centralisé en deux niveaux :
+  //  - DevTools console (sortie visible) : log/info gates derrière debugMode.
+  //    warn/error toujours visibles car critiques (echecs fetch, OOM, etc.).
+  //  - Buffer (modale 🐛 Logs) : log/info gates derrière debugMode AUSSI.
+  //    warn/error toujours bufferisés (diagnostic post-mortem en prod).
+  //
+  // Pourquoi gater AUSSI le buffer ? Sans ça, tracking.js (60 logs/s en
+  // mode actif) pollue le localStorage et pousse les warn/error utiles
+  // hors du buffer (limite 300 entries). En debug OFF on ne garde donc
+  // que les warn/error : modale 🐛 reste lisible meme apres une session
+  // intensive de tracking.
+  // Lecture safe d'APP_CONFIG (pas encore chargé au tout début du boot
+  // → défaut silencieux).
   function _isDebug() {
     return !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
   }
 
   console.log = function() {
-    if (_isDebug()) _origLog.apply(console, arguments);
-    _save("log", arguments);
+    if (_isDebug()) {
+      _origLog.apply(console, arguments);
+      _save("log", arguments);
+    }
   };
   console.info = function() {
-    if (_isDebug()) _origInfo.apply(console, arguments);
-    _save("info", arguments);
+    if (_isDebug()) {
+      _origInfo.apply(console, arguments);
+      _save("info", arguments);
+    }
   };
   console.warn = function() {
     _origWarn.apply(console, arguments);
