@@ -9,6 +9,18 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 31) — Fix z-index contrôle des couches (passe derrière le titre sur mobile)
+
+**Bug mobile** : quand l'utilisateur ouvrait le contrôle des couches Leaflet (haut-droite) sur mobile, le panneau déplié (`.leaflet-control-layers-expanded`) passait **derrière le titre fixe** (`#kta-titre-fixe`, z-index 1100). Sur mobile le titre prend la pleine largeur en haut → chevauchement → le haut du panneau était caché par le titre.
+
+**Fix** : `z-index: 1200 !important` sur `.leaflet-control-layers-expanded` → passe au-dessus du titre, mais reste sous les modales charte (99999) et le splash (9999) pour ne pas perturber les autres flux UI.
+
+Code : `css/style.css > .leaflet-control-layers-expanded`.
+
+**`sw.js`** : `CACHE_NAME` v80 → v81.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 30) — Tuiles fond noir + raccourci label distance + édition waypoints en mode navigation
 
 **3 améliorations cumulées** :
