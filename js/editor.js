@@ -266,7 +266,7 @@ function _ajouterMarker(point) {
   }
 
   const marker = L.marker(convertCoord(point.x, point.y), { icon: icone }).addTo(window.layerEditor);
-  marker.bindPopup("<b>" + point.nom + "</b><br>" + (point.description || ""));
+  marker.bindPopup("<b>" + point.nom + "</b><br>" + (point.description || ""), window.KTA_POPUP_OPTS);
 }
 
 // =========================

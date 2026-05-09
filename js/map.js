@@ -4,6 +4,19 @@
 
 let map, bounds, collisionCanvas, collisionCtx;
 
+// Options communes à tous les popups markers — autoPanPadding généreux pour
+// éviter les popups clippés par les bords d'écran sur mobile. Combiné au
+// buffer maxBounds (cf. initMapFromConfig), Leaflet a la marge de manœuvre
+// pour repositionner correctement.
+//   autoPanPadding[0]  = padding horizontal (px écran)
+//   autoPanPadding[1]  = padding vertical   (px écran)
+window.KTA_POPUP_OPTS = {
+  autoPan:         true,
+  autoPanPadding:  [30, 80],   // 30 px latéraux, 80 px en haut/bas (status bar + sidebar)
+  closeButton:     true,
+  className:       "kta-marker-popup"
+};
+
 // Icônes globales — seules iconeDefault et iconeTrack sont consommées hors map.js
 // (cf. utils.js, editor.js, interface.js, tracking.js). Tous les autres tags sont
 // résolus via window._iconMap[tag] (cf. cascade getIconUrlForPoint dans utils.js).
@@ -162,12 +175,31 @@ async function initMapFromConfig() {
 
   creerIcones(config.icons);
 
+  // Bornes "réelles" du plan (image)
   bounds = [[0, 0], [config.plan.imageHeight, config.plan.imageWidth]];
+
+  // Bornes "élargies" pour maxBounds : ajout d'un buffer autour du plan,
+  // invisible visuellement (juste le body bg sombre) mais qui permet à
+  // l'auto-pan de Leaflet de positionner les popups quand un marker est
+  // près du bord du plan. Sans ça, viscosity:1.0 bloquait l'auto-pan et
+  // les popups sortaient du cadre.
+  // Buffer ~ 30% de la dimension la plus petite : assez pour qu'une
+  // popup mobile (~250×150 px) tienne même au zoom le plus zoomé.
+  const _bufferPx = Math.round(Math.min(config.plan.imageWidth, config.plan.imageHeight) * 0.3);
+  const _maxBounds = [
+    [-_bufferPx,                          -_bufferPx],
+    [config.plan.imageHeight + _bufferPx,  config.plan.imageWidth + _bufferPx]
+  ];
+
+  // Sur mobile, dezoom plus profond (-4 vs -2) pour donner plus d'espace
+  // écran libre autour du plan quand on consulte un point au bord.
+  const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  const _minZoom  = _isMobile ? -4 : -2;
 
   map = L.map('map', {
     crs: L.CRS.Simple,
-    minZoom: -2,
-    maxBounds: bounds,
+    minZoom: _minZoom,
+    maxBounds: _maxBounds,
     maxBoundsViscosity: 1.0,
     // Rendu canvas pour les overlays vectoriels (polylines routes, polygons zones,
     // circleMarker intersections). Évite la création de N éléments SVG/DOM, gros
@@ -175,8 +207,8 @@ async function initMapFromConfig() {
     // car ils utilisent des icon images — pas affectés par preferCanvas.
     preferCanvas: true
   });
-  map.setMaxBounds(bounds);
-  map.setMinZoom(-2);
+  map.setMaxBounds(_maxBounds);
+  map.setMinZoom(_minZoom);
   map.setMaxZoom(2);
 
   window.map    = map;
