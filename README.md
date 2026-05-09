@@ -9,6 +9,115 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 4) — OOMGuard : modale "ATTENTION arrêt brutal détecté"
+
+- **Nouveau module `js/oomGuard.js`** — détection des kills mémoire silencieux d'iOS Safari et Android Chrome :
+  - **Heartbeat** localStorage `myktamap_session_alive` rafraîchi toutes les 5s, effacé proprement aux events `beforeunload` ET `pagehide` (iOS préfère `pagehide`)
+  - **Au boot** : si le marker est présent et < 1h → kill brutal probable (l'app n'a pas atteint son unload). Stocke l'info en `_pendingKillInfo` et programme l'affichage de la modale.
+  - **`flushPendingToasts()`** appelée depuis `_splashEnd` dans main.js → vide la file 400ms après le fade splash → la modale s'affiche au bon moment, pas derrière le gradient sombre.
+- **Modale plein-format `_afficherModaleKill`** dans le style charte :
+  - **Bordure rouge 2px** + glow rouge (layered box-shadow) autour de la carte
+  - **Titre `⚠️ ATTENTION — ARRÊT BRUTAL DÉTECTÉ ⚠️`** en gros (18px), all caps, rouge `#ff6b6b`, bold 800. Les ⚠️ de chaque côté pulsent doucement (1.6s scale 1↔1.15) pour attirer l'œil sans agresser.
+  - **Sections** : intro pill (accent rouge gauche), "🤔 Pourquoi ?", "💡 Comment éviter que ça recommence" (liste de conseils concrets : fermer apps en arrière-plan, baisser le mode performance, éviter onglets multiples, garder OS à jour, plan trop volumineux, exporter régulièrement), "🔧 Détails techniques" (planId, ageSec, PWA vs navigateur)
+  - **Bouton "✓ Compris"** + ✕ + Échap + clic backdrop pour fermer
+- **Wording neutre** : "smartphone" au lieu d'"iOS" (Android Chrome aggressif aussi).
+- **API `window.OOMGuard`** : `start()`, `showToast(msg, type)` (warn/error/info, file derrière le splash), `flushPendingToasts()`.
+- **Toast quota localStorage** : `sessionPersist.js` détecte `QuotaExceededError` au save et affiche un toast charte-aligné incitant à exporter manuellement (anti-spam : 1× max).
+- **`sw.js`** : `js/oomGuard.js` ajouté à `ASSETS_TO_CACHE`. CACHE_NAME bumpé v36 → v40.
+
+---
+
+### 🗓️ 09/05/2026 (suite 3) — Reset "Tout réinitialiser" : check Internet en amont
+
+- **Restoration d'une feature perdue** dans `viderCacheAppli()` (`js/interface.js`) : ping Internet AVANT toute confirmation, parce qu'un reset wipe le SW + caches → l'app ne pourra se relancer que si la connexion permet de redescendre les fichiers.
+- **`_pingInternet()`** : combine `navigator.onLine` (rapide signal offline) + `fetch no-cors` sur `gstatic.com/generate_204` (HTTP 204 No Content, payload minimal) avec `AbortController` + timeout 5s. Fail = vrai offline.
+- **Modale "📶 Vérification de la connexion…"** affichée pendant le ping (max 5s).
+- **Si OFFLINE** : nouvelle modale rouge insistante (`_resetFlowOfflineWarning`, style cohérent avec la modale OOM : bordures rouges, gros titre `⚠️ PAS DE CONNEXION INTERNET ⚠️`) explique :
+  - L'app sera inutilisable après reset (splash bloqué au reboot, aucun asset)
+  - Plans / session / prefs perdus définitivement
+  - Recommandation : reconnecter avant de relancer
+  - Boutons "Annuler" / "Continuer quand même"
+- **Si ONLINE OU forcé** : flow inchangé (2 confirmations).
+- **Total confirmations** : 2 quand online, **3 quand offline**.
+- **CACHE_NAME bumpé** v40 → v41.
+
+---
+
+### 🗓️ 09/05/2026 (suite 2) — Perf hardening mobile (transparent utilisateur)
+
+Optims user-invisibles pour réduire le risque de crash sur smartphone, **aucun changement graphique**.
+
+- **`preferCanvas: true`** sur init Leaflet (`map.js`) → polylines (routes), polygons (zones), `circleMarker` (intersections) rendus sur 1 canvas au lieu de N éléments SVG. Markers (icon images) restent en DOM. Gain perf sur plans denses.
+- **`_libererRessourcesPlanPrecedent()`** dans `main.js` factorise le cleanup au plan switch :
+  - libère les tuiles (`libererTuiles` → overlays + blob URLs)
+  - `map.remove()`
+  - **vide explicitement `collisionCanvas`** (width/height à 0 → libération immédiate des pixels — sur plans 4K c'est jusqu'à 64 MB, sinon iOS Safari accumule la pression mémoire entre 2 plans)
+  - nullifie `window.collisionCanvas` / `window.collisionCtx`
+  - `resetRuntimeAssets()` (blob URLs ZIP)
+  - reset des flags `interfaceInitialized` / `roadInitialized` / `zonesInitialized`
+- **Listeners device idempotents** (`tracking.js`) : flags `_orientationListenerAttached` / `_motionListenerAttached` empêchent la duplication des handlers `deviceorientation` / `devicemotion` après plan switch + nouveau Play.
+- **SessionPersist throttle adaptatif** (`sessionPersist.js`) : `save()` mesure le main thread via micro-bench (`performance.now` × busy-loop). Si > 5ms → main thread busy → skip ce tick. Max 6 skips consécutifs (≈ 9s) avant force. `beforeunload` et `visibilitychange` appellent `save({force:true})` pour ne jamais perdre les dernières modifs au moment de fermer / passer en arrière-plan.
+- **`createImageBitmap` étudié puis SKIPPÉ** : commentaire explicite dans `tiling.js > _imageVersCanvasReduit` indique que l'auteur a déjà testé et est revenu à `new Image()` pour de meilleures perfs mémoire sur Safari iOS avec gros JPEG. Décision : respecter le précédent.
+
+---
+
+### 🗓️ 09/05/2026 (suite) — Audit code : suppression dead code, gating logs centralisé
+
+Nettoyage des reliquats accumulés. Net : **−1700 lignes** dans le repo.
+
+**Fichiers orphelins supprimés** :
+- `js/sw.js` (75 lignes) — ancien SW abandonné, le vrai vit à la racine
+- `js/import.html` (321 lignes) — page autonome obsolète, fusionnée dans `index.html`
+
+**Globals window morts** retirés :
+- `js/map.js` : 13 `window.iconeXXX` (`iconeSalle`, `iconepa`, `iconepc`, `iconepb`, `iconeVehicule`, `iconeElec`, `iconeEpure`, `iconePS`, `iconeInfo`, `iconeChatiere`, `iconePassage`, `iconeDanger`, `iconepe`) + leurs `let` locaux. Résolution unique via `window._iconMap[tag]` désormais. Conservés : `iconeDefault` et `iconeTrack`.
+- `js/tiling.js` : `perfModeActif()` + `window.perfModeActif` — alias rétro-compat jamais consommé.
+- `js/config.js` : `window._SERVER_PLAN_PATH` — dead write (jamais lu).
+
+**Reliquats deprecated** :
+- `js/config.js > buildAppConfigFromPlan` lit désormais `tracking.debugMode` en priorité, fallback sur l'ancien `tracking.motionDebug` (rétro-compat zip terrains).
+
+**Classes CSS orphelines** retirées (style.css) : `.kta-cfg-actions`, `.kta-cfg-cache`, `.kta-conv-apercu`, `.kta-conv-hint`, `.kta-legende-separateur` (+ first-child), `.kta-planner-tabs`, `.kta-planner-tab` (+ .active).
+
+**Gating logs centralisé** dans `js/debug.js` :
+- `console.log` / `console.info` patchés : silence dans la console DevTools sauf si `APP_CONFIG.debugMode === true`. Toujours bufferisés pour la modale 🐛 Logs (utile en post-mortem).
+- `console.warn` / `console.error` : toujours visibles ET bufferisés (critiques).
+- Plus de gating manuel `if (APP_CONFIG?.debugMode)` à coder dans les modules.
+- Préfixage uniforme `[Module]` (ex : `[Road]`, `[Tracking]`, `[Zones]`, `[Export rapide]`).
+
+**Onglets export renommés** : `⚡ Export rapide` / `🎨 Avancé` → `⚡ Mode rapide` / `🎨 Mode avancé` (UX : le mot "Mode" évite que l'utilisateur lise ça comme un bouton d'action — observé en session de troubleshooting où l'utilisateur cliquait l'onglet en pensant déclencher l'export).
+
+---
+
+### 🗓️ 09/05/2026 — iPhone PWA : top intégré dark via hack Leaflet
+
+Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en haut sans bug de bande sombre en bas. **Conclusion** : `viewport-fit=cover` est ingérable proprement sur iOS PWA portrait sans devtools Safari Mac. On revient à un setup safe-area natif iOS + un hack ciblé.
+
+**Setup final** :
+- `index.html` viewport **sans** `viewport-fit=cover` : iOS reste dans la safe-area, pas de bug bottom band.
+- `apple-mobile-web-app-status-bar-style: black` : bande noire opaque fixe avec icônes blanches, **indépendante du contenu**. Ne flashe plus en blanc quand les tuiles Leaflet (claires) chargent.
+- **Hack `lib/leaflet/leaflet.css` ligne 267** : `background: #000000` (au lieu du `#ddd` Leaflet par défaut). Effet : la zone hors-tuiles est noire, et surtout le sliver visible juste sous la status bar avant le rendu des tuiles l'est aussi. Cohérence visuelle splash → loader → map.
+- **`viderCacheAppli` complète** : étend le wipe à `localStorage`, `sessionStorage`, **toutes** les bases IndexedDB (avec fallback Safari/Firefox sur `myktamap_handles`). Avant ça, la fonction nettoyait juste SW + caches HTTP — les plans, prefs, sessions survivaient. CLAUDE.md décrivait déjà le comportement attendu mais le code avait dérivé.
+
+**Fix indirects en route** :
+- **Bug zones embarquées non exportées en mode avancé** : regex `/_zone_(.+)$/` greedy gauche-droite + id checkbox `export_layer_zone_zone_eau` (collision quand l'id du layer contient "zone") capturait `"zone_eau"` au lieu de `"eau"`. Filter excluait toutes les zones. Fix : `[^_]+$` pour zone/road, `startsWith` + `slice` pour les tags (qui peuvent contenir des `_`).
+- **Bug cross-plan leakage** : `initEditor` et `initRoad` ne reset pas `listePoints` / `roadsData` au switch de plan. Le polling SessionPersist ré-enregistrait les points de l'ancien plan sous l'id du nouveau plan, créant une cross-pollination. Fix : reset complet en début d'init (cohérent avec `initZones` / `initMeasure` qui le faisaient déjà).
+- **Export rapide planté silencieusement** : `telechargerPlan` attrapait ses erreurs en interne et alertait, puis la modale fermait → alert masqué. Fix : rethrow + Promise wrapper autour de `toBlob` + try/catch par marker (un icône qui rate ne fait plus tomber l'export entier).
+
+**Cercles aux intersections de routes** :
+- 16px de diamètre, priorité couleur `chemin > secondaire > principal`, croisements même type conservés (vert/vert = vert, etc.).
+- Détection segment + T-junction avec tolérance 8px (gère les hand-drawn imparfaits).
+- Inclut les routes embarquées dans les data layers (registre `_embeddedRoads` via `registerEmbeddedRoad` / `clearEmbeddedRoads`).
+- Visible sur la carte ET dans les exports (rapide + avancé), z-order ZONE → TRAIT → CERCLE → ICÔNE.
+
+**Splash** :
+- Échelle 0-100 ajoutée sous la barre de chargement (style barre d'échelle de carte, 10 segments alternés jaune/dark, labels 0..100 centrés sur leurs ticks).
+
+**Modale Documentation** :
+- Footer enrichi : `Développé par <signature KARMA> — 🍃 Cartographie propulsée par Leaflet` (au lieu du seul crédit Leaflet).
+
+---
+
 ### 🗓️ 08/05/2026 (suite 3) — Filtres calques + tags dans la recherche
 
 - **Filtres ajoutés** dans la modale `🔍 Rechercher un point` (`js/searchPoints.js`) :
@@ -609,24 +718,26 @@ data/
 
 js/
         │
-        ├── debug.js           ← Capture logs + modale débogage
+        ├── debug.js           ← Capture logs + GATING CENTRALISÉ debugMode + modale débogage
         ├── config.js          ← Configuration unifiée + loadAppConfig(planPath) paramétrée
         ├── utils.js           ← Fonctions utilitaires + export PNG dynamique (rapide)
         ├── measure.js         ← Mesure de distance + suppression granulaire
-        ├── tiling.js          ← Mode performance : découpage en tuiles
-        ├── map.js             ← Initialisation Leaflet + _iconMap dynamique
-        ├── tracking.js        ← Déplacement simulé via capteurs
+        ├── tiling.js          ← Mode performance : découpage en tuiles (5 presets)
+        ├── map.js             ← Initialisation Leaflet (preferCanvas:true) + _iconMap dynamique
+        ├── tracking.js        ← Déplacement simulé via capteurs (listeners idempotents)
         ├── editor.js          ← Modale plein écran + tags custom
-        ├── road.js            ← Tracé de routes + suppression granulaire
+        ├── road.js            ← Tracé routes + cercles intersections
         ├── zones.js           ← Zones polygonales remplies (eau / remblais / effondrement)
-        ├── exporter.js        ← Modale d'export plan avancé (rapide / avancé + légende intégrée)
-        ├── sessionExporter.js ← Modale d'export de session (Full / Avancé / Conversion + filtrage par tag)
+        ├── exporter.js        ← Modale d'export plan (Mode rapide / Mode avancé + légende)
+        ├── sessionExporter.js ← Modale d'export de session (Full / Avancé / Conversion bidirectionnelle)
         ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
-        ├── searchPoints.js    ← Recherche rapide d'un point (nom / id / tag / description)
+        ├── searchPoints.js    ← Recherche d'un point (nom / id / tag / calque + filtres)
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
         ├── planRegistry.js    ← Registre multi-plans (localStorage + IndexedDB blobs/handles)
-        ├── interface.js       ← Interface Leaflet + toutes les modales
-        └── main.js            ← Point d'entrée unique avec auto-détection + auto-discovery serveur
+        ├── sessionPersist.js  ← Auto-save session active (polling 1.5s + throttle adaptatif)
+        ├── oomGuard.js        ← Détection kill mémoire mobile + modale d'avertissement
+        ├── interface.js       ← Interface Leaflet + toutes les modales (incl. reset internet check)
+        └── main.js            ← Point d'entrée unique + cleanup factorisé _libererRessourcesPlanPrecedent
 
 lib/
         ├── leaflet/           ← Leaflet.js (local)

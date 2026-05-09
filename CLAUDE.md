@@ -29,34 +29,42 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 ├── index.html                  ← Point d'entrée + loader + splash (source de vérité pour l'ordre des scripts)
 ├── manifest.json               ← Manifest PWA
 ├── sw.js                       ← Service Worker PWA (cache des assets, enregistré via /sw.js)
-│                                  ⚠️ NE PAS confondre avec `js/sw.js` qui existe encore mais
-│                                  N'EST PAS UTILISÉ — celui à la racine est le seul actif
+│                                  ℹ️ `js/sw.js` (orphelin) ET `js/import.html` ont été supprimés
+│                                  le 09/05/2026 — seul ce SW racine est actif
 │
 ├── css/
 │   └── style.css               ← Styles globaux (charte dark)
 │
 ├── js/                         ← Scripts chargés directement via <script> dans index.html
-│   ├── debug.js                ← Capture silencieuse logs console
+│   ├── debug.js                ← Capture logs console + GATING CENTRALISÉ debugMode
+│   │                              (cf. § "Gating logs centralisé")
 │   ├── config.js               ← APP_CONFIG, DEFAULT_CONFIG, runtime assets
 │   ├── utils.js                ← convertCoord, choisirIcone, getIconUrlForPoint, telechargerPlan
-│   ├── tiling.js               ← Tuilage image base (perfMode)
-│   ├── map.js                  ← Init Leaflet, calques, _iconMap, TAGS_BUILTIN
+│   ├── tiling.js               ← Tuilage image base (perfPreset)
+│   ├── map.js                  ← Init Leaflet (preferCanvas:true), calques, _iconMap, TAGS_BUILTIN
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
+│   │                              + flags _orientationListenerAttached/_motionListenerAttached
+│   │                              (idempotency contre fuite après plan switch)
 │   ├── measure.js              ← Mesure de distance
 │   ├── editor.js               ← Ajout de points + EDITOR_TAG_LABELS
 │   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin)
+│   │                              + cercles intersections (chemin>secondaire>principal)
 │   ├── zones.js                ← Zones polygonales (Eau/Remblais/Effondrement)
-│   ├── searchPoints.js         ← Recherche de points (par nom, id, tag)
+│   ├── searchPoints.js         ← Recherche de points (par nom, id, tag, calque)
 │   ├── tableEditor.js          ← Éditeur JSON en tableau interactif
-│   ├── exporter.js             ← Export PNG du plan (modale Rapide / Avancé)
-│   ├── sessionExporter.js      ← Export session (Full / Avancé / Conversion)
+│   ├── exporter.js             ← Export PNG du plan (modale Mode rapide / Mode avancé)
+│   ├── sessionExporter.js      ← Export session (Full / Avancé / Conversion bidirectionnelle)
 │   ├── planRegistry.js         ← Registre multi-plans (localStorage + IndexedDB)
 │   ├── createConf.js           ← Générateur ZIP de plan (UI afficherPlanner)
 │   │                              + constantes PLANNER_DEFAULT_ICONS
 │   │                              ⚠️ ancien nom : planner.js (renommé/fusionné)
-│   ├── interface.js            ← UI principale, barre latérale 11 groupes,
-│   │                              titre cliquable + plan switcher, légende, modales
-│   └── main.js                 ← Orchestration, splash, auto-discovery serveur
+│   ├── sessionPersist.js       ← Auto-save session (polling 1.5s + throttle adaptatif)
+│   ├── oomGuard.js             ← Détection kill mémoire mobile + modale d'avertissement
+│   │                              + showToast utilitaire (cf. § "OOMGuard")
+│   ├── interface.js            ← UI principale, barre latérale, titre + plan switcher,
+│   │                              légende, modales (incl. reset internet check)
+│   └── main.js                 ← Orchestration, splash, auto-discovery serveur,
+│                                   _libererRessourcesPlanPrecedent (cleanup factorisé)
 │
 ├── data/                       ← Plans (un sous-dossier par plan)
 │   ├── index.json              ← Liste des plans (auto-discovery serveur)
@@ -233,7 +241,11 @@ Vidange totale de :
 5. **TOUTES** les bases IndexedDB (avec fallback Safari pour `myktamap_handles`)
 6. `window.location.reload(true)`
 
-Double confirmation utilisateur avant exécution. Accessible depuis :
+**Pré-check Internet (depuis 09/05/2026)** : avant la double confirmation, `_pingInternet()` teste la connexion via `fetch no-cors` sur `gstatic.com/generate_204` (timeout 5s, combiné à `navigator.onLine`). Si offline → modale rouge insistante (`_resetFlowOfflineWarning`) explique que l'app sera inutilisable après reset (pas de SW + caches vides → splash bloqué au reboot car aucun asset à descendre). User peut forcer "Continuer quand même". Si online → flow direct.
+
+Total confirmations : **2** quand online, **3** quand offline.
+
+Accessible depuis :
 
 - ⚙️ Réglages (dans l'app)
 - ⚙️ Plus d'options (dans le loader)
@@ -324,6 +336,59 @@ Le flag debug est désormais **global pour toute l'app**, pas uniquement le trac
 
 Idempotente : peut tourner 100 fois sans effet de bord.
 
+### 11. Gating centralisé des logs (`debug.js`, depuis 09/05/2026)
+
+`debug.js` proxie `console.log/info/warn/error` pour les capter dans un buffer (modale 🐛 Logs accessible depuis Réglages). Depuis 09/05, le proxy fait AUSSI :
+
+- `console.log` / `console.info` → ne sortent dans la console DevTools **que si** `APP_CONFIG.debugMode === true`. Sinon ils sont **toujours bufferisés** mais invisibles dans la console (silence en prod).
+- `console.warn` / `console.error` → toujours visibles ET bufferisés (critiques).
+
+**Convention de tag** : préfixer chaque log avec `[Module]` (ex : `[Road] Mode :`, `[Tracking] Magnitude :`, `[Export rapide] résumé layer loop`). Plus de gating manuel `if (APP_CONFIG?.debugMode)` à coder dans les modules.
+
+### 12. OOMGuard — détection kill mémoire mobile (`oomGuard.js`, depuis 09/05/2026)
+
+iOS Safari et Android Chrome tuent silencieusement les PWA qui dépassent leur budget mémoire (~500 MB iOS). La page redémarre sans event ni erreur. OOMGuard rend ce kill explicite :
+
+**Mécanisme** :
+1. Au boot du module → `_checkPreviousKill()` : si `localStorage["myktamap_session_alive"]` est présent et < 1h → kill brutal probable (l'app n'a pas atteint `beforeunload`/`pagehide`).
+2. `start()` (appelé par `lancerApplication`) → set marker au boot puis heartbeat toutes les 5s.
+3. `beforeunload` ET `pagehide` → clear marker (iOS préfère `pagehide`).
+4. Modale d'avertissement affichée après le splash via `flushPendingToasts` (queue, pour éviter d'afficher derrière le gradient sombre).
+
+**Modale `_afficherModaleKill`** : style `.kta-readme-modal-overlay` avec contenu `.kta-oom-*`. Bordure rouge + glow, titre `⚠️ ATTENTION — ARRÊT BRUTAL DÉTECTÉ ⚠️` (avec ⚠️ qui pulsent), sections "Pourquoi ?" + "Comment éviter" (liste de conseils : fermer apps, baisser perfPreset, garder OS à jour, etc.) + "Détails techniques".
+
+**API `window.OOMGuard`** :
+- `start()` — démarre l'heartbeat
+- `showToast(message, type)` — toast court (`warn`/`error`/`info`), file derrière le splash
+- `flushPendingToasts()` — vide la file (appelé depuis `_splashEnd`)
+
+**Toast quota** : `sessionPersist.js` détecte `QuotaExceededError` au save et appelle `OOMGuard.showToast(...)` pour avertir l'utilisateur d'exporter manuellement (anti-spam : 1 fois max tant que le quota dure).
+
+### 13. Perf hardening mobile (depuis 09/05/2026)
+
+Optims user-invisibles pour réduire le risque de crash sur smartphone, **sans aucun changement graphique** :
+
+- **`preferCanvas: true`** sur init Leaflet (`map.js`) → polylines (routes), polygons (zones), `circleMarker` rendus sur 1 canvas au lieu de N éléments SVG. Markers (icon images) restent en DOM. Gain perf sur plans denses.
+- **`_libererRessourcesPlanPrecedent()`** dans `main.js` factorise le cleanup au plan switch : libère les tuiles (overlay + blob URLs), `map.remove()`, **vide explicitement** `collisionCanvas` (width/height à 0 → libération immédiate des pixels, jusqu'à 64 MB sur plans 4K) puis nullifie ses refs, `resetRuntimeAssets`, reset des flags d'init.
+- **Listeners device idempotents** : `tracking.js` utilise `_orientationListenerAttached`/`_motionListenerAttached` pour empêcher la duplication des handlers `deviceorientation`/`devicemotion` après plan switch + nouveau Play.
+- **SessionPersist throttle adaptatif** : `save()` mesure le main thread via micro-bench. Si busy → skip (max 6 skips consécutifs ≈ 9s avant force). `beforeunload`/`visibilitychange` appellent `save({force:true})` pour ne jamais perdre les dernières modifs.
+
+### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
+
+[`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :
+
+```css
+.leaflet-container {
+  /* MyKTAMap : noir pur pour matcher l'overlay loader (...) */
+  background: #000000;
+  outline-offset: 1px;
+}
+```
+
+**Pourquoi** : sur iPhone PWA standalone, iOS lit la couleur du haut de page pour tinter sa status bar (mode `black-translucent` sans `viewport-fit=cover`). En mettant le fond du container Leaflet en noir pur, le sliver visible juste sous la status bar (avant le rendu des tuiles) garde la status bar dark même quand la map est claire derrière.
+
+⚠️ **NE PAS REVENIR à `#ddd`** (le défaut Leaflet) sans avoir compris ce qu'on perd. Le commentaire dans le CSS explique l'intention. Lors d'un upgrade Leaflet upstream, **garder ce patch**.
+
 ---
 
 ## 🚨 Pièges connus & règles importantes
@@ -375,6 +440,20 @@ Voir le fix de `tableEditor.js > _menuSauvegarde` (z-index 100001).
 | `cfg_motionDebug` (id select Réglages) | `cfg_debugMode` | — |
 | label "Debug mouvement" (Réglages) | "Logs détaillés" | — |
 | Constante `TILE_SIZE = 1024` | `params.tileSize` (lu depuis le preset) | Idem `MAX_WORK_DIM` → `params.maxWorkDim`, `0.88` → `params.jpegQuality` |
+
+### Audit 09/05/2026 — code mort retiré
+
+Du code/doc plus ancien peut référencer ces noms — ils n'existent plus :
+
+| Ancien nom | Action | Notes |
+|---|---|---|
+| `js/sw.js` | **supprimé** | ancien SW abandonné, le vrai vit à la racine |
+| `js/import.html` | **supprimé** | page autonome obsolète, fusionnée dans `index.html` |
+| `window.iconeSalle`, `iconepa`, `iconepc`, `iconepb`, `iconeVehicule`, `iconeElec`, `iconeEpure`, `iconePS`, `iconeInfo`, `iconeChatiere`, `iconePassage`, `iconeDanger`, `iconepe` | **supprimés** (13 globals) | résolution unique via `window._iconMap[tag]` désormais. Seuls `iconeDefault` et `iconeTrack` restent globaux. |
+| `perfModeActif(fileSize)` + `window.perfModeActif` | **supprimé** | alias rétro-compat jamais consommé après migration vers `perfPreset` |
+| `window._SERVER_PLAN_PATH` | **supprimé** | dead write (jamais lu) |
+| Classes CSS `.kta-cfg-actions`, `.kta-cfg-cache`, `.kta-conv-apercu`, `.kta-conv-hint`, `.kta-legende-separateur`, `.kta-planner-tabs`, `.kta-planner-tab` | **supprimées** | jamais référencées en JS/HTML |
+| Onglets export `⚡ Export rapide` / `🎨 Avancé` | renommés | `⚡ Mode rapide` / `🎨 Mode avancé` (UX : le mot "Mode" évite que l'utilisateur lise ça comme un bouton d'action) |
 
 ### Coordonnées plan ↔ Leaflet
 
