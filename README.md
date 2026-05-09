@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 23) — Itinéraire : bouton "🧭 Ma position" pour utiliser le tracker comme waypoint
+
+Nouveau dans la modale **🗺️ Calculer un itinéraire** (mode calcul) : un bouton **🧭 Ma position** ajoute la position actuelle du tracker comme waypoint (snapshot figé au moment du clic).
+
+**Position toujours disponible** : utilise `window.getTrackingPosition()` qui retourne `{x, y}` peu importe si le tracking est actif ou non. Au boot, c'est `APP_CONFIG.startX/Y` (point de départ initial du plan), puis modifié par recalage manuel (📍 Mode recalage) ou par les pas du tracker actif.
+
+**Comportement** :
+- Clic sur le bouton → ajoute un waypoint avec `source: "tracker"`, label `"🧭 Position actuelle (X, Y)"` (avec coords figées).
+- Le waypoint est un **snapshot** : si tu démarres le tracker après et que tu marches, le waypoint ne suit pas (il reste à la position prise au moment du clic). Cohérent avec les autres waypoints (clic carte / search). Pour avoir une position live, ré-ajoute le waypoint.
+- Dans la liste de waypoints, l'icône source `📍` est dans un **badge jaune** (classe `.kta-iti-wp-icon-tracker`) pour distinguer visuellement des sources clic carte (📍 standard) et search (🎯).
+
+**Code** :
+- `js/interface.js > ouvrirItinerairModal` : nouveau bouton `🧭 Ma position` dans la barre `.kta-iti-mode-toggle`. Wire-up qui appelle `window.getTrackingPosition()` et pousse un waypoint avec `source: "tracker"`.
+- `js/interface.js > _rafraichirListeWaypointsModale` : 3 cas pour `sourceIcon` / `sourceTitle` / `sourceClass` (search / tracker / click).
+- `css/style.css` : `.kta-iti-wp-icon-tracker` styles le badge jaune doré.
+- Aide in-app : section Itinéraire mise à jour pour mentionner le bouton.
+
+**`sw.js`** : `CACHE_NAME` v72 → v73.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 22) — Rollback du calque "Mes tracés" séparé
 
 La séparation des roads dans un calque dédié "Mes tracés" (suite 21) ne résolvait pas le problème de toggle chez l'utilisateur — les polylines roads continuaient à ne pas être masquées par le toggle off de leur LayerGroup parent. Bug Leaflet subtil non identifié.

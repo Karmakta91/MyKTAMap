@@ -428,6 +428,8 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 
 **Pour tracer un itinéraire :**
 
+> 💡 **Bouton 🧭 Ma position** — ajoute ta position tracker actuelle comme waypoint (snapshot figé). Pratique si tu marches dans la cata avec le tracker actif et tu veux calculer un itinéraire qui démarre d'où tu es. Si tu as recalé ta position au début, c'est cette position recalée qui est utilisée.
+
 1. Ouvrez la modale **🗺️ Calculer un itinéraire**
 2. Choisissez vos **points de passage** de 2 façons (combinables) :
    - **📍 Mode clic carte** : la modale se réduit à un mini-bandeau "Mode clic actif", cliquez sur la carte pour poser chaque waypoint (markers cyan numérotés). Bouton **✓ Terminer** pour revenir à la modale.
