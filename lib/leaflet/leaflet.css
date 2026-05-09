@@ -16,12 +16,6 @@
 	}
 .leaflet-container {
 	overflow: hidden;
-	/* MyKTAMap : fond sombre par défaut pour que la zone hors-tuiles (et
-	   le haut de la viewport en iOS PWA standalone, qui prend la couleur
-	   du contenu en dessous de la status bar) soit cohérent avec la charte
-	   dark de l'app au lieu d'un blanc cru flashé entre splash et tiles
-	   chargées. */
-	background: #1a1f2e;
 	}
 .leaflet-tile,
 .leaflet-marker-icon,
@@ -264,7 +258,14 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* visual tweaks */
 
 .leaflet-container {
-	background: #ddd;
+	/* MyKTAMap : fond sombre par défaut (charte app) au lieu du #ddd Leaflet
+	   d'origine. Effet : la zone hors-tuiles est dark, et surtout le haut de
+	   la page (qu'iOS PWA standalone lit pour colorier la status bar en mode
+	   black-translucent / default) reste sombre même quand les tuiles claires
+	   sont chargées par-dessus — la mince zone visible juste sous la status
+	   bar (avant que la tuile y soit dessinée à 1er paint) suffit à iOS pour
+	   tinter sa barre. */
+	background: #1a1f2e;
 	outline-offset: 1px;
 	}
 .leaflet-container a {
