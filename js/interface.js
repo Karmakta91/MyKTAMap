@@ -2040,6 +2040,15 @@ function initInterface() {
           };
           _setGroupeModeActif("tracker", true, "📍");
         }
+      },
+      {
+        icone: "🗺️",
+        titre: "Calculer un itinéraire",
+        onClick: function() {
+          if (typeof window.ouvrirItinerairModal === "function") {
+            window.ouvrirItinerairModal();
+          }
+        }
       }
     ]
   });
@@ -2293,20 +2302,6 @@ function initInterface() {
     ]
   });
 
-  // ─────────────────────────────
-  // ITINÉRAIRE — calcul de route sur le réseau de polylines
-  // ─────────────────────────────
-  _creerGroupeAccordeon({
-    id: "itinerary",
-    iconePrincipale: "🗺️",
-    titre: "Itinéraire",
-    soloAction: function() {
-      if (typeof window.ouvrirItinerairModal === "function") {
-        window.ouvrirItinerairModal();
-      }
-    }
-  });
-
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 }
@@ -2371,6 +2366,7 @@ function _activerModeClicCarte() {
       _itineraryWaypoints.push({ x: x, y: y });
       _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
+      _majPanneauFloaterCount();
     };
     window.map.on("click", _itineraryClickHandler);
   }
@@ -2390,6 +2386,43 @@ function _viderItineraire() {
   if (_itineraryMarkerLayer) {
     _itineraryMarkerLayer.clearLayers();
   }
+}
+
+// Mini panneau flottant en bas d'écran pendant le mode clic, pour ne pas
+// bloquer la carte. Bouton "✓ Terminer" → re-affiche la modale principale.
+let _itineraryFloater = null;
+function _afficherPanneauItineraireFlottant(mainModal) {
+  if (_itineraryFloater) _itineraryFloater.remove();
+  const panneau = document.createElement("div");
+  panneau.id = "kta-iti-floater";
+  panneau.className = "kta-iti-floater";
+  panneau.innerHTML =
+    '<span class="kta-iti-floater-icon">📍</span>' +
+    '<span class="kta-iti-floater-msg">' +
+      'Mode clic actif — <strong id="kta-iti-floater-count">' + _itineraryWaypoints.length + '</strong> point(s)' +
+    '</span>' +
+    '<button class="kta-btn kta-btn-primary" id="kta-iti-floater-done" type="button">✓ Terminer</button>';
+  document.body.appendChild(panneau);
+  _itineraryFloater = panneau;
+
+  document.getElementById("kta-iti-floater-done").addEventListener("click", function() {
+    _desactiverModeClicCarte();
+    if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
+    if (mainModal) {
+      mainModal.style.display = "";
+      _rafraichirListeWaypointsModale();
+      const btn = document.getElementById("kta-iti-mode-click");
+      if (btn) {
+        btn.textContent = "📍 Activer mode clic carte";
+        btn.classList.remove("kta-actif");
+      }
+    }
+  });
+}
+
+function _majPanneauFloaterCount() {
+  const el = document.getElementById("kta-iti-floater-count");
+  if (el) el.textContent = _itineraryWaypoints.length;
 }
 
 window.ouvrirItinerairModal = function() {
@@ -2439,13 +2472,20 @@ window.ouvrirItinerairModal = function() {
   function fermer() {
     _desactiverModeClicCarte();
     _viderItineraire();
+    if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
     modal.remove();
+    // Si on quitte avec un preview encore actif, on le retire du tracé
+    const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
+    if (window.setRoads) window.setRoads(roadsNow);
   }
 
   document.getElementById("kta-iti-close").addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
 
   // Bouton activer / désactiver mode clic carte
+  // Quand on active : on cache la modale et affiche un mini-panneau flottant
+  // pour que l'utilisateur puisse cliquer sur la carte (la modale plein-écran
+  // bloquait les clics).
   const btnMode = document.getElementById("kta-iti-mode-click");
   btnMode.addEventListener("click", function() {
     if (_itineraryClickActive) {
@@ -2454,8 +2494,9 @@ window.ouvrirItinerairModal = function() {
       btnMode.classList.remove("kta-actif");
     } else {
       _activerModeClicCarte();
-      btnMode.textContent = "✋ Désactiver mode clic carte";
-      btnMode.classList.add("kta-actif");
+      // Cacher la modale principale + montrer mini-panneau
+      modal.style.display = "none";
+      _afficherPanneauItineraireFlottant(modal);
     }
   });
 

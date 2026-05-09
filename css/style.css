@@ -3018,3 +3018,45 @@ html, body {
   border: 2px solid #1a1f2e;
   box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
 }
+
+/* Floater itinéraire — mini-panneau pendant le mode clic carte */
+.kta-iti-floater {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #00d4ff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100000;
+  font-size: 13px;
+  color: #c8d0e0;
+  max-width: calc(100vw - 24px);
+}
+
+.kta-iti-floater-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.kta-iti-floater-msg {
+  flex: 1;
+  white-space: nowrap;
+  color: #e8eaf0;
+}
+
+.kta-iti-floater-msg strong {
+  color: #00d4ff;
+}
+
+.kta-iti-floater .kta-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 6px 12px;
+}
