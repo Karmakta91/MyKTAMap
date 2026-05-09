@@ -1,3 +1,9 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.is-underground.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
 // =========================
 // SESSION PERSIST — auto-sauvegarde de la session active
 // =========================

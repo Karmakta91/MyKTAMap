@@ -1,8 +1,23 @@
 <!DOCTYPE html>
+<!--
+  MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+  Site : https://myktamap.is-underground.fr
+  Licence : CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike)
+  https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+  USAGE COMMERCIAL STRICTEMENT INTERDIT sans accord ecrit prealable.
+  Voir le fichier LICENSE a la racine du projet.
+-->
 <html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>MyKTAMap</title>
+
+  <!-- Metadonnees de propriete intellectuelle -->
+  <meta name="author"      content="Flavien VIDAL (alias KARMA)">
+  <meta name="copyright"   content="(c) 2026 Flavien VIDAL — Tous droits reserves">
+  <meta name="license"     content="CC BY-NC-SA 4.0 — https://creativecommons.org/licenses/by-nc-sa/4.0/">
+  <meta name="description" content="MyKTAMap — Application de cartographie pour cataphiles. Usage non commercial uniquement.">
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
@@ -86,6 +101,9 @@
     <!-- Crédit librairie Leaflet — discret, en bas à droite (pas de lien cliquable, splash auto-fermant) -->
     <div id="splashLeafletCredit">🍃 Cartographie propulsée par Leaflet</div>
   </div>
+
+  <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
+  <script src="js/copyright.js"></script>
 
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>
@@ -202,6 +220,15 @@
       <input id="importListFile" type="file" accept=".config,.json,application/json" style="display:none;">
 
       <div id="loaderStatus"></div>
+
+      <!-- Mention copyright + licence (visible côté utilisateur) -->
+      <div class="kta-loader-copyright">
+        <span>&copy; 2026 <strong>Flavien VIDAL</strong> (alias KARMA)</span>
+        <span class="kta-loader-copyright-sep">·</span>
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
+        <span class="kta-loader-copyright-sep">·</span>
+        <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+      </div>
     </div>
   </div>
 

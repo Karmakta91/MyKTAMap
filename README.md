@@ -9,6 +9,40 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 12) — Protection juridique du code (Phase 1 légale)
+
+Mise en place d'un dispositif de protection contre le vol commercial du code (cible : sociétés carrière qui voudraient piquer le code via F12 et l'utiliser commercialement).
+
+**Choix de licence** : **CC BY-NC-SA 4.0** (Creative Commons Attribution - NonCommercial - ShareAlike). Autorise l'usage non-commercial avec attribution + partage dans les mêmes conditions. **Interdit explicitement l'usage commercial** sans accord écrit préalable.
+
+**Choix de nom légal** : **Flavien VIDAL** (vrai nom civil, force probante en cas de litige) avec mention "(alias KARMA)" pour la continuité de la marque visible dans le splash et la signature.
+
+**Fichiers ajoutés** :
+- `LICENSE` à la racine — licence formalisée avec lien officiel CC, mention claire de l'interdiction commerciale, contact pour licence commerciale, référence à l'art. L.335-2 CPI.
+- `js/copyright.js` — module chargé EN PREMIER dans `index.html`, contient :
+  - Watermark global `window.__MKM__` (frozen) avec auteur, copyright, licence, build → permet de prouver l'origine d'une copie.
+  - Bannière console stylée au boot (visible quand quelqu'un ouvre F12).
+  - Détection DevTools (heuristique outerWidth/innerWidth) → toast charte au coin haut-droit avec mention "Inspection détectée · Code propriétaire · Usage commercial INTERDIT".
+
+**Fichiers modifiés** :
+- `index.html` :
+  - Commentaire copyright en tête (avant `<html>`)
+  - Meta `author`, `copyright`, `license`, `description` dans `<head>`
+  - Chargement de `copyright.js` AVANT tous les autres scripts (premier `<script>` après les `<style>`)
+  - Footer copyright dans le loader (visible côté utilisateur) : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
+- `sw.js` :
+  - Header copyright en tête
+  - `LICENSE` et `js/copyright.js` ajoutés à `ASSETS_TO_CACHE` (consultables offline)
+  - `CACHE_NAME` v60 → v61
+- `js/main.js`, `js/utils.js`, `js/interface.js`, `js/pathfinder.js`, `js/planRegistry.js`, `js/sessionPersist.js`, `js/oomGuard.js` : header copyright en tête (algos métier les plus précieux à protéger).
+- `css/style.css` : styles `.kta-devtools-warn-*` (toast détection DevTools) + `.kta-loader-copyright` (footer loader).
+
+**Phase 2.1 (build pipeline esbuild) à venir** : minification + bundle 1 seul fichier en prod (le code source reste lisible en repo privé, le code en prod est compressé). À discuter selon outillage local (node ou binaire standalone).
+
+**Phase 2.2 (obfuscation forte) gardée de côté** : pas activée pour préserver la perf mobile.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 11) — Fix toggle calque "Ajout" sur points restaurés par SessionPersist
 
 **Bug** : après quitter / relancer / restaurer la session via SessionPersist, le toggle du calque **"Ajout"** dans le contrôle des couches Leaflet ne masquait que les points **nouvellement** ajoutés. Les points restaurés depuis localStorage restaient visibles peu importe l'état de la case.
