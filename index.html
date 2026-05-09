@@ -6,11 +6,29 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
+  <!-- viewport-fit=cover testé puis retiré : iOS PWA n'extendait pas correctement
+       la viewport jusqu'au home-indicator (bande sombre persistante en bas).
+       Sans cover : iOS reste dans la safe-area, status bar coloré par theme-color
+       (notre #111827 dark) + icônes claires (apple-mobile-web-app-status-bar-style
+       = black-translucent → light icons en l'absence de cover). Look intégré dark
+       en haut, footer correct en bas. */ -->
+  <!-- Pas de viewport-fit=cover : iOS PWA portrait n'extendait jamais la
+       viewport jusqu'au home-indicator malgré tous les fixes (inset:0,
+       100dvh, --realvh, bottom négatif). Sans cover, iOS reste dans la
+       safe-area = pas de bug de bande sombre en bas. Le top intégré dark
+       est obtenu différemment : .leaflet-container reçoit un background
+       sombre dans leaflet.css, donc dès que le DOM map est monté, la
+       couleur du haut de page est dark → la status bar iOS reflète. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" = bande noire opaque, icônes blanches, indépendante du contenu
+       sous-jacent. Sans viewport-fit=cover, "black-translucent" tombe en
+       fallback "default" = couleur du haut de page → devenait blanc dès que
+       les tuiles Leaflet chargeaient (cf. capture utilisateur). "black" force
+       le top sombre en permanence. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 

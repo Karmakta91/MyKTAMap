@@ -2,7 +2,9 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background-color: #9fc3f5;
+  /* Fond sombre cohérent avec le splash et le thème pour les zones où le body
+     pourrait apparaître (rubber-band scroll, avant init Leaflet). */
+  background-color: #0a0d18;
 }
 
 #map {
@@ -63,10 +65,19 @@ html, body {
   pointer-events: auto;
 }
 
-/* Titre fixe centré en haut, hors Leaflet */
+/* Safe-area iPhone (viewport-fit=cover) : on pousse uniquement le coin TOP
+   sous la status bar (où vit la sidebar accordéon en topright). Les autres
+   coins ne contiennent rien de visible (attribution masquée), et leur
+   ajouter du padding créait une bande visible en bas sur iPhone — d'où
+   ce minimum-viable. env() vaut 0 sur les appareils sans encoche. */
+.leaflet-top { padding-top: env(safe-area-inset-top, 0px); }
+
+/* Titre fixe centré en haut, hors Leaflet
+   top : safe-area-inset pour passer SOUS la status bar iPhone (notch/Dynamic Island)
+   sans la chevaucher. Sur Android et navigateurs sans encoche, env() vaut 0 → comportement inchangé. */
 #kta-titre-fixe {
   position: fixed;
-  top: 10px;
+  top: calc(10px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100;
@@ -120,16 +131,20 @@ html, body {
 
 #kta-plan-switcher {
   position: fixed;
-  top: 56px;
+  /* Suit le décalage du titre fixe (safe-area iPhone) pour rester ancré juste sous lui */
+  top: calc(56px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: 1099;
   min-width: 280px;
   max-width: 360px;
-  background: #1a1f2e;
-  border: 1px solid rgba(140,180,255,0.25);
+  /* Aligné sur l'état #kta-titre-fixe.ouvert (le seul état où le switcher
+     apparaît) → fond éclairci #232838 + bordure bleutée 0.55, comme un
+     prolongement direct du titre cliqué. */
+  background: #232838;
+  border: 1px solid rgba(140,180,255,0.55);
   border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(0,0,0,0.55);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
   padding: 8px 0;
   animation: ktaSwitcherIn 0.18s ease-out both;
   overflow: hidden;
@@ -1409,7 +1424,10 @@ html, body {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 30px 40px;
+  /* safe-area : le contenu (logo, titre, progress, signature) reste visible
+     même si la status bar / notch / home indicator empiète sur le viewport.
+     Le fond #splashOverlay s'étend jusqu'aux bords (effet "intégré"). */
+  padding: calc(30px + env(safe-area-inset-top, 0px)) 40px calc(30px + env(safe-area-inset-bottom, 0px));
   max-width: 460px;
   width: 90%;
 }
@@ -1598,7 +1616,8 @@ html, body {
 /* Crédit Leaflet — petit, discret, centré en bas du splash (pas un lien cliquable) */
 #splashLeafletCredit {
   position: absolute;
-  bottom: 14px;
+  /* safe-area-bottom pour éviter le home indicator iPhone (~34px sur les modèles avec encoche) */
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   font-size: 11px;
@@ -1654,7 +1673,9 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  /* safe-area sur top et bottom pour ne pas masquer le contenu sous la status bar
+     et le home indicator iPhone (le fond, lui, s'étend bord à bord via inset:0) */
+  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   overflow-y: auto;
 }

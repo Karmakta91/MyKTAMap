@@ -135,6 +135,38 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // Resize defensif (iOS PWA viewport-fit=cover) :
+  //   Sur iPhone PWA, la viewport change après l'activation du Service Worker
+  //   (la status bar passe en black-translucent et la home-indicator zone entre
+  //   dans la viewport). Leaflet calcule ses dimensions à l'init et reste figé
+  //   sur l'ancienne taille → bande visible en haut/bas, tuiles décalées.
+  //   `invalidateSize` recalcule, et un listener resize gère les rotations
+  //   d'écran et le toggle de l'URL bar Safari.
+  if (window.map && typeof window.map.invalidateSize === "function") {
+    requestAnimationFrame(function() {
+      try { window.map.invalidateSize(); } catch(e) {}
+      // 2e passe après ~300ms pour rattraper la fin de l'animation status bar iOS
+      setTimeout(function() {
+        try { window.map.invalidateSize(); } catch(e) {}
+      }, 300);
+    });
+    if (!window._ktaResizeBound) {
+      window._ktaResizeBound = true;
+      window.addEventListener("resize", function() {
+        if (window.map && typeof window.map.invalidateSize === "function") {
+          try { window.map.invalidateSize(); } catch(e) {}
+        }
+      });
+      window.addEventListener("orientationchange", function() {
+        setTimeout(function() {
+          if (window.map && typeof window.map.invalidateSize === "function") {
+            try { window.map.invalidateSize(); } catch(e) {}
+          }
+        }, 200);
+      });
+    }
+  }
+
   console.log("[Main] Application lancée");
   } finally {
     _appEnCours = false;

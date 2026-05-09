@@ -34,6 +34,16 @@ const ROAD_INTERSECTION_RADIUS = 8;  // 16px de diamètre
 // INIT
 // =========================
 function initRoad() {
+  // Reset complet (cohérence avec initZones / initMeasure) — sans ce reset,
+  // roadsData survit au switch de plan via le plan switcher et le polling
+  // SessionPersist ré-enregistre les routes de l'ancien plan sous l'ID du
+  // nouveau plan (cross-pollination entre plans).
+  roadsData = [];
+  currentRoad = null;
+  // roadLayers : la map précédente est détruite avant lancerApplication,
+  // donc removeLayer n'a rien à faire — on vide juste la liste de références.
+  roadLayers = [];
+
   if (window.roadInitialized) return;
   window.roadInitialized = true;
 

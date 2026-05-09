@@ -41,6 +41,15 @@ function toggleEdition() {
 // INIT
 // =========================
 function initEditor() {
+  // Reset complet (cohérence avec initZones / initMeasure) — sans ce reset,
+  // listePoints survit au switch de plan via le plan switcher et le polling
+  // SessionPersist ré-enregistre les points de l'ancien plan sous l'ID du
+  // nouveau plan (cross-pollination entre plans).
+  listePoints = [];
+  if (window.layerEditor) {
+    try { window.layerEditor.clearLayers(); } catch(e) {}
+  }
+
   window.map.on("click", function(e) {
     if (!window.modeEdition) return;
     if (document.getElementById("kta-poi-modal")) return; // évite double clic
