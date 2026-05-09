@@ -47,8 +47,11 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   │                              (idempotency contre fuite après plan switch)
 │   ├── measure.js              ← Mesure de distance
 │   ├── editor.js               ← Ajout de points + EDITOR_TAG_LABELS
-│   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin)
+│   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin/itinerary)
 │   │                              + cercles intersections (chemin>secondaire>principal)
+│   │                              + halo néon SVG sur le type itinerary
+│   ├── pathfinder.js           ← Module Dijkstra + graph builder pour la fonction Itinéraire
+│   │                              (route plus courte sur réseau de polylines)
 │   ├── zones.js                ← Zones polygonales (Eau/Remblais/Effondrement)
 │   ├── searchPoints.js         ← Recherche de points (par nom, id, tag, calque)
 │   ├── tableEditor.js          ← Éditeur JSON en tableau interactif
@@ -372,6 +375,46 @@ Optims user-invisibles pour réduire le risque de crash sur smartphone, **sans a
 - **`_libererRessourcesPlanPrecedent()`** dans `main.js` factorise le cleanup au plan switch : libère les tuiles (overlay + blob URLs), `map.remove()`, **vide explicitement** `collisionCanvas` (width/height à 0 → libération immédiate des pixels, jusqu'à 64 MB sur plans 4K) puis nullifie ses refs, `resetRuntimeAssets`, reset des flags d'init.
 - **Listeners device idempotents** : `tracking.js` utilise `_orientationListenerAttached`/`_motionListenerAttached` pour empêcher la duplication des handlers `deviceorientation`/`devicemotion` après plan switch + nouveau Play.
 - **SessionPersist throttle adaptatif** : `save()` mesure le main thread via micro-bench. Si busy → skip (max 6 skips consécutifs ≈ 9s avant force). `beforeunload`/`visibilitychange` appellent `save({force:true})` pour ne jamais perdre les dernières modifs.
+
+### 14. Itinéraire / Pathfinding (`pathfinder.js` + `interface.js`, depuis 09/05/2026)
+
+Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de polylines existantes (session `getRoads()` + calques `getEmbeddedRoads()`).
+
+**Algorithme** (`js/pathfinder.js`, module IIFE) :
+1. **Construction du graphe** (`_buildGraph`) — chaque point d'une polyline = nœud, connecté à son voisin par une arête euclidienne. Spatial-bucketing 1.5 px pour fusionner les points coïncidents.
+2. **Enrichissement** (`_enrichirGrapheAvecCroisements`) — gère 3 cas de jonction entre polylines distinctes :
+   - Croisement strict segment-segment (intersection paramétrique)
+   - T-junction (extrémité d'un segment à ≤ 15 px de l'intérieur d'un autre, avec projection orthogonale)
+   - Endpoint↔endpoint (2 extrémités distinctes à 1.5 < d < 15 px)
+   → ajout de nœuds virtuels et arêtes ad-hoc. Sans ça, les roads tracés à la main qui se croisent sans partager de point exact restent dans des composantes graphe disjointes.
+3. **Snap des waypoints** (`_insertVirtualNode`) — projection orthogonale du waypoint sur le segment le plus proche, insertion d'un nœud virtuel à la projection (split du segment d'origine).
+4. **Dijkstra** entre paires consécutives, concaténation des chemins.
+
+**API publique** :
+- `Pathfinder.computeRoute(waypoints, opts)` → `{ path, totalDistance (px), segmentCount, snappedPoints }`. Throw avec message lisible si waypoints insuffisants, graphe vide, ou pair de waypoints isolée dans une composante.
+- `SearchPoints.getAllPoints()` / `findByQuery(q)` (ajoutées dans `searchPoints.js`) — utilisées par la modale itinéraire pour l'autocomplete.
+
+**UI** (modale `kta-itinerary-modal` dans `interface.js`) :
+- Entrée : sous-action **🗺️ Calculer un itinéraire** dans le groupe Tracker (cohérent avec ▶️ tracking + 📍 recalage).
+- 2 modes selon état :
+  - **Calcul** (pas d'itinéraire actif) : input recherche autocomplete + toggle mode clic carte (avec floater compact en bas pour ne pas bloquer la carte) + liste de waypoints avec ✕ par ligne + bouton 🎯 Calculer.
+  - **Navigation** (itinéraire actif détecté) : titre "Itinéraire actif", quick-nav `⏮️ Début / ⏭️ Fin / 🔁 Tour complet`, liste des waypoints avec 🎯 (pan + flash style search) et ✕, boutons 🔄 Recalculer / ❌ Effacer.
+
+**Persistance des waypoints** : la road de type `"itinerary"` porte une propriété `waypoints: [{x, y, label, source}, ...]` en plus de `points`. SessionPersist sauve la road comme n'importe quelle autre, donc les waypoints survivent au reload du plan. Au reopen de la modale, on bascule en mode navigation si `road.waypoints` est présent.
+
+**Style du tracé** :
+- `road.js > ROAD_STYLES.itinerary` : cyan `#00d4ff`, weight 7, dashArray "12 6", opacity 0.9.
+- `renderer: L.svg()` forcé sur la polyline (sinon canvas → pas de filter CSS).
+- CSS `.kta-itinerary-polyline` : `filter: drop-shadow(...)` × 2 → effet halo néon cyan.
+- Filtré du calcul des cercles d'intersection (`renderRoads`) pour éviter les cercles redondants.
+
+**Label de distance** : `L.control` au coin `bottomleft` (`.kta-iti-distance`, fond `#1a1f2e` + accent cyan), s'affiche dès qu'une road de type `"itinerary"` existe, masqué sinon. Empilé au-dessus du label measure naturellement (Leaflet stack DOM order).
+
+**Helper `_majLabelDistanceItineraire`** exposé sur `window`, appelé après chaque setRoads (save/discard/erase) et après `lancerApplication` pour gérer le restore session.
+
+**Sémantique** : un seul itinéraire actif à la fois. Recalculer remplace le précédent (filter sur `r.type !== "itinerary"`). Effacer le retire. Switch de plan le perd (reset normal de la session).
+
+---
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

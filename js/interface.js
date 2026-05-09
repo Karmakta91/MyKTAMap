@@ -1149,11 +1149,19 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🧭 Tracker</div>
+          <div class="kta-aide-section-titre">🧭 Tracker / Navigation</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking</span>
-            <span class="kta-aide-icone">📍</span><span>Mode recalage de position</span>
+            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
+            <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker</span>
+            <span class="kta-aide-icone">🗺️</span><span>Calculer un itinéraire — chemin le plus court entre 2 ou plus points en suivant les routes existantes</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Itinéraire :</strong> ajoute des waypoints (clic sur la carte ou recherche par nom/id/tag),
+            l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données).
+            Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
+            <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
+            <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
+          </p>
         </div>
 
         <div class="kta-aide-section">

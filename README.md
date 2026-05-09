@@ -9,6 +9,56 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 5) — Itinéraire / Pathfinding sur le réseau de routes
+
+Nouvelle feature : calcul du chemin le plus court entre N points en empruntant les routes existantes.
+
+**Module `js/pathfinder.js` (nouveau)** — algorithme :
+- Construction d'un graphe à partir de toutes les polylines visibles : `getRoads()` (session) + `getEmbeddedRoads()` (calques de données).
+- Spatial-bucketing pour fusionner les nœuds coïncidents (1.5 px).
+- Étape d'enrichissement `_enrichirGrapheAvecCroisements` qui gère 3 cas de jonction :
+  - **Croisement strict** : intersection segment-segment paramétrique → nœud virtuel à l'intersection, lié aux 4 endpoints.
+  - **T-junction** : extrémité d'un segment à ≤ 15 px de l'intérieur d'un autre, projection orthogonale + insertion de nœud virtuel.
+  - **Endpoint↔endpoint** : 2 extrémités distinctes à 1.5 < d < 15 px, arête directe pondérée.
+- Snap des waypoints : projection orthogonale sur le segment le plus proche, insertion d'un nœud virtuel à la projection.
+- Dijkstra entre paires consécutives de waypoints, concaténation des chemins.
+- API publique : `window.Pathfinder.computeRoute(waypoints, opts)` retourne `{ path, totalDistance (px), segmentCount, snappedPoints }`.
+
+**Module `js/searchPoints.js` (extension)** :
+- Nouvelle API publique `window.SearchPoints.getAllPoints()` (async) et `findByQuery(q)` (async, recherche substring sur nom + id + tags) — utilisées par la modale itinéraire pour l'autocomplete.
+
+**UI — modale itinéraire (`interface.js`)** :
+- Entrée : sous-action **🗺️ Calculer un itinéraire** dans le groupe Tracker.
+- **Mode calcul** (pas d'itinéraire actif) :
+  - Toggle "📍 Mode clic carte" → masque la modale et affiche un mini-floater en bas (pour ne pas bloquer la carte). Clics sur la carte ajoutent des waypoints numérotés (markers cyan).
+  - Input "🔍 Rechercher un point existant…" avec dropdown autocomplete sur tous les points (data layers + editor). Clic sur un résultat ajoute un waypoint avec son nom.
+  - Liste de waypoints affichés avec source (📍 clic / 🎯 search), label, et bouton ✕ par ligne pour retirer.
+  - Bouton "🎯 Calculer l'itinéraire" lance le pathfinder, trace le résultat en **cyan néon** (halo `drop-shadow` × 2 grâce au renderer SVG forcé).
+  - Boutons résultat : "💾 Enregistrer" (persiste comme road type "itinerary") / "❌ Effacer" (retire le preview).
+- **Mode navigation** (itinéraire actif détecté au re-open) :
+  - Titre "🗺️ Itinéraire actif — Navigation".
+  - Quick-nav row : "⏮️ Début" / "⏭️ Fin" / "🔁 Tour complet" (fitBounds sur tout le tracé).
+  - Liste des waypoints avec bouton 🎯 par ligne → pan + flash cyan (style search), et ✕ pour retirer.
+  - Section "Itinéraire actuel" : distance + nombre de tronçons.
+  - Boutons "🔄 Recalculer" (drop le tracé, ré-ouvre en mode calcul avec waypoints conservés) / "❌ Effacer l'itinéraire" (red).
+
+**Persistance** : la road de type `"itinerary"` porte une propriété `waypoints: [{x, y, label, source}, ...]` en plus de `points`. SessionPersist sauve la road comme n'importe quelle autre, donc les waypoints survivent au reload du plan.
+
+**Type de road `"itinerary"`** :
+- `road.js > ROAD_STYLES.itinerary` : cyan `#00d4ff`, weight 7, dashArray "12 6".
+- Renderer SVG forcé sur la polyline pour permettre le filter CSS (effet néon).
+- Filtré du calcul des cercles d'intersection (`renderRoads`) pour éviter les cercles redondants sur le tracé itinéraire.
+
+**Label de distance** : nouveau `L.control` `bottomleft` `.kta-iti-distance` (cyan `#00d4ff` sur fond `#1a1f2e`), affiché dès qu'une road de type "itinerary" existe, juste **au-dessus du label measure** (Distance : …). Helper `_majLabelDistanceItineraire` exposé sur `window`, appelé après chaque setRoads et après `lancerApplication` (pour le restore session).
+
+**Sémantique** : un seul itinéraire actif à la fois. Recalculer remplace le précédent. Effacer le retire complètement.
+
+**Aide en-app** : section "🧭 Tracker / Navigation" mise à jour pour mentionner la sous-action 🗺️ et son fonctionnement.
+
+**`sw.js`** : `js/pathfinder.js` ajouté à `ASSETS_TO_CACHE`. Cache bumpé v43 → v50 sur la chaîne (multiples itérations Phase 1 / Phase 2 / fixes intersections / persistance).
+
+---
+
 ### 🗓️ 09/05/2026 (suite 4) — OOMGuard : modale "ATTENTION arrêt brutal détecté"
 
 - **Nouveau module `js/oomGuard.js`** — détection des kills mémoire silencieux d'iOS Safari et Android Chrome :
@@ -726,17 +776,20 @@ js/
         ├── map.js             ← Initialisation Leaflet (preferCanvas:true) + _iconMap dynamique
         ├── tracking.js        ← Déplacement simulé via capteurs (listeners idempotents)
         ├── editor.js          ← Modale plein écran + tags custom
-        ├── road.js            ← Tracé routes + cercles intersections
+        ├── road.js            ← Tracé routes + cercles intersections + halo néon itinerary
         ├── zones.js           ← Zones polygonales remplies (eau / remblais / effondrement)
         ├── exporter.js        ← Modale d'export plan (Mode rapide / Mode avancé + légende)
         ├── sessionExporter.js ← Modale d'export de session (Full / Avancé / Conversion bidirectionnelle)
         ├── tableEditor.js     ← Éditeur de fichier JSON sous forme de tableau
         ├── searchPoints.js    ← Recherche d'un point (nom / id / tag / calque + filtres)
+        │                         + API publique window.SearchPoints (getAllPoints, findByQuery)
+        ├── pathfinder.js      ← Module Dijkstra pour la fonction Itinéraire (chemin le plus
+        │                         court sur le réseau de polylines, snap orthogonal des waypoints)
         ├── createConf.js      ← Générateur de plan ZIP (Nouveau / Modifier)
         ├── planRegistry.js    ← Registre multi-plans (localStorage + IndexedDB blobs/handles)
         ├── sessionPersist.js  ← Auto-save session active (polling 1.5s + throttle adaptatif)
         ├── oomGuard.js        ← Détection kill mémoire mobile + modale d'avertissement
-        ├── interface.js       ← Interface Leaflet + toutes les modales (incl. reset internet check)
+        ├── interface.js       ← Interface Leaflet + toutes les modales (incl. itinéraire, reset internet check)
         └── main.js            ← Point d'entrée unique + cleanup factorisé _libererRessourcesPlanPrecedent
 
 lib/
