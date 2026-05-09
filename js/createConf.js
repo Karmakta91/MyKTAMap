@@ -710,7 +710,7 @@ async function _genererZip() {
 
     // Calque editor
     dataFolder.file("editor.json", PLANNER_EDITOR_JSON);
-    dataLayers.push({ id: "editor", label: "Ajouts", file: "data/editor.json", visible: true });
+    dataLayers.push({ id: "editor", label: "Mes annotations", file: "data/editor.json", visible: true });
 
     // ── Tracking ──
     const tracking = {

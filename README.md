@@ -9,6 +9,35 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 13) — Calque "Mes annotations" englobe points + roads + zones session
+
+**Avant** : le calque "Ajout" dans le contrôle des couches Leaflet ne masquait que les **points editor**. Les routes (Principal/Secondaire/Chemin) et les zones (Eau/Remblais/Effondrement) tracées en session étaient ajoutées directement à `window.map` → restaient visibles peu importe l'état du toggle.
+
+**Après** : un seul toggle **"Mes annotations"** masque/affiche TOUT ce que l'utilisateur a tracé en session (points + roads + zones + cercles d'intersection).
+
+**Exclus du toggle** (cycle de vie propre) :
+- 🗺️ **Itinéraire** (type road `"itinerary"`) — géré par la modale Itinéraire (❌ Effacer / 🔄 Recalculer)
+- 📐 **Mesure** — mode actif/inactif via le bouton mesure
+- 🧭 **Tracker** — démarrage explicite via ▶️ Play
+
+**Changements code** :
+
+- `js/road.js > renderRoads()` : routes non-itinerary ciblent désormais `window.layerEditor` au lieu de `window.map`. Helper `_targetLayerForRoad(roadType)` qui retourne `map` pour itinerary, `layerEditor` sinon. Cercles d'intersection également dans `layerEditor`.
+- `js/zones.js > renderZones() / initZones() / resetZones()` : tous les `addTo(window.map)` deviennent `addTo(layerEditor)` via le helper `_zoneTarget()`. Inclut polygones fermés, polyline preview pendant tracé, et cercle "fermeture possible" sur le 1er point.
+- Tous les `removeLayer` remplacés par `layer.remove()` (API portable Leaflet, fonctionne où que soit attaché le layer).
+- Fallback `window.map` si `layerEditor` pas encore créé (init précoce).
+
+**Renommage du calque dans le contrôle des couches** :
+- `data/test1/plan-config.json` : `"label": "Ajouts"` → `"label": "Mes annotations"`
+- `data/test2/plan-config.json` : idem
+- `js/createConf.js` : default pour les nouveaux plans → `"Mes annotations"`
+
+**Compatibilité plans existants** : les anciens ZIP avec `"label": "Ajouts"` continuent de fonctionner, leur calque s'affichera juste comme "Ajouts" dans le contrôle. Pour migrer, l'utilisateur peut éditer le `plan-config.json` du ZIP manuellement (ou regénérer le plan via 🏗️).
+
+**`sw.js`** : `CACHE_NAME` v61 → v62.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 12) — Protection juridique du code (Phase 1 légale)
 
 Mise en place d'un dispositif de protection contre le vol commercial du code (cible : sociétés carrière qui voudraient piquer le code via F12 et l'utiliser commercialement).

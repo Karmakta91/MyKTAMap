@@ -49,6 +49,17 @@ const ZONE_STYLE_PREVIEW = {
 };
 
 // =========================
+// CIBLE DE RENDU — calque "Mes annotations"
+// =========================
+// Les zones de session sont rendues dans window.layerEditor (= calque
+// "Mes annotations"), comme les points editor et les roads de session.
+// Toggle unique pour masquer/afficher toutes les annotations utilisateur.
+// Fallback window.map si layerEditor pas encore créé (cas d'init précoce).
+function _zoneTarget() {
+  return window.layerEditor || window.map;
+}
+
+// =========================
 // INIT
 // =========================
 function initZones() {
@@ -58,13 +69,13 @@ function initZones() {
 
   if (zoneLayers && zoneLayers.length) {
     zoneLayers.forEach(function(l) {
-      try { window.map.removeLayer(l); } catch(e) {}
+      try { l.remove(); } catch(e) {}
     });
   }
   zoneLayers = [];
 
   if (previewLayer) {
-    try { window.map.removeLayer(previewLayer); } catch(e) {}
+    try { previewLayer.remove(); } catch(e) {}
     previewLayer = null;
   }
 
@@ -153,12 +164,12 @@ function fermerZoneEnCours() {
 // RENDU
 // =========================
 function renderZones() {
-  // Vider les layers existants
-  zoneLayers.forEach(function(l) { window.map.removeLayer(l); });
+  // Vider les layers existants — .remove() détache où qu'ils soient (map ou layerEditor)
+  zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   zoneLayers = [];
 
   if (previewLayer) {
-    window.map.removeLayer(previewLayer);
+    try { previewLayer.remove(); } catch(e) {}
     previewLayer = null;
   }
 
@@ -171,6 +182,8 @@ function renderZones() {
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
     return oa - ob;
   });
+
+  const target = _zoneTarget();
 
   // Pour chaque zone, déterminer si elle est fermée (= pas la zone courante)
   zonesAffichage.forEach(function(zone) {
@@ -185,7 +198,7 @@ function renderZones() {
         const previewStyle = Object.assign({}, ZONE_STYLE_PREVIEW, {
           color: style.color
         });
-        previewLayer = L.polyline(latlngs, previewStyle).addTo(window.map);
+        previewLayer = L.polyline(latlngs, previewStyle).addTo(target);
 
         // Afficher un petit cercle sur le 1er point pour indiquer la fermeture possible
         if (zone.points.length >= 3) {
@@ -197,13 +210,13 @@ function renderZones() {
             fillOpacity: 0.4,
             weight:      2,
             interactive: false
-          }).addTo(window.map);
+          }).addTo(target);
           zoneLayers.push(marker);
         }
       }
     } else {
       // Zone fermée → polygone rempli
-      const polygon = L.polygon(latlngs, style).addTo(window.map);
+      const polygon = L.polygon(latlngs, style).addTo(target);
       zoneLayers.push(polygon);
     }
   });
@@ -217,11 +230,11 @@ function resetZones() {
   currentZone = null;
   window.modeZone = null;
 
-  zoneLayers.forEach(function(l) { window.map.removeLayer(l); });
+  zoneLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
   zoneLayers = [];
 
   if (previewLayer) {
-    window.map.removeLayer(previewLayer);
+    try { previewLayer.remove(); } catch(e) {}
     previewLayer = null;
   }
 }

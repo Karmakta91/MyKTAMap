@@ -231,10 +231,25 @@ function _calculerIntersectionsRoads(roads) {
 // =========================
 // RENDU
 // =========================
+// Cible des polylines roads de session : window.layerEditor (= calque
+// "Mes annotations"). Permet à l'utilisateur de masquer/afficher d'un seul
+// toggle TOUTES ses annotations (points editor + roads session + zones session).
+// EXCEPTION : le type "itinerary" reste sur window.map direct, car il a son
+// propre cycle de vie (modale Itinéraire / ❌ Effacer / 🔄 Recalculer) et ne
+// doit PAS être masqué par le toggle "Mes annotations".
+// Fallback window.map si layerEditor pas encore créé (cas d'init précoce).
+function _targetLayerForRoad(roadType) {
+  if (roadType === "itinerary") return window.map;
+  return window.layerEditor || window.map;
+}
+
 function renderRoads() {
   console.log("[Road] renderRoads — roadsData :", roadsData);
 
-  roadLayers.forEach(layer => window.map.removeLayer(layer));
+  // .remove() détache le layer où qu'il soit (map directe ou via layerGroup).
+  // Plus portable que window.map.removeLayer(...) maintenant que les layers
+  // peuvent vivre dans layerEditor au lieu de la map.
+  roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
 
   // Tracés
@@ -243,6 +258,7 @@ function renderRoads() {
 
     const latlngs = road.points.map(p => convertCoord(p.x, p.y));
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
+    const target = _targetLayerForRoad(road.type);
 
     // Cas spécial "itinerary" : on force le renderer SVG pour pouvoir appliquer
     // un filtre CSS drop-shadow (effet "néon glow"), impossible sur le renderer
@@ -252,10 +268,10 @@ function renderRoads() {
         renderer:  L.svg(),
         className: "kta-itinerary-polyline"
       });
-      const polyline = L.polyline(latlngs, opts).addTo(window.map);
+      const polyline = L.polyline(latlngs, opts).addTo(target);
       roadLayers.push(polyline);
     } else {
-      const polyline = L.polyline(latlngs, style).addTo(window.map);
+      const polyline = L.polyline(latlngs, style).addTo(target);
       roadLayers.push(polyline);
     }
   });
@@ -266,6 +282,10 @@ function renderRoads() {
   // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
   // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
   // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
+  // Cercles → layerEditor : ils suivent le toggle "Mes annotations" (cohérent : si on
+  // masque toutes nos annotations, les cercles d'intersection liés à nos roads doivent
+  // disparaître aussi).
+  const intersectionsTarget = window.layerEditor || window.map;
   const allRoads = roadsData.concat(_embeddedRoadsVisibles()).filter(r => r.type !== "itinerary");
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
@@ -278,7 +298,7 @@ function renderRoads() {
       weight:      0,
       stroke:      false,
       interactive: false
-    }).addTo(window.map);
+    }).addTo(intersectionsTarget);
     roadLayers.push(cercle);
   });
 
@@ -298,7 +318,7 @@ function resetRoads() {
   currentRoad = null;
   window.modeRoad = null;
 
-  roadLayers.forEach(layer => window.map.removeLayer(layer));
+  roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
 }
 
