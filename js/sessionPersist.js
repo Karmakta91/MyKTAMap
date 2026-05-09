@@ -37,12 +37,24 @@
   // ========== ETAT COURANT ==========
 
   function _gatherState() {
+    // ⚠️ On EXCLUT les roads de type "itinerary" du state persiste (depuis 09/05/2026
+    // suite 29). L'itineraire est un calcul derive du reseau de routes (Pathfinder),
+    // pas une annotation permanente. Ses tracés peuvent contenir des centaines de
+    // points et avec le drop-shadow CSS du halo neon, le rendu au boot saturait le
+    // GPU mobile / browser → crash au reload pour les utilisateurs ayant un
+    // itineraire actif au moment de fermer.
+    // L'utilisateur peut le recalculer en 2 clics via la modale 🗺️ apres reload.
+    const allRoads = window.getRoads ? (window.getRoads() || []) : [];
+    const persistableRoads = allRoads.filter(function(r) {
+      return r && r.type !== "itinerary";
+    });
     return {
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
-      roads:        window.getRoads         ? (window.getRoads()         || []) : [],
+      roads:        persistableRoads,
       zones:        window.getZones         ? (window.getZones()         || []) : [],
       measure:      window.getMeasurePoints ? (window.getMeasurePoints() || []) : []
       // tracker path : volontairement non persisté (cf. choix 3:b)
+      // itineraire (type road "itinerary") : volontairement non persisté (suite 29)
     };
   }
 
@@ -183,11 +195,18 @@
         window.setEditorPoints(payload.editorPoints);
         restored.points = payload.editorPoints.length;
       }
-      // setRoads redessine en interne (renderRoads), donc juste reset + set
+      // setRoads redessine en interne (renderRoads), donc juste reset + set.
+      // ⚠️ Filter "itinerary" cote restore aussi : les sessions sauvegardees AVANT
+      // le fix suite 29 peuvent encore contenir des itineraires en localStorage
+      // → sans ce filtre, elles continueraient a crasher au reload chez les
+      // utilisateurs qui n'ont pas encore vide leur cache.
       if (Array.isArray(payload.roads)) {
+        const safeRoads = payload.roads.filter(function(r) {
+          return r && r.type !== "itinerary";
+        });
         if (window.resetRoads) window.resetRoads();
-        if (window.setRoads)   window.setRoads(payload.roads);
-        restored.roads = payload.roads.length;
+        if (window.setRoads)   window.setRoads(safeRoads);
+        restored.roads = safeRoads.length;
       }
       // setZones redessine en interne (renderZones), donc juste reset + set
       if (Array.isArray(payload.zones)) {
