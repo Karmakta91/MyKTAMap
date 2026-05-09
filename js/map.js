@@ -164,9 +164,17 @@ async function initMapFromConfig() {
 
   bounds = [[0, 0], [config.plan.imageHeight, config.plan.imageWidth]];
 
+  // Sur mobile, on autorise un dezoom plus profond (-4 au lieu de -2 = 4×
+  // plus zoomable arrière) pour donner de la marge autour du plan. Cas
+  // d'usage : un point près du bord ouvre une popup qui sort du cadre ;
+  // l'utilisateur peut alors dezoomer pour avoir plus d'espace écran libre
+  // autour du marker. Desktop garde -2 (plein écran suffisant).
+  const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
+  const _minZoom  = _isMobile ? -4 : -2;
+
   map = L.map('map', {
     crs: L.CRS.Simple,
-    minZoom: -2,
+    minZoom: _minZoom,
     maxBounds: bounds,
     maxBoundsViscosity: 1.0,
     // Rendu canvas pour les overlays vectoriels (polylines routes, polygons zones,
@@ -176,7 +184,7 @@ async function initMapFromConfig() {
     preferCanvas: true
   });
   map.setMaxBounds(bounds);
-  map.setMinZoom(-2);
+  map.setMinZoom(_minZoom);
   map.setMaxZoom(2);
 
   window.map    = map;
