@@ -9,6 +9,20 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 18) — Fix toggle "Mes annotations" sur les roads (renderer SVG forcé)
+
+**Symptôme** : après le fix suite 17 (auto-création du calque editor), le toggle "Mes annotations" masquait bien les zones de session, mais **les roads de session restaient visibles**.
+
+**Cause racine probable** : interaction subtile entre `preferCanvas: true` (Leaflet) et le toggle d'un layerGroup parent. Les polylines en canvas mode partagent le canvas de la map et leur retrait au moment du `removeLayer(layerGroup)` n'est pas toujours propagé au canvas de manière fiable. Les polygons (zones) ne sont pas affectés par ce bug.
+
+**Fix** : forcer `renderer: L.svg()` sur **toutes les roads de session** (`roadsData`) ET sur les **cercles d'intersection** dans `road.js > renderRoads`. Avec SVG, chaque polyline / circleMarker est un élément DOM dédié, retiré proprement avec son layerGroup parent.
+
+**Impact perf** : négligeable côté roads session car peu nombreuses (typiquement <20 par utilisateur). Les routes **embedded** du JSON (potentiellement des centaines) restent en canvas via `ajouterPointsDepuisJSON`, perf préservée.
+
+**`sw.js`** : `CACHE_NAME` v67 → v68.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 17) — Fallback auto-création du calque "editor" dans map.js
 
 **Bug** : sur des plans-config qui ne déclarent **PAS** le calque `id: "editor"` dans leur tableau `dataLayers` (anciens plans, plans minimaux, ZIP générés avant standardisation), `dataLayerGroups.editor` était `undefined` → `window.layerEditor` aussi → les helpers `_targetLayerForRoad()` et `_zoneTarget()` faisaient `fallback || window.map` et ajoutaient les polylines/polygons directement à la map → toggle "Mes annotations" inopérant pour les routes et zones (les points editor passaient par `_ajouterMarker` qui logge un `console.error` quand `layerEditor` est undefined).
