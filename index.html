@@ -6,7 +6,13 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- viewport-fit=cover testé puis retiré : iOS PWA n'extendait pas correctement
+       la viewport jusqu'au home-indicator (bande sombre persistante en bas).
+       Sans cover : iOS reste dans la safe-area, status bar coloré par theme-color
+       (notre #111827 dark) + icônes claires (apple-mobile-web-app-status-bar-style
+       = black-translucent → light icons en l'absence de cover). Look intégré dark
+       en haut, footer correct en bas. */ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -30,28 +36,6 @@
 </head>
 
 <body>
-
-  <!-- ════════════════════════════════════════════════════════
-       FIX VIEWPORT HEIGHT — iOS PWA bottom safe-area workaround
-       Sur iOS PWA, 100vh / 100dvh / position:fixed inset:0 peuvent
-       laisser une bande non couverte au-dessus du home-indicator.
-       window.innerHeight donne TOUJOURS la hauteur réellement visible.
-       Cette inline-script s'exécute AVANT que le CSS soit appliqué.
-       ════════════════════════════════════════════════════════ -->
-  <script>
-    (function() {
-      function setRealVh() {
-        // window.innerHeight = hauteur physiquement visible incluant la safe-area-bottom
-        document.documentElement.style.setProperty("--realvh", window.innerHeight + "px");
-      }
-      setRealVh();
-      window.addEventListener("resize", setRealVh);
-      window.addEventListener("orientationchange", function() {
-        // Petit délai pour laisser iOS finir l'animation de rotation avant de mesurer
-        setTimeout(setRealVh, 200);
-      });
-    })();
-  </script>
 
   <!-- ════════════════════════════════════════════════════════
        SPLASH SCREEN — Animation de bienvenue au démarrage

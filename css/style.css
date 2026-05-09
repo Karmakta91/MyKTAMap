@@ -1,17 +1,9 @@
 html, body {
-  /* Cascade :
-     1) 100vh = fallback navigateurs vieux
-     2) 100dvh = dynamic viewport height (iOS 15.4+, Chrome 108+)
-     3) var(--realvh) = window.innerHeight calculé en JS au boot (cf. <script>
-        inline en haut du <body>) — gagne toujours quand le JS a tourné, marche
-        sur n'importe quelle version iOS PWA, là où dvh peut encore mentir. */
-  height: 100vh;
-  height: 100dvh;
-  height: var(--realvh, 100dvh);
+  height: 100%;
   margin: 0;
   overflow: hidden;
-  /* Fond sombre pour iOS/Android edge-to-edge : ce qui apparaît sous la status bar
-     et le home indicator reste cohérent avec le thème. */
+  /* Fond sombre cohérent avec le splash et le thème pour les zones où le body
+     pourrait apparaître (rubber-band scroll, avant init Leaflet). */
   background-color: #0a0d18;
 }
 
@@ -20,18 +12,8 @@ html, body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  /* Même cascade : --realvh prime toujours quand dispo */
-  height: 100vh;
-  height: 100dvh;
-  height: var(--realvh, 100dvh);
-}
-
-/* Force aussi le conteneur interne Leaflet à suivre, par défense (Leaflet
-   parfois fige une height absolue qui ne suit pas le resize/dvh) */
-.leaflet-container {
-  width: 100% !important;
-  height: 100% !important;
+  width: 100%;
+  height: 100%;
 }
 
 .map-title {
@@ -1422,11 +1404,6 @@ html, body {
 #splashOverlay {
   position: fixed;
   inset: 0;
-  /* Garantie d'occupation totale même quand inset:0 ne suffit pas sur iOS PWA */
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  height: var(--realvh, 100dvh);
   z-index: 9999;
   background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
   display: flex;
@@ -1691,11 +1668,6 @@ html, body {
 #planLoaderOverlay {
   position: fixed;
   inset: 0;
-  /* Idem splash : garantie d'occupation totale sur iOS PWA */
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  height: var(--realvh, 100dvh);
   z-index: 5000;
   background: rgba(5, 8, 15, 0.92);
   display: flex;
