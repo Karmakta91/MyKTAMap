@@ -281,6 +281,13 @@ function renderRoads() {
     }).addTo(window.map);
     roadLayers.push(cercle);
   });
+
+  // Hook : si le panneau "Distance totale des tracés" est ouvert, on
+  // rafraîchit le surlignage magenta + le total live (l'utilisateur peut
+  // tracer/effacer une road pendant que le panneau est affiché).
+  if (typeof window._rdOnRoadsChanged === "function") {
+    try { window._rdOnRoadsChanged(); } catch(e) {}
+  }
 }
 
 // =========================

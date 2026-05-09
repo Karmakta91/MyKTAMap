@@ -51,6 +51,24 @@ function getIconUrlForPoint(point) {
 }
 window.getIconUrlForPoint = getIconUrlForPoint;
 
+// =========================
+// FORMAT DE DISTANCE — m / km adaptatif
+// =========================
+// Reçoit une distance en mètres et retourne une string formatée :
+// - < 1000 m → "X.X m" (decimalsM décimales, défaut 1)
+// - ≥ 1000 m → "X.XX km" (toujours 2 décimales, soit ~10 m de précision)
+// Utilisé par les 3 outils de mesure (📐 Mesure simple, 📏 Distance totale,
+// 🗺️ Itinéraire) pour un affichage cohérent et lisible.
+function formatDistance(distM, decimalsM) {
+  if (typeof distM !== "number" || isNaN(distM)) return "—";
+  if (distM >= 1000) {
+    return (distM / 1000).toFixed(2) + " km";
+  }
+  const dec = (typeof decimalsM === "number") ? decimalsM : 1;
+  return distM.toFixed(dec) + " m";
+}
+window.formatDistance = formatDistance;
+
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
   if (Array.isArray(json.editorPoints))  return json.editorPoints;

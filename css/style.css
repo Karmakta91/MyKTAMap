@@ -3245,3 +3245,124 @@ html, body {
 .kta-measure-distance .kta-measure-distance-icon {
   margin-right: 6px;
 }
+
+/* =========================
+   DISTANCE TOTALE DES TRACÉS — modale plein écran + halo magenta
+   ========================= */
+
+/* Boîte de la modale : largeur conservée modeste pour ne pas étirer le panneau
+   sur grand écran. Le shell vient de .kta-readme-modal-* (overlay full screen,
+   centrage, fade-in, etc.) — seul le contenu interne est customisé ici. */
+.kta-rd-modal-boite {
+  max-width: 480px;
+  height: auto;
+  max-height: 90vh;
+}
+
+.kta-rd-help {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.kta-rd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.kta-rd-row:hover {
+  background: rgba(255, 78, 203, 0.06);
+  border-color: rgba(255, 78, 203, 0.18);
+}
+
+.kta-rd-row input[type="checkbox"] {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #ff4ecb;
+  width: 16px;
+  height: 16px;
+}
+
+.kta-rd-swatch {
+  flex-shrink: 0;
+  width: 22px;
+  height: 5px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.kta-rd-label {
+  flex: 1;
+  color: #e8eaf0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.kta-rd-count {
+  flex-shrink: 0;
+  color: #8892a4;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.kta-rd-total-wrap {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 78, 203, 0.06);
+  border: 1px solid rgba(255, 78, 203, 0.22);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kta-rd-total-label {
+  font-weight: 600;
+  color: #e8eaf0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.kta-rd-total-value {
+  font-weight: 700;
+  color: #ff4ecb;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Footer actions : ❌ Effacer / ✓ Fermer en bas de la modale */
+.kta-rd-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kta-rd-actions .kta-btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* Polyline de surlignage : halo magenta (renderer SVG forcé), au-dessus
+   des routes natives mais sous les markers et l'itinéraire cyan. */
+.kta-rd-highlight-polyline {
+  filter: drop-shadow(0 0 4px rgba(255, 78, 203, 0.9))
+          drop-shadow(0 0 10px rgba(255, 78, 203, 0.5));
+  pointer-events: none;
+}

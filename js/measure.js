@@ -104,7 +104,7 @@ function afficherDistance(d) {
 
   const label = document.getElementById("measureLabel");
   if (label) {
-    label.innerHTML = '<span class="kta-measure-distance-icon">📐</span>Distance : ' + d.toFixed(2) + " m";
+    label.innerHTML = '<span class="kta-measure-distance-icon">📐</span>Distance : ' + window.formatDistance(d, 2);
   }
 }
 

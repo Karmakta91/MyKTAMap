@@ -305,7 +305,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
-| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins |
+| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
@@ -526,6 +526,24 @@ Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux op
 - **🟨 Chemin** — jaune
 
 Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
+
+### 📏 Distance totale des tracés
+
+Le bouton **📏 Distance totale** dans le groupe **🛣️ Tracés** ouvre une fenêtre qui calcule la **somme des longueurs** de tous vos tracés visibles, avec un filtre par type.
+
+**Comment ça marche :**
+
+1. Appuyez sur **📏** — la fenêtre s'ouvre avec 3 cases cochées (Principal, Secondaire, Chemin)
+2. Décochez les types que vous voulez exclure du calcul
+3. Le **total en mètres** se met à jour instantanément, et les tracés inclus sont **surlignés en magenta** sur la carte (halo lumineux pour bien les voir)
+4. Pour chaque type, la fenêtre affiche le **nombre de tracés** et leur **longueur cumulée**
+5. Deux options de sortie :
+   - **✓ Fermer (garder le surlignage)** — la fenêtre se ferme mais le **surlignage magenta reste affiché** sur la carte. Vous pouvez explorer la carte avec les tronçons toujours visibles, et re-cliquer **📏** pour rouvrir la fenêtre (les filtres précédents sont conservés).
+   - **❌ Effacer le surlignage** — retire le halo magenta de la carte ET ferme la fenêtre.
+
+> 💡 Le calcul inclut **toutes** les routes visibles : celles que vous avez tracées dans la session ET celles présentes dans les **calques de données** activés. Si vous masquez un calque dans le contrôle des couches, ses routes sortent automatiquement du calcul.
+>
+> ℹ️ Cette mesure est **uniquement à l'écran** — elle n'apparaît pas dans la légende de l'export image PNG.
 
 ### 🧹 Effacer un tracé
 

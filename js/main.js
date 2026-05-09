@@ -193,6 +193,13 @@ async function lancerApplication() {
 // startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
 // sur mobile où chaque Mo retenu compte pour iOS Safari.
 function _libererRessourcesPlanPrecedent() {
+  // Distance totale des tracés : ferme le panneau flottant et purge le layer
+  // de surlignage magenta avant le démontage de la map (sinon le layer reste
+  // attaché à une map détruite et le panneau flotte par-dessus le splash).
+  if (typeof window._rdEffacerHighlight === "function") {
+    try { window._rdEffacerHighlight(); } catch(e) {}
+  }
+
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
   if (window._baseTiles && window._baseTiles.length > 0) {
     libererTuiles(window._baseTiles, window.map);
