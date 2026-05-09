@@ -2293,9 +2293,245 @@ function initInterface() {
     ]
   });
 
+  // ─────────────────────────────
+  // ITINÉRAIRE — calcul de route sur le réseau de polylines
+  // ─────────────────────────────
+  _creerGroupeAccordeon({
+    id: "itinerary",
+    iconePrincipale: "🗺️",
+    titre: "Itinéraire",
+    soloAction: function() {
+      if (typeof window.ouvrirItinerairModal === "function") {
+        window.ouvrirItinerairModal();
+      }
+    }
+  });
+
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 }
+
+// =========================
+// ITINÉRAIRE — modale + mode clic + rendu du tracé calculé
+// =========================
+let _itineraryWaypoints   = [];
+let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers numérotés
+let _itineraryClickActive = false;
+let _itineraryClickHandler = null;
+
+function _ajouterWaypointVisuel(p, num) {
+  if (!window.map) return;
+  if (!_itineraryMarkerLayer) {
+    _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
+  }
+  const icon = L.divIcon({
+    className: "kta-itinerary-waypoint",
+    html: '<div class="kta-iti-num">' + num + '</div>',
+    iconSize:  [28, 28],
+    iconAnchor: [14, 14]
+  });
+  const m = L.marker(convertCoord(p.x, p.y), { icon: icon, interactive: false })
+              .addTo(_itineraryMarkerLayer);
+  return m;
+}
+
+function _redessinerWaypoints() {
+  if (_itineraryMarkerLayer) {
+    _itineraryMarkerLayer.clearLayers();
+  }
+  _itineraryWaypoints.forEach(function(p, i) {
+    _ajouterWaypointVisuel(p, i + 1);
+  });
+  _rafraichirListeWaypointsModale();
+}
+
+function _rafraichirListeWaypointsModale() {
+  const cont = document.getElementById("kta-iti-waypoints-list");
+  if (!cont) return;
+  if (_itineraryWaypoints.length === 0) {
+    cont.innerHTML = '<div class="kta-iti-empty">Aucun waypoint — clique sur la carte pour en ajouter</div>';
+    return;
+  }
+  cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
+    return '<div class="kta-iti-wp-row">' +
+             '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
+             '<span class="kta-iti-wp-coord">x:' + Math.round(p.x) + ' y:' + Math.round(p.y) + '</span>' +
+           '</div>';
+  }).join("");
+}
+
+function _activerModeClicCarte() {
+  if (_itineraryClickActive) return;
+  _itineraryClickActive = true;
+  if (window.map) {
+    _itineraryClickHandler = function(e) {
+      // Coords plan (cf. convention du projet : convertCoord inverse y)
+      const x = e.latlng.lng;
+      const y = APP_CONFIG.imageHeight - e.latlng.lat;
+      _itineraryWaypoints.push({ x: x, y: y });
+      _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+      _rafraichirListeWaypointsModale();
+    };
+    window.map.on("click", _itineraryClickHandler);
+  }
+}
+
+function _desactiverModeClicCarte() {
+  if (!_itineraryClickActive) return;
+  _itineraryClickActive = false;
+  if (window.map && _itineraryClickHandler) {
+    window.map.off("click", _itineraryClickHandler);
+  }
+  _itineraryClickHandler = null;
+}
+
+function _viderItineraire() {
+  _itineraryWaypoints = [];
+  if (_itineraryMarkerLayer) {
+    _itineraryMarkerLayer.clearLayers();
+  }
+}
+
+window.ouvrirItinerairModal = function() {
+  // Si une modale existe déjà, on la ferme et reset l'état
+  const existing = document.getElementById("kta-itinerary-modal");
+  if (existing) existing.remove();
+
+  _viderItineraire();
+
+  const modal = document.createElement("div");
+  modal.id = "kta-itinerary-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-iti-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🗺️ Calculer un itinéraire</span>' +
+        '<button class="kta-panneau-close" id="kta-iti-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-iti-corps">' +
+
+        '<div class="kta-iti-section">' +
+          '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
+          '<p class="kta-iti-help">' +
+            'Clique sur la carte pour ajouter des waypoints. ' +
+            'L\'itinéraire passera dans l\'ordre par chacun d\'eux, ' +
+            'en suivant le réseau de routes existant au plus court.' +
+          '</p>' +
+          '<div class="kta-iti-mode-toggle">' +
+            '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Activer mode clic carte</button>' +
+            '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
+          '</div>' +
+          '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
+        '</div>' +
+
+        '<div class="kta-iti-section">' +
+          '<div class="kta-iti-section-titre">🎯 Action</div>' +
+          '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">🎯 Calculer l\'itinéraire</button>' +
+          '<div id="kta-iti-result" class="kta-iti-result" style="display:none;"></div>' +
+          '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+  _rafraichirListeWaypointsModale();
+
+  function fermer() {
+    _desactiverModeClicCarte();
+    _viderItineraire();
+    modal.remove();
+  }
+
+  document.getElementById("kta-iti-close").addEventListener("click", fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  // Bouton activer / désactiver mode clic carte
+  const btnMode = document.getElementById("kta-iti-mode-click");
+  btnMode.addEventListener("click", function() {
+    if (_itineraryClickActive) {
+      _desactiverModeClicCarte();
+      btnMode.textContent = "📍 Activer mode clic carte";
+      btnMode.classList.remove("kta-actif");
+    } else {
+      _activerModeClicCarte();
+      btnMode.textContent = "✋ Désactiver mode clic carte";
+      btnMode.classList.add("kta-actif");
+    }
+  });
+
+  // Vider
+  document.getElementById("kta-iti-clear").addEventListener("click", function() {
+    _itineraryWaypoints = [];
+    if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
+    _rafraichirListeWaypointsModale();
+    document.getElementById("kta-iti-result").style.display = "none";
+    document.getElementById("kta-iti-error").style.display  = "none";
+  });
+
+  // Calculer
+  document.getElementById("kta-iti-compute").addEventListener("click", function() {
+    const errEl = document.getElementById("kta-iti-error");
+    const resEl = document.getElementById("kta-iti-result");
+    errEl.style.display = "none";
+    resEl.style.display = "none";
+
+    if (_itineraryWaypoints.length < 2) {
+      errEl.textContent = "Il faut au moins 2 waypoints pour calculer un itinéraire.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    if (!window.Pathfinder) {
+      errEl.textContent = "Module Pathfinder non chargé.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    try {
+      const result = window.Pathfinder.computeRoute(_itineraryWaypoints);
+      // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
+      const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
+      const distM = result.totalDistance / scale;
+
+      resEl.innerHTML =
+        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + distM.toFixed(1) + ' m</div>' +
+        '<div class="kta-iti-result-row"><strong>Tronçons traversés :</strong> ' + result.segmentCount + '</div>' +
+        '<div class="kta-iti-result-actions">' +
+          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">💾 Enregistrer comme itinéraire</button>' +
+          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">❌ Effacer</button>' +
+        '</div>';
+      resEl.style.display = "block";
+
+      // Tracer immédiatement (preview) en utilisant le type "itinerary"
+      // — sera remplacé/conservé selon le choix utilisateur
+      const previewRoad = { type: "itinerary", points: result.path, _preview: true };
+      const currentRoads = window.getRoads ? window.getRoads() : [];
+      // Retire d'éventuels itinéraires preview précédents
+      const filtered = currentRoads.filter(function(r) { return !r._preview; });
+      filtered.push(previewRoad);
+      if (window.setRoads) window.setRoads(filtered);
+
+      document.getElementById("kta-iti-save").addEventListener("click", function() {
+        // Convertit le preview en road persistante
+        const roadsNow = (window.getRoads ? window.getRoads() : []).map(function(r) {
+          if (r._preview) { const c = Object.assign({}, r); delete c._preview; return c; }
+          return r;
+        });
+        if (window.setRoads) window.setRoads(roadsNow);
+        fermer();
+      });
+      document.getElementById("kta-iti-discard").addEventListener("click", function() {
+        const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
+        if (window.setRoads) window.setRoads(roadsNow);
+        resEl.style.display = "none";
+      });
+
+    } catch(err) {
+      errEl.textContent = err.message || String(err);
+      errEl.style.display = "block";
+    }
+  });
+};
 
 // =========================
 // LÉGENDE — modale plein écran

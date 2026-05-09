@@ -17,7 +17,10 @@ let _embeddedRoads = [];
 const ROAD_STYLES = {
   principal:   { color: "#00ff00", weight: 5, opacity: 1 },
   secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-  chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+  chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
+  // Type "itinéraire" calculé par Pathfinder : couleur cyan distinctive,
+  // tracé plus épais pour bien se voir par-dessus les autres roads.
+  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6" }
 };
 
 // Priorité couleur des intersections : chemin (jaune) > secondaire (violet) > principal (vert)
@@ -238,7 +241,10 @@ function renderRoads() {
   // Cercles d'intersection : on combine routes éditables (roadsData) + routes embarquées
   // (chargées depuis les calques de données) — pour que les croisements soient détectés
   // entre n'importe quels deux tracés visibles, peu importe leur source.
-  const allRoads = roadsData.concat(_embeddedRoads);
+  // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
+  // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
+  // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
+  const allRoads = roadsData.concat(_embeddedRoads).filter(r => r.type !== "itinerary");
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
@@ -330,6 +336,13 @@ window.registerEmbeddedRoad = function(road) {
 window.clearEmbeddedRoads = function() {
   _embeddedRoads = [];
   if (window.map && window.roadInitialized) renderRoads();
+};
+
+// Expose la liste des routes embarquées pour les modules qui ont besoin de
+// l'ensemble du réseau (Pathfinder construit le graphe à partir des roads
+// session ET embedded).
+window.getEmbeddedRoads = function() {
+  return _embeddedRoads.slice();  // copie défensive
 };
 
 // =========================

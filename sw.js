@@ -6,7 +6,7 @@
 // Cacher README_USER.md (utilisé par le modal Documentation in-app).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v43";
+const CACHE_NAME = "myktamap-cache-v44";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -38,6 +38,7 @@ const ASSETS_TO_CACHE = [
   "./js/planRegistry.js",
   "./js/sessionPersist.js",
   "./js/oomGuard.js",
+  "./js/pathfinder.js",
   "./js/interface.js",
   "./js/main.js",
 

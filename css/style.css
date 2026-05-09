@@ -2884,3 +2884,137 @@ html, body {
   from { opacity: 1; transform: translate(-50%, 0); }
   to   { opacity: 0; transform: translate(-50%, -10px); }
 }
+
+/* ══════════════════════════════════════════════
+   ITINÉRAIRE — modale + waypoints
+   ══════════════════════════════════════════════ */
+.kta-iti-modal-boite {
+  max-width: 540px;
+}
+
+.kta-iti-corps {
+  padding: 18px 22px;
+}
+
+.kta-iti-section {
+  margin-bottom: 18px;
+}
+
+.kta-iti-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8cb4ff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.kta-iti-help {
+  font-size: 12px;
+  color: #8892a4;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.kta-iti-mode-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.kta-iti-waypoints-list {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+
+.kta-iti-empty {
+  font-style: italic;
+  color: #6c7689;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.kta-iti-wp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.kta-iti-wp-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #00d4ff;
+  color: #0a0d18;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.kta-iti-wp-coord {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #8892a4;
+}
+
+.kta-iti-result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 212, 255, 0.08);
+  border-left: 3px solid #00d4ff;
+  border-radius: 6px;
+}
+
+.kta-iti-result-row {
+  font-size: 13px;
+  color: #e8eaf0;
+  line-height: 1.6;
+}
+
+.kta-iti-result-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.kta-iti-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 107, 107, 0.08);
+  border-left: 3px solid #ff6b6b;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #ffb3b3;
+}
+
+/* Marker numéroté placé sur la carte pour chaque waypoint */
+.kta-itinerary-waypoint {
+  background: transparent;
+  border: none;
+}
+
+.kta-iti-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #00d4ff;
+  color: #0a0d18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  border: 2px solid #1a1f2e;
+  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
+}
