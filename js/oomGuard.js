@@ -115,8 +115,12 @@
     overlay.className = "kta-readme-modal-overlay";
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
-        '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">⚠️ Arrêt brutal détecté</span>' +
+        '<div class="kta-readme-modal-header kta-oom-header">' +
+          '<span class="kta-oom-titre-big">' +
+            '<span class="kta-oom-warn-side">⚠️</span>' +
+            '<span class="kta-oom-titre-text">ATTENTION — ARRÊT BRUTAL DÉTECTÉ</span>' +
+            '<span class="kta-oom-warn-side">⚠️</span>' +
+          '</span>' +
           '<button class="kta-panneau-close" id="kta-oom-fermer" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-oom-corps">' +

@@ -2659,10 +2659,59 @@ html, body {
    MODALE OOM — affichée au boot quand un kill mémoire a été détecté
    Style : reprend le shell .kta-readme-modal-overlay/.boite (déjà défini
    ailleurs) + classes spécifiques au contenu.
+   ATTENTION visuelle voulue : bordures rouges, titre énorme avec
+   ⚠️ de chaque côté, pour que l'utilisateur ne rate pas le message.
    ══════════════════════════════════════════════ */
 .kta-oom-modal-boite {
-  max-width: 560px;
-  /* Hauteur libre, scrolle interne via .kta-readme-modal-corps si besoin */
+  max-width: 600px;
+  border: 2px solid #ff6b6b !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7),
+              0 0 0 1px rgba(255, 107, 107, 0.35),
+              0 0 30px rgba(255, 107, 107, 0.15);
+}
+
+.kta-oom-header {
+  border-bottom: 2px solid rgba(255, 107, 107, 0.35) !important;
+  background: rgba(255, 107, 107, 0.04);
+  padding: 18px 16px !important;
+}
+
+.kta-oom-titre-big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex: 1;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ff6b6b;
+  letter-spacing: 0.08em;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+.kta-oom-warn-side {
+  font-size: 24px;
+  line-height: 1;
+  flex-shrink: 0;
+  /* léger pulse pour attirer l'œil sans agresser */
+  animation: kta-oom-warn-pulse 1.6s ease-in-out infinite;
+}
+
+.kta-oom-titre-text {
+  flex: 1;
+  text-align: center;
+}
+
+@keyframes kta-oom-warn-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.15); }
+}
+
+@media (max-width: 480px) {
+  .kta-oom-titre-big       { font-size: 14px; gap: 8px; }
+  .kta-oom-warn-side       { font-size: 20px; }
+  .kta-oom-titre-text      { letter-spacing: 0.04em; }
+  .kta-oom-header          { padding: 14px 12px !important; }
 }
 
 .kta-oom-corps {
@@ -2674,8 +2723,8 @@ html, body {
   color: #e8eaf0;
   line-height: 1.55;
   padding: 12px 14px;
-  background: rgba(244, 197, 66, 0.08);
-  border-left: 3px solid #f4c542;
+  background: rgba(255, 107, 107, 0.08);
+  border-left: 3px solid #ff6b6b;
   border-radius: 6px;
   margin-bottom: 18px;
 }
@@ -2724,7 +2773,7 @@ html, body {
   position: absolute;
   left: 8px;
   top: 8px;
-  color: #f4c542;
+  color: #ff6b6b;
   font-weight: 700;
 }
 
@@ -2748,7 +2797,7 @@ html, body {
   display: flex;
   justify-content: flex-end;
   padding: 12px 22px 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 2px solid rgba(255, 107, 107, 0.18);
 }
 
 .kta-oom-leaving {
