@@ -253,6 +253,15 @@ function renderRoads() {
   roadLayers = [];
 
   // Tracés
+  // ⚠️ On force le renderer SVG sur TOUTES les roads de session (depuis 09/05/2026,
+  // suite 18). Sans ça, avec preferCanvas:true, les polylines etaient rendues sur
+  // le canvas partage de la map et le toggle off du layerGroup parent ne les
+  // retirait pas systematiquement (bug Leaflet observe : polygons zones se
+  // retiraient bien, mais polylines roads restaient visibles). SVG = element DOM
+  // dedié, removed proprement avec son layerGroup parent. Impact perf negligeable
+  // car les roads SESSION sont peu nombreuses (<20 typiquement). Les routes
+  // EMBEDDED du JSON (potentiellement centaines) restent en canvas via
+  // ajouterPointsDepuisJSON, perf preservee.
   roadsData.forEach(road => {
     if (!road.points || road.points.length === 0) return;
 
@@ -260,10 +269,8 @@ function renderRoads() {
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
     const target = _targetLayerForRoad(road.type);
 
-    // Cas spécial "itinerary" : on force le renderer SVG pour pouvoir appliquer
-    // un filtre CSS drop-shadow (effet "néon glow"), impossible sur le renderer
-    // canvas (preferCanvas:true) qui dessine en bitmap pixel-aware.
     if (road.type === "itinerary") {
+      // Itineraire : SVG + className pour le filtre CSS drop-shadow (halo neon)
       const opts = Object.assign({}, style, {
         renderer:  L.svg(),
         className: "kta-itinerary-polyline"
@@ -271,7 +278,9 @@ function renderRoads() {
       const polyline = L.polyline(latlngs, opts).addTo(target);
       roadLayers.push(polyline);
     } else {
-      const polyline = L.polyline(latlngs, style).addTo(target);
+      // Roads session normales : SVG force pour fiabilite du toggle layerEditor
+      const opts = Object.assign({}, style, { renderer: L.svg() });
+      const polyline = L.polyline(latlngs, opts).addTo(target);
       roadLayers.push(polyline);
     }
   });
@@ -290,6 +299,8 @@ function renderRoads() {
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
+    // Renderer SVG force aussi pour les cercles d'intersection (meme raison
+    // que les polylines roads ci-dessus : fiabilite du toggle layerEditor).
     const cercle = L.circleMarker(latlng, {
       radius:      ROAD_INTERSECTION_RADIUS,
       color:       color,
@@ -297,7 +308,8 @@ function renderRoads() {
       fillOpacity: 1,
       weight:      0,
       stroke:      false,
-      interactive: false
+      interactive: false,
+      renderer:    L.svg()
     }).addTo(intersectionsTarget);
     roadLayers.push(cercle);
   });
