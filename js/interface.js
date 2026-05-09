@@ -2544,11 +2544,13 @@ window.ouvrirItinerairModal = function() {
       resEl.style.display = "block";
 
       // Tracer immédiatement (preview) en utilisant le type "itinerary"
-      // — sera remplacé/conservé selon le choix utilisateur
+      // — sera remplacé/conservé selon le choix utilisateur.
+      // ⚠️ Sémantique : un seul itinéraire actif à la fois — on retire TOUTES
+      // les roads de type "itinerary" (preview ET déjà enregistrées) avant
+      // d'ajouter le nouveau. Recalculer remplace la session précédente.
       const previewRoad = { type: "itinerary", points: result.path, _preview: true };
       const currentRoads = window.getRoads ? window.getRoads() : [];
-      // Retire d'éventuels itinéraires preview précédents
-      const filtered = currentRoads.filter(function(r) { return !r._preview; });
+      const filtered = currentRoads.filter(function(r) { return r.type !== "itinerary"; });
       filtered.push(previewRoad);
       if (window.setRoads) window.setRoads(filtered);
 
