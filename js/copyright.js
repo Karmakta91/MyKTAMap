@@ -96,15 +96,24 @@
     );
   }
 
-  function _afficherToastDevtools() {
+  // Affiche le toast d'avertissement copyright. Avec un titre adaptatif selon
+  // la cause du declenchement (activation manuelle du mode debug ou detection
+  // F12 par heuristique).
+  function _afficherToastDevtools(cause) {
     if (document.getElementById("kta-devtools-warn")) return;
+    var titre;
+    if (cause === "debug-activated") {
+      titre = "Mode debug active";
+    } else {
+      titre = "Inspection detectee";
+    }
     var t = document.createElement("div");
     t.id = "kta-devtools-warn";
     t.className = "kta-devtools-warn";
     t.innerHTML =
       '<div class="kta-devtools-warn-titre">' +
         '<span class="kta-devtools-warn-icon">&#x1F441;&#xFE0F;</span> ' +
-        'Inspection detectee' +
+        titre +
         '<span class="kta-devtools-warn-tag">DEBUG</span>' +
       '</div>' +
       '<div class="kta-devtools-warn-corps">' +
@@ -128,6 +137,11 @@
       if (t.parentNode) t.parentNode.removeChild(t);
     }, 12000);
   }
+
+  // Expose la fonction pour que setDebugMode puisse declencher le toast
+  // a l'activation du mode debug, sans attendre que le polling F12 detecte
+  // quelque chose (utile car le user peut activer debug sans avoir F12 ouvert).
+  window.__MKM_showWarning__ = _afficherToastDevtools;
 
   function _checkDevTools() {
     // Garde principale : si debug OFF, on ne fait STRICTEMENT rien (pas de

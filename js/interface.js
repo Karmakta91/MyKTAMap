@@ -1383,7 +1383,15 @@ function appliquerConfig() {
   APP_CONFIG.startY        = parseInt(document.getElementById("cfg_startY").value, 10);
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
-  APP_CONFIG.debugMode     = document.getElementById("cfg_debugMode").value === "true";
+  // ⚠️ Passer par setDebugMode() au lieu d'ecrire directement APP_CONFIG.debugMode :
+  // ainsi le toast feedback (copyright.js > __MKM_showWarning__) se declenche
+  // si l'utilisateur passe de OFF a ON via les Reglages.
+  const newDebugMode = document.getElementById("cfg_debugMode").value === "true";
+  if (typeof window.setDebugMode === "function") {
+    window.setDebugMode(newDebugMode);
+  } else {
+    APP_CONFIG.debugMode = newDebugMode;
+  }
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
