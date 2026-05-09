@@ -99,12 +99,19 @@ function buildPointPopupHtml(point) {
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + safeDesc + '</span>' : '') +
            '<div class="kta-popup-actions">' +
+             '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
+               'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
+               'title="Recale ta position tracker sur ce point (équivalent du mode recalage)">' +
+               '📍 Je suis ici' +
+             '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
-               'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\">" +
+               'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
+               'title="Calcule un itinéraire depuis ta position tracker vers ce point">' +
                '🧭 Y aller' +
              '</button>' +
              '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
-               'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\">" +
+               'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\" " +
+               'title="Ajoute ce point comme waypoint d\'un itinéraire">' +
                '➕ Itinéraire' +
              '</button>' +
            '</div>' +

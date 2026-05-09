@@ -329,3 +329,30 @@ window.getTrackingPath = function() {
     return { x: ll.lng, y: APP_CONFIG.imageHeight - ll.lat };
   });
 };
+
+// Recale la position du tracker sur des coords plan precises (typiquement
+// utilise depuis le bouton "📍 Je suis ici" d'une popup point — voir
+// utils.js > buildPointPopupHtml + interface.js wire-up).
+// Equivalent du mode recalage clic-carte mais avec coords exactes du point
+// existant (plus precis qu'un clic approximatif). Reset le tracé en cours
+// (polyline) et le compteur de pas, comme le mode recalage classique.
+window.recalerTrackerSurPoint = function(x, y) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+  position.x = x;
+  position.y = y;
+  if (polyline) polyline.setLatLngs([]);
+  stepCount = 0;
+  updateMap();
+  // Desactive le mode recalage s'il etait actif (cohérent : on vient de
+  // recaler via le bouton, on n'a plus besoin du mode click).
+  if (window.modeRecalage) window.modeRecalage = false;
+  // Pan la map sur la nouvelle position pour que l'utilisateur voie le
+  // marker tracker s'aligner avec le point selectionne.
+  if (window.map) {
+    try {
+      const latlng = convertCoord(x, y);
+      window.map.setView(latlng, window.map.getZoom(), { animate: true });
+    } catch(e) {}
+  }
+  console.log("[Tracking] Recalé sur point :", x, y);
+};
