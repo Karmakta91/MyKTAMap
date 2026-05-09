@@ -147,7 +147,16 @@ function getHeading(alpha, beta, gamma) {
   return heading;
 }
 
+// Garde-fous : sur plan switch, requestPermission peut être rappelé et
+// re-déclencher initOrientation/initMotion. Sans ces flags, on accumulait
+// les listeners window à chaque appel → fuite mémoire + double traitement
+// de chaque événement deviceorientation/devicemotion.
+let _orientationListenerAttached = false;
+let _motionListenerAttached      = false;
+
 function initOrientation() {
+  if (_orientationListenerAttached) return;
+  _orientationListenerAttached = true;
   window.addEventListener("deviceorientation", function(event) {
     if (event.alpha !== null
         && event.beta  !== null
@@ -166,6 +175,8 @@ function initOrientation() {
 // MOUVEMENT
 // =========================
 function initMotion() {
+  if (_motionListenerAttached) return;
+  _motionListenerAttached = true;
   window.addEventListener("devicemotion", function(event) {
     if (!tracking) return;
     if (!event.accelerationIncludingGravity) return;

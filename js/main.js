@@ -174,6 +174,46 @@ async function lancerApplication() {
 }
 
 // =========================
+// CLEANUP DU PLAN PRÉCÉDENT
+// =========================
+// Centralise le démontage des ressources avant rechargement (chargerPlanServeur,
+// startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
+// sur mobile où chaque Mo retenu compte pour iOS Safari.
+function _libererRessourcesPlanPrecedent() {
+  // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
+  if (window._baseTiles && window._baseTiles.length > 0) {
+    libererTuiles(window._baseTiles, window.map);
+    window._baseTiles = [];
+  }
+
+  // Map Leaflet : map.remove() détache tous les listeners/overlays/markers
+  if (window.map) {
+    try { window.map.remove(); } catch(e) {}
+    window.map = null;
+  }
+
+  // Collision canvas : potentiellement 4096×4096 = 64 Mo. Force la libération
+  // immédiate des pixels en mettant width/height à 0 — sinon le GC peut tarder
+  // et iOS Safari accumule la pression mémoire entre 2 plans.
+  if (window.collisionCanvas) {
+    try {
+      window.collisionCanvas.width  = 0;
+      window.collisionCanvas.height = 0;
+    } catch(e) {}
+    window.collisionCanvas = null;
+    window.collisionCtx    = null;
+  }
+
+  // Runtime assets (blob URLs des fichiers ZIP importés)
+  resetRuntimeAssets();
+
+  // Flags d'init des modules (forcent re-init au prochain lancerApplication)
+  window.interfaceInitialized = false;
+  window.roadInitialized      = false;
+  window.zonesInitialized     = false;
+}
+
+// =========================
 // CHARGEMENT D'UN PLAN SERVEUR PARTICULIER (depuis le registre)
 // =========================
 // presetChoisi (optionnel) : "off" | "auto" | "quality" | "balanced" | "performance"
@@ -181,21 +221,7 @@ async function lancerApplication() {
 const _PERF_VALID_PRESETS = ["off", "auto", "quality", "balanced", "performance"];
 
 async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
-  // Détruire la carte existante
-  if (window._baseTiles && window._baseTiles.length > 0) {
-    libererTuiles(window._baseTiles, window.map);
-    window._baseTiles = [];
-  }
-  if (window.map) {
-    try { window.map.remove(); } catch(e) {}
-    window.map = null;
-  }
-
-  resetRuntimeAssets();
-
-  window.interfaceInitialized = false;
-  window.roadInitialized      = false;
-  window.zonesInitialized     = false;
+  _libererRessourcesPlanPrecedent();
 
   const ok = await loadAppConfig(planPath);
   if (!ok) {
@@ -248,24 +274,7 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   _importDemande = true;
   _appEnCours    = false;
 
-  // Libérer les tuiles du plan serveur si elles existent
-  if (window._baseTiles && window._baseTiles.length > 0) {
-    libererTuiles(window._baseTiles, window.map);
-    window._baseTiles = [];
-  }
-
-  // Supprimer la carte Leaflet existante
-  if (window.map) {
-    try { window.map.remove(); } catch(e) {}
-    window.map = null;
-  }
-
-  // Réinitialiser les états des modules
-  window.interfaceInitialized = false;
-  window.roadInitialized      = false;
-  window.zonesInitialized     = false;
-
-  resetRuntimeAssets();
+  _libererRessourcesPlanPrecedent();
 
   const planText  = await planConfigFile.text();
   const rawConfig = JSON.parse(planText);
