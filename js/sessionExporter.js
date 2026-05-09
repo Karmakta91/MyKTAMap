@@ -545,11 +545,28 @@
     const d = _compter();
     const tagsList = _listerTagsPoints(d.points);
 
+    // ⚠️ Filtre les roads de type "itinerary" (calculées par Pathfinder, pas
+    // de vraies roads exportables). Comptage par type pour les sous-checkboxes
+    // de filtre fin (cohérent avec l'export image avancé).
+    const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
+    const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
+    const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement"]);
+
     function row(id, label, count, defaultChecked) {
       const disabled = count === 0 ? " disabled" : "";
       const checked = (count > 0 && defaultChecked) ? " checked" : "";
       const dim = count === 0 ? "opacity:0.4;" : "";
       return `<label class="kta-ses-cb-row" style="${dim}">
+        <input type="checkbox" id="${id}"${checked}${disabled}>
+        <span>${label} <span class="kta-ses-count">(${count})</span></span>
+      </label>`;
+    }
+
+    function rowTypeSub(id, label, count, defaultChecked) {
+      const disabled = count === 0 ? " disabled" : "";
+      const checked  = (count > 0 && defaultChecked) ? " checked" : "";
+      const dim      = count === 0 ? "opacity:0.4;" : "";
+      return `<label class="kta-ses-cb-row kta-ses-cb-sub" style="${dim}">
         <input type="checkbox" id="${id}"${checked}${disabled}>
         <span>${label} <span class="kta-ses-count">(${count})</span></span>
       </label>`;
@@ -577,6 +594,18 @@
       }).join("");
     }
 
+    // Sub-cases types route (Principal / Secondaire / Chemin)
+    const roadsTypesHtml =
+      rowTypeSub("conv_roads_principal",  "🟩 Principal",  roadCountByType.principal.length,  true) +
+      rowTypeSub("conv_roads_secondaire", "🟪 Secondaire", roadCountByType.secondaire.length, true) +
+      rowTypeSub("conv_roads_chemin",     "🟨 Chemin",     roadCountByType.chemin.length,     true);
+
+    // Sub-cases types zone (Eau / Remblais / Effondrement)
+    const zonesTypesHtml =
+      rowTypeSub("conv_zones_eau",          "🟦 Eau",          zoneCountByType.eau.length,          true) +
+      rowTypeSub("conv_zones_remblais",     "⬛ Remblais",     zoneCountByType.remblais.length,     true) +
+      rowTypeSub("conv_zones_effondrement", "🟥 Effondrement", zoneCountByType.effondrement.length, true);
+
     return `
       <div class="kta-ses-intro">
         Convertit la session en <strong>calque de données</strong> prêt à intégrer dans
@@ -588,8 +617,10 @@
         <div class="kta-ses-section-title">📦 À convertir</div>
         ${row("conv_points", "✏️ Points ajoutés",  d.points.length, true)}
         ${pointsTagsHtml}
-        ${row("conv_roads",  "🛣️ Tracés",          d.roads.length,  true)}
+        ${row("conv_roads",  "🛣️ Tracés",          roadsExportables.length,  true)}
+        ${roadsTypesHtml}
         ${row("conv_zones",  "⬛ Zones",            d.zones.length,  true)}
+        ${zonesTypesHtml}
       </div>
 
       <div class="kta-ses-section">
@@ -717,6 +748,10 @@
     if (tagSubIds.length > 0) {
       syncParent("conv_points", tagSubIds);
     }
+
+    // Sync parent ↔ sub-checkboxes pour types road et zone
+    syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
+    syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement"]);
   }
 
   // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
@@ -891,9 +926,33 @@
       filteredPoints = _filtrerPointsParTags(d.points, sel.tagsCoches, sel.untaggedCoche);
     }
 
-    const total = filteredPoints.length + (incRoads ? d.roads.length : 0) + (incZones ? d.zones.length : 0);
+    // Filtrer les roads par type coché (Principal / Secondaire / Chemin) +
+    // exclure le type "itinerary" qui n'a rien à faire dans un export data layer.
+    const roadTypesActifs = {
+      principal:  document.getElementById("conv_roads_principal")?.checked  ?? true,
+      secondaire: document.getElementById("conv_roads_secondaire")?.checked ?? true,
+      chemin:     document.getElementById("conv_roads_chemin")?.checked     ?? true
+    };
+    const filteredRoads = incRoads
+      ? (d.roads || []).filter(function(r) {
+          if (r.type === "itinerary") return false;
+          return roadTypesActifs[r.type] !== false;
+        })
+      : [];
+
+    // Filtrer les zones par type coché (Eau / Remblais / Effondrement)
+    const zoneTypesActifs = {
+      eau:          document.getElementById("conv_zones_eau")?.checked          ?? true,
+      remblais:     document.getElementById("conv_zones_remblais")?.checked     ?? true,
+      effondrement: document.getElementById("conv_zones_effondrement")?.checked ?? true
+    };
+    const filteredZones = incZones
+      ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
+      : [];
+
+    const total = filteredPoints.length + filteredRoads.length + filteredZones.length;
     if (total === 0) {
-      alert("Rien à convertir — sélectionnez au moins une catégorie / un tag non vide.");
+      alert("Rien à convertir — sélectionnez au moins une catégorie / un type non vide.");
       return;
     }
 
@@ -903,11 +962,11 @@
       if (filteredPoints.length) {
         files.push({ name: "points.json", payload: { data: filteredPoints } });
       }
-      if (incRoads && d.roads.length) {
-        files.push({ name: "roads.json", payload: { data: [], roads: d.roads } });
+      if (filteredRoads.length) {
+        files.push({ name: "roads.json", payload: { data: [], roads: filteredRoads } });
       }
-      if (incZones && d.zones.length) {
-        files.push({ name: "zones.json", payload: { data: [], zones: d.zones } });
+      if (filteredZones.length) {
+        files.push({ name: "zones.json", payload: { data: [], zones: filteredZones } });
       }
       _telechargerConversionFiles(files);
     } else {
@@ -919,8 +978,8 @@
         files.push({ name: "points.json", payload: { data: filteredPoints } });
       }
 
-      if (incRoads) {
-        const byType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
+      if (filteredRoads.length) {
+        const byType = _trierParType(filteredRoads, ["principal", "secondaire", "chemin"]);
         ["principal", "secondaire", "chemin"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "roads_" + t + ".json", payload: { data: [], roads: byType[t] } });
@@ -928,8 +987,8 @@
         });
       }
 
-      if (incZones) {
-        const byType = _trierParType(d.zones, ["eau", "remblais", "effondrement"]);
+      if (filteredZones.length) {
+        const byType = _trierParType(filteredZones, ["eau", "remblais", "effondrement"]);
         ["eau", "remblais", "effondrement"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "zones_" + t + ".json", payload: { data: [], zones: byType[t] } });

@@ -373,7 +373,13 @@ async function telechargerPlan() {
     }
 
     // ---------- routes ----------
-    const roads = window.getRoads ? window.getRoads() : [];
+    // ⚠️ On EXCLUT le type "itinerary" : c'est un calcul Pathfinder dérivé du
+    // réseau, pas une vraie route. Sans ce filtre, le fallback "white" plus bas
+    // dessinait l'itinéraire en blanc PAR-DESSUS les routes colorées sous-jacentes,
+    // ce qui les "effaçait" visuellement dans l'export.
+    const roads = (window.getRoads ? window.getRoads() : []).filter(function(r) {
+      return r.type !== "itinerary";
+    });
     const ROAD_STYLES = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },

@@ -1377,8 +1377,11 @@
     if (_debugAdv) console.log("[Export avancé] résumé layer loop :", _diagAdv);
 
     // ---------- routes ----------
+    // ⚠️ Exclusion du type "itinerary" — c'est un overlay calculé par Pathfinder,
+    // pas une route à exporter. Sans ce filtre, le fallback "white" effaçait les
+    // segments du réseau sous-jacent par-dessus lesquels passait l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
-      const roads = window.getRoads();
+      const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
       const RS = {
         principal:   { color: "#00ff00", weight: 5 },
         secondaire:  { color: "#b000ff", weight: 5 },
