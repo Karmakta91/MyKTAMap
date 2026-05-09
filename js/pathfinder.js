@@ -24,10 +24,12 @@
   // extrémités OU se croisent quasi exactement (T-junctions, croisements).
   const SPATIAL_MERGE_THRESHOLD = 1.5;
 
-  // Tolérance pour les T-junctions imparfaites : si une extrémité d'un
-  // segment est à ≤ 8 px de l'intérieur d'un autre segment, on les
-  // considère connectés (cohérent avec road.js > _calculerIntersectionsRoads).
-  const PROXIMITY_TOLERANCE = 8;
+  // Tolérance pour les jonctions imparfaites (T-junction par projection
+  // ET endpoint↔endpoint). 15 px est plus permissif que les 8 px utilisés
+  // pour le DESSIN des cercles d'intersection — pour le pathfinding, on
+  // veut max de connexions logiques même si elles ne se voient pas (les
+  // roads hand-tracés ont souvent 5-10 px de jitter aux jonctions).
+  const PROXIMITY_TOLERANCE = 15;
 
   // =========================
   // HELPERS GÉOMÉTRIQUES
@@ -234,7 +236,41 @@
       }
     }
 
-    console.log("[Pathfinder] Graphe enrichi —", nbCroisements, "croisements,", nbProximites, "T-junctions par proximité");
+    // ===== 3. Endpoint-endpoint proximity =====
+    // Cas typique : 2 roads se rejoignent visuellement à un endroit, mais leur
+    // dernier point respectif est décalé de quelques pixels (jitter hand-trace).
+    // SPATIAL_MERGE_THRESHOLD (1.5 px) est trop strict pour les fusionner au
+    // build du graphe ; on les relie ici par une arête directe pondérée.
+    const endpointSet = new Set();
+    for (let i = 0; i < segs.length; i++) {
+      endpointSet.add(segs[i].a);
+      endpointSet.add(segs[i].b);
+    }
+    const endpoints = Array.from(endpointSet);
+    let nbEndpoints = 0;
+
+    for (let i = 0; i < endpoints.length; i++) {
+      const idxA = endpoints[i];
+      const pA = graph.nodes[idxA];
+      for (let j = i + 1; j < endpoints.length; j++) {
+        const idxB = endpoints[j];
+        const pB = graph.nodes[idxB];
+        const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+        // Inférieur à la tolérance ET supérieur au seuil de fusion (sinon
+        // déjà mergés au build) → 2 endpoints distincts mais proches.
+        if (d > SPATIAL_MERGE_THRESHOLD && d < PROXIMITY_TOLERANCE) {
+          _addEdge(graph, idxA, idxB, d);
+          nbEndpoints++;
+        }
+      }
+    }
+
+    console.log("[Pathfinder] Graphe enrichi —",
+      "nœuds:", graph.nodes.length, "/",
+      "segments:", segs.length, "/",
+      "croisements stricts:", nbCroisements, "/",
+      "T-junctions:", nbProximites, "/",
+      "endpoint↔endpoint:", nbEndpoints);
   }
 
   // =========================
@@ -359,6 +395,12 @@
     const sessionRoads  = (typeof window.getRoads        === "function") ? window.getRoads()        : [];
     const embeddedRoads = (typeof window.getEmbeddedRoads === "function") ? window.getEmbeddedRoads() : [];
     const allRoads      = sessionRoads.concat(embeddedRoads);
+
+    console.log("[Pathfinder] Roads en entrée —",
+      "session:", sessionRoads.length, "/",
+      "embedded:", embeddedRoads.length, "/",
+      "total:", allRoads.length,
+      "| types autorisés:", allowedTypes.join(","));
 
     if (allRoads.length === 0) {
       throw new Error("Aucune route disponible pour calculer un itinéraire");
