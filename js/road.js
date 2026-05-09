@@ -17,13 +17,22 @@ let roadLayers = [];
 let _embeddedRoads = [];
 
 // styles par type
+// smoothFactor 2.5 : Leaflet simplifie les polylines en interne via
+// Douglas-Peucker. Le defaut (1.0) garde tous les points. 2.5 reduit
+// significativement le nombre de points dessines au pan/zoom (gain perf
+// sur les polylines avec beaucoup de points), perte visuelle negligeable
+// (les segments restent visuellement equivalents au zoom usuel). Sur
+// l'itineraire on garde un facteur plus bas pour preserver la precision
+// du tracé calculé.
 const ROAD_STYLES = {
-  principal:   { color: "#00ff00", weight: 5, opacity: 1 },
-  secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-  chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
+  principal:   { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
+  secondaire:  { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
+  chemin:      { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
   // Type "itinéraire" calculé par Pathfinder : couleur cyan distinctive,
   // tracé plus épais pour bien se voir par-dessus les autres roads.
-  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6" }
+  // smoothFactor 1.5 (un peu moins agressif) pour preserver la precision
+  // du chemin calcule par le pathfinder.
+  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6", smoothFactor: 1.5 }
 };
 
 // Priorité couleur des intersections : chemin (jaune) > secondaire (violet) > principal (vert)
@@ -58,9 +67,19 @@ function initRoad() {
   // Re-render quand l'utilisateur toggle la visibilité d'un calque dans le
   // contrôle des couches Leaflet (overlayadd/overlayremove). Ça force le
   // recalcul des intersections en fonction des calques visibles.
-  window.map.on("overlayadd overlayremove", function() {
-    renderRoads();
-  });
+  // Throttle 250ms : evite les recalculs en cascade quand l'utilisateur
+  // toggle plusieurs calques rapidement, ou quand Leaflet emet plusieurs
+  // events en burst au plan switch. Le calcul d'intersections est lourd
+  // sur les gros plans (cf _calculerIntersectionsRoads) donc on consolide.
+  let _renderRoadsTimer = null;
+  function _renderRoadsThrottled() {
+    if (_renderRoadsTimer) return;
+    _renderRoadsTimer = setTimeout(function() {
+      _renderRoadsTimer = null;
+      renderRoads();
+    }, 250);
+  }
+  window.map.on("overlayadd overlayremove", _renderRoadsThrottled);
 
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
@@ -152,23 +171,87 @@ function _typeGagnant(typeA, typeB) {
   return pA >= pB ? typeA : typeB;
 }
 
+// Au-dela de ce seuil (somme des roads session + embedded visibles), on
+// SKIP completement le calcul d'intersections : O(N²×P²) explose au-dela
+// d'une centaine de routes. Le user a alors la strategie "routes dans le PNG
+// + calque masque + pathfinder via getAllEmbeddedRoads" comme alternative
+// (cf README_USER section "Optimiser ton plan").
+const ROAD_INTERSECTION_MAX_ROADS = 200;
+
+// Calcule l'AABB (bounding box) d'une road : { minX, minY, maxX, maxY }.
+// Utilise pour le pre-check rapide dans _calculerIntersectionsRoads :
+// si les boxes de 2 routes ne se recouvrent pas, on skip toutes les
+// comparaisons de segments. Souvent 90%+ des paires sont eliminees sans
+// avoir besoin de comparer les segments un a un.
+function _bboxOfRoad(road) {
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  const pts = road.points;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (p.x < minX) minX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+}
+
+// Test rapide d'intersection de 2 AABBs (avec marge ROAD_PROXIMITY_TOLERANCE
+// pour capturer les T-junctions imparfaites a la limite des bbox).
+function _bboxIntersect(a, b, margin) {
+  return !(a.maxX + margin < b.minX || b.maxX + margin < a.minX ||
+           a.maxY + margin < b.minY || b.maxY + margin < a.minY);
+}
+
 // Calcule toutes les intersections entre toutes les routes (y compris même type).
 // Détection :
+//   0) PRE-CHECK : skip total si > ROAD_INTERSECTION_MAX_ROADS (garde-fou anti-freeze).
+//   0bis) PRE-CHECK : pour chaque paire, AABB intersect ? Sinon skip toute la paire.
 //   1) Croisement franc segment×segment (algo paramétrique strict)
 //   2) Proximité d'une extrémité d'une route avec un segment d'une autre
-//      (tolérance ROAD_PROXIMITY_TOLERANCE) — capture les T-junctions imparfaites
-//      où les routes ne se touchent pas exactement (typique des données importées).
+//      (tolérance ROAD_PROXIMITY_TOLERANCE) — capture les T-junctions imparfaites.
 //   3) Dedup final : on collapse les intersections distantes de < tolérance entre elles.
 function _calculerIntersectionsRoads(roads) {
   const raw = [];
   const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
 
+  // Garde-fou anti-freeze sur les gros plans : skip total si trop de routes.
+  // L'utilisateur peut compenser via la strategie "routes dans le PNG +
+  // calque masque" pour conserver la lisibilite sans plomber les perfs.
+  if (roads.length > ROAD_INTERSECTION_MAX_ROADS) {
+    console.warn("[Roads] " + roads.length + " routes > " + ROAD_INTERSECTION_MAX_ROADS +
+                 " — calcul d'intersections SKIP pour preserver la perf. " +
+                 "Astuce : dessine les routes dans le PNG + masque le calque (cf doc).");
+    return [];
+  }
+
+  // Pre-calcul des bbox de toutes les routes valides (cout O(N×P), une fois)
+  const validRoads = [];
+  const bboxes = [];
   for (let i = 0; i < roads.length; i++) {
-    const A = roads[i];
-    if (!A || !Array.isArray(A.points) || A.points.length < 2) continue;
-    for (let j = i + 1; j < roads.length; j++) {
-      const B = roads[j];
-      if (!B || !Array.isArray(B.points) || B.points.length < 2) continue;
+    const r = roads[i];
+    if (r && Array.isArray(r.points) && r.points.length >= 2) {
+      validRoads.push(r);
+      bboxes.push(_bboxOfRoad(r));
+    }
+  }
+
+  let pairsTotal = 0, pairsSkipped = 0;
+
+  for (let i = 0; i < validRoads.length; i++) {
+    const A     = validRoads[i];
+    const bboxA = bboxes[i];
+    for (let j = i + 1; j < validRoads.length; j++) {
+      pairsTotal++;
+      const B     = validRoads[j];
+      const bboxB = bboxes[j];
+
+      // PRE-CHECK AABB : si les bbox ne se recouvrent pas (avec marge), aucune
+      // intersection possible → skip toute la paire (gain massif sur gros plans).
+      if (!_bboxIntersect(bboxA, bboxB, ROAD_PROXIMITY_TOLERANCE)) {
+        pairsSkipped++;
+        continue;
+      }
 
       const winner = _typeGagnant(A.type, B.type);
       const color  = ROAD_STYLES[winner]?.color || "#ffffff";
@@ -221,9 +304,10 @@ function _calculerIntersectionsRoads(roads) {
   }
 
   if (isDebug) {
+    const skipPct = pairsTotal > 0 ? Math.round(100 * pairsSkipped / pairsTotal) : 0;
     console.log("[Roads] Roads count:", roads.length,
-                "→ raw:", raw.length, " → après dedup:", intersections.length,
-                intersections);
+                "→ paires testees:", pairsTotal, "(AABB skip:", pairsSkipped, "=", skipPct + "%)",
+                "→ raw:", raw.length, "→ après dedup:", intersections.length);
   }
   return intersections;
 }
