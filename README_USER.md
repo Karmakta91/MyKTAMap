@@ -307,11 +307,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
 
-> 💡 **Calques d'annotations** dans le contrôle des couches Leaflet (en haut à droite de la carte) :
-> - **✏️ Mes annotations** — points ajoutés + zones (Eau/Remblais/Effondrement)
-> - **🛣️ Mes tracés** — routes (Principal/Secondaire/Chemin) + cercles d'intersection
->
-> Décocher un calque masque tout son contenu en un clic. L'**itinéraire**, la **mesure** et le **tracker** ne sont PAS affectés (ils ont leur propre cycle de vie).
+> 💡 **Calque "Mes annotations"** dans le contrôle des couches Leaflet (en haut à droite de la carte) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
