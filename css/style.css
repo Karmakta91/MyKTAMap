@@ -7,6 +7,27 @@ html, body {
   background-color: #0a0d18;
 }
 
+/* ════════════════════════════════════════════════════════
+   Bande dark fixe au-dessus de la zone home-indicator iPhone.
+   Avec viewport-fit=cover, env(safe-area-inset-bottom) > 0 sur les modèles
+   à encoche → cette div couvre cet espace avec un fond dark, peu importe
+   ce qui s'affiche derrière (map blanche, loader, etc.). Sur Android et
+   iPhones sans encoche, env() vaut 0 → div invisible (height = 0).
+   z-index 1000 : au-dessus de la map et de la sidebar Leaflet, sous les
+   modales (qui sont à 9999+). pointer-events:none pour laisser passer
+   les gestes iOS (swipe-up home).
+   ════════════════════════════════════════════════════════ */
+.kta-bottom-safe-fill {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: env(safe-area-inset-bottom, 0px);
+  background: #0a0d18;
+  z-index: 1000;
+  pointer-events: none;
+}
+
 #map {
   display: block;
   position: fixed;
