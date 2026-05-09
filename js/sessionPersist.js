@@ -171,11 +171,10 @@
     if (!payload) return null;
     const restored = { points: 0, roads: 0, zones: 0, measure: 0 };
     try {
-      // setEditorPoints ne redessine PAS automatiquement les markers (asymétrie avec setRoads/setZones).
-      // Il faut appeler renderEditorPoints() après pour que les icônes apparaissent sur la carte.
+      // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
+      // toggle calque "Ajout" sur points restaurés) — symmetric avec setRoads/setZones
       if (window.setEditorPoints && Array.isArray(payload.editorPoints)) {
         window.setEditorPoints(payload.editorPoints);
-        if (window.renderEditorPoints) window.renderEditorPoints();
         restored.points = payload.editorPoints.length;
       }
       // setRoads redessine en interne (renderRoads), donc juste reset + set
