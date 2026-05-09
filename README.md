@@ -9,6 +9,34 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 21) — Calque "Mes tracés" séparé pour les roads session
+
+**Problème** : malgré les fixes successifs (suite 18 SVG renderer, suite 20 SVG partagé, suite 17 fallback auto-création), le toggle "Mes annotations" ne masquait toujours pas les roads de session chez l'utilisateur. Les zones, points et tout le reste suivaient bien le toggle, mais les polylines roads échappaient. Bug Leaflet subtil non identifié — probablement lié au mixage canvas/SVG dans un même LayerGroup.
+
+**Solution** : **séparer les roads dans un calque dédié** plutôt que continuer à debugger le bug Leaflet.
+
+**Architecture résultante** :
+
+| Calque (contrôle des couches Leaflet) | LayerGroup | Contenu |
+|---|---|---|
+| ✏️ **Mes annotations** | `window.layerEditor` | Points editor + zones session |
+| 🛣️ **Mes tracés** | `window.layerTraces` (NOUVEAU) | Roads session + cercles d'intersection |
+
+**Code** :
+- `js/map.js > initMapFromConfig` : création systématique du LayerGroup `traces` (en plus de `editor`). Visible par défaut, ajouté au control de calques avec le label "Mes tracés".
+- `js/road.js > _targetLayerForRoad` : cible désormais `window.layerTraces` (au lieu de `window.layerEditor`). Cascade de fallback `window.layerTraces || window.layerEditor || window.map` pour robustesse.
+- `js/road.js` : cercles d'intersection également dans `window.layerTraces` (cohérence : les cercles dépendent des roads).
+- `js/interface.js > afficherAide` : nouvelle section "🗂️ Calques d'annotations" qui documente les 2 calques côté utilisateur.
+- `README_USER.md` : doc utilisateur mise à jour pour expliquer les 2 calques.
+
+**Le calque `traces` n'existe PAS dans `plan-config.json`** — il est purement runtime, créé systématiquement au boot pour TOUS les plans. Aucune migration nécessaire.
+
+**Aucun impact sur les exports** (PNG / session / Conversion) : ils utilisent `window.getRoads()` directement, pas le filtrage par visibilité de layer. Les roads session sont toujours incluses dans l'export peu importe le toggle.
+
+**`sw.js`** : `CACHE_NAME` v70 → v71.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 20) — Hotfix crash app : SVG renderer partagé pour les roads
 
 **Bug** : la suite 18 (forçage `renderer: L.svg()` sur roads + cercles d'intersection) faisait crasher l'app instantanément après chargement sur les plans denses.
