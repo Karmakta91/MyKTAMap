@@ -614,21 +614,24 @@ html, body {
 
 .kta-popup-actions {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   margin-top: 10px;
   padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
 }
 
 /* Override .leaflet-popup-content button (qui sont stylises plus haut avec
-   un look generique) pour les boutons d'action specifiques de la popup point. */
+   un look generique) pour les boutons d'action specifiques de la popup point.
+   Avec 3 boutons sur la meme ligne, on resserre padding/font pour rester
+   compact (popups Leaflet sont par defaut ~250px de large). */
 .kta-popup-actions .kta-popup-btn {
-  flex: 1 !important;
+  flex: 1 1 70px !important;
   background: rgba(140, 180, 255, 0.12) !important;
   border: 1px solid rgba(140, 180, 255, 0.4) !important;
   color: #8cb4ff !important;
-  padding: 7px 8px !important;
-  font-size: 12px !important;
+  padding: 6px 4px !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
   border-radius: 5px !important;
   cursor: pointer !important;
@@ -638,6 +641,7 @@ html, body {
   margin: 0 !important;
   width: auto !important;
   display: inline-block !important;
+  white-space: nowrap !important;
 }
 
 .kta-popup-actions .kta-popup-btn:hover {
@@ -645,7 +649,19 @@ html, body {
   opacity: 1 !important;
 }
 
-/* Bouton "Y aller" : accent jaune charte (action principale) */
+/* Bouton "📍 Je suis ici" : accent vert (recalage = action positive,
+   distinct du jaune action principale et du bleu action secondaire) */
+.kta-popup-actions .kta-popup-btn-here {
+  background: rgba(108, 226, 138, 0.13) !important;
+  border-color: rgba(108, 226, 138, 0.45) !important;
+  color: #6ce28a !important;
+}
+
+.kta-popup-actions .kta-popup-btn-here:hover {
+  background: rgba(108, 226, 138, 0.25) !important;
+}
+
+/* Bouton "🧭 Y aller" : accent jaune charte (action principale) */
 .kta-popup-actions .kta-popup-btn-aller {
   background: rgba(244, 197, 66, 0.15) !important;
   border-color: rgba(244, 197, 66, 0.5) !important;

@@ -9,6 +9,38 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 1) — Popup point : 3ème bouton "📍 Je suis ici" (recalage tracker)
+
+Dans la même logique que les boutons Y aller / Itinéraire ajoutés précédemment, nouveau bouton **📍 Je suis ici** dans la popup d'un point — recale ta position tracker sur les coords exactes du point.
+
+**Cas d'usage** : tu es physiquement à côté d'un puits que tu retrouves sur la carte, tu cliques sur le marker → "📍 Je suis ici" → la position tracker s'aligne instantanément sur le puits. Plus précis que cliquer "à peu près" sur la carte en mode recalage 📍.
+
+**Comportement** :
+- Met à jour `position.x / position.y` du tracker
+- Vide le polyline trace en cours (`polyline.setLatLngs([])`)
+- Reset `stepCount = 0`
+- Désactive le mode recalage s'il était actif (cohérent : on vient de recaler)
+- Pan la map sur la nouvelle position pour que le marker tracker soit visible
+- Console log `[Tracking] Recalé sur point : X, Y`
+
+**Code** :
+- `js/tracking.js > window.recalerTrackerSurPoint(x, y)` : factorise la logique du mode recalage clic-carte existant.
+- `js/utils.js > buildPointPopupHtml` : ajout du bouton en première position (ordre logique : 📍 Je suis ici / 🧭 Y aller / ➕ Itinéraire).
+- `js/utils.js` : `title` hover ajouté sur les 3 boutons pour clarifier l'action.
+- `css/style.css > .kta-popup-btn-here` : style accent vert charte (`#6ce28a`) — distinct du jaune (Y aller, action principale) et du bleu (Itinéraire, action secondaire).
+- Avec 3 boutons sur la même ligne, padding et font-size resserrés (6px 4px, 11px) pour rester compact dans la largeur ~250px d'une popup Leaflet, `flex-wrap: wrap` en backup.
+
+**Code couleur** :
+| Bouton | Couleur | Sémantique |
+|---|---|---|
+| 📍 Je suis ici | Vert `#6ce28a` | Recalage / position |
+| 🧭 Y aller | Jaune `#f4c542` | Action principale (calcul + trace) |
+| ➕ Itinéraire | Bleu `#8cb4ff` | Action secondaire (modification waypoint) |
+
+**`sw.js`** : `CACHE_NAME` v84 → v85.
+
+---
+
 ### 🗓️ 10/05/2026 — Popups de points : boutons "🧭 Y aller" et "➕ Itinéraire"
 
 Nouvelle UX pour interagir avec un point depuis sa popup Leaflet. Au clic sur un marker (point editor ou point embedded JSON), la popup affiche désormais 2 boutons en bas, sous le nom et la description :
