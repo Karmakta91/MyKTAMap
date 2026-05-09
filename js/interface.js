@@ -2309,6 +2309,12 @@ function initInterface() {
 // =========================
 // ITINÉRAIRE — modale + mode clic + rendu du tracé calculé
 // =========================
+function _escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+
 let _itineraryWaypoints   = [];
 let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers numérotés
 let _itineraryClickActive = false;
@@ -2344,15 +2350,30 @@ function _rafraichirListeWaypointsModale() {
   const cont = document.getElementById("kta-iti-waypoints-list");
   if (!cont) return;
   if (_itineraryWaypoints.length === 0) {
-    cont.innerHTML = '<div class="kta-iti-empty">Aucun waypoint — clique sur la carte pour en ajouter</div>';
+    cont.innerHTML = '<div class="kta-iti-empty">Aucun waypoint — clique sur la carte ou sélectionne un point ci-dessus</div>';
     return;
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
+    const label = p.label || ("x:" + Math.round(p.x) + " y:" + Math.round(p.y));
+    const sourceIcon = p.source === "search" ? "🎯" : "📍";
     return '<div class="kta-iti-wp-row">' +
              '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
-             '<span class="kta-iti-wp-coord">x:' + Math.round(p.x) + ' y:' + Math.round(p.y) + '</span>' +
+             '<span class="kta-iti-wp-icon" title="' + (p.source === "search" ? "Point existant" : "Clic carte") + '">' + sourceIcon + '</span>' +
+             '<span class="kta-iti-wp-coord">' + label + '</span>' +
+             '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="Retirer ce waypoint">✕</button>' +
            '</div>';
   }).join("");
+  // Wire-up des boutons retirer
+  Array.from(cont.querySelectorAll(".kta-iti-wp-remove")).forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (idx >= 0 && idx < _itineraryWaypoints.length) {
+        _itineraryWaypoints.splice(idx, 1);
+        _redessinerWaypoints();
+        _majPanneauFloaterCount();
+      }
+    });
+  });
 }
 
 function _activerModeClicCarte() {
@@ -2363,7 +2384,7 @@ function _activerModeClicCarte() {
       // Coords plan (cf. convention du projet : convertCoord inverse y)
       const x = e.latlng.lng;
       const y = APP_CONFIG.imageHeight - e.latlng.lat;
-      _itineraryWaypoints.push({ x: x, y: y });
+      _itineraryWaypoints.push({ x: x, y: y, source: "click" });
       _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
       _rafraichirListeWaypointsModale();
       _majPanneauFloaterCount();
@@ -2446,13 +2467,18 @@ window.ouvrirItinerairModal = function() {
         '<div class="kta-iti-section">' +
           '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
           '<p class="kta-iti-help">' +
-            'Clique sur la carte pour ajouter des waypoints. ' +
+            'Clique sur la carte ou sélectionne un point existant. ' +
             'L\'itinéraire passera dans l\'ordre par chacun d\'eux, ' +
             'en suivant le réseau de routes existant au plus court.' +
           '</p>' +
           '<div class="kta-iti-mode-toggle">' +
-            '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Activer mode clic carte</button>' +
+            '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
             '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
+          '</div>' +
+          '<div class="kta-iti-search-wrap">' +
+            '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
+              'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+            '<div id="kta-iti-search-results" class="kta-iti-search-results"></div>' +
           '</div>' +
           '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
         '</div>' +
@@ -2481,6 +2507,76 @@ window.ouvrirItinerairModal = function() {
 
   document.getElementById("kta-iti-close").addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  // ===== Sélecteur de point existant (autocomplete) =====
+  // Recherche sur tous les points du plan (data layers + editor) via l'API
+  // window.SearchPoints.findByQuery. Affiche les résultats sous l'input,
+  // clic sur un résultat → ajoute un waypoint avec les coords du point ET son nom.
+  const searchInput   = document.getElementById("kta-iti-search-input");
+  const searchResults = document.getElementById("kta-iti-search-results");
+  let _searchTimer = null;
+
+  function _afficherResultatsRecherche(items) {
+    if (!items || items.length === 0) {
+      searchResults.innerHTML = '<div class="kta-iti-search-empty">Aucun résultat</div>';
+      searchResults.style.display = "block";
+      return;
+    }
+    // Limite l'affichage aux 10 premiers résultats pour pas saturer le DOM
+    const limite = items.slice(0, 10);
+    searchResults.innerHTML = limite.map(function(it, idx) {
+      const p = it.point;
+      const name = p.nom || p.id || "(sans nom)";
+      const sub = (p.id && p.id !== name) ? p.id + " — " : "";
+      const layer = it.layerLabel || it.layerId || "";
+      return '<div class="kta-iti-search-item" data-idx="' + idx + '">' +
+               '<div class="kta-iti-search-name">' + _escapeHtml(name) + '</div>' +
+               '<div class="kta-iti-search-meta">' + _escapeHtml(sub + layer) + '</div>' +
+             '</div>';
+    }).join("");
+    if (items.length > 10) {
+      searchResults.innerHTML += '<div class="kta-iti-search-more">+ ' + (items.length - 10) + ' autres résultats — affine la recherche</div>';
+    }
+    searchResults.style.display = "block";
+
+    Array.from(searchResults.querySelectorAll(".kta-iti-search-item")).forEach(function(el, idx) {
+      el.addEventListener("click", function() {
+        const it = limite[idx];
+        const p = it.point;
+        if (typeof p.x !== "number" || typeof p.y !== "number") return;
+        _itineraryWaypoints.push({
+          x:      p.x,
+          y:      p.y,
+          source: "search",
+          label:  (p.nom || p.id || "?") + " (" + (it.layerLabel || it.layerId) + ")"
+        });
+        _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
+        _rafraichirListeWaypointsModale();
+        _majPanneauFloaterCount();
+        // Reset l'input pour faciliter un autre ajout
+        searchInput.value    = "";
+        searchResults.style.display = "none";
+      });
+    });
+  }
+
+  searchInput.addEventListener("input", function() {
+    clearTimeout(_searchTimer);
+    const query = searchInput.value.trim();
+    if (query.length < 2) {
+      searchResults.style.display = "none";
+      return;
+    }
+    _searchTimer = setTimeout(function() {
+      if (window.SearchPoints && typeof window.SearchPoints.findByQuery === "function") {
+        window.SearchPoints.findByQuery(query).then(_afficherResultatsRecherche);
+      }
+    }, 150);
+  });
+  searchInput.addEventListener("blur", function() {
+    // Petit délai pour laisser le clic sur un résultat fonctionner avant de cacher
+    setTimeout(function() { searchResults.style.display = "none"; }, 200);
+  });
 
   // Bouton activer / désactiver mode clic carte
   // Quand on active : on cache la modale et affiche un mini-panneau flottant
