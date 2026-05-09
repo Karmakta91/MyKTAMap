@@ -1,12 +1,20 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * Site : https://myktamap.is-underground.fr
+ * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
+ * Voir LICENSE a la racine du projet.
+ */
+
 // =========================
 // SERVICE WORKER — MyKtaMAP
 // =========================
 // Liste des assets cachés pour utilisation offline.
 // NE PAS cacher README.md ni CLAUDE.md (réservés aux développeurs).
 // Cacher README_USER.md (utilisé par le modal Documentation in-app).
+// Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v60";
+const CACHE_NAME = "myktamap-cache-v61";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -15,11 +23,15 @@ const ASSETS_TO_CACHE = [
 
   // Doc utilisateur (consommée par le modal Documentation)
   "./README_USER.md",
+  // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
+  "./LICENSE",
 
   // CSS
   "./css/style.css",
 
   // JS principaux
+  // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
+  "./js/copyright.js",
   "./js/debug.js",
   "./js/config.js",
   "./js/utils.js",

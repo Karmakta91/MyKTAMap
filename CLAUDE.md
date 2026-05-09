@@ -489,6 +489,29 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 **Conséquence pour les autres calques** : aucune. Seul l'editor a ce problème car il a une vraie source de vérité côté listePoints. Les puits, vehicules, etc. sont read-only depuis le JSON.
 
+### 18. Protection juridique du code (Phase 1 légale, depuis 09/05/2026)
+
+**Auteur** : Flavien VIDAL (vrai nom civil, pour la force probante légale) — alias KARMA pour la continuité de marque visible.
+
+**Licence** : CC BY-NC-SA 4.0 — usage commercial interdit sans accord écrit préalable. Fichier `LICENSE` à la racine.
+
+**Module `js/copyright.js`** chargé EN PREMIER dans `index.html` :
+- `window.__MKM__` watermark (frozen object avec author/copyright/license/build) — preuve d'origine en cas de copie.
+- Console banner stylé au boot (visible à F12).
+- Détection DevTools (heuristique outer/inner > 200px) → toast `.kta-devtools-warn` charte une fois par session.
+- Toujours dans `ASSETS_TO_CACHE` du SW.
+
+**Headers copyright** dans les fichiers JS critiques : `main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`. Format `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */`. Si quelqu'un copie un fichier isolé, le copyright le suit.
+
+**Mentions visibles utilisateur** :
+- Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
+- Splash : signature `karma.png` (pseudo artistique, déjà en place)
+- Meta tags `<head>` : `author`, `copyright`, `license`
+
+**Pour ajouter un nouveau fichier JS** : ajouter le header copyright en tête (8 lignes max). Utile surtout pour les algorithmes métier (genre pathfinder).
+
+**Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :
