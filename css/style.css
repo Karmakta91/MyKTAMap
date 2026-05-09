@@ -1417,6 +1417,10 @@ html, body {
 #splashOverlay {
   position: fixed;
   inset: 0;
+  /* Même trick que #map : déborder dans la zone home-indicator iPhone pour
+     que le splash s'étende vraiment bord-à-bord. inset:0 seul ne suffit pas
+     en mode PWA portrait. */
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
   display: flex;
@@ -1681,6 +1685,8 @@ html, body {
 #planLoaderOverlay {
   position: fixed;
   inset: 0;
+  /* Idem splash : déborder dans la zone home-indicator iPhone */
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: 5000;
   background: rgba(5, 8, 15, 0.92);
   display: flex;
