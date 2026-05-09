@@ -47,12 +47,44 @@
 <body>
 
   <!-- ════════════════════════════════════════════════════════
-       SAFE-AREA FILL — bande dark fixe sous la zone home-indicator
-       iPhone (env(safe-area-inset-bottom)). Hauteur 0 sur appareils
-       sans encoche → invisible. Toujours présent pour empêcher la map
-       claire (ou tout contenu blanc) de remonter sous le home indicator.
+       FORCE MAP HEIGHT — fix iOS PWA bottom safe-area
+       Sur iOS PWA, ni 100% / 100dvh / inset:0 / position:fixed n'extendent
+       toujours #map jusqu'au home-indicator. Le bg body sombre apparaît en
+       bande visible. Solution : forcer la hauteur en JS depuis
+       window.innerHeight (qui retourne TOUJOURS la viewport physiquement
+       visible) directement sur #map et .leaflet-container, et invalidater
+       Leaflet à chaque resize/rotation.
+       Script en début de body → s'exécute avant Leaflet, attache aussi un
+       observer pour ré-appliquer après que Leaflet ait monté son DOM.
        ════════════════════════════════════════════════════════ -->
-  <div class="kta-bottom-safe-fill" aria-hidden="true"></div>
+  <script>
+    (function() {
+      function forceFullViewport() {
+        var w = window.innerWidth + "px";
+        var h = window.innerHeight + "px";
+        var mapEl = document.getElementById("map");
+        if (mapEl) { mapEl.style.width = w; mapEl.style.height = h; }
+        var lc = document.querySelector(".leaflet-container");
+        if (lc) { lc.style.width = "100%"; lc.style.height = "100%"; }
+        if (window.map && typeof window.map.invalidateSize === "function") {
+          try { window.map.invalidateSize(); } catch(e) {}
+        }
+      }
+      // Init asap (avant Leaflet) et après Leaflet (rAF + setTimeout)
+      forceFullViewport();
+      requestAnimationFrame(forceFullViewport);
+      setTimeout(forceFullViewport, 100);
+      setTimeout(forceFullViewport, 500);
+      setTimeout(forceFullViewport, 1500);
+      // Resize / rotation
+      window.addEventListener("resize", forceFullViewport);
+      window.addEventListener("orientationchange", function() {
+        setTimeout(forceFullViewport, 200);
+      });
+      // Expose pour les modules qui changent de plan / réinit la carte
+      window.forceFullViewport = forceFullViewport;
+    })();
+  </script>
 
   <!-- ════════════════════════════════════════════════════════
        SPLASH SCREEN — Animation de bienvenue au démarrage
