@@ -23,12 +23,12 @@
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- black-translucent + viewport-fit=cover = status bar transparente avec
-       icônes claires, posée sur le contenu de la page. Le contenu derrière
-       est dark naturellement (splash, loader). Pour la map (qui est claire),
-       le background tile reste visible mais c'est OK pour le top.
-       Le footer (zone home-indicator) est couvert par .kta-bottom-safe-fill. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" = bande noire opaque, icônes blanches, indépendante du contenu
+       sous-jacent. Sans viewport-fit=cover, "black-translucent" tombe en
+       fallback "default" = couleur du haut de page → devenait blanc dès que
+       les tuiles Leaflet chargeaient (cf. capture utilisateur). "black" force
+       le top sombre en permanence. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 
