@@ -138,7 +138,7 @@
       if (isQuota && !_quotaWarned && window.OOMGuard) {
         _quotaWarned = true;
         window.OOMGuard.showToast(
-          "Espace de stockage local saturé — la session ne peut plus être sauvegardée automatiquement. " +
+          "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. " +
           "Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
           "error"
         );

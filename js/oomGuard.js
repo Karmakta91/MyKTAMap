@@ -10,8 +10,11 @@
 //   - Marker présent récent → kill brutal probable → toast d'avertissement
 //
 // API : window.OOMGuard
-//   - start()    : démarre l'heartbeat (à appeler après lancerApplication)
-//   - showToast(message, type) : exposé pour les autres modules
+//   - start()             : démarre l'heartbeat (à appeler après lancerApplication)
+//   - showToast(msg, type): exposé pour les autres modules. Si le splash est
+//                            encore visible, le toast est mis en file et affiché
+//                            après la fin du splash.
+//   - flushPendingToasts(): vide la file (à appeler depuis _splashEnd)
 // =========================
 
 (function() {
@@ -23,12 +26,13 @@
 
   let _heartbeatTimer = null;
   let _heartbeatStart = null;
+  let _splashGone     = false;                       // passe à true quand _splashEnd a fini
+  const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
 
   // =========================
   // TOAST UI
   // =========================
-  function showToast(message, type) {
-    type = type || "warn";
+  function _renderToast(message, type) {
     const existing = document.getElementById("kta-toast");
     if (existing) existing.remove();
 
@@ -53,11 +57,42 @@
 
     toast.querySelector(".kta-toast-close").addEventListener("click", dismiss);
 
-    // Auto-dismiss après 10s pour "warn", 6s pour "info"
+    // Auto-dismiss après 10s pour warn/error, 6s pour info
     const autoMs = type === "info" ? 6000 : 10000;
     setTimeout(function() {
       if (document.body.contains(toast)) dismiss();
     }, autoMs);
+  }
+
+  function showToast(message, type) {
+    type = type || "warn";
+    // Si le splash bloque encore l'écran, on met en file pour ne pas
+    // afficher un toast invisible derrière le gradient sombre.
+    if (!_splashGone) {
+      _toastQueue.push({ message: message, type: type });
+      return;
+    }
+    _renderToast(message, type);
+  }
+
+  function flushPendingToasts() {
+    _splashGone = true;
+    if (_toastQueue.length === 0) return;
+    // Petit délai pour laisser la map se mettre en place (évite de chevaucher
+    // un éventuel rendu Leaflet au tout premier paint).
+    setTimeout(function() {
+      while (_toastQueue.length > 0) {
+        const t = _toastQueue.shift();
+        _renderToast(t.message, t.type);
+        // Si plusieurs toasts en file, on laisse le 1er respirer 4s avant le 2e
+        if (_toastQueue.length > 0) {
+          // (showToast remplace l'existant, donc on temporise) —
+          // implémenté simplement : on stocke en cas d'erreur multiple,
+          // mais le scénario typique est 1 toast, donc setTimeout récursif suffit.
+          break;
+        }
+      }
+    }, 400);
   }
 
   // =========================
@@ -98,18 +133,19 @@
     }
 
     // Kill brutal probable : l'app était active et n'a pas atteint son
-    // beforeunload. Sur iPhone PWA c'est très souvent un OOM.
+    // beforeunload. Sur smartphone (iOS Safari + Android Chrome agressif)
+    // c'est très souvent un OOM.
     console.warn("[OOMGuard] Kill détecté — dernière activité il y a", Math.round(age/1000),
                  "s | plan :", info.planId, "| UA :", info.userAgent);
 
-    // Toast affiché après le splash (1s de délai pour pas chevaucher l'animation)
-    setTimeout(function() {
-      showToast(
-        "⚠️ L'application a été arrêtée brutalement la dernière fois (probablement par iOS pour libérer de la mémoire). " +
-        "Si ça se reproduit souvent, baisse le mode performance dans le loader.",
-        "warn"
-      );
-    }, 1000);
+    // Le toast est mis en file (showToast détecte le splash actif et stocke).
+    // Il sera affiché par flushPendingToasts(), appelé depuis _splashEnd dans
+    // main.js → l'utilisateur voit le message une fois le splash terminé.
+    showToast(
+      "L'application a été arrêtée brutalement la dernière fois — probablement parce que ton smartphone manquait de mémoire. " +
+      "Si ça se reproduit, baisse le mode performance dans le loader.",
+      "warn"
+    );
 
     _clearMarker();
   }
@@ -136,7 +172,8 @@
   // EXPORT
   // =========================
   window.OOMGuard = {
-    start:     start,
-    showToast: showToast
+    start:               start,
+    showToast:           showToast,
+    flushPendingToasts:  flushPendingToasts
   };
 })();

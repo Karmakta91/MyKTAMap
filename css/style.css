@@ -2657,6 +2657,9 @@ html, body {
 
 /* ══════════════════════════════════════════════
    TOAST — notification non-intrusive (OOMGuard, etc.)
+   Aligné sur la charte : carte dark #1a1f2e, bordure subtile blanche
+   (idem #kta-titre-fixe et autres cards). Accent couleur uniquement
+   sur la barre gauche selon le type (jaune / rouge / bleu).
    ══════════════════════════════════════════════ */
 .kta-toast {
   position: fixed;
@@ -2664,27 +2667,28 @@ html, body {
   left: 50%;
   transform: translateX(-50%);
   max-width: min(440px, calc(100vw - 24px));
-  background: #232838;
-  border: 1px solid rgba(244, 197, 66, 0.35);
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #f4c542;
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-  padding: 12px 14px 12px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  padding: 11px 12px 11px 13px;
   display: flex;
   align-items: flex-start;
   gap: 10px;
   z-index: 100000;
   font-size: 13px;
-  color: #e8eaf0;
+  color: #c8d0e0;
   line-height: 1.45;
   animation: kta-toast-in 0.3s ease-out both;
 }
 
 .kta-toast-error {
-  border-color: rgba(255, 107, 107, 0.45);
+  border-left-color: #ff6b6b;
 }
 
 .kta-toast-info {
-  border-color: rgba(140, 180, 255, 0.35);
+  border-left-color: #8cb4ff;
 }
 
 .kta-toast-leaving {
@@ -2700,6 +2704,7 @@ html, body {
 .kta-toast-msg {
   flex: 1;
   word-wrap: break-word;
+  color: #e8eaf0;
 }
 
 .kta-toast-close {

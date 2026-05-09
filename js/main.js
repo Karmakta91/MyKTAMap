@@ -450,6 +450,9 @@ async function _splashEnd() {
   splash.classList.add("fading");
   setTimeout(function() {
     if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
+    // Splash plus à l'écran → on peut afficher les toasts en attente
+    // (typiquement OOMGuard quand un kill a été détecté au boot)
+    if (window.OOMGuard) window.OOMGuard.flushPendingToasts();
   }, 500);
 }
 
