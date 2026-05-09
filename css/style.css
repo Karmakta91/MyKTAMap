@@ -459,31 +459,6 @@ html, body {
   border-color: #4d8aff;
 }
 
-.kta-cfg-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding-top: 4px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  margin-top: 2px;
-}
-
-.kta-cfg-cache {
-  padding-top: 10px;
-  margin-top: 6px;
-  border-top: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  justify-content: center;
-}
-
-.kta-cfg-cache .kta-btn {
-  width: 100%;
-  text-align: center;
-  font-size: 12px;
-  padding: 6px 10px;
-}
-
-
 /* ==============================================
    BOUTONS GÉNÉRIQUES
    ============================================== */
@@ -1235,21 +1210,6 @@ html, body {
    LÉGENDE — icônes et tracés
    ============================================== */
 
-.kta-legende-separateur {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #8cb4ff;
-  margin: 10px 0 6px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-
-.kta-legende-separateur:first-child {
-  margin-top: 0;
-}
-
 .kta-legende-ligne {
   display: flex;
   align-items: center;
@@ -1338,14 +1298,6 @@ html, body {
   margin-bottom: 6px;
 }
 
-.kta-conv-hint {
-  display: inline-block;
-  margin-left: 6px;
-  font-size: 11px;
-  color: #4d8aff;
-  opacity: 0.8;
-}
-
 .kta-conv-drop {
   border: 2px dashed rgba(255,255,255,0.12);
   border-radius: 8px;
@@ -1362,20 +1314,6 @@ html, body {
   border-color: #4d8aff;
   background: rgba(77,138,255,0.06);
   color: #8cb4ff;
-}
-
-.kta-conv-apercu {
-  background: #0d1117;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
-  padding: 10px 12px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: #abb2bf;
-  white-space: pre;
-  overflow-x: auto;
-  max-height: 160px;
-  overflow-y: auto;
 }
 
 .kta-conv-actions {
@@ -2477,31 +2415,6 @@ html, body {
 
 .kta-planner-add-btn:hover {
   background: rgba(31,111,235,0.35);
-}
-
-/* Aperçu icônes */
-.kta-planner-tabs {
-  display: flex;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding: 0 20px;
-  background: rgba(0,0,0,0.2);
-}
-
-.kta-planner-tab {
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #8892a4;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.kta-planner-tab.active {
-  color: #e8eaf0;
-  border-bottom-color: #4a90d9;
 }
 
 .kta-planner-icon-header {

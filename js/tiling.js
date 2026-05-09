@@ -101,17 +101,6 @@ function resoudrePerfPreset(preset, fileSize, imageW, imageH) {
 }
 
 // =========================
-// COMPAT ASCENDANTE
-// =========================
-// perfModeActif() est conservé pour les modules legacy qui l'appellent encore.
-// Lit APP_CONFIG.perfPreset et délègue à resoudrePerfPreset.
-function perfModeActif(fileSize) {
-  if (typeof APP_CONFIG === "undefined") return false;
-  const r = resoudrePerfPreset(APP_CONFIG.perfPreset, fileSize, null, null);
-  return r.tile;
-}
-
-// =========================
 // POINT D'ENTRÉE
 // =========================
 async function chargerImage(url, bounds, map, fileSize, sourceFile) {
@@ -374,7 +363,6 @@ window.chargerImage             = chargerImage;
 window.chargerImageTuillee      = chargerImageTuillee;
 window.libererTuiles            = libererTuiles;
 window.tuilingNecessaire        = tuilingNecessaire;
-window.perfModeActif            = perfModeActif;
 window.resoudrePerfPreset       = resoudrePerfPreset;
 window.PERF_PRESETS             = PERF_PRESETS;
 window.PERF_AUTO_META           = PERF_AUTO_META;

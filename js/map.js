@@ -4,10 +4,10 @@
 
 let map, bounds, collisionCanvas, collisionCtx;
 
-// Icônes globales
-let iconeDefault, iconeSalle, iconepa, iconepc, iconepb;
-let iconeVehicule, iconeElec, iconeEpure, iconePS;
-let iconeInfo, iconeChatiere, iconePassage, iconeDanger, iconepe, iconeTrack;
+// Icônes globales — seules iconeDefault et iconeTrack sont consommées hors map.js
+// (cf. utils.js, editor.js, interface.js, tracking.js). Tous les autres tags sont
+// résolus via window._iconMap[tag] (cf. cascade getIconUrlForPoint dans utils.js).
+let iconeDefault, iconeTrack;
 
 // =========================
 // ICÔNES
@@ -41,37 +41,15 @@ function creerIcones(iconConfig) {
     });
   };
 
-  iconeDefault  = makeDefaultIcon();
-  iconeSalle    = mk(iconConfig.salle,    50, 50, 25, 25);
-  iconepa       = mk(iconConfig.pa,       50, 50, 25, 25);
-  iconepc       = mk(iconConfig.pc,       50, 50, 25, 25);
-  iconepb       = mk(iconConfig.pb,       50, 50, 25, 25);
-  iconeVehicule = mk(iconConfig.vehicule, 50, 50, 25, 25);
-  iconeElec     = mk(iconConfig.elec,     50, 50, 25, 25);
-  iconeEpure    = mk(iconConfig.epure,    50, 50, 25, 25);
-  iconePS       = mk(iconConfig.ps,       50, 50, 25, 25);
-  iconeInfo     = mk(iconConfig.info,     50, 50, 25, 25);
-  iconeChatiere = mk(iconConfig.chatiere, 50, 50, 25, 25);
-  iconePassage  = mk(iconConfig.passage,  50, 50, 25, 25);
-  iconeDanger   = mk(iconConfig.danger,   50, 50, 25, 25);
-  iconepe       = mk(iconConfig.pe,       50, 50, 25, 25);
-  iconeTrack    = L.icon({ iconUrl: trackUrl, iconSize: [50, 50], iconAnchor: [25, 25] });
+  iconeDefault = makeDefaultIcon();
+  iconeTrack   = L.icon({ iconUrl: trackUrl, iconSize: [50, 50], iconAnchor: [25, 25] });
 
-  window.iconeDefault  = iconeDefault;
-  window.iconeSalle    = iconeSalle;
-  window.iconepa       = iconepa;
-  window.iconepc       = iconepc;
-  window.iconepb       = iconepb;
-  window.iconeVehicule = iconeVehicule;
-  window.iconeElec     = iconeElec;
-  window.iconeEpure    = iconeEpure;
-  window.iconePS       = iconePS;
-  window.iconeInfo     = iconeInfo;
-  window.iconeChatiere = iconeChatiere;
-  window.iconePassage  = iconePassage;
-  window.iconeDanger   = iconeDanger;
-  window.iconepe       = iconepe;
-  window.iconeTrack    = iconeTrack;
+  // Globaux exposés : iconeDefault sert de fallback ultime (utils.js, editor.js,
+  // interface.js) et iconeTrack est consommé par tracking.js. Les ex-globaux
+  // par-tag (iconeSalle, iconepa, iconeChatiere, etc.) ont été retirés — la
+  // résolution se fait désormais via window._iconMap[tag].
+  window.iconeDefault = iconeDefault;
+  window.iconeTrack   = iconeTrack;
 
   // Map dynamique : tag → L.icon — supporte tous les tags définis dans plan-config.json
   window._iconMap = {};
