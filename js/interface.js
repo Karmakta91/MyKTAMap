@@ -2443,6 +2443,149 @@ function _panEtFlashSurPoint(p) {
 }
 
 // =========================
+// POPUP D'UN POINT — boutons "Y aller" / "Ajouter à l'itinéraire"
+// =========================
+// Appelees depuis le HTML inline genere par utils.js > buildPointPopupHtml.
+// Toutes les routes session + embedded (visibles ou non) participent au calcul
+// via le pathfinder qui utilise getAllEmbeddedRoads (cf suite 26).
+
+// Modal charte : confirme remplacement de l'itineraire en cours
+function _confirmRemplacerItineraire(onConfirm) {
+  const existing = document.getElementById("kta-iti-confirm-replace");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "kta-iti-confirm-replace";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-modal" style="max-width:420px;">' +
+      '<div class="kta-modal-icon" style="color:#f4c542;">⚠️</div>' +
+      '<div class="kta-modal-titre">Itinéraire en cours</div>' +
+      '<div class="kta-modal-texte">' +
+        'Un itinéraire est déjà actif. Si tu continues, il sera ' +
+        '<strong>remplacé</strong> par un nouvel itinéraire vers ce point ' +
+        '(depuis ta position tracker actuelle).' +
+      '</div>' +
+      '<div class="kta-modal-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-iti-confirm-cancel" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-iti-confirm-ok"     type="button">🧭 Y aller quand même</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _ferme() { modal.remove(); }
+
+  document.getElementById("kta-iti-confirm-cancel").addEventListener("click", _ferme);
+  document.getElementById("kta-iti-confirm-ok").addEventListener("click", function() {
+    _ferme();
+    if (typeof onConfirm === "function") onConfirm();
+  });
+  modal.addEventListener("click", function(e) { if (e.target === modal) _ferme(); });
+}
+
+// "🧭 Y aller" : depuis position tracker → ce point. Calcul direct + trace.
+// Si itineraire actif → confirme avant remplacement.
+window.itineraireYAller = function(x, y, nom) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+
+  const pos = (typeof window.getTrackingPosition === "function")
+    ? window.getTrackingPosition()
+    : null;
+  if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
+    alert("Position du tracker indisponible.");
+    return;
+  }
+  if (!window.Pathfinder) {
+    alert("Module Pathfinder non chargé.");
+    return;
+  }
+
+  const labelPoint = nom ? String(nom) : ("Point (" + Math.round(x) + ", " + Math.round(y) + ")");
+
+  function _calculer() {
+    // Ferme la popup Leaflet ouverte (sinon elle reste affichee derriere le tracé)
+    if (window.map) try { window.map.closePopup(); } catch(e) {}
+
+    const waypoints = [
+      {
+        x: pos.x, y: pos.y, source: "tracker",
+        label: "🧭 Position actuelle (" + Math.round(pos.x) + ", " + Math.round(pos.y) + ")"
+      },
+      { x: x, y: y, source: "search", label: labelPoint }
+    ];
+
+    try {
+      const result = window.Pathfinder.computeRoute(waypoints);
+
+      // Cree la road itineraire (sans flag _preview : on enregistre direct)
+      const newRoad = {
+        type:      "itinerary",
+        points:    result.path,
+        waypoints: waypoints
+      };
+
+      // Remove ancien itineraire + add le nouveau
+      const currentRoads = window.getRoads ? window.getRoads() : [];
+      const filtered = currentRoads.filter(function(r) { return r.type !== "itinerary"; });
+      filtered.push(newRoad);
+      if (window.setRoads) window.setRoads(filtered);
+
+      // Update markers visuels des waypoints + label distance bottomleft
+      _itineraryWaypoints = waypoints.map(function(w) { return Object.assign({}, w); });
+      if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
+      _itineraryWaypoints.forEach(function(p, i) {
+        _ajouterWaypointVisuel(p, i + 1);
+      });
+      _majLabelDistanceItineraire();
+
+      // Pan + flash sur le point d'arrivée pour indiquer ce qui vient d'etre calcule
+      _panEtFlashSurPoint({ x: x, y: y });
+
+    } catch(err) {
+      alert("Erreur calcul itinéraire : " + (err.message || err));
+    }
+  }
+
+  // Check si itineraire actif → confirm
+  const existing = (window.getRoads ? window.getRoads() : [])
+    .find(function(r) { return r.type === "itinerary"; });
+  if (existing) {
+    _confirmRemplacerItineraire(_calculer);
+  } else {
+    _calculer();
+  }
+};
+
+// "➕ Itinéraire" : ajoute le point comme waypoint à un itinéraire existant
+// (mode navigation) ou ouvre la modale en mode calcul avec ce waypoint pre-rempli.
+window.itineraireAjouterWaypoint = function(x, y, nom) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+
+  // Ferme la popup Leaflet
+  if (window.map) try { window.map.closePopup(); } catch(e) {}
+
+  const labelPoint = nom ? String(nom) : ("Point (" + Math.round(x) + ", " + Math.round(y) + ")");
+  const newWaypoint = { x: x, y: y, source: "search", label: labelPoint };
+
+  // Cas 1 : modale itineraire deja ouverte → ajoute direct a la liste
+  if (document.getElementById("kta-itinerary-modal")) {
+    _itineraryWaypoints.push(newWaypoint);
+    _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+    _rafraichirListeWaypointsModale();
+    _majPanneauFloaterCount();
+    return;
+  }
+
+  // Cas 2 : pas de modale ouverte → on ouvre, et on push le waypoint apres
+  // ouverture (la modale restore _itineraryWaypoints depuis l'itineraire actif
+  // si mode navigation, sinon vide en mode calcul).
+  window.ouvrirItinerairModal();
+  _itineraryWaypoints.push(newWaypoint);
+  _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+  _rafraichirListeWaypointsModale();
+};
+
+// =========================
 // LABEL DISTANCE ITINÉRAIRE — au-dessus du label measure (bottomleft)
 // =========================
 let _itiDistanceCtrl = null;

@@ -9,6 +9,29 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 — Popups de points : boutons "🧭 Y aller" et "➕ Itinéraire"
+
+Nouvelle UX pour interagir avec un point depuis sa popup Leaflet. Au clic sur un marker (point editor ou point embedded JSON), la popup affiche désormais 2 boutons en bas, sous le nom et la description :
+
+| Bouton | Comportement |
+|---|---|
+| **🧭 Y aller** | Calcule l'itinéraire **depuis ta position tracker actuelle** vers ce point. Trace direct (pas de modale). Si un itinéraire est déjà actif, modale charte de confirmation : *"Itinéraire en cours — il sera remplacé"*. |
+| **➕ Itinéraire** | Ajoute ce point comme waypoint à l'itinéraire en cours. Si modale itinéraire ouverte → ajout direct à la liste. Sinon → ouvre la modale avec le waypoint déjà pré-rempli. |
+
+**Architecture** :
+- `js/utils.js > buildPointPopupHtml(point)` : helper commun qui construit le HTML de la popup avec les 2 boutons. Échappement HTML/JS strict (apostrophes, guillemets, < / > / &).
+- `js/editor.js > _ajouterMarker` et `js/utils.js > ajouterPointsDepuisJSON` : utilisent le helper.
+- `js/interface.js > window.itineraireYAller(x, y, nom)` : récupère `getTrackingPosition()`, build 2 waypoints (tracker + point cible), Pathfinder.computeRoute, écrit la road `type: "itinerary"`, met à jour markers visuels + label distance bottomleft, pan+flash sur le point cible.
+- `js/interface.js > window.itineraireAjouterWaypoint(x, y, nom)` : ajoute à la liste de la modale ouverte ou ouvre la modale.
+- `js/interface.js > _confirmRemplacerItineraire(callback)` : modale charte `.kta-readme-modal-overlay` pour la confirmation.
+- `css/style.css > .kta-popup-actions / .kta-popup-btn / .kta-popup-btn-aller` : style des boutons (jaune charte pour Y aller = action principale, bleu pour Ajouter).
+
+**Source de la position tracker** : `getTrackingPosition()` qui retourne `{x, y}` peu importe l'état du tracking (au boot c'est `APP_CONFIG.startX/Y`, puis modifié par recalage manuel ou pas du tracker actif). Cohérent avec le bouton **🧭 Ma position** déjà présent dans la modale.
+
+**`sw.js`** : `CACHE_NAME` v83 → v84.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 33) — Décalage titre limité au mobile (desktop a assez de place)
 
 Le décalage du titre vers la gauche quand le contrôle des couches est ouvert (suite 32) était appliqué partout. Sur desktop la fenêtre est plus large, le panneau du contrôle a la place de s'ouvrir à droite sans toucher le titre centré → le décalage devient inutile et perturbant visuellement (le titre bouge sans raison).

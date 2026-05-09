@@ -75,6 +75,43 @@ function formatDistance(distM, decimalsM) {
 }
 window.formatDistance = formatDistance;
 
+// =========================
+// HTML POPUP D'UN POINT — helper commun (editor + embedded)
+// =========================
+// Construit le HTML d'une popup Leaflet pour un point, avec 2 boutons :
+//   🧭 Y aller — calcule l'itineraire depuis la position tracker vers ce point
+//   ➕ Itinéraire — ajoute ce point comme waypoint de l'itineraire
+// Wire-up via onclick inline (window.itineraireYAller / window.itineraireAjouterWaypoint
+// dans interface.js). Echappement HTML/string strict pour eviter les injections
+// si un point a un nom avec apostrophe ou guillemet.
+function buildPointPopupHtml(point) {
+  const nom  = String(point.nom || "(sans nom)");
+  const desc = String(point.description || "");
+  // Echappement HTML pour le contenu affiche
+  const safeName = nom.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeDesc = desc.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Echappement string JS pour le 'nom' passe en argument inline (entre apostrophes)
+  const jsName = nom.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
+  const x = Number(point.x) || 0;
+  const y = Number(point.y) || 0;
+
+  return '<div class="kta-popup-point">' +
+           '<b>' + safeName + '</b>' +
+           (safeDesc ? '<br><span class="kta-popup-desc">' + safeDesc + '</span>' : '') +
+           '<div class="kta-popup-actions">' +
+             '<button class="kta-popup-btn kta-popup-btn-aller" type="button" ' +
+               'onclick="window.itineraireYAller(' + x + ',' + y + ",'" + jsName + "'); return false;\">" +
+               '🧭 Y aller' +
+             '</button>' +
+             '<button class="kta-popup-btn kta-popup-btn-add" type="button" ' +
+               'onclick="window.itineraireAjouterWaypoint(' + x + ',' + y + ",'" + jsName + "'); return false;\">" +
+               '➕ Itinéraire' +
+             '</button>' +
+           '</div>' +
+         '</div>';
+}
+window.buildPointPopupHtml = buildPointPopupHtml;
+
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
   if (Array.isArray(json.editorPoints))  return json.editorPoints;
@@ -106,7 +143,11 @@ function ajouterPointsDepuisJSON(url, layer) {
         for (let i = index; i < fin; i++) {
           const p = points[i];
           var marker = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-          marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`, window.KTA_POPUP_OPTS);
+          // Popup avec boutons "Y aller" / "Itinéraire" — helper commun
+          const popupHtml = (typeof window.buildPointPopupHtml === "function")
+            ? window.buildPointPopupHtml(p)
+            : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
+          marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
           marker.addTo(layer);
         }
         index = fin;

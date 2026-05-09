@@ -600,6 +600,62 @@ html, body {
   opacity: 0.85 !important;
 }
 
+/* =========================
+   POPUP D'UN POINT — boutons d'actions itineraire
+   ========================= */
+
+.kta-popup-point .kta-popup-desc {
+  display: block;
+  margin-top: 4px;
+  color: #c8d0e0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.kta-popup-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Override .leaflet-popup-content button (qui sont stylises plus haut avec
+   un look generique) pour les boutons d'action specifiques de la popup point. */
+.kta-popup-actions .kta-popup-btn {
+  flex: 1 !important;
+  background: rgba(140, 180, 255, 0.12) !important;
+  border: 1px solid rgba(140, 180, 255, 0.4) !important;
+  color: #8cb4ff !important;
+  padding: 7px 8px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  border-radius: 5px !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  letter-spacing: 0.01em !important;
+  transition: background 0.12s, border-color 0.12s !important;
+  margin: 0 !important;
+  width: auto !important;
+  display: inline-block !important;
+}
+
+.kta-popup-actions .kta-popup-btn:hover {
+  background: rgba(140, 180, 255, 0.22) !important;
+  opacity: 1 !important;
+}
+
+/* Bouton "Y aller" : accent jaune charte (action principale) */
+.kta-popup-actions .kta-popup-btn-aller {
+  background: rgba(244, 197, 66, 0.15) !important;
+  border-color: rgba(244, 197, 66, 0.5) !important;
+  color: #f4c542 !important;
+}
+
+.kta-popup-actions .kta-popup-btn-aller:hover {
+  background: rgba(244, 197, 66, 0.28) !important;
+}
+
 
 /* ==============================================
    MODALES DE CONFIRMATION
