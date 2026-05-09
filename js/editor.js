@@ -34,7 +34,7 @@ const EDITOR_EXCLURE = ["default", "track"];
 // =========================
 function toggleEdition() {
   window.modeEdition = !window.modeEdition;
-  if (window.APP_CONFIG?.debugMode) console.log("[Editor] Mode édition :", window.modeEdition);
+  console.log("[Editor] Mode édition :", window.modeEdition);
 }
 
 // =========================

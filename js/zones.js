@@ -73,7 +73,7 @@ function initZones() {
   if (window.zonesInitialized) return;
   window.zonesInitialized = true;
 
-  console.log("initZones OK");
+  console.log("[Zones] init OK");
 
   window.map.on("click", function(e) {
     if (!window.modeZone) return;
@@ -133,7 +133,7 @@ function toggleZoneMode(type) {
   }
 
   renderZones();
-  console.log("Mode zone :", window.modeZone);
+  console.log("[Zones] Mode :", window.modeZone);
 }
 
 // =========================

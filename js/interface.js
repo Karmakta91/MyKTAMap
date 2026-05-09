@@ -1790,7 +1790,7 @@ function _creerGroupeAccordeon(config) {
 // INIT INTERFACE — barre 9 groupes (accordéons)
 // =========================
 function initInterface() {
-  if (window.APP_CONFIG?.debugMode) console.log("[Interface] initInterface");
+  console.log("[Interface] initInterface");
   if (window.interfaceInitialized) return;
   window.interfaceInitialized = true;
 

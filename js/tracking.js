@@ -61,7 +61,7 @@ function initTracking() {
     position.y = y;
 
     updateMap();
-    console.log("Recalé en :", x, y);
+    console.log("[Tracking] Recalé en :", x, y);
 
     if (polyline) polyline.setLatLngs([]);
     stepCount = 0;
@@ -181,20 +181,16 @@ function initMotion() {
 
     magnitude = Math.round(magnitude * 10) / 10;
 
-    if (APP_CONFIG.debugMode) {
-      console.log("Magnitude:", magnitude.toFixed(2));
-    }
+    // Magnitude + détection pas : log gating géré centralement par debug.js
+    // (silence en prod, visible en debug). Tag uniformisé.
+    console.log("[Tracking] Magnitude :", magnitude.toFixed(2));
 
     if (
       magnitude > APP_CONFIG.stepThreshold &&
       (now - lastStepTime) > APP_CONFIG.stepCooldown
     ) {
       stepCount++;
-
-      if (APP_CONFIG.debugMode) {
-        console.log("👣 Pas détecté :", stepCount);
-      }
-
+      console.log("[Tracking] 👣 Pas détecté :", stepCount);
       avancer();
       lastStepTime = now;
     }
@@ -220,7 +216,7 @@ function avancer() {
     position.x = newX;
     position.y = newY;
   } else {
-    console.log("Collision !");
+    console.log("[Tracking] Collision !");
   }
 
   updateMap();
@@ -246,12 +242,12 @@ function updateMap() {
 // =========================
 function startTracking() {
   tracking = true;
-  console.log("Tracking ON");
+  console.log("[Tracking] ON");
 }
 
 function stopTracking() {
   tracking = false;
-  console.log("Tracking OFF");
+  console.log("[Tracking] OFF");
 }
 
 // =========================

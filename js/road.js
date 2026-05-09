@@ -47,7 +47,7 @@ function initRoad() {
   if (window.roadInitialized) return;
   window.roadInitialized = true;
 
-  if (window.APP_CONFIG?.debugMode) console.log("[Road] initRoad OK");
+  console.log("[Road] initRoad OK");
 
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
@@ -61,11 +61,11 @@ function initRoad() {
         points: []
       };
       roadsData.push(currentRoad);
-      if (window.APP_CONFIG?.debugMode) console.log("[Road] nouveau tracé", currentRoad);
+      console.log("[Road] nouveau tracé", currentRoad);
     }
 
     currentRoad.points.push({ x, y });
-    if (window.APP_CONFIG?.debugMode) console.log("[Road] point ajouté", x, y);
+    console.log("[Road] point ajouté", x, y);
 
     renderRoads();
   });
@@ -83,7 +83,7 @@ function toggleRoadMode(type) {
     currentRoad = null;
   }
 
-  if (window.APP_CONFIG?.debugMode) console.log("[Road] Mode :", window.modeRoad);
+  console.log("[Road] Mode :", window.modeRoad);
 }
 
 // =========================
@@ -219,9 +219,7 @@ function _calculerIntersectionsRoads(roads) {
 // RENDU
 // =========================
 function renderRoads() {
-  if (window.APP_CONFIG?.debugMode) {
-    console.log("[Road] renderRoads — roadsData :", roadsData);
-  }
+  console.log("[Road] renderRoads — roadsData :", roadsData);
 
   roadLayers.forEach(layer => window.map.removeLayer(layer));
   roadLayers = [];
