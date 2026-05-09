@@ -9,6 +9,28 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 25) — Plafonnement dynamique du minZoom selon la taille de l'image
+
+**Bug** : crash de l'app au dézoom extrême sur les gros plans (signalé sur un plan de carrière). Cause probable : avec `preferCanvas: true`, Leaflet traite l'image entière dans le canvas au minZoom maximum. Pour une image 8000+ px, le canvas devient énorme → saturation RAM, crash mobile.
+
+**Fix** : plafonner dynamiquement le `minZoom` Leaflet selon la dimension max de l'image (`max(imageWidth, imageHeight)`) :
+
+| Taille max de l'image | minZoom mobile | minZoom desktop |
+|---|---|---|
+| < 4000 px | -4 (défaut, généreux) | -2 |
+| 4000 - 8000 px | -3 (modéré) | -2 |
+| > 8000 px | -2 (limite, sécurité) | -1 |
+
+Console log au boot affiche la décision : `[Map] Plan XXXX px → minZoom -N (mobile: true/false)` (visible si debug ON).
+
+**Code** : `js/map.js > initMapFromConfig`. Calcul de `_maxImgDim` puis cascade if/else pour `_minZoom`.
+
+**`sw.js`** : `CACHE_NAME` v74 → v75.
+
+⚠️ **Note utilisateur** : si tu as un très gros plan, tu peux désormais dézoomer un peu moins loin qu'avant — c'est volontaire pour éviter le crash. Compromis taille/perf/stabilité.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 24) — Rollback complet du forçage SVG sur roads (crash dézoom)
 
 **Bug** : le forçage du renderer SVG sur les polylines roads + cercles d'intersection (suites 18 et 20) causait des crashes au dézoom sur les plans denses. Trop d'éléments DOM SVG redessinés simultanément lors du recalcul des coordonnées Leaflet.
