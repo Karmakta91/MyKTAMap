@@ -18,17 +18,15 @@ html, body {
      bottom à un offset NÉGATIF égal à la safe-area-bottom. La map déborde
      dans la zone home-indicator et la couvre. iOS overlay ses gestes par
      dessus. Sur appareils sans encoche (Android, iPhone home button),
-     env() vaut 0 → comportement standard inchangé. */
+     env() vaut 0 → comportement standard inchangé.
+     ⚠️ NE PAS ajouter de règle .leaflet-container { height: 100% } : Leaflet
+     ajoute la classe leaflet-container DIRECTEMENT sur #map (cf. leaflet-src.js
+     _initLayout, addClass sur le container existant), donc la règle
+     écraserait notre top/bottom et la map ne déborderait plus. */
   top: 0;
   left: 0;
   right: 0;
   bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
-}
-
-/* Leaflet container suit son parent (pas de hauteur figée) */
-.leaflet-container {
-  width: 100% !important;
-  height: 100% !important;
 }
 
 .map-title {
