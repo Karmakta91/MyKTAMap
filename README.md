@@ -9,6 +9,29 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 15) — Détection DevTools réactivée mais conditionnée au mode debug
+
+Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) et l'absence de bug UX :
+
+**Comportement** :
+- **Mode debug OFF** (utilisateurs normaux en prod) : **aucune** détection, **aucune** polling, zéro overhead. Pas de faux positif possible.
+- **Mode debug ON** (toi en dev/test, ou via le bouton 🐛 dans le loader) : polling 2s reprend, heuristique outer/inner > 280px déclenche le toast `.kta-devtools-warn` avec un badge "DEBUG" pour signaler sa nature dev-only.
+- Toggle live : si tu actives/désactives le debug en cours de session, la détection s'active/désactive sans reload.
+
+**Améliorations anti faux positif (même en debug)** :
+- Threshold relevé de 200 à **280px** (moins sensible aux transitions de modales).
+- **Skip si une modale charte est ouverte** (`.kta-readme-modal-overlay`, `kta-poi-modal`, `kta-itinerary-modal`) — le viewport interne peut bouger pendant les transitions d'ouverture/fermeture.
+- Délai de 800ms avant affichage du toast (laisse le viewport se stabiliser).
+- **Badge "DEBUG"** sur le toast (style `.kta-devtools-warn-tag` bleu `#8cb4ff`) pour bien signaler que c'est un outil de développement.
+
+**Fichiers** :
+- `js/copyright.js` : réintégration de la détection avec `_isDebugMode()` checked à chaque tick + skip modal.
+- `css/style.css` : restauration des classes `.kta-devtools-warn-*` + ajout `.kta-devtools-warn-tag` (badge "DEBUG").
+
+**`sw.js`** : `CACHE_NAME` v64 → v65.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 14) — Fix toast DevTools faux positif + audit gating logs
 
 **Bug** : la popup "Inspection détectée" du copyright apparaissait à tort lors de l'utilisation normale de l'app (typiquement au clic **Appliquer** dans le formulaire d'ajout de point). Cause racine : la heuristique `outerWidth - innerWidth > 200 || outerHeight - innerHeight > 200` du polling 2s était trop sensible aux transitions de modales — quand une modale plein écran s'ouvre/se ferme, le viewport interne peut basculer brièvement et déclencher le faux positif.

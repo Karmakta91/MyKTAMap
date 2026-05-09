@@ -11,20 +11,19 @@
  */
 
 // =========================
-// COPYRIGHT.JS — Watermark + banniere console au boot
+// COPYRIGHT.JS — Watermark + banniere console + detection F12 (debug only)
 // =========================
 // Ce module est charge EN PREMIER dans index.html (avant tous les autres scripts).
-// Il fait 2 choses :
+// Il fait 3 choses :
 //   1. Pose un watermark global accessible via window.__MKM__ (signature de build,
 //      utile pour prouver l'origine du code en cas de copie)
 //   2. Affiche une banniere copyright dans la console au boot (visible quand un
 //      developpeur ouvre F12 — message clair sur la licence)
-//
-// NB : la detection DevTools par heuristique outerWidth/innerWidth a ete retiree
-// (depuis 09/05/2026) car elle generait des faux positifs au moment des
-// transitions de modales (ex : clic "Appliquer" dans le formulaire d'ajout de
-// point declenchait le toast a tort). Le banner console + watermark suffisent
-// pour transmettre le message copyright a un inspecteur, sans risque de bug UX.
+//   3. Si APP_CONFIG.debugMode === true : detecte l'ouverture de DevTools par
+//      heuristique outerWidth/innerWidth et affiche un toast d'avertissement.
+//      ⚠️ Conditionne au mode debug ! En prod (debugMode = false) la detection
+//      est totalement inactive — la heuristique generait des faux positifs au
+//      moment des transitions de modales chez les utilisateurs normaux.
 // =========================
 
 (function() {
@@ -61,4 +60,102 @@
       "color:#c8d0e0; font-size:12px; line-height:1.6;"
     );
   } catch(e) {}
+
+  // ========== DETECTION DEVTOOLS (debug only) ==========
+  // Active uniquement si APP_CONFIG.debugMode === true (verif a chaque tick,
+  // pas seulement au boot — donc toggle live du mode debug fonctionne).
+  // Sinon : aucune polling, zero overhead, zero faux positif chez les
+  // utilisateurs normaux.
+  //
+  // Heuristique : quand le panneau DevTools s'ouvre (dock cote ou bas), la
+  // difference outerWidth/innerWidth ou outerHeight/innerHeight depasse ~280px.
+  // Threshold un peu plus haut que la heuristique classique (200) pour reduire
+  // les faux positifs sur transitions de modales meme en mode debug.
+  // Limite : detection par taille pas fiable si DevTools detache (fenetre
+  // separee) — c'est un outil de dissuasion, pas une vraie protection.
+
+  var _devtoolsSpotted = false;
+  var THRESHOLD = 280;
+
+  function _isDebugMode() {
+    return !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+  }
+
+  function _modalOuverte() {
+    // Skip si une modale charte est ouverte ou en transition (changement de
+    // viewport au moment du clic, evite faux positif meme en debug).
+    return !!(
+      document.querySelector(".kta-readme-modal-overlay") ||
+      document.getElementById("kta-poi-modal")            ||
+      document.getElementById("kta-itinerary-modal")
+    );
+  }
+
+  function _afficherToastDevtools() {
+    if (document.getElementById("kta-devtools-warn")) return;
+    var t = document.createElement("div");
+    t.id = "kta-devtools-warn";
+    t.className = "kta-devtools-warn";
+    t.innerHTML =
+      '<div class="kta-devtools-warn-titre">' +
+        '<span class="kta-devtools-warn-icon">&#x1F441;&#xFE0F;</span> ' +
+        'Inspection detectee' +
+        '<span class="kta-devtools-warn-tag">DEBUG</span>' +
+      '</div>' +
+      '<div class="kta-devtools-warn-corps">' +
+        '<strong>MyKTAMap</strong> &copy; 2026 Flavien VIDAL<br>' +
+        'Licence : <strong>CC BY-NC-SA 4.0</strong><br>' +
+        'Usage commercial <strong style="color:#ff6b6b;">INTERDIT</strong> sans accord ecrit prealable.<br>' +
+        '<a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener">myktamap.is-underground.fr</a>' +
+      '</div>' +
+      '<button class="kta-devtools-warn-close" type="button" aria-label="Fermer">&times;</button>';
+    document.body.appendChild(t);
+
+    var btn = t.querySelector(".kta-devtools-warn-close");
+    if (btn) {
+      btn.addEventListener("click", function() {
+        if (t.parentNode) t.parentNode.removeChild(t);
+      });
+    }
+
+    // Auto-dismiss apres 12s
+    setTimeout(function() {
+      if (t.parentNode) t.parentNode.removeChild(t);
+    }, 12000);
+  }
+
+  function _checkDevTools() {
+    // Garde principale : si debug OFF, on ne fait STRICTEMENT rien (pas de
+    // toast, pas de calcul, pas de side-effect). Les utilisateurs normaux
+    // sont 100% epargnes.
+    if (!_isDebugMode()) {
+      _devtoolsSpotted = false;  // reset pour le toggle live debug ON -> OFF
+      return;
+    }
+
+    // Skip si une modale est ouverte (le viewport interne peut changer
+    // brievement durant la transition d'ouverture/fermeture).
+    if (_modalOuverte()) return;
+
+    var wd = (window.outerWidth  || 0) - (window.innerWidth  || 0);
+    var hd = (window.outerHeight || 0) - (window.innerHeight || 0);
+
+    if (wd > THRESHOLD || hd > THRESHOLD) {
+      if (!_devtoolsSpotted) {
+        _devtoolsSpotted = true;
+        // Differe le toast de 800ms pour laisser le splash se terminer
+        // et laisser le viewport se stabiliser apres une eventuelle transition.
+        setTimeout(_afficherToastDevtools, 800);
+      }
+    } else {
+      _devtoolsSpotted = false;
+    }
+  }
+
+  // Lancer le polling apres un petit delai (laisse l'app booter tranquille
+  // et APP_CONFIG.debugMode etre populated par config.js).
+  setTimeout(function() {
+    _checkDevTools();
+    setInterval(_checkDevTools, 2000);
+  }, 3000);
 })();
