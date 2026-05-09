@@ -78,7 +78,7 @@ function ajouterPointsDepuisJSON(url, layer) {
         for (let i = index; i < fin; i++) {
           const p = points[i];
           var marker = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-          marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`);
+          marker.bindPopup(`<b>${p.nom}</b><br>${p.description || ""}`, window.KTA_POPUP_OPTS);
           marker.addTo(layer);
         }
         index = fin;

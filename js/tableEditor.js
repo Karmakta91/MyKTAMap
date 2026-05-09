@@ -1148,7 +1148,7 @@
     _data.forEach(function(p) {
       if (typeof p.x !== "number" || typeof p.y !== "number") return;
       const m = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-      m.bindPopup("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
+      m.bindPopup("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""), window.KTA_POPUP_OPTS);
       m.addTo(layer);
     });
 
