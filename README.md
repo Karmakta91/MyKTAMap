@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 14) — Fix toast DevTools faux positif + audit gating logs
+
+**Bug** : la popup "Inspection détectée" du copyright apparaissait à tort lors de l'utilisation normale de l'app (typiquement au clic **Appliquer** dans le formulaire d'ajout de point). Cause racine : la heuristique `outerWidth - innerWidth > 200 || outerHeight - innerHeight > 200` du polling 2s était trop sensible aux transitions de modales — quand une modale plein écran s'ouvre/se ferme, le viewport interne peut basculer brièvement et déclencher le faux positif.
+
+**Fix** : **suppression complète de la détection DevTools** dans `js/copyright.js`. Le watermark `window.__MKM__` (frozen) et le banner console stylé au boot restent en place — ils transmettent suffisamment le message copyright à un inspecteur curieux qui ouvre F12.
+
+**Nettoyage** : suppression des CSS associés (`.kta-devtools-warn-*`, `@keyframes kta-devtools-popin`) — ~80 lignes de CSS retirées.
+
+**Audit gating logs** (demande utilisateur "que tous les logs soient gated par debugMode si actif") :
+
+- ✅ Le proxy `debug.js` gate déjà tous les `console.log` / `console.info` derrière `APP_CONFIG.debugMode === true`. En mode debug OFF, ces logs sont silencieux dans la console DevTools mais restent **bufferisés** dans la modale 🐛 Logs (accessible depuis ⚙️ Réglages).
+- ✅ `console.warn` / `console.error` restent **toujours visibles** par design — cas critiques (échecs fetch, parsing corrompu, OOM, etc.) qui doivent rester diagnostiquables même en prod.
+- ✅ Aucun bypass `window.console.*` dans le code (grep exhaustif des 21 fichiers JS, 117 occurrences `console.*`) — tous passent par le proxy.
+- ✅ Le banner console copyright bypass volontairement le proxy (chargé AVANT `debug.js`) → reste visible en mode debug OFF, ce qui est le comportement souhaité.
+
+**Conclusion audit** : le système de gating est propre, aucune fuite. Tous les `console.warn`/`error` actuels sont des cas légitimes (pas d'info banale mal classée).
+
+**`sw.js`** : `CACHE_NAME` v63 → v64.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 13) — Calque "Mes annotations" englobe points + roads + zones session
 
 **Avant** : le calque "Ajout" dans le contrôle des couches Leaflet ne masquait que les **points editor**. Les routes (Principal/Secondaire/Chemin) et les zones (Eau/Remblais/Effondrement) tracées en session étaient ajoutées directement à `window.map` → restaient visibles peu importe l'état du toggle.

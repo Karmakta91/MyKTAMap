@@ -231,7 +231,13 @@ async function initMapFromConfig() {
     const group = L.layerGroup();
     if (layerConfig.visible) group.addTo(map);
     dataLayerGroups[layerConfig.id] = group;
-    overlays[layerConfig.label]     = group;
+    // Pour le calque "editor", on FORCE le label "Mes annotations" peu importe
+    // ce que dit le plan-config. Ce calque est universel à tous les plans
+    // MyKTAMap et regroupe TOUTES les annotations utilisateur (points + roads
+    // + zones session). Ainsi les vieux ZIP avec label "Ajouts" affichent
+    // automatiquement le nouveau label sans regénération du plan.
+    const labelAffiche = (layerConfig.id === "editor") ? "Mes annotations" : layerConfig.label;
+    overlays[labelAffiche] = group;
   });
 
   // Calques image
