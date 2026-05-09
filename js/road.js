@@ -403,11 +403,22 @@ function _embeddedRoadsVisibles() {
     .map(function(e) { return e.road; });
 }
 
-// Expose la liste des routes embarquées (visibles uniquement) pour les modules qui
-// ont besoin de l'ensemble du réseau actif (Pathfinder construit le graphe à partir
-// des roads session ET embedded).
+// Expose la liste des routes embarquées VISIBLES uniquement (filtrees par
+// visibilite du calque dans le controle des couches). Utilise pour les
+// cercles d'intersection (qui doivent disparaitre quand le calque est
+// masque) et le panneau "Distance totale" (qui ne compte que les visibles).
 window.getEmbeddedRoads = function() {
   return _embeddedRoadsVisibles();
+};
+
+// Expose la liste de TOUTES les routes embarquees (visibles ET masquees).
+// Utilise par Pathfinder : permet a l'utilisateur de masquer le calque des
+// routes (qui sont parfois dessinees en dur sur le PNG du plan) pour gagner
+// en perf de rendu, tout en gardant le calcul d'itineraire fonctionnel.
+// Sans ca, masquer le calque empechait le pathfinder de trouver un chemin
+// car il ne voyait plus le reseau de routes.
+window.getAllEmbeddedRoads = function() {
+  return _embeddedRoads.map(function(e) { return e.road; });
 };
 
 // =========================

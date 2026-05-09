@@ -430,6 +430,8 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 
 > 💡 **Bouton 🧭 Ma position** — ajoute ta position tracker actuelle comme waypoint (snapshot figé). Pratique si tu marches dans la cata avec le tracker actif et tu veux calculer un itinéraire qui démarre d'où tu es. Si tu as recalé ta position au début, c'est cette position recalée qui est utilisée.
 
+> 🚀 **Astuce perf** : si tes routes sont déjà dessinées en dur sur le PNG du plan, tu peux **masquer le calque des routes** dans le contrôle des couches Leaflet (haut-droite). Tu gardes la lisibilité visuelle (le PNG montre les routes) ET tu gagnes en perf de rendu (Leaflet ne dessine pas les polylines des données par-dessus). Le module **🗺️ Itinéraire continue de fonctionner** : il utilise toutes les routes du calque, qu'elles soient affichées ou non.
+
 1. Ouvrez la modale **🗺️ Calculer un itinéraire**
 2. Choisissez vos **points de passage** de 2 façons (combinables) :
    - **📍 Mode clic carte** : la modale se réduit à un mini-bandeau "Mode clic actif", cliquez sur la carte pour poser chaque waypoint (markers cyan numérotés). Bouton **✓ Terminer** pour revenir à la modale.
