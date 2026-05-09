@@ -16,7 +16,31 @@ async function initDataFromConfig() {
   if (typeof window.clearEmbeddedRoads === "function") {
     window.clearEmbeddedRoads();
   }
+
+  // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
+  // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.
+  // Sans ce skip, les markers du JSON arrivent async APRÈS le restore et coexistent
+  // avec ceux de la session dans le layerEditor — mais ces markers JSON ne sont
+  // PAS dans listePoints, donc tout render ultérieur (suppression, ajout) les efface
+  // silencieusement, et le contrôle des calques peut sembler ne pas les gérer.
+  let _skipEditorJsonLoad = false;
+  try {
+    const raw = localStorage.getItem("myktamap_session_v1");
+    if (raw) {
+      const saved = JSON.parse(raw);
+      const planId = window._currentLoadedPlanId;
+      const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
+      const idMatch   = saved && saved.planId === planId;
+      const nameMatch = (!saved.planName || !planName) ? true : (saved.planName === planName);
+      if (idMatch && nameMatch && Array.isArray(saved.editorPoints) && saved.editorPoints.length > 0) {
+        _skipEditorJsonLoad = true;
+        console.log("[Main] Session active avec", saved.editorPoints.length, "point(s) editor → skip data/editor.json (session autoritative)");
+      }
+    }
+  } catch(e) {}
+
   config.dataLayers.forEach(function(layerConfig) {
+    if (_skipEditorJsonLoad && layerConfig.id === "editor") return;
     const targetLayer = window.dataLayerGroups?.[layerConfig.id];
     if (targetLayer) {
       ajouterPointsDepuisJSON(layerConfig.file, targetLayer);

@@ -9,6 +9,26 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 11) — Fix toggle calque "Ajout" sur points restaurés par SessionPersist
+
+**Bug** : après quitter / relancer / restaurer la session via SessionPersist, le toggle du calque **"Ajout"** dans le contrôle des couches Leaflet ne masquait que les points **nouvellement** ajoutés. Les points restaurés depuis localStorage restaient visibles peu importe l'état de la case.
+
+**Causes racines** (deux confondues) :
+
+**1. Asymétrie `setEditorPoints` vs `setRoads / setZones`** — `window.setRoads` et `window.setZones` appellent `renderRoads / renderZones` automatiquement en fin d'exécution. `window.setEditorPoints` était une simple assignation `listePoints = points` sans re-render. SessionPersist appelait bien `renderEditorPoints()` derrière, mais d'autres callers (import session, _viderEtatCourant…) pouvaient laisser le state désynchronisé.
+
+**2. Course async `data/editor.json` ↔ SessionPersist** — `initDataFromConfig` lance le fetch `data/editor.json` en background (RAF batch). SessionPersist restaure ensuite les points en synchrone. Quand le fetch JSON résolvait APRÈS le restore, ses markers s'ajoutaient au `layerEditor` MAIS pas dans `listePoints`. Au prochain `renderEditorPoints` (suppression d'un point, etc.), `clearLayers + addAll(listePoints)` purgeait les markers JSON sans les recréer. Surtout, ces markers fantômes étaient parfois rendus dans un état où le toggle ne les affectait pas correctement.
+
+**Fixes** :
+
+- `editor.js > setEditorPoints()` redessine désormais en interne (`renderEditorPoints()` automatique). Symétrie avec setRoads/setZones, plus aucun caller à risque d'oubli.
+- `main.js > initDataFromConfig()` détecte si la session SessionPersist contient des `editorPoints` pour le plan courant (peek `localStorage["myktamap_session_v1"]`) — si oui, **skip le fetch `data/editor.json`** car la session est autoritative. Sans cette détection, on risquait des doublons ou des markers fantômes.
+- `sessionPersist.js > _applyRestore` simplifié (l'appel manuel à `renderEditorPoints` n'est plus nécessaire — `setEditorPoints` le fait).
+
+**`sw.js`** : `CACHE_NAME` v59 → v60.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 10) — Conversion auto m / km sur les 3 outils de distance
 
 Au-delà de 1000 mètres, les distances affichées par les 3 outils (📐 Mesure simple, 📏 Distance totale, 🗺️ Itinéraire) basculent automatiquement en kilomètres pour la lisibilité.

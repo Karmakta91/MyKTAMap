@@ -295,4 +295,13 @@ window.toggleEdition          = toggleEdition;
 window.initEditor             = initEditor;
 window.removeLastEditorPoint  = removeLastEditorPoint;
 window.getEditorPoints        = function() { return listePoints; };
-window.setEditorPoints        = function(points) { listePoints = points || []; };
+// ⚠️ Auto-render symmetric avec setRoads/setZones (qui appellent renderRoads/renderZones
+// en interne). Sans ça, les callers oubliaient parfois renderEditorPoints() après set,
+// et les markers restaient en mémoire (listePoints) sans être attachés au layerEditor.
+// Conséquence visible : le toggle du calque "Ajout" dans le contrôle des couches
+// Leaflet ne masquait pas les points restaurés par SessionPersist (les markers
+// étaient bien sur la map, mais hors du layerGroup que toggle l'overlay).
+window.setEditorPoints        = function(points) {
+  listePoints = points || [];
+  if (window.renderEditorPoints) window.renderEditorPoints();
+};
