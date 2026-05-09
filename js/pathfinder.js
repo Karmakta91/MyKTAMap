@@ -8,7 +8,7 @@
 // PATHFINDER — itinéraire sur le réseau de routes du plan
 // =========================
 // Calcule un trajet en suivant les polylines existantes (session via getRoads()
-// + embarquées via getEmbeddedRoads()). Algorithme : Dijkstra sur un graphe
+// + embarquées via getAllEmbeddedRoads()). Algorithme : Dijkstra sur un graphe
 // dynamique construit à la volée, avec snap orthogonal des waypoints sur le
 // segment le plus proche du réseau.
 //
@@ -397,14 +397,27 @@
     opts = opts || {};
     const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
 
-    // 1. Collecte des roads disponibles
-    const sessionRoads  = (typeof window.getRoads        === "function") ? window.getRoads()        : [];
-    const embeddedRoads = (typeof window.getEmbeddedRoads === "function") ? window.getEmbeddedRoads() : [];
-    const allRoads      = sessionRoads.concat(embeddedRoads);
+    // 1. Collecte des roads disponibles.
+    // ⚠️ On utilise getAllEmbeddedRoads (TOUTES les embedded, visibles ET masquees)
+    // au lieu de getEmbeddedRoads (visibles uniquement) — cela permet a l'utilisateur
+    // de masquer le calque des routes (routes parfois dessinees en dur sur le PNG du
+    // plan) pour gagner en perf de rendu, tout en gardant un pathfinder fonctionnel.
+    // Fallback sur getEmbeddedRoads pour retro-compat si getAllEmbeddedRoads absent
+    // (vieux cache SW non encore rafraichi).
+    const sessionRoads = (typeof window.getRoads === "function") ? window.getRoads() : [];
+    let embeddedRoads;
+    if (typeof window.getAllEmbeddedRoads === "function") {
+      embeddedRoads = window.getAllEmbeddedRoads();
+    } else if (typeof window.getEmbeddedRoads === "function") {
+      embeddedRoads = window.getEmbeddedRoads();
+    } else {
+      embeddedRoads = [];
+    }
+    const allRoads = sessionRoads.concat(embeddedRoads);
 
     console.log("[Pathfinder] Roads en entrée —",
       "session:", sessionRoads.length, "/",
-      "embedded:", embeddedRoads.length, "/",
+      "embedded (toutes):", embeddedRoads.length, "/",
       "total:", allRoads.length,
       "| types autorisés:", allowedTypes.join(","));
 

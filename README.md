@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 26) — Pathfinder utilise toutes les routes embedded (visibles ou non)
+
+**Cas d'usage** : sur un plan où les routes sont dessinées en dur sur le PNG, l'utilisateur peut vouloir **masquer le calque des routes JSON** dans le contrôle des couches Leaflet pour gagner en perf de rendu (moins d'éléments vectoriels à redessiner). Mais avant ce fix, masquer le calque empêchait aussi le module **🗺️ Itinéraire** de trouver un chemin (le pathfinder ne voyait plus le réseau de routes).
+
+**Fix** : le pathfinder utilise désormais une nouvelle API `window.getAllEmbeddedRoads()` qui retourne **toutes** les routes embedded (visibles ET masquées). Les autres consommateurs (cercles d'intersection, panneau Distance totale) continuent d'utiliser `window.getEmbeddedRoads()` qui filtre par visibilité — leur sémantique reste correcte.
+
+**API séparée** :
+- `window.getEmbeddedRoads()` — routes embedded **visibles** uniquement (cercles intersection + panneau Distance totale, qui doivent suivre la visibilité)
+- `window.getAllEmbeddedRoads()` (NOUVEAU) — **toutes** les routes embedded (pathfinder, qui doit considérer tout le réseau)
+
+**Impact utilisateur** : tu peux désormais masquer le calque des routes (pour la perf, ou pour pas surcharger visuellement quand les routes sont déjà sur le PNG) tout en gardant l'itinéraire fonctionnel. Documenté dans l'aide in-app + README utilisateur.
+
+**Code** :
+- `js/road.js` : ajout de `window.getAllEmbeddedRoads`.
+- `js/pathfinder.js` : `computeRoute()` utilise `getAllEmbeddedRoads()` avec fallback `getEmbeddedRoads()` (rétro-compat si vieux cache SW).
+- `js/interface.js > afficherAide` + `README_USER.md` : doc utilisateur mise à jour.
+
+**`sw.js`** : `CACHE_NAME` v75 → v76.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 25) — Plafonnement dynamique du minZoom selon la taille de l'image
 
 **Bug** : crash de l'app au dézoom extrême sur les gros plans (signalé sur un plan de carrière). Cause probable : avec `preferCanvas: true`, Leaflet traite l'image entière dans le canvas au minZoom maximum. Pour une image 8000+ px, le canvas devient énorme → saturation RAM, crash mobile.
