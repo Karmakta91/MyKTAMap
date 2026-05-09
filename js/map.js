@@ -240,6 +240,22 @@ async function initMapFromConfig() {
     overlays[labelAffiche] = group;
   });
 
+  // ⚠️ Fallback CRITIQUE : si le plan-config n'a pas de calque "editor"
+  // (ancien plan genere avant standardisation, ou plan minimal), on en cree
+  // un automatiquement. Sans ce fallback, dataLayerGroups.editor serait
+  // undefined → window.layerEditor undefined → road.js et zones.js feraient
+  // addTo(window.map) directement (fallback), donc les routes/zones de session
+  // seraient sur la map directe et echapperaient au toggle "Mes annotations".
+  // Avec ce fallback, window.layerEditor existe TOUJOURS, et le toggle
+  // englobe toujours points + roads + zones de session.
+  if (!dataLayerGroups.editor) {
+    const editorGroup = L.layerGroup();
+    editorGroup.addTo(map);  // visible par defaut
+    dataLayerGroups.editor = editorGroup;
+    overlays["Mes annotations"] = editorGroup;
+    console.warn("[Map] Calque 'editor' absent du plan-config — fallback auto-créé");
+  }
+
   // Calques image
   const sortedImageLayers = [...(config.imageLayers || [])].sort(function(a, b) {
     return (a.order || 0) - (b.order || 0);
