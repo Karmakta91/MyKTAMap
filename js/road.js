@@ -11,6 +11,9 @@ let roadLayers = [];
 // Routes embarquées dans les calques de données (chargées par utils.js > ajouterPointsDepuisJSON).
 // Elles ne sont pas éditables MAIS doivent participer au calcul des intersections
 // pour afficher des cercles aux croisements avec les routes éditables.
+// Format : [{ road, layer }] — layer = LayerGroup Leaflet du calque, sert à
+// filtrer par visibilité (toggle dans le contrôle des calques) → quand un
+// calque est masqué, ses roads disparaissent ET leurs intersections aussi.
 let _embeddedRoads = [];
 
 // styles par type
@@ -51,6 +54,13 @@ function initRoad() {
   window.roadInitialized = true;
 
   console.log("[Road] initRoad OK");
+
+  // Re-render quand l'utilisateur toggle la visibilité d'un calque dans le
+  // contrôle des couches Leaflet (overlayadd/overlayremove). Ça force le
+  // recalcul des intersections en fonction des calques visibles.
+  window.map.on("overlayadd overlayremove", function() {
+    renderRoads();
+  });
 
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
@@ -251,12 +261,12 @@ function renderRoads() {
   });
 
   // Cercles d'intersection : on combine routes éditables (roadsData) + routes embarquées
-  // (chargées depuis les calques de données) — pour que les croisements soient détectés
-  // entre n'importe quels deux tracés visibles, peu importe leur source.
+  // VISIBLES (filtrées par visibilité du calque Leaflet) — pour que les croisements
+  // disparaissent quand l'utilisateur masque un calque dans le contrôle des couches.
   // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
   // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
   // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
-  const allRoads = roadsData.concat(_embeddedRoads).filter(r => r.type !== "itinerary");
+  const allRoads = roadsData.concat(_embeddedRoadsVisibles()).filter(r => r.type !== "itinerary");
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
@@ -336,9 +346,9 @@ window.setRoads = function(roads) {
 // =========================
 // Permet à utils.js > ajouterPointsDepuisJSON d'enregistrer les routes lues
 // dans un calque de données, afin qu'elles participent au calcul des intersections.
-window.registerEmbeddedRoad = function(road) {
+window.registerEmbeddedRoad = function(road, layer) {
   if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
-  _embeddedRoads.push(road);
+  _embeddedRoads.push({ road: road, layer: layer || null });
   // Re-render pour ajouter / mettre à jour les cercles d'intersection
   if (window.map && window.roadInitialized) renderRoads();
 };
@@ -350,11 +360,21 @@ window.clearEmbeddedRoads = function() {
   if (window.map && window.roadInitialized) renderRoads();
 };
 
-// Expose la liste des routes embarquées pour les modules qui ont besoin de
-// l'ensemble du réseau (Pathfinder construit le graphe à partir des roads
-// session ET embedded).
+// Helper : retourne uniquement les roads embarquées dont le calque est ACTUELLEMENT
+// visible sur la map. Si la road n'a pas de layer associé (ancien format ou contexte
+// import), elle est considérée visible par défaut.
+function _embeddedRoadsVisibles() {
+  if (!window.map) return _embeddedRoads.map(function(e) { return e.road; });
+  return _embeddedRoads
+    .filter(function(e) { return !e.layer || window.map.hasLayer(e.layer); })
+    .map(function(e) { return e.road; });
+}
+
+// Expose la liste des routes embarquées (visibles uniquement) pour les modules qui
+// ont besoin de l'ensemble du réseau actif (Pathfinder construit le graphe à partir
+// des roads session ET embedded).
 window.getEmbeddedRoads = function() {
-  return _embeddedRoads.slice();  // copie défensive
+  return _embeddedRoadsVisibles();
 };
 
 // =========================

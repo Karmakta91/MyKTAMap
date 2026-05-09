@@ -2361,7 +2361,10 @@ let _itiDistanceCtrl = null;
 
 function _afficherLabelDistanceItineraire(distanceM) {
   if (!window.map) return;
-  if (!_itiDistanceCtrl) {
+  // Détection d'un contrôle "détaché" : après un plan switch, map.remove()
+  // a été appelé et le contrôle n'est plus rattaché à la map. _itiDistanceCtrl._map
+  // devient null/undefined → on doit re-créer le contrôle, pas réutiliser l'ancien.
+  if (!_itiDistanceCtrl || !_itiDistanceCtrl._map) {
     _itiDistanceCtrl = L.control({ position: "bottomleft" });
     _itiDistanceCtrl.onAdd = function() {
       const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
@@ -2417,7 +2420,11 @@ let _itineraryClickHandler = null;
 
 function _ajouterWaypointVisuel(p, num) {
   if (!window.map) return;
-  if (!_itineraryMarkerLayer) {
+  // Idem _afficherLabelDistanceItineraire : si l'ancien layerGroup a été détaché
+  // par un plan switch (map.remove() précédent), on doit le recréer avant
+  // d'ajouter des markers — sinon ils sont attachés à un layer mort qui
+  // n'apparaîtra jamais sur la nouvelle map.
+  if (!_itineraryMarkerLayer || !_itineraryMarkerLayer._map) {
     _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
   }
   const icon = L.divIcon({

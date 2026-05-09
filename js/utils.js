@@ -96,10 +96,10 @@ function ajouterPointsDepuisJSON(url, layer) {
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
           L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
-          // Enregistrer dans road.js pour que le calcul d'intersection (cercles aux croisements)
-          // tienne compte de cette route, comme s'il s'agissait d'une route éditable
+          // Enregistrer dans road.js avec la référence au layerGroup du calque,
+          // pour que les intersections se filtrent par visibilité (toggle calques).
           if (typeof window.registerEmbeddedRoad === "function") {
-            window.registerEmbeddedRoad(road);
+            window.registerEmbeddedRoad(road, layer);
           }
         });
       }
