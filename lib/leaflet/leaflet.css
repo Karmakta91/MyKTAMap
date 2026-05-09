@@ -258,13 +258,12 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* visual tweaks */
 
 .leaflet-container {
-	/* MyKTAMap : fond aligné sur la couleur dominante visible sur la modale
-	   loader (#0a0d18 du body sur lequel l'overlay rgba(5,8,15,0.92) laisse
-	   transparaître). Effet : la transition loader → map est invisible (même
-	   teinte de fond), et le haut de la page reste sombre quand les tuiles
-	   claires sont chargées par-dessus — iOS PWA standalone lit cette couleur
-	   pour colorier sa status bar en mode black-translucent / default. */
-	background: #0a0d18;
+	/* MyKTAMap : noir pur pour matcher l'overlay loader (rgba(5,8,15,0.92)
+	   sur body se blend à ~#050810, perçu comme noir). #0a0d18 paraissait
+	   grisé sur iPhone. Effet : transition loader → map invisible, top
+	   Leaflet noir comme le menu de chargement, status bar iOS PWA tinte
+	   sombre via la sliver visible avant le rendu des tuiles. */
+	background: #000000;
 	outline-offset: 1px;
 	}
 .leaflet-container a {
