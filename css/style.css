@@ -327,6 +327,12 @@ html, body {
 
 .leaflet-control-layers-expanded {
   padding: 8px 12px !important;
+  /* Z-index 1200 pour passer au-dessus du #kta-titre-fixe (z-index 1100).
+     Sans ça, le panneau déplié passait derrière le titre sur mobile (le
+     titre prend la pleine largeur en haut et chevauche le contrôle des
+     couches qui s'étire vers le bas). Reste sous les modales charte
+     (z-index 99999) et le splash (z-index 9999). */
+  z-index: 1200 !important;
 }
 
 .leaflet-control-layers label {
