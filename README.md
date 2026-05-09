@@ -9,6 +9,28 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 22) — Rollback du calque "Mes tracés" séparé
+
+La séparation des roads dans un calque dédié "Mes tracés" (suite 21) ne résolvait pas le problème de toggle chez l'utilisateur — les polylines roads continuaient à ne pas être masquées par le toggle off de leur LayerGroup parent. Bug Leaflet subtil non identifié.
+
+**Décision pragmatique** : rollback complet du calque "Mes tracés". Les roads retournent dans `window.layerEditor` (calque "Mes annotations"). Le toggle peut ne pas masquer les polylines roads sur certaines configurations, mais au moins on n'a plus de calque parasite dans le contrôle des couches.
+
+**Code restauré** :
+- `js/map.js` : suppression de la création runtime du LayerGroup `traces` et de `window.layerTraces`.
+- `js/road.js > _targetLayerForRoad` : revient à `window.layerEditor || window.map`.
+- `js/road.js` : cercles d'intersection à nouveau dans `window.layerEditor`.
+- `js/interface.js > afficherAide` : section "🗂️ Calques d'annotations" supprimée.
+- `README_USER.md` : doc utilisateur revient à 1 seul calque.
+
+**À investiguer plus tard si critique** : le bug Leaflet du toggle pour les polylines roads (zones et markers OK) reste ouvert. Possibilités à explorer :
+- Recompilation de Leaflet local avec une version différente
+- Pattern dom-to-image pour le rendu vectoriel
+- Décrochage explicite de chaque polyline dans un listener `overlayremove` du calque
+
+**`sw.js`** : `CACHE_NAME` v71 → v72.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 21) — Calque "Mes tracés" séparé pour les roads session
 
 **Problème** : malgré les fixes successifs (suite 18 SVG renderer, suite 20 SVG partagé, suite 17 fallback auto-création), le toggle "Mes annotations" ne masquait toujours pas les roads de session chez l'utilisateur. Les zones, points et tout le reste suivaient bien le toggle, mais les polylines roads échappaient. Bug Leaflet subtil non identifié — probablement lié au mixage canvas/SVG dans un même LayerGroup.

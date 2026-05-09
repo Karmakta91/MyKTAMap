@@ -254,18 +254,6 @@ async function initMapFromConfig() {
     console.warn("[Map] Calque 'editor' absent du plan-config — fallback auto-créé");
   }
 
-  // ⚠️ NOUVEAU CALQUE DEDIE "Mes tracés" pour les roads de session.
-  // Avant cette separation, les roads etaient dans "Mes annotations" avec les
-  // points/zones, mais le toggle off du layerGroup ne propageait pas
-  // systematiquement aux polylines (bug Leaflet observe). En les isolant dans
-  // leur PROPRE LayerGroup, le toggle est fiable. Le calque "traces" n'existe
-  // pas dans plan-config.json (et ne doit pas y exister) — il est purement
-  // runtime, cree systematiquement au boot pour TOUS les plans.
-  const tracesGroup = L.layerGroup();
-  tracesGroup.addTo(map);  // visible par defaut
-  dataLayerGroups.traces = tracesGroup;
-  overlays["Mes tracés"] = tracesGroup;
-
   // Calques image
   const sortedImageLayers = [...(config.imageLayers || [])].sort(function(a, b) {
     return (a.order || 0) - (b.order || 0);
@@ -288,9 +276,6 @@ async function initMapFromConfig() {
   window.layerCarry     = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
   window.layerEditor    = dataLayerGroups.editor;
-  // Calque dedie aux roads de session (separation depuis 09/05/2026 suite 21
-  // pour fiabilite du toggle — voir commentaires plus haut).
-  window.layerTraces    = dataLayerGroups.traces;
 
   console.log("[Map] Carte initialisée");
 }

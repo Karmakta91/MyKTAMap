@@ -231,22 +231,18 @@ function _calculerIntersectionsRoads(roads) {
 // =========================
 // RENDU
 // =========================
-// Cible des polylines roads de session : window.layerTraces (= calque dedie
-// "Mes tracés", separe de "Mes annotations" depuis 09/05/2026 suite 21).
-// Pourquoi un calque distinct ? Quand les roads etaient dans le meme
-// LayerGroup que les markers/zones (window.layerEditor), le toggle off du
-// LayerGroup ne propageait pas systematiquement aux polylines (bug Leaflet
-// observe : zones + markers se masquaient correctement, mais polylines roads
-// restaient visibles). En isolant les roads dans leur propre LayerGroup, le
-// toggle est fiable.
+// Cible des polylines roads de session : window.layerEditor (= calque
+// "Mes annotations").
 // EXCEPTION : le type "itinerary" reste sur window.map direct, car il a son
 // propre cycle de vie (modale Itinéraire / ❌ Effacer / 🔄 Recalculer) et ne
-// doit PAS être masque par le toggle "Mes tracés".
-// Fallback window.layerEditor → window.map si layerTraces pas encore cree
-// (vieux cache SW, init precoce).
+// doit PAS être masque par le toggle.
+// ⚠️ Note : le toggle "Mes annotations" peut ne pas masquer les polylines
+// roads sur certaines configurations (bug Leaflet subtil non identifie au
+// 09/05/2026). Les zones, markers et autres elements suivent bien le toggle.
+// Fallback window.map si layerEditor pas encore cree (init precoce).
 function _targetLayerForRoad(roadType) {
   if (roadType === "itinerary") return window.map;
-  return window.layerTraces || window.layerEditor || window.map;
+  return window.layerEditor || window.map;
 }
 
 function renderRoads() {
@@ -300,10 +296,8 @@ function renderRoads() {
   // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
   // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
   // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
-  // Cercles → layerTraces (meme cible que les polylines roads session) : ils suivent
-  // le toggle "Mes tracés" (cohérent : si on masque les roads, les cercles d'intersection
-  // liés a ces roads doivent disparaitre aussi).
-  const intersectionsTarget = window.layerTraces || window.layerEditor || window.map;
+  // Cercles → layerEditor (meme cible que les polylines roads session).
+  const intersectionsTarget = window.layerEditor || window.map;
   const allRoads = roadsData.concat(_embeddedRoadsVisibles()).filter(r => r.type !== "itinerary");
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {

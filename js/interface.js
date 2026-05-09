@@ -1163,20 +1163,6 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🗂️ Calques d'annotations</div>
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 6px; line-height:1.5;">
-            Dans le contrôle des couches Leaflet (haut-droit de la carte), deux calques regroupent tes annotations de session :
-          </p>
-          <div class="kta-aide-grille">
-            <span class="kta-aide-icone">✏️</span><span><strong>Mes annotations</strong> — points ajoutés via l'éditeur + zones tracées (Eau / Remblais / Effondrement)</span>
-            <span class="kta-aide-icone">🛣️</span><span><strong>Mes tracés</strong> — routes tracées (Principal / Secondaire / Chemin) + cercles d'intersection</span>
-          </div>
-          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            Décocher un calque masque tout son contenu d'un coup. L'<strong>itinéraire</strong>, la <strong>mesure</strong> et le <strong>tracker</strong> restent visibles indépendamment (ils ont leur propre cycle de vie).
-          </p>
-        </div>
-
-        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">📐 Outils de mesure</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📐</span><span>Mesure de distance simple — clic pour poser des points, total affiché en bas-gauche</span>

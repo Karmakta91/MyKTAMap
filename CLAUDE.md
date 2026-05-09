@@ -516,37 +516,28 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 **Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
 
-### 19. Calques d'annotations — "Mes annotations" + "Mes tracés" séparés (depuis 09/05/2026)
+### 19. Calque "Mes annotations" (depuis 09/05/2026)
 
-**Architecture à DEUX calques séparés** dans le contrôle des couches Leaflet :
+Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes annotations"**) regroupe les annotations utilisateur de la session :
+- ✏️ Points ajoutés via l'éditeur
+- ⬛ Zones de session (Eau/Remblais/Effondrement)
+- 🛣️ Roads de session (Principal/Secondaire/Chemin)
+- ⭕ Cercles d'intersection des roads
 
-| Calque | LayerGroup | Contenu |
-|---|---|---|
-| ✏️ **Mes annotations** | `window.layerEditor` (= `dataLayerGroups.editor`) | Points editor + zones session (Eau/Remblais/Effondrement) |
-| 🛣️ **Mes tracés** | `window.layerTraces` (= `dataLayerGroups.traces`) | Roads session (Principal/Secondaire/Chemin) + cercles d'intersection |
-
-**Pourquoi 2 calques distincts ?** Quand les roads étaient dans le même `LayerGroup` que les markers/zones, le toggle off du LayerGroup ne propageait pas systématiquement aux polylines (bug Leaflet observé : zones + markers se masquaient correctement, mais polylines roads restaient visibles). En isolant les roads dans leur propre LayerGroup, le toggle est fiable.
-
-**Exclus des deux calques** (rendus directement sur `window.map` pour cycle de vie propre) :
-- 🗺️ Itinéraire (type road `"itinerary"`) — modale Itinéraire (❌ Effacer / 🔄 Recalculer)
-- 📐 Mesure de distance — mode actif/inactif
-- 🧭 Tracker — Play/Stop explicite
-- Labels `L.control` bottomleft (itinéraire, mesure)
-- Surlignage magenta "Distance totale" (layerGroup parallèle dédié)
+**Exclus du calque** (rendus directement sur `window.map` pour cycle de vie propre) :
+- 🗺️ Itinéraire (type `"itinerary"`) — modale Itinéraire
+- 📐 Mesure / 🧭 Tracker — modes propres
+- Labels `L.control` bottomleft, surlignage magenta "Distance totale"
 
 **Implémentation** :
-- `road.js > _targetLayerForRoad(roadType)` : `window.map` si "itinerary", sinon `window.layerTraces || window.layerEditor || window.map`.
-- `zones.js > _zoneTarget()` : `window.layerEditor || window.map` (zones restent dans Mes annotations).
+- `road.js > _targetLayerForRoad(roadType)` : `window.map` si "itinerary", sinon `window.layerEditor || window.map`.
+- `zones.js > _zoneTarget()` : `window.layerEditor || window.map`.
 - `editor.js > _ajouterMarker` : `addTo(window.layerEditor)`.
-- `map.js > initMapFromConfig` : auto-création du LayerGroup `traces` (toujours, indépendant du plan-config) + auto-création de `editor` si absent du plan-config (fallback pour vieux plans).
+- `map.js > initMapFromConfig` : auto-création de `editor` si absent du plan-config (fallback pour vieux plans).
 
-**Le calque `traces` n'existe PAS dans plan-config.json** — il est purement runtime, créé systématiquement au boot pour TOUS les plans. Pas de migration des plan-configs nécessaire.
+**⚠️ Bug Leaflet observé non résolu** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug. À investiguer plus tard si critique pour un user.
 
-**Label dans le contrôle des couches** :
-- "Mes annotations" : forcé hardcoded pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config).
-- "Mes tracés" : hardcoded dans le code (le calque `traces` n'a pas d'entrée plan-config).
-
-**Pour ajouter un nouveau type d'annotation utilisateur** : choisir le bon calque selon le type d'élément. Markers/polygons → `window.layerEditor`. Polylines/circleMarkers → `window.layerTraces` (à cause du bug Leaflet pour les polylines en layerGroup mixte).
+**Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
