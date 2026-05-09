@@ -243,11 +243,9 @@ async function initMapFromConfig() {
   // ⚠️ Fallback CRITIQUE : si le plan-config n'a pas de calque "editor"
   // (ancien plan genere avant standardisation, ou plan minimal), on en cree
   // un automatiquement. Sans ce fallback, dataLayerGroups.editor serait
-  // undefined → window.layerEditor undefined → road.js et zones.js feraient
-  // addTo(window.map) directement (fallback), donc les routes/zones de session
+  // undefined → window.layerEditor undefined → editor.js et zones.js feraient
+  // addTo(window.map) directement (fallback), donc les points/zones de session
   // seraient sur la map directe et echapperaient au toggle "Mes annotations".
-  // Avec ce fallback, window.layerEditor existe TOUJOURS, et le toggle
-  // englobe toujours points + roads + zones de session.
   if (!dataLayerGroups.editor) {
     const editorGroup = L.layerGroup();
     editorGroup.addTo(map);  // visible par defaut
@@ -255,6 +253,18 @@ async function initMapFromConfig() {
     overlays["Mes annotations"] = editorGroup;
     console.warn("[Map] Calque 'editor' absent du plan-config — fallback auto-créé");
   }
+
+  // ⚠️ NOUVEAU CALQUE DEDIE "Mes tracés" pour les roads de session.
+  // Avant cette separation, les roads etaient dans "Mes annotations" avec les
+  // points/zones, mais le toggle off du layerGroup ne propageait pas
+  // systematiquement aux polylines (bug Leaflet observe). En les isolant dans
+  // leur PROPRE LayerGroup, le toggle est fiable. Le calque "traces" n'existe
+  // pas dans plan-config.json (et ne doit pas y exister) — il est purement
+  // runtime, cree systematiquement au boot pour TOUS les plans.
+  const tracesGroup = L.layerGroup();
+  tracesGroup.addTo(map);  // visible par defaut
+  dataLayerGroups.traces = tracesGroup;
+  overlays["Mes tracés"] = tracesGroup;
 
   // Calques image
   const sortedImageLayers = [...(config.imageLayers || [])].sort(function(a, b) {
@@ -278,6 +288,9 @@ async function initMapFromConfig() {
   window.layerCarry     = dataLayerGroups.carry;
   window.dataLayerGroups = dataLayerGroups;
   window.layerEditor    = dataLayerGroups.editor;
+  // Calque dedie aux roads de session (separation depuis 09/05/2026 suite 21
+  // pour fiabilite du toggle — voir commentaires plus haut).
+  window.layerTraces    = dataLayerGroups.traces;
 
   console.log("[Map] Carte initialisée");
 }

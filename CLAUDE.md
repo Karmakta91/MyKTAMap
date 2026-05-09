@@ -516,31 +516,37 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 
 **Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
 
-### 19. Calque "Mes annotations" — toggle unique pour points + roads + zones session (depuis 09/05/2026)
+### 19. Calques d'annotations — "Mes annotations" + "Mes tracés" séparés (depuis 09/05/2026)
 
-Le calque `editor` dans le contrôle des couches Leaflet (label affiché : **"Mes annotations"**) regroupe TOUTES les annotations utilisateur de la session :
-- ✏️ Points ajoutés via l'éditeur
-- 🛣️ Roads de session (Principal/Secondaire/Chemin) — types non-itinerary
-- ⬛ Zones de session (Eau/Remblais/Effondrement)
-- ⭕ Cercles d'intersection des roads
+**Architecture à DEUX calques séparés** dans le contrôle des couches Leaflet :
 
-**Exclus du calque** (rendus directement sur `window.map` pour éviter d'être affectés par le toggle) :
-- 🗺️ Itinéraire (type road `"itinerary"`) — modale Itinéraire gère son cycle de vie
+| Calque | LayerGroup | Contenu |
+|---|---|---|
+| ✏️ **Mes annotations** | `window.layerEditor` (= `dataLayerGroups.editor`) | Points editor + zones session (Eau/Remblais/Effondrement) |
+| 🛣️ **Mes tracés** | `window.layerTraces` (= `dataLayerGroups.traces`) | Roads session (Principal/Secondaire/Chemin) + cercles d'intersection |
+
+**Pourquoi 2 calques distincts ?** Quand les roads étaient dans le même `LayerGroup` que les markers/zones, le toggle off du LayerGroup ne propageait pas systématiquement aux polylines (bug Leaflet observé : zones + markers se masquaient correctement, mais polylines roads restaient visibles). En isolant les roads dans leur propre LayerGroup, le toggle est fiable.
+
+**Exclus des deux calques** (rendus directement sur `window.map` pour cycle de vie propre) :
+- 🗺️ Itinéraire (type road `"itinerary"`) — modale Itinéraire (❌ Effacer / 🔄 Recalculer)
 - 📐 Mesure de distance — mode actif/inactif
 - 🧭 Tracker — Play/Stop explicite
-- Le label distance itinéraire (`L.control` bottomleft)
-- Le label mesure (`L.control` bottomleft)
-- Le surlignage magenta de "Distance totale" (layerGroup parallèle dédié)
+- Labels `L.control` bottomleft (itinéraire, mesure)
+- Surlignage magenta "Distance totale" (layerGroup parallèle dédié)
 
 **Implémentation** :
-- `road.js > _targetLayerForRoad(roadType)` retourne `window.map` si type "itinerary", `window.layerEditor` sinon. Cercles d'intersection → `window.layerEditor`.
-- `zones.js > _zoneTarget()` retourne `window.layerEditor` (toutes zones de session).
-- Tous les `removeLayer` remplacés par `layer.remove()` (API portable Leaflet — détache le layer où qu'il soit attaché).
-- Fallback `window.map` si `layerEditor` pas encore créé.
+- `road.js > _targetLayerForRoad(roadType)` : `window.map` si "itinerary", sinon `window.layerTraces || window.layerEditor || window.map`.
+- `zones.js > _zoneTarget()` : `window.layerEditor || window.map` (zones restent dans Mes annotations).
+- `editor.js > _ajouterMarker` : `addTo(window.layerEditor)`.
+- `map.js > initMapFromConfig` : auto-création du LayerGroup `traces` (toujours, indépendant du plan-config) + auto-création de `editor` si absent du plan-config (fallback pour vieux plans).
 
-**Pour ajouter un nouveau type d'annotation utilisateur** : suivre le même pattern. Cibler `window.layerEditor || window.map` au lieu de `window.map` direct. Ainsi le toggle unique "Mes annotations" gère automatiquement le nouveau type.
+**Le calque `traces` n'existe PAS dans plan-config.json** — il est purement runtime, créé systématiquement au boot pour TOUS les plans. Pas de migration des plan-configs nécessaire.
 
-**Label dans le contrôle des couches** : vient de `plan-config.json > dataLayers[id="editor"].label`. Default pour les nouveaux plans (via `createConf.js`) : `"Mes annotations"`. Plans existants `"Ajouts"` peuvent rester ou être migrés manuellement.
+**Label dans le contrôle des couches** :
+- "Mes annotations" : forcé hardcoded pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config).
+- "Mes tracés" : hardcoded dans le code (le calque `traces` n'a pas d'entrée plan-config).
+
+**Pour ajouter un nouveau type d'annotation utilisateur** : choisir le bon calque selon le type d'élément. Markers/polygons → `window.layerEditor`. Polylines/circleMarkers → `window.layerTraces` (à cause du bug Leaflet pour les polylines en layerGroup mixte).
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
