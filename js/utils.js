@@ -51,6 +51,24 @@ function getIconUrlForPoint(point) {
 }
 window.getIconUrlForPoint = getIconUrlForPoint;
 
+// =========================
+// FORMAT DE DISTANCE — m / km adaptatif
+// =========================
+// Reçoit une distance en mètres et retourne une string formatée :
+// - < 1000 m → "X.X m" (decimalsM décimales, défaut 1)
+// - ≥ 1000 m → "X.XX km" (toujours 2 décimales, soit ~10 m de précision)
+// Utilisé par les 3 outils de mesure (📐 Mesure simple, 📏 Distance totale,
+// 🗺️ Itinéraire) pour un affichage cohérent et lisible.
+function formatDistance(distM, decimalsM) {
+  if (typeof distM !== "number" || isNaN(distM)) return "—";
+  if (distM >= 1000) {
+    return (distM / 1000).toFixed(2) + " km";
+  }
+  const dec = (typeof decimalsM === "number") ? decimalsM : 1;
+  return distM.toFixed(dec) + " m";
+}
+window.formatDistance = formatDistance;
+
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
   if (Array.isArray(json.editorPoints))  return json.editorPoints;
@@ -96,10 +114,10 @@ function ajouterPointsDepuisJSON(url, layer) {
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
           L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
-          // Enregistrer dans road.js pour que le calcul d'intersection (cercles aux croisements)
-          // tienne compte de cette route, comme s'il s'agissait d'une route éditable
+          // Enregistrer dans road.js avec la référence au layerGroup du calque,
+          // pour que les intersections se filtrent par visibilité (toggle calques).
           if (typeof window.registerEmbeddedRoad === "function") {
-            window.registerEmbeddedRoad(road);
+            window.registerEmbeddedRoad(road, layer);
           }
         });
       }
@@ -373,7 +391,13 @@ async function telechargerPlan() {
     }
 
     // ---------- routes ----------
-    const roads = window.getRoads ? window.getRoads() : [];
+    // ⚠️ On EXCLUT le type "itinerary" : c'est un calcul Pathfinder dérivé du
+    // réseau, pas une vraie route. Sans ce filtre, le fallback "white" plus bas
+    // dessinait l'itinéraire en blanc PAR-DESSUS les routes colorées sous-jacentes,
+    // ce qui les "effaçait" visuellement dans l'export.
+    const roads = (window.getRoads ? window.getRoads() : []).filter(function(r) {
+      return r.type !== "itinerary";
+    });
     const ROAD_STYLES = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },

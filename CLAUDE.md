@@ -47,8 +47,11 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   │                              (idempotency contre fuite après plan switch)
 │   ├── measure.js              ← Mesure de distance
 │   ├── editor.js               ← Ajout de points + EDITOR_TAG_LABELS
-│   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin)
+│   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin/itinerary)
 │   │                              + cercles intersections (chemin>secondaire>principal)
+│   │                              + halo néon SVG sur le type itinerary
+│   ├── pathfinder.js           ← Module Dijkstra + graph builder pour la fonction Itinéraire
+│   │                              (route plus courte sur réseau de polylines)
 │   ├── zones.js                ← Zones polygonales (Eau/Remblais/Effondrement)
 │   ├── searchPoints.js         ← Recherche de points (par nom, id, tag, calque)
 │   ├── tableEditor.js          ← Éditeur JSON en tableau interactif
@@ -372,6 +375,109 @@ Optims user-invisibles pour réduire le risque de crash sur smartphone, **sans a
 - **`_libererRessourcesPlanPrecedent()`** dans `main.js` factorise le cleanup au plan switch : libère les tuiles (overlay + blob URLs), `map.remove()`, **vide explicitement** `collisionCanvas` (width/height à 0 → libération immédiate des pixels, jusqu'à 64 MB sur plans 4K) puis nullifie ses refs, `resetRuntimeAssets`, reset des flags d'init.
 - **Listeners device idempotents** : `tracking.js` utilise `_orientationListenerAttached`/`_motionListenerAttached` pour empêcher la duplication des handlers `deviceorientation`/`devicemotion` après plan switch + nouveau Play.
 - **SessionPersist throttle adaptatif** : `save()` mesure le main thread via micro-bench. Si busy → skip (max 6 skips consécutifs ≈ 9s avant force). `beforeunload`/`visibilitychange` appellent `save({force:true})` pour ne jamais perdre les dernières modifs.
+
+### 14. Itinéraire / Pathfinding (`pathfinder.js` + `interface.js`, depuis 09/05/2026)
+
+Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de polylines existantes (session `getRoads()` + calques `getEmbeddedRoads()`).
+
+**Algorithme** (`js/pathfinder.js`, module IIFE) :
+1. **Construction du graphe** (`_buildGraph`) — chaque point d'une polyline = nœud, connecté à son voisin par une arête euclidienne. Spatial-bucketing 1.5 px pour fusionner les points coïncidents.
+2. **Enrichissement** (`_enrichirGrapheAvecCroisements`) — gère 3 cas de jonction entre polylines distinctes :
+   - Croisement strict segment-segment (intersection paramétrique)
+   - T-junction (extrémité d'un segment à ≤ 15 px de l'intérieur d'un autre, avec projection orthogonale)
+   - Endpoint↔endpoint (2 extrémités distinctes à 1.5 < d < 15 px)
+   → ajout de nœuds virtuels et arêtes ad-hoc. Sans ça, les roads tracés à la main qui se croisent sans partager de point exact restent dans des composantes graphe disjointes.
+3. **Snap des waypoints** (`_insertVirtualNode`) — projection orthogonale du waypoint sur le segment le plus proche, insertion d'un nœud virtuel à la projection (split du segment d'origine).
+4. **Dijkstra** entre paires consécutives, concaténation des chemins.
+
+**API publique** :
+- `Pathfinder.computeRoute(waypoints, opts)` → `{ path, totalDistance (px), segmentCount, snappedPoints }`. Throw avec message lisible si waypoints insuffisants, graphe vide, ou pair de waypoints isolée dans une composante.
+- `SearchPoints.getAllPoints()` / `findByQuery(q)` (ajoutées dans `searchPoints.js`) — utilisées par la modale itinéraire pour l'autocomplete.
+
+**UI** (modale `kta-itinerary-modal` dans `interface.js`) :
+- Entrée : sous-action **🗺️ Calculer un itinéraire** dans le groupe Tracker (cohérent avec ▶️ tracking + 📍 recalage).
+- 2 modes selon état :
+  - **Calcul** (pas d'itinéraire actif) : input recherche autocomplete + toggle mode clic carte (avec floater compact en bas pour ne pas bloquer la carte) + liste de waypoints avec ✕ par ligne + bouton 🎯 Calculer.
+  - **Navigation** (itinéraire actif détecté) : titre "Itinéraire actif", quick-nav `⏮️ Début / ⏭️ Fin / 🔁 Tour complet`, liste des waypoints avec 🎯 (pan + flash style search) et ✕, boutons 🔄 Recalculer / ❌ Effacer.
+
+**Persistance des waypoints** : la road de type `"itinerary"` porte une propriété `waypoints: [{x, y, label, source}, ...]` en plus de `points`. SessionPersist sauve la road comme n'importe quelle autre, donc les waypoints survivent au reload du plan. Au reopen de la modale, on bascule en mode navigation si `road.waypoints` est présent.
+
+**Style du tracé** :
+- `road.js > ROAD_STYLES.itinerary` : cyan `#00d4ff`, weight 7, dashArray "12 6", opacity 0.9.
+- `renderer: L.svg()` forcé sur la polyline (sinon canvas → pas de filter CSS).
+- CSS `.kta-itinerary-polyline` : `filter: drop-shadow(...)` × 2 → effet halo néon cyan.
+- Filtré du calcul des cercles d'intersection (`renderRoads`) pour éviter les cercles redondants.
+
+**Label de distance** : `L.control` au coin `bottomleft` (`.kta-iti-distance`, fond `#1a1f2e` + accent cyan), s'affiche dès qu'une road de type `"itinerary"` existe, masqué sinon. Empilé au-dessus du label measure naturellement (Leaflet stack DOM order).
+
+**Helper `_majLabelDistanceItineraire`** exposé sur `window`, appelé après chaque setRoads (save/discard/erase) et après `lancerApplication` pour gérer le restore session.
+
+**Sémantique** : un seul itinéraire actif à la fois. Recalculer remplace le précédent (filter sur `r.type !== "itinerary"`). Effacer le retire. Switch de plan le perd (reset normal de la session).
+
+### 15. Distance totale des tracés (`interface.js`, depuis 2026-05-09)
+
+Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents (session `getRoads()` + calques `getEmbeddedRoads()` visibles), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
+
+**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **🛣️ Tracés / Routes** (`interface.js > _creerGroupeAccordeon({id:"traces"})`). Toggle ON/OFF — re-cliquer ferme la modale.
+
+**Modale plein écran** (`#kta-rd-modal`, shell `.kta-readme-modal-overlay` + `.kta-rd-modal-boite`) — pattern identique aux autres modales du projet (itinéraire, légende, config) :
+- Boîte centrée 480px max, `max-height: 90vh`.
+- Header : titre "📏 Distance totale des tracés" + ✕.
+- Corps :
+  - Phrase d'aide (avec mention "magenta" colorée et explication de la persistance après fermeture).
+  - 3 lignes checkbox stylées en boîtes (`background: rgba(...,0.03)`, hover magenta) avec swatch coloré + label + compteur live `nb — distM m`.
+  - Bloc total mis en avant (fond magenta 6%, bordure 22%), valeur 20px gras `#ff4ecb`.
+- Footer actions :
+  - `❌ Effacer le surlignage` (`.kta-btn-danger`) — retire le highlight ET ferme.
+  - `✓ Fermer (garder le surlignage)` (`.kta-btn-primary`) — ferme uniquement la modale.
+- Toggle checkbox → `_rdRedessinerHighlight()` + `_rdRafraichirAffichage()` instantané.
+
+**Sémantique de persistance** :
+- ✕ / clic backdrop / ✓ Fermer → ferme la modale, **garde le surlignage actif sur la carte**. L'utilisateur peut explorer la carte avec les tronçons toujours surlignés.
+- Re-clic 📏 → rouvre la modale en restaurant les filtres précédents (détecté via `_rdHighlightLayer !== null`). Si pas de surlignage actif, reset à "tous cochés".
+- ❌ Effacer → retire le surlignage ET ferme la modale.
+- Plan switch → cleanup automatique via `main.js > _libererRessourcesPlanPrecedent()`.
+
+### 16. Format de distance unifié m / km (depuis 09/05/2026)
+
+Les 3 outils de mesure (📐 Mesure simple, 📏 Distance totale, 🗺️ Itinéraire) utilisent un seul helper `window.formatDistance(distM, decimalsM)` (dans `utils.js`) qui bascule automatiquement en kilomètres au-delà de 1000 m :
+- `< 1000 m` → `"123.4 m"` (decimalsM décimales, défaut 1)
+- `≥ 1000 m` → `"1.23 km"` (toujours 2 décimales en km, ~10 m de précision)
+
+**Pour ajouter un nouvel affichage de distance** (ex : nouvel export, nouvelle modale) : NE PAS coder `distM.toFixed(N) + " m"` à la main. Utiliser `window.formatDistance(distM, N)` pour profiter automatiquement de la conversion km. Le grep `toFixed.*"\\s*m"` doit rester vide dans le repo.
+
+**⚠️ Piège noms de fonctions top-level** (lié au bug suite 9 du 09/05/2026) :
+
+Dans un script chargé via `<script src="...">` (pas un module ES), une `function FOO()` au top-level devient implicitement `window.FOO`. Si plus bas dans le même fichier on fait `window.FOO = function() { ...; FOO(); }`, le wrapper export ÉCRASE la fonction privée et toute auto-référence boucle sur lui-même → récursion infinie silencieuse → l'app fait... rien.
+
+**Convention** : pour les modules avec un export `window.foo = function()` ET un cleanup interne du même nom, préfixer la version privée par `_internalFoo` ou `_privFoo`. Voir `interface.js > _rdInternalEffacerHighlight()` qui est l'implémentation réelle, et `window._rdEffacerHighlight` qui est juste le wrapper exposé pour main.js (plan switch).
+
+**Highlight magenta** :
+- `L.layerGroup` dédié `_rdHighlightLayer` (créé à l'ouverture, purgé à la fermeture / plan switch).
+- ⚠️ **Perf critique** : UNE SEULE `L.polyline` avec un array d'arrays `[[seg1latlngs], [seg2latlngs], ...]` qui rend tous les segments dans UN SEUL `<path>` SVG. Si on créait N polylines avec chacune un `filter: drop-shadow`, le compositing GPU explose dès ~10 routes sur mobile (kill iOS Safari). Le format multi-segments natif Leaflet permet 1 seul élément DOM = 1 seul drop-shadow appliqué = coût ~constant.
+- `weight: 9, opacity: 0.85, color: "#ff4ecb"`, renderer `L.svg()` forcé pour permettre le `drop-shadow` CSS (preferCanvas = true par défaut).
+- Classe CSS `.kta-rd-highlight-polyline` : `filter: drop-shadow(0 0 4px ...) drop-shadow(0 0 10px ...)` magenta.
+- `pointer-events: none` → ne bloque pas les clics natifs sur la carte.
+
+**Calcul** :
+- `_rdRoadsExploitables()` retourne `session + embeddedVisibles` filtré sur types `principal/secondaire/chemin` (exclut explicitement `itinerary` pour éviter le double-comptage).
+- `_rdLongueurPx(road)` : somme euclidienne des distances entre points consécutifs.
+- `_rdCalculerBreakdown()` : convertit en mètres via `APP_CONFIG.scale` (px/m) et retourne `{principal:{nb,distM}, secondaire:{...}, chemin:{...}, totalM}`.
+
+**Hooks de rafraîchissement live** :
+- `road.js > renderRoads()` appelle `window._rdOnRoadsChanged()` à la fin → si le panneau est ouvert, le surlignage et les compteurs sont mis à jour automatiquement (utilisateur trace une nouvelle road, efface une road, etc.).
+- `overlayadd/overlayremove` (toggle calque) déclenche `renderRoads` (listener déjà en place dans `initRoad`), donc le panneau suit aussi.
+
+**Cleanup au plan switch** : `main.js > _libererRessourcesPlanPrecedent()` appelle `window._rdEffacerHighlight()` AVANT `map.remove()` pour éviter qu'un layer détaché flotte ou que le panneau se superpose au splash.
+
+**Pas dans la légende des exports PNG** : la fonctionnalité est purement runtime (panneau + surlignage). Aucun changement à `exporter.js / utils.js > telechargerPlan`. Les magenta polylines ne sont pas dessinées dans le canvas d'export car pas dans `roadsData` ni dans `getEmbeddedRoads()` (c'est un layerGroup parallèle dédié).
+
+**API exposée** :
+- `window.ouvrirRoadsDistanceFloater()` — toggle ouverture/fermeture du panneau
+- `window._rdEffacerHighlight()` — cleanup forcé (utilisé par main.js au plan switch)
+- `window._rdOnRoadsChanged()` — hook appelé par road.js > renderRoads
+
+---
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

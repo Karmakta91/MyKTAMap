@@ -305,7 +305,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Tracker** | 🧭 | Démarrer / arrêter le tracking, recaler ta position |
 | **Mesure** | 📐 | Mesurer une distance, effacer |
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
-| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins |
+| **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
@@ -420,6 +420,33 @@ Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latéral
 - **Cooldown (ms)** : délai minimum entre deux pas
 - **Position initiale X / Y** : point de départ de l'icône au chargement
 
+### 🗺️ Calculer un itinéraire
+
+Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéraire. Elle calcule le **chemin le plus court** entre 2 ou plusieurs points en empruntant les **routes existantes** du plan (à la fois celles que vous avez tracées et celles présentes dans les calques de données).
+
+**Pour tracer un itinéraire :**
+
+1. Ouvrez la modale **🗺️ Calculer un itinéraire**
+2. Choisissez vos **points de passage** de 2 façons (combinables) :
+   - **📍 Mode clic carte** : la modale se réduit à un mini-bandeau "Mode clic actif", cliquez sur la carte pour poser chaque waypoint (markers cyan numérotés). Bouton **✓ Terminer** pour revenir à la modale.
+   - **🔍 Recherche** : tapez le nom, l'id ou un tag d'un point existant ; cliquez dans la liste de suggestions pour l'ajouter.
+3. Vous pouvez **retirer** un waypoint avec le bouton ✕ à droite de chaque ligne.
+4. Cliquez **🎯 Calculer l'itinéraire** : un tracé **cyan néon** apparaît, l'app vous indique la **distance totale en mètres** et le nombre de tronçons traversés.
+5. **💾 Enregistrer** garde l'itinéraire dans la session, **❌ Effacer** le retire.
+
+**Étiquette de distance** : tant qu'un itinéraire est actif, un petit label **🗺️ Itinéraire : XX m** s'affiche en bas à gauche de la carte, juste au-dessus du label de mesure de distance classique.
+
+**Mode navigation** — quand un itinéraire est déjà actif et que vous rouvrez **🗺️ Calculer un itinéraire**, la modale bascule en **mode navigation** :
+
+- Boutons rapides **⏮️ Début** (centre la carte sur le 1er waypoint avec un cercle cyan flash), **⏭️ Fin** (idem pour le dernier), **🔁 Tour complet** (zoom pour voir tout le tracé).
+- Bouton **🎯** sur chaque waypoint pour aller le voir directement.
+- **🔄 Recalculer** repasse en mode édition (les waypoints sont conservés, vous pouvez les retoucher).
+- **❌ Effacer l'itinéraire** retire complètement le tracé.
+
+**Tolérance** : l'algorithme accepte que vos points de départ ou d'arrivée soient un peu **à côté** des routes — il les snappe automatiquement sur le réseau le plus proche. Si plusieurs roads se croisent visuellement mais sans partager exactement un même point (cas typique d'un tracé fait à la main), l'app gère aussi les **jonctions à 15 px près** pour tracer le chemin sans coupure.
+
+> 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
+
 ---
 
 ## 📐 Mesure de distance
@@ -499,6 +526,24 @@ Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux op
 - **🟨 Chemin** — jaune
 
 Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
+
+### 📏 Distance totale des tracés
+
+Le bouton **📏 Distance totale** dans le groupe **🛣️ Tracés** ouvre une fenêtre qui calcule la **somme des longueurs** de tous vos tracés visibles, avec un filtre par type.
+
+**Comment ça marche :**
+
+1. Appuyez sur **📏** — la fenêtre s'ouvre avec 3 cases cochées (Principal, Secondaire, Chemin)
+2. Décochez les types que vous voulez exclure du calcul
+3. Le **total en mètres** se met à jour instantanément, et les tracés inclus sont **surlignés en magenta** sur la carte (halo lumineux pour bien les voir)
+4. Pour chaque type, la fenêtre affiche le **nombre de tracés** et leur **longueur cumulée**
+5. Deux options de sortie :
+   - **✓ Fermer (garder le surlignage)** — la fenêtre se ferme mais le **surlignage magenta reste affiché** sur la carte. Vous pouvez explorer la carte avec les tronçons toujours visibles, et re-cliquer **📏** pour rouvrir la fenêtre (les filtres précédents sont conservés).
+   - **❌ Effacer le surlignage** — retire le halo magenta de la carte ET ferme la fenêtre.
+
+> 💡 Le calcul inclut **toutes** les routes visibles : celles que vous avez tracées dans la session ET celles présentes dans les **calques de données** activés. Si vous masquez un calque dans le contrôle des couches, ses routes sortent automatiquement du calcul.
+>
+> ℹ️ Cette mesure est **uniquement à l'écran** — elle n'apparaît pas dans la légende de l'export image PNG.
 
 ### 🧹 Effacer un tracé
 

@@ -2884,3 +2884,485 @@ html, body {
   from { opacity: 1; transform: translate(-50%, 0); }
   to   { opacity: 0; transform: translate(-50%, -10px); }
 }
+
+/* ══════════════════════════════════════════════
+   ITINÉRAIRE — modale + waypoints
+   ══════════════════════════════════════════════ */
+.kta-iti-modal-boite {
+  max-width: 540px;
+}
+
+.kta-iti-corps {
+  padding: 18px 22px;
+}
+
+.kta-iti-section {
+  margin-bottom: 18px;
+}
+
+.kta-iti-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8cb4ff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 10px;
+}
+
+.kta-iti-help {
+  font-size: 12px;
+  color: #8892a4;
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.kta-iti-mode-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.kta-iti-waypoints-list {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 8px 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+
+.kta-iti-empty {
+  font-style: italic;
+  color: #6c7689;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.kta-iti-wp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.kta-iti-wp-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #00d4ff;
+  color: #0a0d18;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.kta-iti-wp-coord {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #8892a4;
+}
+
+.kta-iti-result {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(0, 212, 255, 0.08);
+  border-left: 3px solid #00d4ff;
+  border-radius: 6px;
+}
+
+.kta-iti-result-row {
+  font-size: 13px;
+  color: #e8eaf0;
+  line-height: 1.6;
+}
+
+.kta-iti-result-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.kta-iti-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 107, 107, 0.08);
+  border-left: 3px solid #ff6b6b;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #ffb3b3;
+}
+
+/* Marker numéroté placé sur la carte pour chaque waypoint */
+.kta-itinerary-waypoint {
+  background: transparent;
+  border: none;
+}
+
+.kta-iti-num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #00d4ff;
+  color: #0a0d18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  border: 2px solid #1a1f2e;
+  box-shadow: 0 2px 8px rgba(0, 212, 255, 0.5);
+}
+
+/* Floater itinéraire — mini-panneau pendant le mode clic carte */
+.kta-iti-floater {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid #00d4ff;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 100000;
+  font-size: 13px;
+  color: #c8d0e0;
+  max-width: calc(100vw - 24px);
+}
+
+.kta-iti-floater-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.kta-iti-floater-msg {
+  flex: 1;
+  white-space: nowrap;
+  color: #e8eaf0;
+}
+
+.kta-iti-floater-msg strong {
+  color: #00d4ff;
+}
+
+.kta-iti-floater .kta-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+/* Itinéraire — recherche autocomplete pour ajouter un point existant */
+.kta-iti-search-wrap {
+  position: relative;
+  margin: 10px 0 0;
+}
+
+#kta-iti-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 13px;
+}
+
+.kta-iti-search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #232838;
+  border: 1px solid rgba(140,180,255,0.35);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  z-index: 100002;  /* au-dessus de la modale */
+  display: none;
+}
+
+.kta-iti-search-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.12s;
+}
+
+.kta-iti-search-item:last-child {
+  border-bottom: none;
+}
+
+.kta-iti-search-item:hover {
+  background: rgba(140,180,255,0.12);
+}
+
+.kta-iti-search-name {
+  font-size: 13px;
+  color: #e8eaf0;
+  font-weight: 500;
+}
+
+.kta-iti-search-meta {
+  font-size: 11px;
+  color: #8892a4;
+  margin-top: 2px;
+}
+
+.kta-iti-search-empty,
+.kta-iti-search-more {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  text-align: center;
+}
+
+/* Bouton retirer dans la liste de waypoints */
+.kta-iti-wp-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.kta-iti-wp-coord {
+  flex: 1;
+  font-size: 12px;
+  color: #c8d0e0;
+  word-break: break-word;
+}
+
+.kta-iti-wp-remove {
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid rgba(255,107,107,0.35);
+  color: #ff8c8c;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+
+.kta-iti-wp-remove:hover {
+  background: rgba(255,107,107,0.12);
+  color: #ff6b6b;
+}
+
+.kta-iti-wp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+/* Itinéraire — halo néon sur le tracé (renderer SVG forcé) */
+.kta-itinerary-polyline {
+  filter: drop-shadow(0 0 4px rgba(0, 212, 255, 0.9))
+          drop-shadow(0 0 10px rgba(0, 212, 255, 0.5));
+  pointer-events: none;
+}
+
+/* Label distance itinéraire — fixe en bas-gauche, juste AU-DESSUS du label
+   measure (Distance: ...). Sur Leaflet, l'ordre d'ajout au coin bottomleft
+   place le dernier ajouté au-dessus visuellement. Le label itinéraire a
+   donc juste à être un L.control bottomleft pour s'empiler correctement. */
+.kta-iti-distance {
+  background: #1a1f2e !important;
+  color: #00d4ff !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(0, 212, 255, 0.4) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  letter-spacing: 0.02em;
+}
+
+.kta-iti-distance .kta-iti-distance-icon {
+  margin-right: 6px;
+}
+
+/* Bouton "aller à" sur chaque waypoint dans la liste */
+.kta-iti-wp-goto {
+  flex-shrink: 0;
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 4px;
+  transition: background 0.12s;
+}
+
+.kta-iti-wp-goto:hover {
+  background: rgba(0, 212, 255, 0.25);
+}
+
+/* Quick-nav bar (Début / Fin / etc.) en haut de la liste de waypoints en mode navigation */
+.kta-iti-quicknav {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.kta-iti-quicknav .kta-btn {
+  flex: 1;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* Label de mesure de distance — même charte que .kta-iti-distance pour
+   cohérence visuelle (les 2 labels sont empilés en bas-gauche). Accent
+   jaune charte au lieu du cyan (qui est réservé à l'itinéraire). */
+.kta-measure-distance {
+  background: #1a1f2e !important;
+  color: #f4c542 !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(244, 197, 66, 0.4) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  letter-spacing: 0.02em;
+}
+
+.kta-measure-distance .kta-measure-distance-icon {
+  margin-right: 6px;
+}
+
+/* =========================
+   DISTANCE TOTALE DES TRACÉS — modale plein écran + halo magenta
+   ========================= */
+
+/* Boîte de la modale : largeur conservée modeste pour ne pas étirer le panneau
+   sur grand écran. Le shell vient de .kta-readme-modal-* (overlay full screen,
+   centrage, fade-in, etc.) — seul le contenu interne est customisé ici. */
+.kta-rd-modal-boite {
+  max-width: 480px;
+  height: auto;
+  max-height: 90vh;
+}
+
+.kta-rd-help {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.kta-rd-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.kta-rd-row:hover {
+  background: rgba(255, 78, 203, 0.06);
+  border-color: rgba(255, 78, 203, 0.18);
+}
+
+.kta-rd-row input[type="checkbox"] {
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #ff4ecb;
+  width: 16px;
+  height: 16px;
+}
+
+.kta-rd-swatch {
+  flex-shrink: 0;
+  width: 22px;
+  height: 5px;
+  border-radius: 2px;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+}
+
+.kta-rd-label {
+  flex: 1;
+  color: #e8eaf0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.kta-rd-count {
+  flex-shrink: 0;
+  color: #8892a4;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.kta-rd-total-wrap {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 78, 203, 0.06);
+  border: 1px solid rgba(255, 78, 203, 0.22);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kta-rd-total-label {
+  font-weight: 600;
+  color: #e8eaf0;
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.kta-rd-total-value {
+  font-weight: 700;
+  color: #ff4ecb;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* Footer actions : ❌ Effacer / ✓ Fermer en bas de la modale */
+.kta-rd-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kta-rd-actions .kta-btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* Polyline de surlignage : halo magenta (renderer SVG forcé), au-dessus
+   des routes natives mais sous les markers et l'itinéraire cyan. */
+.kta-rd-highlight-polyline {
+  filter: drop-shadow(0 0 4px rgba(255, 78, 203, 0.9))
+          drop-shadow(0 0 10px rgba(255, 78, 203, 0.5));
+  pointer-events: none;
+}

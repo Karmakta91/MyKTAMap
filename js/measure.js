@@ -89,14 +89,13 @@ function afficherDistance(d) {
     }
     window.measureLabel = L.control({ position: 'bottomleft' });
 
+    // Charte alignée avec le label itinéraire (.kta-iti-distance) — fond
+    // #1a1f2e, accent jaune charte, bordure subtile + shadow standard. Le
+    // styling complet vit dans css/style.css (.kta-measure-distance).
     window.measureLabel.onAdd = function() {
-      const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+      const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control kta-measure-distance');
       div.id = "measureLabel";
-      div.style.background = "rgba(0,0,0,0.8)";
-      div.style.color = "white";
-      div.style.padding = "8px";
-      div.style.fontSize = "16px";
-      div.innerHTML = "Distance : 0 m";
+      div.innerHTML = '<span class="kta-measure-distance-icon">📐</span>Distance : 0 m';
       return div;
     };
 
@@ -105,7 +104,7 @@ function afficherDistance(d) {
 
   const label = document.getElementById("measureLabel");
   if (label) {
-    label.innerHTML = "Distance : " + d.toFixed(2) + " m";
+    label.innerHTML = '<span class="kta-measure-distance-icon">📐</span>Distance : ' + window.formatDistance(d, 2);
   }
 }
 

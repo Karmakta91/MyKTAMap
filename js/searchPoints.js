@@ -247,6 +247,32 @@
     _afficherModal();
   };
 
+  // API utilitaire exposée pour les autres modules (Pathfinder par ex.) qui
+  // veulent énumérer tous les points (data layers + editor) sans ouvrir la
+  // modale de recherche. Async car le 1er appel charge le cache des data
+  // layers depuis fetch().
+  window.SearchPoints = {
+    getAllPoints: async function() {
+      try { await _chargerCache(); }
+      catch(e) { console.warn("[SearchPoints.getAllPoints] cache load failed :", e); }
+      return _tousLesPoints();
+    },
+    // Recherche substring case-insensitive sur nom + id + tags. Utile pour
+    // l'autocomplete dans la modale itinéraire.
+    findByQuery: async function(query) {
+      const q = _normalize(query || "");
+      if (!q) return [];
+      const all = await window.SearchPoints.getAllPoints();
+      return all.filter(function(it) {
+        const p = it.point;
+        if (_normalize(p.nom) .indexOf(q) >= 0) return true;
+        if (_normalize(p.id)  .indexOf(q) >= 0) return true;
+        if (Array.isArray(p.tags) && p.tags.some(function(t) { return _normalize(t).indexOf(q) >= 0; })) return true;
+        return false;
+      });
+    }
+  };
+
   // ========== FILTRES — DONNÉES DISPO ==========
   // Calques présents dans les points (data + editor)
   function _availableLayers() {

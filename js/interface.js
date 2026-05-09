@@ -1151,17 +1151,31 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking</span>
-            <span class="kta-aide-icone">📍</span><span>Mode recalage de position</span>
+            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
+            <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker</span>
           </div>
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📐 Mesure</div>
+          <div class="kta-aide-section-titre">📐 Outils de mesure</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📐</span><span>Activer la mesure de distance</span>
-            <span class="kta-aide-icone">❌</span><span>Effacer (dernier point ou toute la mesure)</span>
+            <span class="kta-aide-icone">📐</span><span>Mesure de distance simple — clic pour poser des points, total affiché en bas-gauche</span>
+            <span class="kta-aide-icone">📏</span><span>Distance totale des tracés — sous-action du groupe Tracés, panneau flottant avec filtres par type</span>
+            <span class="kta-aide-icone">🗺️</span><span>Itinéraire — chemin le plus court entre 2 points ou plus en suivant les routes existantes</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📏 Distance totale :</strong> ouvre un petit panneau bas-droite avec 3 cases à cocher
+            (Principal / Secondaire / Chemin). Le total des longueurs des tracés cochés est affiché en mètres,
+            et les tronçons inclus sont surlignés en magenta sur la carte. Inclut aussi les routes des calques
+            de données visibles. <strong>Pas exporté dans la légende des images PNG.</strong>
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte ou recherche par nom/id/tag),
+            l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données).
+            Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
+            <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
+            <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1178,6 +1192,7 @@ function afficherAide() {
             <span class="kta-aide-icone">🟩</span><span>Tracer une route principale</span>
             <span class="kta-aide-icone">🟪</span><span>Tracer une route secondaire</span>
             <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
+            <span class="kta-aide-icone">📏</span><span>Distance totale des tracés (panneau flottant avec filtres par type)</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernier tracé ou tous)</span>
           </div>
         </div>
@@ -2040,6 +2055,15 @@ function initInterface() {
           };
           _setGroupeModeActif("tracker", true, "📍");
         }
+      },
+      {
+        icone: "🗺️",
+        titre: "Calculer un itinéraire",
+        onClick: function() {
+          if (typeof window.ouvrirItinerairModal === "function") {
+            window.ouvrirItinerairModal();
+          }
+        }
       }
     ]
   });
@@ -2192,6 +2216,13 @@ function initInterface() {
         onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
       { icone: "🟨", titre: "Chemin",
         onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } },
+      { icone: "📏", titre: "Distance totale (filtres)",
+        onClick: function() {
+          if (typeof window.ouvrirRoadsDistanceFloater === "function") {
+            window.ouvrirRoadsDistanceFloater();
+          }
+        }
+      },
       { icone: "🧹", titre: "Effacer",
         onClick: function() {
           const roads = window.getRoads ? window.getRoads() : [];
@@ -2296,6 +2327,847 @@ function initInterface() {
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 }
+
+// =========================
+// ITINÉRAIRE — modale + mode clic + rendu du tracé calculé
+// =========================
+function _escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}
+
+// =========================
+// PAN + FLASH (style searchPoints) — pour les boutons "aller à" sur les waypoints
+// =========================
+let _itiFlashLayer = null;
+function _panEtFlashSurPoint(p) {
+  if (!window.map || !window.APP_CONFIG) return;
+  const latlng = convertCoord(p.x, p.y);
+  window.map.setView(latlng, window.map.getZoom(), { animate: false });
+  window.map.invalidateSize();
+
+  if (_itiFlashLayer) {
+    try { window.map.removeLayer(_itiFlashLayer); } catch(e) {}
+    _itiFlashLayer = null;
+  }
+  _itiFlashLayer = L.circleMarker(latlng, {
+    radius:      24,
+    color:       "#00d4ff",
+    fillColor:   "#00d4ff",
+    fillOpacity: 0,
+    weight:      3,
+    opacity:     0.9,
+    interactive: false
+  }).addTo(window.map);
+  setTimeout(function() {
+    if (_itiFlashLayer) {
+      try { window.map.removeLayer(_itiFlashLayer); } catch(e) {}
+      _itiFlashLayer = null;
+    }
+  }, 3000);
+}
+
+// =========================
+// LABEL DISTANCE ITINÉRAIRE — au-dessus du label measure (bottomleft)
+// =========================
+let _itiDistanceCtrl = null;
+
+function _afficherLabelDistanceItineraire(distanceM) {
+  if (!window.map) return;
+  // Détection d'un contrôle "détaché" : après un plan switch, map.remove()
+  // a été appelé et le contrôle n'est plus rattaché à la map. _itiDistanceCtrl._map
+  // devient null/undefined → on doit re-créer le contrôle, pas réutiliser l'ancien.
+  if (!_itiDistanceCtrl || !_itiDistanceCtrl._map) {
+    _itiDistanceCtrl = L.control({ position: "bottomleft" });
+    _itiDistanceCtrl.onAdd = function() {
+      const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
+      div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>Itinéraire : 0 m';
+      return div;
+    };
+    _itiDistanceCtrl.addTo(window.map);
+  }
+  const el = document.querySelector(".kta-iti-distance");
+  if (el) {
+    el.style.display = "block";
+    el.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>Itinéraire : ' + window.formatDistance(distanceM, 1);
+  }
+}
+
+function _masquerLabelDistanceItineraire() {
+  const el = document.querySelector(".kta-iti-distance");
+  if (el) el.style.display = "none";
+}
+
+// Recalcule la distance d'un tracé itinerary à partir de ses points (en pixels
+// plan) et la convertit en mètres via APP_CONFIG.scale (px/m).
+function _distanceItineraireMeters(road) {
+  if (!road || !Array.isArray(road.points) || road.points.length < 2) return 0;
+  let totalPx = 0;
+  for (let i = 1; i < road.points.length; i++) {
+    const a = road.points[i - 1];
+    const b = road.points[i];
+    totalPx += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
+  return totalPx / scale;
+}
+
+// Met à jour le label de distance en fonction de l'état actuel des roads.
+// À appeler après chaque setRoads / save / discard / plan switch / session restore.
+function _majLabelDistanceItineraire() {
+  if (!window.getRoads || !window.map) return;
+  const itineraryRoad = window.getRoads().find(function(r) { return r.type === "itinerary"; });
+  if (itineraryRoad) {
+    _afficherLabelDistanceItineraire(_distanceItineraireMeters(itineraryRoad));
+  } else {
+    _masquerLabelDistanceItineraire();
+  }
+}
+// Exposé globalement pour que main.js puisse appeler après lancerApplication
+window._majLabelDistanceItineraire = _majLabelDistanceItineraire;
+
+let _itineraryWaypoints   = [];
+let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers numérotés
+let _itineraryClickActive = false;
+let _itineraryClickHandler = null;
+
+function _ajouterWaypointVisuel(p, num) {
+  if (!window.map) return;
+  // Idem _afficherLabelDistanceItineraire : si l'ancien layerGroup a été détaché
+  // par un plan switch (map.remove() précédent), on doit le recréer avant
+  // d'ajouter des markers — sinon ils sont attachés à un layer mort qui
+  // n'apparaîtra jamais sur la nouvelle map.
+  if (!_itineraryMarkerLayer || !_itineraryMarkerLayer._map) {
+    _itineraryMarkerLayer = L.layerGroup().addTo(window.map);
+  }
+  const icon = L.divIcon({
+    className: "kta-itinerary-waypoint",
+    html: '<div class="kta-iti-num">' + num + '</div>',
+    iconSize:  [28, 28],
+    iconAnchor: [14, 14]
+  });
+  const m = L.marker(convertCoord(p.x, p.y), { icon: icon, interactive: false })
+              .addTo(_itineraryMarkerLayer);
+  return m;
+}
+
+function _redessinerWaypoints() {
+  if (_itineraryMarkerLayer) {
+    _itineraryMarkerLayer.clearLayers();
+  }
+  _itineraryWaypoints.forEach(function(p, i) {
+    _ajouterWaypointVisuel(p, i + 1);
+  });
+  _rafraichirListeWaypointsModale();
+}
+
+function _rafraichirListeWaypointsModale() {
+  const cont = document.getElementById("kta-iti-waypoints-list");
+  if (!cont) return;
+  if (_itineraryWaypoints.length === 0) {
+    cont.innerHTML = '<div class="kta-iti-empty">Aucun waypoint — clique sur la carte ou sélectionne un point ci-dessus</div>';
+    return;
+  }
+  cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
+    const label = p.label || ("x:" + Math.round(p.x) + " y:" + Math.round(p.y));
+    const sourceIcon = p.source === "search" ? "🎯" : "📍";
+    return '<div class="kta-iti-wp-row">' +
+             '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
+             '<span class="kta-iti-wp-icon" title="' + (p.source === "search" ? "Point existant" : "Clic carte") + '">' + sourceIcon + '</span>' +
+             '<span class="kta-iti-wp-coord">' + _escapeHtml(label) + '</span>' +
+             '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="Aller à ce waypoint">🎯</button>' +
+             '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="Retirer ce waypoint">✕</button>' +
+           '</div>';
+  }).join("");
+  // Wire-up des boutons retirer
+  Array.from(cont.querySelectorAll(".kta-iti-wp-remove")).forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (idx >= 0 && idx < _itineraryWaypoints.length) {
+        _itineraryWaypoints.splice(idx, 1);
+        _redessinerWaypoints();
+        _majPanneauFloaterCount();
+      }
+    });
+  });
+  // Wire-up des boutons "aller à"
+  Array.from(cont.querySelectorAll(".kta-iti-wp-goto")).forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const idx = parseInt(btn.dataset.idx, 10);
+      if (idx >= 0 && idx < _itineraryWaypoints.length) {
+        const p = _itineraryWaypoints[idx];
+        // Ferme la modale pour laisser voir la map (comportement style search)
+        const modal = document.getElementById("kta-itinerary-modal");
+        if (modal) modal.remove();
+        _panEtFlashSurPoint(p);
+      }
+    });
+  });
+}
+
+function _activerModeClicCarte() {
+  if (_itineraryClickActive) return;
+  _itineraryClickActive = true;
+  if (window.map) {
+    _itineraryClickHandler = function(e) {
+      // Coords plan (cf. convention du projet : convertCoord inverse y)
+      const x = e.latlng.lng;
+      const y = APP_CONFIG.imageHeight - e.latlng.lat;
+      _itineraryWaypoints.push({ x: x, y: y, source: "click" });
+      _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
+      _rafraichirListeWaypointsModale();
+      _majPanneauFloaterCount();
+    };
+    window.map.on("click", _itineraryClickHandler);
+  }
+}
+
+function _desactiverModeClicCarte() {
+  if (!_itineraryClickActive) return;
+  _itineraryClickActive = false;
+  if (window.map && _itineraryClickHandler) {
+    window.map.off("click", _itineraryClickHandler);
+  }
+  _itineraryClickHandler = null;
+}
+
+function _viderItineraire() {
+  _itineraryWaypoints = [];
+  if (_itineraryMarkerLayer) {
+    _itineraryMarkerLayer.clearLayers();
+  }
+}
+
+// Mini panneau flottant en bas d'écran pendant le mode clic, pour ne pas
+// bloquer la carte. Bouton "✓ Terminer" → re-affiche la modale principale.
+let _itineraryFloater = null;
+function _afficherPanneauItineraireFlottant(mainModal) {
+  if (_itineraryFloater) _itineraryFloater.remove();
+  const panneau = document.createElement("div");
+  panneau.id = "kta-iti-floater";
+  panneau.className = "kta-iti-floater";
+  panneau.innerHTML =
+    '<span class="kta-iti-floater-icon">📍</span>' +
+    '<span class="kta-iti-floater-msg">' +
+      'Mode clic actif — <strong id="kta-iti-floater-count">' + _itineraryWaypoints.length + '</strong> point(s)' +
+    '</span>' +
+    '<button class="kta-btn kta-btn-primary" id="kta-iti-floater-done" type="button">✓ Terminer</button>';
+  document.body.appendChild(panneau);
+  _itineraryFloater = panneau;
+
+  document.getElementById("kta-iti-floater-done").addEventListener("click", function() {
+    _desactiverModeClicCarte();
+    if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
+    if (mainModal) {
+      mainModal.style.display = "";
+      _rafraichirListeWaypointsModale();
+      const btn = document.getElementById("kta-iti-mode-click");
+      if (btn) {
+        btn.textContent = "📍 Activer mode clic carte";
+        btn.classList.remove("kta-actif");
+      }
+    }
+  });
+}
+
+function _majPanneauFloaterCount() {
+  const el = document.getElementById("kta-iti-floater-count");
+  if (el) el.textContent = _itineraryWaypoints.length;
+}
+
+window.ouvrirItinerairModal = function() {
+  // Si une modale existe déjà, on la ferme et reset l'état
+  const existing = document.getElementById("kta-itinerary-modal");
+  if (existing) existing.remove();
+
+  // Détection itinéraire actif : si une road de type "itinerary" existe,
+  // on RESTAURE ses waypoints et on bascule en MODE NAVIGATION
+  // (pas de calcul, juste les boutons pour aller voir chaque waypoint).
+  const existingItinerary = (window.getRoads ? window.getRoads() : [])
+    .find(function(r) { return r.type === "itinerary"; });
+
+  const modeNavigation = !!(existingItinerary && Array.isArray(existingItinerary.waypoints) && existingItinerary.waypoints.length >= 2);
+
+  if (modeNavigation) {
+    // Restaure les waypoints et leurs markers visuels
+    _itineraryWaypoints = existingItinerary.waypoints.map(function(w) { return Object.assign({}, w); });
+    if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
+    _itineraryWaypoints.forEach(function(p, i) {
+      _ajouterWaypointVisuel(p, i + 1);
+    });
+  } else {
+    _viderItineraire();
+  }
+
+  const titre = modeNavigation ? "🗺️ Itinéraire actif — Navigation" : "🗺️ Calculer un itinéraire";
+
+  // Section "Points de passage" : 2 versions selon le mode
+  let sectionPoints;
+  if (modeNavigation) {
+    // ===== Mode navigation : juste les boutons rapides + liste des waypoints =====
+    sectionPoints =
+      '<div class="kta-iti-section">' +
+        '<div class="kta-iti-section-titre">📍 Waypoints du parcours</div>' +
+        '<p class="kta-iti-help">' +
+          'Clique sur un 🎯 pour centrer la carte et flasher le waypoint correspondant.' +
+        '</p>' +
+        '<div class="kta-iti-quicknav">' +
+          '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">⏮️ Début</button>' +
+          '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">⏭️ Fin</button>' +
+          '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">🔁 Tour complet</button>' +
+        '</div>' +
+        '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
+      '</div>';
+  } else {
+    // ===== Mode calcul : input + autocomplete + liste vide =====
+    sectionPoints =
+      '<div class="kta-iti-section">' +
+        '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
+        '<p class="kta-iti-help">' +
+          'Clique sur la carte ou sélectionne un point existant. ' +
+          'L\'itinéraire passera dans l\'ordre par chacun d\'eux, ' +
+          'en suivant le réseau de routes existant au plus court.' +
+        '</p>' +
+        '<div class="kta-iti-mode-toggle">' +
+          '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
+          '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
+        '</div>' +
+        '<div class="kta-iti-search-wrap">' +
+          '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
+            'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+          '<div id="kta-iti-search-results" class="kta-iti-search-results"></div>' +
+        '</div>' +
+        '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
+      '</div>';
+  }
+
+  // Section action : "Calculer" en mode calcul, "Effacer l'itinéraire" en mode navigation
+  let sectionAction;
+  if (modeNavigation) {
+    const distFmt = window.formatDistance(_distanceItineraireMeters(existingItinerary), 1);
+    sectionAction =
+      '<div class="kta-iti-section">' +
+        '<div class="kta-iti-section-titre">🎯 Itinéraire actuel</div>' +
+        '<div class="kta-iti-result" style="display:block;">' +
+          '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + distFmt + '</div>' +
+          '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
+        '</div>' +
+        '<div style="margin-top:10px;">' +
+          '<button id="kta-iti-recalc" class="kta-btn kta-btn-ghost"   type="button" style="width:48%; margin-right:4%;">🔄 Recalculer</button>' +
+          '<button id="kta-iti-erase"  class="kta-btn kta-btn-danger"  type="button" style="width:48%;">❌ Effacer l\'itinéraire</button>' +
+        '</div>' +
+      '</div>';
+  } else {
+    sectionAction =
+      '<div class="kta-iti-section">' +
+        '<div class="kta-iti-section-titre">🎯 Action</div>' +
+        '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">🎯 Calculer l\'itinéraire</button>' +
+        '<div id="kta-iti-result" class="kta-iti-result" style="display:none;"></div>' +
+        '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
+      '</div>';
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-itinerary-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-iti-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">' + titre + '</span>' +
+        '<button class="kta-panneau-close" id="kta-iti-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-iti-corps">' +
+        sectionPoints +
+        sectionAction +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+  _rafraichirListeWaypointsModale();
+
+  function fermer() {
+    _desactiverModeClicCarte();
+    if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
+    // En mode calcul, on retire le preview éventuel et les markers numérotés
+    // (sinon ça encombre la carte). En mode navigation, on garde les markers
+    // affichés pour que l'utilisateur puisse continuer à voir ses waypoints
+    // même hors modale.
+    if (!modeNavigation) {
+      _viderItineraire();
+      const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
+      if (window.setRoads) window.setRoads(roadsNow);
+    }
+    modal.remove();
+    _majLabelDistanceItineraire();
+  }
+
+  document.getElementById("kta-iti-close").addEventListener("click", fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  // ===== Mode navigation : wiring des quick-nav + recalc + erase =====
+  if (modeNavigation) {
+    document.getElementById("kta-iti-nav-debut").addEventListener("click", function() {
+      if (_itineraryWaypoints.length === 0) return;
+      modal.remove();
+      _panEtFlashSurPoint(_itineraryWaypoints[0]);
+    });
+    document.getElementById("kta-iti-nav-fin").addEventListener("click", function() {
+      if (_itineraryWaypoints.length === 0) return;
+      modal.remove();
+      _panEtFlashSurPoint(_itineraryWaypoints[_itineraryWaypoints.length - 1]);
+    });
+    document.getElementById("kta-iti-nav-tour").addEventListener("click", function() {
+      // fitBounds sur l'ensemble des points du tracé
+      if (!existingItinerary || !existingItinerary.points || existingItinerary.points.length < 2) return;
+      const latlngs = existingItinerary.points.map(function(p) { return convertCoord(p.x, p.y); });
+      const bounds = L.latLngBounds(latlngs);
+      modal.remove();
+      window.map.fitBounds(bounds, { padding: [40, 40], animate: false });
+    });
+    document.getElementById("kta-iti-recalc").addEventListener("click", function() {
+      // Repasse en mode calcul : retire l'itinéraire actuel, retire les
+      // markers numérotés visuels, et ré-ouvre la modale en mode calcul
+      // (avec les waypoints existants conservés pour permettre une édition).
+      const wpsKept = _itineraryWaypoints.slice();
+      const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+      if (window.setRoads) window.setRoads(roadsNow);
+      modal.remove();
+      _majLabelDistanceItineraire();
+      // Ré-ouvre en mode calcul (waypoints conservés)
+      window.ouvrirItinerairModal();
+      _itineraryWaypoints = wpsKept;
+      _redessinerWaypoints();
+    });
+    document.getElementById("kta-iti-erase").addEventListener("click", function() {
+      if (!confirm("Effacer l'itinéraire actif ?")) return;
+      const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
+      if (window.setRoads) window.setRoads(roadsNow);
+      _viderItineraire();
+      modal.remove();
+      _majLabelDistanceItineraire();
+    });
+    // Pas besoin de wirer mode-click / search / compute en mode navigation,
+    // on bypass tout le bloc qui suit.
+    return;
+  }
+
+  // ===== Sélecteur de point existant (autocomplete) =====
+  // Recherche sur tous les points du plan (data layers + editor) via l'API
+  // window.SearchPoints.findByQuery. Affiche les résultats sous l'input,
+  // clic sur un résultat → ajoute un waypoint avec les coords du point ET son nom.
+  const searchInput   = document.getElementById("kta-iti-search-input");
+  const searchResults = document.getElementById("kta-iti-search-results");
+  let _searchTimer = null;
+
+  function _afficherResultatsRecherche(items) {
+    if (!items || items.length === 0) {
+      searchResults.innerHTML = '<div class="kta-iti-search-empty">Aucun résultat</div>';
+      searchResults.style.display = "block";
+      return;
+    }
+    // Limite l'affichage aux 10 premiers résultats pour pas saturer le DOM
+    const limite = items.slice(0, 10);
+    searchResults.innerHTML = limite.map(function(it, idx) {
+      const p = it.point;
+      const name = p.nom || p.id || "(sans nom)";
+      const sub = (p.id && p.id !== name) ? p.id + " — " : "";
+      const layer = it.layerLabel || it.layerId || "";
+      return '<div class="kta-iti-search-item" data-idx="' + idx + '">' +
+               '<div class="kta-iti-search-name">' + _escapeHtml(name) + '</div>' +
+               '<div class="kta-iti-search-meta">' + _escapeHtml(sub + layer) + '</div>' +
+             '</div>';
+    }).join("");
+    if (items.length > 10) {
+      searchResults.innerHTML += '<div class="kta-iti-search-more">+ ' + (items.length - 10) + ' autres résultats — affine la recherche</div>';
+    }
+    searchResults.style.display = "block";
+
+    Array.from(searchResults.querySelectorAll(".kta-iti-search-item")).forEach(function(el, idx) {
+      el.addEventListener("click", function() {
+        const it = limite[idx];
+        const p = it.point;
+        if (typeof p.x !== "number" || typeof p.y !== "number") return;
+        _itineraryWaypoints.push({
+          x:      p.x,
+          y:      p.y,
+          source: "search",
+          label:  (p.nom || p.id || "?") + " (" + (it.layerLabel || it.layerId) + ")"
+        });
+        _ajouterWaypointVisuel({ x: p.x, y: p.y }, _itineraryWaypoints.length);
+        _rafraichirListeWaypointsModale();
+        _majPanneauFloaterCount();
+        // Reset l'input pour faciliter un autre ajout
+        searchInput.value    = "";
+        searchResults.style.display = "none";
+      });
+    });
+  }
+
+  searchInput.addEventListener("input", function() {
+    clearTimeout(_searchTimer);
+    const query = searchInput.value.trim();
+    if (query.length < 2) {
+      searchResults.style.display = "none";
+      return;
+    }
+    _searchTimer = setTimeout(function() {
+      if (window.SearchPoints && typeof window.SearchPoints.findByQuery === "function") {
+        window.SearchPoints.findByQuery(query).then(_afficherResultatsRecherche);
+      }
+    }, 150);
+  });
+  searchInput.addEventListener("blur", function() {
+    // Petit délai pour laisser le clic sur un résultat fonctionner avant de cacher
+    setTimeout(function() { searchResults.style.display = "none"; }, 200);
+  });
+
+  // Bouton activer / désactiver mode clic carte
+  // Quand on active : on cache la modale et affiche un mini-panneau flottant
+  // pour que l'utilisateur puisse cliquer sur la carte (la modale plein-écran
+  // bloquait les clics).
+  const btnMode = document.getElementById("kta-iti-mode-click");
+  btnMode.addEventListener("click", function() {
+    if (_itineraryClickActive) {
+      _desactiverModeClicCarte();
+      btnMode.textContent = "📍 Activer mode clic carte";
+      btnMode.classList.remove("kta-actif");
+    } else {
+      _activerModeClicCarte();
+      // Cacher la modale principale + montrer mini-panneau
+      modal.style.display = "none";
+      _afficherPanneauItineraireFlottant(modal);
+    }
+  });
+
+  // Vider
+  document.getElementById("kta-iti-clear").addEventListener("click", function() {
+    _itineraryWaypoints = [];
+    if (_itineraryMarkerLayer) _itineraryMarkerLayer.clearLayers();
+    _rafraichirListeWaypointsModale();
+    document.getElementById("kta-iti-result").style.display = "none";
+    document.getElementById("kta-iti-error").style.display  = "none";
+  });
+
+  // Calculer
+  document.getElementById("kta-iti-compute").addEventListener("click", function() {
+    const errEl = document.getElementById("kta-iti-error");
+    const resEl = document.getElementById("kta-iti-result");
+    errEl.style.display = "none";
+    resEl.style.display = "none";
+
+    if (_itineraryWaypoints.length < 2) {
+      errEl.textContent = "Il faut au moins 2 waypoints pour calculer un itinéraire.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    if (!window.Pathfinder) {
+      errEl.textContent = "Module Pathfinder non chargé.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    try {
+      const result = window.Pathfinder.computeRoute(_itineraryWaypoints);
+      // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
+      const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
+      const distM = result.totalDistance / scale;
+
+      resEl.innerHTML =
+        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distM, 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>Tronçons traversés :</strong> ' + result.segmentCount + '</div>' +
+        '<div class="kta-iti-result-actions">' +
+          '<button id="kta-iti-save" class="kta-btn kta-btn-primary" type="button">💾 Enregistrer comme itinéraire</button>' +
+          '<button id="kta-iti-discard" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">❌ Effacer</button>' +
+        '</div>';
+      resEl.style.display = "block";
+
+      // Tracer immédiatement (preview) en utilisant le type "itinerary".
+      // ⚠️ Sémantique : un seul itinéraire actif à la fois — on retire TOUTES
+      // les roads de type "itinerary" (preview ET déjà enregistrées) avant
+      // d'ajouter le nouveau. Recalculer remplace la session précédente.
+      // ⚠️ Les waypoints originaux (avec leurs labels/sources) sont stockés sur
+      // le road via la propriété `waypoints` → restauration au re-open de la
+      // modale (mode navigation).
+      const previewRoad = {
+        type:      "itinerary",
+        points:    result.path,
+        waypoints: _itineraryWaypoints.map(function(w) { return Object.assign({}, w); }),
+        _preview:  true
+      };
+      const currentRoads = window.getRoads ? window.getRoads() : [];
+      const filtered = currentRoads.filter(function(r) { return r.type !== "itinerary"; });
+      filtered.push(previewRoad);
+      if (window.setRoads) window.setRoads(filtered);
+      _majLabelDistanceItineraire();
+
+      document.getElementById("kta-iti-save").addEventListener("click", function() {
+        // Convertit le preview en road persistante (les waypoints sont déjà attachés)
+        const roadsNow = (window.getRoads ? window.getRoads() : []).map(function(r) {
+          if (r._preview) { const c = Object.assign({}, r); delete c._preview; return c; }
+          return r;
+        });
+        if (window.setRoads) window.setRoads(roadsNow);
+        _majLabelDistanceItineraire();
+        fermer();
+      });
+      document.getElementById("kta-iti-discard").addEventListener("click", function() {
+        const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
+        if (window.setRoads) window.setRoads(roadsNow);
+        _majLabelDistanceItineraire();
+        resEl.style.display = "none";
+      });
+
+    } catch(err) {
+      errEl.textContent = err.message || String(err);
+      errEl.style.display = "block";
+    }
+  });
+};
+
+// =========================
+// DISTANCE TOTALE DES TRACÉS — panneau flottant + surlignage
+// =========================
+// Calcule la somme des longueurs des polylines (Principal / Secondaire / Chemin)
+// présentes sur le plan (session getRoads + calques embarqués visibles getEmbeddedRoads).
+// L'utilisateur filtre par type via 3 checkboxes ; le total est mis à jour live et
+// les tronçons inclus sont surlignés en magenta avec un halo (même pattern que
+// l'itinéraire cyan, mais couleur distincte pour ne pas confondre).
+// Le type "itinerary" est exclu (c'est un calcul dérivé du réseau, pas une route
+// indépendante).
+
+const _RD_TYPES_TOUS    = ["principal", "secondaire", "chemin"];
+const _RD_HIGHLIGHT_HEX = "#ff4ecb";
+
+let _rdFloater         = null;
+let _rdHighlightLayer  = null;  // L.layerGroup contenant les polylines magenta
+let _rdFiltres         = { principal: true, secondaire: true, chemin: true };
+
+// Collecte toutes les roads pertinentes (session + embedded visibles), filtrées
+// pour ne garder que les types principal/secondaire/chemin.
+function _rdRoadsExploitables() {
+  const session  = (window.getRoads          ? window.getRoads()          : []) || [];
+  const embedded = (window.getEmbeddedRoads  ? window.getEmbeddedRoads()  : []) || [];
+  return session.concat(embedded).filter(function(r) {
+    return r && Array.isArray(r.points) && r.points.length >= 2 &&
+           _RD_TYPES_TOUS.indexOf(r.type) !== -1;
+  });
+}
+
+// Longueur d'une road en pixels (somme des distances euclidiennes entre
+// points consécutifs).
+function _rdLongueurPx(road) {
+  let total = 0;
+  for (let i = 1; i < road.points.length; i++) {
+    const a = road.points[i - 1];
+    const b = road.points[i];
+    total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return total;
+}
+
+// Calcule un breakdown par type sur les roads filtrées par les checkboxes.
+// Retourne { principal: {nb, distM}, secondaire: {...}, chemin: {...}, totalM }.
+function _rdCalculerBreakdown() {
+  const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
+  const out = {
+    principal:  { nb: 0, distM: 0 },
+    secondaire: { nb: 0, distM: 0 },
+    chemin:     { nb: 0, distM: 0 },
+    totalM:     0
+  };
+  _rdRoadsExploitables().forEach(function(r) {
+    if (!_rdFiltres[r.type]) return;
+    const distM = _rdLongueurPx(r) / scale;
+    out[r.type].nb    += 1;
+    out[r.type].distM += distM;
+    out.totalM        += distM;
+  });
+  return out;
+}
+
+// Dessine (ou redessine) la polyline magenta surlignant les tronçons inclus.
+// ⚠️ Perf critique : on utilise UNE SEULE L.polyline avec un array d'arrays
+// (multi-segments dans 1 seul élément SVG path). Sans ça, on aurait N éléments
+// SVG avec chacun un `filter: drop-shadow` GPU → crash garanti sur mobile dès
+// une dizaine de routes (compositing layers explosent en mémoire iOS Safari).
+// Leaflet supporte nativement le format [[seg1], [seg2], ...] pour rendre
+// plusieurs sous-paths dans UN seul `<path>` SVG — coût ~constant peu importe
+// le nombre de routes incluses.
+function _rdRedessinerHighlight() {
+  if (!window.map) return;
+  // Cleanup ancien layer (gestion du cas plan switch : ._map devient null)
+  if (_rdHighlightLayer && _rdHighlightLayer._map) {
+    _rdHighlightLayer.clearLayers();
+  } else {
+    _rdHighlightLayer = L.layerGroup().addTo(window.map);
+  }
+  // Collecte de tous les segments inclus → array d'arrays de latlngs
+  const multiSegments = [];
+  _rdRoadsExploitables().forEach(function(r) {
+    if (!_rdFiltres[r.type]) return;
+    multiSegments.push(r.points.map(function(p) { return convertCoord(p.x, p.y); }));
+  });
+  if (multiSegments.length === 0) return;  // rien à dessiner (toutes les cases décochées)
+  L.polyline(multiSegments, {
+    color:     _RD_HIGHLIGHT_HEX,
+    weight:    9,
+    opacity:   0.85,
+    renderer:  L.svg(),       // SVG forcé pour drop-shadow CSS
+    className: "kta-rd-highlight-polyline",
+    interactive: false
+  }).addTo(_rdHighlightLayer);
+}
+
+// ⚠️ Nom volontairement différent de `window._rdEffacerHighlight` (l'export
+// global) — sans ça, function declarations top-level deviennent propriétés
+// de window, et l'export plus bas écrasait celle-ci, causant une récursion
+// infinie silencieuse (les appels internes à `_rdEffacerHighlight()` partaient
+// dans le wrapper export qui se rappelait lui-même).
+function _rdInternalEffacerHighlight() {
+  if (_rdHighlightLayer) {
+    try { _rdHighlightLayer.clearLayers(); } catch(e) {}
+    if (window.map && _rdHighlightLayer._map) {
+      try { window.map.removeLayer(_rdHighlightLayer); } catch(e) {}
+    }
+    _rdHighlightLayer = null;
+  }
+}
+
+// Mise à jour des compteurs et du total dans le panneau flottant (live).
+function _rdRafraichirAffichage() {
+  const b = _rdCalculerBreakdown();
+  const setTxt = function(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  setTxt("kta-rd-cnt-principal",  b.principal.nb  + " — " + window.formatDistance(b.principal.distM,  1));
+  setTxt("kta-rd-cnt-secondaire", b.secondaire.nb + " — " + window.formatDistance(b.secondaire.distM, 1));
+  setTxt("kta-rd-cnt-chemin",     b.chemin.nb     + " — " + window.formatDistance(b.chemin.distM,     1));
+  setTxt("kta-rd-total",          window.formatDistance(b.totalM, 1));
+}
+
+window.ouvrirRoadsDistanceFloater = function() {
+  // Toggle : si la modale est déjà ouverte, on la ferme (mais on GARDE le
+  // surlignage actif, cohérent avec le choix initial "persiste jusqu'à clic
+  // ❌ Effacer"). L'utilisateur peut ainsi voir la map avec les tronçons
+  // surlignés, puis re-cliquer 📏 pour rouvrir la modale.
+  if (_rdFloater) {
+    _rdFloater.remove();
+    _rdFloater = null;
+    return;
+  }
+
+  const roads = _rdRoadsExploitables();
+  if (roads.length === 0) {
+    alert("Aucun tracé de route présent sur ce plan.\n\nTrace au moins une route (Principal / Secondaire / Chemin) avant de calculer une distance totale.");
+    return;
+  }
+
+  // Modale plein écran style charte (.kta-readme-modal-overlay) — on conserve
+  // les filtres précédents si un highlight était déjà actif (réouverture après
+  // fermeture sans avoir cliqué ❌ Effacer). Sinon reset à "tous cochés".
+  if (!_rdHighlightLayer) {
+    _rdFiltres = { principal: true, secondaire: true, chemin: true };
+  }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-rd-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-rd-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">📏 Distance totale des tracés</span>' +
+        '<button class="kta-panneau-close" id="kta-rd-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<div class="kta-aide-section">' +
+          '<p class="kta-rd-help">' +
+            'Décoche les types à exclure du calcul. Les tracés inclus sont surlignés ' +
+            '<strong style="color:#ff4ecb;">en magenta</strong> sur la carte. ' +
+            'Le surlignage <strong>persiste après fermeture</strong> de la modale — clique ❌ ' +
+            'Effacer pour le retirer.' +
+          '</p>' +
+          '<label class="kta-rd-row">' +
+            '<input type="checkbox" id="kta-rd-chk-principal"' + (_rdFiltres.principal ? ' checked' : '') + '>' +
+            '<span class="kta-rd-swatch" style="background:#00ff00;"></span>' +
+            '<span class="kta-rd-label">Principal</span>' +
+            '<span class="kta-rd-count" id="kta-rd-cnt-principal">—</span>' +
+          '</label>' +
+          '<label class="kta-rd-row">' +
+            '<input type="checkbox" id="kta-rd-chk-secondaire"' + (_rdFiltres.secondaire ? ' checked' : '') + '>' +
+            '<span class="kta-rd-swatch" style="background:#b000ff;"></span>' +
+            '<span class="kta-rd-label">Secondaire</span>' +
+            '<span class="kta-rd-count" id="kta-rd-cnt-secondaire">—</span>' +
+          '</label>' +
+          '<label class="kta-rd-row">' +
+            '<input type="checkbox" id="kta-rd-chk-chemin"' + (_rdFiltres.chemin ? ' checked' : '') + '>' +
+            '<span class="kta-rd-swatch" style="background:#ffff00;"></span>' +
+            '<span class="kta-rd-label">Chemin</span>' +
+            '<span class="kta-rd-count" id="kta-rd-cnt-chemin">—</span>' +
+          '</label>' +
+          '<div class="kta-rd-total-wrap">' +
+            '<span class="kta-rd-total-label">Total</span>' +
+            '<span class="kta-rd-total-value" id="kta-rd-total">—</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="kta-rd-actions">' +
+          '<button id="kta-rd-erase" class="kta-btn kta-btn-danger" type="button">❌ Effacer le surlignage</button>' +
+          '<button id="kta-rd-done"  class="kta-btn kta-btn-primary" type="button">✓ Fermer (garder le surlignage)</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+  _rdFloater = modal;
+
+  // Wire-up des checkboxes : toggle filtre + redraw highlight + refresh affichage
+  _RD_TYPES_TOUS.forEach(function(type) {
+    const chk = document.getElementById("kta-rd-chk-" + type);
+    if (!chk) return;
+    chk.addEventListener("change", function() {
+      _rdFiltres[type] = chk.checked;
+      _rdRedessinerHighlight();
+      _rdRafraichirAffichage();
+    });
+  });
+
+  // Fermer la modale (✕ / clic backdrop / ✓ Fermer) — on GARDE le surlignage
+  function _rdFermerModale() {
+    if (_rdFloater) { _rdFloater.remove(); _rdFloater = null; }
+  }
+
+  // ❌ Effacer le surlignage ET fermer la modale
+  function _rdToutEffacer() {
+    _rdInternalEffacerHighlight();
+    if (_rdFloater) { _rdFloater.remove(); _rdFloater = null; }
+  }
+
+  document.getElementById("kta-rd-close").addEventListener("click", _rdFermerModale);
+  document.getElementById("kta-rd-done").addEventListener("click",  _rdFermerModale);
+  document.getElementById("kta-rd-erase").addEventListener("click", _rdToutEffacer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _rdFermerModale(); });
+
+  // Premier rendu : highlight + breakdown
+  _rdRedessinerHighlight();
+  _rdRafraichirAffichage();
+};
+
+// Cleanup helper exposé pour main.js (libération avant plan switch).
+// Appelle _rdInternalEffacerHighlight (le vrai cleanup) — voir le warning sur
+// la collision de noms juste au-dessus de la fonction interne.
+window._rdEffacerHighlight = function() {
+  if (_rdFloater) { _rdFloater.remove(); _rdFloater = null; }
+  _rdInternalEffacerHighlight();
+};
+
+// Hook appelé par road.js > renderRoads (et par le listener overlayadd/remove)
+// quand l'ensemble des roads change. Si le panneau est ouvert, on rejoue le
+// surlignage et l'affichage. Sinon, no-op.
+window._rdOnRoadsChanged = function() {
+  if (!_rdFloater) return;
+  _rdRedessinerHighlight();
+  _rdRafraichirAffichage();
+};
 
 // =========================
 // LÉGENDE — modale plein écran
