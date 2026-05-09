@@ -12,11 +12,14 @@
        (notre #111827 dark) + icônes claires (apple-mobile-web-app-status-bar-style
        = black-translucent → light icons en l'absence de cover). Look intégré dark
        en haut, footer correct en bas. */ -->
-  <!-- viewport-fit=cover réactivé : le top devient edge-to-edge (status bar
-       flotte sur le contenu via apple-mobile-web-app-status-bar-style:
-       black-translucent). Le footer (zone home-indicator) est couvert par
-       une bande dark fixe (.kta-bottom-safe-fill) ajoutée au boot. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- Pas de viewport-fit=cover : iOS PWA portrait n'extendait jamais la
+       viewport jusqu'au home-indicator malgré tous les fixes (inset:0,
+       100dvh, --realvh, bottom négatif). Sans cover, iOS reste dans la
+       safe-area = pas de bug de bande sombre en bas. Le top intégré dark
+       est obtenu différemment : .leaflet-container reçoit un background
+       sombre dans leaflet.css, donc dès que le DOM map est monté, la
+       couleur du haut de page est dark → la status bar iOS reflète. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">

@@ -10,23 +10,10 @@ html, body {
 #map {
   display: block;
   position: fixed;
-  /* iOS PWA en portrait : window.innerHeight et 100%/100dvh excluent la
-     safe-area-bottom (zone home-indicator ~34px) → la map s'arrête au-dessus
-     du home indicator et le body bg sombre apparaît en bande. En landscape
-     ça marche tout seul (iOS gère différemment).
-     Astuce : on force #map à DÉPASSER la viewport vers le bas en mettant
-     bottom à un offset NÉGATIF égal à la safe-area-bottom. La map déborde
-     dans la zone home-indicator et la couvre. iOS overlay ses gestes par
-     dessus. Sur appareils sans encoche (Android, iPhone home button),
-     env() vaut 0 → comportement standard inchangé.
-     ⚠️ NE PAS ajouter de règle .leaflet-container { height: 100% } : Leaflet
-     ajoute la classe leaflet-container DIRECTEMENT sur #map (cf. leaflet-src.js
-     _initLayout, addClass sur le container existant), donc la règle
-     écraserait notre top/bottom et la map ne déborderait plus. */
   top: 0;
   left: 0;
-  right: 0;
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  width: 100%;
+  height: 100%;
 }
 
 .map-title {
@@ -1417,10 +1404,6 @@ html, body {
 #splashOverlay {
   position: fixed;
   inset: 0;
-  /* Même trick que #map : déborder dans la zone home-indicator iPhone pour
-     que le splash s'étende vraiment bord-à-bord. inset:0 seul ne suffit pas
-     en mode PWA portrait. */
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: 9999;
   background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
   display: flex;
@@ -1685,8 +1668,6 @@ html, body {
 #planLoaderOverlay {
   position: fixed;
   inset: 0;
-  /* Idem splash : déborder dans la zone home-indicator iPhone */
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
   z-index: 5000;
   background: rgba(5, 8, 15, 0.92);
   display: flex;

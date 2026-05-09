@@ -6,7 +6,7 @@
 // Cacher README_USER.md (utilisé par le modal Documentation in-app).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v28";
+const CACHE_NAME = "myktamap-cache-v29";
 
 const ASSETS_TO_CACHE = [
   "./",

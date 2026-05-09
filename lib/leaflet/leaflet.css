@@ -16,6 +16,12 @@
 	}
 .leaflet-container {
 	overflow: hidden;
+	/* MyKTAMap : fond sombre par défaut pour que la zone hors-tuiles (et
+	   le haut de la viewport en iOS PWA standalone, qui prend la couleur
+	   du contenu en dessous de la status bar) soit cohérent avec la charte
+	   dark de l'app au lieu d'un blanc cru flashé entre splash et tiles
+	   chargées. */
+	background: #1a1f2e;
 	}
 .leaflet-tile,
 .leaflet-marker-icon,
