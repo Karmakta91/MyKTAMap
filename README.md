@@ -9,6 +9,18 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 33) — Décalage titre limité au mobile (desktop a assez de place)
+
+Le décalage du titre vers la gauche quand le contrôle des couches est ouvert (suite 32) était appliqué partout. Sur desktop la fenêtre est plus large, le panneau du contrôle a la place de s'ouvrir à droite sans toucher le titre centré → le décalage devient inutile et perturbant visuellement (le titre bouge sans raison).
+
+**Fix** : wrap les 3 règles `body.kta-layers-panel-open` (titre, titre:active, plan-switcher) dans `@media (max-width: 768px)` — le breakpoint mobile/desktop déjà utilisé partout dans le projet (cohérent avec `js/map.js > _isMobile`).
+
+Le watcher JavaScript (MutationObserver) reste actif sur les 2 plateformes — il ajoute toujours la classe `kta-layers-panel-open` sur le body, mais sans effet visuel sur desktop.
+
+**`sw.js`** : `CACHE_NAME` v82 → v83.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 32) — Décalage du titre fixe quand le contrôle des couches est ouvert
 
 Le z-index élevé sur `.leaflet-control-layers-expanded` (suite 31) **n'a pas suffi** : le `#map` est en `position: fixed`, ce qui crée un **stacking context isolé**. Le z-index du panneau Leaflet est piégé dans ce contexte et ne peut pas dépasser le titre fixe (dans le body, z-index 1100), même avec une valeur très élevée.
