@@ -2415,6 +2415,17 @@ function _afficherLabelDistanceItineraire(distanceM) {
     _itiDistanceCtrl.onAdd = function() {
       const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-iti-distance");
       div.innerHTML = '<span class="kta-iti-distance-icon">🗺️</span>Itinéraire : 0 m';
+      // Raccourci : clic sur le label → ouvre la modale itineraire (mode
+      // navigation ou calcul selon presence d'un itineraire actif).
+      div.style.cursor = "pointer";
+      div.title = "Cliquer pour ouvrir le menu Itinéraire";
+      // Empecher Leaflet de capturer les events (sinon clic propage a la map)
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(div, "click", function() {
+        if (typeof window.ouvrirItinerairModal === "function") {
+          window.ouvrirItinerairModal();
+        }
+      });
       return div;
     };
     _itiDistanceCtrl.addTo(window.map);
@@ -2649,72 +2660,65 @@ window.ouvrirItinerairModal = function() {
 
   const titre = modeNavigation ? "🗺️ Itinéraire actif — Navigation" : "🗺️ Calculer un itinéraire";
 
-  // Section "Points de passage" : 2 versions selon le mode
-  let sectionPoints;
-  if (modeNavigation) {
-    // ===== Mode navigation : juste les boutons rapides + liste des waypoints =====
-    sectionPoints =
-      '<div class="kta-iti-section">' +
-        '<div class="kta-iti-section-titre">📍 Waypoints du parcours</div>' +
-        '<p class="kta-iti-help">' +
-          'Clique sur un 🎯 pour centrer la carte et flasher le waypoint correspondant.' +
-        '</p>' +
-        '<div class="kta-iti-quicknav">' +
-          '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">⏮️ Début</button>' +
-          '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">⏭️ Fin</button>' +
-          '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">🔁 Tour complet</button>' +
-        '</div>' +
-        '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
-      '</div>';
-  } else {
-    // ===== Mode calcul : input + autocomplete + liste vide =====
-    sectionPoints =
-      '<div class="kta-iti-section">' +
-        '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
-        '<p class="kta-iti-help">' +
-          'Clique sur la carte, sélectionne un point existant, ou utilise ta position tracker. ' +
-          'L\'itinéraire passera dans l\'ordre par chacun d\'eux, ' +
-          'en suivant le réseau de routes existant au plus court.' +
-        '</p>' +
-        '<div class="kta-iti-mode-toggle">' +
-          '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
-          '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="Ajoute la position actuelle du tracker comme waypoint (snapshot fige)">🧭 Ma position</button>' +
-          '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
-        '</div>' +
-        '<div class="kta-iti-search-wrap">' +
-          '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
-            'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
-          '<div id="kta-iti-search-results" class="kta-iti-search-results"></div>' +
-        '</div>' +
-        '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
-      '</div>';
-  }
+  // ===== Section "Points de passage" UNIFIEE (mode calcul + mode navigation) =====
+  // Les deux modes ont desormais les memes controles d'edition (ajout/suppression
+  // de waypoints) → l'utilisateur peut modifier son itineraire actif sans
+  // passer par "Recalculer" qui efface tout et recommence.
+  // En mode navigation : on ajoute en plus une quick-nav (Debut/Fin/Tour) au-dessus
+  // de la liste, pour acceder rapidement aux extremites du tracé.
+  const quickNavHtml = modeNavigation
+    ? '<div class="kta-iti-quicknav">' +
+        '<button id="kta-iti-nav-debut" class="kta-btn kta-btn-primary" type="button">⏮️ Début</button>' +
+        '<button id="kta-iti-nav-fin"   class="kta-btn kta-btn-primary" type="button">⏭️ Fin</button>' +
+        '<button id="kta-iti-nav-tour"  class="kta-btn kta-btn-ghost"   type="button">🔁 Tour complet</button>' +
+      '</div>'
+    : '';
 
-  // Section action : "Calculer" en mode calcul, "Effacer l'itinéraire" en mode navigation
-  let sectionAction;
-  if (modeNavigation) {
-    const distFmt = window.formatDistance(_distanceItineraireMeters(existingItinerary), 1);
-    sectionAction =
-      '<div class="kta-iti-section">' +
-        '<div class="kta-iti-section-titre">🎯 Itinéraire actuel</div>' +
-        '<div class="kta-iti-result" style="display:block;">' +
-          '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + distFmt + '</div>' +
-          '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
-        '</div>' +
-        '<div style="margin-top:10px;">' +
-          '<button id="kta-iti-recalc" class="kta-btn kta-btn-ghost"   type="button" style="width:48%; margin-right:4%;">🔄 Recalculer</button>' +
-          '<button id="kta-iti-erase"  class="kta-btn kta-btn-danger"  type="button" style="width:48%;">❌ Effacer l\'itinéraire</button>' +
-        '</div>' +
-      '</div>';
-  } else {
-    sectionAction =
-      '<div class="kta-iti-section">' +
-        '<div class="kta-iti-section-titre">🎯 Action</div>' +
-        '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">🎯 Calculer l\'itinéraire</button>' +
-        '<div id="kta-iti-result" class="kta-iti-result" style="display:none;"></div>' +
-        '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
-      '</div>';
-  }
+  const helpText = modeNavigation
+    ? 'Modifie tes waypoints (ajout via clic carte / 🧭 Ma position / recherche, suppression via ✕) puis 🔄 Recalculer pour mettre à jour le tracé.'
+    : 'Clique sur la carte, sélectionne un point existant, ou utilise ta position tracker. L\'itinéraire passera dans l\'ordre par chacun d\'eux, en suivant le réseau de routes existant au plus court.';
+
+  const sectionPoints =
+    '<div class="kta-iti-section">' +
+      '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
+      '<p class="kta-iti-help">' + helpText + '</p>' +
+      quickNavHtml +
+      '<div class="kta-iti-mode-toggle">' +
+        '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
+        '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="Ajoute la position actuelle du tracker comme waypoint (snapshot fige)">🧭 Ma position</button>' +
+        '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
+      '</div>' +
+      '<div class="kta-iti-search-wrap">' +
+        '<input type="text" id="kta-iti-search-input" class="kta-cfg-input" ' +
+          'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+        '<div id="kta-iti-search-results" class="kta-iti-search-results"></div>' +
+      '</div>' +
+      '<div id="kta-iti-waypoints-list" class="kta-iti-waypoints-list"></div>' +
+    '</div>';
+
+  // ===== Section action UNIFIEE =====
+  // Bouton principal "🎯 Calculer" / "🔄 Recalculer" selon presence d'itineraire.
+  // Bouton "❌ Effacer" affiche uniquement si itineraire actif.
+  // Statut Distance/Tronçons en haut si mode navigation.
+  const computeBtnLabel = modeNavigation ? "🔄 Recalculer l'itinéraire" : "🎯 Calculer l'itinéraire";
+  const statusActuel = modeNavigation
+    ? '<div class="kta-iti-result" style="display:block; margin-bottom:10px;">' +
+        '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(_distanceItineraireMeters(existingItinerary), 1) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
+      '</div>'
+    : '';
+  const eraseBtn = modeNavigation
+    ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">❌ Effacer l\'itinéraire</button>'
+    : '';
+  const sectionAction =
+    '<div class="kta-iti-section">' +
+      '<div class="kta-iti-section-titre">🎯 ' + (modeNavigation ? "Itinéraire actuel" : "Action") + '</div>' +
+      statusActuel +
+      '<button id="kta-iti-compute" class="kta-btn kta-btn-primary" type="button" style="width:100%;">' + computeBtnLabel + '</button>' +
+      eraseBtn +
+      '<div id="kta-iti-result" class="kta-iti-result" style="display:none;"></div>' +
+      '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
+    '</div>';
 
   const modal = document.createElement("div");
   modal.id = "kta-itinerary-modal";
@@ -2736,11 +2740,26 @@ window.ouvrirItinerairModal = function() {
   function fermer() {
     _desactiverModeClicCarte();
     if (_itineraryFloater) { _itineraryFloater.remove(); _itineraryFloater = null; }
-    // En mode calcul, on retire le preview éventuel et les markers numérotés
-    // (sinon ça encombre la carte). En mode navigation, on garde les markers
-    // affichés pour que l'utilisateur puisse continuer à voir ses waypoints
-    // même hors modale.
-    if (!modeNavigation) {
+    if (modeNavigation) {
+      // Mode navigation : si un preview existe (l'utilisateur a recalcule
+      // pendant cette session de modale), on l'auto-save → l'itineraire
+      // utilise la nouvelle version au lieu d'etre perdu. Cohérent avec
+      // l'intention "j'ai recalculé donc je veux le nouveau". L'utilisateur
+      // peut explicitement annuler via le bouton ❌ Effacer du preview.
+      const hasPreview = (window.getRoads ? window.getRoads() : []).some(function(r) { return r._preview; });
+      if (hasPreview) {
+        const roadsNow = (window.getRoads ? window.getRoads() : []).map(function(r) {
+          if (r._preview) { const c = Object.assign({}, r); delete c._preview; return c; }
+          return r;
+        });
+        if (window.setRoads) window.setRoads(roadsNow);
+      }
+      // On garde les markers numérotés (waypoints visuels) sur la carte pour
+      // que l'utilisateur les voie toujours hors modale.
+    } else {
+      // Mode calcul : on retire le preview éventuel + les markers numérotés
+      // (sinon ça encombre la carte). L'utilisateur doit explicitement
+      // sauver via le bouton 💾 dans la zone résultat.
       _viderItineraire();
       const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return !r._preview; });
       if (window.setRoads) window.setRoads(roadsNow);
@@ -2752,7 +2771,10 @@ window.ouvrirItinerairModal = function() {
   document.getElementById("kta-iti-close").addEventListener("click", fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
 
-  // ===== Mode navigation : wiring des quick-nav + recalc + erase =====
+  // ===== Mode navigation : wiring des quick-nav + erase =====
+  // Ces boutons ne sont presents que si modeNavigation = true (HTML conditionnel
+  // plus haut). Le reste du wiring (mode-click, search, tracker-pos, clear,
+  // compute) est commun aux 2 modes — pas de return early.
   if (modeNavigation) {
     document.getElementById("kta-iti-nav-debut").addEventListener("click", function() {
       if (_itineraryWaypoints.length === 0) return;
@@ -2772,20 +2794,6 @@ window.ouvrirItinerairModal = function() {
       modal.remove();
       window.map.fitBounds(bounds, { padding: [40, 40], animate: false });
     });
-    document.getElementById("kta-iti-recalc").addEventListener("click", function() {
-      // Repasse en mode calcul : retire l'itinéraire actuel, retire les
-      // markers numérotés visuels, et ré-ouvre la modale en mode calcul
-      // (avec les waypoints existants conservés pour permettre une édition).
-      const wpsKept = _itineraryWaypoints.slice();
-      const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
-      if (window.setRoads) window.setRoads(roadsNow);
-      modal.remove();
-      _majLabelDistanceItineraire();
-      // Ré-ouvre en mode calcul (waypoints conservés)
-      window.ouvrirItinerairModal();
-      _itineraryWaypoints = wpsKept;
-      _redessinerWaypoints();
-    });
     document.getElementById("kta-iti-erase").addEventListener("click", function() {
       if (!confirm("Effacer l'itinéraire actif ?")) return;
       const roadsNow = (window.getRoads ? window.getRoads() : []).filter(function(r) { return r.type !== "itinerary"; });
@@ -2794,9 +2802,6 @@ window.ouvrirItinerairModal = function() {
       modal.remove();
       _majLabelDistanceItineraire();
     });
-    // Pas besoin de wirer mode-click / search / compute en mode navigation,
-    // on bypass tout le bloc qui suit.
-    return;
   }
 
   // ===== Sélecteur de point existant (autocomplete) =====

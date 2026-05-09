@@ -201,7 +201,13 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
         canvas.height = workH;
         const ctx = canvas.getContext('2d');
 
-        ctx.fillStyle = "#ffffff";
+        // Fond charte sombre #0a0d18 (au lieu de blanc) — apparait pendant le
+        // tile loading et autour des bords de l'image si elle ne couvre pas tout.
+        // Cohérent avec le fond de la map (.leaflet-container = #000000) et la
+        // charte loader. ⚠️ NE PAS mettre #000000 strict : la detection
+        // "canvas noir" plus bas check pixel (0,0,0) — un fond noir pur ferait
+        // un faux positif. #0a0d18 est visuellement equivalent mais distinct.
+        ctx.fillStyle = "#0a0d18";
         ctx.fillRect(0, 0, workW, workH);
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
@@ -217,7 +223,7 @@ function _imageVersCanvasReduit(url, targetW, targetH, srcBlob, maxWorkDim) {
         if (estNoir) {
           console.warn("[Tiling] Canvas noir — re-essai dans 100ms");
           setTimeout(function() {
-            ctx.fillStyle = "#ffffff";
+            ctx.fillStyle = "#0a0d18";
             ctx.fillRect(0, 0, workW, workH);
             ctx.drawImage(img, 0, 0, workW, workH);
             // Vérifier à nouveau
@@ -290,7 +296,7 @@ async function _tilerDepuisCanvas(srcCanvas, W, H, map, params) {
       tuile.height = tileH;
       const tCtx   = tuile.getContext('2d');
 
-      tCtx.fillStyle = "#ffffff";
+      tCtx.fillStyle = "#0a0d18";
       tCtx.fillRect(0, 0, tileW, tileH);
       tCtx.drawImage(srcCanvas, srcX, srcY, srcW, srcH, 0, 0, tileW, tileH);
 
