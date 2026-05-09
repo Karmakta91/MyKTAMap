@@ -11,10 +11,8 @@
 //
 // API : window.OOMGuard
 //   - start()             : démarre l'heartbeat (à appeler après lancerApplication)
-//   - showToast(msg, type): exposé pour les autres modules. Si le splash est
-//                            encore visible, le toast est mis en file et affiché
-//                            après la fin du splash.
-//   - flushPendingToasts(): vide la file (à appeler depuis _splashEnd)
+//   - showToast(msg, type): notif courte, file d'attente derrière le splash
+//   - flushPendingToasts(): vide la file (appelée depuis _splashEnd)
 // =========================
 
 (function() {
@@ -28,6 +26,7 @@
   let _heartbeatStart = null;
   let _splashGone     = false;                       // passe à true quand _splashEnd a fini
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
+  let _pendingKillInfo = null;                       // payload kill détecté → modale après splash
 
   // =========================
   // TOAST UI
@@ -77,22 +76,117 @@
 
   function flushPendingToasts() {
     _splashGone = true;
-    if (_toastQueue.length === 0) return;
-    // Petit délai pour laisser la map se mettre en place (évite de chevaucher
-    // un éventuel rendu Leaflet au tout premier paint).
+
+    // Petit délai pour laisser la map se poser après la fin du splash.
     setTimeout(function() {
+      // 1) Modale "kill détecté" prioritaire (importante, vue grand format).
+      if (_pendingKillInfo) {
+        _afficherModaleKill(_pendingKillInfo);
+        _pendingKillInfo = null;
+        return;  // les éventuels toasts s'afficheront quand l'utilisateur ferme la modale
+      }
+      // 2) Toasts en attente
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
-        // Si plusieurs toasts en file, on laisse le 1er respirer 4s avant le 2e
-        if (_toastQueue.length > 0) {
-          // (showToast remplace l'existant, donc on temporise) —
-          // implémenté simplement : on stocke en cas d'erreur multiple,
-          // mais le scénario typique est 1 toast, donc setTimeout récursif suffit.
-          break;
-        }
+        if (_toastQueue.length > 0) break; // un seul à la fois (le 2e replacerait le 1er)
       }
     }, 400);
+  }
+
+  // =========================
+  // MODALE "KILL DÉTECTÉ"
+  // =========================
+  // Pleine carte centrée, style kta-readme-modal pour cohérence avec les
+  // autres modales de l'app (Documentation, Réglages, etc.). Contient :
+  //   - Explication factuelle
+  //   - Pourquoi (cause probable mémoire)
+  //   - Liste de conseils concrets pour réduire la pression mémoire
+  //   - Bouton de fermeture
+  function _afficherModaleKill(info) {
+    const existing = document.getElementById("kta-oom-modal");
+    if (existing) existing.remove();
+
+    const ageSec = info && info.ageSec ? info.ageSec : null;
+    const planTxt = info && info.planId ? info.planId : "(plan inconnu)";
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-oom-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">⚠️ Arrêt brutal détecté</span>' +
+          '<button class="kta-panneau-close" id="kta-oom-fermer" type="button">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-oom-corps">' +
+          '<div class="kta-oom-intro">' +
+            'La fois précédente, l\'application s\'est arrêtée <strong>brutalement</strong> sans pouvoir sauvegarder ' +
+            'sa session normalement.' +
+          '</div>' +
+
+          '<div class="kta-oom-section">' +
+            '<div class="kta-oom-section-titre">🤔 Pourquoi&nbsp;?</div>' +
+            '<p>' +
+              'Sur smartphone (iOS et Android), le système d\'exploitation tue silencieusement les onglets et ' +
+              'les apps installées qui consomment trop de mémoire vive. C\'est très souvent ce qui s\'est passé ici, ' +
+              'surtout si tu utilises un plan en haute résolution ou que beaucoup d\'autres apps tournaient en parallèle.' +
+            '</p>' +
+          '</div>' +
+
+          '<div class="kta-oom-section">' +
+            '<div class="kta-oom-section-titre">💡 Comment éviter que ça recommence</div>' +
+            '<ul class="kta-oom-list">' +
+              '<li><strong>Ferme les autres applications en arrière-plan</strong> avant d\'utiliser MyKTAMap. ' +
+                'Sur iPhone : double-clic Home ou swipe-up + dégage les vignettes. Sur Android : bouton multi-tâche + balaye.</li>' +
+              '<li><strong>Réduis le mode performance</strong> dans le loader (icône 🚀 ou via ⚙️ Réglages). ' +
+                '"Performance" charge des tuiles plus petites et utilise moins de RAM que "Qualité".</li>' +
+              '<li><strong>Évite d\'ouvrir plusieurs onglets de navigateur</strong> en parallèle si tu utilises ' +
+                'l\'app via Safari/Chrome — chaque onglet consomme aussi de la mémoire.</li>' +
+              '<li><strong>Garde ton smartphone à jour</strong> : iOS et Android améliorent régulièrement leur ' +
+                'gestion mémoire pour les PWA.</li>' +
+              '<li><strong>Si le problème persiste sur un plan précis</strong>, son image principale est peut-être ' +
+                'trop volumineuse — il faut alors la ré-optimiser (compression PNG ou réduction des dimensions).</li>' +
+              '<li><strong>Exporte régulièrement ta session</strong> (💾 Enregistrer la session) pour ne rien ' +
+                'perdre en cas d\'arrêt brutal.</li>' +
+            '</ul>' +
+          '</div>' +
+
+          '<div class="kta-oom-section kta-oom-tech">' +
+            '<div class="kta-oom-section-titre">🔧 Détails techniques</div>' +
+            '<p style="font-size:11px; color:#8892a4; margin:0;">' +
+              'Plan&nbsp;: <code>' + planTxt + '</code><br>' +
+              (ageSec ? 'Dernière activité avant l\'arrêt&nbsp;: il y a ' + ageSec + 's<br>' : '') +
+              'Mode&nbsp;: ' + (window.matchMedia('(display-mode: standalone)').matches ? 'PWA installée' : 'Navigateur') +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="kta-oom-actions">' +
+          '<button class="kta-btn kta-btn-primary" id="kta-oom-ok" type="button">✓ Compris</button>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(overlay);
+
+    function fermer() {
+      overlay.classList.add("kta-oom-leaving");
+      setTimeout(function() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        // Une fois la modale fermée, traiter les toasts qui auraient pu s'accumuler
+        if (_toastQueue.length > 0) flushPendingToasts();
+      }, 220);
+    }
+
+    overlay.querySelector("#kta-oom-fermer").addEventListener("click", fermer);
+    overlay.querySelector("#kta-oom-ok").addEventListener("click", fermer);
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+    const onKey = function(e) {
+      if (e.key === "Escape") {
+        fermer();
+        document.removeEventListener("keydown", onKey);
+      }
+    };
+    document.addEventListener("keydown", onKey);
   }
 
   // =========================
@@ -134,18 +228,17 @@
 
     // Kill brutal probable : l'app était active et n'a pas atteint son
     // beforeunload. Sur smartphone (iOS Safari + Android Chrome agressif)
-    // c'est très souvent un OOM.
-    console.warn("[OOMGuard] Kill détecté — dernière activité il y a", Math.round(age/1000),
+    // c'est très souvent un OOM. On stocke l'info et on l'affiche en modale
+    // pleine carte une fois le splash parti (cf. flushPendingToasts).
+    const ageSec = Math.round(age / 1000);
+    console.warn("[OOMGuard] Kill détecté — dernière activité il y a", ageSec,
                  "s | plan :", info.planId, "| UA :", info.userAgent);
 
-    // Le toast est mis en file (showToast détecte le splash actif et stocke).
-    // Il sera affiché par flushPendingToasts(), appelé depuis _splashEnd dans
-    // main.js → l'utilisateur voit le message une fois le splash terminé.
-    showToast(
-      "L'application a été arrêtée brutalement la dernière fois — probablement parce que ton smartphone manquait de mémoire. " +
-      "Si ça se reproduit, baisse le mode performance dans le loader.",
-      "warn"
-    );
+    _pendingKillInfo = {
+      ageSec:  ageSec,
+      planId:  info.planId,
+      userAgent: info.userAgent
+    };
 
     _clearMarker();
   }

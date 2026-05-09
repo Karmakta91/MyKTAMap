@@ -2656,6 +2656,110 @@ html, body {
 }
 
 /* ══════════════════════════════════════════════
+   MODALE OOM — affichée au boot quand un kill mémoire a été détecté
+   Style : reprend le shell .kta-readme-modal-overlay/.boite (déjà défini
+   ailleurs) + classes spécifiques au contenu.
+   ══════════════════════════════════════════════ */
+.kta-oom-modal-boite {
+  max-width: 560px;
+  /* Hauteur libre, scrolle interne via .kta-readme-modal-corps si besoin */
+}
+
+.kta-oom-corps {
+  padding: 18px 22px 4px;
+}
+
+.kta-oom-intro {
+  font-size: 14px;
+  color: #e8eaf0;
+  line-height: 1.55;
+  padding: 12px 14px;
+  background: rgba(244, 197, 66, 0.08);
+  border-left: 3px solid #f4c542;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+.kta-oom-section {
+  margin-bottom: 18px;
+}
+
+.kta-oom-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8cb4ff;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.kta-oom-corps p {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #c8d0e0;
+  margin: 0;
+}
+
+.kta-oom-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.kta-oom-list li {
+  position: relative;
+  padding: 8px 10px 8px 26px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #c8d0e0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.kta-oom-list li:last-child {
+  border-bottom: none;
+}
+
+.kta-oom-list li::before {
+  content: "→";
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  color: #f4c542;
+  font-weight: 700;
+}
+
+.kta-oom-list strong {
+  color: #e8eaf0;
+}
+
+.kta-oom-tech {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.kta-oom-tech code {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: #8cb4ff;
+}
+
+.kta-oom-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 22px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.kta-oom-leaving {
+  animation: kta-oom-fade-out 0.22s ease-in forwards;
+}
+
+@keyframes kta-oom-fade-out {
+  to { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════
    TOAST — notification non-intrusive (OOMGuard, etc.)
    Aligné sur la charte : carte dark #1a1f2e, bordure subtile blanche
    (idem #kta-titre-fixe et autres cards). Accent couleur uniquement
