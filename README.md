@@ -9,6 +9,28 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 29) — Hotfix crash au reload avec itinéraire actif
+
+**Bug** : utilisateur trace un itinéraire, ferme l'app, relance — crash instantané au démarrage, peu importe le perfPreset.
+
+**Cause racine** : SessionPersist sauvait l'itinéraire dans le state persisté. Au reload, `setRoads` re-créait la polyline SVG du tracé itinéraire avec son `filter: drop-shadow` CSS (halo cyan néon × 2 layers). Pour un itinéraire long (centaines de points sur des plans denses où le pathfinder traverse beaucoup de tronçons), le rendu GPU saturait au boot avant même que l'app soit utilisable.
+
+**Fix** : exclure les roads de type `"itinerary"` du state persisté SessionPersist :
+- **Côté save** (`_gatherState`) : filter sur les roads pour ne pas inclure le type `"itinerary"`. L'utilisateur le recalcule à la demande via la modale 🗺️ après reload (2 clics).
+- **Côté restore** (`_applyRestore`) : filter aussi sur les sessions déjà sauvegardées avant ce fix — sans ça, les utilisateurs qui n'ont pas vidé leur cache localStorage continueraient à crasher au reload.
+
+L'itinéraire reste un calcul ponctuel à la demande, ce qui est cohérent avec sa nature (calcul Pathfinder dérivé du réseau). Aucun impact sur les autres roads (Principal/Secondaire/Chemin), points editor, zones, mesure — tous persistés normalement.
+
+**Code** :
+- `js/sessionPersist.js > _gatherState` : `persistableRoads` exclut `type === "itinerary"`.
+- `js/sessionPersist.js > _applyRestore` : `safeRoads` exclut `type === "itinerary"` (filtrage défensif).
+
+**`sw.js`** : `CACHE_NAME` v78 → v79.
+
+⚠️ **Note utilisateur** : si tu avais un itinéraire actif au moment de fermer l'app, il ne sera pas restauré au reload. Re-clique sur **🗺️ Calculer un itinéraire** pour le retracer (les waypoints d'un itinéraire ne sont pas mémorisés non plus, choix volontaire).
+
+---
+
 ### 🗓️ 09/05/2026 (suite 28) — Optimisations performance pour les plans avec beaucoup de routes
 
 User a partagé un fichier Road.json avec ~100+ routes (plan de carrière). Le rendu et le calcul d'intersections devenaient ingérables. 4 optimisations cumulées :
