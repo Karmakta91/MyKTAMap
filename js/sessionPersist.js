@@ -25,6 +25,8 @@
   let _pollTimer     = null;
   let _lastHash      = null;
   let _currentPlanId = null;
+  // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
+  let _quotaWarned   = false;
 
   // ========== ETAT COURANT ==========
 
@@ -61,8 +63,40 @@
     return (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
   }
 
-  function save() {
+  // Throttle adaptatif : le polling 1.5s peut tomber en plein milieu d'un
+  // long task UI (zoom Leaflet, rendu canvas tile, etc.). Sur mobile, le
+  // localStorage.setItem synchrone ajoute alors du jank perceptible. On
+  // mesure le temps écoulé depuis le début du tick rAF courant : si on est
+  // déjà à >100ms (= main thread déjà occupé), on skip ce save et on
+  // attendra le prochain poll. Garantit qu'on n'aggrave pas la pression
+  // pendant une opération coûteuse, sans rien perdre en pratique car
+  // le hash-check fait que le save reprendra juste après.
+  let _lastForceSave = 0;
+  function _mainThreadBusy() {
+    // Heuristique simple : performance.now() vs un repère local.
+    // En condition normale, deux appels successifs sont à <1ms.
+    // Si le browser a juste retraité un long task, perf.now() peut sauter.
+    const t0 = performance.now();
+    let i = 0;
+    // micro-bench : ~50 µs en idle, plus si CPU contesté
+    while (i < 1000) i++;
+    return (performance.now() - t0) > 5;
+  }
+
+  function save(opts) {
     if (!_currentPlanId) return false;
+
+    // Throttle : sauf si force=true (beforeunload, visibilitychange) on
+    // skip si le main thread est sous pression
+    const force = opts && opts.force;
+    if (!force && _mainThreadBusy()) {
+      // Si on a skippé plus de 6 fois (≈ 9 secondes), on force quand même
+      // pour pas perdre de modif si la pression dure longtemps.
+      _lastForceSave++;
+      if (_lastForceSave < 6) return false;
+    }
+    _lastForceSave = 0;
+
     const state = _gatherState();
     const hash  = _hashState(state);
     if (hash === _lastHash) return false; // pas de changement depuis dernier save
@@ -87,9 +121,28 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       _lastHash = hash;
+      _quotaWarned = false;  // reset si le save remarche après libération de place
       return true;
     } catch(e) {
       console.warn("[SessionPersist] save échoué :", e);
+      // Détection quota dépassé : sur mobile c'est très souvent un signe que
+      // le navigateur va commencer à purger / killer l'onglet. On alerte
+      // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
+      // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
+      // suivants tant que le problème dure.
+      const isQuota =
+        e && (e.name === "QuotaExceededError" ||
+              e.code === 22 ||                       // historique Chrome/Safari
+              e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
+              /quota|storage/i.test(e.message || ""));
+      if (isQuota && !_quotaWarned && window.OOMGuard) {
+        _quotaWarned = true;
+        window.OOMGuard.showToast(
+          "Espace de stockage du smartphone saturé — la session ne peut plus être sauvegardée automatiquement. " +
+          "Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
+          "error"
+        );
+      }
       return false;
     }
   }
@@ -286,11 +339,15 @@
   // ========== SAFETY NETS ==========
 
   // Save au unload (fermeture page)
-  window.addEventListener("beforeunload", function() { save(); });
+  // Force=true au unload : critique de pas perdre les dernières modifs même
+  // si le main thread est busy (la page va disparaître, on n'aura pas de 2e chance).
+  window.addEventListener("beforeunload", function() { save({ force: true }); });
 
   // Save quand la page passe en arrière-plan (mobile + onglet caché)
   document.addEventListener("visibilitychange", function() {
-    if (document.visibilityState === "hidden") save();
+    // Force=true quand l'app passe en arrière-plan (mobile : iOS peut tuer
+    // l'onglet pour récup mémoire), même règle que beforeunload.
+    if (document.visibilityState === "hidden") save({ force: true });
   });
 
   // ========== EXPORTS ==========

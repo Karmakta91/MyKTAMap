@@ -214,6 +214,16 @@ Le bouton **🐛 Logs détaillés** dans "Plus d'options" du chargeur active un 
 
 Utile pour signaler un problème ou comprendre ce qu'il se passe sous le capot. Désactivé par défaut. Réglage aussi accessible depuis ⚙️ Réglages > Logs détaillés.
 
+### ⚠️ Si l'application s'arrête brusquement
+
+Sur smartphone, le système d'exploitation (iOS / Android) peut **fermer brutalement les applications qui consomment trop de mémoire**. Quand ça arrive, la prochaine fois que vous lancez MyKTAMap, une **fenêtre rouge "ATTENTION — ARRÊT BRUTAL DÉTECTÉ"** apparaît juste après le splash pour vous prévenir.
+
+La fenêtre détaille :
+- **Pourquoi** ça s'est produit (mémoire saturée la plupart du temps)
+- **Comment éviter que ça recommence** : fermer les autres applications en arrière-plan, baisser le mode performance dans le loader, éviter d'ouvrir trop d'onglets de navigateur en parallèle, garder le smartphone à jour, exporter régulièrement votre session pour ne rien perdre
+
+Si vous voyez cette fenêtre **régulièrement**, c'est le signe qu'il faut **réduire le mode performance** (Performance < Équilibré < Qualité, niveau de RAM décroissant).
+
 ### 📡 Utilisation hors connexion
 
 MyKTAMap fonctionne **entièrement hors connexion** une fois le plan chargé une première fois.
@@ -261,6 +271,8 @@ Si vous voulez remettre l'application **à l'état initial** (comme un premier l
 - Vos **préférences** (mode performance par plan, options de tracker, logs détaillés, etc.)
 
 L'application demande **deux confirmations** avant d'exécuter le reset, et vous rappelle d'**exporter votre liste** au préalable si vous souhaitez la conserver.
+
+> 📡 **Vérification connexion** : avant la première confirmation, l'application teste rapidement votre connexion Internet (max 5 secondes). Si vous êtes **hors ligne**, une **fenêtre rouge supplémentaire** vous prévient que l'application sera **inutilisable** après le reset (le cache vide ne pourra pas être rerempli sans réseau). Reconnectez-vous au Wi-Fi ou aux données mobiles avant de relancer le reset, ou cliquez "Continuer quand même" si vous savez ce que vous faites.
 
 > Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
 

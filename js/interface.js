@@ -1498,10 +1498,123 @@ function ouvrirCalibrageEchelle() {
 // =========================
 // VIDER LE CACHE APPLICATIF
 // =========================
+// Vérification connexion Internet : timeout 5s, retourne Promise<boolean>.
+// Combine navigator.onLine (rapide) + fetch no-cors sur un endpoint léger
+// (Google generate_204 = endpoint historique pour ce check, retourne juste
+// un HTTP 204 No Content). En mode no-cors la promesse résout dès qu'un
+// network round-trip a lieu — donc fail = vrai offline. AbortSignal pour
+// gérer le timeout proprement.
+function _pingInternet() {
+  return new Promise(function(resolve) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      // Le navigateur est sûr d'être offline → on évite même le fetch
+      resolve(false);
+      return;
+    }
+    let done = false;
+    const timer = setTimeout(function() {
+      if (done) return;
+      done = true;
+      try { ctrl.abort(); } catch(e) {}
+      resolve(false);
+    }, 5000);
+    const ctrl = new AbortController();
+    fetch("https://www.gstatic.com/generate_204", {
+      method: "GET",
+      mode:   "no-cors",
+      cache:  "no-store",
+      signal: ctrl.signal
+    }).then(function() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(true);
+    }).catch(function() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
+}
+
 function viderCacheAppli() {
   const cfgModal = document.getElementById("kta-cfg-modal");
   if (cfgModal) cfgModal.remove();
 
+  // 1ère étape : check connexion Internet AVANT toute confirmation.
+  // Affichage bref d'un "Vérification connexion…" pour pas avoir un
+  // freeze silencieux de 5s si le réseau ne répond pas.
+  const overlayPing = document.createElement("div");
+  overlayPing.className = "kta-modal-overlay";
+  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">Vérification de la connexion…</div><div class="kta-modal-texte">Test de la connexion Internet (max 5s).</div></div>';
+  document.documentElement.appendChild(overlayPing);
+
+  _pingInternet().then(function(online) {
+    overlayPing.remove();
+    if (online) {
+      _resetFlowConfirmation();
+    } else {
+      _resetFlowOfflineWarning();
+    }
+  });
+}
+
+// Affiche d'abord le warning insistant "PAS DE CONNEXION INTERNET" en rouge
+// (style cohérent avec la modale OOM), puis bascule sur le flow de double
+// confirmation classique si l'utilisateur veut quand même continuer.
+function _resetFlowOfflineWarning() {
+  const overlay = document.createElement("div");
+  overlay.id = "kta-reset-offline";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
+      '<div class="kta-readme-modal-header kta-oom-header">' +
+        '<span class="kta-oom-titre-big">' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+          '<span class="kta-oom-titre-text">PAS DE CONNEXION INTERNET</span>' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+        '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-oom-corps">' +
+        '<div class="kta-oom-intro">' +
+          'Tu es sur le point de <strong>tout réinitialiser</strong> alors que tu es <strong>hors ligne</strong>. ' +
+          'L\'application a besoin d\'Internet pour redescendre ses fichiers (HTML, JS, CSS, icônes) après le wipe.' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">⛔ Conséquence si tu continues maintenant</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li><strong>L\'app sera inutilisable</strong> tant que tu n\'auras pas une connexion Internet.</li>' +
+            '<li>Le splash et le loader ne s\'afficheront même pas — le navigateur cherchera les fichiers, ne les trouvera plus en cache, et restera bloqué.</li>' +
+            '<li>Tous tes plans mémorisés, ta session en cours et tes préférences seront <strong>perdus définitivement</strong>.</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">✅ Recommandation</div>' +
+          '<p>' +
+            '<strong>Reconnecte-toi à Internet</strong> (Wi-Fi, 4G/5G) puis relance la réinitialisation. ' +
+            'L\'app aura ainsi une chance de se recharger correctement après le wipe.' +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kta-oom-actions" style="justify-content:space-between;">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-reset-offline-annuler" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-danger"  id="kta-reset-offline-forcer"  type="button">Continuer quand même</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  document.getElementById("kta-reset-offline-annuler").addEventListener("click", function() {
+    overlay.remove();
+  });
+  document.getElementById("kta-reset-offline-forcer").addEventListener("click", function() {
+    overlay.remove();
+    _resetFlowConfirmation();
+  });
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function _resetFlowConfirmation() {
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
   overlay1.innerHTML = `

@@ -168,7 +168,12 @@ async function initMapFromConfig() {
     crs: L.CRS.Simple,
     minZoom: -2,
     maxBounds: bounds,
-    maxBoundsViscosity: 1.0
+    maxBoundsViscosity: 1.0,
+    // Rendu canvas pour les overlays vectoriels (polylines routes, polygons zones,
+    // circleMarker intersections). Évite la création de N éléments SVG/DOM, gros
+    // gain perf sur mobile pour les plans denses. Markers (L.marker) restent en DOM
+    // car ils utilisent des icon images — pas affectés par preferCanvas.
+    preferCanvas: true
   });
   map.setMaxBounds(bounds);
   map.setMinZoom(-2);
