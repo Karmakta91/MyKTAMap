@@ -258,14 +258,13 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* visual tweaks */
 
 .leaflet-container {
-	/* MyKTAMap : fond sombre par défaut (charte app) au lieu du #ddd Leaflet
-	   d'origine. Effet : la zone hors-tuiles est dark, et surtout le haut de
-	   la page (qu'iOS PWA standalone lit pour colorier la status bar en mode
-	   black-translucent / default) reste sombre même quand les tuiles claires
-	   sont chargées par-dessus — la mince zone visible juste sous la status
-	   bar (avant que la tuile y soit dessinée à 1er paint) suffit à iOS pour
-	   tinter sa barre. */
-	background: #1a1f2e;
+	/* MyKTAMap : fond aligné sur la couleur dominante visible sur la modale
+	   loader (#0a0d18 du body sur lequel l'overlay rgba(5,8,15,0.92) laisse
+	   transparaître). Effet : la transition loader → map est invisible (même
+	   teinte de fond), et le haut de la page reste sombre quand les tuiles
+	   claires sont chargées par-dessus — iOS PWA standalone lit cette couleur
+	   pour colorier sa status bar en mode black-translucent / default. */
+	background: #0a0d18;
 	outline-offset: 1px;
 	}
 .leaflet-container a {
