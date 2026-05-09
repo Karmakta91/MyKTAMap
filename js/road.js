@@ -234,8 +234,20 @@ function renderRoads() {
     const latlngs = road.points.map(p => convertCoord(p.x, p.y));
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
 
-    const polyline = L.polyline(latlngs, style).addTo(window.map);
-    roadLayers.push(polyline);
+    // Cas spécial "itinerary" : on force le renderer SVG pour pouvoir appliquer
+    // un filtre CSS drop-shadow (effet "néon glow"), impossible sur le renderer
+    // canvas (preferCanvas:true) qui dessine en bitmap pixel-aware.
+    if (road.type === "itinerary") {
+      const opts = Object.assign({}, style, {
+        renderer:  L.svg(),
+        className: "kta-itinerary-polyline"
+      });
+      const polyline = L.polyline(latlngs, opts).addTo(window.map);
+      roadLayers.push(polyline);
+    } else {
+      const polyline = L.polyline(latlngs, style).addTo(window.map);
+      roadLayers.push(polyline);
+    }
   });
 
   // Cercles d'intersection : on combine routes éditables (roadsData) + routes embarquées

@@ -135,6 +135,13 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // Si la session restaurée contient un road de type "itinerary", afficher
+  // immédiatement le label de distance. Le hook est aussi appelé après chaque
+  // setRoads dans la modale itinéraire pour rester à jour.
+  if (typeof window._majLabelDistanceItineraire === "function") {
+    window._majLabelDistanceItineraire();
+  }
+
   // Démarre le heartbeat OOMGuard : marker localStorage rafraîchi toutes
   // les 5s, effacé proprement au beforeunload/pagehide. Si la fois suivante
   // on retrouve le marker au boot, c'est qu'iOS/Android a tué l'app
