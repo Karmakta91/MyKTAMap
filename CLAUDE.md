@@ -498,9 +498,8 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 **Module `js/copyright.js`** chargé EN PREMIER dans `index.html` :
 - `window.__MKM__` watermark (frozen object avec author/copyright/license/build) — preuve d'origine en cas de copie.
 - Console banner stylé au boot (visible à F12). Bypass volontaire du proxy `debug.js` (chargé après) → reste visible même en `debugMode = false`.
+- **Détection DevTools conditionnée à `APP_CONFIG.debugMode === true`** : si debug ON, polling 2s heuristique outer/inner > 280px → toast `.kta-devtools-warn` (badge "DEBUG" pour signaler la nature outil-dev). Si debug OFF, aucune polling, zéro overhead. Toggle live du mode debug fonctionne (pas besoin de reload). Skip si une modale charte est ouverte (anti faux positif sur transitions viewport).
 - Toujours dans `ASSETS_TO_CACHE` du SW.
-
-**⚠️ Détection DevTools retirée le 09/05/2026** — l'ancienne heuristique outerWidth/innerWidth générait des faux positifs lors des transitions de modales (ex : clic "Appliquer" dans le formulaire d'ajout de point déclenchait le toast). Le banner console + watermark suffisent pour transmettre le message copyright à un inspecteur, sans risque de bug UX.
 
 **Headers copyright** dans les fichiers JS critiques : `main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`. Format `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */`. Si quelqu'un copie un fichier isolé, le copyright le suit.
 
