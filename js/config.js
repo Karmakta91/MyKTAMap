@@ -170,7 +170,9 @@ function buildAppConfigFromPlan(planConfig) {
     startY:        Number(tracking.startY        ?? DEFAULT_CONFIG.startY),
     stepThreshold: Number(tracking.stepThreshold ?? DEFAULT_CONFIG.stepThreshold),
     stepCooldown:  Number(tracking.stepCooldown  ?? DEFAULT_CONFIG.stepCooldown),
-    debugMode:     Boolean(tracking.motionDebug  ?? DEFAULT_CONFIG.debugMode),
+    // Lit `debugMode` du plan-config en priorité, fallback sur l'ancien `motionDebug`
+    // pour les plans pas encore migrés (rétro-compat zip terrains).
+    debugMode:     Boolean(tracking.debugMode ?? tracking.motionDebug ?? DEFAULT_CONFIG.debugMode),
     perfPreset:    DEFAULT_CONFIG.perfPreset
   };
 
@@ -238,9 +240,6 @@ async function loadAppConfig(planPath) {
 
     APP_CONFIG = { ...cfg };
     window.APP_CONFIG = APP_CONFIG;
-
-    // Mémoriser le chemin pour le registre
-    window._SERVER_PLAN_PATH = baseDir;
 
     console.log("[Config] Chargée depuis", configUrl, APP_CONFIG);
     return true;

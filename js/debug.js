@@ -41,12 +41,35 @@
   }
 
   const _origLog   = console.log.bind(console);
+  const _origInfo  = console.info ? console.info.bind(console) : _origLog;
   const _origWarn  = console.warn.bind(console);
   const _origError = console.error.bind(console);
 
-  console.log   = function() { _origLog.apply(console, arguments);   _save("log",   arguments); };
-  console.warn  = function() { _origWarn.apply(console, arguments);  _save("warn",  arguments); };
-  console.error = function() { _origError.apply(console, arguments); _save("error", arguments); };
+  // Gating centralisé : en mode debug OFF, console.log/info ne ressortent PAS
+  // dans la console DevTools (silence en prod) mais sont TOUJOURS bufferisés
+  // pour la modale 🐛 Logs de débogage. warn/error restent toujours visibles
+  // car critiques. Lecture safe d'APP_CONFIG (pas encore chargé au tout début
+  // du boot → défaut silencieux).
+  function _isDebug() {
+    return !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+  }
+
+  console.log = function() {
+    if (_isDebug()) _origLog.apply(console, arguments);
+    _save("log", arguments);
+  };
+  console.info = function() {
+    if (_isDebug()) _origInfo.apply(console, arguments);
+    _save("info", arguments);
+  };
+  console.warn = function() {
+    _origWarn.apply(console, arguments);
+    _save("warn", arguments);
+  };
+  console.error = function() {
+    _origError.apply(console, arguments);
+    _save("error", arguments);
+  };
 
   window.addEventListener("error", function(e) {
     _save("error", ["[UNCAUGHT] " + e.message + " — " + (e.filename||"") + ":" + (e.lineno||"")]);

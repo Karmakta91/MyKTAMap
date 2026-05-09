@@ -47,12 +47,9 @@ function initRoad() {
   if (window.roadInitialized) return;
   window.roadInitialized = true;
 
-  console.log("initRoad OK");
+  console.log("[Road] initRoad OK");
 
   window.map.on("mousedown", function(e) {
-    console.log("clic carte road");
-    console.log("modeRoad =", window.modeRoad);
-
     if (!window.modeRoad) return;
 
     const x = e.latlng.lng;
@@ -64,11 +61,11 @@ function initRoad() {
         points: []
       };
       roadsData.push(currentRoad);
-      console.log("nouveau tracé", currentRoad);
+      console.log("[Road] nouveau tracé", currentRoad);
     }
 
     currentRoad.points.push({ x, y });
-    console.log("point ajouté", x, y);
+    console.log("[Road] point ajouté", x, y);
 
     renderRoads();
   });
@@ -86,7 +83,7 @@ function toggleRoadMode(type) {
     currentRoad = null;
   }
 
-  console.log("Mode road :", window.modeRoad);
+  console.log("[Road] Mode :", window.modeRoad);
 }
 
 // =========================
@@ -222,8 +219,7 @@ function _calculerIntersectionsRoads(roads) {
 // RENDU
 // =========================
 function renderRoads() {
-  console.log("renderRoads lancé");
-  console.log("roadsData =", roadsData);
+  console.log("[Road] renderRoads — roadsData :", roadsData);
 
   roadLayers.forEach(layer => window.map.removeLayer(layer));
   roadLayers = [];
