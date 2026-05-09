@@ -106,6 +106,29 @@ html, body {
   transform: translateX(-50%) scale(0.98);
 }
 
+/* Quand le panneau du contrôle des couches Leaflet est ouvert (classe injectée
+   sur <body> par interface.js > _initLayersControlWatcher), on décale le titre
+   fixe vers la gauche. Sans ce décalage, le panneau passait derrière le titre :
+   le #map est position:fixed → stacking context isolé → le panneau Leaflet
+   (dans #map) ne pouvait pas dépasser le titre (dans body, z-index 1100), même
+   avec un z-index élevé sur le panneau lui-même.
+   Décalage : on retire le centrage et on ancre le titre à gauche, après la
+   sidebar (≈ 60-70px de large). Transition douce pour éviter un saut visuel. */
+body.kta-layers-panel-open #kta-titre-fixe {
+  left: calc(70px + env(safe-area-inset-left, 0px));
+  transform: translateX(0);
+}
+
+body.kta-layers-panel-open #kta-titre-fixe:active {
+  transform: translateX(0) scale(0.98);
+}
+
+/* Le plan switcher ouvre depuis le titre fixe → suit son décalage. */
+body.kta-layers-panel-open #kta-plan-switcher {
+  left: calc(70px + env(safe-area-inset-left, 0px));
+  transform: translateX(0);
+}
+
 .kta-titre-arrow {
   display: inline-block;
   margin-left: 6px;
