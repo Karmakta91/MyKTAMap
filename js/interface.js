@@ -1176,7 +1176,7 @@ function afficherAide() {
             de données visibles. <strong>Pas exporté dans la légende des images PNG.</strong>
           </p>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte ou recherche par nom/id/tag),
+            <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte, recherche par nom/id/tag, ou bouton <strong>🧭 Ma position</strong> qui prend ta position tracker actuelle),
             l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données).
             Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
             <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
@@ -2485,10 +2485,25 @@ function _rafraichirListeWaypointsModale() {
   }
   cont.innerHTML = _itineraryWaypoints.map(function(p, i) {
     const label = p.label || ("x:" + Math.round(p.x) + " y:" + Math.round(p.y));
-    const sourceIcon = p.source === "search" ? "🎯" : "📍";
+    // 3 sources possibles : "search" (point existant), "tracker" (position
+    // tracker), "click" (par defaut, clic carte). Icone + title adaptes.
+    let sourceIcon, sourceTitle, sourceClass;
+    if (p.source === "search") {
+      sourceIcon  = "🎯";
+      sourceTitle = "Point existant";
+      sourceClass = "";
+    } else if (p.source === "tracker") {
+      sourceIcon  = "📍";
+      sourceTitle = "Position tracker (snapshot)";
+      sourceClass = " kta-iti-wp-icon-tracker";
+    } else {
+      sourceIcon  = "📍";
+      sourceTitle = "Clic carte";
+      sourceClass = "";
+    }
     return '<div class="kta-iti-wp-row">' +
              '<span class="kta-iti-wp-num">' + (i + 1) + '</span>' +
-             '<span class="kta-iti-wp-icon" title="' + (p.source === "search" ? "Point existant" : "Clic carte") + '">' + sourceIcon + '</span>' +
+             '<span class="kta-iti-wp-icon' + sourceClass + '" title="' + sourceTitle + '">' + sourceIcon + '</span>' +
              '<span class="kta-iti-wp-coord">' + _escapeHtml(label) + '</span>' +
              '<button class="kta-iti-wp-goto"   data-idx="' + i + '" title="Aller à ce waypoint">🎯</button>' +
              '<button class="kta-iti-wp-remove" data-idx="' + i + '" title="Retirer ce waypoint">✕</button>' +
@@ -2639,12 +2654,13 @@ window.ouvrirItinerairModal = function() {
       '<div class="kta-iti-section">' +
         '<div class="kta-iti-section-titre">📍 Points de passage</div>' +
         '<p class="kta-iti-help">' +
-          'Clique sur la carte ou sélectionne un point existant. ' +
+          'Clique sur la carte, sélectionne un point existant, ou utilise ta position tracker. ' +
           'L\'itinéraire passera dans l\'ordre par chacun d\'eux, ' +
           'en suivant le réseau de routes existant au plus court.' +
         '</p>' +
         '<div class="kta-iti-mode-toggle">' +
           '<button id="kta-iti-mode-click" class="kta-btn kta-btn-primary" type="button">📍 Mode clic carte</button>' +
+          '<button id="kta-iti-tracker-pos" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;" title="Ajoute la position actuelle du tracker comme waypoint (snapshot fige)">🧭 Ma position</button>' +
           '<button id="kta-iti-clear" class="kta-btn kta-btn-ghost" type="button" style="margin-left:8px;">🗑️ Vider</button>' +
         '</div>' +
         '<div class="kta-iti-search-wrap">' +
@@ -2852,6 +2868,31 @@ window.ouvrirItinerairModal = function() {
       _afficherPanneauItineraireFlottant(modal);
     }
   });
+
+  // 🧭 Ma position tracker — ajoute un waypoint avec la position courante du
+  // tracker (snapshot fige au moment du clic, ne bouge plus apres). Position
+  // toujours disponible : APP_CONFIG.startX/Y au boot, puis modifiee par
+  // recalage manuel ou par les pas du tracker actif.
+  const btnTrackerPos = document.getElementById("kta-iti-tracker-pos");
+  if (btnTrackerPos) {
+    btnTrackerPos.addEventListener("click", function() {
+      if (typeof window.getTrackingPosition !== "function") return;
+      const pos = window.getTrackingPosition();
+      if (!pos || typeof pos.x !== "number" || typeof pos.y !== "number") {
+        alert("Position du tracker indisponible.");
+        return;
+      }
+      _itineraryWaypoints.push({
+        x:      pos.x,
+        y:      pos.y,
+        source: "tracker",
+        label:  "🧭 Position actuelle (" + Math.round(pos.x) + ", " + Math.round(pos.y) + ")"
+      });
+      _ajouterWaypointVisuel({ x: pos.x, y: pos.y }, _itineraryWaypoints.length);
+      _rafraichirListeWaypointsModale();
+      _majPanneauFloaterCount();
+    });
+  }
 
   // Vider
   document.getElementById("kta-iti-clear").addEventListener("click", function() {

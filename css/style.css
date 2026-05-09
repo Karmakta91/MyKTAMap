@@ -3131,6 +3131,22 @@ html, body {
   flex-shrink: 0;
 }
 
+/* Source "tracker" — emoji 📍 dans un badge jaune doré pour distinguer
+   visuellement des autres sources (clic carte ou search). Le badge
+   accompagne le label "🧭 Position actuelle (X, Y)" du waypoint. */
+.kta-iti-wp-icon-tracker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: rgba(244, 197, 66, 0.18);
+  border: 1px solid rgba(244, 197, 66, 0.5);
+  border-radius: 4px;
+  font-size: 10px;
+  line-height: 1;
+}
+
 .kta-iti-wp-coord {
   flex: 1;
   font-size: 12px;
