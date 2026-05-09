@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 19) — Toast copyright à l'activation du mode debug
+
+**Avant** : la popup copyright `.kta-devtools-warn` ne s'affichait que si la heuristique outerWidth/innerWidth détectait DevTools ouvert (polling 2s, threshold 240px). Le user ne voyait pas de feedback visuel s'il activait le mode debug **sans** F12 ouvert, ou si son setup DevTools tombait en dessous du threshold.
+
+**Maintenant** : le toast s'affiche **instantanément** dès qu'on passe `setDebugMode(false → true)` — peu importe l'état de F12. Titre adaptatif :
+- **"Mode debug active"** si déclenché par activation manuelle (bouton 🐛 ou Réglages)
+- **"Inspection detectee"** si déclenché par la heuristique F12 (polling)
+
+**Code** :
+- `js/copyright.js > _afficherToastDevtools(cause)` : titre adaptatif. Exposé sur `window.__MKM_showWarning__` pour appel externe.
+- `js/config.js > setDebugMode(value)` : si transition false → true, appelle `window.__MKM_showWarning__("debug-activated")`.
+- `js/interface.js > sauvegarderConfig` (modale Réglages ⚙️) : appelle `window.setDebugMode()` au lieu d'écrire directement `APP_CONFIG.debugMode`, pour que le toast se déclenche.
+
+Le polling F12 (heuristique 240px) reste actif en complément si debug était déjà ON au boot.
+
+**`sw.js`** : `CACHE_NAME` v68 → v69.
+
+⚠️ **Force refresh nécessaire** côté utilisateur (Ctrl+Shift+R, ou Réglages → 💥 Tout réinitialiser) pour récupérer le nouveau code.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 18) — Fix toggle "Mes annotations" sur les roads (renderer SVG forcé)
 
 **Symptôme** : après le fix suite 17 (auto-création du calque editor), le toggle "Mes annotations" masquait bien les zones de session, mais **les roads de session restaient visibles**.

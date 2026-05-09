@@ -268,10 +268,20 @@ function sauvegarderPrefsUtilisateur() {
 // =========================
 // Utilisé par le loader (bouton 🐛) ET les Réglages ⚙️ → un seul point d'entrée
 function setDebugMode(value) {
-  APP_CONFIG.debugMode = !!value;
+  const newValue = !!value;
+  const wasOff = !APP_CONFIG.debugMode;
+  APP_CONFIG.debugMode = newValue;
   window.APP_CONFIG = APP_CONFIG;
   sauvegarderPrefsUtilisateur();
   console.log("[Config] debugMode →", APP_CONFIG.debugMode);
+
+  // Feedback visuel : si on PASSE de OFF à ON, afficher le toast copyright
+  // pour confirmer l'activation du mode debug (et rappeler la licence).
+  // L'utilisateur n'a pas besoin d'avoir F12 ouvert — le toast s'affiche
+  // direct, peu importe la heuristique de detection F12.
+  if (newValue && wasOff && typeof window.__MKM_showWarning__ === "function") {
+    window.__MKM_showWarning__("debug-activated");
+  }
 }
 
 // =========================
