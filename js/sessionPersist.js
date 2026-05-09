@@ -25,6 +25,8 @@
   let _pollTimer     = null;
   let _lastHash      = null;
   let _currentPlanId = null;
+  // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
+  let _quotaWarned   = false;
 
   // ========== ETAT COURANT ==========
 
@@ -119,9 +121,28 @@
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
       _lastHash = hash;
+      _quotaWarned = false;  // reset si le save remarche après libération de place
       return true;
     } catch(e) {
       console.warn("[SessionPersist] save échoué :", e);
+      // Détection quota dépassé : sur mobile c'est très souvent un signe que
+      // le navigateur va commencer à purger / killer l'onglet. On alerte
+      // l'utilisateur 1× pour l'inciter à exporter sa session manuellement
+      // avant que tout soit perdu. _quotaWarned évite le spam sur les ticks
+      // suivants tant que le problème dure.
+      const isQuota =
+        e && (e.name === "QuotaExceededError" ||
+              e.code === 22 ||                       // historique Chrome/Safari
+              e.code === 1014 ||                     // Firefox NS_ERROR_DOM_QUOTA_REACHED
+              /quota|storage/i.test(e.message || ""));
+      if (isQuota && !_quotaWarned && window.OOMGuard) {
+        _quotaWarned = true;
+        window.OOMGuard.showToast(
+          "Espace de stockage local saturé — la session ne peut plus être sauvegardée automatiquement. " +
+          "Pense à exporter ta session (💾 Enregistrer la session) pour ne rien perdre.",
+          "error"
+        );
+      }
       return false;
     }
   }

@@ -135,6 +135,12 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // Démarre le heartbeat OOMGuard : marker localStorage rafraîchi toutes
+  // les 5s, effacé proprement au beforeunload/pagehide. Si la fois suivante
+  // on retrouve le marker au boot, c'est qu'iOS/Android a tué l'app
+  // brutalement (typiquement OOM) → toast affiché côté utilisateur.
+  if (window.OOMGuard) window.OOMGuard.start();
+
   // Resize defensif (iOS PWA viewport-fit=cover) :
   //   Sur iPhone PWA, la viewport change après l'activation du Service Worker
   //   (la status bar passe en black-translucent et la home-indicator zone entre
