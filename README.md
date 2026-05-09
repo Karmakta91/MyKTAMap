@@ -9,6 +9,20 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 17) — Fallback auto-création du calque "editor" dans map.js
+
+**Bug** : sur des plans-config qui ne déclarent **PAS** le calque `id: "editor"` dans leur tableau `dataLayers` (anciens plans, plans minimaux, ZIP générés avant standardisation), `dataLayerGroups.editor` était `undefined` → `window.layerEditor` aussi → les helpers `_targetLayerForRoad()` et `_zoneTarget()` faisaient `fallback || window.map` et ajoutaient les polylines/polygons directement à la map → toggle "Mes annotations" inopérant pour les routes et zones (les points editor passaient par `_ajouterMarker` qui logge un `console.error` quand `layerEditor` est undefined).
+
+**Fix** : dans `js/map.js > initMapFromConfig`, après le `forEach` des `dataLayers`, on **auto-crée** un calque `editor` si absent. Le LayerGroup est ajouté à la map (visible par défaut) et au control de calques avec le label "Mes annotations". Console warn `[Map] Calque 'editor' absent du plan-config — fallback auto-créé` pour traçabilité.
+
+Avec ce fallback, `window.layerEditor` existe **toujours**, peu importe la version du plan-config. Le toggle "Mes annotations" englobe systématiquement points + roads + zones de session.
+
+**`sw.js`** : `CACHE_NAME` v66 → v67.
+
+⚠️ **Force refresh nécessaire** côté utilisateur (Ctrl+Shift+R, ou Réglages → 💥 Tout réinitialiser) pour récupérer le nouveau code.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 16) — Gating buffer logs + threshold popup F12 ajusté
 
 **Bug 1** : la modale 🐛 Logs de débogage contenait toujours plein de logs même en mode debug OFF (notamment `[Tracking] Magnitude :` qui spammait 60 logs/s en mode tracker actif). Le proxy `debug.js` gatait les logs côté **DevTools console** mais les bufferisait quand même dans le localStorage → buffer plein de bruit.
