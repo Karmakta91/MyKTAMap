@@ -193,8 +193,25 @@ async function initMapFromConfig() {
 
   // Sur mobile, dezoom plus profond (-4 vs -2) pour donner plus d'espace
   // écran libre autour du plan quand on consulte un point au bord.
+  // ⚠️ MAIS : pour les gros plans, le dezoom extreme fait crasher l'app
+  // (Leaflet doit traiter l'image entiere en memoire au minZoom). On plafonne
+  // donc dynamiquement selon la taille de l'image :
+  //   image < 4000 px de cote     → minZoom -4 mobile / -2 desktop (defaut)
+  //   image 4000 - 8000 px        → minZoom -3 mobile / -2 desktop (peu profond)
+  //   image > 8000 px             → minZoom -2 mobile / -1 desktop (limite)
+  // Choix du seuil 4000/8000 base sur l'observation : crashes au dezoom
+  // extreme rapportes sur des plans de carriere de 8000+ px (09/05/2026).
   const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
-  const _minZoom  = _isMobile ? -4 : -2;
+  const _maxImgDim = Math.max(config.plan.imageWidth || 0, config.plan.imageHeight || 0);
+  let _minZoom;
+  if (_maxImgDim > 8000) {
+    _minZoom = _isMobile ? -2 : -1;
+  } else if (_maxImgDim > 4000) {
+    _minZoom = _isMobile ? -3 : -2;
+  } else {
+    _minZoom = _isMobile ? -4 : -2;
+  }
+  console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom, "(mobile:", _isMobile, ")");
 
   map = L.map('map', {
     crs: L.CRS.Simple,
