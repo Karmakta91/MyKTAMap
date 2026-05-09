@@ -9,6 +9,21 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 24) — Rollback complet du forçage SVG sur roads (crash dézoom)
+
+**Bug** : le forçage du renderer SVG sur les polylines roads + cercles d'intersection (suites 18 et 20) causait des crashes au dézoom sur les plans denses. Trop d'éléments DOM SVG redessinés simultanément lors du recalcul des coordonnées Leaflet.
+
+**Décision pragmatique** : rollback complet du forçage SVG. Retour au renderer canvas natif (preferCanvas:true) pour toutes les polylines roads non-itinerary et tous les cercles d'intersection. Le bug du toggle "Mes annotations" pour les polylines reste ouvert (déjà connu suite 22), mais au moins plus de crash au dézoom.
+
+L'itinéraire garde son renderer SVG dédié — il en a besoin pour le `filter: drop-shadow` CSS (halo néon cyan) impossible sur le canvas. Un seul tracé itinéraire actif à la fois → coût négligeable.
+
+**Code** :
+- `js/road.js` : suppression de `_sharedSvgRenderer`. Polylines roads non-itinerary et cercles d'intersection reviennent au renderer canvas par défaut (juste `addTo(target)` sans option `renderer`).
+
+**`sw.js`** : `CACHE_NAME` v73 → v74.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 23) — Itinéraire : bouton "🧭 Ma position" pour utiliser le tracker comme waypoint
 
 Nouveau dans la modale **🗺️ Calculer un itinéraire** (mode calcul) : un bouton **🧭 Ma position** ajoute la position actuelle du tracker comme waypoint (snapshot figé au moment du clic).
