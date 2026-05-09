@@ -3226,3 +3226,22 @@ html, body {
   font-size: 12px;
   padding: 6px 10px;
 }
+
+/* Label de mesure de distance — même charte que .kta-iti-distance pour
+   cohérence visuelle (les 2 labels sont empilés en bas-gauche). Accent
+   jaune charte au lieu du cyan (qui est réservé à l'itinéraire). */
+.kta-measure-distance {
+  background: #1a1f2e !important;
+  color: #f4c542 !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(244, 197, 66, 0.4) !important;
+  border-radius: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+  letter-spacing: 0.02em;
+}
+
+.kta-measure-distance .kta-measure-distance-icon {
+  margin-right: 6px;
+}
