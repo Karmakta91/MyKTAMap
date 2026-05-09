@@ -75,7 +75,12 @@
   // separee) — c'est un outil de dissuasion, pas une vraie protection.
 
   var _devtoolsSpotted = false;
-  var THRESHOLD = 280;
+  // Threshold abaisse a 240 (etait 280) — compromis entre le sensible (200,
+  // qui generait des faux positifs au clic Appliquer) et le strict (280, qui
+  // ratait des configs DevTools dock cote sur certains ecrans). Le skip-modal
+  // protege deja des transitions de modales, 240 capture la plupart des
+  // ouvertures DevTools sans declenchement abusif.
+  var THRESHOLD = 240;
 
   function _isDebugMode() {
     return !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);

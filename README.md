@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 16) — Gating buffer logs + threshold popup F12 ajusté
+
+**Bug 1** : la modale 🐛 Logs de débogage contenait toujours plein de logs même en mode debug OFF (notamment `[Tracking] Magnitude :` qui spammait 60 logs/s en mode tracker actif). Le proxy `debug.js` gatait les logs côté **DevTools console** mais les bufferisait quand même dans le localStorage → buffer plein de bruit.
+
+**Fix** : `console.log` / `console.info` ne sont **plus bufferisés** quand `debugMode === false`. Seuls `console.warn` / `console.error` restent toujours bufferisés (utile pour diagnostic post-mortem en prod). Effet : modale 🐛 reste lisible même après une session intensive de tracker.
+
+| | DevTools console | Buffer (modale 🐛) |
+|---|---|---|
+| `console.log` / `info` | Visible si debug ON | Bufferisé si debug ON |
+| `console.warn` / `error` | Toujours visible | Toujours bufferisé |
+
+**Bug 2** : la popup F12 ne s'affichait plus à l'activation du mode debug pour certaines configs DevTools (dock côté sur écrans pas trop larges). Le threshold 280px était trop strict.
+
+**Fix** : threshold abaissé à **240px** (compromis entre 200 trop sensible et 280 trop strict). Le skip-modal en place protège déjà contre les faux positifs sur transitions de modales.
+
+**`sw.js`** : `CACHE_NAME` v65 → v66.
+
+⚠️ **À faire côté utilisateur après déploiement** : force refresh du SW (Ctrl+Shift+R, ou Réglages → 💥 Tout réinitialiser) pour récupérer le nouveau code.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 15) — Détection DevTools réactivée mais conditionnée au mode debug
 
 Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) et l'absence de bug UX :
