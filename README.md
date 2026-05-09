@@ -9,6 +9,48 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 09/05/2026 (suite 30) — Tuiles fond noir + raccourci label distance + édition waypoints en mode navigation
+
+**3 améliorations cumulées** :
+
+#### 1. Tuiles : fond charte sombre au lieu de blanc
+
+Avant le rendu de la tuile, le canvas était rempli en blanc (`#ffffff`). Visible pendant le tile loading et autour des bords si l'image ne couvre pas tout le tile. Maintenant : **`#0a0d18`** (charte sombre, équivalent au fond `.leaflet-container`).
+
+⚠️ Pas `#000000` strict pour ne pas casser la détection "canvas noir = drawImage JPEG échoué" qui check `(0,0,0)` exact.
+
+Code : `js/tiling.js` (3 occurrences `fillStyle = "#ffffff"` → `"#0a0d18"`).
+
+#### 2. Raccourci : clic sur le label distance bottomleft → ouvre la modale Itinéraire
+
+Le label `Itinéraire : XX m` en bas-gauche est désormais cliquable. Title hover : "Cliquer pour ouvrir le menu Itinéraire". `cursor: pointer`. Wire-up via `L.DomEvent.on(div, "click", ...)` qui appelle `window.ouvrirItinerairModal()`. `disableClickPropagation` pour éviter que le clic se propage à la map.
+
+Code : `js/interface.js > _afficherLabelDistanceItineraire`.
+
+#### 3. Modale Itinéraire : édition des waypoints en mode navigation
+
+**Avant** : en mode navigation (itinéraire actif), la modale n'avait que la quick-nav (⏮️/⏭️/🔁) + Recalculer/Effacer. Pour modifier les waypoints, il fallait cliquer "🔄 Recalculer" qui fermait la modale et la rouvrait en mode calcul.
+
+**Maintenant** : la modale unifie les deux modes. En mode navigation, tu peux directement :
+- Ajouter un waypoint via 📍 Mode clic carte / 🧭 Ma position / 🔍 recherche
+- Retirer un waypoint via ✕ dans la liste
+- Cliquer "🔄 Recalculer l'itinéraire" pour appliquer les modifs (sans fermer la modale)
+- La quick-nav (⏮️/⏭️/🔁) reste visible en haut
+
+**Auto-save à la fermeture** (mode navigation uniquement) : si tu as recalculé un itinéraire en mode navigation, fermer la modale **valide automatiquement** le nouveau tracé (transforme le `_preview` en road persistante). Cohérent avec l'intention "j'ai recalculé donc je veux le nouveau". Tu peux annuler explicitement via le bouton ❌ Effacer du preview.
+
+En mode calcul (pas d'itinéraire actif), comportement inchangé : il faut cliquer 💾 Enregistrer pour sauver, sinon le preview est retiré à la fermeture.
+
+Code : `js/interface.js > ouvrirItinerairModal` :
+- HTML sectionPoints unifié (mode-toggle + search dans les 2 modes, quick-nav en plus si modeNavigation)
+- HTML sectionAction unifié (bouton compute label adaptatif "Calculer / Recalculer", bouton Effacer si modeNavigation)
+- Wire-up du bouton compute fonctionne dans les 2 modes
+- `fermer()` adapté : auto-save preview en modeNavigation
+
+**`sw.js`** : `CACHE_NAME` v79 → v80.
+
+---
+
 ### 🗓️ 09/05/2026 (suite 29) — Hotfix crash au reload avec itinéraire actif
 
 **Bug** : utilisateur trace un itinéraire, ferme l'app, relance — crash instantané au démarrage, peu importe le perfPreset.
