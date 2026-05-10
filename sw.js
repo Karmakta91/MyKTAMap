@@ -14,7 +14,7 @@
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v91";
+const CACHE_NAME = "myktamap-cache-v92";
 
 const ASSETS_TO_CACHE = [
   "./",

@@ -1817,15 +1817,20 @@ html, body {
 }
 
 @media (min-width: 1024px) {
-  /* Loader plus large sur PC pour permettre le layout 2 colonnes */
+  /* Loader plus large sur PC pour permettre le layout 2 colonnes.
+     Padding latéral augmenté (24 → 36px) pour donner plus de respiration
+     visuelle sur grand écran : sans ça, la colonne droite (drop zone +
+     options) collait au bord du loader contrairement à la gauche qui
+     respirait naturellement (cards plus petites que la colonne). */
   #planLoaderBox {
     max-width: 1100px;
+    padding: 24px 36px;
   }
 
   .loader-grid {
     display: grid;
     grid-template-columns: 60% 40%;
-    gap: 0 24px;
+    gap: 0 32px;
     align-items: start;
     margin-top: 4px;
   }
@@ -3757,4 +3762,17 @@ html, body {
 .kta-loader-copyright-warn {
   color: #ff8c8c;
   font-weight: 500;
+}
+
+/* Signature manuscrite KARMA dans le footer copyright (remplace le texte
+   "(alias KARMA)" pour un rendu plus identitaire, cohérent avec le splash). */
+.kta-loader-copyright-sig {
+  height: 16px;
+  width: auto;
+  vertical-align: middle;
+  margin: -2px 6px 0;
+  opacity: 0.85;
+  filter: brightness(1.05);
+  pointer-events: none;
+  user-select: none;
 }
