@@ -9,6 +9,23 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 8) — Loader : marges équilibrées + signature image (au lieu de "alias KARMA")
+
+**Fix 1 — Marges équilibrées sur PC** : sur le layout 2 colonnes (suite 7), la colonne droite (drop zone + options) collait au bord du loader contrairement à la gauche qui respirait grâce aux cards plus petites. Padding horizontal du loader augmenté de `24px` → `36px` et gap entre colonnes de `24px` → `32px` sur ≥ 1024px → respiration équilibrée des deux côtés.
+
+**Fix 2 — Signature image dans le footer copyright** : le texte `"(alias KARMA)"` à côté de "Flavien VIDAL" est remplacé par l'image manuscrite `icon/karma.png` (la même que celle utilisée dans le splash). Rendu plus identitaire et cohérent avec la charte graphique. S'applique aux 2 modes mobile et desktop (footer commun).
+
+**Code** :
+- `css/style.css > #planLoaderBox` (PC media query) : `padding: 24px 36px` au lieu de `24px`. `.loader-grid` : `gap: 0 32px` au lieu de `0 24px`.
+- `css/style.css > .kta-loader-copyright-sig` : nouveau style pour l'image signature (`height: 16px`, `vertical-align: middle`, `opacity: 0.85`, `pointer-events: none`).
+- `index.html` : `<img class="kta-loader-copyright-sig" src="icon/karma.png">` à la place de `"(alias KARMA)"`.
+
+Les autres mentions "(alias KARMA)" qui restent (headers JS, banner console, meta tags, LICENSE, docs) sont des **traces techniques copyright** non visibles côté utilisateur normal — gardées pour la trace légale.
+
+**`sw.js`** : `CACHE_NAME` v91 → v92.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 7) — Loader : layout 2 colonnes sur PC (≥ 1024px)
 
 Le loader (page d'accueil avec liste des plans + import) utilisait le même layout vertical mono-colonne sur toutes les plateformes — gaspillait de la place sur PC. Refonte responsive : **mobile/tablette inchangé**, **PC en 2 colonnes 60/40**.
