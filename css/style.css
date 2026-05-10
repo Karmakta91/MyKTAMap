@@ -3778,3 +3778,19 @@ html, body {
   pointer-events: none;
   user-select: none;
 }
+
+/* Sur mobile (≤ 768px) : la partie licence (CC BY-NC-SA 4.0 + Usage commercial
+   interdit) passe à la ligne sous la signature pour une meilleure lisibilité
+   sur petite largeur. Le séparateur · initial (avant CC BY-NC) est masqué
+   car redondant en début de nouvelle ligne. Sur desktop : tout reste sur
+   une seule ligne (display naturel inline). */
+@media (max-width: 768px) {
+  .kta-loader-copyright-line2 {
+    display: block;
+    margin-top: 4px;
+  }
+
+  .kta-loader-copyright-line2 > .kta-loader-copyright-sep:first-child {
+    display: none;
+  }
+}

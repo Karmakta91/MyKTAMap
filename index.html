@@ -240,14 +240,18 @@
 
       <!-- Mention copyright + licence (visible côté utilisateur).
            "(alias KARMA)" est remplacé par l'image signature karma.png
-           pour un rendu plus identitaire et consistant avec le splash. -->
+           pour un rendu plus identitaire et consistant avec le splash.
+           Le span .kta-loader-copyright-line2 wrappe la partie licence
+           pour permettre un line-break sur mobile (CSS @media). -->
       <div class="kta-loader-copyright">
         <span>&copy; 2026 <strong>Flavien VIDAL</strong></span>
         <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
-        <span class="kta-loader-copyright-sep">·</span>
-        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
-        <span class="kta-loader-copyright-sep">·</span>
-        <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+        <span class="kta-loader-copyright-line2">
+          <span class="kta-loader-copyright-sep">·</span>
+          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
+          <span class="kta-loader-copyright-sep">·</span>
+          <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+        </span>
       </div>
     </div>
   </div>
