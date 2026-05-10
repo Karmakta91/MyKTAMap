@@ -1346,6 +1346,28 @@ html, body {
    AIDE — sections groupées
    ============================================== */
 
+/* Largeur de la modale Aide.
+   Mobile/tablette par défaut : 580px (compact, scroll vertical naturel).
+   PC ≥ 1024px : 1100px + corps en 2 colonnes via CSS columns
+   (override plus bas dans le @media).
+   ⚠️ !important sur la max-width parce que .kta-readme-modal-boite a
+   déjà un width fixé à min(960px, 96vw) plus haut — sans !important
+   notre règle perdrait la specificity. */
+.kta-aide-modal-boite {
+  max-width: 580px !important;
+  width: min(580px, 96vw) !important;
+}
+
+/* Paragraphe d'intro : doit rester full-width quand on passe en 2 colonnes
+   (sinon l'intro fait 50% de large et les sections en dessous s'étalent
+   verticalement avant de basculer dans la 2e colonne — moche). */
+.kta-aide-intro {
+  color: #8892a4;
+  font-size: 13px;
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
 .kta-aide-section {
   margin-bottom: 18px;
 }
@@ -1380,6 +1402,42 @@ html, body {
 .kta-aide-section .kta-aide-grille span:not(.kta-aide-icone) {
   font-size: 13px;
   color: #c8d0e0;
+}
+
+/* ===== MODALE AIDE — layout 2 colonnes sur PC (≥ 1024px) =====
+   Sur grand écran, on étale les nombreuses sections de l'aide en 2 colonnes
+   via CSS multi-column (column-count: 2). Avantage : aucune restructuration
+   HTML, le browser gère l'équilibrage automatique. break-inside: avoid
+   empêche une section de se couper en 2 entre les colonnes (= chaque
+   section reste atomique). L'intro et toute autre élément qui doit rester
+   full-width utilisent column-span: all. */
+@media (min-width: 1024px) {
+  .kta-aide-modal-boite {
+    max-width: 1100px !important;
+    width: min(1100px, 96vw) !important;
+  }
+
+  .kta-aide-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .kta-aide-corps .kta-aide-intro {
+    column-span: all;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .kta-aide-corps .kta-aide-section {
+    break-inside: avoid;
+    page-break-inside: avoid;     /* fallback browsers anciens */
+    -webkit-column-break-inside: avoid;  /* Safari */
+    /* Une section ne doit jamais commencer par un margin-top en haut
+       d'une colonne (sinon décalage visible entre les 2 colonnes). */
+    margin-top: 0;
+  }
 }
 
 
