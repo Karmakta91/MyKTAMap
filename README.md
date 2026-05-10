@@ -9,6 +9,21 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 10) — Footer copyright : licence à la ligne sur mobile
+
+Sur mobile (≤ 768px), le footer copyright `© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit` s'étendait sur 1 seule ligne et tronquait à droite si écran étroit. Désormais :
+
+- **Mobile** : line-break après la signature → la licence passe sur une 2ème ligne (`© 2026 Flavien VIDAL [signature]` puis `CC BY-NC-SA 4.0 · Usage commercial interdit` en dessous).
+- **Desktop** : inchangé, tout sur une seule ligne.
+
+**Implémentation** :
+- HTML : wrapper `.kta-loader-copyright-line2` autour de la partie licence (le 1er séparateur `·` + le lien CC + le 2ème séparateur + "Usage commercial interdit").
+- CSS `@media (max-width: 768px)` : `display: block` + `margin-top: 4px` sur le wrapper. Le `·` initial (devenu redondant en début de ligne) est masqué via `:first-child`.
+
+**`sw.js`** : `CACHE_NAME` v93 → v94.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 9) — Loader PC : fix débordement grid (% vs fr)
 
 La suite 8 augmentait le padding pour rééquilibrer les marges, mais le bug visuel persistait : la colonne droite collait toujours au bord. **Cause racine identifiée** : `grid-template-columns: 60% 40%` totalise `100%` de la largeur disponible, et le `gap: 32px` se rajoute en plus → débordement → les colonnes touchent les bords du conteneur, écrasant le padding.
