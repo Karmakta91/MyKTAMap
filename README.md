@@ -9,6 +9,29 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 6) — Sélection visuelle pour supprimer une zone (même pattern que tracés)
+
+Reproduit le pattern "mode clic visuel sur la carte" pour les zones session, en complément des options existantes du menu **🧹 Effacer** du groupe Zones.
+
+**Workflow** :
+- Menu Zones → 🧹 Effacer → 🎯 **"Sélectionner une zone à supprimer"**
+- Floater apparaît en bas : "🎯 Clique sur une zone pour la **supprimer** · ✕ Annuler"
+- L'utilisateur clique directement sur la zone sur la carte
+- La zone est supprimée immédiatement, le floater disparaît
+
+**Détection** : algorithme classique du **ray casting** (point-in-polygon). On teste si le point cliqué est à l'intérieur du polygone. Si **plusieurs zones overlappent** au point cliqué, on prend la **dernière dessinée** (top z-order visuel — ce que l'utilisateur voit en dessus).
+
+**Fallback "click près du bord"** : si le clic est hors de toute zone mais à ≤ 20 px d'un segment de contour, on prend la zone correspondante (utile pour les petites zones où il est facile de cliquer juste à côté).
+
+**Code** :
+- `js/interface.js > window.activerModeSuppressionZoneClic()` : nouvelle fonction. Floater + click handler avec ray casting (`_pointInPolygon`) + fallback bord.
+- `js/interface.js` : nouvelle entrée dans `_choixSuppression` du menu Effacer Zones.
+- CSS : réutilise `.kta-supp-trace-floater` (même pattern visuel rouge), pas de nouveau style.
+
+**`sw.js`** : `CACHE_NAME` v89 → v90.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 5) — Hotfix suppression point + sélection visuelle des tracés
 
 **Bug 1** : le bouton 🗑️ Supprimer ce point dans la popup supprimait **tout** le contenu visuel (points + roads + zones) au lieu d'un seul point. Cause : `renderEditorPoints` faisait `layerEditor.clearLayers()`. Or depuis suite 13, layerEditor contient AUSSI les roads et zones session (regroupement "Mes annotations"). Le clearLayers vidait donc tout.
