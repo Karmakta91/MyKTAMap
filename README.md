@@ -9,6 +9,32 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 5) — Hotfix suppression point + sélection visuelle des tracés
+
+**Bug 1** : le bouton 🗑️ Supprimer ce point dans la popup supprimait **tout** le contenu visuel (points + roads + zones) au lieu d'un seul point. Cause : `renderEditorPoints` faisait `layerEditor.clearLayers()`. Or depuis suite 13, layerEditor contient AUSSI les roads et zones session (regroupement "Mes annotations"). Le clearLayers vidait donc tout.
+
+**Fix** : tracking séparé des markers editor dans une liste interne `_markersEditor`. `renderEditorPoints` retire désormais UNIQUEMENT ces markers (via `m.remove()` individuel) puis les recrée. Roads et zones session restent intactes.
+
+Code : `js/editor.js` — ajout de `_markersEditor`, `_ajouterMarker` push dedans, `renderEditorPoints` cleanup ciblé, `initEditor` cleanup au boot.
+
+**Bug 2** : la modale liste de tracés ("Sélectionner un tracé à supprimer") n'était pas claire pour identifier le bon tracé.
+
+**Fix** : remplacement par un **mode clic visuel** (pattern identique au mode clic carte de l'itinéraire). Au clic sur "🎯 Sélectionner un tracé à supprimer" dans le menu Effacer :
+- Un floater apparaît en bas : "🎯 Clique sur un tracé pour le **supprimer** · ✕ Annuler"
+- L'utilisateur clique directement sur le tracé sur la carte
+- Le pathfinder cherche la polyline session la plus proche du clic (tolérance 20 px)
+- Si trouvée → suppression immédiate + cleanup du mode
+
+Code :
+- `js/interface.js > window.activerModeSuppressionTraceClic()` : nouvelle fonction. Floater + click handler avec calcul `_pointSegmentDistanceFlat` pour trouver la polyline la plus proche.
+- `js/interface.js` : ancienne fonction `afficherModaleSuppressionTrace` supprimée (remplacée).
+- `js/interface.js` : menu Effacer pointe sur la nouvelle fonction.
+- `css/style.css > .kta-supp-trace-floater` : style charte rouge `#ff6b6b` (action destructive). Ancien CSS `.kta-trace-supr-*` supprimé.
+
+**`sw.js`** : `CACHE_NAME` v88 → v89.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 4) — Suppression : bouton popup + modale "Sélectionner un tracé"
 
 Deux nouvelles options de suppression ajoutées en parallèle.
