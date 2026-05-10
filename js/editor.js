@@ -309,3 +309,45 @@ window.setEditorPoints        = function(points) {
   listePoints = points || [];
   if (window.renderEditorPoints) window.renderEditorPoints();
 };
+
+// Supprime un point editor par id + coords (utilise depuis le bouton 🗑️ de la
+// popup d'un point — voir utils.js > buildPointPopupHtml). Le matching par id
+// + coords permet de disambiguer si plusieurs points ont meme id (peu probable
+// car id == nom, qui doit etre unique, mais safety net).
+// Si pas trouve par id+coords, fallback match par coords seules.
+window.supprimerPointEditor = function(id, x, y) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+
+  // Match exact (id + coords)
+  let idx = -1;
+  for (let i = 0; i < listePoints.length; i++) {
+    const p = listePoints[i];
+    if (String(p.id || "") === String(id) && p.x === x && p.y === y) {
+      idx = i;
+      break;
+    }
+  }
+  // Fallback : match par coords seules (au cas ou l'id a ete modifie)
+  if (idx === -1) {
+    for (let i = 0; i < listePoints.length; i++) {
+      if (listePoints[i].x === x && listePoints[i].y === y) {
+        idx = i;
+        break;
+      }
+    }
+  }
+  if (idx === -1) {
+    console.warn("[Editor] Point a supprimer introuvable :", id, x, y);
+    return;
+  }
+
+  // Retire du tableau + re-render (renderEditorPoints clear le layerEditor + re-add)
+  listePoints.splice(idx, 1);
+  if (window.renderEditorPoints) window.renderEditorPoints();
+
+  // Ferme la popup ouverte (sinon elle reste affichee a l'emplacement du marker
+  // qui n'existe plus)
+  if (window.map) try { window.map.closePopup(); } catch(e) {}
+
+  console.log("[Editor] Point supprimé :", id, "à", x, y, "— restant :", listePoints.length);
+};

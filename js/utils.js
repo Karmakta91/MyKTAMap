@@ -92,8 +92,25 @@ function buildPointPopupHtml(point) {
   const safeDesc = desc.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   // Echappement string JS pour le 'nom' passe en argument inline (entre apostrophes)
   const jsName = nom.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
+  const id     = String(point.id || "");
+  const jsId   = id.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
   const x = Number(point.x) || 0;
   const y = Number(point.y) || 0;
+
+  // Bouton Supprimer : visible UNIQUEMENT pour les points editor (session
+  // utilisateur). Les points embedded (puits.json, cataphile.json, etc.) sont
+  // en lecture seule depuis le ZIP du plan → on ne propose pas la suppression.
+  // Detection : point.source === "editor" (set par editor.js > afficherFormulaire).
+  const isEditor = point.source === "editor";
+  const deleteRow = isEditor
+    ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
+        '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
+          'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+          'title="Supprimer définitivement ce point de ta session">' +
+          '🗑️ Supprimer ce point' +
+        '</button>' +
+      '</div>'
+    : '';
 
   return '<div class="kta-popup-point">' +
            '<b>' + safeName + '</b>' +
@@ -115,6 +132,7 @@ function buildPointPopupHtml(point) {
                '➕ Itinéraire' +
              '</button>' +
            '</div>' +
+           deleteRow +
          '</div>';
 }
 window.buildPointPopupHtml = buildPointPopupHtml;

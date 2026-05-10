@@ -9,6 +9,39 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 4) — Suppression : bouton popup + modale "Sélectionner un tracé"
+
+Deux nouvelles options de suppression ajoutées en parallèle.
+
+#### 1. Bouton "🗑️ Supprimer ce point" dans la popup d'un point editor
+
+Visible **uniquement pour les points session** (`source === "editor"`). Les points embedded (puits.json, cataphile.json, etc.) restent en lecture seule — pas de bouton (cohérent : leur source de vérité est le ZIP du plan, pas la session).
+
+Placé sur une 2ème ligne d'actions séparée par un trait pointillé rouge léger pour éviter les clics accidentels (action destructive). Suppression **immédiate** au clic (pas de confirmation), la popup se ferme.
+
+**Code** :
+- `js/utils.js > buildPointPopupHtml` : test `point.source === "editor"` → bloc `deleteRow` conditionnel.
+- `js/editor.js > window.supprimerPointEditor(id, x, y)` : matching par id+coords avec fallback coords seules. Retire de `listePoints`, render, ferme la popup.
+- `css/style.css > .kta-popup-actions-danger / .kta-popup-btn-delete` : style rouge `#ff8c8c`, séparation visuelle.
+
+#### 2. Modale "Sélectionner un tracé à supprimer"
+
+Nouvelle option dans le menu **🧹 Effacer** du groupe Tracés, en complément des options existantes (Dernier point / Dernier tracé / Tous). Ouvre une modale charte qui liste tous les tracés session (Principal/Secondaire/Chemin) avec :
+- Type + numérotation par type (`🟩 Route principale #1`, `🟪 Route secondaire #2`, etc.)
+- Nombre de points + distance estimée par tracé
+- Bouton 🗑️ par ligne pour suppression immédiate
+
+L'itinéraire est exclu (cycle de vie propre via la modale Itinéraire). Échap / clic backdrop / ✕ pour fermer la modale.
+
+**Code** :
+- `js/interface.js > window.afficherModaleSuppressionTrace()` : nouvelle fonction. Filtrage des roads supprimables, calcul distance, build de la liste, wire-up des boutons.
+- `js/interface.js` : nouvelle entrée "🎯 Sélectionner un tracé à supprimer" dans `_choixSuppression` du menu Effacer.
+- `css/style.css > .kta-trace-supr-list / .kta-trace-supr-row / .kta-trace-supr-titre` : style charte cohérent (cards avec hover rouge).
+
+**`sw.js`** : `CACHE_NAME` v87 → v88.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 3) — minZoom plus généreux sur desktop
 
 User a demandé plus de profondeur de dezoom sur PC. Les seuils de la suite 25 (qui plafonnaient à -2 / -1 sur desktop pour anti-crash) étaient trop conservateurs : la mémoire desktop est largement suffisante pour gérer le canvas même au minZoom max.

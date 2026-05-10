@@ -672,6 +672,81 @@ html, body {
   background: rgba(244, 197, 66, 0.28) !important;
 }
 
+/* 2ème ligne d'actions "danger" (suppression du point editor) — separee
+   visuellement des actions principales pour eviter les clics accidentels */
+.kta-popup-actions.kta-popup-actions-danger {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 107, 107, 0.25);
+}
+
+.kta-popup-actions .kta-popup-btn-delete {
+  background: rgba(255, 107, 107, 0.12) !important;
+  border-color: rgba(255, 107, 107, 0.4) !important;
+  color: #ff8c8c !important;
+  flex: 1 1 100% !important;
+}
+
+.kta-popup-actions .kta-popup-btn-delete:hover {
+  background: rgba(255, 107, 107, 0.22) !important;
+  color: #ff6b6b !important;
+}
+
+/* =========================
+   MODALE SUPPRESSION TRACÉ — liste avec boutons par ligne
+   ========================= */
+
+.kta-trace-supr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.kta-trace-supr-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.kta-trace-supr-row:hover {
+  background: rgba(255, 107, 107, 0.06);
+  border-color: rgba(255, 107, 107, 0.18);
+}
+
+.kta-trace-supr-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.kta-trace-supr-titre {
+  font-weight: 600;
+  color: #e8eaf0;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+.kta-trace-supr-meta {
+  font-size: 12px;
+  color: #8892a4;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.kta-trace-supr-btn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 36px;
+  font-size: 16px;
+  padding: 0 !important;
+}
+
 
 /* ==============================================
    MODALES DE CONFIRMATION
