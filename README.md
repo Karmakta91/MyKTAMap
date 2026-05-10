@@ -9,6 +9,37 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 12) — Modale Aide : passage de `columns:2` à CSS Grid auto-flow
+
+Le passage en `columns: 2` (suite 11) créait un déséquilibre visuel important : une section énorme (genre "Charger / Import") plus volumineuse que les autres réunies bloquait l'équilibrage automatique du multi-column avec `break-inside: avoid` → grand trou dans la colonne gauche.
+
+**Fix** : remplacement du `columns: 2` par CSS Grid `1fr 1fr` avec `grid-auto-flow: row dense`. Chaque section occupe une cellule dans l'ordre HTML, le browser n'essaie plus d'équilibrer les hauteurs (ce qui est mieux ici puisque les sections ont des tailles très variables). Avec `dense`, les petites sections peuvent même remplir les trous laissés par les grandes.
+
+```css
+/* Avant : balance impossible */
+.kta-aide-corps {
+  columns: 2;
+  /* break-inside: avoid sur sections → trou si une section est très grande */
+}
+
+/* Après : grid prévisible */
+.kta-aide-corps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 36px;
+  row-gap: 18px;
+  align-items: start;
+  grid-auto-flow: row dense;
+}
+.kta-aide-intro { grid-column: 1 / -1; }
+```
+
+L'**intro** garde son full-width via `grid-column: 1 / -1` (span sur les 2 colonnes). Les sections individuelles restent atomiques par construction (chacune dans sa propre cellule, pas de coupe possible).
+
+**`sw.js`** : `CACHE_NAME` v95 → v96.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 11) — Modale Aide : layout 2 colonnes sur PC
 
 La modale **❓ Aide** était figée à 580px de large et empilait verticalement ~10 sections. Sur grand écran, beaucoup de scroll inutile et gaspillage de largeur. Maintenant elle exploite la largeur disponible avec un layout 2 colonnes.
