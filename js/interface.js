@@ -1043,14 +1043,14 @@ function afficherAide() {
   modal.className = "kta-readme-modal-overlay";
 
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:580px;">
+    <div class="kta-readme-modal-boite kta-aide-modal-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">❓ Aide — Référence des boutons</span>
         <button class="kta-panneau-close" id="kta-aide-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps">
+      <div class="kta-readme-modal-corps kta-aide-corps">
 
-        <p style="color:#8892a4; font-size:13px; margin:0 0 14px; line-height:1.5;">
+        <p class="kta-aide-intro">
           La barre latérale droite est organisée en groupes déroulables.
           Un seul groupe peut être ouvert à la fois — cliquer sur un autre referme le précédent.
         </p>

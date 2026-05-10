@@ -9,6 +9,36 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 11) — Modale Aide : layout 2 colonnes sur PC
+
+La modale **❓ Aide** était figée à 580px de large et empilait verticalement ~10 sections. Sur grand écran, beaucoup de scroll inutile et gaspillage de largeur. Maintenant elle exploite la largeur disponible avec un layout 2 colonnes.
+
+**Mobile (≤ 1023px)** : inchangé — modale 580px max, sections empilées verticalement, scroll vertical naturel.
+
+**PC (≥ 1024px)** : modale élargie à 1100px max, corps en **CSS multi-column** (`columns: 2`). Avantages :
+- Aucune restructuration HTML — le browser gère l'équilibrage automatique des sections sur les 2 colonnes
+- `break-inside: avoid` empêche qu'une section soit coupée en 2 entre les colonnes (chaque section reste atomique)
+- L'**intro** (`.kta-aide-intro`) utilise `column-span: all` pour rester full-width au-dessus des 2 colonnes
+- `column-rule` discret pour démarquer visuellement les 2 colonnes
+- `overflow-y: auto` du corps gère naturellement le scroll si trop long
+
+**Code** :
+- `js/interface.js > afficherAide` :
+  - Style inline `max-width:580px` remplacé par classe `.kta-aide-modal-boite`
+  - Style inline du paragraphe d'intro remplacé par classe `.kta-aide-intro`
+  - Corps reçoit en plus la classe `.kta-aide-corps`
+- `css/style.css` :
+  - `.kta-aide-modal-boite` : largeur mobile (580px), override desktop (1100px)
+  - `.kta-aide-intro` : style du paragraphe d'intro (couleur, font-size, line-height)
+  - `@media (min-width: 1024px) .kta-aide-corps { columns: 2; column-gap: 36px; column-rule: ... }`
+  - `.kta-aide-section { break-inside: avoid; ... }` pour atomicité des sections
+
+**Note** : la **Documentation** (`afficherReadme`) avait déjà un layout 2 colonnes (sommaire 240px à gauche + corps à droite, basculement vertical sur mobile). Pas de changement nécessaire.
+
+**`sw.js`** : `CACHE_NAME` v94 → v95.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 10) — Footer copyright : licence à la ligne sur mobile
 
 Sur mobile (≤ 768px), le footer copyright `© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit` s'étendait sur 1 seule ligne et tronquait à droite si écran étroit. Désormais :
