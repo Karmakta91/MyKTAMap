@@ -1060,6 +1060,7 @@ function afficherAide() {
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">❓</span><span>Cette aide — référence des boutons</span>
             <span class="kta-aide-icone">📖</span><span>Documentation utilisateur</span>
+            <span class="kta-aide-icone">🤖</span><span>Aide IA — télécharge un fichier contexte à coller dans ChatGPT/Claude/Gemini/etc.</span>
             <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
           </div>
         </div>
@@ -2011,6 +2012,11 @@ function initInterface() {
     sousActions: [
       { icone: "❓", titre: "Aide",          onClick: afficherAide },
       { icone: "📖", titre: "Documentation", onClick: afficherReadme },
+      { icone: "🤖", titre: "Aide IA",       onClick: function() {
+          if (typeof window.afficherModaleAideIA === "function") {
+            window.afficherModaleAideIA();
+          }
+        } },
       { icone: "🗺️", titre: "Légende",       onClick: afficherLegende }
     ]
   });
@@ -3912,6 +3918,249 @@ function afficherLegende() {
   document.getElementById("kta-legende-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
 }
+
+// =========================
+// 🤖 AIDE IA — génère un fichier de contexte téléchargeable
+// =========================
+// L'utilisateur peut télécharger un .md qui combine :
+//   - Métadonnées entête (date export, URL, etc.)
+//   - Instructions pour l'utilisateur ("comment utiliser ce fichier")
+//   - Instructions pour l'IA (rôle + exemples Q/R)
+//   - Contenu de README_USER.md (la doc utilisateur intégrale)
+//   - Postambule FAQ (problèmes courants + solutions rapides)
+// Le fichier est censé être collé dans le contexte de n'importe quelle IA
+// (ChatGPT, Claude, Gemini, Perplexity, Le Chat, etc.) pour obtenir une
+// assistance ciblée sur l'app.
+
+function _genererContenuContexteIA(readmeUserText) {
+  const dateExport = new Date().toISOString().slice(0, 10);
+  const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
+
+  const entete =
+    "# MyKTAMap — Contexte d'Aide IA\n\n" +
+    "> Fichier généré automatiquement pour servir de **contexte d'assistance** à n'importe quelle IA.\n\n" +
+    "| Métadonnée | Valeur |\n" +
+    "|---|---|\n" +
+    "| Date d'export | " + dateExport + " |\n" +
+    "| Build app | " + buildVersion + " |\n" +
+    "| Site officiel | https://myktamap.is-underground.fr |\n" +
+    "| GitHub | https://github.com/Karmakta91/MyKTAMap |\n" +
+    "| Licence | CC BY-NC-SA 4.0 (usage non commercial) |\n" +
+    "| Auteur | Flavien VIDAL (alias KARMA) |\n\n" +
+    "---\n\n";
+
+  const modeEmploiUser =
+    "## 📋 Comment utiliser ce fichier\n\n" +
+    "1. Ouvre une IA conversationnelle de ton choix : **ChatGPT, Claude, Gemini, " +
+    "Perplexity, Le Chat (Mistral), Copilot, etc.**\n" +
+    "2. **Copie-colle** l'intégralité de ce fichier dans le **premier message** " +
+    "de la conversation OU joins-le en pièce jointe si l'IA le supporte.\n" +
+    "3. Pose ensuite tes questions sur l'utilisation de MyKTAMap. " +
+    "L'IA répondra en se basant sur ce contexte.\n\n" +
+    "**Exemples de questions à poser** :\n" +
+    "- Comment ajouter un point sur mon plan ?\n" +
+    "- Mon plan plante au dézoom, que faire ?\n" +
+    "- Comment calculer un itinéraire entre 2 puits ?\n" +
+    "- Quelle est la différence entre les modes performance ?\n" +
+    "- Comment exporter ma session pour la partager ?\n\n" +
+    "💡 **Astuce** : si l'IA donne une réponse approximative, demande-lui " +
+    "explicitement : *\"Réponds uniquement en te basant sur le fichier de contexte que je t'ai donné.\"*\n\n" +
+    "---\n\n";
+
+  const instructionsIA =
+    "## 🤖 Instructions pour l'IA (à lire en priorité)\n\n" +
+    "Tu es un **assistant utilisateur dédié à l'application web MyKTAMap**.\n\n" +
+    "### Règles\n\n" +
+    "1. **Source unique** : réponds UNIQUEMENT en te basant sur le contenu " +
+    "ci-dessous (documentation utilisateur fournie). N'invente pas de " +
+    "fonctionnalités, ne devine pas.\n" +
+    "2. **Honnêteté** : si la réponse n'est pas dans le contexte, dis-le " +
+    "clairement : *\"Cette information n'est pas couverte par la documentation " +
+    "fournie — vérifie directement dans l'app ou contacte l'auteur.\"*\n" +
+    "3. **Adaptation** : adapte ton ton au niveau apparent de l'utilisateur " +
+    "(débutant vs avancé). Sois concret, pas trop technique.\n" +
+    "4. **Étapes claires** : pour les how-to, donne des étapes numérotées avec " +
+    "les icônes/boutons exacts mentionnés dans la doc (ex: *Clique sur le " +
+    "bouton ✏️ Édition de points*).\n" +
+    "5. **Limite** : tu ne réponds qu'aux questions sur **MyKTAMap**. Pour les " +
+    "questions hors-sujet (météo, autre app, etc.), redirige poliment.\n\n" +
+    "### Exemples de bonnes réponses\n\n" +
+    "**Q** : Comment ajouter un point sur la carte ?\n" +
+    "**R** : \n" +
+    "1. Dans la barre latérale, ouvre le groupe **✏️ Édition de points**\n" +
+    "2. Active le mode (le bouton devient vert)\n" +
+    "3. Clique sur la carte à l'endroit voulu\n" +
+    "4. Renseigne le nom et le type dans la modale\n" +
+    "5. Clique **✅ Ajouter**\n\n" +
+    "**Q** : Mon plan plante quand je dézoome, que faire ?\n" +
+    "**R** : Le crash au dézoom est typique des grandes images sur mobile. " +
+    "Solutions par ordre d'impact :\n" +
+    "1. **Réduis la taille de l'image base** (max 8000 px de côté recommandé)\n" +
+    "2. Convertis en **JPEG qualité 85** au lieu de PNG (5-10× plus léger)\n" +
+    "3. Au chargement, choisis le preset **⚡ Performance** (Mode performance)\n" +
+    "4. Sur mobile, l'app limite déjà le dézoom max — c'est volontaire (anti-crash)\n\n" +
+    "**Q** : C'est quoi la différence entre les modes Tracker et Mesure ?\n" +
+    "**R** : \n" +
+    "- **🧭 Tracker** : position continue (capteurs mobile expérimentaux) " +
+    "qui se déplace pendant que tu marches dans la cata. Tracé enregistré.\n" +
+    "- **📐 Mesure** : tu cliques 2 points sur la carte, l'app affiche la " +
+    "distance entre eux. Statique, pas de tracking.\n\n" +
+    "---\n\n";
+
+  const docUtilisateur =
+    "## 📖 Documentation utilisateur complète\n\n" +
+    "*Le contenu ci-dessous est l'intégralité de la doc utilisateur — c'est " +
+    "ta source de vérité pour répondre aux questions.*\n\n" +
+    "---\n\n" +
+    (readmeUserText || "_(Documentation indisponible au moment de la génération — fetch README_USER.md sur le serveur)_") +
+    "\n\n---\n\n";
+
+  const faqRapide =
+    "## ❓ FAQ rapide — problèmes courants\n\n" +
+    "### Le tracker dérive énormément après quelques pas\n" +
+    "Le tracker capteurs est **expérimental** et dérive avec le temps. " +
+    "Solutions :\n" +
+    "- Calibre l'**échelle** dans ⚙️ Réglages → \"Calibrer\" (renseigne combien de mètres font une distance connue)\n" +
+    "- Recale régulièrement ta position via le mode **📍 Recalage** (clic sur un point connu) ou le bouton **📍 Je suis ici** des popups points\n\n" +
+    "### Mon plan crash au chargement\n" +
+    "Probablement saturation mémoire (gros plan sur mobile). Au prochain reload :\n" +
+    "- Choisis le preset **⚡ Performance** dans le loader\n" +
+    "- Si le crash persiste, dans le loader : ⚙️ Plus d'options → 🐛 Logs détaillés ON → recharge → consulte les logs depuis la modale 🐛\n\n" +
+    "### Je perds ma session quand je ferme l'app\n" +
+    "Une **auto-sauvegarde** (1.5s d'intervalle) s'occupe normalement de ça. Si tu la perds :\n" +
+    "- Vérifie que tu rouvres bien le **même plan** (même nom et version)\n" +
+    "- Pour plus de sécurité, **exporte ta session** régulièrement via 💾 Enregistrer la session\n\n" +
+    "### Le module Itinéraire dit \"aucun chemin trouvé\"\n" +
+    "Le pathfinder a besoin d'un **réseau de routes** pour calculer le chemin.\n" +
+    "- Vérifie qu'il y a bien des tracés (Principal/Secondaire/Chemin) entre tes 2 waypoints\n" +
+    "- Les routes peuvent être dans la session OU dans les calques de données du plan (visibles ou masquées)\n" +
+    "- Si les routes se croisent visuellement sans partager un point exact, l'app les connecte automatiquement à 15 px près\n\n" +
+    "### Comment partager un plan avec un ami ?\n" +
+    "1. 🏗️ Générer un plan → crée/regénère le ZIP\n" +
+    "2. Envoie le `.zip` à ton ami (mail, cloud, USB...)\n" +
+    "3. Ton ami fait \"Glisse ton archive ZIP ici\" dans le loader → ✅ Charger\n\n" +
+    "### Je veux modifier les icônes ou ajouter des types de points\n" +
+    "Via 🏗️ Générer un plan → \"Modifier existant\" → importe le ZIP → ajoute des tags personnalisés et leurs icônes → regénère.\n\n" +
+    "---\n\n" +
+    "**Fin du contexte.** Tu peux maintenant répondre aux questions de l'utilisateur en te basant exclusivement sur ce qui précède.\n";
+
+  return entete + modeEmploiUser + instructionsIA + docUtilisateur + faqRapide;
+}
+
+window.afficherModaleAideIA = function() {
+  const existing = document.getElementById("kta-aide-ia-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-aide-ia-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🤖 Aide IA — Contexte téléchargeable</span>' +
+        '<button class="kta-panneau-close" id="kta-aide-ia-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">💡 Concept</div>' +
+          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+            'Télécharge un fichier <strong>.md</strong> qui résume tout ce que ' +
+            'l\'app permet de faire. Donne-le à <strong>n\'importe quelle IA</strong> ' +
+            '(ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — elle ' +
+            'pourra répondre à toutes tes questions sur MyKTAMap avec un contexte ' +
+            'précis et à jour.' +
+          '</p>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">📋 Comment ça marche</div>' +
+          '<ol style="color:#c8d0e0; line-height:1.7; font-size:13px; padding-left:22px; margin:0;">' +
+            '<li>Clique <strong>📥 Télécharger le contexte</strong> en bas</li>' +
+            '<li>Ouvre l\'IA de ton choix (web, app mobile, etc.)</li>' +
+            '<li>Copie-colle le fichier dans le <strong>premier message</strong> de la conversation</li>' +
+            '<li>Pose tes questions : <em>"Comment ajouter un point ?"</em>, <em>"Mon plan plante, que faire ?"</em>, etc.</li>' +
+          '</ol>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">🔒 Confidentialité</div>' +
+          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+            'Le fichier ne contient <strong>QUE la documentation</strong> de l\'app — ' +
+            '<strong>aucune donnée personnelle</strong> (pas de tes plans, points, sessions, etc.). ' +
+            'Tu peux donc le partager sans risque.' +
+          '</p>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">💰 Note importante</div>' +
+          '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
+            'L\'utilisation d\'une IA peut être <strong>payante ou limitée</strong> selon ' +
+            'le service (ChatGPT gratuit avec quotas, Claude Pro, etc.). MyKTAMap reste ' +
+            '<strong>gratuit</strong> — le contexte téléchargé est juste pour aider une ' +
+            'IA externe à mieux te répondre.' +
+          '</p>' +
+        '</div>' +
+
+        '<div style="display:flex; gap:10px; margin-top:14px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-aide-ia-cancel"   type="button" style="flex:1;">Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-aide-ia-download" type="button" style="flex:2;">📥 Télécharger le contexte (.md)</button>' +
+        '</div>' +
+        '<div id="kta-aide-ia-status" style="margin-top:10px; font-size:12px; color:#8892a4; min-height:18px; text-align:center;"></div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _fermer() { modal.remove(); }
+
+  document.getElementById("kta-aide-ia-close").addEventListener("click", _fermer);
+  document.getElementById("kta-aide-ia-cancel").addEventListener("click", _fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+
+  document.getElementById("kta-aide-ia-download").addEventListener("click", async function() {
+    const btn = this;
+    const statusEl = document.getElementById("kta-aide-ia-status");
+    btn.disabled = true;
+    btn.textContent = "⏳ Génération en cours...";
+    statusEl.textContent = "Fetch de la documentation...";
+
+    // Fetch README_USER.md (cache SW dispo ou serveur)
+    let readmeText = "";
+    try {
+      const resp = await fetch("README_USER.md", { cache: "no-cache" });
+      if (resp.ok) {
+        readmeText = await resp.text();
+        statusEl.textContent = "Documentation chargée (" + Math.round(readmeText.length / 1024) + " Ko). Génération du fichier...";
+      } else {
+        statusEl.textContent = "⚠️ Documentation non récupérée (HTTP " + resp.status + ") — fichier généré sans la doc.";
+      }
+    } catch(e) {
+      console.warn("[AideIA] Erreur fetch README_USER :", e);
+      statusEl.textContent = "⚠️ Documentation non récupérée — fichier généré sans la doc.";
+    }
+
+    // Construction du contenu complet
+    const contenu = _genererContenuContexteIA(readmeText);
+    const blob = new Blob([contenu], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    // Nom de fichier avec timestamp
+    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "MyKTAMap-AI-Context-" + ts + ".md";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    statusEl.textContent = "✓ Fichier téléchargé (" + Math.round(contenu.length / 1024) + " Ko)";
+    btn.textContent = "📥 Télécharger le contexte (.md)";
+    btn.disabled = false;
+
+    // Fermer la modale après 1.5s
+    setTimeout(_fermer, 1500);
+  });
+};
 
 // =========================
 // EXPORT GLOBAL

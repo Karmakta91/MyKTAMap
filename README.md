@@ -9,6 +9,38 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 15) — 🤖 Aide IA : fichier de contexte téléchargeable pour assistance IA externe
+
+Nouvelle fonctionnalité dans le groupe **📚 Aide / Documentation / Légende** : une sous-action **🤖 Aide IA** qui permet à l'utilisateur de télécharger un fichier `.md` contenant tout le contexte d'usage de l'app, à coller dans n'importe quelle IA conversationnelle pour obtenir une assistance personnalisée.
+
+**Cas d'usage** : l'utilisateur veut poser une question sur l'app à ChatGPT/Claude/Gemini/etc. mais l'IA ne connaît pas MyKTAMap par défaut → télécharge le contexte, le donne à l'IA, et obtient des réponses ciblées et à jour.
+
+**Structure du fichier `MyKTAMap-AI-Context-{date}.md` généré** :
+1. **Entête métadonnées** : date d'export, build app, URL, GitHub, licence, auteur
+2. **Mode d'emploi utilisateur** : étapes pour utiliser le fichier dans une IA + exemples de questions
+3. **Instructions IA** : rôle d'assistant, règles strictes (source unique, honnêteté, étapes claires), exemples Q/R
+4. **Documentation utilisateur complète** : `README_USER.md` fetched dynamiquement et inclus tel quel
+5. **FAQ rapide** : problèmes courants (tracker dérive, crash chargement, session perdue, itinéraire impossible, partage de plan, modifier icônes)
+
+**Confidentialité** : le fichier ne contient **QUE la documentation** — aucune donnée personnelle (pas de plans, points, sessions de l'utilisateur). Partage safe.
+
+**UI** :
+- Sous-bouton **🤖 Aide IA** ajouté au groupe Aide entre 📖 Documentation et 🗺️ Légende.
+- Modale charte qui explique le concept avant le téléchargement : Concept, Comment ça marche (4 étapes), Confidentialité, Note IA payante/gratuite.
+- Bouton **📥 Télécharger le contexte (.md)** primary (accent jaune) + Annuler ghost.
+- Status text en bas pendant la génération (fetch doc + génération fichier).
+
+**Code** :
+- `js/interface.js > _genererContenuContexteIA(readmeUserText)` : construit le contenu .md (entête + 4 sections + FAQ).
+- `js/interface.js > window.afficherModaleAideIA()` : modale charte + handler de téléchargement (fetch README_USER.md, blob, download).
+- `js/interface.js > initInterface()` : nouveau sous-action `🤖 Aide IA` dans le groupe Aide.
+- `js/interface.js > afficherAide` : nouvelle ligne 🤖 dans la grille de référence.
+- `README_USER.md` : nouvelle section "🤖 Aide IA" qui documente la fonctionnalité (et qui sera elle-même incluse dans les futurs exports — auto-référence cohérente).
+
+**`sw.js`** : `CACHE_NAME` v98 → v99.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 14) — Fix bouton "🗑️ Supprimer ce point" qui apparaissait sur points data layer
 
 **Bug** : le bouton "🗑️ Supprimer ce point" apparaissait dans la popup de **points de calque de données** (pas seulement points session). Au clic, `supprimerPointEditor` cherchait dans `listePoints` (la session), ne trouvait rien → `console.warn("[Editor] Point a supprimer introuvable")` et retour silencieux. Du point de vue user : le bouton "ne fait rien".

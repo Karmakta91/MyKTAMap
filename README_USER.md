@@ -877,6 +877,25 @@ Les plans très gros peuvent occasionner des **kills mémoire silencieux** sur i
 
 ---
 
+## 🤖 Aide IA
+
+> Accessible via le groupe **📚 Aide / Doc / Légende → 🤖 Aide IA**.
+
+Télécharge un fichier `.md` qui résume tout ce que l'app permet de faire (cette doc + une FAQ + des instructions pour l'IA). Donne-le à **n'importe quelle IA conversationnelle** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — elle pourra répondre à toutes tes questions sur MyKTAMap avec un contexte précis.
+
+**Comment utiliser** :
+
+1. Clique sur 🤖 Aide IA → bouton **📥 Télécharger le contexte (.md)**
+2. Le fichier `MyKTAMap-AI-Context-AAAA-MM-JJ.md` arrive dans tes téléchargements
+3. Ouvre l'IA de ton choix → colle le fichier en début de conversation
+4. Pose tes questions normalement : *"Comment ajouter un point ?"*, *"Mon plan plante, pourquoi ?"*, etc.
+
+> 🔒 **Confidentialité** : le fichier ne contient QUE la documentation — aucune donnée personnelle (pas de tes plans, points, sessions, etc.). Tu peux le partager sans risque.
+
+> 💰 **Note** : l'IA utilisée peut être payante ou avoir des quotas selon le service. MyKTAMap reste gratuit — l'aide IA est juste une façon de tirer parti d'une IA externe.
+
+---
+
 ## 🗺️ Légende
 
 > Accessible via le groupe **📚 Aide / Doc / Légende → 🗺️ Légende**.
