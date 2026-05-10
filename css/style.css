@@ -1809,6 +1809,56 @@ html, body {
   margin: auto 0;
 }
 
+/* ===== Loader-grid : wrapper transparent par défaut (mobile/tablette
+   ≤ 1023px), devient un grid 60/40 sur desktop (≥ 1024px) ===== */
+.loader-grid {
+  display: contents;  /* Sur mobile, le wrapper disparaît → enfants directement
+                         dans #planLoaderBox, layout vertical comme avant */
+}
+
+@media (min-width: 1024px) {
+  /* Loader plus large sur PC pour permettre le layout 2 colonnes */
+  #planLoaderBox {
+    max-width: 1100px;
+  }
+
+  .loader-grid {
+    display: grid;
+    grid-template-columns: 60% 40%;
+    gap: 0 24px;
+    align-items: start;
+    margin-top: 4px;
+  }
+
+  /* Colonnes : pas de style spécifique, juste container des sections */
+  .loader-col {
+    min-width: 0;  /* Empêche les enfants overflow de pousser le grid */
+  }
+
+  /* Liste des plans : permet un scroll interne si beaucoup de plans
+     (sinon la colonne droite finit en bas pendant que la gauche
+     s'étend à l'infini). Hauteur max alignée sur la fenêtre. */
+  .loader-col-plans .loader-plans-list {
+    max-height: calc(100vh - 320px);
+    overflow-y: auto;
+  }
+
+  /* "Plus d'options" toujours déplié sur PC (on a la place) — override le
+     state JS qui peut être en "fermé" sur mobile. Pas de chevron, pas de
+     curseur de toggle pour signaler que c'est figé ouvert. */
+  #advancedBox {
+    display: flex !important;
+  }
+
+  #advancedHead {
+    cursor: default;
+  }
+
+  #advancedHead .loader-collapse-chevron {
+    display: none;
+  }
+}
+
 .loader-header {
   margin-bottom: 18px;
   display: flex;
