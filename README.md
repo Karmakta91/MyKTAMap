@@ -9,6 +9,26 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 3) — minZoom plus généreux sur desktop
+
+User a demandé plus de profondeur de dezoom sur PC. Les seuils de la suite 25 (qui plafonnaient à -2 / -1 sur desktop pour anti-crash) étaient trop conservateurs : la mémoire desktop est largement suffisante pour gérer le canvas même au minZoom max.
+
+**Nouveaux seuils** :
+
+| Taille max de l'image | Mobile (inchangé) | Desktop (assoupli) |
+|---|---|---|
+| < 4000 px | -4 | **-4** (était -2) |
+| 4000-8000 px | -3 | **-4** (était -2) |
+| > 8000 px | -2 | **-3** (était -1) |
+
+Mobile reste calibré anti-crash (suite 25). Desktop a maintenant une vue d'ensemble plus confortable, surtout sur les gros plans de carrière où prendre du recul est utile.
+
+Code : `js/map.js > initMapFromConfig`.
+
+**`sw.js`** : `CACHE_NAME` v86 → v87.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 2) — Itinéraire : temps estimé (label bottomleft + modale)
 
 Le label distance bottomleft (`.kta-iti-distance`) affiche maintenant aussi un **temps estimé** à côté de la distance, et la modale itinéraire l'affiche dans le bloc résultat (mode calcul) et le statut actuel (mode navigation).
