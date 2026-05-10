@@ -9,6 +9,28 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 9) — Loader PC : fix débordement grid (% vs fr)
+
+La suite 8 augmentait le padding pour rééquilibrer les marges, mais le bug visuel persistait : la colonne droite collait toujours au bord. **Cause racine identifiée** : `grid-template-columns: 60% 40%` totalise `100%` de la largeur disponible, et le `gap: 32px` se rajoute en plus → débordement → les colonnes touchent les bords du conteneur, écrasant le padding.
+
+**Fix** : remplacer les unités `%` par `fr` (`3fr 2fr` = ratio 60/40). Avec `fr`, le browser distribue le gap **AVANT** de calculer la largeur des colonnes, donc plus de débordement. Padding latéral du loader également relevé `36px` → `40px` pour plus de respiration.
+
+```css
+/* Avant (suite 8) — débordement */
+grid-template-columns: 60% 40%;
+gap: 0 32px;
+
+/* Après (suite 9) — pas de débordement, ratio 60/40 préservé */
+grid-template-columns: 3fr 2fr;
+gap: 0 32px;
+```
+
+Code : `css/style.css > @media (min-width: 1024px) > .loader-grid`.
+
+**`sw.js`** : `CACHE_NAME` v92 → v93.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 8) — Loader : marges équilibrées + signature image (au lieu de "alias KARMA")
 
 **Fix 1 — Marges équilibrées sur PC** : sur le layout 2 colonnes (suite 7), la colonne droite (drop zone + options) collait au bord du loader contrairement à la gauche qui respirait grâce aux cards plus petites. Padding horizontal du loader augmenté de `24px` → `36px` et gap entre colonnes de `24px` → `32px` sur ≥ 1024px → respiration équilibrée des deux côtés.
