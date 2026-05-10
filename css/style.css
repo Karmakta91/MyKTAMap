@@ -693,58 +693,55 @@ html, body {
 }
 
 /* =========================
-   MODALE SUPPRESSION TRACÉ — liste avec boutons par ligne
+   SUPPRESSION TRACÉ — floater mode clic visuel
+   (pattern identique au floater mode clic itineraire)
    ========================= */
 
-.kta-trace-supr-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 50vh;
-  overflow-y: auto;
-}
-
-.kta-trace-supr-row {
+.kta-supp-trace-floater {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 107, 107, 0.5);
+  border-left: 3px solid #ff6b6b;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  transition: background 0.12s, border-color 0.12s;
+  z-index: 100000;
+  font-size: 13px;
+  color: #c8d0e0;
+  max-width: calc(100vw - 24px);
+  animation: kta-supp-trace-popin 0.18s ease-out;
 }
 
-.kta-trace-supr-row:hover {
-  background: rgba(255, 107, 107, 0.06);
-  border-color: rgba(255, 107, 107, 0.18);
+@keyframes kta-supp-trace-popin {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-.kta-trace-supr-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.kta-trace-supr-titre {
-  font-weight: 600;
-  color: #e8eaf0;
-  font-size: 14px;
-  letter-spacing: 0.01em;
-}
-
-.kta-trace-supr-meta {
-  font-size: 12px;
-  color: #8892a4;
-  margin-top: 2px;
-  font-variant-numeric: tabular-nums;
-}
-
-.kta-trace-supr-btn {
-  flex-shrink: 0;
-  width: 40px;
-  height: 36px;
+.kta-supp-trace-icon {
   font-size: 16px;
-  padding: 0 !important;
+  flex-shrink: 0;
+}
+
+.kta-supp-trace-msg {
+  flex: 1;
+  white-space: nowrap;
+  color: #e8eaf0;
+}
+
+.kta-supp-trace-msg strong {
+  color: #ff6b6b;
+}
+
+.kta-supp-trace-floater .kta-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 6px 12px;
 }
 
 

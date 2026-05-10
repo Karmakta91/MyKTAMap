@@ -5,6 +5,16 @@
 window.modeEdition = false;
 let listePoints = [];
 
+// Tracking des markers Leaflet créés par _ajouterMarker, pour pouvoir les
+// retirer SÉLECTIVEMENT lors d'un re-render. Avant suite 13, layerEditor
+// ne contenait que des markers — on pouvait faire layerEditor.clearLayers()
+// sans risque. Mais depuis suite 13, layerEditor contient AUSSI les roads
+// et zones session (regroupement dans le calque "Mes annotations") →
+// clearLayers les supprime tous, ce qui faisait disparaitre roads + zones
+// quand on supprimait UN seul point.
+// On track donc nos propres markers pour pouvoir faire un cleanup cible.
+let _markersEditor = [];
+
 const EDITOR_TAG_LABELS = {
   salle:    "Salle",
   pa:       "Puits Aération",
@@ -46,9 +56,10 @@ function initEditor() {
   // SessionPersist ré-enregistre les points de l'ancien plan sous l'ID du
   // nouveau plan (cross-pollination entre plans).
   listePoints = [];
-  if (window.layerEditor) {
-    try { window.layerEditor.clearLayers(); } catch(e) {}
-  }
+  // Cleanup des markers tracking (pas clearLayers du group entier — voir
+  // commentaire sur _markersEditor en haut du fichier).
+  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _markersEditor = [];
 
   window.map.on("click", function(e) {
     if (!window.modeEdition) return;
@@ -271,6 +282,9 @@ function _ajouterMarker(point) {
     ? window.buildPointPopupHtml(point)
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+  // Tracking pour permettre une suppression ciblée plus tard (sans clearLayers
+  // qui efface aussi roads/zones partageant le meme layerEditor).
+  _markersEditor.push(marker);
 }
 
 // =========================
@@ -286,9 +300,15 @@ function removeLastEditorPoint() {
 // =========================
 // RENDU DES POINTS
 // =========================
+// ⚠️ Ne PAS appeler layerEditor.clearLayers() ici : depuis suite 13, layerEditor
+// contient aussi roads + zones session (regroupes dans le calque "Mes annotations").
+// Un clearLayers retirerait TOUT le contenu, y compris roads et zones, ce qui
+// causait un bug "supprimer un point efface aussi mes routes" rapporte par user.
+// On track les markers editor dans _markersEditor et on retire UNIQUEMENT ceux-la.
 window.renderEditorPoints = function() {
   if (!window.layerEditor) return;
-  window.layerEditor.clearLayers();
+  _markersEditor.forEach(function(m) { try { m.remove(); } catch(e) {} });
+  _markersEditor = [];
   listePoints.forEach(_ajouterMarker);
 };
 
