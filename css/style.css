@@ -1405,12 +1405,19 @@ html, body {
 }
 
 /* ===== MODALE AIDE — layout 2 colonnes sur PC (≥ 1024px) =====
-   Précédemment via "columns: 2" + break-inside avoid, mais une section
-   énorme (Charger/Import par ex) cassait l'équilibrage et créait un grand
-   trou dans la colonne gauche.
-   Maintenant via CSS Grid avec auto-flow : chaque section occupe une
-   cellule dans l'ordre HTML, sans tenter d'équilibrage automatique
-   problématique. Plus prévisible, sections restent atomiques sans hack. */
+   Évolution :
+   - Suite 11 : "columns: 2" + break-inside avoid → grand trou dans la col
+     gauche quand une section est plus grande que les autres réunies.
+   - Suite 12 : Grid auto-flow → respecte l'ordre HTML mais pas
+     d'équilibrage des hauteurs → toujours du vide en bas de la col gauche.
+   - Suite 13 (ici) : "columns: 2" SANS break-inside avoid → le browser
+     équilibre vraiment les hauteurs en autorisant le split d'une section
+     entre les 2 colonnes si nécessaire. Compromis accepté : une section
+     peut être coupée (lecture top-bottom-left → top-right), mais plus
+     de trou massif.
+   Si une section sensible doit rester atomique, on peut lui ajouter une
+   classe spécifique avec break-inside: avoid au cas par cas (pas fait par
+   défaut). */
 @media (min-width: 1024px) {
   .kta-aide-modal-boite {
     max-width: 1100px !important;
@@ -1418,26 +1425,30 @@ html, body {
   }
 
   .kta-aide-corps {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    columns: 2;
     column-gap: 36px;
-    row-gap: 18px;
-    align-items: start;       /* sections collées en haut de leur cellule */
-    grid-auto-flow: row dense; /* dense → essaie de remplir les trous */
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .kta-aide-corps .kta-aide-intro {
-    grid-column: 1 / -1;       /* full-width, span sur les 2 colonnes */
-    margin: 0 0 4px;
+    column-span: all;
+    margin: 0 0 14px;
     padding-bottom: 12px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .kta-aide-corps .kta-aide-section {
-    /* Reset margin-bottom puisque row-gap du grid s'en occupe */
-    margin-bottom: 0;
-    /* Une astuce : sections "petites" (peu de contenu) prennent moins de
-       place verticale et le grid auto-flow remplit naturellement. */
+    /* Marge pour aerer entre sections dans la même colonne */
+    margin-top: 0;
+    margin-bottom: 16px;
+  }
+
+  /* Le titre de section ne doit JAMAIS etre coupe de son contenu :
+     si une coupure intervient, on garde le titre avec au moins le debut
+     de la grille en dessous. */
+  .kta-aide-corps .kta-aide-section-titre {
+    break-after: avoid;
+    page-break-after: avoid;
   }
 }
 

@@ -9,6 +9,38 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 13) — Modale Aide : retour à `columns:2` sans break-inside (vraie balance)
+
+L'approche Grid auto-flow (suite 12) respectait l'ordre HTML mais ne pouvait pas équilibrer les hauteurs des colonnes — la grosse section "Charger / Import" laissait toujours du vide dans la colonne gauche.
+
+**Fix final** : retour à `columns: 2` MAIS **sans `break-inside: avoid`**. Le browser peut désormais couper une grosse section entre les 2 colonnes pour vraiment équilibrer les hauteurs. Plus de trou.
+
+**Compromis accepté** : une section peut être visuellement splittée (lecture top-bottom-left → top-right). En pratique, l'œil suit la lecture en colonne gauche puis colonne droite, c'est lisible.
+
+**Sécurité ajoutée** : `break-after: avoid` sur les titres de section → si une coupure intervient, le titre reste avec au moins le début de son contenu (jamais "titre orphelin" en bas d'une colonne).
+
+```css
+/* Avant : Grid auto-flow → trous */
+.kta-aide-corps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* Après : columns:2 + balance auto, sections divisibles */
+.kta-aide-corps {
+  columns: 2;
+  column-gap: 36px;
+  column-rule: 1px solid rgba(255,255,255,0.06);
+}
+.kta-aide-section-titre {
+  break-after: avoid;  /* titre orphelin évité */
+}
+```
+
+**`sw.js`** : `CACHE_NAME` v96 → v97.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 12) — Modale Aide : passage de `columns:2` à CSS Grid auto-flow
 
 Le passage en `columns: 2` (suite 11) créait un déséquilibre visuel important : une section énorme (genre "Charger / Import") plus volumineuse que les autres réunies bloquait l'équilibrage automatique du multi-column avec `break-inside: avoid` → grand trou dans la colonne gauche.
