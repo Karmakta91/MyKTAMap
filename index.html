@@ -125,25 +125,38 @@
         </button>
       </div>
 
-      <!-- 📚 MES PLANS -->
-      <div id="myPlansBox" style="display:none; margin-bottom:14px;">
-        <div class="loader-section-head">
-          <span>📚 Mes plans</span>
-          <div class="loader-section-actions">
-            <button class="loader-btn-mini" id="exportListBtn" title="Exporter ma liste">💾</button>
-            <button class="loader-btn-mini" id="importListBtn" title="Charger une liste">📂</button>
+      <!-- ===== Layout 2 colonnes sur PC (≥1024px) — sur mobile/tablette
+           le wrapper se comporte en display:contents (transparent), tout
+           s'empile verticalement comme avant. ===== -->
+      <div class="loader-grid">
+
+        <!-- ▬▬▬ COLONNE GAUCHE (60% PC) : 📚 Mes plans ▬▬▬ -->
+        <div class="loader-col loader-col-plans">
+
+          <!-- 📚 MES PLANS -->
+          <div id="myPlansBox" style="display:none; margin-bottom:14px;">
+            <div class="loader-section-head">
+              <span>📚 Mes plans</span>
+              <div class="loader-section-actions">
+                <button class="loader-btn-mini" id="exportListBtn" title="Exporter ma liste">💾</button>
+                <button class="loader-btn-mini" id="importListBtn" title="Charger une liste">📂</button>
+              </div>
+            </div>
+
+            <div id="allPlansList" class="loader-plans-list"></div>
           </div>
-        </div>
 
-        <div id="allPlansList" class="loader-plans-list"></div>
-      </div>
+        </div><!-- /.loader-col-plans -->
 
-      <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
-      <div class="loader-section-head">
-        <span>📦 Ajouter un plan</span>
-      </div>
+        <!-- ▬▬▬ COLONNE DROITE (40% PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
+        <div class="loader-col loader-col-actions">
 
-      <div class="loader-panel active" id="panelZip">
+          <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
+          <div class="loader-section-head">
+            <span>📦 Ajouter un plan</span>
+          </div>
+
+          <div class="loader-panel active" id="panelZip">
         <div class="zip-drop-zone" id="zipDropZone">
           <span class="zip-icon">📦</span>
           Glisse ton archive ZIP ici<br>
@@ -204,17 +217,21 @@
         </div>
       </div>
 
-      <!-- ACTIONS AVANCÉES — en bas, groupe discret -->
-      <div class="loader-section-head loader-section-head-collapse" id="advancedHead">
-        <span>⚙️ Plus d'options</span>
-        <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
-      </div>
-      <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
-        <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
-        <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
-        <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
-        <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
-      </div>
+          <!-- ACTIONS AVANCÉES — en bas de la colonne droite (déplié par défaut sur PC) -->
+          <div class="loader-section-head loader-section-head-collapse" id="advancedHead">
+            <span>⚙️ Plus d'options</span>
+            <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
+          </div>
+          <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
+            <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
+            <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
+            <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
+            <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
+          </div>
+
+        </div><!-- /.loader-col-actions -->
+
+      </div><!-- /.loader-grid -->
 
       <!-- Input caché pour import de liste -->
       <input id="importListFile" type="file" accept=".config,.json,application/json" style="display:none;">

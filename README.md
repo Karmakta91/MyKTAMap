@@ -9,6 +9,60 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 7) — Loader : layout 2 colonnes sur PC (≥ 1024px)
+
+Le loader (page d'accueil avec liste des plans + import) utilisait le même layout vertical mono-colonne sur toutes les plateformes — gaspillait de la place sur PC. Refonte responsive : **mobile/tablette inchangé**, **PC en 2 colonnes 60/40**.
+
+**Layout PC** (≥ 1024px) :
+
+```
+┌─────────────────────────────────────────────────┐
+│        📦 MyKTAMap            📖                │ ← header full-width
+├─────────────────────────────────────────────────┤
+│  ▶️ Reprendre [Nom du dernier plan]             │ ← bandeau full-width
+├──────────────────────────┬──────────────────────┤
+│                          │ 📦 Ajouter un plan   │
+│ 📚 Mes plans (60%)       │ [Drop ZIP]           │
+│  - Plan 1                │ [FS access]          │
+│  - Plan 2                │ [Store blob]         │
+│  - Plan 3 (scroll)       │ [Mode performance]   │
+│  - ...                   │ [▶️ Charger]         │
+│                          │                      │
+│                          │ ⚙️ Plus d'options     │
+│                          │ (déplié par défaut)  │
+│                          │ [🏗️ Générer]         │
+│                          │ [📥 Conf exemple]    │
+│                          │ [🐛 Logs]            │
+│                          │ [💥 Reset]           │
+├──────────────────────────┴──────────────────────┤
+│       © 2026 Flavien VIDAL · CC BY-NC-SA        │ ← footer
+└─────────────────────────────────────────────────┘
+```
+
+**Choix utilisateur** :
+- Breakpoint **1024px+** (mobile/tablette = ≤ 1023px gardent le layout vertical existant)
+- Ratio **60/40** (gauche large pour la liste de plans)
+- ▶️ Reprendre en bandeau **full-width** au-dessus des 2 colonnes (action prioritaire)
+- ⚙️ Plus d'options **toujours déplié** sur PC (place disponible — chevron caché, pas de toggle)
+- Largeur max **1100px** (confortable sur 4K, ne s'étire pas indéfiniment)
+- Hauteur **auto** (scroll fenêtre si trop long), liste de plans avec scroll interne (`max-height: calc(100vh - 320px)`)
+
+**Implémentation** :
+- HTML : nouveau wrapper `.loader-grid` qui contient 2 `.loader-col` (`.loader-col-plans` / `.loader-col-actions`). Le ▶️ Reprendre, le header et le footer copyright restent hors du grid.
+- CSS : `.loader-grid` est `display: contents` par défaut (transparent sur mobile, enfants directement dans le parent — layout vertical inchangé). Sur ≥ 1024px, le wrapper devient `display: grid` 60/40.
+- Sur PC, override `#advancedBox { display: flex !important; }` pour forcer ouvert peu importe l'état JS.
+- `.loader-col-plans .loader-plans-list { max-height + overflow-y: auto }` pour un scroll interne propre quand beaucoup de plans.
+
+**Aucun changement JS** — la restructuration est purement HTML+CSS.
+
+**Mobile** : aucun changement visuel ni comportemental confirmé.
+
+**Note** : autres modales charte qui pourraient bénéficier d'un layout PC (à voir plus tard) : 📖 Documentation, ❓ Aide, 🏗️ Générateur de plan, 🖼️ Export PNG (Avancé), 💾 Sauvegarde session.
+
+**`sw.js`** : `CACHE_NAME` v90 → v91.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 6) — Sélection visuelle pour supprimer une zone (même pattern que tracés)
 
 Reproduit le pattern "mode clic visuel sur la carte" pour les zones session, en complément des options existantes du menu **🧹 Effacer** du groupe Zones.
