@@ -2390,6 +2390,10 @@ function initInterface() {
 
           // Compter les zones fermées (différentes de currentZone)
           const nbZonesFermees = zones.length;
+          // Compte les zones fermables/supprimables (au moins 3 points)
+          const nbSelectables = zones.filter(function(z) {
+            return z && Array.isArray(z.points) && z.points.length >= 3;
+          }).length;
 
           _choixSuppression(
             "Zones", "Que veux-tu effacer ?",
@@ -2400,6 +2404,13 @@ function initInterface() {
               { label: "Dernière zone fermée", icon: "✂️",
                 desc: nbZonesFermees + " zone(s) au total",
                 onClick: function() { if (window.removeLastZone) window.removeLastZone(); } },
+              { label: "Sélectionner une zone à supprimer", icon: "🎯",
+                desc: "Clique sur la zone sur la carte (" + nbSelectables + " disponibles)",
+                onClick: function() {
+                  if (typeof window.activerModeSuppressionZoneClic === "function") {
+                    window.activerModeSuppressionZoneClic();
+                  }
+                } },
               { label: "Toutes les zones", icon: "🗑️", danger: true,
                 desc: "Action irréversible",
                 onClick: function() { if (window.resetZones) window.resetZones(); } }
@@ -2705,6 +2716,131 @@ window.activerModeSuppressionTraceClic = function() {
   };
 
   window.map.on("click", _suppTraceClickHandler);
+};
+
+// =========================
+// SUPPRESSION D'UNE ZONE — mode clic visuel sur la carte
+// =========================
+// Pattern identique a la suppression de tracé clic (cf au-dessus). Detection
+// en deux temps :
+//   1. Test "point dans polygone" (ray casting) → zone qui contient le clic
+//   2. Si aucun match interieur, fallback sur "click pres d'un bord" (tolerance
+//      px) → utile pour cliquer juste a cote d'une petite zone.
+// Si plusieurs zones contiennent le point (overlap), on prend la DERNIERE
+// dessinée (top de la pile = ce que l'utilisateur voit le plus).
+
+let _suppZoneClickHandler = null;
+let _suppZoneFloater      = null;
+
+// Algorithme classique du ray casting : on compte les intersections d'un rayon
+// horizontal partant du point avec les arêtes du polygone. Nombre impair = dedans.
+function _pointInPolygon(p, poly) {
+  if (!Array.isArray(poly) || poly.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > p.y) !== (yj > p.y)) &&
+                      (p.x < (xj - xi) * (p.y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function _desactiverModeSuppressionZone() {
+  if (_suppZoneClickHandler && window.map) {
+    window.map.off("click", _suppZoneClickHandler);
+    _suppZoneClickHandler = null;
+  }
+  if (_suppZoneFloater) {
+    _suppZoneFloater.remove();
+    _suppZoneFloater = null;
+  }
+}
+
+window.activerModeSuppressionZoneClic = function() {
+  if (!window.map) return;
+
+  const allZones = window.getZones ? (window.getZones() || []) : [];
+  const supprimables = allZones.filter(function(z) {
+    return z && Array.isArray(z.points) && z.points.length >= 3;
+  });
+  if (supprimables.length === 0) {
+    alert("Aucune zone session à supprimer.");
+    return;
+  }
+
+  _desactiverModeSuppressionZone();
+
+  _suppZoneFloater = document.createElement("div");
+  _suppZoneFloater.id = "kta-supp-zone-floater";
+  _suppZoneFloater.className = "kta-supp-trace-floater";  // reuse meme style charte
+  _suppZoneFloater.innerHTML =
+    '<span class="kta-supp-trace-icon">🎯</span>' +
+    '<span class="kta-supp-trace-msg">Clique sur une zone pour la <strong>supprimer</strong></span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-supp-zone-annuler" type="button">✕ Annuler</button>';
+  document.body.appendChild(_suppZoneFloater);
+
+  document.getElementById("kta-supp-zone-annuler")
+    .addEventListener("click", _desactiverModeSuppressionZone);
+
+  // Tolerance pour le fallback "click pres du bord" (zone de petit polygon
+  // sur lequel l'utilisateur clique a cote sans rentrer dedans).
+  const TOLERANCE_BORD_PX = 20;
+
+  _suppZoneClickHandler = function(e) {
+    const cx = e.latlng.lng;
+    const cy = APP_CONFIG.imageHeight - e.latlng.lat;
+    const cp = { x: cx, y: cy };
+
+    // 1) Test "dans le polygone" — on parcourt en ordre INVERSE pour prendre
+    // la zone dessinée en dernier (top z-order visuel) si plusieurs s'overlap.
+    let foundZone = null;
+    for (let i = supprimables.length - 1; i >= 0; i--) {
+      if (_pointInPolygon(cp, supprimables[i].points)) {
+        foundZone = supprimables[i];
+        break;
+      }
+    }
+
+    // 2) Fallback : click pres d'un bord (segment du contour ferme)
+    if (!foundZone) {
+      let closestDist = Infinity;
+      let closestZone = null;
+      for (let z = 0; z < supprimables.length; z++) {
+        const pts = supprimables[z].points;
+        // Boucle fermee : segment final pts[N-1] → pts[0]
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[i];
+          const b = pts[(i + 1) % pts.length];
+          const d = _pointSegmentDistanceFlat(cp, a, b);
+          if (d < closestDist) {
+            closestDist = d;
+            closestZone = supprimables[z];
+          }
+        }
+      }
+      if (closestZone && closestDist <= TOLERANCE_BORD_PX) {
+        foundZone = closestZone;
+      }
+    }
+
+    if (!foundZone) {
+      console.log("[Suppr zone] Click hors zone et hors tolérance bord, ignoré");
+      return;
+    }
+
+    // Supprime la zone
+    const currentZones = window.getZones ? window.getZones() : [];
+    const filtered = currentZones.filter(function(z) { return z !== foundZone; });
+    if (window.setZones) window.setZones(filtered);
+    console.log("[Suppr zone] Zone supprimée :", foundZone.type, "—",
+                filtered.length, "zone(s) restante(s)");
+
+    _desactiverModeSuppressionZone();
+  };
+
+  window.map.on("click", _suppZoneClickHandler);
 };
 
 // =========================
