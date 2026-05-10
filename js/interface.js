@@ -2304,6 +2304,10 @@ function initInterface() {
           if (roads.length === 0) return;
           const dernier = roads[roads.length - 1];
           const nbPts = dernier?.points?.length || 0;
+          // Compte uniquement les tracés selectionnables (pas itinerary)
+          const tracesSelectables = roads.filter(function(r) {
+            return r && ["principal", "secondaire", "chemin"].indexOf(r.type) !== -1;
+          });
           _choixSuppression(
             "Tracés", "Que veux-tu effacer ?",
             [
@@ -2313,6 +2317,13 @@ function initInterface() {
               { label: "Dernier tracé entier", icon: "✂️",
                 desc: roads.length + " tracé(s) au total",
                 onClick: function() { if (window.removeLastRoad) window.removeLastRoad(); } },
+              { label: "Sélectionner un tracé à supprimer", icon: "🎯",
+                desc: tracesSelectables.length + " tracé(s) au choix",
+                onClick: function() {
+                  if (typeof window.afficherModaleSuppressionTrace === "function") {
+                    window.afficherModaleSuppressionTrace();
+                  }
+                } },
               { label: "Tous les tracés", icon: "🗑️", danger: true,
                 desc: "Action irréversible",
                 onClick: function() { if (window.resetRoads) window.resetRoads(); } }
@@ -2584,6 +2595,130 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
   _itineraryWaypoints.push(newWaypoint);
   _ajouterWaypointVisuel({ x: x, y: y }, _itineraryWaypoints.length);
   _rafraichirListeWaypointsModale();
+};
+
+// =========================
+// SUPPRESSION D'UN TRACÉ SPÉCIFIQUE — modale liste
+// =========================
+// Modale charte qui liste tous les tracés de session (Principal/Secondaire/Chemin)
+// avec un bouton 🗑️ par ligne. Appelee depuis le menu "🧹 Effacer" du groupe
+// Tracés de la sidebar accordéon. L'itineraire est exclu (cycle de vie propre
+// via la modale Itinéraire).
+window.afficherModaleSuppressionTrace = function() {
+  const existing = document.getElementById("kta-trace-supr-modal");
+  if (existing) existing.remove();
+
+  const allRoads = window.getRoads ? (window.getRoads() || []) : [];
+  // On garde la trace de l'INDEX dans roadsData pour la suppression
+  // (sinon on doit faire un match par reference Object.is qui marche car
+  // setRoads ne clone pas, mais c'est moins safe).
+  const supprimables = [];
+  for (let i = 0; i < allRoads.length; i++) {
+    const r = allRoads[i];
+    if (r && ["principal", "secondaire", "chemin"].indexOf(r.type) !== -1) {
+      supprimables.push({ road: r, indexInAll: i });
+    }
+  }
+
+  if (supprimables.length === 0) {
+    alert("Aucun tracé session à supprimer.");
+    return;
+  }
+
+  const ROAD_LABELS = {
+    principal:  { emoji: "🟩", nom: "Route principale" },
+    secondaire: { emoji: "🟪", nom: "Route secondaire" },
+    chemin:     { emoji: "🟨", nom: "Chemin"          }
+  };
+  const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
+
+  function _distanceRoadM(road) {
+    if (!Array.isArray(road.points) || road.points.length < 2) return 0;
+    let totalPx = 0;
+    for (let i = 1; i < road.points.length; i++) {
+      const a = road.points[i - 1];
+      const b = road.points[i];
+      totalPx += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return totalPx / scale;
+  }
+
+  // Compteur par type (numerotation par ordre d'apparition dans le meme type)
+  const compteurType = { principal: 0, secondaire: 0, chemin: 0 };
+  const lignesHtml = supprimables.map(function(item, listIdx) {
+    const r     = item.road;
+    const meta  = ROAD_LABELS[r.type] || { emoji: "•", nom: r.type };
+    compteurType[r.type] = (compteurType[r.type] || 0) + 1;
+    const numType = compteurType[r.type];
+    const distM   = _distanceRoadM(r);
+    const distFmt = (typeof window.formatDistance === "function")
+      ? window.formatDistance(distM, 1)
+      : (distM.toFixed(1) + " m");
+    const nbPts = (r.points || []).length;
+    return '<div class="kta-trace-supr-row">' +
+             '<div class="kta-trace-supr-info">' +
+               '<div class="kta-trace-supr-titre">' +
+                 meta.emoji + ' ' + meta.nom + ' #' + numType +
+               '</div>' +
+               '<div class="kta-trace-supr-meta">' +
+                 nbPts + ' point' + (nbPts > 1 ? 's' : '') + ' · ' + distFmt +
+               '</div>' +
+             '</div>' +
+             '<button class="kta-btn kta-btn-danger kta-trace-supr-btn" type="button" ' +
+               'data-list-idx="' + listIdx + '" ' +
+               'title="Supprimer ce tracé définitivement">🗑️</button>' +
+           '</div>';
+  }).join("");
+
+  const modal = document.createElement("div");
+  modal.id = "kta-trace-supr-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:480px;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🗑️ Supprimer un tracé</span>' +
+        '<button class="kta-panneau-close" id="kta-trace-supr-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="margin:0 0 14px; color:#8892a4; font-size:13px; line-height:1.5;">' +
+          'Choisis un tracé à supprimer. Action <strong>immédiate</strong> au clic — ' +
+          'pas de confirmation supplémentaire (utilise ✕ ou Échap pour annuler).' +
+        '</p>' +
+        '<div class="kta-trace-supr-list">' + lignesHtml + '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _ferme() { modal.remove(); }
+  document.getElementById("kta-trace-supr-close").addEventListener("click", _ferme);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _ferme(); });
+  // Echap pour fermer
+  function _onKey(e) {
+    if (e.key === "Escape") {
+      _ferme();
+      document.removeEventListener("keydown", _onKey);
+    }
+  }
+  document.addEventListener("keydown", _onKey);
+
+  // Wire-up des boutons 🗑️
+  const btns = modal.querySelectorAll(".kta-trace-supr-btn");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const listIdx = parseInt(btn.dataset.listIdx, 10);
+      const target  = supprimables[listIdx];
+      if (!target) return;
+
+      // Re-fetch roads (peut avoir change si l'utilisateur a trace en parallèle)
+      const currentRoads = window.getRoads ? window.getRoads() : [];
+      // Filter par reference au road original (Object.is compare les references)
+      const filtered = currentRoads.filter(function(r) { return r !== target.road; });
+      if (window.setRoads) window.setRoads(filtered);
+      console.log("[Roads] Tracé supprimé :", target.road.type, "—", filtered.length, "tracé(s) restant(s)");
+
+      _ferme();
+    });
+  });
 };
 
 // =========================
