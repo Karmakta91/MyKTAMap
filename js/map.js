@@ -191,25 +191,29 @@ async function initMapFromConfig() {
     [config.plan.imageHeight + _bufferPx,  config.plan.imageWidth + _bufferPx]
   ];
 
-  // Sur mobile, dezoom plus profond (-4 vs -2) pour donner plus d'espace
-  // écran libre autour du plan quand on consulte un point au bord.
-  // ⚠️ MAIS : pour les gros plans, le dezoom extreme fait crasher l'app
-  // (Leaflet doit traiter l'image entiere en memoire au minZoom). On plafonne
-  // donc dynamiquement selon la taille de l'image :
-  //   image < 4000 px de cote     → minZoom -4 mobile / -2 desktop (defaut)
-  //   image 4000 - 8000 px        → minZoom -3 mobile / -2 desktop (peu profond)
-  //   image > 8000 px             → minZoom -2 mobile / -1 desktop (limite)
-  // Choix du seuil 4000/8000 base sur l'observation : crashes au dezoom
-  // extreme rapportes sur des plans de carriere de 8000+ px (09/05/2026).
+  // minZoom dynamique selon la taille de l'image ET la plateforme.
+  // Sur MOBILE : on plafonne pour eviter les crashes au dezoom extreme
+  // (Leaflet doit traiter l'image entiere en memoire au minZoom — sur un
+  // plan 8000+ px le canvas devient enorme et sature la RAM mobile).
+  // Sur DESKTOP : la memoire est largement suffisante, on est plus
+  // genereux pour permettre une vue d'ensemble confortable, surtout sur
+  // les gros plans de carriere ou le user veut prendre du recul.
+  //
+  //   image < 4000 px de cote     → mobile -4 / desktop -4
+  //   image 4000 - 8000 px        → mobile -3 / desktop -4
+  //   image > 8000 px             → mobile -2 / desktop -3
+  //
+  // Mise a jour 10/05/2026 : desktop assoupli (-4/-3 au lieu de -2/-1)
+  // sur demande utilisateur. Mobile inchange (calibre anti-crash).
   const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
   const _maxImgDim = Math.max(config.plan.imageWidth || 0, config.plan.imageHeight || 0);
   let _minZoom;
   if (_maxImgDim > 8000) {
-    _minZoom = _isMobile ? -2 : -1;
+    _minZoom = _isMobile ? -2 : -3;
   } else if (_maxImgDim > 4000) {
-    _minZoom = _isMobile ? -3 : -2;
+    _minZoom = _isMobile ? -3 : -4;
   } else {
-    _minZoom = _isMobile ? -4 : -2;
+    _minZoom = _isMobile ? -4 : -4;
   }
   console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom, "(mobile:", _isMobile, ")");
 
