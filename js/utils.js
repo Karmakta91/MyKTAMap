@@ -84,7 +84,7 @@ window.formatDistance = formatDistance;
 // Wire-up via onclick inline (window.itineraireYAller / window.itineraireAjouterWaypoint
 // dans interface.js). Echappement HTML/string strict pour eviter les injections
 // si un point a un nom avec apostrophe ou guillemet.
-function buildPointPopupHtml(point) {
+function buildPointPopupHtml(point, isEditorSession) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");
   // Echappement HTML pour le contenu affiche
@@ -97,12 +97,17 @@ function buildPointPopupHtml(point) {
   const x = Number(point.x) || 0;
   const y = Number(point.y) || 0;
 
-  // Bouton Supprimer : visible UNIQUEMENT pour les points editor (session
-  // utilisateur). Les points embedded (puits.json, cataphile.json, etc.) sont
-  // en lecture seule depuis le ZIP du plan → on ne propose pas la suppression.
-  // Detection : point.source === "editor" (set par editor.js > afficherFormulaire).
-  const isEditor = point.source === "editor";
-  const deleteRow = isEditor
+  // Bouton Supprimer : visible UNIQUEMENT pour les points de la session
+  // utilisateur en cours (listePoints). Detection via le 2eme argument
+  // isEditorSession passe explicitement par le caller :
+  //   - editor.js > _ajouterMarker     → true  (point session, supprimable)
+  //   - utils.js > ajouterPointsDepuisJSON → false (data layer, lecture seule)
+  // ⚠️ NE PAS se baser sur point.source === "editor" : un point converti
+  // session → data via Conversion garde "source: editor" dans le JSON, le
+  // test serait trompeur → bouton affiche mais supprimerPointEditor ne
+  // trouve rien dans listePoints → erreur silencieuse.
+  const showDelete = isEditorSession === true;
+  const deleteRow = showDelete
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
           'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
@@ -168,9 +173,11 @@ function ajouterPointsDepuisJSON(url, layer) {
         for (let i = index; i < fin; i++) {
           const p = points[i];
           var marker = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-          // Popup avec boutons "Y aller" / "Itinéraire" — helper commun
+          // Popup avec boutons "Y aller" / "Itinéraire" — helper commun.
+          // 2e argument false → point d'un data layer (lecture seule), pas
+          // de bouton "🗑️ Supprimer" affiche.
           const popupHtml = (typeof window.buildPointPopupHtml === "function")
-            ? window.buildPointPopupHtml(p)
+            ? window.buildPointPopupHtml(p, false)
             : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
           marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
           marker.addTo(layer);

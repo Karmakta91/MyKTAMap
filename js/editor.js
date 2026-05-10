@@ -277,9 +277,11 @@ function _ajouterMarker(point) {
   }
 
   const marker = L.marker(convertCoord(point.x, point.y), { icon: icone }).addTo(window.layerEditor);
-  // Popup avec boutons "Y aller" / "Itinéraire" — helper commun avec utils.js
+  // Popup avec boutons "Y aller" / "Itinéraire" / "Supprimer" — helper commun.
+  // 2e argument true → c'est un point de la session courante (listePoints) →
+  // bouton "🗑️ Supprimer" affiche dans la popup.
   const popupHtml = (typeof window.buildPointPopupHtml === "function")
-    ? window.buildPointPopupHtml(point)
+    ? window.buildPointPopupHtml(point, true)
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
   // Tracking pour permettre une suppression ciblée plus tard (sans clearLayers

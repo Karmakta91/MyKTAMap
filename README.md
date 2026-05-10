@@ -9,6 +9,27 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 10/05/2026 (suite 14) — Fix bouton "🗑️ Supprimer ce point" qui apparaissait sur points data layer
+
+**Bug** : le bouton "🗑️ Supprimer ce point" apparaissait dans la popup de **points de calque de données** (pas seulement points session). Au clic, `supprimerPointEditor` cherchait dans `listePoints` (la session), ne trouvait rien → `console.warn("[Editor] Point a supprimer introuvable")` et retour silencieux. Du point de vue user : le bouton "ne fait rien".
+
+**Cause racine** : la détection se basait sur `point.source === "editor"`. Or quand l'utilisateur fait une **conversion session→data** via la modale Conversion, les points editor sont copiés dans le JSON du data layer cible (ex: `data/test1/editor.json`) en gardant `source: "editor"` dans le JSON. Au reload du plan, ces points sont chargés via `ajouterPointsDepuisJSON` (donc dans le data layer, pas dans `listePoints`), mais leur `source: "editor"` reste → test trompeur, bouton affiché à tort.
+
+**Fix** : la détection se base désormais sur le **contexte d'appel** (un argument explicite `isEditorSession` au helper) et plus sur la donnée :
+- `editor.js > _ajouterMarker` (point session, vraiment dans `listePoints`) → `buildPointPopupHtml(point, true)` → bouton affiché
+- `utils.js > ajouterPointsDepuisJSON` (point data layer, lecture seule) → `buildPointPopupHtml(p, false)` → bouton masqué
+
+Plus fiable car la source de vérité est l'API qui crée le marker, pas un champ de la donnée qui peut survivre à des conversions.
+
+**Code** :
+- `js/utils.js > buildPointPopupHtml(point, isEditorSession)` : nouveau paramètre. Test `isEditorSession === true` au lieu de `point.source === "editor"`.
+- `js/editor.js > _ajouterMarker` : appelle avec `true`.
+- `js/utils.js > ajouterPointsDepuisJSON` : appelle avec `false`.
+
+**`sw.js`** : `CACHE_NAME` v97 → v98.
+
+---
+
 ### 🗓️ 10/05/2026 (suite 13) — Modale Aide : retour à `columns:2` sans break-inside (vraie balance)
 
 L'approche Grid auto-flow (suite 12) respectait l'ordre HTML mais ne pouvait pas équilibrer les hauteurs des colonnes — la grosse section "Charger / Import" laissait toujours du vide dans la colonne gauche.
