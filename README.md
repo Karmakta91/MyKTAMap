@@ -9,6 +9,160 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 11/05/2026 (suite 3) — 🖼️ Fix export PNG/JPEG : fallback automatique pour gros plans JPG source
+
+**Bug** : sur les plans dont l'image source est en JPG haute résolution (typique car JPG compresse bien à l'upload, donc on s'autocensure moins sur les dimensions), `canvas.toBlob(cb, "image/png")` retournait **`null` silencieusement**. Cause : l'encodage PNG d'un gros canvas demande `width × height × 4 bytes` de RAM en continu — au-delà de ~250-400 Mo bruts (≈ 8000×8000 px), Safari iOS et Chrome Android refusent. JPEG en revanche est progressif (streamé bloc par bloc) et tolère des dimensions bien plus grandes.
+
+**Fix** : fallback automatique dans les deux modes d'export (`utils.js > telechargerPlan` mode rapide et `exporter.js > _exporterAvance` mode avancé) :
+- Si `toBlob("image/png")` retourne null → retry avec `toBlob("image/jpeg", 0.92)`.
+- Si le JPEG échoue aussi → message d'erreur clair suggérant le mode avancé avec résolution ½ ou ¼.
+- Plan PNG raisonnable → comportement inchangé (PNG produit).
+- Plan trop grand → l'utilisateur récupère un `.jpg` q=0.92 au lieu d'une erreur silencieuse. Qualité visuellement transparente pour un plan cartographique.
+
+**Code** :
+- `js/utils.js > telechargerPlan` : helper `_exporter(mime, ext, quality)` puis try PNG / catch retry JPEG / catch erreur claire.
+- `js/exporter.js > _exporterAvance` : helper `_tryEncode(targetMime, targetExt, targetQuality)`, fallback uniquement si l'utilisateur avait demandé PNG (sinon erreur directe sur JPEG échec).
+
+**`sw.js`** : bump CACHE_NAME (sw.js a été modifié, propagation cache).
+
+---
+
+### 🗓️ 11/05/2026 (suite 2) — 🤖 AI Context : externalisation à la racine + anti-hallucination renforcé + prompt copiable
+
+Refactor majeur de la fonctionnalité **🤖 Aide IA** introduite la veille (10/05 suite 15) :
+
+**Avant** : tout le contexte IA était inline dans `js/interface.js > _genererContenuContexteIA()` (~210 lignes de concaténation de strings). Pour enrichir le contexte (ajouter une FAQ, une recette), il fallait éditer le JS et bumper le SW.
+
+**Après** : le contenu vit dans un fichier statique **`AI_CONTEXT.md` à la racine**, avec placeholders runtime `{{DATE}}`, `{{BUILD}}`, `{{README_USER}}`. La fonction JS est réduite à ~30 lignes (template.replace). Pour enrichir → éditer le `.md` directement, le SW propage.
+
+**Structure du nouveau `AI_CONTEXT.md`** :
+1. **Bandeau légal** (auteur, licence CC BY-NC-SA 4.0, code non public, collaboration sur demande)
+2. **Préambule IA renforcé** :
+   - ⛔ Bloc "TOLÉRANCE ZÉRO À L'HALLUCINATION" en tête
+   - Procédure de vérification en 4 étapes (cherche dans tout le document, considère synonymes, cite la section)
+   - 📋 **Listes fermées** anti-hallu (zones, tracés, icônes, modes perf, formats) + **survol des fonctionnalités principales** (15 modules : multi-plans, recherche, tracker, itinéraire, mode urgence, mesure, distance totale, etc.)
+   - 💬 Modèles de réponse prêts à l'emploi
+3. **Doc utilisateur intégrale** (README_USER.md injectée)
+4. **📚 Glossaire** (15 termes)
+5. **🍳 Recettes** pas-à-pas (9 workflows : 1ère utilisation, charger ZIP, point, route, itinéraire, sauvegarder/partager, créer plan, optimiser, mode urgence, intégrer session définitivement)
+6. **❓ FAQ** enrichie
+
+**Nouveau bouton "Copier le prompt" dans la modale 🤖 Aide IA** : `<textarea readonly>` avec un prompt court anti-hallucination (5 règles ⛔/✅ + demande "OK, prêt") pré-rédigé, à coller au premier message de l'IA AVEC le fichier `.md`. Bouton 📋 Copier qui utilise `navigator.clipboard.writeText` (HTTPS) ou fallback `execCommand("copy")`.
+
+**Renforcement anti-hallu suite à un retour user** : l'IA disait initialement "le mode urgence n'existe pas" car le bloc anti-hallucination ne listait que des sous-listes (zones, tracés, icônes...) et n'incluait pas les **fonctionnalités globales** comme le mode urgence. Ajout d'une section "Fonctionnalités principales" listant les 15 modules de l'app. Procédure de vérification revue pour considérer les synonymes ("mode urgence ≡ Je suis perdu", "itinéraire ≡ trajet", etc.) avant de conclure à l'inexistence.
+
+**Code** :
+- `AI_CONTEXT.md` : nouveau fichier à la racine, ~400 lignes éditable.
+- `js/interface.js > _genererContenuContexteIA(aiContextTemplate, readmeUserText)` : passe à 30 lignes (template.replace + fallback minimal si fetch échoue).
+- `js/interface.js > afficherModaleAideIA` : nouvelle section "📋 Prompt prêt à coller" avec textarea + bouton Copier.
+- `js/interface.js > download handler` : fetch parallèle `AI_CONTEXT.md` + `README_USER.md` via Promise.all.
+- `sw.js > ASSETS_TO_CACHE` : ajout de `./AI_CONTEXT.md`.
+
+**`sw.js`** : bump CACHE_NAME (nouvelle ressource cachée).
+
+---
+
+### 🗓️ 11/05/2026 (suite 1) — 🔔 Détection de mise à jour : modale + mise à jour douce vs reset complet
+
+Système de notification automatique quand une nouvelle version de l'app est dispo. L'utilisateur n'a plus à vider manuellement le cache pour bénéficier des correctifs.
+
+**Mécanisme** :
+- Fichier `version.json` à la racine, contient `{ version, released, notes[] }`. NON caché par le SW.
+- Module `js/updateChecker.js` au boot fetche `version.json` avec cache-bust (`?_=${Date.now()}` + `cache: "no-store"`) pour contourner le SW cache-first.
+- Compare la version reçue avec `localStorage["myktamap_known_version"]`.
+- Si différente + pas snoozée + pas 1er run → modale **🔔 Mise à jour disponible** affichée.
+- 1er run → stocke silencieusement, pas de popup à l'installation.
+- Offline → silencieux, garde l'ancienne valeur.
+- Snooze 24h si user clique "Plus tard" (localStorage `myktamap_update_postponed_at`).
+
+**Différée après splash** : pattern identique à `OOMGuard.flushPendingToasts()`. Si la modale doit s'afficher pendant le splash (~4s), elle est mise dans `_pendingModalArgs` puis flushée par `_splashEnd()` via `UpdateChecker.notifySplashEnded()`. Plus de popup par-dessus le gradient sombre.
+
+**Modale 🔔** : tableau "Installée → Disponible" (versions monospace), notes de version, avertissement, **3 actions** :
+- **Plus tard (24h)** : snooze
+- **🪶 Mise à jour douce** *(défaut, primary vert)* : purge **uniquement** le cache PWA + reload. Préserve sessions, plans, préférences, IndexedDB, localStorage. Implémentée via `mettreAJourCodeSeul()` dans `interface.js` : ping Internet + `reg.update()` + `caches.delete` + reload.
+- **💥 Forcer un reset complet** *(lien rouge discret)* : `viderCacheAppli()` historique, purge tout (table rase).
+
+**Pourquoi 2 modes** : l'ancien viderCacheAppli faisait table rase à chaque update — user perdait ses plans importés et sa session. La mise à jour douce résout 99% des cas et n'est plus destructrice. Le reset complet reste dispo en fallback si un état corrompu persiste.
+
+**Code** :
+- `version.json` (nouveau) : indicateur de version + notes.
+- `js/updateChecker.js` (nouveau) : `UpdateChecker.check()`, `notifySplashEnded()`, `_showOrDefer()`.
+- `js/interface.js` : `window.afficherModaleUpdateDispo({localVersion, remote, onAcceptSoft, onAcceptHard, onPostpone})`, `mettreAJourCodeSeul()` avec overlay progression, modale offline dédiée.
+- `js/main.js > initApp()` : appelle `UpdateChecker.check()` au boot. `_splashEnd()` appelle `UpdateChecker.notifySplashEnded()`.
+- `index.html` : `<script src="js/updateChecker.js">` avant interface.js.
+- `sw.js` : nouveau fichier dans ASSETS_TO_CACHE (sauf version.json, on veut réseau-only avec fallback localStorage).
+
+**`sw.js`** : bump CACHE_NAME (nouveaux fichiers cachés).
+
+---
+
+### 🗓️ 11/05/2026 — ⛑️ Mode urgence "Je suis perdu" : module complet d'estimation de position en cataphilie
+
+Nouvelle fonctionnalité majeure (~700 lignes JS + 200 lignes CSS) accessible via la sidebar **🧭 Tracker → ⛑️ Je suis perdu — Mode urgence** (sous-action orange distinctive). Estime la **zone probable** où peut être l'utilisateur à partir de sa dernière position connue, du temps écoulé et d'indices visuels observés.
+
+**Cas d'usage** : tu es sorti(e) sans tracker actif ou il a dérivé. Tu sais où tu étais il y a X minutes, et tu observes maintenant des éléments distinctifs ("bidon eau", "épure bélier"). L'app croise tout ça pour proposer une zone de recherche + une localisation probable affinée.
+
+**Saisie position** (3 méthodes combinables) :
+- 🔎 Recherche autocomplete d'un point existant par nom/id/tag (insensible aux accents : NFD + diacritiques)
+- 📍 Clic direct sur la carte (modale se met en retrait)
+- 🧭 Position actuelle du tracker (si actif)
+
+**Paramètres** :
+- ⏱️ Temps écoulé : slider 1-90 min (plafond 1h30 — au-delà la zone devient non pertinente)
+- 🏃 Vitesse présumée (défaut 1.5 km/h, marche cataphile lente)
+- 📊 **Marge de sécurité** (défaut ×1.0, ex-"Incertitude" renommé pour clarté) : élargit le rayon pour compenser détours, demi-tours, erreurs d'estimation du temps. Valeurs typiques ×1.0 (strict) → ×1.5 (prudent) → ×2+ (très incertain).
+- 🔮 Indices visuels (texte libre) : l'app cherche les mots dans `nom + id + description + tags + label calque` de **tous les points du plan** (data layers + editor session), insensible casse + accents.
+
+**Calcul** :
+- Rayon en mètres = `vitesse_km_h × 1000 × temps_min / 60 × marge_sécurité`
+- Rayon px = `rayon_m × APP_CONFIG.scale`
+- "Dans la zone" = distance euclidienne ≤ rayon depuis la dernière position
+- Localisation probable affinée = barycentre des matches in-zone (si ≥ 1)
+
+**Rendu carte** (couleurs anti-collision avec Effondrement rouge / Eau bleu / Itinéraire cyan / Distance highlight magenta) :
+- **Cercle orange `#ff6b35`** pulsant : zone de recherche. **Polygone 96-segments SVG** (pas `L.circle`, qui bugge avec CRS.Simple + preferCanvas — interprétation du rayon imprévisible).
+- **Marker vert `#6ce28a`** pulsant 📍 : dernière position connue.
+- **Markers violets `#b452ff`** pulsants 🔮 : indices in-zone (les plus pertinents).
+- **Markers gris `#8892a4`** statiques : indices hors zone (exclus).
+- **Cercle violet intérieur** pulsant : localisation probable affinée.
+- Détection "rayon > plan" → bande d'alerte orange dans les résultats : *"Le rayon dépasse la taille du plan — tu pourrais être n'importe où"*.
+
+**Popups markers** stylés à la charte dark (classe `.kta-lost-popup-wrapper`) : titre orange pour dernière position, badges violet/gris in-zone/out-zone, distance jaune monospace, description du point.
+
+**📚 Bloc dépliable "Bonnes pratiques"** en haut de la modale (couleur ambre `#f4c542`, fermé par défaut) — 6 catégories thématiques de conseils cataphiles :
+- 🧘 Garde ton calme (Stop. Inspire. Pas de panique.)
+- 🗺️ Orientation (reviens sur tes pas, axes principaux/roulages, boussole physique, écoute les bruits)
+- 🔦 Lumière & ressources
+- 📡 Communication (réseau près des puits → préviens AVANT batterie morte)
+- 📍 Si tu décides d'attendre (endroit identifiable, marquage)
+- ⚠️ À ne pas faire (suivre l'eau, passages inconnus, se fier au tracker)
+
+**Actions** :
+- 📋 **Copier le rapport** : texte structuré dans le presse-papiers (plan, position, temps, indices, loc affinée, timestamp) — utile en offline pour SMS/radio cataphile.
+- ✅ **Supprimer la zone et sauvegarder ma position supposée** : retire les layers ET ajoute un point éditeur permanent (icône ⚠️ danger) à la loc probable, exportable comme tout autre point.
+- 🔄 **Recalculer** : modifie les paramètres et relance sans repartir de zéro.
+- 🗑️ **Effacer la zone et fermer** : retire la zone et les markers sans sauvegarder.
+- 👁️ **Fermer** (et ✕ + clic backdrop) : ferme juste la modale, **garde la zone visible** sur la carte. Re-clic ⛑️ restaure tous les paramètres + résultats précédents (`_restaurerEtatModale`).
+
+**Cleanup au plan switch** : `LostMode._onPlanSwitch()` appelé par `main.js > _libererRessourcesPlanPrecedent()`.
+
+**⚠️ Important rappelé partout dans l'UI et la doc** : c'est une estimation **purement géométrique**, isotrope (pas de suivi du réseau de routes), basée sur des hypothèses fragiles. Ne remplace **PAS** une opération de secours réelle (fil d'Ariane, boussole physique, lampe de secours, carte papier, et la règle d'or : prévenir quelqu'un en surface AVANT la sortie).
+
+**Code** :
+- `js/lostMode.js` (nouveau, ~700 lignes) : module IIFE complet. State interne, calcul rayon, recherche indices avec `_normalizeStr` (NFD + diacritiques), rendu carte SVG forcé + diagnostic logs, génération rapport, cleanup, modale UI complète.
+- `js/interface.js > initInterface()` : sous-action `⛑️ Je suis perdu — Mode urgence` ajoutée au groupe Tracker avec `cssClass: "kta-sous-action-urgence"`. Helper `_creerGroupeAccordeon` enrichi du paramètre `cssClass`.
+- `js/interface.js > afficherAide()` : entrée ⛑️ ajoutée dans la section 🧭 Tracker de la modale d'aide avec paragraphe explicatif.
+- `js/main.js > _libererRessourcesPlanPrecedent()` : hook `LostMode._onPlanSwitch()`.
+- `css/style.css` : ~250 lignes ajoutées (modale, sliders, accordion bonnes pratiques ambre, markers SVG polygone, popups charte).
+- `README_USER.md` : nouvelle section ⛑️ détaillée avec cas d'usage type ("épure 'Bélier' + bidon d'eau") + récap des bonnes pratiques.
+- `AI_CONTEXT.md` : nouvelle recette **J** + nouvelle entrée FAQ ("Je suis perdu dans la cata, comment l'app peut m'aider ?").
+- `index.html` : `<script src="js/lostMode.js">` avant interface.js.
+- `sw.js > ASSETS_TO_CACHE` : ajout de `./js/lostMode.js`.
+
+**`sw.js`** : bump CACHE_NAME v107 → v128 (parcours complet de la session d'itérations : visualisation, persistance, popups, fixes).
+
+---
+
 ### 🗓️ 10/05/2026 (suite 15) — 🤖 Aide IA : fichier de contexte téléchargeable pour assistance IA externe
 
 Nouvelle fonctionnalité dans le groupe **📚 Aide / Documentation / Légende** : une sous-action **🤖 Aide IA** qui permet à l'utilisateur de télécharger un fichier `.md` contenant tout le contexte d'usage de l'app, à coller dans n'importe quelle IA conversationnelle pour obtenir une assistance personnalisée.
