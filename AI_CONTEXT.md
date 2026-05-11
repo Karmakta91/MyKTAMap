@@ -254,9 +254,11 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
      - **📍 Clic carte** → la modale se met en retrait, tu cliques sur la carte.
      - **🧭 Position tracker** → utilise la position du tracker si il est actif.
    - **⏱️ Temps écoulé** depuis cette position (slider 1-480 min, défaut 30 min).
-   - **⚙️ Paramètres avancés** (optionnel) :
-     - **Vitesse présumée** (défaut 1.5 km/h, marche cataphile typique).
-     - **Marge de sécurité** (défaut ×1.0) — coefficient qui **élargit le rayon** pour compenser que la personne n'a pas marché en ligne droite (couloirs, demi-tours, exploration). Le rayon final = `vitesse × temps × marge`. Valeurs typiques : ×1.0 (défaut, strict, théorique) → ×1.5 (prudent) → ×2+ (très incertain).
+   - **🏃 Vitesse & état de la personne** — segmented control 4 presets bundlant vitesse + marge de sécurité (multiplicateur qui élargit la zone pour compenser détours/demi-tours/erreurs de temps). Rayon final = `vitesse × temps × marge`. Choix persisté en localStorage.
+     - 🍺 **Bourré** : 1.0 km/h × marge ×2.0 — très confus, désorienté
+     - 🐌 **Lente** : 1.2 km/h × marge ×1.5 — prudente, étroitures
+     - 🚶 **Normale** *(défaut)* : 1.5 km/h × marge ×1.0 — allure standard, zone tendue
+     - 🏃 **Rapide** : 2.5 km/h × marge ×1.0 — parcours connu, peut être loin
    - **Temps écoulé** : slider de 1 à 90 min (1h30 max). Au-delà, la zone devient non pertinente.
    - **🔮 Indices visuels** (optionnel mais TRÈS utile) : texte libre, exemples *"bidon eau, épure bélier, puits cassé"*. L'app cherche ces mots dans le nom, la description et les tags de tous les points du plan.
 3. Clique **🎯 Calculer la zone**.

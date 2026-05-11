@@ -35,11 +35,34 @@
   "use strict";
 
   // ===== Constantes =====
-  const DEFAULT_SPEED_KMH    = 1.5;
-  const DEFAULT_UNCERTAINTY  = 1.0;
   const DEFAULT_ELAPSED_MIN  = 30;
   const MAX_ELAPSED_MIN      = 90;  // 1h30 — au-delà, mode urgence non pertinent (zone immense)
   const MAX_MATCHES_SHOWN    = 20;
+
+  // Presets qui bundlent vitesse de marche + marge de sécurité.
+  // Pattern identique au mode itinéraire (4 presets, segmented control), mais
+  // les valeurs sont adaptées au contexte "personne perdue en cataphilie" :
+  // marche plus lente que itinéraire, et chaque preset porte une logique
+  // (Bourré = lent ET confus = marge énorme ; Rapide = vif mais peut être loin).
+  const LOST_MODE_PRESETS = {
+    bourre:  { kmh: 1.0, marge: 2.0, label: "Bourré",  icon: "🍺", hint: "Très lent, confus, désorienté. Marge large." },
+    lente:   { kmh: 1.2, marge: 1.5, label: "Lente",   icon: "🐌", hint: "Marche prudente, étroitures, exploration lente." },
+    normale: { kmh: 1.5, marge: 1.0, label: "Normale", icon: "🚶", hint: "Allure standard de marche cataphile (défaut)." },
+    rapide:  { kmh: 2.5, marge: 1.0, label: "Rapide",  icon: "🏃", hint: "Marche soutenue, parcours connu, estimation stricte." }
+  };
+  const DEFAULT_LOST_PRESET     = "normale";
+  const LOST_PRESET_STORAGE_KEY = "myktamap_lost_preset";
+
+  // Defaults dérivés du preset stocké (pour rétro-compat de l'API interne)
+  const _initialPreset      = (function() {
+    try {
+      const v = localStorage.getItem(LOST_PRESET_STORAGE_KEY);
+      if (v && LOST_MODE_PRESETS[v]) return v;
+    } catch(e) {}
+    return DEFAULT_LOST_PRESET;
+  })();
+  const DEFAULT_SPEED_KMH    = LOST_MODE_PRESETS[_initialPreset].kmh;
+  const DEFAULT_UNCERTAINTY  = LOST_MODE_PRESETS[_initialPreset].marge;
 
   const COLOR_ZONE      = "#ff6b35";
   const COLOR_LAST_POS  = "#6ce28a";
@@ -58,6 +81,20 @@
   let _refinedLoc       = null;   // {x, y}
   let _zoneOverflow     = false;  // true si le rayon dépasse la taille du plan
   let _lastClues        = "";     // texte des indices saisis (pour restauration)
+  let _currentPreset    = _initialPreset;  // clé du preset actif (bourre/lente/normale/rapide)
+
+  function _getLostPreset() {
+    return _currentPreset;
+  }
+
+  function _setLostPreset(presetKey) {
+    if (!LOST_MODE_PRESETS[presetKey]) return false;
+    _currentPreset = presetKey;
+    _speedKmH      = LOST_MODE_PRESETS[presetKey].kmh;
+    _uncertainty   = LOST_MODE_PRESETS[presetKey].marge;
+    try { localStorage.setItem(LOST_PRESET_STORAGE_KEY, presetKey); } catch(e) {}
+    return true;
+  }
 
   // Layers Leaflet (cleanup au close)
   let _zoneLayer        = null;
@@ -429,8 +466,9 @@
     lines.push("");
 
     lines.push("⏱️ Temps écoulé : " + _elapsedMinutes + " min");
-    lines.push("🏃 Vitesse présumée : " + _speedKmH.toFixed(1) + " km/h");
-    lines.push("📊 Marge de sécurité : ×" + _uncertainty.toFixed(1));
+    const presetInfo = LOST_MODE_PRESETS[_currentPreset] || { label: "?", icon: "?" };
+    lines.push("🏃 Preset : " + presetInfo.icon + " " + presetInfo.label +
+               " (" + _speedKmH.toFixed(1) + " km/h × marge ×" + _uncertainty.toFixed(1) + ")");
     lines.push("📐 Rayon de la zone de recherche : ~" + _formatDist(_radiusPx));
     lines.push("");
 
@@ -589,21 +627,20 @@
     if (_lastKnownPos) {
       _selectionnerPosition(_lastKnownPos);
     }
-    // Sliders
+    // Slider temps écoulé
     const elapsedRange = document.getElementById("kta-lost-elapsed");
     const elapsedNum   = document.getElementById("kta-lost-elapsed-num");
     if (elapsedRange) elapsedRange.value = _elapsedMinutes;
     if (elapsedNum)   elapsedNum.value   = _elapsedMinutes;
 
-    const speedRange = document.getElementById("kta-lost-speed");
-    const speedVal   = document.getElementById("kta-lost-speed-val");
-    if (speedRange) speedRange.value = _speedKmH;
-    if (speedVal)   speedVal.textContent = _speedKmH.toFixed(1) + " km/h";
-
-    const uncertRange = document.getElementById("kta-lost-uncert");
-    const uncertVal   = document.getElementById("kta-lost-uncert-val");
-    if (uncertRange) uncertRange.value = _uncertainty;
-    if (uncertVal)   uncertVal.textContent = "×" + _uncertainty.toFixed(1);
+    // Segmented preset (re-sync visuel sur _currentPreset)
+    const segWrap = document.getElementById("kta-lost-preset-segmented");
+    if (segWrap) {
+      segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(b) {
+        b.classList.toggle("kta-lost-preset-active",
+                           b.getAttribute("data-preset") === _currentPreset);
+      });
+    }
 
     // Indices (restauré tel quel)
     const cluesEl = document.getElementById("kta-lost-clues");
@@ -711,19 +748,28 @@
           '</div>' +
 
           '<div class="kta-lost-section">' +
-            '<div class="kta-lost-section-titre">⚙️ Paramètres avancés</div>' +
-            '<div class="kta-lost-slider-row" title="Vitesse moyenne de marche en milieu cataphile (lent, courbé, prudent : 1.0–1.5 km/h ; bonne progression : 2–3 km/h).">' +
-              '<span class="kta-lost-param-label">Vitesse</span>' +
-              '<input id="kta-lost-speed" type="range" min="0.3" max="5" step="0.1" value="' + DEFAULT_SPEED_KMH + '" class="kta-lost-slider">' +
-              '<span class="kta-lost-param-val" id="kta-lost-speed-val">' + DEFAULT_SPEED_KMH.toFixed(1) + ' km/h</span>' +
-            '</div>' +
-            '<div class="kta-lost-slider-row" title="Marge de sécurité — élargit la zone de recherche pour compenser les détours, demi-tours et erreurs d\'estimation du temps.">' +
-              '<span class="kta-lost-param-label">Marge de sécurité</span>' +
-              '<input id="kta-lost-uncert" type="range" min="1" max="3" step="0.1" value="' + DEFAULT_UNCERTAINTY + '" class="kta-lost-slider">' +
-              '<span class="kta-lost-param-val" id="kta-lost-uncert-val">×' + DEFAULT_UNCERTAINTY.toFixed(1) + '</span>' +
-            '</div>' +
-            '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0; line-height:1.45; font-style:italic;">' +
-              '💡 La <strong>marge de sécurité</strong> agrandit le rayon : la personne n\'a probablement pas marché en ligne droite (couloirs, demi-tours, exploration). Plus la marge est haute, plus la zone est large mais moins précise. <strong>×1.0</strong> = défaut, exactement <em>vitesse × temps</em>. <strong>×1.5</strong> = prudent. <strong>×2+</strong> = très incertain (temps écoulé approximatif).' +
+            '<div class="kta-lost-section-titre">🏃 Vitesse & état de la personne</div>' +
+            (function() {
+              // Segmented control 4 presets (vitesse + marge bundlés). Pattern
+              // identique au mode itinéraire mais valeurs adaptées au contexte urgence.
+              let html = '<div class="kta-lost-preset-segmented" id="kta-lost-preset-segmented">';
+              Object.keys(LOST_MODE_PRESETS).forEach(function(key) {
+                const p = LOST_MODE_PRESETS[key];
+                const active = (key === _currentPreset);
+                html +=
+                  '<button type="button" class="kta-lost-preset-btn' + (active ? " kta-lost-preset-active" : "") + '" ' +
+                    'data-preset="' + key + '" ' +
+                    'title="' + p.label + ' — ' + p.kmh + ' km/h, marge ×' + p.marge + '. ' + p.hint + '">' +
+                    '<span class="kta-lost-preset-icon">' + p.icon + '</span>' +
+                    '<span class="kta-lost-preset-label">' + p.label + '</span>' +
+                    '<span class="kta-lost-preset-meta">' + p.kmh + ' km/h · ×' + p.marge + '</span>' +
+                  '</button>';
+              });
+              html += '</div>';
+              return html;
+            })() +
+            '<p style="font-size:11.5px; color:#8892a4; margin:8px 0 0; line-height:1.45; font-style:italic;">' +
+              '💡 Chaque preset bundle une <strong>vitesse de marche</strong> + une <strong>marge de sécurité</strong> (multiplicateur qui agrandit le rayon pour compenser détours, demi-tours, erreurs de temps). Choisis selon l\'état présumé de la personne perdue : <strong>🍺 Bourré</strong> = très confus → marge large ; <strong>🚶 Normale</strong> = défaut ; <strong>🏃 Rapide</strong> = parcours connu mais peut être loin.' +
             '</p>' +
           '</div>' +
 
@@ -766,19 +812,29 @@
     elapsedRange.addEventListener("input", function() { elapsedNum.value = elapsedRange.value; _elapsedMinutes = parseInt(elapsedRange.value, 10); });
     elapsedNum.addEventListener("input",   function() { elapsedRange.value = elapsedNum.value;  _elapsedMinutes = parseInt(elapsedNum.value, 10); });
 
-    const speedRange = document.getElementById("kta-lost-speed");
-    const speedVal   = document.getElementById("kta-lost-speed-val");
-    speedRange.addEventListener("input", function() {
-      _speedKmH = parseFloat(speedRange.value);
-      speedVal.textContent = _speedKmH.toFixed(1) + " km/h";
-    });
-
-    const uncertRange = document.getElementById("kta-lost-uncert");
-    const uncertVal   = document.getElementById("kta-lost-uncert-val");
-    uncertRange.addEventListener("input", function() {
-      _uncertainty = parseFloat(uncertRange.value);
-      uncertVal.textContent = "×" + _uncertainty.toFixed(1);
-    });
+    // Segmented control 4 presets (remplace les anciens sliders speed + marge).
+    // Au clic, on update _speedKmH + _uncertainty + persistance localStorage, et
+    // si une zone est déjà visible on la recalcule instantanément.
+    const segWrap = document.getElementById("kta-lost-preset-segmented");
+    if (segWrap) {
+      segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const key = btn.getAttribute("data-preset");
+          if (!_setLostPreset(key)) return;
+          segWrap.querySelectorAll(".kta-lost-preset-btn").forEach(function(b) {
+            b.classList.toggle("kta-lost-preset-active", b === btn);
+          });
+          // Recalcul instantané si une zone existe déjà sur la carte
+          if (_zoneLayer && _lastKnownPos) {
+            _calculerRayon();
+            _matches    = _annoterMatches(_matches);  // recompute inZone selon nouveau rayon
+            _refinedLoc = _calculerLocAffinee(_matches);
+            _renderOnMap();
+            _afficherResultats();
+          }
+        });
+      });
+    }
 
     // Recherche autocomplete position
     const searchInput   = document.getElementById("kta-lost-search");
@@ -886,9 +942,13 @@
 
     let html = '<div class="kta-lost-section">';
     html += '<div class="kta-lost-section-titre">📐 Zone de recherche</div>';
+    const pres = LOST_MODE_PRESETS[_currentPreset] || { label: "?", icon: "?" };
     html += '<div class="kta-lost-stat">Rayon estimé : <strong>' +
             _formatDist(_radiusPx) + '</strong> ' +
-            '(' + _speedKmH.toFixed(1) + ' km/h × ' + _elapsedMinutes + ' min × ' + _uncertainty.toFixed(1) + ')</div>';
+            '<span class="kta-lost-stat-detail">' +
+              '<span class="kta-lost-stat-preset">' + pres.icon + ' ' + pres.label + '</span> ' +
+              '· ' + _speedKmH.toFixed(1) + ' km/h × ' + _elapsedMinutes + ' min × marge ×' + _uncertainty.toFixed(1) +
+            '</span></div>';
     if (_zoneOverflow) {
       html += '<div class="kta-lost-stat" style="margin-top:6px; background:rgba(255,107,53,0.14); border:1px solid rgba(255,107,53,0.45); color:#ffb088;">' +
               '⚠️ Le rayon dépasse la taille du plan — tu pourrais être <strong>n\'importe où</strong> sur le plan. ' +
