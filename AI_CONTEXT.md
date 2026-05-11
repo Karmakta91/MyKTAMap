@@ -254,11 +254,11 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
      - **📍 Clic carte** → la modale se met en retrait, tu cliques sur la carte.
      - **🧭 Position tracker** → utilise la position du tracker si il est actif.
    - **⏱️ Temps écoulé** depuis cette position (slider 1-480 min, défaut 30 min).
-   - **🏃 Vitesse & état de la personne** — segmented control 4 presets bundlant vitesse + marge de sécurité (multiplicateur qui élargit la zone pour compenser détours/demi-tours/erreurs de temps). Rayon final = `vitesse × temps × marge`. Choix persisté en localStorage.
-     - 🍺 **Bourré** : 1.0 km/h × marge ×2.0 — très confus, désorienté
-     - 🐌 **Lente** : 1.2 km/h × marge ×1.5 — prudente, étroitures
-     - 🚶 **Normale** *(défaut)* : 1.5 km/h × marge ×1.0 — allure standard, zone tendue
-     - 🏃 **Rapide** : 2.5 km/h × marge ×1.0 — parcours connu, peut être loin
+   - **🏃 Vitesse de marche présumée** — segmented control 4 presets, **mêmes valeurs que le mode itinéraire** (cohérence UX entre les deux modules). Rayon final = `vitesse × temps`, pas de marge de sécurité. Choix persisté en localStorage (`myktamap_lost_preset`).
+     - 🍺 **Bourré** : 2 km/h — très lent, confus, désorienté
+     - 🐌 **Lente** : 3 km/h — prudente, étroitures, exploration
+     - 🚶 **Normale** *(défaut)* : 5 km/h — allure standard de marche
+     - 🏃 **Rapide** : 7 km/h — parcours connu, marche soutenue
    - **Temps écoulé** : slider de 1 à 90 min (1h30 max). Au-delà, la zone devient non pertinente.
    - **🔮 Indices visuels** (optionnel mais TRÈS utile) : texte libre, exemples *"bidon eau, épure bélier, puits cassé"*. L'app cherche ces mots dans le nom, la description et les tags de tous les points du plan.
 3. Clique **🎯 Calculer la zone**.

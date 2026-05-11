@@ -1165,10 +1165,10 @@ function afficherAide() {
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#ff8a5c;">⛑️ Mode urgence :</strong> sous-action orange distinctive. Tu indiques où tu étais (recherche
             d'un point existant, clic sur la carte ou position tracker), <strong>depuis combien de temps</strong>, et
-            l'app dessine un <strong>cercle de recherche</strong> orange autour (rayon = vitesse × temps × marge de sécurité).
-            La vitesse et la marge sont bundlées en <strong>4 presets</strong> (segmented control) selon l'état présumé de
-            la personne : <strong>🍺 Bourré</strong> (1.0 km/h × ×2.0 — confus, marge large), <strong>🐌 Lente</strong> (1.2 × ×1.5),
-            <strong>🚶 Normale</strong> (1.5 × ×1.0 — défaut, zone tendue), <strong>🏃 Rapide</strong> (2.5 × ×1.0 — parcours connu).
+            l'app dessine un <strong>cercle de recherche</strong> orange autour (rayon = <strong>vitesse × temps</strong>, sans marge).
+            La vitesse se choisit via <strong>4 presets</strong> (segmented control) — <strong>mêmes valeurs que le mode
+            itinéraire</strong> pour la cohérence : <strong>🍺 Bourré</strong> (2 km/h), <strong>🐌 Lente</strong>
+            (3 km/h), <strong>🚶 Normale</strong> (5 km/h, défaut), <strong>🏃 Rapide</strong> (7 km/h).
             Temps écoulé max <strong>1h30</strong> (au-delà la zone devient immense et non pertinente).
             Tu peux ajouter des <strong>indices visuels</strong> ("bidon eau", "épure bélier"...) — l'app cherche ces mots
             dans le nom, la description et les tags des points du plan ; les indices qui matchent <strong>dans la zone</strong>
