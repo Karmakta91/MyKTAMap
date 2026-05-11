@@ -1,10 +1,10 @@
 {
-  "version": "v129",
+  "version": "v130",
   "released": "2026-05-11",
   "notes": [
-    "🏃 Itinéraire : nouveau réglage de vitesse de marche avec 4 presets — 🍺 Bourré (2 km/h), 🐌 Lente (3 km/h), 🚶 Normale (5 km/h, défaut), 🏃 Rapide (7 km/h).",
-    "Segmented control dans la modale Itinéraire pour switcher entre les modes ; le temps estimé se met à jour instantanément.",
-    "Le mode actif est affiché dans le label bottom-left de la carte (icône + nom) à côté de la distance et du temps.",
-    "Choix persisté entre sessions (localStorage myktamap_iti_walking_preset)."
+    "⛑️ Mode urgence : les 2 sliders Vitesse + Marge de sécurité sont remplacés par un segmented control 4 presets qui bundlent les deux valeurs — 🍺 Bourré (1.0 km/h × ×2.0), 🐌 Lente (1.2 × ×1.5), 🚶 Normale (1.5 × ×1.0, défaut), 🏃 Rapide (2.5 × ×1.0).",
+    "Pattern identique au mode itinéraire (cohérence UX) mais accent orange au lieu de cyan.",
+    "Si une zone est déjà affichée sur la carte, changer de preset recalcule instantanément (sans re-cliquer Calculer).",
+    "Choix persisté entre sessions (localStorage myktamap_lost_preset)."
   ]
 }

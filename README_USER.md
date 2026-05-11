@@ -479,12 +479,16 @@ Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgenc
 
 2. **⏱️ Temps écoulé** — slider de 1 à 90 minutes (1h30 max). Au-delà, la zone devient si large que le mode n'est plus pertinent — privilégiez alors un signalement de secours réel.
 
-3. **⚙️ Paramètres avancés** :
-   - **Vitesse** — vitesse moyenne de marche présumée. Défaut : **1.5 km/h** (lent, prudent, courbé en milieu cataphile). En zone facile, 2-3 km/h.
-   - **Marge de sécurité** — coefficient qui élargit le rayon pour compenser le fait que personne ne marche en ligne droite (couloirs, demi-tours, exploration). Le rayon final est `vitesse × temps × marge`.
-     - **×1.0** = défaut, strictement la distance théorique (zone précise, mais on suppose que l'estimation temps + vitesse est fiable)
-     - **×1.5** = prudent (légère sur-couverture pour ne pas manquer la personne)
-     - **×2+** = très incertain (temps écoulé approximatif, exploration confuse, demi-tours fréquents)
+3. **🏃 Vitesse & état de la personne** — un segmented control 4 presets qui bundle vitesse de marche + marge de sécurité (multiplicateur qui élargit la zone pour compenser détours, demi-tours, erreurs de temps). Le rayon final = `vitesse × temps × marge`.
+
+   | Preset | Vitesse | Marge | Rayon pour 10 min | Quand l'utiliser |
+   |---|---|---|---|---|
+   | 🍺 **Bourré** | 1.0 km/h | ×2.0 | ~333 m | Très confus, désorienté, marche hésitante, marge large |
+   | 🐌 **Lente** | 1.2 km/h | ×1.5 | ~300 m | Marche prudente, étroitures, exploration lente |
+   | 🚶 **Normale** *(défaut)* | 1.5 km/h | ×1.0 | ~250 m | Allure standard, zone tendue, on suppose estimation fiable |
+   | 🏃 **Rapide** | 2.5 km/h | ×1.0 | ~417 m | Parcours connu, marche soutenue, peut être loin |
+
+   Le choix est persisté entre sessions (localStorage). Si la zone est déjà affichée sur la carte, changer de preset la recalcule instantanément.
 
 4. **🔮 Indices visuels (optionnel mais très utile)** — texte libre, séparé par virgule ou retour ligne. Exemples : *"bidon eau, épure bélier, salle bleue, puits cassé, escalier descend"*. L'app cherche ces mots dans le **nom**, la **description** et les **tags** de tous les points du plan (calques et points session combinés).
 
