@@ -1199,7 +1199,7 @@ function afficherAide() {
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte, recherche par nom/id/tag, ou bouton <strong>🧭 Ma position</strong> qui prend ta position tracker actuelle),
             l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données, <strong>même les calques masqués</strong> — utile si les routes sont dessinées en dur sur le PNG et que tu veux gagner en perf).
-            Le label en bas-gauche affiche la <strong>distance</strong> et le <strong>⏱️ temps estimé</strong> (vitesse marche 5 km/h + 15 min de pause par point intermédiaire).
+            Le label en bas-gauche affiche la <strong>distance</strong>, le <strong>⏱️ temps estimé</strong> et le <strong>mode de vitesse actif</strong> (🍺 Bourré 2 km/h / 🐌 Lente 3 km/h / 🚶 Normale 5 km/h défaut / 🏃 Rapide 7 km/h, + 15 min de pause par point intermédiaire). Le mode se change via un segmented control dans la modale itinéraire et est persisté entre sessions.
             Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
             <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
@@ -3001,18 +3001,52 @@ window.activerModeSuppressionZoneClic = function() {
 // =========================
 let _itiDistanceCtrl = null;
 
-// Constantes pour l'estimation du temps de parcours.
-// Vitesse de marche normale (5 km/h ~ 83 m/min). En cataphilie le terrain
-// peut etre plus accidente mais l'estimation reste indicative.
-const VITESSE_MARCHE_KMH       = 5;
+// =========================
+// Presets de vitesse de marche pour l'itinéraire
+// =========================
+// 4 modes choisis par l'utilisateur via segmented control dans la modale
+// Itinéraire. Le mode courant est affiché dans le label bottomleft (icône +
+// nom) et persisté en localStorage pour conserver le réglage entre sessions.
+const ITI_SPEED_PRESETS = {
+  bourre:  { kmh: 2, label: "Bourré",  icon: "🍺", hint: "Très lent, hésitant, terrain accidenté" },
+  lente:   { kmh: 3, label: "Lente",   icon: "🐌", hint: "Prudent, étroitures, exploration" },
+  normale: { kmh: 5, label: "Normale", icon: "🚶", hint: "Allure standard (défaut)" },
+  rapide:  { kmh: 7, label: "Rapide",  icon: "🏃", hint: "Allure soutenue, parcours connu" }
+};
+const DEFAULT_ITI_SPEED       = "normale";
+const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
+
 // Temps de pause par point intermediaire (entre depart et arrivee).
 // 2 waypoints = 0 pauses (depart + arrivee). 3 waypoints = 1 pause. N = N-2.
 const TEMPS_PAUSE_PAR_POINT_MIN = 15;
 
+function _getItiSpeedPreset() {
+  try {
+    const stored = localStorage.getItem(ITI_SPEED_STORAGE_KEY);
+    if (stored && ITI_SPEED_PRESETS[stored]) return stored;
+  } catch(e) {}
+  return DEFAULT_ITI_SPEED;
+}
+
+function _setItiSpeedPreset(preset) {
+  if (!ITI_SPEED_PRESETS[preset]) return false;
+  try { localStorage.setItem(ITI_SPEED_STORAGE_KEY, preset); } catch(e) {}
+  // Re-rendu du label bottomleft (la durée change avec la nouvelle vitesse)
+  if (typeof window._majLabelDistanceItineraire === "function") {
+    window._majLabelDistanceItineraire();
+  }
+  return true;
+}
+
+function _vitesseMarcheKmh() {
+  const preset = _getItiSpeedPreset();
+  return ITI_SPEED_PRESETS[preset].kmh;
+}
+
 // Retourne le temps total estime en minutes : marche + pauses intermediaires.
 function _tempsItineraireMinutes(distanceM, nbWaypoints) {
   if (typeof distanceM !== "number" || distanceM <= 0) return 0;
-  const tempsMarcheMin = distanceM / (VITESSE_MARCHE_KMH * 1000 / 60);  // m / (m/min)
+  const tempsMarcheMin = distanceM / (_vitesseMarcheKmh() * 1000 / 60);  // m / (m/min)
   const nbPausesInter  = Math.max(0, (nbWaypoints || 0) - 2);
   const tempsPauseMin  = nbPausesInter * TEMPS_PAUSE_PAR_POINT_MIN;
   return tempsMarcheMin + tempsPauseMin;
@@ -3055,25 +3089,32 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
   const el = document.querySelector(".kta-iti-distance");
   if (el) {
     el.style.display = "block";
-    const tempsMin    = _tempsItineraireMinutes(distanceM, nbWaypoints);
-    const distFmt     = window.formatDistance(distanceM, 1);
-    const tempsFmt    = _formatTempsMinutes(tempsMin);
+    const presetKey  = _getItiSpeedPreset();
+    const preset     = ITI_SPEED_PRESETS[presetKey];
+    const tempsMin   = _tempsItineraireMinutes(distanceM, nbWaypoints);
+    const distFmt    = window.formatDistance(distanceM, 1);
+    const tempsFmt   = _formatTempsMinutes(tempsMin);
     const nbPausesInter = Math.max(0, (nbWaypoints || 0) - 2);
     el.innerHTML =
       '<span class="kta-iti-distance-icon">🗺️</span>' +
       '<span class="kta-iti-distance-val">' + distFmt + '</span>' +
       '<span class="kta-iti-distance-sep">·</span>' +
-      '<span class="kta-iti-distance-time">⏱️ ' + tempsFmt + '</span>';
+      '<span class="kta-iti-distance-time">⏱️ ' + tempsFmt + '</span>' +
+      '<span class="kta-iti-distance-sep">·</span>' +
+      '<span class="kta-iti-distance-speed" title="Vitesse de marche : ' +
+        preset.label + ' (' + preset.kmh + ' km/h)">' +
+        preset.icon + ' ' + preset.label +
+      '</span>';
     // Tooltip detaille pour la breakdown (vitesse + nb pauses)
     el.title =
       "Distance : " + distFmt + "\n" +
       "Temps estimé : " + tempsFmt +
-      " (vitesse " + VITESSE_MARCHE_KMH + " km/h" +
+      " (vitesse " + preset.label + " — " + preset.kmh + " km/h" +
       (nbPausesInter > 0
         ? " + " + nbPausesInter + " pause" + (nbPausesInter > 1 ? "s" : "") +
           " de " + TEMPS_PAUSE_PAR_POINT_MIN + " min"
         : "") +
-      ")\nCliquer pour ouvrir le menu Itinéraire";
+      ")\nCliquer pour ouvrir le menu Itinéraire (changer la vitesse).";
   }
 }
 
@@ -3343,21 +3384,52 @@ window.ouvrirItinerairModal = function() {
   // Bouton "❌ Effacer" affiche uniquement si itineraire actif.
   // Statut Distance/Tronçons en haut si mode navigation.
   const computeBtnLabel = modeNavigation ? "🔄 Recalculer l'itinéraire" : "🎯 Calculer l'itinéraire";
+  const currentPresetKey = _getItiSpeedPreset();
+  const currentPreset    = ITI_SPEED_PRESETS[currentPresetKey];
   let statusActuel = '';
   if (modeNavigation) {
     const distActMeters = _distanceItineraireMeters(existingItinerary);
     const nbWpAct       = Array.isArray(existingItinerary.waypoints) ? existingItinerary.waypoints.length : 2;
     const tempsActMin   = _tempsItineraireMinutes(distActMeters, nbWpAct);
     statusActuel =
-      '<div class="kta-iti-result" style="display:block; margin-bottom:10px;">' +
+      '<div class="kta-iti-result" id="kta-iti-status-block" style="display:block; margin-bottom:10px;" ' +
+           'data-distm="' + distActMeters + '" data-nbwp="' + nbWpAct + '">' +
         '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distActMeters, 1) + '</div>' +
-        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' + _formatTempsMinutes(tempsActMin) + '</div>' +
+        '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' +
+          '<span id="kta-iti-temps-val">' + _formatTempsMinutes(tempsActMin) + '</span> ' +
+          '<span class="kta-iti-temps-speed-hint" id="kta-iti-temps-speed-hint">(' + currentPreset.icon + ' ' + currentPreset.label + ')</span>' +
+        '</div>' +
         '<div class="kta-iti-result-row"><strong>Tronçons :</strong> ' + (existingItinerary.points.length - 1) + '</div>' +
       '</div>';
   }
   const eraseBtn = modeNavigation
     ? '<button id="kta-iti-erase" class="kta-btn kta-btn-danger" type="button" style="width:100%; margin-top:8px;">❌ Effacer l\'itinéraire</button>'
     : '';
+  // Segmented control pour la vitesse de marche (4 presets)
+  // currentPresetKey est déjà défini plus haut (avant statusActuel)
+  let speedButtonsHtml = "";
+  Object.keys(ITI_SPEED_PRESETS).forEach(function(key) {
+    const p = ITI_SPEED_PRESETS[key];
+    const active = (key === currentPresetKey);
+    speedButtonsHtml +=
+      '<button type="button" class="kta-iti-speed-btn' + (active ? " kta-iti-speed-active" : "") + '" ' +
+        'data-speed="' + key + '" ' +
+        'title="' + p.label + ' — ' + p.kmh + ' km/h. ' + p.hint + '">' +
+        '<span class="kta-iti-speed-icon">' + p.icon + '</span>' +
+        '<span class="kta-iti-speed-label">' + p.label + '</span>' +
+        '<span class="kta-iti-speed-kmh">' + p.kmh + ' km/h</span>' +
+      '</button>';
+  });
+  const sectionVitesse =
+    '<div class="kta-iti-section">' +
+      '<div class="kta-iti-section-titre">🏃 Vitesse de marche estimée</div>' +
+      '<div class="kta-iti-speed-segmented" id="kta-iti-speed-segmented">' +
+        speedButtonsHtml +
+      '</div>' +
+      '<p class="kta-iti-speed-hint">Ajuste l\'estimation du temps de parcours. ' +
+        'Le mode actif s\'affiche dans le label bottom-left de la carte.</p>' +
+    '</div>';
+
   const sectionAction =
     '<div class="kta-iti-section">' +
       '<div class="kta-iti-section-titre">🎯 ' + (modeNavigation ? "Itinéraire actuel" : "Action") + '</div>' +
@@ -3379,11 +3451,45 @@ window.ouvrirItinerairModal = function() {
       '</div>' +
       '<div class="kta-readme-modal-corps kta-iti-corps">' +
         sectionPoints +
+        sectionVitesse +
         sectionAction +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
   _rafraichirListeWaypointsModale();
+
+  // Bind du segmented control de vitesse — clic = update preset + refresh
+  // visuel des boutons + refresh in-place du temps affiché dans le bloc
+  // statusActuel (mode navigation) + refresh du label bottom-left (géré par
+  // _setItiSpeedPreset).
+  (function bindSpeedSegmented() {
+    const wrap = document.getElementById("kta-iti-speed-segmented");
+    if (!wrap) return;
+    wrap.querySelectorAll(".kta-iti-speed-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const key = btn.getAttribute("data-speed");
+        if (!_setItiSpeedPreset(key)) return;
+        // Toggle visuel des boutons
+        wrap.querySelectorAll(".kta-iti-speed-btn").forEach(function(b) {
+          b.classList.toggle("kta-iti-speed-active", b === btn);
+        });
+        // Refresh in-place du bloc statusActuel (mode navigation) :
+        // on lit distM/nbwp depuis les data-* attributs et on regénère le
+        // texte du span temps + hint preset.
+        const statusBlk = document.getElementById("kta-iti-status-block");
+        if (statusBlk) {
+          const distM = parseFloat(statusBlk.dataset.distm) || 0;
+          const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
+          const tMin  = _tempsItineraireMinutes(distM, nbWp);
+          const p     = ITI_SPEED_PRESETS[key];
+          const tEl   = document.getElementById("kta-iti-temps-val");
+          const hEl   = document.getElementById("kta-iti-temps-speed-hint");
+          if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
+          if (hEl) hEl.textContent = "(" + p.icon + " " + p.label + ")";
+        }
+      });
+    });
+  })();
 
   function fermer() {
     _desactiverModeClicCarte();

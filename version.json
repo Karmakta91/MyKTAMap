@@ -1,9 +1,10 @@
 {
-  "version": "v128",
+  "version": "v129",
   "released": "2026-05-11",
   "notes": [
-    "🤖 Contexte IA enrichi : ajout d'un survol des fonctionnalités principales (multi-plans, recherche, itinéraire, mode urgence, mesure, distance totale, etc.) directement dans la liste anti-hallucination — l'IA reconnaît maintenant les modes globaux et ne dit plus 'ça n'existe pas' alors que la doc en parle.",
-    "Procédure de vérification renforcée : prise en compte des synonymes raisonnables (mode urgence ≡ Je suis perdu, itinéraire ≡ trajet, etc.) avant de conclure à l'inexistence.",
-    "Penser à re-télécharger le fichier .md via 🤖 Aide IA après la mise à jour pour récupérer le nouveau contexte."
+    "🏃 Itinéraire : nouveau réglage de vitesse de marche avec 4 presets — 🍺 Bourré (2 km/h), 🐌 Lente (3 km/h), 🚶 Normale (5 km/h, défaut), 🏃 Rapide (7 km/h).",
+    "Segmented control dans la modale Itinéraire pour switcher entre les modes ; le temps estimé se met à jour instantanément.",
+    "Le mode actif est affiché dans le label bottom-left de la carte (icône + nom) à côté de la distance et du temps.",
+    "Choix persisté entre sessions (localStorage myktamap_iti_walking_preset)."
   ]
 }

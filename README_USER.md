@@ -440,7 +440,18 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 4. Cliquez **🎯 Calculer l'itinéraire** : un tracé **cyan néon** apparaît, l'app vous indique la **distance totale en mètres** et le nombre de tronçons traversés.
 5. **💾 Enregistrer** garde l'itinéraire dans la session, **❌ Effacer** le retire.
 
-**Étiquette de distance** : tant qu'un itinéraire est actif, un petit label **🗺️ Itinéraire : XX m** s'affiche en bas à gauche de la carte, juste au-dessus du label de mesure de distance classique.
+**Étiquette de distance** : tant qu'un itinéraire est actif, un petit label **🗺️ Itinéraire : XX m · ⏱️ temps · 🚶 mode vitesse** s'affiche en bas à gauche de la carte, juste au-dessus du label de mesure de distance classique.
+
+**🏃 Vitesse de marche estimée** (segmented control dans la modale) — 4 presets pour ajuster l'estimation du temps de parcours :
+
+| Mode | Vitesse | Quand l'utiliser |
+|---|---|---|
+| 🍺 **Bourré** | 2 km/h | Très lent, hésitant, terrain accidenté, fin de soirée |
+| 🐌 **Lente** | 3 km/h | Prudente, étroitures, exploration, transport de matos |
+| 🚶 **Normale** | 5 km/h | Défaut, allure standard de marche cataphile |
+| 🏃 **Rapide** | 7 km/h | Allure soutenue, parcours connu, retour rapide |
+
+Le mode actif est affiché à côté du temps estimé dans le label bottomleft. Le choix est persisté entre sessions (localStorage). Tu peux changer de mode à tout moment via la modale, le temps se met à jour instantanément.
 
 **Mode navigation** — quand un itinéraire est déjà actif et que vous rouvrez **🗺️ Calculer un itinéraire**, la modale bascule en **mode navigation** :
 
