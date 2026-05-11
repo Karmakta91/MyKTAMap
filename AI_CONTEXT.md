@@ -204,8 +204,14 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
    - Soit en tapant un nom dans la barre de recherche (autocomplete des points existants).
    - Soit en cliquant directement sur la carte (mode clic activé via toggle).
 4. Quand tu as ≥ 2 waypoints, clique **🎯 Calculer**.
-5. Le trajet apparaît en cyan néon. Distance + temps estimé sont affichés en bas à gauche.
-6. Pour modifier : utilise les boutons 🔄 Recalculer ou ❌ Effacer.
+5. Le trajet apparaît en cyan néon. Distance + temps estimé + mode de vitesse actif sont affichés en bas à gauche.
+6. **Vitesse de marche** : segmented control dans la modale, 4 presets :
+   - 🍺 **Bourré** (2 km/h) — très lent, hésitant
+   - 🐌 **Lente** (3 km/h) — prudente, étroitures
+   - 🚶 **Normale** (5 km/h, défaut) — allure standard
+   - 🏃 **Rapide** (7 km/h) — parcours connu
+   Le mode est persisté entre sessions (localStorage `myktamap_iti_walking_preset`). Le label bottom-left affiche le mode actif avec son icône à côté de la distance et du temps.
+7. Pour modifier : utilise les boutons 🔄 Recalculer ou ❌ Effacer.
 
 ### F. Sauvegarder et partager une session
 
