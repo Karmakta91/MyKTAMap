@@ -453,6 +453,72 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
 
+### ⛑️ Mode urgence — "Je suis perdu"
+
+Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgence. Il estime la **zone probable où vous pouvez être maintenant** à partir de votre dernière position connue, du temps écoulé et d'**indices visuels** que vous observez autour de vous.
+
+> ⚠️ **Le mode urgence est une aide géométrique. Il ne remplace PAS** : un fil d'Ariane, une boussole, une lampe avec piles de rechange, une carte papier, et la règle d'or de prévenir quelqu'un avant la sortie. Si vous êtes vraiment perdu : restez calme, ne paniquez pas, économisez votre lumière, et signalez votre position si vous avez du réseau.
+
+**Comment ça marche :**
+
+1. **📍 Dernière position connue** — renseignez où vous étiez sûr d'être il y a X minutes :
+   - 🔎 **Recherche** d'un point existant par nom/id (ex: "PA1", "salle", "épure XYZ")
+   - 📍 **Clic carte** — clic direct sur la carte pour placer un repère
+   - 🧭 **Position tracker** — utilise la position actuelle du tracker s'il est actif
+
+2. **⏱️ Temps écoulé** — slider de 1 à 90 minutes (1h30 max). Au-delà, la zone devient si large que le mode n'est plus pertinent — privilégiez alors un signalement de secours réel.
+
+3. **⚙️ Paramètres avancés** :
+   - **Vitesse** — vitesse moyenne de marche présumée. Défaut : **1.5 km/h** (lent, prudent, courbé en milieu cataphile). En zone facile, 2-3 km/h.
+   - **Marge de sécurité** — coefficient qui élargit le rayon pour compenser le fait que personne ne marche en ligne droite (couloirs, demi-tours, exploration). Le rayon final est `vitesse × temps × marge`.
+     - **×1.0** = défaut, strictement la distance théorique (zone précise, mais on suppose que l'estimation temps + vitesse est fiable)
+     - **×1.5** = prudent (légère sur-couverture pour ne pas manquer la personne)
+     - **×2+** = très incertain (temps écoulé approximatif, exploration confuse, demi-tours fréquents)
+
+4. **🔮 Indices visuels (optionnel mais très utile)** — texte libre, séparé par virgule ou retour ligne. Exemples : *"bidon eau, épure bélier, salle bleue, puits cassé, escalier descend"*. L'app cherche ces mots dans le **nom**, la **description** et les **tags** de tous les points du plan (calques et points session combinés).
+
+5. Cliquez **🎯 Calculer la zone**.
+
+**Ce qui apparaît sur la carte :**
+
+| Élément | Signification |
+|---|---|
+| **Cercle orange pulsant** | Zone de recherche (rayon = vitesse × temps × marge de sécurité) |
+| **📍 vert pulsant** | Votre dernière position connue |
+| **🔮 violet pulsant** | Indice texte qui matche ET est **dans la zone** (le plus important) |
+| **· gris** | Indice texte qui matche mais est **hors zone** (exclu) |
+| **Cercle violet intérieur** | Localisation probable affinée (barycentre des indices in-zone) — apparaît seulement s'il y a au moins 1 match in-zone |
+
+**⚠️ Si la zone dépasse les bornes du plan** (rayon trop grand vs taille du plan), une bande d'alerte orange dans les résultats vous le signale : *"Le rayon dépasse la taille du plan — tu pourrais être n'importe où"*. Diminuez le temps écoulé ou affinez avec des indices.
+
+**Actions disponibles dans les résultats :**
+
+- **📋 Copier le rapport** — copie un texte structuré dans le presse-papiers (plan, position, temps, indices, loc affinée, timestamp) pour partager par SMS, radio ou tout autre moyen de communication.
+- **✅ Supprimer la zone et sauvegarder ma position supposée** — retire la zone de recherche de la carte ET ajoute un point éditeur permanent (icône ⚠️ danger) à la localisation probable. Tu peux ensuite l'exporter ou le convertir comme n'importe quel autre point.
+- **🗑️ Effacer la zone et fermer** — retire la zone et les markers de la carte sans sauvegarder de point.
+
+**👁️ Fermer la modale sans effacer la zone** : le bouton **👁️ Fermer** (et la croix ✕ en haut, et le clic en dehors de la modale) ferment juste la modale. La zone reste visible sur la carte pour que vous puissiez explorer ; rouvrir **⛑️** restaure tous vos paramètres précédents.
+
+> 💡 **Cas d'usage type** — vous êtes sorti(e) du dernier puits identifié il y a 20 minutes, vous marchez depuis sans tracker, et vous voyez maintenant *"une épure 'Bélier' sur le mur, et un bidon d'eau au sol"*. Ouvrez ⛑️, sélectionnez le puits comme dernière position, mettez 20 min, tapez `bélier, bidon` dans les indices. L'app vous montre la zone probable et — s'il y a un point nommé "épure Bélier" dans le plan qui tombe dans la zone — un cercle violet à cet endroit.
+
+#### 📚 Bonnes pratiques quand on est perdu
+
+Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de la modale (clique pour ouvrir). Il regroupe les conseils essentiels en 6 sections, à lire calmement si la situation l'exige :
+
+**🧘 Garde ton calme (d'abord)** — Stop. Inspire. La panique fait perdre les repères et gaspille lumière + énergie. Mange/bois un peu si tu as quelque chose.
+
+**🗺️ Orientation** — **Reviens sur tes pas** plutôt que chercher à atteindre ta destination (statistiquement plus fiable). Cherche les **axes principaux** (roulages, galeries droites, voies ferrées) qui mènent à des repères connus. **Utilise une boussole physique** — pas celle du téléphone (faussée par le sol et les armatures). **Écoute les bruits** : circulation, métro, eau qui coule = indice de direction.
+
+**🔦 Lumière & ressources** — Mode économie immédiatement. Garde une lampe de secours. Hydrate-toi un peu mais économise.
+
+**📡 Communication** — Si tu **captes du réseau** (souvent près des puits / regards) → préviens quelqu'un en surface AVANT que ta batterie meure. Utilise le bouton **📋 Copier le rapport** pour préparer un message tout fait avec ta dernière position + le temps écoulé.
+
+**📍 Si tu décides d'attendre** — Pose-toi à un endroit **identifiable** (puits numéroté, salle nommée). Reste où tu es si **personne ne sait que tu es là**. Marque ton emplacement pour qu'on te trouve.
+
+**⚠️ À ne pas faire** — Ne suis pas l'eau (diaclases dangereuses). Ne tente pas un passage inconnu juste parce qu'il "monte". Ne te fie pas au tracker téléphone (il dérive sous stress).
+
+> ⚠️ Ces conseils sont des **principes généraux** issus de la pratique cataphile. Ils ne remplacent pas la formation, l'équipement et le bon sens. La règle d'or reste : prévenir quelqu'un en surface AVANT la sortie, avec heure de retour estimée.
+
 ---
 
 ## 📐 Mesure de distance

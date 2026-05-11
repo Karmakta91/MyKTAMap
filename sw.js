@@ -11,10 +11,11 @@
 // Liste des assets cachés pour utilisation offline.
 // NE PAS cacher README.md ni CLAUDE.md (réservés aux développeurs).
 // Cacher README_USER.md (utilisé par le modal Documentation in-app).
+// Cacher AI_CONTEXT.md (squelette enrichi pour la modale 🤖 Aide IA — éditable).
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v99";
+const CACHE_NAME = "myktamap-cache-v128";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -23,6 +24,8 @@ const ASSETS_TO_CACHE = [
 
   // Doc utilisateur (consommée par le modal Documentation)
   "./README_USER.md",
+  // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
+  "./AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
 
@@ -51,6 +54,8 @@ const ASSETS_TO_CACHE = [
   "./js/sessionPersist.js",
   "./js/oomGuard.js",
   "./js/pathfinder.js",
+  "./js/updateChecker.js",
+  "./js/lostMode.js",
   "./js/interface.js",
   "./js/main.js",
 

@@ -529,6 +529,486 @@ html, body {
   opacity: 1;
 }
 
+/* Bouton "lien" discret — pour les actions secondaires/dangereuses qu'on ne
+   veut pas mettre au même niveau visuel que les CTA principaux (ex: "💥 Reset
+   complet" sous "🪶 Mise à jour douce" dans la modale Update). */
+.kta-btn-link {
+  background: transparent;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #8892a4;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,0.2);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  font-family: inherit;
+}
+.kta-btn-link:hover {
+  color: #c8d0e0;
+  text-decoration-color: rgba(255,255,255,0.4);
+}
+.kta-update-link-danger {
+  color: #b85050;
+}
+.kta-update-link-danger:hover {
+  color: #ff6b6b;
+  text-decoration-color: rgba(255,107,107,0.4);
+}
+
+/* =========================================================
+   ⛑️ MODE URGENCE — "Je suis perdu"
+   Couleurs (anti-collision avec Effondrement rouge / Eau bleu / Itinéraire cyan / Highlight magenta) :
+     - Zone de recherche : orange #ff6b35 (alerte mais distinct)
+     - Dernière position : marker vert #6ce28a pulse
+     - Match in-zone     : violet #b452ff pulse
+     - Match hors zone   : gris #8892a4 static
+   ========================================================= */
+
+/* Sous-action ⛑️ dans la sidebar — distinctif rouge urgence */
+.kta-sous-action-urgence,
+a.kta-sub.kta-sous-action-urgence {
+  background: rgba(255, 107, 53, 0.10) !important;
+  border-color: rgba(255, 107, 53, 0.45) !important;
+  color: #ff8a5c !important;
+}
+.kta-sous-action-urgence:hover,
+a.kta-sub.kta-sous-action-urgence:hover {
+  background: rgba(255, 107, 53, 0.22) !important;
+  border-color: rgba(255, 107, 53, 0.70) !important;
+  color: #ffb088 !important;
+}
+
+/* Modale Lost Mode — bordure rouge urgence */
+.kta-lost-modal-boite {
+  max-width: 560px;
+  border: 2px solid rgba(255, 107, 53, 0.45);
+  box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.10), 0 18px 60px rgba(0,0,0,0.6);
+}
+.kta-lost-header {
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 107, 53, 0.05));
+  border-bottom: 1px solid rgba(255, 107, 53, 0.35);
+}
+.kta-lost-section {
+  margin-bottom: 16px;
+}
+.kta-lost-section-titre {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ff8a5c;
+  padding-bottom: 5px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,107,53,0.18);
+}
+
+/* Onglets/boutons de position */
+.kta-lost-pos-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.kta-lost-search {
+  flex: 1 1 200px;
+  min-width: 150px;
+  background: #0a0d18;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #c8d0e0;
+  font-size: 13px;
+}
+.kta-lost-search:focus {
+  outline: none;
+  border-color: #ff8a5c;
+  box-shadow: 0 0 0 2px rgba(255,138,92,0.18);
+}
+.kta-lost-pos-tabs .kta-btn {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.kta-lost-search-results {
+  background: rgba(255,255,255,0.02);
+  border-radius: 6px;
+  margin: 6px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.kta-lost-search-results:empty { display: none; }
+.kta-lost-search-result {
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  color: #c8d0e0;
+  font-size: 13px;
+}
+.kta-lost-search-result:last-child { border-bottom: none; }
+.kta-lost-search-result:hover {
+  background: rgba(255,138,92,0.12);
+  color: #ffb088;
+}
+.kta-lost-search-layer {
+  color: #8892a4;
+  font-size: 11px;
+  font-weight: normal;
+}
+.kta-lost-search-empty {
+  padding: 8px 12px;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12px;
+}
+.kta-lost-pos-display {
+  background: rgba(140,180,255,0.04);
+  border: 1px dashed rgba(140,180,255,0.20);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 4px;
+  color: #8892a4;
+  font-size: 12.5px;
+  font-style: italic;
+}
+.kta-lost-pos-display.kta-lost-pos-set {
+  background: rgba(108,226,138,0.08);
+  border: 1px solid rgba(108,226,138,0.35);
+  color: #c8d0e0;
+  font-style: normal;
+}
+.kta-lost-pos-label { color: #6ce28a; font-weight: 600; }
+.kta-lost-pos-coord { color: #8892a4; font-size: 11.5px; }
+
+/* Sliders */
+.kta-lost-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: #c8d0e0;
+  font-size: 13px;
+}
+.kta-lost-slider {
+  flex: 1;
+  accent-color: #ff8a5c;
+}
+.kta-lost-num {
+  width: 60px;
+  background: #0a0d18;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: #c8d0e0;
+  font-size: 13px;
+  text-align: center;
+}
+.kta-lost-param-label {
+  min-width: 80px;
+  font-size: 12px;
+  color: #8892a4;
+}
+.kta-lost-param-val {
+  min-width: 80px;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  color: #ff8a5c;
+}
+
+/* Textarea indices */
+.kta-lost-clues {
+  width: 100%;
+  min-height: 70px;
+  background: #0a0d18;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #c8d0e0;
+  font-size: 13px;
+  resize: vertical;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.kta-lost-clues:focus {
+  outline: none;
+  border-color: #ff8a5c;
+  box-shadow: 0 0 0 2px rgba(255,138,92,0.18);
+}
+
+/* Résultats */
+.kta-lost-results {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 2px dashed rgba(255,107,53,0.25);
+}
+.kta-lost-stat {
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #c8d0e0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.kta-lost-empty {
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12.5px;
+  margin: 4px 0 0 0;
+}
+.kta-lost-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kta-lost-match {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.kta-lost-match-in {
+  background: rgba(180, 82, 255, 0.10);
+  border: 1px solid rgba(180, 82, 255, 0.30);
+  color: #c8d0e0;
+}
+.kta-lost-match-out {
+  background: rgba(136, 146, 164, 0.05);
+  border: 1px solid rgba(136, 146, 164, 0.18);
+  color: #8892a4;
+}
+.kta-lost-match-ico { font-size: 18px; line-height: 1; }
+.kta-lost-match-body { flex: 1; }
+.kta-lost-match-layer { color: #8892a4; font-size: 11.5px; font-weight: normal; }
+.kta-lost-match-detail { font-size: 11.5px; color: #8892a4; margin-top: 2px; }
+.kta-lost-refined-box {
+  background: rgba(180, 82, 255, 0.05);
+  border: 1px solid rgba(180, 82, 255, 0.30);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.kta-lost-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.kta-lost-actions .kta-btn { flex: 1; }
+
+/* Markers/cercles sur la carte */
+.kta-lost-zone {
+  animation: kta-lost-pulse-zone 2.5s ease-in-out infinite;
+}
+@keyframes kta-lost-pulse-zone {
+  0%, 100% { stroke-opacity: 0.65; fill-opacity: 0.08; }
+  50%      { stroke-opacity: 1.00; fill-opacity: 0.16; }
+}
+.kta-lost-refined {
+  animation: kta-lost-pulse-refined 1.2s ease-in-out infinite;
+}
+@keyframes kta-lost-pulse-refined {
+  0%, 100% { stroke-opacity: 0.7; fill-opacity: 0.18; }
+  50%      { stroke-opacity: 1.0; fill-opacity: 0.35; }
+}
+
+.kta-lost-marker-last,
+.kta-lost-marker-last-inner {
+  background: transparent !important;
+  border: none !important;
+}
+.kta-lost-marker-last-inner {
+  font-size: 26px;
+  filter: drop-shadow(0 0 4px #6ce28a) drop-shadow(0 0 8px #6ce28a);
+  animation: kta-lost-pulse-last 1.5s ease-in-out infinite;
+  text-align: center;
+  line-height: 36px;
+}
+@keyframes kta-lost-pulse-last {
+  0%, 100% { transform: scale(1.0); }
+  50%      { transform: scale(1.15); }
+}
+
+.kta-lost-marker-match-in,
+.kta-lost-marker-match-in-inner {
+  background: transparent !important;
+  border: none !important;
+}
+.kta-lost-marker-match-in-inner {
+  font-size: 20px;
+  filter: drop-shadow(0 0 3px #b452ff) drop-shadow(0 0 7px #b452ff);
+  animation: kta-lost-pulse-match 1.6s ease-in-out infinite;
+  text-align: center;
+  line-height: 28px;
+}
+@keyframes kta-lost-pulse-match {
+  0%, 100% { transform: scale(1.0); opacity: 1.0; }
+  50%      { transform: scale(1.20); opacity: 0.75; }
+}
+
+.kta-lost-marker-match-out,
+.kta-lost-marker-match-out-inner {
+  background: transparent !important;
+  border: none !important;
+}
+.kta-lost-marker-match-out-inner {
+  font-size: 14px;
+  color: #8892a4;
+  text-align: center;
+  line-height: 28px;
+  opacity: 0.7;
+}
+
+/* Curseur crosshair pendant le mode clic carte */
+body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
+
+/* === Bloc accordion "📚 Bonnes pratiques" — couleur ambre #f4c542 === */
+.kta-lost-pratiques {
+  background: rgba(244, 197, 66, 0.08);
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.kta-lost-pratiques-titre {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4c542;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.15s ease;
+}
+.kta-lost-pratiques-titre::-webkit-details-marker { display: none; }
+.kta-lost-pratiques-titre::marker { display: none; }
+.kta-lost-pratiques-titre:hover {
+  background: rgba(244, 197, 66, 0.14);
+}
+.kta-lost-pratiques-titre::before {
+  content: "▸";
+  display: inline-block;
+  transition: transform 0.15s ease;
+  color: #f4c542;
+  font-size: 12px;
+}
+.kta-lost-pratiques[open] > .kta-lost-pratiques-titre::before {
+  transform: rotate(90deg);
+}
+.kta-lost-pratiques-corps {
+  padding: 4px 14px 12px 14px;
+  border-top: 1px solid rgba(244, 197, 66, 0.20);
+}
+.kta-lost-pratique-cat {
+  margin-top: 10px;
+}
+.kta-lost-pratique-cat:first-child { margin-top: 6px; }
+.kta-lost-pratique-cat-titre {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.kta-lost-pratique-cat ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #c8d0e0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.kta-lost-pratique-cat li {
+  margin-bottom: 3px;
+}
+.kta-lost-pratique-cat li strong {
+  color: #ffd980;
+}
+/* La catégorie "À ne pas faire" est en orange pour la distinguer */
+.kta-lost-pratique-warn .kta-lost-pratique-cat-titre {
+  color: #ff8a5c;
+}
+.kta-lost-pratique-warn li strong {
+  color: #ffb088;
+}
+
+/* === Popups Leaflet du mode urgence (markers dernière position + indices) ===
+   Les overrides .leaflet-popup-content-wrapper du thème dark global s'appliquent
+   déjà (fond #1a1f2e, texte clair). Ici on ajoute la mise en forme spécifique
+   au mode urgence : couleurs orange pour la dernière position, violet pour les
+   indices in-zone, gris pour hors zone. */
+
+.kta-lost-popup-wrapper .leaflet-popup-content-wrapper {
+  /* Renforce la bordure pour bien distinguer des popups points normaux */
+  border-color: rgba(255, 107, 53, 0.30) !important;
+}
+.kta-lost-popup-wrapper .leaflet-popup-tip {
+  /* La pointe du popup matche aussi la bordure */
+  border-top-color: #1a1f2e !important;
+}
+
+.kta-lost-popup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+  max-width: 280px;
+}
+.kta-lost-popup b {
+  /* Sur les markers dernière position : titre orange. Sur match : reste bleu (par défaut .leaflet-popup-content b). */
+  color: #ff8a5c !important;
+  font-size: 14px;
+}
+.kta-lost-popup .kta-popup-desc {
+  color: #c8d0e0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.kta-lost-popup-coord {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px !important;
+  color: #8892a4 !important;
+}
+.kta-lost-popup-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.kta-lost-popup-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.02em;
+}
+.kta-lost-popup-badge-in {
+  background: rgba(180, 82, 255, 0.18);
+  border: 1px solid rgba(180, 82, 255, 0.40);
+  color: #d4a5ff;
+}
+.kta-lost-popup-badge-out {
+  background: rgba(136, 146, 164, 0.15);
+  border: 1px solid rgba(136, 146, 164, 0.30);
+  color: #8892a4;
+}
+.kta-lost-popup-dist {
+  font-family: ui-monospace, monospace;
+  font-size: 12.5px;
+  color: #f4c542;
+  font-weight: 600;
+}
+.kta-lost-popup-match {
+  font-style: italic;
+  color: #8892a4 !important;
+  font-size: 11.5px !important;
+}
+
 
 /* ==============================================
    POPUPS LEAFLET STYLÉES
@@ -1392,6 +1872,52 @@ html, body {
   grid-template-columns: 36px 1fr;
   gap: 5px 10px;
   align-items: center;
+}
+
+/* === Modale 🤖 Aide IA — prompt prêt à coller === */
+.kta-aide-ia-prompt-wrap {
+  position: relative;
+}
+.kta-aide-ia-prompt {
+  width: 100%;
+  min-height: 180px;
+  background: #0a0d18;
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #c8d0e0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  resize: vertical;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+}
+.kta-aide-ia-prompt:focus {
+  outline: none;
+  border-color: #8cb4ff;
+  box-shadow: 0 0 0 2px rgba(140,180,255,0.15);
+}
+.kta-aide-ia-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  background: rgba(244,197,66,0.12);
+  border: 1px solid rgba(244,197,66,0.35);
+  color: #f4c542;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.kta-aide-ia-copy-btn:hover {
+  background: rgba(244,197,66,0.22);
+  border-color: rgba(244,197,66,0.55);
+}
+.kta-aide-ia-copy-btn.kta-aide-ia-copy-ok {
+  background: rgba(108,226,138,0.18);
+  border-color: rgba(108,226,138,0.55);
+  color: #6ce28a;
 }
 
 .kta-aide-section .kta-aide-icone {

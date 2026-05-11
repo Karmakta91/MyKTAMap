@@ -16,9 +16,9 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 - **Stack** : HTML/CSS/JS vanilla + Leaflet (pas de framework, pas de bundler)
 - **Production** : https://myktamap.is-underground.fr
 - **Dev** : https://devmap.is-underground.fr
-- **GitHub** : https://github.com/Karmakta91/MyKTAMap
-- **Auteur** : KARMA (`Karmakta91`)
-- **Licence** : libre, usage non commercial
+- **Auteur** : Flavien VIDAL (alias KARMA)
+- **Licence** : **CC BY-NC-SA 4.0** — usage non commercial, partage à l'identique, attribution requise. Usage commercial **strictement interdit** sans accord écrit préalable.
+- **Collaboration** : ouverte **sur demande** (contributions, ports, intégrations, retours terrain). Aucune contribution acceptée sans accord écrit préalable de l'auteur — contact via le site officiel.
 
 ---
 
@@ -799,7 +799,8 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 
 - **Production** : https://myktamap.is-underground.fr
 - **Dev** : https://devmap.is-underground.fr
-- **GitHub** : https://github.com/Karmakta91/MyKTAMap
+- **Licence** : CC BY-NC-SA 4.0 — voir `LICENSE` à la racine
+- **Collaboration** : ouverte sur demande, contact via le site officiel
 - **Leaflet docs** : https://leafletjs.com/reference.html
 - **Doc dev complète** : `README.md` (à la racine du projet)
 - **Doc utilisateur** : `README_USER.md` (intégrée à l'app via 📖)

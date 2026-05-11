@@ -54,11 +54,22 @@ service payant, integration dans un produit vendu, etc.), une licence
 commerciale separee est requise. Contactez l'auteur :
 
 - Site : https://myktamap.is-underground.fr
-- GitHub : https://github.com/Karmakta91/MyKTAMap
 
 Toute utilisation commerciale sans autorisation ecrite expose le contrevenant
 a des poursuites pour contrefacon (article L.335-2 et suivants du Code de la
 propriete intellectuelle).
+
+---
+
+## Collaboration
+
+Le projet est **ouvert a la collaboration sur demande** (contributions,
+ports, integrations, etudes, retours terrain, etc.). Aucune contribution
+n'est acceptee sans accord ecrit prealable de l'auteur, afin de garantir
+la coherence du projet et le respect de la licence CC BY-NC-SA 4.0.
+
+Toute demande de collaboration, de fork autorise ou de licence speciale
+doit etre adressee a l'auteur via le site officiel.
 
 ---
 

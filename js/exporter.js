@@ -1095,18 +1095,48 @@
     const mime = opts.format === "jpeg" ? "image/jpeg" : "image/png";
     const quality = opts.format === "jpeg" ? 0.9 : undefined;
 
-    return new Promise(function(resolve, reject) {
-      canvas.toBlob(function(blob) {
-        if (!blob) { reject(new Error("Impossible de générer l'image")); return; }
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = (config.plan.name || "plan") + "_export." + ext;
-        link.click();
-        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        resolve();
-      }, mime, quality);
-    });
+    // Helper qui tente un encodage et résout {ok, fallbackUsed}
+    function _tryEncode(targetMime, targetExt, targetQuality) {
+      return new Promise(function(resolve, reject) {
+        canvas.toBlob(function(blob) {
+          if (!blob) { reject(new Error("toBlob null pour " + targetMime)); return; }
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = (config.plan.name || "plan") + "_export." + targetExt;
+          link.click();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+          resolve();
+        }, targetMime, targetQuality);
+      });
+    }
+
+    // Tente le format demandé, puis fallback JPEG si c'était PNG, sinon downsample.
+    // Cf. utils.js — l'encodage PNG d'un gros canvas (plans JPG haute résolution)
+    // crame la mémoire mobile et retourne null. JPEG est plus tolérant.
+    try {
+      await _tryEncode(mime, ext, quality);
+    } catch(errPrimary) {
+      console.warn("[Export avancé] encodage " + mime + " échoué — fallback :", errPrimary.message);
+      // Si PNG a échoué, on tente JPEG. Si JPEG a déjà échoué, on remonte.
+      if (mime === "image/png") {
+        try {
+          await _tryEncode("image/jpeg", "jpg", 0.92);
+          console.info("[Export avancé] fallback JPEG OK (plan trop grand pour PNG)");
+        } catch(errJpg) {
+          throw new Error(
+            "Export impossible : le plan est trop grand pour être encodé par le navigateur " +
+            "(PNG et JPEG ont tous deux échoué). Réduis la résolution (½ ou ¼) dans les " +
+            "options d'export pour contourner la limite mémoire."
+          );
+        }
+      } else {
+        throw new Error(
+          "Export JPEG impossible : le plan est trop grand pour être encodé. " +
+          "Réduis la résolution (½ ou ¼) dans les options d'export."
+        );
+      }
+    }
   }
 
   // =========================
