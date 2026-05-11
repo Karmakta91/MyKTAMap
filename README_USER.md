@@ -479,14 +479,14 @@ Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgenc
 
 2. **⏱️ Temps écoulé** — slider de 1 à 90 minutes (1h30 max). Au-delà, la zone devient si large que le mode n'est plus pertinent — privilégiez alors un signalement de secours réel.
 
-3. **🏃 Vitesse & état de la personne** — un segmented control 4 presets qui bundle vitesse de marche + marge de sécurité (multiplicateur qui élargit la zone pour compenser détours, demi-tours, erreurs de temps). Le rayon final = `vitesse × temps × marge`.
+3. **🏃 Vitesse de marche présumée** — un segmented control 4 presets. Le rayon final = `vitesse × temps`. Les valeurs km/h sont **les mêmes que le mode itinéraire** pour la cohérence (un preset "Normale" représente la même vitesse partout dans l'app).
 
-   | Preset | Vitesse | Marge | Rayon pour 10 min | Quand l'utiliser |
-   |---|---|---|---|---|
-   | 🍺 **Bourré** | 1.0 km/h | ×2.0 | ~333 m | Très confus, désorienté, marche hésitante, marge large |
-   | 🐌 **Lente** | 1.2 km/h | ×1.5 | ~300 m | Marche prudente, étroitures, exploration lente |
-   | 🚶 **Normale** *(défaut)* | 1.5 km/h | ×1.0 | ~250 m | Allure standard, zone tendue, on suppose estimation fiable |
-   | 🏃 **Rapide** | 2.5 km/h | ×1.0 | ~417 m | Parcours connu, marche soutenue, peut être loin |
+   | Preset | Vitesse | Rayon pour 10 min | Quand l'utiliser |
+   |---|---|---|---|
+   | 🍺 **Bourré** | 2 km/h | ~333 m | Très lent, confus, désorienté, marche hésitante |
+   | 🐌 **Lente** | 3 km/h | ~500 m | Marche prudente, étroitures, exploration |
+   | 🚶 **Normale** *(défaut)* | 5 km/h | ~833 m | Allure standard de marche |
+   | 🏃 **Rapide** | 7 km/h | ~1167 m | Parcours connu, marche soutenue |
 
    Le choix est persisté entre sessions (localStorage). Si la zone est déjà affichée sur la carte, changer de preset la recalcule instantanément.
 
@@ -498,7 +498,7 @@ Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgenc
 
 | Élément | Signification |
 |---|---|
-| **Cercle orange pulsant** | Zone de recherche (rayon = vitesse × temps × marge de sécurité) |
+| **Cercle orange pulsant** | Zone de recherche (rayon = vitesse × temps) |
 | **📍 vert pulsant** | Votre dernière position connue |
 | **🔮 violet pulsant** | Indice texte qui matche ET est **dans la zone** (le plus important) |
 | **· gris** | Indice texte qui matche mais est **hors zone** (exclu) |
