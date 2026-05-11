@@ -1,0 +1,9 @@
+{
+  "version": "v128",
+  "released": "2026-05-11",
+  "notes": [
+    "🤖 Contexte IA enrichi : ajout d'un survol des fonctionnalités principales (multi-plans, recherche, itinéraire, mode urgence, mesure, distance totale, etc.) directement dans la liste anti-hallucination — l'IA reconnaît maintenant les modes globaux et ne dit plus 'ça n'existe pas' alors que la doc en parle.",
+    "Procédure de vérification renforcée : prise en compte des synonymes raisonnables (mode urgence ≡ Je suis perdu, itinéraire ≡ trajet, etc.) avant de conclure à l'inexistence.",
+    "Penser à re-télécharger le fichier .md via 🤖 Aide IA après la mise à jour pour récupérer le nouveau contexte."
+  ]
+}

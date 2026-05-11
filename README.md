@@ -16,7 +16,7 @@ Nouvelle fonctionnalité dans le groupe **📚 Aide / Documentation / Légende**
 **Cas d'usage** : l'utilisateur veut poser une question sur l'app à ChatGPT/Claude/Gemini/etc. mais l'IA ne connaît pas MyKTAMap par défaut → télécharge le contexte, le donne à l'IA, et obtient des réponses ciblées et à jour.
 
 **Structure du fichier `MyKTAMap-AI-Context-{date}.md` généré** :
-1. **Entête métadonnées** : date d'export, build app, URL, GitHub, licence, auteur
+1. **Entête métadonnées** : date d'export, build app, URL, licence, usage commercial, collaboration, auteur
 2. **Mode d'emploi utilisateur** : étapes pour utiliser le fichier dans une IA + exemples de questions
 3. **Instructions IA** : rôle d'assistant, règles strictes (source unique, honnêteté, étapes claires), exemples Q/R
 4. **Documentation utilisateur complète** : `README_USER.md` fetched dynamiquement et inclus tel quel

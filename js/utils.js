@@ -545,23 +545,51 @@ async function telechargerPlan() {
     }
 
     // ---------- export ----------
-    // Promesse autour de toBlob pour que l'appelant (modale Export) puisse await
-    // proprement et voir le succès ou l'échec — sinon le download ratait silencieusement.
-    await new Promise(function(resolve, reject) {
-      canvas.toBlob(function(blob) {
-        if (!blob) {
-          reject(new Error("canvas.toBlob a retourné null (image trop grande ?)"));
-          return;
-        }
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = (config.plan.name || "plan") + "_complet.png";
-        link.click();
-        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
-        resolve();
-      }, "image/png");
-    });
+    // Promesse autour de toBlob avec fallback JPEG si PNG échoue.
+    //
+    // POURQUOI le fallback : sur de gros plans (typiquement plans JPG en source —
+    // souvent plus grands que les PNG car JPG compresse bien à l'upload),
+    // l'encodage PNG du canvas final exige width × height × 4 bytes de RAM en
+    // continu. Safari iOS / Chrome Android refusent au-delà de ~250-400 Mo
+    // bruts (≈ 8000×8000 px) et retournent null silencieusement.
+    //
+    // JPEG est progressif (streamé bloc par bloc) et tolère des dimensions
+    // bien plus grandes — on l'utilise comme fallback pour ne pas laisser
+    // l'utilisateur avec une erreur cryptique alors qu'on peut produire un
+    // fichier exploitable.
+    function _exporter(mime, ext, quality) {
+      return new Promise(function(resolve, reject) {
+        canvas.toBlob(function(blob) {
+          if (!blob) {
+            reject(new Error("toBlob null pour " + mime));
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = (config.plan.name || "plan") + "_complet." + ext;
+          link.click();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+          resolve(mime);
+        }, mime, quality);
+      });
+    }
+
+    try {
+      await _exporter("image/png", "png");
+    } catch (errPng) {
+      console.warn("[Export rapide] PNG a échoué — fallback JPEG :", errPng.message);
+      try {
+        await _exporter("image/jpeg", "jpg", 0.92);
+        console.info("[Export rapide] fallback JPEG OK (plan trop grand pour PNG)");
+      } catch (errJpg) {
+        throw new Error(
+          "Export impossible : le plan est trop grand pour être encodé par le navigateur " +
+          "(PNG et JPEG ont tous deux échoué). Essaye le 🎨 Mode avancé avec une " +
+          "résolution réduite (½ ou ¼) pour contourner la limite mémoire."
+        );
+      }
+    }
 
   } catch (err) {
     // Re-throw pour que l'appelant (modale Export) affiche l'erreur dans son zone

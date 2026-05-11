@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
  * https://myktamap.is-underground.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
@@ -1160,7 +1160,27 @@ function afficherAide() {
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
             <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker</span>
+            <span class="kta-aide-icone">⛑️</span><span>Mode urgence "Je suis perdu" — estime la zone probable de ta position à partir de ta dernière position connue, du temps écoulé et d'indices visuels</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">⛑️ Mode urgence :</strong> sous-action orange distinctive. Tu indiques où tu étais (recherche
+            d'un point existant, clic sur la carte ou position tracker), <strong>depuis combien de temps</strong>, et
+            l'app dessine un <strong>cercle de recherche</strong> orange autour (rayon = vitesse × temps × marge de sécurité).
+            La <strong>marge de sécurité</strong> élargit le rayon pour compenser les détours, demi-tours et erreurs
+            d'estimation du temps — défaut ×1.0 (strict), monter à ×1.5–2 si le temps est approximatif. Temps écoulé
+            max <strong>1h30</strong> (au-delà la zone devient immense et non pertinente).
+            Tu peux ajouter des <strong>indices visuels</strong> ("bidon eau", "épure bélier"...) — l'app cherche ces mots
+            dans le nom, la description et les tags des points du plan ; les indices qui matchent <strong>dans la zone</strong>
+            apparaissent en violet pulsant, et leur <strong>barycentre</strong> donne une <strong>localisation probable affinée</strong>.
+            Bouton <strong>👁️ Fermer</strong> ferme la modale en gardant la zone visible sur la carte (pour explorer).
+            Bouton <strong>🗑️ Effacer la zone</strong> (dans les résultats) retire tout. Rapport texte copiable au
+            presse-papiers (📋) pour partage offline (radio, SMS).
+            Un accordion <strong>📚 Bonnes pratiques</strong> en haut de la modale regroupe les conseils essentiels
+            (garde ton calme, reviens sur tes pas, cherche les axes principaux/roulages, utilise une boussole physique,
+            économise ta lumière, préviens quelqu'un si tu captes du réseau, à ne pas faire). ⚠️ Estimation géométrique
+            uniquement — ne remplace <strong>PAS</strong> une opération de secours réelle (fil d'Ariane, boussole,
+            lampe de rechange, carte papier).
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1587,6 +1607,120 @@ function _pingInternet() {
   });
 }
 
+// =========================
+// 🔄 MISE À JOUR DOUCE — purge SW cache uniquement, préserve toutes les données
+// =========================
+// Différent de viderCacheAppli() qui fait table rase. Ici on ne touche QUE
+// au cache PWA (assets HTTP) — la session, le registre de plans, l'IndexedDB
+// et le localStorage restent intacts.
+//
+// Flow :
+//   1. Quick ping Internet (5s) — sinon erreur claire avant de tout purger.
+//   2. Demande au SW de skipWaiting si une nouvelle version attend.
+//   3. Force reg.update() pour que le navigateur check sw.js sur le réseau.
+//   4. Purge caches.keys() (cache PWA uniquement).
+//   5. Reload — les nouveaux assets sont re-fetchés depuis le réseau.
+//
+// Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
+// sessionStorage, cookies, données utilisateur.
+// =========================
+async function mettreAJourCodeSeul() {
+  // Affiche un overlay pendant l'opération pour que l'utilisateur voie
+  // qu'il se passe quelque chose. Cette phase peut prendre 1-3s.
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">⏳</div>' +
+      '<div class="kta-modal-titre">Mise à jour en cours…</div>' +
+      '<div class="kta-modal-texte" id="kta-soft-update-status">Vérification de la connexion…</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  const status = document.getElementById("kta-soft-update-status");
+
+  function _statusUpdate(txt) { if (status) status.innerHTML = txt; }
+
+  try {
+    // 1. Ping Internet — sans réseau le re-fetch va échouer après la purge
+    _statusUpdate("Vérification de la connexion…");
+    const online = await _pingInternet();
+    if (!online) {
+      overlay.remove();
+      _softUpdateOfflineWarning();
+      return;
+    }
+
+    // 2. Force le check + skipWaiting du SW
+    _statusUpdate("Vérification de la version du Service Worker…");
+    if (navigator.serviceWorker) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          try { await reg.update(); } catch(e) { console.warn("[Soft update] reg.update() :", e); }
+          if (reg.waiting) {
+            // Demande au SW en attente de prendre le relais sans attendre que tous
+            // les clients soient fermés (notre sw.js fait déjà skipWaiting() au install,
+            // mais on renforce ici en cas de SW custom dans le futur)
+            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+        }
+      } catch(e) {
+        console.warn("[Soft update] erreur SW :", e);
+      }
+    }
+
+    // 3. Purge des caches HTTP / PWA UNIQUEMENT (pas localStorage / IDB)
+    _statusUpdate("Purge du cache des assets PWA…");
+    if (window.caches) {
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(function(k) {
+          console.log("[Soft update] suppression cache :", k);
+          return caches.delete(k);
+        }));
+      } catch(e) {
+        console.warn("[Soft update] purge caches :", e);
+      }
+    }
+
+    // 4. Reload : le SW re-cache tout depuis le réseau au prochain démarrage
+    _statusUpdate("Rechargement…");
+    setTimeout(function() {
+      window.location.reload();
+    }, 400);
+
+  } catch(err) {
+    overlay.remove();
+    console.error("[Soft update] erreur :", err);
+    alert("Erreur pendant la mise à jour douce :\n" + (err.message || err) + "\n\nTu peux essayer le reset complet à la place.");
+  }
+}
+
+// Avertissement spécifique offline pour la mise à jour douce
+function _softUpdateOfflineWarning() {
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">📡</div>' +
+      '<div class="kta-modal-titre">Pas de connexion Internet</div>' +
+      '<div class="kta-modal-texte">' +
+        'La mise à jour a besoin d\'Internet pour télécharger les nouveaux fichiers. ' +
+        'Reconnecte-toi (Wi-Fi, 4G/5G) puis relance.' +
+        '<br><br>' +
+        '<strong>Bonne nouvelle</strong> : aucune donnée n\'a été supprimée. Tu peux ' +
+        'continuer à utiliser l\'app normalement avec la version actuelle.' +
+      '</div>' +
+      '<div class="kta-modal-actions" style="justify-content:center;">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">OK</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  document.getElementById("kta-soft-update-offline-ok").addEventListener("click", function() {
+    overlay.remove();
+  });
+}
+
 function viderCacheAppli() {
   const cfgModal = document.getElementById("kta-cfg-modal");
   if (cfgModal) cfgModal.remove();
@@ -1912,7 +2046,8 @@ function _creerGroupeAccordeon(config) {
     } else {
       // Créer les sous-actions (cachées par défaut)
       (config.sousActions || []).forEach(function(sub) {
-        const btnSub = L.DomUtil.create("a", "kta-sub kta-hidden", div);
+        const extraCls = sub.cssClass ? (" " + sub.cssClass) : "";
+        const btnSub = L.DomUtil.create("a", "kta-sub kta-hidden" + extraCls, div);
         btnSub.innerHTML = sub.icone;
         btnSub.href      = "javascript:void(0)";
         btnSub.title     = sub.titre;
@@ -2143,6 +2278,18 @@ function initInterface() {
         onClick: function() {
           if (typeof window.ouvrirItinerairModal === "function") {
             window.ouvrirItinerairModal();
+          }
+        }
+      },
+      {
+        icone: "⛑️",
+        titre: "Je suis perdu — Mode urgence",
+        cssClass: "kta-sous-action-urgence",
+        onClick: function() {
+          if (window.LostMode && typeof window.LostMode.open === "function") {
+            window.LostMode.open();
+          } else {
+            alert("Mode urgence indisponible (LostMode non chargé).");
           }
         }
       }
@@ -3922,130 +4069,168 @@ function afficherLegende() {
 // =========================
 // 🤖 AIDE IA — génère un fichier de contexte téléchargeable
 // =========================
-// L'utilisateur peut télécharger un .md qui combine :
-//   - Métadonnées entête (date export, URL, etc.)
-//   - Instructions pour l'utilisateur ("comment utiliser ce fichier")
-//   - Instructions pour l'IA (rôle + exemples Q/R)
-//   - Contenu de README_USER.md (la doc utilisateur intégrale)
-//   - Postambule FAQ (problèmes courants + solutions rapides)
-// Le fichier est censé être collé dans le contexte de n'importe quelle IA
-// (ChatGPT, Claude, Gemini, Perplexity, Le Chat, etc.) pour obtenir une
-// assistance ciblée sur l'app.
+// Le contenu vit dans le fichier STATIQUE `AI_CONTEXT.md` à la racine.
+// JS se contente de :
+//   1. fetch AI_CONTEXT.md (le squelette enrichi)
+//   2. fetch README_USER.md (la doc officielle)
+//   3. remplacer les placeholders {{DATE}}, {{BUILD}}, {{README_USER}}
+//   4. proposer le fichier au téléchargement
+//
+// Avantage : tout l'enrichissement du contexte IA se fait en éditant
+// AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
+// =========================
 
-function _genererContenuContexteIA(readmeUserText) {
+function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
   const dateExport = new Date().toISOString().slice(0, 10);
   const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
 
-  const entete =
-    "# MyKTAMap — Contexte d'Aide IA\n\n" +
-    "> Fichier généré automatiquement pour servir de **contexte d'assistance** à n'importe quelle IA.\n\n" +
-    "| Métadonnée | Valeur |\n" +
-    "|---|---|\n" +
-    "| Date d'export | " + dateExport + " |\n" +
-    "| Build app | " + buildVersion + " |\n" +
-    "| Site officiel | https://myktamap.is-underground.fr |\n" +
-    "| GitHub | https://github.com/Karmakta91/MyKTAMap |\n" +
-    "| Licence | CC BY-NC-SA 4.0 (usage non commercial) |\n" +
-    "| Auteur | Flavien VIDAL (alias KARMA) |\n\n" +
-    "---\n\n";
+  // Si le template AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
+  if (aiContextTemplate && aiContextTemplate.trim().length > 0) {
+    return aiContextTemplate
+      .replace(/\{\{DATE\}\}/g, dateExport)
+      .replace(/\{\{BUILD\}\}/g, buildVersion)
+      .replace(
+        /\{\{README_USER\}\}/g,
+        readmeUserText && readmeUserText.trim().length > 0
+          ? readmeUserText
+          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
+      );
+  }
 
-  const modeEmploiUser =
-    "## 📋 Comment utiliser ce fichier\n\n" +
-    "1. Ouvre une IA conversationnelle de ton choix : **ChatGPT, Claude, Gemini, " +
-    "Perplexity, Le Chat (Mistral), Copilot, etc.**\n" +
-    "2. **Copie-colle** l'intégralité de ce fichier dans le **premier message** " +
-    "de la conversation OU joins-le en pièce jointe si l'IA le supporte.\n" +
-    "3. Pose ensuite tes questions sur l'utilisation de MyKTAMap. " +
-    "L'IA répondra en se basant sur ce contexte.\n\n" +
-    "**Exemples de questions à poser** :\n" +
-    "- Comment ajouter un point sur mon plan ?\n" +
-    "- Mon plan plante au dézoom, que faire ?\n" +
-    "- Comment calculer un itinéraire entre 2 puits ?\n" +
-    "- Quelle est la différence entre les modes performance ?\n" +
-    "- Comment exporter ma session pour la partager ?\n\n" +
-    "💡 **Astuce** : si l'IA donne une réponse approximative, demande-lui " +
-    "explicitement : *\"Réponds uniquement en te basant sur le fichier de contexte que je t'ai donné.\"*\n\n" +
-    "---\n\n";
-
-  const instructionsIA =
-    "## 🤖 Instructions pour l'IA (à lire en priorité)\n\n" +
-    "Tu es un **assistant utilisateur dédié à l'application web MyKTAMap**.\n\n" +
-    "### Règles\n\n" +
-    "1. **Source unique** : réponds UNIQUEMENT en te basant sur le contenu " +
-    "ci-dessous (documentation utilisateur fournie). N'invente pas de " +
-    "fonctionnalités, ne devine pas.\n" +
-    "2. **Honnêteté** : si la réponse n'est pas dans le contexte, dis-le " +
-    "clairement : *\"Cette information n'est pas couverte par la documentation " +
-    "fournie — vérifie directement dans l'app ou contacte l'auteur.\"*\n" +
-    "3. **Adaptation** : adapte ton ton au niveau apparent de l'utilisateur " +
-    "(débutant vs avancé). Sois concret, pas trop technique.\n" +
-    "4. **Étapes claires** : pour les how-to, donne des étapes numérotées avec " +
-    "les icônes/boutons exacts mentionnés dans la doc (ex: *Clique sur le " +
-    "bouton ✏️ Édition de points*).\n" +
-    "5. **Limite** : tu ne réponds qu'aux questions sur **MyKTAMap**. Pour les " +
-    "questions hors-sujet (météo, autre app, etc.), redirige poliment.\n\n" +
-    "### Exemples de bonnes réponses\n\n" +
-    "**Q** : Comment ajouter un point sur la carte ?\n" +
-    "**R** : \n" +
-    "1. Dans la barre latérale, ouvre le groupe **✏️ Édition de points**\n" +
-    "2. Active le mode (le bouton devient vert)\n" +
-    "3. Clique sur la carte à l'endroit voulu\n" +
-    "4. Renseigne le nom et le type dans la modale\n" +
-    "5. Clique **✅ Ajouter**\n\n" +
-    "**Q** : Mon plan plante quand je dézoome, que faire ?\n" +
-    "**R** : Le crash au dézoom est typique des grandes images sur mobile. " +
-    "Solutions par ordre d'impact :\n" +
-    "1. **Réduis la taille de l'image base** (max 8000 px de côté recommandé)\n" +
-    "2. Convertis en **JPEG qualité 85** au lieu de PNG (5-10× plus léger)\n" +
-    "3. Au chargement, choisis le preset **⚡ Performance** (Mode performance)\n" +
-    "4. Sur mobile, l'app limite déjà le dézoom max — c'est volontaire (anti-crash)\n\n" +
-    "**Q** : C'est quoi la différence entre les modes Tracker et Mesure ?\n" +
-    "**R** : \n" +
-    "- **🧭 Tracker** : position continue (capteurs mobile expérimentaux) " +
-    "qui se déplace pendant que tu marches dans la cata. Tracé enregistré.\n" +
-    "- **📐 Mesure** : tu cliques 2 points sur la carte, l'app affiche la " +
-    "distance entre eux. Statique, pas de tracking.\n\n" +
-    "---\n\n";
-
-  const docUtilisateur =
-    "## 📖 Documentation utilisateur complète\n\n" +
-    "*Le contenu ci-dessous est l'intégralité de la doc utilisateur — c'est " +
-    "ta source de vérité pour répondre aux questions.*\n\n" +
+  // ===== Fallback ultra-minimal si AI_CONTEXT.md est introuvable =====
+  return (
+    "# MyKTAMap — Contexte IA (fallback minimal)\n\n" +
+    "> ⚠️ Le fichier `AI_CONTEXT.md` n'a pas pu être récupéré. Ce fichier de secours " +
+    "contient uniquement la documentation utilisateur brute. Réessaye depuis l'app " +
+    "quand le service worker aura mis `AI_CONTEXT.md` en cache.\n\n" +
+    "**Auteur** : Flavien VIDAL (alias KARMA) · **Licence** : CC BY-NC-SA 4.0 · " +
+    "**Site** : https://myktamap.is-underground.fr\n\n" +
+    "Date d'export : " + dateExport + " · Build : " + buildVersion + "\n\n" +
     "---\n\n" +
-    (readmeUserText || "_(Documentation indisponible au moment de la génération — fetch README_USER.md sur le serveur)_") +
-    "\n\n---\n\n";
-
-  const faqRapide =
-    "## ❓ FAQ rapide — problèmes courants\n\n" +
-    "### Le tracker dérive énormément après quelques pas\n" +
-    "Le tracker capteurs est **expérimental** et dérive avec le temps. " +
-    "Solutions :\n" +
-    "- Calibre l'**échelle** dans ⚙️ Réglages → \"Calibrer\" (renseigne combien de mètres font une distance connue)\n" +
-    "- Recale régulièrement ta position via le mode **📍 Recalage** (clic sur un point connu) ou le bouton **📍 Je suis ici** des popups points\n\n" +
-    "### Mon plan crash au chargement\n" +
-    "Probablement saturation mémoire (gros plan sur mobile). Au prochain reload :\n" +
-    "- Choisis le preset **⚡ Performance** dans le loader\n" +
-    "- Si le crash persiste, dans le loader : ⚙️ Plus d'options → 🐛 Logs détaillés ON → recharge → consulte les logs depuis la modale 🐛\n\n" +
-    "### Je perds ma session quand je ferme l'app\n" +
-    "Une **auto-sauvegarde** (1.5s d'intervalle) s'occupe normalement de ça. Si tu la perds :\n" +
-    "- Vérifie que tu rouvres bien le **même plan** (même nom et version)\n" +
-    "- Pour plus de sécurité, **exporte ta session** régulièrement via 💾 Enregistrer la session\n\n" +
-    "### Le module Itinéraire dit \"aucun chemin trouvé\"\n" +
-    "Le pathfinder a besoin d'un **réseau de routes** pour calculer le chemin.\n" +
-    "- Vérifie qu'il y a bien des tracés (Principal/Secondaire/Chemin) entre tes 2 waypoints\n" +
-    "- Les routes peuvent être dans la session OU dans les calques de données du plan (visibles ou masquées)\n" +
-    "- Si les routes se croisent visuellement sans partager un point exact, l'app les connecte automatiquement à 15 px près\n\n" +
-    "### Comment partager un plan avec un ami ?\n" +
-    "1. 🏗️ Générer un plan → crée/regénère le ZIP\n" +
-    "2. Envoie le `.zip` à ton ami (mail, cloud, USB...)\n" +
-    "3. Ton ami fait \"Glisse ton archive ZIP ici\" dans le loader → ✅ Charger\n\n" +
-    "### Je veux modifier les icônes ou ajouter des types de points\n" +
-    "Via 🏗️ Générer un plan → \"Modifier existant\" → importe le ZIP → ajoute des tags personnalisés et leurs icônes → regénère.\n\n" +
-    "---\n\n" +
-    "**Fin du contexte.** Tu peux maintenant répondre aux questions de l'utilisateur en te basant exclusivement sur ce qui précède.\n";
-
-  return entete + modeEmploiUser + instructionsIA + docUtilisateur + faqRapide;
+    (readmeUserText || "_Documentation utilisateur également indisponible._") +
+    "\n"
+  );
 }
+
+
+// =========================
+// 🔔 MODALE MISE À JOUR DISPONIBLE — déclenchée par updateChecker.js
+// =========================
+window.afficherModaleUpdateDispo = function(opts) {
+  // Si déjà ouverte (re-appel), ne fait rien
+  if (document.getElementById("kta-update-modal")) return;
+
+  const localVersion  = opts.localVersion  || "?";
+  const remote        = opts.remote        || {};
+  const remoteVersion = remote.version     || "?";
+  const released      = remote.released    || "";
+  const notes         = Array.isArray(remote.notes) ? remote.notes
+                       : (remote.notes ? [remote.notes] : []);
+
+  const notesHtml = notes.length
+    ? '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.6;">' +
+        notes.map(function(n) { return '<li>' + String(n).replace(/</g, "&lt;") + '</li>'; }).join("") +
+      '</ul>'
+    : '<p style="color:#8892a4; font-size:12px; font-style:italic; margin:8px 0 0 0;">Aucune note de version fournie.</p>';
+
+  const modal = document.createElement("div");
+  modal.id = "kta-update-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🔔 Mise à jour disponible</span>' +
+        '<button class="kta-panneau-close" id="kta-update-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">📦 Versions</div>' +
+          '<div style="display:flex; align-items:center; gap:14px; padding:10px 14px; background:rgba(140,180,255,0.06); border-radius:8px; border:1px solid rgba(140,180,255,0.18);">' +
+            '<div style="font-size:12px; color:#8892a4;">' +
+              'Installée<br>' +
+              '<strong style="font-size:18px; color:#c8d0e0; font-family:ui-monospace,monospace;">' + localVersion + '</strong>' +
+            '</div>' +
+            '<div style="font-size:20px; color:#8cb4ff;">→</div>' +
+            '<div style="font-size:12px; color:#8892a4;">' +
+              'Disponible' + (released ? ' (' + released + ')' : '') + '<br>' +
+              '<strong style="font-size:18px; color:#f4c542; font-family:ui-monospace,monospace;">' + remoteVersion + '</strong>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">🆕 Nouveautés</div>' +
+          notesHtml +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">🔄 Deux modes de mise à jour</div>' +
+          '<div style="background:rgba(108,226,138,0.08); border:1px solid rgba(108,226,138,0.30); border-radius:8px; padding:10px 12px; margin-bottom:8px;">' +
+            '<div style="font-weight:700; color:#6ce28a; font-size:13px; margin-bottom:4px;">🪶 Mise à jour douce (recommandée)</div>' +
+            '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
+              'Seul le <strong>code de l\'app</strong> est rafraîchi (HTML, JS, CSS, docs). ' +
+              'Tes <strong>plans, sessions et préférences sont préservés</strong>.' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
+            '<div style="font-weight:700; color:#ff6b6b; font-size:13px; margin-bottom:4px;">💥 Reset complet</div>' +
+            '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
+              'À utiliser <strong>seulement</strong> si la mise à jour douce ne suffit pas ' +
+              '(problème persistant). Purge <strong>tout</strong> : cache, plans, sessions, préférences.' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div style="display:flex; gap:10px; margin-top:14px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-update-postpone" type="button" style="flex:1;">Plus tard (24h)</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-update-accept-soft" type="button" style="flex:2;">🪶 Mise à jour douce</button>' +
+        '</div>' +
+        '<div style="text-align:center; margin-top:10px;">' +
+          '<button class="kta-btn-link kta-update-link-danger" id="kta-update-accept-hard" type="button">💥 Forcer un reset complet à la place</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _fermer() { modal.remove(); }
+
+  document.getElementById("kta-update-close").addEventListener("click", function() {
+    _fermer();
+    if (typeof opts.onPostpone === "function") opts.onPostpone();
+  });
+  document.getElementById("kta-update-postpone").addEventListener("click", function() {
+    _fermer();
+    if (typeof opts.onPostpone === "function") opts.onPostpone();
+  });
+  // 🪶 Mise à jour douce — préserve les données utilisateur
+  document.getElementById("kta-update-accept-soft").addEventListener("click", function() {
+    _fermer();
+    if (typeof opts.onAcceptSoft === "function") {
+      opts.onAcceptSoft();
+    } else if (typeof window.mettreAJourCodeSeul === "function") {
+      window.mettreAJourCodeSeul();
+    }
+  });
+  // 💥 Reset complet — purge tout (fallback)
+  document.getElementById("kta-update-accept-hard").addEventListener("click", function() {
+    _fermer();
+    if (typeof opts.onAcceptHard === "function") {
+      opts.onAcceptHard();
+    } else if (typeof opts.onAccept === "function") {
+      // Rétro-compat — l'ancien callback `onAccept` était le reset complet
+      opts.onAccept();
+    } else if (typeof window.viderCacheAppli === "function") {
+      window.viderCacheAppli();
+    }
+  });
+  // Clic backdrop = postpone (équivalent Plus tard)
+  modal.addEventListener("click", function(e) {
+    if (e.target === modal) {
+      _fermer();
+      if (typeof opts.onPostpone === "function") opts.onPostpone();
+    }
+  });
+};
 
 window.afficherModaleAideIA = function() {
   const existing = document.getElementById("kta-aide-ia-modal");
@@ -4092,6 +4277,28 @@ window.afficherModaleAideIA = function() {
         '</div>' +
 
         '<div class="kta-aide-section">' +
+          '<div class="kta-aide-section-titre">📋 Prompt prêt à coller (anti-hallucination)</div>' +
+          '<p style="color:#c0c8d8; line-height:1.6; font-size:12px; margin:0 0 8px 0;">' +
+            'Colle ce texte <strong>avec</strong> le fichier .md dans le premier message de l\'IA. ' +
+            'Il cadre les règles et limite les hallucinations.' +
+          '</p>' +
+          '<div class="kta-aide-ia-prompt-wrap">' +
+            '<textarea id="kta-aide-ia-prompt" class="kta-aide-ia-prompt" readonly>' +
+              'Voici la documentation officielle de l\'application MyKTAMap (fichier .md joint).\n\n' +
+              'Tu vas m\'aider à l\'utiliser en suivant ces règles STRICTES :\n\n' +
+              '⛔ Ne réponds QUE à partir du contenu du fichier joint.\n' +
+              '⛔ Si une fonctionnalité n\'y est pas décrite, dis-le clairement — n\'invente JAMAIS.\n' +
+              '⛔ N\'extrapole pas à partir d\'autres applis (Google Maps, QGIS, etc.).\n' +
+              '⛔ Tu n\'as accès ni au code source, ni au site web, ni à mon application.\n' +
+              '✅ Cite la section du fichier où tu trouves l\'info dans tes réponses.\n' +
+              '✅ Utilise les icônes et libellés exacts mentionnés dans la doc.\n\n' +
+              'Si tu as bien compris, réponds simplement « OK, prêt » et attends ma première question.' +
+            '</textarea>' +
+            '<button class="kta-btn kta-btn-ghost kta-aide-ia-copy-btn" id="kta-aide-ia-copy" type="button">📋 Copier</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="kta-aide-section">' +
           '<div class="kta-aide-section-titre">💰 Note importante</div>' +
           '<p style="color:#c0c8d8; line-height:1.6; font-size:13px;">' +
             'L\'utilisation d\'une IA peut être <strong>payante ou limitée</strong> selon ' +
@@ -4116,6 +4323,34 @@ window.afficherModaleAideIA = function() {
   document.getElementById("kta-aide-ia-cancel").addEventListener("click", _fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
 
+  // Copie du prompt dans le presse-papiers
+  document.getElementById("kta-aide-ia-copy").addEventListener("click", async function() {
+    const btn = this;
+    const ta = document.getElementById("kta-aide-ia-prompt");
+    const originalText = btn.textContent;
+    try {
+      // navigator.clipboard requiert HTTPS ou localhost — fallback execCommand sinon
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(ta.value);
+      } else {
+        ta.select();
+        document.execCommand("copy");
+        ta.setSelectionRange(0, 0);
+        ta.blur();
+      }
+      btn.textContent = "✓ Copié !";
+      btn.classList.add("kta-aide-ia-copy-ok");
+      setTimeout(function() {
+        btn.textContent = originalText;
+        btn.classList.remove("kta-aide-ia-copy-ok");
+      }, 1500);
+    } catch(e) {
+      console.warn("[AideIA] Copy failed :", e);
+      btn.textContent = "❌ Échec — sélectionne manuellement";
+      setTimeout(function() { btn.textContent = originalText; }, 2000);
+    }
+  });
+
   document.getElementById("kta-aide-ia-download").addEventListener("click", async function() {
     const btn = this;
     const statusEl = document.getElementById("kta-aide-ia-status");
@@ -4123,23 +4358,34 @@ window.afficherModaleAideIA = function() {
     btn.textContent = "⏳ Génération en cours...";
     statusEl.textContent = "Fetch de la documentation...";
 
-    // Fetch README_USER.md (cache SW dispo ou serveur)
+    // Fetch en parallèle : AI_CONTEXT.md (template) + README_USER.md (doc utilisateur)
+    let aiContextTpl = "";
     let readmeText = "";
     try {
-      const resp = await fetch("README_USER.md", { cache: "no-cache" });
-      if (resp.ok) {
-        readmeText = await resp.text();
-        statusEl.textContent = "Documentation chargée (" + Math.round(readmeText.length / 1024) + " Ko). Génération du fichier...";
+      const [respCtx, respDoc] = await Promise.all([
+        fetch("AI_CONTEXT.md", { cache: "no-cache" }),
+        fetch("README_USER.md", { cache: "no-cache" })
+      ]);
+      if (respCtx.ok) {
+        aiContextTpl = await respCtx.text();
       } else {
-        statusEl.textContent = "⚠️ Documentation non récupérée (HTTP " + resp.status + ") — fichier généré sans la doc.";
+        console.warn("[AideIA] AI_CONTEXT.md HTTP " + respCtx.status);
       }
+      if (respDoc.ok) {
+        readmeText = await respDoc.text();
+      } else {
+        console.warn("[AideIA] README_USER.md HTTP " + respDoc.status);
+      }
+      const tplKo = Math.round(aiContextTpl.length / 1024);
+      const docKo = Math.round(readmeText.length / 1024);
+      statusEl.textContent = "Template " + tplKo + " Ko + doc " + docKo + " Ko. Génération...";
     } catch(e) {
-      console.warn("[AideIA] Erreur fetch README_USER :", e);
-      statusEl.textContent = "⚠️ Documentation non récupérée — fichier généré sans la doc.";
+      console.warn("[AideIA] Erreur fetch :", e);
+      statusEl.textContent = "⚠️ Échec du fetch — fallback minimal.";
     }
 
-    // Construction du contenu complet
-    const contenu = _genererContenuContexteIA(readmeText);
+    // Construction du contenu complet via remplacement de placeholders
+    const contenu = _genererContenuContexteIA(aiContextTpl, readmeText);
     const blob = new Blob([contenu], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
 
@@ -4170,6 +4416,7 @@ window.appliquerConfig        = appliquerConfig;
 window.resetConfig            = resetConfig;
 window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
 window.viderCacheAppli       = viderCacheAppli;
+window.mettreAJourCodeSeul   = mettreAJourCodeSeul;
 window.afficherReadme        = afficherReadme;
 window.afficherLegende       = afficherLegende;
 // window.afficherConvertisseur retiré le 08/05/2026 — la conversion est maintenant

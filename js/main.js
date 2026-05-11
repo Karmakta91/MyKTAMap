@@ -230,6 +230,13 @@ function _libererRessourcesPlanPrecedent() {
     try { window._rdEffacerHighlight(); } catch(e) {}
   }
 
+  // Mode urgence "Je suis perdu" : ferme la modale et purge tous les layers
+  // (cercle zone, marker dernière position, markers indices, cercle affiné)
+  // avant le démontage de la map.
+  if (window.LostMode && typeof window.LostMode._onPlanSwitch === "function") {
+    try { window.LostMode._onPlanSwitch(); } catch(e) {}
+  }
+
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
   if (window._baseTiles && window._baseTiles.length > 0) {
     libererTuiles(window._baseTiles, window.map);
@@ -494,9 +501,12 @@ async function _splashEnd() {
   splash.classList.add("fading");
   setTimeout(function() {
     if (splash && splash.parentNode) splash.parentNode.removeChild(splash);
-    // Splash plus à l'écran → on peut afficher les toasts en attente
-    // (typiquement OOMGuard quand un kill a été détecté au boot)
+    // Splash plus à l'écran → on peut afficher les éléments en attente
     if (window.OOMGuard) window.OOMGuard.flushPendingToasts();
+    // Modale de mise à jour si une nouvelle version a été détectée pendant le splash
+    if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
+      window.UpdateChecker.notifySplashEnded();
+    }
   }, 500);
 }
 
@@ -512,6 +522,15 @@ async function _splashEnd() {
   // Initialiser le registre
   if (window.PlanRegistry) {
     window.PlanRegistry.init();
+  }
+
+  // Détection de mise à jour (non bloquant) — fetch version.json en arrière-plan
+  // et propose une modale de reset si une nouvelle version est dispo. Si offline,
+  // silencieux. La modale s'affichera AU-DESSUS du splash naturellement (z-index 99999).
+  if (window.UpdateChecker && typeof window.UpdateChecker.check === "function") {
+    window.UpdateChecker.check().catch(function(e) {
+      console.warn("[Main] UpdateChecker error :", e);
+    });
   }
 
   // Auto-discovery serveur (data/index.json)
