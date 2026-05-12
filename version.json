@@ -1,10 +1,11 @@
 {
-  "version": "v133",
+  "version": "v134",
   "released": "2026-05-13",
   "notes": [
-    "🏗️ Générateur de plan : la position initiale du tracker (groupe 🧭 Tracking) est désormais auto-centrée au milieu du plan (W/2 × H/2) dès que l'image principale est chargée — fini les 0/0 par défaut qui plaçaient le tracker dans un coin.",
-    "Modifications manuelles toujours possibles (les champs restent éditables).",
-    "Nouveau bouton 🎯 Recentrer la position de départ pour réappliquer le centre à tout moment.",
-    "✅ Rétro-compatibilité : les anciennes archives gardent leurs valeurs startX/startY restaurées telles quelles (sauf 0/0 qui est considéré 'non défini' et recentré). Structure JSON exportée inchangée."
+    "🚨 NOUVEAU : Diffusion d'alertes publiques via le fichier alert.json à la racine. L'auteur peut activer/désactiver une alerte en éditant ce seul fichier — pas besoin de bump SW ou code JS.",
+    "Modale charte rouge pulsante affichée après le splash si alert.active = true.",
+    "3 niveaux supportés : emergency (rouge pulse), warning (orange), info (bleu).",
+    "Acknowledgment via timestamp 'released' : l'utilisateur peut acquitter, ne re-popup que si l'alerte change (nouveau timestamp = nouvelle alerte).",
+    "Pour désactiver après crise : passer 'active': false dans alert.json. Pour rediffuser : remettre 'active': true avec nouveau released."
   ]
 }

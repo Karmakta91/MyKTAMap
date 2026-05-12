@@ -1,0 +1,13 @@
+{
+  "active": true,
+  "level": "emergency",
+  "title": "🚨 ALERTE — Incendie en cours",
+  "message": "Un incendie est en cours dans une carrière de calcaire. Évite la zone, suis les consignes des secours, et préviens les autres cataphiles que tu croises.",
+  "details": [
+    "Ne descend pas si tu n'es pas déjà sous terre.",
+    "Si tu es sous terre : sors par le chemin connu le plus court, ne traverse pas de zone enfumée.",
+    "Préviens en surface dès que tu as du réseau."
+  ],
+  "released": "2026-05-13T00:00:00Z"
+}
+
