@@ -1,7 +1,7 @@
 {
-  "version": "v136",
+  "version": "v137",
   "released": "2026-05-13",
   "notes": [
-    "🚨 Bouton alerte du loader : nouvelle icône style sirène (🚨), fond rouge saturé + glow pulsant + collé au 📖 Documentation."
+    "📚 Mise à jour complète de la documentation : README.md (journal 4 entrées 13/05), README_USER.md (nouvelle section 🚨 Alertes publiques), modale ❓ Aide (ligne 🚨 + paragraphe explicatif), AI_CONTEXT.md (survol enrichi + 2 nouvelles FAQ), CLAUDE.md (section 20 Live config files pour le pattern alert.json + version.json)."
   ]
 }

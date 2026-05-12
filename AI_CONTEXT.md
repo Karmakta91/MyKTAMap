@@ -73,6 +73,8 @@ Pour **chaque** question :
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
 - 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
+- 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques...) via fichier `alert.json` côté serveur. Modale rouge pulsante après le splash. Bouton 🚨 dans le header du loader pour re-consulter à tout moment.
+- 🏗️ **Générateur de plan** : auto-détection des dimensions de l'image principale + warnings si > 10000 px / > 30 Mo. Position initiale tracker auto-centrée (W/2 × H/2) au choix de l'image, avec bouton 🎯 Recentrer.
 
 **Types de zones** (exhaustif — il n'en existe que 3) :
 - **Remblais** (gris foncé, ⬛)
@@ -353,6 +355,26 @@ Le pathfinder a besoin d'un **réseau de routes connectées** :
 - Vérifie qu'il y a des tracés (Principal/Secondaire/Chemin) entre tes waypoints.
 - Les routes peuvent être dans la session OU dans les calques de données du plan (visibles ou masquées — toutes sont prises en compte).
 - L'app connecte automatiquement les routes qui se croisent visuellement (tolérance 15 px). Si rien ne se touche, il faut tracer une route de raccordement.
+
+### J'ai vu une modale rouge au démarrage avec "🚨 ALERTE", c'est quoi ?
+
+C'est le système d'**alertes publiques** de MyKTAMap. L'auteur peut diffuser des messages d'alerte à toute la communauté en cas de situation à risque (incendie en cataphilie, fermeture d'accès, gaz toxiques, etc.) en éditant le fichier `alert.json` côté serveur.
+
+**3 niveaux** :
+- **🚨 emergency** : rouge pulsant, situation critique (gaz, incendie, accident)
+- **⚠️ warning** : orange, info importante (perturbation, événement)
+- **ℹ️ info** : bleu, annonce neutre
+
+Lis attentivement le message + la liste de consignes, puis clique **"J'ai compris"** pour acquitter. La modale ne réapparaîtra plus tant que l'alerte est la même.
+
+Si tu veux re-consulter l'alerte plus tard, clique le bouton **🚨** dans le header du loader (à gauche du 📖). Il te montrera l'état actuel — soit l'alerte rouge si toujours active, soit une modale verte **"✅ Aucune alerte en cours"** si la situation est revenue à la normale.
+
+### Je veux vérifier s'il y a encore une alerte active
+
+Clique le bouton **🚨** dans le header du loader (à gauche du 📖 Documentation). Trois réponses possibles :
+- Modale rouge "🚨 ALERTE" → alerte toujours active, lis les consignes
+- Modale verte "✅ Aucune alerte en cours" → situation revenue à la normale
+- Modale "📡 Vérification impossible" → tu es hors ligne, réessaie avec du réseau
 
 ### Je suis perdu dans la cata, comment l'app peut m'aider ?
 

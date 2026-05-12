@@ -50,6 +50,36 @@ Utilisez toujours le **recalage manuel** (bouton 📍) dès que vous identifiez 
 
 ---
 
+### 🚨 Alertes publiques (diffusion en temps réel)
+
+L'application supporte un système d'**alertes publiques** diffusées par l'auteur à la communauté en cas de situation à risque (incendie en cataphilie, fermeture d'accès, gaz toxiques, etc.).
+
+**Comment ça se manifeste** :
+
+- Au lancement de l'app (après le splash), si une alerte est active côté serveur, une **modale rouge pulsante** s'affiche avec titre, message principal et liste de consignes.
+- **Niveaux** :
+  - 🚨 **emergency** (rouge pulsant + `!` qui clignote) — situation critique, à lire impérativement
+  - ⚠️ **warning** (orange) — info importante, attention requise
+  - ℹ️ **info** (bleu) — annonce neutre, simple notification
+- **Acquittement** : cliquer **"J'ai compris"** stocke la confirmation dans votre navigateur. La modale ne ré-apparaîtra plus tant que l'alerte reste la même.
+- **Si une nouvelle alerte est publiée** (ou la même est ré-éditée par l'auteur), elle ré-apparaîtra automatiquement au prochain reload.
+
+**Bouton 🚨 dans le loader** (à gauche du 📖 Documentation) :
+
+Permet de re-consulter l'alerte à tout moment, OU de vérifier si elle est toujours active. Réponses possibles :
+
+| État serveur | Modale affichée |
+|---|---|
+| Alerte active | Modale d'alerte rouge (force le ré-affichage, même si vous aviez acquitté) |
+| Alerte désactivée par l'auteur | **Modale verte sobre** "✅ Aucune alerte en cours" — confirmation visuelle que la situation est revenue à la normale |
+| Hors ligne | Modale neutre "📡 Vérification impossible — réessayez avec du réseau" |
+
+> 💡 Si vous voyez encore l'alerte en mémoire après plusieurs jours mais voulez vérifier l'état officiel, cliquez 🚨 — vous saurez immédiatement si la situation est toujours d'actualité ou si elle est résolue.
+
+> ⚠️ Ce système est destiné à des alertes **importantes pour la sécurité de la communauté**. Il ne sert pas à des messages commerciaux ou promotionnels.
+
+---
+
 ## 🚀 Premiers pas
 
 ### 📱 Installer l'application sur Mobile (Iphone/Android)
