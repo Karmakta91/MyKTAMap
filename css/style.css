@@ -3214,6 +3214,79 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   flex-wrap: wrap;
 }
 
+/* Display des dimensions auto-détectées (dans la section "Plan général") */
+.kta-planner-dim-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(140, 180, 255, 0.05);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 6px;
+  color: #c8d0e0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.kta-planner-dim-display.kta-planner-dim-ok {
+  background: rgba(108, 226, 138, 0.06);
+  border-color: rgba(108, 226, 138, 0.30);
+  color: #c8d0e0;
+}
+.kta-planner-dim-display.kta-planner-dim-warn {
+  background: rgba(244, 197, 66, 0.07);
+  border-color: rgba(244, 197, 66, 0.40);
+  color: #ffd980;
+}
+.kta-planner-dim-display.kta-planner-dim-err {
+  background: rgba(255, 107, 107, 0.08);
+  border-color: rgba(255, 107, 107, 0.40);
+  color: #ffb088;
+}
+.kta-planner-dim-icon {
+  font-size: 16px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.kta-planner-dim-text {
+  flex: 1;
+}
+.kta-planner-dim-text em {
+  color: #8892a4;
+  font-style: italic;
+}
+.kta-planner-dim-val {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 600;
+  color: #8cb4ff;
+}
+.kta-planner-dim-ok .kta-planner-dim-val {
+  color: #6ce28a;
+}
+.kta-planner-dim-warn .kta-planner-dim-val {
+  color: #f4c542;
+}
+.kta-planner-dim-warnings {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(244, 197, 66, 0.25);
+}
+.kta-planner-dim-warn-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #ff8a5c;
+  margin-top: 4px;
+}
+.kta-planner-dim-warn-line:first-child {
+  margin-top: 0;
+}
+.kta-planner-dim-warn-line strong {
+  color: #ff6b6b;
+}
+
 .kta-planner-upload-ligne .kta-cfg-label {
   flex: 0 0 auto;
   margin: 0;

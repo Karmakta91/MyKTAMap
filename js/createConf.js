@@ -99,12 +99,14 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">Auteur</label>
             <input class="kta-cfg-input" id="pl_author" type="text" placeholder="ex: KARMA">
+          </div>
 
-            <label class="kta-cfg-label">Largeur (px) <span class="kta-planner-req">*</span></label>
-            <input class="kta-cfg-input" id="pl_width" type="number" placeholder="ex: 1044">
-
-            <label class="kta-cfg-label">Hauteur (px) <span class="kta-planner-req">*</span></label>
-            <input class="kta-cfg-input" id="pl_height" type="number" placeholder="ex: 610">
+          <!-- Dimensions auto-détectées depuis l'image principale -->
+          <input type="hidden" id="pl_width">
+          <input type="hidden" id="pl_height">
+          <div class="kta-planner-dim-display" id="pl_dimensions_display">
+            <span class="kta-planner-dim-icon">📐</span>
+            <span class="kta-planner-dim-text">Dimensions : <em>en attente du chargement de l'image principale ci-dessous</em></span>
           </div>
         </div>
 
@@ -225,6 +227,20 @@ function afficherPlanner() {
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
 
+  // Auto-détection des dimensions du plan depuis l'image principale uploadée.
+  // Met à jour les champs hidden pl_width / pl_height + le display visuel
+  // (avec warnings rouges si dimensions > 10000 px ou taille > 30 MB).
+  document.getElementById("pl_baseImage").addEventListener("change", function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    _lireImageDimensions(file).then(function(dims) {
+      _appliquerDimensions(dims.width, dims.height, file.size);
+    }).catch(function(err) {
+      console.warn("[Planner] Échec lecture dimensions :", err);
+      _appliquerDimensions(null, null, file.size);
+    });
+  });
+
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
 
@@ -342,6 +358,18 @@ function _preRemplirFormulaire(config) {
 
   if (plan.baseImage)      sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
   if (plan.collisionImage) sn("pl_collision_nom",  "📄 " + plan.collisionImage.split("/").pop());
+
+  // Affiche les dimensions auto-détectées + warnings éventuels.
+  // En mode modifier, on a déjà les dims dans plan-config + le File d'origine
+  // dans _plannerOrigAssets → on peut afficher direct sans re-décoder l'image.
+  if (plan.imageWidth && plan.imageHeight) {
+    let origFile = null;
+    if (plan.baseImage) {
+      const origName = plan.baseImage.split("/").pop();
+      origFile = _plannerOrigAssets[origName] || null;
+    }
+    _appliquerDimensions(plan.imageWidth, plan.imageHeight, origFile ? origFile.size : null);
+  }
 
   // Calques image
   const ilList = document.getElementById("pl_imageLayers_list");
@@ -590,6 +618,95 @@ function _lireFichier(file) {
   });
 }
 
+// =========================
+// AUTO-DÉTECTION DIMENSIONS DU PLAN (depuis l'image principale)
+// =========================
+// Lit la largeur/hauteur naturelles d'une image File via blob URL + Image.
+// Plus léger que decodeImage() : pas de décompression complète, juste le header.
+function _lireImageDimensions(file) {
+  return new Promise(function(resolve, reject) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function() {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      URL.revokeObjectURL(url);
+      if (w > 0 && h > 0) resolve({ width: w, height: h });
+      else reject(new Error("Dimensions naturelles 0 — image invalide"));
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image non décodable : " + file.name));
+    };
+    img.src = url;
+  });
+}
+
+// Seuils warnings (alignés sur les limites pratiques mobiles vues dans le
+// reste de l'app : 8000 px de côté = bord du raisonnable, 30 Mo = encodage
+// canvas en danger sur iOS Safari).
+const PLANNER_DIM_WARN_PX  = 10000;
+const PLANNER_FILE_WARN_MB = 30;
+
+function _formatMB(bytes) {
+  return (bytes / 1048576).toFixed(1);
+}
+
+// Met à jour les champs hidden pl_width/pl_height et le display visuel.
+// Affiche des warnings rouges si dimensions ou taille dépassent les seuils.
+// width/height peuvent être null (cas d'erreur de lecture).
+function _appliquerDimensions(width, height, fileSizeBytes) {
+  const wEl = document.getElementById("pl_width");
+  const hEl = document.getElementById("pl_height");
+  const disp = document.getElementById("pl_dimensions_display");
+  if (!disp) return;
+
+  if (wEl) wEl.value = width  || "";
+  if (hEl) hEl.value = height || "";
+
+  if (!width || !height) {
+    disp.className = "kta-planner-dim-display kta-planner-dim-err";
+    disp.innerHTML =
+      '<span class="kta-planner-dim-icon">⚠️</span>' +
+      '<span class="kta-planner-dim-text">Impossible de lire les dimensions de l\'image — fichier corrompu ou format non supporté.</span>';
+    return;
+  }
+
+  const sizeMB = fileSizeBytes ? _formatMB(fileSizeBytes) : null;
+  const dimWarn  = (width > PLANNER_DIM_WARN_PX) || (height > PLANNER_DIM_WARN_PX);
+  const sizeWarn = sizeMB && parseFloat(sizeMB) > PLANNER_FILE_WARN_MB;
+  const hasWarn  = dimWarn || sizeWarn;
+
+  disp.className = "kta-planner-dim-display" + (hasWarn ? " kta-planner-dim-warn" : " kta-planner-dim-ok");
+
+  let html =
+    '<span class="kta-planner-dim-icon">' + (hasWarn ? "⚠️" : "✅") + '</span>' +
+    '<span class="kta-planner-dim-text">' +
+      '<strong>Dimensions auto-détectées :</strong> ' +
+      '<span class="kta-planner-dim-val">' + width + ' × ' + height + ' px</span>' +
+      (sizeMB ? ' · <span class="kta-planner-dim-val">' + sizeMB + ' Mo</span>' : '') +
+    '</span>';
+
+  if (hasWarn) {
+    html += '<div class="kta-planner-dim-warnings">';
+    if (dimWarn) {
+      html += '<div class="kta-planner-dim-warn-line">' +
+                '🚨 <strong>Grande dimension détectée</strong> (' +
+                width + ' × ' + height + ' px, > ' + PLANNER_DIM_WARN_PX + ' px). ' +
+                'Risque de crash mémoire sur mobile. Pense à choisir un mode performance bas, ou réduire l\'image avant import.' +
+              '</div>';
+    }
+    if (sizeWarn) {
+      html += '<div class="kta-planner-dim-warn-line">' +
+                '🚨 <strong>Gros fichier détecté</strong> (' + sizeMB + ' Mo, > ' + PLANNER_FILE_WARN_MB + ' Mo). ' +
+                'Le ZIP final sera lourd. Privilégie JPEG qualité 85 plutôt que PNG, ou recadre l\'image pour gagner en taille.' +
+              '</div>';
+    }
+    html += '</div>';
+  }
+
+  disp.innerHTML = html;
+}
+
 // Récupérer fichier : upload prioritaire, puis asset ZIP original
 function _getFile(inputId, logicalPath) {
   const input = document.getElementById(inputId);
@@ -614,7 +731,10 @@ async function _genererZip() {
   const height  = parseInt(document.getElementById("pl_height").value, 10);
 
   if (!name)             { _plannerErreur("Le nom du plan est obligatoire."); return; }
-  if (!width || !height) { _plannerErreur("Les dimensions sont obligatoires."); return; }
+  if (!width || !height) {
+    _plannerErreur("Dimensions du plan inconnues — charge ou recharge l'image principale (le décodage a échoué).");
+    return;
+  }
   if (typeof JSZip === "undefined") { _plannerErreur("JSZip non chargé."); return; }
 
   const btnGen = document.getElementById("kta-planner-generer");
