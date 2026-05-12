@@ -3287,6 +3287,23 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #ff6b6b;
 }
 
+/* Actions tracking — conteneur du bouton 🎯 Recentrer sous la grille */
+.kta-planner-tracking-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Flash vert bref sur les inputs startX/startY après clic sur 🎯 Recentrer
+   pour confirmer visuellement que les valeurs ont été mises à jour. */
+@keyframes kta-planner-flash-ok {
+  0%   { background: rgba(108, 226, 138, 0.30); border-color: #6ce28a; }
+  100% { background: inherit;                    border-color: inherit; }
+}
+.kta-cfg-input.kta-planner-flash-ok {
+  animation: kta-planner-flash-ok 0.6s ease-out;
+}
+
 .kta-planner-upload-ligne .kta-cfg-label {
   flex: 0 0 auto;
   margin: 0;

@@ -156,11 +156,17 @@ function afficherPlanner() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracking</div>
           <div class="kta-planner-grille">
-            <label class="kta-cfg-label">Position initiale X</label>
-            <input class="kta-cfg-input" id="pl_startX" type="number" value="0">
+            <label class="kta-cfg-label">
+              Position initiale X
+              <span class="kta-planner-hint">(centre auto si vide)</span>
+            </label>
+            <input class="kta-cfg-input" id="pl_startX" type="number" placeholder="auto = W/2">
 
-            <label class="kta-cfg-label">Position initiale Y</label>
-            <input class="kta-cfg-input" id="pl_startY" type="number" value="0">
+            <label class="kta-cfg-label">
+              Position initiale Y
+              <span class="kta-planner-hint">(centre auto si vide)</span>
+            </label>
+            <input class="kta-cfg-input" id="pl_startY" type="number" placeholder="auto = H/2">
 
             <label class="kta-cfg-label">Échelle (px/m)</label>
             <input class="kta-cfg-input" id="pl_scale" type="number" step="0.1" value="4.9">
@@ -173,6 +179,9 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">Cooldown (ms)</label>
             <input class="kta-cfg-input" id="pl_stepCooldown" type="number" value="400">
+          </div>
+          <div class="kta-planner-tracking-actions">
+            <button type="button" class="kta-planner-add-btn" id="pl_resetStartCenter" title="Remet la position de départ au centre du plan (W/2 × H/2)">🎯 Recentrer la position de départ</button>
           </div>
         </div>
 
@@ -247,6 +256,14 @@ function afficherPlanner() {
   document.getElementById("pl_chargerDefauts").addEventListener("click", _chargerIconesDefaut);
   document.getElementById("pl_addIconRow").addEventListener("click", function() {
     _ajouterIconRow("", "", null, false);
+  });
+
+  // Bouton 🎯 Recentrer : force la position de départ du tracker au centre
+  // du plan (W/2 × H/2) en se basant sur les dimensions actuelles. Marche
+  // aussi bien en mode nouveau qu'en mode modifier (si l'utilisateur veut
+  // remettre au centre après avoir tâtonné).
+  document.getElementById("pl_resetStartCenter").addEventListener("click", function() {
+    _recentrerPositionInitiale();
   });
 
   const zipDrop  = document.getElementById("kta-planner-zip-drop");
@@ -641,6 +658,31 @@ function _lireImageDimensions(file) {
   });
 }
 
+// Bouton 🎯 Recentrer : force pl_startX/Y au centre du plan en se basant sur
+// les dimensions actuelles. Si dims inconnues (pas d'image chargée), affiche
+// un message d'erreur dans la zone _plannerErreur.
+function _recentrerPositionInitiale() {
+  const wEl = document.getElementById("pl_width");
+  const hEl = document.getElementById("pl_height");
+  const w = wEl ? parseInt(wEl.value, 10) : NaN;
+  const h = hEl ? parseInt(hEl.value, 10) : NaN;
+  if (!w || !h) {
+    _plannerErreur("Charge l'image principale d'abord — sans dimensions, impossible de calculer le centre.");
+    setTimeout(function() { _plannerErreur(""); }, 4000);
+    return;
+  }
+  const sxEl = document.getElementById("pl_startX");
+  const syEl = document.getElementById("pl_startY");
+  if (sxEl) sxEl.value = Math.round(w / 2);
+  if (syEl) syEl.value = Math.round(h / 2);
+  // Flash visuel léger : focus + classe brève
+  [sxEl, syEl].forEach(function(el) {
+    if (!el) return;
+    el.classList.add("kta-planner-flash-ok");
+    setTimeout(function() { el.classList.remove("kta-planner-flash-ok"); }, 600);
+  });
+}
+
 // Seuils warnings (alignés sur les limites pratiques mobiles vues dans le
 // reste de l'app : 8000 px de côté = bord du raisonnable, 30 Mo = encodage
 // canvas en danger sur iOS Safari).
@@ -662,6 +704,24 @@ function _appliquerDimensions(width, height, fileSizeBytes) {
 
   if (wEl) wEl.value = width  || "";
   if (hEl) hEl.value = height || "";
+
+  // Auto-recentrage de la position initiale tracker : on remplit pl_startX/Y
+  // à W/2 × H/2 SI l'utilisateur n'a pas déjà saisi des valeurs non-nulles.
+  // → mode nouveau : startX/Y sont vides → on remplit ✓
+  // → mode modifier : plan-config restauré → on respecte la valeur d'origine ✓
+  //   (sauf si elle était 0/0, qu'on considère "non définie" et qu'on recentre)
+  if (width && height) {
+    const sxEl = document.getElementById("pl_startX");
+    const syEl = document.getElementById("pl_startY");
+    const sxVal = sxEl ? sxEl.value.trim() : "";
+    const syVal = syEl ? syEl.value.trim() : "";
+    const noPos = (sxVal === "" || parseInt(sxVal, 10) === 0) &&
+                  (syVal === "" || parseInt(syVal, 10) === 0);
+    if (noPos) {
+      if (sxEl) sxEl.value = Math.round(width  / 2);
+      if (syEl) syEl.value = Math.round(height / 2);
+    }
+  }
 
   if (!width || !height) {
     disp.className = "kta-planner-dim-display kta-planner-dim-err";
