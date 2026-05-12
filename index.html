@@ -115,8 +115,10 @@
       <!-- HEADER : titre + boutons utilitaires (alerte, doc) -->
       <div class="loader-header">
         <span class="loader-titre">📦 MyKTAMap</span>
-        <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🔔</button>
-        <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
+        <div class="loader-header-actions">
+          <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
+          <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
+        </div>
       </div>
 
       <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
