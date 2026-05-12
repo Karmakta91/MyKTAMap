@@ -507,6 +507,10 @@ async function _splashEnd() {
     if (window.UpdateChecker && typeof window.UpdateChecker.notifySplashEnded === "function") {
       window.UpdateChecker.notifySplashEnded();
     }
+    // Alerte publique (incendie, etc.) si l'auteur en a publié une dans alert.json
+    if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
+      window.AlertChecker.notifySplashEnded();
+    }
   }, 500);
 }
 
@@ -530,6 +534,16 @@ async function _splashEnd() {
   if (window.UpdateChecker && typeof window.UpdateChecker.check === "function") {
     window.UpdateChecker.check().catch(function(e) {
       console.warn("[Main] UpdateChecker error :", e);
+    });
+  }
+
+  // Alerte publique (incendie, fermeture, etc.) — fetch alert.json en parallèle.
+  // Si une alerte est active (alert.active = true côté serveur), modale charte
+  // affichée après le splash via notifySplashEnded (queue pour éviter le bypass
+  // du gradient sombre).
+  if (window.AlertChecker && typeof window.AlertChecker.check === "function") {
+    window.AlertChecker.check().catch(function(e) {
+      console.warn("[Main] AlertChecker error :", e);
     });
   }
 

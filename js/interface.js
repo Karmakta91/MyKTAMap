@@ -4223,6 +4223,72 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
 // =========================
 // 🔔 MODALE MISE À JOUR DISPONIBLE — déclenchée par updateChecker.js
 // =========================
+// =========================
+// 🚨 MODALE ALERTE PUBLIQUE — diffusée par alert.json (incendie, fermeture, etc.)
+// =========================
+// Déclenchée par alertChecker.js si alert.json a `active: true`.
+// 3 niveaux possibles selon `level` :
+//   - "emergency" : rouge + pulse (incendie, fermeture totale, etc.)
+//   - "warning"   : orange (perturbation, info importante)
+//   - "info"      : bleu (annonce neutre)
+window.afficherModaleAlerte = function(alert) {
+  if (!alert) return;
+  if (document.getElementById("kta-alert-modal")) return;
+
+  function _esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
+  const title = alert.title   || "🚨 Alerte";
+  const msg   = alert.message || "";
+  const details = Array.isArray(alert.details) ? alert.details : [];
+  const released = alert.released || "";
+
+  const detailsHtml = details.length
+    ? '<ul class="kta-alert-details">' +
+        details.map(function(d) { return '<li>' + _esc(d) + '</li>'; }).join("") +
+      '</ul>'
+    : '';
+
+  const footerInfo = released
+    ? '<div class="kta-alert-released">Publié le ' + _esc(released) + '</div>'
+    : '';
+
+  const modal = document.createElement("div");
+  modal.id = "kta-alert-modal";
+  modal.className = "kta-readme-modal-overlay kta-alert-overlay kta-alert-level-" + level;
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-alert-boite">' +
+      '<div class="kta-readme-modal-header kta-alert-header">' +
+        '<span class="kta-alert-pulse-side">!</span>' +
+        '<span class="kta-alert-title-text">' + _esc(title) + '</span>' +
+        '<span class="kta-alert-pulse-side">!</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-alert-corps">' +
+        '<p class="kta-alert-msg">' + _esc(msg) + '</p>' +
+        detailsHtml +
+        footerInfo +
+      '</div>' +
+      '<div class="kta-alert-actions">' +
+        '<button class="kta-btn kta-btn-primary kta-alert-btn-ok" id="kta-alert-ok" type="button">J\'ai compris</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _fermer() {
+    if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") {
+      window.AlertChecker.dismiss(released);
+    }
+    modal.remove();
+  }
+
+  document.getElementById("kta-alert-ok").addEventListener("click", _fermer);
+  // Volontairement PAS de fermeture au clic backdrop : alerte critique,
+  // l'utilisateur doit cliquer explicitement "J'ai compris".
+};
+
 window.afficherModaleUpdateDispo = function(opts) {
   // Si déjà ouverte (re-appel), ne fait rien
   if (document.getElementById("kta-update-modal")) return;

@@ -3304,6 +3304,162 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   animation: kta-planner-flash-ok 0.6s ease-out;
 }
 
+/* =========================================================
+   🚨 MODALE ALERTE PUBLIQUE — diffusée par alert.json
+   3 niveaux : emergency (rouge pulse), warning (orange), info (bleu).
+   Style délibérément agressif sur emergency pour ne pas être ignoré.
+   ========================================================= */
+
+.kta-alert-overlay {
+  /* Backdrop encore plus opaque que les autres modales pour focus max */
+  background: rgba(5, 8, 15, 0.94) !important;
+}
+
+.kta-alert-boite {
+  max-width: 560px;
+  border: 2px solid #ff6b6b !important;
+  box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.20),
+              0 0 30px rgba(255, 107, 107, 0.45),
+              0 18px 60px rgba(0, 0, 0, 0.7) !important;
+  animation: kta-alert-glow 1.8s ease-in-out infinite;
+}
+@keyframes kta-alert-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.20),
+                0 0 30px rgba(255, 107, 107, 0.45),
+                0 18px 60px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.35),
+                0 0 55px rgba(255, 107, 107, 0.70),
+                0 18px 60px rgba(0, 0, 0, 0.7);
+  }
+}
+
+.kta-alert-header {
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.22), rgba(255, 107, 107, 0.08)) !important;
+  border-bottom: 1px solid rgba(255, 107, 107, 0.50) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px 14px !important;
+  text-align: center;
+}
+.kta-alert-title-text {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffd0d0;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(255, 107, 107, 0.55);
+}
+.kta-alert-pulse-side {
+  font-size: 24px;
+  color: #ff6b6b;
+  font-weight: 900;
+  animation: kta-alert-pulse-side 0.9s ease-in-out infinite;
+  text-shadow: 0 0 10px rgba(255, 107, 107, 0.8);
+}
+@keyframes kta-alert-pulse-side {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50%      { transform: scale(1.35); opacity: 1; }
+}
+
+.kta-alert-corps {
+  padding: 18px 20px !important;
+}
+.kta-alert-msg {
+  color: #ffe4d4;
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+.kta-alert-details {
+  margin: 12px 0 0 0;
+  padding-left: 22px;
+  color: #c8d0e0;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.kta-alert-details li {
+  margin-bottom: 4px;
+}
+.kta-alert-released {
+  margin-top: 16px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 11.5px;
+  color: #8892a4;
+  font-family: ui-monospace, monospace;
+}
+.kta-alert-actions {
+  padding: 12px 20px 18px 20px;
+  display: flex;
+  justify-content: center;
+}
+.kta-alert-btn-ok {
+  min-width: 200px;
+  background: #c0392b !important;
+  border: 1px solid #ff6b6b !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.04em;
+}
+.kta-alert-btn-ok:hover {
+  background: #d94436 !important;
+  opacity: 1;
+}
+
+/* Variante warning — orange/jaune */
+.kta-alert-overlay.kta-alert-level-warning .kta-alert-boite {
+  border-color: #ff8a5c !important;
+  animation: none;
+  box-shadow: 0 0 0 1px rgba(255, 138, 92, 0.20),
+              0 0 30px rgba(255, 138, 92, 0.30),
+              0 18px 60px rgba(0, 0, 0, 0.7) !important;
+}
+.kta-alert-overlay.kta-alert-level-warning .kta-alert-header {
+  background: linear-gradient(135deg, rgba(255, 138, 92, 0.20), rgba(255, 138, 92, 0.06)) !important;
+  border-bottom-color: rgba(255, 138, 92, 0.45) !important;
+}
+.kta-alert-overlay.kta-alert-level-warning .kta-alert-pulse-side {
+  color: #ff8a5c;
+  animation: none;
+}
+.kta-alert-overlay.kta-alert-level-warning .kta-alert-title-text {
+  color: #ffd4b8;
+}
+.kta-alert-overlay.kta-alert-level-warning .kta-alert-btn-ok {
+  background: #ff8a5c !important;
+  border-color: #ffb088 !important;
+}
+
+/* Variante info — bleu neutre */
+.kta-alert-overlay.kta-alert-level-info .kta-alert-boite {
+  border-color: #8cb4ff !important;
+  animation: none;
+  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.20),
+              0 0 30px rgba(140, 180, 255, 0.25),
+              0 18px 60px rgba(0, 0, 0, 0.7) !important;
+}
+.kta-alert-overlay.kta-alert-level-info .kta-alert-header {
+  background: linear-gradient(135deg, rgba(140, 180, 255, 0.20), rgba(140, 180, 255, 0.06)) !important;
+  border-bottom-color: rgba(140, 180, 255, 0.40) !important;
+}
+.kta-alert-overlay.kta-alert-level-info .kta-alert-pulse-side {
+  color: #8cb4ff;
+  animation: none;
+}
+.kta-alert-overlay.kta-alert-level-info .kta-alert-title-text {
+  color: #c5d8ff;
+}
+.kta-alert-overlay.kta-alert-level-info .kta-alert-btn-ok {
+  background: #1f6feb !important;
+  border-color: #8cb4ff !important;
+}
+
 .kta-planner-upload-ligne .kta-cfg-label {
   flex: 0 0 auto;
   margin: 0;
