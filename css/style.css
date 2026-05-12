@@ -2571,6 +2571,52 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #e8eaf0;
 }
 
+/* Bouton 🔔 alerte dans le header du loader — variante orange/rouge urgence
+   pour le distinguer du 📖 documentation, sans en faire un truc agressif
+   (pas de pulse animée : on veut juste qu'on le repère). */
+.loader-btn-help.loader-btn-alert {
+  background: rgba(255, 107, 107, 0.10);
+  border-color: rgba(255, 107, 107, 0.30);
+  color: #ff8a5c;
+}
+.loader-btn-help.loader-btn-alert:hover {
+  background: rgba(255, 107, 107, 0.22);
+  border-color: rgba(255, 107, 107, 0.55);
+  color: #ffd0d0;
+}
+
+/* === Modale "Pas d'alerte en cours" === */
+.kta-alert-absent-overlay .kta-alert-absent-boite {
+  max-width: 460px;
+  border: 1px solid rgba(108, 226, 138, 0.30);
+}
+.kta-alert-absent-header {
+  background: linear-gradient(135deg, rgba(108,226,138,0.12), rgba(108,226,138,0.04)) !important;
+  border-bottom: 1px solid rgba(108, 226, 138, 0.25) !important;
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 14px !important;
+}
+.kta-alert-absent-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.kta-alert-absent-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #c8d0e0;
+}
+.kta-alert-absent-corps {
+  padding: 16px 18px !important;
+}
+.kta-alert-absent-msg {
+  color: #c8d0e0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  margin: 0;
+}
+
 .loader-desc {
   font-size: 13px;
   color: #8892a4;

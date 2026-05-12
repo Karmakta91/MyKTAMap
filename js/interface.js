@@ -4231,6 +4231,44 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
 //   - "emergency" : rouge + pulse (incendie, fermeture totale, etc.)
 //   - "warning"   : orange (perturbation, info importante)
 //   - "info"      : bleu (annonce neutre)
+// Modale informative quand l'utilisateur clique sur 🔔 et qu'il n'y a pas
+// d'alerte en cours (alert.json renommé en .lock côté serveur → 404, OU
+// alert.json présent avec "active": false). Permet de confirmer visuellement
+// que la situation est revenue à la normale.
+window.afficherModaleAlerteAbsente = function(status) {
+  if (document.getElementById("kta-alert-absent-modal")) return;
+
+  const isOffline = (status === "offline");
+
+  const icon  = isOffline ? "📡" : "✅";
+  const title = isOffline ? "Vérification impossible" : "Aucune alerte en cours";
+  const msg   = isOffline
+    ? "Tu es hors ligne — impossible de vérifier l'état des alertes. Réessaie quand tu auras du réseau."
+    : "Pas d'alerte publique active actuellement. Le serveur ne diffuse aucune communication urgente. Continue à utiliser l'app normalement.";
+
+  const modal = document.createElement("div");
+  modal.id = "kta-alert-absent-modal";
+  modal.className = "kta-readme-modal-overlay kta-alert-absent-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-alert-absent-boite">' +
+      '<div class="kta-readme-modal-header kta-alert-absent-header">' +
+        '<span class="kta-alert-absent-icon">' + icon + '</span>' +
+        '<span class="kta-alert-absent-title">' + title + '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-alert-absent-corps">' +
+        '<p class="kta-alert-absent-msg">' + msg + '</p>' +
+      '</div>' +
+      '<div class="kta-alert-actions">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-alert-absent-ok" type="button">OK</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _fermer() { modal.remove(); }
+  document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+};
+
 window.afficherModaleAlerte = function(alert) {
   if (!alert) return;
   if (document.getElementById("kta-alert-modal")) return;
