@@ -1062,7 +1062,16 @@ function afficherAide() {
             <span class="kta-aide-icone">📖</span><span>Documentation utilisateur</span>
             <span class="kta-aide-icone">🤖</span><span>Aide IA — télécharge un fichier contexte à coller dans ChatGPT/Claude/Gemini/etc.</span>
             <span class="kta-aide-icone">🗺️</span><span>Légende des icônes du plan</span>
+            <span class="kta-aide-icone">🚨</span><span>Alerte publique (bouton du loader, à gauche du 📖) — affiche l'alerte en cours, ou "Aucune alerte en cours" si la situation est OK</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">🚨 Alertes publiques :</strong> si l'auteur diffuse une alerte (incendie, fermeture, gaz toxiques...),
+            une modale rouge pulsante apparaît automatiquement après le splash, avec titre, message et consignes. 3 niveaux possibles :
+            <strong>emergency</strong> (rouge pulse, situation critique), <strong>warning</strong> (orange) ou <strong>info</strong> (bleu).
+            Le bouton <strong>🚨</strong> dans le header du loader permet de re-consulter l'alerte à tout moment, OU de vérifier
+            "✅ Aucune alerte en cours" si la situation est revenue à la normale. Une fois "J'ai compris" cliqué, la modale ne réapparaît plus
+            au reload tant que l'alerte est la même — sauf si l'auteur en publie une nouvelle.
+          </p>
         </div>
 
         <div class="kta-aide-section">

@@ -9,6 +9,157 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)
+
+Ajout d'un bouton **🚨** dans le header du loader, à gauche du **📖 Documentation**, pour permettre à l'utilisateur de **re-consulter l'alerte en cours** à tout moment (utile s'il a déjà cliqué "J'ai compris" et veut revérifier les consignes), OU de **confirmer "Aucune alerte en cours"** si la situation est revenue à la normale.
+
+**Comportement au clic** (`AlertChecker.showCurrent()`) :
+
+| État `alert.json` | Modale affichée |
+|---|---|
+| `active: true` | **Modale d'alerte rouge pulsante** (force le re-affichage, bypass de l'acquittement local) |
+| `active: false` | **Modale verte sobre** "✅ Aucune alerte en cours" |
+| Fichier renommé (404, ex : `alert.lock`) | **Idem** "✅ Aucune alerte en cours" |
+| Offline | **Modale neutre** "📡 Vérification impossible" |
+
+**Style** : icône `🚨` (sirène rotative), fond rouge saturé `rgba(220,53,69,0.22)`, glow box-shadow pulsant 2.2s (sans agresser), hover plus rouge avec animation stoppée. Wrap des 2 boutons (🚨 + 📖) dans `.loader-header-actions` avec `gap: 4px` → ils sont collés visuellement, séparés du titre par le `gap: 12px` du parent.
+
+**Workflow auteur** pour désactiver une alerte :
+- **Option A** : passer `"active": false` dans `alert.json`
+- **Option B** : renommer `alert.json` → `alert.lock` (préserve la structure pour réutilisation future)
+
+Dans les deux cas, les users qui cliquent 🚨 voient la modale verte "Aucune alerte en cours" → confirmation visuelle que la situation est OK.
+
+**Code** :
+- `js/alertChecker.js > showCurrent()` : fetch frais avec cache-bust + 3 modales selon l'état (alerte / pas d'alerte / offline). Distinct du `check()` automatique au boot qui respecte le LS_SEEN et la queue splash.
+- `js/interface.js > afficherModaleAlerteAbsente(status)` : modale verte sobre, backdrop cliquable (vs emergency qui force le clic OK).
+- `index.html > loader-header-actions` : nouveau wrapper flex pour les 2 boutons.
+- `css/style.css > .loader-btn-alert` : style sirène + animation `@keyframes loader-btn-alert-pulse`.
+
+**`sw.js`** : `CACHE_NAME` v134 → v136 (deux itérations : v135 ajout du bouton, v136 ajustement style sirène + collé).
+
+---
+
+### 🗓️ 13/05/2026 (suite 2) — 🚨 Système d'alertes publiques via `alert.json`
+
+Nouveau système indépendant de la version pour **diffuser des messages d'alerte** aux utilisateurs en temps réel (incendie en cataphilie, fermeture d'accès, perturbation...). Cas d'usage immédiat : incendie criminel dans une carrière calcaire de la région parisienne, gaz toxiques résiduels nécessitant de prévenir la communauté.
+
+**Architecture** (alignée sur le pattern UpdateChecker + OOMGuard) :
+
+`alert.json` (racine, **non caché par le SW**) :
+```json
+{
+  "active":   true | false,
+  "level":    "emergency" | "warning" | "info",
+  "title":    "🚨 ALERTE — ...",
+  "message":  "Texte principal",
+  "details":  ["consigne 1", "consigne 2", ...],
+  "released": "2026-05-13T14:00:00Z"
+}
+```
+
+L'auteur active/désactive l'alerte en éditant **uniquement ce fichier** — pas besoin de toucher au code JS ni bumper le SW.
+
+**Mécanisme côté client** (`js/alertChecker.js`, ~180 lignes au final) :
+- `check()` au boot : fetch alert.json avec cache-bust `?_=${Date.now()}` + `cache: "no-store"` → contourne le SW
+- Si `active: true` ET `released != localStorage["myktamap_alert_seen"]` → modale queue
+- `notifySplashEnded()` flushé par `main.js > _splashEnd()` (pattern OOMGuard) → modale apparaît APRÈS le splash, jamais par-dessus
+- `dismiss(released)` appelé au clic OK → stocke `released` en localStorage → plus de popup au reload tant que `released` est identique
+- **Si l'auteur publie une nouvelle alerte** (changement du `released` timestamp) → re-popup pour tous, y compris ceux qui avaient acquitté l'ancienne
+- Offline / 404 → silencieux (pas de popup, comportement normal)
+
+**Modale** (`js/interface.js > afficherModaleAlerte(alert)`) :
+- 3 variantes visuelles via class `kta-alert-level-{emergency|warning|info}` :
+  - **emergency** : bordure rouge `#ff6b6b` + glow box-shadow + animation `kta-alert-glow` (pulse 1.8s) + `!` qui pulse de chaque côté du titre (0.9s) + bouton OK rouge sombre
+  - **warning** : orange `#ff8a5c` static
+  - **info** : bleu `#8cb4ff` static
+- Backdrop opaque 94% (focus max)
+- **Volontairement PAS de fermeture au clic backdrop** : alerte critique, l'utilisateur doit cliquer "J'ai compris" pour acquitter
+- Helper `_esc()` local pour échappement HTML (anti-XSS sur le contenu remote)
+
+**Persistance** :
+- **Une fois acquittée** → silencieuse pour cet utilisateur même après mise à jour douce, même après plusieurs reloads
+- **Mise à jour douce** ne touche pas le localStorage → acquittement préservé
+- **Reset complet** purge localStorage → re-popup au prochain reload (comportement attendu : fresh install)
+- **Nouveau timestamp `released`** → re-popup garantie pour tous
+
+**Code** :
+- `alert.json` (nouveau, racine) : valeurs initiales avec alerte V2 réelle (`active: true`, niveau emergency, contenu pro/prévention).
+- `js/alertChecker.js` (nouveau, ~180 lignes) : `check()`, `notifySplashEnded()`, `dismiss()`, `showCurrent()`. State interne `_pendingAlert` + `_splashEnded`.
+- `js/interface.js > afficherModaleAlerte` + `afficherModaleAlerteAbsente` (modale "pas d'alerte" pour la suite 3).
+- `js/main.js > initApp` : `AlertChecker.check()` lancé après `UpdateChecker.check()`. `_splashEnd()` appelle `AlertChecker.notifySplashEnded()` après les autres.
+- `index.html` : `<script src="js/alertChecker.js">` avant interface.js.
+- `sw.js` :
+  - `js/alertChecker.js` ajouté à `ASSETS_TO_CACHE`
+  - `alert.json` **NON** ajouté (volontaire) → toujours fetched réseau-only, comme `version.json`
+  - Commentaire d'en-tête à jour pour documenter ce choix
+
+**`sw.js`** : `CACHE_NAME` v133 → v134.
+
+---
+
+### 🗓️ 13/05/2026 (suite 1) — 🎯 Générateur : position initiale tracker auto-centrée (W/2 × H/2)
+
+Avant : `pl_startX` et `pl_startY` avaient `value="0"` en dur dans le HTML, donc les nouveaux plans démarraient toujours avec le tracker dans le coin haut/bas-gauche (selon la conversion CRS Simple). Pas pratique : l'utilisateur devait deviner les bonnes coordonnées.
+
+Après : la position initiale est **auto-recentrée au milieu du plan** (arrondi(W/2), arrondi(H/2)) dès que l'image principale est chargée et que ses dimensions sont auto-détectées (cf. entrée du jour sans suite).
+
+**Comportement détaillé** :
+
+| Cas | Comportement |
+|---|---|
+| Mode **nouveau** | Champs vides au chargement (placeholder `"auto = W/2"` / `"auto = H/2"`). Remplis automatiquement au choix de l'image. |
+| Mode **modifier** avec valeurs non-nulles | Valeurs restaurées telles quelles depuis `plan-config.json` (rétro-compat) |
+| Mode **modifier** avec `0/0` | Considérées "non configurées" → recentrées (changement bénin : 0/0 plaçait le tracker dans un coin de toute façon) |
+| Bouton **🎯 Recentrer la position de départ** | Force `W/2 × H/2` même si l'utilisateur a déjà tâtonné. Flash CSS vert bref sur les inputs pour confirmer visuellement. |
+| Bouton 🎯 sans image chargée | Erreur dans `_plannerErreur` : *"Charge l'image principale d'abord — sans dimensions, impossible de calculer le centre."* (auto-cleared après 4s) |
+
+**Rétro-compatibilité confirmée** :
+- Anciennes archives : `t.startX/startY` restaurés via `?? 0` comme avant
+- **Structure JSON exportée IDENTIQUE** : `tracking { startX, startY, ... }`. Le code `_genererZip` lit toujours `pl_startX/pl_startY` depuis le DOM. On change uniquement la valeur **par défaut** au moment de la saisie.
+
+**Code** :
+- HTML : `value="0"` retiré, remplacé par `placeholder="auto = W/2"` et hint `(centre auto si vide)` dans le label
+- HTML : nouveau bouton `.kta-planner-tracking-actions > #pl_resetStartCenter`
+- `_appliquerDimensions` : check `noPos` puis remplit `pl_startX/Y` à `round(W/2)`, `round(H/2)`
+- `_recentrerPositionInitiale` : helper du bouton 🎯, avec flash CSS via `@keyframes kta-planner-flash-ok`
+
+**`sw.js`** : `CACHE_NAME` v132 → v133.
+
+---
+
+### 🗓️ 13/05/2026 — 🏗️ Générateur de plan : auto-détection des dimensions de l'image principale
+
+Suppression de la saisie manuelle largeur/hauteur, remplacée par une **auto-détection** au moment du choix du fichier image. Plus d'erreur "dimensions ne correspondent pas à l'image" possible.
+
+**UI** :
+- Les 2 inputs number "Largeur (px)" / "Hauteur (px)" sont remplacés par un **encadré display dédié** sous les infos générales
+- `pl_width / pl_height` deviennent des `input[type=hidden]` (les autres modules qui les lisent — `_genererZip` ligne 613-614 — fonctionnent inchangés)
+- **État initial** : encadré bleu *"Dimensions : en attente du chargement..."*
+- **Après upload OK** : encadré vert ✅ *"Dimensions auto-détectées : W × H px · Z Mo"*
+- **Si erreur de lecture** : encadré rouge ⚠️ *"Impossible de lire les dimensions"*
+
+**Warnings rouges** (seuils alignés sur les limites pratiques mobiles vues ailleurs dans l'app) :
+- 🚨 **Grande dimension** : > 10 000 px de côté → *"Risque de crash mémoire mobile. Pense à choisir un mode performance bas, ou réduire l'image avant import."*
+- 🚨 **Gros fichier** : > 30 Mo → *"Le ZIP final sera lourd. Privilégie JPEG qualité 85 plutôt que PNG, ou recadre l'image pour gagner en taille."*
+
+**Mode "Modifier existant"** : les dimensions du plan importé sont affichées + analysées de la même façon (sans re-décoder l'image — lecture directe depuis `plan-config.json` + taille du File via `_plannerOrigAssets[name].size`).
+
+**Code** :
+- `_lireImageDimensions(file)` : Promise → `{width, height}` via `Image` + `naturalWidth/Height` + blob URL (léger, juste le header décodé)
+- `_appliquerDimensions(width, height, fileSizeBytes)` : met à jour les hidden inputs + render le display avec classes `ok/warn/err`
+- Constantes `PLANNER_DIM_WARN_PX=10000`, `PLANNER_FILE_WARN_MB=30`
+- Hook `change` sur `pl_baseImage` (nouvelle modale + mode modifier)
+- `_preRemplirFormulaire` (mode modifier) : appelle `_appliquerDimensions` avec les dims plan-config + la taille du File depuis `_plannerOrigAssets`
+
+**CSS** (~70 lignes) :
+- `.kta-planner-dim-display` : 3 variantes (`ok #6ce28a` / `warn #f4c542` / `err #ff6b6b`)
+- `.kta-planner-dim-warnings` : bloc séparé pour les warnings, lignes en orange
+
+**`sw.js`** : `CACHE_NAME` v131 → v132.
+
+---
+
 ### 🗓️ 11/05/2026 (suite 3) — 🖼️ Fix export PNG/JPEG : fallback automatique pour gros plans JPG source
 
 **Bug** : sur les plans dont l'image source est en JPG haute résolution (typique car JPG compresse bien à l'upload, donc on s'autocensure moins sur les dimensions), `canvas.toBlob(cb, "image/png")` retournait **`null` silencieusement**. Cause : l'encodage PNG d'un gros canvas demande `width × height × 4 bytes` de RAM en continu — au-delà de ~250-400 Mo bruts (≈ 8000×8000 px), Safari iOS et Chrome Android refusent. JPEG en revanche est progressif (streamé bloc par bloc) et tolère des dimensions bien plus grandes.

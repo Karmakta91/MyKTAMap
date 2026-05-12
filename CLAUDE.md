@@ -539,6 +539,47 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 
 **Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
 
+### 20. Live config files (`version.json`, `alert.json`) (depuis 11-13/05/2026)
+
+Pattern de **fichiers JSON à la racine non cachés par le SW**, fetched live à chaque boot avec cache-bust, pour permettre à l'auteur de pousser des changements **sans bumper le SW ni le code JS**.
+
+**Deux fichiers actuels** :
+
+| Fichier | Module client | Rôle | Cache SW |
+|---|---|---|---|
+| `version.json` | `js/updateChecker.js` | Détection de mise à jour + popup propose mise à jour douce (purge cache PWA, garde session) ou reset complet | ❌ Non caché |
+| `alert.json` | `js/alertChecker.js` | Diffusion d'alertes publiques en temps réel (incendie, fermeture, etc.) — modale rouge pulsante après splash | ❌ Non caché |
+
+**Pourquoi pas cacher** : on veut TOUJOURS la valeur serveur, sans bypass via le SW cache-first. Le fetch utilise `?_=${Date.now()}` + `cache: "no-store"` pour contourner aussi les caches HTTP intermédiaires. Si offline → fetch échoue silencieusement, pas de popup (comportement normal).
+
+**Format `alert.json`** :
+```json
+{
+  "active":   true | false,
+  "level":    "emergency" | "warning" | "info",
+  "title":    "🚨 ALERTE — ...",
+  "message":  "Texte principal",
+  "details":  ["consigne 1", "consigne 2", ...],
+  "released": "ISO timestamp"   // clé d'acquittement
+}
+```
+
+L'auteur active/désactive **en éditant uniquement ce fichier** :
+- `"active": false` OU renommer `alert.json` → `alert.lock` (404 traité comme `no-alert`)
+- Pour rediffuser après désactivation : remettre `"active": true` avec un **nouveau `released` timestamp** → force re-popup pour tous, y compris ceux qui avaient acquitté l'ancienne
+
+**Persistance d'acquittement** : `localStorage["myktamap_alert_seen"]` stocke le dernier `released` acquitté. Comparaison stricte d'égalité au check suivant. Survit aux mises à jour douces (qui ne touchent QUE `caches`), wipée par reset complet.
+
+**Bouton 🚨 du loader** (header, à gauche du 📖) : appelle `AlertChecker.showCurrent()` qui force le re-fetch + bypass le `seen` → affiche soit l'alerte rouge si active, soit "✅ Aucune alerte en cours" si désactivée. Pratique pour l'utilisateur qui veut vérifier l'état officiel sans devoir reset son navigateur.
+
+**Modales** (dans `interface.js`) :
+- `window.afficherModaleAlerte(alert)` — modale rouge/orange/bleu selon `level`. 3 variantes CSS `.kta-alert-level-{emergency|warning|info}`. Backdrop opaque 94%, **pas de fermeture au clic backdrop** sur emergency (force le clic "J'ai compris"). Helper `_esc()` pour échappement HTML anti-XSS sur contenu remote.
+- `window.afficherModaleAlerteAbsente(status)` — modale verte sobre "Aucune alerte en cours" ou "Vérification impossible" (offline).
+
+**Hook splash** : pattern identique à `OOMGuard.flushPendingToasts()` et `UpdateChecker.notifySplashEnded()`. Les modales en attente sont flushed par `main.js > _splashEnd()` après le fade-out, jamais par-dessus le gradient sombre du splash.
+
+**Pour ajouter un nouveau fichier live-config** (futur) : créer le `.json` à la racine, NE PAS le mettre dans `ASSETS_TO_CACHE`, créer un module `js/xxxChecker.js` qui suit le pattern (fetch cache-bust + queue splash + notifySplashEnded). Toujours documenter le commentaire d'en-tête de `sw.js` pour rappeler "NE PAS cacher".
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :
