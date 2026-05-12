@@ -834,8 +834,9 @@ Appuyez sur **🏗️** pour ouvrir le générateur. Deux onglets disponibles :
 
 Formulaire vierge. Renseignez :
 
-- **Informations** : nom, version, auteur, dimensions de l'image
-- **Image principale** (obligatoire) et carte de collision (optionnelle)
+- **Informations** : nom, version, auteur
+- **Image principale** (obligatoire) — les **dimensions du plan sont auto-détectées** dès que vous choisissez votre fichier. Un encadré affiche les dimensions et la taille en Mo, avec des **avertissements rouges** si l'image dépasse 10 000 px de côté ou 30 Mo (risque de crash mémoire sur mobile / ZIP très lourd).
+- **Carte de collision** (optionnelle)
 - **Calques image** supplémentaires (légendes, annotations) — jusqu'à 10
 - **Calques de données** JSON — jusqu'à 10 (créés vides si non fournis)
 - **Paramètres de tracking** : position de départ, échelle, sensibilité
