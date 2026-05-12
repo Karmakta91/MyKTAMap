@@ -1,9 +1,7 @@
 {
-  "version": "v135",
+  "version": "v136",
   "released": "2026-05-13",
   "notes": [
-    "🚨 Alerte 'Gaz toxiques dans les V2 (région parisienne)' diffusée — voir détails au prochain reload.",
-    "🔔 Nouveau bouton dans le header du loader (à gauche du 📖 Documentation) : permet de re-consulter l'alerte en cours à tout moment, ou de confirmer 'aucune alerte en cours' si la situation est revenue à la normale.",
-    "Le bouton bypass l'acquittement local — utile pour vérifier l'état officiel sans devoir reset le navigateur."
+    "🚨 Bouton alerte du loader : nouvelle icône style sirène (🚨), fond rouge saturé + glow pulsant + collé au 📖 Documentation."
   ]
 }

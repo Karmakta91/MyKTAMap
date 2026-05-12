@@ -2571,18 +2571,41 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #e8eaf0;
 }
 
-/* Bouton 🔔 alerte dans le header du loader — variante orange/rouge urgence
-   pour le distinguer du 📖 documentation, sans en faire un truc agressif
-   (pas de pulse animée : on veut juste qu'on le repère). */
+/* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
+   Gap volontairement faible pour les coller visuellement. */
+.loader-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Bouton 🚨 alerte dans le header du loader — style sirène rouge prononcé
+   (fond rouge saturé, bordure rouge vive, glow). Pulsation douce pour
+   attirer l'attention. */
 .loader-btn-help.loader-btn-alert {
-  background: rgba(255, 107, 107, 0.10);
-  border-color: rgba(255, 107, 107, 0.30);
-  color: #ff8a5c;
+  background: rgba(220, 53, 69, 0.22);
+  border-color: rgba(255, 107, 107, 0.55);
+  color: #ffe4d4;
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.35);
+  animation: loader-btn-alert-pulse 2.2s ease-in-out infinite;
 }
 .loader-btn-help.loader-btn-alert:hover {
-  background: rgba(255, 107, 107, 0.22);
-  border-color: rgba(255, 107, 107, 0.55);
-  color: #ffd0d0;
+  background: rgba(255, 53, 69, 0.40);
+  border-color: rgba(255, 107, 107, 0.85);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(255, 107, 107, 0.65);
+  animation: none;
+}
+@keyframes loader-btn-alert-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 107, 107, 0.35);
+    background: rgba(220, 53, 69, 0.22);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 107, 107, 0.70);
+    background: rgba(255, 53, 69, 0.34);
+  }
 }
 
 /* === Modale "Pas d'alerte en cours" === */
