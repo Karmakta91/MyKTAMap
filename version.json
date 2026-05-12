@@ -1,10 +1,10 @@
 {
-  "version": "v132",
+  "version": "v133",
   "released": "2026-05-13",
   "notes": [
-    "🏗️ Générateur de plan : suppression de la saisie manuelle de largeur/hauteur. Les dimensions sont désormais auto-détectées dès que tu choisis l'image principale.",
-    "Affichage des dimensions + taille en Mo dans un encadré dédié sous les infos générales.",
-    "⚠️ Warnings rouges si dimensions > 10 000 px (risque crash mémoire mobile) ou taille > 30 Mo (ZIP très lourd) — avec conseils d'action.",
-    "Mode 'Modifier existant' : les dimensions du plan importé sont affichées + analysées de la même façon."
+    "🏗️ Générateur de plan : la position initiale du tracker (groupe 🧭 Tracking) est désormais auto-centrée au milieu du plan (W/2 × H/2) dès que l'image principale est chargée — fini les 0/0 par défaut qui plaçaient le tracker dans un coin.",
+    "Modifications manuelles toujours possibles (les champs restent éditables).",
+    "Nouveau bouton 🎯 Recentrer la position de départ pour réappliquer le centre à tout moment.",
+    "✅ Rétro-compatibilité : les anciennes archives gardent leurs valeurs startX/startY restaurées telles quelles (sauf 0/0 qui est considéré 'non défini' et recentré). Structure JSON exportée inchangée."
   ]
 }
