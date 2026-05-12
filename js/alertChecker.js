@@ -129,9 +129,52 @@
     return { status: "shown", alert: alert };
   }
 
+  // Affichage manuel forcé — pour le bouton 🔔 du loader.
+  // Refait le fetch frais et affiche TOUJOURS quelque chose à l'utilisateur :
+  //   - alerte active → modale d'alerte (même si déjà acquittée)
+  //   - alerte inactive (active=false dans le json) → modale "pas d'alerte"
+  //   - fichier absent (404, ex : alert.lock côté serveur) → modale "pas d'alerte"
+  //   - offline → modale "impossible de vérifier"
+  async function showCurrent() {
+    let alert;
+    let status = "ok";
+    try {
+      const url = ALERT_URL + "?_=" + Date.now();
+      const resp = await fetch(url, { cache: "no-store" });
+      if (resp.status === 404) {
+        status = "no-alert";
+      } else if (!resp.ok) {
+        status = "no-alert"; // autres erreurs serveur → traite comme pas d'alerte
+      } else {
+        alert = await resp.json();
+        if (!alert || typeof alert !== "object" || !alert.active) {
+          status = "no-alert";
+        }
+      }
+    } catch(e) {
+      console.log("[AlertChecker] showCurrent fetch échoué :", e.message);
+      status = "offline";
+    }
+
+    if (status === "ok" && alert) {
+      // Alerte active — force le re-affichage même si déjà acquittée
+      if (typeof window.afficherModaleAlerte === "function") {
+        window.afficherModaleAlerte(alert);
+      }
+      return { status: "shown", alert: alert };
+    }
+
+    // Pas d'alerte / offline → modale informative
+    if (typeof window.afficherModaleAlerteAbsente === "function") {
+      window.afficherModaleAlerteAbsente(status);
+    }
+    return { status: status };
+  }
+
   window.AlertChecker = {
     check: check,
     notifySplashEnded: notifySplashEnded,
-    dismiss: dismiss
+    dismiss: dismiss,
+    showCurrent: showCurrent
   };
 })();

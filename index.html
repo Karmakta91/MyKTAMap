@@ -112,9 +112,10 @@
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
 
-      <!-- HEADER : titre + aide -->
+      <!-- HEADER : titre + boutons utilitaires (alerte, doc) -->
       <div class="loader-header">
         <span class="loader-titre">📦 MyKTAMap</span>
+        <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🔔</button>
         <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
       </div>
 
@@ -974,6 +975,22 @@
             window.afficherReadme();
           } else {
             setStatus("Documentation indisponible", true);
+          }
+        });
+      }
+
+      // === BOUTON 🔔 ALERTE EN COURS ===
+      // Force le re-fetch de alert.json et affiche soit la modale d'alerte
+      // (même si déjà acquittée), soit une modale informative "pas d'alerte".
+      // L'auteur peut désactiver l'alerte en renommant alert.json en
+      // alert.lock côté serveur (fetch 404 → modale "pas d'alerte").
+      const alertBtn = document.getElementById("loaderAlertBtn");
+      if (alertBtn) {
+        alertBtn.addEventListener("click", function() {
+          if (window.AlertChecker && typeof window.AlertChecker.showCurrent === "function") {
+            window.AlertChecker.showCurrent();
+          } else {
+            setStatus("Module Alerte indisponible", true);
           }
         });
       }
