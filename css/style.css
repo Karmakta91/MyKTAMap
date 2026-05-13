@@ -4977,6 +4977,40 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.02);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+
+/* Variante "update disponible" — bleu clignotant + cliquable. Le badge passe
+   en bleu accent (#8cb4ff) avec animation de pulse douce qui attire l'œil
+   sans agresser. Cursor pointer + hover plus marqué. Affiche aussi la
+   version cible : "v140 → v141". */
+.kta-loader-copyright-version.kta-loader-copyright-version-update {
+  cursor: pointer;
+  color: #c5d8ff;
+  background: rgba(140, 180, 255, 0.12);
+  border-color: rgba(140, 180, 255, 0.50);
+  animation: kta-version-update-pulse 1.8s ease-in-out infinite;
+  user-select: none;
+}
+.kta-loader-copyright-version.kta-loader-copyright-version-update:hover {
+  background: rgba(140, 180, 255, 0.24);
+  border-color: rgba(140, 180, 255, 0.85);
+  color: #ffffff;
+  animation: none;
+}
+.kta-loader-copyright-version.kta-loader-copyright-version-update:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 2px;
+}
+@keyframes kta-version-update-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(140, 180, 255, 0.0);
+    background: rgba(140, 180, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 10px 1px rgba(140, 180, 255, 0.55);
+    background: rgba(140, 180, 255, 0.22);
+  }
 }
 
 /* Signature manuscrite KARMA dans le footer copyright (remplace le texte

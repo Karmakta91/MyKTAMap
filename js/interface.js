@@ -4339,13 +4339,23 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
 window.afficherModaleAlerteAbsente = function(status) {
   if (document.getElementById("kta-alert-absent-modal")) return;
 
-  const isOffline = (status === "offline");
+  const isOffline   = (status === "offline");
+  const isUpToDate  = (status === "up-to-date");
 
-  const icon  = isOffline ? "📡" : "✅";
-  const title = isOffline ? "Vérification impossible" : "Aucune alerte en cours";
-  const msg   = isOffline
-    ? "Tu es hors ligne — impossible de vérifier l'état des alertes. Réessaie quand tu auras du réseau."
-    : "Pas d'alerte publique active actuellement. Le serveur ne diffuse aucune communication urgente. Continue à utiliser l'app normalement.";
+  let icon, title, msg;
+  if (isOffline) {
+    icon  = "📡";
+    title = "Vérification impossible";
+    msg   = "Tu es hors ligne — impossible de vérifier l'état des alertes ou des mises à jour. Réessaie quand tu auras du réseau.";
+  } else if (isUpToDate) {
+    icon  = "✅";
+    title = "Tu utilises déjà la dernière version";
+    msg   = "L'application est à jour. Pas de nouvelle version disponible côté serveur. Reviens cliquer ici plus tard pour vérifier à nouveau.";
+  } else {
+    icon  = "✅";
+    title = "Aucune alerte en cours";
+    msg   = "Pas d'alerte publique active actuellement. Le serveur ne diffuse aucune communication urgente. Continue à utiliser l'app normalement.";
+  }
 
   const modal = document.createElement("div");
   modal.id = "kta-alert-absent-modal";

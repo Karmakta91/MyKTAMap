@@ -1,9 +1,10 @@
 {
-  "version": "v140",
+  "version": "v141",
   "released": "2026-05-13",
   "notes": [
-    "🎚️ Loader : drawer 'Réglages de performance' fermée par défaut (au lieu d'ouverte) pour réduire la hauteur visuelle initiale du loader.",
-    "🏷️ Loader : badge version (ex: v140) ajouté dans le footer copyright (à droite de 'Usage commercial interdit'), monospace gris discret.",
-    "🐛 Fix bug rotation mobile : footer qui 'grandissait' après rotation landscape→portrait sur iOS Safari. Cause : auto-text-size-adjust appliqué après rotation. Fix : -webkit-text-size-adjust: 100% sur le footer + line-height absolu + flex-shrink:0."
+    "🏷️ Badge version footer (loader) : devient cliquable + bleu clignotant si une nouvelle version est dispo côté serveur. Affichage 'v140 → v141' au lieu de juste 'v141'.",
+    "Au clic sur le badge : ré-affichage forcé de la modale de mise à jour, même si tu avais cliqué 'Plus tard'. Bypass du snooze 24h pour les utilisateurs qui veulent agir tout de suite.",
+    "Si pas d'update dispo : modale informative '✅ Tu utilises déjà la dernière version'.",
+    "Hors ligne : modale '📡 Vérification impossible'."
   ]
 }
