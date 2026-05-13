@@ -1,9 +1,9 @@
 {
-  "version": "v139",
+  "version": "v140",
   "released": "2026-05-13",
   "notes": [
-    "🎚️ Loader : nouvelle box déroulable 'Réglages de performance' qui regroupe le Tiling existant + les toggles Mode Performance ULTRA.",
-    "Tiling (preset image au chargement, par plan) en haut, séparateur, puis Mode Performance ULTRA (toggles tracés/markers, préférence globale).",
-    "Drawer ouverte par défaut → aucune régression visuelle. L'utilisateur peut la replier pour gagner de la place."
+    "🎚️ Loader : drawer 'Réglages de performance' fermée par défaut (au lieu d'ouverte) pour réduire la hauteur visuelle initiale du loader.",
+    "🏷️ Loader : badge version (ex: v140) ajouté dans le footer copyright (à droite de 'Usage commercial interdit'), monospace gris discret.",
+    "🐛 Fix bug rotation mobile : footer qui 'grandissait' après rotation landscape→portrait sur iOS Safari. Cause : auto-text-size-adjust appliqué après rotation. Fix : -webkit-text-size-adjust: 100% sur le footer + line-height absolu + flex-shrink:0."
   ]
 }

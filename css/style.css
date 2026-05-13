@@ -4919,7 +4919,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #f4c542;
 }
 
-/* Footer copyright dans le loader (mention licence visible cote utilisateur) */
+/* Footer copyright dans le loader (mention licence visible cote utilisateur).
+   - text-size-adjust: 100% → empêche iOS Safari de gonfler le texte au
+     changement d'orientation (bug récurrent landscape → portrait).
+   - line-height fixé en valeur absolue (en px) plutôt qu'en em pour rester
+     déterministe quelle que soit la taille de police calculée par le browser.
+   - flex-shrink: 0 + box-sizing pour éviter les distorsions au resize. */
 .kta-loader-copyright {
   margin-top: 18px;
   padding-top: 14px;
@@ -4927,8 +4932,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-size: 11px;
   color: #8892a4;
   text-align: center;
-  line-height: 1.6;
+  line-height: 18px;
   letter-spacing: 0.02em;
+  -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .kta-loader-copyright strong {
@@ -4956,6 +4965,18 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-loader-copyright-warn {
   color: #ff8c8c;
   font-weight: 500;
+}
+
+/* Badge version dans le footer (monospace, gris discret) */
+.kta-loader-copyright-version {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: #6a7488;
+  letter-spacing: 0;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 /* Signature manuscrite KARMA dans le footer copyright (remplace le texte
