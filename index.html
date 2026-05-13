@@ -194,29 +194,112 @@
           </span>
         </div>
 
-        <!-- 🎚️ Mode performance — segmented control (lié à l'import en cours) -->
-        <div class="kta-perf-wrap">
-          <div class="kta-perf-titre">Mode performance</div>
-          <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
-            <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-              <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
-            </button>
-            <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-              <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
-            </button>
-            <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-              <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
-            </button>
-            <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-              <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
-            </button>
-            <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-              <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
-            </button>
+        <!-- 🎚️ Box déroulable groupant les réglages de performance :
+             - Tiling (preset image au chargement, par plan)
+             - Mode Performance ULTRA (toggles tracés/markers, global) -->
+        <details class="kta-loader-perf-drawer" id="loaderPerfDrawer" open>
+          <summary class="kta-loader-perf-drawer-titre">
+            <span>🎚️ Réglages de performance</span>
+            <span class="kta-loader-perf-drawer-chevron">▾</span>
+          </summary>
+          <div class="kta-loader-perf-drawer-corps">
+
+            <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
+            <div class="kta-perf-wrap">
+              <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
+              <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
+                <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+                  <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
+                </button>
+                <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
+                  <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
+                </button>
+                <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
+                  <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
+                </button>
+                <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
+                  <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
+                </button>
+                <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
+                  <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
+                </button>
+              </div>
+              <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
+              <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
+            </div>
+
+            <!-- ─── Séparateur visuel ─── -->
+            <hr class="kta-loader-perf-sep">
+
+            <!-- ─── Mode Performance ULTRA : toggles tracés/markers, préférence globale ─── -->
+            <div class="kta-perf-wrap">
+              <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
+              <p class="kta-loader-perf-hint">
+                Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
+                Préférence globale, conservée entre sessions.
+              </p>
+
+              <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
+                <input type="checkbox" id="loader_perf_ultra">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
+                  <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
+                </span>
+              </label>
+
+              <div class="kta-loader-perf-divider"></div>
+
+              <label class="kta-perf-ultra-row">
+                <input type="checkbox" id="loader_perf_decim">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
+                  <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
+                </span>
+              </label>
+
+              <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+                <input type="checkbox" id="loader_perf_animOff">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
+                  <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
+                </span>
+              </label>
+
+              <label class="kta-perf-ultra-row">
+                <input type="checkbox" id="loader_perf_noIntersect">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
+                  <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
+                </span>
+              </label>
+
+              <label class="kta-perf-ultra-row">
+                <input type="checkbox" id="loader_perf_noTooltips">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
+                  <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
+                </span>
+              </label>
+
+              <label class="kta-perf-ultra-row">
+                <input type="checkbox" id="loader_perf_slowSave">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
+                  <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
+                </span>
+              </label>
+
+              <label class="kta-perf-ultra-row">
+                <input type="checkbox" id="loader_perf_viewportCull">
+                <span class="kta-perf-ultra-text">
+                  <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
+                  <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
+                </span>
+              </label>
+            </div>
+
           </div>
-          <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-          <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-        </div>
+        </details>
 
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
@@ -1000,6 +1083,51 @@
           }
         });
       }
+
+      // === SYNC TOGGLES PERF ULTRA dans le loader (drawer perf) ===
+      // À l'ouverture du loader, on synchronise les checkboxes avec l'état
+      // PerfUltra actuel. Au clic d'un toggle, on appelle PerfUltra.set() qui
+      // persiste + notify les modules consommateurs. Le master "ULTRA" est
+      // sync auto via isUltra() (coché si les 6 individuels le sont).
+      (function _initPerfUltraToggles() {
+        if (!window.PerfUltra) return;
+        const ultraEl = document.getElementById("loader_perf_ultra");
+        const map = {
+          "loader_perf_decim":        "decim",
+          "loader_perf_animOff":      "animOff",
+          "loader_perf_noIntersect":  "noIntersect",
+          "loader_perf_noTooltips":   "noTooltips",
+          "loader_perf_slowSave":     "slowSave",
+          "loader_perf_viewportCull": "viewportCull"
+        };
+        // Sync visuel initial
+        Object.keys(map).forEach(function(id) {
+          const el = document.getElementById(id);
+          if (el) el.checked = window.PerfUltra.get(map[id]);
+        });
+        if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
+        // Bind master ULTRA
+        if (ultraEl) {
+          ultraEl.addEventListener("change", function() {
+            window.PerfUltra.setUltra(ultraEl.checked);
+            // Re-sync visuel des 6 toggles
+            Object.keys(map).forEach(function(id) {
+              const el = document.getElementById(id);
+              if (el) el.checked = window.PerfUltra.get(map[id]);
+            });
+          });
+        }
+        // Bind toggles individuels
+        Object.keys(map).forEach(function(id) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("change", function() {
+            window.PerfUltra.set(map[id], el.checked);
+            // Re-sync visuel du master (coché si les 6 le sont)
+            if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
+          });
+        });
+      })();
 
       // === COLLAPSE "PLUS D'OPTIONS" ===
       const advHead    = document.getElementById("advancedHead");
