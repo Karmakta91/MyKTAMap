@@ -71,6 +71,7 @@ Pour **chaque** question :
 - 🖼️ **Export PNG** : Mode rapide / Mode avancé (avec légende, calques au choix, résolution)
 - 🏗️ **Générateur de plan** : Nouveau plan / Modifier existant (ZIP)
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
+- 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
 - 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
 - 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques...) via fichier `alert.json` côté serveur. Modale rouge pulsante après le splash. Bouton 🚨 dans le header du loader pour re-consulter à tout moment.
@@ -332,12 +333,20 @@ Le tracker PDR est **expérimental**. La dérive est inévitable, mais peut êtr
 
 ### Mon plan crash au chargement / au dézoom
 
-Saturation mémoire — typique des gros plans sur mobile. Solutions :
+Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d'impact :
 
-- Choisis le preset **⚡ Performance** dans le loader avant de charger.
-- Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
-- Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
-- À terme : optimise le plan (voir recette H ci-dessus).
+1. **Choisis le preset ⚡ Performance** dans le loader avant de charger.
+2. **Active le 🚀 Mode Performance ULTRA** : ouvre ⚙️ Réglages → section "🚀 Mode Performance ULTRA" → coche le toggle **🚀 ULTRA**. Il active 6 optimisations agressives qui ne touchent pas l'image mais réduisent drastiquement la charge des tracés/markers/intersections :
+   - 🪜 Décimer les tracés au dézoom
+   - ⚡ Désactiver animations zoom/pan (reload requis)
+   - 🎯 Désactiver cercles intersections (seuil 50 routes vs 200)
+   - 🚫 Désactiver popups sur calques de données
+   - 🐢 Auto-save lent (30s)
+   - 👁️ Ne rendre que les tracés visibles (viewport culling)
+   Tu peux aussi activer ces toggles individuellement si tu veux affiner.
+3. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
+4. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
+5. À terme : optimise le plan (voir recette H ci-dessus).
 
 ### J'ai perdu ma session quand j'ai fermé l'app
 

@@ -9,6 +9,48 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 13/05/2026 (suite 4) — 🚀 Mode Performance ULTRA : 6 toggles d'optimisation pour gros plans / appareils faibles
+
+Système de toggles activable depuis **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** pour gérer les crash récurrents sur les très gros plans (4000+ × 2000+ pixels) avec beaucoup de tracés. Préset bloc **🚀 ULTRA** qui active les 6 optims d'un coup, ou ajustement fin via toggles individuels.
+
+**6 optims implémentées** (aucune ne touche à l'image — déjà gérée par le mode performance au chargement) :
+
+| Toggle | Effet | Trade-off visuel |
+|---|---|---|
+| 🪜 **Décimer les tracés au dézoom** | Ramer-Douglas-Peucker avec epsilon dynamique selon zoom (0→16 px) | Tracés moins lisses au dézoom |
+| ⚡ **Désactiver animations zoom/pan** | `zoomAnimation/fadeAnimation/markerZoomAnimation = false` | Transitions abruptes au lieu d'animées (**reload requis**) |
+| 🎯 **Désactiver cercles intersections** (gros plans) | Seuil abaissé à 50 routes (vs 200 normal) | Pas de cercles aux carrefours au-delà |
+| 🚫 **Désactiver popups sur calques données** | Skip `bindPopup` sur les markers data-layer | User doit utiliser 🔍 pour interagir |
+| 🐢 **Auto-save lent (30s)** | `POLL_INTERVAL_SLOW_MS = 30000` au lieu de 1500 | Risque de perdre ~30s en cas de crash |
+| 👁️ **Ne rendre que les tracés visibles** | AABB check vs viewport + 10% padding → skip création L.polyline | Pop-in léger au pan |
+
+**Architecture** :
+- Nouveau module **`js/perfUltra.js`** (~150 lignes) — singleton `window.PerfUltra` avec :
+  - `get(key)`, `set(key, value)`, `setUltra(bool)`, `getAll()`, `isUltra()`, `onChange(callback)`
+  - Persistance `localStorage["myktamap_perf_toggles"]` (préférence globale, pas par plan, cohérent avec debugMode)
+  - Defaults all `false` → comportement existant strictement préservé pour les users actuels
+- **Modules consommateurs** s'inscrivent à `onChange` pour re-render à la volée :
+  - `road.js` : re-render sur `decim/viewportCull/noIntersect` + sur `moveend/zoomend` si les deux toggles correspondants sont actifs
+  - `sessionPersist.js` : restart polling sur changement de `slowSave`
+  - `map.js` : lit `animOff` UNIQUEMENT à l'init (reload requis)
+  - `utils.js > ajouterPointsDepuisJSON` : lit `noTooltips` à chaque marker créé
+
+**UI dans ⚙️ Réglages** (`js/interface.js`) :
+- `_renderPerfUltraSection()` génère le HTML avec 1 toggle master ULTRA (accent jaune) + 6 toggles individuels
+- Hint italique sous chaque toggle explicitant le trade-off perf/visuel
+- `animOff` a un **liseré orange** (classe `.kta-perf-ultra-row-danger`) pour signaler le besoin de reload
+- Master ULTRA active/désactive les 6 d'un coup. Visuel auto-sync : si l'user toggle individuellement jusqu'à atteindre les 6 → ultra apparaît coché automatiquement.
+
+**Helpers d'implémentation** :
+- `js/road.js > _decimatePointsRDP(pts, epsilon)` : RDP itératif (évite récursion profonde sur les longues polylines). `_decimationEpsilon()` retourne 0/2/4/8/16 selon zoom.
+- `js/road.js > _roadIntersectionMaxRoads()` : 50 ou 200 selon toggle.
+- `js/road.js > renderRoads` : viewport AABB calculé une fois en début de fonction, comparé à `_bboxOfRoad(road)` (helper déjà existant pour les intersections).
+- `js/sessionPersist.js > _currentPollInterval()` : 1500 ou 30000.
+
+**`sw.js`** : `js/perfUltra.js` ajouté à `ASSETS_TO_CACHE`. `CACHE_NAME` v137 → v138.
+
+---
+
 ### 🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)
 
 Ajout d'un bouton **🚨** dans le header du loader, à gauche du **📖 Documentation**, pour permettre à l'utilisateur de **re-consulter l'alerte en cours** à tout moment (utile s'il a déjà cliqué "J'ai compris" et veut revérifier les consignes), OU de **confirmer "Aucune alerte en cours"** si la situation est revenue à la normale.

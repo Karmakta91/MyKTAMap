@@ -1078,9 +1078,19 @@ function afficherAide() {
           <div class="kta-aide-section-titre">⚙️ Paramètres</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug (clic direct)</span>
+            <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs et 🗑️ pour réinitialiser le cache.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">🚀 Mode Performance ULTRA :</strong> section dans la modale ⚙️ Réglages pour les
+            gros plans / appareils faibles. Active le toggle <strong>🚀 ULTRA</strong> pour appliquer 6 optims agressives d'un coup,
+            ou ajuste individuellement : <strong>🪜 Décimer les tracés au dézoom</strong>, <strong>⚡ Désactiver animations zoom/pan</strong>
+            (reload requis), <strong>🎯 Désactiver cercles intersections</strong> (seuil 50 vs 200), <strong>🚫 Désactiver popups
+            sur calques de données</strong> (utilise 🔍 Recherche à la place), <strong>🐢 Auto-save lent</strong> (30s vs 1.5s),
+            <strong>👁️ Ne rendre que les tracés visibles</strong> (viewport culling). Aucune optim ne touche à l'image (déjà
+            gérée par le mode performance au chargement). Persistance globale en localStorage, conservée entre sessions.
           </p>
         </div>
 
@@ -1328,6 +1338,83 @@ function afficherPopupChangerPlan() {
 }
 
 // =========================
+// 🚀 PERF ULTRA — section de toggles dans la modale Réglages
+// =========================
+// Génère le HTML de la section "🚀 Mode Performance ULTRA" avec :
+//   - Toggle master "🚀 ULTRA" (preset qui active les 6 ensemble)
+//   - 6 toggles individuels pour ajustement fin par power users
+// Le binding des change events se fait dans _bindPerfUltraToggles après render.
+function _renderPerfUltraSection() {
+  if (!window.PerfUltra) return "";
+  const s = window.PerfUltra.getAll();
+  function row(id, label, value, hint, danger) {
+    return `
+      <label class="kta-perf-ultra-row${danger ? " kta-perf-ultra-row-danger" : ""}">
+        <input type="checkbox" id="${id}" ${value ? "checked" : ""}>
+        <span class="kta-perf-ultra-text">
+          <span class="kta-perf-ultra-label">${label}</span>
+          ${hint ? `<span class="kta-perf-ultra-hint">${hint}</span>` : ""}
+        </span>
+      </label>`;
+  }
+  return `
+    <div class="kta-aide-section">
+      <div class="kta-aide-section-titre">🚀 Mode Performance ULTRA</div>
+      <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
+        Pour les gros plans / appareils faibles. Active <strong>🚀 ULTRA</strong> pour appliquer
+        les 6 optims d'un coup, ou ajuste individuellement chaque levier. Les changements
+        s'appliquent à la volée (sauf "Désactiver animations" qui nécessite un reload).
+      </p>
+      ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
+            "Préset qui active les 6 toggles ci-dessous. Décocher = désactive tout.")}
+      <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
+      ${row("cfg_perf_decim", "🪜 Décimer les tracés au dézoom", s.decim,
+            "Simplifie les polylines via Ramer-Douglas-Peucker. Tracés moins lisses au dézoom mais bien plus rapides.")}
+      ${row("cfg_perf_animOff", "⚡ Désactiver animations zoom/pan", s.animOff,
+            "Pan/zoom instantanés au lieu d'animés. <strong>Reload requis</strong> après changement.", true)}
+      ${row("cfg_perf_noIntersect", "🎯 Désactiver cercles intersections (gros plans)", s.noIntersect,
+            "Seuil abaissé à 50 routes (vs 200 normal). Pas de cercles aux carrefours au-delà.")}
+      ${row("cfg_perf_noTooltips", "🚫 Désactiver popups sur calques données", s.noTooltips,
+            "Plus de popup au clic sur les markers des calques de données. Les points session restent interactifs. Utilise 🔍 pour interagir.")}
+      ${row("cfg_perf_slowSave", "🐢 Auto-save lent (30s)", s.slowSave,
+            "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
+      ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les tracés visibles", s.viewportCull,
+            "Saute les routes hors viewport. Pop-in léger au pan mais énorme gain sur plans denses.")}
+    </div>`;
+}
+
+// Binding des change events sur les toggles PerfUltra après render.
+function _bindPerfUltraToggles() {
+  if (!window.PerfUltra) return;
+  const ultraEl = document.getElementById("cfg_perf_ultra");
+  if (ultraEl) {
+    ultraEl.addEventListener("change", function() {
+      window.PerfUltra.setUltra(ultraEl.checked);
+      // Re-render la section pour refléter les nouveaux états individuels
+      const m = document.getElementById("kta-cfg-modal");
+      if (m) { m.remove(); afficherConfig(); }
+    });
+  }
+  const map = {
+    "cfg_perf_decim":        "decim",
+    "cfg_perf_animOff":      "animOff",
+    "cfg_perf_noIntersect":  "noIntersect",
+    "cfg_perf_noTooltips":   "noTooltips",
+    "cfg_perf_slowSave":     "slowSave",
+    "cfg_perf_viewportCull": "viewportCull"
+  };
+  Object.keys(map).forEach(function(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("change", function() {
+      window.PerfUltra.set(map[id], el.checked);
+      // Sync visuel du master ULTRA (coché si tous les autres le sont)
+      if (ultraEl) ultraEl.checked = window.PerfUltra.isUltra();
+    });
+  });
+}
+
+// =========================
 // CONFIG — modale plein écran
 // =========================
 function afficherConfig() {
@@ -1410,6 +1497,8 @@ function afficherConfig() {
           </div>
         </div>
 
+        ${_renderPerfUltraSection()}
+
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
@@ -1424,6 +1513,9 @@ function afficherConfig() {
   document.documentElement.appendChild(modal);
   document.getElementById("kta-cfg-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
+  _bindPerfUltraToggles();
 }
 
 function appliquerConfig() {

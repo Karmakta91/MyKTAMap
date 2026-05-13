@@ -25,7 +25,16 @@
   "use strict";
 
   const STORAGE_KEY      = "myktamap_session_v1";
-  const POLL_INTERVAL_MS = 1500;
+  const POLL_INTERVAL_MS      = 1500;   // défaut (~real-time)
+  const POLL_INTERVAL_SLOW_MS = 30000;  // mode 🚀 PerfUltra.slowSave (30s)
+
+  // Sélectionne l'intervalle de polling selon le toggle PerfUltra.slowSave.
+  function _currentPollInterval() {
+    if (window.PerfUltra && window.PerfUltra.get("slowSave")) {
+      return POLL_INTERVAL_SLOW_MS;
+    }
+    return POLL_INTERVAL_MS;
+  }
   const VERSION = 1;
 
   let _pollTimer     = null;
@@ -308,11 +317,26 @@
 
   function _startPolling() {
     if (_pollTimer) return;
-    _pollTimer = setInterval(save, POLL_INTERVAL_MS);
+    const interval = _currentPollInterval();
+    _pollTimer = setInterval(save, interval);
+    if (interval !== POLL_INTERVAL_MS) {
+      console.log("[SessionPersist] 🚀 PerfUltra.slowSave actif → polling " + (interval/1000) + "s");
+    }
   }
 
   function _stopPolling() {
     if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+  }
+
+  // Hook sur changement du toggle PerfUltra.slowSave → redémarrer le polling
+  // avec le nouvel intervalle (sans attendre un reload).
+  if (window.PerfUltra && typeof window.PerfUltra.onChange === "function") {
+    window.PerfUltra.onChange(function(changedKeys) {
+      if (changedKeys.indexOf("slowSave") >= 0 && _pollTimer) {
+        _stopPolling();
+        _startPolling();
+      }
+    });
   }
 
   // ========== HOOK PRINCIPAL ==========

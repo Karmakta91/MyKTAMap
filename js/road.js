@@ -81,6 +81,27 @@ function initRoad() {
   }
   window.map.on("overlayadd overlayremove", _renderRoadsThrottled);
 
+  // 🚀 PerfUltra : re-render sur moveend/zoomend si viewport culling OU
+  // décimation est actif (les deux dépendent du viewport ou du zoom courant).
+  // Throttle déjà géré par _renderRoadsThrottled.
+  window.map.on("moveend zoomend", function() {
+    if (window.PerfUltra && (window.PerfUltra.get("viewportCull") || window.PerfUltra.get("decim"))) {
+      _renderRoadsThrottled();
+    }
+  });
+
+  // Hook sur les changements de toggles PerfUltra → re-render à la volée
+  // pour appliquer décimation / viewport culling / cap intersections sans
+  // forcer l'utilisateur à reload (sauf animOff qui nécessite reload).
+  if (window.PerfUltra && typeof window.PerfUltra.onChange === "function") {
+    window.PerfUltra.onChange(function(changedKeys) {
+      const touchedRender = changedKeys.some(function(k) {
+        return ["decim", "viewportCull", "noIntersect"].indexOf(k) >= 0;
+      });
+      if (touchedRender) _renderRoadsThrottled();
+    });
+  }
+
   window.map.on("mousedown", function(e) {
     if (!window.modeRoad) return;
 
@@ -176,7 +197,68 @@ function _typeGagnant(typeA, typeB) {
 // d'une centaine de routes. Le user a alors la strategie "routes dans le PNG
 // + calque masque + pathfinder via getAllEmbeddedRoads" comme alternative
 // (cf README_USER section "Optimiser ton plan").
-const ROAD_INTERSECTION_MAX_ROADS = 200;
+// Seuil dynamique selon le toggle PerfUltra.noIntersect : 50 en mode aggressive,
+// 200 en mode normal. Lu à chaque appel pour réagir aux changements à chaud.
+function _roadIntersectionMaxRoads() {
+  if (window.PerfUltra && window.PerfUltra.get("noIntersect")) return 50;
+  return 200;
+}
+const ROAD_INTERSECTION_MAX_ROADS = 200; // gardé pour rétro-compat des logs
+
+// =========================
+// 🚀 PerfUltra : décimation polylines (Ramer-Douglas-Peucker)
+// =========================
+// Epsilon (en pixels plan) selon le zoom Leaflet courant. Plus on est dézoomé
+// (zoom négatif), plus on peut simplifier sans que ça se voie à l'écran.
+// 0 = pas de décimation (zoom proche).
+function _decimationEpsilon() {
+  if (!window.map) return 0;
+  const z = window.map.getZoom();
+  // Échelle : 2^-z = zoom factor inverse. À zoom=-4 (le plus dézoomé), facteur = 16
+  // → on peut écraser des points distants de 8 px sans qu'on les distingue.
+  if (z >= 0)  return 0;        // proche : pas de décimation, garde la précision
+  if (z >= -1) return 2;        // léger dézoom
+  if (z >= -2) return 4;
+  if (z >= -3) return 8;
+  return 16;                    // très dézoomé : agressif
+}
+
+// Distance perpendiculaire d'un point au segment AB (en coords plan).
+function _perpDist(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  if (dx === 0 && dy === 0) {
+    const dxp = p.x - a.x, dyp = p.y - a.y;
+    return Math.sqrt(dxp * dxp + dyp * dyp);
+  }
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
+  const tc = Math.max(0, Math.min(1, t));
+  const cx = a.x + tc * dx, cy = a.y + tc * dy;
+  const ex = p.x - cx, ey = p.y - cy;
+  return Math.sqrt(ex * ex + ey * ey);
+}
+
+// RDP itératif (évite récursion profonde sur les longues polylines).
+function _decimatePointsRDP(pts, epsilon) {
+  if (!Array.isArray(pts) || pts.length < 3) return pts;
+  const keep = new Array(pts.length); keep[0] = keep[pts.length - 1] = true;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop();
+    if (b - a < 2) continue;
+    let maxD = 0, idx = -1;
+    for (let i = a + 1; i < b; i++) {
+      const d = _perpDist(pts[i], pts[a], pts[b]);
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD > epsilon && idx > -1) {
+      keep[idx] = true;
+      stack.push([a, idx], [idx, b]);
+    }
+  }
+  const out = [];
+  for (let i = 0; i < pts.length; i++) if (keep[i]) out.push(pts[i]);
+  return out;
+}
 
 // Calcule l'AABB (bounding box) d'une road : { minX, minY, maxX, maxY }.
 // Utilise pour le pre-check rapide dans _calculerIntersectionsRoads :
@@ -216,10 +298,10 @@ function _calculerIntersectionsRoads(roads) {
   const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
 
   // Garde-fou anti-freeze sur les gros plans : skip total si trop de routes.
-  // L'utilisateur peut compenser via la strategie "routes dans le PNG +
-  // calque masque" pour conserver la lisibilite sans plomber les perfs.
-  if (roads.length > ROAD_INTERSECTION_MAX_ROADS) {
-    console.warn("[Roads] " + roads.length + " routes > " + ROAD_INTERSECTION_MAX_ROADS +
+  // Seuil dynamique : 200 en mode normal, 50 si PerfUltra.noIntersect actif.
+  const _maxRoads = _roadIntersectionMaxRoads();
+  if (roads.length > _maxRoads) {
+    console.warn("[Roads] " + roads.length + " routes > " + _maxRoads +
                  " — calcul d'intersections SKIP pour preserver la perf. " +
                  "Astuce : dessine les routes dans le PNG + masque le calque (cf doc).");
     return [];
@@ -338,6 +420,31 @@ function renderRoads() {
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
 
+  // 🚀 PerfUltra : lecture des toggles avant le rendu
+  const _decim        = !!(window.PerfUltra && window.PerfUltra.get("decim"));
+  const _viewportCull = !!(window.PerfUltra && window.PerfUltra.get("viewportCull") && window.map);
+  // Bbox du viewport actuel (en coordonnées plan x/y) — pour viewport culling.
+  // On élargit légèrement (10%) pour éviter le pop-in au pan.
+  let _vpBox = null;
+  if (_viewportCull) {
+    try {
+      const b = window.map.getBounds();
+      const sw = b.getSouthWest(), ne = b.getNorthEast();
+      const H = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+      // Conversion latlng Leaflet → coords plan : lat = H - y, lng = x
+      // donc y = H - lat, x = lng. South = y max plan, North = y min plan.
+      const padW = (ne.lng - sw.lng) * 0.1;
+      const padH = (ne.lat - sw.lat) * 0.1;
+      _vpBox = {
+        minX: sw.lng - padW,
+        maxX: ne.lng + padW,
+        minY: H - (ne.lat + padH),
+        maxY: H - (sw.lat - padH)
+      };
+    } catch(e) { _vpBox = null; }
+  }
+  let _culled = 0;
+
   // Tracés — utilisent le renderer canvas par defaut (preferCanvas:true sur la
   // map). Tentative anterieure de forcer SVG (pour fixer le bug du toggle
   // "Mes annotations" sur les polylines roads) abandonnee : le forcage SVG
@@ -348,7 +455,28 @@ function renderRoads() {
   roadsData.forEach(road => {
     if (!road.points || road.points.length === 0) return;
 
-    const latlngs = road.points.map(p => convertCoord(p.x, p.y));
+    // 🚀 PerfUltra viewport culling : skip si AABB hors du viewport (sauf itinéraire,
+    // qu'on garde toujours visible pour la navigation continue).
+    if (_viewportCull && _vpBox && road.type !== "itinerary") {
+      const bb = _bboxOfRoad(road);
+      if (bb.maxX < _vpBox.minX || bb.minX > _vpBox.maxX ||
+          bb.maxY < _vpBox.minY || bb.minY > _vpBox.maxY) {
+        _culled++;
+        return;
+      }
+    }
+
+    // 🚀 PerfUltra décimation : appliqué uniquement quand le toggle est ON ET
+    // si la road a > 8 points (sinon on garde toute la précision). Ramer-Douglas-
+    // Peucker avec epsilon dynamique selon le zoom (plus on est dézoomé, plus
+    // on peut simplifier sans que ça se voie).
+    let workPoints = road.points;
+    if (_decim && workPoints.length > 8 && road.type !== "itinerary") {
+      const epsilonPx = _decimationEpsilon();
+      if (epsilonPx > 0) workPoints = _decimatePointsRDP(workPoints, epsilonPx);
+    }
+
+    const latlngs = workPoints.map(p => convertCoord(p.x, p.y));
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
     const target = _targetLayerForRoad(road.type);
 
@@ -366,6 +494,10 @@ function renderRoads() {
       roadLayers.push(polyline);
     }
   });
+
+  if (_viewportCull && _culled > 0) {
+    console.log("[Road] 🚀 viewport-culling : " + _culled + "/" + roadsData.length + " roads skip (hors viewport)");
+  }
 
   // Cercles d'intersection : on combine routes éditables (roadsData) + routes embarquées
   // VISIBLES (filtrées par visibilité du calque Leaflet) — pour que les croisements

@@ -580,6 +580,47 @@ L'auteur active/désactive **en éditant uniquement ce fichier** :
 
 **Pour ajouter un nouveau fichier live-config** (futur) : créer le `.json` à la racine, NE PAS le mettre dans `ASSETS_TO_CACHE`, créer un module `js/xxxChecker.js` qui suit le pattern (fetch cache-bust + queue splash + notifySplashEnded). Toujours documenter le commentaire d'en-tête de `sw.js` pour rappeler "NE PAS cacher".
 
+### 21. Mode Performance ULTRA (`js/perfUltra.js`, depuis 13/05/2026)
+
+Module de toggles d'optimisation activables pour gérer les crash mémoire sur très gros plans (4000+ × 2000+ pixels avec beaucoup de tracés). Aucune optim ne touche à l'image — ce périmètre est déjà couvert par le **Mode performance preset** au chargement (cf. §8). Le mode ULTRA cible **uniquement** les éléments vectoriels (polylines, markers, intersections, polling).
+
+**Singleton `window.PerfUltra`** (`js/perfUltra.js`, ~150 lignes) :
+- `get(key)` / `set(key, value, opts?)` / `setUltra(bool)` / `getAll()` / `isUltra()` / `onChange(callback)`
+- 6 toggles individuels : `decim`, `animOff`, `noIntersect`, `noTooltips`, `slowSave`, `viewportCull`
+- `ultra` = méta-toggle calculé (true si les 6 sont ON)
+- Persistance `localStorage["myktamap_perf_toggles"]` (préférence globale, pas par plan, cohérent avec `debugMode`)
+- Defaults all `false` → comportement existant strictement préservé
+
+**Modules consommateurs** (lecture via `window.PerfUltra.get()`) :
+
+| Toggle | Module | Comportement |
+|---|---|---|
+| `decim` | `road.js > renderRoads` | Applique RDP (`_decimatePointsRDP`) avec epsilon dynamique selon zoom (0/2/4/8/16 px). Skip sur `type === "itinerary"` (précision navigation > perf) et si `points.length <= 8`. Re-render hook sur `moveend/zoomend`. |
+| `animOff` | `map.js > L.map()` | `zoomAnimation/fadeAnimation/markerZoomAnimation: false`. **Lu UNIQUEMENT à init** → reload requis. UI signale via `.kta-perf-ultra-row-danger` (liseré orange). |
+| `noIntersect` | `road.js > _calculerIntersectionsRoads` | Seuil `_roadIntersectionMaxRoads()` → 50 si actif, 200 sinon. Lu à chaque appel. |
+| `noTooltips` | `utils.js > ajouterPointsDepuisJSON` | Skip `bindPopup` sur markers data-layer. Points session éditeur gardent leurs popups. Compromis : user passe par 🔍 pour interagir. |
+| `slowSave` | `sessionPersist.js > _currentPollInterval` | `POLL_INTERVAL_SLOW_MS = 30000` au lieu de 1500. Hook `onChange` → restart polling avec nouvel intervalle (sans reload). |
+| `viewportCull` | `road.js > renderRoads` | AABB check vs `map.getBounds()` + 10% padding. Skip création L.polyline si road hors viewport. Skip culling sur `type === "itinerary"`. Re-render hook sur `moveend/zoomend`. |
+
+**UI dans `js/interface.js > afficherConfig`** :
+- `_renderPerfUltraSection()` génère le HTML — section dédiée après "Debug", avant les boutons d'action
+- 1 toggle master ULTRA (accent jaune `#f4c542`) + 6 toggles individuels
+- Hint italique sous chaque toggle explicitant le trade-off perf/visuel
+- `_bindPerfUltraToggles()` appelé après `documentElement.appendChild(modal)`
+- Master ULTRA → `setUltra(value)` qui applique aux 6 d'un coup + re-render la modale pour refléter
+- Toggles individuels → `set(key, value)` + sync visuel du master (coché si `isUltra()`)
+
+**Pattern pour ajouter un toggle** :
+1. Ajouter la clé dans `TOGGLES` array de `perfUltra.js`
+2. Lire `window.PerfUltra.get("nouvelleClé")` dans le module concerné
+3. S'inscrire à `onChange` si re-render dynamique nécessaire
+4. Ajouter la rangée HTML dans `_renderPerfUltraSection()` + mapping dans `_bindPerfUltraToggles()`
+
+**Helpers RDP dans `road.js`** :
+- `_decimationEpsilon()` → 0/2/4/8/16 selon `map.getZoom()` (0 = pas de décim au zoom proche)
+- `_decimatePointsRDP(pts, epsilon)` → RDP **itératif** (évite récursion profonde sur longues polylines) avec stack manuelle. ~30 lignes.
+- `_perpDist(p, a, b)` → distance perpendiculaire d'un point au segment
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

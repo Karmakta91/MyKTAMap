@@ -17,7 +17,7 @@
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v137";
+const CACHE_NAME = "myktamap-cache-v138";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -38,6 +38,7 @@ const ASSETS_TO_CACHE = [
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
   "./js/debug.js",
+  "./js/perfUltra.js",
   "./js/config.js",
   "./js/utils.js",
   "./js/measure.js",

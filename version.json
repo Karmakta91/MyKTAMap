@@ -1,7 +1,14 @@
 {
-  "version": "v137",
+  "version": "v138",
   "released": "2026-05-13",
   "notes": [
-    "📚 Mise à jour complète de la documentation : README.md (journal 4 entrées 13/05), README_USER.md (nouvelle section 🚨 Alertes publiques), modale ❓ Aide (ligne 🚨 + paragraphe explicatif), AI_CONTEXT.md (survol enrichi + 2 nouvelles FAQ), CLAUDE.md (section 20 Live config files pour le pattern alert.json + version.json)."
+    "🚀 NOUVEAU : Mode Performance ULTRA — toggle dans ⚙️ Réglages qui active 6 optimisations agressives pour les gros plans / appareils faibles.",
+    "🪜 Décimation des tracés au dézoom (Ramer-Douglas-Peucker — moins de points dessinés au zoom out).",
+    "⚡ Désactivation des animations zoom/pan Leaflet (reload requis).",
+    "🎯 Seuil cercles intersections abaissé à 50 routes (vs 200 normal).",
+    "🚫 Plus de popups sur les markers des calques de données (les points session restent interactifs).",
+    "🐢 Auto-save session ralenti à 30s (vs 1.5s).",
+    "👁️ Viewport culling : seules les routes visibles à l'écran sont rendues.",
+    "Préset ULTRA + 6 toggles individuels pour ajustement fin. Persistance globale localStorage."
   ]
 }

@@ -173,13 +173,21 @@ function ajouterPointsDepuisJSON(url, layer) {
         for (let i = index; i < fin; i++) {
           const p = points[i];
           var marker = L.marker(convertCoord(p.x, p.y), { icon: choisirIcone(p) });
-          // Popup avec boutons "Y aller" / "Itinéraire" — helper commun.
-          // 2e argument false → point d'un data layer (lecture seule), pas
-          // de bouton "🗑️ Supprimer" affiche.
-          const popupHtml = (typeof window.buildPointPopupHtml === "function")
-            ? window.buildPointPopupHtml(p, false)
-            : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
-          marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+          // 🚀 PerfUltra noTooltips : skip le bindPopup sur les markers de
+          // data layers (read-only). Les points de session éditeur restent
+          // interactifs. Gain : event listener + popup HTML init en moins
+          // par marker, multiplié par des milliers de points sur gros plans.
+          // Compromis : user doit utiliser 🔍 Recherche pour interagir avec.
+          const _skipPopup = !!(window.PerfUltra && window.PerfUltra.get("noTooltips"));
+          if (!_skipPopup) {
+            // Popup avec boutons "Y aller" / "Itinéraire" — helper commun.
+            // 2e argument false → point d'un data layer (lecture seule), pas
+            // de bouton "🗑️ Supprimer" affiche.
+            const popupHtml = (typeof window.buildPointPopupHtml === "function")
+              ? window.buildPointPopupHtml(p, false)
+              : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
+            marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+          }
           marker.addTo(layer);
         }
         index = fin;
