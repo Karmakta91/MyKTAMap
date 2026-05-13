@@ -1,8 +1,8 @@
 {
-  "version": "v144",
+  "version": "v145",
   "released": "2026-05-13",
   "notes": [
     "🚀 Mode Performance ULTRA : nouvelle section dans le chargeur et dans ⚙️ Réglages avec 6 optimisations agressives pour les gros plans ou appareils peu puissants (décimation des tracés au dézoom, désactivation des animations, viewport culling, etc.). Active le toggle 🚀 ULTRA pour appliquer le pack en un clic, ou ajuste individuellement chaque levier selon ce que tu veux sacrifier.",
-    "🏷️ Badge version dans le footer du chargeur : affiche la version installée (ex: v144). Clignote en bleu quand une nouvelle version est dispo — clique-le pour relancer la modale de mise à jour à tout moment, ou consulter les notes de ta version actuelle si tu es déjà à jour."
+    "🏷️ Badge version dans le footer du chargeur : affiche la version installée (ex: v145). Clignote en bleu quand une nouvelle version est dispo — clique-le pour relancer la modale de mise à jour à tout moment, ou consulter les notes de ta version actuelle si tu es déjà à jour."
   ]
 }

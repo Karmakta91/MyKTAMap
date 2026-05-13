@@ -5040,14 +5040,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 /* Badge version dans le footer (monospace, gris discret).
+   TOUJOURS cliquable : cursor pointer + hover subtle dans le mode normal,
+   variante bleu clignotant si update dispo (voir .kta-loader-copyright-version-update).
    white-space: nowrap → empêche le texte "v141 → v142" de casser en 2 lignes.
-   display: inline-block → garantit que le badge reste un bloc atomique.
-   max-width + overflow: si le contenu est trop long pour la ligne, le badge
-   entier passe à une nouvelle ligne (grâce au comportement inline-block dans
-   une zone qui wrap), mais le badge lui-même reste sur 1 seule ligne. */
+   display: inline-block → garantit que le badge reste un bloc atomique. */
 .kta-loader-copyright-version {
   display: inline-block;
   white-space: nowrap;
+  cursor: pointer;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 10.5px;
   color: #6a7488;
@@ -5058,6 +5058,16 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   background: rgba(255, 255, 255, 0.02);
   transition: color 0.2s, border-color 0.2s, background 0.2s;
   vertical-align: baseline;
+  user-select: none;
+}
+.kta-loader-copyright-version:hover {
+  color: #c8d0e0;
+  border-color: rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.06);
+}
+.kta-loader-copyright-version:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 2px;
 }
 
 /* Variante "update disponible" — bleu clignotant + cliquable. Le badge passe

@@ -1132,45 +1132,52 @@
       })();
 
       // === VERSION DANS LE FOOTER COPYRIGHT ===
-      // - Affiche la version installée (window.__MKM__.build).
-      // - Si une nouvelle version est disponible côté serveur (détecté par
-      //   UpdateChecker via comparaison localStorage["myktamap_last_version_data"]
-      //   vs __MKM__.build), le badge devient cliquable + bleu clignotant.
-      //   Au clic, UpdateChecker.showCurrent() force l'affichage de la modale
-      //   de mise à jour (bypass snooze + LS_SEEN).
+      // - Le badge est TOUJOURS cliquable :
+      //   · Mode normal (à jour) → modale "Déjà à jour" avec les notes de la
+      //     version installée (récap pratique)
+      //   · Mode update dispo → modale "🔔 Mise à jour disponible" (avec choix
+      //     douce / reset complet, bypass snooze)
+      // - Visuel différencié : gris discret normal vs bleu clignotant si update
+      //   (mais cursor:pointer + onclick dans LES DEUX cas).
       (function _initFooterVersion() {
         const el = document.getElementById("loaderCopyrightVersion");
         if (!el) return;
         const installed = (window.__MKM__ && window.__MKM__.build) || "v?";
 
+        // Badge cliquable dès le départ — peu importe l'état update.
+        el.setAttribute("role", "button");
+        el.setAttribute("tabindex", "0");
+        el.onclick = function() {
+          if (window.UpdateChecker && typeof window.UpdateChecker.showCurrent === "function") {
+            window.UpdateChecker.showCurrent();
+          }
+        };
+        // Support Entrée/Espace au clavier (accessibilité)
+        el.addEventListener("keydown", function(e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            el.click();
+          }
+        });
+
         // État initial : affiche la version installée. Le check d'update
         // décoré ci-dessous ré-évalue au moment où le résultat du fetch
         // version.json arrive.
         el.textContent = installed;
+        el.title = "Version installée : " + installed + " — clique pour voir les notes ou vérifier les mises à jour";
 
         function _evaluerEtAfficher(remoteVersion) {
           if (!remoteVersion || remoteVersion === installed) {
-            // Pas d'update dispo → état normal
+            // Pas d'update dispo → état normal (mais toujours cliquable)
             el.classList.remove("kta-loader-copyright-version-update");
-            el.removeAttribute("role");
-            el.removeAttribute("tabindex");
-            el.title = "Version de l'app";
-            // Onclick neutralisé : on garde le handler mais sans rien faire
-            el.onclick = null;
+            el.textContent = installed;
+            el.title = "Version installée : " + installed + " — clique pour voir les notes ou vérifier les mises à jour";
             return;
           }
-          // Update disponible → badge bleu clignotant + cliquable
+          // Update disponible → badge bleu clignotant
           el.classList.add("kta-loader-copyright-version-update");
-          el.setAttribute("role", "button");
-          el.setAttribute("tabindex", "0");
-          el.title = "Nouvelle version disponible : " + remoteVersion + " — clique pour mettre à jour";
-          // Affiche aussi la version cible dans le badge
           el.textContent = installed + " → " + remoteVersion;
-          el.onclick = function() {
-            if (window.UpdateChecker && typeof window.UpdateChecker.showCurrent === "function") {
-              window.UpdateChecker.showCurrent();
-            }
-          };
+          el.title = "Nouvelle version disponible : " + remoteVersion + " — clique pour mettre à jour";
         }
 
         // Évaluation initiale via le cache LS si dispo
