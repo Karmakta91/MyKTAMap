@@ -621,6 +621,49 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 - `_decimatePointsRDP(pts, epsilon)` → RDP **itératif** (évite récursion profonde sur longues polylines) avec stack manuelle. ~30 lignes.
 - `_perpDist(p, a, b)` → distance perpendiculaire d'un point au segment
 
+### 22. Sources de vérité version & Badge version footer (depuis 13/05/2026)
+
+**3 sources de vérité version à bumper ensemble à chaque release** :
+
+| Source | Champ | Format | Rôle |
+|---|---|---|---|
+| `sw.js` | `CACHE_NAME` | `myktamap-cache-v143` | Cache PWA — bump force la purge + re-cache au prochain SW install |
+| `js/copyright.js` | `__MKM__.build` | `"v143"` | Constante embarquée dans le code, affichée dans le badge footer (version installée) |
+| `version.json` | `version` | `"v143"` | Source serveur, comparée par UpdateChecker pour détecter les updates dispo |
+
+**Convention de bump** :
+- Pour une **vraie release** : les 3 sources ensemble (sw + copyright + version)
+- Pour un **test du badge clignotant** : bump UNIQUEMENT `version.json` (simule une nouvelle version côté serveur sans modifier le code)
+- Pour un **fix CSS qui doit être propagé** : bump `sw.js` + au choix `copyright.js` selon si on veut afficher la même version qu'avant ou pas
+
+**Badge version cliquable** (`index.html > _initFooterVersion`) :
+- `<span id="loaderCopyrightVersion">` dans le footer du loader, en fin de `.kta-loader-copyright-line2`
+- 2 états :
+  - **Normal** : `v143` gris monospace
+  - **Update dispo** : `v141 → v143` bleu clignotant (`.kta-loader-copyright-version-update` + animation `kta-version-update-pulse` 1.8s)
+- Évaluation initiale via `localStorage["myktamap_last_version_data"]` (cache UpdateChecker) au DOM ready
+- Re-évaluation via `UpdateChecker.onCheck()` callback après le fetch frais (couvre le cas où la version a changé entre 2 boots)
+- Au clic : `UpdateChecker.showCurrent()` qui force le re-fetch + affiche soit la modale d'update (bypass snooze), soit `afficherModaleAlerteAbsente("up-to-date")` qui montre les notes de la version installée
+
+**Modale informative compacte** (`window.afficherModaleAlerteAbsente`) :
+- 3 statuts : `"up-to-date"` (clic badge sans update), `"no-alert"` (clic 🚨 sans alerte), `"offline"`
+- Conteneur dédié `.kta-alert-absent-overlay.kta-alert-absent-compact` (vs `.kta-readme-modal-overlay` qui est plus lourd) :
+  - Backdrop **0.55 opacité** au lieu de 0.88 (plus léger)
+  - Box max-width 440px, **hauteur déterminée par le contenu** (pas de plein écran inutile pour 2-3 lignes)
+- Pour `"up-to-date"` : lit `localStorage["myktamap_last_version_data"]` et affiche un bloc `.kta-alert-absent-version-block` avec :
+  - Date de publication (`released`)
+  - Titre "📝 NOTES DE CETTE VERSION" en uppercase letter-spacing
+  - Liste à puces des `notes[]`
+- Fermeture : OK / clic backdrop / Échap
+
+**API `window.UpdateChecker` exposée** :
+- `check()` → wrap autour du check interne qui notifie ensuite les listeners. Lancé au boot.
+- `notifySplashEnded()` → flush la modale différée si pendant le splash
+- `showCurrent()` → force le re-fetch + modale update (bypass snooze + LS_SEEN) — appelé par le badge cliquable
+- `onCheck(callback)` → s'inscrit aux résultats de check() pour l'UI (badge)
+- `getCurrentVersion()` → lit `localStorage["myktamap_known_version"]`
+- `getLastKnownData()` → lit `localStorage["myktamap_last_version_data"]`
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

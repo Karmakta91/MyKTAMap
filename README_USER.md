@@ -205,6 +205,16 @@ Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/`
 
 Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
+### 🎚️ Drawer "Réglages de performance" (chargeur)
+
+Dans le chargeur, un encadré dépliable **🎚️ Réglages de performance** regroupe deux blocs liés à l'optimisation, **fermé par défaut** pour ne pas encombrer visuellement le loader. Cliquez sur le titre pour déplier — le contenu apparaît avec un séparateur visuel entre les deux blocs.
+
+**Contenu de la drawer** :
+
+1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
+
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 6 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+
 ### 🎚️ Mode performance — 5 presets
 
 Le bloc **Mode performance** dans le chargeur permet de choisir comment afficher votre plan, avec 5 modes présentés comme un sélecteur (à la manière du DLSS dans les jeux vidéo) :
@@ -1074,6 +1084,25 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 6. Clique **Appliquer** dans la modale Réglages pour valider
 
 > Plus tu calibres sur une longue distance, plus le résultat sera précis.
+
+---
+
+## 🏷️ Badge version dans le footer (chargeur)
+
+Au bas du chargeur, à côté de la mention de licence, un petit **badge version** affiche la version actuelle de l'application installée (ex: `v143`).
+
+**Deux états visuels** :
+
+| État | Affichage | Action au clic |
+|---|---|---|
+| **Vous êtes à jour** | `v143` en gris discret | Modale "✅ Déjà à jour" — affiche la version installée + date de publication + **notes de cette version** (changelog) |
+| **Mise à jour disponible** | `v141 → v143` en **bleu clignotant** | Modale "🔔 Mise à jour disponible" — propose une mise à jour douce (préserve plans et sessions) ou un reset complet |
+
+Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer l'attention sans agresser visuellement. Au clic, vous pouvez choisir d'agir immédiatement (mise à jour douce ou reset complet) ou de remettre à plus tard (snooze 24h).
+
+> 💡 Le badge bypasse le snooze 24h : si vous avez cliqué "Plus tard" il y a quelques minutes mais que vous changez d'avis, cliquez le badge pour relancer la modale de mise à jour.
+
+> 💡 Si vous êtes déjà à jour, cliquer le badge affiche tout de même les notes de la dernière version — pratique pour relire ce qui a été changé dans la mise à jour que vous avez installée.
 
 ---
 
