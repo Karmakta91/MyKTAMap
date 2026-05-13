@@ -1,10 +1,9 @@
 {
-  "version": "v141",
+  "version": "v142-test-badge",
   "released": "2026-05-13",
   "notes": [
-    "🏷️ Badge version footer (loader) : devient cliquable + bleu clignotant si une nouvelle version est dispo côté serveur. Affichage 'v140 → v141' au lieu de juste 'v141'.",
-    "Au clic sur le badge : ré-affichage forcé de la modale de mise à jour, même si tu avais cliqué 'Plus tard'. Bypass du snooze 24h pour les utilisateurs qui veulent agir tout de suite.",
-    "Si pas d'update dispo : modale informative '✅ Tu utilises déjà la dernière version'.",
-    "Hors ligne : modale '📡 Vérification impossible'."
+    "🧪 Version de test pour valider le badge version cliquable + bleu clignotant dans le footer du loader.",
+    "Si tu vois le badge afficher 'v141 → v142-test-badge' et qu'il clignote en bleu, le mécanisme fonctionne.",
+    "Au clic sur le badge, tu devrais voir la modale '🔔 Mise à jour disponible' avec les options Mise à jour douce / Reset complet."
   ]
 }
