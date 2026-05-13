@@ -4342,34 +4342,70 @@ window.afficherModaleAlerteAbsente = function(status) {
   const isOffline   = (status === "offline");
   const isUpToDate  = (status === "up-to-date");
 
-  let icon, title, msg;
+  // Pour "up-to-date" : lit les notes de la dernière version connue (stockées
+  // par UpdateChecker au dernier fetch réussi) pour les afficher dans la modale.
+  let lastVersionData = null;
+  if (isUpToDate) {
+    try {
+      const raw = localStorage.getItem("myktamap_last_version_data");
+      if (raw) lastVersionData = JSON.parse(raw);
+    } catch(e) {}
+  }
+
+  // Échappe le texte HTML (anti-XSS sur contenu remote)
+  function _esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  let icon, title, msg, extraHtml = "";
   if (isOffline) {
     icon  = "📡";
     title = "Vérification impossible";
     msg   = "Tu es hors ligne — impossible de vérifier l'état des alertes ou des mises à jour. Réessaie quand tu auras du réseau.";
   } else if (isUpToDate) {
     icon  = "✅";
-    title = "Tu utilises déjà la dernière version";
-    msg   = "L'application est à jour. Pas de nouvelle version disponible côté serveur. Reviens cliquer ici plus tard pour vérifier à nouveau.";
+    title = "Déjà à jour";
+    const installed = (window.__MKM__ && window.__MKM__.build) || (lastVersionData && lastVersionData.version) || "?";
+    msg = "Tu utilises la dernière version : <strong>" + _esc(installed) + "</strong>.";
+    // Bloc "📝 Dernière mise à jour" si on a les données
+    if (lastVersionData && (lastVersionData.released || (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length))) {
+      extraHtml += '<div class="kta-alert-absent-version-block">';
+      if (lastVersionData.released) {
+        extraHtml += '<div class="kta-alert-absent-version-released">Publiée le <strong>' + _esc(lastVersionData.released) + '</strong></div>';
+      }
+      if (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length) {
+        extraHtml += '<div class="kta-alert-absent-version-notes-titre">📝 Notes de cette version</div>';
+        extraHtml += '<ul class="kta-alert-absent-version-notes">';
+        lastVersionData.notes.forEach(function(n) {
+          extraHtml += '<li>' + _esc(n) + '</li>';
+        });
+        extraHtml += '</ul>';
+      }
+      extraHtml += '</div>';
+    }
   } else {
     icon  = "✅";
     title = "Aucune alerte en cours";
     msg   = "Pas d'alerte publique active actuellement. Le serveur ne diffuse aucune communication urgente. Continue à utiliser l'app normalement.";
   }
 
+  // Variante compacte pour les modales informatives (vs overlay opaque global) :
+  // backdrop translucide léger, boîte centrée mais NON pleine hauteur.
   const modal = document.createElement("div");
   modal.id = "kta-alert-absent-modal";
-  modal.className = "kta-readme-modal-overlay kta-alert-absent-overlay";
+  modal.className = "kta-alert-absent-overlay kta-alert-absent-compact";
   modal.innerHTML =
-    '<div class="kta-readme-modal-boite kta-alert-absent-boite">' +
-      '<div class="kta-readme-modal-header kta-alert-absent-header">' +
+    '<div class="kta-alert-absent-boite">' +
+      '<div class="kta-alert-absent-header">' +
         '<span class="kta-alert-absent-icon">' + icon + '</span>' +
         '<span class="kta-alert-absent-title">' + title + '</span>' +
       '</div>' +
-      '<div class="kta-readme-modal-corps kta-alert-absent-corps">' +
+      '<div class="kta-alert-absent-corps">' +
         '<p class="kta-alert-absent-msg">' + msg + '</p>' +
+        extraHtml +
       '</div>' +
-      '<div class="kta-alert-actions">' +
+      '<div class="kta-alert-absent-actions">' +
         '<button class="kta-btn kta-btn-primary" id="kta-alert-absent-ok" type="button">OK</button>' +
       '</div>' +
     '</div>';
@@ -4378,6 +4414,9 @@ window.afficherModaleAlerteAbsente = function(status) {
   function _fermer() { modal.remove(); }
   document.getElementById("kta-alert-absent-ok").addEventListener("click", _fermer);
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+  // Échap = fermer
+  function _onKey(e) { if (e.key === "Escape") { _fermer(); document.removeEventListener("keydown", _onKey); } }
+  document.addEventListener("keydown", _onKey);
 };
 
 window.afficherModaleAlerte = function(alert) {
