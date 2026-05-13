@@ -580,6 +580,90 @@ L'auteur active/désactive **en éditant uniquement ce fichier** :
 
 **Pour ajouter un nouveau fichier live-config** (futur) : créer le `.json` à la racine, NE PAS le mettre dans `ASSETS_TO_CACHE`, créer un module `js/xxxChecker.js` qui suit le pattern (fetch cache-bust + queue splash + notifySplashEnded). Toujours documenter le commentaire d'en-tête de `sw.js` pour rappeler "NE PAS cacher".
 
+### 21. Mode Performance ULTRA (`js/perfUltra.js`, depuis 13/05/2026)
+
+Module de toggles d'optimisation activables pour gérer les crash mémoire sur très gros plans (4000+ × 2000+ pixels avec beaucoup de tracés). Aucune optim ne touche à l'image — ce périmètre est déjà couvert par le **Mode performance preset** au chargement (cf. §8). Le mode ULTRA cible **uniquement** les éléments vectoriels (polylines, markers, intersections, polling).
+
+**Singleton `window.PerfUltra`** (`js/perfUltra.js`, ~150 lignes) :
+- `get(key)` / `set(key, value, opts?)` / `setUltra(bool)` / `getAll()` / `isUltra()` / `onChange(callback)`
+- 6 toggles individuels : `decim`, `animOff`, `noIntersect`, `noTooltips`, `slowSave`, `viewportCull`
+- `ultra` = méta-toggle calculé (true si les 6 sont ON)
+- Persistance `localStorage["myktamap_perf_toggles"]` (préférence globale, pas par plan, cohérent avec `debugMode`)
+- Defaults all `false` → comportement existant strictement préservé
+
+**Modules consommateurs** (lecture via `window.PerfUltra.get()`) :
+
+| Toggle | Module | Comportement |
+|---|---|---|
+| `decim` | `road.js > renderRoads` | Applique RDP (`_decimatePointsRDP`) avec epsilon dynamique selon zoom (0/2/4/8/16 px). Skip sur `type === "itinerary"` (précision navigation > perf) et si `points.length <= 8`. Re-render hook sur `moveend/zoomend`. |
+| `animOff` | `map.js > L.map()` | `zoomAnimation/fadeAnimation/markerZoomAnimation: false`. **Lu UNIQUEMENT à init** → reload requis. UI signale via `.kta-perf-ultra-row-danger` (liseré orange). |
+| `noIntersect` | `road.js > _calculerIntersectionsRoads` | Seuil `_roadIntersectionMaxRoads()` → 50 si actif, 200 sinon. Lu à chaque appel. |
+| `noTooltips` | `utils.js > ajouterPointsDepuisJSON` | Skip `bindPopup` sur markers data-layer. Points session éditeur gardent leurs popups. Compromis : user passe par 🔍 pour interagir. |
+| `slowSave` | `sessionPersist.js > _currentPollInterval` | `POLL_INTERVAL_SLOW_MS = 30000` au lieu de 1500. Hook `onChange` → restart polling avec nouvel intervalle (sans reload). |
+| `viewportCull` | `road.js > renderRoads` | AABB check vs `map.getBounds()` + 10% padding. Skip création L.polyline si road hors viewport. Skip culling sur `type === "itinerary"`. Re-render hook sur `moveend/zoomend`. |
+
+**UI dans `js/interface.js > afficherConfig`** :
+- `_renderPerfUltraSection()` génère le HTML — section dédiée après "Debug", avant les boutons d'action
+- 1 toggle master ULTRA (accent jaune `#f4c542`) + 6 toggles individuels
+- Hint italique sous chaque toggle explicitant le trade-off perf/visuel
+- `_bindPerfUltraToggles()` appelé après `documentElement.appendChild(modal)`
+- Master ULTRA → `setUltra(value)` qui applique aux 6 d'un coup + re-render la modale pour refléter
+- Toggles individuels → `set(key, value)` + sync visuel du master (coché si `isUltra()`)
+
+**Pattern pour ajouter un toggle** :
+1. Ajouter la clé dans `TOGGLES` array de `perfUltra.js`
+2. Lire `window.PerfUltra.get("nouvelleClé")` dans le module concerné
+3. S'inscrire à `onChange` si re-render dynamique nécessaire
+4. Ajouter la rangée HTML dans `_renderPerfUltraSection()` + mapping dans `_bindPerfUltraToggles()`
+
+**Helpers RDP dans `road.js`** :
+- `_decimationEpsilon()` → 0/2/4/8/16 selon `map.getZoom()` (0 = pas de décim au zoom proche)
+- `_decimatePointsRDP(pts, epsilon)` → RDP **itératif** (évite récursion profonde sur longues polylines) avec stack manuelle. ~30 lignes.
+- `_perpDist(p, a, b)` → distance perpendiculaire d'un point au segment
+
+### 22. Sources de vérité version & Badge version footer (depuis 13/05/2026)
+
+**3 sources de vérité version à bumper ensemble à chaque release** :
+
+| Source | Champ | Format | Rôle |
+|---|---|---|---|
+| `sw.js` | `CACHE_NAME` | `myktamap-cache-v143` | Cache PWA — bump force la purge + re-cache au prochain SW install |
+| `js/copyright.js` | `__MKM__.build` | `"v143"` | Constante embarquée dans le code, affichée dans le badge footer (version installée) |
+| `version.json` | `version` | `"v143"` | Source serveur, comparée par UpdateChecker pour détecter les updates dispo |
+
+**Convention de bump** :
+- Pour une **vraie release** : les 3 sources ensemble (sw + copyright + version)
+- Pour un **test du badge clignotant** : bump UNIQUEMENT `version.json` (simule une nouvelle version côté serveur sans modifier le code)
+- Pour un **fix CSS qui doit être propagé** : bump `sw.js` + au choix `copyright.js` selon si on veut afficher la même version qu'avant ou pas
+
+**Badge version cliquable** (`index.html > _initFooterVersion`) :
+- `<span id="loaderCopyrightVersion">` dans le footer du loader, en fin de `.kta-loader-copyright-line2`
+- 2 états :
+  - **Normal** : `v143` gris monospace
+  - **Update dispo** : `v141 → v143` bleu clignotant (`.kta-loader-copyright-version-update` + animation `kta-version-update-pulse` 1.8s)
+- Évaluation initiale via `localStorage["myktamap_last_version_data"]` (cache UpdateChecker) au DOM ready
+- Re-évaluation via `UpdateChecker.onCheck()` callback après le fetch frais (couvre le cas où la version a changé entre 2 boots)
+- Au clic : `UpdateChecker.showCurrent()` qui force le re-fetch + affiche soit la modale d'update (bypass snooze), soit `afficherModaleAlerteAbsente("up-to-date")` qui montre les notes de la version installée
+
+**Modale informative compacte** (`window.afficherModaleAlerteAbsente`) :
+- 3 statuts : `"up-to-date"` (clic badge sans update), `"no-alert"` (clic 🚨 sans alerte), `"offline"`
+- Conteneur dédié `.kta-alert-absent-overlay.kta-alert-absent-compact` (vs `.kta-readme-modal-overlay` qui est plus lourd) :
+  - Backdrop **0.55 opacité** au lieu de 0.88 (plus léger)
+  - Box max-width 440px, **hauteur déterminée par le contenu** (pas de plein écran inutile pour 2-3 lignes)
+- Pour `"up-to-date"` : lit `localStorage["myktamap_last_version_data"]` et affiche un bloc `.kta-alert-absent-version-block` avec :
+  - Date de publication (`released`)
+  - Titre "📝 NOTES DE CETTE VERSION" en uppercase letter-spacing
+  - Liste à puces des `notes[]`
+- Fermeture : OK / clic backdrop / Échap
+
+**API `window.UpdateChecker` exposée** :
+- `check()` → wrap autour du check interne qui notifie ensuite les listeners. Lancé au boot.
+- `notifySplashEnded()` → flush la modale différée si pendant le splash
+- `showCurrent()` → force le re-fetch + modale update (bypass snooze + LS_SEEN) — appelé par le badge cliquable
+- `onCheck(callback)` → s'inscrit aux résultats de check() pour l'UI (badge)
+- `getCurrentVersion()` → lit `localStorage["myktamap_known_version"]`
+- `getLastKnownData()` → lit `localStorage["myktamap_last_version_data"]`
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

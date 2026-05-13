@@ -71,8 +71,10 @@ Pour **chaque** question :
 - 🖼️ **Export PNG** : Mode rapide / Mode avancé (avec légende, calques au choix, résolution)
 - 🏗️ **Générateur de plan** : Nouveau plan / Modifier existant (ZIP)
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
+- 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
 - 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
+- 🏷️ **Badge version cliquable** dans le footer du loader : affiche la version installée. Clignote en bleu si une nouvelle version est dispo (passage à la version cible visible : `v141 → v143`). Au clic, force la modale d'update (bypass snooze 24h). Si déjà à jour, affiche les notes de la version installée.
 - 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques...) via fichier `alert.json` côté serveur. Modale rouge pulsante après le splash. Bouton 🚨 dans le header du loader pour re-consulter à tout moment.
 - 🏗️ **Générateur de plan** : auto-détection des dimensions de l'image principale + warnings si > 10000 px / > 30 Mo. Position initiale tracker auto-centrée (W/2 × H/2) au choix de l'image, avec bouton 🎯 Recentrer.
 
@@ -332,12 +334,20 @@ Le tracker PDR est **expérimental**. La dérive est inévitable, mais peut êtr
 
 ### Mon plan crash au chargement / au dézoom
 
-Saturation mémoire — typique des gros plans sur mobile. Solutions :
+Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d'impact :
 
-- Choisis le preset **⚡ Performance** dans le loader avant de charger.
-- Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
-- Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
-- À terme : optimise le plan (voir recette H ci-dessus).
+1. **Choisis le preset ⚡ Performance** dans le loader avant de charger.
+2. **Active le 🚀 Mode Performance ULTRA** : ouvre ⚙️ Réglages → section "🚀 Mode Performance ULTRA" → coche le toggle **🚀 ULTRA**. Il active 6 optimisations agressives qui ne touchent pas l'image mais réduisent drastiquement la charge des tracés/markers/intersections :
+   - 🪜 Décimer les tracés au dézoom
+   - ⚡ Désactiver animations zoom/pan (reload requis)
+   - 🎯 Désactiver cercles intersections (seuil 50 routes vs 200)
+   - 🚫 Désactiver popups sur calques de données
+   - 🐢 Auto-save lent (30s)
+   - 👁️ Ne rendre que les tracés visibles (viewport culling)
+   Tu peux aussi activer ces toggles individuellement si tu veux affiner.
+3. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
+4. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
+5. À terme : optimise le plan (voir recette H ci-dessus).
 
 ### J'ai perdu ma session quand j'ai fermé l'app
 
@@ -368,6 +378,19 @@ C'est le système d'**alertes publiques** de MyKTAMap. L'auteur peut diffuser de
 Lis attentivement le message + la liste de consignes, puis clique **"J'ai compris"** pour acquitter. La modale ne réapparaîtra plus tant que l'alerte est la même.
 
 Si tu veux re-consulter l'alerte plus tard, clique le bouton **🚨** dans le header du loader (à gauche du 📖). Il te montrera l'état actuel — soit l'alerte rouge si toujours active, soit une modale verte **"✅ Aucune alerte en cours"** si la situation est revenue à la normale.
+
+### C'est quoi le petit badge `v143` (ou similaire) en bas du loader ?
+
+C'est le **badge version** de l'application. Il indique la version actuellement installée chez toi.
+
+**État normal** : gris discret avec bordure subtile. Au clic, affiche une modale compacte avec :
+- La version installée (en monospace vert)
+- La date de publication
+- Les **notes de cette version** (changelog de ce que tu utilises actuellement)
+
+**État "mise à jour disponible"** : le badge devient **bleu et clignote**, et affiche la transition (ex: `v141 → v143`). Au clic, ouvre la modale **🔔 Mise à jour disponible** avec les choix Mise à jour douce / Reset complet.
+
+> 💡 Tu peux cliquer le badge à tout moment pour relancer la modale d'update — pratique si tu avais cliqué "Plus tard" et que tu changes d'avis.
 
 ### Je veux vérifier s'il y a encore une alerte active
 

@@ -217,6 +217,11 @@ async function initMapFromConfig() {
   }
   console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom, "(mobile:", _isMobile, ")");
 
+  // 🚀 PerfUltra : si "animOff" actif, désactivation des animations Leaflet
+  // (zoom progressif, fade, marker zoom). Lecture UNIQUEMENT à l'init de la
+  // map → un changement du toggle nécessite reload pour effet (warning UI).
+  const _animOff = (window.PerfUltra && window.PerfUltra.get("animOff"));
+
   map = L.map('map', {
     crs: L.CRS.Simple,
     minZoom: _minZoom,
@@ -226,8 +231,14 @@ async function initMapFromConfig() {
     // circleMarker intersections). Évite la création de N éléments SVG/DOM, gros
     // gain perf sur mobile pour les plans denses. Markers (L.marker) restent en DOM
     // car ils utilisent des icon images — pas affectés par preferCanvas.
-    preferCanvas: true
+    preferCanvas: true,
+    // Animations désactivées si PerfUltra.animOff (mode performance ULTRA) :
+    // pan/zoom instantanés au lieu d'animés → gain perceptible sur gros plans.
+    zoomAnimation:        !_animOff,
+    fadeAnimation:        !_animOff,
+    markerZoomAnimation:  !_animOff
   });
+  if (_animOff) console.log("[Map] 🚀 Animations Leaflet désactivées (PerfUltra.animOff)");
   map.setMaxBounds(_maxBounds);
   map.setMinZoom(_minZoom);
   map.setMaxZoom(2);

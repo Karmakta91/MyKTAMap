@@ -9,6 +9,130 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 13/05/2026 (suite 6) — 🏷️ Badge version cliquable dans le footer (avec notes intégrées)
+
+Badge version dans le footer copyright du loader, qui devient un **indicateur d'update + bouton d'action** :
+
+**États visuels du badge** :
+
+| Cas | Affichage | Style | Cliquable ? |
+|---|---|---|---|
+| **Pas d'update** | `v143` | Gris monospace discret avec bordure subtile | Oui → modale "Déjà à jour" |
+| **Update dispo** | `v141 → v142` | **Bleu accent `#8cb4ff` clignotant** (animation `kta-version-update-pulse` 1.8s) + cursor pointer | Oui → modale "🔔 Mise à jour disponible" |
+
+**Au clic sur le badge** : appelle `UpdateChecker.showCurrent()` qui force le re-fetch + affiche soit la modale d'update (bypass snooze 24h + LS_SEEN), soit une **modale compacte "Déjà à jour"** avec :
+- Version installée (depuis `__MKM__.build`)
+- Date de publication (depuis localStorage cache UpdateChecker)
+- **Notes de cette version** (changelog)
+
+**Nouvelles API `window.UpdateChecker`** (js/updateChecker.js) :
+- `showCurrent()` : force le re-fetch + modale update (bypass snooze)
+- `onCheck(callback)` : s'inscrit aux résultats de check() → permet à l'UI (badge) de réagir au résultat fresh sans devoir poller le LS
+
+**Modale compacte "Déjà à jour"** (`afficherModaleAlerteAbsente` enrichi) :
+- Backdrop **0.55 opacité** au lieu de 0.88 (plus léger, moins invasif pour 2-3 lignes d'info)
+- Box max-width 440px, hauteur déterminée par le contenu (pas de plein-écran inutile)
+- Bloc "Notes de cette version" avec liste à puces, lu depuis `localStorage["myktamap_last_version_data"]`
+- Échap pour fermer (event listener nettoyé)
+- CSS dédié `.kta-alert-absent-overlay.kta-alert-absent-compact` (vs héritage `.kta-readme-modal-overlay` lourd)
+
+**Wire-up du badge** (`_initFooterVersion` dans le script du loader) :
+- Évaluation initiale via `localStorage["myktamap_last_version_data"]` au DOM ready
+- Re-évaluation via `UpdateChecker.onCheck()` après le fetch frais (couvre le cas où la version a changé entre 2 boots)
+- Si remote != installed → ajoute la classe `.kta-loader-copyright-version-update` + onclick + role/tabindex/title
+
+**Fix bug wrap badge** : `white-space: nowrap` + `display: inline-block` + `vertical-align: baseline` empêchent le texte "v141 → v142-test-badge" de casser au milieu. Si la ligne est trop étroite, le badge passe entier à la ligne suivante au lieu de wrap.
+
+**3 sources de vérité version à bumper ensemble** (à chaque release) :
+- `sw.js > CACHE_NAME` (cache PWA)
+- `js/copyright.js > __MKM__.build` (constante embarquée, affichée dans le badge)
+- `version.json > version` (source serveur, comparée par UpdateChecker)
+
+**Animation `@keyframes kta-version-update-pulse`** : box-shadow + background pulsent doucement (0% → 50% → 100% sur 1.8s ease-in-out infinite). Au hover : animation stoppée, contraste renforcé.
+
+**`sw.js`** : `CACHE_NAME` v140 → v143 (4 itérations : badge cliquable, fix wrap, modale compacte avec notes, et bump pour propager).
+
+---
+
+### 🗓️ 13/05/2026 (suite 5) — 🎚️ Loader : drawer "Réglages de performance" + fix bug rotation + badge version footer
+
+Regroupement des réglages perf existants (Tiling) et nouveaux (Mode ULTRA) dans une **box déroulable unique** au loader, plus un badge version au footer + fix d'un bug de layout.
+
+**Drawer "Réglages de performance"** (`<details id="loaderPerfDrawer">`) :
+- Wrappe le Tiling existant (segmented control, par plan) + les toggles Mode Performance ULTRA (par sessions, globaux)
+- **Fermée par défaut** pour réduire la hauteur visuelle initiale du loader (l'utilisateur déploie à la demande)
+- Summary cliquable "🎚️ Réglages de performance" + chevron ▾ qui pivote à 180° quand ouvert
+- Séparateur `<hr class="kta-loader-perf-sep">` dashed entre Tiling et toggles ULTRA
+- CSS dédié `.kta-loader-perf-drawer*` avec border, rounded, overflow:hidden
+
+**Badge version au footer copyright** :
+- Nouveau `<span id="loaderCopyrightVersion">` en fin de `kta-loader-copyright-line2`
+- Style monospace gris discret avec bordure rounded subtile
+- Rempli au boot par `_initFooterVersion()` :
+  - Priorité 1 : `window.__MKM__.build` (depuis copyright.js)
+  - Fallback : `localStorage["myktamap_last_version_data"].version` (cache UpdateChecker)
+  - Ultime : "v?"
+
+**Fix bug rotation mobile** : "le footer grandit après rotation landscape→portrait" sur iOS Safari.
+- Cause probable : iOS Safari applique auto-text-size-adjust après rotation, gonflant le texte
+- Fix CSS sur `.kta-loader-copyright` :
+  - `-webkit-text-size-adjust: 100%` + standard `text-size-adjust: 100%`
+  - `line-height: 18px` (absolu) au lieu de `1.6` (em-based) → hauteur déterministe
+  - `flex-shrink: 0` + `box-sizing: border-box` → évite la distorsion au reflow
+
+**Code** :
+- `index.html` : refactor du bloc perf en `<details>` + ajout des toggles ULTRA dans le drawer + span version dans le footer
+- `index.html > _initPerfUltraToggles` : sync visuel + bind change events sur les checkboxes (lecture/écriture via `window.PerfUltra`)
+- `index.html > _initFooterVersion` : remplissage version
+- `js/copyright.js > __MKM__.build` : `"2026.05.09"` → `"v140"` (puis bumps suivants au fur et à mesure des fixes du badge)
+- `css/style.css` : `.kta-loader-perf-drawer*` (~60 lignes), `.kta-loader-perf-sep`, `.kta-loader-perf-divider`, `.kta-loader-perf-hint`, fix `.kta-loader-copyright` (text-size-adjust), badge `.kta-loader-copyright-version`
+
+**`sw.js`** : `CACHE_NAME` v138 → v140 (drawer puis fix rotation + badge).
+
+---
+
+### 🗓️ 13/05/2026 (suite 4) — 🚀 Mode Performance ULTRA : 6 toggles d'optimisation pour gros plans / appareils faibles
+
+Système de toggles activable depuis **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** pour gérer les crash récurrents sur les très gros plans (4000+ × 2000+ pixels) avec beaucoup de tracés. Préset bloc **🚀 ULTRA** qui active les 6 optims d'un coup, ou ajustement fin via toggles individuels.
+
+**6 optims implémentées** (aucune ne touche à l'image — déjà gérée par le mode performance au chargement) :
+
+| Toggle | Effet | Trade-off visuel |
+|---|---|---|
+| 🪜 **Décimer les tracés au dézoom** | Ramer-Douglas-Peucker avec epsilon dynamique selon zoom (0→16 px) | Tracés moins lisses au dézoom |
+| ⚡ **Désactiver animations zoom/pan** | `zoomAnimation/fadeAnimation/markerZoomAnimation = false` | Transitions abruptes au lieu d'animées (**reload requis**) |
+| 🎯 **Désactiver cercles intersections** (gros plans) | Seuil abaissé à 50 routes (vs 200 normal) | Pas de cercles aux carrefours au-delà |
+| 🚫 **Désactiver popups sur calques données** | Skip `bindPopup` sur les markers data-layer | User doit utiliser 🔍 pour interagir |
+| 🐢 **Auto-save lent (30s)** | `POLL_INTERVAL_SLOW_MS = 30000` au lieu de 1500 | Risque de perdre ~30s en cas de crash |
+| 👁️ **Ne rendre que les tracés visibles** | AABB check vs viewport + 10% padding → skip création L.polyline | Pop-in léger au pan |
+
+**Architecture** :
+- Nouveau module **`js/perfUltra.js`** (~150 lignes) — singleton `window.PerfUltra` avec :
+  - `get(key)`, `set(key, value)`, `setUltra(bool)`, `getAll()`, `isUltra()`, `onChange(callback)`
+  - Persistance `localStorage["myktamap_perf_toggles"]` (préférence globale, pas par plan, cohérent avec debugMode)
+  - Defaults all `false` → comportement existant strictement préservé pour les users actuels
+- **Modules consommateurs** s'inscrivent à `onChange` pour re-render à la volée :
+  - `road.js` : re-render sur `decim/viewportCull/noIntersect` + sur `moveend/zoomend` si les deux toggles correspondants sont actifs
+  - `sessionPersist.js` : restart polling sur changement de `slowSave`
+  - `map.js` : lit `animOff` UNIQUEMENT à l'init (reload requis)
+  - `utils.js > ajouterPointsDepuisJSON` : lit `noTooltips` à chaque marker créé
+
+**UI dans ⚙️ Réglages** (`js/interface.js`) :
+- `_renderPerfUltraSection()` génère le HTML avec 1 toggle master ULTRA (accent jaune) + 6 toggles individuels
+- Hint italique sous chaque toggle explicitant le trade-off perf/visuel
+- `animOff` a un **liseré orange** (classe `.kta-perf-ultra-row-danger`) pour signaler le besoin de reload
+- Master ULTRA active/désactive les 6 d'un coup. Visuel auto-sync : si l'user toggle individuellement jusqu'à atteindre les 6 → ultra apparaît coché automatiquement.
+
+**Helpers d'implémentation** :
+- `js/road.js > _decimatePointsRDP(pts, epsilon)` : RDP itératif (évite récursion profonde sur les longues polylines). `_decimationEpsilon()` retourne 0/2/4/8/16 selon zoom.
+- `js/road.js > _roadIntersectionMaxRoads()` : 50 ou 200 selon toggle.
+- `js/road.js > renderRoads` : viewport AABB calculé une fois en début de fonction, comparé à `_bboxOfRoad(road)` (helper déjà existant pour les intersections).
+- `js/sessionPersist.js > _currentPollInterval()` : 1500 ou 30000.
+
+**`sw.js`** : `js/perfUltra.js` ajouté à `ASSETS_TO_CACHE`. `CACHE_NAME` v137 → v138.
+
+---
+
 ### 🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)
 
 Ajout d'un bouton **🚨** dans le header du loader, à gauche du **📖 Documentation**, pour permettre à l'utilisateur de **re-consulter l'alerte en cours** à tout moment (utile s'il a déjà cliqué "J'ai compris" et veut revérifier les consignes), OU de **confirmer "Aucune alerte en cours"** si la situation est revenue à la normale.

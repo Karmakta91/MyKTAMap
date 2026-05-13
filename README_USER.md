@@ -205,6 +205,16 @@ Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/`
 
 Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
+### 🎚️ Drawer "Réglages de performance" (chargeur)
+
+Dans le chargeur, un encadré dépliable **🎚️ Réglages de performance** regroupe deux blocs liés à l'optimisation, **fermé par défaut** pour ne pas encombrer visuellement le loader. Cliquez sur le titre pour déplier — le contenu apparaît avec un séparateur visuel entre les deux blocs.
+
+**Contenu de la drawer** :
+
+1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
+
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 6 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+
 ### 🎚️ Mode performance — 5 presets
 
 Le bloc **Mode performance** dans le chargeur permet de choisir comment afficher votre plan, avec 5 modes présentés comme un sélecteur (à la manière du DLSS dans les jeux vidéo) :
@@ -968,6 +978,33 @@ Au chargement d'un plan, tu peux choisir parmi 5 presets dans le loader :
 
 > 💡 Le preset est mémorisé **par plan** : tu peux avoir un plan en mode Performance pour ton vieux téléphone et un autre en Qualité pour ton iPad.
 
+### 6 bis. 🚀 Mode Performance ULTRA — pour les vrais gros plans qui crashent
+
+Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ × 2000+ pixels avec beaucoup de tracés), ouvre **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** et active le **toggle master 🚀 ULTRA**. Il active 6 optimisations agressives simultanément.
+
+> ⚠️ Ces optims **ne touchent PAS à l'image** (déjà gérée par le mode performance ci-dessus). Elles ciblent les éléments vectoriels (tracés, points, calculs).
+
+**Les 6 toggles individuels** (activables séparément si tu veux affiner) :
+
+| Toggle | Effet | Trade-off |
+|---|---|---|
+| 🪜 **Décimer les tracés au dézoom** | Simplifie les polylines au zoom out | Tracés moins lisses au dézoom |
+| ⚡ **Désactiver animations zoom/pan** | Transitions instantanées au lieu d'animées | Visuel plus abrupt — **reload requis** |
+| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 200) | Carrefours moins visibles |
+| 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
+| 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
+| 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
+
+**Comment t'en servir** :
+
+- **Si l'app crashe encore** → coche **🚀 ULTRA** (active tout). Effet immédiat (sauf "animations" qui demande un reload).
+- **Si tu veux affiner** → garde ULTRA décoché et active manuellement les toggles selon ce que tu veux sacrifier. Par exemple : tu peux activer juste **🐢 Auto-save lent** et **👁️ Viewport culling** pour gagner pas mal sans rien perdre visuellement.
+- **Pour revenir au comportement normal** → décoche **🚀 ULTRA** (ça décoche tout) ou décoche individuellement.
+
+**Persistance** : les toggles sont mémorisés dans ton navigateur (préférence globale, pas par plan). Ils restent activés entre sessions.
+
+> 💡 Combo recommandé pour les très gros plans : 🚀 ULTRA + mode performance ⚡ Performance au chargement + image source ≤ 8000 px / JPEG q85.
+
 ### 7. 📱 Spécifique mobile
 
 - **iPhone PWA** (installé sur écran d'accueil) gère mieux les gros plans qu'iPhone Safari direct
@@ -1047,6 +1084,25 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 6. Clique **Appliquer** dans la modale Réglages pour valider
 
 > Plus tu calibres sur une longue distance, plus le résultat sera précis.
+
+---
+
+## 🏷️ Badge version dans le footer (chargeur)
+
+Au bas du chargeur, à côté de la mention de licence, un petit **badge version** affiche la version actuelle de l'application installée (ex: `v143`).
+
+**Deux états visuels** :
+
+| État | Affichage | Action au clic |
+|---|---|---|
+| **Vous êtes à jour** | `v143` en gris discret | Modale "✅ Déjà à jour" — affiche la version installée + date de publication + **notes de cette version** (changelog) |
+| **Mise à jour disponible** | `v141 → v143` en **bleu clignotant** | Modale "🔔 Mise à jour disponible" — propose une mise à jour douce (préserve plans et sessions) ou un reset complet |
+
+Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer l'attention sans agresser visuellement. Au clic, vous pouvez choisir d'agir immédiatement (mise à jour douce ou reset complet) ou de remettre à plus tard (snooze 24h).
+
+> 💡 Le badge bypasse le snooze 24h : si vous avez cliqué "Plus tard" il y a quelques minutes mais que vous changez d'avis, cliquez le badge pour relancer la modale de mise à jour.
+
+> 💡 Si vous êtes déjà à jour, cliquer le badge affiche tout de même les notes de la dernière version — pratique pour relire ce qui a été changé dans la mise à jour que vous avez installée.
 
 ---
 

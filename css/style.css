@@ -2580,6 +2580,66 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   flex-shrink: 0;
 }
 
+/* === 🚀 Mode Performance ULTRA — toggles dans la modale Réglages === */
+.kta-perf-ultra-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.05);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kta-perf-ultra-row:hover {
+  background: rgba(140,180,255,0.06);
+  border-color: rgba(140,180,255,0.18);
+}
+.kta-perf-ultra-row input[type="checkbox"] {
+  margin: 3px 0 0 0;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: #8cb4ff;
+  cursor: pointer;
+}
+.kta-perf-ultra-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.kta-perf-ultra-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eaf0;
+  line-height: 1.3;
+}
+.kta-perf-ultra-hint {
+  font-size: 11.5px;
+  color: #8892a4;
+  line-height: 1.45;
+}
+/* Toggle "danger" (animOff = reload requis) → liseré orange */
+.kta-perf-ultra-row-danger {
+  border-color: rgba(255, 138, 92, 0.25);
+  background: rgba(255, 138, 92, 0.04);
+}
+.kta-perf-ultra-row-danger:hover {
+  background: rgba(255, 138, 92, 0.10);
+  border-color: rgba(255, 138, 92, 0.45);
+}
+/* Toggle master ULTRA — visuellement plus marquant */
+#cfg_perf_ultra {
+  accent-color: #f4c542;
+}
+.kta-perf-ultra-row:has(#cfg_perf_ultra:checked) {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.40);
+}
+
 /* Bouton 🚨 alerte dans le header du loader — style sirène rouge prononcé
    (fond rouge saturé, bordure rouge vive, glow). Pulsation douce pour
    attirer l'attention. */
@@ -2608,36 +2668,108 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* === Modale "Pas d'alerte en cours" === */
+/* === Modale informative compacte ("Aucune alerte" / "Déjà à jour" / Offline) ===
+   Volontairement plus légère que .kta-readme-modal-overlay : backdrop moins
+   opaque (60% vs 88%), box centrée mais hauteur déterminée par le contenu,
+   ne prend PAS toute la hauteur disponible pour 2-3 lignes de texte. */
+.kta-alert-absent-overlay.kta-alert-absent-compact {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(5, 8, 15, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
+  animation: kta-fadein 0.18s ease;
+  overflow-y: auto;
+}
 .kta-alert-absent-overlay .kta-alert-absent-boite {
-  max-width: 460px;
+  width: 100%;
+  max-width: 440px;
+  background: #1a1f2e;
   border: 1px solid rgba(108, 226, 138, 0.30);
+  border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.55);
+  font-family: Arial, sans-serif;
+  overflow: hidden;
 }
 .kta-alert-absent-header {
-  background: linear-gradient(135deg, rgba(108,226,138,0.12), rgba(108,226,138,0.04)) !important;
-  border-bottom: 1px solid rgba(108, 226, 138, 0.25) !important;
-  display: flex !important;
+  background: linear-gradient(135deg, rgba(108,226,138,0.12), rgba(108,226,138,0.04));
+  border-bottom: 1px solid rgba(108, 226, 138, 0.25);
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 14px !important;
+  padding: 12px 14px;
 }
 .kta-alert-absent-icon {
-  font-size: 24px;
+  font-size: 22px;
   flex-shrink: 0;
+  line-height: 1;
 }
 .kta-alert-absent-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #c8d0e0;
 }
 .kta-alert-absent-corps {
-  padding: 16px 18px !important;
+  padding: 14px 16px;
 }
 .kta-alert-absent-msg {
   color: #c8d0e0;
   font-size: 13.5px;
   line-height: 1.55;
   margin: 0;
+}
+.kta-alert-absent-msg strong {
+  color: #6ce28a;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+.kta-alert-absent-actions {
+  padding: 10px 16px 14px 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+.kta-alert-absent-actions .kta-btn {
+  min-width: 80px;
+}
+
+/* Bloc "Dernière mise à jour" affiché quand on est up-to-date :
+   récap version installée + date + notes */
+.kta-alert-absent-version-block {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.kta-alert-absent-version-released {
+  color: #8892a4;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.kta-alert-absent-version-released strong {
+  color: #c8d0e0;
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+}
+.kta-alert-absent-version-notes-titre {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8cb4ff;
+  margin-bottom: 5px;
+}
+.kta-alert-absent-version-notes {
+  margin: 0;
+  padding-left: 20px;
+  color: #c8d0e0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.kta-alert-absent-version-notes li {
+  margin-bottom: 3px;
 }
 
 .loader-desc {
@@ -3130,6 +3262,73 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* === Drawer "🎚️ Réglages de performance" (loader) === */
+/* Wrapper qui regroupe le Tiling + les toggles Perf ULTRA dans une seule box
+   collapsible. Ouverte par défaut pour conserver la visibilité du Tiling. */
+.kta-loader-perf-drawer {
+  margin-top: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.kta-loader-perf-drawer-titre {
+  cursor: pointer;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #c8d0e0;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: background 0.15s ease;
+}
+.kta-loader-perf-drawer-titre::-webkit-details-marker { display: none; }
+.kta-loader-perf-drawer-titre::marker { display: none; }
+.kta-loader-perf-drawer-titre:hover {
+  background: rgba(140, 180, 255, 0.05);
+}
+.kta-loader-perf-drawer-chevron {
+  font-size: 14px;
+  color: #8892a4;
+  transition: transform 0.18s ease;
+}
+.kta-loader-perf-drawer[open] > .kta-loader-perf-drawer-titre .kta-loader-perf-drawer-chevron {
+  transform: rotate(180deg);
+}
+.kta-loader-perf-drawer-corps {
+  padding: 4px 12px 12px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+/* Le premier .kta-perf-wrap à l'intérieur du drawer perd son margin-top pour
+   coller juste sous le bord du séparateur du drawer. */
+.kta-loader-perf-drawer-corps > .kta-perf-wrap:first-child {
+  margin-top: 10px;
+}
+/* Séparateur visuel entre Tiling et toggles ULTRA dans le drawer */
+.kta-loader-perf-sep {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px dashed rgba(255, 255, 255, 0.10);
+}
+/* Diviseur entre toggle master ULTRA et toggles individuels */
+.kta-loader-perf-divider {
+  margin: 8px 0 6px 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+}
+/* Hint italique sous le titre "🚀 Mode Performance ULTRA" du drawer */
+.kta-loader-perf-hint {
+  margin: 0 0 4px 0;
+  font-size: 11.5px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.45;
 }
 
 .kta-perf-titre {
@@ -4792,7 +4991,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #f4c542;
 }
 
-/* Footer copyright dans le loader (mention licence visible cote utilisateur) */
+/* Footer copyright dans le loader (mention licence visible cote utilisateur).
+   - text-size-adjust: 100% → empêche iOS Safari de gonfler le texte au
+     changement d'orientation (bug récurrent landscape → portrait).
+   - line-height fixé en valeur absolue (en px) plutôt qu'en em pour rester
+     déterministe quelle que soit la taille de police calculée par le browser.
+   - flex-shrink: 0 + box-sizing pour éviter les distorsions au resize. */
 .kta-loader-copyright {
   margin-top: 18px;
   padding-top: 14px;
@@ -4800,8 +5004,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-size: 11px;
   color: #8892a4;
   text-align: center;
-  line-height: 1.6;
+  line-height: 18px;
   letter-spacing: 0.02em;
+  -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .kta-loader-copyright strong {
@@ -4829,6 +5037,70 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-loader-copyright-warn {
   color: #ff8c8c;
   font-weight: 500;
+}
+
+/* Badge version dans le footer (monospace, gris discret).
+   TOUJOURS cliquable : cursor pointer + hover subtle dans le mode normal,
+   variante bleu clignotant si update dispo (voir .kta-loader-copyright-version-update).
+   white-space: nowrap → empêche le texte "v141 → v142" de casser en 2 lignes.
+   display: inline-block → garantit que le badge reste un bloc atomique. */
+.kta-loader-copyright-version {
+  display: inline-block;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: #6a7488;
+  letter-spacing: 0;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+  vertical-align: baseline;
+  user-select: none;
+}
+.kta-loader-copyright-version:hover {
+  color: #c8d0e0;
+  border-color: rgba(255, 255, 255, 0.20);
+  background: rgba(255, 255, 255, 0.06);
+}
+.kta-loader-copyright-version:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 2px;
+}
+
+/* Variante "update disponible" — bleu clignotant + cliquable. Le badge passe
+   en bleu accent (#8cb4ff) avec animation de pulse douce qui attire l'œil
+   sans agresser. Cursor pointer + hover plus marqué. Affiche aussi la
+   version cible : "v140 → v141". */
+.kta-loader-copyright-version.kta-loader-copyright-version-update {
+  cursor: pointer;
+  color: #c5d8ff;
+  background: rgba(140, 180, 255, 0.12);
+  border-color: rgba(140, 180, 255, 0.50);
+  animation: kta-version-update-pulse 1.8s ease-in-out infinite;
+  user-select: none;
+}
+.kta-loader-copyright-version.kta-loader-copyright-version-update:hover {
+  background: rgba(140, 180, 255, 0.24);
+  border-color: rgba(140, 180, 255, 0.85);
+  color: #ffffff;
+  animation: none;
+}
+.kta-loader-copyright-version.kta-loader-copyright-version-update:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 2px;
+}
+@keyframes kta-version-update-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(140, 180, 255, 0.0);
+    background: rgba(140, 180, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 10px 1px rgba(140, 180, 255, 0.55);
+    background: rgba(140, 180, 255, 0.22);
+  }
 }
 
 /* Signature manuscrite KARMA dans le footer copyright (remplace le texte

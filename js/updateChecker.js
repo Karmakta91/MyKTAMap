@@ -194,9 +194,94 @@
     return { status: "update-available", local: known, remote };
   }
 
+  // Callbacks invoqués à chaque fin de check() — permet à l'UI (ex: badge
+  // version dans le footer) de réagir au résultat sans devoir poller le LS.
+  const _checkListeners = [];
+  function onCheck(cb) {
+    if (typeof cb === "function") _checkListeners.push(cb);
+  }
+  function _notifyCheck(result) {
+    _checkListeners.forEach(function(fn) {
+      try { fn(result); } catch(e) { console.warn("[UpdateChecker] onCheck listener throw :", e); }
+    });
+  }
+
+  // Wrap check() pour notifier les listeners. On ré-affecte la référence
+  // exposée plus bas pour conserver l'API publique.
+  const _checkRaw = check;
+  async function checkWithNotify() {
+    const r = await _checkRaw();
+    _notifyCheck(r);
+    return r;
+  }
+
+  // Forçage manuel de la modale d'update — bypass le LS_SEEN et le snooze.
+  // Utilisé par le badge version cliquable du footer loader.
+  // Re-fetch frais pour être sûr d'avoir la dernière version remote, puis
+  // affiche la modale via afficherModaleUpdateDispo si update dispo, sinon
+  // une info "déjà à jour".
+  async function showCurrent() {
+    let remote;
+    try {
+      remote = await _fetchRemote();
+    } catch(e) {
+      console.log("[UpdateChecker] showCurrent fetch échoué :", e.message);
+      if (typeof window.afficherModaleAlerteAbsente === "function") {
+        window.afficherModaleAlerteAbsente("offline");
+      }
+      return { status: "offline" };
+    }
+
+    const known = _getKnownVersion() || (window.__MKM__ && window.__MKM__.build) || "?";
+
+    if (!remote || !remote.version || remote.version === known) {
+      // Pas d'update dispo — message neutre
+      if (typeof window.afficherModaleAlerteAbsente === "function") {
+        window.afficherModaleAlerteAbsente("up-to-date");
+      } else {
+        alert("✅ Tu utilises déjà la dernière version (" + (remote && remote.version || known) + ").");
+      }
+      return { status: "up-to-date", remote: remote };
+    }
+
+    // Update dispo → affichage forcé de la modale, sans respecter snooze ni LS_SEEN
+    if (typeof window.afficherModaleUpdateDispo === "function") {
+      function _markSeen() {
+        _clearSnooze();
+        _setKnownVersion(remote.version, remote);
+      }
+      window.afficherModaleUpdateDispo({
+        localVersion: known,
+        remote: remote,
+        onAcceptSoft: function() {
+          _markSeen();
+          if (typeof window.mettreAJourCodeSeul === "function") {
+            window.mettreAJourCodeSeul();
+          } else {
+            window.location.reload();
+          }
+        },
+        onAcceptHard: function() {
+          _markSeen();
+          if (typeof window.viderCacheAppli === "function") {
+            window.viderCacheAppli();
+          } else {
+            window.location.reload();
+          }
+        },
+        onPostpone: function() {
+          _snooze();
+        }
+      });
+    }
+    return { status: "update-available", local: known, remote: remote };
+  }
+
   window.UpdateChecker = {
-    check: check,
+    check: checkWithNotify,
     notifySplashEnded: notifySplashEnded,
+    showCurrent: showCurrent,
+    onCheck: onCheck,
     getCurrentVersion: _getKnownVersion,
     getLastKnownData: _getLastKnownData
   };
