@@ -436,6 +436,14 @@
           if (!name) continue;
           const blob = await entry.async("blob");
           const file = new File([blob], name, { type: guessMime(name) });
+          // 🧱 Tiling V2 (v149) : on annote le File avec son chemin complet
+          // dans le ZIP via une propriété ad-hoc `_fullPath`. iOS Safari strip
+          // les `/` du `File.name` (qui devient juste le basename), donc
+          // impossible de stocker `data/tiles/z0/x0_y-1.jpg` dans `file.name`.
+          // Les tuiles partagent souvent le même basename (x0_y-1.jpg existe
+          // à z=0, z=-1, z=-2…) → seul le chemin complet permet de
+          // désambiguer.
+          file._fullPath = entry.name;
           if (name === "plan-config.json") planConfigFile = file;
           else assetFiles.push(file);
         }

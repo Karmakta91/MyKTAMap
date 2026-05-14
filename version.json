@@ -1,12 +1,11 @@
 {
-  "version": "v148",
+  "version": "v149",
   "released": "2026-05-15",
   "notes": [
-    "🏗️ Gros morceau : MODE MULTI-NIVEAU pour les carrières multi-étages (Glacière, Capucins…). Active via ⚙️ Réglages → toggle 🏗️ Mode multi-niveau ou via le 📦 Générateur de plan (case à cocher). Tous tes plans existants restent identiques tant que tu ne l'actives pas (rétro-compat absolue).",
-    "🏗️ Quand le mode est ON pour un plan : nouveau bouton 'niveau actif' sous les boutons de zoom (top-left), modale avec sélecteur de niveau actif (segmented [0][1][2][3][+]) + checkboxes 'niveaux visibles' (filtre multi-select). Toutes les nouvelles roads, zones, points éditeur et le tracker sont tagués automatiquement avec le niveau actif. Le filtre niveau s'applique aux roads/zones/points session ET aux data layers (puits, cataphile, etc. — ajoute manuellement \"level\": N dans le JSON pour qu'ils soient filtrables).",
-    "🪜 Jonctions interniveau : sous-action 🪜 dans le groupe Tracés (seulement si multiLevel ON). Crée un tracé spécial (magenta pointillé avec ronds aux extrémités) qui relie 2 niveaux. C'est le SEUL moyen pour le pathfinder de passer d'un niveau à l'autre (les croisements visuels 2D entre niveaux différents ne comptent plus comme intersection réelle).",
-    "🗺️ Pathfinder niveau-aware : ne traverse plus les croisements visuels entre roads de niveaux différents. Les jonctions sont les bridges officiels entre niveaux. Sur plans monolayer (multiLevel OFF) : comportement strictement identique à v147.",
-    "🎨 Export PNG mode Avancé : nouvelle section '🏗️ Niveaux à exporter' avec checkboxes par niveau (uniquement visible si multiLevel ON). Permet d'exporter une image avec un sous-ensemble de niveaux indépendamment du filtre actuel sur la carte.",
-    "🧭 Petits fix : icône mode jonction qui ne se désactive pas avec un re-clic (fix), modes de saisie point + jonction qui s'activaient en même temps (fix exclusivité), cercles d'intersection apparaissant entre roads de niveaux différents (fix), road/zone en cours qui disparaissait pendant le tracé si filtre actif (fix : toujours visible pendant le tracé)."
+    "🧱 Tiling V2 (Option B) : nouvelle conversion V1→V2 dans le générateur (📦 Modifier un plan → ☑️ 🧱 Convertir en V2 tuile). Découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like). Réduction massive de la conso mémoire pour les gros plans (>50 Mo) : Leaflet ne charge plus l'image entière en RAM, juste les tuiles du niveau de zoom courant.",
+    "🧱 Runtime Option B : N L.imageOverlay indépendants par niveau de zoom, swap automatique on zoomend. Beaucoup plus simple et fiable que les approches GridLayer/TileLayer.extend testées précédemment (qui avaient des bugs subtils sur les coords tuile inversées Y, le _tileZoom clamping, et la péremption des blob URLs iOS).",
+    "🧱 Auto-crop intégré : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Sinon (image déjà cadrée), pas de crop. Les dims plan-config reflètent la zone effectivement tuilée.",
+    "🔄 Workflow : disponible UNIQUEMENT en mode 'Modifier un plan existant' (besoin du File source). Si tu modifies un plan déjà V2 sans changer la case, les tuiles sont régénérées. Si tu décoches, downgrade V2 → V1 (les tuiles ne sont pas reportées). Conversion souvent lente (1-5 min selon la taille de l'image) mais une seule fois.",
+    "📦 Backward compat : les plans V1 sans le flag plan.tiledV2 fonctionnent strictement comme avant (mode performance preset classique). Le runtime V2 n'est activé que si le plan-config contient `plan.tiledV2: true` ET une section `tiling` avec les métadonnées."
   ]
 }

@@ -107,6 +107,16 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   const W = bounds[1][1];
   const H = bounds[1][0];
 
+  // 🧱 Tiling V2 (v149) : si le plan-config indique `plan.tiledV2: true` ET
+  // contient une section `tiling` (manifest), on bascule sur le runtime
+  // Option B : N L.imageOverlay par niveau de zoom, swap on zoomend.
+  // Cf createConf.js > _genererTuilesV2 pour la génération côté planner.
+  const pc = window.PLAN_CONFIG;
+  if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
+    console.log("[Tiling] Mode V2 (Option B : multi-imageOverlay swap on zoom)");
+    return _chargerImageV2OptionB(bounds, map, pc.tiling);
+  }
+
   const preset = (typeof APP_CONFIG !== "undefined") ? APP_CONFIG.perfPreset : "auto";
   const r = resoudrePerfPreset(preset, fileSize, W, H);
 
@@ -120,6 +130,159 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   L.imageOverlay(url, bounds).addTo(map);
   return [];
 }
+
+// =========================
+// 🧱 RUNTIME V2 — Option B (multi-imageOverlay swap on zoom)
+// =========================
+// Le plan-config contient :
+//   plan.imageWidth/imageHeight = dims du plan (post-crop)
+//   plan.tiledV2 = true (flag de mode)
+//   tiling = { version: 2, tileSize: 512, format: "jpeg",
+//              minNativeZoom: -3, maxNativeZoom: 0 }
+//
+// Les tuiles sont dans RUNTIME_ASSETS[`data/tiles/z<N>/x<col>_y<-k>.jpg`].
+// Au runtime, on choisit le niveau z correspondant au zoom Leaflet courant
+// (clamp entre min/maxNativeZoom), on enlève les overlays du niveau précédent,
+// on ajoute les nouveaux. Chaque overlay = L.imageOverlay avec bounds calcules
+// depuis la position de la tuile dans la grille.
+//
+// Pas de GridLayer, pas de TileLayer.extend, pas de coord math complexe :
+// Leaflet positionne les imageOverlay via leurs bounds (latLng), et gère
+// le scaling CSS naturellement (même primitive que le mode V1 classique).
+//
+// Pour les tuiles PARTIELLES (image non multiple de tileSize) au niveau le
+// plus haut, la tuile est paddée avec du noir (canvas 512×512). Les bounds
+// FULL la placent au-dessus du plan (lat > imageHeight). Le black border
+// visible si l'utilisateur dezoome très loin. Acceptable pour v1.
+function _chargerImageV2OptionB(bounds, map, tilingManifest) {
+  const H = bounds[1][0];
+  const W = bounds[1][1];
+
+  const TILE_SIZE = tilingManifest.tileSize || 512;
+  const MIN_NATIVE = (Number.isInteger(tilingManifest.minNativeZoom)) ? tilingManifest.minNativeZoom : -3;
+  const MAX_NATIVE = (Number.isInteger(tilingManifest.maxNativeZoom)) ? tilingManifest.maxNativeZoom : 0;
+
+  // État du runtime V2 — exposé en window pour cleanup côté main.js plan switch
+  const state = {
+    currentLevel: null,   // z courant
+    activeOverlays: [],   // [L.imageOverlay] actuellement affichés
+    blobUrlsCreated: []   // [string] pour revoke au cleanup
+  };
+  window._tilingV2State = state;
+
+  // Helper : résout l'URL d'une tuile (z, col, k=-row). Lazy → crée la blob URL
+  // au premier appel et la réutilise ensuite (asset.url cached).
+  function _resoudreUrlTuile(z, col, k) {
+    const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+    const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
+    if (!asset) return null;  // tuile manquante (edge case ou erreur génération)
+    if (!asset.url && asset.file) {
+      asset.url = URL.createObjectURL(asset.file);
+      state.blobUrlsCreated.push(asset.url);
+    }
+    return asset.url || path;  // fallback path (mode serveur HTTP, futur)
+  }
+
+  // Helper : choix du niveau z à afficher selon le zoom courant de la map.
+  // Clamp aux niveaux générés (min/maxNativeZoom). round() pour un comportement
+  // équilibré entre netteté (z élevé) et perf (z bas = moins de tuiles).
+  function _choisirNiveau(mapZoom) {
+    const z = Math.max(MIN_NATIVE, Math.min(MAX_NATIVE, Math.round(mapZoom)));
+    return z;
+  }
+
+  // Helper : génère les overlays d'un niveau z donné.
+  function _renderNiveau(z) {
+    // Cleanup overlays précédents
+    state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
+    state.activeOverlays = [];
+
+    const scale = Math.pow(2, -z);       // z=0 → 1, z=-1 → 2, z=-2 → 4, z=-3 → 8
+    const lvlW  = Math.ceil(W / scale);
+    const lvlH  = Math.ceil(H / scale);
+    const cols  = Math.ceil(lvlW / TILE_SIZE);
+    const rows  = Math.ceil(lvlH / TILE_SIZE);
+
+    let added = 0, missing = 0;
+    for (let k = 1; k <= rows; k++) {
+      for (let col = 0; col < cols; col++) {
+        const url = _resoudreUrlTuile(z, col, k);
+        if (!url) { missing++; continue; }
+
+        // Bounds Leaflet (CRS.Simple, lat = H_image - y_source).
+        //   lat_min (south) = (k-1) * TILE_SIZE * scale
+        //   lat_max (north) = k * TILE_SIZE * scale   (peut dépasser H si tuile partielle)
+        //   lng_min (west)  = col * TILE_SIZE * scale
+        //   lng_max (east)  = (col+1) * TILE_SIZE * scale  (peut dépasser W si dernière col partielle)
+        const latMin = (k - 1) * TILE_SIZE * scale;
+        const latMax = k       * TILE_SIZE * scale;
+        const lngMin = col       * TILE_SIZE * scale;
+        const lngMax = (col + 1) * TILE_SIZE * scale;
+
+        const tileBounds = [[latMin, lngMin], [latMax, lngMax]];
+        const overlay = L.imageOverlay(url, tileBounds, {
+          interactive: false,
+          // pane "tilePane" → s'affiche SOUS les overlays vectoriels et icons
+          // (cohérent avec le rendu Leaflet standard)
+          pane: "tilePane"
+        });
+        overlay.addTo(map);
+        state.activeOverlays.push(overlay);
+        added++;
+      }
+    }
+    state.currentLevel = z;
+    console.log("[Tiling V2] Niveau z=" + z + " — " + added + " tuiles affichées" +
+                (missing > 0 ? " (" + missing + " manquantes)" : ""));
+  }
+
+  // Écoute des changements de zoom : swap de niveau si nécessaire.
+  function _onZoom() {
+    const z = _choisirNiveau(map.getZoom());
+    if (z !== state.currentLevel) _renderNiveau(z);
+  }
+  map.on("zoomend", _onZoom);
+
+  // Rendu initial (avant tout zoom, on prend le zoom courant de la map)
+  _renderNiveau(_choisirNiveau(map.getZoom()));
+
+  // Retourne les overlays courants pour API compat (main.js > _libererRessourcesPlanPrecedent
+  // appelle libererTuiles sur ce retour). Pour V2, on a aussi besoin du cleanup
+  // du listener zoomend + revoke des blob URLs créées. Le state est dans
+  // window._tilingV2State, _libererRessourcesPlanPrecedent gère le cleanup global.
+  state.zoomHandler = _onZoom;
+  return state.activeOverlays;
+}
+
+// Cleanup spécifique V2 — appelé par main.js > _libererRessourcesPlanPrecedent
+window._libererTuilesV2 = function() {
+  const state = window._tilingV2State;
+  if (!state) return;
+  // Remove le listener zoomend
+  if (window.map && state.zoomHandler) {
+    try { window.map.off("zoomend", state.zoomHandler); } catch(e) {}
+  }
+  // Remove tous les overlays actifs
+  state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
+  state.activeOverlays = [];
+  // Revoke les blob URLs créées (économie mémoire)
+  state.blobUrlsCreated.forEach(function(u) {
+    try { URL.revokeObjectURL(u); } catch(e) {}
+  });
+  state.blobUrlsCreated = [];
+  // Reset asset.url pour les tuiles qui pourraient être rechargées plus tard
+  // (au plan switch, RUNTIME_ASSETS est wipé donc pas nécessaire — safety net)
+  if (window.RUNTIME_ASSETS) {
+    Object.keys(window.RUNTIME_ASSETS).forEach(function(k) {
+      if (k.startsWith("data/tiles/")) {
+        const a = window.RUNTIME_ASSETS[k];
+        if (a && a.lazy === true) a.url = null;
+      }
+    });
+  }
+  window._tilingV2State = null;
+  console.log("[Tiling V2] Cleanup OK");
+};
 
 // =========================
 // TILING PRINCIPAL
