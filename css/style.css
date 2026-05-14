@@ -3032,6 +3032,31 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   overflow: hidden;
 }
 
+/* ⚠️ Layout fix v150 : la 1ère ligne (titre) est désormais un flex container,
+   avec le nom prenant flex:1 (et l'ellipsis) tandis que les badges/version
+   ont flex-shrink:0 → ils restent toujours visibles même sur noms longs.
+   Avant : la classe .plan-row-name avait l'ellipsis sur l'ensemble du contenu
+   (nom + badge ✅), donc les badges étaient tronqués avec le nom long. */
+.plan-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;       /* permet à flex:1 child d'overflow correctement */
+  overflow: hidden;
+}
+
+.plan-row-name-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: #e8eaf0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Alias rétro-compat (anciens emplacements éventuels) */
 .plan-row-name {
   font-size: 13px;
   color: #e8eaf0;
@@ -3042,14 +3067,54 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 .plan-row-version {
+  flex-shrink: 0;
   display: inline-block;
   font-size: 10px;
   color: #8cb4ff;
   background: rgba(140,180,255,0.12);
   padding: 1px 6px;
   border-radius: 3px;
-  margin-left: 4px;
   font-weight: 500;
+}
+
+/* Container des badges (mode + storage) à droite du nom — flex-shrink:0
+   garantit qu'ils ne se font jamais grignoter par l'ellipsis du nom. */
+.plan-row-badges {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 🏗️ Badges de MODE — V2 / M-LVL / V1 — code couleur cohérent charte */
+.plan-row-mode {
+  display: inline-block;
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+/* V2 tuilé = violet (cohérent avec la checkbox V2 dans le planner) */
+.plan-row-mode-v2 {
+  background: rgba(180, 82, 255, 0.18);
+  color: #d29bff;
+  border: 1px solid rgba(180, 82, 255, 0.35);
+}
+/* Multi-niveau = jaune (cohérent avec la pastille niveau dans la sidebar) */
+.plan-row-mode-mlvl {
+  background: rgba(244, 197, 66, 0.18);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+}
+/* V1 classique = gris neutre, discret */
+.plan-row-mode-v1 {
+  background: rgba(255, 255, 255, 0.05);
+  color: #8892a4;
+  border: 1px solid rgba(255, 255, 255, 0.10);
 }
 
 .plan-row-sub {
@@ -3163,7 +3228,8 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .plan-row-badge {
   display: inline-block;
   font-size: 11px;
-  margin-left: 6px;
+  /* margin-left supprimée v150 : badge maintenant dans .plan-row-badges
+     (flex avec gap:4px), pas besoin de marge inline. */
   vertical-align: middle;
   cursor: help;
 }
