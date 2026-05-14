@@ -619,16 +619,30 @@
 
       function planRowHTML(plan) {
         let icon = plan.type === "server" ? "🌐" : "💾";
-        // Différencier visuellement les plans locaux selon leur mode de persistance
-        let badge = "";
+        // Badge de persistance (plans locaux) — différencier visuellement les
+        // modes de stockage (blob/fsHandle/pick).
+        let badgeStorage = "";
         if (plan.type === "local") {
           if (plan.storedBlob) {
-            badge = '<span class="plan-row-badge plan-row-badge-stored" title="Plan mémorisé dans l\'app">✅</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-stored" title="Plan mémorisé dans l\'app">✅</span>';
           } else if (plan.fsHandleId) {
-            badge = '<span class="plan-row-badge plan-row-badge-fs" title="Accès permanent autorisé">🔐</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-fs" title="Accès permanent autorisé">🔐</span>';
           } else {
-            badge = '<span class="plan-row-badge plan-row-badge-pick" title="Re-sélection requise au chargement">📁</span>';
+            badgeStorage = '<span class="plan-row-badge plan-row-badge-pick" title="Re-sélection requise au chargement">📁</span>';
           }
+        }
+        // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
+        // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
+        // Si aucun flag → badge V1 implicite (mode classique).
+        let badgesMode = "";
+        if (plan.tiledV2 === true) {
+          badgesMode += '<span class="plan-row-mode plan-row-mode-v2" title="Plan tuilé V2 (performance, Google Maps-like)">V2</span>';
+        }
+        if (plan.multiLevel === true) {
+          badgesMode += '<span class="plan-row-mode plan-row-mode-mlvl" title="Plan multi-niveau (carrière multi-étages)">M-LVL</span>';
+        }
+        if (!badgesMode) {
+          badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="Plan classique (mono-niveau, image entière en RAM)">V1</span>';
         }
         const sub  = plan.type === "server"
           ? plan.path
@@ -636,13 +650,17 @@
         const meta = plan.lastOpened
           ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
           : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
+        // Structure : .plan-row-title = flex avec name (ellipsis) + version + badges côte à côte.
+        // .plan-row-name-text prend flex:1 et trunque, les badges/version sont flex-shrink:0
+        // pour rester toujours visibles même sur noms longs (fix v150 ✅ disparaissait).
         return `
           <div class="plan-row" data-id="${plan.id}">
             <span class="plan-row-icon">${icon}</span>
             <div class="plan-row-info">
-              <div class="plan-row-name">
-                ${escapeHtml(plan.name || plan.id)}${plan.version ? ' <span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
-                ${badge}
+              <div class="plan-row-title">
+                <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
+                ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
+                <span class="plan-row-badges">${badgesMode}${badgeStorage}</span>
               </div>
               <div class="plan-row-sub">${escapeHtml(sub)}</div>
               ${meta}

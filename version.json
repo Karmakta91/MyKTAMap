@@ -1,11 +1,9 @@
 {
-  "version": "v149",
+  "version": "v150",
   "released": "2026-05-15",
   "notes": [
-    "🧱 Tiling V2 (Option B) : nouvelle conversion V1→V2 dans le générateur (📦 Modifier un plan → ☑️ 🧱 Convertir en V2 tuile). Découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like). Réduction massive de la conso mémoire pour les gros plans (>50 Mo) : Leaflet ne charge plus l'image entière en RAM, juste les tuiles du niveau de zoom courant.",
-    "🧱 Runtime Option B : N L.imageOverlay indépendants par niveau de zoom, swap automatique on zoomend. Beaucoup plus simple et fiable que les approches GridLayer/TileLayer.extend testées précédemment (qui avaient des bugs subtils sur les coords tuile inversées Y, le _tileZoom clamping, et la péremption des blob URLs iOS).",
-    "🧱 Auto-crop intégré : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Sinon (image déjà cadrée), pas de crop. Les dims plan-config reflètent la zone effectivement tuilée.",
-    "🔄 Workflow : disponible UNIQUEMENT en mode 'Modifier un plan existant' (besoin du File source). Si tu modifies un plan déjà V2 sans changer la case, les tuiles sont régénérées. Si tu décoches, downgrade V2 → V1 (les tuiles ne sont pas reportées). Conversion souvent lente (1-5 min selon la taille de l'image) mais une seule fois.",
-    "📦 Backward compat : les plans V1 sans le flag plan.tiledV2 fonctionnent strictement comme avant (mode performance preset classique). Le runtime V2 n'est activé que si le plan-config contient `plan.tiledV2: true` ET une section `tiling` avec les métadonnées."
+    "🏷️ Badges de mode sur chaque ligne de plan dans le loader : V1 (gris classique), M-LVL (jaune multi-niveau), V2 (violet tuile). Plusieurs badges peuvent coexister sur un même plan. Le code couleur suit la charte (jaune = niveau, violet = V2).",
+    "🐛 Fix : le petit ✅ vert 'plan mémorisé en local' disparaissait sur les carrières au nom long. Restructure du layout de la ligne plan (.plan-row-title en flex) → le nom s'ellipse comme avant mais les badges (mode + persistance + version) restent toujours visibles à droite.",
+    "📄 data/index.json enrichi : peut désormais déclarer multiLevel:true / tiledV2:true par plan pour afficher les badges immédiatement, sans avoir à charger chaque plan-config.json au boot."
   ]
 }

@@ -84,9 +84,9 @@ async function decouvrirPlansServeur() {
     console.log("[Main] index.json trouvé :", plans.length, "plan(s)");
 
     plans.forEach(function(entry) {
-      // Format détaillé : { id, path, name, version?, author? }
+      // Format détaillé : { id, path, name, version?, author?, multiLevel?, tiledV2? }
       // Format minimal : "test1" (string) → on déduit
-      let path, name, version, author, id;
+      let path, name, version, author, id, multiLevel, tiledV2;
       if (typeof entry === "string") {
         path = "data/" + entry;
         name = entry;
@@ -96,12 +96,19 @@ async function decouvrirPlansServeur() {
         name = entry.name || entry.id || path;
         version = entry.version || null;
         author  = entry.author  || null;
+        // 🏗️ Mode badges (v150) : flags optionnels declares dans data/index.json
+        // pour que la liste de plans affiche les badges V2 / Multi-LVL immediatement,
+        // sans avoir a charger chaque plan-config.json. Pour les plans locaux et
+        // server-mais-pas-declares, les flags sont stockes en PlanRegistry au
+        // premier load (cf _enregistrerPlanCharge dans chargerPlanServeur / startImportedPlan).
+        if (entry.multiLevel === true) multiLevel = true;
+        if (entry.tiledV2    === true) tiledV2    = true;
         id   = entry.id ? "server_" + entry.id.replace(/[^a-z0-9_-]/gi, "_") : window.PlanRegistry.genServerId(path);
       } else {
         return;
       }
 
-      window.PlanRegistry.addOrUpdate({
+      const regEntry = {
         id: id,
         type: "server",
         path: path,
@@ -110,7 +117,12 @@ async function decouvrirPlansServeur() {
         author: author,
         discovered: true,
         addedAt: new Date().toISOString()
-      });
+      };
+      // Ajout conditionnel des flags (sinon Object.assign dans addOrUpdate effacerait
+      // un user-override explicite en multiLevel:false par setMultiLevel).
+      if (multiLevel === true) regEntry.multiLevel = true;
+      if (tiledV2    === true) regEntry.tiledV2    = true;
+      window.PlanRegistry.addOrUpdate(regEntry);
     });
   } catch(e) {
     console.warn("[Main] Erreur auto-discovery serveur :", e);
@@ -354,7 +366,7 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   if (window.PlanRegistry && window.PLAN_CONFIG?.plan) {
     const id = registryEntry?.id || window.PlanRegistry.genServerId(planPath);
     window._currentLoadedPlanId = id;  // pour SessionPersist (restore après lancerApplication)
-    _enregistrerPlanCharge({
+    const planEntry = {
       id: id,
       type: "server",
       path: planPath,
@@ -363,7 +375,14 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
       author:  window.PLAN_CONFIG.plan.author  || (registryEntry && registryEntry.author)  || null,
       discovered: registryEntry?.discovered || false,
       perfPreset: APP_CONFIG.perfPreset
-    });
+    };
+    // 🏗️ Mode badges (v150) : enregistrer les flags depuis plan-config.json
+    // pour que la liste de plans affiche M-LVL / V2 a la prochaine visite du
+    // loader. Ajout conditionnel pour ne pas ecraser un user-override explicite
+    // false fait via setMultiLevel (Object.assign dans addOrUpdate respecte ca).
+    if (window.PLAN_CONFIG.plan.multiLevel === true) planEntry.multiLevel = true;
+    if (window.PLAN_CONFIG.plan.tiledV2    === true) planEntry.tiledV2    = true;
+    _enregistrerPlanCharge(planEntry);
   }
 
   _appEnCours    = false;
@@ -466,6 +485,11 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
       fileSize: meta.zipFile?.size || null,
       perfPreset: APP_CONFIG.perfPreset
     };
+    // 🏗️ Mode badges (v150) : enregistrer les flags depuis plan-config.json
+    // pour que la liste de plans affiche M-LVL / V2. Ajout conditionnel pour
+    // ne pas ecraser un user-override explicite (setMultiLevel(id, false)).
+    if (rawConfig.plan.multiLevel === true) entry.multiLevel = true;
+    if (rawConfig.plan.tiledV2    === true) entry.tiledV2    = true;
 
     // Si on a un FileSystemFileHandle, le persister
     if (meta.fsHandle && window.PlanRegistry.hasFsAccess()) {
