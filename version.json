@@ -1,9 +1,9 @@
 {
-  "version": "v150",
+  "version": "v151",
   "released": "2026-05-15",
   "notes": [
-    "🏷️ Badges de mode sur chaque ligne de plan dans le loader : V1 (gris classique), M-LVL (jaune multi-niveau), V2 (violet tuile). Plusieurs badges peuvent coexister sur un même plan. Le code couleur suit la charte (jaune = niveau, violet = V2).",
-    "🐛 Fix : le petit ✅ vert 'plan mémorisé en local' disparaissait sur les carrières au nom long. Restructure du layout de la ligne plan (.plan-row-title en flex) → le nom s'ellipse comme avant mais les badges (mode + persistance + version) restent toujours visibles à droite.",
-    "📄 data/index.json enrichi : peut désormais déclarer multiLevel:true / tiledV2:true par plan pour afficher les badges immédiatement, sans avoir à charger chaque plan-config.json au boot."
+    "🧱 Conversion V2 disponible aussi en mode 'Nouveau plan' : avant il fallait passer par 'Modifier un plan existant' (uploader un ZIP V1) pour cocher la case 🧱. Maintenant la case apparaît dès qu'une image principale est uploadée, peu importe le mode.",
+    "⚠️ Modal d'avertissement au check de la case V2 : conversion lourde (CPU + RAM), conseille de faire la génération sur PC plutôt que sur mobile (iOS Safari plafonné à ~500 MB, crash quasi-garanti sur image >50 MB ou >8K px). L'utilisateur peut continuer ou annuler.",
+    "🎛️ Plan V2 + Mode performance Désactivé : si tu sélectionnes Mode 'Désactivé' au chargement d'un plan V2, le runtime saute le tuilage et charge l'image source directement (comportement V1 brut). Pratique pour comparer V2 vs V1 sur le même plan, ou pour bypass temporairement le système de tuiles si besoin de troubleshooting."
   ]
 }

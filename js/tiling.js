@@ -107,17 +107,27 @@ async function chargerImage(url, bounds, map, fileSize, sourceFile) {
   const W = bounds[1][1];
   const H = bounds[1][0];
 
+  const preset = (typeof APP_CONFIG !== "undefined") ? APP_CONFIG.perfPreset : "auto";
+
   // 🧱 Tiling V2 (v149) : si le plan-config indique `plan.tiledV2: true` ET
   // contient une section `tiling` (manifest), on bascule sur le runtime
   // Option B : N L.imageOverlay par niveau de zoom, swap on zoomend.
   // Cf createConf.js > _genererTuilesV2 pour la génération côté planner.
+  // ⚠️ v151 : si le user a force perfPreset="off" (Mode perf Désactivé), on
+  // SKIP le tuilage V2 et on charge directement l'image source (baseImage) en
+  // L.imageOverlay — comportement V1 brut. Use case : comparer V2 vs V1 sur le
+  // meme plan, ou contourner un bug perçu du runtime tuile. Le baseImage reste
+  // toujours present dans le ZIP/asset (le generateur V2 ne le supprime pas).
   const pc = window.PLAN_CONFIG;
   if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
+    if (preset === "off") {
+      console.log("[Tiling] Plan V2 mais perfPreset=off → fallback baseImage direct (V1-like)");
+      L.imageOverlay(url, bounds).addTo(map);
+      return [];
+    }
     console.log("[Tiling] Mode V2 (Option B : multi-imageOverlay swap on zoom)");
     return _chargerImageV2OptionB(bounds, map, pc.tiling);
   }
-
-  const preset = (typeof APP_CONFIG !== "undefined") ? APP_CONFIG.perfPreset : "auto";
   const r = resoudrePerfPreset(preset, fileSize, W, H);
 
   if (r.tile && r.params) {
