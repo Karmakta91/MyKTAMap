@@ -250,6 +250,12 @@ function afficherFormulaire(x, y) {
       source:      "editor"
     };
 
+    // 🏗️ Multi-niveau (v148) : tag le point avec le niveau actif si la feature
+    // est ON pour ce plan. Si OFF → aucun champ `level` → retro-compat absolue.
+    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      point.level = window.APP_CONFIG.activeLevel || 0;
+    }
+
     listePoints.push(point);
     _ajouterMarker(point);
     fermer();
@@ -284,10 +290,48 @@ function _ajouterMarker(point) {
     ? window.buildPointPopupHtml(point, true)
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+
+  // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.
+  // (Le point.level est aussi conserve dans listePoints, mais on duplique sur
+  // l'objet marker pour eviter une lookup au moment du filter visuel.)
+  marker._ktaLevel = Number.isInteger(point.level) ? point.level : 0;
+
   // Tracking pour permettre une suppression ciblée plus tard (sans clearLayers
   // qui efface aussi roads/zones partageant le meme layerEditor).
   _markersEditor.push(marker);
+
+  // Applique le filtre niveau immediat sur ce nouveau marker (utile quand le
+  // user ajoute un point sur un niveau qui n'est pas dans visibleLevels —
+  // ex: il a filtre Niv 1 mais ajoute via le mode edition sans changer le
+  // niveau actif). Le marker se cache si pas visible.
+  _appliquerFiltreNiveauSurMarker(marker);
 }
+
+// 🏗️ Multi-niveau : helper de filtrage visuel d'un marker editor selon
+// APP_CONFIG.visibleLevels. Utilise setOpacity + pointer-events plutot
+// que remove/addLayer pour preserver l'integration avec layerEditor.
+function _appliquerFiltreNiveauSurMarker(marker) {
+  if (!marker) return;
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  if (!multi) {
+    // Feature off → tout visible (retro-compat)
+    try { marker.setOpacity(1); } catch(e) {}
+    if (marker._icon) marker._icon.style.pointerEvents = "";
+    return;
+  }
+  const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+    ? window.APP_CONFIG.visibleLevels : [0];
+  const lvl = Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0;
+  const visible = visibles.indexOf(lvl) >= 0;
+  try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
+  if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
+}
+
+// Filtre TOUS les markers editor courants. Appelle par interface.js
+// (window.appliquerFiltreNiveau) quand le filtre change.
+window._applyLevelFilterToEditorPoints = function() {
+  _markersEditor.forEach(_appliquerFiltreNiveauSurMarker);
+};
 
 // =========================
 // SUPPRIMER LE DERNIER POINT AJOUTÉ

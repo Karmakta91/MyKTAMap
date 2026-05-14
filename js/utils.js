@@ -158,6 +158,69 @@ const ROAD_STYLES_DATA = {
   chemin:     { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 }
 };
 
+// 🏗️ Multi-niveau (v148) : registres globaux de TOUS les objets Leaflet des
+// data layers pour appliquer le filtre runtime sans refetch. Vides a chaque
+// initDataFromConfig (reset cote main.js au plan switch).
+//   _ktaDataMarkers   : markers (L.marker)        — setOpacity + pointer-events
+//   _ktaDataPolylines : roads embarques (polyline) — setStyle({opacity})
+//   _ktaDataPolygons  : zones embarques (polygon)  — setStyle({opacity, fillOpacity})
+window._ktaDataMarkers   = window._ktaDataMarkers   || [];
+window._ktaDataPolylines = window._ktaDataPolylines || [];
+window._ktaDataPolygons  = window._ktaDataPolygons  || [];
+
+// Helper commun : retourne true si le level passe le filtre courant.
+// MultiLevel OFF → tout visible. ON → visible ssi level ∈ visibleLevels.
+function _passeFiltreDataLevel(lvl) {
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  if (!multi) return true;
+  const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+    ? window.APP_CONFIG.visibleLevels : [0];
+  return visibles.indexOf(Number.isInteger(lvl) ? lvl : 0) >= 0;
+}
+
+// === MARKERS data layers ===
+function _filtreNiveauSurMarkerData(marker) {
+  if (!marker) return;
+  const visible = _passeFiltreDataLevel(marker._ktaLevel);
+  try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
+  if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
+}
+window._applyLevelFilterToDataPoints = function() {
+  if (!Array.isArray(window._ktaDataMarkers)) return;
+  window._ktaDataMarkers.forEach(_filtreNiveauSurMarkerData);
+};
+
+// === POLYLINES data layers (routes embarquees) ===
+// On stocke l'opacite originale du tracé pour pouvoir la restaurer quand le
+// filtre redevient visible (sinon on perdrait l'opacite si elle est < 1).
+function _filtreNiveauSurPolylineData(entry) {
+  if (!entry || !entry.polyline) return;
+  const visible = _passeFiltreDataLevel(entry.level);
+  try {
+    entry.polyline.setStyle({ opacity: visible ? entry.origOpacity : 0 });
+  } catch(e) {}
+}
+window._applyLevelFilterToDataRoads = function() {
+  if (!Array.isArray(window._ktaDataPolylines)) return;
+  window._ktaDataPolylines.forEach(_filtreNiveauSurPolylineData);
+};
+
+// === POLYGONS data layers (zones embarquees) ===
+function _filtreNiveauSurPolygonData(entry) {
+  if (!entry || !entry.polygon) return;
+  const visible = _passeFiltreDataLevel(entry.level);
+  try {
+    entry.polygon.setStyle({
+      opacity:     visible ? entry.origOpacity     : 0,
+      fillOpacity: visible ? entry.origFillOpacity : 0
+    });
+  } catch(e) {}
+}
+window._applyLevelFilterToDataZones = function() {
+  if (!Array.isArray(window._ktaDataPolygons)) return;
+  window._ktaDataPolygons.forEach(_filtreNiveauSurPolygonData);
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
@@ -188,6 +251,14 @@ function ajouterPointsDepuisJSON(url, layer) {
               : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
             marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
           }
+
+          // 🏗️ Multi-niveau (v148) : si le point JSON contient un champ
+          // `level`, on le stocke sur le marker pour le filtre runtime.
+          // Absent (cas usuel sur plans v147) → traite comme level 0.
+          marker._ktaLevel = Number.isInteger(p.level) ? p.level : 0;
+          window._ktaDataMarkers.push(marker);
+          _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
+
           marker.addTo(layer);
         }
         index = fin;
@@ -204,7 +275,16 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
-          L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
+          const polyline = L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
+          // 🏗️ Multi-niveau (v148) : registre pour filtre runtime. Si le JSON
+          // de la route contient un champ `level`, on l'utilise. Sinon = 0.
+          const entry = {
+            polyline:    polyline,
+            level:       Number.isInteger(road.level) ? road.level : 0,
+            origOpacity: style.opacity ?? 1
+          };
+          window._ktaDataPolylines.push(entry);
+          _filtreNiveauSurPolylineData(entry);  // applique le filtre courant
           // Enregistrer dans road.js avec la référence au layerGroup du calque,
           // pour que les intersections se filtrent par visibilité (toggle calques).
           if (typeof window.registerEmbeddedRoad === "function") {
@@ -229,7 +309,16 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!zone.points || zone.points.length < 3) return;
           const style = ZONE_STYLES_DATA[zone.type] || ZONE_STYLES_DATA.remblais;
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-          L.polygon(latlngs, { ...style, interactive: false }).addTo(layer);
+          const polygon = L.polygon(latlngs, { ...style, interactive: false }).addTo(layer);
+          // 🏗️ Multi-niveau (v148) : registre pour filtre runtime.
+          const entry = {
+            polygon:         polygon,
+            level:           Number.isInteger(zone.level) ? zone.level : 0,
+            origOpacity:     style.opacity     ?? 1,
+            origFillOpacity: style.fillOpacity ?? 0.7
+          };
+          window._ktaDataPolygons.push(entry);
+          _filtreNiveauSurPolygonData(entry);
         });
       }
     })
@@ -422,6 +511,8 @@ async function telechargerPlan() {
         if (layerConfig.id === "editor") {
           const editorPoints = window.getEditorPoints ? window.getEditorPoints() : [];
           for (const point of editorPoints) {
+            // 🏗️ Multi-niveau : WYSIWYG (filtre visibleLevels si actif)
+            if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(point)) continue;
             deferredMarkers.push(point);
           }
         } else {
@@ -436,11 +527,13 @@ async function telechargerPlan() {
           }
 
           // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement
+          // 🏗️ Multi-niveau (v148) : WYSIWYG → filtre par visibleLevels si feature ON.
           if (Array.isArray(json.zones) && json.zones.length > 0) {
             const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
             [...json.zones].sort(function(a, b) {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
+              if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
               drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
               _diag.embZones++;
             });
@@ -450,6 +543,7 @@ async function telechargerPlan() {
           if (Array.isArray(json.roads) && json.roads.length > 0) {
             json.roads.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
+              if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
               drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
               allRoadsForIntersect.push(r);
               _diag.embRoads++;
@@ -459,6 +553,7 @@ async function telechargerPlan() {
           // Markers DIFFÉRÉS (au lieu de drawPoint immédiat)
           const points = json.data || [];
           for (const point of points) {
+            if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(point)) continue;
             deferredMarkers.push(point);
             _diag.embPoints++;
           }
@@ -468,7 +563,10 @@ async function telechargerPlan() {
     if (_debug) console.log("[Export rapide] résumé layer loop :", _diag);
 
     // ---------- zones (avant les tracés pour qu'elles soient en arrière-plan) ----------
-    const zones = window.getZones ? window.getZones() : [];
+    // 🏗️ Multi-niveau : filtre par visibleLevels si actif (WYSIWYG export).
+    const zones = (window.getZones ? window.getZones() : []).filter(function(z) {
+      return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
+    });
     const ZONE_STYLES_EXPORT = {
       remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
       effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
@@ -486,17 +584,41 @@ async function telechargerPlan() {
     // réseau, pas une vraie route. Sans ce filtre, le fallback "white" plus bas
     // dessinait l'itinéraire en blanc PAR-DESSUS les routes colorées sous-jacentes,
     // ce qui les "effaçait" visuellement dans l'export.
-    const roads = (window.getRoads ? window.getRoads() : []).filter(function(r) {
-      return r.type !== "itinerary";
-    });
+    // 🏗️ Multi-niveau : filtre WYSIWYG (jonctions visibles si fromLevel/toLevel ∈ visibles).
+    const roads = (window.getRoads ? window.getRoads() : [])
+      .filter(function(r) { return r.type !== "itinerary"; })
+      .filter(function(r) { return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(r); });
     const ROAD_STYLES = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
+      // Jonction : magenta cohérent avec on-map render. Pas de dashArray dans
+      // canvas (ctx.setLineDash requis) → plein pour l'export. Endpoints
+      // marqués par des ronds blanc+magenta plus bas.
+      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
     };
 
     for (const road of roads) {
       drawPolyline(road.points || [], ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 });
+      // 🏗️ Multi-niveau : ronds aux extremites des jonctions (parite avec on-map)
+      // Convention export rapide : x direct + toCanvasY pour y.
+      if (road.type === "jonction" && road.points && road.points.length >= 2) {
+        const endpts = [road.points[0], road.points[road.points.length - 1]];
+        endpts.forEach(function(pt) {
+          ctx.save();
+          ctx.fillStyle   = "#ffffff";
+          ctx.strokeStyle = ROAD_STYLES.jonction.color;
+          ctx.lineWidth   = 3;
+          ctx.beginPath();
+          ctx.arc(pt.x, toCanvasY(pt.y), 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        });
+      }
+      // Jonctions exclues du calcul d'intersection (pas de cercle de croisement
+      // pour les bridges interniveau — cf. road.js logique de filtre).
+      if (road.type === "jonction") continue;
       if (road.points && road.points.length >= 2) allRoadsForIntersect.push(road);
     }
 

@@ -91,11 +91,24 @@
 
   function _newGraph() {
     return {
-      nodes:    [],   // [{x, y, virtual?:true}]
-      edges:    [],   // edges[i] = [{to: nodeIdx, weight: number}, ...]
-      segments: [],   // [{a: nodeIdx, b: nodeIdx, roadType: string}]
-      buckets:  {}    // bucketKey → [nodeIdx, ...]
+      nodes:      [],   // [{x, y, virtual?:true}]
+      edges:      [],   // edges[i] = [{to: nodeIdx, weight: number}, ...]
+      segments:   [],   // [{a: nodeIdx, b: nodeIdx, roadType: string, level: number|"transit"}]
+      buckets:    {},   // bucketKey → [nodeIdx, ...]
+      // 🏗️ Multi-niveau (v148) : Set<level> par nœud.
+      // Pour les nodes normaux road : 1 élément (le niveau de la road).
+      // Pour les nodes spatial-mergés (ex: jonction first sur road) : multiple éléments.
+      // Pour jonction middle : ["transit"] (pas de niveau réel).
+      // Utilisé par l'enrichissement pour décider si on peut connecter 2 nodes
+      // (endpoint-endpoint) ou un endpoint à un segment (T-junction).
+      nodeLevels: []    // nodeLevels[i] = Set<number|"transit">
     };
+  }
+
+  // Helper : ajoute un niveau a la Set du node (cree la Set si absente).
+  function _ajouterNiveauNode(graph, idx, lvl) {
+    while (graph.nodeLevels.length <= idx) graph.nodeLevels.push(new Set());
+    graph.nodeLevels[idx].add(lvl);
   }
 
   function _getOrAddNode(graph, x, y) {
@@ -134,21 +147,56 @@
 
   function _buildGraph(roads, allowedTypes) {
     const graph = _newGraph();
+
     for (let r = 0; r < roads.length; r++) {
       const road = roads[r];
       if (!road || !Array.isArray(road.points) || road.points.length < 2) continue;
-      // Skip si le type n'est pas autorisé. Skip aussi le type "itinerary"
-      // (anciens itinéraires calculés ne doivent pas alimenter le graphe).
       if (road.type === "itinerary") continue;
-      if (allowedTypes && allowedTypes.indexOf(road.type) < 0) continue;
+
+      const isJonction = (road.type === "jonction");
+      // Jonctions toujours autorisees (ce sont les bridges interniveau).
+      // Pour les roads normales, on respecte allowedTypes.
+      if (!isJonction && allowedTypes && allowedTypes.indexOf(road.type) < 0) continue;
+
+      // 🏗️ Multi-niveau (v148) : niveau des segments + des nodes.
+      //   Road normale : tous les segments + tous les nodes ont le meme `level`.
+      //   Jonction     : tous les segments sont "transit" (interdits a l'enrichissement
+      //                  intersection/T-junction). MAIS le first node porte fromLevel
+      //                  et le last node porte toLevel → permet endpoint-endpoint
+      //                  avec les roads cibles meme s'il y a un peu de jitter.
+      const segLevel = isJonction
+        ? "transit"
+        : (Number.isInteger(road.level) ? road.level : 0);
+      const fromLvl = isJonction
+        ? (Number.isInteger(road.fromLevel) ? road.fromLevel : 0)
+        : null;
+      const toLvl = isJonction
+        ? (Number.isInteger(road.toLevel) ? road.toLevel : 0)
+        : null;
+      const lastPointIdxInRoad = road.points.length - 1;
 
       let prevIdx = _getOrAddNode(graph, road.points[0].x, road.points[0].y);
+      // Niveau du first node : fromLvl pour jonction, segLevel pour road normale.
+      _ajouterNiveauNode(graph, prevIdx, isJonction ? fromLvl : segLevel);
+
       for (let i = 1; i < road.points.length; i++) {
         const p = road.points[i];
         const idx = _getOrAddNode(graph, p.x, p.y);
+        const isLast = (i === lastPointIdxInRoad);
+        // Pour jonction : middle = "transit", last = toLvl. Pour road normale : segLevel.
+        const nodeLvl = isJonction
+          ? (isLast ? toLvl : "transit")
+          : segLevel;
+        _ajouterNiveauNode(graph, idx, nodeLvl);
+
         const w = _dist(road.points[i - 1], p);
         _addEdge(graph, prevIdx, idx, w);
-        graph.segments.push({ a: prevIdx, b: idx, roadType: road.type });
+        graph.segments.push({
+          a:        prevIdx,
+          b:        idx,
+          roadType: road.type,
+          level:    segLevel   // numeric pour road, "transit" pour jonction
+        });
         prevIdx = idx;
       }
     }
@@ -166,12 +214,47 @@
   // ou (b) dont une extrémité d'un segment est à ≤ 8 px de l'intérieur d'un
   // autre segment (T-junction imparfaite), on insère un nœud virtuel et on
   // crée des arêtes qui relient les 2 roads.
+  // 🏗️ Multi-niveau (v148) : helpers de compatibilite niveau.
+  // Si feature OFF (multiLevel = false) → tout est compatible (v147 strict).
+  // Si ON →
+  //   - 2 segments compatibles ssi tous deux ont le meme niveau NUMERIQUE.
+  //     Les segments "transit" (jonction middle) ne sont JAMAIS compatibles
+  //     avec quoi que ce soit (les middle nodes d'une jonction ne croisent
+  //     rien — ce sont des points en l'air dans un escalier vertical).
+  //   - 2 nodes compatibles (pour endpoint-endpoint) ssi ils partagent au
+  //     moins 1 niveau numerique (transit exclu de la comparaison).
+  //   - Endpoint vs segment (T-junction) : le node doit contenir le niveau
+  //     numerique du segment.
+  function _segmentsCompatibleNiveau(segA, segB, mlOn) {
+    if (!mlOn) return true;
+    if (segA.level === "transit" || segB.level === "transit") return false;
+    return segA.level === segB.level;
+  }
+  function _nodesCompatibleNiveau(setA, setB, mlOn) {
+    if (!mlOn) return true;
+    if (!setA || !setB) return false;
+    for (const l of setA) {
+      if (l === "transit") continue;
+      if (setB.has(l)) return true;
+    }
+    return false;
+  }
+  function _nodeSurSegmentCompatible(nodeSet, segLevel, mlOn) {
+    if (!mlOn) return true;
+    if (segLevel === "transit") return false;
+    return !!(nodeSet && nodeSet.has(segLevel));
+  }
+
   function _enrichirGrapheAvecCroisements(graph) {
     // Snapshot des segments AVANT l'enrichissement (sinon boucle infinie sur
     // les segments virtuels qu'on ajoute).
     const segs = graph.segments.slice();
     let nbCroisements = 0;
     let nbProximites  = 0;
+    // 🏗️ Multi-niveau : flag lu une fois pour eviter de relire APP_CONFIG
+    // a chaque iteration des boucles enrichissement (chaud sur gros plans).
+    const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    let _nbSkipNiveau = 0;
 
     // ===== 1. Croisements stricts (segment-segment) =====
     for (let i = 0; i < segs.length; i++) {
@@ -185,6 +268,16 @@
         if (segA.a === segB.a || segA.a === segB.b ||
             segA.b === segB.a || segA.b === segB.b) continue;
 
+        // 🏗️ Multi-niveau : skip si niveaux incompatibles. Cela couvre :
+        //   - Croisement visuel 2D d'une road niveau 0 et road niveau 1
+        //     (ne se touchent pas physiquement → pas d'intersection valide)
+        //   - Tout pair impliquant une jonction transit (les middle segments
+        //     d'une jonction ne croisent rien — bridge vertical)
+        if (!_segmentsCompatibleNiveau(segA, segB, _mlOn)) {
+          _nbSkipNiveau++;
+          continue;
+        }
+
         const b1 = graph.nodes[segB.a];
         const b2 = graph.nodes[segB.b];
 
@@ -194,6 +287,12 @@
         // Insère un nœud virtuel à l'intersection (spatial-bucket-merge si
         // déjà existant à cet endroit, ce qui gère les croisements à 3+ roads).
         const newIdx = _getOrAddNode(graph, inter.x, inter.y);
+        // Le node virtuel herite du niveau commun des 2 segments (forcement
+        // egal sinon on aurait skip plus haut). Important pour les futurs
+        // checks node-vs-segment (T-junction propagation).
+        if (_mlOn && segA.level !== "transit") {
+          _ajouterNiveauNode(graph, newIdx, segA.level);
+        }
         // Connecte aux 4 extrémités des 2 segments
         _addEdge(graph, newIdx, segA.a, Math.hypot(a1.x - inter.x, a1.y - inter.y));
         _addEdge(graph, newIdx, segA.b, Math.hypot(a2.x - inter.x, a2.y - inter.y));
@@ -218,9 +317,27 @@
         if (j === i) continue;
         const segB = segs[j];
 
+        // 🏗️ Multi-niveau : on saute si segB est transit (jonction middle —
+        // pas de T-junction VERS un segment de jonction interne, c'est en l'air).
+        // Pour le check niveau du node endpoint ↔ segment cible, on utilise
+        // _nodeSurSegmentCompatible plus bas (par endpoint).
+        if (_mlOn && segB.level === "transit") {
+          _nbSkipNiveau++;
+          continue;
+        }
+
         for (const ep of endpoints) {
           // Skip si l'endpoint est déjà sur ce segment B
           if (segB.a === ep.nodeIdx || segB.b === ep.nodeIdx) continue;
+
+          // 🏗️ Multi-niveau : skip si le node endpoint ne porte pas le niveau
+          // du segment cible (ex: endpoint level-0 vs segment level-1). Permet
+          // les jonction endpoints (first portant fromLevel, last portant toLevel)
+          // de faire un T-junction avec leur road cible meme avec du jitter.
+          if (_mlOn && !_nodeSurSegmentCompatible(graph.nodeLevels[ep.nodeIdx], segB.level, _mlOn)) {
+            _nbSkipNiveau++;
+            continue;
+          }
 
           const b1 = graph.nodes[segB.a];
           const b2 = graph.nodes[segB.b];
@@ -231,6 +348,7 @@
           // déjà gérés ci-dessus aux extrémités)
           if (proj.dist < PROXIMITY_TOLERANCE && proj.t > 0.05 && proj.t < 0.95) {
             const projIdx = _getOrAddNode(graph, proj.x, proj.y);
+            if (_mlOn) _ajouterNiveauNode(graph, projIdx, segB.level);
             // Lie l'endpoint vers la projection (distance courte = pénalité minime)
             _addEdge(graph, ep.nodeIdx, projIdx, proj.dist);
             // Lie la projection aux 2 extrémités du segment B
@@ -260,6 +378,16 @@
       const pA = graph.nodes[idxA];
       for (let j = i + 1; j < endpoints.length; j++) {
         const idxB = endpoints[j];
+
+        // 🏗️ Multi-niveau : skip si les niveaux des 2 nodes n'ont aucun
+        // niveau numerique en commun (transit ne compte pas car deux
+        // jonction-middle ne se connectent pas par proximite — ce sont
+        // des points en l'air dans des escaliers différents).
+        if (_mlOn && !_nodesCompatibleNiveau(graph.nodeLevels[idxA], graph.nodeLevels[idxB], _mlOn)) {
+          _nbSkipNiveau++;
+          continue;
+        }
+
         const pB = graph.nodes[idxB];
         const d = Math.hypot(pB.x - pA.x, pB.y - pA.y);
         // Inférieur à la tolérance ET supérieur au seuil de fusion (sinon
@@ -269,6 +397,10 @@
           nbEndpoints++;
         }
       }
+    }
+
+    if (_mlOn) {
+      console.log("[Pathfinder] Multi-niveau : " + _nbSkipNiveau + " paires skip (niveaux incompatibles)");
     }
 
     console.log("[Pathfinder] Graphe enrichi —",
@@ -325,6 +457,14 @@
     const newIdx = graph.nodes.length;
     graph.nodes.push({ x: bestProj.x, y: bestProj.y, virtual: true });
     graph.edges.push([]);
+    // 🏗️ Multi-niveau (v148) : le node virtuel herite du niveau du segment
+    // snapped (numeric pour road, "transit" pour jonction). Sans ca, Dijkstra
+    // partirait d'un node sans niveau → traverserait tout le graphe sans
+    // contrainte. Avec, le node est sur le bon niveau et les contraintes des
+    // edges (deja niveau-aware via l'enrichissement) le maintiennent.
+    if (graph.nodeLevels) {
+      _ajouterNiveauNode(graph, newIdx, seg.level);
+    }
     _addEdge(graph, newIdx, seg.a, dToA);
     _addEdge(graph, newIdx, seg.b, dToB);
 

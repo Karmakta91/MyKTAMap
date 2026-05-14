@@ -95,6 +95,20 @@
     const imageLayersVisibles = _getVisibleImageLayerIds(config);
     const dataLayersVisibles  = _getVisibleDataLayerIds(config);
 
+    // 🏗️ Multi-niveau : pour afficher dans la description du mode rapide
+    // quels niveaux seront exportés (le rapide est WYSIWYG = suit le filtre
+    // actuel `visibleLevels`). Si multiLevel OFF → pas d'info de niveau.
+    const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const _visibleLevelsForExport = (_mlOn && Array.isArray(window.APP_CONFIG.visibleLevels))
+      ? window.APP_CONFIG.visibleLevels.slice().sort(function(a,b){return a-b;})
+      : null;
+    const _niveauxRapideTxt = _visibleLevelsForExport
+      ? (_visibleLevelsForExport.length === 0
+          ? "AUCUN niveau coché — l'export sera vide"
+          : "niveau" + (_visibleLevelsForExport.length > 1 ? "x" : "") + " " +
+            _visibleLevelsForExport.map(function(l){return "Niv " + l;}).join(", "))
+      : null;
+
     const modal = document.createElement("div");
     modal.id = "kta-export-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -111,11 +125,15 @@
           <div class="kta-conv-sens-wrap">
             <button class="kta-conv-sens-btn ${modeInitial === 'rapide' ? 'active' : ''}" id="kta-export-mode-rapide">
               <span class="kta-conv-sens-label">⚡ Mode rapide</span>
-              <span class="kta-conv-sens-desc">Tout inclus, format PNG, résolution originale</span>
+              <span class="kta-conv-sens-desc">
+                ${_mlOn
+                  ? "Ce qui est visible sur la carte (filtre niveau actuel), PNG résolution originale"
+                  : "Ce qui est visible sur la carte, PNG résolution originale"}
+              </span>
             </button>
             <button class="kta-conv-sens-btn ${modeInitial === 'avance' ? 'active' : ''}" id="kta-export-mode-avance">
               <span class="kta-conv-sens-label">🎨 Mode avancé</span>
-              <span class="kta-conv-sens-desc">Choix des calques, légende intégrée, format personnalisable</span>
+              <span class="kta-conv-sens-desc">Choix des calques, niveaux, légende intégrée, format personnalisable</span>
             </button>
           </div>
 
@@ -124,8 +142,11 @@
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">📋 Contenu</div>
               <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
-                ✓ Plan complet (image + tous calques visibles)<br>
+                ✓ Image du plan + calques actuellement <strong>visibles</strong> sur la carte<br>
                 ✓ Annotations de la session (${nbPoints} point(s), ${nbRoads} tracé(s), ${nbZones} zone(s))<br>
+                ${_niveauxRapideTxt
+                  ? '<span style="color:#f4c542;">🏗️ ' + _niveauxRapideTxt + '</span> — change le filtre via le bouton niveau pour exporter autre chose, ou passe en <strong>🎨 Mode avancé</strong> pour choisir explicitement<br>'
+                  : ''}
                 ✓ Format PNG, résolution originale<br>
                 ${nbMesure > 0 ? '✓ Mesure de distance (' + nbMesure + ' points)<br>' : ''}
               </p>
@@ -151,6 +172,17 @@
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">✏️ Annotations de session</div>
               <div id="kta-export-annotations"></div>
+            </div>
+
+            <!-- 🏗️ Niveaux (depuis v148, conditionnel sur multiLevel ON) -->
+            <div class="kta-aide-section" id="kta-export-levels-section" style="display:none;">
+              <div class="kta-aide-section-titre">🏗️ Niveaux à exporter</div>
+              <p style="font-size:11.5px; color:#8892a4; margin:0 0 8px 0; line-height:1.5;">
+                Sélectionne les niveaux à inclure dans l'export. Pré-coché sur les niveaux
+                actuellement visibles. Les jonctions sont incluses si au moins un de leurs
+                endpoints touche un niveau coché.
+              </p>
+              <div id="kta-export-levels" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
 
             <!-- Légende intégrée -->
@@ -263,6 +295,7 @@
     _peuplerCalquesImage(config, imageLayersVisibles);
     _peuplerCalquesData(config, dataLayersVisibles);
     _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath);
+    _peuplerNiveaux();
 
     // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
     if (etatPrecedent) _restaurerEtat(etatPrecedent);
@@ -598,6 +631,41 @@
   // Réinitialiser le cache (à appeler à chaque ouverture de modale)
   function _resetLayerPointsCache() {
     Object.keys(_layerPointsCache).forEach(function(k) { delete _layerPointsCache[k]; });
+  }
+
+  // 🏗️ Multi-niveau (v148) : peuplement de la section "Niveaux a exporter".
+  // Section cachee si multiLevel = false pour ce plan (retro-compat strict).
+  // Sinon : 1 checkbox par niveau dans availableLevels, pre-cochee si le niveau
+  // est dans visibleLevels (= ce que le user voit actuellement).
+  function _peuplerNiveaux() {
+    const section = document.getElementById("kta-export-levels-section");
+    const cont    = document.getElementById("kta-export-levels");
+    if (!section || !cont) return;
+
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    if (!mlOn) {
+      section.style.display = "none";
+      cont.innerHTML = "";
+      return;
+    }
+
+    section.style.display = "";
+    const levels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
+      ? window.APP_CONFIG.availableLevels.slice()
+      : [0, 1, 2, 3];
+    const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+      ? window.APP_CONFIG.visibleLevels
+      : [0];
+
+    cont.innerHTML = levels.map(function(lvl) {
+      const checked = visibles.indexOf(lvl) >= 0 ? "checked" : "";
+      return '<label class="kta-export-cb-row" style="margin:0; padding:4px 10px;' +
+             ' background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20);' +
+             ' border-radius:6px; cursor:pointer;">' +
+             '<input type="checkbox" data-level="' + lvl + '" id="ann_level_' + lvl + '" ' + checked + '>' +
+             '<span style="font-family:monospace; font-weight:600; color:#f4c542; margin-left:6px;">Niv ' + lvl + '</span>' +
+             '</label>';
+    }).join("");
   }
 
   function _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath) {
@@ -1049,6 +1117,22 @@
       remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true
     };
+    // 🏗️ Multi-niveau (v148) : Set des niveaux coches dans la section dediee.
+    // - null → multiLevel OFF pour ce plan → pas de filtrage niveau
+    // - Set → filtre actif : on n'exporte que les items dont level ∈ Set
+    //                         (jonction si fromLevel OU toLevel ∈ Set)
+    opts.ann.levels = null;
+    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      const levelsCoches = new Set();
+      document.querySelectorAll('#kta-export-levels input[type="checkbox"]').forEach(function(cb) {
+        if (cb.checked) {
+          const lvl = parseInt(cb.dataset.level, 10);
+          if (Number.isInteger(lvl)) levelsCoches.add(lvl);
+        }
+      });
+      opts.ann.levels = levelsCoches;
+    }
+
     // Tags des points de session (filtrage fin)
     opts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
     if (_sessionPointsTags && _sessionPointsTags.length > 0) {
@@ -1167,6 +1251,24 @@
     // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
     const sc = function(v) { return v * scale; };
 
+    // 🏗️ Multi-niveau (v148) : helper local de filtrage selon les niveaux
+    // CHOISIS dans la modale Avancé (opts.ann.levels = Set<number> ou null).
+    // Cela découple l'export du filtre runtime (visibleLevels) : l'utilisateur
+    // peut filtrer la map sur Niv 0 mais exporter Niv 0+1+2 cochés dans la modale.
+    //   - opts.ann.levels === null → pas de filtre (multiLevel OFF) → tout passe
+    //   - opts.ann.levels = Set    → on filtre. Jonction visible si fromLevel
+    //     OU toLevel ∈ Set. Item sans level (rétro-compat) = niveau 0.
+    function _itemPasseLevels(item) {
+      if (!opts.ann.levels) return true;
+      if (item && item.type === "jonction") {
+        const fromL = Number.isInteger(item.fromLevel) ? item.fromLevel : 0;
+        const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
+        return opts.ann.levels.has(fromL) || opts.ann.levels.has(toL);
+      }
+      const lvl = Number.isInteger(item && item.level) ? item.level : 0;
+      return opts.ann.levels.has(lvl);
+    }
+
     // ---------- helpers ----------
     function loadImage(src) {
       return new Promise(function(res, rej) {
@@ -1225,6 +1327,8 @@
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true };
       const triees = [...zones]
         .filter(function(z) { return filtreZ[z.type] !== false; })
+        // 🏗️ Multi-niveau : filtre sur les niveaux coches dans la modale Avancé
+        .filter(_itemPasseLevels)
         .sort(function(a, b) {
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
@@ -1374,16 +1478,20 @@
       }
 
       // Zones embarquées (arrière-plan, triées eau → remblais → effondrement)
+      // 🏗️ Multi-niveau : filtre WYSIWYG (visibleLevels) sur les zones embarquees.
       const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
       [...drawnZones].sort(function(a, b) {
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {
+        if (!_itemPasseLevels(z)) return;
         _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
         _diagAdv.embZones++;
       });
 
       // Routes embarquées
+      // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
       drawnRoads.forEach(function(r) {
+        if (!_itemPasseLevels(r)) return;
         _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
         _diagAdv.embRoads++;
@@ -1392,7 +1500,9 @@
       // Markers (filtrés par tags si modale) — DIFFÉRÉS au dessin final pour passer
       // au-dessus des routes + cercles d'intersection.
       // Les tags sont collectés ici (pour la légende exportée) sans attendre.
+      // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
       for (const p of pts) {
+        if (!_itemPasseLevels(p)) continue;
         deferredMarkers.push(p);
         _diagAdv.embPoints++;
         if (Array.isArray(p.tags) && p.tags.length > 0) {
@@ -1415,12 +1525,20 @@
       const RS = {
         principal:   { color: "#00ff00", weight: 5 },
         secondaire:  { color: "#b000ff", weight: 5 },
-        chemin:      { color: "#ffff00", weight: 5 }
+        chemin:      { color: "#ffff00", weight: 5 },
+        // 🏗️ Multi-niveau (v148) : jonction = magenta plein (canvas n'a
+        // pas de dashArray natif dans cette pipe). Endpoints marques en
+        // ronds blanc+magenta plus bas pour parite avec l'on-map.
+        jonction:    { color: "#ff4ecb", weight: 5 }
       };
       const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
       for (const r of roads) {
         if (!r.points || r.points.length === 0) continue;
-        if (filtreR[r.type] === false) continue;
+        // Jonctions toujours autorisees si multiLevel ON (pas dans le filtreR
+        // qui ne liste que principal/secondaire/chemin). Sinon respect filtreR.
+        if (r.type !== "jonction" && filtreR[r.type] === false) continue;
+        // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
+        if (!_itemPasseLevels(r)) continue;
         const s = RS[r.type] || { color: "white", weight: 5 };
         ctx.save();
         ctx.strokeStyle = s.color;
@@ -1434,6 +1552,23 @@
         }
         ctx.stroke();
         ctx.restore();
+        // 🏗️ Multi-niveau : ronds aux extremites pour les jonctions.
+        if (r.type === "jonction" && r.points.length >= 2) {
+          const endpts = [r.points[0], r.points[r.points.length - 1]];
+          endpts.forEach(function(pt) {
+            ctx.save();
+            ctx.fillStyle   = "#ffffff";
+            ctx.strokeStyle = RS.jonction.color;
+            ctx.lineWidth   = 3 * scale;
+            ctx.beginPath();
+            ctx.arc(sc(pt.x), sc(pt.y), 7 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+          });
+          // Jonctions exclues du calcul des intersections (bridges interniveau).
+          continue;
+        }
         if (r.points.length >= 2) allRoadsForIntersect.push(r);
       }
     }

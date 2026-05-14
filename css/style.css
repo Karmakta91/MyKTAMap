@@ -3511,6 +3511,49 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-color: rgba(255, 107, 107, 0.40);
   color: #ffb088;
 }
+
+/* 🏗️ Multi-niveau : checkbox compacte dans le planner (section Infos) */
+.kta-planner-multilevel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(244, 197, 66, 0.04);
+  border: 1px solid rgba(244, 197, 66, 0.20);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.kta-planner-multilevel-row:hover {
+  background: rgba(244, 197, 66, 0.08);
+  border-color: rgba(244, 197, 66, 0.35);
+}
+.kta-planner-multilevel-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #f4c542;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+}
+.kta-planner-multilevel-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.4;
+}
+.kta-planner-multilevel-row strong {
+  color: #f4c542;
+  font-weight: 600;
+}
+.kta-planner-multilevel-row em {
+  color: #8892a4;
+  font-style: italic;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
 .kta-planner-dim-icon {
   font-size: 16px;
   line-height: 1.45;
@@ -5129,5 +5172,500 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
   .kta-loader-copyright-line2 > .kta-loader-copyright-sep:first-child {
     display: none;
+  }
+}
+
+/* =========================
+   🏗️ MULTI-NIVEAU — pastille "Niv X" dans sidebar + modales (depuis v148)
+   ========================= */
+/* Pastille du niveau actif : cercle plein jaune charte avec le chiffre du
+   niveau au centre (style badge). Utilisée dans le Leaflet control top-left
+   sous le zoom (cf .kta-level-control). */
+.kta-niv-pastille {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f4c542;
+  color: #1a1f2e;
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Leaflet control "niveau actif" — bouton compact sous le zoom (top-left).
+   Style coherent avec .leaflet-bar (mêmes border/shadow que zoom). */
+.kta-level-control {
+  /* hérite de .leaflet-bar : border, shadow, border-radius */
+}
+.kta-level-btn,
+a.kta-level-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.kta-level-btn:hover {
+  background: #f4c542;
+}
+.kta-level-btn:hover .kta-niv-pastille {
+  background: #fff;
+  color: #1a1f2e;
+  box-shadow: 0 0 0 1px #1a1f2e;
+}
+
+/* Modal sélecteur de niveau */
+.kta-niv-modal-boite {
+  max-width: 460px;
+}
+.kta-niv-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.kta-niv-seg-btn {
+  flex: 0 0 auto;
+  min-width: 44px;
+  padding: 10px 14px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.kta-niv-seg-btn:hover {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.35);
+  color: #f4c542;
+}
+.kta-niv-seg-btn.kta-actif {
+  background: #f4c542;
+  color: #1a1f2e;
+  border-color: #f4c542;
+}
+.kta-niv-seg-add {
+  background: rgba(255, 255, 255, 0.02);
+  color: #8892a4;
+  border-style: dashed;
+  font-size: 18px;
+  font-weight: 700;
+}
+.kta-niv-seg-add:hover {
+  color: #f4c542;
+}
+
+/* Sections dans la modale niveau (actif + visibles) */
+.kta-niv-section {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.kta-niv-section-titre {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #f4c542;
+  margin-bottom: 6px;
+}
+.kta-niv-section-hint {
+  font-size: 12px;
+  color: #8892a4;
+  margin: 0 0 10px 0;
+  line-height: 1.5;
+}
+
+/* Grille checkboxes visibles */
+.kta-niv-vis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.kta-niv-vis-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.kta-niv-vis-box:hover {
+  background: rgba(244, 197, 66, 0.08);
+  border-color: rgba(244, 197, 66, 0.25);
+}
+.kta-niv-vis-box input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f4c542;
+  margin: 0;
+  flex: 0 0 auto;
+}
+.kta-niv-vis-label {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8d0e0;
+}
+
+.kta-niv-vis-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.kta-btn-small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Modal création jonction */
+.kta-jct-modal-boite {
+  max-width: 460px;
+}
+.kta-jct-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 8px 0;
+}
+.kta-jct-grille .kta-cfg-label {
+  font-size: 13px;
+  color: #c8d0e0;
+  margin: 0;
+}
+.kta-jct-grille .kta-cfg-input {
+  padding: 8px 10px;
+}
+
+/* =========================
+   TRACKER WARNING MODAL — popup avertissement au démarrage du tracker
+   ========================= */
+/* Hérite de .kta-readme-modal-overlay/.kta-readme-modal-boite. Surcouche
+   visuelle : liseré rouge subtil pour souligner le caractère safety-critical
+   sans tomber dans l'alarme rouge des modales OOM/offline (l'utilisateur va
+   voir cette popup à chaque session de test, on garde mesuré). */
+.kta-tracker-warn-boite {
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 107, 107, 0.08);
+  max-width: 560px;
+}
+
+.kta-tracker-warn-header .kta-readme-modal-titre {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+.kta-tracker-warn-lead {
+  background: rgba(255, 107, 107, 0.10);
+  border-left: 3px solid #ff6b6b;
+  color: #ffb3b3;
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 0 0 14px 0;
+  font-size: 15px;
+}
+
+.kta-tracker-warn-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+.kta-tracker-warn-section ul {
+  margin: 6px 0 0 0;
+  padding-left: 22px;
+}
+.kta-tracker-warn-section li {
+  margin-bottom: 4px;
+}
+.kta-tracker-warn-section-titre {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #c8d0e0;
+  margin-bottom: 6px;
+}
+.kta-tracker-warn-section-bad .kta-tracker-warn-section-titre {
+  color: #ff8a8a;
+}
+.kta-tracker-warn-section-bad {
+  background: rgba(255, 107, 107, 0.05);
+}
+
+.kta-tracker-warn-note {
+  font-style: italic;
+  font-size: 13px;
+  color: #8892a4;
+  margin-top: 14px;
+  margin-bottom: 0;
+  text-align: center;
+}
+
+.kta-tracker-warn-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.kta-tracker-warn-actions .kta-btn {
+  min-width: 130px;
+}
+
+/* Mobile : actions full-width empilées */
+@media (max-width: 540px) {
+  .kta-tracker-warn-actions {
+    flex-direction: column-reverse;
+  }
+  .kta-tracker-warn-actions .kta-btn {
+    width: 100%;
+  }
+}
+
+/* =========================
+   COMPASS WIDGET — boussole flottante (rose des vents)
+   ========================= */
+/* Position : top-LEFT sous les boutons de zoom Leaflet (zoom control =
+   ~60px de haut + 10px de marge top → offset ~80px).
+   La sidebar accordéon est en topright, donc on s'écarte d'elle pour ne
+   pas être recouvert par les sous-actions qui se déploient quand on ouvre
+   un groupe (Tracker / Tracés / etc.).
+   Safe-area pour l'iPhone PWA (notch + barre Dynamic Island). */
+.kta-compass-widget {
+  position: fixed;
+  /* Top-left, sous le zoom Leaflet. Si le mode multi-niveau est actif pour
+     ce plan, on decale la boussole plus bas pour laisser de la place au
+     bouton "niveau actif" inséré entre zoom et boussole (cf override
+     `body.kta-multilevel-active` plus bas). */
+  top:  calc(80px + env(safe-area-inset-top,  0px));
+  left: calc(10px + env(safe-area-inset-left, 0px));
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(26, 31, 46, 0.88);                /* #1a1f2e charte avec alpha */
+  border: 1px solid rgba(244, 197, 66, 0.30);        /* liseré jaune accent */
+  border-radius: 12px;
+  padding: 10px 12px 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.50);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  user-select: none;
+  -webkit-user-select: none;
+  /* Empêche les gestes carte de passer au widget (pinch / pan) */
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.kta-compass-close {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: transparent;
+  color: #8892a4;
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, color 0.15s;
+}
+.kta-compass-close:hover,
+.kta-compass-close:focus {
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff6b6b;
+  outline: none;
+}
+
+/* Indique que toute la zone widget est cliquable (ouvre modal plein) */
+.kta-compass-widget {
+  cursor: pointer;
+}
+.kta-compass-widget:hover {
+  border-color: rgba(244, 197, 66, 0.55);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), 0 0 18px rgba(244, 197, 66, 0.10);
+}
+
+.kta-compass-rose-wrap {
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;            /* sécurité visuelle à la rotation */
+}
+
+.kta-compass-rose {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  /* Léger halo jaune assorti au splash, plus discret */
+  filter: drop-shadow(0 0 6px rgba(244, 197, 66, 0.18));
+  /* PAS de transition CSS — rAF gère le lissage, transition causerait du lag */
+  transform-origin: 50% 50%;
+  pointer-events: none;        /* le widget gère le close, pas la rose */
+}
+
+.kta-compass-info {
+  margin-top: 6px;
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f4c542;              /* jaune accent charte */
+  letter-spacing: 0.05em;
+  text-align: center;
+  min-width: 60px;
+}
+
+/* Mobile : compact pour ne pas trop empiéter sur la map */
+@media (max-width: 600px) {
+  .kta-compass-widget {
+    top:  calc(76px + env(safe-area-inset-top,  0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    padding: 8px 10px 6px;
+  }
+  .kta-compass-rose-wrap,
+  .kta-compass-rose {
+    width: 80px;
+    height: 80px;
+  }
+  .kta-compass-info {
+    font-size: 13px;
+    margin-top: 4px;
+  }
+}
+
+/* 🏗️ Multi-niveau actif : decale la boussole plus bas pour ne pas overlap
+   avec le Leaflet control "niveau actif" insere entre zoom et boussole.
+   Le control fait ~36px (30px button + 1px border + Leaflet stacking margin),
+   donc on rajoute ~45px au top initial. */
+body.kta-multilevel-active .kta-compass-widget {
+  top: calc(130px + env(safe-area-inset-top, 0px));
+}
+@media (max-width: 600px) {
+  body.kta-multilevel-active .kta-compass-widget {
+    top: calc(124px + env(safe-area-inset-top, 0px));
+  }
+}
+
+/* =========================
+   COMPASS — modal plein (clic sur le widget)
+   ========================= */
+.kta-compass-full-boite {
+  max-width: 480px;
+  width: 92%;
+}
+
+.kta-compass-full-corps {
+  text-align: center;
+}
+
+.kta-compass-full-rose-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 8px auto 12px;
+  width: 240px;
+  height: 240px;
+  overflow: hidden;
+}
+
+.kta-compass-rose-big {
+  width: 240px;
+  height: 240px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 16px rgba(244, 197, 66, 0.22));
+  transform-origin: 50% 50%;
+  pointer-events: none;
+}
+
+.kta-compass-full-info {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  margin: 6px 0 18px;
+}
+
+.kta-compass-full-cardinal {
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 42px;
+  font-weight: 800;
+  color: #f4c542;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.kta-compass-full-angle {
+  font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 24px;
+  font-weight: 600;
+  color: #c8d0e0;
+  line-height: 1;
+}
+
+.kta-compass-full-hint {
+  color: #c8d0e0;
+  font-size: 14px;
+  margin: 12px 18px 6px;
+  text-align: left;
+}
+
+.kta-compass-full-list {
+  margin: 0 18px 14px;
+  padding-left: 22px;
+  text-align: left;
+  color: #c8d0e0;
+  font-size: 13px;
+}
+.kta-compass-full-list li {
+  margin-bottom: 4px;
+}
+
+.kta-compass-full-note {
+  background: rgba(255, 107, 107, 0.06);
+  border-left: 3px solid rgba(255, 107, 107, 0.55);
+  color: #ffb3b3;
+  font-size: 13px;
+  padding: 8px 12px;
+  margin: 14px 18px 4px;
+  border-radius: 4px;
+  text-align: left;
+}
+
+/* Mobile : rose plus petite pour rentrer dans le viewport */
+@media (max-width: 540px) {
+  .kta-compass-full-rose-wrap,
+  .kta-compass-rose-big {
+    width: 180px;
+    height: 180px;
+  }
+  .kta-compass-full-cardinal {
+    font-size: 34px;
+  }
+  .kta-compass-full-angle {
+    font-size: 20px;
   }
 }

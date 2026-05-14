@@ -9,6 +9,242 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 — 🏗️ v148 : Mode multi-niveau (carrières multi-étages)
+
+Gros morceau : support des **carrières/galeries multi-étages** (Glacière, Capucins, sites avec plusieurs niveaux empilés physiquement). Phase 1A (data model + UI) + Phase 2A (filtre + intégration toutes fonctions) + Pathfinder niveau-aware en une seule release.
+
+#### 1. Opt-in par plan (3 voies)
+
+```
+APP_CONFIG.multiLevel ←
+  PlanRegistry[id].multiLevel       (toggle ⚙️ Réglages, prime sur le reste)
+  ↓ sinon
+  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json, défaut du générateur)
+  ↓ sinon
+  false                             (rétro-compat v147 stricte)
+```
+
+- ⚙️ Réglages → `🏗️ Mode multi-niveau (avancé)` (persisté dans PlanRegistry)
+- 📦 Générateur de plan → case `🏗️ Plan multi-niveau` → écrit `plan.multiLevel: true` dans plan-config.json
+- Édition manuelle du JSON
+
+**Rétro-compat absolue** : plans v147 et avant n'ont jamais de champ `level` sur leurs items → fonctionnent strictement identique tant que le toggle est OFF.
+
+#### 2. UI dédiée
+
+| Élément | Visible si multiLevel ON |
+|---|---|
+| Bouton pastille `[N]` jaune sous le zoom (top-left, `L.control`) | Oui |
+| Modale niveau (2 sections : actif + visibles) | Au clic sur la pastille |
+| Sous-action 🪜 Jonction interniveau dans groupe Tracés | Oui |
+| Boussole décalée à `top:130px` (au lieu de 80px) | Via `body.kta-multilevel-active` |
+| Section `🏗️ Niveaux à exporter` dans export Avancé | Oui |
+
+#### 3. Data model
+
+- Roads / Zones / Editor points : `level: number` à la création
+- Tracker position : `trackerLevel` interne (set au ▶️ Play, au recalage clic, au recalage sur point)
+- Data layer items : `level: number` **optionnel** dans le JSON (`puits.json`, etc.)
+- Jonctions : type spécial `"jonction"` + `fromLevel` + `toLevel` + polyline N points
+- `APP_CONFIG.activeLevel` (single, pour dessiner) + `APP_CONFIG.visibleLevels` (Set, pour filtrer)
+
+#### 4. Filtrage runtime
+
+`window.appliquerFiltreNiveau()` orchestre :
+- `renderRoads` / `renderZones` (filtre au rendu)
+- `_applyLevelFilterToEditorPoints` / `DataPoints` / `DataRoads` / `DataZones` (setOpacity / setStyle)
+- `_applyLevelFilterToTracker` (marker + polyline parcouru)
+
+`currentRoad` / `currentZone` toujours visibles pendant le tracé (override filtre, sinon user clique sans rien voir).
+
+Jonctions visibles si `fromLevel` OU `toLevel` ∈ `visibleLevels`.
+
+#### 5. Pathfinder niveau-aware (`pathfinder.js`)
+
+- Segments tagués `level: number | "transit"` (jonction = transit)
+- Nodes tagués `nodeLevels: Set<number|"transit">` (sets multi-niveau pour les jonction endpoints)
+- 3 sous-loops d'enrichissement (intersection, T-junction, endpoint-endpoint) **skip les pairs de niveaux incompatibles**
+- Jonctions = **seuls bridges** entre niveaux (connectent via first/last node qui portent fromLevel/toLevel)
+- `_insertVirtualNode` (waypoint snap) : virtual node hérite du niveau du segment snapped
+- MultiLevel OFF → tous les helpers compat retournent true → comportement v147 strict
+
+#### 6. Exports
+
+| Mode | Comportement |
+|---|---|
+| **Export PNG rapide** (`utils.js > telechargerPlan`) | WYSIWYG : applique `window.passeFiltreNiveau(item)` qui lit `visibleLevels` du runtime |
+| **Export PNG avancé** (`exporter.js`) | Section dédiée `🏗️ Niveaux à exporter` avec checkboxes (défaut = visibleLevels actuels). **Découplé** du filtre map. |
+| **Session export Full/Avancé/Conversion** | Aucun filtre — `JSON.stringify` préserve automatiquement `level`/`fromLevel`/`toLevel` |
+| **SessionPersist auto-save** | Idem |
+
+#### 7. Fichiers touchés (12)
+
+| Fichier | Lignes ajoutées |
+|---|---:|
+| `js/config.js` | +12 (APP_CONFIG fields multiLevel/activeLevel/visibleLevels/availableLevels) |
+| `js/planRegistry.js` | +25 (getMultiLevel/setMultiLevel + fallback param) |
+| `js/main.js` | +20 (init au plan load + reset registres) |
+| `js/road.js` | +80 (style jonction, filtre `_passeFiltreNiveau` + intersection cross-level, helper global) |
+| `js/zones.js` | +18 (level création + filtre rendu) |
+| `js/editor.js` | +35 (level création + filtre marker via opacity) |
+| `js/utils.js` | +110 (registres `_ktaDataMarkers/Polylines/Polygons` + filtres + style jonction export rapide) |
+| `js/tracking.js` | +50 (trackerLevel + filtre marker + polyline + recalage) |
+| `js/interface.js` | +220 (Leaflet control niveau + modale 2 sections + helpers + toggle Réglages + sous-action 🪜) |
+| `js/pathfinder.js` | +150 (segments/nodes level + 3 helpers compat + filter dans enrichissement + virtual node level) |
+| `js/exporter.js` | +90 (section 🏗️ Niveaux modale Avancé + helper `_itemPasseLevels` + filtres roads/zones/points session + embedded + jonction style + ronds endpoints) |
+| `js/createConf.js` | +35 (checkbox 🏗️ dans planner + pré-remplissage en mode Modifier + écriture dans plan-config.json) |
+| `css/style.css` | +200 (`.kta-niv-pastille` badge + `.kta-niv-*` sections modale + `.kta-level-*` control + `.kta-jct-*` modale jonction + `.kta-planner-multilevel-row` planner + override position boussole) |
+
+#### 8. Bugs corrigés en route (validation terrain v148.test)
+
+- Cercles d'intersection apparaissaient entre roads de niveaux différents qui se croisaient visuellement → fix dans `_calculerIntersectionsRoads` + `_enrichirGrapheAvecCroisements` (pathfinder)
+- Pastille "Niv 0" débordait du sub-action button → simplifiée en chiffre seul `[0]` (badge jaune)
+- 🪜 actif → re-clic réouvrait la modale au lieu de désactiver → fix toggle dans onClick
+- Modes ✏️ saisie point + 🪜 jonction activables en même temps → fix `_desactiverTousLesModes()` dans `_activerJonctionMode`
+- Pendant le tracé d'une road/zone, si son niveau n'était pas dans visibleLevels → invisible → user voyait rien → fix `currentRoad/currentZone === item` toujours visible
+- Roads dans data layers ignoraient le filtre niveau → fix registre `_ktaDataPolylines` + filtre setStyle
+- Marqueurs visuels sur jonctions manquaient → ronds magenta+blanc aux extrémités (∅14px)
+
+#### 9. Bump
+
+- `sw.js > CACHE_NAME` : v147 → v148
+- `js/copyright.js > __MKM__.build` : v147 → v148
+- `version.json` : v148 + 6 notes user
+
+#### 10. Hors scope (futur)
+
+- TableEditor support du champ `level` (édition manuelle de niveau sur points existants)
+- Distance totale par niveau (breakdown dans la modale 📏)
+- Recherche `🔍` filtrable par niveau
+- Pré-aperçu visuel "✕ ce niveau bloque ton itinéraire" dans la modale itinéraire si waypoints isolés
+- Indicateur visuel sur la map pour les jonctions (label "0↔1" au survol ?)
+
+---
+
+### 🗓️ 14/05/2026 (suite 1) — 🧭 v147 : Fix heading tracker + Widget boussole + Popup avertissement
+
+Retour terrain en carrière : "tourner à droite → tracker tourne à gauche, avancer → recule". 3 livrables pour traiter le problème et ses conséquences UX.
+
+#### 1. Fix math `getHeading` (tracking.js)
+
+L'ancienne formule (depuis le premier commit) avait :
+- **Signe inversé** sur la composante East : `+sin α cos β` au lieu de `-sin α cos β` → swap Est↔Ouest pour téléphone à plat (formule géométrique fausse).
+- **Termes spurious en γ** : `cos α sin γ sin β`, `cos α cos γ sin β`, etc. — ne devraient pas exister dans la projection de l'axe Y device (rotation autour de Y laisse Y invariant).
+- **Aucune gestion** de la pose verticale (téléphone tenu en main, β ≈ 90°) → cos β ≈ 0 → calcul dégénéré.
+
+**Conséquences mesurées** :
+
+| α (deviceorientation) | Direction réelle | Code v145 | Code v147 |
+|---:|:---:|:---:|:---:|
+| 0 | Nord | Nord ✅ | Nord ✅ |
+| 270 | Est | **Ouest** ❌ | Est ✅ |
+| 180 | Sud | Sud ✅ | Sud ✅ |
+| 90 | Ouest | **Est** ❌ | Ouest ✅ |
+
+**Fix** : math propre dérivée de la matrice W3C Z-X'-Y'' (intrinsèque) + bascule adaptative Y/-Z selon `|cos β|` (axe Y device pour pose plate, axe -Z pour pose verticale).
+
+#### 2. Cascade de sources d'orientation
+
+Avant : un seul listener `deviceorientation`, pas d'usage de `webkitCompassHeading`.
+
+Après :
+
+1. **iOS** : `event.webkitCompassHeading` capté en priorité (compass calibré natif iOS, 0=N CW). Plus précis que tout calcul depuis α/β/γ.
+2. **Android moderne** : listener `deviceorientationabsolute` (au lieu de `deviceorientation`) → `event.alpha` référencé true North.
+3. **Fallback** : calcul via `getHeading` corrigé.
+
+Log throttled 1Hz `[Tracking] Heading : NNN.N° (source: webkitCompassHeading | calc-absolute | calc-relative)` pour debug terrain.
+
+#### 3. Widget boussole (`js/compass.js`, nouveau ~200 lignes)
+
+Outil de validation visuelle : rose des vents tournante affichant le vrai Nord en temps réel. Permet à l'utilisateur de vérifier d'un coup d'œil que le heading est cohérent.
+
+**Deux vues** :
+- **Widget flottant** : top-left, sous les boutons de zoom Leaflet. Rose 100px desktop / 80px mobile + texte "N 12°" / "NE 45°" / "O 270°" (notation française). Clic ✕ ferme, clic ailleurs ouvre le modal plein.
+- **Modal plein** : pattern `.kta-readme-modal-overlay`. Rose 240px + cardinal en gros jaune + angle + hint + liste de validation 4 cardinaux + note armatures métalliques.
+
+Réutilise `icon/mkm-full.png` (rose des vents jaune de la charte, déjà cachée par le SW). rAF unifié pour widget + modal (querySelectorAll sur classes partagées).
+
+Entrée UI : sous-action 🧭 dans le groupe Tracker (après ▶️ Play, avant 📍 Mode recalage).
+
+**API** : `window.CompassWidget = { show, hide, toggle, isVisible, openFull, closeFull }`. `window.getCurrentHeading()` exposé côté tracking.js (lecture seule).
+
+#### 4. Popup d'avertissement au ▶️ Play
+
+Modal au premier clic ▶️ Play de la session, rappelant que le module est expérimental et NE PAS l'utiliser pour se localiser en situation réelle.
+
+**Contenu** : lead rouge, paragraphe dérive cumulative + armatures, sections ✅ usages OK (debug, calibration, détection pas) / ❌ NE PAS (localisation réelle, itinéraire fiable, perte → ⛑️), note recalage 📍.
+
+**iOS-safe** : `requestPermission()` appelé synchronement dans le click handler de "J'ai compris" → préserve le user gesture iOS, la popup native permission s'affiche normalement après.
+
+**Persistance** : flag in-memory `_trackerWarningAcknowledged` (pas de localStorage) → réaffiché à chaque reload de page. Volontaire pour le caractère safety-critical.
+
+Le bouton 🧭 Boussole **ne** déclenche **pas** cette popup (c'est un outil de debug légitime, pas un démarrage de tracking).
+
+#### 5. Fichiers touchés
+
+| Fichier | Changement |
+|---|---|
+| `js/tracking.js` | Réécriture `getHeading` + `initOrientation` + nouvel export `window.getCurrentHeading()` |
+| `js/compass.js` | **Nouveau** (~200 lignes) |
+| `js/interface.js` | Sous-action 🧭 Tracker + helper `_afficherAvertissementTracker` + flag module |
+| `css/style.css` | Styles `.kta-compass-widget` + `.kta-compass-full-*` + `.kta-tracker-warn-*` |
+| `index.html` | `<script src="js/compass.js">` avant interface.js |
+| `sw.js` | `./js/compass.js` ajouté à `ASSETS_TO_CACHE` + CACHE_NAME v146 → v147 |
+| `js/copyright.js` | `__MKM__.build` v146 → v147 |
+| `version.json` | Bump + notes user |
+| `CLAUDE.md` | Sections §24 (fix heading) + §25 (boussole + popup) |
+| `README_USER.md` | Section boussole + warning popup tracker |
+
+#### 6. Pièges à connaître pour les futures interventions
+
+- ⚠️ Ne PAS toucher à `requestPermission()` côté tracking.js sans tester iOS : c'est le geste utilisateur de la popup permission iOS qui est synchronisé avec le clic UI.
+- ⚠️ Ne PAS ajouter `setTimeout` / `await` non-synchrone entre le clic "J'ai compris" et `requestPermission()` → casse le user gesture iOS.
+- ⚠️ La formule `getHeading` doit rester math-propre (W3C). Si on ajoute un mode (autre pose de tél), ajouter une branche conditionnelle plutôt que de modifier les existantes.
+- ⚠️ Le widget boussole et le modal plein partagent la classe `.kta-compass-rotating-rose` (et `.kta-compass-{text,cardinal,angle}-display`). Ne pas réutiliser ces noms ailleurs.
+
+---
+
+### 🗓️ 14/05/2026 — 🧹 v146 : Fix mode tracé/zone après suppression + Distance totale inclut roads masquées
+
+Deux petits bugs identifiés en utilisation réelle (cf. CLAUDE.md §23 + §15).
+
+**Bug 1 — Icône mode tracé/zone reste allumée après suppression du tracé en cours**
+
+Reproduction (avant fix) :
+1. Activer 🟩 Route principale dans la sidebar → icône passe en `kta-actif`, premier point posé sur la carte.
+2. Ouvrir 🧹 Effacer → choisir 🗑️ "Tous les tracés" (ou ✂️ "Dernier tracé entier" si c'est le tracé en cours).
+3. `resetRoads()` remet `window.modeRoad = null` côté road.js → la road est bien effacée, MAIS l'icône reste visuellement allumée dans la sidebar.
+4. Cliquer sur la carte → rien (logique, `modeRoad` est null) → state incohérent du point de vue utilisateur.
+
+**Cause** : double state entre `road.js` (currentRoad + window.modeRoad) et `interface.js` (`_modesActifs["road"]` + classe DOM sur le bouton). Les fonctions `resetRoads` / `removeLastRoad` ne touchent pas au state UI.
+
+**Fix** :
+- `road.js` expose `window.getCurrentRoad()` (lecture seule).
+- `zones.js` expose `window.getCurrentZone()`.
+- `interface.js` ajoute 2 helpers `_fermerModeRoad()` / `_fermerModeZone()` qui appellent `desactiverFn()` + retirent `kta-actif` du bouton + delete `_modesActifs[k]`.
+- Appliqués dans les 4 actions du menu suppression (roads et zones) avec **logique conditionnelle** :
+  - ✂️ Dernier tracé entier : ferme le mode seulement si `getCurrentRoad()` était non-null AVANT et null APRÈS.
+  - 🎯 Clic sélection : ferme le mode seulement si la road cliquée === `getCurrentRoad()` avant.
+  - 🗑️ Tous : ferme inconditionnellement.
+  - ↩️ Annuler dernier point : ne ferme PAS (user continue à tracer).
+- Idem zones.
+
+**Bug 2 — "Distance totale des tracés" ne compte pas les routes masquées**
+
+Le panneau 📏 utilisait `window.getEmbeddedRoads()` qui filtre par visibilité du calque Leaflet (`hasLayer`). Incohérent avec :
+- Pathfinder qui utilise `getAllEmbeddedRoads()` (cf README_USER conseil perf "masquer le calque routes pour gagner en perf rendu tout en gardant le pathfinder fonctionnel")
+- Recherche de points qui inclut les points des calques masqués
+
+**Fix** : `_rdRoadsExploitables()` (interface.js) utilise désormais `getAllEmbeddedRoads()`. Le surlignage magenta s'applique aussi aux roads masquées — c'est OK car le layer magenta est séparé et se voit indépendamment du calque sous-jacent. CLAUDE.md §15 mis à jour.
+
+**Bump version `v145 → v146`** :
+- `sw.js > CACHE_NAME`
+- `js/copyright.js > __MKM__.build`
+- `version.json > version` + notes utilisateur
+
+---
+
 ### 🗓️ 13/05/2026 (suite 6) — 🏷️ Badge version cliquable dans le footer (avec notes intégrées)
 
 Badge version dans le footer copyright du loader, qui devient un **indicateur d'update + bouton d'action** :

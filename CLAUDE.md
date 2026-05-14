@@ -420,7 +420,9 @@ Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de poly
 
 ### 15. Distance totale des tracés (`interface.js`, depuis 2026-05-09)
 
-Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents (session `getRoads()` + calques `getEmbeddedRoads()` visibles), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
+Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents (session `getRoads()` + calques `getAllEmbeddedRoads()` — TOUTES, masquées comprises depuis v146), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
+
+**⚠️ Depuis v146 (2026-05-14)** : `_rdRoadsExploitables()` utilise `getAllEmbeddedRoads()` (et plus `getEmbeddedRoads()` qui filtrait par visibilité). Cohérence avec Pathfinder + Search : l'utilisateur peut masquer le calque routes (dessinées en dur sur le PNG) pour gagner en perf rendu, tout en gardant un total fiable. Le surlignage magenta est aussi appliqué sur les roads masquées (layer séparé qui se voit indépendamment du calque sous-jacent).
 
 **Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **🛣️ Tracés / Routes** (`interface.js > _creerGroupeAccordeon({id:"traces"})`). Toggle ON/OFF — re-cliquer ferme la modale.
 
@@ -464,7 +466,7 @@ Dans un script chargé via `<script src="...">` (pas un module ES), une `functio
 - `pointer-events: none` → ne bloque pas les clics natifs sur la carte.
 
 **Calcul** :
-- `_rdRoadsExploitables()` retourne `session + embeddedVisibles` filtré sur types `principal/secondaire/chemin` (exclut explicitement `itinerary` pour éviter le double-comptage).
+- `_rdRoadsExploitables()` retourne `session + tous embedded` (visibles ET masquées depuis v146) filtré sur types `principal/secondaire/chemin` (exclut explicitement `itinerary` pour éviter le double-comptage).
 - `_rdLongueurPx(road)` : somme euclidienne des distances entre points consécutifs.
 - `_rdCalculerBreakdown()` : convertit en mètres via `APP_CONFIG.scale` (px/m) et retourne `{principal:{nb,distM}, secondaire:{...}, chemin:{...}, totalM}`.
 
@@ -663,6 +665,270 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 - `onCheck(callback)` → s'inscrit aux résultats de check() pour l'UI (badge)
 - `getCurrentVersion()` → lit `localStorage["myktamap_known_version"]`
 - `getLastKnownData()` → lit `localStorage["myktamap_last_version_data"]`
+
+### 23. Fermeture auto du mode tracé/zone après suppression (depuis v146 — 14/05/2026)
+
+**Bug v145** : si l'utilisateur démarrait un tracé (ou une zone) puis ouvrait le menu suppression et choisissait "Tous les tracés" / "Dernier tracé entier" (quand c'était le tracé en cours), l'icône de la sidebar restait visuellement "actif" (classe `kta-actif`) mais `window.modeRoad` venait d'être remis à `null` par `resetRoads()` → clic sur la carte ne faisait rien (state incohérent).
+
+**Origine** : double state entre `road.js` (qui gère `currentRoad` + `window.modeRoad`) et `interface.js` (qui gère `_modesActifs["road"]` + classe DOM sur le bouton). `resetRoads()` ne touche pas au state UI, ni `removeLastRoad()`.
+
+**Fix** :
+- `road.js` expose `window.getCurrentRoad()` (lecture seule de `currentRoad`).
+- `zones.js` expose `window.getCurrentZone()` (idem).
+- `interface.js` ajoute 2 helpers `_fermerModeRoad()` / `_fermerModeZone()` qui appellent `_modesActifs[k].desactiverFn()` + retirent la classe `kta-actif` du bouton + `delete _modesActifs[k]`.
+
+**Logique conditionnelle** (appliquée aux onClicks du menu suppression + handlers du mode clic) :
+
+| Action | Couper le mode ? |
+|---|---|
+| ↩️ Annuler dernier point | Non (user continue à tracer) |
+| ✂️ Dernier tracé entier | Oui **si** `getCurrentRoad()` était non-null AVANT et null APRÈS |
+| 🎯 Sélection au clic | Oui **si** la road cliquée === `getCurrentRoad()` capturé AVANT |
+| 🗑️ Tous les tracés | Oui **inconditionnel** (resetRoads vide tout) |
+
+Symétrique pour zones avec `getCurrentZone()`.
+
+**Pour ajouter une nouvelle action de suppression** : si l'action peut effacer le `currentRoad`/`currentZone`, capturer la référence AVANT, comparer APRÈS, appeler `_fermerModeRoad()` ou `_fermerModeZone()` si la road/zone en cours a disparu. Ne pas appeler les helpers inconditionnellement sinon on coupe le mode même quand l'utilisateur supprime une vieille road sans rapport.
+
+### 24. Fix heading tracker + sources d'orientation (depuis v147 — 14/05/2026)
+
+**Bug v145 et avant** : la fonction `getHeading(α, β, γ)` dans `tracking.js` retournait un heading **inversé Est↔Ouest** pour téléphone tenu à plat (formule avec `+sin α cos β` au lieu de `-sin α cos β` sur la composante East), avec en plus des **termes spurious en γ** qui ne devraient pas exister dans la projection de l'axe Y device, et **aucune gestion** de la pose verticale (cos β ≈ 0 → calcul dégénéré). Retour terrain en carrière : "tourner à droite physiquement → tracker tourne à gauche, avancer → recule".
+
+**Fix v147 dans `getHeading`** :
+
+Math propre dérivée de la matrice W3C DeviceOrientation (rotation intrinsèque Z-X'-Y'', `R = Rz(α) · Rx(β) · Ry(γ)`).
+
+- **Pose à plat** (`|cos β| > 0.5`) — pose "boussole", recommandée dans la doc utilisateur :
+  - Projection axe Y device (top edge) en monde : `(-sin α cos β, cos α cos β, sin β)`
+  - γ n'intervient pas (rotation autour de Y laisse Y invariant)
+  - heading = `atan2(-sin α cos β, cos α cos β)`
+- **Pose verticale** (`|cos β| ≤ 0.5`) — pose "lecture SMS", fallback :
+  - Projection axe -Z device (dos / caméra) en monde
+  - heading = `atan2(-(cos α sin γ + sin α sin β cos γ), -(sin α sin γ - cos α sin β cos γ))`
+
+Validation math des 4 cardinaux (pose plate, β=0) :
+
+| α | Direction réelle | Code v145 | Code v147 |
+|---:|:---:|:---:|:---:|
+| 0 | Nord (0°) | Nord ✅ | Nord ✅ |
+| 270 | Est (90°) | Ouest ❌ | Est ✅ |
+| 180 | Sud (180°) | Sud ✅ | Sud ✅ |
+| 90 | Ouest (270°) | Est ❌ | Ouest ✅ |
+
+**Cascade de sources d'orientation** (dans `initOrientation`) :
+
+1. **iOS** : `event.webkitCompassHeading` — compass calibré natif (magnétomètre + capteurs fusion iOS), déjà en convention 0=N CW. **Priorité absolue** quand dispo (plus précis que tout calcul depuis α/β/γ).
+2. **Android moderne** : listener `deviceorientationabsolute` au lieu de `deviceorientation` → l'event `event.alpha` est référencé true North magnétique (au lieu d'être relatif à la position de boot, ce qui cause une dérive sans recalage).
+3. **Fallback** : calcul depuis (α, β, γ) via `getHeading` corrigé.
+
+Choix du listener au boot : `if ("ondeviceorientationabsolute" in window)` → `deviceorientationabsolute` (Android), sinon `deviceorientation` (iOS, qui publie `webkitCompassHeading` sur cet event).
+
+**API exposée** :
+- `window.getCurrentHeading()` → retourne `direction` (lecture seule, degrés 0-360). Utilisé par le widget boussole (cf. §25).
+
+**Log throttled** : `[Tracking] Heading : NNN.N° (source: webkitCompassHeading | calc-absolute | calc-relative)` à 1Hz max pendant le tracking actif. Permet de vérifier au debug quelle source feed le heading sur le device de l'utilisateur. Gating centralisé par debug.js (cf §11).
+
+**À NE PAS TOUCHER** quand on intervient sur tracking.js :
+- `requestPermission()` — iOS gesture flow. Pre-existing bug : ne demande que `DeviceMotionEvent.requestPermission`, pas `DeviceOrientationEvent.requestPermission`. Sur iOS 13+, certaines versions auto-grantent l'orientation avec la motion permission ; d'autres pas. À corriger dans un fix séparé si retour terrain iOS confirme un problème.
+- `initMotion`, `avancer`, `estAccessible`, `initCollisionCache` — détection de pas + collision, indépendants du heading.
+- Flags idempotents `_orientationListenerAttached` / `_motionListenerAttached` — protection plan switch.
+
+### 25. Widget boussole + popup avertissement tracker (depuis v147 — 14/05/2026)
+
+#### 25.1 Widget boussole (`js/compass.js`)
+
+Outil de validation visuelle du heading : affiche la rose des vents `icon/mkm-full.png` (logo charte) qui contre-tourne en temps réel selon `window.getCurrentHeading()`. Permet à l'utilisateur de vérifier d'un coup d'œil que le heading est cohérent (marche vers Nord → N reste en haut, marche vers Est → N pointe à gauche, etc.).
+
+**Architecture** : module IIFE `js/compass.js` (~200 lignes), expose `window.CompassWidget = { show, hide, toggle, isVisible, openFull, closeFull }`.
+
+**Deux vues** :
+
+1. **Widget flottant** (bottom-left top-left au final) :
+   - Position : top-left sous les boutons de zoom Leaflet (`top: 80px + safe-area-top; left: 10px`).
+   - Rose 100px desktop / 80px mobile.
+   - Texte "N 12°" / "NE 45°" / "O 270°" sous la rose (notation française : O au lieu de W, NO au lieu de NW).
+   - ✕ pour fermer entièrement, clic ailleurs sur le widget → ouvre le modal plein.
+   - Border jaune au hover (signale la cliquabilité).
+
+2. **Modal plein** (`.kta-readme-modal-overlay` standard) :
+   - Ouvert au clic sur le widget flottant.
+   - Rose 240px desktop / 180px mobile.
+   - Cardinal en gros jaune (`#f4c542`) + angle en gris à côté.
+   - Hint explicatif + liste de validation des 4 cardinaux.
+   - Note rouge : armatures métalliques faussent le magnétomètre.
+   - Fermable ✕ / backdrop / Échap → revient au widget flottant.
+
+**Boucle rAF unifiée** : un seul `requestAnimationFrame` actif quand le widget est visible. Query unifiée via classes partagées :
+- `.kta-compass-rotating-rose` → toutes les roses (widget + modal s'il est ouvert) reçoivent le `transform: rotate(-h deg)`
+- `.kta-compass-text-display` → texte combiné "N 12°" du widget flottant
+- `.kta-compass-cardinal-display` → cardinal seul du modal plein
+- `.kta-compass-angle-display` → angle seul du modal plein
+
+Throttle 0.5° avant re-application du transform (skip rerender CSS si heading stable).
+
+**Entrée UI** : sous-action 🧭 dans le groupe accordéon **Tracker** (`interface.js`, après ▶️ Play, avant 📍 Mode recalage). Toggle visuel `kta-actif` synchronisé via hook `window._onCompassHiddenExternally` (déclenché si l'utilisateur ferme via la ✕ du widget plutôt que par re-clic sur la sous-action).
+
+**Permission iOS** : `show()` appelle `requestPermission()` (idempotent côté tracking.js). Comme `show()` est invoqué depuis un click handler (sous-action 🧭), c'est un geste utilisateur valide pour iOS.
+
+**Math de rotation** : `rotate(-direction deg)` sur la rose. Quand l'utilisateur est face au Nord (direction=0), rose normale. Face à l'Est (direction=90), rose contre-tournée 90° → N pointe à gauche du widget.
+
+**Pourquoi pas une icône SVG dédiée ?** Réutiliser `icon/mkm-full.png` (rose des vents jaune du splash + logo PWA) garantit la cohérence visuelle avec l'identité de la marque sans charger un nouvel asset.
+
+#### 25.2 Popup d'avertissement tracker
+
+Modal affiché **une fois par session** au clic ▶️ Play. Rappelle que le module est expérimental et ne doit pas servir à se localiser en situation réelle.
+
+**Flag in-memory** : `let _trackerWarningAcknowledged = false;` au module-scope dans `interface.js`. Réinitialisé à chaque reload de la page (par design — pas de localStorage : on veut que l'utilisateur revoie l'avertissement à chaque session).
+
+**Fonction helper** : `_afficherAvertissementTracker(onConfirm)` dans `interface.js` (au module-scope, avant `initInterface`). Crée un overlay `.kta-readme-modal-overlay` + boîte `.kta-tracker-warn-boite` avec liseré rouge subtil. Contenu :
+- Lead rouge : "Ne pas utiliser pour te repérer en situation réelle."
+- Paragraphe sur la dérive cumulative + armatures métalliques.
+- Section ✅ Utilisations recommandées (debug, calibration, détection pas).
+- Section ❌ NE PAS utiliser pour (localisation réelle, itinéraire fiable, perte → ⛑️).
+- Note italique : recalage 📍 indispensable tous les ~50m.
+- Footer : Annuler (ghost) / "J'ai compris — Démarrer" (primary).
+
+**Wire-up dans le onClick ▶️** :
+
+```js
+const _doStart = function() {
+  requestPermission();    // ← appel SYNCHRONE depuis le click handler
+  startTracking();
+  btnSub.innerHTML = "⏹️";
+  isTracking = true;
+};
+if (_trackerWarningAcknowledged) _doStart();
+else _afficherAvertissementTracker(_doStart);
+```
+
+**⚠️ Critique iOS** : `DeviceMotionEvent.requestPermission()` doit être appelé depuis un geste utilisateur synchrone. Le clic sur "J'ai compris" EST un nouveau geste utilisateur (chaque event click est un user gesture indépendant), donc `requestPermission` appelé dans son handler est valide.
+
+**À NE PAS FAIRE** : ajouter un `setTimeout` ou `await Promise(...)` entre le click et `requestPermission` → casse le user gesture iOS, la popup de permission n'apparaît plus, l'orientation n'est pas captée.
+
+**Dismiss = Annuler** : clic backdrop / Échap / ✕ / bouton Annuler → modal disparaît sans démarrer le tracker (`_trackerWarningAcknowledged` reste false → la popup réapparaît au prochain clic ▶️).
+
+**Le bouton 🧭 Boussole NE déclenche PAS cette popup** : le widget boussole est un outil de debug légitime (cf §25.1), pas un démarrage de tracking. Il appelle `requestPermission` directement sans rappel d'avertissement.
+
+### 26. Mode multi-niveau (depuis v148 — 15/05/2026)
+
+Feature opt-in **par plan** pour gérer les carrières/galeries à plusieurs étages (Glacière, Capucins…). Quand désactivé → comportement strictement identique à v147 (rétro-compat absolue).
+
+#### 26.1 Opt-in (cascade de priorité)
+
+```
+APP_CONFIG.multiLevel ←
+  PlanRegistry[id].multiLevel       (set explicitement via ⚙️ Réglages, prime)
+  ↓ sinon
+  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json, défaut du ZIP généré)
+  ↓ sinon
+  false                              (retro-compat plans v147)
+```
+
+**3 voies pour activer** :
+- ⚙️ Réglages → toggle `🏗️ Mode multi-niveau (avancé)` (par plan, stocké dans `PlanRegistry`)
+- Au moment de la création/modification d'un plan via 📦 Générateur → case `🏗️ Plan multi-niveau` → ajoute `plan.multiLevel: true` dans `plan-config.json`
+- Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
+
+#### 26.2 Data model
+
+**APP_CONFIG (runtime)** — défini dans `js/config.js` :
+- `multiLevel: boolean` — feature active pour ce plan ?
+- `activeLevel: number` — niveau utilisé pour dessiner de nouveaux items (default 0)
+- `visibleLevels: number[]` — filtre d'affichage (multi-select, default `[0]`)
+- `availableLevels: number[]` — niveaux disponibles dans le sélecteur (default `[0,1,2,3]`, extensible via bouton +)
+
+**Données persistées** :
+- Roads : `road.level: number` (création) OU `{ type: "jonction", fromLevel, toLevel }`
+- Zones : `zone.level: number`
+- Editor points : `point.level: number`
+- Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)
+- Roads embarquées dans data layers : `road.level: number` optionnel
+- Zones embarquées dans data layers : `zone.level: number` optionnel
+
+**Rétro-compat absolue** : si un item n'a PAS de `level`, il est traité comme `level: 0`. Tous les plans v147 et avant fonctionnent identiquement quand le toggle est OFF (jamais de champ `level` ajouté).
+
+#### 26.3 UI
+
+- **Bouton "Niveau actif"** : `L.control({position: "topleft"})` sous les boutons de zoom Leaflet. Pastille jaune avec chiffre du niveau actif. Click → ouvre la modale niveau.
+- **Modale niveau** (`#kta-niv-modal`) : 2 sections
+  - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner
+  - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
+  - Quick actions : `Tous` / `Actif seul`
+  - Bouton `+` pour étendre `availableLevels`
+- **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
+- **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
+
+#### 26.4 Rendu et filtrage
+
+`window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
+- `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
+- `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
+- `_applyLevelFilterToEditorPoints()` (editor.js) — opacity/pointer-events sur markers session
+- `_applyLevelFilterToDataPoints()` (utils.js) — opacity sur markers data layers
+- `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
+- `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
+- `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru
+
+Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons` pour les data layers). Reset au plan switch via `main.js > lancerApplication`.
+
+#### 26.5 Jonctions interniveau
+
+Type spécial `"jonction"` :
+- `fromLevel`/`toLevel` : niveaux des 2 extrémités
+- N points (comme une polyline normale)
+- Style : magenta `#ff4ecb` weight 5 dashArray "10 6"
+- Marqueurs aux endpoints : `L.circleMarker` ∅14 (radius 7) bord magenta + intérieur blanc weight 3
+- Toujours visible si **au moins un** de `fromLevel`/`toLevel` ∈ `visibleLevels` (sinon cachée)
+- Exclue du calcul des cercles d'intersection (les middle points sont en transit vertical, pas des croisements physiques)
+
+#### 26.6 Pathfinder niveau-aware (`pathfinder.js`)
+
+- Chaque **segment** porte `level: number | "transit"` (transit = segment de jonction)
+- Chaque **node** porte `nodeLevels[idx]: Set<level>` (niveaux des segments qu'il touche)
+- Enrichissement (intersection, T-junction, endpoint-endpoint) : **skip** les pairs avec niveaux numériques différents OU impliquant `"transit"` (sauf pour la jonction's first/last point qui porte fromLevel/toLevel en plus de transit, permettant T-junction propre)
+- `_insertVirtualNode` (waypoint snap) : le node virtuel hérite du `level` du segment snapped — Dijkstra reste contraint au bon niveau
+- Multi-level OFF → tous les helpers compatibilité retournent `true` → comportement strictement v147
+
+#### 26.7 Exports
+
+| Export | Filtre niveau |
+|---|---|
+| `utils.js > telechargerPlan` (rapide) | **WYSIWYG** : `window.passeFiltreNiveau(item)` lit `visibleLevels` du runtime |
+| `exporter.js > _genererCanvasExport` (avancé) | Section dédiée `🏗️ Niveaux à exporter` (multi-select), lecture via `opts.ann.levels: Set<number>` → helper local `_itemPasseLevels`. **Découplé** du filtre runtime : tu peux filtrer la map sur [Niv 0] et exporter [Niv 0+1+2]. |
+| `sessionExporter.js` (Full / Avancé / Conversion) | Aucun filtre — sérialise TOUS les items via `JSON.stringify` (préserve `level`/`fromLevel`/`toLevel` automatiquement) |
+| `sessionPersist.js` (auto-save) | Idem — sérialisation JSON transparente |
+
+#### 26.8 Helper global `window.passeFiltreNiveau(item)`
+
+Exposé par `road.js`. Utilisé par l'export rapide et par toutes les fonctions level-aware qui ne sont pas dans le contexte d'une modale (modale Avancé = filtre dédié via `opts.ann.levels`).
+
+```js
+window.passeFiltreNiveau = function(item) {
+  if (!APP_CONFIG.multiLevel) return true;            // off → tout visible
+  const visibles = APP_CONFIG.visibleLevels || [0];
+  if (item.type === "jonction") {
+    return visibles.includes(item.fromLevel||0) ||
+           visibles.includes(item.toLevel||0);
+  }
+  return visibles.includes(item.level||0);
+};
+```
+
+#### 26.9 Pièges et conventions
+
+⚠️ **Currents always visible during draw** : `currentRoad` (road.js) et `currentZone` (zones.js) bypass le filtre pendant le tracé. Sinon clic carte → road créée au niveau actif → cachée si pas dans visibleLevels → user voit rien. Re-rendu normal une fois le mode désactivé.
+
+⚠️ **Mode jonction = exclusif** : `_activerJonctionMode` appelle `_desactiverTousLesModes()` avant d'activer (sinon ✏️ + 🪜 actifs en même temps).
+
+⚠️ **Pastille = chiffre seul** : `<span class="kta-niv-pastille">1</span>` (pas `Niv 1`). Le préfixe "Niv " débordait du bouton sub-action.
+
+⚠️ **Body class `kta-multilevel-active`** : ajouté/retiré sur `document.body` dans `lancerApplication` ET dans `_bindMultiLevelToggle`. Permet à la boussole de se repositionner via CSS sans reload.
+
+⚠️ **Switch d'activeLevel reset visibleLevels** : `_changerNiveauActif(N)` fait `visibleLevels = [N]` (mode focalisé par défaut). Si l'user veut voir plusieurs niveaux à la fois, il utilise les checkboxes ou le bouton `Tous`.
+
+⚠️ **Itineraire = bypass total** : `road.type === "itinerary"` toujours visible peu importe le filtre (calculé par Pathfinder, doit rester affiché pendant la navigation).
+
+⚠️ **Reset au plan switch** : `lancerApplication` reset `activeLevel = 0`, `visibleLevels = [0]`, vide les registres `_ktaDataMarkers/Polylines/Polygons` (ils seront re-remplis par `ajouterPointsDepuisJSON`).
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

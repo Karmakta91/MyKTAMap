@@ -435,11 +435,36 @@ La recherche couvre **tous les calques de données du plan** (puits, véhicules,
 
 ### ▶️ Démarrer le tracking
 
-Appuyez sur **▶️** pour démarrer. Sur Mobile, une demande de permission s'affiche — acceptez-la pour autoriser l'accès aux capteurs de mouvement.
+Appuyez sur **▶️** pour démarrer.
+
+**Au premier démarrage de la session**, une popup d'avertissement s'affiche pour rappeler que le tracker est un **module expérimental** : il sert à valider le calibrage / la détection de pas / la formule de heading, **pas à se localiser réellement**. Cliquez sur **« J'ai compris — Démarrer »** pour continuer (la popup ne réapparaîtra plus avant le prochain reload de la page). Sur Mobile, la demande de permission iOS / Android pour les capteurs s'affiche ensuite — acceptez-la.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
 Appuyez sur **⏹️** pour arrêter.
+
+> ⚠️ **Important** : la dérive cumulative est inévitable. Recalez votre position manuellement (📍 ci-dessous) tous les ~50m sur un point reconnu du plan. Les armatures métalliques des carrières et galeries faussent fortement le magnétomètre du téléphone — une vraie boussole physique reste indispensable.
+
+### 🧭 Boussole — vérifier la cohérence du heading
+
+Le bouton **🧭** dans le groupe **🧭 Tracker** affiche une **rose des vents flottante** en haut à gauche de la carte (sous les boutons de zoom). La rose contre-tourne en temps réel pour que le **N pointe toujours vers le vrai Nord**.
+
+**Comment vérifier que tout est cohérent ?**
+
+Tenez le téléphone à plat dans la main, écran face à vous, **bord supérieur du téléphone dans votre direction de marche** (pose "boussole"). En tournant sur vous-même :
+
+| Direction de marche | Le N de la rose doit être... |
+|---|---|
+| Nord 🧭 | En haut (12h) |
+| Est ➡️ | À gauche (9h) |
+| Sud 🧭 | En bas (6h) |
+| Ouest ⬅️ | À droite (3h) |
+
+Si l'orientation est cohérente, le tracker enregistre correctement vos déplacements. Sinon, suspectez une perturbation magnétique (armatures, ferraille, sol) — recalez via 📍 dès que possible et limitez la confiance dans le tracé.
+
+**Cliquez sur le widget** pour ouvrir un **affichage agrandi** plein écran (rose 240px + cardinal en gros + angle exact). Pratique pour valider de loin ou faire une démo. Refermer via ✕, Échap ou en cliquant à côté.
+
+Le widget reste affiché même quand le tracker est à l'arrêt — vous pouvez l'utiliser pour valider la boussole sans démarrer le tracking. ✕ du widget pour le fermer entièrement.
 
 ### 📍 Recaler sa position
 
@@ -729,6 +754,100 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 | **↩️ Annuler le dernier point** | Sur la zone en cours, ou sur la dernière zone fermée |
 | **✂️ Supprimer la dernière zone** | Retire la dernière zone fermée |
 | **🗑️ Effacer toutes les zones** | Efface absolument tout (irréversible) |
+
+---
+
+## 🏗️ Mode multi-niveau (carrières multi-étages)
+
+Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (Glacière, Capucins, sites avec étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.
+
+> ⚠️ **Mode optionnel** — désactivé par défaut. La plupart des carrières sont mono-niveau, le mode classique suffit. Active-le **uniquement** pour les vraies carrières multi-étages.
+
+### Activer le mode pour un plan
+
+**3 façons** :
+
+1. **Via ⚙️ Réglages** (recommandé sur un plan existant) : ouvre la modale ⚙️ Réglages → section **🏗️ Mode multi-niveau (avancé)** → coche la case. **Reload** la page pour que la barre latérale prenne en compte le changement.
+
+2. **À la création d'un plan** (via 📦 Créer un plan) : coche la case **🏗️ Plan multi-niveau (avancé)** dans la section "Informations du plan". Le ZIP généré contient le flag → tout utilisateur qui le chargera aura le mode activé par défaut.
+
+3. **Manuellement dans plan-config.json** : ajouter `"multiLevel": true` dans la section `plan`.
+
+> 💡 Tu peux toujours désactiver le mode via ⚙️ Réglages → décocher → reload. Les tracés existants gardent leur info de niveau (cachée), tu peux la réactiver plus tard sans rien perdre.
+
+### Le bouton "Niveau actif"
+
+Quand le mode est activé, un **bouton jaune avec un chiffre** apparaît sous les boutons de zoom (haut-gauche de la carte). Le chiffre = ton niveau actif (`0` au démarrage). Clique dessus pour ouvrir la **modale Niveaux**.
+
+### La modale Niveaux
+
+Deux sections :
+
+#### 🎯 Niveau actif (pour dessiner)
+
+Boutons radio `[0] [1] [2] [3] [+]`. Le niveau cliqué devient le **niveau actif** : tous les nouveaux tracés, zones, points éditeur que tu vas dessiner seront tagués avec ce niveau.
+
+⚠️ **Changer de niveau actif annule tout tracé en cours** (si tu avais commencé une route principale au Niv 0 et tu switches sur Niv 1, le tracé en cours disparaît). C'est exprès pour éviter qu'un tracé soit à cheval sur 2 niveaux.
+
+⚠️ **Reset visibles** : changer de niveau actif coche **uniquement ce niveau** dans la section "Niveaux visibles" en dessous (mode focalisé par défaut).
+
+Bouton **+** : ajoute un niveau au-delà du max actuel (utile pour des carrières à 5+ étages).
+
+#### 👁️ Niveaux visibles (filtre)
+
+Checkboxes par niveau. Les tracés/zones/points de niveaux **non cochés** sont cachés sur la carte (opacity 0). Les jonctions interniveau restent visibles si **au moins un** de leurs endpoints touche un niveau coché.
+
+Boutons rapides :
+- **Tous** : coche tous les niveaux disponibles
+- **Actif seul** : coche uniquement le niveau actif
+
+### 🪜 Jonctions interniveau
+
+Pour relier deux niveaux (escalier, pente raide, puits interne), utilise la sous-action **🪜 Jonction interniveau** dans le groupe **🛣️ Tracés** (uniquement visible quand multiLevel est ON).
+
+1. Clique 🪜 → modale "Niveau de départ : [N1] vers : [N2]" → **OK**
+2. Clique N points sur la carte (autant que tu veux, comme un chemin)
+3. Le tracé apparaît en **magenta pointillé** avec des **ronds blancs+magenta** aux 2 extrémités
+
+Une jonction reste toujours visible si au moins un de ses 2 niveaux est dans le filtre.
+
+> 💡 **Important pour le pathfinder** : les jonctions sont les **seuls bridges** entre niveaux. Si tu veux qu'un itinéraire passe du Niv 0 au Niv 1, tu DOIS tracer une jonction entre ces 2 niveaux à l'endroit physique du passage (escalier réel). Sans jonction, le pathfinder ne peut pas traverser.
+
+### Ajouter du niveau aux data layers
+
+Les calques de données existants (`puits.json`, `cataphile.json`, etc.) peuvent aussi avoir des items tagués par niveau. Ajoute manuellement `"level": N` dans le JSON :
+
+```json
+{
+  "data": [
+    { "id": "PA1", "nom": "Puits Aération Niv 1", "x": 100, "y": 200, "tags": ["pa"], "level": 1 }
+  ],
+  "roads": [
+    { "type": "principal", "level": 0, "points": [{"x":1,"y":2}, ...] }
+  ],
+  "zones": [
+    { "type": "eau", "level": 0, "points": [...] }
+  ]
+}
+```
+
+Items sans `level` → traités comme `level: 0` (rétro-compat avec tes JSON existants).
+
+### Exporter avec choix des niveaux
+
+**Mode rapide** (🖼️ → ⚡ Mode rapide) : exporte ce qui est actuellement visible (WYSIWYG, suit ton filtre).
+
+**Mode avancé** (🖼️ → 🎨 Mode avancé) : nouvelle section **🏗️ Niveaux à exporter** avec checkboxes par niveau. **Indépendant** du filtre map → tu peux filtrer la map sur [Niv 0] mais exporter [Niv 0+1+2] en cochant les 3 boxes. Pré-coché sur ce qui est actuellement visible pour éviter les surprises.
+
+### Plans existants (rétro-compat)
+
+Si tu charges un plan v147 ou avant qui **n'a pas** activé le mode multi-niveau :
+- Aucun bouton niveau, aucune sous-action 🪜, comportement strictement identique
+- Tes anciennes sessions / exports continuent de fonctionner sans modification
+
+Si tu actives le mode sur un plan existant :
+- Tous les tracés/zones/points sans niveau sont considérés comme **Niv 0**
+- Tu peux commencer à ajouter des tracés Niv 1, 2… qui coexistent avec les anciens (au Niv 0)
 
 ---
 

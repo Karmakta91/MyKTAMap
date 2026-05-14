@@ -108,6 +108,17 @@ function afficherPlanner() {
             <span class="kta-planner-dim-icon">📐</span>
             <span class="kta-planner-dim-text">Dimensions : <em>en attente du chargement de l'image principale ci-dessous</em></span>
           </div>
+
+          <!-- Multi-niveau (depuis v148) : opt-in pour les carrieres multi-etages.
+               Si coche, ajoute plan.multiLevel:true dans plan-config.json. -->
+          <label class="kta-planner-multilevel-row">
+            <input type="checkbox" id="pl_multiLevel">
+            <span>
+              <strong>🏗️ Plan multi-niveau (avancé)</strong>
+              <em>Active la gestion des étages (Niv 0, 1, 2…) + jonctions interniveau.
+              Ne coche que pour des carrières/galeries avec plusieurs niveaux empilés.</em>
+            </span>
+          </label>
         </div>
 
         <!-- 2. IMAGES -->
@@ -372,6 +383,11 @@ function _preRemplirFormulaire(config) {
   sv("pl_stepLength",    t.stepLength    ?? 0.7);
   sv("pl_stepThreshold", t.stepThreshold ?? 13);
   sv("pl_stepCooldown",  t.stepCooldown  ?? 400);
+  // 🏗️ Multi-niveau : pre-coche la case si le plan-config importé contient
+  // `plan.multiLevel: true`. Sinon laisse decochee (defaut HTML). Absence
+  // du champ = false implicite (retro-compat plans v147 et avant).
+  const mlEl = document.getElementById("pl_multiLevel");
+  if (mlEl) mlEl.checked = (plan.multiLevel === true);
 
   if (plan.baseImage)      sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
   if (plan.collisionImage) sn("pl_collision_nom",  "📄 " + plan.collisionImage.split("/").pop());
@@ -789,6 +805,11 @@ async function _genererZip() {
   const author  = document.getElementById("pl_author").value.trim();
   const width   = parseInt(document.getElementById("pl_width").value,  10);
   const height  = parseInt(document.getElementById("pl_height").value, 10);
+  // 🏗️ Multi-niveau (depuis v148) : opt-in via checkbox dans le planner.
+  // Si coché → on ajoute `plan.multiLevel: true` au plan-config.json généré.
+  // Sinon → on n'ajoute PAS le champ (retro-compat absolue : les apps v147
+  // ignorent ce champ inconnu sans broncher).
+  const multiLevel = !!document.getElementById("pl_multiLevel")?.checked;
 
   if (!name)             { _plannerErreur("Le nom du plan est obligatoire."); return; }
   if (!width || !height) {
@@ -936,9 +957,19 @@ async function _genererZip() {
     if (!icons.track)   icons.track   = PLANNER_DEFAULT_ICONS.track;
 
     // ── plan-config.json ──
+    // 🏗️ Multi-niveau : on n'inclut `multiLevel: true` QUE si la case est
+    // cochee. Sinon le champ est totalement absent → plans existants v147 et
+    // anciens generateurs continuent de produire un JSON identique → retro-
+    // compat parfaite (zero diff sur les plans monolayer).
+    const planObj = {
+      name, version, author,
+      imageWidth: width, imageHeight: height,
+      baseImage: baseImageName, collisionImage: collisionName
+    };
+    if (multiLevel) planObj.multiLevel = true;
+
     zip.file("plan-config.json", JSON.stringify({
-      plan: { name, version, author, imageWidth: width, imageHeight: height,
-              baseImage: baseImageName, collisionImage: collisionName },
+      plan: planObj,
       imageLayers,
       dataLayers,
       tracking,

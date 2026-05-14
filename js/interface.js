@@ -1416,6 +1416,74 @@ function _bindPerfUltraToggles() {
 }
 
 // =========================
+// 🏗️ MULTI-NIVEAU — section toggle dans Réglages (depuis v148)
+// =========================
+// Toggle "opt-in" par plan : quand activé, l'UI affiche un selecteur de
+// niveau dans le groupe Tracés + une sous-action 🪜 Jonction interniveau.
+// Quand désactivé (defaut), aucun changement visible → retro-compat absolue
+// avec les plans existants v147 et avant.
+// Le toggle ecrit dans PlanRegistry[planId].multiLevel (pas dans
+// localStorage global) → persistance par plan, comme perfPreset.
+function _renderMultiLevelSection() {
+  const planId = window._currentLoadedPlanId;
+  // Si on est dans le contexte d'un plan charge → on lit la valeur. Sinon
+  // (cas improbable, modale ouverte hors chargement) → false.
+  const enabled = !!(planId && window.PlanRegistry && typeof window.PlanRegistry.getMultiLevel === "function"
+    && window.PlanRegistry.getMultiLevel(planId));
+  return `
+    <div class="kta-aide-section">
+      <div class="kta-aide-section-titre">🏗️ Mode multi-niveau (avancé)</div>
+      <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
+        Active la gestion des niveaux (étages) pour les carrières multi-étages.
+        Ajoute un sélecteur de niveau dans le groupe <strong>🛣️ Tracés</strong> +
+        une sous-action <strong>🪜 Jonction interniveau</strong>. Les roads existantes
+        sans niveau explicite sont automatiquement considérées comme niveau 0.
+        <br><strong style="color:#c8d0e0;">Désactivé par défaut</strong> — uniquement
+        pour les plans qui le nécessitent (Glacière, Capucins, etc.).
+      </p>
+      <label class="kta-perf-ultra-row">
+        <input type="checkbox" id="cfg_multiLevel" ${enabled ? "checked" : ""}>
+        <span class="kta-perf-ultra-text">
+          <span class="kta-perf-ultra-label">🏗️ Activer le mode multi-niveau pour ce plan</span>
+          <span class="kta-perf-ultra-hint">Persisté par plan. Reload requis pour que les changements UI soient visibles dans la sidebar.</span>
+        </span>
+      </label>
+    </div>`;
+}
+
+// Binding du toggle multi-niveau apres render. Sauvegarde dans PlanRegistry,
+// applique au state runtime (APP_CONFIG.multiLevel) immediatement pour les
+// rerenders ne necessitant pas de reload.
+function _bindMultiLevelToggle() {
+  const el = document.getElementById("cfg_multiLevel");
+  if (!el) return;
+  el.addEventListener("change", function() {
+    const planId = window._currentLoadedPlanId;
+    if (!planId || !window.PlanRegistry || typeof window.PlanRegistry.setMultiLevel !== "function") {
+      console.warn("[Config] setMultiLevel indisponible (planId ou PlanRegistry manquant)");
+      return;
+    }
+    const newVal = !!el.checked;
+    window.PlanRegistry.setMultiLevel(planId, newVal);
+    // Applique au runtime immédiatement → permet aux re-renders (renderRoads,
+    // initInterface si re-appellé) de prendre le bon filtre. Le user verra le
+    // selecteur de niveau apparaitre/disparaitre seulement apres reload car
+    // initInterface() crée les sous-actions une seule fois au boot.
+    APP_CONFIG.multiLevel = newVal;
+    if (newVal) {
+      APP_CONFIG.activeLevel   = 0;
+      APP_CONFIG.visibleLevels = [0];
+      document.body.classList.add("kta-multilevel-active");
+    } else {
+      document.body.classList.remove("kta-multilevel-active");
+    }
+    window.APP_CONFIG = APP_CONFIG;
+    if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+    console.log("[Config] multiLevel →", newVal, "(plan", planId + ")");
+  });
+}
+
+// =========================
 // CONFIG — modale plein écran
 // =========================
 function afficherConfig() {
@@ -1498,6 +1566,8 @@ function afficherConfig() {
           </div>
         </div>
 
+        ${_renderMultiLevelSection()}
+
         ${_renderPerfUltraSection()}
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
@@ -1517,6 +1587,9 @@ function afficherConfig() {
 
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
+
+  // 🏗️ Multi-niveau : bind du toggle (lit/ecrit dans PlanRegistry)
+  _bindMultiLevelToggle();
 }
 
 function appliquerConfig() {
@@ -2036,6 +2109,447 @@ function _activerMode(cle, btnEl, activerFn, desactiverFn) {
 }
 
 // =========================
+// FERMETURE CIBLEE D'UN MODE (utilise par les onClicks suppression)
+// =========================
+// Quand une action de suppression efface le trace en cours (ou tous les
+// traces), il faut imperativement fermer le mode actif : sinon le bouton
+// reste "kta-actif" en surbrillance dans la sidebar, mais window.modeRoad
+// vient d'etre reinitialise par resetRoads → clic sur la carte fait rien
+// (state incoherent). Idem pour zones.
+function _fermerModeRoad() {
+  const m = _modesActifs["road"];
+  if (!m) return;
+  try { m.desactiverFn(); } catch(e) {}
+  if (m.btnEl) m.btnEl.classList.remove("kta-actif");
+  delete _modesActifs["road"];
+}
+
+function _fermerModeZone() {
+  const m = _modesActifs["zone"];
+  if (!m) return;
+  try { m.desactiverFn(); } catch(e) {}
+  if (m.btnEl) m.btnEl.classList.remove("kta-actif");
+  delete _modesActifs["zone"];
+}
+
+// =========================
+// AVERTISSEMENT TRACKER (popup au ▶️ Play)
+// =========================
+// Affiche une popup d'avertissement la PREMIÈRE FOIS que l'utilisateur clique
+// ▶️ Play sur le tracker dans la session courante. Le flag est in-memory (pas
+// de localStorage) → réaffiché au prochain reload, suffisant pour rappeler la
+// non-fiabilité sans saouler pendant les tests.
+//
+// ⚠️ iOS : DeviceMotionEvent.requestPermission() doit être appelé depuis un
+// geste utilisateur SYNCHRONE. Le clic sur "J'ai compris" EST un geste
+// utilisateur valide (event click), donc on enchaîne directement onConfirm
+// dans son handler — pas de setTimeout, pas d'await intercalaire entre le
+// click et requestPermission() sinon la popup permission iOS ne s'affiche pas.
+
+let _trackerWarningAcknowledged = false;
+
+function _afficherAvertissementTracker(onConfirm) {
+  // Guard contre double-ouverture (double-clic rapide).
+  if (document.getElementById("kta-tracker-warn-overlay")) return;
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-tracker-warn-overlay";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-tracker-warn-boite">' +
+      '<div class="kta-readme-modal-header kta-tracker-warn-header">' +
+        '<span class="kta-readme-modal-titre">⚠️ Tracker — Module expérimental</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p class="kta-tracker-warn-lead">' +
+          'Ce module ne doit <strong>PAS</strong> être utilisé pour te repérer en situation réelle.' +
+        '</p>' +
+        '<p>' +
+          'Le suivi par capteurs (boussole + accéléromètre) est <strong>expérimental</strong> et ' +
+          'accumule de la dérive à chaque pas. La précision dépend du calibrage du plan, de la ' +
+          'qualité du magnétomètre du téléphone, et de l\'environnement (les armatures métalliques ' +
+          'des carrières / galeries faussent fortement la boussole).' +
+        '</p>' +
+        '<div class="kta-tracker-warn-section">' +
+          '<div class="kta-tracker-warn-section-titre">✅ Utilisations recommandées</div>' +
+          '<ul>' +
+            '<li>Debug de la formule de heading (avec la boussole 🧭)</li>' +
+            '<li>Tester la calibration du plan (échelle pixel→mètre)</li>' +
+            '<li>Valider la détection de pas (seuils accéléromètre)</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-tracker-warn-section kta-tracker-warn-section-bad">' +
+          '<div class="kta-tracker-warn-section-titre">❌ NE PAS utiliser pour</div>' +
+          '<ul>' +
+            '<li>Te localiser réellement (utilise un fil d\'Ariane physique)</li>' +
+            '<li>Tracer un itinéraire fiable</li>' +
+            '<li>Retrouver ton chemin en cas de perte (utilise ⛑️ Je suis perdu)</li>' +
+          '</ul>' +
+        '</div>' +
+        '<p class="kta-tracker-warn-note">' +
+          'Recalage manuel via 📍 indispensable tous les ~50m pour limiter la dérive.' +
+        '</p>' +
+      '</div>' +
+      '<div class="kta-tracker-warn-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-tracker-warn-cancel" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-tracker-warn-ok"     type="button">J\'ai compris — Démarrer</button>' +
+      '</div>' +
+    '</div>';
+
+  document.documentElement.appendChild(overlay);
+
+  function _cleanup() {
+    if (overlay.parentNode) overlay.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) {
+    if (e.key === "Escape") _cleanup();
+  }
+
+  // Clic backdrop = annuler (l'utilisateur doit explicitement cliquer "J'ai
+  // compris" pour démarrer le tracking → safety-first).
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) _cleanup();
+  });
+  document.addEventListener("keydown", _onKey);
+
+  document.getElementById("kta-tracker-warn-cancel").addEventListener("click", _cleanup);
+
+  document.getElementById("kta-tracker-warn-ok").addEventListener("click", function() {
+    _trackerWarningAcknowledged = true;
+    _cleanup();
+    // ⚠️ APPEL SYNCHRONE — voir commentaire d'en-tête. Pas de setTimeout ici.
+    try { onConfirm(); } catch(e) { console.error("[Tracker] onConfirm threw:", e); }
+  });
+}
+
+// =========================
+// 🏗️ MULTI-NIVEAU — modales et helpers (depuis v148)
+// =========================
+// _ouvrirSelecteurNiveau : modal complète gérant 2 dimensions :
+//   1. NIVEAU ACTIF (single-select) → utilisé pour DESSINER nouvelles roads/points/zones
+//   2. NIVEAUX VISIBLES (multi-select) → filtre d'AFFICHAGE
+// Apparaît au clic sur la pastille "Niv X" dans le groupe Tracés.
+// Changer le niveau actif → coupe le mode road en cours ET reset le filtre
+// visible à [newActive] (mode focalisé par défaut).
+function _ouvrirSelecteurNiveau(btnPastille) {
+  if (document.getElementById("kta-niv-modal")) return;
+
+  const cur = APP_CONFIG.activeLevel || 0;
+  const visibles = Array.isArray(APP_CONFIG.visibleLevels) ? APP_CONFIG.visibleLevels.slice() : [cur];
+  const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
+    ? APP_CONFIG.availableLevels.slice()
+    : [0, 1, 2, 3];
+
+  // Segmented (niveau actif) : boutons radio visuels
+  let segmented = "";
+  levels.forEach(function(lvl) {
+    const active = (lvl === cur);
+    segmented +=
+      '<button type="button" class="kta-niv-seg-btn' + (active ? ' kta-actif' : '') +
+      '" data-level="' + lvl + '">' + lvl + '</button>';
+  });
+
+  // Checkboxes (niveaux visibles)
+  let checkboxes = "";
+  levels.forEach(function(lvl) {
+    const checked = (visibles.indexOf(lvl) >= 0);
+    checkboxes +=
+      '<label class="kta-niv-vis-box">' +
+        '<input type="checkbox" data-level="' + lvl + '"' + (checked ? ' checked' : '') + '>' +
+        '<span class="kta-niv-vis-label">Niv ' + lvl + '</span>' +
+      '</label>';
+  });
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-niv-modal";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-niv-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🏗️ Niveaux</span>' +
+        '<button class="kta-panneau-close" id="kta-niv-close" type="button" aria-label="Fermer">&times;</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+
+        // SECTION 1 : Niveau actif (single-select)
+        '<div class="kta-niv-section">' +
+          '<div class="kta-niv-section-titre">🎯 Niveau actif (pour dessiner)</div>' +
+          '<p class="kta-niv-section-hint">' +
+            'Tous les nouveaux éléments (tracés, points, zones, tracker recalé) seront ' +
+            'tagués avec ce niveau.' +
+          '</p>' +
+          '<div class="kta-niv-segmented">' + segmented +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="Ajouter un niveau">+</button>' +
+          '</div>' +
+        '</div>' +
+
+        // SECTION 2 : Niveaux visibles (multi-select)
+        '<div class="kta-niv-section">' +
+          '<div class="kta-niv-section-titre">👁️ Niveaux visibles (filtre)</div>' +
+          '<p class="kta-niv-section-hint">' +
+            'Coche les niveaux que tu veux afficher sur la carte. Les jonctions sont ' +
+            'visibles si au moins un de leurs endpoints touche un niveau coché.' +
+          '</p>' +
+          '<div class="kta-niv-vis-grid">' + checkboxes + '</div>' +
+          '<div class="kta-niv-vis-actions">' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-all">Tous</button>' +
+            '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-niv-vis-active">Actif seul</button>' +
+          '</div>' +
+        '</div>' +
+
+        '<p style="font-size:11.5px; color:#8892a4; margin:6px 0 0 0; line-height:1.5;">' +
+          '⚠️ Changer le niveau actif <strong>annule</strong> tout tracé en cours et ' +
+          'reset le filtre visibles à [actif].' +
+        '</p>' +
+      '</div>' +
+    '</div>';
+
+  document.documentElement.appendChild(overlay);
+
+  function _cleanup() {
+    if (overlay.parentNode) overlay.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) { if (e.key === "Escape") _cleanup(); }
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) _cleanup(); });
+  document.addEventListener("keydown", _onKey);
+  document.getElementById("kta-niv-close").addEventListener("click", _cleanup);
+
+  // Clic sur un niveau actif : applique + ferme
+  overlay.querySelectorAll(".kta-niv-seg-btn[data-level]").forEach(function(b) {
+    b.addEventListener("click", function() {
+      const lvl = parseInt(b.dataset.level, 10);
+      if (!Number.isInteger(lvl)) return;
+      _changerNiveauActif(lvl);
+      _cleanup();
+    });
+  });
+
+  // Bouton + : ajoute un niveau au-dela du max existant
+  const addBtn = document.getElementById("kta-niv-add");
+  if (addBtn) {
+    addBtn.addEventListener("click", function() {
+      const maxLvl = Math.max.apply(null, APP_CONFIG.availableLevels || [0]);
+      APP_CONFIG.availableLevels = (APP_CONFIG.availableLevels || []).concat(maxLvl + 1);
+      window.APP_CONFIG = APP_CONFIG;
+      _cleanup();
+      _ouvrirSelecteurNiveau(btnPastille);
+    });
+  }
+
+  // Checkboxes filtre visible : toggle a la volee → applique le filtre
+  overlay.querySelectorAll(".kta-niv-vis-box input[type=checkbox]").forEach(function(cb) {
+    cb.addEventListener("change", function() {
+      const lvl = parseInt(cb.dataset.level, 10);
+      if (!Number.isInteger(lvl)) return;
+      let arr = Array.isArray(APP_CONFIG.visibleLevels) ? APP_CONFIG.visibleLevels.slice() : [];
+      if (cb.checked) {
+        if (arr.indexOf(lvl) < 0) arr.push(lvl);
+      } else {
+        arr = arr.filter(function(l) { return l !== lvl; });
+      }
+      APP_CONFIG.visibleLevels = arr;
+      window.APP_CONFIG = APP_CONFIG;
+      if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+    });
+  });
+
+  // Quick action : "Tous" coche toutes les boites
+  const allBtn = document.getElementById("kta-niv-vis-all");
+  if (allBtn) {
+    allBtn.addEventListener("click", function() {
+      APP_CONFIG.visibleLevels = levels.slice();
+      window.APP_CONFIG = APP_CONFIG;
+      // Update DOM checkboxes
+      overlay.querySelectorAll(".kta-niv-vis-box input[type=checkbox]").forEach(function(cb) {
+        cb.checked = true;
+      });
+      if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+    });
+  }
+  // Quick action : "Actif seul"
+  const activeBtn = document.getElementById("kta-niv-vis-active");
+  if (activeBtn) {
+    activeBtn.addEventListener("click", function() {
+      const lvl = APP_CONFIG.activeLevel || 0;
+      APP_CONFIG.visibleLevels = [lvl];
+      window.APP_CONFIG = APP_CONFIG;
+      overlay.querySelectorAll(".kta-niv-vis-box input[type=checkbox]").forEach(function(cb) {
+        cb.checked = parseInt(cb.dataset.level, 10) === lvl;
+      });
+      if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+    });
+  }
+}
+
+// Applique le changement de niveau actif : coupe le mode road en cours (Q5),
+// reset le filtre visibles a [newActive] (mode focalise), met a jour la
+// pastille, propage le filtre a tous les modules.
+function _changerNiveauActif(newLevel) {
+  if (!Number.isInteger(newLevel) || newLevel < 0) return;
+
+  // Annule le tracé en cours
+  if (typeof _fermerModeRoad === "function") _fermerModeRoad();
+
+  APP_CONFIG.activeLevel   = newLevel;
+  APP_CONFIG.visibleLevels = [newLevel];  // reset filtre au mode focalise
+  window.APP_CONFIG = APP_CONFIG;
+
+  // Mise à jour de la pastille dans la sidebar (chiffre seul, pas de prefixe)
+  const pill = document.getElementById("kta-niv-pastille-icone");
+  if (pill) pill.textContent = String(newLevel);
+
+  // Propage le filtre a tous les modules level-aware
+  if (typeof window.appliquerFiltreNiveau === "function") window.appliquerFiltreNiveau();
+
+  console.log("[MultiNiveau] Niveau actif →", newLevel, "| Visibles :", APP_CONFIG.visibleLevels);
+}
+
+// 🏗️ Multi-niveau : helper global qui re-render / re-filtre TOUS les modules
+// level-aware. Appele apres tout changement de visibleLevels.
+// Chaque module expose _applyLevelFilterTo*() qui itere ses markers et
+// applique setOpacity selon le filtre courant.
+window.appliquerFiltreNiveau = function() {
+  // Roads + zones de session : re-render complet (filtre applique au build)
+  if (typeof window.renderRoads === "function") {
+    try { window.renderRoads(); } catch(e) {}
+  }
+  if (typeof window.renderZones === "function") {
+    try { window.renderZones(); } catch(e) {}
+  }
+  // Markers / points des layers DATA (puits, cataphile, etc.)
+  if (typeof window._applyLevelFilterToDataPoints === "function") {
+    try { window._applyLevelFilterToDataPoints(); } catch(e) {}
+  }
+  // Routes embarquees dans les calques DATA (json.roads[])
+  if (typeof window._applyLevelFilterToDataRoads === "function") {
+    try { window._applyLevelFilterToDataRoads(); } catch(e) {}
+  }
+  // Zones embarquees dans les calques DATA (json.zones[])
+  if (typeof window._applyLevelFilterToDataZones === "function") {
+    try { window._applyLevelFilterToDataZones(); } catch(e) {}
+  }
+  // Points editor (session)
+  if (typeof window._applyLevelFilterToEditorPoints === "function") {
+    try { window._applyLevelFilterToEditorPoints(); } catch(e) {}
+  }
+  // Tracker marker + polyline parcouru
+  if (typeof window._applyLevelFilterToTracker === "function") {
+    try { window._applyLevelFilterToTracker(); } catch(e) {}
+  }
+};
+
+// _ouvrirCreationJonction : modal pour saisir fromLevel/toLevel avant
+// d'activer le mode tracé jonction.
+function _ouvrirCreationJonction(btnSub) {
+  if (document.getElementById("kta-jct-modal")) return;
+
+  const cur = APP_CONFIG.activeLevel || 0;
+  const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
+    ? APP_CONFIG.availableLevels.slice()
+    : [0, 1, 2, 3];
+
+  // Options du select : tous les niveaux dispo
+  function _optionsHtml(selectedLevel) {
+    return levels.map(function(l) {
+      return '<option value="' + l + '"' + (l === selectedLevel ? ' selected' : '') + '>' +
+             'Niveau ' + l + '</option>';
+    }).join('');
+  }
+
+  // Defaut : depuis le niveau actif vers le niveau juste au-dessus
+  const defaultTo = (cur === 0 && levels.indexOf(1) >= 0) ? 1
+                  : (cur + 1 <= Math.max.apply(null, levels) ? cur + 1
+                  : Math.max.apply(null, levels));
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-jct-modal";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-jct-modal-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">🪜 Nouvelle jonction interniveau</span>' +
+        '<button class="kta-panneau-close" id="kta-jct-close" type="button" aria-label="Fermer">&times;</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="margin:0 0 12px 0; font-size:13px; color:#c8d0e0;">' +
+          'Cette jonction (escalier, pente raide, puits interne) relie deux niveaux.' +
+        '</p>' +
+        '<div class="kta-jct-grille">' +
+          '<label class="kta-cfg-label">Niveau de départ</label>' +
+          '<select class="kta-cfg-input" id="kta-jct-from">' + _optionsHtml(cur) + '</select>' +
+          '<label class="kta-cfg-label">Niveau d\'arrivée</label>' +
+          '<select class="kta-cfg-input" id="kta-jct-to">' + _optionsHtml(defaultTo) + '</select>' +
+        '</div>' +
+        '<p style="font-size:11.5px; color:#8892a4; margin:12px 0 0 0; line-height:1.5;">' +
+          'Après OK, clique sur la carte pour poser les points de la jonction (autant que tu veux). ' +
+          'Le tracé sera magenta pointillé et restera toujours visible peu importe le niveau actif.' +
+        '</p>' +
+      '</div>' +
+      '<div class="kta-tracker-warn-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-jct-cancel" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-jct-ok"     type="button">OK — Tracer la jonction</button>' +
+      '</div>' +
+    '</div>';
+
+  document.documentElement.appendChild(overlay);
+
+  function _cleanup() {
+    if (overlay.parentNode) overlay.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) { if (e.key === "Escape") _cleanup(); }
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) _cleanup(); });
+  document.addEventListener("keydown", _onKey);
+  document.getElementById("kta-jct-close").addEventListener("click", _cleanup);
+  document.getElementById("kta-jct-cancel").addEventListener("click", _cleanup);
+
+  document.getElementById("kta-jct-ok").addEventListener("click", function() {
+    const fromLvl = parseInt(document.getElementById("kta-jct-from").value, 10);
+    const toLvl   = parseInt(document.getElementById("kta-jct-to").value,   10);
+    if (!Number.isInteger(fromLvl) || !Number.isInteger(toLvl)) return;
+    if (fromLvl === toLvl) {
+      alert("Les niveaux de départ et d'arrivée doivent être différents.");
+      return;
+    }
+    _cleanup();
+    // Stocke la meta pour que road.js > mousedown la lise au premier clic
+    window._jonctionPendingMeta = { fromLevel: fromLvl, toLevel: toLvl };
+    // Active le mode tracé "jonction"
+    _activerJonctionMode(btnSub, fromLvl, toLvl);
+  });
+}
+
+// Active le mode tracé jonction (utilise le même pattern que _activerRoute
+// mais avec type "jonction" + icone reflet 🪜).
+function _activerJonctionMode(btnCible, fromLvl, toLvl) {
+  // Replique _activerRoute en inline : on est en scope module, alors que
+  // _activerRoute est dans initInterface (closure sur _groupes etc.).
+  //
+  // ⚠️ Bug v148.test : sans _desactiverTousLesModes() ici, activer la jonction
+  // alors qu'un autre mode est actif (✏️ point, 📐 mesure, ⬛ zone, etc.) laisse
+  // les 2 modes actifs en parallele → clic carte declenche plusieurs handlers
+  // contradictoires. Fix : on tue tout avant de demarrer la jonction.
+  _desactiverTousLesModes();
+
+  toggleRoadMode("jonction");  // sets window.modeRoad = "jonction"
+  if (btnCible) btnCible.classList.add("kta-actif");
+  const grp = _groupes["traces"];
+  _modesActifs["road"] = {
+    btnEl: btnCible,
+    desactiverFn: function() {
+      if (window.modeRoad) toggleRoadMode(window.modeRoad);
+      if (grp) grp.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+      _setGroupeModeActif("traces", false);
+      window._jonctionPendingMeta = null;
+    }
+  };
+  _setGroupeModeActif("traces", true, "🪜");
+  console.log("[MultiNiveau] Jonction mode activé :", fromLvl, "→", toLvl);
+}
+
+// =========================
 // INIT INTERFACE
 // =========================
 // =========================
@@ -2338,16 +2852,45 @@ function initInterface() {
         icone: "▶️",
         titre: "Démarrer / arrêter le tracking",
         onClick: function(btnSub) {
-          if (!isTracking) {
-            requestPermission(); startTracking();
-            btnSub.innerHTML = "⏹️";
-            _setGroupeModeActif("tracker", true, "⏹️");
-          } else {
+          if (isTracking) {
+            // Arrêt : pas d'avertissement, direct.
             stopTracking();
             btnSub.innerHTML = "▶️";
             _setGroupeModeActif("tracker", false);
+            isTracking = false;
+            return;
           }
-          isTracking = !isTracking;
+          // Démarrage : enchaîne requestPermission + startTracking dans un
+          // callback synchrone (le clic "J'ai compris" est un geste user
+          // valide pour iOS requestPermission). Cf. commentaire d'en-tête de
+          // _afficherAvertissementTracker.
+          const _doStart = function() {
+            requestPermission();
+            startTracking();
+            btnSub.innerHTML = "⏹️";
+            _setGroupeModeActif("tracker", true, "⏹️");
+            isTracking = true;
+          };
+          if (_trackerWarningAcknowledged) {
+            _doStart();
+          } else {
+            _afficherAvertissementTracker(_doStart);
+          }
+        }
+      },
+      {
+        icone: "🧭",
+        titre: "Afficher la boussole (Nord)",
+        onClick: function(btnSub) {
+          if (!window.CompassWidget) return;
+          window.CompassWidget.toggle();
+          const visible = window.CompassWidget.isVisible();
+          btnSub.classList.toggle("kta-actif", visible);
+          // Hook pour decocher visuellement si l'utilisateur ferme le widget
+          // via la croix ✕ (et non en re-cliquant la sous-action).
+          window._onCompassHiddenExternally = function() {
+            btnSub.classList.remove("kta-actif");
+          };
         }
       },
       {
@@ -2536,18 +3079,46 @@ function initInterface() {
     _setGroupeModeActif("traces", true, iconeReflet);
   }
 
-  _creerGroupeAccordeon({
-    id: "traces",
-    iconePrincipale: "🛣️",
-    titre: "Tracés / Routes",
-    sousActions: [
-      { icone: "🟩", titre: "Route principale",
-        onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
-      { icone: "🟪", titre: "Route secondaire",
-        onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
-      { icone: "🟨", titre: "Chemin",
-        onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } },
-      { icone: "📏", titre: "Distance totale (filtres)",
+  // 🏗️ Multi-niveau : construction dynamique des sous-actions selon le toggle.
+  // Si multiLevel = false (defaut) → liste identique à v147 (retro-compat).
+  // Si multiLevel = true → ajout sous-action 🪜 Jonction interniveau juste
+  // apres 🟨 Chemin. La pastille de niveau n'est PLUS dans la sidebar : elle
+  // a ete deplacee dans un Leaflet control top-left sous le zoom (cf
+  // _initLevelFilterControl) pour rester accessible peu importe l'etat de
+  // l'accordeon ET pour eviter le debordement texte du sous-action button.
+  const _isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+
+  const _sousActionsTraces = [];
+
+  _sousActionsTraces.push(
+    { icone: "🟩", titre: "Route principale",
+      onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
+    { icone: "🟪", titre: "Route secondaire",
+      onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
+    { icone: "🟨", titre: "Chemin",
+      onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } }
+  );
+
+  if (_isMultiLevel) {
+    _sousActionsTraces.push({
+      icone: "🪜",
+      titre: "Jonction interniveau",
+      onClick: function(btn) {
+        // Toggle (Bug 4 fix v148.test) : si le mode jonction est deja actif,
+        // re-clic = on désactive proprement le mode (cohérent avec le
+        // comportement des autres types via _activerRoute). Sinon → ouvre
+        // la modale de saisie from/to.
+        if (window.modeRoad === "jonction") {
+          _fermerModeRoad();
+          return;
+        }
+        _ouvrirCreationJonction(btn);
+      }
+    });
+  }
+
+  _sousActionsTraces.push(
+    { icone: "📏", titre: "Distance totale (filtres)",
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
             window.ouvrirRoadsDistanceFloater();
@@ -2572,7 +3143,16 @@ function initInterface() {
                 onClick: function() { if (window.removeLastRoadPoint) window.removeLastRoadPoint(); } },
               { label: "Dernier tracé entier", icon: "✂️",
                 desc: roads.length + " tracé(s) au total",
-                onClick: function() { if (window.removeLastRoad) window.removeLastRoad(); } },
+                onClick: function() {
+                  // Capturer la ref du tracé en cours AVANT la suppression :
+                  // si removeLastRoad efface justement la road en cours, il
+                  // faut fermer le mode (sinon icone reste allumee mais clic
+                  // map fait rien car modeRoad = null cote road.js).
+                  const before = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (window.removeLastRoad) window.removeLastRoad();
+                  const after = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+                  if (before && !after) _fermerModeRoad();
+                } },
               { label: "Sélectionner un tracé à supprimer", icon: "🎯",
                 desc: "Clique sur le tracé sur la carte (" + tracesSelectables.length + " disponibles)",
                 onClick: function() {
@@ -2582,12 +3162,23 @@ function initInterface() {
                 } },
               { label: "Tous les tracés", icon: "🗑️", danger: true,
                 desc: "Action irréversible",
-                onClick: function() { if (window.resetRoads) window.resetRoads(); } }
+                onClick: function() {
+                  if (window.resetRoads) window.resetRoads();
+                  // resetRoads vide tout y compris currentRoad ET coupe
+                  // window.modeRoad → on doit fermer le mode UI sans condition.
+                  _fermerModeRoad();
+                } }
             ]
           );
         }
       }
-    ]
+  );
+
+  _creerGroupeAccordeon({
+    id: "traces",
+    iconePrincipale: "🛣️",
+    titre: "Tracés / Routes",
+    sousActions: _sousActionsTraces
   });
 
   // 10. ZONES (polygones remplis : remblais / effondrement)
@@ -2659,7 +3250,15 @@ function initInterface() {
                 onClick: function() { if (window.removeLastZonePoint) window.removeLastZonePoint(); } },
               { label: "Dernière zone fermée", icon: "✂️",
                 desc: nbZonesFermees + " zone(s) au total",
-                onClick: function() { if (window.removeLastZone) window.removeLastZone(); } },
+                onClick: function() {
+                  // Symetrique du fix roads : si la zone en cours vient
+                  // d'etre supprimee, on ferme le mode UI (sinon icone
+                  // reste allumee et clic map fait rien).
+                  const before = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (window.removeLastZone) window.removeLastZone();
+                  const after = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+                  if (before && !after) _fermerModeZone();
+                } },
               { label: "Sélectionner une zone à supprimer", icon: "🎯",
                 desc: "Clique sur la zone sur la carte (" + nbSelectables + " disponibles)",
                 onClick: function() {
@@ -2669,7 +3268,12 @@ function initInterface() {
                 } },
               { label: "Toutes les zones", icon: "🗑️", danger: true,
                 desc: "Action irréversible",
-                onClick: function() { if (window.resetZones) window.resetZones(); } }
+                onClick: function() {
+                  if (window.resetZones) window.resetZones();
+                  // resetZones reset currentZone + window.modeZone → on ferme
+                  // le mode UI inconditionnellement.
+                  _fermerModeZone();
+                } }
             ]
           );
         }
@@ -2679,6 +3283,51 @@ function initInterface() {
 
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
+
+  // 🏗️ Multi-niveau : si actif pour ce plan, créer le bouton flottant
+  // top-left (sous les boutons de zoom Leaflet) pour ouvrir la modale niveau.
+  // Si OFF → rien n'est crée → comportement v147 strict.
+  _initLevelFilterControl();
+}
+
+// =========================
+// 🏗️ MULTI-NIVEAU — Leaflet control top-left (pastille niveau actif)
+// =========================
+// Bouton carré 30x30 sous les boutons de zoom, style coherent avec les autres
+// controles Leaflet (.leaflet-bar). Au clic → ouvre la modale niveau (active +
+// visibles). Affiche le chiffre du niveau actif dans une pastille jaune.
+// Refresh automatique du chiffre via getElementById("kta-niv-pastille-icone")
+// dans _changerNiveauActif (l'ID est dans le span).
+function _initLevelFilterControl() {
+  if (!window.map) return;
+  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return;
+  // Pour eviter de dupliquer si initInterface est appele 2 fois (shouldn't
+  // happen mais safety net) : on detruit le precedent control si present.
+  if (window._levelFilterControl) {
+    try { window.map.removeControl(window._levelFilterControl); } catch(e) {}
+    window._levelFilterControl = null;
+  }
+
+  const ctrl = L.control({ position: "topleft" });
+  ctrl.onAdd = function() {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-level-control");
+    const a   = L.DomUtil.create("a", "kta-level-btn", div);
+    a.href      = "javascript:void(0)";
+    a.title     = "Niveau actif — Cliquer pour changer / filtrer";
+    a.innerHTML = '<span class="kta-niv-pastille" id="kta-niv-pastille-icone">' +
+                  (APP_CONFIG.activeLevel || 0) + '</span>';
+    // Empeche les events de propager a la carte (clic-pan + zoom-wheel)
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.disableScrollPropagation(div);
+    L.DomEvent.on(a, "click", function(e) {
+      L.DomEvent.stop(e);
+      _ouvrirSelecteurNiveau(a);
+    });
+    return div;
+  };
+  ctrl.addTo(window.map);
+  window._levelFilterControl = ctrl;
+  console.log("[MultiNiveau] Level filter control créé (top-left)");
 }
 
 // =========================
@@ -2960,6 +3609,12 @@ window.activerModeSuppressionTraceClic = function() {
       return;
     }
 
+    // Si la road cliquee est la road en cours de trace, on devra fermer
+    // le mode trace apres suppression (sinon icone reste allumee). setRoads
+    // remet currentRoad = null cote road.js, donc on capture la ref AVANT.
+    const currentBefore = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
+    const closeRoadMode = (currentBefore && currentBefore === closestRoad);
+
     // Supprime la road
     const currentRoads = window.getRoads ? window.getRoads() : [];
     const filtered = currentRoads.filter(function(r) { return r !== closestRoad; });
@@ -2967,6 +3622,8 @@ window.activerModeSuppressionTraceClic = function() {
     console.log("[Suppr trace] Tracé supprimé :", closestRoad.type,
                 "(distance click :", Math.round(closestDist), "px) —",
                 filtered.length, "tracé(s) restant(s)");
+
+    if (closeRoadMode) _fermerModeRoad();
 
     _desactiverModeSuppressionTrace();
   };
@@ -3086,12 +3743,19 @@ window.activerModeSuppressionZoneClic = function() {
       return;
     }
 
+    // Si la zone cliquee est la zone en cours, on ferme le mode UI apres
+    // suppression (setZones reset currentZone → on capture la ref AVANT).
+    const currentBefore = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
+    const closeZoneMode = (currentBefore && currentBefore === foundZone);
+
     // Supprime la zone
     const currentZones = window.getZones ? window.getZones() : [];
     const filtered = currentZones.filter(function(z) { return z !== foundZone; });
     if (window.setZones) window.setZones(filtered);
     console.log("[Suppr zone] Zone supprimée :", foundZone.type, "—",
                 filtered.length, "zone(s) restante(s)");
+
+    if (closeZoneMode) _fermerModeZone();
 
     _desactiverModeSuppressionZone();
   };
@@ -3880,11 +4544,18 @@ let _rdFloater         = null;
 let _rdHighlightLayer  = null;  // L.layerGroup contenant les polylines magenta
 let _rdFiltres         = { principal: true, secondaire: true, chemin: true };
 
-// Collecte toutes les roads pertinentes (session + embedded visibles), filtrées
-// pour ne garder que les types principal/secondaire/chemin.
+// Collecte toutes les roads pertinentes (session + TOUTES embedded, masquees
+// comprises), filtrees pour ne garder que les types principal/secondaire/chemin.
+//
+// ⚠️ On utilise getAllEmbeddedRoads (pas getEmbeddedRoads) — symetrie avec
+// Pathfinder/Search qui prennent tout : le panneau "Distance totale" doit
+// donner un chiffre fiable meme si l'utilisateur a masque un calque dans
+// le controle des couches (cas typique : routes dessinees en dur sur le PNG
+// du plan + calque routes masque pour gagner en perf de rendu — l'utilisateur
+// veut quand meme connaitre la distance totale du reseau).
 function _rdRoadsExploitables() {
-  const session  = (window.getRoads          ? window.getRoads()          : []) || [];
-  const embedded = (window.getEmbeddedRoads  ? window.getEmbeddedRoads()  : []) || [];
+  const session  = (window.getRoads             ? window.getRoads()             : []) || [];
+  const embedded = (window.getAllEmbeddedRoads  ? window.getAllEmbeddedRoads()  : []) || [];
   return session.concat(embedded).filter(function(r) {
     return r && Array.isArray(r.points) && r.points.length >= 2 &&
            _RD_TYPES_TOUS.indexOf(r.type) !== -1;
