@@ -9,6 +9,52 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 2) — 🧱 v151 : V2 améliorations workflow + perfPreset bypass
+
+3 améliorations sur la conversion V2 suite au feedback de la session de test v149 / v150.
+
+#### 1. V2 disponible en mode Nouveau plan
+
+Auparavant la checkbox 🧱 V2 était cachée en mode `Nouveau` (visible UNIQUEMENT en mode Modifier qui exposait `_plannerOrigAssets`). Logique : on avait besoin d'un File source pour générer les tuiles. Mais en Nouveau, l'utilisateur upload son image via `pl_baseImage` → on a un File aussi !
+
+Fix :
+- `_majVisibiliteCheckboxV2()` factorise la logique → visible si mode Modifier OU si baseImage uploadée
+- Hook sur le change handler de `pl_baseImage` pour rafraîchir
+- `_genererZip` utilise `_getFile("pl_baseImage", baseImageName)` qui gère les 2 sources
+
+#### 2. Modal d'avertissement au check V2
+
+La conversion V2 est lourde (CPU + RAM, ~256 Mo pour image 8K). Sur iOS Safari plafonné à ~500 MB, l'utilisateur peut crasher pendant la génération. Modal d'avertissement au check de la case :
+- Section "📱 Sur mobile" (rouge) : risque OOM élevé sur image >50 Mo ou >8K
+- Section "💻 Sur ordinateur" (vert) : recommandé, aucune limite mémoire en pratique
+- Note finale : une fois le ZIP V2 généré sur PC, il s'importe sans coût sur mobile (c'est le but de V2)
+- Boutons : `Annuler (décocher)` / `J'ai compris — Continuer`
+- Backdrop click + Escape = annuler
+
+#### 3. V2 + perfPreset=off → bypass tuilage
+
+Si l'utilisateur choisit `Mode performance: Désactivé` au loader sur un plan V2, le runtime saute le tuilage et charge l'image source directement via `L.imageOverlay(url, bounds)` (comportement V1 brut). Le `baseImage` du plan-config est toujours présent dans le ZIP (le générateur V2 ne le supprime pas), donc fallback sans crash.
+
+Use case : comparer V2 vs V1 sur le même plan, ou bypass temporaire du système de tuiles pour troubleshooting.
+
+#### 4. Fichiers (5 modifiés)
+
+| Fichier | Changement |
+|---|---|
+| `js/createConf.js` | +80 (helper `_majVisibiliteCheckboxV2`, modal `_afficherAvertissementV2`, bind change handler, `_genererZip` accepte mode Nouveau, `_getFile` au lieu de `_plannerOrigAssets`) |
+| `js/tiling.js` | +10 (test `preset === "off"` avant routing V2, fallback `L.imageOverlay`) |
+| `css/style.css` | +65 (styles `.kta-v2-warn-*` modal violet cohérent badge V2) |
+| `sw.js`, `js/copyright.js`, `version.json` | bump v151 + 3 notes user |
+| `CLAUDE.md` | §27.7 ajoutée (améliorations v151 documentées) |
+
+#### 5. Backward compat
+
+- Plans V1 : aucun changement de comportement
+- Plans V2 existants : continuent à fonctionner comme avant (sauf si l'utilisateur force perfPreset=off, choix volontaire)
+- Le warning modal V2 n'est jamais déclenché si l'utilisateur ne touche pas la case (mode passif)
+
+---
+
 ### 🗓️ 15/05/2026 (suite 1) — 🧱 v149 : Tiling V2 Option B (multi-imageOverlay)
 
 Pivot vers **Option B** après échec des approches GridLayer / TileLayer.extend testées en v148 puis archivées (branche `v2-work-archive`). Système de découpage d'image en tuiles 512×512 sur 4 niveaux de zoom Google Maps-like, pour les gros plans qui saturent la RAM mobile.

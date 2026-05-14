@@ -1019,18 +1019,20 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 ### 🧱 Convertir en V2 tuile (performance)
 
-> ⚙️ **Disponible uniquement en mode Modifier** (besoin du File source pour générer les tuiles)
-
 Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
 
-**Workflow** :
+**Workflow (depuis v151)** :
 
-1. **Modifier existant** → uploader ton ZIP V1
-2. Cocher la case **☑️ 🧱 Convertir en V2 tuile (performance)** (encadré violet sous Informations du plan)
-3. Optionnellement modifier d'autres champs
-4. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)"
-5. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
-6. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement
+La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploadé une image principale**, que tu sois en mode **Nouveau plan** OU en **Modifier existant**. Plus besoin de passer par un ZIP V1 source.
+
+1. **Nouveau plan** : choisir une image principale → la case 🧱 apparaît<br>
+   OU **Modifier existant** : uploader ton ZIP V1 (la case 🧱 est dispo)
+2. Cocher la case **☑️ 🧱 Convertir en V2 tuile (performance)** (encadré violet)
+3. **Modal d'avertissement** : la conversion est lourde (CPU + RAM). Lis le message, clique **J'ai compris — Continuer** (ou **Annuler (décocher)** si tu veux y réfléchir). Voir section "PC vs mobile" plus bas.
+4. Remplir le reste du formulaire (nom, version, calques, tracking, etc.)
+5. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)"
+6. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
+7. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan)
 
 **Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
 
@@ -1044,6 +1046,27 @@ Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le converti
 | Auto-crop des marges blanches | Black border visible quand on dezoome très très loin (au-delà des bords) |
 
 **Modifier un plan déjà V2** : la case est **pré-cochée** par défaut → les tuiles seront régénérées avec les nouvelles modifs. Si tu décoches, downgrade explicite V2 → V1 (les tuiles ne sont pas reportées dans le nouveau ZIP).
+
+#### 💻 PC vs 📱 Mobile pour la conversion
+
+> ⚠️ **Important** — c'est le sujet du modal d'avertissement qui apparaît quand tu coches la case.
+
+| Plateforme | Décodage image source | Recommandation |
+|---|---|---|
+| 💻 **Ordinateur** (Windows / macOS / Linux) | Aucune limite mémoire en pratique. Conversion 1-5 min selon taille. | ✅ **Recommandé** pour la génération |
+| 📱 **Mobile** (iOS / Android) | Plafonné à **~500 Mo de RAM** pour la PWA. Crash quasi-garanti sur image >50 Mo ou >8K px. | ❌ Éviter — **mais** le ZIP V2 généré sur PC s'importe sans coût sur mobile (c'est tout l'intérêt de V2) |
+
+> 💡 **Workflow recommandé** : génère le ZIP V2 une fois pour toutes sur ton PC, puis partage-le sur ton téléphone (Drive, AirDrop, etc.). Le téléphone l'importe en quelques secondes et tu profites du runtime tuilé sans coût mémoire au boot.
+
+#### 🎛️ Désactiver le tuilage à la lecture (V2 → V1 brut)
+
+Au chargement d'un plan V2, tu peux choisir **Mode performance : Désactivé** dans le drawer "🎚️ Réglages de performance" du loader. Dans ce cas, le runtime ignore les tuiles et charge directement l'**image source** (`baseImage` du ZIP, gardée intacte) comme un plan V1 classique.
+
+Use cases :
+- Comparer le rendu V2 vs V1 sur le même plan
+- Bypass temporaire si tu vois un comportement bizarre du système de tuiles (debug)
+
+⚠️ Ce mode charge toute l'image en RAM → susceptible de crasher sur mobile pour les gros plans (c'est ce que V2 évite normalement).
 
 > 💡 **À tester en priorité** sur ton plus gros plan qui crashe sur mobile, ou avant de partager un plan lourd à quelqu'un avec un téléphone modeste.
 

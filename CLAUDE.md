@@ -1051,9 +1051,29 @@ if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
 
 - ✅ **Plans V1 (sans `tiledV2`)** : strictement identique à v148. Aucun changement de comportement.
 - ✅ **Multi-niveau + V2** : indépendants, fonctionnent ensemble. Une carrière multi-étages tuilée → les jonctions et le filtre niveau marchent par-dessus le tile rendering.
-- ✅ **PerfPreset** : pour les plans V1, les presets continuent de fonctionner. En mode V2, les presets sont ignorés (le tile rendering remplace).
+- ✅ **PerfPreset** : pour les plans V1, les presets continuent de fonctionner. En mode V2, les presets sont ignorés sauf `"off"` qui force le **fallback baseImage direct** (cf §27.7 ci-dessous).
 - ⚠️ **Plans serveur V2** : pas supporté en v1. RUNTIME_ASSETS est rempli uniquement par les imports ZIP. Pour servir un V2 depuis `data/<plan>/tiles/`, il faudrait un résolveur de chemin HTTP. Future amélioration.
 - ⚠️ **Modifier un plan V2** : si l'utilisateur modifie un plan déjà V2 sans toucher au checkbox, les tuiles sont **régénérées** (pas reportées). Slow mais correct. Décocher la checkbox = downgrade explicite V2 → V1.
+
+#### 27.7 Améliorations v151 (15/05/2026 suite)
+
+**V2 dispo en mode Nouveau plan** : la checkbox 🧱 était auparavant cachée en mode `nouveau`. Désormais elle apparaît dès que l'utilisateur upload une image principale via `pl_baseImage` (mode Nouveau) OU à l'ouverture du formulaire en mode Modifier. La fonction `_majVisibiliteCheckboxV2()` centralise la logique, appelée depuis `_preRemplirFormulaire` et depuis le change handler de `pl_baseImage`.
+
+`_genererZip` retrouve désormais le File via `_getFile("pl_baseImage", baseImageName)` qui gère les 2 sources (upload direct ou `_plannerOrigAssets` du ZIP V1 importé).
+
+**Modal d'avertissement au check V2** : sur change de la case, si elle vient d'être cochée → `_afficherAvertissementV2(checkbox)` ouvre une modal violette qui détaille la conversion lourde (CPU + RAM + durée) avec sections "📱 Sur mobile" (rouge) et "💻 Sur ordinateur" (vert). Boutons "Annuler (décocher)" / "J'ai compris — Continuer". Backdrop click + Escape = annuler.
+
+**V2 + perfPreset=off → fallback baseImage** : si l'utilisateur a choisi `Mode performance: Désactivé` au loader et charge un plan V2 :
+```js
+if (pc.plan.tiledV2 === true && pc.tiling) {
+  if (preset === "off") {
+    L.imageOverlay(url, bounds).addTo(map);  // V1-like, image source entière
+    return [];
+  }
+  return _chargerImageV2OptionB(bounds, map, pc.tiling);
+}
+```
+Le `baseImage` est toujours présent dans le ZIP/asset (le générateur V2 ne le supprime pas), donc le fallback fonctionne sans crash. Use case : comparer V2 vs V1 sur le même plan ou contourner temporairement le système de tuiles pour troubleshooting.
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

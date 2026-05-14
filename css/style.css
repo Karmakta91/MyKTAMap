@@ -5469,6 +5469,73 @@ a.kta-level-btn {
 }
 
 /* =========================
+   🧱 V2 WARNING MODAL — popup avertissement au check de la case V2 (v151)
+   ========================= */
+/* Pattern identique au tracker warning (cf. ci-dessous) mais avec un accent
+   violet (la couleur du V2 dans le planner et les badges plan). Conversion
+   lourde donc on conseille PC, avec details memoire/CPU/duree. */
+.kta-v2-warn-boite {
+  border: 1px solid rgba(180, 82, 255, 0.40);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(180, 82, 255, 0.10);
+  max-width: 560px;
+}
+.kta-v2-warn-header .kta-readme-modal-titre {
+  color: #d29bff;
+  font-weight: 700;
+}
+.kta-v2-warn-lead {
+  background: rgba(180, 82, 255, 0.10);
+  border-left: 3px solid #b452ff;
+  color: #e6c8ff;
+  padding: 10px 12px;
+  border-radius: 4px;
+  margin: 0 0 14px 0;
+  font-size: 14px;
+}
+.kta-v2-warn-section {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 12px 0;
+}
+.kta-v2-warn-section-titre {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.kta-v2-warn-section-bad {
+  background: rgba(255, 107, 107, 0.06);
+  border-left: 3px solid rgba(255, 107, 107, 0.55);
+}
+.kta-v2-warn-section-bad .kta-v2-warn-section-titre {
+  color: #ff8a8a;
+}
+.kta-v2-warn-section-good {
+  background: rgba(108, 226, 138, 0.06);
+  border-left: 3px solid rgba(108, 226, 138, 0.55);
+}
+.kta-v2-warn-section-good .kta-v2-warn-section-titre {
+  color: #6ce28a;
+}
+.kta-v2-warn-section p {
+  margin: 0;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.55;
+}
+.kta-v2-warn-note {
+  font-style: italic;
+  font-size: 13px;
+  color: #a8b3c8;
+  background: rgba(140, 180, 255, 0.06);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 14px 0 0;
+}
+
+/* =========================
    TRACKER WARNING MODAL — popup avertissement au démarrage du tracker
    ========================= */
 /* Hérite de .kta-readme-modal-overlay/.kta-readme-modal-boite. Surcouche

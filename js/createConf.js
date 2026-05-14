@@ -279,7 +279,20 @@ function afficherPlanner() {
       console.warn("[Planner] Échec lecture dimensions :", err);
       _appliquerDimensions(null, null, file.size);
     });
+    // 🧱 V2 : revue de la visibilite de la checkbox V2 (mode Nouveau l'expose
+    // seulement apres upload d'une image source).
+    _majVisibiliteCheckboxV2();
   });
+
+  // 🧱 V2 : warning au check de la checkbox V2 — conversion lourde, PC recommande.
+  // Pas de modal bloquante a la generation (overlay progress existe deja), mais
+  // un avertissement au moment ou l'user "opt-in" pour qu'il puisse decocher.
+  const v2CbBind = document.getElementById("pl_tilingV2");
+  if (v2CbBind) {
+    v2CbBind.addEventListener("change", function() {
+      if (v2CbBind.checked) _afficherAvertissementV2(v2CbBind);
+    });
+  }
 
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
@@ -409,25 +422,13 @@ function _preRemplirFormulaire(config) {
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
 
-  // 🧱 Tiling V2 : checkbox visible UNIQUEMENT en mode Modifier (besoin du File
-  // source pour generer les tuiles).
-  //   - Source V1 (pas de section `tiling`) → defaut DECOCHE (opt-in user)
-  //   - Source V2 (section `tiling` presente) → defaut COCHE (re-tilage,
-  //     sinon downgrade silencieux V2→V1 si l'utilisateur modifie un V2)
-  // Si l'utilisateur decoche sur un source V2 → downgrade explicite vers V1
-  // (les tuiles ne seront pas regenerees, plan-config.tiledV2 absent).
-  const v2Wrap = document.getElementById("pl_v2_convert_wrap");
-  const v2Cb   = document.getElementById("pl_tilingV2");
-  if (v2Wrap && v2Cb) {
-    const dejaV2 = !!(config.tiling && Number.isInteger(config.tiling.version) && config.tiling.version >= 2);
-    if (_plannerMode === "modifier") {
-      v2Wrap.style.display = "";
-      v2Cb.checked = dejaV2;
-    } else {
-      v2Wrap.style.display = "none";
-      v2Cb.checked = false;
-    }
-  }
+  // 🧱 Tiling V2 : checkbox visible selon le contexte (cf _majVisibiliteCheckboxV2)
+  //   - Source V2 (section `tiling` presente) → defaut COCHE (re-tilage)
+  //   - Sinon → defaut DECOCHE (opt-in user)
+  const dejaV2 = !!(config.tiling && Number.isInteger(config.tiling.version) && config.tiling.version >= 2);
+  const v2CbInit = document.getElementById("pl_tilingV2");
+  if (v2CbInit) v2CbInit.checked = dejaV2;
+  _majVisibiliteCheckboxV2();
 
   if (plan.baseImage)      sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
   if (plan.collisionImage) sn("pl_collision_nom",  "📄 " + plan.collisionImage.split("/").pop());
@@ -677,6 +678,85 @@ function _plannerErreur(msg) {
   if (!el) return;
   el.textContent = msg || "";
   el.style.display = msg ? "block" : "none";
+}
+
+// =========================
+// 🧱 Tiling V2 — UI helpers (v151)
+// =========================
+// Visibilite de la checkbox V2 :
+//   - mode Modifier        → toujours visible (File source dans _plannerOrigAssets)
+//   - mode Nouveau + image → visible (File source via input pl_baseImage)
+//   - mode Nouveau sans img → cachee (pas de File a tuiler)
+function _majVisibiliteCheckboxV2() {
+  const wrap = document.getElementById("pl_v2_convert_wrap");
+  if (!wrap) return;
+  if (_plannerMode === "modifier") {
+    wrap.style.display = "";
+    return;
+  }
+  // Mode Nouveau : visible si baseImage est uploade
+  const input = document.getElementById("pl_baseImage");
+  const aImage = !!(input && input.files && input.files[0]);
+  wrap.style.display = aImage ? "" : "none";
+}
+
+// Modal d'avertissement quand l'user coche la case V2 (genere des tuiles).
+// Conversion lourde en CPU + RAM cote navigateur (drawImage sur 16K x 16K
+// fait souvent crasher iOS Safari). Conseille PC.
+// L'user peut continuer (case reste cochee) ou annuler (decoche).
+function _afficherAvertissementV2(checkbox) {
+  if (document.getElementById("kta-v2-warn-overlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "kta-v2-warn-overlay";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-v2-warn-boite">' +
+      '<div class="kta-readme-modal-header kta-v2-warn-header">' +
+        '<span class="kta-readme-modal-titre">🧱 Conversion V2 — ressources nécessaires</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p class="kta-v2-warn-lead">' +
+          'La conversion V2 (génération des tuiles) est une opération <strong>lourde</strong> :' +
+        '</p>' +
+        '<ul>' +
+          '<li><strong>CPU</strong> : tu décodes l\'image source à pleine résolution puis tu draw chaque tuile (jusqu\'à 1000+ tuiles selon la taille du plan).</li>' +
+          '<li><strong>RAM navigateur</strong> : l\'image source décodée occupe ~ W×H×4 octets (~256 Mo pour un 8000×8000 px).</li>' +
+          '<li><strong>Durée</strong> : 1 à 5 minutes selon la taille de l\'image et le matériel.</li>' +
+        '</ul>' +
+        '<div class="kta-v2-warn-section kta-v2-warn-section-bad">' +
+          '<div class="kta-v2-warn-section-titre">📱 Sur mobile</div>' +
+          '<p>iOS Safari et Android Chrome plafonnent à <strong>~500 MB de RAM</strong> pour la PWA. Image source >50 MB ou >8K px : <strong>crash quasi-garanti</strong> pendant la génération.</p>' +
+        '</div>' +
+        '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
+          '<div class="kta-v2-warn-section-titre">💻 Sur ordinateur</div>' +
+          '<p>Aucune limite particulière (mémoire abondante). C\'est la <strong>méthode recommandée</strong> pour générer ton plan V2 avant de le distribuer ou de l\'importer sur mobile.</p>' +
+        '</div>' +
+        '<p class="kta-v2-warn-note">' +
+          '💡 Une fois le ZIP V2 généré sur PC, tu l\'importes sur ton téléphone sans aucun coût mémoire — c\'est exactement le but de V2.' +
+        '</p>' +
+      '</div>' +
+      '<div class="kta-tracker-warn-actions">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-v2-warn-cancel" type="button">Annuler (décocher)</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-v2-warn-ok"     type="button">J\'ai compris — Continuer</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  function _cleanup() {
+    if (overlay.parentNode) overlay.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) { if (e.key === "Escape") _onCancel(); }
+  function _onCancel() {
+    if (checkbox) checkbox.checked = false;
+    _cleanup();
+  }
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) _onCancel();   // clic backdrop = annulation
+  });
+  document.addEventListener("keydown", _onKey);
+  document.getElementById("kta-v2-warn-cancel").addEventListener("click", _onCancel);
+  document.getElementById("kta-v2-warn-ok").addEventListener("click", _cleanup);
 }
 
 // =========================
@@ -1073,9 +1153,10 @@ async function _genererZip() {
   // Sinon → on n'ajoute PAS le champ (retro-compat absolue : les apps v147
   // ignorent ce champ inconnu sans broncher).
   const multiLevel = !!document.getElementById("pl_multiLevel")?.checked;
-  // 🧱 Tiling V2 (depuis v149) : opt-in conversion en plan tuile, dispo
-  // uniquement en mode "Modifier" (besoin du File source).
-  const tilingV2On = !!(document.getElementById("pl_tilingV2")?.checked && _plannerMode === "modifier");
+  // 🧱 Tiling V2 (depuis v149) : opt-in conversion en plan tuile. Disponible en
+  // mode Modifier (File source dans _plannerOrigAssets) ET en mode Nouveau si
+  // une image a été uploadée via le file input pl_baseImage (v151).
+  const tilingV2On = !!document.getElementById("pl_tilingV2")?.checked;
 
   if (!name)             { _plannerErreur("Le nom du plan est obligatoire."); return; }
   if (!width || !height) {
@@ -1229,11 +1310,14 @@ async function _genererZip() {
     let tilingManifest = null;
     let v2Dims = null;
     if (tilingV2On) {
-      // Retrouve le File de l'image source (mode Modifier → _plannerOrigAssets)
-      const imgKey = baseImageName ? baseImageName.replace(/^data\//, "") : null;
-      const imageFile = (imgKey && _plannerOrigAssets[imgKey]) ? _plannerOrigAssets[imgKey] : null;
+      // 🧱 v151 : retrouve le File de l'image source — 2 sources possibles :
+      //   - Mode Nouveau  : input upload pl_baseImage (user a choisi un fichier)
+      //   - Mode Modifier : _plannerOrigAssets (extrait du ZIP source)
+      // _getFile gere les 2 cas (priorite a l'upload, fallback _plannerOrigAssets
+      // via le basename de baseImageName).
+      const imageFile = _getFile("pl_baseImage", baseImageName);
       if (!imageFile) {
-        _plannerErreur("Conversion V2 : impossible de récupérer l'image source du V1 d'origine.");
+        _plannerErreur("Conversion V2 : impossible de récupérer l'image source. Choisis une image principale d'abord.");
         throw new Error("abort");
       }
 
