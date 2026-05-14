@@ -23,6 +23,15 @@ async function initDataFromConfig() {
     window.clearEmbeddedRoads();
   }
 
+  // 🏗️ Multi-niveau (v148) : vider les registres des objets data layers du
+  // plan precedent (markers + polylines + polygons) — ils seront re-remplis
+  // par ajouterPointsDepuisJSON ci-dessous. Sans ce reset, les objets du
+  // plan precedent restent dans les registres et le filtre niveau tenterait
+  // de les modifier alors qu'ils sont detaches de la map.
+  window._ktaDataMarkers   = [];
+  window._ktaDataPolylines = [];
+  window._ktaDataPolygons  = [];
+
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
   // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.
   // Sans ce skip, les markers du JSON arrivent async APRÈS le restore et coexistent
@@ -132,6 +141,44 @@ async function lancerApplication() {
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
   window.zonesInitialized     = false;
+
+  // 🏗️ Multi-niveau (v148) : lecture de la preference par plan (PlanRegistry)
+  // + reset des etats de session (activeLevel = 0, visibleLevels = [0] a
+  // chaque plan switch — confirme Q4 du topo). Si la feature n'est pas
+  // activee pour ce plan, multiLevel reste false → UI cachee + comportement
+  // strictement identique a v147 pour la retro-compat.
+  try {
+    const _planId = window._currentLoadedPlanId;
+    // 🏗️ Multi-niveau : ordre de priorite pour determiner si la feature est
+    // activee :
+    //   1. Si user a explicitement toggle via ⚙️ Reglages → PlanRegistry.multiLevel
+    //      (true ou false) → ca prime
+    //   2. Sinon → plan-config.json `plan.multiLevel` (par defaut du generateur)
+    //   3. Sinon → false (retro-compat absolue avec plans v147 et avant)
+    const _fromConfig = !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan
+                            && window.PLAN_CONFIG.plan.multiLevel === true);
+    const _multiOn = (_planId && window.PlanRegistry && typeof window.PlanRegistry.getMultiLevel === "function")
+      ? window.PlanRegistry.getMultiLevel(_planId, _fromConfig)
+      : _fromConfig;
+    APP_CONFIG.multiLevel     = !!_multiOn;
+    APP_CONFIG.activeLevel    = 0;
+    APP_CONFIG.visibleLevels  = [0];   // reset filtre : montre uniquement le niveau 0 au load
+    if (!Array.isArray(APP_CONFIG.availableLevels) || APP_CONFIG.availableLevels.length === 0) {
+      APP_CONFIG.availableLevels = [0, 1, 2, 3];
+    }
+    window.APP_CONFIG = APP_CONFIG;
+    // Body class : la boussole et autres elements fixes top-left utilisent
+    // cette classe pour se decaler vers le bas et liberer de la place pour
+    // le Leaflet control "niveau actif" sous le zoom.
+    if (APP_CONFIG.multiLevel === true) {
+      document.body.classList.add("kta-multilevel-active");
+    } else {
+      document.body.classList.remove("kta-multilevel-active");
+    }
+    console.log("[Main] multiLevel pour ce plan :", APP_CONFIG.multiLevel, "(planId=" + _planId + ")");
+  } catch(e) {
+    console.warn("[Main] init multi-niveau a echoue :", e);
+  }
 
   // Nettoyer les modales orphelines
   ["kta-aide-modal","kta-legende-modal","kta-cfg-modal","kta-readme-modal",

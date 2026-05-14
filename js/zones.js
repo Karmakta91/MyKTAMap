@@ -97,6 +97,11 @@ function initZones() {
         type: window.modeZone,
         points: []
       };
+      // 🏗️ Multi-niveau (v148) : tag la zone avec le niveau actif si la
+      // feature est ON pour ce plan. Sinon → aucun champ level (retro-compat).
+      if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+        currentZone.level = window.APP_CONFIG.activeLevel || 0;
+      }
       zonesData.push(currentZone);
     }
 
@@ -185,9 +190,27 @@ function renderZones() {
 
   const target = _zoneTarget();
 
+  // 🏗️ Multi-niveau (v148) : pre-calcul du filtre. Si la feature est OFF →
+  // toutes les zones visibles (retro-compat). Si ON → seul level ∈ visibleLevels.
+  // Les zones sans level (pre-v148) sont traitees comme level 0.
+  const _multiLevelOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const _visibleLevels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+                          ? window.APP_CONFIG.visibleLevels : [0];
+  function _zonePasseFiltre(zone) {
+    if (!_multiLevelOn) return true;
+    // Zone EN COURS DE TRACÉ : toujours visible peu importe le filtre (sinon
+    // l'utilisateur ne voit pas la zone qu'il dessine si son niveau actuel
+    // n'est pas dans visibleLevels). Cf bug report user v148.test, fix
+    // symétrique avec road.js > _passeFiltreNiveau.
+    if (zone === currentZone) return true;
+    const lvl = Number.isInteger(zone.level) ? zone.level : 0;
+    return _visibleLevels.indexOf(lvl) >= 0;
+  }
+
   // Pour chaque zone, déterminer si elle est fermée (= pas la zone courante)
   zonesAffichage.forEach(function(zone) {
     if (!zone.points || zone.points.length === 0) return;
+    if (!_zonePasseFiltre(zone)) return;
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = ZONE_STYLES[zone.type] || ZONE_STYLES.remblais;
@@ -293,6 +316,13 @@ window.setZones = function(zones) {
   zonesData = zones || [];
   currentZone = null;
   renderZones();
+};
+
+// Lecture seule : retourne la zone en cours de tracé (ou null si aucune
+// zone active). Utilisé par interface.js pour fermer le mode quand une
+// suppression vient d'effacer la zone en cours (cohérent avec getCurrentRoad).
+window.getCurrentZone = function() {
+  return currentZone || null;
 };
 
 // =========================

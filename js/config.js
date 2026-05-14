@@ -53,7 +53,18 @@ let DEFAULT_CONFIG = {
   stepThreshold: 13,
   stepCooldown:  400,
   debugMode:     false,
-  perfPreset:    "auto"   // "auto" | "quality" | "balanced" | "performance"
+  perfPreset:    "auto",  // "auto" | "quality" | "balanced" | "performance"
+
+  // ========== MULTI-NIVEAU (depuis v148) ==========
+  // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
+  // false (defaut), l'UI multi-niveau est masquee et le comportement est
+  // strictement identique a v147 (retro-compat absolue).
+  multiLevel:       false,         // boolean : feature activee pour ce plan ?
+  activeLevel:      0,             // entier ≥ 0 : niveau actif pour DESSINER de nouveaux elements
+  visibleLevels:    [0],           // array d'entiers : niveaux AFFICHES (multi-select).
+                                   // Par defaut = [activeLevel]. Jonctions affichees si au
+                                   // moins un de leurs endpoints (fromLevel/toLevel) est ici.
+  availableLevels:  [0, 1, 2, 3]   // liste des niveaux disponibles dans le selecteur
 };
 
 let APP_CONFIG = { ...DEFAULT_CONFIG };
@@ -173,7 +184,16 @@ function buildAppConfigFromPlan(planConfig) {
     // Lit `debugMode` du plan-config en priorité, fallback sur l'ancien `motionDebug`
     // pour les plans pas encore migrés (rétro-compat zip terrains).
     debugMode:     Boolean(tracking.debugMode ?? tracking.motionDebug ?? DEFAULT_CONFIG.debugMode),
-    perfPreset:    DEFAULT_CONFIG.perfPreset
+    perfPreset:    DEFAULT_CONFIG.perfPreset,
+
+    // Multi-niveau : valeurs par defaut au load. Le toggle reel (multiLevel)
+    // est ecrase par main.js depuis PlanRegistry[planId].multiLevel apres le
+    // buildAppConfigFromPlan. activeLevel/visibleLevels resetent toujours a
+    // leurs defauts (0 / [0]) au plan switch — Q4 du topo confirme.
+    multiLevel:       false,
+    activeLevel:      0,
+    visibleLevels:    [0],
+    availableLevels:  [0, 1, 2, 3]
   };
 
   // Restaurer la préférence globale debugMode depuis localStorage

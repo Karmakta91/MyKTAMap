@@ -1,8 +1,12 @@
 {
-  "version": "v145",
-  "released": "2026-05-13",
+  "version": "v148",
+  "released": "2026-05-15",
   "notes": [
-    "🚀 Mode Performance ULTRA : nouvelle section dans le chargeur et dans ⚙️ Réglages avec 6 optimisations agressives pour les gros plans ou appareils peu puissants (décimation des tracés au dézoom, désactivation des animations, viewport culling, etc.). Active le toggle 🚀 ULTRA pour appliquer le pack en un clic, ou ajuste individuellement chaque levier selon ce que tu veux sacrifier.",
-    "🏷️ Badge version dans le footer du chargeur : affiche la version installée (ex: v145). Clignote en bleu quand une nouvelle version est dispo — clique-le pour relancer la modale de mise à jour à tout moment, ou consulter les notes de ta version actuelle si tu es déjà à jour."
+    "🏗️ Gros morceau : MODE MULTI-NIVEAU pour les carrières multi-étages (Glacière, Capucins…). Active via ⚙️ Réglages → toggle 🏗️ Mode multi-niveau ou via le 📦 Générateur de plan (case à cocher). Tous tes plans existants restent identiques tant que tu ne l'actives pas (rétro-compat absolue).",
+    "🏗️ Quand le mode est ON pour un plan : nouveau bouton 'niveau actif' sous les boutons de zoom (top-left), modale avec sélecteur de niveau actif (segmented [0][1][2][3][+]) + checkboxes 'niveaux visibles' (filtre multi-select). Toutes les nouvelles roads, zones, points éditeur et le tracker sont tagués automatiquement avec le niveau actif. Le filtre niveau s'applique aux roads/zones/points session ET aux data layers (puits, cataphile, etc. — ajoute manuellement \"level\": N dans le JSON pour qu'ils soient filtrables).",
+    "🪜 Jonctions interniveau : sous-action 🪜 dans le groupe Tracés (seulement si multiLevel ON). Crée un tracé spécial (magenta pointillé avec ronds aux extrémités) qui relie 2 niveaux. C'est le SEUL moyen pour le pathfinder de passer d'un niveau à l'autre (les croisements visuels 2D entre niveaux différents ne comptent plus comme intersection réelle).",
+    "🗺️ Pathfinder niveau-aware : ne traverse plus les croisements visuels entre roads de niveaux différents. Les jonctions sont les bridges officiels entre niveaux. Sur plans monolayer (multiLevel OFF) : comportement strictement identique à v147.",
+    "🎨 Export PNG mode Avancé : nouvelle section '🏗️ Niveaux à exporter' avec checkboxes par niveau (uniquement visible si multiLevel ON). Permet d'exporter une image avec un sous-ensemble de niveaux indépendamment du filtre actuel sur la carte.",
+    "🧭 Petits fix : icône mode jonction qui ne se désactive pas avec un re-clic (fix), modes de saisie point + jonction qui s'activaient en même temps (fix exclusivité), cercles d'intersection apparaissant entre roads de niveaux différents (fix), road/zone en cours qui disparaissait pendant le tracé si filtre actif (fix : toujours visible pendant le tracé)."
   ]
 }

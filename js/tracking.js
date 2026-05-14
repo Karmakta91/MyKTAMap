@@ -16,6 +16,13 @@ let polyline;
 let lastStepTime = 0;
 let stepCount = 0;
 
+// 🏗️ Multi-niveau (v148) : niveau courant du tracker. Mis a jour :
+//   - Au demarrage (startTracking) → snapshot de APP_CONFIG.activeLevel
+//   - Au recalage clic carte → snapshot de APP_CONFIG.activeLevel
+//   - Au recalage sur point (popup "📍 Je suis ici") → snapshot du level du point
+// Si multiLevel = false → reste a 0 sans effet.
+let trackerLevel = 0;
+
 // =========================
 // INIT
 // =========================
@@ -60,13 +67,46 @@ function initTracking() {
     position.x = x;
     position.y = y;
 
+    // 🏗️ Multi-niveau (v148) : recalage clic carte → tracker passe au niveau actif
+    // ("pouvoir se relocaliser selon le niveau" — request user). Si multiLevel
+    // est OFF, trackerLevel reste a 0 sans effet visible.
+    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      trackerLevel = window.APP_CONFIG.activeLevel || 0;
+      console.log("[Tracking] Recalé sur niveau :", trackerLevel);
+    }
+
     updateMap();
+    _appliquerFiltreNiveauSurTracker();
     console.log("[Tracking] Recalé en :", x, y);
 
     if (polyline) polyline.setLatLngs([]);
     stepCount = 0;
   });
 }
+
+// 🏗️ Multi-niveau (v148) : applique le filtre visuel sur le marker tracker.
+// Cache (opacity 0 + pointer-events none) si trackerLevel n'est pas dans
+// visibleLevels. Si multiLevel = false → toujours visible (retro-compat).
+function _appliquerFiltreNiveauSurTracker() {
+  if (!markerPosition) return;
+  const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  if (!multi) {
+    try { markerPosition.setOpacity(1); } catch(e) {}
+    if (markerPosition._icon) markerPosition._icon.style.pointerEvents = "";
+    if (polyline)  try { polyline.setStyle({ opacity: 1 }); } catch(e) {}
+    return;
+  }
+  const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+    ? window.APP_CONFIG.visibleLevels : [0];
+  const visible = visibles.indexOf(trackerLevel) >= 0;
+  try { markerPosition.setOpacity(visible ? 1 : 0); } catch(e) {}
+  if (markerPosition._icon) markerPosition._icon.style.pointerEvents = visible ? "" : "none";
+  // Le polyline (tracé parcouru) suit aussi le tracker level
+  if (polyline) try { polyline.setStyle({ opacity: visible ? 1 : 0 }); } catch(e) {}
+}
+
+// Expose pour interface.js → window.appliquerFiltreNiveau()
+window._applyLevelFilterToTracker = _appliquerFiltreNiveauSurTracker;
 
 // Cache de collision
 let _collisionData   = null;
@@ -129,20 +169,69 @@ function estAccessible(x, y) {
 // ORIENTATION
 // =========================
 
+// Convertit (alpha, beta, gamma) du DeviceOrientationEvent en heading compass
+// (0=Nord, 90=Est CW, intervalle [0, 360)).
+//
+// =========================================================================
+// CONVENTION W3C DeviceOrientation (corrige le bug de l'ancienne formule)
+// =========================================================================
+// Rotation intrinsèque Z-X'-Y'' (yaw α, pitch β, roll γ). Matrice de passage
+// body→world : R = Rz(α) · Rx(β) · Ry(γ).
+//
+// Axe Y du device = bord SUPÉRIEUR du tél (top edge).
+//   Projection de Y en repère monde : (-sin α cos β, cos α cos β, sin β)
+//   → γ N'INTERVIENT PAS car une rotation autour de Y laisse Y invariant.
+//   → C'est la pose "boussole" : tél à plat dans la main, top edge dans
+//     la direction de marche.
+//
+// Axe -Z du device = DOS du tél (sortie de l'objectif caméra).
+//   Projection en repère monde :
+//     (-(cos α sin γ + sin α sin β cos γ),
+//      -(sin α sin γ - cos α sin β cos γ))
+//   → utile pour la pose "lecture SMS" : tél vertical en main, top vers
+//     le ciel, dos vers l'avant.
+//
+// Le code bascule entre les deux axes selon |cos β| (proxy de la
+// verticalité du tél) :
+//   - |cos β| > 0.5 (β proche de 0° ou 180°) → tél plutôt plat → axe Y
+//   - sinon (β proche de ±90°)               → tél vertical → axe -Z
+// La pose "boussole" est privilégiée car c'est celle de la doc utilisateur.
+//
+// =========================================================================
+// BUG DE L'ANCIENNE FORMULE (référence pour mémoire)
+// =========================================================================
+// L'ancienne formule (cf. git history avant 14/05/2026) avait :
+//   - SIGNE INVERSÉ sur la composante east : `+sin α cos β` au lieu de
+//     `-sin α cos β` → swap Est↔Ouest pour téléphone à plat.
+//   - TERMES SPURIOUS en γ (`cos α sin γ sin β`, etc.) qui ne devraient
+//     pas figurer dans la projection de l'axe Y.
+//   - PAS DE GESTION de la pose verticale → dégénéré quand β ≈ 90°.
+// Conséquence pour l'utilisateur : tourner à droite physiquement faisait
+// tourner le tracker à GAUCHE (rotation sens inverse), avancer faisait
+// reculer (heading initial à l'opposé) — cf. retour terrain carrière.
 function getHeading(alpha, beta, gamma) {
   const a = alpha * Math.PI / 180;
   const b = beta  * Math.PI / 180;
   const g = gamma * Math.PI / 180;
 
-  // vecteur "nez" du tel dans le repère monde
-  const x = Math.sin(a) * Math.cos(b)
-          + Math.cos(a) * Math.sin(g) * Math.sin(b)
-          - Math.cos(a) * Math.cos(g) * Math.sin(b);
-  const y = Math.cos(a) * Math.cos(b)
-          - Math.sin(a) * Math.sin(g) * Math.sin(b)
-          + Math.sin(a) * Math.cos(g) * Math.sin(b);
+  const sa = Math.sin(a), ca = Math.cos(a);
+  const sb = Math.sin(b), cb = Math.cos(b);
+  const sg = Math.sin(g), cg = Math.cos(g);
 
-  let heading = Math.atan2(x, y) * 180 / Math.PI;
+  let east, north;
+
+  if (Math.abs(cb) > 0.5) {
+    // Tél plutôt à plat → projection de l'axe Y device (top edge)
+    east  = -sa * cb;
+    north =  ca * cb;
+  } else {
+    // Tél plutôt vertical → projection de l'axe -Z device (dos / caméra)
+    east  = -(ca * sg + sa * sb * cg);
+    north = -(sa * sg - ca * sb * cg);
+  }
+
+  // Compass heading : atan2(east, north). 0 = Nord, 90 = Est, sens CW.
+  let heading = Math.atan2(east, north) * 180 / Math.PI;
   if (heading < 0) heading += 360;
   return heading;
 }
@@ -154,21 +243,55 @@ function getHeading(alpha, beta, gamma) {
 let _orientationListenerAttached = false;
 let _motionListenerAttached      = false;
 
+// Log throttle pour ne pas spammer la console (cf debug.js §11) : 1 log/s max
+// pendant que le tracking est actif. Visible uniquement en debugMode = true.
+let _lastHeadingLog = 0;
+function _logHeading(heading, source) {
+  if (!tracking) return;  // pas la peine de logger si on ne tracke pas
+  const now = Date.now();
+  if (now - _lastHeadingLog < 1000) return;
+  _lastHeadingLog = now;
+  console.log("[Tracking] Heading :", heading.toFixed(1), "° (source:", source + ")");
+}
+
 function initOrientation() {
   if (_orientationListenerAttached) return;
   _orientationListenerAttached = true;
-  window.addEventListener("deviceorientation", function(event) {
-    if (event.alpha !== null
-        && event.beta  !== null
-        && event.gamma !== null) {
 
-      direction = getHeading(
-        event.alpha,
-        event.beta,
-        event.gamma
-      );
+  // Handler unique réutilisé pour deviceorientation ET deviceorientationabsolute.
+  // Cascade de priorité pour obtenir le heading le plus fiable possible :
+  //   1) iOS  : event.webkitCompassHeading (compass calibré natif, déjà 0=N CW).
+  //             N'existe que sur l'event deviceorientation iOS.
+  //   2) Tout : calcul depuis (α, β, γ) via getHeading() — formule corrigée.
+  function _onOrientation(event) {
+    // 1) iOS : compass natif si dispo (plus précis que le calcul, et déjà
+    // référencé true North via le magnétomètre calibré du device).
+    if (typeof event.webkitCompassHeading === "number" &&
+        !isNaN(event.webkitCompassHeading)) {
+      direction = event.webkitCompassHeading;
+      _logHeading(direction, "webkitCompassHeading");
+      return;
     }
-  });
+
+    // 2) Fallback : calcul depuis les angles bruts.
+    if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
+      direction = getHeading(event.alpha, event.beta, event.gamma);
+      _logHeading(direction, event.absolute ? "calc-absolute" : "calc-relative");
+    }
+  }
+
+  // Android Chrome moderne : `deviceorientationabsolute` donne un α référencé
+  // true North magnétique (plus fiable que `deviceorientation` qui peut être
+  // relatif à la position de boot du device → dérive du heading sans recalage).
+  // Si non supporté (iOS, vieux Android) → fallback sur `deviceorientation`.
+  // iOS publie webkitCompassHeading sur deviceorientation, donc on est couvert.
+  if ("ondeviceorientationabsolute" in window) {
+    window.addEventListener("deviceorientationabsolute", _onOrientation);
+    console.log("[Tracking] Orientation : listener deviceorientationabsolute (true North)");
+  } else {
+    window.addEventListener("deviceorientation", _onOrientation);
+    console.log("[Tracking] Orientation : listener deviceorientation (iOS webkitCompassHeading prioritaire si dispo)");
+  }
 }
 
 // =========================
@@ -253,7 +376,14 @@ function updateMap() {
 // =========================
 function startTracking() {
   tracking = true;
-  console.log("[Tracking] ON");
+  // 🏗️ Multi-niveau : snapshot du niveau actif au moment du Play. Le tracker
+  // est considere comme "demarrant sur ce niveau". Le user peut changer via
+  // recalage si necessaire. Sans effet si multiLevel = false.
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    trackerLevel = window.APP_CONFIG.activeLevel || 0;
+  }
+  _appliquerFiltreNiveauSurTracker();
+  console.log("[Tracking] ON (level:", trackerLevel + ")");
 }
 
 function stopTracking() {
@@ -315,9 +445,23 @@ window.initCollisionCache = initCollisionCache;
 // =========================
 // EXPORT POUR L'EXPORT PNG ET LA RECHERCHE
 // =========================
+// Lecture seule du heading courant (degrés, 0=N, 90=E CW). Utilisé par
+// le widget boussole (compass.js) pour afficher la direction du Nord en
+// temps réel. Toujours dispo, même si le tracking n'est pas démarré (à
+// condition que requestPermission ait attaché les listeners orientation).
+window.getCurrentHeading = function() {
+  return direction;
+};
+
 window.getTrackingPosition = function() {
   // Position courante du tracker (en coords plan)
   return { x: position.x, y: position.y };
+};
+
+// 🏗️ Multi-niveau : lecture du niveau courant du tracker (utile pour les
+// itineraires/recherche aware-niveau en phase 2B).
+window.getTrackerLevel = function() {
+  return trackerLevel;
 };
 
 window.getTrackingPath = function() {
@@ -336,13 +480,25 @@ window.getTrackingPath = function() {
 // Equivalent du mode recalage clic-carte mais avec coords exactes du point
 // existant (plus precis qu'un clic approximatif). Reset le tracé en cours
 // (polyline) et le compteur de pas, comme le mode recalage classique.
-window.recalerTrackerSurPoint = function(x, y) {
+window.recalerTrackerSurPoint = function(x, y, level) {
   if (typeof x !== "number" || typeof y !== "number") return;
   position.x = x;
   position.y = y;
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;
+  // 🏗️ Multi-niveau (v148) : si un level explicite est fourni (depuis la popup
+  // d'un point qui porte son level), on l'utilise. Sinon, par defaut on prend
+  // le niveau actif (le user a cliqué un point visible donc forcément actif).
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    if (Number.isInteger(level)) {
+      trackerLevel = level;
+    } else {
+      trackerLevel = window.APP_CONFIG.activeLevel || 0;
+    }
+    console.log("[Tracking] Recalé sur point au niveau :", trackerLevel);
+  }
   updateMap();
+  _appliquerFiltreNiveauSurTracker();
   // Desactive le mode recalage s'il etait actif (cohérent : on vient de
   // recaler via le bouton, on n'a plus besoin du mode click).
   if (window.modeRecalage) window.modeRecalage = false;

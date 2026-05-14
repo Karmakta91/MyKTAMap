@@ -32,7 +32,12 @@ const ROAD_STYLES = {
   // tracé plus épais pour bien se voir par-dessus les autres roads.
   // smoothFactor 1.5 (un peu moins agressif) pour preserver la precision
   // du chemin calcule par le pathfinder.
-  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6", smoothFactor: 1.5 }
+  itinerary:   { color: "#00d4ff", weight: 7, opacity: 0.9, dashArray: "12 6", smoothFactor: 1.5 },
+  // Type "jonction" (multi-niveau, depuis v148) : tracé reliant 2 points sur
+  // des niveaux differents (escalier, pente, puits interne). Magenta pointille
+  // (coherent avec le surlignage distance totale). Toujours visible peu
+  // importe le filtre `activeLevel` car c'est le bridge entre niveaux.
+  jonction:    { color: "#ff4ecb", weight: 5, opacity: 1, dashArray: "10 6", smoothFactor: 2.0 }
 };
 
 // Priorité couleur des intersections : chemin (jaune) > secondaire (violet) > principal (vert)
@@ -113,6 +118,21 @@ function initRoad() {
         type: window.modeRoad,
         points: []
       };
+      // Multi-niveau (v148) : tag chaque nouvelle road avec le niveau actif.
+      // - jonction : porte fromLevel + toLevel, pas de `level` (c'est un bridge)
+      // - principal/secondaire/chemin : porte `level` = APP_CONFIG.activeLevel
+      // Si multiLevel = false → AUCUN champ level n'est ajoute (retro-compat
+      // stricte : les roads serialisees ressemblent a v147).
+      if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+        if (window.modeRoad === "jonction") {
+          // Meta-info fournie par interface.js avant d'activer le mode
+          const meta = window._jonctionPendingMeta || {};
+          currentRoad.fromLevel = Number.isInteger(meta.fromLevel) ? meta.fromLevel : (APP_CONFIG.activeLevel || 0);
+          currentRoad.toLevel   = Number.isInteger(meta.toLevel)   ? meta.toLevel   : (APP_CONFIG.activeLevel || 0);
+        } else {
+          currentRoad.level = APP_CONFIG.activeLevel || 0;
+        }
+      }
       roadsData.push(currentRoad);
       console.log("[Road] nouveau tracé", currentRoad);
     }
@@ -296,6 +316,11 @@ function _bboxIntersect(a, b, margin) {
 function _calculerIntersectionsRoads(roads) {
   const raw = [];
   const isDebug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
+  // 🏗️ Multi-niveau (v148) : flag pour filtrer les paires cross-niveau.
+  // Sans ca, deux roads de niveaux differents qui se croisent visuellement
+  // en 2D generaient un cercle d'intersection alors qu'elles ne se touchent
+  // pas physiquement (un est au-dessus de l'autre). Bug report user.
+  const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
 
   // Garde-fou anti-freeze sur les gros plans : skip total si trop de routes.
   // Seuil dynamique : 200 en mode normal, 50 si PerfUltra.noIntersect actif.
@@ -333,6 +358,19 @@ function _calculerIntersectionsRoads(roads) {
       if (!_bboxIntersect(bboxA, bboxB, ROAD_PROXIMITY_TOLERANCE)) {
         pairsSkipped++;
         continue;
+      }
+
+      // 🏗️ Multi-niveau : skip si les 2 roads sont sur des niveaux differents.
+      // Roads sans `level` (pre-v148) sont traitees comme niveau 0 pour cette
+      // comparaison → roads pre-multilevel + roads niveau 0 explicite croisent
+      // bien ensemble. Roads niveau 1 ne croisent jamais avec niveau 0.
+      if (_mlOn) {
+        const lvlA = Number.isInteger(A.level) ? A.level : 0;
+        const lvlB = Number.isInteger(B.level) ? B.level : 0;
+        if (lvlA !== lvlB) {
+          pairsSkipped++;
+          continue;
+        }
       }
 
       const winner = _typeGagnant(A.type, B.type);
@@ -445,6 +483,34 @@ function renderRoads() {
   }
   let _culled = 0;
 
+  // 🏗️ Multi-niveau (v148) : pre-calcul du filtre par niveaux visibles. Si la
+  // feature est OFF pour ce plan → comportement v147 inchange (tout visible).
+  // Si ON → seuls les roads dont le level ∈ visibleLevels s'affichent.
+  // Pour les jonctions (bridges) : visible si fromLevel OU toLevel ∈ visibleLevels.
+  const _multiLevelOn   = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const _visibleLevels  = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+                            ? window.APP_CONFIG.visibleLevels : [0];
+  function _passeFiltreNiveau(road) {
+    if (!_multiLevelOn) return true;                  // feature off → tout visible (v147)
+    if (road.type === "itinerary") return true;       // itineraire toujours visible
+    // Road EN COURS DE TRACÉ : toujours visible peu importe le filtre. Sans ça,
+    // si l'utilisateur a un filtre [Niv 1] et qu'il clique "Tracé Principal"
+    // alors qu'activeLevel = 0 (par ex.), la road creee au niveau 0 serait
+    // filtree → l'utilisateur clique sur la carte mais ne voit rien grandir
+    // → bug report user v148.test. Une fois le mode desactive (currentRoad
+    // → null), la road redevient soumise au filtre normal.
+    if (road === currentRoad) return true;
+    if (road.type === "jonction") {
+      // Jonction visible si au moins un endpoint touche un niveau visible
+      const fromL = Number.isInteger(road.fromLevel) ? road.fromLevel : 0;
+      const toL   = Number.isInteger(road.toLevel)   ? road.toLevel   : 0;
+      return _visibleLevels.indexOf(fromL) >= 0 || _visibleLevels.indexOf(toL) >= 0;
+    }
+    // Roads normales (principal/secondaire/chemin) — level absent = 0 par retro-compat
+    const lvl = Number.isInteger(road.level) ? road.level : 0;
+    return _visibleLevels.indexOf(lvl) >= 0;
+  }
+
   // Tracés — utilisent le renderer canvas par defaut (preferCanvas:true sur la
   // map). Tentative anterieure de forcer SVG (pour fixer le bug du toggle
   // "Mes annotations" sur les polylines roads) abandonnee : le forcage SVG
@@ -454,6 +520,9 @@ function renderRoads() {
   // filter CSS drop-shadow (halo neon cyan), impossible sur le canvas.
   roadsData.forEach(road => {
     if (!road.points || road.points.length === 0) return;
+
+    // 🏗️ Multi-niveau : skip si la road ne passe pas le filtre du niveau actif.
+    if (!_passeFiltreNiveau(road)) return;
 
     // 🚀 PerfUltra viewport culling : skip si AABB hors du viewport (sauf itinéraire,
     // qu'on garde toujours visible pour la navigation continue).
@@ -493,6 +562,26 @@ function renderRoads() {
       const polyline = L.polyline(latlngs, style).addTo(target);
       roadLayers.push(polyline);
     }
+
+    // 🏗️ Multi-niveau : marqueurs visuels aux extremites des jonctions
+    // (rond blanc avec bord magenta, ∅14px) pour bien reperer ou commence
+    // et ou finit la jonction (escalier/pente). Bug report user v148.test :
+    // sans ces ronds, difficile de voir l'orientation de la jonction sur la
+    // carte densement remplie de tracés.
+    if (road.type === "jonction" && workPoints.length >= 2) {
+      const endpoints = [workPoints[0], workPoints[workPoints.length - 1]];
+      endpoints.forEach(function(pt) {
+        const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
+          radius:      7,
+          color:       ROAD_STYLES.jonction.color,   // bord magenta
+          fillColor:   "#ffffff",                    // intérieur blanc → contraste
+          fillOpacity: 1,
+          weight:      3,
+          interactive: false
+        }).addTo(target);
+        roadLayers.push(cm);
+      });
+    }
   });
 
   if (_viewportCull && _culled > 0) {
@@ -505,9 +594,18 @@ function renderRoads() {
   // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
   // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
   // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
+  // ⚠️ Multi-niveau (v148) : on exclut aussi "jonction" — ce sont des bridges
+  // pointillés magenta qui croisent visuellement les routes des 2 niveaux qu'ils
+  // relient, mais physiquement c'est un escalier/pente, pas une intersection
+  // de surface. Et on filtre par activeLevel quand le filtre multi-niveau est
+  // actif → seules les intersections du niveau affiché apparaissent.
   // Cercles → layerEditor (meme cible que les polylines roads session).
   const intersectionsTarget = window.layerEditor || window.map;
-  const allRoads = roadsData.concat(_embeddedRoadsVisibles()).filter(r => r.type !== "itinerary");
+  const allRoads = roadsData.concat(_embeddedRoadsVisibles())
+    .filter(function(r) {
+      if (r.type === "itinerary" || r.type === "jonction") return false;
+      return _passeFiltreNiveau(r);
+    });
   const intersections = _calculerIntersectionsRoads(allRoads);
   intersections.forEach(({ point, color }) => {
     const latlng = convertCoord(point.x, point.y);
@@ -588,6 +686,36 @@ window.setRoads = function(roads) {
   roadsData = roads || [];
   currentRoad = null;
   renderRoads();
+};
+
+// Lecture seule : retourne la road en cours de tracé (ou null si aucun
+// tracé actif). Utilisé par interface.js pour décider de fermer le mode
+// quand une suppression vient d'effacer la road en cours (sinon l'icône
+// du sidebar reste "actif" mais clic carte → rien car modeRoad = null).
+window.getCurrentRoad = function() {
+  return currentRoad || null;
+};
+
+// 🏗️ Multi-niveau (v148) : helper global de filtre niveau, reutilise par
+// les exports (utils.js telechargerPlan + exporter.js mode avance) pour
+// rendre l'export WYSIWYG (ce que le user voit = ce qu'il exporte).
+//   - multiLevel OFF → always true (retro-compat strict v147)
+//   - multiLevel ON  → item.level ∈ visibleLevels (jonction : fromLevel
+//                      OU toLevel ∈ visibleLevels)
+// Item attendu : objet avec un `level` (road/zone/point) OU avec
+// `type: "jonction"` + `fromLevel` + `toLevel`. Absence de level = 0.
+window.passeFiltreNiveau = function(item) {
+  const _ml = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  if (!_ml) return true;
+  const _visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+    ? window.APP_CONFIG.visibleLevels : [0];
+  if (item && item.type === "jonction") {
+    const fromL = Number.isInteger(item.fromLevel) ? item.fromLevel : 0;
+    const toL   = Number.isInteger(item.toLevel)   ? item.toLevel   : 0;
+    return _visibles.indexOf(fromL) >= 0 || _visibles.indexOf(toL) >= 0;
+  }
+  const lvl = Number.isInteger(item && item.level) ? item.level : 0;
+  return _visibles.indexOf(lvl) >= 0;
 };
 
 // =========================

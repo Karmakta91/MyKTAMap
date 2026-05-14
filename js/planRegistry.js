@@ -198,6 +198,40 @@
     return true;
   }
 
+  // ========== MULTI-NIVEAU (PAR PLAN, depuis v148) ==========
+  // Opt-in par plan : quand multiLevel = true, l'UI affiche un sélecteur de
+  // niveau dans le groupe Tracés + une sous-action 🪜 Jonction interniveau,
+  // et les roads dessinees sont taguees avec un champ `level` (0, 1, 2…).
+  // Quand multiLevel = false (defaut) → comportement strictement identique a
+  // v147 (aucun champ level sur les roads, aucun selecteur visible).
+  // Retro-compat absolue : plans existants restent intacts tant que le
+  // toggle n'est pas active dans ⚙️ Reglages.
+  //
+  // Depuis v148.2 : le 2e parametre `fallbackIfUnset` permet a main.js de
+  // passer la valeur `plan.multiLevel` du plan-config.json comme defaut.
+  // Si l'utilisateur a explicitement set la valeur via ⚙️ Reglages (true
+  // ou false), elle prime sur le fallback. Sinon, on prend le defaut du ZIP.
+  function getMultiLevel(id, fallbackIfUnset) {
+    init();
+    const p = findById(id);
+    if (p && typeof p.multiLevel === "boolean") return p.multiLevel;
+    return !!fallbackIfUnset;
+  }
+
+  function setMultiLevel(id, enabled) {
+    init();
+    const p = findById(id);
+    if (!p) {
+      console.warn("[PlanRegistry] setMultiLevel : plan introuvable", id);
+      return false;
+    }
+    const target = !!enabled;
+    if (!!p.multiLevel === target) return true;
+    p.multiLevel = target;
+    _save();
+    return true;
+  }
+
   // ========== EXPORT / IMPORT ==========
   function exportToFile() {
     init();
@@ -433,6 +467,8 @@
     removeAll:            removeAll,
     getPerfPreset:        getPerfPreset,
     setPerfPreset:        setPerfPreset,
+    getMultiLevel:        getMultiLevel,
+    setMultiLevel:        setMultiLevel,
     exportToFile:         exportToFile,
     importFromFile:       importFromFile,
     statsImport:          statsImport,
