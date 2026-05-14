@@ -9,6 +9,101 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 1) — 🧱 v149 : Tiling V2 Option B (multi-imageOverlay)
+
+Pivot vers **Option B** après échec des approches GridLayer / TileLayer.extend testées en v148 puis archivées (branche `v2-work-archive`). Système de découpage d'image en tuiles 512×512 sur 4 niveaux de zoom Google Maps-like, pour les gros plans qui saturent la RAM mobile.
+
+#### 1. Approche
+
+| Aspect | Approche archivée (GridLayer) | Approche Option B (depuis v149) |
+|---|---|---|
+| Coord math tuile | Y inversé, `_tileZoom` clamping, lazy blob URL péremption | **Aucune** — Leaflet positionne via bounds latLng |
+| Code custom Leaflet | `TileLayer.extend`, override `createTile`, `getTileUrl` | Aucun — `L.imageOverlay` standard |
+| Risque de bug visuel | Plusieurs régressions corrigées en cascade | Quasi-nul (même primitive que V1 classique) |
+| Lazy loading natif | Oui (GridLayer auto) | Non — mais swap on `zoomend` = ~équivalent en pratique |
+| Mémoire effective | ~16 MB / niveau visible | **~16 MB / niveau visible** (idem) |
+
+Conclusion : on perd le lazy loading natif mais on **gagne en simplicité + fiabilité visuelle**. Le swap manuel des overlays sur `zoomend` n'a en RAM que les tuiles du niveau courant à tout moment.
+
+#### 2. Génération (cherry-pick depuis v2-work-archive)
+
+Réutilise le code générateur de `_genererTuilesV2` archivé (slice direct via `drawImage` à 9 args, pas de canvas intermédiaire — contourne la dégradation silencieuse Chrome > 256 MP) + `_detectContentBBox` pour auto-crop des marges blanches.
+
+**Nouveauté UI** dans `js/createConf.js` : checkbox `🧱 Convertir en V2 tuile (performance)` visible uniquement en mode Modifier. Default coché si source déjà V2 (re-tilage), décoché sinon (opt-in user).
+
+**Manifest dans plan-config.json** :
+```json
+{
+  "plan": { "tiledV2": true, "imageWidth": ..., "imageHeight": ... },
+  "tiling": {
+    "version": 2,
+    "tileSize": 512,
+    "format": "jpeg",
+    "minNativeZoom": -3,
+    "maxNativeZoom": 0
+  }
+}
+```
+
+Tuiles dans `data/tiles/z<N>/x<col>_y<-k>.jpg`, convention Y NÉGATIF (CRS.Simple : k=1 = bottom).
+
+#### 3. Runtime Option B (réécriture from scratch)
+
+**Détection** dans `js/tiling.js > chargerImage` :
+```js
+if (PLAN_CONFIG.plan.tiledV2 === true && PLAN_CONFIG.tiling) {
+  return _chargerImageV2OptionB(bounds, map, PLAN_CONFIG.tiling);
+}
+```
+
+**Algorithme** :
+1. `_choisirNiveau(mapZoom)` → clamp à `[minNativeZoom, maxNativeZoom]`
+2. `_renderNiveau(z)` → cleanup overlays précédents + crée N `L.imageOverlay` pour le niveau z avec bounds latLng calculés. `pane: "tilePane"` pour ordre Z correct sous les overlays vectoriels.
+3. `map.on("zoomend", _onZoom)` → swap si nécessaire
+
+**Lazy blob URL** : tuiles enregistrées via `registerAsset(path, file, {lazy: true})` (config.js extension). `_resoudreUrlTuile(z, col, k)` crée la blob URL à la demande, cache dans `asset.url`, track dans `state.blobUrlsCreated`. Revoke au cleanup.
+
+**State global** : `window._tilingV2State = { currentLevel, activeOverlays, blobUrlsCreated, zoomHandler }`. Cleanup propre via `window._libererTuilesV2()` au plan switch (hook dans `main.js > _libererRessourcesPlanPrecedent`).
+
+#### 4. Fichiers touchés (6)
+
+| Fichier | Changement |
+|---|---|
+| `js/createConf.js` | +280 (`_genererTuilesV2`, `_detectContentBBox`, checkbox UI, intégration dans `_genererZip`) |
+| `js/tiling.js` | +145 (`_chargerImageV2OptionB`, `_libererTuilesV2`, détection en tête de `chargerImage`) |
+| `js/config.js` | +20 (`registerAsset` opt `lazy: true`, `findMatchingFile` accepte `file._fullPath`) |
+| `js/main.js` | +18 (scan tuiles dans `startImportedPlan`, hook cleanup V2 dans `_libererRessourcesPlanPrecedent`) |
+| `index.html` | +7 (`file._fullPath = entry.name` dans `extraireZip`) |
+| `css/style.css` | +45 (`.kta-planner-tiling-v2-row` checkbox style violet `#b452ff`) |
+| `sw.js`, `js/copyright.js`, `version.json` | bump v149 |
+
+#### 5. Workflow utilisateur
+
+1. Ouvrir le 📦 Générateur de plan → onglet **Modifier un plan existant**
+2. Uploader un ZIP V1 (plan classique)
+3. Cocher ☑️ **🧱 Convertir en V2 tuile (performance)**
+4. Optionnellement modifier d'autres champs (nom, calques, etc.)
+5. Cliquer 📦 **Générer le ZIP** → overlay de progression "Niveau z=-N · X / Y tuiles (Z%)"
+6. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
+7. Re-importer ce ZIP via le loader → le mode V2 s'active automatiquement (détection `plan.tiledV2`)
+
+Conversion lente (1-5 min sur image typique 4-16K px), une seule fois.
+
+#### 6. Backward compat
+
+- Plans V1 (sans `plan.tiledV2`) : strictement v148, aucun changement de comportement
+- Plans serveur dans `data/test1`, `data/test2`, etc. : restent V1 par défaut
+- Modifier un V2 sans toucher la case = re-tilage. Décocher = downgrade V2 → V1 (tuiles non reportées)
+- Multi-niveau + V2 : indépendants, fonctionnent ensemble
+
+#### 7. Hors scope (futur)
+
+- Tuiles côté serveur (`data/<plan>/tiles/...`) : pour l'instant V2 uniquement via import ZIP
+- Tuiles sans black border sur les bordures partielles (générer natural-size + bounds tighter)
+- Préchargement des tuiles adjacentes (vu que le swap est on `zoomend`, légère latence au premier render après un changement de zoom)
+
+---
+
 ### 🗓️ 15/05/2026 — 🏗️ v148 : Mode multi-niveau (carrières multi-étages)
 
 Gros morceau : support des **carrières/galeries multi-étages** (Glacière, Capucins, sites avec plusieurs niveaux empilés physiquement). Phase 1A (data model + UI) + Phase 2A (filtre + intégration toutes fonctions) + Pathfinder niveau-aware en une seule release.

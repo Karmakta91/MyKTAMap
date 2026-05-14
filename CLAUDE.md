@@ -930,6 +930,131 @@ window.passeFiltreNiveau = function(item) {
 
 ⚠️ **Reset au plan switch** : `lancerApplication` reset `activeLevel = 0`, `visibleLevels = [0]`, vide les registres `_ktaDataMarkers/Polylines/Polygons` (ils seront re-remplis par `ajouterPointsDepuisJSON`).
 
+### 27. Tiling V2 (Option B — multi-imageOverlay) — depuis v149 (15/05/2026)
+
+Système de découpage d'image en tuiles inspiré Google Maps pour réduire massivement la conso mémoire au runtime sur les gros plans (>50 Mo). Pivot vers **Option B** après échec des approches GridLayer / TileLayer.extend (cf. branche `v2-work-archive` pour l'historique de l'approche abandonnée).
+
+#### 27.1 Pourquoi Option B ?
+
+Le tiling Google Maps-like avec GridLayer / TileLayer.extend nécessite :
+- Math des coords tuile (Y inversé en CRS.Simple)
+- Clamping de `_tileZoom` pour gérer les zooms hors `minNativeZoom/maxNativeZoom`
+- Lazy blob URL avec péremption iOS Safari aléatoire
+- Override de `createTile` pour le callback `done()` (sinon class CSS `leaflet-tile-loaded` jamais ajoutée → tuiles invisibles)
+
+Option B contourne TOUT ça :
+- **N `L.imageOverlay`** indépendants par niveau de zoom
+- Chacun positionné via bounds latLng → Leaflet gère le scaling CSS naturellement (**même primitive que le mode V1 classique** qui marche depuis toujours)
+- Swap dynamique des overlays sur `zoomend` selon le niveau qui correspond le mieux au zoom courant
+- Pas de coord math → pas de bug subtil
+
+Trade-off : on n'a pas le lazy loading natif de GridLayer. Mais on garde le gain mémoire principal : à chaque instant on n'a en RAM que les tuiles du niveau courant (= équivalent zone visible, ~16 MB max sur les plans testés).
+
+#### 27.2 Données
+
+**plan-config.json enrichi** :
+
+```json
+{
+  "plan": {
+    "imageWidth": 4000,
+    "imageHeight": 2251,
+    "tiledV2": true,            // ← flag activant le runtime Option B
+    "baseImage": "..."          // gardé pour rétrocompat / fallback éventuel
+  },
+  "tiling": {                   // ← section manifest (depuis v149)
+    "version":       2,
+    "tileSize":      512,
+    "format":        "jpeg",
+    "minNativeZoom": -3,
+    "maxNativeZoom": 0
+  }
+}
+```
+
+**Structure ZIP** :
+```
+plan-config.json
+data/
+├── TestMAP.png         (image source originale, gardée pour rétrocompat)
+├── collision.png       (inchangé)
+└── tiles/
+    ├── z0/             (niveau natif, scale=1)
+    │   ├── x0_y-1.jpg  (col=0, leafletY=-1 = tuile la plus basse)
+    │   ├── x0_y-2.jpg
+    │   ├── x1_y-1.jpg
+    │   └── ...
+    ├── z-1/            (scale=2, image divisée par 2)
+    ├── z-2/            (scale=4)
+    └── z-3/            (scale=8, niveau le plus zoomé out)
+```
+
+Convention de nommage : `x<col>_y<-k>.jpg` où `k=1` est la tuile la plus basse de l'image (CRS.Simple lat=0 → sud).
+
+**`imageWidth`/`imageHeight` post-auto-crop** : si l'auto-crop détecte du blanc autour du contenu, les dims plan-config reflètent la zone effectivement tuilée (pas l'image source entière). Le `cropOffset` n'est pas stocké côté plan-config — le runtime n'en a pas besoin (les coords plan sont relatives à la zone croppée).
+
+#### 27.3 Génération (`js/createConf.js`)
+
+**Entrée** : checkbox `🧱 Convertir en V2 tuile` dans la modale Planner, section "Informations du plan". Visible **uniquement en mode Modifier** (besoin du File source pour générer les tuiles). Default coché si source déjà V2 (re-tilage), décoché sinon (opt-in user).
+
+**Fonction `_genererTuilesV2(imageFile, zip, onProgress)`** :
+1. `_detectContentBBox(img)` : sample à 1024px max, scan des pixels non-blancs (RGB > 200), bbox + padding 1%. Skip si bbox > 90% du canvas (= image bien cadrée, pas de crop). Retourne `{x, y, w, h}` ou `null`.
+2. Pour chaque niveau L=0..3 (z=0..−3) :
+   - scale = 2^L, lvlW = ceil(srcW/scale), lvlH = ceil(srcH/scale)
+   - cols = ceil(lvlW/512), rows = ceil(lvlH/512)
+   - Pour chaque (col, k=1..rows) : slice via `drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh)` directement de l'HTMLImageElement source vers un canvas 512×512. Pas de canvas intermédiaire pleine résolution (cf §27.5).
+3. Tuiles partielles (lvlH/W pas multiple de 512) : paddées avec **noir** (`destY > 0` pour la dernière row, idem pour la dernière col). Le black border visible si l'utilisateur dezoome très loin sur les bords.
+4. Output : `data/tiles/z<N>/x<col>_y<-k>.jpg` (JPEG q88).
+5. Manifest : `{ version: 2, tileSize: 512, format: "jpeg", minNativeZoom: -3, maxNativeZoom: 0 }`.
+6. Dims : `{ width: srcW, height: srcH, cropOffset?: {x, y} }` retournées pour override `imageWidth/Height` dans plan-config.
+
+⚠️ Conversion lente : 1-5 min sur l'ordi typique pour une image 16K×16K. Overlay de progression bloquant pendant la génération.
+
+#### 27.4 Runtime (`js/tiling.js > _chargerImageV2OptionB`)
+
+Détection en tête de `chargerImage` :
+
+```js
+const pc = window.PLAN_CONFIG;
+if (pc && pc.plan && pc.plan.tiledV2 === true && pc.tiling) {
+  return _chargerImageV2OptionB(bounds, map, pc.tiling);
+}
+```
+
+**Algorithme** :
+1. Choix du niveau z = `clamp(round(map.getZoom()), minNativeZoom, maxNativeZoom)`
+2. Pour chaque tuile (col, k) à ce niveau : calcule les bounds Leaflet :
+   - `latMin = (k-1) * tileSize * scale`
+   - `latMax = k * tileSize * scale`
+   - `lngMin = col * tileSize * scale`
+   - `lngMax = (col+1) * tileSize * scale`
+3. `L.imageOverlay(url, [[latMin, lngMin], [latMax, lngMax]], { pane: "tilePane", interactive: false }).addTo(map)`
+4. Listener `map.on("zoomend", _onZoom)` qui swap le niveau si nécessaire (cleanup overlays précédents + render nouveau niveau)
+
+**Résolution URL lazy** : `_resoudreUrlTuile(z, col, k)` lookup `RUNTIME_ASSETS["data/tiles/z<N>/x<col>_y<-k>.jpg"]`. Si l'asset est `lazy: true`, crée la blob URL au premier appel et cache dans `asset.url`. Tracking dans `state.blobUrlsCreated` pour revoke au cleanup.
+
+**State global** : `window._tilingV2State = { currentLevel, activeOverlays, blobUrlsCreated, zoomHandler }`. Permet le cleanup propre via `window._libererTuilesV2()` au plan switch (appelé par `main.js > _libererRessourcesPlanPrecedent`).
+
+#### 27.5 Pièges techniques
+
+⚠️ **Canvas Chrome > 256 MP dégrade silencieusement** : raison pour laquelle on slice CHAQUE tuile directement depuis l'HTMLImageElement source via `drawImage` à 9 args (avec scaling natif intégré), pas via un canvas intermédiaire pleine résolution. Pour une image 16K×16K (= 226 MP), un canvas intermédiaire deviendrait suspect. Le slice direct contourne entièrement la limite.
+
+⚠️ **iOS Safari strip `/` du `File.name`** : à l'extraction ZIP, on annote chaque File avec `file._fullPath = entry.name` (propriété ad-hoc) pour préserver le chemin complet. `findMatchingFile` (config.js) accepte ce match alternatif. Sans ça, les tuiles partageant le même basename (x0_y-1.jpg existe à z=0, -1, -2, -3) seraient indistinguables.
+
+⚠️ **Lazy blob URL** : `registerAsset(path, file, {lazy: true})` ne crée PAS la blob URL au boot. Économie d'allocations sur des plans avec 1000+ tuiles (pour le user pré-rollback : 1160 tuiles → 1160 blob URLs au boot saturait iOS Safari). La blob URL est créée à la demande par le runtime au moment du render.
+
+⚠️ **Black borders sur tuiles partielles** : si srcH/W pas multiple de tileSize, les tuiles bordure ont du noir. Acceptable pour v1 — visible uniquement quand l'utilisateur dezoome très loin au-delà des bords du plan. Future amélioration : générer des tuiles natural-size (non paddées) + bounds tighter.
+
+⚠️ **`_baseTiles` devient stale après swap** : le tableau retourné par `chargerImage` en mode V2 = `state.activeOverlays`. Au swap de niveau, on réassigne `state.activeOverlays` mais le tableau original (toujours référencé par `_baseTiles`) contient des overlays déjà retirés. `libererTuiles` sur cet array est idempotent (no-op sur layers déjà removed). Le vrai cleanup passe par `_libererTuilesV2`.
+
+#### 27.6 Compatibilité
+
+- ✅ **Plans V1 (sans `tiledV2`)** : strictement identique à v148. Aucun changement de comportement.
+- ✅ **Multi-niveau + V2** : indépendants, fonctionnent ensemble. Une carrière multi-étages tuilée → les jonctions et le filtre niveau marchent par-dessus le tile rendering.
+- ✅ **PerfPreset** : pour les plans V1, les presets continuent de fonctionner. En mode V2, les presets sont ignorés (le tile rendering remplace).
+- ⚠️ **Plans serveur V2** : pas supporté en v1. RUNTIME_ASSETS est rempli uniquement par les imports ZIP. Pour servir un V2 depuis `data/<plan>/tiles/`, il faudrait un résolveur de chemin HTTP. Future amélioration.
+- ⚠️ **Modifier un plan V2** : si l'utilisateur modifie un plan déjà V2 sans toucher au checkbox, les tuiles sont **régénérées** (pas reportées). Slow mais correct. Décocher la checkbox = downgrade explicite V2 → V1.
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

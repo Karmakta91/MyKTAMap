@@ -119,6 +119,26 @@ function afficherPlanner() {
               Ne coche que pour des carrières/galeries avec plusieurs niveaux empilés.</em>
             </span>
           </label>
+
+          <!-- Tiling V2 (depuis v149) : opt-in conversion en plan tuile.
+               Visible UNIQUEMENT en mode "Modifier" (besoin du File source du V1)
+               ET seulement si le plan source n'a PAS deja une section tiling
+               (pas re-convertir un V2). Decoupe l'image en tuiles 512x512 sur
+               4 niveaux de zoom (Google Maps-like). Approche runtime : N
+               L.imageOverlay par niveau avec swap on zoomend (Option B).
+               Reduction memoire massive vs V1 (qui charge l'image entiere
+               en RAM) — utile pour les gros plans > 50 Mo. -->
+          <div id="pl_v2_convert_wrap" style="display:none; margin-top:10px;">
+            <label class="kta-planner-tiling-v2-row" id="pl_v2_convert_label" title="Decoupe l'image en tuiles 512x512 sur 4 niveaux de zoom. Reduction memoire massive sur les gros plans.">
+              <input type="checkbox" id="pl_tilingV2">
+              <span>
+                <strong>🧱 Convertir en V2 tuile (performance)</strong>
+                <em>Genere des tuiles 512x512 sur 4 niveaux de zoom. Reduction
+                memoire massive sur les gros plans (>50 Mo). Disponible
+                uniquement en mode <strong>Modifier un plan existant</strong>.</em>
+              </span>
+            </label>
+          </div>
         </div>
 
         <!-- 2. IMAGES -->
@@ -388,6 +408,26 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
+
+  // 🧱 Tiling V2 : checkbox visible UNIQUEMENT en mode Modifier (besoin du File
+  // source pour generer les tuiles).
+  //   - Source V1 (pas de section `tiling`) → defaut DECOCHE (opt-in user)
+  //   - Source V2 (section `tiling` presente) → defaut COCHE (re-tilage,
+  //     sinon downgrade silencieux V2→V1 si l'utilisateur modifie un V2)
+  // Si l'utilisateur decoche sur un source V2 → downgrade explicite vers V1
+  // (les tuiles ne seront pas regenerees, plan-config.tiledV2 absent).
+  const v2Wrap = document.getElementById("pl_v2_convert_wrap");
+  const v2Cb   = document.getElementById("pl_tilingV2");
+  if (v2Wrap && v2Cb) {
+    const dejaV2 = !!(config.tiling && Number.isInteger(config.tiling.version) && config.tiling.version >= 2);
+    if (_plannerMode === "modifier") {
+      v2Wrap.style.display = "";
+      v2Cb.checked = dejaV2;
+    } else {
+      v2Wrap.style.display = "none";
+      v2Cb.checked = false;
+    }
+  }
 
   if (plan.baseImage)      sn("pl_baseImage_nom", "📄 " + plan.baseImage.split("/").pop());
   if (plan.collisionImage) sn("pl_collision_nom",  "📄 " + plan.collisionImage.split("/").pop());
@@ -795,6 +835,229 @@ function _getFile(inputId, logicalPath) {
 }
 
 // =========================
+// 🧱 GÉNÉRATEUR DE TUILES V2 (conversion V1 → V2) — depuis v149
+// =========================
+// Découpe l'image source en tuiles tileSize×tileSize sur 4 niveaux de zoom
+// (z=0..z=-3), JPEG q88. Convention Y NÉGATIF (Leaflet CRS.Simple) :
+//   - leafletY = -1 : tuile la plus basse (lat 0..tileSize)
+//   - leafletY = -k : k-ième tuile en partant du bas
+//
+// ⚠️ CRITIQUE : on slice CHAQUE TUILE directement depuis l'HTMLImageElement
+// source via drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh). Pas de canvas
+// intermédiaire pleine résolution — pour une image > 16K×16K (= 256 MP),
+// Chrome dégrade silencieusement le contenu du canvas. drawImage depuis
+// l'img source fait le scaling natif au passage, hors limites canvas.
+//
+// Auto-crop optionnel : si l'image a beaucoup de marges blanches (cas
+// typique des plans papier scannés), on détecte le bbox du contenu utile
+// et on génère les tuiles depuis cette zone (les dims plan-config = dims
+// croppées). Ça évite que fitBounds affiche 60-80% de blanc autour du plan.
+
+const TILING_V2_TILE_SIZE  = 512;
+const TILING_V2_FORMAT     = "jpeg";
+const TILING_V2_JPEG_Q     = 0.88;
+const TILING_V2_LEVELS     = 4;       // z=0, -1, -2, -3
+const TILING_V2_VERSION    = 2;
+const TILING_V2_AUTOCROP_RGB_THRESHOLD = 200;  // R,G,B > 200 = "blanc"
+const TILING_V2_AUTOCROP_PADDING_PCT   = 0.01; // 1% de marge autour du bbox
+const TILING_V2_AUTOCROP_MAX_PCT       = 0.90; // si bbox > 90% du canvas → skip
+
+// Détecte le bounding box du contenu utile dans une image (cad: les pixels
+// non-blancs). Sample à 1024px max pour la perf (1M itérations max au lieu
+// de 200M). Retourne { x, y, w, h } en coords originales, OU null si pas
+// pertinent (bbox > 90% du canvas dans les 2 dimensions).
+function _detectContentBBox(img) {
+  const srcW = img.naturalWidth;
+  const srcH = img.naturalHeight;
+  // Sample à 1024px max pour la perf
+  const SAMPLE_MAX = 1024;
+  const sampleScale = Math.min(1, SAMPLE_MAX / Math.max(srcW, srcH));
+  const sampleW = Math.round(srcW * sampleScale);
+  const sampleH = Math.round(srcH * sampleScale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = sampleW;
+  canvas.height = sampleH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, sampleW, sampleH);
+  const data = ctx.getImageData(0, 0, sampleW, sampleH).data;
+
+  // Background = pixels où R, G, B > seuil (capte blanc pur ET cream/beige)
+  const TH = TILING_V2_AUTOCROP_RGB_THRESHOLD;
+  let minX = sampleW, minY = sampleH, maxX = -1, maxY = -1;
+  for (let y = 0; y < sampleH; y++) {
+    for (let x = 0; x < sampleW; x++) {
+      const i = (y * sampleW + x) * 4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      if (r > TH && g > TH && b > TH) continue;  // background
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  // Cleanup
+  canvas.width = 0; canvas.height = 0;
+
+  if (maxX < 0 || maxY < 0) {
+    console.log("[Planner] Auto-crop : image entièrement blanche, skip");
+    return null;
+  }
+
+  // Scale-back vers coords originales
+  const bboxW_sample = maxX - minX + 1;
+  const bboxH_sample = maxY - minY + 1;
+  if (bboxW_sample / sampleW > TILING_V2_AUTOCROP_MAX_PCT &&
+      bboxH_sample / sampleH > TILING_V2_AUTOCROP_MAX_PCT) {
+    console.log("[Planner] Auto-crop : bbox couvre > 90% du canvas — pas pertinent, skip");
+    return null;
+  }
+
+  // Padding 1% autour du bbox
+  const padX_sample = Math.round(sampleW * TILING_V2_AUTOCROP_PADDING_PCT);
+  const padY_sample = Math.round(sampleH * TILING_V2_AUTOCROP_PADDING_PCT);
+  const bx_sample = Math.max(0, minX - padX_sample);
+  const by_sample = Math.max(0, minY - padY_sample);
+  const bw_sample = Math.min(sampleW, maxX + padX_sample) - bx_sample + 1;
+  const bh_sample = Math.min(sampleH, maxY + padY_sample) - by_sample + 1;
+
+  // Conversion vers coords originales (rounding)
+  const bbox = {
+    x: Math.round(bx_sample / sampleScale),
+    y: Math.round(by_sample / sampleScale),
+    w: Math.round(bw_sample / sampleScale),
+    h: Math.round(bh_sample / sampleScale)
+  };
+  // Clip aux dims sources (par sécurité)
+  bbox.x = Math.max(0, Math.min(bbox.x, srcW - 1));
+  bbox.y = Math.max(0, Math.min(bbox.y, srcH - 1));
+  bbox.w = Math.min(bbox.w, srcW - bbox.x);
+  bbox.h = Math.min(bbox.h, srcH - bbox.y);
+
+  const pctW = Math.round(100 * bbox.w / srcW);
+  const pctH = Math.round(100 * bbox.h / srcH);
+  console.log("[Planner] Auto-crop détecté : bbox content " + bbox.w + "×" + bbox.h +
+              " (offset " + bbox.x + "," + bbox.y + ") = " + pctW + "%×" + pctH + "% du canvas");
+  return bbox;
+}
+
+// Génère les tuiles V2 dans le ZIP fourni. Retourne { tilesCount, manifest, dims }
+// où dims = { width, height, cropOffset?: {x, y} } reflète la zone effective tuilée
+// (post-crop si auto-crop a été appliqué).
+async function _genererTuilesV2(imageFile, zip, onProgress) {
+  // Decode initial de l'image source (HTMLImageElement, pas de canvas)
+  const imgUrl = URL.createObjectURL(imageFile);
+  const img = await new Promise(function(resolve, reject) {
+    const i = new Image();
+    i.onload  = function() { resolve(i); };
+    i.onerror = function() { reject(new Error("Image source non décodable")); };
+    i.src = imgUrl;
+  });
+
+  // Auto-crop : si l'image a beaucoup de marges blanches, on tuile depuis la
+  // zone utile uniquement. Sinon (bbox > 90% du canvas), on prend tout.
+  const bbox = _detectContentBBox(img);
+  const cropX = bbox ? bbox.x : 0;
+  const cropY = bbox ? bbox.y : 0;
+  const srcW  = bbox ? bbox.w : img.naturalWidth;
+  const srcH  = bbox ? bbox.h : img.naturalHeight;
+
+  // Comptage total de tuiles pour la progression
+  let tilesTotal = 0;
+  for (let L = 0; L < TILING_V2_LEVELS; L++) {
+    const scale = Math.pow(2, L);
+    const lvlW  = Math.ceil(srcW / scale);
+    const lvlH  = Math.ceil(srcH / scale);
+    const cols  = Math.ceil(lvlW / TILING_V2_TILE_SIZE);
+    const rows  = Math.ceil(lvlH / TILING_V2_TILE_SIZE);
+    tilesTotal += cols * rows;
+  }
+  let tilesDone = 0;
+
+  // Tile canvas réutilisable (512×512 = 1 MP, safe sur tout device)
+  const tileCanvas = document.createElement("canvas");
+  tileCanvas.width  = TILING_V2_TILE_SIZE;
+  tileCanvas.height = TILING_V2_TILE_SIZE;
+  const tileCtx = tileCanvas.getContext("2d");
+  tileCtx.imageSmoothingEnabled = true;
+  tileCtx.imageSmoothingQuality = "high";
+
+  const tilesFolder = zip.folder("data").folder("tiles");
+
+  for (let L = 0; L < TILING_V2_LEVELS; L++) {
+    const z = -L;                  // z=0, -1, -2, -3
+    const scale = Math.pow(2, L);  // 1, 2, 4, 8
+    const lvlW = Math.ceil(srcW / scale);
+    const lvlH = Math.ceil(srcH / scale);
+    const cols = Math.ceil(lvlW / TILING_V2_TILE_SIZE);
+    const rows = Math.ceil(lvlH / TILING_V2_TILE_SIZE);
+
+    const zFolder = tilesFolder.folder("z" + z);
+
+    // Convention Y NÉGATIF — slice depuis le BAS de l'image (cf. CRS.Simple)
+    for (let k = 1; k <= rows; k++) {
+      const leafletY        = -k;
+      const sourceBottomLvl = lvlH - (k - 1) * TILING_V2_TILE_SIZE;
+      const sourceTopLvl    = Math.max(0, lvlH - k * TILING_V2_TILE_SIZE);
+      const sliceHeightLvl  = sourceBottomLvl - sourceTopLvl;
+      // destY > 0 quand la tuile haute est partielle (H % tileSize != 0)
+      // → on paste au BAS du tile canvas, le haut reste noir
+      const destY = TILING_V2_TILE_SIZE - sliceHeightLvl;
+
+      for (let col = 0; col < cols; col++) {
+        const sourceLeftLvl  = col * TILING_V2_TILE_SIZE;
+        const sourceRightLvl = Math.min(lvlW, (col + 1) * TILING_V2_TILE_SIZE);
+        const sliceWidthLvl  = sourceRightLvl - sourceLeftLvl;
+
+        // Conversion vers les coords de l'image ORIGINALE (multiplier par scale
+        // ET ajouter l'offset auto-crop, sinon on slice à mauvais endroit)
+        const sourceLeftOrig   = cropX + sourceLeftLvl  * scale;
+        const sourceTopOrig    = cropY + sourceTopLvl   * scale;
+        const sourceWidthOrig  = sliceWidthLvl  * scale;
+        const sourceHeightOrig = sliceHeightLvl * scale;
+
+        // Fond noir pour les bordures de la tuile haute partielle
+        tileCtx.clearRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+        tileCtx.fillStyle = "#000000";
+        tileCtx.fillRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+        tileCtx.drawImage(
+          img,
+          sourceLeftOrig, sourceTopOrig, sourceWidthOrig, sourceHeightOrig,
+          0,              destY,          sliceWidthLvl,   sliceHeightLvl
+        );
+
+        const blob = await new Promise(function(resolve) {
+          tileCanvas.toBlob(function(b) { resolve(b); }, "image/jpeg", TILING_V2_JPEG_Q);
+        });
+        if (blob) {
+          const arrBuf = await blob.arrayBuffer();
+          zFolder.file("x" + col + "_y" + leafletY + ".jpg", arrBuf);
+        }
+
+        tilesDone++;
+        if (onProgress) onProgress(tilesDone, tilesTotal, z);
+      }
+    }
+  }
+
+  // Cleanup
+  tileCanvas.width = 0; tileCanvas.height = 0;
+  URL.revokeObjectURL(imgUrl);
+
+  return {
+    tilesCount: tilesDone,
+    manifest: {
+      version:        TILING_V2_VERSION,
+      tileSize:       TILING_V2_TILE_SIZE,
+      format:         TILING_V2_FORMAT,
+      minNativeZoom:  -(TILING_V2_LEVELS - 1),
+      maxNativeZoom:  0
+    },
+    dims: { width: srcW, height: srcH, cropOffset: bbox ? { x: cropX, y: cropY } : null }
+  };
+}
+
+// =========================
 // GÉNÉRATION DU ZIP
 // =========================
 async function _genererZip() {
@@ -810,6 +1073,9 @@ async function _genererZip() {
   // Sinon → on n'ajoute PAS le champ (retro-compat absolue : les apps v147
   // ignorent ce champ inconnu sans broncher).
   const multiLevel = !!document.getElementById("pl_multiLevel")?.checked;
+  // 🧱 Tiling V2 (depuis v149) : opt-in conversion en plan tuile, dispo
+  // uniquement en mode "Modifier" (besoin du File source).
+  const tilingV2On = !!(document.getElementById("pl_tilingV2")?.checked && _plannerMode === "modifier");
 
   if (!name)             { _plannerErreur("Le nom du plan est obligatoire."); return; }
   if (!width || !height) {
@@ -956,31 +1222,91 @@ async function _genererZip() {
     if (!icons.default) icons.default = PLANNER_DEFAULT_ICONS.default;
     if (!icons.track)   icons.track   = PLANNER_DEFAULT_ICONS.track;
 
+    // ── 🧱 Tiling V2 (conversion V1 → V2, opt-in en mode Modifier) ──
+    // On lance la génération AVANT l'écriture du plan-config.json : si
+    // l'auto-crop détecte des marges blanches, les dims `imageWidth/Height`
+    // doivent refléter la zone effective tuilée (pas l'image entière source).
+    let tilingManifest = null;
+    let v2Dims = null;
+    if (tilingV2On) {
+      // Retrouve le File de l'image source (mode Modifier → _plannerOrigAssets)
+      const imgKey = baseImageName ? baseImageName.replace(/^data\//, "") : null;
+      const imageFile = (imgKey && _plannerOrigAssets[imgKey]) ? _plannerOrigAssets[imgKey] : null;
+      if (!imageFile) {
+        _plannerErreur("Conversion V2 : impossible de récupérer l'image source du V1 d'origine.");
+        throw new Error("abort");
+      }
+
+      // Overlay de progression bloquant pendant la génération
+      const overlay = document.createElement("div");
+      overlay.className = "kta-modal-overlay";
+      overlay.innerHTML =
+        '<div class="kta-modal">' +
+          '<div class="kta-modal-icon">🧱</div>' +
+          '<div class="kta-modal-titre">Conversion en V2 tuile : génération des tuiles…</div>' +
+          '<div class="kta-modal-texte">' +
+            '<div id="kta-tiling-progress-text" style="margin-bottom:10px;">Initialisation…</div>' +
+            '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
+              '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      document.documentElement.appendChild(overlay);
+
+      try {
+        const result = await _genererTuilesV2(imageFile, zip, function(done, total, currentZ) {
+          const pct = Math.round((done / total) * 100);
+          const txt = document.getElementById("kta-tiling-progress-text");
+          const bar = document.getElementById("kta-tiling-progress-bar");
+          if (txt) txt.textContent = "Niveau z=" + currentZ + " · " + done + " / " + total + " tuiles (" + pct + "%)";
+          if (bar) bar.style.width = pct + "%";
+        });
+        tilingManifest = result.manifest;
+        v2Dims = result.dims;
+        console.log("[Planner] Tiling V2 généré : " + result.tilesCount + " tuiles" +
+                    (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
+      } finally {
+        overlay.remove();
+      }
+    }
+
     // ── plan-config.json ──
     // 🏗️ Multi-niveau : on n'inclut `multiLevel: true` QUE si la case est
     // cochee. Sinon le champ est totalement absent → plans existants v147 et
     // anciens generateurs continuent de produire un JSON identique → retro-
     // compat parfaite (zero diff sur les plans monolayer).
+    // 🧱 Tiling V2 : si on a généré les tuiles, on override imageWidth/Height
+    // avec les dims post-crop (= zone effectivement tuilée) et on ajoute la
+    // section `tiling` avec le manifest. Le flag `plan.tiledV2 = true`
+    // permet au runtime de détecter rapidement le mode tuile.
     const planObj = {
       name, version, author,
-      imageWidth: width, imageHeight: height,
+      imageWidth:  v2Dims ? v2Dims.width  : width,
+      imageHeight: v2Dims ? v2Dims.height : height,
       baseImage: baseImageName, collisionImage: collisionName
     };
-    if (multiLevel) planObj.multiLevel = true;
+    if (multiLevel)     planObj.multiLevel = true;
+    if (tilingManifest) planObj.tiledV2    = true;
 
-    zip.file("plan-config.json", JSON.stringify({
+    const planConfigObj = {
       plan: planObj,
       imageLayers,
       dataLayers,
       tracking,
       icons
-    }, null, 2));
+    };
+    if (tilingManifest) planConfigObj.tiling = tilingManifest;
+
+    zip.file("plan-config.json", JSON.stringify(planConfigObj, null, 2));
 
     // ── Génération ──
     const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement("a");
-    a.href = url; a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + ".zip"; a.click();
+    a.href = url;
+    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() +
+                 (tilingV2On ? "_v2" : "") + ".zip";
+    a.click();
     URL.revokeObjectURL(url);
 
     const m = document.getElementById("kta-planner-modal");

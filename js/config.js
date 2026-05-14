@@ -118,21 +118,35 @@ function resetRuntimeAssets() {
 
 function findMatchingFile(logicalPath, files) {
   const base = getBaseName(logicalPath);
+  const normalizedLogical = normalizePath(logicalPath);
   for (const file of files) {
     const name = normalizePath(file.name);
-    if (name === normalizePath(logicalPath) || name === base) return file;
+    if (name === normalizedLogical || name === base) return file;
+    // 🧱 Tiling V2 (v149) : aussi matcher via `_fullPath` (propriété ad-hoc
+    // posée par extraireZip dans index.html). Nécessaire car iOS Safari strip
+    // les `/` du File.name → impossible de retrouver `data/tiles/z0/x0_y-1.jpg`
+    // via le name (qui devient juste `x0_y-1.jpg`, partagé avec d'autres
+    // niveaux z=-1, z=-2…).
+    if (file._fullPath && normalizePath(file._fullPath) === normalizedLogical) return file;
   }
   return null;
 }
 
-async function registerAsset(logicalPath, file) {
+async function registerAsset(logicalPath, file, opts) {
   const normalized = normalizePath(logicalPath);
   const lower = file.name.toLowerCase();
+  // 🧱 Tiling V2 : option `lazy` pour les tuiles. Si lazy=true, on ne crée
+  // PAS la blob URL au boot — économie d'allocations pour des plans qui
+  // peuvent avoir 1000+ tuiles. La blob URL est créée à la demande par
+  // tiling.js > _resoudreUrlTuileLazy.
   if (lower.endsWith(".json")) {
     const text = await file.text();
     const parsed = JSON.parse(text);
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
     window.RUNTIME_ASSETS[normalized] = { file, url, json: parsed, type: "json" };
+  } else if (opts && opts.lazy === true) {
+    // Pas de blob URL maintenant — sera créée lazy par tiling.js
+    window.RUNTIME_ASSETS[normalized] = { file, url: null, json: null, type: "binary", lazy: true };
   } else {
     const url = URL.createObjectURL(file);
     window.RUNTIME_ASSETS[normalized] = { file, url, json: null, type: "binary" };

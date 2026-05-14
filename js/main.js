@@ -290,6 +290,14 @@ function _libererRessourcesPlanPrecedent() {
     window._baseTiles = [];
   }
 
+  // 🧱 Tiling V2 (v149) : cleanup spécifique du runtime Option B (listener
+  // zoomend + overlays actifs + blob URLs lazy créées au fil des swaps).
+  // Indépendant de window._baseTiles (le tableau retourné par chargerImage en
+  // mode V2 contient juste les overlays du niveau courant, pas tous).
+  if (typeof window._libererTuilesV2 === "function") {
+    try { window._libererTuilesV2(); } catch(e) {}
+  }
+
   // Map Leaflet : map.remove() détache tous les listeners/overlays/markers
   if (window.map) {
     try { window.map.remove(); } catch(e) {}
@@ -402,6 +410,22 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     if (!matched) { console.warn("[Loader] Fichier non trouvé :", logicalPath); return; }
     await registerAsset(logicalPath, matched);
   }));
+
+  // 🧱 Tiling V2 (v149) : scan des tuiles dans le ZIP (chemin `data/tiles/z<N>/*.jpg`).
+  // Enregistrement LAZY (pas de blob URL au boot — économie d'allocations sur des
+  // plans qui peuvent avoir 1000+ tuiles). Les blob URLs sont créées à la demande
+  // par tiling.js > _chargerImageTuileV2 quand chaque tuile est rendue.
+  if (rawConfig.plan?.tiledV2 === true || rawConfig.tiling) {
+    let nbTuiles = 0;
+    for (const f of files) {
+      const fullPath = f._fullPath || f.name;
+      if (typeof fullPath === "string" && /^data\/tiles\/z-?\d+\//.test(fullPath)) {
+        await registerAsset(fullPath, f, { lazy: true });
+        nbTuiles++;
+      }
+    }
+    console.log("[Loader] Tiling V2 — " + nbTuiles + " tuiles enregistrées (lazy)");
+  }
 
   window.PLAN_CONFIG = cloneAndResolvePlanConfig(rawConfig);
 

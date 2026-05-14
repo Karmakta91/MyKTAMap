@@ -1017,6 +1017,36 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 > Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
 
+### 🧱 Convertir en V2 tuile (performance)
+
+> ⚙️ **Disponible uniquement en mode Modifier** (besoin du File source pour générer les tuiles)
+
+Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
+
+**Workflow** :
+
+1. **Modifier existant** → uploader ton ZIP V1
+2. Cocher la case **☑️ 🧱 Convertir en V2 tuile (performance)** (encadré violet sous Informations du plan)
+3. Optionnellement modifier d'autres champs
+4. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)"
+5. ZIP téléchargé avec suffixe `_v2` (ex: `plan_xxx_v2.zip`)
+6. **Re-importer ce ZIP via le loader** → le mode V2 s'active automatiquement
+
+**Auto-crop intégré** : si ton image source a beaucoup de marges blanches (typique des plans scannés papier), le générateur détecte automatiquement le bbox du contenu utile et tuile uniquement cette zone. Tu gagnes en taille de ZIP + en netteté au zoom max. Si l'image est déjà bien cadrée, pas de crop.
+
+**Trade-offs** :
+
+| ✅ Gains | ⚠️ Coûts |
+|---|---|
+| Conso mémoire massivement réduite (~16 MB max au lieu de l'image entière en RAM) | Conversion lente (1-5 min selon la taille de l'image) |
+| Idéal pour mobile (Safari iOS, gros plans qui crashent en V1) | Le ZIP final contient plus de fichiers (les tuiles) mais ~même poids total qu'un PNG/JPEG unique |
+| Navigation plus fluide au pan/zoom | Léger flash visuel au changement de niveau de zoom (swap des tuiles) |
+| Auto-crop des marges blanches | Black border visible quand on dezoome très très loin (au-delà des bords) |
+
+**Modifier un plan déjà V2** : la case est **pré-cochée** par défaut → les tuiles seront régénérées avec les nouvelles modifs. Si tu décoches, downgrade explicite V2 → V1 (les tuiles ne sont pas reportées dans le nouveau ZIP).
+
+> 💡 **À tester en priorité** sur ton plus gros plan qui crashe sur mobile, ou avant de partager un plan lourd à quelqu'un avec un téléphone modeste.
+
 ---
 
 ## 🚀 Optimiser ton plan pour la performance
