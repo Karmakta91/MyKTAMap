@@ -1,12 +1,13 @@
 {
   "plan": {
-    "name": "Carriere test",
+    "name": "Test MultiLVL",
     "version": "V2",
     "author": "Karma",
     "imageWidth": 4000,
     "imageHeight": 2251,
     "baseImage": "data/test2/TestMAP.png",
-    "collisionImage": "data/test2/collision.png"
+    "collisionImage": "data/test2/collision.png",
+     "multiLevel": true
   },
   "imageLayers": [],
   "dataLayers": [
