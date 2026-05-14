@@ -74,9 +74,14 @@ Pour **chaque** question :
 - 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
 - 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
-- 🏷️ **Badge version cliquable** dans le footer du loader : affiche la version installée. Clignote en bleu si une nouvelle version est dispo (passage à la version cible visible : `v141 → v143`). Au clic, force la modale d'update (bypass snooze 24h). Si déjà à jour, affiche les notes de la version installée.
+- 🏷️ **Badge version cliquable** dans le footer du loader : affiche la version installée. Clignote en bleu si une nouvelle version est dispo (passage à la version cible visible : `v150 → v151`). Au clic, force la modale d'update (bypass snooze 24h). Si déjà à jour, affiche les notes de la version installée.
 - 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques...) via fichier `alert.json` côté serveur. Modale rouge pulsante après le splash. Bouton 🚨 dans le header du loader pour re-consulter à tout moment.
 - 🏗️ **Générateur de plan** : auto-détection des dimensions de l'image principale + warnings si > 10000 px / > 30 Mo. Position initiale tracker auto-centrée (W/2 × H/2) au choix de l'image, avec bouton 🎯 Recentrer.
+- 🧭 **Boussole / widget Nord** (depuis v147) : sous-action 🧭 dans le groupe Tracker → affiche une rose des vents flottante en haut-gauche sous le zoom. La rose tourne en temps réel pour pointer vers le vrai Nord. Clic dessus → modal plein écran avec la rose en grand + angle cardinal exact. Outil de debug pour valider que le heading du téléphone est cohérent.
+- ⚠️ **Popup avertissement au démarrage du tracker** (depuis v147) : au premier ▶️ Play de chaque session, modal qui rappelle que le module est expérimental et ne doit pas servir à se localiser en situation réelle. iOS-safe (requestPermission appelé synchronement dans le click handler).
+- 🏗️ **Mode multi-niveau** (depuis v148) : opt-in par plan pour les carrières multi-étages (Glacière, Capucins). Activable via ⚙️ Réglages OU via le générateur de plan (case 🏗️ Plan multi-niveau). Une fois activé : pastille jaune `[N]` (numéro du niveau actif) sous le zoom, modale avec 2 sections (niveau actif single + niveaux visibles multi-select). Nouveau type de tracé **🪜 Jonction interniveau** (magenta pointillé) qui sert de bridge unique entre 2 niveaux. Le pathfinder est niveau-aware : ne traverse plus les croisements visuels 2D entre niveaux différents (utilise uniquement les jonctions). Items session (roads, zones, points) tagués par niveau au moment de la création, filtré au rendu.
+- 🧱 **Tiling V2** (depuis v149) : système de tuilage Google Maps-like pour réduire la conso mémoire au runtime sur gros plans (>50 Mo). Génération via le générateur de plan (case 🧱 Convertir en V2 tuile) — disponible en mode Nouveau OU Modifier dès qu'une image est uploadée (depuis v151). Runtime Option B : N L.imageOverlay par niveau de zoom, swap on zoomend (~16 MB max en RAM à tout moment). Auto-crop des marges blanches intégré. Modal d'avertissement avant la conversion (lourde — recommandé sur PC plutôt que mobile).
+- 🏷️ **Badges de mode sur la liste de plans** (depuis v150) : chaque ligne plan dans le loader affiche un ou deux chips de mode — `V1` (gris classique), `M-LVL` (jaune multi-niveau), `V2` (violet tuilé). Plusieurs badges peuvent coexister (un V2 peut être aussi multi-niveau).
 
 **Types de zones** (exhaustif — il n'en existe que 3) :
 - **Remblais** (gris foncé, ⬛)
@@ -85,11 +90,12 @@ Pour **chaque** question :
 
 → Il n'y a **PAS** de zone "brûlée", "incendiée", "dangereuse", "interdite", "fumée", "sèche", "gelée", "humide" ou autre. Strictement Remblais / Effondrement / Eau.
 
-**Types de tracés / routes** (exhaustif — il n'en existe que 4) :
-- **Principal** (rouge épais)
-- **Secondaire** (orange moyen)
+**Types de tracés / routes** (exhaustif — il n'en existe que 5, dont 1 conditionnel) :
+- **Principal** (vert épais)
+- **Secondaire** (violet moyen)
 - **Chemin** (jaune fin)
 - **Itinéraire** (cyan néon, calculé automatiquement — pas tracé à la main)
+- **Jonction interniveau** (magenta pointillé + ronds blanc/magenta aux extrémités) — UNIQUEMENT disponible si le plan a le mode **multi-niveau** activé. Sert de bridge entre 2 niveaux pour le pathfinder.
 
 **Types de points / icônes built-in** (liste fermée) :
 - Puits : `pa` (Aération), `pb` (Bouchon), `pc` (Communication), `pe` (Égout), `ps` (Spéléo)
@@ -100,11 +106,16 @@ Pour **chaque** question :
 → L'utilisateur **peut créer des tags custom** via 🏗️ Générer un plan, mais en sortie de boîte, seuls les tags ci-dessus existent.
 
 **Modes performance** (exhaustif — il n'en existe que 5) :
-- **Off** — pas de tiling (risqué sur mobile pour grosses images)
+- **Off** — pas de tiling (risqué sur mobile pour grosses images). Sur un plan V2, ce mode force le fallback à l'image source `baseImage` (V1-like) au lieu du runtime tuilé.
 - **Auto** — tile si l'image fait > 60 Mo
 - **Qualité** — tile dès que nécessaire, params haute qualité
 - **Équilibré** — défaut
 - **Performance** — params agressifs pour mobile
+
+**Modes de plan** (3 modes orthogonaux, peuvent coexister) :
+- **V1** (mode classique) — défaut. Image entière chargée en RAM. Modes performance et tiling preset au chargement. Badge `V1` gris.
+- **Multi-niveau / M-LVL** — opt-in via `plan.multiLevel: true` dans `plan-config.json`. Tracés, zones, points et tracker tagués par niveau. Pastille `[N]` sous le zoom + filtre visibles + jonctions interniveau. Badge `M-LVL` jaune.
+- **V2 tuilé** — opt-in via `plan.tiledV2: true` + section `tiling` dans `plan-config.json`. Image découpée en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like). Runtime swap on zoomend. Badge `V2` violet.
 
 **Formats de fichiers manipulés** (exhaustif) :
 - Plans : `.zip` (archive de plan)
@@ -160,6 +171,13 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 | **Cataphile** | Personne qui explore les anciennes carrières souterraines de Paris (et par extension, tout site souterrain abandonné). |
 | **Mode performance / preset** | Réglage qui contrôle la quantité de mémoire et de calcul utilisée pour afficher le plan. 5 niveaux : Off / Auto / Qualité / Équilibré / Performance. |
 | **Tiling** | Découpage de l'image principale en tuiles plus petites pour éviter de charger une seule grosse image en mémoire (évite les crashes sur mobile). |
+| **V1 (plan classique)** | Plan où l'image principale est chargée intégralement en RAM au boot. Modes performance preset déterminent un éventuel tuilage runtime. Défaut historique. |
+| **V2 (plan tuilé)** | Plan où l'image est pré-découpée en tuiles 512×512 sur 4 niveaux de zoom dans le ZIP (`data/tiles/z<N>/x<col>_y<-k>.jpg`). Au runtime, seules les tuiles du niveau de zoom courant sont en RAM (~16 MB max). Opt-in via le générateur de plan (case 🧱). |
+| **Mode multi-niveau / M-LVL** | Opt-in par plan pour gérer les carrières multi-étages. Tracés/zones/points/tracker tagués par niveau, filtre runtime. Jonctions interniveau (🪜) = seuls bridges entre niveaux pour le pathfinder. |
+| **Jonction interniveau** | Tracé spécial (type `jonction`, magenta pointillé) qui relie 2 niveaux d'un plan multi-niveau. Le pathfinder s'en sert exclusivement pour passer d'un niveau à l'autre — les croisements visuels 2D entre niveaux différents ne comptent pas. |
+| **Niveau actif** | Niveau courant utilisé pour DESSINER les nouveaux tracés/zones/points dans un plan multi-niveau. Affiché dans la pastille jaune `[N]` sous le zoom Leaflet. Click → modale de changement. |
+| **Niveaux visibles** | Liste des niveaux affichés sur la carte (filtre runtime, multi-select). Les éléments dont le `level` n'est pas dans cette liste sont masqués (opacity 0). Les jonctions sont affichées si au moins un de leurs endpoints touche un niveau visible. |
+| **Auto-crop** | Étape automatique du générateur V2 qui détecte les marges blanches autour du contenu utile et tuile uniquement la zone non-blanche. Les dims `imageWidth/Height` reflètent la zone croppée. |
 | **ZIP de plan** | Archive contenant toutes les données d'un plan (images + JSON + config). Format de partage entre utilisateurs. |
 | **Loader** | Écran d'accueil de l'app (avant chargement d'un plan). Affiche la liste des plans connus + options de chargement. |
 | **Service Worker** | Mécanisme PWA qui met les fichiers de l'app en cache pour fonctionnement hors connexion. |
@@ -239,11 +257,41 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 1. Identifie ce qui pèse : taille image base, nombre de calques, nombre de routes, nombre de points.
 2. Solutions par ordre d'impact :
+   - **Convertis en V2 tuilé** (depuis v149) : 🏗️ Générateur → uploader l'image (ou le ZIP V1 existant) → cocher 🧱 **Convertir en V2 tuile (performance)** → 📦 Générer. Solution la plus efficace pour les gros plans : runtime tuilé Google Maps-like, ~16 MB max en RAM au lieu de l'image entière. ⚠️ Génération **lourde** (CPU + RAM), faire la conversion sur PC plutôt que mobile (cf modal d'avertissement à la coche).
    - **Réduis l'image base** (≤ 8000 px, JPEG qualité 85 au lieu de PNG).
    - **Diminue le nombre de calques image** (fusionne légendes + collision dans l'image base si possible).
    - **Intègre les routes dans l'image** si tu as > 200 tracés (deviennent statiques, plus interactives mais ne consomment plus de mémoire vive).
    - **Choisis le preset ⚡ Performance** au chargement.
 3. Regénère le ZIP via 🏗️ Modifier existant.
+
+### K. 🏗️ Activer le mode multi-niveau (carrière multi-étages)
+
+> Pour les carrières / galeries avec plusieurs niveaux empilés physiquement (Glacière, Capucins, etc.). Mode opt-in désactivé par défaut. Cf glossaire `Mode multi-niveau`.
+
+1. **Active la feature** (3 voies, au choix) :
+   - **Via ⚙️ Réglages** sur un plan déjà chargé → cocher 🏗️ Mode multi-niveau (avancé) → reload page
+   - **Via le générateur de plan** : cocher 🏗️ Plan multi-niveau (avancé) → 📦 Générer → ZIP avec le flag pré-activé
+   - **Manuellement** dans `plan-config.json` : ajouter `"multiLevel": true` dans la section `plan`
+2. Une fois activé, une **pastille `[0]` jaune** apparaît sous les boutons de zoom (haut-gauche).
+3. **Trace au niveau 0** comme d'habitude (routes/zones/points).
+4. **Pour passer au niveau 1** : clique la pastille → modale Niveaux → sélecteur "Niveau actif" → bouton `[1]`. La pastille passe à `[1]` et le filtre passe sur ce niveau (les éléments niveau 0 disparaissent visuellement).
+5. **Trace au niveau 1** : tous les nouveaux éléments sont tagués `level: 1`.
+6. **Pour relier deux niveaux** (escalier, pente, puits interne) : groupe 🛣️ Tracés → **🪜 Jonction interniveau** → modale → choisir from/to (ex: 0 vers 1) → OK → clic N points sur la carte → la jonction est tracée en magenta pointillé avec des ronds blanc+magenta aux extrémités. Sans jonction, le pathfinder ne peut pas passer d'un niveau à l'autre.
+7. **Filtrer ce que tu vois** : modale Niveaux → section "Niveaux visibles" → cocher/décocher les niveaux. Boutons rapides `Tous` (tout afficher) / `Actif seul` (focaliser).
+
+### L. 🧱 Convertir un plan V1 en V2 tuilé (performance)
+
+> Pour les gros plans (>50 Mo image, >8000 px) qui plantent sur mobile. La conversion V2 découpe l'image en tuiles 512×512 sur 4 niveaux de zoom → runtime charge seulement les tuiles du niveau visible. Cf glossaire `V2 (plan tuilé)`.
+
+1. **Recommandé sur PC** (conversion lourde : décodage image source + drawImage de N tuiles, ~256 Mo RAM pour image 8K). Sur mobile, risque de crash pendant la génération (iOS plafonné à ~500 MB).
+2. Ouvrir le 🏗️ Générateur de plan.
+3. **Mode Nouveau** : uploader ton image principale + remplir le formulaire → la case 🧱 Convertir en V2 tuile apparaît automatiquement.<br>
+   **Mode Modifier existant** : uploader ton ZIP V1 → la case 🧱 est dispo.
+4. Cocher **☑️ 🧱 Convertir en V2 tuile (performance)** → modal d'avertissement (CPU/RAM/durée + PC vs mobile) → **J'ai compris — Continuer**.
+5. Compléter le reste du formulaire si nécessaire (nom, version, calques, tracking, etc.).
+6. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)" (1-5 min selon image).
+7. ZIP téléchargé avec suffixe `_v2`. Le réimporter via le loader → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan).
+8. **Bypass temporaire** : si tu veux comparer V2 vs V1, charge le plan V2 avec **Mode performance : Désactivé** au loader → l'app charge l'image source directement comme V1.
 
 ### J. ⛑️ Mode urgence — Je suis perdu (estimer une position en cataphilie)
 
@@ -336,8 +384,9 @@ Le tracker PDR est **expérimental**. La dérive est inévitable, mais peut êtr
 
 Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d'impact :
 
-1. **Choisis le preset ⚡ Performance** dans le loader avant de charger.
-2. **Active le 🚀 Mode Performance ULTRA** : ouvre ⚙️ Réglages → section "🚀 Mode Performance ULTRA" → coche le toggle **🚀 ULTRA**. Il active 6 optimisations agressives qui ne touchent pas l'image mais réduisent drastiquement la charge des tracés/markers/intersections :
+1. **Convertis ton plan en V2 tuilé** (depuis v149, solution la plus efficace) : 🏗️ Générateur → cocher 🧱 Convertir en V2 tuile → 📦 Générer → réimporter le ZIP V2. La conso mémoire passe de "image entière en RAM" à ~16 MB max au runtime. Conversion **lourde**, à faire sur PC plutôt que mobile (cf recette L).
+2. **Choisis le preset ⚡ Performance** dans le loader avant de charger.
+3. **Active le 🚀 Mode Performance ULTRA** : ouvre ⚙️ Réglages → section "🚀 Mode Performance ULTRA" → coche le toggle **🚀 ULTRA**. Il active 6 optimisations agressives qui ne touchent pas l'image mais réduisent drastiquement la charge des tracés/markers/intersections :
    - 🪜 Décimer les tracés au dézoom
    - ⚡ Désactiver animations zoom/pan (reload requis)
    - 🎯 Désactiver cercles intersections (seuil 50 routes vs 200)
@@ -345,9 +394,27 @@ Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d
    - 🐢 Auto-save lent (30s)
    - 👁️ Ne rendre que les tracés visibles (viewport culling)
    Tu peux aussi activer ces toggles individuellement si tu veux affiner.
-3. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
-4. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
-5. À terme : optimise le plan (voir recette H ci-dessus).
+4. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
+5. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
+6. À terme : optimise le plan (voir recette H ci-dessus).
+
+### C'est quoi les badges V1 / M-LVL / V2 sur les lignes de la liste de plans ?
+
+Indicateurs visuels du **mode** de chaque plan dans le loader (depuis v150) :
+
+- **V1** (gris discret) : plan classique, image entière chargée en RAM au boot. Mode par défaut historique.
+- **M-LVL** (jaune) : plan **multi-niveau**, contient des éléments tagués par niveau + le mode est activé (`plan.multiLevel: true`). Carrière multi-étages. Cf glossaire et recette K.
+- **V2** (violet) : plan **tuilé V2**, image découpée en tuiles 512×512 sur 4 niveaux de zoom. Conso mémoire massivement réduite au runtime. Cf glossaire et recette L.
+
+Plusieurs badges peuvent coexister sur un même plan (un V2 peut aussi être multi-niveau). Couleur cohérente avec les UI internes : jaune = niveau (pastille `[N]`), violet = V2 (checkbox planner).
+
+### Le tracker ne pointe pas dans la bonne direction sur ma carrière (boussole déraille)
+
+C'est probablement une perturbation magnétique. Les armatures métalliques (rails, ferraille, plaques d'égout) faussent fortement le magnétomètre du téléphone.
+
+1. **Active la boussole de validation** : groupe 🧭 Tracker → sous-action 🧭 Afficher la boussole. Elle affiche une rose des vents en haut-gauche qui tourne pour pointer vers le vrai Nord. Marche dehors / en surface, déraille parfois en sous-sol.
+2. **Recale manuellement** le tracker dès que tu reconnais un repère sur le plan : 📍 Mode recalage → clic sur le point reconnu.
+3. **Utilise une vraie boussole physique** en parallèle — c'est la recommandation officielle (le tracker est un outil de debug, pas de localisation fiable, cf popup d'avertissement au démarrage).
 
 ### J'ai perdu ma session quand j'ai fermé l'app
 
