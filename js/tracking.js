@@ -84,43 +84,80 @@ function initTracking() {
   });
 }
 
-// 🧭 v158/v159 : rotation de l'icone tracker selon le heading (sens de marche).
+// 🧭 v158/v159/v160 : rotation de l'icone tracker selon le heading.
 //
 // IMPLEMENTATION : le marker tracker utilise un L.divIcon (cf. map.js) qui
 // produit un DOM <div class="kta-tracker-divicon"><img class="kta-tracker-img"></div>.
 // Le DIV recoit le transform: translate3d(...) de Leaflet pour le placement
 // geo. L'<img> ENFANT recoit notre transform: rotate(heading deg) - les 2 sont
-// independants, pas de conflit. La transition CSS (0.15s) est definie en CSS
+// independants, pas de conflit. La transition CSS (0.3s) est definie en CSS
 // (.kta-tracker-img).
 //
-// HISTOIRE : v158 utilisait L.icon (img top-level) et appliquait le rotate
-// directement sur l'<img>, qui ETAIT aussi l'element positionne par Leaflet
-// (transform: translate3d). Le rotate ecrasait le translate → l'icone collait
-// au coin (0,0). Fix v159 : passage en divIcon avec wrapper.
+// HISTOIRE :
+//   v158 - tentative L.icon : rotate ecrasait le translate Leaflet → icone
+//          colait au (0,0). Fix v159.
+//   v159 - passage en divIcon avec wrapper. Position OK mais tremblement
+//          de l'icone : le magnetometre genere du bruit haute frequence
+//          (±2-5° meme phone immobile) qui passait le throttle 0.5°.
+//   v160 - anti-jitter avec 3 techniques combinees :
+//          1. Smoothing exponentiel (alpha=0.25) : lisse les valeurs brutes
+//             AVANT de les appliquer. Gere le wrap 0-360° correctement.
+//          2. Throttle 2° APRES smoothing : skip DOM update si delta < 2°.
+//          3. Transition CSS 0.3s : absorbe visuellement les sauts residuels.
 //
-// Throttle 0.5° pour eviter du churn DOM. Reset a 0° au stopTracking.
-let _trackerRotationLast = -999;
+// Reset complet (smoothed + last) au stopTracking pour repartir propre.
+
+let _trackerRotationLast    = -999;  // derniere valeur appliquee au DOM
+let _trackerHeadingSmoothed = null;  // valeur lissee (exponential smoothing)
+
 function _applyRotationToTrackerMarker() {
   // Uniquement en tracking actif. Au repos / recalage seul, l'icone reste
   // statique pointant Nord (= sa definition de base dans le PNG).
   if (!tracking) return;
   if (!markerPosition) return;
+
   const heading = (typeof direction === "number" && !isNaN(direction)) ? direction : 0;
-  // Throttle 0.5° : skip si delta trop petit (anti-jitter du magnetometre)
-  if (Math.abs(heading - _trackerRotationLast) < 0.5) return;
-  _trackerRotationLast = heading;
+
+  // ===== 1. SMOOTHING EXPONENTIEL =====
+  // smoothed = (1 - α) * smoothed_prev + α * heading
+  // α = 0.25 : 75% historique + 25% nouvelle valeur = lissage modere.
+  // Gestion du wrap 0-360° : si on tourne de 350° vers 10° (via le Nord),
+  // le delta brut serait -340° (retour arriere geant) - on prend le delta
+  // circulaire minimum (en signed degrees) pour eviter ca.
+  if (_trackerHeadingSmoothed === null) {
+    _trackerHeadingSmoothed = heading;
+  } else {
+    let delta = heading - _trackerHeadingSmoothed;
+    if (delta > 180)       delta -= 360;
+    else if (delta < -180) delta += 360;
+    _trackerHeadingSmoothed = (_trackerHeadingSmoothed + delta * 0.25 + 360) % 360;
+  }
+
+  // ===== 2. THROTTLE 2° APRES SMOOTHING =====
+  // Skip DOM update si delta < 2°. La transition CSS 0.3s + le smoothing
+  // suffisent pour absorber les petites variations sans qu'on bouge le DOM
+  // a chaque tick.
+  let deltaAffich = Math.abs(_trackerHeadingSmoothed - _trackerRotationLast);
+  if (deltaAffich > 180) deltaAffich = 360 - deltaAffich;  // wrap pour distance min
+  if (deltaAffich < 2) return;
+  _trackerRotationLast = _trackerHeadingSmoothed;
+
+  // ===== 3. APPLY =====
   // getElement retourne le DIV wrapper (translate Leaflet). On cible son img enfant.
+  // La transition CSS 0.3s (.kta-tracker-img) lisse visuellement.
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
   const img = el.querySelector(".kta-tracker-img");
   if (!img) return;
-  img.style.transform = "rotate(" + heading + "deg)";
+  img.style.transform = "rotate(" + _trackerHeadingSmoothed + "deg)";
 }
 
 // Reset la rotation a 0° (icone pointant Nord = pose neutre). Appele au
-// stopTracking().
+// stopTracking(). Vide aussi le smoothing buffer pour repartir propre au
+// prochain Play.
 function _resetRotationTrackerMarker() {
-  _trackerRotationLast = -999;
+  _trackerRotationLast    = -999;
+  _trackerHeadingSmoothed = null;
   if (!markerPosition) return;
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
