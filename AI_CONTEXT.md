@@ -82,6 +82,9 @@ Pour **chaque** question :
 - 🏗️ **Mode multi-niveau** (depuis v148) : opt-in par plan pour les carrières multi-étages (Glacière, Capucins). Activable via ⚙️ Réglages OU via le générateur de plan (case 🏗️ Plan multi-niveau). Une fois activé : pastille jaune `[N]` (numéro du niveau actif) sous le zoom, modale avec 2 sections (niveau actif single + niveaux visibles multi-select). Nouveau type de tracé **🪜 Jonction interniveau** (magenta pointillé) qui sert de bridge unique entre 2 niveaux. Le pathfinder est niveau-aware : ne traverse plus les croisements visuels 2D entre niveaux différents (utilise uniquement les jonctions). Items session (roads, zones, points) tagués par niveau au moment de la création, filtré au rendu.
 - 🧱 **Tiling V2** (depuis v149) : système de tuilage Google Maps-like pour réduire la conso mémoire au runtime sur gros plans (>50 Mo). Génération via le générateur de plan (case 🧱 Convertir en V2 tuile) — disponible en mode Nouveau OU Modifier dès qu'une image est uploadée (depuis v151). Runtime Option B : N L.imageOverlay par niveau de zoom, swap on zoomend (~16 MB max en RAM à tout moment). Auto-crop des marges blanches intégré. Modal d'avertissement avant la conversion (lourde — recommandé sur PC plutôt que mobile).
 - 🏷️ **Badges de mode sur la liste de plans** (depuis v150) : chaque ligne plan dans le loader affiche un ou deux chips de mode — `V1` (gris classique), `M-LVL` (jaune multi-niveau), `V2` (violet tuilé). Plusieurs badges peuvent coexister (un V2 peut être aussi multi-niveau).
+- 🌀 **Overlay de chargement plein écran** (depuis v152) : quand un plan se charge (extraction ZIP, indexation tuiles V2 toutes les 50 tuiles, init carte), une modale centrée avec spinner + message d'étape s'affiche au-dessus du splash. Avant v152, le statut était écrit en petit en bas du loader, peu visible sur gros plans.
+- ❌ **Erreur explicite en cas d'échec de génération V2** (depuis v152) : modale rouge plein écran qui détaille la cause du crash (drawImage / toBlob / saturation mémoire) avec les coordonnées de la tuile en échec + conseils actionnables (PC vs mobile, réduire l'image source, convertir en JPEG q85). Plus jamais d'erreur silencieuse pendant la conversion V2.
+- 🛡️ **Détection automatique des crashs durant la génération V2** (depuis v152) : un flag localStorage est posé avant la conversion et retiré dans le `finally`. Si le navigateur kill la page pendant la génération (OOM mobile typique), le flag reste → au prochain démarrage de l'app, modale spécifique **"🧱❌ Génération V2 interrompue"** avec rappel des solutions (PC, réduire image, fermer apps en arrière-plan).
 
 **Types de zones** (exhaustif — il n'en existe que 3) :
 - **Remblais** (gris foncé, ⬛)
@@ -100,7 +103,7 @@ Pour **chaque** question :
 **Types de points / icônes built-in** (liste fermée) :
 - Puits : `pa` (Aération), `pb` (Bouchon), `pc` (Communication), `pe` (Égout), `ps` (Spéléo)
 - Accès : `peo`/`pef` (Puits Entrée Ouvert/Fermé), `eso`/`esf` (Entrée Souterraine Ouvert/Fermé), `cao`/`caf` (Carrière Accès Ouvert/Fermé)
-- Signalétique : `salle` (house), `chatiere`, `passage`, `danger`, `info`, `elec`, `epure`
+- Signalétique : `salle` (house), `chatiere`, `passage`, `danger`, `info`, `elec`, `epure`, `plaque` (panneau beige sur poteau — pour repérer les plaques IGC, panneaux directions cataphiles, etc., depuis v152)
 - Véhicule, tracker, etc.
 
 → L'utilisateur **peut créer des tags custom** via 🏗️ Générer un plan, mais en sortie de boîte, seuls les tags ci-dessus existent.
@@ -292,6 +295,9 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 6. Cliquer **📦 Générer le ZIP** → overlay de progression "Niveau z=−N · X / Y tuiles (Z%)" (1-5 min selon image).
 7. ZIP téléchargé avec suffixe `_v2`. Le réimporter via le loader → le mode V2 s'active automatiquement (badge violet `V2` sur la carte plan).
 8. **Bypass temporaire** : si tu veux comparer V2 vs V1, charge le plan V2 avec **Mode performance : Désactivé** au loader → l'app charge l'image source directement comme V1.
+9. **Si la génération échoue** (depuis v152) :
+   - **Erreur attrapée** → modale rouge "❌ Échec de génération" qui détaille la cause (drawImage, toBlob, saturation mémoire) + conseils. Lis le message et applique le conseil correspondant (PC, image plus petite, JPEG q85).
+   - **Crash silencieux** (navigateur kill la page sans erreur) → au prochain reload de l'app, modale rouge "🧱❌ Génération V2 interrompue" t'avertit. Cause typique : OOM sur mobile (plafond ~500 Mo iOS).
 
 ### J. ⛑️ Mode urgence — Je suis perdu (estimer une position en cataphilie)
 
@@ -521,6 +527,23 @@ L'OOMGuard a détecté que la session précédente a été tuée par le système
 
 - C'est normal sur mobile avec un gros plan.
 - Pour éviter la prochaine fois : baisse le preset performance, réduis l'image base, ferme les autres apps.
+
+### L'app me dit "🧱❌ Génération V2 interrompue" au démarrage
+
+Variante spécifique du détecteur de kill OOM (depuis v152), focalisée sur la **génération V2**. Tu avais lancé une conversion V2 (case 🧱 du générateur) et le navigateur a tué la page pendant la conversion — typique sur mobile avec une image source > 8K×8K.
+
+**Solutions** (par ordre d'efficacité) :
+1. **Refaire la conversion sur PC** plutôt que mobile (plafond mémoire navigateur 4-8 Go au lieu de ~500 Mo iOS).
+2. **Réduire l'image source** (la passer en JPEG qualité 85, dimensions ≤ 8000 px de côté).
+3. **Fermer toutes les autres apps** en arrière-plan avant de relancer la conversion sur mobile.
+
+### J'ai eu une modale rouge "❌ Échec de génération" pendant la conversion V2
+
+Depuis v152, la génération V2 attrape toutes les erreurs internes (drawImage, toBlob, saturation mémoire) au lieu de planter silencieusement.
+
+La modale t'indique la **cause exacte** (avec les coordonnées de la tuile qui a échoué : `(z, col, k)`) + des **conseils actionnables**. Lis le message et applique le conseil :
+- Erreurs `drawImage` ou `toBlob` → typiquement OOM, baisse la taille de l'image source ou passe sur PC.
+- Erreur "saturation mémoire" → idem, plafond du navigateur atteint.
 
 ### Je veux utiliser MyKTAMap commercialement (entreprise, prestation payante)
 
