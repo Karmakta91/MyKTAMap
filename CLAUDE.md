@@ -1103,6 +1103,45 @@ Détection OOM (heuristique sur le message d'erreur via regex `/m[ée]moire|draw
 
 CSS : `.kta-load-overlay` fixed inset:0 background semi-transparent + blur + `.kta-load-box` centrée (spinner animé 48px + titre + message + hint italique).
 
+### 28. Tracker directionnel — icône qui tourne en tracking actif (depuis v158-v161)
+
+L'icône du marker tracker tourne en temps réel pour pointer dans la direction de marche pendant le tracking actif. Au repos (tracking off, recalage seul, plan affiché statique) : icône fixe pointant Nord.
+
+**Source du heading** : `getCurrentHeading()` exposé par `tracking.js` (cf. §24 sources d'orientation). Cohérent avec la boussole 🧭 — les 2 widgets utilisent le même heading mais avec rotation opposée (boussole contre-tourne pour garder le N en haut, tracker tourne dans le sens de marche).
+
+**Implémentation DOM** :
+- `iconeTrack` est un **`L.divIcon`** (et pas `L.icon`) qui produit `<div class="kta-tracker-divicon"><img class="kta-tracker-img"></div>`
+- Le **DIV wrapper** reçoit le `transform: translate3d(...)` de Leaflet (positionnement géo)
+- L'**`<img>` enfant** reçoit notre `transform: rotate(heading deg)` (rotation indépendante)
+- → 2 éléments distincts = 2 transforms qui ne s'écrasent pas mutuellement
+
+⚠️ **Piège v158** : utilisation initiale de `L.icon` qui produit un `<img>` top-level. Leaflet appliquait `translate3d` sur cet `<img>`, et notre `rotate` sur le même → écrasement, icône collait au `(0,0)`. **Fix v159** : passage en divIcon. À ne JAMAIS revenir à `L.icon` pour ce marker.
+
+**Anti-jitter (v160)** : 3 techniques combinées dans `_applyRotationToTrackerMarker()` :
+
+| Technique | Valeur | Rôle |
+|---|---|---|
+| Smoothing exponentiel | `α=0.25` (75% historique + 25% nouvelle) | Filtre le bruit ±2-5° du magnétomètre |
+| Throttle DOM | `2°` après smoothing | Skip update si delta trop petit |
+| Transition CSS | `0.3s ease-out` sur `.kta-tracker-img` | Absorbe les sauts résiduels |
+
+**Wrap circulaire 0-360°** : delta signé minimum pour les transitions Nord→Nord-via-Est (350°→10° = `+20°`, pas `-340°`). Géré à 2 endroits : (1) dans le smoothing pour ne pas faire revenir l'icône en arrière, (2) dans le throttle pour la distance circulaire vraie.
+
+⚠️ **Piège v160 (fix v161)** : initialiser `_trackerRotationLast = -999` comme sentinel "jamais initialisé" cassait le wrap-fix (`360 - (-999) = 1359` ou `360 - 999 = -639 < 2`) → return immédiat éternel → icône bloquée. **Toujours utiliser un sentinel typé** (`null`) + check explicite avant tout math circulaire.
+
+**API privée** :
+- `_applyRotationToTrackerMarker()` — appelée depuis `_onOrientation` (à chaque event d'orientation, iOS webkitCompassHeading + cas calc α/β/γ) + au `startTracking()` pour pré-positionner si heading déjà connu
+- `_resetRotationTrackerMarker()` — appelée au `stopTracking()`, reset `transform: rotate(0deg)` + vide `_trackerHeadingSmoothed = null` + `_trackerRotationLast = null` pour repartir frais au prochain Play
+- Variables module-scope : `_trackerHeadingSmoothed`, `_trackerRotationLast` (les 2 reset à `null` au stop)
+
+**Compatibilité tracking-off** : `_applyRotationToTrackerMarker` early-return si `!tracking` → l'icône reste en pose neutre Nord. Pas de coût CPU au repos.
+
+**À NE PAS TOUCHER** :
+- Le choix `L.divIcon` (pas `L.icon`)
+- Le sentinel `null` (pas `-999`) pour `_trackerRotationLast`
+- La transition CSS de 0.3s — testée optimale pour la perception humaine du smooth
+- Le tag `direction` global qui est mis à jour par `_onOrientation` — c'est la même var que celle utilisée par `getCurrentHeading()` pour la boussole
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

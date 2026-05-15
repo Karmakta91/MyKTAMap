@@ -441,6 +441,8 @@ Appuyez sur **▶️** pour démarrer.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
+> 🧭 **Icône directionnelle (depuis v158)** : pendant le tracking actif, l'icône (cône bleu + dot blanc, style GPS) **tourne en temps réel pour pointer dans la direction de marche** — calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracker arrêté ou recalage seul), l'icône pointe Nord (pose neutre). Smoothing intégré pour éviter le tremblement.
+
 Appuyez sur **⏹️** pour arrêter.
 
 > ⚠️ **Important** : la dérive cumulative est inévitable. Recalez votre position manuellement (📍 ci-dessous) tous les ~50m sur un point reconnu du plan. Les armatures métalliques des carrières et galeries faussent fortement le magnétomètre du téléphone — une vraie boussole physique reste indispensable.
@@ -448,6 +450,8 @@ Appuyez sur **⏹️** pour arrêter.
 ### 🧭 Boussole — vérifier la cohérence du heading
 
 Le bouton **🧭** dans le groupe **🧭 Tracker** affiche une **rose des vents flottante** en haut à gauche de la carte (sous les boutons de zoom). La rose contre-tourne en temps réel pour que le **N pointe toujours vers le vrai Nord**.
+
+> 🆕 **Depuis v157** : nouvelle rose dédiée à la boussole avec **N/S/E/W marqués clairement** + flèche rouge sur le Nord. Beaucoup plus lisible à l'usage que l'ancienne version qui utilisait le logo MyKTAMap (rose stylée charte). Le logo d'origine reste utilisé pour le splash/loader (identité visuelle).
 
 **Comment vérifier que tout est cohérent ?**
 
