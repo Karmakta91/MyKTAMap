@@ -17,7 +17,7 @@
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v162";
+const CACHE_NAME = "myktamap-cache-v163";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -59,6 +59,7 @@ const ASSETS_TO_CACHE = [
   "./js/pathfinder.js",
   "./js/updateChecker.js",
   "./js/alertChecker.js",
+  "./js/migrationNotice.js",
   "./js/lostMode.js",
   "./js/compass.js",
   "./js/interface.js",

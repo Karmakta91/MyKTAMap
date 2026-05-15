@@ -64,19 +64,54 @@ L'application supporte un système d'**alertes publiques** diffusées par l'aute
 - **Acquittement** : cliquer **"J'ai compris"** stocke la confirmation dans votre navigateur. La modale ne ré-apparaîtra plus tant que l'alerte reste la même.
 - **Si une nouvelle alerte est publiée** (ou la même est ré-éditée par l'auteur), elle ré-apparaîtra automatiquement au prochain reload.
 
-**Bouton 🚨 dans le loader** (à gauche du 📖 Documentation) :
+**Multi-alertes (depuis v163)** : plusieurs alertes peuvent coexister (ex: alerte migration domaine + alerte incendie ponctuelle). Elles s'affichent en cascade au lancement (priorité : emergency → warning → info, plus récente d'abord). Chacune s'acquitte individuellement avec son propre bouton "J'ai compris".
 
-Permet de re-consulter l'alerte à tout moment, OU de vérifier si elle est toujours active. Réponses possibles :
+**Bouton 🚨 dans le loader** (à gauche du 📖 Documentation) — **couleur dynamique selon le niveau max actif** :
+
+| État | Apparence du badge 🚨 |
+|---|---|
+| Au moins 1 alerte `emergency` non acquittée | 🚨 **rouge pulsant** |
+| Sinon, au moins 1 `warning` | 🚨 **orange** |
+| Sinon, seulement `info` | 🚨 **bleu discret** |
+| Aucune alerte active | 🚨 **gris neutre** |
+
+**Pastille compteur** : si plusieurs alertes non acquittées coexistent, un petit cercle rouge avec le chiffre apparaît en haut-droite du badge.
+
+Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en cascade (même celles déjà acquittées) :
 
 | État serveur | Modale affichée |
 |---|---|
-| Alerte active | Modale d'alerte rouge (force le ré-affichage, même si vous aviez acquitté) |
-| Alerte désactivée par l'auteur | **Modale verte sobre** "✅ Aucune alerte en cours" — confirmation visuelle que la situation est revenue à la normale |
+| Alertes actives | Cascade des alertes triées par priorité |
+| Aucune alerte active | **Modale verte sobre** "✅ Aucune alerte en cours" |
 | Hors ligne | Modale neutre "📡 Vérification impossible — réessayez avec du réseau" |
 
 > 💡 Si vous voyez encore l'alerte en mémoire après plusieurs jours mais voulez vérifier l'état officiel, cliquez 🚨 — vous saurez immédiatement si la situation est toujours d'actualité ou si elle est résolue.
 
 > ⚠️ Ce système est destiné à des alertes **importantes pour la sécurité de la communauté**. Il ne sert pas à des messages commerciaux ou promotionnels.
+
+---
+
+### 🌐 Migration vers `myktamap.fr` (depuis v163)
+
+L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.is-underground.fr`).
+
+**Que se passe-t-il sur l'ancien domaine ?**
+
+- Une **modal pédagogique** s'affiche au premier lancement post-mise-à-jour (clic "J'ai compris" = vu définitivement / "Plus tard" = rappel dans 7 jours)
+- Une **alerte info permanente** (badge 🚨 bleu) est diffusée en continu via le système d'alertes — consultable à tout moment
+
+**Que faire pour migrer mes données ?**
+
+Les sessions et préférences sont **liées au domaine** (règle de sécurité web — origins isolés). Elles ne suivront PAS automatiquement. Tu dois agir avant la coupure :
+
+1. **Exporte tes sessions** via **💾 Sauvegarde session** sur chaque plan (Full ou Avancé) → télécharge un fichier `.json` par session
+2. **Garde tes ZIPs de plans** que tu avais importés
+3. **Au 15 juillet 2026** : va sur `myktamap.fr` → ré-importe les `.json` de session + les ZIPs
+4. **Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine)
+
+**Pendant la transition (jusqu'au 15 juillet 2026)** : les 2 domaines fonctionneront en parallèle. Tu peux continuer à utiliser ce site comme avant, et migrer à ton rythme.
+
+**Après le 15 juillet 2026** : l'ancien domaine affichera une page de transition qui te redirigera automatiquement vers `myktamap.fr`. La PWA installée se désactivera automatiquement à son prochain check de mise à jour (≤24h après la coupure).
 
 ---
 

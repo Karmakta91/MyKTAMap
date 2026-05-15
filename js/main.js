@@ -732,6 +732,10 @@ async function _splashEnd() {
     if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
       window.AlertChecker.notifySplashEnded();
     }
+    // 🌐 v163 : annonce du changement de domaine (uniquement sur ancien hostname)
+    if (window.MigrationNotice && typeof window.MigrationNotice.notifySplashEnded === "function") {
+      window.MigrationNotice.notifySplashEnded();
+    }
   }, 500);
 }
 

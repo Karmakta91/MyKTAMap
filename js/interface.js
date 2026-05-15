@@ -5136,7 +5136,9 @@ window.afficherModaleAlerteAbsente = function(status) {
   document.addEventListener("keydown", _onKey);
 };
 
-window.afficherModaleAlerte = function(alert) {
+// v163 : 2e arg optionnel `onClose` — callback appelé à la fermeture de la
+// modale (utilisé par AlertChecker pour la cascade multi-alertes).
+window.afficherModaleAlerte = function(alert, onClose) {
   if (!alert) return;
   if (document.getElementById("kta-alert-modal")) return;
 
@@ -5145,6 +5147,7 @@ window.afficherModaleAlerte = function(alert) {
       .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
+  const id    = alert.id    || "";  // v163 : acquit individuel par id
   const level = alert.level === "warning" || alert.level === "info" ? alert.level : "emergency";
   const title = alert.title   || "🚨 Alerte";
   const msg   = alert.message || "";
@@ -5184,9 +5187,14 @@ window.afficherModaleAlerte = function(alert) {
 
   function _fermer() {
     if (window.AlertChecker && typeof window.AlertChecker.dismiss === "function") {
-      window.AlertChecker.dismiss(released);
+      // v163 : passe id + released pour acquit individuel (pas juste released)
+      window.AlertChecker.dismiss(id, released);
     }
     modal.remove();
+    // v163 : callback pour la cascade multi-alertes
+    if (typeof onClose === "function") {
+      try { onClose(); } catch(e) {}
+    }
   }
 
   document.getElementById("kta-alert-ok").addEventListener("click", _fermer);

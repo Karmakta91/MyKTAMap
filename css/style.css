@@ -2640,22 +2640,90 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-color: rgba(244, 197, 66, 0.40);
 }
 
-/* Bouton 🚨 alerte dans le header du loader — style sirène rouge prononcé
-   (fond rouge saturé, bordure rouge vive, glow). Pulsation douce pour
-   attirer l'attention. */
+/* Bouton 🚨 alerte dans le header du loader.
+   v163 : coloration dynamique selon le niveau max d'alerte active.
+   Classes appliquees par JS (cf. index.html _majBadgeAlert) :
+     .loader-btn-alert-emergency → rouge pulsant (priorite max)
+     .loader-btn-alert-warning   → orange statique
+     .loader-btn-alert-info      → bleu discret
+     .loader-btn-alert-none      → gris neutre (aucune alerte)
+   La classe de base .loader-btn-alert n'a plus de style propre — c'est
+   uniquement un selecteur pour le JS. */
 .loader-btn-help.loader-btn-alert {
+  position: relative;  /* pour la pastille compteur */
+}
+/* Niveau EMERGENCY : rouge pulsant (= comportement v162 et avant) */
+.loader-btn-help.loader-btn-alert-emergency {
   background: rgba(220, 53, 69, 0.22);
   border-color: rgba(255, 107, 107, 0.55);
   color: #ffe4d4;
   box-shadow: 0 0 8px rgba(255, 107, 107, 0.35);
   animation: loader-btn-alert-pulse 2.2s ease-in-out infinite;
 }
-.loader-btn-help.loader-btn-alert:hover {
+.loader-btn-help.loader-btn-alert-emergency:hover {
   background: rgba(255, 53, 69, 0.40);
   border-color: rgba(255, 107, 107, 0.85);
   color: #fff;
   box-shadow: 0 0 14px rgba(255, 107, 107, 0.65);
   animation: none;
+}
+/* Niveau WARNING : orange statique (pas de pulsation) */
+.loader-btn-help.loader-btn-alert-warning {
+  background: rgba(255, 153, 51, 0.18);
+  border-color: rgba(255, 178, 102, 0.55);
+  color: #ffe4c2;
+  box-shadow: 0 0 6px rgba(255, 178, 102, 0.30);
+}
+.loader-btn-help.loader-btn-alert-warning:hover {
+  background: rgba(255, 153, 51, 0.32);
+  border-color: rgba(255, 178, 102, 0.85);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(255, 178, 102, 0.50);
+}
+/* Niveau INFO : bleu discret */
+.loader-btn-help.loader-btn-alert-info {
+  background: rgba(140, 180, 255, 0.14);
+  border-color: rgba(140, 180, 255, 0.45);
+  color: #c8d8ff;
+  box-shadow: 0 0 5px rgba(140, 180, 255, 0.20);
+}
+.loader-btn-help.loader-btn-alert-info:hover {
+  background: rgba(140, 180, 255, 0.26);
+  border-color: rgba(140, 180, 255, 0.75);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(140, 180, 255, 0.40);
+}
+/* Niveau NONE : gris neutre — le bouton reste accessible pour vérifier l'état. */
+.loader-btn-help.loader-btn-alert-none {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: #8892a4;
+}
+.loader-btn-help.loader-btn-alert-none:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.20);
+  color: #e8eaf0;
+}
+
+/* Pastille compteur (visible si > 1 alerte non acquittée). Petit cercle rouge
+   en haut-droite du bouton avec le nombre d'alertes. */
+.loader-btn-alert-counter {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #dc3545;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+  border: 1.5px solid #1a1f2e;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  pointer-events: none;
 }
 @keyframes loader-btn-alert-pulse {
   0%, 100% {
@@ -5289,6 +5357,94 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* =========================
    🏗️ MULTI-NIVEAU — pastille "Niv X" dans sidebar + modales (depuis v148)
    ========================= */
+/* 🌐 v163 : Modal de migration (annonce changement de domaine).
+   Style accent jaune charte, pas alarmiste — c'est de l'info pédagogique, pas
+   une urgence. Liseré jaune doré + sections claires. */
+.kta-migration-overlay {
+  /* hérite de .kta-readme-modal-overlay */
+}
+.kta-migration-boite {
+  max-width: 540px;
+  border: 1px solid rgba(244, 197, 66, 0.45);
+  box-shadow: 0 8px 32px rgba(244, 197, 66, 0.18), 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+.kta-migration-header {
+  border-bottom: 1px solid rgba(244, 197, 66, 0.25);
+}
+.kta-migration-corps {
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+.kta-migration-lead {
+  font-size: 15px;
+  color: #e8eaf0;
+  margin: 0 0 14px 0;
+  padding: 10px 14px;
+  background: rgba(244, 197, 66, 0.08);
+  border-left: 3px solid #f4c542;
+  border-radius: 4px;
+}
+.kta-migration-section {
+  margin: 14px 0;
+}
+.kta-migration-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 4px;
+  letter-spacing: 0.3px;
+}
+.kta-migration-section p {
+  margin: 4px 0;
+  font-size: 13.5px;
+  color: #c8d0e0;
+}
+.kta-migration-section ul {
+  font-size: 13px;
+  color: #c8d0e0;
+}
+.kta-migration-section-soft {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+}
+.kta-migration-section-soft .kta-migration-section-titre {
+  color: #8cb4ff;
+  font-style: normal;
+}
+.kta-migration-link {
+  display: inline-block;
+  padding: 8px 18px;
+  background: rgba(244, 197, 66, 0.15);
+  border: 1.5px solid rgba(244, 197, 66, 0.55);
+  border-radius: 8px;
+  color: #f4c542;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.15s;
+}
+.kta-migration-link:not(.kta-migration-link-disabled):hover {
+  background: rgba(244, 197, 66, 0.28);
+  border-color: #f4c542;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(244, 197, 66, 0.35);
+}
+.kta-migration-link-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #8892a4;
+}
+.kta-migration-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid rgba(244, 197, 66, 0.18);
+}
+
 /* 🧭 v159 : Tracker icon en divIcon (wrapper div + img enfant) pour permettre
    la rotation independante du positionnement geo. Le div recoit le translate
    Leaflet, l'img recoit notre rotate(heading deg). Le default Leaflet

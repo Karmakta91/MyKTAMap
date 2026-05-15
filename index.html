@@ -378,6 +378,7 @@
   <script src="js/pathfinder.js"></script>
   <script src="js/updateChecker.js"></script>
   <script src="js/alertChecker.js"></script>
+  <script src="js/migrationNotice.js"></script>
   <script src="js/lostMode.js"></script>
   <script src="js/compass.js"></script>
   <script src="js/interface.js"></script>
@@ -1160,6 +1161,54 @@
             setStatus("Module Alerte indisponible", true);
           }
         });
+
+        // v163 : badge 🚨 dynamique selon niveau max + pastille compteur si >1.
+        // Le AlertChecker notifie via onChange après chaque check/dismiss.
+        function _majBadgeAlert() {
+          if (!window.AlertChecker || typeof window.AlertChecker.getActiveAlerts !== "function") return;
+          const actives = window.AlertChecker.getActiveAlerts() || [];
+          // Filtre les non-acquittées pour le badge actif visuel
+          const nonAcq = actives.filter(function(a) {
+            if (!a.id || !a.released) return true;
+            try {
+              const seen = localStorage.getItem("myktamap_alert_seen_" + a.id);
+              return !(seen && seen === a.released);
+            } catch(e) { return true; }
+          });
+          // Reset classes de niveau
+          alertBtn.classList.remove(
+            "loader-btn-alert-emergency",
+            "loader-btn-alert-warning",
+            "loader-btn-alert-info",
+            "loader-btn-alert-none"
+          );
+          // Détecte niveau max (parmi les non acquittées)
+          let maxLevel = "none";
+          for (var i = 0; i < nonAcq.length; i++) {
+            const lvl = nonAcq[i].level;
+            if (lvl === "emergency") { maxLevel = "emergency"; break; }
+            if (lvl === "warning"  && maxLevel !== "emergency") maxLevel = "warning";
+            else if (lvl === "info" && maxLevel === "none")     maxLevel = "info";
+          }
+          alertBtn.classList.add("loader-btn-alert-" + maxLevel);
+          // Pastille compteur si > 1 alerte non acquittée
+          let counter = alertBtn.querySelector(".loader-btn-alert-counter");
+          if (nonAcq.length > 1) {
+            if (!counter) {
+              counter = document.createElement("span");
+              counter.className = "loader-btn-alert-counter";
+              alertBtn.appendChild(counter);
+            }
+            counter.textContent = String(nonAcq.length);
+          } else if (counter) {
+            counter.remove();
+          }
+        }
+        if (window.AlertChecker && typeof window.AlertChecker.onChange === "function") {
+          window.AlertChecker.onChange(_majBadgeAlert);
+        }
+        // Premier rendu (en cas où le check a déjà eu lieu)
+        _majBadgeAlert();
       }
 
       // === SYNC TOGGLES PERF ULTRA dans le loader (drawer perf) ===
