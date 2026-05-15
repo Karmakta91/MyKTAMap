@@ -1,0 +1,39 @@
+{
+  "_comment": "Exemple de alert.json multi-alertes (v163+). Combine annonce migration (info) + emplacement pour alertes ponctuelles emergency/warning. Voir CLAUDE.md §20 et js/alertChecker.js pour le détail du format.",
+
+  "active": true,
+
+  "alerts": [
+    {
+      "_comment_alert_1": "Annonce migration domaine — niveau INFO (bleu). Acquittable individuellement. Pour escalader plus tard, changer le `level` à 'warning' puis 'emergency', et bump le `released` pour forcer le re-popup chez ceux qui ont acquitté.",
+      "id":       "migration-myktamap-fr-2026",
+      "level":    "info",
+      "title":    "🌐 Nouveau domaine — myktamap.fr",
+      "message":  "L'application change de domaine officiel. La nouvelle adresse est myktamap.fr et la migration est prévue pour le 15 juillet 2026.",
+      "details": [
+        "📅 Coupure de l'ancien domaine prévue le 15 juillet 2026",
+        "💾 Exporte tes sessions via 💾 Sauvegarde session sur chaque plan avant la coupure",
+        "📦 Conserve tes ZIPs de plans pour les ré-importer sur le nouveau domaine",
+        "📱 Si l'app est installée sur ton écran d'accueil (PWA), tu devras la supprimer manuellement et la réinstaller depuis myktamap.fr"
+      ],
+      "released": "2026-05-15T12:00:00Z"
+    },
+
+    {
+      "_comment_alert_2": "EMPLACEMENT pour alerte ponctuelle (incendie, fermeture, gaz, etc.). Décommenter et adapter quand besoin. Pour le moment commenté donc inactif. Plusieurs alertes peuvent coexister, elles s'affichent en cascade triées par priorité (emergency > warning > info).",
+      "_DESACTIVE_EXEMPLE": {
+        "id":       "incendie-glaciere-juin-2026",
+        "level":    "emergency",
+        "title":    "🚨 INCENDIE — Carrière Glacière",
+        "message":  "Incendie déclaré dans la zone Glacière. Évacuation immédiate par la sortie Ouest.",
+        "details": [
+          "🔥 Zone affectée : galerie principale Glacière, secteur Est",
+          "🚪 Sortie sécurisée : puits PA-12 (Ouest)",
+          "⚠️ Ne PAS utiliser le puits d'accès Sud-Est (fumées)",
+          "📞 Préviens un cataphile sortant en surface dès que possible"
+        ],
+        "released": "2026-06-10T08:00:00Z"
+      }
+    }
+  ]
+}

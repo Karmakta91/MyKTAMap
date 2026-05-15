@@ -554,29 +554,47 @@ Pattern de **fichiers JSON à la racine non cachés par le SW**, fetched live à
 
 **Pourquoi pas cacher** : on veut TOUJOURS la valeur serveur, sans bypass via le SW cache-first. Le fetch utilise `?_=${Date.now()}` + `cache: "no-store"` pour contourner aussi les caches HTTP intermédiaires. Si offline → fetch échoue silencieusement, pas de popup (comportement normal).
 
-**Format `alert.json`** :
+**Format `alert.json` (v163+, multi-alertes)** :
 ```json
 {
-  "active":   true | false,
-  "level":    "emergency" | "warning" | "info",
-  "title":    "🚨 ALERTE — ...",
-  "message":  "Texte principal",
-  "details":  ["consigne 1", "consigne 2", ...],
-  "released": "ISO timestamp"   // clé d'acquittement
+  "active": true | false,
+  "alerts": [
+    {
+      "id":       "migration-myktamap-fr-2026",
+      "level":    "info" | "warning" | "emergency",
+      "title":    "...",
+      "message":  "...",
+      "details":  ["..."],
+      "released": "ISO timestamp"
+    },
+    ...
+  ]
 }
 ```
 
+**Rétro-compat** : l'ancien format mono-alerte (sans `alerts[]`, avec `level`/`title`/`message` au top-level) est toujours accepté. `alertChecker.js > _normaliserPayload()` le wrap automatiquement en `alerts: [{id: "legacy-<released>", ...}]`.
+
 L'auteur active/désactive **en éditant uniquement ce fichier** :
-- `"active": false` OU renommer `alert.json` → `alert.lock` (404 traité comme `no-alert`)
-- Pour rediffuser après désactivation : remettre `"active": true` avec un **nouveau `released` timestamp** → force re-popup pour tous, y compris ceux qui avaient acquitté l'ancienne
+- `"active": false` OU renommer `alert.json` → `alert.lock` (404 traité comme `no-alert`) → toutes les alertes deviennent inactives
+- Pour rediffuser après désactivation : remettre `"active": true` avec un **nouveau `released` timestamp sur chaque alerte qu'on veut re-pousser** → force re-popup chez ceux qui avaient acquitté
+- Pour escalader le niveau d'une alerte existante (ex: `info → warning → emergency`) : modifier `level` ET `released` → force re-popup avec nouvelle couleur
 
-**Persistance d'acquittement** : `localStorage["myktamap_alert_seen"]` stocke le dernier `released` acquitté. Comparaison stricte d'égalité au check suivant. Survit aux mises à jour douces (qui ne touchent QUE `caches`), wipée par reset complet.
+**Persistance d'acquittement (v163+)** : `localStorage["myktamap_alert_seen_<id>"]` stocke le `released` acquitté pour CHAQUE alerte individuellement. Permet d'acquitter migration sans toucher à incendie. Fallback rétro-compat sur `localStorage["myktamap_alert_seen"]` (mono) pour les id `legacy-*`.
 
-**Bouton 🚨 du loader** (header, à gauche du 📖) : appelle `AlertChecker.showCurrent()` qui force le re-fetch + bypass le `seen` → affiche soit l'alerte rouge si active, soit "✅ Aucune alerte en cours" si désactivée. Pratique pour l'utilisateur qui veut vérifier l'état officiel sans devoir reset son navigateur.
+**Bouton 🚨 du loader — coloration dynamique (v163+)** :
+- `🚨 rouge pulsant` si au moins 1 alerte `emergency` non acquittée
+- `🚨 orange` si au moins 1 `warning`
+- `🚨 bleu discret` si seulement `info`
+- `🚨 gris neutre` si aucune alerte active
+- **Pastille compteur** (cercle rouge en haut-droite) si N > 1 alertes non acquittées
+- Click → `AlertChecker.showCurrent()` qui re-fetch + bypass acquittement + affiche TOUTES les alertes actives en cascade
+- L'update du badge est notifié via `AlertChecker.onChange(callback)` après chaque `check()` ou `dismiss()`
+
+**Affichage en cascade** : `_afficherCascade(alerts)` dans `alertChecker.js` itère sur les alertes triées par priorité (`emergency > warning > info`) puis `released` desc. Chaque modale appelle le callback `onClose` qui déclenche la suivante après 250ms de fade-out.
 
 **Modales** (dans `interface.js`) :
-- `window.afficherModaleAlerte(alert)` — modale rouge/orange/bleu selon `level`. 3 variantes CSS `.kta-alert-level-{emergency|warning|info}`. Backdrop opaque 94%, **pas de fermeture au clic backdrop** sur emergency (force le clic "J'ai compris"). Helper `_esc()` pour échappement HTML anti-XSS sur contenu remote.
-- `window.afficherModaleAlerteAbsente(status)` — modale verte sobre "Aucune alerte en cours" ou "Vérification impossible" (offline).
+- `window.afficherModaleAlerte(alert, onClose)` — `onClose` (v163+, optionnel) callback à la fermeture, utilisé par la cascade
+- `window.afficherModaleAlerteAbsente(status)` — modale verte sobre "Aucune alerte en cours" / "Vérification impossible" (offline)
 
 **Hook splash** : pattern identique à `OOMGuard.flushPendingToasts()` et `UpdateChecker.notifySplashEnded()`. Les modales en attente sont flushed par `main.js > _splashEnd()` après le fade-out, jamais par-dessus le gradient sombre du splash.
 
@@ -1143,6 +1161,41 @@ L'icône du marker tracker tourne en temps réel pour pointer dans la direction 
 - Le sentinel `null` (pas `-999`) pour `_trackerRotationLast`
 - La transition CSS de 0.3s — testée optimale pour la perception humaine du smooth
 - Le tag `direction` global qui est mis à jour par `_onOrientation` — c'est la même var que celle utilisée par `getCurrentHeading()` pour la boussole
+
+### 29. Migration domaine `is-underground.fr` → `myktamap.fr` (depuis v163)
+
+Stratégie de transition douce du domaine historique vers le nouveau domaine officiel, prévue pour le **15 juillet 2026**.
+
+**Approche cohabitation 60 jours** (au lieu d'un kill switch immédiat) :
+- Les 2 domaines servent la même app v163+ en parallèle pendant ~2 mois
+- Sur l'ancien domaine, l'utilisateur est informé via :
+  1. **Modal one-shot pédagogique** (`js/migrationNotice.js`) au premier lancement post-update — persistée localStorage
+  2. **Entrée `info` dans `alert.json`** — rappel récurrent visible via le badge 🚨 dynamique (cf. §20)
+- Aucune perte de données : l'utilisateur a le temps d'exporter ses sessions via 💾 et de migrer à son rythme
+- À J+60, déploiement de la conf Nginx `docs/nginx-redirect-old-domain.conf` (kill switch SW + page de transition)
+
+**Module `js/migrationNotice.js`** :
+- Hostname gate : affiche UNIQUEMENT si `location.hostname === "myktamap.is-underground.fr"`. Sur localhost / dev / nouveau domaine → silencieux.
+- Persistance `localStorage["myktamap_migration_seen"]` :
+  - `"permanent"` → vue définitivement (clic "J'ai compris")
+  - ISO timestamp → vue mais pas définitif (clic "Plus tard") → re-affiche dans 7 jours
+- Modal style charte jaune charte (pas alarmiste — info pédagogique, pas urgence). Sections : Quand, Nouveau domaine (lien), Que faire avant la coupure, Pendant la transition.
+- Lien `myktamap.fr` désactivé tant que `NEW_DOMAIN_LIVE = false` (= constante en haut du fichier). Affiche "🚧 Arrive bientôt (15 juillet 2026)". Quand le DNS est pointé, passer `NEW_DOMAIN_LIVE = true` et bump version.
+- Hook splash identique à `AlertChecker`/`OOMGuard`/`UpdateChecker` : `notifySplashEnded()` appelé depuis `main.js > _splashEnd`.
+
+**Fichier `docs/nginx-redirect-old-domain.conf`** : conf Nginx prête à déployer à J+60. Contient :
+1. `/sw.js` → kill switch SW inline (purge caches + unregister + force reload des clients)
+2. `/manifest.json` → manifest "vide" pointant `myktamap.fr` pour éviter ré-install ancien domaine
+3. Tous les autres paths → page HTML de transition (cleanup JS + redirect avec triple filet meta/JS/countdown)
+4. Headers `no-cache, no-store` strict partout
+
+**Fichier `docs/alert-example-migration.json`** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle (incendie, etc.). À déployer côté serveur ancien domaine.
+
+**Constantes à mettre à jour quand `myktamap.fr` sera DNS-pointé** :
+- `js/migrationNotice.js > NEW_DOMAIN_LIVE = true`
+- `js/copyright.js > __MKM__.site` (sur le nouveau domaine, garder l'ancien sur l'ancien domaine pour cohérence pendant la transition)
+- Meta tags `<head>` dans `index.html`
+- Mentions dans `README.md` / `README_USER.md` / `AI_CONTEXT.md`
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

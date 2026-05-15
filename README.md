@@ -9,6 +9,100 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`
+
+Préparation de la migration de domaine du site historique `myktamap.is-underground.fr` vers le nouveau `myktamap.fr` (prévue **15 juillet 2026**). Approche cohabitation 60j (pas de kill switch immédiat) pour éviter toute perte de données utilisateur.
+
+#### 1. Refactor `alertChecker.js` — support multi-alertes
+
+L'ancien format mono-alerte (`{ active, level, title, ... }`) ne pouvait afficher qu'une seule alerte à la fois. Pour cohabiter annonce migration (info, permanente) ET alertes ponctuelles (incendie emergency, etc.), passage à un format `alerts[]`.
+
+**Nouveau format `alert.json`** (rétro-compat assurée sur l'ancien) :
+```json
+{
+  "active": true,
+  "alerts": [
+    { "id": "migration-myktamap-fr-2026", "level": "info", ... },
+    { "id": "incendie-glaciere-juin-2026", "level": "emergency", ... }
+  ]
+}
+```
+
+**Acquittement individuel par `id`** : `localStorage["myktamap_alert_seen_<id>"]` au lieu d'une seule clé globale. L'user peut acquitter migration et garder incendie visible, et vice-versa. Fallback rétro-compat sur l'ancienne clé `myktamap_alert_seen` pour les id `legacy-*` (= alertes du format mono).
+
+**Affichage en cascade** : `_afficherCascade(alerts)` itère sur les alertes triées par priorité (`emergency > warning > info`) puis `released` desc. Chaque modale appelle un callback `onClose` (nouveau 2e arg de `afficherModaleAlerte`) qui déclenche la suivante après 250ms.
+
+**Nouvelle API exposée** :
+- `AlertChecker.getActiveAlerts()` — pour le badge dynamique
+- `AlertChecker.onChange(callback)` — listeners pour MAJ badge
+
+#### 2. Badge 🚨 dynamique selon niveau max
+
+Avant v163 : le badge 🚨 du loader était **toujours rouge pulsant** (peu importe le niveau d'alerte). Pour cohabiter info/warning/emergency, il devient **dynamique** :
+
+| Situation | Apparence du badge |
+|---|---|
+| Au moins 1 `emergency` non acquittée | 🚨 rouge pulsant |
+| Sinon, au moins 1 `warning` | 🚨 orange statique |
+| Sinon, seulement `info` | 🚨 bleu discret |
+| Aucune alerte active | 🚨 gris neutre |
+
+**Pastille compteur** (cercle rouge en haut-droite) affichée si N > 1 alertes non acquittées. MAJ dynamique via le listener `AlertChecker.onChange`.
+
+CSS : 4 nouvelles classes `.loader-btn-alert-{emergency|warning|info|none}` (l'ancienne `.loader-btn-alert` perd son style propre, c'est juste un sélecteur pour le JS).
+
+#### 3. Nouveau module `js/migrationNotice.js` — modal pédagogique one-shot
+
+Affichée **uniquement** sur `myktamap.is-underground.fr` (hostname gate strict), au premier lancement post-update.
+
+**Persistance** :
+- `"permanent"` → vue définitivement (clic "J'ai compris")
+- ISO timestamp → vue mais pas définitif (clic "Plus tard") → re-affiche dans 7 jours
+
+**Contenu** : sections "Quand ?" (15 juillet 2026), "Nouveau domaine" (lien `myktamap.fr` désactivé tant que `NEW_DOMAIN_LIVE = false`), "Que faire avant la coupure" (exporter sessions, garder ZIPs, supprimer PWA installée), "Pendant la transition" (cohabitation).
+
+Hook splash identique aux autres modules (`notifySplashEnded`).
+
+#### 4. Fichiers utilitaires (`docs/`)
+
+- **`docs/nginx-redirect-old-domain.conf`** : conf Nginx à déployer **à J+60** (15 juillet 2026). Kill switch SW + page HTML de transition. Conservée en réserve, pas déployée maintenant.
+- **`docs/alert-example-migration.json`** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle. À déployer **maintenant** côté serveur ancien domaine pour le rappel récurrent via badge 🚨.
+
+#### Stratégie complète de migration
+
+| Phase | Période | Actions |
+|---|---|---|
+| **Phase 1 — Cohabitation** | J0 → J+60 | Les 2 domaines servent l'app. Modal one-shot + alerte `info` permanente. Aucune friction utilisateur. |
+| **Phase 2 — Escalade** | J+30 → J+60 | Modifier `alert.json` : `level: info → warning` + bump `released` → force re-popup |
+| **Phase 3 — Cut-off** | J+60 (15/07/2026) | Déployer `docs/nginx-redirect-old-domain.conf` sur ancien domaine. Kill switch SW auto + page transition. |
+
+#### Fichiers modifiés (+~450 lignes)
+
+| Fichier | Changement |
+|---|---|
+| `js/alertChecker.js` | Refactor complet : support `alerts[]` + acquittement par `id` + cascade + listeners onChange |
+| `js/migrationNotice.js` | **NEW** module, modal one-shot persistée + hostname gate |
+| `js/interface.js` | `afficherModaleAlerte(alert, onClose)` accepte callback de fermeture |
+| `js/main.js` | Hook splash pour MigrationNotice |
+| `index.html` | `<script src>` migrationNotice.js + badge 🚨 dynamique (50 lignes JS) |
+| `css/style.css` | Classes badge dynamique + modal migration (charte jaune) |
+| `sw.js` | Ajout migrationNotice.js dans ASSETS_TO_CACHE |
+| `docs/nginx-redirect-old-domain.conf` | (de v162, conservé) |
+| `docs/alert-example-migration.json` | **NEW** exemple format multi-alertes |
+| `CLAUDE.md` §20 + §29 | Format alert.json v163 + section dédiée migration |
+| `README.md` | Cette entrée |
+
+**Bump v162 → v163** (notes user-facing inchangées).
+
+#### Rétro-compat absolue
+
+- Anciens déploiements `alert.json` mono-alerte → fonctionnent identiquement (auto-wrap dans `alerts:[{...}]` avec id `legacy-<released>`)
+- Anciennes clés localStorage `myktamap_alert_seen` → fallback pour acquit des legacy-mono
+- Badge 🚨 sur déploiements sans alert.json → classe `loader-btn-alert-none` (gris discret)
+- Hostname autre que `myktamap.is-underground.fr` → `migrationNotice.js` totalement silencieux
+
+---
+
 ### 🗓️ 15/05/2026 (suite 10) — 🏗️ v162 : Champ "Niveau" sur les image layers
 
 Le mode multi-niveau supportait déjà le tagging par niveau des roads, zones, points (session + data layers). Manquait : les **image layers** (calques image du plan : légende, hachures, surcouches statiques). Quand le plan contient une légende dessinée pour le niveau 0 ET une légende différente pour le niveau -1, on veut que seule la bonne s'affiche selon le filtre Niveaux courant.

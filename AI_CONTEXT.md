@@ -75,7 +75,8 @@ Pour **chaque** question :
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
 - 🔔 **Détection de mise à jour** : version.json + popup avec choix mise à jour douce / reset complet
 - 🏷️ **Badge version cliquable** dans le footer du loader : affiche la version installée. Clignote en bleu si une nouvelle version est dispo (passage à la version cible visible : `v150 → v151`). Au clic, force la modale d'update (bypass snooze 24h). Si déjà à jour, affiche les notes de la version installée.
-- 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques...) via fichier `alert.json` côté serveur. Modale rouge pulsante après le splash. Bouton 🚨 dans le header du loader pour re-consulter à tout moment.
+- 🚨 **Alertes publiques** : système de diffusion d'alertes (incendie, fermeture, gaz toxiques, migration domaine...) via fichier `alert.json` côté serveur. Modales colorées selon niveau (`emergency` rouge / `warning` orange / `info` bleu) affichées en cascade après le splash. **Multi-alertes supporté depuis v163** : plusieurs alertes peuvent être actives simultanément (chacune acquittable individuellement). Bouton 🚨 dans le header du loader pour re-consulter à tout moment, avec **coloration dynamique** selon le niveau max actif + pastille compteur si N > 1 alertes.
+- 🌐 **Migration domaine vers myktamap.fr** (depuis v163) : annoncée pour le **15 juillet 2026**. Sur l'ancien domaine `myktamap.is-underground.fr`, une modal pédagogique one-shot apparaît au premier lancement post-update + une alerte info permanente via `alert.json` rappelle l'échéance. Les 2 domaines cohabitent pendant ~2 mois pour laisser le temps d'exporter sessions et plans manuellement. Cf recette M.
 - 🏗️ **Générateur de plan** : auto-détection des dimensions de l'image principale + warnings si > 10000 px / > 30 Mo. Position initiale tracker auto-centrée (W/2 × H/2) au choix de l'image, avec bouton 🎯 Recentrer.
 - 🧭 **Boussole / widget Nord** (depuis v147) : sous-action 🧭 dans le groupe Tracker → affiche une rose des vents flottante en haut-gauche sous le zoom. La rose tourne en temps réel pour pointer vers le vrai Nord. Clic dessus → modal plein écran avec la rose en grand + angle cardinal exact. Outil de debug pour valider que le heading du téléphone est cohérent.
 - ⚠️ **Popup avertissement au démarrage du tracker** (depuis v147) : au premier ▶️ Play de chaque session, modal qui rappelle que le module est expérimental et ne doit pas servir à se localiser en situation réelle. iOS-safe (requestPermission appelé synchronement dans le click handler).
@@ -301,6 +302,27 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 9. **Si la génération échoue** (depuis v152) :
    - **Erreur attrapée** → modale rouge "❌ Échec de génération" qui détaille la cause (drawImage, toBlob, saturation mémoire) + conseils. Lis le message et applique le conseil correspondant (PC, image plus petite, JPEG q85).
    - **Crash silencieux** (navigateur kill la page sans erreur) → au prochain reload de l'app, modale rouge "🧱❌ Génération V2 interrompue" t'avertit. Cause typique : OOM sur mobile (plafond ~500 Mo iOS).
+
+### M. 🌐 Migration vers `myktamap.fr` (depuis v163)
+
+> Mots-clés : "changement de domaine", "nouvelle adresse", "myktamap.fr", "is-underground.fr", "déménagement", "ancienne adresse".
+
+**Contexte** : MyKTAMap change de domaine officiel. La nouvelle adresse `myktamap.fr` remplacera `myktamap.is-underground.fr` à partir du **15 juillet 2026**.
+
+**Sur l'ancien domaine** (jusqu'au 15 juillet 2026) :
+- Modal pédagogique au premier lancement (rappel) + alerte info permanente via le badge 🚨
+- L'utilisateur peut continuer à utiliser le site normalement
+- Aucune perte de données si l'utilisateur agit avant la coupure
+
+**Que faire pour migrer ses données** (les sessions et préférences sont liées au domaine — elles ne suivront PAS automatiquement) :
+1. **Exporter ses sessions** via 💾 Sauvegarde session sur chaque plan (Full ou Avancé) → télécharge un `.json` par session
+2. **Garder les ZIPs** des plans importés pour les ré-importer sur `myktamap.fr`
+3. **Au 15 juillet 2026** : aller sur `myktamap.fr` → importer les `.json` de session + les ZIPs
+4. **Si l'app était installée** (PWA sur écran d'accueil) : supprimer l'ancienne icône manuellement + réinstaller depuis `myktamap.fr`
+
+**Important** : la migration des sessions/plans est **manuelle**. Le système ne transfère pas automatiquement les données entre les 2 domaines pour des raisons de sécurité (isolation des origins par les navigateurs — règle web non-contournable).
+
+---
 
 ### J. ⛑️ Mode urgence — Je suis perdu (estimer une position en cataphilie)
 
