@@ -5343,9 +5343,30 @@ a.kta-level-btn {
 }
 .kta-niv-segmented {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;        /* v155 : pas de retour à la ligne — scroll horizontal si trop de niveaux */
   gap: 8px;
   margin: 8px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;    /* Firefox : scrollbar discrète */
+  scrollbar-color: rgba(244,197,66,0.3) transparent;
+  padding-bottom: 4px;      /* respiration pour la scrollbar */
+  /* iOS smooth scroll */
+  -webkit-overflow-scrolling: touch;
+}
+/* WebKit scrollbar styling (Chrome, Safari, Edge) */
+.kta-niv-segmented::-webkit-scrollbar {
+  height: 6px;
+}
+.kta-niv-segmented::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kta-niv-segmented::-webkit-scrollbar-thumb {
+  background: rgba(244,197,66,0.3);
+  border-radius: 3px;
+}
+.kta-niv-segmented::-webkit-scrollbar-thumb:hover {
+  background: rgba(244,197,66,0.5);
 }
 .kta-niv-seg-btn {
   flex: 0 0 auto;

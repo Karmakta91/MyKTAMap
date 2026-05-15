@@ -2323,6 +2323,20 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   document.addEventListener("keydown", _onKey);
   document.getElementById("kta-niv-close").addEventListener("click", _cleanup);
 
+  // v155 : segmented en mode nowrap (scroll horizontal si trop de niveaux).
+  // Scroll vers le bouton actif pour qu'il soit visible a l'ouverture.
+  setTimeout(function() {
+    const activeBtn = overlay.querySelector(".kta-niv-seg-btn.kta-actif");
+    if (activeBtn && typeof activeBtn.scrollIntoView === "function") {
+      try {
+        activeBtn.scrollIntoView({ behavior: "instant", block: "nearest", inline: "center" });
+      } catch(e) {
+        // Fallback Safari (pas de "instant" sur vieille version)
+        try { activeBtn.scrollIntoView({ block: "nearest", inline: "center" }); } catch(e2) {}
+      }
+    }
+  }, 0);
+
   // Clic sur un niveau actif : applique + ferme
   overlay.querySelectorAll(".kta-niv-seg-btn[data-level]").forEach(function(b) {
     b.addEventListener("click", function() {
