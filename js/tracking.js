@@ -107,7 +107,9 @@ function initTracking() {
 //
 // Reset complet (smoothed + last) au stopTracking pour repartir propre.
 
-let _trackerRotationLast    = -999;  // derniere valeur appliquee au DOM
+// 🐛 v161 fix : sentinel null au lieu de -999 (mon wrap-fix circulaire sur
+// delta > 180 retournait 360-999 = -639 < 2 → return immediat → icone bloquee).
+let _trackerRotationLast    = null;  // derniere valeur appliquee au DOM (null = jamais)
 let _trackerHeadingSmoothed = null;  // valeur lissee (exponential smoothing)
 
 function _applyRotationToTrackerMarker() {
@@ -136,10 +138,12 @@ function _applyRotationToTrackerMarker() {
   // ===== 2. THROTTLE 2° APRES SMOOTHING =====
   // Skip DOM update si delta < 2°. La transition CSS 0.3s + le smoothing
   // suffisent pour absorber les petites variations sans qu'on bouge le DOM
-  // a chaque tick.
-  let deltaAffich = Math.abs(_trackerHeadingSmoothed - _trackerRotationLast);
-  if (deltaAffich > 180) deltaAffich = 360 - deltaAffich;  // wrap pour distance min
-  if (deltaAffich < 2) return;
+  // a chaque tick. SKIP le throttle au tout premier appel (null sentinel).
+  if (_trackerRotationLast !== null) {
+    let deltaAffich = Math.abs(_trackerHeadingSmoothed - _trackerRotationLast);
+    if (deltaAffich > 180) deltaAffich = 360 - deltaAffich;  // wrap pour distance min
+    if (deltaAffich < 2) return;
+  }
   _trackerRotationLast = _trackerHeadingSmoothed;
 
   // ===== 3. APPLY =====
@@ -156,7 +160,7 @@ function _applyRotationToTrackerMarker() {
 // stopTracking(). Vide aussi le smoothing buffer pour repartir propre au
 // prochain Play.
 function _resetRotationTrackerMarker() {
-  _trackerRotationLast    = -999;
+  _trackerRotationLast    = null;
   _trackerHeadingSmoothed = null;
   if (!markerPosition) return;
   const el = markerPosition.getElement && markerPosition.getElement();
