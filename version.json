@@ -1,5 +1,5 @@
 {
-  "version": "v166",
+  "version": "v167",
   "released": "2026-05-15",
   "notes": [
     "🏗️ Mode multi-niveau (carrières multi-étages) : opt-in par plan via ⚙️ Réglages ou via le générateur. Pastille jaune `[N]` sous le zoom affiche le niveau actif. Modale dédiée pour switcher de niveau ET filtrer ce qu'on voit. Sous-action 🪜 Jonction interniveau (magenta pointillé) pour relier 2 niveaux (escaliers, puits internes). Le pathfinder est niveau-aware et ne traverse pas les croisements visuels entre niveaux différents. NOUVEAUTÉ v154 : niveaux négatifs supportés (-1, -2, …) pour distinguer les sous-sols. Boutons +/- pour étendre le range dans les 2 sens. Auto-extension si tes data layers contiennent des niveaux hors range.",
