@@ -59,7 +59,7 @@ Pour **chaque** question :
 **Fonctionnalités principales** (survol — détails dans la doc + recettes) :
 - 🗂️ **Multi-plans** : registre de plans, import ZIP, auto-discovery serveur, modale "Plan introuvable", titre cliquable plan switcher
 - 🔍 **Recherche de points** par nom / id / tag, avec filtres calques et tags, insensible aux accents
-- 🧭 **Tracker PDR** (expérimental) : tracking inertiel mobile, mode 📍 Recalage
+- 🧭 **Tracker PDR** (expérimental) : tracking inertiel mobile, mode 📍 Recalage. **Icône directionnelle (depuis v158-v161)** : pendant le tracking actif, l'icône (cône GPS bleu) tourne en temps réel pour pointer dans la direction de marche, calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracking off) ou après recalage sans démarrer le tracking, l'icône pointe Nord (pose neutre). Smoothing exponentiel + throttle 2° + transition CSS 0.3s pour absorber le jitter du magnétomètre.
 - 🗺️ **Itinéraire** : pathfinder Dijkstra entre 2+ waypoints, label distance + temps estimé en bas-gauche
 - ⛑️ **Mode urgence "Je suis perdu"** (sous-action du groupe 🧭 Tracker) : estime une zone de recherche à partir de dernière position + temps écoulé + indices visuels texte ; affiche cercle orange, markers violets pour les indices in-zone ; bloc dépliable "📚 Bonnes pratiques" ; rapport copiable
 - 📐 **Mesure de distance simple** (clic-clic, label bas-gauche)

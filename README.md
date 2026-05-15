@@ -9,6 +9,105 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 9) — 🧭 v158-v161 : Tracker directionnel (4 itérations)
+
+L'icône du tracker pointe maintenant dans la direction de marche pendant le tracking actif, à la place d'être statique. Source du heading = `getCurrentHeading()` (même que la boussole 🧭, cohérence du système). 4 versions car le path n'était pas trivial.
+
+#### v158 — Première implémentation (BUGGÉE)
+
+Tentative initiale avec `L.icon` (un simple `<img>` top-level). `_applyRotationToTrackerMarker()` appliquait `transform: rotate(N deg)` sur l'`<img>`. Nouvelle icône "spéléo casque sombre + lampe frontale" (variant E2 généré via PowerShell System.Drawing).
+
+**Bug critique** : Leaflet applique `transform: translate3d(X,Y,0)` sur le **même** `<img>`. CSS `transform` n'est pas additive — le rotate écrasait le translate → l'icône collait au coin `(0,0)` au lieu de rester positionnée géographiquement.
+
+#### v159 — Fix décalage (divIcon wrapper) + retour à l'icône A
+
+- `iconeTrack` migré de `L.icon` → `L.divIcon` produisant `<div class="kta-tracker-divicon"><img class="kta-tracker-img"></div>`
+- Le DIV reçoit le translate Leaflet, l'`<img>` reçoit notre rotate → 2 éléments distincts, 2 transforms indépendants
+- CSS `.kta-tracker-divicon` : reset `background/border` (sinon `.leaflet-div-icon` default = fond blanc + bordure noire qui masque le PNG)
+- Retour à l'icône **A** (cône GPS bleu + dot blanc, style Google Maps classique) — l'icône E2 spéléo était trop sombre/peu visible sur les plans clairs
+
+#### v160 — Anti-jitter (smoothing + throttle + transition)
+
+Le magnétomètre génère du bruit ±2-5° en continu même phone immobile → l'icône tremblait. Fix avec 3 techniques combinées :
+
+| Technique | Avant v160 | v160 | Rôle |
+|---|---|---|---|
+| **Smoothing exponentiel** | aucun | α=0.25 (75% historique + 25% nouvelle) | Filtre le bruit haute fréquence à la source |
+| **Throttle DOM** | 0.5° | 2° (sur valeur lissée) | Évite les updates DOM minuscules |
+| **Transition CSS** | 0.15s | 0.3s | Absorbe les sauts résiduels visuellement |
+
+Gestion correcte du **wrap 0-360°** : delta circulaire signé minimum pour éviter une rotation arrière de 340° quand on passe 350°→10° via le Nord.
+
+#### v161 — Fix sentinel null (icône bloquée)
+
+v160 utilisait `_trackerRotationLast = -999` comme valeur "jamais initialisée". Mon wrap-fix circulaire (`if abs(delta) > 180 → 360 - delta`) appliquait son math sur -999 : `360 - 1000 = -640 < 2` → **return immédiat** dès le premier appel → icône bloquée.
+
+Fix : sentinel `null` + check explicite avant le math circulaire. Le throttle est skip au premier appel pour permettre l'application initiale.
+
+**Lesson learned** documentée dans le commentaire d'en-tête : les sentinels "valeur impossible numérique" sont des pièges avec du math circulaire. Préférer `null` + check explicite.
+
+#### Fichiers modifiés (cumulatif v158→v161)
+
+| Fichier | Changement |
+|---|---|
+| `icon/iconetrack.png` | Variant E2 (v158) → Variant A (v159+) — cône GPS bleu charte |
+| `js/map.js` | `iconeTrack` : `L.icon` → `L.divIcon` |
+| `js/tracking.js` | `_applyRotationToTrackerMarker` + `_resetRotationTrackerMarker` (+~90 lignes au total) |
+| `css/style.css` | `.kta-tracker-divicon` + `.kta-tracker-img` (transition 0.3s) |
+
+#### Sémantique respectée
+
+- ✅ Tracking actif → flèche dans direction de marche (`rotate(+heading)`)
+- ❌ Tracking off → icône pointe Nord (`rotate(0deg)`)
+- ❌ Recalage seul → icône statique
+- Source heading = `getCurrentHeading()` (cohérent avec boussole 🧭)
+- Combinaison boussole + tracker : les 2 doivent être cohérents visuellement. Boussole contre-tourne le N pour le garder en haut, tracker tourne dans la direction réelle → les 2 mouvements sont opposés mais cohérents (axes complémentaires).
+
+---
+
+### 🗓️ 15/05/2026 (suite 8) — 🧭 v157 : Nouvelle icône dédiée pour la boussole
+
+Remplacement de l'icône utilisée par le widget 🧭 Boussole : passe de `icon/mkm-full.png` (rose des vents identité MyKTAMap) à **`icon/compass.png`** dédiée, avec **N/S/E/W marqués clairement** + flèche rouge sur le Nord. Beaucoup plus lisible à l'usage en cataphilie sombre.
+
+**Périmètre strict** : uniquement le widget boussole et son modal plein écran. Le loader/splash garde `icon/mkm-full.png` qui reste l'identité visuelle de la marque (logo PWA + signature + splash).
+
+Fichiers : `js/compass.js` (3 `src=` remplacés + commentaire d'en-tête), `sw.js > ASSETS_TO_CACHE` (ajout `./icon/compass.png`), nouveau `icon/compass.png` (24 Ko).
+
+---
+
+### 🗓️ 15/05/2026 (suite 7) — 🐛 v156 : Fix sélection niveau négatif inactive
+
+Bug remonté par KARMA : dans la modale Niveaux, cliquer sur un bouton niveau négatif (`-1`, `-2`, …) ne mettait pas le bouton en jaune (`kta-actif`) et ne changeait pas le niveau actif.
+
+**Cause** : `interface.js > _changerNiveauActif` ligne 2423 :
+```js
+if (!Number.isInteger(newLevel) || newLevel < 0) return;
+```
+
+Le check `newLevel < 0` était un reste de v148 où `availableLevels` était strictement `[0, 1, 2, 3]`. Il bloquait silencieusement tous les niveaux négatifs : return immédiat sans toucher à `activeLevel`, pas de refresh pastille, pas de re-render filtre.
+
+**Fix** : retirer `|| newLevel < 0`. Garde le check `Number.isInteger` qui suffit (rejette null/undefined/NaN/strings). Commentaire explicatif ajouté pour éviter qu'un futur dev remette le check.
+
+Vérification exhaustive : grep `level<0`, `lvl<0`, `newLevel<0` → 1 seul endroit dans tout le code (celui-ci).
+
+---
+
+### 🗓️ 15/05/2026 (suite 6) — 🎨 v155 : Multi-niveau — segmented sur une seule ligne
+
+Quand l'user étendait beaucoup le range (>7 niveaux), le segmented control "Niveau actif" passait à la ligne. Refactor pour garder tout sur une seule ligne avec scroll horizontal.
+
+**CSS `.kta-niv-segmented`** :
+- `flex-wrap: wrap` → `nowrap`
+- + `overflow-x: auto`, scrollbar styling discret (charte jaune, 6px height)
+- + `-webkit-overflow-scrolling: touch` (smooth iOS)
+- + `padding-bottom: 4px` (respiration scrollbar)
+
+**JS `_ouvrirSelecteurNiveau`** : `scrollIntoView({ block:"nearest", inline:"center" })` sur le bouton actif à l'ouverture → si l'user a étendu à 10+ niveaux et que l'actif est hors viewport, on scroll automatiquement pour le centrer.
+
+Section "Niveaux visibles" (checkboxes en grid) inchangée — le wrap a du sens là car chaque case fait 80-100px.
+
+---
+
 ### 🗓️ 15/05/2026 (suite 5) — 🏗️ v154 : Niveaux négatifs (sous-sols) + auto-extension availableLevels
 
 Évolution du mode multi-niveau pour mieux représenter les sites souterrains à étages (Glacière, Capucins) : le défaut passe de `[0, 1, 2, 3]` à `[-2, -1, 0, 1, 2]` pour distinguer sous-sols (négatifs) et étages supérieurs (positifs), avec 0 comme niveau de référence (RDC / éléments sans `level`).
