@@ -5136,6 +5136,105 @@ window.afficherModaleAlerteAbsente = function(status) {
   document.addEventListener("keydown", _onKey);
 };
 
+// v166 : sélecteur d'alertes quand N > 1 alertes actives. Liste classée par
+// criticité (emergency > warning > info). Click sur une row → ouvre la modale
+// détail correspondante. Après acquit, si d'autres alertes restent → re-ouvre
+// le sélecteur. Si l'user ferme le sélecteur (✕ ou Échap), tout se ferme.
+//
+// `alerts` : array d'objets alert (format normalisé par alertChecker.js).
+// `opts.onSelect(alert)` : callback appelé quand l'user clique une row.
+// `opts.fromBoot` : si true (boot post-splash), bypass-acquittement check
+//                   (= filtre sur non-acquittées seulement). Si false (click
+//                   bouton 🚨), affiche TOUTES les alertes même acquittées.
+window.afficherSelecteurAlertes = function(alerts, opts) {
+  if (!Array.isArray(alerts) || alerts.length === 0) return;
+  if (document.getElementById("kta-alert-selector-modal")) return;
+  opts = opts || {};
+
+  function _esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Tri par priorité (emergency > warning > info) puis released desc
+  const prioOrder = { emergency: 0, warning: 1, info: 2 };
+  const sorted = alerts.slice().sort(function(a, b) {
+    const pa = prioOrder[a.level] != null ? prioOrder[a.level] : 3;
+    const pb = prioOrder[b.level] != null ? prioOrder[b.level] : 3;
+    if (pa !== pb) return pa - pb;
+    return (b.released || "").localeCompare(a.released || "");
+  });
+
+  // Indicateur acquit : utile en mode "click 🚨" pour distinguer les alertes
+  // déjà lues. localStorage["myktamap_alert_seen_<id>"] = released acquitté.
+  function _isAcquittee(a) {
+    if (!a.id || !a.released) return false;
+    try {
+      const seen = localStorage.getItem("myktamap_alert_seen_" + a.id);
+      return seen === a.released;
+    } catch(e) { return false; }
+  }
+
+  const rowsHtml = sorted.map(function(a) {
+    const level = (a.level === "warning" || a.level === "info") ? a.level : "emergency";
+    const acq   = _isAcquittee(a);
+    const ts    = a.released ? a.released.replace("T", " ").replace(/:\d{2}\.?\d*Z?$/, "") : "";
+    return '' +
+      '<button type="button" class="kta-alert-selector-row kta-alert-selector-row-' + level + (acq ? ' kta-alert-selector-row-seen' : '') + '" data-alert-id="' + _esc(a.id || "") + '">' +
+        '<span class="kta-alert-selector-dot"></span>' +
+        '<span class="kta-alert-selector-content">' +
+          '<span class="kta-alert-selector-title">' + _esc(a.title || "(sans titre)") + '</span>' +
+          (ts ? '<span class="kta-alert-selector-meta">' + _esc(ts) + (acq ? ' · ✓ acquittée' : '') + '</span>' : '') +
+        '</span>' +
+        '<span class="kta-alert-selector-arrow">›</span>' +
+      '</button>';
+  }).join("");
+
+  const modal = document.createElement("div");
+  modal.id = "kta-alert-selector-modal";
+  modal.className = "kta-readme-modal-overlay kta-alert-selector-overlay";
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite kta-alert-selector-boite">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">📋 ' + sorted.length + ' alertes actives</span>' +
+        '<button class="kta-panneau-close" id="kta-alert-selector-close" type="button" aria-label="Fermer">&times;</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-alert-selector-corps">' +
+        '<p class="kta-alert-selector-hint">Sélectionne une alerte pour voir le détail. Triées par criticité décroissante.</p>' +
+        '<div class="kta-alert-selector-list">' + rowsHtml + '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(modal);
+
+  function _fermer() {
+    if (modal.parentNode) modal.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) { if (e.key === "Escape") _fermer(); }
+  modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+  document.addEventListener("keydown", _onKey);
+  document.getElementById("kta-alert-selector-close").addEventListener("click", _fermer);
+
+  modal.querySelectorAll(".kta-alert-selector-row").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const id = btn.getAttribute("data-alert-id");
+      const alertObj = sorted.filter(function(a) { return a.id === id; })[0];
+      if (!alertObj) return;
+      _fermer();
+      // Petite pause pour fade-out visuel propre, puis ouvre la détail.
+      // Au close de la détail, on appelle onSelect pour permettre la cascade
+      // (réouvrir le sélecteur si d'autres alertes restent à voir).
+      setTimeout(function() {
+        if (typeof opts.onSelect === "function") {
+          opts.onSelect(alertObj);
+        } else {
+          window.afficherModaleAlerte(alertObj);
+        }
+      }, 150);
+    });
+  });
+};
+
 // v163 : 2e arg optionnel `onClose` — callback appelé à la fermeture de la
 // modale (utilisé par AlertChecker pour la cascade multi-alertes).
 window.afficherModaleAlerte = function(alert, onClose) {

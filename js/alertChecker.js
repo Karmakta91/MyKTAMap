@@ -39,8 +39,18 @@
 //
 // PRIORITE D'AFFICHAGE
 //   emergency (rouge) > warning (orange) > info (bleu), puis tri par released
-//   descendant (plus récent en haut). Affichage en cascade : chaque alerte
-//   ouvre la suivante après acquittement individuel.
+//   descendant (plus récent en haut).
+//
+// AFFICHAGE — sélecteur si N>1, modale détail si N=1 (depuis v166)
+//   - 1 seule alerte : modale détail direct
+//   - Plusieurs alertes : sélecteur (liste classée par criticité), l'user
+//     choisit ce qui l'intéresse. Après acquit d'une, si d'autres restent
+//     non acquittées → re-ouvre le sélecteur automatiquement.
+//   - L'user peut fermer le sélecteur (✕ / Échap / backdrop) sans rien lire.
+//
+//   Mode "click bouton 🚨" (manuel) : sélecteur affiche TOUTES les alertes
+//   actives même acquittées (badge "✓ acquittée" sur celles déjà lues).
+//   Mode "boot post-splash" : sélecteur n'affiche QUE les non acquittées.
 //
 // ACQUITTEMENT INDIVIDUEL
 //   localStorage["myktamap_alert_seen_<id>"] = released timestamp
@@ -175,30 +185,62 @@
   }
 
   // =========================
-  // AFFICHAGE EN CASCADE
+  // AFFICHAGE — sélecteur si N > 1, modale détail si N == 1
   // =========================
-  // Affiche les alertes une par une via la modale. Chaque acquittement
-  // déclenche la suivante.
-  function _afficherCascade(alertsAaffich) {
+  // v166 : remplace l'ancienne cascade automatique (qui enchaînait les modales
+  // sans laisser le choix à l'user) par un sélecteur quand N > 1. L'user voit
+  // la liste classée par criticité, choisit ce qui l'intéresse. Après acquit
+  // d'une alerte, si d'autres restent non acquittées → re-ouvre le sélecteur.
+  //
+  // `fromManualClick` : si true (click bouton 🚨), affiche TOUTES les alertes
+  // actives même acquittées dans le sélecteur. Si false (boot post-splash),
+  // ne montre que les non acquittées.
+  function _afficherAlertes(alertsAaffich, fromManualClick) {
     if (!alertsAaffich || alertsAaffich.length === 0) return;
     if (typeof window.afficherModaleAlerte !== "function") {
-      console.warn("[AlertChecker] afficherModaleAlerte absente — cascade ignorée");
+      console.warn("[AlertChecker] afficherModaleAlerte absente — alerte ignorée");
       return;
     }
-    // afficherModaleAlerte accepte désormais un 2e arg : callback à la fermeture
-    const current = alertsAaffich[0];
-    const rest    = alertsAaffich.slice(1);
-    window.afficherModaleAlerte(current, function() {
-      if (rest.length > 0) {
-        // Petit délai pour que la modale précédente disparaisse avant la suivante
-        setTimeout(function() { _afficherCascade(rest); }, 250);
+
+    // Cas simple : 1 seule alerte → modale détail direct
+    if (alertsAaffich.length === 1) {
+      window.afficherModaleAlerte(alertsAaffich[0]);
+      return;
+    }
+
+    // Cas multi : sélecteur. L'user choisit. À l'acquit d'une, on rouvre le
+    // sélecteur s'il reste des non-acquittées (en mode boot uniquement).
+    if (typeof window.afficherSelecteurAlertes !== "function") {
+      // Fallback si le sélecteur est absent (vieille version interface.js)
+      console.warn("[AlertChecker] afficherSelecteurAlertes absent — fallback modale détail 1ère alerte");
+      window.afficherModaleAlerte(alertsAaffich[0]);
+      return;
+    }
+
+    window.afficherSelecteurAlertes(alertsAaffich, {
+      fromBoot: !fromManualClick,
+      onSelect: function(chosen) {
+        window.afficherModaleAlerte(chosen, function() {
+          // Au close de la modale détail, on relance le sélecteur si :
+          //   - on est en mode boot ET il reste des alertes non acquittées
+          //   - OU on est en mode manuel ET il reste plusieurs alertes
+          //     (= l'user n'a pas fini de toutes les revoir)
+          setTimeout(function() {
+            const remaining = fromManualClick
+              ? alertsAaffich.filter(function(a) { return a.id !== chosen.id; })
+              : _filtrerEtTrier(_activeAlertsCache);
+            if (remaining.length > 0) {
+              _afficherAlertes(remaining, fromManualClick);
+            }
+          }, 200);
+        });
       }
     });
   }
 
   function _showOrDefer(alertsAaffich) {
     if (_splashEnded) {
-      _afficherCascade(alertsAaffich);
+      _afficherAlertes(alertsAaffich, false);
     } else {
       _pendingAlerts = alertsAaffich;
       console.log("[AlertChecker] " + alertsAaffich.length + " alerte(s) différée(s) jusqu'à la fin du splash");
@@ -210,7 +252,7 @@
     if (_pendingAlerts.length > 0) {
       const list = _pendingAlerts;
       _pendingAlerts = [];
-      _afficherCascade(list);
+      _afficherAlertes(list, false);
     }
   }
 
@@ -292,7 +334,10 @@
     if (status === "ok" && raw) {
       const norm = _normaliserPayload(raw);
       if (norm.active && norm.alerts.length > 0) {
-        // Affiche TOUTES les alertes actives (bypass acquittement) en cascade
+        // v166 : si N>1, affiche un SELECTEUR (au lieu de la cascade auto).
+        // Si N=1, modale détail direct. fromManualClick=true → TOUTES les
+        // alertes visibles dans le sélecteur même acquittées (= l'user a
+        // explicitement demandé à les revoir).
         const sorted = norm.alerts.slice().sort(function(a, b) {
           const prio = { emergency: 0, warning: 1, info: 2 };
           const pa = prio[a.level] != null ? prio[a.level] : 3;
@@ -300,7 +345,7 @@
           if (pa !== pb) return pa - pb;
           return (b.released || "").localeCompare(a.released || "");
         });
-        _afficherCascade(sorted);
+        _afficherAlertes(sorted, true);  // true = fromManualClick
         // MAJ cache et badge
         _activeAlertsCache = norm.alerts.slice();
         _notifyChange();
