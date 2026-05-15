@@ -25,8 +25,13 @@
 //   - Si "Ouvrir myktamap.fr" cliqué → marque comme vue indefiniment
 //
 // HOSTNAME GATE
-//   Affiche UNIQUEMENT si hostname === "myktamap.is-underground.fr".
-//   Sur localhost, dev, ou nouveau domaine, le module est silencieux.
+//   Affiche UNIQUEMENT si :
+//     - hostname === "myktamap.is-underground.fr" (prod ancien domaine), OU
+//     - hostname === "devmap.is-underground.fr" (miroir de prod pour tests)
+//     - URL contient `?migrationPreview=1` (force l'affichage depuis n'importe
+//       quel hostname — utile pour test localhost)
+//   Sur autre hostname sans query param → silent (localhost dev, myktamap.fr
+//   futur, etc.).
 //
 // HOOK SPLASH
 //   Comme AlertChecker, OOMGuard, UpdateChecker → différé jusqu'à la fin du
@@ -41,7 +46,10 @@
   "use strict";
 
   // === CONSTANTES DE LA MIGRATION ===
-  const OLD_HOSTNAME       = "myktamap.is-underground.fr";
+  const OLD_HOSTNAMES      = [
+    "myktamap.is-underground.fr",  // prod
+    "devmap.is-underground.fr"     // miroir dev (test naturel)
+  ];
   const NEW_DOMAIN_DISPLAY = "myktamap.fr";
   const NEW_DOMAIN_LIVE    = false;                // ⚠️ Mettre à true quand DNS pointé
   const CUTOFF_DATE        = "15 juillet 2026";    // date affichée dans la modal
@@ -51,14 +59,34 @@
   let _splashEnded   = false;
   let _pendingShow   = false;
 
+  // Check si l'URL contient le query param de preview forcé (test depuis
+  // n'importe quel hostname, ex: localhost). Pratique pour valider la modale
+  // sans déployer sur un domaine matching.
+  function _hasPreviewQueryParam() {
+    try {
+      if (typeof location === "undefined") return false;
+      return /[?&]migrationPreview=1\b/.test(location.search || "");
+    } catch(e) { return false; }
+  }
+
   function _shouldShow() {
-    // Hostname gate
-    if (typeof location === "undefined" || location.hostname !== OLD_HOSTNAME) {
-      return false;
+    // Hostname gate (avec bypass via query param ?migrationPreview=1)
+    if (typeof location === "undefined") return false;
+    const hostnameMatch = OLD_HOSTNAMES.indexOf(location.hostname) >= 0;
+    const previewMode   = _hasPreviewQueryParam();
+    if (!hostnameMatch && !previewMode) return false;
+
+    // En mode preview (query param OU devmap), on bypass la persistance "seen"
+    // pour permettre les tests répétés. Production (myktamap.is-underground.fr)
+    // garde la persistance normale.
+    if (previewMode || location.hostname === "devmap.is-underground.fr") {
+      console.log("[MigrationNotice] Preview mode actif (hostname:",
+                  location.hostname, "| query:", previewMode + ")");
+      return true;
     }
+
     // Persistance : si déjà vu < 7j ago, on skip. Si "vu définitivement"
-    // (= "Ouvrir le nouveau domaine" cliqué), on stocke un timestamp far
-    // future et on skip toujours.
+    // (= "J'ai compris" cliqué), on stocke "permanent" et on skip toujours.
     let last;
     try { last = localStorage.getItem(LS_KEY); } catch(e) { return true; }
     if (!last) return true;
