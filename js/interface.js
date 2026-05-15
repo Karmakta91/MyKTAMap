@@ -2474,6 +2474,12 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window._applyLevelFilterToTracker === "function") {
     try { window._applyLevelFilterToTracker(); } catch(e) {}
   }
+  // 🏗️ v162 : Image layers (calques image du plan : legende, etc.) qui ont
+  // un champ `level`. Force addLayer/removeLayer selon visibleLevels. Modale
+  // Niveaux = authority (override le checkbox Leaflet).
+  if (typeof window._applyLevelFilterToImageLayers === "function") {
+    try { window._applyLevelFilterToImageLayers(); } catch(e) {}
+  }
 };
 
 // _ouvrirCreationJonction : modal pour saisir fromLevel/toLevel avant

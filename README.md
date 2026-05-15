@@ -9,6 +9,72 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 10) — 🏗️ v162 : Champ "Niveau" sur les image layers
+
+Le mode multi-niveau supportait déjà le tagging par niveau des roads, zones, points (session + data layers). Manquait : les **image layers** (calques image du plan : légende, hachures, surcouches statiques). Quand le plan contient une légende dessinée pour le niveau 0 ET une légende différente pour le niveau -1, on veut que seule la bonne s'affiche selon le filtre Niveaux courant.
+
+#### 1. Champ "Niveau" dans le générateur (createConf.js)
+
+Nouveau champ `🏗️ Niveau` à côté de chaque calque image dans la modale `📦 Générateur de plan` :
+- Visible **uniquement** si la case `🏗️ Plan multi-niveau (avancé)` est cochée
+- Default `0` (rétro-compat absolue)
+- Accepte les entiers négatifs (cf v154)
+- Toggle dynamique : cocher/décocher la case multi-niveau affiche/cache les champs niveau des image layers existants en live
+
+À la regénération du ZIP, le champ `level` est **toujours écrit** dans `plan-config.json > imageLayers[i].level`, même à `0`. Permet la traçabilité et facilite la re-édition (l'user voit `0` et peut le modifier au lieu de "level absent" qu'il pourrait croire à un bug).
+
+#### 2. Runtime — filtre des image layers (map.js)
+
+Nouveau registre `window._ktaImageOverlays = [{overlay, label, level}, ...]` peuplé à l'init de la map.
+
+Nouveau helper global `window._applyLevelFilterToImageLayers()` :
+- Skip si `multiLevel: false` (rétro-compat strict v161)
+- Pour chaque overlay : compare `entry.level` à `APP_CONFIG.visibleLevels`
+- Force `map.addLayer(overlay)` si niveau visible et pas déjà sur la map
+- Force `map.removeLayer(overlay)` si niveau pas visible et présent sur la map
+- Le checkbox Leaflet du calque dans le `L.control.layers` suit automatiquement (Leaflet écoute add/remove)
+
+**Sémantique demandée par KARMA** : la modale Niveaux fait **autorité** sur le checkbox Leaflet. Si l'user a décoché manuellement un calque dans le control Leaflet et qu'on change de niveau visible, le calque est ré-activé (override). Entre 2 changements de niveau, l'user peut toggle librement le checkbox Leaflet.
+
+#### 3. Filtre initial au chargement (map.js)
+
+Au build initial des overlays, si `multiLevel: true` ET le niveau du layer n'est PAS dans `visibleLevels`, le layer n'est **pas** ajouté à la map (même si `layerConfig.visible: true` dans plan-config.json). Sinon comportement strictement v161 (= `layerConfig.visible`).
+
+#### 4. Auto-extension `_etendreAvailableLevelsSiBesoin` (main.js)
+
+Scan élargi pour inclure les image layers. Si un plan v148-v161 chargé avec une nouvelle conversion v162 du générateur (ZIP modifié avec niveau 3 explicite) contient un image layer à niveau 3, l'auto-extension étend `availableLevels` pour englober 3.
+
+#### 5. Hook dans `appliquerFiltreNiveau` (interface.js)
+
+Appel ajouté à la fin de la chaîne des appliquerFilterTo* — ordre cohérent avec les autres modules level-aware (roads, zones, points, tracker).
+
+#### Périmètre strict
+
+- ✅ Image layers (`PLAN_CONFIG.imageLayers`)
+- ❌ Pas les data layers (déjà gérés via leurs propres registres)
+- ❌ Pas le base layer (image principale, pas de niveau)
+- ❌ Pas le collision layer (canvas interne, jamais visible utilisateur)
+
+#### Rétro-compat
+
+- Plans v147 et avant (sans `multiLevel`) : aucun changement
+- Plans v148-v161 avec `multiLevel: true` mais sans `level` sur image layers : tous traités comme `level: 0`. S'affichent quand niveau 0 dans visibles, masqués sinon.
+- L'user qui modifie un ZIP v148-v161 dans le générateur v162 voit `0` partout — peut affecter un vrai niveau s'il le souhaite.
+
+#### Fichiers modifiés (+~70 lignes)
+
+| Fichier | Changement |
+|---|---|
+| `js/createConf.js` | Champ niveau dans le HTML de `_ajouterImageLayer` + lecture/écriture dans la sauvegarde + listener toggle multiLevel |
+| `js/map.js` | Registre `_ktaImageOverlays` + filtre initial + helper `_applyLevelFilterToImageLayers` |
+| `js/main.js` | Reset registre au plan switch + scan image layers dans `_etendreAvailableLevelsSiBesoin` |
+| `js/interface.js` | Hook dans `appliquerFiltreNiveau` |
+| `CLAUDE.md` §26.2/§26.4 + `AI_CONTEXT.md` + `README_USER.md` | Mise à jour docs |
+
+**Bump v161 → v162** (notes user-facing inchangées).
+
+---
+
 ### 🗓️ 15/05/2026 (suite 9) — 🧭 v158-v161 : Tracker directionnel (4 itérations)
 
 L'icône du tracker pointe maintenant dans la direction de marche pendant le tracking actif, à la place d'être statique. Source du heading = `getCurrentHeading()` (même que la boussole 🧭, cohérence du système). 4 versions car le path n'était pas trivial.
