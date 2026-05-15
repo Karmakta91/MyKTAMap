@@ -2420,7 +2420,10 @@ function _ouvrirSelecteurNiveau(btnPastille) {
 // reset le filtre visibles a [newActive] (mode focalise), met a jour la
 // pastille, propage le filtre a tous les modules.
 function _changerNiveauActif(newLevel) {
-  if (!Number.isInteger(newLevel) || newLevel < 0) return;
+  // v155 fix : retire le check newLevel < 0 qui bloquait les niveaux negatifs
+  // (reste de v148 quand availableLevels etait [0..3] strict). Depuis v154 on
+  // supporte les sous-sols (-1, -2, …), donc tout entier est valide.
+  if (!Number.isInteger(newLevel)) return;
 
   // Annule le tracé en cours
   if (typeof _fermerModeRoad === "function") _fermerModeRoad();
