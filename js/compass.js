@@ -8,8 +8,11 @@
 // =========================
 // COMPASS WIDGET — boussole flottante (rose des vents)
 // =========================
-// Affiche une rose des vents (icon/mkm-full.png, charte graphique du projet)
-// flottante au-dessus de la carte. La rose contre-tourne en temps reel selon
+// Affiche une rose des vents (icon/compass.png, rose dediee avec N/S/E/W
+// marques clairement + fleche rouge sur le Nord — depuis v157) flottante
+// au-dessus de la carte. Le loader/splash reste sur icon/mkm-full.png qui
+// est l'identite visuelle de la marque.
+// La rose contre-tourne en temps reel selon
 // le heading capte par tracking.js (window.getCurrentHeading) → le repere "N"
 // pointe toujours vers le vrai Nord, peu importe la pose du telephone.
 //
@@ -70,7 +73,7 @@
     _widgetEl.innerHTML =
       '<button class="kta-compass-close" type="button" title="Fermer la boussole" aria-label="Fermer">&times;</button>' +
       '<div class="kta-compass-rose-wrap" title="Cliquer pour agrandir">' +
-        '<img src="icon/mkm-full.png" class="kta-compass-rose kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
+        '<img src="icon/compass.png" class="kta-compass-rose kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
       '</div>' +
       '<div class="kta-compass-info">' +
         '<span class="kta-compass-heading kta-compass-text-display">N 0°</span>' +
@@ -113,7 +116,7 @@
         '</div>' +
         '<div class="kta-readme-modal-corps kta-compass-full-corps">' +
           '<div class="kta-compass-full-rose-wrap">' +
-            '<img src="icon/mkm-full.png" class="kta-compass-rose-big kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
+            '<img src="icon/compass.png" class="kta-compass-rose-big kta-compass-rotating-rose" alt="Rose des vents" draggable="false">' +
           '</div>' +
           '<div class="kta-compass-full-info">' +
             '<div class="kta-compass-full-cardinal kta-compass-cardinal-display">N</div>' +
