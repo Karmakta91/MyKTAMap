@@ -652,7 +652,9 @@
     section.style.display = "";
     const levels = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
       ? window.APP_CONFIG.availableLevels.slice()
-      : [0, 1, 2, 3];
+      : [-2, -1, 0, 1, 2];
+    // v154 : tri croissant (cf. modale Niveaux)
+    levels.sort(function(a, b) { return a - b; });
     const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
       ? window.APP_CONFIG.visibleLevels
       : [0];

@@ -2239,9 +2239,14 @@ function _ouvrirSelecteurNiveau(btnPastille) {
   const visibles = Array.isArray(APP_CONFIG.visibleLevels) ? APP_CONFIG.visibleLevels.slice() : [cur];
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
     ? APP_CONFIG.availableLevels.slice()
-    : [0, 1, 2, 3];
+    : [-2, -1, 0, 1, 2];
+  // 🏗️ v154 : tri croissant pour affichage horizontal naturel -2 → +2 (gauche
+  // a droite = negatif a positif, comme un axe numerique). availableLevels en
+  // memoire peut etre dans n'importe quel ordre (apres push/unshift par les
+  // boutons +/-), on trie systematiquement avant rendu.
+  levels.sort(function(a, b) { return a - b; });
 
-  // Segmented (niveau actif) : boutons radio visuels
+  // Segmented (niveau actif) : boutons radio visuels, encadres de [-] et [+]
   let segmented = "";
   levels.forEach(function(lvl) {
     const active = (lvl === cur);
@@ -2250,7 +2255,7 @@ function _ouvrirSelecteurNiveau(btnPastille) {
       '" data-level="' + lvl + '">' + lvl + '</button>';
   });
 
-  // Checkboxes (niveaux visibles)
+  // Checkboxes (niveaux visibles) - meme ordre croissant
   let checkboxes = "";
   levels.forEach(function(lvl) {
     const checked = (visibles.indexOf(lvl) >= 0);
@@ -2279,8 +2284,10 @@ function _ouvrirSelecteurNiveau(btnPastille) {
             'Tous les nouveaux éléments (tracés, points, zones, tracker recalé) seront ' +
             'tagués avec ce niveau.' +
           '</p>' +
-          '<div class="kta-niv-segmented">' + segmented +
-            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="Ajouter un niveau">+</button>' +
+          '<div class="kta-niv-segmented">' +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-sub" title="Ajouter un niveau en-dessous (min - 1)">−</button>' +
+            segmented +
+            '<button type="button" class="kta-niv-seg-btn kta-niv-seg-add" id="kta-niv-add" title="Ajouter un niveau au-dessus (max + 1)">+</button>' +
           '</div>' +
         '</div>' +
 
@@ -2326,12 +2333,24 @@ function _ouvrirSelecteurNiveau(btnPastille) {
     });
   });
 
-  // Bouton + : ajoute un niveau au-dela du max existant
+  // Bouton + : ajoute un niveau au-dela du max existant (vers le haut)
   const addBtn = document.getElementById("kta-niv-add");
   if (addBtn) {
     addBtn.addEventListener("click", function() {
       const maxLvl = Math.max.apply(null, APP_CONFIG.availableLevels || [0]);
       APP_CONFIG.availableLevels = (APP_CONFIG.availableLevels || []).concat(maxLvl + 1);
+      window.APP_CONFIG = APP_CONFIG;
+      _cleanup();
+      _ouvrirSelecteurNiveau(btnPastille);
+    });
+  }
+
+  // 🏗️ v154 : Bouton − : ajoute un niveau en-dessous du min existant
+  const subBtn = document.getElementById("kta-niv-sub");
+  if (subBtn) {
+    subBtn.addEventListener("click", function() {
+      const minLvl = Math.min.apply(null, APP_CONFIG.availableLevels || [0]);
+      APP_CONFIG.availableLevels = (APP_CONFIG.availableLevels || []).concat(minLvl - 1);
       window.APP_CONFIG = APP_CONFIG;
       _cleanup();
       _ouvrirSelecteurNiveau(btnPastille);
@@ -2448,7 +2467,9 @@ function _ouvrirCreationJonction(btnSub) {
   const cur = APP_CONFIG.activeLevel || 0;
   const levels = Array.isArray(APP_CONFIG.availableLevels) && APP_CONFIG.availableLevels.length
     ? APP_CONFIG.availableLevels.slice()
-    : [0, 1, 2, 3];
+    : [-2, -1, 0, 1, 2];
+  // v154 : tri croissant pour cohrence avec la modale Niveaux
+  levels.sort(function(a, b) { return a - b; });
 
   // Options du select : tous les niveaux dispo
   function _optionsHtml(selectedLevel) {

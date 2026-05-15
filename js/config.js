@@ -59,12 +59,19 @@ let DEFAULT_CONFIG = {
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
   // false (defaut), l'UI multi-niveau est masquee et le comportement est
   // strictement identique a v147 (retro-compat absolue).
-  multiLevel:       false,         // boolean : feature activee pour ce plan ?
-  activeLevel:      0,             // entier ≥ 0 : niveau actif pour DESSINER de nouveaux elements
-  visibleLevels:    [0],           // array d'entiers : niveaux AFFICHES (multi-select).
-                                   // Par defaut = [activeLevel]. Jonctions affichees si au
-                                   // moins un de leurs endpoints (fromLevel/toLevel) est ici.
-  availableLevels:  [0, 1, 2, 3]   // liste des niveaux disponibles dans le selecteur
+  multiLevel:       false,           // boolean : feature activee pour ce plan ?
+  activeLevel:      0,               // entier (positif OU negatif) : niveau actif pour DESSINER
+                                     // de nouveaux elements. 0 = niveau de reference (= elements
+                                     // sans `level` taggue). Les negatifs representent les sous-sols
+                                     // (-1 = etage du dessous, etc.).
+  visibleLevels:    [0],             // array d'entiers : niveaux AFFICHES (multi-select).
+                                     // Par defaut = [activeLevel]. Jonctions affichees si au
+                                     // moins un de leurs endpoints (fromLevel/toLevel) est ici.
+  availableLevels:  [-2, -1, 0, 1, 2] // liste des niveaux disponibles dans le selecteur.
+                                     // Defaut symetrique autour de 0. Extensible via boutons
+                                     // -/+ dans la modale (min-1 / max+1). Auto-etendu au boot
+                                     // par main.js si les data layers contiennent des items
+                                     // hors range (ex: level: 4 → ajout du 3 et 4).
 };
 
 let APP_CONFIG = { ...DEFAULT_CONFIG };
@@ -207,7 +214,7 @@ function buildAppConfigFromPlan(planConfig) {
     multiLevel:       false,
     activeLevel:      0,
     visibleLevels:    [0],
-    availableLevels:  [0, 1, 2, 3]
+    availableLevels:  [-2, -1, 0, 1, 2]
   };
 
   // Restaurer la préférence globale debugMode depuis localStorage

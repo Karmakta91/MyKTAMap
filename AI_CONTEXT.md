@@ -176,9 +176,9 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 | **Tiling** | Découpage de l'image principale en tuiles plus petites pour éviter de charger une seule grosse image en mémoire (évite les crashes sur mobile). |
 | **V1 (plan classique)** | Plan où l'image principale est chargée intégralement en RAM au boot. Modes performance preset déterminent un éventuel tuilage runtime. Défaut historique. |
 | **V2 (plan tuilé)** | Plan où l'image est pré-découpée en tuiles 512×512 sur 4 niveaux de zoom dans le ZIP (`data/tiles/z<N>/x<col>_y<-k>.jpg`). Au runtime, seules les tuiles du niveau de zoom courant sont en RAM (~16 MB max). Opt-in via le générateur de plan (case 🧱). |
-| **Mode multi-niveau / M-LVL** | Opt-in par plan pour gérer les carrières multi-étages. Tracés/zones/points/tracker tagués par niveau, filtre runtime. Jonctions interniveau (🪜) = seuls bridges entre niveaux pour le pathfinder. |
-| **Jonction interniveau** | Tracé spécial (type `jonction`, magenta pointillé) qui relie 2 niveaux d'un plan multi-niveau. Le pathfinder s'en sert exclusivement pour passer d'un niveau à l'autre — les croisements visuels 2D entre niveaux différents ne comptent pas. |
-| **Niveau actif** | Niveau courant utilisé pour DESSINER les nouveaux tracés/zones/points dans un plan multi-niveau. Affiché dans la pastille jaune `[N]` sous le zoom Leaflet. Click → modale de changement. |
+| **Mode multi-niveau / M-LVL** | Opt-in par plan pour gérer les carrières multi-étages. Tracés/zones/points/tracker tagués par niveau, filtre runtime. Jonctions interniveau (🪜) = seuls bridges entre niveaux pour le pathfinder. **Niveaux supportés (depuis v154)** : entiers positifs ET négatifs autour de 0. Défaut `[-2, -1, 0, 1, 2]` (sous-sols typiques + RDC + étages supérieurs). Auto-extension au chargement si les data layers contiennent des niveaux hors range. |
+| **Jonction interniveau** | Tracé spécial (type `jonction`, magenta pointillé) qui relie 2 niveaux d'un plan multi-niveau. Le pathfinder s'en sert exclusivement pour passer d'un niveau à l'autre — les croisements visuels 2D entre niveaux différents ne comptent pas. Sémantique `fromLevel`/`toLevel` symétrique (traverse dans les 2 sens). |
+| **Niveau actif** | Niveau courant utilisé pour DESSINER les nouveaux tracés/zones/points dans un plan multi-niveau. Affiché dans la pastille jaune `[N]` sous le zoom Leaflet (peut être négatif : `-1`, `-2`, etc.). Click → modale de changement. |
 | **Niveaux visibles** | Liste des niveaux affichés sur la carte (filtre runtime, multi-select). Les éléments dont le `level` n'est pas dans cette liste sont masqués (opacity 0). Les jonctions sont affichées si au moins un de leurs endpoints touche un niveau visible. |
 | **Auto-crop** | Étape automatique du générateur V2 qui détecte les marges blanches autour du contenu utile et tuile uniquement la zone non-blanche. Les dims `imageWidth/Height` reflètent la zone croppée. |
 | **ZIP de plan** | Archive contenant toutes les données d'un plan (images + JSON + config). Format de partage entre utilisateurs. |
@@ -275,11 +275,14 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
    - **Via ⚙️ Réglages** sur un plan déjà chargé → cocher 🏗️ Mode multi-niveau (avancé) → reload page
    - **Via le générateur de plan** : cocher 🏗️ Plan multi-niveau (avancé) → 📦 Générer → ZIP avec le flag pré-activé
    - **Manuellement** dans `plan-config.json` : ajouter `"multiLevel": true` dans la section `plan`
-2. Une fois activé, une **pastille `[0]` jaune** apparaît sous les boutons de zoom (haut-gauche).
-3. **Trace au niveau 0** comme d'habitude (routes/zones/points).
-4. **Pour passer au niveau 1** : clique la pastille → modale Niveaux → sélecteur "Niveau actif" → bouton `[1]`. La pastille passe à `[1]` et le filtre passe sur ce niveau (les éléments niveau 0 disparaissent visuellement).
-5. **Trace au niveau 1** : tous les nouveaux éléments sont tagués `level: 1`.
-6. **Pour relier deux niveaux** (escalier, pente, puits interne) : groupe 🛣️ Tracés → **🪜 Jonction interniveau** → modale → choisir from/to (ex: 0 vers 1) → OK → clic N points sur la carte → la jonction est tracée en magenta pointillé avec des ronds blanc+magenta aux extrémités. Sans jonction, le pathfinder ne peut pas passer d'un niveau à l'autre.
+2. Une fois activé, une **pastille `[0]` jaune** apparaît sous les boutons de zoom (haut-gauche). Le mode affiche par défaut **5 niveaux symétriques** : `-2, -1, 0, 1, 2`. 0 reste le niveau de référence (= éléments sans `level` taggué, ex: tous les plans v147 et avant).
+3. **Trace au niveau 0** comme d'habitude (routes/zones/points). Pour les **sous-sols (sub-cellars)**, change le niveau actif vers `-1` ou `-2`. Pour les **étages supérieurs**, vers `1` ou `2`.
+4. **Pour changer de niveau actif** : clique la pastille → modale Niveaux → sélecteur "Niveau actif" → choisis le numéro voulu (peut être négatif : `[-1]`, `[-2]`). La pastille se met à jour et le filtre passe sur ce niveau (les autres niveaux disparaissent visuellement).
+5. **Étendre le range au-delà de [-2, 2]** : 2 boutons d'extension dans la modale Niveaux :
+   - `[ + ]` (à droite) → ajoute le prochain niveau supérieur (max+1)
+   - `[ − ]` (à gauche) → ajoute le prochain niveau inférieur (min−1)
+   Ex: cliquer `[ + ]` étend `[-2, -1, 0, 1, 2]` en `[-2, -1, 0, 1, 2, 3]`. Idem `[ − ]` ajoute `-3`. **Auto-extension** : si tu charges un plan dont les data layers ont déjà des niveaux hors range (ex: ancienne session avec `level: 4`), l'app étend automatiquement `availableLevels` pour que ces éléments soient sélectionnables.
+6. **Pour relier deux niveaux** (escalier, pente, puits interne) : groupe 🛣️ Tracés → **🪜 Jonction interniveau** → modale → choisir départ/arrivée (ex: `-1` vers `0`, ou `0` vers `1`, peu importe l'ordre — sémantique symétrique) → OK → clic N points sur la carte → la jonction est tracée en magenta pointillé avec des ronds blanc+magenta aux extrémités. Sans jonction, le pathfinder ne peut pas passer d'un niveau à l'autre.
 7. **Filtrer ce que tu vois** : modale Niveaux → section "Niveaux visibles" → cocher/décocher les niveaux. Boutons rapides `Tous` (tout afficher) / `Actif seul` (focaliser).
 
 ### L. 🧱 Convertir un plan V1 en V2 tuilé (performance)

@@ -1,8 +1,9 @@
 {
-  "version": "v153",
+  "version": "v154",
   "released": "2026-05-15",
   "notes": [
-    "🔧 Fix UX : quand le crash de génération V2 est détecté au démarrage (modale '🧱❌ Génération V2 interrompue'), la modale générique 'ARRÊT BRUTAL DÉTECTÉ' n'apparaît plus derrière. Les deux flags (heartbeat session + flag V2) restent en place après un kill OOM pendant la conversion, et v152 affichait les 2 modales l'une après l'autre — confusion. Désormais : la modale V2 est prioritaire et discard la modale générique (couvre déjà le sujet, en plus spécifique).",
-    "📖 AI_CONTEXT.md mis à jour pour v152 (overlay de chargement plein écran, modale d'erreur explicite à la génération V2, détection auto crash V2) + nouvelle icône built-in 'plaque indication' dans la liste des tags signalétique."
+    "🏗️ Mode multi-niveau (carrières multi-étages) : opt-in par plan via ⚙️ Réglages ou via le générateur. Pastille jaune `[N]` sous le zoom affiche le niveau actif. Modale dédiée pour switcher de niveau ET filtrer ce qu'on voit. Sous-action 🪜 Jonction interniveau (magenta pointillé) pour relier 2 niveaux (escaliers, puits internes). Le pathfinder est niveau-aware et ne traverse pas les croisements visuels entre niveaux différents. NOUVEAUTÉ v154 : niveaux négatifs supportés (-1, -2, …) pour distinguer les sous-sols. Boutons +/- pour étendre le range dans les 2 sens. Auto-extension si tes data layers contiennent des niveaux hors range.",
+    "🧱 Mode V2 (plan tuilé) : génération depuis le 🏗️ Générateur de plan, case 🧱 Convertir en V2 tuile. Disponible en mode Nouveau plan ET Modifier existant. L'image est découpée en tuiles 512×512 sur 4 niveaux de zoom à la Google Maps. Au runtime, seules les tuiles du niveau visible sont en RAM (~16 Mo max au lieu de l'image entière) → plus de plantage mémoire sur mobile. Conversion lourde (recommandé sur PC, modale d'avertissement à la coche). Badge violet V2 sur les lignes plan du loader. Mode performance \"Désactivé\" force le fallback baseImage pour comparer V1 vs V2.",
+    "🧭 Boussole / widget Nord : sous-action 🧭 dans le groupe Tracker (mais ne démarre pas le tracker — outil indépendant). Affiche une rose des vents flottante en haut-gauche qui tourne en temps réel pour pointer le vrai Nord. Pratique pour vérifier que l'orientation du téléphone est cohérente avec la carte avant de te lancer en navigation. Clic dessus → modal plein écran avec la rose en grand + angle cardinal exact + note sur les armatures métalliques qui faussent le magnétomètre."
   ]
 }

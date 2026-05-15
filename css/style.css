@@ -5296,16 +5296,19 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
+  min-width: 22px;        /* v154 : "pill" extensible — accepte 1 ou 2 caracteres */
   height: 22px;
-  border-radius: 50%;
+  padding: 0 4px;         /* respiration laterale compacte pour valeurs negatives */
+  border-radius: 11px;    /* 50% du height = capsule arrondie (cercle pour 1 char) */
   background: #f4c542;
   color: #1a1f2e;
   font-family: 'SF Mono', Monaco, Consolas, 'Liberation Mono', monospace;
-  font-size: 13px;
+  font-size: 12px;        /* legerement reduit pour rester dans le bouton 30×30 */
   font-weight: 800;
   line-height: 1;
-  letter-spacing: 0;
+  letter-spacing: -0.3px; /* compactage horizontal pour "-1" / "-2" */
+  white-space: nowrap;    /* evite le wrap d'un "-1" sur deux lignes */
+  box-sizing: border-box;
 }
 
 /* Leaflet control "niveau actif" — bouton compact sous le zoom (top-left).
