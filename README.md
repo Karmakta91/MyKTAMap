@@ -9,6 +9,66 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 3) — 🛡️ v152 : Robustesse erreurs V2 + overlay chargement visible
+
+2 demandes utilisateur traitées : (1) erreurs explicites au crash de génération V2 (plus jamais d'erreur silencieuse) et (2) overlay de chargement de plan visible au centre (au lieu du discret `#loaderStatus` en bas).
+
+#### 1. Try/catch ciblé + modal d'erreur visible
+
+`_genererTuilesV2` :
+- `drawImage` wrappé : si OOM → throw `Échec drawImage à z=N col=X k=Y — probable saturation mémoire (...)`
+- `toBlob` wrappé : si retourne `null` → throw `Échec encodage JPEG de la tuile z=N col=X k=Y — saturation mémoire navigateur (...)`
+- Écriture ZIP wrappée
+- `_detectContentBBox > getImageData` wrappé : si CORS-tainted ou OOM → warn console + skip auto-crop (pas d'erreur fatale)
+
+`_afficherErreurV2(titre, message)` : nouvelle modale plein écran rouge avec message d'erreur + conseils actionnables (PC, réduire image, JPEG q85). Remplace l'usage de `_plannerErreur` inline pour les erreurs critiques.
+
+Heuristique OOM (regex `/m[ée]moire|drawImage|toBlob|saturation/i` sur le message) → suffixe automatique du message avec conseil spécifique.
+
+#### 2. Flag de détection de crash silencieux
+
+`localStorage.setItem("myktamap_v2_gen_in_progress", JSON)` posé AVANT la génération, retiré dans le `finally`. Si le navigateur kill la page (OOM iOS Safari, etc.), le `finally` ne tourne pas → le flag reste.
+
+`oomGuard.js > _checkV2GenerationCrash()` détecte au boot suivant (fenêtre de fraîcheur 1h). Si flag présent → `_afficherModaleV2Crash(info)` affichée dans `flushPendingToasts` après le splash. Modale spécifique "🧱❌ Génération V2 interrompue" avec contexte du plan + conseils ciblés.
+
+Priorité sur la modale "kill détecté" standard (cf §27.8 de CLAUDE.md).
+
+#### 3. Overlay de chargement plein écran visible
+
+3 fonctions exposées sur window :
+- `_afficherOverlayChargement(msg)` : crée la modale plein écran avec spinner + message
+- `_majOverlayChargement(msg)` : met à jour le message d'étape sans recréer la DOM
+- `_fermerOverlayChargement()` : retire la modale
+
+Appelée depuis :
+- `chargerZipFichier` (index.html) au début → "Extraction du ZIP en cours…" → "ZIP extrait — Chargement de la carte…"
+- `chargerPlanServeur` (main.js) au début → "Récupération du plan depuis le serveur…"
+- `startImportedPlan` (main.js) pendant indexation V2 → "Plan V2 tuilé — Indexation X / Y tuiles…" (update toutes les 50 tuiles)
+- `lancerApplication` (main.js) au render → "Initialisation de la carte et des calques…"
+- Fermée dans le `finally` de `lancerApplication` → cleanup garanti en cas de succès OU d'erreur
+
+CSS `.kta-load-*` : modale centrée, fond semi-transparent + blur, spinner 48px animé bleu charte, titre + message + hint italique en pied.
+
+#### 4. Fichiers touchés (8 modifiés)
+
+| Fichier | Lignes | Rôle |
+|---|---:|---|
+| `js/createConf.js` | +95 | try/catch ciblé, `_afficherErreurV2`, flag in-progress, message si abort |
+| `js/oomGuard.js` | +95 | `_checkV2GenerationCrash` + `_afficherModaleV2Crash` + hook flush |
+| `index.html` | +50 | overlay chargement (afficher/maj/fermer) + hook dans `chargerZipFichier` |
+| `js/main.js` | +30 | hooks overlay dans `chargerPlanServeur` + indexation tuiles + `lancerApplication` finally |
+| `css/style.css` | +110 | `.kta-load-*` + `.kta-v2-error-*` |
+| `sw.js`, `js/copyright.js`, `version.json` | — | bump v152 + 4 notes user |
+| `CLAUDE.md` | +50 | §27.8 ajoutée |
+
+#### 5. Backward compat
+
+- Aucun changement sur les plans V1 ou Multi-niveau hors V2 — l'overlay de chargement bénéficie à TOUT plan (V1 trivialement, V2 explicitement)
+- Le flag de crash n'est posé que si V2 generation activée
+- `_afficherErreurV2` n'apparaît que si génération V2 throw une erreur catchée
+
+---
+
 ### 🗓️ 15/05/2026 (suite 2) — 🧱 v151 : V2 améliorations workflow + perfPreset bypass
 
 3 améliorations sur la conversion V2 suite au feedback de la session de test v149 / v150.

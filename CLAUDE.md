@@ -1075,6 +1075,33 @@ if (pc.plan.tiledV2 === true && pc.tiling) {
 ```
 Le `baseImage` est toujours présent dans le ZIP/asset (le générateur V2 ne le supprime pas), donc le fallback fonctionne sans crash. Use case : comparer V2 vs V1 sur le même plan ou contourner temporairement le système de tuiles pour troubleshooting.
 
+#### 27.8 Robustesse erreurs et visibilité (v152)
+
+**Try/catch ciblé dans `_genererTuilesV2`** (createConf.js) : chaque opération critique (drawImage, toBlob, écriture ZIP, `_detectContentBBox > getImageData`) est wrappée avec un message d'erreur explicite mentionnant la coord (z, col, k) de la tuile qui a échoué. Les erreurs OOM typiques (toBlob retournant null, drawImage qui throw) sont relancées avec contexte.
+
+**Modal d'erreur visible** : `_afficherErreurV2(titre, message)` (createConf.js) remplace l'usage de `_plannerErreur` (zone inline en bas, peu visible) pour les erreurs critiques de génération V2. Pattern `.kta-readme-modal-overlay` + boîte rouge avec :
+- Header `❌ Échec de génération`
+- Message d'erreur encadré rouge (avec détail du throw catché)
+- Section `💡 Que faire ?` (verte) avec conseils actionnables : PC vs mobile, réduire image, JPEG q85
+- Bouton `J'ai compris` (primary)
+
+Détection OOM (heuristique sur le message d'erreur via regex `/m[ée]moire|drawImage|toBlob|saturation/i`) pour ajouter un suffixe spécifique au message.
+
+**Flag `myktamap_v2_gen_in_progress`** : posé AVANT la génération via `localStorage.setItem`, retiré dans le `finally` (succès OU catch). Contient `{ planName, imageSize, startedAt }`. Si le navigateur kill la page pendant la génération, le code du `finally` ne tourne JAMAIS → le flag reste au reload.
+
+**Détection au boot dans oomGuard.js** : `_checkV2GenerationCrash()` vérifie ce flag avec une fenêtre de fraîcheur de 1h (au-delà = vieux flag oublié, on ignore). Si détecté → `_pendingV2CrashInfo` stocké, puis `_afficherModaleV2Crash(info)` est appelé dans `flushPendingToasts` (après le splash), AVANT la modale "kill" générique standard.
+
+**Modale "Génération V2 interrompue"** : pattern `.kta-readme-modal-overlay` + boîte rouge similaire à _afficherErreurV2 mais focalisée sur le contexte spécifique :
+- Header `🧱❌ Génération V2 interrompue`
+- Message qui mentionne le nom du plan + taille de l'image source
+- Explication "saturation mémoire navigateur" + plafond ~500 MB iOS
+- Conseils : PC, réduire image, fermer apps en arrière-plan
+- Bouton `✓ Compris`
+
+**Overlay de chargement plein écran** : `_afficherOverlayChargement(message)` / `_majOverlayChargement(message)` / `_fermerOverlayChargement()` (index.html). Modale plein écran avec spinner CSS + message d'étape + hint. Affiché depuis `chargerZipFichier` (extraction du ZIP) et `chargerPlanServeur` (fetch serveur). Mis à jour pendant l'indexation des tuiles V2 (toutes les 50 tuiles) et avant le render carte. Fermé dans le `finally` de `lancerApplication` (succès OU erreur).
+
+CSS : `.kta-load-overlay` fixed inset:0 background semi-transparent + blur + `.kta-load-box` centrée (spinner animé 48px + titre + message + hint italique).
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

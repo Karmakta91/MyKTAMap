@@ -419,6 +419,46 @@
         statusBox.style.color = isError ? "#ffb3b3" : "#8cb4ff";
       }
 
+      // =========================
+      // 🌀 OVERLAY DE CHARGEMENT (depuis v152)
+      // =========================
+      // Affiche une modale plein écran avec spinner + message d'étape pendant
+      // le chargement d'un plan. Visible au CENTRE de l'écran (pas en bas
+      // comme #loaderStatus). Particulièrement utile pour les plans V2 qui
+      // peuvent être longs à extraire (1000+ tuiles) — l'utilisateur sait
+      // qu'il faut attendre et où on en est.
+      function _afficherOverlayChargement(message) {
+        let overlay = document.getElementById("kta-load-overlay");
+        if (!overlay) {
+          overlay = document.createElement("div");
+          overlay.id = "kta-load-overlay";
+          overlay.className = "kta-load-overlay";
+          overlay.innerHTML =
+            '<div class="kta-load-box">' +
+              '<div class="kta-load-spinner"></div>' +
+              '<div class="kta-load-titre">Chargement du plan…</div>' +
+              '<div class="kta-load-message" id="kta-load-message"></div>' +
+              '<div class="kta-load-hint">Ne ferme pas l\'onglet. Pour les plans tuilés V2 ou les plans très détaillés, ça peut prendre plusieurs secondes.</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+        }
+        const msgEl = document.getElementById("kta-load-message");
+        if (msgEl) msgEl.textContent = message || "Initialisation…";
+      }
+      function _majOverlayChargement(message) {
+        const msgEl = document.getElementById("kta-load-message");
+        if (msgEl) msgEl.textContent = message || "";
+      }
+      function _fermerOverlayChargement() {
+        const overlay = document.getElementById("kta-load-overlay");
+        if (overlay) overlay.remove();
+      }
+      // Expose pour main.js (lancerApplication peut envoyer des mises à jour
+      // de message au fur et à mesure de ses étapes).
+      window._afficherOverlayChargement = _afficherOverlayChargement;
+      window._majOverlayChargement      = _majOverlayChargement;
+      window._fermerOverlayChargement   = _fermerOverlayChargement;
+
       function guessMime(filename) {
         const ext = filename.split(".").pop().toLowerCase();
         return ({ json:"application/json", png:"image/png", jpg:"image/jpeg",
@@ -540,16 +580,25 @@
         if (typeof window.startImportedPlan !== "function") {
           throw new Error("startImportedPlan introuvable");
         }
+        // 🌀 v152 : overlay plein écran visible avec spinner + message d'étape.
+        // Plus visible que setStatus (qui écrit dans #loaderStatus tout en bas).
+        // Particulièrement utile pour les plans V2 (extraction de 1000+ tuiles).
+        _afficherOverlayChargement("Extraction du ZIP en cours…");
         setStatus("Extraction en cours…", false);
-        const { planConfigFile, assetFiles } = await extraireZip(zipFile);
-        setStatus("Chargement en cours…", false);
+        try {
+          const { planConfigFile, assetFiles } = await extraireZip(zipFile);
+          _majOverlayChargement("ZIP extrait — Chargement de la carte…");
+          setStatus("Chargement en cours…", false);
 
-        // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
-        // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
+          // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
+          // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
 
-        await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
-        setStatus("Plan chargé avec succès.");
-        if (window.masquerLoader) window.masquerLoader();
+          await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
+          setStatus("Plan chargé avec succès.");
+          if (window.masquerLoader) window.masquerLoader();
+        } finally {
+          _fermerOverlayChargement();
+        }
       }
       // Exposer pour le bouton "Changer de plan"
       window.chargerZipFichier = chargerZipFichier;

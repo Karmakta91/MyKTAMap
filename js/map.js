@@ -102,7 +102,8 @@ function creerIcones(iconConfig) {
     info:     "icon/info.png",
     chatiere: "icon/chatiere.png",
     passage:  "icon/passage.png",
-    danger:   "icon/danger.png"
+    danger:   "icon/danger.png",
+    plaque:   "icon/plaque.png"
   };
   Object.keys(TAGS_BUILTIN).forEach(function(tag) {
     if (!window._iconMap[tag]) {

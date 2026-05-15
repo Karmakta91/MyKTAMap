@@ -5469,6 +5469,101 @@ a.kta-level-btn {
 }
 
 /* =========================
+   🌀 OVERLAY DE CHARGEMENT (depuis v152)
+   ========================= */
+/* Modale plein écran avec spinner + message d'étape, affichée pendant le
+   chargement d'un plan (extraction ZIP, scan tuiles V2, init carte).
+   Plus visible que #loaderStatus qui est tout en bas du loader. */
+.kta-load-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 24, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99998;
+  animation: kta-load-fadein 0.15s ease-out;
+}
+@keyframes kta-load-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.kta-load-box {
+  background: #1a1f2e;
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 12px;
+  padding: 28px 32px;
+  text-align: center;
+  max-width: 440px;
+  width: 90%;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 0 32px rgba(140, 180, 255, 0.08);
+}
+.kta-load-spinner {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 18px;
+  border: 4px solid rgba(140, 180, 255, 0.15);
+  border-top-color: #8cb4ff;
+  border-radius: 50%;
+  animation: kta-load-spin 1s linear infinite;
+}
+@keyframes kta-load-spin {
+  to { transform: rotate(360deg); }
+}
+.kta-load-titre {
+  font-size: 17px;
+  font-weight: 600;
+  color: #e8eaf0;
+  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+}
+.kta-load-message {
+  font-size: 14px;
+  color: #c8d0e0;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  min-height: 21px;  /* évite le saut quand le message change */
+}
+.kta-load-hint {
+  font-size: 11.5px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.5;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* =========================
+   🧱 V2 ERROR MODAL — modale d'erreur lors de la génération (depuis v152)
+   ========================= */
+/* Pattern .kta-readme-modal + cohérent avec la modal warning V2 (violet).
+   Affichée lors d'un échec catché de _genererTuilesV2. Inclut conseils
+   actionnables (PC, réduire image, JPEG). */
+.kta-v2-error-boite {
+  border: 1px solid rgba(255, 107, 107, 0.40);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 107, 107, 0.10);
+  max-width: 560px;
+}
+.kta-v2-error-header .kta-readme-modal-titre {
+  color: #ff8a8a;
+  font-weight: 700;
+}
+.kta-v2-error-message {
+  background: rgba(255, 107, 107, 0.10);
+  border-left: 3px solid #ff6b6b;
+  color: #ffcccc;
+  padding: 12px 14px;
+  border-radius: 4px;
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+/* =========================
    🧱 V2 WARNING MODAL — popup avertissement au check de la case V2 (v151)
    ========================= */
 /* Pattern identique au tracker warning (cf. ci-dessous) mais avec un accent
