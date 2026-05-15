@@ -874,12 +874,13 @@ Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaD
 #### 26.5 Jonctions interniveau
 
 Type spécial `"jonction"` :
-- `fromLevel`/`toLevel` : niveaux des 2 extrémités
+- `fromLevel`/`toLevel` : niveaux des 2 extrémités. **Sémantique symétrique** : Pathfinder traverse dans les 2 sens, l'ordre from/to n'affecte rien d'autre que l'étiquetage UI dans la modale de création. Une jonction `{from:0, to:1}` est strictement équivalente à `{from:1, to:0}` du point de vue du graph.
 - N points (comme une polyline normale)
 - Style : magenta `#ff4ecb` weight 5 dashArray "10 6"
 - Marqueurs aux endpoints : `L.circleMarker` ∅14 (radius 7) bord magenta + intérieur blanc weight 3
 - Toujours visible si **au moins un** de `fromLevel`/`toLevel` ∈ `visibleLevels` (sinon cachée)
 - Exclue du calcul des cercles d'intersection (les middle points sont en transit vertical, pas des croisements physiques)
+- **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
 
 #### 26.6 Pathfinder niveau-aware (`pathfinder.js`)
 

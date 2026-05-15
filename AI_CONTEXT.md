@@ -98,7 +98,7 @@ Pour **chaque** question :
 - **Secondaire** (violet moyen)
 - **Chemin** (jaune fin)
 - **Itinéraire** (cyan néon, calculé automatiquement — pas tracé à la main)
-- **Jonction interniveau** (magenta pointillé + ronds blanc/magenta aux extrémités) — UNIQUEMENT disponible si le plan a le mode **multi-niveau** activé. Sert de bridge entre 2 niveaux pour le pathfinder.
+- **Jonction interniveau** (polyline magenta pointillée + ronds blanc/magenta aux 2 extrémités) — UNIQUEMENT disponible si le plan a le mode **multi-niveau** activé. Polyline multi-points (comme un tracé normal) qui sert de bridge unique entre 2 niveaux pour le pathfinder. Sémantique `fromLevel`/`toLevel` symétrique (pathfinder traverse dans les 2 sens). S'efface comme un tracé normal via 🧹.
 
 **Types de points / icônes built-in** (liste fermée) :
 - Puits : `pa` (Aération), `pb` (Bouchon), `pc` (Communication), `pe` (Égout), `ps` (Spéléo)
