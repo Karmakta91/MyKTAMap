@@ -9,6 +9,31 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques
+
+Mise en place du workflow `.github/workflows/release.yml` qui auto-crée tag + Release GitHub à chaque bump de `version.json > version` sur `main`. Pas de changement côté app — pur outillage dev.
+
+Avant : pour voir l'historique des versions, il fallait lire `README.md > Journal` (technique, dense). La page "Releases" du repo GitHub était vide.
+
+Maintenant : la page **Releases** devient l'index visible chronologique, avec :
+- Tag `v<version>` sur le commit exact du bump (= checkout possible)
+- Notes user-facing formatées (extraites de `version.json > notes`)
+- Lien "📊 Voir tous les commits depuis vN-1" → page compare GitHub
+
+**Workflow** : trigger sur push main qui modifie `version.json`. Garde-fous : skip si version inchangée ou tag déjà existant.
+
+**Documenté** : section §30 dans CLAUDE.md + commentaire d'en-tête détaillé dans le YAML (incl. commande d'antidatation v168 pour l'initialisation).
+
+**Pas de bump** : ce commit ne change pas l'app, juste l'outillage. La prochaine vraie release (v169+) déclenchera le workflow.
+
+Fichiers ajoutés :
+| Fichier | Rôle |
+|---|---|
+| `.github/workflows/release.yml` | Workflow GitHub Actions (~110 lignes) |
+| `CLAUDE.md` §30 | Doc pour futurs devs/agents |
+
+---
+
 ### 🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)
 
 KARMA : "ducoup l'alerte dans le menu alerte suffit pour la migration, supprime l'autre pour éviter les doublons".

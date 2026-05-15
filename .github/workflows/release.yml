@@ -1,0 +1,167 @@
+# =====================================================================
+# MyKTAMap — Workflow de release automatique
+# =====================================================================
+# Quand `version.json > version` change sur main (= bump de version),
+# ce workflow auto-crée :
+#   1. Un tag git `v<version>` (ex: v168) sur le commit du bump
+#   2. Une GitHub Release avec les notes user-facing extraites de version.json
+#
+# AVANTAGE
+# - La page "Releases" du repo devient l'index visible chronologique des
+#   versions, avec leur changelog formaté
+# - Aucun changement de workflow côté dev : tu continues de bumper les
+#   3 fichiers (sw.js, copyright.js, version.json) comme avant, le tag
+#   + la release apparaissent automatiquement après le push sur main
+# - Le tag te permet de checkout le code exact d'une version donnée
+#
+# INITIALISATION (à faire une seule fois après le merge de ce workflow)
+# La version courante v168 n'a pas encore de tag/release associé. Pour
+# antidater proprement, lance dans un terminal :
+#
+#   git tag v168 cb5e05d
+#   git push origin v168
+#   gh release create v168 \
+#     --title "MyKTAMap v168" \
+#     --notes-file - <<EOF
+#   ## 📋 Nouveautés
+#
+#   - 🏗️ Mode multi-niveau (carrières multi-étages)…
+#   - 🧱 Mode V2 (plan tuilé)…
+#   - 🧭 Boussole / widget Nord…
+#
+#   ---
+#   _Publié le 2026-05-15_
+#   EOF
+#
+# Le prochain bump (v169) déclenchera automatiquement ce workflow.
+# =====================================================================
+
+name: Auto Release
+
+on:
+  push:
+    branches: [main]
+    # Optimisation : le workflow ne se déclenche QUE si version.json a été
+    # modifié dans le push (= très majoritairement les commits de bump).
+    paths:
+      - 'version.json'
+
+# Le workflow doit pouvoir créer tags + releases
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (avec historique pour diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # On compare HEAD vs HEAD~1
+
+      # ----------------------------------------------------------------
+      # 1. Lecture version courante (HEAD) et précédente (HEAD~1)
+      # ----------------------------------------------------------------
+      - name: Lire version courante
+        id: current
+        run: |
+          VERSION=$(jq -r '.version' version.json)
+          RELEASED=$(jq -r '.released' version.json)
+          echo "version=$VERSION"  >> "$GITHUB_OUTPUT"
+          echo "released=$RELEASED" >> "$GITHUB_OUTPUT"
+          echo "[release] Version courante : $VERSION ($RELEASED)"
+
+      - name: Lire version précédente (HEAD~1)
+        id: previous
+        run: |
+          # git show peut échouer si version.json n'existait pas avant (1er commit) -
+          # dans ce cas on traite comme "version différente" pour déclencher la release.
+          PREV=$(git show HEAD~1:version.json 2>/dev/null | jq -r '.version' 2>/dev/null || echo "")
+          echo "version=$PREV" >> "$GITHUB_OUTPUT"
+          echo "[release] Version précédente : ${PREV:-<aucune>}"
+
+      # ----------------------------------------------------------------
+      # 2. Skip si version inchangée (ex: l'user a corrigé une typo dans
+      #    les notes sans bumper le numéro → on ne crée pas un duplicate tag).
+      # ----------------------------------------------------------------
+      - name: Vérifier que la version a changé
+        id: check
+        run: |
+          if [ "${{ steps.current.outputs.version }}" = "${{ steps.previous.outputs.version }}" ]; then
+            echo "[release] Version inchangée → skip"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[release] Bump détecté : ${{ steps.previous.outputs.version }} → ${{ steps.current.outputs.version }}"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ----------------------------------------------------------------
+      # 3. Skip aussi si le tag existe déjà (ex: l'user a déjà taggué
+      #    manuellement avant que le workflow tourne).
+      # ----------------------------------------------------------------
+      - name: Vérifier que le tag n'existe pas déjà
+        id: tag_check
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "[release] La release $VERSION existe déjà → skip"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "[release] Release $VERSION pas encore créée → on continue"
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ----------------------------------------------------------------
+      # 4. Formate les notes user-facing depuis version.json en markdown
+      # ----------------------------------------------------------------
+      - name: Formater les release notes
+        id: notes
+        if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
+        run: |
+          # Convertit le array `notes` JSON en bullets markdown.
+          NOTES=$(jq -r '.notes // [] | map("- " + .) | join("\n")' version.json)
+          PREV="${{ steps.previous.outputs.version }}"
+          CUR="${{ steps.current.outputs.version }}"
+
+          # Lien compare entre tag précédent et nouveau, si tag précédent existe.
+          COMPARE_LINK=""
+          if [ -n "$PREV" ] && [ "$PREV" != "null" ]; then
+            REPO="${{ github.repository }}"
+            COMPARE_LINK=$'\n\n[📊 Voir tous les commits depuis '"$PREV"$'](https://github.com/'"$REPO"$'/compare/'"$PREV"$'...'"$CUR"$')'
+          fi
+
+          # Écrit le body en multi-line output (syntaxe heredoc GitHub Actions)
+          {
+            echo "body<<RELEASE_EOF"
+            echo "## 📋 Nouveautés"
+            echo ""
+            echo "$NOTES"
+            echo ""
+            echo "---"
+            echo "_Publié le ${{ steps.current.outputs.released }}_"
+            echo "$COMPARE_LINK"
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      # ----------------------------------------------------------------
+      # 5. Crée le tag + la release GitHub
+      # ----------------------------------------------------------------
+      - name: Créer le tag et la release
+        if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          # Le tag est créé directement par `gh release create --target` sur le
+          # commit courant (HEAD = commit du bump version.json sur main).
+          # `--latest` marque cette release comme la dernière (utile pour le badge
+          # "Latest" sur la page GitHub).
+          gh release create "$VERSION" \
+            --title "MyKTAMap $VERSION" \
+            --notes "${{ steps.notes.outputs.body }}" \
+            --target main \
+            --latest
+          echo "[release] ✅ Release $VERSION créée avec succès"
