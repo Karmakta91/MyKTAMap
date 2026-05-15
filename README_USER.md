@@ -95,10 +95,9 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.is-underground.fr`).
 
-**Que se passe-t-il sur l'ancien domaine ?**
+**Comment es-tu informé ?**
 
-- Une **modal pédagogique** s'affiche au premier lancement post-mise-à-jour (clic "J'ai compris" = vu définitivement / "Plus tard" = rappel dans 7 jours)
-- Une **alerte info permanente** (badge 🚨 bleu) est diffusée en continu via le système d'alertes — consultable à tout moment
+Une **alerte info permanente** (badge 🚨 bleu) est diffusée via le système d'alertes publiques. Tu la consultes quand tu veux en cliquant sur le badge 🚨 dans le header du loader. L'alerte affiche la date de coupure + la checklist complète des données à exporter avant migration.
 
 **Que faire pour migrer mes données ?**
 

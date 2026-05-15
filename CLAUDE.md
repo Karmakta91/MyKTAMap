@@ -1168,20 +1168,11 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 **Approche cohabitation 60 jours** (au lieu d'un kill switch immédiat) :
 - Les 2 domaines servent la même app v163+ en parallèle pendant ~2 mois
-- Sur l'ancien domaine, l'utilisateur est informé via :
-  1. **Modal one-shot pédagogique** (`js/migrationNotice.js`) au premier lancement post-update — persistée localStorage
-  2. **Entrée `info` dans `alert.json`** — rappel récurrent visible via le badge 🚨 dynamique (cf. §20)
+- Sur l'ancien domaine, l'utilisateur est informé via une **entrée `info` dans `alert.json`** (cf §20 et v167 sélecteur multi-alertes) — rappel discret via badge 🚨 bleu, l'user lit quand il veut
 - Aucune perte de données : l'utilisateur a le temps d'exporter ses sessions via 💾 et de migrer à son rythme
 - À J+60, déploiement de la conf Nginx `docs/nginx-redirect-old-domain.conf` (kill switch SW + page de transition)
 
-**Module `js/migrationNotice.js`** :
-- Hostname gate : affiche UNIQUEMENT si `location.hostname === "myktamap.is-underground.fr"`. Sur localhost / dev / nouveau domaine → silencieux.
-- Persistance `localStorage["myktamap_migration_seen"]` :
-  - `"permanent"` → vue définitivement (clic "J'ai compris")
-  - ISO timestamp → vue mais pas définitif (clic "Plus tard") → re-affiche dans 7 jours
-- Modal style charte jaune charte (pas alarmiste — info pédagogique, pas urgence). Sections : Quand, Nouveau domaine (lien), Que faire avant la coupure, Pendant la transition.
-- Lien `myktamap.fr` désactivé tant que `NEW_DOMAIN_LIVE = false` (= constante en haut du fichier). Affiche "🚧 Arrive bientôt (15 juillet 2026)". Quand le DNS est pointé, passer `NEW_DOMAIN_LIVE = true` et bump version.
-- Hook splash identique à `AlertChecker`/`OOMGuard`/`UpdateChecker` : `notifySplashEnded()` appelé depuis `main.js > _splashEnd`.
+**Historique** : v163-v167 avait aussi un module `js/migrationNotice.js` qui affichait une modal one-shot pédagogique au premier lancement. **Supprimé en v168** car doublon avec l'alerte info `alert.json` qui est plus discrète et déjà visible en permanence via le badge 🚨. Le code git history conserve `migrationNotice.js` pour référence (commit `aea3a1e` introduisait, `?` supprime).
 
 **Fichier `docs/nginx-redirect-old-domain.conf`** : conf Nginx prête à déployer à J+60. Contient :
 1. `/sw.js` → kill switch SW inline (purge caches + unregister + force reload des clients)
@@ -1189,13 +1180,13 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 3. Tous les autres paths → page HTML de transition (cleanup JS + redirect avec triple filet meta/JS/countdown)
 4. Headers `no-cache, no-store` strict partout
 
-**Fichier `docs/alert-example-migration.json`** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle (incendie, etc.). À déployer côté serveur ancien domaine.
+**Fichier `docs/alert-example-migration.json`** : exemple `alert.json` multi-alertes avec entrée info migration + emplacement commenté pour alerte ponctuelle (incendie, etc.). Le vrai `alert.json` racine (servi en prod) contient déjà les 2 alertes (gaz toxiques emergency + migration info) au format v163+.
 
 **Constantes à mettre à jour quand `myktamap.fr` sera DNS-pointé** :
-- `js/migrationNotice.js > NEW_DOMAIN_LIVE = true`
 - `js/copyright.js > __MKM__.site` (sur le nouveau domaine, garder l'ancien sur l'ancien domaine pour cohérence pendant la transition)
 - Meta tags `<head>` dans `index.html`
 - Mentions dans `README.md` / `README_USER.md` / `AI_CONTEXT.md`
+- Dans `alert.json > details` de l'alerte migration : retirer la mention "🚧 myktamap.fr est en cours de mise en service" et ajouter le lien actif
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

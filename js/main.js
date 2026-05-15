@@ -729,12 +729,10 @@ async function _splashEnd() {
       window.UpdateChecker.notifySplashEnded();
     }
     // Alerte publique (incendie, etc.) si l'auteur en a publié une dans alert.json
+    // (depuis v168 : inclut aussi l'annonce migration myktamap.fr — l'ancien
+    // module MigrationNotice qui doublait via une modal one-shot a été supprimé)
     if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
       window.AlertChecker.notifySplashEnded();
-    }
-    // 🌐 v163 : annonce du changement de domaine (uniquement sur ancien hostname)
-    if (window.MigrationNotice && typeof window.MigrationNotice.notifySplashEnded === "function") {
-      window.MigrationNotice.notifySplashEnded();
     }
   }, 500);
 }
