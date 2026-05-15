@@ -9,7 +9,109 @@
 
 ## 📋 Journal des modifications
 
-### 🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques
+> _Le journal est long (93 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+### 📑 Sommaire des versions
+
+- [🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques](#2026-05-15-s13)
+- [🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)](#v168)
+- [🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`](#v163)
+- [🗓️ 15/05/2026 (suite 10) — 🏗️ v162 : Champ "Niveau" sur les image layers](#v162)
+- [🗓️ 15/05/2026 (suite 9) — 🧭 v158-v161 : Tracker directionnel (4 itérations)](#v158)
+- [🗓️ 15/05/2026 (suite 8) — 🧭 v157 : Nouvelle icône dédiée pour la boussole](#v157)
+- [🗓️ 15/05/2026 (suite 7) — 🐛 v156 : Fix sélection niveau négatif inactive](#v156)
+- [🗓️ 15/05/2026 (suite 6) — 🎨 v155 : Multi-niveau — segmented sur une seule ligne](#v155)
+- [🗓️ 15/05/2026 (suite 5) — 🏗️ v154 : Niveaux négatifs (sous-sols) + auto-extension availableLevels](#v154)
+- [🗓️ 15/05/2026 (suite 4) — 🔧 v153 : Fix double modale après crash V2](#v153)
+- [🗓️ 15/05/2026 (suite 3) — 🛡️ v152 : Robustesse erreurs V2 + overlay chargement visible](#v152)
+- [🗓️ 15/05/2026 (suite 2) — 🧱 v151 : V2 améliorations workflow + perfPreset bypass](#v151)
+- [🗓️ 15/05/2026 (suite 1) — 🧱 v149 : Tiling V2 Option B (multi-imageOverlay)](#v149)
+- [🗓️ 15/05/2026 — 🏗️ v148 : Mode multi-niveau (carrières multi-étages)](#v148)
+- [🗓️ 14/05/2026 (suite 1) — 🧭 v147 : Fix heading tracker + Widget boussole + Popup avertissement](#v147)
+- [🗓️ 14/05/2026 — 🧹 v146 : Fix mode tracé/zone après suppression + Distance totale inclut roads masquées](#v146)
+- [🗓️ 13/05/2026 (suite 6) — 🏷️ Badge version cliquable dans le footer (avec notes intégrées)](#2026-05-13-s6)
+- [🗓️ 13/05/2026 (suite 5) — 🎚️ Loader : drawer "Réglages de performance" + fix bug rotation + badge version footer](#2026-05-13-s5)
+- [🗓️ 13/05/2026 (suite 4) — 🚀 Mode Performance ULTRA : 6 toggles d'optimisation pour gros plans / appareils faibles](#2026-05-13-s4)
+- [🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)](#2026-05-13-s3)
+- [🗓️ 13/05/2026 (suite 2) — 🚨 Système d'alertes publiques via `alert.json`](#2026-05-13-s2)
+- [🗓️ 13/05/2026 (suite 1) — 🎯 Générateur : position initiale tracker auto-centrée (W/2 × H/2)](#2026-05-13-s1)
+- [🗓️ 13/05/2026 — 🏗️ Générateur de plan : auto-détection des dimensions de l'image principale](#2026-05-13)
+- [🗓️ 11/05/2026 (suite 3) — 🖼️ Fix export PNG/JPEG : fallback automatique pour gros plans JPG source](#2026-05-11-s3)
+- [🗓️ 11/05/2026 (suite 2) — 🤖 AI Context : externalisation à la racine + anti-hallucination renforcé + prompt copiable](#2026-05-11-s2)
+- [🗓️ 11/05/2026 (suite 1) — 🔔 Détection de mise à jour : modale + mise à jour douce vs reset complet](#2026-05-11-s1)
+- [🗓️ 11/05/2026 — ⛑️ Mode urgence "Je suis perdu" : module complet d'estimation de position en cataphilie](#2026-05-11)
+- [🗓️ 10/05/2026 (suite 15) — 🤖 Aide IA : fichier de contexte téléchargeable pour assistance IA externe](#2026-05-10-s15)
+- [🗓️ 10/05/2026 (suite 14) — Fix bouton "🗑️ Supprimer ce point" qui apparaissait sur points data layer](#2026-05-10-s14)
+- [🗓️ 10/05/2026 (suite 13) — Modale Aide : retour à `columns:2` sans break-inside (vraie balance)](#2026-05-10-s13)
+- [🗓️ 10/05/2026 (suite 12) — Modale Aide : passage de `columns:2` à CSS Grid auto-flow](#2026-05-10-s12)
+- [🗓️ 10/05/2026 (suite 11) — Modale Aide : layout 2 colonnes sur PC](#2026-05-10-s11)
+- [🗓️ 10/05/2026 (suite 10) — Footer copyright : licence à la ligne sur mobile](#2026-05-10-s10)
+- [🗓️ 10/05/2026 (suite 9) — Loader PC : fix débordement grid (% vs fr)](#2026-05-10-s9)
+- [🗓️ 10/05/2026 (suite 8) — Loader : marges équilibrées + signature image (au lieu de "alias KARMA")](#2026-05-10-s8)
+- [🗓️ 10/05/2026 (suite 7) — Loader : layout 2 colonnes sur PC (≥ 1024px)](#2026-05-10-s7)
+- [🗓️ 10/05/2026 (suite 6) — Sélection visuelle pour supprimer une zone (même pattern que tracés)](#2026-05-10-s6)
+- [🗓️ 10/05/2026 (suite 5) — Hotfix suppression point + sélection visuelle des tracés](#2026-05-10-s5)
+- [🗓️ 10/05/2026 (suite 4) — Suppression : bouton popup + modale "Sélectionner un tracé"](#2026-05-10-s4)
+- [🗓️ 10/05/2026 (suite 3) — minZoom plus généreux sur desktop](#2026-05-10-s3)
+- [🗓️ 10/05/2026 (suite 2) — Itinéraire : temps estimé (label bottomleft + modale)](#2026-05-10-s2)
+- [🗓️ 10/05/2026 (suite 1) — Popup point : 3ème bouton "📍 Je suis ici" (recalage tracker)](#2026-05-10-s1)
+- [🗓️ 10/05/2026 — Popups de points : boutons "🧭 Y aller" et "➕ Itinéraire"](#2026-05-10)
+- [🗓️ 09/05/2026 (suite 33) — Décalage titre limité au mobile (desktop a assez de place)](#2026-05-09-s33)
+- [🗓️ 09/05/2026 (suite 32) — Décalage du titre fixe quand le contrôle des couches est ouvert](#2026-05-09-s32)
+- [🗓️ 09/05/2026 (suite 31) — Fix z-index contrôle des couches (passe derrière le titre sur mobile)](#2026-05-09-s31)
+- [🗓️ 09/05/2026 (suite 30) — Tuiles fond noir + raccourci label distance + édition waypoints en mode navigation](#2026-05-09-s30)
+- [🗓️ 09/05/2026 (suite 29) — Hotfix crash au reload avec itinéraire actif](#2026-05-09-s29)
+- [🗓️ 09/05/2026 (suite 28) — Optimisations performance pour les plans avec beaucoup de routes](#2026-05-09-s28)
+- [🗓️ 09/05/2026 (suite 27) — Tutoriel "Optimiser ton plan" dans la doc utilisateur](#2026-05-09-s27)
+- [🗓️ 09/05/2026 (suite 26) — Pathfinder utilise toutes les routes embedded (visibles ou non)](#2026-05-09-s26)
+- [🗓️ 09/05/2026 (suite 25) — Plafonnement dynamique du minZoom selon la taille de l'image](#2026-05-09-s25)
+- [🗓️ 09/05/2026 (suite 24) — Rollback complet du forçage SVG sur roads (crash dézoom)](#2026-05-09-s24)
+- [🗓️ 09/05/2026 (suite 23) — Itinéraire : bouton "🧭 Ma position" pour utiliser le tracker comme waypoint](#2026-05-09-s23)
+- [🗓️ 09/05/2026 (suite 22) — Rollback du calque "Mes tracés" séparé](#2026-05-09-s22)
+- [🗓️ 09/05/2026 (suite 21) — Calque "Mes tracés" séparé pour les roads session](#2026-05-09-s21)
+- [🗓️ 09/05/2026 (suite 20) — Hotfix crash app : SVG renderer partagé pour les roads](#2026-05-09-s20)
+- [🗓️ 09/05/2026 (suite 19) — Toast copyright à l'activation du mode debug](#2026-05-09-s19)
+- [🗓️ 09/05/2026 (suite 18) — Fix toggle "Mes annotations" sur les roads (renderer SVG forcé)](#2026-05-09-s18)
+- [🗓️ 09/05/2026 (suite 17) — Fallback auto-création du calque "editor" dans map.js](#2026-05-09-s17)
+- [🗓️ 09/05/2026 (suite 16) — Gating buffer logs + threshold popup F12 ajusté](#2026-05-09-s16)
+- [🗓️ 09/05/2026 (suite 15) — Détection DevTools réactivée mais conditionnée au mode debug](#2026-05-09-s15)
+- [🗓️ 09/05/2026 (suite 14) — Fix toast DevTools faux positif + audit gating logs](#2026-05-09-s14)
+- [🗓️ 09/05/2026 (suite 13) — Calque "Mes annotations" englobe points + roads + zones session](#2026-05-09-s13)
+- [🗓️ 09/05/2026 (suite 12) — Protection juridique du code (Phase 1 légale)](#2026-05-09-s12)
+- [🗓️ 09/05/2026 (suite 11) — Fix toggle calque "Ajout" sur points restaurés par SessionPersist](#2026-05-09-s11)
+- [🗓️ 09/05/2026 (suite 10) — Conversion auto m / km sur les 3 outils de distance](#2026-05-09-s10)
+- [🗓️ 09/05/2026 (suite 9) — Fix bouton ❌ Effacer le surlignage (collision de noms)](#2026-05-09-s9)
+- [🗓️ 09/05/2026 (suite 8) — Distance totale : modale plein écran (uniformisation UI)](#2026-05-09-s8)
+- [🗓️ 09/05/2026 (suite 7) — Fix crash Distance totale sur plans denses](#2026-05-09-s7)
+- [🗓️ 09/05/2026 (suite 6) — Distance totale des tracés (filtres + surlignage magenta)](#2026-05-09-s6)
+- [🗓️ 09/05/2026 (suite 5) — Itinéraire / Pathfinding sur le réseau de routes](#2026-05-09-s5)
+- [🗓️ 09/05/2026 (suite 4) — OOMGuard : modale "ATTENTION arrêt brutal détecté"](#2026-05-09-s4)
+- [🗓️ 09/05/2026 (suite 3) — Reset "Tout réinitialiser" : check Internet en amont](#2026-05-09-s3)
+- [🗓️ 09/05/2026 (suite 2) — Perf hardening mobile (transparent utilisateur)](#2026-05-09-s2)
+- [🗓️ 09/05/2026 (suite) — Audit code : suppression dead code, gating logs centralisé](#2026-05-09)
+- [🗓️ 09/05/2026 — iPhone PWA : top intégré dark via hack Leaflet](#2026-05-09-bis1)
+- [🗓️ 08/05/2026 (suite 3) — Filtres calques + tags dans la recherche](#2026-05-08-s3)
+- [🗓️ 08/05/2026 (suite 2) — Convertisseur bidirectionnel dans le modal Export](#2026-05-08-s2)
+- [🗓️ 08/05/2026 (suite) — Auto-save de la session active + toast de restauration](#2026-05-08)
+- [🗓️ 08/05/2026 — Mode performance réglable (5 presets DLSS-like) + flag debug global](#2026-05-08-bis1)
+- [🗓️ 06/05/2026 (suite 3) — 6 nouveaux tags d'accès + refonte cascade icônes + légende 5 groupes](#2026-05-06-s3)
+- [🗓️ 06/05/2026 (suite 2) — Plan Switcher (titre cliquable)](#2026-05-06-s2)
+- [🗓️ 06/05/2026 (suite) — Splash + ergonomie loader + gestion erreurs plan](#2026-05-06)
+- [🗓️ 06/05/2026 — Système multi-plans + persistance ZIP locale](#2026-05-06-bis1)
+- [🗓️ 05/05/2026 — Export session avancé + filtrage par tag + bugs résolus](#2026-05-05)
+- [🗓️ 04/05/2026 — Recherche de point + ajustements](#2026-05-04)
+- [🗓️ 04/05/2026 — Éditeur tableau JSON](#2026-05-04-bis1)
+- [🗓️ 04/05/2026 — Charte graphique légende exportée](#2026-05-04-bis2)
+- [🗓️ 04/05/2026 — Zones, eau, page d'accueil, calibrage](#2026-05-04-bis3)
+- [🗓️ 03/05/2026 — Export plan avancé](#2026-05-03)
+- [🗓️ 03/05/2026 — Module Zones](#2026-05-03-bis1)
+- [🗓️ 03/05/2026 — Refonte interface](#2026-05-03-bis2)
+
+---
+
+<details id="2026-05-15-s13" open>
+<summary><strong>🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques</strong></summary>
+
 
 Mise en place du workflow `.github/workflows/release.yml` qui auto-crée tag + Release GitHub à chaque bump de `version.json > version` sur `main`. Pas de changement côté app — pur outillage dev.
 
@@ -34,7 +136,11 @@ Fichiers ajoutés :
 
 ---
 
-### 🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)
+</details>
+
+<details id="v168" open>
+<summary><strong>🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)</strong></summary>
+
 
 KARMA : "ducoup l'alerte dans le menu alerte suffit pour la migration, supprime l'autre pour éviter les doublons".
 
@@ -70,7 +176,11 @@ L'annonce migration était diffusée par 2 canaux distincts :
 
 ---
 
-### 🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`
+</details>
+
+<details id="v163">
+<summary><strong>🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`</strong></summary>
+
 
 Préparation de la migration de domaine du site historique `myktamap.is-underground.fr` vers le nouveau `myktamap.fr` (prévue **15 juillet 2026**). Approche cohabitation 60j (pas de kill switch immédiat) pour éviter toute perte de données utilisateur.
 
@@ -164,7 +274,11 @@ Hook splash identique aux autres modules (`notifySplashEnded`).
 
 ---
 
-### 🗓️ 15/05/2026 (suite 10) — 🏗️ v162 : Champ "Niveau" sur les image layers
+</details>
+
+<details id="v162">
+<summary><strong>🗓️ 15/05/2026 (suite 10) — 🏗️ v162 : Champ "Niveau" sur les image layers</strong></summary>
+
 
 Le mode multi-niveau supportait déjà le tagging par niveau des roads, zones, points (session + data layers). Manquait : les **image layers** (calques image du plan : légende, hachures, surcouches statiques). Quand le plan contient une légende dessinée pour le niveau 0 ET une légende différente pour le niveau -1, on veut que seule la bonne s'affiche selon le filtre Niveaux courant.
 
@@ -230,7 +344,11 @@ Appel ajouté à la fin de la chaîne des appliquerFilterTo* — ordre cohérent
 
 ---
 
-### 🗓️ 15/05/2026 (suite 9) — 🧭 v158-v161 : Tracker directionnel (4 itérations)
+</details>
+
+<details id="v158">
+<summary><strong>🗓️ 15/05/2026 (suite 9) — 🧭 v158-v161 : Tracker directionnel (4 itérations)</strong></summary>
+
 
 L'icône du tracker pointe maintenant dans la direction de marche pendant le tracking actif, à la place d'être statique. Source du heading = `getCurrentHeading()` (même que la boussole 🧭, cohérence du système). 4 versions car le path n'était pas trivial.
 
@@ -286,7 +404,11 @@ Fix : sentinel `null` + check explicite avant le math circulaire. Le throttle es
 
 ---
 
-### 🗓️ 15/05/2026 (suite 8) — 🧭 v157 : Nouvelle icône dédiée pour la boussole
+</details>
+
+<details id="v157">
+<summary><strong>🗓️ 15/05/2026 (suite 8) — 🧭 v157 : Nouvelle icône dédiée pour la boussole</strong></summary>
+
 
 Remplacement de l'icône utilisée par le widget 🧭 Boussole : passe de `icon/mkm-full.png` (rose des vents identité MyKTAMap) à **`icon/compass.png`** dédiée, avec **N/S/E/W marqués clairement** + flèche rouge sur le Nord. Beaucoup plus lisible à l'usage en cataphilie sombre.
 
@@ -296,7 +418,11 @@ Fichiers : `js/compass.js` (3 `src=` remplacés + commentaire d'en-tête), `sw.j
 
 ---
 
-### 🗓️ 15/05/2026 (suite 7) — 🐛 v156 : Fix sélection niveau négatif inactive
+</details>
+
+<details id="v156">
+<summary><strong>🗓️ 15/05/2026 (suite 7) — 🐛 v156 : Fix sélection niveau négatif inactive</strong></summary>
+
 
 Bug remonté par KARMA : dans la modale Niveaux, cliquer sur un bouton niveau négatif (`-1`, `-2`, …) ne mettait pas le bouton en jaune (`kta-actif`) et ne changeait pas le niveau actif.
 
@@ -313,7 +439,11 @@ Vérification exhaustive : grep `level<0`, `lvl<0`, `newLevel<0` → 1 seul endr
 
 ---
 
-### 🗓️ 15/05/2026 (suite 6) — 🎨 v155 : Multi-niveau — segmented sur une seule ligne
+</details>
+
+<details id="v155">
+<summary><strong>🗓️ 15/05/2026 (suite 6) — 🎨 v155 : Multi-niveau — segmented sur une seule ligne</strong></summary>
+
 
 Quand l'user étendait beaucoup le range (>7 niveaux), le segmented control "Niveau actif" passait à la ligne. Refactor pour garder tout sur une seule ligne avec scroll horizontal.
 
@@ -329,7 +459,11 @@ Section "Niveaux visibles" (checkboxes en grid) inchangée — le wrap a du sens
 
 ---
 
-### 🗓️ 15/05/2026 (suite 5) — 🏗️ v154 : Niveaux négatifs (sous-sols) + auto-extension availableLevels
+</details>
+
+<details id="v154">
+<summary><strong>🗓️ 15/05/2026 (suite 5) — 🏗️ v154 : Niveaux négatifs (sous-sols) + auto-extension availableLevels</strong></summary>
+
 
 Évolution du mode multi-niveau pour mieux représenter les sites souterrains à étages (Glacière, Capucins) : le défaut passe de `[0, 1, 2, 3]` à `[-2, -1, 0, 1, 2]` pour distinguer sous-sols (négatifs) et étages supérieurs (positifs), avec 0 comme niveau de référence (RDC / éléments sans `level`).
 
@@ -376,7 +510,11 @@ Idempotent — peut tourner plusieurs fois sans effet de bord. Cas d'usage typiq
 - Plans v148-v153 avec `availableLevels` persistés dans `plan-config.json` : aucun, car `availableLevels` est runtime-only (jamais sérialisé).
 - Sessions sauvegardées : aucun impact (sérialisent `level` comme number, donc négatifs OK).
 
-### 🗓️ 15/05/2026 (suite 4) — 🔧 v153 : Fix double modale après crash V2
+</details>
+
+<details id="v153">
+<summary><strong>🗓️ 15/05/2026 (suite 4) — 🔧 v153 : Fix double modale après crash V2</strong></summary>
+
 
 Bug remonté par l'user : après un crash OOM pendant la génération V2, la modale "🧱❌ Génération V2 interrompue" était immédiatement suivie par la modale "⚠️ ARRÊT BRUTAL DÉTECTÉ" générique — les deux pointent vers le même événement mais V2 est plus spécifique.
 
@@ -386,7 +524,11 @@ Bug remonté par l'user : après un crash OOM pendant la génération V2, la mod
 
 Bump v153 : `sw.js`, `js/copyright.js > __MKM__.build`, `version.json` synchronisés.
 
-### 🗓️ 15/05/2026 (suite 3) — 🛡️ v152 : Robustesse erreurs V2 + overlay chargement visible
+</details>
+
+<details id="v152">
+<summary><strong>🗓️ 15/05/2026 (suite 3) — 🛡️ v152 : Robustesse erreurs V2 + overlay chargement visible</strong></summary>
+
 
 2 demandes utilisateur traitées : (1) erreurs explicites au crash de génération V2 (plus jamais d'erreur silencieuse) et (2) overlay de chargement de plan visible au centre (au lieu du discret `#loaderStatus` en bas).
 
@@ -446,7 +588,11 @@ CSS `.kta-load-*` : modale centrée, fond semi-transparent + blur, spinner 48px 
 
 ---
 
-### 🗓️ 15/05/2026 (suite 2) — 🧱 v151 : V2 améliorations workflow + perfPreset bypass
+</details>
+
+<details id="v151">
+<summary><strong>🗓️ 15/05/2026 (suite 2) — 🧱 v151 : V2 améliorations workflow + perfPreset bypass</strong></summary>
+
 
 3 améliorations sur la conversion V2 suite au feedback de la session de test v149 / v150.
 
@@ -492,7 +638,11 @@ Use case : comparer V2 vs V1 sur le même plan, ou bypass temporaire du système
 
 ---
 
-### 🗓️ 15/05/2026 (suite 1) — 🧱 v149 : Tiling V2 Option B (multi-imageOverlay)
+</details>
+
+<details id="v149">
+<summary><strong>🗓️ 15/05/2026 (suite 1) — 🧱 v149 : Tiling V2 Option B (multi-imageOverlay)</strong></summary>
+
 
 Pivot vers **Option B** après échec des approches GridLayer / TileLayer.extend testées en v148 puis archivées (branche `v2-work-archive`). Système de découpage d'image en tuiles 512×512 sur 4 niveaux de zoom Google Maps-like, pour les gros plans qui saturent la RAM mobile.
 
@@ -587,7 +737,11 @@ Conversion lente (1-5 min sur image typique 4-16K px), une seule fois.
 
 ---
 
-### 🗓️ 15/05/2026 — 🏗️ v148 : Mode multi-niveau (carrières multi-étages)
+</details>
+
+<details id="v148">
+<summary><strong>🗓️ 15/05/2026 — 🏗️ v148 : Mode multi-niveau (carrières multi-étages)</strong></summary>
+
 
 Gros morceau : support des **carrières/galeries multi-étages** (Glacière, Capucins, sites avec plusieurs niveaux empilés physiquement). Phase 1A (data model + UI) + Phase 2A (filtre + intégration toutes fonctions) + Pathfinder niveau-aware en une seule release.
 
@@ -699,7 +853,11 @@ Jonctions visibles si `fromLevel` OU `toLevel` ∈ `visibleLevels`.
 
 ---
 
-### 🗓️ 14/05/2026 (suite 1) — 🧭 v147 : Fix heading tracker + Widget boussole + Popup avertissement
+</details>
+
+<details id="v147">
+<summary><strong>🗓️ 14/05/2026 (suite 1) — 🧭 v147 : Fix heading tracker + Widget boussole + Popup avertissement</strong></summary>
+
 
 Retour terrain en carrière : "tourner à droite → tracker tourne à gauche, avancer → recule". 3 livrables pour traiter le problème et ses conséquences UX.
 
@@ -783,7 +941,11 @@ Le bouton 🧭 Boussole **ne** déclenche **pas** cette popup (c'est un outil de
 
 ---
 
-### 🗓️ 14/05/2026 — 🧹 v146 : Fix mode tracé/zone après suppression + Distance totale inclut roads masquées
+</details>
+
+<details id="v146">
+<summary><strong>🗓️ 14/05/2026 — 🧹 v146 : Fix mode tracé/zone après suppression + Distance totale inclut roads masquées</strong></summary>
+
 
 Deux petits bugs identifiés en utilisation réelle (cf. CLAUDE.md §23 + §15).
 
@@ -823,7 +985,11 @@ Le panneau 📏 utilisait `window.getEmbeddedRoads()` qui filtre par visibilité
 
 ---
 
-### 🗓️ 13/05/2026 (suite 6) — 🏷️ Badge version cliquable dans le footer (avec notes intégrées)
+</details>
+
+<details id="2026-05-13-s6">
+<summary><strong>🗓️ 13/05/2026 (suite 6) — 🏷️ Badge version cliquable dans le footer (avec notes intégrées)</strong></summary>
+
 
 Badge version dans le footer copyright du loader, qui devient un **indicateur d'update + bouton d'action** :
 
@@ -868,7 +1034,11 @@ Badge version dans le footer copyright du loader, qui devient un **indicateur d'
 
 ---
 
-### 🗓️ 13/05/2026 (suite 5) — 🎚️ Loader : drawer "Réglages de performance" + fix bug rotation + badge version footer
+</details>
+
+<details id="2026-05-13-s5">
+<summary><strong>🗓️ 13/05/2026 (suite 5) — 🎚️ Loader : drawer "Réglages de performance" + fix bug rotation + badge version footer</strong></summary>
+
 
 Regroupement des réglages perf existants (Tiling) et nouveaux (Mode ULTRA) dans une **box déroulable unique** au loader, plus un badge version au footer + fix d'un bug de layout.
 
@@ -905,7 +1075,11 @@ Regroupement des réglages perf existants (Tiling) et nouveaux (Mode ULTRA) dans
 
 ---
 
-### 🗓️ 13/05/2026 (suite 4) — 🚀 Mode Performance ULTRA : 6 toggles d'optimisation pour gros plans / appareils faibles
+</details>
+
+<details id="2026-05-13-s4">
+<summary><strong>🗓️ 13/05/2026 (suite 4) — 🚀 Mode Performance ULTRA : 6 toggles d'optimisation pour gros plans / appareils faibles</strong></summary>
+
 
 Système de toggles activable depuis **⚙️ Réglages → section "🚀 Mode Performance ULTRA"** pour gérer les crash récurrents sur les très gros plans (4000+ × 2000+ pixels) avec beaucoup de tracés. Préset bloc **🚀 ULTRA** qui active les 6 optims d'un coup, ou ajustement fin via toggles individuels.
 
@@ -947,7 +1121,11 @@ Système de toggles activable depuis **⚙️ Réglages → section "🚀 Mode P
 
 ---
 
-### 🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)
+</details>
+
+<details id="2026-05-13-s3">
+<summary><strong>🗓️ 13/05/2026 (suite 3) — 🚨 Bouton alerte dans le loader (icône sirène + style collé au 📖)</strong></summary>
+
 
 Ajout d'un bouton **🚨** dans le header du loader, à gauche du **📖 Documentation**, pour permettre à l'utilisateur de **re-consulter l'alerte en cours** à tout moment (utile s'il a déjà cliqué "J'ai compris" et veut revérifier les consignes), OU de **confirmer "Aucune alerte en cours"** si la situation est revenue à la normale.
 
@@ -978,7 +1156,11 @@ Dans les deux cas, les users qui cliquent 🚨 voient la modale verte "Aucune al
 
 ---
 
-### 🗓️ 13/05/2026 (suite 2) — 🚨 Système d'alertes publiques via `alert.json`
+</details>
+
+<details id="2026-05-13-s2">
+<summary><strong>🗓️ 13/05/2026 (suite 2) — 🚨 Système d'alertes publiques via `alert.json`</strong></summary>
+
 
 Nouveau système indépendant de la version pour **diffuser des messages d'alerte** aux utilisateurs en temps réel (incendie en cataphilie, fermeture d'accès, perturbation...). Cas d'usage immédiat : incendie criminel dans une carrière calcaire de la région parisienne, gaz toxiques résiduels nécessitant de prévenir la communauté.
 
@@ -1036,7 +1218,11 @@ L'auteur active/désactive l'alerte en éditant **uniquement ce fichier** — pa
 
 ---
 
-### 🗓️ 13/05/2026 (suite 1) — 🎯 Générateur : position initiale tracker auto-centrée (W/2 × H/2)
+</details>
+
+<details id="2026-05-13-s1">
+<summary><strong>🗓️ 13/05/2026 (suite 1) — 🎯 Générateur : position initiale tracker auto-centrée (W/2 × H/2)</strong></summary>
+
 
 Avant : `pl_startX` et `pl_startY` avaient `value="0"` en dur dans le HTML, donc les nouveaux plans démarraient toujours avec le tracker dans le coin haut/bas-gauche (selon la conversion CRS Simple). Pas pratique : l'utilisateur devait deviner les bonnes coordonnées.
 
@@ -1066,7 +1252,11 @@ Après : la position initiale est **auto-recentrée au milieu du plan** (arrondi
 
 ---
 
-### 🗓️ 13/05/2026 — 🏗️ Générateur de plan : auto-détection des dimensions de l'image principale
+</details>
+
+<details id="2026-05-13">
+<summary><strong>🗓️ 13/05/2026 — 🏗️ Générateur de plan : auto-détection des dimensions de l'image principale</strong></summary>
+
 
 Suppression de la saisie manuelle largeur/hauteur, remplacée par une **auto-détection** au moment du choix du fichier image. Plus d'erreur "dimensions ne correspondent pas à l'image" possible.
 
@@ -1098,7 +1288,11 @@ Suppression de la saisie manuelle largeur/hauteur, remplacée par une **auto-dé
 
 ---
 
-### 🗓️ 11/05/2026 (suite 3) — 🖼️ Fix export PNG/JPEG : fallback automatique pour gros plans JPG source
+</details>
+
+<details id="2026-05-11-s3">
+<summary><strong>🗓️ 11/05/2026 (suite 3) — 🖼️ Fix export PNG/JPEG : fallback automatique pour gros plans JPG source</strong></summary>
+
 
 **Bug** : sur les plans dont l'image source est en JPG haute résolution (typique car JPG compresse bien à l'upload, donc on s'autocensure moins sur les dimensions), `canvas.toBlob(cb, "image/png")` retournait **`null` silencieusement**. Cause : l'encodage PNG d'un gros canvas demande `width × height × 4 bytes` de RAM en continu — au-delà de ~250-400 Mo bruts (≈ 8000×8000 px), Safari iOS et Chrome Android refusent. JPEG en revanche est progressif (streamé bloc par bloc) et tolère des dimensions bien plus grandes.
 
@@ -1116,7 +1310,11 @@ Suppression de la saisie manuelle largeur/hauteur, remplacée par une **auto-dé
 
 ---
 
-### 🗓️ 11/05/2026 (suite 2) — 🤖 AI Context : externalisation à la racine + anti-hallucination renforcé + prompt copiable
+</details>
+
+<details id="2026-05-11-s2">
+<summary><strong>🗓️ 11/05/2026 (suite 2) — 🤖 AI Context : externalisation à la racine + anti-hallucination renforcé + prompt copiable</strong></summary>
+
 
 Refactor majeur de la fonctionnalité **🤖 Aide IA** introduite la veille (10/05 suite 15) :
 
@@ -1151,7 +1349,11 @@ Refactor majeur de la fonctionnalité **🤖 Aide IA** introduite la veille (10/
 
 ---
 
-### 🗓️ 11/05/2026 (suite 1) — 🔔 Détection de mise à jour : modale + mise à jour douce vs reset complet
+</details>
+
+<details id="2026-05-11-s1">
+<summary><strong>🗓️ 11/05/2026 (suite 1) — 🔔 Détection de mise à jour : modale + mise à jour douce vs reset complet</strong></summary>
+
 
 Système de notification automatique quand une nouvelle version de l'app est dispo. L'utilisateur n'a plus à vider manuellement le cache pour bénéficier des correctifs.
 
@@ -1185,7 +1387,11 @@ Système de notification automatique quand une nouvelle version de l'app est dis
 
 ---
 
-### 🗓️ 11/05/2026 — ⛑️ Mode urgence "Je suis perdu" : module complet d'estimation de position en cataphilie
+</details>
+
+<details id="2026-05-11">
+<summary><strong>🗓️ 11/05/2026 — ⛑️ Mode urgence "Je suis perdu" : module complet d'estimation de position en cataphilie</strong></summary>
+
 
 Nouvelle fonctionnalité majeure (~700 lignes JS + 200 lignes CSS) accessible via la sidebar **🧭 Tracker → ⛑️ Je suis perdu — Mode urgence** (sous-action orange distinctive). Estime la **zone probable** où peut être l'utilisateur à partir de sa dernière position connue, du temps écoulé et d'indices visuels observés.
 
@@ -1252,7 +1458,11 @@ Nouvelle fonctionnalité majeure (~700 lignes JS + 200 lignes CSS) accessible vi
 
 ---
 
-### 🗓️ 10/05/2026 (suite 15) — 🤖 Aide IA : fichier de contexte téléchargeable pour assistance IA externe
+</details>
+
+<details id="2026-05-10-s15">
+<summary><strong>🗓️ 10/05/2026 (suite 15) — 🤖 Aide IA : fichier de contexte téléchargeable pour assistance IA externe</strong></summary>
+
 
 Nouvelle fonctionnalité dans le groupe **📚 Aide / Documentation / Légende** : une sous-action **🤖 Aide IA** qui permet à l'utilisateur de télécharger un fichier `.md` contenant tout le contexte d'usage de l'app, à coller dans n'importe quelle IA conversationnelle pour obtenir une assistance personnalisée.
 
@@ -1284,7 +1494,11 @@ Nouvelle fonctionnalité dans le groupe **📚 Aide / Documentation / Légende**
 
 ---
 
-### 🗓️ 10/05/2026 (suite 14) — Fix bouton "🗑️ Supprimer ce point" qui apparaissait sur points data layer
+</details>
+
+<details id="2026-05-10-s14">
+<summary><strong>🗓️ 10/05/2026 (suite 14) — Fix bouton "🗑️ Supprimer ce point" qui apparaissait sur points data layer</strong></summary>
+
 
 **Bug** : le bouton "🗑️ Supprimer ce point" apparaissait dans la popup de **points de calque de données** (pas seulement points session). Au clic, `supprimerPointEditor` cherchait dans `listePoints` (la session), ne trouvait rien → `console.warn("[Editor] Point a supprimer introuvable")` et retour silencieux. Du point de vue user : le bouton "ne fait rien".
 
@@ -1305,7 +1519,11 @@ Plus fiable car la source de vérité est l'API qui crée le marker, pas un cham
 
 ---
 
-### 🗓️ 10/05/2026 (suite 13) — Modale Aide : retour à `columns:2` sans break-inside (vraie balance)
+</details>
+
+<details id="2026-05-10-s13">
+<summary><strong>🗓️ 10/05/2026 (suite 13) — Modale Aide : retour à `columns:2` sans break-inside (vraie balance)</strong></summary>
+
 
 L'approche Grid auto-flow (suite 12) respectait l'ordre HTML mais ne pouvait pas équilibrer les hauteurs des colonnes — la grosse section "Charger / Import" laissait toujours du vide dans la colonne gauche.
 
@@ -1337,7 +1555,11 @@ L'approche Grid auto-flow (suite 12) respectait l'ordre HTML mais ne pouvait pas
 
 ---
 
-### 🗓️ 10/05/2026 (suite 12) — Modale Aide : passage de `columns:2` à CSS Grid auto-flow
+</details>
+
+<details id="2026-05-10-s12">
+<summary><strong>🗓️ 10/05/2026 (suite 12) — Modale Aide : passage de `columns:2` à CSS Grid auto-flow</strong></summary>
+
 
 Le passage en `columns: 2` (suite 11) créait un déséquilibre visuel important : une section énorme (genre "Charger / Import") plus volumineuse que les autres réunies bloquait l'équilibrage automatique du multi-column avec `break-inside: avoid` → grand trou dans la colonne gauche.
 
@@ -1368,7 +1590,11 @@ L'**intro** garde son full-width via `grid-column: 1 / -1` (span sur les 2 colon
 
 ---
 
-### 🗓️ 10/05/2026 (suite 11) — Modale Aide : layout 2 colonnes sur PC
+</details>
+
+<details id="2026-05-10-s11">
+<summary><strong>🗓️ 10/05/2026 (suite 11) — Modale Aide : layout 2 colonnes sur PC</strong></summary>
+
 
 La modale **❓ Aide** était figée à 580px de large et empilait verticalement ~10 sections. Sur grand écran, beaucoup de scroll inutile et gaspillage de largeur. Maintenant elle exploite la largeur disponible avec un layout 2 colonnes.
 
@@ -1398,7 +1624,11 @@ La modale **❓ Aide** était figée à 580px de large et empilait verticalement
 
 ---
 
-### 🗓️ 10/05/2026 (suite 10) — Footer copyright : licence à la ligne sur mobile
+</details>
+
+<details id="2026-05-10-s10">
+<summary><strong>🗓️ 10/05/2026 (suite 10) — Footer copyright : licence à la ligne sur mobile</strong></summary>
+
 
 Sur mobile (≤ 768px), le footer copyright `© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit` s'étendait sur 1 seule ligne et tronquait à droite si écran étroit. Désormais :
 
@@ -1413,7 +1643,11 @@ Sur mobile (≤ 768px), le footer copyright `© 2026 Flavien VIDAL [karma.png] �
 
 ---
 
-### 🗓️ 10/05/2026 (suite 9) — Loader PC : fix débordement grid (% vs fr)
+</details>
+
+<details id="2026-05-10-s9">
+<summary><strong>🗓️ 10/05/2026 (suite 9) — Loader PC : fix débordement grid (% vs fr)</strong></summary>
+
 
 La suite 8 augmentait le padding pour rééquilibrer les marges, mais le bug visuel persistait : la colonne droite collait toujours au bord. **Cause racine identifiée** : `grid-template-columns: 60% 40%` totalise `100%` de la largeur disponible, et le `gap: 32px` se rajoute en plus → débordement → les colonnes touchent les bords du conteneur, écrasant le padding.
 
@@ -1435,7 +1669,11 @@ Code : `css/style.css > @media (min-width: 1024px) > .loader-grid`.
 
 ---
 
-### 🗓️ 10/05/2026 (suite 8) — Loader : marges équilibrées + signature image (au lieu de "alias KARMA")
+</details>
+
+<details id="2026-05-10-s8">
+<summary><strong>🗓️ 10/05/2026 (suite 8) — Loader : marges équilibrées + signature image (au lieu de "alias KARMA")</strong></summary>
+
 
 **Fix 1 — Marges équilibrées sur PC** : sur le layout 2 colonnes (suite 7), la colonne droite (drop zone + options) collait au bord du loader contrairement à la gauche qui respirait grâce aux cards plus petites. Padding horizontal du loader augmenté de `24px` → `36px` et gap entre colonnes de `24px` → `32px` sur ≥ 1024px → respiration équilibrée des deux côtés.
 
@@ -1452,7 +1690,11 @@ Les autres mentions "(alias KARMA)" qui restent (headers JS, banner console, met
 
 ---
 
-### 🗓️ 10/05/2026 (suite 7) — Loader : layout 2 colonnes sur PC (≥ 1024px)
+</details>
+
+<details id="2026-05-10-s7">
+<summary><strong>🗓️ 10/05/2026 (suite 7) — Loader : layout 2 colonnes sur PC (≥ 1024px)</strong></summary>
+
 
 Le loader (page d'accueil avec liste des plans + import) utilisait le même layout vertical mono-colonne sur toutes les plateformes — gaspillait de la place sur PC. Refonte responsive : **mobile/tablette inchangé**, **PC en 2 colonnes 60/40**.
 
@@ -1506,7 +1748,11 @@ Le loader (page d'accueil avec liste des plans + import) utilisait le même layo
 
 ---
 
-### 🗓️ 10/05/2026 (suite 6) — Sélection visuelle pour supprimer une zone (même pattern que tracés)
+</details>
+
+<details id="2026-05-10-s6">
+<summary><strong>🗓️ 10/05/2026 (suite 6) — Sélection visuelle pour supprimer une zone (même pattern que tracés)</strong></summary>
+
 
 Reproduit le pattern "mode clic visuel sur la carte" pour les zones session, en complément des options existantes du menu **🧹 Effacer** du groupe Zones.
 
@@ -1529,7 +1775,11 @@ Reproduit le pattern "mode clic visuel sur la carte" pour les zones session, en 
 
 ---
 
-### 🗓️ 10/05/2026 (suite 5) — Hotfix suppression point + sélection visuelle des tracés
+</details>
+
+<details id="2026-05-10-s5">
+<summary><strong>🗓️ 10/05/2026 (suite 5) — Hotfix suppression point + sélection visuelle des tracés</strong></summary>
+
 
 **Bug 1** : le bouton 🗑️ Supprimer ce point dans la popup supprimait **tout** le contenu visuel (points + roads + zones) au lieu d'un seul point. Cause : `renderEditorPoints` faisait `layerEditor.clearLayers()`. Or depuis suite 13, layerEditor contient AUSSI les roads et zones session (regroupement "Mes annotations"). Le clearLayers vidait donc tout.
 
@@ -1555,7 +1805,11 @@ Code :
 
 ---
 
-### 🗓️ 10/05/2026 (suite 4) — Suppression : bouton popup + modale "Sélectionner un tracé"
+</details>
+
+<details id="2026-05-10-s4">
+<summary><strong>🗓️ 10/05/2026 (suite 4) — Suppression : bouton popup + modale "Sélectionner un tracé"</strong></summary>
+
 
 Deux nouvelles options de suppression ajoutées en parallèle.
 
@@ -1588,7 +1842,11 @@ L'itinéraire est exclu (cycle de vie propre via la modale Itinéraire). Échap 
 
 ---
 
-### 🗓️ 10/05/2026 (suite 3) — minZoom plus généreux sur desktop
+</details>
+
+<details id="2026-05-10-s3">
+<summary><strong>🗓️ 10/05/2026 (suite 3) — minZoom plus généreux sur desktop</strong></summary>
+
 
 User a demandé plus de profondeur de dezoom sur PC. Les seuils de la suite 25 (qui plafonnaient à -2 / -1 sur desktop pour anti-crash) étaient trop conservateurs : la mémoire desktop est largement suffisante pour gérer le canvas même au minZoom max.
 
@@ -1608,7 +1866,11 @@ Code : `js/map.js > initMapFromConfig`.
 
 ---
 
-### 🗓️ 10/05/2026 (suite 2) — Itinéraire : temps estimé (label bottomleft + modale)
+</details>
+
+<details id="2026-05-10-s2">
+<summary><strong>🗓️ 10/05/2026 (suite 2) — Itinéraire : temps estimé (label bottomleft + modale)</strong></summary>
+
 
 Le label distance bottomleft (`.kta-iti-distance`) affiche maintenant aussi un **temps estimé** à côté de la distance, et la modale itinéraire l'affiche dans le bloc résultat (mode calcul) et le statut actuel (mode navigation).
 
@@ -1645,7 +1907,11 @@ Tooltip hover (title) avec breakdown détaillé : `"Distance : 1.23 km · Temps 
 
 ---
 
-### 🗓️ 10/05/2026 (suite 1) — Popup point : 3ème bouton "📍 Je suis ici" (recalage tracker)
+</details>
+
+<details id="2026-05-10-s1">
+<summary><strong>🗓️ 10/05/2026 (suite 1) — Popup point : 3ème bouton "📍 Je suis ici" (recalage tracker)</strong></summary>
+
 
 Dans la même logique que les boutons Y aller / Itinéraire ajoutés précédemment, nouveau bouton **📍 Je suis ici** dans la popup d'un point — recale ta position tracker sur les coords exactes du point.
 
@@ -1677,7 +1943,11 @@ Dans la même logique que les boutons Y aller / Itinéraire ajoutés précédemm
 
 ---
 
-### 🗓️ 10/05/2026 — Popups de points : boutons "🧭 Y aller" et "➕ Itinéraire"
+</details>
+
+<details id="2026-05-10">
+<summary><strong>🗓️ 10/05/2026 — Popups de points : boutons "🧭 Y aller" et "➕ Itinéraire"</strong></summary>
+
 
 Nouvelle UX pour interagir avec un point depuis sa popup Leaflet. Au clic sur un marker (point editor ou point embedded JSON), la popup affiche désormais 2 boutons en bas, sous le nom et la description :
 
@@ -1700,7 +1970,11 @@ Nouvelle UX pour interagir avec un point depuis sa popup Leaflet. Au clic sur un
 
 ---
 
-### 🗓️ 09/05/2026 (suite 33) — Décalage titre limité au mobile (desktop a assez de place)
+</details>
+
+<details id="2026-05-09-s33">
+<summary><strong>🗓️ 09/05/2026 (suite 33) — Décalage titre limité au mobile (desktop a assez de place)</strong></summary>
+
 
 Le décalage du titre vers la gauche quand le contrôle des couches est ouvert (suite 32) était appliqué partout. Sur desktop la fenêtre est plus large, le panneau du contrôle a la place de s'ouvrir à droite sans toucher le titre centré → le décalage devient inutile et perturbant visuellement (le titre bouge sans raison).
 
@@ -1712,7 +1986,11 @@ Le watcher JavaScript (MutationObserver) reste actif sur les 2 plateformes — i
 
 ---
 
-### 🗓️ 09/05/2026 (suite 32) — Décalage du titre fixe quand le contrôle des couches est ouvert
+</details>
+
+<details id="2026-05-09-s32">
+<summary><strong>🗓️ 09/05/2026 (suite 32) — Décalage du titre fixe quand le contrôle des couches est ouvert</strong></summary>
+
 
 Le z-index élevé sur `.leaflet-control-layers-expanded` (suite 31) **n'a pas suffi** : le `#map` est en `position: fixed`, ce qui crée un **stacking context isolé**. Le z-index du panneau Leaflet est piégé dans ce contexte et ne peut pas dépasser le titre fixe (dans le body, z-index 1100), même avec une valeur très élevée.
 
@@ -1730,7 +2008,11 @@ Transition CSS douce déjà en place sur `transition: transform 0.1s` du titre.
 
 ---
 
-### 🗓️ 09/05/2026 (suite 31) — Fix z-index contrôle des couches (passe derrière le titre sur mobile)
+</details>
+
+<details id="2026-05-09-s31">
+<summary><strong>🗓️ 09/05/2026 (suite 31) — Fix z-index contrôle des couches (passe derrière le titre sur mobile)</strong></summary>
+
 
 **Bug mobile** : quand l'utilisateur ouvrait le contrôle des couches Leaflet (haut-droite) sur mobile, le panneau déplié (`.leaflet-control-layers-expanded`) passait **derrière le titre fixe** (`#kta-titre-fixe`, z-index 1100). Sur mobile le titre prend la pleine largeur en haut → chevauchement → le haut du panneau était caché par le titre.
 
@@ -1742,7 +2024,11 @@ Code : `css/style.css > .leaflet-control-layers-expanded`.
 
 ---
 
-### 🗓️ 09/05/2026 (suite 30) — Tuiles fond noir + raccourci label distance + édition waypoints en mode navigation
+</details>
+
+<details id="2026-05-09-s30">
+<summary><strong>🗓️ 09/05/2026 (suite 30) — Tuiles fond noir + raccourci label distance + édition waypoints en mode navigation</strong></summary>
+
 
 **3 améliorations cumulées** :
 
@@ -1784,7 +2070,11 @@ Code : `js/interface.js > ouvrirItinerairModal` :
 
 ---
 
-### 🗓️ 09/05/2026 (suite 29) — Hotfix crash au reload avec itinéraire actif
+</details>
+
+<details id="2026-05-09-s29">
+<summary><strong>🗓️ 09/05/2026 (suite 29) — Hotfix crash au reload avec itinéraire actif</strong></summary>
+
 
 **Bug** : utilisateur trace un itinéraire, ferme l'app, relance — crash instantané au démarrage, peu importe le perfPreset.
 
@@ -1806,7 +2096,11 @@ L'itinéraire reste un calcul ponctuel à la demande, ce qui est cohérent avec 
 
 ---
 
-### 🗓️ 09/05/2026 (suite 28) — Optimisations performance pour les plans avec beaucoup de routes
+</details>
+
+<details id="2026-05-09-s28">
+<summary><strong>🗓️ 09/05/2026 (suite 28) — Optimisations performance pour les plans avec beaucoup de routes</strong></summary>
+
 
 User a partagé un fichier Road.json avec ~100+ routes (plan de carrière). Le rendu et le calcul d'intersections devenaient ingérables. 4 optimisations cumulées :
 
@@ -1846,7 +2140,11 @@ User a partagé un fichier Road.json avec ~100+ routes (plan de carrière). Le r
 
 ---
 
-### 🗓️ 09/05/2026 (suite 27) — Tutoriel "Optimiser ton plan" dans la doc utilisateur
+</details>
+
+<details id="2026-05-09-s27">
+<summary><strong>🗓️ 09/05/2026 (suite 27) — Tutoriel "Optimiser ton plan" dans la doc utilisateur</strong></summary>
+
 
 Nouvelle section dans `README_USER.md` (consommée par la modale 📖 Documentation in-app) : un tutoriel concret pour optimiser un plan en termes de performance et stabilité mémoire.
 
@@ -1866,7 +2164,11 @@ Nouvelle section dans `README_USER.md` (consommée par la modale 📖 Documentat
 
 ---
 
-### 🗓️ 09/05/2026 (suite 26) — Pathfinder utilise toutes les routes embedded (visibles ou non)
+</details>
+
+<details id="2026-05-09-s26">
+<summary><strong>🗓️ 09/05/2026 (suite 26) — Pathfinder utilise toutes les routes embedded (visibles ou non)</strong></summary>
+
 
 **Cas d'usage** : sur un plan où les routes sont dessinées en dur sur le PNG, l'utilisateur peut vouloir **masquer le calque des routes JSON** dans le contrôle des couches Leaflet pour gagner en perf de rendu (moins d'éléments vectoriels à redessiner). Mais avant ce fix, masquer le calque empêchait aussi le module **🗺️ Itinéraire** de trouver un chemin (le pathfinder ne voyait plus le réseau de routes).
 
@@ -1887,7 +2189,11 @@ Nouvelle section dans `README_USER.md` (consommée par la modale 📖 Documentat
 
 ---
 
-### 🗓️ 09/05/2026 (suite 25) — Plafonnement dynamique du minZoom selon la taille de l'image
+</details>
+
+<details id="2026-05-09-s25">
+<summary><strong>🗓️ 09/05/2026 (suite 25) — Plafonnement dynamique du minZoom selon la taille de l'image</strong></summary>
+
 
 **Bug** : crash de l'app au dézoom extrême sur les gros plans (signalé sur un plan de carrière). Cause probable : avec `preferCanvas: true`, Leaflet traite l'image entière dans le canvas au minZoom maximum. Pour une image 8000+ px, le canvas devient énorme → saturation RAM, crash mobile.
 
@@ -1909,7 +2215,11 @@ Console log au boot affiche la décision : `[Map] Plan XXXX px → minZoom -N (m
 
 ---
 
-### 🗓️ 09/05/2026 (suite 24) — Rollback complet du forçage SVG sur roads (crash dézoom)
+</details>
+
+<details id="2026-05-09-s24">
+<summary><strong>🗓️ 09/05/2026 (suite 24) — Rollback complet du forçage SVG sur roads (crash dézoom)</strong></summary>
+
 
 **Bug** : le forçage du renderer SVG sur les polylines roads + cercles d'intersection (suites 18 et 20) causait des crashes au dézoom sur les plans denses. Trop d'éléments DOM SVG redessinés simultanément lors du recalcul des coordonnées Leaflet.
 
@@ -1924,7 +2234,11 @@ L'itinéraire garde son renderer SVG dédié — il en a besoin pour le `filter:
 
 ---
 
-### 🗓️ 09/05/2026 (suite 23) — Itinéraire : bouton "🧭 Ma position" pour utiliser le tracker comme waypoint
+</details>
+
+<details id="2026-05-09-s23">
+<summary><strong>🗓️ 09/05/2026 (suite 23) — Itinéraire : bouton "🧭 Ma position" pour utiliser le tracker comme waypoint</strong></summary>
+
 
 Nouveau dans la modale **🗺️ Calculer un itinéraire** (mode calcul) : un bouton **🧭 Ma position** ajoute la position actuelle du tracker comme waypoint (snapshot figé au moment du clic).
 
@@ -1945,7 +2259,11 @@ Nouveau dans la modale **🗺️ Calculer un itinéraire** (mode calcul) : un bo
 
 ---
 
-### 🗓️ 09/05/2026 (suite 22) — Rollback du calque "Mes tracés" séparé
+</details>
+
+<details id="2026-05-09-s22">
+<summary><strong>🗓️ 09/05/2026 (suite 22) — Rollback du calque "Mes tracés" séparé</strong></summary>
+
 
 La séparation des roads dans un calque dédié "Mes tracés" (suite 21) ne résolvait pas le problème de toggle chez l'utilisateur — les polylines roads continuaient à ne pas être masquées par le toggle off de leur LayerGroup parent. Bug Leaflet subtil non identifié.
 
@@ -1967,7 +2285,11 @@ La séparation des roads dans un calque dédié "Mes tracés" (suite 21) ne rés
 
 ---
 
-### 🗓️ 09/05/2026 (suite 21) — Calque "Mes tracés" séparé pour les roads session
+</details>
+
+<details id="2026-05-09-s21">
+<summary><strong>🗓️ 09/05/2026 (suite 21) — Calque "Mes tracés" séparé pour les roads session</strong></summary>
+
 
 **Problème** : malgré les fixes successifs (suite 18 SVG renderer, suite 20 SVG partagé, suite 17 fallback auto-création), le toggle "Mes annotations" ne masquait toujours pas les roads de session chez l'utilisateur. Les zones, points et tout le reste suivaient bien le toggle, mais les polylines roads échappaient. Bug Leaflet subtil non identifié — probablement lié au mixage canvas/SVG dans un même LayerGroup.
 
@@ -1995,7 +2317,11 @@ La séparation des roads dans un calque dédié "Mes tracés" (suite 21) ne rés
 
 ---
 
-### 🗓️ 09/05/2026 (suite 20) — Hotfix crash app : SVG renderer partagé pour les roads
+</details>
+
+<details id="2026-05-09-s20">
+<summary><strong>🗓️ 09/05/2026 (suite 20) — Hotfix crash app : SVG renderer partagé pour les roads</strong></summary>
+
 
 **Bug** : la suite 18 (forçage `renderer: L.svg()` sur roads + cercles d'intersection) faisait crasher l'app instantanément après chargement sur les plans denses.
 
@@ -2009,7 +2335,11 @@ L'itinéraire garde son propre `L.svg()` car il a besoin d'un className CSS déd
 
 ---
 
-### 🗓️ 09/05/2026 (suite 19) — Toast copyright à l'activation du mode debug
+</details>
+
+<details id="2026-05-09-s19">
+<summary><strong>🗓️ 09/05/2026 (suite 19) — Toast copyright à l'activation du mode debug</strong></summary>
+
 
 **Avant** : la popup copyright `.kta-devtools-warn` ne s'affichait que si la heuristique outerWidth/innerWidth détectait DevTools ouvert (polling 2s, threshold 240px). Le user ne voyait pas de feedback visuel s'il activait le mode debug **sans** F12 ouvert, ou si son setup DevTools tombait en dessous du threshold.
 
@@ -2030,7 +2360,11 @@ Le polling F12 (heuristique 240px) reste actif en complément si debug était d�
 
 ---
 
-### 🗓️ 09/05/2026 (suite 18) — Fix toggle "Mes annotations" sur les roads (renderer SVG forcé)
+</details>
+
+<details id="2026-05-09-s18">
+<summary><strong>🗓️ 09/05/2026 (suite 18) — Fix toggle "Mes annotations" sur les roads (renderer SVG forcé)</strong></summary>
+
 
 **Symptôme** : après le fix suite 17 (auto-création du calque editor), le toggle "Mes annotations" masquait bien les zones de session, mais **les roads de session restaient visibles**.
 
@@ -2044,7 +2378,11 @@ Le polling F12 (heuristique 240px) reste actif en complément si debug était d�
 
 ---
 
-### 🗓️ 09/05/2026 (suite 17) — Fallback auto-création du calque "editor" dans map.js
+</details>
+
+<details id="2026-05-09-s17">
+<summary><strong>🗓️ 09/05/2026 (suite 17) — Fallback auto-création du calque "editor" dans map.js</strong></summary>
+
 
 **Bug** : sur des plans-config qui ne déclarent **PAS** le calque `id: "editor"` dans leur tableau `dataLayers` (anciens plans, plans minimaux, ZIP générés avant standardisation), `dataLayerGroups.editor` était `undefined` → `window.layerEditor` aussi → les helpers `_targetLayerForRoad()` et `_zoneTarget()` faisaient `fallback || window.map` et ajoutaient les polylines/polygons directement à la map → toggle "Mes annotations" inopérant pour les routes et zones (les points editor passaient par `_ajouterMarker` qui logge un `console.error` quand `layerEditor` est undefined).
 
@@ -2058,7 +2396,11 @@ Avec ce fallback, `window.layerEditor` existe **toujours**, peu importe la versi
 
 ---
 
-### 🗓️ 09/05/2026 (suite 16) — Gating buffer logs + threshold popup F12 ajusté
+</details>
+
+<details id="2026-05-09-s16">
+<summary><strong>🗓️ 09/05/2026 (suite 16) — Gating buffer logs + threshold popup F12 ajusté</strong></summary>
+
 
 **Bug 1** : la modale 🐛 Logs de débogage contenait toujours plein de logs même en mode debug OFF (notamment `[Tracking] Magnitude :` qui spammait 60 logs/s en mode tracker actif). Le proxy `debug.js` gatait les logs côté **DevTools console** mais les bufferisait quand même dans le localStorage → buffer plein de bruit.
 
@@ -2079,7 +2421,11 @@ Avec ce fallback, `window.layerEditor` existe **toujours**, peu importe la versi
 
 ---
 
-### 🗓️ 09/05/2026 (suite 15) — Détection DevTools réactivée mais conditionnée au mode debug
+</details>
+
+<details id="2026-05-09-s15">
+<summary><strong>🗓️ 09/05/2026 (suite 15) — Détection DevTools réactivée mais conditionnée au mode debug</strong></summary>
+
 
 Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) et l'absence de bug UX :
 
@@ -2102,7 +2448,11 @@ Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) 
 
 ---
 
-### 🗓️ 09/05/2026 (suite 14) — Fix toast DevTools faux positif + audit gating logs
+</details>
+
+<details id="2026-05-09-s14">
+<summary><strong>🗓️ 09/05/2026 (suite 14) — Fix toast DevTools faux positif + audit gating logs</strong></summary>
+
 
 **Bug** : la popup "Inspection détectée" du copyright apparaissait à tort lors de l'utilisation normale de l'app (typiquement au clic **Appliquer** dans le formulaire d'ajout de point). Cause racine : la heuristique `outerWidth - innerWidth > 200 || outerHeight - innerHeight > 200` du polling 2s était trop sensible aux transitions de modales — quand une modale plein écran s'ouvre/se ferme, le viewport interne peut basculer brièvement et déclencher le faux positif.
 
@@ -2123,7 +2473,11 @@ Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) 
 
 ---
 
-### 🗓️ 09/05/2026 (suite 13) — Calque "Mes annotations" englobe points + roads + zones session
+</details>
+
+<details id="2026-05-09-s13">
+<summary><strong>🗓️ 09/05/2026 (suite 13) — Calque "Mes annotations" englobe points + roads + zones session</strong></summary>
+
 
 **Avant** : le calque "Ajout" dans le contrôle des couches Leaflet ne masquait que les **points editor**. Les routes (Principal/Secondaire/Chemin) et les zones (Eau/Remblais/Effondrement) tracées en session étaient ajoutées directement à `window.map` → restaient visibles peu importe l'état du toggle.
 
@@ -2152,7 +2506,11 @@ Compromis pratique entre la fonctionnalité copyright (dissuasion d'inspection) 
 
 ---
 
-### 🗓️ 09/05/2026 (suite 12) — Protection juridique du code (Phase 1 légale)
+</details>
+
+<details id="2026-05-09-s12">
+<summary><strong>🗓️ 09/05/2026 (suite 12) — Protection juridique du code (Phase 1 légale)</strong></summary>
+
 
 Mise en place d'un dispositif de protection contre le vol commercial du code (cible : sociétés carrière qui voudraient piquer le code via F12 et l'utiliser commercialement).
 
@@ -2186,7 +2544,11 @@ Mise en place d'un dispositif de protection contre le vol commercial du code (ci
 
 ---
 
-### 🗓️ 09/05/2026 (suite 11) — Fix toggle calque "Ajout" sur points restaurés par SessionPersist
+</details>
+
+<details id="2026-05-09-s11">
+<summary><strong>🗓️ 09/05/2026 (suite 11) — Fix toggle calque "Ajout" sur points restaurés par SessionPersist</strong></summary>
+
 
 **Bug** : après quitter / relancer / restaurer la session via SessionPersist, le toggle du calque **"Ajout"** dans le contrôle des couches Leaflet ne masquait que les points **nouvellement** ajoutés. Les points restaurés depuis localStorage restaient visibles peu importe l'état de la case.
 
@@ -2206,7 +2568,11 @@ Mise en place d'un dispositif de protection contre le vol commercial du code (ci
 
 ---
 
-### 🗓️ 09/05/2026 (suite 10) — Conversion auto m / km sur les 3 outils de distance
+</details>
+
+<details id="2026-05-09-s10">
+<summary><strong>🗓️ 09/05/2026 (suite 10) — Conversion auto m / km sur les 3 outils de distance</strong></summary>
+
 
 Au-delà de 1000 mètres, les distances affichées par les 3 outils (📐 Mesure simple, 📏 Distance totale, 🗺️ Itinéraire) basculent automatiquement en kilomètres pour la lisibilité.
 
@@ -2228,7 +2594,11 @@ Au-delà de 1000 mètres, les distances affichées par les 3 outils (📐 Mesure
 
 ---
 
-### 🗓️ 09/05/2026 (suite 9) — Fix bouton ❌ Effacer le surlignage (collision de noms)
+</details>
+
+<details id="2026-05-09-s9">
+<summary><strong>🗓️ 09/05/2026 (suite 9) — Fix bouton ❌ Effacer le surlignage (collision de noms)</strong></summary>
+
 
 **Bug** : le bouton **❌ Effacer le surlignage** dans la modale "Distance totale" ne faisait rien, alors que les checkboxes et le calcul fonctionnaient.
 
@@ -2242,7 +2612,11 @@ Au-delà de 1000 mètres, les distances affichées par les 3 outils (📐 Mesure
 
 ---
 
-### 🗓️ 09/05/2026 (suite 8) — Distance totale : modale plein écran (uniformisation UI)
+</details>
+
+<details id="2026-05-09-s8">
+<summary><strong>🗓️ 09/05/2026 (suite 8) — Distance totale : modale plein écran (uniformisation UI)</strong></summary>
+
 
 Le panneau flottant bas-droite introduit en suite 6 est converti en **modale plein écran** style charte (pattern `.kta-readme-modal-overlay` partagé avec les modales itinéraire, légende, config, aide).
 
@@ -2266,7 +2640,11 @@ Le panneau flottant bas-droite introduit en suite 6 est converti en **modale ple
 
 ---
 
-### 🗓️ 09/05/2026 (suite 7) — Fix crash Distance totale sur plans denses
+</details>
+
+<details id="2026-05-09-s7">
+<summary><strong>🗓️ 09/05/2026 (suite 7) — Fix crash Distance totale sur plans denses</strong></summary>
+
 
 **Bug** : la fonctionnalité "📏 Distance totale" introduite plus tôt dans la journée crashait l'app sur mobile (et même desktop sur les plans très denses), alors que le calcul lui-même était correct. Reproductible même en mode performance.
 
@@ -2284,7 +2662,11 @@ Le commentaire dans `interface.js > _rdRedessinerHighlight` documente la contrai
 
 ---
 
-### 🗓️ 09/05/2026 (suite 6) — Distance totale des tracés (filtres + surlignage magenta)
+</details>
+
+<details id="2026-05-09-s6">
+<summary><strong>🗓️ 09/05/2026 (suite 6) — Distance totale des tracés (filtres + surlignage magenta)</strong></summary>
+
 
 Nouvel outil de mesure agrégée qui calcule la somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents sur le plan, avec filtrage par type et highlight visuel des tronçons inclus.
 
@@ -2328,7 +2710,11 @@ Nouvel outil de mesure agrégée qui calcule la somme des longueurs de tous les 
 
 ---
 
-### 🗓️ 09/05/2026 (suite 5) — Itinéraire / Pathfinding sur le réseau de routes
+</details>
+
+<details id="2026-05-09-s5">
+<summary><strong>🗓️ 09/05/2026 (suite 5) — Itinéraire / Pathfinding sur le réseau de routes</strong></summary>
+
 
 Nouvelle feature : calcul du chemin le plus court entre N points en empruntant les routes existantes.
 
@@ -2378,7 +2764,11 @@ Nouvelle feature : calcul du chemin le plus court entre N points en empruntant l
 
 ---
 
-### 🗓️ 09/05/2026 (suite 4) — OOMGuard : modale "ATTENTION arrêt brutal détecté"
+</details>
+
+<details id="2026-05-09-s4">
+<summary><strong>🗓️ 09/05/2026 (suite 4) — OOMGuard : modale "ATTENTION arrêt brutal détecté"</strong></summary>
+
 
 - **Nouveau module `js/oomGuard.js`** — détection des kills mémoire silencieux d'iOS Safari et Android Chrome :
   - **Heartbeat** localStorage `myktamap_session_alive` rafraîchi toutes les 5s, effacé proprement aux events `beforeunload` ET `pagehide` (iOS préfère `pagehide`)
@@ -2396,7 +2786,11 @@ Nouvelle feature : calcul du chemin le plus court entre N points en empruntant l
 
 ---
 
-### 🗓️ 09/05/2026 (suite 3) — Reset "Tout réinitialiser" : check Internet en amont
+</details>
+
+<details id="2026-05-09-s3">
+<summary><strong>🗓️ 09/05/2026 (suite 3) — Reset "Tout réinitialiser" : check Internet en amont</strong></summary>
+
 
 - **Restoration d'une feature perdue** dans `viderCacheAppli()` (`js/interface.js`) : ping Internet AVANT toute confirmation, parce qu'un reset wipe le SW + caches → l'app ne pourra se relancer que si la connexion permet de redescendre les fichiers.
 - **`_pingInternet()`** : combine `navigator.onLine` (rapide signal offline) + `fetch no-cors` sur `gstatic.com/generate_204` (HTTP 204 No Content, payload minimal) avec `AbortController` + timeout 5s. Fail = vrai offline.
@@ -2412,7 +2806,11 @@ Nouvelle feature : calcul du chemin le plus court entre N points en empruntant l
 
 ---
 
-### 🗓️ 09/05/2026 (suite 2) — Perf hardening mobile (transparent utilisateur)
+</details>
+
+<details id="2026-05-09-s2">
+<summary><strong>🗓️ 09/05/2026 (suite 2) — Perf hardening mobile (transparent utilisateur)</strong></summary>
+
 
 Optims user-invisibles pour réduire le risque de crash sur smartphone, **aucun changement graphique**.
 
@@ -2430,7 +2828,11 @@ Optims user-invisibles pour réduire le risque de crash sur smartphone, **aucun 
 
 ---
 
-### 🗓️ 09/05/2026 (suite) — Audit code : suppression dead code, gating logs centralisé
+</details>
+
+<details id="2026-05-09">
+<summary><strong>🗓️ 09/05/2026 (suite) — Audit code : suppression dead code, gating logs centralisé</strong></summary>
+
 
 Nettoyage des reliquats accumulés. Net : **−1700 lignes** dans le repo.
 
@@ -2458,7 +2860,11 @@ Nettoyage des reliquats accumulés. Net : **−1700 lignes** dans le repo.
 
 ---
 
-### 🗓️ 09/05/2026 — iPhone PWA : top intégré dark via hack Leaflet
+</details>
+
+<details id="2026-05-09-bis1">
+<summary><strong>🗓️ 09/05/2026 — iPhone PWA : top intégré dark via hack Leaflet</strong></summary>
+
 
 Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en haut sans bug de bande sombre en bas. **Conclusion** : `viewport-fit=cover` est ingérable proprement sur iOS PWA portrait sans devtools Safari Mac. On revient à un setup safe-area natif iOS + un hack ciblé.
 
@@ -2487,7 +2893,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 ---
 
-### 🗓️ 08/05/2026 (suite 3) — Filtres calques + tags dans la recherche
+</details>
+
+<details id="2026-05-08-s3">
+<summary><strong>🗓️ 08/05/2026 (suite 3) — Filtres calques + tags dans la recherche</strong></summary>
+
 
 - **Filtres ajoutés** dans la modale `🔍 Rechercher un point` (`js/searchPoints.js`) :
   - 2 lignes de chips compactes sous le champ de recherche : **Calques** (un chip par calque utilisé) + **Tags** (un chip par tag unique présent dans les points)
@@ -2505,7 +2915,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 ---
 
-### 🗓️ 08/05/2026 (suite 2) — Convertisseur bidirectionnel dans le modal Export
+</details>
+
+<details id="2026-05-08-s2">
+<summary><strong>🗓️ 08/05/2026 (suite 2) — Convertisseur bidirectionnel dans le modal Export</strong></summary>
+
 
 - **Onglet "🔄 Conversion"** du modal "💾 Enregistrer la session" (`sessionExporter.js`) gère désormais **les 2 sens** :
   - **✏️ → 🗂️ Session vers data layer** (existant) : convertit la session en cours en fichier(s) data layer chargeable(s) dans un plan via `plan-config.json > dataLayers`. Granularité basique (1 fichier/catégorie) ou fine (1 fichier/type)
@@ -2517,7 +2931,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 ---
 
-### 🗓️ 08/05/2026 (suite) — Auto-save de la session active + toast de restauration
+</details>
+
+<details id="2026-05-08">
+<summary><strong>🗓️ 08/05/2026 (suite) — Auto-save de la session active + toast de restauration</strong></summary>
+
 
 - **Nouveau module `js/sessionPersist.js`** — auto-sauvegarde silencieuse de la session active dans `localStorage["myktamap_session_v1"]` :
   - **Slot unique** : la dernière session active "gagne" — si tu charges un autre plan, l'auto-save écrase le slot avec le nouvel état
@@ -2554,7 +2972,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 ---
 
-### 🗓️ 08/05/2026 — Mode performance réglable (5 presets DLSS-like) + flag debug global
+</details>
+
+<details id="2026-05-08-bis1">
+<summary><strong>🗓️ 08/05/2026 — Mode performance réglable (5 presets DLSS-like) + flag debug global</strong></summary>
+
 
 - **Refonte du mode performance** : la simple checkbox boolean est remplacée par un **segmented control 5 boutons** dans le loader, à la manière du DLSS dans les jeux vidéo :
   - 💤 **Désactivé** — aucun tiling, `L.imageOverlay` direct (qualité brute, équivalent de l'ancien `perfMode = false`). ⚠️ Risque de crash sur Safari iOS pour images > 8192 px
@@ -2598,7 +3020,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 ---
 
-### 🗓️ 06/05/2026 (suite 3) — 6 nouveaux tags d'accès + refonte cascade icônes + légende 5 groupes
+</details>
+
+<details id="2026-05-06-s3">
+<summary><strong>🗓️ 06/05/2026 (suite 3) — 6 nouveaux tags d'accès + refonte cascade icônes + légende 5 groupes</strong></summary>
+
 
 - **Ajout de 6 nouveaux tags built-in** dans le set par défaut :
   - `peo` / `pef` — Puits à échelon ouvert / fermé
@@ -2660,7 +3086,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
   - Suppression prématurée de `kta-titre-fixe` corrigée
   - Si l'utilisateur clique sur un autre plan via le titre puis annule la modale "Plan introuvable", le titre du plan en cours reste désormais affiché
 
-### 🗓️ 06/05/2026 (suite 2) — Plan Switcher (titre cliquable)
+</details>
+
+<details id="2026-05-06-s2">
+<summary><strong>🗓️ 06/05/2026 (suite 2) — Plan Switcher (titre cliquable)</strong></summary>
+
 
 - **Titre du plan rendu cliquable** (`interface.js` + `style.css`)
   - Suppression de `pointer-events: none` sur `#kta-titre-fixe`
@@ -2720,7 +3150,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
   - `.kta-titre-arrow` (flèche avec rotation à 180° en mode ouvert)
   - Responsive mobile (`max-width: 92vw`)
 
-### 🗓️ 06/05/2026 (suite) — Splash + ergonomie loader + gestion erreurs plan
+</details>
+
+<details id="2026-05-06">
+<summary><strong>🗓️ 06/05/2026 (suite) — Splash + ergonomie loader + gestion erreurs plan</strong></summary>
+
 
 - **Splash screen au démarrage** (`index.html` + `style.css` + `main.js`)
   - Bloc `<div id="splashOverlay">` placé en HTML statique tout en haut du `<body>` → s'affiche **instantanément** dès le parsing du DOM, avant tout JS
@@ -2783,7 +3217,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 - **`sw.js`** — `icon/mkm-full.png` et `icon/karma.png` ajoutés au cache PWA pour que le splash fonctionne hors-ligne
 
-### 🗓️ 06/05/2026 — Système multi-plans + persistance ZIP locale
+</details>
+
+<details id="2026-05-06-bis1">
+<summary><strong>🗓️ 06/05/2026 — Système multi-plans + persistance ZIP locale</strong></summary>
+
 
 - **Nouveau module `planRegistry.js`** — gestionnaire de la liste des plans connus (serveur découverts + locaux ZIP)
   - Stockage dans `localStorage["myktamap_plans"]` (format JSON v1.0 avec `lastPlanId` + `plans[]`)
@@ -2854,7 +3292,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 
 - **`sw.js`** — `js/planRegistry.js` ajouté à `assetsToCache`
 
-### 🗓️ 05/05/2026 — Export session avancé + filtrage par tag + bugs résolus
+</details>
+
+<details id="2026-05-05">
+<summary><strong>🗓️ 05/05/2026 — Export session avancé + filtrage par tag + bugs résolus</strong></summary>
+
 
 - Sommaire dans la documentation
 - Documentation Utilisateur afficher uniquement
@@ -2880,7 +3322,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 - **Permission capteurs au play uniquement** : suppression du listener `document.body.click` dans `main.js` et `main_import.js` qui demandait la permission au tout premier clic global. Maintenant la popup iOS de permission n'apparaît qu'au clic sur ▶️ Play du tracker (cohérent avec la directive Apple "permission dans une tâche utilisateur directe").
 - **Icône groupe Édition** : confirmation que ✏️ est bien en place partout (vs. 📌 punaise testé puis abandonné)
 
-### 🗓️ 04/05/2026 — Recherche de point + ajustements
+</details>
+
+<details id="2026-05-04">
+<summary><strong>🗓️ 04/05/2026 — Recherche de point + ajustements</strong></summary>
+
 - **Nouveau module `searchPoints.js`** — recherche rapide d'un point par nom, id, tag, description ou état
 
   . Bouton **🔍 Rechercher un point** ajouté en position solo dans la barre latérale, après ⚙️ Paramètres
@@ -2895,7 +3341,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 - **Couleur des remblais** : passage à `#3a3a44` (bordure) / `#5a5a68` (remplissage) — gris franc qui ne se confond plus avec les fonds beiges/marron des plans
 - **Icône du groupe Zones** : 🟫 → **⬛** (Large Brown Square → Black Large Square) car 🟫 est marron par définition Unicode et ne reflétait pas la couleur réelle des remblais. Synchronisé dans le bouton principal, les sous-actions, l'aide et les modes actifs.
 
-### 🗓️ 04/05/2026 — Éditeur tableau JSON
+</details>
+
+<details id="2026-05-04-bis1">
+<summary><strong>🗓️ 04/05/2026 — Éditeur tableau JSON</strong></summary>
+
 - **Nouveau module `tableEditor.js`** — éditeur de fichier JSON sous forme de tableau interactif
   . Bouton **📊 Éditer un fichier JSON** ajouté en 2e position dans le groupe ⬇️ Charger
   . Auto-détection du format (`data` calque ou `editorPoints` session)
@@ -2912,14 +3362,22 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
   . Module autonome — styles CSS injectés dynamiquement au premier appel
   . Branchement : `<script src="js/tableEditor.js">` ajouté dans `index.html` après `exporter.js`
 
-### 🗓️ 04/05/2026 — Charte graphique légende exportée
+</details>
+
+<details id="2026-05-04-bis2">
+<summary><strong>🗓️ 04/05/2026 — Charte graphique légende exportée</strong></summary>
+
 - **Légende exportée alignée sur le dark theme des modales** (fond `#1a1f2e`, accents bleu vif `#8cb4ff`)
 - **Titre "Légende" en Georgia italique**, taille réduite (compact 13 / standard 17 / large 22) pour ne plus dominer
 - **Date au format FR `JJ/MM/AAAA`** (suppression de "Exporté :" devant la date)
 - **Layout en 2 colonnes** : Icônes à gauche, Tracés + Zones à droite — légende plus large mais moins haute
 - Métadonnées et titre restent en pleine largeur en haut
 
-### 🗓️ 04/05/2026 — Zones, eau, page d'accueil, calibrage
+</details>
+
+<details id="2026-05-04-bis3">
+<summary><strong>🗓️ 04/05/2026 — Zones, eau, page d'accueil, calibrage</strong></summary>
+
 - **Eau (3e type de zone)** — bouton 🟦 dans le groupe Zones, couleurs `#0066aa` / `#3aa9e8`
   . Tri d'affichage : eau (0) → remblais (1) → effondrement (2)
   . Synchronisé partout : `zones.js` (renderZones), `utils.js` × 2 (export PNG + lecture data layer), `exporter.js`
@@ -2929,7 +3387,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 - **Calibrage d'échelle — formule corrigée** : `nouveau = scale × (affichée / réelle)` (au lieu de `réelle / affichée`)
 - **Onglet "Fichiers séparés" supprimé** du loader — ZIP uniquement
 
-### 🗓️ 03/05/2026 — Export plan avancé
+</details>
+
+<details id="2026-05-03">
+<summary><strong>🗓️ 03/05/2026 — Export plan avancé</strong></summary>
+
 - **Nouveau module `exporter.js`** — modale d'export avec deux modes : ⚡ Rapide (export historique inchangé) et 🎨 Avancé
 - **Mode avancé** :
   . Choix précis des calques d'image / calques de données / annotations à inclure
@@ -2940,7 +3402,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
   . Aperçu mini-canvas 320×200 px (debounced 300ms)
 - Bouton 🖼️ ouvre maintenant la modale au lieu de télécharger directement
 
-### 🗓️ 03/05/2026 — Module Zones
+</details>
+
+<details id="2026-05-03-bis1">
+<summary><strong>🗓️ 03/05/2026 — Module Zones</strong></summary>
+
 - **Nouveau module `zones.js`** — zones polygonales remplies (remblais / effondrement)
 - **Nouveau groupe Zones** dans la barre latérale (10e position, après Tracés)
 - Sous-actions : 🟫 Remblais / 🟥 Effondrement / 🟦 Eau / ✅ Fermer / 🧹 Effacer
@@ -2950,7 +3416,11 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 - Préservation dans : session JSON (`zones[]`), data layer embarqué (`zones[]`), export PNG
 - Convertisseur JSON préserve `zones` dans les 2 sens
 
-### 🗓️ 03/05/2026 — Refonte interface
+</details>
+
+<details id="2026-05-03-bis2">
+<summary><strong>🗓️ 03/05/2026 — Refonte interface</strong></summary>
+
 - **Barre latérale refondue en 9 groupes** (accordéon vertical, exclusivité)
   . Ordre : Aide → Paramètres → Charger → Créer-Modifier → Enregistrer → Tracker → Mesure → Édition → Tracés
   . **Paramètres ⚙️ et Créer/Modifier 🏗️** sont des boutons solo (clic direct, pas de sous-menu)
@@ -3038,6 +3508,8 @@ Saga iPhone PWA edge-to-edge / safe-area pour avoir un look intégré dark en ha
 - Tiling JPEG sur Safari iOS : qualité réduite par contrainte mémoire GPU (MAX_WORK_DIM = 8192)
 
 ---
+
+</details>
 
 ## 🧭 Introduction générale
 
