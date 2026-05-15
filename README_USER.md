@@ -676,6 +676,7 @@ Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux op
 - **🟩 Route principale** — vert vif
 - **🟪 Route secondaire** — violet
 - **🟨 Chemin** — jaune
+- **🪜 Jonction interniveau** — magenta pointillé (avec des ronds blancs aux extrémités). **Apparaît uniquement si le plan est en mode multi-niveau** — sert à relier deux étages (escalier, pente raide, puits interne). Voir la section **🏗️ Mode multi-niveau** plus bas pour les détails.
 
 Pour tracer : appuyez sur le bouton correspondant → cliquez sur le plan pour poser des points → appuyez à nouveau pour arrêter.
 
@@ -709,6 +710,8 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 | Annuler | Ferme la fenêtre sans rien supprimer |
 
 > Exemple d'usage : tu traces une route principale, tu te trompes sur le dernier virage. Clique **🧹 → ↩️ Dernier point du tracé** pour reculer d'un point, puis continue ton tracé normalement.
+
+> 💡 **Jonctions interniveau (mode multi-niveau)** : les jonctions 🪜 sont traitées comme des tracés normaux par 🧹. **Dernier tracé entier** supprime la dernière jonction si elle est la plus récente ; **Tous les tracés** efface routes ET jonctions ; **Sélection au clic** fonctionne aussi sur une jonction.
 
 ---
 
@@ -775,9 +778,11 @@ Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** 
 
 > 💡 Tu peux toujours désactiver le mode via ⚙️ Réglages → décocher → reload. Les tracés existants gardent leur info de niveau (cachée), tu peux la réactiver plus tard sans rien perdre.
 
-### Le bouton "Niveau actif"
+### La pastille "Niveau actif"
 
-Quand le mode est activé, un **bouton jaune avec un chiffre** apparaît sous les boutons de zoom (haut-gauche de la carte). Le chiffre = ton niveau actif (`0` au démarrage). Clique dessus pour ouvrir la **modale Niveaux**.
+Quand le mode est activé, une **pastille jaune** affichant le chiffre du niveau actif (`0` au démarrage, par exemple `[0]`) apparaît **sous les boutons de zoom Leaflet** (haut-gauche de la carte, juste en-dessous des `+` `-`). Clique dessus pour ouvrir la **modale Niveaux**.
+
+> 💡 Si tu actives plus tard le widget 🧭 Boussole alors que le mode multi-niveau est actif, la boussole se positionne automatiquement **en-dessous de la pastille** pour ne pas se chevaucher.
 
 ### La modale Niveaux
 
@@ -801,17 +806,35 @@ Boutons rapides :
 - **Tous** : coche tous les niveaux disponibles
 - **Actif seul** : coche uniquement le niveau actif
 
-### 🪜 Jonctions interniveau
+### 🪜 Tracer une jonction interniveau
 
-Pour relier deux niveaux (escalier, pente raide, puits interne), utilise la sous-action **🪜 Jonction interniveau** dans le groupe **🛣️ Tracés** (uniquement visible quand multiLevel est ON).
+Pour relier deux niveaux physiquement (escalier, pente raide, puits interne, échelle entre étages), tu utilises la sous-action **🪜 Jonction interniveau** dans le groupe **🛣️ Tracés**.
 
-1. Clique 🪜 → modale "Niveau de départ : [N1] vers : [N2]" → **OK**
-2. Clique N points sur la carte (autant que tu veux, comme un chemin)
-3. Le tracé apparaît en **magenta pointillé** avec des **ronds blancs+magenta** aux 2 extrémités
+> ⚠️ **Visibilité conditionnelle** : le bouton 🪜 n'apparaît **que si le mode multi-niveau est activé** sur le plan courant. Si tu ne le vois pas, vérifie d'abord que la pastille jaune `[N]` est bien visible en haut-gauche.
 
-Une jonction reste toujours visible si au moins un de ses 2 niveaux est dans le filtre.
+**Procédure pas-à-pas** :
 
-> 💡 **Important pour le pathfinder** : les jonctions sont les **seuls bridges** entre niveaux. Si tu veux qu'un itinéraire passe du Niv 0 au Niv 1, tu DOIS tracer une jonction entre ces 2 niveaux à l'endroit physique du passage (escalier réel). Sans jonction, le pathfinder ne peut pas traverser.
+1. Ouvre le groupe accordéon **🛣️ Tracés** dans la barre latérale.
+2. Clique sur la sous-action **🪜 Jonction interniveau**.
+3. Une **modale s'ouvre** avec 2 sélecteurs : `Niveau de départ` et `Niveau d'arrivée`. Par défaut, "départ" = ton niveau actif. Choisis le second niveau, puis clique **OK**.
+4. Le mode tracé démarre. **Clique sur la carte** pour poser autant de points que tu veux (comme une polyline normale). Tu peux suivre la forme exacte de l'escalier ou tracer une simple diagonale.
+5. **Appuie à nouveau sur 🪜** pour valider et sortir du mode tracé.
+6. La jonction apparaît en **magenta pointillé** avec un **rond blanc+magenta** à chacune des 2 extrémités.
+
+**Sémantique des 2 niveaux** : *départ* et *arrivée* sont **symétriques** côté pathfinder — peu importe lequel tu mets en premier, l'itinéraire traverse la jonction dans les 2 sens. Choisis l'ordre qui te semble naturel (ex: un escalier qui descend du Niv 1 au Niv 0 → `départ: 1, arrivée: 0`).
+
+**Visibilité d'une jonction** : reste affichée si **au moins un** de ses 2 niveaux est dans la liste des niveaux visibles. Exemple : jonction `0 ↔ 1`, filtre `[0]` actif → jonction visible (car 0 dans le filtre). Filtre `[2]` → jonction cachée.
+
+**Cas particulier : une seule jonction = un seul passage logique**. Si dans la réalité il y a 2 escaliers entre les mêmes niveaux, trace **2 jonctions distinctes** aux 2 endroits physiques. Le pathfinder choisira automatiquement la plus courte selon le trajet demandé.
+
+> 💡 **Important pour le pathfinder** : les jonctions sont les **seuls bridges** entre niveaux. Si tu veux qu'un itinéraire passe du Niv 0 au Niv 1, tu **DOIS** tracer une jonction entre ces 2 niveaux à l'endroit physique du passage (escalier réel). Sans jonction, le pathfinder refuse de traverser même si visuellement 2 tracés se croisent à l'écran.
+
+### 🧹 Effacer une jonction
+
+Les jonctions s'effacent **exactement comme les autres tracés** via la sous-action 🧹 :
+- **🎯 Sélection au clic** → clique sur la jonction → confirme la suppression
+- **✂️ Dernier tracé entier** → si la jonction est le dernier tracé fait, elle est supprimée
+- **🗑️ Tous les tracés** → efface absolument tout (routes + jonctions)
 
 ### Ajouter du niveau aux data layers
 
