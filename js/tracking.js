@@ -84,6 +84,51 @@ function initTracking() {
   });
 }
 
+// 🧭 v158 : rotation de l'icone tracker selon le heading (sens de marche).
+// L'icone iconetrack.png est dessinee pointant plein Nord par defaut. Pendant
+// le tracking actif, on applique transform: rotate(heading deg) sur l'img
+// interne du marker Leaflet → la fleche pointe dans la direction reelle.
+// Throttle 0.5° pour eviter du churn DOM a 60 Hz. Reset a 0° au stopTracking.
+let _trackerRotationLast = -999;
+function _applyRotationToTrackerMarker() {
+  // Uniquement en tracking actif (cf. specs v158). Au repos / recalage seul,
+  // l'icone reste statique pointant Nord (= sa definition de base).
+  if (!tracking) return;
+  if (!markerPosition) return;
+  const heading = (typeof direction === "number" && !isNaN(direction)) ? direction : 0;
+  // Throttle 0.5° : skip si delta trop petit (anti-jitter du magnetometre)
+  if (Math.abs(heading - _trackerRotationLast) < 0.5) return;
+  _trackerRotationLast = heading;
+  // Le DIV positionne par Leaflet (getElement) contient un <img> enfant.
+  // On applique la rotation UNIQUEMENT sur l'img → ne casse pas le placement
+  // geo du marker (le transform: translate3d du DIV reste intact).
+  const el = markerPosition.getElement && markerPosition.getElement();
+  if (!el) return;
+  const img = el.tagName === "IMG" ? el : el.querySelector("img");
+  if (!img) return;
+  img.style.transformOrigin = "center center";
+  img.style.transform       = "rotate(" + heading + "deg)";
+  // Transition douce pour eviter le jitter visible. 0.15s = compromis entre
+  // reactivite et fluidite. Pas de transition au reset (rotate 0) pour eviter
+  // un retour visible quand on arrete le tracking.
+  if (!img.style.transition) {
+    img.style.transition = "transform 0.15s ease-out";
+  }
+}
+
+// Reset la rotation a 0° (icone pointant Nord). Appele au stopTracking() pour
+// que l'icone retrouve sa pose neutre.
+function _resetRotationTrackerMarker() {
+  _trackerRotationLast = -999;
+  if (!markerPosition) return;
+  const el = markerPosition.getElement && markerPosition.getElement();
+  if (!el) return;
+  const img = el.tagName === "IMG" ? el : el.querySelector("img");
+  if (!img) return;
+  img.style.transition = "none";       // reset instantane (pas de transition)
+  img.style.transform  = "rotate(0deg)";
+}
+
 // 🏗️ Multi-niveau (v148) : applique le filtre visuel sur le marker tracker.
 // Cache (opacity 0 + pointer-events none) si trackerLevel n'est pas dans
 // visibleLevels. Si multiLevel = false → toujours visible (retro-compat).
@@ -270,6 +315,7 @@ function initOrientation() {
         !isNaN(event.webkitCompassHeading)) {
       direction = event.webkitCompassHeading;
       _logHeading(direction, "webkitCompassHeading");
+      _applyRotationToTrackerMarker();  // v158 : oriente l'icone selon le heading
       return;
     }
 
@@ -277,6 +323,7 @@ function initOrientation() {
     if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
       direction = getHeading(event.alpha, event.beta, event.gamma);
       _logHeading(direction, event.absolute ? "calc-absolute" : "calc-relative");
+      _applyRotationToTrackerMarker();  // v158 : oriente l'icone selon le heading
     }
   }
 
@@ -383,11 +430,17 @@ function startTracking() {
     trackerLevel = window.APP_CONFIG.activeLevel || 0;
   }
   _appliquerFiltreNiveauSurTracker();
+  // 🧭 v158 : applique immediatement la rotation si direction connue
+  // (cas du clic Play apres que l'orientation a deja ete capte au moins une
+  // fois). Sinon, l'event suivant deviceorientation s'en chargera.
+  _applyRotationToTrackerMarker();
   console.log("[Tracking] ON (level:", trackerLevel + ")");
 }
 
 function stopTracking() {
   tracking = false;
+  // 🧭 v158 : reset rotation a 0° (icone pointe Nord = pose neutre).
+  _resetRotationTrackerMarker();
   console.log("[Tracking] OFF");
 }
 
