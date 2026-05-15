@@ -44,8 +44,9 @@
 // AFFICHAGE — sélecteur si N>1, modale détail si N=1 (depuis v166)
 //   - 1 seule alerte : modale détail direct
 //   - Plusieurs alertes : sélecteur (liste classée par criticité), l'user
-//     choisit ce qui l'intéresse. Après acquit d'une, si d'autres restent
-//     non acquittées → re-ouvre le sélecteur automatiquement.
+//     choisit ce qui l'intéresse. UN click = UNE modale détail (v167+).
+//     Pas de cascade auto après acquit — l'user re-clique 🚨 pour voir une
+//     autre alerte (le sélecteur réapparaît avec ce qui reste).
 //   - L'user peut fermer le sélecteur (✕ / Échap / backdrop) sans rien lire.
 //
 //   Mode "click bouton 🚨" (manuel) : sélecteur affiche TOUTES les alertes
@@ -217,23 +218,19 @@
       return;
     }
 
+    // v167 : SUPPRESSION de la cascade auto après acquit. Le close de la
+    // modale détail ne re-ouvre PAS le sélecteur ni la modale suivante.
+    // L'user qui veut voir une autre alerte re-clique 🚨 → sélecteur
+    // réapparaît avec les alertes restantes. Comportement plus prévisible :
+    // "1 click = 1 alerte affichée".
+    //
+    // Avant v167 : enchaînait automatiquement les modales après acquit
+    // ("il m'ouvre les deux" remonté par KARMA), trop intrusif.
     window.afficherSelecteurAlertes(alertsAaffich, {
       fromBoot: !fromManualClick,
       onSelect: function(chosen) {
-        window.afficherModaleAlerte(chosen, function() {
-          // Au close de la modale détail, on relance le sélecteur si :
-          //   - on est en mode boot ET il reste des alertes non acquittées
-          //   - OU on est en mode manuel ET il reste plusieurs alertes
-          //     (= l'user n'a pas fini de toutes les revoir)
-          setTimeout(function() {
-            const remaining = fromManualClick
-              ? alertsAaffich.filter(function(a) { return a.id !== chosen.id; })
-              : _filtrerEtTrier(_activeAlertsCache);
-            if (remaining.length > 0) {
-              _afficherAlertes(remaining, fromManualClick);
-            }
-          }, 200);
-        });
+        window.afficherModaleAlerte(chosen);
+        // PAS de callback onClose → fermeture simple, pas de re-déclenchement
       }
     });
   }
