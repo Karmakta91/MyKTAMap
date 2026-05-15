@@ -1,11 +1,8 @@
 {
-  "version": "v152",
+  "version": "v153",
   "released": "2026-05-15",
   "notes": [
-    "🪧 Nouvelle icône built-in 'plaque indication' (tag plaque) : panneau beige sur poteau avec lignes de texte stylisées. Disponible direct dans le mode ✏️ ajout de point, sans modifier les plans existants — utile pour repérer les plaques IGC, panneaux de directions cataphiles, etc.",
-    "🌀 Overlay de chargement plein écran : quand tu charges un plan (surtout V2 avec ses 1000+ tuiles), un overlay visible au CENTRE de l'écran s'affiche avec un spinner + un message d'étape (Extraction → Indexation tuiles → Initialisation carte). Avant, le statut était écrit tout en bas du loader (peu visible).",
-    "❌ Erreur explicite en cas d'échec de génération V2 : modale d'erreur rouge plein écran qui détaille la cause (drawImage / toBlob / saturation mémoire) + conseils actionnables (PC vs mobile, réduire l'image source, convertir en JPEG q85). Plus jamais d'erreur silencieuse.",
-    "🛡️ Détection automatique des crashs durant la génération V2 : un flag localStorage est posé avant la conversion et retiré après. Si le navigateur kill la page pendant la génération (OOM mobile), le flag reste → au prochain démarrage de l'app, modale spécifique '🧱❌ Génération V2 interrompue' avec rappel des solutions (PC, réduire image, fermer apps en arrière-plan).",
-    "💪 Try/catch resserré dans le générateur V2 : chaque opération critique (drawImage, toBlob, écriture ZIP) est wrappée avec message d'erreur clair pointant la coord exacte de la tuile qui a échoué. Permet de diagnostiquer rapidement où ça plante."
+    "🔧 Fix UX : quand le crash de génération V2 est détecté au démarrage (modale '🧱❌ Génération V2 interrompue'), la modale générique 'ARRÊT BRUTAL DÉTECTÉ' n'apparaît plus derrière. Les deux flags (heartbeat session + flag V2) restent en place après un kill OOM pendant la conversion, et v152 affichait les 2 modales l'une après l'autre — confusion. Désormais : la modale V2 est prioritaire et discard la modale générique (couvre déjà le sujet, en plus spécifique).",
+    "📖 AI_CONTEXT.md mis à jour pour v152 (overlay de chargement plein écran, modale d'erreur explicite à la génération V2, détection auto crash V2) + nouvelle icône built-in 'plaque indication' dans la liste des tags signalétique."
   ]
 }

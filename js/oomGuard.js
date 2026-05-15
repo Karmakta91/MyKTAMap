@@ -89,10 +89,12 @@
       // 1) 🧱 v152 : Modale "V2 generation crash" prioritaire si flag détecté
       //    au boot. Spécifique car le user a une action concrète à reprendre
       //    (relancer la conversion sur PC ou réduire l'image source).
+      //    NB : _checkV2GenerationCrash a déjà discardé _pendingKillInfo car
+      //    les 2 modales pointent vers le même kill OOM (V2 plus spécifique).
       if (_pendingV2CrashInfo) {
         _afficherModaleV2Crash(_pendingV2CrashInfo);
         _pendingV2CrashInfo = null;
-        return;  // la modale "kill" standard et les toasts seront flush au close
+        return;  // les toasts seront flush au close de la modale V2
       }
       // 2) Modale "kill détecté" générique (OOM session normale).
       if (_pendingKillInfo) {
@@ -312,6 +314,16 @@
                  "plan:", _pendingV2CrashInfo.planName,
                  "imageSize:", _pendingV2CrashInfo.imageSizeMB + "Mo",
                  "age:", _pendingV2CrashInfo.ageSec + "s");
+
+    // ⚠️ Important : un crash V2 laisse AUSSI le marker session_alive en place
+    // (la page a été killed avant beforeunload/pagehide). _checkPreviousKill()
+    // a donc probablement déjà set _pendingKillInfo. On le discard ici car la
+    // modale V2 couvre déjà le sujet de manière plus spécifique (et plus utile :
+    // l'user a une action concrète = relancer la conversion sur PC).
+    if (_pendingKillInfo) {
+      console.log("[OOMGuard] Crash V2 détecté → discard de la modale kill générique (redondante)");
+      _pendingKillInfo = null;
+    }
   }
 
   function _afficherModaleV2Crash(info) {
@@ -356,8 +368,10 @@
     function fermer() {
       if (overlay.parentNode) overlay.remove();
       document.removeEventListener("keydown", _onKey);
-      // Une fois la modale fermée, on flush les autres modales en attente
-      if (_pendingKillInfo) _afficherModaleKill(_pendingKillInfo), _pendingKillInfo = null;
+      // Note : on NE ré-affiche PAS la modale kill générique ici. Si on est dans
+      // ce code, _checkV2GenerationCrash a déjà discardé _pendingKillInfo (la
+      // modale V2 couvre le même sujet plus spécifiquement). On flush juste les
+      // toasts en attente.
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
