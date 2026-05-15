@@ -9,6 +9,63 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 5) — 🏗️ v154 : Niveaux négatifs (sous-sols) + auto-extension availableLevels
+
+Évolution du mode multi-niveau pour mieux représenter les sites souterrains à étages (Glacière, Capucins) : le défaut passe de `[0, 1, 2, 3]` à `[-2, -1, 0, 1, 2]` pour distinguer sous-sols (négatifs) et étages supérieurs (positifs), avec 0 comme niveau de référence (RDC / éléments sans `level`).
+
+#### 1. Niveaux négatifs supportés
+
+`APP_CONFIG.availableLevels` accepte désormais des entiers négatifs. Tout le code level-aware existant utilise déjà `Number.isInteger(level) ? level : 0` ou `parseInt(...)` qui marche nativement avec les négatifs — aucune modification d'algorithme nécessaire (pathfinder, exports, filtres data layers, etc.).
+
+#### 2. 2 boutons d'extension dans la modale Niveaux
+
+Avant v154 : un seul bouton `+` qui étendait vers le haut (`max+1`).
+Depuis v154 :
+- **`[ + ]`** (à droite du segmented) : `max+1` — ajoute le prochain niveau supérieur
+- **`[ − ]`** (à gauche du segmented) : `min−1` — ajoute le prochain niveau inférieur
+
+Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique). Pareil pour la section "Niveaux visibles" et la modale jonction interniveau.
+
+#### 3. Auto-extension `_etendreAvailableLevelsSiBesoin`
+
+Helper global qui scanne toutes les sources level-aware (session roads/zones/editorPoints + data layers via `_ktaDataMarkers/Polylines/Polygons`) et étend `availableLevels` pour englober le min/max trouvé. Appelé :
+- Au plan load dans `lancerApplication` (1ère passe, session pré-existante)
+- Après chargement de chaque data layer dans `utils.js > ajouterPointsDepuisJSON` (2ème passe, layers async)
+
+Idempotent — peut tourner plusieurs fois sans effet de bord. Cas d'usage typique : plan v148-v153 où l'user avait étendu manuellement à `[0..4]`, chargé en v154 (range default `[-2..2]`) → l'auto-extension ajoute `3` et `4` pour que les éléments existants restent sélectionnables/filtrables.
+
+#### 4. Pastille jaune "pill" extensible
+
+`.kta-niv-pastille` passe de cercle fixe 22×22 à capsule (`min-width: 22px; padding: 0 4px; border-radius: 11px`) pour accepter `-1` et `-2` sans débordement. Font-size 13px → 12px + `letter-spacing: -0.3px` pour compacter horizontalement et rester dans le bouton Leaflet 30×30.
+
+#### Fichiers modifiés
+
+| Fichier | Lignes |
+|---|---:|
+| `js/config.js` | +5 (defaults `[-2, -1, 0, 1, 2]` au 2 endroits + commentaires) |
+| `js/main.js` | +90 (helper `_etendreAvailableLevelsSiBesoin` + appel au plan load) |
+| `js/utils.js` | +10 (appel après ajouterPointsDepuisJSON) |
+| `js/interface.js` | +25 (tri croissant + bouton `−` + handler) |
+| `js/exporter.js` | +3 (fallback + tri) |
+| `css/style.css` | +5 (pastille pill extensible) |
+
+#### Backward compat
+
+- Plans v147 et avant (sans `multiLevel`) : aucun changement (mode désactivé par défaut, tout est traité comme niveau 0).
+- Plans v148-v153 avec `multiLevel: true` : 100% compatibles. Si l'user avait niveau 3 ou 4, auto-extension ajoute ces niveaux silencieusement au load.
+- Plans v148-v153 avec `availableLevels` persistés dans `plan-config.json` : aucun, car `availableLevels` est runtime-only (jamais sérialisé).
+- Sessions sauvegardées : aucun impact (sérialisent `level` comme number, donc négatifs OK).
+
+### 🗓️ 15/05/2026 (suite 4) — 🔧 v153 : Fix double modale après crash V2
+
+Bug remonté par l'user : après un crash OOM pendant la génération V2, la modale "🧱❌ Génération V2 interrompue" était immédiatement suivie par la modale "⚠️ ARRÊT BRUTAL DÉTECTÉ" générique — les deux pointent vers le même événement mais V2 est plus spécifique.
+
+**Cause** : 2 flags localStorage (`myktamap_session_alive` + `myktamap_v2_gen_in_progress`) restent posés après un kill OOM en cours de génération. `_checkPreviousKill` ET `_checkV2GenerationCrash` détectent leur flag, et le `fermer()` de la modale V2 ré-affichait la modale kill standard.
+
+**Fix** : `_checkV2GenerationCrash` discard `_pendingKillInfo` quand un crash V2 est détecté (la modale V2 couvre déjà le sujet, plus actionnable). Le code de fermeture de la modale V2 ne ré-affiche plus la modale kill. Mise à jour du commentaire dans `flushPendingToasts` pour refléter la nouvelle priorité.
+
+Bump v153 : `sw.js`, `js/copyright.js > __MKM__.build`, `version.json` synchronisés.
+
 ### 🗓️ 15/05/2026 (suite 3) — 🛡️ v152 : Robustesse erreurs V2 + overlay chargement visible
 
 2 demandes utilisateur traitées : (1) erreurs explicites au crash de génération V2 (plus jamais d'erreur silencieuse) et (2) overlay de chargement de plan visible au centre (au lieu du discret `#loaderStatus` en bas).

@@ -833,9 +833,9 @@ APP_CONFIG.multiLevel ←
 
 **APP_CONFIG (runtime)** — défini dans `js/config.js` :
 - `multiLevel: boolean` — feature active pour ce plan ?
-- `activeLevel: number` — niveau utilisé pour dessiner de nouveaux items (default 0)
+- `activeLevel: number` — niveau utilisé pour dessiner de nouveaux items (default 0). **Peut être négatif** depuis v154 (sous-sols).
 - `visibleLevels: number[]` — filtre d'affichage (multi-select, default `[0]`)
-- `availableLevels: number[]` — niveaux disponibles dans le sélecteur (default `[0,1,2,3]`, extensible via bouton +)
+- `availableLevels: number[]` — niveaux disponibles dans le sélecteur (**default `[-2, -1, 0, 1, 2]` depuis v154**, symétrique autour de 0). Extensible via boutons `+` (max+1) et `−` (min−1) dans la modale. Auto-étendu au boot par `window._etendreAvailableLevelsSiBesoin()` si les data layers contiennent des niveaux hors range.
 
 **Données persistées** :
 - Roads : `road.level: number` (création) OU `{ type: "jonction", fromLevel, toLevel }`
@@ -851,10 +851,10 @@ APP_CONFIG.multiLevel ←
 
 - **Bouton "Niveau actif"** : `L.control({position: "topleft"})` sous les boutons de zoom Leaflet. Pastille jaune avec chiffre du niveau actif. Click → ouvre la modale niveau.
 - **Modale niveau** (`#kta-niv-modal`) : 2 sections
-  - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner
+  - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner. Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique).
   - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
   - Quick actions : `Tous` / `Actif seul`
-  - Bouton `+` pour étendre `availableLevels`
+  - **2 boutons d'extension (v154+)** : `−` à gauche (ajoute `min-1`, sous-sols) + `+` à droite (ajoute `max+1`, étages supérieurs). Format pastille = "pill" extensible (cf. `.kta-niv-pastille` CSS) pour accepter `-1`/`-2` sans débordement dans le bouton Leaflet 30×30.
 - **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
 - **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
 

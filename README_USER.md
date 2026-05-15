@@ -790,13 +790,22 @@ Deux sections :
 
 #### 🎯 Niveau actif (pour dessiner)
 
-Boutons radio `[0] [1] [2] [3] [+]`. Le niveau cliqué devient le **niveau actif** : tous les nouveaux tracés, zones, points éditeur que tu vas dessiner seront tagués avec ce niveau.
+Boutons radio `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 niveaux par défaut, symétriques autour de 0). Le niveau cliqué devient le **niveau actif** : tous les nouveaux tracés, zones, points éditeur que tu vas dessiner seront tagués avec ce niveau.
 
-⚠️ **Changer de niveau actif annule tout tracé en cours** (si tu avais commencé une route principale au Niv 0 et tu switches sur Niv 1, le tracé en cours disparaît). C'est exprès pour éviter qu'un tracé soit à cheval sur 2 niveaux.
+**Convention numérique** :
+- **`0`** = niveau de référence (= les éléments sans niveau taggué — typiquement les anciens plans v147 et avant). C'est ton RDC / la galerie principale.
+- **`1, 2, 3...`** = étages supérieurs / niveaux au-dessus du RDC
+- **`-1, -2, -3...`** = sous-sols / niveaux en-dessous du RDC
+
+⚠️ **Changer de niveau actif annule tout tracé en cours** (si tu avais commencé une route principale au Niv 0 et tu switches sur Niv -1, le tracé en cours disparaît). C'est exprès pour éviter qu'un tracé soit à cheval sur 2 niveaux.
 
 ⚠️ **Reset visibles** : changer de niveau actif coche **uniquement ce niveau** dans la section "Niveaux visibles" en dessous (mode focalisé par défaut).
 
-Bouton **+** : ajoute un niveau au-delà du max actuel (utile pour des carrières à 5+ étages).
+**2 boutons d'extension** :
+- **[ + ]** (à droite) : ajoute un niveau supérieur (max + 1). Utile pour des étages au-dessus.
+- **[ − ]** (à gauche) : ajoute un niveau inférieur (min − 1). Utile pour des sous-sols additionnels.
+
+💡 **Auto-extension** : si tu charges un plan dont les data layers contiennent déjà des éléments à des niveaux hors du range par défaut (ex : un puits taggué `level: 4`), l'app étend automatiquement la liste des niveaux disponibles pour que tu puisses les sélectionner/filtrer.
 
 #### 👁️ Niveaux visibles (filtre)
 
@@ -821,7 +830,7 @@ Pour relier deux niveaux physiquement (escalier, pente raide, puits interne, éc
 5. **Appuie à nouveau sur 🪜** pour valider et sortir du mode tracé.
 6. La jonction apparaît en **magenta pointillé** avec un **rond blanc+magenta** à chacune des 2 extrémités.
 
-**Sémantique des 2 niveaux** : *départ* et *arrivée* sont **symétriques** côté pathfinder — peu importe lequel tu mets en premier, l'itinéraire traverse la jonction dans les 2 sens. Choisis l'ordre qui te semble naturel (ex: un escalier qui descend du Niv 1 au Niv 0 → `départ: 1, arrivée: 0`).
+**Sémantique des 2 niveaux** : *départ* et *arrivée* sont **symétriques** côté pathfinder — peu importe lequel tu mets en premier, l'itinéraire traverse la jonction dans les 2 sens. Choisis l'ordre qui te semble naturel (ex: un escalier qui descend du Niv 1 au Niv 0 → `départ: 1, arrivée: 0` ; un puits qui descend du Niv 0 au Niv -1 → `départ: 0, arrivée: -1`).
 
 **Visibilité d'une jonction** : reste affichée si **au moins un** de ses 2 niveaux est dans la liste des niveaux visibles. Exemple : jonction `0 ↔ 1`, filtre `[0]` actif → jonction visible (car 0 dans le filtre). Filtre `[2]` → jonction cachée.
 

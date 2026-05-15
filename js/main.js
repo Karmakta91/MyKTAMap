@@ -176,7 +176,12 @@ async function lancerApplication() {
     APP_CONFIG.activeLevel    = 0;
     APP_CONFIG.visibleLevels  = [0];   // reset filtre : montre uniquement le niveau 0 au load
     if (!Array.isArray(APP_CONFIG.availableLevels) || APP_CONFIG.availableLevels.length === 0) {
-      APP_CONFIG.availableLevels = [0, 1, 2, 3];
+      APP_CONFIG.availableLevels = [-2, -1, 0, 1, 2];  // defaut symetrique (v154+)
+    }
+    // 🏗️ v154 : auto-extension de availableLevels — premier passage (session).
+    // Voir window._etendreAvailableLevelsSiBesoin pour les details.
+    if (APP_CONFIG.multiLevel === true && typeof window._etendreAvailableLevelsSiBesoin === "function") {
+      window._etendreAvailableLevelsSiBesoin();
     }
     window.APP_CONFIG = APP_CONFIG;
     // Body class : la boussole et autres elements fixes top-left utilisent
@@ -285,6 +290,87 @@ async function lancerApplication() {
     }
   }
 }
+
+// =========================
+// AUTO-EXTENSION availableLevels (v154+, mode multi-niveau)
+// =========================
+// Scanne toutes les sources level-aware connues (session + data layers) et
+// etend APP_CONFIG.availableLevels pour englober le min/max trouve. Idempotent :
+// peut etre appele plusieurs fois sans risque.
+//
+// Cas d'usage :
+//   1. Premier passage au plan load (depuis lancerApplication) : scan session
+//      pre-existante (SessionPersist a deja reload les editorPoints/roads/zones)
+//   2. Deuxieme passage apres chargement des data layers async (utils.js >
+//      ajouterPointsDepuisJSON appelle ce helper apres avoir charge un layer)
+//
+// Defaut v154 = [-2, -1, 0, 1, 2]. Si l'user avait un plan v153 ou il avait
+// etendu manuellement a [0..4], l'auto-extension ajoute 3 et 4 pour qu'il
+// retrouve ses niveaux dans l'UI.
+window._etendreAvailableLevelsSiBesoin = function() {
+  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return false;
+  try {
+    const levelsFound = [];
+    const _push = function(arr) {
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function(it) {
+        if (it && typeof it === "object") {
+          if (Number.isInteger(it.level))      levelsFound.push(it.level);
+          if (Number.isInteger(it.fromLevel))  levelsFound.push(it.fromLevel);
+          if (Number.isInteger(it.toLevel))    levelsFound.push(it.toLevel);
+        }
+      });
+    };
+    if (typeof window.getRoads        === "function") _push(window.getRoads());
+    if (typeof window.getZones        === "function") _push(window.getZones());
+    if (typeof window.getEditorPoints === "function") _push(window.getEditorPoints());
+    // Data layers : levels stockes en _ktaLevel sur les markers, en .level sur
+    // les entries polylines/polygons (cf. utils.js > ajouterPointsDepuisJSON).
+    if (Array.isArray(window._ktaDataMarkers)) {
+      window._ktaDataMarkers.forEach(function(m) {
+        if (m && Number.isInteger(m._ktaLevel)) levelsFound.push(m._ktaLevel);
+      });
+    }
+    if (Array.isArray(window._ktaDataPolylines)) {
+      window._ktaDataPolylines.forEach(function(entry) {
+        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
+      });
+    }
+    if (Array.isArray(window._ktaDataPolygons)) {
+      window._ktaDataPolygons.forEach(function(entry) {
+        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
+      });
+    }
+
+    if (levelsFound.length === 0) return false;
+
+    let avail = Array.isArray(window.APP_CONFIG.availableLevels)
+                && window.APP_CONFIG.availableLevels.length
+      ? window.APP_CONFIG.availableLevels.slice()
+      : [-2, -1, 0, 1, 2];
+    const minF = Math.min.apply(null, levelsFound);
+    const maxF = Math.max.apply(null, levelsFound);
+    let extended = false;
+    while (Math.min.apply(null, avail) > minF) {
+      avail.unshift(Math.min.apply(null, avail) - 1);
+      extended = true;
+    }
+    while (Math.max.apply(null, avail) < maxF) {
+      avail.push(Math.max.apply(null, avail) + 1);
+      extended = true;
+    }
+    if (extended) {
+      window.APP_CONFIG.availableLevels = avail;
+      console.log("[Main] availableLevels auto-etendu :",
+                  "items min/max =", minF, "/", maxF,
+                  "→ availableLevels =", avail);
+    }
+    return extended;
+  } catch(e) {
+    console.warn("[Main] Auto-extension availableLevels echec :", e);
+    return false;
+  }
+};
 
 // =========================
 // CLEANUP DU PLAN PRÉCÉDENT

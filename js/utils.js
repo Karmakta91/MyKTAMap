@@ -321,6 +321,16 @@ function ajouterPointsDepuisJSON(url, layer) {
           _filtreNiveauSurPolygonData(entry);
         });
       }
+
+      // 🏗️ v154 : auto-extension de availableLevels si le data layer contient
+      // des items au-dela du range default. Les roads et zones sont deja
+      // inscrites synchroniquement ; les markers le sont par batches async,
+      // mais le 1er batch suffit dans 99% des cas (les niveaux extremes sont
+      // rarement isoles en fin de JSON). Si vraiment necessaire, l'user peut
+      // toujours etendre manuellement via les boutons +/- de la modale.
+      if (typeof window._etendreAvailableLevelsSiBesoin === "function") {
+        try { window._etendreAvailableLevelsSiBesoin(); } catch(e) {}
+      }
     })
     .catch(function(err) {
       console.warn("[Data] Erreur chargement", url, err);
