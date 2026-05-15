@@ -31,6 +31,7 @@ async function initDataFromConfig() {
   window._ktaDataMarkers   = [];
   window._ktaDataPolylines = [];
   window._ktaDataPolygons  = [];
+  window._ktaImageOverlays = [];  // v162 : registre des image layers level-aware
 
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
   // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.
@@ -338,6 +339,12 @@ window._etendreAvailableLevelsSiBesoin = function() {
     }
     if (Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {
+        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
+      });
+    }
+    // 🏗️ v162 : scan des image layers (PLAN_CONFIG.imageLayers[i].level)
+    if (Array.isArray(window._ktaImageOverlays)) {
+      window._ktaImageOverlays.forEach(function(entry) {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
     }

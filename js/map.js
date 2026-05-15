@@ -302,10 +302,30 @@ async function initMapFromConfig() {
     return (a.order || 0) - (b.order || 0);
   });
 
+  // 🏗️ v162 : registre des image layers pour le filtre multi-niveau runtime.
+  // Reset au plan switch (cf. main.js > _libererRessourcesPlanPrecedent).
+  window._ktaImageOverlays = [];
+
+  // 🏗️ v162 : cohérence avec le filtre multi-niveau au load initial. Si le plan
+  // a multiLevel actif ET que le niveau du layer n'est pas dans visibleLevels,
+  // on ne l'ajoute PAS à la map (même si layerConfig.visible: true). Cas inverse :
+  // si multiLevel = false ou level dans visibles → comportement v161 (layerConfig.visible).
+  const _mlActif = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const _visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+                    ? window.APP_CONFIG.visibleLevels : [0];
+
   sortedImageLayers.forEach(function(layerConfig) {
     const overlay = L.imageOverlay(layerConfig.file, bounds);
-    if (layerConfig.visible) overlay.addTo(map);
+    const lvl = Number.isInteger(layerConfig.level) ? layerConfig.level : 0;
+    overlay._ktaLevel = lvl;  // stocke pour le filtre runtime
+    const niveauVisible = !_mlActif || _visibles.indexOf(lvl) >= 0;
+    if (layerConfig.visible && niveauVisible) overlay.addTo(map);
     overlays[layerConfig.label] = overlay;
+    window._ktaImageOverlays.push({
+      overlay: overlay,
+      label:   layerConfig.label,
+      level:   lvl
+    });
   });
 
   L.control.layers(null, overlays).addTo(map);
@@ -322,6 +342,34 @@ async function initMapFromConfig() {
 
   console.log("[Map] Carte initialisée");
 }
+
+// 🏗️ v162 : helper global pour appliquer le filtre multi-niveau sur les image
+// layers. Appelé par interface.js > appliquerFiltreNiveau() après tout changement
+// de visibleLevels (modale Niveaux, changement de niveau actif).
+//
+// SEMANTIQUE (demande KARMA) : la modale Niveaux fait autorité.
+//   - Niveau dans visibleLevels  → on FORCE addLayer (override décochage Leaflet)
+//   - Niveau hors visibleLevels  → on FORCE removeLayer (override cochage Leaflet)
+//
+// Entre 2 changements de niveau, l'user peut toggler le checkbox Leaflet
+// librement (la modale ne ré-intervient qu'au prochain changement de visibles).
+//
+// Skip total si multiLevel = false (retro-compat v161).
+window._applyLevelFilterToImageLayers = function() {
+  if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) return;
+  if (!window.map || !Array.isArray(window._ktaImageOverlays)) return;
+  const visibles = Array.isArray(window.APP_CONFIG.visibleLevels)
+                   ? window.APP_CONFIG.visibleLevels : [0];
+  window._ktaImageOverlays.forEach(function(entry) {
+    const niveauVisible = visibles.indexOf(entry.level) >= 0;
+    const onMap = window.map.hasLayer(entry.overlay);
+    if (niveauVisible && !onMap) {
+      window.map.addLayer(entry.overlay);
+    } else if (!niveauVisible && onMap) {
+      window.map.removeLayer(entry.overlay);
+    }
+  });
+};
 
 // =========================
 // COLLISION

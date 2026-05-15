@@ -285,6 +285,19 @@ function afficherPlanner() {
     _majVisibiliteCheckboxV2();
   });
 
+  // 🏗️ v162 : toggle visible/hidden des champs Niveau (image layers) selon
+  // l'etat de la case pl_multiLevel. Cache si plan single-level (pas pertinent),
+  // affiche si plan multi-niveau (l'user peut tagger chaque image layer).
+  const mlCbBind = document.getElementById("pl_multiLevel");
+  if (mlCbBind) {
+    mlCbBind.addEventListener("change", function() {
+      const show = mlCbBind.checked;
+      document.querySelectorAll("#pl_imageLayers_list .kta-planner-niveau-row").forEach(function(el) {
+        el.style.display = show ? "" : "none";
+      });
+    });
+  }
+
   // 🧱 V2 : warning au check de la checkbox V2 — conversion lourde, PC recommande.
   // Pas de modal bloquante a la generation (overlay progress existe deja), mais
   // un avertissement au moment ou l'user "opt-in" pour qu'il puisse decocher.
@@ -577,6 +590,15 @@ function _ajouterImageLayer(prefill) {
   const id = "il_" + _imageLayerCount;
   const p  = prefill || {};
 
+  // 🏗️ v162 : champ Niveau optionnel (image layers uniquement, pas data layers).
+  // Default 0 = niveau de reference, conserve la retro-compat avec les ZIP
+  // d'avant v162 ou avec multiLevel: false. Affiche le champ seulement si la
+  // case pl_multiLevel est cochee (cache sinon via class .kta-planner-niveau-row).
+  const levelVal   = Number.isInteger(p.level) ? p.level : 0;
+  const mlIsActive = !!(document.getElementById("pl_multiLevel") &&
+                        document.getElementById("pl_multiLevel").checked);
+  const niveauStyle = mlIsActive ? "" : "display:none;";
+
   const item = document.createElement("div");
   item.className = "kta-planner-layer-item";
   item.dataset.layerId = id;
@@ -597,6 +619,8 @@ function _ajouterImageLayer(prefill) {
       </select>
       <label class="kta-cfg-label">Ordre</label>
       <input class="kta-cfg-input" id="${id}_order"   type="number" value="${p.order || _imageLayerCount * 10}">
+      <label class="kta-cfg-label kta-planner-niveau-row" style="${niveauStyle}">🏗️ Niveau</label>
+      <input class="kta-cfg-input kta-planner-niveau-row" id="${id}_level" type="number" value="${levelVal}" style="${niveauStyle}">
     </div>
     <div class="kta-planner-upload-ligne">
       <span class="kta-cfg-label">Image <span class="kta-planner-req">*</span></span>
@@ -1298,6 +1322,13 @@ async function _genererZip() {
       const ilLabel = document.getElementById(lid + "_label").value.trim() || ilId;
       const ilVis   = document.getElementById(lid + "_visible").value === "true";
       const ilOrder = parseInt(document.getElementById(lid + "_order").value, 10) || 10;
+      // 🏗️ v162 : niveau (defaut 0 si vide / invalide / non-multiLevel). On
+      // ecrit TOUJOURS le champ dans le JSON pour tracabilite et facilite la
+      // re-edition (l'user voit 0 et peut le modifier au lieu de "level absent").
+      const ilLevelStr = document.getElementById(lid + "_level")
+                          ? document.getElementById(lid + "_level").value : "";
+      const ilLevel = (ilLevelStr === "" || isNaN(parseInt(ilLevelStr, 10)))
+                       ? 0 : parseInt(ilLevelStr, 10);
       const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "");
       const ilFile  = _getFile(lid + "_file", nomTxt);
 
@@ -1313,7 +1344,7 @@ async function _genererZip() {
         _plannerErreur("Fichier manquant pour le calque \"" + ilId + "\"."); throw new Error("abort");
       }
 
-      imageLayers.push({ id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder });
+      imageLayers.push({ id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel });
     }
 
     // ── Calques données ──

@@ -844,6 +844,7 @@ APP_CONFIG.multiLevel ←
 - Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)
 - Roads embarquées dans data layers : `road.level: number` optionnel
 - Zones embarquées dans data layers : `zone.level: number` optionnel
+- **Image layers (depuis v162)** : `plan-config.json > imageLayers[i].level: number` optionnel. Filtré au runtime via `_applyLevelFilterToImageLayers()`. Modale Niveaux = authority → force `addLayer`/`removeLayer` selon `visibleLevels` (override le checkbox Leaflet). Le générateur expose un champ "Niveau" à côté de chaque image layer, visible **uniquement** si la case 🏗️ Plan multi-niveau est cochée.
 
 **Rétro-compat absolue** : si un item n'a PAS de `level`, il est traité comme `level: 0`. Tous les plans v147 et avant fonctionnent identiquement quand le toggle est OFF (jamais de champ `level` ajouté).
 
@@ -868,8 +869,9 @@ APP_CONFIG.multiLevel ←
 - `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
 - `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
 - `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru
+- `_applyLevelFilterToImageLayers()` (map.js, **depuis v162**) — `map.addLayer`/`removeLayer` sur les `L.imageOverlay` selon le niveau. Sémantique différente des points/zones : on retire l'overlay du Leaflet layer control (pas juste de l'opacity à 0). La modale Niveaux fait autorité — force coché/décoché selon visibleLevels (override le toggle manuel du checkbox Leaflet).
 
-Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons` pour les data layers). Reset au plan switch via `main.js > lancerApplication`.
+Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons`, `_ktaImageOverlays`). Reset au plan switch via `main.js > lancerApplication`.
 
 #### 26.5 Jonctions interniveau
 

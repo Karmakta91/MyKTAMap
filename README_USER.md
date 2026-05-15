@@ -849,6 +849,14 @@ Les jonctions s'effacent **exactement comme les autres tracés** via la sous-act
 - **✂️ Dernier tracé entier** → si la jonction est le dernier tracé fait, elle est supprimée
 - **🗑️ Tous les tracés** → efface absolument tout (routes + jonctions)
 
+### Ajouter du niveau aux calques image (depuis v162)
+
+Dans le **🏗️ Générateur de plan**, chaque calque image (légende, hachures, etc.) a un champ **🏗️ Niveau** (visible uniquement quand `🏗️ Plan multi-niveau` est cochée). Indique-y le niveau auquel le calque appartient (entier, défaut `0`).
+
+**Au runtime** : le calque est automatiquement affiché/masqué selon ton filtre "Niveaux visibles" dans la modale Niveaux. La modale fait **autorité** sur le checkbox Leaflet du contrôle des couches → si tu décoches manuellement un calque, le changement de niveau ré-applique l'état correct.
+
+**Rétro-compat** : si tu modifies un ZIP existant qui n'avait pas de `level` sur ses calques image, ils s'affichent à `0` dans le générateur — modifie-les pour les répartir par niveau si besoin.
+
 ### Ajouter du niveau aux data layers
 
 Les calques de données existants (`puits.json`, `cataphile.json`, etc.) peuvent aussi avoir des items tagués par niveau. Ajoute manuellement `"level": N` dans le JSON :
