@@ -9,6 +9,42 @@
 
 ## 📋 Journal des modifications
 
+### 🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)
+
+KARMA : "ducoup l'alerte dans le menu alerte suffit pour la migration, supprime l'autre pour éviter les doublons".
+
+L'annonce migration était diffusée par 2 canaux distincts :
+1. **Modal one-shot pédagogique** au premier lancement (`js/migrationNotice.js`, v163-v167)
+2. **Alerte info dans `alert.json`** visible via badge 🚨 (v163+, multi-alertes)
+
+→ Doublon perçu par l'utilisateur. Suppression du canal modal one-shot pour ne garder que l'alerte info (plus discrète, déjà visible en permanence).
+
+#### Suppression
+
+- `js/migrationNotice.js` — fichier supprimé (préservé dans l'historique git, commit `aea3a1e` l'introduisait)
+- `<script src="js/migrationNotice.js">` retiré de `index.html`
+- Hook `MigrationNotice.notifySplashEnded()` retiré de `main.js > _splashEnd`
+- `"./js/migrationNotice.js"` retiré de `sw.js > ASSETS_TO_CACHE`
+- Classes CSS `.kta-migration-*` retirées de `style.css` (-~95 lignes)
+
+#### Ce qui reste
+
+- ✅ `alert.json` avec l'entrée `migration-myktamap-fr-2026` (info bleu)
+- ✅ Badge 🚨 dynamique avec couleur selon niveau max + pastille compteur
+- ✅ Sélecteur multi-alertes (v166-v167) avec tri par criticité
+- ✅ `docs/nginx-redirect-old-domain.conf` (Phase 3 J+60)
+- ✅ `docs/alert-example-migration.json` (template référence)
+
+#### Docs sync
+
+- CLAUDE.md §29 : retire la partie "Module migrationNotice.js" + note historique sur la suppression
+- AI_CONTEXT.md : recette M conservée, mention "modal one-shot" → "alerte info permanente"
+- README_USER.md : section migration adaptée (1 canal au lieu de 2)
+
+**Bump v167 → v168** (notes user-facing inchangées)
+
+---
+
 ### 🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`
 
 Préparation de la migration de domaine du site historique `myktamap.is-underground.fr` vers le nouveau `myktamap.fr` (prévue **15 juillet 2026**). Approche cohabitation 60j (pas de kill switch immédiat) pour éviter toute perte de données utilisateur.
