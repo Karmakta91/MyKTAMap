@@ -5357,6 +5357,119 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* =========================
    🏗️ MULTI-NIVEAU — pastille "Niv X" dans sidebar + modales (depuis v148)
    ========================= */
+/* 🔔 v166 : Sélecteur d'alertes (modal qui liste N>1 alertes classées par
+   criticité). Click sur une row → ouvre la modale détail correspondante. */
+.kta-alert-selector-overlay {
+  /* hérite de .kta-readme-modal-overlay */
+}
+.kta-alert-selector-boite {
+  max-width: 540px;
+  height: auto;
+  max-height: 80vh;
+}
+.kta-alert-selector-corps {
+  padding: 14px 18px;
+}
+.kta-alert-selector-hint {
+  font-size: 12.5px;
+  color: #8892a4;
+  margin: 0 0 14px 0;
+  font-style: italic;
+}
+.kta-alert-selector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* Row clickable d'une alerte dans le sélecteur */
+.kta-alert-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  color: #e8eaf0;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s, transform 0.05s;
+}
+.kta-alert-selector-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+.kta-alert-selector-row:active {
+  transform: scale(0.98);
+}
+.kta-alert-selector-row-seen {
+  opacity: 0.55;
+}
+/* Pastille de couleur selon le niveau */
+.kta-alert-selector-dot {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
+}
+.kta-alert-selector-row-emergency {
+  border-left: 3px solid #dc3545;
+}
+.kta-alert-selector-row-emergency .kta-alert-selector-dot {
+  background: #dc3545;
+  box-shadow: 0 0 6px rgba(220, 53, 69, 0.7);
+  animation: kta-alert-dot-pulse 1.6s ease-in-out infinite;
+}
+.kta-alert-selector-row-warning {
+  border-left: 3px solid #ff9933;
+}
+.kta-alert-selector-row-warning .kta-alert-selector-dot {
+  background: #ff9933;
+  box-shadow: 0 0 4px rgba(255, 153, 51, 0.5);
+}
+.kta-alert-selector-row-info {
+  border-left: 3px solid #8cb4ff;
+}
+.kta-alert-selector-row-info .kta-alert-selector-dot {
+  background: #8cb4ff;
+}
+@keyframes kta-alert-dot-pulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(220, 53, 69, 0.7); }
+  50%      { box-shadow: 0 0 12px rgba(220, 53, 69, 1); }
+}
+/* Contenu texte d'une row */
+.kta-alert-selector-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;  /* permet à title de wrap proprement */
+}
+.kta-alert-selector-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.kta-alert-selector-meta {
+  font-size: 11.5px;
+  color: #8892a4;
+  font-family: monospace;
+}
+.kta-alert-selector-arrow {
+  flex: 0 0 auto;
+  font-size: 22px;
+  color: #5a6275;
+  line-height: 1;
+}
+.kta-alert-selector-row:hover .kta-alert-selector-arrow {
+  color: #f4c542;
+}
+
 /* 🌐 v163 : Modal de migration (annonce changement de domaine).
    Style accent jaune charte, pas alarmiste — c'est de l'info pédagogique, pas
    une urgence. Liseré jaune doré + sections claires. */
