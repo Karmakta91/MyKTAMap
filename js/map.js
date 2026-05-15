@@ -55,7 +55,17 @@ function creerIcones(iconConfig) {
   };
 
   iconeDefault = makeDefaultIcon();
-  iconeTrack   = L.icon({ iconUrl: trackUrl, iconSize: [50, 50], iconAnchor: [25, 25] });
+  // 🧭 v158/v159 : divIcon au lieu de L.icon pour permettre la rotation sans
+  // casser le positionnement. Leaflet applique transform: translate3d(...) sur
+  // le DIV parent (positionnement geo). On applique transform: rotate(...) sur
+  // l'<img> enfant (rotation indépendante). className "kta-tracker-divicon"
+  // override le default .leaflet-div-icon (fond blanc + bordure → invisible).
+  iconeTrack   = L.divIcon({
+    html:       '<img src="' + trackUrl + '" alt="Tracker" class="kta-tracker-img" draggable="false">',
+    className:  "kta-tracker-divicon",
+    iconSize:   [50, 50],
+    iconAnchor: [25, 25]
+  });
 
   // Globaux exposés : iconeDefault sert de fallback ultime (utils.js, editor.js,
   // interface.js) et iconeTrack est consommé par tracking.js. Les ex-globaux

@@ -5289,6 +5289,23 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* =========================
    🏗️ MULTI-NIVEAU — pastille "Niv X" dans sidebar + modales (depuis v148)
    ========================= */
+/* 🧭 v159 : Tracker icon en divIcon (wrapper div + img enfant) pour permettre
+   la rotation independante du positionnement geo. Le div recoit le translate
+   Leaflet, l'img recoit notre rotate(heading deg). Le default Leaflet
+   .leaflet-div-icon a un fond blanc + border que l'on doit ecraser. */
+.kta-tracker-divicon {
+  background: transparent !important;
+  border: none !important;
+}
+.kta-tracker-divicon .kta-tracker-img {
+  display: block;
+  width: 50px;
+  height: 50px;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+  pointer-events: none; /* le clic doit aller a la map en dessous */
+}
+
 /* Pastille du niveau actif : cercle plein jaune charte avec le chiffre du
    niveau au centre (style badge). Utilisée dans le Leaflet control top-left
    sous le zoom (cf .kta-level-control). */

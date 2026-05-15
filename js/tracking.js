@@ -84,49 +84,49 @@ function initTracking() {
   });
 }
 
-// 🧭 v158 : rotation de l'icone tracker selon le heading (sens de marche).
-// L'icone iconetrack.png est dessinee pointant plein Nord par defaut. Pendant
-// le tracking actif, on applique transform: rotate(heading deg) sur l'img
-// interne du marker Leaflet → la fleche pointe dans la direction reelle.
-// Throttle 0.5° pour eviter du churn DOM a 60 Hz. Reset a 0° au stopTracking.
+// 🧭 v158/v159 : rotation de l'icone tracker selon le heading (sens de marche).
+//
+// IMPLEMENTATION : le marker tracker utilise un L.divIcon (cf. map.js) qui
+// produit un DOM <div class="kta-tracker-divicon"><img class="kta-tracker-img"></div>.
+// Le DIV recoit le transform: translate3d(...) de Leaflet pour le placement
+// geo. L'<img> ENFANT recoit notre transform: rotate(heading deg) - les 2 sont
+// independants, pas de conflit. La transition CSS (0.15s) est definie en CSS
+// (.kta-tracker-img).
+//
+// HISTOIRE : v158 utilisait L.icon (img top-level) et appliquait le rotate
+// directement sur l'<img>, qui ETAIT aussi l'element positionne par Leaflet
+// (transform: translate3d). Le rotate ecrasait le translate → l'icone collait
+// au coin (0,0). Fix v159 : passage en divIcon avec wrapper.
+//
+// Throttle 0.5° pour eviter du churn DOM. Reset a 0° au stopTracking.
 let _trackerRotationLast = -999;
 function _applyRotationToTrackerMarker() {
-  // Uniquement en tracking actif (cf. specs v158). Au repos / recalage seul,
-  // l'icone reste statique pointant Nord (= sa definition de base).
+  // Uniquement en tracking actif. Au repos / recalage seul, l'icone reste
+  // statique pointant Nord (= sa definition de base dans le PNG).
   if (!tracking) return;
   if (!markerPosition) return;
   const heading = (typeof direction === "number" && !isNaN(direction)) ? direction : 0;
   // Throttle 0.5° : skip si delta trop petit (anti-jitter du magnetometre)
   if (Math.abs(heading - _trackerRotationLast) < 0.5) return;
   _trackerRotationLast = heading;
-  // Le DIV positionne par Leaflet (getElement) contient un <img> enfant.
-  // On applique la rotation UNIQUEMENT sur l'img → ne casse pas le placement
-  // geo du marker (le transform: translate3d du DIV reste intact).
+  // getElement retourne le DIV wrapper (translate Leaflet). On cible son img enfant.
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
-  const img = el.tagName === "IMG" ? el : el.querySelector("img");
+  const img = el.querySelector(".kta-tracker-img");
   if (!img) return;
-  img.style.transformOrigin = "center center";
-  img.style.transform       = "rotate(" + heading + "deg)";
-  // Transition douce pour eviter le jitter visible. 0.15s = compromis entre
-  // reactivite et fluidite. Pas de transition au reset (rotate 0) pour eviter
-  // un retour visible quand on arrete le tracking.
-  if (!img.style.transition) {
-    img.style.transition = "transform 0.15s ease-out";
-  }
+  img.style.transform = "rotate(" + heading + "deg)";
 }
 
-// Reset la rotation a 0° (icone pointant Nord). Appele au stopTracking() pour
-// que l'icone retrouve sa pose neutre.
+// Reset la rotation a 0° (icone pointant Nord = pose neutre). Appele au
+// stopTracking().
 function _resetRotationTrackerMarker() {
   _trackerRotationLast = -999;
   if (!markerPosition) return;
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
-  const img = el.tagName === "IMG" ? el : el.querySelector("img");
+  const img = el.querySelector(".kta-tracker-img");
   if (!img) return;
-  img.style.transition = "none";       // reset instantane (pas de transition)
-  img.style.transform  = "rotate(0deg)";
+  img.style.transform = "rotate(0deg)";
 }
 
 // 🏗️ Multi-niveau (v148) : applique le filtre visuel sur le marker tracker.
