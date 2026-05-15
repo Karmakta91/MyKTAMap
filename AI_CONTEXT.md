@@ -314,11 +314,12 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 - L'utilisateur peut continuer à utiliser le site normalement
 - Aucune perte de données si l'utilisateur agit avant la coupure
 
-**Que faire pour migrer ses données** (les sessions et préférences sont liées au domaine — elles ne suivront PAS automatiquement) :
-1. **Exporter ses sessions** via 💾 Sauvegarde session sur chaque plan (Full ou Avancé) → télécharge un `.json` par session
-2. **Garder les ZIPs** des plans importés pour les ré-importer sur `myktamap.fr`
-3. **Au 15 juillet 2026** : aller sur `myktamap.fr` → importer les `.json` de session + les ZIPs
-4. **Si l'app était installée** (PWA sur écran d'accueil) : supprimer l'ancienne icône manuellement + réinstaller depuis `myktamap.fr`
+**Que faire pour migrer ses données** (la liste de plans, les sessions et les préférences sont liées au domaine — elles ne suivront PAS automatiquement) :
+1. **📚 Exporter la liste de plans** : loader → section "📚 Mes plans" → bouton 💾 → télécharge un fichier `.config` (métadatas + références des plans connus). Réimport via le bouton 📂 au même endroit sur le nouveau domaine.
+2. **💾 Exporter ses sessions** via 💾 Sauvegarde session sur chaque plan (Full ou Avancé) → télécharge un `.json` par session (annotations, tracés, zones, points perso en cours)
+3. **📦 Garder les ZIPs** des plans importés pour les ré-importer manuellement sur `myktamap.fr` (les blobs locaux stockés en IndexedDB ne sont pas exportables)
+4. **Au 15 juillet 2026** : aller sur `myktamap.fr` → importer le `.config` de liste + ré-importer les ZIPs + importer les `.json` de session sur chaque plan correspondant
+5. **📱 Si l'app était installée** (PWA sur écran d'accueil) : supprimer l'ancienne icône manuellement + réinstaller depuis `myktamap.fr`
 
 **Important** : la migration des sessions/plans est **manuelle**. Le système ne transfère pas automatiquement les données entre les 2 domaines pour des raisons de sécurité (isolation des origins par les navigateurs — règle web non-contournable).
 

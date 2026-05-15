@@ -102,12 +102,13 @@ L'application change de domaine officiel. À partir du **15 juillet 2026**, la n
 
 **Que faire pour migrer mes données ?**
 
-Les sessions et préférences sont **liées au domaine** (règle de sécurité web — origins isolés). Elles ne suivront PAS automatiquement. Tu dois agir avant la coupure :
+Tes données (liste de plans, sessions, préférences) sont **liées au domaine** (règle de sécurité web — origins isolés). Elles ne suivront PAS automatiquement. Tu dois agir avant la coupure :
 
-1. **Exporte tes sessions** via **💾 Sauvegarde session** sur chaque plan (Full ou Avancé) → télécharge un fichier `.json` par session
-2. **Garde tes ZIPs de plans** que tu avais importés
-3. **Au 15 juillet 2026** : va sur `myktamap.fr` → ré-importe les `.json` de session + les ZIPs
-4. **Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine)
+1. **📚 Exporte ta liste de plans** : dans le loader, section **📚 Mes plans** → bouton **💾** → télécharge un fichier `.config` qui contient tous tes plans enregistrés (métadatas + références). Sur le nouveau domaine, tu importeras ce `.config` via le bouton **📂** au même endroit.
+2. **💾 Exporte tes sessions** : sur chaque plan ouvert, utilise **💾 Sauvegarde session** (Full ou Avancé) → télécharge un `.json` par session (annotations, tracés, zones, points perso en cours).
+3. **📦 Garde tes ZIPs de plans** que tu avais importés. Les blobs locaux stockés dans le navigateur ne sont pas exportables — il faudra ré-importer les ZIPs manuellement sur le nouveau domaine via le drag-and-drop habituel.
+4. **Au 15 juillet 2026** : va sur `myktamap.fr` → importe le `.config` de liste de plans + ré-importe les ZIPs + importe les `.json` de session sur chaque plan correspondant.
+5. **📱 Si tu avais installé l'app sur ton écran d'accueil** (PWA) : tu devras supprimer l'ancienne icône manuellement puis réinstaller depuis `myktamap.fr` (les origins étant différents, l'icône installée pointe sur l'ancien domaine).
 
 **Pendant la transition (jusqu'au 15 juillet 2026)** : les 2 domaines fonctionneront en parallèle. Tu peux continuer à utiliser ce site comme avant, et migrer à ton rythme.
 

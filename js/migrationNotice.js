@@ -139,12 +139,23 @@
 
           '<div class="kta-migration-section">' +
             '<div class="kta-migration-section-titre">⚠️ Que faire avant la coupure ?</div>' +
+            '<p style="margin:6px 0 4px; font-size:13px; color:#c8d0e0;">' +
+              'Tes données (liste de plans, sessions, préférences) sont liées au domaine ' +
+              'actuel et <strong>ne suivront PAS automatiquement</strong>. Tu dois les exporter avant la coupure.' +
+            '</p>' +
             '<ul style="margin:6px 0 0; padding-left:22px; line-height:1.6;">' +
-              '<li><strong>Exporte tes sessions</strong> via 💾 Sauvegarde session sur chaque plan ' +
-                '(les sessions sont liées au domaine actuel — elles ne suivront PAS automatiquement).</li>' +
-              '<li><strong>Garde tes ZIPs de plans</strong> pour les ré-importer sur le nouveau domaine.</li>' +
-              '<li><strong>Si l\'app est installée</strong> sur ton écran d\'accueil (PWA), tu devras la ' +
-                '<em>supprimer manuellement</em> puis la réinstaller depuis ' + NEW_DOMAIN_DISPLAY + '.</li>' +
+              '<li><strong>📚 Exporte ta liste de plans</strong> : dans le loader, section ' +
+                '<em>📚 Mes plans</em> → bouton 💾 → télécharge un <code>.config</code> avec ' +
+                'tous tes plans enregistrés (méta + références).</li>' +
+              '<li><strong>💾 Exporte tes sessions</strong> : sur chaque plan, ouvre <em>💾 Sauvegarde ' +
+                'session</em> → télécharge un <code>.json</code> par plan (annotations en cours, ' +
+                'tracés, zones, points perso).</li>' +
+              '<li><strong>📦 Garde tes ZIPs de plans</strong> que tu avais importés (les blobs ' +
+                'locaux ne suivent pas — il faudra les ré-importer manuellement sur le nouveau ' +
+                'domaine).</li>' +
+              '<li><strong>📱 PWA installée sur écran d\'accueil</strong> : tu devras la ' +
+                '<em>supprimer manuellement</em> puis la réinstaller depuis ' + NEW_DOMAIN_DISPLAY +
+                ' (icônes liées à l\'origin actuel).</li>' +
             '</ul>' +
           '</div>' +
 
