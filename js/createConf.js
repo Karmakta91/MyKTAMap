@@ -24,7 +24,8 @@ const PLANNER_DEFAULT_ICONS = {
   info:     "icon/info.png",
   chatiere: "icon/chatiere.png",
   passage:  "icon/passage.png",
-  danger:   "icon/danger.png"
+  danger:   "icon/danger.png",
+  plaque:   "icon/plaque.png"
 };
 
 const PLANNER_EDITOR_JSON   = JSON.stringify({ type: "editor", version: 1, data: [] }, null, 2);
@@ -700,6 +701,51 @@ function _majVisibiliteCheckboxV2() {
   wrap.style.display = aImage ? "" : "none";
 }
 
+// 🧱 v152 : Modal d'erreur VISIBLE (full-screen) quand la generation V2 echoue.
+// Remplace l'usage de _plannerErreur (zone inline en bas de la modale planner,
+// peu visible) pour les erreurs critiques de generation. Inclut des conseils
+// actionnables (réduire image, faire sur PC).
+function _afficherErreurV2(titre, message) {
+  // Si une modale precedente existe, on la remplace pour eviter le stacking
+  const existing = document.getElementById("kta-v2-error-overlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-v2-error-overlay";
+  overlay.className = "kta-readme-modal-overlay";
+  const safeMessage = String(message || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g, "<br>");
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
+      '<div class="kta-readme-modal-header kta-v2-error-header">' +
+        '<span class="kta-readme-modal-titre">❌ ' + (titre || "Erreur de génération V2") + '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p class="kta-v2-error-message">' + safeMessage + '</p>' +
+        '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
+          '<div class="kta-v2-warn-section-titre">💡 Que faire ?</div>' +
+          '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:#c8d0e0; line-height:1.6;">' +
+            '<li><strong>Génère sur PC plutôt que mobile</strong> — pas de plafond mémoire en pratique, le ZIP V2 généré s\'importera ensuite sans coût sur ton téléphone.</li>' +
+            '<li><strong>Réduis l\'image source</strong> avant de réessayer : redimensionne à 6000-8000 px max via GIMP / Photoshop / <a href="https://squoosh.app" target="_blank" rel="noopener" style="color:#8cb4ff;">Squoosh</a>. Tu perds un peu de détail au zoom max mais la conversion passe.</li>' +
+            '<li><strong>Convertis en JPEG qualité 85</strong> si ton source est en PNG : div / 5 à 10 sur le poids sans perte visuelle.</li>' +
+          '</ul>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kta-tracker-warn-actions">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-v2-error-ok" type="button">J\'ai compris</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  function _cleanup() {
+    if (overlay.parentNode) overlay.remove();
+    document.removeEventListener("keydown", _onKey);
+  }
+  function _onKey(e) { if (e.key === "Escape") _cleanup(); }
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) _cleanup(); });
+  document.addEventListener("keydown", _onKey);
+  document.getElementById("kta-v2-error-ok").addEventListener("click", _cleanup);
+}
+
 // Modal d'avertissement quand l'user coche la case V2 (genere des tuiles).
 // Conversion lourde en CPU + RAM cote navigateur (drawImage sur 16K x 16K
 // fait souvent crasher iOS Safari). Conseille PC.
@@ -959,8 +1005,18 @@ function _detectContentBBox(img) {
   canvas.width = sampleW;
   canvas.height = sampleH;
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(img, 0, 0, sampleW, sampleH);
-  const data = ctx.getImageData(0, 0, sampleW, sampleH).data;
+  let data;
+  try {
+    ctx.drawImage(img, 0, 0, sampleW, sampleH);
+    data = ctx.getImageData(0, 0, sampleW, sampleH).data;
+  } catch(e) {
+    // CORS-tainted canvas (rare en usage normal — l'image vient de l'upload
+    // user donc same-origin), ou OOM lors du downsample. On skip l'auto-crop
+    // et on tuile l'image entière sans crop. Pas une vraie erreur fatale.
+    console.warn("[Planner] _detectContentBBox : échec lecture pixels (CORS ? OOM ?), skip auto-crop —", e.message);
+    canvas.width = 0; canvas.height = 0;
+    return null;
+  }
 
   // Background = pixels où R, G, B > seuil (capte blanc pur ET cream/beige)
   const TH = TILING_V2_AUTOCROP_RGB_THRESHOLD;
@@ -1097,21 +1153,46 @@ async function _genererTuilesV2(imageFile, zip, onProgress) {
         const sourceHeightOrig = sliceHeightLvl * scale;
 
         // Fond noir pour les bordures de la tuile haute partielle
-        tileCtx.clearRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
-        tileCtx.fillStyle = "#000000";
-        tileCtx.fillRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
-        tileCtx.drawImage(
-          img,
-          sourceLeftOrig, sourceTopOrig, sourceWidthOrig, sourceHeightOrig,
-          0,              destY,          sliceWidthLvl,   sliceHeightLvl
-        );
+        try {
+          tileCtx.clearRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+          tileCtx.fillStyle = "#000000";
+          tileCtx.fillRect(0, 0, TILING_V2_TILE_SIZE, TILING_V2_TILE_SIZE);
+          tileCtx.drawImage(
+            img,
+            sourceLeftOrig, sourceTopOrig, sourceWidthOrig, sourceHeightOrig,
+            0,              destY,          sliceWidthLvl,   sliceHeightLvl
+          );
+        } catch(drawErr) {
+          // drawImage peut throw sur "tainted canvas" (image cross-origin) ou
+          // sur OOM (rare mais possible sur mobile). On veut un message clair.
+          throw new Error("Échec drawImage à z=" + z + " col=" + col + " k=" + k +
+                          " — probable saturation mémoire (image source trop grande pour ce device). " +
+                          "Détail interne : " + (drawErr && drawErr.message ? drawErr.message : "inconnu"));
+        }
 
-        const blob = await new Promise(function(resolve) {
-          tileCanvas.toBlob(function(b) { resolve(b); }, "image/jpeg", TILING_V2_JPEG_Q);
-        });
-        if (blob) {
+        // toBlob peut renvoyer null silencieusement si le canvas est dans un
+        // état dégradé (OOM, contexte perdu). On wrap dans une Promise qui
+        // throw si blob === null.
+        let blob;
+        try {
+          blob = await new Promise(function(resolve, reject) {
+            tileCanvas.toBlob(function(b) {
+              if (!b) reject(new Error("toBlob a retourné null"));
+              else    resolve(b);
+            }, "image/jpeg", TILING_V2_JPEG_Q);
+          });
+        } catch(blobErr) {
+          throw new Error("Échec encodage JPEG de la tuile z=" + z + " col=" + col + " k=" + k +
+                          " — saturation mémoire navigateur. " +
+                          "Détail interne : " + (blobErr && blobErr.message ? blobErr.message : "inconnu"));
+        }
+
+        try {
           const arrBuf = await blob.arrayBuffer();
           zFolder.file("x" + col + "_y" + leafletY + ".jpg", arrBuf);
+        } catch(zipErr) {
+          throw new Error("Échec ajout tuile au ZIP à z=" + z + " col=" + col + " k=" + k +
+                          ". Détail : " + (zipErr && zipErr.message ? zipErr.message : "inconnu"));
         }
 
         tilesDone++;
@@ -1313,13 +1394,27 @@ async function _genererZip() {
       // 🧱 v151 : retrouve le File de l'image source — 2 sources possibles :
       //   - Mode Nouveau  : input upload pl_baseImage (user a choisi un fichier)
       //   - Mode Modifier : _plannerOrigAssets (extrait du ZIP source)
-      // _getFile gere les 2 cas (priorite a l'upload, fallback _plannerOrigAssets
-      // via le basename de baseImageName).
       const imageFile = _getFile("pl_baseImage", baseImageName);
       if (!imageFile) {
-        _plannerErreur("Conversion V2 : impossible de récupérer l'image source. Choisis une image principale d'abord.");
+        _afficherErreurV2("Image source introuvable",
+          "Choisis une image principale d'abord (section 🖼️ Images principales).");
         throw new Error("abort");
       }
+
+      // 🧱 v152 : flag de détection de crash mémoire pendant la génération.
+      // Si le navigateur kill la page (OOM iOS Safari) au milieu de drawImage
+      // ou toBlob, l'execution s'arrete sans aucun throw — utilisateur perdu.
+      // En posant ce flag AVANT et en le supprimant APRES, on peut detecter
+      // au reload qu'une generation V2 etait en cours et n'a pas fini
+      // proprement → modale specifique au boot (cf OOMGuard hook + index.html
+      // _detecterCrashV2GenerationAuBoot).
+      try {
+        localStorage.setItem("myktamap_v2_gen_in_progress", JSON.stringify({
+          planName: name,
+          imageSize: imageFile.size,
+          startedAt: Date.now()
+        }));
+      } catch(e) { /* localStorage saturé : pas bloquant */ }
 
       // Overlay de progression bloquant pendant la génération
       const overlay = document.createElement("div");
@@ -1333,25 +1428,47 @@ async function _genererZip() {
             '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
               '<div id="kta-tiling-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
             '</div>' +
+            '<p style="font-size:11.5px; color:#8892a4; margin:14px 0 0; line-height:1.5;">' +
+              '⚠️ Ne ferme pas l\'onglet pendant la conversion. Sur mobile, le navigateur peut killer la page si la mémoire sature.' +
+            '</p>' +
           '</div>' +
         '</div>';
       document.documentElement.appendChild(overlay);
 
+      let v2Result = null;
+      let v2Error  = null;
       try {
-        const result = await _genererTuilesV2(imageFile, zip, function(done, total, currentZ) {
+        v2Result = await _genererTuilesV2(imageFile, zip, function(done, total, currentZ) {
           const pct = Math.round((done / total) * 100);
           const txt = document.getElementById("kta-tiling-progress-text");
           const bar = document.getElementById("kta-tiling-progress-bar");
           if (txt) txt.textContent = "Niveau z=" + currentZ + " · " + done + " / " + total + " tuiles (" + pct + "%)";
           if (bar) bar.style.width = pct + "%";
         });
-        tilingManifest = result.manifest;
-        v2Dims = result.dims;
-        console.log("[Planner] Tiling V2 généré : " + result.tilesCount + " tuiles" +
-                    (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
+      } catch(err) {
+        v2Error = err;
       } finally {
         overlay.remove();
+        // Cleanup du flag in-progress (succes OU echec catché). Si OOM kill
+        // brutal, ce code ne tourne JAMAIS → le flag reste en localStorage
+        // → détecté au prochain boot.
+        try { localStorage.removeItem("myktamap_v2_gen_in_progress"); } catch(e) {}
       }
+
+      if (v2Error) {
+        const isOOM = /m[ée]moire|drawImage|toBlob|saturation/i.test(v2Error.message || "");
+        _afficherErreurV2(
+          isOOM ? "Échec de génération — saturation mémoire" : "Échec de génération",
+          (v2Error.message || "Erreur inconnue pendant la génération V2.") +
+          (isOOM ? "\n\nC'est typique sur mobile pour des images > 50 Mo ou > 8K px. Solutions : générer sur PC, ou réduire l'image source." : "")
+        );
+        throw new Error("abort");
+      }
+
+      tilingManifest = v2Result.manifest;
+      v2Dims = v2Result.dims;
+      console.log("[Planner] Tiling V2 généré : " + v2Result.tilesCount + " tuiles" +
+                  (v2Dims.cropOffset ? " | auto-crop offset (" + v2Dims.cropOffset.x + "," + v2Dims.cropOffset.y + ")" : ""));
     }
 
     // ── plan-config.json ──

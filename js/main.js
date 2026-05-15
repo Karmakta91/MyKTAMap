@@ -205,6 +205,11 @@ async function lancerApplication() {
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) overlay.style.display = "none";
 
+  // 🌀 v152 : message overlay au moment du render carte (lourd sur V2)
+  if (typeof window._majOverlayChargement === "function") {
+    window._majOverlayChargement("Initialisation de la carte et des calques…");
+  }
+
   await new Promise(function(resolve) { requestAnimationFrame(resolve); });
 
   await initMapFromConfig();
@@ -272,6 +277,12 @@ async function lancerApplication() {
   console.log("[Main] Application lancée");
   } finally {
     _appEnCours = false;
+    // 🌀 v152 : ferme l'overlay de chargement plein écran (lancé par
+    // chargerZipFichier ou chargerPlanServeur). Succès OU erreur cumulés
+    // ici dans finally → l'overlay disparaît dans tous les cas.
+    if (typeof window._fermerOverlayChargement === "function") {
+      window._fermerOverlayChargement();
+    }
   }
 }
 
@@ -347,8 +358,15 @@ const _PERF_VALID_PRESETS = ["off", "auto", "quality", "balanced", "performance"
 async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
   _libererRessourcesPlanPrecedent();
 
+  // 🌀 v152 : overlay plein écran visible (lance avant le fetch du plan-config
+  // pour que l'utilisateur sache qu'il y a une activité en cours dès le clic).
+  if (typeof window._afficherOverlayChargement === "function") {
+    window._afficherOverlayChargement("Récupération du plan depuis le serveur…");
+  }
+
   const ok = await loadAppConfig(planPath);
   if (!ok) {
+    if (typeof window._fermerOverlayChargement === "function") window._fermerOverlayChargement();
     const err = new Error("Plan serveur introuvable : " + planPath);
     err.code = "PLAN_NOT_FOUND";
     throw err;
@@ -435,15 +453,30 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   // plans qui peuvent avoir 1000+ tuiles). Les blob URLs sont créées à la demande
   // par tiling.js > _chargerImageTuileV2 quand chaque tuile est rendue.
   if (rawConfig.plan?.tiledV2 === true || rawConfig.tiling) {
+    // 🌀 v152 : mise à jour de l'overlay de chargement avec progression
+    const totalTuiles = files.filter(function(f) {
+      const fp = f._fullPath || f.name;
+      return typeof fp === "string" && /^data\/tiles\/z-?\d+\//.test(fp);
+    }).length;
+    if (typeof window._majOverlayChargement === "function") {
+      window._majOverlayChargement("Plan V2 tuilé — Indexation de " + totalTuiles + " tuiles…");
+    }
     let nbTuiles = 0;
     for (const f of files) {
       const fullPath = f._fullPath || f.name;
       if (typeof fullPath === "string" && /^data\/tiles\/z-?\d+\//.test(fullPath)) {
         await registerAsset(fullPath, f, { lazy: true });
         nbTuiles++;
+        // Update progress every 50 tiles (gros plans = 1000+ tuiles)
+        if (nbTuiles % 50 === 0 && typeof window._majOverlayChargement === "function") {
+          window._majOverlayChargement("Plan V2 tuilé — Indexation " + nbTuiles + " / " + totalTuiles + " tuiles…");
+        }
       }
     }
     console.log("[Loader] Tiling V2 — " + nbTuiles + " tuiles enregistrées (lazy)");
+    if (typeof window._majOverlayChargement === "function") {
+      window._majOverlayChargement("Plan V2 prêt — Initialisation de la carte…");
+    }
   }
 
   window.PLAN_CONFIG = cloneAndResolvePlanConfig(rawConfig);

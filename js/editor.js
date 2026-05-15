@@ -34,7 +34,8 @@ const EDITOR_TAG_LABELS = {
   danger:   "Danger",
   info:     "Information",
   elec:     "Électricité",
-  epure:    "Épure"
+  epure:    "Épure",
+  plaque:   "Plaque indication"
 };
 
 const EDITOR_EXCLURE = ["default", "track"];

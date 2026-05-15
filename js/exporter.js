@@ -1729,7 +1729,8 @@
         eso: "Escalier service ouvert", esf: "Escalier service fermé",
         cao: "Cavage ouvert", caf: "Cavage fermé",
         passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
-        danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure"
+        danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
+        plaque: "Plaque indication"
       };
 
       const exclu = ["default"];
@@ -1739,7 +1740,7 @@
       const GROUPES_ICONES = [
         { titre: "🕳️ Puits",        cles: ["pa", "pb", "pc", "pe", "ps"] },
         { titre: "🪜 Accès",         cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
+        { titre: "⚠️ Signalétique", cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] }
       ];
       const clesGroupees = new Set(GROUPES_ICONES.flatMap(function(g) { return g.cles; }));
 

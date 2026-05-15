@@ -32,7 +32,8 @@
   let _heartbeatStart = null;
   let _splashGone     = false;                       // passe à true quand _splashEnd a fini
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
-  let _pendingKillInfo = null;                       // payload kill détecté → modale après splash
+  let _pendingKillInfo    = null;                    // payload kill détecté → modale après splash
+  let _pendingV2CrashInfo = null;                    // 🧱 v152 : payload kill V2 generation → modale spécifique
 
   // =========================
   // TOAST UI
@@ -85,13 +86,21 @@
 
     // Petit délai pour laisser la map se poser après la fin du splash.
     setTimeout(function() {
-      // 1) Modale "kill détecté" prioritaire (importante, vue grand format).
+      // 1) 🧱 v152 : Modale "V2 generation crash" prioritaire si flag détecté
+      //    au boot. Spécifique car le user a une action concrète à reprendre
+      //    (relancer la conversion sur PC ou réduire l'image source).
+      if (_pendingV2CrashInfo) {
+        _afficherModaleV2Crash(_pendingV2CrashInfo);
+        _pendingV2CrashInfo = null;
+        return;  // la modale "kill" standard et les toasts seront flush au close
+      }
+      // 2) Modale "kill détecté" générique (OOM session normale).
       if (_pendingKillInfo) {
         _afficherModaleKill(_pendingKillInfo);
         _pendingKillInfo = null;
-        return;  // les éventuels toasts s'afficheront quand l'utilisateur ferme la modale
+        return;
       }
-      // 2) Toasts en attente
+      // 3) Toasts en attente
       while (_toastQueue.length > 0) {
         const t = _toastQueue.shift();
         _renderToast(t.message, t.type);
@@ -265,6 +274,101 @@
 
   // Vérification au chargement du module (avant tout app code)
   _checkPreviousKill();
+  _checkV2GenerationCrash();
+
+  // =========================
+  // 🧱 V2 GENERATION CRASH (depuis v152)
+  // =========================
+  // Flag posé par createConf.js > _genererTuilesV2 AVANT la génération, retiré
+  // dans le `finally` APRÈS (succès ou catch). Si le flag est encore présent
+  // au boot suivant → le navigateur a probablement kill la page pendant la
+  // génération (OOM mobile). Modale spécifique pour expliquer + suggérer PC.
+  function _checkV2GenerationCrash() {
+    const FLAG = "myktamap_v2_gen_in_progress";
+    let info = null;
+    try {
+      const raw = localStorage.getItem(FLAG);
+      if (!raw) return;
+      info = JSON.parse(raw);
+      localStorage.removeItem(FLAG);  // one-shot : on consomme le flag immédiatement
+    } catch(e) {
+      try { localStorage.removeItem(FLAG); } catch(e2) {}
+      return;
+    }
+    if (!info || !info.startedAt) return;
+
+    // Fenêtre de fraîcheur : 1h. Au-delà, c'est probablement un vieux flag
+    // qui traîne (l'user a fermé l'onglet sans crash, on a oublié de remove).
+    const ageMs = Date.now() - info.startedAt;
+    if (ageMs > 3600000) return;
+
+    // Differé après splash (pareil que la modale kill standard)
+    _pendingV2CrashInfo = {
+      planName:    info.planName  || "(sans nom)",
+      imageSizeMB: info.imageSize  ? Math.round(info.imageSize / 1024 / 1024) : null,
+      ageSec:      Math.round(ageMs / 1000)
+    };
+    console.warn("[OOMGuard] V2 generation crash détecté —",
+                 "plan:", _pendingV2CrashInfo.planName,
+                 "imageSize:", _pendingV2CrashInfo.imageSizeMB + "Mo",
+                 "age:", _pendingV2CrashInfo.ageSec + "s");
+  }
+
+  function _afficherModaleV2Crash(info) {
+    if (document.getElementById("kta-v2-crash-modal")) return;
+    const overlay = document.createElement("div");
+    overlay.id = "kta-v2-crash-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    const sizeTxt = info.imageSizeMB ? info.imageSizeMB + " Mo" : "taille inconnue";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-v2-error-boite">' +
+        '<div class="kta-readme-modal-header kta-v2-error-header">' +
+          '<span class="kta-readme-modal-titre">🧱❌ Génération V2 interrompue</span>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p class="kta-v2-error-message">' +
+            'La dernière fois, tu lançais la conversion en V2 du plan <strong>' +
+            String(info.planName).replace(/[<>&]/g, function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}) +
+            '</strong> (image ' + sizeTxt + ') et l\'app s\'est arrêtée brutalement avant la fin.' +
+          '</p>' +
+          '<p style="font-size:13px; color:#c8d0e0; line-height:1.5; margin:10px 0;">' +
+            'C\'est très probablement une <strong>saturation mémoire</strong> du navigateur — la conversion V2 ' +
+            'décode l\'image source à pleine résolution puis génère N tuiles, ce qui peut dépasser le plafond mémoire ' +
+            'des navigateurs mobiles (~500 MB sur iOS Safari, variable sur Android).' +
+          '</p>' +
+          '<div class="kta-v2-warn-section kta-v2-warn-section-good">' +
+            '<div class="kta-v2-warn-section-titre">💡 Solutions</div>' +
+            '<ul style="margin:6px 0 0; padding-left:22px; font-size:13px; color:#c8d0e0; line-height:1.6;">' +
+              '<li><strong>Fais la conversion sur PC</strong> (Windows / macOS / Linux). Pas de plafond mémoire en pratique. ' +
+                'Une fois le ZIP V2 généré, importe-le sur ton téléphone — l\'import est léger (pas de décodage à pleine résolution).</li>' +
+              '<li><strong>Réduis l\'image source</strong> à 6000-8000 px max avant de réessayer (GIMP / Photoshop / ' +
+                '<a href="https://squoosh.app" target="_blank" rel="noopener" style="color:#8cb4ff;">Squoosh</a>).</li>' +
+              '<li><strong>Ferme les autres apps</strong> en arrière-plan pour libérer de la RAM avant de retenter.</li>' +
+            '</ul>' +
+          '</div>' +
+        '</div>' +
+        '<div class="kta-oom-actions">' +
+          '<button class="kta-btn kta-btn-primary" id="kta-v2-crash-ok" type="button">✓ Compris</button>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    function fermer() {
+      if (overlay.parentNode) overlay.remove();
+      document.removeEventListener("keydown", _onKey);
+      // Une fois la modale fermée, on flush les autres modales en attente
+      if (_pendingKillInfo) _afficherModaleKill(_pendingKillInfo), _pendingKillInfo = null;
+      while (_toastQueue.length > 0) {
+        const t = _toastQueue.shift();
+        _renderToast(t.message, t.type);
+        if (_toastQueue.length > 0) break;
+      }
+    }
+    function _onKey(e) { if (e.key === "Escape") fermer(); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
+    document.addEventListener("keydown", _onKey);
+    document.getElementById("kta-v2-crash-ok").addEventListener("click", fermer);
+  }
 
   // Effacement aux 2 events de fin de page : beforeunload (desktop / Android Chrome
   // qui le firea avant de killer) + pagehide (iOS Safari qui préfère pagehide).

@@ -4800,6 +4800,7 @@ const LEGENDE_LABELS = {
   chatiere: "Chatière",
   passage:  "Passage",
   danger:   "Danger",
+  plaque:   "Plaque indication",
   track:    "Position du tracker",
   default:  "Point sans tag (défaut)"
 };
@@ -4833,7 +4834,7 @@ function afficherLegende() {
     const GROUPES = [
       { titre: "🕳️ Puits",         cles: ["pa", "pb", "pc", "pe", "ps"] },
       { titre: "🪜 Accès",          cles: ["peo", "pef", "eso", "esf", "cao", "caf"] },
-      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule"] }
+      { titre: "⚠️ Signalétique",  cles: ["salle", "chatiere", "passage", "danger", "info", "elec", "epure", "vehicule", "plaque"] }
     ];
 
     const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });

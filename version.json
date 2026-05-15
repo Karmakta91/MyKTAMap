@@ -1,9 +1,11 @@
 {
-  "version": "v151",
+  "version": "v152",
   "released": "2026-05-15",
   "notes": [
-    "🧱 Conversion V2 disponible aussi en mode 'Nouveau plan' : avant il fallait passer par 'Modifier un plan existant' (uploader un ZIP V1) pour cocher la case 🧱. Maintenant la case apparaît dès qu'une image principale est uploadée, peu importe le mode.",
-    "⚠️ Modal d'avertissement au check de la case V2 : conversion lourde (CPU + RAM), conseille de faire la génération sur PC plutôt que sur mobile (iOS Safari plafonné à ~500 MB, crash quasi-garanti sur image >50 MB ou >8K px). L'utilisateur peut continuer ou annuler.",
-    "🎛️ Plan V2 + Mode performance Désactivé : si tu sélectionnes Mode 'Désactivé' au chargement d'un plan V2, le runtime saute le tuilage et charge l'image source directement (comportement V1 brut). Pratique pour comparer V2 vs V1 sur le même plan, ou pour bypass temporairement le système de tuiles si besoin de troubleshooting."
+    "🪧 Nouvelle icône built-in 'plaque indication' (tag plaque) : panneau beige sur poteau avec lignes de texte stylisées. Disponible direct dans le mode ✏️ ajout de point, sans modifier les plans existants — utile pour repérer les plaques IGC, panneaux de directions cataphiles, etc.",
+    "🌀 Overlay de chargement plein écran : quand tu charges un plan (surtout V2 avec ses 1000+ tuiles), un overlay visible au CENTRE de l'écran s'affiche avec un spinner + un message d'étape (Extraction → Indexation tuiles → Initialisation carte). Avant, le statut était écrit tout en bas du loader (peu visible).",
+    "❌ Erreur explicite en cas d'échec de génération V2 : modale d'erreur rouge plein écran qui détaille la cause (drawImage / toBlob / saturation mémoire) + conseils actionnables (PC vs mobile, réduire l'image source, convertir en JPEG q85). Plus jamais d'erreur silencieuse.",
+    "🛡️ Détection automatique des crashs durant la génération V2 : un flag localStorage est posé avant la conversion et retiré après. Si le navigateur kill la page pendant la génération (OOM mobile), le flag reste → au prochain démarrage de l'app, modale spécifique '🧱❌ Génération V2 interrompue' avec rappel des solutions (PC, réduire image, fermer apps en arrière-plan).",
+    "💪 Try/catch resserré dans le générateur V2 : chaque opération critique (drawImage, toBlob, écriture ZIP) est wrappée avec message d'erreur clair pointant la coord exacte de la tuile qui a échoué. Permet de diagnostiquer rapidement où ça plante."
   ]
 }
