@@ -1857,7 +1857,7 @@
         { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
         { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
         { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
-        { label: "Inaccessible (bloque l'itinéraire)", fillColor: "#7a0000", borderColor: "#5a0a0a" }
+        { label: "Inaccessible", fillColor: "#7a0000", borderColor: "#5a0a0a" }
       ]});
     }
 
