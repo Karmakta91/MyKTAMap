@@ -1520,6 +1520,256 @@ Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, au
 5. Lecture : `opts.include.xxx` + éventuellement Set granulaire
 6. Stats : ajouter au compteur dans `_kmzCollecterStats`
 
+### 33. Refonte UX loader + fixes critiques (depuis v172)
+
+Refonte de la liste 📚 Mes plans + 2 fixes critiques (sidebar landscape mobile, re-sélection ZIP V1/V2 mismatch). Toutes les modifs sont dans `index.html` (HTML + JS inline) et `css/style.css`, sauf le helper `syncModeFlags` ajouté à `js/planRegistry.js`.
+
+#### 33.1 Toggle "Afficher les plans serveur" (persisté localStorage)
+
+UI : checkbox dans `.loader-plans-filters` entre `.loader-section-head` et `#allPlansList`. Helpers `_loaderShowServerPlans()` / `_loaderSetShowServerPlans(v)` (clé `myktamap_loader_show_server_plans`, default true).
+
+**Sémantique** : c'est un filtre d'**affichage uniquement** — les plans serveur restent dans le `PlanRegistry`. Filtré au moment du render dans `refreshPlansList` : `const filtered = showServer ? all : all.filter(p => p.type !== "server")`.
+
+**Cas dégénéré** : registre non-vide mais filtre cache tout → message d'aide `.loader-plans-empty` ("Aucun plan local — coche <em>Afficher les plans serveur</em>...") au lieu d'une liste vide silencieuse.
+
+**Pattern à réutiliser pour ajouter un futur filtre loader** : helper get/set localStorage (clé `myktamap_loader_<feature>`) + checkbox dans `.loader-plans-filters` + bind change handler → `refreshPlansList()` + filtre dans `refreshPlansList`.
+
+#### 33.2 Restructure ligne plan (badges sur ligne 2)
+
+Le rendu d'une ligne plan dans `planRowHTML` passe d'une structure compacte 4 lignes à une structure compacte 2 lignes :
+
+| Avant (v170) | Après (v171) |
+|---|---|
+| L1 : nom + version + badges modes + storage | L1 : nom + version |
+| L2 : sub (fichier + taille) | L2 : badges modes + storage (groupés) |
+| L3 : date | — |
+
+CSS clé : nouvelle `.plan-row-modes` avec `display: flex; align-items: center; gap: 4px; margin-top: 3px; flex-wrap: wrap;`. `align-items: center` nécessaire car les badges modes (9px monospace avec fond/bordure) et le badge storage (emoji 11px sans fond) ont des hauteurs différentes.
+
+L'ancienne `.plan-row-badges` (sur ligne 1) est marquée DEPRECATED dans le commentaire CSS — gardée pour compat éventuelle si plugin user en dépend, mais le HTML standard ne la génère plus.
+
+#### 33.3 Bouton ℹ️ + modale détaillée
+
+Compense le retrait de sub/date avec une modale qui affiche **tous** les attributs du plan (et même plus : auteur, addedAt, perfPreset n'étaient pas affichés en v170).
+
+Helper `_afficherInfosPlan(id)` dans `index.html` (~80 lignes). Lit `PlanRegistry.findById(id)`, génère un tableau 2 colonnes (clé/valeur) avec labels traduits en français et valeurs lisibles :
+- `tiledV2: true` → "Mode : V2 tuilé (Google Maps-like)"
+- `storedBlob: true` → "Persistance : ✅ Mémorisé dans l'app (IndexedDB)"
+- Champs vides masqués automatiquement
+
+Modale style `.kta-readme-modal-overlay` + classe dédiée `.kta-plan-infos-boite` (max-width 480px, max-height 80vh). Table `.kta-plan-infos-table` avec `.kta-info-key` (gris #8892a4, nowrap, width 40%) et `.kta-info-val` (couleur principale, word-break:break-word). Fermeture : ✕, backdrop, ou **Échap** (pattern cohérent).
+
+Bouton `.plan-row-info-btn` dans `.plan-row-actions` (avant ▶️ Charger et ✕ Retirer). Hover bleu `#8cb4ff` cohérent avec la charte (▶️ vert, ✕ rouge, ℹ️ bleu).
+
+#### 33.4 Checkbox "💾 Mémoriser ce plan dans l'app" coché par défaut
+
+1 ligne de modif : `<input type="checkbox" id="storeBlobCb" checked>` (attribut HTML).
+
+Visible **uniquement** sur mobile / Firefox / Safari (sans File System Access API) — Chrome/Edge desktop a 🔐 FS Access à la place. Avant : décoché → user devait penser à cocher manuellement → ZIP non mémorisé → re-sélection à chaque chargement → UX piège.
+
+#### 33.5 Réglages : responsive PC ≥ 1024px
+
+Modale ⚙️ Réglages reçoit le pattern responsive identique à la modale Doc/Aide (cf §22).
+
+Mobile (< 1024px) : 440px max, 1 colonne — comportement v170 strict.
+
+PC (≥ 1024px) : 1100px max + `columns: 2` via CSS column-flow.
+
+**Différence assumée avec la modale Aide** : `break-inside: avoid` sur chaque section (.kta-aide-section dans le corps). La doc Aide a `columns: 2` SANS break-inside pour équilibrer les hauteurs de sections inégales (au prix d'un split occasionnel). Les Réglages ont des sections d'inputs/grilles homogènes en hauteur → break-inside acceptable, et couper en plein milieu d'un bloc d'inputs serait confusant.
+
+Barre d'actions : `.kta-cfg-actions-bar` avec `column-span: all` sur PC + grid 4 colonnes (les 4 boutons Reset/Appliquer/Réinitialiser/Logs sur 1 ligne). Mobile : grid 2×2.
+
+#### 33.6 Fix critique : icônes sidebar landscape mobile débordent
+
+**Symptôme** : sur mobile en mode landscape (hauteur ≤ 500px), la sidebar topright (11 groupes accordéon) sortait du cadre. Une règle `@media (max-height: 500px)` existait avec `max-height + overflow-y: auto` mais ne FONCTIONNAIT PAS.
+
+**Root cause** : Leaflet utilise `float: left/right` + `clear: both` sur `.leaflet-control` (héritage IE compat — cf. `lib/leaflet/leaflet.css` lignes 156-162). En layout floating, le **parent ne "voit" PAS la hauteur de ses enfants flottants** sans clearfix → `max-height` est appliqué mais le contenu (floats) déborde sans déclencher le scroll → `overflow-y: auto` ne s'active jamais.
+
+**Fix** : bascule en `display: flex; flex-direction: column;` dans la media query landscape mobile uniquement. Spec CSS : un flex item ignore son `float` (standardisé). Les enfants empilés verticalement, hauteur comptée, overflow scroll natif s'active proprement.
+
+`align-items: flex-end` (topright) / `flex-start` (topleft) reproduit l'alignement bord-droit / bord-gauche que le float assurait. Sans ça, les contrôles seraient alignés à gauche par défaut.
+
+**Bonus** : `max-height` recalculé avec safe-area iOS : `calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px)`. Sur iPhone landscape avec home indicator (inset-bottom = 21px), les derniers boutons étaient masqués sous la zone tactile système réservée.
+
+**Portée** : topright (11 groupes — bug principal) + topleft (zoom + niveau + boussole — par cohérence). Portrait + desktop strictement inchangés.
+
+**⚠️ À NE PAS RÉACTIVER LE FLOAT NATIF** dans cette media query sans avoir réfléchi à comment compter la hauteur des enfants flottants. Si on retire `display: flex`, le bug réapparaît silencieusement.
+
+#### 33.7 Fix critique : re-sélection ZIP V1 sur plan registre V2
+
+**Workflow buggé** : reset → import sauvegarde liste → registre rempli avec `tiledV2: true` pour les plans qui l'étaient → user clique sur un plan V2 → modale "Plan introuvable" → "Re-sélectionner le ZIP" → choisit le **même plan en V1** → badge V2 reste affiché à tort, risque de crash runtime.
+
+**Root cause** : `PlanRegistry.addOrUpdate` utilise `Object.assign({}, existing, newEntry)` qui MERGE. `startImportedPlan` construit l'entry avec :
+```js
+if (rawConfig.plan.tiledV2 === true) entry.tiledV2 = true;
+```
+→ pour un V1, le champ est ABSENT de la nouvelle entry → Object.assign garde l'ancien `tiledV2: true` du registre.
+
+**Fix 2 niveaux** :
+
+**(a) Nouveau helper `PlanRegistry.syncModeFlags(id, flags)`** dans `planRegistry.js` qui aligne explicitement les flags :
+- `flags.tiledV2 === true`  → set `p.tiledV2 = true`
+- `flags.tiledV2 === false` → **delete** `p.tiledV2` (différent du merge !)
+- Idem `multiLevel`
+- Sauvegarde `_save()` si au moins un changement
+
+Exposé dans l'API publique.
+
+**(b) Détection dans `reSelectionnerZipPourPlan`** (index.html). Après extraction du `plan-config.json` du ZIP fourni, comparer les flags `tiledV2` / `multiLevel` au registre. Si discordance → `confirm()` avec message détaillé listant chaque flag changé (avant → après). Si OK → `syncModeFlags(plan.id, zipFlags)` AVANT `chargerZipFichier` → `startImportedPlan` part d'un état propre.
+
+**4 cas couverts** (peuvent se cumuler) : V2↔V1 (2 sens) + Multi-niveau↔Mono (2 sens).
+
+**Choix volontaire `confirm()` natif** : pattern cohérent avec le check du nom de plan déjà en place dans la même fonction. Modale custom = 80 lignes pour un cas marginal de re-sélection. À basculer en modale custom si retour user terrain.
+
+**Non touché** : flow d'import normal (📦 Charger) — l'id est auto-généré donc pas de pré-état à réconcilier. Auto-discovery serveur idem (entry construite from scratch).
+
+#### 33.8 Pattern à retenir : Object.assign et merge silencieux
+
+⚠️ **Piège général** : `Object.assign({}, existing, newPartial)` GARDE les anciens champs si `newPartial` ne les redéclare pas. Si une logique métier dépend de l'**absence** d'un flag (ex: pas de `tiledV2` = mode V1), un merge silencieux peut préserver un flag obsolète.
+
+Solution :
+- Soit construire `newPartial` avec tous les flags possibles explicitement (true OU false/null pour delete)
+- Soit utiliser un helper dédié comme `syncModeFlags` qui set/delete explicitement
+- Soit changer `Object.assign` en remplacement total — mais alors faut tout redéclarer (addedAt, lastOpened, etc.)
+
+Le projet a choisi l'option helper dédié pour la rétro-compat (addOrUpdate continue de merge naturellement pour les autres champs, seul un sync explicite via syncModeFlags affecte les flags V2/multiLevel).
+
+### 34. Correction heading selon orientation écran (depuis v172)
+
+Fix critique : la boussole 🧭 (cf §25) et la rotation de l'icône tracker (cf §28) étaient faussées en mode landscape (±90° de décalage) et portrait inversé (180°).
+
+#### 34.1 Root cause
+
+`DeviceOrientationEvent` renvoie α/β/γ par rapport aux axes **intrinsèques** du device :
+- Axe Y = bord court "haut" physique du tel
+- En portrait normal : axe Y aligné avec le haut visuel → heading brut OK
+- En landscape : OS a tourné l'écran mais le device n'a pas bougé → l'axe Y pointe vers la gauche/droite visuelle → décalage angulaire perçu comme un bug
+
+Le calcul `getHeading(α, β, γ)` v147 (cf §24) reste correct mais renvoie la direction vers laquelle pointe le **haut device**, pas le **haut visuel**.
+
+#### 34.2 Architecture en 3 couches
+
+**1. `direction`** (existant) reste la valeur **device brute**. Source de vérité pour debug + cohérence avec iOS `webkitCompassHeading` qui est aussi brut (compass natif iOS retourne le heading de l'axe Y device).
+
+**2. `_getCorrectedHeading()`** (nouveau) applique l'offset écran :
+```js
+function _getCorrectedHeading() {
+  if (typeof direction !== "number" || isNaN(direction)) return 0;
+  return ((direction + _screenAngle) % 360 + 360) % 360;
+}
+```
+
+**3. `_screenAngle`** (0 / 90 / 180 / 270) maintenu à jour à 2 moments :
+- Au boot de `_initScreenOrientationListener()` (appelé par `initOrientation` qui est déclenché par `requestPermission` du tracker OU de la boussole 🧭 — couvert même sans tracker actif)
+- Sur event `screen.orientation.change` (standard) OU `window.orientationchange` (fallback iOS Safari < 16.4 + vieux Android) → l'user tourne son tel → recalage instantané sans attendre le prochain event device → l'icône tracker est aussi ré-orientée immédiatement via `_applyRotationToTrackerMarker()`
+
+#### 34.3 Cascade compat `screen.orientation`
+
+Helper `_getScreenAngleNormalized()` :
+
+```js
+function _getScreenAngleNormalized() {
+  // Standard moderne (Chrome, Firefox, Edge, Safari ≥ 16.4)
+  if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+    return ((screen.orientation.angle % 360) + 360) % 360;
+  }
+  // Fallback iOS Safari < 16.4 — convention OPPOSÉE pour landscape :
+  //   iOS 0 → standard 0,  iOS 180 → standard 180
+  //   iOS 90 → standard 270 (LS-left iOS = LS-secondary standard)
+  //   iOS -90 → standard 90 (LS-right iOS = LS-primary standard)
+  if (typeof window.orientation === "number") {
+    const v = ((window.orientation % 360) + 360) % 360;
+    if (v === 0 || v === 180) return v;
+    return (360 - v) % 360;
+  }
+  return 0;
+}
+```
+
+⚠️ **Piège** : `screen.orientation.angle` et `window.orientation` ont des **conventions opposées** pour landscape. L'OS standard dit "90 = écran tourné 90° anti-horaire par moi" (= user a tourné tel 90° horaire), iOS dit "90 = device rotated 90° counter-clockwise". Sans normalisation, on aurait un bug iOS ⇄ Chrome dans la même formule.
+
+#### 34.4 Validation math
+
+(heading device + screen.angle) % 360. Cas testés (user face Nord) :
+
+| Orientation visuelle | α device | screen.angle (standard) | corrected |
+|---|---|---|---|
+| Portrait normal | 0 | 0 | 0 ✓ |
+| Landscape-PRIMARY | 270 | 90 | 0 ✓ |
+| Landscape-SECONDARY | 90 | 270 | 0 ✓ |
+| Portrait inversé | 180 | 180 | 0 ✓ |
+
+**Justification** : si l'OS a tourné l'écran de θ° anti-horaire, le bord du device qui pointe désormais vers "haut visuel" est l'ancien bord à θ° du bord court "haut" device dans le sens horaire. Le heading visuel = heading brut + θ.
+
+#### 34.5 Consumers basculés vers la version corrigée
+
+- **`_applyRotationToTrackerMarker`** (tracking.js, cf §28) : `const heading = _getCorrectedHeading();` au lieu de `direction` directement. L'icône tracker tourne dans le sens cohérent avec l'orientation visuelle de la carte affichée.
+- **`window.getCurrentHeading`** (consommé par compass.js widget boussole, cf §25.1) : `return _getCorrectedHeading();` au lieu de `return direction;`. La rose des vents contre-tourne par rapport au heading corrigé → le N reste en haut visuel quelle que soit l'orientation.
+
+⚠️ **À ne pas faire** : appliquer la correction dans `_onOrientation` directement (= modifier la variable `direction`). Ça casserait la sémantique "direction = device brut" utile pour le debug + cohérence avec iOS webkitCompassHeading. Préférer toujours l'application à la lecture via le helper.
+
+#### 34.6 Log debug enrichi
+
+Format : `[Tracking] Heading : 270.0° (source: webkitCompassHeading, screen: 90°, visuel: 0.0°)`. Permet de diagnostiquer rapidement brut device vs correction appliquée vs résultat final consommé.
+
+#### 34.7 Préservé (ne pas toucher)
+
+- Math `getHeading(α, β, γ)` v147 (formule "pose à plat" / "pose verticale" inchangée)
+- Smoothing exponentiel + throttle 2° + transition CSS 0.3s de l'icône tracker (§28)
+- Cascade sources iOS `webkitCompassHeading` → Android `deviceorientationabsolute` → calc brut (§24)
+- Tous les flags idempotents (`_orientationListenerAttached`, `_motionListenerAttached`, `_screenOrientationListenerAttached`)
+
+### 35. Modales custom pour re-sélection ZIP (depuis v172)
+
+Remplacement des `confirm()` natifs OS dans `reSelectionnerZipPourPlan` (index.html) par des modales custom respectant la charte graphique du projet. Plus important : changement **fonctionnel** sur le cas "nom différent" — refus définitif au lieu de "Charger quand même".
+
+#### 35.1 Modale "Nom différent" — `_afficherModaleNomZipKO(zipName, planName)`
+
+API : `Promise<void>` (résout quand l'user ferme, peu importe l'action).
+
+Visuel : border + accent rouge `#ff8c8c` (cohérent avec `.plan-row-remove:hover` et autres modales d'erreur), grille 2 colonnes "Plan ciblé / ZIP fourni" pour visualiser la discordance, hint italique expliquant le refus + alternative (passer par 📦 Charger un nouveau plan), **1 seul bouton "J'ai compris"** primary.
+
+Fermeture : ✕, backdrop, Échap (toutes équivalentes — résout sans charger le ZIP).
+
+**Changement fonctionnel v172** : avant on avait `confirm("Charger quand même ?")` qui permettait à l'user d'accepter et créait des incohérences silencieuses (badges, sessions, métadonnées). Maintenant : refus définitif, pas de bypass.
+
+#### 35.2 Modale "Mode différent" — `_afficherModaleModeDifferent(planName, discordances)`
+
+API : `Promise<boolean>` (true = continuer, false = annuler).
+
+Visuel : border + accent orange `#ffb380` (cohérent avec warnings du projet, V2 generation, OOM toast warn…), 1 carte par discordance dans une grille verticale avec titre flag en gras orange + comparaison "Mode mémorisé : ... / Mode du ZIP : ..." en blocs lisibles, hint italique expliquant que le ZIP fait foi, 2 boutons "Annuler" (ghost) + "Continuer" (primary).
+
+Fermeture : ✕, backdrop, Échap = annuler (résout false). Click sur "Continuer" = résout true.
+
+Le ZIP fait foi → `syncModeFlags` appliqué après confirmation pour aligner le registre sur le contenu réel du ZIP.
+
+#### 35.3 Pattern réutilisable pour futures modales
+
+Promise-based, idéal pour intégration dans des flows async existants :
+```js
+const ok = await _afficherModaleModeDifferent(planName, discordances);
+if (!ok) return;
+```
+
+Structure type :
+1. Helper `function _afficherModaleXxx(args)` qui retourne `new Promise(function(resolve) { ... })`
+2. Cleanup d'une éventuelle modale précédente (`if (existing) existing.remove();`)
+3. Création DOM avec classes `.kta-readme-modal-overlay` + `.kta-readme-modal-boite`
+4. Border/accent inline-style pour la couleur sémantique (rouge erreur, orange warning, etc.)
+5. Bind ✕ + click backdrop + keydown Escape → tous appellent `_close(<result>)` qui retire la modale + retire le listener Escape + résout la Promise
+
+#### 35.4 Pourquoi pas de confirm() natif
+
+- Pas customisable visuellement → casse la charte
+- Pas Promise-friendly nativement (bloque le thread JS)
+- Position et apparence dépendent de l'OS → incohérent entre desktop/mobile
+- Texte sec, pas de mise en forme (gras, couleurs, listes…)
+- Bouton "OK/Annuler" pas customisable → pas de "J'ai compris" sémantique
+
+⚠️ **`confirm()` natifs gardés** dans le projet (volontaire, pas à toucher sauf demande explicite) :
+- "Retirer ce plan de votre liste ?" (action destructive simple)
+- "Tracé en cours, charger un autre plan ?" (rapide, contexte évident)
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

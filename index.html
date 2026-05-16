@@ -167,6 +167,14 @@
               </div>
             </div>
 
+            <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
+            <div class="loader-plans-filters">
+              <label class="loader-plans-filter-row" title="Masquer les plans découverts automatiquement sur le serveur (data/index.json)">
+                <input type="checkbox" id="loaderShowServerPlans" checked>
+                <span>🌐 Afficher les plans serveur</span>
+              </label>
+            </div>
+
             <div id="allPlansList" class="loader-plans-list"></div>
           </div>
 
@@ -199,10 +207,13 @@
           </span>
         </div>
 
-        <!-- Options : 💾 stockage app (mobile / Firefox / Safari) -->
+        <!-- Options : 💾 stockage app (mobile / Firefox / Safari)
+             v170 (suite) : coché par défaut. Sans ça, l'user devait re-sélectionner
+             le ZIP à chaque chargement sur mobile/Safari — comportement piège pour
+             un cas d'usage qu'on veut promouvoir (mémorisation = défaut sain). -->
         <div id="storeBlobHint" class="fs-access-hint" style="display:none;">
           <label class="loader-store-blob">
-            <input type="checkbox" id="storeBlobCb">
+            <input type="checkbox" id="storeBlobCb" checked>
             <span>💾 Mémoriser ce plan dans l'app</span>
           </label>
           <span class="fs-access-info" id="storeBlobInfo">
@@ -701,6 +712,9 @@
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
         // Si aucun flag → badge V1 implicite (mode classique).
+        // 📐 v170 : les badges modes passent sur LIGNE 2 (sous le nom du plan)
+        // — la ligne 1 contient juste le nom + version + badge storage. Évite
+        // que les noms longs poussent les badges modes en ellipsis.
         let badgesMode = "";
         if (plan.tiledV2 === true) {
           badgesMode += '<span class="plan-row-mode plan-row-mode-v2" title="Plan tuilé V2 (performance, Google Maps-like)">V2</span>';
@@ -711,15 +725,12 @@
         if (!badgesMode) {
           badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="Plan classique (mono-niveau, image entière en RAM)">V1</span>';
         }
-        const sub  = plan.type === "server"
-          ? plan.path
-          : (plan.originalFilename || "") + (plan.fileSize ? " · " + fmtSize(plan.fileSize) : "");
-        const meta = plan.lastOpened
-          ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
-          : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
-        // Structure : .plan-row-title = flex avec name (ellipsis) + version + badges côte à côte.
-        // .plan-row-name-text prend flex:1 et trunque, les badges/version sont flex-shrink:0
-        // pour rester toujours visibles même sur noms longs (fix v150 ✅ disparaissait).
+        // Structure (v170 suite 3 — épuration affichage compact) :
+        // - .plan-row-title = ligne 1 : nom (ellipsis) + version uniquement
+        // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL + badge storage (✅/🔐/📁)
+        // - Sub (nom zip + taille) et date d'ouverture déplacés vers la
+        //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
+        //   Allège la liste, surtout quand on en a beaucoup.
         return `
           <div class="plan-row" data-id="${plan.id}">
             <span class="plan-row-icon">${icon}</span>
@@ -727,17 +738,233 @@
               <div class="plan-row-title">
                 <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
                 ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
-                <span class="plan-row-badges">${badgesMode}${badgeStorage}</span>
               </div>
-              <div class="plan-row-sub">${escapeHtml(sub)}</div>
-              ${meta}
+              <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
             </div>
             <div class="plan-row-actions">
+              <button class="plan-row-btn plan-row-info-btn" title="Informations détaillées sur cette archive">ℹ️</button>
               <button class="plan-row-btn plan-row-load" title="Charger ce plan">▶️</button>
               <button class="plan-row-btn plan-row-remove" title="Retirer de la liste">✕</button>
             </div>
           </div>
         `;
+      }
+
+      // 🌐 v170 : helpers de filtrage "Afficher plans serveur" (persisté localStorage)
+      const LS_SHOW_SERVER = "myktamap_loader_show_server_plans";
+      function _loaderShowServerPlans() {
+        // Default = true (affiche les plans serveur). On retourne false UNIQUEMENT
+        // si l'user a explicitement décoché ET que la valeur est en localStorage.
+        return localStorage.getItem(LS_SHOW_SERVER) !== "false";
+      }
+      function _loaderSetShowServerPlans(value) {
+        localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // 🚫 v171 : Modale "Erreur — nom du ZIP ne correspond pas"
+      // ════════════════════════════════════════════════════════════════════
+      // Affichée quand l'user re-sélectionne un ZIP dont le `plan.name` ne
+      // matche pas avec le plan sur lequel il a cliqué. Refus DÉFINITIF —
+      // un seul bouton "J'ai compris" qui ferme la modale + retour sans
+      // charger le ZIP. Pattern .kta-readme-modal pour cohérence charte.
+      function _afficherModaleNomZipKO(zipName, planName) {
+        return new Promise(function(resolve) {
+          const existing = document.getElementById("kta-zipname-error-modal");
+          if (existing) existing.remove();
+
+          const modal = document.createElement("div");
+          modal.id = "kta-zipname-error-modal";
+          modal.className = "kta-readme-modal-overlay";
+          modal.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
+                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 ZIP refusé — Nom différent</span>' +
+                '<button class="kta-panneau-close" id="kta-zipname-error-close">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps">' +
+                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' +
+                  'Le ZIP que vous avez sélectionné contient un plan dont le nom ne correspond pas à celui sur lequel vous avez cliqué :' +
+                '</p>' +
+                '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:13px; padding:10px 12px; background:rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.22); border-radius:6px; margin-bottom:14px;">' +
+                  '<span style="color:#8892a4; white-space:nowrap;">Plan ciblé :</span>' +
+                  '<strong style="color:#e8eaf0; word-break:break-word;">' + escapeHtml(planName) + '</strong>' +
+                  '<span style="color:#8892a4; white-space:nowrap;">ZIP fourni :</span>' +
+                  '<strong style="color:#ff8c8c; word-break:break-word;">' + escapeHtml(zipName) + '</strong>' +
+                '</div>' +
+                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:0 0 14px; font-style:italic;">' +
+                  'Pour éviter toute incohérence (badges, sessions, métadonnées), l\'import est refusé. ' +
+                  'Si vous souhaitez vraiment charger ce plan, importez-le via le bouton 📦 Charger un nouveau plan ' +
+                  '(il sera ajouté comme entrée distincte avec son propre nom).' +
+                '</p>' +
+                '<div style="display:flex; justify-content:flex-end;">' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-zipname-error-ok">J\'ai compris</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(modal);
+
+          const _close = function() {
+            modal.remove();
+            document.removeEventListener("keydown", _onEsc);
+            resolve();
+          };
+          document.getElementById("kta-zipname-error-close").addEventListener("click", _close);
+          document.getElementById("kta-zipname-error-ok").addEventListener("click", _close);
+          modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+          const _onEsc = function(ev) { if (ev.key === "Escape") _close(); };
+          document.addEventListener("keydown", _onEsc);
+        });
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ⚠️ v171 : Modale "Mode différent détecté"
+      // ════════════════════════════════════════════════════════════════════
+      // Affichée quand le ZIP fourni a des flags (tiledV2, multiLevel) qui
+      // diffèrent du registre. Pas un refus — l'user peut continuer (le
+      // contenu du ZIP fait foi, sync automatique). Couleur orange (warning).
+      // Returns Promise<boolean> : true = continuer, false = annuler.
+      function _afficherModaleModeDifferent(planName, discordances) {
+        return new Promise(function(resolve) {
+          const existing = document.getElementById("kta-mode-warn-modal");
+          if (existing) existing.remove();
+
+          const lignesHtml = discordances.map(function(d) {
+            return '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:8px;">' +
+                     '<div style="font-size:13px; font-weight:600; color:#ffb380; margin-bottom:6px;">' + escapeHtml(d.flag) + '</div>' +
+                     '<div style="font-size:12px; color:#c0c8d8; line-height:1.6;">' +
+                       '<span style="color:#8892a4;">Mode mémorisé :</span> ' + escapeHtml(d.avant) + '<br>' +
+                       '<span style="color:#8892a4;">Mode du ZIP :</span> <strong style="color:#e8eaf0;">' + escapeHtml(d.apres) + '</strong>' +
+                     '</div>' +
+                   '</div>';
+          }).join("");
+
+          const modal = document.createElement("div");
+          modal.id = "kta-mode-warn-modal";
+          modal.className = "kta-readme-modal-overlay";
+          modal.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh; border:1px solid rgba(255,179,128,0.35);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,179,128,0.20);">' +
+                '<span class="kta-readme-modal-titre" style="color:#ffb380;">⚠️ Mode différent détecté</span>' +
+                '<button class="kta-panneau-close" id="kta-mode-warn-close">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps">' +
+                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+                  'Le plan <strong style="color:#e8eaf0;">« ' + escapeHtml(planName) + ' »</strong> ' +
+                  'était mémorisé dans un mode, mais le ZIP que vous venez de fournir est dans un autre mode :' +
+                '</p>' +
+                lignesHtml +
+                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:12px 0 16px; font-style:italic;">' +
+                  '👉 Si vous continuez, les badges de ce plan dans la liste seront mis à jour pour refléter le nouveau mode ' +
+                  '(le contenu du ZIP fait foi).' +
+                '</p>' +
+                '<div style="display:flex; gap:10px; justify-content:flex-end;">' +
+                  '<button class="kta-btn kta-btn-ghost" id="kta-mode-warn-cancel">Annuler</button>' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-mode-warn-ok">Continuer</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(modal);
+
+          const _close = function(result) {
+            modal.remove();
+            document.removeEventListener("keydown", _onEsc);
+            resolve(!!result);
+          };
+          document.getElementById("kta-mode-warn-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-mode-warn-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-mode-warn-ok").addEventListener("click", function() { _close(true); });
+          modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
+          const _onEsc = function(ev) { if (ev.key === "Escape") _close(false); };
+          document.addEventListener("keydown", _onEsc);
+        });
+      }
+
+      // ℹ️ v170 (suite 3) : Modale "Informations détaillées sur l'archive".
+      // Liste tous les attributs du plan stockés dans le PlanRegistry (id,
+      // type, persistance, dates, modes, fichier source...). Le bouton ℹ️
+      // dans la ligne plan ouvre cette modale. Compense le retrait du sub
+      // (nom zip + taille) et de la date d'ouverture qui surchargeaient
+      // visuellement la liste compacte.
+      function _afficherInfosPlan(id) {
+        if (!window.PlanRegistry) return;
+        const plan = window.PlanRegistry.findById(id);
+        if (!plan) { console.warn("[Loader] Plan introuvable :", id); return; }
+
+        // Cleanup d'une éventuelle modale déjà ouverte
+        const existing = document.getElementById("kta-plan-infos-modal");
+        if (existing) existing.remove();
+
+        // Labels lisibles pour les champs techniques
+        const typeLabel = plan.type === "server" ? "🌐 Plan serveur (data/)" :
+                          plan.type === "local"  ? "💾 Plan local (ZIP)"      :
+                          plan.type;
+        let storageLabel = "—";
+        if (plan.type === "local") {
+          if (plan.storedBlob)      storageLabel = "✅ Mémorisé dans l'app (IndexedDB)";
+          else if (plan.fsHandleId) storageLabel = "🔐 Accès permanent autorisé (File System Access API)";
+          else                      storageLabel = "📁 Re-sélection requise au chargement (pick)";
+        }
+        let modesParts = [];
+        if (plan.tiledV2 === true)    modesParts.push("V2 tuilé (Google Maps-like)");
+        if (plan.multiLevel === true) modesParts.push("Multi-niveau (carrière multi-étages)");
+        if (modesParts.length === 0)  modesParts.push("V1 classique (mono-niveau, image entière en RAM)");
+        const modesLabel = modesParts.join(" + ");
+
+        // Liste des champs à afficher (ordre cohérent : identité → source → tech → dates)
+        const rows = [];
+        function pushRow(label, value, mono) {
+          if (value === undefined || value === null || value === "") return;
+          rows.push({ label: label, value: String(value), mono: !!mono });
+        }
+        pushRow("Identifiant interne", plan.id, true);
+        pushRow("Nom",                 plan.name);
+        pushRow("Version",             plan.version);
+        pushRow("Auteur",              plan.author);
+        rows.push({ label: "Type",     value: typeLabel, mono: false });
+        if (plan.type === "server") {
+          pushRow("Chemin serveur",   plan.path, true);
+        } else if (plan.type === "local") {
+          pushRow("Fichier source",   plan.originalFilename, true);
+          pushRow("Taille",           plan.fileSize ? fmtSize(plan.fileSize) : null);
+          rows.push({ label: "Persistance", value: storageLabel, mono: false });
+        }
+        rows.push({ label: "Mode",    value: modesLabel, mono: false });
+        if (plan.perfPreset) {
+          pushRow("Préset performance", plan.perfPreset);
+        }
+        pushRow("Ajouté le",          plan.addedAt    ? fmtDate(plan.addedAt)    : null);
+        pushRow("Dernière ouverture", plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? "Jamais ouvert (découvert)" : null));
+
+        const tableHtml = rows.map(function(r) {
+          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
+          return '<tr>' +
+                   '<td class="kta-info-key">' + escapeHtml(r.label) + '</td>' +
+                   '<td class="kta-info-val"' + valStyle + '>' + escapeHtml(r.value) + '</td>' +
+                 '</tr>';
+        }).join("");
+
+        const modal = document.createElement("div");
+        modal.id = "kta-plan-infos-modal";
+        modal.className = "kta-readme-modal-overlay";
+        modal.innerHTML =
+          '<div class="kta-readme-modal-boite kta-plan-infos-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">ℹ️ Informations sur « ' + escapeHtml(plan.name || plan.id) + ' »</span>' +
+              '<button class="kta-panneau-close" id="kta-plan-infos-close">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps">' +
+              '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(modal);
+        document.getElementById("kta-plan-infos-close").addEventListener("click", function() { modal.remove(); });
+        modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
+        // Échap pour fermer (cohérent avec les autres modales du projet)
+        const onEsc = function(ev) {
+          if (ev.key === "Escape") { modal.remove(); document.removeEventListener("keydown", onEsc); }
+        };
+        document.addEventListener("keydown", onEsc);
       }
 
       function escapeHtml(s) {
@@ -770,16 +997,35 @@
         }
         if (myPlansBox) myPlansBox.style.display = "block";
 
+        // 🌐 v170 : filtre "Afficher plans serveur" (persisté localStorage).
+        // Si l'user a décoché → on retire tous les plans type === "server" de
+        // la liste (mais on les laisse dans le PlanRegistry — c'est juste un
+        // filtre d'affichage, ré-active toujours possible via le toggle).
+        const showServer = _loaderShowServerPlans();
+        const filtered = showServer ? all : all.filter(function(p) { return p.type !== "server"; });
+
+        // Sync visuelle de la checkbox (au cas où refreshPlansList est appelé
+        // sans que le checkbox ait été coché manuellement, ex: au boot).
+        const cbServer = document.getElementById("loaderShowServerPlans");
+        if (cbServer) cbServer.checked = showServer;
+
         const allPlansList = document.getElementById("allPlansList");
         if (allPlansList) {
-          // Tri : par lastOpened desc, puis par name
-          const sorted = all.slice().sort(function(a, b) {
-            if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
-            if (a.lastOpened) return -1;
-            if (b.lastOpened) return 1;
-            return (a.name || "").localeCompare(b.name || "");
-          });
-          allPlansList.innerHTML = sorted.map(planRowHTML).join("");
+          if (filtered.length === 0) {
+            // Cas particulier : registre non vide mais filtre cache tout
+            // → message d'aide pour réactiver les serveurs.
+            allPlansList.innerHTML =
+              '<div class="loader-plans-empty">Aucun plan local — coche <em>Afficher les plans serveur</em> pour voir les plans découverts.</div>';
+          } else {
+            // Tri : par lastOpened desc, puis par name
+            const sorted = filtered.slice().sort(function(a, b) {
+              if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
+              if (a.lastOpened) return -1;
+              if (b.lastOpened) return 1;
+              return (a.name || "").localeCompare(b.name || "");
+            });
+            allPlansList.innerHTML = sorted.map(planRowHTML).join("");
+          }
         }
 
         // Brancher les listeners
@@ -796,6 +1042,15 @@
               window.refreshPlansList();
             }
           });
+          // ℹ️ v170 (suite 3) : bouton infos détaillées (compense le retrait
+          // de l'affichage sub/date qui surchargeait la liste compacte)
+          const infoBtn = row.querySelector(".plan-row-info-btn");
+          if (infoBtn) {
+            infoBtn.addEventListener("click", function(e) {
+              e.stopPropagation();
+              _afficherInfosPlan(id);
+            });
+          }
           row.addEventListener("click", function() {
             chargerPlanDuRegistre(id);
           });
@@ -1022,7 +1277,9 @@
 
         if (!file) return;
 
-        // Vérifier que le ZIP correspond bien (nom du plan)
+        // Vérifier que le ZIP correspond bien (nom du plan) ET les modes (V1/V2,
+        // multi-niveau) — sinon incohérence registre vs ZIP réel.
+        let zipFlags = { tiledV2: false, multiLevel: false };
         try {
           const { planConfigFile } = await extraireZip(file);
           const text = await planConfigFile.text();
@@ -1030,17 +1287,56 @@
           const ziPName = (cfg.plan?.name || "").trim();
           const planName = (plan.name || "").trim();
 
+          // Capturer les flags du ZIP pour le sync ultérieur du registre
+          zipFlags.tiledV2    = cfg.plan?.tiledV2    === true;
+          zipFlags.multiLevel = cfg.plan?.multiLevel === true;
+
+          // 1) Check nom du plan — REFUS DÉFINITIF si discordance (v171).
+          // Avant : confirm "Charger quand même ?" → l'user pouvait accepter
+          // un ZIP au nom différent, ce qui créait des incohérences silencieuses
+          // (badges, sessions liées au mauvais plan, métadonnées polluées).
+          // Maintenant : modale custom rouge, bouton unique "J'ai compris",
+          // import refusé. Si l'user veut vraiment charger ce ZIP, il passe
+          // par 📦 Charger un nouveau plan (= entrée distincte, id auto-généré).
           if (ziPName && planName && ziPName !== planName) {
-            const ok = confirm(
-              "⚠️ Ce ZIP contient le plan « " + ziPName + " » mais vous avez cliqué sur « " + planName + " ».\n\n" +
-              "Charger quand même ce ZIP ?"
-            );
+            await _afficherModaleNomZipKO(ziPName, planName);
+            return;
+          }
+
+          // 2) v170 fix : check discordance de mode (V1/V2 + multi-niveau).
+          // Cas remonté : user reset + import sauvegarde liste → registre a
+          // `tiledV2: true` mémorisé, mais le ZIP fourni à la re-sélection est
+          // un V1 du même plan → incohérence visuelle (badge V2 sur plan V1)
+          // + risque de crash runtime (modules qui lisent les flags registre).
+          const registreV2  = plan.tiledV2    === true;
+          const registreML  = plan.multiLevel === true;
+          const discordances = [];
+          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: "V2 tuilé (Google Maps-like)",        apres: "V1 classique (image entière en RAM)" });
+          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: "V1 classique (image entière en RAM)", apres: "V2 tuilé (Google Maps-like)" });
+          if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: "Multi-niveau (carrière multi-étages)",apres: "Mono-niveau (classique)" });
+          if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: "Mono-niveau (classique)",            apres: "Multi-niveau (carrière multi-étages)" });
+
+          // v171 : modale custom (orange warning) au lieu de confirm() natif.
+          // Continue offert car le ZIP fait foi (sync automatique des flags).
+          if (discordances.length > 0) {
+            const ok = await _afficherModaleModeDifferent(plan.name || plan.id, discordances);
             if (!ok) return;
           }
         } catch(e) {
           setStatus("ZIP invalide : " + (e.message || e), true);
           return;
         }
+
+        // v170 fix : aligner les flags du registre AVANT le chargement.
+        // addOrUpdate (appelé par startImportedPlan) merge avec Object.assign
+        // → si on ne sync pas ici, les anciens flags tiledV2/multiLevel
+        // restent en place (le ZIP V1 ne les déclare pas, donc Object.assign
+        // ne les écrase pas).
+        try {
+          if (window.PlanRegistry && typeof window.PlanRegistry.syncModeFlags === "function") {
+            window.PlanRegistry.syncModeFlags(plan.id, zipFlags);
+          }
+        } catch(e) { console.warn("[ReSelect] syncModeFlags KO :", e); }
 
         // Re-sélection = même règle que le clic sur Mes plans :
         // segmented explicite (≠ "auto") → override
@@ -1081,6 +1377,21 @@
             window.PlanRegistry.exportToFile();
             setStatus("Liste exportée");
           }
+        });
+      }
+
+      // === FILTRE "Afficher plans serveur" (v170) ===
+      // Persistance localStorage via les helpers _loaderShowServerPlans /
+      // _loaderSetShowServerPlans. Bind unique au boot, le state visuel de la
+      // checkbox est sync'd dans refreshPlansList (au cas où on re-render
+      // depuis ailleurs après un changement programmatique).
+      const showServerCb = document.getElementById("loaderShowServerPlans");
+      if (showServerCb) {
+        // Restore l'état persisté au boot
+        showServerCb.checked = _loaderShowServerPlans();
+        showServerCb.addEventListener("change", function() {
+          _loaderSetShowServerPlans(showServerCb.checked);
+          window.refreshPlansList();
         });
       }
 

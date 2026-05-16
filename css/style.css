@@ -2052,6 +2052,76 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
 
 /* ==============================================
+   MODALE RÉGLAGES (⚙️) — responsive PC (depuis v170)
+   ==============================================
+   Mobile (default) : étroite (440px max), 1 colonne — comportement v169.
+   PC ≥ 1024px : 1100px max + columns: 2 (pattern identique à la doc Aide).
+
+   Différence avec la doc Aide : on ajoute break-inside: avoid sur les
+   sections (.kta-aide-section dans le corps) parce que les Réglages
+   contiennent des inputs/grilles/toggles — couper en plein milieu d'un
+   bloc d'inputs serait confusant pour l'user. Les sections de la modale
+   Réglages sont relativement homogènes en hauteur, donc break-inside:
+   avoid ne crée pas de déséquilibre significatif (contrairement à la doc
+   Aide qui a des sections très inégales, où break-inside cassait le
+   layout). */
+.kta-cfg-modal-boite {
+  /* Mobile : préserve strictement le comportement v169 (440px, h auto) */
+  max-width: 440px !important;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+
+@media (min-width: 1024px) {
+  .kta-cfg-modal-boite {
+    max-width: 1100px !important;
+    width: min(1100px, 96vw) !important;
+  }
+
+  /* Layout 2 colonnes via column-flow (cohérent avec la modale Aide). */
+  .kta-cfg-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Sections d'inputs : ne JAMAIS couper en plein milieu d'une section
+     (compromis différent de la doc Aide — cf. commentaire en tête de bloc). */
+  .kta-cfg-corps .kta-aide-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+
+  /* Barre d'actions en bas : doit traverser les 2 colonnes en pleine largeur
+     pour que les 4 boutons restent visibles d'un coup sans devoir scroller
+     une colonne. En 4 colonnes pour exploiter l'espace dispo sur PC. */
+  .kta-cfg-actions-bar {
+    column-span: all;
+    -webkit-column-span: all;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+}
+
+/* Mobile (< 1024px) : barre d'actions en grid 2x2 (comportement v169). */
+@media (max-width: 1023px) {
+  .kta-cfg-actions-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+}
+
+
+/* ==============================================
    LÉGENDE — icônes et tracés
    ============================================== */
 
@@ -3071,6 +3141,57 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   margin-bottom: 8px;
 }
 
+/* 🌐 v170 : toggle "Afficher plans serveur" entre le head et la liste.
+   Discret par défaut, hover plus marqué pour signaler la cliquabilité. */
+.loader-plans-filters {
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.loader-plans-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #8892a4;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
+}
+
+.loader-plans-filter-row:hover {
+  color: #c8d0e0;
+}
+
+.loader-plans-filter-row input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #8cb4ff;
+  margin: 0;
+}
+
+/* Message affiché quand le registre n'est pas vide mais le filtre cache tout
+   (ex: seuls les plans serveur sont présents et l'user a décoché le toggle). */
+.loader-plans-empty {
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+}
+
+.loader-plans-empty em {
+  color: #c8d0e0;
+  font-style: normal;
+  font-weight: 500;
+}
+
 .plan-row {
   display: flex;
   align-items: center;
@@ -3145,13 +3266,35 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-weight: 500;
 }
 
-/* Container des badges (mode + storage) à droite du nom — flex-shrink:0
-   garantit qu'ils ne se font jamais grignoter par l'ellipsis du nom. */
+/* Container des badges historique — DEPRECATED v170 :
+   anciennement à droite du nom sur ligne 1 (modes + storage).
+   Le HTML actuel ne le génère plus dans planRowHTML — gardé en CSS pour
+   compat éventuelle (extensions, plugins user). Le storage badge est
+   désormais dans .plan-row-modes (ligne 2 avec les badges modes V1/V2/M-LVL).
+   Si on supprime cette classe à terme, vérifier qu'aucun consommateur tiers
+   n'en dépend. */
 .plan-row-badges {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+/* 🆕 v170 : ligne 2 dédiée aux badges meta (sous le nom du plan).
+   - Suite 1 : badges modes V1/V2/M-LVL uniquement
+   - Suite 2 (ici) : badges modes + badge storage (✅/🔐/📁) groupés
+                     ensemble pour qu'un scan visuel donne d'un coup tous
+                     les attributs techniques (mode + persistance) du plan
+                     sans avoir à regarder à 2 endroits.
+   align-items:center pour bien aligner les badges modes (9px monospace
+   avec fond/border) et le badge storage (emoji 11px sans fond) qui ont
+   des hauteurs différentes. */
+.plan-row-modes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  flex-wrap: wrap;
 }
 
 /* 🏗️ Badges de MODE — V2 / M-LVL / V1 — code couleur cohérent charte */
@@ -3234,6 +3377,50 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   background: rgba(255,140,140,0.12);
   border-color: rgba(255,140,140,0.4);
   color: #ff8c8c;
+}
+/* ℹ️ v170 (suite 3) : bouton infos — accent bleu cohérent avec la charte */
+.plan-row-info-btn:hover {
+  background: rgba(140,180,255,0.12);
+  border-color: rgba(140,180,255,0.4);
+  color: #8cb4ff;
+}
+
+/* Modale "Infos détaillées sur l'archive" — pattern .kta-readme-modal,
+   max-width compact (480px) + table 2 colonnes clé/valeur sobre. */
+.kta-plan-infos-boite {
+  max-width: 480px !important;
+  height: auto !important;
+  max-height: 80vh !important;
+}
+
+.kta-plan-infos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.kta-plan-infos-table tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.kta-plan-infos-table tr:last-child {
+  border-bottom: none;
+}
+
+.kta-plan-infos-table .kta-info-key {
+  padding: 8px 12px 8px 0;
+  color: #8892a4;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: top;
+  width: 40%;
+}
+
+.kta-plan-infos-table .kta-info-val {
+  padding: 8px 0;
+  color: #e8eaf0;
+  word-break: break-word;
+  vertical-align: top;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -4152,21 +4339,66 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    ========================= */
 
 /* Sur mobile en mode paysage, la hauteur est très réduite (≤ 500px).
-   On scrollifie la zone des contrôles à droite pour qu'aucune icône ne sorte du cadre. */
+   On scrollifie les zones de contrôles (gauche + droite) pour qu'aucune
+   icône ne sorte du cadre, même quand un groupe accordéon est ouvert avec
+   plusieurs sous-actions.
+
+   🔧 v170 fix critique : Leaflet utilise float: left/right + clear: both
+   sur .leaflet-control (héritage IE compat — voir lib/leaflet/leaflet.css
+   lignes 156-162). Avec ce layout floating, le PARENT ne "voit" PAS la
+   hauteur de ses enfants flottants → max-height + overflow-y: auto NE
+   DÉCLENCHE PAS le scroll, et les enfants sortent visuellement.
+   La règle existante (avant ce fix) ne marchait donc pas en pratique.
+
+   Solution : on bascule le container en `display: flex; flex-direction:
+   column;`. Les enfants deviennent des flex items (les `float` sont
+   ignorés sur les flex items par spec CSS), leur hauteur est comptée,
+   l'overflow scroll natif s'active proprement. `align-items: flex-end`
+   pour préserver l'alignement à droite (équivalent du float: right
+   d'origine).
+
+   ⚠️ NE PAS appliquer ces règles hors landscape mobile — desktop et
+   portrait n'ont pas besoin du scroll (assez de hauteur) et le float
+   natif Leaflet est OK dans ces cas. */
 @media (max-height: 500px) {
+  /* SIDEBAR DROITE — 11 groupes accordéon + layers control */
   .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 16px);
+    /* Tenir compte des safe-area iOS (notch + home indicator) en plus
+       de la marge esthétique 16px. Sans cela, sur iPhone 14 landscape
+       avec home indicator, les derniers boutons étaient cachés sous
+       la zone tactile réservée. */
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    /* Cacher la scrollbar pour rester propre */
     scrollbar-width: none;
+    /* 🔧 Bascule float → flex (cf. commentaire d'en-tête). */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
   }
-  .leaflet-top.leaflet-right::-webkit-scrollbar {
-    display: none;
-  }
+  .leaflet-top.leaflet-right::-webkit-scrollbar { display: none; }
 
-  /* Réduire légèrement les boutons en paysage pour gagner de la place */
+  /* SIDEBAR GAUCHE — zoom + bouton niveau (multi-niveau) + boussole.
+     Moins de boutons donc moins critique, mais on applique le même
+     pattern pour cohérence et anticipation (ex: si on ajoute un futur
+     contrôle topleft, il ne créera pas de débordement silencieux). */
+  .leaflet-top.leaflet-left {
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .leaflet-top.leaflet-left::-webkit-scrollbar { display: none; }
+
+  /* Réduire légèrement les boutons en paysage pour gagner de la place
+     (cumul avec le scroll : si l'user a peu de groupes ouverts, tout
+     reste visible sans scroll grâce aux boutons 28px ; sinon le scroll
+     prend le relais sans aucun débordement). */
   .leaflet-bar a {
     width: 28px !important;
     height: 28px !important;
@@ -4174,8 +4406,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     font-size: 14px !important;
   }
 
-  /* Réduire l'espacement entre groupes */
+  /* Réduire l'espacement entre groupes (déjà actif avant le fix flex,
+     plus efficace maintenant car compté correctement dans le scroll). */
   .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
+    margin-top: 1px !important;
+  }
+  .leaflet-top.leaflet-left .leaflet-control + .leaflet-control {
     margin-top: 1px !important;
   }
 }

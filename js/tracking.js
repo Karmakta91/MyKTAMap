@@ -118,7 +118,11 @@ function _applyRotationToTrackerMarker() {
   if (!tracking) return;
   if (!markerPosition) return;
 
-  const heading = (typeof direction === "number" && !isNaN(direction)) ? direction : 0;
+  // v172 : passe par _getCorrectedHeading() pour appliquer l'offset
+  // d'orientation écran (landscape, portrait inversé). Sinon en landscape
+  // l'icône pointait vers le haut DEVICE au lieu du haut VISUEL → décalage
+  // de 90° perçu comme un bug par l'user.
+  const heading = _getCorrectedHeading();
 
   // ===== 1. SMOOTHING EXPONENTIEL =====
   // smoothed = (1 - α) * smoothed_prev + α * heading
@@ -329,6 +333,99 @@ function getHeading(alpha, beta, gamma) {
 let _orientationListenerAttached = false;
 let _motionListenerAttached      = false;
 
+// =========================
+// CORRECTION HEADING SELON L'ORIENTATION DE L'ÉCRAN (depuis v172)
+// =========================
+// Bug rapporté : en mode landscape, la boussole et la rotation de l'icône
+// tracker indiquaient un Nord décalé de ±90° (ou 180° en portrait inversé).
+//
+// Cause : DeviceOrientationEvent renvoie α/β/γ par rapport aux axes
+// INTRINSÈQUES du device, pas selon l'orientation visuelle de l'écran.
+// L'axe Y du device (bord court "haut") correspond au haut visuel UNIQUEMENT
+// en portrait normal. En landscape, le haut visuel est l'ancien bord
+// droit/gauche du device → décalage angulaire.
+//
+// Fix : variable `_screenAngle` (0/90/180/270) mise à jour via event
+// `orientationchange` + `screen.orientation.change`. La correction est
+// appliquée à la lecture via _getCorrectedHeading() — la variable
+// `direction` reste la valeur DEVICE BRUTE (utile pour debug + cohérence
+// avec les sources de truth iOS webkitCompassHeading qui sont aussi brutes).
+let _screenAngle = 0;
+
+// Lit l'angle de rotation de l'écran (cascade de compat).
+// Convention standard `screen.orientation.angle` : 0 / 90 / 180 / 270
+//   - 0   : portrait normal (haut visuel = bord court haut device)
+//   - 90  : screen tourné 90° anti-horaire par l'OS (= l'user a tourné
+//           le device 90° horaire physiquement → landscape-PRIMARY,
+//           bord droit du device devient le haut visuel)
+//   - 180 : portrait inversé
+//   - 270 : landscape-SECONDARY (sens opposé à 90)
+//
+// iOS Safari < 16.4 : window.orientation (deprecated) avec convention
+// OPPOSÉE sur landscape (0 / 90 / -90 / 180). On normalise vers la
+// convention standard via (360 - val) % 360 sur les valeurs landscape.
+function _getScreenAngleNormalized() {
+  // Standard moderne (Chrome, Firefox, Edge, Safari ≥ 16.4)
+  if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+    return ((screen.orientation.angle % 360) + 360) % 360;
+  }
+  // Fallback iOS Safari < 16.4 — convention opposée pour landscape, on
+  // inverse en convertissant via (360 - val) % 360 :
+  //   0 (portrait)    → 0
+  //   90 (LS-left)    → 270
+  //   -90 (LS-right)  → 90
+  //   180 (inversé)   → 180
+  if (typeof window.orientation === "number") {
+    const v = ((window.orientation % 360) + 360) % 360;
+    if (v === 0 || v === 180) return v;
+    return (360 - v) % 360;
+  }
+  return 0;
+}
+
+// Heading visuel = (heading device brut + angle écran) % 360.
+// Justification math : si l'écran a été tourné de θ° anti-horaire par l'OS,
+// le bord du device qui pointe désormais vers "haut visuel" est l'ancien
+// bord droit (pour θ=90), l'ancien bord bas (θ=180), etc. Le heading
+// visuel = direction vers laquelle ce bord pointe en monde = direction du
+// bord court device "haut" (= heading brut) + offset angulaire de θ.
+function _getCorrectedHeading() {
+  if (typeof direction !== "number" || isNaN(direction)) return 0;
+  return ((direction + _screenAngle) % 360 + 360) % 360;
+}
+
+// Sync de _screenAngle au boot du module + listener pour les changements
+// d'orientation (l'user tourne son tel pendant l'utilisation). On force
+// aussi un re-render de l'icône tracker pour qu'elle se recale instantanément
+// sans attendre le prochain event device (= bonne UX terrain).
+//
+// Idempotent : safe à appeler plusieurs fois (les addEventListener sont
+// gardés par le flag `_screenOrientationListenerAttached`).
+let _screenOrientationListenerAttached = false;
+function _initScreenOrientationListener() {
+  // Init la valeur courante (cas boot en landscape, ou re-init après
+  // rebuild)
+  _screenAngle = _getScreenAngleNormalized();
+  if (_screenOrientationListenerAttached) return;
+  _screenOrientationListenerAttached = true;
+
+  const _onScreenChange = function() {
+    _screenAngle = _getScreenAngleNormalized();
+    console.log("[Tracking] Screen orientation → angle :", _screenAngle, "°");
+    // Re-render immédiat de l'icône tracker pour ne pas attendre le prochain
+    // event device. _applyRotationToTrackerMarker lit _getCorrectedHeading()
+    // donc se basera sur la nouvelle correction.
+    _applyRotationToTrackerMarker();
+  };
+
+  // Standard moderne : screen.orientation.change (Chrome, FF, Edge, Safari ≥ 16.4)
+  if (screen && screen.orientation && typeof screen.orientation.addEventListener === "function") {
+    screen.orientation.addEventListener("change", _onScreenChange);
+  }
+  // Fallback universel : event orientationchange sur window (iOS Safari, vieux Android)
+  window.addEventListener("orientationchange", _onScreenChange);
+}
+
 // Log throttle pour ne pas spammer la console (cf debug.js §11) : 1 log/s max
 // pendant que le tracking est actif. Visible uniquement en debugMode = true.
 let _lastHeadingLog = 0;
@@ -337,10 +434,21 @@ function _logHeading(heading, source) {
   const now = Date.now();
   if (now - _lastHeadingLog < 1000) return;
   _lastHeadingLog = now;
-  console.log("[Tracking] Heading :", heading.toFixed(1), "° (source:", source + ")");
+  // v172 : log inclut l'angle écran appliqué pour debug terrain en landscape
+  // (heading brut device + offset écran = heading visuel utilisé par boussole/icône).
+  const corrected = _getCorrectedHeading();
+  console.log(
+    "[Tracking] Heading :", heading.toFixed(1), "° (source:", source +
+    ", screen:", _screenAngle + "°, visuel:", corrected.toFixed(1) + "°)"
+  );
 }
 
 function initOrientation() {
+  // v172 : attache le listener d'orientation écran AVANT le listener device,
+  // pour que _screenAngle soit déjà à jour quand le 1er event device arrive
+  // (= correction appliquée dès la 1ère lecture du heading).
+  _initScreenOrientationListener();
+
   if (_orientationListenerAttached) return;
   _orientationListenerAttached = true;
 
@@ -544,7 +652,10 @@ window.initCollisionCache = initCollisionCache;
 // temps réel. Toujours dispo, même si le tracking n'est pas démarré (à
 // condition que requestPermission ait attaché les listeners orientation).
 window.getCurrentHeading = function() {
-  return direction;
+  // v172 : retourne le heading CORRIGÉ selon l'orientation écran (landscape,
+  // portrait inversé). Le widget boussole et l'icône tracker passent par
+  // cette fonction, donc ils restent cohérents avec le haut visuel.
+  return _getCorrectedHeading();
 };
 
 window.getTrackingPosition = function() {
