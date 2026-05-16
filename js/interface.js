@@ -1225,6 +1225,11 @@ function afficherAide() {
             <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
           </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#ffb266;">🚫 Contraintes d'évitement (depuis Karma_dev / v169) :</strong>
+            <strong style="color:#a8b3c8;">⛔ Zone Inaccessible</strong> (groupe Zones) = contrainte <em>dure</em>, l'itinéraire ne passera jamais à travers, jamais relâchée.
+            <strong style="color:#a8b3c8;">🚫 Préférences d'évitement</strong> (section repliable dans la modale itinéraire) = contrainte <em>souple</em> : points à éviter (recherche / ID / clic carte) + tags à éviter + marge (px, défaut 100). Si pas de chemin alternatif, l'app calcule quand même en passant à proximité et affiche un message orange <em>⚠️ Impossible d'éviter : X, Y</em>. Préférences persistées par plan en localStorage.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1241,6 +1246,7 @@ function afficherAide() {
             <span class="kta-aide-icone">🟩</span><span>Tracer une route principale</span>
             <span class="kta-aide-icone">🟪</span><span>Tracer une route secondaire</span>
             <span class="kta-aide-icone">🟨</span><span>Tracer un chemin</span>
+            <span class="kta-aide-icone">🪜</span><span>Jonction interniveau (magenta pointillé) — sous-action visible uniquement si le mode multi-niveau est activé. Bridge entre 2 niveaux pour le pathfinder.</span>
             <span class="kta-aide-icone">📏</span><span>Distance totale des tracés (panneau flottant avec filtres par type)</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernier tracé ou tous)</span>
           </div>
@@ -3176,9 +3182,12 @@ function initInterface() {
           if (roads.length === 0) return;
           const dernier = roads[roads.length - 1];
           const nbPts = dernier?.points?.length || 0;
-          // Compte uniquement les tracés selectionnables (pas itinerary)
+          // Compte uniquement les tracés selectionnables (pas itinerary).
+          // 🪜 v169 (Karma_dev) : jonction incluse dans les selectionnables —
+          // l'user peut cliquer sur une jonction pour la supprimer, cohérent
+          // avec les autres tracés.
           const tracesSelectables = roads.filter(function(r) {
-            return r && ["principal", "secondaire", "chemin"].indexOf(r.type) !== -1;
+            return r && ["principal", "secondaire", "chemin", "jonction"].indexOf(r.type) !== -1;
           });
           _choixSuppression(
             "Tracés", "Que veux-tu effacer ?",
@@ -3613,9 +3622,10 @@ window.activerModeSuppressionTraceClic = function() {
   if (!window.map) return;
 
   const allRoads = window.getRoads ? (window.getRoads() || []) : [];
+  // 🪜 v169 (Karma_dev) : jonction incluse dans les tracés supprimables au clic
   const supprimables = allRoads.filter(function(r) {
     return r && Array.isArray(r.points) && r.points.length >= 2 &&
-           ["principal", "secondaire", "chemin"].indexOf(r.type) !== -1;
+           ["principal", "secondaire", "chemin", "jonction"].indexOf(r.type) !== -1;
   });
   if (supprimables.length === 0) {
     alert("Aucun tracé session à supprimer.");
@@ -5411,15 +5421,22 @@ function afficherLegende() {
     }
   }
 
+  // 🪜 v169 (Karma_dev) : ajout de Jonction interniveau (magenta) — type
+  // conditionnel multi-niveau, présenté dans la légende même sans multiLevel
+  // car cohérence avec la légende exportée PNG.
   const contenuTracés = `
     <div class="kta-aide-section">
       <div class="kta-aide-section-titre">🛣️ Tracés</div>
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#00ff00;"></span><span class="kta-legende-label">Route principale</span></div>
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#b000ff;"></span><span class="kta-legende-label">Route secondaire</span></div>
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ffff00;"></span><span class="kta-legende-label">Chemin</span></div>
+      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ff4ecb;"></span><span class="kta-legende-label">🪜 Jonction interniveau (escalier / pente — multi-niveau)</span></div>
     </div>
   `;
 
+  // 🚫 v169 (Karma_dev) : ajout d'Inaccessible (hachures rouge/noir) — zone
+  // bloquante pour le pathfinder, contrainte dure. Visuel cohérent avec
+  // l'on-map (pattern SVG via background pour la swatch de légende).
   const contenuZones = `
     <div class="kta-aide-section">
       <div class="kta-aide-section-titre">⬛ Zones</div>
@@ -5434,6 +5451,10 @@ function afficherLegende() {
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#ff3333; opacity:0.7; height:14px; border:2px solid #cc0000;"></span>
         <span class="kta-legende-label">Effondrement (rouge)</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>
+        <span class="kta-legende-label">⛔ Inaccessible — bloque l'itinéraire (hachures)</span>
       </div>
     </div>
   `;
