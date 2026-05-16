@@ -240,12 +240,18 @@
   //   transform,                             // résultat de buildTransform
   //   include: {
   //     image: true|false,                   // GroundOverlay
-  //     points: true,
-  //     roads: true,
-  //     zones: true,
-  //     jonctions: true,
+  //     points: true,                        // parent — si false, tous les points droppés
+  //     roads: true,                         // parent — idem roads
+  //     zones: true,                         // parent — idem zones
+  //     jonctions: true,                     // (uniquement si multi-niveau)
   //     itineraire: true,
-  //     dataLayers: true                     // points + roads + zones embedded
+  //     dataLayers: true,                    // points + roads + zones embedded
+  //     // Filtres granulaires (v169 Karma_dev, pattern IMAGE AVANCE) :
+  //     pointTagsSet: Set<string> | null,    // whitelist tags (1er tag de chaque point)
+  //     roadTypesSet: Set<string> | null,    // whitelist {principal, secondaire, chemin}
+  //     zoneTypesSet: Set<string> | null     // whitelist {eau, remblais, effondrement, inaccessible}
+  //                                          // null = pas de filtre (legacy compat)
+  //                                          // Set vide = drop tout (parent coché sans enfants)
   //   },
   //   levels: Set<number> | null,            // filtre niveaux (null = tous)
   //   data: {
@@ -365,11 +371,27 @@
     const levels = mlOn ? (opts.levels ? Array.from(opts.levels).sort(function(a,b){return a-b;}) : [0])
                         : [0];
 
+    // Filtres granulaires depuis opts.include (v169 Karma_dev) :
+    //   pointTagsSet : Set<string> | null — whitelist des tags (1er tag du point)
+    //   roadTypesSet : Set<string> | null — whitelist des types principal/secondaire/chemin
+    //   zoneTypesSet : Set<string> | null — whitelist des types eau/remblais/effondrement/inaccessible
+    // null = pas de filtre (legacy compat). Set vide = drop tout (parent
+    // coché mais aucun enfant sélectionné, edge case).
+    const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
+    const roadTypesSet = (opts.include.roadTypesSet instanceof Set) ? opts.include.roadTypesSet : null;
+    const zoneTypesSet = (opts.include.zoneTypesSet instanceof Set) ? opts.include.zoneTypesSet : null;
+
+    // Helper : 1er tag d'un point pour le filtre (cohérent avec _emitPlacemark)
+    function _firstTag(p) {
+      return (Array.isArray(p.tags) && p.tags.length > 0) ? p.tags[0] : "__untagged__";
+    }
+
     function _folderForLevel(level) {
       let body = "";
       // Editor points
       if (opts.include.points && opts.data.editorPoints) {
         const points = opts.data.editorPoints.filter(function(p) {
+          if (pointTagsSet && !pointTagsSet.has(_firstTag(p))) return false;
           return _passeLevel(p, Number.isInteger(p.level) ? p.level : 0) &&
                  (!mlOn || (Number.isInteger(p.level) ? p.level : 0) === level);
         });
@@ -383,6 +405,7 @@
       if (opts.include.roads && opts.data.roads) {
         const roads = opts.data.roads.filter(function(r) {
           if (r.type === "itinerary" || r.type === "jonction") return false;
+          if (roadTypesSet && !roadTypesSet.has(r.type)) return false;
           return _passeLevel(r, Number.isInteger(r.level) ? r.level : 0) &&
                  (!mlOn || (Number.isInteger(r.level) ? r.level : 0) === level);
         });
@@ -412,6 +435,7 @@
       // Zones
       if (opts.include.zones && opts.data.zones) {
         const zones = opts.data.zones.filter(function(z) {
+          if (zoneTypesSet && !zoneTypesSet.has(z.type)) return false;
           return _passeLevel(z, Number.isInteger(z.level) ? z.level : 0) &&
                  (!mlOn || (Number.isInteger(z.level) ? z.level : 0) === level);
         });

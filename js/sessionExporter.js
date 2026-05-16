@@ -1275,6 +1275,107 @@
     return window._currentLoadedPlanId || "default";
   }
 
+  // Slug CSS-safe pour un tag (id checkbox)
+  function _kmzSlugTag(tag) {
+    return String(tag).replace(/[^a-z0-9_-]/gi, "_");
+  }
+
+  // Liste les tags presents dans une collection de points
+  // Renvoie [{tag, count, isUntagged}] trie alpha, "__untagged__" en queue
+  function _kmzListerTags(points) {
+    const counts = {};
+    let untagged = 0;
+    (points || []).forEach(function(p) {
+      const tags = Array.isArray(p.tags) ? p.tags.filter(function(t) { return t && String(t).trim(); }) : [];
+      if (tags.length === 0) untagged++;
+      else tags.forEach(function(t) {
+        const k = String(t);
+        counts[k] = (counts[k] || 0) + 1;
+      });
+    });
+    const list = Object.keys(counts).sort().map(function(t) {
+      return { tag: t, count: counts[t], isUntagged: false };
+    });
+    if (untagged > 0) list.push({ tag: "__untagged__", count: untagged, isUntagged: true });
+    return list;
+  }
+
+  // URL d'icone pour un tag (lookup _iconMap → resolution Leaflet)
+  function _kmzIconePourTag(tag) {
+    if (!window._iconMap || !window._iconMap[tag]) return null;
+    const ic = window._iconMap[tag];
+    return (ic && ic.options && ic.options.iconUrl) ? ic.options.iconUrl : null;
+  }
+
+  // Collecte unifiee des stats KMZ (session + embedded) pour generer les
+  // sous-cases avec compteurs et icones, comme l'export PNG mode avance.
+  // Reutilise les memes getters que _exportKmz pour rester strictement coherent.
+  function _kmzCollecterStats() {
+    // === Points : session + data layers ===
+    const sessionPts = (window.getEditorPoints ? window.getEditorPoints() : []) || [];
+    const dataLayerPts = [];
+    if (Array.isArray(window._ktaDataMarkers)) {
+      window._ktaDataMarkers.forEach(function(m) {
+        if (!m) return;
+        dataLayerPts.push({ tags: Array.isArray(m._ktaTags) ? m._ktaTags : [] });
+      });
+    }
+    const allPts = sessionPts.concat(dataLayerPts);
+    const tagsList = _kmzListerTags(allPts);
+
+    // === Roads : session + embedded ===
+    const sessionRoads = (window.getRoads ? window.getRoads() : []) || [];
+    const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function")
+      ? window.getAllEmbeddedRoads() : [];
+    const allRoads = sessionRoads.concat(embeddedRoads);
+    const roadsByType = {
+      principal:  allRoads.filter(function(r) { return r.type === "principal";  }).length,
+      secondaire: allRoads.filter(function(r) { return r.type === "secondaire"; }).length,
+      chemin:     allRoads.filter(function(r) { return r.type === "chemin";     }).length,
+      jonction:   allRoads.filter(function(r) { return r.type === "jonction";   }).length,
+      itinerary:  allRoads.filter(function(r) { return r.type === "itinerary";  }).length
+    };
+
+    // === Zones : session + embedded ===
+    const sessionZones = (window.getZones ? window.getZones() : []) || [];
+    const embeddedZones = (typeof window.getAllEmbeddedZones === "function")
+      ? window.getAllEmbeddedZones() : [];
+    const allZones = sessionZones.concat(embeddedZones);
+    const zonesByType = {
+      eau:          allZones.filter(function(z) { return z.type === "eau";          }).length,
+      remblais:     allZones.filter(function(z) { return z.type === "remblais";     }).length,
+      effondrement: allZones.filter(function(z) { return z.type === "effondrement"; }).length,
+      inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length
+    };
+
+    return {
+      pointsTotal: allPts.length,
+      tagsList:    tagsList,
+      roadsByType: roadsByType,
+      zonesByType: zonesByType
+    };
+  }
+
+  // Sync visuelle parent ↔ enfants (parent coche / decoche tous les enfants,
+  // enfants au moins 1 coche le parent). Replique le pattern _syncAnnotParent
+  // de exporter.js pour le mode avance PNG.
+  function _kmzSyncParent(parentId, childIds) {
+    const parent = document.getElementById(parentId);
+    if (!parent) return;
+    const children = childIds.map(function(id) { return document.getElementById(id); }).filter(Boolean);
+    if (children.length === 0) return;
+
+    parent.addEventListener("change", function() {
+      children.forEach(function(c) { if (!c.disabled) c.checked = parent.checked; });
+    });
+    children.forEach(function(c) {
+      c.addEventListener("change", function() {
+        const anyChecked = children.some(function(x) { return x.checked; });
+        parent.checked = anyChecked;
+      });
+    });
+  }
+
   // ---------- RENDU HTML ONGLET KMZ ----------
   function _renderKmz() {
     // Restaure le calibrage sauvé pour ce plan s'il existe
@@ -1351,23 +1452,95 @@
         '</div>' +
       '</div>' +
 
-      // ===== Contenu à inclure =====
-      '<div class="kta-kmz-section">' +
+      // ===== Contenu à inclure (granularite fine, pattern IMAGE AVANCE) =====
+      _kmzRenderContenu(mlOn) +
+
+      niveauxBloc;
+  }
+
+  // ---------- RENDU SECTION CONTENU (sous-cases par tag/type) ----------
+  function _kmzRenderContenu(mlOn) {
+    const stats = _kmzCollecterStats();
+
+    // Helper : ligne parent ou simple checkbox
+    function row(id, label, count, checked) {
+      const disabled = count === 0 ? "disabled" : "";
+      const dim      = count === 0 ? "opacity:0.5;" : "";
+      const isChecked= (count > 0 && checked) ? "checked" : "";
+      const cnt      = (count !== null) ? ' <span style="color:#8892a4;">(' + count + ')</span>' : '';
+      return '<label class="kta-ses-cb-row" style="' + dim + '">' +
+               '<input type="checkbox" id="' + id + '" ' + isChecked + ' ' + disabled + '>' +
+               '<span>' + label + cnt + '</span>' +
+             '</label>';
+    }
+
+    // Helper : sous-case indentee (enfant d'une parent)
+    function rowSub(id, label, count, checked) {
+      const disabled = count === 0 ? "disabled" : "";
+      const dim      = count === 0 ? "opacity:0.5;" : "";
+      const isChecked= (count > 0 && checked) ? "checked" : "";
+      return '<label class="kta-ses-cb-row" style="' + dim + 'margin-left:24px;font-size:12px;padding:3px 4px;">' +
+               '<input type="checkbox" id="' + id + '" ' + isChecked + ' ' + disabled + '>' +
+               '<span>' + label + ' <span style="color:#8892a4;">(' + count + ')</span></span>' +
+             '</label>';
+    }
+
+    // Sous-cases dynamiques pour les tags de points (avec icones quand dispo)
+    let pointsTagsHtml = "";
+    if (stats.tagsList.length > 0) {
+      pointsTagsHtml = stats.tagsList.map(function(item) {
+        const safeTag = _kmzSlugTag(item.tag);
+        const iconUrl = item.isUntagged ? null : _kmzIconePourTag(item.tag);
+        const iconHtml = iconUrl
+          ? '<img src="' + iconUrl + '" style="width:14px;height:14px;object-fit:contain;vertical-align:middle;margin-right:4px;">'
+          : (item.isUntagged ? '<span style="opacity:0.5;margin-right:4px;">∅</span>' : '<span style="opacity:0.5;margin-right:4px;">🏷️</span>');
+        const label = item.isUntagged ? "<em>(sans tag)</em>" : item.tag;
+        return '<label class="kta-ses-cb-row" style="margin-left:24px;font-size:12px;padding:3px 4px;">' +
+                 '<input type="checkbox" id="kmz_inc_points_tag_' + safeTag + '" data-tag="' + item.tag + '" checked>' +
+                 '<span>' + iconHtml + label + ' <span style="color:#8892a4;">(' + item.count + ')</span></span>' +
+               '</label>';
+      }).join("");
+    }
+
+    const rByT = stats.roadsByType;
+    const zByT = stats.zonesByType;
+    const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin;
+    const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible;
+
+    return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">📦 Contenu à inclure</div>' +
-        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_image" checked><span>🖼️ Image plan (GroundOverlay)</span></label>' +
-        '<div class="kta-kmz-opacity-row" id="kmz_opacity_wrap">' +
-          '<label for="kmz_img_opacity" class="kta-kmz-opacity-lbl">Opacité image :</label>' +
+
+        // --- Image + opacite ---
+        row("kmz_inc_image", "🖼️ Image plan (GroundOverlay)", null, true) +
+        '<div class="kta-kmz-opacity-row" id="kmz_opacity_wrap" style="margin-left:24px;">' +
+          '<label for="kmz_img_opacity" class="kta-kmz-opacity-lbl">Opacité :</label>' +
           '<input type="range" id="kmz_img_opacity" min="0" max="100" step="5" value="60" class="kta-kmz-opacity-slider">' +
           '<span id="kmz_img_opacity_val" class="kta-kmz-opacity-val">60%</span>' +
         '</div>' +
-        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_points" checked><span>📍 Points (éditeur + data layers)</span></label>' +
-        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_roads" checked><span>🛣️ Tracés (principal / secondaire / chemin)</span></label>' +
-        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_zones" checked><span>⬛ Zones (eau / remblais / effondrement / inaccessible)</span></label>' +
-        (mlOn ? '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_jonctions" checked><span>🪜 Jonctions interniveau</span></label>' : '') +
-        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_iti" checked><span>🗺️ Itinéraire actif (si présent)</span></label>' +
-      '</div>' +
 
-      niveauxBloc;
+        // --- Points + sous-cases par tag ---
+        row("kmz_inc_points", "📍 Points", stats.pointsTotal, true) +
+        pointsTagsHtml +
+
+        // --- Tracés + sous-cases par type ---
+        row("kmz_inc_roads", "🛣️ Tracés", roadsTotal, true) +
+        rowSub("kmz_inc_roads_principal",  "🟩 Principaux",  rByT.principal,  true) +
+        rowSub("kmz_inc_roads_secondaire", "🟪 Secondaires", rByT.secondaire, true) +
+        rowSub("kmz_inc_roads_chemin",     "🟨 Chemins",     rByT.chemin,     true) +
+
+        // --- Zones + sous-cases par type ---
+        row("kmz_inc_zones", "⬛ Zones", zonesTotal, true) +
+        rowSub("kmz_inc_zones_eau",          "🟦 Eau",          zByT.eau,          true) +
+        rowSub("kmz_inc_zones_remblais",     "⬛ Remblais",     zByT.remblais,     true) +
+        rowSub("kmz_inc_zones_effondrement", "🟥 Effondrement", zByT.effondrement, true) +
+        rowSub("kmz_inc_zones_inaccessible", "⛔ Inaccessible", zByT.inaccessible, true) +
+
+        // --- Jonctions (uniquement si multi-niveau) ---
+        (mlOn ? row("kmz_inc_jonctions", "🪜 Jonctions interniveau", rByT.jonction, rByT.jonction > 0) : '') +
+
+        // --- Itineraire actif ---
+        row("kmz_inc_iti", "🗺️ Itinéraire actif", rByT.itinerary, rByT.itinerary > 0) +
+      '</div>';
   }
 
   // ---------- BIND HANDLERS ----------
@@ -1410,6 +1583,17 @@
       cbImg.addEventListener("change", _majOpState);
       _majOpState();
     }
+
+    // Sync parent ↔ enfants (pattern IMAGE AVANCE) — defer car les enfants
+    // sont rendus dans le meme HTML et tous prets a ce stade.
+    setTimeout(function() {
+      _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
+      _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
+      // Points : sous-cases par tag, IDs = kmz_inc_points_tag_<slug>
+      const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
+      const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });
+      if (tagIds.length > 0) _kmzSyncParent("kmz_inc_points", tagIds);
+    }, 0);
 
     // Premier rendu aperçu (si calibrage restauré)
     _kmzRafraichirApercu();
@@ -1749,10 +1933,51 @@
       const opSlider = document.getElementById("kmz_img_opacity");
       const imageOpacity = opSlider ? Math.max(0, Math.min(100, parseInt(opSlider.value, 10) || 60)) : 60;
 
+      // === Lecture des sous-cases granulaires (pattern IMAGE AVANCE) ===
+      // Sets de filtrage par type/tag : si la Set est non-null, le generateur
+      // ne garde QUE les items du Set. Si null = parent decoche = drop total.
+      // Si Set vide = parent coche mais aucun enfant = drop total (cas degenere).
+
+      // Tags points : on lit toutes les sous-cases [id^="kmz_inc_points_tag_"]
+      let pointTagsSet = null;
+      const pointsParent = document.getElementById("kmz_inc_points");
+      if (pointsParent && pointsParent.checked) {
+        pointTagsSet = new Set();
+        document.querySelectorAll('[id^="kmz_inc_points_tag_"]').forEach(function(cb) {
+          if (cb.checked && cb.dataset && cb.dataset.tag) pointTagsSet.add(cb.dataset.tag);
+        });
+      }
+
+      // Types roads : 3 sous-cases (principal/secondaire/chemin)
+      let roadTypesSet = null;
+      const roadsParent = document.getElementById("kmz_inc_roads");
+      if (roadsParent && roadsParent.checked) {
+        roadTypesSet = new Set();
+        ["principal", "secondaire", "chemin"].forEach(function(t) {
+          const cb = document.getElementById("kmz_inc_roads_" + t);
+          if (cb && cb.checked) roadTypesSet.add(t);
+        });
+      }
+
+      // Types zones : 4 sous-cases (eau/remblais/effondrement/inaccessible)
+      let zoneTypesSet = null;
+      const zonesParent = document.getElementById("kmz_inc_zones");
+      if (zonesParent && zonesParent.checked) {
+        zoneTypesSet = new Set();
+        ["eau", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
+          const cb = document.getElementById("kmz_inc_zones_" + t);
+          if (cb && cb.checked) zoneTypesSet.add(t);
+        });
+      }
+
       console.log("[KMZ] Contenu :",
         allPoints.length, "points,",
         allRoads.length, "roads (" + sessionRoads.length + " session +", embeddedRoads.length, "embedded),",
         allZones.length, "zones (" + sessionZones.length + " session +", embeddedZones.length, "embedded)");
+      console.log("[KMZ] Filtres :",
+        "pointTags=", pointTagsSet ? Array.from(pointTagsSet) : "null",
+        "roadTypes=", roadTypesSet ? Array.from(roadTypesSet) : "null",
+        "zoneTypes=", zoneTypesSet ? Array.from(zoneTypesSet) : "null");
 
       const kmzBlob = await window.KmzExport.genererKmz({
         planName:    (window.PLAN_CONFIG?.plan?.name)    || "Plan MyKTAMap",
@@ -1764,12 +1989,16 @@
         imageOpacity: imageOpacity,    // 0-100 (% d'opacité du GroundOverlay)
         include: {
           image:      inclImage,
-          points:     document.getElementById("kmz_inc_points")?.checked,
-          roads:      document.getElementById("kmz_inc_roads")?.checked,
-          zones:      document.getElementById("kmz_inc_zones")?.checked,
+          points:     !!pointTagsSet,       // true si parent coche
+          roads:      !!roadTypesSet,
+          zones:      !!zoneTypesSet,
           jonctions:  mlOn && document.getElementById("kmz_inc_jonctions")?.checked,
           itineraire: document.getElementById("kmz_inc_iti")?.checked,
-          dataLayers: true
+          dataLayers: true,
+          // Sets de filtrage granulaire (null = pas de filtre, Set = whitelist)
+          pointTagsSet: pointTagsSet,
+          roadTypesSet: roadTypesSet,
+          zoneTypesSet: zoneTypesSet
         },
         levels:        levels,
         data: {
