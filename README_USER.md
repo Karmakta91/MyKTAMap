@@ -574,7 +574,7 @@ Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitem
 
 | Type | Description |
 |---|---|
-| **📍 Points à éviter** | Ajout par recherche autocomplete OU saisie ID texte. Chips orange avec ✕ pour retirer. |
+| **📍 Points à éviter** | **3 méthodes** au choix : (a) recherche autocomplete dans le champ texte, (b) saisie par ID exact, (c) **📍 Cliquer sur la carte** : bascule en mode clic, chaque clic sur la map ajoute un point. Chips orange avec ✕ pour retirer. |
 | **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
 | **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
 

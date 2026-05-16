@@ -834,7 +834,15 @@
       return document.getElementById("adv_zones_" + t)?.checked;
     });
 
-    const filteredRoads = (d.roads || []).filter(function(r) { return roadTypes.indexOf(r.type) >= 0; });
+    // 🪜 v169 (Karma_dev) : jonctions interniveau toujours préservées dans
+    // l'export Avancé (= bridges du graphe pathfinder, non négociables). Sans
+    // ce bypass, le filter `roadTypes.indexOf(r.type) >= 0` les retirerait
+    // silencieusement car "jonction" n'est PAS dans roadTypes (qui ne liste
+    // que principal/secondaire/chemin). Idem dans Conversion plus bas.
+    const filteredRoads = (d.roads || []).filter(function(r) {
+      if (r.type === "jonction") return true;  // bypass : toujours inclus
+      return roadTypes.indexOf(r.type) >= 0;
+    });
     const filteredZones = (d.zones || []).filter(function(z) { return zoneTypes.indexOf(z.type) >= 0; });
 
     // Filtrer les points par tags cochés
@@ -938,6 +946,10 @@
     const filteredRoads = incRoads
       ? (d.roads || []).filter(function(r) {
           if (r.type === "itinerary") return false;
+          // 🪜 v169 (Karma_dev) : jonctions interniveau toujours préservées
+          // dans la conversion → data layer (bridges essentiels du graphe
+          // pathfinder, non filtrables par type principal/secondaire/chemin).
+          if (r.type === "jonction") return true;
           return roadTypesActifs[r.type] !== false;
         })
       : [];
@@ -982,8 +994,11 @@
       }
 
       if (filteredRoads.length) {
-        const byType = _trierParType(filteredRoads, ["principal", "secondaire", "chemin"]);
-        ["principal", "secondaire", "chemin"].forEach(function(t) {
+        // 🪜 v169 (Karma_dev) : inclure "jonction" dans la granularité fine
+        // pour ne pas perdre les bridges interniveau (sans ça, _trierParType
+        // les listerait dans le bucket "_ignored" et ils seraient drop).
+        const byType = _trierParType(filteredRoads, ["principal", "secondaire", "chemin", "jonction"]);
+        ["principal", "secondaire", "chemin", "jonction"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "roads_" + t + ".json", payload: { data: [], roads: byType[t] } });
           }

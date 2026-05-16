@@ -4204,6 +4204,89 @@ async function _itiAvoidGetAvailableTags() {
   } catch(e) { return []; }
 }
 
+// 🚫 v169 (Karma_dev) : mode clic carte pour ajouter des points d'évitement
+// directement en cliquant sur la map. Réutilise le pattern des waypoints mais
+// avec un état séparé (sinon conflit avec le mode clic des waypoints).
+//
+// Flow :
+//   1. Click bouton "📍 Cliquer sur la carte" → _activerModeClicAvoid
+//   2. Modale cachée + floater orange "Mode clic évitement actif"
+//   3. Chaque clic sur la map ajoute aux avoidPoints + persiste localStorage
+//   4. Click "✓ Terminer" sur le floater → _desactiverModeClicAvoid + re-affiche modale
+
+let _itiAvoidClickActive  = false;
+let _itiAvoidClickHandler = null;
+let _itiAvoidFloater      = null;
+
+function _activerModeClicAvoid(mainModal) {
+  if (_itiAvoidClickActive) return;
+  _itiAvoidClickActive = true;
+  if (!window.map) return;
+
+  _itiAvoidClickHandler = function(e) {
+    const x = e.latlng.lng;
+    const y = APP_CONFIG.imageHeight - e.latlng.lat;
+    const prefs = _getItiAvoidPrefs();
+    prefs.points.push({
+      x:     x,
+      y:     y,
+      label: "📍 Clic carte (" + Math.round(x) + ", " + Math.round(y) + ")",
+      id:    null
+    });
+    _setItiAvoidPrefs(prefs);
+    _majPanneauFloaterAvoidCount();
+  };
+  window.map.on("click", _itiAvoidClickHandler);
+
+  // Cache la modale (pas remove → on garde son DOM pour réafficher)
+  if (mainModal) mainModal.style.display = "none";
+
+  // Floater orange (couleur thématique avoid) avec compteur live
+  if (_itiAvoidFloater) _itiAvoidFloater.remove();
+  const panneau = document.createElement("div");
+  panneau.id = "kta-iti-avoid-floater";
+  panneau.className = "kta-iti-floater kta-iti-avoid-floater";
+  panneau.innerHTML =
+    '<span class="kta-iti-floater-icon">🚫</span>' +
+    '<span class="kta-iti-floater-msg">' +
+      'Mode clic évitement actif — <strong id="kta-iti-avoid-floater-count">' + _getItiAvoidPrefs().points.length + '</strong> point(s) à éviter' +
+    '</span>' +
+    '<button class="kta-btn kta-btn-primary" id="kta-iti-avoid-floater-done" type="button">✓ Terminer</button>';
+  document.body.appendChild(panneau);
+  _itiAvoidFloater = panneau;
+
+  document.getElementById("kta-iti-avoid-floater-done").addEventListener("click", function() {
+    _desactiverModeClicAvoid();
+    if (mainModal) {
+      mainModal.style.display = "";
+      _rafraichirListeAvoidPoints();
+      const btn = document.getElementById("kta-iti-avoid-click-map");
+      if (btn) {
+        btn.textContent = "📍 Cliquer sur la carte";
+        btn.classList.remove("kta-actif");
+      }
+    }
+  });
+}
+
+function _desactiverModeClicAvoid() {
+  if (!_itiAvoidClickActive) return;
+  _itiAvoidClickActive = false;
+  if (window.map && _itiAvoidClickHandler) {
+    window.map.off("click", _itiAvoidClickHandler);
+  }
+  _itiAvoidClickHandler = null;
+  if (_itiAvoidFloater) {
+    _itiAvoidFloater.remove();
+    _itiAvoidFloater = null;
+  }
+}
+
+function _majPanneauFloaterAvoidCount() {
+  const el = document.getElementById("kta-iti-avoid-floater-count");
+  if (el) el.textContent = _getItiAvoidPrefs().points.length;
+}
+
 // Genere le HTML de la section "🚫 Preferences d'evitement" pour la modale
 // itineraire. Replie par defaut via <details> (HTML natif). Composants :
 //   - Recherche autocomplete (input + dropdown resultats)
@@ -4238,6 +4321,9 @@ function _htmlSectionAvoidItineraire(prefs) {
               'placeholder="Saisir un ID exact…" autocomplete="off" style="flex:1;">' +
             '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">+ Ajouter par ID</button>' +
           '</div>' +
+          // 🚫 v169 (Karma_dev) : bouton mode clic carte — bascule la modale en
+          // floater, chaque clic sur la map ajoute un point d'évitement
+          '<button id="kta-iti-avoid-click-map" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-bottom:8px;">📍 Cliquer sur la carte</button>' +
           '<div id="kta-iti-avoid-points-list" class="kta-iti-avoid-list"></div>' +
         '</div>' +
 
@@ -4428,6 +4514,21 @@ function _bindAvoidSectionHandlers() {
     idBtn.addEventListener("click", _ajouterParId);
     idInput.addEventListener("keydown", function(e) {
       if (e.key === "Enter") { e.preventDefault(); _ajouterParId(); }
+    });
+  }
+
+  // 2bis. 🚫 v169 (Karma_dev) : mode clic carte — bascule en floater, chaque
+  // clic ajoute un point. Coexiste avec le mode clic waypoints (handlers
+  // séparés via _itiAvoidClickHandler) → si l'user active les 2 modes en
+  // même temps, c'est OK (clics partagés) mais peu utile en pratique.
+  const clickMapBtn = document.getElementById("kta-iti-avoid-click-map");
+  if (clickMapBtn) {
+    clickMapBtn.addEventListener("click", function() {
+      const mainModal = document.getElementById("kta-itinerary-modal");
+      _activerModeClicAvoid(mainModal);
+      // Indicateur visuel (devient inactif au "✓ Terminer" du floater)
+      clickMapBtn.classList.add("kta-actif");
+      clickMapBtn.textContent = "📍 Mode clic actif…";
     });
   }
 

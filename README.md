@@ -31,6 +31,27 @@ Nouveau 4ème type de zone polygonale (`inaccessible`) qui bloque tout segment d
 - `_segmentBloqueParZoneInaccess` (filtre niveau-aware, segments "transit" jamais bloqués)
 - `_collecterZonesInaccessibles` (lit session via getZones + data layers via _ktaDataPolygons)
 
+### Audit fonctions d'export + mode clic carte évitement (post Karma_dev)
+
+Audit complet des 4 fonctions d'export (image rapide/avancé, session Full/Avancé/Conversion, tableau JSON, liste de plans) pour vérifier la cohérence des Features 1+2. **3 corrections** appliquées :
+
+1. **`sessionExporter.js`** Export Avancé + Conversion drop silencieusement les jonctions (`roadTypes` ne contient pas `"jonction"` → filter exclu). Fix : bypass explicite `if (r.type === "jonction") return true;` avant le filter. Cas critique : un plan multi-niveau exporté en Advanced perdait tous ses bridges → import = perte de continuité du graphe pathfinder.
+2. **`exporter.js > _dessinerLegende`** Légende PNG (mode avancé) manquait `Inaccessible` et `Jonction interniveau`. Ajout des 2 entrées avec leurs couleurs (rouge foncé pour Inaccessible côté canvas, magenta pour Jonction).
+3. **`tableEditor.js`** Colonne `level` apparaissait en queue de tableau au lieu d'à côté de `x/y`. Ajout dans `ordreCourant` entre `y` et `tags`.
+
+**Choix volontaire documenté** (non corrigé) :
+- Préférences d'évitement (localStorage par plan) **non sérialisées** dans les exports session. Volontaire : ces préfs sont locales à l'user, pas portables. Si besoin futur, ajout via checkbox optionnelle dans Export Session Full.
+
+### Mode clic carte pour évitements (audit)
+
+Bouton **📍 Cliquer sur la carte** dans la section "🚫 Préférences d'évitement" :
+- Click → la modale se réduit en floater orange "Mode clic évitement actif"
+- Chaque clic sur la map ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)")
+- Compteur live dans le floater
+- Bouton **✓ Terminer** réaffiche la modale
+
+État `_itiAvoidClickActive` + handler `_itiAvoidClickHandler` séparés du mode clic waypoints existant (pas de conflit possible). Pattern identique à `_activerModeClicCarte`/`_desactiverModeClicCarte`.
+
 ### Fix Z-order multi-niveau (bug remonté KARMA pendant Karma_dev)
 
 En multi-niveau, une galerie au Niv 0 doit toujours apparaître AU-DESSUS d'une galerie au Niv -1, etc. Avant ce fix, l'ordre était plat (= ordre d'insertion). Désormais (uniquement si `multiLevel === true`) :

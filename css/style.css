@@ -4662,6 +4662,24 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   background: rgba(255, 153, 51, 0.35);
 }
 
+/* 🚫 v169 (Karma_dev) : floater orange pour le mode clic carte d'évitement
+   (différent du floater cyan des waypoints itinéraire pour éviter la confusion).
+   Hérite de .kta-iti-floater (position, layout) puis override la couleur. */
+.kta-iti-floater.kta-iti-avoid-floater {
+  background: rgba(120, 60, 0, 0.95);
+  border: 1px solid rgba(255, 153, 51, 0.55);
+  box-shadow: 0 4px 16px rgba(255, 153, 51, 0.25);
+}
+.kta-iti-floater.kta-iti-avoid-floater .kta-iti-floater-icon {
+  color: #ffb266;
+}
+/* Bouton "📍 Cliquer sur la carte" état actif (mode clic en cours) */
+#kta-iti-avoid-click-map.kta-actif {
+  background: rgba(255, 153, 51, 0.25);
+  border-color: rgba(255, 153, 51, 0.65);
+  color: #ffe4c2;
+}
+
 .kta-iti-mode-toggle {
   display: flex;
   align-items: center;

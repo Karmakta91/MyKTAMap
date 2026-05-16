@@ -355,9 +355,10 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
 
 1. Ouvre la modale **🗺️ Itinéraire** (groupe 🧭 Tracker → 🗺️ Calculer un itinéraire).
 2. Déplie la section **🚫 Préférences d'évitement (optionnel)** en cliquant le titre.
-3. **Points à éviter** :
-   - Tape un nom dans la recherche autocomplete et clique le résultat
-   - OU saisis un ID exact dans le champ texte et clique "+ Ajouter par ID"
+3. **Points à éviter** (3 méthodes au choix) :
+   - **Recherche autocomplete** : tape un nom dans le champ et clique le résultat
+   - **Saisie par ID** : tape l'ID exact dans le champ texte et clique "+ Ajouter par ID"
+   - **Clic carte** (depuis fix audit) : bouton **📍 Cliquer sur la carte** → la modale se réduit en floater orange et chaque clic sur la carte ajoute un point d'évitement. Bouton ✓ Terminer pour revenir à la modale.
    - Les points ajoutés apparaissent en chips orange avec ✕ pour retirer
 4. **Tags à éviter** :
    - Clique sur un chip de tag pour le toggler (gris → orange)

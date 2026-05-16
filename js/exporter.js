@@ -1835,20 +1835,29 @@
     }
 
     // Tracés
+    // 🪜 v169 (Karma_dev) : ajout de "Jonction interniveau" (magenta) — type
+    // de tracé spécifique au mode multi-niveau, bridge entre 2 niveaux pour
+    // le pathfinder. Visible dans la légende sans condition (si l'export ne
+    // contient pas de jonction, la ligne reste mais inerte — minor).
     if (leg.contenu.traces) {
       entrees.push({ section: "🛣️ Tracés", lignes: [
-        { label: "Route principale",  lineColor: "#00ff00" },
-        { label: "Route secondaire",  lineColor: "#b000ff" },
-        { label: "Chemin",            lineColor: "#ffff00" }
+        { label: "Route principale",      lineColor: "#00ff00" },
+        { label: "Route secondaire",      lineColor: "#b000ff" },
+        { label: "Chemin",                lineColor: "#ffff00" },
+        { label: "Jonction interniveau",  lineColor: "#ff4ecb" }
       ]});
     }
 
     // Zones
+    // 🚫 v169 (Karma_dev) : ajout de "Inaccessible" (rouge foncé) — zone
+    // bloquante pour le pathfinder (contrainte dure). Couleur uni rouge
+    // foncé (pas de hachures dans cette pipe canvas — voir ZONE_STYLES_EXPORT).
     if (leg.contenu.zones) {
       entrees.push({ section: "⬛ Zones", lignes: [
         { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
         { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
-        { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" }
+        { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
+        { label: "Inaccessible (bloque l'itinéraire)", fillColor: "#7a0000", borderColor: "#5a0a0a" }
       ]});
     }
 
