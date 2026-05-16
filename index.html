@@ -1158,7 +1158,9 @@
 
         if (!file) return;
 
-        // Vérifier que le ZIP correspond bien (nom du plan)
+        // Vérifier que le ZIP correspond bien (nom du plan) ET les modes (V1/V2,
+        // multi-niveau) — sinon incohérence registre vs ZIP réel.
+        let zipFlags = { tiledV2: false, multiLevel: false };
         try {
           const { planConfigFile } = await extraireZip(file);
           const text = await planConfigFile.text();
@@ -1166,6 +1168,11 @@
           const ziPName = (cfg.plan?.name || "").trim();
           const planName = (plan.name || "").trim();
 
+          // Capturer les flags du ZIP pour le sync ultérieur du registre
+          zipFlags.tiledV2    = cfg.plan?.tiledV2    === true;
+          zipFlags.multiLevel = cfg.plan?.multiLevel === true;
+
+          // 1) Check nom du plan
           if (ziPName && planName && ziPName !== planName) {
             const ok = confirm(
               "⚠️ Ce ZIP contient le plan « " + ziPName + " » mais vous avez cliqué sur « " + planName + " ».\n\n" +
@@ -1173,10 +1180,50 @@
             );
             if (!ok) return;
           }
+
+          // 2) v170 fix : check discordance de mode (V1/V2 + multi-niveau).
+          // Cas remonté : user reset + import sauvegarde liste → registre a
+          // `tiledV2: true` mémorisé, mais le ZIP fourni à la re-sélection est
+          // un V1 du même plan → incohérence visuelle (badge V2 sur plan V1)
+          // + risque de crash runtime (modules qui lisent les flags registre).
+          const registreV2  = plan.tiledV2    === true;
+          const registreML  = plan.multiLevel === true;
+          const discordances = [];
+          if (registreV2  && !zipFlags.tiledV2)    discordances.push({ flag: "V2 tuilé",    avant: "V2 tuilé (Google Maps-like)",        apres: "V1 classique (image entière en RAM)" });
+          if (!registreV2 && zipFlags.tiledV2)     discordances.push({ flag: "V2 tuilé",    avant: "V1 classique (image entière en RAM)", apres: "V2 tuilé (Google Maps-like)" });
+          if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: "Multi-niveau (carrière multi-étages)",apres: "Mono-niveau (classique)" });
+          if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: "Mono-niveau (classique)",            apres: "Multi-niveau (carrière multi-étages)" });
+
+          if (discordances.length > 0) {
+            const lignes = discordances.map(function(d) {
+              return "• " + d.flag + " :\n   Avant → " + d.avant + "\n   Maintenant → " + d.apres;
+            }).join("\n\n");
+            const ok = confirm(
+              "⚠️ Mode différent détecté pour ce plan\n\n" +
+              "Le plan « " + (plan.name || plan.id) + " » était mémorisé dans un certain mode, " +
+              "mais le ZIP que vous venez de fournir est dans un autre mode :\n\n" +
+              lignes + "\n\n" +
+              "👉 Si vous continuez, les badges de ce plan dans la liste seront mis à jour " +
+              "pour refléter le nouveau mode (le contenu du ZIP fait foi).\n\n" +
+              "Continuer ?"
+            );
+            if (!ok) return;
+          }
         } catch(e) {
           setStatus("ZIP invalide : " + (e.message || e), true);
           return;
         }
+
+        // v170 fix : aligner les flags du registre AVANT le chargement.
+        // addOrUpdate (appelé par startImportedPlan) merge avec Object.assign
+        // → si on ne sync pas ici, les anciens flags tiledV2/multiLevel
+        // restent en place (le ZIP V1 ne les déclare pas, donc Object.assign
+        // ne les écrase pas).
+        try {
+          if (window.PlanRegistry && typeof window.PlanRegistry.syncModeFlags === "function") {
+            window.PlanRegistry.syncModeFlags(plan.id, zipFlags);
+          }
+        } catch(e) { console.warn("[ReSelect] syncModeFlags KO :", e); }
 
         // Re-sélection = même règle que le clic sur Mes plans :
         // segmented explicite (≠ "auto") → override

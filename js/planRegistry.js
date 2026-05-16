@@ -232,6 +232,48 @@
     return true;
   }
 
+  // ========== SYNC MODE FLAGS (v170 — bug re-sélection ZIP) ==========
+  // Aligne les flags `tiledV2` et `multiLevel` du registre sur ce qui est
+  // déclaré dans un plan-config.json fraîchement uploadé. Différent de
+  // addOrUpdate qui MERGE (préserve les flags existants si la nouvelle entry
+  // ne les redéclare pas) : ici on SET ou DELETE explicitement selon le
+  // ZIP source de vérité.
+  //
+  // Cas d'usage : user reset + import sauvegarde liste (registre = tiledV2:true)
+  // puis re-sélectionne un ZIP V1 du même plan → on doit aligner les flags
+  // pour éviter une incohérence visuelle (badge V2 sur un plan V1) et tout
+  // crash runtime potentiel (si un module lit le flag du registre au lieu
+  // de PLAN_CONFIG).
+  //
+  // flags : { tiledV2: boolean, multiLevel: boolean }
+  // - true  → set le flag à true
+  // - false → delete le flag (= absent dans le registre = V1 / mono-niveau)
+  function syncModeFlags(id, flags) {
+    init();
+    const p = findById(id);
+    if (!p) {
+      console.warn("[PlanRegistry] syncModeFlags : plan introuvable", id);
+      return false;
+    }
+    let changed = false;
+    if (flags && Object.prototype.hasOwnProperty.call(flags, "tiledV2")) {
+      if (flags.tiledV2 === true) {
+        if (p.tiledV2 !== true) { p.tiledV2 = true; changed = true; }
+      } else {
+        if (p.tiledV2 !== undefined) { delete p.tiledV2; changed = true; }
+      }
+    }
+    if (flags && Object.prototype.hasOwnProperty.call(flags, "multiLevel")) {
+      if (flags.multiLevel === true) {
+        if (p.multiLevel !== true) { p.multiLevel = true; changed = true; }
+      } else {
+        if (p.multiLevel !== undefined) { delete p.multiLevel; changed = true; }
+      }
+    }
+    if (changed) _save();
+    return changed;
+  }
+
   // ========== EXPORT / IMPORT ==========
   function exportToFile() {
     init();
@@ -469,6 +511,7 @@
     setPerfPreset:        setPerfPreset,
     getMultiLevel:        getMultiLevel,
     setMultiLevel:        setMultiLevel,
+    syncModeFlags:        syncModeFlags,
     exportToFile:         exportToFile,
     importFromFile:       importFromFile,
     statsImport:          statsImport,
