@@ -221,6 +221,26 @@ window._applyLevelFilterToDataZones = function() {
   window._ktaDataPolygons.forEach(_filtreNiveauSurPolygonData);
 };
 
+// =========================
+// 🌍 GETTERS PUBLICS — embedded zones (data layers)
+// =========================
+// Symetrique de window.getAllEmbeddedRoads (road.js) : expose les zones
+// embarquees dans les data layers (puits.json, etc.) sous forme reutilisable
+// par les exports (notamment KMZ qui doit inclure TOUT le contenu visible
+// du plan, pas uniquement la session).
+// Renvoie [{type, points, level}, ...] — meme format que window.getZones()
+// (zones session) pour permettre une concatenation directe sans transformation.
+window.getAllEmbeddedZones = function() {
+  if (!Array.isArray(window._ktaDataPolygons)) return [];
+  return window._ktaDataPolygons
+    .filter(function(e) {
+      return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
+    })
+    .map(function(e) {
+      return { type: e.type, points: e.points, level: e.level || 0 };
+    });
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
@@ -256,6 +276,12 @@ function ajouterPointsDepuisJSON(url, layer) {
           // `level`, on le stocke sur le marker pour le filtre runtime.
           // Absent (cas usuel sur plans v147) → traite comme level 0.
           marker._ktaLevel = Number.isInteger(p.level) ? p.level : 0;
+          // 🌍 v169 (Karma_dev) : on stocke aussi nom + tags + id pour que
+          // KmzExport puisse construire les Placemarks KML (label + style icone).
+          // Sans ça, les data layers sortiraient anonymes dans le KMZ.
+          marker._ktaNom  = p.nom || "";
+          marker._ktaId   = p.id  || "";
+          marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
 

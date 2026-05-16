@@ -1789,6 +1789,9 @@ function _pingInternet() {
     });
   });
 }
+// Expose globalement pour les autres modules (ex: sessionExporter onglet KMZ qui
+// vérifie la connexion avant d'ouvrir un lien externe Google Maps).
+window._pingInternet = _pingInternet;
 
 // =========================
 // 🔄 MISE À JOUR DOUCE — purge SW cache uniquement, préserve toutes les données
