@@ -254,8 +254,9 @@
   //     zones: [...],
   //     dataLayerItems: { points: [...], roads: [...], zones: [...] }
   //   },
-  //   imageBaseUrl: string                   // URL relative ou data: pour le GroundOverlay
+  //   imageBaseUrl: string,                  // URL relative ou data: pour le GroundOverlay
   //                                          // (résolu par RUNTIME_ASSETS ou le caller)
+  //   imageOpacity: number                   // 0-100, default 60 (% d'opacité du GroundOverlay)
   // }
   //
   // Retourne le KML complet en string.
@@ -273,6 +274,17 @@
       const cTR = planToGps(t, opts.imageW, 0);
       const cBR = planToGps(t, opts.imageW, opts.imageH);
       const cBL = planToGps(t, 0,          opts.imageH);
+
+      // Opacité : KML <color> au format AABBGGRR (alpha + bleu + vert + rouge).
+      // ffffffff = blanc full opaque (default Google Earth si <color> absent).
+      // L'opacité s'applique à l'image via teinte blanche × alpha.
+      // Default 60% si non spécifié (lecture sous le plan sans masquer).
+      const opPct = (typeof opts.imageOpacity === "number") ? opts.imageOpacity : 60;
+      const opClamped = Math.max(0, Math.min(100, opPct));
+      const alpha255 = Math.round(opClamped * 2.55);
+      const alphaHex = (alpha255 < 16 ? "0" : "") + alpha255.toString(16);
+      const colorTag = '<color>' + alphaHex + 'ffffff</color>';
+
       // gx:LatLonQuad supporte une orientation arbitraire (4 coins libres),
       // contrairement à LatLonBox qui suppose un axes-aligned + rotation
       // unique. Plus robuste pour les plans tournés.
@@ -280,6 +292,7 @@
       groundOverlay =
         '<GroundOverlay>' +
           '<name>' + _xmlEsc(planName + " — plan image") + '</name>' +
+          colorTag +
           '<Icon><href>' + _xmlEsc(opts.imageBaseUrl) + '</href></Icon>' +
           '<gx:LatLonQuad xmlns:gx="http://www.google.com/kml/ext/2.2">' +
             '<coordinates>' +

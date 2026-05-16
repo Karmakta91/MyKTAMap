@@ -287,6 +287,36 @@
       .kta-kmz-chip-niveau input[type="checkbox"] {
         accent-color: #8cb4ff;
       }
+      .kta-kmz-opacity-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 4px 0 8px 28px;
+        padding: 4px 6px;
+        font-size: 12px;
+        color: #c0c8d8;
+      }
+      .kta-kmz-opacity-row.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .kta-kmz-opacity-lbl {
+        color: #8892a4;
+        white-space: nowrap;
+      }
+      .kta-kmz-opacity-slider {
+        flex: 1;
+        min-width: 120px;
+        accent-color: #8cb4ff;
+        cursor: pointer;
+      }
+      .kta-kmz-opacity-val {
+        font-family: monospace;
+        font-size: 12px;
+        color: #f4c542;
+        min-width: 36px;
+        text-align: right;
+      }
     `;
     document.head.appendChild(s);
   }
@@ -1324,12 +1354,17 @@
       // ===== Contenu à inclure =====
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">📦 Contenu à inclure</div>' +
-        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_image" checked><span>🖼️ Image plan (GroundOverlay)</span></label>' +
-        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_points" checked><span>📍 Points (éditeur + data layers)</span></label>' +
-        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_roads" checked><span>🛣️ Tracés (principal / secondaire / chemin)</span></label>' +
-        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_zones" checked><span>⬛ Zones (eau / remblais / effondrement / inaccessible)</span></label>' +
-        (mlOn ? '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_jonctions" checked><span>🪜 Jonctions interniveau</span></label>' : '') +
-        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_iti" checked><span>🗺️ Itinéraire actif (si présent)</span></label>' +
+        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_image" checked><span>🖼️ Image plan (GroundOverlay)</span></label>' +
+        '<div class="kta-kmz-opacity-row" id="kmz_opacity_wrap">' +
+          '<label for="kmz_img_opacity" class="kta-kmz-opacity-lbl">Opacité image :</label>' +
+          '<input type="range" id="kmz_img_opacity" min="0" max="100" step="5" value="60" class="kta-kmz-opacity-slider">' +
+          '<span id="kmz_img_opacity_val" class="kta-kmz-opacity-val">60%</span>' +
+        '</div>' +
+        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_points" checked><span>📍 Points (éditeur + data layers)</span></label>' +
+        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_roads" checked><span>🛣️ Tracés (principal / secondaire / chemin)</span></label>' +
+        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_zones" checked><span>⬛ Zones (eau / remblais / effondrement / inaccessible)</span></label>' +
+        (mlOn ? '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_jonctions" checked><span>🪜 Jonctions interniveau</span></label>' : '') +
+        '<label class="kta-ses-cb-row"><input type="checkbox" id="kmz_inc_iti" checked><span>🗺️ Itinéraire actif (si présent)</span></label>' +
       '</div>' +
 
       niveauxBloc;
@@ -1356,6 +1391,25 @@
       const btn = document.getElementById("kmz_" + letter + "_click");
       if (btn) btn.addEventListener("click", function() { _kmzActiverModeClic(letter); });
     });
+
+    // Slider opacité image : maj du % en live + greying out si checkbox image décochée
+    const sliderOp = document.getElementById("kmz_img_opacity");
+    const sliderOpVal = document.getElementById("kmz_img_opacity_val");
+    if (sliderOp && sliderOpVal) {
+      sliderOp.addEventListener("input", function() {
+        sliderOpVal.textContent = sliderOp.value + "%";
+      });
+    }
+    const cbImg = document.getElementById("kmz_inc_image");
+    const opWrap = document.getElementById("kmz_opacity_wrap");
+    if (cbImg && opWrap) {
+      const _majOpState = function() {
+        if (cbImg.checked) opWrap.classList.remove("disabled");
+        else               opWrap.classList.add("disabled");
+      };
+      cbImg.addEventListener("change", _majOpState);
+      _majOpState();
+    }
 
     // Premier rendu aperçu (si calibrage restauré)
     _kmzRafraichirApercu();
@@ -1634,6 +1688,10 @@
       }
       const allPoints = editorPoints.concat(dataLayerPoints);
 
+      // Opacité image : slider 0-100% → passé en pourcent au générateur
+      const opSlider = document.getElementById("kmz_img_opacity");
+      const imageOpacity = opSlider ? Math.max(0, Math.min(100, parseInt(opSlider.value, 10) || 60)) : 60;
+
       const kmzBlob = await window.KmzExport.genererKmz({
         planName:    (window.PLAN_CONFIG?.plan?.name)    || "Plan MyKTAMap",
         planVersion: (window.PLAN_CONFIG?.plan?.version) || "",
@@ -1641,6 +1699,7 @@
         imageW:      window.APP_CONFIG.imageWidth,
         imageH:      window.APP_CONFIG.imageHeight,
         transform:   transform,
+        imageOpacity: imageOpacity,    // 0-100 (% d'opacité du GroundOverlay)
         include: {
           image:      inclImage,
           points:     document.getElementById("kmz_inc_points")?.checked,
