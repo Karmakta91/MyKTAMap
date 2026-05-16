@@ -31,6 +31,19 @@ Nouveau 4ème type de zone polygonale (`inaccessible`) qui bloque tout segment d
 - `_segmentBloqueParZoneInaccess` (filtre niveau-aware, segments "transit" jamais bloqués)
 - `_collecterZonesInaccessibles` (lit session via getZones + data layers via _ktaDataPolygons)
 
+### Fix Z-order multi-niveau (bug remonté KARMA pendant Karma_dev)
+
+En multi-niveau, une galerie au Niv 0 doit toujours apparaître AU-DESSUS d'une galerie au Niv -1, etc. Avant ce fix, l'ordre était plat (= ordre d'insertion). Désormais (uniquement si `multiLevel === true`) :
+
+- Tri primaire **par level ascendant** : LVL -∞ → -2 → -1 → 0 → +1 → +∞ (bas en arrière, haut au-dessus)
+- Tri secondaire **par type** au sein du même niveau : `chemin < secondaire < principal < jonction` (Principal au-dessus de chemin)
+- Itinéraire toujours en dernier (au-dessus de tout)
+- Jonctions triées par `max(fromLevel, toLevel)` (= apparaissent au-dessus du niveau inférieur, cohérent avec "escalier qui monte")
+
+Appliqué dans 4 endroits : `road.js > renderRoads` (on-map session), `utils.js > ajouterPointsDepuisJSON` (création polylines data layer), `utils.js > telechargerPlan` (export PNG rapide), `exporter.js > _genererCanvasExport` (export PNG avancé). Tous utilisent `[...arr].sort(...)` (copie immutable de l'array source).
+
+Rétro-compat absolue : si `multiLevel === false`, ordre d'insertion conservé (= comportement v147 strict).
+
 ### Feature 2 — Préférences d'évitement (contrainte SOUPLE)
 
 Section repliable "🚫 Préférences d'évitement (optionnel)" dans la modale itinéraire. 3 types de contraintes :

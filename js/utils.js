@@ -269,9 +269,26 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       requestAnimationFrame(ajouterBatch);
 
-      // Routes embarquées en lecture seule dans le même layer
+      // Routes embarquées en lecture seule dans le même layer.
+      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
+      // Cohérent avec le tri dans road.js > renderRoads — "galerie niveau N
+      // toujours sous celles du niveau N+1". Au sein du même niveau :
+      // chemin < secondaire < principal (Principal dessus). Si multiLevel OFF
+      // → ordre d'origine du JSON conservé (v147 strict).
       if (Array.isArray(json.roads) && json.roads.length > 0) {
-        json.roads.forEach(function(road) {
+        const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+        let roadsToRender = json.roads;
+        if (_mlOn) {
+          const TYPE_ORDER = { chemin: 0, secondaire: 1, principal: 2 };
+          roadsToRender = [...json.roads].sort(function(a, b) {
+            const la = Number.isInteger(a.level) ? a.level : 0;
+            const lb = Number.isInteger(b.level) ? b.level : 0;
+            if (la !== lb) return la - lb;  // bas en-dessous, haut au-dessus
+            return (TYPE_ORDER[a.type] != null ? TYPE_ORDER[a.type] : 99) -
+                   (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
+          });
+        }
+        roadsToRender.forEach(function(road) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
@@ -572,8 +589,21 @@ async function telechargerPlan() {
           }
 
           // Routes embarquées
+          // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
           if (Array.isArray(json.roads) && json.roads.length > 0) {
-            json.roads.forEach(function(r) {
+            const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+            let roadsR = json.roads;
+            if (_mlOnExp) {
+              const T_ORDER = { chemin: 0, secondaire: 1, principal: 2 };
+              roadsR = [...json.roads].sort(function(a, b) {
+                const la = Number.isInteger(a.level) ? a.level : 0;
+                const lb = Number.isInteger(b.level) ? b.level : 0;
+                if (la !== lb) return la - lb;
+                return (T_ORDER[a.type] != null ? T_ORDER[a.type] : 99) -
+                       (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
+              });
+            }
+            roadsR.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
               drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
@@ -621,9 +651,28 @@ async function telechargerPlan() {
     // dessinait l'itinéraire en blanc PAR-DESSUS les routes colorées sous-jacentes,
     // ce qui les "effaçait" visuellement dans l'export.
     // 🏗️ Multi-niveau : filtre WYSIWYG (jonctions visibles si fromLevel/toLevel ∈ visibles).
+    // 🏗️ v169 : tri Z-index ascending par level si multiLevel ON (cohérent
+    // avec road.js > renderRoads). Niveau bas en arrière, haut au-dessus.
     const roads = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; })
       .filter(function(r) { return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(r); });
+    const _mlOnExport = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    if (_mlOnExport) {
+      const TYPE_ORDER = { chemin: 0, secondaire: 1, principal: 2, jonction: 3 };
+      roads.sort(function(a, b) {
+        const la = (a.type === "jonction")
+          ? Math.max(Number.isInteger(a.fromLevel) ? a.fromLevel : 0,
+                     Number.isInteger(a.toLevel)   ? a.toLevel   : 0)
+          : (Number.isInteger(a.level) ? a.level : 0);
+        const lb = (b.type === "jonction")
+          ? Math.max(Number.isInteger(b.fromLevel) ? b.fromLevel : 0,
+                     Number.isInteger(b.toLevel)   ? b.toLevel   : 0)
+          : (Number.isInteger(b.level) ? b.level : 0);
+        if (la !== lb) return la - lb;
+        return (TYPE_ORDER[a.type] != null ? TYPE_ORDER[a.type] : 99) -
+               (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
+      });
+    }
     const ROAD_STYLES = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },

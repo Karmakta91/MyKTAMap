@@ -1286,7 +1286,27 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 **Styles** : `.kta-iti-avoid-*` dans `style.css` — couleur thématique orange (cohérent semantic "warning"), chips arrondis, etat actif/inactif sur tags
 
-#### 31.4 Pour ajouter une 5ème type de zone (futur)
+#### 31.4 Tri Z-index des roads en mode multi-niveau (depuis v169)
+
+Bug remonté KARMA : en mode multi-niveau, l'ordre d'affichage des routes ne reflétait pas la hiérarchie physique. Une galerie au Niv 0 pouvait apparaître **en-dessous** d'une galerie au Niv -1 si elle avait été tracée avant — c'était l'ordre d'insertion plat.
+
+**Règle implémentée** (uniquement quand `multiLevel === true`) :
+- **Tri primaire** : `level` **ascendant** — niveau bas en arrière, niveau haut au-dessus (LVL -∞ → -2 → -1 → 0 → +1 → +∞)
+- **Tri secondaire** : type au sein du même niveau — `chemin (0) < secondaire (1) < principal (2) < jonction (3)`. Principal au-dessus de chemin/secondaire = hiérarchie visuelle naturelle.
+- **Itinéraire** : toujours en dernier (au-dessus de tout, c'est la navigation active).
+- **Jonctions** : tri par `max(fromLevel, toLevel)` — le pont apparaît au-dessus du niveau inférieur, cohérent avec l'analogie "escalier qui monte au-dessus du sol bas".
+
+**Sites d'application** (4 endroits) :
+1. `js/road.js > renderRoads` — affichage Leaflet on-map des routes de session
+2. `js/utils.js > ajouterPointsDepuisJSON` — création initiale des polylines data layer
+3. `js/utils.js > telechargerPlan` — export PNG rapide (session + embedded)
+4. `js/exporter.js > _genererCanvasExport` — export PNG avancé (session + embedded)
+
+**Pattern** : copie triée (`[...arr].sort(...)`) pour ne pas muter l'array source. Sort prédicat composé level → type.
+
+**Rétro-compat** : si `multiLevel === false`, ordre d'insertion conservé (= comportement v147 strict). Pas de régression sur les plans single-level.
+
+#### 31.5 Pour ajouter une 5ème type de zone (futur)
 
 **À NE PAS OUBLIER** quand on ajoute un nouveau type de zone (au-delà des 4 actuels eau/remblais/effondrement/inaccessible) :
 

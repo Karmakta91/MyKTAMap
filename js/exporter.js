@@ -1498,7 +1498,20 @@
 
       // Routes embarquées
       // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
-      drawnRoads.forEach(function(r) {
+      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
+      let drawnRoadsSorted = drawnRoads;
+      const _mlOnExpAdv = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+      if (_mlOnExpAdv) {
+        const T_ORDER = { chemin: 0, secondaire: 1, principal: 2 };
+        drawnRoadsSorted = [...drawnRoads].sort(function(a, b) {
+          const la = Number.isInteger(a.level) ? a.level : 0;
+          const lb = Number.isInteger(b.level) ? b.level : 0;
+          if (la !== lb) return la - lb;
+          return (T_ORDER[a.type] != null ? T_ORDER[a.type] : 99) -
+                 (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
+        });
+      }
+      drawnRoadsSorted.forEach(function(r) {
         if (!_itemPasseLevels(r)) return;
         _drawPolyline(r.points || [], RS_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
         if (r.points && r.points.length >= 2) allRoadsForIntersect.push(r);
@@ -1530,6 +1543,25 @@
     // segments du réseau sous-jacent par-dessus lesquels passait l'itinéraire.
     if (opts.ann.roads && window.getRoads) {
       const roads = window.getRoads().filter(function(r) { return r.type !== "itinerary"; });
+      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
+      // Cohérent avec road.js > renderRoads. Niveau bas en arrière, haut au-dessus.
+      const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+      if (_mlOnExp) {
+        const T_ORDER = { chemin: 0, secondaire: 1, principal: 2, jonction: 3 };
+        roads.sort(function(a, b) {
+          const la = (a.type === "jonction")
+            ? Math.max(Number.isInteger(a.fromLevel) ? a.fromLevel : 0,
+                       Number.isInteger(a.toLevel)   ? a.toLevel   : 0)
+            : (Number.isInteger(a.level) ? a.level : 0);
+          const lb = (b.type === "jonction")
+            ? Math.max(Number.isInteger(b.fromLevel) ? b.fromLevel : 0,
+                       Number.isInteger(b.toLevel)   ? b.toLevel   : 0)
+            : (Number.isInteger(b.level) ? b.level : 0);
+          if (la !== lb) return la - lb;
+          return (T_ORDER[a.type] != null ? T_ORDER[a.type] : 99) -
+                 (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
+        });
+      }
       const RS = {
         principal:   { color: "#00ff00", weight: 5 },
         secondaire:  { color: "#b000ff", weight: 5 },
