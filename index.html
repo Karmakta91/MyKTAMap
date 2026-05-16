@@ -728,9 +728,10 @@
         const meta = plan.lastOpened
           ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
           : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
-        // Structure (v170 restructurée) :
-        // - .plan-row-title = ligne 1 : nom (ellipsis) + version + badge storage uniquement
-        // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL (dégagés du titre)
+        // Structure (v170 restructurée + v170 suite : tous les badges meta sur ligne 2) :
+        // - .plan-row-title = ligne 1 : nom (ellipsis) + version uniquement
+        // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL + badge storage (✅/🔐/📁)
+        //                              groupés ensemble pour scan visuel rapide
         // - .plan-row-sub   = ligne 3 : sub (path serveur ou nom fichier + taille)
         // - .plan-row-date  = ligne 4 : date d'ouverture / "découvert"
         return `
@@ -740,9 +741,8 @@
               <div class="plan-row-title">
                 <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
                 ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
-                ${badgeStorage ? '<span class="plan-row-badges">' + badgeStorage + '</span>' : ''}
               </div>
-              <div class="plan-row-modes">${badgesMode}</div>
+              <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
               <div class="plan-row-sub">${escapeHtml(sub)}</div>
               ${meta}
             </div>

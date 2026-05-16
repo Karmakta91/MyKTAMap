@@ -3266,10 +3266,13 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-weight: 500;
 }
 
-/* Container des badges (mode + storage) à droite du nom — flex-shrink:0
-   garantit qu'ils ne se font jamais grignoter par l'ellipsis du nom.
-   ⚠️ v170 : ne contient plus que le badge storage (✅/🔐/📁). Les badges
-   modes V1/V2/M-LVL sont passés sur ligne 2 dans .plan-row-modes. */
+/* Container des badges historique — DEPRECATED v170 :
+   anciennement à droite du nom sur ligne 1 (modes + storage).
+   Le HTML actuel ne le génère plus dans planRowHTML — gardé en CSS pour
+   compat éventuelle (extensions, plugins user). Le storage badge est
+   désormais dans .plan-row-modes (ligne 2 avec les badges modes V1/V2/M-LVL).
+   Si on supprime cette classe à terme, vérifier qu'aucun consommateur tiers
+   n'en dépend. */
 .plan-row-badges {
   flex-shrink: 0;
   display: inline-flex;
@@ -3277,14 +3280,18 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   gap: 4px;
 }
 
-/* 🆕 v170 : ligne 2 dédiée aux badges modes V1/V2/M-LVL (sous le nom du plan).
-   Avant : badges modes affichés à droite du nom (sur la même ligne) →
-   problème avec les noms longs qui finissaient en ellipsis tout en laissant
-   plus de place aux badges (visuellement confusant + nom tronqué inutilement).
-   Maintenant : nom prend toute la largeur ligne 1, badges sur leur propre
-   ligne en bas, alignés à gauche. */
+/* 🆕 v170 : ligne 2 dédiée aux badges meta (sous le nom du plan).
+   - Suite 1 : badges modes V1/V2/M-LVL uniquement
+   - Suite 2 (ici) : badges modes + badge storage (✅/🔐/📁) groupés
+                     ensemble pour qu'un scan visuel donne d'un coup tous
+                     les attributs techniques (mode + persistance) du plan
+                     sans avoir à regarder à 2 endroits.
+   align-items:center pour bien aligner les badges modes (9px monospace
+   avec fond/border) et le badge storage (emoji 11px sans fond) qui ont
+   des hauteurs différentes. */
 .plan-row-modes {
   display: flex;
+  align-items: center;
   gap: 4px;
   margin-top: 3px;
   flex-wrap: wrap;
