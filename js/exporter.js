@@ -433,7 +433,7 @@
     const infos = {
       tags:      _listerTagsPoints(points),
       roadTypes: _compterTypes(roads, ["principal", "secondaire", "chemin"]),
-      zoneTypes: _compterTypes(zones, ["eau", "remblais", "effondrement"])
+      zoneTypes: _compterTypes(zones, ["eau", "remblais", "effondrement", "inaccessible"])
     };
     _layerPointsCache[layerCfg.id] = infos;
     return infos;
@@ -479,7 +479,7 @@
 
     const hasTags  = tagsList.length > 0;
     const hasRoads = ["principal","secondaire","chemin"].some(function(t) { return roadTypes[t] > 0; });
-    const hasZones = ["eau","remblais","effondrement"].some(function(t) { return zoneTypes[t] > 0; });
+    const hasZones = ["eau","remblais","effondrement","inaccessible"].some(function(t) { return zoneTypes[t] > 0; });
 
     if (!hasTags && !hasRoads && !hasZones) {
       cont.innerHTML = "";
@@ -520,8 +520,8 @@
 
     // Sous-cases types de zones embarquées
     if (hasZones) {
-      const zoneLabels = { eau: "🟦 Eau", remblais: "⬛ Remblais", effondrement: "🟥 Effondrement" };
-      ["eau","remblais","effondrement"].forEach(function(t) {
+      const zoneLabels = { eau: "🟦 Eau", remblais: "⬛ Remblais", effondrement: "🟥 Effondrement", inaccessible: "⛔ Inaccessible" };
+      ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
         if (!zoneTypes[t]) return;
         const id = "export_layer_" + safeId + "_zone_" + t;
         html += `<label class="kta-export-cb-row" style="margin-left:24px; font-size:12px;">
@@ -748,6 +748,7 @@
       rowSub("zones_eau",          "🟦 Eau",           zonesByType.eau,          true) +
       rowSub("zones_remblais",     "⬛ Remblais",      zonesByType.remblais,     true) +
       rowSub("zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement, true) +
+      rowSub("zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible, true) +
 
       row("mesure",  "Mesure de distance",      nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
@@ -761,7 +762,7 @@
     // Synchronisation parent ↔ enfants
     setTimeout(function() {
       _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]);
-      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement"]);
+      _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]);
 
       // Sync parent Points ↔ tags
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
@@ -920,7 +921,7 @@
       const cb = document.getElementById("ann_roads_" + t);
       etat.ann["roads_" + t] = cb ? cb.checked : true;
     });
-    ["eau","remblais","effondrement"].forEach(function(t) {
+    ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
     });
@@ -1117,7 +1118,8 @@
     opts.ann.zonesTypes = {
       eau:          document.getElementById("ann_zones_eau")?.checked          ?? true,
       remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
-      effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true
+      effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true,
+      inaccessible: document.getElementById("ann_zones_inaccessible")?.checked ?? true
     };
     // 🏗️ Multi-niveau (v148) : Set des niveaux coches dans la section dediee.
     // - null → multiLevel OFF pour ce plan → pas de filtrage niveau
@@ -1321,12 +1323,16 @@
     if (opts.ann.zones && window.getZones) {
       const zones = window.getZones();
       const ZS = {
-        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+        eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+        remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+        effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+        // v169 : Zone inaccessible. Pour l'export canvas PNG, on utilise un
+        // rouge fonce uni semi-transparent (les hachures SVG runtime ne sont
+        // pas portables tel quel au canvas — perte acceptable pour l'export).
+        inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
       };
-      const ordre = { eau: 0, remblais: 1, effondrement: 2 };
-      const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true };
+      const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
+      const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
       const triees = [...zones]
         .filter(function(z) { return filtreZ[z.type] !== false; })
         // 🏗️ Multi-niveau : filtre sur les niveaux coches dans la modale Avancé
@@ -1479,9 +1485,9 @@
         }
       }
 
-      // Zones embarquées (arrière-plan, triées eau → remblais → effondrement)
+      // Zones embarquées (arrière-plan, triées eau → remblais → effondrement → inaccessible)
       // 🏗️ Multi-niveau : filtre WYSIWYG (visibleLevels) sur les zones embarquees.
-      const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
+      const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       [...drawnZones].sort(function(a, b) {
         return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
       }).forEach(function(z) {

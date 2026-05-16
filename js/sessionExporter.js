@@ -398,7 +398,7 @@
   function _renderAdvanced() {
     const d = _compter();
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
-    const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement"]);
+    const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
     const tagsList = _listerTagsPoints(d.points);
 
     function row(id, label, count, defaultChecked) {
@@ -463,6 +463,7 @@
         ${rowSub("adv_zones_eau",          "🟦 Eau",           zonesByType.eau.length,          true)}
         ${rowSub("adv_zones_remblais",     "⬛ Remblais",      zonesByType.remblais.length,     true)}
         ${rowSub("adv_zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement.length, true)}
+        ${rowSub("adv_zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible.length, true)}
 
         <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
@@ -510,7 +511,7 @@
     }
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
-    syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement"]);
+    syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
 
     // Synchro parent Points ↔ tags (dynamique : la liste varie selon les points)
     const tagsList = _listerTagsPoints(_compter().points);
@@ -550,7 +551,7 @@
     // de filtre fin (cohérent avec l'export image avancé).
     const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
-    const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement"]);
+    const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
 
     function row(id, label, count, defaultChecked) {
       const disabled = count === 0 ? " disabled" : "";
@@ -600,11 +601,12 @@
       rowTypeSub("conv_roads_secondaire", "🟪 Secondaire", roadCountByType.secondaire.length, true) +
       rowTypeSub("conv_roads_chemin",     "🟨 Chemin",     roadCountByType.chemin.length,     true);
 
-    // Sub-cases types zone (Eau / Remblais / Effondrement)
+    // Sub-cases types zone (Eau / Remblais / Effondrement / Inaccessible)
     const zonesTypesHtml =
       rowTypeSub("conv_zones_eau",          "🟦 Eau",          zoneCountByType.eau.length,          true) +
       rowTypeSub("conv_zones_remblais",     "⬛ Remblais",     zoneCountByType.remblais.length,     true) +
-      rowTypeSub("conv_zones_effondrement", "🟥 Effondrement", zoneCountByType.effondrement.length, true);
+      rowTypeSub("conv_zones_effondrement", "🟥 Effondrement", zoneCountByType.effondrement.length, true) +
+      rowTypeSub("conv_zones_inaccessible", "⛔ Inaccessible", zoneCountByType.inaccessible.length, true);
 
     return `
       <div class="kta-ses-intro">
@@ -751,7 +753,7 @@
 
     // Sync parent ↔ sub-checkboxes pour types road et zone
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
-    syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement"]);
+    syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
   }
 
   // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
@@ -828,7 +830,7 @@
     const roadTypes = ["principal", "secondaire", "chemin"].filter(function(t) {
       return document.getElementById("adv_roads_" + t)?.checked;
     });
-    const zoneTypes = ["eau", "remblais", "effondrement"].filter(function(t) {
+    const zoneTypes = ["eau", "remblais", "effondrement", "inaccessible"].filter(function(t) {
       return document.getElementById("adv_zones_" + t)?.checked;
     });
 
@@ -940,11 +942,12 @@
         })
       : [];
 
-    // Filtrer les zones par type coché (Eau / Remblais / Effondrement)
+    // Filtrer les zones par type coché (Eau / Remblais / Effondrement / Inaccessible)
     const zoneTypesActifs = {
       eau:          document.getElementById("conv_zones_eau")?.checked          ?? true,
       remblais:     document.getElementById("conv_zones_remblais")?.checked     ?? true,
-      effondrement: document.getElementById("conv_zones_effondrement")?.checked ?? true
+      effondrement: document.getElementById("conv_zones_effondrement")?.checked ?? true,
+      inaccessible: document.getElementById("conv_zones_inaccessible")?.checked ?? true
     };
     const filteredZones = incZones
       ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
@@ -988,8 +991,8 @@
       }
 
       if (filteredZones.length) {
-        const byType = _trierParType(filteredZones, ["eau", "remblais", "effondrement"]);
-        ["eau", "remblais", "effondrement"].forEach(function(t) {
+        const byType = _trierParType(filteredZones, ["eau", "remblais", "effondrement", "inaccessible"]);
+        ["eau", "remblais", "effondrement", "inaccessible"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "zones_" + t + ".json", payload: { data: [], zones: byType[t] } });
           }

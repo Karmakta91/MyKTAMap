@@ -5,7 +5,7 @@
 // — fermeture par re-clic sur le 1er point OU par bouton "Fermer la zone"
 // =========================
 
-window.modeZone = null; // null | "remblais" | "effondrement"
+window.modeZone = null; // null | "remblais" | "effondrement" | "eau" | "inaccessible"
 
 let zonesData = [];
 let currentZone = null;
@@ -39,8 +39,33 @@ const ZONE_STYLES = {
     fillOpacity: 0.7,
     weight:      3,
     opacity:     1
+  },
+  // 🚫 Zone INACCESSIBLE (depuis Karma_dev / v169) : bloque le pathfinder.
+  // Tout segment de route qui traverse ce polygone est retire du graphe.
+  // Style : hachures rouge fonce/noir 45° via pattern SVG defini dans index.html
+  // (id="kta-pattern-inaccessible"). Necessite un L.svg() renderer pour que
+  // le navigateur applique le url(#...) — un renderer canvas ignorerait le
+  // pattern et afficherait du remplissage uni.
+  inaccessible: {
+    color:       "#5a0a0a",
+    fillColor:   "url(#kta-pattern-inaccessible)",
+    fillOpacity: 1,          // 1 pour que le pattern soit pleinement visible
+    weight:      3,
+    opacity:     1
   }
 };
+
+// Singleton SVG renderer dedie aux zones inaccessibles. Force pour que le
+// pattern url(#kta-pattern-inaccessible) s'applique correctement. Les autres
+// zones (eau/remblais/effondrement) utilisent le renderer par defaut Leaflet
+// (canvas si preferCanvas:true, sinon SVG) — pas concernees par ce renderer.
+let _inaccessibleRenderer = null;
+function _getInaccessibleRenderer() {
+  if (!_inaccessibleRenderer) {
+    _inaccessibleRenderer = L.svg({ padding: 0.5 });
+  }
+  return _inaccessibleRenderer;
+}
 
 const ZONE_STYLE_PREVIEW = {
   weight:    3,
@@ -178,9 +203,11 @@ function renderZones() {
     previewLayer = null;
   }
 
-  // Trier l'affichage : eau d'abord (en arrière), puis remblais, puis effondrements (au-dessus)
+  // Trier l'affichage : eau d'abord (en arrière), puis remblais, puis effondrements, puis inaccessible (au-dessus)
   // — la zone en cours reste à sa position pour éviter qu'elle saute pendant le tracé
-  const ordreType = { eau: 0, remblais: 1, effondrement: 2 };
+  // L'inaccessible est en haut car elle a une fonction "bloquante" (pathfinder) que
+  // l'utilisateur doit voir clairement.
+  const ordreType = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
   const zonesAffichage = [...zonesData].sort(function(a, b) {
     // currentZone garde sa priorité naturelle de tracé (en dernier dans le tableau)
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
@@ -238,8 +265,13 @@ function renderZones() {
         }
       }
     } else {
-      // Zone fermée → polygone rempli
-      const polygon = L.polygon(latlngs, style).addTo(target);
+      // Zone fermée → polygone rempli.
+      // 🚫 Cas spécial inaccessible : force le SVG renderer pour que le pattern
+      // url(#kta-pattern-inaccessible) s'affiche (canvas l'ignorerait).
+      const polygonOpts = (zone.type === "inaccessible")
+        ? Object.assign({}, style, { renderer: _getInaccessibleRenderer() })
+        : style;
+      const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
     }
   });

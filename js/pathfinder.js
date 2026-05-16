@@ -81,6 +81,99 @@
   }
 
   // =========================
+  // ZONES INACCESSIBLES — geometrie polygone
+  // =========================
+  // 🚫 v169 (Karma_dev) : une zone de type "inaccessible" bloque le pathfinder.
+  // Tout segment de route qui passe a l'interieur ou traverse le bord d'un
+  // polygone inaccessible n'est PAS ajoute au graphe (= contrainte dure).
+  // Multi-niveau : la zone bloque uniquement les segments du MEME niveau
+  // (sauf si multiLevel = false, auquel cas tout est "level 0" implicite).
+
+  // Ray-casting standard : retourne true si le point (p.x, p.y) est dans
+  // le polygone defini par l'array `poly` ({x, y}). Algo classique en O(n).
+  function _pointInPolygon(p, poly) {
+    let inside = false;
+    const x = p.x, y = p.y;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y;
+      const xj = poly[j].x, yj = poly[j].y;
+      const intersect = ((yi > y) !== (yj > y)) &&
+                        (x < (xj - xi) * (y - yi) / (yj - yi + 1e-12) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Test : le segment [p1, p2] entre-t-il en contact avec le polygone `poly` ?
+  //   - Si l'un des 2 endpoints est dans le polygone → oui
+  //   - Si le segment croise l'une des aretes du polygone → oui
+  // (Si les 2 endpoints sont a l'exterieur ET le segment ne croise aucune arete,
+  //  alors le segment est entierement hors polygone → non bloque.)
+  function _segmentTraversePolygon(p1, p2, poly) {
+    if (_pointInPolygon(p1, poly)) return true;
+    if (_pointInPolygon(p2, poly)) return true;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i];
+      const b = poly[(i + 1) % poly.length];
+      if (_segmentIntersection(p1, p2, a, b)) return true;
+    }
+    return false;
+  }
+
+  // Helper : le segment doit-il etre exclu du graphe a cause d'une zone
+  // inaccessible ? Filtre niveau-aware : on ignore les zones d'un niveau
+  // different du segment (sauf si multiLevel = false → comparaison plate).
+  // Les segments "transit" (middle de jonction) sont jamais bloques car
+  // physiquement ce sont des points "en l'air" dans un escalier vertical.
+  function _segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc) {
+    if (segLevel === "transit") return false;
+    if (!zonesInacc || zonesInacc.length === 0) return false;
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    for (let i = 0; i < zonesInacc.length; i++) {
+      const z = zonesInacc[i];
+      if (mlOn && z.level !== segLevel) continue;  // niveau different → pas bloquant
+      if (_segmentTraversePolygon(p1, p2, z.points)) return true;
+    }
+    return false;
+  }
+
+  // Collecte toutes les zones inaccessibles actives sur le plan courant :
+  //   - Zones de session (via window.getZones())
+  //   - Zones embarquees dans les data layers (via window._ktaDataPolygons)
+  // Retourne [{ points: [{x,y}, ...], level: number }, ...].
+  function _collecterZonesInaccessibles() {
+    const out = [];
+    if (typeof window.getZones === "function") {
+      const session = window.getZones();
+      if (Array.isArray(session)) {
+        for (let i = 0; i < session.length; i++) {
+          const z = session[i];
+          if (z && z.type === "inaccessible" &&
+              Array.isArray(z.points) && z.points.length >= 3) {
+            out.push({
+              points: z.points,
+              level:  Number.isInteger(z.level) ? z.level : 0
+            });
+          }
+        }
+      }
+    }
+    if (Array.isArray(window._ktaDataPolygons)) {
+      for (let i = 0; i < window._ktaDataPolygons.length; i++) {
+        const e = window._ktaDataPolygons[i];
+        if (e && e.type === "inaccessible" &&
+            Array.isArray(e.points) && e.points.length >= 3) {
+          out.push({
+            points: e.points,
+            level:  Number.isInteger(e.level) ? e.level : 0
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  // =========================
   // CONSTRUCTION DU GRAPHE
   // =========================
   // Spatial bucketing : O(1) pour vérifier si un nœud existe déjà près d'une position.
@@ -145,7 +238,8 @@
     graph.edges[b].push({ to: a, weight: weight });
   }
 
-  function _buildGraph(roads, allowedTypes) {
+  function _buildGraph(roads, allowedTypes, zonesInacc) {
+    zonesInacc = zonesInacc || [];
     const graph = _newGraph();
 
     for (let r = 0; r < roads.length; r++) {
@@ -181,6 +275,7 @@
 
       for (let i = 1; i < road.points.length; i++) {
         const p = road.points[i];
+        const prevP = road.points[i - 1];
         const idx = _getOrAddNode(graph, p.x, p.y);
         const isLast = (i === lastPointIdxInRoad);
         // Pour jonction : middle = "transit", last = toLvl. Pour road normale : segLevel.
@@ -189,14 +284,21 @@
           : segLevel;
         _ajouterNiveauNode(graph, idx, nodeLvl);
 
-        const w = _dist(road.points[i - 1], p);
-        _addEdge(graph, prevIdx, idx, w);
-        graph.segments.push({
-          a:        prevIdx,
-          b:        idx,
-          roadType: road.type,
-          level:    segLevel   // numeric pour road, "transit" pour jonction
-        });
+        // 🚫 v169 (Karma_dev) : si ce segment traverse une zone inaccessible,
+        // on N'AJOUTE PAS l'arête NI le segment dans graph.segments.
+        // Le node existe quand même (au cas où il y a une connexion ailleurs)
+        // mais isolé. L'enrichment ne verra pas ce segment pour les croisements
+        // → impossible d'emprunter ce tronçon dans le calcul Dijkstra.
+        if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)) {
+          const w = _dist(prevP, p);
+          _addEdge(graph, prevIdx, idx, w);
+          graph.segments.push({
+            a:        prevIdx,
+            b:        idx,
+            roadType: road.type,
+            level:    segLevel   // numeric pour road, "transit" pour jonction
+          });
+        }
         prevIdx = idx;
       }
     }
@@ -565,8 +667,16 @@
       throw new Error("Aucune route disponible pour calculer un itinéraire");
     }
 
+    // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" pour bloquer
+    // les segments qui les traversent. Filtre niveau-aware applique dans
+    // _segmentBloqueParZoneInaccess. Contrainte DURE — pas de fallback.
+    const zonesInacc = _collecterZonesInaccessibles();
+    if (zonesInacc.length > 0) {
+      console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) detectee(s) — pathfinder evite ces polygones");
+    }
+
     // 2. Construction du graphe
-    const graph = _buildGraph(allRoads, allowedTypes);
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc);
     if (graph.nodes.length === 0) {
       throw new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
     }

@@ -1247,11 +1247,12 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">⬛ Zones (remblais / effondrements / eau)</div>
+          <div class="kta-aide-section-titre">⬛ Zones (remblais / effondrements / eau / inaccessible)</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais (gris)</span>
             <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement (rouge)</span>
             <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau (bleu)</span>
+            <span class="kta-aide-icone">⛔</span><span>Tracer une zone inaccessible (hachures rouge/noir) — bloque le pathfinder</span>
             <span class="kta-aide-icone">✅</span><span>Fermer la zone en cours (au moins 3 points)</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernière zone ou toutes)</span>
           </div>
@@ -3254,7 +3255,7 @@ function initInterface() {
   _creerGroupeAccordeon({
     id: "zones",
     iconePrincipale: "⬛",
-    titre: "Zones (remblais / effondrements)",
+    titre: "Zones (remblais / effondrements / eau / inaccessible)",
     sousActions: [
       { icone: "⬛", titre: "Zone de remblais",
         onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
@@ -3262,6 +3263,11 @@ function initInterface() {
         onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
       { icone: "🟦", titre: "Zone d'eau",
         onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
+      // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
+      // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
+      // pour le calcul d'itinéraire (= contrainte dure).
+      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)",
+        onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
       { icone: "✅", titre: "Fermer la zone en cours",
         onClick: function() {
           if (!window.modeZone) {
