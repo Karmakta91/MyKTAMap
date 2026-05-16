@@ -1473,6 +1473,7 @@
     const cBR = window.KmzExport.planToGps(transform, W, H);
     const cCenter = window.KmzExport.planToGps(transform, W/2, H/2);
     function fmt(ll) { return ll.lat.toFixed(6) + ", " + ll.lng.toFixed(6); }
+    const gmapsUrl = "https://www.google.com/maps/@" + cCenter.lat + "," + cCenter.lng + ",17z";
     target.innerHTML =
       '<div class="kta-kmz-coins-grille">' +
         '<div>↖️ Haut-gauche : <code>' + fmt(cTL) + '</code></div>' +
@@ -1481,12 +1482,48 @@
         '<div>↘️ Bas-droite : <code>' + fmt(cBR) + '</code></div>' +
       '</div>' +
       '<div style="margin-top:8px;">' +
-        '<a href="https://www.google.com/maps/@' + cCenter.lat + ',' + cCenter.lng + ',17z" target="_blank" rel="noopener" style="color:#8cb4ff;">🔗 Voir le centre sur Google Maps</a>' +
+        '<a href="' + gmapsUrl + '" id="kmz_apercu_gmaps_link" target="_blank" rel="noopener" style="color:#8cb4ff;">🔗 Voir le centre sur Google Maps</a>' +
       '</div>' +
       '<div style="margin-top:6px; font-size:11.5px; color:#8892a4;">' +
         'Échelle calculée : <strong>' + transform.metresParPixel.toFixed(3) + ' m/px</strong>' +
         ' · Rotation : <strong>' + (transform.rotation * 180 / Math.PI).toFixed(1) + '°</strong>' +
       '</div>';
+
+    // Interception du clic Google Maps : ping internet avant ouverture pour
+    // éviter une erreur navigateur sèche en mode offline (DNS_PROBE / ERR_NAME).
+    // Le lien garde son target/rel pour le clic milieu/Ctrl+clic (ouvre direct
+    // en nouvel onglet, le ping ne s'applique qu'au clic gauche standard).
+    const linkGmaps = document.getElementById("kmz_apercu_gmaps_link");
+    if (linkGmaps) {
+      linkGmaps.addEventListener("click", function(e) {
+        // Modificateurs (Ctrl/Cmd/Shift/middle-click) → laisser le navigateur ouvrir
+        if (e.ctrlKey || e.metaKey || e.shiftKey || e.button === 1) return;
+        e.preventDefault();
+        const oldText = linkGmaps.textContent;
+        linkGmaps.textContent = "🔗 Vérification connexion…";
+        linkGmaps.style.pointerEvents = "none";
+        const _restore = function() {
+          linkGmaps.textContent = oldText;
+          linkGmaps.style.pointerEvents = "";
+        };
+        const pingFn = typeof window._pingInternet === "function"
+          ? window._pingInternet
+          : function() { return Promise.resolve(navigator.onLine !== false); };
+        pingFn().then(function(online) {
+          _restore();
+          if (online) {
+            window.open(gmapsUrl, "_blank", "noopener");
+          } else {
+            const msg = "🚫 Hors-ligne — Google Maps inaccessible. Reconnecte-toi pour vérifier le calibrage visuellement.";
+            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+              window.OOMGuard.showToast(msg, "warn");
+            } else {
+              alert(msg);
+            }
+          }
+        });
+      });
+    }
   }
 
   function _kmzRafraichirChipsNiveaux() {
