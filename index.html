@@ -761,6 +761,125 @@
         localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
       }
 
+      // ════════════════════════════════════════════════════════════════════
+      // 🚫 v171 : Modale "Erreur — nom du ZIP ne correspond pas"
+      // ════════════════════════════════════════════════════════════════════
+      // Affichée quand l'user re-sélectionne un ZIP dont le `plan.name` ne
+      // matche pas avec le plan sur lequel il a cliqué. Refus DÉFINITIF —
+      // un seul bouton "J'ai compris" qui ferme la modale + retour sans
+      // charger le ZIP. Pattern .kta-readme-modal pour cohérence charte.
+      function _afficherModaleNomZipKO(zipName, planName) {
+        return new Promise(function(resolve) {
+          const existing = document.getElementById("kta-zipname-error-modal");
+          if (existing) existing.remove();
+
+          const modal = document.createElement("div");
+          modal.id = "kta-zipname-error-modal";
+          modal.className = "kta-readme-modal-overlay";
+          modal.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
+                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 ZIP refusé — Nom différent</span>' +
+                '<button class="kta-panneau-close" id="kta-zipname-error-close">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps">' +
+                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' +
+                  'Le ZIP que vous avez sélectionné contient un plan dont le nom ne correspond pas à celui sur lequel vous avez cliqué :' +
+                '</p>' +
+                '<div style="display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:13px; padding:10px 12px; background:rgba(255,140,140,0.06); border:1px solid rgba(255,140,140,0.22); border-radius:6px; margin-bottom:14px;">' +
+                  '<span style="color:#8892a4; white-space:nowrap;">Plan ciblé :</span>' +
+                  '<strong style="color:#e8eaf0; word-break:break-word;">' + escapeHtml(planName) + '</strong>' +
+                  '<span style="color:#8892a4; white-space:nowrap;">ZIP fourni :</span>' +
+                  '<strong style="color:#ff8c8c; word-break:break-word;">' + escapeHtml(zipName) + '</strong>' +
+                '</div>' +
+                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:0 0 14px; font-style:italic;">' +
+                  'Pour éviter toute incohérence (badges, sessions, métadonnées), l\'import est refusé. ' +
+                  'Si vous souhaitez vraiment charger ce plan, importez-le via le bouton 📦 Charger un nouveau plan ' +
+                  '(il sera ajouté comme entrée distincte avec son propre nom).' +
+                '</p>' +
+                '<div style="display:flex; justify-content:flex-end;">' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-zipname-error-ok">J\'ai compris</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(modal);
+
+          const _close = function() {
+            modal.remove();
+            document.removeEventListener("keydown", _onEsc);
+            resolve();
+          };
+          document.getElementById("kta-zipname-error-close").addEventListener("click", _close);
+          document.getElementById("kta-zipname-error-ok").addEventListener("click", _close);
+          modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+          const _onEsc = function(ev) { if (ev.key === "Escape") _close(); };
+          document.addEventListener("keydown", _onEsc);
+        });
+      }
+
+      // ════════════════════════════════════════════════════════════════════
+      // ⚠️ v171 : Modale "Mode différent détecté"
+      // ════════════════════════════════════════════════════════════════════
+      // Affichée quand le ZIP fourni a des flags (tiledV2, multiLevel) qui
+      // diffèrent du registre. Pas un refus — l'user peut continuer (le
+      // contenu du ZIP fait foi, sync automatique). Couleur orange (warning).
+      // Returns Promise<boolean> : true = continuer, false = annuler.
+      function _afficherModaleModeDifferent(planName, discordances) {
+        return new Promise(function(resolve) {
+          const existing = document.getElementById("kta-mode-warn-modal");
+          if (existing) existing.remove();
+
+          const lignesHtml = discordances.map(function(d) {
+            return '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:8px;">' +
+                     '<div style="font-size:13px; font-weight:600; color:#ffb380; margin-bottom:6px;">' + escapeHtml(d.flag) + '</div>' +
+                     '<div style="font-size:12px; color:#c0c8d8; line-height:1.6;">' +
+                       '<span style="color:#8892a4;">Mode mémorisé :</span> ' + escapeHtml(d.avant) + '<br>' +
+                       '<span style="color:#8892a4;">Mode du ZIP :</span> <strong style="color:#e8eaf0;">' + escapeHtml(d.apres) + '</strong>' +
+                     '</div>' +
+                   '</div>';
+          }).join("");
+
+          const modal = document.createElement("div");
+          modal.id = "kta-mode-warn-modal";
+          modal.className = "kta-readme-modal-overlay";
+          modal.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh; border:1px solid rgba(255,179,128,0.35);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,179,128,0.20);">' +
+                '<span class="kta-readme-modal-titre" style="color:#ffb380;">⚠️ Mode différent détecté</span>' +
+                '<button class="kta-panneau-close" id="kta-mode-warn-close">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps">' +
+                '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+                  'Le plan <strong style="color:#e8eaf0;">« ' + escapeHtml(planName) + ' »</strong> ' +
+                  'était mémorisé dans un mode, mais le ZIP que vous venez de fournir est dans un autre mode :' +
+                '</p>' +
+                lignesHtml +
+                '<p style="font-size:12.5px; color:#8892a4; line-height:1.5; margin:12px 0 16px; font-style:italic;">' +
+                  '👉 Si vous continuez, les badges de ce plan dans la liste seront mis à jour pour refléter le nouveau mode ' +
+                  '(le contenu du ZIP fait foi).' +
+                '</p>' +
+                '<div style="display:flex; gap:10px; justify-content:flex-end;">' +
+                  '<button class="kta-btn kta-btn-ghost" id="kta-mode-warn-cancel">Annuler</button>' +
+                  '<button class="kta-btn kta-btn-primary" id="kta-mode-warn-ok">Continuer</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(modal);
+
+          const _close = function(result) {
+            modal.remove();
+            document.removeEventListener("keydown", _onEsc);
+            resolve(!!result);
+          };
+          document.getElementById("kta-mode-warn-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-mode-warn-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-mode-warn-ok").addEventListener("click", function() { _close(true); });
+          modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
+          const _onEsc = function(ev) { if (ev.key === "Escape") _close(false); };
+          document.addEventListener("keydown", _onEsc);
+        });
+      }
+
       // ℹ️ v170 (suite 3) : Modale "Informations détaillées sur l'archive".
       // Liste tous les attributs du plan stockés dans le PlanRegistry (id,
       // type, persistance, dates, modes, fichier source...). Le bouton ℹ️
@@ -1172,13 +1291,16 @@
           zipFlags.tiledV2    = cfg.plan?.tiledV2    === true;
           zipFlags.multiLevel = cfg.plan?.multiLevel === true;
 
-          // 1) Check nom du plan
+          // 1) Check nom du plan — REFUS DÉFINITIF si discordance (v171).
+          // Avant : confirm "Charger quand même ?" → l'user pouvait accepter
+          // un ZIP au nom différent, ce qui créait des incohérences silencieuses
+          // (badges, sessions liées au mauvais plan, métadonnées polluées).
+          // Maintenant : modale custom rouge, bouton unique "J'ai compris",
+          // import refusé. Si l'user veut vraiment charger ce ZIP, il passe
+          // par 📦 Charger un nouveau plan (= entrée distincte, id auto-généré).
           if (ziPName && planName && ziPName !== planName) {
-            const ok = confirm(
-              "⚠️ Ce ZIP contient le plan « " + ziPName + " » mais vous avez cliqué sur « " + planName + " ».\n\n" +
-              "Charger quand même ce ZIP ?"
-            );
-            if (!ok) return;
+            await _afficherModaleNomZipKO(ziPName, planName);
+            return;
           }
 
           // 2) v170 fix : check discordance de mode (V1/V2 + multi-niveau).
@@ -1194,19 +1316,10 @@
           if (registreML  && !zipFlags.multiLevel) discordances.push({ flag: "Multi-niveau",avant: "Multi-niveau (carrière multi-étages)",apres: "Mono-niveau (classique)" });
           if (!registreML && zipFlags.multiLevel)  discordances.push({ flag: "Multi-niveau",avant: "Mono-niveau (classique)",            apres: "Multi-niveau (carrière multi-étages)" });
 
+          // v171 : modale custom (orange warning) au lieu de confirm() natif.
+          // Continue offert car le ZIP fait foi (sync automatique des flags).
           if (discordances.length > 0) {
-            const lignes = discordances.map(function(d) {
-              return "• " + d.flag + " :\n   Avant → " + d.avant + "\n   Maintenant → " + d.apres;
-            }).join("\n\n");
-            const ok = confirm(
-              "⚠️ Mode différent détecté pour ce plan\n\n" +
-              "Le plan « " + (plan.name || plan.id) + " » était mémorisé dans un certain mode, " +
-              "mais le ZIP que vous venez de fournir est dans un autre mode :\n\n" +
-              lignes + "\n\n" +
-              "👉 Si vous continuez, les badges de ce plan dans la liste seront mis à jour " +
-              "pour refléter le nouveau mode (le contenu du ZIP fait foi).\n\n" +
-              "Continuer ?"
-            );
+            const ok = await _afficherModaleModeDifferent(plan.name || plan.id, discordances);
             if (!ok) return;
           }
         } catch(e) {
