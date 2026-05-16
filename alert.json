@@ -2,21 +2,6 @@
   "active": true,
   "alerts": [
     {
-      "id":       "gaz-toxiques-v2-2026-05",
-      "level":    "emergency",
-      "title":    "🚨 ALERTE — Gaz toxiques dans les V2 (région parisienne)",
-      "message":  "Plusieurs incendies criminels ont touché des carrières V2 en région parisienne ces derniers jours. Les feux sont à présent maîtrisés, mais des gaz toxiques (monoxyde de carbone, vapeurs résiduelles, fumées d'hydrocarbures) persistent dans les galeries. Le risque d'intoxication est réel et potentiellement mortel — les gaz incriminés sont invisibles et inodores. Reste en surface tant que la ventilation naturelle n'a pas évacué ces résidus.",
-      "details": [
-        "🚫 Pas de descente dans les V2 : le monoxyde de carbone (CO) est inodore, incolore, et peut être létal en quelques minutes selon la concentration.",
-        "🚓 Présence renforcée des pompiers, police et secours dans le secteur — accès surveillés et balisés.",
-        "📢 Préviens activement les autres cataphiles (groupes Telegram / Signal / forums spécialisés). Le bouche-à-oreille sauve des vies dans cette communauté.",
-        "⏳ La ventilation naturelle des galeries peut prendre plusieurs jours selon la météo, la configuration du réseau et le niveau d'aération. N'évalue PAS le risque toi-même : attends l'information officielle de retour à la normale.",
-        "🔁 Reviens consulter cette alerte régulièrement — elle sera désactivée dès que la situation sera sécurisée.",
-        "🕯️ Rappel : même en temps normal, descends toujours avec une lampe + une de secours, un détecteur de gaz si possible, et préviens quelqu'un en surface (heure de retour estimée, point d'entrée)."
-      ],
-      "released": "2026-05-13T14:00:00Z"
-    },
-    {
       "id":       "migration-myktamap-fr-2026",
       "level":    "info",
       "title":    "🌐 Nouveau domaine — myktamap.fr",
