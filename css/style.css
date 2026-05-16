@@ -3378,6 +3378,50 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-color: rgba(255,140,140,0.4);
   color: #ff8c8c;
 }
+/* ℹ️ v170 (suite 3) : bouton infos — accent bleu cohérent avec la charte */
+.plan-row-info-btn:hover {
+  background: rgba(140,180,255,0.12);
+  border-color: rgba(140,180,255,0.4);
+  color: #8cb4ff;
+}
+
+/* Modale "Infos détaillées sur l'archive" — pattern .kta-readme-modal,
+   max-width compact (480px) + table 2 colonnes clé/valeur sobre. */
+.kta-plan-infos-boite {
+  max-width: 480px !important;
+  height: auto !important;
+  max-height: 80vh !important;
+}
+
+.kta-plan-infos-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.kta-plan-infos-table tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.kta-plan-infos-table tr:last-child {
+  border-bottom: none;
+}
+
+.kta-plan-infos-table .kta-info-key {
+  padding: 8px 12px 8px 0;
+  color: #8892a4;
+  font-weight: 500;
+  white-space: nowrap;
+  vertical-align: top;
+  width: 40%;
+}
+
+.kta-plan-infos-table .kta-info-val {
+  padding: 8px 0;
+  color: #e8eaf0;
+  word-break: break-word;
+  vertical-align: top;
+}
 
 /* ═══════════════════════════════════════════════════
    FS ACCESS — Sélection ZIP avec autorisation persistante

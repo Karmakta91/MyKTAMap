@@ -722,18 +722,12 @@
         if (!badgesMode) {
           badgesMode = '<span class="plan-row-mode plan-row-mode-v1" title="Plan classique (mono-niveau, image entière en RAM)">V1</span>';
         }
-        const sub  = plan.type === "server"
-          ? plan.path
-          : (plan.originalFilename || "") + (plan.fileSize ? " · " + fmtSize(plan.fileSize) : "");
-        const meta = plan.lastOpened
-          ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
-          : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
-        // Structure (v170 restructurée + v170 suite : tous les badges meta sur ligne 2) :
+        // Structure (v170 suite 3 — épuration affichage compact) :
         // - .plan-row-title = ligne 1 : nom (ellipsis) + version uniquement
         // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL + badge storage (✅/🔐/📁)
-        //                              groupés ensemble pour scan visuel rapide
-        // - .plan-row-sub   = ligne 3 : sub (path serveur ou nom fichier + taille)
-        // - .plan-row-date  = ligne 4 : date d'ouverture / "découvert"
+        // - Sub (nom zip + taille) et date d'ouverture déplacés vers la
+        //   modale ℹ️ Informations détaillées (bouton dans .plan-row-actions).
+        //   Allège la liste, surtout quand on en a beaucoup.
         return `
           <div class="plan-row" data-id="${plan.id}">
             <span class="plan-row-icon">${icon}</span>
@@ -743,10 +737,9 @@
                 ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
               </div>
               <div class="plan-row-modes">${badgesMode}${badgeStorage}</div>
-              <div class="plan-row-sub">${escapeHtml(sub)}</div>
-              ${meta}
             </div>
             <div class="plan-row-actions">
+              <button class="plan-row-btn plan-row-info-btn" title="Informations détaillées sur cette archive">ℹ️</button>
               <button class="plan-row-btn plan-row-load" title="Charger ce plan">▶️</button>
               <button class="plan-row-btn plan-row-remove" title="Retirer de la liste">✕</button>
             </div>
@@ -763,6 +756,93 @@
       }
       function _loaderSetShowServerPlans(value) {
         localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
+      }
+
+      // ℹ️ v170 (suite 3) : Modale "Informations détaillées sur l'archive".
+      // Liste tous les attributs du plan stockés dans le PlanRegistry (id,
+      // type, persistance, dates, modes, fichier source...). Le bouton ℹ️
+      // dans la ligne plan ouvre cette modale. Compense le retrait du sub
+      // (nom zip + taille) et de la date d'ouverture qui surchargeaient
+      // visuellement la liste compacte.
+      function _afficherInfosPlan(id) {
+        if (!window.PlanRegistry) return;
+        const plan = window.PlanRegistry.findById(id);
+        if (!plan) { console.warn("[Loader] Plan introuvable :", id); return; }
+
+        // Cleanup d'une éventuelle modale déjà ouverte
+        const existing = document.getElementById("kta-plan-infos-modal");
+        if (existing) existing.remove();
+
+        // Labels lisibles pour les champs techniques
+        const typeLabel = plan.type === "server" ? "🌐 Plan serveur (data/)" :
+                          plan.type === "local"  ? "💾 Plan local (ZIP)"      :
+                          plan.type;
+        let storageLabel = "—";
+        if (plan.type === "local") {
+          if (plan.storedBlob)      storageLabel = "✅ Mémorisé dans l'app (IndexedDB)";
+          else if (plan.fsHandleId) storageLabel = "🔐 Accès permanent autorisé (File System Access API)";
+          else                      storageLabel = "📁 Re-sélection requise au chargement (pick)";
+        }
+        let modesParts = [];
+        if (plan.tiledV2 === true)    modesParts.push("V2 tuilé (Google Maps-like)");
+        if (plan.multiLevel === true) modesParts.push("Multi-niveau (carrière multi-étages)");
+        if (modesParts.length === 0)  modesParts.push("V1 classique (mono-niveau, image entière en RAM)");
+        const modesLabel = modesParts.join(" + ");
+
+        // Liste des champs à afficher (ordre cohérent : identité → source → tech → dates)
+        const rows = [];
+        function pushRow(label, value, mono) {
+          if (value === undefined || value === null || value === "") return;
+          rows.push({ label: label, value: String(value), mono: !!mono });
+        }
+        pushRow("Identifiant interne", plan.id, true);
+        pushRow("Nom",                 plan.name);
+        pushRow("Version",             plan.version);
+        pushRow("Auteur",              plan.author);
+        rows.push({ label: "Type",     value: typeLabel, mono: false });
+        if (plan.type === "server") {
+          pushRow("Chemin serveur",   plan.path, true);
+        } else if (plan.type === "local") {
+          pushRow("Fichier source",   plan.originalFilename, true);
+          pushRow("Taille",           plan.fileSize ? fmtSize(plan.fileSize) : null);
+          rows.push({ label: "Persistance", value: storageLabel, mono: false });
+        }
+        rows.push({ label: "Mode",    value: modesLabel, mono: false });
+        if (plan.perfPreset) {
+          pushRow("Préset performance", plan.perfPreset);
+        }
+        pushRow("Ajouté le",          plan.addedAt    ? fmtDate(plan.addedAt)    : null);
+        pushRow("Dernière ouverture", plan.lastOpened ? fmtDate(plan.lastOpened) : (plan.discovered ? "Jamais ouvert (découvert)" : null));
+
+        const tableHtml = rows.map(function(r) {
+          const valStyle = r.mono ? ' style="font-family:monospace; font-size:11.5px; color:#c8d0e0;"' : '';
+          return '<tr>' +
+                   '<td class="kta-info-key">' + escapeHtml(r.label) + '</td>' +
+                   '<td class="kta-info-val"' + valStyle + '>' + escapeHtml(r.value) + '</td>' +
+                 '</tr>';
+        }).join("");
+
+        const modal = document.createElement("div");
+        modal.id = "kta-plan-infos-modal";
+        modal.className = "kta-readme-modal-overlay";
+        modal.innerHTML =
+          '<div class="kta-readme-modal-boite kta-plan-infos-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">ℹ️ Informations sur « ' + escapeHtml(plan.name || plan.id) + ' »</span>' +
+              '<button class="kta-panneau-close" id="kta-plan-infos-close">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps">' +
+              '<table class="kta-plan-infos-table">' + tableHtml + '</table>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(modal);
+        document.getElementById("kta-plan-infos-close").addEventListener("click", function() { modal.remove(); });
+        modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
+        // Échap pour fermer (cohérent avec les autres modales du projet)
+        const onEsc = function(ev) {
+          if (ev.key === "Escape") { modal.remove(); document.removeEventListener("keydown", onEsc); }
+        };
+        document.addEventListener("keydown", onEsc);
       }
 
       function escapeHtml(s) {
@@ -840,6 +920,15 @@
               window.refreshPlansList();
             }
           });
+          // ℹ️ v170 (suite 3) : bouton infos détaillées (compense le retrait
+          // de l'affichage sub/date qui surchargeait la liste compacte)
+          const infoBtn = row.querySelector(".plan-row-info-btn");
+          if (infoBtn) {
+            infoBtn.addEventListener("click", function(e) {
+              e.stopPropagation();
+              _afficherInfosPlan(id);
+            });
+          }
           row.addEventListener("click", function() {
             chargerPlanDuRegistre(id);
           });
