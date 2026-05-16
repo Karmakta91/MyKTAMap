@@ -207,10 +207,13 @@
           </span>
         </div>
 
-        <!-- Options : 💾 stockage app (mobile / Firefox / Safari) -->
+        <!-- Options : 💾 stockage app (mobile / Firefox / Safari)
+             v170 (suite) : coché par défaut. Sans ça, l'user devait re-sélectionner
+             le ZIP à chaque chargement sur mobile/Safari — comportement piège pour
+             un cas d'usage qu'on veut promouvoir (mémorisation = défaut sain). -->
         <div id="storeBlobHint" class="fs-access-hint" style="display:none;">
           <label class="loader-store-blob">
-            <input type="checkbox" id="storeBlobCb">
+            <input type="checkbox" id="storeBlobCb" checked>
             <span>💾 Mémoriser ce plan dans l'app</span>
           </label>
           <span class="fs-access-info" id="storeBlobInfo">
