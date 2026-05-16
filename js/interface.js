@@ -5430,7 +5430,7 @@ function afficherLegende() {
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#00ff00;"></span><span class="kta-legende-label">Route principale</span></div>
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#b000ff;"></span><span class="kta-legende-label">Route secondaire</span></div>
       <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ffff00;"></span><span class="kta-legende-label">Chemin</span></div>
-      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ff4ecb;"></span><span class="kta-legende-label">🪜 Jonction interniveau (escalier / pente — multi-niveau)</span></div>
+      <div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:#ff4ecb;"></span><span class="kta-legende-label">Jonction interniveau</span></div>
     </div>
   `;
 
