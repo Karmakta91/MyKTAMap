@@ -5454,7 +5454,7 @@ function afficherLegende() {
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>
-        <span class="kta-legende-label">⛔ Inaccessible</span>
+        <span class="kta-legende-label">Inaccessible</span>
       </div>
     </div>
   `;
