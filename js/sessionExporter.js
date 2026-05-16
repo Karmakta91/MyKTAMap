@@ -1725,9 +1725,34 @@
       }
       const allPoints = editorPoints.concat(dataLayerPoints);
 
+      // 🛣️ Roads : session + embedded data layers
+      // Sans ça, un plan dont les tracés sont définis dans les JSON data layers
+      // (chemin.json, puits.json, etc.) ne sortait qu'avec ses tracés session.
+      // getAllEmbeddedRoads = TOUTES les roads embedded (visibles ET masquées),
+      // cohérent avec Pathfinder + Distance totale (cf. CLAUDE.md §15).
+      const sessionRoads = d.roads || [];
+      const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function")
+        ? window.getAllEmbeddedRoads()
+        : [];
+      const allRoads = sessionRoads.concat(embeddedRoads);
+
+      // ⬛ Zones : session + embedded data layers (symétrique aux roads)
+      // Nouveau getter window.getAllEmbeddedZones (v169 Karma_dev) qui mappe
+      // _ktaDataPolygons vers le format {type, points, level} de getZones().
+      const sessionZones = d.zones || [];
+      const embeddedZones = (typeof window.getAllEmbeddedZones === "function")
+        ? window.getAllEmbeddedZones()
+        : [];
+      const allZones = sessionZones.concat(embeddedZones);
+
       // Opacité image : slider 0-100% → passé en pourcent au générateur
       const opSlider = document.getElementById("kmz_img_opacity");
       const imageOpacity = opSlider ? Math.max(0, Math.min(100, parseInt(opSlider.value, 10) || 60)) : 60;
+
+      console.log("[KMZ] Contenu :",
+        allPoints.length, "points,",
+        allRoads.length, "roads (" + sessionRoads.length + " session +", embeddedRoads.length, "embedded),",
+        allZones.length, "zones (" + sessionZones.length + " session +", embeddedZones.length, "embedded)");
 
       const kmzBlob = await window.KmzExport.genererKmz({
         planName:    (window.PLAN_CONFIG?.plan?.name)    || "Plan MyKTAMap",
@@ -1749,8 +1774,8 @@
         levels:        levels,
         data: {
           editorPoints: allPoints,
-          roads:        d.roads || [],
-          zones:        d.zones || []
+          roads:        allRoads,
+          zones:        allZones
         },
         imageBlob:     imageBlob,
         imageFilename: imageFilename,

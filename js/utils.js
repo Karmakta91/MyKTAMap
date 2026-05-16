@@ -221,6 +221,26 @@ window._applyLevelFilterToDataZones = function() {
   window._ktaDataPolygons.forEach(_filtreNiveauSurPolygonData);
 };
 
+// =========================
+// 🌍 GETTERS PUBLICS — embedded zones (data layers)
+// =========================
+// Symetrique de window.getAllEmbeddedRoads (road.js) : expose les zones
+// embarquees dans les data layers (puits.json, etc.) sous forme reutilisable
+// par les exports (notamment KMZ qui doit inclure TOUT le contenu visible
+// du plan, pas uniquement la session).
+// Renvoie [{type, points, level}, ...] — meme format que window.getZones()
+// (zones session) pour permettre une concatenation directe sans transformation.
+window.getAllEmbeddedZones = function() {
+  if (!Array.isArray(window._ktaDataPolygons)) return [];
+  return window._ktaDataPolygons
+    .filter(function(e) {
+      return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
+    })
+    .map(function(e) {
+      return { type: e.type, points: e.points, level: e.level || 0 };
+    });
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
