@@ -2052,6 +2052,76 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
 
 /* ==============================================
+   MODALE RÉGLAGES (⚙️) — responsive PC (depuis v170)
+   ==============================================
+   Mobile (default) : étroite (440px max), 1 colonne — comportement v169.
+   PC ≥ 1024px : 1100px max + columns: 2 (pattern identique à la doc Aide).
+
+   Différence avec la doc Aide : on ajoute break-inside: avoid sur les
+   sections (.kta-aide-section dans le corps) parce que les Réglages
+   contiennent des inputs/grilles/toggles — couper en plein milieu d'un
+   bloc d'inputs serait confusant pour l'user. Les sections de la modale
+   Réglages sont relativement homogènes en hauteur, donc break-inside:
+   avoid ne crée pas de déséquilibre significatif (contrairement à la doc
+   Aide qui a des sections très inégales, où break-inside cassait le
+   layout). */
+.kta-cfg-modal-boite {
+  /* Mobile : préserve strictement le comportement v169 (440px, h auto) */
+  max-width: 440px !important;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+
+@media (min-width: 1024px) {
+  .kta-cfg-modal-boite {
+    max-width: 1100px !important;
+    width: min(1100px, 96vw) !important;
+  }
+
+  /* Layout 2 colonnes via column-flow (cohérent avec la modale Aide). */
+  .kta-cfg-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Sections d'inputs : ne JAMAIS couper en plein milieu d'une section
+     (compromis différent de la doc Aide — cf. commentaire en tête de bloc). */
+  .kta-cfg-corps .kta-aide-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+
+  /* Barre d'actions en bas : doit traverser les 2 colonnes en pleine largeur
+     pour que les 4 boutons restent visibles d'un coup sans devoir scroller
+     une colonne. En 4 colonnes pour exploiter l'espace dispo sur PC. */
+  .kta-cfg-actions-bar {
+    column-span: all;
+    -webkit-column-span: all;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+}
+
+/* Mobile (< 1024px) : barre d'actions en grid 2x2 (comportement v169). */
+@media (max-width: 1023px) {
+  .kta-cfg-actions-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+}
+
+
+/* ==============================================
    LÉGENDE — icônes et tracés
    ============================================== */
 

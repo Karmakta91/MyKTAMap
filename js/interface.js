@@ -1514,12 +1514,12 @@ function afficherConfig() {
   modal.className = "kta-readme-modal-overlay";
 
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:440px; height:auto; max-height:90vh;">
+    <div class="kta-readme-modal-boite kta-cfg-modal-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">⚙️ Réglages</span>
         <button class="kta-panneau-close" id="kta-cfg-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps">
+      <div class="kta-readme-modal-corps kta-cfg-corps">
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
@@ -1577,7 +1577,7 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08);">
+        <div class="kta-cfg-actions-bar">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
           <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
