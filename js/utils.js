@@ -256,6 +256,12 @@ function ajouterPointsDepuisJSON(url, layer) {
           // `level`, on le stocke sur le marker pour le filtre runtime.
           // Absent (cas usuel sur plans v147) → traite comme level 0.
           marker._ktaLevel = Number.isInteger(p.level) ? p.level : 0;
+          // 🌍 v169 (Karma_dev) : on stocke aussi nom + tags + id pour que
+          // KmzExport puisse construire les Placemarks KML (label + style icone).
+          // Sans ça, les data layers sortiraient anonymes dans le KMZ.
+          marker._ktaNom  = p.nom || "";
+          marker._ktaId   = p.id  || "";
+          marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
 

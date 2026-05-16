@@ -200,6 +200,93 @@
       .kta-ses-btn-secondary:hover {
         background: rgba(255,255,255,0.1);
       }
+
+      /* 🌍 v169 (Karma_dev) : Onglet KMZ — calibrage 2 points + aperçu coins */
+      .kta-kmz-section {
+        margin: 14px 0;
+        padding: 10px 12px;
+        background: rgba(140,180,255,0.04);
+        border: 1px solid rgba(140,180,255,0.18);
+        border-radius: 6px;
+      }
+      .kta-kmz-section-titre {
+        font-size: 13px;
+        font-weight: 600;
+        color: #8cb4ff;
+        margin-bottom: 8px;
+      }
+      .kta-kmz-pt-grille {
+        display: grid;
+        grid-template-columns: auto 1fr auto 1fr;
+        gap: 6px 8px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .kta-kmz-lbl {
+        font-size: 12px;
+        color: #8892a4;
+        text-align: right;
+      }
+      .kta-kmz-input {
+        font-family: monospace;
+        font-size: 12.5px;
+        padding: 4px 8px;
+      }
+      .kta-kmz-pt-actions {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 4px;
+      }
+      .kta-kmz-search-results {
+        margin-top: 6px;
+        padding: 8px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .kta-kmz-apercu {
+        padding: 8px 10px;
+        background: rgba(0,0,0,0.20);
+        border-radius: 4px;
+        font-size: 12px;
+        color: #c8d0e0;
+      }
+      .kta-kmz-coins-grille {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+      }
+      .kta-kmz-coins-grille code {
+        font-size: 11px;
+        color: #f4c542;
+      }
+      .kta-kmz-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .kta-kmz-chip-niveau {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 12px;
+        font-size: 12px;
+        color: #c8d0e0;
+        cursor: pointer;
+      }
+      .kta-kmz-chip-niveau:hover {
+        background: rgba(140,180,255,0.10);
+        border-color: rgba(140,180,255,0.35);
+      }
+      .kta-kmz-chip-niveau input[type="checkbox"] {
+        accent-color: #8cb4ff;
+      }
     `;
     document.head.appendChild(s);
   }
@@ -321,6 +408,7 @@
           <button class="kta-ses-tab" data-tab="full">🚀 Full</button>
           <button class="kta-ses-tab" data-tab="advanced">🎨 Avancé</button>
           <button class="kta-ses-tab" data-tab="conversion">🔄 Conversion</button>
+          <button class="kta-ses-tab" data-tab="kmz">🌍 KMZ</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
@@ -376,6 +464,12 @@
     if (_activeTab === "full")        c.innerHTML = _renderFull();
     else if (_activeTab === "advanced")   c.innerHTML = _renderAdvanced();
     else if (_activeTab === "conversion") c.innerHTML = _renderConversion();
+    else if (_activeTab === "kmz") {
+      c.innerHTML = _renderKmz();
+      // 🌍 v169 (Karma_dev) : binding handlers spécifique KMZ après injection
+      // HTML (autocomplete + clic carte + validations + aperçu coins)
+      setTimeout(_bindKmzHandlers, 0);
+    }
   }
 
   // ---------- ONGLET FULL ----------
@@ -800,6 +894,7 @@
     if (_activeTab === "full")              _exportFull();
     else if (_activeTab === "advanced")     _exportAdvanced();
     else if (_activeTab === "conversion")   _exportConversion();
+    else if (_activeTab === "kmz")          _exportKmz();
   }
 
   // ---------- FULL ----------
@@ -1127,6 +1222,461 @@
     // Reset de l'état de la conversion data2ed pour la prochaine ouverture
     _convUploadedJson = null;
     _convUploadedName = "";
+    // 🌍 v169 (Karma_dev) : reset mode clic carte KMZ si actif
+    if (_kmzClickActive) _kmzDesactiverModeClic();
+  }
+
+  // =========================================================================
+  // 🌍 ONGLET KMZ (depuis v169 / Karma_dev)
+  // =========================================================================
+  // Export geolocalise pour Google Earth / OsmAnd / Locus / Avenza.
+  // Calibrage 2 points (plan + GPS) → transformation affine 2D → KMZ.
+  // Cf. js/kmzExport.js pour le moteur (math + generateur KML + zip).
+  // =========================================================================
+
+  // Etat interne onglet KMZ (mode clic carte pour saisir x/y d'un point)
+  // _kmzClickTarget = "A" | "B" | null — quel point on est en train de saisir
+  let _kmzClickActive = false;
+  let _kmzClickHandler = null;
+  let _kmzClickTarget = null;
+
+  // Helper : récupère l'ID du plan courant (pour la clé localStorage du calibrage)
+  function _kmzCurrentPlanId() {
+    return window._currentLoadedPlanId || "default";
+  }
+
+  // ---------- RENDU HTML ONGLET KMZ ----------
+  function _renderKmz() {
+    // Restaure le calibrage sauvé pour ce plan s'il existe
+    const planId = _kmzCurrentPlanId();
+    const saved  = (window.KmzExport && window.KmzExport.getCalibration)
+                    ? window.KmzExport.getCalibration(planId) : null;
+    const pA     = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
+    const pB     = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
+
+    const mlOn   = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const niveauxBloc = mlOn
+      ? '<div class="kta-kmz-section">' +
+          '<div class="kta-kmz-section-titre">🏗️ Niveaux à inclure</div>' +
+          '<p style="font-size:11.5px; color:#8892a4; margin:4px 0;">' +
+            'Par défaut : tous les niveaux disponibles (1 Folder KML par niveau).' +
+          '</p>' +
+          '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
+        '</div>'
+      : '';
+
+    return '' +
+      '<div class="kta-ses-intro">' +
+        '🌍 Export <strong>geolocalise</strong> au format KMZ (Google Earth, OsmAnd, Locus, Avenza...). ' +
+        'Calibrage par <strong>2 points</strong> (saisis x/y plan + coordonnées GPS réelles), ' +
+        'l\'app calcule la transformation rotation+échelle+translation pour positionner ' +
+        'le plan et toutes les annotations sur le globe.' +
+      '</div>' +
+
+      // ===== Calibrage Point A =====
+      '<div class="kta-kmz-section">' +
+        '<div class="kta-kmz-section-titre">📍 Point A — calibrage</div>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<input type="number" id="kmz_A_x" value="' + pA.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<input type="number" id="kmz_A_y" value="' + pA.y + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">GPS lat :</label>' +
+          '<input type="number" id="kmz_A_lat" value="' + pA.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8580">' +
+          '<label class="kta-kmz-lbl">GPS lng :</label>' +
+          '<input type="number" id="kmz_A_lng" value="' + pA.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.2945">' +
+        '</div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_search" type="button">🔍 Chercher un point</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_click" type="button">📍 Cliquer carte</button>' +
+        '</div>' +
+        '<div id="kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
+      '</div>' +
+
+      // ===== Calibrage Point B =====
+      '<div class="kta-kmz-section">' +
+        '<div class="kta-kmz-section-titre">📍 Point B — calibrage</div>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<input type="number" id="kmz_B_x" value="' + pB.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<input type="number" id="kmz_B_y" value="' + pB.y + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">GPS lat :</label>' +
+          '<input type="number" id="kmz_B_lat" value="' + pB.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8520">' +
+          '<label class="kta-kmz-lbl">GPS lng :</label>' +
+          '<input type="number" id="kmz_B_lng" value="' + pB.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.3050">' +
+        '</div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_search" type="button">🔍 Chercher un point</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_click" type="button">📍 Cliquer carte</button>' +
+        '</div>' +
+        '<div id="kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
+      '</div>' +
+
+      // ===== Apercu coins =====
+      '<div class="kta-kmz-section">' +
+        '<div class="kta-kmz-section-titre">🌐 Aperçu coins (lat/lng)</div>' +
+        '<div id="kmz_apercu" class="kta-kmz-apercu">' +
+          '<em style="color:#8892a4;">Renseigne les 2 points pour voir l\'aperçu...</em>' +
+        '</div>' +
+      '</div>' +
+
+      // ===== Contenu à inclure =====
+      '<div class="kta-kmz-section">' +
+        '<div class="kta-kmz-section-titre">📦 Contenu à inclure</div>' +
+        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_image" checked><span>🖼️ Image plan (GroundOverlay)</span></label>' +
+        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_points" checked><span>📍 Points (éditeur + data layers)</span></label>' +
+        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_roads" checked><span>🛣️ Tracés (principal / secondaire / chemin)</span></label>' +
+        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_zones" checked><span>⬛ Zones (eau / remblais / effondrement / inaccessible)</span></label>' +
+        (mlOn ? '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_jonctions" checked><span>🪜 Jonctions interniveau</span></label>' : '') +
+        '<label class="kta-export-cb-row"><input type="checkbox" id="kmz_inc_iti" checked><span>🗺️ Itinéraire actif (si présent)</span></label>' +
+      '</div>' +
+
+      niveauxBloc;
+  }
+
+  // ---------- BIND HANDLERS ----------
+  function _bindKmzHandlers() {
+    // Validation + aperçu coins à chaque changement de champ
+    ["x", "y", "lat", "lng"].forEach(function(field) {
+      ["A", "B"].forEach(function(letter) {
+        const el = document.getElementById("kmz_" + letter + "_" + field);
+        if (el) el.addEventListener("input", _kmzRafraichirApercu);
+      });
+    });
+
+    // Boutons "🔍 Chercher un point" → autocomplete
+    ["A", "B"].forEach(function(letter) {
+      const btn = document.getElementById("kmz_" + letter + "_search");
+      if (btn) btn.addEventListener("click", function() { _kmzOuvrirRecherche(letter); });
+    });
+
+    // Boutons "📍 Cliquer carte" → mode clic
+    ["A", "B"].forEach(function(letter) {
+      const btn = document.getElementById("kmz_" + letter + "_click");
+      if (btn) btn.addEventListener("click", function() { _kmzActiverModeClic(letter); });
+    });
+
+    // Premier rendu aperçu (si calibrage restauré)
+    _kmzRafraichirApercu();
+
+    // Chips niveaux si multiLevel ON
+    _kmzRafraichirChipsNiveaux();
+  }
+
+  function _kmzLireCalib() {
+    const get = function(id) {
+      const v = document.getElementById(id);
+      if (!v) return null;
+      const n = parseFloat(v.value);
+      return Number.isFinite(n) ? n : null;
+    };
+    return {
+      pointA: {
+        x:   get("kmz_A_x"),   y:   get("kmz_A_y"),
+        lat: get("kmz_A_lat"), lng: get("kmz_A_lng")
+      },
+      pointB: {
+        x:   get("kmz_B_x"),   y:   get("kmz_B_y"),
+        lat: get("kmz_B_lat"), lng: get("kmz_B_lng")
+      }
+    };
+  }
+
+  function _kmzRafraichirApercu() {
+    const target = document.getElementById("kmz_apercu");
+    if (!target) return;
+    const c = _kmzLireCalib();
+    const ok = c.pointA.x != null && c.pointA.y != null &&
+               c.pointA.lat != null && c.pointA.lng != null &&
+               c.pointB.x != null && c.pointB.y != null &&
+               c.pointB.lat != null && c.pointB.lng != null;
+    if (!ok) {
+      target.innerHTML = '<em style="color:#8892a4;">Renseigne les 8 champs pour voir l\'aperçu des coins du plan...</em>';
+      return;
+    }
+    if (!window.KmzExport) {
+      target.innerHTML = '<em style="color:#cc0000;">Module KmzExport non chargé.</em>';
+      return;
+    }
+    let transform;
+    try {
+      transform = window.KmzExport.buildTransform(
+        { x: c.pointA.x, y: c.pointA.y },
+        { x: c.pointB.x, y: c.pointB.y },
+        { lat: c.pointA.lat, lng: c.pointA.lng },
+        { lat: c.pointB.lat, lng: c.pointB.lng }
+      );
+    } catch(e) {
+      target.innerHTML = '<span style="color:#ff9933;">⚠️ ' + String(e.message || e) + '</span>';
+      return;
+    }
+    const W = window.APP_CONFIG.imageWidth  || 0;
+    const H = window.APP_CONFIG.imageHeight || 0;
+    const cTL = window.KmzExport.planToGps(transform, 0, 0);
+    const cTR = window.KmzExport.planToGps(transform, W, 0);
+    const cBL = window.KmzExport.planToGps(transform, 0, H);
+    const cBR = window.KmzExport.planToGps(transform, W, H);
+    const cCenter = window.KmzExport.planToGps(transform, W/2, H/2);
+    function fmt(ll) { return ll.lat.toFixed(6) + ", " + ll.lng.toFixed(6); }
+    target.innerHTML =
+      '<div class="kta-kmz-coins-grille">' +
+        '<div>↖️ Haut-gauche : <code>' + fmt(cTL) + '</code></div>' +
+        '<div>↗️ Haut-droite : <code>' + fmt(cTR) + '</code></div>' +
+        '<div>↙️ Bas-gauche : <code>' + fmt(cBL) + '</code></div>' +
+        '<div>↘️ Bas-droite : <code>' + fmt(cBR) + '</code></div>' +
+      '</div>' +
+      '<div style="margin-top:8px;">' +
+        '<a href="https://www.google.com/maps/@' + cCenter.lat + ',' + cCenter.lng + ',17z" target="_blank" rel="noopener" style="color:#8cb4ff;">🔗 Voir le centre sur Google Maps</a>' +
+      '</div>' +
+      '<div style="margin-top:6px; font-size:11.5px; color:#8892a4;">' +
+        'Échelle calculée : <strong>' + transform.metresParPixel.toFixed(3) + ' m/px</strong>' +
+        ' · Rotation : <strong>' + (transform.rotation * 180 / Math.PI).toFixed(1) + '°</strong>' +
+      '</div>';
+  }
+
+  function _kmzRafraichirChipsNiveaux() {
+    const el = document.getElementById("kta-kmz-levels-chips");
+    if (!el) return;
+    const avail = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
+                   ? window.APP_CONFIG.availableLevels.slice() : [0];
+    avail.sort(function(a, b) { return a - b; });
+    el.innerHTML = avail.map(function(lvl) {
+      return '<label class="kta-kmz-chip-niveau"><input type="checkbox" data-level="' + lvl + '" checked> Niv ' + lvl + '</label>';
+    }).join("");
+  }
+
+  // ---------- AUTOCOMPLETE RECHERCHE ----------
+  function _kmzOuvrirRecherche(letter) {
+    const res = document.getElementById("kmz_" + letter + "_search_results");
+    if (!res) return;
+    res.style.display = "block";
+    res.innerHTML = '<input type="text" id="kmz_' + letter + '_search_q" class="kta-cfg-input" placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;"><div id="kmz_' + letter + '_search_list"></div>';
+    const input = document.getElementById("kmz_" + letter + "_search_q");
+    const list  = document.getElementById("kmz_" + letter + "_search_list");
+    input.focus();
+    let debTimer = null;
+    input.addEventListener("input", function() {
+      const q = input.value.trim();
+      if (debTimer) clearTimeout(debTimer);
+      if (!q || !window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
+        list.innerHTML = "";
+        return;
+      }
+      debTimer = setTimeout(async function() {
+        let results = [];
+        try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
+        if (input.value.trim() !== q) return;
+        if (results.length === 0) { list.innerHTML = '<div style="color:#8892a4;">Aucun résultat</div>'; return; }
+        list.innerHTML = results.slice(0, 10).map(function(it, i) {
+          const p = it.point;
+          return '<div class="kta-iti-search-result" data-idx="' + i + '">' +
+                   '<strong>' + (p.nom || p.id || "(point)") + '</strong>' +
+                   (p.id ? ' <span style="color:#8892a4;">(' + p.id + ')</span>' : '') +
+                 '</div>';
+        }).join("");
+        list.querySelectorAll(".kta-iti-search-result").forEach(function(row, i) {
+          row.addEventListener("click", function() {
+            const p = results[i].point;
+            document.getElementById("kmz_" + letter + "_x").value = p.x;
+            document.getElementById("kmz_" + letter + "_y").value = p.y;
+            res.style.display = "none";
+            _kmzRafraichirApercu();
+          });
+        });
+      }, 150);
+    });
+  }
+
+  // ---------- MODE CLIC CARTE ----------
+  function _kmzActiverModeClic(letter) {
+    if (!window.map) return;
+    _kmzDesactiverModeClic();  // si un autre était actif
+    _kmzClickActive = true;
+    _kmzClickTarget = letter;
+    _kmzClickHandler = function(e) {
+      const x = e.latlng.lng;
+      const y = APP_CONFIG.imageHeight - e.latlng.lat;
+      document.getElementById("kmz_" + letter + "_x").value = Math.round(x * 100) / 100;
+      document.getElementById("kmz_" + letter + "_y").value = Math.round(y * 100) / 100;
+      _kmzDesactiverModeClic();
+      if (_modal) _modal.style.display = "";
+      _kmzRafraichirApercu();
+    };
+    window.map.on("click", _kmzClickHandler);
+    if (_modal) _modal.style.display = "none";
+    // Floater minimal pour indiquer le mode actif
+    const fl = document.createElement("div");
+    fl.id = "kta-kmz-click-floater";
+    fl.className = "kta-iti-floater";
+    fl.innerHTML = '<span class="kta-iti-floater-icon">📍</span><span class="kta-iti-floater-msg">Clique sur la carte pour saisir le Point ' + letter + '</span><button class="kta-btn kta-btn-ghost" id="kmz_click_cancel" type="button">Annuler</button>';
+    document.body.appendChild(fl);
+    document.getElementById("kmz_click_cancel").addEventListener("click", function() {
+      _kmzDesactiverModeClic();
+      if (_modal) _modal.style.display = "";
+    });
+  }
+
+  function _kmzDesactiverModeClic() {
+    if (!_kmzClickActive) return;
+    _kmzClickActive = false;
+    _kmzClickTarget = null;
+    if (window.map && _kmzClickHandler) window.map.off("click", _kmzClickHandler);
+    _kmzClickHandler = null;
+    const fl = document.getElementById("kta-kmz-click-floater");
+    if (fl) fl.remove();
+  }
+
+  // ---------- EXPORT KMZ ----------
+  async function _exportKmz() {
+    if (!window.KmzExport) {
+      alert("Module KmzExport non chargé.");
+      return;
+    }
+    const c = _kmzLireCalib();
+    if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
+        c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
+      alert("Les 8 champs de calibrage sont obligatoires (4 par point).");
+      return;
+    }
+    // Build transform (avec validations bloquantes)
+    let transform;
+    try {
+      transform = window.KmzExport.buildTransform(
+        { x: c.pointA.x, y: c.pointA.y },
+        { x: c.pointB.x, y: c.pointB.y },
+        { lat: c.pointA.lat, lng: c.pointA.lng },
+        { lat: c.pointB.lat, lng: c.pointB.lng }
+      );
+    } catch(e) {
+      alert("Calibrage invalide : " + e.message);
+      return;
+    }
+    // Persistance
+    window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
+
+    // Collecte des données session
+    const d = _compter();
+
+    // Filtre niveaux (chips si multiLevel ON, sinon null = tous)
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    let levels = null;
+    if (mlOn) {
+      levels = new Set();
+      document.querySelectorAll('#kta-kmz-levels-chips input[type="checkbox"]:checked').forEach(function(cb) {
+        const lvl = parseInt(cb.dataset.level, 10);
+        if (Number.isInteger(lvl)) levels.add(lvl);
+      });
+      if (levels.size === 0) levels = null;
+    }
+
+    // Image plan (Blob) + nom de fichier — résolu via RUNTIME_ASSETS si dispo
+    let imageBlob = null;
+    let imageFilename = null;
+    const inclImage = document.getElementById("kmz_inc_image")?.checked;
+    if (inclImage && window.PLAN_CONFIG?.plan?.baseImage) {
+      const baseImagePath = window.PLAN_CONFIG.plan.baseImage;
+      const fullPath = baseImagePath.indexOf("/") >= 0 ? baseImagePath : ("data/" + baseImagePath);
+      imageFilename = baseImagePath;
+      // Tentative 1 : RUNTIME_ASSETS (cas ZIP local)
+      if (window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[fullPath]) {
+        const asset = window.RUNTIME_ASSETS[fullPath];
+        if (asset.file instanceof Blob) imageBlob = asset.file;
+        else if (asset.url) {
+          try { const r = await fetch(asset.url); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
+        }
+      }
+      // Tentative 2 : fetch direct (cas plan serveur)
+      if (!imageBlob) {
+        try { const r = await fetch(fullPath); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
+      }
+      if (!imageBlob) {
+        console.warn("[KMZ] Image plan introuvable → KMZ généré sans GroundOverlay");
+        imageFilename = null;
+      }
+    }
+
+    // Icônes embedded : 1 PNG par tag rencontré dans les points
+    const iconsToEmbed = {};
+    if (window._iconMap) {
+      // On embed TOUTES les icônes connues — c'est ~30 Ko au total et plus simple
+      Object.keys(window._iconMap).forEach(function(tag) {
+        const icObj = window._iconMap[tag];
+        if (icObj && icObj.options && icObj.options.iconUrl) {
+          iconsToEmbed[tag] = icObj.options.iconUrl;
+        }
+      });
+    }
+    if (window.iconeDefault && window.iconeDefault.options && window.iconeDefault.options.iconUrl) {
+      iconsToEmbed["default"] = window.iconeDefault.options.iconUrl;
+    }
+
+    // Génération KMZ
+    const btnDl = document.getElementById("kta-ses-download");
+    if (btnDl) { btnDl.disabled = true; btnDl.textContent = "Génération KMZ..."; }
+    try {
+      // Collecte des points editor + data layers
+      const editorPoints = d.points || [];
+      // Data layer points : on lit _ktaDataMarkers et on reconstruit {x, y, nom, tags, level}
+      const dataLayerPoints = [];
+      if (Array.isArray(window._ktaDataMarkers)) {
+        window._ktaDataMarkers.forEach(function(m) {
+          if (!m || !m.getLatLng) return;
+          const ll = m.getLatLng();
+          dataLayerPoints.push({
+            x:     ll.lng,
+            y:     APP_CONFIG.imageHeight - ll.lat,
+            nom:   m._ktaNom || "",
+            tags:  Array.isArray(m._ktaTags) ? m._ktaTags : [],
+            level: Number.isInteger(m._ktaLevel) ? m._ktaLevel : 0
+          });
+        });
+      }
+      const allPoints = editorPoints.concat(dataLayerPoints);
+
+      const kmzBlob = await window.KmzExport.genererKmz({
+        planName:    (window.PLAN_CONFIG?.plan?.name)    || "Plan MyKTAMap",
+        planVersion: (window.PLAN_CONFIG?.plan?.version) || "",
+        planAuthor:  (window.PLAN_CONFIG?.plan?.author)  || "KARMA",
+        imageW:      window.APP_CONFIG.imageWidth,
+        imageH:      window.APP_CONFIG.imageHeight,
+        transform:   transform,
+        include: {
+          image:      inclImage,
+          points:     document.getElementById("kmz_inc_points")?.checked,
+          roads:      document.getElementById("kmz_inc_roads")?.checked,
+          zones:      document.getElementById("kmz_inc_zones")?.checked,
+          jonctions:  mlOn && document.getElementById("kmz_inc_jonctions")?.checked,
+          itineraire: document.getElementById("kmz_inc_iti")?.checked,
+          dataLayers: true
+        },
+        levels:        levels,
+        data: {
+          editorPoints: allPoints,
+          roads:        d.roads || [],
+          zones:        d.zones || []
+        },
+        imageBlob:     imageBlob,
+        imageFilename: imageFilename,
+        iconsToEmbed:  iconsToEmbed
+      });
+
+      // Téléchargement
+      const url = URL.createObjectURL(kmzBlob);
+      const a = document.createElement("a");
+      const planName = (window.PLAN_CONFIG?.plan?.name) || "plan";
+      a.href = url;
+      a.download = "MyKTAMap_" + planName.replace(/[^a-z0-9]+/gi, "_") + "_" + new Date().toISOString().slice(0, 10) + ".kmz";
+      a.click();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+      _fermer();
+    } catch(e) {
+      console.error("[KMZ] Erreur génération :", e);
+      alert("Erreur lors de la génération du KMZ : " + (e.message || e));
+    } finally {
+      if (btnDl) { btnDl.disabled = false; btnDl.textContent = "Télécharger"; }
+    }
   }
 
 })();
