@@ -1497,12 +1497,20 @@
   function _kmzRenderContenu(mlOn) {
     const stats = _kmzCollecterStats();
 
-    // Helper : ligne parent ou simple checkbox
+    // Helper : ligne parent ou simple checkbox.
+    // count = null → pas de compteur affiché, checkbox toujours enabled
+    //                (cas image : pas de notion de "X items à exporter")
+    // count = 0    → grisée + désactivée + dim 50% (rien à exporter pour cette
+    //                catégorie, donc on bloque la coche)
+    // count > 0    → normale, cochée si checked=true
     function row(id, label, count, checked) {
-      const disabled = count === 0 ? "disabled" : "";
-      const dim      = count === 0 ? "opacity:0.5;" : "";
-      const isChecked= (count > 0 && checked) ? "checked" : "";
-      const cnt      = (count !== null) ? ' <span style="color:#8892a4;">(' + count + ')</span>' : '';
+      const hasCount = (count !== null && count !== undefined);
+      const isZero   = hasCount && count === 0;
+      const disabled = isZero ? "disabled" : "";
+      const dim      = isZero ? "opacity:0.5;" : "";
+      // Cochée si checked=true ET (pas de compteur OU compteur > 0)
+      const isChecked= (checked && !isZero) ? "checked" : "";
+      const cnt      = hasCount ? ' <span style="color:#8892a4;">(' + count + ')</span>' : '';
       return '<label class="kta-ses-cb-row" style="' + dim + '">' +
                '<input type="checkbox" id="' + id + '" ' + isChecked + ' ' + disabled + '>' +
                '<span>' + label + cnt + '</span>' +
