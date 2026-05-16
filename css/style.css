@@ -2809,23 +2809,40 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* === Modale informative compacte ("Aucune alerte" / "Déjà à jour" / Offline) ===
    Volontairement plus légère que .kta-readme-modal-overlay : backdrop moins
    opaque (60% vs 88%), box centrée mais hauteur déterminée par le contenu,
-   ne prend PAS toute la hauteur disponible pour 2-3 lignes de texte. */
+   ne prend PAS toute la hauteur disponible pour 2-3 lignes de texte.
+
+   🔧 v172 fix : bug "flex centered overflow" sur mobile. Quand le contenu
+   dépasse la hauteur viewport (ex: notes de version v172 = 8 bullets longs
+   sur mobile portrait), `align-items: center` + `overflow-y: auto` poussait
+   la boîte au-dessus du viewport → le haut devenait inaccessible (le scroll
+   ne peut pas remonter au-delà du top du container flex).
+
+   Fix universel : `align-items: flex-start` sur le container + `margin: auto`
+   sur l'enfant. Le margin auto centre verticalement SI la place est dispo,
+   sinon il collapse (margin négatif impossible) → l'enfant part du haut →
+   scroll naturel accessible. Pattern compatible Safari iOS ≥ 11. */
 .kta-alert-absent-overlay.kta-alert-absent-compact {
   position: fixed;
   inset: 0;
   z-index: 99999;
   background: rgba(5, 8, 15, 0.55);
   display: flex;
-  align-items: center;
+  align-items: flex-start;            /* fix flex-centered-overflow (v172) */
   justify-content: center;
-  padding: 16px;
+  /* Padding-top tient compte du safe-area iOS (notch / status bar) en plus
+     d'une marge esthétique. Sans ça, en portrait sur iPhone avec notch, la
+     boîte démarrait à 16px du bord → collait au notch quand le contenu
+     dépassait. */
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   animation: kta-fadein 0.18s ease;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;  /* smooth scroll iOS */
 }
 .kta-alert-absent-overlay .kta-alert-absent-boite {
   width: 100%;
   max-width: 440px;
+  margin: auto;                        /* centre vertical si place, collapse sinon (v172) */
   background: #1a1f2e;
   border: 1px solid rgba(108, 226, 138, 0.30);
   border-radius: 10px;
