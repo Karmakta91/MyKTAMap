@@ -9,10 +9,78 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (93 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (94 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="karma-dev-zone-inacc-evitement" open>
+<summary><strong>🚧 [Karma_dev — en cours] 🚫 Zone "Inaccessible" + Préférences d'évitement itinéraire</strong></summary>
+
+**⚠️ Branche `Karma_dev` — pas encore release.** Pas de bump version, pas de merge main tant que KARMA n'a pas validé + dit "release".
+
+### Feature 1 — Zone "Inaccessible" (contrainte DURE pathfinder)
+
+Nouveau 4ème type de zone polygonale (`inaccessible`) qui bloque tout segment de route qui la traverse pour le calcul d'itinéraire. Visuel : **hachures rouge sombre / noir 45°** via `<pattern>` SVG global (`#kta-pattern-inaccessible` dans index.html). Renderer SVG forcé (canvas ignore les patterns SVG).
+
+- Bouton ⛔ dans le groupe ⬛ Zones de la sidebar
+- Multi-niveau : bloque uniquement les segments du **même niveau**
+- Indépendant de la visibilité du calque (pathfinder prend en compte même si toggle off)
+- Export PNG canvas : fallback rouge foncé uni (#7a0000 fillOpacity 0.65, hachures SVG non portables au canvas)
+
+**Algorithme géométrique** (pathfinder.js) :
+- `_pointInPolygon` (ray-casting O(n))
+- `_segmentTraversePolygon` (true si endpoint dans poly OU intersection avec arête)
+- `_segmentBloqueParZoneInaccess` (filtre niveau-aware, segments "transit" jamais bloqués)
+- `_collecterZonesInaccessibles` (lit session via getZones + data layers via _ktaDataPolygons)
+
+### Feature 2 — Préférences d'évitement (contrainte SOUPLE)
+
+Section repliable "🚫 Préférences d'évitement (optionnel)" dans la modale itinéraire. 3 types de contraintes :
+
+1. **Points à éviter** : ajout via autocomplete (SearchPoints.findByQuery) OU saisie ID (Pathfinder.resolvePointById). Chips orange avec ✕.
+2. **Tags à éviter** : multi-select chips, expansion auto en tous les points portant ce tag (via SearchPoints.getAllPoints **async**)
+3. **Marge** : px configurable (défaut 100). Tout segment à moins de cette distance d'un point évité est exclu du graphe.
+
+**Algo 2 passes** :
+- **Passe 1** : graphe avec contraintes dures (zones inaccessibles) + souples (évitements) → Dijkstra
+- Si échec ET avoidances → **Passe 2** : graphe sans avoidances → Dijkstra. Si OK → marque `usedFallback: true` + détection des points évités traversés (`avoidedThrough`)
+- Si Passe 2 échoue aussi → vraie absence de chemin, erreur relancée
+
+**UI fallback** : si `usedFallback`, bloc orange "⚠️ Impossible d'éviter : X, Y" au-dessus des résultats. Marge utilisée affichée. Distinction claire dur/souple.
+
+**Persistance** : localStorage `myktamap_route_avoid_<planId>` par plan. Restauré à l'ouverture, écrit à chaque changement, bouton 🗑️ Reset.
+
+### API breaking change
+
+`Pathfinder.computeRoute(waypoints, opts)` est désormais **async** (await `SearchPoints.getAllPoints` pour expansion tags). Les 2 appelants dans interface.js mis à jour avec `await`. Aucun autre appelant détecté.
+
+### Fichiers modifiés (cumulatif Feature 1 + 2)
+
+| Fichier | Changement |
+|---|---|
+| `index.html` | `<pattern>` SVG global `kta-pattern-inaccessible` |
+| `js/zones.js` | Type `inaccessible` dans ZONE_STYLES + renderer SVG singleton + ordre superposition |
+| `js/pathfinder.js` | Helpers géométriques + collecte zones + `_buildGraph` étendu + `_computeRouteInterne` factorisé + `computeRoute` async avec algo 2 passes |
+| `js/interface.js` | Section UI complète + helpers localStorage + handlers async (autocomplete, ID, tags chips, radius, reset) + 2 appels `await Pathfinder.computeRoute` + message fallback + bouton ⛔ |
+| `js/utils.js` | ZONE_STYLES_DATA + ZONE_STYLES_EMBED + ZONE_STYLES_EXPORT inclus inaccessible + entry `_ktaDataPolygons` expose type/points pour pathfinder |
+| `js/exporter.js` | Liste de types, zoneLabels, sync parent/enfants, ordre tri canvas + checkbox `ann_zones_inaccessible` |
+| `js/sessionExporter.js` | Type inclus dans _trierParType (×3), syncParent (×2), zoneTypes filter, zoneTypesActifs + checkboxes adv/conv |
+| `css/style.css` | Styles `.kta-iti-avoid-*` (chips, groupes, details) — palette orange semantic "warning" |
+| `CLAUDE.md` §31 | Section dev complète avec algo + helpers + liste 13 endroits à toucher pour ajouter un futur 5ème type de zone |
+| `AI_CONTEXT.md` | Type inaccessible dans la liste anti-hallucination + recettes N et O |
+| `README_USER.md` | Tableau zones étendu + section "⛔ Zone Inaccessible" + sous-section "🚫 Préférences d'évitement" |
+
+### Workflow Karma_dev
+
+Branche dédiée pour développement de features avant validation et release. Pas de push main, pas de release sans validation explicite + go.
+
+À faire avant release : tests KARMA + bump version + merge dans main + workflow CI auto-release GitHub déclenché.
+
+</details>
+
+
 
 ### 📑 Sommaire des versions
 
+- [🚧 **Karma_dev (en cours)** — 🚫 Zone "Inaccessible" + Préférences d'évitement itinéraire](#karma-dev-zone-inacc-evitement)
 - [🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques](#2026-05-15-s13)
 - [🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)](#v168)
 - [🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`](#v163)
@@ -138,7 +206,7 @@ Fichiers ajoutés :
 
 </details>
 
-<details id="v168" open>
+<details id="v168">
 <summary><strong>🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)</strong></summary>
 
 

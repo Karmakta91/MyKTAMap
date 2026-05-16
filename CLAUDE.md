@@ -1213,6 +1213,99 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 
 **Initialisation v168** : la version courante v168 n'avait pas de tag/release associé au moment du déploiement du workflow. Le commentaire d'en-tête du fichier `.github/workflows/release.yml` contient la commande à lancer une fois pour antidater proprement v168. Les versions suivantes (v169+) sont auto.
 
+### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)
+
+2 features complémentaires pour contraindre les itinéraires calculés par Pathfinder. Toutes deux travaillent au niveau du graphe (filtrage des arêtes avant Dijkstra), pas en post-traitement.
+
+#### 31.1 Zone "Inaccessible" (contrainte DURE)
+
+**Type de zone** : `"inaccessible"` (4ème type, après `eau`/`remblais`/`effondrement`). Tracé via le groupe ⬛ Zones de la sidebar, bouton ⛔.
+
+**Visuel** : hachures rouge sombre / noir à 45° via un `<pattern>` SVG défini dans `index.html` (`id="kta-pattern-inaccessible"`). Renderer SVG forcé (singleton `_inaccessibleRenderer` dans `zones.js` pour session, `_inaccessibleDataRenderer` dans `utils.js` pour data layers) car canvas ignore les patterns SVG.
+
+**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)`. Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
+
+**Algorithme de détection** (`pathfinder.js`) :
+- `_pointInPolygon(p, poly)` — ray-casting standard O(n)
+- `_segmentTraversePolygon(p1, p2, poly)` — true si un endpoint dedans OU si le segment intersecte une arête du polygone
+- `_segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc)` — applique la règle niveau-aware (segments "transit" jamais bloqués)
+
+**Collecte des zones** : `_collecterZonesInaccessibles()` lit :
+- Session zones via `window.getZones()` (filtre `type === "inaccessible"`)
+- Data layer zones via `window._ktaDataPolygons` (entries portant `type` et `points` depuis v169, cf. `utils.js > ajouterPointsDepuisJSON`)
+
+**Multi-niveau** : zone bloque uniquement les segments du **même niveau**. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
+
+**Indépendant de la visibilité** : pathfinder utilise toujours la zone même si le calque zones est toggle off (cohérence demandée — sinon l'user pourrait toggler sans s'en rendre compte). Toutes les modifs d'export (PNG, session) respectent toujours le type comme une vraie zone.
+
+#### 31.2 Préférences d'évitement (contrainte SOUPLE)
+
+**Configurées dans la modale itinéraire**, section repliable "🚫 Préférences d'évitement (optionnel)". Persisté en localStorage par plan : `localStorage["myktamap_route_avoid_<planId>"] = { points: [{x,y,label,id?}], tags: [...], radius: 100 }`.
+
+**3 types de contraintes** :
+1. **Points explicites** : `avoidPoints: [{x, y, label?, id?}, ...]` (ajout via autocomplete `SearchPoints.findByQuery` ou saisie ID via `Pathfinder.resolvePointById`)
+2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
+3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
+
+**Algo 2 passes** (clé du fallback) :
+1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius)` — graphe avec dur+souple, tentative Dijkstra
+2. Si échec ET `hasAvoidances` → **Passe 2** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, [], 0)` — graphe avec dur uniquement
+3. Si Passe 2 OK → marqué `usedFallback: true` + détection des points évités traversés via `_pathPassesNearPoint(path, ap, radius)` → renvoyé dans `avoidedThrough`. UI affiche "⚠️ Impossible d'éviter : ..." en bloc orange.
+4. Si Passe 2 échoue aussi → erreur relancée (vraie absence de chemin, zone inaccessible bloquante ou réseau disconnect).
+
+**API publique** : `Pathfinder.computeRoute(waypoints, opts)` est désormais **async** (await `_expandAvoidTagsEnPoints` qui utilise `SearchPoints.getAllPoints` async). Les 2 appelants dans `interface.js` ont été mis à jour avec `await`.
+
+**Structure retournée** :
+```js
+{
+  path:           [{x, y}, ...],     // chemin final
+  totalDistance:  number,             // px image
+  segmentCount:   number,
+  snappedPoints:  [...],
+  usedFallback:   boolean,            // v169 : true si fallback passe 2 utilisé
+  avoidedThrough: [{x, y, label}, ...], // v169 : points évités traversés
+  avoidRadius:    number              // v169 : marge appliquée
+}
+```
+
+#### 31.3 UI (interface.js, ~370 lignes)
+
+**Helpers localStorage** : `_getItiAvoidPrefs`, `_setItiAvoidPrefs`, `_itiAvoidLsKey` (clé par planId pour ne pas mélanger entre plans)
+
+**HTML section** : `_htmlSectionAvoidItineraire(prefs)` génère le `<details>` repliable avec 3 sous-blocs (Points / Tags / Marge) + reset
+
+**Rendu** :
+- `_rafraichirListeAvoidPoints` (sync) : chips orange pour chaque point évité avec ✕
+- `_rafraichirChipsAvoidTags` (async, await `_itiAvoidGetAvailableTags`) : chips toggleables pour les tags du plan
+
+**Bind handlers** : `_bindAvoidSectionHandlers` :
+- Autocomplete avec debounce 150ms (réutilise `SearchPoints.findByQuery`)
+- Saisie ID + Enter (réutilise `Pathfinder.resolvePointById`)
+- Change handler sur radius input
+- Reset avec `confirm()`
+
+**Styles** : `.kta-iti-avoid-*` dans `style.css` — couleur thématique orange (cohérent semantic "warning"), chips arrondis, etat actif/inactif sur tags
+
+#### 31.4 Pour ajouter une 5ème type de zone (futur)
+
+**À NE PAS OUBLIER** quand on ajoute un nouveau type de zone (au-delà des 4 actuels eau/remblais/effondrement/inaccessible) :
+
+1. `js/zones.js > ZONE_STYLES` — style visuel (color/fillColor/fillOpacity)
+2. `js/zones.js > ordreType` — position d'affichage dans la pile (ordre = z-index logique)
+3. `js/interface.js > _creerGroupeAccordeon zones` — bouton sous-action
+4. `js/interface.js > Aide intégrée` — ligne descriptive
+5. `js/utils.js > ZONE_STYLES_DATA + ZONE_STYLES_EMBED + ZONE_STYLES_EXPORT` — styles pour data layers + export rapide
+6. `js/utils.js > ajouterPointsDepuisJSON > zonesTriees ordre` — ordre embedded zones
+7. `js/utils.js > telechargerPlan > ordre` — tri zones session
+8. `js/exporter.js > _compterTypes / hasZones / zoneLabels / ordre / filtreZ + checkboxes ann_zones_*` (×~10 sites)
+9. `js/sessionExporter.js > _trierParType (×3 sites) / syncParent (×2) / zoneTypes filter / zoneTypesActifs + checkboxes adv_zones_* / conv_zones_*` (~8 sites)
+10. `index.html` — pattern SVG si nécessaire pour le rendu visuel
+11. `css/style.css` — styles spécifiques si besoin
+12. Pathfinder si bloquant : helper de détection dans `pathfinder.js`
+13. Doc : CLAUDE.md (cette section), AI_CONTEXT.md (liste anti-hallucination), README_USER.md, README.md (journal)
+
+C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne pas en oublier.
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

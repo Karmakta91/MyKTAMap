@@ -568,6 +568,27 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
 
+#### 🚫 Préférences d'évitement (depuis v169)
+
+Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitement (optionnel)** permet de définir des contraintes **souples** que le pathfinder essaiera de respecter :
+
+| Type | Description |
+|---|---|
+| **📍 Points à éviter** | Ajout par recherche autocomplete OU saisie ID texte. Chips orange avec ✕ pour retirer. |
+| **🏷️ Tags à éviter** | Clique un chip pour le toggler. Tous les points portant ce tag seront évités (ex: tu actives `pa` → tous les puits aération sont évités). |
+| **📏 Marge** | Distance autour des points évités (px, défaut 100). Tout segment de route à moins de cette marge est exclu du graphe. |
+
+**Comportement** :
+- ✅ Si possible, l'itinéraire évite tout (= calcul normal)
+- ⚠️ Si aucun chemin alternatif n'existe → l'app calcule quand même en passant par ces points et affiche un message orange `⚠️ Impossible d'éviter : X, Y` au-dessus du résultat
+- ❌ Si même le fallback échoue (= vraie absence de chemin) → message d'erreur classique
+
+**Différence avec ⛔ Zone Inaccessible** :
+- ⛔ Zone = contrainte **dure** (jamais relâchée même en fallback)
+- 🚫 Évitement = contrainte **souple** (fallback possible avec message)
+
+**Persistance** : tes préférences sont sauvegardées par plan (localStorage). Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
+
 ### ⛑️ Mode urgence — "Je suis perdu"
 
 Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgence. Il estime la **zone probable où vous pouvez être maintenant** à partir de votre dernière position connue, du temps écoulé et d'**indices visuels** que vous observez autour de vous.
@@ -758,17 +779,18 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 > Tous les boutons de zones se trouvent dans le groupe **⬛ Zones** de la barre latérale.
 
-Permet de dessiner des **surfaces fermées** pour annoter des espaces particuliers du plan : remblais, zones effondrées, plans d'eau, etc.
+Permet de dessiner des **surfaces fermées** pour annoter des espaces particuliers du plan : remblais, zones effondrées, plans d'eau, ou zones inaccessibles qui bloquent le calcul d'itinéraire.
 
-| Type | Icône | Couleur |
-|---|---|---|
-| **Remblais** | ⬛ | Gris foncé |
-| **Effondrement** | 🟥 | Rouge |
-| **Eau** | 🟦 | Bleu |
+| Type | Icône | Couleur | Effet pathfinder |
+|---|---|---|---|
+| **Remblais** | ⬛ | Gris foncé | Aucun |
+| **Effondrement** | 🟥 | Rouge | Aucun |
+| **Eau** | 🟦 | Bleu | Aucun |
+| **Inaccessible** | ⛔ | Hachures rouge sombre / noir | 🚫 **BLOQUE** — l'itinéraire ne passera jamais par cette zone |
 
 ### ✏️ Comment tracer une zone
 
-1. Appuyez sur l'icône du type voulu (⬛, 🟥 ou 🟦) — le mode s'active
+1. Appuyez sur l'icône du type voulu (⬛, 🟥, 🟦 ou ⛔) — le mode s'active
 2. Cliquez sur le plan pour poser les points (au moins 3)
 3. Pour fermer la zone, **deux options** :
    - **Re-cliquer sur le premier point** (un cercle apparaît dessus dès que 3 points sont posés)
@@ -777,13 +799,26 @@ Permet de dessiner des **surfaces fermées** pour annoter des espaces particulie
 
 > Pendant le tracé, les segments apparaissent en pointillé. Une fois fermée, la zone devient pleine.
 
+### ⛔ Zone "Inaccessible" — bloque l'itinéraire
+
+Trace une zone de type **⛔ Inaccessible** sur une partie du plan que tu veux **interdire au pathfinder** (effondrement récent qui rend le passage dangereux, eau profonde, passage non balisé, etc.).
+
+**Effet** : tout itinéraire calculé qui aurait traversé cette zone passera désormais par un autre chemin. Si aucun autre chemin n'existe, le calcul échoue avec un message clair.
+
+C'est une **contrainte dure** — jamais relâchée. Si tu veux une contrainte **souple** (éviter si possible, sinon passer quand même avec un message), utilise plutôt les **🚫 Préférences d'évitement** dans la modale itinéraire (voir section dédiée plus bas).
+
+**Multi-niveau** : la zone ⛔ bloque uniquement les segments du **même niveau** (cohérent avec le filtre niveau). Une zone inaccessible au Niv 0 n'affecte pas l'itinéraire au Niv -1.
+
+**Indépendant du toggle calque** : même si tu décoches le calque zones dans le contrôle des couches, la zone reste prise en compte par le pathfinder.
+
 ### 🧱 Ordre d'affichage
 
 Les zones se superposent dans cet ordre, indépendamment de l'ordre de tracé :
 
 1. **Eau** (en arrière-plan)
 2. **Remblais** (au-dessus de l'eau)
-3. **Effondrement** (au-dessus de tout)
+3. **Effondrement** (au-dessus)
+4. **Inaccessible** (au-dessus de tout — pour bien voir les zones bloquantes)
 
 Cela permet par exemple de tracer un effondrement par-dessus un remblais sans qu'il soit masqué.
 

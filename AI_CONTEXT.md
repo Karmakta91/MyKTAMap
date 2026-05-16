@@ -60,7 +60,9 @@ Pour **chaque** question :
 - 🗂️ **Multi-plans** : registre de plans, import ZIP, auto-discovery serveur, modale "Plan introuvable", titre cliquable plan switcher
 - 🔍 **Recherche de points** par nom / id / tag, avec filtres calques et tags, insensible aux accents
 - 🧭 **Tracker PDR** (expérimental) : tracking inertiel mobile, mode 📍 Recalage. **Icône directionnelle (depuis v158-v161)** : pendant le tracking actif, l'icône (cône GPS bleu) tourne en temps réel pour pointer dans la direction de marche, calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracking off) ou après recalage sans démarrer le tracking, l'icône pointe Nord (pose neutre). Smoothing exponentiel + throttle 2° + transition CSS 0.3s pour absorber le jitter du magnétomètre.
-- 🗺️ **Itinéraire** : pathfinder Dijkstra entre 2+ waypoints, label distance + temps estimé en bas-gauche
+- 🗺️ **Itinéraire** : pathfinder Dijkstra entre 2+ waypoints, label distance + temps estimé en bas-gauche. **Depuis v169 (Karma_dev)** : 2 nouvelles contraintes possibles :
+  - ⛔ **Zones inaccessibles** (DUR) : tout segment de route traversant une zone polygonale de type `inaccessible` est exclu du graphe — l'itinéraire passe forcément à côté. Jamais relâché.
+  - 🚫 **Préférences d'évitement** (SOUPLE) : configurées dans la modale itinéraire (section repliable "🚫 Préférences d'évitement"). On peut éviter des **points précis** (par recherche / ID) ou des **tags entiers** (ex: tous les `pa` / Puits Aération). Marge configurable (défaut 100px). **Fallback 2 passes** : si pas de chemin en évitant, l'app tente sans les évitements et affiche un message orange "⚠️ Impossible d'éviter : X, Y" pour informer l'user. Persisté par plan via localStorage.
 - ⛑️ **Mode urgence "Je suis perdu"** (sous-action du groupe 🧭 Tracker) : estime une zone de recherche à partir de dernière position + temps écoulé + indices visuels texte ; affiche cercle orange, markers violets pour les indices in-zone ; bloc dépliable "📚 Bonnes pratiques" ; rapport copiable
 - 📐 **Mesure de distance simple** (clic-clic, label bas-gauche)
 - 📏 **Distance totale des tracés** (filtre par type, highlight magenta)
@@ -87,12 +89,13 @@ Pour **chaque** question :
 - ❌ **Erreur explicite en cas d'échec de génération V2** (depuis v152) : modale rouge plein écran qui détaille la cause du crash (drawImage / toBlob / saturation mémoire) avec les coordonnées de la tuile en échec + conseils actionnables (PC vs mobile, réduire l'image source, convertir en JPEG q85). Plus jamais d'erreur silencieuse pendant la conversion V2.
 - 🛡️ **Détection automatique des crashs durant la génération V2** (depuis v152) : un flag localStorage est posé avant la conversion et retiré dans le `finally`. Si le navigateur kill la page pendant la génération (OOM mobile typique), le flag reste → au prochain démarrage de l'app, modale spécifique **"🧱❌ Génération V2 interrompue"** avec rappel des solutions (PC, réduire image, fermer apps en arrière-plan).
 
-**Types de zones** (exhaustif — il n'en existe que 3) :
+**Types de zones** (exhaustif — il n'en existe que 4 depuis v169 / Karma_dev) :
 - **Remblais** (gris foncé, ⬛)
 - **Effondrement** (rouge, 🟥)
 - **Eau** (bleu, 🟦)
+- **Inaccessible** (hachures rouge sombre / noir 45°, ⛔) — *nouveau v169*. Zone BLOQUANTE pour le pathfinder : tout segment de route qui la traverse est retiré du graphe → l'itinéraire calculé ne passera jamais par cette zone. Multi-niveau : ne bloque que les segments du même niveau. Contrainte DURE — jamais relâchée même en fallback.
 
-→ Il n'y a **PAS** de zone "brûlée", "incendiée", "dangereuse", "interdite", "fumée", "sèche", "gelée", "humide" ou autre. Strictement Remblais / Effondrement / Eau.
+→ Il n'y a **PAS** de zone "brûlée", "incendiée", "dangereuse", "fumée", "sèche", "gelée", "humide" ou autre. Strictement Remblais / Effondrement / Eau / Inaccessible.
 
 **Types de tracés / routes** (exhaustif — il n'en existe que 5, dont 1 conditionnel) :
 - **Principal** (vert épais)
@@ -322,6 +325,58 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 5. **📱 Si l'app était installée** (PWA sur écran d'accueil) : supprimer l'ancienne icône manuellement + réinstaller depuis `myktamap.fr`
 
 **Important** : la migration des sessions/plans est **manuelle**. Le système ne transfère pas automatiquement les données entre les 2 domaines pour des raisons de sécurité (isolation des origins par les navigateurs — règle web non-contournable).
+
+---
+
+### N. 🚫 Bloquer un itinéraire par zone "Inaccessible" (depuis v169 / Karma_dev)
+
+> Mots-clés : "bloquer itinéraire", "zone interdite", "éviter une zone", "rendre inaccessible", "interdire le passage", "zone bloquante".
+
+**Cas d'usage** : tu veux qu'un calcul d'itinéraire ne passe JAMAIS par une certaine zone (effondrement récent, eau profonde, passage dangereux non balisé, etc.). C'est une contrainte **dure** — jamais relâchée même en cas de fallback.
+
+1. Dans la barre latérale, ouvre le groupe **⬛ Zones**.
+2. Clique la sous-action **⛔ Zone inaccessible**.
+3. Clique sur la carte pour poser les sommets du polygone (au moins 3).
+4. Re-clique sur le 1er point ou appuie sur ✅ Fermer pour clôturer.
+
+La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout itinéraire calculé qui aurait traversé cette zone passera désormais par un autre chemin. Si aucun autre chemin n'existe, l'itinéraire échoue avec un message "Aucun chemin trouvé".
+
+**Multi-niveau** : la zone bloque uniquement les segments de route du **même niveau** (cohérent avec le filtre niveau). Une zone inaccessible au niveau 0 n'affecte pas l'itinéraire au niveau -1.
+
+**Indépendant de la visibilité** : même si tu décoches le calque zones dans le contrôle des couches, la zone bloque toujours le pathfinder.
+
+---
+
+### O. 🚫 Préférences d'évitement (points / tags) — depuis v169 / Karma_dev
+
+> Mots-clés : "éviter un point", "éviter un tag", "préférences itinéraire", "contournement", "ne pas passer par", "marge d'évitement".
+
+**Cas d'usage** : tu veux que l'itinéraire calculé évite si possible un point spécifique (ex: PA12 que tu sais bloqué temporairement) ou tous les points d'un type donné (ex: tous les `danger`). Contrainte **souple** : si pas d'alternative, l'app calcule quand même en passant par les points évités et te prévient.
+
+1. Ouvre la modale **🗺️ Itinéraire** (groupe 🧭 Tracker → 🗺️ Calculer un itinéraire).
+2. Déplie la section **🚫 Préférences d'évitement (optionnel)** en cliquant le titre.
+3. **Points à éviter** :
+   - Tape un nom dans la recherche autocomplete et clique le résultat
+   - OU saisis un ID exact dans le champ texte et clique "+ Ajouter par ID"
+   - Les points ajoutés apparaissent en chips orange avec ✕ pour retirer
+4. **Tags à éviter** :
+   - Clique sur un chip de tag pour le toggler (gris → orange)
+   - Tous les points du plan portant ce tag seront évités
+5. **Marge (px)** : tout segment de route à moins de cette distance d'un point évité est exclu du graphe (défaut 100px).
+6. Ajoute tes waypoints + clique **🎯 Calculer**.
+
+**Résultat du calcul** :
+- ✅ Cas idéal : l'itinéraire passe en évitant tout, tu vois juste la distance + temps habituels.
+- ⚠️ Cas fallback : un message orange "⚠️ Impossible d'éviter : X, Y" apparaît si l'app a dû passer à proximité de certains points évités (= aucun chemin alternatif possible). L'itinéraire est quand même tracé.
+- ❌ Cas erreur : "Aucun chemin trouvé" si même le fallback échoue (réseau de routes disconnect ou zone inaccessible bloque tout).
+
+**Persistance** : tes préférences d'évitement sont sauvegardées en localStorage par plan. Au prochain calcul sur le même plan, elles sont restaurées. Bouton **🗑️ Reset** pour tout effacer.
+
+**Différence dur/souple** :
+| Type | Hard/soft | Fallback |
+|---|---|---|
+| ⛔ Zone inaccessible | Dur | ❌ Jamais relâché |
+| 🚫 Point / tag évité | Souple | ✅ Fallback + message si pas d'alternative |
 
 ---
 
