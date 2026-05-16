@@ -181,8 +181,9 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
-**Actions disponibles** sur chaque ligne :
+**Actions disponibles** sur chaque ligne (depuis v171, 3 boutons) :
 
+- **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture). Pratique pour vérifier ce que l'app sait du plan sans le charger.
 - **▶️** — charge le plan
 - **✕** — retire le plan de la liste (ne supprime pas le fichier ZIP sur votre disque, juste l'entrée dans la liste)
 
@@ -191,7 +192,11 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 - **💾 Exporter ma liste** — télécharge un fichier `myktamap_plans_AAAAMMJJ.config` que vous pouvez sauvegarder ou partager.
 - **📂 Charger une liste** — importe un fichier de liste précédemment exporté. Trois choix : Remplacer, Fusionner, ou Annuler.
 
-> 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil).
+**Filtre d'affichage** (depuis v171) :
+
+- **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (localStorage). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
+
+> 💡 **Astuce** — Si vous changez de PC ou de téléphone, exportez votre liste sur l'ancien appareil puis importez-la sur le nouveau pour retrouver tous vos plans en un clic. Note : les autorisations d'accès aux fichiers ne sont pas portables (vous devrez re-sélectionner les ZIP locaux la première fois sur le nouvel appareil). À la re-sélection, si vous fournissez un ZIP dans un autre mode (ex: vous aviez ce plan en V2 mais le ZIP est un V1), un message d'avertissement vous le signale clairement avant de continuer.
 
 ### 🔐 Éviter de re-sélectionner le ZIP à chaque ouverture
 
@@ -203,7 +208,7 @@ Cliquez sur **🔐 Autoriser l'accès permanent au fichier**. Le navigateur reti
 
 #### Sur mobile, Firefox, Safari
 
-Cochez **💾 Mémoriser ce plan dans l'app** avant de cliquer sur Charger. Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
+L'option **💾 Mémoriser ce plan dans l'app** est **cochée par défaut depuis v171** (avant : décochée, ce qui obligeait à re-sélectionner le ZIP à chaque chargement si on oubliait). Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
 
 - **0 clic**, le plan se charge directement
 - Fonctionne **hors-ligne** (le ZIP est dans le navigateur, pas besoin de retrouver le fichier)

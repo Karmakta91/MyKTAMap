@@ -1,9 +1,12 @@
 {
-  "version": "v170",
-  "released": "2026-05-16",
+  "version": "v171",
+  "released": "2026-05-17",
   "notes": [
-    "⛔ Nouveau type de zone : INACCESSIBLE — tracée comme une zone normale (groupe ⬛ Zones → sous-action ⛔), visuel en hachures rouge/noir. Sert à bloquer le pathfinder : aucun itinéraire ne traversera ces zones (contrainte dure). Niveau-aware si tu es en mode multi-niveau (bloque uniquement les routes du même niveau).",
-    "🚫 Préférences d'évitement dans la modale itinéraire — section repliable 'Préférences d'évitement (optionnel)' avec 3 méthodes pour ajouter un point à éviter : (1) recherche autocomplete, (2) saisie ID exacte, (3) 📍 clic sur la carte. Plus un multi-select de tags à éviter (ex: tous les `pa` puits aération) et une marge configurable (px). Contrainte SOUPLE : si aucun chemin ne respecte tes évitements, l'app calcule quand même avec un message orange '⚠️ Impossible d'éviter : X, Y'. Préférences persistées par plan.",
-    "📚 Tri Z visuel cohérent en mode multi-niveau — une galerie au niveau N apparaît TOUJOURS au-dessus d'une galerie au niveau N-1, et celle au N+1 au-dessus du N. Au sein du même niveau : Chemin (en arrière) < Secondaire < Principal (au-dessus). L'itinéraire calculé et les zones inaccessibles restent visibles au-dessus de tout."
+    "🎚️ Refonte de la liste 📚 Mes plans dans le loader. Toggle '🌐 Afficher les plans serveur' pour cacher les plans serveur découverts auto et ne voir que tes plans persos (persisté entre les sessions). Restructure : nom du plan sur ligne 1 (plus tronqué prématurément), badges V1/V2/M-LVL + storage (✅/🔐/📁) groupés sur ligne 2 pour scan visuel rapide.",
+    "ℹ️ Nouveau bouton 'Infos détaillées' par plan dans la liste. Ouvre une fenêtre qui liste TOUS les attributs (id, nom, version, auteur, fichier source, taille, persistance, mode, dates...) — pratique pour vérifier ce que l'app sait sans charger le plan. Remplace l'affichage compact sub/date qui surchargeait la liste.",
+    "💾 Sur mobile/Safari/Firefox, la case '💾 Mémoriser ce plan dans l'app' est cochée par défaut. Avant : décochée → l'user oubliait souvent → re-sélection requise à chaque chargement. Maintenant : import → mémorisé automatiquement → rechargement en 1 clic.",
+    "📐 La modale ⚙️ Réglages passe en layout 2 colonnes sur PC (≥1024px). Sur mobile : strictement inchangée. Cohérent avec la modale Doc/Aide ❓ et la page d'accueil.",
+    "🔧 Fix critique mobile landscape : les icônes de la barre de droite sortaient du cadre quand un groupe accordéon était ouvert avec plusieurs sous-actions. Maintenant scroll vertical natif si nécessaire, avec respect des safe-areas iOS (home indicator).",
+    "🔧 Fix re-sélection ZIP : si tu re-uploades un plan dans un autre mode (ex: tu avais Catacombes en V2, tu fournis un V1), un message d'avertissement clair t'explique le changement avant de continuer. Plus de badge V2 affiché à tort sur un plan désormais V1."
   ]
 }

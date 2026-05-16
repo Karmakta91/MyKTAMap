@@ -9,7 +9,113 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (95 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (96 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v171" open>
+<summary><strong>🗓️ 17/05/2026 — 🚀 v171 : Refonte UX loader (toggle serveurs, ligne 2 badges, bouton ℹ️) + fixes mobile & PC</strong></summary>
+
+Release majoritairement **UX + fixes** centrée sur la page loader (liste de plans) et 2 bugs critiques (sidebar landscape mobile, re-sélection ZIP V1 sur registre V2).
+
+### 🌐 Loader : toggle "Afficher les plans serveur" (persisté)
+
+Nouveau toggle au-dessus de la liste 📚 Mes plans pour cacher les plans découverts automatiquement via `data/index.json` (test1, test2, démos…). Persisté en `localStorage["myktamap_loader_show_server_plans"]`. Default = true (rétro-compat absolue).
+
+- C'est un filtre d'**affichage uniquement** : les plans serveur restent dans le PlanRegistry, recocher → ils réapparaissent instantanément
+- Cas filtre vide (registre non-vide mais filtre cache tout) : message d'aide "Aucun plan local — coche <em>Afficher les plans serveur</em>..."
+- Helpers `_loaderShowServerPlans()` / `_loaderSetShowServerPlans(v)` dans `index.html`
+
+### 📐 Loader : badges modes V1/V2/M-LVL passent sur ligne 2
+
+Restructure visuelle de chaque ligne plan pour une lecture plus claire :
+
+```
+ligne 1 : 💾 NomDuPlan ............................... [v1.0]
+ligne 2 :   [V2] [M-LVL] ✅
+```
+
+- Ligne 1 : nom (ellipsis, prend toute la largeur dispo) + version
+- Ligne 2 : badges modes V1/V2/M-LVL **+ badge storage** (✅/🔐/📁) groupés
+- Bénéfice : nom du plan ne se fait plus tronquer prématurément par les badges. Lecture verticale rapide pour repérer les V2 vs V1 ou les ✅ memorisés vs 📁 à re-sélectionner.
+
+CSS : nouvelle `.plan-row-modes` avec `align-items: center` (les badges modes 9px monospace et le badge storage 11px emoji s'alignent proprement).
+
+### ℹ️ Loader : épuration ligne plan + bouton infos détaillées
+
+Retrait des lignes "sub" (nom zip + taille) et "date d'ouverture" sur l'affichage compact. Nouveau bouton **ℹ️** dans `.plan-row-actions` (avant ▶️ Charger et ✕ Retirer) qui ouvre une modale détaillée :
+
+- Tableau 2 colonnes (clé/valeur) avec **TOUS** les champs PlanRegistry du plan
+- Champs vides masqués automatiquement (rien d'inutile affiché)
+- Storage rendu lisible : "✅ Mémorisé dans l'app (IndexedDB)" au lieu d'un flag brut
+- Mode résumé : "V2 tuilé + Multi-niveau" sur une ligne
+- Affiche en fait **plus d'infos** qu'avant (auteur, addedAt, perfPreset n'étaient pas affichés avant)
+- Fermeture : ✕, clic backdrop, ou Échap (pattern cohérent)
+
+Bénéfice : la liste devient bien plus dense, surtout sur 20+ plans. L'user a tout sous les yeux sans scroller.
+
+### ✅ Loader : "💾 Mémoriser ce plan dans l'app" coché par défaut
+
+Sur mobile / Firefox / Safari (plateformes sans File System Access API), la checkbox `#storeBlobCb` est désormais cochée par défaut. Avant : l'user devait penser à la cocher manuellement à chaque import sinon le ZIP n'était pas mémorisé et il fallait re-sélectionner à chaque chargement (= UX piège).
+
+Aucun changement sur Chrome/Edge desktop (la checkbox n'est pas affichée — l'app propose plutôt 🔐 FS Access).
+
+### 📐 Réglages : layout responsive 2 colonnes sur PC (≥1024px)
+
+La modale ⚙️ Réglages reste 440px de large sur mobile, mais passe à **1100px + 2 colonnes** sur PC (pattern identique à la modale Doc/Aide ❓).
+
+- Différence avec la doc Aide : `columns: 2` AVEC `break-inside: avoid` sur chaque section (les Réglages contiennent des inputs/grilles — couper en plein milieu serait confusant). Sections homogènes en hauteur → pas de déséquilibre.
+- Barre d'actions (Reset / Appliquer / Réinitialiser / Logs) : `column-span: all` + grid 4 colonnes sur PC (4 boutons sur 1 ligne) vs grid 2×2 sur mobile.
+
+### 🔧 Fix critique : icônes sidebar landscape mobile débordent (bug visuel)
+
+**Root cause** : Leaflet utilise `float: left/right` + `clear: both` sur ses `.leaflet-control` (héritage IE compat — cf. `lib/leaflet/leaflet.css` lignes 156-162). En layout floating, le **parent ne "voit" PAS la hauteur de ses enfants flottants** → `max-height + overflow-y: auto` (déjà en place depuis longtemps en `@media max-height: 500px`) ne déclenchait jamais le scroll → les boutons sortaient visuellement sans scrollbar.
+
+**Fix** : bascule en `display: flex; flex-direction: column;` dans la media query landscape mobile uniquement. Spec CSS : un flex item ignore son `float`. Les enfants empilés verticalement, hauteur comptée, overflow scroll natif s'active proprement. `align-items: flex-end` (topright) / `flex-start` (topleft) reproduit l'alignement bord-droit / bord-gauche que le float assurait.
+
+Bonus : `max-height` recalculé pour tenir compte des safe-area iOS (`env(safe-area-inset-bottom)` notamment — sur iPhone landscape, le home indicator masquait les derniers boutons).
+
+Préservé : portrait + desktop strictement inchangés.
+
+### 🔧 Fix : re-sélection ZIP V1 sur plan registre V2 (et vice-versa)
+
+**Bug rapporté KARMA** : workflow reset → import sauvegarde liste → user clique sur un plan registre avec `tiledV2: true` → modale "Plan introuvable" → "Re-sélectionner le ZIP" → choisit le **même plan en V1** → incohérence : badge V2 reste affiché sur un plan désormais V1, risque de crash runtime.
+
+**Root cause** : `PlanRegistry.addOrUpdate` utilise `Object.assign({}, existing, newEntry)` qui MERGE en préservant les flags existants. `startImportedPlan` construit l'entry avec `if (rawConfig.plan.tiledV2 === true) entry.tiledV2 = true;` → pour un V1, le flag est absent de la nouvelle entry → Object.assign garde l'ancien `tiledV2: true` du registre.
+
+**Fix en 2 niveaux** :
+1. Nouveau helper `PlanRegistry.syncModeFlags(id, {tiledV2, multiLevel})` qui aligne explicitement les flags : `true` → set, `false` → **delete** (différent du merge).
+2. `reSelectionnerZipPourPlan` détecte la discordance AVANT chargement et affiche un confirm explicite : "⚠️ Mode différent détecté — Avant → V2 tuilé / Maintenant → V1 classique". Si OK → syncModeFlags avant chargement.
+
+4 cas couverts (peuvent se cumuler) : V2↔V1 dans les 2 sens + Multi-niveau↔Mono dans les 2 sens.
+
+### 🗑️ alert.json : retrait alerte gaz toxiques V2 (plus d'actualité)
+
+L'alerte emergency `gaz-toxiques-v2-2026-05` (released 2026-05-13) n'était plus d'actualité. Retirée du fichier `alert.json` racine. **Propagé en prod via cherry-pick séparé** (commit `0c6e033` sur main) avant la release v171, vu l'urgence (bandeau rouge pulsant chez tous les users).
+
+L'alerte info `migration-myktamap-fr-2026` reste en place jusqu'au 15 juillet 2026.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `v170` → `v171`
+- `js/copyright.js > __MKM__.build` : `"v170"` → `"v171"`
+- `version.json > version` : `"v170"` → `"v171"` — **notes user-facing mises à jour** (changements UX bien visibles, dignes d'être annoncés)
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `index.html` | Toggle serveurs HTML/JS, restructure planRowHTML (ligne 1/2), bouton ℹ️, modale `_afficherInfosPlan` (~80 lignes), checkbox memoriser default-on, syncModeFlags + check discordance dans `reSelectionnerZipPourPlan` |
+| `css/style.css` | `.plan-row-modes` + `.loader-plans-filters` + `.loader-plans-empty` + `.kta-plan-infos-table/boite/key/val` + `.plan-row-info-btn:hover`, Réglages responsive `.kta-cfg-modal-boite/corps/actions-bar` (~140 lignes), fix landscape sidebar (display:flex sur leaflet-top.right/left) |
+| `js/planRegistry.js` | Nouveau `syncModeFlags(id, flags)` + exposé dans l'API publique |
+| `js/interface.js` | Réglages : classe `.kta-cfg-modal-boite` + `.kta-cfg-corps` + `.kta-cfg-actions-bar` (responsive PC) |
+| `alert.json` | Retrait alerte gaz toxiques (déjà propagé via cherry-pick `0c6e033` sur main) |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v171 |
+| `CLAUDE.md` §33 | Section technique loader v171 (pattern UX, fix landscape, sync flags) |
+| `AI_CONTEXT.md` | Survol mis à jour |
+| `README_USER.md` | Section "Filtrer la liste de plans" + "Bouton ℹ️ Infos détaillées" + checkbox memoriser par défaut |
+
+---
+
+</details>
 
 <details id="v170" open>
 <summary><strong>🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)</strong></summary>
@@ -93,7 +199,7 @@ Découvert pendant l'audit : la classe `.kta-iti-search-result` (singulier) util
 
 </details>
 
-<details id="v169" open>
+<details id="v169">
 <summary><strong>🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire</strong></summary>
 
 ### Feature 1 — Zone "Inaccessible" (contrainte DURE pathfinder)
@@ -206,6 +312,7 @@ Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis mast
 
 ### 📑 Sommaire des versions
 
+- [🗓️ 17/05/2026 — 🚀 v171 : Refonte UX loader (toggle serveurs, ligne 2 badges, bouton ℹ️) + fixes mobile & PC](#v171)
 - [🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)](#v170)
 - [🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire](#v169)
 - [🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques](#2026-05-15-s13)
