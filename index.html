@@ -167,6 +167,14 @@
               </div>
             </div>
 
+            <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
+            <div class="loader-plans-filters">
+              <label class="loader-plans-filter-row" title="Masquer les plans découverts automatiquement sur le serveur (data/index.json)">
+                <input type="checkbox" id="loaderShowServerPlans" checked>
+                <span>🌐 Afficher les plans serveur</span>
+              </label>
+            </div>
+
             <div id="allPlansList" class="loader-plans-list"></div>
           </div>
 
@@ -701,6 +709,9 @@
         // 🏗️ Mode badges (v150) : V2 tuilé (violet), Multi-niveau (jaune), V1 (gris).
         // Plusieurs badges peuvent coexister (un plan V2 peut aussi être multi-niveau).
         // Si aucun flag → badge V1 implicite (mode classique).
+        // 📐 v170 : les badges modes passent sur LIGNE 2 (sous le nom du plan)
+        // — la ligne 1 contient juste le nom + version + badge storage. Évite
+        // que les noms longs poussent les badges modes en ellipsis.
         let badgesMode = "";
         if (plan.tiledV2 === true) {
           badgesMode += '<span class="plan-row-mode plan-row-mode-v2" title="Plan tuilé V2 (performance, Google Maps-like)">V2</span>';
@@ -717,9 +728,11 @@
         const meta = plan.lastOpened
           ? '<span class="plan-row-date">' + fmtDate(plan.lastOpened) + '</span>'
           : (plan.discovered ? '<span class="plan-row-date">découvert</span>' : '');
-        // Structure : .plan-row-title = flex avec name (ellipsis) + version + badges côte à côte.
-        // .plan-row-name-text prend flex:1 et trunque, les badges/version sont flex-shrink:0
-        // pour rester toujours visibles même sur noms longs (fix v150 ✅ disparaissait).
+        // Structure (v170 restructurée) :
+        // - .plan-row-title = ligne 1 : nom (ellipsis) + version + badge storage uniquement
+        // - .plan-row-modes = ligne 2 : badges V1/V2/M-LVL (dégagés du titre)
+        // - .plan-row-sub   = ligne 3 : sub (path serveur ou nom fichier + taille)
+        // - .plan-row-date  = ligne 4 : date d'ouverture / "découvert"
         return `
           <div class="plan-row" data-id="${plan.id}">
             <span class="plan-row-icon">${icon}</span>
@@ -727,8 +740,9 @@
               <div class="plan-row-title">
                 <span class="plan-row-name-text">${escapeHtml(plan.name || plan.id)}</span>
                 ${plan.version ? '<span class="plan-row-version">' + escapeHtml(plan.version) + '</span>' : ''}
-                <span class="plan-row-badges">${badgesMode}${badgeStorage}</span>
+                ${badgeStorage ? '<span class="plan-row-badges">' + badgeStorage + '</span>' : ''}
               </div>
+              <div class="plan-row-modes">${badgesMode}</div>
               <div class="plan-row-sub">${escapeHtml(sub)}</div>
               ${meta}
             </div>
@@ -738,6 +752,17 @@
             </div>
           </div>
         `;
+      }
+
+      // 🌐 v170 : helpers de filtrage "Afficher plans serveur" (persisté localStorage)
+      const LS_SHOW_SERVER = "myktamap_loader_show_server_plans";
+      function _loaderShowServerPlans() {
+        // Default = true (affiche les plans serveur). On retourne false UNIQUEMENT
+        // si l'user a explicitement décoché ET que la valeur est en localStorage.
+        return localStorage.getItem(LS_SHOW_SERVER) !== "false";
+      }
+      function _loaderSetShowServerPlans(value) {
+        localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
       }
 
       function escapeHtml(s) {
@@ -770,16 +795,35 @@
         }
         if (myPlansBox) myPlansBox.style.display = "block";
 
+        // 🌐 v170 : filtre "Afficher plans serveur" (persisté localStorage).
+        // Si l'user a décoché → on retire tous les plans type === "server" de
+        // la liste (mais on les laisse dans le PlanRegistry — c'est juste un
+        // filtre d'affichage, ré-active toujours possible via le toggle).
+        const showServer = _loaderShowServerPlans();
+        const filtered = showServer ? all : all.filter(function(p) { return p.type !== "server"; });
+
+        // Sync visuelle de la checkbox (au cas où refreshPlansList est appelé
+        // sans que le checkbox ait été coché manuellement, ex: au boot).
+        const cbServer = document.getElementById("loaderShowServerPlans");
+        if (cbServer) cbServer.checked = showServer;
+
         const allPlansList = document.getElementById("allPlansList");
         if (allPlansList) {
-          // Tri : par lastOpened desc, puis par name
-          const sorted = all.slice().sort(function(a, b) {
-            if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
-            if (a.lastOpened) return -1;
-            if (b.lastOpened) return 1;
-            return (a.name || "").localeCompare(b.name || "");
-          });
-          allPlansList.innerHTML = sorted.map(planRowHTML).join("");
+          if (filtered.length === 0) {
+            // Cas particulier : registre non vide mais filtre cache tout
+            // → message d'aide pour réactiver les serveurs.
+            allPlansList.innerHTML =
+              '<div class="loader-plans-empty">Aucun plan local — coche <em>Afficher les plans serveur</em> pour voir les plans découverts.</div>';
+          } else {
+            // Tri : par lastOpened desc, puis par name
+            const sorted = filtered.slice().sort(function(a, b) {
+              if (a.lastOpened && b.lastOpened) return b.lastOpened.localeCompare(a.lastOpened);
+              if (a.lastOpened) return -1;
+              if (b.lastOpened) return 1;
+              return (a.name || "").localeCompare(b.name || "");
+            });
+            allPlansList.innerHTML = sorted.map(planRowHTML).join("");
+          }
         }
 
         // Brancher les listeners
@@ -1081,6 +1125,21 @@
             window.PlanRegistry.exportToFile();
             setStatus("Liste exportée");
           }
+        });
+      }
+
+      // === FILTRE "Afficher plans serveur" (v170) ===
+      // Persistance localStorage via les helpers _loaderShowServerPlans /
+      // _loaderSetShowServerPlans. Bind unique au boot, le state visuel de la
+      // checkbox est sync'd dans refreshPlansList (au cas où on re-render
+      // depuis ailleurs après un changement programmatique).
+      const showServerCb = document.getElementById("loaderShowServerPlans");
+      if (showServerCb) {
+        // Restore l'état persisté au boot
+        showServerCb.checked = _loaderShowServerPlans();
+        showServerCb.addEventListener("change", function() {
+          _loaderSetShowServerPlans(showServerCb.checked);
+          window.refreshPlansList();
         });
       }
 
