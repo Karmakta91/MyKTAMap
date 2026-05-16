@@ -1243,7 +1243,10 @@ Stratégie de transition douce du domaine historique vers le nouveau domaine off
 **Configurées dans la modale itinéraire**, section repliable "🚫 Préférences d'évitement (optionnel)". Persisté en localStorage par plan : `localStorage["myktamap_route_avoid_<planId>"] = { points: [{x,y,label,id?}], tags: [...], radius: 100 }`.
 
 **3 types de contraintes** :
-1. **Points explicites** : `avoidPoints: [{x, y, label?, id?}, ...]` (ajout via autocomplete `SearchPoints.findByQuery` ou saisie ID via `Pathfinder.resolvePointById`)
+1. **Points explicites** : `avoidPoints: [{x, y, label?, id?}, ...]`. **3 méthodes d'ajout** côté UI :
+   - **Autocomplete** : `SearchPoints.findByQuery` (recherche par nom/id/tag)
+   - **Saisie ID exact** : `Pathfinder.resolvePointById` (input texte + bouton Ajouter)
+   - **Clic carte** : bouton "📍 Cliquer sur la carte" → mode flottant orange (`_itiAvoidClickActive`, handler isolé du mode clic waypoints), chaque clic ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)"). Cf. `_activerModeClicAvoid` / `_desactiverModeClicAvoid` dans interface.js.
 2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
 3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
 
@@ -1295,7 +1298,7 @@ Audit complet des 4 fonctions d'export pour vérifier la cohérence des 2 featur
 1. **`sessionExporter.js > _genererPayloadAvanc + _genererFichiersConversion`** : les filtres `roadTypes` / `roadTypesActifs` listent `["principal", "secondaire", "chemin"]` → drop silencieux des jonctions. Fix : bypass explicite `if (r.type === "jonction") return true;` avant le filtre. Idem dans la granularité fine où on liste les types pour générer les fichiers : `["principal", "secondaire", "chemin", "jonction"]`.
 
 2. **`exporter.js > _dessinerLegende`** : la légende PNG (mode avancé) listait uniquement Eau/Remblais/Effondrement et Principal/Secondaire/Chemin. Ajouts :
-   - Section Zones : `"Inaccessible (bloque l'itinéraire)"` avec fillColor `#7a0000` (= couleur uni canvas, pas hachures SVG car non portable au canvas)
+   - Section Zones : `"Inaccessible"` avec fillColor `#7a0000` (= couleur uni canvas, pas hachures SVG car non portable au canvas). Label épuré pour rester sobre : la sémantique "bloque l'itinéraire" est portée par le visuel (rouge sombre + icône ⛔ dans la sidebar).
    - Section Tracés : `"Jonction interniveau"` avec lineColor `#ff4ecb`
 
 3. **`tableEditor.js > _detecterColonnes.ordreCourant`** : la liste d'ordre privilégié `["id","nom","x","y","tags","etat","description",...]` n'incluait pas `level` → colonne en queue de tableau. Ajout : `level` inséré entre `y` et `tags` pour cohérence visuelle des coords (`x/y/level` contigus).
@@ -1326,7 +1329,28 @@ Bug remonté KARMA : en mode multi-niveau, l'ordre d'affichage des routes ne ref
 
 **Rétro-compat** : si `multiLevel === false`, ordre d'insertion conservé (= comportement v147 strict). Pas de régression sur les plans single-level.
 
-#### 31.6 Pour ajouter une 5ème type de zone (futur)
+#### 31.6 Audit aide intégrée + légende in-app + label épuré (depuis v169 / Karma_dev)
+
+Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" (🗺️) intègrent les 2 features. Corrections appliquées :
+
+**Modale Légende in-app** (`interface.js > afficherLegende`) :
+- Section 🛣️ Tracés : ajout `"Jonction interniveau"` (trait magenta `#ff4ecb`)
+- Section ⬛ Zones : ajout `"⛔ Inaccessible"` (swatch en hachures CSS via `repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px)`)
+
+**Modale Aide intégrée** (`interface.js > afficherAide`) :
+- Section 🛣️ Tracés & Routes : ajout `🪜` Jonction interniveau (mention "sous-action conditionnelle multi-niveau")
+- Section 🗺️ Itinéraire : nouveau paragraphe `🚫 Contraintes d'évitement` qui distingue clairement dur (⛔) vs souple (🚫), mentionne les 3 méthodes d'ajout et la persistance localStorage par plan
+
+**Suppression au clic** (`interface.js`, 2 sites) :
+- `_choixSuppression "Tracés"` et `activerModeSuppressionTraceClic` : filtre étendu à `["principal", "secondaire", "chemin", "jonction"]`. Avant : impossible de supprimer une jonction au clic, fallback obligatoire via "Tous les tracés". Après : cohérent avec les autres tracés.
+
+**Épuration des labels de légende** (cohérence cross-doc, 2 commits) :
+- Légende in-app : `"⛔ Inaccessible — bloque l'itinéraire (hachures)"` → `"⛔ Inaccessible"` (commit `0419752`)
+- Légende in-app : `"🪜 Jonction interniveau (escalier / pente — multi-niveau)"` → `"Jonction interniveau"` (commit `d2b4898`)
+- Légende PNG : `"Inaccessible (bloque l'itinéraire)"` → `"Inaccessible"` (commit `0419752`)
+- **Principe** : sémantique portée par le **visuel** (couleur unique magenta pour jonction, hachures rouge/noir pour inaccessible) + icône dans la sidebar (⛔, 🪜) → pas besoin de doubler en texte. Labels sobres alignés avec le reste du projet.
+
+#### 31.7 Pour ajouter une 5ème type de zone (futur)
 
 **À NE PAS OUBLIER** quand on ajoute un nouveau type de zone (au-delà des 4 actuels eau/remblais/effondrement/inaccessible) :
 

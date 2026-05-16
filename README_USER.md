@@ -838,6 +838,8 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
 
 Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (Glacière, Capucins, sites avec étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.
 
+> 📚 **Cohérence visuelle des niveaux (depuis v169)** : quand le mode multi-niveau est activé, les tracés sont automatiquement empilés selon leur niveau — une galerie au Niveau 0 apparaît toujours **AU-DESSUS** d'une galerie au Niveau -1, et celle au Niveau +1 au-dessus du Niveau 0. Au sein du même niveau : Chemin (en arrière) < Secondaire < Principal (au-dessus). L'itinéraire calculé et les zones inaccessibles ⛔ passent toujours au-dessus de tout pour rester visibles.
+
 > ⚠️ **Mode optionnel** — désactivé par défaut. La plupart des carrières sont mono-niveau, le mode classique suffit. Active-le **uniquement** pour les vraies carrières multi-étages.
 
 ### Activer le mode pour un plan

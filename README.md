@@ -31,6 +31,20 @@ Nouveau 4ème type de zone polygonale (`inaccessible`) qui bloque tout segment d
 - `_segmentBloqueParZoneInaccess` (filtre niveau-aware, segments "transit" jamais bloqués)
 - `_collecterZonesInaccessibles` (lit session via getZones + data layers via _ktaDataPolygons)
 
+### Audit aide intégrée + légende in-app + épuration labels
+
+Audit complémentaire des modales "aide" (📖) et "légende" (🗺️) côté in-app :
+
+- **Modale Légende in-app** (`interface.js > afficherLegende`) : ajout `"Jonction interniveau"` (trait magenta) dans la section Tracés + `"⛔ Inaccessible"` (swatch hachures CSS) dans la section Zones
+- **Modale Aide** section Tracés & Routes : mention 🪜 Jonction (conditionnelle multi-niveau)
+- **Modale Aide** section Itinéraire : nouveau paragraphe `🚫 Contraintes d'évitement` qui distingue dur (⛔) vs souple (🚫) + 3 méthodes d'ajout + persistance localStorage
+- **Sélection clic suppression** : jonction maintenant supprimable au clic (2 sites étendus dans `interface.js`)
+
+**Épuration cosmétique des labels** de légende (cohérence sobre du projet — sémantique portée par le visuel et l'icône sidebar, pas dupliquée en texte) :
+- Légende in-app : `"⛔ Inaccessible — bloque l'itinéraire (hachures)"` → `"⛔ Inaccessible"`
+- Légende in-app : `"🪜 Jonction interniveau (escalier / pente — multi-niveau)"` → `"Jonction interniveau"`
+- Légende PNG : `"Inaccessible (bloque l'itinéraire)"` → `"Inaccessible"`
+
 ### Audit fonctions d'export + mode clic carte évitement (post Karma_dev)
 
 Audit complet des 4 fonctions d'export (image rapide/avancé, session Full/Avancé/Conversion, tableau JSON, liste de plans) pour vérifier la cohérence des Features 1+2. **3 corrections** appliquées :
