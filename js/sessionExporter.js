@@ -246,6 +246,41 @@
         max-height: 200px;
         overflow-y: auto;
       }
+      /* Item de résultat dans le panneau de recherche (calibrage KMZ).
+         Pas de classe .kta-iti-search-result en CSS (incohérence historique
+         avec .kta-iti-search-item) — on isole donc avec une classe dédiée KMZ. */
+      .kta-kmz-search-item {
+        padding: 6px 10px;
+        margin: 2px 0;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 12.5px;
+        color: #c8d0e0;
+        transition: background 0.12s;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: 4px;
+      }
+      .kta-kmz-search-item:hover {
+        background: rgba(140,180,255,0.14);
+        color: #e8eaf0;
+      }
+      .kta-kmz-search-item strong {
+        color: #8cb4ff;
+        font-weight: 600;
+      }
+      .kta-kmz-search-item .kta-kmz-search-meta {
+        color: #8892a4;
+        font-size: 11px;
+      }
+      .kta-kmz-search-empty {
+        padding: 8px 10px;
+        color: #8892a4;
+        font-style: italic;
+        font-size: 12px;
+        text-align: center;
+      }
       .kta-kmz-apercu {
         padding: 8px 10px;
         background: rgba(0,0,0,0.20);
@@ -1742,15 +1777,27 @@
         let results = [];
         try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
         if (input.value.trim() !== q) return;
-        if (results.length === 0) { list.innerHTML = '<div style="color:#8892a4;">Aucun résultat</div>'; return; }
+        if (results.length === 0) {
+          list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+          return;
+        }
         list.innerHTML = results.slice(0, 10).map(function(it, i) {
           const p = it.point;
-          return '<div class="kta-iti-search-result" data-idx="' + i + '">' +
-                   '<strong>' + (p.nom || p.id || "(point)") + '</strong>' +
-                   (p.id ? ' <span style="color:#8892a4;">(' + p.id + ')</span>' : '') +
+          const nom = p.nom || p.id || "(point)";
+          // Méta : ID (s'il diffère du nom) + coord plan en plus petit
+          const metaParts = [];
+          if (p.id && p.id !== nom) metaParts.push(p.id);
+          if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
+            metaParts.push("x=" + p.x + ", y=" + p.y);
+          }
+          const meta = metaParts.length > 0
+            ? '<span class="kta-kmz-search-meta">(' + metaParts.join(" · ") + ')</span>'
+            : '';
+          return '<div class="kta-kmz-search-item" data-idx="' + i + '">' +
+                   '<strong>' + nom + '</strong>' + meta +
                  '</div>';
         }).join("");
-        list.querySelectorAll(".kta-iti-search-result").forEach(function(row, i) {
+        list.querySelectorAll(".kta-kmz-search-item").forEach(function(row, i) {
           row.addEventListener("click", function() {
             const p = results[i].point;
             document.getElementById("kmz_" + letter + "_x").value = p.x;
