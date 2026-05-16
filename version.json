@@ -1,5 +1,5 @@
 {
-  "version": "v169",
+  "version": "v170",
   "released": "2026-05-16",
   "notes": [
     "⛔ Nouveau type de zone : INACCESSIBLE — tracée comme une zone normale (groupe ⬛ Zones → sous-action ⛔), visuel en hachures rouge/noir. Sert à bloquer le pathfinder : aucun itinéraire ne traversera ces zones (contrainte dure). Niveau-aware si tu es en mode multi-niveau (bloque uniquement les routes du même niveau).",

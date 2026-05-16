@@ -9,12 +9,92 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (94 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (95 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="karma-dev-zone-inacc-evitement" open>
-<summary><strong>🚧 [Karma_dev — en cours] 🚫 Zone "Inaccessible" + Préférences d'évitement itinéraire</strong></summary>
+<details id="v170" open>
+<summary><strong>🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)</strong></summary>
 
-**⚠️ Branche `Karma_dev` — pas encore release.** Pas de bump version, pas de merge main tant que KARMA n'a pas validé + dit "release".
+Nouvelle fonctionnalité d'**export terrain géoréférencé** au format KMZ. L'utilisateur fournit 2 couples `(point_plan, point_GPS)` → l'app calcule une **transformation affine 2D similarity** (rotation + scale + translation) qui mappe chaque coord plan vers (lat, lng). Le résultat est ouvrable dans n'importe quel viewer KML standard.
+
+### Module `js/kmzExport.js` (~430 lignes, nouveau)
+
+Module IIFE exposant `window.KmzExport = { buildTransform, planToGps, getCalibration, setCalibration, genererKml, genererKmz }`.
+
+- **Math affine 2D** : `buildTransform(planA, planB, gpsA, gpsB)` retourne `{refPlan, refGps, metresParPixel, rotation, latMoyenne}`. Projection équirectangulaire locale (~111320·cos(lat) pour E-W, ~110540 pour N-S). Validations : |AB_plan| ≥ 50 px, |AB_gps| ≥ 1 m.
+- **Génération KML** : `<GroundOverlay>` avec `<gx:LatLonQuad>` (orientation arbitraire), `<Placemark>` pour points (+ Icon par tag), `<LineString>` pour roads, `<Polygon>` pour zones, `<Folder>` par niveau (si multi-niveau).
+- **Packaging KMZ** : ZIP via JSZip avec `doc.kml` + `files/<plan.png>` + `files/icons/<tag>.png` (1 icône par tag rencontré).
+- **Persistance calibrage** : `localStorage["myktamap_kmz_calib_<planId>"]` — l'user n'a pas à re-saisir les 8 champs à chaque export sur le même plan.
+
+### UI onglet 🌍 KMZ dans Export Session
+
+Onglet dédié dans la modale 💾 Export Session, avec :
+- **Calibrage 2 points** : 8 champs (x/y plan + lat/lng GPS pour chaque point) avec 3 méthodes de saisie par point :
+  - **🔍 Chercher un point** : autocomplete via SearchPoints (debounce 150ms)
+  - **📍 Cliquer carte** : la modale se réduit, l'user clique sur la carte (handler séparé du mode itinéraire pour éviter conflits)
+  - **Saisie manuelle** des coords directement
+- **Aperçu live** : les 4 coins du plan calculés (↖️↗️↙️↘️) + échelle (m/px) + rotation (°) + lien Google Maps vers le centre
+- **Section 📦 Contenu à inclure** (granularité fine pattern IMAGE AVANCÉ) :
+  - 🖼️ Image plan + slider opacité (défaut 60%, 0-100%)
+  - 📍 Points (parent) + sous-cases dynamiques par tag avec icônes et compteurs (session + data layers)
+  - 🛣️ Tracés (parent) + 3 sous-cases (Principaux/Secondaires/Chemins) avec compteurs
+  - ⬛ Zones (parent) + 4 sous-cases (Eau/Remblais/Effondrement/Inaccessible)
+  - 🪜 Jonctions interniveau (si multi-niveau)
+  - 🗺️ Itinéraire actif (si présent)
+- **Section 🏗️ Niveaux à inclure** (si multi-niveau) : chips pour filtrer par niveau
+
+### Itérations Karma_dev avant release
+
+| Commit | Sujet |
+|---|---|
+| `a3c2cc4` | MVP : calibrage 2 points + génération KMZ complète |
+| `15215a8` | Slider opacité image (défaut 60%) + fix CSS modal (kta-export-cb-row → kta-ses-cb-row) |
+| `bb23b98` | Check connexion internet avant ouverture lien Google Maps (via _pingInternet) |
+| `0eeb610` | Roads + zones embedded data layers inclus (avant : session uniquement) |
+| `66954cf` | Granularité fine pattern IMAGE AVANCÉ (parent + sous-cases par tag/type avec compteurs) |
+| `e7b0a80` | Fix CSS panneau recherche calibrage (classe orpheline `.kta-iti-search-result`) + meta enrichie |
+| `ec0343f` | Fix checkbox image cochée par défaut (helper `row()` interprétait `count=null` comme 0) |
+
+### Helpers transverses ajoutés
+
+- `window.getAllEmbeddedZones()` (`utils.js`) — symétrique à `getAllEmbeddedRoads`, mappe `_ktaDataPolygons` vers `[{type, points, level}]`. Utilisé par le KMZ pour exporter aussi les zones data layer.
+- `window._pingInternet` exposé sur window (`interface.js`) — était top-level mais inutilisable cross-module. Utilisé par le check connexion avant lien Google Maps.
+
+### Markers data layers annotés (`utils.js`)
+
+`ajouterPointsDepuisJSON` annote désormais chaque marker avec `_ktaNom`, `_ktaId`, `_ktaTags`, `_ktaLevel` (en plus du `_ktaLevel` qui existait pour le filtre multi-niveau). Permet au KMZ de générer les Placemarks avec nom + description + style icône par tag.
+
+### Bug CSS fix collatéral
+
+Découvert pendant l'audit : la classe `.kta-iti-search-result` (singulier) utilisée dans 2 endroits (KMZ et modal Itinéraire) n'avait **aucune définition CSS** (seule `.kta-iti-search-item` existe — incohérence historique). Fix isolé au KMZ via `.kta-kmz-search-item` dédiée. Le bug pourrait exister aussi côté itinéraire (à corriger en commit séparé si remonté par user).
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `v169` → `v170`
+- `js/copyright.js > __MKM__.build` : `"v169"` → `"v170"`
+- `version.json > version` : `"v169"` → `"v170"` (notes user-facing **inchangées** — pas de bullet user-visible nécessaire pour cette release, c'est un ajout outillage technique)
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `js/kmzExport.js` | **NEW** ~430 lignes : math affine 2D + génération KML/KMZ + persistance localStorage |
+| `js/sessionExporter.js` | +~370 lignes : onglet KMZ complet (UI + handlers + logique export) + CSS injectés |
+| `js/utils.js` | Markers data layers annotés (_ktaNom/Id/Tags) + getter `window.getAllEmbeddedZones` |
+| `js/interface.js` | Expose `window._pingInternet` |
+| `index.html` | `<script src="js/kmzExport.js">` |
+| `sw.js` | `./js/kmzExport.js` dans ASSETS_TO_CACHE + bump CACHE_NAME v170 |
+| `js/copyright.js` | bump build v170 |
+| `version.json` | bump version v170 |
+| `CLAUDE.md` §32 | Section technique complète KMZ |
+| `AI_CONTEXT.md` | Mention KMZ dans survol + recette P + format `.kmz` |
+| `README_USER.md` | Section "🌍 Exporter en KMZ" sous Export |
+
+---
+
+</details>
+
+<details id="v169" open>
+<summary><strong>🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire</strong></summary>
 
 ### Feature 1 — Zone "Inaccessible" (contrainte DURE pathfinder)
 
@@ -116,11 +196,9 @@ Section repliable "🚫 Préférences d'évitement (optionnel)" dans la modale i
 | `AI_CONTEXT.md` | Type inaccessible dans la liste anti-hallucination + recettes N et O |
 | `README_USER.md` | Tableau zones étendu + section "⛔ Zone Inaccessible" + sous-section "🚫 Préférences d'évitement" |
 
-### Workflow Karma_dev
+### Workflow
 
-Branche dédiée pour développement de features avant validation et release. Pas de push main, pas de release sans validation explicite + go.
-
-À faire avant release : tests KARMA + bump version + merge dans main + workflow CI auto-release GitHub déclenché.
+Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis master cb5e05d) puis merge dans `main` au moment de la release.
 
 </details>
 
@@ -128,7 +206,8 @@ Branche dédiée pour développement de features avant validation et release. Pa
 
 ### 📑 Sommaire des versions
 
-- [🚧 **Karma_dev (en cours)** — 🚫 Zone "Inaccessible" + Préférences d'évitement itinéraire](#karma-dev-zone-inacc-evitement)
+- [🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)](#v170)
+- [🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire](#v169)
 - [🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques](#2026-05-15-s13)
 - [🗓️ 15/05/2026 (suite 12) — 🧹 v168 : Suppression de migrationNotice.js (doublon avec alert.json info)](#v168)
 - [🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`](#v163)
@@ -225,7 +304,7 @@ Branche dédiée pour développement de features avant validation et release. Pa
 
 ---
 
-<details id="2026-05-15-s13" open>
+<details id="2026-05-15-s13">
 <summary><strong>🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques</strong></summary>
 
 

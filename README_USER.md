@@ -1030,6 +1030,62 @@ Pour un contrôle précis sur tout ce que tu exportes :
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
 
+### 🌍 Exporter en KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)
+
+Appuyez sur **⬆️ → 💾** puis l'onglet **🌍 KMZ**. Génère un fichier `.kmz` ouvrable dans n'importe quelle appli de cartographie terrain compatible KML.
+
+Cas d'usage typiques :
+- Visualiser ton plan dans **Google Earth** par-dessus l'imagerie satellite
+- Charger dans **OsmAnd / Locus / Avenza** pour navigation terrain hors-ligne
+- Partager avec un collègue qui n'a pas MyKTAMap mais a un viewer KML
+
+#### Calibrage par 2 points GPS
+
+Le KMZ a besoin de savoir **où ton plan se trouve sur le globe**. Tu lui donnes 2 couples (point sur ton plan ↔ coordonnées GPS réelles), l'app calcule la transformation rotation+échelle+translation et positionne tout correctement.
+
+Pour chaque point (A et B), 3 méthodes au choix :
+- **🔍 Chercher un point** : tape un nom dans la barre, clique le résultat → les coords plan x/y sont auto-remplies. Tu n'as plus qu'à renseigner les lat/lng GPS correspondantes (que tu connais via Google Maps, GPS de terrain, plaque IGC visible en Street View…).
+- **📍 Cliquer carte** : la modale se réduit, tu cliques sur la carte là où tu connais les coords GPS → x/y plan auto-remplies. Renseigne lat/lng GPS.
+- **Saisie manuelle** des 4 champs directement (x, y, lat, lng).
+
+> 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
+
+#### Aperçu live
+
+Au fur et à mesure que tu remplis les champs, un bloc **🌐 Aperçu coins** s'affiche avec :
+- Les 4 coins de ton plan calculés en (lat, lng) — ↖️ ↗️ ↙️ ↘️
+- L'**échelle** calculée (mètres par pixel) et la **rotation** (°)
+- Un lien **🔗 Voir le centre sur Google Maps** pour vérifier visuellement que le centre du plan tombe bien là où tu attendais (vérif connexion internet auto avant ouverture)
+
+#### Contenu à inclure (granularité fine)
+
+Pareil que le mode Image Avancé : cases parent + sous-cases pour un contrôle précis.
+
+- 🖼️ **Image plan** (GroundOverlay) + slider **Opacité 0-100%** (défaut 60%) — permet de voir la cartographie satellite/OSM sous ton plan dans Google Earth
+- 📍 **Points** + sous-cases par tag avec icônes et compteurs (session + data layers)
+- 🛣️ **Tracés** + sous-cases Principaux / Secondaires / Chemins
+- ⬛ **Zones** + sous-cases Eau / Remblais / Effondrement / Inaccessible
+- 🪜 **Jonctions interniveau** (si plan multi-niveau)
+- 🗺️ **Itinéraire actif** (si calculé)
+
+Tu peux par exemple exporter uniquement les **puits d'aération** sans les chemins, ou seulement les **zones inaccessibles** pour fournir un layer de danger à un viewer externe.
+
+#### Niveaux à inclure (si multi-niveau)
+
+Section dédiée avec chips pour filtrer par niveau. Par défaut tous les niveaux dispo sont cochés (1 Folder KML par niveau dans le fichier).
+
+#### Téléchargement
+
+Clic **Télécharger** → fichier `MyKTAMap_<NomDuPlan>_<date>.kmz` téléchargé.
+
+#### Persistance du calibrage
+
+Ton calibrage 2 points est sauvegardé **par plan** (localStorage). Au prochain export du même plan, les 8 champs sont déjà pré-remplis — tu ajustes si besoin et tu re-télécharges. Si tu changes de plan ou repars à zéro, tu n'as qu'à re-saisir.
+
+> ⚠️ **Limites de la précision** : la transformation est une **similarity 2D** (rotation + scale uniforme + translation). Sur des plans globalement plats et rigides, c'est suffisant. Sur des plans très étendus ou non-rigides (déformations locales), attends-toi à une légère dérive aux extrémités opposées au calibrage. Une version future pourra supporter 3+ points (least squares) pour plus de précision si besoin.
+
+> ⚠️ **Comme pour l'export PNG**, vérifie que ton KMZ ne révèle pas d'informations sensibles avant de le partager publiquement (carrière privée, accès restreint…).
+
 ---
 
 ## ⬇️ Charger / Import

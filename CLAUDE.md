@@ -1370,6 +1370,156 @@ Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" 
 
 C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne pas en oublier.
 
+### 32. Export KMZ géolocalisé (`js/kmzExport.js`, depuis v170)
+
+Export terrain géoréférencé au format KMZ standard (OGC) ouvrable dans **Google Earth, OsmAnd, Locus, Avenza, ArcGIS Earth**, etc. L'utilisateur saisit 2 couples `(point_plan, point_GPS)` → l'app calcule une transformation affine 2D similarity (rotation + scale + translation) qui mappe chaque coord plan vers (lat, lng).
+
+#### 32.1 Math affine 2D
+
+**`buildTransform(planA, planB, gpsA, gpsB)`** retourne `{refPlan, refGps, metresParPixel, rotation, latMoyenne}`.
+
+Algorithme :
+1. Vecteur plan AB : `dxPlan = Bx - Ax`, `dyPlan = -(By - Ay)` (y **inversé** car axe image vers le bas, math standard vers le haut)
+2. Vecteur GPS AB converti en mètres via projection équirectangulaire locale :
+   - `dxGps = (lngB - lngA) * 111320 * cos(latMoy)` (E-W)
+   - `dyGps = (latB - latA) * 110540` (N-S, constante car latitude varie peu en local)
+3. `metresParPixel = |AB_gps| / |AB_plan|` (échelle uniforme)
+4. `rotation = atan2(dyGps, dxGps) - atan2(dyPlan, dxPlan)` (delta angles)
+
+**Validations** :
+- `|AB_plan| ≥ 50 px` (sinon imprécision énorme — fail safe)
+- `|AB_gps| ≥ 1 m` (sinon dégénéré)
+
+**`planToGps(t, x, y)`** : applique la transformation inverse pour mapper un (x, y) plan vers (lat, lng).
+
+**Extension future** : la math est conçue pour facilement passer à 3+ points (least squares) si besoin de plus de précision sur les plans très étendus ou non-rigides.
+
+#### 32.2 Format KMZ
+
+KMZ = ZIP standard avec :
+- `doc.kml` : XML KML 2.2 + namespace gx 2.2 (pour `<gx:LatLonQuad>`)
+- `files/<plan>.png` : image plan référencée dans `<GroundOverlay>`
+- `files/icons/<tag>.png` : 1 icône par tag rencontré dans les Placemarks
+
+Structure KML :
+```xml
+<Document>
+  <Style id="point_pa">...</Style>          <!-- 1 par tag -->
+  <Style id="road_principal">...</Style>    <!-- 5 styles roads -->
+  <Style id="zone_eau">...</Style>          <!-- 4 styles zones -->
+  <GroundOverlay>
+    <color>99ffffff</color>                 <!-- alpha 60% par défaut -->
+    <Icon><href>files/plan.png</href></Icon>
+    <gx:LatLonQuad>                          <!-- 4 coins arbitraires -->
+      <coordinates>SW SE NE NW</coordinates>
+    </gx:LatLonQuad>
+  </GroundOverlay>
+  <Folder><name>🏗️ Niveau 0</name>           <!-- 1 folder par niveau si multi-level -->
+    <Folder><name>📍 Points (N)</name>...</Folder>
+    <Folder><name>🛣️ Tracés (N)</name>...</Folder>
+    <Folder><name>🪜 Jonctions (N)</name>...</Folder>
+    <Folder><name>⬛ Zones (N)</name>...</Folder>
+  </Folder>
+  <Folder><name>🗺️ Itinéraire (N)</name>...</Folder>
+</Document>
+```
+
+#### 32.3 Format couleur KML
+
+**AABBGGRR** (attention : pas RRGGBBAA ni AARRGGBB) — alpha + bleu + vert + rouge en hex 2 chars chacun. Helper `_kmlColor(hex, alpha)` dans `kmzExport.js` fait la conversion `#RRGGBB` + alpha 0-255 → `AABBGGRR`.
+
+Exemples :
+- `ffffffff` = blanc opaque
+- `99ffffff` = blanc 60% alpha (utilisé pour GroundOverlay slider 60%)
+- `ff0000ff` = rouge pur opaque (rouge=ff, vert=00, bleu=00, alpha=ff)
+
+#### 32.4 Coordonnées KML
+
+`_coord(latlng)` formate en `"lng,lat,0"` (KML : lng AVANT lat, contrairement au standard "lat,lng"). Le `,0` est l'altitude (0 = au sol).
+
+#### 32.5 API publique
+
+**`window.KmzExport`** :
+- `buildTransform(planA, planB, gpsA, gpsB)` → `transform` ou throw
+- `planToGps(transform, x, y)` → `{lat, lng}`
+- `getCalibration(planId)` / `setCalibration(planId, calib)` — localStorage persistance
+- `genererKml(opts)` → string KML (synchrone)
+- `genererKmz(opts)` → Promise<Blob> (async, packe le ZIP via JSZip)
+
+**Format `opts` pour `genererKmz`** :
+```js
+{
+  planName, planVersion, planAuthor,     // métadonnées du plan
+  imageW, imageH,                        // dimensions plan en px
+  transform,                             // résultat de buildTransform
+  imageOpacity: 0-100,                   // % opacité GroundOverlay (default 60)
+  include: {
+    image:        true|false,            // parent GroundOverlay
+    points:       true|false,            // parent Placemarks
+    roads:        true|false,            // parent LineStrings
+    zones:        true|false,            // parent Polygons
+    jonctions:    true|false,            // (si multi-niveau)
+    itineraire:   true|false,
+    dataLayers:   true,
+    // Filtres granulaires (Set | null → null = pas de filtre, legacy compat)
+    pointTagsSet: Set<string> | null,    // whitelist tags (1er tag du point)
+    roadTypesSet: Set<string> | null,    // whitelist {principal, secondaire, chemin}
+    zoneTypesSet: Set<string> | null     // whitelist {eau, remblais, effondrement, inaccessible}
+  },
+  levels: Set<number> | null,            // filtre niveaux (null = tous)
+  data: {
+    editorPoints: [{x, y, nom, id, tags, level, description}, ...],
+    roads:        [{type, points, level, fromLevel, toLevel}, ...],
+    zones:        [{type, points, level}, ...]
+  },
+  imageBlob:     Blob | null,            // image PNG/JPEG (null → skip GroundOverlay)
+  imageFilename: string,                 // nom dans le ZIP (ex: "TestMAP.png")
+  iconsToEmbed:  { tag: url, ... }       // URLs (data: ou http) des icônes par tag
+}
+```
+
+#### 32.6 Cycle de vie côté sessionExporter
+
+1. **Click onglet 🌍 KMZ** → `_renderKmz()` génère HTML (calibrage + aperçu + contenu + niveaux)
+2. **`_kmzCollecterStats()`** : agrège session + embedded → counts par tag/type pour les compteurs UI
+3. **Saisie 8 champs** ou import via 🔍 Chercher / 📍 Cliquer carte / Saisie manuelle
+4. **`_kmzRafraichirApercu()`** : à chaque input, recalcule + affiche les 4 coins + lien Google Maps (avec ping internet via `window._pingInternet`)
+5. **Click Télécharger** → `_exportKmz()` :
+   - Validation 8 champs requis
+   - `buildTransform` + persistance via `setCalibration`
+   - Collecte session + embedded (allRoads, allZones, allPoints + dataLayerPoints)
+   - Lecture des Sets de filtrage granulaire (pointTagsSet, roadTypesSet, zoneTypesSet)
+   - Fetch image blob (RUNTIME_ASSETS si ZIP local, fetch HTTP sinon)
+   - Collecte iconsToEmbed depuis `window._iconMap`
+   - `genererKmz(opts)` → Blob → téléchargement `MyKTAMap_<plan>_<date>.kmz`
+
+#### 32.7 Pièges et conventions
+
+⚠️ **`y` inversé dans `buildTransform`** : axe image va vers le bas (haut-gauche = 0,0), axe math standard va vers le haut. La math doit inverser y sinon la rotation est miroir.
+
+⚠️ **AABBGGRR vs RRGGBBAA** : KML utilise un format particulier hérité de Google. Toujours passer par le helper `_kmlColor` plutôt que de coder le hex à la main.
+
+⚠️ **`<gx:LatLonQuad>` plus robuste que `<LatLonBox>`** : LatLonBox suppose un rectangle axes-aligned + rotation unique. LatLonQuad permet 4 coins arbitraires — gère naturellement les plans non-rectangulaires ou tournés.
+
+⚠️ **Image blob requise** : si `imageBlob = null`, le GroundOverlay est skip silencieusement (log warning). Le KMZ reste valide mais affiche juste les annotations sans la cartographie de fond.
+
+⚠️ **Helper `row(id, label, count, checked)`** dans sessionExporter (commit `ec0343f` fix) :
+- `count = null` → pas de compteur, checkbox toujours enabled (cas image, métadonnée binaire)
+- `count = 0` → "(0)" affiché, checkbox grisée + disabled (rien à exporter, blocage utile)
+- `count > 0` → "(N)" affiché, cochée si `checked=true`
+
+⚠️ **Classe CSS `.kta-iti-search-result` orpheline** : utilisée historiquement dans le modal Itinéraire (`interface.js`) ET dans le KMZ initial mais **jamais définie en CSS** (seule `.kta-iti-search-item` l'est). Le KMZ est passé à `.kta-kmz-search-item` dédiée (cf. commit `e7b0a80`). Le bug existe probablement encore côté Itinéraire — à fixer si remonté.
+
+#### 32.8 Pour ajouter une nouvelle catégorie d'export KMZ (futur)
+
+Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, audio notes) :
+1. Helper `_emitXxx(item, styleId)` dans `kmzExport.js > genererKml`
+2. Helper `_genererStyleXxx()` (style KML)
+3. Bloc dans `_folderForLevel` avec filtre niveau-aware
+4. UI : ajouter une row dans `_kmzRenderContenu` (sessionExporter.js)
+5. Lecture : `opts.include.xxx` + éventuellement Set granulaire
+6. Stats : ajouter au compteur dans `_kmzCollecterStats`
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

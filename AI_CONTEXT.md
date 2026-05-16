@@ -71,6 +71,7 @@ Pour **chaque** question :
 - ⬛ **Zones** : Remblais / Effondrement / Eau
 - 💾 **Sauvegarde session** : Full / Avancé / Conversion (session → data layer)
 - 🖼️ **Export PNG** : Mode rapide / Mode avancé (avec légende, calques au choix, résolution)
+- 🌍 **Export KMZ géolocalisé** (depuis v170) : nouvel onglet dans 💾 Export Session. Calibrage par **2 points** (saisie x/y plan + lat/lng GPS pour chacun, via recherche / clic carte / saisie manuelle). L'app calcule une transformation affine 2D (rotation + scale + translation) et génère un fichier `.kmz` ouvrable dans Google Earth, OsmAnd, Locus, Avenza... Image plan en transparence configurable (slider 0-100%, défaut 60%). Granularité fine du contenu : sous-cases parent/enfants par tag de point, type de tracé, type de zone (pattern identique à l'Export PNG Avancé). Inclut session + embedded data layers. Calibrage persisté par plan (localStorage). Compatible multi-niveau (1 Folder KML par niveau).
 - 🏗️ **Générateur de plan** : Nouveau plan / Modifier existant (ZIP)
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
 - 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
@@ -129,6 +130,7 @@ Pour **chaque** question :
 - Sessions : `.json` (export de session)
 - Images : `.png` ou `.jpg` (image base + calques)
 - Données : `.json` (puits, vehicule, editor, etc.)
+- **Export terrain géoréférencé** : `.kmz` (depuis v170, Google Earth / OsmAnd / Locus / Avenza)
 
 **Aucune autre fonctionnalité, type, ou format que ce qui est listé ici ou décrit dans la doc ci-dessous ne fait partie de MyKTAMap.**
 
@@ -378,6 +380,47 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
 |---|---|---|
 | ⛔ Zone inaccessible | Dur | ❌ Jamais relâché |
 | 🚫 Point / tag évité | Souple | ✅ Fallback + message si pas d'alternative |
+
+---
+
+### P. 🌍 Exporter en KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza) — depuis v170
+
+> Mots-clés : "export KMZ", "Google Earth", "OsmAnd", "Locus", "Avenza", "KML", "géolocalisé", "géoréférencé", "calibrage GPS", "lat lng", "coordonnées GPS", "exporter pour application terrain".
+
+**Cas d'usage** : tu veux ouvrir ton plan + tes annotations (points, tracés, zones) dans une appli de cartographie terrain qui supporte le KML (Google Earth, OsmAnd, Locus, Avenza, ArcGIS Earth…). L'app calcule la transformation rotation+échelle+translation à partir de **2 points** dont tu connais à la fois les coords plan (x, y en pixels) ET les coords GPS réelles (lat, lng en degrés).
+
+1. Ouvre **💾 Export Session** → onglet **🌍 KMZ**.
+2. **Calibrage Point A** :
+   - Méthode 1 : **🔍 Chercher un point** → tape un nom dans la barre, clique le résultat → x/y plan auto-remplis. Tu n'as plus qu'à renseigner les lat/lng GPS réelles correspondantes.
+   - Méthode 2 : **📍 Cliquer carte** → la modale se réduit, clique sur la carte là où tu connais les coords GPS → x/y plan auto-remplis. Renseigne lat/lng GPS.
+   - Méthode 3 : Saisie manuelle directe des 4 champs x/y/lat/lng.
+3. **Calibrage Point B** : pareil, choisis un point **éloigné** du Point A (idéalement aux extrémités opposées du plan pour maximiser la précision). L'app refuse si `|AB_plan| < 50 px` ou `|AB_gps| < 1 m`.
+4. **🌐 Aperçu coins** s'affiche live au fur et à mesure que tu remplis : les 4 coins du plan calculés en (lat, lng), + échelle (mètres/pixel) + rotation (°). Lien **🔗 Voir le centre sur Google Maps** pour vérifier visuellement (vérif connexion internet auto avant ouverture).
+5. **📦 Contenu à inclure** (pattern identique à l'Export PNG Avancé) :
+   - 🖼️ **Image plan** (GroundOverlay) + slider **Opacité** (0-100%, défaut 60% — permet de voir l'OSM/satellite sous le plan)
+   - 📍 **Points** (parent) + sous-cases par tag avec icônes et compteurs
+   - 🛣️ **Tracés** (parent) + sous-cases Principaux / Secondaires / Chemins
+   - ⬛ **Zones** (parent) + sous-cases Eau / Remblais / Effondrement / Inaccessible
+   - 🪜 **Jonctions interniveau** (si plan multi-niveau)
+   - 🗺️ **Itinéraire actif** (si calculé)
+6. **🏗️ Niveaux à inclure** (si multi-niveau) : chips pour filtrer. Par défaut : tous les niveaux dispo (1 Folder KML par niveau).
+7. Clique **Télécharger** → fichier `MyKTAMap_<plan>_<date>.kmz` téléchargé.
+
+**Persistance** : ton calibrage 2 points est sauvegardé en localStorage par plan (clé `myktamap_kmz_calib_<planId>`). Au prochain export du même plan, les 8 champs sont pré-remplis — tu ajustes si besoin et tu re-télécharges.
+
+**Conseils calibrage** :
+- Choisis 2 points dont tu es **sûr** des coords GPS (entrée de carrière reconnaissable, plaque IGC visible depuis Google Maps Street View…)
+- Plus AB est long sur le plan, meilleure est la précision de la transformation
+- 2 points seulement suffisent pour un plan globalement plat et rigide ; sur des plans très étendus ou non-rigides, attends-toi à une légère dérive aux extrémités opposées (math affine simple, pas de correction non-linéaire)
+
+**Compatibilité** :
+- ✅ **Google Earth** (web et desktop) : recommandé, support natif gx:LatLonQuad
+- ✅ **OsmAnd** (Android, iOS) : supporte KMZ + KML
+- ✅ **Locus Map** (Android) : idem
+- ✅ **Avenza Maps** (Android, iOS) : idem
+- ✅ **ArcGIS Earth, QGIS** : support KML
+
+**Inclusion data layers** : le KMZ inclut **session + embedded**. Si ton plan a des roads/zones/points dans `chemin.json`, `puits.json` etc., ils sortent aussi (contrairement aux exports Full/Avancé/Conversion qui sont session-only par design).
 
 ---
 
