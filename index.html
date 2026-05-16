@@ -65,6 +65,23 @@
 <body>
 
   <!-- ════════════════════════════════════════════════════════
+       SVG PATTERNS — definitions partagees pour les zones (depuis Karma_dev / v169)
+       Le pattern `kta-pattern-inaccessible` est utilise par les zones de type
+       "inaccessible" (bloquant pour le pathfinder). SVG global invisible pour
+       que `fill: url(#kta-pattern-inaccessible)` resolve depuis n'importe quel
+       polygon Leaflet en mode SVG renderer.
+       ════════════════════════════════════════════════════════ -->
+  <svg style="position:absolute; width:0; height:0; pointer-events:none;" aria-hidden="true">
+    <defs>
+      <pattern id="kta-pattern-inaccessible" patternUnits="userSpaceOnUse" width="14" height="14" patternTransform="rotate(45)">
+        <rect width="14" height="14" fill="#5a0a0a"/>
+        <rect width="14" height="14" fill="#cc0000" opacity="0.45"/>
+        <line x1="0" y1="0" x2="0" y2="14" stroke="#1a1f2e" stroke-width="4"/>
+      </pattern>
+    </defs>
+  </svg>
+
+  <!-- ════════════════════════════════════════════════════════
        SPLASH SCREEN — Animation de bienvenue au démarrage
        Affiché par défaut, fermé par main.js après init + 4s min
        ════════════════════════════════════════════════════════ -->

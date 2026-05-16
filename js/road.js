@@ -518,7 +518,42 @@ function renderRoads() {
   // plans denses. Le bug du toggle reste ouvert (cf README suite 22).
   // Seul l'itineraire garde un renderer SVG dedie : il en a besoin pour le
   // filter CSS drop-shadow (halo neon cyan), impossible sur le canvas.
-  roadsData.forEach(road => {
+  //
+  // 🏗️ v169 (Karma_dev) : TRI Z-INDEX par niveau + type quand multiLevel ON.
+  // Cohérence visuelle "galerie niveau N toujours sous celles du niveau N+1".
+  // Leaflet rend dans l'ordre addTo() : premier ajouté = en-dessous, dernier
+  // = au-dessus. Donc on trie ascendant par level (LVL -∞ → -1 → 0 → 1 → +∞).
+  // Au sein du même niveau : chemin (en-dessous) < secondaire < principal
+  // < jonction (Principal/jonction au-dessus = hiérarchie visuelle classique).
+  // Itinéraire TOUJOURS en dernier (au-dessus de tout — c'est la navigation
+  // active). Si multiLevel OFF → ordre v147 strict (insertion = ordre rendu).
+  let _renderQueue = roadsData;
+  if (_multiLevelOn) {
+    const TYPE_ORDER = { chemin: 0, secondaire: 1, principal: 2, jonction: 3 };
+    _renderQueue = [...roadsData].sort(function(a, b) {
+      // Itinéraire toujours au-dessus
+      if (a.type === "itinerary" && b.type !== "itinerary") return 1;
+      if (b.type === "itinerary" && a.type !== "itinerary") return -1;
+      if (a.type === "itinerary" && b.type === "itinerary") return 0;
+      // Pour les jonctions : on utilise max(fromLevel, toLevel) car le pont
+      // visuel doit apparaître AU-DESSUS du niveau inférieur (= cohérent avec
+      // "escalier qui monte au-dessus du sol bas").
+      const la = (a.type === "jonction")
+        ? Math.max(Number.isInteger(a.fromLevel) ? a.fromLevel : 0,
+                   Number.isInteger(a.toLevel)   ? a.toLevel   : 0)
+        : (Number.isInteger(a.level) ? a.level : 0);
+      const lb = (b.type === "jonction")
+        ? Math.max(Number.isInteger(b.fromLevel) ? b.fromLevel : 0,
+                   Number.isInteger(b.toLevel)   ? b.toLevel   : 0)
+        : (Number.isInteger(b.level) ? b.level : 0);
+      if (la !== lb) return la - lb;  // niveau bas en-dessous
+      // Même niveau → tri par type (chemin sous, principal au-dessus, jonction tout au-dessus)
+      return (TYPE_ORDER[a.type] != null ? TYPE_ORDER[a.type] : 99) -
+             (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
+    });
+  }
+
+  _renderQueue.forEach(road => {
     if (!road.points || road.points.length === 0) return;
 
     // 🏗️ Multi-niveau : skip si la road ne passe pas le filtre du niveau actif.

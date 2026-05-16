@@ -269,9 +269,26 @@ function ajouterPointsDepuisJSON(url, layer) {
 
       requestAnimationFrame(ajouterBatch);
 
-      // Routes embarquées en lecture seule dans le même layer
+      // Routes embarquées en lecture seule dans le même layer.
+      // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
+      // Cohérent avec le tri dans road.js > renderRoads — "galerie niveau N
+      // toujours sous celles du niveau N+1". Au sein du même niveau :
+      // chemin < secondaire < principal (Principal dessus). Si multiLevel OFF
+      // → ordre d'origine du JSON conservé (v147 strict).
       if (Array.isArray(json.roads) && json.roads.length > 0) {
-        json.roads.forEach(function(road) {
+        const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+        let roadsToRender = json.roads;
+        if (_mlOn) {
+          const TYPE_ORDER = { chemin: 0, secondaire: 1, principal: 2 };
+          roadsToRender = [...json.roads].sort(function(a, b) {
+            const la = Number.isInteger(a.level) ? a.level : 0;
+            const lb = Number.isInteger(b.level) ? b.level : 0;
+            if (la !== lb) return la - lb;  // bas en-dessous, haut au-dessus
+            return (TYPE_ORDER[a.type] != null ? TYPE_ORDER[a.type] : 99) -
+                   (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
+          });
+        }
+        roadsToRender.forEach(function(road) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
@@ -299,20 +316,38 @@ function ajouterPointsDepuisJSON(url, layer) {
         const ZONE_STYLES_DATA = {
           eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
           remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-          effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+          effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 },
+          // 🚫 v169 : zone inaccessible — pattern hachures rouge/noir 45° (id
+          // SVG defini dans index.html). Force renderer SVG (canvas ignore).
+          inaccessible: { color: "#5a0a0a", fillColor: "url(#kta-pattern-inaccessible)", fillOpacity: 1, weight: 3, opacity: 1 }
         };
         const zonesTriees = [...json.zones].sort(function(a, b) {
-          const ordre = { eau: 0, remblais: 1, effondrement: 2 };
+          const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
           return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
         });
+        // v169 : singleton SVG renderer pour les zones inaccessibles data layer.
+        // Cree une seule fois et reutilise pour tous les polygons inaccessibles
+        // de tous les data layers.
+        if (!window._inaccessibleDataRenderer) {
+          window._inaccessibleDataRenderer = L.svg({ padding: 0.5 });
+        }
         zonesTriees.forEach(function(zone) {
           if (!zone.points || zone.points.length < 3) return;
           const style = ZONE_STYLES_DATA[zone.type] || ZONE_STYLES_DATA.remblais;
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-          const polygon = L.polygon(latlngs, { ...style, interactive: false }).addTo(layer);
+          const polyOpts = (zone.type === "inaccessible")
+            ? Object.assign({}, style, { interactive: false, renderer: window._inaccessibleDataRenderer })
+            : Object.assign({}, style, { interactive: false });
+          const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           // 🏗️ Multi-niveau (v148) : registre pour filtre runtime.
+          // 🚫 v169 (Karma_dev) : on stocke aussi `type` et `points` (coords
+          // plan x/y) pour que Pathfinder puisse identifier les zones
+          // inaccessibles dans les data layers et les utiliser comme contrainte
+          // dure (= polygon bloque les segments qui le traversent).
           const entry = {
             polygon:         polygon,
+            type:            zone.type,
+            points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.7
@@ -490,9 +525,13 @@ async function telechargerPlan() {
     // Pour chaque calque : data[] (markers) + roads[] + zones[] embarqués
     // (cohérent avec ajouterPointsDepuisJSON qui les affiche à l'écran)
     const ZONE_STYLES_EMBED = {
-      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      // v169 : zone inaccessible — rouge fonce uni pour l'export PNG (canvas
+      // ne supporte pas le pattern SVG inline ; on perd l'effet hachures mais
+      // la signification "zone interdite" reste claire visuellement)
+      inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
     };
     const ROAD_STYLES_EMBED = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
@@ -536,10 +575,10 @@ async function telechargerPlan() {
             continue;
           }
 
-          // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement
+          // Zones embarquées (arrière-plan) — triées eau → remblais → effondrement → inaccessible
           // 🏗️ Multi-niveau (v148) : WYSIWYG → filtre par visibleLevels si feature ON.
           if (Array.isArray(json.zones) && json.zones.length > 0) {
-            const ordreZ = { eau: 0, remblais: 1, effondrement: 2 };
+            const ordreZ = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
             [...json.zones].sort(function(a, b) {
               return (ordreZ[a.type] ?? 99) - (ordreZ[b.type] ?? 99);
             }).forEach(function(z) {
@@ -550,8 +589,21 @@ async function telechargerPlan() {
           }
 
           // Routes embarquées
+          // 🏗️ v169 (Karma_dev) : tri Z-index ascending par level si multiLevel ON.
           if (Array.isArray(json.roads) && json.roads.length > 0) {
-            json.roads.forEach(function(r) {
+            const _mlOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+            let roadsR = json.roads;
+            if (_mlOnExp) {
+              const T_ORDER = { chemin: 0, secondaire: 1, principal: 2 };
+              roadsR = [...json.roads].sort(function(a, b) {
+                const la = Number.isInteger(a.level) ? a.level : 0;
+                const lb = Number.isInteger(b.level) ? b.level : 0;
+                if (la !== lb) return la - lb;
+                return (T_ORDER[a.type] != null ? T_ORDER[a.type] : 99) -
+                       (T_ORDER[b.type] != null ? T_ORDER[b.type] : 99);
+              });
+            }
+            roadsR.forEach(function(r) {
               if (!r.points || r.points.length < 2) return;
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(r)) return;
               drawPolyline(r.points, ROAD_STYLES_EMBED[r.type] || { color: "#ffffff", weight: 5, opacity: 1 });
@@ -578,11 +630,15 @@ async function telechargerPlan() {
       return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(z);
     });
     const ZONE_STYLES_EXPORT = {
-      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7, weight: 3, opacity: 1 },
-      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7, weight: 3, opacity: 1 }
+      eau:          { color: "#0066aa", fillColor: "#3aa9e8", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      remblais:     { color: "#3a3a44", fillColor: "#5a5a68", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      effondrement: { color: "#cc0000", fillColor: "#ff3333", fillOpacity: 0.7,  weight: 3, opacity: 1 },
+      // v169 : zone inaccessible — rouge fonce uni (canvas-only fallback, cf
+      // commentaire dans ZONE_STYLES_EMBED ci-dessus pour le contexte hachures)
+      inaccessible: { color: "#5a0a0a", fillColor: "#7a0000", fillOpacity: 0.65, weight: 3, opacity: 1 }
     };
     for (const zone of [...zones].sort(function(a, b) {
-      const ordre = { remblais: 0, effondrement: 1 };
+      const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       return (ordre[a.type] ?? 99) - (ordre[b.type] ?? 99);
     })) {
       const style = ZONE_STYLES_EXPORT[zone.type] || ZONE_STYLES_EXPORT.remblais;
@@ -595,9 +651,28 @@ async function telechargerPlan() {
     // dessinait l'itinéraire en blanc PAR-DESSUS les routes colorées sous-jacentes,
     // ce qui les "effaçait" visuellement dans l'export.
     // 🏗️ Multi-niveau : filtre WYSIWYG (jonctions visibles si fromLevel/toLevel ∈ visibles).
+    // 🏗️ v169 : tri Z-index ascending par level si multiLevel ON (cohérent
+    // avec road.js > renderRoads). Niveau bas en arrière, haut au-dessus.
     const roads = (window.getRoads ? window.getRoads() : [])
       .filter(function(r) { return r.type !== "itinerary"; })
       .filter(function(r) { return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(r); });
+    const _mlOnExport = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    if (_mlOnExport) {
+      const TYPE_ORDER = { chemin: 0, secondaire: 1, principal: 2, jonction: 3 };
+      roads.sort(function(a, b) {
+        const la = (a.type === "jonction")
+          ? Math.max(Number.isInteger(a.fromLevel) ? a.fromLevel : 0,
+                     Number.isInteger(a.toLevel)   ? a.toLevel   : 0)
+          : (Number.isInteger(a.level) ? a.level : 0);
+        const lb = (b.type === "jonction")
+          ? Math.max(Number.isInteger(b.fromLevel) ? b.fromLevel : 0,
+                     Number.isInteger(b.toLevel)   ? b.toLevel   : 0)
+          : (Number.isInteger(b.level) ? b.level : 0);
+        if (la !== lb) return la - lb;
+        return (TYPE_ORDER[a.type] != null ? TYPE_ORDER[a.type] : 99) -
+               (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
+      });
+    }
     const ROAD_STYLES = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },

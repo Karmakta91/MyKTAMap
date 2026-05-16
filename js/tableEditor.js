@@ -345,8 +345,12 @@
     data.forEach(function(p) {
       Object.keys(p).forEach(function(k) { set.add(k); });
     });
-    // Ordre privilégié pour les clés courantes
-    const ordreCourant = ["id", "nom", "x", "y", "tags", "etat", "description", "profondeur", "date_update"];
+    // Ordre privilégié pour les clés courantes.
+    // 🏗️ v169 (Karma_dev) : ajout de "level" juste après "y" pour que les
+    // plans multi-niveau aient la colonne niveau visible à côté des coords
+    // (cohérence visuelle x/y/level). Sans ça, level passait en queue de
+    // tableau via le fallback set.forEach (P3 audit Karma_dev).
+    const ordreCourant = ["id", "nom", "x", "y", "level", "tags", "etat", "description", "profondeur", "date_update"];
     const ordonnees = [];
     ordreCourant.forEach(function(k) { if (set.has(k)) { ordonnees.push(k); set.delete(k); } });
     // Ajouter les autres en queue
