@@ -51,6 +51,7 @@ const ASSETS_TO_CACHE = [
   "./js/exporter.js",
   "./js/sessionExporter.js",
   "./js/kmzExport.js",
+  "./js/kmzImport.js",
   "./js/tableEditor.js",
   "./js/searchPoints.js",
   "./js/createConf.js",
