@@ -137,6 +137,77 @@
     return false;
   }
 
+  // =========================
+  // EVITEMENTS DE POINTS (preferences souples) — depuis v169 (Karma_dev)
+  // =========================
+  // Contrainte SOUPLE : si possible, le pathfinder evite les segments qui
+  // passent a moins de `avoidRadius` d'un point a eviter. Si aucun chemin
+  // n'est trouve avec ces contraintes, on bascule en fallback (passe 2)
+  // qui calcule sans les evitements et renvoie la liste des points
+  // contournes pour affichage utilisateur ("Impossible d'eviter : X, Y").
+
+  // Vrai si la distance du point `avoidPoint` au segment [p1, p2] < radius.
+  // Utilise la projection orthogonale clampee aux extremites (= distance min
+  // d'un point a un segment, pas a sa droite support).
+  function _segmentTraverseProxiPoint(p1, p2, avoidPoint, radius) {
+    const proj = _projectOnSegment(avoidPoint, p1, p2);
+    return proj.dist < radius;
+  }
+
+  // Vrai si le segment doit etre exclu du graphe a cause d'au moins un point
+  // d'evitement. Si avoidPoints vide ou radius<=0 → toujours false.
+  function _segmentBloqueParAvoidance(p1, p2, avoidPoints, radius) {
+    if (!avoidPoints || avoidPoints.length === 0 || !radius || radius <= 0) return false;
+    for (let i = 0; i < avoidPoints.length; i++) {
+      if (_segmentTraverseProxiPoint(p1, p2, avoidPoints[i], radius)) return true;
+    }
+    return false;
+  }
+
+  // Vrai si le path final passe a moins de `radius` du point `ap` au moins
+  // une fois. Utilise apres la passe 2 (fallback) pour detecter les
+  // evitements n'ont pas pu etre respectes.
+  function _pathPassesNearPoint(pathPts, ap, radius) {
+    if (!Array.isArray(pathPts) || pathPts.length < 2 || !radius || radius <= 0) return false;
+    for (let i = 1; i < pathPts.length; i++) {
+      const proj = _projectOnSegment(ap, pathPts[i - 1], pathPts[i]);
+      if (proj.dist < radius) return true;
+    }
+    return false;
+  }
+
+  // Expand les tags a eviter en liste de points. Pour chaque tag, on
+  // recupere tous les points du plan portant ce tag (via SearchPoints qui
+  // expose getAllPoints() ASYNC). La structure SearchPoints retourne
+  // [{point, source, layerId}, ...] — on lit `.point.{x,y,nom,id,tags}`.
+  // Si SearchPoints absent → array vide (degraded gracieusement).
+  async function _expandAvoidTagsEnPoints(tags) {
+    if (!Array.isArray(tags) || tags.length === 0) return [];
+    if (typeof window.SearchPoints !== "object" ||
+        typeof window.SearchPoints.getAllPoints !== "function") {
+      return [];
+    }
+    let allItems;
+    try { allItems = await window.SearchPoints.getAllPoints(); }
+    catch(e) { return []; }
+    if (!Array.isArray(allItems)) return [];
+    return allItems
+      .filter(function(it) {
+        const p = it && it.point;
+        if (!p || !Array.isArray(p.tags)) return false;
+        return p.tags.some(function(t) { return tags.indexOf(t) >= 0; });
+      })
+      .map(function(it) {
+        const p = it.point;
+        return {
+          x:     p.x,
+          y:     p.y,
+          label: p.nom || p.id || "(tag " + (p.tags[0] || "?") + ")",
+          tags:  p.tags
+        };
+      });
+  }
+
   // Collecte toutes les zones inaccessibles actives sur le plan courant :
   //   - Zones de session (via window.getZones())
   //   - Zones embarquees dans les data layers (via window._ktaDataPolygons)
@@ -238,8 +309,10 @@
     graph.edges[b].push({ to: a, weight: weight });
   }
 
-  function _buildGraph(roads, allowedTypes, zonesInacc) {
-    zonesInacc = zonesInacc || [];
+  function _buildGraph(roads, allowedTypes, zonesInacc, avoidPoints, avoidRadius) {
+    zonesInacc  = zonesInacc  || [];
+    avoidPoints = avoidPoints || [];
+    avoidRadius = avoidRadius || 0;
     const graph = _newGraph();
 
     for (let r = 0; r < roads.length; r++) {
@@ -284,12 +357,15 @@
           : segLevel;
         _ajouterNiveauNode(graph, idx, nodeLvl);
 
-        // 🚫 v169 (Karma_dev) : si ce segment traverse une zone inaccessible,
-        // on N'AJOUTE PAS l'arête NI le segment dans graph.segments.
-        // Le node existe quand même (au cas où il y a une connexion ailleurs)
-        // mais isolé. L'enrichment ne verra pas ce segment pour les croisements
-        // → impossible d'emprunter ce tronçon dans le calcul Dijkstra.
-        if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)) {
+        // 🚫 v169 (Karma_dev) : 2 raisons possibles d'exclure un segment du graphe :
+        //   - Zone inaccessible le traverse (contrainte DURE, jamais relachee)
+        //   - Point d'evitement a moins de `avoidRadius` du segment (contrainte
+        //     SOUPLE, relachee par computeRoute si passe 1 fail → passe 2 sans
+        //     avoidances, message "Impossible d'eviter : X" affiche au user)
+        // Quand exclu, le node existe quand meme mais sans edge → impossible
+        // d'emprunter ce troncon dans Dijkstra.
+        if (!_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc) &&
+            !_segmentBloqueParAvoidance(prevP, p, avoidPoints, avoidRadius)) {
           const w = _dist(prevP, p);
           _addEdge(graph, prevIdx, idx, w);
           graph.segments.push({
@@ -630,9 +706,83 @@
   }
 
   // =========================
-  // API PUBLIQUE
+  // CALCUL INTERNE — 1 passe (avec contraintes donnees)
   // =========================
-  function computeRoute(waypoints, opts) {
+  // Factorise la logique build+enrich+snap+Dijkstra. Appele par computeRoute
+  // pour la passe 1 (avec contraintes) puis si necessaire pour la passe 2
+  // (sans avoidances). Throw avec messages clairs si echec.
+  function _computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius) {
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, avoidPoints, avoidRadius);
+    if (graph.nodes.length === 0) {
+      throw new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
+    }
+    _enrichirGrapheAvecCroisements(graph);
+
+    const snapResults = [];
+    for (let i = 0; i < waypoints.length; i++) {
+      const snap = _insertVirtualNode(graph, waypoints[i]);
+      if (!snap) {
+        throw new Error("Impossible de snap le waypoint #" + (i + 1) + " sur le réseau");
+      }
+      snapResults.push(snap);
+    }
+
+    const fullPath    = [];
+    let totalDistance = 0;
+    let segmentCount  = 0;
+
+    for (let i = 0; i < snapResults.length - 1; i++) {
+      const a = snapResults[i].nodeIdx;
+      const b = snapResults[i + 1].nodeIdx;
+      const result = _dijkstra(graph, a, b);
+      if (!result) {
+        throw new Error(
+          "Aucun chemin trouvé entre le waypoint #" + (i + 1) + " et le waypoint #" + (i + 2) +
+          " (le réseau est probablement déconnecté entre ces 2 points)"
+        );
+      }
+      const segPoints = result.nodeIndices.map(function(idx) {
+        return { x: graph.nodes[idx].x, y: graph.nodes[idx].y };
+      });
+      if (i > 0) segPoints.shift();
+      for (let k = 0; k < segPoints.length; k++) fullPath.push(segPoints[k]);
+      totalDistance += result.totalDistance;
+      segmentCount  += result.nodeIndices.length - 1;
+    }
+
+    return {
+      path:           fullPath,
+      totalDistance:  totalDistance,
+      segmentCount:   segmentCount,
+      snappedPoints:  snapResults.map(function(s) { return s.projection; })
+    };
+  }
+
+  // =========================
+  // API PUBLIQUE — computeRoute (avec fallback 2 passes pour evitements)
+  // =========================
+  // opts :
+  //   - allowedTypes : ['principal','secondaire','chemin'] par defaut
+  //   - avoidPoints  : [{x, y, label?}, ...] — points a eviter (souple)
+  //   - avoidTags    : ["pa", "danger", ...] — tags a eviter (expansion auto
+  //                    via SearchPoints.getAllPoints + filtre par tag)
+  //   - avoidRadius  : px (defaut 100). Tout segment a moins de cette distance
+  //                    d'un point d'evitement est exclu du graphe.
+  //
+  // ALGO 2 PASSES
+  //   Passe 1 : avec zones inaccessibles (dur) + evitements (souple)
+  //   Si echec ET avoidances non vides → Passe 2 : zones uniquement.
+  //   Si passe 2 trouve un chemin → detection des points evites qui ont quand
+  //   meme ete traverses par le path final (proximite < avoidRadius). Retour
+  //   enrichi avec `usedFallback: true` + `avoidedThrough: [...]` pour que
+  //   l'UI puisse afficher "⚠️ Impossible d'eviter : ..."
+  //   Si passe 2 echoue aussi → on relance l'erreur (vraie absence de chemin
+  //   = zone inaccessible bloquante ou reseau disconnect).
+  // ⚠️ ASYNC depuis v169 (Karma_dev) : _expandAvoidTagsEnPoints utilise
+  // SearchPoints.getAllPoints qui est async (cache fetch + data layers).
+  // Les appelants doivent utiliser `await Pathfinder.computeRoute(...)` ou
+  // `.then(...)`. Sans avoidTags, l'await est immediat (resolve sync).
+  async function computeRoute(waypoints, opts) {
     if (!Array.isArray(waypoints) || waypoints.length < 2) {
       throw new Error("Au moins 2 waypoints sont requis");
     }
@@ -644,8 +794,6 @@
     // au lieu de getEmbeddedRoads (visibles uniquement) — cela permet a l'utilisateur
     // de masquer le calque des routes (routes parfois dessinees en dur sur le PNG du
     // plan) pour gagner en perf de rendu, tout en gardant un pathfinder fonctionnel.
-    // Fallback sur getEmbeddedRoads pour retro-compat si getAllEmbeddedRoads absent
-    // (vieux cache SW non encore rafraichi).
     const sessionRoads = (typeof window.getRoads === "function") ? window.getRoads() : [];
     let embeddedRoads;
     if (typeof window.getAllEmbeddedRoads === "function") {
@@ -667,67 +815,68 @@
       throw new Error("Aucune route disponible pour calculer un itinéraire");
     }
 
-    // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" pour bloquer
-    // les segments qui les traversent. Filtre niveau-aware applique dans
-    // _segmentBloqueParZoneInaccess. Contrainte DURE — pas de fallback.
+    // 🚫 v169 (Karma_dev) : collecte des zones "inaccessibles" (contrainte dure).
     const zonesInacc = _collecterZonesInaccessibles();
     if (zonesInacc.length > 0) {
-      console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) detectee(s) — pathfinder evite ces polygones");
+      console.log("[Pathfinder] " + zonesInacc.length + " zone(s) inaccessible(s) — contrainte dure");
     }
 
-    // 2. Construction du graphe
-    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc);
-    if (graph.nodes.length === 0) {
-      throw new Error("Aucune route correspondant aux types sélectionnés (" + allowedTypes.join(", ") + ")");
+    // 🚫 v169 (Karma_dev) : preferences d'evitement (contrainte souple).
+    // avoidPoints explicites + expansion des avoidTags en points.
+    const explicitAvoid    = Array.isArray(opts.avoidPoints) ? opts.avoidPoints.slice() : [];
+    const avoidTags        = Array.isArray(opts.avoidTags)   ? opts.avoidTags.slice()   : [];
+    const expandedFromTags = await _expandAvoidTagsEnPoints(avoidTags);
+    const allAvoidPts      = explicitAvoid.concat(expandedFromTags);
+    const avoidRadius      = (Number.isFinite(opts.avoidRadius) && opts.avoidRadius > 0)
+                              ? opts.avoidRadius : 100;
+    const hasAvoidances    = (allAvoidPts.length > 0);
+    if (hasAvoidances) {
+      console.log("[Pathfinder] " + allAvoidPts.length +
+                  " point(s) a eviter (rayon " + avoidRadius + "px) — contrainte souple, fallback possible");
     }
 
-    // 2bis. Enrichissement avec les croisements & T-junctions — sans ça,
-    // les roads qui se croisent visuellement mais n'ont pas de point exact
-    // commun restent dans des composantes graphe disjointes (cas typique
-    // des roads hand-tracés).
-    _enrichirGrapheAvecCroisements(graph);
+    // ===== PASSE 1 : avec contraintes dures + souples =====
+    let result          = null;
+    let usedFallback    = false;
+    let avoidedThrough  = [];
 
-    // 3. Snap de chaque waypoint sur le réseau (insertion de nœuds virtuels)
-    const snapResults = [];
-    for (let i = 0; i < waypoints.length; i++) {
-      const snap = _insertVirtualNode(graph, waypoints[i]);
-      if (!snap) {
-        throw new Error("Impossible de snap le waypoint #" + (i + 1) + " sur le réseau");
-      }
-      snapResults.push(snap);
-    }
+    try {
+      result = _computeRouteInterne(
+        waypoints, allRoads, allowedTypes,
+        zonesInacc, allAvoidPts, avoidRadius
+      );
+    } catch(e1) {
+      // Passe 1 echoue. Si on n'avait pas d'avoidances, c'est une vraie absence
+      // de chemin (= zone inaccessible bloque ou reseau disconnect) → on relance.
+      if (!hasAvoidances) throw e1;
 
-    // 4. Dijkstra entre paires consécutives, concaténation des chemins
-    const fullPath     = [];
-    let totalDistance  = 0;
-    let segmentCount   = 0;
-
-    for (let i = 0; i < snapResults.length - 1; i++) {
-      const a = snapResults[i].nodeIdx;
-      const b = snapResults[i + 1].nodeIdx;
-      const result = _dijkstra(graph, a, b);
-      if (!result) {
-        throw new Error(
-          "Aucun chemin trouvé entre le waypoint #" + (i + 1) + " et le waypoint #" + (i + 2) +
-          " (le réseau est probablement déconnecté entre ces 2 points)"
+      // Sinon, tentative passe 2 sans avoidances (= seulement zones dures).
+      console.log("[Pathfinder] Passe 1 echec — tentative passe 2 sans evitements (fallback)");
+      try {
+        result = _computeRouteInterne(
+          waypoints, allRoads, allowedTypes,
+          zonesInacc, [], 0
         );
+        usedFallback = true;
+        // Detecter quels points evites sont traverses par le chemin final
+        // (proximite < avoidRadius). Permet a l'UI d'afficher "Impossible
+        // d'eviter : X, Y" pour informer l'user.
+        avoidedThrough = allAvoidPts.filter(function(ap) {
+          return _pathPassesNearPoint(result.path, ap, avoidRadius);
+        });
+        console.log("[Pathfinder] Passe 2 ok — " + avoidedThrough.length +
+                    " evitement(s) traverse(s) malgre la preference");
+      } catch(e2) {
+        // Passe 2 echoue aussi → vraie absence de chemin
+        throw e2;
       }
-      const segPoints = result.nodeIndices.map(function(idx) {
-        return { x: graph.nodes[idx].x, y: graph.nodes[idx].y };
-      });
-      // Évite de dupliquer le point de jonction (sauf pour le premier segment)
-      if (i > 0) segPoints.shift();
-      for (let k = 0; k < segPoints.length; k++) fullPath.push(segPoints[k]);
-      totalDistance += result.totalDistance;
-      segmentCount  += result.nodeIndices.length - 1;
     }
 
-    return {
-      path:           fullPath,
-      totalDistance:  totalDistance,    // en unités plan (px image)
-      segmentCount:   segmentCount,
-      snappedPoints:  snapResults.map(function(s) { return s.projection; })
-    };
+    return Object.assign({}, result, {
+      usedFallback:    usedFallback,
+      avoidedThrough:  avoidedThrough,
+      avoidRadius:     avoidRadius
+    });
   }
 
   // Recherche un point existant par id ou par nom (case-insensitive).

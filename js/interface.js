@@ -3480,7 +3480,7 @@ window.itineraireYAller = function(x, y, nom) {
 
   const labelPoint = nom ? String(nom) : ("Point (" + Math.round(x) + ", " + Math.round(y) + ")");
 
-  function _calculer() {
+  async function _calculer() {
     // Ferme la popup Leaflet ouverte (sinon elle reste affichee derriere le tracé)
     if (window.map) try { window.map.closePopup(); } catch(e) {}
 
@@ -3493,7 +3493,17 @@ window.itineraireYAller = function(x, y, nom) {
     ];
 
     try {
-      const result = window.Pathfinder.computeRoute(waypoints);
+      // 🚫 v169 : computeRoute est async (await getAllPoints pour avoidTags).
+      // Pour les itineraires depuis popup "Itineraire jusqu'ici", on n'a pas
+      // d'avoidances configurees → mais on peut les charger depuis localStorage
+      // pour cohérence avec la modale itineraire (l'user voudrait probablement
+      // les memes preferences).
+      const avoidPrefs = _getItiAvoidPrefs();
+      const result = await window.Pathfinder.computeRoute(waypoints, {
+        avoidPoints: avoidPrefs.points || [],
+        avoidTags:   avoidPrefs.tags   || [],
+        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+      });
 
       // Cree la road itineraire (sans flag _preview : on enregistre direct)
       const newRoad = {
@@ -4134,6 +4144,321 @@ function _majPanneauFloaterCount() {
   if (el) el.textContent = _itineraryWaypoints.length;
 }
 
+// =========================
+// 🚫 EVITEMENTS ITINERAIRE — preferences par plan (depuis v169 / Karma_dev)
+// =========================
+// Stockage localStorage par planId : { points: [{x,y,label,id?}], tags: [], radius: 100 }
+// Restauration a l'ouverture de la modale itineraire, ecriture a chaque
+// modification (ajout/suppression/changement radius). Reset via bouton dedie.
+
+const ITI_AVOID_LS_PREFIX = "myktamap_route_avoid_";
+const ITI_AVOID_DEFAULT_RADIUS = 100;
+
+function _itiAvoidLsKey() {
+  const planId = window._currentLoadedPlanId || "default";
+  return ITI_AVOID_LS_PREFIX + planId;
+}
+
+function _getItiAvoidPrefs() {
+  try {
+    const raw = localStorage.getItem(_itiAvoidLsKey());
+    if (!raw) return { points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+    const obj = JSON.parse(raw);
+    return {
+      points: Array.isArray(obj.points) ? obj.points : [],
+      tags:   Array.isArray(obj.tags)   ? obj.tags   : [],
+      radius: Number.isFinite(obj.radius) ? obj.radius : ITI_AVOID_DEFAULT_RADIUS
+    };
+  } catch(e) {
+    return { points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS };
+  }
+}
+
+function _setItiAvoidPrefs(prefs) {
+  try {
+    localStorage.setItem(_itiAvoidLsKey(), JSON.stringify(prefs));
+  } catch(e) {}
+}
+
+// Liste des tags presents dans le plan (depuis SearchPoints) pour le dropdown
+// "+ Ajouter un tag a eviter". Distincts, tries alphabetiquement.
+// ASYNC depuis v169 : SearchPoints.getAllPoints est async (cache fetch). Le
+// 1er appel peut prendre 1 frame, les suivants sont en cache. Structure des
+// retours : [{point, source, layerId}, ...] — on lit `.point.tags`.
+async function _itiAvoidGetAvailableTags() {
+  if (typeof window.SearchPoints !== "object" ||
+      typeof window.SearchPoints.getAllPoints !== "function") {
+    return [];
+  }
+  try {
+    const all = await window.SearchPoints.getAllPoints();
+    if (!Array.isArray(all)) return [];
+    const set = new Set();
+    all.forEach(function(it) {
+      const p = it && it.point;
+      if (p && Array.isArray(p.tags)) {
+        p.tags.forEach(function(t) { if (t) set.add(t); });
+      }
+    });
+    return Array.from(set).sort();
+  } catch(e) { return []; }
+}
+
+// Genere le HTML de la section "🚫 Preferences d'evitement" pour la modale
+// itineraire. Replie par defaut via <details> (HTML natif). Composants :
+//   - Recherche autocomplete (input + dropdown resultats)
+//   - Saisie ID texte + bouton Ajouter
+//   - Multi-select des tags (chips cliquables)
+//   - Champ marge (px)
+//   - Liste des points evites avec ✕
+//   - Bouton 🗑️ Reset
+function _htmlSectionAvoidItineraire(prefs) {
+  const radiusVal = Number.isFinite(prefs.radius) ? prefs.radius : ITI_AVOID_DEFAULT_RADIUS;
+  return '' +
+    '<div class="kta-iti-section">' +
+      '<details class="kta-iti-avoid-details">' +
+        '<summary class="kta-iti-section-titre" style="cursor:pointer;">🚫 Préférences d\'évitement (optionnel)</summary>' +
+        '<p class="kta-iti-help">' +
+          'Définis des points ou tags que le pathfinder essaiera de ne PAS traverser. ' +
+          'Si aucun chemin n\'existe en évitant ces contraintes, un fallback les ignore ' +
+          'avec un message d\'avertissement. <em>Les zones inaccessibles ⛔ sont des ' +
+          'contraintes dures séparées (toujours respectées).</em>' +
+        '</p>' +
+
+        // === Points à éviter ===
+        '<div class="kta-iti-avoid-group">' +
+          '<div class="kta-iti-avoid-group-titre">📍 Points à éviter</div>' +
+          '<div class="kta-iti-avoid-search-wrap">' +
+            '<input type="text" id="kta-iti-avoid-search-input" class="kta-cfg-input" ' +
+              'placeholder="🔍 Rechercher un point existant (nom, id, tag)…" autocomplete="off">' +
+            '<div id="kta-iti-avoid-search-results" class="kta-iti-search-results"></div>' +
+          '</div>' +
+          '<div class="kta-iti-avoid-byid-wrap">' +
+            '<input type="text" id="kta-iti-avoid-byid-input" class="kta-cfg-input" ' +
+              'placeholder="Saisir un ID exact…" autocomplete="off" style="flex:1;">' +
+            '<button id="kta-iti-avoid-byid-add" class="kta-btn kta-btn-ghost kta-btn-small" type="button">+ Ajouter par ID</button>' +
+          '</div>' +
+          '<div id="kta-iti-avoid-points-list" class="kta-iti-avoid-list"></div>' +
+        '</div>' +
+
+        // === Tags à éviter ===
+        '<div class="kta-iti-avoid-group">' +
+          '<div class="kta-iti-avoid-group-titre">🏷️ Tags à éviter</div>' +
+          '<p class="kta-iti-help" style="margin:2px 0 6px; font-size:11.5px;">' +
+            'Clique un tag pour le toggler. Tous les points avec ce tag seront évités.' +
+          '</p>' +
+          '<div id="kta-iti-avoid-tags-chips" class="kta-iti-avoid-tags-chips"></div>' +
+        '</div>' +
+
+        // === Marge ===
+        '<div class="kta-iti-avoid-group">' +
+          '<div class="kta-iti-avoid-group-titre">📏 Marge autour des points à éviter</div>' +
+          '<div style="display:flex; align-items:center; gap:8px;">' +
+            '<input type="number" id="kta-iti-avoid-radius" class="kta-cfg-input" ' +
+              'value="' + radiusVal + '" min="0" max="500" step="10" style="width:90px;">' +
+            '<span style="font-size:12px; color:#8892a4;">px (défaut 100)</span>' +
+          '</div>' +
+        '</div>' +
+
+        // === Reset ===
+        '<button id="kta-iti-avoid-reset" class="kta-btn kta-btn-ghost kta-btn-small" type="button" style="margin-top:6px;">🗑️ Reset tous les évitements</button>' +
+      '</details>' +
+    '</div>';
+}
+
+// Re-rendu de la liste des points evites (chips avec ✕). Appelle apres
+// chaque ajout/suppression. Lit prefs depuis localStorage.
+function _rafraichirListeAvoidPoints() {
+  const el = document.getElementById("kta-iti-avoid-points-list");
+  if (!el) return;
+  const prefs = _getItiAvoidPrefs();
+  if (prefs.points.length === 0) {
+    el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Aucun point à éviter pour le moment.</p>';
+    return;
+  }
+  function _esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  el.innerHTML = prefs.points.map(function(p, idx) {
+    return '<div class="kta-iti-avoid-chip">' +
+             '<span class="kta-iti-avoid-chip-label">' + _esc(p.label || p.id || ("(" + p.x.toFixed(0) + "," + p.y.toFixed(0) + ")")) + '</span>' +
+             '<button class="kta-iti-avoid-chip-remove" data-idx="' + idx + '" type="button" title="Retirer">✕</button>' +
+           '</div>';
+  }).join("");
+  // Bind retraits
+  el.querySelectorAll(".kta-iti-avoid-chip-remove").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const i = parseInt(btn.getAttribute("data-idx"), 10);
+      if (!Number.isInteger(i)) return;
+      const prefs2 = _getItiAvoidPrefs();
+      prefs2.points.splice(i, 1);
+      _setItiAvoidPrefs(prefs2);
+      _rafraichirListeAvoidPoints();
+    });
+  });
+}
+
+// Re-rendu des chips de tags avec etat actif/inactif selon prefs.tags.
+// ASYNC depuis v169 (await _itiAvoidGetAvailableTags). Pendant le chargement,
+// on affiche un placeholder "Chargement…" pour ne pas laisser un vide visible.
+async function _rafraichirChipsAvoidTags() {
+  const el = document.getElementById("kta-iti-avoid-tags-chips");
+  if (!el) return;
+  el.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Chargement des tags…</p>';
+  const prefs = _getItiAvoidPrefs();
+  const available = await _itiAvoidGetAvailableTags();
+  // Si l'utilisateur a deja ferme la modale entre temps, le sub-element peut
+  // ne plus exister — on re-check.
+  const el2 = document.getElementById("kta-iti-avoid-tags-chips");
+  if (!el2) return;
+  if (available.length === 0) {
+    el2.innerHTML = '<p class="kta-iti-help" style="font-style:italic; margin:6px 0;">Aucun tag détecté dans les points de ce plan.</p>';
+    return;
+  }
+  function _esc(s) {
+    return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  el2.innerHTML = available.map(function(tag) {
+    const active = prefs.tags.indexOf(tag) >= 0;
+    return '<button class="kta-iti-avoid-tag-chip' + (active ? ' kta-iti-avoid-tag-chip-active' : '') + '" ' +
+             'data-tag="' + _esc(tag) + '" type="button">' +
+             (active ? '🚫 ' : '') + _esc(tag) +
+           '</button>';
+  }).join("");
+  el2.querySelectorAll(".kta-iti-avoid-tag-chip").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      const tag = btn.getAttribute("data-tag");
+      const prefs2 = _getItiAvoidPrefs();
+      const idx = prefs2.tags.indexOf(tag);
+      if (idx >= 0) prefs2.tags.splice(idx, 1);
+      else prefs2.tags.push(tag);
+      _setItiAvoidPrefs(prefs2);
+      _rafraichirChipsAvoidTags();
+    });
+  });
+}
+
+// Setup des handlers de la section evitement (recherche, ajout par ID, radius,
+// reset). Appele apres injection du HTML dans la modale itineraire.
+function _bindAvoidSectionHandlers() {
+  // 1. Recherche autocomplete : reuse SearchPoints.findByQuery (ASYNC).
+  // Structure retournee : [{point, source, layerId}, ...] — on lit `.point.*`.
+  // Debounce 150ms pour eviter de spam le fetch a chaque keystroke.
+  const searchInput = document.getElementById("kta-iti-avoid-search-input");
+  const searchRes   = document.getElementById("kta-iti-avoid-search-results");
+  if (searchInput && searchRes && window.SearchPoints &&
+      typeof window.SearchPoints.findByQuery === "function") {
+    let _searchDebounce = null;
+    searchInput.addEventListener("input", function() {
+      const q = searchInput.value.trim();
+      if (_searchDebounce) clearTimeout(_searchDebounce);
+      if (!q) { searchRes.innerHTML = ""; searchRes.style.display = "none"; return; }
+      _searchDebounce = setTimeout(async function() {
+        let results = [];
+        try { results = await window.SearchPoints.findByQuery(q) || []; }
+        catch(e) { results = []; }
+        // Si l'input a change entre temps, on annule (la prochaine query
+        // viendra en remplacement)
+        if (searchInput.value.trim() !== q) return;
+        if (results.length === 0) {
+          searchRes.innerHTML = '<div class="kta-iti-search-result-empty">Aucun point trouvé</div>';
+          searchRes.style.display = "block";
+          return;
+        }
+        function _esc(s) {
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        searchRes.innerHTML = results.slice(0, 10).map(function(it, i) {
+          const p = it.point;
+          const label = p.nom || p.id || "(point sans nom)";
+          const sub   = p.id  ? p.id : "";
+          return '<div class="kta-iti-search-result" data-idx="' + i + '">' +
+                   '<strong>' + _esc(label) + '</strong>' +
+                   (sub ? ' <span style="color:#8892a4;">(' + _esc(sub) + ')</span>' : '') +
+                 '</div>';
+        }).join("");
+        searchRes.style.display = "block";
+        searchRes.querySelectorAll(".kta-iti-search-result").forEach(function(row, i) {
+          row.addEventListener("click", function() {
+            const it = results[i];
+            if (!it || !it.point) return;
+            const p = it.point;
+            const prefs2 = _getItiAvoidPrefs();
+            prefs2.points.push({
+              x:     p.x,
+              y:     p.y,
+              label: p.nom || p.id || ("(" + (p.x ?? 0).toFixed(0) + "," + (p.y ?? 0).toFixed(0) + ")"),
+              id:    p.id || null
+            });
+            _setItiAvoidPrefs(prefs2);
+            _rafraichirListeAvoidPoints();
+            searchInput.value = "";
+            searchRes.innerHTML = "";
+            searchRes.style.display = "none";
+          });
+        });
+      }, 150);
+    });
+  }
+
+  // 2. Ajout par ID texte
+  const idInput = document.getElementById("kta-iti-avoid-byid-input");
+  const idBtn   = document.getElementById("kta-iti-avoid-byid-add");
+  if (idInput && idBtn && window.Pathfinder &&
+      typeof window.Pathfinder.resolvePointById === "function") {
+    function _ajouterParId() {
+      const id = idInput.value.trim();
+      if (!id) return;
+      const resolved = window.Pathfinder.resolvePointById(id);
+      if (!resolved) {
+        alert("Aucun point trouvé avec l'ID/nom : \"" + id + "\"");
+        return;
+      }
+      const prefs2 = _getItiAvoidPrefs();
+      prefs2.points.push({
+        x:     resolved.x,
+        y:     resolved.y,
+        label: (resolved.point && (resolved.point.nom || resolved.point.id)) || id,
+        id:    (resolved.point && resolved.point.id) || id
+      });
+      _setItiAvoidPrefs(prefs2);
+      _rafraichirListeAvoidPoints();
+      idInput.value = "";
+    }
+    idBtn.addEventListener("click", _ajouterParId);
+    idInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { e.preventDefault(); _ajouterParId(); }
+    });
+  }
+
+  // 3. Champ radius
+  const radiusInput = document.getElementById("kta-iti-avoid-radius");
+  if (radiusInput) {
+    radiusInput.addEventListener("change", function() {
+      const v = parseInt(radiusInput.value, 10);
+      const prefs2 = _getItiAvoidPrefs();
+      prefs2.radius = (Number.isFinite(v) && v >= 0) ? v : ITI_AVOID_DEFAULT_RADIUS;
+      _setItiAvoidPrefs(prefs2);
+    });
+  }
+
+  // 4. Reset complet
+  const resetBtn = document.getElementById("kta-iti-avoid-reset");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", function() {
+      if (!confirm("Effacer tous les évitements (points + tags) ?")) return;
+      _setItiAvoidPrefs({ points: [], tags: [], radius: ITI_AVOID_DEFAULT_RADIUS });
+      _rafraichirListeAvoidPoints();
+      _rafraichirChipsAvoidTags();
+      if (radiusInput) radiusInput.value = String(ITI_AVOID_DEFAULT_RADIUS);
+    });
+  }
+
+  // Premier rendu des chips + liste
+  _rafraichirListeAvoidPoints();
+  _rafraichirChipsAvoidTags();
+}
+
 window.ouvrirItinerairModal = function() {
   // Si une modale existe déjà, on la ferme et reset l'état
   const existing = document.getElementById("kta-itinerary-modal");
@@ -4257,6 +4582,11 @@ window.ouvrirItinerairModal = function() {
       '<div id="kta-iti-error" class="kta-iti-error" style="display:none;"></div>' +
     '</div>';
 
+  // 🚫 v169 (Karma_dev) : section preferences d'evitement (avancees, repliees
+  // par defaut via <details> HTML). Lit les prefs depuis localStorage par
+  // planId pour restaurer l'etat entre 2 ouvertures de la modale.
+  const sectionAvoid = _htmlSectionAvoidItineraire(_getItiAvoidPrefs());
+
   const modal = document.createElement("div");
   modal.id = "kta-itinerary-modal";
   modal.className = "kta-readme-modal-overlay";
@@ -4268,12 +4598,14 @@ window.ouvrirItinerairModal = function() {
       '</div>' +
       '<div class="kta-readme-modal-corps kta-iti-corps">' +
         sectionPoints +
+        sectionAvoid +
         sectionVitesse +
         sectionAction +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(modal);
   _rafraichirListeWaypointsModale();
+  _bindAvoidSectionHandlers();
 
   // Bind du segmented control de vitesse — clic = update preset + refresh
   // visuel des boutons + refresh in-place du temps affiché dans le bloc
@@ -4497,8 +4829,9 @@ window.ouvrirItinerairModal = function() {
     document.getElementById("kta-iti-error").style.display  = "none";
   });
 
-  // Calculer
-  document.getElementById("kta-iti-compute").addEventListener("click", function() {
+  // Calculer (handler async depuis v169 : computeRoute peut await SearchPoints
+  // si avoidTags non vide — l'await passe immediatement si pas d'avoidTags)
+  document.getElementById("kta-iti-compute").addEventListener("click", async function() {
     const errEl = document.getElementById("kta-iti-error");
     const resEl = document.getElementById("kta-iti-result");
     errEl.style.display = "none";
@@ -4517,13 +4850,39 @@ window.ouvrirItinerairModal = function() {
     }
 
     try {
-      const result = window.Pathfinder.computeRoute(_itineraryWaypoints);
+      // 🚫 v169 (Karma_dev) : lit les preferences d'evitement depuis localStorage
+      // et les passe au Pathfinder. La logique 2-passes (fallback) est interne
+      // au Pathfinder — on lit result.usedFallback et result.avoidedThrough pour
+      // afficher un message d'avertissement au user le cas echeant.
+      const avoidPrefs = _getItiAvoidPrefs();
+      const result = await window.Pathfinder.computeRoute(_itineraryWaypoints, {
+        avoidPoints: avoidPrefs.points || [],
+        avoidTags:   avoidPrefs.tags   || [],
+        avoidRadius: avoidPrefs.radius || ITI_AVOID_DEFAULT_RADIUS
+      });
       // Conversion px → mètres via APP_CONFIG.scale (px/mètre)
       const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) ? window.APP_CONFIG.scale : 1;
       const distM = result.totalDistance / scale;
 
+      // Message fallback si certains evitements n'ont pas pu etre respectes
+      let fallbackHtml = "";
+      if (result.usedFallback && Array.isArray(result.avoidedThrough) && result.avoidedThrough.length > 0) {
+        function _esc(s) {
+          return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+        const noms = result.avoidedThrough.map(function(ap) {
+          return _esc(ap.label || ap.id || "(point)");
+        }).join(", ");
+        fallbackHtml =
+          '<div class="kta-iti-result-row kta-iti-avoid-warning" style="color:#ff9933; background:rgba(255,153,51,0.10); border-left:3px solid #ff9933; padding:8px 10px; margin:6px 0; border-radius:4px;">' +
+            '⚠️ <strong>Impossible d\'éviter</strong> : ' + noms +
+            '<br><span style="font-size:11.5px;">Aucun chemin alternatif possible avec ces contraintes — l\'itinéraire calculé passe à proximité de ces points (marge ' + (result.avoidRadius || ITI_AVOID_DEFAULT_RADIUS) + 'px).</span>' +
+          '</div>';
+      }
+
       const tempsCalcMin = _tempsItineraireMinutes(distM, _itineraryWaypoints.length);
       resEl.innerHTML =
+        fallbackHtml +
         '<div class="kta-iti-result-row"><strong>Distance :</strong> ' + window.formatDistance(distM, 1) + '</div>' +
         '<div class="kta-iti-result-row"><strong>⏱️ Temps estimé :</strong> ' + _formatTempsMinutes(tempsCalcMin) + '</div>' +
         '<div class="kta-iti-result-row"><strong>Tronçons traversés :</strong> ' + result.segmentCount + '</div>' +
