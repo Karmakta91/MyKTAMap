@@ -4339,21 +4339,66 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    ========================= */
 
 /* Sur mobile en mode paysage, la hauteur est très réduite (≤ 500px).
-   On scrollifie la zone des contrôles à droite pour qu'aucune icône ne sorte du cadre. */
+   On scrollifie les zones de contrôles (gauche + droite) pour qu'aucune
+   icône ne sorte du cadre, même quand un groupe accordéon est ouvert avec
+   plusieurs sous-actions.
+
+   🔧 v170 fix critique : Leaflet utilise float: left/right + clear: both
+   sur .leaflet-control (héritage IE compat — voir lib/leaflet/leaflet.css
+   lignes 156-162). Avec ce layout floating, le PARENT ne "voit" PAS la
+   hauteur de ses enfants flottants → max-height + overflow-y: auto NE
+   DÉCLENCHE PAS le scroll, et les enfants sortent visuellement.
+   La règle existante (avant ce fix) ne marchait donc pas en pratique.
+
+   Solution : on bascule le container en `display: flex; flex-direction:
+   column;`. Les enfants deviennent des flex items (les `float` sont
+   ignorés sur les flex items par spec CSS), leur hauteur est comptée,
+   l'overflow scroll natif s'active proprement. `align-items: flex-end`
+   pour préserver l'alignement à droite (équivalent du float: right
+   d'origine).
+
+   ⚠️ NE PAS appliquer ces règles hors landscape mobile — desktop et
+   portrait n'ont pas besoin du scroll (assez de hauteur) et le float
+   natif Leaflet est OK dans ces cas. */
 @media (max-height: 500px) {
+  /* SIDEBAR DROITE — 11 groupes accordéon + layers control */
   .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 16px);
+    /* Tenir compte des safe-area iOS (notch + home indicator) en plus
+       de la marge esthétique 16px. Sans cela, sur iPhone 14 landscape
+       avec home indicator, les derniers boutons étaient cachés sous
+       la zone tactile réservée. */
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    /* Cacher la scrollbar pour rester propre */
     scrollbar-width: none;
+    /* 🔧 Bascule float → flex (cf. commentaire d'en-tête). */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
   }
-  .leaflet-top.leaflet-right::-webkit-scrollbar {
-    display: none;
-  }
+  .leaflet-top.leaflet-right::-webkit-scrollbar { display: none; }
 
-  /* Réduire légèrement les boutons en paysage pour gagner de la place */
+  /* SIDEBAR GAUCHE — zoom + bouton niveau (multi-niveau) + boussole.
+     Moins de boutons donc moins critique, mais on applique le même
+     pattern pour cohérence et anticipation (ex: si on ajoute un futur
+     contrôle topleft, il ne créera pas de débordement silencieux). */
+  .leaflet-top.leaflet-left {
+    max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 16px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .leaflet-top.leaflet-left::-webkit-scrollbar { display: none; }
+
+  /* Réduire légèrement les boutons en paysage pour gagner de la place
+     (cumul avec le scroll : si l'user a peu de groupes ouverts, tout
+     reste visible sans scroll grâce aux boutons 28px ; sinon le scroll
+     prend le relais sans aucun débordement). */
   .leaflet-bar a {
     width: 28px !important;
     height: 28px !important;
@@ -4361,8 +4406,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     font-size: 14px !important;
   }
 
-  /* Réduire l'espacement entre groupes */
+  /* Réduire l'espacement entre groupes (déjà actif avant le fix flex,
+     plus efficace maintenant car compté correctement dans le scroll). */
   .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
+    margin-top: 1px !important;
+  }
+  .leaflet-top.leaflet-left .leaflet-control + .leaflet-control {
     margin-top: 1px !important;
   }
 }
