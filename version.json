@@ -1,5 +1,5 @@
 {
-  "version": "v171",
+  "version": "v172",
   "released": "2026-05-17",
   "notes": [
     "🎚️ Refonte de la liste 📚 Mes plans dans le loader. Toggle '🌐 Afficher les plans serveur' pour cacher les plans serveur découverts auto et ne voir que tes plans persos (persisté entre les sessions). Restructure : nom du plan sur ligne 1 (plus tronqué prématurément), badges V1/V2/M-LVL + storage (✅/🔐/📁) groupés sur ligne 2 pour scan visuel rapide.",
@@ -7,6 +7,8 @@
     "💾 Sur mobile/Safari/Firefox, la case '💾 Mémoriser ce plan dans l'app' est cochée par défaut. Avant : décochée → l'user oubliait souvent → re-sélection requise à chaque chargement. Maintenant : import → mémorisé automatiquement → rechargement en 1 clic.",
     "📐 La modale ⚙️ Réglages passe en layout 2 colonnes sur PC (≥1024px). Sur mobile : strictement inchangée. Cohérent avec la modale Doc/Aide ❓ et la page d'accueil.",
     "🔧 Fix critique mobile landscape : les icônes de la barre de droite sortaient du cadre quand un groupe accordéon était ouvert avec plusieurs sous-actions. Maintenant scroll vertical natif si nécessaire, avec respect des safe-areas iOS (home indicator).",
-    "🔧 Fix re-sélection ZIP : si tu re-uploades un plan dans un autre mode (ex: tu avais Catacombes en V2, tu fournis un V1), un message d'avertissement clair t'explique le changement avant de continuer. Plus de badge V2 affiché à tort sur un plan désormais V1."
+    "🧭 Fix critique boussole + tracker en mode landscape : avant, en tenant le téléphone à l'horizontale (ou en portrait inversé), le Nord indiqué par la boussole 🧭 et la rotation de l'icône tracker étaient décalés de ±90° (ou 180°). Maintenant : recalage automatique dès que tu tournes ton téléphone, le N reste en haut visuel dans les 4 orientations.",
+    "🎨 Modales de re-sélection ZIP refondues à la charte graphique. Si tu re-uploades un ZIP avec un nom différent du plan ciblé → modale rouge claire et import refusé (avant : 'Charger quand même' qui créait des incohérences silencieuses). Si juste le mode change (V1/V2 ou multi-niveau) → modale orange avec carte par discordance + choix Annuler/Continuer.",
+    "🗑️ alert.json : retrait de l'alerte gaz toxiques V2 (plus d'actualité). L'alerte info migration myktamap.fr reste active jusqu'au 15 juillet 2026."
   ]
 }

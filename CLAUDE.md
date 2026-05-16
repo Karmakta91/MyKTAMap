@@ -1520,7 +1520,7 @@ Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, au
 5. Lecture : `opts.include.xxx` + éventuellement Set granulaire
 6. Stats : ajouter au compteur dans `_kmzCollecterStats`
 
-### 33. Refonte UX loader + fixes critiques (depuis v171)
+### 33. Refonte UX loader + fixes critiques (depuis v172)
 
 Refonte de la liste 📚 Mes plans + 2 fixes critiques (sidebar landscape mobile, re-sélection ZIP V1/V2 mismatch). Toutes les modifs sont dans `index.html` (HTML + JS inline) et `css/style.css`, sauf le helper `syncModeFlags` ajouté à `js/planRegistry.js`.
 
@@ -1633,6 +1633,142 @@ Solution :
 - Soit changer `Object.assign` en remplacement total — mais alors faut tout redéclarer (addedAt, lastOpened, etc.)
 
 Le projet a choisi l'option helper dédié pour la rétro-compat (addOrUpdate continue de merge naturellement pour les autres champs, seul un sync explicite via syncModeFlags affecte les flags V2/multiLevel).
+
+### 34. Correction heading selon orientation écran (depuis v172)
+
+Fix critique : la boussole 🧭 (cf §25) et la rotation de l'icône tracker (cf §28) étaient faussées en mode landscape (±90° de décalage) et portrait inversé (180°).
+
+#### 34.1 Root cause
+
+`DeviceOrientationEvent` renvoie α/β/γ par rapport aux axes **intrinsèques** du device :
+- Axe Y = bord court "haut" physique du tel
+- En portrait normal : axe Y aligné avec le haut visuel → heading brut OK
+- En landscape : OS a tourné l'écran mais le device n'a pas bougé → l'axe Y pointe vers la gauche/droite visuelle → décalage angulaire perçu comme un bug
+
+Le calcul `getHeading(α, β, γ)` v147 (cf §24) reste correct mais renvoie la direction vers laquelle pointe le **haut device**, pas le **haut visuel**.
+
+#### 34.2 Architecture en 3 couches
+
+**1. `direction`** (existant) reste la valeur **device brute**. Source de vérité pour debug + cohérence avec iOS `webkitCompassHeading` qui est aussi brut (compass natif iOS retourne le heading de l'axe Y device).
+
+**2. `_getCorrectedHeading()`** (nouveau) applique l'offset écran :
+```js
+function _getCorrectedHeading() {
+  if (typeof direction !== "number" || isNaN(direction)) return 0;
+  return ((direction + _screenAngle) % 360 + 360) % 360;
+}
+```
+
+**3. `_screenAngle`** (0 / 90 / 180 / 270) maintenu à jour à 2 moments :
+- Au boot de `_initScreenOrientationListener()` (appelé par `initOrientation` qui est déclenché par `requestPermission` du tracker OU de la boussole 🧭 — couvert même sans tracker actif)
+- Sur event `screen.orientation.change` (standard) OU `window.orientationchange` (fallback iOS Safari < 16.4 + vieux Android) → l'user tourne son tel → recalage instantané sans attendre le prochain event device → l'icône tracker est aussi ré-orientée immédiatement via `_applyRotationToTrackerMarker()`
+
+#### 34.3 Cascade compat `screen.orientation`
+
+Helper `_getScreenAngleNormalized()` :
+
+```js
+function _getScreenAngleNormalized() {
+  // Standard moderne (Chrome, Firefox, Edge, Safari ≥ 16.4)
+  if (screen && screen.orientation && typeof screen.orientation.angle === "number") {
+    return ((screen.orientation.angle % 360) + 360) % 360;
+  }
+  // Fallback iOS Safari < 16.4 — convention OPPOSÉE pour landscape :
+  //   iOS 0 → standard 0,  iOS 180 → standard 180
+  //   iOS 90 → standard 270 (LS-left iOS = LS-secondary standard)
+  //   iOS -90 → standard 90 (LS-right iOS = LS-primary standard)
+  if (typeof window.orientation === "number") {
+    const v = ((window.orientation % 360) + 360) % 360;
+    if (v === 0 || v === 180) return v;
+    return (360 - v) % 360;
+  }
+  return 0;
+}
+```
+
+⚠️ **Piège** : `screen.orientation.angle` et `window.orientation` ont des **conventions opposées** pour landscape. L'OS standard dit "90 = écran tourné 90° anti-horaire par moi" (= user a tourné tel 90° horaire), iOS dit "90 = device rotated 90° counter-clockwise". Sans normalisation, on aurait un bug iOS ⇄ Chrome dans la même formule.
+
+#### 34.4 Validation math
+
+(heading device + screen.angle) % 360. Cas testés (user face Nord) :
+
+| Orientation visuelle | α device | screen.angle (standard) | corrected |
+|---|---|---|---|
+| Portrait normal | 0 | 0 | 0 ✓ |
+| Landscape-PRIMARY | 270 | 90 | 0 ✓ |
+| Landscape-SECONDARY | 90 | 270 | 0 ✓ |
+| Portrait inversé | 180 | 180 | 0 ✓ |
+
+**Justification** : si l'OS a tourné l'écran de θ° anti-horaire, le bord du device qui pointe désormais vers "haut visuel" est l'ancien bord à θ° du bord court "haut" device dans le sens horaire. Le heading visuel = heading brut + θ.
+
+#### 34.5 Consumers basculés vers la version corrigée
+
+- **`_applyRotationToTrackerMarker`** (tracking.js, cf §28) : `const heading = _getCorrectedHeading();` au lieu de `direction` directement. L'icône tracker tourne dans le sens cohérent avec l'orientation visuelle de la carte affichée.
+- **`window.getCurrentHeading`** (consommé par compass.js widget boussole, cf §25.1) : `return _getCorrectedHeading();` au lieu de `return direction;`. La rose des vents contre-tourne par rapport au heading corrigé → le N reste en haut visuel quelle que soit l'orientation.
+
+⚠️ **À ne pas faire** : appliquer la correction dans `_onOrientation` directement (= modifier la variable `direction`). Ça casserait la sémantique "direction = device brut" utile pour le debug + cohérence avec iOS webkitCompassHeading. Préférer toujours l'application à la lecture via le helper.
+
+#### 34.6 Log debug enrichi
+
+Format : `[Tracking] Heading : 270.0° (source: webkitCompassHeading, screen: 90°, visuel: 0.0°)`. Permet de diagnostiquer rapidement brut device vs correction appliquée vs résultat final consommé.
+
+#### 34.7 Préservé (ne pas toucher)
+
+- Math `getHeading(α, β, γ)` v147 (formule "pose à plat" / "pose verticale" inchangée)
+- Smoothing exponentiel + throttle 2° + transition CSS 0.3s de l'icône tracker (§28)
+- Cascade sources iOS `webkitCompassHeading` → Android `deviceorientationabsolute` → calc brut (§24)
+- Tous les flags idempotents (`_orientationListenerAttached`, `_motionListenerAttached`, `_screenOrientationListenerAttached`)
+
+### 35. Modales custom pour re-sélection ZIP (depuis v172)
+
+Remplacement des `confirm()` natifs OS dans `reSelectionnerZipPourPlan` (index.html) par des modales custom respectant la charte graphique du projet. Plus important : changement **fonctionnel** sur le cas "nom différent" — refus définitif au lieu de "Charger quand même".
+
+#### 35.1 Modale "Nom différent" — `_afficherModaleNomZipKO(zipName, planName)`
+
+API : `Promise<void>` (résout quand l'user ferme, peu importe l'action).
+
+Visuel : border + accent rouge `#ff8c8c` (cohérent avec `.plan-row-remove:hover` et autres modales d'erreur), grille 2 colonnes "Plan ciblé / ZIP fourni" pour visualiser la discordance, hint italique expliquant le refus + alternative (passer par 📦 Charger un nouveau plan), **1 seul bouton "J'ai compris"** primary.
+
+Fermeture : ✕, backdrop, Échap (toutes équivalentes — résout sans charger le ZIP).
+
+**Changement fonctionnel v172** : avant on avait `confirm("Charger quand même ?")` qui permettait à l'user d'accepter et créait des incohérences silencieuses (badges, sessions, métadonnées). Maintenant : refus définitif, pas de bypass.
+
+#### 35.2 Modale "Mode différent" — `_afficherModaleModeDifferent(planName, discordances)`
+
+API : `Promise<boolean>` (true = continuer, false = annuler).
+
+Visuel : border + accent orange `#ffb380` (cohérent avec warnings du projet, V2 generation, OOM toast warn…), 1 carte par discordance dans une grille verticale avec titre flag en gras orange + comparaison "Mode mémorisé : ... / Mode du ZIP : ..." en blocs lisibles, hint italique expliquant que le ZIP fait foi, 2 boutons "Annuler" (ghost) + "Continuer" (primary).
+
+Fermeture : ✕, backdrop, Échap = annuler (résout false). Click sur "Continuer" = résout true.
+
+Le ZIP fait foi → `syncModeFlags` appliqué après confirmation pour aligner le registre sur le contenu réel du ZIP.
+
+#### 35.3 Pattern réutilisable pour futures modales
+
+Promise-based, idéal pour intégration dans des flows async existants :
+```js
+const ok = await _afficherModaleModeDifferent(planName, discordances);
+if (!ok) return;
+```
+
+Structure type :
+1. Helper `function _afficherModaleXxx(args)` qui retourne `new Promise(function(resolve) { ... })`
+2. Cleanup d'une éventuelle modale précédente (`if (existing) existing.remove();`)
+3. Création DOM avec classes `.kta-readme-modal-overlay` + `.kta-readme-modal-boite`
+4. Border/accent inline-style pour la couleur sémantique (rouge erreur, orange warning, etc.)
+5. Bind ✕ + click backdrop + keydown Escape → tous appellent `_close(<result>)` qui retire la modale + retire le listener Escape + résout la Promise
+
+#### 35.4 Pourquoi pas de confirm() natif
+
+- Pas customisable visuellement → casse la charte
+- Pas Promise-friendly nativement (bloque le thread JS)
+- Position et apparence dépendent de l'OS → incohérent entre desktop/mobile
+- Texte sec, pas de mise en forme (gras, couleurs, listes…)
+- Bouton "OK/Annuler" pas customisable → pas de "J'ai compris" sémantique
+
+⚠️ **`confirm()` natifs gardés** dans le projet (volontaire, pas à toucher sauf demande explicite) :
+- "Retirer ce plan de votre liste ?" (action destructive simple)
+- "Tracé en cours, charger un autre plan ?" (rapide, contexte évident)
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

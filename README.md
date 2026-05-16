@@ -11,10 +11,12 @@
 
 > _Le journal est long (96 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v171" open>
-<summary><strong>🗓️ 17/05/2026 — 🚀 v171 : Refonte UX loader (toggle serveurs, ligne 2 badges, bouton ℹ️) + fixes mobile & PC</strong></summary>
+<details id="v172" open>
+<summary><strong>🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte</strong></summary>
 
-Release majoritairement **UX + fixes** centrée sur la page loader (liste de plans) et 2 bugs critiques (sidebar landscape mobile, re-sélection ZIP V1 sur registre V2).
+Release majoritairement **UX + fixes** centrée sur la page loader (liste de plans) et 4 bugs critiques (sidebar landscape mobile, re-sélection ZIP V1 sur registre V2, boussole faussée en landscape, modales `confirm()` natives remplacées).
+
+> _Note de versioning : v171 a été bumpée en local mais jamais déployée en prod — toutes ses features sont incluses dans v172 + 2 nouveautés supplémentaires (fix boussole landscape + modales charte). Pour les users, la dernière version installée est v170 → v172 directement._
 
 ### 🌐 Loader : toggle "Afficher les plans serveur" (persisté)
 
@@ -89,29 +91,56 @@ Préservé : portrait + desktop strictement inchangés.
 
 ### 🗑️ alert.json : retrait alerte gaz toxiques V2 (plus d'actualité)
 
-L'alerte emergency `gaz-toxiques-v2-2026-05` (released 2026-05-13) n'était plus d'actualité. Retirée du fichier `alert.json` racine. **Propagé en prod via cherry-pick séparé** (commit `0c6e033` sur main) avant la release v171, vu l'urgence (bandeau rouge pulsant chez tous les users).
+L'alerte emergency `gaz-toxiques-v2-2026-05` (released 2026-05-13) n'était plus d'actualité. Retirée du fichier `alert.json` racine. **Propagé en prod via cherry-pick séparé** (commit `0c6e033` sur main) avant la release v172, vu l'urgence (bandeau rouge pulsant chez tous les users).
 
 L'alerte info `migration-myktamap-fr-2026` reste en place jusqu'au 15 juillet 2026.
 
+### 🧭 Fix critique : boussole + tracker faussés en mode landscape
+
+**Symptôme** : en landscape (et portrait inversé), le widget boussole 🧭 indiquait un Nord décalé de ±90° (ou 180°), idem pour la rotation de l'icône tracker.
+
+**Root cause** : `DeviceOrientationEvent` renvoie α/β/γ par rapport aux axes **intrinsèques** du device (axe Y = bord court "haut" du tel). En portrait normal cet axe correspond au haut visuel. En landscape, l'OS a tourné l'écran de 90/270° mais le device n'a pas bougé → l'axe Y pointe à gauche/droite visuelle, plus vers le haut → décalage angulaire.
+
+**Fix (option A validée)** : helper `_getCorrectedHeading()` qui retourne `(direction + _screenAngle) % 360`. Variable `_screenAngle` (0 / 90 / 180 / 270) tenue à jour par :
+- Cascade compat : `screen.orientation.angle` (standard) → `window.orientation` (iOS Safari < 16.4, convention opposée pour landscape inversée via `(360 - v) % 360`) → fallback 0
+- Listener double `screen.orientation.change` + `window.orientationchange` pour couvrir tous les navigateurs
+- Recalage instantané sans attendre le prochain event device (= `_applyRotationToTrackerMarker` ré-appelé au change)
+
+**Architecture** : `direction` reste la valeur **device brute** (cohérence avec iOS `webkitCompassHeading` aussi brut, debug log). `_getCorrectedHeading()` appliqué à la lecture par les 2 consumers (icône tracker §28 + `window.getCurrentHeading` consommé par compass.js §25).
+
+**Validation math** : (heading device + screen.angle) % 360. Testé sur les 4 orientations face Nord → corrected = 0 dans les 4 cas. Cf. CLAUDE.md §34 pour la dérivation complète.
+
+### 🎨 Re-sélection ZIP : modales charte + refus définitif si nom différent
+
+Les 2 `confirm()` natifs dans `reSelectionnerZipPourPlan` remplacés par des modales custom respectant la charte (.kta-readme-modal-overlay + boutons .kta-btn, ✕/backdrop/Échap pour fermer). Plus important : **changement fonctionnel** sur le cas "nom du ZIP ≠ nom du plan" :
+
+- **Avant** : `confirm("Charger quand même ?")` — l'user pouvait accepter un ZIP au nom différent, créant des incohérences silencieuses (badges sur le mauvais plan, sessions liées au mauvais ZIP, métadonnées polluées)
+- **Après** : modale rouge `_afficherModaleNomZipKO(zipName, planName)` avec **1 seul bouton "J'ai compris"**, import refusé définitivement. L'user qui veut vraiment charger ce ZIP passe par 📦 Charger un nouveau plan (entrée distincte, id auto-généré).
+
+Modale "Mode différent (V1/V2 + multi-niveau)" : conservée avec son choix Annuler/Continuer (le ZIP fait foi), juste passée en design custom orange `_afficherModaleModeDifferent(planName, discordances)`. Carte par discordance avec accent flag + comparaison mémorisé/ZIP en bloc lisible.
+
+API Promise-based pour intégration propre dans le flow async de `reSelectionnerZipPourPlan`.
+
 ### Sources de vérité bumpées
 
-- `sw.js > CACHE_NAME` : `v170` → `v171`
-- `js/copyright.js > __MKM__.build` : `"v170"` → `"v171"`
-- `version.json > version` : `"v170"` → `"v171"` — **notes user-facing mises à jour** (changements UX bien visibles, dignes d'être annoncés)
+- `sw.js > CACHE_NAME` : `v170` → `v172`
+- `js/copyright.js > __MKM__.build` : `"v170"` → `"v172"`
+- `version.json > version` : `"v170"` → `"v172"` — **notes user-facing mises à jour** (changements UX bien visibles + fix boussole landscape, dignes d'être annoncés)
 
 ### Fichiers modifiés
 
 | Fichier | Changement |
 |---|---|
-| `index.html` | Toggle serveurs HTML/JS, restructure planRowHTML (ligne 1/2), bouton ℹ️, modale `_afficherInfosPlan` (~80 lignes), checkbox memoriser default-on, syncModeFlags + check discordance dans `reSelectionnerZipPourPlan` |
+| `index.html` | Toggle serveurs HTML/JS, restructure planRowHTML (ligne 1/2), bouton ℹ️, modale `_afficherInfosPlan` (~80 lignes), checkbox memoriser default-on, syncModeFlags + check discordance dans `reSelectionnerZipPourPlan`, **modales custom `_afficherModaleNomZipKO` + `_afficherModaleModeDifferent`** (~130 lignes Promise-based) |
 | `css/style.css` | `.plan-row-modes` + `.loader-plans-filters` + `.loader-plans-empty` + `.kta-plan-infos-table/boite/key/val` + `.plan-row-info-btn:hover`, Réglages responsive `.kta-cfg-modal-boite/corps/actions-bar` (~140 lignes), fix landscape sidebar (display:flex sur leaflet-top.right/left) |
 | `js/planRegistry.js` | Nouveau `syncModeFlags(id, flags)` + exposé dans l'API publique |
 | `js/interface.js` | Réglages : classe `.kta-cfg-modal-boite` + `.kta-cfg-corps` + `.kta-cfg-actions-bar` (responsive PC) |
+| `js/tracking.js` | **Fix boussole landscape : helpers `_getScreenAngleNormalized`, `_getCorrectedHeading`, `_initScreenOrientationListener` (~85 lignes)** + variable `_screenAngle` + bascule consumers (`_applyRotationToTrackerMarker`, `window.getCurrentHeading`) vers `_getCorrectedHeading()` + log enrichi |
 | `alert.json` | Retrait alerte gaz toxiques (déjà propagé via cherry-pick `0c6e033` sur main) |
-| `sw.js` + `js/copyright.js` + `version.json` | Bumps v171 |
-| `CLAUDE.md` §33 | Section technique loader v171 (pattern UX, fix landscape, sync flags) |
-| `AI_CONTEXT.md` | Survol mis à jour |
-| `README_USER.md` | Section "Filtrer la liste de plans" + "Bouton ℹ️ Infos détaillées" + checkbox memoriser par défaut |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v172 |
+| `CLAUDE.md` §33 + §34 | Section §33 technique loader (pattern UX, fix landscape sidebar, sync flags) + nouvelle **§34 (correction heading orientation écran)** |
+| `AI_CONTEXT.md` | Survol mis à jour + mention boussole landscape fix |
+| `README_USER.md` | Section "Filtrer la liste de plans" + "Bouton ℹ️ Infos détaillées" + checkbox memoriser par défaut + mention boussole landscape OK |
 
 ---
 
@@ -312,7 +341,7 @@ Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis mast
 
 ### 📑 Sommaire des versions
 
-- [🗓️ 17/05/2026 — 🚀 v171 : Refonte UX loader (toggle serveurs, ligne 2 badges, bouton ℹ️) + fixes mobile & PC](#v171)
+- [🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte](#v172)
 - [🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)](#v170)
 - [🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire](#v169)
 - [🗓️ 15/05/2026 (suite 13) — 🤖 GitHub Releases automatiques](#2026-05-15-s13)

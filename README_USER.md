@@ -506,6 +506,8 @@ Tenez le téléphone à plat dans la main, écran face à vous, **bord supérieu
 
 Si l'orientation est cohérente, le tracker enregistre correctement vos déplacements. Sinon, suspectez une perturbation magnétique (armatures, ferraille, sol) — recalez via 📍 dès que possible et limitez la confiance dans le tracé.
 
+> 🆕 **Depuis v172** : la boussole et la rotation de l'icône tracker fonctionnent correctement en **mode landscape** (téléphone tenu à l'horizontale) et en **portrait inversé**. Avant : décalage de ±90° en landscape, qui pouvait laisser penser que la boussole était cassée. Maintenant : recalage instantané dès que vous tournez votre téléphone, le N reste en haut visuel quelle que soit l'orientation. Les 4 orientations sont couvertes.
+
 **Cliquez sur le widget** pour ouvrir un **affichage agrandi** plein écran (rose 240px + cardinal en gros + angle exact). Pratique pour valider de loin ou faire une démo. Refermer via ✕, Échap ou en cliquant à côté.
 
 Le widget reste affiché même quand le tracker est à l'arrêt — vous pouvez l'utiliser pour valider la boussole sans démarrer le tracking. ✕ du widget pour le fermer entièrement.
