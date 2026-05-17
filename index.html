@@ -654,8 +654,19 @@
 
           await chargerZipFichier(zipFile, presetChoisi, meta);
         } catch(err) {
-          console.error("[Loader] Erreur :", err);
-          setStatus("Erreur : " + (err.message || err), true);
+          // v173 : extraction défensive pour éviter le log "[Loader] Erreur : {}"
+          // qui apparait quand l'erreur est un objet sans message (throw {} ou
+          // Promise reject avec valeur non-Error). On essaie plusieurs sources
+          // pour donner une trace utile au F12.
+          const _msg =
+            (err && err.message) ||
+            (err && err.toString && err.toString() !== "[object Object]" ? err.toString() : null) ||
+            (err && err.name) ||
+            (err && typeof err === "object" ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : null) ||
+            String(err) ||
+            "Erreur inconnue";
+          console.error("[Loader] Erreur :", _msg, "| raw err :", err, "| typeof :", typeof err, "| stack :", err && err.stack);
+          setStatus("Erreur : " + _msg, true);
           loadBtn.disabled = false;
         }
       }
