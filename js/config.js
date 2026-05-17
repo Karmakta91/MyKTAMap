@@ -55,6 +55,12 @@ let DEFAULT_CONFIG = {
   debugMode:     false,
   perfPreset:    "auto",  // "auto" | "quality" | "balanced" | "performance"
 
+  // 🔍 v174 : adapter la taille visuelle des icônes au zoom (default true).
+  // Si false, comportement Leaflet par défaut (icônes taille écran fixe →
+  // semblent énormes au dézoom). Lu une fois à creerIcones + au hook zoom
+  // dans initMapFromConfig → reload du plan requis pour changement.
+  scaledMarkers: true,
+
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
   // false (defaut), l'UI multi-niveau est masquee et le comportement est
@@ -81,6 +87,8 @@ let APP_CONFIG = { ...DEFAULT_CONFIG };
 try {
   const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
   if ("debugMode" in saved) APP_CONFIG.debugMode = !!saved.debugMode;
+  // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
+  if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
 } catch(e) {}
 
 // =========================
@@ -299,7 +307,8 @@ function sauvegarderPrefsUtilisateur() {
   try {
     // Lire ce qui est déjà sauvé pour ne pas écraser des clés inconnues éventuelles
     const existing = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-    existing.debugMode = !!APP_CONFIG.debugMode;
+    existing.debugMode     = !!APP_CONFIG.debugMode;
+    existing.scaledMarkers = APP_CONFIG.scaledMarkers !== false;  // v174 : default true
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }

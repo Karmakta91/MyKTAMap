@@ -453,8 +453,9 @@
     const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
     if (planIcons[tag]) return planIcons[tag];
     const entry = window._iconMap && window._iconMap[tag];
-    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
-    return null;
+    if (!entry) return null;
+    // v174 : entry peut être un L.divIcon (scaledMarkers ON) → check _kta_iconUrl
+    return entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
   }
 
   // ========== AFFICHAGE MODALE ==========
@@ -1336,10 +1337,11 @@
   }
 
   // URL d'icone pour un tag (lookup _iconMap → resolution Leaflet)
+  // v174 : check _kta_iconUrl (divIcon) avant options.iconUrl (icon classique)
   function _kmzIconePourTag(tag) {
     if (!window._iconMap || !window._iconMap[tag]) return null;
     const ic = window._iconMap[tag];
-    return (ic && ic.options && ic.options.iconUrl) ? ic.options.iconUrl : null;
+    return ic._kta_iconUrl || (ic.options && ic.options.iconUrl) || null;
   }
 
   // Collecte unifiee des stats KMZ (session + embedded) pour generer les
@@ -1926,19 +1928,22 @@
       }
     }
 
-    // Icônes embedded : 1 PNG par tag rencontré dans les points
+    // Icônes embedded : 1 PNG par tag rencontré dans les points.
+    // v174 : check _kta_iconUrl (divIcon scaledMarkers) avant options.iconUrl
     const iconsToEmbed = {};
     if (window._iconMap) {
       // On embed TOUTES les icônes connues — c'est ~30 Ko au total et plus simple
       Object.keys(window._iconMap).forEach(function(tag) {
         const icObj = window._iconMap[tag];
-        if (icObj && icObj.options && icObj.options.iconUrl) {
-          iconsToEmbed[tag] = icObj.options.iconUrl;
-        }
+        if (!icObj) return;
+        const url = icObj._kta_iconUrl || (icObj.options && icObj.options.iconUrl);
+        if (url) iconsToEmbed[tag] = url;
       });
     }
-    if (window.iconeDefault && window.iconeDefault.options && window.iconeDefault.options.iconUrl) {
-      iconsToEmbed["default"] = window.iconeDefault.options.iconUrl;
+    if (window.iconeDefault) {
+      const defUrl = window.iconeDefault._kta_iconUrl ||
+                     (window.iconeDefault.options && window.iconeDefault.options.iconUrl);
+      if (defUrl) iconsToEmbed["default"] = defUrl;
     }
 
     // Génération KMZ

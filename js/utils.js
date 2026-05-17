@@ -40,7 +40,13 @@ function getIconUrlForPoint(point) {
   const map       = window._iconMap || {};
 
   function urlFromMapEntry(entry) {
-    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
+    if (!entry) return null;
+    // v174 : avec scaledMarkers ON (default), _iconMap[tag] est un L.divIcon
+    // qui n'a PAS options.iconUrl. On stocke l'URL dans _kta_iconUrl pour ces
+    // cas (cf map.js > creerIcones > _mkIcon). Fallback sur options.iconUrl
+    // si on est en mode L.icon classique (scaledMarkers OFF).
+    if (entry._kta_iconUrl) return entry._kta_iconUrl;
+    if (entry.options && entry.options.iconUrl) return entry.options.iconUrl;
     return null;
   }
 

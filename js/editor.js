@@ -277,8 +277,11 @@ function _ajouterMarker(point) {
 
   let icone = choisirIcone(point);
 
-  // Validation : si l'icône est invalide, utiliser le pin Leaflet natif
-  if (!icone || !icone.options || !icone.options.iconUrl) {
+  // Validation : si l'icône est invalide, utiliser le pin Leaflet natif.
+  // v174 : avec scaledMarkers ON, icone est un L.divIcon → options.iconUrl
+  // n'existe pas, on check _kta_iconUrl (backup posé par creerIcones).
+  const hasUrl = icone && (icone._kta_iconUrl || (icone.options && icone.options.iconUrl));
+  if (!icone || !hasUrl) {
     console.warn("[Editor] Icône invalide pour", point.nom, "— pin Leaflet par défaut");
     icone = new L.Icon.Default();
   }

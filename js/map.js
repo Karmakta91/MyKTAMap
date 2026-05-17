@@ -40,25 +40,50 @@ function creerIcones(iconConfig) {
   // (pin bleu standard) pour bien différencier des points custom
   const useLeafletDefault = !iconConfig.default;
 
-  function makeDefaultIcon() {
-    if (useLeafletDefault) {
-      // Icône native Leaflet (pin bleu classique)
-      return new L.Icon.Default();
+  // 🔍 v174 : si APP_CONFIG.scaledMarkers === true (default), tous les
+  // markers sont créés en L.divIcon (wrapper div + img enfant) au lieu de
+  // L.icon natif. Permet d'appliquer une CSS transform: scale() sur l'<img>
+  // enfant pour faire varier la taille des icônes selon le zoom (sans
+  // casser le translate3d Leaflet appliqué sur le DIV parent).
+  // OFF = comportement Leaflet par défaut (icônes taille écran fixe).
+  // Reload du plan requis pour changement (lu uniquement ici à l'init).
+  const _useScaled = !window.APP_CONFIG || window.APP_CONFIG.scaledMarkers !== false;
+
+  // Helper de création d'icône — choisit L.icon ou L.divIcon selon le mode.
+  // Dans les 2 cas on attache `_kta_iconUrl` sur l'objet pour les consumers
+  // qui lisaient `options.iconUrl` (utils.js > getIconUrlForPoint,
+  // sessionExporter, exporter, etc.). Avec divIcon, options.iconUrl
+  // n'existe pas → on doit fallback sur _kta_iconUrl.
+  function _mkIcon(url, w, h, ax, ay) {
+    if (!url) return makeDefaultIcon();
+    let ic;
+    if (_useScaled) {
+      ic = L.divIcon({
+        // L'<img> enfant reçoit le transform: scale(...) CSS (cf style.css)
+        html:       '<img src="' + url + '" alt="" class="kta-marker-img" draggable="false">',
+        className:  "kta-marker-divicon",
+        iconSize:   [w, h],
+        iconAnchor: [ax, ay]
+      });
+    } else {
+      ic = L.icon({ iconUrl: url, iconSize: [w, h], iconAnchor: [ax, ay] });
     }
-    return L.icon({
-      iconUrl:    iconConfig.default,
-      iconSize:   [50, 50],
-      iconAnchor: [25, 25]
-    });
+    ic._kta_iconUrl = url;  // backup pour les consumers (cf commentaire ci-dessus)
+    return ic;
   }
 
+  function makeDefaultIcon() {
+    if (useLeafletDefault) {
+      // Icône native Leaflet (pin bleu classique). Pas de scale (anchor
+      // bas-centre incompatible avec scale around center).
+      return new L.Icon.Default();
+    }
+    return _mkIcon(iconConfig.default, 50, 50, 25, 25);
+  }
+
+  // Helper rétro-compat (gardé pour le code interne — utilise _mkIcon désormais)
   const mk = function(url, w, h, ax, ay) {
-    if (!url) return makeDefaultIcon();
-    return L.icon({
-      iconUrl:    url,
-      iconSize:   [w, h],
-      iconAnchor: [ax, ay]
-    });
+    return _mkIcon(url, w, h, ax, ay);
   };
 
   iconeDefault = makeDefaultIcon();
@@ -81,7 +106,8 @@ function creerIcones(iconConfig) {
   window.iconeDefault = iconeDefault;
   window.iconeTrack   = iconeTrack;
 
-  // Map dynamique : tag → L.icon — supporte tous les tags définis dans plan-config.json
+  // Map dynamique : tag → L.icon ou L.divIcon (selon _useScaled, cf _mkIcon)
+  // — supporte tous les tags définis dans plan-config.json
   window._iconMap = {};
   Object.keys(iconConfig).forEach(function(tag) {
     const url = iconConfig[tag];
@@ -90,11 +116,7 @@ function creerIcones(iconConfig) {
       window._iconMap[tag] = makeDefaultIcon();
       return;
     }
-    window._iconMap[tag] = L.icon({
-      iconUrl:    url,
-      iconSize:   [50, 50],
-      iconAnchor: [25, 25]
-    });
+    window._iconMap[tag] = _mkIcon(url, 50, 50, 25, 25);
   });
 
   // Tags par défaut : si le plan-config ne les déclare pas, on les ajoute quand même
@@ -124,11 +146,7 @@ function creerIcones(iconConfig) {
   };
   Object.keys(TAGS_BUILTIN).forEach(function(tag) {
     if (!window._iconMap[tag]) {
-      window._iconMap[tag] = L.icon({
-        iconUrl:    TAGS_BUILTIN[tag],
-        iconSize:   [50, 50],
-        iconAnchor: [25, 25]
-      });
+      window._iconMap[tag] = _mkIcon(TAGS_BUILTIN[tag], 50, 50, 25, 25);
     }
   });
 
@@ -274,6 +292,28 @@ async function initMapFromConfig() {
 
   window.map    = map;
   window.bounds = bounds;
+
+  // 🔍 v174 : hook zoom pour adapter la taille visuelle des icônes.
+  // Variable CSS --kta-marker-scale appliquée aux <img> des markers divIcon
+  // (cf style.css > .kta-marker-img). Clamp min 0.25 (choix 4b validé KARMA)
+  // pour qu'au dézoom extrême les icônes restent visibles (~12px).
+  // Skip total si toggle scaledMarkers OFF (CSS variable reste à 1).
+  if (!window.APP_CONFIG || window.APP_CONFIG.scaledMarkers !== false) {
+    const _majMarkerScale = function() {
+      // Scale = 2^zoom : zoom 0 (natif) → 1, zoom -1 → 0.5, zoom -2 → 0.25, etc.
+      // Clamp min 0.25 (≈ 12px visible) — au-delà l'icône devient un point illisible.
+      const z = map.getZoom();
+      const raw = Math.pow(2, z);
+      const clamped = Math.max(0.25, Math.min(2, raw));  // clamp aussi en haut (zoom > 1 = très zoomé)
+      document.body.style.setProperty("--kta-marker-scale", clamped);
+    };
+    map.on("zoomend", _majMarkerScale);
+    map.on("zoom",    _majMarkerScale);  // pendant l'animation pour fluidité
+    _majMarkerScale();
+  } else {
+    // Toggle OFF : on garde la CSS variable à 1 → icônes taille écran fixe
+    document.body.style.setProperty("--kta-marker-scale", "1");
+  }
 
   // Récupérer le File source si disponible (mode import)
   const baseAsset = Object.values(window.RUNTIME_ASSETS || {}).find(function(a) {

@@ -4,17 +4,18 @@
     {
       "id":       "migration-myktamap-fr-2026",
       "level":    "info",
-      "title":    "🌐 Nouveau domaine — myktamap.fr",
-      "message":  "L'application change de domaine officiel. La nouvelle adresse sera myktamap.fr et la migration est prévue pour le 15 juillet 2026. Tu as donc le temps d'exporter tes données et de te préparer.",
+      "title":    "🌐 myktamap.fr est en ligne !",
+      "message":  "Le nouveau domaine officiel est désormais disponible : https://myktamap.fr. Les 2 domaines cohabitent jusqu'au 15 juillet 2026, après quoi l'ancien sera coupé.",
       "details": [
-        "📅 Coupure de l'ancien domaine prévue le 15 juillet 2026 — les 2 domaines cohabiteront jusque-là.",
-        "📚 Exporte ta liste de plans : loader → section 📚 Mes plans → bouton 💾 → fichier .config avec tous tes plans enregistrés.",
+        "✅ Nouvelle URL active : https://myktamap.fr — accède-y dès maintenant pour prendre l'habitude.",
+        "📅 L'ancien domaine (myktamap.is-underground.fr) sera coupé le 15 juillet 2026 — tu as encore le temps de migrer tranquillement.",
+        "📚 Exporte ta liste de plans depuis l'ancien domaine : loader → section 📚 Mes plans → bouton 💾 → fichier .config avec tous tes plans enregistrés. Ré-importe-la sur le nouveau via 📂.",
         "💾 Exporte tes sessions via 💾 Sauvegarde session sur chaque plan (Full ou Avancé) → un .json par session.",
         "📦 Garde tes ZIPs de plans pour les ré-importer manuellement sur le nouveau domaine.",
-        "📱 Si l'app est installée sur ton écran d'accueil (PWA), tu devras la supprimer manuellement et la réinstaller depuis myktamap.fr (les origins étant différents).",
-        "🚧 myktamap.fr est en cours de mise en service. Le lien sera actif sous peu — surveille cette alerte pour la confirmation."
+        "📱 Si l'app est installée sur ton écran d'accueil (PWA), tu devras la supprimer manuellement et la réinstaller depuis myktamap.fr (les origins étant différents, l'ancienne PWA ne se mettra pas à jour vers la nouvelle).",
+        "🗝️ Au premier accès depuis myktamap.fr, le code d'accès communautaire te sera redemandé (le localStorage n'est pas partagé entre les 2 origins). Code = F!sYs44!h4z!3J — note-le avant de migrer."
       ],
-      "released": "2026-05-15T13:00:00Z"
+      "released": "2026-05-17T19:00:00Z"
     }
   ]
 }
