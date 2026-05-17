@@ -295,6 +295,11 @@ function _ajouterMarker(point) {
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
 
+  // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
+  if (typeof window.attachMarkerDblClickZoom === "function") {
+    window.attachMarkerDblClickZoom(marker);
+  }
+
   // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.
   // (Le point.level est aussi conserve dans listePoints, mais on duplique sur
   // l'objet marker pour eviter une lookup au moment du filter visuel.)

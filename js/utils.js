@@ -64,6 +64,54 @@ function getIconUrlForPoint(point) {
 window.getIconUrlForPoint = getIconUrlForPoint;
 
 // =========================
+// 🔍 v174 : Double-clic sur un marker → zoom dessus
+// =========================
+// Pattern : on bind un handler `dblclick` sur le marker. L'event navigateur
+// "double-clic" est déclenché si 2 clics arrivent en < 500ms (~standard
+// browser dblclick delay). Au-delà → 2 clics simples (popup s'ouvre/ferme
+// normalement).
+//
+// Comportement :
+//   1. Stop propagation : sinon Leaflet zoomerait aussi via son dblclick
+//      natif sur la map → effet conflictuel
+//   2. Ferme le popup ouvert s'il y en a un (sinon le popup persiste à un
+//      endroit fixe pendant que la map bouge = bizarre)
+//   3. flyTo smooth (0.6s) sur la position du marker avec zoom +2 clampé
+//      au maxZoom de la map et au minZoom courant
+//
+// À appeler après bindPopup/addTo. Idempotent : pas de garde car L.Evented
+// permet plusieurs handlers du même type sans erreur (mais on évite de
+// l'appeler 2x sur le même marker quand même).
+function attachMarkerDblClickZoom(marker) {
+  if (!marker || typeof marker.on !== "function") return;
+  marker.on("dblclick", function(e) {
+    // Stop la propagation pour empêcher le dblclick natif Leaflet sur la map
+    if (e && e.originalEvent) {
+      L.DomEvent.stopPropagation(e.originalEvent);
+      L.DomEvent.preventDefault(e.originalEvent);
+    }
+    if (!window.map) return;
+    // Ferme le popup éventuel (visuel propre pendant le flyTo)
+    try { marker.closePopup && marker.closePopup(); } catch(err) {}
+
+    const ll = marker.getLatLng ? marker.getLatLng() : null;
+    if (!ll) return;
+
+    // Zoom +2 clampé au maxZoom (= 2 dans MyKTAMap, cf map.setMaxZoom(2))
+    // ET au moins le zoom courant (jamais dézoomer en double-clic).
+    const curZ = window.map.getZoom();
+    const targetZ = Math.min(window.map.getMaxZoom ? window.map.getMaxZoom() : 2, curZ + 2);
+
+    if (typeof window.map.flyTo === "function") {
+      window.map.flyTo(ll, targetZ, { duration: 0.6 });
+    } else {
+      window.map.setView(ll, targetZ);
+    }
+  });
+}
+window.attachMarkerDblClickZoom = attachMarkerDblClickZoom;
+
+// =========================
 // FORMAT DE DISTANCE — m / km adaptatif
 // =========================
 // Reçoit une distance en mètres et retourne une string formatée :
@@ -290,6 +338,9 @@ function ajouterPointsDepuisJSON(url, layer) {
           marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
+
+          // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
+          attachMarkerDblClickZoom(marker);
 
           marker.addTo(layer);
         }
