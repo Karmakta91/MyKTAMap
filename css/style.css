@@ -931,6 +931,21 @@ a.kta-sub.kta-sous-action-urgence:hover {
   opacity: 0.7;
 }
 
+/* 🛣️ v173 : Portée max sur le réseau de routes (effet néon rouge clair).
+   Effet drop-shadow appliqué à la polyline SVG entière (= 1 seul rendu GPU,
+   peu importe le nombre de segments — cf §16 piège performance qui explique
+   pourquoi on n'utilise PAS N polylines avec drop-shadow individuels). */
+.kta-lost-reach-polyline {
+  filter: drop-shadow(0 0 3px rgba(255, 128, 128, 0.8))
+          drop-shadow(0 0 6px rgba(255, 128, 128, 0.5));
+  pointer-events: none;
+}
+/* Ligne pointillée du point de départ au snap road (cas départ éloigné) */
+.kta-lost-reach-lead {
+  filter: drop-shadow(0 0 2px rgba(255, 128, 128, 0.6));
+  pointer-events: none;
+}
+
 /* Curseur crosshair pendant le mode clic carte */
 body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 

@@ -1255,9 +1255,9 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬛ Zones (remblais / effondrements / eau / inaccessible)</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais (gris)</span>
-            <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement (rouge)</span>
-            <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau (bleu)</span>
+            <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais</span>
+            <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement</span>
+            <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau</span>
             <span class="kta-aide-icone">⛔</span><span>Tracer une zone inaccessible (hachures rouge/noir) — bloque le pathfinder</span>
             <span class="kta-aide-icone">✅</span><span>Fermer la zone en cours (au moins 3 points)</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernière zone ou toutes)</span>
@@ -5445,15 +5445,15 @@ function afficherLegende() {
       <div class="kta-aide-section-titre">⬛ Zones</div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#3aa9e8; opacity:0.7; height:14px; border:2px solid #0066aa;"></span>
-        <span class="kta-legende-label">Eau (bleu)</span>
+        <span class="kta-legende-label">Eau</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#5a5a68; opacity:0.7; height:14px; border:2px solid #3a3a44;"></span>
-        <span class="kta-legende-label">Remblais (gris)</span>
+        <span class="kta-legende-label">Remblais</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#ff3333; opacity:0.7; height:14px; border:2px solid #cc0000;"></span>
-        <span class="kta-legende-label">Effondrement (rouge)</span>
+        <span class="kta-legende-label">Effondrement</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>

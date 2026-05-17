@@ -66,6 +66,9 @@
   const COLOR_LAST_POS  = "#6ce28a";
   const COLOR_MATCH_IN  = "#b452ff";
   const COLOR_MATCH_OUT = "#8892a4";
+  // 🛣️ v173 : portée max sur le réseau de routes (rouge clair, choix 3b validé)
+  // Cohérent avec le thème urgence — rouge sans être trop agressif.
+  const COLOR_REACH     = "#ff8080";
 
   // ===== État interne =====
   let _active           = false;
@@ -97,6 +100,11 @@
   let _lastKnownMarker  = null;
   let _matchMarkers     = [];
   let _refinedCircle    = null;
+  // 🛣️ v173 : layers pour la portée max sur le réseau de routes
+  let _reachPolyFull    = null;   // polyline multi-segments rouge (segments complets atteints)
+  let _reachPolyPartial = null;   // polyline multi-segments rouge (segments tronqués)
+  let _reachLeadLine    = null;   // ligne pointillée du point au snap road (cas départ éloigné)
+  let _reachStats       = null;   // { fullCount, partialCount, totalReachableDistance, snapDistance, exceedsBudget }
 
   // Mode click-carte pour saisir la position
   let _clickModeActive  = false;
@@ -247,9 +255,13 @@
   // ===== Rendu carte =====
   function _clearLayers() {
     if (!window.map) return;
-    if (_zoneLayer)       { window.map.removeLayer(_zoneLayer);       _zoneLayer = null; }
-    if (_lastKnownMarker) { window.map.removeLayer(_lastKnownMarker); _lastKnownMarker = null; }
-    if (_refinedCircle)   { window.map.removeLayer(_refinedCircle);   _refinedCircle = null; }
+    if (_zoneLayer)         { window.map.removeLayer(_zoneLayer);         _zoneLayer = null; }
+    if (_lastKnownMarker)   { window.map.removeLayer(_lastKnownMarker);   _lastKnownMarker = null; }
+    if (_refinedCircle)     { window.map.removeLayer(_refinedCircle);     _refinedCircle = null; }
+    if (_reachPolyFull)     { window.map.removeLayer(_reachPolyFull);     _reachPolyFull = null; }
+    if (_reachPolyPartial)  { window.map.removeLayer(_reachPolyPartial);  _reachPolyPartial = null; }
+    if (_reachLeadLine)     { window.map.removeLayer(_reachLeadLine);     _reachLeadLine = null; }
+    _reachStats = null;
     _matchMarkers.forEach(function(m) { window.map.removeLayer(m); });
     _matchMarkers = [];
   }
@@ -350,6 +362,82 @@
     _lastKnownMarker = L.marker(ll, { icon: lastIcon, zIndexOffset: 1000 })
       .addTo(window.map)
       .bindPopup(lastPopupHtml, { className: "kta-lost-popup-wrapper", autoPan: true });
+
+    // 🛣️ v173 : Portée max sur le réseau de routes (Pathfinder.computeReachable).
+    // Affiché systématiquement (choix 2c validé KARMA : pas de toggle, toujours
+    // actif quand Pathfinder dispo). Restreint visuellement la zone aux galeries
+    // physiquement accessibles, en complément du cercle théorique.
+    try {
+      if (window.Pathfinder && typeof window.Pathfinder.computeReachable === "function") {
+        const reach = window.Pathfinder.computeReachable(_lastKnownPos, _radiusPx);
+        _reachStats = {
+          fullCount:              reach.fullSegments.length,
+          partialCount:           reach.partialSegments.length,
+          totalReachableDistance: reach.totalReachableDistance,
+          snapDistance:           reach.snapDistance,
+          exceedsBudget:          reach.exceedsBudget,
+          reason:                 reach.reason || null
+        };
+        console.log("[LostMode] Reach :", _reachStats);
+
+        // Cas 1 : départ ≤ budget des routes → on a au moins quelques segments
+        if (!reach.exceedsBudget && (reach.fullSegments.length || reach.partialSegments.length)) {
+          // Ligne pointillée du startPoint vers le snapPoint si distance vol
+          // d'oiseau > 5px (choix 4b : informer l'user du décrochage point→road)
+          if (reach.snapPoint && reach.snapDistance > 5) {
+            _reachLeadLine = L.polyline([
+              ll,
+              _toLatLng(reach.snapPoint.x, reach.snapPoint.y)
+            ], {
+              color: COLOR_REACH,
+              weight: 2,
+              opacity: 0.7,
+              dashArray: "4 4",
+              interactive: false,
+              renderer: svgRenderer,
+              className: "kta-lost-reach-lead"
+            }).addTo(window.map);
+          }
+
+          // UNE seule polyline multi-segments (perf — cf §16 piège : N polylines
+          // avec drop-shadow = compositing GPU explose à 10+ roads sur mobile)
+          // pour les segments full
+          if (reach.fullSegments.length > 0) {
+            const fullLatLngs = reach.fullSegments.map(function(seg) {
+              return [_toLatLng(seg[0].x, seg[0].y), _toLatLng(seg[1].x, seg[1].y)];
+            });
+            _reachPolyFull = L.polyline(fullLatLngs, {
+              color: COLOR_REACH,
+              weight: 5,
+              opacity: 0.85,
+              interactive: false,
+              renderer: svgRenderer,
+              className: "kta-lost-reach-polyline"
+            }).addTo(window.map);
+          }
+
+          // Idem pour les segments tronqués (au point d'arrêt budget)
+          if (reach.partialSegments.length > 0) {
+            const partLatLngs = reach.partialSegments.map(function(seg) {
+              return [_toLatLng(seg[0].x, seg[0].y), _toLatLng(seg[1].x, seg[1].y)];
+            });
+            _reachPolyPartial = L.polyline(partLatLngs, {
+              color: COLOR_REACH,
+              weight: 5,
+              opacity: 0.85,
+              interactive: false,
+              renderer: svgRenderer,
+              className: "kta-lost-reach-polyline"
+            }).addTo(window.map);
+          }
+        }
+        // Cas 2 : départ trop loin de toute road → juste le cercle, pas de rouge
+        // (l'user verra dans le rapport "Aucune route accessible depuis ce point")
+      }
+    } catch(e) {
+      console.warn("[LostMode] Pathfinder.computeReachable échec :", e);
+      _reachStats = null;
+    }
 
     // Markers matches (in-zone violet, hors zone gris) — popups charte aussi
     _matches.forEach(function(m) {
@@ -468,6 +556,39 @@
     lines.push("🏃 Vitesse de marche : " + presetInfo.icon + " " + presetInfo.label +
                " (" + _speedKmH + " km/h)");
     lines.push("📐 Rayon de la zone de recherche : ~" + _formatDist(_radiusPx));
+
+    // 🛣️ v173 : portée max sur le réseau de routes (Pathfinder.computeReachable).
+    // Donne aux secours une info concrète sur le réseau physique parcouru
+    // plutôt qu'un simple cercle théorique.
+    if (_reachStats) {
+      if (_reachStats.exceedsBudget) {
+        const r = _reachStats.reason;
+        if (r === "no-roads" || r === "empty-graph") {
+          lines.push("🛣️ Portée sur réseau de routes : aucun réseau de routes connu sur ce plan");
+        } else if (r === "snap-too-far") {
+          lines.push("🛣️ Portée sur réseau de routes : la dernière position connue est à ~" +
+                     _formatDist(_reachStats.snapDistance) + " du réseau le plus proche " +
+                     "(> rayon de recherche → personne probablement HORS du réseau de galeries)");
+        } else {
+          lines.push("🛣️ Portée sur réseau de routes : non calculable (" + (r || "raison inconnue") + ")");
+        }
+      } else {
+        const tot = _reachStats.fullCount + _reachStats.partialCount;
+        lines.push("🛣️ Portée max sur le réseau de routes : ~" +
+                   _formatDist(_reachStats.totalReachableDistance) +
+                   " parcourable (" + _reachStats.fullCount + " segment" +
+                   (_reachStats.fullCount > 1 ? "s" : "") + " complet" +
+                   (_reachStats.fullCount > 1 ? "s" : "") +
+                   (_reachStats.partialCount > 0
+                     ? " + " + _reachStats.partialCount + " partiel" + (_reachStats.partialCount > 1 ? "s" : "")
+                     : "") +
+                   ", à comparer au rayon théorique " + _formatDist(_radiusPx) + ")");
+        if (_reachStats.snapDistance > 5) {
+          lines.push("   (distance entre position connue et 1er point du réseau : ~" +
+                     _formatDist(_reachStats.snapDistance) + ")");
+        }
+      }
+    }
     lines.push("");
 
     const inZone  = _matches.filter(function(m) { return m.inZone; });
