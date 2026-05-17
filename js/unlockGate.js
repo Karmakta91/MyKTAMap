@@ -120,8 +120,19 @@
     return o;
   }
 
-  // Bloque l'app dans l'état "lockout" : champ caché, message permanent,
-  // bouton reset disponible. Le seul moyen de sortir = viderCacheAppli().
+  // Bloque l'app dans l'état "lockout" : champ caché, message permanent.
+  //
+  // 🚨 v173 fix incohérence remontée KARMA : on ne propose AUCUN bouton de
+  // reset depuis le lockout. Sinon l'user fait :
+  //   1. Saisit 5 fois faux → lockout
+  //   2. Clique "Reset complet" → modale confirmation → voit le mdp affiché
+  //   3. Reset → relance → re-saisit le mdp → bypass complet du lockout
+  //
+  // → Lockout vraiment bloquant. L'user qui ne connaît pas le code DOIT
+  // désinstaller l'app (vider cache navigateur manuellement, désinstaller
+  // la PWA, etc.). C'est sa responsabilité — l'app ne lui mâche pas le
+  // travail. Cohérent avec le warning "barrière sociale" : qui n'a pas
+  // le code n'a rien à faire ici.
   function _afficherLockout(overlay) {
     const form = overlay.querySelector("#kta-unlock-form");
     const fb   = overlay.querySelector("#kta-unlock-feedback");
@@ -132,30 +143,12 @@
         '<div class="kta-unlock-lockout">' +
           '<div class="kta-unlock-lockout-titre">🚫 Trop de tentatives</div>' +
           '<div class="kta-unlock-lockout-msg">Le brute force c\'est mal, m\'voyez.</div>' +
-          '<button type="button" class="kta-btn kta-btn-danger" id="kta-unlock-reset-btn">' +
-            '🗑️ Reset complet de l\'application' +
-          '</button>' +
           '<div class="kta-unlock-lockout-hint">' +
-            'Le reset efface toutes les données locales et redemande le code d\'accès.' +
+            'L\'accès est verrouillé. Si tu connais légitimement le code, ' +
+            'contacte l\'auteur via <a href="https://myktamap.is-underground.fr" ' +
+            'target="_blank" rel="noopener">myktamap.is-underground.fr</a>.' +
           '</div>' +
         '</div>';
-      const btnReset = fb.querySelector("#kta-unlock-reset-btn");
-      if (btnReset) {
-        btnReset.addEventListener("click", function() {
-          // viderCacheAppli est défini dans interface.js, mais avant que
-          // initInterface ait tourné (gate = avant initApp) la fonction
-          // peut ne pas être dispo. Fallback : reset manuel localStorage
-          // + reload.
-          if (typeof window.viderCacheAppli === "function") {
-            window.viderCacheAppli();
-          } else {
-            // Fallback : purger LS + reload (cas où on est appelé très tôt)
-            try { localStorage.clear(); } catch(e) {}
-            try { sessionStorage.clear(); } catch(e) {}
-            window.location.reload();
-          }
-        });
-      }
     }
   }
 
