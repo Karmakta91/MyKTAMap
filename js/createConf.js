@@ -1612,10 +1612,14 @@ function _afficherImporterKmz() {
       <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
 
         <p class="kta-planner-info" style="margin-bottom:14px;">
-          Sélectionne un fichier <strong>.kmz</strong>. L'app lit le <code>GroundOverlay</code>
-          (image géoréférencée) et les <code>Placemark</code> (points, lignes, polygones),
-          puis génère un ZIP MyKTAMap utilisable.
+          Sélectionne un fichier <strong>.kmz</strong> précédemment exporté par MyKTAMap
+          (onglet 🌍 KMZ de l'export session). L'app le ré-importe en ZIP MyKTAMap utilisable.
         </p>
+        <div style="padding:8px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">
+          <strong style="color:#ffb380;">⚠️ Phase 1 (depuis v173)</strong> — seuls les KMZ
+          exportés depuis MyKTAMap sont supportés pour le moment. Les KMZ tiers
+          (Google Earth, OsmAnd, IGN scan…) afficheront un message d'incompatibilité.
+        </div>
 
         <!-- 1. UPLOAD -->
         <div class="kta-aide-section" id="kta-kmz-imp-step-upload">
@@ -1744,11 +1748,25 @@ async function _kmzImpAnalyserFichier(file) {
 
   try {
     const { kmlDoc, assets } = await window.KmzImport.extraireKmz(file);
+
+    // 🔒 v173 simplifié : on ne supporte QUE les KMZ exportés par MyKTAMap.
+    // Détection via la signature "Export MyKTAMap" dans <Document><description>
+    // (posée par kmzExport.js ligne 485) + fallbacks (name, styles).
+    // Si le KMZ est tiers (Google Earth, OsmAnd, IGN scan…) → refus net.
+    if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
+      status.textContent = "❌ KMZ non compatible (pas un export MyKTAMap)";
+      status.style.color = "#ff8c8c";
+      _kmzImpAfficherModaleNonCompatible();
+      return;
+    }
+
     const overlays = window.KmzImport.extraireGroundOverlays(kmlDoc, assets);
 
-    // Mode C : pas de GroundOverlay → refus avec modale d'erreur claire
+    // Cas dégénéré : KMZ MyKTAMap reconnu mais sans GroundOverlay
+    // (= exporté avec décoche "🖼️ Image plan" → théoriquement impossible
+    // d'importer car pas de système coord pixel)
     if (overlays.length === 0) {
-      status.textContent = "❌ Aucun GroundOverlay détecté";
+      status.textContent = "❌ KMZ MyKTAMap sans image plan (export sans GroundOverlay)";
       status.style.color = "#ff8c8c";
       _kmzImpAfficherModaleErrSansImage();
       return;
@@ -1821,6 +1839,44 @@ async function _kmzImpAnalyserFichier(file) {
     status.textContent = "❌ Erreur : " + (e.message || e);
     status.style.color = "#ff8c8c";
   }
+}
+
+// Modale d'erreur "KMZ non compatible" (v173 simplifié — round-trip MyKTAMap only).
+// Affichée quand `estKmzMyktamap` retourne false (KMZ tiers).
+function _kmzImpAfficherModaleNonCompatible() {
+  const existing = document.getElementById("kta-kmz-imp-incompat-modal");
+  if (existing) existing.remove();
+  const m = document.createElement("div");
+  m.id = "kta-kmz-imp-incompat-modal";
+  m.className = "kta-readme-modal-overlay";
+  m.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
+      '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
+        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 Ce fichier KMZ n\'est pas compatible pour le moment</span>' +
+        '<button class="kta-panneau-close" id="kta-kmz-imp-incompat-close">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+          'Ce KMZ ne contient pas la signature MyKTAMap qui permet l\'import dans cette ' +
+          'version (Phase 1 MVP). Il a probablement été créé par un autre outil ' +
+          '(<em>Google Earth, OsmAnd, Locus, Avenza, scan IGN, etc.</em>).' +
+        '</p>' +
+        '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' +
+          '<strong style="color:#8cb4ff;">💡 Pour utiliser cette feature :</strong><br>' +
+          '· Exporte un plan MyKTAMap au format KMZ via 💾 Export session → 🌍 KMZ<br>' +
+          '· Le KMZ généré contient la signature qui permet de le ré-importer ici<br>' +
+          '· Le support des KMZ tiers (Google Earth, OsmAnd…) est prévu pour une version future' +
+        '</div>' +
+        '<div style="display:flex; justify-content:flex-end;">' +
+          '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">J\'ai compris</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(m);
+  const _c = function() { m.remove(); };
+  document.getElementById("kta-kmz-imp-incompat-close").addEventListener("click", _c);
+  document.getElementById("kta-kmz-imp-incompat-ok").addEventListener("click", _c);
+  m.addEventListener("click", function(e) { if (e.target === m) _c(); });
 }
 
 // Modale d'erreur dédiée pour le Mode C (KMZ sans GroundOverlay).

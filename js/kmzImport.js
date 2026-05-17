@@ -42,6 +42,37 @@
   "use strict";
 
   // =========================================================================
+  // DÉTECTION KMZ MyKTAMap (round-trip only — v173 simplifié)
+  // =========================================================================
+  //
+  // Phase 1 simplifiée : on ne supporte QUE les KMZ exportés par MyKTAMap
+  // (kmzExport.js v170+). Pour détecter ça, on cherche la signature
+  // "Export MyKTAMap" dans <Document><description> qui est posée par
+  // kmzExport.js > genererKml ligne 485.
+  //
+  // Returns true si signature MyKTAMap détectée, false sinon.
+  function estKmzMyktamap(kmlDoc) {
+    if (!kmlDoc) return false;
+    // 1) <Document><description> contient "Export MyKTAMap" ?
+    const docDesc = kmlDoc.querySelector("Document > description");
+    if (docDesc && /Export\s+MyKTAMap/i.test(docDesc.textContent || "")) {
+      return true;
+    }
+    // 2) Fallback : <Document><name> contient "MyKTAMap" ?
+    // (cas où l'user a renommé manuellement le KMZ sans casser le KML)
+    const docName = kmlDoc.querySelector("Document > name");
+    if (docName && /MyKTAMap/i.test(docName.textContent || "")) {
+      return true;
+    }
+    // 3) Fallback : styles MyKTAMap caractéristiques (road_principal/etc.)
+    // déclarés dans <Style id="...">. Si on trouve "road_principal" ou
+    // "zone_eau" → forte probabilité d'un KMZ MyKTAMap.
+    const styles = kmlDoc.querySelectorAll('Style[id^="road_"], Style[id^="zone_"], Style[id^="point_"]');
+    if (styles && styles.length >= 2) return true;
+    return false;
+  }
+
+  // =========================================================================
   // EXTRACTION ZIP
   // =========================================================================
 
@@ -506,6 +537,7 @@
   // API PUBLIQUE
   // =========================================================================
   window.KmzImport = {
+    estKmzMyktamap:        estKmzMyktamap,
     extraireKmz:           extraireKmz,
     extraireGroundOverlays: extraireGroundOverlays,
     buildTransform:        buildTransform,
