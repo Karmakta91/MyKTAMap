@@ -117,6 +117,23 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 
 ## 🚀 Premiers pas
 
+### 🗝️ Accès restreint — Code communautaire (depuis v173)
+
+L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
+
+**À la première installation** (ou après un reset complet) :
+1. Le splash s'affiche normalement (4 secondes)
+2. Un écran **🗝️ Accès restreint** apparaît avec un champ de saisie
+3. Saisis le code → clique **🔓 Déverrouiller**
+4. Si correct → l'app se charge normalement et tu n'as plus besoin de re-saisir
+5. Si incorrect → message rouge, tu as 4 tentatives restantes
+
+> ⚠️ **5 tentatives ratées = blocage permanent** ("Le brute force c'est mal, m'voyez."). Pour sortir du blocage si tu connais légitimement le code mais l'as oublié, contacte l'auteur via myktamap.is-underground.fr. Sinon, il faut désinstaller manuellement l'app (mobile : long-press icône → désinstaller ; PC : `chrome://apps` → désinstaller).
+
+**Avant de faire un reset complet** : la modale de confirmation affiche le code en clair pour que tu puisses le re-saisir au prochain démarrage. **Note-le ou copie-le avant de cliquer "Réinitialiser"**, sinon tu ne pourras plus rentrer.
+
+> 🛡️ **Niveau de sécurité** : c'est une **barrière communautaire**, pas une vraie authentification. Le code source de l'app est public sur GitHub. Cette gate sert à décourager les passants et cadrer un cercle d'utilisateurs avertis, pas à protéger des données sensibles.
+
 ### 📱 Installer l'application sur Mobile (Iphone/Android)
 
 MyKTAMap peut être installée comme application native sur Mobile — sans passer par l'App Store/Play Store :

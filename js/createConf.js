@@ -37,6 +37,14 @@ let _iconRowCount      = 0;
 let _plannerOrigAssets = {};
 let _plannerMode       = "nouveau";
 
+// 🌍 v173 : feature flag pour l'UI Import KMZ. Mis à false pour la release
+// v173 — le code est en place (js/kmzImport.js + modale _afficherImporterKmz)
+// mais l'entrée UI dans le planner est cachée. Réactiver = remettre à true.
+// Justification : Phase 1 (round-trip MyKTAMap only) en place mais pas
+// finalisée à la satisfaction de KARMA pour release publique → on push v173
+// sans exposer une fonctionnalité incomplète.
+const KTA_KMZ_IMPORT_UI_ENABLED = false;
+
 // =========================
 // MODALE PRINCIPALE
 // =========================
@@ -57,21 +65,23 @@ function afficherPlanner() {
 
       <div class="kta-readme-modal-corps" id="kta-planner-corps">
 
+        ${KTA_KMZ_IMPORT_UI_ENABLED ? `
         <!-- 🌍 IMPORT KMZ (depuis v173) : entrée alternative au planner classique.
-             Ouvre une modale dédiée qui parse un KMZ standard (Google Earth,
-             OsmAnd, IGN scan…) et génère un ZIP MyKTAMap utilisable.
-             Cohérent avec la position A validée (= dans le Générateur). -->
+             Ouvre une modale dédiée qui parse un KMZ MyKTAMap (round-trip) et
+             génère un ZIP MyKTAMap utilisable. Cohérent avec la position A
+             validée (= dans le Générateur). Conditionnel via le feature flag
+             KTA_KMZ_IMPORT_UI_ENABLED en tête de createConf.js. -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🌍 Importer depuis un KMZ <span class="kta-planner-hint">(Google Earth, OsmAnd, IGN…)</span></div>
+          <div class="kta-aide-section-titre">🌍 Importer depuis un KMZ <span class="kta-planner-hint">(MyKTAMap round-trip)</span></div>
           <p class="kta-planner-info">
-            Tu as un fichier <strong>.kmz</strong> avec un plan géoréférencé (image + coords GPS) ?
-            L'app peut le convertir en ZIP MyKTAMap en lisant le <code>GroundOverlay</code> et les
-            <code>Placemark</code> (points, lignes, polygones).
+            Tu as un fichier <strong>.kmz</strong> exporté depuis MyKTAMap ?
+            L'app peut le ré-importer en ZIP MyKTAMap utilisable.
           </p>
           <button class="kta-btn kta-btn-primary" id="kta-planner-open-kmz-import" type="button" style="width:100%; padding:12px;">
             🌍 Ouvrir l'import KMZ
           </button>
         </div>
+        ` : ``}
 
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section">

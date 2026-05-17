@@ -101,8 +101,7 @@
         '<div class="kta-unlock-titre">Accès restreint</div>' +
         '<p class="kta-unlock-info">' +
           'Cette application est privée. Saisis le code d\'accès qui t\'a été ' +
-          'communiqué. Si tu n\'as pas le code, contacte l\'auteur via ' +
-          '<a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener">myktamap.is-underground.fr</a>.' +
+          'communiqué. Si tu n\'as pas le code, contacte l\'auteur.' +
         '</p>' +
         '<form id="kta-unlock-form" autocomplete="off">' +
           '<input type="password" id="kta-unlock-input" placeholder="Code d\'accès" ' +
@@ -145,8 +144,7 @@
           '<div class="kta-unlock-lockout-msg">Le brute force c\'est mal, m\'voyez.</div>' +
           '<div class="kta-unlock-lockout-hint">' +
             'L\'accès est verrouillé. Si tu connais légitimement le code, ' +
-            'contacte l\'auteur via <a href="https://myktamap.is-underground.fr" ' +
-            'target="_blank" rel="noopener">myktamap.is-underground.fr</a>.' +
+            'contacte l\'auteur.' +
           '</div>' +
         '</div>';
     }
