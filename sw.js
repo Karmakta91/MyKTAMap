@@ -39,6 +39,7 @@ const ASSETS_TO_CACHE = [
   "./js/copyright.js",
   "./js/debug.js",
   "./js/perfUltra.js",
+  "./js/unlockGate.js",
   "./js/config.js",
   "./js/utils.js",
   "./js/measure.js",

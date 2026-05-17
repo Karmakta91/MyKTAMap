@@ -129,6 +129,12 @@
        à l'initialisation. DOIT être chargé AVANT ces modules. -->
   <script src="js/perfUltra.js"></script>
 
+  <!-- 🗝️ UNLOCK GATE — barrière communautaire (depuis v173). Chargé tôt
+       pour que main.js puisse vérifier l'auth dès initApp. Ne charge que
+       le module (l'affichage de l'overlay est déclenché par main.js après
+       le splash). -->
+  <script src="js/unlockGate.js"></script>
+
   <!-- CHARGEUR DE PLAN (masqué par défaut, affiché si pas de plan serveur) -->
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">

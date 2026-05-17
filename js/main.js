@@ -746,6 +746,24 @@ async function _splashEnd() {
   // Démarrer le splash dès l'init
   _splashStart();
 
+  // 🗝️ v173 : Unlock Gate (barrière communautaire).
+  // Position 3=b validée KARMA : APRÈS le splash, AVANT toute initialisation
+  // qui touche au plan ou à l'UI. Si pas authentifié → l'app reste bloquée
+  // sur l'overlay tant que l'user n'a pas saisi le bon code (ou reset complet).
+  // ⚠️ La fonction await ouvrirGate() ne résout JAMAIS en lockout (5 échecs)
+  //    → main.js reste bloqué là pour toujours, l'user doit cliquer "Reset
+  //    complet" dans l'overlay pour repartir. Volontaire.
+  if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
+    // On laisse le splash se finir d'abord (UX préservée) puis on enchaîne
+    // sur le gate. Si l'user a déjà été déverrouillé (cas le plus fréquent
+    // = 2e boot+), on saute complètement cette étape sans même montrer
+    // l'overlay → tu ne le vois qu'à la 1ère installation et au reset.
+    await _splashEnd();
+    console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
+    await window.UnlockGate.ouvrirGate();
+    console.log("[Main] Gate auth franchie → init normale");
+  }
+
   // Initialiser le registre
   if (window.PlanRegistry) {
     window.PlanRegistry.init();

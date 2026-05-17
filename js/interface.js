@@ -1987,6 +1987,13 @@ function _resetFlowOfflineWarning() {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
+// 🗝️ v173 : mot de passe en clair affiché à l'écran de reset pour que
+// l'user le retrouve avant de tout effacer (choix 6=a validé KARMA).
+// ⚠️ Volontairement en clair ici (sinon impossible d'afficher à l'user).
+// Le hash SHA-256 dans unlockGate.js reste la source de vérité pour la
+// comparaison. Si on bumpe le mdp un jour : changer les 2 endroits ensemble.
+const KTA_UNLOCK_PASSWORD_DISPLAY = "F!sYs44!h4z!3J";
+
 function _resetFlowConfirmation() {
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
@@ -2003,6 +2010,13 @@ function _resetFlowConfirmation() {
           <li>Préférences (mode performance, logs détaillés…)</li>
         </ul>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
+
+        <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
+          🗝️ <strong style="color:#f4c542;">Code d'accès requis au redémarrage</strong><br>
+          <span style="color:#c8d0e0;">Après reset, l'app redemandera le code d'accès communautaire :</span><br>
+          <code style="display:inline-block; margin-top:6px; padding:4px 10px; background:#0a0d18; border:1px solid rgba(244,197,66,0.30); border-radius:4px; color:#f4c542; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:14px; user-select:all;">${KTA_UNLOCK_PASSWORD_DISPLAY}</code>
+          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer dans l'app !</span>
+        </div>
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">Annuler</button>
