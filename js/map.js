@@ -225,15 +225,26 @@ async function initMapFromConfig() {
   // sur demande utilisateur. Mobile inchange (calibre anti-crash).
   const _isMobile = window.matchMedia && window.matchMedia("(max-width: 768px)").matches;
   const _maxImgDim = Math.max(config.plan.imageWidth || 0, config.plan.imageHeight || 0);
+
+  // 🛡️ v173 : si PerfUltra.mobileZoomLimit est décoché (par défaut coché),
+  // l'utilisateur a explicitement assumé le risque crash mémoire mobile au
+  // dézoom extrême → on traite le mobile comme un PC pour le calcul minZoom
+  // (gagne 1 ou 2 niveaux de dézoom selon la taille du plan). ⚠️ Reload du
+  // plan requis pour que le changement prenne effet (minZoom lu uniquement
+  // à l'init de L.map → pas re-évaluable à la volée).
+  const _mobileLimit = window.PerfUltra ? window.PerfUltra.get("mobileZoomLimit") : true;
+  const _treatAsMobile = _isMobile && _mobileLimit;
+
   let _minZoom;
   if (_maxImgDim > 8000) {
-    _minZoom = _isMobile ? -2 : -3;
+    _minZoom = _treatAsMobile ? -2 : -3;
   } else if (_maxImgDim > 4000) {
-    _minZoom = _isMobile ? -3 : -4;
+    _minZoom = _treatAsMobile ? -3 : -4;
   } else {
-    _minZoom = _isMobile ? -4 : -4;
+    _minZoom = _treatAsMobile ? -4 : -4;
   }
-  console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom, "(mobile:", _isMobile, ")");
+  console.log("[Map] Plan", _maxImgDim, "px → minZoom", _minZoom,
+              "(mobile:", _isMobile, ", mobileZoomLimit:", _mobileLimit + ")");
 
   // 🚀 PerfUltra : si "animOff" actif, désactivation des animations Leaflet
   // (zoom progressif, fade, marker zoom). Lecture UNIQUEMENT à l'init de la

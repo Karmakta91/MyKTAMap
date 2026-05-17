@@ -1370,8 +1370,9 @@ function _renderPerfUltraSection() {
       <div class="kta-aide-section-titre">🚀 Mode Performance ULTRA</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
         Pour les gros plans / appareils faibles. Active <strong>🚀 ULTRA</strong> pour appliquer
-        les 6 optims d'un coup, ou ajuste individuellement chaque levier. Les changements
-        s'appliquent à la volée (sauf "Désactiver animations" qui nécessite un reload).
+        les optims d'un coup, ou ajuste individuellement chaque levier. Les changements
+        s'appliquent à la volée — sauf les options marquées d'un <span style="color:#ffb380;">liseré orange</span>
+        qui nécessitent un reload du plan pour prendre effet.
       </p>
       ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
             "Préset qui active les 6 toggles ci-dessous. Décocher = désactive tout.")}
@@ -1388,6 +1389,8 @@ function _renderPerfUltraSection() {
             "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
       ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les tracés visibles", s.viewportCull,
             "Saute les routes hors viewport. Pop-in léger au pan mais énorme gain sur plans denses.")}
+      ${row("cfg_perf_mobileZoomLimit", "🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)", s.mobileZoomLimit,
+            "<strong>Coché par défaut</strong>. Sur smartphone, plafonne le dézoom max pour éviter le crash OOM quand Leaflet tente de rendre l'image entière au minZoom. <strong>Décocher</strong> = autorise le même dézoom max que sur PC (utile pour vue d'ensemble), mais risque de crash sur gros plans. <strong>Reload requis</strong> après changement.", true)}
     </div>`;
 }
 
@@ -1404,12 +1407,13 @@ function _bindPerfUltraToggles() {
     });
   }
   const map = {
-    "cfg_perf_decim":        "decim",
-    "cfg_perf_animOff":      "animOff",
-    "cfg_perf_noIntersect":  "noIntersect",
-    "cfg_perf_noTooltips":   "noTooltips",
-    "cfg_perf_slowSave":     "slowSave",
-    "cfg_perf_viewportCull": "viewportCull"
+    "cfg_perf_decim":           "decim",
+    "cfg_perf_animOff":         "animOff",
+    "cfg_perf_noIntersect":     "noIntersect",
+    "cfg_perf_noTooltips":      "noTooltips",
+    "cfg_perf_slowSave":        "slowSave",
+    "cfg_perf_viewportCull":    "viewportCull",
+    "cfg_perf_mobileZoomLimit": "mobileZoomLimit"
   };
   Object.keys(map).forEach(function(id) {
     const el = document.getElementById(id);
