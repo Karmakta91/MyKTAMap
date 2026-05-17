@@ -277,8 +277,11 @@ function _ajouterMarker(point) {
 
   let icone = choisirIcone(point);
 
-  // Validation : si l'icône est invalide, utiliser le pin Leaflet natif
-  if (!icone || !icone.options || !icone.options.iconUrl) {
+  // Validation : si l'icône est invalide, utiliser le pin Leaflet natif.
+  // v174 : avec scaledMarkers ON, icone est un L.divIcon → options.iconUrl
+  // n'existe pas, on check _kta_iconUrl (backup posé par creerIcones).
+  const hasUrl = icone && (icone._kta_iconUrl || (icone.options && icone.options.iconUrl));
+  if (!icone || !hasUrl) {
     console.warn("[Editor] Icône invalide pour", point.nom, "— pin Leaflet par défaut");
     icone = new L.Icon.Default();
   }
@@ -291,6 +294,11 @@ function _ajouterMarker(point) {
     ? window.buildPointPopupHtml(point, true)
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+
+  // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
+  if (typeof window.attachMarkerDblClickZoom === "function") {
+    window.attachMarkerDblClickZoom(marker);
+  }
 
   // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.
   // (Le point.level est aussi conserve dans listePoints, mais on duplique sur

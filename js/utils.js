@@ -40,7 +40,13 @@ function getIconUrlForPoint(point) {
   const map       = window._iconMap || {};
 
   function urlFromMapEntry(entry) {
-    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
+    if (!entry) return null;
+    // v174 : avec scaledMarkers ON (default), _iconMap[tag] est un L.divIcon
+    // qui n'a PAS options.iconUrl. On stocke l'URL dans _kta_iconUrl pour ces
+    // cas (cf map.js > creerIcones > _mkIcon). Fallback sur options.iconUrl
+    // si on est en mode L.icon classique (scaledMarkers OFF).
+    if (entry._kta_iconUrl) return entry._kta_iconUrl;
+    if (entry.options && entry.options.iconUrl) return entry.options.iconUrl;
     return null;
   }
 
@@ -56,6 +62,68 @@ function getIconUrlForPoint(point) {
   return urlFromMapEntry(map.default);
 }
 window.getIconUrlForPoint = getIconUrlForPoint;
+
+// =========================
+// 🔍 v1.7.1 : Double-clic sur un marker → zoom dessus
+// =========================
+// Initialement (commit cb846da) on utilisait l'event natif Leaflet `dblclick`.
+// Bug remonté KARMA : ne se déclenche jamais en pratique. Cause probable :
+// le handler `click` posé par `marker.bindPopup` "mange" les events et
+// l'agrégation 2-clicks-en-dblclick n'a pas le temps de se déclencher.
+// Sur mobile c'est encore pire (touch events synthétisent juste des `click`,
+// pas de `dblclick` natif fiable).
+//
+// Nouveau pattern (v1.7.1 fix) : détection manuelle via 2 `click` consécutifs
+// dans une fenêtre de 400ms sur le même marker. Marche en toutes conditions
+// (popup actif, mobile touch, desktop souris).
+//
+// Comportement :
+//   1er clic  → Leaflet ouvre le popup normalement (= comportement préservé)
+//   2e clic en < 400ms sur le même marker → :
+//     - closePopup (le popup vient peut-être de s'ouvrir au 2e clic via toggle Leaflet)
+//     - flyTo smooth (0.6s) sur la position avec zoom +2 clampé au maxZoom
+//   2e clic au-delà de 400ms → traité comme 1er clic d'une nouvelle séquence
+//
+// Compteur de timestamp PAR marker via closure (pas de variable globale qui
+// se mélangerait si l'user clique sur marker A puis marker B rapidement).
+//
+// À appeler après bindPopup/addTo.
+function attachMarkerDblClickZoom(marker) {
+  if (!marker || typeof marker.on !== "function") return;
+
+  let _lastClickTime = 0;
+  const DBL_DELAY_MS = 400;
+
+  marker.on("click", function() {
+    const now = Date.now();
+    const isDbl = (now - _lastClickTime) < DBL_DELAY_MS;
+    _lastClickTime = isDbl ? 0 : now;  // reset après dblclick pour éviter triple-trigger
+
+    if (!isDbl) return;  // 1er clic : Leaflet ouvre le popup normalement
+    if (!window.map) return;
+
+    // Ferme le popup s'il vient de s'ouvrir au 2e clic via le toggle Leaflet
+    // (bindPopup gère click → openPopup → re-click → closePopup en toggle)
+    try { marker.closePopup && marker.closePopup(); } catch(err) {}
+
+    const ll = marker.getLatLng ? marker.getLatLng() : null;
+    if (!ll) return;
+
+    // Zoom +2 clampé au maxZoom (= 2 dans MyKTAMap, cf map.setMaxZoom(2))
+    const curZ = window.map.getZoom();
+    const targetZ = Math.min(
+      window.map.getMaxZoom ? window.map.getMaxZoom() : 2,
+      curZ + 2
+    );
+
+    if (typeof window.map.flyTo === "function") {
+      window.map.flyTo(ll, targetZ, { duration: 0.6 });
+    } else {
+      window.map.setView(ll, targetZ);
+    }
+  });
+}
+window.attachMarkerDblClickZoom = attachMarkerDblClickZoom;
 
 // =========================
 // FORMAT DE DISTANCE — m / km adaptatif
@@ -284,6 +352,9 @@ function ajouterPointsDepuisJSON(url, layer) {
           marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
+
+          // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
+          attachMarkerDblClickZoom(marker);
 
           marker.addTo(layer);
         }

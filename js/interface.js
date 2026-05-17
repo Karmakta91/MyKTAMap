@@ -1556,6 +1556,22 @@ function afficherConfig() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🔍 Affichage</div>
+          <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
+            <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">📐 Adapter la taille des icônes au zoom</span>
+              <span class="kta-perf-ultra-hint">
+                Coché par défaut : les icônes des points rétrécissent quand tu dézoomes
+                (taille relative au plan constante). <strong>Décocher</strong> = comportement Leaflet
+                standard (icônes taille écran fixe, elles deviennent énormes au dézoom).
+                <strong>Reload requis</strong> après changement.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🛠️ Debug</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">Logs détaillés</label>
@@ -1619,6 +1635,10 @@ function appliquerConfig() {
   } else {
     APP_CONFIG.debugMode = newDebugMode;
   }
+
+  // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
+  const cbScaled = document.getElementById("cfg_scaledMarkers");
+  if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
@@ -5381,13 +5401,12 @@ function afficherLegende() {
     const clesGroupees = GROUPES.flatMap(function(g) { return g.cles; });
 
     // Helper : récupérer l'URL pour une clé — d'abord le plan-config, sinon _iconMap (fallback built-in)
+    // v174 : _kta_iconUrl backup pour les divIcon (cf creerIcones avec scaledMarkers ON)
     function urlPourCle(cle) {
       if (icons[cle]) return icons[cle];
       const iconObj = window._iconMap?.[cle];
-      if (iconObj && iconObj.options && iconObj.options.iconUrl) {
-        return iconObj.options.iconUrl;
-      }
-      return null;
+      if (!iconObj) return null;
+      return iconObj._kta_iconUrl || (iconObj.options && iconObj.options.iconUrl) || null;
     }
 
     // Sections groupées
@@ -5411,6 +5430,9 @@ function afficherLegende() {
       const iconObj = window._iconMap?.[cle] || (cle === "default" ? window.iconeDefault : null);
 
       if (iconObj) {
+        // v174 : _kta_iconUrl backup pour les divIcon créés par creerIcones
+        // quand scaledMarkers ON (options.iconUrl undefined dans ce cas).
+        if (iconObj._kta_iconUrl) return iconObj._kta_iconUrl;
         // Cas 1 : icône custom L.icon({ iconUrl }) → récupération directe
         if (iconObj.options && iconObj.options.iconUrl) {
           return iconObj.options.iconUrl;

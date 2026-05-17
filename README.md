@@ -9,9 +9,93 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (97 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (98 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v173" open>
+<details id="v1-7-1" open>
+<summary><strong>🗓️ 18/05/2026 — 🚀 v1.7.1 : Icônes adaptatives au zoom + double-clic zoom marker + nouveau format de version</strong></summary>
+
+> 🔢 **Changement de format de version** : passage de `vNNN` (v173) à **`vX.Y.Z`** (v1.7.1) — schéma semver-like.
+>
+> Convention :
+> - **X = MAJOR** (1) : actuel = 1. Passera à **2** quand on aura un backend (notion de comptes, partage cloud, etc. — pas avant longtemps).
+> - **Y = MINOR** (7) : évolutions majeures du projet (multi-plan, V2 tuilé, M-LVL, KMZ, etc. — cf. tableau ci-dessous).
+> - **Z = PATCH** (1) : améliorations / bug fixes / raffinements UX qui ne changent pas l'architecture.
+>
+> **Mapping rétroactif des évolutions MINOR** :
+>
+> | MINOR | Évolution majeure | Version d'origine |
+> |---|---|---|
+> | 1.0 | Base initiale (mono-plan, V1 classique, points/roads/zones) | < v100 |
+> | 1.1 | 🗂️ Multi-plan (registre, ZIP, auto-discovery, persistance) | ~v90-100 |
+> | 1.2 | ⛑️ Mode urgence "Je suis perdu" + 🗺️ Pathfinder/Itinéraire | ~v140-145 |
+> | 1.3 | 🏗️ Multi-niveau (M-LVL, carrières multi-étages, jonctions) | v148 |
+> | 1.4 | 🧱 Tiling V2 (Google Maps-like, anti-OOM gros plans) | v149 |
+> | 1.5 | 🌍 Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza) | v170 |
+> | 1.6 | ⛔ Zone Inaccessible + 🚫 Préférences évitement itinéraire | v169 |
+> | 1.7 | 🗝️ Unlock Gate (barrière communautaire d'accès) | v173 |
+>
+> Les anciennes entrées du journal restent nommées avec leur ancienne convention `vNNN` (= historique préservé). Seules les **nouvelles entrées à partir de v1.7.1** suivent le nouveau format.
+
+### 📐 Icônes adaptatives au zoom
+
+Nouveau toggle dans ⚙️ Réglages → 🔍 Affichage → "📐 Adapter la taille des icônes au zoom" (default ON).
+
+**Problème résolu** : Leaflet met les icônes à taille écran fixe (50px toujours). Au dézoom, l'image du plan rétrécit mais les icônes restent à 50px → relativement au plan, elles paraissent énormes et "voilent" la carte.
+
+**Solution** : pattern divIcon (wrapper div + img enfant) + CSS variable `--kta-marker-scale` mise à jour sur chaque event zoom Leaflet. Formule : `clamp(0.25, 2^zoom, 2)`. À zoom 0 (natif) → scale 1 (= 50px). À zoom -2 → scale 0.25 (= 12.5px, clamp min visible). À zoom +2 → scale 2 (= 100px, clamp max).
+
+**Consumers de `_iconMap[tag].options.iconUrl` adaptés** : avec scaledMarkers ON, `_iconMap[tag]` est un L.divIcon → `options.iconUrl` undefined. Le tag `_kta_iconUrl` est posé en parallèle par `creerIcones` pour permettre le lookup. 7 sites patchés (utils.js, editor.js, exporter.js, interface.js × 2, sessionExporter.js × 3).
+
+**Non touché** : tracker (garde ses classes `kta-tracker-*` distinctes → taille écran fixe préservée pour le repérage), iconeDefault Leaflet natif (pin bleu, anchor bas-centre incompatible avec scale around center), exports PNG/KMZ (transform CSS n'affecte que le runtime Leaflet).
+
+**Reload requis** pour changement du toggle (liseré orange).
+
+### 🔍 Double-clic sur un marker → zoom flyTo
+
+Nouveau comportement : double-clic (< 400ms entre les 2 clics) sur un marker → `map.flyTo` smooth (0.6s) sur le point au zoom +2 clampé au maxZoom. Le popup éventuel est fermé pendant le flyTo.
+
+- Click simple → popup s'ouvre/ferme normalement (inchangé)
+- Détection **manuelle via 2 `click` consécutifs** avec timer (pas l'event natif `dblclick` Leaflet qui ne se déclenche jamais en pratique sur des markers avec `bindPopup` — le handler popup mange les events ; et mobile ne synthétise pas de dblclick fiable depuis les touch events)
+- Compteur de timestamp PAR marker via closure (pas de variable globale qui mélangerait entre marker A puis marker B)
+- Helper global `window.attachMarkerDblClickZoom(marker)` dans utils.js
+
+Sites patchés :
+- `utils.js > ajouterPointsDepuisJSON` (markers data layers)
+- `editor.js > _ajouterMarker` (markers session éditeur)
+
+> 🐛 1ère itération (commit `cb846da`) utilisait l'event natif `marker.on("dblclick", ...)`. Bug remonté KARMA en test : ne se déclenche jamais avec bindPopup. Refactor immédiat vers détection manuelle (la version actuelle ci-dessus). Pas de re-bump version (fix avant release).
+
+### 🌐 alert.json maj — myktamap.fr en ligne
+
+L'alerte info `migration-myktamap-fr-2026` mise à jour pour annoncer que le nouveau domaine est désormais en ligne (avant : "🚧 en cours de mise en service"). Nouvelle puce ajoutée pour rappeler le code d'accès qui sera redemandé sur la nouvelle origine (localStorage isolé entre origins).
+
+`released` bumpé à 2026-05-17T19:00:00Z → re-popup auto chez les users qui avaient acquitté l'ancienne version.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v173"` → **`"myktamap-cache-v1.7.1"`**
+- `js/copyright.js > __MKM__.build` : `"v173"` → **`"v1.7.1"`**
+- `version.json > version` : `"v173"` → **`"v1.7.1"`** + 5 notes user-facing
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `js/map.js` | Refactor `creerIcones` → L.divIcon avec `_mkIcon` helper si `scaledMarkers` ON. Hook `map.on("zoomend zoom", _majMarkerScale)` qui set `--kta-marker-scale`. `_kta_iconUrl` backup stocké sur chaque icône. |
+| `js/utils.js` | Nouveau helper `window.attachMarkerDblClickZoom` + appel dans `ajouterPointsDepuisJSON` + adaptation `getIconUrlForPoint > urlFromMapEntry` pour fallback `_kta_iconUrl` |
+| `js/editor.js` | Appel `attachMarkerDblClickZoom` dans `_ajouterMarker` + adaptation validation icône (fallback `_kta_iconUrl`) |
+| `js/exporter.js`, `js/interface.js`, `js/sessionExporter.js` | 7 sites adaptés pour fallback `_kta_iconUrl || options.iconUrl` |
+| `js/config.js` | `DEFAULT_CONFIG.scaledMarkers = true` + persistance `app_user_prefs.scaledMarkers` |
+| `js/interface.js > afficherConfig` | Nouvelle section "🔍 Affichage" avec toggle "Adapter la taille des icônes au zoom" (liseré orange = reload requis). Lecture dans `appliquerConfig`. |
+| `css/style.css` | `.kta-marker-divicon` (reset Leaflet default) + `.kta-marker-img` (transform scale via CSS var) |
+| `alert.json` | Maj message "myktamap.fr en ligne" + nouvelle puce rappel code d'accès |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.7.1 |
+
+---
+
+</details>
+
+<details id="v173">
 <summary><strong>🗓️ 17/05/2026 (suite) — 🚀 v173 : 🗝️ Accès restreint communautaire + Mode urgence enrichi + PerfUltra limit dézoom + UX loader</strong></summary>
 
 > ⚠️ **CODE D'ACCÈS NÉCESSAIRE** : depuis v173, l'app est protégée par une barrière communautaire au démarrage. **Code après update : `F!sYs44!h4z!3J`** — à noter avant de mettre à jour, sinon tu seras bloqué (lockout permanent après 5 tentatives ratées).
@@ -98,7 +182,7 @@ Le module `js/kmzImport.js` (Phase 1 MVP round-trip MyKTAMap only) est dans le c
 
 </details>
 
-<details id="v172" open>
+<details id="v172">
 <summary><strong>🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte</strong></summary>
 
 Release majoritairement **UX + fixes** centrée sur la page loader (liste de plans) et 4 bugs critiques (sidebar landscape mobile, re-sélection ZIP V1 sur registre V2, boussole faussée en landscape, modales `confirm()` natives remplacées).
@@ -428,6 +512,9 @@ Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis mast
 
 ### 📑 Sommaire des versions
 
+> 🔢 Depuis le 18/05/2026, les versions suivent le format **vX.Y.Z** (semver-like). Les anciennes entrées restent en `vNNN` (historique).
+
+- [🗓️ 18/05/2026 — 🚀 v1.7.1 : Icônes adaptatives au zoom + double-clic zoom marker + nouveau format de version](#v1-7-1)
 - [🗓️ 17/05/2026 (suite) — 🚀 v173 : 🗝️ Accès restreint communautaire + Mode urgence enrichi + PerfUltra limit dézoom + UX loader](#v173)
 - [🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte](#v172)
 - [🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)](#v170)

@@ -381,9 +381,12 @@ Une fois le plan chargé :
 
 - **Pincer / zoomer** pour agrandir ou réduire la vue
 - **Glisser** pour se déplacer sur le plan
-- **Cliquer sur une icône** pour afficher les informations du point
+- **Cliquer** sur une icône pour afficher les informations du point
+- **Double-cliquer** sur une icône (depuis v1.7.1) pour zoomer rapidement dessus avec une animation smooth (= raccourci équivalent au bouton "Y aller" du popup)
 
 Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôle de calques en haut à droite permet d'afficher ou masquer des couches d'informations.
+
+> 📐 **Depuis v1.7.1** : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille proportionnelle au plan (avant : elles paraissaient énormes et voilaient la carte). Tu peux désactiver ce comportement dans ⚙️ Réglages → 🔍 Affichage → "📐 Adapter la taille des icônes au zoom" si tu préfères le comportement Leaflet par défaut (icônes taille écran fixe).
 
 ---
 

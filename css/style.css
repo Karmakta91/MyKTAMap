@@ -6044,6 +6044,28 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   pointer-events: none; /* le clic doit aller a la map en dessous */
 }
 
+/* 🔍 v174 : Markers en divIcon (wrapper div + img enfant) pour permettre la
+   variation de taille selon le zoom via CSS transform: scale(). Le div
+   reçoit le translate3d Leaflet (positionnement), l'img reçoit notre
+   scale (variable --kta-marker-scale calculée dans map.js > _majMarkerScale
+   sur zoom event). Sans wrapper, on ne peut pas faire les 2 transforms
+   indépendamment. Le default Leaflet .leaflet-div-icon a un fond blanc +
+   border 1px qu'on doit écraser pour préserver le visuel original. */
+.kta-marker-divicon {
+  background: transparent !important;
+  border: none !important;
+}
+.kta-marker-divicon .kta-marker-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform: scale(var(--kta-marker-scale, 1));
+  transform-origin: center center;
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
 /* Pastille du niveau actif : cercle plein jaune charte avec le chiffre du
    niveau au centre (style badge). Utilisée dans le Leaflet control top-left
    sous le zoom (cf .kta-level-control). */

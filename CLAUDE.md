@@ -645,11 +645,24 @@ Module de toggles d'optimisation activables pour gérer les crash mémoire sur t
 
 **3 sources de vérité version à bumper ensemble à chaque release** :
 
-| Source | Champ | Format | Rôle |
+| Source | Champ | Format actuel (depuis v1.7.1) | Rôle |
 |---|---|---|---|
-| `sw.js` | `CACHE_NAME` | `myktamap-cache-v143` | Cache PWA — bump force la purge + re-cache au prochain SW install |
-| `js/copyright.js` | `__MKM__.build` | `"v143"` | Constante embarquée dans le code, affichée dans le badge footer (version installée) |
-| `version.json` | `version` | `"v143"` | Source serveur, comparée par UpdateChecker pour détecter les updates dispo |
+| `sw.js` | `CACHE_NAME` | `myktamap-cache-v1.7.1` | Cache PWA — bump force la purge + re-cache au prochain SW install |
+| `js/copyright.js` | `__MKM__.build` | `"v1.7.1"` | Constante embarquée dans le code, affichée dans le badge footer (version installée) |
+| `version.json` | `version` | `"v1.7.1"` | Source serveur, comparée par UpdateChecker pour détecter les updates dispo |
+
+**🔢 Format de version — semver-like depuis v1.7.1 (18/05/2026)** :
+
+Avant : `vNNN` (v143, v170, v173…). Maintenant : `vX.Y.Z` :
+- **X = MAJOR** : actuel = **1**. Passera à **2** uniquement quand on aura un backend (notion de comptes, partage cloud, etc. — pas avant longtemps).
+- **Y = MINOR** : évolutions majeures du projet (multi-plan, V2 tuilé, M-LVL, KMZ, etc.). Cf. tableau de mapping rétroactif dans le journal v1.7.1 du README.md.
+- **Z = PATCH** : améliorations / bug fixes / raffinements UX qui ne changent pas l'architecture.
+
+Les anciennes entrées du journal restent nommées en `vNNN` (historique préservé). Nouveau format uniquement à partir de v1.7.1.
+
+**⚠️ Pour les futurs bumps** : décider à chaque release si la change relève d'un PATCH (Z+1), MINOR (Y+1, Z=0), ou MAJOR (X+1, Y=0, Z=0). Quand on hésite → PATCH par défaut, réserver MINOR pour les vraies évolutions architecturales visibles user. MAJOR uniquement quand le modèle de données ou la nature de l'app change fondamentalement (= backend).
+
+**Limite UpdateChecker actuelle** : compare les versions en string simple (`"v1.7.1" !== "v1.7.2"` → nouvelle version détectée). Marche tant qu'on a pas de versions à 2+ chiffres dans un même segment (`v1.7.10` vs `v1.7.9` en string : `"v1.7.10" < "v1.7.9"`). À refactorer en vrai semver compare quand on dépassera 9 patches d'affilée sans MINOR bump.
 
 **Convention de bump** :
 - Pour une **vraie release** : les 3 sources ensemble (sw + copyright + version)
@@ -1853,6 +1866,114 @@ F!sYs44!h4z!3J — note-le avant de mettre à jour !
 - **Ne JAMAIS** réintroduire un bouton reset depuis le lockout (bypass trivial). Si un user perd son accès → désinstaller manuellement (= friction délibérée).
 - **Ne PAS** exposer le mdp en clair via `window.UnlockGate.getPassword()` ou similaire (rendrait inutile le hash dans le code).
 - **Ne PAS** bumper le mdp sans synchroniser HASH_VALIDE (unlockGate.js) ET KTA_UNLOCK_PASSWORD_DISPLAY (interface.js) ET la première puce de version.json.
+
+### 37. Icônes adaptatives au zoom (depuis v1.7.1)
+
+Toggle `APP_CONFIG.scaledMarkers` (default `true`) qui fait scaler les icônes des markers selon le niveau de zoom pour garder leur taille **relative au plan** constante (au lieu du comportement Leaflet par défaut = taille écran fixe = icônes énormes au dézoom).
+
+#### 37.1 Pattern technique
+
+Comme le tracker (§28) : `L.divIcon` avec `<div>` wrapper (positionné via translate3d Leaflet) + `<img class="kta-marker-img">` enfant (scaled via CSS transform). Sans wrapper, on ne peut pas appliquer 2 transforms indépendamment.
+
+`map.js > creerIcones > _mkIcon(url, w, h, ax, ay)` :
+- Si `scaledMarkers === true` (default) → `L.divIcon` avec `<img class="kta-marker-img">`
+- Sinon → `L.icon` natif (comportement v172)
+- Dans les 2 cas : `ic._kta_iconUrl = url` posé en backup pour les consumers
+
+CSS variable `--kta-marker-scale` sur `<body>` mise à jour dans `initMapFromConfig` via :
+```js
+map.on("zoomend zoom", function() {
+  const z = map.getZoom();
+  const clamped = Math.max(0.25, Math.min(2, Math.pow(2, z)));
+  document.body.style.setProperty("--kta-marker-scale", clamped);
+});
+```
+
+CSS : `.kta-marker-img { transform: scale(var(--kta-marker-scale, 1)); transform-origin: center; }`.
+
+#### 37.2 Clamp 0.25 / 2
+
+- Au zoom -2 et au-delà → scale `0.25` (= 12.5px visible, pas invisible)
+- Au zoom +2 (rare, déjà au max MyKTAMap) → scale `2` (= 100px, évite des icônes ridiculement énormes)
+- Entre les 2 : scale linéaire en `2^zoom`
+
+#### 37.3 Pièges _kta_iconUrl (consumers patchés)
+
+Avec `scaledMarkers === true`, `_iconMap[tag]` est un `L.divIcon` → `options.iconUrl` n'existe pas. **Tous les sites qui lisaient cette propriété** ont été adaptés au pattern :
+```js
+const url = entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
+```
+
+7 sites patchés :
+- `utils.js > getIconUrlForPoint > urlFromMapEntry`
+- `editor.js > _ajouterMarker` (validation icône)
+- `exporter.js > _iconePourTag` + default fallback
+- `interface.js > urlPourCle` + `getIconUrl` (légende UI)
+- `sessionExporter.js > _iconePourTag` (modale session)
+- `sessionExporter.js > _kmzIconePourTag` (modale KMZ)
+- `sessionExporter.js > iconsToEmbed` builder (KMZ export)
+
+⚠️ **À faire** si on ajoute un nouveau consumer qui lit `_iconMap[tag].options.iconUrl` direct : adapter au pattern fallback ci-dessus, sinon ça casse en mode scaledMarkers.
+
+#### 37.4 Non touché (volontaire)
+
+- **Tracker** (cf §28) : garde ses classes `kta-tracker-divicon` / `kta-tracker-img` distinctes → pas concerné par le CSS variable `--kta-marker-scale`. Taille écran fixe préservée. Utile pour le repérage visuel au dézoom (l'user veut TOUJOURS voir où il est).
+- **iconeDefault Leaflet natif** (`L.Icon.Default` = pin bleu) : pas scalé. Anchor bas-centre incompatible avec scale around center → décalerait la pointe. Cas marginal (uniquement si plan sans `icons.default`).
+- **Exports PNG / KMZ** : continuent de produire des images taille originale. Les transform CSS n'affectent que le rendu Leaflet runtime, pas les exports canvas qui peignent les icônes à leur taille brute.
+
+#### 37.5 Reload requis pour changement du toggle
+
+`scaledMarkers` est lu UNE FOIS dans `creerIcones` au load du plan. Toggle dans ⚙️ Réglages → 🔍 Affichage (liseré orange = reload requis). Si l'user toggle sans reload, les icônes existantes restent en L.icon ou L.divIcon selon leur état au moment de la création.
+
+### 38. Double-clic sur un marker → zoom flyTo (depuis v1.7.1)
+
+Détection manuelle via 2 `click` consécutifs en < 400ms sur le même marker (pas l'event natif Leaflet `dblclick`).
+
+#### 38.1 Pourquoi pas l'event natif `dblclick`
+
+1ère itération (commit cb846da) utilisait `marker.on("dblclick", ...)`. **Bug remonté KARMA : ne se déclenche jamais en pratique**. Causes probables (cumulatives) :
+- Le handler `click` posé par `marker.bindPopup` (pour ouvrir/fermer le popup au clic) "mange" les events et l'agrégation 2-clicks-en-dblclick n'a pas le temps de se déclencher.
+- Sur mobile : pas d'event `dblclick` natif fiable. Les touch events synthétisent juste des `click`, et Leaflet ne fait pas le boulot de détection 2-taps-rapides systématiquement.
+
+#### 38.2 Pattern actuel (fix v1.7.1)
+
+Helper `window.attachMarkerDblClickZoom(marker)` dans `utils.js` :
+```js
+let _lastClickTime = 0;
+const DBL_DELAY_MS = 400;
+marker.on("click", function() {
+  const now = Date.now();
+  const isDbl = (now - _lastClickTime) < DBL_DELAY_MS;
+  _lastClickTime = isDbl ? 0 : now;  // reset après dblclick pour éviter triple-trigger
+  if (!isDbl) return;  // 1er clic : Leaflet ouvre le popup normalement
+  // ... closePopup + flyTo
+});
+```
+
+Compteur `_lastClickTime` PAR marker via closure (pas de variable globale qui mélangerait si l'user clique sur marker A puis marker B rapidement).
+
+#### 38.3 Comportement
+
+- **1er clic** → Leaflet ouvre le popup normalement (comportement préservé)
+- **2e clic en < 400ms sur le même marker** → :
+  1. closePopup (le popup vient peut-être de s'ouvrir au 2e clic via le toggle Leaflet bindPopup)
+  2. flyTo smooth (0.6s) sur la position avec zoom +2 clampé au `map.getMaxZoom()` (= 2 dans MyKTAMap)
+- **2e clic au-delà de 400ms** → reset compteur, traité comme un 1er clic d'une nouvelle séquence
+
+#### 38.4 Pas de `stopPropagation`
+
+Volontaire : on laisse Leaflet faire son travail au 1er clic (ouverture popup). Au 2e clic, Leaflet peut faire son toggle (fermer le popup) en parallèle de notre closePopup — pas de conflit visible car les 2 actions sont synchrones.
+
+⚠️ Si un jour on veut empêcher le popup au 1er clic d'une séquence dblclick (= pas d'ouverture/fermeture flash), il faudrait soit un délai 400ms avant d'ouvrir le popup au 1er clic (mais perceptible), soit intercepter l'event au mousedown plutôt qu'au click. Compromis actuel acceptable.
+
+#### 38.5 Sites équipés
+
+- `utils.js > ajouterPointsDepuisJSON` (markers data layers, après bindPopup et avant addTo)
+- `editor.js > _ajouterMarker` (markers session éditeur, après bindPopup)
+
+**Non concerné** : tracker (comportement spécifique dans `tracking.js`, position temps réel), lost mode markers (popups dédiées avec badges in-zone/hors zone).
+
+À ajouter ailleurs si nouveau type de marker est introduit, via simple appel `window.attachMarkerDblClickZoom(marker)` après bindPopup.
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

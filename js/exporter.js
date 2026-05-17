@@ -451,8 +451,10 @@
     const planIcons = (window.PLAN_CONFIG && window.PLAN_CONFIG.icons) || {};
     if (planIcons[tag]) return planIcons[tag];
     const entry = window._iconMap && window._iconMap[tag];
-    if (entry && entry.options && entry.options.iconUrl) return entry.options.iconUrl;
-    return null;
+    if (!entry) return null;
+    // v174 : entry peut être un L.divIcon (scaledMarkers ON) → options.iconUrl
+    // undefined. _kta_iconUrl est posé en backup par creerIcones.
+    return entry._kta_iconUrl || (entry.options && entry.options.iconUrl) || null;
   }
 
   function _escapeHtmlExport(s) {
@@ -1823,9 +1825,11 @@
         // Récupérer l'URL : plan-config → _iconMap → default
         let url = _iconePourTag(tag);
         if (!url) {
-          // Tag custom sans icône dédiée → utiliser l'icône par défaut (5:a)
+          // Tag custom sans icône dédiée → utiliser l'icône par défaut (5:a).
+          // v174 : default peut être divIcon → check _kta_iconUrl avant options.iconUrl.
+          const def = window._iconMap && window._iconMap.default;
           url = (config.icons && config.icons.default)
-             || (window._iconMap && window._iconMap.default && window._iconMap.default.options && window._iconMap.default.options.iconUrl)
+             || (def && (def._kta_iconUrl || (def.options && def.options.iconUrl)))
              || null;
         }
         if (!url) return;
