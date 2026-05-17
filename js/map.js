@@ -26,6 +26,13 @@ let iconeDefault, iconeTrack;
 // ICÔNES
 // =========================
 function creerIcones(iconConfig) {
+  // v173 défense : iconConfig peut être undefined si le plan-config.json
+  // n'a pas de section "icons" (ex: ZIP généré par un outil externe ou
+  // par kmzImport sans intégration de la section icons). Sans ce guard,
+  // crash TypeError "Cannot read properties of undefined (reading 'track')"
+  // au tout début du chargement → écran noir car lancerApplication throw.
+  iconConfig = iconConfig || {};
+
   // URL pour le tracker (toujours iconetrack.png)
   const trackUrl = iconConfig.track || "icon/iconetrack.png";
 

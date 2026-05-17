@@ -472,7 +472,10 @@
     const baseFilename = opts.baseImageFilename || "baseImage.png";
     zip.file("data/" + baseFilename, opts.baseImage);
 
-    // plan-config.json minimal valide
+    // plan-config.json minimal valide.
+    // v173 fix : champ `icons` ajouté pour éviter le crash TypeError au boot
+    // (creerIcones lit iconConfig.track/default). Sans ces 2 valeurs au minimum,
+    // map.js > initMapFromConfig throw → écran noir au chargement du plan.
     const planConfig = {
       plan: {
         name: opts.planName || "Plan importé KMZ",
@@ -481,6 +484,10 @@
         imageWidth: opts.imageW,
         imageHeight: opts.imageH,
         baseImage: baseFilename
+      },
+      icons: {
+        default: "icon/iconetrack.png",
+        track:   "icon/iconetrack.png"
       },
       imageLayers: [],
       dataLayers: []
