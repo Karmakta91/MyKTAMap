@@ -64,43 +64,57 @@ function getIconUrlForPoint(point) {
 window.getIconUrlForPoint = getIconUrlForPoint;
 
 // =========================
-// 🔍 v174 : Double-clic sur un marker → zoom dessus
+// 🔍 v1.7.1 : Double-clic sur un marker → zoom dessus
 // =========================
-// Pattern : on bind un handler `dblclick` sur le marker. L'event navigateur
-// "double-clic" est déclenché si 2 clics arrivent en < 500ms (~standard
-// browser dblclick delay). Au-delà → 2 clics simples (popup s'ouvre/ferme
-// normalement).
+// Initialement (commit cb846da) on utilisait l'event natif Leaflet `dblclick`.
+// Bug remonté KARMA : ne se déclenche jamais en pratique. Cause probable :
+// le handler `click` posé par `marker.bindPopup` "mange" les events et
+// l'agrégation 2-clicks-en-dblclick n'a pas le temps de se déclencher.
+// Sur mobile c'est encore pire (touch events synthétisent juste des `click`,
+// pas de `dblclick` natif fiable).
+//
+// Nouveau pattern (v1.7.1 fix) : détection manuelle via 2 `click` consécutifs
+// dans une fenêtre de 400ms sur le même marker. Marche en toutes conditions
+// (popup actif, mobile touch, desktop souris).
 //
 // Comportement :
-//   1. Stop propagation : sinon Leaflet zoomerait aussi via son dblclick
-//      natif sur la map → effet conflictuel
-//   2. Ferme le popup ouvert s'il y en a un (sinon le popup persiste à un
-//      endroit fixe pendant que la map bouge = bizarre)
-//   3. flyTo smooth (0.6s) sur la position du marker avec zoom +2 clampé
-//      au maxZoom de la map et au minZoom courant
+//   1er clic  → Leaflet ouvre le popup normalement (= comportement préservé)
+//   2e clic en < 400ms sur le même marker → :
+//     - closePopup (le popup vient peut-être de s'ouvrir au 2e clic via toggle Leaflet)
+//     - flyTo smooth (0.6s) sur la position avec zoom +2 clampé au maxZoom
+//   2e clic au-delà de 400ms → traité comme 1er clic d'une nouvelle séquence
 //
-// À appeler après bindPopup/addTo. Idempotent : pas de garde car L.Evented
-// permet plusieurs handlers du même type sans erreur (mais on évite de
-// l'appeler 2x sur le même marker quand même).
+// Compteur de timestamp PAR marker via closure (pas de variable globale qui
+// se mélangerait si l'user clique sur marker A puis marker B rapidement).
+//
+// À appeler après bindPopup/addTo.
 function attachMarkerDblClickZoom(marker) {
   if (!marker || typeof marker.on !== "function") return;
-  marker.on("dblclick", function(e) {
-    // Stop la propagation pour empêcher le dblclick natif Leaflet sur la map
-    if (e && e.originalEvent) {
-      L.DomEvent.stopPropagation(e.originalEvent);
-      L.DomEvent.preventDefault(e.originalEvent);
-    }
+
+  let _lastClickTime = 0;
+  const DBL_DELAY_MS = 400;
+
+  marker.on("click", function() {
+    const now = Date.now();
+    const isDbl = (now - _lastClickTime) < DBL_DELAY_MS;
+    _lastClickTime = isDbl ? 0 : now;  // reset après dblclick pour éviter triple-trigger
+
+    if (!isDbl) return;  // 1er clic : Leaflet ouvre le popup normalement
     if (!window.map) return;
-    // Ferme le popup éventuel (visuel propre pendant le flyTo)
+
+    // Ferme le popup s'il vient de s'ouvrir au 2e clic via le toggle Leaflet
+    // (bindPopup gère click → openPopup → re-click → closePopup en toggle)
     try { marker.closePopup && marker.closePopup(); } catch(err) {}
 
     const ll = marker.getLatLng ? marker.getLatLng() : null;
     if (!ll) return;
 
     // Zoom +2 clampé au maxZoom (= 2 dans MyKTAMap, cf map.setMaxZoom(2))
-    // ET au moins le zoom courant (jamais dézoomer en double-clic).
     const curZ = window.map.getZoom();
-    const targetZ = Math.min(window.map.getMaxZoom ? window.map.getMaxZoom() : 2, curZ + 2);
+    const targetZ = Math.min(
+      window.map.getMaxZoom ? window.map.getMaxZoom() : 2,
+      curZ + 2
+    );
 
     if (typeof window.map.flyTo === "function") {
       window.map.flyTo(ll, targetZ, { duration: 0.6 });

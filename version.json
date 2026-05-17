@@ -1,14 +1,9 @@
 {
-  "version": "v173",
-  "released": "2026-05-17",
+  "version": "v1.7.1",
+  "released": "2026-05-18",
   "notes": [
-    "🔐 IMPORTANT — Accès restreint communautaire activé. Si tu mets à jour, l'app te demandera un code d'accès au prochain démarrage. CODE = F!sYs44!h4z!3J — note-le ou copie-le AVANT de cliquer 'Mettre à jour', sinon tu seras bloqué (5 tentatives ratées = lockout permanent qui nécessite une désinstallation manuelle).",
-    "🛣️ Mode urgence 'Je suis perdu' enrichi : en plus du cercle théorique (vitesse × temps), l'app affiche désormais en rouge clair tous les segments de routes physiquement atteignables depuis ta dernière position connue. Plus parlant que le cercle abstrait — montre les galeries précises où tu peux te trouver.",
-    "🛡️ Nouvelle option dans le mode Performance ULTRA : 'Limiter le dézoom mobile'. Cochée par défaut = comportement actuel (anti-crash). Décoche-la si tu veux le même dézoom max que sur PC pour une vraie vue d'ensemble (risque de crash sur très gros plans, à tes risques).",
-    "📐 La modale ⚙️ Réglages passe en 2 colonnes sur PC (≥1024px) — plus besoin de scroller pour voir toutes les sections.",
-    "🎚️ Liste de plans 📚 enrichie : toggle '🌐 Afficher les plans serveur' (persisté), bouton ℹ️ 'Infos détaillées' par plan, case 'Mémoriser ce plan' cochée par défaut sur mobile, badges modes (V1/V2/M-LVL/✅/🔐) regroupés sur ligne 2 sous le nom du plan.",
-    "🎨 Épuration légende : retrait des (bleu) / (rouge) / (gris) entre parenthèses sur les zones (la couleur est portée par le visuel + l'icône, pas besoin de la dupliquer en texte).",
-    "🐛 Fix critique : crash écran noir au boot quand un ZIP chargé n'avait pas de section 'icons' dans son plan-config (cas de certains ZIPs externes). Maintenant gracieusement géré.",
-    "🔍 Fix log : l'erreur '[Loader] Erreur : {}' opaque dans la console est résolue. Message désormais explicite avec stack trace utile pour diagnostiquer rapidement."
+    "📐 Nouveauté : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille relative au plan (avant : elles paraissaient énormes et voilaient la carte). Toggle dans ⚙️ Réglages → 🔍 Affichage si tu préfères l'ancien comportement.",
+    "🔍 Nouveauté : double-clic sur un point → la carte zoome dessus avec animation smooth (un seul clic ouvre toujours le popup, comme avant).",
+    "🌐 Alerte info mise à jour : le nouveau domaine myktamap.fr est désormais en ligne. Les deux domaines cohabitent jusqu'au 15 juillet 2026."
   ]
 }
