@@ -616,14 +616,36 @@
         _afficherOverlayChargement("Extraction du ZIP en cours…");
         setStatus("Extraction en cours…", false);
         try {
-          const { planConfigFile, assetFiles } = await extraireZip(zipFile);
+          // v173 : wrapper de step pour capturer une trace utile dès la source
+          // (avant que l'erreur ne se transforme en {} opaque en remontant).
+          // Sans ça, une DOMException Safari ou un Event onerror sortait du
+          // catch dans onLoadPlanClick avec message vide → console "[Loader] Erreur : {}".
+          let _step = "extraction du ZIP";
+          let planConfigFile, assetFiles;
+          try {
+            const res = await extraireZip(zipFile);
+            planConfigFile = res.planConfigFile;
+            assetFiles = res.assetFiles;
+          } catch(eExtr) {
+            const _m = (eExtr && eExtr.message) || (eExtr && eExtr.name) || String(eExtr) || "extraction ZIP échouée";
+            console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eExtr);
+            throw new Error("Étape « " + _step + " » : " + _m);
+          }
+
           _majOverlayChargement("ZIP extrait — Chargement de la carte…");
           setStatus("Chargement en cours…", false);
 
-          // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
-          // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
+          _step = "lancement de l'application (startImportedPlan)";
+          try {
+            // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
+            // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
+            await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
+          } catch(eSta) {
+            const _m = (eSta && eSta.message) || (eSta && eSta.name) || String(eSta) || "lancement échoué";
+            console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eSta, "| stack :", eSta && eSta.stack);
+            throw new Error("Étape « " + _step + " » : " + _m);
+          }
 
-          await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
           setStatus("Plan chargé avec succès.");
           if (window.masquerLoader) window.masquerLoader();
         } finally {
