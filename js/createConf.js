@@ -37,6 +37,14 @@ let _iconRowCount      = 0;
 let _plannerOrigAssets = {};
 let _plannerMode       = "nouveau";
 
+// 🌍 v173 : feature flag pour l'UI Import KMZ. Mis à false pour la release
+// v173 — le code est en place (js/kmzImport.js + modale _afficherImporterKmz)
+// mais l'entrée UI dans le planner est cachée. Réactiver = remettre à true.
+// Justification : Phase 1 (round-trip MyKTAMap only) en place mais pas
+// finalisée à la satisfaction de KARMA pour release publique → on push v173
+// sans exposer une fonctionnalité incomplète.
+const KTA_KMZ_IMPORT_UI_ENABLED = false;
+
 // =========================
 // MODALE PRINCIPALE
 // =========================
@@ -56,6 +64,24 @@ function afficherPlanner() {
       </div>
 
       <div class="kta-readme-modal-corps" id="kta-planner-corps">
+
+        ${KTA_KMZ_IMPORT_UI_ENABLED ? `
+        <!-- 🌍 IMPORT KMZ (depuis v173) : entrée alternative au planner classique.
+             Ouvre une modale dédiée qui parse un KMZ MyKTAMap (round-trip) et
+             génère un ZIP MyKTAMap utilisable. Cohérent avec la position A
+             validée (= dans le Générateur). Conditionnel via le feature flag
+             KTA_KMZ_IMPORT_UI_ENABLED en tête de createConf.js. -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌍 Importer depuis un KMZ <span class="kta-planner-hint">(MyKTAMap round-trip)</span></div>
+          <p class="kta-planner-info">
+            Tu as un fichier <strong>.kmz</strong> exporté depuis MyKTAMap ?
+            L'app peut le ré-importer en ZIP MyKTAMap utilisable.
+          </p>
+          <button class="kta-btn kta-btn-primary" id="kta-planner-open-kmz-import" type="button" style="width:100%; padding:12px;">
+            🌍 Ouvrir l'import KMZ
+          </button>
+        </div>
+        ` : ``}
 
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section">
@@ -264,6 +290,16 @@ function afficherPlanner() {
   document.getElementById("kta-planner-close").addEventListener("click", function() { modal.remove(); });
   document.getElementById("kta-planner-annuler").addEventListener("click", function() { modal.remove(); });
   modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
+
+  // 🌍 v173 : bouton d'entrée vers la modale d'import KMZ (Phase 1 MVP).
+  // Lance le pipeline KMZ → ZIP MyKTAMap dans une modale dédiée (pas
+  // d'interaction avec le formulaire planner classique pour rester clair).
+  const btnKmzImport = document.getElementById("kta-planner-open-kmz-import");
+  if (btnKmzImport) {
+    btnKmzImport.addEventListener("click", function() {
+      _afficherImporterKmz();
+    });
+  }
 
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
@@ -1551,3 +1587,434 @@ async function _genererZip() {
 }
 
 window.afficherPlanner = afficherPlanner;
+
+// =====================================================================
+// 🌍 MODALE IMPORT KMZ → ZIP MyKTAMap (Phase 1 MVP, depuis v173)
+// =====================================================================
+// Pipeline complet en 1 modale :
+//   1. Upload d'un fichier .kmz
+//   2. Parsing automatique (kmzImport.js) — détection GroundOverlay +
+//      comptage des Placemarks par type
+//   3. Affichage du résumé : taille image, nb annotations détectées
+//   4. Choix des types par défaut pour points / lignes / polygones
+//      (choix 4=B validé KARMA — configurables avant import)
+//   5. Bouton "Générer le ZIP" qui télécharge le ZIP MyKTAMap
+//
+// Mode A (GroundOverlay présent) : pipeline complet.
+// Mode C (pas de GroundOverlay) : modale d'erreur claire, pas d'import.
+// =====================================================================
+
+let _kmzImportState = null;  // { kmlDoc, assets, overlay, transform, imageW, imageH, stats }
+
+function _afficherImporterKmz() {
+  const existing = document.getElementById("kta-kmz-import-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id        = "kta-kmz-import-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:620px;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">🌍 Importer un KMZ → ZIP MyKTAMap</span>
+        <button class="kta-panneau-close" id="kta-kmz-imp-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
+
+        <p class="kta-planner-info" style="margin-bottom:14px;">
+          Sélectionne un fichier <strong>.kmz</strong> précédemment exporté par MyKTAMap
+          (onglet 🌍 KMZ de l'export session). L'app le ré-importe en ZIP MyKTAMap utilisable.
+        </p>
+        <div style="padding:8px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">
+          <strong style="color:#ffb380;">⚠️ Phase 1 (depuis v173)</strong> — seuls les KMZ
+          exportés depuis MyKTAMap sont supportés pour le moment. Les KMZ tiers
+          (Google Earth, OsmAnd, IGN scan…) afficheront un message d'incompatibilité.
+        </div>
+
+        <!-- 1. UPLOAD -->
+        <div class="kta-aide-section" id="kta-kmz-imp-step-upload">
+          <div class="kta-aide-section-titre">📂 Fichier KMZ</div>
+          <div class="kta-conv-drop" id="kta-kmz-imp-drop" style="position:relative; overflow:hidden;">
+            <span style="font-size:28px;">🌍</span>
+            <span id="kta-kmz-imp-label">Glisse un .kmz ici ou clique pour sélectionner</span>
+            <input type="file" id="kta-kmz-imp-input" accept=".kmz,application/vnd.google-earth.kmz"
+              style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:5;">
+          </div>
+          <div id="kta-kmz-imp-status" style="margin-top:8px;font-size:13px;min-height:18px;"></div>
+        </div>
+
+        <!-- 2. RÉSUMÉ (caché tant qu'aucun KMZ analysé) -->
+        <div class="kta-aide-section" id="kta-kmz-imp-step-resume" style="display:none;">
+          <div class="kta-aide-section-titre">📊 Aperçu du contenu détecté</div>
+          <div id="kta-kmz-imp-resume" class="kta-conv-stats"></div>
+        </div>
+
+        <!-- 3. CONFIG IMPORT -->
+        <div class="kta-aide-section" id="kta-kmz-imp-step-config" style="display:none;">
+          <div class="kta-aide-section-titre">⚙️ Configuration de l'import</div>
+
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">Nom du plan <span class="kta-planner-req">*</span></label>
+            <input class="kta-cfg-input" id="kta-kmz-imp-name" type="text" placeholder="ex: Carrière du Val">
+
+            <label class="kta-cfg-label">Version</label>
+            <input class="kta-cfg-input" id="kta-kmz-imp-version" type="text" placeholder="v1" value="v1">
+
+            <label class="kta-cfg-label">Auteur</label>
+            <input class="kta-cfg-input" id="kta-kmz-imp-author" type="text" placeholder="ex: KARMA — Import KMZ">
+          </div>
+
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">
+            <strong>Types par défaut</strong> — les Placemarks du KMZ n'ont pas de type MyKTAMap
+            explicite, choisis comment les ranger :
+          </p>
+
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">📍 Points → tag</label>
+            <select class="kta-cfg-input" id="kta-kmz-imp-point-tag">
+              <option value="default">Par défaut (icône générique)</option>
+              <option value="pa">Puits Aération (pa)</option>
+              <option value="pb">Puits Bouchon (pb)</option>
+              <option value="pc">Puits Communication (pc)</option>
+              <option value="pe">Puits Égout (pe)</option>
+              <option value="ps">Puits Spéléo (ps)</option>
+              <option value="salle">Salle (salle)</option>
+              <option value="chatiere">Chatière (chatiere)</option>
+              <option value="passage">Passage (passage)</option>
+              <option value="danger">Danger (danger)</option>
+              <option value="info">Info (info)</option>
+            </select>
+
+            <label class="kta-cfg-label">🛣️ LineString → type</label>
+            <select class="kta-cfg-input" id="kta-kmz-imp-road-type">
+              <option value="chemin" selected>Chemin (jaune fin)</option>
+              <option value="secondaire">Secondaire (violet)</option>
+              <option value="principal">Principal (vert épais)</option>
+            </select>
+
+            <label class="kta-cfg-label">⬛ Polygon → type</label>
+            <select class="kta-cfg-input" id="kta-kmz-imp-zone-type">
+              <option value="remblais" selected>Remblais (gris)</option>
+              <option value="eau">Eau (bleu)</option>
+              <option value="effondrement">Effondrement (rouge)</option>
+              <option value="inaccessible">Inaccessible (hachures rouge)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+        <button class="kta-btn kta-btn-ghost" id="kta-kmz-imp-annuler">Annuler</button>
+        <button class="kta-btn kta-btn-primary" id="kta-kmz-imp-generer" disabled>📦 Générer le ZIP MyKTAMap</button>
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(modal);
+  _kmzImportState = null;
+
+  const _close = function() {
+    modal.remove();
+    _kmzImportState = null;
+  };
+  document.getElementById("kta-kmz-imp-close").addEventListener("click", _close);
+  document.getElementById("kta-kmz-imp-annuler").addEventListener("click", _close);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+
+  // Upload handler
+  const input = document.getElementById("kta-kmz-imp-input");
+  const labelEl = document.getElementById("kta-kmz-imp-label");
+  input.addEventListener("change", async function() {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    labelEl.textContent = "📦 " + file.name;
+    await _kmzImpAnalyserFichier(file);
+  });
+
+  // Generate button
+  document.getElementById("kta-kmz-imp-generer").addEventListener("click", async function() {
+    await _kmzImpGenerer();
+  });
+}
+
+// Analyse un fichier KMZ : extraction + parsing + détection GroundOverlay
+// + comptage. Affiche le résumé ou la modale d'erreur (Mode C).
+async function _kmzImpAnalyserFichier(file) {
+  const status = document.getElementById("kta-kmz-imp-status");
+  const btnGen = document.getElementById("kta-kmz-imp-generer");
+  const stepResume = document.getElementById("kta-kmz-imp-step-resume");
+  const stepConfig = document.getElementById("kta-kmz-imp-step-config");
+  status.textContent = "⏳ Extraction du KMZ…";
+  status.style.color = "#8cb4ff";
+  btnGen.disabled = true;
+  stepResume.style.display = "none";
+  stepConfig.style.display = "none";
+
+  if (!window.KmzImport) {
+    status.textContent = "❌ Module KmzImport non chargé";
+    status.style.color = "#ff8c8c";
+    return;
+  }
+
+  try {
+    const { kmlDoc, assets } = await window.KmzImport.extraireKmz(file);
+
+    // 🔒 v173 simplifié : on ne supporte QUE les KMZ exportés par MyKTAMap.
+    // Détection via la signature "Export MyKTAMap" dans <Document><description>
+    // (posée par kmzExport.js ligne 485) + fallbacks (name, styles).
+    // Si le KMZ est tiers (Google Earth, OsmAnd, IGN scan…) → refus net.
+    if (!window.KmzImport.estKmzMyktamap(kmlDoc)) {
+      status.textContent = "❌ KMZ non compatible (pas un export MyKTAMap)";
+      status.style.color = "#ff8c8c";
+      _kmzImpAfficherModaleNonCompatible();
+      return;
+    }
+
+    const overlays = window.KmzImport.extraireGroundOverlays(kmlDoc, assets);
+
+    // Cas dégénéré : KMZ MyKTAMap reconnu mais sans GroundOverlay
+    // (= exporté avec décoche "🖼️ Image plan" → théoriquement impossible
+    // d'importer car pas de système coord pixel)
+    if (overlays.length === 0) {
+      status.textContent = "❌ KMZ MyKTAMap sans image plan (export sans GroundOverlay)";
+      status.style.color = "#ff8c8c";
+      _kmzImpAfficherModaleErrSansImage();
+      return;
+    }
+
+    // Mode A : 1er overlay = image base
+    const base = overlays[0];
+    const dims = await window.KmzImport.lireDimensionsImage(base.hrefBlob);
+
+    // Construction transformation GPS → pixel
+    let transform;
+    try {
+      transform = window.KmzImport.buildTransform(base.corners, dims.width, dims.height);
+    } catch (e) {
+      status.textContent = "❌ Calibrage GPS invalide : " + (e.message || e);
+      status.style.color = "#ff8c8c";
+      return;
+    }
+
+    // Comptage des Placemarks (sans encore ingérer)
+    const pmCount = kmlDoc.getElementsByTagName("Placemark").length;
+    const ptCount = kmlDoc.querySelectorAll("Placemark > Point").length;
+    const lsCount = kmlDoc.querySelectorAll("Placemark > LineString").length;
+    const pgCount = kmlDoc.querySelectorAll("Placemark > Polygon").length;
+    const mgCount = kmlDoc.querySelectorAll("Placemark > MultiGeometry").length;
+
+    _kmzImportState = {
+      file:      file,
+      kmlDoc:    kmlDoc,
+      assets:    assets,
+      overlay:   base,
+      transform: transform,
+      imageW:    dims.width,
+      imageH:    dims.height
+    };
+
+    // Résumé HTML
+    const docName = (kmlDoc.querySelector("Document > name")?.textContent || "").trim() || "(sans nom)";
+    const overlaysExtra = overlays.length > 1
+      ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ${overlays.length - 1} autre(s) GroundOverlay ignorés en MVP (1er pris comme baseImage).</div>` : "";
+    const mgWarn = mgCount > 0
+      ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ${mgCount} MultiGeometry détecté(s) — sauté(s) en Phase 1 MVP (Phase 2 les éclatera).</div>` : "";
+    document.getElementById("kta-kmz-imp-resume").innerHTML = `
+      <div>📄 <strong>Document KML</strong> : ${_escHtml(docName)}</div>
+      <div>🖼️ <strong>Image plan</strong> : ${dims.width} × ${dims.height} px
+        <span style="color:#8892a4;">(${_escHtml(base.name || base.hrefBlob.type || "image")})</span></div>
+      <div>📐 <strong>Échelle calibrage</strong> : ${transform.metresParPixel.toFixed(3)} m/px
+        · rotation ${(transform.rotation * 180 / Math.PI).toFixed(1)}°</div>
+      <div style="margin-top:8px;">
+        📍 <strong>${ptCount}</strong> points
+        · 🛣️ <strong>${lsCount}</strong> lignes
+        · ⬛ <strong>${pgCount}</strong> polygones
+        <span style="color:#8892a4;">(${pmCount} Placemark total)</span>
+      </div>
+      ${overlaysExtra}${mgWarn}
+    `;
+
+    // Pré-remplir le nom à partir du Document KML
+    const nameInput = document.getElementById("kta-kmz-imp-name");
+    if (nameInput && !nameInput.value) nameInput.value = docName !== "(sans nom)" ? docName : "";
+
+    stepResume.style.display = "";
+    stepConfig.style.display = "";
+    btnGen.disabled = false;
+    status.textContent = "✅ Prêt pour l'import — choisis les types par défaut puis génère.";
+    status.style.color = "#6ce28a";
+
+  } catch (e) {
+    console.error("[KmzImport] Erreur analyse :", e);
+    status.textContent = "❌ Erreur : " + (e.message || e);
+    status.style.color = "#ff8c8c";
+  }
+}
+
+// Modale d'erreur "KMZ non compatible" (v173 simplifié — round-trip MyKTAMap only).
+// Affichée quand `estKmzMyktamap` retourne false (KMZ tiers).
+function _kmzImpAfficherModaleNonCompatible() {
+  const existing = document.getElementById("kta-kmz-imp-incompat-modal");
+  if (existing) existing.remove();
+  const m = document.createElement("div");
+  m.id = "kta-kmz-imp-incompat-modal";
+  m.className = "kta-readme-modal-overlay";
+  m.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
+      '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
+        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 Ce fichier KMZ n\'est pas compatible pour le moment</span>' +
+        '<button class="kta-panneau-close" id="kta-kmz-imp-incompat-close">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+          'Ce KMZ ne contient pas la signature MyKTAMap qui permet l\'import dans cette ' +
+          'version (Phase 1 MVP). Il a probablement été créé par un autre outil ' +
+          '(<em>Google Earth, OsmAnd, Locus, Avenza, scan IGN, etc.</em>).' +
+        '</p>' +
+        '<div style="padding:10px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' +
+          '<strong style="color:#8cb4ff;">💡 Pour utiliser cette feature :</strong><br>' +
+          '· Exporte un plan MyKTAMap au format KMZ via 💾 Export session → 🌍 KMZ<br>' +
+          '· Le KMZ généré contient la signature qui permet de le ré-importer ici<br>' +
+          '· Le support des KMZ tiers (Google Earth, OsmAnd…) est prévu pour une version future' +
+        '</div>' +
+        '<div style="display:flex; justify-content:flex-end;">' +
+          '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-incompat-ok">J\'ai compris</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(m);
+  const _c = function() { m.remove(); };
+  document.getElementById("kta-kmz-imp-incompat-close").addEventListener("click", _c);
+  document.getElementById("kta-kmz-imp-incompat-ok").addEventListener("click", _c);
+  m.addEventListener("click", function(e) { if (e.target === m) _c(); });
+}
+
+// Modale d'erreur dédiée pour le Mode C (KMZ sans GroundOverlay).
+// Refus définitif avec explication claire (choix 2=A validé KARMA).
+function _kmzImpAfficherModaleErrSansImage() {
+  const existing = document.getElementById("kta-kmz-imp-noimg-modal");
+  if (existing) existing.remove();
+  const m = document.createElement("div");
+  m.id = "kta-kmz-imp-noimg-modal";
+  m.className = "kta-readme-modal-overlay";
+  m.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:80vh; border:1px solid rgba(255,140,140,0.35);">' +
+      '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.20);">' +
+        '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🚫 KMZ sans image plan</span>' +
+        '<button class="kta-panneau-close" id="kta-kmz-imp-noimg-close">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="font-size:13.5px; color:#c0c8d8; line-height:1.6; margin:0 0 12px;">' +
+          'Ce fichier KMZ ne contient pas de <code>GroundOverlay</code> (image plan géoréférencée). ' +
+          'Il a probablement été créé pour de la cartographie OSM/satellite (waypoints, traces GPS) ' +
+          'sans image de fond personnalisée.' +
+        '</p>' +
+        '<p style="font-size:13px; color:#c0c8d8; line-height:1.6; margin:0 0 14px;">' +
+          'MyKTAMap a besoin d\'une <strong>image de plan</strong> (PNG/JPEG) pour positionner les annotations. ' +
+          'Sans image, il n\'y a pas de système de coordonnées pixel à utiliser.' +
+        '</p>' +
+        '<div style="padding:10px 12px; background:rgba(255,179,128,0.06); border:1px solid rgba(255,179,128,0.22); border-radius:6px; margin-bottom:14px; font-size:12.5px; color:#c0c8d8;">' +
+          '<strong style="color:#ffb380;">💡 Solutions :</strong><br>' +
+          '· Si tu as une image scannée du plan, crée d\'abord le plan via 🏗️ Créer un plan, puis tu pourras ajouter les annotations à la main<br>' +
+          '· Si le KMZ vient de MyKTAMap, vérifie qu\'il a bien été exporté avec l\'option 🖼️ Image plan cochée<br>' +
+          '· Une future version pourra permettre un calibrage manuel (fournir image + 4 coins GPS) pour ce cas' +
+        '</div>' +
+        '<div style="display:flex; justify-content:flex-end;">' +
+          '<button class="kta-btn kta-btn-primary" id="kta-kmz-imp-noimg-ok">J\'ai compris</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(m);
+  const _c = function() { m.remove(); };
+  document.getElementById("kta-kmz-imp-noimg-close").addEventListener("click", _c);
+  document.getElementById("kta-kmz-imp-noimg-ok").addEventListener("click", _c);
+  m.addEventListener("click", function(e) { if (e.target === m) _c(); });
+}
+
+async function _kmzImpGenerer() {
+  if (!_kmzImportState) return;
+  const state = _kmzImportState;
+  const btnGen = document.getElementById("kta-kmz-imp-generer");
+  const status = document.getElementById("kta-kmz-imp-status");
+
+  const name    = (document.getElementById("kta-kmz-imp-name")?.value || "").trim();
+  const version = (document.getElementById("kta-kmz-imp-version")?.value || "").trim() || "v1";
+  const author  = (document.getElementById("kta-kmz-imp-author")?.value || "").trim() || "Import KMZ";
+  const pointTag = document.getElementById("kta-kmz-imp-point-tag").value;
+  const roadType = document.getElementById("kta-kmz-imp-road-type").value;
+  const zoneType = document.getElementById("kta-kmz-imp-zone-type").value;
+
+  if (!name) {
+    status.textContent = "⚠️ Le nom du plan est obligatoire";
+    status.style.color = "#ffb380";
+    return;
+  }
+
+  btnGen.disabled = true;
+  btnGen.textContent = "⏳ Génération…";
+  status.textContent = "⏳ Conversion en cours…";
+  status.style.color = "#8cb4ff";
+
+  try {
+    // Ingestion des Placemarks
+    const ingested = window.KmzImport.ingestPlacemarks(state.kmlDoc, state.transform, {
+      pointTag: pointTag,
+      roadType: roadType,
+      zoneType: zoneType
+    });
+
+    // Préserver l'extension de l'image source
+    const mime = state.overlay.hrefBlob.type || "image/png";
+    let ext = "png";
+    if (/jpeg|jpg/i.test(mime)) ext = "jpg";
+    else if (/webp/i.test(mime)) ext = "webp";
+    const baseImageFilename = "baseImage." + ext;
+
+    const blob = await window.KmzImport.genererZipMyktamap({
+      planName:          name,
+      planVersion:       version,
+      planAuthor:        author,
+      baseImage:         state.overlay.hrefBlob,
+      baseImageFilename: baseImageFilename,
+      imageW:            state.imageW,
+      imageH:            state.imageH,
+      imported: {
+        points: ingested.points,
+        roads:  ingested.roads,
+        zones:  ingested.zones
+      }
+    });
+
+    // Téléchargement
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + "_from_kmz.zip";
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    const s = ingested.stats;
+    status.innerHTML = "✅ ZIP généré ! " +
+      "<span style='color:#c0c8d8;'>" + s.kept + " gardé(s) · " +
+      s.skipped + " sauté(s)" +
+      (s.outOfBounds > 0 ? " · " + s.outOfBounds + " hors-bounds" : "") +
+      (s.multiGeometry > 0 ? " · " + s.multiGeometry + " MultiGeometry sautés (Phase 2)" : "") +
+      "</span>";
+    status.style.color = "#6ce28a";
+    btnGen.textContent = "✅ Téléchargé — Re-générer";
+    btnGen.disabled = false;
+    console.log("[KmzImport] Stats :", s);
+  } catch (e) {
+    console.error("[KmzImport] Erreur génération :", e);
+    status.textContent = "❌ Erreur : " + (e.message || e);
+    status.style.color = "#ff8c8c";
+    btnGen.textContent = "📦 Générer le ZIP MyKTAMap";
+    btnGen.disabled = false;
+  }
+}
+
+function _escHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c) {
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+  });
+}

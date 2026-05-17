@@ -1255,9 +1255,9 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬛ Zones (remblais / effondrements / eau / inaccessible)</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais (gris)</span>
-            <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement (rouge)</span>
-            <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau (bleu)</span>
+            <span class="kta-aide-icone">⬛</span><span>Tracer une zone de remblais</span>
+            <span class="kta-aide-icone">🟥</span><span>Tracer une zone d'effondrement</span>
+            <span class="kta-aide-icone">🟦</span><span>Tracer une zone d'eau</span>
             <span class="kta-aide-icone">⛔</span><span>Tracer une zone inaccessible (hachures rouge/noir) — bloque le pathfinder</span>
             <span class="kta-aide-icone">✅</span><span>Fermer la zone en cours (au moins 3 points)</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point, dernière zone ou toutes)</span>
@@ -1370,8 +1370,9 @@ function _renderPerfUltraSection() {
       <div class="kta-aide-section-titre">🚀 Mode Performance ULTRA</div>
       <p style="font-size:11.5px; color:#8892a4; margin:0 0 10px 0; line-height:1.5;">
         Pour les gros plans / appareils faibles. Active <strong>🚀 ULTRA</strong> pour appliquer
-        les 6 optims d'un coup, ou ajuste individuellement chaque levier. Les changements
-        s'appliquent à la volée (sauf "Désactiver animations" qui nécessite un reload).
+        les optims d'un coup, ou ajuste individuellement chaque levier. Les changements
+        s'appliquent à la volée — sauf les options marquées d'un <span style="color:#ffb380;">liseré orange</span>
+        qui nécessitent un reload du plan pour prendre effet.
       </p>
       ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
             "Préset qui active les 6 toggles ci-dessous. Décocher = désactive tout.")}
@@ -1388,6 +1389,8 @@ function _renderPerfUltraSection() {
             "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
       ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les tracés visibles", s.viewportCull,
             "Saute les routes hors viewport. Pop-in léger au pan mais énorme gain sur plans denses.")}
+      ${row("cfg_perf_mobileZoomLimit", "🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)", s.mobileZoomLimit,
+            "<strong>Coché par défaut</strong>. Sur smartphone, plafonne le dézoom max pour éviter le crash OOM quand Leaflet tente de rendre l'image entière au minZoom. <strong>Décocher</strong> = autorise le même dézoom max que sur PC (utile pour vue d'ensemble), mais risque de crash sur gros plans. <strong>Reload requis</strong> après changement.", true)}
     </div>`;
 }
 
@@ -1404,12 +1407,13 @@ function _bindPerfUltraToggles() {
     });
   }
   const map = {
-    "cfg_perf_decim":        "decim",
-    "cfg_perf_animOff":      "animOff",
-    "cfg_perf_noIntersect":  "noIntersect",
-    "cfg_perf_noTooltips":   "noTooltips",
-    "cfg_perf_slowSave":     "slowSave",
-    "cfg_perf_viewportCull": "viewportCull"
+    "cfg_perf_decim":           "decim",
+    "cfg_perf_animOff":         "animOff",
+    "cfg_perf_noIntersect":     "noIntersect",
+    "cfg_perf_noTooltips":      "noTooltips",
+    "cfg_perf_slowSave":        "slowSave",
+    "cfg_perf_viewportCull":    "viewportCull",
+    "cfg_perf_mobileZoomLimit": "mobileZoomLimit"
   };
   Object.keys(map).forEach(function(id) {
     const el = document.getElementById(id);
@@ -1983,6 +1987,13 @@ function _resetFlowOfflineWarning() {
   overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
+// 🗝️ v173 : mot de passe en clair affiché à l'écran de reset pour que
+// l'user le retrouve avant de tout effacer (choix 6=a validé KARMA).
+// ⚠️ Volontairement en clair ici (sinon impossible d'afficher à l'user).
+// Le hash SHA-256 dans unlockGate.js reste la source de vérité pour la
+// comparaison. Si on bumpe le mdp un jour : changer les 2 endroits ensemble.
+const KTA_UNLOCK_PASSWORD_DISPLAY = "F!sYs44!h4z!3J";
+
 function _resetFlowConfirmation() {
   const overlay1 = document.createElement("div");
   overlay1.className = "kta-modal-overlay";
@@ -1999,6 +2010,13 @@ function _resetFlowConfirmation() {
           <li>Préférences (mode performance, logs détaillés…)</li>
         </ul>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
+
+        <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
+          🗝️ <strong style="color:#f4c542;">Code d'accès requis au redémarrage</strong><br>
+          <span style="color:#c8d0e0;">Après reset, l'app redemandera le code d'accès communautaire :</span><br>
+          <code style="display:inline-block; margin-top:6px; padding:4px 10px; background:#0a0d18; border:1px solid rgba(244,197,66,0.30); border-radius:4px; color:#f4c542; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:14px; user-select:all;">${KTA_UNLOCK_PASSWORD_DISPLAY}</code>
+          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer dans l'app !</span>
+        </div>
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">Annuler</button>
@@ -5445,15 +5463,15 @@ function afficherLegende() {
       <div class="kta-aide-section-titre">⬛ Zones</div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#3aa9e8; opacity:0.7; height:14px; border:2px solid #0066aa;"></span>
-        <span class="kta-legende-label">Eau (bleu)</span>
+        <span class="kta-legende-label">Eau</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#5a5a68; opacity:0.7; height:14px; border:2px solid #3a3a44;"></span>
-        <span class="kta-legende-label">Remblais (gris)</span>
+        <span class="kta-legende-label">Remblais</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:#ff3333; opacity:0.7; height:14px; border:2px solid #cc0000;"></span>
-        <span class="kta-legende-label">Effondrement (rouge)</span>
+        <span class="kta-legende-label">Effondrement</span>
       </div>
       <div class="kta-legende-ligne">
         <span class="kta-legende-trait" style="background:repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px); height:14px; border:2px solid #5a0a0a;"></span>

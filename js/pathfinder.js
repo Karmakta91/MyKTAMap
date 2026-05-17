@@ -910,10 +910,211 @@
   }
 
   // =========================
+  // =========================
+  // ISOCHRONE / REACHABILITY (depuis v173 — mode urgence "Je suis perdu")
+  // =========================
+  // Calcule tous les segments de roads atteignables depuis un point de départ
+  // dans la limite d'un budget de distance (= vitesse × temps écoulé).
+  // Utilisé par lostMode.js pour restreindre visuellement la zone de recherche
+  // au réseau physique réel (galeries/chemins) au lieu d'un simple cercle.
+  //
+  // Algorithme : Dijkstra "budget" (variante one-to-all avec coupure à budget).
+  // - On part du nœud snap (projection du startPoint sur le road le plus proche)
+  // - On relaxe les voisins tant que leur distance accumulée ≤ budget
+  // - Sortie : 3 catégories de segments :
+  //   * fullSegments : les 2 endpoints sont dans le budget → highlight complet
+  //   * partialSegments : seulement A (ou B) dans le budget → highlight tronqué
+  //     via interpolation linéaire au point d'arrêt exact (= où le budget est épuisé)
+  //   * (non retournés) : aucun endpoint dans le budget → skip
+  //
+  // Multi-niveau : les jonctions sont traversables (choix 5b validé KARMA),
+  // donc le calcul peut s'étendre sur d'autres niveaux via les bridges. Géré
+  // automatiquement par _buildGraph + _enrichirGrapheAvecCroisements existants.
+  //
+  // Cas dégénéré (départ loin de tout road) : retourne exceedsBudget=true avec
+  // snapPoint + snapDistance, mais fullSegments/partialSegments vides. Le caller
+  // (LostMode) trace alors une ligne pointillée + cercle seul.
+  //
+  // opts (optionnel, réservé pour évolutions Phase 2) — actuellement aucun.
+  function computeReachable(startPoint, budgetPx, opts) {
+    if (!startPoint || typeof startPoint.x !== "number" || typeof startPoint.y !== "number") {
+      throw new Error("computeReachable : startPoint = {x, y} requis");
+    }
+    if (!isFinite(budgetPx) || budgetPx <= 0) {
+      throw new Error("computeReachable : budgetPx > 0 requis (= rayon en pixels)");
+    }
+
+    // 1) Collecte de toutes les roads (session + embedded data layers) cohérente
+    // avec computeRoute pour que le mode urgence couvre TOUT le réseau visible
+    // par Pathfinder (visible ET masqué — cf §15 du CLAUDE.md).
+    const sessionRoads = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
+    const embeddedRoads = (typeof window.getAllEmbeddedRoads === "function"
+      ? window.getAllEmbeddedRoads() : []) || [];
+    const allRoads = sessionRoads.concat(embeddedRoads);
+
+    if (allRoads.length === 0) {
+      return {
+        fullSegments: [], partialSegments: [],
+        snapPoint: null, snapDistance: Infinity,
+        exceedsBudget: true, reason: "no-roads",
+        totalReachableDistance: 0
+      };
+    }
+
+    // Types autorisés : tous (principal/secondaire/chemin/jonction), idem computeRoute.
+    const allowedTypes = ["principal", "secondaire", "chemin"];
+    const zonesInacc = _collecterZonesInaccessibles();
+
+    // 2) Construction graphe + enrichissement croisements (idem computeRoute,
+    //    sans avoidances qui sont propres à l'itinéraire).
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
+    _enrichirGrapheAvecCroisements(graph);
+
+    if (graph.nodes.length === 0) {
+      return {
+        fullSegments: [], partialSegments: [],
+        snapPoint: null, snapDistance: Infinity,
+        exceedsBudget: true, reason: "empty-graph",
+        totalReachableDistance: 0
+      };
+    }
+
+    // 3) Snap du point de départ sur le road le plus proche.
+    const snap = _insertVirtualNode(graph, startPoint);
+    if (!snap) {
+      return {
+        fullSegments: [], partialSegments: [],
+        snapPoint: null, snapDistance: Infinity,
+        exceedsBudget: true, reason: "no-snap",
+        totalReachableDistance: 0
+      };
+    }
+
+    // 4) Si le snap est déjà hors budget → impossible d'atteindre une route.
+    if (snap.snapDist >= budgetPx) {
+      return {
+        fullSegments: [], partialSegments: [],
+        snapPoint: snap.projection,
+        snapDistance: snap.snapDist,
+        exceedsBudget: true, reason: "snap-too-far",
+        totalReachableDistance: 0
+      };
+    }
+
+    const remainingBudget = budgetPx - snap.snapDist;
+
+    // 5) Dijkstra "budget" depuis le node snap.
+    const distances = _dijkstraReachable(graph, snap.nodeIdx, remainingBudget);
+
+    // 6) Catégorisation des segments (full vs partial).
+    const fullSegments = [];
+    const partialSegments = [];
+    let totalDist = 0;
+
+    for (let i = 0; i < graph.segments.length; i++) {
+      const seg = graph.segments[i];
+      const dA = distances[seg.a];
+      const dB = distances[seg.b];
+
+      // Ni A ni B atteints → segment non emprunté
+      if (dA === Infinity && dB === Infinity) continue;
+
+      const pA = graph.nodes[seg.a];
+      const pB = graph.nodes[seg.b];
+      const segLen = Math.hypot(pB.x - pA.x, pB.y - pA.y);
+      if (segLen < 0.01) continue;  // segment dégénéré
+
+      const inA = dA <= remainingBudget;
+      const inB = dB <= remainingBudget;
+
+      if (inA && inB) {
+        // Cas 1 : les 2 endpoints atteints sous le budget → segment complet
+        fullSegments.push([{ x: pA.x, y: pA.y }, { x: pB.x, y: pB.y }]);
+        totalDist += segLen;
+      } else if (inA) {
+        // Cas 2 : A atteint, B hors budget → tronquer de A vers B
+        const rem = remainingBudget - dA;
+        const ratio = Math.min(1, rem / segLen);
+        if (ratio > 0.001) {
+          const cut = {
+            x: pA.x + (pB.x - pA.x) * ratio,
+            y: pA.y + (pB.y - pA.y) * ratio
+          };
+          partialSegments.push([{ x: pA.x, y: pA.y }, cut]);
+          totalDist += segLen * ratio;
+        }
+      } else if (inB) {
+        // Cas 3 : B atteint, A hors budget → tronquer de B vers A
+        const rem = remainingBudget - dB;
+        const ratio = Math.min(1, rem / segLen);
+        if (ratio > 0.001) {
+          const cut = {
+            x: pB.x + (pA.x - pB.x) * ratio,
+            y: pB.y + (pA.y - pB.y) * ratio
+          };
+          partialSegments.push([{ x: pB.x, y: pB.y }, cut]);
+          totalDist += segLen * ratio;
+        }
+      }
+      // Cas 4 (A et B hors budget) : aucun highlight (le segment était entre 2
+      // sub-trees dépassés, peu intéressant pour l'user perdu).
+    }
+
+    return {
+      fullSegments:           fullSegments,
+      partialSegments:        partialSegments,
+      snapPoint:              snap.projection,
+      snapDistance:           snap.snapDist,
+      exceedsBudget:          false,
+      totalReachableDistance: totalDist
+    };
+  }
+
+  // Dijkstra one-to-all avec coupure à budget. Renvoie un array dist[] indexé
+  // par nodeIdx (Infinity si non atteint ou hors budget).
+  function _dijkstraReachable(graph, start, budget) {
+    const N = graph.nodes.length;
+    const dist = new Array(N).fill(Infinity);
+    dist[start] = 0;
+
+    const remaining = new Set();
+    for (let i = 0; i < N; i++) remaining.add(i);
+
+    while (remaining.size > 0) {
+      let u = -1;
+      let minD = Infinity;
+      remaining.forEach(function(i) {
+        if (dist[i] < minD) { minD = dist[i]; u = i; }
+      });
+      if (u < 0 || minD === Infinity) break;
+      // Optimisation : si le nœud minimum dépasse déjà le budget, tous les
+      // suivants aussi (Dijkstra extraction par ordre croissant) → on peut sortir.
+      if (minD > budget) break;
+      remaining.delete(u);
+
+      const neigh = graph.edges[u];
+      for (let i = 0; i < neigh.length; i++) {
+        const v = neigh[i].to;
+        if (!remaining.has(v)) continue;
+        const alt = dist[u] + neigh[i].weight;
+        // On garde dist[v] même si > budget : utile pour le calcul des
+        // partial segments (cas 2/3 ci-dessus où on a besoin de savoir
+        // que B a été "vu" avec une certaine distance même si > budget).
+        if (alt < dist[v]) {
+          dist[v] = alt;
+        }
+      }
+    }
+
+    return dist;
+  }
+
+  // =========================
   // EXPORT
   // =========================
   window.Pathfinder = {
     computeRoute:     computeRoute,
+    computeReachable: computeReachable,
     resolvePointById: resolvePointById
   };
 })();

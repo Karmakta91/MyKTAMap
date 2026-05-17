@@ -37,12 +37,22 @@
 
   // Liste des toggles individuels gérés. ultra n'est PAS dans cette liste —
   // c'est un méta-toggle qui active/désactive les autres en bloc.
-  const TOGGLES = ["decim", "animOff", "noIntersect", "noTooltips", "slowSave", "viewportCull"];
+  const TOGGLES = ["decim", "animOff", "noIntersect", "noTooltips", "slowSave", "viewportCull", "mobileZoomLimit"];
 
-  // Defaults : tout désactivé (perf mode normal, comportement actuel inchangé)
+  // 🛡️ v173 : certains toggles sont ON par défaut (= sécurité activée par défaut).
+  // `mobileZoomLimit` ON par défaut = limite mobile minZoom v172 active (anti-OOM).
+  // Décocher = l'user assume le risque crash, traite mobile comme PC (= plus de
+  // dézoom dispo). Cohérent avec la sémantique PerfUltra "ON = optimisation /
+  // sécurité activée".
+  const DEFAULTS_TRUE = ["mobileZoomLimit"];
+
+  // Defaults : tout désactivé SAUF les toggles dans DEFAULTS_TRUE.
+  // Comportement actuel v172 strictement préservé (limite mobile active).
   function _defaults() {
     const o = {};
-    TOGGLES.forEach(function(k) { o[k] = false; });
+    TOGGLES.forEach(function(k) {
+      o[k] = DEFAULTS_TRUE.indexOf(k) >= 0;
+    });
     return o;
   }
 

@@ -9,7 +9,94 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (96 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (97 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v173" open>
+<summary><strong>🗓️ 17/05/2026 (suite) — 🚀 v173 : 🗝️ Accès restreint communautaire + Mode urgence enrichi + PerfUltra limit dézoom + UX loader</strong></summary>
+
+> ⚠️ **CODE D'ACCÈS NÉCESSAIRE** : depuis v173, l'app est protégée par une barrière communautaire au démarrage. **Code après update : `F!sYs44!h4z!3J`** — à noter avant de mettre à jour, sinon tu seras bloqué (lockout permanent après 5 tentatives ratées).
+
+### 🗝️ Unlock Gate — Barrière communautaire d'accès (feature principale)
+
+Nouveau module `js/unlockGate.js` qui intercale un écran de saisie de mot de passe **après le splash, avant le loader**. Vérification 1 fois à la 1ère installation, mémorisé en localStorage ensuite. Re-demandé après reset complet.
+
+- **Hash SHA-256** hardcodé dans le code (mdp en clair non visible). Calcul via `crypto.subtle.digest` natif.
+- **5 tentatives max** → lockout permanent avec message "Le brute force c'est mal, m'voyez." (clin d'œil communautaire validé KARMA). Pas de bouton reset depuis le lockout — l'user doit désinstaller l'app manuellement s'il ne connaît pas le code (sinon bypass trivial : reset → modale affiche le mdp → re-saisie → contournement).
+- **Style charte** : overlay plein écran z-index 100100, gradient noir + accent jaune `#f4c542`, icône 🗝️ avec drop-shadow, signature `© 2026 Flavien VIDAL — CC BY-NC-SA 4.0`.
+- **Affichage du mdp dans la modale Reset** (interface.js) : bloc jaune avec le code en monospace + warning "Note-le avant de reset". Permet à un user authentifié de reset proprement sans perdre l'accès. Le mdp en clair est dans `interface.js > KTA_UNLOCK_PASSWORD_DISPLAY` (= seul endroit du code où il apparaît en clair, volontairement pour l'affichage).
+
+**⚠️ Niveau de sécurité** : barrière **sociale** (PWA 100% client = code source public sur GitHub). Décourage les passants + cadre communauté, n'empêche **pas** un attaquant motivé. KARMA explicitement informé et a validé.
+
+### 🛣️ Mode urgence enrichi — Portée max sur le réseau de routes
+
+Extension de `js/lostMode.js` + nouvelle fonction `Pathfinder.computeReachable(startPoint, budgetPx, opts)` (algorithme isochrone Dijkstra "budget"). Affiche en rouge clair `#ff8080` tous les segments de routes physiquement atteignables depuis la dernière position connue, dans la limite du rayon théorique (= vitesse × temps).
+
+- Toujours actif (pas de toggle) — choix 2c validé
+- Multi-niveau via jonctions interniveau (cohérent Pathfinder existant)
+- Ligne pointillée du startPoint au snapPoint si snapDistance > 5px (= visualise le décrochage point→road)
+- Pattern perf : UNE seule polyline multi-segments par catégorie (full/partial) = 1 seul drop-shadow GPU (cf §16 piège)
+- Cas dégénérés gérés explicitement (no-roads / snap-too-far / empty-graph) avec messages dédiés dans le rapport copiable
+- Bonus rapport copiable : "🛣️ Portée max sur le réseau de routes : ~340 m parcourable (5 segments complets + 2 partiels)..."
+
+### 🛡️ PerfUltra — Nouveau toggle "Limiter le dézoom sur mobile"
+
+Septième toggle dans le mode Performance ULTRA (⚙️ Réglages). Coché par défaut = comportement v172 préservé (limite mobile anti-OOM). Décoché = traite le mobile comme un PC dans le calcul minZoom → gagne 1-2 niveaux de dézoom selon la taille du plan. Reload requis pour appliquer (liseré orange).
+
+C'est le 1er toggle PerfUltra avec **default true** — nouvelle infra `DEFAULTS_TRUE = ["mobileZoomLimit"]` dans `_defaults()`. Sémantique cohérente "ON = optimisation/sécurité activée".
+
+### 🎚️ Refonte UX loader (5 changements)
+
+- **🌐 Toggle "Afficher les plans serveur"** — Persisté localStorage. Permet de cacher les plans serveur découverts auto (test1, test2, démos…) pour ne voir que ses plans persos. Recocher = ils réapparaissent intacts (filtre d'affichage seul).
+- **📐 Restructure ligne plan** — Badges modes V1/V2/M-LVL + badge storage (✅/🔐/📁) groupés sur **ligne 2** (sous le nom). Avant : sur la même ligne que le nom → noms longs tronqués prématurément. Maintenant : nom prend toute la largeur ligne 1, badges en bas pour scan visuel rapide.
+- **ℹ️ Bouton "Infos détaillées"** — Nouveau bouton dans `.plan-row-actions` qui ouvre une modale listant TOUS les attributs du plan (id, nom, version, auteur, fichier source, taille, persistance, mode, perfPreset, dates). Remplace l'affichage compact sub/date qui surchargeait la liste.
+- **💾 "Mémoriser ce plan" coché par défaut** sur mobile/Safari/Firefox. Avant : décoché → l'user oubliait souvent → re-sélection requise à chaque chargement. Maintenant : import → mémorisé automatiquement → rechargement 1 clic.
+
+### 📐 Modale Réglages responsive PC (≥1024px)
+
+La modale ⚙️ Réglages passe en layout 2 colonnes sur ≥1024px (pattern identique à la modale Doc/Aide ❓). Sur mobile : strictement inchangée (1 colonne 440px). Différence assumée vs Aide : `break-inside: avoid` sur chaque section pour ne pas couper en plein milieu d'un bloc d'inputs.
+
+### 🎨 Épuration légende zones (cohérence v169)
+
+Retrait des "(bleu)" / "(rouge)" / "(gris)" entre parenthèses dans 6 lignes user-facing (3 dans afficherAide pour le tracé, 3 dans afficherLegende). Cohérent avec l'épuration v169 sur "Inaccessible" / "Jonction interniveau" — sémantique portée par le visuel et l'icône sidebar, pas dupliquée en texte. Conservé : "(rouge pulse, situation critique)" qui est un descriptif comportemental.
+
+### 🔧 Fixes critiques
+
+- **Modale notes de version coupée en haut sur mobile** : bug "flex centered overflow" classique. Fix : `align-items: flex-start` + `margin: auto` sur l'enfant (centre vertical si place, sinon collapse → scroll naturel accessible). Bonus safe-area iOS (env(safe-area-inset-bottom) → home indicator respecté).
+- **Crash creerIcones (écran noir)** : ZIP sans section `icons` dans plan-config.json → TypeError silencieux → écran noir au boot. Fix défensif universel : `iconConfig = iconConfig || {}` au début de `creerIcones`. Protège tous les futurs ZIPs malformés.
+- **Log `[Loader] Erreur : {}` opaque** : DOMException Safari iOS / Event / objet jeté par lib externe loggé comme `{}` car propriétés non-enumerable. Fix en 2 niveaux : (1) cascade `message → toString → name → JSON.stringify(getOwnPropertyNames) → String` dans le catch global ; (2) wrappers d'étape dans `chargerZipFichier` qui convertissent toute erreur en `new Error("Étape « X » : <message>")` dès la source. Stack trace + raw err loggées en parallèle pour debug F12. C'est cette amélioration qui a permis de diagnostiquer le bug crash creerIcones ci-dessus.
+
+### 🌍 KMZ Import (code en place, UI désactivée)
+
+Le module `js/kmzImport.js` (Phase 1 MVP round-trip MyKTAMap only) est dans le code mais l'entrée UI dans le générateur est cachée pour cette release v173 via le feature flag `KTA_KMZ_IMPORT_UI_ENABLED = false` (createConf.js). Sera réactivé dans une release future après finition. Aucune mention user-facing dans les notes pour ne pas exposer une fonctionnalité incomplète.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `v172` → `v173`
+- `js/copyright.js > __MKM__.build` : `"v172"` → `"v173"`
+- `version.json > version` : `"v172"` → `"v173"` — notes user-facing mises à jour AVEC le mdp en clair en première puce (impératif pour que les users v172 le voient avant de mettre à jour)
+
+### Fichiers modifiés (cumulatif depuis v172)
+
+| Fichier | Changement |
+|---|---|
+| `js/unlockGate.js` | **NEW** ~210 lignes — module Unlock Gate IIFE complet |
+| `js/lostMode.js` | +const COLOR_REACH + 4 vars module-scope + cleanup + section render reach + bloc rapport copiable |
+| `js/pathfinder.js` | +~180 lignes — `computeReachable` + `_dijkstraReachable` + export public |
+| `js/perfUltra.js` | +toggle `mobileZoomLimit` + nouveau pattern `DEFAULTS_TRUE` |
+| `js/map.js` | +guard `iconConfig = iconConfig || {}` + lecture `PerfUltra.mobileZoomLimit` dans calcul minZoom |
+| `js/main.js` | +hook `await UnlockGate.ouvrirGate()` après _splashEnd |
+| `js/interface.js` | +const `KTA_UNLOCK_PASSWORD_DISPLAY` + enrichissement modale reset avec bloc jaune mdp + ajout toggle PerfUltra mobileZoomLimit + épuration légende zones (6 lignes) |
+| `js/createConf.js` | +feature flag `KTA_KMZ_IMPORT_UI_ENABLED = false` (UI cachée mais code conservé) |
+| `js/kmzImport.js` | **NEW** ~440 lignes — module KMZ Import Phase 1 MVP round-trip (UI désactivée, code en place) |
+| `index.html` | +`<script src="js/unlockGate.js">` + `<script src="js/kmzImport.js">` + restructure ligne plan + toggle serveur + bouton ℹ️ + log error enrichi + wrappers d'étape |
+| `css/style.css` | +~140 lignes Unlock Gate + .kta-plan-infos-* + .loader-plans-filters + .plan-row-modes + .kta-lost-reach-polyline + .kta-cfg-modal-boite responsive + fix flex-centered-overflow modale notes |
+| `sw.js` | +`./js/unlockGate.js` + `./js/kmzImport.js` + bump v173 |
+| `js/copyright.js` | bump build v173 |
+| `version.json` | bump version v173 + notes user-facing avec mdp en première puce |
+
+---
+
+</details>
 
 <details id="v172" open>
 <summary><strong>🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte</strong></summary>
@@ -146,7 +233,7 @@ API Promise-based pour intégration propre dans le flow async de `reSelectionner
 
 </details>
 
-<details id="v170" open>
+<details id="v170">
 <summary><strong>🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)</strong></summary>
 
 Nouvelle fonctionnalité d'**export terrain géoréférencé** au format KMZ. L'utilisateur fournit 2 couples `(point_plan, point_GPS)` → l'app calcule une **transformation affine 2D similarity** (rotation + scale + translation) qui mappe chaque coord plan vers (lat, lng). Le résultat est ouvrable dans n'importe quel viewer KML standard.
@@ -341,6 +428,7 @@ Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis mast
 
 ### 📑 Sommaire des versions
 
+- [🗓️ 17/05/2026 (suite) — 🚀 v173 : 🗝️ Accès restreint communautaire + Mode urgence enrichi + PerfUltra limit dézoom + UX loader](#v173)
 - [🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte](#v172)
 - [🗓️ 16/05/2026 (suite 1) — 🚀 v170 : Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)](#v170)
 - [🗓️ 16/05/2026 — 🚀 v169 : Zone "Inaccessible" + Préférences d'évitement itinéraire](#v169)

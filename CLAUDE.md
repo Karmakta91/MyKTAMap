@@ -1770,6 +1770,90 @@ Structure type :
 - "Retirer ce plan de votre liste ?" (action destructive simple)
 - "Tracé en cours, charger un autre plan ?" (rapide, contexte évident)
 
+### 36. Unlock Gate — barrière communautaire d'accès (depuis v173)
+
+Module `js/unlockGate.js` qui intercale un écran de saisie de mot de passe entre la fin du splash et le démarrage normal de l'app. Vérification 1 fois à la 1ère installation, mémorisé en localStorage ensuite, re-demandé après reset complet.
+
+#### 36.1 ⚠️ Niveau de sécurité — barrière SOCIALE, pas une vraie auth
+
+MyKTAMap est une PWA 100% client → tout le code HTML/JS/CSS est servi en clair par Nginx ET disponible publiquement sur GitHub (`Karmakta91/MyKTAMap`). Cette gate est efficace pour :
+- ✅ Décourager les passants / robots d'indexation
+- ✅ Cadrer "communauté" → "il faut connaître le code"
+- ❌ NE PAS empêcher un attaquant motivé (hash dans le code → brute force offline trivial ; bypass `localStorage.setItem("myktamap_unlock_v1", "<hash>")` en F12 → 5 secondes)
+
+**KARMA explicitement informé et a validé.** Le mdp est communiqué hors-bande aux utilisateurs (forum, message direct).
+
+#### 36.2 Hash hardcodé (SHA-256)
+
+Le mdp en clair n'apparaît PAS dans `unlockGate.js` — juste son hash SHA-256 calculé via `crypto.subtle.digest`. Pour bumper le mdp :
+```bash
+echo -n "<nouveau-mdp>" | openssl dgst -sha256
+```
+Mettre le résultat dans la const `HASH_VALIDE` de `unlockGate.js`. Au prochain boot, les users qui avaient l'ancien hash en localStorage seront re-demandés (le hash en LS ne matchera plus le nouveau).
+
+⚠️ **Si on change le mdp** : il faut aussi changer la const `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair affiché dans la modale Reset). Ces 2 valeurs doivent rester synchronisées.
+
+#### 36.3 5 tentatives + lockout permanent
+
+Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au reload).
+- Tentatives 1-4 : message rouge "❌ Code incorrect. Tentatives restantes : N"
+- Tentative 5+ : LOCKOUT permanent
+  - Champ saisie masqué
+  - Message "🚫 Trop de tentatives" + sous-texte italique "Le brute force c'est mal, m'voyez." (clin d'œil validé KARMA)
+  - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
+  - Lien externe vers `myktamap.is-underground.fr` pour contacter l'auteur si l'user a légitimement perdu son accès
+
+#### 36.4 Position dans le flow `main.js > initApp`
+
+APRÈS `_splashEnd()`, AVANT `PlanRegistry.init()` et tout le reste :
+```js
+if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
+  await _splashEnd();
+  await window.UnlockGate.ouvrirGate();  // bloque jusqu'à unlock
+}
+```
+- User authentifié (cas le plus fréquent = 2e boot+) : gate skip silencieusement, comportement v172 strictement préservé
+- 1ère installation : splash 4s → gate → saisie → unlock → loader
+- Lockout : `ouvrirGate()` ne résout JAMAIS la Promise → `await` reste bloqué pour toujours → l'app reste sur l'écran lockout
+
+#### 36.5 Affichage du mdp dans la modale Reset
+
+Constante `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair). Affichée dans la 1ère modale de confirmation de reset via un bloc jaune accent :
+```
+🗝️ Code d'accès requis au redémarrage
+Après reset, l'app redemandera le code d'accès communautaire :
+[F!sYs44!h4z!3J]   ← code en monospace, fond noir, user-select:all
+Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer !
+```
+
+Permet à un user **déjà authentifié** de reset proprement sans perdre l'accès. C'est le SEUL endroit du code où le mdp apparaît en clair (volontaire — sinon impossible à afficher).
+
+`localStorage.clear()` de `viderCacheAppli` purge naturellement le flag `myktamap_unlock_v1` → la gate redemande au prochain boot. Pas besoin d'appeler `UnlockGate.lock()` explicitement.
+
+#### 36.6 API publique `window.UnlockGate`
+
+- `isUnlocked()` → bool — lit `localStorage["myktamap_unlock_v1"]`
+- `isLockedOut()` → bool — true si attempts ≥ 5
+- `ouvrirGate()` → Promise — résout `true` à l'unlock, NE RÉSOUT JAMAIS en lockout
+- `lock()` → void — retire les flags (utilitaire, pas appelé par défaut)
+
+#### 36.7 Workflow release / bump du mdp
+
+À chaque release qui touche au mdp, **impératif** : afficher le nouveau mdp dans `version.json > notes` (en première puce, avec warning explicite) pour que les users qui mettent à jour le voient AVANT l'update. Sinon : update → cache PWA purgé → nouveau code chargé → gate apparaît → user bloqué car n'a pas noté le mdp.
+
+Format suggéré pour la 1ère puce de v173+ :
+```
+🔐 IMPORTANT — Accès restreint communautaire activé. Si tu mets à jour,
+l'app te demandera un code d'accès au prochain démarrage. Le code est :
+F!sYs44!h4z!3J — note-le avant de mettre à jour !
+```
+
+#### 36.8 À NE PAS faire
+
+- **Ne JAMAIS** réintroduire un bouton reset depuis le lockout (bypass trivial). Si un user perd son accès → désinstaller manuellement (= friction délibérée).
+- **Ne PAS** exposer le mdp en clair via `window.UnlockGate.getPassword()` ou similaire (rendrait inutile le hash dans le code).
+- **Ne PAS** bumper le mdp sans synchroniser HASH_VALIDE (unlockGate.js) ET KTA_UNLOCK_PASSWORD_DISPLAY (interface.js) ET la première puce de version.json.
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

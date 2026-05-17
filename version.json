@@ -1,14 +1,14 @@
 {
-  "version": "v172",
+  "version": "v173",
   "released": "2026-05-17",
   "notes": [
-    "🎚️ Refonte de la liste 📚 Mes plans dans le loader. Toggle '🌐 Afficher les plans serveur' pour cacher les plans serveur découverts auto et ne voir que tes plans persos (persisté entre les sessions). Restructure : nom du plan sur ligne 1 (plus tronqué prématurément), badges V1/V2/M-LVL + storage (✅/🔐/📁) groupés sur ligne 2 pour scan visuel rapide.",
-    "ℹ️ Nouveau bouton 'Infos détaillées' par plan dans la liste. Ouvre une fenêtre qui liste TOUS les attributs (id, nom, version, auteur, fichier source, taille, persistance, mode, dates...) — pratique pour vérifier ce que l'app sait sans charger le plan. Remplace l'affichage compact sub/date qui surchargeait la liste.",
-    "💾 Sur mobile/Safari/Firefox, la case '💾 Mémoriser ce plan dans l'app' est cochée par défaut. Avant : décochée → l'user oubliait souvent → re-sélection requise à chaque chargement. Maintenant : import → mémorisé automatiquement → rechargement en 1 clic.",
-    "📐 La modale ⚙️ Réglages passe en layout 2 colonnes sur PC (≥1024px). Sur mobile : strictement inchangée. Cohérent avec la modale Doc/Aide ❓ et la page d'accueil.",
-    "🔧 Fix critique mobile landscape : les icônes de la barre de droite sortaient du cadre quand un groupe accordéon était ouvert avec plusieurs sous-actions. Maintenant scroll vertical natif si nécessaire, avec respect des safe-areas iOS (home indicator).",
-    "🧭 Fix critique boussole + tracker en mode landscape : avant, en tenant le téléphone à l'horizontale (ou en portrait inversé), le Nord indiqué par la boussole 🧭 et la rotation de l'icône tracker étaient décalés de ±90° (ou 180°). Maintenant : recalage automatique dès que tu tournes ton téléphone, le N reste en haut visuel dans les 4 orientations.",
-    "🎨 Modales de re-sélection ZIP refondues à la charte graphique. Si tu re-uploades un ZIP avec un nom différent du plan ciblé → modale rouge claire et import refusé (avant : 'Charger quand même' qui créait des incohérences silencieuses). Si juste le mode change (V1/V2 ou multi-niveau) → modale orange avec carte par discordance + choix Annuler/Continuer.",
-    "🗑️ alert.json : retrait de l'alerte gaz toxiques V2 (plus d'actualité). L'alerte info migration myktamap.fr reste active jusqu'au 15 juillet 2026."
+    "🔐 IMPORTANT — Accès restreint communautaire activé. Si tu mets à jour, l'app te demandera un code d'accès au prochain démarrage. CODE = F!sYs44!h4z!3J — note-le ou copie-le AVANT de cliquer 'Mettre à jour', sinon tu seras bloqué (5 tentatives ratées = lockout permanent qui nécessite une désinstallation manuelle).",
+    "🛣️ Mode urgence 'Je suis perdu' enrichi : en plus du cercle théorique (vitesse × temps), l'app affiche désormais en rouge clair tous les segments de routes physiquement atteignables depuis ta dernière position connue. Plus parlant que le cercle abstrait — montre les galeries précises où tu peux te trouver.",
+    "🛡️ Nouvelle option dans le mode Performance ULTRA : 'Limiter le dézoom mobile'. Cochée par défaut = comportement actuel (anti-crash). Décoche-la si tu veux le même dézoom max que sur PC pour une vraie vue d'ensemble (risque de crash sur très gros plans, à tes risques).",
+    "📐 La modale ⚙️ Réglages passe en 2 colonnes sur PC (≥1024px) — plus besoin de scroller pour voir toutes les sections.",
+    "🎚️ Liste de plans 📚 enrichie : toggle '🌐 Afficher les plans serveur' (persisté), bouton ℹ️ 'Infos détaillées' par plan, case 'Mémoriser ce plan' cochée par défaut sur mobile, badges modes (V1/V2/M-LVL/✅/🔐) regroupés sur ligne 2 sous le nom du plan.",
+    "🎨 Épuration légende : retrait des (bleu) / (rouge) / (gris) entre parenthèses sur les zones (la couleur est portée par le visuel + l'icône, pas besoin de la dupliquer en texte).",
+    "🐛 Fix critique : crash écran noir au boot quand un ZIP chargé n'avait pas de section 'icons' dans son plan-config (cas de certains ZIPs externes). Maintenant gracieusement géré.",
+    "🔍 Fix log : l'erreur '[Loader] Erreur : {}' opaque dans la console est résolue. Message désormais explicite avec stack trace utile pour diagnostiquer rapidement."
   ]
 }

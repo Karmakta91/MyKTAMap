@@ -129,6 +129,12 @@
        à l'initialisation. DOIT être chargé AVANT ces modules. -->
   <script src="js/perfUltra.js"></script>
 
+  <!-- 🗝️ UNLOCK GATE — barrière communautaire (depuis v173). Chargé tôt
+       pour que main.js puisse vérifier l'auth dès initApp. Ne charge que
+       le module (l'affichage de l'overlay est déclenché par main.js après
+       le splash). -->
+  <script src="js/unlockGate.js"></script>
+
   <!-- CHARGEUR DE PLAN (masqué par défaut, affiché si pas de plan serveur) -->
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
@@ -400,6 +406,7 @@
   <script src="js/searchPoints.js"></script>
   <script src="js/sessionExporter.js"></script>
   <script src="js/kmzExport.js"></script>
+  <script src="js/kmzImport.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/planRegistry.js"></script>
   <script src="js/sessionPersist.js"></script>
@@ -615,14 +622,36 @@
         _afficherOverlayChargement("Extraction du ZIP en cours…");
         setStatus("Extraction en cours…", false);
         try {
-          const { planConfigFile, assetFiles } = await extraireZip(zipFile);
+          // v173 : wrapper de step pour capturer une trace utile dès la source
+          // (avant que l'erreur ne se transforme en {} opaque en remontant).
+          // Sans ça, une DOMException Safari ou un Event onerror sortait du
+          // catch dans onLoadPlanClick avec message vide → console "[Loader] Erreur : {}".
+          let _step = "extraction du ZIP";
+          let planConfigFile, assetFiles;
+          try {
+            const res = await extraireZip(zipFile);
+            planConfigFile = res.planConfigFile;
+            assetFiles = res.assetFiles;
+          } catch(eExtr) {
+            const _m = (eExtr && eExtr.message) || (eExtr && eExtr.name) || String(eExtr) || "extraction ZIP échouée";
+            console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eExtr);
+            throw new Error("Étape « " + _step + " » : " + _m);
+          }
+
           _majOverlayChargement("ZIP extrait — Chargement de la carte…");
           setStatus("Chargement en cours…", false);
 
-          // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
-          // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
+          _step = "lancement de l'application (startImportedPlan)";
+          try {
+            // Note : pas de localStorage global pour perfPreset — c'est sauvegardé
+            // par plan dans PlanRegistry.setPerfPreset (via startImportedPlan)
+            await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
+          } catch(eSta) {
+            const _m = (eSta && eSta.message) || (eSta && eSta.name) || String(eSta) || "lancement échoué";
+            console.error("[chargerZipFichier] Erreur étape '" + _step + "' :", _m, "| raw :", eSta, "| stack :", eSta && eSta.stack);
+            throw new Error("Étape « " + _step + " » : " + _m);
+          }
 
-          await window.startImportedPlan(planConfigFile, assetFiles, presetChoisi, Object.assign({ zipFile: zipFile }, meta || {}));
           setStatus("Plan chargé avec succès.");
           if (window.masquerLoader) window.masquerLoader();
         } finally {
@@ -653,8 +682,19 @@
 
           await chargerZipFichier(zipFile, presetChoisi, meta);
         } catch(err) {
-          console.error("[Loader] Erreur :", err);
-          setStatus("Erreur : " + (err.message || err), true);
+          // v173 : extraction défensive pour éviter le log "[Loader] Erreur : {}"
+          // qui apparait quand l'erreur est un objet sans message (throw {} ou
+          // Promise reject avec valeur non-Error). On essaie plusieurs sources
+          // pour donner une trace utile au F12.
+          const _msg =
+            (err && err.message) ||
+            (err && err.toString && err.toString() !== "[object Object]" ? err.toString() : null) ||
+            (err && err.name) ||
+            (err && typeof err === "object" ? JSON.stringify(err, Object.getOwnPropertyNames(err)) : null) ||
+            String(err) ||
+            "Erreur inconnue";
+          console.error("[Loader] Erreur :", _msg, "| raw err :", err, "| typeof :", typeof err, "| stack :", err && err.stack);
+          setStatus("Erreur : " + _msg, true);
           loadBtn.disabled = false;
         }
       }
