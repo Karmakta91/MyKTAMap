@@ -223,7 +223,10 @@ function normaliserPoints(json) {
 const ROAD_STYLES_DATA = {
   principal:  { color: "#00ff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
   secondaire: { color: "#b000ff", weight: 5, opacity: 1, smoothFactor: 2.5 },
-  chemin:     { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 }
+  chemin:     { color: "#ffff00", weight: 5, opacity: 1, smoothFactor: 2.5 },
+  // 🪜 v1.7.1 fix : entrée jonction manquante → fallback blanc bug. Style
+  // canonique cohérent avec road.js > ROAD_STYLES.jonction (magenta pointillé).
+  jonction:   { color: "#ff4ecb", weight: 5, opacity: 1, dashArray: "10 6", smoothFactor: 2.0 }
 };
 
 // 🏗️ Multi-niveau (v148) : registres globaux de TOUS les objets Leaflet des
@@ -403,6 +406,33 @@ function ajouterPointsDepuisJSON(url, layer) {
           // pour que les intersections se filtrent par visibilité (toggle calques).
           if (typeof window.registerEmbeddedRoad === "function") {
             window.registerEmbeddedRoad(road, layer);
+          }
+
+          // 🪜 v1.7.1 fix : ronds magenta aux extrémités des jonctions embedded
+          // (parité visuelle avec road.js > renderRoads pour les jonctions session).
+          // Sans ces ronds, les jonctions interniveau converties en data layer
+          // perdaient leur signalétique d'extrémité (where start/end visually).
+          if (road.type === "jonction" && road.points.length >= 2) {
+            const endpts = [road.points[0], road.points[road.points.length - 1]];
+            endpts.forEach(function(pt) {
+              const cm = L.circleMarker(convertCoord(pt.x, pt.y), {
+                radius:      7,
+                color:       "#ff4ecb",   // bord magenta cohérent avec polyline
+                fillColor:   "#ffffff",   // intérieur blanc = contraste
+                fillOpacity: 1,
+                weight:      3,
+                interactive: false
+              }).addTo(layer);
+              // On l'enregistre dans _ktaDataPolylines avec le même level que la
+              // polyline parente pour que le filtre niveau s'applique aussi à
+              // ces marqueurs (sinon ils restent visibles quand la jonction est
+              // filtrée → incohérence visuelle).
+              window._ktaDataPolylines.push({
+                polyline:    cm,
+                level:       entry.level,
+                origOpacity: 1
+              });
+            });
           }
         });
       }
@@ -633,7 +663,11 @@ async function telechargerPlan() {
     const ROAD_STYLES_EMBED = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
+      // 🪜 v1.7.1 fix : entrée jonction manquante. Pas de dashArray dans canvas
+      // export (ctx.setLineDash requis). Ronds magenta aux extrémités gérés
+      // séparément ci-dessous comme pour les jonctions de session.
+      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
     };
 
     // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
