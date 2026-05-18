@@ -9,9 +9,67 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (98 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-7-1" open>
+<details id="v1-7-2" open>
+<summary><strong>🗓️ 18/05/2026 (suite) — 🐛 v1.7.2 : Fix jonctions interniveau blanches dans les data layers</strong></summary>
+
+PATCH bump pour corriger un bug visuel critique du mode multi-niveau remonté en test KARMA.
+
+### Le bug
+
+Quand une jonction interniveau (type `"jonction"`, normalement **magenta pointillé `#ff4ecb`** dans la session) est convertie en data layer via 🔄 sessionExporter Conversion puis réintégrée dans un plan (ou directement embedded via plan-config.json), elle apparaissait **en blanc** au lieu de magenta. Idem dans les exports PNG des roads embedded (mode rapide ET avancé).
+
+### Root cause
+
+**3 tables de styles dans le projet n'avaient pas d'entrée `jonction`** :
+
+| Fichier | Table | Pipeline impacté |
+|---|---|---|
+| `js/utils.js` | `ROAD_STYLES_DATA` | Rendu Leaflet runtime des roads embedded (`ajouterPointsDepuisJSON`) |
+| `js/utils.js` | `ROAD_STYLES_EMBED` | Export PNG rapide via `telechargerPlan` (pipeline embedded) |
+| `js/exporter.js` | `RS_EMBED` | Export PNG avancé via `_genererCanvasExport` (pipeline embedded) |
+
+Le fallback `|| { color: "#ffffff", weight: 5 }` → blanc. Les jonctions de session marchaient (gérées par `road.js > ROAD_STYLES` qui inclut bien `jonction` depuis v148), mais aucune jonction "convertie en data" ne ressortait correctement.
+
+### Fix
+
+Ajout de l'entrée `jonction` (magenta `#ff4ecb`) dans les 3 tables, cohérent avec le style canonique `road.js > ROAD_STYLES.jonction` :
+- `ROAD_STYLES_DATA` : `dashArray: "10 6"` pour les pointillés Leaflet (SVG)
+- `ROAD_STYLES_EMBED` / `RS_EMBED` : pas de dashArray (canvas `ctx.setLineDash` requis, pas géré dans ces pipes — choix v169 documenté). Trait plein magenta + ronds blanc/magenta aux extrémités font suffisamment signal visuel.
+
+### Bonus : ronds magenta aux extrémités des jonctions embedded
+
+Ajout dans `utils.js > ajouterPointsDepuisJSON` du même code que `road.js` qui dessine 2 `L.circleMarker` (∅14px, bord magenta, intérieur blanc) aux endpoints de chaque jonction. Sans ces ronds, les jonctions converties en data layer perdaient leur signalétique d'extrémité (où commence/finit le pont entre niveaux).
+
+Les marqueurs sont enregistrés dans `_ktaDataPolylines` avec le même `level` que la polyline parente → le filtre niveau s'applique aussi à ces marqueurs (sinon ils restent visibles quand la jonction est filtrée hors `visibleLevels` → incohérence visuelle).
+
+### Sites audités, pas de bug
+
+- `road.js > ROAD_STYLES` : OK (jonction présent depuis v148)
+- `utils.js > telechargerPlan > ROAD_STYLES` (export rapide **session**) : OK
+- `exporter.js > _genererCanvasExport > RS` (export avancé **session**) : OK
+- `kmzExport.js > _STYLES_KML.road_jonction` : OK
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.1"` → **`"myktamap-cache-v1.7.2"`**
+- `js/copyright.js > __MKM__.build` : `"v1.7.1"` → **`"v1.7.2"`**
+- `version.json > version` : `"v1.7.1"` → **`"v1.7.2"`** + 1 note user-facing
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `js/utils.js` | Ajout entrée `jonction` dans `ROAD_STYLES_DATA` (magenta + dashArray Leaflet) et `ROAD_STYLES_EMBED` (magenta plein canvas). Ronds magenta aux extrémités des jonctions embedded ajoutés dans `ajouterPointsDepuisJSON` (parité avec session). |
+| `js/exporter.js` | Ajout entrée `jonction` dans `RS_EMBED` (export PNG avancé pipeline embedded). |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.7.2 |
+
+---
+
+</details>
+
+<details id="v1-7-1">
 <summary><strong>🗓️ 18/05/2026 — 🚀 v1.7.1 : Icônes adaptatives au zoom + double-clic zoom marker + nouveau format de version</strong></summary>
 
 > 🔢 **Changement de format de version** : passage de `vNNN` (v173) à **`vX.Y.Z`** (v1.7.1) — schéma semver-like.
@@ -514,6 +572,7 @@ Développement sur branche dédiée `Karma_dev` (12 commits cumulés depuis mast
 
 > 🔢 Depuis le 18/05/2026, les versions suivent le format **vX.Y.Z** (semver-like). Les anciennes entrées restent en `vNNN` (historique).
 
+- [🗓️ 18/05/2026 (suite) — 🐛 v1.7.2 : Fix jonctions interniveau blanches dans les data layers](#v1-7-2)
 - [🗓️ 18/05/2026 — 🚀 v1.7.1 : Icônes adaptatives au zoom + double-clic zoom marker + nouveau format de version](#v1-7-1)
 - [🗓️ 17/05/2026 (suite) — 🚀 v173 : 🗝️ Accès restreint communautaire + Mode urgence enrichi + PerfUltra limit dézoom + UX loader](#v173)
 - [🗓️ 17/05/2026 — 🚀 v172 : Refonte UX loader + fixes mobile & PC + boussole landscape + modales charte](#v172)

@@ -1,9 +1,7 @@
 {
-  "version": "v1.7.1",
+  "version": "v1.7.2",
   "released": "2026-05-18",
   "notes": [
-    "📐 Nouveauté : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille relative au plan (avant : elles paraissaient énormes et voilaient la carte). Toggle dans ⚙️ Réglages → 🔍 Affichage si tu préfères l'ancien comportement.",
-    "🔍 Nouveauté : double-clic sur un point → la carte zoome dessus avec animation smooth (un seul clic ouvre toujours le popup, comme avant).",
-    "🌐 Alerte info mise à jour : le nouveau domaine myktamap.fr est désormais en ligne. Les deux domaines cohabitent jusqu'au 15 juillet 2026."
+    "🪜 Correction du bug de liaison de niveau : les jonctions interniveau (escaliers / pentes magenta) apparaissaient en blanc une fois intégrées comme calque de données (puits.json, chemin.json…). Elles ressortent désormais correctement en magenta pointillé avec les ronds blancs aux extrémités, comme dans la session."
   ]
 }

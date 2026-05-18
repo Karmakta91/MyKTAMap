@@ -1409,7 +1409,10 @@
     const RS_EMBED = {
       principal:   { color: "#00ff00", weight: 5, opacity: 1 },
       secondaire:  { color: "#b000ff", weight: 5, opacity: 1 },
-      chemin:      { color: "#ffff00", weight: 5, opacity: 1 }
+      chemin:      { color: "#ffff00", weight: 5, opacity: 1 },
+      // 🪜 v1.7.1 fix : entrée jonction manquante = blanc dans l'export PNG avancé
+      // des roads embedded. Magenta cohérent avec utils.js + road.js.
+      jonction:    { color: "#ff4ecb", weight: 5, opacity: 1 }
     };
 
     // Collecte des routes (embedded + editable) pour dessiner les cercles d'intersection à la fin
