@@ -264,14 +264,19 @@
       <div id="loaderStatus"></div>
 
       <!-- Mention copyright + licence (visible côté utilisateur).
-           v1.7.3 : "Flavien VIDAL" retiré (déjà présent dans les headers
-           copyright des fichiers JS critiques + meta tags <head>).
-           On garde uniquement "KARMA" (alias artistique visible) pour
-           rester cohérent avec le splash + la signature de l'app.
+           v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
+           retirée — elle reste présente dans les headers copyright des
+           fichiers JS critiques + meta tags <head>, donc la force
+           probante légale est préservée.
+           L'image karma.png (signature manuscrite, alias artistique
+           visible) est CONSERVÉE comme identité du copyright, cohérente
+           avec le splash. Le footer final affiche : "© 2026 [karma.png]
+           · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
       <div class="kta-loader-copyright">
-        <span>&copy; 2026 <strong>KARMA</strong></span>
+        <span>&copy; 2026</span>
+        <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
         <span class="kta-loader-copyright-line2">
           <span class="kta-loader-copyright-sep">·</span>
           <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>

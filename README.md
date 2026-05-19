@@ -68,9 +68,11 @@ Les fonctions `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.
 
 Avant : `© 2026 Flavien VIDAL [signature karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit · v?`
 
-Après : `© 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit · v?`
+Après : `© 2026 [signature karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit · v?`
 
-**Conservation de la valeur légale** : "Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des fichiers JS critiques (`main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`) + meta tags `<head>` de `index.html`. La force probante n'est pas affectée — seule la mention visible utilisateur est épurée. La règle CSS `.kta-loader-copyright-sig` est conservée en dormant pour usage futur potentiel.
+Seule la mention texte **"Flavien VIDAL"** (nom civil) est retirée. L'image signature `karma.png` est **conservée** comme identité visible du copyright, cohérente avec le splash.
+
+**Conservation de la valeur légale** : "Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des fichiers JS critiques (`main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`) + meta tags `<head>` de `index.html`. La force probante n'est pas affectée — seule la mention visible utilisateur côté loader est épurée.
 
 ### 🗑️ Nettoyage doc
 
@@ -86,8 +88,8 @@ Retrait du paragraphe sur le lockout du `README_USER.md` (mention du "Le brute f
 
 | Fichier | Changement |
 |---|---|
-| `index.html` | Splash subtitle `Cartographie terrain` → `Cartographie souterraine`. Header loader : ajout bouton `⚙️ Configuration`. Section "Plus d'options" supprimée. Bouton `🏗️ Générer un plan` placé directement visible. Nouvelle modale `#loaderConfigModal` (~130 lignes HTML) avec Tiling + ULTRA + Debug + Force update + Reset. Handlers correspondants. Footer copyright : retrait `<strong>Flavien VIDAL</strong>` et `<img class="kta-loader-copyright-sig">` → `<strong>KARMA</strong>`. |
-| `css/style.css` | Nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline` avec hover pulse + drop-shadow halo jaune + media query ≥1024px. Règle `.kta-loader-copyright-sig` conservée en dormant (commentaire explicatif). |
+| `index.html` | Splash subtitle `Cartographie terrain` → `Cartographie souterraine`. Header loader : ajout bouton `⚙️ Configuration`. Section "Plus d'options" supprimée. Bouton `🏗️ Générer un plan` placé directement visible. Nouvelle modale `#loaderConfigModal` (~130 lignes HTML) avec Tiling + ULTRA + Debug + Force update + Reset. Handlers correspondants. Footer copyright : retrait `<strong>Flavien VIDAL</strong>` uniquement ; l'image `<img class="kta-loader-copyright-sig">` (signature karma.png) est conservée. |
+| `css/style.css` | Nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline` avec hover pulse + drop-shadow halo jaune + media query ≥1024px. Commentaire de la règle `.kta-loader-copyright-sig` actualisé. |
 | `js/createConf.js` | Ajout bouton `📥 ZIP d'exemple` dans le header de la section "📂 Charger un ZIP existant" du planner + handler de téléchargement de `data/myktamap.zip`. |
 | `js/interface.js` | Retrait appels `${_renderMultiLevelSection()}` et `_bindMultiLevelToggle()` dans `afficherConfig`. Fonctions conservées en dead code propre avec commentaire explicatif. |
 | `CLAUDE.md`, `AI_CONTEXT.md`, `README_USER.md`, `README.md` | Mise à jour de la doc pour refléter les changements (refonte UX home, retrait M-LVL Réglages, footer, etc.). |

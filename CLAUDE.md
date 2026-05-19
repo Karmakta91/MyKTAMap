@@ -2050,11 +2050,13 @@ Fonctions `_renderMultiLevelSection` / `_bindMultiLevelToggle` (interface.js) re
 
 #### 39.5 Footer copyright
 
-`© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 ...` → `© 2026 KARMA · CC BY-NC-SA 4.0 ...`.
+`© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 ...` → `© 2026 [karma.png] · CC BY-NC-SA 4.0 ...`.
 
-"Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des 7 fichiers JS critiques + meta tags `<head>` → **force probante légale préservée**. Seule la mention visible utilisateur est épurée.
+Seule la mention texte **"Flavien VIDAL"** (nom civil) est retirée du DOM. L'image signature `karma.png` est **conservée** comme identité visible du copyright, cohérente avec son usage au splash.
 
-CSS `.kta-loader-copyright-sig` conservée en dormant (image plus dans le DOM mais règle utilisable si on veut ré-injecter la signature ailleurs un jour).
+"Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des 7 fichiers JS critiques + meta tags `<head>` → **force probante légale préservée**. Seule la mention visible utilisateur côté loader est épurée.
+
+CSS `.kta-loader-copyright-sig` toujours active (l'image reste dans le DOM, juste sans le nom civil à côté).
 
 #### 39.6 Titre stylisé de la home
 
