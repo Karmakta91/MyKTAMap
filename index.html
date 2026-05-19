@@ -1817,14 +1817,106 @@
       // version. Préserve TOUTES les données user (localStorage,
       // IndexedDB, sessions). Helper window.mettreAJourCodeSeul existe
       // déjà depuis l'UpdateChecker — on le réutilise tel quel.
+      //
+      // 🆕 v1.7.3 (fix KARMA) : garde-fou de confirmation. Avant : un seul
+      // clic déclenchait le pipeline (ping → purge cache → reload). Trop
+      // facile à déclencher par erreur, et l'action implique un reload
+      // immédiat. Maintenant : modale custom (pattern `kta-readme-modal-
+      // overlay`) qui explique ce qui se passe + ce qui est préservé,
+      // demande confirmation explicite. Reste plus léger que le double
+      // confirm du Reset complet — c'est cohérent avec la sémantique
+      // "douce" de l'action (rien n'est supprimé).
+      //
+      // Note : on ne réplique PAS le ping internet ici — il existe déjà
+      // dans `mettreAJourCodeSeul()` (cf. js/interface.js ligne 1859)
+      // qui affiche `_softUpdateOfflineWarning()` si offline.
       const forceUpdateBtn = document.getElementById("loaderForceUpdateBtn");
       if (forceUpdateBtn) {
         forceUpdateBtn.addEventListener("click", function() {
-          if (typeof window.mettreAJourCodeSeul === "function") {
-            window.mettreAJourCodeSeul();
-          } else {
-            setStatus("Fonction de mise à jour indisponible", true);
+          _afficherConfirmForceUpdate().then(function(ok) {
+            if (!ok) return;
+            if (typeof window.mettreAJourCodeSeul === "function") {
+              window.mettreAJourCodeSeul();
+            } else {
+              setStatus("Fonction de mise à jour indisponible", true);
+            }
+          });
+        });
+      }
+
+      // Modale de confirmation pour Force update douce.
+      // Promise<boolean> : true = continuer, false = annuler.
+      // Pattern Promise-based identique aux modales de re-sélection ZIP
+      // (cf. CLAUDE.md §35) — fermable via ✕ / backdrop / Échap / Annuler.
+      function _afficherConfirmForceUpdate() {
+        return new Promise(function(resolve) {
+          // Cleanup éventuel d'une instance précédente
+          const existing = document.getElementById("kta-force-update-confirm");
+          if (existing) existing.remove();
+
+          const overlay = document.createElement("div");
+          overlay.id = "kta-force-update-confirm";
+          overlay.className = "kta-readme-modal-overlay";
+          overlay.style.display = "flex";
+
+          // Accent bleu (info, action non-destructive) — différencie de la
+          // modale de Reset qui est rouge (action destructive).
+          overlay.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:480px; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
+                '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
+                '<button class="kta-readme-modal-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+                '<p style="margin:0 0 14px 0; line-height:1.55;">' +
+                  'Cette action va <strong>purger le cache des assets</strong> ' +
+                  '(HTML, JS, CSS, icônes) et <strong>recharger l\'application</strong> ' +
+                  'pour télécharger la dernière version depuis le serveur.' +
+                '</p>' +
+                '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Préservé</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li>Tes plans mémorisés</li>' +
+                    '<li>Sessions auto-save</li>' +
+                    '<li>Préférences (perf, debug, etc.)</li>' +
+                    '<li>Code d\'accès communautaire</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
+                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">⚠️ Conditions</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li><strong>Connexion Internet active</strong> (vérifiée juste après)</li>' +
+                    '<li>Reload immédiat — ferme bien tes onglets / sessions sensibles avant</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+                  'Si tu n\'es pas sûr de la nécessité : pas grave, tu peux annuler. ' +
+                  'L\'app reste utilisable sur sa version actuelle.' +
+                '</p>' +
+              '</div>' +
+              '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
+                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-fu-cancel">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary" type="button" id="kta-fu-ok">🔄 Continuer</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+
+          function _close(result) {
+            try { overlay.remove(); } catch(e) {}
+            document.removeEventListener("keydown", _onKey);
+            resolve(result);
           }
+          function _onKey(e) {
+            if (e.key === "Escape") _close(false);
+          }
+          document.addEventListener("keydown", _onKey);
+
+          overlay.addEventListener("click", function(e) {
+            if (e.target === overlay) _close(false);
+          });
+          document.getElementById("kta-fu-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-fu-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-fu-ok").addEventListener("click", function() { _close(true); });
         });
       }
 

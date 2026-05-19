@@ -48,11 +48,13 @@ C'était éparpillé et pas clair pour l'user. Refonte :
 
 ### 🆕 Force update douce (reset lite)
 
-Nouveau bouton `🔄 Force update` dans la modale Configuration. Reprend le pipeline `window.mettreAJourCodeSeul()` (existant, utilisé par le badge version cliquable) : ping internet → SW skipWaiting → caches.delete → reload.
+Nouveau bouton `🔄 Force update` dans la modale Configuration. Reprend le pipeline `window.mettreAJourCodeSeul()` (existant, utilisé par le badge version cliquable) : confirmation utilisateur → ping internet → SW skipWaiting → caches.delete → reload.
 
 **Différence avec `💥 Tout réinitialiser`** :
 - **Force update douce** : purge le **cache PWA** (code app) mais **garde tes données** (localStorage, IndexedDB, plans mémorisés, sessions auto-save). Utile si tu suspectes que ton app reste sur une vieille version après une release.
 - **Tout réinitialiser** : purge **TOUT** (cache + localStorage + IndexedDB + plans + sessions + unlock gate). Retour état usine.
+
+**Garde-fou de confirmation** *(ajouté en cours de v1.7.3)* : avant le déclenchement, une modale custom Promise-based (`_afficherConfirmForceUpdate` dans `index.html`, pattern `.kta-readme-modal-overlay` avec accent bleu info) explique ce qui va se passer + ce qui est préservé + besoin d'une connexion Internet active. L'action étant non-destructive, **1 seule étape de confirmation** (vs 2 pour le Reset). Fermable via ✕ / backdrop / Échap / bouton Annuler. Le ping Internet reste dans `mettreAJourCodeSeul` côté `interface.js` (offline-warning si pas connecté).
 
 ### 🏗️ Multi-niveau (M-LVL) — Activation uniquement via le générateur
 

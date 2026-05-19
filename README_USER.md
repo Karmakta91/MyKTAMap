@@ -270,7 +270,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 3. **🛠️ Debug** — bouton **🐛 Logs détaillés** (toggle verbose mode).
 
-4. **🔄 Force update douce** — re-télécharge silencieusement la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active.
+4. **🔄 Force update douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
 5. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
 

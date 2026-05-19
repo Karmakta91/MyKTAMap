@@ -2021,7 +2021,15 @@ Différences fondamentales avec `viderCacheAppli()` :
 | localStorage | ❌ Préservé | ✅ Purgé |
 | IndexedDB (plans mémorisés, sessions) | ❌ Préservé | ✅ Purgé |
 | Unlock Gate (code d'accès) | ❌ Préservé | ✅ Reset (re-demandé au boot) |
-| Confirmation | ❌ Aucune (action douce) | ✅ Double confirm + ping internet |
+| Confirmation | ✅ Modale simple (1 étape) | ✅ Double confirm |
+| Ping internet | ✅ (interne à `mettreAJourCodeSeul`) | ✅ (avant la double confirm) |
+
+**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, index.html) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
+- Ce qui va se passer : purge cache des assets + reload + re-download
+- Ce qui est préservé : plans, sessions, prefs, unlock gate
+- Conditions : connexion Internet active (vérifiée juste après par `mettreAJourCodeSeul`), reload immédiat
+
+L'action est non-destructive donc 1 étape de confirmation suffit (différent du Reset qui en a 2 + ping pré-modale). Le ping Internet vit toujours dans `mettreAJourCodeSeul` côté `interface.js > _softUpdateOfflineWarning`, pas dupliqué dans le handler du bouton.
 
 Use case : user signale "l'app n'a pas la dernière feature" → un Force update douce force un re-fetch du SW + caches.delete + reload, sans perdre ses données. Ne pas confondre avec un vrai reset.
 
