@@ -1593,8 +1593,6 @@ function afficherConfig() {
           </div>
         </div>
 
-        ${_renderMultiLevelSection()}
-
         ${_renderPerfUltraSection()}
 
         <div class="kta-cfg-actions-bar">
@@ -1615,8 +1613,13 @@ function afficherConfig() {
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // 🏗️ Multi-niveau : bind du toggle (lit/ecrit dans PlanRegistry)
-  _bindMultiLevelToggle();
+  // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
+  // uniquement via le générateur de plan désormais. Les fonctions
+  // _renderMultiLevelSection et _bindMultiLevelToggle restent définies
+  // dans le code pour rétro-compat (lecture) mais ne sont plus appelées.
+  // La cascade APP_CONFIG.multiLevel ← PlanRegistry[id].multiLevel ← PLAN_CONFIG.plan.multiLevel
+  // reste fonctionnelle (cf §26 CLAUDE.md) — un user qui avait toggle via
+  // Réglages avant v1.7.3 garde son état persisté en PlanRegistry.
 }
 
 function appliquerConfig() {

@@ -848,17 +848,29 @@ Feature opt-in **par plan** pour gérer les carrières/galeries à plusieurs ét
 
 ```
 APP_CONFIG.multiLevel ←
-  PlanRegistry[id].multiLevel       (set explicitement via ⚙️ Réglages, prime)
+  PlanRegistry[id].multiLevel       (legacy ≤ v1.7.2 — UI Réglages retirée v1.7.3
+                                     mais lecture conservée pour rétro-compat)
   ↓ sinon
-  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json, défaut du ZIP généré)
+  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json — SOURCE UNIQUE
+                                     depuis v1.7.3, déclaré via le 📦 Générateur)
   ↓ sinon
   false                              (retro-compat plans v147)
 ```
 
-**3 voies pour activer** :
-- ⚙️ Réglages → toggle `🏗️ Mode multi-niveau (avancé)` (par plan, stocké dans `PlanRegistry`)
+**2 voies pour activer** (depuis v1.7.3) :
 - Au moment de la création/modification d'un plan via 📦 Générateur → case `🏗️ Plan multi-niveau` → ajoute `plan.multiLevel: true` dans `plan-config.json`
 - Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
+
+> 🔧 **Changement v1.7.3** (KARMA, 19/05/2026) : retrait du toggle ⚙️ Réglages
+> qui permettait d'activer/désactiver le multi-niveau pour un plan déjà chargé.
+> Raison : forcer une déclaration explicite au moment du plan (générateur ou
+> plan-config.json édité), évite les états incohérents où un plan "non
+> multi-niveau" est activé runtime puis réinitialisé au reload. Les fonctions
+> `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.js`) restent
+> définies dans le code (dead code propre) mais ne sont plus appelées dans
+> `afficherConfig`. La cascade `PlanRegistry[id].multiLevel` reste lue pour les
+> users qui avaient toggle via l'ancien UI avant v1.7.3 (leur préférence est
+> persistée et continue de marcher).
 
 #### 26.2 Data model
 

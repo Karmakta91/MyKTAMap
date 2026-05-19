@@ -871,15 +871,15 @@ Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** 
 
 ### Activer le mode pour un plan
 
-**3 façons** :
+**2 façons** (depuis v1.7.3) :
 
-1. **Via ⚙️ Réglages** (recommandé sur un plan existant) : ouvre la modale ⚙️ Réglages → section **🏗️ Mode multi-niveau (avancé)** → coche la case. **Reload** la page pour que la barre latérale prenne en compte le changement.
+1. **À la création/modification d'un plan** (via 📦 Créer un plan ou ✏️ Modifier un plan existant) : coche la case **🏗️ Plan multi-niveau (avancé)** dans la section "Informations du plan". Le ZIP généré contient le flag → à l'import, le mode s'active automatiquement.
 
-2. **À la création d'un plan** (via 📦 Créer un plan) : coche la case **🏗️ Plan multi-niveau (avancé)** dans la section "Informations du plan". Le ZIP généré contient le flag → tout utilisateur qui le chargera aura le mode activé par défaut.
+2. **Manuellement dans plan-config.json** : ajoute `"multiLevel": true` dans la section `plan`, sauvegarde, recharge le plan.
 
-3. **Manuellement dans plan-config.json** : ajouter `"multiLevel": true` dans la section `plan`.
+> 🔧 **Changement v1.7.3** : le toggle ⚙️ Réglages pour activer/désactiver le multi-niveau sur un plan déjà chargé a été retiré. Pour activer le mode sur un plan existant, **passe par le générateur** : 🏗️ Modifier un plan existant → coche **🏗️ Plan multi-niveau** → 📦 Génère le ZIP mis à jour → recharge-le. Ça force une déclaration explicite et évite les incohérences entre état runtime et `plan-config.json`.
 
-> 💡 Tu peux toujours désactiver le mode via ⚙️ Réglages → décocher → reload. Les tracés existants gardent leur info de niveau (cachée), tu peux la réactiver plus tard sans rien perdre.
+> 💡 Si tu veux désactiver le mode multi-niveau d'un plan, passe aussi par le générateur (décoche la case et re-génère). Les tracés existants gardent leur info de niveau dans le JSON (cachée si la feature est OFF) — réactiver plus tard sans rien perdre.
 
 ### La pastille "Niveau actif"
 
