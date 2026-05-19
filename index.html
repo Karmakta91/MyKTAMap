@@ -407,6 +407,25 @@
           </p>
         </div>
 
+        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
+             Purge uniquement le cache Service Worker (assets HTTP) puis
+             reload → l'app récupère la dernière version sans toucher aux
+             données utilisateur (session, plans mémorisés, préférences,
+             code d'accès). Utile pour forcer une update même sans popup
+             ou si la détection version a foiré. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🔄 Mise à jour</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
+            re-télécharge la dernière version depuis le serveur. <strong>Tes données
+            sont préservées</strong> (plans mémorisés, sessions, préférences, code
+            d'accès). Nécessite une connexion Internet active.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;">
+            🔄 Forcer la mise à jour
+          </button>
+        </div>
+
         <!-- 💥 Reset complet -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">💥 Réinitialisation</div>
@@ -1783,6 +1802,22 @@
             window.viderCacheAppli();
           } else {
             setStatus("Fonction de réinitialisation indisponible", true);
+          }
+        });
+      }
+
+      // === BOUTON "🔄 FORCER LA MISE À JOUR" (v1.7.3) ===
+      // "Reset lite" : purge cache SW + reload → récupère la dernière
+      // version. Préserve TOUTES les données user (localStorage,
+      // IndexedDB, sessions). Helper window.mettreAJourCodeSeul existe
+      // déjà depuis l'UpdateChecker — on le réutilise tel quel.
+      const forceUpdateBtn = document.getElementById("loaderForceUpdateBtn");
+      if (forceUpdateBtn) {
+        forceUpdateBtn.addEventListener("click", function() {
+          if (typeof window.mettreAJourCodeSeul === "function") {
+            window.mettreAJourCodeSeul();
+          } else {
+            setStatus("Fonction de mise à jour indisponible", true);
           }
         });
       }
