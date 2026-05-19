@@ -138,12 +138,13 @@ jobs:
           RELEASED="${{ steps.current.outputs.released }}"
 
           # Lien compare entre tag précédent et nouveau, si tag précédent existe.
+          # ⚠️ Single-line avec $'\n\n' (ANSI-C quoting) : une ligne vide à
+          # indentation 0 dans un block scalar `|` ferme le scalar côté YAML
+          # parser. On évite ça en mettant les \n en bash plutôt qu'en YAML.
           COMPARE_LINK=""
           if [ -n "$PREV" ] && [ "$PREV" != "null" ]; then
             REPO="${{ github.repository }}"
-            COMPARE_LINK="
-
-[📊 Voir tous les commits depuis ${PREV}](https://github.com/${REPO}/compare/${PREV}...${CUR})"
+            COMPARE_LINK=$'\n\n[📊 Voir tous les commits depuis '"$PREV"$'](https://github.com/'"$REPO"$'/compare/'"$PREV"$'...'"$CUR"$')'
           fi
 
           # Écriture dans un fichier temporaire — pas d'interprétation shell
