@@ -81,27 +81,21 @@ jobs:
           echo "[release] Version précédente : ${PREV:-<aucune>}"
 
       # ----------------------------------------------------------------
-      # 2. Skip si version inchangée (ex: l'user a corrigé une typo dans
-      #    les notes sans bumper le numéro → on ne crée pas un duplicate tag).
+      # 2. Check unique et robuste : la release existe-t-elle déjà ?
       # ----------------------------------------------------------------
-      - name: Vérifier que la version a changé
+      # ⚠️ HISTORIQUE — fix v1.7.3 :
+      # Avant, on avait 2 checks séparés :
+      #   - "Vérifier que la version a changé" (HEAD vs HEAD~1)
+      #   - "Vérifier que le tag n'existe pas déjà"
+      # Problème : si le workflow a échoué pour une raison X au premier push
+      # du bump, un commit de fix qui ne re-bump pas la version va re-trigger
+      # le workflow MAIS le 1er check va voir "version inchangée → skip" →
+      # impossible de récupérer la release manquante sans rebumper la version.
+      # Solution : un seul check basé sur l'existence de la release. Si elle
+      # n'existe pas pour la version courante → on tente de la créer. Plus
+      # robuste pour les cas de retry.
+      - name: Vérifier que la release n'existe pas déjà
         id: check
-        run: |
-          if [ "${{ steps.current.outputs.version }}" = "${{ steps.previous.outputs.version }}" ]; then
-            echo "[release] Version inchangée → skip"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "[release] Bump détecté : ${{ steps.previous.outputs.version }} → ${{ steps.current.outputs.version }}"
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # ----------------------------------------------------------------
-      # 3. Skip aussi si le tag existe déjà (ex: l'user a déjà taggué
-      #    manuellement avant que le workflow tourne).
-      # ----------------------------------------------------------------
-      - name: Vérifier que le tag n'existe pas déjà
-        id: tag_check
-        if: steps.check.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -114,10 +108,26 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Step legacy renommée pour compat avec les `if:` plus bas qui
+      # référencent `steps.tag_check.outputs.skip`. On expose la même valeur
+      # que `check` (== unique source de vérité maintenant).
+      - name: Alias tag_check pour compat
+        id: tag_check
+        run: |
+          echo "skip=${{ steps.check.outputs.skip }}" >> "$GITHUB_OUTPUT"
+
       # ----------------------------------------------------------------
-      # 4. Formate les notes user-facing depuis version.json en markdown
+      # 4. Formate les release notes dans un FICHIER (pas un string shell)
       # ----------------------------------------------------------------
-      - name: Formater les release notes
+      # ⚠️ HISTORIQUE — bug v1.7.3 (19/05/2026) :
+      # Avant, on injectait les notes via `--notes "${{ steps.notes.outputs.body }}"`
+      # ce qui marchait pour des notes simples, mais cassait dès qu'une note
+      # contenait un guillemet double (ex: tagline "Cartographie souterraine").
+      # Le shell fermait prématurément le string → exit code 1 sur la commande
+      # `gh release create`. Solution : écrire les notes dans un fichier markdown
+      # temporaire et utiliser `--notes-file`. Le contenu n'est plus interprété
+      # par le shell, donc robuste aux guillemets, backticks, $(), etc.
+      - name: Formater les release notes dans un fichier
         id: notes
         if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
         run: |
@@ -125,29 +135,38 @@ jobs:
           NOTES=$(jq -r '.notes // [] | map("- " + .) | join("\n")' version.json)
           PREV="${{ steps.previous.outputs.version }}"
           CUR="${{ steps.current.outputs.version }}"
+          RELEASED="${{ steps.current.outputs.released }}"
 
           # Lien compare entre tag précédent et nouveau, si tag précédent existe.
           COMPARE_LINK=""
           if [ -n "$PREV" ] && [ "$PREV" != "null" ]; then
             REPO="${{ github.repository }}"
-            COMPARE_LINK=$'\n\n[📊 Voir tous les commits depuis '"$PREV"$'](https://github.com/'"$REPO"$'/compare/'"$PREV"$'...'"$CUR"$')'
+            COMPARE_LINK="
+
+[📊 Voir tous les commits depuis ${PREV}](https://github.com/${REPO}/compare/${PREV}...${CUR})"
           fi
 
-          # Écrit le body en multi-line output (syntaxe heredoc GitHub Actions)
+          # Écriture dans un fichier temporaire — pas d'interprétation shell
+          # sur le contenu, robuste aux caractères spéciaux (", `, $(), etc.).
+          NOTES_FILE="${{ runner.temp }}/release-notes.md"
           {
-            echo "body<<RELEASE_EOF"
             echo "## 📋 Nouveautés"
             echo ""
             echo "$NOTES"
             echo ""
             echo "---"
-            echo "_Publié le ${{ steps.current.outputs.released }}_"
+            echo "_Publié le ${RELEASED}_"
             echo "$COMPARE_LINK"
-            echo "RELEASE_EOF"
-          } >> "$GITHUB_OUTPUT"
+          } > "$NOTES_FILE"
+
+          echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+          echo "[release] Notes écrites dans $NOTES_FILE :"
+          echo "----------------------------------------"
+          cat "$NOTES_FILE"
+          echo "----------------------------------------"
 
       # ----------------------------------------------------------------
-      # 5. Crée le tag + la release GitHub
+      # 5. Crée le tag + la release GitHub via --notes-file (robuste)
       # ----------------------------------------------------------------
       - name: Créer le tag et la release
         if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
@@ -159,9 +178,11 @@ jobs:
           # commit courant (HEAD = commit du bump version.json sur main).
           # `--latest` marque cette release comme la dernière (utile pour le badge
           # "Latest" sur la page GitHub).
+          # `--notes-file` lit depuis un fichier markdown → aucune interprétation
+          # shell sur le contenu (cf. fix v1.7.3 du bug guillemets internes).
           gh release create "$VERSION" \
             --title "MyKTAMap $VERSION" \
-            --notes "${{ steps.notes.outputs.body }}" \
+            --notes-file "${{ steps.notes.outputs.notes_file }}" \
             --target main \
             --latest
           echo "[release] ✅ Release $VERSION créée avec succès"
