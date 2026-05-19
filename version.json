@@ -2,12 +2,12 @@
   "version": "v1.7.3",
   "released": "2026-05-19",
   "notes": [
-    "🎨 Refonte de la page d'accueil : nouveau titre stylisé avec logo et tagline \"Cartographie souterraine\", boutons réorganisés.",
+    "🎨 Refonte de la page d'accueil : nouveau titre stylisé avec logo et tagline « Cartographie souterraine », boutons réorganisés.",
     "⚙️ Nouvelle modale Configuration unique dans le header du loader : regroupe Tiling, ULTRA, Debug + 📋 Afficher les logs, 🔄 Force update douce, 💥 Reset.",
-    "🔄 Bouton \"Forcer la mise à jour\" (reset lite) : re-télécharge la dernière version du code sans toucher à tes plans / sessions / préférences. Confirmation préalable obligatoire.",
+    "🔄 Bouton « Forcer la mise à jour » (reset lite) : re-télécharge la dernière version du code sans toucher à tes plans, sessions ou préférences. Confirmation préalable obligatoire.",
     "🔒 Le bouton 🗑️ Réinitialiser est retiré de la modale ⚙️ Réglages en mode carte. Le reset complet n'est désormais accessible que depuis la modale Configuration du loader (évite les déclenchements accidentels une fois un plan chargé).",
-    "🏗️ Le multi-niveau s'active désormais uniquement via le 📦 Générateur (case \"Plan multi-niveau\") ou par édition manuelle de plan-config.json. Le toggle dans ⚙️ Réglages a été retiré.",
-    "🪶 Footer copyright épuré : retrait de la mention texte \"Flavien VIDAL\" ; la signature manuscrite KARMA est conservée.",
+    "🏗️ Le multi-niveau s'active désormais uniquement via le 📦 Générateur (case « Plan multi-niveau ») ou par édition manuelle de plan-config.json. Le toggle dans ⚙️ Réglages a été retiré.",
+    "🪶 Footer copyright épuré : retrait de la mention texte du nom civil ; la signature manuscrite KARMA est conservée.",
     "🐛 Fix : la home remonte au top à chaque retour depuis un plan (avant : restait à la position de scroll précédente)."
   ]
 }
