@@ -670,6 +670,14 @@ function afficherLoader() {
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";
+    // 🆕 v1.7.3 : remonter au top à chaque ouverture du loader.
+    // Sans ça, si l'user était scrollé en bas (ex: section 📚 Mes plans),
+    // chargeait un plan, puis revenait au loader → la home s'affichait au
+    // même niveau de scroll qu'avant chargement, masquant le titre/header.
+    // overflow-y vit sur #planLoaderOverlay (cf. CSS), donc c'est lui le
+    // scroll container, pas le body. scrollTop = 0 est instantané (pas
+    // smooth) car on veut un reset perceptif net "retour à l'accueil".
+    overlay.scrollTop = 0;
     const btn = document.getElementById("loadPlanBtn");
     if (btn) btn.disabled = false;
     const status = document.getElementById("loaderStatus");

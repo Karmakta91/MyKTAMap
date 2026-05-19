@@ -89,7 +89,7 @@
     <div id="splashBox">
       <img src="icon/mkm-full.png" alt="MyKTAMap" id="splashLogo">
       <div id="splashTitle">MyKTAMap</div>
-      <div id="splashSubtitle">Cartographie terrain</div>
+      <div id="splashSubtitle">Cartographie souterraine</div>
 
       <div id="splashProgressTrack">
         <div id="splashProgressBar"></div>
@@ -139,12 +139,24 @@
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
 
-      <!-- HEADER : titre + boutons utilitaires (alerte, doc) -->
+      <!-- HEADER : titre stylisé (logo + nom + tagline) + boutons utilitaires
+           (alerte, doc). v1.7.3 — refonte D validée KARMA : logo rose des vents
+           jaune (mkm-full.png, déjà utilisé au splash → cohérence identité),
+           wordmark, tagline "Cartographie souterraine" en sous-titre italique.
+           Tous les bonus déco activés (ombre jaune accent, hover pulse,
+           taille +1024px). -->
       <div class="loader-header">
-        <span class="loader-titre">📦 MyKTAMap</span>
+        <div class="loader-titre">
+          <img src="icon/mkm-full.png" alt="" class="loader-titre-logo" draggable="false">
+          <div class="loader-titre-textes">
+            <span class="loader-titre-nom">MyKTAMap</span>
+            <span class="loader-titre-tagline">Cartographie souterraine</span>
+          </div>
+        </div>
         <div class="loader-header-actions">
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
+          <button class="loader-btn-help" id="loaderConfigBtn" type="button" title="Configuration (perf, debug, reset)">⚙️</button>
         </div>
       </div>
 
@@ -228,129 +240,18 @@
           </span>
         </div>
 
-        <!-- 🎚️ Box déroulable groupant les réglages de performance :
-             - Tiling (preset image au chargement, par plan)
-             - Mode Performance ULTRA (toggles tracés/markers, global) -->
-        <details class="kta-loader-perf-drawer" id="loaderPerfDrawer">
-          <summary class="kta-loader-perf-drawer-titre">
-            <span>🎚️ Réglages de performance</span>
-            <span class="kta-loader-perf-drawer-chevron">▾</span>
-          </summary>
-          <div class="kta-loader-perf-drawer-corps">
-
-            <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
-            <div class="kta-perf-wrap">
-              <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
-              <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
-                <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
-                </button>
-                <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                  <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
-                </button>
-              </div>
-              <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-              <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-            </div>
-
-            <!-- ─── Séparateur visuel ─── -->
-            <hr class="kta-loader-perf-sep">
-
-            <!-- ─── Mode Performance ULTRA : toggles tracés/markers, préférence globale ─── -->
-            <div class="kta-perf-wrap">
-              <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
-              <p class="kta-loader-perf-hint">
-                Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
-                Préférence globale, conservée entre sessions.
-              </p>
-
-              <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
-                <input type="checkbox" id="loader_perf_ultra">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
-                  <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
-                </span>
-              </label>
-
-              <div class="kta-loader-perf-divider"></div>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_decim">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
-                  <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-                <input type="checkbox" id="loader_perf_animOff">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
-                  <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_noIntersect">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
-                  <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_noTooltips">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
-                  <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_slowSave">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
-                  <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_viewportCull">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
-                  <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
-                </span>
-              </label>
-            </div>
-
-          </div>
-        </details>
-
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
           <button id="loadPlanBtn" type="button">▶️ Charger ce plan</button>
         </div>
       </div>
 
-          <!-- ACTIONS AVANCÉES — en bas de la colonne droite (déplié par défaut sur PC) -->
-          <div class="loader-section-head loader-section-head-collapse" id="advancedHead">
-            <span>⚙️ Plus d'options</span>
-            <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
-          </div>
-          <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
+          <!-- 🏗️ Bouton "Générer un plan" — accessible directement (sortie de
+               'Plus d'options' v1.7.3). Cohérent avec son importance : c'est
+               la voie d'entrée pour créer/modifier un plan, pas une option
+               avancée cachée. -->
+          <div class="loader-secondary-actions">
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
-            <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
-            <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
-            <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
           </div>
 
         </div><!-- /.loader-col-actions -->
@@ -363,12 +264,18 @@
       <div id="loaderStatus"></div>
 
       <!-- Mention copyright + licence (visible côté utilisateur).
-           "(alias KARMA)" est remplacé par l'image signature karma.png
-           pour un rendu plus identitaire et consistant avec le splash.
+           v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
+           retirée — elle reste présente dans les headers copyright des
+           fichiers JS critiques + meta tags <head>, donc la force
+           probante légale est préservée.
+           L'image karma.png (signature manuscrite, alias artistique
+           visible) est CONSERVÉE comme identité du copyright, cohérente
+           avec le splash. Le footer final affiche : "© 2026 [karma.png]
+           · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
       <div class="kta-loader-copyright">
-        <span>&copy; 2026 <strong>Flavien VIDAL</strong></span>
+        <span>&copy; 2026</span>
         <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
         <span class="kta-loader-copyright-line2">
           <span class="kta-loader-copyright-sep">·</span>
@@ -378,6 +285,174 @@
           <span class="kta-loader-copyright-sep">·</span>
           <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" title="Version de l'app">v?</span>
         </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 v1.7.3 : Modale "⚙️ Configuration" du loader.
+       Regroupe tout ce qui était auparavant éparpillé :
+         • Drawer "🎚️ Réglages de performance" (Tiling + ULTRA)
+         • Bouton 🐛 Logs détaillés
+         • Bouton 💥 Tout réinitialiser
+       Cachée par défaut (display:none), affichée au clic sur le bouton ⚙️
+       du header loader. Pattern .kta-readme-modal-overlay pour cohérence
+       avec les autres modales du projet. -->
+  <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
+    <div class="kta-readme-modal-boite" style="max-width:680px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">⚙️ Configuration</span>
+        <button class="kta-panneau-close" id="loaderConfigClose">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
+        <div class="kta-aide-section">
+
+          <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
+          <div class="kta-perf-wrap">
+            <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
+            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
+              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
+              </button>
+              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
+                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
+              </button>
+            </div>
+            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
+            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
+          </div>
+
+          <hr class="kta-loader-perf-sep">
+
+          <!-- ─── Mode Performance ULTRA : toggles tracés/markers ─── -->
+          <div class="kta-perf-wrap">
+            <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
+            <p class="kta-loader-perf-hint">
+              Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
+              Préférence globale, conservée entre sessions.
+            </p>
+
+            <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
+              <input type="checkbox" id="loader_perf_ultra">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
+                <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
+              </span>
+            </label>
+
+            <div class="kta-loader-perf-divider"></div>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_decim">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
+                <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+              <input type="checkbox" id="loader_perf_animOff">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
+                <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_noIntersect">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
+                <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_noTooltips">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
+                <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_slowSave">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
+                <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_viewportCull">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
+                <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 🐛 Logs détaillés
+             v1.7.3 (suite KARMA) : ajout du bouton 📋 Afficher les logs juste
+             en-dessous du toggle ON/OFF. Avant, l'user devait charger un plan
+             puis ouvrir ⚙️ Réglages > 🐛 Logs pour consulter le buffer. Désormais
+             le buffer est accessible directement depuis la home, ce qui est
+             pratique en cas de bug bloquant au chargement (l'user n'a pas accès
+             à la modale ⚙️ Réglages in-app). -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🛠️ Debug</div>
+          <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false" style="width:100%;">
+            🐛 Logs détaillés : <span id="loaderDebugState">OFF</span>
+          </button>
+          <button class="loader-btn-secondary" type="button" id="loaderShowLogsBtn" style="width:100%; margin-top:8px;">
+            📋 Afficher les logs
+          </button>
+          <p class="kta-loader-perf-hint" style="margin-top:8px;">
+            Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).
+          </p>
+        </div>
+
+        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
+             Purge uniquement le cache Service Worker (assets HTTP) puis
+             reload → l'app récupère la dernière version sans toucher aux
+             données utilisateur (session, plans mémorisés, préférences,
+             code d'accès). Utile pour forcer une update même sans popup
+             ou si la détection version a foiré. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🔄 Mise à jour</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
+            re-télécharge la dernière version depuis le serveur. <strong>Tes données
+            sont préservées</strong> (plans mémorisés, sessions, préférences, code
+            d'accès). Nécessite une connexion Internet active.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;">
+            🔄 Forcer la mise à jour
+          </button>
+        </div>
+
+        <!-- 💥 Reset complet -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">💥 Réinitialisation</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            Vide TOUT le stockage de l'app (cache, plans mémorisés, sessions, préférences).
+            Cette action est <strong>irréversible</strong> et nécessite une connexion Internet pour re-télécharger les assets.
+          </p>
+          <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn" style="width:100%;">
+            💥 Tout réinitialiser
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -443,6 +518,10 @@
       const zipDropZone     = document.getElementById("zipDropZone");
       const zipFileInput    = document.getElementById("zipFile");
       const zipFileName     = document.getElementById("zipFileName");
+      // v1.7.3 : le bouton "📥 Conf exemple" a été déplacé dans la modale
+      // 🏗️ Générateur de plan (cf createConf.js). La const ci-dessous est
+      // gardée à null pour rétro-compat avec le handler plus bas (lookup
+      // null-safe). Si le bouton n'existe pas → handler skip.
       const confExBtn       = document.getElementById("loaderConfExempleBtn");
 
       // Handle FS Access courant (si l'utilisateur a sélectionné via showOpenFilePicker)
@@ -1515,6 +1594,38 @@
         });
       }
 
+      // === BOUTON ⚙️ CONFIGURATION (v1.7.3) ===
+      // Ouvre la modale unique qui regroupe Tiling perf + ULTRA + Logs + Reset.
+      // Remplace l'ancien drawer 'Réglages de performance' + la section
+      // 'Plus d'options' qui étaient éparpillés dans le loader.
+      const configBtn   = document.getElementById("loaderConfigBtn");
+      const configModal = document.getElementById("loaderConfigModal");
+      const configClose = document.getElementById("loaderConfigClose");
+      function _ouvrirLoaderConfig() {
+        if (configModal) configModal.style.display = "flex";
+      }
+      function _fermerLoaderConfig() {
+        if (configModal) configModal.style.display = "none";
+      }
+      if (configBtn && configModal) {
+        configBtn.addEventListener("click", _ouvrirLoaderConfig);
+      }
+      if (configClose) {
+        configClose.addEventListener("click", _fermerLoaderConfig);
+      }
+      if (configModal) {
+        // Click backdrop pour fermer (mais pas si on clique sur la boîte)
+        configModal.addEventListener("click", function(e) {
+          if (e.target === configModal) _fermerLoaderConfig();
+        });
+        // Escape ferme la modale (cohérent avec autres modales projet)
+        document.addEventListener("keydown", function(e) {
+          if (e.key === "Escape" && configModal.style.display !== "none") {
+            _fermerLoaderConfig();
+          }
+        });
+      }
+
       // === BOUTON 🔔 ALERTE EN COURS ===
       // Force le re-fetch de alert.json et affiche soit la modale d'alerte
       // (même si déjà acquittée), soit une modale informative "pas d'alerte".
@@ -1693,17 +1804,10 @@
         }
       })();
 
-      // === COLLAPSE "PLUS D'OPTIONS" ===
-      const advHead    = document.getElementById("advancedHead");
-      const advBox     = document.getElementById("advancedBox");
-      const advChevron = document.getElementById("advancedChevron");
-      if (advHead && advBox) {
-        advHead.addEventListener("click", function() {
-          const isOpen = advBox.style.display === "flex" || advBox.style.display === "block";
-          advBox.style.display = isOpen ? "none" : "flex";
-          if (advChevron) advChevron.textContent = isOpen ? "▾" : "▴";
-        });
-      }
+      // v1.7.3 : section "Plus d'options" retirée du loader (boutons
+      // déplacés dans la modale ⚙️ Configuration). Les IDs #advancedHead,
+      // #advancedBox, #advancedChevron n'existent plus dans le DOM.
+      // Le bloc collapse handler est retiré aussi (devenu inutile).
 
       // === BOUTON "💥 TOUT RÉINITIALISER" ===
       const resetBtn = document.getElementById("loaderResetBtn");
@@ -1714,6 +1818,139 @@
           } else {
             setStatus("Fonction de réinitialisation indisponible", true);
           }
+        });
+      }
+
+      // === BOUTON "🔄 FORCER LA MISE À JOUR" (v1.7.3) ===
+      // "Reset lite" : purge cache SW + reload → récupère la dernière
+      // version. Préserve TOUTES les données user (localStorage,
+      // IndexedDB, sessions). Helper window.mettreAJourCodeSeul existe
+      // déjà depuis l'UpdateChecker — on le réutilise tel quel.
+      //
+      // 🆕 v1.7.3 (fix KARMA) : garde-fou de confirmation. Avant : un seul
+      // clic déclenchait le pipeline (ping → purge cache → reload). Trop
+      // facile à déclencher par erreur, et l'action implique un reload
+      // immédiat. Maintenant : modale custom (pattern `kta-readme-modal-
+      // overlay`) qui explique ce qui se passe + ce qui est préservé,
+      // demande confirmation explicite. Reste plus léger que le double
+      // confirm du Reset complet — c'est cohérent avec la sémantique
+      // "douce" de l'action (rien n'est supprimé).
+      //
+      // Note : on ne réplique PAS le ping internet ici — il existe déjà
+      // dans `mettreAJourCodeSeul()` (cf. js/interface.js ligne 1859)
+      // qui affiche `_softUpdateOfflineWarning()` si offline.
+      const forceUpdateBtn = document.getElementById("loaderForceUpdateBtn");
+      if (forceUpdateBtn) {
+        forceUpdateBtn.addEventListener("click", function() {
+          _afficherConfirmForceUpdate().then(function(ok) {
+            if (!ok) return;
+            if (typeof window.mettreAJourCodeSeul === "function") {
+              window.mettreAJourCodeSeul();
+            } else {
+              setStatus("Fonction de mise à jour indisponible", true);
+            }
+          });
+        });
+      }
+
+      // === BOUTON "📋 AFFICHER LES LOGS" (v1.7.3 suite KARMA) ===
+      // Permet de consulter le buffer des logs capturés par debug.js sans
+      // avoir besoin de charger un plan d'abord. Réutilise window.afficherLogsDebug
+      // exposé par debug.js qui ouvre la modale `.kta-readme-modal-overlay`
+      // avec le buffer.
+      //
+      // Cas d'usage : bug bloquant au chargement, l'user veut envoyer un rapport
+      // sans pouvoir entrer dans l'app.
+      //
+      // Empilement DOM : la modale Configuration et la modale Logs ont le
+      // même z-index (99999 via `.kta-readme-modal-overlay`), donc c'est le
+      // DOM order qui décide. La modale Logs est appendée APRÈS, elle passe
+      // au-dessus. Au close des Logs, la modale Config est toujours là
+      // derrière → l'user retrouve son contexte sans avoir à re-ouvrir.
+      const showLogsBtn = document.getElementById("loaderShowLogsBtn");
+      if (showLogsBtn) {
+        showLogsBtn.addEventListener("click", function() {
+          if (typeof window.afficherLogsDebug === "function") {
+            window.afficherLogsDebug();
+          } else {
+            setStatus("Fonction de logs indisponible", true);
+          }
+        });
+      }
+
+      // Modale de confirmation pour Force update douce.
+      // Promise<boolean> : true = continuer, false = annuler.
+      // Pattern Promise-based identique aux modales de re-sélection ZIP
+      // (cf. CLAUDE.md §35) — fermable via ✕ / backdrop / Échap / Annuler.
+      function _afficherConfirmForceUpdate() {
+        return new Promise(function(resolve) {
+          // Cleanup éventuel d'une instance précédente
+          const existing = document.getElementById("kta-force-update-confirm");
+          if (existing) existing.remove();
+
+          const overlay = document.createElement("div");
+          overlay.id = "kta-force-update-confirm";
+          overlay.className = "kta-readme-modal-overlay";
+          overlay.style.display = "flex";
+
+          // Accent bleu (info, action non-destructive) — différencie de la
+          // modale de Reset qui est rouge (action destructive).
+          overlay.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:480px; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
+                '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
+                '<button class="kta-readme-modal-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+                '<p style="margin:0 0 14px 0; line-height:1.55;">' +
+                  'Cette action va <strong>purger le cache des assets</strong> ' +
+                  '(HTML, JS, CSS, icônes) et <strong>recharger l\'application</strong> ' +
+                  'pour télécharger la dernière version depuis le serveur.' +
+                '</p>' +
+                '<div style="background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                  '<div style="font-weight:600; color:#8cb4ff; margin-bottom:6px;">✅ Préservé</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li>Tes plans mémorisés</li>' +
+                    '<li>Sessions auto-save</li>' +
+                    '<li>Préférences (perf, debug, etc.)</li>' +
+                    '<li>Code d\'accès communautaire</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<div style="background:rgba(255,180,128,0.06); border:1px solid rgba(255,180,128,0.22); border-radius:8px; padding:10px 14px; margin-bottom:14px;">' +
+                  '<div style="font-weight:600; color:#ffb380; margin-bottom:6px;">⚠️ Conditions</div>' +
+                  '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                    '<li><strong>Connexion Internet active</strong> (vérifiée juste après)</li>' +
+                    '<li>Reload immédiat — ferme bien tes onglets / sessions sensibles avant</li>' +
+                  '</ul>' +
+                '</div>' +
+                '<p style="margin:0; font-style:italic; color:#8892a4; font-size:13px;">' +
+                  'Si tu n\'es pas sûr de la nécessité : pas grave, tu peux annuler. ' +
+                  'L\'app reste utilisable sur sa version actuelle.' +
+                '</p>' +
+              '</div>' +
+              '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end;">' +
+                '<button class="kta-btn kta-btn-ghost" type="button" id="kta-fu-cancel">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary" type="button" id="kta-fu-ok">🔄 Continuer</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+
+          function _close(result) {
+            try { overlay.remove(); } catch(e) {}
+            document.removeEventListener("keydown", _onKey);
+            resolve(result);
+          }
+          function _onKey(e) {
+            if (e.key === "Escape") _close(false);
+          }
+          document.addEventListener("keydown", _onKey);
+
+          overlay.addEventListener("click", function(e) {
+            if (e.target === overlay) _close(false);
+          });
+          document.getElementById("kta-fu-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-fu-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-fu-ok").addEventListener("click", function() { _close(true); });
         });
       }
 

@@ -8,7 +8,7 @@
 
 ## 🎯 Le projet en 30 secondes
 
-**MyKTAMap** est une application web de **cartographie terrain** (Leaflet + `L.CRS.Simple`),
+**MyKTAMap** est une application web de **cartographie souterraine** (Leaflet + `L.CRS.Simple`),
 conçue pour visualiser, annoter et exploiter des **plans à partir d'images haute résolution**,
 **sans GPS**. Cible principale : cataphiles, spéléologues, sites souterrains/industriels.
 
@@ -251,7 +251,7 @@ Total confirmations : **2** quand online, **3** quand offline.
 Accessible depuis :
 
 - ⚙️ Réglages (dans l'app)
-- ⚙️ Plus d'options (dans le loader)
+- ⚙️ Configuration (dans le loader, depuis v1.7.3 — cf §39)
 
 ### 8. Mode performance — 5 presets DLSS-like (depuis 08/05/2026)
 
@@ -848,17 +848,29 @@ Feature opt-in **par plan** pour gérer les carrières/galeries à plusieurs ét
 
 ```
 APP_CONFIG.multiLevel ←
-  PlanRegistry[id].multiLevel       (set explicitement via ⚙️ Réglages, prime)
+  PlanRegistry[id].multiLevel       (legacy ≤ v1.7.2 — UI Réglages retirée v1.7.3
+                                     mais lecture conservée pour rétro-compat)
   ↓ sinon
-  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json, défaut du ZIP généré)
+  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json — SOURCE UNIQUE
+                                     depuis v1.7.3, déclaré via le 📦 Générateur)
   ↓ sinon
   false                              (retro-compat plans v147)
 ```
 
-**3 voies pour activer** :
-- ⚙️ Réglages → toggle `🏗️ Mode multi-niveau (avancé)` (par plan, stocké dans `PlanRegistry`)
+**2 voies pour activer** (depuis v1.7.3) :
 - Au moment de la création/modification d'un plan via 📦 Générateur → case `🏗️ Plan multi-niveau` → ajoute `plan.multiLevel: true` dans `plan-config.json`
 - Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
+
+> 🔧 **Changement v1.7.3** (KARMA, 19/05/2026) : retrait du toggle ⚙️ Réglages
+> qui permettait d'activer/désactiver le multi-niveau pour un plan déjà chargé.
+> Raison : forcer une déclaration explicite au moment du plan (générateur ou
+> plan-config.json édité), évite les états incohérents où un plan "non
+> multi-niveau" est activé runtime puis réinitialisé au reload. Les fonctions
+> `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.js`) restent
+> définies dans le code (dead code propre) mais ne sont plus appelées dans
+> `afficherConfig`. La cascade `PlanRegistry[id].multiLevel` reste lue pour les
+> users qui avaient toggle via l'ancien UI avant v1.7.3 (leur préférence est
+> persistée et continue de marcher).
 
 #### 26.2 Data model
 
@@ -1974,6 +1986,108 @@ Volontaire : on laisse Leaflet faire son travail au 1er clic (ouverture popup). 
 **Non concerné** : tracker (comportement spécifique dans `tracking.js`, position temps réel), lost mode markers (popups dédiées avec badges in-zone/hors zone).
 
 À ajouter ailleurs si nouveau type de marker est introduit, via simple appel `window.attachMarkerDblClickZoom(marker)` après bindPopup.
+
+### 39. Refonte UX page d'accueil — Modale ⚙️ Configuration (depuis v1.7.3)
+
+Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + section "Plus d'options") dans une **modale unique** ouverte depuis un bouton `⚙️ Configuration` dans le header du loader. Refonte purement UX, aucun changement de comportement sous-jacent.
+
+#### 39.1 Architecture avant / après
+
+**Avant v1.7.3** :
+- `<details class="loader-perf-drawer">` (drawer dépliable) avec Tiling + ULTRA dans la home
+- Section collapsable `⚙️ Plus d'options` avec 4 boutons : 🏗️ Générer un plan, 📥 Conf exemple, 🐛 Logs détaillés, 💥 Tout réinitialiser
+- → 2 zones distinctes pour des réglages liés, UX confus
+
+**Après v1.7.3** :
+- Header loader : 3 boutons (📖 Documentation, 🚨 Alertes, ⚙️ Configuration)
+- `⚙️ Configuration` ouvre une **modale unique** `#loaderConfigModal` (~140 lignes HTML) regroupant :
+  1. 🖼️ Tiling (segmented 5 presets)
+  2. 🚀 ULTRA (7 toggles)
+  3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
+  4. 🔄 **Force update douce** *(nouveau)*
+  5. 💥 Tout réinitialiser
+- `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
+- `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
+
+**Symétriquement, retiré de la modale ⚙️ Réglages in-app (map mode)** *(suite KARMA)* :
+- Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
+- Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
+- Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser
+- Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
+
+#### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
+
+Nouveau bouton 🔄 dans la modale Configuration. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+
+Différences fondamentales avec `viderCacheAppli()` :
+
+| | Force update douce | Tout réinitialiser |
+|---|---|---|
+| Cache PWA (Service Worker) | ✅ Purgé | ✅ Purgé |
+| localStorage | ❌ Préservé | ✅ Purgé |
+| IndexedDB (plans mémorisés, sessions) | ❌ Préservé | ✅ Purgé |
+| Unlock Gate (code d'accès) | ❌ Préservé | ✅ Reset (re-demandé au boot) |
+| Confirmation | ✅ Modale simple (1 étape) | ✅ Double confirm |
+| Ping internet | ✅ (interne à `mettreAJourCodeSeul`) | ✅ (avant la double confirm) |
+
+**Garde-fou de confirmation** (`_afficherConfirmForceUpdate`, index.html) : modale custom Promise-based (pattern `.kta-readme-modal-overlay` + accent bleu info) qui explique avant le déclenchement :
+- Ce qui va se passer : purge cache des assets + reload + re-download
+- Ce qui est préservé : plans, sessions, prefs, unlock gate
+- Conditions : connexion Internet active (vérifiée juste après par `mettreAJourCodeSeul`), reload immédiat
+
+L'action est non-destructive donc 1 étape de confirmation suffit (différent du Reset qui en a 2 + ping pré-modale). Le ping Internet vit toujours dans `mettreAJourCodeSeul` côté `interface.js > _softUpdateOfflineWarning`, pas dupliqué dans le handler du bouton.
+
+Use case : user signale "l'app n'a pas la dernière feature" → un Force update douce force un re-fetch du SW + caches.delete + reload, sans perdre ses données. Ne pas confondre avec un vrai reset.
+
+#### 39.3 Pattern HTML/CSS
+
+Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Boutons handlers dans `index.html` (inline) :
+
+- `loaderConfigBtn` → `_ouvrirLoaderConfig()` (set `display:flex`)
+- `loaderConfigClose` + backdrop click + Escape → `_fermerLoaderConfig()`
+- `loaderForceUpdateBtn` → `window.mettreAJourCodeSeul()`
+
+Les handlers existants pour Tiling segmented / ULTRA toggles / 🐛 Logs / 💥 Reset sont conservés et juste **déplacés** dans le DOM. Pas de changement de logique.
+
+#### 39.4 Multi-niveau (M-LVL) — Activation déplacée du Réglages au Générateur
+
+Retrait du toggle `🏗️ Plan multi-niveau` dans `afficherConfig` (`interface.js`). Cascade de lecture inchangée :
+
+```
+APP_CONFIG.multiLevel ←
+  PlanRegistry[id].multiLevel       (legacy ≤ v1.7.2, lecture conservée)
+  PLAN_CONFIG.plan.multiLevel       (SOURCE UNIQUE depuis v1.7.3)
+  false
+```
+
+Fonctions `_renderMultiLevelSection` / `_bindMultiLevelToggle` (interface.js) restent définies en **dead code propre** avec commentaire explicatif. Si retour terrain demande à ré-exposer le toggle (cas marginal), il suffit de re-appeler les 2 fonctions dans `afficherConfig`.
+
+#### 39.5 Footer copyright
+
+`© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 ...` → `© 2026 [karma.png] · CC BY-NC-SA 4.0 ...`.
+
+Seule la mention texte **"Flavien VIDAL"** (nom civil) est retirée du DOM. L'image signature `karma.png` est **conservée** comme identité visible du copyright, cohérente avec son usage au splash.
+
+"Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des 7 fichiers JS critiques + meta tags `<head>` → **force probante légale préservée**. Seule la mention visible utilisateur côté loader est épurée.
+
+CSS `.kta-loader-copyright-sig` toujours active (l'image reste dans le DOM, juste sans le nom civil à côté).
+
+#### 39.6 Titre stylisé de la home
+
+`📦 MyKTAMap` (basique) → lockup graphique Option D :
+- Logo `mkm-full.png` (rose des vents jaune, +1024px, drop-shadow halo jaune)
+- "MyKTAMap" en grand
+- "Cartographie souterraine" en tagline (remplace "Cartographie terrain" partout dans la page de chargement)
+- Hover pulse + responsive (vertical mobile, horizontal ≥1024px)
+
+Nouvelles classes CSS dédiées : `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline`.
+
+#### 39.7 Pour ajouter un nouveau réglage de loader (futur)
+
+1. Ajouter le HTML dans la modale `#loaderConfigModal` (`index.html`) à l'endroit logique (Tiling / ULTRA / Debug / Maintenance)
+2. Bind du handler dans le script inline de `index.html`
+3. Ne PAS recréer une section séparée hors de la modale — la philosophie v1.7.3 est : **tout réglage du loader vit dans la modale Configuration**. Seuls les boutons d'**action** (créer un plan, charger un plan) restent dehors.
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

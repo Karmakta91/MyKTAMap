@@ -1593,14 +1593,20 @@ function afficherConfig() {
           </div>
         </div>
 
-        ${_renderMultiLevelSection()}
-
         ${_renderPerfUltraSection()}
 
+        <!--
+          🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
+          Réglages en mode carte. Le reset complet reste accessible UNIQUEMENT
+          depuis la modale ⚙️ Configuration du loader (home). Raison : limiter
+          les déclenchements accidentels une fois un plan chargé (l'user perd
+          potentiellement sa session active + tous ses plans mémorisés en 2 clics).
+          Pour reset depuis la map : passer par 🗂️ titre cliquable → home → ⚙️
+          Configuration → 💥 Tout réinitialiser.
+        -->
         <div class="kta-cfg-actions-bar">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
-          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
           <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
         </div>
 
@@ -1615,8 +1621,13 @@ function afficherConfig() {
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // 🏗️ Multi-niveau : bind du toggle (lit/ecrit dans PlanRegistry)
-  _bindMultiLevelToggle();
+  // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
+  // uniquement via le générateur de plan désormais. Les fonctions
+  // _renderMultiLevelSection et _bindMultiLevelToggle restent définies
+  // dans le code pour rétro-compat (lecture) mais ne sont plus appelées.
+  // La cascade APP_CONFIG.multiLevel ← PlanRegistry[id].multiLevel ← PLAN_CONFIG.plan.multiLevel
+  // reste fonctionnelle (cf §26 CLAUDE.md) — un user qui avait toggle via
+  // Réglages avant v1.7.3 garde son état persisté en PlanRegistry.
 }
 
 function appliquerConfig() {

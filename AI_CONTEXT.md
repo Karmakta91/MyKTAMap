@@ -84,6 +84,15 @@ Pour **chaque** question :
 - 📐 **Icônes adaptatives au zoom** (depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante au lieu de la taille écran fixe Leaflet par défaut. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Clamp 0.25 → 2× pour éviter les extrêmes (invisible ou énorme). Toggle dans ⚙️ Réglages → 🔍 Affichage (default ON, reload requis pour changement).
 - 🔍 **Double-clic sur un marker → zoom flyTo** (depuis v1.7.1) : un seul clic ouvre le popup (inchangé), un double-clic rapide (< 500ms) fait un flyTo smooth (0.6s) sur le point au zoom +2 clampé. Le popup éventuel est fermé pendant le flyTo. Ne s'applique pas au tracker ni au mode urgence (comportements spécifiques préservés).
 - 🔢 **Nouveau format de version semver-like** (depuis v1.7.1) : passage de vNNN (v173) à vX.Y.Z (v1.7.1). X = MAJOR (1 actuel, 2 quand backend), Y = MINOR (évolutions majeures), Z = PATCH (debug/UX). Mapping rétroactif des MINOR dans le README.md journal.
+- 🎨 **Refonte UX page d'accueil** (depuis v1.7.3) :
+  - **Nouveau titre stylisé** : `📦 MyKTAMap` (basique) remplacé par un lockup graphique avec logo `mkm-full.png` (rose des vents jaune, drop-shadow halo) + "MyKTAMap" en grand + tagline "Cartographie souterraine" (remplace "Cartographie terrain" partout). Hover pulse, responsive vertical mobile / horizontal ≥1024px.
+  - **Bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) qui ouvre une **modale unique** regroupant tout ce qui était éparpillé : Tiling, ULTRA, toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau)*, 🔄 **Force update douce** *(nouveau)*, 💥 Tout réinitialiser. Symétriquement, le bouton 🗑️ Réinitialiser est retiré de la modale ⚙️ Réglages in-app (map mode) — le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader.
+  - **🔄 Force update douce** : re-télécharge la dernière version du code (purge cache PWA) mais **garde tes données** (plans, sessions, localStorage, unlock gate). Différent de `💥 Tout réinitialiser` qui purge tout.
+  - **🏗️ Générer un plan** reste directement visible dans la home (action de création, pas un réglage).
+  - **📥 Conf exemple** déplacé en icône dans le modal du Générateur (section "Charger un ZIP existant"). Plus logique : c'est un outil du générateur.
+  - **Section "⚙️ Plus d'options"** supprimée.
+  - **Footer copyright épuré** : `© 2026 Flavien VIDAL [signature karma.png]` → `© 2026 [signature karma.png]`. Seule la mention texte "Flavien VIDAL" est retirée ; l'image signature `karma.png` est conservée comme identité visible du copyright. Le nom civil reste présent dans les headers JS et meta tags (valeur légale préservée).
+  - **Retrait du toggle M-LVL du menu ⚙️ Réglages** : le multi-niveau s'active désormais **uniquement** via le générateur ou par édition manuelle de `plan-config.json`. Cascade `PlanRegistry[id].multiLevel` reste lue pour rétro-compat des users qui avaient toggle avant v1.7.3.
 - 🧭 **Boussole + tracker landscape OK** (depuis v172) : avant, en mode landscape (et portrait inversé), le widget boussole et la rotation de l'icône tracker indiquaient un Nord décalé de ±90° (ou 180°). Cause : DeviceOrientationEvent renvoie α/β/γ par rapport aux axes du device, pas par rapport à l'orientation visuelle de l'écran. Fix : variable `_screenAngle` (lue depuis `screen.orientation.angle` + fallback iOS `window.orientation`) ajoutée au heading brut. Recalage instantané quand l'user tourne son tel (event `orientationchange`). Couvre les 4 orientations (portrait, landscape-left, landscape-right, portrait inversé).
 - 🎨 **Modales de re-sélection ZIP refondues** (depuis v172) : remplacement des `confirm()` natifs OS par 2 modales custom respectant la charte graphique :
   - **🚫 Nom différent** (rouge) : si l'user re-sélectionne un ZIP dont le `plan.name` ne correspond pas au plan ciblé → REFUS DÉFINITIF (1 seul bouton "J'ai compris"). Avant : "Charger quand même ?" qui créait des incohérences silencieuses. Pour vraiment charger ce ZIP : passer par 📦 Charger un nouveau plan.
@@ -99,7 +108,7 @@ Pour **chaque** question :
 - 🏗️ **Générateur de plan** : auto-détection des dimensions de l'image principale + warnings si > 10000 px / > 30 Mo. Position initiale tracker auto-centrée (W/2 × H/2) au choix de l'image, avec bouton 🎯 Recentrer.
 - 🧭 **Boussole / widget Nord** (depuis v147) : sous-action 🧭 dans le groupe Tracker → affiche une rose des vents flottante en haut-gauche sous le zoom. La rose tourne en temps réel pour pointer vers le vrai Nord. Clic dessus → modal plein écran avec la rose en grand + angle cardinal exact. Outil de debug pour valider que le heading du téléphone est cohérent.
 - ⚠️ **Popup avertissement au démarrage du tracker** (depuis v147) : au premier ▶️ Play de chaque session, modal qui rappelle que le module est expérimental et ne doit pas servir à se localiser en situation réelle. iOS-safe (requestPermission appelé synchronement dans le click handler).
-- 🏗️ **Mode multi-niveau** (depuis v148) : opt-in par plan pour les carrières multi-étages (Glacière, Capucins). Activable via ⚙️ Réglages OU via le générateur de plan (case 🏗️ Plan multi-niveau). Une fois activé : pastille jaune `[N]` (numéro du niveau actif) sous le zoom, modale avec 2 sections (niveau actif single + niveaux visibles multi-select). Nouveau type de tracé **🪜 Jonction interniveau** (magenta pointillé) qui sert de bridge unique entre 2 niveaux. Le pathfinder est niveau-aware : ne traverse plus les croisements visuels 2D entre niveaux différents (utilise uniquement les jonctions). Items session (roads, zones, points) tagués par niveau au moment de la création, filtré au rendu.
+- 🏗️ **Mode multi-niveau** (depuis v148, déclaration via générateur depuis v1.7.3) : opt-in par plan pour les carrières multi-étages (Glacière, Capucins). **Activable uniquement via le générateur de plan** (case 🏗️ Plan multi-niveau au moment de la création/modification du plan) ou par édition manuelle de `plan-config.json` (`plan.multiLevel: true`). Le toggle ⚙️ Réglages pour activer/désactiver sur un plan déjà chargé a été retiré en v1.7.3 — passer obligatoirement par le générateur force une déclaration explicite et évite les états incohérents. Une fois activé : pastille jaune `[N]` (numéro du niveau actif) sous le zoom, modale avec 2 sections (niveau actif single + niveaux visibles multi-select). Nouveau type de tracé **🪜 Jonction interniveau** (magenta pointillé) qui sert de bridge unique entre 2 niveaux. Le pathfinder est niveau-aware : ne traverse plus les croisements visuels 2D entre niveaux différents (utilise uniquement les jonctions). Items session (roads, zones, points) tagués par niveau au moment de la création, filtré au rendu.
 - 🧱 **Tiling V2** (depuis v149) : système de tuilage Google Maps-like pour réduire la conso mémoire au runtime sur gros plans (>50 Mo). Génération via le générateur de plan (case 🧱 Convertir en V2 tuile) — disponible en mode Nouveau OU Modifier dès qu'une image est uploadée (depuis v151). Runtime Option B : N L.imageOverlay par niveau de zoom, swap on zoomend (~16 MB max en RAM à tout moment). Auto-crop des marges blanches intégré. Modal d'avertissement avant la conversion (lourde — recommandé sur PC plutôt que mobile).
 - 🏷️ **Badges de mode sur la liste de plans** (depuis v150) : chaque ligne plan dans le loader affiche un ou deux chips de mode — `V1` (gris classique), `M-LVL` (jaune multi-niveau), `V2` (violet tuilé). Plusieurs badges peuvent coexister (un V2 peut être aussi multi-niveau).
 - 🌀 **Overlay de chargement plein écran** (depuis v152) : quand un plan se charge (extraction ZIP, indexation tuiles V2 toutes les 50 tuiles, init carte), une modale centrée avec spinner + message d'étape s'affiche au-dessus du splash. Avant v152, le statut était écrit en petit en bas du loader, peu visible sur gros plans.
@@ -270,7 +279,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 ### G. Créer un plan from scratch
 
-1. Loader → ⚙️ Plus d'options → **🏗️ Générer un plan**.
+1. Loader → bouton **🏗️ Générer un plan** (directement visible dans la home depuis v1.7.3).
 2. Choisis "📄 Nouveau plan".
 3. Upload une image (PNG ou JPEG, idéalement ≤ 8000 px de côté).
 4. Définis l'échelle (combien de mètres font N pixels — clique 2 points distants sur l'image).
@@ -293,10 +302,10 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 > Pour les carrières / galeries avec plusieurs niveaux empilés physiquement (Glacière, Capucins, etc.). Mode opt-in désactivé par défaut. Cf glossaire `Mode multi-niveau`.
 
-1. **Active la feature** (3 voies, au choix) :
-   - **Via ⚙️ Réglages** sur un plan déjà chargé → cocher 🏗️ Mode multi-niveau (avancé) → reload page
-   - **Via le générateur de plan** : cocher 🏗️ Plan multi-niveau (avancé) → 📦 Générer → ZIP avec le flag pré-activé
+1. **Active la feature** (2 voies, depuis v1.7.3) :
+   - **Via le générateur de plan** (recommandé) : 📦 Créer/Modifier un plan → cocher 🏗️ Plan multi-niveau (avancé) dans la section "Informations du plan" → 📦 Générer → ZIP avec le flag pré-activé. À l'import, le mode s'active automatiquement.
    - **Manuellement** dans `plan-config.json` : ajouter `"multiLevel": true` dans la section `plan`
+   - ⚠️ Le toggle ⚙️ Réglages pour activer le mode sur un plan déjà chargé a été retiré en v1.7.3 — pour activer le mode sur un plan existant, il faut soit le ré-importer dans le générateur en cochant la case, soit éditer son `plan-config.json` manuellement avant de le re-charger.
 2. Une fois activé, une **pastille `[0]` jaune** apparaît sous les boutons de zoom (haut-gauche). Le mode affiche par défaut **5 niveaux symétriques** : `-2, -1, 0, 1, 2`. 0 reste le niveau de référence (= éléments sans `level` taggué, ex: tous les plans v147 et avant).
 3. **Trace au niveau 0** comme d'habitude (routes/zones/points). Pour les **sous-sols (sub-cellars)**, change le niveau actif vers `-1` ou `-2`. Pour les **étages supérieurs**, vers `1` ou `2`.
 4. **Pour changer de niveau actif** : clique la pastille → modale Niveaux → sélecteur "Niveau actif" → choisis le numéro voulu (peut être négatif : `[-1]`, `[-2]`). La pastille se met à jour et le filtre passe sur ce niveau (les autres niveaux disparaissent visuellement).
@@ -505,7 +514,7 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
    - Télécharge le ou les fichiers `.json` générés (ex : `points.json`, `roads.json`, `zones_eau.json`, etc.).
 
 2. **Intégrer** ces JSON dans le ZIP du plan :
-   - Loader → ⚙️ Plus d'options → **🏗️ Générer un plan** → **📂 Modifier existant**.
+   - Loader → **🏗️ Générer un plan** → **📂 Modifier existant**.
    - Importe le ZIP actuel du plan.
    - Ajoute les fichiers `.json` issus de la conversion comme **calques de données** (data layers).
    - Clique **📦 Générer le ZIP** — le nouveau ZIP contient maintenant tes annotations comme données figées.
@@ -542,7 +551,7 @@ Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d
    - 👁️ Ne rendre que les tracés visibles (viewport culling)
    Tu peux aussi activer ces toggles individuellement si tu veux affiner.
 4. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
-5. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
+5. Active 🐛 Logs détaillés (loader → ⚙️ Configuration → 🛠️ Debug, ou ⚙️ Réglages in-app) puis recharge → consulte la modale 🐛 pour voir où ça plante.
 6. À terme : optimise le plan (voir recette H ci-dessus).
 
 ### C'est quoi les badges V1 / M-LVL / V2 sur les lignes de la liste de plans ?
@@ -642,7 +651,7 @@ Voir la **recette J** dans la section "🍳 Recettes" pour la procédure détail
    - Coche Points / Tracés / Zones à figer → télécharge les fichiers `.json` générés.
 
 2. **🏗️ Modifier existant** pour intégrer ces JSON dans le ZIP :
-   - Loader → ⚙️ Plus d'options → 🏗️ Générer un plan → **📂 Modifier existant**.
+   - Loader → **🏗️ Générer un plan** → **📂 Modifier existant**.
    - Importe ton ZIP actuel → ajoute les `.json` de l'étape 1 comme data layers → **📦 Générer le ZIP**.
 
 **Ne confonds pas** :
@@ -653,7 +662,7 @@ Voir aussi la **recette I** dans la section "🍳 Recettes" pour la procédure d
 
 ### Comment partager un plan avec un ami ?
 
-1. Loader → ⚙️ Plus d'options → 🏗️ Générer un plan → "Modifier existant" → sélectionne ton plan.
+1. Loader → **🏗️ Générer un plan** → "Modifier existant" → sélectionne ton plan.
 2. Si rien à modifier, clique directement **📦 Générer le ZIP**.
 3. Envoie le `.zip`.
 4. L'ami le charge via la zone drop du loader.

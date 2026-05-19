@@ -1,5 +1,5 @@
 # 📘 MyKTAMap
-> Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
+> Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains/industriels).
 
 **🌍 Environnements :**
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
@@ -11,7 +11,107 @@
 
 > _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-7-2" open>
+<details id="v1-7-3" open>
+<summary><strong>🗓️ 19/05/2026 — 🎨 v1.7.3 : Refonte UX page d'accueil (modale Configuration, titre stylisé, footer épuré)</strong></summary>
+
+PATCH bump qui regroupe une série d'améliorations UX sur la page d'accueil (loader) et un nettoyage de l'arborescence des réglages.
+
+### 🎨 Nouveau titre stylisé de la home
+
+Le titre `📦 MyKTAMap` (basique) est remplacé par un **lockup graphique** (Option D validée) :
+
+- 🌟 **Logo `mkm-full.png`** (rose des vents jaune, +1024px, drop-shadow halo jaune)
+- **"MyKTAMap"** en grand
+- **"Cartographie souterraine"** en tagline (remplace "Cartographie terrain" partout dans la page de chargement — aligné avec la promesse de l'app)
+- **Hover pulse** sur le logo (scale 1.03 + glow renforcé)
+- **Responsive** : layout vertical sur mobile, horizontal sur ≥1024px
+
+CSS : nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline`.
+
+### ⚙️ Refonte de la page d'accueil — Modale "Configuration" unique
+
+Avant v1.7.3, le loader avait :
+- Un **drawer dépliable** `🎚️ Réglages de performance` (Tiling + ULTRA)
+- Une **section collapsable** `⚙️ Plus d'options` (Générer un plan, Conf exemple, Logs détaillés, Tout réinitialiser)
+
+C'était éparpillé et pas clair pour l'user. Refonte :
+
+1. **Nouveau bouton `⚙️ Configuration`** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) qui ouvre une **modale unique** regroupant :
+   - 🖼️ Tiling de l'image (segmented 5 presets)
+   - 🚀 Mode Performance ULTRA (7 toggles)
+   - 🛠️ Debug → toggle 🐛 Logs détaillés + **bouton 📋 Afficher les logs** *(ajouté en cours de v1.7.3, suite KARMA)* qui ouvre directement la modale buffer des logs capturés (utile pour diagnostiquer un bug bloquant au chargement)
+   - 🔄 **Force update douce** *(nouveau)* — re-télécharge la dernière version du code (purge cache PWA, garde tes données et tes plans)
+   - 💥 Tout réinitialiser (reset complet, double confirm)
+2. **Bouton `🏗️ Générer un plan` directement visible** dans la home (sorti de "Plus d'options") — c'est une action de création, pas un réglage.
+3. **Bouton `📥 Conf exemple` déplacé** en icône dans le modal du Générateur, section "📂 Charger un ZIP existant" (à côté de l'upload). Plus logique : c'est un outil du générateur, pas une option globale.
+4. **Section `⚙️ Plus d'options` supprimée** entièrement.
+
+### 🆕 Force update douce (reset lite)
+
+Nouveau bouton `🔄 Force update` dans la modale Configuration. Reprend le pipeline `window.mettreAJourCodeSeul()` (existant, utilisé par le badge version cliquable) : confirmation utilisateur → ping internet → SW skipWaiting → caches.delete → reload.
+
+**Différence avec `💥 Tout réinitialiser`** :
+- **Force update douce** : purge le **cache PWA** (code app) mais **garde tes données** (localStorage, IndexedDB, plans mémorisés, sessions auto-save). Utile si tu suspectes que ton app reste sur une vieille version après une release.
+- **Tout réinitialiser** : purge **TOUT** (cache + localStorage + IndexedDB + plans + sessions + unlock gate). Retour état usine.
+
+**Garde-fou de confirmation** *(ajouté en cours de v1.7.3)* : avant le déclenchement, une modale custom Promise-based (`_afficherConfirmForceUpdate` dans `index.html`, pattern `.kta-readme-modal-overlay` avec accent bleu info) explique ce qui va se passer + ce qui est préservé + besoin d'une connexion Internet active. L'action étant non-destructive, **1 seule étape de confirmation** (vs 2 pour le Reset). Fermable via ✕ / backdrop / Échap / bouton Annuler. Le ping Internet reste dans `mettreAJourCodeSeul` côté `interface.js` (offline-warning si pas connecté).
+
+### 🔒 Retrait du bouton 🗑️ Réinitialiser de la modale ⚙️ Réglages (mode carte)
+
+Symétriquement à l'enrichissement du loader, le bouton `🗑️ Réinitialiser` est **retiré** de la barre d'actions de la modale ⚙️ Réglages in-app (`afficherConfig` dans `interface.js`). Reste donc dans la `kta-cfg-actions-bar` : Reset / Appliquer / 🐛 Logs.
+
+**Raison** : limiter les déclenchements accidentels une fois un plan chargé (l'user perd potentiellement sa session active + tous ses plans mémorisés en 2 clics depuis le menu Réglages, et la confirmation native du navigateur sur mobile est parfois ambiguë).
+
+**Pour reset depuis la map** : passer par 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser. Une étape supplémentaire mais qui force l'user à sortir explicitement de son contexte de travail.
+
+CSS `.kta-cfg-actions-bar` ajustée : grid `1fr 1fr 1fr` (3 cols) au lieu de `1fr 1fr 1fr 1fr` PC / `1fr 1fr` mobile (qui faisait apparaître une case vide à droite sur PC et un 2+1 asymétrique sur mobile).
+
+### 🏗️ Multi-niveau (M-LVL) — Activation uniquement via le générateur
+
+Retrait du toggle `🏗️ Plan multi-niveau` du menu ⚙️ Réglages (in-app). Avant : l'user pouvait activer/désactiver le multi-niveau pour un plan déjà chargé en runtime, ce qui créait des états incohérents (plan "non multi-niveau" activé runtime puis réinitialisé au reload).
+
+Désormais : **activation explicite uniquement au moment du plan** via 2 voies :
+- Au moment de la création/modification via **📦 Générateur** → case `🏗️ Plan multi-niveau`
+- Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
+
+Les fonctions `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.js`) restent définies dans le code (dead code propre) mais ne sont plus appelées dans `afficherConfig`. La cascade `PlanRegistry[id].multiLevel` reste lue pour les users qui avaient toggle via l'ancien UI avant v1.7.3 (rétro-compat).
+
+### 🪶 Footer copyright épuré
+
+Avant : `© 2026 Flavien VIDAL [signature karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit · v?`
+
+Après : `© 2026 [signature karma.png] · CC BY-NC-SA 4.0 · Usage commercial interdit · v?`
+
+Seule la mention texte **"Flavien VIDAL"** (nom civil) est retirée. L'image signature `karma.png` est **conservée** comme identité visible du copyright, cohérente avec le splash.
+
+**Conservation de la valeur légale** : "Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des fichiers JS critiques (`main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`) + meta tags `<head>` de `index.html`. La force probante n'est pas affectée — seule la mention visible utilisateur côté loader est épurée.
+
+### 🗑️ Nettoyage doc
+
+Retrait du paragraphe sur le lockout du `README_USER.md` (mention du "Le brute force c'est mal m'voyez" + instructions de désinstallation manuelle) — info technique inutile pour l'user normal qui se trompe simplement 1-2 fois en saisissant son code.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.2"` → **`"myktamap-cache-v1.7.3"`**
+- `js/copyright.js > __MKM__.build` : `"v1.7.2"` → **`"v1.7.3"`**
+- `version.json > version` : `"v1.7.2"` → **`"v1.7.3"`** + notes user-facing
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `index.html` | Splash subtitle `Cartographie terrain` → `Cartographie souterraine`. Header loader : ajout bouton `⚙️ Configuration`. Section "Plus d'options" supprimée. Bouton `🏗️ Générer un plan` placé directement visible. Nouvelle modale `#loaderConfigModal` (~130 lignes HTML) avec Tiling + ULTRA + Debug + Force update + Reset. Handlers correspondants. Footer copyright : retrait `<strong>Flavien VIDAL</strong>` uniquement ; l'image `<img class="kta-loader-copyright-sig">` (signature karma.png) est conservée. |
+| `css/style.css` | Nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline` avec hover pulse + drop-shadow halo jaune + media query ≥1024px. Commentaire de la règle `.kta-loader-copyright-sig` actualisé. **Suite KARMA** : `.kta-cfg-actions-bar` passe à grid 3 colonnes (PC et mobile) au lieu de 4/2 (retrait du bouton 🗑️ Réinitialiser dans la modale Réglages map mode). |
+| `js/createConf.js` | Ajout bouton `📥 ZIP d'exemple` dans le header de la section "📂 Charger un ZIP existant" du planner + handler de téléchargement de `data/myktamap.zip`. |
+| `js/interface.js` | Retrait appels `${_renderMultiLevelSection()}` et `_bindMultiLevelToggle()` dans `afficherConfig`. Fonctions conservées en dead code propre avec commentaire explicatif. **Suite KARMA** : retrait du bouton `🗑️ Réinitialiser` de `kta-cfg-actions-bar` (le reset complet reste accessible UNIQUEMENT depuis la modale Configuration du loader). |
+| `CLAUDE.md`, `AI_CONTEXT.md`, `README_USER.md`, `README.md` | Mise à jour de la doc pour refléter les changements (refonte UX home, retrait M-LVL Réglages, footer, etc.). |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.7.3 |
+
+---
+
+</details>
+
+<details id="v1-7-2">
 <summary><strong>🗓️ 18/05/2026 (suite) — 🐛 v1.7.2 : Fix jonctions interniveau blanches dans les data layers</strong></summary>
 
 PATCH bump pour corriger un bug visuel critique du mode multi-niveau remonté en test KARMA.
