@@ -8,7 +8,7 @@
 
 ## 🎯 Le projet en 30 secondes
 
-**MyKTAMap** est une application web de **cartographie terrain** (Leaflet + `L.CRS.Simple`),
+**MyKTAMap** est une application web de **cartographie souterraine** (Leaflet + `L.CRS.Simple`),
 conçue pour visualiser, annoter et exploiter des **plans à partir d'images haute résolution**,
 **sans GPS**. Cible principale : cataphiles, spéléologues, sites souterrains/industriels.
 

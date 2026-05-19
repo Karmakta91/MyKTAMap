@@ -1,5 +1,5 @@
 # 📘 MyKTAMap
-> Application web de cartographie terrain — visualisation, annotation et déplacement simulé sur plan image.
+> Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains/industriels).
 
 **🌍 Environnements :**
 - 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
