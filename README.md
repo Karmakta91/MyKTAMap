@@ -39,7 +39,7 @@ C'était éparpillé et pas clair pour l'user. Refonte :
 1. **Nouveau bouton `⚙️ Configuration`** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) qui ouvre une **modale unique** regroupant :
    - 🖼️ Tiling de l'image (segmented 5 presets)
    - 🚀 Mode Performance ULTRA (7 toggles)
-   - 🛠️ Debug → bouton 🐛 Logs détaillés
+   - 🛠️ Debug → toggle 🐛 Logs détaillés + **bouton 📋 Afficher les logs** *(ajouté en cours de v1.7.3, suite KARMA)* qui ouvre directement la modale buffer des logs capturés (utile pour diagnostiquer un bug bloquant au chargement)
    - 🔄 **Force update douce** *(nouveau)* — re-télécharge la dernière version du code (purge cache PWA, garde tes données et tes plans)
    - 💥 Tout réinitialiser (reset complet, double confirm)
 2. **Bouton `🏗️ Générer un plan` directement visible** dans la home (sorti de "Plus d'options") — c'est une action de création, pas un réglage.
@@ -55,6 +55,16 @@ Nouveau bouton `🔄 Force update` dans la modale Configuration. Reprend le pipe
 - **Tout réinitialiser** : purge **TOUT** (cache + localStorage + IndexedDB + plans + sessions + unlock gate). Retour état usine.
 
 **Garde-fou de confirmation** *(ajouté en cours de v1.7.3)* : avant le déclenchement, une modale custom Promise-based (`_afficherConfirmForceUpdate` dans `index.html`, pattern `.kta-readme-modal-overlay` avec accent bleu info) explique ce qui va se passer + ce qui est préservé + besoin d'une connexion Internet active. L'action étant non-destructive, **1 seule étape de confirmation** (vs 2 pour le Reset). Fermable via ✕ / backdrop / Échap / bouton Annuler. Le ping Internet reste dans `mettreAJourCodeSeul` côté `interface.js` (offline-warning si pas connecté).
+
+### 🔒 Retrait du bouton 🗑️ Réinitialiser de la modale ⚙️ Réglages (mode carte)
+
+Symétriquement à l'enrichissement du loader, le bouton `🗑️ Réinitialiser` est **retiré** de la barre d'actions de la modale ⚙️ Réglages in-app (`afficherConfig` dans `interface.js`). Reste donc dans la `kta-cfg-actions-bar` : Reset / Appliquer / 🐛 Logs.
+
+**Raison** : limiter les déclenchements accidentels une fois un plan chargé (l'user perd potentiellement sa session active + tous ses plans mémorisés en 2 clics depuis le menu Réglages, et la confirmation native du navigateur sur mobile est parfois ambiguë).
+
+**Pour reset depuis la map** : passer par 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser. Une étape supplémentaire mais qui force l'user à sortir explicitement de son contexte de travail.
+
+CSS `.kta-cfg-actions-bar` ajustée : grid `1fr 1fr 1fr` (3 cols) au lieu de `1fr 1fr 1fr 1fr` PC / `1fr 1fr` mobile (qui faisait apparaître une case vide à droite sur PC et un 2+1 asymétrique sur mobile).
 
 ### 🏗️ Multi-niveau (M-LVL) — Activation uniquement via le générateur
 
@@ -91,9 +101,9 @@ Retrait du paragraphe sur le lockout du `README_USER.md` (mention du "Le brute f
 | Fichier | Changement |
 |---|---|
 | `index.html` | Splash subtitle `Cartographie terrain` → `Cartographie souterraine`. Header loader : ajout bouton `⚙️ Configuration`. Section "Plus d'options" supprimée. Bouton `🏗️ Générer un plan` placé directement visible. Nouvelle modale `#loaderConfigModal` (~130 lignes HTML) avec Tiling + ULTRA + Debug + Force update + Reset. Handlers correspondants. Footer copyright : retrait `<strong>Flavien VIDAL</strong>` uniquement ; l'image `<img class="kta-loader-copyright-sig">` (signature karma.png) est conservée. |
-| `css/style.css` | Nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline` avec hover pulse + drop-shadow halo jaune + media query ≥1024px. Commentaire de la règle `.kta-loader-copyright-sig` actualisé. |
+| `css/style.css` | Nouvelles règles `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline` avec hover pulse + drop-shadow halo jaune + media query ≥1024px. Commentaire de la règle `.kta-loader-copyright-sig` actualisé. **Suite KARMA** : `.kta-cfg-actions-bar` passe à grid 3 colonnes (PC et mobile) au lieu de 4/2 (retrait du bouton 🗑️ Réinitialiser dans la modale Réglages map mode). |
 | `js/createConf.js` | Ajout bouton `📥 ZIP d'exemple` dans le header de la section "📂 Charger un ZIP existant" du planner + handler de téléchargement de `data/myktamap.zip`. |
-| `js/interface.js` | Retrait appels `${_renderMultiLevelSection()}` et `_bindMultiLevelToggle()` dans `afficherConfig`. Fonctions conservées en dead code propre avec commentaire explicatif. |
+| `js/interface.js` | Retrait appels `${_renderMultiLevelSection()}` et `_bindMultiLevelToggle()` dans `afficherConfig`. Fonctions conservées en dead code propre avec commentaire explicatif. **Suite KARMA** : retrait du bouton `🗑️ Réinitialiser` de `kta-cfg-actions-bar` (le reset complet reste accessible UNIQUEMENT depuis la modale Configuration du loader). |
 | `CLAUDE.md`, `AI_CONTEXT.md`, `README_USER.md`, `README.md` | Mise à jour de la doc pour refléter les changements (refonte UX home, retrait M-LVL Réglages, footer, etc.). |
 | `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.7.3 |
 

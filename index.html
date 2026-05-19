@@ -402,14 +402,23 @@
           </div>
         </div>
 
-        <!-- 🐛 Logs détaillés -->
+        <!-- 🐛 Logs détaillés
+             v1.7.3 (suite KARMA) : ajout du bouton 📋 Afficher les logs juste
+             en-dessous du toggle ON/OFF. Avant, l'user devait charger un plan
+             puis ouvrir ⚙️ Réglages > 🐛 Logs pour consulter le buffer. Désormais
+             le buffer est accessible directement depuis la home, ce qui est
+             pratique en cas de bug bloquant au chargement (l'user n'a pas accès
+             à la modale ⚙️ Réglages in-app). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">🛠️ Debug</div>
           <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false" style="width:100%;">
             🐛 Logs détaillés : <span id="loaderDebugState">OFF</span>
           </button>
+          <button class="loader-btn-secondary" type="button" id="loaderShowLogsBtn" style="width:100%; margin-top:8px;">
+            📋 Afficher les logs
+          </button>
           <p class="kta-loader-perf-hint" style="margin-top:8px;">
-            Active la console verbeuse pour debug (tracker, fetch, etc.). Consulte les logs via la modale 🐛 Logs des Réglages ⚙️ in-app.
+            Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).
           </p>
         </div>
 
@@ -1841,6 +1850,31 @@
               setStatus("Fonction de mise à jour indisponible", true);
             }
           });
+        });
+      }
+
+      // === BOUTON "📋 AFFICHER LES LOGS" (v1.7.3 suite KARMA) ===
+      // Permet de consulter le buffer des logs capturés par debug.js sans
+      // avoir besoin de charger un plan d'abord. Réutilise window.afficherLogsDebug
+      // exposé par debug.js qui ouvre la modale `.kta-readme-modal-overlay`
+      // avec le buffer.
+      //
+      // Cas d'usage : bug bloquant au chargement, l'user veut envoyer un rapport
+      // sans pouvoir entrer dans l'app.
+      //
+      // Empilement DOM : la modale Configuration et la modale Logs ont le
+      // même z-index (99999 via `.kta-readme-modal-overlay`), donc c'est le
+      // DOM order qui décide. La modale Logs est appendée APRÈS, elle passe
+      // au-dessus. Au close des Logs, la modale Config est toujours là
+      // derrière → l'user retrouve son contexte sans avoir à re-ouvrir.
+      const showLogsBtn = document.getElementById("loaderShowLogsBtn");
+      if (showLogsBtn) {
+        showLogsBtn.addEventListener("click", function() {
+          if (typeof window.afficherLogsDebug === "function") {
+            window.afficherLogsDebug();
+          } else {
+            setStatus("Fonction de logs indisponible", true);
+          }
         });
       }
 

@@ -1595,10 +1595,18 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
+        <!--
+          🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
+          Réglages en mode carte. Le reset complet reste accessible UNIQUEMENT
+          depuis la modale ⚙️ Configuration du loader (home). Raison : limiter
+          les déclenchements accidentels une fois un plan chargé (l'user perd
+          potentiellement sa session active + tous ses plans mémorisés en 2 clics).
+          Pour reset depuis la map : passer par 🗂️ titre cliquable → home → ⚙️
+          Configuration → 💥 Tout réinitialiser.
+        -->
         <div class="kta-cfg-actions-bar">
           <button class="kta-btn kta-btn-ghost"   onclick="resetConfig()">Reset</button>
           <button class="kta-btn kta-btn-primary"  onclick="appliquerConfig()">Appliquer</button>
-          <button class="kta-btn kta-btn-danger"   onclick="viderCacheAppli()">🗑️ Réinitialiser</button>
           <button class="kta-btn kta-btn-ghost"    onclick="afficherLogsDebug()">🐛 Logs</button>
         </div>
 

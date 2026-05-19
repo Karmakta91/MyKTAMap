@@ -2000,14 +2000,21 @@ Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + sec
 
 **Après v1.7.3** :
 - Header loader : 3 boutons (📖 Documentation, 🚨 Alertes, ⚙️ Configuration)
-- `⚙️ Configuration` ouvre une **modale unique** `#loaderConfigModal` (~130 lignes HTML) regroupant :
+- `⚙️ Configuration` ouvre une **modale unique** `#loaderConfigModal` (~140 lignes HTML) regroupant :
   1. 🖼️ Tiling (segmented 5 presets)
   2. 🚀 ULTRA (7 toggles)
-  3. 🛠️ Debug → bouton 🐛 Logs détaillés
+  3. 🛠️ Debug → toggle 🐛 Logs détaillés + bouton **📋 Afficher les logs** *(nouveau, suite KARMA)*
   4. 🔄 **Force update douce** *(nouveau)*
   5. 💥 Tout réinitialiser
 - `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
 - `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
+
+**Symétriquement, retiré de la modale ⚙️ Réglages in-app (map mode)** *(suite KARMA)* :
+- Bouton `🗑️ Réinitialiser` retiré de `kta-cfg-actions-bar` (interface.js)
+- Le reset complet n'est désormais accessible que depuis la modale ⚙️ Configuration du loader (home)
+- Raison : limiter les déclenchements accidentels une fois un plan chargé (user perd potentiellement session active + plans mémorisés en 2 clics)
+- Pour reset depuis la map : 🗂️ titre cliquable → home → ⚙️ Configuration → 💥 Tout réinitialiser
+- Conséquence CSS : `.kta-cfg-actions-bar` passe de `grid-template-columns: 1fr 1fr 1fr 1fr` (4 cols PC) / `1fr 1fr` (2 cols mobile) à `1fr 1fr 1fr` partout (3 boutons : Reset / Appliquer / 🐛 Logs)
 
 #### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
 

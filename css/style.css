@@ -2278,7 +2278,11 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     column-span: all;
     -webkit-column-span: all;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr;
+    /* v1.7.3 (suite KARMA) : 3 colonnes au lieu de 4. Le bouton 🗑️ Réinitialiser
+       a été retiré de la modale ⚙️ Réglages en mode carte (action accessible
+       uniquement depuis la modale ⚙️ Configuration du loader). Reste : Reset
+       / Appliquer / 🐛 Logs. */
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 10px;
     margin-top: 16px;
     padding-top: 12px;
@@ -2286,11 +2290,13 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* Mobile (< 1024px) : barre d'actions en grid 2x2 (comportement v169). */
+/* Mobile (< 1024px) : barre d'actions en grid 3 colonnes depuis v1.7.3 (suite
+   KARMA — retrait du bouton 🗑️ Réinitialiser pour ne plus avoir d'asymétrie
+   2+1 sur la 2e ligne). Reste : Reset / Appliquer / 🐛 Logs. */
 @media (max-width: 1023px) {
   .kta-cfg-actions-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 8px;
     margin-top: 12px;
     padding-top: 10px;

@@ -268,7 +268,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
-3. **🛠️ Debug** — bouton **🐛 Logs détaillés** (toggle verbose mode).
+3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** *(depuis v1.7.3)* qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
 4. **🔄 Force update douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
