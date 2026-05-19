@@ -45,6 +45,13 @@ on:
     # modifié dans le push (= très majoritairement les commits de bump).
     paths:
       - 'version.json'
+  # Trigger manuel via UI GitHub Actions → "Run workflow" sur la branche main.
+  # Utile pour :
+  #   - Retry après un échec (le workflow check si la release existe déjà → skip
+  #     auto si oui, donc safe à relancer plusieurs fois)
+  #   - Créer une release pour une version déjà bumpée mais dont le workflow
+  #     auto n'a pas tourné (ex: bug temporaire, version.json modifié hors push)
+  workflow_dispatch:
 
 # Le workflow doit pouvoir créer tags + releases
 permissions:
