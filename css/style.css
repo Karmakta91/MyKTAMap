@@ -5957,8 +5957,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* Signature manuscrite KARMA dans le footer copyright (remplace le texte
-   "(alias KARMA)" pour un rendu plus identitaire, cohérent avec le splash). */
+/* v1.7.3 : .kta-loader-copyright-sig (image signature karma.png) retiré du DOM
+   en même temps que la mention "Flavien VIDAL". La règle CSS est conservée en
+   dormant au cas où on voudrait re-ajouter la signature à un autre endroit
+   (splash, modale info, etc.). À supprimer si confirmée inutile à long terme. */
 .kta-loader-copyright-sig {
   height: 16px;
   width: auto;
