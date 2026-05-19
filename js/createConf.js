@@ -85,7 +85,17 @@ function afficherPlanner() {
 
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">📂 Charger un ZIP existant <span class="kta-planner-hint">(optionnel)</span></div>
+          <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <span>📂 Charger un ZIP existant <span class="kta-planner-hint">(optionnel)</span></span>
+            <!-- 📥 Bouton Conf exemple — déplacé ici depuis la home loader en v1.7.3.
+                 Permet de télécharger le ZIP d'exemple myktamap.zip pour avoir un
+                 plan de référence à modifier (workflow recommandé pour débutants). -->
+            <button type="button" id="kta-planner-conf-exemple-btn" class="kta-btn kta-btn-ghost kta-btn-small"
+                    title="Télécharger un ZIP d'exemple à modifier"
+                    style="font-size:12px; padding:4px 10px;">
+              📥 ZIP d'exemple
+            </button>
+          </div>
           <p class="kta-planner-info">
             Tu peux importer un ZIP existant pour pré-remplir le formulaire.
             Sinon, remplis simplement le formulaire pour créer un nouveau plan.
@@ -298,6 +308,19 @@ function afficherPlanner() {
   if (btnKmzImport) {
     btnKmzImport.addEventListener("click", function() {
       _afficherImporterKmz();
+    });
+  }
+
+  // 📥 v1.7.3 : bouton "Conf exemple" déplacé depuis la home loader.
+  // Télécharge `data/myktamap.zip` (ZIP d'exemple inclus dans le repo)
+  // pour servir de base de travail à un nouveau plan.
+  const btnConfEx = document.getElementById("kta-planner-conf-exemple-btn");
+  if (btnConfEx) {
+    btnConfEx.addEventListener("click", function() {
+      const a = document.createElement("a");
+      a.href = "data/myktamap.zip";
+      a.download = "myktamap.zip";
+      a.click();
     });
   }
 

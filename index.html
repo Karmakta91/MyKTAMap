@@ -156,6 +156,7 @@
         <div class="loader-header-actions">
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
+          <button class="loader-btn-help" id="loaderConfigBtn" type="button" title="Configuration (perf, debug, reset)">⚙️</button>
         </div>
       </div>
 
@@ -239,129 +240,18 @@
           </span>
         </div>
 
-        <!-- 🎚️ Box déroulable groupant les réglages de performance :
-             - Tiling (preset image au chargement, par plan)
-             - Mode Performance ULTRA (toggles tracés/markers, global) -->
-        <details class="kta-loader-perf-drawer" id="loaderPerfDrawer">
-          <summary class="kta-loader-perf-drawer-titre">
-            <span>🎚️ Réglages de performance</span>
-            <span class="kta-loader-perf-drawer-chevron">▾</span>
-          </summary>
-          <div class="kta-loader-perf-drawer-corps">
-
-            <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
-            <div class="kta-perf-wrap">
-              <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
-              <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
-                <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
-                </button>
-                <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
-                  <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
-                </button>
-                <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
-                  <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
-                </button>
-              </div>
-              <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
-              <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
-            </div>
-
-            <!-- ─── Séparateur visuel ─── -->
-            <hr class="kta-loader-perf-sep">
-
-            <!-- ─── Mode Performance ULTRA : toggles tracés/markers, préférence globale ─── -->
-            <div class="kta-perf-wrap">
-              <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
-              <p class="kta-loader-perf-hint">
-                Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
-                Préférence globale, conservée entre sessions.
-              </p>
-
-              <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
-                <input type="checkbox" id="loader_perf_ultra">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
-                  <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
-                </span>
-              </label>
-
-              <div class="kta-loader-perf-divider"></div>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_decim">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
-                  <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
-                <input type="checkbox" id="loader_perf_animOff">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
-                  <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_noIntersect">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
-                  <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_noTooltips">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
-                  <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_slowSave">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
-                  <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
-                </span>
-              </label>
-
-              <label class="kta-perf-ultra-row">
-                <input type="checkbox" id="loader_perf_viewportCull">
-                <span class="kta-perf-ultra-text">
-                  <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
-                  <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
-                </span>
-              </label>
-            </div>
-
-          </div>
-        </details>
-
         <!-- Bouton principal Charger -->
         <div class="loaderActions">
           <button id="loadPlanBtn" type="button">▶️ Charger ce plan</button>
         </div>
       </div>
 
-          <!-- ACTIONS AVANCÉES — en bas de la colonne droite (déplié par défaut sur PC) -->
-          <div class="loader-section-head loader-section-head-collapse" id="advancedHead">
-            <span>⚙️ Plus d'options</span>
-            <span class="loader-collapse-chevron" id="advancedChevron">▾</span>
-          </div>
-          <div class="loader-secondary-actions" id="advancedBox" style="display:none;">
+          <!-- 🏗️ Bouton "Générer un plan" — accessible directement (sortie de
+               'Plus d'options' v1.7.3). Cohérent avec son importance : c'est
+               la voie d'entrée pour créer/modifier un plan, pas une option
+               avancée cachée. -->
+          <div class="loader-secondary-actions">
             <button class="loader-btn-secondary" type="button" id="loaderPlannerBtn">🏗️ Générer un plan</button>
-            <button class="loader-btn-secondary" type="button" id="loaderConfExempleBtn">📥 Conf exemple (téléchargement)</button>
-            <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false">🐛 Logs détaillés : <span id="loaderDebugState">OFF</span></button>
-            <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn">💥 Tout réinitialiser</button>
           </div>
 
         </div><!-- /.loader-col-actions -->
@@ -389,6 +279,146 @@
           <span class="kta-loader-copyright-sep">·</span>
           <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" title="Version de l'app">v?</span>
         </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 v1.7.3 : Modale "⚙️ Configuration" du loader.
+       Regroupe tout ce qui était auparavant éparpillé :
+         • Drawer "🎚️ Réglages de performance" (Tiling + ULTRA)
+         • Bouton 🐛 Logs détaillés
+         • Bouton 💥 Tout réinitialiser
+       Cachée par défaut (display:none), affichée au clic sur le bouton ⚙️
+       du header loader. Pattern .kta-readme-modal-overlay pour cohérence
+       avec les autres modales du projet. -->
+  <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
+    <div class="kta-readme-modal-boite" style="max-width:680px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">⚙️ Configuration</span>
+        <button class="kta-panneau-close" id="loaderConfigClose">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
+        <div class="kta-aide-section">
+
+          <!-- ─── Tiling : mode performance image, lié à l'import en cours ─── -->
+          <div class="kta-perf-wrap">
+            <div class="kta-perf-titre">🖼️ Tiling de l'image (par plan)</div>
+            <div class="kta-perf-segmented" id="loaderPerfSegmented" role="radiogroup" aria-label="Mode performance">
+              <button type="button" class="kta-perf-btn"        data-preset="off"         role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">💤</span><span class="kta-perf-label">Désactivé</span>
+              </button>
+              <button type="button" class="kta-perf-btn active" data-preset="auto"        role="radio" aria-checked="true">
+                <span class="kta-perf-emoji">🔄</span><span class="kta-perf-label">Auto</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="quality"     role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🌟</span><span class="kta-perf-label">Qualité</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="balanced"    role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">🎯</span><span class="kta-perf-label">Équilibré</span>
+              </button>
+              <button type="button" class="kta-perf-btn"        data-preset="performance" role="radio" aria-checked="false">
+                <span class="kta-perf-emoji">⚡</span><span class="kta-perf-label">Performance</span>
+              </button>
+            </div>
+            <div class="kta-perf-desc" id="loaderPerfDesc">L'app décide selon la taille du plan.</div>
+            <div class="kta-perf-debug" id="loaderPerfDebug" style="display:none;"></div>
+          </div>
+
+          <hr class="kta-loader-perf-sep">
+
+          <!-- ─── Mode Performance ULTRA : toggles tracés/markers ─── -->
+          <div class="kta-perf-wrap">
+            <div class="kta-perf-titre">🚀 Mode Performance ULTRA (tracés / markers)</div>
+            <p class="kta-loader-perf-hint">
+              Pour les gros plans qui crashent. N'affecte PAS l'image (déjà gérée par le Tiling ci-dessus).
+              Préférence globale, conservée entre sessions.
+            </p>
+
+            <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
+              <input type="checkbox" id="loader_perf_ultra">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
+                <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
+              </span>
+            </label>
+
+            <div class="kta-loader-perf-divider"></div>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_decim">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🪜 Décimer les tracés au dézoom</span>
+                <span class="kta-perf-ultra-hint">Simplifie les polylines. Tracés moins lisses mais plus rapides.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+              <input type="checkbox" id="loader_perf_animOff">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">⚡ Désactiver animations zoom/pan</span>
+                <span class="kta-perf-ultra-hint">Transitions instantanées. <strong>Reload requis</strong>.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_noIntersect">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🎯 Désactiver cercles intersections (gros plans)</span>
+                <span class="kta-perf-ultra-hint">Seuil 50 routes (vs 200). Pas de cercles aux carrefours au-delà.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_noTooltips">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🚫 Désactiver popups sur calques données</span>
+                <span class="kta-perf-ultra-hint">Points session restent interactifs. Utilise 🔍 pour les data-layers.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_slowSave">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🐢 Auto-save lent (30s)</span>
+                <span class="kta-perf-ultra-hint">Sauvegarde toutes les 30s au lieu de 1.5s. Risque ~30s de modifs en cas de crash.</span>
+              </span>
+            </label>
+
+            <label class="kta-perf-ultra-row">
+              <input type="checkbox" id="loader_perf_viewportCull">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
+                <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 🐛 Logs détaillés -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🛠️ Debug</div>
+          <button class="loader-btn-secondary kta-debug-toggle" type="button" id="loaderDebugBtn" aria-pressed="false" style="width:100%;">
+            🐛 Logs détaillés : <span id="loaderDebugState">OFF</span>
+          </button>
+          <p class="kta-loader-perf-hint" style="margin-top:8px;">
+            Active la console verbeuse pour debug (tracker, fetch, etc.). Consulte les logs via la modale 🐛 Logs des Réglages ⚙️ in-app.
+          </p>
+        </div>
+
+        <!-- 💥 Reset complet -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">💥 Réinitialisation</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            Vide TOUT le stockage de l'app (cache, plans mémorisés, sessions, préférences).
+            Cette action est <strong>irréversible</strong> et nécessite une connexion Internet pour re-télécharger les assets.
+          </p>
+          <button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderResetBtn" style="width:100%;">
+            💥 Tout réinitialiser
+          </button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -454,6 +484,10 @@
       const zipDropZone     = document.getElementById("zipDropZone");
       const zipFileInput    = document.getElementById("zipFile");
       const zipFileName     = document.getElementById("zipFileName");
+      // v1.7.3 : le bouton "📥 Conf exemple" a été déplacé dans la modale
+      // 🏗️ Générateur de plan (cf createConf.js). La const ci-dessous est
+      // gardée à null pour rétro-compat avec le handler plus bas (lookup
+      // null-safe). Si le bouton n'existe pas → handler skip.
       const confExBtn       = document.getElementById("loaderConfExempleBtn");
 
       // Handle FS Access courant (si l'utilisateur a sélectionné via showOpenFilePicker)
@@ -1526,6 +1560,38 @@
         });
       }
 
+      // === BOUTON ⚙️ CONFIGURATION (v1.7.3) ===
+      // Ouvre la modale unique qui regroupe Tiling perf + ULTRA + Logs + Reset.
+      // Remplace l'ancien drawer 'Réglages de performance' + la section
+      // 'Plus d'options' qui étaient éparpillés dans le loader.
+      const configBtn   = document.getElementById("loaderConfigBtn");
+      const configModal = document.getElementById("loaderConfigModal");
+      const configClose = document.getElementById("loaderConfigClose");
+      function _ouvrirLoaderConfig() {
+        if (configModal) configModal.style.display = "flex";
+      }
+      function _fermerLoaderConfig() {
+        if (configModal) configModal.style.display = "none";
+      }
+      if (configBtn && configModal) {
+        configBtn.addEventListener("click", _ouvrirLoaderConfig);
+      }
+      if (configClose) {
+        configClose.addEventListener("click", _fermerLoaderConfig);
+      }
+      if (configModal) {
+        // Click backdrop pour fermer (mais pas si on clique sur la boîte)
+        configModal.addEventListener("click", function(e) {
+          if (e.target === configModal) _fermerLoaderConfig();
+        });
+        // Escape ferme la modale (cohérent avec autres modales projet)
+        document.addEventListener("keydown", function(e) {
+          if (e.key === "Escape" && configModal.style.display !== "none") {
+            _fermerLoaderConfig();
+          }
+        });
+      }
+
       // === BOUTON 🔔 ALERTE EN COURS ===
       // Force le re-fetch de alert.json et affiche soit la modale d'alerte
       // (même si déjà acquittée), soit une modale informative "pas d'alerte".
@@ -1704,17 +1770,10 @@
         }
       })();
 
-      // === COLLAPSE "PLUS D'OPTIONS" ===
-      const advHead    = document.getElementById("advancedHead");
-      const advBox     = document.getElementById("advancedBox");
-      const advChevron = document.getElementById("advancedChevron");
-      if (advHead && advBox) {
-        advHead.addEventListener("click", function() {
-          const isOpen = advBox.style.display === "flex" || advBox.style.display === "block";
-          advBox.style.display = isOpen ? "none" : "flex";
-          if (advChevron) advChevron.textContent = isOpen ? "▾" : "▴";
-        });
-      }
+      // v1.7.3 : section "Plus d'options" retirée du loader (boutons
+      // déplacés dans la modale ⚙️ Configuration). Les IDs #advancedHead,
+      // #advancedBox, #advancedChevron n'existent plus dans le DOM.
+      // Le bloc collapse handler est retiré aussi (devenu inutile).
 
       // === BOUTON "💥 TOUT RÉINITIALISER" ===
       const resetBtn = document.getElementById("loaderResetBtn");
