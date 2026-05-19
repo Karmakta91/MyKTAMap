@@ -251,7 +251,7 @@ Total confirmations : **2** quand online, **3** quand offline.
 Accessible depuis :
 
 - ⚙️ Réglages (dans l'app)
-- ⚙️ Plus d'options (dans le loader)
+- ⚙️ Configuration (dans le loader, depuis v1.7.3 — cf §39)
 
 ### 8. Mode performance — 5 presets DLSS-like (depuis 08/05/2026)
 
@@ -1986,6 +1986,91 @@ Volontaire : on laisse Leaflet faire son travail au 1er clic (ouverture popup). 
 **Non concerné** : tracker (comportement spécifique dans `tracking.js`, position temps réel), lost mode markers (popups dédiées avec badges in-zone/hors zone).
 
 À ajouter ailleurs si nouveau type de marker est introduit, via simple appel `window.attachMarkerDblClickZoom(marker)` après bindPopup.
+
+### 39. Refonte UX page d'accueil — Modale ⚙️ Configuration (depuis v1.7.3)
+
+Regroupement de tout ce qui était éparpillé dans le loader (drawer Perf + section "Plus d'options") dans une **modale unique** ouverte depuis un bouton `⚙️ Configuration` dans le header du loader. Refonte purement UX, aucun changement de comportement sous-jacent.
+
+#### 39.1 Architecture avant / après
+
+**Avant v1.7.3** :
+- `<details class="loader-perf-drawer">` (drawer dépliable) avec Tiling + ULTRA dans la home
+- Section collapsable `⚙️ Plus d'options` avec 4 boutons : 🏗️ Générer un plan, 📥 Conf exemple, 🐛 Logs détaillés, 💥 Tout réinitialiser
+- → 2 zones distinctes pour des réglages liés, UX confus
+
+**Après v1.7.3** :
+- Header loader : 3 boutons (📖 Documentation, 🚨 Alertes, ⚙️ Configuration)
+- `⚙️ Configuration` ouvre une **modale unique** `#loaderConfigModal` (~130 lignes HTML) regroupant :
+  1. 🖼️ Tiling (segmented 5 presets)
+  2. 🚀 ULTRA (7 toggles)
+  3. 🛠️ Debug → bouton 🐛 Logs détaillés
+  4. 🔄 **Force update douce** *(nouveau)*
+  5. 💥 Tout réinitialiser
+- `🏗️ Générer un plan` reste directement visible dans la home (action de **création**, pas un réglage)
+- `📥 Conf exemple` déplacé en icône dans le modal du Générateur (section "📂 Charger un ZIP existant")
+
+#### 39.2 Force update douce — `window.mettreAJourCodeSeul()`
+
+Nouveau bouton 🔄 dans la modale Configuration. Réutilise le pipeline `mettreAJourCodeSeul` existant (utilisé par le badge version cliquable depuis v1.5.x).
+
+Différences fondamentales avec `viderCacheAppli()` :
+
+| | Force update douce | Tout réinitialiser |
+|---|---|---|
+| Cache PWA (Service Worker) | ✅ Purgé | ✅ Purgé |
+| localStorage | ❌ Préservé | ✅ Purgé |
+| IndexedDB (plans mémorisés, sessions) | ❌ Préservé | ✅ Purgé |
+| Unlock Gate (code d'accès) | ❌ Préservé | ✅ Reset (re-demandé au boot) |
+| Confirmation | ❌ Aucune (action douce) | ✅ Double confirm + ping internet |
+
+Use case : user signale "l'app n'a pas la dernière feature" → un Force update douce force un re-fetch du SW + caches.delete + reload, sans perdre ses données. Ne pas confondre avec un vrai reset.
+
+#### 39.3 Pattern HTML/CSS
+
+Modale `#loaderConfigModal` suit le pattern `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` (déjà utilisé partout dans le projet). Boutons handlers dans `index.html` (inline) :
+
+- `loaderConfigBtn` → `_ouvrirLoaderConfig()` (set `display:flex`)
+- `loaderConfigClose` + backdrop click + Escape → `_fermerLoaderConfig()`
+- `loaderForceUpdateBtn` → `window.mettreAJourCodeSeul()`
+
+Les handlers existants pour Tiling segmented / ULTRA toggles / 🐛 Logs / 💥 Reset sont conservés et juste **déplacés** dans le DOM. Pas de changement de logique.
+
+#### 39.4 Multi-niveau (M-LVL) — Activation déplacée du Réglages au Générateur
+
+Retrait du toggle `🏗️ Plan multi-niveau` dans `afficherConfig` (`interface.js`). Cascade de lecture inchangée :
+
+```
+APP_CONFIG.multiLevel ←
+  PlanRegistry[id].multiLevel       (legacy ≤ v1.7.2, lecture conservée)
+  PLAN_CONFIG.plan.multiLevel       (SOURCE UNIQUE depuis v1.7.3)
+  false
+```
+
+Fonctions `_renderMultiLevelSection` / `_bindMultiLevelToggle` (interface.js) restent définies en **dead code propre** avec commentaire explicatif. Si retour terrain demande à ré-exposer le toggle (cas marginal), il suffit de re-appeler les 2 fonctions dans `afficherConfig`.
+
+#### 39.5 Footer copyright
+
+`© 2026 Flavien VIDAL [karma.png] · CC BY-NC-SA 4.0 ...` → `© 2026 KARMA · CC BY-NC-SA 4.0 ...`.
+
+"Flavien VIDAL" reste présent dans les headers `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */` des 7 fichiers JS critiques + meta tags `<head>` → **force probante légale préservée**. Seule la mention visible utilisateur est épurée.
+
+CSS `.kta-loader-copyright-sig` conservée en dormant (image plus dans le DOM mais règle utilisable si on veut ré-injecter la signature ailleurs un jour).
+
+#### 39.6 Titre stylisé de la home
+
+`📦 MyKTAMap` (basique) → lockup graphique Option D :
+- Logo `mkm-full.png` (rose des vents jaune, +1024px, drop-shadow halo jaune)
+- "MyKTAMap" en grand
+- "Cartographie souterraine" en tagline (remplace "Cartographie terrain" partout dans la page de chargement)
+- Hover pulse + responsive (vertical mobile, horizontal ≥1024px)
+
+Nouvelles classes CSS dédiées : `.loader-titre`, `.loader-titre-logo`, `.loader-titre-textes`, `.loader-titre-nom`, `.loader-titre-tagline`.
+
+#### 39.7 Pour ajouter un nouveau réglage de loader (futur)
+
+1. Ajouter le HTML dans la modale `#loaderConfigModal` (`index.html`) à l'endroit logique (Tiling / ULTRA / Debug / Maintenance)
+2. Bind du handler dans le script inline de `index.html`
+3. Ne PAS recréer une section séparée hors de la modale — la philosophie v1.7.3 est : **tout réglage du loader vit dans la modale Configuration**. Seuls les boutons d'**action** (créer un plan, charger un plan) restent dehors.
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

@@ -128,8 +128,6 @@ L'application est protégée par un **mot de passe unique commun** à tous les u
 4. Si correct → l'app se charge normalement et tu n'as plus besoin de re-saisir
 5. Si incorrect → message rouge, tu as 4 tentatives restantes
 
-> ⚠️ **5 tentatives ratées = blocage permanent** ("Le brute force c'est mal, m'voyez."). Pour sortir du blocage si tu connais légitimement le code mais l'as oublié, contacte l'auteur via myktamap.is-underground.fr. Sinon, il faut désinstaller manuellement l'app (mobile : long-press icône → désinstaller ; PC : `chrome://apps` → désinstaller).
-
 **Avant de faire un reset complet** : la modale de confirmation affiche le code en clair pour que tu puisses le re-saisir au prochain démarrage. **Note-le ou copie-le avant de cliquer "Réinitialiser"**, sinon tu ne pourras plus rentrer.
 
 > 🛡️ **Niveau de sécurité** : c'est une **barrière communautaire**, pas une vraie authentification. Le code source de l'app est public sur GitHub. Cette gate sert à décourager les passants et cadrer un cercle d'utilisateurs avertis, pas à protéger des données sensibles.
@@ -182,7 +180,7 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 
 1. **Importer un ZIP local** — glissez-déposez votre archive sur la zone prévue, ou cliquez pour la sélectionner. Cliquez ensuite sur **Charger le plan**. Le plan s'ajoute automatiquement à votre liste pour les prochaines fois.
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
-3. **🏗️ Générer un plan** — bouton en bas dans "Plus d'options" pour créer un plan from scratch.
+3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
 ### 📚 Gestion de votre liste de plans
 
@@ -262,15 +260,21 @@ Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/`
 
 Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
-### 🎚️ Drawer "Réglages de performance" (chargeur)
+### ⚙️ Modale "Configuration" (chargeur, depuis v1.7.3)
 
-Dans le chargeur, un encadré dépliable **🎚️ Réglages de performance** regroupe deux blocs liés à l'optimisation, **fermé par défaut** pour ne pas encombrer visuellement le loader. Cliquez sur le titre pour déplier — le contenu apparaît avec un séparateur visuel entre les deux blocs.
-
-**Contenu de la drawer** :
+Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe **tout ce qui était auparavant éparpillé** (drawer de perf, bouton de debug, bouton de reset) :
 
 1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
 
-2. **🚀 Mode Performance ULTRA (tracés / markers)** — 6 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
+
+3. **🛠️ Debug** — bouton **🐛 Logs détaillés** (toggle verbose mode).
+
+4. **🔄 Force update douce** — re-télécharge silencieusement la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active.
+
+5. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
+
+**Pourquoi cette refonte** : avant v1.7.3, le bouton de reset et le bouton 🐛 Logs étaient dans une section "Plus d'options" séparée, et le bloc Perf était un drawer à part. C'était confus. Désormais : **tout dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
 ### 🎚️ Mode performance — 5 presets
 
@@ -305,7 +309,7 @@ Vos **annotations en cours** (points ajoutés, tracés, zones, mesures) sont aut
 
 ### 🐛 Logs détaillés (mode debug)
 
-Le bouton **🐛 Logs détaillés** dans "Plus d'options" du chargeur active un mode verbose :
+Le bouton **🐛 Logs détaillés** dans la modale **⚙️ Configuration** du chargeur active un mode verbose :
 - Logs supplémentaires dans la console (capteurs du tracker, étapes du tiling)
 - Affichage des **chiffres techniques** sous le sélecteur Mode performance (tailles de tuile, qualité JPEG, seuil de déclenchement)
 
@@ -359,7 +363,7 @@ La fenêtre vous propose 3 actions :
 Si vous voulez remettre l'application **à l'état initial** (comme un premier lancement), un bouton **💥 Tout réinitialiser** est disponible à deux endroits :
 
 - Dans **⚙️ Réglages** depuis l'application
-- Dans **⚙️ Plus d'options** sur l'écran d'accueil (loader)
+- Dans **⚙️ Configuration** sur l'écran d'accueil (loader)
 
 ⚠️ **Cette action est irréversible** et efface :
 - Le cache de l'application (mode hors-ligne désactivé jusqu'à reconnexion)
@@ -1259,7 +1263,7 @@ La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploa
 
 #### 🎛️ Désactiver le tuilage à la lecture (V2 → V1 brut)
 
-Au chargement d'un plan V2, tu peux choisir **Mode performance : Désactivé** dans le drawer "🎚️ Réglages de performance" du loader. Dans ce cas, le runtime ignore les tuiles et charge directement l'**image source** (`baseImage` du ZIP, gardée intacte) comme un plan V1 classique.
+Au chargement d'un plan V2, tu peux choisir **Mode performance : Désactivé** dans la modale **⚙️ Configuration** du loader. Dans ce cas, le runtime ignore les tuiles et charge directement l'**image source** (`baseImage` du ZIP, gardée intacte) comme un plan V1 classique.
 
 Use cases :
 - Comparer le rendu V2 vs V1 sur le même plan

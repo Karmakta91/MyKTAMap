@@ -84,6 +84,15 @@ Pour **chaque** question :
 - 📐 **Icônes adaptatives au zoom** (depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante au lieu de la taille écran fixe Leaflet par défaut. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Clamp 0.25 → 2× pour éviter les extrêmes (invisible ou énorme). Toggle dans ⚙️ Réglages → 🔍 Affichage (default ON, reload requis pour changement).
 - 🔍 **Double-clic sur un marker → zoom flyTo** (depuis v1.7.1) : un seul clic ouvre le popup (inchangé), un double-clic rapide (< 500ms) fait un flyTo smooth (0.6s) sur le point au zoom +2 clampé. Le popup éventuel est fermé pendant le flyTo. Ne s'applique pas au tracker ni au mode urgence (comportements spécifiques préservés).
 - 🔢 **Nouveau format de version semver-like** (depuis v1.7.1) : passage de vNNN (v173) à vX.Y.Z (v1.7.1). X = MAJOR (1 actuel, 2 quand backend), Y = MINOR (évolutions majeures), Z = PATCH (debug/UX). Mapping rétroactif des MINOR dans le README.md journal.
+- 🎨 **Refonte UX page d'accueil** (depuis v1.7.3) :
+  - **Nouveau titre stylisé** : `📦 MyKTAMap` (basique) remplacé par un lockup graphique avec logo `mkm-full.png` (rose des vents jaune, drop-shadow halo) + "MyKTAMap" en grand + tagline "Cartographie souterraine" (remplace "Cartographie terrain" partout). Hover pulse, responsive vertical mobile / horizontal ≥1024px.
+  - **Bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) qui ouvre une **modale unique** regroupant tout ce qui était éparpillé : Tiling, ULTRA, 🐛 Logs détaillés, 🔄 **Force update douce** *(nouveau)*, 💥 Tout réinitialiser.
+  - **🔄 Force update douce** : re-télécharge la dernière version du code (purge cache PWA) mais **garde tes données** (plans, sessions, localStorage, unlock gate). Différent de `💥 Tout réinitialiser` qui purge tout.
+  - **🏗️ Générer un plan** reste directement visible dans la home (action de création, pas un réglage).
+  - **📥 Conf exemple** déplacé en icône dans le modal du Générateur (section "Charger un ZIP existant"). Plus logique : c'est un outil du générateur.
+  - **Section "⚙️ Plus d'options"** supprimée.
+  - **Footer copyright épuré** : `© 2026 Flavien VIDAL [signature karma.png]` → `© 2026 KARMA`. Le nom civil reste présent dans les headers JS et meta tags (valeur légale préservée).
+  - **Retrait du toggle M-LVL du menu ⚙️ Réglages** : le multi-niveau s'active désormais **uniquement** via le générateur ou par édition manuelle de `plan-config.json`. Cascade `PlanRegistry[id].multiLevel` reste lue pour rétro-compat des users qui avaient toggle avant v1.7.3.
 - 🧭 **Boussole + tracker landscape OK** (depuis v172) : avant, en mode landscape (et portrait inversé), le widget boussole et la rotation de l'icône tracker indiquaient un Nord décalé de ±90° (ou 180°). Cause : DeviceOrientationEvent renvoie α/β/γ par rapport aux axes du device, pas par rapport à l'orientation visuelle de l'écran. Fix : variable `_screenAngle` (lue depuis `screen.orientation.angle` + fallback iOS `window.orientation`) ajoutée au heading brut. Recalage instantané quand l'user tourne son tel (event `orientationchange`). Couvre les 4 orientations (portrait, landscape-left, landscape-right, portrait inversé).
 - 🎨 **Modales de re-sélection ZIP refondues** (depuis v172) : remplacement des `confirm()` natifs OS par 2 modales custom respectant la charte graphique :
   - **🚫 Nom différent** (rouge) : si l'user re-sélectionne un ZIP dont le `plan.name` ne correspond pas au plan ciblé → REFUS DÉFINITIF (1 seul bouton "J'ai compris"). Avant : "Charger quand même ?" qui créait des incohérences silencieuses. Pour vraiment charger ce ZIP : passer par 📦 Charger un nouveau plan.
@@ -270,7 +279,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 ### G. Créer un plan from scratch
 
-1. Loader → ⚙️ Plus d'options → **🏗️ Générer un plan**.
+1. Loader → bouton **🏗️ Générer un plan** (directement visible dans la home depuis v1.7.3).
 2. Choisis "📄 Nouveau plan".
 3. Upload une image (PNG ou JPEG, idéalement ≤ 8000 px de côté).
 4. Définis l'échelle (combien de mètres font N pixels — clique 2 points distants sur l'image).
@@ -505,7 +514,7 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
    - Télécharge le ou les fichiers `.json` générés (ex : `points.json`, `roads.json`, `zones_eau.json`, etc.).
 
 2. **Intégrer** ces JSON dans le ZIP du plan :
-   - Loader → ⚙️ Plus d'options → **🏗️ Générer un plan** → **📂 Modifier existant**.
+   - Loader → **🏗️ Générer un plan** → **📂 Modifier existant**.
    - Importe le ZIP actuel du plan.
    - Ajoute les fichiers `.json` issus de la conversion comme **calques de données** (data layers).
    - Clique **📦 Générer le ZIP** — le nouveau ZIP contient maintenant tes annotations comme données figées.
@@ -542,7 +551,7 @@ Saturation mémoire — typique des gros plans sur mobile. Solutions par ordre d
    - 👁️ Ne rendre que les tracés visibles (viewport culling)
    Tu peux aussi activer ces toggles individuellement si tu veux affiner.
 4. Si l'app a déjà crashé, l'OOMGuard affiche une modale d'avertissement au prochain reload.
-5. Active 🐛 Logs détaillés (loader → Plus d'options) puis recharge → consulte la modale 🐛 pour voir où ça plante.
+5. Active 🐛 Logs détaillés (loader → ⚙️ Configuration → 🛠️ Debug, ou ⚙️ Réglages in-app) puis recharge → consulte la modale 🐛 pour voir où ça plante.
 6. À terme : optimise le plan (voir recette H ci-dessus).
 
 ### C'est quoi les badges V1 / M-LVL / V2 sur les lignes de la liste de plans ?
@@ -642,7 +651,7 @@ Voir la **recette J** dans la section "🍳 Recettes" pour la procédure détail
    - Coche Points / Tracés / Zones à figer → télécharge les fichiers `.json` générés.
 
 2. **🏗️ Modifier existant** pour intégrer ces JSON dans le ZIP :
-   - Loader → ⚙️ Plus d'options → 🏗️ Générer un plan → **📂 Modifier existant**.
+   - Loader → **🏗️ Générer un plan** → **📂 Modifier existant**.
    - Importe ton ZIP actuel → ajoute les `.json` de l'étape 1 comme data layers → **📦 Générer le ZIP**.
 
 **Ne confonds pas** :
@@ -653,7 +662,7 @@ Voir aussi la **recette I** dans la section "🍳 Recettes" pour la procédure d
 
 ### Comment partager un plan avec un ami ?
 
-1. Loader → ⚙️ Plus d'options → 🏗️ Générer un plan → "Modifier existant" → sélectionne ton plan.
+1. Loader → **🏗️ Générer un plan** → "Modifier existant" → sélectionne ton plan.
 2. Si rien à modifier, clique directement **📦 Générer le ZIP**.
 3. Envoie le `.zip`.
 4. L'ami le charge via la zone drop du loader.
