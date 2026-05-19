@@ -2783,18 +2783,93 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 .loader-header {
-  margin-bottom: 18px;
+  margin-bottom: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.18);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
+/* 🎨 v1.7.3 : Titre stylisé du loader — refonte D validée KARMA.
+   Lockup : logo rose des vents (mkm-full.png) + bloc texte (nom + tagline).
+   Cohérent avec le splash (même logo) et la charte (accent jaune #f4c542).
+
+   Bonus déco activés (tous les 3 — KARMA "deco toute") :
+     a) Drop-shadow jaune accent autour du logo (effet "halo souterrain")
+     b) Hover pulse subtil 1.02× sur tout le lockup (signature dev tool)
+     c) Taille augmentée sur PC ≥ 1024px (logo 44px / nom 22px / tag 13px)
+        au lieu de 36 / 18 / 11px en mobile */
 .loader-titre {
-  font-size: 17px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.2s ease;
+  cursor: default;     /* pas de main : le titre n'est pas cliquable */
+}
+.loader-titre:hover {
+  transform: scale(1.02);
+}
+
+.loader-titre-logo {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  object-fit: contain;
+  /* Halo jaune doux — rappel splash (cf icon mkm-full = rose des vents jaune
+     charte). Subtle mais marque l'identité visuellement. */
+  filter: drop-shadow(0 0 10px rgba(244, 197, 66, 0.35))
+          drop-shadow(0 0 4px rgba(244, 197, 66, 0.20));
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.loader-titre-textes {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  min-width: 0;        /* permet truncate sur très petit écran */
+}
+
+.loader-titre-nom {
+  font-size: 18px;
   font-weight: 700;
   color: #e8eaf0;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  /* Léger glow blanc pour lisibilité sur fond foncé + cohérence avec halo */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.loader-titre-tagline {
+  font-size: 11px;
+  color: #f4c542;
+  opacity: 0.75;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  white-space: nowrap;
+  /* Mise en valeur subtile : jaune accent + italique petit */
+}
+
+/* PC ≥ 1024px : titre plus généreux pour profiter de l'espace dispo
+   (le loader y est en 1100px max, on a la place) */
+@media (min-width: 1024px) {
+  .loader-titre-logo {
+    width: 44px;
+    height: 44px;
+    filter: drop-shadow(0 0 14px rgba(244, 197, 66, 0.40))
+            drop-shadow(0 0 6px rgba(244, 197, 66, 0.22));
+  }
+  .loader-titre-nom {
+    font-size: 22px;
+    letter-spacing: 0.04em;
+  }
+  .loader-titre-tagline {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+  }
 }
 
 .loader-btn-help {

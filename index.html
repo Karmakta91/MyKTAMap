@@ -139,9 +139,20 @@
   <div id="planLoaderOverlay" style="display:none;">
     <div id="planLoaderBox">
 
-      <!-- HEADER : titre + boutons utilitaires (alerte, doc) -->
+      <!-- HEADER : titre stylisé (logo + nom + tagline) + boutons utilitaires
+           (alerte, doc). v1.7.3 — refonte D validée KARMA : logo rose des vents
+           jaune (mkm-full.png, déjà utilisé au splash → cohérence identité),
+           wordmark, tagline "Cartographie souterraine" en sous-titre italique.
+           Tous les bonus déco activés (ombre jaune accent, hover pulse,
+           taille +1024px). -->
       <div class="loader-header">
-        <span class="loader-titre">📦 MyKTAMap</span>
+        <div class="loader-titre">
+          <img src="icon/mkm-full.png" alt="" class="loader-titre-logo" draggable="false">
+          <div class="loader-titre-textes">
+            <span class="loader-titre-nom">MyKTAMap</span>
+            <span class="loader-titre-tagline">Cartographie souterraine</span>
+          </div>
+        </div>
         <div class="loader-header-actions">
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
