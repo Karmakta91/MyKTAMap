@@ -2191,11 +2191,12 @@ Persistance : `localStorage["myktamap_network_paranoia_v1"] = "1"` quand actif. 
 
 Double protection : en plus du module JS, le serveur Nginx envoie un header `Content-Security-Policy` strict. Directives clés :
 ```
-connect-src 'self' https://www.gstatic.com
-script-src 'self'
-img-src 'self' data: blob:        ← blob: nécessaire pour tuiles V2 ZIP
-worker-src 'self' blob:           ← Service Worker
-frame-ancestors 'none'            ← anti-clickjacking
+connect-src 'self' https://www.gstatic.com    ← LA garantie anti-exfiltration
+script-src 'self' 'unsafe-inline'             ← compromis assumé (cf. ci-dessous)
+style-src 'self' 'unsafe-inline'              ← idem (style="..." inline partout)
+img-src 'self' data: blob:                    ← blob: nécessaire pour tuiles V2 ZIP
+worker-src 'self' blob:                       ← Service Worker
+frame-ancestors 'none'                        ← anti-clickjacking
 ```
 
 Même si un attaquant injectait du JS malveillant, le **navigateur lui-même** refuserait l'envoi vers un domaine non-whitelisté. Vérifiable côté user via F12 → Network → Headers → `Content-Security-Policy`.
@@ -2203,6 +2204,31 @@ Même si un attaquant injectait du JS malveillant, le **navigateur lui-même** r
 ⚠️ **À déployer côté Nginx prod/dev** (toi-même, manuellement) — le fichier `docs/nginx-csp-config.conf` documente la directive complète + les autres headers de sécurité (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
 
 ⚠️ Pas de `report-uri` / `report-to` : cohérent avec la promesse "aucune donnée n'est envoyée à un serveur tiers". Les violations CSP restent visibles côté user uniquement (DevTools).
+
+#### 40.7.1 ⚠️ `'unsafe-inline'` sur script-src — compromis assumé
+
+L'app utilise depuis toujours :
+- Des blocs `<script>...</script>` inline dans `index.html` (handlers du loader, modales de confirmation, modales audit…)
+- Des `onclick="..."` dans le HTML généré par `interface.js` (modales config, modales d'aide, etc.)
+
+Une CSP `script-src 'self'` strict refuse tout ça. 3 options pour résoudre :
+
+| Option | Effort | Sécurité gagnée |
+|---|---|---|
+| `'unsafe-inline'` ajouté | Aucun | -0 (garantie reste sur `connect-src`) |
+| Hashes SHA-256 par bloc | Très haut (cauchemar maintenance, change à chaque tweak) | Marginal |
+| Externalisation totale + suppression de tous les `onclick` | Refonte massive (~50+ sites) | Marginal |
+
+**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src 'self' https://www.gstatic.com` qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
+
+Conditions qui rendent ce compromis safe pour CE projet :
+- Aucun input user n'est jamais placé en `innerHTML` directement (tout passe par `textContent` ou `_escapeHtml`)
+- Aucun contenu tiers / aucun iframe / pas de CDN externe
+- Le HTML servi par Nginx est statique (pas de templating server-side qui pourrait injecter de l'input user)
+
+⚠️ Si un jour on ajoute une feature qui fait `innerHTML = userInput`, **revoir cette décision** : on devra soit purifier strict (DOMPurify), soit basculer sur du nonce dynamique généré par Nginx.
+
+⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement**. Toujours `el.textContent = userInput` ou `el.innerHTML = _escapeHtml(userInput)`.
 
 #### 40.8 Documentation utilisateur (docs/NETWORK_AUDIT.md)
 
