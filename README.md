@@ -11,7 +11,99 @@
 
 > _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-7-3" open>
+<details id="v1-8-0" open>
+<summary><strong>🗓️ 21/05/2026 — 🔒 v1.8.0 : Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP)</strong></summary>
+
+MINOR bump (1.7 → 1.8) car évolution architecturale majeure visible utilisateur : **MyKTAMap rend maintenant techniquement vérifiable sa promesse "aucune donnée n'est envoyée à nos serveurs"**.
+
+### 🎯 Le contexte
+
+Le milieu cataphile est ce qu'il est : la méfiance vis-à-vis d'une app qui aurait une backdoor pour exfiltrer les plans est totalement légitime. L'archi PWA 100% client-side de MyKTAMap rend la collecte techniquement impossible — mais l'utilisateur ne devrait pas avoir à nous croire sur parole. Cette release ajoute **plusieurs couches de vérifiabilité** :
+
+1. **Module `js/networkAudit.js`** qui instrumente toutes les API réseau du navigateur (fetch, XHR, sendBeacon, WebSocket, EventSource) AVANT toute autre exécution JS, et logue chaque appel dans un buffer accessible à l'utilisateur.
+2. **Mode hors-ligne strict** (opt-in) qui bloque ACTIVEMENT toute requête sortante non-whitelistée.
+3. **Content Security Policy stricte** côté Nginx qui demande au navigateur lui-même de refuser toute connexion vers un domaine non autorisé.
+4. **Page de transparence** détaillée (`docs/NETWORK_AUDIT.md`) qui explique le modèle technique + comment vérifier soi-même.
+
+### 🏗️ Le module `js/networkAudit.js` (~350 lignes)
+
+Chargé **EN DEUXIÈME** dans l'ordre des scripts (juste après `copyright.js` qui ne fait que console.log). Position critique : si on inverse avec `debug.js` ou plus, les premiers fetch passent sous le radar.
+
+Mécanisme :
+- Monkey-patch de `fetch`, `XMLHttpRequest.prototype.open/send`, `navigator.sendBeacon`, `WebSocket`, `EventSource`
+- Buffer circulaire 500 entries (RAM uniquement, pas localStorage)
+- Whitelist hardcodée : 2 entrées (same-origin + `gstatic.com/generate_204`)
+- API publique `window.NetworkAudit` : `getLog()`, `clear()`, `setParanoia(b)`, `isParanoia()`, `onLog(cb)`, `WHITELIST_HUMAN`, `exportJson()`
+
+### 🖥️ L'UI (section dans la modale ⚙️ Configuration du loader)
+
+Nouvelle section **🔒 Confidentialité & Audit** dans `#loaderConfigModal` :
+
+- **Bouton 📋 Voir le journal réseau** → modale `#loaderNetLogModal` avec tableau live (heure / type / méthode / URL / catégorie / hasBody / statut). Sticky header, scrollable, 920px de large, color-coded par catégorie. Subscribe live via `NetworkAudit.onLog()`. Boutons en header : 📋 Copier (JSON dans le presse-papier), 📥 Exporter (téléchargement `.json`), 🗑️ Vider.
+- **Bouton 📖 Que fait l'app sur le réseau ?** → modale `#loaderNetDocModal` avec explication PWA pure + whitelist commentée (auto-générée depuis `NetworkAudit.WHITELIST_HUMAN`) + 4 méthodes de vérification + lien vers `docs/NETWORK_AUDIT.md`.
+- **Toggle 🔒 Mode hors-ligne strict** (opt-in, accent orange) → active `NetworkAudit.setParanoia(true)`.
+
+**Badge `🔒 MODE HORS-LIGNE STRICT ACTIF`** dans le footer du loader (visible uniquement quand paranoia ON) : animation pulse douce, cliquable → ouvre Configuration.
+
+### 🛡️ CSP côté serveur Nginx
+
+Nouveau fichier `docs/nginx-csp-config.conf` documentant la directive complète à déployer côté Nginx :
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self';
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: blob:;
+  connect-src 'self' https://www.gstatic.com;
+  worker-src 'self' blob:;
+  frame-ancestors 'none';
+  ...
+```
+
+⚠️ **À déployer manuellement côté Nginx prod/dev** par KARMA. L'app fonctionne sans (la CSP est défense en profondeur, pas un bloquant côté JS).
+
+Autres headers de sécurité fournis : `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (geolocation/camera/microphone interdits, accelerometer/magnetometer/gyroscope autorisés pour le tracker).
+
+⚠️ Pas de `report-uri` / `report-to` : cohérent avec la promesse "aucune donnée n'est envoyée à un serveur tiers". Les violations CSP restent visibles côté user uniquement (DevTools).
+
+### 📄 Documentation
+
+Nouveau fichier `docs/NETWORK_AUDIT.md` (~300 lignes) servi en static, ajouté à `ASSETS_TO_CACHE` du SW (consultable offline). Contenu : promesse en 1 ligne / modèle technique / whitelist exhaustive et commentée / 3 méthodes de vérification (journal interne / DevTools / lecture source) / mode paranoia détaillé / CSP expliqué / stockage local / analytics-cookies-tracking (réponse : aucun) / position signée KARMA.
+
+### 🚫 Pas de section dans ⚙️ Réglages map mode
+
+Décision KARMA : tout réglage sensible (paranoia, audit, reset, force update) reste dans le loader (cohérent avec la refonte v1.7.3 — cf. §39 CLAUDE.md). Évite la dispersion UI.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.3"` → **`"myktamap-cache-v1.8.0"`** + ajout `./js/networkAudit.js` + `./docs/NETWORK_AUDIT.md` à `ASSETS_TO_CACHE`
+- `js/copyright.js > __MKM__.build` : `"v1.7.3"` → **`"v1.8.0"`**
+- `version.json > version` : `"v1.7.3"` → **`"v1.8.0"`** + 6 notes user-facing
+
+### Fichiers ajoutés
+
+| Fichier | Rôle |
+|---|---|
+| `js/networkAudit.js` | Module instrumentation + buffer + paranoia (~350 lignes) |
+| `docs/NETWORK_AUDIT.md` | Page de transparence détaillée user-facing |
+| `docs/nginx-csp-config.conf` | Config Nginx avec CSP stricte + autres headers sécurité |
+
+### Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `index.html` | Script tag `networkAudit.js` en 2ème position (avant debug.js). Section UI "🔒 Confidentialité & Audit" dans `#loaderConfigModal`. Modales `#loaderNetLogModal` (tableau live) et `#loaderNetDocModal` (doc inline). Badge `#loaderParanoiaBadge` dans le footer. ~250 lignes de handlers JS pour wire le tout. |
+| `css/style.css` | ~250 lignes ajoutées en fin de fichier : styles `.kta-net-paranoia-toggle`, `.kta-net-paranoia-badge` (avec animation pulse), `.kta-net-log-*` (modale tableau live), `.kta-net-doc-*` (modale doc), responsive mobile. |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.0 |
+| `CLAUDE.md` | Nouvelle §40 "Privacy & Audit" (~150 lignes) avec architecture, whitelist, API, UI, CSP, et procédure pour ajouter une URL à la whitelist au futur. |
+| `README_USER.md`, `AI_CONTEXT.md` | Sections audit ajoutées, alignement avec la nouvelle feature. |
+
+---
+
+</details>
+
+<details id="v1-7-3">
 <summary><strong>🗓️ 19/05/2026 — 🎨 v1.7.3 : Refonte UX page d'accueil (modale Configuration, titre stylisé, footer épuré)</strong></summary>
 
 PATCH bump qui regroupe une série d'améliorations UX sur la page d'accueil (loader) et un nettoyage de l'arborescence des réglages.
@@ -191,6 +283,7 @@ Les marqueurs sont enregistrés dans `_ktaDataPolylines` avec le même `level` q
 > | 1.5 | 🌍 Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza) | v170 |
 > | 1.6 | ⛔ Zone Inaccessible + 🚫 Préférences évitement itinéraire | v169 |
 > | 1.7 | 🗝️ Unlock Gate (barrière communautaire d'accès) | v173 |
+> | 1.8 | 🔒 Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) | v1.8.0 |
 >
 > Les anciennes entrées du journal restent nommées avec leur ancienne convention `vNNN` (= historique préservé). Seules les **nouvelles entrées à partir de v1.7.1** suivent le nouveau format.
 

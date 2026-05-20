@@ -122,6 +122,14 @@
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
   <script src="js/copyright.js"></script>
 
+  <!-- 🔒 NETWORK AUDIT — v1.8.0 "Privacy & Audit".
+       Instrumente fetch / XHR / sendBeacon / WebSocket / EventSource AVANT
+       que tout autre module ne puisse émettre une requête réseau. Sans cet
+       ordre, les premiers appels (debug.js, sw.register…) passeraient sous
+       le radar. copyright.js juste avant ne fait que console.log/info, pas
+       de requête réseau, donc l'ordre est OK. Cf. docs/NETWORK_AUDIT.md -->
+  <script src="js/networkAudit.js"></script>
+
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>
 
@@ -262,6 +270,14 @@
       <input id="importListFile" type="file" accept=".config,.json,application/json" style="display:none;">
 
       <div id="loaderStatus"></div>
+
+      <!-- 🆕 v1.8.0 : badge "MODE HORS-LIGNE STRICT" visible seulement quand
+           NetworkAudit.isParanoia() === true. Rappel persistant à l'user que
+           toute requête sortante non whitelistée est bloquée. Cliquable →
+           ouvre ⚙️ Configuration pour aller décocher le toggle. -->
+      <div id="loaderParanoiaBadge" class="kta-net-paranoia-badge" style="display:none;" title="Cliquer pour ouvrir la configuration et désactiver">
+        🔒 MODE HORS-LIGNE STRICT ACTIF
+      </div>
 
       <!-- Mention copyright + licence (visible côté utilisateur).
            v1.7.3 : seule la mention "Flavien VIDAL" (nom civil) est
@@ -441,6 +457,29 @@
           </button>
         </div>
 
+        <!-- 🔒 Confidentialité & Audit réseau (v1.8.0 "Privacy & Audit")
+             Trois actions :
+               1. 📋 Voir le journal réseau live (modale buffer)
+               2. 📖 Que fait l'app sur le réseau ? (modale doc + lien doc/NETWORK_AUDIT.md)
+               3. 🔒 Mode hors-ligne strict (toggle paranoia opt-in)
+             Cf. docs/NETWORK_AUDIT.md pour la doc complète. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🔒 Confidentialité &amp; Audit</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+            MyKTAMap est <strong>100% client-side</strong> : aucune de tes données n'est envoyée à un serveur. Tu peux le vérifier toi-même.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderNetLogBtn" style="width:100%; margin-bottom:6px;">
+            📋 Voir le journal réseau
+          </button>
+          <button class="loader-btn-secondary" type="button" id="loaderNetDocBtn" style="width:100%; margin-bottom:10px;">
+            📖 Que fait l'app sur le réseau ?
+          </button>
+          <label class="kta-net-paranoia-toggle">
+            <input type="checkbox" id="loaderNetParanoiaCb">
+            <span><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
+          </label>
+        </div>
+
         <!-- 💥 Reset complet -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">💥 Réinitialisation</div>
@@ -453,6 +492,102 @@
           </button>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 v1.8.0 : Modale "📋 Journal réseau" — live audit des requêtes
+       fetch/XHR/sendBeacon/WebSocket/EventSource captées par networkAudit.js.
+       Ouverte depuis ⚙️ Configuration → 🔒 Confidentialité → 📋 Voir le journal.
+       Mise à jour live via window.NetworkAudit.onLog(cb). -->
+  <div id="loaderNetLogModal" class="kta-readme-modal-overlay" style="display:none;">
+    <div class="kta-readme-modal-boite kta-net-log-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📋 Journal réseau (live)</span>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogCopy" title="Copier en JSON">📋 Copier</button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogExport" title="Télécharger en JSON">📥 Exporter</button>
+          <button class="kta-btn kta-btn-ghost kta-net-log-mini" type="button" id="loaderNetLogClear" title="Vider le buffer">🗑️ Vider</button>
+          <button class="kta-panneau-close" id="loaderNetLogClose">✕</button>
+        </div>
+      </div>
+      <div class="kta-readme-modal-corps kta-net-log-corps">
+        <div class="kta-net-log-meta" id="loaderNetLogMeta">— 0 requête capturée —</div>
+        <div class="kta-net-log-table-wrap">
+          <table class="kta-net-log-table">
+            <thead>
+              <tr>
+                <th>Heure</th>
+                <th>Type</th>
+                <th>Méthode</th>
+                <th>URL</th>
+                <th>Catégorie</th>
+                <th>Body ?</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody id="loaderNetLogTbody">
+              <!-- Rempli dynamiquement -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🆕 v1.8.0 : Modale "📖 Que fait l'app sur le réseau ?" — doc inline
+       qui explique le modèle PWA, liste la whitelist, explique comment
+       vérifier soi-même (F12 + paranoia). Pointe aussi vers
+       docs/NETWORK_AUDIT.md pour la version longue. -->
+  <div id="loaderNetDocModal" class="kta-readme-modal-overlay" style="display:none;">
+    <div class="kta-readme-modal-boite kta-net-doc-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📖 Que fait l'app sur le réseau ?</span>
+        <button class="kta-panneau-close" id="loaderNetDocClose">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps kta-net-doc-corps">
+        <div class="kta-net-doc-lead">
+          <strong>MyKTAMap est une PWA 100% client-side.</strong> Tout ce que tu crées (annotations, sessions, plans mémorisés, calibrations KMZ, préférences) <strong>reste dans ton navigateur</strong>. Le serveur Nginx ne fait que servir des fichiers statiques. Aucun backend applicatif, aucune base de données serveur, aucun analytics, aucun cookie de tracking.
+        </div>
+
+        <div class="kta-net-doc-section">
+          <div class="kta-net-doc-section-titre">🌐 Liste blanche des connexions réseau</div>
+          <p class="kta-net-doc-hint">Voici la liste <strong>exhaustive</strong> de toutes les URLs que l'app peut contacter :</p>
+          <ul class="kta-net-doc-list" id="loaderNetDocWhitelist">
+            <!-- Rempli dynamiquement depuis window.NetworkAudit.WHITELIST_HUMAN -->
+          </ul>
+          <p class="kta-net-doc-hint">
+            <strong>Aucun POST, PUT, PATCH, DELETE, sendBeacon, WebSocket ou EventSource n'est jamais émis par l'app.</strong> Si un jour ça change, ce document sera mis à jour et la version bumpée.
+          </p>
+        </div>
+
+        <div class="kta-net-doc-section">
+          <div class="kta-net-doc-section-titre">🔍 Comment vérifier toi-même</div>
+          <ol class="kta-net-doc-ol">
+            <li><strong>Journal interne</strong> : bouton « 📋 Voir le journal réseau » dans la même section — logue en temps réel toutes les requêtes émises par l'app.</li>
+            <li><strong>DevTools navigateur (F12)</strong> : onglet « Network » / « Réseau » → tu vois <strong>toutes</strong> les requêtes, indépendamment de ce que l'app raconte. Filtre par méthode pour vérifier qu'il n'y a aucun POST/PUT/PATCH/DELETE.</li>
+            <li><strong>Mode hors-ligne strict</strong> : coche le toggle dans la même section. Le navigateur refusera activement toute requête non-whitelistée — l'app reste 100% fonctionnelle.</li>
+            <li><strong>Content Security Policy</strong> : F12 → Network → première requête (HTML) → onglet Headers → cherche <code>Content-Security-Policy</code>. Le serveur Nginx demande au navigateur de bloquer toute connexion non whitelistée (<code>connect-src 'self' https://www.gstatic.com</code>).</li>
+          </ol>
+        </div>
+
+        <div class="kta-net-doc-section">
+          <div class="kta-net-doc-section-titre">📄 Documentation détaillée</div>
+          <p class="kta-net-doc-hint">
+            La page complète de transparence (modèle technique, stockage local, position de l'auteur…) est dans <code>docs/NETWORK_AUDIT.md</code> :
+          </p>
+          <p style="text-align:center; margin:14px 0 4px 0;">
+            <button class="kta-btn kta-btn-primary" type="button" id="loaderNetDocOpenFull">📄 Ouvrir la doc complète</button>
+          </p>
+          <p class="kta-net-doc-hint" style="text-align:center;">
+            (S'ouvre dans un nouvel onglet — c'est un fichier statique servi par le même Nginx que l'app.)
+          </p>
+        </div>
+
+        <div class="kta-net-doc-section kta-net-doc-quote">
+          <em>« Si tu trouves quoi que ce soit qui contredit cette page, contacte-moi via le site officiel — je corrigerai immédiatement. »</em>
+          <div style="text-align:right; margin-top:6px; color:#8892a4;">— KARMA</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1877,6 +2012,255 @@
           }
         });
       }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 🔒 NETWORK AUDIT (v1.8.0 "Privacy & Audit")
+      // ═══════════════════════════════════════════════════════════════
+      // 3 boutons + 1 toggle dans la section "🔒 Confidentialité & Audit"
+      // de la modale Configuration :
+      //   - 📋 Voir le journal réseau → ouvre #loaderNetLogModal (live)
+      //   - 📖 Que fait l'app sur le réseau ? → ouvre #loaderNetDocModal
+      //   - 🔒 Mode hors-ligne strict → toggle window.NetworkAudit
+      //
+      // Le badge "MODE HORS-LIGNE STRICT" dans le footer est mis à jour via
+      // window._kta_majBadgeParanoia (appelé par NetworkAudit.setParanoia).
+
+      // ── Helper : maj du badge paranoia + sync checkbox ──────────────
+      window._kta_majBadgeParanoia = function() {
+        const isOn = !!(window.NetworkAudit && window.NetworkAudit.isParanoia());
+        const badge = document.getElementById("loaderParanoiaBadge");
+        if (badge) badge.style.display = isOn ? "block" : "none";
+        const cb = document.getElementById("loaderNetParanoiaCb");
+        if (cb) cb.checked = isOn;
+      };
+
+      // ── Init : sync checkbox + badge depuis l'état actuel ───────────
+      try { window._kta_majBadgeParanoia(); } catch(e) {}
+
+      // ── Badge cliquable → ouvre la modale Configuration ─────────────
+      const paranoiaBadge = document.getElementById("loaderParanoiaBadge");
+      if (paranoiaBadge) {
+        paranoiaBadge.addEventListener("click", function() {
+          _ouvrirLoaderConfig();
+        });
+      }
+
+      // ── Toggle "🔒 Mode hors-ligne strict" ──────────────────────────
+      const paranoiaCb = document.getElementById("loaderNetParanoiaCb");
+      if (paranoiaCb) {
+        paranoiaCb.addEventListener("change", function() {
+          if (window.NetworkAudit) {
+            window.NetworkAudit.setParanoia(paranoiaCb.checked);
+          }
+        });
+      }
+
+      // ── Bouton "📋 Voir le journal réseau" ──────────────────────────
+      // Ouvre la modale journal live. Re-render initial + subscribe aux events.
+      const netLogBtn = document.getElementById("loaderNetLogBtn");
+      if (netLogBtn) {
+        netLogBtn.addEventListener("click", function() { _ouvrirNetLogModal(); });
+      }
+
+      // ── Bouton "📖 Que fait l'app sur le réseau ?" ──────────────────
+      const netDocBtn = document.getElementById("loaderNetDocBtn");
+      if (netDocBtn) {
+        netDocBtn.addEventListener("click", function() { _ouvrirNetDocModal(); });
+      }
+
+      // ── Modale Journal réseau (live) ────────────────────────────────
+      let _netLogUnsub = null;  // unsubscribe handle pour NetworkAudit.onLog
+      const CATEGORY_COLORS = {
+        "app-page":      "#8cb4ff",
+        "app-script":    "#8cb4ff",
+        "app-style":     "#8cb4ff",
+        "image":         "#a8d4a8",
+        "data":          "#d4a8d4",
+        "plan-data":     "#d4a8d4",
+        "version-check": "#f4c542",
+        "alert-check":   "#ffb380",
+        "doc":           "#c8d0e0",
+        "ping":          "#888",
+        "external":      "#ff8c8c",
+        "same-origin":   "#a0c8e0",
+        "unknown":       "#c8d0e0"
+      };
+
+      function _escapeHtml(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      }
+
+      function _formatTime(ts) {
+        const d = new Date(ts);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        const ms = String(d.getMilliseconds()).padStart(3, "0");
+        return hh + ":" + mm + ":" + ss + "." + ms;
+      }
+
+      function _renderNetLogRow(entry) {
+        const color = CATEGORY_COLORS[entry.category] || "#c8d0e0";
+        const statusTxt = entry.status === null ? "…" : String(entry.status);
+        const statusClass = entry.blocked ? "kta-net-status-blocked"
+                          : (typeof entry.status === "number" && entry.status >= 200 && entry.status < 400 ? "kta-net-status-ok"
+                          : (typeof entry.status === "number" && entry.status >= 400 ? "kta-net-status-err"
+                          : "kta-net-status-pending"));
+        const bodyBadge = entry.hasBody
+          ? '<span class="kta-net-body-yes" title="Données envoyées dans le corps de la requête">OUI</span>'
+          : '<span class="kta-net-body-no" title="Aucune donnée envoyée">non</span>';
+        return '<tr class="' + (entry.blocked ? "kta-net-row-blocked" : "") + '">' +
+          '<td class="kta-net-cell-time">' + _formatTime(entry.timestamp) + '</td>' +
+          '<td class="kta-net-cell-kind">' + _escapeHtml(entry.kind) + '</td>' +
+          '<td class="kta-net-cell-method">' + _escapeHtml(entry.method) + '</td>' +
+          '<td class="kta-net-cell-url" title="' + _escapeHtml(entry.url) + '">' + _escapeHtml(entry.url) + '</td>' +
+          '<td class="kta-net-cell-cat" style="color:' + color + ';">' + _escapeHtml(entry.category) + '</td>' +
+          '<td class="kta-net-cell-body">' + bodyBadge + '</td>' +
+          '<td class="kta-net-cell-status ' + statusClass + '">' + _escapeHtml(statusTxt) + '</td>' +
+        '</tr>';
+      }
+
+      function _refreshNetLogTable() {
+        const tbody = document.getElementById("loaderNetLogTbody");
+        const meta  = document.getElementById("loaderNetLogMeta");
+        if (!tbody || !window.NetworkAudit) return;
+        const log = window.NetworkAudit.getLog();
+        if (log.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px; color:#8892a4;">Aucune requête capturée pour le moment. Utilise l\'app, recharge un plan, ou ferme/rouvre cette modale.</td></tr>';
+        } else {
+          // On affiche du plus récent au plus ancien (reverse)
+          tbody.innerHTML = log.slice().reverse().map(_renderNetLogRow).join("");
+        }
+        if (meta) {
+          const paranoia = window.NetworkAudit.isParanoia();
+          const blockedCount = log.filter(function(e) { return e.blocked; }).length;
+          meta.innerHTML =
+            '<strong>' + log.length + '</strong> requête' + (log.length > 1 ? 's' : '') + ' capturée' + (log.length > 1 ? 's' : '') +
+            ' · Mode hors-ligne strict : <strong>' + (paranoia ? '🔒 ACTIF' : 'désactivé') + '</strong>' +
+            (blockedCount > 0 ? ' · <strong style="color:#ff8c8c;">' + blockedCount + ' bloquée' + (blockedCount > 1 ? 's' : '') + '</strong>' : '');
+        }
+      }
+
+      function _ouvrirNetLogModal() {
+        const modal = document.getElementById("loaderNetLogModal");
+        if (!modal) return;
+        modal.style.display = "flex";
+        _refreshNetLogTable();
+        // Subscribe live : chaque nouvel event re-render
+        if (window.NetworkAudit && typeof window.NetworkAudit.onLog === "function") {
+          _netLogUnsub = window.NetworkAudit.onLog(function(/* entry */) {
+            _refreshNetLogTable();
+          });
+        }
+      }
+
+      function _fermerNetLogModal() {
+        const modal = document.getElementById("loaderNetLogModal");
+        if (modal) modal.style.display = "none";
+        if (typeof _netLogUnsub === "function") {
+          _netLogUnsub();
+          _netLogUnsub = null;
+        }
+      }
+
+      // Close ✕ + backdrop + Escape
+      const netLogClose = document.getElementById("loaderNetLogClose");
+      if (netLogClose) netLogClose.addEventListener("click", _fermerNetLogModal);
+      const netLogModal = document.getElementById("loaderNetLogModal");
+      if (netLogModal) {
+        netLogModal.addEventListener("click", function(e) {
+          if (e.target === netLogModal) _fermerNetLogModal();
+        });
+      }
+
+      // Boutons d'action de la modale journal
+      const netLogCopy = document.getElementById("loaderNetLogCopy");
+      if (netLogCopy) {
+        netLogCopy.addEventListener("click", function() {
+          if (!window.NetworkAudit) return;
+          const txt = window.NetworkAudit.exportJson();
+          if (navigator.clipboard) {
+            navigator.clipboard.writeText(txt).then(function() {
+              netLogCopy.textContent = "✓ Copié";
+              setTimeout(function() { netLogCopy.textContent = "📋 Copier"; }, 1500);
+            }).catch(function() {
+              alert("Copie échouée — sélectionne manuellement.");
+            });
+          } else {
+            alert("Clipboard API indisponible. Utilise plutôt 📥 Exporter.");
+          }
+        });
+      }
+      const netLogExport = document.getElementById("loaderNetLogExport");
+      if (netLogExport) {
+        netLogExport.addEventListener("click", function() {
+          if (!window.NetworkAudit) return;
+          const txt = window.NetworkAudit.exportJson();
+          const blob = new Blob([txt], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "myktamap-network-audit-" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+          document.documentElement.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        });
+      }
+      const netLogClear = document.getElementById("loaderNetLogClear");
+      if (netLogClear) {
+        netLogClear.addEventListener("click", function() {
+          if (!window.NetworkAudit) return;
+          window.NetworkAudit.clear();
+          _refreshNetLogTable();
+        });
+      }
+
+      // ── Modale Doc audit ────────────────────────────────────────────
+      function _ouvrirNetDocModal() {
+        const modal = document.getElementById("loaderNetDocModal");
+        if (!modal) return;
+        // Rempli la liste whitelist depuis NetworkAudit.WHITELIST_HUMAN
+        const ul = document.getElementById("loaderNetDocWhitelist");
+        if (ul && window.NetworkAudit && Array.isArray(window.NetworkAudit.WHITELIST_HUMAN)) {
+          ul.innerHTML = window.NetworkAudit.WHITELIST_HUMAN.map(function(s) {
+            return '<li>' + _escapeHtml(s) + '</li>';
+          }).join("");
+        }
+        modal.style.display = "flex";
+      }
+      function _fermerNetDocModal() {
+        const modal = document.getElementById("loaderNetDocModal");
+        if (modal) modal.style.display = "none";
+      }
+      const netDocClose = document.getElementById("loaderNetDocClose");
+      if (netDocClose) netDocClose.addEventListener("click", _fermerNetDocModal);
+      const netDocModal = document.getElementById("loaderNetDocModal");
+      if (netDocModal) {
+        netDocModal.addEventListener("click", function(e) {
+          if (e.target === netDocModal) _fermerNetDocModal();
+        });
+      }
+      const netDocOpenFull = document.getElementById("loaderNetDocOpenFull");
+      if (netDocOpenFull) {
+        netDocOpenFull.addEventListener("click", function() {
+          // Ouvre la doc complète dans un nouvel onglet. Path same-origin
+          // donc passe la CSP + le mode paranoia sans problème.
+          window.open("docs/NETWORK_AUDIT.md", "_blank", "noopener,noreferrer");
+        });
+      }
+
+      // Escape global : ferme journal/doc d'abord avant les autres modales
+      document.addEventListener("keydown", function(e) {
+        if (e.key !== "Escape") return;
+        const logM = document.getElementById("loaderNetLogModal");
+        const docM = document.getElementById("loaderNetDocModal");
+        if (logM && logM.style.display !== "none") { _fermerNetLogModal(); return; }
+        if (docM && docM.style.display !== "none") { _fermerNetDocModal(); return; }
+      });
+
+      // ═══════════════════════════════════════════════════════════════
 
       // Modale de confirmation pour Force update douce.
       // Promise<boolean> : true = continuer, false = annuler.
