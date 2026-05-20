@@ -12,12 +12,15 @@
 // NE PAS cacher README.md ni CLAUDE.md (réservés aux développeurs).
 // NE PAS cacher version.json (toujours fetched en réseau via cache-bust ?_=).
 // NE PAS cacher alert.json (idem — diffusion d'alertes publiques en temps réel).
+// NE PAS cacher docs/nginx-csp-config.conf (fichier serveur, ne sert qu'à l'auteur).
 // Cacher README_USER.md (utilisé par le modal Documentation in-app).
 // Cacher AI_CONTEXT.md (squelette enrichi pour la modale 🤖 Aide IA — éditable).
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
+// Cacher docs/NETWORK_AUDIT.md (page de transparence audit, ouverte depuis
+//   ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v1.7.3";
+const CACHE_NAME = "myktamap-cache-v1.8.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -30,6 +33,11 @@ const ASSETS_TO_CACHE = [
   "./AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
+  // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau (ouverte
+  // depuis ⚙️ Configuration → 🔒 Confidentialité → 📖 → bouton "Doc complète").
+  // Cachée pour rester accessible même offline (cohérent avec la promesse :
+  // l'app marche sans réseau).
+  "./docs/NETWORK_AUDIT.md",
 
   // CSS
   "./css/style.css",
@@ -37,6 +45,7 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  "./js/networkAudit.js",
   "./js/debug.js",
   "./js/perfUltra.js",
   "./js/unlockGate.js",
