@@ -33,10 +33,17 @@ const ASSETS_TO_CACHE = [
   "./AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
-  // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau (ouverte
-  // depuis ⚙️ Configuration → 🔒 Confidentialité → 📖 → bouton "Doc complète").
-  // Cachée pour rester accessible même offline (cohérent avec la promesse :
-  // l'app marche sans réseau).
+  // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2
+  // versions :
+  //   - .html : page HTML formatée (style cohérent charte) ouverte depuis le
+  //     bouton "Doc complète" de la modale audit. C'est CELLE que les
+  //     utilisateurs voient. Cachée car servie en mode "document" → si on
+  //     servait du .md brut, le SW fallback `caches.match(index.html)`
+  //     pourrait servir le splash à la place en cas d'échec/non-cache.
+  //   - .md : version source markdown, gardée pour audit de code (GitHub
+  //     web view, lecture par IA, etc.). Pas exposée directement à l'UI mais
+  //     cachée par cohérence.
+  "./docs/NETWORK_AUDIT.html",
   "./docs/NETWORK_AUDIT.md",
 
   // CSS

@@ -2247,9 +2247,16 @@
       const netDocOpenFull = document.getElementById("loaderNetDocOpenFull");
       if (netDocOpenFull) {
         netDocOpenFull.addEventListener("click", function() {
-          // Ouvre la doc complète dans un nouvel onglet. Path same-origin
-          // donc passe la CSP + le mode paranoia sans problème.
-          window.open("docs/NETWORK_AUDIT.md", "_blank", "noopener,noreferrer");
+          // Ouvre la doc complète dans un nouvel onglet. On vise le .html
+          // (page formatée standalone) PAS le .md brut. Raison : le SW
+          // intercepte tout fetch et a un fallback `caches.match(index.html)`
+          // pour les requests type "document" qui échouent → si on pointait
+          // sur le .md et qu'il n'est pas (encore) dans le cache, le SW
+          // servirait le splash index.html à la place → confusion totale
+          // pour l'user. Le .html est dans ASSETS_TO_CACHE depuis v1.8.0
+          // donc toujours dispo offline. Path same-origin → passe la CSP
+          // et le mode paranoia.
+          window.open("docs/NETWORK_AUDIT.html", "_blank", "noopener,noreferrer");
         });
       }
 
