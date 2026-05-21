@@ -7442,16 +7442,84 @@ body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
    thématique (tracés/zones/tracker) à droite suit le même principe.
    ───────────────────────────────────────────────────────────────── */
 
-/* Marge entre les controls Leaflet (déjà géré, on renforce un peu) */
-body.kta-refonte-v1 .leaflet-bar {
-  margin-bottom: 6px;
+/* 🎨 Refonte UI v1 — Sidebars : compaction + agrandissement boutons
+   ─────────────────────────────────────────────────────────────────
+   Fixes feedback KARMA (capture devmap après push v1.8.1) :
+   - Les icônes apparaissaient trop bas (margin Leaflet natif important
+     entre chaque control + padding-top 10px du .leaflet-top par défaut)
+   - Trop d'espacement entre groupes (margin-bottom 10px natif)
+   - Boutons un peu petits pour les pouces sur mobile
+   - Boussole positionnée à top:80px historique → chevauchait avec les
+     actions globales (qui descendaient à cause des marges)
+   ───────────────────────────────────────────────────────────────── */
+
+/* Remonter le bloc des controls Leaflet TOUT près du header :
+   - Leaflet natif a un padding-top de 10px sur .leaflet-top → on le
+     réduit à 4px en mode refonte. Avec un padding de 4px sous le
+     header de 44px, les controls touchent quasi le header. */
+body.kta-refonte-v1 .leaflet-top {
+  padding-top: 4px;
 }
 
-/* Séparateur visuel via un petit espace + ligne fine entre les blocs.
-   En pratique : appliqué à tous les .leaflet-bar pour faire un léger
+/* Marges entre les controls Leaflet : "presque collés" (feedback KARMA).
+   Leaflet utilise par défaut .leaflet-bar { margin-bottom: 10px; } et
+   .leaflet-control { margin-bottom: 0; } selon les versions. On force
+   un margin-bottom plus petit sur les deux pour être sûr. */
+body.kta-refonte-v1 .leaflet-bar,
+body.kta-refonte-v1 .leaflet-control {
+  margin-bottom: 3px !important;
+}
+/* Marge horizontale aussi (entre control et bord de l'écran) — on garde
+   les ~10px natifs Leaflet, c'est bon visuellement. Pas d'override. */
+
+/* Boutons des groupes accordéon : agrandis pour cliquabilité mobile.
+   Natif Leaflet ~30x30px. Refonte v1 : 36x36px. Émojis +1pt aussi. */
+body.kta-refonte-v1 .leaflet-bar a {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 19px;
+}
+/* Sous-actions des accordéons (les chips qui apparaissent quand un
+   groupe est ouvert) : même taille pour cohérence visuelle. */
+body.kta-refonte-v1 .leaflet-bar a.kta-sub {
+  width: 36px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  font-size: 18px;
+}
+
+/* Séparateur visuel via shadow + ligne fine entre les controls — petit
    "card stacking" qui rend la lecture plus claire. */
 body.kta-refonte-v1 .leaflet-bar {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* 🧭 BOUSSOLE — repositionnée en mode refonte pour ne plus chevaucher
+   les actions globales gauche (Doc/Settings/Charger/Save). Calcul du
+   top approximatif :
+   - Header : 44px
+   - Padding .leaflet-top : 4px
+   - Layers control : ~30px + 3px margin
+   - Zoom control : ~60px (2 boutons + et −) + 3px margin
+   = ~144px sans niveau, ~183px avec niveau (+ 36px + 3px)
+
+   La boussole se positionne juste après le zoom (et après le niveau si
+   multi-niveau). Les actions globales (Doc, etc.) suivent naturellement
+   dans le flow Leaflet — la boussole étant en position:fixed, elles ne
+   sont pas "poussées" par sa hauteur, mais elles restent plus haut que
+   le bas du widget grâce au fix margins ci-dessus.
+
+   Note : si la boussole est ouverte ET que beaucoup d'actions globales
+   sont visibles, il peut y avoir un léger chevauchement visuel sur les
+   actions les plus basses. C'est un compromis assumé en phase 1 — phase
+   2 envisagera de transformer la boussole en L.control natif pour qu'elle
+   se stack proprement avec les autres. */
+body.kta-refonte-v1 .kta-compass-widget {
+  top: calc(144px + env(safe-area-inset-top, 0px)) !important;
+}
+body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
+  top: calc(183px + env(safe-area-inset-top, 0px)) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
