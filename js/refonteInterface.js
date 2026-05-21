@@ -156,19 +156,17 @@
     const homeBtn = document.getElementById("kta-refonte-home");
     if (homeBtn) {
       homeBtn.addEventListener("click", function() {
-        // Réutilise la logique de plan switcher / home existante.
-        // afficherLoader = retour direct à la home si exposé.
-        if (typeof window.afficherLoader === "function") {
-          // Avant de fermer le plan courant, demander confirmation si
-          // session avec modifs (déjà géré par le titre cliquable existant
-          // via togglePlanSwitcher → on imite ce comportement).
-          if (typeof window._sessionAModif === "function" && window._sessionAModif()) {
-            if (typeof window.afficherModaleSessionAvecModif === "function") {
-              window.afficherModaleSessionAvecModif();
-              return;
-            }
-            if (!confirm("Tu as une session non sauvegardée. Continuer vers l'accueil ?")) return;
-          }
+        // 🆕 v1.2 fix : utilise la même modale charte que "Mes plans" /
+        // "Charger un plan" (afficherPopupChangerPlan) au lieu du
+        // confirm() natif. Le helper _retourLoaderAvecConfirm gère :
+        //   - Si session sans modifs → afficherLoader direct
+        //   - Si session avec modifs → modale custom "Changer de plan"
+        //     (style charte avec boutons "Rester ici" / "📚 Mes plans")
+        // Exposé par interface.js depuis v1.8.1-refonte-4.
+        if (typeof window._retourLoaderAvecConfirm === "function") {
+          window._retourLoaderAvecConfirm();
+        } else if (typeof window.afficherLoader === "function") {
+          // Fallback safety net si l'helper n'est pas (encore) exposé
           window.afficherLoader();
         }
       });

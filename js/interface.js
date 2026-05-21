@@ -308,6 +308,10 @@ function _retourLoaderAvecConfirm() {
     window.afficherLoader();
   }
 }
+// 🆕 Refonte UI v1.2 : exposé pour que le bouton 🗂 home du header
+// refondu (refonteInterface.js) puisse utiliser la modale charte
+// "Changer de plan" au lieu du confirm() natif du navigateur.
+window._retourLoaderAvecConfirm = _retourLoaderAvecConfirm;
 
 function escapeHtmlSwitcher(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
