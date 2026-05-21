@@ -25,7 +25,15 @@
 //   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v1.8.1";
+// 🎨 Branche Refonte_interface : suffix -refonte-N incrémenté à chaque
+// commit qui modifie un asset caché (CSS / JS / HTML). Force le SW à
+// invalider TOUT le cache au prochain reload chez les testeurs (KARMA
+// principalement). Sinon le SW continue de servir l'ancien cache et
+// les modifs déployées via FTP semblent ne pas s'appliquer.
+//
+// À la fin de la refonte (merge sur main), on alignera tout à un vrai
+// bump v1.8.2 ou v1.9.0 et on retirera ce suffix.
+const CACHE_NAME = "myktamap-cache-v1.8.1-refonte-1";
 
 const ASSETS_TO_CACHE = [
   "./",
