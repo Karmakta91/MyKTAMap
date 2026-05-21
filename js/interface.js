@@ -2693,8 +2693,24 @@ function _ouvrirGroupe(id) {
 
 function _toggleGroupe(id) {
   if (_groupeOuvert === id) {
-    // Si on referme un groupe avec mode actif, on ne ferme pas
-    if (_groupes[id]?.modeActif) return;
+    // 🆕 v1.8.0 (suite KARMA) : autoriser la fermeture MÊME en mode actif.
+    //
+    // Comportement avant : si un mode était actif (ex: tracker en Play),
+    // on refusait de fermer le groupe pour éviter de "perdre" l'accès aux
+    // sous-actions (⏹️ stop, 📍 recalage, etc.). En pratique cette
+    // protection bloquait l'user qui voulait juste replier le groupe pour
+    // gagner de la place à l'écran sans arrêter son mode.
+    //
+    // Maintenant : le clic sur le bouton principal toggle l'affichage
+    // des sous-actions, peu importe le modeActif. Le mode lui-même reste
+    // actif (tracker continue, etc.), seule la visibilité du tiroir
+    // d'actions change. L'icône reflète toujours l'état actif (⏹️ au lieu
+    // de 🧭 par ex), donc l'user voit que c'est en cours et peut rouvrir
+    // d'un clic pour accéder à ⏹️ s'il veut stopper.
+    //
+    // Protection conservée : clic externe + ouverture d'un autre groupe
+    // ne ferment toujours pas en mode actif (anti-fermeture accidentelle).
+    // Cf. _initClickExterieur et _fermerGroupesAutres.
     _fermerGroupe(id);
   } else {
     _ouvrirGroupe(id);
