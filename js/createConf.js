@@ -1399,6 +1399,21 @@ async function _genererZip() {
         dataFolder.file(ilFile.name, await _lireFichier(ilFile));
       } else if (nomTxt && nomTxt !== "Aucun fichier") {
         filePath = "data/" + nomTxt;
+        // 🆕 Fix bug ZIP regen : sans ce bloc, le plan-config.json référencait
+        // "data/legende.png" mais le fichier n'était PAS ajouté au nouveau
+        // ZIP → image layer cassée au load (404 silencieux). Récupère le
+        // File depuis _plannerOrigAssets (peuplé par _chargerZipModifier) et
+        // l'écrit dans le ZIP. Si introuvable → erreur claire (au lieu de
+        // générer un ZIP corrompu silencieusement).
+        if (_plannerOrigAssets[nomTxt]) {
+          dataFolder.file(nomTxt, await _lireFichier(_plannerOrigAssets[nomTxt]));
+        } else {
+          _plannerErreur(
+            "Fichier image \"" + nomTxt + "\" introuvable dans le ZIP source. " +
+            "Re-uploade le fichier via le bouton 📂 Choisir du calque \"" + ilId + "\"."
+          );
+          throw new Error("abort");
+        }
       } else {
         _plannerErreur("Fichier manquant pour le calque \"" + ilId + "\"."); throw new Error("abort");
       }

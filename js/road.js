@@ -635,27 +635,35 @@ function renderRoads() {
   // de surface. Et on filtre par activeLevel quand le filtre multi-niveau est
   // actif → seules les intersections du niveau affiché apparaissent.
   // Cercles → layerEditor (meme cible que les polylines roads session).
-  const intersectionsTarget = window.layerEditor || window.map;
-  const allRoads = roadsData.concat(_embeddedRoadsVisibles())
-    .filter(function(r) {
-      if (r.type === "itinerary" || r.type === "jonction") return false;
-      return _passeFiltreNiveau(r);
+  //
+  // 🆕 v1.9.2 : check APP_CONFIG.showRoadIntersections (default true) — l'user
+  // peut désactiver l'affichage via toggle dans ⚙️ Réglages ou Configuration.
+  // On garde le calcul (`_calculerIntersectionsRoads`) accessible via
+  // `window.getRoadIntersections` pour les exports (KMZ) qui en ont besoin
+  // indépendamment de la préférence d'affichage.
+  if (window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false) {
+    const intersectionsTarget = window.layerEditor || window.map;
+    const allRoads = roadsData.concat(_embeddedRoadsVisibles())
+      .filter(function(r) {
+        if (r.type === "itinerary" || r.type === "jonction") return false;
+        return _passeFiltreNiveau(r);
+      });
+    const intersections = _calculerIntersectionsRoads(allRoads);
+    intersections.forEach(({ point, color }) => {
+      const latlng = convertCoord(point.x, point.y);
+      // Cercles d'intersection : canvas par defaut (preferCanvas) pour perf.
+      const cercle = L.circleMarker(latlng, {
+        radius:      ROAD_INTERSECTION_RADIUS,
+        color:       color,
+        fillColor:   color,
+        fillOpacity: 1,
+        weight:      0,
+        stroke:      false,
+        interactive: false
+      }).addTo(intersectionsTarget);
+      roadLayers.push(cercle);
     });
-  const intersections = _calculerIntersectionsRoads(allRoads);
-  intersections.forEach(({ point, color }) => {
-    const latlng = convertCoord(point.x, point.y);
-    // Cercles d'intersection : canvas par defaut (preferCanvas) pour perf.
-    const cercle = L.circleMarker(latlng, {
-      radius:      ROAD_INTERSECTION_RADIUS,
-      color:       color,
-      fillColor:   color,
-      fillOpacity: 1,
-      weight:      0,
-      stroke:      false,
-      interactive: false
-    }).addTo(intersectionsTarget);
-    roadLayers.push(cercle);
-  });
+  }
 
   // Hook : si le panneau "Distance totale des tracés" est ouvert, on
   // rafraîchit le surlignage magenta + le total live (l'utilisateur peut

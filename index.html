@@ -466,6 +466,41 @@
           </label>
         </div>
 
+        <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
+             Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user
+             peut basculer ici aussi sans avoir à charger un plan.
+             Coché = ancienne interface (classique v1.8.x)
+             Décoché (défaut) = nouvelle interface (refonte v1.2)
+
+             ⚠️ Position v1.8.1-refonte-17 (suite KARMA) : déplacé AVANT
+             "🔄 Mise à jour" pour que Force update + Reset se suivent
+             directement. Logique narrative respectée :
+               1. Confidentialité (informatif, doux)
+               2. Affichage (préférence UI, doux, reload simple)
+               3. Force update (purge cache, garde data)
+               4. Reset (purge totale, irréversible)
+             Update+Reset consécutifs = pattern "actions de purge en
+             gradation" plus lisible. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🎨 Affichage</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+            Par défaut, MyKTAMap utilise la <strong>nouvelle interface</strong> (header bar avec compteurs, sidebars unifiées gauche/droite, status bar). Coche cette case si tu préfères l'<strong>ancienne</strong> (icônes empilées sans header).
+          </p>
+          <label class="kta-net-paranoia-toggle" style="background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="loaderLegacyCb">
+            <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — reload requis au toggle.</span>
+          </label>
+          <!-- 🆕 v1.9.2 : toggle "afficher les ronds aux intersections de tracés".
+               Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user peut
+               basculer ici aussi sans avoir à charger un plan. Sera appliqué
+               au prochain renderRoads (= au chargement du plan si toggle fait
+               ici depuis la home). -->
+          <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="loaderShowIntersectionsCb" checked>
+            <span><strong>⚪ Afficher les ronds aux intersections de tracés</strong> — cercle plein coloré au croisement de 2 tracés. <strong>Décocher</strong> pour aérer visuellement les plans très denses. Effet immédiat.</span>
+          </label>
+        </div>
+
         <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
              Purge uniquement le cache Service Worker (assets HTTP) puis
              reload → l'app récupère la dernière version sans toucher aux
@@ -473,9 +508,10 @@
              code d'accès). Utile pour forcer une update même sans popup
              ou si la détection version a foiré.
 
-             ⚠️ Position v1.8.0 (suite KARMA) : déplacé juste AVANT Reset
-             (et après Confidentialité), pour une gradation narrative
-             cohérente Force update (douce, garde data) → Reset (totale). -->
+             ⚠️ Position v1.8.1-refonte-17 (suite KARMA) : placé JUSTE
+             AVANT Reset pour que la gradation "purge cache → purge tout"
+             se lise d'un coup d'œil sans rupture (avant, le toggle
+             Affichage les séparait visuellement). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">🔄 Mise à jour</div>
           <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
@@ -635,6 +671,13 @@
   <script src="js/alertChecker.js"></script>
   <script src="js/lostMode.js"></script>
   <script src="js/compass.js"></script>
+
+  <!-- 🎨 REFONTE UI v1 (branche Refonte_interface) — chargé AVANT
+       interface.js pour que window._refonteInterfaceActive soit défini
+       quand _creerGroupeAccordeon est appelé (option `position`). No-op
+       si flag OFF (localStorage["myktamap_refonte_v1"] absent). -->
+  <script src="js/refonteInterface.js"></script>
+
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
 
@@ -2018,6 +2061,71 @@
             window.afficherLogsDebug();
           } else {
             setStatus("Fonction de logs indisponible", true);
+          }
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 🎨 AFFICHAGE — Toggle "Utiliser l'ancienne interface" (Legacy)
+      // ═══════════════════════════════════════════════════════════════
+      // Depuis v1.8.1-refonte-8, la nouvelle interface (refonte v1) est
+      // ACTIVÉE PAR DÉFAUT. L'user peut cocher ici (ou dans ⚙️ Réglages
+      // map mode) pour revenir à l'ancienne interface classique v1.8.x.
+      //
+      // Sémantique :
+      //   - cochée → ancienne interface (legacy)
+      //   - décochée (défaut) → nouvelle interface (refonte)
+      // RefonteInterface.setActive(value) prend la valeur de la NOUVELLE
+      // interface (true = nouvelle, false = legacy). Donc on appelle avec
+      // !checkbox.checked.
+      const legacyCb = document.getElementById("loaderLegacyCb");
+      if (legacyCb) {
+        // Initialiser l'état au boot : cochée si legacy actif
+        try {
+          legacyCb.checked = window._refonteInterfaceActive !== true;
+        } catch(e) {}
+
+        legacyCb.addEventListener("change", function() {
+          const wantNouvelle = !legacyCb.checked;
+          if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
+            window.RefonteInterface.setActive(wantNouvelle);
+            // Si user annule le reload → revert checkbox à l'état actuel
+            legacyCb.checked = (window._refonteInterfaceActive !== true);
+          } else {
+            // Fallback (module non chargé) — set direct localStorage
+            try {
+              if (wantNouvelle) localStorage.removeItem("myktamap_legacy_interface");
+              else              localStorage.setItem("myktamap_legacy_interface", "1");
+            } catch(e) {}
+            if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
+              location.reload();
+            }
+          }
+        });
+      }
+
+      // 🆕 v1.9.2 : Toggle "afficher les ronds aux intersections de tracés"
+      // Pareil que dans ⚙️ Réglages map mode (cf. interface.js > afficherConfig)
+      // L'état est lu depuis APP_CONFIG.showRoadIntersections (default true).
+      // Au toggle : on délègue à setShowRoadIntersections qui persiste + appelle
+      // renderRoads() à chaud si la carte est chargée. Depuis le loader (pas
+      // de plan chargé), renderRoads est no-op, mais la pref est persistée et
+      // sera appliquée au prochain chargement de plan.
+      const showInterCb = document.getElementById("loaderShowIntersectionsCb");
+      if (showInterCb) {
+        try {
+          showInterCb.checked = !window.APP_CONFIG || window.APP_CONFIG.showRoadIntersections !== false;
+        } catch(e) {}
+
+        showInterCb.addEventListener("change", function() {
+          if (typeof window.setShowRoadIntersections === "function") {
+            window.setShowRoadIntersections(showInterCb.checked);
+          } else if (window.APP_CONFIG) {
+            // Fallback : set direct + persistance manuelle
+            window.APP_CONFIG.showRoadIntersections = !!showInterCb.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
+            }
           }
         });
       }

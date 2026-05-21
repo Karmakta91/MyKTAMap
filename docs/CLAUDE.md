@@ -2274,6 +2274,233 @@ Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Int
 
 ⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
 
+### 41. Refonte UI v1.9 — Nouvelle interface par défaut (mergée en v1.9.1)
+
+**Statut** : refonte UI mergée et OFFICIALISÉE en v1.9.1 (depuis la branche `Refonte_interface` créée depuis `Karma_dev` HEAD `75455a4`). La nouvelle interface est désormais le défaut, l'ancienne v1.8.x reste accessible en opt-out.
+
+Le module clé est `js/refonteInterface.js` (~900 lignes IIFE). Tout le CSS scopé est en fin de `css/style.css` (~1500 lignes sous `body.kta-refonte-v1`).
+
+#### 41.1 Activation du flag — opt-out (depuis v1.8.1-refonte-8)
+
+**Sémantique** :
+- **Default ON** : nouvelle interface ACTIVÉE par défaut au boot.
+- L'user peut OPT-OUT via toggle "📜 Utiliser l'ancienne interface (classique v1.8.x)" → set `localStorage["myktamap_legacy_interface"] = "1"` + reload.
+
+**Toggle accessible depuis 2 endroits** :
+- ⚙️ **Configuration du loader** (home) → section "🎨 Affichage" → `#loaderLegacyCb`
+- ⚙️ **Réglages map mode** (in-app) → section "🎨 Affichage" → `#kta-cfg-legacy-cb`
+
+**Reload requis** au toggle : la classe `body.kta-refonte-v1` doit être appliquée au boot AVANT que Leaflet initialise ses positions (sinon décalages divers).
+
+**Migration silencieuse** : l'ancien flag opt-in `localStorage["myktamap_refonte_v1"] = "1"` (= phase v1.8.1-refonte-7 et antérieur) est supprimé au chargement du module → user reste en mode refonte (= défaut) sans changement d'expérience.
+
+**API publique** `window.RefonteInterface` :
+- `isActive()` → boolean
+- `setActive(wantNouvelle)` → set localStorage + confirm + reload
+- `updateCompteurs()` → recalcule header
+- `refreshStatusBar()` → recalcule status bar
+
+`window._refonteInterfaceActive` (booléen) exposé tôt pour permettre à `interface.js` de lire l'état avant d'initialiser les groupes accordéon.
+
+#### 41.2 Architecture — 3 zones fixed
+
+| Zone | Contenu | Position |
+|---|---|---|
+| **Header bar** | 🌟 Rose des vents (home) / titre plan cliquable / compteurs (📍 points · 🛣 tracés · ⬛ zones) cliquables | sticky top 44px (+ safe-area top iOS) |
+| **Sidebar gauche** | ⊞ Layers / − + Zoom / 🏗 Niveau / ≡ collapse / 📚 Doc / ⚙ Paramètres / ⬇ Charger / ⬆ Save | Leaflet topleft, flex column (sidebar unifiée) |
+| **Sidebar droite** | ≡ collapse / 🔍 Search / ✏️ Édition / 📐 Mesure / 🛣 Tracés / ⬛ Zones / 🧭 Tracker | Leaflet topright, flex column (sidebar unifiée) |
+| **Status bar** | 📐 Mesure / 📏 Distance totale (cliquable=ouverture modale) / 🗺️ Itinéraire (cliquable=ouverture modale) / 🧭 Tracker GPS (LED ON vert / OFF rouge) | sticky bottom 52px (min-height, grow dynamique) |
+
+**Suppressions** :
+- Groupe `🏗 Créer/modifier plan` retiré de la sidebar carte (accessible uniquement depuis le loader via "🏗️ Générer un plan").
+- Labels Leaflet bottom (`.kta-iti-distance`, `.kta-measure-distance`, `#measureLabel`) masqués via CSS — remplacés par les stats du status bar.
+- Sub-action "🗂️ Changer de plan" retirée du menu ⬇️ Charger / Import (doublonne avec la rose des vents et le titre cliquable).
+
+**Préservations** :
+- Boussole d'orientation : widget compass (`.kta-compass-widget`) toujours géré par `compass.js`. Repositionné en bottom-left (portrait) / bottom-center (landscape) au-dessus du status bar.
+- Toutes les modales, modes, logique métier : inchangés.
+
+#### 41.3 Header bar — détails
+
+`_creerHeaderBar()` dans `refonteInterface.js` génère le DOM. Layout :
+- **Portrait** : `display: flex` + `.kta-refonte-header-title-wrap { flex: 1 1 auto; justify-content: center }` → titre centré dans l'espace restant.
+- **Landscape** (`@media (max-height: 500px) and (orientation: landscape)`) : `display: grid; grid-template-columns: 1fr auto 1fr` → titre au centre géométrique ABSOLU. Home en col 1 avec `justify-self: start`, counters en col 3 avec `justify-self: end`.
+
+**Bouton home 🌟** : image `icon/mkm-full.png` (rose des vents — même asset que splash + home page). Clic → `window._retourLoaderAvecConfirm()` (modale charte "Changer de plan" si session modifiée, sinon retour direct).
+
+**Titre cliquable** : ouvre la modale "🗂 Changer de plan" refondue (cf. §41.10).
+
+**Compteurs cliquables** : ouvre la modale "📊 Détails de la session" (cf. §41.9).
+
+#### 41.4 Sidebars unifiées — modification de `_creerGroupeAccordeon`
+
+Nouvelle option `position: "topleft" | "topright"` lue UNIQUEMENT si `window._refonteInterfaceActive === true`. Sinon comportement v1.8.x strict (tous groupes en topright).
+
+Groupes taggés `position: "topleft"` :
+- `aide` (📚 Doc/Aide/Légende)
+- `settings` (⚙ Paramètres)
+- `charger` (⬇ Charger / Import)
+- `save` (⬆ Enregistrer)
+
+**Effet visuel** : sidebars = barres VERTICALES continues (pas d'icônes séparées avec gap). En CSS :
+- `body.kta-refonte-v1 .leaflet-top.leaflet-{left|right} { display: flex; flex-direction: column }`
+- `.leaflet-bar { margin: 0 !important; border-radius: 0 !important }` puis arrondi uniquement aux extrémités (`:first-child` top, `:last-child` bottom) — donne l'effet "barre unique".
+- Séparateurs internes 1px subtils (`border-top` sur `:not(:first-child)`).
+- Sous-actions accordéon empilées EN DESSOUS du bouton principal (vertical flow, la barre grossit, scroll interne si dépasse `max-height: calc(100vh - 44 - var(--kta-statusbar-h) - safe-areas)`).
+
+Helpers exposés :
+- `window._fermerGroupeOuvertSide(side)` (side = "left"/"right") → ferme le groupe ouvert si dans la sidebar demandée. Appelé par le bouton ▾/▸/◂ avant de collapser. Skip si `modeActif` (anti-coupure tracker en Play).
+- `window._refonteInterfaceCreerBoutonReduction{Left|Right}()` → crée le bouton ≡ de réduction.
+
+#### 41.5 Bouton ≡ de réduction (sidebars collapsibles)
+
+Un bouton par sidebar (gauche + droite), positionné en HAUT via flex `order: -1` (peu importe l'ordre DOM dans lequel Leaflet ajoute ses controls natifs).
+
+**Icônes** (depuis v1.8.1-refonte-7) :
+- `▾` = sidebar déployée (flèche vers le bas, "tout est visible en dessous")
+- `▸` = sidebar gauche repliée (flèche vers l'intérieur)
+- `◂` = sidebar droite repliée (flèche vers l'intérieur)
+
+Helper interne `_iconeCollapse(side, isCollapsed)`. Au clic : toggle `body.kta-refonte-sidebar-{left|right}-collapsed`. CSS cache tous les controls SAUF `.kta-refonte-collapse-bar`.
+
+Pas de persistance localStorage (toujours déroulé au boot).
+
+#### 41.6 Sous-actions horizontales en landscape (depuis v1.9.1)
+
+En portrait, les sous-actions des accordéons s'empilent EN DESSOUS du bouton principal (vertical, la barre grossit vers le bas).
+
+En **landscape mobile** (`@media (max-height: 500px) and (orientation: landscape)`) :
+- Chaque `.leaflet-bar` devient un pill horizontal (`display: flex; align-items: center; border-radius: 8px`).
+- Sidebar GAUCHE : `flex-direction: row` → subs unfold vers la DROITE (intérieur écran).
+- Sidebar DROITE : `flex-direction: row-reverse` → main button reste collé au bord droit (sidebar `align-items: flex-end`), subs unfold vers la GAUCHE (intérieur écran).
+- Boutons compacts 30×30 (au lieu de 36×36 en portrait).
+- Séparateur interne `border-left` au lieu de `border-bottom`.
+
+**Exception** : `.leaflet-control-zoom` (zoom natif Leaflet) garde `flex-direction: column !important` — convention universelle "+ au-dessus du -" (Google Maps, OSM, etc.). Séparateur entre zoom-in/out en `border-top`.
+
+#### 41.7 Status bar — wrap dynamique + variable CSS (depuis v1.9.1)
+
+**Problème résolu** : avec 4 stats actives en même temps (mesure + dist totale + iti + tracker), le contenu ne tenait plus en largeur et était caché en `overflow-x: auto` (scroll horizontal masqué = info invisible).
+
+**Solution** : `.kta-refonte-statusbar-content { flex-wrap: wrap }`. Le contenu passe sur 2 lignes si besoin, la barre grandit via `min-height` au lieu de `height` fixe.
+
+**Variable CSS partagée** `--kta-statusbar-h` :
+- Initialisée à `calc(52px + env(safe-area-inset-bottom, 0px))` (fallback CSS au boot).
+- Mise à jour par JS via `ResizeObserver` sur le status bar — lit `offsetHeight` à chaque resize, écrit dans `document.documentElement.style.setProperty("--kta-statusbar-h", h + "px")`.
+- Notifie Leaflet via `map.invalidateSize({ animate: false })` (debounce via rAF).
+
+**Tout suit la variable** :
+```css
+#map               { bottom: var(--kta-statusbar-h) }
+.kta-compass-widget{ bottom: calc(var(--kta-statusbar-h) + 8px) }
+.leaflet-top       { max-height: calc(100vh - 44 - var(--kta-statusbar-h) ...) }
+.kta-readme-modal-overlay { padding-bottom: calc(var(--kta-statusbar-h) + 16px) }
+```
+
+**Bouton toggle ▾▴** : 40×36px (font 22px) depuis v1.9.1 (avant 28×24/14px). Plus visible, plus facile à taper au pouce.
+
+#### 41.8 Tracker GPS — boussole LED ON/OFF (depuis v1.9.1)
+
+Avant : stat tracker affichait icône 🚶 + "—" quand inactif, "Actif (x, y)" quand actif. Problème : doublon visuel avec le 🚶 de la stat itinéraire (qui contient "🗺️ ... · 🚶 Normale" = mode marche).
+
+**Maintenant** :
+- Icône 🧭 (boussole) + texte "ON" / "OFF" — toujours visible (jamais "—") façon LED hardware.
+- **ON** (`.kta-refonte-stat-tracker-on`) : fond vert translucide, bordure verte, texte `#6ee287` gras, `box-shadow: 0 0 6px rgba(76, 200, 100, 0.35)` (lueur LED).
+- **OFF** (`.kta-refonte-stat-tracker-off`) : fond rouge translucide, bordure rouge, texte `#e88787` gras.
+- Toggle CSS via 2 classes mutuellement exclusives (pas de `.kta-refonte-stat-empty` qui ferait conflit avec `.kta-refonte-stat-tracker-off`).
+
+Stat itinéraire `#kta-refonte-stat-iti` désormais **cliquable** (`.kta-refonte-stat-clickable`) → ouvre `window.ouvrirItinerairModal()` (équivalent ancien comportement du label bottom-left `.kta-iti-distance`). Clic ignoré silencieusement si stat vide (pas d'iti actif).
+
+#### 41.9 Modale "📊 Détails de la session" (depuis v1.8.1-refonte-9)
+
+Compteurs du header (📍 N · 🛣 N · ⬛ N) cliquables → modale qui liste tous les éléments de la session active :
+
+| Section | Contenu |
+|---|---|
+| 📍 Points ajoutés | Liste avec nom / tag / coord / niveau si multi-niveau |
+| 🛣 Tracés | Regroupement par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type |
+| ⬛ Zones | Regroupement par type (Eau/Remblais/Effondrement/Inaccessible) avec compteur |
+| 📊 Autres mesures | Mesure simple (si points ≥ 2), Itinéraire actif (distance + nb waypoints), Tracker (position si actif) |
+
+Fonction `_afficherModaleSessionDetail()` dans `refonteInterface.js`. Pattern `.kta-readme-modal-overlay` + box max-width 560px + sections card-stack. Recalcule en live à chaque ouverture. Toggle re-clic = reopen direct (cleanup d'instance précédente).
+
+Check défensif `typeof _afficherModaleSessionDetail === "function"` dans le handler (anti-déploiement partiel via FTP).
+
+#### 41.10 Modale "🗂 Changer de plan" refondue (depuis v1.9.1)
+
+Avant : dropdown ancré sous le titre fixe (`#kta-plan-switcher` panneau à `top: calc(56 + safe-top)`).
+
+**Maintenant en mode refonte** : modale centrée avec overlay backdrop (pattern `.kta-readme-modal-overlay`).
+
+Structure DOM :
+```
+.kta-readme-modal-overlay.kta-plan-switcher-overlay
+  └── .kta-plan-switcher-modal-boite (#kta-plan-switcher)
+       ├── .kta-plan-switcher-modal-header (titre doré "🗂 Changer de plan" + ✕)
+       ├── .kta-plan-switcher-modal-corps
+       │    ├── .kta-plan-switcher-current (carte highlight dorée + badge "● ACTIF" vert)
+       │    ├── .kta-plan-switcher-section-titre "📚 PLANS RÉCENTS"
+       │    └── .kta-switcher-list (rows hover bleuté + flèche › qui glisse)
+       └── .kta-plan-switcher-modal-footer
+            └── .kta-plan-switcher-cta (gros bouton bleu "📚 Voir tous mes plans")
+```
+
+JS dans `interface.js` : `_ouvrirPlanSwitcher()` branche sur le flag :
+- `_ouvrirPlanSwitcherRefonte(recents, current)` → modale style refonte
+- `_ouvrirPlanSwitcherLegacy(recents)` → dropdown style v1.8.x (mode legacy préservé)
+
+`_fermerPlanSwitcher()` détecte le mode via la présence de `#kta-plan-switcher-overlay` (refonte) vs `#kta-plan-switcher` seul (legacy).
+
+#### 41.11 CSS scoping
+
+Tout le CSS de la refonte est dans une section `body.kta-refonte-v1 { ... }` à la fin de `css/style.css` (~1500 lignes). Aucune règle ne s'applique si la classe est absente du body.
+
+**Variables CSS importantes** :
+- `--kta-statusbar-h` (dynamique, gérée par JS via ResizeObserver) — voir §41.7
+- Header bar : `44px` portrait, `36px` landscape
+- Sidebars : `max-height: calc(100vh - 44 - var(--kta-statusbar-h) - safe-areas)`
+- Safe-area iOS PWA via `env(safe-area-inset-*)` partout
+
+**Sélecteur `:has()`** : utilisé pour adapter `#map { bottom }` quand status bar est collapsed. Compatible Chromium 105+, Safari 15.4+, Firefox 121+ (déc 2023).
+
+#### 41.12 Polling 2s + state via API existantes
+
+Le module ne duplique pas la logique métier. Il lit l'état via les API publiques :
+- Compteurs header : `window.getEditorPoints()` / `getRoads()` / `getZones()`
+- Stat mesure : `window.getMeasurePoints()` + calcul euclidien + `window.formatDistance()`
+- Stat distance totale : `window.getDistanceTotaleStatus()` (API ajoutée pour lire l'état du surlignage magenta `_rdHighlightLayer`, pas le DOM de la modale qui disparaît à la fermeture)
+- Stat itinéraire : lecture du DOM du `L.control .kta-iti-distance` (masqué visuellement mais reste dans le DOM, mis à jour par `_majLabelDistanceItineraire`)
+- Stat tracker : `window.getTrackingActif()` (boolean) + `getTrackingPosition()` optionnel
+
+Polling 2s = compromis : fluide pour l'user sans gaspiller le CPU.
+
+#### 41.13 Pièges & limites connues
+
+⚠️ **`#kta-titre-fixe` masqué quand refonte active** (`display: none !important`). La logique JS `togglePlanSwitcher()` continue de marcher car appelée par le bouton du header bar refondu.
+
+⚠️ **Toggle nécessite reload** : la classe `body.kta-refonte-v1` doit être appliquée au boot. Le `setActive()` propose un `confirm("Recharger maintenant ?")`.
+
+⚠️ **Status bar masque les controls bottom-left Leaflet** par défaut. Si tu ajoutes un nouveau control bottom-left, il sera caché. Réinitialiser via `#map { bottom: var(--kta-statusbar-h) }` qui décale tout automatiquement.
+
+⚠️ **Cache PWA** : bumper `CACHE_NAME` dans `sw.js` à chaque modif d'un asset caché (CSS/JS/HTML). Pendant la phase Refonte_interface, on utilisait le suffix `-refonte-N` pour invalider le cache à chaque commit. Depuis le merge v1.9.1, suffix retiré (CACHE_NAME = `myktamap-cache-v1.9.1`).
+
+⚠️ **ResizeObserver indispo sur très vieux browsers** : fallback `orientationchange` + sync initial dans `_setupStatusBarResizeObserver`. Le wrap multi-ligne ne se mettra à jour qu'à la rotation, pas en temps réel — acceptable.
+
+⚠️ **Hoisting JavaScript** : `_afficherModaleSessionDetail` est appelée (ligne 211) avant sa déclaration (ligne 438) dans le même IIFE. Le hoisting JS le permet, mais en cas de minifieur agressif ou FTP partiel, on a un check défensif `typeof === "function"` + log console.
+
+#### 41.14 Historique git
+
+- Branche `Refonte_interface` créée depuis `Karma_dev` HEAD `75455a4` (12/05/2026 environ)
+- Itérations : `-refonte-1` à `-refonte-17` (commits) sur le suffix CACHE_NAME pour invalider le cache PWA pendant le dev
+- Merge v1.9.1 : `Refonte_interface` → `Karma_dev` (puis push `Karma_dev` → `main` via PR au moment du déploiement production)
+- Branche `Refonte_interface` peut être archivée après le merge (ou supprimée du remote si KARMA préfère)
+
+#### 41.15 Phases futures (post-v1.9.1)
+
+- **v1.9.2+** : polish micro-interactions (transitions sidebars, badges contextuels)
+- **v1.10.x** : accessibilité clavier complète (Tab + raccourcis E/M/Échap)
+- **v2.0.0** : (quand l'ancienne UI sera abandonnée définitivement) retirer le flag `myktamap_legacy_interface`, supprimer le code mort, bumper en MAJOR car retrait d'un comportement publique
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

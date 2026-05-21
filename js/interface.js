@@ -111,7 +111,8 @@ function _ouvrirPlanSwitcher() {
   if (!window.PlanRegistry) return;
 
   const all = window.PlanRegistry.getAll();
-  const currentId = window.PlanRegistry.getLastOpened()?.id;
+  const current = window.PlanRegistry.getLastOpened();
+  const currentId = current && current.id;
 
   // 3 plans récents EXCLUANT le plan en cours
   const recents = all
@@ -119,6 +120,145 @@ function _ouvrirPlanSwitcher() {
     .sort(function(a, b) { return (b.lastOpened || "").localeCompare(a.lastOpened || ""); })
     .slice(0, 3);
 
+  // 🆕 v1.8.1-refonte-15 : 2 modes de rendu selon flag refonte.
+  // - Refonte ON  → modale centrée avec overlay (charte refonte)
+  // - Legacy mode → dropdown ancré sous le titre fixe (comportement v1.8.x)
+  const refonte = window._refonteInterfaceActive === true;
+  if (refonte) {
+    _ouvrirPlanSwitcherRefonte(recents, current);
+  } else {
+    _ouvrirPlanSwitcherLegacy(recents);
+  }
+
+  // Listeners de fermeture communs aux 2 modes
+  setTimeout(function() {
+    document.addEventListener("click", _onClicAilleursPanneau, true);
+    document.addEventListener("keydown", _onEscapePanneau, true);
+  }, 0);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rendu MODALE REFONTE — overlay + boîte centrée, charte v1.8.1+
+// ─────────────────────────────────────────────────────────────────
+// On reprend les classes .kta-readme-modal-overlay / .kta-readme-modal-boite
+// pour bénéficier du backdrop sombre + animation fade-in + safe-area auto.
+// La boîte interne a son propre style compact (.kta-plan-switcher-modal-*).
+function _ouvrirPlanSwitcherRefonte(recents, current) {
+  const overlay = document.createElement("div");
+  overlay.id = "kta-plan-switcher-overlay";
+  overlay.className = "kta-readme-modal-overlay kta-plan-switcher-overlay";
+
+  // Carte du plan en cours (highlight, non-cliquable car déjà chargé)
+  let currentHtml = "";
+  if (current) {
+    const icon = current.type === "server" ? "🌐" : "💾";
+    const ver  = current.version
+      ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(current.version) + '</span>'
+      : '';
+    const sub  = current.lastOpened
+      ? "Ouvert " + (_fmtDateRel(current.lastOpened) || "récemment")
+      : "Plan en cours";
+    currentHtml =
+      '<div class="kta-plan-switcher-current">' +
+        '<div class="kta-plan-switcher-current-label">📍 Plan en cours</div>' +
+        '<div class="kta-plan-switcher-current-name">' +
+          '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
+          '<span>' + escapeHtmlSwitcher(current.name || current.id) + '</span>' + ver +
+        '</div>' +
+        '<div class="kta-plan-switcher-current-sub">' + escapeHtmlSwitcher(sub) + '</div>' +
+      '</div>';
+  }
+
+  // Section "Plans récents"
+  let recentsHtml = "";
+  if (recents.length > 0) {
+    recentsHtml += '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>';
+    recentsHtml += '<div class="kta-switcher-list">';
+    recents.forEach(function(p) {
+      const icon = p.type === "server" ? "🌐" : "💾";
+      const sub  = _fmtDateRel(p.lastOpened) || "";
+      const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
+      recentsHtml +=
+        '<div class="kta-switcher-row" data-plan-id="' + escapeHtmlSwitcher(p.id) + '">' +
+          '<span class="kta-switcher-icon">' + icon + '</span>' +
+          '<div class="kta-switcher-info">' +
+            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(p.name || p.id) + ver + '</div>' +
+            (sub ? '<div class="kta-switcher-sub">' + sub + '</div>' : '') +
+          '</div>' +
+          '<span class="kta-switcher-row-arrow">›</span>' +
+        '</div>';
+    });
+    recentsHtml += '</div>';
+  } else {
+    recentsHtml +=
+      '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>' +
+      '<div class="kta-switcher-empty">Aucun autre plan dans votre liste pour le moment.</div>';
+  }
+
+  overlay.innerHTML =
+    '<div class="kta-plan-switcher-modal-boite" id="kta-plan-switcher">' +
+      '<div class="kta-plan-switcher-modal-header">' +
+        '<span class="kta-plan-switcher-modal-titre">🗂 Changer de plan</span>' +
+        '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="Fermer">✕</button>' +
+      '</div>' +
+      '<div class="kta-plan-switcher-modal-corps">' +
+        currentHtml +
+        recentsHtml +
+      '</div>' +
+      '<div class="kta-plan-switcher-modal-footer">' +
+        '<button class="kta-plan-switcher-cta" id="kta-switcher-tous">' +
+          '<span class="kta-plan-switcher-cta-icon">📚</span>' +
+          '<span class="kta-plan-switcher-cta-label">Voir tous mes plans</span>' +
+          '<span class="kta-plan-switcher-cta-sub">Gérer / supprimer / importer</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  // Marquer le titre comme "ouvert" (effet visuel cohérent même en modal)
+  const titre = document.getElementById("kta-titre-fixe");
+  if (titre) titre.classList.add("ouvert");
+
+  // Clic sur le backdrop overlay (hors de la boîte) → fermeture
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) _fermerPlanSwitcher();
+  });
+
+  // Bouton ✕
+  const closeBtn = overlay.querySelector("#kta-plan-switcher-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      _fermerPlanSwitcher();
+    });
+  }
+
+  // Clic sur une ligne plan récent
+  overlay.querySelectorAll(".kta-switcher-row").forEach(function(row) {
+    row.addEventListener("click", function(e) {
+      e.stopPropagation();
+      const id = row.dataset.planId;
+      _fermerPlanSwitcher();
+      _confirmEtChargerPlan(id);
+    });
+  });
+
+  // CTA "Voir tous mes plans"
+  const btnTous = overlay.querySelector("#kta-switcher-tous");
+  if (btnTous) {
+    btnTous.addEventListener("click", function(e) {
+      e.stopPropagation();
+      _fermerPlanSwitcher();
+      _retourLoaderAvecConfirm();
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rendu LEGACY — dropdown ancré sous le titre (comportement v1.8.x)
+// ─────────────────────────────────────────────────────────────────
+function _ouvrirPlanSwitcherLegacy(recents) {
   const panneau = document.createElement("div");
   panneau.id = "kta-plan-switcher";
 
@@ -173,17 +313,18 @@ function _ouvrirPlanSwitcher() {
       _retourLoaderAvecConfirm();
     });
   }
-
-  // Fermeture au clic ailleurs / Escape
-  setTimeout(function() {
-    document.addEventListener("click", _onClicAilleursPanneau, true);
-    document.addEventListener("keydown", _onEscapePanneau, true);
-  }, 0);
 }
 
 function _fermerPlanSwitcher() {
-  const panneau = document.getElementById("kta-plan-switcher");
-  if (panneau) panneau.remove();
+  // 🆕 v1.8.1-refonte-15 : 2 modes — modale refonte (overlay parent) ou
+  // dropdown legacy (panneau seul). On retire le parent le plus haut.
+  const overlay = document.getElementById("kta-plan-switcher-overlay");
+  if (overlay) {
+    overlay.remove();
+  } else {
+    const panneau = document.getElementById("kta-plan-switcher");
+    if (panneau) panneau.remove();
+  }
   const titre = document.getElementById("kta-titre-fixe");
   if (titre) titre.classList.remove("ouvert");
   document.removeEventListener("click", _onClicAilleursPanneau, true);
@@ -191,6 +332,12 @@ function _fermerPlanSwitcher() {
 }
 
 function _onClicAilleursPanneau(e) {
+  // En mode refonte (modale avec overlay), le clic sur le backdrop overlay
+  // est déjà géré par son propre listener. Ici on couvre uniquement le mode
+  // legacy (dropdown anchored) où l'overlay n'existe pas — clic ailleurs
+  // que sur le panneau ou le titre fixe → fermeture.
+  const overlay = document.getElementById("kta-plan-switcher-overlay");
+  if (overlay) return;  // mode refonte : géré par overlay.onclick
   const panneau = document.getElementById("kta-plan-switcher");
   const titre   = document.getElementById("kta-titre-fixe");
   if (!panneau) return;
@@ -308,6 +455,10 @@ function _retourLoaderAvecConfirm() {
     window.afficherLoader();
   }
 }
+// 🆕 Refonte UI v1.2 : exposé pour que le bouton 🗂 home du header
+// refondu (refonteInterface.js) puisse utiliser la modale charte
+// "Changer de plan" au lieu du confirm() natif du navigateur.
+window._retourLoaderAvecConfirm = _retourLoaderAvecConfirm;
 
 function escapeHtmlSwitcher(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
@@ -1569,6 +1720,21 @@ function afficherConfig() {
               </span>
             </span>
           </label>
+          <!-- 🆕 v1.9.2 : toggle "afficher les ronds aux intersections de tracés".
+               Pas de reload requis (setShowRoadIntersections appelle renderRoads()
+               à chaud). Pratique pour aérer visuellement les plans très denses. -->
+          <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+            <input type="checkbox" id="cfg_showRoadIntersections" ${c.showRoadIntersections !== false ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">⚪ Afficher les ronds aux intersections de tracés</span>
+              <span class="kta-perf-ultra-hint">
+                Coché par défaut : un cercle plein coloré est dessiné au croisement
+                de 2 tracés (vert/violet/jaune selon la priorité de type).
+                <strong>Décocher</strong> pour aérer visuellement les plans très denses.
+                Effet immédiat — pas de reload nécessaire.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div class="kta-aide-section">
@@ -1595,6 +1761,17 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
+        <!-- 🎨 Affichage : choix interface (nouvelle = défaut depuis
+             v1.8.1-refonte-8, ancienne = opt-in pour conservateurs ou
+             en cas de bug bloquant sur la refonte). -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🎨 Affichage</div>
+          <label class="kta-net-paranoia-toggle" style="background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="kta-cfg-legacy-cb" ${window._refonteInterfaceActive === true ? "" : "checked"}>
+            <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — par défaut tu utilises la <strong>nouvelle interface</strong> (header bar avec compteurs, sidebars unifiées gauche/droite, status bar). Coche cette case si tu préfères l'ancienne (icônes empilées sans header). <strong>Reload requis</strong> au toggle.</span>
+          </label>
+        </div>
+
         <!--
           🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
           Réglages en mode carte. Le reset complet reste accessible UNIQUEMENT
@@ -1620,6 +1797,34 @@ function afficherConfig() {
 
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
+
+  // 🎨 Affichage : toggle "Utiliser l'ancienne interface" (LEGACY).
+  // Sémantique inversée depuis v1.8.1-refonte-8 :
+  //   - case cochée  = ancienne interface (legacy)
+  //   - case décochée = nouvelle interface (refonte, défaut)
+  // RefonteInterface.setActive(value) prend la valeur DE LA NOUVELLE
+  // interface (true = nouvelle, false = legacy). Donc on l'appelle avec
+  // !checkbox.checked.
+  const legacyCb = document.getElementById("kta-cfg-legacy-cb");
+  if (legacyCb) {
+    legacyCb.addEventListener("change", function() {
+      const wantNouvelle = !legacyCb.checked;  // cochée = legacy, donc !cochée = nouvelle
+      if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
+        window.RefonteInterface.setActive(wantNouvelle);
+        // Si user annule le reload → revert checkbox à l'état actuel
+        legacyCb.checked = (window._refonteInterfaceActive !== true);
+      } else {
+        // Fallback (module non chargé) — set direct localStorage
+        try {
+          if (wantNouvelle) localStorage.removeItem("myktamap_legacy_interface");
+          else              localStorage.setItem("myktamap_legacy_interface", "1");
+        } catch(e) {}
+        if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
+          location.reload();
+        }
+      }
+    });
+  }
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
   // uniquement via le générateur de plan désormais. Les fonctions
@@ -1650,6 +1855,15 @@ function appliquerConfig() {
   // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
   const cbScaled = document.getElementById("cfg_scaledMarkers");
   if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
+
+  // 🆕 v1.9.2 : showRoadIntersections (effet immédiat via renderRoads())
+  // On délègue à setShowRoadIntersections qui appelle renderRoads() à chaud.
+  const cbInter = document.getElementById("cfg_showRoadIntersections");
+  if (cbInter && typeof window.setShowRoadIntersections === "function") {
+    window.setShowRoadIntersections(!!cbInter.checked);
+  } else if (cbInter) {
+    APP_CONFIG.showRoadIntersections = !!cbInter.checked;
+  }
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();
@@ -2672,6 +2886,21 @@ function _fermerGroupe(id) {
   if (_groupeOuvert === id) _groupeOuvert = null;
 }
 
+// 🆕 Refonte UI v1.2 : ferme le groupe accordéon ouvert si présent dans
+// la sidebar 'left' ou 'right'. Appelé par le bouton ≡ de réduction
+// dans refonteInterface.js. No-op si aucun groupe n'est ouvert, ou si
+// le groupe ouvert n'est pas dans la sidebar demandée.
+window._fermerGroupeOuvertSide = function(side) {
+  if (!_groupeOuvert) return;
+  const g = _groupes[_groupeOuvert];
+  if (!g || !g.position) return;
+  const expected = side === "left" ? "topleft" : "topright";
+  if (g.position !== expected) return;
+  // Ne pas fermer si mode actif (sécurité : tracker en Play, etc.)
+  if (g.modeActif) return;
+  _fermerGroupe(_groupeOuvert);
+};
+
 function _ouvrirGroupe(id) {
   // Fermer tous les autres groupes (sauf ceux qui ont un mode actif)
   Object.keys(_groupes).forEach(function(autreId) {
@@ -2767,7 +2996,15 @@ function _initClickExterieur() {
 //   sousActions: [ { icone, titre, onClick, refClassName? } ]
 // }
 function _creerGroupeAccordeon(config) {
-  const ctrl = L.control({ position: "topright" });
+  // 🆕 Refonte UI v1 : option config.position lue UNIQUEMENT si flag actif
+  // (window._refonteInterfaceActive = true). Sinon comportement strict
+  // v1.8.x (tous les groupes en topright). Évite toute régression sur
+  // l'UI actuelle quand le flag est OFF.
+  let pos = "topright";
+  if (window._refonteInterfaceActive === true && typeof config.position === "string") {
+    pos = config.position;
+  }
+  const ctrl = L.control({ position: pos });
   ctrl.onAdd = function() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
@@ -2821,7 +3058,12 @@ function _creerGroupeAccordeon(config) {
       container:    div,
       btnPrincipal: btnPrincipal,
       subActions:   subActions,
-      modeActif:    false
+      modeActif:    false,
+      // 🆕 Refonte UI v1.2 : stocker la sidebar du groupe (left/right)
+      // pour permettre au bouton ≡ de réduction de fermer le groupe
+      // ouvert dans SA sidebar avant de collapser. Lit la même config
+      // que pour le L.control({position}).
+      position:     pos  // "topleft" ou "topright"
     };
 
     return div;
@@ -2875,6 +3117,29 @@ function initInterface() {
 
   L.control.titleControl().addTo(window.map);
 
+  // 🆕 Refonte UI v1.2 (KARMA) :
+  //   1. Bouton ≡ de réduction de chaque sidebar (gauche + droite)
+  //      → créé en PREMIER, positionné en HAUT via flex order:-1 (cf. CSS).
+  //      → au clic toggle classe body.kta-refonte-sidebar-{left|right}-collapsed.
+  //   2. Bouton 🏗 Niveau (multi-niveau) — ordre intermédiaire dans la
+  //      sidebar gauche (après les natifs Layers/Zoom, avant Doc/Settings).
+  //
+  // En refonte OFF : aucun de ces appels n'a lieu → comportement v1 strict
+  // (Niveau créé à la fin de initInterface, pas de bouton réduction).
+  if (window._refonteInterfaceActive === true) {
+    // Boutons de réduction (gauche + droite). Position visuelle "en haut"
+    // de chaque sidebar gérée via CSS flex order:-1, peu importe l'ordre
+    // d'ajout au DOM (Layers/Zoom natifs Leaflet sont déjà placés avant).
+    if (typeof window._refonteInterfaceCreerBoutonReductionLeft === "function") {
+      window._refonteInterfaceCreerBoutonReductionLeft();
+    }
+    if (typeof window._refonteInterfaceCreerBoutonReductionRight === "function") {
+      window._refonteInterfaceCreerBoutonReductionRight();
+    }
+    // Bouton Niveau (avant les groupes accordéon topleft)
+    _initLevelFilterControl();
+  }
+
   // ===== Watcher pour le contrôle des couches Leaflet =====
   // Quand le panneau des couches s'ouvre (clic ou hover), il s'agrandit en haut-droite
   // de la map. Mais le #map est position:fixed → stacking context isolé → le panneau
@@ -2886,10 +3151,12 @@ function initInterface() {
   _initLayersControlWatcher();
 
   // 1. AIDE / DOC / LÉGENDE
+  // 🆕 Refonte UI v1 : position topleft si flag actif (sinon topright par défaut).
   _creerGroupeAccordeon({
     id: "aide",
     iconePrincipale: "📚",
     titre: "Aide / Documentation / Légende",
+    position: "topleft",
     sousActions: [
       { icone: "❓", titre: "Aide",          onClick: afficherAide },
       { icone: "📖", titre: "Documentation", onClick: afficherReadme },
@@ -2907,6 +3174,7 @@ function initInterface() {
     id: "settings",
     iconePrincipale: "⚙️",
     titre: "Paramètres",
+    position: "topleft",
     soloAction: afficherConfig
   });
 
@@ -2922,35 +3190,48 @@ function initInterface() {
   });
 
   // 3. CHARGER / IMPORT
+  // 🆕 v1.8.1-refonte-14 : retrait du sous-action "🗂️ Changer de plan"
+  // (KARMA feedback "enleve l'icone charger un plan du menu déroulant
+  // import"). En mode refonte, le bouton rose des vents 🌟 du header
+  // ouvre déjà la même modale via _retourLoaderAvecConfirm. En mode
+  // legacy, le clic sur le titre du plan en haut centre fait le même
+  // boulot (togglePlanSwitcher). Plus de doublon dans le menu Import.
   _creerGroupeAccordeon({
     id: "charger",
     iconePrincipale: "⬇️",
     titre: "Charger / Import",
+    position: "topleft",
     sousActions: [
       { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
       { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
           else alert("Module éditeur de tableau indisponible");
-        } },
-      { icone: "🗂️", titre: "Changer de plan",     onClick: afficherPopupChangerPlan }
+        } }
     ]
   });
 
   // 4. CRÉER / MODIFIER PLAN (solo)
-  _creerGroupeAccordeon({
-    id: "planner",
-    iconePrincipale: "🏗️",
-    titre: "Créer ou modifier un plan",
-    soloAction: function() {
-      if (typeof afficherPlanner === "function") afficherPlanner();
-    }
-  });
+  // 🆕 Refonte UI v1 : ce groupe est RETIRÉ du mode carte si le flag est
+  // actif. Le Générateur reste accessible UNIQUEMENT depuis le loader/home
+  // via le bouton "🏗️ Générer un plan". Cohérent avec la philosophie
+  // "actions de création hors du mode carte" (cf. choix KARMA).
+  if (window._refonteInterfaceActive !== true) {
+    _creerGroupeAccordeon({
+      id: "planner",
+      iconePrincipale: "🏗️",
+      titre: "Créer ou modifier un plan",
+      soloAction: function() {
+        if (typeof afficherPlanner === "function") afficherPlanner();
+      }
+    });
+  }
 
   // 5. ENREGISTRER
   _creerGroupeAccordeon({
     id: "save",
     iconePrincipale: "⬆️",
     titre: "Enregistrer",
+    position: "topleft",
     sousActions: [
       { icone: "💾", titre: "Enregistrer la session", onClick: function() {
           if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal();
@@ -3437,7 +3718,14 @@ _setGroupeModeActif("tracker", isTracking, null);
   // 🏗️ Multi-niveau : si actif pour ce plan, créer le bouton flottant
   // top-left (sous les boutons de zoom Leaflet) pour ouvrir la modale niveau.
   // Si OFF → rien n'est crée → comportement v147 strict.
-  _initLevelFilterControl();
+  // 🆕 Refonte UI v1 : si mode refonte actif, le bouton a déjà été créé
+  // au DÉBUT de initInterface (cf. fix ordre — Niveau doit être 3e après
+  // Zoom, pas en queue après les groupes accordéon topleft). On skip
+  // l'appel ici pour éviter la double création (qui serait nettoyée par
+  // la garde interne mais reste inutile).
+  if (window._refonteInterfaceActive !== true) {
+    _initLevelFilterControl();
+  }
 }
 
 // =========================
@@ -5377,6 +5665,30 @@ window.ouvrirRoadsDistanceFloater = function() {
 window._rdEffacerHighlight = function() {
   if (_rdFloater) { _rdFloater.remove(); _rdFloater = null; }
   _rdInternalEffacerHighlight();
+};
+
+// 🆕 API publique : état actuel de la "Distance totale des tracés".
+// Retourne null si pas de surlignage actif (= rien à afficher).
+// Sinon { totalM, breakdown: {principal,secondaire,chemin} }.
+//
+// Pourquoi exposer ça : le statusbar refonte v1 lisait avant directement
+// le DOM .kta-rd-total-value, qui n'existe que QUAND LA MODALE EST OUVERTE.
+// Fermer la modale (en gardant le surlignage magenta) cassait l'affichage
+// dans le statusbar — bug remonté KARMA. Avec cette API, on calcule en
+// live à partir de _rdHighlightLayer (qui survit à la fermeture modale).
+window.getDistanceTotaleStatus = function() {
+  // Pas de surlignage actif → aucune donnée à afficher
+  if (!_rdHighlightLayer) return null;
+  // Surlignage actif : recalcule en live depuis les roads + filtres courants
+  const b = _rdCalculerBreakdown();
+  return {
+    totalM:    b.totalM,
+    breakdown: {
+      principal:  { nb: b.principal.nb,  distM: b.principal.distM  },
+      secondaire: { nb: b.secondaire.nb, distM: b.secondaire.distM },
+      chemin:     { nb: b.chemin.nb,     distM: b.chemin.distM     }
+    }
+  };
 };
 
 // Hook appelé par road.js > renderRoads (et par le listener overlayadd/remove)

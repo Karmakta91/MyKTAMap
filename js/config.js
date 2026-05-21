@@ -61,6 +61,15 @@ let DEFAULT_CONFIG = {
   // dans initMapFromConfig → reload du plan requis pour changement.
   scaledMarkers: true,
 
+  // 🆕 v1.9.2 : afficher les cercles aux intersections de tracés (default true).
+  // Quand 2 roads se croisent, un cercle plein est dessiné au point
+  // d'intersection (cf. road.js > renderRoads). Sur des plans très denses,
+  // ça peut surcharger visuellement → l'user peut désactiver via toggle
+  // dans ⚙️ Réglages (map mode) ou ⚙️ Configuration (loader/home).
+  // Pas de reload requis : un appel à renderRoads() après toggle suffit
+  // pour faire disparaître / réapparaître les cercles à chaud.
+  showRoadIntersections: true,
+
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
   // false (defaut), l'UI multi-niveau est masquee et le comportement est
@@ -89,6 +98,8 @@ try {
   if ("debugMode" in saved) APP_CONFIG.debugMode = !!saved.debugMode;
   // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
+  // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne
+  if ("showRoadIntersections" in saved) APP_CONFIG.showRoadIntersections = !!saved.showRoadIntersections;
 } catch(e) {}
 
 // =========================
@@ -225,12 +236,24 @@ function buildAppConfigFromPlan(planConfig) {
     availableLevels:  [-2, -1, 0, 1, 2]
   };
 
-  // Restaurer la préférence globale debugMode depuis localStorage
+  // Restaurer les préférences GLOBALES depuis localStorage
   // (perfPreset est désormais par plan — résolu côté loader/main.js)
+  // 🆕 v1.9.2 : on lit aussi scaledMarkers et showRoadIntersections ici
+  // pour qu'ils survivent au plan switch (APP_CONFIG = { ...cfg } écrase
+  // sinon ces flags entre 2 plans).
   try {
     const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-    if ("debugMode" in saved) cfg.debugMode = !!saved.debugMode;
+    if ("debugMode"             in saved) cfg.debugMode             = !!saved.debugMode;
+    if ("scaledMarkers"         in saved) cfg.scaledMarkers         = !!saved.scaledMarkers;
+    if ("showRoadIntersections" in saved) cfg.showRoadIntersections = !!saved.showRoadIntersections;
   } catch(e) {}
+
+  // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
+  // touché le toggle → on prend le default true). Sans ce fallback, le
+  // champ resterait undefined et la check `!== false` le traiterait comme
+  // truthy — fonctionnel mais moins explicite.
+  if (cfg.scaledMarkers === undefined)         cfg.scaledMarkers         = DEFAULT_CONFIG.scaledMarkers !== false;
+  if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections !== false;
 
   return cfg;
 }
@@ -307,8 +330,9 @@ function sauvegarderPrefsUtilisateur() {
   try {
     // Lire ce qui est déjà sauvé pour ne pas écraser des clés inconnues éventuelles
     const existing = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
-    existing.debugMode     = !!APP_CONFIG.debugMode;
-    existing.scaledMarkers = APP_CONFIG.scaledMarkers !== false;  // v174 : default true
+    existing.debugMode             = !!APP_CONFIG.debugMode;
+    existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
+    existing.showRoadIntersections = APP_CONFIG.showRoadIntersections !== false;  // 🆕 v1.9.2 : default true
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }
@@ -335,6 +359,29 @@ function setDebugMode(value) {
 }
 
 // =========================
+// HELPER : TOGGLE AFFICHAGE CERCLES D'INTERSECTION (v1.9.2)
+// =========================
+// Setter unifié appelé par les 2 toggles (⚙️ Réglages map mode + ⚙️
+// Configuration loader). Met à jour APP_CONFIG, persiste, et re-render
+// les roads à chaud si on est en mode carte (renderRoads dispo).
+// Pas de reload nécessaire — l'effet est immédiat.
+function setShowRoadIntersections(value) {
+  const newValue = !!value;
+  APP_CONFIG.showRoadIntersections = newValue;
+  window.APP_CONFIG = APP_CONFIG;
+  sauvegarderPrefsUtilisateur();
+  console.log("[Config] showRoadIntersections →", APP_CONFIG.showRoadIntersections);
+  // Re-render des roads à chaud — disponible UNIQUEMENT en mode carte
+  // (après chargement d'un plan). Skip silencieux si appelé depuis le
+  // loader (renderRoads pas encore défini).
+  if (typeof window.renderRoads === "function") {
+    try { window.renderRoads(); } catch(e) {
+      console.warn("[Config] renderRoads() failed:", e);
+    }
+  }
+}
+
+// =========================
 // EXPORTS GLOBAUX
 // =========================
 window.APP_CONFIG                  = APP_CONFIG;
@@ -343,6 +390,7 @@ window.loadAppConfig               = loadAppConfig;
 window.buildAppConfigFromPlan      = buildAppConfigFromPlan;
 window.sauvegarderPrefsUtilisateur = sauvegarderPrefsUtilisateur;
 window.setDebugMode                = setDebugMode;
+window.setShowRoadIntersections    = setShowRoadIntersections;
 window.normalizePath               = normalizePath;
 window.getBaseName                 = getBaseName;
 window.getRuntimeAsset             = getRuntimeAsset;

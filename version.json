@@ -1,13 +1,19 @@
 {
-  "version": "v1.8.1",
+  "version": "v1.9.1",
   "released": "2026-05-21",
   "notes": [
-    "🐛 Fix critique : restore de l'itinéraire en 2 phases pour éviter le crash GPU au reload. Phase 1 immédiate (toutes les annotations sauf itinéraire), phase 2 différée +1500ms (l'itinéraire seul). Si tu efface la session pendant ce délai, l'itinéraire ne réapparaît plus en différé.",
-    "🛡️ CSP ajustée côté Nginx : 'unsafe-inline' autorisé sur script-src (compatible avec les onclick inline du projet — la garantie anti-exfiltration vient de connect-src, pas de script-src) et blob: autorisé sur connect-src (nécessaire pour les tuiles V2).",
-    "📄 Page d'audit en HTML formaté : le bouton « Ouvrir la doc complète » dans la modale Confidentialité affiche désormais une vraie page HTML mise en forme charte MyKTAMap (avant : markdown brut intercepté par le Service Worker qui affichait le splash à la place).",
-    "🖥️ Modale Configuration responsive PC : layout 2 colonnes sur écrans ≥1024px. Sections réordonnées : Confidentialité avant Force update (gradation logique informatif → action douce → action destructive).",
-    "⏯️ Tracker : possibilité de replier le groupe accordéon pendant le Play pour gagner de la place. L'icône principale reste 🧭 (avant : devenait ⏹️ qui faisait doublon avec le sous-bouton). Petit point jaune pulsant signale les modes actifs même quand le groupe est replié.",
-    "🗺️ Itinéraire : le label distance/temps en bas-gauche apparaît automatiquement au restore de session (avant : il fallait ouvrir la modale Itinéraire pour le voir). Et il disparaît correctement quand on efface la session.",
-    "⚡ Splash plus court : 3,5 secondes au lieu de 4. Fixes UX divers (badge MODE HORS-LIGNE STRICT qui débordait, toggle qui débordait, nom de fichier ZIP long qui débordait, croix modale Forcer la mise à jour sans style)."
+    "🎨 Refonte UI majeure — nouvelle interface par défaut : header bar 44px avec rose des vents, titre du plan cliquable et compteurs vivants (📍 points · 🛣 tracés · ⬛ zones), sidebars gauche/droite unifiées en barres continues, status bar 52px en bas avec stats live (📐 mesure · 📏 distance totale · 🗺️ itinéraire · 🧭 tracker GPS).",
+    "🔁 Bascule possible : section « 🎨 Affichage » dans ⚙️ Configuration permet de revenir à l'ancienne interface classique v1.8.x (reload requis). Le défaut est désormais la nouvelle UI.",
+    "📊 Footer dynamique : si toutes les stats sont actives en même temps, le footer s'agrandit automatiquement et wrap sur plusieurs lignes — plus aucune info coupée hors viewport. La carte, la boussole et les sidebars suivent la hauteur réelle via une variable CSS partagée.",
+    "🧭 Boussole tracker GPS en footer : indicateur visuel ON (vert) / OFF (rouge) façon LED hardware, jamais caché par d'autres widgets. En mode landscape, la boussole d'orientation passe en bas-centrée pour ne plus cacher les icônes latérales.",
+    "🗺️ Stat itinéraire cliquable : clic sur 🗺️ dans le footer rouvre la modale Itinéraire (équivalent à l'ancien label en bas-gauche, désormais masqué pour éviter le doublon).",
+    "📚 Modale « Changer de plan » refondue : ouverture centrée avec carte highlight du plan en cours, liste des récents avec hover doré et flèche qui glisse, CTA bleu « Voir tous mes plans ». L'ancien dropdown reste actif en mode legacy.",
+    "📊 Modale « Détails de la session » : clic sur les compteurs du header → liste détaillée points/tracés/zones/mesure/itinéraire/tracker, regroupement par type avec distance totale par catégorie.",
+    "🎛️ Sous-actions horizontales en landscape : sur petit écran horizontal, les sous-menus des accordéons se déplient vers l'intérieur de l'écran au lieu de descendre — meilleure ergonomie sur tablette/smartphone en paysage. Le zoom natif Leaflet reste vertical (+/- conventionnel).",
+    "📐 Centrage géométrique absolu du titre du plan en landscape (CSS Grid 1fr auto 1fr). En portrait, le centrage flex classique est conservé.",
+    "🪟 Bouton ▾▴ de réduction du footer agrandi (40x36px, font 22px) — plus facile à atteindre au pouce.",
+    "🧹 Menu ⬇️ Charger / Import allégé : retrait du sous-action « 🗂️ Changer de plan » (déjà accessible via la rose des vents et le titre cliquable).",
+    "🔧 Réorganisation ⚙️ Configuration du loader : section « 🎨 Affichage » déplacée avant « 🔄 Mise à jour » pour que Force update et Tout réinitialiser se suivent directement (gradation purge cache → purge totale plus lisible).",
+    "💾 Cache PWA bumpé en v1.9.1 (sans suffix refonte) — refresh automatique pour tous les users à la prochaine ouverture."
   ]
 }

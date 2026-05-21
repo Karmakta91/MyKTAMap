@@ -663,6 +663,15 @@ window.getTrackingPosition = function() {
   return { x: position.x, y: position.y };
 };
 
+// 🆕 v1.9.2 : getter pour l'état "Play" du tracker. Utilisé par
+// refonteInterface.js > refreshStatusBar() pour afficher la LED ON/OFF
+// du status bar (KARMA feedback : "quand le tracker est actif, le footer
+// ne passe pas à ON"). Avant : refonteInterface lisait window.getTrackingActif
+// qui n'existait pas → toujours false → toujours OFF rouge même Play actif.
+window.getTrackingActif = function() {
+  return tracking === true;
+};
+
 // 🏗️ Multi-niveau : lecture du niveau courant du tracker (utile pour les
 // itineraires/recherche aware-niveau en phase 2B).
 window.getTrackerLevel = function() {

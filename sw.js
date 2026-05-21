@@ -25,7 +25,16 @@
 //   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v1.8.1";
+// 🎨 v1.9.1 — Refonte UI MERGÉE sur Karma_dev (puis main). Le suffix
+// `-refonte-N` qu'on utilisait pendant la phase de dev sur la branche
+// `Refonte_interface` a été retiré ici : la refonte EST désormais
+// l'interface officielle (nouvelle interface par défaut + toggle
+// `myktamap_legacy_interface` pour opt-out vers l'ancienne v1.8.x).
+//
+// Pour les prochains hotfixes : bump simple `v1.9.2`, `v1.9.3`, etc.
+// Pas besoin de suffix tant qu'on ne re-démarre pas une branche
+// expérimentale parallèle.
+const CACHE_NAME = "myktamap-cache-v1.9.1-fix6";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -60,6 +69,10 @@ const ASSETS_TO_CACHE = [
   "./js/networkAudit.js",
   "./js/debug.js",
   "./js/perfUltra.js",
+  // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag
+  // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle
+  // marche aussi en mode offline.
+  "./js/refonteInterface.js",
   "./js/unlockGate.js",
   "./js/config.js",
   "./js/utils.js",

@@ -248,6 +248,15 @@ async function lancerApplication() {
   // brutalement (typiquement OOM) → toast affiché côté utilisateur.
   if (window.OOMGuard) window.OOMGuard.start();
 
+  // 🎨 Refonte UI v1 : hook post-init pour que refonteInterface.js puisse
+  // créer le header bar + status bar maintenant que window.map et tous les
+  // setters (getEditorPoints, getRoads, etc.) sont prêts. No-op si flag OFF.
+  if (typeof window._refonteInterfacePostInit === "function") {
+    try { window._refonteInterfacePostInit(); } catch(e) {
+      console.warn("[Refonte UI] postInit error:", e);
+    }
+  }
+
   // Resize defensif (iOS PWA viewport-fit=cover) :
   //   Sur iPhone PWA, la viewport change après l'activation du Service Worker
   //   (la status bar passe en black-translucent et la home-indicator zone entre
@@ -386,6 +395,13 @@ window._etendreAvailableLevelsSiBesoin = function() {
 // startImportedPlan). Évite la duplication ET garantit que rien n'est oublié
 // sur mobile où chaque Mo retenu compte pour iOS Safari.
 function _libererRessourcesPlanPrecedent() {
+  // 🎨 Refonte UI v1 : cleanup du header bar + status bar avant démontage
+  // de la map. Sinon le header reste affiché avec les vieilles valeurs
+  // pendant le splash du nouveau plan. No-op si flag OFF.
+  if (typeof window._refonteInterfacePreUnload === "function") {
+    try { window._refonteInterfacePreUnload(); } catch(e) {}
+  }
+
   // Distance totale des tracés : ferme le panneau flottant et purge le layer
   // de surlignage magenta avant le démontage de la map (sinon le layer reste
   // attaché à une map détruite et le panneau flotte par-dessus le splash).
