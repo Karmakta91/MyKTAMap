@@ -2306,6 +2306,56 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
 
 /* ==============================================
+   MODALE ⚙️ CONFIGURATION DU LOADER — responsive PC (depuis v1.8.0)
+   ==============================================
+   Mobile (default) : étroite (680px max), 1 colonne — comportement v1.7.3.
+   PC ≥ 1024px : 1100px max + columns: 2 (pattern identique aux modales
+   ⚙️ Réglages in-app et 📖 Documentation).
+
+   Différence avec la modale Aide (qui a SANS break-inside) : on ajoute
+   break-inside: avoid sur les sections (.kta-aide-section dans le corps).
+   Raison : les sections de Configuration contiennent des éléments
+   structurés (segmented control, toggles, boutons d'action) — couper en
+   plein milieu serait confusant pour l'user. Les 6 sections (Tiling,
+   ULTRA, Debug, Force update, Confidentialité, Réinitialisation) sont
+   relativement homogènes en hauteur, donc break-inside: avoid ne crée pas
+   de gros déséquilibre visuel entre les 2 colonnes.
+
+   Cohérence avec ⚙️ Réglages map mode (cf. bloc ci-dessus) : même CSS,
+   même comportement. La modale de la home et la modale in-app ont la
+   même apparence en PC. */
+.kta-loader-config-boite {
+  /* Mobile : préserve le comportement v1.7.3 (680px, h auto, max-h 90vh) */
+  max-width: 680px !important;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+
+@media (min-width: 1024px) {
+  .kta-loader-config-boite {
+    max-width: 1100px !important;
+    width: min(1100px, 96vw) !important;
+  }
+
+  /* Layout 2 colonnes via column-flow */
+  .kta-loader-config-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Sections de Configuration : ne JAMAIS couper en plein milieu d'une
+     section. Compromis identique à la modale Réglages in-app — cf.
+     commentaire en tête de bloc. */
+  .kta-loader-config-corps .kta-aide-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}
+
+
+/* ==============================================
    LÉGENDE — icônes et tracés
    ============================================== */
 
