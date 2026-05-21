@@ -3866,6 +3866,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-weight: 600;
   margin-top: 6px;
   min-height: 16px;
+  /* 🆕 v1.8.0 fix : autoriser le wrap des noms de fichiers longs (ex:
+     "plan_carriere_de_bagneux_v2_KARMA_2026 (3).zip"). Sans ça, le nom
+     peut sortir du conteneur si le navigateur ne wrappe pas faute de
+     espace dans le nom (les `_` ne sont pas des break points naturels).
+     max-width:100% pour contraindre au parent. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ==============================================
@@ -6898,10 +6906,17 @@ body.kta-multilevel-active .kta-compass-widget {
 }
 
 /* Badge "MODE HORS-LIGNE STRICT" dans le footer du loader (visible
-   seulement quand paranoia ON). Cliquable → ouvre Configuration. */
+   seulement quand paranoia ON). Cliquable → ouvre Configuration.
+
+   🆕 v1.8.0 fix : ajout box-sizing:border-box. Sans ça, `<div>` est en
+   content-box par défaut (les `<button>` héritent border-box du user-agent
+   stylesheet mais pas les `<div>`), donc width:100% + padding 10/14 +
+   border 1px = 100% + 30px → débordement de 30px à droite hors du
+   #planLoaderBox parent. */
 .kta-net-paranoia-badge {
   display: block;
   width: 100%;
+  box-sizing: border-box;
   margin: 8px 0 12px 0;
   padding: 10px 14px;
   background: linear-gradient(135deg, rgba(255, 149, 0, 0.18), rgba(255, 149, 0, 0.08));
