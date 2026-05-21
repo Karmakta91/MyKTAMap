@@ -388,62 +388,20 @@
     // Synchro immédiate (et fallback si ResizeObserver pas dispo : on
     // appelle quand même au chargement + sur orientationchange/resize).
     _syncH();
-    window.addEventListener("orientationchange", _onOrientationChange);
-    // Pageshow event aussi : se déclenche quand l'user revient sur la
-    // page après avoir été dans une autre app (background → foreground)
-    // — moment où iOS peut avoir "oublié" la viewport correcte.
-    window.addEventListener("pageshow", function(e) {
-      // Persisted = page restaurée depuis le cache (bfcache iOS)
-      if (e.persisted) _onOrientationChange();
+    window.addEventListener("orientationchange", function() {
+      // 🆕 v1.9.2 (KARMA pivot) : retrait des workarounds iOS status bar
+      // (scrollTo + viewport meta rewrite). Maintenant qu'on a activé
+      // viewport-fit=cover + apple-mobile-web-app-status-bar-style =
+      // black-translucent, on ne cherche plus à préserver la visibilité
+      // de la status bar iOS — elle est dessinée en transparence par-
+      // dessus notre header. Le bug "status bar disparaît après rotation"
+      // n'est plus pertinent : qu'iOS la cache ou non, notre header reste
+      // correctement positionné et utilise toute la place.
+      //
+      // On garde uniquement le _syncH() pour le wrap multi-ligne du footer.
+      setTimeout(_syncH, 100);
+      setTimeout(_syncH, 350);
     });
-  }
-
-  // 🆕 v1.9.2 (approche fresh) — bug iOS PWA "status bar disparaît après
-  // rotation landscape → portrait". Diagnostic : iOS Safari standalone
-  // hide auto le status bar (heure, batterie) en landscape sur iPhone
-  // pour donner du fullscreen, mais REFUSE de le restaurer au retour
-  // portrait dans certains cas. Pas d'API JS pour forcer iOS à le
-  // remontrer.
-  //
-  // 2 workarounds connus dans la communauté iOS PWA, qu'on empile pour
-  // maximiser les chances :
-  //   1. scrollTo (+1, 0) — simule une activité scroll, iOS revérifie
-  //      la visibilité de son chrome (status bar, URL bar) à chaque scroll.
-  //   2. Viewport meta rewrite — réécrire la valeur identique de la meta
-  //      viewport force iOS à recalculer la viewport intégralement.
-  //
-  // ⚠️ On NE TOUCHE PAS à body.kta-refonte-v1 (avait empiré le bug en
-  // commit dbfe2c0). On ne touche QUE le scroll + meta viewport, à 600ms
-  // après rotation pour laisser iOS se stabiliser d'abord.
-  function _onOrientationChange() {
-    setTimeout(_syncH, 100);
-    setTimeout(_syncH, 350);
-
-    setTimeout(function() {
-      try {
-        // Workaround 1 : scrollTo trick — tiny scroll trigger
-        const sx = window.scrollX || 0;
-        const sy = window.scrollY || 0;
-        window.scrollTo(sx, sy + 1);
-        requestAnimationFrame(function() {
-          window.scrollTo(sx, sy);
-        });
-
-        // Workaround 2 : viewport meta rewrite (force iOS à recalculer
-        // l'attribution viewport sans changer la valeur effective)
-        const meta = document.querySelector('meta[name="viewport"]');
-        if (meta) {
-          const content = meta.getAttribute("content");
-          if (content) {
-            // setAttribute avec la même valeur déclenche un mutation
-            // observable côté navigateur → iOS re-évalue
-            meta.setAttribute("content", content);
-          }
-        }
-      } catch(e) {
-        console.warn("[RefonteInterface] orientation workaround failed:", e);
-      }
-    }, 600);
   }
 
   function _toggleStatusBar() {
