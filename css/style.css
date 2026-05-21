@@ -284,6 +284,309 @@ html, body {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   🆕 v1.8.1-refonte-15 — PLAN SWITCHER MODALE (mode refonte UI)
+   ══════════════════════════════════════════════════════════════════
+   En mode refonte, le clic sur le titre du plan ouvre une modale
+   centrée (au lieu du dropdown ancré sous le titre). Cohérent avec
+   le reste des modales refonte (Aide, Détails session, Force update,
+   Distance totale, etc.) qui utilisent toutes le pattern
+   .kta-readme-modal-overlay + boîte centrée.
+
+   Structure DOM :
+     .kta-readme-modal-overlay.kta-plan-switcher-overlay
+       └── .kta-plan-switcher-modal-boite (#kta-plan-switcher)
+            ├── .kta-plan-switcher-modal-header (titre + close)
+            ├── .kta-plan-switcher-modal-corps (current + liste recents)
+            └── .kta-plan-switcher-modal-footer (CTA "Tous mes plans")
+   ══════════════════════════════════════════════════════════════════ */
+
+.kta-plan-switcher-overlay {
+  /* Hérite de .kta-readme-modal-overlay : inset:0, backdrop noir,
+     flex centré, animation fade-in. Rien à ajouter — la boîte interne
+     définit sa propre largeur compacte. */
+  z-index: 99998;  /* juste sous les modales système (99999) */
+}
+
+.kta-plan-switcher-modal-boite {
+  background: #1a1f2e;
+  border: 1px solid rgba(244, 197, 66, 0.20);
+  border-radius: 14px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  width: min(440px, 92vw);
+  max-height: min(82vh, 720px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  animation: ktaSwitcherModalIn 0.20s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ktaSwitcherModalIn {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.kta-plan-switcher-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.kta-plan-switcher-modal-titre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f4c542;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 8px rgba(244, 197, 66, 0.25);
+}
+
+/* Bouton ✕ : hérite du style global .kta-panneau-close (cohérent
+   avec toutes les autres modales du projet). */
+
+.kta-plan-switcher-modal-corps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px;
+  color: #c8d0e0;
+  /* Petit padding-bottom interne pour ne pas coller le footer */
+  padding-bottom: 6px;
+}
+
+/* ─── Carte du plan en cours (highlight doré) ──────────────────── */
+.kta-plan-switcher-current {
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.08) 0%, rgba(244, 197, 66, 0.03) 100%);
+  border: 1px solid rgba(244, 197, 66, 0.28);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  position: relative;
+}
+.kta-plan-switcher-current::after {
+  /* Petit badge "Actif" en haut à droite, façon LED */
+  content: "● ACTIF";
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6ee287;
+  text-shadow: 0 0 4px rgba(76, 200, 100, 0.55);
+}
+.kta-plan-switcher-current-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8892a4;
+  margin-bottom: 6px;
+}
+.kta-plan-switcher-current-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px rgba(244, 197, 66, 0.20);
+}
+.kta-plan-switcher-current-icon {
+  font-size: 14px;
+}
+.kta-plan-switcher-current-sub {
+  font-size: 11px;
+  color: #8892a4;
+  font-style: italic;
+}
+
+/* ─── Titre de section "Plans récents" ─────────────────────────── */
+.kta-plan-switcher-section-titre {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8cb4ff;
+  font-weight: 700;
+  margin: 0 0 8px 4px;
+  padding: 0;
+}
+
+/* ─── Override .kta-switcher-list et .kta-switcher-row dans la modale
+   refonte UNIQUEMENT (les classes legacy ne sont pas touchées) ─── */
+.kta-plan-switcher-modal-boite .kta-switcher-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.10s;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-row:hover,
+.kta-plan-switcher-modal-boite .kta-switcher-row:focus-visible {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.35);
+  transform: translateX(2px);
+  outline: none;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-icon {
+  font-size: 18px;
+  width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-info {
+  flex: 1;
+  min-width: 0;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-sub {
+  font-size: 11px;
+  color: #8892a4;
+  margin-top: 2px;
+}
+.kta-switcher-row-arrow {
+  font-size: 18px;
+  color: #8892a4;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.15s;
+}
+.kta-plan-switcher-modal-boite .kta-switcher-row:hover .kta-switcher-row-arrow {
+  color: #8cb4ff;
+  transform: translateX(2px);
+}
+
+.kta-plan-switcher-modal-boite .kta-switcher-empty {
+  padding: 14px;
+  font-size: 12px;
+  color: #6c7689;
+  font-style: italic;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+/* ─── Footer modal : CTA "Voir tous mes plans" ─────────────────── */
+.kta-plan-switcher-modal-footer {
+  padding: 12px 16px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(140, 180, 255, 0.02);
+  flex-shrink: 0;
+}
+
+.kta-plan-switcher-cta {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(140, 180, 255, 0.15) 0%, rgba(140, 180, 255, 0.08) 100%);
+  color: #8cb4ff;
+  border: 1px solid rgba(140, 180, 255, 0.35);
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.10s;
+}
+.kta-plan-switcher-cta:hover,
+.kta-plan-switcher-cta:focus-visible {
+  background: linear-gradient(135deg, rgba(140, 180, 255, 0.22) 0%, rgba(140, 180, 255, 0.14) 100%);
+  border-color: rgba(140, 180, 255, 0.65);
+  color: #b3ccff;
+  transform: translateY(-1px);
+  outline: none;
+}
+.kta-plan-switcher-cta:active {
+  transform: translateY(0);
+}
+.kta-plan-switcher-cta-icon {
+  font-size: 18px;
+  margin-bottom: 2px;
+}
+.kta-plan-switcher-cta-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.kta-plan-switcher-cta-sub {
+  font-size: 10px;
+  color: #6c8cc0;
+  font-style: italic;
+  margin-top: 1px;
+}
+
+/* Mobile : modal plus compacte */
+@media (max-width: 480px) {
+  .kta-plan-switcher-modal-boite {
+    width: min(380px, 95vw);
+    border-radius: 12px;
+  }
+  .kta-plan-switcher-modal-header {
+    padding: 12px 14px 10px;
+  }
+  .kta-plan-switcher-modal-titre {
+    font-size: 14px;
+  }
+  .kta-plan-switcher-modal-corps {
+    padding: 12px 12px 4px;
+  }
+  .kta-plan-switcher-current {
+    padding: 10px 12px;
+  }
+  .kta-plan-switcher-current-name {
+    font-size: 15px;
+  }
+  .kta-plan-switcher-modal-boite .kta-switcher-row {
+    padding: 9px 10px;
+    gap: 10px;
+  }
+}
+
+/* Landscape mobile : ajuster pour économiser la hauteur */
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-plan-switcher-modal-boite {
+    max-height: 86vh;
+    width: min(520px, 90vw);
+  }
+  .kta-plan-switcher-current {
+    padding: 8px 12px;
+    margin-bottom: 10px;
+  }
+  .kta-plan-switcher-current-name {
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .kta-plan-switcher-modal-footer {
+    padding: 8px 14px 10px;
+  }
+  .kta-plan-switcher-cta {
+    padding: 8px 14px;
+  }
+  .kta-plan-switcher-cta-icon {
+    font-size: 16px;
+  }
+}
+
 /* ==============================================
    CHARTE GRAPHIQUE — boutons de contrôle Leaflet
    ============================================== */
@@ -7273,6 +7576,13 @@ body.kta-refonte-v1 .kta-refonte-header {
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
   border-bottom: 1px solid rgba(244, 197, 66, 0.18);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  /* 🆕 v1.8.1-refonte-12 : layout flex par défaut (portrait). Le titre
+     est centré dans la largeur restante via le wrap `flex:1 + justify-
+     content:center` — pas un centrage absolu (asymétrie home/counters),
+     mais c'est le comportement que KARMA préfère en portrait. Le grid
+     `1fr auto 1fr` (centrage géométrique absolu) est appliqué UNIQUEMENT
+     en landscape via la media query plus bas, pour rendre le titre bien
+     visible/centré sur les petits écrans en orientation paysage. */
   display: flex;
   align-items: center;
   padding: 0 8px;
@@ -7506,8 +7816,11 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      coller au head"). Avant : 2px de gap minime. */
   padding-top: 0 !important;
   /* Scroll interne si la sidebar dépasse la hauteur disponible (entre
-     header 44px et footer 52px, moins safe-areas). */
-  max-height: calc(100vh - 44px - 52px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4px);
+     header 44px et footer dynamique via --kta-statusbar-h qui inclut
+     déjà safe-area-bottom). Quand le footer wrap multi-ligne et
+     grandit, la sidebar rétrécit automatiquement pour ne pas se faire
+     recouvrir. */
+  max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;  /* Firefox */
@@ -7674,16 +7987,20 @@ body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-c
 body.kta-refonte-v1 .kta-compass-widget {
   /* top: auto annule la règle de base à top:80px qui s'applique en v1. */
   top: auto !important;
-  /* 52px = hauteur statusbar + 8px gap au-dessus. Safe-area iPhone
-     en plus pour ne pas chevaucher le home indicator. */
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  /* 🆕 v1.8.1-refonte-10 : boussole posée au-dessus du status bar (+8px gap).
+     Suit la hauteur dynamique du status bar via `--kta-statusbar-h`
+     (mise à jour par JS quand la barre wrap multi-ligne). Sans ça, si
+     le footer grossit à 2 lignes, la boussole se retrouve cachée
+     dessous. Fallback calc(52 + safe + 8) si JS pas chargé. */
+  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
+  transition: bottom 0.2s ease-out;
 }
 /* Multi-niveau : pas de changement de position en bottom-left, la
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7707,15 +8024,145 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
    Distance totale, Itinéraire, Configuration, Aide, Audit, etc. */
 body.kta-refonte-v1 .kta-readme-modal-overlay {
   padding-top:    calc(44px + env(safe-area-inset-top, 0px) + 16px);
-  padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 16px);
+  /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
+     `--kta-statusbar-h` (qui inclut safe-area déjà) + 16px de respiration.
+     Quand le footer wrap multi-ligne, les modales s'ajustent automatiquement. */
+  padding-bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 16px);
 }
 
-/* En landscape mobile, header et footer sont plus courts (36/40px),
-   ajustement cohérent. */
+/* En landscape mobile, header est plus court (36px). Le footer suit
+   également la variable dynamique --kta-statusbar-h (qui devient 40+safe
+   en landscape via la règle plus bas), donc rien à changer côté bottom. */
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-readme-modal-overlay {
     padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
-    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px) + 8px);
+    padding-bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   🆕 v1.8.1-refonte-10 — LANDSCAPE MODE : SOUS-ACTIONS HORIZONTALES
+   ─────────────────────────────────────────────────────────────────
+   En mode portrait (par défaut) les sous-actions s'empilent EN DESSOUS
+   du bouton principal (vertical) — la sidebar grossit vers le bas.
+   En mode landscape mobile (max-height ≤ 500px), c'est gênant car la
+   hauteur écran est limitée → on dépasse vite le viewport et il faut
+   scroller.
+
+   Solution : en landscape, les sous-actions se déplient HORIZONTALEMENT
+   vers l'INTÉRIEUR de l'écran (= côté opposé au bord de la sidebar).
+   - Sidebar gauche : main button au bord gauche, subs unfold vers la
+     DROITE (intérieur) → flex-direction: row.
+   - Sidebar droite : main button au bord droit, subs unfold vers la
+     GAUCHE (intérieur) → flex-direction: row-reverse. Le main button
+     reste collé au bord droit (sidebar align-items:flex-end), les subs
+     en DOM après main apparaissent visuellement à sa gauche.
+
+   Chaque .leaflet-bar devient un "pill" horizontal arrondi indépendant
+   (override le mode "barre unifiée verticale" du portrait). Les groupes
+   restent stackés verticalement dans la sidebar avec un petit gap.
+   ───────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  /* Chaque .leaflet-bar devient un conteneur flex horizontal */
+  body.kta-refonte-v1 .leaflet-bar {
+    display: flex !important;
+    align-items: center !important;
+    /* Pill arrondi indépendant — override le radius:0 du mode vertical */
+    border-radius: 8px !important;
+    overflow: hidden;
+  }
+  /* Sidebar GAUCHE : subs vers la DROITE (intérieur écran) */
+  body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-bar {
+    flex-direction: row !important;
+  }
+  /* Sidebar DROITE : subs vers la GAUCHE (intérieur écran).
+     row-reverse inverse l'ordre visuel mais préserve l'ordre DOM —
+     main button reste collé au bord droit (align-items:flex-end de la
+     sidebar), subs apparaissent à sa gauche en ordre de proximité
+     décroissante (sub1 le plus proche du main, etc.). */
+  body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-bar {
+    flex-direction: row-reverse !important;
+  }
+  /* 🆕 v1.8.1-refonte-11 EXCEPTION : le zoom natif Leaflet
+     (.leaflet-control-zoom contient zoom-in + zoom-out) reste VERTICAL
+     même en landscape — convention universelle "+ au-dessus du -" que
+     l'utilisateur connaît par cœur (Google Maps, OSM, etc.). Le passer
+     en horizontal serait perturbant. Feedback KARMA : "pour le zoom,
+     on laisse comme avant, le - en dessous du +". */
+  body.kta-refonte-v1 .leaflet-control-zoom {
+    flex-direction: column !important;
+  }
+  /* Boutons en ligne — override le display:block du mode vertical.
+     Taille un peu plus compacte (30px) pour gagner de la place verticale
+     en landscape (hauteur écran limitée). */
+  body.kta-refonte-v1 .leaflet-bar a,
+  body.kta-refonte-v1 .leaflet-bar a.kta-sub {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 30px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+    font-size: 16px;
+  }
+  /* .kta-hidden masque les subs repliés (override prioritaire sur
+     l'inline-flex au-dessus). */
+  body.kta-refonte-v1 .leaflet-bar a.kta-sub.kta-hidden {
+    display: none !important;
+  }
+  /* Override les radius first/last-child du mode vertical : ils mettaient
+     top-rounded au 1er control de la sidebar et bottom-rounded au dernier.
+     En landscape chaque pill est arrondi sur ses 4 coins indépendamment. */
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child {
+    border-radius: 8px !important;
+  }
+  /* Plus de séparateur "border-top" entre groupes (le mode pill n'en
+     a plus besoin — les pills sont visuellement distincts). */
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-bar {
+    border-top: none !important;
+  }
+  /* Petit gap vertical entre 2 pills successifs dans une sidebar */
+  body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-control + .leaflet-control,
+  body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-control + .leaflet-control {
+    margin-top: 4px !important;
+  }
+  /* Séparateur INTERNE entre boutons d'une même .leaflet-bar horizontale :
+     ligne verticale fine (au lieu de la border-bottom Leaflet native qui
+     ne fait sens qu'en vertical). On utilise le sélecteur `a + a` pour
+     cibler tous les boutons SAUF le premier en ordre DOM.
+     Comme la sidebar droite est en row-reverse, le `a + a` cible toujours
+     les bons éléments (le séparateur visuel est ajouté à gauche du DOM-2,
+     ce qui en row-reverse veut dire à droite de DOM-2 = entre DOM-2 et
+     DOM-1 visuellement). */
+  body.kta-refonte-v1 .leaflet-bar a + a {
+    border-left: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-top: none !important;
+    border-bottom: none !important;
+  }
+  /* 🆕 v1.8.1-refonte-11 : zoom natif gardé vertical → séparateur entre
+     zoom-in et zoom-out doit être horizontal (border-top), pas vertical
+     (border-left). Override l'exception générale ci-dessus. */
+  body.kta-refonte-v1 .leaflet-control-zoom a + a {
+    border-left: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  }
+  /* Shadow uniformisée sur chaque pill (override le shadow first/last
+     spécial du mode vertical) */
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control .leaflet-bar,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar,
+  body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.32);
+  }
+  /* Bouton ≡ de réduction : reste seul (pas de subs), pill rond standard,
+     order:-1 le garde en premier (= en haut de la sidebar) */
+  body.kta-refonte-v1 .kta-refonte-collapse-bar {
+    align-self: flex-start;
+  }
+  body.kta-refonte-v1 .leaflet-top.leaflet-right .kta-refonte-collapse-bar {
+    align-self: flex-end;
   }
 }
 
@@ -7827,6 +8274,18 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    STATUS BAR (sticky bottom, 36px ouvert / 14px replié)
    ───────────────────────────────────────────────────────────────── */
 
+/* 🆕 v1.8.1-refonte-10 : variable CSS partagée `--kta-statusbar-h` =
+   hauteur EFFECTIVE actuelle du status bar (incluant safe-area iPhone).
+   - Fallback CSS = 52px + safe (portrait standard, footer 1 ligne).
+   - JS (refonteInterface.js > ResizeObserver) la réécrit dynamiquement
+     dès que la barre s'agrandit (wrap multi-ligne) ou se collapse.
+   Tout ce qui dépend du bas de l'écran (#map bottom, boussole bottom,
+   modales padding-bottom) consomme cette variable → réajustement
+   automatique sans JS supplémentaire. */
+body.kta-refonte-v1 {
+  --kta-statusbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
+}
+
 body.kta-refonte-v1 .kta-refonte-statusbar {
   position: fixed;
   bottom: 0;
@@ -7841,24 +8300,35 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   padding: 0 12px;
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
-  /* 🆕 Footer agrandi (feedback KARMA itéré) : 44px → 52px ouvert +
-     safe-area iPhone bottom. Total ~73px sur iPhone PWA (52 + 21).
-     Évite définitivement le chevauchement avec les bords arrondis et
-     le home indicator. */
-  height: calc(52px + env(safe-area-inset-bottom, 0px));
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* 🆕 v1.8.1-refonte-10 : `min-height` au lieu de `height` pour permettre
+     l'agrandissement dynamique quand les stats wrap sur plusieurs lignes
+     (cas typique mobile petit écran + 4 stats actives = mesure + distance
+     totale + itinéraire + tracker). Le contenu décide la hauteur, le
+     min-height garantit qu'on reste >= 52px même quand 1 ligne suffit.
+     Feedback KARMA : "si toute les informations sont afficher en footer
+     on sort du cadre [...] agrandir le footer dynamiquement et passer
+     a la ligne toute la partie qui sort". */
+  min-height: calc(52px + env(safe-area-inset-bottom, 0px));
+  height: auto;
+  padding-top: 4px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
   color: #c8d0e0;
-  transition: height 0.2s ease-out, padding 0.2s ease-out;
-  overflow: hidden;
+  transition: min-height 0.2s ease-out, padding 0.2s ease-out;
+  /* overflow hidden retiré : le contenu doit pouvoir s'étendre verticalement
+     (wrap multi-ligne). Le z-index 1200 + position fixed garantit qu'il
+     ne déborde pas sur le map de manière problématique. */
   -webkit-user-select: none;
   user-select: none;
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-  /* 🆕 État replié : 18px → 20px + safe-area */
+  /* État replié : la barre garde une hauteur fixe minimaliste (pas de
+     wrap car contenu masqué via opacity:0). On force min-height ET
+     height pour neutraliser l'auto-grow du mode ouvert. */
+  min-height: calc(20px + env(safe-area-inset-bottom, 0px));
   height: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -7871,10 +8341,15 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-cont
 body.kta-refonte-v1 .kta-refonte-statusbar-content {
   flex: 1 1 auto;
   display: flex;
+  /* 🆕 v1.8.1-refonte-10 : flex-wrap pour multi-ligne au lieu de scroll
+     horizontal masqué (qui cachait l'info hors viewport). */
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
+  /* column-gap horizontal large (lecture confort), row-gap petit (compact) */
+  column-gap: 16px;
+  row-gap: 2px;
+  /* overflow-x: auto retiré → plus de scroll horizontal, on wrap.
+     scrollbar-width: none gardé au cas où un autre overflow apparaisse. */
   scrollbar-width: none;
   transition: opacity 0.2s ease-out;
 }
@@ -7903,27 +8378,98 @@ body.kta-refonte-v1 .kta-refonte-stat-empty .kta-refonte-stat-val {
   font-weight: 500;
 }
 
+/* 🆕 v1.8.1-refonte-14 : stats CLIQUABLES (uniquement la stat itinéraire
+   pour l'instant) — feedback visuel pointer + léger hover. On désactive
+   l'effet quand la stat est vide (rien à ouvrir) pour ne pas tromper. */
+body.kta-refonte-v1 .kta-refonte-stat-clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 6px;
+  margin: -2px -2px;
+  transition: background 0.15s;
+}
+body.kta-refonte-v1 .kta-refonte-stat-clickable:hover,
+body.kta-refonte-v1 .kta-refonte-stat-clickable:focus-visible {
+  background: rgba(244, 197, 66, 0.10);
+  outline: none;
+}
+/* Quand la stat est vide (pas d'itinéraire actif), pas de cursor pointer
+   et pas de hover — le clic est intercepté côté JS de toute façon. */
+body.kta-refonte-v1 .kta-refonte-stat-clickable.kta-refonte-stat-empty {
+  cursor: default;
+}
+body.kta-refonte-v1 .kta-refonte-stat-clickable.kta-refonte-stat-empty:hover {
+  background: transparent;
+}
+
+/* 🆕 v1.8.1-refonte-14 : indicateur tracker GPS — ON vert / OFF rouge.
+   Style "LED hardware" : pill arrondi compact avec fond coloré + texte
+   gras. Visibilité immédiate du statut GPS pour l'user (KARMA : "on
+   met une boussole avec un ON vert et un OFF rouge"). */
+body.kta-refonte-v1 .kta-refonte-stat-tracker-on,
+body.kta-refonte-v1 .kta-refonte-stat-tracker-off {
+  border-radius: 10px;
+  padding: 2px 8px;
+  border: 1px solid;
+  opacity: 1 !important;  /* override .kta-refonte-stat-empty éventuel */
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-on {
+  background: rgba(76, 200, 100, 0.18);
+  border-color: rgba(76, 200, 100, 0.55);
+  /* Lueur verte subtile pour effet "LED allumée" */
+  box-shadow: 0 0 6px rgba(76, 200, 100, 0.35);
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-on .kta-refonte-stat-val {
+  color: #6ee287;
+  font-weight: 700;
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-on .kta-refonte-stat-icon {
+  /* Boussole verte quand GPS actif. drop-shadow plutôt que filter:hue-rotate
+     pour ne pas dénaturer le rendu emoji selon les plateformes. */
+  filter: drop-shadow(0 0 3px rgba(76, 200, 100, 0.70));
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-off {
+  background: rgba(220, 80, 80, 0.14);
+  border-color: rgba(220, 80, 80, 0.45);
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-off .kta-refonte-stat-val {
+  color: #e88787;
+  font-weight: 700;
+}
+body.kta-refonte-v1 .kta-refonte-stat-tracker-off .kta-refonte-stat-icon {
+  /* Boussole rougeâtre quand GPS inactif */
+  filter: drop-shadow(0 0 3px rgba(220, 80, 80, 0.55));
+  opacity: 0.75;
+}
+
 body.kta-refonte-v1 .kta-refonte-statusbar-toggle {
   background: transparent;
   border: 1px solid rgba(140, 180, 255, 0.25);
   color: #8cb4ff;
   cursor: pointer;
-  font-size: 14px;
-  width: 28px;
-  height: 24px;
-  border-radius: 4px;
+  /* 🆕 v1.8.1-refonte-14 : bouton ▾▴ plus gros (KARMA feedback).
+     28x24 / 14px → 40x36 / 22px → plus visible et plus facile à taper
+     au pouce sur mobile. Reste flex-shrink:0 pour ne pas wrap avec
+     les stats. */
+  font-size: 22px;
+  font-weight: 600;
+  width: 40px;
+  height: 36px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  margin-left: 8px;
+  margin-left: 10px;
   padding: 0;
-  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 body.kta-refonte-v1 .kta-refonte-statusbar-toggle:hover,
 body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
-  background: rgba(140, 180, 255, 0.10);
-  border-color: rgba(140, 180, 255, 0.50);
+  background: rgba(140, 180, 255, 0.14);
+  border-color: rgba(140, 180, 255, 0.55);
+  color: #b3ccff;
   outline: none;
 }
 
@@ -7961,14 +8507,21 @@ body.kta-refonte-v1 #measureLabel {
 
 body.kta-refonte-v1 #map {
   top: calc(44px + env(safe-area-inset-top, 0px));
-  /* 🆕 Statusbar 44 → 52px (itéré KARMA iPhone) */
-  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.8.1-refonte-10 : variable `--kta-statusbar-h` mise à jour
+     dynamiquement par JS (ResizeObserver sur la barre). Quand la barre
+     wrap multi-ligne et grandit, #map remonte automatiquement pour
+     ne pas être recouvert. Fallback calc(52 + safe) si JS pas chargé.
+     La variable inclut DÉJÀ safe-area-inset-bottom (le JS lit offsetHeight). */
+  bottom: var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px)));
   height: auto;
+  /* Transition douce pour suivre le changement de hauteur du statusbar
+     (wrap/unwrap, collapse/expand) sans saccade visuelle */
+  transition: bottom 0.2s ease-out;
 }
-/* Quand status bar collapsed, plus de place pour la carte
-   🆕 18 → 20px */
+/* État collapsed : la variable JS prend déjà la nouvelle valeur (20+safe).
+   Mais on garde un fallback CSS pour le cas où JS n'a pas encore tourné. */
 body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: var(--kta-statusbar-h, calc(20px + env(safe-area-inset-bottom, 0px)));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7977,24 +8530,44 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-refonte-header {
     height: calc(36px + env(safe-area-inset-top, 0px));
+    /* 🆕 v1.8.1-refonte-12 : passage en CSS Grid `1fr auto 1fr` UNIQUEMENT
+       en landscape pour centrage géométrique ABSOLU du titre. En portrait
+       on reste sur du flex classique (cf. règle principale plus haut).
+       Pourquoi le grid en landscape : sur petits écrans en paysage, le
+       titre flex pouvait apparaître décalé vers la droite (asymétrie
+       largeur home button vs counters). Le grid place le titre au
+       centre exact peu importe les côtés. */
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+  }
+  /* En grid, on aligne explicitement le home (col 1, gauche) et les
+     counters (col 3, droite) — la cellule auto centrale prend la place
+     du titre. */
+  body.kta-refonte-v1 .kta-refonte-header-home {
+    justify-self: start;
+  }
+  body.kta-refonte-v1 .kta-refonte-header-counters {
+    justify-self: end;
   }
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* 🆕 Statusbar landscape : 36 → 40px (cohérent avec +8px en portrait) */
+  /* 🆕 Statusbar landscape : min-height 40+safe (au lieu de height fixe).
+     Permet à la barre de grandir aussi en landscape si les 4 stats wrap.
+     La variable --kta-statusbar-h fallback descend à 40+safe ici. */
+  body.kta-refonte-v1 {
+    --kta-statusbar-h: calc(40px + env(safe-area-inset-bottom, 0px));
+  }
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    height: calc(40px + env(safe-area-inset-bottom, 0px));
+    min-height: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
+    min-height: calc(16px + env(safe-area-inset-bottom, 0px));
     height: calc(16px + env(safe-area-inset-bottom, 0px));
   }
-  /* Adapter aussi le #map bottom en landscape */
-  body.kta-refonte-v1 #map {
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
-  body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  }
+  /* #map bottom : la variable --kta-statusbar-h gère déjà tout (JS la
+     met à jour quand le statusbar bouge). Pas de override hardcodé. */
   /* 🆕 v1.8.1-refonte-9 : .leaflet-top et .leaflet-bottom RESTENT à
      0 (natif Leaflet) car le #map est déjà décalé. Les anciens overrides
      `.leaflet-top { top: 36+safe-top }` et `.leaflet-bottom { bottom:
@@ -8004,15 +8577,28 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 .kta-refonte-header-home-img {
     height: 22px;
   }
-  /* Recalcule la max-height des sidebars pour landscape */
+  /* Recalcule la max-height des sidebars pour landscape — suit la
+     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte) */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 36px - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4px);
+    max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   }
-  /* Boussole bottom-left en landscape — au-dessus du statusbar 40px */
+  /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
+     bas-gauche comme en portrait). Sur petit écran horizontal, les
+     icônes des sidebars descendent bas → la boussole en bas-gauche
+     les cachait. En la centrant horizontalement on garde la même
+     hauteur (au-dessus du statusbar) sans masquer les icônes
+     latérales. Feedback KARMA : "en horizontal, uniquement, la
+     boussole doit etre en bas mais centrer. (pour pas cacher les
+     icones)". */
   body.kta-refonte-v1 .kta-compass-widget,
   body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
-    bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+    bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+    /* Centrage horizontal : left:50% + translateX(-50%). On annule la
+       règle portrait `left: calc(10px + safe-left)` via la valeur 50%
+       qui prime (plus spécifique dans la cascade media query). */
+    left: 50% !important;
+    transform: translateX(-50%);
   }
 }
 

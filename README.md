@@ -9,7 +9,117 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (100 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v1-9-1" open>
+<summary><strong>🗓️ 21/05/2026 — 🎨 v1.9.1 : Refonte UI mergée — nouvelle interface par défaut (header + sidebars unifiées + status bar dynamique)</strong></summary>
+
+MINOR bump (1.8.1 → 1.9.1) qui officialise la refonte UI développée depuis fin avril 2026 sur la branche `Refonte_interface` (créée depuis `Karma_dev` HEAD `75455a4`). Mergée sur Karma_dev (puis main au déploiement). La nouvelle interface devient le **défaut**, l'ancienne v1.8.x reste accessible en opt-out via toggle dans ⚙️ Configuration → 🎨 Affichage.
+
+### 🎨 Nouvelle architecture UI
+
+| Zone | Contenu | Position |
+|---|---|---|
+| **Header bar** | 🌟 Rose des vents (home avec garde-fou) / titre plan cliquable (modale "🗂 Changer de plan" refondue) / compteurs cliquables 📍 🛣 ⬛ (modale "📊 Détails de la session") | sticky top 44px + safe-area iOS |
+| **Sidebar gauche** | Layers / Zoom / 🏗 Niveau / ≡ collapse / 📚 Doc / ⚙ Paramètres / ⬇ Charger / ⬆ Save | Leaflet topleft, flex column unifiée |
+| **Sidebar droite** | ≡ collapse / 🔍 Search / ✏️ Édition / 📐 Mesure / 🛣 Tracés / ⬛ Zones / 🧭 Tracker | Leaflet topright, flex column unifiée |
+| **Status bar** | 📐 Mesure / 📏 Distance totale (cliquable) / 🗺️ Itinéraire (cliquable) / 🧭 Tracker LED ON vert / OFF rouge | sticky bottom 52px (min-height, grow dynamique) |
+
+### 📊 Footer dynamique (variable CSS `--kta-statusbar-h`)
+
+Avant : `overflow-x: auto` masquait silencieusement les stats hors viewport quand les 4 étaient actives.
+
+Maintenant : `flex-wrap: wrap` → les stats passent à la ligne si besoin, le footer grandit en hauteur (de 52px à ~70px+). Tout ce qui dépend du bas de l'écran (`#map`, `.kta-compass-widget`, sidebars max-height, modales padding-bottom) consomme la variable CSS `--kta-statusbar-h` mise à jour en temps réel par un `ResizeObserver` sur le status bar (avec `map.invalidateSize()` debounce via rAF). Fallback `orientationchange` si RO indispo.
+
+### 🧭 Boussole tracker LED ON/OFF (depuis v1.9.1)
+
+Avant : icône 🚶 + texte "—" / "Actif (x, y)" → doublonnait visuellement avec le 🚶 du badge "mode marche" de la stat itinéraire.
+
+Maintenant : icône 🧭 (boussole) + texte **"ON"** (fond vert + lueur `box-shadow: 0 0 6px rgba(76, 200, 100, 0.35)`) ou **"OFF"** (fond rouge), façon LED hardware. Jamais "—". Toggle CSS via classes mutuellement exclusives `.kta-refonte-stat-tracker-{on|off}`.
+
+### 🗺️ Stat itinéraire cliquable
+
+Clic sur la stat 🗺️ du footer → `window.ouvrirItinerairModal()` (équivalent ancien comportement du label `.kta-iti-distance` en bottom-left, désormais masqué pour éviter le doublon). Clic ignoré silencieusement si stat vide.
+
+### 📚 Modale "🗂 Changer de plan" refondue
+
+Avant : dropdown ancré sous le titre (panneau de 280-360px).
+
+Maintenant : modale centrée avec overlay backdrop. Structure :
+- Carte highlight du plan en cours (fond doré, badge `● ACTIF` vert en haut-droite)
+- Section "📚 PLANS RÉCENTS" avec rows hover bleuté + flèche `›` qui glisse
+- Gros bouton bleu "📚 Voir tous mes plans" en bas (CTA full width)
+
+Le mode legacy garde le dropdown style v1.8.x. Branche JS via `window._refonteInterfaceActive` dans `_ouvrirPlanSwitcher()`.
+
+### 🎛️ Sous-actions horizontales en landscape
+
+Sur petit écran horizontal (`@media (max-height: 500px) and (orientation: landscape)`), les sous-menus des accordéons se déplient HORIZONTALEMENT au lieu de descendre :
+- Sidebar gauche → `flex-direction: row` (subs vers la droite, intérieur écran)
+- Sidebar droite → `flex-direction: row-reverse` (main button au bord droit, subs vers la gauche)
+
+**Exception** : `.leaflet-control-zoom` garde `flex-direction: column !important` — convention universelle "+ au-dessus du -" (Google Maps, OSM).
+
+### 📐 Centrage titre du plan en landscape
+
+Portrait : `display: flex` classique (titre centré dans la largeur restante).
+
+Landscape : `display: grid; grid-template-columns: 1fr auto 1fr` → titre au centre géométrique ABSOLU peu importe l'asymétrie de largeur entre home (rose des vents) et compteurs (📍 N · 🛣 N · ⬛ N).
+
+### 🧭 Boussole d'orientation : portrait vs landscape
+
+- **Portrait** : bottom-left au-dessus du footer (`left: calc(10px + safe-left)`)
+- **Landscape** : **bottom-center** (`left: 50% !important; transform: translateX(-50%)`) pour ne pas cacher les icônes latérales des sidebars sur petit écran horizontal
+
+### 📊 Modale "📊 Détails de la session"
+
+Clic sur les compteurs du header (📍 N · 🛣 N · ⬛ N) → modale qui liste tous les éléments de la session active :
+- 📍 Points (nom / tag / coord / niveau si multi-niveau)
+- 🛣 Tracés regroupés par type (Principal / Secondaire / Chemin / Jonction) avec compteur + distance totale par type
+- ⬛ Zones regroupées par type
+- 📊 Autres mesures (Mesure simple, Itinéraire, Tracker)
+
+Fonction `_afficherModaleSessionDetail()` dans `refonteInterface.js`. Pattern `.kta-readme-modal-overlay` + box max-width 560px. Recalcule en live. Toggle re-clic = reopen.
+
+### 🔧 Réorganisation ⚙️ Configuration du loader
+
+**Avant** : Confidentialité → Force update → Affichage → Reset.
+
+**Après** : Confidentialité → **Affichage** → Force update → Reset. Gradation narrative restaurée : informatif → préférence UI → purge cache → purge totale. Update + Reset maintenant consécutifs.
+
+### 🧹 Menu Import allégé
+
+Retrait du sous-action "🗂️ Changer de plan" du menu ⬇️ Charger / Import. Doublonne avec la rose des vents du header + le titre cliquable. Reste 2 sous-actions : 📥 Importer une session + 📊 Éditer un fichier JSON.
+
+### 🪟 Bouton réduction footer agrandi
+
+Bouton ▾▴ du status bar : 28×24 / font 14 → **40×36 / font 22**. Plus visible, plus facile à atteindre au pouce.
+
+### 🎨 Header rose des vents
+
+Icône home du header : émoji 🗂 → image `icon/mkm-full.png` (même asset que splash + home). Drop-shadow doré subtil + animation scale au hover.
+
+### 🛡️ Sémantique du flag — opt-out (depuis v1.8.1-refonte-8)
+
+Flag `localStorage["myktamap_legacy_interface"] = "1"` (présent UNIQUEMENT si l'user a coché "Utiliser l'ancienne interface"). Sans clé → nouvelle interface (défaut).
+
+Migration silencieuse : l'ancien flag opt-in `myktamap_refonte_v1 = "1"` est supprimé au boot pour les users qui l'avaient (déjà en mode refonte = défaut → aucun changement d'expérience).
+
+API publique `window.RefonteInterface.{isActive,setActive,updateCompteurs,refreshStatusBar}`.
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.8.1-refonte-17"` → **`"myktamap-cache-v1.9.1"`** (suffix `-refonte-N` retiré, la refonte est maintenant officielle)
+- `version.json > version` : `"v1.8.1"` → **`"v1.9.1"`** + 13 notes user-facing
+- `docs/CLAUDE.md` : §41 réécrite (architecture, opt-out, status bar dynamique, plan switcher modal, sous-actions horizontales landscape, tracker LED, etc.)
+- `docs/README_USER.md` : section "🎨 Nouvelle interface" mise à jour avec features v1.9.1
+- `docs/AI_CONTEXT.md` : bullet "Nouvelle interface" élargie avec footer dynamique, tracker LED, sous-actions horizontales, etc.
+
+### Workflow git
+
+Branche `Refonte_interface` (créée depuis `Karma_dev@75455a4` fin avril 2026, ~25 commits avec suffix CACHE_NAME `-refonte-1` → `-refonte-17`) → merge vers `Karma_dev` au moment de cette release. Puis `Karma_dev` → `main` via PR ultérieure pour déploiement prod.
+
+</details>
 
 <details id="v1-8-1" open>
 <summary><strong>🗓️ 21/05/2026 — 🐛 v1.8.1 : Privacy & Audit (fixes post-release + restore itinéraire en 2 phases)</strong></summary>
@@ -418,6 +528,7 @@ Les marqueurs sont enregistrés dans `_ktaDataPolylines` avec le même `level` q
 > | 1.6 | ⛔ Zone Inaccessible + 🚫 Préférences évitement itinéraire | v169 |
 > | 1.7 | 🗝️ Unlock Gate (barrière communautaire d'accès) | v173 |
 > | 1.8 | 🔒 Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) | v1.8.1 |
+> | 1.9 | 🎨 Refonte UI (header bar + sidebars unifiées + status bar dynamique + modale plan switcher) | v1.9.1 |
 >
 > Les anciennes entrées du journal restent nommées avec leur ancienne convention `vNNN` (= historique préservé). Seules les **nouvelles entrées à partir de v1.7.1** suivent le nouveau format.
 

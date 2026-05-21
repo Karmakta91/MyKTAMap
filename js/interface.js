@@ -111,7 +111,8 @@ function _ouvrirPlanSwitcher() {
   if (!window.PlanRegistry) return;
 
   const all = window.PlanRegistry.getAll();
-  const currentId = window.PlanRegistry.getLastOpened()?.id;
+  const current = window.PlanRegistry.getLastOpened();
+  const currentId = current && current.id;
 
   // 3 plans récents EXCLUANT le plan en cours
   const recents = all
@@ -119,6 +120,145 @@ function _ouvrirPlanSwitcher() {
     .sort(function(a, b) { return (b.lastOpened || "").localeCompare(a.lastOpened || ""); })
     .slice(0, 3);
 
+  // 🆕 v1.8.1-refonte-15 : 2 modes de rendu selon flag refonte.
+  // - Refonte ON  → modale centrée avec overlay (charte refonte)
+  // - Legacy mode → dropdown ancré sous le titre fixe (comportement v1.8.x)
+  const refonte = window._refonteInterfaceActive === true;
+  if (refonte) {
+    _ouvrirPlanSwitcherRefonte(recents, current);
+  } else {
+    _ouvrirPlanSwitcherLegacy(recents);
+  }
+
+  // Listeners de fermeture communs aux 2 modes
+  setTimeout(function() {
+    document.addEventListener("click", _onClicAilleursPanneau, true);
+    document.addEventListener("keydown", _onEscapePanneau, true);
+  }, 0);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rendu MODALE REFONTE — overlay + boîte centrée, charte v1.8.1+
+// ─────────────────────────────────────────────────────────────────
+// On reprend les classes .kta-readme-modal-overlay / .kta-readme-modal-boite
+// pour bénéficier du backdrop sombre + animation fade-in + safe-area auto.
+// La boîte interne a son propre style compact (.kta-plan-switcher-modal-*).
+function _ouvrirPlanSwitcherRefonte(recents, current) {
+  const overlay = document.createElement("div");
+  overlay.id = "kta-plan-switcher-overlay";
+  overlay.className = "kta-readme-modal-overlay kta-plan-switcher-overlay";
+
+  // Carte du plan en cours (highlight, non-cliquable car déjà chargé)
+  let currentHtml = "";
+  if (current) {
+    const icon = current.type === "server" ? "🌐" : "💾";
+    const ver  = current.version
+      ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(current.version) + '</span>'
+      : '';
+    const sub  = current.lastOpened
+      ? "Ouvert " + (_fmtDateRel(current.lastOpened) || "récemment")
+      : "Plan en cours";
+    currentHtml =
+      '<div class="kta-plan-switcher-current">' +
+        '<div class="kta-plan-switcher-current-label">📍 Plan en cours</div>' +
+        '<div class="kta-plan-switcher-current-name">' +
+          '<span class="kta-plan-switcher-current-icon">' + icon + '</span>' +
+          '<span>' + escapeHtmlSwitcher(current.name || current.id) + '</span>' + ver +
+        '</div>' +
+        '<div class="kta-plan-switcher-current-sub">' + escapeHtmlSwitcher(sub) + '</div>' +
+      '</div>';
+  }
+
+  // Section "Plans récents"
+  let recentsHtml = "";
+  if (recents.length > 0) {
+    recentsHtml += '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>';
+    recentsHtml += '<div class="kta-switcher-list">';
+    recents.forEach(function(p) {
+      const icon = p.type === "server" ? "🌐" : "💾";
+      const sub  = _fmtDateRel(p.lastOpened) || "";
+      const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
+      recentsHtml +=
+        '<div class="kta-switcher-row" data-plan-id="' + escapeHtmlSwitcher(p.id) + '">' +
+          '<span class="kta-switcher-icon">' + icon + '</span>' +
+          '<div class="kta-switcher-info">' +
+            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(p.name || p.id) + ver + '</div>' +
+            (sub ? '<div class="kta-switcher-sub">' + sub + '</div>' : '') +
+          '</div>' +
+          '<span class="kta-switcher-row-arrow">›</span>' +
+        '</div>';
+    });
+    recentsHtml += '</div>';
+  } else {
+    recentsHtml +=
+      '<div class="kta-plan-switcher-section-titre">📚 Plans récents</div>' +
+      '<div class="kta-switcher-empty">Aucun autre plan dans votre liste pour le moment.</div>';
+  }
+
+  overlay.innerHTML =
+    '<div class="kta-plan-switcher-modal-boite" id="kta-plan-switcher">' +
+      '<div class="kta-plan-switcher-modal-header">' +
+        '<span class="kta-plan-switcher-modal-titre">🗂 Changer de plan</span>' +
+        '<button class="kta-panneau-close" id="kta-plan-switcher-close" aria-label="Fermer">✕</button>' +
+      '</div>' +
+      '<div class="kta-plan-switcher-modal-corps">' +
+        currentHtml +
+        recentsHtml +
+      '</div>' +
+      '<div class="kta-plan-switcher-modal-footer">' +
+        '<button class="kta-plan-switcher-cta" id="kta-switcher-tous">' +
+          '<span class="kta-plan-switcher-cta-icon">📚</span>' +
+          '<span class="kta-plan-switcher-cta-label">Voir tous mes plans</span>' +
+          '<span class="kta-plan-switcher-cta-sub">Gérer / supprimer / importer</span>' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+
+  document.body.appendChild(overlay);
+
+  // Marquer le titre comme "ouvert" (effet visuel cohérent même en modal)
+  const titre = document.getElementById("kta-titre-fixe");
+  if (titre) titre.classList.add("ouvert");
+
+  // Clic sur le backdrop overlay (hors de la boîte) → fermeture
+  overlay.addEventListener("click", function(e) {
+    if (e.target === overlay) _fermerPlanSwitcher();
+  });
+
+  // Bouton ✕
+  const closeBtn = overlay.querySelector("#kta-plan-switcher-close");
+  if (closeBtn) {
+    closeBtn.addEventListener("click", function(e) {
+      e.stopPropagation();
+      _fermerPlanSwitcher();
+    });
+  }
+
+  // Clic sur une ligne plan récent
+  overlay.querySelectorAll(".kta-switcher-row").forEach(function(row) {
+    row.addEventListener("click", function(e) {
+      e.stopPropagation();
+      const id = row.dataset.planId;
+      _fermerPlanSwitcher();
+      _confirmEtChargerPlan(id);
+    });
+  });
+
+  // CTA "Voir tous mes plans"
+  const btnTous = overlay.querySelector("#kta-switcher-tous");
+  if (btnTous) {
+    btnTous.addEventListener("click", function(e) {
+      e.stopPropagation();
+      _fermerPlanSwitcher();
+      _retourLoaderAvecConfirm();
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rendu LEGACY — dropdown ancré sous le titre (comportement v1.8.x)
+// ─────────────────────────────────────────────────────────────────
+function _ouvrirPlanSwitcherLegacy(recents) {
   const panneau = document.createElement("div");
   panneau.id = "kta-plan-switcher";
 
@@ -173,17 +313,18 @@ function _ouvrirPlanSwitcher() {
       _retourLoaderAvecConfirm();
     });
   }
-
-  // Fermeture au clic ailleurs / Escape
-  setTimeout(function() {
-    document.addEventListener("click", _onClicAilleursPanneau, true);
-    document.addEventListener("keydown", _onEscapePanneau, true);
-  }, 0);
 }
 
 function _fermerPlanSwitcher() {
-  const panneau = document.getElementById("kta-plan-switcher");
-  if (panneau) panneau.remove();
+  // 🆕 v1.8.1-refonte-15 : 2 modes — modale refonte (overlay parent) ou
+  // dropdown legacy (panneau seul). On retire le parent le plus haut.
+  const overlay = document.getElementById("kta-plan-switcher-overlay");
+  if (overlay) {
+    overlay.remove();
+  } else {
+    const panneau = document.getElementById("kta-plan-switcher");
+    if (panneau) panneau.remove();
+  }
   const titre = document.getElementById("kta-titre-fixe");
   if (titre) titre.classList.remove("ouvert");
   document.removeEventListener("click", _onClicAilleursPanneau, true);
@@ -191,6 +332,12 @@ function _fermerPlanSwitcher() {
 }
 
 function _onClicAilleursPanneau(e) {
+  // En mode refonte (modale avec overlay), le clic sur le backdrop overlay
+  // est déjà géré par son propre listener. Ici on couvre uniquement le mode
+  // legacy (dropdown anchored) où l'overlay n'existe pas — clic ailleurs
+  // que sur le panneau ou le titre fixe → fermeture.
+  const overlay = document.getElementById("kta-plan-switcher-overlay");
+  if (overlay) return;  // mode refonte : géré par overlay.onclick
   const panneau = document.getElementById("kta-plan-switcher");
   const titre   = document.getElementById("kta-titre-fixe");
   if (!panneau) return;
@@ -3019,6 +3166,12 @@ function initInterface() {
   });
 
   // 3. CHARGER / IMPORT
+  // 🆕 v1.8.1-refonte-14 : retrait du sous-action "🗂️ Changer de plan"
+  // (KARMA feedback "enleve l'icone charger un plan du menu déroulant
+  // import"). En mode refonte, le bouton rose des vents 🌟 du header
+  // ouvre déjà la même modale via _retourLoaderAvecConfirm. En mode
+  // legacy, le clic sur le titre du plan en haut centre fait le même
+  // boulot (togglePlanSwitcher). Plus de doublon dans le menu Import.
   _creerGroupeAccordeon({
     id: "charger",
     iconePrincipale: "⬇️",
@@ -3029,8 +3182,7 @@ function initInterface() {
       { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
           else alert("Module éditeur de tableau indisponible");
-        } },
-      { icone: "🗂️", titre: "Changer de plan",     onClick: afficherPopupChangerPlan }
+        } }
     ]
   });
 

@@ -294,44 +294,46 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 
 **Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
 
-### 🎨 Nouvelle interface (refonte v1)
+### 🎨 Nouvelle interface (depuis v1.9.1)
 
-> Depuis cette version, MyKTAMap utilise une **nouvelle interface en mode carte** activée par défaut. Elle a été conçue pour être plus claire, plus tactile et mieux adaptée mobile-first.
+> MyKTAMap utilise une **nouvelle interface en mode carte** activée par défaut depuis v1.9.1. Plus claire, plus tactile, mieux adaptée mobile-first. L'ancienne reste accessible en un clic.
 
 **Ce qui change visuellement** :
 
-- **🌟 Header bar persistant en haut** (44px sticky) avec :
-  - Rose des vents cliquable (gauche) — retour à la home / "Mes plans"
-  - Nom du plan + version (centre, cliquable pour changer de plan rapidement)
-  - **Compteurs cliquables** (droite) : 📍 points · 🛣 tracés · ⬛ zones — au clic, ouvre une modale **"📊 Détails de la session"** qui liste tous tes éléments avec leurs infos détaillées
-- **📊 Status bar en bas** (52px) qui regroupe en permanence les mesures live :
-  - 📐 Mesure simple (si active)
-  - 📏 Distance totale des tracés (si surlignage actif)
-  - 🗺️ Itinéraire (distance + temps)
-  - 🚶 Position tracker (si actif)
-  - Bouton ▾ pour la réduire si tu veux gagner de la place
-- **Sidebars unifiées gauche/droite** : chaque côté est une **seule barre verticale continue** (pas d'icônes séparées avec des gaps) :
-  - **Gauche** : ⊞ Layers · zoom · 🏗 Niveau (multi-niveau) · 📚 Doc/Aide · ⚙ Réglages · ⬇ Charger · ⬆ Save
-  - **Droite** : 🔍 Recherche · ✏️ Édition · 📐 Mesure · 🛣 Tracés · ⬛ Zones · 🧭 Tracker
-- **🧭 Boussole** affichée en bas-gauche au-dessus du footer (activée via 🧭 Tracker → 🧭 Boussole)
-- **Boutons ≡ de réduction** en haut de chaque sidebar (▾ déployé, ▸/◂ replié) pour gagner de la place à l'écran sans arrêter les modes actifs
-- **Modale Configuration** : le générateur de plan a été retiré du mode carte — il reste accessible **uniquement depuis la home** via 🏗️ Générer un plan
-
-**Le bouton 📊 compteurs du header** : un clic dessus ouvre une modale très utile qui te montre :
-- Tous tes points ajoutés (avec leur tag, coordonnées, niveau si multi-niveau)
-- Tous tes tracés groupés par type (Principal/Secondaire/Chemin/Jonction) avec compteur et distance totale
-- Toutes tes zones groupées par type
-- Les mesures actives (📐 mesure simple, 🗺️ itinéraire avec waypoints, 🚶 tracker)
-
-Très pratique pour avoir une vue d'ensemble de ce que tu as créé sans avoir à scroller la carte.
+- **🌟 Header bar persistant en haut** (44px sticky) :
+  - Rose des vents cliquable à gauche — retour à la home (avec garde-fou si session modifiée)
+  - Nom du plan + version au centre, **cliquable** pour ouvrir la modale **"🗂 Changer de plan"** (avec carte highlight du plan en cours + liste des récents + CTA "Voir tous mes plans")
+  - **Compteurs cliquables** à droite : 📍 points · 🛣 tracés · ⬛ zones — au clic, modale **"📊 Détails de la session"** qui liste tous tes éléments avec leurs infos
+- **📊 Status bar en bas** (52px, s'agrandit dynamiquement) — regroupe en permanence les mesures live :
+  - 📐 Mesure simple (si ≥ 2 points posés)
+  - 📏 Distance totale des tracés (si surlignage magenta actif) — **cliquable pour ouvrir la modale**
+  - 🗺️ Itinéraire (distance + temps + mode) — **cliquable pour ouvrir la modale Itinéraire**
+  - 🧭 Tracker GPS — **boussole LED ON (vert) / OFF (rouge)** toujours visible
+  - Si tout est actif et que ça ne tient pas, le footer **s'agrandit automatiquement et passe à la ligne** — aucune info coupée
+  - Gros bouton ▾▴ à droite pour réduire / agrandir le footer manuellement
+- **Sidebars unifiées gauche/droite** — chaque côté est une **seule barre verticale continue** :
+  - **Gauche** : ⊞ Layers · − + Zoom · 🏗 Niveau · ≡ collapse · 📚 Doc · ⚙ Réglages · ⬇ Charger · ⬆ Save
+  - **Droite** : ≡ collapse · 🔍 Recherche · ✏️ Édition · 📐 Mesure · 🛣 Tracés · ⬛ Zones · 🧭 Tracker
+  - **En landscape mobile**, les sous-menus se déplient **horizontalement vers l'intérieur de l'écran** (plus ergonomique sur tablette/smartphone en paysage). Le zoom +/- reste vertical (convention universelle).
+- **🧭 Boussole d'orientation** :
+  - En portrait : en **bas-gauche** au-dessus du footer
+  - En landscape : en **bas-centrée** (pour ne pas cacher les icônes latérales)
+- **Boutons ≡ de réduction** en haut de chaque sidebar (▾ déployé, ▸/◂ replié) — gagne de la place sans arrêter les modes actifs
+- **Modale "Détails de la session"** : un clic sur les compteurs du header ouvre une vue d'ensemble :
+  - Tous tes points (avec tag, coordonnées, niveau si multi-niveau)
+  - Tracés groupés par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type
+  - Zones groupées par type
+  - Mesures actives (📐 mesure simple, 🗺️ itinéraire avec waypoints, 🧭 tracker)
+- **Modale "Changer de plan" refondue** : carte highlight du plan en cours avec badge `● ACTIF`, liste des plans récents avec animation au survol, gros bouton bleu "📚 Voir tous mes plans" en bas
+- **Générateur de plan retiré du mode carte** : reste accessible **uniquement depuis la home** via 🏗️ Générer un plan (création hors du mode carte)
 
 **Revenir à l'ancienne interface (classique v1.8.x)** :
 
-Si tu préfères l'interface précédente (icônes empilées sans header, pas de status bar), tu peux toujours y revenir :
+Si tu préfères l'interface précédente (icônes empilées sans header, pas de status bar), tu peux y revenir en un clic :
 - Depuis la home : **⚙️ Configuration** → section **🎨 Affichage** → coche **"📜 Utiliser l'ancienne interface"**
 - Depuis le mode carte : **⚙️ Réglages** → section **🎨 Affichage** → coche la même case
 
-Reload de la page requis pour appliquer. Le choix est mémorisé entre sessions.
+Reload de la page requis pour appliquer. Le choix est mémorisé entre sessions et entre plans.
 
 ### 💾 Sauvegarde automatique de votre session
 

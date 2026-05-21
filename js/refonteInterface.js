@@ -208,7 +208,22 @@
         // listant tous les éléments (points, tracés, zones, mesure,
         // itinéraire, tracker) avec leurs infos détaillées.
         updateCompteurs();  // refresh des valeurs avant ouverture
-        _afficherModaleSessionDetail();
+        // 🆕 v1.8.1-refonte-10 : check défensif. La fonction est déclarée
+        // plus bas DANS LE MÊME IIFE → le hoisting JS doit la rendre
+        // accessible ici. Si jamais un cas d'erreur apparaît (deploy
+        // partiel via FTP, cache SW stale qui sert une moitié de fichier,
+        // minifieur agressif qui casserait la déclaration, etc.), on
+        // veut au moins un message console clair plutôt qu'un crash UI
+        // silencieux.
+        if (typeof _afficherModaleSessionDetail === "function") {
+          _afficherModaleSessionDetail();
+        } else {
+          console.error(
+            "[RefonteInterface] _afficherModaleSessionDetail introuvable. " +
+            "Fichier déployé peut-être incomplet ? Tente un reset PWA " +
+            "(⚙️ Réglages → Vider le cache) ou re-FTP de refonteInterface.js."
+          );
+        }
       });
     }
 
@@ -273,11 +288,20 @@
         '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-dist-totale">' +
           '<span class="kta-refonte-stat-icon">📏</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-iti">' +
+        // 🆕 v1.8.1-refonte-14 : la stat itinéraire est désormais cliquable —
+        // au clic on rouvre la modale itinéraire (équivalent ancien comportement
+        // du label .kta-iti-distance en bottom-left qui était cliquable et qu'on
+        // a masqué en mode refonte). Cursor pointer + title via CSS.
+        '<span class="kta-refonte-stat kta-refonte-stat-empty kta-refonte-stat-clickable" id="kta-refonte-stat-iti" title="Cliquer pour ouvrir le menu Itinéraire">' +
           '<span class="kta-refonte-stat-icon">🗺️</span><span class="kta-refonte-stat-val">—</span>' +
         '</span>' +
-        '<span class="kta-refonte-stat kta-refonte-stat-empty" id="kta-refonte-stat-tracker">' +
-          '<span class="kta-refonte-stat-icon">🚶</span><span class="kta-refonte-stat-val">—</span>' +
+        // 🆕 v1.8.1-refonte-14 : tracker passé en icône BOUSSOLE 🧭 (au lieu
+        // de 🚶 qui se confondait visuellement avec le 🚶 du badge "mode
+        // marche" de la stat itinéraire). Affiche ON (vert) ou OFF (rouge)
+        // selon que le tracking GPS est actif ou non. Feedback KARMA :
+        // "on met une boussole avec un ON vert et un OFF rouge".
+        '<span class="kta-refonte-stat kta-refonte-stat-tracker-off" id="kta-refonte-stat-tracker">' +
+          '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
       '</div>' +
       '<button class="kta-refonte-statusbar-toggle" id="kta-refonte-statusbar-toggle" title="Réduire / agrandir la barre" aria-label="Toggle status bar">▾</button>';
@@ -290,7 +314,90 @@
       toggleBtn.addEventListener("click", _toggleStatusBar);
     }
 
+    // 🆕 v1.8.1-refonte-14 : clic sur la stat ITI du footer → ouvre la modale
+    // itinéraire (équivalent à l'ancien label `.kta-iti-distance` cliquable
+    // en bottom-left qui faisait pareil avant la refonte). On ne déclenche
+    // que si la stat n'est pas vide (= itinéraire actif), pour éviter
+    // d'ouvrir la modale dans un état "rien à afficher" perturbant.
+    const itiStat = document.getElementById("kta-refonte-stat-iti");
+    if (itiStat) {
+      itiStat.addEventListener("click", function() {
+        // Si la stat affiche "—" (classe kta-refonte-stat-empty), on n'a pas
+        // d'itinéraire actif → clic ignoré silencieusement (cursor: default
+        // côté CSS pour qu'il n'y ait même pas de retour visuel cliquable).
+        if (itiStat.classList.contains("kta-refonte-stat-empty")) return;
+        if (typeof window.ouvrirItinerairModal === "function") {
+          window.ouvrirItinerairModal();
+        }
+      });
+    }
+
     refreshStatusBar();
+
+    // 🆕 v1.8.1-refonte-10 : ResizeObserver sur le status bar pour synchroniser
+    // la variable CSS `--kta-statusbar-h` avec la hauteur RÉELLE de la barre.
+    // Cas qui nécessite ce calcul dynamique :
+    //   - Petit écran + 4 stats actives (mesure + dist totale + iti + tracker)
+    //     → le contenu wrap sur 2 lignes → la barre passe de 52px à ~70px.
+    //   - Rotation portrait/landscape → la barre change de hauteur de base.
+    //   - Collapse/expand par toggle ▾▴ → 20px ↔ 52+ px.
+    //
+    // Sans ce sync, le footer recouvre la carte et la boussole en bas-gauche
+    // (bug remonté KARMA : "si toute les informations sont afficher en footer
+    // on sort du cadre [...] agrandir le footer dynamiquement et passer
+    // a la ligne toute la partie qui sort").
+    //
+    // Conséquences en cascade (gérées via la même variable CSS) :
+    //   - #map { bottom: var(--kta-statusbar-h) } → carte se redimensionne
+    //   - .kta-compass-widget { bottom: calc(var(--kta-statusbar-h) + 8px) }
+    //   - .leaflet-top { max-height: ... - var(--kta-statusbar-h) ... }
+    //   - .kta-readme-modal-overlay { padding-bottom: ... }
+    _setupStatusBarResizeObserver();
+  }
+
+  // ResizeObserver helper — séparé pour pouvoir nettoyer/relancer si besoin.
+  let _statusBarRO = null;
+  function _setupStatusBarResizeObserver() {
+    if (!_statusBarEl || _statusBarRO) return;
+
+    // _syncH : lit la hauteur réelle (offsetHeight inclut padding+border,
+    // donc safe-area-inset-bottom déjà compris vu que padding-bottom de
+    // la barre vaut env(safe-area-inset-bottom)). Écrit dans la variable
+    // CSS au niveau de :root pour cascade globale.
+    function _syncH() {
+      if (!_statusBarEl) return;
+      const h = _statusBarEl.offsetHeight;
+      if (h > 0) {
+        document.documentElement.style.setProperty("--kta-statusbar-h", h + "px");
+      }
+      // Notifier Leaflet pour qu'il recalcule la taille de la carte
+      // (sinon les tiles affichées hors-zone ne sont pas mises à jour
+      // avant la prochaine interaction utilisateur). Debounce via rAF.
+      if (window.map && typeof window.map.invalidateSize === "function") {
+        requestAnimationFrame(function() {
+          try { window.map.invalidateSize({ animate: false }); } catch(e) {}
+        });
+      }
+    }
+
+    if (typeof ResizeObserver !== "undefined") {
+      _statusBarRO = new ResizeObserver(_syncH);
+      _statusBarRO.observe(_statusBarEl);
+    }
+
+    // Synchro immédiate (et fallback si ResizeObserver pas dispo : on
+    // appelle quand même au chargement + sur orientationchange/resize).
+    _syncH();
+    window.addEventListener("orientationchange", function() {
+      // Léger délai pour laisser le navigateur recalculer la layout
+      // après la rotation (sinon offsetHeight retourne la valeur d'avant).
+      setTimeout(_syncH, 100);
+      setTimeout(_syncH, 350);
+    });
+    // Pas besoin de listener resize en plus : si ResizeObserver dispo
+    // il gère tous les cas, sinon orientationchange + le sync initial
+    // suffisent (le wrap dépend de la largeur écran qui ne change qu'à
+    // l'orientation sur mobile).
   }
 
   function _toggleStatusBar() {
@@ -353,16 +460,29 @@
       _setStat("kta-refonte-stat-iti", null);
     }
 
-    // ── 🚶 Tracker (position si actif) ──
-    if (window.getTrackingActif && window.getTrackingActif()) {
-      const pos = window.getTrackingPosition && window.getTrackingPosition();
-      if (pos) {
-        _setStat("kta-refonte-stat-tracker", "Actif (" + Math.round(pos.x) + ", " + Math.round(pos.y) + ")");
-      } else {
-        _setStat("kta-refonte-stat-tracker", "Actif");
+    // ── 🧭 Tracker (boussole GPS — ON vert / OFF rouge) ──
+    // 🆕 v1.8.1-refonte-14 : ce stat utilise un toggle visuel binaire ON/OFF
+    // au lieu du pattern "vide ↔ valeur". Toggle CSS via 2 classes :
+    //   - kta-refonte-stat-tracker-on  → texte "ON" sur fond vert
+    //   - kta-refonte-stat-tracker-off → texte "OFF" sur fond rouge
+    // Pas de classe kta-refonte-stat-empty ici (jamais "—") : la boussole
+    // est TOUJOURS visible, juste son état change. UX inspirée des
+    // indicateurs LED hardware (visibilité immédiate de l'état du GPS).
+    const trackerEl = document.getElementById("kta-refonte-stat-tracker");
+    if (trackerEl) {
+      const valEl = trackerEl.querySelector(".kta-refonte-stat-val");
+      const trackerActif = !!(window.getTrackingActif && window.getTrackingActif());
+      trackerEl.classList.toggle("kta-refonte-stat-tracker-on", trackerActif);
+      trackerEl.classList.toggle("kta-refonte-stat-tracker-off", !trackerActif);
+      // Pas de classe "empty" sur le tracker (toggle géré au-dessus) — on
+      // la retire au cas où elle traînerait d'un état antérieur.
+      trackerEl.classList.remove("kta-refonte-stat-empty");
+      if (valEl) {
+        valEl.textContent = trackerActif ? "ON" : "OFF";
       }
-    } else {
-      _setStat("kta-refonte-stat-tracker", null);
+      trackerEl.title = trackerActif
+        ? "Tracking GPS actif (cliquer pour gérer)"
+        : "Tracking GPS désactivé";
     }
   }
 

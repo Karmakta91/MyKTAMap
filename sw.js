@@ -25,15 +25,16 @@
 //   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-// 🎨 Branche Refonte_interface : suffix -refonte-N incrémenté à chaque
-// commit qui modifie un asset caché (CSS / JS / HTML). Force le SW à
-// invalider TOUT le cache au prochain reload chez les testeurs (KARMA
-// principalement). Sinon le SW continue de servir l'ancien cache et
-// les modifs déployées via FTP semblent ne pas s'appliquer.
+// 🎨 v1.9.1 — Refonte UI MERGÉE sur Karma_dev (puis main). Le suffix
+// `-refonte-N` qu'on utilisait pendant la phase de dev sur la branche
+// `Refonte_interface` a été retiré ici : la refonte EST désormais
+// l'interface officielle (nouvelle interface par défaut + toggle
+// `myktamap_legacy_interface` pour opt-out vers l'ancienne v1.8.x).
 //
-// À la fin de la refonte (merge sur main), on alignera tout à un vrai
-// bump v1.8.2 ou v1.9.0 et on retirera ce suffix.
-const CACHE_NAME = "myktamap-cache-v1.8.1-refonte-9";
+// Pour les prochains hotfixes : bump simple `v1.9.2`, `v1.9.3`, etc.
+// Pas besoin de suffix tant qu'on ne re-démarre pas une branche
+// expérimentale parallèle.
+const CACHE_NAME = "myktamap-cache-v1.9.1";
 
 const ASSETS_TO_CACHE = [
   "./",
