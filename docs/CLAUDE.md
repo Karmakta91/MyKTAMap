@@ -238,7 +238,7 @@ Sections (cohérent avec la légende d'aide) :
 ### 6. Splash screen
 
 - HTML statique dans `<body>` → visible AVANT tout JS.
-- `SPLASH_MIN_DURATION_MS = 3500` (constante dans `main.js`, depuis v1.8.0 — avant : 4000ms).
+- `SPLASH_MIN_DURATION_MS = 3500` (constante dans `main.js`, depuis v1.8.1 — avant : 4000ms en v1.8.0 et antérieures).
 - `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
 - **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
 - Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
@@ -2108,7 +2108,7 @@ Nouvelles classes CSS dédiées : `.loader-titre`, `.loader-titre-logo`, `.loade
 2. Bind du handler dans le script inline de `index.html`
 3. Ne PAS recréer une section séparée hors de la modale — la philosophie v1.7.3 est : **tout réglage du loader vit dans la modale Configuration**. Seuls les boutons d'**action** (créer un plan, charger un plan) restent dehors.
 
-### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.1)
+### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.0, ajustements CSP en v1.8.1)
 
 Module de transparence + vérifiabilité construit pour répondre à la méfiance légitime du milieu cataphile vis-à-vis des "backdoors" qui exfiltreraient les plans. **L'app étant 100% client-side, la collecte est techniquement impossible ; ce module rend ça vérifiable par l'utilisateur sans qu'il ait à nous croire sur parole.**
 

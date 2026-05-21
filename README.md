@@ -12,11 +12,127 @@
 > _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
 <details id="v1-8-1" open>
-<summary><strong>🗓️ 21/05/2026 — 🔒 v1.8.1 : Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) + fixes UX</strong></summary>
+<summary><strong>🗓️ 21/05/2026 — 🐛 v1.8.1 : Privacy & Audit (fixes post-release + restore itinéraire en 2 phases)</strong></summary>
 
-MINOR + PATCH consolidé (1.7.3 → 1.8.1) car évolution architecturale majeure visible utilisateur : **MyKTAMap rend maintenant techniquement vérifiable sa promesse "aucune donnée n'est envoyée à nos serveurs"**.
+PATCH bump (1.8.0 → 1.8.1) cumulant les fixes UX, ajustements CSP et améliorations remontées en test KARMA après la release initiale v1.8.0 du même jour (cf. entrée v1.8.0 ci-dessous pour la description de la feature principale).
 
-> Note : v1.8.0 n'a jamais été shippée publiquement. Tous les commits cumulés sur `Karma_dev` (bump initial + fixes UX + consolidation de la feature Privacy & Audit) sont regroupés dans cette release v1.8.1.
+### 🔧 Fix critique : restore itinéraire en 2 phases (sessionPersist.js)
+
+v1.8.0 avait réactivé la persistance de l'itinéraire dans l'auto-save SessionPersist (avant : filtré pour éviter un crash au reload). Hypothèse "browsers 2026 plus tolérants" → fausse en test. Crash GPU reproductible même en mode V2 sur du matos moderne.
+
+**Cause** : l'itinéraire est rendu avec un CSS `drop-shadow` double (halo néon cyan) coûteux en compositing GPU. Au boot, ce rendu se cumule avec :
+- Leaflet pas encore stabilisé (zoom/center initial)
+- Tuiles V2 en cours de chargement (placement progressif)
+- Init des autres modules (Pathfinder, label distance, etc.)
+
+→ saturation du GPU → kill silencieux → reload boucle.
+
+**Fix v1.8.1** : restore en DEUX PHASES.
+- **Phase 1 (immédiate)** : toutes les roads SAUF `itinerary` + autres calques. L'user voit son contexte de travail apparaître.
+- **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session. 1500ms = compromis qui mime le timing du flow d'import session manuel (qui marche sans crash car l'app est déjà stabilisée).
+
+**Mécanisme d'annulation** : variable module-scope `_phase2TimeoutId` + helper `_annulerPhase2()` appelé dans :
+- `clear()` quand user clique "🗑️ Effacer la session"
+- `_viderEtatCourant()` (double protection)
+- `onPlanLoaded(newPlanId)` au plan switch pendant les 1500ms (sinon itinéraire ancien plan se collait au nouveau)
+
+**Sécurité phase 2** : check `dejaIti` dans le callback (skip si l'user a créé un autre itinéraire via la modale Itinéraire entre temps).
+
+### 🛡️ Ajustements CSP
+
+Suite à déploiement Nginx en test KARMA :
+- **`'unsafe-inline'` ajouté à `script-src`** : compromis assumé. Le projet a depuis toujours des blocs `<script>` inline et des `onclick="..."` dans le HTML généré par interface.js. Externaliser tout serait une refonte massive sans gain de sécurité réel (la garantie anti-exfiltration vient de `connect-src`, pas de `script-src`). Documenté dans CLAUDE.md §40.7.1.
+- **`blob:` ajouté à `connect-src`** : nécessaire pour les fetches du tiling V2 (tuiles JPEG depuis ZIP en mémoire via blob URLs locales). Aucune fuite réseau possible — les blob URLs sont 100% locales au navigateur.
+
+### 🎨 Page d'audit en HTML formaté
+
+Le bouton "📄 Ouvrir la doc complète" de la modale Audit pointait vers `docs/NETWORK_AUDIT.md` (markdown brut). Bug : le Service Worker interceptait la requête et tombait sur le fallback `caches.match("./index.html")` → l'user voyait le splash MyKTAMap à la place de la doc.
+
+Fix : création de `docs/NETWORK_AUDIT.html` (~480 lignes, charte MyKTAMap inline) → page vraie HTML que le navigateur rend nativement. Cachée dans `ASSETS_TO_CACHE` du SW pour consultation offline.
+
+### 🔍 Classification améliorée du journal réseau
+
+Nouvelles catégories visuelles dans le tableau live :
+- **`local-blob`** (vert) : références locales au navigateur via `URL.createObjectURL` — utilisées par le tiling V2. Avant : classées en `external` (rouge alarmant) à tort.
+- **`local-data`** (vert) : data URLs base64 inline (icônes SVG, etc.) — pas de fetch réseau réel.
+
+Whitelist élargie côté `networkAudit.js` à 4 entrées (`same-origin`, `gstatic.com/generate_204`, `blob:`, `data:`).
+
+### 🖥️ Modale Configuration responsive PC
+
+Layout 2 colonnes sur écrans ≥1024px (pattern identique aux modales ⚙️ Réglages in-app et 📖 Documentation). Sections de Configuration homogènes en hauteur → `break-inside: avoid` cohérent. Cohérence transversale avec le reste des modales du projet.
+
+### 🔄 Sections Configuration réordonnées
+
+Ordre v1.8.0 : Tiling → ULTRA → Debug → 🔄 Force update → 🔒 Confidentialité → 💥 Reset.
+
+Ordre v1.8.1 : Tiling → ULTRA → Debug → **🔒 Confidentialité** → **🔄 Force update** → 💥 Reset. Gradation logique : préférences neutres → informatif/audit → action douce → action destructive.
+
+### 🗺️ Itinéraire : 2 améliorations connexes
+
+- **Label distance/temps au restore** : hook `_majLabelDistanceItineraire()` ajouté à la fin de `road.js > renderRoads()`. Couvre toutes les mutations de roads (création, modification, import session, restore auto, phase 2 différée) — plus seulement les actions de la modale Itinéraire.
+- **`resetRoads()` déclenche les hooks UI** : `_rdOnRoadsChanged` (panneau Distance totale) + `_majLabelDistanceItineraire` (label bas-gauche) appelés à la fin. Sans ça, après un reset le label restait visible alors que l'itinéraire venait d'être effacé.
+
+### ⏯️ Tracker : groupe fermable + identité 🧭 préservée
+
+Bug remonté KARMA : pendant le Play, impossible de replier le groupe Tracker (pour gagner de la place). Et l'icône principale 🧭 devenait ⏹️ (redondant avec le sous-bouton + perte d'identité visuelle).
+
+Fixes :
+- Retrait de la garde `if (modeActif) return` dans `_toggleGroupe()` — le clic toggle l'affichage des sous-actions même en mode actif. Le mode lui-même reste actif.
+- `_setGroupeModeActif("tracker", true, null)` au lieu de `"⏹️"` — l'icône principale 🧭 reste en permanence (identité du groupe).
+- Nouvelle classe CSS `.kta-group-mode-actif` avec petit point jaune pulsant `#f4c542` en haut-droite du bouton principal — signale les modes actifs même quand le groupe est replié.
+
+### ⚡ Splash plus court
+
+`SPLASH_MIN_DURATION_MS` : 4000ms → **3500ms** (-0.5s d'attente perçue au boot/F5).
+
+### 🐛 Fixes CSS débordements
+
+- **Badge `🔒 MODE HORS-LIGNE STRICT ACTIF`** débordait à droite hors du `#planLoaderBox` (cause : `width:100%` + padding + border sans `box-sizing: border-box`). Les `<div>` n'héritent pas `border-box` par défaut comme les `<button>`. Fix : `box-sizing: border-box` ajouté.
+- **Toggle paranoia** dans la modale Configuration débordait pareil (`width:100%` manquant sur le `<label>` en `display: flex`). Fix : `width: 100% + box-sizing: border-box` sur le label + `min-width: 0 + word-break` sur le span.
+- **`#zipFileName`** pouvait déborder sur noms de fichiers longs sans break points naturels. Fix : `overflow-wrap: anywhere` ajouté.
+- **`.loader-grid`** passait de `display: contents` (mobile) à `display: grid` (PC) avec des bugs subtils de re-évaluation sur Safari iOS. Fix : `display: flex; flex-direction: column;` mobile (visuellement identique mais déterministe).
+
+### 🎨 Croix ✕ modale "Forcer la mise à jour"
+
+Classe inventée `kta-readme-modal-close` (sans CSS associé) → croix sans style. Fix : remplacée par la classe standard du projet `kta-panneau-close` (24+ usages cohérents).
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.8.0"` → **`"myktamap-cache-v1.8.1"`** + ajout `./docs/NETWORK_AUDIT.html` à `ASSETS_TO_CACHE`
+- `js/copyright.js > __MKM__.build` : `"v1.8.0"` → **`"v1.8.1"`**
+- `version.json > version` : `"v1.8.0"` → **`"v1.8.1"`** + 7 notes user-facing
+
+### Fichiers ajoutés
+
+| Fichier | Rôle |
+|---|---|
+| `docs/NETWORK_AUDIT.html` | Page de transparence audit en HTML formaté (au lieu du `.md` brut intercepté par le SW) |
+
+### Fichiers modifiés (delta depuis v1.8.0)
+
+| Fichier | Changement |
+|---|---|
+| `js/sessionPersist.js` | Restore en 2 phases + helper `_annulerPhase2()` + check `dejaIti` |
+| `js/road.js` | Hook `_majLabelDistanceItineraire` + `_rdOnRoadsChanged` à la fin de `renderRoads` et `resetRoads` |
+| `js/interface.js` | `_setGroupeModeActif` ajoute `.kta-group-mode-actif`. `_toggleGroupe` autorise fermeture en mode actif. Tracker : icône principale `🧭` préservée. Sections Configuration réordonnées. Croix modale Force update corrigée. |
+| `js/networkAudit.js` | Whitelist élargie (`blob:`, `data:`) + classifications `local-blob` / `local-data` |
+| `js/main.js` | `SPLASH_MIN_DURATION_MS` : 4000 → 3500 |
+| `index.html` | Modale Configuration en 2 cols PC. Sections réordonnées. Modales doc audit pointent vers `.html`. Fix croix modale. |
+| `css/style.css` | Fixes débordements (box-sizing badge + toggle paranoia + zipFileName), classe `.kta-group-mode-actif` (point pulsant), `.loader-grid` flex column mobile, modale Config 2 cols PC |
+| `docs/nginx-csp-config.conf` | `'unsafe-inline'` sur `script-src` + `blob:` sur `connect-src` + commentaires de justification |
+| `docs/NETWORK_AUDIT.html` + `.md` | Whitelist élargie (4 entrées), changelog interne v1.8.1, date cataphile 2016 |
+| `docs/CLAUDE.md` | §9 (auto-save) : mécanisme 2 phases documenté. §40.7.1 ajouté : compromis CSP `'unsafe-inline'` |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.1 |
+
+---
+
+</details>
+
+<details id="v1-8-0">
+<summary><strong>🗓️ 21/05/2026 — 🔒 v1.8.0 : Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP)</strong></summary>
+
+MINOR bump (1.7 → 1.8) car évolution architecturale majeure visible utilisateur : **MyKTAMap rend maintenant techniquement vérifiable sa promesse "aucune donnée n'est envoyée à nos serveurs"**.
 
 ### 🎯 Le contexte
 
@@ -49,19 +165,7 @@ Nouvelle section **🔒 Confidentialité & Audit** dans `#loaderConfigModal` :
 
 ### 🛡️ CSP côté serveur Nginx
 
-Nouveau fichier `docs/nginx-csp-config.conf` documentant la directive complète à déployer côté Nginx :
-
-```
-Content-Security-Policy:
-  default-src 'self';
-  script-src 'self';
-  style-src 'self' 'unsafe-inline';
-  img-src 'self' data: blob:;
-  connect-src 'self' https://www.gstatic.com;
-  worker-src 'self' blob:;
-  frame-ancestors 'none';
-  ...
-```
+Nouveau fichier `docs/nginx-csp-config.conf` documentant la directive complète à déployer côté Nginx (cf. v1.8.1 pour les ajustements `'unsafe-inline'` + `blob:`).
 
 ⚠️ **À déployer manuellement côté Nginx prod/dev** par KARMA. L'app fonctionne sans (la CSP est défense en profondeur, pas un bloquant côté JS).
 
@@ -85,9 +189,9 @@ docs/
 ├── CLAUDE.md                       ← Contexte pour Claude/agents IA
 ├── README_USER.md                  ← Doc UTILISATEUR (modale 📖)
 ├── AI_CONTEXT.md                   ← Squelette enrichi pour modale 🤖 Aide IA
-├── NETWORK_AUDIT.html              ← Page transparence audit (HTML formaté)
+├── NETWORK_AUDIT.html              ← Page transparence audit (HTML formaté, ajouté en v1.8.1)
 ├── NETWORK_AUDIT.md                ← Version source markdown
-├── nginx-csp-config.conf           ← Config CSP Nginx (v1.8.1)
+├── nginx-csp-config.conf           ← Config CSP Nginx (v1.8.0+)
 ├── nginx-redirect-old-domain.conf  ← Conf migration is-underground.fr → myktamap.fr
 └── alert-example-migration.json    ← Exemple payload alert.json
 ```
@@ -105,27 +209,11 @@ docs/
 
 Décision KARMA : tout réglage sensible (paranoia, audit, reset, force update) reste dans le loader (cohérent avec la refonte v1.7.3 — cf. §39 CLAUDE.md). Évite la dispersion UI.
 
-### 🛠️ Consolidation post-bump initial (commits cumulés sur Karma_dev)
-
-Après le bump initial v1.8.0 (jamais shippé), plusieurs fixes et améliorations UX ont été ajoutés avant le merge sur main. Tous regroupés dans v1.8.1 :
-
-- **CSP ajustée** : `'unsafe-inline'` ajouté à `script-src` (compromis assumé — la garantie anti-exfiltration vient de `connect-src`, pas de `script-src`. Compatible avec les nombreux blocs `<script>` inline + `onclick` du projet). `blob:` ajouté à `connect-src` (pour les fetches du tiling V2 sur blob URLs locales).
-- **Doc audit en HTML formaté** : `docs/NETWORK_AUDIT.html` créé (~480 lignes formatées charte MyKTAMap) au lieu de servir le `.md` brut. Le `.md` était intercepté par le SW et tombait sur le fallback `index.html` → l'user voyait le splash à la place de la doc.
-- **Classification améliorée du journal réseau** : nouvelles catégories `local-blob` et `local-data` (vert) distinctes de `external` (rouge) — évite d'alarmer l'user à tort sur les blob URLs locales (tuiles V2) et les data URLs (icônes inline).
-- **Modale Configuration responsive PC** : layout 2 colonnes sur ≥1024px (pattern identique à la modale Réglages in-app et Doc/Aide). Sections homogènes en hauteur → `break-inside: avoid` cohérent.
-- **Sections Configuration réordonnées** : Tiling → ULTRA → Debug → 🔒 Confidentialité → 🔄 Force update → 💥 Reset. Gradation logique préférences → informatif → action douce → action destructive.
-- **Itinéraire dans l'auto-save** : `sessionPersist.js > _gatherState()` ne filtre plus les roads `"itinerary"`. L'itinéraire actif est désormais restauré au reload de l'app. Filet de sécurité préservé via try/catch dans `_restore`.
-- **Label distance/temps itinéraire au restore** : hook `_majLabelDistanceItineraire()` ajouté à la fin de `road.js > renderRoads()` — couvre toutes les mutations de roads (création, modification, import session, restore auto), plus seulement les actions de la modale Itinéraire.
-- **Tracker : groupe fermable + identité 🧭 préservée pendant Play** : retrait de la garde `if (modeActif) return` dans `_toggleGroupe()`. Et `_setGroupeModeActif("tracker", true, null)` au lieu de `"⏹️"` — garde 🧭 comme icône principale (le ⏹️ sous-action suffit). Nouveau point jaune pulsant CSS `.kta-group-mode-actif` pour signaler les modes actifs même quand le groupe est replié.
-- **Documentation projet centralisée dans `docs/`** : CLAUDE.md, README_USER.md, AI_CONTEXT.md déplacés depuis la racine (`git mv` → historique préservé). README.md et LICENSE restent à la racine (conventions GitHub). Tous les chemins fetch côté JS adaptés.
-- **Splash plus court** : `SPLASH_MIN_DURATION_MS` 4000ms → 3500ms (-0.5s).
-- **Fixes UX divers** : badge "MODE HORS-LIGNE STRICT ACTIF" qui débordait à droite hors du `#planLoaderBox` (cause : `width:100%` + padding + border sans `box-sizing: border-box`, classique sur `<div>` qui n'hérite pas de `border-box` comme les `<button>`). Toggle paranoia dans la modale qui débordait pareil (`width:100%` manquant sur le `<label>` flex). `#zipFileName` qui pouvait déborder sur noms de fichiers longs (`overflow-wrap: anywhere` ajouté). Bug fermeture du SW intercepteur sur `.md` corrigé via `.html` statique.
-
 ### Sources de vérité bumpées
 
-- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.3"` → **`"myktamap-cache-v1.8.1"`** + ajout `./js/networkAudit.js` + `./docs/NETWORK_AUDIT.html` + `./docs/NETWORK_AUDIT.md` à `ASSETS_TO_CACHE`
-- `js/copyright.js > __MKM__.build` : `"v1.7.3"` → **`"v1.8.1"`**
-- `version.json > version` : `"v1.7.3"` → **`"v1.8.1"`** + 7 notes user-facing
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.3"` → **`"myktamap-cache-v1.8.0"`** + ajout `./js/networkAudit.js` + `./docs/NETWORK_AUDIT.md` à `ASSETS_TO_CACHE`
+- `js/copyright.js > __MKM__.build` : `"v1.7.3"` → **`"v1.8.0"`**
+- `version.json > version` : `"v1.7.3"` → **`"v1.8.0"`** + 6 notes user-facing
 
 ### Fichiers ajoutés
 
@@ -141,9 +229,9 @@ Après le bump initial v1.8.0 (jamais shippé), plusieurs fixes et amélioration
 |---|---|
 | `index.html` | Script tag `networkAudit.js` en 2ème position (avant debug.js). Section UI "🔒 Confidentialité & Audit" dans `#loaderConfigModal`. Modales `#loaderNetLogModal` (tableau live) et `#loaderNetDocModal` (doc inline). Badge `#loaderParanoiaBadge` dans le footer. ~250 lignes de handlers JS pour wire le tout. |
 | `css/style.css` | ~250 lignes ajoutées en fin de fichier : styles `.kta-net-paranoia-toggle`, `.kta-net-paranoia-badge` (avec animation pulse), `.kta-net-log-*` (modale tableau live), `.kta-net-doc-*` (modale doc), responsive mobile. |
-| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.1 |
-| `CLAUDE.md` | Nouvelle §40 "Privacy & Audit" (~150 lignes) avec architecture, whitelist, API, UI, CSP, et procédure pour ajouter une URL à la whitelist au futur. |
-| `README_USER.md`, `AI_CONTEXT.md` | Sections audit ajoutées, alignement avec la nouvelle feature. |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.0 |
+| `docs/CLAUDE.md` | Nouvelle §40 "Privacy & Audit" (~150 lignes) avec architecture, whitelist, API, UI, CSP, et procédure pour ajouter une URL à la whitelist au futur. |
+| `docs/README_USER.md`, `docs/AI_CONTEXT.md` | Sections audit ajoutées, alignement avec la nouvelle feature. |
 
 ---
 

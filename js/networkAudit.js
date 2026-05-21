@@ -3,7 +3,7 @@
  * Site : https://myktamap.is-underground.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  *
- * MODULE : networkAudit.js (v1.8.1 — Privacy & Audit)
+ * MODULE : networkAudit.js (introduit en v1.8.0 — Privacy & Audit)
  * =========================================================================
  *
  * Pourquoi ce module ?

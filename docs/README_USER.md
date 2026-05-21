@@ -272,7 +272,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 4. **🔄 Force update douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
-5. **🔒 Confidentialité & Audit** *(depuis v1.8.1)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
+5. **🔒 Confidentialité & Audit** *(depuis v1.8.0)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
 6. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
 
@@ -379,7 +379,7 @@ L'application demande **deux confirmations** avant d'exécuter le reset, et vous
 
 > Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
 
-### 🔒 Confidentialité & Audit réseau (depuis v1.8.1)
+### 🔒 Confidentialité & Audit réseau (depuis v1.8.0)
 
 **MyKTAMap est une application 100 % client-side. Aucune de tes annotations, sessions, plans ou données personnelles n'est jamais envoyée à un serveur, ni à un service tiers.** Et tu peux le vérifier toi-même.
 
