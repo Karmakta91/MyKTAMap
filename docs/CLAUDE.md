@@ -310,7 +310,7 @@ Helpers : `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Valida
 
 Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]`.
 
-**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental).
+**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.0** : itinéraires (`road.type === "itinerary"`) INCLUS (avant : exclus par sécurité GPU au reload — risque réévalué OK avec browsers 2026 + PerfUltra `viewportCull` disponible).
 
 **API** : `window.SessionPersist`
 - `onPlanLoaded(planId)` → appelé par `main.js > lancerApplication()` après init complète. Restaure si `saved.planId === planId`, purge si différent

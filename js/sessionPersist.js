@@ -46,24 +46,26 @@
   // ========== ETAT COURANT ==========
 
   function _gatherState() {
-    // ⚠️ On EXCLUT les roads de type "itinerary" du state persiste (depuis 09/05/2026
-    // suite 29). L'itineraire est un calcul derive du reseau de routes (Pathfinder),
-    // pas une annotation permanente. Ses tracés peuvent contenir des centaines de
-    // points et avec le drop-shadow CSS du halo neon, le rendu au boot saturait le
-    // GPU mobile / browser → crash au reload pour les utilisateurs ayant un
-    // itineraire actif au moment de fermer.
-    // L'utilisateur peut le recalculer en 2 clics via la modale 🗺️ apres reload.
-    const allRoads = window.getRoads ? (window.getRoads() || []) : [];
-    const persistableRoads = allRoads.filter(function(r) {
-      return r && r.type !== "itinerary";
-    });
+    // 🆕 v1.8.0 (demande KARMA) : on persiste DESORMAIS aussi les roads
+    // de type "itinerary". Avant (suite 29, 09/05/2026), elles etaient
+    // filtrees pour eviter un crash au reload sur les anciens browsers
+    // mobiles (drop-shadow CSS du halo neon cyan qui saturait le GPU sur
+    // des itineraires longs). En 2026 ce risque est moindre :
+    //   - PerfUltra > viewportCull peut etre active pour les plans denses
+    //   - Browsers mobiles plus tolerants
+    //   - Filet de securite : le restore est dans un try/catch, en cas
+    //     d'erreur on log et on continue sans crasher (cf. _restore).
+    // Si un user remontait quand meme un crash sur ce point, basculer
+    // PerfUltra > viewportCull sur ON est le workaround. Ou faire un
+    // Reset complet via ⚙️ Configuration en derniere instance.
     return {
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
-      roads:        persistableRoads,
+      roads:        window.getRoads         ? (window.getRoads()         || []) : [],
       zones:        window.getZones         ? (window.getZones()         || []) : [],
       measure:      window.getMeasurePoints ? (window.getMeasurePoints() || []) : []
-      // tracker path : volontairement non persisté (cf. choix 3:b)
-      // itineraire (type road "itinerary") : volontairement non persisté (suite 29)
+      // tracker path : volontairement non persiste (cf. choix 3:b, tracker
+      // experimental, ressusciter un trail fige serait trompeur sans pos.
+      // recente du capteur).
     };
   }
 
@@ -205,13 +207,16 @@
         restored.points = payload.editorPoints.length;
       }
       // setRoads redessine en interne (renderRoads), donc juste reset + set.
-      // ⚠️ Filter "itinerary" cote restore aussi : les sessions sauvegardees AVANT
-      // le fix suite 29 peuvent encore contenir des itineraires en localStorage
-      // → sans ce filtre, elles continueraient a crasher au reload chez les
-      // utilisateurs qui n'ont pas encore vide leur cache.
+      // 🆕 v1.8.0 (demande KARMA) : on restaure DESORMAIS aussi les itineraires.
+      // Symetrique au changement dans _gatherState. Le try/catch englobant
+      // attrape les erreurs eventuelles → on log et on continue plutot que
+      // de boucler en crash au reload.
+      // Filtre defensif minimal : on garde le check r.type defini pour
+      // ignorer les entrees corrompues (anciens formats, edits manuels du
+      // localStorage, etc.). Mais on n'exclut plus aucun type valide.
       if (Array.isArray(payload.roads)) {
         const safeRoads = payload.roads.filter(function(r) {
-          return r && r.type !== "itinerary";
+          return r && typeof r.type === "string" && r.type.length > 0;
         });
         if (window.resetRoads) window.resetRoads();
         if (window.setRoads)   window.setRoads(safeRoads);
