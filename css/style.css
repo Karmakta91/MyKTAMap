@@ -8365,17 +8365,28 @@ body.kta-refonte-v1 .kta-refonte-stat {
 body.kta-refonte-v1 .kta-refonte-stat-icon {
   font-size: 13px;
 }
+/* 🆕 v1.9.2 : couleur des valeurs en footer passées à l'ambre charte
+   `#f4c542` (orange chaud du projet — même teinte que les titres dorés
+   et le logo rose des vents). Avant : blanc cassé `#e8eaf0` qui se
+   confondait avec le texte standard. Feedback KARMA : "peux tu ecrire
+   en orange, chartre graphique, les informations dans le footer".
+   Le doré accentue les chiffres importants (distance, mesure) sur le
+   fond sombre du status bar. */
 body.kta-refonte-v1 .kta-refonte-stat-val {
-  color: #e8eaf0;
-  font-weight: 600;
+  color: #f4c542;
+  font-weight: 700;
   font-size: 12px;
+  text-shadow: 0 0 4px rgba(244, 197, 66, 0.18);
 }
 body.kta-refonte-v1 .kta-refonte-stat-empty {
   opacity: 0.4;
 }
 body.kta-refonte-v1 .kta-refonte-stat-empty .kta-refonte-stat-val {
+  /* Stat vide ("—") : on retombe sur du gris discret, pas de doré (le
+     doré doit signaler une INFO réelle, pas "rien à afficher"). */
   color: #8892a4;
   font-weight: 500;
+  text-shadow: none;
 }
 
 /* 🆕 v1.8.1-refonte-14 : stats CLIQUABLES (uniquement la stat itinéraire
@@ -8422,6 +8433,9 @@ body.kta-refonte-v1 .kta-refonte-stat-tracker-on {
 body.kta-refonte-v1 .kta-refonte-stat-tracker-on .kta-refonte-stat-val {
   color: #6ee287;
   font-weight: 700;
+  /* Override le text-shadow doré global des stats — le tracker a sa
+     propre lueur via box-shadow vert sur le pill parent. */
+  text-shadow: 0 0 4px rgba(76, 200, 100, 0.55);
 }
 body.kta-refonte-v1 .kta-refonte-stat-tracker-on .kta-refonte-stat-icon {
   /* Boussole verte quand GPS actif. drop-shadow plutôt que filter:hue-rotate
@@ -8435,6 +8449,9 @@ body.kta-refonte-v1 .kta-refonte-stat-tracker-off {
 body.kta-refonte-v1 .kta-refonte-stat-tracker-off .kta-refonte-stat-val {
   color: #e88787;
   font-weight: 700;
+  /* Override le text-shadow doré global — pas de glow rouge volontaire
+     (la pill rouge se voit déjà clairement, pas besoin d'amplifier). */
+  text-shadow: none;
 }
 body.kta-refonte-v1 .kta-refonte-stat-tracker-off .kta-refonte-stat-icon {
   /* Boussole rougeâtre quand GPS inactif */
@@ -8463,7 +8480,10 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle {
   margin-left: 10px;
   padding: 0;
   line-height: 1;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  /* 🆕 v1.9.2 : transition height/font-size pour suivre l'état
+     collapsed sans saccade visuelle. */
+  transition: background 0.15s, border-color 0.15s, color 0.15s,
+              width 0.2s ease-out, height 0.2s ease-out, font-size 0.2s ease-out;
 }
 body.kta-refonte-v1 .kta-refonte-statusbar-toggle:hover,
 body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
@@ -8471,6 +8491,19 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
   border-color: rgba(140, 180, 255, 0.55);
   color: #b3ccff;
   outline: none;
+}
+/* 🆕 v1.9.2 : quand le footer est replié (height ~20px + safe-bottom),
+   le bouton 40x36 dépassait par-dessus le haut du footer → effet bizarre
+   visuellement (KARMA feedback : "vue que on a augmenter la taille de
+   l'icone de reduction du footer, il sort du footer réduit ca fait un
+   effet bizare"). Solution : version compacte 32x16 / font 13 quand
+   la barre est en état collapsed. */
+body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-toggle {
+  width: 32px;
+  height: 16px;
+  font-size: 13px;
+  border-radius: 4px;
+  margin-left: 6px;
 }
 
 /* MASQUAGE des labels Leaflet bottom en mode refonte — ils sont
