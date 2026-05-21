@@ -297,15 +297,30 @@
       _setStat("kta-refonte-stat-mesure", null);
     }
 
-    // ── 📏 Distance totale (lit le state du panneau Distance totale si actif) ──
-    // Pas d'API publique simple, on tente via le DOM du panneau. Sinon —
-    // on laisse vide. C'est volontaire : la "distance totale" n'a pas
-    // forcément à être en permanence affichée, c'est plus un outil ponctuel.
-    const rdMeta = document.querySelector("#kta-rd-modal .kta-rd-total-value");
-    if (rdMeta && rdMeta.textContent) {
-      _setStat("kta-refonte-stat-dist-totale", rdMeta.textContent.trim());
+    // ── 📏 Distance totale ──
+    // 🆕 v1.8.1 (fix KARMA) : on utilise désormais l'API publique
+    // window.getDistanceTotaleStatus() qui lit l'état du surlignage
+    // magenta (_rdHighlightLayer), pas le DOM de la modale.
+    // Avant : on lisait .kta-rd-total-value qui disparaissait à la
+    // fermeture de la modale → la stat statusbar s'éteignait alors que
+    // le surlignage restait actif. Maintenant : la stat persiste tant
+    // que le surlignage est visible sur la carte.
+    if (typeof window.getDistanceTotaleStatus === "function") {
+      const dtStatus = window.getDistanceTotaleStatus();
+      if (dtStatus) {
+        _setStat("kta-refonte-stat-dist-totale", _formatDist(dtStatus.totalM));
+      } else {
+        _setStat("kta-refonte-stat-dist-totale", null);
+      }
     } else {
-      _setStat("kta-refonte-stat-dist-totale", null);
+      // Fallback ancien (au cas où l'API n'est pas exposée pour
+      // quelque raison — rétrocompat soft)
+      const rdMeta = document.querySelector("#kta-rd-modal .kta-rd-total-value");
+      if (rdMeta && rdMeta.textContent) {
+        _setStat("kta-refonte-stat-dist-totale", rdMeta.textContent.trim());
+      } else {
+        _setStat("kta-refonte-stat-dist-totale", null);
+      }
     }
 
     // ── 🗺️ Itinéraire ──

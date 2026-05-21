@@ -2918,6 +2918,17 @@ function initInterface() {
 
   L.control.titleControl().addTo(window.map);
 
+  // 🆕 Refonte UI v1 : créer le bouton 🏗 Niveau EN PREMIER (avant les
+  // groupes accordéon Doc/Settings/Charger/Save qui sont aussi topleft).
+  // En v1 historique, _initLevelFilterControl est appelé à la fin de
+  // initInterface → le bouton Niveau finit en bas. KARMA veut le bouton
+  // juste après Zoom et avant la boussole. En refonte ON, on initialise
+  // donc le control plus tôt dans l'ordre d'ajout Leaflet. En refonte OFF,
+  // l'appel reste à la fin (comportement v1 strict).
+  if (window._refonteInterfaceActive === true) {
+    _initLevelFilterControl();
+  }
+
   // ===== Watcher pour le contrôle des couches Leaflet =====
   // Quand le panneau des couches s'ouvre (clic ou hover), il s'agrandit en haut-droite
   // de la map. Mais le #map est position:fixed → stacking context isolé → le panneau
@@ -3491,7 +3502,14 @@ _setGroupeModeActif("tracker", isTracking, null);
   // 🏗️ Multi-niveau : si actif pour ce plan, créer le bouton flottant
   // top-left (sous les boutons de zoom Leaflet) pour ouvrir la modale niveau.
   // Si OFF → rien n'est crée → comportement v147 strict.
-  _initLevelFilterControl();
+  // 🆕 Refonte UI v1 : si mode refonte actif, le bouton a déjà été créé
+  // au DÉBUT de initInterface (cf. fix ordre — Niveau doit être 3e après
+  // Zoom, pas en queue après les groupes accordéon topleft). On skip
+  // l'appel ici pour éviter la double création (qui serait nettoyée par
+  // la garde interne mais reste inutile).
+  if (window._refonteInterfaceActive !== true) {
+    _initLevelFilterControl();
+  }
 }
 
 // =========================
@@ -5431,6 +5449,30 @@ window.ouvrirRoadsDistanceFloater = function() {
 window._rdEffacerHighlight = function() {
   if (_rdFloater) { _rdFloater.remove(); _rdFloater = null; }
   _rdInternalEffacerHighlight();
+};
+
+// 🆕 API publique : état actuel de la "Distance totale des tracés".
+// Retourne null si pas de surlignage actif (= rien à afficher).
+// Sinon { totalM, breakdown: {principal,secondaire,chemin} }.
+//
+// Pourquoi exposer ça : le statusbar refonte v1 lisait avant directement
+// le DOM .kta-rd-total-value, qui n'existe que QUAND LA MODALE EST OUVERTE.
+// Fermer la modale (en gardant le surlignage magenta) cassait l'affichage
+// dans le statusbar — bug remonté KARMA. Avec cette API, on calcule en
+// live à partir de _rdHighlightLayer (qui survit à la fermeture modale).
+window.getDistanceTotaleStatus = function() {
+  // Pas de surlignage actif → aucune donnée à afficher
+  if (!_rdHighlightLayer) return null;
+  // Surlignage actif : recalcule en live depuis les roads + filtres courants
+  const b = _rdCalculerBreakdown();
+  return {
+    totalM:    b.totalM,
+    breakdown: {
+      principal:  { nb: b.principal.nb,  distM: b.principal.distM  },
+      secondaire: { nb: b.secondaire.nb, distM: b.secondaire.distM },
+      chemin:     { nb: b.chemin.nb,     distM: b.chemin.distM     }
+    }
+  };
 };
 
 // Hook appelé par road.js > renderRoads (et par le listener overlayadd/remove)
