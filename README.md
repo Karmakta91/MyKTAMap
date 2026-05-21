@@ -71,6 +71,34 @@ Autres headers de sécurité fournis : `X-Content-Type-Options: nosniff`, `X-Fra
 
 Nouveau fichier `docs/NETWORK_AUDIT.md` (~300 lignes) servi en static, ajouté à `ASSETS_TO_CACHE` du SW (consultable offline). Contenu : promesse en 1 ligne / modèle technique / whitelist exhaustive et commentée / 3 méthodes de vérification (journal interne / DevTools / lecture source) / mode paranoia détaillé / CSP expliqué / stockage local / analytics-cookies-tracking (réponse : aucun) / position signée KARMA.
 
+### 📁 Réorganisation : toute la doc dans `docs/`
+
+À l'occasion de cette release "Privacy & Audit", la documentation projet est regroupée dans le sous-dossier `docs/` (jusqu'ici elle était éparpillée à la racine). Sauf `README.md` qui reste à la racine pour l'affichage GitHub natif, et `LICENSE` qui reste à la racine pour la convention GitHub.
+
+**Avant** (racine) : `CLAUDE.md`, `README_USER.md`, `AI_CONTEXT.md` + 3 fichiers déjà dans `docs/` (`NETWORK_AUDIT.html`, `nginx-csp-config.conf`, `nginx-redirect-old-domain.conf`).
+
+**Après** (centralisé dans `docs/`) :
+```
+docs/
+├── CLAUDE.md                       ← Contexte pour Claude/agents IA
+├── README_USER.md                  ← Doc UTILISATEUR (modale 📖)
+├── AI_CONTEXT.md                   ← Squelette enrichi pour modale 🤖 Aide IA
+├── NETWORK_AUDIT.html              ← Page transparence audit (HTML formaté)
+├── NETWORK_AUDIT.md                ← Version source markdown
+├── nginx-csp-config.conf           ← Config CSP Nginx (v1.8.0)
+├── nginx-redirect-old-domain.conf  ← Conf migration is-underground.fr → myktamap.fr
+└── alert-example-migration.json    ← Exemple payload alert.json
+```
+
+**Adaptations code** :
+- `sw.js > ASSETS_TO_CACHE` : `./README_USER.md` → `./docs/README_USER.md`, idem AI_CONTEXT
+- `js/interface.js > _chargerReadme()` (appelé depuis modale Documentation) : `README_USER.md` → `docs/README_USER.md`
+- `js/interface.js` modale Aide IA (`Promise.all`) : fetch des 2 fichiers vers `docs/...`
+- `docs/NETWORK_AUDIT.{html,md}` : tableau whitelist mis à jour avec les nouveaux chemins
+- Commentaires en-têtes des fichiers déplacés mis à jour
+
+**Pourquoi** : centralise la doc dans un seul endroit, évite la pollution de la racine, plus facile pour un nouveau contributeur de comprendre où trouver quoi. `git mv` utilisé pour les déplacements → historique préservé.
+
 ### 🚫 Pas de section dans ⚙️ Réglages map mode
 
 Décision KARMA : tout réglage sensible (paranoia, audit, reset, force update) reste dans le loader (cohérent avec la refonte v1.7.3 — cf. §39 CLAUDE.md). Évite la dispersion UI.

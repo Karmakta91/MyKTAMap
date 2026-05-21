@@ -89,8 +89,18 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 ├── lib/leaflet/                ← Leaflet local (pour mode hors-ligne)
 ├── lib/jszip.min.js            ← JSZip (extraction des plans ZIP)
 │
-├── README.md                   ← Doc DEV (architecture, journal des modifications)
-└── README_USER.md              ← Doc UTILISATEUR (intégrée à l'app via 📖)
+├── README.md                   ← Doc DEV (architecture, journal des modifications) — reste à la racine pour GitHub
+├── LICENSE                     ← Licence CC BY-NC-SA 4.0 — reste à la racine pour GitHub
+│
+└── docs/                       ← Documentation projet (déplacée ici depuis la racine en v1.8.0)
+    ├── CLAUDE.md               ← Contexte pour Claude/agents IA (ce fichier)
+    ├── README_USER.md          ← Doc UTILISATEUR (intégrée à l'app via 📖)
+    ├── AI_CONTEXT.md           ← Squelette enrichi pour la modale 🤖 Aide IA
+    ├── NETWORK_AUDIT.html      ← Page de transparence audit (HTML formaté, ouverte depuis ⚙️ Configuration → 🔒 → 📖)
+    ├── NETWORK_AUDIT.md        ← Version source markdown de la page d'audit
+    ├── nginx-csp-config.conf   ← Config CSP Nginx à déployer côté serveur (v1.8.0)
+    ├── nginx-redirect-old-domain.conf  ← Conf Nginx pour la migration is-underground.fr → myktamap.fr
+    └── alert-example-migration.json    ← Exemple de payload alert.json
 ```
 
 > **Source de vérité pour les scripts** : l'ordre de chargement dans `index.html` (`<script src="js/...">`).

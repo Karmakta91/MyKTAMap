@@ -2,7 +2,7 @@
 
 > Document généré le **{{DATE}}** (build {{BUILD}}) par l'application MyKTAMap pour servir de **source de référence** à un assistant IA. Le lecteur (humain ou IA) doit considérer le contenu ci-dessous comme **la seule documentation officielle disponible** de l'application.
 >
-> Ce fichier est servi tel quel depuis la racine de l'app : `AI_CONTEXT.md`. Pour l'enrichir, éditer directement ce fichier — aucun re-déploiement de code n'est nécessaire, le service worker se chargera de propager la mise à jour.
+> Ce fichier est servi tel quel par l'app : `docs/AI_CONTEXT.md` (déplacé dans `docs/` depuis v1.8.0, avant à la racine). Pour l'enrichir, éditer directement ce fichier — aucun re-déploiement de code n'est nécessaire, le service worker se chargera de propager la mise à jour.
 
 ---
 

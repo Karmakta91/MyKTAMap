@@ -711,7 +711,7 @@ function afficherReadme() {
   if (existing) { existing.remove(); return; }
 
   // Chargement direct de la doc utilisateur
-  _chargerReadme("README_USER.md");
+  _chargerReadme("docs/README_USER.md");
 }
 
 // Construit le sommaire latéral (sidebar desktop / haut sur mobile) avec H2 + sous-H3 collapsibles
@@ -5535,22 +5535,23 @@ function afficherLegende() {
 // =========================
 // 🤖 AIDE IA — génère un fichier de contexte téléchargeable
 // =========================
-// Le contenu vit dans le fichier STATIQUE `AI_CONTEXT.md` à la racine.
+// Le contenu vit dans le fichier STATIQUE `docs/AI_CONTEXT.md` (depuis
+// v1.8.0 — auparavant à la racine, déplacé dans docs/ avec README_USER.md).
 // JS se contente de :
-//   1. fetch AI_CONTEXT.md (le squelette enrichi)
-//   2. fetch README_USER.md (la doc officielle)
+//   1. fetch docs/AI_CONTEXT.md (le squelette enrichi)
+//   2. fetch docs/README_USER.md (la doc officielle)
 //   3. remplacer les placeholders {{DATE}}, {{BUILD}}, {{README_USER}}
 //   4. proposer le fichier au téléchargement
 //
 // Avantage : tout l'enrichissement du contexte IA se fait en éditant
-// AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
+// docs/AI_CONTEXT.md, sans toucher au code JS. Le SW propage automatiquement.
 // =========================
 
 function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
   const dateExport = new Date().toISOString().slice(0, 10);
   const buildVersion = (window.__MKM__ && window.__MKM__.build) || "non-défini";
 
-  // Si le template AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
+  // Si le template docs/AI_CONTEXT.md est dispo, on s'en sert. Sinon fallback minimal.
   if (aiContextTemplate && aiContextTemplate.trim().length > 0) {
     return aiContextTemplate
       .replace(/\{\{DATE\}\}/g, dateExport)
@@ -5559,7 +5560,7 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
         /\{\{README_USER\}\}/g,
         readmeUserText && readmeUserText.trim().length > 0
           ? readmeUserText
-          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
+          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch docs/README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
       );
   }
 
@@ -6084,23 +6085,24 @@ window.afficherModaleAideIA = function() {
     btn.textContent = "⏳ Génération en cours...";
     statusEl.textContent = "Fetch de la documentation...";
 
-    // Fetch en parallèle : AI_CONTEXT.md (template) + README_USER.md (doc utilisateur)
+    // Fetch en parallèle : docs/AI_CONTEXT.md (template) + docs/README_USER.md (doc utilisateur)
+    // v1.8.0 : déplacés dans le sous-dossier docs/ (sauf README.md qui reste racine).
     let aiContextTpl = "";
     let readmeText = "";
     try {
       const [respCtx, respDoc] = await Promise.all([
-        fetch("AI_CONTEXT.md", { cache: "no-cache" }),
-        fetch("README_USER.md", { cache: "no-cache" })
+        fetch("docs/AI_CONTEXT.md", { cache: "no-cache" }),
+        fetch("docs/README_USER.md", { cache: "no-cache" })
       ]);
       if (respCtx.ok) {
         aiContextTpl = await respCtx.text();
       } else {
-        console.warn("[AideIA] AI_CONTEXT.md HTTP " + respCtx.status);
+        console.warn("[AideIA] docs/AI_CONTEXT.md HTTP " + respCtx.status);
       }
       if (respDoc.ok) {
         readmeText = await respDoc.text();
       } else {
-        console.warn("[AideIA] README_USER.md HTTP " + respDoc.status);
+        console.warn("[AideIA] docs/README_USER.md HTTP " + respDoc.status);
       }
       const tplKo = Math.round(aiContextTpl.length / 1024);
       const docKo = Math.round(readmeText.length / 1024);
