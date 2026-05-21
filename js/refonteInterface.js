@@ -436,6 +436,18 @@
   // order:-1 (CSS) pour qu'il apparaisse en haut visuellement, peu
   // importe son ordre dans le DOM (Leaflet ajoute les controls dans
   // l'ordre d'appel addTo, donc Layers et Zoom sont créés avant nous).
+  // Icônes du bouton de réduction :
+  //   ▾ = déplié (flèche vers le BAS, "tout est visible en dessous")
+  //   ▸ = replié sidebar GAUCHE  (flèche vers l'intérieur de l'écran)
+  //   ◂ = replié sidebar DROITE  (flèche vers l'intérieur de l'écran)
+  // Cohérent avec la sémantique "la barre se ramasse vers le centre".
+  // Changement v1.2 (feedback KARMA) : avant ≡ qui ressemblait trop à
+  // l'icône des calques Leaflet (3 lignes horizontales).
+  function _iconeCollapse(side, isCollapsed) {
+    if (!isCollapsed) return "▾";
+    return side === "left" ? "▸" : "◂";
+  }
+
   function _creerBoutonReduction(position) {
     if (!window.map) return null;
     const side = position === "topleft" ? "left" : "right";
@@ -449,13 +461,16 @@
       div.dataset.refonteSide = side;
       const a = L.DomUtil.create("a", "kta-refonte-collapse-btn", div);
       a.href  = "javascript:void(0)";
-      a.title = "Réduire / agrandir cette barre";
+      a.title = "Réduire cette barre";
       a.setAttribute("aria-label", "Réduire la barre " + side);
-      a.innerHTML = "≡";
+      // État initial : déplié (5:b = pas de persistance, toujours
+      // déroulée au boot) → icône ▾
+      a.innerHTML = _iconeCollapse(side, false);
       L.DomEvent.disableClickPropagation(div);
       L.DomEvent.on(a, "click", function(e) {
         L.DomEvent.stop(e);
         const isCollapsed = document.body.classList.toggle(cls);
+        a.innerHTML = _iconeCollapse(side, isCollapsed);
         a.title = (isCollapsed ? "Agrandir" : "Réduire") + " cette barre";
         a.setAttribute("aria-pressed", isCollapsed ? "true" : "false");
         // Si on collapse alors qu'un groupe accordéon est ouvert dans
