@@ -238,7 +238,7 @@ Sections (cohérent avec la légende d'aide) :
 ### 6. Splash screen
 
 - HTML statique dans `<body>` → visible AVANT tout JS.
-- `SPLASH_MIN_DURATION_MS = 4000` (constante dans `main.js`).
+- `SPLASH_MIN_DURATION_MS = 3500` (constante dans `main.js`, depuis v1.8.1 — avant : 4000ms en v1.8.0 et antérieures).
 - `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
 - **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
 - Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
@@ -310,7 +310,16 @@ Helpers : `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Valida
 
 Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]`.
 
-**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental).
+**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+
+- **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
+- **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
+
+**Pourquoi** : l'itinéraire est rendu avec un CSS `drop-shadow` double (halo néon cyan) coûteux en compositing GPU. Au boot, ce rendu se cumulait avec Leaflet en cours de stabilisation + tuiles V2 en cours de placement → saturait le GPU mobile → crash silencieux (reload boucle infinie). Le différé mime le timing du flow d'import session manuel (qui marche sans crash car l'app est déjà stabilisée).
+
+**Sécurité phase 2** : check si un itinéraire existe déjà dans `getRoads()` au moment du setTimeout (cas où l'user a lancé la modale Itinéraire entre temps) → skip pour ne pas avoir 2 itinéraires actifs simultanément.
+
+**Hypothèse** v1.8.0 initiale (réactiver sans précaution car "browsers 2026 plus tolérants") s'est révélée fausse en test KARMA : crash reproductible même en mode V2 sur du matos moderne. Le différé est donc la bonne approche.
 
 **API** : `window.SessionPersist`
 - `onPlanLoaded(planId)` → appelé par `main.js > lancerApplication()` après init complète. Restaure si `saved.planId === planId`, purge si différent
@@ -2099,7 +2108,7 @@ Nouvelles classes CSS dédiées : `.loader-titre`, `.loader-titre-logo`, `.loade
 2. Bind du handler dans le script inline de `index.html`
 3. Ne PAS recréer une section séparée hors de la modale — la philosophie v1.7.3 est : **tout réglage du loader vit dans la modale Configuration**. Seuls les boutons d'**action** (créer un plan, charger un plan) restent dehors.
 
-### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.0)
+### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.0, ajustements CSP en v1.8.1)
 
 Module de transparence + vérifiabilité construit pour répondre à la méfiance légitime du milieu cataphile vis-à-vis des "backdoors" qui exfiltreraient les plans. **L'app étant 100% client-side, la collecte est techniquement impossible ; ce module rend ça vérifiable par l'utilisateur sans qu'il ait à nous croire sur parole.**
 

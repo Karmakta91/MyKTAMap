@@ -1,12 +1,13 @@
 {
-  "version": "v1.8.0",
+  "version": "v1.8.1",
   "released": "2026-05-21",
   "notes": [
-    "🔒 Privacy & Audit : nouvelle section dans ⚙️ Configuration qui prouve techniquement que MyKTAMap est 100% client-side. Aucune de tes données n'est envoyée à un serveur, et tu peux le vérifier toi-même.",
-    "📋 Journal réseau (live) : tableau temps réel de toutes les requêtes réseau émises par l'app (fetch, XHR, sendBeacon, WebSocket, EventSource). Exportable en JSON pour audit / partage.",
-    "📖 Page de transparence Que fait l'app sur le réseau : liste blanche exhaustive des endpoints contactés + comment vérifier toi-même (F12, mode strict, CSP). Doc complète dans docs/NETWORK_AUDIT.md.",
-    "🔒 Mode hors-ligne strict (opt-in) : toggle qui bloque ACTIVEMENT toute requête non-whitelistée. L'app reste 100% fonctionnelle. Badge orange persistant dans le footer du loader quand actif.",
-    "🛡️ Content Security Policy (CSP) stricte côté serveur Nginx : double protection navigateur qui refuse toute connexion vers un domaine non autorisé. Config dans docs/nginx-csp-config.conf.",
-    "📡 Aucun analytics, aucun cookie, aucun tracker tiers. Pas de Google Analytics, pas de Matomo, pas de pixel de tracking. Promesse vérifiable dans le code source et dans le journal réseau."
+    "🐛 Fix critique : restore de l'itinéraire en 2 phases pour éviter le crash GPU au reload. Phase 1 immédiate (toutes les annotations sauf itinéraire), phase 2 différée +1500ms (l'itinéraire seul). Si tu efface la session pendant ce délai, l'itinéraire ne réapparaît plus en différé.",
+    "🛡️ CSP ajustée côté Nginx : 'unsafe-inline' autorisé sur script-src (compatible avec les onclick inline du projet — la garantie anti-exfiltration vient de connect-src, pas de script-src) et blob: autorisé sur connect-src (nécessaire pour les tuiles V2).",
+    "📄 Page d'audit en HTML formaté : le bouton « Ouvrir la doc complète » dans la modale Confidentialité affiche désormais une vraie page HTML mise en forme charte MyKTAMap (avant : markdown brut intercepté par le Service Worker qui affichait le splash à la place).",
+    "🖥️ Modale Configuration responsive PC : layout 2 colonnes sur écrans ≥1024px. Sections réordonnées : Confidentialité avant Force update (gradation logique informatif → action douce → action destructive).",
+    "⏯️ Tracker : possibilité de replier le groupe accordéon pendant le Play pour gagner de la place. L'icône principale reste 🧭 (avant : devenait ⏹️ qui faisait doublon avec le sous-bouton). Petit point jaune pulsant signale les modes actifs même quand le groupe est replié.",
+    "🗺️ Itinéraire : le label distance/temps en bas-gauche apparaît automatiquement au restore de session (avant : il fallait ouvrir la modale Itinéraire pour le voir). Et il disparaît correctement quand on efface la session.",
+    "⚡ Splash plus court : 3,5 secondes au lieu de 4. Fixes UX divers (badge MODE HORS-LIGNE STRICT qui débordait, toggle qui débordait, nom de fichier ZIP long qui débordait, croix modale Forcer la mise à jour sans style)."
   ]
 }

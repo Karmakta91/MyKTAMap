@@ -696,7 +696,10 @@ function afficherLoader() {
 // =========================
 // SPLASH SCREEN — animation de bienvenue au démarrage
 // =========================
-const SPLASH_MIN_DURATION_MS = 4000;
+// 🆕 v1.8.0 : 4000ms → 3500ms (demande KARMA). Reste assez long pour que
+// l'animation de la barre de chargement + le logo soient perçus, mais
+// raccourcit légèrement l'attente perçue au boot/F5.
+const SPLASH_MIN_DURATION_MS = 3500;
 let _splashShownAt = null;
 
 function _splashStart() {

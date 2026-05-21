@@ -663,6 +663,20 @@ function renderRoads() {
   if (typeof window._rdOnRoadsChanged === "function") {
     try { window._rdOnRoadsChanged(); } catch(e) {}
   }
+
+  // 🆕 v1.8.0 : Hook itinéraire — met à jour le label "distance + temps"
+  // en bas-gauche selon l'état actuel des roads (présence ou non d'un
+  // type "itinerary"). Auparavant, le label ne s'affichait qu'après les
+  // actions de la modale Itinéraire (Calculer / Effacer), pas après les
+  // setRoads venant d'un import de session ou d'une restauration auto.
+  // Bug remonté KARMA : itinéraire visible sur la carte au restore mais
+  // pas le label distance/temps tant qu'on n'ouvrait pas la modale.
+  // Appel ici dans renderRoads = point de passage commun à toutes les
+  // mutations de roads → label toujours sync. Coût quasi nul (juste un
+  // find sur le tableau + show/hide d'un L.control existant).
+  if (typeof window._majLabelDistanceItineraire === "function") {
+    try { window._majLabelDistanceItineraire(); } catch(e) {}
+  }
 }
 
 // =========================
@@ -675,6 +689,23 @@ function resetRoads() {
 
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
+
+  // 🆕 v1.8.1 : déclencher les hooks de fin de render pour synchroniser
+  // les UI dépendantes (panneau Distance totale + label distance itinéraire
+  // en bas-gauche). Sans ça, après un resetRoads() le label "🗺️ XX m"
+  // restait visible alors que l'itinéraire venait d'être effacé — bug
+  // visible quand l'user clique "🗑️ Effacer la session" dans la modale
+  // de feedback SessionPersist.
+  //
+  // On évite d'appeler renderRoads() (qui re-rendrait à blanc, inutile)
+  // et on appelle directement les hooks. Cohérent avec la fin de
+  // renderRoads() qui les appelle aussi.
+  if (typeof window._rdOnRoadsChanged === "function") {
+    try { window._rdOnRoadsChanged(); } catch(e) {}
+  }
+  if (typeof window._majLabelDistanceItineraire === "function") {
+    try { window._majLabelDistanceItineraire(); } catch(e) {}
+  }
 }
 
 // =========================

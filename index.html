@@ -314,12 +314,12 @@
        du header loader. Pattern .kta-readme-modal-overlay pour cohérence
        avec les autres modales du projet. -->
   <div id="loaderConfigModal" class="kta-readme-modal-overlay" style="display:none;">
-    <div class="kta-readme-modal-boite" style="max-width:680px; height:auto; max-height:90vh;">
+    <div class="kta-readme-modal-boite kta-loader-config-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">⚙️ Configuration</span>
         <button class="kta-panneau-close" id="loaderConfigClose">✕</button>
       </div>
-      <div class="kta-readme-modal-corps">
+      <div class="kta-readme-modal-corps kta-loader-config-corps">
 
         <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
         <div class="kta-aide-section">
@@ -438,31 +438,17 @@
           </p>
         </div>
 
-        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
-             Purge uniquement le cache Service Worker (assets HTTP) puis
-             reload → l'app récupère la dernière version sans toucher aux
-             données utilisateur (session, plans mémorisés, préférences,
-             code d'accès). Utile pour forcer une update même sans popup
-             ou si la détection version a foiré. -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre">🔄 Mise à jour</div>
-          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
-            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
-            re-télécharge la dernière version depuis le serveur. <strong>Tes données
-            sont préservées</strong> (plans mémorisés, sessions, préférences, code
-            d'accès). Nécessite une connexion Internet active.
-          </p>
-          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;">
-            🔄 Forcer la mise à jour
-          </button>
-        </div>
-
         <!-- 🔒 Confidentialité & Audit réseau (v1.8.0 "Privacy & Audit")
              Trois actions :
                1. 📋 Voir le journal réseau live (modale buffer)
                2. 📖 Que fait l'app sur le réseau ? (modale doc + lien doc/NETWORK_AUDIT.md)
                3. 🔒 Mode hors-ligne strict (toggle paranoia opt-in)
-             Cf. docs/NETWORK_AUDIT.md pour la doc complète. -->
+             Cf. docs/NETWORK_AUDIT.md pour la doc complète.
+
+             ⚠️ Ordre v1.8.0 (suite KARMA) : Confidentialité avant Force update
+             et avant Reset. Logique narrative : actions douces / informatives
+             d'abord (audit, mode strict), puis actions de purge progressive
+             (Force update = cache PWA uniquement, Reset = tout). -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">🔒 Confidentialité &amp; Audit</div>
           <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
@@ -478,6 +464,29 @@
             <input type="checkbox" id="loaderNetParanoiaCb">
             <span><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
           </label>
+        </div>
+
+        <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
+             Purge uniquement le cache Service Worker (assets HTTP) puis
+             reload → l'app récupère la dernière version sans toucher aux
+             données utilisateur (session, plans mémorisés, préférences,
+             code d'accès). Utile pour forcer une update même sans popup
+             ou si la détection version a foiré.
+
+             ⚠️ Position v1.8.0 (suite KARMA) : déplacé juste AVANT Reset
+             (et après Confidentialité), pour une gradation narrative
+             cohérente Force update (douce, garde data) → Reset (totale). -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🔄 Mise à jour</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:8px;">
+            Force une mise à jour douce : purge le cache des assets (HTML/JS/CSS) et
+            re-télécharge la dernière version depuis le serveur. <strong>Tes données
+            sont préservées</strong> (plans mémorisés, sessions, préférences, code
+            d'accès). Nécessite une connexion Internet active.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderForceUpdateBtn" style="width:100%;">
+            🔄 Forcer la mise à jour
+          </button>
         </div>
 
         <!-- 💥 Reset complet -->
@@ -2292,7 +2301,7 @@
             '<div class="kta-readme-modal-boite" style="max-width:480px; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
                 '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
-                '<button class="kta-readme-modal-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
+                '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
               '</div>' +
               '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
                 '<p style="margin:0 0 14px 0; line-height:1.55;">' +

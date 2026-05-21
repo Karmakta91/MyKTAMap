@@ -42,28 +42,43 @@
   let _currentPlanId = null;
   // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
   let _quotaWarned   = false;
+  // 🆕 v1.8.1 : ID du setTimeout de la phase 2 de restore (itinéraire différé).
+  // Permet d'annuler la phase 2 si l'user clique "Effacer la session" avant
+  // que les 1500ms ne soient écoulés — sinon l'itinéraire réapparaissait
+  // ~1.5s après l'effacement, ce qui était très perturbant.
+  let _phase2TimeoutId = null;
+  function _annulerPhase2() {
+    if (_phase2TimeoutId !== null) {
+      clearTimeout(_phase2TimeoutId);
+      _phase2TimeoutId = null;
+    }
+  }
 
   // ========== ETAT COURANT ==========
 
   function _gatherState() {
-    // ⚠️ On EXCLUT les roads de type "itinerary" du state persiste (depuis 09/05/2026
-    // suite 29). L'itineraire est un calcul derive du reseau de routes (Pathfinder),
-    // pas une annotation permanente. Ses tracés peuvent contenir des centaines de
-    // points et avec le drop-shadow CSS du halo neon, le rendu au boot saturait le
-    // GPU mobile / browser → crash au reload pour les utilisateurs ayant un
-    // itineraire actif au moment de fermer.
-    // L'utilisateur peut le recalculer en 2 clics via la modale 🗺️ apres reload.
-    const allRoads = window.getRoads ? (window.getRoads() || []) : [];
-    const persistableRoads = allRoads.filter(function(r) {
-      return r && r.type !== "itinerary";
-    });
+    // 🆕 v1.8.1 (demande KARMA) : on persiste DESORMAIS aussi les roads
+    // de type "itinerary". Avant (suite 29, 09/05/2026), elles etaient
+    // filtrees pour eviter un crash au reload (drop-shadow CSS du halo
+    // neon cyan qui saturait le GPU au boot quand applique trop tot dans
+    // le cycle de vie de Leaflet + tuiles V2 en cours de chargement).
+    //
+    // La premiere reactivation v1.8.0 (sans precaution) reproduisait
+    // exactement ce crash. Fix v1.8.1 : restore en DEUX PHASES cote
+    // _restore() — immediat pour les roads classiques, differe +1500ms
+    // pour les itineraires. Le timing mime celui du flow manuel d'import
+    // session (qui marche sans crash car l'app est deja stabilisee).
+    //
+    // Le SAVE lui-meme reste simple : on sauve tout. C'est cote RESTORE
+    // qu'on echelonne.
     return {
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
-      roads:        persistableRoads,
+      roads:        window.getRoads         ? (window.getRoads()         || []) : [],
       zones:        window.getZones         ? (window.getZones()         || []) : [],
       measure:      window.getMeasurePoints ? (window.getMeasurePoints() || []) : []
-      // tracker path : volontairement non persisté (cf. choix 3:b)
-      // itineraire (type road "itinerary") : volontairement non persisté (suite 29)
+      // tracker path : volontairement non persiste (cf. choix 3:b, tracker
+      // experimental, ressusciter un trail fige serait trompeur sans pos.
+      // recente du capteur).
     };
   }
 
@@ -190,6 +205,11 @@
   function clear() {
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
     _lastHash = null;
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
+    // l'user clique "🗑️ Effacer la session" dans la modale de feedback
+    // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait
+    // après l'effacement (timing piège du restore différé).
+    _annulerPhase2();
   }
 
   // ========== RESTORE ==========
@@ -205,17 +225,67 @@
         restored.points = payload.editorPoints.length;
       }
       // setRoads redessine en interne (renderRoads), donc juste reset + set.
-      // ⚠️ Filter "itinerary" cote restore aussi : les sessions sauvegardees AVANT
-      // le fix suite 29 peuvent encore contenir des itineraires en localStorage
-      // → sans ce filtre, elles continueraient a crasher au reload chez les
-      // utilisateurs qui n'ont pas encore vide leur cache.
+      // 🆕 v1.8.1 (re-fix KARMA) : restore en DEUX PHASES pour éviter le
+      // crash GPU au boot avec un itineraire actif :
+      //   - Phase 1 (immédiate) : toutes les roads SAUF itinerary
+      //   - Phase 2 (différée +1500ms) : les itinerary
+      //
+      // Pourquoi ? L'itineraire est rendu avec un CSS drop-shadow double
+      // (halo néon cyan) qui est coûteux en compositing GPU. Au boot, ce
+      // rendu se cumule avec :
+      //   - Leaflet pas encore stabilisé (zoom/center initial)
+      //   - Tuiles V2 en cours de chargement (placement progressif)
+      //   - Init des autres modules (Pathfinder, label distance, etc.)
+      // Le tout sature le GPU mobile → crash silencieux (= reload boucle).
+      //
+      // En import session MANUEL (UI sessionExporter), pas de problème :
+      // l'app est déjà stabilisée, le drop-shadow s'applique sans conflit.
+      // D'où ce différé qui mime le timing du flow manuel.
+      //
+      // Filtre defensif minimal : on garde le check r.type defini pour
+      // ignorer les entrees corrompues (anciens formats, edits manuels du
+      // localStorage, etc.).
       if (Array.isArray(payload.roads)) {
         const safeRoads = payload.roads.filter(function(r) {
-          return r && r.type !== "itinerary";
+          return r && typeof r.type === "string" && r.type.length > 0;
         });
+        // Sépare itinéraires (différés) du reste (immédiat)
+        const phaseImmediat = safeRoads.filter(function(r) { return r.type !== "itinerary"; });
+        const phaseDifferee = safeRoads.filter(function(r) { return r.type === "itinerary"; });
+
         if (window.resetRoads) window.resetRoads();
-        if (window.setRoads)   window.setRoads(safeRoads);
-        restored.roads = safeRoads.length;
+        if (window.setRoads)   window.setRoads(phaseImmediat);
+        restored.roads = safeRoads.length;  // on annonce le total (l'user verra l'itinéraire arriver après)
+
+        // Phase 2 : différé. 1500ms = laisser Leaflet finir son fitBounds
+        // initial + tuiles V2 se placer + autres modules s'initialiser.
+        // Si entre temps l'user a tracé une nouvelle road, on la préserve
+        // via concat sur getRoads() courant (pas un reset brutal).
+        if (phaseDifferee.length > 0) {
+          // Annuler une phase 2 en attente précédente (cas pathologique :
+          // double restore dans la même session, ne devrait pas arriver
+          // mais protection peu coûteuse).
+          _annulerPhase2();
+          _phase2TimeoutId = setTimeout(function() {
+            _phase2TimeoutId = null;  // marqué comme consommé
+            try {
+              const current = window.getRoads ? (window.getRoads() || []) : [];
+              // Sécurité : si l'user a entre-temps lancé une modale Itinéraire
+              // qui a créé son propre itinéraire, on ne l'écrase pas (filter
+              // sur current avant concat) — sinon on a 2 itinéraires en même
+              // temps ce qui casse le label distance.
+              const dejaIti = current.some(function(r) { return r && r.type === "itinerary"; });
+              if (dejaIti) {
+                console.info("[SessionPersist] phase 2 itinéraire : skip (un itinéraire actif existe déjà après la phase 1)");
+                return;
+              }
+              if (window.setRoads) window.setRoads(current.concat(phaseDifferee));
+              console.info("[SessionPersist] phase 2 : itinéraire restauré en mode différé");
+            } catch(e) {
+              console.warn("[SessionPersist] phase 2 échec restauration itinéraire :", e);
+            }
+          }, 1500);
+        }
       }
       // setZones redessine en interne (renderZones), donc juste reset + set
       if (Array.isArray(payload.zones)) {
@@ -239,6 +309,10 @@
   }
 
   function _viderEtatCourant() {
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente (même raison
+    // que dans clear() — cf. commentaire). Double protection en cas
+    // d'appel direct sans passer par clear().
+    _annulerPhase2();
     if (window.setEditorPoints)  window.setEditorPoints([]);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
@@ -348,6 +422,13 @@
   //  - Démarre le polling pour la nouvelle session
   function onPlanLoaded(planId) {
     _stopPolling();
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
+    // l'user a chargé une session avec itinéraire (phase 2 setTimeout
+    // de 1500ms en cours) puis a fait un plan switch (🗂️) avant que
+    // les 1500ms s'écoulent, le setTimeout finirait par s'exécuter sur
+    // le NOUVEAU plan → l'itinéraire de l'ancien plan apparaîtrait
+    // collé au nouveau. Bug subtil mais reproductible.
+    _annulerPhase2();
     _currentPlanId = planId || null;
     _lastHash = null;
 

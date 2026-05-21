@@ -25,7 +25,7 @@
 //   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v1.8.0";
+const CACHE_NAME = "myktamap-cache-v1.8.1";
 
 const ASSETS_TO_CACHE = [
   "./",

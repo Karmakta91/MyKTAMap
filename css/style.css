@@ -2306,6 +2306,56 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
 
 /* ==============================================
+   MODALE ⚙️ CONFIGURATION DU LOADER — responsive PC (depuis v1.8.0)
+   ==============================================
+   Mobile (default) : étroite (680px max), 1 colonne — comportement v1.7.3.
+   PC ≥ 1024px : 1100px max + columns: 2 (pattern identique aux modales
+   ⚙️ Réglages in-app et 📖 Documentation).
+
+   Différence avec la modale Aide (qui a SANS break-inside) : on ajoute
+   break-inside: avoid sur les sections (.kta-aide-section dans le corps).
+   Raison : les sections de Configuration contiennent des éléments
+   structurés (segmented control, toggles, boutons d'action) — couper en
+   plein milieu serait confusant pour l'user. Les 6 sections (Tiling,
+   ULTRA, Debug, Force update, Confidentialité, Réinitialisation) sont
+   relativement homogènes en hauteur, donc break-inside: avoid ne crée pas
+   de gros déséquilibre visuel entre les 2 colonnes.
+
+   Cohérence avec ⚙️ Réglages map mode (cf. bloc ci-dessus) : même CSS,
+   même comportement. La modale de la home et la modale in-app ont la
+   même apparence en PC. */
+.kta-loader-config-boite {
+  /* Mobile : préserve le comportement v1.7.3 (680px, h auto, max-h 90vh) */
+  max-width: 680px !important;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+
+@media (min-width: 1024px) {
+  .kta-loader-config-boite {
+    max-width: 1100px !important;
+    width: min(1100px, 96vw) !important;
+  }
+
+  /* Layout 2 colonnes via column-flow */
+  .kta-loader-config-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  /* Sections de Configuration : ne JAMAIS couper en plein milieu d'une
+     section. Compromis identique à la modale Réglages in-app — cf.
+     commentaire en tête de bloc. */
+  .kta-loader-config-corps .kta-aide-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}
+
+
+/* ==============================================
    LÉGENDE — icônes et tracés
    ============================================== */
 
@@ -2731,11 +2781,32 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   margin: auto 0;
 }
 
-/* ===== Loader-grid : wrapper transparent par défaut (mobile/tablette
-   ≤ 1023px), devient un grid 60/40 sur desktop (≥ 1024px) ===== */
+/* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
+   devient un grid 60/40 sur desktop (≥ 1024px).
+
+   🆕 v1.8.0 fix : remplacement de `display: contents` par
+   `display: flex; flex-direction: column;`.
+
+   Pourquoi : `display: contents` rend le wrapper "transparent" (les
+   enfants se comportent comme s'ils étaient dans le parent direct).
+   C'est élégant mais a des bugs subtils de re-évaluation lors des
+   transitions de viewport (rotation landscape→portrait notamment sur
+   Safari iOS) : certaines propriétés héritées du parent peuvent ne
+   pas se réappliquer correctement au flow flex/grid lorsqu'on passe
+   d'un display: grid (PC) à un display: contents (mobile).
+
+   Bug observé : drag d'un ZIP en portrait → rotation landscape →
+   retour portrait → l'aperçu/le bouton Charger restait à la taille
+   landscape au lieu de reprendre la largeur 100% mobile.
+
+   Fix : flex column ne provoque PAS de différence visuelle vs contents
+   (les enfants sont empilés verticalement dans les 2 cas), mais
+   s'évalue de manière déterministe à chaque resize → pas de bug
+   silencieux. ===== */
 .loader-grid {
-  display: contents;  /* Sur mobile, le wrapper disparaît → enfants directement
-                         dans #planLoaderBox, layout vertical comme avant */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 @media (min-width: 1024px) {
@@ -3845,6 +3916,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-weight: 600;
   margin-top: 6px;
   min-height: 16px;
+  /* 🆕 v1.8.0 fix : autoriser le wrap des noms de fichiers longs (ex:
+     "plan_carriere_de_bagneux_v2_KARMA_2026 (3).zip"). Sans ça, le nom
+     peut sortir du conteneur si le navigateur ne wrappe pas faute de
+     espace dans le nom (les `_` ne sont pas des break points naturels).
+     max-width:100% pour contraindre au parent. */
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ==============================================
@@ -4608,6 +4687,37 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .leaflet-bar a.kta-group-open {
   background: #2a3145 !important;
   color: #8cb4ff !important;
+}
+
+/* 🆕 v1.8.0 : Bouton principal quand le groupe a un MODE ACTIF en cours
+   (tracker en Play, mesure active, mode tracé route en cours, etc.).
+   Indicateur visuel discret persistant qui survit à la fermeture du
+   groupe — sans ça, après le fix v1.8.0 qui autorise la fermeture du
+   groupe en mode actif, l'user n'aurait plus aucun feedback visuel.
+
+   Petit point pulsant en haut-droite + bordure d'accent jaune douce.
+   Compatible avec .kta-group-open (s'ajoute, ne conflicte pas). */
+.leaflet-bar a.kta-group-mode-actif {
+  position: relative;
+  border-color: rgba(244, 197, 66, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.3) inset;
+}
+.leaflet-bar a.kta-group-mode-actif::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  background: #f4c542;
+  border-radius: 50%;
+  box-shadow: 0 0 4px 1px rgba(244, 197, 66, 0.6);
+  animation: kta-group-mode-pulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes kta-group-mode-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%      { opacity: 0.5; transform: scale(0.8); }
 }
 
 /* =========================
@@ -6848,6 +6958,13 @@ body.kta-multilevel-active .kta-compass-widget {
   font-size: 13px;
   line-height: 1.45;
   color: #c8d0e0;
+  /* 🆕 v1.8.0 fix : sans width:100% + box-sizing, un <label> en flex
+     reste shrink-to-fit côté width (= largeur du content max). Avec un
+     <span> long en flex:1 1 auto, le label débordait horizontalement
+     hors du conteneur de la modale Configuration → texte tronqué à
+     droite. Fix : largeur explicite du parent. */
+  width: 100%;
+  box-sizing: border-box;
 }
 .kta-net-paranoia-toggle:hover {
   background: rgba(255, 149, 0, 0.10);
@@ -6861,13 +6978,26 @@ body.kta-multilevel-active .kta-compass-widget {
 }
 .kta-net-paranoia-toggle span {
   flex: 1 1 auto;
+  /* min-width: 0 → permet au flex item de shrink en dessous de sa
+     largeur de contenu intrinsèque, donc d'autoriser le wrap propre
+     du texte. Sans ça, un texte long pouvait pousser le flex container
+     au-delà de sa largeur disponible (cf. piège classique flexbox). */
+  min-width: 0;
+  word-break: break-word;
 }
 
 /* Badge "MODE HORS-LIGNE STRICT" dans le footer du loader (visible
-   seulement quand paranoia ON). Cliquable → ouvre Configuration. */
+   seulement quand paranoia ON). Cliquable → ouvre Configuration.
+
+   🆕 v1.8.0 fix : ajout box-sizing:border-box. Sans ça, `<div>` est en
+   content-box par défaut (les `<button>` héritent border-box du user-agent
+   stylesheet mais pas les `<div>`), donc width:100% + padding 10/14 +
+   border 1px = 100% + 30px → débordement de 30px à droite hors du
+   #planLoaderBox parent. */
 .kta-net-paranoia-badge {
   display: block;
   width: 100%;
+  box-sizing: border-box;
   margin: 8px 0 12px 0;
   padding: 10px 14px;
   background: linear-gradient(135deg, rgba(255, 149, 0, 0.18), rgba(255, 149, 0, 0.08));

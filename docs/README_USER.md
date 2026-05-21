@@ -122,7 +122,7 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
 
 **À la première installation** (ou après un reset complet) :
-1. Le splash s'affiche normalement (4 secondes)
+1. Le splash s'affiche normalement (3,5 secondes)
 2. Un écran **🗝️ Accès restreint** apparaît avec un champ de saisie
 3. Saisis le code → clique **🔓 Déverrouiller**
 4. Si correct → l'app se charge normalement et tu n'as plus besoin de re-saisir
@@ -156,7 +156,7 @@ MyKTAMap peut être installée comme application native sur PC egalement — san
 
 ### 🎬 Animation au démarrage
 
-Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 4 secondes :
+Au lancement de l'application (ouverture de l'app PWA, refresh de la page, premier accès), une **animation de bienvenue** s'affiche pendant environ 3,5 secondes :
 
 - **Logo** MyKTAMap (rose des vents jaune)
 - **Titre** et sous-titre
