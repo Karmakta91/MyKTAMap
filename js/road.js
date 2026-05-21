@@ -689,6 +689,23 @@ function resetRoads() {
 
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
+
+  // 🆕 v1.8.1 : déclencher les hooks de fin de render pour synchroniser
+  // les UI dépendantes (panneau Distance totale + label distance itinéraire
+  // en bas-gauche). Sans ça, après un resetRoads() le label "🗺️ XX m"
+  // restait visible alors que l'itinéraire venait d'être effacé — bug
+  // visible quand l'user clique "🗑️ Effacer la session" dans la modale
+  // de feedback SessionPersist.
+  //
+  // On évite d'appeler renderRoads() (qui re-rendrait à blanc, inutile)
+  // et on appelle directement les hooks. Cohérent avec la fin de
+  // renderRoads() qui les appelle aussi.
+  if (typeof window._rdOnRoadsChanged === "function") {
+    try { window._rdOnRoadsChanged(); } catch(e) {}
+  }
+  if (typeof window._majLabelDistanceItineraire === "function") {
+    try { window._majLabelDistanceItineraire(); } catch(e) {}
+  }
 }
 
 // =========================
