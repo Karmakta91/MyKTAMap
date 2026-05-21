@@ -244,7 +244,7 @@ retrouver sans cache hors-ligne).
 
 ## 🤝 La position de l'auteur
 
-> *Je suis cataphile depuis 1995. Je connais la culture, et je sais que la
+> *Je suis cataphile depuis 2016. Je connais la culture, et je sais que la
 > méfiance envers une appli qui aurait une backdoor pour exfiltrer les
 > plans est totalement légitime. C'est pour ça que j'ai conçu MyKTAMap
 > comme une PWA 100 % client-side dès le départ : ce n'est pas un choix
