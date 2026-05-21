@@ -96,13 +96,27 @@
     // aucune donnée envoyée, juste un round-trip pour tester la connexion.
     function(url) {
       return url === "https://www.gstatic.com/generate_204";
+    },
+    // Blob URLs locales (URL.createObjectURL) — utilisées par le tiling V2
+    // pour servir les tuiles JPEG depuis le ZIP en mémoire. 100% LOCALES
+    // au navigateur, aucune fuite réseau possible : c'est juste un
+    // déréférencement de Blob déjà chargé en RAM. Cf. CLAUDE.md §27.
+    function(url) {
+      return typeof url === "string" && url.indexOf("blob:") === 0;
+    },
+    // Data URLs (base64 inline) — utilisées pour les icônes SVG inline
+    // et certains exports. Pas de fuite réseau possible.
+    function(url) {
+      return typeof url === "string" && url.indexOf("data:") === 0;
     }
   ];
 
   // Descriptions human-readable (affichées dans la modale doc audit)
   const WHITELIST_HUMAN = [
     "Même origine (l'app elle-même : " + location.origin + ")",
-    "https://www.gstatic.com/generate_204 (ping connectivité, mode no-cors, aucune donnée envoyée — juste un HTTP 204 No Content)"
+    "https://www.gstatic.com/generate_204 (ping connectivité, mode no-cors, aucune donnée envoyée — juste un HTTP 204 No Content)",
+    "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
+    "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
   ];
 
   // ============================================================
@@ -133,6 +147,14 @@
   function _classify(url) {
     if (!url) return "unknown";
     if (url === "https://www.gstatic.com/generate_204") return "ping";
+    // Les blob URLs sont 100% LOCALES au navigateur (créées via
+    // URL.createObjectURL à partir de Blob déjà en mémoire — typiquement
+    // les tuiles V2 du tiling). Aucune fuite réseau possible : c'est juste
+    // un déréférencement de donnée déjà présente. Catégorie dédiée pour
+    // ne pas afficher en rouge "external" et inquiéter l'user.
+    if (typeof url === "string" && url.indexOf("blob:") === 0) return "local-blob";
+    // Idem pour data: URLs (base64 inline)
+    if (typeof url === "string" && url.indexOf("data:") === 0) return "local-data";
     try {
       const u = new URL(url, location.origin);
       if (u.origin !== location.origin) return "external";
