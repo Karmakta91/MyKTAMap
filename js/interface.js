@@ -1720,6 +1720,21 @@ function afficherConfig() {
               </span>
             </span>
           </label>
+          <!-- 🆕 v1.9.2 : toggle "afficher les ronds aux intersections de tracés".
+               Pas de reload requis (setShowRoadIntersections appelle renderRoads()
+               à chaud). Pratique pour aérer visuellement les plans très denses. -->
+          <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+            <input type="checkbox" id="cfg_showRoadIntersections" ${c.showRoadIntersections !== false ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">⚪ Afficher les ronds aux intersections de tracés</span>
+              <span class="kta-perf-ultra-hint">
+                Coché par défaut : un cercle plein coloré est dessiné au croisement
+                de 2 tracés (vert/violet/jaune selon la priorité de type).
+                <strong>Décocher</strong> pour aérer visuellement les plans très denses.
+                Effet immédiat — pas de reload nécessaire.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div class="kta-aide-section">
@@ -1840,6 +1855,15 @@ function appliquerConfig() {
   // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
   const cbScaled = document.getElementById("cfg_scaledMarkers");
   if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
+
+  // 🆕 v1.9.2 : showRoadIntersections (effet immédiat via renderRoads())
+  // On délègue à setShowRoadIntersections qui appelle renderRoads() à chaud.
+  const cbInter = document.getElementById("cfg_showRoadIntersections");
+  if (cbInter && typeof window.setShowRoadIntersections === "function") {
+    window.setShowRoadIntersections(!!cbInter.checked);
+  } else if (cbInter) {
+    APP_CONFIG.showRoadIntersections = !!cbInter.checked;
+  }
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
   if (window.resetTrackingPosition) window.resetTrackingPosition();

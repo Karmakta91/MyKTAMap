@@ -490,6 +490,15 @@
             <input type="checkbox" id="loaderLegacyCb">
             <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — reload requis au toggle.</span>
           </label>
+          <!-- 🆕 v1.9.2 : toggle "afficher les ronds aux intersections de tracés".
+               Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user peut
+               basculer ici aussi sans avoir à charger un plan. Sera appliqué
+               au prochain renderRoads (= au chargement du plan si toggle fait
+               ici depuis la home). -->
+          <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="loaderShowIntersectionsCb" checked>
+            <span><strong>⚪ Afficher les ronds aux intersections de tracés</strong> — cercle plein coloré au croisement de 2 tracés. <strong>Décocher</strong> pour aérer visuellement les plans très denses. Effet immédiat.</span>
+          </label>
         </div>
 
         <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
@@ -2090,6 +2099,32 @@
             } catch(e) {}
             if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
               location.reload();
+            }
+          }
+        });
+      }
+
+      // 🆕 v1.9.2 : Toggle "afficher les ronds aux intersections de tracés"
+      // Pareil que dans ⚙️ Réglages map mode (cf. interface.js > afficherConfig)
+      // L'état est lu depuis APP_CONFIG.showRoadIntersections (default true).
+      // Au toggle : on délègue à setShowRoadIntersections qui persiste + appelle
+      // renderRoads() à chaud si la carte est chargée. Depuis le loader (pas
+      // de plan chargé), renderRoads est no-op, mais la pref est persistée et
+      // sera appliquée au prochain chargement de plan.
+      const showInterCb = document.getElementById("loaderShowIntersectionsCb");
+      if (showInterCb) {
+        try {
+          showInterCb.checked = !window.APP_CONFIG || window.APP_CONFIG.showRoadIntersections !== false;
+        } catch(e) {}
+
+        showInterCb.addEventListener("change", function() {
+          if (typeof window.setShowRoadIntersections === "function") {
+            window.setShowRoadIntersections(showInterCb.checked);
+          } else if (window.APP_CONFIG) {
+            // Fallback : set direct + persistance manuelle
+            window.APP_CONFIG.showRoadIntersections = !!showInterCb.checked;
+            if (typeof window.sauvegarderPrefsUtilisateur === "function") {
+              window.sauvegarderPrefsUtilisateur();
             }
           }
         });
