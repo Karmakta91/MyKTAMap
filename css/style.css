@@ -7487,7 +7487,10 @@ body.kta-refonte-v1 .leaflet-top.leaflet-left,
 body.kta-refonte-v1 .leaflet-top.leaflet-right {
   display: flex;
   flex-direction: column;
-  padding-top: 2px !important;
+  /* 🆕 Refonte v1.2 itéré : padding-top 0 = bouton ≡ COLLÉ au header
+     (feedback KARMA "je veux que les icone de reduction de barre soit
+     coller au head"). Avant : 2px de gap minime. */
+  padding-top: 0 !important;
   /* Scroll interne si la sidebar dépasse la hauteur disponible (entre
      header 44px et footer 52px, moins safe-areas). */
   max-height: calc(100vh - 44px - 52px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4px);
@@ -7651,6 +7654,39 @@ body.kta-refonte-v1 .kta-compass-widget {
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
   bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MODALES — réserver l'espace du header + footer en mode refonte
+   ─────────────────────────────────────────────────────────────────
+   Bug remonté KARMA : la modale "Distance totale" s'affichait sous
+   le footer (modale plein écran centrée verticalement → la boîte
+   débordait dans la zone occupée par le status bar 52px).
+
+   Cause : .kta-readme-modal-overlay a `inset: 0; align-items: center`.
+   Le centrage flex prend tout le viewport (100vh), donc une boîte
+   de 88vh est centrée à 6vh du top + 6vh du bottom. En mode refonte,
+   les 6vh du bottom passent SOUS le footer fixed (52px + safe-area).
+
+   Fix : padding-top + padding-bottom sur l'overlay en mode refonte
+   pour réserver l'espace des 2 bars. Le fond sombre couvre toujours
+   tout l'écran (inset:0 + background rgba), mais la boîte centrée
+   reste dans la zone padding-box → plus de débordement.
+
+   Concerne TOUTES les modales utilisant .kta-readme-modal-overlay :
+   Distance totale, Itinéraire, Configuration, Aide, Audit, etc. */
+body.kta-refonte-v1 .kta-readme-modal-overlay {
+  padding-top:    calc(44px + env(safe-area-inset-top, 0px) + 16px);
+  padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* En landscape mobile, header et footer sont plus courts (36/40px),
+   ajustement cohérent. */
+@media (max-height: 500px) and (orientation: landscape) {
+  body.kta-refonte-v1 .kta-readme-modal-overlay {
+    padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
+    padding-bottom: calc(40px + env(safe-area-inset-bottom, 0px) + 8px);
+  }
 }
 
 /* ─────────────────────────────────────────────────────────────────
