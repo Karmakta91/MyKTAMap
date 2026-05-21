@@ -204,10 +204,11 @@
     const countersBtn = document.getElementById("kta-refonte-counters-btn");
     if (countersBtn) {
       countersBtn.addEventListener("click", function() {
-        // Pour l'instant : juste un re-update des compteurs (donne un
-        // feedback visuel sans ouvrir de modale dédiée). En phase 3 on
-        // pourra ouvrir un panneau "Résumé de la session" complet.
-        updateCompteurs();
+        // 🆕 Clic sur les compteurs → modale "📊 Détails de la session"
+        // listant tous les éléments (points, tracés, zones, mesure,
+        // itinéraire, tracker) avec leurs infos détaillées.
+        updateCompteurs();  // refresh des valeurs avant ouverture
+        _afficherModaleSessionDetail();
       });
     }
 
@@ -419,6 +420,217 @@
       clearInterval(_pollTimer);
       _pollTimer = null;
     }
+  }
+
+  // ============================================================
+  // MODALE "📊 DÉTAILS DE LA SESSION"
+  // ============================================================
+  // Ouverte au clic sur les compteurs du header refondu.
+  // Liste tous les éléments de la session active avec leurs infos :
+  //   - Points ajoutés (id, nom, tags, coord, level si multi-niveau)
+  //   - Tracés (type, nb points, distance, level)
+  //   - Zones (type, nb sommets, level)
+  //   - Mesure simple (distance)
+  //   - Itinéraire actif (waypoints, distance, temps estimé)
+  //   - Tracker (statut, position, distance parcourue)
+  //
+  // Pattern .kta-readme-modal-overlay pour cohérence charte projet.
+  function _afficherModaleSessionDetail() {
+    // Cleanup éventuel d'une instance précédente
+    const existing = document.getElementById("kta-refonte-session-modal");
+    if (existing) { existing.remove(); return; }
+
+    const points  = (window.getEditorPoints  && window.getEditorPoints()  || []);
+    const roads   = (window.getRoads         && window.getRoads()         || []);
+    const zones   = (window.getZones         && window.getZones()         || []);
+    const mesure  = (window.getMeasurePoints && window.getMeasurePoints() || []);
+    const scale   = (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
+    const multiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
+
+    // ─── HTML helpers ───
+    function _esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+        return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+      });
+    }
+    function _distRoad(road) {
+      if (!road || !Array.isArray(road.points) || road.points.length < 2) return 0;
+      let total = 0;
+      for (let i = 1; i < road.points.length; i++) {
+        const dx = road.points[i].x - road.points[i-1].x;
+        const dy = road.points[i].y - road.points[i-1].y;
+        total += Math.sqrt(dx*dx + dy*dy);
+      }
+      return total / scale;
+    }
+    function _formatDist(distM) {
+      if (typeof window.formatDistance === "function") return window.formatDistance(distM, 1);
+      if (distM >= 1000) return (distM / 1000).toFixed(2) + " km";
+      return distM.toFixed(1) + " m";
+    }
+
+    // ─── Construction du contenu ───
+    let html = "";
+
+    // 📍 Points
+    html += '<div class="kta-refonte-session-section">';
+    html += '<div class="kta-refonte-session-section-titre">📍 Points ajoutés <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
+    if (points.length === 0) {
+      html += '<div class="kta-refonte-session-empty">Aucun point ajouté pour le moment. Utilise ✏️ Édition pour en ajouter.</div>';
+    } else {
+      html += '<ul class="kta-refonte-session-list">';
+      points.forEach(function(p) {
+        const tag    = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : "—";
+        const nom    = p.nom || p.id || "(sans nom)";
+        const coord  = Math.round(p.x || 0) + ", " + Math.round(p.y || 0);
+        const level  = multiLevel ? ' · 🏗 N' + (p.level || 0) : '';
+        html += '<li>' +
+          '<strong>' + _esc(nom) + '</strong>' +
+          '<span class="kta-refonte-session-meta">' + _esc(tag) + ' · ' + coord + level + '</span>' +
+        '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+
+    // 🛣 Tracés
+    const roadsNonIti = roads.filter(function(r) { return r.type !== "itinerary"; });
+    const itineraire  = roads.find(function(r) { return r.type === "itinerary"; });
+    html += '<div class="kta-refonte-session-section">';
+    html += '<div class="kta-refonte-session-section-titre">🛣 Tracés <span class="kta-refonte-session-badge">' + roadsNonIti.length + '</span></div>';
+    if (roadsNonIti.length === 0) {
+      html += '<div class="kta-refonte-session-empty">Aucun tracé. Utilise 🛣 Tracés pour dessiner.</div>';
+    } else {
+      // Group par type pour résumé
+      const byType = {};
+      roadsNonIti.forEach(function(r) {
+        const t = r.type || "?";
+        if (!byType[t]) byType[t] = { nb: 0, distM: 0 };
+        byType[t].nb += 1;
+        byType[t].distM += _distRoad(r);
+      });
+      html += '<ul class="kta-refonte-session-list">';
+      Object.keys(byType).forEach(function(t) {
+        const stats = byType[t];
+        const tLabel = t === "principal" ? "Principal" :
+                       t === "secondaire" ? "Secondaire" :
+                       t === "chemin" ? "Chemin" :
+                       t === "jonction" ? "Jonction interniveau" : t;
+        html += '<li>' +
+          '<strong>' + _esc(tLabel) + '</strong>' +
+          '<span class="kta-refonte-session-meta">' +
+            stats.nb + ' tracé' + (stats.nb > 1 ? 's' : '') + ' · ' + _formatDist(stats.distM) +
+          '</span>' +
+        '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+
+    // ⬛ Zones
+    html += '<div class="kta-refonte-session-section">';
+    html += '<div class="kta-refonte-session-section-titre">⬛ Zones <span class="kta-refonte-session-badge">' + zones.length + '</span></div>';
+    if (zones.length === 0) {
+      html += '<div class="kta-refonte-session-empty">Aucune zone tracée. Utilise ⬛ Zones pour en délimiter.</div>';
+    } else {
+      const zByType = {};
+      zones.forEach(function(z) {
+        const t = z.type || "?";
+        zByType[t] = (zByType[t] || 0) + 1;
+      });
+      html += '<ul class="kta-refonte-session-list">';
+      Object.keys(zByType).forEach(function(t) {
+        const tLabel = t === "eau" ? "Eau 🟦" :
+                       t === "remblais" ? "Remblais ⬛" :
+                       t === "effondrement" ? "Effondrement 🟥" :
+                       t === "inaccessible" ? "Inaccessible ⛔" : t;
+        const nb = zByType[t];
+        html += '<li>' +
+          '<strong>' + _esc(tLabel) + '</strong>' +
+          '<span class="kta-refonte-session-meta">' + nb + ' zone' + (nb > 1 ? 's' : '') + '</span>' +
+        '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+
+    // 📐 Mesure simple + 🗺️ Itinéraire + 🚶 Tracker
+    const tFoo = !!(window.getTrackingPosition && window.getTrackingPosition());
+    if (mesure.length >= 2 || itineraire || tFoo) {
+      html += '<div class="kta-refonte-session-section">';
+      html += '<div class="kta-refonte-session-section-titre">📊 Autres mesures</div>';
+      html += '<ul class="kta-refonte-session-list">';
+
+      // Mesure simple
+      if (mesure.length >= 2) {
+        let total = 0;
+        for (let i = 1; i < mesure.length; i++) {
+          const dx = mesure[i].x - mesure[i-1].x;
+          const dy = mesure[i].y - mesure[i-1].y;
+          total += Math.sqrt(dx*dx + dy*dy);
+        }
+        html += '<li>' +
+          '<strong>📐 Mesure simple</strong>' +
+          '<span class="kta-refonte-session-meta">' + _formatDist(total / scale) + ' (' + mesure.length + ' points)</span>' +
+        '</li>';
+      }
+
+      // Itinéraire
+      if (itineraire) {
+        const distIti = _distRoad(itineraire);
+        const nbWp = Array.isArray(itineraire.waypoints) ? itineraire.waypoints.length : 0;
+        html += '<li>' +
+          '<strong>🗺️ Itinéraire actif</strong>' +
+          '<span class="kta-refonte-session-meta">' +
+            _formatDist(distIti) + (nbWp > 0 ? ' · ' + nbWp + ' waypoint' + (nbWp > 1 ? 's' : '') : '') +
+          '</span>' +
+        '</li>';
+      }
+
+      // Tracker
+      if (tFoo) {
+        const pos = window.getTrackingPosition();
+        html += '<li>' +
+          '<strong>🚶 Tracker</strong>' +
+          '<span class="kta-refonte-session-meta">' +
+            'Actif · (' + Math.round(pos.x) + ', ' + Math.round(pos.y) + ')' +
+          '</span>' +
+        '</li>';
+      }
+
+      html += '</ul>';
+      html += '</div>';
+    }
+
+    // ─── Création de la modale ───
+    const overlay = document.createElement("div");
+    overlay.id = "kta-refonte-session-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.display = "flex";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-refonte-session-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">📊 Détails de la session</span>' +
+          '<button class="kta-panneau-close" id="kta-refonte-session-close" aria-label="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-refonte-session-corps">' +
+          html +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    function _close() {
+      try { overlay.remove(); } catch(e) {}
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) {
+      if (e.key === "Escape") _close();
+    }
+    document.addEventListener("keydown", _onKey);
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close();
+    });
+    document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
   }
 
   // ============================================================

@@ -33,7 +33,7 @@
 //
 // À la fin de la refonte (merge sur main), on alignera tout à un vrai
 // bump v1.8.2 ou v1.9.0 et on retirera ce suffix.
-const CACHE_NAME = "myktamap-cache-v1.8.1-refonte-8";
+const CACHE_NAME = "myktamap-cache-v1.8.1-refonte-9";
 
 const ASSETS_TO_CACHE = [
   "./",

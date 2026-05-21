@@ -7289,9 +7289,23 @@ body.kta-refonte-v1 .kta-refonte-header {
   user-select: none;
 }
 
-/* Décale tous les controls Leaflet sous le header */
+/* 🆕 v1.8.1-refonte-9 fix bug double-comptage (KARMA capture iPhone) :
+   l'ancienne règle `.leaflet-top { top: calc(44 + safe-top) }` cumulait
+   le décalage AVEC le #map qui est déjà décalé. Sur iPhone notch
+   (safe-top ≈ 50px), ça faisait un gap de ~190px au lieu de 0.
+
+   Maintenant : .leaflet-top reste à top:0 natif Leaflet (relatif au
+   .leaflet-container qui est dans #map déjà décalé de 44+safe-top du
+   viewport). Le gap effectif viewport→sidebar = 44 + safe-top + 0 = 44 +
+   safe-top. PARFAIT, sidebar collée juste sous le header. */
 body.kta-refonte-v1 .leaflet-top {
-  top: calc(44px + env(safe-area-inset-top, 0px));
+  /* Laisser top: 0 natif Leaflet, le décalage est déjà sur #map */
+  top: 0 !important;
+}
+/* Idem .leaflet-bottom : laisser bottom:0 natif, le footer est déjà
+   pris en compte par #map { bottom: calc(52 + safe-bottom) }. */
+body.kta-refonte-v1 .leaflet-bottom {
+  bottom: 0 !important;
 }
 
 /* Masque le titre fixe actuel (#kta-titre-fixe) — remplacé par le header bar */
@@ -7706,6 +7720,110 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   📊 MODALE "Détails de la session"
+   ─────────────────────────────────────────────────────────────────
+   Ouverte au clic sur les compteurs du header refondu (📍 N · 🛣 N · ⬛ N).
+   Liste tous les éléments de la session active.
+   ───────────────────────────────────────────────────────────────── */
+
+.kta-refonte-session-boite {
+  max-width: 560px !important;
+  width: 100%;
+  max-height: 80vh;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.kta-refonte-session-corps {
+  overflow-y: auto;
+  padding: 16px 18px !important;
+  color: #c8d0e0;
+}
+
+.kta-refonte-session-section {
+  margin-bottom: 18px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.kta-refonte-session-section:last-child {
+  margin-bottom: 0;
+}
+
+.kta-refonte-session-section-titre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kta-refonte-session-badge {
+  display: inline-block;
+  background: rgba(244, 197, 66, 0.18);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.32);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 18px;
+  text-align: center;
+}
+
+.kta-refonte-session-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.kta-refonte-session-list li {
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+.kta-refonte-session-list li:last-child {
+  border-bottom: none;
+}
+.kta-refonte-session-list strong {
+  color: #e8eaf0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.kta-refonte-session-meta {
+  color: #8892a4;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.kta-refonte-session-empty {
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12px;
+  padding: 8px 0;
+}
+
+/* Compteurs du header — feedback visuel cliquable */
+body.kta-refonte-v1 #kta-refonte-counters-btn {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+body.kta-refonte-v1 #kta-refonte-counters-btn:hover,
+body.kta-refonte-v1 #kta-refonte-counters-btn:focus-visible {
+  background: rgba(140, 180, 255, 0.12);
+  outline: none;
+}
+body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
+  background: rgba(140, 180, 255, 0.18);
+  border-color: rgba(140, 180, 255, 0.50);
+}
+
+/* ─────────────────────────────────────────────────────────────────
    STATUS BAR (sticky bottom, 36px ouvert / 14px replié)
    ───────────────────────────────────────────────────────────────── */
 
@@ -7809,24 +7927,29 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
   outline: none;
 }
 
-/* Décale les labels Leaflet bottom (mesure, distance totale, itinéraire)
-   pour qu'ils soient au-dessus de la status bar. Mais en refonte v1 ils
-   sont MASQUÉS car remplacés par les stats du status bar.
-   🆕 Hauteur du statusbar : 52px (itéré KARMA iPhone) */
-body.kta-refonte-v1 .leaflet-bottom {
-  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
-}
+/* MASQUAGE des labels Leaflet bottom en mode refonte — ils sont
+   remplacés par les stats du status bar en bas.
+   🆕 v1.8.1-refonte-9 fix KARMA : classe `.kta-measure-distance`
+   (anglais "measure", pas "mesure" FR comme j'avais écrit avant).
+   Le label "Distance : 0 m" restait visible en mode refonte car
+   ma règle .kta-mesure-distance ne matchait jamais.
+
+   La classe .kta-measure-label-control est un legacy alias potentiel
+   (gardé par sécurité), et #measureLabel est l'id du même élément
+   (double protection). */
 body.kta-refonte-v1 .kta-iti-distance,
-body.kta-refonte-v1 .kta-mesure-distance,
-body.kta-refonte-v1 .kta-measure-label-control {
+body.kta-refonte-v1 .kta-measure-distance,
+body.kta-refonte-v1 .kta-mesure-distance,        /* legacy fallback */
+body.kta-refonte-v1 .kta-measure-label-control,
+body.kta-refonte-v1 #measureLabel {
   display: none !important;
 }
-/* Si user replie la status bar, on remonte les controls bottom-left
-   (layer control natif Leaflet, attribution, etc.) en conséquence
-   🆕 Statusbar replié : 20px */
-body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leaflet-bottom {
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-}
+/* Les anciens overrides `.leaflet-bottom { bottom: 52px }` et
+   collapsed → 20px ont été RETIRÉS (fix double-comptage v1.8.1-refonte-9).
+   La position bottom des controls .leaflet-bottom est désormais 0
+   relatif au .leaflet-container, qui est lui-même dans #map qui
+   s'arrête à `bottom: calc(52 + safe-bottom)` du viewport.
+   → controls bottom-left automatiquement au-dessus du statusbar. */
 
 /* ─────────────────────────────────────────────────────────────────
    #map décalé pour laisser place au header + status bar
@@ -7855,9 +7978,6 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 .kta-refonte-header {
     height: calc(36px + env(safe-area-inset-top, 0px));
   }
-  body.kta-refonte-v1 .leaflet-top {
-    top: calc(36px + env(safe-area-inset-top, 0px));
-  }
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
@@ -7875,9 +7995,11 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
-  body.kta-refonte-v1 .leaflet-bottom {
-    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
-  }
+  /* 🆕 v1.8.1-refonte-9 : .leaflet-top et .leaflet-bottom RESTENT à
+     0 (natif Leaflet) car le #map est déjà décalé. Les anciens overrides
+     `.leaflet-top { top: 36+safe-top }` et `.leaflet-bottom { bottom:
+     40+safe-bottom }` causaient un double-comptage = gros gap visible
+     sur iPhone (KARMA capture). Retirés. */
   /* Et la rose des vents du header — taille réduite */
   body.kta-refonte-v1 .kta-refonte-header-home-img {
     height: 22px;

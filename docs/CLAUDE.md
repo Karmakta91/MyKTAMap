@@ -2298,8 +2298,45 @@ Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Int
 
 #### 41.0.2 Helper exposé par interface.js
 
-- `window._fermerGroupeOuvertSide(side)` (side = "left"/"right") → ferme le groupe accordéon ouvert si présent dans la sidebar demandée. Appelé par le bouton ≡ pour fermer un sous-menu avant de collapser (cohérence UX). Skip si `modeActif` (anti-coupure tracker en Play).
+- `window._fermerGroupeOuvertSide(side)` (side = "left"/"right") → ferme le groupe accordéon ouvert si présent dans la sidebar demandée. Appelé par le bouton ▾/▸/◂ pour fermer un sous-menu avant de collapser (cohérence UX). Skip si `modeActif` (anti-coupure tracker en Play).
 - Chaque groupe stocke désormais `position` (topleft/topright) dans `_groupes[id]` pour permettre ce filtrage par sidebar.
+- `window._retourLoaderAvecConfirm()` → utilisé par le bouton 🌟 (rose des vents) du header refondu pour retourner à la home avec la modale charte "Changer de plan" (au lieu de `confirm()` natif).
+
+#### 41.0.3 Icônes du bouton réduction (depuis -refonte-7)
+
+Évolution suite à feedback KARMA (l'ancien `≡` ressemblait trop à l'icône des calques Leaflet) :
+- `▾` = sidebar déployée (flèche vers le bas, "tout est visible en dessous")
+- `▸` = sidebar gauche repliée (flèche vers l'intérieur = centre de l'écran)
+- `◂` = sidebar droite repliée (flèche vers l'intérieur)
+
+Helper interne `_iconeCollapse(side, isCollapsed)` dans refonteInterface.js qui retourne le bon caractère selon état + côté.
+
+#### 41.0.4 Sémantique du flag — INVERSION depuis -refonte-8
+
+**Avant** (-refonte-7 et antérieur) : opt-in via `localStorage["myktamap_refonte_v1"] = "1"` — sans clé = ancienne interface (défaut).
+
+**Maintenant** (-refonte-8+) : **OPT-OUT** via `localStorage["myktamap_legacy_interface"] = "1"` — sans clé = **nouvelle interface (défaut)**. L'user doit explicitement cocher "Utiliser l'ancienne interface" pour revenir à v1.8.x classique.
+
+**Migration silencieuse au boot** : si l'user avait l'ancien flag `myktamap_refonte_v1 = "1"` (= refonte activée manuellement), on le supprime du localStorage. Il était en mode refonte → reste en mode refonte (= défaut maintenant). Aucun changement d'expérience pour cet user.
+
+**Toggle accessible depuis 2 endroits** :
+- ⚙️ **Configuration du loader** (home) → section "🎨 Affichage" → checkbox `loaderLegacyCb`
+- ⚙️ **Réglages map mode** (in-app) → section "🎨 Affichage" → checkbox `kta-cfg-legacy-cb`
+
+Le code lit `window._refonteInterfaceActive` (booléen exposé par refonteInterface.js au tout début du module). API `window.RefonteInterface.setActive(true|false)` accepte un booléen `wantNouvelle` (true = nouvelle, false = legacy) → confirm + reload.
+
+#### 41.0.5 Modale "📊 Détails de la session" (depuis -refonte-9)
+
+Compteurs du header (📍 N · 🛣 N · ⬛ N) devenus cliquables → ouvrent une modale qui liste **tous les éléments de la session active** avec leurs infos détaillées :
+
+| Section | Contenu |
+|---|---|
+| 📍 Points ajoutés | Liste avec nom / tag principal / coord / niveau si multi-niveau |
+| 🛣 Tracés | Regroupement par type (Principal/Secondaire/Chemin/Jonction) avec compteur + distance totale par type |
+| ⬛ Zones | Regroupement par type (Eau/Remblais/Effondrement/Inaccessible) avec compteur |
+| 📊 Autres mesures | Mesure simple (si points ≥ 2), Itinéraire actif (distance + nb waypoints), Tracker (position si actif) |
+
+Fonction `_afficherModaleSessionDetail()` dans refonteInterface.js. Pattern `.kta-readme-modal-overlay` + box max-width 560px + sections card-stack. Recalcule en live à chaque ouverture (pas de cache, données fraîches). Toggle re-clic = reopen direct (cleanup d'instance précédente).
 
 ### 41. Refonte UI v1 — Sidebars gauche/droite + Header/Status bar (branche `Refonte_interface`)
 
