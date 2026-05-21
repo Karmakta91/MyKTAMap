@@ -2727,11 +2727,21 @@ function _setGroupeModeActif(id, actif, iconeReflet) {
       g.btnPrincipal.dataset.iconeOriginale = g.btnPrincipal.dataset.iconeOriginale || g.btnPrincipal.innerHTML;
       g.btnPrincipal.innerHTML = iconeReflet;
     }
+    // 🆕 v1.8.0 : classe CSS persistante sur le btnPrincipal quand un mode
+    // est actif. Permet à l'user de voir d'un coup d'œil que le mode tourne
+    // même quand il a replié le groupe (fix v1.8.0 du toggle qui autorise
+    // la fermeture en modeActif). Utile en particulier pour le tracker
+    // depuis qu'on ne remplace plus l'icône par ⏹️ (fix v1.8.0 KARMA :
+    // garder 🧭 toujours visible comme identité du groupe). Sans cette
+    // classe, l'user n'aurait aucun feedback visuel que tracker tourne
+    // une fois le groupe replié.
+    if (g.btnPrincipal) g.btnPrincipal.classList.add("kta-group-mode-actif");
     _ouvrirGroupe(id);
   } else {
     if (g.btnPrincipal && g.btnPrincipal.dataset.iconeOriginale) {
       g.btnPrincipal.innerHTML = g.btnPrincipal.dataset.iconeOriginale;
     }
+    if (g.btnPrincipal) g.btnPrincipal.classList.remove("kta-group-mode-actif");
   }
 }
 
@@ -2987,7 +2997,16 @@ function initInterface() {
             requestPermission();
             startTracking();
             btnSub.innerHTML = "⏹️";
-            _setGroupeModeActif("tracker", true, "⏹️");
+            // 🆕 v1.8.0 (fix KARMA) : on garde l'icône principale 🧭
+            // pendant le Play (au lieu de la remplacer par ⏹️ comme avant).
+            // Le ⏹️ est déjà visible en sous-action (btnSub ci-dessus),
+            // donc le mettre aussi en principal était redondant et
+            // perdait l'identité visuelle du groupe Tracker.
+            // Le mode actif reste signalé par : (a) la sous-action ⏹️
+            // visible, (b) le groupe qui reste ouvert (modeActif=true),
+            // (c) la couleur d'accent CSS sur le groupe via .kta-actif
+            // si applicable.
+            _setGroupeModeActif("tracker", true, null);
             isTracking = true;
           };
           if (_trackerWarningAcknowledged) {
@@ -3021,7 +3040,9 @@ function initInterface() {
           _desactiverTousLesModes();
           if (dejaActif) {
             modeRecalage = false;
-            _setGroupeModeActif("tracker", isTracking, isTracking ? "⏹️" : null);
+            // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
+// tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
+_setGroupeModeActif("tracker", isTracking, null);
             return;
           }
           modeRecalage = true;
@@ -3031,7 +3052,9 @@ function initInterface() {
             desactiverFn: function() {
               modeRecalage = false;
               btnSub.classList.remove("kta-actif");
-              _setGroupeModeActif("tracker", isTracking, isTracking ? "⏹️" : null);
+              // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
+// tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
+_setGroupeModeActif("tracker", isTracking, null);
             }
           };
           _setGroupeModeActif("tracker", true, "📍");

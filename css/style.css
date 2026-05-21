@@ -4689,6 +4689,37 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #8cb4ff !important;
 }
 
+/* 🆕 v1.8.0 : Bouton principal quand le groupe a un MODE ACTIF en cours
+   (tracker en Play, mesure active, mode tracé route en cours, etc.).
+   Indicateur visuel discret persistant qui survit à la fermeture du
+   groupe — sans ça, après le fix v1.8.0 qui autorise la fermeture du
+   groupe en mode actif, l'user n'aurait plus aucun feedback visuel.
+
+   Petit point pulsant en haut-droite + bordure d'accent jaune douce.
+   Compatible avec .kta-group-open (s'ajoute, ne conflicte pas). */
+.leaflet-bar a.kta-group-mode-actif {
+  position: relative;
+  border-color: rgba(244, 197, 66, 0.6) !important;
+  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.3) inset;
+}
+.leaflet-bar a.kta-group-mode-actif::after {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 7px;
+  height: 7px;
+  background: #f4c542;
+  border-radius: 50%;
+  box-shadow: 0 0 4px 1px rgba(244, 197, 66, 0.6);
+  animation: kta-group-mode-pulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes kta-group-mode-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%      { opacity: 0.5; transform: scale(0.8); }
+}
+
 /* =========================
    FIX MOBILE PAYSAGE — barre dans le cadre
    ========================= */
