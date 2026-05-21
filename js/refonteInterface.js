@@ -388,30 +388,62 @@
     // Synchro immédiate (et fallback si ResizeObserver pas dispo : on
     // appelle quand même au chargement + sur orientationchange/resize).
     _syncH();
-    window.addEventListener("orientationchange", function() {
-      // Léger délai pour laisser le navigateur recalculer la layout
-      // après la rotation (sinon offsetHeight retourne la valeur d'avant).
-      setTimeout(_syncH, 100);
-      setTimeout(_syncH, 350);
-
-      // 🆕 v1.9.2 : REVERT du fix "toggle body class + force reflow"
-      // testé dans le commit précédent. Hypothèse : iOS interprétait le
-      // toggle de body.kta-refonte-v1 comme une transition fullscreen
-      // → status bar HIDDEN dans les 2 orientations (KARMA : "l'heure
-      // ne s'affiche dans aucun des cas").
-      //
-      // On revient à un comportement minimal : juste recalculer la
-      // hauteur du status bar via _syncH() après rotation (gérer le
-      // wrap dynamique du footer). Le bug iOS d'origine
-      // (status bar parfois absent en portrait après landscape) reste
-      // possible mais n'est PAS PIRE qu'avant ce module — c'est un
-      // bug iOS Safari standalone PWA qui mérite plus d'investigation
-      // avant qu'on tente un autre fix (test sur device réel requis).
+    window.addEventListener("orientationchange", _onOrientationChange);
+    // Pageshow event aussi : se déclenche quand l'user revient sur la
+    // page après avoir été dans une autre app (background → foreground)
+    // — moment où iOS peut avoir "oublié" la viewport correcte.
+    window.addEventListener("pageshow", function(e) {
+      // Persisted = page restaurée depuis le cache (bfcache iOS)
+      if (e.persisted) _onOrientationChange();
     });
-    // Pas besoin de listener resize en plus : si ResizeObserver dispo
-    // il gère tous les cas, sinon orientationchange + le sync initial
-    // suffisent (le wrap dépend de la largeur écran qui ne change qu'à
-    // l'orientation sur mobile).
+  }
+
+  // 🆕 v1.9.2 (approche fresh) — bug iOS PWA "status bar disparaît après
+  // rotation landscape → portrait". Diagnostic : iOS Safari standalone
+  // hide auto le status bar (heure, batterie) en landscape sur iPhone
+  // pour donner du fullscreen, mais REFUSE de le restaurer au retour
+  // portrait dans certains cas. Pas d'API JS pour forcer iOS à le
+  // remontrer.
+  //
+  // 2 workarounds connus dans la communauté iOS PWA, qu'on empile pour
+  // maximiser les chances :
+  //   1. scrollTo (+1, 0) — simule une activité scroll, iOS revérifie
+  //      la visibilité de son chrome (status bar, URL bar) à chaque scroll.
+  //   2. Viewport meta rewrite — réécrire la valeur identique de la meta
+  //      viewport force iOS à recalculer la viewport intégralement.
+  //
+  // ⚠️ On NE TOUCHE PAS à body.kta-refonte-v1 (avait empiré le bug en
+  // commit dbfe2c0). On ne touche QUE le scroll + meta viewport, à 600ms
+  // après rotation pour laisser iOS se stabiliser d'abord.
+  function _onOrientationChange() {
+    setTimeout(_syncH, 100);
+    setTimeout(_syncH, 350);
+
+    setTimeout(function() {
+      try {
+        // Workaround 1 : scrollTo trick — tiny scroll trigger
+        const sx = window.scrollX || 0;
+        const sy = window.scrollY || 0;
+        window.scrollTo(sx, sy + 1);
+        requestAnimationFrame(function() {
+          window.scrollTo(sx, sy);
+        });
+
+        // Workaround 2 : viewport meta rewrite (force iOS à recalculer
+        // l'attribution viewport sans changer la valeur effective)
+        const meta = document.querySelector('meta[name="viewport"]');
+        if (meta) {
+          const content = meta.getAttribute("content");
+          if (content) {
+            // setAttribute avec la même valeur déclenche un mutation
+            // observable côté navigateur → iOS re-évalue
+            meta.setAttribute("content", content);
+          }
+        }
+      } catch(e) {
+        console.warn("[RefonteInterface] orientation workaround failed:", e);
+      }
+    }, 600);
   }
 
   function _toggleStatusBar() {
