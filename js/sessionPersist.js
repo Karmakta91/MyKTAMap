@@ -42,6 +42,17 @@
   let _currentPlanId = null;
   // Anti-spam toast quota : true après 1ère alerte, reset après 1er save réussi
   let _quotaWarned   = false;
+  // 🆕 v1.8.1 : ID du setTimeout de la phase 2 de restore (itinéraire différé).
+  // Permet d'annuler la phase 2 si l'user clique "Effacer la session" avant
+  // que les 1500ms ne soient écoulés — sinon l'itinéraire réapparaissait
+  // ~1.5s après l'effacement, ce qui était très perturbant.
+  let _phase2TimeoutId = null;
+  function _annulerPhase2() {
+    if (_phase2TimeoutId !== null) {
+      clearTimeout(_phase2TimeoutId);
+      _phase2TimeoutId = null;
+    }
+  }
 
   // ========== ETAT COURANT ==========
 
@@ -194,6 +205,11 @@
   function clear() {
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
     _lastHash = null;
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
+    // l'user clique "🗑️ Effacer la session" dans la modale de feedback
+    // pendant les 1500ms du setTimeout, l'itinéraire réapparaissait
+    // après l'effacement (timing piège du restore différé).
+    _annulerPhase2();
   }
 
   // ========== RESTORE ==========
@@ -246,7 +262,12 @@
         // Si entre temps l'user a tracé une nouvelle road, on la préserve
         // via concat sur getRoads() courant (pas un reset brutal).
         if (phaseDifferee.length > 0) {
-          setTimeout(function() {
+          // Annuler une phase 2 en attente précédente (cas pathologique :
+          // double restore dans la même session, ne devrait pas arriver
+          // mais protection peu coûteuse).
+          _annulerPhase2();
+          _phase2TimeoutId = setTimeout(function() {
+            _phase2TimeoutId = null;  // marqué comme consommé
             try {
               const current = window.getRoads ? (window.getRoads() || []) : [];
               // Sécurité : si l'user a entre-temps lancé une modale Itinéraire
@@ -288,6 +309,10 @@
   }
 
   function _viderEtatCourant() {
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente (même raison
+    // que dans clear() — cf. commentaire). Double protection en cas
+    // d'appel direct sans passer par clear().
+    _annulerPhase2();
     if (window.setEditorPoints)  window.setEditorPoints([]);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
@@ -397,6 +422,13 @@
   //  - Démarre le polling pour la nouvelle session
   function onPlanLoaded(planId) {
     _stopPolling();
+    // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
+    // l'user a chargé une session avec itinéraire (phase 2 setTimeout
+    // de 1500ms en cours) puis a fait un plan switch (🗂️) avant que
+    // les 1500ms s'écoulent, le setTimeout finirait par s'exécuter sur
+    // le NOUVEAU plan → l'itinéraire de l'ancien plan apparaîtrait
+    // collé au nouveau. Bug subtil mais reproductible.
+    _annulerPhase2();
     _currentPlanId = planId || null;
     _lastHash = null;
 
