@@ -238,7 +238,7 @@ Sections (cohérent avec la légende d'aide) :
 ### 6. Splash screen
 
 - HTML statique dans `<body>` → visible AVANT tout JS.
-- `SPLASH_MIN_DURATION_MS = 4000` (constante dans `main.js`).
+- `SPLASH_MIN_DURATION_MS = 3500` (constante dans `main.js`, depuis v1.8.0 — avant : 4000ms).
 - `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
 - **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
 - Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
