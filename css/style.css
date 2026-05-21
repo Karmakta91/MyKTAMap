@@ -7521,6 +7521,22 @@ body.kta-refonte-v1 .leaflet-control {
   float: none !important;
   clear: none !important;
 }
+/* 🆕 Refonte v1.2 itéré : surcharge la règle Leaflet native plus spécifique
+   `.leaflet-top .leaflet-control { margin-top: 10px }` (leaflet.css ligne 163).
+   Ma règle plus haute devrait gagner par spécificité (0,2,1 vs 0,2,0) mais
+   on renforce explicitement pour les 2 sidebars + chaque direction de
+   margin → garantit que le 1er control de la sidebar est collé au top
+   du .leaflet-top (lui-même collé au header via top:44px). Sans ça,
+   gap de 10px visible entre le bas du header et le bouton ≡ de réduction.
+   Feedback KARMA : "je veux que les icone de reduction de barre soit coller au head". */
+body.kta-refonte-v1 .leaflet-top .leaflet-control,
+body.kta-refonte-v1 .leaflet-top.leaflet-left .leaflet-control,
+body.kta-refonte-v1 .leaflet-top.leaflet-right .leaflet-control {
+  margin-top:    0 !important;
+  margin-bottom: 0 !important;
+  margin-left:   0 !important;
+  margin-right:  0 !important;
+}
 
 /* Bordures arrondies uniquement aux extrémités de la sidebar (premier
    et dernier control) — donne l'effet "barre unique" sans gap visible.
