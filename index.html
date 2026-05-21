@@ -21,38 +21,29 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2 (KARMA pivot) — viewport-fit=cover RÉACTIVÉ.
-       Avant : pas de cover → iOS réservait la zone du status bar
-       (heure/batterie) en haut, ce qui forçait le header de l'app à
-       commencer SOUS cette zone réservée. Bug observé : après rotation
-       landscape → portrait, iOS ne restaurait pas toujours sa status bar
-       → zone vide en haut, header non remonté.
-       Maintenant : cover → la viewport s'étend bord à bord. La status
-       bar iOS (heure, batterie) reste affichée mais TRANSPARENTE
-       (grâce à apple-mobile-web-app-status-bar-style = black-translucent)
-       avec nos contenus visibles dessous. Le header refonte (rose des
-       vents + titre + compteurs) monte en haut de l'écran et utilise
-       toute la place disponible.
-       Note : le rejet précédent de cover (v1.8.0) était dû à une "bande
-       sombre persistante en bas" sur PWA portrait. La refonte gère
-       maintenant safe-area-inset-bottom partout (status bar +
-       --kta-statusbar-h), donc ce bug ne devrait plus apparaître. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- viewport-fit=cover testé puis retiré : iOS PWA n'extendait pas correctement
+       la viewport jusqu'au home-indicator (bande sombre persistante en bas).
+       Sans cover : iOS reste dans la safe-area, status bar coloré par theme-color
+       (notre #111827 dark) + icônes claires (apple-mobile-web-app-status-bar-style
+       = black-translucent → light icons en l'absence de cover). Look intégré dark
+       en haut, footer correct en bas. */ -->
+  <!-- Pas de viewport-fit=cover : iOS PWA portrait n'extendait jamais la
+       viewport jusqu'au home-indicator malgré tous les fixes (inset:0,
+       100dvh, --realvh, bottom négatif). Sans cover, iOS reste dans la
+       safe-area = pas de bug de bande sombre en bas. Le top intégré dark
+       est obtenu différemment : .leaflet-container reçoit un background
+       sombre dans leaflet.css, donc dès que le DOM map est monté, la
+       couleur du haut de page est dark → la status bar iOS reflète. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- 🆕 v1.9.2 (KARMA pivot) — passage à "black-translucent" :
-       Avant ("black") : bande noire OPAQUE forcée par iOS au-dessus de
-       l'app, indépendante du contenu. Le header de l'app se place
-       DESSOUS = perte verticale ~47px sur iPhone notché.
-       Maintenant ("black-translucent") + viewport-fit=cover : iOS dessine
-       sa status bar TRANSPARENTE (icônes claires uniquement, pas de fond)
-       par-dessus notre header. Notre header dark sert de fond visuel à
-       la status bar. KARMA pivot : "on affiche jamais l'heure, et on
-       profite de la place dispo pour monter la rose de vent en top".
-       Si iOS hide sa status bar en landscape ou après rotation, on ne
-       voit pas la différence — notre header reste correctement positionné. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" = bande noire opaque, icônes blanches, indépendante du contenu
+       sous-jacent. Sans viewport-fit=cover, "black-translucent" tombe en
+       fallback "default" = couleur du haut de page → devenait blanc dès que
+       les tuiles Leaflet chargeaient (cf. capture utilisateur). "black" force
+       le top sombre en permanence. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 

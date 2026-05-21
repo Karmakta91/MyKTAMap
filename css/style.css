@@ -7571,6 +7571,7 @@ body.kta-refonte-v1 .kta-refonte-header {
   top: 0;
   left: 0;
   right: 0;
+  height: 44px;
   z-index: 1200;  /* au-dessus de Leaflet (1000) et du contrôle layers, sous les modales (99999) */
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
   border-bottom: 1px solid rgba(244, 197, 66, 0.18);
@@ -7586,24 +7587,11 @@ body.kta-refonte-v1 .kta-refonte-header {
   align-items: center;
   padding: 0 8px;
   gap: 8px;
-  /* 🆕 v1.9.2 (KARMA pivot) — viewport-fit=cover + black-translucent
-     ACTIVÉS dans index.html. La viewport couvre maintenant tout l'écran
-     y compris la zone status bar iOS (notch). On utilise cette place
-     pour monter le header tout en haut :
-       - height: 44px FIXE (pas de + safe-area-inset-top) → le header
-         reste compact, son fond dark sert de toile à la status bar
-         iOS transparente qui s'affiche par-dessus.
-       - PAS de padding-top safe-area → le contenu (rose des vents,
-         titre, compteurs) est centré dans les 44px du header, juste
-         sous les icônes iOS (clock, batterie) qui apparaissent over.
-       - safe-area-inset-left/right gardé pour landscape iPhone (notch
-         côté quand l'écran tourne).
-     Avant ce pivot : height = 44 + safe-top (~91px sur iPhone notché)
-     avec content padded down — perte verticale. */
-  padding-top: 0;
+  /* Safe-area iOS PWA (notch + status bar translucide) */
+  padding-top: env(safe-area-inset-top, 0px);
   padding-left: calc(8px + env(safe-area-inset-left, 0px));
   padding-right: calc(8px + env(safe-area-inset-right, 0px));
-  height: 44px;
+  height: calc(44px + env(safe-area-inset-top, 0px));
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   color: #c8d0e0;
@@ -7831,10 +7819,8 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      header 44px et footer dynamique via --kta-statusbar-h qui inclut
      déjà safe-area-bottom). Quand le footer wrap multi-ligne et
      grandit, la sidebar rétrécit automatiquement pour ne pas se faire
-     recouvrir.
-     🆕 v1.9.2 : suppression du `- env(safe-area-inset-top)` (le header
-     est désormais hauteur fixe 44px sans inclure le safe-area). */
-  max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - 4px);
+     recouvrir. */
+  max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;  /* Firefox */
@@ -7848,18 +7834,9 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right::-webkit-scrollbar {
   display: none;
 }
 
-/* 🆕 v1.9.2 (KARMA pivot) : inset latéral plus large pour les coins arrondis
-   de l'écran iPhone. Avec viewport-fit=cover, la viewport s'étend jusqu'au
-   bord arrondi du screen → les icônes des sidebars (collées à 2px du bord)
-   se faisaient grignoter par les corners. Solution : 8px d'inset minimum +
-   safe-area-inset-{left|right} pour landscape iPhone (notch côté).
-   Feedback KARMA : "on décalle légerement les icone pour les bord arrondie". */
-body.kta-refonte-v1 .leaflet-left {
-  padding-left: calc(8px + env(safe-area-inset-left, 0px)) !important;
-}
-body.kta-refonte-v1 .leaflet-right {
-  padding-right: calc(8px + env(safe-area-inset-right, 0px)) !important;
-}
+/* Padding horizontal minimal (collé au bord) */
+body.kta-refonte-v1 .leaflet-left { padding-left: 2px !important; }
+body.kta-refonte-v1 .leaflet-right { padding-right: 2px !important; }
 
 /* SIDEBAR UNIFIÉE : zéro margin entre les controls collés.
    En mode flex (cf. au-dessus), .leaflet-control sont des flex items
@@ -8046,11 +8023,6 @@ body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
    Concerne TOUTES les modales utilisant .kta-readme-modal-overlay :
    Distance totale, Itinéraire, Configuration, Aide, Audit, etc. */
 body.kta-refonte-v1 .kta-readme-modal-overlay {
-  /* 🆕 v1.9.2 : avec viewport-fit=cover, la status bar iOS transparente
-     est dessinée par-dessus le haut de l'écran. On garde le `+ env(safe-
-     area-inset-top)` pour que les modales restent ENTIÈREMENT visibles
-     sous les icônes iOS (clock, batterie). 44px = hauteur du header,
-     env(safe-top) = hauteur de la zone iOS overlay, +16 = respiration. */
   padding-top:    calc(44px + env(safe-area-inset-top, 0px) + 16px);
   /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
      `--kta-statusbar-h` (qui inclut safe-area déjà) + 16px de respiration.
@@ -8063,8 +8035,6 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
    en landscape via la règle plus bas), donc rien à changer côté bottom. */
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-readme-modal-overlay {
-    /* En landscape, safe-area-inset-top est typiquement 0 (notch latéral),
-       donc on ne pad que le header 36px + 8px de respiration. */
     padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
     padding-bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px);
   }
@@ -8569,12 +8539,7 @@ body.kta-refonte-v1 #measureLabel {
    ───────────────────────────────────────────────────────────────── */
 
 body.kta-refonte-v1 #map {
-  /* 🆕 v1.9.2 (KARMA pivot) : header maintenant à top:0 hauteur fixe 44px
-     (pas de + safe-area-inset-top), donc #map commence à 44px du top de
-     la viewport (qui couvre tout l'écran grâce à viewport-fit=cover).
-     La status bar iOS transparente apparaît PAR-DESSUS le header.
-     Avant : top: calc(44 + safe-top) → laissait la zone notch vide. */
-  top: 44px;
+  top: calc(44px + env(safe-area-inset-top, 0px));
   /* 🆕 v1.8.1-refonte-10 : variable `--kta-statusbar-h` mise à jour
      dynamiquement par JS (ResizeObserver sur la barre). Quand la barre
      wrap multi-ligne et grandit, #map remonte automatiquement pour
@@ -8597,11 +8562,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
    ───────────────────────────────────────────────────────────────── */
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-refonte-header {
-    /* 🆕 v1.9.2 (KARMA pivot) : hauteur FIXE 36px en landscape (sans
-       + safe-area-inset-top). En landscape iPhone, le notch est sur le
-       côté (pas en haut), donc safe-area-inset-top ≈ 0. Hauteur compacte
-       pour gagner de la place verticale. */
-    height: 36px;
+    height: calc(36px + env(safe-area-inset-top, 0px));
     /* 🆕 v1.8.1-refonte-12 : passage en CSS Grid `1fr auto 1fr` UNIQUEMENT
        en landscape pour centrage géométrique ABSOLU du titre. En portrait
        on reste sur du flex classique (cf. règle principale plus haut).
@@ -8623,10 +8584,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     justify-self: end;
   }
   body.kta-refonte-v1 #map {
-    /* 🆕 v1.9.2 : header landscape à top:0 hauteur 36px fixe, donc #map
-       commence à 36px (pas de + safe-area-inset-top, le notch est latéral
-       en landscape). */
-    top: 36px;
+    top: calc(36px + env(safe-area-inset-top, 0px));
   }
   /* 🆕 Statusbar landscape : min-height 40+safe (au lieu de height fixe).
      Permet à la barre de grandir aussi en landscape si les 4 stats wrap.
@@ -8653,12 +8611,10 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     height: 22px;
   }
   /* Recalcule la max-height des sidebars pour landscape — suit la
-     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte).
-     🆕 v1.9.2 : suppression du `- env(safe-area-inset-top)` (le header
-     landscape est désormais hauteur fixe 36px sans inclure le safe-area). */
+     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte) */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - 4px);
+    max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   }
   /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
      bas-gauche comme en portrait). Sur petit écran horizontal, les
