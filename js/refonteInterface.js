@@ -60,28 +60,48 @@
   // ============================================================
   // CONFIGURATION
   // ============================================================
-  const LS_FLAG = "myktamap_refonte_v1";
+  // 🆕 v1.8.1-refonte-8 : INVERSION sémantique du flag (KARMA).
+  // Avant : `myktamap_refonte_v1 = "1"` → nouvelle interface ON (opt-in)
+  // Maintenant : nouvelle interface est le DÉFAUT. L'user peut cocher
+  // "Utiliser l'ancienne interface (classique)" pour revenir à v1.8.x.
+  //   - LS_LEGACY = "1"  → ancienne interface (legacy mode)
+  //   - LS_LEGACY absent → nouvelle interface (refonte = défaut)
+  const LS_LEGACY = "myktamap_legacy_interface";
+
+  // Migration : si l'user avait déjà coché l'ancien flag opt-in
+  // `myktamap_refonte_v1 = "1"`, il avait déjà la nouvelle interface
+  // → maintenant c'est le défaut, on supprime le flag obsolète pour
+  // garder le localStorage propre. Aucun changement d'expérience.
+  try {
+    if (localStorage.getItem("myktamap_refonte_v1") === "1") {
+      localStorage.removeItem("myktamap_refonte_v1");
+    }
+  } catch(e) {}
 
   // ============================================================
   // LECTURE FLAG (au chargement du module)
   // ============================================================
+  // Retourne TRUE si la nouvelle interface est active.
+  // C'est TRUE par défaut sauf si l'user a explicitement coché "ancienne".
   function _readFlag() {
     try {
-      return localStorage.getItem(LS_FLAG) === "1";
-    } catch(e) { return false; }
+      return localStorage.getItem(LS_LEGACY) !== "1";
+    } catch(e) { return true; }  // localStorage indispo → on prend le défaut (nouvelle)
   }
 
+  // Set la nouvelle interface ON (value=true) ou OFF (value=false = legacy).
   function _writeFlag(value) {
     try {
-      if (value) localStorage.setItem(LS_FLAG, "1");
-      else       localStorage.removeItem(LS_FLAG);
+      if (value) localStorage.removeItem(LS_LEGACY);     // remove = défaut = nouvelle
+      else       localStorage.setItem(LS_LEGACY, "1");   // set = legacy = ancienne
     } catch(e) {}
   }
 
   // Exposer l'état tôt pour que interface.js puisse le lire avant init
   window._refonteInterfaceActive = _readFlag();
 
-  // Si flag OFF, on s'arrête là : aucun DOM créé, aucun CSS ajouté.
+  // Si nouvelle interface OFF (= legacy actif), on s'arrête là : aucun
+  // DOM créé, aucun CSS ajouté → l'app fonctionne en v1.8.x strict.
   if (!window._refonteInterfaceActive) {
     // On expose juste l'API pour pouvoir activer plus tard sans reload
     window.RefonteInterface = {
@@ -526,7 +546,10 @@
     _writeFlag(value);
     // Reload requis pour appliquer (la classe body + injection DOM doit
     // se faire au boot pour rester safe).
-    if (confirm("L'interface refonte sera " + (value ? "ACTIVÉE" : "DÉSACTIVÉE") + " au prochain démarrage. Recharger maintenant ?")) {
+    const label = value
+      ? "la NOUVELLE interface (refonte)"
+      : "l'ANCIENNE interface (classique)";
+    if (confirm("Tu utiliseras " + label + " au prochain démarrage. Recharger maintenant ?")) {
       location.reload();
     }
   }
@@ -540,7 +563,8 @@
 
   // Banner console
   console.info(
-    "%c[Refonte UI v1]%c Interface refonte active. Toggle dans ⚙️ Réglages → 🎨 Affichage.",
+    "%c[Refonte UI v1]%c Nouvelle interface active (défaut depuis v1.8.1-refonte-8). " +
+    "Pour revenir à l'ancienne : ⚙️ Configuration (home) ou ⚙️ Réglages (map) → 🎨 Affichage.",
     "background:#f4c542;color:#1a1f2e;font-weight:bold;padding:2px 6px;border-radius:3px;",
     "color:#f4c542;"
   );

@@ -1599,14 +1599,14 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
-        <!-- 🆕 Refonte UI v1 (branche Refonte_interface) : toggle pour
-             activer l'interface refondue en mode carte (header bar + sidebars
-             gauche/droite séparées + status bar). Expérimental. -->
+        <!-- 🎨 Affichage : choix interface (nouvelle = défaut depuis
+             v1.8.1-refonte-8, ancienne = opt-in pour conservateurs ou
+             en cas de bug bloquant sur la refonte). -->
         <div class="kta-aide-section">
-          <div class="kta-perf-titre">🎨 Affichage (expérimental)</div>
-          <label class="kta-net-paranoia-toggle" style="background: rgba(244, 197, 66, 0.06); border-color: rgba(244, 197, 66, 0.22);">
-            <input type="checkbox" id="kta-cfg-refonte-v1-cb" ${window._refonteInterfaceActive === true ? "checked" : ""}>
-            <span><strong>🎨 Interface refonte v1</strong> — header bar sticky avec compteurs en haut, sidebars gauche (Doc/Settings/Charger/Save) et droite (Outils/Tracés/Zones/Tracker), status bar collapsible en bas. <strong>Reload requis</strong> au toggle.</span>
+          <div class="kta-perf-titre">🎨 Affichage</div>
+          <label class="kta-net-paranoia-toggle" style="background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="kta-cfg-legacy-cb" ${window._refonteInterfaceActive === true ? "" : "checked"}>
+            <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — par défaut tu utilises la <strong>nouvelle interface</strong> (header bar avec compteurs, sidebars unifiées gauche/droite, status bar). Coche cette case si tu préfères l'ancienne (icônes empilées sans header). <strong>Reload requis</strong> au toggle.</span>
           </label>
         </div>
 
@@ -1636,24 +1636,28 @@ function afficherConfig() {
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // 🎨 Refonte UI v1 : toggle qui set le flag + propose un reload
-  const refonteCb = document.getElementById("kta-cfg-refonte-v1-cb");
-  if (refonteCb) {
-    refonteCb.addEventListener("change", function() {
-      const newVal = refonteCb.checked;
-      // setActive demande la confirmation reload via confirm(). Si l'user
-      // annule, on remet la checkbox dans son état d'origine.
+  // 🎨 Affichage : toggle "Utiliser l'ancienne interface" (LEGACY).
+  // Sémantique inversée depuis v1.8.1-refonte-8 :
+  //   - case cochée  = ancienne interface (legacy)
+  //   - case décochée = nouvelle interface (refonte, défaut)
+  // RefonteInterface.setActive(value) prend la valeur DE LA NOUVELLE
+  // interface (true = nouvelle, false = legacy). Donc on l'appelle avec
+  // !checkbox.checked.
+  const legacyCb = document.getElementById("kta-cfg-legacy-cb");
+  if (legacyCb) {
+    legacyCb.addEventListener("change", function() {
+      const wantNouvelle = !legacyCb.checked;  // cochée = legacy, donc !cochée = nouvelle
       if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-        window.RefonteInterface.setActive(newVal);
-        // Si on est encore là, c'est que l'user a annulé le reload → revert checkbox
-        refonteCb.checked = (window._refonteInterfaceActive === true);
+        window.RefonteInterface.setActive(wantNouvelle);
+        // Si user annule le reload → revert checkbox à l'état actuel
+        legacyCb.checked = (window._refonteInterfaceActive !== true);
       } else {
         // Fallback (module non chargé) — set direct localStorage
         try {
-          if (newVal) localStorage.setItem("myktamap_refonte_v1", "1");
-          else        localStorage.removeItem("myktamap_refonte_v1");
+          if (wantNouvelle) localStorage.removeItem("myktamap_legacy_interface");
+          else              localStorage.setItem("myktamap_legacy_interface", "1");
         } catch(e) {}
-        if (confirm("Refonte UI " + (newVal ? "activée" : "désactivée") + ". Recharger ?")) {
+        if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
           location.reload();
         }
       }

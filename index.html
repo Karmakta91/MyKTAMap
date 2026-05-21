@@ -489,6 +489,22 @@
           </button>
         </div>
 
+        <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
+             Pareil que dans ⚙️ Réglages map mode pour cohérence — l'user
+             peut basculer ici aussi sans avoir à charger un plan.
+             Coché = ancienne interface (classique v1.8.x)
+             Décoché (défaut) = nouvelle interface (refonte v1.2) -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🎨 Affichage</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+            Par défaut, MyKTAMap utilise la <strong>nouvelle interface</strong> (header bar avec compteurs, sidebars unifiées gauche/droite, status bar). Coche cette case si tu préfères l'<strong>ancienne</strong> (icônes empilées sans header).
+          </p>
+          <label class="kta-net-paranoia-toggle" style="background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
+            <input type="checkbox" id="loaderLegacyCb">
+            <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — reload requis au toggle.</span>
+          </label>
+        </div>
+
         <!-- 💥 Reset complet -->
         <div class="kta-aide-section">
           <div class="kta-perf-titre">💥 Réinitialisation</div>
@@ -2025,6 +2041,45 @@
             window.afficherLogsDebug();
           } else {
             setStatus("Fonction de logs indisponible", true);
+          }
+        });
+      }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 🎨 AFFICHAGE — Toggle "Utiliser l'ancienne interface" (Legacy)
+      // ═══════════════════════════════════════════════════════════════
+      // Depuis v1.8.1-refonte-8, la nouvelle interface (refonte v1) est
+      // ACTIVÉE PAR DÉFAUT. L'user peut cocher ici (ou dans ⚙️ Réglages
+      // map mode) pour revenir à l'ancienne interface classique v1.8.x.
+      //
+      // Sémantique :
+      //   - cochée → ancienne interface (legacy)
+      //   - décochée (défaut) → nouvelle interface (refonte)
+      // RefonteInterface.setActive(value) prend la valeur de la NOUVELLE
+      // interface (true = nouvelle, false = legacy). Donc on appelle avec
+      // !checkbox.checked.
+      const legacyCb = document.getElementById("loaderLegacyCb");
+      if (legacyCb) {
+        // Initialiser l'état au boot : cochée si legacy actif
+        try {
+          legacyCb.checked = window._refonteInterfaceActive !== true;
+        } catch(e) {}
+
+        legacyCb.addEventListener("change", function() {
+          const wantNouvelle = !legacyCb.checked;
+          if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
+            window.RefonteInterface.setActive(wantNouvelle);
+            // Si user annule le reload → revert checkbox à l'état actuel
+            legacyCb.checked = (window._refonteInterfaceActive !== true);
+          } else {
+            // Fallback (module non chargé) — set direct localStorage
+            try {
+              if (wantNouvelle) localStorage.removeItem("myktamap_legacy_interface");
+              else              localStorage.setItem("myktamap_legacy_interface", "1");
+            } catch(e) {}
+            if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
+              location.reload();
+            }
           }
         });
       }

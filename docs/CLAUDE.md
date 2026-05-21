@@ -2307,9 +2307,21 @@ Refonte progressive de l'interface en mode carte (post-loader). **Pas encore mer
 
 #### 41.1 Activation
 
-Flag `localStorage["myktamap_refonte_v1"] = "1"`. Toggle via ⚙️ Réglages → 🎨 Affichage (expérimental) → checkbox "Interface refonte v1". **Reload requis** au toggle (la classe `body.kta-refonte-v1` doit être appliquée au boot pour que le CSS scope tous les changements visuels avant que Leaflet initialise ses positions).
+**Sémantique INVERSÉE depuis v1.8.1-refonte-8** (KARMA) :
+- **Default ON** : la nouvelle interface (refonte) est ACTIVÉE par défaut.
+- L'user peut OPT-OUT en cochant "Utiliser l'ancienne interface" pour revenir à v1.8.x classique.
 
-**Default OFF** : par construction, si la clé n'existe pas en localStorage, l'app fonctionne en v1.8.x strict (zéro changement visuel ou comportemental). C'est crucial pour le déploiement progressif.
+Flag `localStorage["myktamap_legacy_interface"] = "1"` (présent uniquement quand l'user a choisi l'ancienne). **Reload requis** au toggle (la classe `body.kta-refonte-v1` doit être appliquée au boot pour que le CSS scope tous les changements visuels avant que Leaflet initialise ses positions).
+
+**Toggle accessible depuis 2 endroits** :
+- ⚙️ **Configuration du loader** (home) → section "🎨 Affichage" (id `loaderLegacyCb`)
+- ⚙️ **Réglages map mode** (in-app) → section "🎨 Affichage" (id `kta-cfg-legacy-cb`)
+
+**Migration au boot** : l'ancien flag `myktamap_refonte_v1 = "1"` (= opt-in avant v1.8.1-refonte-8) est supprimé silencieusement au chargement du module — l'user était déjà en mode refonte, qui est maintenant le défaut, donc le flag obsolète est nettoyé sans changement d'expérience.
+
+**Historique sémantique** :
+- v1.8.1-refonte-7 et antérieur : opt-in (`myktamap_refonte_v1 = "1"` pour activer)
+- v1.8.1-refonte-8+ : opt-out (`myktamap_legacy_interface = "1"` pour désactiver)
 
 #### 41.2 Architecture phase 1
 
