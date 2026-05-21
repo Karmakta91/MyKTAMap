@@ -7455,19 +7455,30 @@ body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
 
 /* Remonter le bloc des controls Leaflet TOUT près du header :
    - Leaflet natif a un padding-top de 10px sur .leaflet-top → on le
-     réduit à 4px en mode refonte. Avec un padding de 4px sous le
-     header de 44px, les controls touchent quasi le header. */
+     réduit à 2px en mode refonte. Itération KARMA : voulait les icônes
+     "quasiment collées au top" → on passe de 4px à 2px (gap minime). */
 body.kta-refonte-v1 .leaflet-top {
-  padding-top: 4px;
+  padding-top: 2px !important;
+}
+/* Idem horizontalement pour les sidebars droite/gauche : padding minimal */
+body.kta-refonte-v1 .leaflet-left {
+  padding-left: 2px !important;
+}
+body.kta-refonte-v1 .leaflet-right {
+  padding-right: 2px !important;
 }
 
 /* Marges entre les controls Leaflet : "presque collés" (feedback KARMA).
+   Itération : 6px → 3px → 1px. Tend vers le minimum visuel (1px = trait
+   fin pour différencier les controls sans gap perçu).
    Leaflet utilise par défaut .leaflet-bar { margin-bottom: 10px; } et
    .leaflet-control { margin-bottom: 0; } selon les versions. On force
-   un margin-bottom plus petit sur les deux pour être sûr. */
+   un margin-bottom 1px sur les deux pour être sûr (avec !important
+   pour gagner contre les media queries natives Leaflet). */
 body.kta-refonte-v1 .leaflet-bar,
 body.kta-refonte-v1 .leaflet-control {
-  margin-bottom: 3px !important;
+  margin-bottom: 1px !important;
+  margin-top: 0 !important;
 }
 /* Marge horizontale aussi (entre control et bord de l'écran) — on garde
    les ~10px natifs Leaflet, c'est bon visuellement. Pas d'override. */
@@ -7516,10 +7527,14 @@ body.kta-refonte-v1 .leaflet-bar {
    2 envisagera de transformer la boussole en L.control natif pour qu'elle
    se stack proprement avec les autres. */
 body.kta-refonte-v1 .kta-compass-widget {
-  top: calc(144px + env(safe-area-inset-top, 0px)) !important;
+  /* Recalcul itération KARMA après réduction marges :
+     header 44 + padding-top 2 + Layers 36 + margin 1 + Zoom 72 + margin 1
+     + marge sécurité 6 = ~162px. On pousse à 170 pour être safe. */
+  top: calc(170px + env(safe-area-inset-top, 0px)) !important;
 }
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
-  top: calc(183px + env(safe-area-inset-top, 0px)) !important;
+  /* + Niveau 36 + margin 1 = +37 → ~207 + sécurité = 210 */
+  top: calc(210px + env(safe-area-inset-top, 0px)) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
