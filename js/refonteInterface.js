@@ -426,6 +426,61 @@
     _setupQuandMapPrete();
   };
 
+  // ============================================================
+  // BOUTONS DE RÉDUCTION DES SIDEBARS (gauche / droite)
+  // ============================================================
+  // Itération KARMA (1:a 2:a) : chaque sidebar a un bouton ≡ EN HAUT.
+  // Au clic, tous les autres controls de cette sidebar sont cachés
+  // (seul le bouton ≡ reste visible pour rouvrir). Pas de persistance
+  // (5:b) — au boot la sidebar est toujours déroulée.
+  //
+  // Implémentation : on crée un L.control en first-of-side via flex
+  // order:-1 (CSS) pour qu'il apparaisse en haut visuellement, peu
+  // importe son ordre dans le DOM (Leaflet ajoute les controls dans
+  // l'ordre d'appel addTo, donc Layers et Zoom sont créés avant nous).
+  function _creerBoutonReduction(position) {
+    if (!window.map) return null;
+    const side = position === "topleft" ? "left" : "right";
+    const cls  = "kta-refonte-sidebar-" + side + "-collapsed";
+    const ctrl = L.control({ position: position });
+    ctrl.onAdd = function() {
+      const div = L.DomUtil.create(
+        "div",
+        "leaflet-bar leaflet-control kta-refonte-collapse-bar kta-refonte-collapse-" + side
+      );
+      div.dataset.refonteSide = side;
+      const a = L.DomUtil.create("a", "kta-refonte-collapse-btn", div);
+      a.href  = "javascript:void(0)";
+      a.title = "Réduire / agrandir cette barre";
+      a.setAttribute("aria-label", "Réduire la barre " + side);
+      a.innerHTML = "≡";
+      L.DomEvent.disableClickPropagation(div);
+      L.DomEvent.on(a, "click", function(e) {
+        L.DomEvent.stop(e);
+        const isCollapsed = document.body.classList.toggle(cls);
+        a.title = (isCollapsed ? "Agrandir" : "Réduire") + " cette barre";
+        a.setAttribute("aria-pressed", isCollapsed ? "true" : "false");
+        // Si on collapse alors qu'un groupe accordéon est ouvert dans
+        // cette sidebar, on le ferme pour cohérence visuelle (sinon le
+        // sous-menu se rouvrirait au décollapse sans raison).
+        if (isCollapsed && typeof window._fermerGroupeOuvertSide === "function") {
+          try { window._fermerGroupeOuvertSide(side); } catch(e) {}
+        }
+      });
+      return div;
+    };
+    ctrl.addTo(window.map);
+    return ctrl;
+  }
+
+  // Exposé pour interface.js (appelé au tout début de initInterface)
+  window._refonteInterfaceCreerBoutonReductionLeft  = function() {
+    return _creerBoutonReduction("topleft");
+  };
+  window._refonteInterfaceCreerBoutonReductionRight = function() {
+    return _creerBoutonReduction("topright");
+  };
+
   // Et au cas où on est chargé après lancerApplication (cas rare mais
   // safe), on tente direct si window.map existe.
   document.addEventListener("DOMContentLoaded", function() {

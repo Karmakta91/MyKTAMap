@@ -2274,6 +2274,33 @@ Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Int
 
 ⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
 
+### 41. Refonte UI v1.2 — Sidebars unifiées + boutons réduction (branche `Refonte_interface`)
+
+#### 41.0 Itération v1.2 (post-feedback KARMA, plusieurs commits)
+
+| Changement | v1.0 initial | v1.2 |
+|---|---|---|
+| Icône home header | 🗂 émoji | Image `mkm-full.png` (rose des vents) |
+| Sidebar visuelle | Controls Leaflet séparés avec gap | **UNE SEULE BARRE** continue : flex column, bordures arrondies first/last-child seulement, séparateurs internes 1px |
+| Sous-actions accordéon | À droite du bouton principal (inline) | **EN DESSOUS** (vertical flow, la barre grossit) |
+| Scroll si dépasse | aucun | `overflow-y: auto` + `max-height: calc(100vh - header - footer - safe-areas)` |
+| Boussole position | `top: 80px` historique (chevauchait actions globales) | **bottom-left** au-dessus du footer (`bottom: 60px + safe-area`) |
+| Bouton ≡ de réduction | aucun | Un par sidebar (gauche + droite), positionné en HAUT via flex `order: -1`. Au clic → cache tous les autres controls. Pas de persistance (toujours déroulé au boot). |
+| Footer hauteur | 36px → 44px → 52px | **52px** + safe-area (~73px iPhone PWA) |
+| Bouton 🏗 Niveau | Créé après les groupes accordéon (= en bas) | Créé en début de initInterface, ordre : Layers / Zoom / Niveau / [groupes accordéon] |
+
+#### 41.0.1 Helpers exposés par refonteInterface.js
+
+- `window._refonteInterfaceCreerBoutonReductionLeft()` → crée le bouton ≡ en topleft
+- `window._refonteInterfaceCreerBoutonReductionRight()` → idem topright
+- Au clic : toggle `body.kta-refonte-sidebar-{left|right}-collapsed`
+- CSS cache tous les controls de cette sidebar SAUF ceux marqués `.kta-refonte-collapse-bar`
+
+#### 41.0.2 Helper exposé par interface.js
+
+- `window._fermerGroupeOuvertSide(side)` (side = "left"/"right") → ferme le groupe accordéon ouvert si présent dans la sidebar demandée. Appelé par le bouton ≡ pour fermer un sous-menu avant de collapser (cohérence UX). Skip si `modeActif` (anti-coupure tracker en Play).
+- Chaque groupe stocke désormais `position` (topleft/topright) dans `_groupes[id]` pour permettre ce filtrage par sidebar.
+
 ### 41. Refonte UI v1 — Sidebars gauche/droite + Header/Status bar (branche `Refonte_interface`)
 
 Refonte progressive de l'interface en mode carte (post-loader). **Pas encore mergée sur main au moment de cette doc**. Vit sur la branche `Refonte_interface` (créée depuis `Karma_dev` HEAD `75455a4`).

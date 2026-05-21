@@ -7462,99 +7462,195 @@ body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
    thématique (tracés/zones/tracker) à droite suit le même principe.
    ───────────────────────────────────────────────────────────────── */
 
-/* 🎨 Refonte UI v1 — Sidebars : compaction + agrandissement boutons
+/* 🎨 Refonte UI v1.2 — Sidebars unifiées + boutons réduction + boussole bottom
    ─────────────────────────────────────────────────────────────────
-   Fixes feedback KARMA (capture devmap après push v1.8.1) :
-   - Les icônes apparaissaient trop bas (margin Leaflet natif important
-     entre chaque control + padding-top 10px du .leaflet-top par défaut)
-   - Trop d'espacement entre groupes (margin-bottom 10px natif)
-   - Boutons un peu petits pour les pouces sur mobile
-   - Boussole positionnée à top:80px historique → chevauchait avec les
-     actions globales (qui descendaient à cause des marges)
+   Itération KARMA (1:a 2:a 3:a 4:a 5:b 6:a) :
+   - Chaque sidebar (gauche/droite) = UNE SEULE BARRE VERTICALE continue
+     (pas d'icônes séparées avec gap). Margin 0, bordures arrondies
+     uniquement aux extrémités (premier+dernier control), séparateurs
+     internes 1px subtils.
+   - Sous-actions des accordéons : s'empilent EN DESSOUS du bouton
+     principal (vertical) au lieu d'à côté (horizontal). La sidebar
+     grossit vers le bas, scroll interne si dépasse.
+   - Bouton ≡ de réduction en HAUT de chaque sidebar (via flex order:-1).
+     Au clic toggle classe body.kta-refonte-sidebar-{left|right}-collapsed.
+     Quand collapsed → seul le bouton ≡ reste visible (la barre = 1 icône).
+   - Boussole repositionnée en BOTTOM-LEFT au-dessus du footer (plus de
+     chevauchement possible avec les actions globales gauche).
    ───────────────────────────────────────────────────────────────── */
 
-/* Remonter le bloc des controls Leaflet TOUT près du header :
-   - Leaflet natif a un padding-top de 10px sur .leaflet-top → on le
-     réduit à 2px en mode refonte. Itération KARMA : voulait les icônes
-     "quasiment collées au top" → on passe de 4px à 2px (gap minime). */
-body.kta-refonte-v1 .leaflet-top {
+/* Sidebar verticale en mode flex (pour pouvoir utiliser order:-1 sur
+   le bouton réduction qui doit s'afficher en haut peu importe son
+   ordre dans le DOM). Leaflet par défaut utilise float natif → on
+   override pour les 2 sidebars. */
+body.kta-refonte-v1 .leaflet-top.leaflet-left,
+body.kta-refonte-v1 .leaflet-top.leaflet-right {
+  display: flex;
+  flex-direction: column;
   padding-top: 2px !important;
+  /* Scroll interne si la sidebar dépasse la hauteur disponible (entre
+     header 44px et footer 52px, moins safe-areas). */
+  max-height: calc(100vh - 44px - 52px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;  /* Firefox */
+  -webkit-overflow-scrolling: touch;
 }
-/* Idem horizontalement pour les sidebars droite/gauche : padding minimal */
-body.kta-refonte-v1 .leaflet-left {
-  padding-left: 2px !important;
-}
-body.kta-refonte-v1 .leaflet-right {
-  padding-right: 2px !important;
+body.kta-refonte-v1 .leaflet-top.leaflet-left { align-items: flex-start; }
+body.kta-refonte-v1 .leaflet-top.leaflet-right { align-items: flex-end; }
+/* Masquer la scrollbar webkit pour rester propre visuellement */
+body.kta-refonte-v1 .leaflet-top.leaflet-left::-webkit-scrollbar,
+body.kta-refonte-v1 .leaflet-top.leaflet-right::-webkit-scrollbar {
+  display: none;
 }
 
-/* Marges entre les controls Leaflet : "presque collés" (feedback KARMA).
-   Itération : 6px → 3px → 1px. Tend vers le minimum visuel (1px = trait
-   fin pour différencier les controls sans gap perçu).
-   Leaflet utilise par défaut .leaflet-bar { margin-bottom: 10px; } et
-   .leaflet-control { margin-bottom: 0; } selon les versions. On force
-   un margin-bottom 1px sur les deux pour être sûr (avec !important
-   pour gagner contre les media queries natives Leaflet). */
+/* Padding horizontal minimal (collé au bord) */
+body.kta-refonte-v1 .leaflet-left { padding-left: 2px !important; }
+body.kta-refonte-v1 .leaflet-right { padding-right: 2px !important; }
+
+/* SIDEBAR UNIFIÉE : zéro margin entre les controls collés.
+   En mode flex (cf. au-dessus), .leaflet-control sont des flex items
+   empilés verticalement. On force margin:0 pour les coller.
+   Float Leaflet natif est neutralisé par le flex. */
 body.kta-refonte-v1 .leaflet-bar,
 body.kta-refonte-v1 .leaflet-control {
-  margin-bottom: 1px !important;
-  margin-top: 0 !important;
+  margin: 0 !important;
+  float: none !important;
+  clear: none !important;
 }
-/* Marge horizontale aussi (entre control et bord de l'écran) — on garde
-   les ~10px natifs Leaflet, c'est bon visuellement. Pas d'override. */
 
-/* Boutons des groupes accordéon : agrandis pour cliquabilité mobile.
-   Natif Leaflet ~30x30px. Refonte v1 : 36x36px. Émojis +1pt aussi. */
+/* Bordures arrondies uniquement aux extrémités de la sidebar (premier
+   et dernier control) — donne l'effet "barre unique" sans gap visible.
+   Tout le reste : carré. */
+body.kta-refonte-v1 .leaflet-bar {
+  border-radius: 0 !important;
+}
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar,
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child {
+  border-top-left-radius: 8px !important;
+  border-top-right-radius: 8px !important;
+}
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar,
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child {
+  border-bottom-left-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+/* Séparateur interne 1px subtil entre 2 controls collés. Border-top
+   pour ne pas se cumuler avec le border-bottom natif du control
+   précédent. */
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:not(:first-child) .leaflet-bar {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Boutons des groupes accordéon : 36x36px (cliquabilité mobile) */
 body.kta-refonte-v1 .leaflet-bar a {
   width: 36px !important;
   height: 36px !important;
   line-height: 36px !important;
   font-size: 19px;
+  /* Important pour le flow vertical : annule le float Leaflet natif
+     qui ferait flotter les sous-actions à gauche. */
+  float: none !important;
+  display: block !important;
+  /* Le border-bottom natif Leaflet entre 2 boutons d'un même control
+     (ex: zoom-in / zoom-out) reste — c'est le séparateur intra-control. */
 }
-/* Sous-actions des accordéons (les chips qui apparaissent quand un
-   groupe est ouvert) : même taille pour cohérence visuelle. */
+
+/* SOUS-ACTIONS EN COLONNE — KARMA 3:a "scroll vers le bas et agrandissement".
+   Les .kta-sub apparaissaient à droite du bouton principal (inline-block).
+   Refonte : block, s'empilent verticalement. */
 body.kta-refonte-v1 .leaflet-bar a.kta-sub {
   width: 36px !important;
   height: 36px !important;
   line-height: 36px !important;
   font-size: 18px;
+  display: block !important;
+  float: none !important;
+}
+/* .kta-hidden masque les sous-actions quand le groupe est replié.
+   Override "display:none" propre (Leaflet pouvait afficher en flex). */
+body.kta-refonte-v1 .leaflet-bar a.kta-sub.kta-hidden {
+  display: none !important;
 }
 
-/* Séparateur visuel via shadow + ligne fine entre les controls — petit
-   "card stacking" qui rend la lecture plus claire. */
+/* Shadow externe sur les sidebars (effet "card flottante") au lieu
+   d'un shadow par-control (qui faisait stacking visuel). On apply le
+   shadow uniquement sur le premier/dernier control pour englober. */
 body.kta-refonte-v1 .leaflet-bar {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: none;
+}
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:first-child .leaflet-bar {
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.25);
+}
+body.kta-refonte-v1 .leaflet-top > .leaflet-control:last-child .leaflet-bar {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-/* 🧭 BOUSSOLE — repositionnée en mode refonte pour ne plus chevaucher
-   les actions globales gauche (Doc/Settings/Charger/Save). Calcul du
-   top approximatif :
-   - Header : 44px
-   - Padding .leaflet-top : 4px
-   - Layers control : ~30px + 3px margin
-   - Zoom control : ~60px (2 boutons + et −) + 3px margin
-   = ~144px sans niveau, ~183px avec niveau (+ 36px + 3px)
+/* ─────────────────────────────────────────────────────────────────
+   BOUTON ≡ DE RÉDUCTION DES SIDEBARS
+   ─────────────────────────────────────────────────────────────────
+   Créé par refonteInterface.js > _creerBoutonReduction.
+   Marqué .kta-refonte-collapse-bar (sur le .leaflet-bar) +
+   .kta-refonte-collapse-{left|right} pour distinguer côté.
 
-   La boussole se positionne juste après le zoom (et après le niveau si
-   multi-niveau). Les actions globales (Doc, etc.) suivent naturellement
-   dans le flow Leaflet — la boussole étant en position:fixed, elles ne
-   sont pas "poussées" par sa hauteur, mais elles restent plus haut que
-   le bas du widget grâce au fix margins ci-dessus.
+   Position visuelle : EN HAUT (order:-1 en flex) peu importe l'ordre
+   d'ajout DOM (les natifs Layers/Zoom Leaflet sont créés avant nous).
+   ───────────────────────────────────────────────────────────────── */
 
-   Note : si la boussole est ouverte ET que beaucoup d'actions globales
-   sont visibles, il peut y avoir un léger chevauchement visuel sur les
-   actions les plus basses. C'est un compromis assumé en phase 1 — phase
-   2 envisagera de transformer la boussole en L.control natif pour qu'elle
-   se stack proprement avec les autres. */
+body.kta-refonte-v1 .kta-refonte-collapse-bar {
+  order: -1;  /* premier en flex order */
+}
+
+body.kta-refonte-v1 .kta-refonte-collapse-btn {
+  background: rgba(244, 197, 66, 0.10);
+  color: #f4c542 !important;
+  font-size: 20px !important;
+  font-weight: 600;
+  line-height: 36px !important;
+  text-align: center;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+body.kta-refonte-v1 .kta-refonte-collapse-btn:hover,
+body.kta-refonte-v1 .kta-refonte-collapse-btn:focus-visible {
+  background: rgba(244, 197, 66, 0.22);
+  color: #ffd766 !important;
+  outline: none;
+}
+
+/* État collapsed : cacher tous les controls SAUF le bouton de réduction.
+   On utilise :not(.kta-refonte-collapse-bar) pour cibler n'importe
+   quel control sauf celui marqué. */
+body.kta-refonte-sidebar-left-collapsed .leaflet-top.leaflet-left > .leaflet-control:not(.kta-refonte-collapse-bar) {
+  display: none !important;
+}
+body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-control:not(.kta-refonte-collapse-bar) {
+  display: none !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   🧭 BOUSSOLE — REPOSITIONNÉE EN BOTTOM-LEFT (au-dessus du footer)
+   ─────────────────────────────────────────────────────────────────
+   Itération KARMA : la boussole top-left chevauchait constamment les
+   actions globales gauche (Doc/Settings/Charger/Save). Solution
+   propre : déplacer en bottom-left, juste au-dessus de la status bar.
+   Plus aucun chevauchement possible avec les sidebars top.
+   ───────────────────────────────────────────────────────────────── */
 body.kta-refonte-v1 .kta-compass-widget {
-  /* Recalcul itération KARMA après réduction marges :
-     header 44 + padding-top 2 + Layers 36 + margin 1 + Zoom 72 + margin 1
-     + marge sécurité 6 = ~162px. On pousse à 170 pour être safe. */
-  top: calc(170px + env(safe-area-inset-top, 0px)) !important;
+  /* top: auto annule la règle de base à top:80px qui s'applique en v1. */
+  top: auto !important;
+  /* 52px = hauteur statusbar + 8px gap au-dessus. Safe-area iPhone
+     en plus pour ne pas chevaucher le home indicator. */
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
+  left: calc(10px + env(safe-area-inset-left, 0px));
 }
+/* Multi-niveau : pas de changement de position en bottom-left, la
+   présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
-  /* + Niveau 36 + margin 1 = +37 → ~207 + sécurité = 210 */
-  top: calc(210px + env(safe-area-inset-top, 0px)) !important;
+  top: auto !important;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7575,11 +7671,11 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   padding: 0 12px;
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
-  /* 🆕 Footer agrandi (feedback KARMA) : 36px → 44px ouvert + safe-area
-     iPhone bottom (home indicator ~21px sur iPhone 14 et + récents).
-     Sans la safe-area, les stats étaient coupées en bas par les bords
-     arrondis / le home indicator. Total ~65px sur iPhone PWA. */
-  height: calc(44px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 Footer agrandi (feedback KARMA itéré) : 44px → 52px ouvert +
+     safe-area iPhone bottom. Total ~73px sur iPhone PWA (52 + 21).
+     Évite définitivement le chevauchement avec les bords arrondis et
+     le home indicator. */
+  height: calc(52px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -7592,8 +7688,8 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-  /* 🆕 État replié : 14px → 18px (un poil plus visible) + safe-area */
-  height: calc(18px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 État replié : 18px → 20px + safe-area */
+  height: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -7664,9 +7760,9 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
 /* Décale les labels Leaflet bottom (mesure, distance totale, itinéraire)
    pour qu'ils soient au-dessus de la status bar. Mais en refonte v1 ils
    sont MASQUÉS car remplacés par les stats du status bar.
-   🆕 Hauteur du statusbar : 36px → 44px (feedback KARMA iPhone) */
+   🆕 Hauteur du statusbar : 52px (itéré KARMA iPhone) */
 body.kta-refonte-v1 .leaflet-bottom {
-  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
 }
 body.kta-refonte-v1 .kta-iti-distance,
 body.kta-refonte-v1 .kta-mesure-distance,
@@ -7675,9 +7771,9 @@ body.kta-refonte-v1 .kta-measure-label-control {
 }
 /* Si user replie la status bar, on remonte les controls bottom-left
    (layer control natif Leaflet, attribution, etc.) en conséquence
-   🆕 Statusbar replié : 14px → 18px */
+   🆕 Statusbar replié : 20px */
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leaflet-bottom {
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7690,14 +7786,14 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leafl
 
 body.kta-refonte-v1 #map {
   top: calc(44px + env(safe-area-inset-top, 0px));
-  /* 🆕 Statusbar 36 → 44px (feedback KARMA iPhone home indicator) */
-  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 Statusbar 44 → 52px (itéré KARMA iPhone) */
+  bottom: calc(52px + env(safe-area-inset-bottom, 0px));
   height: auto;
 }
 /* Quand status bar collapsed, plus de place pour la carte
-   🆕 14 → 18px */
+   🆕 18 → 20px */
 body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7713,23 +7809,36 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* 🆕 Statusbar landscape : 28 → 36px (cohérent avec +8px en portrait) */
+  /* 🆕 Statusbar landscape : 36 → 40px (cohérent avec +8px en portrait) */
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    height: calc(36px + env(safe-area-inset-bottom, 0px));
+    height: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-    height: calc(14px + env(safe-area-inset-bottom, 0px));
+    height: calc(16px + env(safe-area-inset-bottom, 0px));
   }
   /* Adapter aussi le #map bottom en landscape */
   body.kta-refonte-v1 #map {
-    bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  body.kta-refonte-v1 .leaflet-bottom {
+    bottom: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   /* Et la rose des vents du header — taille réduite */
   body.kta-refonte-v1 .kta-refonte-header-home-img {
     height: 22px;
+  }
+  /* Recalcule la max-height des sidebars pour landscape */
+  body.kta-refonte-v1 .leaflet-top.leaflet-left,
+  body.kta-refonte-v1 .leaflet-top.leaflet-right {
+    max-height: calc(100vh - 36px - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 4px);
+  }
+  /* Boussole bottom-left en landscape — au-dessus du statusbar 40px */
+  body.kta-refonte-v1 .kta-compass-widget,
+  body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 

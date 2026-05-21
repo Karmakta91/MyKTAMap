@@ -2707,6 +2707,21 @@ function _fermerGroupe(id) {
   if (_groupeOuvert === id) _groupeOuvert = null;
 }
 
+// 🆕 Refonte UI v1.2 : ferme le groupe accordéon ouvert si présent dans
+// la sidebar 'left' ou 'right'. Appelé par le bouton ≡ de réduction
+// dans refonteInterface.js. No-op si aucun groupe n'est ouvert, ou si
+// le groupe ouvert n'est pas dans la sidebar demandée.
+window._fermerGroupeOuvertSide = function(side) {
+  if (!_groupeOuvert) return;
+  const g = _groupes[_groupeOuvert];
+  if (!g || !g.position) return;
+  const expected = side === "left" ? "topleft" : "topright";
+  if (g.position !== expected) return;
+  // Ne pas fermer si mode actif (sécurité : tracker en Play, etc.)
+  if (g.modeActif) return;
+  _fermerGroupe(_groupeOuvert);
+};
+
 function _ouvrirGroupe(id) {
   // Fermer tous les autres groupes (sauf ceux qui ont un mode actif)
   Object.keys(_groupes).forEach(function(autreId) {
@@ -2864,7 +2879,12 @@ function _creerGroupeAccordeon(config) {
       container:    div,
       btnPrincipal: btnPrincipal,
       subActions:   subActions,
-      modeActif:    false
+      modeActif:    false,
+      // 🆕 Refonte UI v1.2 : stocker la sidebar du groupe (left/right)
+      // pour permettre au bouton ≡ de réduction de fermer le groupe
+      // ouvert dans SA sidebar avant de collapser. Lit la même config
+      // que pour le L.control({position}).
+      position:     pos  // "topleft" ou "topright"
     };
 
     return div;
@@ -2918,14 +2938,26 @@ function initInterface() {
 
   L.control.titleControl().addTo(window.map);
 
-  // 🆕 Refonte UI v1 : créer le bouton 🏗 Niveau EN PREMIER (avant les
-  // groupes accordéon Doc/Settings/Charger/Save qui sont aussi topleft).
-  // En v1 historique, _initLevelFilterControl est appelé à la fin de
-  // initInterface → le bouton Niveau finit en bas. KARMA veut le bouton
-  // juste après Zoom et avant la boussole. En refonte ON, on initialise
-  // donc le control plus tôt dans l'ordre d'ajout Leaflet. En refonte OFF,
-  // l'appel reste à la fin (comportement v1 strict).
+  // 🆕 Refonte UI v1.2 (KARMA) :
+  //   1. Bouton ≡ de réduction de chaque sidebar (gauche + droite)
+  //      → créé en PREMIER, positionné en HAUT via flex order:-1 (cf. CSS).
+  //      → au clic toggle classe body.kta-refonte-sidebar-{left|right}-collapsed.
+  //   2. Bouton 🏗 Niveau (multi-niveau) — ordre intermédiaire dans la
+  //      sidebar gauche (après les natifs Layers/Zoom, avant Doc/Settings).
+  //
+  // En refonte OFF : aucun de ces appels n'a lieu → comportement v1 strict
+  // (Niveau créé à la fin de initInterface, pas de bouton réduction).
   if (window._refonteInterfaceActive === true) {
+    // Boutons de réduction (gauche + droite). Position visuelle "en haut"
+    // de chaque sidebar gérée via CSS flex order:-1, peu importe l'ordre
+    // d'ajout au DOM (Layers/Zoom natifs Leaflet sont déjà placés avant).
+    if (typeof window._refonteInterfaceCreerBoutonReductionLeft === "function") {
+      window._refonteInterfaceCreerBoutonReductionLeft();
+    }
+    if (typeof window._refonteInterfaceCreerBoutonReductionRight === "function") {
+      window._refonteInterfaceCreerBoutonReductionRight();
+    }
+    // Bouton Niveau (avant les groupes accordéon topleft)
     _initLevelFilterControl();
   }
 
