@@ -34,7 +34,7 @@
 // Pour les prochains hotfixes : bump simple `v1.9.2`, `v1.9.3`, etc.
 // Pas besoin de suffix tant qu'on ne re-démarre pas une branche
 // expérimentale parallèle.
-const CACHE_NAME = "myktamap-cache-v1.9.1-fix6";
+const CACHE_NAME = "myktamap-cache-v1.9.1-fix7";
 
 const ASSETS_TO_CACHE = [
   "./",
