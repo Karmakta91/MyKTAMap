@@ -60,6 +60,10 @@ const ASSETS_TO_CACHE = [
   "./js/networkAudit.js",
   "./js/debug.js",
   "./js/perfUltra.js",
+  // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag
+  // localStorage["myktamap_refonte_v1"] absent. Cachée pour que le toggle
+  // marche aussi en mode offline.
+  "./js/refonteInterface.js",
   "./js/unlockGate.js",
   "./js/config.js",
   "./js/utils.js",

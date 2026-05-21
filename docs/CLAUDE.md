@@ -2274,6 +2274,110 @@ Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Int
 
 ⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
 
+### 41. Refonte UI v1 — Sidebars gauche/droite + Header/Status bar (branche `Refonte_interface`)
+
+Refonte progressive de l'interface en mode carte (post-loader). **Pas encore mergée sur main au moment de cette doc**. Vit sur la branche `Refonte_interface` (créée depuis `Karma_dev` HEAD `75455a4`).
+
+#### 41.1 Activation
+
+Flag `localStorage["myktamap_refonte_v1"] = "1"`. Toggle via ⚙️ Réglages → 🎨 Affichage (expérimental) → checkbox "Interface refonte v1". **Reload requis** au toggle (la classe `body.kta-refonte-v1` doit être appliquée au boot pour que le CSS scope tous les changements visuels avant que Leaflet initialise ses positions).
+
+**Default OFF** : par construction, si la clé n'existe pas en localStorage, l'app fonctionne en v1.8.x strict (zéro changement visuel ou comportemental). C'est crucial pour le déploiement progressif.
+
+#### 41.2 Architecture phase 1
+
+| Zone | Contenu | Position |
+|---|---|---|
+| **Header bar** | 🗂 home / titre plan / compteurs (📍 points · 🛣 tracés · ⬛ zones) | sticky top 44px |
+| **Sidebar gauche** | ⊞ Layers / − + Zoom / 🏗 Niveau / 📚 Doc / ⚙ Paramètres / ⬇ Charger / ⬆ Save | Leaflet topleft |
+| **Sidebar droite** | 🔍 Search / ✏️ Édition / 📐 Mesure / 🛣 Tracés / ⬛ Zones / 🧭 Tracker | Leaflet topright |
+| **Status bar** | 📐 Mesure / 📏 Distance totale / 🗺️ Itinéraire / 🚶 Tracker | sticky bottom 36px (collapsible) |
+
+**Suppressions** :
+- Groupe 🏗 Créer/modifier plan **retiré** de la sidebar carte (reste accessible depuis le loader/home via "🏗️ Générer un plan")
+- Labels Leaflet bottom (`.kta-iti-distance`, `.kta-mesure-distance`, `.kta-measure-label-control`) **masqués via CSS** — remplacés par les stats du status bar
+
+**Préservations** :
+- Boussole : icône d'accès reste uniquement dans le sous-menu Tracker (à droite). Widget affiché en haut-gauche quand activé via `compass.js` (comportement inchangé).
+- Toutes les modales, tous les modes, toute la logique métier inchangés.
+
+#### 41.3 Implémentation — approche "couche additionnelle"
+
+**Pas de duplication de code**. Le module `js/refonteInterface.js` (~370 lignes IIFE) ajoute uniquement :
+
+1. **Au boot** : lecture du flag, si actif → ajoute `body.kta-refonte-v1` (classe CSS qui scope tous les changements visuels)
+2. **Post-init** : hook `window._refonteInterfacePostInit` appelé par `main.js > lancerApplication` après que `window.map` est prête → crée le header bar et la status bar en DOM
+3. **Plan switch** : hook `window._refonteInterfacePreUnload` appelé par `main.js > _libererRessourcesPlanPrecedent` → cleanup
+4. **Polling 2s** : refresh des compteurs (header) et des stats (status bar) — décorrelé du code existant pour rester safe
+
+**API publique** `window.RefonteInterface` :
+- `isActive()` → boolean
+- `setActive(boolean)` → set + reload (avec confirm)
+- `updateCompteurs()` → recalcule header
+- `refreshStatusBar()` → recalcule status bar
+
+#### 41.4 Modification de `_creerGroupeAccordeon` (interface.js)
+
+Nouvelle option `position: "topleft" | "topright"` lue UNIQUEMENT si `window._refonteInterfaceActive === true`. Sinon comportement v1.8.x strict (tous les groupes en topright).
+
+Groupes taggés `position: "topleft"` :
+- `aide` (📚 Doc/Aide/Légende)
+- `settings` (⚙ Paramètres)
+- `charger` (⬇ Charger / Import)
+- `save` (⬆ Enregistrer)
+
+Groupe `planner` (🏗 Créer/modifier) : skip total si flag actif (wrapping `if (window._refonteInterfaceActive !== true) _creerGroupeAccordeon(...)`).
+
+Autres groupes (recherche, édition, mesure, tracés, zones, tracker) : aucun changement → restent à droite par défaut.
+
+#### 41.5 CSS scoping
+
+Tout le CSS de la refonte est dans une section `body.kta-refonte-v1 { ... }` à la fin de `css/style.css` (~330 lignes). Aucune règle ne s'applique si la classe est absente du body.
+
+**Variables CSS importantes** :
+- Header bar height : `44px` (desktop) / `36px` (mobile landscape)
+- Status bar height : `36px` ouvert / `14px` replié
+- `#map` recalculé via `top: 44px; bottom: 36px;` quand classe active
+- Safe-area iOS PWA gérée via `env(safe-area-inset-*)` partout
+
+**Sélecteur `:has()`** : utilisé pour adapter la position du `bottom: 14px` quand status bar est collapsed. Compatible Chromium 105+, Safari 15.4+, Firefox 121+ (déc 2023). Fallback acceptable sur très vieux browsers : Leaflet bottom controls coupés par la statusbar.
+
+#### 41.6 Compteurs et stats — comment c'est calculé
+
+Le module **ne duplique pas la logique métier**. Il lit l'état via les API publiques existantes :
+- Compteurs header : `window.getEditorPoints()` / `getRoads()` / `getZones()`
+- Stat mesure : `window.getMeasurePoints()` + calcul euclidien + `window.formatDistance()`
+- Stat itinéraire : lecture du DOM du `L.control .kta-iti-distance` (qui est masqué visuellement mais reste dans le DOM, mis à jour par `_majLabelDistanceItineraire`)
+- Stat tracker : `window.getTrackingActif()` + `getTrackingPosition()` (à condition que ces helpers existent ; sinon affichage "Actif" simple)
+
+Polling 2s = compromis : fluide pour l'user sans gaspiller le CPU.
+
+#### 41.7 Pièges & limites connues
+
+⚠️ **Le titre fixe historique `#kta-titre-fixe` est masqué** quand classe active (`display: none !important`). La logique JS de plan switcher (`togglePlanSwitcher` etc.) continue de marcher car appelée par le bouton du header bar refondu.
+
+⚠️ **`window.getTrackingActif()` n'existe peut-être pas** : check `if (window.getTrackingActif && window.getTrackingActif())` côté JS. Si l'API n'est pas exposée, le status bar tracker reste vide. Pas bloquant.
+
+⚠️ **Re-fetch du SW requis pour les users en cache** : quand on shippe la refonte sur main, bumper `CACHE_NAME` (sinon les users en v1.8.x ne re-fetcheront pas `refonteInterface.js`).
+
+⚠️ **Toggle nécessite reload** : pour appliquer / retirer la classe body proprement (Leaflet recalcule ses dimensions au boot, pas au runtime). Le `setActive()` propose un `confirm("Recharger maintenant ?")`.
+
+⚠️ **Status bar masque les controls bottom-left Leaflet** par défaut. Si tu ajoutes un nouveau control bottom-left, vérifie qu'il n'est pas caché sous la statusbar. CSS le décale automatiquement de 36px (ou 14px si replié).
+
+#### 41.8 Phases futures (post-validation de la phase 1)
+
+- **Phase 2** : standardisation des tailles modales (S/M/L/XL cohérent)
+- **Phase 3** : polish micro-interactions (transitions sidebars, badges contextuels)
+- **Phase 4** : accessibilité clavier complète (Tab + raccourcis E/M/Échap)
+- **Phase 5** : *(quand toutes validées)* retirer le feature flag, supprimer l'ancien code mort, bumper en v2.0.0 (MAJOR car nouveau modèle UI)
+
+#### 41.9 Workflow Git
+
+- Travail sur branche `Refonte_interface` (créée depuis `Karma_dev` HEAD `75455a4`)
+- Pour fix sur prod : `git checkout Karma_dev` puis workflow normal
+- Pour refonte : `git checkout Refonte_interface`
+- Merge final : `Refonte_interface` → `Karma_dev` → `main` (bumper CACHE_NAME au merge sur main)
+
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 
 [`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :

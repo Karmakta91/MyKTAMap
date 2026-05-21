@@ -1595,6 +1595,17 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
+        <!-- 🆕 Refonte UI v1 (branche Refonte_interface) : toggle pour
+             activer l'interface refondue en mode carte (header bar + sidebars
+             gauche/droite séparées + status bar). Expérimental. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🎨 Affichage (expérimental)</div>
+          <label class="kta-net-paranoia-toggle" style="background: rgba(244, 197, 66, 0.06); border-color: rgba(244, 197, 66, 0.22);">
+            <input type="checkbox" id="kta-cfg-refonte-v1-cb" ${window._refonteInterfaceActive === true ? "checked" : ""}>
+            <span><strong>🎨 Interface refonte v1</strong> — header bar sticky avec compteurs en haut, sidebars gauche (Doc/Settings/Charger/Save) et droite (Outils/Tracés/Zones/Tracker), status bar collapsible en bas. <strong>Reload requis</strong> au toggle.</span>
+          </label>
+        </div>
+
         <!--
           🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
           Réglages en mode carte. Le reset complet reste accessible UNIQUEMENT
@@ -1620,6 +1631,30 @@ function afficherConfig() {
 
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
+
+  // 🎨 Refonte UI v1 : toggle qui set le flag + propose un reload
+  const refonteCb = document.getElementById("kta-cfg-refonte-v1-cb");
+  if (refonteCb) {
+    refonteCb.addEventListener("change", function() {
+      const newVal = refonteCb.checked;
+      // setActive demande la confirmation reload via confirm(). Si l'user
+      // annule, on remet la checkbox dans son état d'origine.
+      if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
+        window.RefonteInterface.setActive(newVal);
+        // Si on est encore là, c'est que l'user a annulé le reload → revert checkbox
+        refonteCb.checked = (window._refonteInterfaceActive === true);
+      } else {
+        // Fallback (module non chargé) — set direct localStorage
+        try {
+          if (newVal) localStorage.setItem("myktamap_refonte_v1", "1");
+          else        localStorage.removeItem("myktamap_refonte_v1");
+        } catch(e) {}
+        if (confirm("Refonte UI " + (newVal ? "activée" : "désactivée") + ". Recharger ?")) {
+          location.reload();
+        }
+      }
+    });
+  }
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
   // uniquement via le générateur de plan désormais. Les fonctions
@@ -2767,7 +2802,15 @@ function _initClickExterieur() {
 //   sousActions: [ { icone, titre, onClick, refClassName? } ]
 // }
 function _creerGroupeAccordeon(config) {
-  const ctrl = L.control({ position: "topright" });
+  // 🆕 Refonte UI v1 : option config.position lue UNIQUEMENT si flag actif
+  // (window._refonteInterfaceActive = true). Sinon comportement strict
+  // v1.8.x (tous les groupes en topright). Évite toute régression sur
+  // l'UI actuelle quand le flag est OFF.
+  let pos = "topright";
+  if (window._refonteInterfaceActive === true && typeof config.position === "string") {
+    pos = config.position;
+  }
+  const ctrl = L.control({ position: pos });
   ctrl.onAdd = function() {
     const div = L.DomUtil.create("div", "leaflet-bar leaflet-control");
 
@@ -2886,10 +2929,12 @@ function initInterface() {
   _initLayersControlWatcher();
 
   // 1. AIDE / DOC / LÉGENDE
+  // 🆕 Refonte UI v1 : position topleft si flag actif (sinon topright par défaut).
   _creerGroupeAccordeon({
     id: "aide",
     iconePrincipale: "📚",
     titre: "Aide / Documentation / Légende",
+    position: "topleft",
     sousActions: [
       { icone: "❓", titre: "Aide",          onClick: afficherAide },
       { icone: "📖", titre: "Documentation", onClick: afficherReadme },
@@ -2907,6 +2952,7 @@ function initInterface() {
     id: "settings",
     iconePrincipale: "⚙️",
     titre: "Paramètres",
+    position: "topleft",
     soloAction: afficherConfig
   });
 
@@ -2926,6 +2972,7 @@ function initInterface() {
     id: "charger",
     iconePrincipale: "⬇️",
     titre: "Charger / Import",
+    position: "topleft",
     sousActions: [
       { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
       { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
@@ -2937,20 +2984,27 @@ function initInterface() {
   });
 
   // 4. CRÉER / MODIFIER PLAN (solo)
-  _creerGroupeAccordeon({
-    id: "planner",
-    iconePrincipale: "🏗️",
-    titre: "Créer ou modifier un plan",
-    soloAction: function() {
-      if (typeof afficherPlanner === "function") afficherPlanner();
-    }
-  });
+  // 🆕 Refonte UI v1 : ce groupe est RETIRÉ du mode carte si le flag est
+  // actif. Le Générateur reste accessible UNIQUEMENT depuis le loader/home
+  // via le bouton "🏗️ Générer un plan". Cohérent avec la philosophie
+  // "actions de création hors du mode carte" (cf. choix KARMA).
+  if (window._refonteInterfaceActive !== true) {
+    _creerGroupeAccordeon({
+      id: "planner",
+      iconePrincipale: "🏗️",
+      titre: "Créer ou modifier un plan",
+      soloAction: function() {
+        if (typeof afficherPlanner === "function") afficherPlanner();
+      }
+    });
+  }
 
   // 5. ENREGISTRER
   _creerGroupeAccordeon({
     id: "save",
     iconePrincipale: "⬆️",
     titre: "Enregistrer",
+    position: "topleft",
     sousActions: [
       { icone: "💾", titre: "Enregistrer la session", onClick: function() {
           if (window.ouvrirExportSessionModal) window.ouvrirExportSessionModal();

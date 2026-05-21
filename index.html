@@ -635,6 +635,13 @@
   <script src="js/alertChecker.js"></script>
   <script src="js/lostMode.js"></script>
   <script src="js/compass.js"></script>
+
+  <!-- 🎨 REFONTE UI v1 (branche Refonte_interface) — chargé AVANT
+       interface.js pour que window._refonteInterfaceActive soit défini
+       quand _creerGroupeAccordeon est appelé (option `position`). No-op
+       si flag OFF (localStorage["myktamap_refonte_v1"] absent). -->
+  <script src="js/refonteInterface.js"></script>
+
   <script src="js/interface.js"></script>
   <script src="js/main.js"></script>
 

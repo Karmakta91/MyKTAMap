@@ -7240,3 +7240,373 @@ body.kta-multilevel-active .kta-compass-widget {
     max-width: 160px;
   }
 }
+
+/* ==================================================================
+   🎨 REFONTE UI v1 (branche Refonte_interface)
+   ==================================================================
+
+   Active uniquement quand body.kta-refonte-v1 est présent (= flag
+   localStorage["myktamap_refonte_v1"] = "1"). Sinon ces règles ne
+   matchent pas → comportement v1.8.x strict.
+
+   Architecture phase 1 :
+   - HEADER BAR sticky top 44px (toujours visible, mobile-first)
+   - SIDEBAR GAUCHE Leaflet topleft (zoom, niveau, doc, settings, charger, save)
+   - SIDEBAR DROITE Leaflet topright (recherche, édition, mesure, tracés, zones, tracker)
+   - STATUS BAR sticky bottom 36px (collapsible)
+
+   Charte couleurs strictement préservée (#0a0d18 / #1a1f2e / #e8eaf0 /
+   #c8d0e0 / #8892a4 / #f4c542 / #8cb4ff).
+   ================================================================== */
+
+/* ─────────────────────────────────────────────────────────────────
+   HEADER BAR (sticky top 44px)
+   ───────────────────────────────────────────────────────────────── */
+
+body.kta-refonte-v1 .kta-refonte-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  z-index: 1200;  /* au-dessus de Leaflet (1000) et du contrôle layers, sous les modales (99999) */
+  background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
+  border-bottom: 1px solid rgba(244, 197, 66, 0.18);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 8px;
+  /* Safe-area iOS PWA (notch + status bar translucide) */
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: calc(8px + env(safe-area-inset-left, 0px));
+  padding-right: calc(8px + env(safe-area-inset-right, 0px));
+  height: calc(44px + env(safe-area-inset-top, 0px));
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  color: #c8d0e0;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Décale tous les controls Leaflet sous le header */
+body.kta-refonte-v1 .leaflet-top {
+  top: calc(44px + env(safe-area-inset-top, 0px));
+}
+
+/* Masque le titre fixe actuel (#kta-titre-fixe) — remplacé par le header bar */
+body.kta-refonte-v1 #kta-titre-fixe {
+  display: none !important;
+}
+
+/* Bouton home (gauche) */
+body.kta-refonte-v1 .kta-refonte-header-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #c8d0e0;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 6px 10px;
+  height: 34px;
+  min-width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+body.kta-refonte-v1 .kta-refonte-header-btn:hover,
+body.kta-refonte-v1 .kta-refonte-header-btn:focus-visible {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.30);
+  outline: none;
+}
+body.kta-refonte-v1 .kta-refonte-header-home {
+  font-size: 20px;
+}
+
+/* Titre du plan (centre) */
+body.kta-refonte-v1 .kta-refonte-header-title-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+body.kta-refonte-v1 .kta-refonte-header-title {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #e8eaf0;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+body.kta-refonte-v1 .kta-refonte-header-title:hover,
+body.kta-refonte-v1 .kta-refonte-header-title:focus-visible {
+  background: rgba(244, 197, 66, 0.08);
+  border-color: rgba(244, 197, 66, 0.25);
+  outline: none;
+}
+body.kta-refonte-v1 #kta-refonte-plan-name {
+  color: #f4c542;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(244, 197, 66, 0.25);
+}
+body.kta-refonte-v1 #kta-refonte-plan-version {
+  color: #8892a4;
+  font-size: 12px;
+  font-weight: 500;
+}
+body.kta-refonte-v1 .kta-refonte-header-chevron {
+  color: #8892a4;
+  font-size: 11px;
+  margin-left: 2px;
+}
+
+/* Compteurs (droite) */
+body.kta-refonte-v1 .kta-refonte-header-counters {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+body.kta-refonte-v1 .kta-refonte-counter {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(140, 180, 255, 0.08);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  transition: opacity 0.15s, background 0.15s;
+}
+body.kta-refonte-v1 .kta-refonte-counter-icon {
+  font-size: 12px;
+}
+body.kta-refonte-v1 .kta-refonte-counter-val {
+  color: #8cb4ff;
+  font-size: 12px;
+  font-weight: 700;
+  min-width: 8px;
+  text-align: center;
+}
+body.kta-refonte-v1 .kta-refonte-counter-empty {
+  opacity: 0.4;
+}
+body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
+  color: #8892a4;
+}
+
+/* Mobile portrait : compteurs simplifiés */
+@media (max-width: 480px) {
+  body.kta-refonte-v1 .kta-refonte-header-counters {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+  body.kta-refonte-v1 .kta-refonte-counter {
+    padding: 2px 4px;
+    gap: 2px;
+  }
+  body.kta-refonte-v1 .kta-refonte-counter-icon {
+    font-size: 11px;
+  }
+  body.kta-refonte-v1 .kta-refonte-header-title {
+    font-size: 14px;
+    padding: 4px 8px;
+  }
+  body.kta-refonte-v1 #kta-refonte-plan-version {
+    font-size: 11px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SIDEBARS LEAFLET — séparateur visuel entre les blocs de groupes
+   ─────────────────────────────────────────────────────────────────
+   On utilise une bordure inférieure marquée sur le dernier control
+   du bloc "système" (zoom/niveau) pour visuellement séparer du bloc
+   "actions globales" en dessous (Doc, Settings, etc.).
+
+   Le séparateur entre quick actions (search/edit/mesure) et accordéon
+   thématique (tracés/zones/tracker) à droite suit le même principe.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Marge entre les controls Leaflet (déjà géré, on renforce un peu) */
+body.kta-refonte-v1 .leaflet-bar {
+  margin-bottom: 6px;
+}
+
+/* Séparateur visuel via un petit espace + ligne fine entre les blocs.
+   En pratique : appliqué à tous les .leaflet-bar pour faire un léger
+   "card stacking" qui rend la lecture plus claire. */
+body.kta-refonte-v1 .leaflet-bar {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   STATUS BAR (sticky bottom, 36px ouvert / 14px replié)
+   ───────────────────────────────────────────────────────────────── */
+
+body.kta-refonte-v1 .kta-refonte-statusbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  z-index: 1200;
+  background: linear-gradient(0deg, #1a1f2e 0%, #161b28 100%);
+  border-top: 1px solid rgba(140, 180, 255, 0.18);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: calc(10px + env(safe-area-inset-left, 0px));
+  padding-right: calc(10px + env(safe-area-inset-right, 0px));
+  height: calc(36px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  font-size: 12px;
+  color: #c8d0e0;
+  transition: height 0.2s ease-out, padding 0.2s ease-out;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
+  height: calc(14px + env(safe-area-inset-bottom, 0px));
+  padding-top: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.kta-refonte-v1 .kta-refonte-statusbar-content {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  transition: opacity 0.2s ease-out;
+}
+body.kta-refonte-v1 .kta-refonte-statusbar-content::-webkit-scrollbar { display: none; }
+
+body.kta-refonte-v1 .kta-refonte-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+body.kta-refonte-v1 .kta-refonte-stat-icon {
+  font-size: 13px;
+}
+body.kta-refonte-v1 .kta-refonte-stat-val {
+  color: #e8eaf0;
+  font-weight: 600;
+  font-size: 12px;
+}
+body.kta-refonte-v1 .kta-refonte-stat-empty {
+  opacity: 0.4;
+}
+body.kta-refonte-v1 .kta-refonte-stat-empty .kta-refonte-stat-val {
+  color: #8892a4;
+  font-weight: 500;
+}
+
+body.kta-refonte-v1 .kta-refonte-statusbar-toggle {
+  background: transparent;
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  color: #8cb4ff;
+  cursor: pointer;
+  font-size: 14px;
+  width: 28px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+  padding: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+body.kta-refonte-v1 .kta-refonte-statusbar-toggle:hover,
+body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.50);
+  outline: none;
+}
+
+/* Décale les labels Leaflet bottom (mesure, distance totale, itinéraire)
+   pour qu'ils soient au-dessus de la status bar. Mais en refonte v1 ils
+   sont MASQUÉS car remplacés par les stats du status bar. */
+body.kta-refonte-v1 .leaflet-bottom {
+  bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+}
+body.kta-refonte-v1 .kta-iti-distance,
+body.kta-refonte-v1 .kta-mesure-distance,
+body.kta-refonte-v1 .kta-measure-label-control {
+  display: none !important;
+}
+/* Si user replie la status bar, on remonte les controls bottom-left
+   (layer control natif Leaflet, attribution, etc.) en conséquence */
+body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leaflet-bottom {
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   #map décalé pour laisser place au header + status bar
+   ─────────────────────────────────────────────────────────────────
+   #map est fixed:0 → on lui applique top et bottom pour respecter les
+   2 bars sticky. Leaflet recalcule ses dimensions à chaque resize, ce
+   qui est déclenché naturellement par l'application de cette classe.
+   ───────────────────────────────────────────────────────────────── */
+
+body.kta-refonte-v1 #map {
+  top: calc(44px + env(safe-area-inset-top, 0px));
+  bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+  height: auto;
+}
+/* Quand status bar collapsed, plus de place pour la carte */
+body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Mobile landscape : compacter le header (gain de hauteur)
+   ───────────────────────────────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  body.kta-refonte-v1 .kta-refonte-header {
+    height: calc(36px + env(safe-area-inset-top, 0px));
+  }
+  body.kta-refonte-v1 .leaflet-top {
+    top: calc(36px + env(safe-area-inset-top, 0px));
+  }
+  body.kta-refonte-v1 #map {
+    top: calc(36px + env(safe-area-inset-top, 0px));
+  }
+  body.kta-refonte-v1 .kta-refonte-statusbar {
+    height: calc(28px + env(safe-area-inset-bottom, 0px));
+  }
+  body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
+    height: calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
