@@ -394,43 +394,19 @@
       setTimeout(_syncH, 100);
       setTimeout(_syncH, 350);
 
-      // 🆕 v1.9.2 : fix iOS PWA — la safe-area-inset-top n'est pas
-      // toujours réévaluée après rotation landscape → portrait, ce qui
-      // fait disparaître le status bar iOS (heure, batterie). KARMA
-      // feedback : "si je passe en horizontal, revient en vertical, je
-      // ne vois plus l'heure et toute les information en top".
+      // 🆕 v1.9.2 : REVERT du fix "toggle body class + force reflow"
+      // testé dans le commit précédent. Hypothèse : iOS interprétait le
+      // toggle de body.kta-refonte-v1 comme une transition fullscreen
+      // → status bar HIDDEN dans les 2 orientations (KARMA : "l'heure
+      // ne s'affiche dans aucun des cas").
       //
-      // 3 techniques de fallback empilées pour maximiser les chances
-      // que iOS re-évalue les env(safe-area-inset-*) :
-      //
-      //   1. Dispatch un event 'resize' global → certains observers
-      //      Leaflet et autres listeners en profitent pour recalculer.
-      //   2. Toggle bref de body.kta-refonte-v1 (off 1 frame, on) →
-      //      force iOS à re-rendre les règles CSS scopées à ce sélecteur,
-      //      ce qui ré-évalue les env() embarqués dans les calc().
-      //   3. Force reflow via lecture de offsetHeight (no-op visuel).
-      //
-      // Si le bug iOS est définitivement résolu côté navigateur dans
-      // une version future, ces fallbacks restent inoffensifs (ils
-      // n'ajoutent qu'un cycle de reflow par rotation, pas perceptible).
-      setTimeout(function() {
-        try {
-          // 1. Resize event global
-          window.dispatchEvent(new Event("resize"));
-          // 2. Toggle body class (off → on) pour re-évaluer le CSS scopé
-          if (document.body && document.body.classList.contains("kta-refonte-v1")) {
-            document.body.classList.remove("kta-refonte-v1");
-            // 3. Force reflow (lit offsetHeight, ignore résultat)
-            // eslint-disable-next-line no-unused-expressions
-            document.body.offsetHeight;
-            requestAnimationFrame(function() {
-              document.body.classList.add("kta-refonte-v1");
-            });
-          }
-        } catch(e) {
-          console.warn("[RefonteInterface] orientation reflow failed:", e);
-        }
-      }, 500);
+      // On revient à un comportement minimal : juste recalculer la
+      // hauteur du status bar via _syncH() après rotation (gérer le
+      // wrap dynamique du footer). Le bug iOS d'origine
+      // (status bar parfois absent en portrait après landscape) reste
+      // possible mais n'est PAS PIRE qu'avant ce module — c'est un
+      // bug iOS Safari standalone PWA qui mérite plus d'investigation
+      // avant qu'on tente un autre fix (test sur device réel requis).
     });
     // Pas besoin de listener resize en plus : si ResizeObserver dispo
     // il gère tous les cas, sinon orientationchange + le sync initial
