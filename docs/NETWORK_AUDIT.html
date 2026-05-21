@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.8.0</strong> (21 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.8.1</strong> (21 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -520,9 +520,24 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.8.1</td>
+        <td>21/05/2026</td>
+        <td>
+          Consolidation Privacy &amp; Audit :
+          <ul style="margin: 4px 0 0 16px; padding: 0;">
+            <li>Page d'audit servie en HTML formaté (au lieu de markdown brut intercepté par le Service Worker)</li>
+            <li>Whitelist élargie à <code>blob:</code> et <code>data:</code> (références locales au navigateur, nécessaires pour le tiling V2)</li>
+            <li>Classification améliorée dans le journal : <code>local-blob</code> et <code>local-data</code> distingués de <code>external</code> (rouge alarmant)</li>
+            <li>CSP Nginx ajustée : <code>'unsafe-inline'</code> sur <code>script-src</code> (compromis assumé — la garantie anti-exfiltration vient de <code>connect-src</code>) et <code>blob:</code> sur <code>connect-src</code></li>
+            <li>Modale Configuration responsive PC (≥1024px) en 2 colonnes</li>
+            <li>Fix débordement du badge « MODE HORS-LIGNE STRICT ACTIF » et du toggle</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
         <td>v1.8.0</td>
         <td>21/05/2026</td>
-        <td>Création du document. Ajout du module <code>networkAudit.js</code>, du Mode hors-ligne strict, et de la CSP Nginx.</td>
+        <td>Création initiale du document. Module <code>networkAudit.js</code>, Mode hors-ligne strict, CSP Nginx.</td>
       </tr>
     </tbody>
   </table>
@@ -535,7 +550,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 21 mai 2026 — v1.8.0 « Privacy &amp; Audit »<br>
+    Dernière mise à jour : 21 mai 2026 — v1.8.1 « Privacy &amp; Audit »<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 

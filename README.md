@@ -11,10 +11,12 @@
 
 > _Le journal est long (99 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-8-0" open>
-<summary><strong>🗓️ 21/05/2026 — 🔒 v1.8.0 : Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP)</strong></summary>
+<details id="v1-8-1" open>
+<summary><strong>🗓️ 21/05/2026 — 🔒 v1.8.1 : Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) + fixes UX</strong></summary>
 
-MINOR bump (1.7 → 1.8) car évolution architecturale majeure visible utilisateur : **MyKTAMap rend maintenant techniquement vérifiable sa promesse "aucune donnée n'est envoyée à nos serveurs"**.
+MINOR + PATCH consolidé (1.7.3 → 1.8.1) car évolution architecturale majeure visible utilisateur : **MyKTAMap rend maintenant techniquement vérifiable sa promesse "aucune donnée n'est envoyée à nos serveurs"**.
+
+> Note : v1.8.0 n'a jamais été shippée publiquement. Tous les commits cumulés sur `Karma_dev` (bump initial + fixes UX + consolidation de la feature Privacy & Audit) sont regroupés dans cette release v1.8.1.
 
 ### 🎯 Le contexte
 
@@ -85,7 +87,7 @@ docs/
 ├── AI_CONTEXT.md                   ← Squelette enrichi pour modale 🤖 Aide IA
 ├── NETWORK_AUDIT.html              ← Page transparence audit (HTML formaté)
 ├── NETWORK_AUDIT.md                ← Version source markdown
-├── nginx-csp-config.conf           ← Config CSP Nginx (v1.8.0)
+├── nginx-csp-config.conf           ← Config CSP Nginx (v1.8.1)
 ├── nginx-redirect-old-domain.conf  ← Conf migration is-underground.fr → myktamap.fr
 └── alert-example-migration.json    ← Exemple payload alert.json
 ```
@@ -103,11 +105,27 @@ docs/
 
 Décision KARMA : tout réglage sensible (paranoia, audit, reset, force update) reste dans le loader (cohérent avec la refonte v1.7.3 — cf. §39 CLAUDE.md). Évite la dispersion UI.
 
+### 🛠️ Consolidation post-bump initial (commits cumulés sur Karma_dev)
+
+Après le bump initial v1.8.0 (jamais shippé), plusieurs fixes et améliorations UX ont été ajoutés avant le merge sur main. Tous regroupés dans v1.8.1 :
+
+- **CSP ajustée** : `'unsafe-inline'` ajouté à `script-src` (compromis assumé — la garantie anti-exfiltration vient de `connect-src`, pas de `script-src`. Compatible avec les nombreux blocs `<script>` inline + `onclick` du projet). `blob:` ajouté à `connect-src` (pour les fetches du tiling V2 sur blob URLs locales).
+- **Doc audit en HTML formaté** : `docs/NETWORK_AUDIT.html` créé (~480 lignes formatées charte MyKTAMap) au lieu de servir le `.md` brut. Le `.md` était intercepté par le SW et tombait sur le fallback `index.html` → l'user voyait le splash à la place de la doc.
+- **Classification améliorée du journal réseau** : nouvelles catégories `local-blob` et `local-data` (vert) distinctes de `external` (rouge) — évite d'alarmer l'user à tort sur les blob URLs locales (tuiles V2) et les data URLs (icônes inline).
+- **Modale Configuration responsive PC** : layout 2 colonnes sur ≥1024px (pattern identique à la modale Réglages in-app et Doc/Aide). Sections homogènes en hauteur → `break-inside: avoid` cohérent.
+- **Sections Configuration réordonnées** : Tiling → ULTRA → Debug → 🔒 Confidentialité → 🔄 Force update → 💥 Reset. Gradation logique préférences → informatif → action douce → action destructive.
+- **Itinéraire dans l'auto-save** : `sessionPersist.js > _gatherState()` ne filtre plus les roads `"itinerary"`. L'itinéraire actif est désormais restauré au reload de l'app. Filet de sécurité préservé via try/catch dans `_restore`.
+- **Label distance/temps itinéraire au restore** : hook `_majLabelDistanceItineraire()` ajouté à la fin de `road.js > renderRoads()` — couvre toutes les mutations de roads (création, modification, import session, restore auto), plus seulement les actions de la modale Itinéraire.
+- **Tracker : groupe fermable + identité 🧭 préservée pendant Play** : retrait de la garde `if (modeActif) return` dans `_toggleGroupe()`. Et `_setGroupeModeActif("tracker", true, null)` au lieu de `"⏹️"` — garde 🧭 comme icône principale (le ⏹️ sous-action suffit). Nouveau point jaune pulsant CSS `.kta-group-mode-actif` pour signaler les modes actifs même quand le groupe est replié.
+- **Documentation projet centralisée dans `docs/`** : CLAUDE.md, README_USER.md, AI_CONTEXT.md déplacés depuis la racine (`git mv` → historique préservé). README.md et LICENSE restent à la racine (conventions GitHub). Tous les chemins fetch côté JS adaptés.
+- **Splash plus court** : `SPLASH_MIN_DURATION_MS` 4000ms → 3500ms (-0.5s).
+- **Fixes UX divers** : badge "MODE HORS-LIGNE STRICT ACTIF" qui débordait à droite hors du `#planLoaderBox` (cause : `width:100%` + padding + border sans `box-sizing: border-box`, classique sur `<div>` qui n'hérite pas de `border-box` comme les `<button>`). Toggle paranoia dans la modale qui débordait pareil (`width:100%` manquant sur le `<label>` flex). `#zipFileName` qui pouvait déborder sur noms de fichiers longs (`overflow-wrap: anywhere` ajouté). Bug fermeture du SW intercepteur sur `.md` corrigé via `.html` statique.
+
 ### Sources de vérité bumpées
 
-- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.3"` → **`"myktamap-cache-v1.8.0"`** + ajout `./js/networkAudit.js` + `./docs/NETWORK_AUDIT.md` à `ASSETS_TO_CACHE`
-- `js/copyright.js > __MKM__.build` : `"v1.7.3"` → **`"v1.8.0"`**
-- `version.json > version` : `"v1.7.3"` → **`"v1.8.0"`** + 6 notes user-facing
+- `sw.js > CACHE_NAME` : `"myktamap-cache-v1.7.3"` → **`"myktamap-cache-v1.8.1"`** + ajout `./js/networkAudit.js` + `./docs/NETWORK_AUDIT.html` + `./docs/NETWORK_AUDIT.md` à `ASSETS_TO_CACHE`
+- `js/copyright.js > __MKM__.build` : `"v1.7.3"` → **`"v1.8.1"`**
+- `version.json > version` : `"v1.7.3"` → **`"v1.8.1"`** + 7 notes user-facing
 
 ### Fichiers ajoutés
 
@@ -123,7 +141,7 @@ Décision KARMA : tout réglage sensible (paranoia, audit, reset, force update) 
 |---|---|
 | `index.html` | Script tag `networkAudit.js` en 2ème position (avant debug.js). Section UI "🔒 Confidentialité & Audit" dans `#loaderConfigModal`. Modales `#loaderNetLogModal` (tableau live) et `#loaderNetDocModal` (doc inline). Badge `#loaderParanoiaBadge` dans le footer. ~250 lignes de handlers JS pour wire le tout. |
 | `css/style.css` | ~250 lignes ajoutées en fin de fichier : styles `.kta-net-paranoia-toggle`, `.kta-net-paranoia-badge` (avec animation pulse), `.kta-net-log-*` (modale tableau live), `.kta-net-doc-*` (modale doc), responsive mobile. |
-| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.0 |
+| `sw.js` + `js/copyright.js` + `version.json` | Bumps v1.8.1 |
 | `CLAUDE.md` | Nouvelle §40 "Privacy & Audit" (~150 lignes) avec architecture, whitelist, API, UI, CSP, et procédure pour ajouter une URL à la whitelist au futur. |
 | `README_USER.md`, `AI_CONTEXT.md` | Sections audit ajoutées, alignement avec la nouvelle feature. |
 
@@ -311,7 +329,7 @@ Les marqueurs sont enregistrés dans `_ktaDataPolylines` avec le même `level` q
 > | 1.5 | 🌍 Export KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza) | v170 |
 > | 1.6 | ⛔ Zone Inaccessible + 🚫 Préférences évitement itinéraire | v169 |
 > | 1.7 | 🗝️ Unlock Gate (barrière communautaire d'accès) | v173 |
-> | 1.8 | 🔒 Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) | v1.8.0 |
+> | 1.8 | 🔒 Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) | v1.8.1 |
 >
 > Les anciennes entrées du journal restent nommées avec leur ancienne convention `vNNN` (= historique préservé). Seules les **nouvelles entrées à partir de v1.7.1** suivent le nouveau format.
 

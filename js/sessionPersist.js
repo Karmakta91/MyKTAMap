@@ -46,18 +46,20 @@
   // ========== ETAT COURANT ==========
 
   function _gatherState() {
-    // 🆕 v1.8.0 (demande KARMA) : on persiste DESORMAIS aussi les roads
+    // 🆕 v1.8.1 (demande KARMA) : on persiste DESORMAIS aussi les roads
     // de type "itinerary". Avant (suite 29, 09/05/2026), elles etaient
-    // filtrees pour eviter un crash au reload sur les anciens browsers
-    // mobiles (drop-shadow CSS du halo neon cyan qui saturait le GPU sur
-    // des itineraires longs). En 2026 ce risque est moindre :
-    //   - PerfUltra > viewportCull peut etre active pour les plans denses
-    //   - Browsers mobiles plus tolerants
-    //   - Filet de securite : le restore est dans un try/catch, en cas
-    //     d'erreur on log et on continue sans crasher (cf. _restore).
-    // Si un user remontait quand meme un crash sur ce point, basculer
-    // PerfUltra > viewportCull sur ON est le workaround. Ou faire un
-    // Reset complet via ⚙️ Configuration en derniere instance.
+    // filtrees pour eviter un crash au reload (drop-shadow CSS du halo
+    // neon cyan qui saturait le GPU au boot quand applique trop tot dans
+    // le cycle de vie de Leaflet + tuiles V2 en cours de chargement).
+    //
+    // La premiere reactivation v1.8.0 (sans precaution) reproduisait
+    // exactement ce crash. Fix v1.8.1 : restore en DEUX PHASES cote
+    // _restore() — immediat pour les roads classiques, differe +1500ms
+    // pour les itineraires. Le timing mime celui du flow manuel d'import
+    // session (qui marche sans crash car l'app est deja stabilisee).
+    //
+    // Le SAVE lui-meme reste simple : on sauve tout. C'est cote RESTORE
+    // qu'on echelonne.
     return {
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
       roads:        window.getRoads         ? (window.getRoads()         || []) : [],
@@ -207,20 +209,62 @@
         restored.points = payload.editorPoints.length;
       }
       // setRoads redessine en interne (renderRoads), donc juste reset + set.
-      // 🆕 v1.8.0 (demande KARMA) : on restaure DESORMAIS aussi les itineraires.
-      // Symetrique au changement dans _gatherState. Le try/catch englobant
-      // attrape les erreurs eventuelles → on log et on continue plutot que
-      // de boucler en crash au reload.
+      // 🆕 v1.8.1 (re-fix KARMA) : restore en DEUX PHASES pour éviter le
+      // crash GPU au boot avec un itineraire actif :
+      //   - Phase 1 (immédiate) : toutes les roads SAUF itinerary
+      //   - Phase 2 (différée +1500ms) : les itinerary
+      //
+      // Pourquoi ? L'itineraire est rendu avec un CSS drop-shadow double
+      // (halo néon cyan) qui est coûteux en compositing GPU. Au boot, ce
+      // rendu se cumule avec :
+      //   - Leaflet pas encore stabilisé (zoom/center initial)
+      //   - Tuiles V2 en cours de chargement (placement progressif)
+      //   - Init des autres modules (Pathfinder, label distance, etc.)
+      // Le tout sature le GPU mobile → crash silencieux (= reload boucle).
+      //
+      // En import session MANUEL (UI sessionExporter), pas de problème :
+      // l'app est déjà stabilisée, le drop-shadow s'applique sans conflit.
+      // D'où ce différé qui mime le timing du flow manuel.
+      //
       // Filtre defensif minimal : on garde le check r.type defini pour
       // ignorer les entrees corrompues (anciens formats, edits manuels du
-      // localStorage, etc.). Mais on n'exclut plus aucun type valide.
+      // localStorage, etc.).
       if (Array.isArray(payload.roads)) {
         const safeRoads = payload.roads.filter(function(r) {
           return r && typeof r.type === "string" && r.type.length > 0;
         });
+        // Sépare itinéraires (différés) du reste (immédiat)
+        const phaseImmediat = safeRoads.filter(function(r) { return r.type !== "itinerary"; });
+        const phaseDifferee = safeRoads.filter(function(r) { return r.type === "itinerary"; });
+
         if (window.resetRoads) window.resetRoads();
-        if (window.setRoads)   window.setRoads(safeRoads);
-        restored.roads = safeRoads.length;
+        if (window.setRoads)   window.setRoads(phaseImmediat);
+        restored.roads = safeRoads.length;  // on annonce le total (l'user verra l'itinéraire arriver après)
+
+        // Phase 2 : différé. 1500ms = laisser Leaflet finir son fitBounds
+        // initial + tuiles V2 se placer + autres modules s'initialiser.
+        // Si entre temps l'user a tracé une nouvelle road, on la préserve
+        // via concat sur getRoads() courant (pas un reset brutal).
+        if (phaseDifferee.length > 0) {
+          setTimeout(function() {
+            try {
+              const current = window.getRoads ? (window.getRoads() || []) : [];
+              // Sécurité : si l'user a entre-temps lancé une modale Itinéraire
+              // qui a créé son propre itinéraire, on ne l'écrase pas (filter
+              // sur current avant concat) — sinon on a 2 itinéraires en même
+              // temps ce qui casse le label distance.
+              const dejaIti = current.some(function(r) { return r && r.type === "itinerary"; });
+              if (dejaIti) {
+                console.info("[SessionPersist] phase 2 itinéraire : skip (un itinéraire actif existe déjà après la phase 1)");
+                return;
+              }
+              if (window.setRoads) window.setRoads(current.concat(phaseDifferee));
+              console.info("[SessionPersist] phase 2 : itinéraire restauré en mode différé");
+            } catch(e) {
+              console.warn("[SessionPersist] phase 2 échec restauration itinéraire :", e);
+            }
+          }, 1500);
+        }
       }
       // setZones redessine en interne (renderZones), donc juste reset + set
       if (Array.isArray(payload.zones)) {
