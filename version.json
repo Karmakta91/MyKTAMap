@@ -1,13 +1,12 @@
 {
-  "version": "v1.7.3",
-  "released": "2026-05-19",
+  "version": "v1.8.0",
+  "released": "2026-05-21",
   "notes": [
-    "🎨 Refonte de la page d'accueil : nouveau titre stylisé avec logo et tagline « Cartographie souterraine », boutons réorganisés.",
-    "⚙️ Nouvelle modale Configuration unique dans le header du loader : regroupe Tiling, ULTRA, Debug + 📋 Afficher les logs, 🔄 Force update douce, 💥 Reset.",
-    "🔄 Bouton « Forcer la mise à jour » (reset lite) : re-télécharge la dernière version du code sans toucher à tes plans, sessions ou préférences. Confirmation préalable obligatoire.",
-    "🔒 Le bouton 🗑️ Réinitialiser est retiré de la modale ⚙️ Réglages en mode carte. Le reset complet n'est désormais accessible que depuis la modale Configuration du loader (évite les déclenchements accidentels une fois un plan chargé).",
-    "🏗️ Le multi-niveau s'active désormais uniquement via le 📦 Générateur (case « Plan multi-niveau ») ou par édition manuelle de plan-config.json. Le toggle dans ⚙️ Réglages a été retiré.",
-    "🪶 Footer copyright épuré : retrait de la mention texte du nom civil ; la signature manuscrite KARMA est conservée.",
-    "🐛 Fix : la home remonte au top à chaque retour depuis un plan (avant : restait à la position de scroll précédente)."
+    "🔒 Privacy & Audit : nouvelle section dans ⚙️ Configuration qui prouve techniquement que MyKTAMap est 100% client-side. Aucune de tes données n'est envoyée à un serveur, et tu peux le vérifier toi-même.",
+    "📋 Journal réseau (live) : tableau temps réel de toutes les requêtes réseau émises par l'app (fetch, XHR, sendBeacon, WebSocket, EventSource). Exportable en JSON pour audit / partage.",
+    "📖 Page de transparence Que fait l'app sur le réseau : liste blanche exhaustive des endpoints contactés + comment vérifier toi-même (F12, mode strict, CSP). Doc complète dans docs/NETWORK_AUDIT.md.",
+    "🔒 Mode hors-ligne strict (opt-in) : toggle qui bloque ACTIVEMENT toute requête non-whitelistée. L'app reste 100% fonctionnelle. Badge orange persistant dans le footer du loader quand actif.",
+    "🛡️ Content Security Policy (CSP) stricte côté serveur Nginx : double protection navigateur qui refuse toute connexion vers un domaine non autorisé. Config dans docs/nginx-csp-config.conf.",
+    "📡 Aucun analytics, aucun cookie, aucun tracker tiers. Pas de Google Analytics, pas de Matomo, pas de pixel de tracking. Promesse vérifiable dans le code source et dans le journal réseau."
   ]
 }

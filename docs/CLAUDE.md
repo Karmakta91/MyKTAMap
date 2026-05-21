@@ -89,8 +89,18 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 ├── lib/leaflet/                ← Leaflet local (pour mode hors-ligne)
 ├── lib/jszip.min.js            ← JSZip (extraction des plans ZIP)
 │
-├── README.md                   ← Doc DEV (architecture, journal des modifications)
-└── README_USER.md              ← Doc UTILISATEUR (intégrée à l'app via 📖)
+├── README.md                   ← Doc DEV (architecture, journal des modifications) — reste à la racine pour GitHub
+├── LICENSE                     ← Licence CC BY-NC-SA 4.0 — reste à la racine pour GitHub
+│
+└── docs/                       ← Documentation projet (déplacée ici depuis la racine en v1.8.0)
+    ├── CLAUDE.md               ← Contexte pour Claude/agents IA (ce fichier)
+    ├── README_USER.md          ← Doc UTILISATEUR (intégrée à l'app via 📖)
+    ├── AI_CONTEXT.md           ← Squelette enrichi pour la modale 🤖 Aide IA
+    ├── NETWORK_AUDIT.html      ← Page de transparence audit (HTML formaté, ouverte depuis ⚙️ Configuration → 🔒 → 📖)
+    ├── NETWORK_AUDIT.md        ← Version source markdown de la page d'audit
+    ├── nginx-csp-config.conf   ← Config CSP Nginx à déployer côté serveur (v1.8.0)
+    ├── nginx-redirect-old-domain.conf  ← Conf Nginx pour la migration is-underground.fr → myktamap.fr
+    └── alert-example-migration.json    ← Exemple de payload alert.json
 ```
 
 > **Source de vérité pour les scripts** : l'ordre de chargement dans `index.html` (`<script src="js/...">`).
@@ -2088,6 +2098,172 @@ Nouvelles classes CSS dédiées : `.loader-titre`, `.loader-titre-logo`, `.loade
 1. Ajouter le HTML dans la modale `#loaderConfigModal` (`index.html`) à l'endroit logique (Tiling / ULTRA / Debug / Maintenance)
 2. Bind du handler dans le script inline de `index.html`
 3. Ne PAS recréer une section séparée hors de la modale — la philosophie v1.7.3 est : **tout réglage du loader vit dans la modale Configuration**. Seuls les boutons d'**action** (créer un plan, charger un plan) restent dehors.
+
+### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.0)
+
+Module de transparence + vérifiabilité construit pour répondre à la méfiance légitime du milieu cataphile vis-à-vis des "backdoors" qui exfiltreraient les plans. **L'app étant 100% client-side, la collecte est techniquement impossible ; ce module rend ça vérifiable par l'utilisateur sans qu'il ait à nous croire sur parole.**
+
+#### 40.1 Architecture
+
+Module IIFE `js/networkAudit.js` (~350 lignes) chargé **EN DEUXIÈME** dans l'ordre des scripts (juste après `copyright.js` qui ne fait que `console.log`, et **avant tout module qui fait du fetch**). Ordre critique : si on inverse avec `debug.js` ou plus, les premiers `fetch()` passent sous le radar.
+
+Mécanisme : monkey-patch des 5 API réseau du navigateur AVANT que tout autre code ne puisse les appeler :
+- `window.fetch`
+- `XMLHttpRequest.prototype.open` + `.send`
+- `navigator.sendBeacon`
+- `WebSocket` (constructor wrapper)
+- `EventSource` (constructor wrapper)
+
+Chaque appel est :
+1. Loggué dans un **buffer circulaire de 500 entries** (RAM uniquement, pas localStorage)
+2. Vérifié contre une **whitelist hardcodée**
+3. Si paranoia ON + non-whitelisté → **bloqué AVANT d'atteindre le réseau** (Promise reject pour fetch, throw pour XHR/WS/SSE, return false pour sendBeacon)
+
+#### 40.2 Whitelist (visible côté UI)
+
+2 entrées hardcodées dans `WHITELIST_PATTERNS` (array de fonctions `(url) => boolean`) :
+
+1. **Same-origin** : `new URL(url, location.origin).origin === location.origin` → autorise toute requête vers le domaine de l'app (asset HTTP, version.json, alert.json, data/*, docs/*, …)
+2. **`https://www.gstatic.com/generate_204`** (literal exact) → ping connectivité no-cors, aucune donnée envoyée
+
+`WHITELIST_HUMAN` exposé en string-array lisible affiché dans la modale 📖 Doc audit pour l'user.
+
+#### 40.3 API publique `window.NetworkAudit`
+
+- `getLog()` → `Array<Entry>` (copie immutable du buffer)
+- `clear()` → vide le buffer
+- `setParanoia(boolean)` → toggle + persistance `localStorage["myktamap_network_paranoia_v1"]` + hook `window._kta_majBadgeParanoia` pour le badge footer
+- `isParanoia()` → état actuel
+- `onLog(callback)` → subscribe live, retourne unsubscribe (utilisé par la modale 📋 Journal)
+- `WHITELIST_HUMAN` → array readonly de descriptions
+- `exportJson()` → string JSON formaté (utilisé par bouton 📥 Exporter)
+
+**Structure `Entry`** :
+```js
+{
+  timestamp: 1747923456789,  // Date.now()
+  kind:      "fetch",         // ou "xhr", "beacon", "websocket", "eventsource"
+  url:       "...",
+  method:    "GET",           // ou POST, WS, SSE, etc.
+  hasBody:   false,           // true si payload envoyé
+  category:  "plan-data",     // ou app-script, ping, external, etc. (cf. _classify)
+  status:    200,             // HTTP status OU "BLOCKED", "FAIL", "OPEN", "SENT"
+  blocked:   false            // true si bloqué par paranoia
+}
+```
+
+#### 40.4 UI (uniquement dans la modale ⚙️ Configuration du loader)
+
+Section "🔒 Confidentialité & Audit" dans `#loaderConfigModal` avec :
+- Bouton 📋 Voir le journal réseau → modale `#loaderNetLogModal` (tableau live + sticky header + scroll body + boutons 📋 Copier / 📥 Exporter / 🗑️ Vider)
+- Bouton 📖 Que fait l'app sur le réseau ? → modale `#loaderNetDocModal` (lead + whitelist + comment vérifier + CSP + bouton 📄 Ouvrir doc complète → `docs/NETWORK_AUDIT.md`)
+- Toggle 🔒 Mode hors-ligne strict (`label.kta-net-paranoia-toggle` avec accent orange)
+
+**Badge `kta-net-paranoia-badge`** dans le footer du loader (`#loaderParanoiaBadge`) : visible uniquement quand paranoia ON, animation pulse douce, cliquable → ouvre la modale Configuration. Helper `window._kta_majBadgeParanoia()` sync le badge + la checkbox depuis l'état NetworkAudit.
+
+⚠️ **Pas de section dans la modale ⚙️ Réglages in-app (map mode)** — décision KARMA : tout réglage sensible reste dans le loader. Cohérent avec la refonte v1.7.3 (cf. §39).
+
+#### 40.5 Catégorisation visuelle dans le journal (UI)
+
+`_classify(url)` retourne un label affiché en couleur :
+
+| Catégorie | Pattern URL | Couleur |
+|---|---|---|
+| `app-page` | `/`, `.html` | bleu |
+| `app-script` | `.js` | bleu |
+| `app-style` | `.css` | bleu |
+| `image` | `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`, `.gif` | vert |
+| `data` | `.json` (générique) | violet |
+| `plan-data` | `/data/...` | violet |
+| `version-check` | `/version.json` | jaune |
+| `alert-check` | `/alert.json` | orange |
+| `doc` | `.md` | gris clair |
+| `ping` | `gstatic.com/generate_204` | gris |
+| `external` | autre origine | rouge |
+| `same-origin` | autre same-origin | bleu clair |
+| `unknown` | erreur de parsing URL | gris |
+
+Aide visuelle pour repérer rapidement les anomalies dans le journal (toute catégorie `external` autre que `ping` devrait alarmer).
+
+#### 40.6 Mode paranoia — comportements précis
+
+- **fetch** : reject avec `Error("[NetworkAudit] Bloqué par le mode hors-ligne strict : <url>")`
+- **XHR** : throw même erreur dans `.send()` (le caller reçoit une exception synchrone)
+- **sendBeacon** : retourne `false` (compat API native)
+- **WebSocket** : throw dans le constructor wrapper
+- **EventSource** : throw dans le constructor wrapper
+
+Persistance : `localStorage["myktamap_network_paranoia_v1"] = "1"` quand actif. Pas de fallback si localStorage indisponible (incognito strict) → paranoia OFF par défaut.
+
+⚠️ Si on ajoute un nouveau type d'API réseau (genre WebTransport, RTCPeerConnection) **il faut l'instrumenter** dans `networkAudit.js`, sinon il passe sous le radar.
+
+#### 40.7 CSP côté serveur (docs/nginx-csp-config.conf)
+
+Double protection : en plus du module JS, le serveur Nginx envoie un header `Content-Security-Policy` strict. Directives clés :
+```
+connect-src 'self' https://www.gstatic.com    ← LA garantie anti-exfiltration
+script-src 'self' 'unsafe-inline'             ← compromis assumé (cf. ci-dessous)
+style-src 'self' 'unsafe-inline'              ← idem (style="..." inline partout)
+img-src 'self' data: blob:                    ← blob: nécessaire pour tuiles V2 ZIP
+worker-src 'self' blob:                       ← Service Worker
+frame-ancestors 'none'                        ← anti-clickjacking
+```
+
+Même si un attaquant injectait du JS malveillant, le **navigateur lui-même** refuserait l'envoi vers un domaine non-whitelisté. Vérifiable côté user via F12 → Network → Headers → `Content-Security-Policy`.
+
+⚠️ **À déployer côté Nginx prod/dev** (toi-même, manuellement) — le fichier `docs/nginx-csp-config.conf` documente la directive complète + les autres headers de sécurité (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+
+⚠️ Pas de `report-uri` / `report-to` : cohérent avec la promesse "aucune donnée n'est envoyée à un serveur tiers". Les violations CSP restent visibles côté user uniquement (DevTools).
+
+#### 40.7.1 ⚠️ `'unsafe-inline'` sur script-src — compromis assumé
+
+L'app utilise depuis toujours :
+- Des blocs `<script>...</script>` inline dans `index.html` (handlers du loader, modales de confirmation, modales audit…)
+- Des `onclick="..."` dans le HTML généré par `interface.js` (modales config, modales d'aide, etc.)
+
+Une CSP `script-src 'self'` strict refuse tout ça. 3 options pour résoudre :
+
+| Option | Effort | Sécurité gagnée |
+|---|---|---|
+| `'unsafe-inline'` ajouté | Aucun | -0 (garantie reste sur `connect-src`) |
+| Hashes SHA-256 par bloc | Très haut (cauchemar maintenance, change à chaque tweak) | Marginal |
+| Externalisation totale + suppression de tous les `onclick` | Refonte massive (~50+ sites) | Marginal |
+
+**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src 'self' https://www.gstatic.com` qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
+
+Conditions qui rendent ce compromis safe pour CE projet :
+- Aucun input user n'est jamais placé en `innerHTML` directement (tout passe par `textContent` ou `_escapeHtml`)
+- Aucun contenu tiers / aucun iframe / pas de CDN externe
+- Le HTML servi par Nginx est statique (pas de templating server-side qui pourrait injecter de l'input user)
+
+⚠️ Si un jour on ajoute une feature qui fait `innerHTML = userInput`, **revoir cette décision** : on devra soit purifier strict (DOMPurify), soit basculer sur du nonce dynamique généré par Nginx.
+
+⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement**. Toujours `el.textContent = userInput` ou `el.innerHTML = _escapeHtml(userInput)`.
+
+#### 40.8 Documentation utilisateur (docs/NETWORK_AUDIT.md)
+
+Page de transparence détaillée (~300 lignes) servie en static depuis le SW (ajoutée à `ASSETS_TO_CACHE`). Contenu :
+- Promesse en 1 ligne
+- Modèle technique (PWA pure)
+- Liste blanche commentée
+- Comment vérifier toi-même (3 méthodes : journal interne / F12 / lecture source)
+- Mode paranoia détaillé
+- CSP expliqué
+- Position de l'auteur
+
+Accessible via le bouton 📄 dans la modale 📖 Doc audit (s'ouvre dans un nouvel onglet `noopener,noreferrer`, path same-origin donc OK même en mode paranoia).
+
+#### 40.9 Pour ajouter une nouvelle URL à la whitelist (futur)
+
+Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Inter, un service de tuiles cartographiques) :
+
+1. Ajouter le pattern dans `WHITELIST_PATTERNS` (tableau de fonctions)
+2. Ajouter une ligne dans `WHITELIST_HUMAN` (description lisible)
+3. Ajouter dans `docs/NETWORK_AUDIT.md` (tableau de la liste blanche complète)
+4. Ajouter dans `docs/nginx-csp-config.conf` (directive `connect-src`)
+5. **Bumper la version** (transparence : un changement de liste blanche = changement de surface réseau, l'user doit pouvoir comparer avant/après)
+
+⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
 
 ### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
 

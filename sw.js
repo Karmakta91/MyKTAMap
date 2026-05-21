@@ -9,15 +9,23 @@
 // SERVICE WORKER — MyKtaMAP
 // =========================
 // Liste des assets cachés pour utilisation offline.
-// NE PAS cacher README.md ni CLAUDE.md (réservés aux développeurs).
+//
+// 📁 Organisation depuis v1.8.0 : toute la documentation (sauf README.md
+//    qui reste à la racine pour GitHub) est dans le sous-dossier docs/.
+//
+// NE PAS cacher README.md à la racine (réservé aux développeurs / GitHub).
+// NE PAS cacher docs/CLAUDE.md (réservé aux agents IA / développeurs).
 // NE PAS cacher version.json (toujours fetched en réseau via cache-bust ?_=).
 // NE PAS cacher alert.json (idem — diffusion d'alertes publiques en temps réel).
-// Cacher README_USER.md (utilisé par le modal Documentation in-app).
-// Cacher AI_CONTEXT.md (squelette enrichi pour la modale 🤖 Aide IA — éditable).
+// NE PAS cacher docs/nginx-csp-config.conf (fichier serveur, ne sert qu'à l'auteur).
+// Cacher docs/README_USER.md (utilisé par le modal Documentation in-app).
+// Cacher docs/AI_CONTEXT.md (squelette enrichi pour la modale 🤖 Aide IA — éditable).
 // Cacher LICENSE (visible offline si l'utilisateur veut consulter la licence).
+// Cacher docs/NETWORK_AUDIT.html + .md (page de transparence audit, ouverte
+//   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-const CACHE_NAME = "myktamap-cache-v1.7.3";
+const CACHE_NAME = "myktamap-cache-v1.8.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -25,11 +33,23 @@ const ASSETS_TO_CACHE = [
   "./manifest.json",
 
   // Doc utilisateur (consommée par le modal Documentation)
-  "./README_USER.md",
+  "./docs/README_USER.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
-  "./AI_CONTEXT.md",
+  "./docs/AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
+  // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2
+  // versions :
+  //   - .html : page HTML formatée (style cohérent charte) ouverte depuis le
+  //     bouton "Doc complète" de la modale audit. C'est CELLE que les
+  //     utilisateurs voient. Cachée car servie en mode "document" → si on
+  //     servait du .md brut, le SW fallback `caches.match(index.html)`
+  //     pourrait servir le splash à la place en cas d'échec/non-cache.
+  //   - .md : version source markdown, gardée pour audit de code (GitHub
+  //     web view, lecture par IA, etc.). Pas exposée directement à l'UI mais
+  //     cachée par cohérence.
+  "./docs/NETWORK_AUDIT.html",
+  "./docs/NETWORK_AUDIT.md",
 
   // CSS
   "./css/style.css",
@@ -37,6 +57,7 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  "./js/networkAudit.js",
   "./js/debug.js",
   "./js/perfUltra.js",
   "./js/unlockGate.js",

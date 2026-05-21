@@ -272,7 +272,9 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 4. **🔄 Force update douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
-5. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
+5. **🔒 Confidentialité & Audit** *(depuis v1.8.0)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
+
+6. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
 
 **Pourquoi cette refonte** : avant v1.7.3, le bouton de reset et le bouton 🐛 Logs étaient dans une section "Plus d'options" séparée, et le bloc Perf était un drawer à part. C'était confus. Désormais : **tout dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
@@ -376,6 +378,51 @@ L'application demande **deux confirmations** avant d'exécuter le reset, et vous
 > 📡 **Vérification connexion** : avant la première confirmation, l'application teste rapidement votre connexion Internet (max 5 secondes). Si vous êtes **hors ligne**, une **fenêtre rouge supplémentaire** vous prévient que l'application sera **inutilisable** après le reset (le cache vide ne pourra pas être rerempli sans réseau). Reconnectez-vous au Wi-Fi ou aux données mobiles avant de relancer le reset, ou cliquez "Continuer quand même" si vous savez ce que vous faites.
 
 > Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
+
+### 🔒 Confidentialité & Audit réseau (depuis v1.8.0)
+
+**MyKTAMap est une application 100 % client-side. Aucune de tes annotations, sessions, plans ou données personnelles n'est jamais envoyée à un serveur, ni à un service tiers.** Et tu peux le vérifier toi-même.
+
+La section **🔒 Confidentialité & Audit** dans la modale ⚙️ Configuration du loader te propose trois outils :
+
+#### 📋 Voir le journal réseau
+
+Ouvre un tableau en temps réel qui logue **toutes** les requêtes réseau émises par l'application (méthode, URL, catégorie, statut, et surtout s'il y a un *body* — c'est-à-dire des données envoyées).
+
+Tu peux :
+- **📋 Copier** le journal en JSON dans le presse-papier
+- **📥 Exporter** le journal en fichier `.json` (à partager / archiver / faire auditer)
+- **🗑️ Vider** le buffer
+
+**À surveiller** : si tu vois apparaître une requête `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` ou `EventSource`, ou une URL externe (catégorie en rouge) autre que le ping de connectivité Google → **contacte l'auteur immédiatement** : ça contredirait la promesse de cette page.
+
+#### 📖 Que fait l'app sur le réseau ?
+
+Une fenêtre qui détaille :
+- Le modèle technique (PWA pure, pas de backend)
+- La **liste blanche** complète et nominative des URLs que l'app peut contacter
+- Comment vérifier toi-même via les DevTools de ton navigateur (F12 → Network)
+- Comment la Content Security Policy (CSP) du serveur protège en plus
+
+Un bouton 📄 te permet d'ouvrir la **documentation complète** (`docs/NETWORK_AUDIT.md`) dans un nouvel onglet.
+
+#### 🔒 Mode hors-ligne strict (opt-in)
+
+Coche cette case si tu veux une **garantie active** côté navigateur : toute requête sortante non whitelistée sera **bloquée AVANT d'atteindre le réseau** (le navigateur reçoit une exception, pas un timeout).
+
+Une fois activé :
+- Un badge orange `🔒 MODE HORS-LIGNE STRICT ACTIF` apparaît dans le footer de la page d'accueil
+- L'app continue de fonctionner normalement (annotations, calculs, exports PNG/KMZ, navigation, multi-niveau, itinéraire, tracker…)
+- Seuls les pings de mise à jour vers Internet sont coupés (mais l'app reste utilisable avec sa version actuelle)
+
+Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'à ce que tu le décoches ou que tu fasses un reset complet.
+
+> 🛡️ **Niveau de garantie** : c'est une **triple protection** :
+> 1. L'archi PWA rend la collecte techniquement impossible (pas de backend)
+> 2. Le module d'audit JS logue + peut bloquer côté client
+> 3. La Content Security Policy du serveur demande au navigateur lui-même de refuser toute connexion non autorisée
+>
+> Tu n'es jamais obligé de croire l'auteur sur parole : tout est vérifiable.
 
 ---
 

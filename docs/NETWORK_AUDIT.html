@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="author" content="Flavien VIDAL (alias KARMA)">
+  <meta name="copyright" content="(c) 2026 Flavien VIDAL — CC BY-NC-SA 4.0">
+  <title>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</title>
+  <link rel="icon" type="image/png" href="../icon/mkm-full.png">
+
+  <style>
+    /* Charte cohérente avec MyKTAMap (style.css). Inline pour rester
+       autonome (la page peut être ouverte directement sans dépendance). */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #0a0d18;
+      color: #c8d0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+    }
+    .wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .header-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #8cb4ff;
+      text-decoration: none;
+      font-size: 14px;
+      margin-bottom: 20px;
+      padding: 8px 14px;
+      background: rgba(140, 180, 255, 0.08);
+      border: 1px solid rgba(140, 180, 255, 0.22);
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+    .header-back:hover {
+      background: rgba(140, 180, 255, 0.15);
+    }
+    h1 {
+      color: #f4c542;
+      font-size: 28px;
+      margin: 0 0 8px;
+      letter-spacing: -0.3px;
+    }
+    .meta {
+      color: #8892a4;
+      font-style: italic;
+      font-size: 13px;
+      margin-bottom: 30px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    h2 {
+      color: #8cb4ff;
+      font-size: 20px;
+      margin: 36px 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(140, 180, 255, 0.18);
+    }
+    h3 {
+      color: #e8eaf0;
+      font-size: 16px;
+      margin: 24px 0 10px;
+    }
+    p { margin: 8px 0 14px; }
+    a { color: #8cb4ff; }
+    a:hover { color: #b8d0ff; }
+    strong { color: #e8eaf0; }
+    em { color: #d0d6dc; }
+    code {
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+      background: rgba(140, 180, 255, 0.12);
+      color: #8cb4ff;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    pre {
+      background: #0d1117;
+      color: #c8d0e0;
+      padding: 14px 16px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0 20px;
+      font-size: 13px;
+    }
+    table th, table td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      vertical-align: top;
+    }
+    table th {
+      color: #8cb4ff;
+      background: rgba(140, 180, 255, 0.08);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    table tr:hover td {
+      background: rgba(140, 180, 255, 0.04);
+    }
+    ul, ol {
+      padding-left: 24px;
+      margin: 10px 0 16px;
+    }
+    li { margin-bottom: 6px; }
+    blockquote {
+      margin: 18px 0;
+      padding: 14px 18px;
+      background: rgba(244, 197, 66, 0.08);
+      border-left: 3px solid #f4c542;
+      border-radius: 4px;
+      color: #d0d6dc;
+      font-style: italic;
+    }
+    .quote-author {
+      text-align: right;
+      font-style: normal;
+      color: #8892a4;
+      margin-top: 8px;
+    }
+    .promise {
+      padding: 18px 22px;
+      background: linear-gradient(135deg, rgba(140, 180, 255, 0.10), rgba(140, 180, 255, 0.04));
+      border: 1px solid rgba(140, 180, 255, 0.32);
+      border-radius: 10px;
+      font-size: 15px;
+      margin: 16px 0 26px;
+    }
+    .promise strong {
+      color: #b8d0ff;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin: 36px 0;
+    }
+    .footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      color: #8892a4;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <a class="header-back" href="../index.html">← Retour à MyKTAMap</a>
+
+  <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
+
+  <p class="meta">
+    Page de transparence technique. À jour pour la version <strong>v1.8.0</strong> (21 mai 2026).<br>
+    Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
+    <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
+    le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <h2>🎯 La promesse en une ligne</h2>
+
+  <div class="promise">
+    <strong>MyKTAMap est une application 100 % client-side. Aucune de tes annotations,
+    sessions, plans ou données personnelles n'est jamais envoyée à un serveur,
+    ni à un service tiers. Point final.</strong>
+  </div>
+
+  <p>C'est vérifiable <strong>par toi-même</strong> sans avoir à nous croire sur parole —
+  la suite du document t'explique comment.</p>
+
+  <h2>🏛️ Le modèle technique (en bref)</h2>
+
+  <p>MyKTAMap est une <strong>Progressive Web App (PWA)</strong> servie comme un site web
+  statique. Concrètement :</p>
+
+  <table>
+    <thead>
+      <tr><th>Composant</th><th>Rôle</th><th>Stockage</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Ton navigateur</strong></td>
+        <td>Exécute tout le code de l'app, gère l'interface, fait les calculs (pathfinder, export PNG, KMZ…)</td>
+        <td>localStorage + IndexedDB (uniquement local)</td>
+      </tr>
+      <tr>
+        <td><strong>Notre serveur Nginx</strong></td>
+        <td>Sert les fichiers statiques de l'app (HTML, JS, CSS, images, plans serveur de démo)</td>
+        <td>Aucune base de données, aucune session utilisateur</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><strong>Pas de backend applicatif.</strong> Pas de base de données serveur. Pas de
+  compte utilisateur. Pas de session côté serveur. Pas de cookies de tracking.
+  Pas d'analytics tiers (Google Analytics, Matomo, etc.). Pas de CDN tiers.</p>
+
+  <p>Tout ce que tu crées dans l'app (points, tracés, zones, sessions, plans
+  mémorisés, calibrations KMZ, préférences) <strong>reste dans ton navigateur</strong>,
+  dans des espaces de stockage isolés à ton appareil (localStorage et IndexedDB).</p>
+
+  <h2>📡 La liste blanche complète des connexions réseau</h2>
+
+  <p>Voici la liste <strong>exhaustive et nominative</strong> de toutes les URLs que l'app
+  peut contacter, avec leur fréquence, leur méthode HTTP, et <strong>ce qui est
+  envoyé</strong> (réponse : rien, jamais).</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Endpoint</th>
+        <th>Méthode</th>
+        <th>Quand</th>
+        <th>Pourquoi</th>
+        <th>Données envoyées</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>&lt;origin&gt;/*</code></td>
+        <td><code>GET</code></td>
+        <td>Au boot + cache PWA</td>
+        <td>Charger l'app (HTML/JS/CSS/images/JSON)</td>
+        <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/version.json</code></td>
+        <td><code>GET</code></td>
+        <td>Au boot, puis check périodique</td>
+        <td>Détecter une nouvelle version dispo</td>
+        <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/alert.json</code></td>
+        <td><code>GET</code></td>
+        <td>Au boot</td>
+        <td>Diffusion d'alertes publiques (incendie, fermeture site, etc.)</td>
+        <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/data/&lt;plan&gt;/*</code></td>
+        <td><code>GET</code></td>
+        <td>Charge d'un plan serveur</td>
+        <td>Lecture des fichiers d'un plan (image + JSON)</td>
+        <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>&lt;origin&gt;/docs/README_USER.md</code>, <code>docs/AI_CONTEXT.md</code>, <code>docs/NETWORK_AUDIT.*</code></td>
+        <td><code>GET</code></td>
+        <td>Ouverture des modales Documentation / Aide IA / Audit</td>
+        <td>Affichage du contenu</td>
+        <td><strong>Aucune</strong></td>
+      </tr>
+      <tr>
+        <td><code>https://www.gstatic.com/generate_204</code></td>
+        <td><code>GET</code> (mode <code>no-cors</code>)</td>
+        <td>Avant un reset complet, avant un Force update</td>
+        <td>Tester si tu as Internet (round-trip vide)</td>
+        <td><strong>Aucune</strong> (no-cors → pas de payload)</td>
+      </tr>
+      <tr>
+        <td><code>blob:&lt;origin&gt;/&lt;uuid&gt;</code></td>
+        <td><code>GET</code></td>
+        <td>Chargement des tuiles V2 d'un plan tuilé</td>
+        <td>Déréférencer une tuile JPEG depuis le ZIP <strong>déjà en mémoire</strong> dans le navigateur</td>
+        <td><strong>Aucune</strong> (référence locale au navigateur)</td>
+      </tr>
+      <tr>
+        <td><code>data:&lt;mime&gt;;base64,...</code></td>
+        <td><code>GET</code></td>
+        <td>Icônes SVG inline, certains exports</td>
+        <td>Déréférencer une donnée encodée en base64 <strong>dans le code de l'app</strong></td>
+        <td><strong>Aucune</strong> (pas de fetch réseau réel)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><code>&lt;origin&gt;</code> = le domaine sur lequel l'app est servie. Pour la prod c'est
+  <code>myktamap.is-underground.fr</code> (ou <code>myktamap.fr</code> après le 15 juillet 2026).
+  Pour dev : <code>devmap.is-underground.fr</code>. Sur ton réseau local en développement :
+  <code>localhost</code> ou IP locale.</p>
+
+  <p><strong>Aucun <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>sendBeacon</code>, <code>WebSocket</code>,
+  <code>EventSource</code> ou n'importe quelle autre méthode d'envoi de données vers
+  un serveur n'est jamais émise par l'app.</strong> Si un jour ça change, ce
+  fichier sera mis à jour en conséquence et la version sera bumpée.</p>
+
+  <h3>À propos du ping <code>gstatic.com</code></h3>
+
+  <p><code>https://www.gstatic.com/generate_204</code> est un endpoint historique de
+  Google qui renvoie systématiquement un <code>HTTP 204 No Content</code>. C'est
+  l'endpoint utilisé par Chrome, Android, et de nombreuses apps pour
+  détecter une connexion Internet captive (style « page de login WiFi hôtel »).</p>
+
+  <p>L'app l'appelle en mode <code>no-cors</code>, ce qui signifie que <strong>le navigateur
+  n'envoie ni cookie, ni en-tête identifiant, ni payload</strong>, et <strong>ne peut
+  même pas lire le corps de la réponse</strong>. Ce ping sert uniquement à vérifier
+  le round-trip réseau (« y a-t-il Internet ? oui / non »).</p>
+
+  <p>Si tu préfères ne pas faire ce ping du tout, <strong>active le mode hors-ligne
+  strict</strong> (cf. plus bas) : il sera bloqué comme tout autre appel non local.</p>
+
+  <h2>🔍 Comment vérifier toi-même (3 méthodes)</h2>
+
+  <h3>Méthode 1 — Le journal réseau intégré (le plus simple)</h3>
+
+  <p>L'app logue <strong>en temps réel</strong> toutes ses requêtes réseau dans un
+  journal interne. Tu peux le consulter à tout moment :</p>
+
+  <ol>
+    <li><strong>Page d'accueil → ⚙️ Configuration</strong> (header)</li>
+    <li>Section <strong>🔒 Confidentialité &amp; Audit</strong></li>
+    <li>Bouton <strong>📋 Voir le journal réseau</strong></li>
+  </ol>
+
+  <p>Tu y verras chaque requête avec :</p>
+  <ul>
+    <li>L'heure exacte</li>
+    <li>La méthode (GET, POST, etc.)</li>
+    <li>L'URL complète</li>
+    <li>La catégorie (<code>app-script</code>, <code>plan-data</code>, <code>ping</code>, <code>local-blob</code>…)</li>
+    <li>Si la requête envoyait des données (<code>hasBody: true/false</code>)</li>
+    <li>Le statut HTTP de la réponse</li>
+    <li>Si elle a été bloquée par le mode hors-ligne strict</li>
+  </ul>
+
+  <p>Tu peux <strong>copier</strong> le journal au format texte ou <strong>exporter en JSON</strong>
+  (bouton 📥) pour le partager / l'archiver / le faire auditer par un tiers.</p>
+
+  <h3>Méthode 2 — Les outils de développement du navigateur</h3>
+
+  <p>Tu n'es pas obligé de nous faire confiance sur notre propre journal. Tu
+  peux utiliser l'inspecteur natif de ton navigateur, qui voit <strong>toutes</strong>
+  les requêtes réseau quel que soit ce que l'app fait :</p>
+
+  <p><strong>Sur PC</strong> :</p>
+  <ol>
+    <li>Appuie sur <code>F12</code> (ou <code>Cmd+Opt+I</code> sur Mac)</li>
+    <li>Onglet <strong>Network</strong> (ou <strong>Réseau</strong>)</li>
+    <li>Recharge la page (<code>F5</code>)</li>
+    <li>Utilise l'app normalement — chaque requête s'affiche dans la liste</li>
+    <li>Filtre par méthode pour vérifier qu'il n'y a <strong>aucun POST/PUT/PATCH/DELETE</strong></li>
+  </ol>
+
+  <p><strong>Sur mobile</strong> :</p>
+  <ol>
+    <li>Branche ton téléphone à un PC via USB</li>
+    <li><strong>Android</strong> : Chrome PC → <code>chrome://inspect</code> → sélectionne l'onglet de
+       ton mobile → DevTools normal</li>
+    <li><strong>iPhone</strong> : Safari Mac → Préférences → Avancé → cocher
+       « Afficher menu Développement » → Mac Safari → menu Développement → ton iPhone</li>
+  </ol>
+
+  <h3>Méthode 3 — Lire le code source</h3>
+
+  <p>L'app est servie en code clair (HTML/JS/CSS minifiés ou non selon
+  l'environnement). Tu peux :</p>
+
+  <ul>
+    <li><strong>F12 → onglet Sources</strong> : naviguer dans tous les fichiers JS de l'app</li>
+    <li><strong>Chercher</strong> les chaînes <code>fetch(</code>, <code>XMLHttpRequest</code>, <code>sendBeacon</code>, etc.</li>
+    <li>Vérifier que tous les appels ciblent des URLs locales (<code>/...</code>, <code>./...</code>)
+       ou la whitelist documentée ci-dessus</li>
+  </ul>
+
+  <p>Le module dédié <code>js/networkAudit.js</code> (~350 lignes, commenté) instrumente
+  toutes les API réseau et est le code source qui alimente le journal de la
+  Méthode 1. Tu peux le lire en intégralité pour comprendre la mécanique.</p>
+
+  <h2>🛡️ Le mode hors-ligne strict (paranoia opt-in)</h2>
+
+  <p>Si la liste blanche te suffit pas et que tu veux une <strong>garantie active
+  côté navigateur</strong>, active le <strong>Mode hors-ligne strict</strong> :</p>
+
+  <ol>
+    <li><strong>Page d'accueil → ⚙️ Configuration</strong></li>
+    <li>Section <strong>🔒 Confidentialité &amp; Audit</strong></li>
+    <li>Coche <strong>🔒 Mode hors-ligne strict</strong></li>
+  </ol>
+
+  <p>Une fois activé :</p>
+  <ul>
+    <li><strong>Toute requête sortante non-whitelistée est interceptée et bloquée
+       AVANT même d'atteindre le réseau</strong> (le navigateur reçoit une exception,
+       pas un timeout).</li>
+    <li>Un badge orange <code>🔒 PARANOIA</code> apparaît dans le footer de la page d'accueil
+       pour te rappeler que le mode est actif.</li>
+    <li>L'app continue de fonctionner normalement (annotations, calculs, exports
+       PNG/KMZ, navigation, multi-niveau, itinéraire, tracker…).</li>
+  </ul>
+
+  <p>Le toggle est <strong>persistant</strong> : il survit aux reloads et aux fermetures
+  d'onglet, jusqu'à ce que tu le décoches manuellement (ou que tu fasses
+  un reset complet via 💥 Tout réinitialiser).</p>
+
+  <h3>Différence avec le mode « Avion » de ton OS</h3>
+
+  <p>Le mode Avion coupe le WiFi/4G/5G entièrement. Le mode hors-ligne strict
+  de MyKTAMap, lui, <strong>te laisse une connexion fonctionnelle</strong> pour le reste
+  de ton appareil (autres apps, navigateur) mais bloque uniquement les
+  appels que MyKTAMap pourrait faire. Tu peux donc faire des recherches
+  web en parallèle pendant que MyKTAMap reste isolée.</p>
+
+  <h2>🔐 La Content Security Policy (CSP)</h2>
+
+  <p>En plus du module d'audit côté JS, le serveur Nginx envoie un en-tête HTTP
+  <code>Content-Security-Policy</code> qui <strong>demande à ton navigateur</strong> de bloquer toute
+  tentative d'envoi de données vers un domaine non autorisé.</p>
+
+  <p>C'est une <strong>double protection</strong> : même si un attaquant injectait du code
+  malveillant dans une dépendance, ton navigateur lui-même refuserait l'envoi.</p>
+
+  <p>Tu peux vérifier la CSP appliquée :</p>
+  <ol>
+    <li><code>F12</code> → onglet <strong>Network</strong></li>
+    <li>Recharge la page</li>
+    <li>Clic sur la première requête (le HTML de la page)</li>
+    <li>Onglet <strong>Headers</strong> → cherche <code>Content-Security-Policy</code></li>
+  </ol>
+
+  <p>La directive clé est <code>connect-src 'self' https://www.gstatic.com blob:;</code> —
+  le navigateur n'acceptera pas d'envoyer des données ailleurs.</p>
+
+  <h2>🧰 Stockage local — où vivent tes données</h2>
+
+  <p>Toutes tes données sont <strong>strictement locales</strong> à ton appareil et à ton
+  navigateur. Tu peux les inspecter et les supprimer toi-même via F12 :</p>
+
+  <table>
+    <thead>
+      <tr><th>Espace</th><th>Contenu</th><th>Comment l'inspecter</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>localStorage</strong></td>
+        <td>Préférences (debugMode, perfPreset, unlock gate, alertes acquittées, paranoia…)</td>
+        <td>F12 → Application → Local Storage</td>
+      </tr>
+      <tr>
+        <td><strong>IndexedDB</strong></td>
+        <td>Handles FS Access API + blobs ZIP des plans mémorisés</td>
+        <td>F12 → Application → IndexedDB</td>
+      </tr>
+      <tr>
+        <td><strong>Cache Storage</strong></td>
+        <td>Assets PWA pour le mode hors-ligne</td>
+        <td>F12 → Application → Cache Storage</td>
+      </tr>
+      <tr>
+        <td><strong>Service Worker</strong></td>
+        <td>Code du SW qui gère le cache</td>
+        <td>F12 → Application → Service Workers</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>Pour <strong>tout effacer</strong> d'un coup : ⚙️ Configuration → 💥 Tout réinitialiser
+  (double confirmation + ping internet de sécurité pour éviter de te
+  retrouver sans cache hors-ligne).</p>
+
+  <h2>🔭 Sur les analytics, le tracking, les cookies</h2>
+
+  <ul>
+    <li><strong>Pas d'analytics</strong> : ni Google Analytics, ni Matomo, ni Plausible,
+       ni Fathom, ni quoi que ce soit. L'auteur n'a aucune visibilité sur qui
+       utilise l'app ni comment.</li>
+    <li><strong>Pas de cookies</strong> : l'app n'écrit aucun cookie HTTP. Aucune session
+       serveur, aucune session tracking.</li>
+    <li><strong>Pas de pixel tracking</strong> : aucune balise <code>&lt;img&gt;</code> distante. Toutes les
+       images de l'app sont en same-origin.</li>
+    <li><strong>Pas de fingerprinting</strong> : aucun script ne lit l'UA, la résolution
+       d'écran, la liste des polices, le canvas… au-delà de ce qui est
+       fonctionnellement nécessaire (responsive design via media queries CSS).</li>
+  </ul>
+
+  <h2>🤝 La position de l'auteur</h2>
+
+  <blockquote>
+    Je suis cataphile depuis 2016. Je connais la culture, et je sais que la
+    méfiance envers une appli qui aurait une backdoor pour exfiltrer les
+    plans est totalement légitime. C'est pour ça que j'ai conçu MyKTAMap
+    comme une PWA 100 % client-side dès le départ : ce n'est pas un choix
+    a posteriori pour rassurer, c'est l'architecture même de l'app. Il n'y
+    a tout simplement aucun endroit côté serveur où tes données
+    pourraient atterrir, parce qu'il n'y a aucun code applicatif côté
+    serveur. Tout est conçu pour être vérifiable. Si tu trouves quoi que
+    ce soit qui contredit ce document, contacte-moi directement via le
+    site officiel — je corrigerai immédiatement.
+    <div class="quote-author">— <strong>KARMA</strong>, auteur de MyKTAMap</div>
+  </blockquote>
+
+  <h2>📋 Historique des changements de ce document</h2>
+
+  <table>
+    <thead>
+      <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>v1.8.0</td>
+        <td>21/05/2026</td>
+        <td>Création du document. Ajout du module <code>networkAudit.js</code>, du Mode hors-ligne strict, et de la CSP Nginx.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>📬 Signaler une fuite ou un problème</h2>
+
+  <p>Si tu observes <strong>n'importe quelle requête réseau</strong> émise par MyKTAMap
+  qui ne figure pas dans la liste blanche ci-dessus, contacte l'auteur
+  immédiatement via <a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener noreferrer">myktamap.is-underground.fr</a>.
+  Le document sera corrigé et le code patché en priorité absolue.</p>
+
+  <div class="footer">
+    Dernière mise à jour : 21 mai 2026 — v1.8.0 « Privacy &amp; Audit »<br>
+    © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
+  </div>
+
+</div>
+
+</body>
+</html>
