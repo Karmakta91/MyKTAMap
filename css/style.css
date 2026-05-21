@@ -7324,6 +7324,26 @@ body.kta-refonte-v1 .kta-refonte-header-btn:focus-visible {
 }
 body.kta-refonte-v1 .kta-refonte-header-home {
   font-size: 20px;
+  /* 🆕 Padding réduit pour laisser de la place à l'image rose des vents */
+  padding: 4px 8px;
+}
+
+/* 🆕 Rose des vents dans le bouton home — mkm-full.png (même asset que
+   le splash + le titre stylé de la home, cohérence identité KARMA). */
+body.kta-refonte-v1 .kta-refonte-header-home-img {
+  height: 26px;
+  width: auto;
+  display: block;
+  /* Drop-shadow jaune subtile pour faire ressortir la rose sur le dark */
+  filter: drop-shadow(0 0 4px rgba(244, 197, 66, 0.40));
+  transition: transform 0.15s, filter 0.15s;
+  pointer-events: none;  /* clics passent au bouton parent */
+  -webkit-user-drag: none;
+  user-select: none;
+}
+body.kta-refonte-v1 .kta-refonte-header-home:hover .kta-refonte-header-home-img {
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 6px rgba(244, 197, 66, 0.65));
 }
 
 /* Titre du plan (centre) */
@@ -7546,21 +7566,24 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 36px;
   z-index: 1200;
   background: linear-gradient(0deg, #1a1f2e 0%, #161b28 100%);
   border-top: 1px solid rgba(140, 180, 255, 0.18);
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 12px;
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  padding-right: calc(12px + env(safe-area-inset-right, 0px));
+  /* 🆕 Footer agrandi (feedback KARMA) : 36px → 44px ouvert + safe-area
+     iPhone bottom (home indicator ~21px sur iPhone 14 et + récents).
+     Sans la safe-area, les stats étaient coupées en bas par les bords
+     arrondis / le home indicator. Total ~65px sur iPhone PWA. */
+  height: calc(44px + env(safe-area-inset-bottom, 0px));
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: calc(10px + env(safe-area-inset-left, 0px));
-  padding-right: calc(10px + env(safe-area-inset-right, 0px));
-  height: calc(36px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  font-size: 12px;
+  font-size: 13px;
   color: #c8d0e0;
   transition: height 0.2s ease-out, padding 0.2s ease-out;
   overflow: hidden;
@@ -7569,7 +7592,8 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-  height: calc(14px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 État replié : 14px → 18px (un poil plus visible) + safe-area */
+  height: calc(18px + env(safe-area-inset-bottom, 0px));
   padding-top: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -7639,9 +7663,10 @@ body.kta-refonte-v1 .kta-refonte-statusbar-toggle:focus-visible {
 
 /* Décale les labels Leaflet bottom (mesure, distance totale, itinéraire)
    pour qu'ils soient au-dessus de la status bar. Mais en refonte v1 ils
-   sont MASQUÉS car remplacés par les stats du status bar. */
+   sont MASQUÉS car remplacés par les stats du status bar.
+   🆕 Hauteur du statusbar : 36px → 44px (feedback KARMA iPhone) */
 body.kta-refonte-v1 .leaflet-bottom {
-  bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
 }
 body.kta-refonte-v1 .kta-iti-distance,
 body.kta-refonte-v1 .kta-mesure-distance,
@@ -7649,9 +7674,10 @@ body.kta-refonte-v1 .kta-measure-label-control {
   display: none !important;
 }
 /* Si user replie la status bar, on remonte les controls bottom-left
-   (layer control natif Leaflet, attribution, etc.) en conséquence */
+   (layer control natif Leaflet, attribution, etc.) en conséquence
+   🆕 Statusbar replié : 14px → 18px */
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leaflet-bottom {
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7664,12 +7690,14 @@ body.kta-refonte-v1 .kta-refonte-statusbar-collapsed ~ .leaflet-container .leafl
 
 body.kta-refonte-v1 #map {
   top: calc(44px + env(safe-area-inset-top, 0px));
-  bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 Statusbar 36 → 44px (feedback KARMA iPhone home indicator) */
+  bottom: calc(44px + env(safe-area-inset-bottom, 0px));
   height: auto;
 }
-/* Quand status bar collapsed, plus de place pour la carte */
+/* Quand status bar collapsed, plus de place pour la carte
+   🆕 14 → 18px */
 body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -7685,11 +7713,23 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
+  /* 🆕 Statusbar landscape : 28 → 36px (cohérent avec +8px en portrait) */
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    height: calc(28px + env(safe-area-inset-bottom, 0px));
+    height: calc(36px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-    height: calc(10px + env(safe-area-inset-bottom, 0px));
+    height: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Adapter aussi le #map bottom en landscape */
+  body.kta-refonte-v1 #map {
+    bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+  }
+  body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  /* Et la rose des vents du header — taille réduite */
+  body.kta-refonte-v1 .kta-refonte-header-home-img {
+    height: 22px;
   }
 }
 

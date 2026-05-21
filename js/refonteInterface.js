@@ -127,7 +127,9 @@
     header.id = "kta-refonte-header";
     header.className = "kta-refonte-header";
     header.innerHTML =
-      '<button class="kta-refonte-header-btn kta-refonte-header-home" id="kta-refonte-home" title="Retour à l\'accueil / Changer de plan" aria-label="Retour à l\'accueil">🗂</button>' +
+      '<button class="kta-refonte-header-btn kta-refonte-header-home" id="kta-refonte-home" title="Retour à l\'accueil / Changer de plan" aria-label="Retour à l\'accueil">' +
+        '<img src="icon/mkm-full.png" alt="" class="kta-refonte-header-home-img" draggable="false">' +
+      '</button>' +
       '<div class="kta-refonte-header-title-wrap">' +
         '<button class="kta-refonte-header-title" id="kta-refonte-title-btn" title="Changer de plan">' +
           '<strong id="kta-refonte-plan-name">—</strong>' +
