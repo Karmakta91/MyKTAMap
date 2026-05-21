@@ -2731,11 +2731,32 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   margin: auto 0;
 }
 
-/* ===== Loader-grid : wrapper transparent par défaut (mobile/tablette
-   ≤ 1023px), devient un grid 60/40 sur desktop (≥ 1024px) ===== */
+/* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
+   devient un grid 60/40 sur desktop (≥ 1024px).
+
+   🆕 v1.8.0 fix : remplacement de `display: contents` par
+   `display: flex; flex-direction: column;`.
+
+   Pourquoi : `display: contents` rend le wrapper "transparent" (les
+   enfants se comportent comme s'ils étaient dans le parent direct).
+   C'est élégant mais a des bugs subtils de re-évaluation lors des
+   transitions de viewport (rotation landscape→portrait notamment sur
+   Safari iOS) : certaines propriétés héritées du parent peuvent ne
+   pas se réappliquer correctement au flow flex/grid lorsqu'on passe
+   d'un display: grid (PC) à un display: contents (mobile).
+
+   Bug observé : drag d'un ZIP en portrait → rotation landscape →
+   retour portrait → l'aperçu/le bouton Charger restait à la taille
+   landscape au lieu de reprendre la largeur 100% mobile.
+
+   Fix : flex column ne provoque PAS de différence visuelle vs contents
+   (les enfants sont empilés verticalement dans les 2 cas), mais
+   s'évalue de manière déterministe à chaque resize → pas de bug
+   silencieux. ===== */
 .loader-grid {
-  display: contents;  /* Sur mobile, le wrapper disparaît → enfants directement
-                         dans #planLoaderBox, layout vertical comme avant */
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 @media (min-width: 1024px) {
@@ -6848,6 +6869,13 @@ body.kta-multilevel-active .kta-compass-widget {
   font-size: 13px;
   line-height: 1.45;
   color: #c8d0e0;
+  /* 🆕 v1.8.0 fix : sans width:100% + box-sizing, un <label> en flex
+     reste shrink-to-fit côté width (= largeur du content max). Avec un
+     <span> long en flex:1 1 auto, le label débordait horizontalement
+     hors du conteneur de la modale Configuration → texte tronqué à
+     droite. Fix : largeur explicite du parent. */
+  width: 100%;
+  box-sizing: border-box;
 }
 .kta-net-paranoia-toggle:hover {
   background: rgba(255, 149, 0, 0.10);
@@ -6861,6 +6889,12 @@ body.kta-multilevel-active .kta-compass-widget {
 }
 .kta-net-paranoia-toggle span {
   flex: 1 1 auto;
+  /* min-width: 0 → permet au flex item de shrink en dessous de sa
+     largeur de contenu intrinsèque, donc d'autoriser le wrap propre
+     du texte. Sans ça, un texte long pouvait pousser le flex container
+     au-delà de sa largeur disponible (cf. piège classique flexbox). */
+  min-width: 0;
+  word-break: break-word;
 }
 
 /* Badge "MODE HORS-LIGNE STRICT" dans le footer du loader (visible
