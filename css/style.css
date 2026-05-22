@@ -3078,25 +3078,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   animation: splashTextIn 0.6s ease-out 0.85s both;
 }
 
-#splashAuthor {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #8892a4;
-  font-size: 13px;
-}
-
-.splash-by {
-  font-style: italic;
-  opacity: 0.7;
-}
-
-#splashSignature {
-  height: 32px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 6px rgba(244, 197, 66, 0.3));
-}
+/* 🆕 v1.9.2-fix15 : règles #splashAuthor / .splash-by / #splashSignature
+   retirées (éléments supprimés du DOM splash). La signature KARMA est
+   désormais affichée via #splashKarmaCorner / #splashKarmaImg en bas
+   à droite avec animation lettre-par-lettre (cf. plus bas). */
 
 #splashLicense {
   font-size: 11px;
@@ -3111,20 +3096,68 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-style: italic;
 }
 
-/* Crédit Leaflet — petit, discret, centré en bas du splash (pas un lien cliquable) */
+/* 🆕 v1.9.2-fix15 — Signature KARMA en bas à droite du splash avec
+   animation lettre-par-lettre via clip-path: inset() + steps().
+   L'image karma.png est révélée de gauche à droite en 5 étapes
+   discrètes = effet "K-A-R-M-A" qui apparaît tour à tour. Le délai
+   initial (0.8s) laisse au logo + titre le temps d'apparaître avant
+   l'entrée de la signature. */
+#splashKarmaCorner {
+  position: absolute;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  /* Lueur dorée derrière la signature pour matérialiser sa présence
+     même sur petit format (l'image est petite donc le glow l'agrandit
+     visuellement sans grossir le rendu). */
+  filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45))
+          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+#splashKarmaImg {
+  /* Plus petite que l'ancien splashSignature (32px) — KARMA pivot. */
+  height: 20px;
+  width: auto;
+  display: block;
+  /* Animation lettre-par-lettre : on cache TOUTE l'image au départ
+     (inset 100% à droite = visible 0%) puis on révèle progressivement
+     jusqu'à 0% (visible 100%). `steps(5, end)` discretise la
+     transition en 5 paliers = visuellement K, K+A, K+A+R, K+A+R+M,
+     K+A+R+M+A. Durée totale 1.5s = ~0.3s par lettre. */
+  clip-path: inset(0 100% 0 0);
+  animation: kta-splash-karma-reveal 1.5s steps(5, end) 0.8s forwards;
+}
+
+@keyframes kta-splash-karma-reveal {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Quand le splash est en fade-out, la signature s'efface aussi (sinon
+   elle resterait visible pendant le fade du parent). */
+#splashOverlay.fading #splashKarmaCorner {
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Crédit Leaflet + JSZip — petit, discret, en BAS À GAUCHE du splash
+   (déplacé du centre dans fix15 pour libérer le bas-droit où s'affiche
+   désormais la signature KARMA animée). */
 #splashLeafletCredit {
   position: absolute;
   /* safe-area-bottom pour éviter le home indicator iPhone (~34px sur les modèles avec encoche) */
   bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  left: calc(14px + env(safe-area-inset-left, 0px));
   font-size: 11px;
   color: #6c7689;
   letter-spacing: 0.02em;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
-  /* Animation custom (opacity uniquement, pour ne pas écraser le translateX) */
+  /* Animation custom (opacity uniquement, pas de transform à conserver) */
   animation: splashLeafletFadeIn 0.6s ease-out 1.0s both;
 }
 
@@ -3142,7 +3175,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashScale { width: 200px; margin-top: 0; }
   .splash-scale-labels { font-size: 8px; }
   #splashFooter { margin-top: 28px; }
-  #splashSignature { height: 26px; }
+  /* 🆕 v1.9.2-fix15 : ancienne règle #splashSignature retirée (élément
+     supprimé), nouvelle règle pour #splashKarmaImg (signature animée
+     en bas à droite). Taille un peu réduite sur mobile. */
+  #splashKarmaImg { height: 18px; }
   #splashLeafletCredit { font-size: 10px; bottom: 10px; }
 }
 
@@ -3155,7 +3191,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashScale { margin-top: 0; }
   .splash-scale-labels { font-size: 8px; height: 10px; }
   #splashFooter { margin-top: 14px; gap: 6px; }
-  #splashSignature { height: 22px; }
+  #splashKarmaImg { height: 16px; }
   #splashLicense { font-size: 10px; }
 }
 

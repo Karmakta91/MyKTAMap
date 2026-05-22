@@ -104,10 +104,12 @@
       </div>
 
       <div id="splashFooter">
-        <div id="splashAuthor">
-          <span class="splash-by">Par</span>
-          <img src="icon/karma.png" alt="KARMA" id="splashSignature">
-        </div>
+        <!-- 🆕 v1.9.2-fix15 (KARMA pivot) : retrait du bloc #splashAuthor
+             ("Par [karma.png]") qui était centré dans le footer. La
+             signature KARMA est maintenant affichée en BAS À DROITE
+             du splash avec une animation lettre-par-lettre (cf.
+             #splashKarmaCorner plus bas). Le footer ne contient plus
+             que la mention de licence. -->
         <div id="splashLicense">
           Licence libre — usage non commercial<br>
           <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
@@ -115,8 +117,20 @@
       </div>
     </div>
 
-    <!-- Crédit librairie Leaflet — discret, en bas à droite (pas de lien cliquable, splash auto-fermant) -->
-    <div id="splashLeafletCredit">🍃 Cartographie propulsée par Leaflet</div>
+    <!-- 🆕 v1.9.2-fix15 (KARMA) : signature KARMA en bas à droite, plus
+         petite que l'ancienne. Animation : la karma.png se révèle
+         progressivement de gauche à droite via clip-path avec steps()
+         pour un effet "lettre par lettre" (5 étapes pour K-A-R-M-A).
+         Préserve le style graphique original (l'image stylisée) tout
+         en ajoutant la séquence d'apparition demandée. -->
+    <div id="splashKarmaCorner" aria-hidden="true">
+      <img src="icon/karma.png" alt="KARMA" id="splashKarmaImg">
+    </div>
+
+    <!-- Crédits librairies — discret, en bas à GAUCHE pour libérer le
+         bas-droit pour KARMA. Mention des 2 libs majeures du projet :
+         Leaflet (mapping) + JSZip (génération/lecture ZIP des plans). -->
+    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -2406,7 +2420,14 @@
           // Accent bleu (info, action non-destructive) — différencie de la
           // modale de Reset qui est rouge (action destructive).
           overlay.innerHTML =
-            '<div class="kta-readme-modal-boite" style="max-width:480px; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
+            // 🆕 v1.9.2-fix15 : ajout de height:auto + max-height:92vh pour
+            // que la modale ne prenne plus toute la hauteur de l'écran sur
+            // PC (KARMA : "prend toute longueur pour rien, bcp de vide").
+            // La base CSS .kta-readme-modal-boite donne désormais min(92vh,
+            // 1100px) sur PC — utile pour les modales avec contenu long
+            // (Doc, Aide), mais pas pour cette modale de confirmation
+            // courte. height:auto rend la modale à la taille de son contenu.
+            '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
                 '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
                 '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +
