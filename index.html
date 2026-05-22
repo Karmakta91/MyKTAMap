@@ -21,28 +21,21 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-fullscreen3 — KARMA pivot final : « je veux que le top
-       soit toujours de la même couleur que en mode carte même au premier
-       chargement ».
-
-       Constat précédent (fullscreen1) : avec cover + black-translucent,
-       l'heure iOS est visible au premier chargement (sur fond noir pur
-       iOS) mais peut disparaître après ouverture d'une carte (iOS auto-
-       hide qu'on ne contrôle pas). KARMA accepte ce comportement iOS
-       — ce qu'il veut surtout c'est la COULEUR uniforme du top. Avec
-       cover + black-translucent, le top est TOUJOURS la couleur de
-       notre header (#1a1f2e) ou body (#0a0d18) charte, peu importe si
-       iOS affiche ou cache son horloge par-dessus. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- 🆕 v1.9.2-rollback-cover (KARMA "on rollback ce qu'on a fait pour
+       le fullscreen, on a dû créer des soucis").
+       Retour à l'état pré-fullscreen : pas de viewport-fit=cover,
+       status-bar-style = black opaque. L'heure iOS reste TOUJOURS
+       visible au-dessus de l'app (zone réservée par iOS), pas de
+       comportement de hide/show imprévisible. Compromis : on perd
+       ~47px en haut sur iPhone notché, mais le comportement est
+       stable et prévisible. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black-translucent" : status bar iOS TRANSPARENTE par-dessus notre
-       contenu. iOS dessine ses icônes (heure, batterie) en blanc sur
-       le fond de notre app (header dark gradient ou body #0a0d18). La
-       couleur visible au top = TOUJOURS la couleur de notre app, pas
-       le noir opaque iOS. Cohérent avec mode carte ET premier chargement. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" = bande noire opaque iOS, indépendante du contenu.
+       Stable, l'heure reste visible en permanence au-dessus de l'app. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 
@@ -58,13 +51,7 @@
 
   <!-- ICON CHROME INSTALL-->
 <link rel="manifest" href="manifest.json">
-<!-- 🆕 v1.9.2-fullscreen3 (KARMA "top toujours même couleur que body") :
-     theme-color aligné à body bg (#0a0d18) pour cohérence visuelle dès
-     le premier paint, AVANT que le CSS charge complètement. Affecte
-     l'address bar Android Chrome + certains backgrounds système. Sur
-     iOS PWA, c'est apple-mobile-web-app-status-bar-style qui prime,
-     mais theme-color complète sur les autres plateformes. -->
-<meta name="theme-color" content="#0a0d18">
+<meta name="theme-color" content="#111827">
 </head>
 
 <body>
