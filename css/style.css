@@ -1,19 +1,30 @@
 html, body {
-  height: 100%;
+  /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
+     pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
+     `viewport-fit=cover` (iOS 16+). Fallback `100vh` pour iOS 15 et
+     antérieur (déclaration en premier, écrasée par dvh si supporté).
+     Sans ça, le body s'arrêtait ~21-34px au-dessus du home indicator
+     iOS → "bande sombre" visible dans cette zone (bug historique). */
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   overflow: hidden;
   /* Fond sombre cohérent avec le splash et le thème pour les zones où le body
-     pourrait apparaître (rubber-band scroll, avant init Leaflet). */
+     pourrait apparaître (rubber-band scroll, avant init Leaflet, et
+     fallback si jamais un élément ne couvre pas tout). */
   background-color: #0a0d18;
 }
 
 #map {
   display: block;
+  /* 🆕 v1.9.2-fullscreen : `inset: 0` au lieu de `width/height: 100%`.
+     Avec position:fixed, `inset: 0` anchre l'élément aux 4 côtés du
+     viewport (containing block = visual viewport avec cover). Plus
+     robuste que `100%` height qui pouvait être tronquée par le bug
+     iOS 100vh < 16. Le mode refonte ré-override top/bottom via
+     #map { top: 44; bottom: var(--kta-statusbar-h) } plus bas. */
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
 }
 
 .map-title {
@@ -1570,7 +1581,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-supp-trace-floater {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 107, 107, 0.5);
@@ -1868,10 +1879,47 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-radius: 14px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.65);
   width: min(960px, 96vw);
+  /* 🆕 v1.9.2-fullscreen : double déclaration vh/dvh. La modale est cap
+     à 88% du viewport — sur iOS PWA avec cover, `dvh` correspond à
+     l'écran physique entier (le `vh` historique pouvait exclure la
+     zone home indicator iOS 15-). */
   height: min(88vh, 920px);
+  height: min(88dvh, 920px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* 🆕 v1.9.2-fix13 — Modales PC plus grandes (KARMA : « les modal qu'on
+   avait adaptées au PC doivent pouvoir prendre plus de place »).
+   Concerne TOUTES les modales utilisant `.kta-readme-modal-boite`
+   sans override de width inline : Documentation, Légende, Audit,
+   et toutes les confirmations. Pour les modales qui ont leur propre
+   override (.kta-aide-modal-boite, .kta-cfg-modal-boite, .kta-loader-
+   config-boite), un bloc plus bas surcharge à valeur identique.
+   RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
+/* 🆕 v1.9.2-fullscreen : tous les paliers PC ont la double déclaration
+   vh/dvh pour profiter de l'écran physique entier sur iOS PWA avec cover. */
+@media (min-width: 1024px) {
+  .kta-readme-modal-boite {
+    width: min(1400px, 96vw);
+    height: min(92vh, 1100px);
+    height: min(92dvh, 1100px);
+  }
+}
+@media (min-width: 1440px) {
+  .kta-readme-modal-boite {
+    width: min(1700px, 96vw);
+    height: min(94vh, 1300px);
+    height: min(94dvh, 1300px);
+  }
+}
+@media (min-width: 1920px) {
+  .kta-readme-modal-boite {
+    width: min(2000px, 95vw);
+    height: min(95vh, 1500px);
+    height: min(95dvh, 1500px);
+  }
 }
 
 .kta-readme-modal-header {
@@ -2498,9 +2546,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    classe spécifique avec break-inside: avoid au cas par cas (pas fait par
    défaut). */
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-aide-modal-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   .kta-aide-corps {
@@ -2554,9 +2603,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-cfg-modal-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   /* Layout 2 colonnes via column-flow (cohérent avec la modale Aide). */
@@ -2635,9 +2685,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-loader-config-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   /* Layout 2 colonnes via column-flow */
@@ -2657,6 +2708,84 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
+/* 🆕 v1.9.2-fix13 — Paliers PC large / ultra-large pour les modales
+   à override max-width (Aide, Cfg map, Loader Config). On utilise
+   les mêmes paliers que les autres modales (.kta-readme-modal-boite
+   plus haut) pour cohérence. */
+@media (min-width: 1440px) {
+  .kta-aide-modal-boite,
+  .kta-cfg-modal-boite,
+  .kta-loader-config-boite {
+    max-width: 1700px !important;
+    width: min(1700px, 96vw) !important;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-aide-modal-boite,
+  .kta-cfg-modal-boite,
+  .kta-loader-config-boite {
+    max-width: 2000px !important;
+    width: min(2000px, 95vw) !important;
+  }
+}
+
+/* 🆕 v1.9.2-fix14 — Modale Export Images (.kta-export-modal-boite).
+   Mobile : garde height:auto (le contenu peut être court) avec max-height
+   pour éviter qu'il dépasse l'écran.
+   PC : applique les mêmes paliers que les autres modales pour l'élargir,
+   en gardant height:auto (le contenu d'export ne justifie pas d'imposer
+   88vh / 92vh — on prend la taille naturelle, avec max-height pour limiter). */
+.kta-export-modal-boite {
+  height: auto !important;
+  max-height: 92vh !important;
+}
+@media (min-width: 1024px) {
+  .kta-export-modal-boite {
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-export-modal-boite {
+    max-width: 1700px !important;
+    width: min(1700px, 96vw) !important;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-export-modal-boite {
+    max-width: 2000px !important;
+    width: min(2000px, 95vw) !important;
+  }
+}
+
+
+/* 🆕 v1.9.2-fix13 — Légende sur PC : layout multi-colonnes pour
+   profiter de la largeur agrandie. Les sections (Puits / Accès /
+   Signalétique / Tracés / Zones) se distribuent automatiquement. */
+@media (min-width: 1024px) {
+  .kta-legende-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .kta-legende-corps .kta-aide-section {
+    /* Ne JAMAIS couper une section au milieu (les lignes icône + label
+       d'une même catégorie doivent rester groupées). */
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-legende-corps {
+    columns: 3;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-legende-corps {
+    columns: 4;
+  }
+}
 
 /* ==============================================
    LÉGENDE — icônes et tracés
@@ -2795,6 +2924,8 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   position: fixed;
   inset: 0;
   z-index: 9999;
+  /* Rollback v1.9.2 fix6 (cover retiré) : gradient `at center` restauré
+     pour l'effet "tunnel" original du splash. */
   background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
   display: flex;
   align-items: center;
@@ -2961,40 +3092,44 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* "100" centré sur son tick comme les autres (au lieu de right-aligné qui le collait au "90") */
 .splash-scale-labels span:nth-child(11) { left: 100%; transform: translateX(-50%); }
 
-#splashFooter {
-  margin-top: 38px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  animation: splashTextIn 0.6s ease-out 0.85s both;
-}
+/* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM (orphelin après extraction
+   de #splashLicense en absolute). Règle CSS gardée vide en commentaire au
+   cas où on l'aurait raté quelque part — sinon elle ne s'applique plus. */
+/* #splashFooter — n'existe plus dans le DOM. */
 
-#splashAuthor {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #8892a4;
-  font-size: 13px;
-}
+/* Règles #splashAuthor / .splash-by / #splashSignature retirées en fix15. */
 
-.splash-by {
-  font-style: italic;
-  opacity: 0.7;
-}
+/* 🆕 v1.9.2-fix18/fix2 (KARMA "Licence libre doit être plus bas, juste
+   au-dessus de la signature et libs cités" + "elle est à droite, pas
+   centrée") : licence positionnée en ABSOLUTE au bas du splash, juste
+   au-dessus de la rangée KARMA + crédits libs (bottom 28px).
 
-#splashSignature {
-  height: 32px;
-  width: auto;
-  object-fit: contain;
-  filter: drop-shadow(0 1px 6px rgba(244, 197, 66, 0.3));
-}
-
+   ⚠️ FIX CENTRAGE : avant on utilisait `left: 50% + transform:
+   translateX(-50%)`, mais l'animation `splashTextIn` redéfinit
+   `transform: translateY(...)` ce qui ÉCRASE le translateX → l'élément
+   se retrouve aligné à `left: 50%` SANS recentrage (= bord gauche au
+   centre de l'écran, contenu pousse vers la droite).
+   Solution : centrage via `left:0; right:0; text-align:center` →
+   l'élément prend toute la largeur, le texte est centré dedans, et
+   l'animation translateY peut faire son travail sans conflit. */
 #splashLicense {
+  position: absolute;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  left: 0;
+  right: 0;
+  padding: 0 28px;
+  box-sizing: border-box;
   font-size: 11px;
   color: #6c7689;
   line-height: 1.6;
   letter-spacing: 0.02em;
+  text-align: center;
+  user-select: none;
+  pointer-events: none;
+  /* Animation : apparaît avec un léger delay après le contenu central.
+     `splashTextIn` applique translateY → pas de conflit avec left/right. */
+  animation: splashTextIn 0.6s ease-out 1.0s both;
+  z-index: 2;
 }
 
 .splash-license-detail {
@@ -3003,20 +3138,89 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-style: italic;
 }
 
-/* Crédit Leaflet — petit, discret, centré en bas du splash (pas un lien cliquable) */
+/* 🆕 v1.9.2-fix15 — Signature KARMA en bas à droite du splash avec
+   animation lettre-par-lettre via clip-path: inset() + steps().
+   L'image karma.png est révélée de gauche à droite en 5 étapes
+   discrètes = effet "K-A-R-M-A" qui apparaît tour à tour. Le délai
+   initial (0.8s) laisse au logo + titre le temps d'apparaître avant
+   l'entrée de la signature. */
+#splashKarmaCorner {
+  position: absolute;
+  /* 🆕 v1.9.2-fix17 (KARMA "le karma sort du cadre sur bord arrondi") :
+     décalage augmenté 14px → 28px pour ne plus être coupé par les coins
+     arrondis de l'écran (iPhone PWA + écrans avec viewport bord-à-bord).
+     Les safe-area-inset-{right,bottom} restent ajoutés pour les notches
+     latéraux en landscape iPhone. */
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  /* Lueur dorée derrière la signature pour matérialiser sa présence
+     même sur petit format (l'image est petite donc le glow l'agrandit
+     visuellement sans grossir le rendu). */
+  filter: drop-shadow(0 0 8px rgba(244, 197, 66, 0.45))
+          drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
+}
+
+#splashKarmaImg {
+  /* Plus petite que l'ancien splashSignature (32px) — KARMA pivot. */
+  height: 20px;
+  width: auto;
+  display: block;
+  /* 🆕 v1.9.2-fix16 : animation lettre-par-lettre PLUS DOUCE (KARMA
+     « arrivée des lettres plus douce »). Avant : steps(5, end) =
+     5 jumps secs sans transition. Maintenant : 5 keyframes explicites
+     avec courbe cubic-bezier(0.45, 0.05, 0.55, 0.95) (ease-in-out
+     doux) entre chacune → la révélation glisse smooth d'une "lettre"
+     à l'autre tout en gardant des paliers visibles. Durée totale
+     allongée à 1.8s pour donner du poids visuel. */
+  clip-path: inset(0 100% 0 0);
+  animation: kta-splash-karma-reveal 1.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.8s forwards;
+}
+
+@keyframes kta-splash-karma-reveal {
+  0%   { clip-path: inset(0 100% 0 0); }   /* tout caché */
+  20%  { clip-path: inset(0 80%  0 0); }   /* K visible */
+  40%  { clip-path: inset(0 60%  0 0); }   /* + A */
+  60%  { clip-path: inset(0 40%  0 0); }   /* + R */
+  80%  { clip-path: inset(0 20%  0 0); }   /* + M */
+  100% { clip-path: inset(0 0    0 0); }   /* + A finale */
+}
+
+/* Quand le splash est en fade-out, la signature s'efface aussi (sinon
+   elle resterait visible pendant le fade du parent). */
+#splashOverlay.fading #splashKarmaCorner {
+  opacity: 0;
+  transition: opacity 0.3s ease-out;
+}
+
+/* Crédit Leaflet + JSZip + Dijkstra — petit, discret, en BAS À GAUCHE du
+   splash (déplacé du centre dans fix15 pour libérer le bas-droit où
+   s'affiche la signature KARMA animée). */
 #splashLeafletCredit {
   position: absolute;
-  /* safe-area-bottom pour éviter le home indicator iPhone (~34px sur les modèles avec encoche) */
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  /* 🆕 v1.9.2-fix17 : 14px → 28px (même raison que splashKarmaCorner :
+     éviter le clip par les coins arrondis d'écran). Safe-area conservé
+     pour notches latéraux. */
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  left: calc(28px + env(safe-area-inset-left, 0px));
   font-size: 11px;
   color: #6c7689;
   letter-spacing: 0.02em;
+  /* 🆕 v1.9.2-fix18 (KARMA "le karma est légèrement plus haut que les
+     libs, doit être au même alignement") : on fixe la hauteur effective
+     du crédit à 20px = hauteur de #splashKarmaImg. Les deux éléments
+     ont ainsi leur "boîte" de la même hauteur visuelle → centres et
+     bords alignés à la même ligne de base. */
+  height: 20px;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
-  /* Animation custom (opacity uniquement, pour ne pas écraser le translateX) */
+  /* Animation custom (opacity uniquement, pas de transform à conserver) */
   animation: splashLeafletFadeIn 0.6s ease-out 1.0s both;
 }
 
@@ -3033,9 +3237,16 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashProgressTrack { width: 200px; margin-top: 30px; }
   #splashScale { width: 200px; margin-top: 0; }
   .splash-scale-labels { font-size: 8px; }
-  #splashFooter { margin-top: 28px; }
-  #splashSignature { height: 26px; }
-  #splashLeafletCredit { font-size: 10px; bottom: 10px; }
+  /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM, règle obsolète
+     supprimée. Le KARMA img + crédits gardent leurs paliers mobiles. */
+  #splashKarmaImg { height: 18px; }
+  #splashLeafletCredit {
+    font-size: 10px;
+    /* Alignement avec karma image à la même hauteur (18px sur mobile) */
+    height: 18px;
+    line-height: 18px;
+  }
+  #splashLicense { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Mode paysage mobile : compact */
@@ -3046,9 +3257,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashProgressTrack { margin-top: 16px; }
   #splashScale { margin-top: 0; }
   .splash-scale-labels { font-size: 8px; height: 10px; }
-  #splashFooter { margin-top: 14px; gap: 6px; }
-  #splashSignature { height: 22px; }
-  #splashLicense { font-size: 10px; }
+  #splashKarmaImg { height: 16px; }
+  #splashLeafletCredit {
+    height: 16px;
+    line-height: 16px;
+  }
+  #splashLicense {
+    font-size: 10px;
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ==============================================
@@ -3063,25 +3280,45 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  /* safe-area sur top et bottom pour ne pas masquer le contenu sous la status bar
-     et le home indicator iPhone (le fond, lui, s'étend bord à bord via inset:0) */
-  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.9.2-fix12 (KARMA pivot) : padding overlay supprimé.
+     « j'en veux pas, je veux le modal full sans noir autour du modal ».
+     Le contenu (#planLoaderBox) prend désormais 100% de la viewport.
+     Les safe-areas iOS sont gérées au niveau du PADDING INTERNE de la
+     box (voir plus bas) → le contenu reste accessible sous le notch /
+     home indicator, mais le fond #1a1f2e couvre toute la viewport
+     y compris ces zones réservées. */
+  padding: 0;
   box-sizing: border-box;
   overflow-y: auto;
 }
 
 #planLoaderBox {
   width: 100%;
-  max-width: 520px;
+  /* 🆕 v1.9.2-fix12 : plein écran sans bordure noire autour. Le cap
+     ancien (520px mobile / 1100-2400px PC) est supprimé → la box prend
+     100% de la viewport. */
+  max-width: 100%;
   background: #1a1f2e;
   color: #e8eaf0;
-  border-radius: 14px;
-  padding: 24px;
+  /* Pas de border-radius / border / box-shadow : la box couvre tout,
+     ces décorations sont invisibles (coupées par le bord de l'écran)
+     ou apparaissent juste comme un trait disgracieux au sommet. */
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  /* Padding interne avec safe-area iOS UNIQUEMENT EN HAUT pour que le
+     contenu (logo, titre, ...) reste sous le notch.
+     🆕 v1.9.2-rollback2 (KARMA "réduit encore un peu") :
+     padding-bottom 8→4px. Minimum acceptable pour ne pas coller au bord. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 4px;
   box-sizing: border-box;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.65);
-  border: 1px solid rgba(255,255,255,0.08);
   font-family: Arial, sans-serif;
-  margin: auto 0;
+  margin: 0;
+  /* 🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` pour iOS PWA
+     avec cover. Le `100vh` reste en fallback pour iOS 15 et antérieur
+     (déclaration en premier, écrasée par dvh si supporté). */
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
@@ -3113,11 +3350,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
-  /* Loader plus large sur PC pour permettre le layout 2 colonnes.
-     Padding latéral augmenté pour bien respirer des deux côtés. */
+  /* 🆕 v1.9.2-fix12 : box full edge-to-edge sans cap max-width.
+     Padding horizontal interne augmenté pour respirer sur les côtés
+     du contenu sans repousser la box elle-même. */
   #planLoaderBox {
-    max-width: 1100px;
-    padding: 24px 40px;
+    padding-left: 56px;
+    padding-right: 56px;
   }
 
   .loader-grid {
@@ -3159,6 +3397,144 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
   #advancedHead .loader-collapse-chevron {
     display: none;
+  }
+
+  /* 🆕 v1.9.2 — Loader PC plus "fullscreen" (KARMA feedback :
+     « avoir une sorte de full screen » / « éviter tout ce noir autour »).
+     Itéré (KARMA "toujours du noir juste plus alongé") : on rend
+     l'effet plus marqué :
+       1. Pattern de points dorés opacity bumpée 0.035 → 0.07 (= visible
+          au lieu de quasi invisible)
+       2. Radial gradient avec centre plus clair (rgba(...,0.85)) pour
+          un vrai effet "puits de lumière" perceptible
+       3. Box loader étiré en HAUTEUR pour prendre presque tout l'écran
+          → plus de noir au-dessus / en-dessous
+     RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
+  #planLoaderOverlay {
+    background-color: #050810;
+    background-image:
+      radial-gradient(circle, rgba(244, 197, 66, 0.07) 1px, transparent 1px),
+      radial-gradient(ellipse 1400px 900px at center,
+        rgba(38, 55, 88, 0.85) 0%,
+        rgba(12, 18, 32, 0.96) 55%,
+        rgba(5, 8, 15, 1) 100%);
+    background-size: 28px 28px, 100% 100%;
+    background-position: center center, center center;
+    background-repeat: repeat, no-repeat;
+    /* Aligner le contenu en haut au lieu de center → box prend la hauteur
+       (et plus de noir résiduel au-dessus). */
+    align-items: stretch;
+  }
+
+  /* 🆕 v1.9.2-fix12 : la box prend 100vh défini dans la base CSS
+     (cf. plus haut). Ici on ajoute juste le flex-column pour la
+     distribution interne (resume / grid / footer). PAS de border /
+     box-shadow ajoutés (box edge-to-edge, ces décorations ne sont
+     pas visibles). */
+  #planLoaderBox {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* La loader-grid (2 cols) prend le RESTE de la hauteur disponible
+     dans la box, après header / resume / status / badge / footer.
+     Sans ça, elle restait à sa hauteur naturelle (~400px) et le bas
+     de la box était vide.
+     align-items: stretch override le `start` plus haut → les 2 colonnes
+     remplissent maintenant la hauteur du grid (sans ça, les flex internes
+     ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
+  .loader-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  /* La liste des plans peut prendre toute la hauteur dispo dans sa col
+     (override la valeur fixe calc(100vh - 320px) de plus bas). */
+  .loader-col-plans .loader-plans-list {
+    max-height: none;
+    height: 100%;
+    min-height: 0;
+  }
+  .loader-col-plans {
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-plans #myPlansBox {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Colonne ACTIONS (droite) — KARMA itéré v1.9.2-fix11 :
+     « le glisser déposer du zip est bien trop grand, il garde sa taille
+     initiale, mais marge suffisante pour garder en bas le bouton de
+     charger ce plan et Générer un plan ».
+     Layout :
+       - section-head au top (Ajouter un plan)
+       - panelZip prend l'espace restant (flex:1) avec drop-zone à sa
+         TAILLE NATURELLE en haut, puis "Charger ce plan" pinned en
+         bas via margin-top: auto à l'intérieur de panelZip
+       - loader-secondary-actions (Générer un plan) juste sous panelZip
+     Résultat : drop zone compacte au top, gros gap d'air visuel au
+     milieu, deux boutons "Charger / Générer" alignés en bas. */
+  .loader-col-actions {
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-actions #panelZip {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    /* PAS de flex: 1 1 auto sur .zip-drop-zone (retiré du fix9 qui le
+       faisait grandir disgracieusement). La drop zone garde sa taille
+       naturelle définie par son style de base. */
+  }
+  .loader-col-actions #panelZip .loaderActions {
+    /* "Charger ce plan" pinned en bas de panelZip via auto margin.
+       Les éléments qui le précèdent (drop zone, fileName, hints) restent
+       au top dans leur flow naturel. L'espace vide entre eux et le bouton
+       est l'effet voulu = aération visuelle. */
+    margin-top: auto;
+  }
+}
+
+/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding latéral plus généreux
+   (la box reste full edge-to-edge). */
+@media (min-width: 1440px) {
+  #planLoaderBox {
+    padding-left: 64px;
+    padding-right: 64px;
+  }
+  .loader-grid {
+    gap: 0 56px;
+  }
+  .loader-col-plans .loader-plans-list {
+    /* Hauteur scroll mieux adaptée à la grandeur écran */
+    max-height: calc(100vh - 340px);
+  }
+  /* Resume button : éviter qu'il devienne aride en pleine largeur sur
+     écran large. Limité à 900px et centré dans son conteneur. */
+  #resumeBox {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : padding latéral maxi. */
+@media (min-width: 1920px) {
+  #planLoaderBox {
+    padding-left: 96px;
+    padding-right: 96px;
+  }
+  .loader-grid {
+    gap: 0 72px;
+  }
+  /* Resume button : limite légèrement plus large sur ultra-wide */
+  #resumeBox {
+    max-width: 1000px;
   }
 }
 
@@ -3466,7 +3842,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
      d'une marge esthétique. Sans ça, en portrait sur iPhone avec notch, la
      boîte démarrait à 16px du bord → collait au notch quand le contenu
      dépassait. */
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
   box-sizing: border-box;
   animation: kta-fadein 0.18s ease;
   overflow-y: auto;
@@ -5712,7 +6088,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-iti-floater {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -6271,13 +6647,16 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
      déterministe quelle que soit la taille de police calculée par le browser.
    - flex-shrink: 0 + box-sizing pour éviter les distorsions au resize. */
 .kta-loader-copyright {
-  margin-top: 18px;
-  padding-top: 14px;
+  /* 🆕 v1.9.2-rollback2 (KARMA "réduit encore un peu le footer en
+     loader") : marges encore plus tassées — margin-top 6→2 +
+     padding-top 6→4 + line-height 16→15. */
+  margin-top: 2px;
+  padding-top: 4px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 11px;
   color: #8892a4;
   text-align: center;
-  line-height: 18px;
+  line-height: 15px;
   letter-spacing: 0.02em;
   -webkit-text-size-adjust: 100%;
           text-size-adjust: 100%;
@@ -6310,6 +6689,19 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-loader-copyright-warn {
   color: #ff8c8c;
   font-weight: 500;
+}
+
+/* 🆕 v1.9.2-fix17 — Ligne crédits libs/algos dans le footer du home.
+   Plus discrète que la ligne copyright (couleur plus pâle, taille
+   légèrement réduite). Reprise cohérente avec le crédit du splash. */
+.kta-loader-credits {
+  /* 🆕 v1.9.2-rollback2 : marge top 6→3, line-height 1.5→1.3 pour
+     gain vertical supplémentaire (cf. footer loader compactage). */
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: #6c7689;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
 }
 
 /* Badge version dans le footer (monospace, gris discret).
@@ -7819,8 +8211,11 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      header 44px et footer dynamique via --kta-statusbar-h qui inclut
      déjà safe-area-bottom). Quand le footer wrap multi-ligne et
      grandit, la sidebar rétrécit automatiquement pour ne pas se faire
-     recouvrir. */
-  max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+     recouvrir.
+     🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` (fallback `vh`
+     gardé en premier pour iOS 15-). */
+  max-height: calc(100vh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
+  max-height: calc(100dvh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;  /* Firefox */
@@ -7992,7 +8387,7 @@ body.kta-refonte-v1 .kta-compass-widget {
      (mise à jour par JS quand la barre wrap multi-ligne). Sans ça, si
      le footer grossit à 2 lignes, la boussole se retrouve cachée
      dessous. Fallback calc(52 + safe + 8) si JS pas chargé. */
-  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
 }
@@ -8000,7 +8395,7 @@ body.kta-refonte-v1 .kta-compass-widget {
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
-  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -8027,7 +8422,7 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
   /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
      `--kta-statusbar-h` (qui inclut safe-area déjà) + 16px de respiration.
      Quand le footer wrap multi-ligne, les modales s'ajustent automatiquement. */
-  padding-bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 16px);
+  padding-bottom: calc(var(--kta-statusbar-h, 52px) + 16px);
 }
 
 /* En landscape mobile, header est plus court (36px). Le footer suit
@@ -8036,7 +8431,7 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-readme-modal-overlay {
     padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
-    padding-bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px);
+    padding-bottom: calc(var(--kta-statusbar-h, 40px) + 8px);
   }
 }
 
@@ -8275,13 +8670,16 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    ───────────────────────────────────────────────────────────────── */
 
 /* 🆕 v1.8.1-refonte-10 : variable CSS partagée `--kta-statusbar-h` =
-   hauteur EFFECTIVE actuelle du status bar (incluant safe-area iPhone).
-   - Fallback CSS = 52px + safe (portrait standard, footer 1 ligne).
+   hauteur EFFECTIVE actuelle du status bar.
+   - Fallback CSS = 52px (portrait standard, footer 1 ligne).
    - JS (refonteInterface.js > ResizeObserver) la réécrit dynamiquement
      dès que la barre s'agrandit (wrap multi-ligne) ou se collapse.
    Tout ce qui dépend du bas de l'écran (#map bottom, boussole bottom,
    modales padding-bottom) consomme cette variable → réajustement
-   automatique sans JS supplémentaire. */
+   automatique sans JS supplémentaire.
+   Sans cover (état actuel après rollback final), safe-area-inset-bottom
+   = 0 sur iPhone donc le `+ env(...)` est un no-op. Conservé pour
+   robustesse si un jour cover est réintroduit. */
 body.kta-refonte-v1 {
   --kta-statusbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
 }
@@ -8297,6 +8695,10 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
+  /* 🆕 v1.9.2-fix3 (KARMA "uniquement sur mobile, padding renforcé pour
+     éviter le clip des coins arrondis bottom-left/right de l'écran")
+     → règle mobile-only plus bas. Sur PC on garde 12px (pas de coins
+     arrondis à éviter). */
   padding: 0 12px;
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
@@ -8308,6 +8710,8 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
      Feedback KARMA : "si toute les informations sont afficher en footer
      on sort du cadre [...] agrandir le footer dynamiquement et passer
      a la ligne toute la partie qui sort". */
+  /* Sans cover (rollback final), safe-area-inset-bottom = 0 sur iPhone
+     donc no-op. Conservé pour robustesse si cover réintroduit. */
   min-height: calc(52px + env(safe-area-inset-bottom, 0px));
   height: auto;
   padding-top: 4px;
@@ -8324,10 +8728,24 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   user-select: none;
 }
 
+/* 🆕 v1.9.2-fix3 (KARMA "rajoute le petit fix pour les marges en footer
+   pour éviter le souci de bord arrondi, uniquement sur mobile, sinon
+   on perd un bout d'icône à droite et à gauche") :
+   sur écrans tactiles avec coins arrondis (iPhone, Android phones), le
+   premier stat 📐 à gauche et le bouton ▾▴ à droite étaient grignotés
+   par les coins de l'écran. On bump le padding latéral à 28px (même
+   valeur que le splash en fix17) pour décaler les icônes vers
+   l'intérieur. PC inchangé (12px car pas de coins arrondis à éviter). */
+@media (max-width: 480px), (max-height: 500px) and (orientation: landscape) {
+  body.kta-refonte-v1 .kta-refonte-statusbar {
+    padding-left: calc(28px + env(safe-area-inset-left, 0px));
+    padding-right: calc(28px + env(safe-area-inset-right, 0px));
+  }
+}
+
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-  /* État replié : la barre garde une hauteur fixe minimaliste (pas de
-     wrap car contenu masqué via opacity:0). On force min-height ET
-     height pour neutraliser l'auto-grow du mode ouvert. */
+  /* État replié : la barre garde une hauteur fixe minimaliste.
+     safe-area-inset-bottom conservé pour robustesse (no-op sans cover). */
   min-height: calc(20px + env(safe-area-inset-bottom, 0px));
   height: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: 0;
@@ -8545,7 +8963,7 @@ body.kta-refonte-v1 #map {
      wrap multi-ligne et grandit, #map remonte automatiquement pour
      ne pas être recouvert. Fallback calc(52 + safe) si JS pas chargé.
      La variable inclut DÉJÀ safe-area-inset-bottom (le JS lit offsetHeight). */
-  bottom: var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px)));
+  bottom: var(--kta-statusbar-h, 52px);
   height: auto;
   /* Transition douce pour suivre le changement de hauteur du statusbar
      (wrap/unwrap, collapse/expand) sans saccade visuelle */
@@ -8554,7 +8972,7 @@ body.kta-refonte-v1 #map {
 /* État collapsed : la variable JS prend déjà la nouvelle valeur (20+safe).
    Mais on garde un fallback CSS pour le cas où JS n'a pas encore tourné. */
 body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-  bottom: var(--kta-statusbar-h, calc(20px + env(safe-area-inset-bottom, 0px)));
+  bottom: var(--kta-statusbar-h, 20px);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -8586,9 +9004,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* 🆕 Statusbar landscape : min-height 40+safe (au lieu de height fixe).
-     Permet à la barre de grandir aussi en landscape si les 4 stats wrap.
-     La variable --kta-statusbar-h fallback descend à 40+safe ici. */
+  /* Statusbar landscape : min-height 40+safe (no-op sans cover). */
   body.kta-refonte-v1 {
     --kta-statusbar-h: calc(40px + env(safe-area-inset-bottom, 0px));
   }
@@ -8611,10 +9027,12 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     height: 22px;
   }
   /* Recalcule la max-height des sidebars pour landscape — suit la
-     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte) */
+     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte).
+     🆕 v1.9.2-fullscreen : double déclaration vh/dvh. */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+    max-height: calc(100vh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
+    max-height: calc(100dvh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
   }
   /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
      bas-gauche comme en portrait). Sur petit écran horizontal, les
@@ -8626,7 +9044,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
      icones)". */
   body.kta-refonte-v1 .kta-compass-widget,
   body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
-    bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+    bottom: calc(var(--kta-statusbar-h, 40px) + 8px) !important;
     /* Centrage horizontal : left:50% + translateX(-50%). On annule la
        règle portrait `left: calc(10px + safe-left)` via la valeur 50%
        qui prime (plus spécifique dans la cascade media query). */

@@ -25,16 +25,11 @@
 //   depuis ⚙️ Configuration → 🔒 Confidentialité → 📖).
 // =========================
 
-// 🎨 v1.9.1 — Refonte UI MERGÉE sur Karma_dev (puis main). Le suffix
-// `-refonte-N` qu'on utilisait pendant la phase de dev sur la branche
-// `Refonte_interface` a été retiré ici : la refonte EST désormais
-// l'interface officielle (nouvelle interface par défaut + toggle
-// `myktamap_legacy_interface` pour opt-out vers l'ancienne v1.8.x).
-//
-// Pour les prochains hotfixes : bump simple `v1.9.2`, `v1.9.3`, etc.
-// Pas besoin de suffix tant qu'on ne re-démarre pas une branche
-// expérimentale parallèle.
-const CACHE_NAME = "myktamap-cache-v1.9.1-fix7";
+// 🎨 v1.9.x — Refonte UI officialisée depuis v1.9.1 (mergée sur main).
+// v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
+// (loader fullscreen PC, modales agrandies, tracker rotation
+// continue, splash KARMA animé + crédits Dijkstra, etc.).
+const CACHE_NAME = "myktamap-cache-v1.9.2";
 
 const ASSETS_TO_CACHE = [
   "./",

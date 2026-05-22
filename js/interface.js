@@ -1145,7 +1145,11 @@ function _ouvrirReadmeModal(html) {
       </div>
       <div class="kta-readme-modal-footer">
         <span class="kta-readme-modal-by">Développé par <img src="icon/karma.png" alt="KARMA"></span>
-        <span>— 🍃 Cartographie propulsée par Leaflet</span>
+        <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer de la doc nos
+             nouvelles citations") : élargi pour citer toutes les
+             dépendances/algos majeurs, en cohérence avec le splash et
+             le footer du home. -->
+        <span>— 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra</span>
       </div>
     </div>
   `;
@@ -1802,9 +1806,20 @@ function afficherConfig() {
     legacyCb.addEventListener("change", function() {
       const wantNouvelle = !legacyCb.checked;  // cochée = legacy, donc !cochée = nouvelle
       if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-        window.RefonteInterface.setActive(wantNouvelle);
-        // Si user annule le reload → revert checkbox à l'état actuel
-        legacyCb.checked = (window._refonteInterfaceActive !== true);
+        // 🆕 v1.9.2-fix4 : setActive retourne une Promise (modale charte).
+        // On revert le checkbox si l'utilisateur annule (Plus tard / ✕ /
+        // backdrop / Échap) — le flag n'a PAS été écrit dans ce cas.
+        const result = window.RefonteInterface.setActive(wantNouvelle);
+        if (result && typeof result.then === "function") {
+          result.then(function(confirmed) {
+            if (!confirmed) {
+              legacyCb.checked = (window._refonteInterfaceActive !== true);
+            }
+          });
+        } else {
+          // Fallback ancien API sync (sécurité)
+          legacyCb.checked = (window._refonteInterfaceActive !== true);
+        }
       } else {
         // Fallback (module non chargé) — set direct localStorage
         try {
@@ -5852,13 +5867,19 @@ function afficherLegende() {
     </div>
   `;
 
+  // 🆕 v1.9.2-fix13 : retrait du style inline `max-width:480px` qui
+  // bloquait l'agrandissement PC. La modale utilise désormais les tailles
+  // standard de .kta-readme-modal-boite (mobile : min(960px, 96vw),
+  // PC : 1400px / 1700px / 2000px selon le palier — cf. style.css).
+  // Sur mobile la légende reste lisible (96vw), sur PC elle profite
+  // de l'espace pour afficher plus de groupes en parallèle si besoin.
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:480px;">
+    <div class="kta-readme-modal-boite kta-legende-modal-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">🗺️ Légende</span>
         <button class="kta-panneau-close" id="kta-legende-close">✕</button>
       </div>
-      <div class="kta-readme-modal-corps">
+      <div class="kta-readme-modal-corps kta-legende-corps">
         ${contenuIcones}
         ${contenuTracés}
         ${contenuZones}

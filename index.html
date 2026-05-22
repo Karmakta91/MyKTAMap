@@ -21,28 +21,19 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- viewport-fit=cover testé puis retiré : iOS PWA n'extendait pas correctement
-       la viewport jusqu'au home-indicator (bande sombre persistante en bas).
-       Sans cover : iOS reste dans la safe-area, status bar coloré par theme-color
-       (notre #111827 dark) + icônes claires (apple-mobile-web-app-status-bar-style
-       = black-translucent → light icons en l'absence de cover). Look intégré dark
-       en haut, footer correct en bas. */ -->
-  <!-- Pas de viewport-fit=cover : iOS PWA portrait n'extendait jamais la
-       viewport jusqu'au home-indicator malgré tous les fixes (inset:0,
-       100dvh, --realvh, bottom négatif). Sans cover, iOS reste dans la
-       safe-area = pas de bug de bande sombre en bas. Le top intégré dark
-       est obtenu différemment : .leaflet-container reçoit un background
-       sombre dans leaflet.css, donc dès que le DOM map est monté, la
-       couleur du haut de page est dark → la status bar iOS reflète. -->
+  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
+       plus de problèmes que de bénéfice"). Multiples tentatives cover +
+       black-translucent ont créé soit une bande sombre en bas, soit la
+       status bar iOS qui hide/show de façon imprévisible. On reste sur
+       le comportement stable v1.9.1 : pas de cover, status bar opaque
+       noire, on perd ~47px en haut sur iPhone notché mais comportement
+       PRÉVISIBLE. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black" = bande noire opaque, icônes blanches, indépendante du contenu
-       sous-jacent. Sans viewport-fit=cover, "black-translucent" tombe en
-       fallback "default" = couleur du haut de page → devenait blanc dès que
-       les tuiles Leaflet chargeaient (cf. capture utilisateur). "black" force
-       le top sombre en permanence. -->
+  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
+       du contenu. Stable, l'heure iOS reste visible en permanence. -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
@@ -59,7 +50,16 @@
 
   <!-- ICON CHROME INSTALL-->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
+<!-- 🆕 v1.9.2-rollback4 (KARMA "premier chargement barre noire, après
+     Leaflet me la met comme je veux") : theme-color aligné à la
+     couleur de DÉPART du gradient header refonte (#1a1f2e). Ainsi le
+     status bar tinté par theme-color (Safari mobile, Android Chrome)
+     correspond visuellement au header refonte qui s'affiche après
+     chargement d'un plan. Avant : #111827 (un peu plus sombre, créait
+     un léger contraste perçu comme "saut de couleur"). Sur iPhone PWA
+     standalone, c'est apple-mobile-web-app-status-bar-style qui prime
+     (= black opaque), mais theme-color est utile partout ailleurs. -->
+<meta name="theme-color" content="#1a1f2e">
 </head>
 
 <body>
@@ -103,20 +103,38 @@
         </div>
       </div>
 
-      <div id="splashFooter">
-        <div id="splashAuthor">
-          <span class="splash-by">Par</span>
-          <img src="icon/karma.png" alt="KARMA" id="splashSignature">
-        </div>
-        <div id="splashLicense">
-          Licence libre — usage non commercial<br>
-          <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
-        </div>
-      </div>
+      <!-- 🆕 v1.9.2-fix18 (KARMA pivot) : #splashFooter et #splashLicense
+           SORTIS du #splashBox pour pouvoir positionner la licence en
+           absolu au bas du splash, juste au-dessus de la signature KARMA
+           et des crédits libs. Le box principal contient désormais
+           uniquement le contenu central (logo, titre, progress, scale). -->
     </div>
 
-    <!-- Crédit librairie Leaflet — discret, en bas à droite (pas de lien cliquable, splash auto-fermant) -->
-    <div id="splashLeafletCredit">🍃 Cartographie propulsée par Leaflet</div>
+    <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
+         KARMA + crédits libs. Position absolute pour décoreller du flux
+         vertical du #splashBox centré. -->
+    <div id="splashLicense">
+      Licence libre — usage non commercial<br>
+      <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
+    </div>
+
+    <!-- 🆕 v1.9.2-fix15 (KARMA) : signature KARMA en bas à droite, plus
+         petite que l'ancienne. Animation : la karma.png se révèle
+         progressivement de gauche à droite via clip-path avec steps()
+         pour un effet "lettre par lettre" (5 étapes pour K-A-R-M-A).
+         Préserve le style graphique original (l'image stylisée) tout
+         en ajoutant la séquence d'apparition demandée. -->
+    <div id="splashKarmaCorner" aria-hidden="true">
+      <img src="icon/karma.png" alt="KARMA" id="splashKarmaImg">
+    </div>
+
+    <!-- Crédits librairies + algos — discret, en bas à GAUCHE pour
+         libérer le bas-droit pour KARMA. Mention des 2 libs majeures
+         (Leaflet mapping, JSZip ZIP I/O) + de l'algo Dijkstra du
+         pathfinder (utilisé pour le calcul d'itinéraires sur le
+         réseau de tracés). KARMA s'en souvient : "djakarta" était une
+         confusion phonétique avec Dijkstra. -->
+    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -301,6 +319,13 @@
           <span class="kta-loader-copyright-sep">·</span>
           <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" title="Version de l'app">v?</span>
         </span>
+        <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer du home nos
+             nouvelles citations") : mention des libs + algo majeurs du
+             projet, en cohérence avec le crédit affiché en bas-gauche
+             du splash. Ligne séparée pour la lisibilité. -->
+        <div class="kta-loader-credits">
+          🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra
+        </div>
       </div>
     </div>
   </div>
@@ -2088,9 +2113,22 @@
         legacyCb.addEventListener("change", function() {
           const wantNouvelle = !legacyCb.checked;
           if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-            window.RefonteInterface.setActive(wantNouvelle);
-            // Si user annule le reload → revert checkbox à l'état actuel
-            legacyCb.checked = (window._refonteInterfaceActive !== true);
+            // 🆕 v1.9.2-fix4 : setActive retourne désormais une Promise.
+            // Si user clique "Recharger maintenant" → flag écrit + reload.
+            // Si user clique "Plus tard" / ✕ / Échap / backdrop → on revert
+            // le checkbox à l'état boot (le flag N'A PAS été écrit donc
+            // l'interface reste comme avant au prochain démarrage).
+            const result = window.RefonteInterface.setActive(wantNouvelle);
+            if (result && typeof result.then === "function") {
+              result.then(function(confirmed) {
+                if (!confirmed) {
+                  legacyCb.checked = (window._refonteInterfaceActive !== true);
+                }
+              });
+            } else {
+              // Fallback ancien API sync (sécurité)
+              legacyCb.checked = (window._refonteInterfaceActive !== true);
+            }
           } else {
             // Fallback (module non chargé) — set direct localStorage
             try {
@@ -2406,7 +2444,14 @@
           // Accent bleu (info, action non-destructive) — différencie de la
           // modale de Reset qui est rouge (action destructive).
           overlay.innerHTML =
-            '<div class="kta-readme-modal-boite" style="max-width:480px; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
+            // 🆕 v1.9.2-fix15 : ajout de height:auto + max-height:92vh pour
+            // que la modale ne prenne plus toute la hauteur de l'écran sur
+            // PC (KARMA : "prend toute longueur pour rien, bcp de vide").
+            // La base CSS .kta-readme-modal-boite donne désormais min(92vh,
+            // 1100px) sur PC — utile pour les modales avec contenu long
+            // (Doc, Aide), mais pas pour cette modale de confirmation
+            // courte. height:auto rend la modale à la taille de son contenu.
+            '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(140,180,255,0.4); box-shadow:0 0 32px rgba(140,180,255,0.18);">' +
               '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(140,180,255,0.25);">' +
                 '<div class="kta-readme-modal-titre" style="color:#8cb4ff;">🔄 Forcer la mise à jour ?</div>' +
                 '<button class="kta-panneau-close" type="button" id="kta-fu-close" aria-label="Fermer">✕</button>' +

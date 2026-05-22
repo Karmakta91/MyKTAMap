@@ -59,6 +59,36 @@
       #kta-export-modal .kta-aide-section-titre {
         margin-bottom: 8px;
       }
+
+      /* 🆕 v1.9.2-fix15 (KARMA "lister les layer horizontalement, 4 max,
+         on passe à la ligne") : sur PC ≥ 1024px, les blocs de calques
+         (Puits, Carrière, Chemin, etc.) s'organisent en grille 4 cols
+         max. Chaque cellule contient le titre du calque + ses sous-tags
+         empilés verticalement. Wrap automatique à la ligne suivante
+         quand > 4 calques. */
+      @media (min-width: 1024px) {
+        #kta-export-data-layers,
+        #kta-export-image-layers {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 14px;
+          align-items: start;
+        }
+        /* Chaque bloc de calque devient une "carte" visuelle */
+        #kta-export-data-layers .kta-export-data-layer-block {
+          background: rgba(255, 255, 255, 0.025);
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          border-radius: 8px;
+          padding: 8px 10px;
+        }
+      }
+      /* Petit écran PC (1024-1279) : 3 cols pour respirer */
+      @media (min-width: 1024px) and (max-width: 1279px) {
+        #kta-export-data-layers,
+        #kta-export-image-layers {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -114,7 +144,12 @@
     modal.className = "kta-readme-modal-overlay";
 
     modal.innerHTML = `
-      <div class="kta-readme-modal-boite" style="max-width:580px; height:auto; max-height:92vh;">
+      <!-- 🆕 v1.9.2-fix14 (KARMA "même concept pour Export images") :
+           retrait du style inline max-width:580px qui bloquait
+           l'agrandissement PC. La modale utilise désormais les tailles
+           standard de .kta-readme-modal-boite + classe spécifique
+           kta-export-modal-boite pour ajustements ciblés (cf. CSS). -->
+      <div class="kta-readme-modal-boite kta-export-modal-boite">
         <div class="kta-readme-modal-header">
           <span class="kta-readme-modal-titre">🖼️ Exporter le plan</span>
           <button class="kta-panneau-close" id="kta-export-close">✕</button>

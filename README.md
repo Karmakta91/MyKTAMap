@@ -9,7 +9,162 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (100 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (101 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v1-9-2" open>
+<summary><strong>🗓️ 22/05/2026 — 💎 v1.9.2 : Polish post-refonte — loader fullscreen PC + modales agrandies + tracker rotation continue + splash KARMA animé</strong></summary>
+
+PATCH bump (1.9.1 → 1.9.2) consolidant 17 itérations de polish UX
+appliquées le lendemain de la release v1.9.1. Aucune feature majeure
+nouvelle, beaucoup de raffinement visuel et de fixes de comportement
+issus du retour terrain immédiat.
+
+### 🏠 Page d'accueil PC plein écran
+
+Le loader prend désormais 100 % de la viewport (largeur ET hauteur),
+sans bordure noire autour. Changements clés :
+- `#planLoaderOverlay { padding: 0 }` (overlay)
+- `#planLoaderBox` : `max-width: 100%`, `min-height: 100vh`,
+  `border-radius: 0`, `border: none`, `box-shadow: none`,
+  `padding: calc(24 + safe-area-inset-top) 24 calc(24 + safe-area-inset-bottom)`
+
+Les safe-areas iOS (notch / home indicator) sont gérées au niveau du
+padding interne plutôt que de l'overlay → le fond `#1a1f2e` s'étend
+bord à bord, le contenu reste visible sous les zones iOS réservées.
+
+Backdrop décoratif sur PC (≥ 1024px) en cas de petites bordures
+résiduelles : pattern subtil de points dorés (rgba 0.07) + radial
+gradient warmer au centre. Mobile inchangé.
+
+### 🎨 Toutes les modales PC agrandies
+
+Paliers progressifs :
+| Modale (classe) | ≥ 1024px | ≥ 1440px | ≥ 1920px |
+|---|---|---|---|
+| Documentation (`.kta-readme-modal-boite`) | 1400 × 92vh | 1700 × 94vh | 2000 × 95vh |
+| Aide (`.kta-aide-modal-boite`) | 1400 | 1700 | 2000 |
+| ⚙️ Réglages map (`.kta-cfg-modal-boite`) | 1400 | 1700 | 2000 |
+| ⚙️ Configuration loader (`.kta-loader-config-boite`) | 1400 | 1700 | 2000 |
+| Légende (`.kta-legende-modal-boite` + multi-cols 2/3/4) | 1400 | 1700 | 2000 |
+| Export images (`.kta-export-modal-boite` + height: auto) | 1400 | 1700 | 2000 |
+| Enregistrer session (héritée de `.kta-readme-modal-boite`) | 1400 | 1700 | 2000 |
+| Éditeur tableau (retrait du width: 1100px forcé) | 1400 | 1700 | 2000 |
+
+### 🧹 Toggle « afficher les ronds aux intersections de tracés »
+
+Nouvelle préférence globale `APP_CONFIG.showRoadIntersections` (default
+true), persistée dans `localStorage > app_user_prefs`. Accessible
+**uniquement** depuis ⚙️ Configuration du home → section « 🎨 Affichage ».
+Décocher pour aérer visuellement les plans très denses (les cercles
+pleins colorés aux croisements de tracés disparaissent).
+
+Setter unifié `window.setShowRoadIntersections(value)` qui persiste +
+appelle `renderRoads()` à chaud (effet immédiat, pas de reload).
+
+Bug fix bonus : `buildAppConfigFromPlan` reconstruisait `APP_CONFIG`
+sans les prefs globales (scaledMarkers et showRoadIntersections étaient
+écrasés au plan switch). Restauration explicite depuis localStorage
+dans cfg pour ces 2 flags.
+
+### ⚪ Tracker icône — rotation continue sans saut
+
+Bug : la CSS transition `transform: rotate(deg)` interprétait les
+valeurs littéralement. Passage de `rotate(350deg)` à `rotate(10deg)` =
+animation -340° (saut visuel arrière), pas +20° (chemin court).
+
+Fix : nouvelle variable `_trackerRotationUnwrapped` qui cumule les
+deltas courts (toujours dans [-180, +180°]) à chaque tick. Valeur
+appliquée au CSS peut être -10, 370, 720, -45, etc. — visuellement
+identique mais le CSS anime toujours dans le sens physique réel.
+
+### 🎬 Splash refondu
+
+- Retrait du bloc `#splashAuthor` centré dans le footer
+- Ajout de `#splashKarmaCorner` en bas-droite avec animation
+  lettre-par-lettre via `clip-path: inset()` + 5 keyframes ease-in-out
+  (1,8 s, délai 0,8 s, paliers smooth visibles aux 5 phases K-A-R-M-A)
+- Taille 32px → 20px (16-18px mobile/landscape)
+- Glow doré + fade-out synchronisé avec splash.fading
+- Crédits libs/algo `🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra` en bas-gauche
+- Décalage 14px → 28px des coins (anti-clip écrans arrondis)
+
+Ces mêmes crédits ajoutés au :
+- Footer du home (`.kta-loader-credits` sous le copyright)
+- Footer de la modale Documentation (`.kta-readme-modal-footer`)
+
+### 🎨 Couleur Leaflet alignée à la charte
+
+`lib/leaflet/leaflet.css` ligne 266 :
+- AVANT : `background: #000000` (noir pur — hack historique)
+- APRÈS : `background: #0a0d18` (charte, identique à body bg)
+
+Plus de saut de teinte au retour loader après chargement d'un plan.
+
+### 🧭 Tracker GPS dans le footer — LED ON/OFF
+
+Avant : icône 🚶 + texte "—" / "Actif (x, y)" → doublon visuel avec le
+🚶 du badge "mode marche" de la stat itinéraire.
+
+Maintenant : icône 🧭 (boussole) + texte « ON » (fond vert, lueur
+LED) ou « OFF » (fond rouge). Toujours visible (jamais "—"). Mise à
+jour pilotée par `window.getTrackingActif()` (nouvelle API exposée
+dans tracking.js).
+
+### 🗺️ Stat itinéraire cliquable
+
+`#kta-refonte-stat-iti` reçoit un handler `click` qui appelle
+`window.ouvrirItinerairModal()` (la même fonction que l'ancien label
+`.kta-iti-distance` en bottom-left, désormais masqué pour éviter le
+doublon). Clic ignoré silencieusement si stat vide.
+
+### 🎛️ Export images — layers en grille horizontale
+
+Sur PC ≥ 1024px, les blocs de calques (`#kta-export-data-layers`,
+`#kta-export-image-layers`) s'organisent en :
+- 4 cols (≥ 1280px) avec gap 14px
+- 3 cols (1024-1279px) pour respirer
+- Stack vertical (< 1024px, inchangé)
+
+Chaque bloc data-layer reçoit fond/bordure subtils pour le matérialiser
+comme une "carte" dans la grille.
+
+### 🔧 Modale « Forcer la mise à jour ? » plus compacte
+
+Ajout de `height:auto; max-height:92vh` à l'inline style pour que la
+modale se cale sur la taille de son contenu (~250px) au lieu d'occuper
+92vh entiers comme une grosse modale Doc.
+
+### 💎 Polish UX divers
+
+- Bouton ▾▴ du footer compact (32×16, font 13) quand `.kta-refonte-
+  statusbar-collapsed`, avant 40×36 = débordement sur footer replié
+- Stats du footer en doré charte `#f4c542` (au lieu de blanc cassé)
+- Retrait du sous-action « 🗂️ Changer de plan » du menu ⬇️ Charger /
+  Import (doublon avec la rose des vents + le titre cliquable)
+- ⚙️ Configuration loader réordonnée : Affichage avant Force update
+  pour que Force update + Reset se suivent (gradation purge cache →
+  purge totale)
+
+### Sources de vérité bumpées
+
+- `sw.js > CACHE_NAME` : `v1.9.1-fix17` → **`v1.9.2`** (suffix `-fixN`
+  retiré, version stable)
+- `version.json > version` : `v1.9.1` → **`v1.9.2`** + 11 notes user-facing
+- `js/copyright.js > build` : `v1.9.1` → **`v1.9.2`**
+
+### Ce qui n'a PAS marché en cours de route (transparence)
+
+- `viewport-fit=cover` + `apple-mobile-web-app-status-bar-style =
+  black-translucent` (fix4) : tentative pour faire monter le header
+  refonte tout en haut de l'écran iPhone PWA. Provoquait la même
+  bande sombre en bas qu'en v1.8.0 → revert (fix5).
+- Tentatives de fix iOS rotation status bar (fix1 body class toggle,
+  fix3 scrollTo + viewport meta rewrite) : amélioration marginale,
+  fix1 a même PIRE le bug → revert. C'est un bug iOS Safari standalone
+  PWA documenté, sans API JS officielle pour le contrer. Status quo
+  accepté.
+
+</details>
 
 <details id="v1-9-1" open>
 <summary><strong>🗓️ 21/05/2026 — 🎨 v1.9.1 : Refonte UI mergée — nouvelle interface par défaut (header + sidebars unifiées + status bar dynamique)</strong></summary>
@@ -121,7 +276,7 @@ Branche `Refonte_interface` (créée depuis `Karma_dev@75455a4` fin avril 2026, 
 
 </details>
 
-<details id="v1-8-1" open>
+<details id="v1-8-1">
 <summary><strong>🗓️ 21/05/2026 — 🐛 v1.8.1 : Privacy & Audit (fixes post-release + restore itinéraire en 2 phases)</strong></summary>
 
 PATCH bump (1.8.0 → 1.8.1) cumulant les fixes UX, ajustements CSP et améliorations remontées en test KARMA après la release initiale v1.8.0 du même jour (cf. entrée v1.8.0 ci-dessous pour la description de la feature principale).
@@ -528,7 +683,7 @@ Les marqueurs sont enregistrés dans `_ktaDataPolylines` avec le même `level` q
 > | 1.6 | ⛔ Zone Inaccessible + 🚫 Préférences évitement itinéraire | v169 |
 > | 1.7 | 🗝️ Unlock Gate (barrière communautaire d'accès) | v173 |
 > | 1.8 | 🔒 Privacy & Audit (transparence vérifiable + mode hors-ligne strict + CSP) | v1.8.1 |
-> | 1.9 | 🎨 Refonte UI (header bar + sidebars unifiées + status bar dynamique + modale plan switcher) | v1.9.1 |
+> | 1.9 | 🎨 Refonte UI (header bar + sidebars unifiées + status bar dynamique + modale plan switcher) | v1.9.2 |
 >
 > Les anciennes entrées du journal restent nommées avec leur ancienne convention `vNNN` (= historique préservé). Seules les **nouvelles entrées à partir de v1.7.1** suivent le nouveau format.
 
