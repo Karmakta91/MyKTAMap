@@ -9,10 +9,16 @@ html, body {
   min-height: 100dvh;
   margin: 0;
   overflow: hidden;
-  /* Fond sombre cohérent avec le splash et le thème pour les zones où le body
-     pourrait apparaître (rubber-band scroll, avant init Leaflet, et
-     fallback si jamais un élément ne couvre pas tout). */
-  background-color: #0a0d18;
+  /* 🆕 v1.9.2-fix3 (KARMA "force et persévérance" sur le top tint) :
+     bg body changé de #0a0d18 → #1a1f2e (= start gradient header refonte
+     + theme-color). Hypothèse : Safari mobile et Chrome mobile peuvent
+     échantillonner le bg computé du body/html pour tinter leur chrome
+     système (address bar, status bar). Avec body #1a1f2e, le top tint
+     dès le PREMIER paint, sans attendre que Leaflet soit chargé.
+     Effet collatéral : rubber-band scroll iOS et toute zone où le body
+     est visible (rare) auront cette teinte plus claire. Le splash + le
+     loader overlay continuent de cacher le body en pratique. */
+  background-color: #1a1f2e;
 }
 
 #map {
