@@ -21,29 +21,27 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-fullscreen TENTATIVE 2 (KARMA "on tente l'implémentation
-       fullscreen viewport-fit=cover + dvh partout").
+  <!-- 🆕 v1.9.2-fullscreen3 — KARMA pivot final : « je veux que le top
+       soit toujours de la même couleur que en mode carte même au premier
+       chargement ».
 
-       PREMIÈRE TENTATIVE (v1.8.0 + v1.9.2-fix4) : cover seul → "bande
-       sombre persistante en bas". Cause : iOS Safari historique
-       interprétait `100vh` et `height: 100%` comme le visual viewport
-       SANS la zone home indicator → 21-34px de gap en bas.
-
-       MAINTENANT : cover + audit complet du CSS pour migrer les
-       hauteurs critiques vers `100dvh` (dynamic viewport height) qui
-       correspond à l'écran physique entier. Support iOS 16+ (sept 2022,
-       largement déployé en 2026). Fallback `100vh` gardé en première
-       déclaration pour iOS 15 et antérieur. -->
+       Constat précédent (fullscreen1) : avec cover + black-translucent,
+       l'heure iOS est visible au premier chargement (sur fond noir pur
+       iOS) mais peut disparaître après ouverture d'une carte (iOS auto-
+       hide qu'on ne contrôle pas). KARMA accepte ce comportement iOS
+       — ce qu'il veut surtout c'est la COULEUR uniforme du top. Avec
+       cover + black-translucent, le top est TOUJOURS la couleur de
+       notre header (#1a1f2e) ou body (#0a0d18) charte, peu importe si
+       iOS affiche ou cache son horloge par-dessus. -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- 🆕 v1.9.2-fullscreen : "black-translucent" pour que iOS dessine
-       sa status bar TRANSPARENTE par-dessus notre contenu (au lieu de
-       réserver une bande noire opaque). Combiné à viewport-fit=cover,
-       notre app prend tout l'écran physique. Le header refonte (dark
-       gradient) sert de fond visuel pour les icônes iOS (heure,
-       batterie) en blanc dessus. -->
+  <!-- "black-translucent" : status bar iOS TRANSPARENTE par-dessus notre
+       contenu. iOS dessine ses icônes (heure, batterie) en blanc sur
+       le fond de notre app (header dark gradient ou body #0a0d18). La
+       couleur visible au top = TOUJOURS la couleur de notre app, pas
+       le noir opaque iOS. Cohérent avec mode carte ET premier chargement. -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
