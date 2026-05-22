@@ -114,7 +114,12 @@
     modal.className = "kta-readme-modal-overlay";
 
     modal.innerHTML = `
-      <div class="kta-readme-modal-boite" style="max-width:580px; height:auto; max-height:92vh;">
+      <!-- 🆕 v1.9.2-fix14 (KARMA "même concept pour Export images") :
+           retrait du style inline max-width:580px qui bloquait
+           l'agrandissement PC. La modale utilise désormais les tailles
+           standard de .kta-readme-modal-boite + classe spécifique
+           kta-export-modal-boite pour ajustements ciblés (cf. CSS). -->
+      <div class="kta-readme-modal-boite kta-export-modal-boite">
         <div class="kta-readme-modal-header">
           <span class="kta-readme-modal-titre">🖼️ Exporter le plan</span>
           <button class="kta-panneau-close" id="kta-export-close">✕</button>

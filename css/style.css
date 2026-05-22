@@ -2708,6 +2708,35 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
+/* 🆕 v1.9.2-fix14 — Modale Export Images (.kta-export-modal-boite).
+   Mobile : garde height:auto (le contenu peut être court) avec max-height
+   pour éviter qu'il dépasse l'écran.
+   PC : applique les mêmes paliers que les autres modales pour l'élargir,
+   en gardant height:auto (le contenu d'export ne justifie pas d'imposer
+   88vh / 92vh — on prend la taille naturelle, avec max-height pour limiter). */
+.kta-export-modal-boite {
+  height: auto !important;
+  max-height: 92vh !important;
+}
+@media (min-width: 1024px) {
+  .kta-export-modal-boite {
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-export-modal-boite {
+    max-width: 1700px !important;
+    width: min(1700px, 96vw) !important;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-export-modal-boite {
+    max-width: 2000px !important;
+    width: min(2000px, 95vw) !important;
+  }
+}
+
 
 /* 🆕 v1.9.2-fix13 — Légende sur PC : layout multi-colonnes pour
    profiter de la largeur agrandie. Les sections (Puits / Accès /

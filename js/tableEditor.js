@@ -33,7 +33,13 @@
     const s = document.createElement("style");
     s.id = "kta-tbl-styles";
     s.textContent = `
-      #kta-tbl-modal .kta-readme-modal-boite { max-width: 95vw; width: 1100px; height: 90vh; max-height: 90vh; display:flex; flex-direction:column; }
+      /* 🆕 v1.9.2-fix14 (KARMA "même concept pour Éditeur tableau") :
+         on retire le width fixe 1100px → la modale utilise les tailles
+         de .kta-readme-modal-boite (mobile : min(960px, 96vw),
+         PC : 1400/1700/2000px selon palier — cf. style.css fix13).
+         La règle de base ici sert juste à neutraliser un éventuel
+         override de width fixe ailleurs : on laisse la base CSS gérer. */
+      #kta-tbl-modal .kta-readme-modal-boite { display:flex; flex-direction:column; }
       #kta-tbl-modal .kta-readme-modal-corps { display:flex; flex-direction:column; flex:1; min-height:0; padding-bottom:0; }
 
       .kta-tbl-toolbar {
