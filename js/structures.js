@@ -235,11 +235,25 @@ function toggleStructureMode(type) {
   }
 
   if (window.modeStructure === type) {
-    // Désactivation du même type → annule la structure en cours si pas fermée
+    // 🆕 v1.9.3-A1.b.2.5-fix (KARMA "on peut valider le front de taille
+    // en cliquant sur son icône, comme pour les tracés") :
+    // - Polyline (front) : re-clic = VALIDATION du front si assez de
+    //   points (2+). Comportement calqué sur toggleRoadMode dans road.js
+    //   où re-cliquer sur le type ferme la road en cours.
+    // - Polygon (pilier/mur) : re-clic = ANNULATION de la structure en
+    //   cours si pas encore fermée (comportement historique préservé).
     if (currentStructure) {
-      const idx = structuresData.indexOf(currentStructure);
-      if (idx >= 0) structuresData.splice(idx, 1);
-      currentStructure = null;
+      if (_isPolylineType(currentStructure.type) && currentStructure.points.length >= 2) {
+        // Front avec assez de points → on le garde (= validation),
+        // on déréférence juste currentStructure pour qu'il devienne
+        // "fermé" (rendu en ligne continue au prochain renderStructures).
+        currentStructure = null;
+      } else {
+        // Polygon ou polyline avec < 2 pts → annule (= comportement classique)
+        const idx = structuresData.indexOf(currentStructure);
+        if (idx >= 0) structuresData.splice(idx, 1);
+        currentStructure = null;
+      }
     }
     window.modeStructure = null;
   } else {
@@ -339,30 +353,47 @@ function renderStructures() {
     const isPolyline = !!style.isPolyline;
 
     if (s === currentStructure) {
-      // Structure en cours de tracé → polyline pointillée (aperçu) en
-      // couleur fill de la structure pour que l'utilisateur voie ce
-      // qu'il dessine.
+      // 🆕 v1.9.3-A1.b.2.5-fix (KARMA "si ce sont bien des tracés, ils
+      // ne doivent pas être en pointillé pendant le dessin, on garde le
+      // même comportement écran que une road") :
+      // - Polyline (front) en cours : ligne CONTINUE déjà au style final
+      //   (color, weight, opacity du STRUCTURE_STYLES), pas de dashArray.
+      //   Comportement calqué sur road.js qui rend directement la road
+      //   en cours dans son style final.
+      // - Polygon (pilier/mur) en cours : preview pointillé (dashArray
+      //   "8 5") pour bien signaler que ce n'est pas encore fermé.
       if (s.points.length >= 1) {
-        const previewStyle = Object.assign({}, STRUCTURE_STYLE_PREVIEW, {
-          color: style.fillColor
-        });
-        structurePreviewLayer = L.polyline(latlngs, previewStyle).addTo(target);
-
-        // Petit cercle sur le 1er point pour indiquer la fermeture possible.
-        // Polygones : à partir de 3 points (= polygone fermable).
-        // Polylines : pas de marker de fermeture (la ligne se ferme via
-        // bouton ✅ "Fermer la structure en cours" du menu, pas par re-clic).
-        if (!isPolyline && s.points.length >= 3) {
-          const p0 = s.points[0];
-          const marker = L.circleMarker(convertCoord(p0.x, p0.y), {
-            radius:      6,
-            color:       style.color,         // noir, comme stroke
-            fillColor:   style.fillColor,
-            fillOpacity: 0.6,
-            weight:      2,
+        if (isPolyline) {
+          // Front en cours : style final solide, pas de pointillé
+          structurePreviewLayer = L.polyline(latlngs, {
+            color:    style.color,
+            weight:   style.weight,
+            opacity:  style.opacity,
+            lineCap:  "round",
+            lineJoin: "round",
             interactive: false
           }).addTo(target);
-          structureLayers.push(marker);
+        } else {
+          // Polygon en cours : preview pointillé classique
+          const previewStyle = Object.assign({}, STRUCTURE_STYLE_PREVIEW, {
+            color: style.fillColor
+          });
+          structurePreviewLayer = L.polyline(latlngs, previewStyle).addTo(target);
+
+          // Petit cercle sur le 1er point pour indiquer la fermeture possible.
+          // À partir de 3 points (= polygone fermable par re-clic sur p0).
+          if (s.points.length >= 3) {
+            const p0 = s.points[0];
+            const marker = L.circleMarker(convertCoord(p0.x, p0.y), {
+              radius:      6,
+              color:       style.color,         // noir, comme stroke
+              fillColor:   style.fillColor,
+              fillOpacity: 0.6,
+              weight:      2,
+              interactive: false
+            }).addTo(target);
+            structureLayers.push(marker);
+          }
         }
       }
     } else if (isPolyline) {
