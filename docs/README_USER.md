@@ -294,9 +294,11 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 
 **Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
 
-### 🎨 Nouvelle interface (depuis v1.9.1)
+### 🎨 Nouvelle interface (depuis v1.9.1, polish v1.9.2)
 
 > MyKTAMap utilise une **nouvelle interface en mode carte** activée par défaut depuis v1.9.1. Plus claire, plus tactile, mieux adaptée mobile-first. L'ancienne reste accessible en un clic.
+>
+> **Polish v1.9.2** (22/05/2026) : page d'accueil PC plein écran sans bordure noire, toutes les modales agrandies sur grand écran (Doc, Aide, ⚙️ Configuration, Légende multi-colonnes, Enregistrer session, Éditeur tableau, Export images), nouveau toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration, rotation tracker continue sans saut au franchissement du Nord, splash refondu avec signature KARMA animée + crédits libs (🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra).
 
 **Ce qui change visuellement** :
 

@@ -2495,25 +2495,134 @@ Polling 2s = compromis : fluide pour l'user sans gaspiller le CPU.
 - Merge v1.9.1 : `Refonte_interface` → `Karma_dev` (puis push `Karma_dev` → `main` via PR au moment du déploiement production)
 - Branche `Refonte_interface` peut être archivée après le merge (ou supprimée du remote si KARMA préfère)
 
-#### 41.15 Phases futures (post-v1.9.1)
+#### 41.15 Polish v1.9.2 (22/05/2026 — 17 itérations post-release)
 
-- **v1.9.2+** : polish micro-interactions (transitions sidebars, badges contextuels)
+Le lendemain de la release v1.9.1, KARMA a remonté beaucoup de polish UX en testant l'app sur PC et iPhone. 17 commits hotfix appliqués sur le suffix CACHE_NAME `-fix1` → `-fix17`, consolidés en v1.9.2.
+
+##### 41.15.1 Loader PC plein écran (fix9 → fix12)
+
+Itéré : enlargement progressif → finalement full edge-to-edge.
+- `#planLoaderOverlay { padding: 0 }`
+- `#planLoaderBox { max-width: 100%; min-height: 100vh; border-radius: 0; border: none; box-shadow: none; padding: calc(24 + safe-top) 24 calc(24 + safe-bottom) }`
+
+Les safe-areas iOS sont gérées via le padding interne plutôt que via l'overlay → fond `#1a1f2e` edge-to-edge, contenu visible sous notch/home indicator.
+
+Backdrop décoratif sur PC (≥ 1024px) au cas où des bordures résiduelles subsistent : pattern subtil de points dorés (rgba 0.07) + radial gradient warmer au centre. Mobile inchangé.
+
+##### 41.15.2 Toutes les modales PC agrandies (fix13 → fix14)
+
+Paliers progressifs `≥ 1024 / 1440 / 1920px` → `1400 / 1700 / 2000px` pour :
+- `.kta-readme-modal-boite` (Documentation, base, et toutes celles qui héritent : Enregistrer session)
+- `.kta-aide-modal-boite` (Aide)
+- `.kta-cfg-modal-boite` (⚙️ Réglages map mode)
+- `.kta-loader-config-boite` (⚙️ Configuration loader)
+- `.kta-legende-modal-boite` (Légende, refactor : retrait du `style="max-width:480px"` inline → ajout classe + multi-cols 2/3/4 selon palier)
+- `.kta-export-modal-boite` (Export images, retrait du `style="max-width:580px"` inline + height: auto)
+
+Pour l'Éditeur tableau (`tableEditor.js`), retrait du `width: 1100px` forcé dans le `<style>` injecté.
+
+⚠️ Les modales de confirmation courtes avec inline `style="max-width:420-520px"` (Force update, plan switcher legacy fallback, etc.) gardent volontairement leur taille fixe.
+
+##### 41.15.3 Toggle showRoadIntersections (fix6/fix7)
+
+`APP_CONFIG.showRoadIntersections` (default true) persisté dans `localStorage > app_user_prefs`. Setter `window.setShowRoadIntersections(value)` qui persiste + appelle `renderRoads()` à chaud.
+
+Toggle accessible **uniquement** depuis ⚙️ Configuration du home → section « 🎨 Affichage » (KARMA a fait retirer le doublon de ⚙️ Réglages map mode pour ne pas surcharger les Réglages in-app focus PAR PLAN).
+
+Bug fix bonus dans `buildAppConfigFromPlan` : ce setter reconstruisait `APP_CONFIG = { ...cfg }` SANS les prefs globales → `scaledMarkers` et `showRoadIntersections` étaient écrasés au plan switch. Restauration explicite depuis localStorage maintenue dans cfg.
+
+##### 41.15.4 Tracker rotation unwrapped (fix10)
+
+Bug : la CSS transition `transform: rotate(deg)` interprète les valeurs littéralement. Passage de `rotate(350deg)` → `rotate(10deg)` = -340° d'animation arrière (1 tour quasi-complet) au lieu de +20° par le chemin court.
+
+Fix dans `tracking.js > _applyRotationToTrackerMarker()` :
+- Nouvelle variable `_trackerRotationUnwrapped` qui CUMULE les deltas courts (toujours dans `[-180, +180°]`) à chaque tick
+- Valeur appliquée au CSS = peut être `-10`, `370`, `720`, `-45`… mais visuellement identique
+- Le CSS anime toujours dans le sens physique réel
+
+Reset dans `_resetRotationTrackerMarker()` pour repartir propre au prochain Play.
+
+##### 41.15.5 Splash KARMA animé (fix15 / fix16)
+
+- Retrait du bloc `#splashAuthor` ("Par [karma.png]" centré dans le footer)
+- Ajout d'un nouveau `#splashKarmaCorner` en `position: absolute; bottom: 28; right: 28` (28 au lieu de 14 pour anti-clip bord arrondi écrans modernes, KARMA fix17)
+- Image karma.png 20px (au lieu de 32px) + drop-shadow doré + animation `clip-path: inset(0 100% 0 0)` → `inset(0 0 0 0)`
+- Animation : 5 keyframes explicites (0/20/40/60/80/100%) avec `cubic-bezier(0.45, 0.05, 0.55, 0.95)` (ease-in-out doux) → effet "K-A-R-M-A" lettre par lettre avec transitions smooth. Durée 1.8s, délai 0.8s
+- Fade-out synchronisé avec `splashOverlay.fading`
+
+Crédits libs/algo au splash : `🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra` en bas-gauche (déplacé du centre pour libérer le coin droit pour KARMA).
+
+`Dijkstra` réfère à l'algorithme du plus court chemin implémenté dans `js/pathfinder.js > _dijkstra()`. KARMA s'en souvenait phonétiquement comme "djakarta" — pas une lib externe mais un classique informatique (Edsger Dijkstra, 1956) qu'on implémente nous-mêmes.
+
+Ces mêmes 3 crédits ajoutés au :
+- Footer du home (`.kta-loader-credits` sous le copyright)
+- Footer de la modale Documentation (`.kta-readme-modal-footer`)
+
+##### 41.15.6 Couleur Leaflet alignée à la charte (fix17)
+
+`lib/leaflet/leaflet.css` ligne 266 :
+- AVANT : `background: #000000` (noir pur — hack historique pour matcher l'overlay loader perçu noir sur iOS PWA)
+- APRÈS : `background: #0a0d18` (charte dark blue-black, identique à `body { background-color }`)
+
+Plus de saut de teinte au retour loader après chargement d'un plan. La transition loader → leaflet → loader est désormais visuellement uniforme.
+
+##### 41.15.7 Tracker GPS LED ON/OFF dans le footer (fix1)
+
+Bug : `_refreshStatusBar` du footer refonte appelait `window.getTrackingActif()` qui n'existait pas dans tracking.js → toujours false → tracker affichait toujours OFF rouge même Play actif.
+
+Fix : ajout de `window.getTrackingActif = function() { return tracking === true }` dans tracking.js à côté des autres getters.
+
+Icône passée de 🚶 à 🧭 (boussole) pour éviter le doublon visuel avec le 🚶 du badge "mode marche" de la stat itinéraire. Style "LED hardware" : pill arrondi avec fond vert (ON) ou rouge (OFF).
+
+##### 41.15.8 Stat itinéraire cliquable (fix1)
+
+`#kta-refonte-stat-iti` (footer) reçoit un handler `click` qui appelle `window.ouvrirItinerairModal()` — équivalent du label `.kta-iti-distance` en bottom-left, désormais masqué pour éviter le doublon. Clic ignoré silencieusement si stat vide.
+
+##### 41.15.9 Export images — layers en grille horizontale (fix15)
+
+Sur PC ≥ 1024px, les blocs de calques (`#kta-export-data-layers`, `#kta-export-image-layers`) s'organisent en :
+- 4 cols (≥ 1280px) avec gap 14px
+- 3 cols (1024-1279px)
+- Stack vertical (< 1024px, inchangé)
+
+Chaque bloc data-layer reçoit fond + bordure subtils pour le matérialiser comme une "carte".
+
+##### 41.15.10 Polish UX divers
+
+- Bouton ▾▴ du footer compact (32×16, font 13) quand `.kta-refonte-statusbar-collapsed` — sinon le 40×36 débordait sur le footer replié 20px
+- Stats du footer en doré charte `#f4c542` (au lieu de blanc cassé `#e8eaf0`)
+- Retrait du sous-action « 🗂️ Changer de plan » du menu ⬇️ Charger / Import (doublon avec rose des vents + titre cliquable)
+- ⚙️ Configuration loader réordonnée : Affichage avant Force update (gradation Force update + Reset consécutifs)
+- Modale « Forcer la mise à jour ? » : ajout de `height:auto; max-height:92vh` à l'inline style pour éviter qu'elle prenne 92vh de la base CSS modale enlargée
+
+#### 41.16 Tentatives qui n'ont pas marché (transparence)
+
+- **viewport-fit=cover + apple-mobile-web-app-status-bar-style = black-translucent** (fix4) : tentative pour faire monter le header refonte tout en haut de l'écran iPhone PWA. Provoquait la même "bande sombre en bas" qu'en v1.8.0 → revert (fix5).
+- **Fixes iOS rotation status bar** : 3 tentatives empilées (fix1 body class toggle, fix3 scrollTo + viewport meta rewrite). fix1 a même empiré le bug → revert immédiat. C'est un bug iOS Safari standalone PWA documenté, sans API JS officielle pour le contrer. **Status quo accepté** : la status bar (heure, batterie) peut parfois ne pas se restaurer après une rotation landscape → portrait sur iPhone PWA. Non bloquant, pas de fix sans test sur device réel.
+
+#### 41.17 Phases futures (post-v1.9.2)
+
 - **v1.10.x** : accessibilité clavier complète (Tab + raccourcis E/M/Échap)
+- **v1.10.x** : polish micro-interactions (transitions sidebars, badges contextuels)
 - **v2.0.0** : (quand l'ancienne UI sera abandonnée définitivement) retirer le flag `myktamap_legacy_interface`, supprimer le code mort, bumper en MAJOR car retrait d'un comportement publique
 
-### ⚠️ Hack Leaflet — fond `.leaflet-container = #000000`
+### ⚠️ Hack Leaflet — fond `.leaflet-container`
 
-[`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 267** a été modifié à la main :
+[`lib/leaflet/leaflet.css`](lib/leaflet/leaflet.css) **ligne 266** a été modifié à la main :
 
 ```css
 .leaflet-container {
-  /* MyKTAMap : noir pur pour matcher l'overlay loader (...) */
-  background: #000000;
+  /* 🆕 v1.9.2 : charte #0a0d18 au lieu de #000000 noir pur (cohérence
+     avec body bg + overlay loader). Hack maintenu lors de l'upgrade
+     Leaflet upstream. */
+  background: #0a0d18;
   outline-offset: 1px;
 }
 ```
 
-**Pourquoi** : sur iPhone PWA standalone, iOS lit la couleur du haut de page pour tinter sa status bar (mode `black-translucent` sans `viewport-fit=cover`). En mettant le fond du container Leaflet en noir pur, le sliver visible juste sous la status bar (avant le rendu des tuiles) garde la status bar dark même quand la map est claire derrière.
+**Pourquoi** : cohérence visuelle avec la charte. `#0a0d18` est la couleur de base du body, du splash et du loader → la transition loader → leaflet → loader est visuellement invisible (pas de saut de teinte). Avant v1.9.2, c'était `#000000` (noir pur) mais ça créait un saut perceptible au retour du loader après chargement d'un plan.
+
+Sur iPhone PWA standalone, le sliver visible juste sous la status bar (avant le rendu des tuiles) reste dark — `#0a0d18` est suffisamment foncé pour préserver le tinting de la status bar iOS.
 
 ⚠️ **NE PAS REVENIR à `#ddd`** (le défaut Leaflet) sans avoir compris ce qu'on perd. Le commentaire dans le CSS explique l'intention. Lors d'un upgrade Leaflet upstream, **garder ce patch**.
 

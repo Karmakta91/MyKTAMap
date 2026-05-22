@@ -1,19 +1,17 @@
 {
-  "version": "v1.9.1",
-  "released": "2026-05-21",
+  "version": "v1.9.2",
+  "released": "2026-05-22",
   "notes": [
-    "🎨 Refonte UI majeure — nouvelle interface par défaut : header bar 44px avec rose des vents, titre du plan cliquable et compteurs vivants (📍 points · 🛣 tracés · ⬛ zones), sidebars gauche/droite unifiées en barres continues, status bar 52px en bas avec stats live (📐 mesure · 📏 distance totale · 🗺️ itinéraire · 🧭 tracker GPS).",
-    "🔁 Bascule possible : section « 🎨 Affichage » dans ⚙️ Configuration permet de revenir à l'ancienne interface classique v1.8.x (reload requis). Le défaut est désormais la nouvelle UI.",
-    "📊 Footer dynamique : si toutes les stats sont actives en même temps, le footer s'agrandit automatiquement et wrap sur plusieurs lignes — plus aucune info coupée hors viewport. La carte, la boussole et les sidebars suivent la hauteur réelle via une variable CSS partagée.",
-    "🧭 Boussole tracker GPS en footer : indicateur visuel ON (vert) / OFF (rouge) façon LED hardware, jamais caché par d'autres widgets. En mode landscape, la boussole d'orientation passe en bas-centrée pour ne plus cacher les icônes latérales.",
-    "🗺️ Stat itinéraire cliquable : clic sur 🗺️ dans le footer rouvre la modale Itinéraire (équivalent à l'ancien label en bas-gauche, désormais masqué pour éviter le doublon).",
-    "📚 Modale « Changer de plan » refondue : ouverture centrée avec carte highlight du plan en cours, liste des récents avec hover doré et flèche qui glisse, CTA bleu « Voir tous mes plans ». L'ancien dropdown reste actif en mode legacy.",
-    "📊 Modale « Détails de la session » : clic sur les compteurs du header → liste détaillée points/tracés/zones/mesure/itinéraire/tracker, regroupement par type avec distance totale par catégorie.",
-    "🎛️ Sous-actions horizontales en landscape : sur petit écran horizontal, les sous-menus des accordéons se déplient vers l'intérieur de l'écran au lieu de descendre — meilleure ergonomie sur tablette/smartphone en paysage. Le zoom natif Leaflet reste vertical (+/- conventionnel).",
-    "📐 Centrage géométrique absolu du titre du plan en landscape (CSS Grid 1fr auto 1fr). En portrait, le centrage flex classique est conservé.",
-    "🪟 Bouton ▾▴ de réduction du footer agrandi (40x36px, font 22px) — plus facile à atteindre au pouce.",
-    "🧹 Menu ⬇️ Charger / Import allégé : retrait du sous-action « 🗂️ Changer de plan » (déjà accessible via la rose des vents et le titre cliquable).",
-    "🔧 Réorganisation ⚙️ Configuration du loader : section « 🎨 Affichage » déplacée avant « 🔄 Mise à jour » pour que Force update et Tout réinitialiser se suivent directement (gradation purge cache → purge totale plus lisible).",
-    "💾 Cache PWA bumpé en v1.9.1 (sans suffix refonte) — refresh automatique pour tous les users à la prochaine ouverture."
+    "🏠 Page d'accueil PC plein écran : le loader prend désormais 100% de la viewport (largeur ET hauteur), sans bordure noire autour. Box edge-to-edge avec safe-area iOS gérée en interne pour ne pas masquer notch et home indicator.",
+    "🎨 Toutes les modales agrandies sur PC : Documentation, Aide, ⚙️ Configuration (home et map), Légende (multi-colonnes 2/3/4 selon la largeur), Enregistrer session, Éditeur tableau, Export images. Paliers progressifs 1400 / 1700 / 2000px selon ≥ 1024 / 1440 / 1920px.",
+    "📊 Toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration du home — décocher pour aérer visuellement les plans très denses. Effet immédiat à chaud (sans reload), pref persistée entre les changements de plan.",
+    "⚪ Tracker icône : rotation continue sans saut au franchissement du Nord. Avant : si tu changeais de cap (passage 350° → 10°), l'icône faisait un tour complet arrière pour se caler. Maintenant elle prend toujours le chemin angulaire le plus court.",
+    "🎬 Splash refondu : signature KARMA animée en bas-droite (apparition lettre par lettre douce sur 1,8 s) + crédits libs/algo (🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra) en bas-gauche. Mêmes crédits ajoutés au footer de la home et de la modale Documentation.",
+    "🎨 Cohérence des couleurs : background du conteneur Leaflet aligné à la charte (#0a0d18 au lieu de noir pur). Plus de saut de teinte entre loader → map → retour loader.",
+    "🧭 Tracker GPS dans le footer : LED ON (vert) / OFF (rouge) façon témoin hardware. Icône boussole 🧭 (plus de confusion avec le 🚶 du badge mode marche de l'itinéraire).",
+    "🗺️ Stat itinéraire du footer cliquable → ouvre la modale Itinéraire (équivalent à l'ancien label bas-gauche, désormais masqué pour éviter le doublon).",
+    "🎛️ Layers en grille horizontale dans Export images (mode Avancé) : sur PC, les calques (Puits, Carrière, Chemin, etc.) s'organisent en 3-4 colonnes au lieu de défiler verticalement.",
+    "🔧 Modale « Forcer la mise à jour » plus compacte sur PC (height: auto au lieu de prendre toute la hauteur).",
+    "💎 Fixes UX divers : bouton ▾▴ du footer compact quand replié, couleur ambre charte sur les stats du footer, configuration loader réordonnée (Affichage avant Force update), retrait du sous-action « 🗂️ Changer de plan » du menu Charger/Import (doublon avec rose des vents + titre cliquable)."
   ]
 }
