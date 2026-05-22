@@ -64,6 +64,43 @@
       meta.setAttribute("content", want);
     }
 
+    // 🆕 v1.9.2-hotfix-landscape-cover-pulse (KARMA "si je démarre en
+    // vertical, passe en horizontal 1x, pas bon, je reviens en vertical,
+    // repasse en horizontal, et la c'est bon sans chargement de carte").
+    //
+    // Diagnostic : au PREMIER orientationchange portrait → landscape,
+    // iOS est en pleine animation de rotation et ignore notre
+    // setAttribute (state transitoire). Même nos retries à 100/400/1000
+    // ms tombent sur une valeur déjà identique → setAttribute skip
+    // (ou iOS continue d'ignorer car valeur "déjà vue"). Au 2e cycle,
+    // iOS a déjà vu la valeur "cover" précédemment et la recompute
+    // correctement.
+    //
+    // Fix PULSE : forcer iOS à voir un CHANGEMENT EXPLICITE de valeur
+    // viewport en passant par une valeur INTERMÉDIAIRE différente
+    // (initial-scale légèrement modifié) avant de mettre la valeur
+    // cible. Un setAttribute vers la même valeur = no-op pour iOS, mais
+    // setAttribute → différent → setAttribute → cible = changement
+    // détectable, iOS recompute. C'est le même principe que toggler une
+    // class CSS pour forcer un reflow.
+    function _pulseViewport() {
+      if (!meta) return;
+      var want = BASE + (_isLandscape() ? COVER_SUFFIX : "");
+      // Valeur transitoire INTENTIONNELLEMENT différente de toute autre
+      // qu'on utilise normalement : initial-scale 0.9999 au lieu de 1.
+      // Effet visuel négligeable (1 pixel sur 1920 = imperceptible),
+      // mais iOS verra clairement le changement et recomputera.
+      var pulse = "width=device-width, initial-scale=0.9999, maximum-scale=1, user-scalable=no" +
+                  (_isLandscape() ? COVER_SUFFIX : "");
+      meta.setAttribute("content", pulse);
+      // Force un reflow synchrone pour que iOS observe la valeur pulse
+      // AVANT qu'on revienne à la valeur cible. Sans reflow forcé, les
+      // 2 setAttribute peuvent être batchés et iOS ne verra que le
+      // résultat final = no-op.
+      void document.documentElement.offsetHeight;
+      meta.setAttribute("content", want);
+    }
+
     // 1. Apply initial (avant 1er paint si possible).
     _applyViewport();
 
@@ -73,13 +110,17 @@
     //    retour vertical") où iOS peut conserver les insets landscape
     //    cachés si on ne force pas le recompute.
     function _forceRecompute() {
-      // Immédiat
+      // Immédiat : apply standard (au cas où orientationchange a réellement
+      // changé l'orientation détectée → setAttribute aura un effet).
       _applyViewport();
-      // Retries pour iOS lazy
-      setTimeout(_applyViewport, 100);
-      setTimeout(_applyViewport, 400);
-      setTimeout(_applyViewport, 1000);
-      setTimeout(_applyViewport, 2000);  // extra retry pour boot lent
+      // Retries en PULSE pour iOS lazy : force iOS à voir un changement
+      // explicite de valeur (pulse → cible) à chaque retry. Couvre le cas
+      // où la 1ère rotation portrait → landscape est ignorée par iOS car
+      // en pleine animation de rotation.
+      setTimeout(_pulseViewport, 100);
+      setTimeout(_pulseViewport, 400);
+      setTimeout(_pulseViewport, 1000);
+      setTimeout(_pulseViewport, 2000);  // extra retry pour boot lent
 
       // Trigger explicite de iOS recompute via scrollTo + resize event.
       // Le scroll de 1px puis retour force iOS à revérifier son chrome.
@@ -142,6 +183,7 @@
 
     // Exposer pour debug / re-call manuel si besoin
     window._ktaApplyViewport = _applyViewport;
+    window._ktaPulseViewport = _pulseViewport;
     window._ktaForceRecompute = _forceRecompute;
   })();
   </script>
