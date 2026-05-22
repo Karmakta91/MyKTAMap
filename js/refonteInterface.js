@@ -396,6 +396,26 @@
       // Persisted = page restaurée depuis le cache (bfcache iOS)
       if (e.persisted) _onOrientationChange();
     });
+
+    // 🆕 v1.9.2-fix7 (insight clé KARMA : "si je passe en horizontal,
+    // revient en vertical, le footer en trop disparait et s'affiche
+    // comme on aurait voulu, et les tailles redeviennent correctes").
+    //
+    // Diagnostic : iOS PWA standalone + viewport-fit=cover NE CALCULE
+    // PAS correctement la viewport au 1er paint. La rotation
+    // utilisateur force iOS à recompute → tout devient correct.
+    // Donc en simulant la rotation au load (scrollTo + meta viewport
+    // rewrite, déjà implémentés dans _onOrientationChange), on
+    // déclenche le recompute SANS que l'utilisateur ait à tourner.
+    //
+    // Pourquoi plusieurs retries : iOS peut être "pas prêt" pendant
+    // les premières centaines de ms (Leaflet n'est pas chargé, le
+    // statusbar a une hauteur transitoire, etc.). On rejoue à
+    // plusieurs intervalles pour maximiser les chances qu'au moins
+    // un appel tombe quand iOS est en état stable.
+    setTimeout(_onOrientationChange, 200);
+    setTimeout(_onOrientationChange, 800);
+    setTimeout(_onOrientationChange, 1800);
   }
 
   // 🆕 v1.9.2 (approche fresh) — bug iOS PWA "status bar disparaît après
