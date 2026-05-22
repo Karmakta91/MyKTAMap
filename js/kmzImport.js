@@ -337,11 +337,14 @@
   //   roadType : "principal" / "secondaire" / "chemin"
   //   zoneType : "eau" / "remblais" / "effondrement" / "inaccessible"
   //
-  // Returns : { points: [...], roads: [...], zones: [...],
+  // Returns : { points: [...], roads: [...], zones: [...], structures: [...],
   //             stats: { total, kept, skipped, outOfBounds, multiGeometry } }
+  // 🆕 v1.9.3-A1.b.1 : ajout de `structures` (piliers + murs). Détection via
+  // le styleUrl du Placemark : si commence par "#structure_<type>" on classe
+  // le polygone comme structure (sinon zone, comportement legacy).
   function ingestPlacemarks(kmlDoc, transform, defaults) {
     const stats = { total: 0, kept: 0, skipped: 0, outOfBounds: 0, multiGeometry: 0 };
-    const out = { points: [], roads: [], zones: [], stats: stats };
+    const out = { points: [], roads: [], zones: [], structures: [], stats: stats };
 
     const W = transform.imageW;
     const H = transform.imageH;
@@ -422,10 +425,28 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          out.zones.push({
-            id: pmId, nom: nom || undefined,
-            type: defaults.zoneType, points: projected
-          });
+          // 🆕 v1.9.3-A1.b.1 : détection structure vs zone via styleUrl.
+          // Notre KMZ export utilise "#structure_<type>" pour les piliers
+          // et murs. Sinon (= KMZ d'une autre app, ou KMZ MyKTAMap legacy
+          // sans structures), comportement existant : import comme zone.
+          const styleUrlEl = pm.querySelector(":scope > styleUrl");
+          const styleUrl = styleUrlEl ? (styleUrlEl.textContent || "").trim() : "";
+          const structMatch = styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
+          if (structMatch) {
+            // C'est une structure (pilier 1ère masse / 2e masse / mur).
+            // On préserve le sous-type extrait du styleUrl pour respecter
+            // ce que le KMZ exportait à l'origine.
+            out.structures.push({
+              id: pmId, nom: nom || undefined,
+              type: structMatch[1], points: projected
+            });
+          } else {
+            // Comportement legacy : zone avec le type par défaut.
+            out.zones.push({
+              id: pmId, nom: nom || undefined,
+              type: defaults.zoneType, points: projected
+            });
+          }
           stats.kept++;
         } else { stats.skipped++; }
         continue;
@@ -493,11 +514,17 @@
       dataLayers: []
     };
 
-    // Data layer "imported" qui groupe tous les éléments importés
+    // Data layer "imported" qui groupe tous les éléments importés.
+    // 🆕 v1.9.3-A1.b.1 : ajout des structures (piliers + murs). Si le KMZ
+    // exporté venait de MyKTAMap v1.9.3+ avec des structures, elles sont
+    // détectées via styleUrl="#structure_*" et préservées avec leur
+    // sous-type d'origine. Rétrocompat KMZ legacy : pas de structures →
+    // imported.structures vide → no-op silencieux.
     const imported = opts.imported || {};
-    const hasContent = (imported.points && imported.points.length) ||
-                       (imported.roads  && imported.roads.length)  ||
-                       (imported.zones  && imported.zones.length);
+    const hasContent = (imported.points     && imported.points.length)     ||
+                       (imported.roads      && imported.roads.length)      ||
+                       (imported.zones      && imported.zones.length)      ||
+                       (imported.structures && imported.structures.length);
     if (hasContent) {
       planConfig.dataLayers.push({
         id: "imported",
@@ -507,9 +534,10 @@
       });
 
       const payload = {
-        data:  imported.points || [],
-        roads: imported.roads  || [],
-        zones: imported.zones  || []
+        data:       imported.points     || [],
+        roads:      imported.roads      || [],
+        zones:      imported.zones      || [],
+        structures: imported.structures || []
       };
       zip.file("data/imported.json", JSON.stringify(payload, null, 2));
     }

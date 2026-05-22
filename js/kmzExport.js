@@ -188,7 +188,13 @@
     zone_eau:          { line: "#0066aa", fill: "#3aa9e8", fillAlpha: 0.6, width: 2 },
     zone_remblais:     { line: "#3a3a44", fill: "#5a5a68", fillAlpha: 0.6, width: 2 },
     zone_effondrement: { line: "#cc0000", fill: "#ff3333", fillAlpha: 0.6, width: 2 },
-    zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 }
+    zone_inaccessible: { line: "#5a0a0a", fill: "#7a0000", fillAlpha: 0.65, width: 2 },
+    // 🆕 v1.9.3-A1.b.1 : structures (piliers + murs). Stroke noir (#000)
+    // signature visuelle qui distingue des zones. fill cohérent avec
+    // STRUCTURE_STYLES de structures.js (jaune charte / orange / bleu foncé).
+    "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
+    "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
+    "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 }
   };
 
   function _genererStylesKml() {
@@ -243,13 +249,15 @@
   //     points: true,                        // parent — si false, tous les points droppés
   //     roads: true,                         // parent — idem roads
   //     zones: true,                         // parent — idem zones
+  //     structures: true,                    // 🆕 v1.9.3-A1.b.1 — parent piliers + murs
   //     jonctions: true,                     // (uniquement si multi-niveau)
   //     itineraire: true,
-  //     dataLayers: true,                    // points + roads + zones embedded
+  //     dataLayers: true,                    // points + roads + zones + structures embedded
   //     // Filtres granulaires (v169 Karma_dev, pattern IMAGE AVANCE) :
   //     pointTagsSet: Set<string> | null,    // whitelist tags (1er tag de chaque point)
   //     roadTypesSet: Set<string> | null,    // whitelist {principal, secondaire, chemin}
-  //     zoneTypesSet: Set<string> | null     // whitelist {eau, remblais, effondrement, inaccessible}
+  //     zoneTypesSet: Set<string> | null,    // whitelist {eau, remblais, effondrement, inaccessible}
+  //     structureTypesSet: Set<string> | null// 🆕 v1.9.3-A1.b.1 — whitelist {pilier-1, pilier-2, mur}
   //                                          // null = pas de filtre (legacy compat)
   //                                          // Set vide = drop tout (parent coché sans enfants)
   //   },
@@ -258,7 +266,8 @@
   //     editorPoints: [...],
   //     roads: [...],
   //     zones: [...],
-  //     dataLayerItems: { points: [...], roads: [...], zones: [...] }
+  //     structures: [...],                   // 🆕 v1.9.3-A1.b.1
+  //     dataLayerItems: { points: [...], roads: [...], zones: [...], structures: [...] }
   //   },
   //   imageBaseUrl: string,                  // URL relative ou data: pour le GroundOverlay
   //                                          // (résolu par RUNTIME_ASSETS ou le caller)
@@ -356,7 +365,15 @@
       const coords = ring
         .map(function(p) { return _coord(planToGps(t, p.x, p.y)); })
         .join(" ");
-      const nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
+      // 🆕 v1.9.3-A1.b.1 : nom lisible selon le type. Pour les structures
+      // (pilier-1 / pilier-2 / mur), le mapping basique
+      // "type.charAt(0).toUpperCase() + slice(1)" donnerait "Pilier-1" qui
+      // est peu informatif. On mappe vers des noms explicites cataphile.
+      let nom;
+      if (zone.type === "pilier-1") nom = "Pilier 1ère masse";
+      else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
+      else if (zone.type === "mur") nom = "Mur";
+      else nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                '<styleUrl>#' + styleId + '</styleUrl>' +
@@ -380,6 +397,9 @@
     const pointTagsSet = (opts.include.pointTagsSet instanceof Set) ? opts.include.pointTagsSet : null;
     const roadTypesSet = (opts.include.roadTypesSet instanceof Set) ? opts.include.roadTypesSet : null;
     const zoneTypesSet = (opts.include.zoneTypesSet instanceof Set) ? opts.include.zoneTypesSet : null;
+    // 🆕 v1.9.3-A1.b.1 : filtre granulaire sous-types structures (pilier-1
+    // / pilier-2 / mur). null = pas de filtre, Set vide = drop tout.
+    const structureTypesSet = (opts.include.structureTypesSet instanceof Set) ? opts.include.structureTypesSet : null;
 
     // Helper : 1er tag d'un point pour le filtre (cohérent avec _emitPlacemark)
     function _firstTag(p) {
@@ -444,6 +464,24 @@
           zones.forEach(function(z) {
             const styleId = "zone_" + z.type;
             body += _emitPolygon(z, styleId);
+          });
+          body += '</Folder>';
+        }
+      }
+      // 🆕 v1.9.3-A1.b.1 : Structures (piliers + murs) — calqué sur zones,
+      // styles dédiés (cf. _genererStylesKml > structure_*). Filtre niveau
+      // identique : structure tagguée au niveau du folder courant uniquement.
+      if (opts.include.structures && opts.data.structures) {
+        const structures = opts.data.structures.filter(function(s) {
+          if (structureTypesSet && !structureTypesSet.has(s.type)) return false;
+          return _passeLevel(s, Number.isInteger(s.level) ? s.level : 0) &&
+                 (!mlOn || (Number.isInteger(s.level) ? s.level : 0) === level);
+        });
+        if (structures.length > 0) {
+          body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
+          structures.forEach(function(s) {
+            const styleId = "structure_" + s.type;
+            body += _emitPolygon(s, styleId);
           });
           body += '</Folder>';
         }

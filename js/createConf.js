@@ -2017,9 +2017,13 @@ async function _kmzImpGenerer() {
       imageW:            state.imageW,
       imageH:            state.imageH,
       imported: {
-        points: ingested.points,
-        roads:  ingested.roads,
-        zones:  ingested.zones
+        points:     ingested.points,
+        roads:      ingested.roads,
+        zones:      ingested.zones,
+        // 🆕 v1.9.3-A1.b.1 : passage des structures détectées via
+        // styleUrl="#structure_*" dans le KMZ. Si KMZ legacy sans
+        // structures → ingested.structures = [] → no-op silencieux.
+        structures: ingested.structures || []
       }
     });
 

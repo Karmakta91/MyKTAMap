@@ -1472,11 +1472,23 @@
       inaccessible: allZones.filter(function(z) { return z.type === "inaccessible"; }).length
     };
 
+    // === Structures : session + embedded (v1.9.3-A1.b.1) ===
+    const sessionStructures = (window.getStructures ? window.getStructures() : []) || [];
+    const embeddedStructures = (typeof window.getAllEmbeddedStructures === "function")
+      ? window.getAllEmbeddedStructures() : [];
+    const allStructures = sessionStructures.concat(embeddedStructures);
+    const structuresByType = {
+      "pilier-1": allStructures.filter(function(s) { return s.type === "pilier-1"; }).length,
+      "pilier-2": allStructures.filter(function(s) { return s.type === "pilier-2"; }).length,
+      "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length
+    };
+
     return {
-      pointsTotal: allPts.length,
-      tagsList:    tagsList,
-      roadsByType: roadsByType,
-      zonesByType: zonesByType
+      pointsTotal:     allPts.length,
+      tagsList:        tagsList,
+      roadsByType:     roadsByType,
+      zonesByType:     zonesByType,
+      structuresByType: structuresByType
     };
   }
 
@@ -1636,8 +1648,11 @@
 
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
+    // 🆕 v1.9.3-A1.b.1 : compteur structures pour stats KMZ
+    const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0 };
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin;
     const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible;
+    const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"];
 
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">📦 Contenu à inclure</div>' +
@@ -1666,6 +1681,12 @@
         rowSub("kmz_inc_zones_remblais",     "⬛ Remblais",     zByT.remblais,     true) +
         rowSub("kmz_inc_zones_effondrement", "🟥 Effondrement", zByT.effondrement, true) +
         rowSub("kmz_inc_zones_inaccessible", "⛔ Inaccessible", zByT.inaccessible, true) +
+
+        // --- 🆕 v1.9.3-A1.b.1 : Structures + sous-cases par sous-type ---
+        row("kmz_inc_structures", "🏛️ Structures", structuresTotal, true) +
+        rowSub("kmz_inc_structures_pilier-1", "🟡 Pilier 1ère masse", sByT["pilier-1"], true) +
+        rowSub("kmz_inc_structures_pilier-2", "🟠 Pilier 2e masse",   sByT["pilier-2"], true) +
+        rowSub("kmz_inc_structures_mur",      "🔵 Mur",               sByT["mur"],      true) +
 
         // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", "🪜 Jonctions interniveau", rByT.jonction, rByT.jonction > 0) : '') +
@@ -1721,6 +1742,8 @@
     setTimeout(function() {
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
       _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
+      // 🆕 v1.9.3-A1.b.1 : sync parent ↔ enfants pour structures KMZ
+      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur"]);
       // Points : sous-cases par tag, IDs = kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
       const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });
@@ -2076,6 +2099,17 @@
         : [];
       const allZones = sessionZones.concat(embeddedZones);
 
+      // 🏛️ Structures : session + embedded data layers (symétrique zones).
+      // 🆕 v1.9.3-A1.b.1 : inclus dans le KMZ avec leurs propres styles
+      // (cf. kmzExport.js > STYLES_KML > structure_*). Rétrocompat OK :
+      // si pas de structures (legacy build / plan sans structure.json),
+      // l'export skip silencieusement le Folder Structures.
+      const sessionStructures = d.structures || [];
+      const embeddedStructures = (typeof window.getAllEmbeddedStructures === "function")
+        ? window.getAllEmbeddedStructures()
+        : [];
+      const allStructures = sessionStructures.concat(embeddedStructures);
+
       // Opacité image : slider 0-100% → passé en pourcent au générateur
       const opSlider = document.getElementById("kmz_img_opacity");
       const imageOpacity = opSlider ? Math.max(0, Math.min(100, parseInt(opSlider.value, 10) || 60)) : 60;
@@ -2117,14 +2151,36 @@
         });
       }
 
+      // 🆕 v1.9.3-A1.b.1 : Types structures (3 sous-cases). Si parent
+      // décoché → null (drop total). Si pas de checkbox UI encore (= UI
+      // KMZ pas mise à jour), fallback Set complet "tout inclus" pour
+      // ne pas perdre les structures silencieusement.
+      let structureTypesSet = null;
+      const structuresParent = document.getElementById("kmz_inc_structures");
+      if (structuresParent) {
+        if (structuresParent.checked) {
+          structureTypesSet = new Set();
+          ["pilier-1", "pilier-2", "mur"].forEach(function(t) {
+            const cb = document.getElementById("kmz_inc_structures_" + t);
+            if (cb && cb.checked) structureTypesSet.add(t);
+          });
+        }
+      } else {
+        // Pas de checkbox UI → tout inclus par défaut (rétrocompat A1.b.1
+        // avant ajout des checkboxes UI dans la modale KMZ)
+        structureTypesSet = new Set(["pilier-1", "pilier-2", "mur"]);
+      }
+
       console.log("[KMZ] Contenu :",
         allPoints.length, "points,",
         allRoads.length, "roads (" + sessionRoads.length + " session +", embeddedRoads.length, "embedded),",
-        allZones.length, "zones (" + sessionZones.length + " session +", embeddedZones.length, "embedded)");
+        allZones.length, "zones (" + sessionZones.length + " session +", embeddedZones.length, "embedded),",
+        allStructures.length, "structures (" + sessionStructures.length + " session +", embeddedStructures.length, "embedded)");
       console.log("[KMZ] Filtres :",
         "pointTags=", pointTagsSet ? Array.from(pointTagsSet) : "null",
         "roadTypes=", roadTypesSet ? Array.from(roadTypesSet) : "null",
-        "zoneTypes=", zoneTypesSet ? Array.from(zoneTypesSet) : "null");
+        "zoneTypes=", zoneTypesSet ? Array.from(zoneTypesSet) : "null",
+        "structureTypes=", structureTypesSet ? Array.from(structureTypesSet) : "null");
 
       const kmzBlob = await window.KmzExport.genererKmz({
         planName:    (window.PLAN_CONFIG?.plan?.name)    || "Plan MyKTAMap",
@@ -2139,19 +2195,27 @@
           points:     !!pointTagsSet,       // true si parent coche
           roads:      !!roadTypesSet,
           zones:      !!zoneTypesSet,
+          // 🆕 v1.9.3-A1.b.1 : flag parent pour les structures (true si
+          // le Set existe et est non-vide — sinon drop tout le folder
+          // Structures dans le KMZ).
+          structures: !!structureTypesSet && structureTypesSet.size > 0,
           jonctions:  mlOn && document.getElementById("kmz_inc_jonctions")?.checked,
           itineraire: document.getElementById("kmz_inc_iti")?.checked,
           dataLayers: true,
           // Sets de filtrage granulaire (null = pas de filtre, Set = whitelist)
           pointTagsSet: pointTagsSet,
           roadTypesSet: roadTypesSet,
-          zoneTypesSet: zoneTypesSet
+          zoneTypesSet: zoneTypesSet,
+          // 🆕 v1.9.3-A1.b.1 : whitelist sous-types structures
+          structureTypesSet: structureTypesSet
         },
         levels:        levels,
         data: {
           editorPoints: allPoints,
           roads:        allRoads,
-          zones:        allZones
+          zones:        allZones,
+          // 🆕 v1.9.3-A1.b.1 : session + embedded structures concaténées
+          structures:   allStructures
         },
         imageBlob:     imageBlob,
         imageFilename: imageFilename,
