@@ -2074,28 +2074,36 @@ function ouvrirCalibrageEchelle() {
 // VIDER LE CACHE APPLICATIF
 // =========================
 // 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être vers
-// https://myktamap.fr/ping.html, comme ça plus de bug du call de Google,
-// plus aucun appel externe. On assure que le serveur est dispo (ping ok,
-// SSL, nginx répond bien) avant de tenter une mise à jour. On attend un
-// retour 'OK' du ping").
+// origin/ping.html, plus aucun appel externe vers Google. On assure le
+// serveur dispo, SSL, Nginx avant Force update. On attend retour 'OK'").
+//
+// 🆕 v1.9.3-B-side-fix (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
+// mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
+// PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
+//   - Prod (myktamap.is-underground.fr) → https://myktamap.is-underground.fr/ping.html
+//   - Dev  (devmap.is-underground.fr)   → https://devmap.is-underground.fr/ping.html
+//   - Prod future (myktamap.fr)         → https://myktamap.fr/ping.html
+//   - Local (localhost:8080)            → http://localhost:8080/ping.html
+//
+// Avantage same-origin : plus besoin de header CORS côté Nginx (le fetch
+// est same-origin → la SOP autorise). On peut même retirer le mode "cors"
+// explicite (default same-origin). Simplification déploiement : KARMA crée
+// /ping.html UNE fois sur chaque serveur, ça marche partout.
 //
 // Vérification connexion Internet + disponibilité serveur MyKTAMap :
 //   - timeout 5s, retourne Promise<boolean>
 //   - navigator.onLine (rapide) en court-circuit si false
-//   - fetch GET sur PING_URL (config en tête de fichier)
+//   - fetch GET sur PING_URL same-origin
 //   - body attendu : exactement "OK" (texte brut)
 //
 // Avantages vs ancien ping Google :
-//   ✅ Plus AUCUN appel externe (cohérent avec privacy + module
-//      networkAudit qui doit refléter ça dans sa whitelist)
-//   ✅ Si OK → on garantit que :
-//      • DNS résout myktamap.fr
-//      • TLS handshake réussit (SSL valide)
-//      • Nginx répond correctement
-//      • La PWA peut tenter le pull SW (skipWaiting + cache purge)
-//   ❌ "Internet OK mais myktamap.fr down" est traité comme offline
-//      (c'est voulu — pas la peine d'updater si le serveur ne répond pas)
-const PING_URL = "https://myktamap.fr/ping.html";
+//   ✅ Plus AUCUN appel externe (cohérent avec privacy)
+//   ✅ Si OK → on garantit DNS + SSL + Nginx + PWA peut pull
+//   ❌ "Internet OK mais serveur down" est traité comme offline (voulu —
+//      pas la peine d'updater si le serveur source du nouveau code est down)
+const PING_URL = (typeof location !== "undefined" && location.origin)
+  ? (location.origin + "/ping.html")
+  : "/ping.html";  // fallback chemin relatif (très improbable)
 const PING_EXPECTED_BODY = "OK";  // body attendu trim-comparé (case-insensitive)
 
 function _pingInternet() {
@@ -2113,22 +2121,18 @@ function _pingInternet() {
       resolve(false);
     }, 5000);
     const ctrl = new AbortController();
-    // Mode "cors" + lecture du body (au lieu de no-cors qui résolvait
-    // sur n'importe quelle réponse réseau). Nécessite que myktamap.fr/
-    // ping.html serve Access-Control-Allow-Origin: * (ou same-origin si
-    // la PWA tourne sur myktamap.fr). En cas d'absence du header CORS,
-    // le fetch rejette → ping retourne false (= traite comme "serveur
-    // indispo"). KARMA s'assurera que Nginx renvoie le header correct.
+    // Same-origin par défaut (PING_URL = location.origin + "/ping.html").
+    // Pas besoin de mode "cors" explicite → moins de friction Nginx.
+    // credentials: "omit" pour ne pas envoyer de cookies (le ping n'a
+    // pas besoin de session, garde la requête neutre).
     fetch(PING_URL, {
       method: "GET",
-      mode:   "cors",
       cache:  "no-store",
       signal: ctrl.signal,
-      credentials: "omit"  // pas de cookies envoyés
+      credentials: "omit"
     }).then(function(res) {
       if (!res.ok) {
-        // Status HTTP non-2xx (404 si le fichier n'existe pas, 5xx Nginx
-        // en rade, etc.) → serveur "répond" mais pas correctement.
+        // Status HTTP non-2xx (404 si fichier absent, 5xx Nginx down, etc.)
         if (done) return;
         done = true;
         clearTimeout(timer);
@@ -2140,8 +2144,7 @@ function _pingInternet() {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      // Comparaison stricte du body : doit être "OK" (trim + uppercase
-      // pour tolérer "ok\n" ou "Ok " selon comment Nginx serve le fichier).
+      // Body "OK" attendu (trim + uppercase pour tolérer "ok\n" ou " Ok ")
       const trimmed = (body || "").trim().toUpperCase();
       resolve(trimmed === PING_EXPECTED_BODY);
     }).catch(function() {
@@ -2152,11 +2155,10 @@ function _pingInternet() {
     });
   });
 }
-// Expose globalement pour les autres modules (ex: sessionExporter onglet KMZ qui
-// vérifie la connexion avant d'ouvrir un lien externe Google Maps).
+// Expose globalement (consommé par d'autres modules, ex: sessionExporter
+// onglet KMZ qui vérifie la connexion avant d'ouvrir un lien externe).
 window._pingInternet = _pingInternet;
-// Expose aussi l'URL pour que d'autres modules (networkAudit, messages
-// d'erreur) puissent la mentionner sans hardcoder.
+// Expose aussi l'URL résolue pour les messages d'erreur user-friendly.
 window._pingInternetUrl = PING_URL;
 
 // =========================

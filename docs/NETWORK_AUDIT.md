@@ -53,7 +53,7 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/docs/README_USER.md`, `<origin>/docs/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
-| `https://myktamap.fr/ping.html` | `GET` (mode `cors`, body lu) | Avant un reset complet, avant un Force update | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies envoyés via `credentials: "omit"`) |
+| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -67,28 +67,34 @@ développement : `localhost` ou IP locale.
 un serveur n'est jamais émise par l'app.** Si un jour ça change, ce
 fichier sera mis à jour en conséquence et la version sera bumpée.
 
-### À propos du ping `myktamap.fr/ping.html` (depuis v1.9.3)
+### À propos du ping `<origin>/ping.html` (depuis v1.9.3)
 
 **Avant v1.9.3** : l'app utilisait `https://www.gstatic.com/generate_204`
-(endpoint Google) pour détecter Internet. **Depuis v1.9.3**, l'app
-utilise **uniquement** `https://myktamap.fr/ping.html` — un fichier
-statique d'1 ligne hébergé sur le même domaine que l'auteur du projet.
+(endpoint Google) pour détecter Internet. **Depuis v1.9.3**, l'app utilise
+**uniquement** un fichier `/ping.html` servi sur **le même domaine que
+l'app** (same-origin) :
+
+- Prod : `https://myktamap.is-underground.fr/ping.html`
+- Dev : `https://devmap.is-underground.fr/ping.html`
+- Future prod : `https://myktamap.fr/ping.html`
+
+L'URL est résolue dynamiquement via `location.origin + "/ping.html"`.
 Le body attendu est exactement `"OK"`.
 
 **Pourquoi ce changement ?** Plus aucun appel externe vers un service
-tiers, même benin comme Google. Le ping vers `myktamap.fr` permet en
-outre de vérifier **en un seul appel** :
+tiers, même bénin comme Google. Le ping same-origin permet en outre de
+vérifier **en un seul appel** :
 
 - Connexion Internet active (DNS résout, route IP atteignable)
-- Certificat SSL `myktamap.fr` valide
+- Certificat SSL du domaine valide
 - Serveur Nginx en ligne et répond correctement
 - La PWA peut tenter le pull SW (skipWaiting + cache purge)
 
-L'app l'appelle en mode `cors` avec `credentials: "omit"` :
-**aucun cookie n'est envoyé**, et seul le body `"OK"` (texte brut)
-est lu pour vérification. Si le serveur répond autre chose (404, 500,
-body différent), le ping est traité comme "indispo" et l'app refuse
-de tenter la mise à jour douce.
+L'app l'appelle en mode same-origin (default) avec `credentials: "omit"` :
+**aucun cookie n'est envoyé**, et seul le body `"OK"` (texte brut) est
+lu pour vérification. Si le serveur répond autre chose (404, 500, body
+différent), le ping est traité comme "indispo" et l'app refuse de
+tenter la mise à jour douce.
 
 Si tu préfères ne pas faire ce ping du tout, **active le mode hors-ligne
 strict** (cf. plus bas) : il sera bloqué comme tout autre appel non
@@ -178,7 +184,7 @@ Une fois activé :
     bloqué — sauf qu'il est en `<origin>` donc whitelisté par défaut)
   - Les **plans serveur** que tu n'as pas encore mémorisés (mais ils sont
     en same-origin donc whitelistés aussi)
-  - Le **ping `myktamap.fr/ping.html`** avant un reset / force update
+  - Le **ping `<origin>/ping.html`** avant un reset / force update
 
 Le toggle est **persistant** : il survit aux reloads et aux fermetures
 d'onglet, jusqu'à ce que tu le décoches manuellement (ou que tu fasses
@@ -210,7 +216,7 @@ Tu peux vérifier la CSP appliquée :
 3. Clic sur la première requête (le HTML de la page)
 4. Onglet **Headers** → cherche `Content-Security-Policy`
 
-La directive clé est `connect-src 'self' https://myktamap.fr;` — le
+La directive clé est `connect-src 'self';` — le
 navigateur n'acceptera pas d'envoyer des données ailleurs.
 
 Le fichier de configuration Nginx exact est versionné dans le dépôt sous

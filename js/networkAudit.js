@@ -27,10 +27,10 @@
  *      activement toute requête sortante non-whitelistée.
  *
  * Whitelist hardcodée (visible dans WHITELIST_HUMAN, exposée à l'UI) :
- *   - Même origine (l'app elle-même servie depuis location.origin)
- *   - https://myktamap.fr/ping.html (ping connectivité + santé serveur,
- *     body attendu "OK". Remplace depuis v1.9.3 l'ancien ping Google
- *     gstatic.com/generate_204 — plus aucun appel externe non-MyKTAMap)
+ *   - Même origine (l'app elle-même servie depuis location.origin).
+ *     Inclut automatiquement le ping santé serveur <origin>/ping.html
+ *     (body "OK"). Depuis v1.9.3, plus aucun appel externe non-MyKTAMap
+ *     (l'ancien ping Google gstatic.com/generate_204 a été retiré).
  *
  * Ordre de chargement critique
  * ----------------------------
@@ -84,23 +84,24 @@
   // ============================================================
   // Chaque entrée = fonction(url) → boolean.
   // Si AU MOINS UNE renvoie true, l'URL est whitelistée.
+  // 🆕 v1.9.3-B-side-fix (KARMA "ping doit être origin pour dev/prod") :
+  // le ping cible désormais `<origin>/ping.html` au lieu d'un hardcode.
+  // C'est SAME-ORIGIN par définition → déjà couvert par le 1er pattern,
+  // pas besoin d'entrée dédiée. La whitelist a même UNE entrée de MOINS
+  // qu'avant (suppression de l'ancien pattern gstatic + de l'éphémère
+  // pattern myktamap.fr/ping.html).
+  // → Plus AUCUN domaine externe dans la whitelist. Promesse "100%
+  // client-side, aucun appel externe non-MyKTAMap" respectée à la lettre.
   const WHITELIST_PATTERNS = [
-    // Same-origin : l'app elle-même (myktamap.is-underground.fr, devmap, localhost…)
+    // Same-origin : l'app elle-même (myktamap.is-underground.fr, devmap,
+    // myktamap.fr, localhost…). Inclut automatiquement le ping
+    // <origin>/ping.html (cf. js/interface.js _pingInternet).
     function(url) {
       try {
         if (!url) return false;
         const u = new URL(url, location.origin);
         return u.origin === location.origin;
       } catch(e) { return false; }
-    },
-    // 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être
-    // vers https://myktamap.fr/ping.html, plus aucun appel externe vers
-    // Google") : ping connectivité + santé serveur MyKTAMap.
-    // Replace l'ancien gstatic.com/generate_204. Permet de vérifier en
-    // un appel : Internet OK + DNS myktamap.fr OK + SSL OK + Nginx OK.
-    // Le body attendu = "OK" (texte brut). Cf. js/interface.js _pingInternet.
-    function(url) {
-      return url === "https://myktamap.fr/ping.html";
     },
     // Blob URLs locales (URL.createObjectURL) — utilisées par le tiling V2
     // pour servir les tuiles JPEG depuis le ZIP en mémoire. 100% LOCALES
@@ -118,8 +119,10 @@
 
   // Descriptions human-readable (affichées dans la modale doc audit)
   const WHITELIST_HUMAN = [
-    "Même origine (l'app elle-même : " + location.origin + ")",
-    "https://myktamap.fr/ping.html (ping connectivité + santé serveur — DNS / SSL / Nginx, body attendu \"OK\". Remplace l'ancien ping Google, plus aucun appel externe non-MyKTAMap)",
+    "Même origine — l'app elle-même servie depuis " + location.origin +
+      " (inclut le ping santé serveur " + location.origin + "/ping.html, " +
+      "body attendu \"OK\", utilisé avant Force update / Reset pour vérifier " +
+      "DNS / SSL / Nginx en un seul appel)",
     "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
     "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
   ];
@@ -151,9 +154,13 @@
   // Classification automatique pour l'affichage UI (label coloré)
   function _classify(url) {
     if (!url) return "unknown";
-    // 🆕 v1.9.3-B-side : nouveau ping santé serveur MyKTAMap (remplace
-    // l'ancien gstatic Google). Garde le label "ping" dans l'UI.
-    if (url === "https://myktamap.fr/ping.html") return "ping";
+    // 🆕 v1.9.3-B-side + fix : ping santé serveur MyKTAMap = same-origin
+    // /ping.html (chemin <origin>/ping.html). Garde le label "ping" pour
+    // distinction visuelle dans le journal réseau.
+    try {
+      const u = new URL(url, location.origin);
+      if (u.origin === location.origin && u.pathname === "/ping.html") return "ping";
+    } catch(e) { /* skip */ }
     // Les blob URLs sont 100% LOCALES au navigateur (créées via
     // URL.createObjectURL à partir de Blob déjà en mémoire — typiquement
     // les tuiles V2 du tiling). Aucune fuite réseau possible : c'est juste

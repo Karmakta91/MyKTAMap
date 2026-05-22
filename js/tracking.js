@@ -548,9 +548,18 @@ function initMotion() {
 
     magnitude = Math.round(magnitude * 10) / 10;
 
-    // Magnitude + détection pas : log gating géré centralement par debug.js
-    // (silence en prod, visible en debug). Tag uniformisé.
-    console.log("[Tracking] Magnitude :", magnitude.toFixed(2));
+    // 🆕 v1.9.3-B-side (KARMA "en actif tracking j'ai un log Magnitude qui
+    // log énormément, c'est du flood") :
+    // Throttle 1 Hz max. L'event devicemotion fire à ~60 Hz sur iPhone,
+    // ~50 Hz sur Android. Sans throttle, debug.js logue à pleine fréquence
+    // → spam console + saturation rapide du buffer 300 entries (les warn/
+    // error utiles sont chassés en 5s). Maintenant : 1 log/s en debug.
+    // Le gating debugMode est toujours fait par debug.js (cf §11 CLAUDE.md),
+    // ce throttle s'applique en plus pour limiter la verbosité.
+    if (!window._lastMagnitudeLog || (now - window._lastMagnitudeLog) >= 1000) {
+      window._lastMagnitudeLog = now;
+      console.log("[Tracking] Magnitude :", magnitude.toFixed(2));
+    }
 
     if (
       magnitude > APP_CONFIG.stepThreshold &&
