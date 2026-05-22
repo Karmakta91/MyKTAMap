@@ -296,25 +296,40 @@ function renderStructures() {
     structurePreviewLayer = null;
   }
 
-  // 🆕 v1.9.3-A1.a-fix3 (KARMA "un pilier de 2nd masse, et forcement en
-  // dessous d'un 1er, en mode non M-LVL il se met au dessus") :
-  // Ordre d'affichage en vue 2D (= projection verticale du dessus) :
-  //   1. Murs en arrière (Z bas)
-  //   2. Piliers de 2e masse au milieu (couche basse de la carrière)
-  //   3. Piliers de 1ère masse devant (couche haute, masquent les 2e
-  //      masse là où ils se chevauchent dans la projection)
-  // Cohérent avec la stratigraphie cataphile : la 1ère masse est au-dessus
-  // de la 2e masse, donc en projection 2D du dessus, elle masque la 2e.
-  // En mode M-LVL ON, le filtre niveau gère déjà la séparation visuelle
-  // (pilier-2 est à level activeLevel-1, ne s'affiche qu'au bon niveau),
-  // mais l'ordre Z reste cohérent dans tous les cas.
-  // 🆕 v1.9.3-A1.b.2 : ajout des fronts dans l'ordre Z. Les fronts sont
-  // des traces de limite d'exploitation — visuellement en arrière des
-  // piliers (qui sont des obstacles ponctuels saillants).
-  // Ordre final Z bas → haut :
-  //   mur < front-2 < front-1 < pilier-2 < pilier-1
-  const ordreType = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
+  // 🆕 v1.10.0-hotfix1 (KARMA "les fronts de taille doivent être au-dessus
+  // des piliers, et respecter la logique de niveau") :
+  //
+  // Ordre Z FINAL (du plus en arrière au plus en avant-plan) :
+  //   mur < pilier-2 < pilier-1 < front-2 < front-1
+  //
+  // Rationnel :
+  //   - Mur en arrière (architecture statique de soutènement, fond)
+  //   - Piliers de 2e masse au-dessus du mur (couche basse stratigraphie)
+  //   - Piliers de 1ère masse au-dessus des 2e masse (couche haute, masquent
+  //     les 2e masse là où ils se chevauchent dans la projection 2D vue du
+  //     dessus — cohérent avec la stratigraphie cataphile)
+  //   - Fronts de taille EN AVANT-PLAN (limites d'exploitation, plus
+  //     visibles que l'architecture statique) — front-2 puis front-1 pour
+  //     respecter la même logique stratigraphique (1ère masse devant la 2e)
+  //
+  // Avant ce hotfix : les fronts étaient EN ARRIÈRE des piliers, ce qui les
+  // masquait visuellement → l'user ne voyait plus son avancement d'exploitation.
+  //
+  // 🏗️ Logique de NIVEAU : en mode multi-niveau (APP_CONFIG.multiLevel === true),
+  // tri primaire par `level` ascendant (= niveau bas en arrière, niveau haut
+  // au-dessus de la pile visuelle) avant le tri par type. Cohérent avec le
+  // pattern des roads (cf. CLAUDE.md §31.5). En single-level, ce tri est
+  // sans effet (tous level = 0).
+  const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+  const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
   const structuresAffichage = [...structuresData].sort(function(a, b) {
+    // Tri primaire : level ascendant (uniquement en M-LVL)
+    if (_multiLevelOnSort) {
+      const la = Number.isInteger(a.level) ? a.level : 0;
+      const lb = Number.isInteger(b.level) ? b.level : 0;
+      if (la !== lb) return la - lb;
+    }
+    // Tri secondaire : type (mur < pilier-2 < pilier-1 < front-2 < front-1)
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
     return oa - ob;

@@ -658,11 +658,20 @@ function ajouterPointsDepuisJSON(url, layer) {
           "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
           "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
         };
-        // 🆕 v1.9.3-A1.a-fix3 + A1.b.2 : ordre Z avec fronts insérés
-        // entre mur (arrière) et piliers (devant) — cohérent avec
-        // structures.js > renderStructures.
-        const ordreStruct = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
+        // 🆕 v1.10.0-hotfix1 (KARMA "fronts au-dessus des piliers + logique
+        // de niveau") : nouvel ordre Z mur < pilier-2 < pilier-1 < front-2 <
+        // front-1 (fronts en avant-plan, plus visibles). En mode multi-niveau,
+        // tri primaire par level ascendant (niveau bas en arrière) avant le
+        // tri par type. Cohérent avec structures.js > renderStructures et
+        // pattern roads (CLAUDE.md §31.5).
+        const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        const _multiLevelOnSort = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
         const structuresTriees = [...json.structures].sort(function(a, b) {
+          if (_multiLevelOnSort) {
+            const la = Number.isInteger(a.level) ? a.level : 0;
+            const lb = Number.isInteger(b.level) ? b.level : 0;
+            if (la !== lb) return la - lb;
+          }
           return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
         });
         // Registre dédié pour le filtre multi-niveau runtime (équivalent

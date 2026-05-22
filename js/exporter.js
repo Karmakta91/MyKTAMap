@@ -1579,16 +1579,24 @@
         "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
         "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
       };
-      // Ordre Z complet (cohérent structures.js + utils.js)
-      const ordreS = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
+      // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
+      // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.
+      // Cohérent avec structures.js > renderStructures et utils.js.
+      const ordreS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
       const filtreS = opts.ann.structuresTypes || {
         "pilier-1": true, "pilier-2": true, "mur": true,
         "front-1":  true, "front-2": true
       };
+      const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
         .filter(function(s) { return filtreS[s.type] !== false; })
         .filter(_itemPasseLevels)
         .sort(function(a, b) {
+          if (_multiLevelOnExp) {
+            const la = Number.isInteger(a.level) ? a.level : 0;
+            const lb = Number.isInteger(b.level) ? b.level : 0;
+            if (la !== lb) return la - lb;
+          }
           return (ordreS[a.type] ?? 99) - (ordreS[b.type] ?? 99);
         });
       for (const st of triees) {
