@@ -3104,8 +3104,13 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    l'entrée de la signature. */
 #splashKarmaCorner {
   position: absolute;
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  right: calc(14px + env(safe-area-inset-right, 0px));
+  /* 🆕 v1.9.2-fix17 (KARMA "le karma sort du cadre sur bord arrondi") :
+     décalage augmenté 14px → 28px pour ne plus être coupé par les coins
+     arrondis de l'écran (iPhone PWA + écrans avec viewport bord-à-bord).
+     Les safe-area-inset-{right,bottom} restent ajoutés pour les notches
+     latéraux en landscape iPhone. */
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  right: calc(28px + env(safe-area-inset-right, 0px));
   z-index: 2;
   pointer-events: none;
   user-select: none;
@@ -3153,9 +3158,11 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    désormais la signature KARMA animée). */
 #splashLeafletCredit {
   position: absolute;
-  /* safe-area-bottom pour éviter le home indicator iPhone (~34px sur les modèles avec encoche) */
-  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
-  left: calc(14px + env(safe-area-inset-left, 0px));
+  /* 🆕 v1.9.2-fix17 : 14px → 28px (même raison que splashKarmaCorner :
+     éviter le clip par les coins arrondis d'écran). Safe-area conservé
+     pour notches latéraux. */
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  left: calc(28px + env(safe-area-inset-left, 0px));
   font-size: 11px;
   color: #6c7689;
   letter-spacing: 0.02em;
@@ -6616,6 +6623,18 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-loader-copyright-warn {
   color: #ff8c8c;
   font-weight: 500;
+}
+
+/* 🆕 v1.9.2-fix17 — Ligne crédits libs/algos dans le footer du home.
+   Plus discrète que la ligne copyright (couleur plus pâle, taille
+   légèrement réduite). Reprise cohérente avec le crédit du splash. */
+.kta-loader-credits {
+  margin-top: 6px;
+  font-size: 10.5px;
+  color: #6c7689;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  /* Légère bordure haute optionnelle pour séparer du copyright */
 }
 
 /* Badge version dans le footer (monospace, gris discret).

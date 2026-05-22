@@ -258,12 +258,15 @@ svg.leaflet-image-layer.leaflet-interactive path {
 /* visual tweaks */
 
 .leaflet-container {
-	/* MyKTAMap : noir pur pour matcher l'overlay loader (rgba(5,8,15,0.92)
-	   sur body se blend à ~#050810, perçu comme noir). #0a0d18 paraissait
-	   grisé sur iPhone. Effet : transition loader → map invisible, top
-	   Leaflet noir comme le menu de chargement, status bar iOS PWA tinte
-	   sombre via la sliver visible avant le rendu des tuiles. */
-	background: #000000;
+	/* 🆕 v1.9.2-fix17 (KARMA "il doit rester à la couleur de retour de
+	   leaflet, pas noir, mais le sombre de notre charte graphique") :
+	   `#000000` (noir pur) remplacé par `#0a0d18` (charte dark blue-black,
+	   identique à body bg). Avant : la transition loader (rgba(5,8,15,0.92)
+	   sur #0a0d18 ≈ #050810) → leaflet (#000000) montrait un changement
+	   subtil de teinte au retour home après chargement d'un plan.
+	   Maintenant : transition invisible, top reste à la couleur charte
+	   uniforme partout. */
+	background: #0a0d18;
 	outline-offset: 1px;
 	}
 .leaflet-container a {
