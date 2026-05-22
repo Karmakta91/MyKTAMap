@@ -1,19 +1,30 @@
 html, body {
-  height: 100%;
+  /* 🆕 v1.9.2-fullscreen (KARMA cover+dvh attempt) : `min-height: 100dvh`
+     pour que le body REMPLISSE l'écran physique entier sur iOS PWA avec
+     `viewport-fit=cover` (iOS 16+). Fallback `100vh` pour iOS 15 et
+     antérieur (déclaration en premier, écrasée par dvh si supporté).
+     Sans ça, le body s'arrêtait ~21-34px au-dessus du home indicator
+     iOS → "bande sombre" visible dans cette zone (bug historique). */
+  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0;
   overflow: hidden;
   /* Fond sombre cohérent avec le splash et le thème pour les zones où le body
-     pourrait apparaître (rubber-band scroll, avant init Leaflet). */
+     pourrait apparaître (rubber-band scroll, avant init Leaflet, et
+     fallback si jamais un élément ne couvre pas tout). */
   background-color: #0a0d18;
 }
 
 #map {
   display: block;
+  /* 🆕 v1.9.2-fullscreen : `inset: 0` au lieu de `width/height: 100%`.
+     Avec position:fixed, `inset: 0` anchre l'élément aux 4 côtés du
+     viewport (containing block = visual viewport avec cover). Plus
+     robuste que `100%` height qui pouvait être tronquée par le bug
+     iOS 100vh < 16. Le mode refonte ré-override top/bottom via
+     #map { top: 44; bottom: var(--kta-statusbar-h) } plus bas. */
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
 }
 
 .map-title {
@@ -1868,7 +1879,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-radius: 14px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.65);
   width: min(960px, 96vw);
+  /* 🆕 v1.9.2-fullscreen : double déclaration vh/dvh. La modale est cap
+     à 88% du viewport — sur iOS PWA avec cover, `dvh` correspond à
+     l'écran physique entier (le `vh` historique pouvait exclure la
+     zone home indicator iOS 15-). */
   height: min(88vh, 920px);
+  height: min(88dvh, 920px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1882,22 +1898,27 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    override (.kta-aide-modal-boite, .kta-cfg-modal-boite, .kta-loader-
    config-boite), un bloc plus bas surcharge à valeur identique.
    RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
+/* 🆕 v1.9.2-fullscreen : tous les paliers PC ont la double déclaration
+   vh/dvh pour profiter de l'écran physique entier sur iOS PWA avec cover. */
 @media (min-width: 1024px) {
   .kta-readme-modal-boite {
     width: min(1400px, 96vw);
     height: min(92vh, 1100px);
+    height: min(92dvh, 1100px);
   }
 }
 @media (min-width: 1440px) {
   .kta-readme-modal-boite {
     width: min(1700px, 96vw);
     height: min(94vh, 1300px);
+    height: min(94dvh, 1300px);
   }
 }
 @media (min-width: 1920px) {
   .kta-readme-modal-boite {
     width: min(2000px, 95vw);
     height: min(95vh, 1500px);
+    height: min(95dvh, 1500px);
   }
 }
 
@@ -3291,9 +3312,11 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   box-sizing: border-box;
   font-family: Arial, sans-serif;
   margin: 0;
-  /* Min-height 100vh pour que la box couvre l'écran même quand le
-     contenu est court. */
+  /* 🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` pour iOS PWA
+     avec cover. Le `100vh` reste en fallback pour iOS 15 et antérieur
+     (déclaration en premier, écrasée par dvh si supporté). */
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
@@ -8182,8 +8205,11 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      header 44px et footer dynamique via --kta-statusbar-h qui inclut
      déjà safe-area-bottom). Quand le footer wrap multi-ligne et
      grandit, la sidebar rétrécit automatiquement pour ne pas se faire
-     recouvrir. */
+     recouvrir.
+     🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` (fallback `vh`
+     gardé en premier pour iOS 15-). */
   max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+  max-height: calc(100dvh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;  /* Firefox */
@@ -8993,10 +9019,12 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     height: 22px;
   }
   /* Recalcule la max-height des sidebars pour landscape — suit la
-     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte) */
+     variable dynamique --kta-statusbar-h (wrap multi-ligne pris en compte).
+     🆕 v1.9.2-fullscreen : double déclaration vh/dvh. */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
     max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+    max-height: calc(100dvh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
   }
   /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
      bas-gauche comme en portrait). Sur petit écran horizontal, les
