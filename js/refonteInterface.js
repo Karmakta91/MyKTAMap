@@ -935,11 +935,7 @@
   // false = annulé. Les callers (index.html, interface.js) attendent
   // la Promise pour revert le checkbox si annulation.
   function _setActive(value) {
-    const label = value
-      ? "la NOUVELLE interface (refonte)"
-      : "l'ANCIENNE interface (classique)";
-
-    return _afficherConfirmInterfaceChange(label).then(function(confirmed) {
+    return _afficherConfirmInterfaceChange(value).then(function(confirmed) {
       if (confirmed) {
         _writeFlag(value);
         location.reload();
@@ -951,13 +947,34 @@
   // Modale custom respectant la charte (.kta-readme-modal-boite +
   // accent doré #f4c542). Pattern Promise-based identique à la modale
   // "Forcer la mise à jour" du loader (cf. index.html). Fermable via
-  // ✕ / backdrop / Échap / "Plus tard" → résout false ; clic "Recharger
-  // maintenant" → résout true.
-  function _afficherConfirmInterfaceChange(label) {
+  // ✕ / backdrop / Échap / "Annuler" → résout false ; clic "Valider"
+  // → résout true.
+  //
+  // 🆕 v1.9.2-fix5 (KARMA "le recharger maintenant n'a pas de sens,
+  // ca rechargera de base ; on met valider ou annuler, et enlève la
+  // phrase L'app doit être rechargée. Et on adapte le modal dans le
+  // cas où on passe à l'ancienne interface") :
+  //   - Boutons : "Annuler" / "Valider" (au lieu de "Plus tard" /
+  //     "🔄 Recharger maintenant")
+  //   - Retrait du paragraphe explicatif sur le reload
+  //   - Texte adapté selon la direction (vers nouvelle vs vers
+  //     ancienne) avec titre, label et description différenciés
+  function _afficherConfirmInterfaceChange(valueIsNouvelle) {
     return new Promise(function(resolve) {
       // Cleanup éventuel d'une instance précédente
       const existing = document.getElementById("kta-refonte-interface-confirm");
       if (existing) existing.remove();
+
+      // Texte différencié selon la direction du toggle
+      const titre = valueIsNouvelle
+        ? "🎨 Passer à la nouvelle interface ?"
+        : "📜 Revenir à l'ancienne interface ?";
+      const labelCible = valueIsNouvelle
+        ? "la NOUVELLE interface (refonte)"
+        : "l'ANCIENNE interface (classique v1.8.x)";
+      const description = valueIsNouvelle
+        ? 'Tu profiteras du header bar avec rose des vents et compteurs cliquables, des sidebars unifiées gauche/droite, et du status bar avec stats live (mesure, distance totale, itinéraire, tracker GPS).'
+        : 'Tu retrouveras l\'interface classique : icônes empilées sans header bar ni status bar, comme avant la refonte v1.9.x. Les modes et les modales restent identiques.';
 
       const overlay = document.createElement("div");
       overlay.id = "kta-refonte-interface-confirm";
@@ -970,14 +987,17 @@
       overlay.innerHTML =
         '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4); box-shadow:0 0 32px rgba(244,197,66,0.18);">' +
           '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(244,197,66,0.25);">' +
-            '<div class="kta-readme-modal-titre" style="color:#f4c542;">🎨 Changer d\'interface ?</div>' +
+            '<div class="kta-readme-modal-titre" style="color:#f4c542;">' + titre + '</div>' +
             '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="Fermer">✕</button>' +
           '</div>' +
           '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
             '<p style="margin:0 0 14px 0; line-height:1.55;">' +
-              'Tu vas passer à <strong style="color:#f4c542;">' + label + '</strong> au prochain démarrage de l\'app.' +
+              'Tu vas passer à <strong style="color:#f4c542;">' + labelCible + '</strong>.' +
             '</p>' +
-            '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:8px;">' +
+            '<p style="margin:0 0 14px 0; line-height:1.55; font-size:13px; color:#8892a4;">' +
+              description +
+            '</p>' +
+            '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:0;">' +
               '<div style="font-weight:600; color:#f4c542; margin-bottom:6px;">✅ Préservé</div>' +
               '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
                 '<li>Tes plans mémorisés</li>' +
@@ -986,13 +1006,10 @@
                 '<li>Code d\'accès communautaire</li>' +
               '</ul>' +
             '</div>' +
-            '<p style="margin:0; line-height:1.55; font-size:13px; color:#8892a4;">' +
-              'L\'app doit être <strong>rechargée</strong> pour appliquer le changement. Tu peux le faire maintenant ou plus tard.' +
-            '</p>' +
           '</div>' +
           '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.06); padding:12px 18px; flex-shrink:0;">' +
-            '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">Plus tard</button>' +
-            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">🔄 Recharger maintenant</button>' +
+            '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">Annuler</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">Valider</button>' +
           '</div>' +
         '</div>';
 
