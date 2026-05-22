@@ -72,13 +72,14 @@
     //    Spécialement crucial AU RETOUR EN PORTRAIT (KARMA "attention au
     //    retour vertical") où iOS peut conserver les insets landscape
     //    cachés si on ne force pas le recompute.
-    function _onOrientationChange() {
+    function _forceRecompute() {
       // Immédiat
       _applyViewport();
       // Retries pour iOS lazy
       setTimeout(_applyViewport, 100);
       setTimeout(_applyViewport, 400);
       setTimeout(_applyViewport, 1000);
+      setTimeout(_applyViewport, 2000);  // extra retry pour boot lent
 
       // Trigger explicite de iOS recompute via scrollTo + resize event.
       // Le scroll de 1px puis retour force iOS à revérifier son chrome.
@@ -92,13 +93,56 @@
       }, 250);
     }
 
+    // 🆕 v1.9.2-hotfix-landscape-cover-boot (KARMA "à gauche c'est bon
+    // mais à droite on a toujours la marge. Si je charge une carte,
+    // retour home, tout est bon").
+    //
+    // Diagnostic : si l'app boot DÉJÀ en landscape (utilisateur ouvre
+    // la PWA téléphone tenu horizontalement), aucun événement
+    // `orientationchange` ne fire — donc nos retries 0/100/400/1000ms
+    // ne s'exécutent JAMAIS au démarrage. Le meta viewport est bien
+    // setattribué avec cover, mais iOS n'a pas recalculé ses
+    // safe-area-insets → env(safe-area-inset-right) reste à 0 alors
+    // que le notch est physiquement sur la droite → tout élément qui
+    // utilise cette inset ne se décale pas → "marge invisible".
+    //
+    // Quand l'user charge une carte, le DOM mute massivement
+    // (création Leaflet, init map, etc.) → iOS recompute les
+    // safe-area-insets. Retour home → tout est correct.
+    //
+    // Fix : déclencher la SÉQUENCE COMPLÈTE de recompute aussi au
+    // load initial (pas seulement sur orientationchange). On force
+    // iOS à recompute via les mêmes workarounds (retries +
+    // scrollTo + resize event) dès le boot.
+    function _onOrientationChange() {
+      _forceRecompute();
+    }
+
     window.addEventListener("orientationchange", _onOrientationChange);
     // resize aussi : sur certains iOS, orientationchange ne fire pas
     // immédiatement mais resize si — on traite les 2 pour la couverture.
     window.addEventListener("resize", _applyViewport);
 
+    // 3. BOOT : si on est DÉJÀ en landscape au load, jouer la séquence
+    //    complète de recompute (équivalent d'une rotation virtuelle).
+    //    En portrait, _applyViewport() ci-dessus a déjà tout fait (pas
+    //    de cover, comportement standard). En landscape, on a besoin
+    //    de forcer iOS à recalculer ses insets MAINTENANT.
+    if (_isLandscape()) {
+      // Exécuter après le 1er paint pour éviter de bloquer le rendu
+      // initial. requestAnimationFrame garantit qu'on est après le
+      // parsing HTML mais aussi tôt que possible pour minimiser le
+      // flash de "marge invisible" en haut/côté.
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(_forceRecompute);
+      } else {
+        setTimeout(_forceRecompute, 0);
+      }
+    }
+
     // Exposer pour debug / re-call manuel si besoin
     window._ktaApplyViewport = _applyViewport;
+    window._ktaForceRecompute = _forceRecompute;
   })();
   </script>
 
