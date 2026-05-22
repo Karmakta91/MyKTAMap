@@ -3160,6 +3160,71 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #advancedHead .loader-collapse-chevron {
     display: none;
   }
+
+  /* 🆕 v1.9.2 — Loader PC plus "fullscreen" (KARMA feedback :
+     « avoir une sorte de full screen » / « éviter tout ce noir autour »).
+     Le fond noir uniforme rgba(5, 8, 15, 0.92) est remplacé sur PC par
+     2 couches superposées :
+       1. Pattern subtil de points dorés (effet "blueprint souterrain") —
+          opacity très basse pour ne pas perturber la lecture
+       2. Radial gradient éclaircissant le centre (où le loader est posé)
+          et gardant les bords sombres = effet "puits de lumière"
+     Donne de la profondeur visuelle sans distraire.
+     RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
+  #planLoaderOverlay {
+    background-color: #050810;
+    background-image:
+      radial-gradient(circle, rgba(244, 197, 66, 0.035) 1px, transparent 1px),
+      radial-gradient(ellipse 1400px 900px at center,
+        rgba(28, 40, 65, 0.65) 0%,
+        rgba(10, 14, 25, 0.93) 60%,
+        rgba(5, 8, 15, 0.96) 100%);
+    background-size: 28px 28px, 100% 100%;
+    background-position: center center, center center;
+    background-repeat: repeat, no-repeat;
+  }
+}
+
+/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : box élargie pour profiter de
+   l'espace disponible. Bord noir réduit de ~410px à ~20px de chaque
+   côté sur un écran 1440px. Grid 2 colonnes plus aéré. */
+@media (min-width: 1440px) {
+  #planLoaderBox {
+    max-width: 1400px;
+    padding: 32px 56px;
+  }
+  .loader-grid {
+    gap: 0 48px;
+  }
+  .loader-col-plans .loader-plans-list {
+    /* Hauteur scroll mieux adaptée à la grandeur écran */
+    max-height: calc(100vh - 340px);
+  }
+  /* Resume button : éviter qu'il devienne aride en pleine largeur sur
+     écran large. Limité à 900px et centré dans son conteneur. */
+  #resumeBox {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : encore plus généreux.
+   On reste sur 1700px max (avec marge ~110px de chaque côté à 1920px)
+   pour garder le contenu lisible. Au-delà de 2500px le loader ne
+   grandit plus = pas perdu dans des moniteurs 4K ultra-wide. */
+@media (min-width: 1920px) {
+  #planLoaderBox {
+    max-width: 1700px;
+    padding: 40px 80px;
+  }
+  .loader-grid {
+    gap: 0 64px;
+  }
+  /* Resume button : limite légèrement plus large sur ultra-wide */
+  #resumeBox {
+    max-width: 1000px;
+  }
 }
 
 .loader-header {
