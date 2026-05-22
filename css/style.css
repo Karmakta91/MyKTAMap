@@ -1874,6 +1874,33 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   overflow: hidden;
 }
 
+/* 🆕 v1.9.2-fix13 — Modales PC plus grandes (KARMA : « les modal qu'on
+   avait adaptées au PC doivent pouvoir prendre plus de place »).
+   Concerne TOUTES les modales utilisant `.kta-readme-modal-boite`
+   sans override de width inline : Documentation, Légende, Audit,
+   et toutes les confirmations. Pour les modales qui ont leur propre
+   override (.kta-aide-modal-boite, .kta-cfg-modal-boite, .kta-loader-
+   config-boite), un bloc plus bas surcharge à valeur identique.
+   RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
+@media (min-width: 1024px) {
+  .kta-readme-modal-boite {
+    width: min(1400px, 96vw);
+    height: min(92vh, 1100px);
+  }
+}
+@media (min-width: 1440px) {
+  .kta-readme-modal-boite {
+    width: min(1700px, 96vw);
+    height: min(94vh, 1300px);
+  }
+}
+@media (min-width: 1920px) {
+  .kta-readme-modal-boite {
+    width: min(2000px, 95vw);
+    height: min(95vh, 1500px);
+  }
+}
+
 .kta-readme-modal-header {
   display: flex;
   align-items: center;
@@ -2498,9 +2525,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    classe spécifique avec break-inside: avoid au cas par cas (pas fait par
    défaut). */
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-aide-modal-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   .kta-aide-corps {
@@ -2554,9 +2582,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-cfg-modal-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   /* Layout 2 colonnes via column-flow (cohérent avec la modale Aide). */
@@ -2635,9 +2664,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
+  /* 🆕 v1.9.2-fix13 : 1100px → 1400px (et paliers ≥1440 / ≥1920 plus bas) */
   .kta-loader-config-boite {
-    max-width: 1100px !important;
-    width: min(1100px, 96vw) !important;
+    max-width: 1400px !important;
+    width: min(1400px, 96vw) !important;
   }
 
   /* Layout 2 colonnes via column-flow */
@@ -2657,6 +2687,55 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
+/* 🆕 v1.9.2-fix13 — Paliers PC large / ultra-large pour les modales
+   à override max-width (Aide, Cfg map, Loader Config). On utilise
+   les mêmes paliers que les autres modales (.kta-readme-modal-boite
+   plus haut) pour cohérence. */
+@media (min-width: 1440px) {
+  .kta-aide-modal-boite,
+  .kta-cfg-modal-boite,
+  .kta-loader-config-boite {
+    max-width: 1700px !important;
+    width: min(1700px, 96vw) !important;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-aide-modal-boite,
+  .kta-cfg-modal-boite,
+  .kta-loader-config-boite {
+    max-width: 2000px !important;
+    width: min(2000px, 95vw) !important;
+  }
+}
+
+
+/* 🆕 v1.9.2-fix13 — Légende sur PC : layout multi-colonnes pour
+   profiter de la largeur agrandie. Les sections (Puits / Accès /
+   Signalétique / Tracés / Zones) se distribuent automatiquement. */
+@media (min-width: 1024px) {
+  .kta-legende-corps {
+    columns: 2;
+    column-gap: 36px;
+    column-rule: 1px solid rgba(255, 255, 255, 0.06);
+  }
+  .kta-legende-corps .kta-aide-section {
+    /* Ne JAMAIS couper une section au milieu (les lignes icône + label
+       d'une même catégorie doivent rester groupées). */
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 16px;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-legende-corps {
+    columns: 3;
+  }
+}
+@media (min-width: 1920px) {
+  .kta-legende-corps {
+    columns: 4;
+  }
+}
 
 /* ==============================================
    LÉGENDE — icônes et tracés
