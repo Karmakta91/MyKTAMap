@@ -3163,25 +3163,97 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
   /* 🆕 v1.9.2 — Loader PC plus "fullscreen" (KARMA feedback :
      « avoir une sorte de full screen » / « éviter tout ce noir autour »).
-     Le fond noir uniforme rgba(5, 8, 15, 0.92) est remplacé sur PC par
-     2 couches superposées :
-       1. Pattern subtil de points dorés (effet "blueprint souterrain") —
-          opacity très basse pour ne pas perturber la lecture
-       2. Radial gradient éclaircissant le centre (où le loader est posé)
-          et gardant les bords sombres = effet "puits de lumière"
-     Donne de la profondeur visuelle sans distraire.
+     Itéré (KARMA "toujours du noir juste plus alongé") : on rend
+     l'effet plus marqué :
+       1. Pattern de points dorés opacity bumpée 0.035 → 0.07 (= visible
+          au lieu de quasi invisible)
+       2. Radial gradient avec centre plus clair (rgba(...,0.85)) pour
+          un vrai effet "puits de lumière" perceptible
+       3. Box loader étiré en HAUTEUR pour prendre presque tout l'écran
+          → plus de noir au-dessus / en-dessous
      RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
   #planLoaderOverlay {
     background-color: #050810;
     background-image:
-      radial-gradient(circle, rgba(244, 197, 66, 0.035) 1px, transparent 1px),
+      radial-gradient(circle, rgba(244, 197, 66, 0.07) 1px, transparent 1px),
       radial-gradient(ellipse 1400px 900px at center,
-        rgba(28, 40, 65, 0.65) 0%,
-        rgba(10, 14, 25, 0.93) 60%,
-        rgba(5, 8, 15, 0.96) 100%);
+        rgba(38, 55, 88, 0.85) 0%,
+        rgba(12, 18, 32, 0.96) 55%,
+        rgba(5, 8, 15, 1) 100%);
     background-size: 28px 28px, 100% 100%;
     background-position: center center, center center;
     background-repeat: repeat, no-repeat;
+    /* Aligner le contenu en haut au lieu de center → box prend la hauteur
+       (et plus de noir résiduel au-dessus). */
+    align-items: stretch;
+  }
+
+  /* 🆕 v1.9.2 : box loader étiré pour prendre ~95% de la hauteur écran.
+     Le margin: auto 0 reste valide mais le min-height force la box à
+     occuper l'espace même si son contenu est court. */
+  #planLoaderBox {
+    min-height: calc(100vh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    /* Glow doré subtil sur la bordure pour matérialiser visuellement
+       la box dans le grand espace écran. */
+    box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 80px rgba(244, 197, 66, 0.04);
+    border-color: rgba(244, 197, 66, 0.10);
+  }
+
+  /* La loader-grid (2 cols) prend le RESTE de la hauteur disponible
+     dans la box, après header / resume / status / badge / footer.
+     Sans ça, elle restait à sa hauteur naturelle (~400px) et le bas
+     de la box était vide.
+     align-items: stretch override le `start` plus haut → les 2 colonnes
+     remplissent maintenant la hauteur du grid (sans ça, les flex internes
+     ne peuvent pas grandir car leur parent n'a pas de hauteur définie). */
+  .loader-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-items: stretch;
+  }
+
+  /* La liste des plans peut prendre toute la hauteur dispo dans sa col
+     (override la valeur fixe calc(100vh - 320px) de plus bas). */
+  .loader-col-plans .loader-plans-list {
+    max-height: none;
+    height: 100%;
+    min-height: 0;
+  }
+  .loader-col-plans {
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-plans #myPlansBox {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Colonne ACTIONS (droite) : flex column avec drop zone qui prend
+     l'espace, "Générer un plan" pinned en bas via margin-top: auto.
+     Donne un layout équilibré sur la hauteur sans étirer le drop zone
+     de façon disgracieuse. */
+  .loader-col-actions {
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-actions #panelZip {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-actions #panelZip .zip-drop-zone {
+    /* Drop zone qui grandit pour remplir le panelZip — plus accueillant
+       visuellement, drop area plus généreuse. */
+    flex: 1 1 auto;
+    min-height: 200px;
+  }
+  .loader-col-actions .loader-secondary-actions {
+    /* "Générer un plan" pinned en bas de la colonne */
+    margin-top: auto;
   }
 }
 
