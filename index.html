@@ -21,22 +21,20 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-fix4 (KARMA "on teste ça") — RE-tentative cover +
-       black-translucent ISOLÉE : seulement ces 2 meta tags + retrait
-       du `+ env(safe-area-inset-bottom)` des règles footer/loader.
-       Le bug "bande sombre en bas" est causé par cette safe-area qui
-       devient ~21-34px avec cover. En la retirant, le footer est flush
-       au bord physique → pas de bande. Compromis : boutons proches
-       du home indicator iOS, mais négligeable en pratique. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
+       plus de problèmes que de bénéfice"). Multiples tentatives cover +
+       black-translucent ont créé soit une bande sombre en bas, soit la
+       status bar iOS qui hide/show de façon imprévisible. On reste sur
+       le comportement stable v1.9.1 : pas de cover, status bar opaque
+       noire, on perd ~47px en haut sur iPhone notché mais comportement
+       PRÉVISIBLE. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black-translucent" : iOS status bar TRANSPARENTE par-dessus le
-       contenu. iOS lit la couleur de notre body (#1a1f2e, fix3) ou
-       du décoy (#kta-status-tint, fix2) pour tinter sa bande. Top
-       cohérent dès le premier paint, sans attendre Leaflet. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
+       du contenu. Stable, l'heure iOS reste visible en permanence. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 
@@ -65,31 +63,6 @@
 </head>
 
 <body>
-
-  <!-- 🆕 v1.9.2-fix2 (KARMA insight "le Leaflet encore chargé tinte le top
-       comme je veux") : décoy DOM en POSITION FIXED top:0 qui mime le
-       comportement du refonte header. Présent dès le PREMIER paint HTML
-       → iOS Safari / Chrome peuvent sampler sa couleur pour tinter
-       leur chrome système avec la charte (#1a1f2e). -->
-  <div id="kta-status-tint" aria-hidden="true"
-       style="position:fixed; top:0; left:0; right:0; height:60px; background:#1a1f2e; z-index:1; pointer-events:none;"></div>
-
-  <!-- 🆕 v1.9.2-fix6 (KARMA insight clé "ca fonctionne en horizontal, ca
-       fait ca que en vertical") :
-       Le bug "bande sombre en bas" ne se manifeste QU'EN PORTRAIT, jamais
-       en landscape. Or env(safe-area-inset-bottom) vaut ~21-34px en
-       portrait (zone home indicator iOS) et ~0 en landscape (pas de
-       home indicator au bord bas en landscape). C'est donc EXACTEMENT
-       cette zone qui pose problème.
-       Fix précis : decoy bottom avec height = env(safe-area-inset-bottom)
-       → couvre la zone home indicator AU PIXEL PRÈS en portrait,
-       invisible (height: 0) en landscape. Z-index 1500 = au-dessus de
-       Leaflet (z:400) et de la statusbar refonte (z:1000), sous les
-       modales (z:9999) et le splash (z:100000). Garantit que la zone
-       home indicator est peinte avec la couleur charte (#1a1f2e), sans
-       perturber landscape ni les autres breakpoints. -->
-  <div id="kta-status-tint-bottom" aria-hidden="true"
-       style="position:fixed; bottom:0; left:0; right:0; height:env(safe-area-inset-bottom, 0px); background:#1a1f2e; z-index:1500; pointer-events:none;"></div>
 
   <!-- ════════════════════════════════════════════════════════
        SVG PATTERNS — definitions partagees pour les zones (depuis Karma_dev / v169)
