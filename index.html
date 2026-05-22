@@ -21,185 +21,22 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-hotfix-landscape-cover (KARMA "vue que le mode full
-       screen fonctionne en horizontal, peut on l'activer uniquement
-       dans ce cas. Attention au retour a vertical").
-       Stratégie : viewport-fit=cover uniquement en landscape (toggle JS
-       dynamique au plus tôt ci-dessous). En landscape, iOS PWA
-       standalone cache automatiquement sa status bar quand cover est
-       actif → "fullscreen feel" pour l'utilisateur sans réinstall PWA
-       (apple-mobile-web-app-status-bar-style reste "black" opaque).
-       En portrait : retour au comportement stable rollback (pas de
-       cover, pas de bande sombre, pas de titres regonflés).
-       Valeur initiale = sans cover (portrait sûr) ; le script inline
-       en HEAD corrige immédiatement si le boot est en landscape. -->
-  <meta id="kta-viewport-meta" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-  <!-- Script de toggle cover orientation-aware. Placé en HEAD le PLUS
-       TÔT possible pour s'exécuter avant le 1er paint (sinon iOS calcule
-       le layout avec la valeur initiale, puis on doit forcer un
-       recompute → flash visuel). En IIFE auto-exécutée. -->
-  <script>
-  (function() {
-    var meta = document.getElementById("kta-viewport-meta");
-    var BASE = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
-    var COVER_SUFFIX = ", viewport-fit=cover";
-
-    function _isLandscape() {
-      // matchMedia est le détecteur canonique. innerWidth/Height comme
-      // fallback (utile si matchMedia indisponible en très vieux iOS).
-      if (window.matchMedia) {
-        return window.matchMedia("(orientation: landscape)").matches;
-      }
-      return window.innerWidth > window.innerHeight;
-    }
-
-    function _applyViewport() {
-      if (!meta) return;
-      var want = BASE + (_isLandscape() ? COVER_SUFFIX : "");
-      // Skip si la valeur n'a pas changé — évite les iOS recompute
-      // inutiles (chaque setAttribute déclenche un mutation observable
-      // côté browser → reflow).
-      if (meta.getAttribute("content") === want) return;
-      meta.setAttribute("content", want);
-    }
-
-    // 🆕 v1.9.2-hotfix-landscape-cover-pulse (KARMA "si je démarre en
-    // vertical, passe en horizontal 1x, pas bon, je reviens en vertical,
-    // repasse en horizontal, et la c'est bon sans chargement de carte").
-    //
-    // Diagnostic : au PREMIER orientationchange portrait → landscape,
-    // iOS est en pleine animation de rotation et ignore notre
-    // setAttribute (state transitoire). Même nos retries à 100/400/1000
-    // ms tombent sur une valeur déjà identique → setAttribute skip
-    // (ou iOS continue d'ignorer car valeur "déjà vue"). Au 2e cycle,
-    // iOS a déjà vu la valeur "cover" précédemment et la recompute
-    // correctement.
-    //
-    // Fix PULSE : forcer iOS à voir un CHANGEMENT EXPLICITE de valeur
-    // viewport en passant par une valeur INTERMÉDIAIRE différente
-    // (initial-scale légèrement modifié) avant de mettre la valeur
-    // cible. Un setAttribute vers la même valeur = no-op pour iOS, mais
-    // setAttribute → différent → setAttribute → cible = changement
-    // détectable, iOS recompute. C'est le même principe que toggler une
-    // class CSS pour forcer un reflow.
-    function _pulseViewport() {
-      if (!meta) return;
-      var want = BASE + (_isLandscape() ? COVER_SUFFIX : "");
-      // Valeur transitoire INTENTIONNELLEMENT différente de toute autre
-      // qu'on utilise normalement : initial-scale 0.9999 au lieu de 1.
-      // Effet visuel négligeable (1 pixel sur 1920 = imperceptible),
-      // mais iOS verra clairement le changement et recomputera.
-      var pulse = "width=device-width, initial-scale=0.9999, maximum-scale=1, user-scalable=no" +
-                  (_isLandscape() ? COVER_SUFFIX : "");
-      meta.setAttribute("content", pulse);
-      // Force un reflow synchrone pour que iOS observe la valeur pulse
-      // AVANT qu'on revienne à la valeur cible. Sans reflow forcé, les
-      // 2 setAttribute peuvent être batchés et iOS ne verra que le
-      // résultat final = no-op.
-      void document.documentElement.offsetHeight;
-      meta.setAttribute("content", want);
-    }
-
-    // 1. Apply initial (avant 1er paint si possible).
-    _applyViewport();
-
-    // 2. Sur changement d'orientation : iOS prend du temps à finaliser
-    //    les dimensions. On rejoue 3× pour couvrir les états transitoires.
-    //    Spécialement crucial AU RETOUR EN PORTRAIT (KARMA "attention au
-    //    retour vertical") où iOS peut conserver les insets landscape
-    //    cachés si on ne force pas le recompute.
-    function _forceRecompute() {
-      // Immédiat : apply standard (au cas où orientationchange a réellement
-      // changé l'orientation détectée → setAttribute aura un effet).
-      _applyViewport();
-      // Retries en PULSE pour iOS lazy : force iOS à voir un changement
-      // explicite de valeur (pulse → cible) à chaque retry. Couvre le cas
-      // où la 1ère rotation portrait → landscape est ignorée par iOS car
-      // en pleine animation de rotation.
-      setTimeout(_pulseViewport, 100);
-      setTimeout(_pulseViewport, 400);
-      setTimeout(_pulseViewport, 1000);
-      setTimeout(_pulseViewport, 2000);  // extra retry pour boot lent
-
-      // Trigger explicite de iOS recompute via scrollTo + resize event.
-      // Le scroll de 1px puis retour force iOS à revérifier son chrome.
-      setTimeout(function() {
-        try {
-          var sx = window.scrollX || 0, sy = window.scrollY || 0;
-          window.scrollTo(sx, sy + 1);
-          requestAnimationFrame(function() { window.scrollTo(sx, sy); });
-          window.dispatchEvent(new Event("resize"));
-        } catch(e) { /* no-op */ }
-      }, 250);
-    }
-
-    // 🆕 v1.9.2-hotfix-landscape-cover-boot (KARMA "à gauche c'est bon
-    // mais à droite on a toujours la marge. Si je charge une carte,
-    // retour home, tout est bon").
-    //
-    // Diagnostic : si l'app boot DÉJÀ en landscape (utilisateur ouvre
-    // la PWA téléphone tenu horizontalement), aucun événement
-    // `orientationchange` ne fire — donc nos retries 0/100/400/1000ms
-    // ne s'exécutent JAMAIS au démarrage. Le meta viewport est bien
-    // setattribué avec cover, mais iOS n'a pas recalculé ses
-    // safe-area-insets → env(safe-area-inset-right) reste à 0 alors
-    // que le notch est physiquement sur la droite → tout élément qui
-    // utilise cette inset ne se décale pas → "marge invisible".
-    //
-    // Quand l'user charge une carte, le DOM mute massivement
-    // (création Leaflet, init map, etc.) → iOS recompute les
-    // safe-area-insets. Retour home → tout est correct.
-    //
-    // Fix : déclencher la SÉQUENCE COMPLÈTE de recompute aussi au
-    // load initial (pas seulement sur orientationchange). On force
-    // iOS à recompute via les mêmes workarounds (retries +
-    // scrollTo + resize event) dès le boot.
-    function _onOrientationChange() {
-      _forceRecompute();
-    }
-
-    window.addEventListener("orientationchange", _onOrientationChange);
-    // resize aussi : sur certains iOS, orientationchange ne fire pas
-    // immédiatement mais resize si — on traite les 2 pour la couverture.
-    window.addEventListener("resize", _applyViewport);
-
-    // 3. BOOT : si on est DÉJÀ en landscape au load, jouer la séquence
-    //    complète de recompute (équivalent d'une rotation virtuelle).
-    //    En portrait, _applyViewport() ci-dessus a déjà tout fait (pas
-    //    de cover, comportement standard). En landscape, on a besoin
-    //    de forcer iOS à recalculer ses insets MAINTENANT.
-    if (_isLandscape()) {
-      // Exécuter après le 1er paint pour éviter de bloquer le rendu
-      // initial. requestAnimationFrame garantit qu'on est après le
-      // parsing HTML mais aussi tôt que possible pour minimiser le
-      // flash de "marge invisible" en haut/côté.
-      if (typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(_forceRecompute);
-      } else {
-        setTimeout(_forceRecompute, 0);
-      }
-    }
-
-    // Exposer pour debug / re-call manuel si besoin
-    window._ktaApplyViewport = _applyViewport;
-    window._ktaPulseViewport = _pulseViewport;
-    window._ktaForceRecompute = _forceRecompute;
-  })();
-  </script>
+  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
+       plus de problèmes que de bénéfice"). Multiples tentatives cover +
+       black-translucent ont créé soit une bande sombre en bas, soit la
+       status bar iOS qui hide/show de façon imprévisible. On reste sur
+       le comportement stable v1.9.1 : pas de cover, status bar opaque
+       noire, on perd ~47px en haut sur iPhone notché mais comportement
+       PRÉVISIBLE. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app en portrait,
-       indépendante du contenu. En landscape avec cover (toggle JS au
-       runtime, cf. script ci-dessus), iOS PWA standalone CACHE auto la
-       status bar → fullscreen feel sans toucher au meta status-bar-style
-       (donc sans nécessiter une réinstall PWA, qu'aurait imposée un
-       passage à black-translucent). -->
+  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
+       du contenu. Stable, l'heure iOS reste visible en permanence. -->
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
-
 
   <!-- Icône écran d'accueil iOS — Safari iOS lit UNIQUEMENT apple-touch-icon -->
   <link rel="apple-touch-icon" href="icon/mkm.png">
