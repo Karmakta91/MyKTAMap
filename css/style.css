@@ -3076,24 +3076,35 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 
 /* Règles #splashAuthor / .splash-by / #splashSignature retirées en fix15. */
 
-/* 🆕 v1.9.2-fix18 (KARMA "la partie Licence libre doit être plus bas,
-   juste au-dessus de la signature et lib cités") : licence positionnée
-   en ABSOLUTE au bas du splash, juste au-dessus de la rangée KARMA +
-   crédits libs (bottom 28px). Centrée horizontalement. */
+/* 🆕 v1.9.2-fix18/fix2 (KARMA "Licence libre doit être plus bas, juste
+   au-dessus de la signature et libs cités" + "elle est à droite, pas
+   centrée") : licence positionnée en ABSOLUTE au bas du splash, juste
+   au-dessus de la rangée KARMA + crédits libs (bottom 28px).
+
+   ⚠️ FIX CENTRAGE : avant on utilisait `left: 50% + transform:
+   translateX(-50%)`, mais l'animation `splashTextIn` redéfinit
+   `transform: translateY(...)` ce qui ÉCRASE le translateX → l'élément
+   se retrouve aligné à `left: 50%` SANS recentrage (= bord gauche au
+   centre de l'écran, contenu pousse vers la droite).
+   Solution : centrage via `left:0; right:0; text-align:center` →
+   l'élément prend toute la largeur, le texte est centré dedans, et
+   l'animation translateY peut faire son travail sans conflit. */
 #splashLicense {
   position: absolute;
   bottom: calc(70px + env(safe-area-inset-bottom, 0px));
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  padding: 0 28px;
+  box-sizing: border-box;
   font-size: 11px;
   color: #6c7689;
   line-height: 1.6;
   letter-spacing: 0.02em;
   text-align: center;
-  max-width: calc(100% - 56px);  /* respect des 28px latéraux des crédits */
   user-select: none;
   pointer-events: none;
-  /* Animation : apparaît avec un léger delay après le contenu central */
+  /* Animation : apparaît avec un léger delay après le contenu central.
+     `splashTextIn` applique translateY → pas de conflit avec left/right. */
   animation: splashTextIn 0.6s ease-out 1.0s both;
   z-index: 2;
 }
