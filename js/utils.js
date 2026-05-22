@@ -174,8 +174,21 @@ function buildPointPopupHtml(point, isEditorSession) {
   // session → data via Conversion garde "source: editor" dans le JSON, le
   // test serait trompeur → bouton affiche mais supprimerPointEditor ne
   // trouve rien dans listePoints → erreur silencieuse.
-  const showDelete = isEditorSession === true;
-  const deleteRow = showDelete
+  // 🆕 v1.9.3-B1b : 2 lignes pour les points session :
+  //   - ligne "édition" : ✏️ Modifier (ouvre la modale unifiée avec photos)
+  //   - ligne "destruction" : 🗑️ Supprimer (rouge, séparée pour ne pas être
+  //     confondue avec une action neutre)
+  const showSessionActions = isEditorSession === true;
+  const editRow = showSessionActions
+    ? '<div class="kta-popup-actions">' +
+        '<button class="kta-popup-btn kta-popup-btn-edit" type="button" ' +
+          'onclick="window.modifierPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
+          'title="Modifier ce point (nom, type, description, photos)">' +
+          '✏️ Modifier' +
+        '</button>' +
+      '</div>'
+    : '';
+  const deleteRow = showSessionActions
     ? '<div class="kta-popup-actions kta-popup-actions-danger">' +
         '<button class="kta-popup-btn kta-popup-btn-delete" type="button" ' +
           'onclick="window.supprimerPointEditor(\'' + jsId + "'," + x + ',' + y + '); return false;" ' +
@@ -185,9 +198,16 @@ function buildPointPopupHtml(point, isEditorSession) {
       '</div>'
     : '';
 
+  // 🆕 v1.9.3-B1d : slot photos hydraté en async via popupopen (cf.
+  // window.attachPopupPhotos appelé depuis _ajouterMarker et
+  // ajouterPointsDepuisJSON). Vide par défaut → caché en CSS via :empty
+  // pour ne pas créer d'espace blanc si pas de photos.
+  const photosSlot = '<div class="kta-popup-photos" data-pointid="' + jsId + '"></div>';
+
   return '<div class="kta-popup-point">' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + safeDesc + '</span>' : '') +
+           photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +
                'onclick="window.recalerTrackerSurPoint(' + x + ',' + y + '); return false;" ' +
@@ -205,10 +225,155 @@ function buildPointPopupHtml(point, isEditorSession) {
                '➕ Itinéraire' +
              '</button>' +
            '</div>' +
+           editRow +
            deleteRow +
          '</div>';
 }
 window.buildPointPopupHtml = buildPointPopupHtml;
+
+// =========================
+// 📸 attachPopupPhotos(marker, pointId) — v1.9.3-B1d
+// =========================
+// Hydrate les miniatures photos dans le slot `.kta-popup-photos` du popup
+// d'un marker. Idempotent (flag _ktaPhotosAttached sur le marker pour
+// ne pas re-attacher 2 fois).
+//
+// Au popupopen :
+//   1. Cherche le slot .kta-popup-photos dans le popup ouvert
+//   2. Lit le pointId depuis data-pointid (fallback paramètre fonction)
+//   3. Query MyKTAMapPhotos.getPhotosForPoint(planId, pointId)
+//   4. Si N > 0 → injecte les miniatures + click handler → viewer plein écran
+//   5. Si 0 → slot reste vide (CSS .kta-popup-photos:empty masque)
+//
+// Cleanup objectURLs au popupclose (sinon memory leak si l'user ouvre/
+// ferme des popups en boucle sur des plans riches).
+function attachPopupPhotos(marker, pointId) {
+  if (!marker || !pointId) return;
+  if (marker._ktaPhotosAttached) return;  // idempotent
+  marker._ktaPhotosAttached = true;
+
+  const _objectUrls = new Set();
+  let _lastLoadedForPointId = null;
+
+  function _cleanupUrls() {
+    _objectUrls.forEach(function(u) {
+      try { URL.revokeObjectURL(u); } catch(e) {}
+    });
+    _objectUrls.clear();
+  }
+
+  marker.on("popupopen", function(ev) {
+    if (!window.MyKTAMapPhotos) return;
+    // Récupère l'élément du slot dans le DOM du popup ouvert
+    const popupEl = ev.popup && ev.popup.getElement ? ev.popup.getElement() : null;
+    if (!popupEl) return;
+    const slot = popupEl.querySelector(".kta-popup-photos");
+    if (!slot) return;
+    const pid = slot.getAttribute("data-pointid") || pointId;
+    if (!pid) return;
+
+    // 🔧 v1.9.3-B1d-fix2 : on FORCE le re-fetch à chaque popupopen.
+    // Avant on skip si déjà chargé, mais ça causait un piège : après un
+    // popupclose qui révoque les blob URLs (anti memory leak), le DOM du
+    // popup gardait des <img src="blob:..."> morts → image cassée au
+    // re-open. Le re-fetch IDB est rapide (~10-50ms) → coût acceptable
+    // pour la robustesse. Si optim nécessaire à terme : conditionner le
+    // re-fetch à l'invalidation du cache des URLs.
+    _lastLoadedForPointId = pid;
+    // Reset le slot pour ne pas voir l'ancien HTML flasher si le re-fetch
+    // est lent (rare mais possible sur quotas IDB chargés).
+    slot.innerHTML = "";
+    slot.dataset.loaded = "0";
+
+    const planId = window._currentLoadedPlanId || "default";
+    window.MyKTAMapPhotos.getPhotosForPoint(planId, pid).then(function(arr) {
+      if (!arr || arr.length === 0) {
+        slot.innerHTML = "";
+        slot.dataset.loaded = "1";
+        return;
+      }
+      // Génère les objectURLs ET le HTML des miniatures
+      const photosWithUrl = arr.map(function(rec) {
+        const url = URL.createObjectURL(rec.blob);
+        _objectUrls.add(url);
+        return {
+          id:         rec.id,
+          mime:       rec.mime,
+          size:       rec.size,
+          createdAt:  rec.createdAt,
+          _objectUrl: url
+        };
+      });
+      // Rendu : grille de miniatures 44×44.
+      // 🔧 v1.9.3-B1d-fix2 → fix4 → fix6 (KARMA "j'ai toujours le fond bleu") :
+      // Historique :
+      //   - fix2 : passage de background-image inline sur <button> → <img>
+      //     enfant dans <button>. Fond bleu toujours visible.
+      //   - fix4 : ajout box-sizing/line-height/font-size sur le button +
+      //     vertical-align top sur l'img. Fond bleu RÉDUIT mais pas éliminé.
+      //   - fix6 : abandon complet du <button>, on utilise un <img>
+      //     cliquable direct. Plus de styles user-agent <button> à gérer
+      //     (border-inset, appearance, padding-inline natif, baseline...).
+      //     L'img est nativement display:inline → on force display:block
+      //     en CSS pour qu'elle remplisse exactement le cadre 44×44.
+      slot.innerHTML =
+        '<div class="kta-popup-photos-row"></div>' +
+        '<div class="kta-popup-photos-count">📸 ' + photosWithUrl.length + ' photo' + (photosWithUrl.length > 1 ? "s" : "") + '</div>';
+      const rowEl = slot.querySelector(".kta-popup-photos-row");
+      photosWithUrl.forEach(function(p, idx) {
+        const img = document.createElement("img");
+        img.className = "kta-popup-photo-mini";
+        img.src = p._objectUrl;
+        img.alt = "";
+        img.loading = "lazy";
+        img.draggable = false;
+        img.dataset.idx = idx;
+        img.title = "Voir photo " + (idx + 1) + " / " + photosWithUrl.length;
+        // role + tabindex pour l'accessibilité (la mini reste cliquable
+        // au clavier / focus-visible).
+        img.setAttribute("role", "button");
+        img.setAttribute("tabindex", "0");
+        rowEl.appendChild(img);
+      });
+      slot.dataset.loaded = "1";
+
+      // Click + keyboard handler sur chaque miniature → viewer plein écran.
+      // 🔧 v1.9.3-B1d-fix6 : on est maintenant sur des <img role="button">
+      // (pas un vrai <button>) → il faut gérer Enter et Space au clavier
+      // nous-mêmes pour l'accessibilité.
+      slot.querySelectorAll(".kta-popup-photo-mini").forEach(function(el) {
+        function _open(ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          if (!window.MyKTAMapPhotoViewer) {
+            console.warn("[Popup photos] MyKTAMapPhotoViewer indispo");
+            return;
+          }
+          const idx = parseInt(el.dataset.idx, 10) || 0;
+          window.MyKTAMapPhotoViewer.open(photosWithUrl, idx);
+        }
+        el.addEventListener("click", _open);
+        el.addEventListener("keydown", function(ev) {
+          if (ev.key === "Enter" || ev.key === " ") _open(ev);
+        });
+      });
+    }).catch(function(e) {
+      console.warn("[Popup photos] getPhotosForPoint erreur :", e);
+    });
+  });
+
+  marker.on("popupclose", function() {
+    // On garde le HTML rendu (= re-open instantané sans flicker IDB) MAIS
+    // on doit révoquer les objectURLs sinon ça leak. Petit compromis : on
+    // garde les URLs jusqu'à la prochaine ouverture (où _lastLoadedForPointId
+    // skip le re-fetch). Pour une stratégie 100% sans leak, on reset ici :
+    _cleanupUrls();
+    _lastLoadedForPointId = null;
+    // Le slot HTML reste mais ses background-image url(blob:...) seront
+    // invalides. C'est OK car au prochain popupopen on re-hydrate.
+  });
+}
+window.attachPopupPhotos = attachPopupPhotos;
 
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
@@ -366,6 +531,14 @@ function ajouterPointsDepuisJSON(url, layer) {
               ? window.buildPointPopupHtml(p, false)
               : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
             marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
+            // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à
+            // l'ouverture. Pour les data layers, ça permet de voir les
+            // photos quand l'user import un plan ZIP qui en contient
+            // (workflow B1.d.γ à venir). Pour B1.d.α actuel, les data
+            // layers n'ont pas de photos donc le slot reste invisible.
+            if (typeof window.attachPopupPhotos === "function") {
+              window.attachPopupPhotos(marker, String(p.id || ""));
+            }
           }
 
           // 🏗️ Multi-niveau (v148) : si le point JSON contient un champ

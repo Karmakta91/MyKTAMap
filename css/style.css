@@ -1585,6 +1585,91 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #ff6b6b !important;
 }
 
+/* 🆕 v1.9.3-B1b — Bouton "✏️ Modifier" : accent bleu sage (action
+   d'édition neutre, distinct du vert recalage / jaune action principale /
+   rouge suppression). Pleine largeur car action solo dans sa ligne. */
+.kta-popup-actions .kta-popup-btn-edit {
+  background: rgba(140, 180, 255, 0.13) !important;
+  border-color: rgba(140, 180, 255, 0.45) !important;
+  color: #8cb4ff !important;
+  flex: 1 1 100% !important;
+}
+
+.kta-popup-actions .kta-popup-btn-edit:hover {
+  background: rgba(140, 180, 255, 0.25) !important;
+  color: #b4ccff !important;
+}
+
+/* 🆕 v1.9.3-B1d — Slot photos dans le popup point. Vide par défaut
+   (hydraté async via attachPopupPhotos au popupopen). Masqué si vide
+   pour ne pas créer d'espace blanc. */
+.kta-popup-photos:empty {
+  display: none;
+}
+
+.kta-popup-photos {
+  margin: 8px 0 6px 0;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(244, 197, 66, 0.18);
+}
+
+.kta-popup-photos-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  /* Si plus de N miniatures qu'on n'en peut afficher (popup limité en
+     largeur), scroll horizontal compact pour éviter de retailler le
+     popup à chaque marker. */
+  max-width: 100%;
+}
+
+/* 🔧 v1.9.3-B1d-fix6 (KARMA "j'ai toujours le fond bleu") :
+   Abandon du <button> qui apporte trop de styles user-agent (border-inset,
+   appearance, padding-inline natif, baseline descender...) → on rend la
+   <img> directement cliquable (role="button" tabindex=0 côté JS).
+   L'img est nativement display:inline → on force display:block pour qu'elle
+   occupe exactement les 44×44 sans descender gap.
+*/
+img.kta-popup-photo-mini {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 4px;
+  cursor: zoom-in;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  box-sizing: border-box;
+  object-fit: cover;
+  display: block;
+  vertical-align: top;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+img.kta-popup-photo-mini:hover,
+img.kta-popup-photo-mini:focus-visible {
+  transform: scale(1.08);
+  border-color: #f4c542;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25);
+  outline: none;
+  z-index: 1;
+}
+
+/* 🔧 v1.9.3-B1d-fix6 : ancienne règle .kta-popup-photo-mini:hover
+   (sans préfixe `img.`) supprimée — était orpheline du temps où la mini
+   était un <button>. La nouvelle img.kta-popup-photo-mini:hover ci-dessus
+   couvre déjà tous les cas. */
+
+.kta-popup-photos-count {
+  margin-top: 5px;
+  font-size: 10.5px;
+  color: #f4c542;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  opacity: 0.85;
+}
+
 /* =========================
    SUPPRESSION TRACÉ — floater mode clic visuel
    (pattern identique au floater mode clic itineraire)
@@ -5332,6 +5417,402 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   background: rgba(31,111,235,0.35);
 }
 
+/* =====================================================================
+   🔐 PIN LOCK — v1.9.4-V1
+   Modale Gate plein écran (keypad + biométrie + lockout) + section
+   d'activation dans la modale ⚙️ Configuration du loader.
+   ===================================================================== */
+
+/* Section dans ⚙️ Configuration du loader */
+.kta-loader-pin-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+
+.kta-loader-pin-status-icon {
+  font-size: 18px;
+  flex: 0 0 auto;
+}
+
+.kta-loader-pin-status-text {
+  flex: 1 1 auto;
+}
+
+.kta-loader-pin-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.kta-loader-pin-actions:has(button + button) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.kta-loader-pin-btn-modif {
+  background: rgba(140, 180, 255, 0.12);
+  border-color: rgba(140, 180, 255, 0.3);
+  color: #8cb4ff;
+}
+
+/* 🆕 v1.10.0-hotfix1 : flash highlight le bouton "Activer" pour guider
+   l'user après le clic "🔐 Activer maintenant" de la modale proposition.
+   3 pulses jaunes en 2.2s + box-shadow expansif. Non bloquant. */
+.kta-pin-enable-flash {
+  animation: kta-pin-enable-flash-pulse 0.7s ease-in-out 3;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes kta-pin-enable-flash-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(244, 197, 66, 0);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(244, 197, 66, 0.35),
+                0 0 20px 4px rgba(244, 197, 66, 0.4);
+    transform: scale(1.03);
+  }
+}
+
+/* =====================================================================
+   GATE PLEIN ÉCRAN — modale au boot quand PIN activé
+   ===================================================================== */
+.kta-pin-gate-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #0a0d18 0%, #1a1f2e 100%);
+  z-index: 100002;  /* au-dessus de tout (modales 100001) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-top: calc(20px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  animation: kta-pin-gate-fadein 0.25s ease-out;
+}
+
+@keyframes kta-pin-gate-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.kta-pin-gate-box {
+  background: #1a1f2e;
+  border: 2px solid rgba(244, 197, 66, 0.3);
+  border-radius: 14px;
+  padding: 24px 28px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15);
+  animation: kta-pin-gate-popin 0.3s ease-out;
+}
+
+@keyframes kta-pin-gate-popin {
+  from { transform: scale(0.92); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.kta-pin-gate-icon {
+  font-size: 44px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 14px rgba(244, 197, 66, 0.4));
+}
+
+.kta-pin-gate-titre {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 6px;
+}
+
+.kta-pin-gate-soustitre {
+  font-size: 13px;
+  color: #c8d0e0;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+/* Dots de saisie PIN */
+.kta-pin-gate-dots {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 12px 0 14px;
+  height: 28px;
+  align-items: center;
+}
+
+.kta-pin-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #4a5468;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.kta-pin-dot-filled {
+  color: #f4c542;
+  transform: scale(1.1);
+}
+
+.kta-pin-dot-visible {
+  /* Pattern iOS 8:b : chiffre visible 0.5s puis ● */
+  font-size: 20px;
+  background: rgba(244, 197, 66, 0.18);
+  border-radius: 50%;
+  color: #f4c542;
+}
+
+/* Affichage erreur + tentatives */
+.kta-pin-gate-err {
+  font-size: 12.5px;
+  color: #ff8c8c;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.kta-pin-gate-attempts {
+  font-size: 11px;
+  color: #8892a4;
+  margin-bottom: 14px;
+  font-style: italic;
+}
+
+.kta-pin-gate-attempts-warn {
+  color: #ffb380;
+  font-weight: 600;
+  font-style: normal;
+}
+
+/* Keypad 3×4 — 0-9 + biométrie/empty + ← */
+.kta-pin-gate-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.kta-pin-gate-key {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e8eaf0;
+  font-size: 22px;
+  font-weight: 600;
+  border-radius: 10px;
+  padding: 16px 0;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.kta-pin-gate-key:hover {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.3);
+}
+
+.kta-pin-gate-key:active {
+  background: rgba(244, 197, 66, 0.25);
+  transform: scale(0.94);
+}
+
+.kta-pin-gate-key-empty {
+  visibility: hidden;
+  cursor: default;
+}
+
+/* 🆕 v1.10.0-hotfix3 : bouton biométrie standalone AU-DESSUS du keypad
+   (plus visible + gros + auto-prompt automatique 400ms après ouverture). */
+.kta-pin-gate-bio-btn {
+  display: block;
+  width: 100%;
+  margin: 6px 0 12px;
+  padding: 12px 14px;
+  background: rgba(108, 226, 138, 0.15);
+  border: 1.5px solid rgba(108, 226, 138, 0.45);
+  border-radius: 10px;
+  color: #6ee287;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.08s;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.kta-pin-gate-bio-btn:hover {
+  background: rgba(108, 226, 138, 0.28);
+  border-color: rgba(108, 226, 138, 0.65);
+}
+
+.kta-pin-gate-bio-btn:active {
+  transform: scale(0.98);
+}
+
+.kta-pin-gate-key-erase {
+  background: rgba(255, 107, 107, 0.08);
+  border-color: rgba(255, 107, 107, 0.25);
+  color: #ff8c8c;
+  font-size: 20px;
+}
+
+.kta-pin-gate-key-erase:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+/* 🆕 v1.10.0-hotfix3 : bouton ✓ Valider (vert) — activé dès PIN_MIN
+   chiffres saisis. Disabled = gris avec opacité 0.35. */
+.kta-pin-gate-key-validate {
+  background: rgba(108, 226, 138, 0.15);
+  border-color: rgba(108, 226, 138, 0.4);
+  color: #6ee287;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.kta-pin-gate-key-validate:hover:not(:disabled) {
+  background: rgba(108, 226, 138, 0.3);
+  border-color: rgba(108, 226, 138, 0.6);
+}
+
+.kta-pin-gate-key-validate:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #4a5468;
+}
+
+/* Mobile : taille du keypad un poil réduite */
+@media (max-width: 380px) {
+  .kta-pin-gate-box { padding: 20px 18px; max-width: 100%; }
+  .kta-pin-gate-icon { font-size: 36px; }
+  .kta-pin-gate-titre { font-size: 18px; }
+  .kta-pin-gate-key { font-size: 20px; padding: 13px 0; }
+  .kta-pin-gate-key-bio { font-size: 22px; }
+}
+
+/* =====================================================================
+   MODALE PROPOSITION D'ACTIVATION POST-UPDATE (v1.10.0)
+   One-shot après update : invite l'user à activer le PIN. Si refus → flag
+   localStorage qui empêche de re-proposer. Style modale charte classique.
+   ===================================================================== */
+.kta-pin-proposal-boite {
+  max-width: 520px !important;
+  border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
+  box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
+}
+
+.kta-pin-proposal-info {
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.2);
+  border-radius: 6px;
+}
+
+.kta-pin-proposal-info-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8cb4ff;
+  margin-bottom: 4px;
+}
+
+.kta-pin-proposal-info p {
+  margin: 0;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+
+/* =====================================================================
+   GATE PLEIN ÉCRAN — variante LOCKOUT (5 tentatives échouées)
+   ===================================================================== */
+.kta-pin-gate-overlay-lockout {
+  background: linear-gradient(135deg, #1a0808 0%, #2a0a0a 100%);
+}
+
+.kta-pin-gate-box-lockout {
+  border-color: rgba(255, 107, 107, 0.5);
+  box-shadow: 0 8px 50px rgba(255, 107, 107, 0.25);
+}
+
+.kta-pin-gate-box-lockout .kta-pin-gate-titre {
+  color: #ff8c8c;
+}
+
+.kta-pin-gate-lockout-explication {
+  font-size: 13px;
+  color: #c8d0e0;
+  background: rgba(255, 107, 107, 0.06);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 10px;
+  text-align: left;
+  line-height: 1.5;
+}
+
+.kta-pin-gate-lockout-explication p {
+  margin: 0 0 8px;
+}
+
+.kta-pin-gate-lockout-explication p:last-child {
+  margin-bottom: 0;
+}
+
+/* 🆕 v1.9.3-B1d.γ.2 (revisité KARMA "pas très clair") :
+   Encadré dédié pour l'import ZIP datalayer, mis en avant pour que l'user
+   le voie immédiatement (au lieu d'être caché dans le titre de section). */
+.kta-planner-import-zip-box {
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: rgba(244, 197, 66, 0.06);
+  border: 1px dashed rgba(244, 197, 66, 0.35);
+  border-radius: 8px;
+}
+
+.kta-planner-import-zip-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 6px;
+}
+
+.kta-planner-import-zip-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+
+.kta-planner-import-zip-btn {
+  width: 100%;
+  padding: 9px 12px !important;
+  font-size: 13px !important;
+}
+
 .kta-planner-icon-header {
   display: flex;
   align-items: center;
@@ -8193,11 +8674,24 @@ body.kta-refonte-v1 .kta-refonte-header-title-wrap {
   display: flex;
   justify-content: center;
 }
+/* 🆕 v1.9.3-B1d-fix5 (KARMA "titre passe derrière les compteurs") :
+   Graceful degradation 2 niveaux :
+     1. Quand le titre déborde → on cache d'abord la version (JS détecte
+        scrollWidth > clientWidth, met display:none sur la version).
+     2. Si toujours trop large → l'ellipsis CSS natif tronque le nom.
+        L'ellipsis prend la couleur du parent → on force #f4c542 (jaune
+        charte) au lieu d'hériter du gris d'origine, pour que "..."
+        soit dans la couleur du nom (= le user voit que c'est le nom qui
+        est tronqué, pas un séparateur ou autre).
+   ⚠️ text-overflow ne s'applique PAS sur le button display:flex
+   directement. On le pose sur le span #kta-refonte-plan-name lui-même
+   (qui est shrinkable via min-width:0 + flex 0 1 auto).
+*/
 body.kta-refonte-v1 .kta-refonte-header-title {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 6px;
-  color: #e8eaf0;
+  color: #f4c542;          /* hérité pour le span name + l'ellipsis */
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -8206,8 +8700,8 @@ body.kta-refonte-v1 .kta-refonte-header-title {
   align-items: baseline;
   gap: 6px;
   max-width: 100%;
+  min-width: 0;            /* indispensable pour le shrink des enfants */
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -8221,16 +8715,26 @@ body.kta-refonte-v1 #kta-refonte-plan-name {
   color: #f4c542;
   font-weight: 700;
   text-shadow: 0 0 8px rgba(244, 197, 66, 0.25);
+  /* Shrink en premier, ellipsis dans la couleur du nom (#f4c542) */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 body.kta-refonte-v1 #kta-refonte-plan-version {
   color: #8892a4;
   font-size: 12px;
   font-weight: 500;
+  /* La version ne shrink jamais : soit visible entière, soit cachée
+     totalement par le JS (display:none). Évite "v1.7" tronqué en "v…". */
+  flex: 0 0 auto;
 }
 body.kta-refonte-v1 .kta-refonte-header-chevron {
   color: #8892a4;
   font-size: 11px;
   margin-left: 2px;
+  flex: 0 0 auto;
 }
 
 /* Compteurs (droite) */
@@ -9175,5 +9679,361 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
     left: 50% !important;
     transform: translateX(-50%);
   }
+}
+
+/* =====================================================================
+   📸 SECTION PHOTOS POI — v1.9.3-B1b
+   Grille 3 colonnes avec miniatures 80×80, bouton ✕ overlay au hover,
+   spinner placeholder pendant compression, 2 boutons d'ajout (camera +
+   galerie). Le tout dans la section "📸 Photos" de la modale d'ajout/
+   édition d'un point (editor.js > afficherFormulaire).
+   ===================================================================== */
+
+/* Compteur "N / 5" à droite du titre de section */
+.kta-poi-photos-counter {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  background: rgba(244, 197, 66, 0.12);
+  border: 1px solid rgba(244, 197, 66, 0.32);
+  border-radius: 10px;
+  color: #f4c542;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+/* Grille 3 colonnes, gap 8px. Wrap au besoin. */
+.kta-poi-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0;
+  min-height: 30px;
+}
+
+/* État vide : message centré italique */
+.kta-poi-photos-empty {
+  grid-column: 1 / -1;
+  padding: 16px 8px;
+  text-align: center;
+  color: #8892a4;
+  font-size: 12px;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+}
+
+/* Miniature : carré aspect 1/1, fond noir pour les images transparentes,
+   bordure subtile, overflow hidden pour clipper l'image. */
+.kta-poi-photo-thumb {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  background: #0a0d18;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: default;
+}
+
+.kta-poi-photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Spinner placeholder (pendant compression+IDB write).
+   Texte ⏳ qui pulse doucement. */
+.kta-poi-photo-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: #8892a4;
+  animation: kta-poi-photo-spinner-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes kta-poi-photo-spinner-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.92); }
+  50%      { opacity: 1;   transform: scale(1);    }
+}
+
+/* État "pending delete" : grisé + croix barrée diagonale */
+.kta-poi-photo-thumb-pending {
+  opacity: 0.35;
+  filter: grayscale(0.7);
+}
+
+.kta-poi-photo-thumb-pending::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 107, 107, 0.0) 0 8px,
+    rgba(255, 107, 107, 0.18) 8px 12px
+  );
+  pointer-events: none;
+}
+
+/* Bouton ✕ supprimer (overlay coin haut-droit).
+   Toujours visible (vs hover-only) car bouton tactile sur mobile. */
+.kta-poi-photo-del {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ff8c8c;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+  z-index: 2;
+}
+
+.kta-poi-photo-del:hover {
+  background: rgba(255, 107, 107, 0.85);
+  color: #fff;
+}
+
+/* Etat pending : croix devient une flèche ↺ de restauration en vert */
+.kta-poi-photo-thumb-pending .kta-poi-photo-del {
+  color: #6ce28a;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.kta-poi-photo-thumb-pending .kta-poi-photo-del:hover {
+  background: rgba(108, 226, 138, 0.85);
+  color: #1a1f2e;
+}
+
+/* Actions photos (2 boutons côte à côte) */
+.kta-poi-photos-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 6px 0;
+}
+
+.kta-poi-photos-btn {
+  font-size: 13px;
+  padding: 9px 6px !important;
+}
+
+.kta-poi-photos-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Hint italique sous les boutons */
+.kta-poi-photos-hint {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Mobile : grille 2 colonnes (plus large pour les vignettes) */
+@media (max-width: 480px) {
+  .kta-poi-photos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* =====================================================================
+   🔍 PHOTO VIEWER — v1.9.3-B1c
+   Modale plein écran pour visualiser une photo en grand, avec pinch-zoom,
+   pan, swipe horizontal, flèches nav.
+   z-index 100000 (= au-dessus de la modale POI à 99999, et de tout le
+   reste hors notifications système).
+   ===================================================================== */
+
+.kta-photo-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Animation d'apparition */
+  animation: kta-photo-viewer-fadein 0.18s ease-out;
+}
+
+@keyframes kta-photo-viewer-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.kta-photo-viewer-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
+  color: #fff;
+  font-size: 14px;
+  z-index: 2;
+  /* Safe-area iOS notch */
+  padding-top: env(safe-area-inset-top, 0);
+  height: calc(44px + env(safe-area-inset-top, 0px));
+}
+
+.kta-photo-viewer-counter {
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  font-size: 13px;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.12);
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.kta-photo-viewer-close {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+
+.kta-photo-viewer-close:hover {
+  background: rgba(255, 107, 107, 0.85);
+}
+
+.kta-photo-viewer-viewport {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;  /* on gère le touch nous-mêmes (pinch+swipe+pan) */
+}
+
+.kta-photo-viewer-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  cursor: default;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+  /* La transition est désactivée pendant le pan/pinch pour réactivité.
+     On garde un léger ease pour les snaps après touchend / wheel. */
+  will-change: transform;
+  -webkit-user-drag: none;
+}
+
+/* Boutons de navigation latéraux ◂ ▸ */
+.kta-photo-viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 64px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, transform 0.12s;
+  z-index: 2;
+}
+
+.kta-photo-viewer-nav:hover {
+  background: rgba(244, 197, 66, 0.4);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.kta-photo-viewer-nav-prev {
+  left: 12px;
+}
+
+.kta-photo-viewer-nav-next {
+  right: 12px;
+}
+
+/* Hint en bas de l'écran (PC + tablette, caché sur petit mobile pour
+   économiser la hauteur) */
+.kta-photo-viewer-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 16px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%);
+  color: #c8d0e0;
+  font-size: 12px;
+  text-align: center;
+  font-style: italic;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Sur mobile en portrait : flèches plus compactes pour ne pas masquer
+   trop la photo */
+@media (max-width: 480px) {
+  .kta-photo-viewer-nav {
+    width: 36px;
+    height: 56px;
+    font-size: 22px;
+  }
+  .kta-photo-viewer-nav-prev { left: 6px; }
+  .kta-photo-viewer-nav-next { right: 6px; }
+  .kta-photo-viewer-hint {
+    font-size: 11px;
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Landscape mobile très bas : on cache le hint pour gagner de la place */
+@media (max-height: 400px) and (orientation: landscape) {
+  .kta-photo-viewer-hint { display: none; }
+}
+
+/* Curseur grab quand zoomé (set dynamiquement par le JS aussi mais
+   fallback CSS au cas où). Le JS prend la main pour distinguer grab/grabbing. */
+.kta-photo-viewer-img[style*="scale(1)"] {
+  cursor: default;
 }
 

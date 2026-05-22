@@ -160,6 +160,11 @@
        le module (l'affichage de l'overlay est déclenché par main.js après
        le splash). -->
   <script src="js/unlockGate.js"></script>
+  <!-- 🆕 v1.9.4 : code d'accès local optionnel (PIN + biométrie). Chargé
+       APRÈS unlockGate.js car le PIN est une couche par-dessus la barrière
+       communautaire. Doit être chargé avant main.js pour que la détection
+       isEnabled() au boot fonctionne. -->
+  <script src="js/pinLock.js"></script>
 
   <!-- CHARGEUR DE PLAN (masqué par défaut, affiché si pas de plan serveur) -->
   <div id="planLoaderOverlay" style="display:none;">
@@ -543,6 +548,27 @@
           </label>
         </div>
 
+        <!-- 🔐 Code d'accès local (v1.9.4 — KARMA 7:b "loader uniquement").
+             Couche perso optionnelle par-dessus UnlockGate communautaire.
+             Cf. js/pinLock.js pour le moteur (hash SHA-256 + WebAuthn
+             biométrie + lockout 5 tentatives). UI d'activation/modif/désactivation
+             gérée par le script inline plus bas (window._pinSetupHandlers). -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">🔐 Code d'accès local</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+            <strong>Optionnel</strong>. Verrouille l'app par PIN 4-6 chiffres à chaque boot.
+            <strong>Face ID / Touch ID</strong> supporté si ton appareil le permet (fallback PIN sinon).
+            <br>⚠️ <strong>Pas de recovery</strong> en cas d'oubli → reset complet requis. C'est une barrière UX, pas un chiffrement des données.
+          </p>
+          <div id="loaderPinStatus" class="kta-loader-pin-status">
+            <span class="kta-loader-pin-status-icon" id="loaderPinStatusIcon">○</span>
+            <span class="kta-loader-pin-status-text" id="loaderPinStatusText">Chargement…</span>
+          </div>
+          <div class="kta-loader-pin-actions" id="loaderPinActions">
+            <!-- Boutons remplis dynamiquement selon l'état (activé / désactivé) -->
+          </div>
+        </div>
+
         <!-- 🔄 Force mise à jour douce — équivalent du "reset lite".
              Purge uniquement le cache Service Worker (assets HTTP) puis
              reload → l'app récupère la dernière version sans toucher aux
@@ -707,6 +733,10 @@
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->
   <script src="js/photos.js"></script>
+  <!-- 🆕 v1.9.3-B1c : viewer photo plein écran (pinch-zoom + pan + swipe).
+       Self-contained, exposé via window.MyKTAMapPhotoViewer. Doit charger
+       APRÈS photos.js (pas de dep stricte mais cohérence d'ordre). -->
+  <script src="js/photoViewer.js"></script>
   <script src="js/exporter.js"></script>
   <script src="js/tableEditor.js"></script>
   <script src="js/searchPoints.js"></script>
@@ -1846,10 +1876,26 @@
       const configClose = document.getElementById("loaderConfigClose");
       function _ouvrirLoaderConfig() {
         if (configModal) configModal.style.display = "flex";
+        // 🆕 v1.10.0-hotfix1 : si on est in-app (plan chargé, loader masqué),
+        // on doit aussi afficher le loader pour que la modale Config soit
+        // visible dans son contexte (sinon elle apparaît au-dessus de la
+        // map et l'user ferme → l'app reste en mode map sans contexte).
+        const loaderOverlay = document.getElementById("planLoaderOverlay");
+        if (loaderOverlay && loaderOverlay.style.display === "none") {
+          loaderOverlay.style.display = "flex";
+        }
       }
       function _fermerLoaderConfig() {
         if (configModal) configModal.style.display = "none";
       }
+      // 🆕 v1.10.0-hotfix1 (KARMA "si on clique sur activer maintenant, ca
+      // ferme juste le modal mais ouvre pas le formulaire") : expose les
+      // helpers sur window pour que les modules externes (pinLock.js, etc.)
+      // puissent ouvrir/fermer la modale Configuration. Avant : functions
+      // locales au scope du <script> inline → window._ouvrirLoaderConfig
+      // était undefined.
+      window._ouvrirLoaderConfig = _ouvrirLoaderConfig;
+      window._fermerLoaderConfig = _fermerLoaderConfig;
       if (configBtn && configModal) {
         configBtn.addEventListener("click", _ouvrirLoaderConfig);
       }
@@ -2099,6 +2145,312 @@
           });
         });
       }
+
+      // ═══════════════════════════════════════════════════════════════
+      // 🔐 CODE D'ACCÈS LOCAL (v1.9.4 — PIN/biométrie optionnel)
+      // ═══════════════════════════════════════════════════════════════
+      // Affichage de l'état + boutons d'activation/modif/désactivation.
+      // Le moteur (hash + WebAuthn + lockout + Gate UI) est dans
+      // js/pinLock.js — ici on ne fait que les flows UI de configuration.
+      //
+      // Cohérent KARMA 7:b "loader uniquement" — la modale ⚙️ Réglages
+      // map mode n'expose PAS cette section (pour ne pas surcharger les
+      // réglages in-app focus PAR PLAN).
+      function _majPinStatusUI() {
+        const iconEl    = document.getElementById("loaderPinStatusIcon");
+        const textEl    = document.getElementById("loaderPinStatusText");
+        const actionsEl = document.getElementById("loaderPinActions");
+        if (!iconEl || !textEl || !actionsEl) return;
+
+        if (!window.MyKTAMapPinLock) {
+          iconEl.textContent = "⚠️";
+          textEl.textContent = "Module PIN indisponible";
+          actionsEl.innerHTML = "";
+          return;
+        }
+
+        const enabled = window.MyKTAMapPinLock.isEnabled();
+        const hasBio  = window.MyKTAMapPinLock.hasBiometric();
+
+        if (enabled) {
+          iconEl.textContent = "✅";
+          iconEl.style.color = "#6ee287";
+          textEl.innerHTML = "Code d'accès <strong>activé</strong>" + (hasBio ? " · 🤳 biométrie configurée" : "");
+          actionsEl.innerHTML =
+            '<button class="loader-btn-secondary kta-loader-pin-btn-modif" type="button" id="loaderPinModifBtn">' +
+              '✏️ Modifier le code' +
+            '</button>' +
+            '<button class="loader-btn-secondary loader-btn-danger" type="button" id="loaderPinDisableBtn">' +
+              '🔓 Désactiver' +
+            '</button>';
+          document.getElementById("loaderPinModifBtn").addEventListener("click", _lancerModificationPin);
+          document.getElementById("loaderPinDisableBtn").addEventListener("click", _lancerDesactivationPin);
+        } else {
+          iconEl.textContent = "○";
+          iconEl.style.color = "#8892a4";
+          textEl.innerHTML = "Code d'accès <strong>désactivé</strong>";
+          actionsEl.innerHTML =
+            '<button class="loader-btn-secondary" type="button" id="loaderPinEnableBtn" style="background:rgba(244,197,66,0.15); border-color:rgba(244,197,66,0.4); color:#f4c542;">' +
+              '🔐 Activer le code d\'accès' +
+            '</button>';
+          document.getElementById("loaderPinEnableBtn").addEventListener("click", _lancerActivationPin);
+        }
+      }
+
+      // Helper Promise-based : demande un PIN à l'user via une modale custom.
+      // Retourne Promise<string|null> (null si annulé).
+      function _demanderPin(titre, message, confirmLabel) {
+        return new Promise(function(resolve) {
+          const overlay = document.createElement("div");
+          overlay.className = "kta-modal-overlay";
+          overlay.innerHTML =
+            '<div class="kta-modal" style="max-width:380px;">' +
+              '<div class="kta-modal-icon">🔐</div>' +
+              '<div class="kta-modal-titre">' + titre + '</div>' +
+              '<div class="kta-modal-texte">' + message + '</div>' +
+              '<input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" ' +
+                'maxlength="6" id="ktaPinPromptInput" ' +
+                'style="display:block; width:100%; margin:14px 0 6px; padding:12px; font-size:22px; ' +
+                'text-align:center; letter-spacing:8px; background:#0a0d18; border:2px solid rgba(244,197,66,0.3); ' +
+                'border-radius:8px; color:#f4c542; font-family:monospace; box-sizing:border-box;" placeholder="••••">' +
+              '<div class="kta-modal-actions" style="margin-top:10px;">' +
+                '<button class="kta-btn kta-btn-ghost"   id="ktaPinPromptCancel">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary" id="ktaPinPromptOk">' + (confirmLabel || "Valider") + '</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+          const input  = document.getElementById("ktaPinPromptInput");
+          const okBtn  = document.getElementById("ktaPinPromptOk");
+          const cancel = document.getElementById("ktaPinPromptCancel");
+          setTimeout(function() { if (input) input.focus(); }, 50);
+          function _close(val) {
+            overlay.remove();
+            document.removeEventListener("keydown", _onKey);
+            resolve(val);
+          }
+          function _onKey(e) {
+            if (e.key === "Escape") { e.preventDefault(); _close(null); }
+            else if (e.key === "Enter") { e.preventDefault(); _close(input.value); }
+          }
+          document.addEventListener("keydown", _onKey);
+          okBtn.addEventListener("click", function() { _close(input.value); });
+          cancel.addEventListener("click", function() { _close(null); });
+          // Filtre l'input : que des chiffres
+          input.addEventListener("input", function() {
+            input.value = input.value.replace(/[^0-9]/g, "").slice(0, 6);
+          });
+        });
+      }
+
+      // 🆕 v1.10.0-hotfix5 (KARMA "au lieu Annuler mettre Non plus clair") :
+      // helper Promise-based pour une question Oui/Non charte (remplace
+      // le confirm() natif qui affiche "OK/Annuler"). Retourne true=oui,
+      // false=non (Échap, click backdrop, ou bouton Non).
+      function _demanderOuiNon(titre, message, ouiLabel, nonLabel, icon) {
+        return new Promise(function(resolve) {
+          const overlay = document.createElement("div");
+          overlay.className = "kta-modal-overlay";
+          overlay.innerHTML =
+            '<div class="kta-modal" style="max-width:420px;">' +
+              '<div class="kta-modal-icon">' + (icon || "❓") + '</div>' +
+              '<div class="kta-modal-titre">' + titre + '</div>' +
+              '<div class="kta-modal-texte">' + message + '</div>' +
+              '<div class="kta-modal-actions" style="margin-top:14px;">' +
+                '<button class="kta-btn kta-btn-ghost"   id="ktaYesNoCancel">' + (nonLabel || "Non") + '</button>' +
+                '<button class="kta-btn kta-btn-primary" id="ktaYesNoOk">'    + (ouiLabel || "Oui") + '</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+          function _close(val) {
+            overlay.remove();
+            document.removeEventListener("keydown", _onKey);
+            resolve(val);
+          }
+          function _onKey(e) {
+            if (e.key === "Escape") { e.preventDefault(); _close(false); }
+            else if (e.key === "Enter") { e.preventDefault(); _close(true); }
+          }
+          document.addEventListener("keydown", _onKey);
+          document.getElementById("ktaYesNoOk").addEventListener("click", function() { _close(true); });
+          document.getElementById("ktaYesNoCancel").addEventListener("click", function() { _close(false); });
+          overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(false); });
+        });
+      }
+
+      // Flow d'activation
+      async function _lancerActivationPin() {
+        const pin1 = await _demanderPin(
+          "Définir le code d'accès",
+          "Choisis un code de <strong>4 à 6 chiffres</strong>. " +
+          "<br><strong>Note-le bien</strong> : aucune récupération possible en cas d'oubli.",
+          "Suivant"
+        );
+        if (!pin1) return;
+        // Validation basique côté UI (le backend re-valide)
+        if (!/^\d{4,6}$/.test(pin1)) {
+          alert("Le code doit faire 4 à 6 chiffres.");
+          return;
+        }
+        const pin2 = await _demanderPin(
+          "Confirme ton code",
+          "Saisis ton code une seconde fois pour confirmer.",
+          "Confirmer"
+        );
+        if (!pin2) return;
+        if (pin1 !== pin2) {
+          alert("❌ Les codes ne correspondent pas. Réessaie.");
+          return;
+        }
+
+        // Check biométrie disponible
+        // 🆕 v1.10.0-hotfix5 (KARMA) : modale Oui/Non charte au lieu du
+        // confirm() natif qui affichait "OK / Annuler" (peu clair).
+        let useBio = false;
+        try {
+          const bioSupported = await window.MyKTAMapPinLock.isBiometricSupported();
+          if (bioSupported) {
+            useBio = await _demanderOuiNon(
+              "Activer la biométrie ?",
+              "🤳 Veux-tu aussi activer <strong>Face ID / Touch ID</strong> ?" +
+              "<br><br>Le PIN reste actif en fallback si la biométrie échoue ou n'est pas disponible.",
+              "Oui, activer", "Non, PIN seul", "🤳"
+            );
+          }
+        } catch(e) {
+          console.warn("[PinSetup] check biométrie :", e);
+        }
+
+        // Activation
+        try {
+          await window.MyKTAMapPinLock.enable(pin1, useBio);
+          alert("✅ Code d'accès activé." + (useBio ? "\n🤳 Biométrie configurée." : ""));
+        } catch(e) {
+          if (e && e.pinActivatedWithoutBiometric) {
+            // Cas partiel : PIN OK mais biométrie a échoué
+            alert("✅ Code d'accès activé.\n⚠️ Biométrie échouée : " + e.message);
+          } else {
+            console.error("[PinSetup] enable :", e);
+            alert("❌ Erreur lors de l'activation : " + (e.message || e));
+            return;
+          }
+        }
+        _majPinStatusUI();
+      }
+
+      // Flow de modification (9:b — biométrie OU ancien PIN → nouveau)
+      async function _lancerModificationPin() {
+        // Vérification identité : tentative biométrie d'abord si dispo, sinon PIN
+        let unlocked = false;
+        if (window.MyKTAMapPinLock.hasBiometric()) {
+          try {
+            unlocked = await window.MyKTAMapPinLock.unlockWithBiometric();
+          } catch(e) {
+            console.warn("[PinSetup] biométrie :", e);
+          }
+        }
+        if (!unlocked) {
+          const oldPin = await _demanderPin(
+            "Modifier le code",
+            "Saisis ton <strong>code actuel</strong> pour autoriser le changement.",
+            "Vérifier"
+          );
+          if (!oldPin) return;
+          try {
+            unlocked = await window.MyKTAMapPinLock.unlock(oldPin);
+          } catch(e) {
+            alert("❌ " + (e.message || e));
+            return;
+          }
+          if (!unlocked) {
+            const remaining = window.MyKTAMapPinLock.getRemainingAttempts();
+            alert("❌ Code incorrect. " + remaining + " tentative(s) restante(s).");
+            return;
+          }
+        }
+
+        // Saisie du nouveau code (2 fois)
+        const newPin1 = await _demanderPin(
+          "Nouveau code",
+          "Choisis ton <strong>nouveau code</strong> de 4 à 6 chiffres.",
+          "Suivant"
+        );
+        if (!newPin1) return;
+        if (!/^\d{4,6}$/.test(newPin1)) {
+          alert("Le code doit faire 4 à 6 chiffres.");
+          return;
+        }
+        const newPin2 = await _demanderPin(
+          "Confirme le nouveau code",
+          "Saisis le nouveau code une seconde fois.",
+          "Confirmer"
+        );
+        if (!newPin2) return;
+        if (newPin1 !== newPin2) {
+          alert("❌ Les codes ne correspondent pas.");
+          return;
+        }
+
+        try {
+          await window.MyKTAMapPinLock.changePin(newPin1);
+          alert("✅ Code d'accès modifié.");
+        } catch(e) {
+          console.error("[PinSetup] changePin :", e);
+          alert("❌ Erreur : " + (e.message || e));
+          return;
+        }
+        _majPinStatusUI();
+      }
+
+      // Flow de désactivation
+      async function _lancerDesactivationPin() {
+        // 🆕 v1.10.0-hotfix5 : modale Oui/Non charte au lieu du confirm() natif
+        const okDesact = await _demanderOuiNon(
+          "Désactiver le code d'accès ?",
+          "L'app ne demandera plus de code au démarrage.<br><br>" +
+          "Si tu changes d'avis, tu pourras réactiver à tout moment depuis " +
+          "<strong>⚙️ Configuration → 🔐 Code d'accès local</strong>.",
+          "Oui, désactiver", "Non, garder",
+          "🔓"
+        );
+        if (!okDesact) return;
+
+        // Vérification identité (biométrie ou PIN)
+        let unlocked = false;
+        if (window.MyKTAMapPinLock.hasBiometric()) {
+          try {
+            unlocked = await window.MyKTAMapPinLock.unlockWithBiometric();
+          } catch(e) { console.warn("[PinSetup] biométrie :", e); }
+        }
+        if (!unlocked) {
+          const pin = await _demanderPin(
+            "Désactiver le code",
+            "Saisis ton code pour confirmer la désactivation.",
+            "Désactiver"
+          );
+          if (!pin) return;
+          try {
+            await window.MyKTAMapPinLock.disable(pin);
+            alert("🔓 Code d'accès désactivé.");
+            _majPinStatusUI();
+            return;
+          } catch(e) {
+            console.error("[PinSetup] disable :", e);
+            alert("❌ " + (e.message || e));
+            return;
+          }
+        }
+
+        // Si déverrouillé via biométrie → on peut désactiver directement
+        // (la disable() backend reverif le PIN, donc on contourne en
+        // appelant reset() après check biométrie OK).
+        // ⚠️ Sécurité OK car la biométrie EST la preuve d'identité.
+        window.MyKTAMapPinLock.reset();
+        alert("🔓 Code d'accès désactivé (validé par biométrie).");
+        _majPinStatusUI();
+      }
+
+      // Initialisation : update au load de la modale Configuration
+      _majPinStatusUI();
 
       // === BOUTON "📋 AFFICHER LES LOGS" (v1.7.3 suite KARMA) ===
       // Permet de consulter le buffer des logs capturés par debug.js sans

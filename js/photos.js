@@ -72,7 +72,13 @@
   const STORE      = "photos";
 
   // Limites (anti-OOM, anti-quota)
-  const MAX_PHOTOS_PER_POINT  = 10;
+  // 🆕 v1.9.3-B1b (KARMA "7: 5 par point") : abaissé de 10 → 5 photos par POI.
+  // 5 = compromis ergonomie (l'user voit toutes les photos en 1 grille 3 cols
+  // sans scroll, soit 1 ligne complète + 1 photo seule sur la 2e ligne) +
+  // capacité (5 × 500 Ko ≈ 2.5 Mo par point, raisonnable sur quota mobile
+  // de ~50-100 Mo IDB). Si retour terrain veut plus → bump ici + adapter
+  // compteur "N/5" et messages dans editor.js.
+  const MAX_PHOTOS_PER_POINT  = 5;
   const COMPRESS_MAX_DIMENSION = 1920;  // px côté long après compression
   const COMPRESS_JPEG_QUALITY  = 0.85;  // qualité JPEG (0-1)
 
@@ -466,6 +472,105 @@
     });
   }
 
+  // ============================================================
+  // RESTORE D'UN RECORD COMPLET (v1.9.3-B1d, pour import session ZIP)
+  // ============================================================
+  // Cas d'usage : l'user importe un ZIP de session qui contient des
+  // photos précédemment exportées avec leurs photoIds. On veut conserver
+  // ces ids pour que les `point.photos: [photoId, ...]` continuent de
+  // pointer sur les bons records.
+  //
+  // Contrairement à addPhoto qui génère un nouvel id et compresse, ce
+  // helper :
+  //   - Préserve l'id du record (donc l'index by_plan_point reste cohérent)
+  //   - Bypass la compression (le blob est déjà au format final)
+  //   - Bypass le quota MAX_PHOTOS_PER_POINT (le record vient d'un export
+  //     déjà accepté par l'user au moment de la création)
+  //   - Utilise store.put → upsert (overwrite si id existe déjà)
+  //
+  // Le `record` doit contenir au moins : {id, planId, pointId, blob}. Les
+  // autres champs (mime, size, createdAt, meta) sont passés si présents,
+  // sinon valeurs par défaut.
+  function restorePhoto(record) {
+    if (!record || !record.id || !record.planId || !record.pointId || !record.blob) {
+      return Promise.reject(new Error("restorePhoto : record incomplet"));
+    }
+    const rec = {
+      id:        String(record.id),
+      planId:    String(record.planId),
+      pointId:   String(record.pointId),
+      blob:      record.blob,
+      mime:      record.mime      || (record.blob.type) || "image/jpeg",
+      size:      record.size      || record.blob.size || 0,
+      createdAt: record.createdAt || Date.now(),
+      meta:      record.meta      || {}
+    };
+    return _tx("readwrite", function(store) {
+      return _reqPromise(store.put(rec)).then(function() {
+        return rec.id;
+      });
+    });
+  }
+
+  // ============================================================
+  // RENAME / MIGRATION D'UN POINT ID (v1.9.3-B1b)
+  // ============================================================
+  // Cas d'usage : l'user édite un point qui a des photos et change son
+  // nom. Comme `point.id === point.nom` dans l'éditeur (rétro-compat
+  // avec tout le reste de l'app), changer le nom = changer l'id = perdre
+  // l'association avec les photos IDB indexées sous l'ancien id.
+  //
+  // Solution : re-tagger en place chaque record IDB du point en swappant
+  // pointId via cursor (atomique dans 1 transaction readwrite). Les
+  // photoIds individuels ne changent PAS — seul le pointId est mis à
+  // jour, donc tout viewer qui aurait gardé un photoId en mémoire
+  // continue de marcher.
+  //
+  // Retourne le nombre de records migrés (0 si rien à faire).
+  function renamePointId(planId, oldPointId, newPointId) {
+    if (!planId || !oldPointId || !newPointId) {
+      return Promise.resolve(0);
+    }
+    if (oldPointId === newPointId) return Promise.resolve(0);
+
+    return _tx("readwrite", function(store) {
+      const idx = store.index("by_plan_point");
+      const range = IDBKeyRange.only([String(planId), String(oldPointId)]);
+      return new Promise(function(resolve, reject) {
+        let count = 0;
+        const req = idx.openCursor(range);
+        req.onsuccess = function(ev) {
+          const cursor = ev.target.result;
+          if (!cursor) {
+            resolve(count);
+            return;
+          }
+          const rec = cursor.value;
+          rec.pointId = String(newPointId);
+          const put = cursor.update(rec);
+          put.onsuccess = function() {
+            count++;
+            cursor.continue();
+          };
+          put.onerror = function() {
+            console.warn("[Photos] renamePointId : update échoué pour", rec.id);
+            cursor.continue();
+          };
+        };
+        req.onerror = function() {
+          reject(req.error);
+        };
+      });
+    }).then(function(n) {
+      if (n > 0) console.log("[Photos] renamePointId :", n, "photos migrées",
+                              oldPointId, "→", newPointId);
+      return n;
+    }).catch(function(e) {
+      console.warn("[Photos] renamePointId erreur :", e);
+      return 0;
+    });
+  }
+
   function clearAll() {
     return _tx("readwrite", function(store) {
       return _reqPromise(store.clear()).then(function() {
@@ -524,6 +629,8 @@
     deletePhoto:             deletePhoto,
     deletePhotosForPoint:    deletePhotosForPoint,
     deletePhotosForPlan:     deletePhotosForPlan,
+    renamePointId:           renamePointId,
+    restorePhoto:            restorePhoto,
     clearAll:                clearAll,
     getStorageInfo:          getStorageInfo,
     // Constantes exposées pour l'UI (B1.b) qui peut afficher les limites

@@ -21,6 +21,8 @@
   let _convDirection      = "ed2data"; // "ed2data" (session→data) | "data2ed" (data→session)
   let _convUploadedJson   = null;      // JSON parsé du fichier uploadé (mode data2ed)
   let _convUploadedName   = "";        // nom du fichier uploadé (mode data2ed)
+  let _convUploadedPhotos = null;      // 🆕 v1.9.3-B1d++ : Array<{id, pointId, mime, size, blob}>
+                                       // si l'input est un ZIP data layer avec photos/, sinon null
 
   // ========== STYLES ==========
   function _injecterStyles() {
@@ -537,9 +539,24 @@
     const c = document.getElementById("kta-ses-content");
     if (!c) return;
 
-    if (_activeTab === "full")        c.innerHTML = _renderFull();
-    else if (_activeTab === "advanced")   c.innerHTML = _renderAdvanced();
-    else if (_activeTab === "conversion") c.innerHTML = _renderConversion();
+    if (_activeTab === "full") {
+      c.innerHTML = _renderFull();
+      // 🆕 v1.9.3-B1d : remplit le compteur photos en async (lecture IDB).
+      // Si aucune photo trouvée OU module indispo, la section reste cachée.
+      setTimeout(_majCompteurPhotosFull, 0);
+    }
+    else if (_activeTab === "advanced") {
+      c.innerHTML = _renderAdvanced();
+      // 🆕 v1.9.3-B1d+ : remplit le compteur photos en async (lecture IDB).
+      setTimeout(_majCompteurPhotosAdvanced, 0);
+    }
+    else if (_activeTab === "conversion") {
+      c.innerHTML = _renderConversion();
+      // 🆕 v1.9.3-B1d++ : remplit le compteur photos pour le sens
+      // session→data (skip si on est en sens data→session, la section
+      // n'est pas dans le DOM dans ce cas).
+      setTimeout(_majCompteurPhotosConvEd2Data, 0);
+    }
     else if (_activeTab === "kmz") {
       c.innerHTML = _renderKmz();
       // 🌍 v169 (Karma_dev) : binding handlers spécifique KMZ après injection
@@ -548,9 +565,72 @@
     }
   }
 
+  // 🆕 v1.9.3-B1d : compteur photos async pour la section "📸 Photos" de
+  // l'onglet Full. Section restée cachée si aucune photo (ou si module
+  // MyKTAMapPhotos indispo). Compteur format "(N · X Mo)".
+  function _majCompteurPhotosFull() {
+    const section = document.getElementById("full_photos_section");
+    const counter = document.getElementById("full_photos_count");
+    const cb      = document.getElementById("full_photos");
+    if (!section || !counter) return;
+    _collecterPhotosPlan(null).then(function(pack) {
+      if (pack.photos.length === 0) {
+        // Aucune photo → on cache la section (l'export reste JSON pur).
+        section.style.display = "none";
+        if (cb) cb.checked = false;
+        return;
+      }
+      section.style.display = "block";
+      counter.textContent = "(" + pack.photos.length + " · " + _formatBytes(pack.totalSize) + ")";
+    });
+  }
+
+  // 🆕 v1.9.3-B1d+ : compteur photos async pour la section "📸 Photos" de
+  // l'onglet Avancé. Affiche le compteur GLOBAL du plan (toutes photos).
+  // Le filtrage par points effectivement exportés se fait à la save (cf.
+  // _exportAdvanced). Le compteur indique donc "max" — il pourra être plus
+  // petit selon les filtres tag à la save.
+  function _majCompteurPhotosAdvanced() {
+    const section = document.getElementById("adv_photos_section");
+    const counter = document.getElementById("adv_photos_count");
+    const cb      = document.getElementById("adv_photos");
+    if (!section || !counter) return;
+    _collecterPhotosPlan(null).then(function(pack) {
+      if (pack.photos.length === 0) {
+        section.style.display = "none";
+        if (cb) cb.checked = false;
+        return;
+      }
+      section.style.display = "block";
+      counter.textContent = "(max " + pack.photos.length + " · " + _formatBytes(pack.totalSize) + ")";
+    });
+  }
+
+  // 🆕 v1.9.3-B1d++ : compteur photos pour la conversion session→data layer.
+  // Section auto-cachée si 0 photo. Affichage "max N" : le filtre par
+  // points/tags peut réduire le nombre final à la conversion.
+  function _majCompteurPhotosConvEd2Data() {
+    const section = document.getElementById("conv_ed2data_photos_section");
+    const counter = document.getElementById("conv_ed2data_photos_count");
+    const cb      = document.getElementById("conv_ed2data_photos");
+    if (!section || !counter) return;
+    _collecterPhotosPlan(null).then(function(pack) {
+      if (pack.photos.length === 0) {
+        section.style.display = "none";
+        if (cb) cb.checked = false;
+        return;
+      }
+      section.style.display = "block";
+      counter.textContent = "(max " + pack.photos.length + " · " + _formatBytes(pack.totalSize) + ")";
+    });
+  }
+
   // ---------- ONGLET FULL ----------
   function _renderFull() {
     const d = _compter();
+    // 🆕 v1.9.3-B1d : section 📸 Photos. Le compteur exact est rempli en
+    // async après render via _kta_majCompteurPhotosFull (cf. _afficherModale).
+    // En attendant, on affiche "Chargement…" pour ne pas bloquer le render.
     return `
       <div class="kta-ses-intro">
         Exporte la session complète pour pouvoir la réimporter et reprendre votre travail.
@@ -560,6 +640,20 @@
         <div>✏️ <strong>${d.points.length}</strong> point${d.points.length > 1 ? "s" : ""} ajouté${d.points.length > 1 ? "s" : ""}</div>
         <div>🛣️ <strong>${d.roads.length}</strong> tracé${d.roads.length > 1 ? "s" : ""}</div>
         <div>⬛ <strong>${d.zones.length}</strong> zone${d.zones.length > 1 ? "s" : ""}</div>
+      </div>
+
+      <div class="kta-ses-photos-section" id="full_photos_section" style="display:none;">
+        <label class="kta-ses-cb-row" style="margin-top:8px;">
+          <input type="checkbox" id="full_photos" checked>
+          <span>
+            📸 Inclure les photos attachées aux points
+            <span class="kta-ses-count" id="full_photos_count">(chargement…)</span>
+          </span>
+        </label>
+        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+          Si coché ET au moins 1 photo : l'export sera un <code>.zip</code> contenant <code>session.json</code> + <code>photos/</code>.
+          Si décoché OU 0 photo : export <code>.json</code> classique.
+        </p>
       </div>
     `;
   }
@@ -650,6 +744,25 @@
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
           <span>🧭 Position du tracker ${d.trackerPath.length > 1 ? '<span class="kta-ses-count">(+ tracé ' + d.trackerPath.length + ' pts)</span>' : ''}</span>
         </label>
+      </div>
+
+      <!-- 🆕 v1.9.3-B1d+ : section 📸 Photos (auto-cachée si 0 photo, peuplée
+           en async via _majCompteurPhotosAdvanced après render). Filtrée
+           selon les points effectivement exportés à la save. -->
+      <div class="kta-ses-photos-section" id="adv_photos_section" style="display:none;">
+        <div class="kta-ses-section-title">📸 Photos</div>
+        <label class="kta-ses-cb-row">
+          <input type="checkbox" id="adv_photos" checked>
+          <span>
+            Inclure les photos attachées aux points exportés
+            <span class="kta-ses-count" id="adv_photos_count">(chargement…)</span>
+          </span>
+        </label>
+        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+          Si coché ET au moins 1 photo attachée à un point exporté : la sortie sera un <code>.zip</code> (qu'on soit en mode single
+          ou multi-fichiers). Sinon comportement habituel <code>.json</code> / <code>.zip multi</code>.
+          <br>Le filtrage des photos suit le filtre des points (tags décochés → leurs photos sont aussi exclues).
+        </p>
       </div>
 
       <div class="kta-ses-section">
@@ -820,6 +933,25 @@
         ${structuresTypesHtml}
       </div>
 
+      <!-- 🆕 v1.9.3-B1d++ : section 📸 Photos pour la conversion session→data.
+           Auto-cachée si 0 photo, peuplée en async via _majCompteurPhotosConvEd2Data.
+           Filtrée selon les points effectivement convertis (cf. _exportConvSession2Data). -->
+      <div class="kta-ses-photos-section" id="conv_ed2data_photos_section" style="display:none;">
+        <div class="kta-ses-section-title">📸 Photos</div>
+        <label class="kta-ses-cb-row">
+          <input type="checkbox" id="conv_ed2data_photos" checked>
+          <span>
+            Inclure les photos attachées aux points convertis
+            <span class="kta-ses-count" id="conv_ed2data_photos_count">(chargement…)</span>
+          </span>
+        </label>
+        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+          Si coché ET au moins 1 photo : la sortie sera forcément un <code>.zip</code> (même en granularité Basique
+          avec 1 seul fichier — il faut un container pour packer les photos). Sinon comportement habituel
+          <code>.json</code> simple ou <code>.zip</code> multi-fichiers.
+        </p>
+      </div>
+
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">🎯 Granularité</div>
         <label class="kta-ses-radio-row">
@@ -840,12 +972,18 @@
     let stats = null;
 
     if (_convUploadedJson) {
-      const points = Array.isArray(_convUploadedJson.data)         ? _convUploadedJson.data
-                   : Array.isArray(_convUploadedJson.editorPoints) ? _convUploadedJson.editorPoints
-                   : [];
-      const roads  = Array.isArray(_convUploadedJson.roads) ? _convUploadedJson.roads : [];
-      const zones  = Array.isArray(_convUploadedJson.zones) ? _convUploadedJson.zones : [];
-      stats = { points: points.length, roads: roads.length, zones: zones.length };
+      const points     = Array.isArray(_convUploadedJson.data)         ? _convUploadedJson.data
+                       : Array.isArray(_convUploadedJson.editorPoints) ? _convUploadedJson.editorPoints
+                       : [];
+      const roads      = Array.isArray(_convUploadedJson.roads)      ? _convUploadedJson.roads      : [];
+      const zones      = Array.isArray(_convUploadedJson.zones)      ? _convUploadedJson.zones      : [];
+      const structures = Array.isArray(_convUploadedJson.structures) ? _convUploadedJson.structures : [];
+      // 🆕 v1.9.3-B1d++ : compteur photos si ZIP data layer avec photos/
+      const nbPhotos = (_convUploadedPhotos && _convUploadedPhotos.length) || 0;
+      stats = { points: points.length, roads: roads.length, zones: zones.length, structures: structures.length, photos: nbPhotos };
+      const photosBadge = nbPhotos > 0
+        ? '<div><strong style="color:#f4c542;">📸 ' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? "s" : "") + '</div>'
+        : '';
       apercu = `
         <div class="kta-ses-section">
           <div class="kta-ses-section-title">📊 Aperçu du contenu détecté</div>
@@ -853,6 +991,8 @@
             <div>✏️ <strong>${stats.points}</strong> point${stats.points > 1 ? "s" : ""}</div>
             <div>🛣️ <strong>${stats.roads}</strong> tracé${stats.roads > 1 ? "s" : ""}</div>
             <div>⬛ <strong>${stats.zones}</strong> zone${stats.zones > 1 ? "s" : ""}</div>
+            <div>🏛️ <strong>${stats.structures}</strong> structure${stats.structures > 1 ? "s" : ""}</div>
+            ${photosBadge}
           </div>
         </div>
       `;
@@ -867,8 +1007,9 @@
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">📂 Fichier source</div>
         <div class="kta-conv-drop" id="kta-conv-d2e-drop">
-          <span id="kta-conv-d2e-drop-label">${_convUploadedName ? "✅ " + _escapeHtml(_convUploadedName) : "📂 Cliquer ou glisser un fichier .json"}</span>
-          <input type="file" id="kta-conv-d2e-file" accept=".json" style="display:none">
+          <span id="kta-conv-d2e-drop-label">${_convUploadedName ? "✅ " + _escapeHtml(_convUploadedName) : "📂 Cliquer ou glisser un fichier .json ou .zip"}</span>
+          <!-- 🆕 v1.9.3-B1d++ : accepte aussi .zip (data layer avec photos) -->
+          <input type="file" id="kta-conv-d2e-file" accept=".json,.zip,application/json,application/zip" style="display:none">
         </div>
       </div>
 
@@ -907,8 +1048,10 @@
         dropZone.addEventListener("drop", function(e) {
           e.preventDefault(); dropZone.classList.remove("dragover");
           const f = e.dataTransfer.files[0];
-          if (f && f.name.toLowerCase().endsWith(".json")) _chargerFichierData2Ed(f);
-          else if (erreurEl) { erreurEl.textContent = "❌ Le fichier doit être un .json"; erreurEl.style.display = "block"; }
+          // 🆕 v1.9.3-B1d++ : accepte aussi .zip (data layer avec photos)
+          const okExt = f && (/\.(json|zip)$/i).test(f.name);
+          if (okExt) _chargerFichierData2Ed(f);
+          else if (erreurEl) { erreurEl.textContent = "❌ Le fichier doit être un .json ou .zip"; erreurEl.style.display = "block"; }
         });
         fileInput.addEventListener("change", function() {
           if (fileInput.files[0]) _chargerFichierData2Ed(fileInput.files[0]);
@@ -953,8 +1096,22 @@
     syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_front-1", "conv_structures_front-2"]);
   }
 
-  // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
+  // Charge un fichier .json ou .zip pour le sens data2ed, parse + re-render
+  // l'onglet pour afficher l'aperçu.
+  // 🆕 v1.9.3-B1d++ : support des ZIP data layer (avec ou sans photos/).
+  //   - Si .json → flow historique (1 seul fichier data layer)
+  //   - Si .zip  → merge des multiples .json data layer + extraction photos/
   function _chargerFichierData2Ed(file) {
+    _convUploadedPhotos = null;  // reset pour éviter un état stale
+    const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip"
+                  || file.type === "application/x-zip-compressed";
+
+    if (isZip) {
+      _chargerZipData2Ed(file);
+      return;
+    }
+
+    // JSON pur — flow historique
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
@@ -970,18 +1127,153 @@
         _convUploadedName = file.name;
         _renderTab(); // re-render pour afficher l'aperçu + activer le bouton
       } catch(err) {
-        const erreurEl = document.getElementById("kta-conv-d2e-erreur");
-        if (erreurEl) {
-          erreurEl.textContent = "❌ " + (err.message || err);
-          erreurEl.style.display = "block";
-        }
-        _convUploadedJson = null;
-        _convUploadedName = "";
-        const dlBtn = document.getElementById("kta-ses-download");
-        if (dlBtn) dlBtn.disabled = true;
+        _showConvErreur("❌ " + (err.message || err));
       }
     };
     reader.readAsText(file);
+  }
+
+  // 🆕 v1.9.3-B1d++ : helper d'erreur conv data2ed (factorisé)
+  function _showConvErreur(msg) {
+    const erreurEl = document.getElementById("kta-conv-d2e-erreur");
+    if (erreurEl) {
+      erreurEl.textContent = msg;
+      erreurEl.style.display = "block";
+    }
+    _convUploadedJson = null;
+    _convUploadedName = "";
+    _convUploadedPhotos = null;
+    const dlBtn = document.getElementById("kta-ses-download");
+    if (dlBtn) dlBtn.disabled = true;
+  }
+
+  // 🆕 v1.9.3-B1d++ : charge un ZIP data layer (multi-fichiers ou pas) +
+  // extrait les photos si présentes.
+  // Format ZIP attendu :
+  //   ├── points.json | roads.json | zones.json | structure.json
+  //   │     (granularité basic)
+  //   OU
+  //   ├── points.json | roads_principal.json | roads_secondaire.json | ...
+  //   │     (granularité fine)
+  //   └── photos/
+  //        ├── _index.json
+  //        └── <photoId>.<ext>
+  function _chargerZipData2Ed(file) {
+    if (typeof JSZip === "undefined") {
+      _showConvErreur("JSZip n'est pas chargé — impossible de lire un ZIP.");
+      return;
+    }
+    JSZip.loadAsync(file).then(function(zip) {
+      // Étape 1 : merge tous les *.json à la racine en un seul objet
+      // _convUploadedJson. Chaque fichier individuel apporte ses propres
+      // champs (data, roads, zones, structures) qu'on cumule.
+      const merged = {
+        type: "devmap-data-merged",
+        version: "1.0",
+        data: [],
+        roads: [],
+        zones: [],
+        structures: []
+      };
+
+      const jsonFiles = [];
+      zip.forEach(function(relPath, entry) {
+        if (entry.dir) return;
+        if (relPath.indexOf("/") >= 0) return;  // ignore les sous-dossiers (photos/)
+        if (!/\.json$/i.test(relPath)) return;
+        jsonFiles.push(entry);
+      });
+
+      if (jsonFiles.length === 0) {
+        throw new Error("ZIP invalide : aucun fichier .json data layer à la racine.");
+      }
+
+      // Promise.all pour parse tous les JSON en parallèle
+      const parsePromises = jsonFiles.map(function(entry) {
+        return entry.async("string").then(function(txt) {
+          try {
+            return JSON.parse(txt);
+          } catch(e) {
+            console.warn("[Conv ZIP] " + entry.name + " : JSON invalide, ignoré :", e);
+            return null;
+          }
+        });
+      });
+
+      return Promise.all(parsePromises).then(function(parsedArr) {
+        parsedArr.forEach(function(json) {
+          if (!json || typeof json !== "object") return;
+          // Points : peut être dans .data ou .editorPoints
+          if (Array.isArray(json.data) && json.data.length > 0) {
+            merged.data = merged.data.concat(json.data);
+          } else if (Array.isArray(json.editorPoints) && json.editorPoints.length > 0) {
+            merged.data = merged.data.concat(json.editorPoints);
+          }
+          if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
+          if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
+          if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
+        });
+
+        const hasContent = merged.data.length > 0 || merged.roads.length > 0
+                        || merged.zones.length > 0 || merged.structures.length > 0;
+        if (!hasContent) {
+          throw new Error("ZIP data layer vide : aucun point/tracé/zone/structure trouvé.");
+        }
+
+        // Étape 2 : extraire les photos (si dossier photos/_index.json)
+        const indexFile = zip.file("photos/_index.json");
+        if (!indexFile) {
+          // Pas de photos → on s'arrête là
+          _convUploadedJson = merged;
+          _convUploadedName = file.name;
+          _convUploadedPhotos = null;
+          _renderTab();
+          return;
+        }
+        return indexFile.async("string").then(function(idxText) {
+          let idxObj;
+          try { idxObj = JSON.parse(idxText); }
+          catch(e) { throw new Error("photos/_index.json corrompu : " + e.message); }
+          const idxMap = (idxObj && idxObj.photos) || {};
+          const photoIds = Object.keys(idxMap);
+          if (photoIds.length === 0) {
+            _convUploadedJson = merged;
+            _convUploadedName = file.name;
+            _convUploadedPhotos = null;
+            _renderTab();
+            return;
+          }
+          // Charge chaque blob en parallèle
+          const blobPromises = photoIds.map(function(pid) {
+            const info = idxMap[pid] || {};
+            const filename = "photos/" + (info.file || (pid + ".jpg"));
+            const f = zip.file(filename);
+            if (!f) {
+              console.warn("[Conv ZIP] Photo manquante :", filename);
+              return null;
+            }
+            return f.async("blob").then(function(blob) {
+              return {
+                id:      pid,
+                pointId: info.pointId,
+                mime:    info.mime || blob.type || "image/jpeg",
+                size:    info.size || blob.size,
+                blob:    blob
+              };
+            });
+          });
+          return Promise.all(blobPromises).then(function(arr) {
+            _convUploadedJson = merged;
+            _convUploadedName = file.name;
+            _convUploadedPhotos = arr.filter(function(p) { return p !== null; });
+            _renderTab();
+          });
+        });
+      });
+    }).catch(function(err) {
+      console.error("[Conv ZIP]", err);
+      _showConvErreur("❌ " + (err.message || err));
+    });
   }
 
   // Re-render avec listeners post-DOM
@@ -1000,6 +1292,126 @@
     else if (_activeTab === "kmz")          _exportKmz();
   }
 
+  // ========================================================
+  // 📸 PHOTOS — helper de collecte pour les exports (v1.9.3-B1d)
+  // ========================================================
+  // Collecte TOUTES les photos en IDB pour le plan courant, avec leur
+  // pointId associé. Retourne Promise<{ photos: Array<{id, blob, mime, pointId, size}>,
+  // totalSize: number }>. Si MyKTAMapPhotos indispo ou aucune photo, retourne
+  // un payload vide (le caller continue normalement).
+  //
+  // Filtre optionnel `pointIdsSet` : ne retourne que les photos des points
+  // listés (utilisé pour les exports filtrés type Avancé qui ne prennent
+  // qu'une partie des points). Si null → toutes les photos du plan.
+  function _collecterPhotosPlan(pointIdsSet) {
+    if (!window.MyKTAMapPhotos) {
+      return Promise.resolve({ photos: [], totalSize: 0 });
+    }
+    const planId = window._currentLoadedPlanId || "default";
+    return window.MyKTAMapPhotos.getAllPhotosForPlan(planId).then(function(arr) {
+      const filtered = pointIdsSet
+        ? arr.filter(function(r) { return pointIdsSet.has(String(r.pointId)); })
+        : arr;
+      let totalSize = 0;
+      const photos = filtered.map(function(rec) {
+        totalSize += rec.size || (rec.blob && rec.blob.size) || 0;
+        return {
+          id:      rec.id,
+          blob:    rec.blob,
+          mime:    rec.mime || "image/jpeg",
+          pointId: rec.pointId,
+          size:    rec.size || (rec.blob && rec.blob.size) || 0
+        };
+      });
+      return { photos: photos, totalSize: totalSize };
+    }).catch(function(e) {
+      console.warn("[SessionExport] _collecterPhotosPlan erreur :", e);
+      return { photos: [], totalSize: 0 };
+    });
+  }
+
+  // Détermine l'extension de fichier depuis un mime type photo.
+  function _extDepuisMime(mime) {
+    if (!mime) return "jpg";
+    if (mime.indexOf("png")  >= 0) return "png";
+    if (mime.indexOf("webp") >= 0) return "webp";
+    if (mime.indexOf("gif")  >= 0) return "gif";
+    return "jpg";
+  }
+
+  // Format human-readable d'une taille en bytes (Ko / Mo).
+  function _formatBytes(n) {
+    if (!n || n < 0) return "0 Ko";
+    if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
+    return (n / (1024 * 1024)).toFixed(1) + " Mo";
+  }
+  // Expose pour les autres modules / l'UI (counter de la modale)
+  if (typeof window !== "undefined") window._kta_formatBytes = _formatBytes;
+
+  // Packe un payload session + des photos dans un ZIP. Retourne Promise<Blob>.
+  // Structure du ZIP :
+  //   /session.json                  ← payload session (format devmap-session)
+  //   /photos/<photoId>.<ext>        ← 1 fichier par photo (blob direct)
+  //   /photos/_index.json            ← mapping photoId → pointId pour le restore
+  //
+  // L'index est redondant avec le pointId qu'on PEUT mettre dans les records
+  // de editorPoints (cf. _enrichirPointsAvecPhotos), mais le garde séparé
+  // permet un restore robuste même si l'user édite session.json à la main
+  // et change des ids. Le restore IDB lit l'index en priorité.
+  function _packerZipSession(payload, photos, filename) {
+    if (typeof JSZip === "undefined") {
+      alert("JSZip n'est pas chargé — impossible de créer le ZIP avec photos.");
+      return Promise.reject(new Error("JSZip indisponible"));
+    }
+    const zip = new JSZip();
+    zip.file("session.json", JSON.stringify(payload, null, 2));
+
+    if (photos && photos.length > 0) {
+      const photosFolder = zip.folder("photos");
+      const idx = {};
+      photos.forEach(function(p) {
+        const ext = _extDepuisMime(p.mime);
+        const name = p.id + "." + ext;
+        photosFolder.file(name, p.blob);
+        idx[p.id] = {
+          pointId: p.pointId,
+          mime:    p.mime,
+          size:    p.size,
+          file:    name
+        };
+      });
+      photosFolder.file("_index.json", JSON.stringify({
+        version: 1,
+        photos:  idx
+      }, null, 2));
+    }
+
+    return zip.generateAsync({ type: "blob" }).then(function(blob) {
+      _telechargerBlob(blob, filename);
+      return blob;
+    });
+  }
+
+  // Marque chaque editorPoint avec un array `photos: [photoId, ...]` listant
+  // les photos qui lui sont rattachées. Permet un viewer "rapide" qui sait
+  // qu'un point a N photos sans relire l'index.
+  function _enrichirPointsAvecPhotos(points, photos) {
+    if (!points || !photos || photos.length === 0) return points;
+    const parPoint = {};
+    photos.forEach(function(p) {
+      const k = String(p.pointId);
+      if (!parPoint[k]) parPoint[k] = [];
+      parPoint[k].push(p.id);
+    });
+    return points.map(function(pt) {
+      const ids = parPoint[String(pt.id || "")];
+      if (!ids || ids.length === 0) return pt;
+      const clone = Object.assign({}, pt);
+      clone.photos = ids;
+      return clone;
+    });
+  }
+
   // ---------- FULL ----------
   function _exportFull() {
     const d = _compter();
@@ -1012,21 +1424,56 @@
       alert("Rien à exporter — la session est vide.");
       return;
     }
-    const session = {
-      type: "devmap-session",
-      version: "1.0",
-      date_export: new Date().toISOString(),
-      editorPoints: d.points,
-      roads:        d.roads,
-      zones:        d.zones,
-      // 🆕 v1.9.3-A1.a : structures (piliers + murs) dans l'export Full
-      structures:   d.structures || [],
-      // 🆕 v1.9.3-A1.b.2.5 : mesure dans l'export Full (objet avec points
-      // pour cohérence avec le format attendu en import).
-      measure:      { points: d.mesure || [] }
-    };
-    _telechargerJSON(session, _filename("session"));
-    _fermer();
+
+    // 🆕 v1.9.3-B1d : checkbox "Inclure les photos" (default ON si photos présentes).
+    const inclurePhotosCb = document.getElementById("full_photos");
+    const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
+
+    // Collecte des photos (async — on encapsule tout dans la chaîne Promise).
+    const photosPromise = inclurePhotos
+      ? _collecterPhotosPlan(null)
+      : Promise.resolve({ photos: [], totalSize: 0 });
+
+    photosPromise.then(function(pack) {
+      const photos = pack.photos;
+      // Enrichit les points avec leur liste de photoIds (pour viewer rapide
+      // et debug à la main du JSON par l'user).
+      const editorPointsEnriched = _enrichirPointsAvecPhotos(d.points, photos);
+
+      const session = {
+        type: "devmap-session",
+        version: "1.0",
+        date_export: new Date().toISOString(),
+        editorPoints: editorPointsEnriched,
+        roads:        d.roads,
+        zones:        d.zones,
+        // 🆕 v1.9.3-A1.a : structures (piliers + murs) dans l'export Full
+        structures:   d.structures || [],
+        // 🆕 v1.9.3-A1.b.2.5 : mesure dans l'export Full (objet avec points
+        // pour cohérence avec le format attendu en import).
+        measure:      { points: d.mesure || [] }
+      };
+      // 🆕 v1.9.3-B1d : info récap photos dans le JSON pour aider l'import
+      // (le re-import sait combien attendre).
+      if (photos.length > 0) {
+        session.photosCount    = photos.length;
+        session.photosTotalKB  = Math.round(pack.totalSize / 1024);
+      }
+
+      if (photos.length > 0) {
+        // Bundle ZIP : session.json + photos/
+        _packerZipSession(session, photos, _filename("session", "zip"))
+          .then(function() { _fermer(); })
+          .catch(function(err) {
+            console.error("[SessionExport] _packerZipSession :", err);
+            alert("Erreur lors de la création du ZIP : " + (err.message || err));
+          });
+      } else {
+        // Pas de photos → JSON pur (rétro-compat absolue)
+        _telechargerJSON(session, _filename("session"));
+        _fermer();
+      }
+    });
   }
 
   // ---------- AVANCÉ ----------
@@ -1095,31 +1542,68 @@
 
     const fmt = document.querySelector('input[name="adv_format"]:checked')?.value || "single";
 
-    if (fmt === "single") {
-      // 1 seul fichier session
-      const session = {
-        type: "devmap-session",
-        version: "1.0",
-        date_export: new Date().toISOString()
-      };
-      if (filteredPoints.length)     session.editorPoints = filteredPoints;
-      if (filteredRoads.length)      session.roads        = filteredRoads;
-      if (filteredZones.length)      session.zones        = filteredZones;
-      // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
-      if (filteredStructures.length) session.structures   = filteredStructures;
-      // 🆕 v1.9.3-A1.b.2.5 : mesure dans le JSON Avancé
-      if (mesurePts.length)          session.measure      = { points: mesurePts };
-      if (tracker)                   session.tracker      = tracker;
+    // 🆕 v1.9.3-B1d+ : photos. Filtre par les points effectivement exportés
+    // (= filteredPoints). Si l'user a décoché les points, ou qu'aucun point
+    // exporté n'a de photo, le pack sera vide → comportement strictement v1.9.2.
+    const inclurePhotosCb = document.getElementById("adv_photos");
+    const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
-      _telechargerJSON(session, _filename("session"));
-      _fermer();
-    } else {
-      // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
-      _genererZipAdvanced(filteredPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, tracker);
-    }
+    const pointIdsSet = inclurePhotos && filteredPoints.length > 0
+      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      : null;
+    const photosPromise = (inclurePhotos && pointIdsSet)
+      ? _collecterPhotosPlan(pointIdsSet)
+      : Promise.resolve({ photos: [], totalSize: 0 });
+
+    photosPromise.then(function(pack) {
+      const photos = pack.photos;
+      // Enrichit les points filtrés avec leur liste de photoIds (utile en
+      // single mode où l'user peut re-importer + voir les photos dans les
+      // popups). On mute filteredPoints en place via le helper qui clone.
+      const enrichedPoints = _enrichirPointsAvecPhotos(filteredPoints, photos);
+
+      if (fmt === "single") {
+        // 1 seul fichier session (JSON ou ZIP selon présence photos)
+        const session = {
+          type: "devmap-session",
+          version: "1.0",
+          date_export: new Date().toISOString()
+        };
+        if (enrichedPoints.length)     session.editorPoints = enrichedPoints;
+        if (filteredRoads.length)      session.roads        = filteredRoads;
+        if (filteredZones.length)      session.zones        = filteredZones;
+        // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
+        if (filteredStructures.length) session.structures   = filteredStructures;
+        // 🆕 v1.9.3-A1.b.2.5 : mesure dans le JSON Avancé
+        if (mesurePts.length)          session.measure      = { points: mesurePts };
+        if (tracker)                   session.tracker      = tracker;
+        if (photos.length > 0) {
+          session.photosCount   = photos.length;
+          session.photosTotalKB = Math.round(pack.totalSize / 1024);
+        }
+
+        if (photos.length > 0) {
+          // Bundle ZIP : session.json + photos/ (= même structure que Full ZIP)
+          _packerZipSession(session, photos, _filename("session", "zip"))
+            .then(function() { _fermer(); })
+            .catch(function(err) {
+              console.error("[SessionExport] _packerZipSession Avancé :", err);
+              alert("Erreur lors de la création du ZIP : " + (err.message || err));
+            });
+        } else {
+          // Pas de photos → JSON pur (rétrocompat absolue)
+          _telechargerJSON(session, _filename("session"));
+          _fermer();
+        }
+      } else {
+        // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
+        // + dossier photos/ si photos cochées
+        _genererZipAdvanced(enrichedPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, tracker, photos);
+      }
+    });
   }
 
-  function _genererZipAdvanced(points, roads, zones, structures, mesurePts, tracker) {
+  function _genererZipAdvanced(points, roads, zones, structures, mesurePts, tracker, photos) {
     if (typeof JSZip === "undefined") {
       alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
       return;
@@ -1140,6 +1624,29 @@
     // 🆕 v1.9.3-A1.b.2.5 : fichier dédié pour la mesure dans le ZIP Avancé
     if (mesurePts && mesurePts.length) file("session_measure.json", { measure: { points: mesurePts } });
     if (tracker)           file("session_tracker.json",    { tracker: tracker });
+
+    // 🆕 v1.9.3-B1d+ : dossier photos/ + _index.json (même format que le
+    // ZIP Full bundle). Permet au re-import de retrouver les blobs +
+    // remapper le pointId si l'user a renommé un point depuis.
+    if (photos && photos.length > 0) {
+      const photosFolder = zip.folder("photos");
+      const idx = {};
+      photos.forEach(function(p) {
+        const ext  = _extDepuisMime(p.mime);
+        const name = p.id + "." + ext;
+        photosFolder.file(name, p.blob);
+        idx[p.id] = {
+          pointId: p.pointId,
+          mime:    p.mime,
+          size:    p.size,
+          file:    name
+        };
+      });
+      photosFolder.file("_index.json", JSON.stringify({
+        version: 1,
+        photos:  idx
+      }, null, 2));
+    }
 
     zip.generateAsync({ type: "blob" }).then(function(blob) {
       _telechargerBlob(blob, _filename("session", "zip"));
@@ -1223,11 +1730,29 @@
       return;
     }
 
-    if (gran === "basic") {
+    // 🆕 v1.9.3-B1d++ : photos. Filtre par points effectivement convertis.
+    // Si N=0 ou case décochée → pack vide, comportement strictement v1.9.2.
+    const inclurePhotosCb = document.getElementById("conv_ed2data_photos");
+    const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
+    const pointIdsSet = inclurePhotos && filteredPoints.length > 0
+      ? new Set(filteredPoints.map(function(p) { return String(p.id || ""); }))
+      : null;
+    const photosPromise = (inclurePhotos && pointIdsSet)
+      ? _collecterPhotosPlan(pointIdsSet)
+      : Promise.resolve({ photos: [], totalSize: 0 });
+
+    photosPromise.then(function(pack) {
+      const photos = pack.photos;
+      // Enrichit les points filtrés avec les photoIds → utile pour qu'un
+      // re-import (data→session) puisse reconnecter les photos aux points
+      // par lookup de point.photos[].
+      const enrichedPoints = _enrichirPointsAvecPhotos(filteredPoints, photos);
+
+      if (gran === "basic") {
       // Granularité basique : 1 fichier par catégorie (max 4)
       const files = [];
-      if (filteredPoints.length) {
-        files.push({ name: "points.json", payload: { data: filteredPoints } });
+      if (enrichedPoints.length) {
+        files.push({ name: "points.json", payload: { data: enrichedPoints } });
       }
       if (filteredRoads.length) {
         files.push({ name: "roads.json", payload: { data: [], roads: filteredRoads } });
@@ -1239,14 +1764,16 @@
       if (filteredStructures.length) {
         files.push({ name: "structure.json", payload: { data: [], structures: filteredStructures } });
       }
-      _telechargerConversionFiles(files);
+      _telechargerConversionFiles(files, photos);
     } else {
       // Granularité fine : par type
       const files = [];
 
-      if (filteredPoints.length) {
-        // Points : un seul fichier (les tags sont multiples → séparation ambigüe)
-        files.push({ name: "points.json", payload: { data: filteredPoints } });
+      if (enrichedPoints.length) {
+        // Points : un seul fichier (les tags sont multiples → séparation ambigüe).
+        // Utilise enrichedPoints pour préserver `photos: [photoIds]` même en
+        // granularité fine.
+        files.push({ name: "points.json", payload: { data: enrichedPoints } });
       }
 
       if (filteredRoads.length) {
@@ -1283,14 +1810,15 @@
         });
       }
 
-      _telechargerConversionFiles(files);
+      _telechargerConversionFiles(files, photos);
     }
+    });  // fin photosPromise.then
   }
 
-  // Sens 2 : fichier data layer uploadé → fichier session JSON
+  // Sens 2 : fichier data layer uploadé → fichier session JSON (ou ZIP si photos)
   function _exportConvData2Session() {
     if (!_convUploadedJson) {
-      alert("Aucun fichier source — glisse un fichier .json d'abord.");
+      alert("Aucun fichier source — glisse un fichier .json ou .zip d'abord.");
       return;
     }
     const j = _convUploadedJson;
@@ -1320,32 +1848,69 @@
     if (zones.length)      session.zones        = zones;
     if (structures.length) session.structures   = structures;
 
-    // Nom du fichier de sortie : basé sur le fichier source
-    const baseName = (_convUploadedName || "data").replace(/\.json$/i, "");
-    _telechargerJSON(session, baseName + "_session.json");
-    _fermer();
+    // 🆕 v1.9.3-B1d++ : si l'input ZIP contenait des photos, on les
+    // ré-emballe dans un ZIP session de sortie (= même format que l'export
+    // Full ZIP de B1.d.α). Le re-import session "📥 Importer une session"
+    // saura les restaurer en IDB automatiquement.
+    const hasPhotos = _convUploadedPhotos && _convUploadedPhotos.length > 0;
+    const baseName = (_convUploadedName || "data").replace(/\.(json|zip)$/i, "");
+
+    if (hasPhotos) {
+      // Adapt _convUploadedPhotos {id, pointId, mime, size, blob} → format
+      // attendu par _packerZipSession (= ce qui sort de _collecterPhotosPlan).
+      const photosForPack = _convUploadedPhotos.map(function(p) {
+        return {
+          id:      p.id,
+          blob:    p.blob,
+          mime:    p.mime,
+          pointId: p.pointId,
+          size:    p.size
+        };
+      });
+      // Ajoute photosCount/TotalKB pour cohérence avec l'export Full
+      session.photosCount   = photosForPack.length;
+      session.photosTotalKB = Math.round(photosForPack.reduce(function(s, p) {
+        return s + (p.size || 0);
+      }, 0) / 1024);
+
+      _packerZipSession(session, photosForPack, baseName + "_session.zip")
+        .then(function() { _fermer(); })
+        .catch(function(err) {
+          console.error("[SessionExport] Conv ZIP session sortie :", err);
+          alert("Erreur lors de la création du ZIP session : " + (err.message || err));
+        });
+    } else {
+      // Pas de photos → JSON pur (rétrocompat absolue)
+      _telechargerJSON(session, baseName + "_session.json");
+      _fermer();
+    }
   }
 
-  function _telechargerConversionFiles(files) {
+  // 🆕 v1.9.3-B1d++ : param `photos` optionnel pour embarquer les blobs
+  // photos dans le ZIP de conversion. Format identique au session ZIP
+  // (B1.d.α) → photos/_index.json + photos/<photoId>.<ext>. Permet au
+  // re-import data→session de reconnecter les photos automatiquement.
+  function _telechargerConversionFiles(files, photos) {
     if (files.length === 0) {
       alert("Rien à convertir.");
       return;
     }
     const now = new Date().toISOString();
+    const hasPhotos = Array.isArray(photos) && photos.length > 0;
 
     // Wrap en format devmap-data
     files.forEach(function(f) {
       f.payload = Object.assign({ type: "devmap-data", version: "1.0", date_export: now }, f.payload);
     });
 
-    if (files.length === 1) {
-      // Fichier unique → téléchargement direct
+    // Cas le plus simple : 1 seul fichier, pas de photos → JSON direct (rétrocompat)
+    if (files.length === 1 && !hasPhotos) {
       _telechargerJSON(files[0].payload, files[0].name);
       _fermer();
       return;
     }
 
-    // Plusieurs fichiers → ZIP
+    // Sinon (>1 fichier OU avec photos) → ZIP
     if (typeof JSZip === "undefined") {
       alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
       return;
@@ -1354,6 +1919,29 @@
     files.forEach(function(f) {
       zip.file(f.name, JSON.stringify(f.payload, null, 2));
     });
+
+    // 🆕 v1.9.3-B1d++ : dossier photos/ + _index.json. Format identique
+    // au session ZIP (B1.d.α) pour cohérence et symétrie au re-import.
+    if (hasPhotos) {
+      const photosFolder = zip.folder("photos");
+      const idx = {};
+      photos.forEach(function(p) {
+        const ext  = _extDepuisMime(p.mime);
+        const name = p.id + "." + ext;
+        photosFolder.file(name, p.blob);
+        idx[p.id] = {
+          pointId: p.pointId,
+          mime:    p.mime,
+          size:    p.size,
+          file:    name
+        };
+      });
+      photosFolder.file("_index.json", JSON.stringify({
+        version: 1,
+        photos:  idx
+      }, null, 2));
+    }
+
     zip.generateAsync({ type: "blob" }).then(function(blob) {
       _telechargerBlob(blob, _filename("data", "zip"));
       _fermer();
@@ -1402,6 +1990,7 @@
     // Reset de l'état de la conversion data2ed pour la prochaine ouverture
     _convUploadedJson = null;
     _convUploadedName = "";
+    _convUploadedPhotos = null;  // 🆕 v1.9.3-B1d++
     // 🌍 v169 (Karma_dev) : reset mode clic carte KMZ si actif
     if (_kmzClickActive) _kmzDesactiverModeClic();
   }

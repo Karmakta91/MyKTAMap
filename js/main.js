@@ -191,9 +191,21 @@ async function lancerApplication() {
       : _fromConfig;
     APP_CONFIG.multiLevel     = !!_multiOn;
     APP_CONFIG.activeLevel    = 0;
-    APP_CONFIG.visibleLevels  = [0];   // reset filtre : montre uniquement le niveau 0 au load
     if (!Array.isArray(APP_CONFIG.availableLevels) || APP_CONFIG.availableLevels.length === 0) {
       APP_CONFIG.availableLevels = [-2, -1, 0, 1, 2];  // defaut symetrique (v154+)
+    }
+    // 🆕 v1.10.0 (KARMA "en mode M-LVL, fait en sorte que -1, 0, +1 soit
+    // affiché par défaut") : si multi-niveau actif → on montre les 3
+    // niveaux centraux par défaut, filtrés par les niveaux effectivement
+    // disponibles dans availableLevels. Si single-level → [0] strict
+    // (retro-compat absolue, pas de comportement inattendu).
+    if (APP_CONFIG.multiLevel) {
+      const _candidats = [-1, 0, 1].filter(function(l) {
+        return APP_CONFIG.availableLevels.indexOf(l) >= 0;
+      });
+      APP_CONFIG.visibleLevels = _candidats.length > 0 ? _candidats : [0];
+    } else {
+      APP_CONFIG.visibleLevels = [0];   // reset filtre : montre uniquement le niveau 0 au load
     }
     // 🏗️ v154 : auto-extension de availableLevels — premier passage (session).
     // Voir window._etendreAvailableLevelsSiBesoin pour les details.
@@ -713,6 +725,87 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     _enregistrerPlanCharge(entry);
   }
 
+  // 🆕 v1.9.3-B1d.γ.3 : extraction + restore des photos depuis le ZIP plan.
+  // Format attendu (créé par createConf.js > _genererZip quand "Inclure les
+  // photos" est cochée en mode Modifier, cf B1.d.γ.1) :
+  //   data/photos/_index.json   ← mapping photoId → {pointId, mime, size, file}
+  //   data/photos/<photoId>.<ext>  ← blob de chaque photo
+  //
+  // Stratégie wipe + restore (KARMA 3:a) : on supprime d'abord les photos IDB
+  // existantes pour ce planId (= le ZIP fait foi, cohérent avec syncModeFlags),
+  // puis on insère les nouvelles via restorePhoto qui préserve les photoIds.
+  //
+  // Toast OOMGuard discret en fin de restore (KARMA 2:c).
+  // Comportement strictement opt-in (rétrocompat) : si aucun _index.json
+  // dans le ZIP, on saute toute cette section silencieusement.
+  try {
+    const indexFile = findMatchingFile("data/photos/_index.json", files);
+    if (indexFile && window.MyKTAMapPhotos && window._currentLoadedPlanId) {
+      const planId = window._currentLoadedPlanId;
+      const idxText = await indexFile.text();
+      let idxObj;
+      try { idxObj = JSON.parse(idxText); }
+      catch(e) {
+        console.warn("[Loader] data/photos/_index.json corrompu :", e);
+        idxObj = null;
+      }
+      if (idxObj && idxObj.photos) {
+        const photoIds = Object.keys(idxObj.photos);
+        if (photoIds.length > 0) {
+          if (typeof window._majOverlayChargement === "function") {
+            window._majOverlayChargement("Restauration de " + photoIds.length + " photo(s)…");
+          }
+          // Wipe préalable des photos IDB de ce planId (3:a)
+          try {
+            await window.MyKTAMapPhotos.deletePhotosForPlan(planId);
+          } catch(e) { console.warn("[Loader] deletePhotosForPlan :", e); }
+
+          let restoredCount = 0;
+          for (const pid of photoIds) {
+            const info = idxObj.photos[pid] || {};
+            const filename = "data/photos/" + (info.file || (pid + ".jpg"));
+            const blobFile = findMatchingFile(filename, files);
+            if (!blobFile) {
+              console.warn("[Loader] Photo manquante dans le ZIP :", filename);
+              continue;
+            }
+            try {
+              const blob = await blobFile.arrayBuffer().then(function(buf) {
+                return new Blob([buf], { type: info.mime || "image/jpeg" });
+              });
+              await window.MyKTAMapPhotos.restorePhoto({
+                id:      pid,
+                planId:  planId,
+                pointId: String(info.pointId || ""),
+                blob:    blob,
+                mime:    info.mime || "image/jpeg",
+                size:    info.size || blob.size
+              });
+              restoredCount++;
+            } catch(e) {
+              console.warn("[Loader] restorePhoto échoué pour", pid, ":", e);
+            }
+          }
+          console.log("[Loader] " + restoredCount + " / " + photoIds.length + " photo(s) restaurée(s) en IDB");
+
+          // Toast discret pour informer l'user (KARMA 2:c). On utilise
+          // OOMGuard.showToast s'il est dispo (queue jusqu'à fin splash),
+          // sinon console seulement (toast nice-to-have, pas critique).
+          if (restoredCount > 0 && window.OOMGuard
+              && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast(
+              "📸 " + restoredCount + " photo" + (restoredCount > 1 ? "s" : "") + " restaurée" + (restoredCount > 1 ? "s" : "") + " depuis le plan",
+              "info"
+            );
+          }
+        }
+      }
+    }
+  } catch(e) {
+    console.warn("[Loader] Restore photos depuis ZIP plan :", e);
+    // Pas bloquant — le plan se charge normalement sans les photos
+  }
+
   _appEnCours    = false;
   _importDemande = false;
 
@@ -845,6 +938,33 @@ async function _splashEnd() {
     console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
     await window.UnlockGate.ouvrirGate();
     console.log("[Main] Gate auth franchie → init normale");
+  }
+
+  // 🆕 v1.9.4 (KARMA 2:a "PIN après UnlockGate") : couche perso PIN/biométrie
+  // optionnelle, par-dessus la barrière communautaire UnlockGate.
+  //   - Si pas activé → résout immédiatement (no-op)
+  //   - Si activé et déjà unlocké cette session (rare car flag in-memory
+  //     reset à chaque reload) → no-op
+  //   - Sinon → affiche la gate PIN, attend l'unlock (via PIN ou biométrie)
+  //   - En lockout → la gate reste affichée infiniment (l'user doit reset)
+  //
+  // Cf. js/pinLock.js pour le moteur (hash SHA-256 + WebAuthn + lockout).
+  if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
+      && !window.MyKTAMapPinLock.isUnlocked()) {
+    await _splashEnd();
+    console.log("[Main] Gate PIN ouverte (pas encore déverrouillé)…");
+    await window.MyKTAMapPinLock.ouvrirGate();
+    console.log("[Main] Gate PIN franchie → init normale");
+  }
+
+  // 🆕 v1.10.0 (KARMA "après cette mise à jour, premier lancement, proposer
+  // activer l'authentification forte") : proposition d'activation one-shot
+  // pour les users qui n'ont pas (encore) activé le PIN. Skip si déjà
+  // activé OU si l'user a déjà refusé une fois (flag localStorage).
+  // Délai 800ms après pour laisser le splash finir + ne pas surcharger
+  // le 1er paint visuel.
+  if (window.MyKTAMapPinLock && typeof window.MyKTAMapPinLock.proposerActivation === "function") {
+    window.MyKTAMapPinLock.proposerActivation();
   }
 
   // Initialiser le registre

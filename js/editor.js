@@ -113,9 +113,69 @@ function _buildTypeOptionsHTML(selectedTag) {
 // =========================
 // FORMULAIRE — modale plein écran style cohérent
 // =========================
-function afficherFormulaire(x, y) {
+// 🆕 v1.9.3-B1b : signature étendue pour mode ajout/édition unifié.
+//   - afficherFormulaire(x, y)                    → mode AJOUT (existant)
+//   - afficherFormulaire(x, y, existingPoint)     → mode ÉDITION (nouveau)
+//
+// En mode ÉDITION, on travaille DIRECTEMENT sur la référence du point dans
+// listePoints (mutation in place) pour ne pas avoir à dupliquer/réinjecter.
+// Le re-render du marker est fait au save (pour propager nom, tag, level…).
+//
+// 📸 Photos : section IDB-backed (B1.b stratégie 5a — écriture immédiate
+// avec cleanup à l'annulation). Mode AJOUT utilise un pointId temporaire
+// (_pendingPointId, UUID préfixé "_temp_") qui sera migré vers le vrai id
+// (= nom saisi) à la validation. Mode ÉDITION utilise existingPoint.id
+// directement. Si l'user renomme un point ayant des photos, on appelle
+// MyKTAMapPhotos.renamePointId au save pour migrer les enregistrements.
+function afficherFormulaire(x, y, existingPoint) {
   const existing = document.getElementById("kta-poi-modal");
   if (existing) existing.remove();
+
+  const isEdit = !!(existingPoint && typeof existingPoint === "object");
+  const titreModale  = isEdit ? "✏️ Modifier le point" : "✏️ Ajouter un point";
+  const labelBouton  = isEdit ? "💾 Enregistrer"        : "✅ Ajouter";
+  const tagInitial   = isEdit && existingPoint.tags && existingPoint.tags.length > 0
+                       ? existingPoint.tags[0]
+                       : "";
+  const nomInitial   = isEdit ? (existingPoint.nom || "") : "";
+  const descInitial  = isEdit ? (existingPoint.description || "") : "";
+
+  // Echappement pour pré-remplissage (sinon une apostrophe dans le nom
+  // casserait l'attribut value HTML).
+  function _esc(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+                    .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // planId courant — utilisé pour les opérations MyKTAMapPhotos.
+  // Fallback "default" cohérent avec sessionExporter.js (cf. CLAUDE.md §27).
+  const planId = window._currentLoadedPlanId || "default";
+
+  // ID du point côté IDB photos :
+  //   - mode ÉDITION : id figé = existingPoint.id
+  //   - mode AJOUT   : id temporaire (UUID préfixé "_temp_") qu'on
+  //     migrera vers le vrai nom à la validation. Permet à l'user
+  //     d'attacher des photos AVANT d'avoir saisi un nom définitif.
+  let _photoPointId;
+  if (isEdit) {
+    _photoPointId = String(existingPoint.id || existingPoint.nom || "");
+  } else {
+    _photoPointId = "_temp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+  }
+
+  // Tracking des photoIds manipulés DANS cette session de modale :
+  //   - _photosAddedThisSession : ajoutées (à supprimer si Annuler)
+  //   - _photosPendingDelete    : marquées à supprimer (à committer au Save,
+  //                                à ignorer si Annuler)
+  const _photosAddedThisSession = new Set();
+  const _photosPendingDelete    = new Set();
+
+  // Cache des metadata photos chargées en mémoire pour rendre la grille
+  // sans refetch IDB à chaque tick. Format : [{id, blob, mime, size, ...}]
+  let _photosCacheMeta = [];
+  // Cache des objectURL pour pouvoir révoquer au close (évite memory leak
+  // si l'user ouvre/ferme la modale 50 fois sur des plans riches).
+  const _photoObjectUrls = new Set();
 
   const modal = document.createElement("div");
   modal.id = "kta-poi-modal";
@@ -124,7 +184,7 @@ function afficherFormulaire(x, y) {
   modal.innerHTML = `
     <div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:90vh;">
       <div class="kta-readme-modal-header">
-        <span class="kta-readme-modal-titre">✏️ Ajouter un point</span>
+        <span class="kta-readme-modal-titre">${titreModale}</span>
         <button class="kta-panneau-close" id="kta-poi-close">✕</button>
       </div>
       <div class="kta-readme-modal-corps">
@@ -140,10 +200,10 @@ function afficherFormulaire(x, y) {
           <div class="kta-aide-section-titre">📋 Informations</div>
           <div class="kta-cfg-grille">
             <label class="kta-cfg-label">Nom <span style="color:#ff8080;">*</span></label>
-            <input class="kta-cfg-input" id="kta-poi-nom" type="text" placeholder="ex: Puits du chêne" autocomplete="off">
+            <input class="kta-cfg-input" id="kta-poi-nom" type="text" value="${_esc(nomInitial)}" placeholder="ex: Puits du chêne" autocomplete="off">
 
             <label class="kta-cfg-label">Type</label>
-            <select class="kta-cfg-input" id="kta-poi-type">${_buildTypeOptionsHTML("")}</select>
+            <select class="kta-cfg-input" id="kta-poi-type">${_buildTypeOptionsHTML(tagInitial)}</select>
           </div>
 
           <div id="kta-poi-newtag-wrap" style="display:none; margin-top:8px;">
@@ -158,15 +218,36 @@ function afficherFormulaire(x, y) {
             <label class="kta-cfg-label" style="display:block; margin-bottom:4px;">Description</label>
             <textarea class="kta-cfg-input" id="kta-poi-desc"
               style="min-height:70px; resize:vertical; font-family:inherit;"
-              placeholder="(optionnel)"></textarea>
+              placeholder="(optionnel)">${_esc(descInitial)}</textarea>
           </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">
+            📸 Photos
+            <span id="kta-poi-photos-counter" class="kta-poi-photos-counter">0 / 5</span>
+          </div>
+          <div id="kta-poi-photos-grid" class="kta-poi-photos-grid"></div>
+          <div id="kta-poi-photos-actions" class="kta-poi-photos-actions">
+            <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-camera" type="button">
+              📷 Prendre photo
+            </button>
+            <button class="kta-btn kta-btn-ghost kta-poi-photos-btn" id="kta-poi-photos-galerie" type="button">
+              🖼️ Depuis la galerie
+            </button>
+          </div>
+          <input type="file" accept="image/*" capture="environment" id="kta-poi-photos-input-camera"  style="display:none;">
+          <input type="file" accept="image/*" multiple                id="kta-poi-photos-input-galerie" style="display:none;">
+          <p id="kta-poi-photos-hint" class="kta-poi-photos-hint">
+            JPEG/PNG, compressées automatiquement (1920px max, qualité 85%). Max 5 photos par point.
+          </p>
         </div>
 
         <div id="kta-poi-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
         <div class="kta-conv-actions" style="margin-top:14px;">
           <button class="kta-btn kta-btn-ghost"   id="kta-poi-annuler">Annuler</button>
-          <button class="kta-btn kta-btn-primary"  id="kta-poi-valider">✅ Ajouter</button>
+          <button class="kta-btn kta-btn-primary" id="kta-poi-valider">${labelBouton}</button>
         </div>
 
       </div>
@@ -185,12 +266,56 @@ function afficherFormulaire(x, y) {
   const btnAnnuler  = document.getElementById("kta-poi-annuler");
   const btnValider  = document.getElementById("kta-poi-valider");
 
+  // Section photos
+  const photoGrid       = document.getElementById("kta-poi-photos-grid");
+  const photoCounter    = document.getElementById("kta-poi-photos-counter");
+  const photoBtnCamera  = document.getElementById("kta-poi-photos-camera");
+  const photoBtnGalerie = document.getElementById("kta-poi-photos-galerie");
+  const photoInputCam   = document.getElementById("kta-poi-photos-input-camera");
+  const photoInputGal   = document.getElementById("kta-poi-photos-input-galerie");
+
   function setErr(msg) {
     erreurEl.textContent  = msg || "";
     erreurEl.style.display = msg ? "block" : "none";
   }
 
-  function fermer() { modal.remove(); }
+  // Cleanup commun à toutes les fermetures (sauf au save qui appelle son
+  // propre cleanup conditionnel). Révoque les objectURL pour éviter les
+  // memory leaks.
+  function _cleanupObjectUrls() {
+    _photoObjectUrls.forEach(function(u) {
+      try { URL.revokeObjectURL(u); } catch(e) {}
+    });
+    _photoObjectUrls.clear();
+  }
+
+  function fermer() { _cleanupObjectUrls(); modal.remove(); }
+
+  // 🚪 Annuler : delete les photos ajoutées dans cette session de modale
+  // (sous _photoPointId, qui peut être l'id réel d'un point existant en
+  // édition OU l'id temporaire en ajout). Les pending deletes ne sont
+  // PAS committés (rien n'a été vraiment supprimé en IDB).
+  function annuler() {
+    if (!window.MyKTAMapPhotos || _photosAddedThisSession.size === 0) {
+      // Si mode AJOUT sans photos uploadées → rien à nettoyer
+      // Si mode AJOUT avec photos → on les delete via deletePhotosForPoint
+      //   sur le _temp_ pointId (couvre aussi le cas où Set serait désynchro)
+      if (!isEdit && window.MyKTAMapPhotos && _photoPointId.indexOf("_temp_") === 0) {
+        window.MyKTAMapPhotos.deletePhotosForPoint(planId, _photoPointId)
+          .catch(function(e) { console.warn("[Editor] cleanup _temp_ photos :", e); });
+      }
+      fermer();
+      return;
+    }
+    // Mode édition avec ajouts : delete précis des photos uploadées cette session
+    const promises = [];
+    _photosAddedThisSession.forEach(function(photoId) {
+      promises.push(window.MyKTAMapPhotos.deletePhoto(photoId));
+    });
+    Promise.all(promises).catch(function(e) {
+      console.warn("[Editor] cleanup photos session :", e);
+    }).finally(fermer);
+  }
 
   selectType.addEventListener("change", function() {
     if (selectType.value === "__new__") {
@@ -201,13 +326,215 @@ function afficherFormulaire(x, y) {
     }
   });
 
-  btnClose.addEventListener("click", fermer);
-  btnAnnuler.addEventListener("click", fermer);
-  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+  btnClose.addEventListener("click", annuler);
+  btnAnnuler.addEventListener("click", annuler);
+  modal.addEventListener("click", function(e) { if (e.target === modal) annuler(); });
 
   // Empêcher Leaflet de capturer les events tactiles dans la modale
   L.DomEvent.disableClickPropagation(modal);
 
+  // ============================================================
+  // PHOTOS — handlers
+  // ============================================================
+  // Recompte les photos visibles (cache - pending delete) pour afficher
+  // "N / 5" et désactiver les boutons d'ajout à la saturation.
+  function _refreshCounterAndButtons() {
+    const visible = _photosCacheMeta.filter(function(p) {
+      return !_photosPendingDelete.has(p.id);
+    }).length;
+    photoCounter.textContent = visible + " / " + (window.MyKTAMapPhotos
+                                                  ? window.MyKTAMapPhotos.MAX_PHOTOS_PER_POINT
+                                                  : 5);
+    const max  = window.MyKTAMapPhotos ? window.MyKTAMapPhotos.MAX_PHOTOS_PER_POINT : 5;
+    const full = visible >= max;
+    photoBtnCamera.disabled  = full;
+    photoBtnGalerie.disabled = full;
+    if (full) {
+      photoBtnCamera.title  = "Maximum " + max + " photos par point atteint";
+      photoBtnGalerie.title = "Maximum " + max + " photos par point atteint";
+    } else {
+      photoBtnCamera.title  = "";
+      photoBtnGalerie.title = "";
+    }
+  }
+
+  // Re-render visuel de la grille à partir de _photosCacheMeta.
+  // Les vignettes marquées pending delete sont stylées différemment (grisées + ✕ disabled).
+  function _renderPhotoGrid() {
+    photoGrid.innerHTML = "";
+    if (_photosCacheMeta.length === 0) {
+      photoGrid.innerHTML = '<div class="kta-poi-photos-empty">Aucune photo. Ajoute une photo avec les boutons ci-dessous.</div>';
+      return;
+    }
+    _photosCacheMeta.forEach(function(p) {
+      const isPending = _photosPendingDelete.has(p.id);
+      const isPlaceholder = !p._objectUrl;  // compression en cours
+      const thumb = document.createElement("div");
+      thumb.className = "kta-poi-photo-thumb" + (isPending ? " kta-poi-photo-thumb-pending" : "");
+      thumb.dataset.photoId = p.id;
+      if (p._objectUrl) {
+        const img = document.createElement("img");
+        img.src = p._objectUrl;
+        img.alt = "photo";
+        img.loading = "lazy";
+        thumb.appendChild(img);
+        // 🆕 v1.9.3-B1c : tap miniature → ouvre viewer plein écran.
+        // - Skip si la photo est en cours de compression (placeholder)
+        //   ou marquée pending delete (l'user veut la supprimer, pas la zoomer)
+        // - L'array passé au viewer = filtré pour ne montrer QUE les
+        //   photos visibles (pas les placeholders ni les pendings),
+        //   sinon l'index ne correspondrait pas.
+        if (!isPending && !isPlaceholder) {
+          thumb.style.cursor = "zoom-in";
+          thumb.addEventListener("click", function(ev) {
+            // Click sur le ✕ ne doit PAS ouvrir le viewer (stop propag dans le handler ✕ ci-dessous)
+            if (ev.target && ev.target.classList.contains("kta-poi-photo-del")) return;
+            if (!window.MyKTAMapPhotoViewer) {
+              console.warn("[Editor] MyKTAMapPhotoViewer indisponible");
+              return;
+            }
+            // Filtre : on n'envoie au viewer que les photos visibles
+            // (pas les placeholders, pas les pendings). On recalcule
+            // startIndex dans cette sous-liste filtrée.
+            const visible = _photosCacheMeta.filter(function(q) {
+              return q._objectUrl && !_photosPendingDelete.has(q.id);
+            });
+            const idx = visible.findIndex(function(q) { return q.id === p.id; });
+            window.MyKTAMapPhotoViewer.open(visible, Math.max(0, idx));
+          });
+        }
+      } else {
+        // Placeholder (compression en cours, voir _ajouterPhotoBlob)
+        thumb.innerHTML = '<div class="kta-poi-photo-spinner">⏳</div>';
+      }
+      // Bouton ✕ pour retirer la photo (mark pending delete, vraie suppression au save)
+      const btnDel = document.createElement("button");
+      btnDel.type = "button";
+      btnDel.className = "kta-poi-photo-del";
+      btnDel.title = isPending ? "Restaurer cette photo" : "Retirer cette photo";
+      btnDel.textContent = isPending ? "↺" : "✕";
+      btnDel.addEventListener("click", function(ev) {
+        ev.stopPropagation();
+        if (isPending) {
+          _photosPendingDelete.delete(p.id);
+        } else {
+          _photosPendingDelete.add(p.id);
+        }
+        _renderPhotoGrid();
+        _refreshCounterAndButtons();
+      });
+      thumb.appendChild(btnDel);
+      photoGrid.appendChild(thumb);
+    });
+  }
+
+  // Charge en mémoire les photos existantes (mode édition uniquement)
+  // pour pré-remplir la grille. En mode ajout, _photoPointId est temporaire
+  // donc rien à charger au départ (cache vide).
+  function _loadExistingPhotos() {
+    if (!isEdit || !window.MyKTAMapPhotos) {
+      _renderPhotoGrid();
+      _refreshCounterAndButtons();
+      return;
+    }
+    window.MyKTAMapPhotos.getPhotosForPoint(planId, _photoPointId).then(function(arr) {
+      _photosCacheMeta = arr.map(function(rec) {
+        const url = URL.createObjectURL(rec.blob);
+        _photoObjectUrls.add(url);
+        return {
+          id:        rec.id,
+          mime:      rec.mime,
+          size:      rec.size,
+          createdAt: rec.createdAt,
+          _objectUrl: url
+        };
+      });
+      _renderPhotoGrid();
+      _refreshCounterAndButtons();
+    }).catch(function(e) {
+      console.warn("[Editor] _loadExistingPhotos erreur :", e);
+      _renderPhotoGrid();
+      _refreshCounterAndButtons();
+    });
+  }
+
+  // Upload d'1 Blob photo : crée un placeholder grille immédiat (UX
+  // réactive), lance compression+IDB write en arrière-plan, swap par la
+  // vraie miniature au callback. Si erreur → toast + retire le placeholder.
+  function _ajouterPhotoBlob(blob) {
+    if (!window.MyKTAMapPhotos) {
+      setErr("Module photos indisponible (IndexedDB ?)");
+      return;
+    }
+    // Placeholder local — id provisoire local pour pouvoir le retrouver
+    const placeholderLocalId = "_pending_" + Math.random().toString(36).slice(2, 10);
+    _photosCacheMeta.push({
+      id:        placeholderLocalId,
+      _pending:  true,
+      _objectUrl: null
+    });
+    _renderPhotoGrid();
+    _refreshCounterAndButtons();
+
+    window.MyKTAMapPhotos.addPhoto(planId, _photoPointId, blob).then(function(photoId) {
+      // Récupère le blob compressé pour générer l'objectURL d'affichage
+      return window.MyKTAMapPhotos.getPhoto(photoId).then(function(rec) {
+        if (!rec) throw new Error("photo introuvable après addPhoto");
+        const idx = _photosCacheMeta.findIndex(function(p) { return p.id === placeholderLocalId; });
+        if (idx === -1) return; // user a fermé entre-temps
+        const url = URL.createObjectURL(rec.blob);
+        _photoObjectUrls.add(url);
+        _photosCacheMeta[idx] = {
+          id:         rec.id,
+          mime:       rec.mime,
+          size:       rec.size,
+          createdAt:  rec.createdAt,
+          _objectUrl: url
+        };
+        _photosAddedThisSession.add(rec.id);
+        _renderPhotoGrid();
+        _refreshCounterAndButtons();
+      });
+    }).catch(function(err) {
+      console.warn("[Editor] ajout photo erreur :", err);
+      // Retire le placeholder en échec
+      const idx = _photosCacheMeta.findIndex(function(p) { return p.id === placeholderLocalId; });
+      if (idx !== -1) _photosCacheMeta.splice(idx, 1);
+      _renderPhotoGrid();
+      _refreshCounterAndButtons();
+      // Message utilisateur
+      const msg = (err && err.code === "QUOTA_PER_POINT")
+        ? "Maximum 5 photos par point atteint."
+        : (err && err.code === "QUOTA_EXCEEDED")
+          ? "Stockage du navigateur saturé. Supprime des photos ou des plans inutilisés."
+          : "Erreur lors de l'ajout de la photo : " + (err && err.message ? err.message : err);
+      setErr(msg);
+      setTimeout(function() { setErr(""); }, 5000);
+    });
+  }
+
+  // File picker → addPhoto pour chaque file sélectionné
+  function _onFileChange(ev) {
+    const files = ev.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      _ajouterPhotoBlob(files[i]);
+    }
+    // Reset l'input pour permettre re-sélection du même fichier
+    ev.target.value = "";
+  }
+
+  photoBtnCamera.addEventListener("click",  function() { photoInputCam.click(); });
+  photoBtnGalerie.addEventListener("click", function() { photoInputGal.click(); });
+  photoInputCam.addEventListener("change",  _onFileChange);
+  photoInputGal.addEventListener("change",  _onFileChange);
+
+  // Charge les photos existantes (mode édition)
+  _loadExistingPhotos();
+
+  // ============================================================
+  // VALIDATION — save
+  // ============================================================
   btnValider.addEventListener("click", function() {
     const nom = inputNom.value.trim();
     if (!nom) { setErr("Le nom est obligatoire"); inputNom.focus(); return; }
@@ -238,33 +565,110 @@ function afficherFormulaire(x, y) {
     }
 
     const desc = inputDesc.value.trim();
-    const point = {
-      id:          nom,
-      nom:         nom,
-      x:           x,
-      y:           y,
-      tags:        tag ? [tag] : [],
-      etat:        "Non inspectée",
-      description: desc,
-      profondeur:  null,
-      date_update: new Date().toISOString().split("T")[0],
-      source:      "editor"
-    };
 
-    // 🏗️ Multi-niveau (v148) : tag le point avec le niveau actif si la feature
-    // est ON pour ce plan. Si OFF → aucun champ `level` → retro-compat absolue.
-    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-      point.level = window.APP_CONFIG.activeLevel || 0;
+    // Phase 1 : commit photos (pendings delete + migration id si renommage)
+    const photoOps = [];
+    if (window.MyKTAMapPhotos) {
+      // Commit pending deletes (vraie suppression IDB)
+      _photosPendingDelete.forEach(function(photoId) {
+        photoOps.push(window.MyKTAMapPhotos.deletePhoto(photoId));
+      });
+      // Migration : si mode ajout (pointId temp) OU si mode édition avec
+      // renommage (oldId !== newId), on rename les photoIds vers le bon id
+      const newPointId = nom;
+      if (_photoPointId !== newPointId) {
+        photoOps.push(window.MyKTAMapPhotos.renamePointId(planId, _photoPointId, newPointId));
+      }
     }
 
-    listePoints.push(point);
-    _ajouterMarker(point);
-    fermer();
+    Promise.all(photoOps).catch(function(e) {
+      console.warn("[Editor] photoOps erreur :", e);
+    }).finally(function() {
+      // Phase 2 : commit du point (création ou update)
+      if (isEdit) {
+        // Update IN PLACE de l'objet existant dans listePoints
+        existingPoint.nom         = nom;
+        existingPoint.id          = nom;  // garde id === nom (rétro-compat)
+        existingPoint.tags        = tag ? [tag] : [];
+        existingPoint.description = desc;
+        existingPoint.date_update = new Date().toISOString().split("T")[0];
+        // 🏗️ Multi-niveau : on garde le level d'origine (pas de re-tag automatique
+        // sur le niveau actif au save d'une édition, ce serait surprenant si l'user
+        // a switché de niveau entretemps).
+        // Re-render tout pour propager le changement d'icône / nom / popup.
+        if (window.renderEditorPoints) window.renderEditorPoints();
+        console.log("[Editor] Point modifié :", nom, "à", x, y);
+      } else {
+        const point = {
+          id:          nom,
+          nom:         nom,
+          x:           x,
+          y:           y,
+          tags:        tag ? [tag] : [],
+          etat:        "Non inspectée",
+          description: desc,
+          profondeur:  null,
+          date_update: new Date().toISOString().split("T")[0],
+          source:      "editor"
+        };
+
+        // 🏗️ Multi-niveau (v148) : tag le point avec le niveau actif si la feature
+        // est ON pour ce plan. Si OFF → aucun champ `level` → retro-compat absolue.
+        if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+          point.level = window.APP_CONFIG.activeLevel || 0;
+        }
+
+        listePoints.push(point);
+        _ajouterMarker(point);
+      }
+      fermer();
+    });
   });
 
   // Focus auto sur le nom
   setTimeout(function() { inputNom.focus(); }, 50);
 }
+
+// =========================
+// ÉDITION D'UN POINT EXISTANT (v1.9.3-B1b)
+// =========================
+// Appelé depuis le bouton "✏️ Modifier" de la popup d'un point session
+// (cf. utils.js > buildPointPopupHtml). Lookup dans listePoints par id +
+// coords (fallback coords seules si l'id ne matche pas), puis ouvre
+// afficherFormulaire en mode édition. Si introuvable → warn console et
+// no-op (pas de modale d'erreur, c'est un cas marginal).
+window.modifierPointEditor = function(id, x, y) {
+  if (typeof x !== "number" || typeof y !== "number") return;
+
+  let target = null;
+  // Match exact (id + coords)
+  for (let i = 0; i < listePoints.length; i++) {
+    const p = listePoints[i];
+    if (String(p.id || "") === String(id) && p.x === x && p.y === y) {
+      target = p;
+      break;
+    }
+  }
+  // Fallback : match par coords seules
+  if (!target) {
+    for (let i = 0; i < listePoints.length; i++) {
+      if (listePoints[i].x === x && listePoints[i].y === y) {
+        target = listePoints[i];
+        break;
+      }
+    }
+  }
+  if (!target) {
+    console.warn("[Editor] Point à modifier introuvable :", id, x, y);
+    return;
+  }
+
+  // Ferme la popup ouverte avant d'ouvrir la modale (sinon la popup
+  // reste accrochée au marker et masque le clic backdrop)
+  if (window.map) try { window.map.closePopup(); } catch(e) {}
+
+  afficherFormulaire(target.x, target.y, target);
+};
 
 // =========================
 // AJOUTER UN MARKER À LA CARTE
@@ -298,6 +702,12 @@ function _ajouterMarker(point) {
   // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
   if (typeof window.attachMarkerDblClickZoom === "function") {
     window.attachMarkerDblClickZoom(marker);
+  }
+
+  // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à l'ouverture
+  // (slot vide dans buildPointPopupHtml, rempli en async via popupopen).
+  if (typeof window.attachPopupPhotos === "function") {
+    window.attachPopupPhotos(marker, String(point.id || ""));
   }
 
   // 🏗️ Multi-niveau (v148) : stocke le level sur le marker pour le filtre runtime.

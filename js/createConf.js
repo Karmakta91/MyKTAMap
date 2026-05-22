@@ -35,6 +35,12 @@ let _imageLayerCount   = 0;
 let _dataLayerCount    = 0;
 let _iconRowCount      = 0;
 let _plannerOrigAssets = {};
+// 🆕 v1.9.3-B1d.γ.2 : photos extraites d'un datalayer ZIP importé via le
+// bouton "📦 Importer ZIP" (mode Nouveau ou Modifier). Format identique à
+// ce qu'on trouve dans _convUploadedPhotos de sessionExporter.js :
+// [{id, pointId, mime, size, blob}]. Lu au moment du _genererZip pour
+// embed dans data/photos/. Reset à chaque ouverture de modale.
+let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
 
 // 🌍 v173 : feature flag pour l'UI Import KMZ. Mis à false pour la release
@@ -176,6 +182,21 @@ function afficherPlanner() {
               </span>
             </label>
           </div>
+
+          <!-- 🆕 v1.9.3-B1d.γ : inclure les photos attachées (IDB) dans le ZIP
+               plan. Visible uniquement en mode "Modifier" (les photos sont
+               attachées aux points du plan actuel via window._currentLoadedPlanId).
+               Compteur "N · X Mo" peuplé en async par _majCompteurPhotosPlanner. -->
+          <div id="pl_photos_wrap" style="display:none; margin-top:10px;">
+            <label class="kta-planner-photos-row" title="Embarque les photos attachées aux points dans le ZIP plan généré (data/photos/). Permet de partager le plan avec ses photos vers un autre appareil.">
+              <input type="checkbox" id="pl_photos" checked>
+              <span>
+                <strong>📸 Inclure les photos attachées <span class="kta-ses-count" id="pl_photos_count" style="margin-left:6px;">(chargement…)</span></strong>
+                <em>Embarque les photos IDB du plan courant dans <code>data/photos/</code> du ZIP généré.
+                Visible uniquement en mode <strong>Modifier</strong> (les photos sont liées au plan actuellement chargé).</em>
+              </span>
+            </label>
+          </div>
         </div>
 
         <!-- 2. IMAGES -->
@@ -275,9 +296,29 @@ function afficherPlanner() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">
             📊 Calques de données
-            <button class="kta-planner-add-btn" id="pl_addDataLayer">+ Ajouter</button>
+            <button class="kta-planner-add-btn" id="pl_addDataLayer" type="button">+ Ajouter</button>
           </div>
           <p class="kta-planner-info">Le calque <code>editor</code> est toujours inclus automatiquement.</p>
+
+          <!-- 🆕 v1.9.3-B1d.γ.2 (KARMA "pas très clair, il faut cliquer sur importer un zip dans data layer") :
+               Encadré dédié et visible pour l'import ZIP datalayer, sorti du titre
+               où il était masqué. Bouton large + texte explicite. -->
+          <div class="kta-planner-import-zip-box">
+            <div class="kta-planner-import-zip-titre">📦 Importer un datalayer ZIP en un clic</div>
+            <p class="kta-planner-import-zip-hint">
+              Tu peux récupérer en un coup les calques (points / tracés / zones / structures) + photos
+              d'un <strong>ZIP datalayer</strong> exporté depuis l'app via
+              <strong>💾 Enregistrer session → 🔄 Conversion → ✏️→🗂️ Session vers data layer</strong>.
+            </p>
+            <button class="kta-btn kta-btn-primary kta-planner-import-zip-btn" id="pl_importDataZip" type="button">
+              📦 Choisir un ZIP datalayer…
+            </button>
+            <!-- Input file caché pour le pl_importDataZip handler -->
+            <input type="file" id="pl_importDataZip_file" accept=".zip,application/zip" style="display:none">
+            <!-- Feedback de l'import ZIP (succès / erreur) -->
+            <div id="pl_importDataZip_status" style="display:none; margin-top:8px; font-size:12px;"></div>
+          </div>
+
           <div id="pl_dataLayers_list" class="kta-planner-layers-list">
             <p class="kta-planner-empty">Aucun calque de données</p>
           </div>
@@ -358,6 +399,7 @@ function afficherPlanner() {
   _dataLayerCount    = 0;
   _iconRowCount      = 0;
   _plannerOrigAssets = {};
+  _plannerPhotosFromZip = [];  // 🆕 v1.9.3-B1d.γ.2 : reset buffer photos ZIP
   _plannerMode       = "nouveau";
 
   document.getElementById("kta-planner-close").addEventListener("click", function() { modal.remove(); });
@@ -430,6 +472,13 @@ function afficherPlanner() {
     });
   }
 
+  // 🆕 v1.9.3-B1d.γ : visibilité section "📸 Inclure les photos" + compteur
+  // async. Section visible UNIQUEMENT en mode Modifier (sinon pas de plan
+  // courant chargé, donc pas de photos IDB à embarquer). Le compteur est
+  // peuplé après render avec lecture IDB.
+  _majVisibiliteCheckboxPhotos();
+  _majCompteurPhotosPlanner();
+
   // 🆕 v1.9.3-A2 : toggle mode image (upload / vierge) + handler de
   // génération du canvas vide. Cf. handlers _onImageModeChange et
   // _genererImageVierge plus bas dans le fichier.
@@ -441,6 +490,22 @@ function afficherPlanner() {
 
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
+
+  // 🆕 v1.9.3-B1d.γ.2 (KARMA 4:b "un datalayer en zip") : bouton pour
+  // importer un datalayer ZIP (data + photos) exporté depuis l'app via
+  // Conversion session→data avec case "📸 Inclure les photos" cochée.
+  // Permet de pré-remplir les data layers + embed les photos en 1 clic.
+  const importZipBtn = document.getElementById("pl_importDataZip");
+  const importZipInput = document.getElementById("pl_importDataZip_file");
+  if (importZipBtn && importZipInput) {
+    importZipBtn.addEventListener("click", function() { importZipInput.click(); });
+    importZipInput.addEventListener("change", function(e) {
+      const f = e.target.files && e.target.files[0];
+      if (f) _importerDatalayerZip(f);
+      // Reset l'input pour permettre re-sélection du même fichier
+      e.target.value = "";
+    });
+  }
 
   document.getElementById("pl_chargerDefauts").addEventListener("click", _chargerIconesDefaut);
   document.getElementById("pl_addIconRow").addEventListener("click", function() {
@@ -511,6 +576,7 @@ async function _chargerZipModifier(file) {
     const zip = await JSZip.loadAsync(file);
     let planConfigFile = null;
     _plannerOrigAssets = {};
+    _plannerPhotosFromZip = [];  // reset buffer photos ZIP au reload (modifier)
 
     for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
       const name = entry.name.split("/").pop();
@@ -950,6 +1016,258 @@ function _ajouterDataLayer(prefill) {
 }
 
 // =========================
+// 📦 IMPORT DATALAYER ZIP (v1.9.3-B1d.γ.2 — KARMA 4:b)
+// =========================
+// Permet d'importer en 1 clic un ZIP datalayer (= exporté depuis l'app via
+// Conversion session→data avec photos cochées) pour pré-remplir les calques
+// data + photos du nouveau plan.
+//
+// Format ZIP attendu (= output de _exportConvSession2Data) :
+//   ├── points.json           (granularité basic, contient {data: [...]})
+//   ├── roads.json            (contient {roads: [...]})
+//   ├── zones.json            (contient {zones: [...]})
+//   ├── structure.json        (contient {structures: [...]})
+//   OU
+//   ├── points.json + roads_<type>.json + zones_<type>.json + structures_<type>.json
+//   │     (granularité fine — on fusionne par catégorie au moment de l'import)
+//   └── photos/
+//        ├── _index.json
+//        └── <photoId>.<ext>
+//
+// Comportement :
+//   - Mode "remplace" : on vide les data layers existants avant d'ajouter
+//     les nouveaux (cohérent avec syncModeFlags / wipe+restore B1d.γ.3)
+//   - 1 calque créé par catégorie présente (max 4 : points, roads, zones, structure)
+//   - Photos stockées dans _plannerPhotosFromZip → embed au _genererZip
+function _importerDatalayerZip(zipFile) {
+  if (typeof JSZip === "undefined") {
+    _afficherStatutImportZip("error", "JSZip non chargé — impossible de lire un ZIP.");
+    return;
+  }
+  _afficherStatutImportZip("info", "⏳ Lecture du ZIP datalayer…");
+
+  JSZip.loadAsync(zipFile).then(function(zip) {
+    // Étape 1 : merge des .json à la racine par catégorie
+    const merged = {
+      data:       [],
+      roads:      [],
+      zones:      [],
+      structures: []
+    };
+    const jsonFiles = [];
+    zip.forEach(function(relPath, entry) {
+      if (entry.dir) return;
+      if (relPath.indexOf("/") >= 0) return;  // skip sous-dossiers (photos/)
+      if (!/\.json$/i.test(relPath)) return;
+      jsonFiles.push(entry);
+    });
+
+    if (jsonFiles.length === 0) {
+      throw new Error("ZIP invalide : aucun fichier .json data layer trouvé à la racine.");
+    }
+
+    return Promise.all(jsonFiles.map(function(entry) {
+      return entry.async("string").then(function(txt) {
+        try {
+          return JSON.parse(txt);
+        } catch(e) {
+          console.warn("[Planner Import ZIP] " + entry.name + " : JSON invalide, ignoré :", e);
+          return null;
+        }
+      });
+    })).then(function(parsedArr) {
+      parsedArr.forEach(function(json) {
+        if (!json || typeof json !== "object") return;
+        // Points : .data ou .editorPoints
+        if (Array.isArray(json.data) && json.data.length > 0) {
+          merged.data = merged.data.concat(json.data);
+        } else if (Array.isArray(json.editorPoints) && json.editorPoints.length > 0) {
+          merged.data = merged.data.concat(json.editorPoints);
+        }
+        if (Array.isArray(json.roads))      merged.roads      = merged.roads.concat(json.roads);
+        if (Array.isArray(json.zones))      merged.zones      = merged.zones.concat(json.zones);
+        if (Array.isArray(json.structures)) merged.structures = merged.structures.concat(json.structures);
+      });
+
+      const total = merged.data.length + merged.roads.length + merged.zones.length + merged.structures.length;
+      if (total === 0) {
+        throw new Error("ZIP datalayer vide : aucun point/tracé/zone/structure trouvé.");
+      }
+
+      // Étape 2 : extraire les photos (si dossier photos/_index.json)
+      const indexFile = zip.file("photos/_index.json");
+      const photosPromise = !indexFile
+        ? Promise.resolve([])
+        : indexFile.async("string").then(function(idxText) {
+            let idxObj;
+            try { idxObj = JSON.parse(idxText); }
+            catch(e) { throw new Error("photos/_index.json corrompu : " + e.message); }
+            const idxMap = (idxObj && idxObj.photos) || {};
+            const photoIds = Object.keys(idxMap);
+            if (photoIds.length === 0) return [];
+            const blobPromises = photoIds.map(function(pid) {
+              const info = idxMap[pid] || {};
+              const filename = "photos/" + (info.file || (pid + ".jpg"));
+              const f = zip.file(filename);
+              if (!f) {
+                console.warn("[Planner Import ZIP] Photo manquante :", filename);
+                return null;
+              }
+              return f.async("blob").then(function(blob) {
+                return {
+                  id:      pid,
+                  pointId: String(info.pointId || ""),
+                  mime:    info.mime || blob.type || "image/jpeg",
+                  size:    info.size || blob.size,
+                  blob:    blob
+                };
+              });
+            });
+            return Promise.all(blobPromises).then(function(arr) {
+              return arr.filter(function(p) { return p !== null; });
+            });
+          });
+
+      return photosPromise.then(function(photos) {
+        // Étape 3 : créer les data layers UI
+        // 🔧 v1.9.4 (KARMA "si on modifie un plan, importe un zip alors que
+        // d'autre datalayer était chargé il nous les supprime") :
+        //   - Mode NOUVEAU → on wipe la liste (vide au départ de toute façon)
+        //   - Mode MODIFIER → on PRÉSERVE les calques existants du plan source,
+        //     on AJOUTE les nouveaux avec suffixe `_imported_<N>` pour éviter
+        //     les collisions d'id (ex: `points` existant + `points` du ZIP).
+        //     L'user peut renommer après si besoin.
+        const isModeNouveau = (_plannerMode === "nouveau");
+        if (isModeNouveau) {
+          const list = document.getElementById("pl_dataLayers_list");
+          if (list) {
+            list.innerHTML = '<p class="kta-planner-empty">Aucun calque de données</p>';
+            _dataLayerCount = 0;
+          }
+        }
+
+        // Set des ids déjà utilisés en UI (pour éviter les collisions au
+        // moment d'importer en mode Modifier)
+        function _idsExistants() {
+          const set = new Set();
+          document.querySelectorAll("#pl_dataLayers_list .kta-planner-layer-item").forEach(function(item) {
+            const lid = item.dataset.layerId;
+            const inputId = document.getElementById(lid + "_id");
+            if (inputId && inputId.value) set.add(inputId.value.trim());
+          });
+          return set;
+        }
+        // Suffixe d'unicité — applique uniquement en mode Modifier (en
+        // Nouveau, le wipe ci-dessus garantit déjà aucune collision).
+        function _idUnique(baseId, idsTaken) {
+          if (isModeNouveau) return baseId;
+          if (!idsTaken.has(baseId)) return baseId;
+          let n = 1;
+          while (idsTaken.has(baseId + "_imported_" + n)) n++;
+          return baseId + "_imported_" + n;
+        }
+
+        // Helper : crée un File JSON synthétique à partir d'un objet payload
+        function _makeJsonFile(name, payload) {
+          const text = JSON.stringify(payload, null, 2);
+          const blob = new Blob([text], { type: "application/json" });
+          // File est dispo dans tous les navigateurs modernes ; fallback Blob
+          // assigné directement à _plannerOrigAssets si File constructor échoue.
+          try {
+            return new File([blob], name, { type: "application/json" });
+          } catch(e) {
+            // Vieux Safari : pas de File constructor. On utilise le Blob direct
+            // avec un .name forgé (canard typing : _lireFichier appelle juste
+            // .text() ou .arrayBuffer() qui sont dispos sur Blob).
+            blob.name = name;
+            return blob;
+          }
+        }
+
+        const idsTaken = _idsExistants();
+        const layersCrees = [];
+
+        function _creerCalqueImport(baseId, label, payload, fileNameBase) {
+          const finalId = _idUnique(baseId, idsTaken);
+          idsTaken.add(finalId);
+          // Nom du fichier dans le ZIP plan = `<id>.json` (cohérent avec
+          // l'init existante du générateur — le nom du fichier = id du calque).
+          const fileName = finalId + ".json";
+          const file = _makeJsonFile(fileName, payload);
+          _plannerOrigAssets[fileName] = file;
+          const finalLabel = (finalId !== baseId) ? (label + " (importé)") : label;
+          _ajouterDataLayer({
+            id: finalId,
+            label: finalLabel,
+            visible: true,
+            file: "data/" + fileName
+          });
+          return finalId;
+        }
+
+        if (merged.data.length > 0) {
+          const id = _creerCalqueImport(
+            "points", "Points importés",
+            { type: "points", version: 1, data: merged.data },
+            "points"
+          );
+          layersCrees.push(id + " (" + merged.data.length + ")");
+        }
+        if (merged.roads.length > 0) {
+          const id = _creerCalqueImport(
+            "roads", "Tracés importés",
+            { type: "roads", version: 1, data: [], roads: merged.roads },
+            "roads"
+          );
+          layersCrees.push(id + " (" + merged.roads.length + ")");
+        }
+        if (merged.zones.length > 0) {
+          const id = _creerCalqueImport(
+            "zones", "Zones importées",
+            { type: "zones", version: 1, data: [], zones: merged.zones },
+            "zones"
+          );
+          layersCrees.push(id + " (" + merged.zones.length + ")");
+        }
+        if (merged.structures.length > 0) {
+          const id = _creerCalqueImport(
+            "structure", "Structures importées",
+            { type: "structures", version: 1, data: [], structures: merged.structures },
+            "structure"
+          );
+          layersCrees.push(id + " (" + merged.structures.length + ")");
+        }
+
+        // Étape 4 : stocker les photos pour embed au _genererZip
+        _plannerPhotosFromZip = photos;
+
+        // Étape 5 : feedback UI
+        const photosTxt = photos.length > 0
+          ? " · 📸 " + photos.length + " photo" + (photos.length > 1 ? "s" : "")
+          : "";
+        _afficherStatutImportZip(
+          "success",
+          "✅ " + layersCrees.length + " calque(s) créé(s) : " + layersCrees.join(", ") + photosTxt
+        );
+      });
+    });
+  }).catch(function(err) {
+    console.error("[Planner Import ZIP]", err);
+    _afficherStatutImportZip("error", "❌ " + (err.message || err));
+  });
+}
+
+// Helper : affiche le statut de l'import ZIP (success vert / error rouge / info gris)
+function _afficherStatutImportZip(kind, msg) {
+  const el = document.getElementById("pl_importDataZip_status");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+  const colors = { success: "#6ce28a", error: "#ff8c8c", info: "#8cb4ff" };
+  el.style.color = colors[kind] || "#c8d0e0";
+}
+
+// =========================
 // ERREUR
 // =========================
 function _plannerErreur(msg) {
@@ -957,6 +1275,58 @@ function _plannerErreur(msg) {
   if (!el) return;
   el.textContent = msg || "";
   el.style.display = msg ? "block" : "none";
+}
+
+// =========================
+// 📸 Photos — UI helpers (v1.9.3-B1d.γ)
+// =========================
+// Visibilite de la section "Inclure les photos" :
+//   - mode Modifier → visible (un plan est chargé, photos potentielles en IDB)
+//   - mode Nouveau  → cachée (pas de plan courant, pas de photos à embarquer)
+function _majVisibiliteCheckboxPhotos() {
+  const wrap = document.getElementById("pl_photos_wrap");
+  if (!wrap) return;
+  wrap.style.display = (_plannerMode === "modifier") ? "" : "none";
+}
+
+// Compteur photos async : lit IDB pour le plan courant + affiche "N · X Mo".
+// Section auto-cachée si 0 photo (l'user n'a pas besoin de voir la case quand
+// rien à embarquer).
+function _majCompteurPhotosPlanner() {
+  const wrap    = document.getElementById("pl_photos_wrap");
+  const counter = document.getElementById("pl_photos_count");
+  const cb      = document.getElementById("pl_photos");
+  if (!wrap || !counter) return;
+  if (_plannerMode !== "modifier") {
+    wrap.style.display = "none";
+    return;
+  }
+  if (!window.MyKTAMapPhotos || typeof window.MyKTAMapPhotos.getAllPhotosForPlan !== "function") {
+    wrap.style.display = "none";
+    return;
+  }
+  const planId = window._currentLoadedPlanId || null;
+  if (!planId) {
+    wrap.style.display = "none";
+    return;
+  }
+  window.MyKTAMapPhotos.getAllPhotosForPlan(planId).then(function(arr) {
+    if (!arr || arr.length === 0) {
+      wrap.style.display = "none";
+      if (cb) cb.checked = false;
+      return;
+    }
+    const totalSize = arr.reduce(function(s, r) { return s + (r.size || (r.blob && r.blob.size) || 0); }, 0);
+    const fmt = window._kta_formatBytes || function(n) {
+      if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
+      return (n / (1024 * 1024)).toFixed(1) + " Mo";
+    };
+    wrap.style.display = "";
+    counter.textContent = "(" + arr.length + " · " + fmt(totalSize) + ")";
+  }).catch(function(e) {
+    console.warn("[Planner] _majCompteurPhotosPlanner :", e);
+    wrap.style.display = "none";
+  });
 }
 
 // =========================
@@ -1640,6 +2010,113 @@ async function _genererZip() {
     // Calque editor
     dataFolder.file("editor.json", PLANNER_EDITOR_JSON);
     dataLayers.push({ id: "editor", label: "Mes annotations", file: "data/editor.json", visible: true });
+
+    // 🆕 v1.9.3-B1d.γ : embed des photos dans data/photos/<photoId>.<ext>
+    // + data/photos/_index.json. Source : combinaison de
+    //
+    //   - Mode Modifier + case "Inclure les photos" cochée → photos IDB du
+    //     plan courant (cf. B1.d.γ.1).
+    //   - Tout mode + import d'un datalayer ZIP → photos extraites de ce
+    //     ZIP via le bouton "📦 Importer ZIP" (cf. B1.d.γ.2, stockées
+    //     dans _plannerPhotosFromZip).
+    //
+    // 🔧 v1.9.4 (KARMA "ca casse tout") : MERGE des 2 sources en mode
+    // Modifier. Avant on prenait juste le ZIP importé en priorité → les
+    // photos IDB du plan source disparaissaient. Maintenant on combine :
+    //   - Toutes les photos IDB (si checkbox cochée + mode Modifier)
+    //   - + Toutes les photos du ZIP datalayer importé
+    //   - Dédupliqué par photoId (UUID v4 → conflit négligeable mais on
+    //     préfère le record IDB pour la dédup car potentiellement modifié
+    //     depuis le ZIP).
+    //
+    // Au load du plan importé, main.js > startImportedPlan détecte
+    // data/photos/_index.json et restore en IDB (cf. B1.d.γ.3).
+    //
+    // Comportement strictement opt-in (rétrocompat absolue) : sans photos
+    // IDB ET sans ZIP datalayer importé, le ZIP plan reste identique à
+    // v1.9.2 (pas de dossier photos/).
+    function _ext(mime) {
+      if (!mime) return "jpg";
+      if (mime.indexOf("png")  >= 0) return "png";
+      if (mime.indexOf("webp") >= 0) return "webp";
+      if (mime.indexOf("gif")  >= 0) return "gif";
+      return "jpg";
+    }
+
+    // Merge des 2 sources avec déduplication par photoId
+    let photosArr = [];
+    const seenIds = new Set();
+
+    // 1. Photos IDB du plan courant (mode Modifier uniquement)
+    const inclurePhotosCb = document.getElementById("pl_photos");
+    const inclurePhotos = !!(inclurePhotosCb && inclurePhotosCb.checked
+                             && _plannerMode === "modifier"
+                             && window.MyKTAMapPhotos);
+    if (inclurePhotos) {
+      const planId = window._currentLoadedPlanId || null;
+      if (planId) {
+        try {
+          const idbPhotos = await window.MyKTAMapPhotos.getAllPhotosForPlan(planId);
+          if (idbPhotos && idbPhotos.length > 0) {
+            idbPhotos.forEach(function(p) {
+              if (!seenIds.has(p.id)) {
+                seenIds.add(p.id);
+                photosArr.push(p);
+              }
+            });
+            console.log("[Planner] Source photos : IDB plan courant (" + idbPhotos.length + ")");
+          }
+        } catch(e) {
+          console.warn("[Planner] Échec lecture photos IDB :", e);
+        }
+      }
+    }
+
+    // 2. Photos du ZIP datalayer importé (s'ajoute aux IDB en mode Modifier,
+    //    seule source en mode Nouveau)
+    if (Array.isArray(_plannerPhotosFromZip) && _plannerPhotosFromZip.length > 0) {
+      let addedFromZip = 0;
+      _plannerPhotosFromZip.forEach(function(p) {
+        if (!seenIds.has(p.id)) {
+          seenIds.add(p.id);
+          photosArr.push({
+            id:      p.id,
+            blob:    p.blob,
+            mime:    p.mime,
+            pointId: p.pointId,
+            size:    p.size
+          });
+          addedFromZip++;
+        }
+      });
+      console.log("[Planner] Source photos : ZIP datalayer (+" + addedFromZip + " ajoutées au merge)");
+    }
+
+    if (photosArr && photosArr.length > 0) {
+      try {
+        const photosFolder = dataFolder.folder("photos");
+        const idx = {};
+        photosArr.forEach(function(rec) {
+          const ext  = _ext(rec.mime);
+          const name = rec.id + "." + ext;
+          photosFolder.file(name, rec.blob);
+          idx[rec.id] = {
+            pointId: rec.pointId,
+            mime:    rec.mime || "image/jpeg",
+            size:    rec.size || (rec.blob && rec.blob.size) || 0,
+            file:    name
+          };
+        });
+        photosFolder.file("_index.json", JSON.stringify({
+          version: 1,
+          photos:  idx
+        }, null, 2));
+        console.log("[Planner] " + photosArr.length + " photo(s) embarquée(s) dans data/photos/");
+      } catch(e) {
+        console.warn("[Planner] Échec embed photos :", e);
+        // Pas bloquant : on continue la génération du ZIP sans les photos
+      }
+    }
 
     // ── Tracking ──
     const tracking = {

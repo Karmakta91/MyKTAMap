@@ -644,15 +644,17 @@ function ouvrirImportSession() {
       <div class="kta-readme-modal-corps">
 
         <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
-          Charge un fichier <code>devmap-session.json</code> exporté depuis l'application.
-          Il contient tes points ajoutés, tes tracés et ta mesure en cours.
+          Charge un fichier <code>session.json</code> exporté depuis l'application,
+          ou un <code>.zip</code> de session avec photos (depuis v1.9.3).
+          Contient tes points ajoutés, tes tracés, tes zones, tes structures, ta
+          mesure en cours et ses photos rattachées.
         </p>
 
         <div class="kta-conv-champ">
           <label class="kta-conv-label">Fichier session</label>
           <div class="kta-conv-drop" id="kta-import-drop">
-            <span id="kta-import-drop-label">📂 Cliquer ou glisser un fichier .json</span>
-            <input type="file" id="kta-import-file" accept=".json,application/json" style="display:none">
+            <span id="kta-import-drop-label">📂 Cliquer ou glisser un fichier .json ou .zip</span>
+            <input type="file" id="kta-import-file" accept=".json,.zip,application/json,application/zip" style="display:none">
           </div>
         </div>
 
@@ -702,49 +704,140 @@ function ouvrirImportSession() {
     erreurEl.style.display = msg ? "block" : "none";
   }
 
+  // 🆕 v1.9.3-B1d : ZIP avec photos (session.json + photos/) en plus du JSON pur.
+  // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
+  // et la validation. Format : [{id, pointId, mime, size, blob}, ...]
+  let _pendingPhotosToRestore = null;
+
+  function _renderApercu(data) {
+    const nbPoints     = (data.editorPoints || []).length;
+    const nbMesure     = (data.measure && data.measure.points) ? data.measure.points.length : 0;
+    const nbTraces     = (data.roads || []).length;
+    const nbZones      = (data.zones || []).length;
+    // 🆕 v1.9.3-A1.a-fix5 : structures dans l'aperçu d'import session
+    // (sinon KARMA voyait l'import accepté sans confirmation visuelle
+    // que les structures étaient bien dans le fichier).
+    const nbStructures = (data.structures || []).length;
+    // 🆕 v1.9.3-B1d : photos
+    const nbPhotos     = (_pendingPhotosToRestore && _pendingPhotosToRestore.length) || 0;
+    const photosBadge  = nbPhotos > 0
+      ? '<span><strong style="color:#f4c542;">📸 ' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? "s" : "") + '</span>'
+      : '';
+
+    apercuEl.innerHTML = `
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
+        <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
+        <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
+        <span><strong style="color:#8cb4ff;">${nbStructures}</strong> structure(s)</span>
+        <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
+        ${photosBadge}
+      </div>
+    `;
+    apercuWrap.style.display = "block";
+    warnEl.style.display = "block";
+    btnValider.disabled = false;
+  }
+
+  function _parseSessionJson(text) {
+    const data = JSON.parse(text);
+    if (data.type !== "devmap-session") {
+      throw new Error("Le fichier n'est pas une session devmap-session valide.");
+    }
+    return data;
+  }
+
+  // Parse un ZIP de session (v1.9.3-B1d) : extrait session.json + photos/
+  // Retourne Promise<data> où data est l'objet session parsé + remplit le
+  // tableau _pendingPhotosToRestore en variable de fermeture.
+  function _parseSessionZip(file) {
+    if (typeof JSZip === "undefined") {
+      return Promise.reject(new Error("JSZip non chargé (ZIP impossible)"));
+    }
+    return JSZip.loadAsync(file).then(function(zip) {
+      const sessionFile = zip.file("session.json");
+      if (!sessionFile) throw new Error("ZIP invalide : session.json manquant à la racine.");
+      return sessionFile.async("string").then(function(jsonText) {
+        const data = _parseSessionJson(jsonText);
+        // Cherche le sous-dossier photos/ + l'index. Si absent → pas de photos.
+        const indexFile = zip.file("photos/_index.json");
+        if (!indexFile) {
+          _pendingPhotosToRestore = [];
+          return data;
+        }
+        return indexFile.async("string").then(function(idxText) {
+          let idxObj;
+          try { idxObj = JSON.parse(idxText); }
+          catch(e) { throw new Error("photos/_index.json corrompu : " + e.message); }
+          const idxMap = idxObj && idxObj.photos ? idxObj.photos : {};
+          const photoIds = Object.keys(idxMap);
+          if (photoIds.length === 0) {
+            _pendingPhotosToRestore = [];
+            return data;
+          }
+          // Charge chaque blob photo en parallèle
+          const promises = photoIds.map(function(pid) {
+            const info = idxMap[pid] || {};
+            const filename = "photos/" + (info.file || (pid + ".jpg"));
+            const f = zip.file(filename);
+            if (!f) {
+              console.warn("[Import] Photo manquante dans le ZIP :", filename);
+              return null;
+            }
+            return f.async("blob").then(function(blob) {
+              return {
+                id:      pid,
+                pointId: info.pointId,
+                mime:    info.mime || blob.type || "image/jpeg",
+                size:    info.size || blob.size,
+                blob:    blob
+              };
+            });
+          });
+          return Promise.all(promises).then(function(arr) {
+            _pendingPhotosToRestore = arr.filter(function(p) { return p !== null; });
+            return data;
+          });
+        });
+      });
+    });
+  }
+
   function chargerFichier(file) {
     fichierCharge = file;
     dropLabel.textContent = "✅ " + file.name;
     setErr("");
+    _pendingPhotosToRestore = null;
 
+    const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip"
+                  || file.type === "application/x-zip-compressed";
+
+    if (isZip) {
+      // 🆕 v1.9.3-B1d : ZIP avec photos
+      _parseSessionZip(file).then(function(data) {
+        dataParsee = data;
+        _renderApercu(data);
+      }).catch(function(err) {
+        console.error("[Import session ZIP] :", err);
+        setErr("❌ ZIP invalide : " + (err.message || err));
+        dataParsee = null;
+        _pendingPhotosToRestore = null;
+        apercuWrap.style.display = "none";
+        warnEl.style.display = "none";
+        btnValider.disabled = true;
+      });
+      return;
+    }
+
+    // JSON pur (rétrocompat)
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
-        const data = JSON.parse(e.target.result);
-        if (data.type !== "devmap-session") {
-          setErr("❌ Fichier invalide — il doit s'agir d'une session devmap-session");
-          dataParsee = null;
-          apercuWrap.style.display = "none";
-          warnEl.style.display = "none";
-          btnValider.disabled = true;
-          return;
-        }
-
+        const data = _parseSessionJson(e.target.result);
         dataParsee = data;
-        const nbPoints     = (data.editorPoints || []).length;
-        const nbMesure     = (data.measure && data.measure.points) ? data.measure.points.length : 0;
-        const nbTraces     = (data.roads || []).length;
-        const nbZones      = (data.zones || []).length;
-        // 🆕 v1.9.3-A1.a-fix5 : structures dans l'aperçu d'import session
-        // (sinon KARMA voyait l'import accepté sans confirmation visuelle
-        // que les structures étaient bien dans le fichier).
-        const nbStructures = (data.structures || []).length;
-
-        apercuEl.innerHTML = `
-          <div style="display:flex; gap:14px; flex-wrap:wrap;">
-            <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
-            <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
-            <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
-            <span><strong style="color:#8cb4ff;">${nbStructures}</strong> structure(s)</span>
-            <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
-          </div>
-        `;
-        apercuWrap.style.display = "block";
-        warnEl.style.display = "block";
-        btnValider.disabled = false;
-
+        _renderApercu(data);
       } catch(err) {
-        setErr("❌ JSON invalide : " + err.message);
+        setErr("❌ " + err.message);
         dataParsee = null;
         apercuWrap.style.display = "none";
         warnEl.style.display = "none";
@@ -766,8 +859,10 @@ function ouvrirImportSession() {
   dropZone.addEventListener("drop", function(e) {
     e.preventDefault(); dropZone.classList.remove("dragover");
     const f = e.dataTransfer.files[0];
-    if (f && f.name.toLowerCase().endsWith(".json")) chargerFichier(f);
-    else setErr("Le fichier doit être un .json");
+    // 🆕 v1.9.3-B1d : accepte aussi les .zip (session avec photos)
+    const okExt = f && (/\.(json|zip)$/i).test(f.name);
+    if (okExt) chargerFichier(f);
+    else setErr("Le fichier doit être un .json ou .zip (session)");
   });
 
   // Boutons
@@ -778,28 +873,67 @@ function ouvrirImportSession() {
   btnValider.addEventListener("click", function() {
     if (!dataParsee) return;
 
-    try {
-      if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
-      if (window.renderEditorPoints) window.renderEditorPoints();
-      if (window.resetMesure)        window.resetMesure();
-      if (window.setMeasurePoints) {
-        window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
+    // 🆕 v1.9.3-B1d : restauration des photos en IDB AVANT de pousser
+    // editorPoints (= avant que la grille puisse interroger IDB).
+    // Stratégie : on purge TOUTES les photos du plan courant en IDB,
+    // puis on injecte celles du ZIP. C'est le comportement attendu
+    // (= un import est un remplacement, pas un merge — cohérent avec
+    // points/roads/zones qui sont aussi reset+set).
+    function _restorerPhotos() {
+      if (!_pendingPhotosToRestore || _pendingPhotosToRestore.length === 0) {
+        return Promise.resolve(0);
       }
-      if (window.resetRoads)         window.resetRoads();
-      if (window.setRoads)           window.setRoads(dataParsee.roads || []);
-      if (window.resetZones)         window.resetZones();
-      if (window.setZones)           window.setZones(dataParsee.zones || []);
-      // 🆕 v1.9.3-A1.a : restauration des structures depuis l'import
-      // session JSON. Rétrocompat : si l'import est antérieur à v1.9.3,
-      // dataParsee.structures sera undefined → array vide via `|| []`.
-      if (window.resetStructures)    window.resetStructures();
-      if (window.setStructures)      window.setStructures(dataParsee.structures || []);
-
-      fermer();
-    } catch(err) {
-      console.error(err);
-      setErr("Erreur lors de l'import : " + (err.message || err));
+      if (!window.MyKTAMapPhotos) {
+        console.warn("[Import] MyKTAMapPhotos indispo — photos ignorées");
+        return Promise.resolve(0);
+      }
+      const planId = window._currentLoadedPlanId || "default";
+      return window.MyKTAMapPhotos.deletePhotosForPlan(planId).then(function() {
+        const promises = _pendingPhotosToRestore.map(function(p) {
+          return window.MyKTAMapPhotos.restorePhoto({
+            id:      p.id,
+            planId:  planId,
+            pointId: String(p.pointId),
+            blob:    p.blob,
+            mime:    p.mime,
+            size:    p.size
+          });
+        });
+        return Promise.all(promises).then(function() {
+          console.log("[Import] Photos restaurées :", _pendingPhotosToRestore.length);
+          return _pendingPhotosToRestore.length;
+        });
+      });
     }
+
+    _restorerPhotos().then(function() {
+      try {
+        if (window.setEditorPoints)    window.setEditorPoints(dataParsee.editorPoints || []);
+        if (window.renderEditorPoints) window.renderEditorPoints();
+        if (window.resetMesure)        window.resetMesure();
+        if (window.setMeasurePoints) {
+          window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
+        }
+        if (window.resetRoads)         window.resetRoads();
+        if (window.setRoads)           window.setRoads(dataParsee.roads || []);
+        if (window.resetZones)         window.resetZones();
+        if (window.setZones)           window.setZones(dataParsee.zones || []);
+        // 🆕 v1.9.3-A1.a : restauration des structures depuis l'import
+        // session JSON. Rétrocompat : si l'import est antérieur à v1.9.3,
+        // dataParsee.structures sera undefined → array vide via `|| []`.
+        if (window.resetStructures)    window.resetStructures();
+        if (window.setStructures)      window.setStructures(dataParsee.structures || []);
+
+        _pendingPhotosToRestore = null;  // cleanup
+        fermer();
+      } catch(err) {
+        console.error(err);
+        setErr("Erreur lors de l'import : " + (err.message || err));
+      }
+    }).catch(function(err) {
+      console.error("[Import] _restorerPhotos a échoué :", err);
+      setErr("Erreur lors de la restauration des photos : " + (err.message || err));
+    });
   });
 }
 
@@ -1304,11 +1438,14 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⚙️ Paramètres</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug (clic direct)</span>
+            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug (clic direct) — réglages <strong>par plan</strong></span>
             <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs et 🗑️ pour réinitialiser le cache.
+            Contient le bouton 🎯 pour calibrer l'échelle, 🐛 pour les logs détaillés. Depuis v1.7.3,
+            <strong>le reset complet n'est plus ici</strong> — passe par ⚙️ Configuration sur la page d'accueil →
+            💥 Tout réinitialiser. Idem pour le <strong>🔐 Code d'accès local (PIN/Face ID)</strong>
+            qui n'est activable que depuis ⚙️ Configuration loader (par design).
           </p>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#f4c542;">🚀 Mode Performance ULTRA :</strong> section dans la modale ⚙️ Réglages pour les
@@ -1461,9 +1598,37 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">✏️ Édition de points</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point</span>
+            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point (clic sur la carte = nouveau point)</span>
+            <span class="kta-aide-icone">📸</span><span>Photos attachées au point (max 5) — section dans la modale d'ajout/édition. Boutons 📷 Prendre / 🖼️ Galerie</span>
+            <span class="kta-aide-icone">✏️</span><span>Modifier un point existant — bouton bleu dans la popup du marker (relance la même modale pré-remplie)</span>
             <span class="kta-aide-icone">🗑️</span><span>Effacer (dernier point ou tous les points)</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">📸 Photos POI (depuis v1.10.0) :</strong> attache jusqu'à <strong>5 photos par point</strong>
+            (caméra mobile via 📷 ou import galerie via 🖼️). Compression auto JPEG q85 max 1920px. <strong>100 % local en IndexedDB</strong>
+            — jamais envoyé sur Internet. Miniatures 44×44 dans la popup du marker (tap → viewer plein écran avec pinch-zoom + pan +
+            swipe horizontal pour naviguer entre photos). Inclues dans tous les exports (session ZIP + générateur ZIP plan) + restaurées
+            automatiquement au re-import. 5e compteur 📸 dans le header + section dans la modale "📊 Détails de la session".
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏛️ Structures (piliers + murs + fronts de taille)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🟡</span><span>Pilier 1ère masse (polygone, fill jaune)</span>
+            <span class="kta-aide-icone">🟠</span><span>Pilier 2e masse (polygone, fill orange) — auto-taggé niveau -1 en M-LVL</span>
+            <span class="kta-aide-icone">🔵</span><span>Mur (polygone, fill bleu)</span>
+            <span class="kta-aide-icone">🟧</span><span>Front de taille 1ère masse (polyligne, trait orange) — c'est une LIGNE, pas un polygone fermé</span>
+            <span class="kta-aide-icone">🟨</span><span>Front de taille 2e masse (polyligne, trait jaune) — auto-taggé niveau -1 en M-LVL</span>
+            <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point / dernière structure en cours OU fermée / 🎯 sélection au clic carte / toutes)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">Cartographie de l'architecture souterraine</strong> : piliers porteurs (1ère/2e masse de
+            calcaire), murs de soutènement, et fronts d'exploitation. Pour les polygones (piliers + murs), pose au moins 3 points
+            puis re-clique sur l'icône allumée pour fermer. Pour les polylignes (fronts), pose au moins 2 points puis re-clique sur
+            l'icône pour valider la ligne. Aucun effet pathfinder (lecture seule — c'est différent de la zone ⛔ Inaccessible qui
+            bloque l'itinéraire).
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1508,6 +1673,29 @@ function afficherAide() {
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             Plus de détails et chiffres précis dans la <strong>Documentation 📖</strong> (groupe 📚 Aide / Doc) section "Optimiser ton plan pour la performance".
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🔐 Code d'accès local (PIN / Face ID)</div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🔐</span><span>Verrouillage optionnel de l'app à chaque démarrage (depuis v1.10.0)</span>
+            <span class="kta-aide-icone">🤳</span><span>Biométrie Face ID / Touch ID / Windows Hello si l'appareil le supporte (WebAuthn natif)</span>
+            <span class="kta-aide-icone">🚫</span><span>5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#f4c542;">À activer depuis la page d'accueil uniquement :</strong>
+            ⚙️ Configuration → 🔐 Code d'accès local → bouton "🔐 Activer le code d'accès". Saisis un PIN
+            4-6 chiffres, confirme, puis accepte la biométrie si proposée. Au prochain démarrage, l'app
+            te demandera ton code avant d'ouvrir.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong style="color:#ff8a5c;">⚠️ Note importante :</strong> c'est une <strong>barrière d'usage</strong>,
+            PAS un chiffrement des données. Les photos et sessions restent en clair en stockage local du navigateur.
+            Le PIN est haché côté client (SHA-256 + sel random) et jamais envoyé sur Internet.
+            <strong>Note bien ton code</strong> — aucune recovery possible en cas d'oubli (no backend, no email reset).
+            En lockout : seules solutions = réinstaller l'app (perte session + plans non mémorisés) OU contacter
+            l'auteur (qui ne pourra rien faire, c'est cohérent avec la philo no-backend).
           </p>
         </div>
 
@@ -2258,39 +2446,70 @@ async function mettreAJourCodeSeul() {
 }
 
 // Avertissement spécifique offline pour la mise à jour douce.
-// 🆕 v1.9.3-B-side (KARMA) : message adapté car le ping cible désormais
-// le serveur MyKTAMap (myktamap.fr/ping.html), pas Google. Donc un échec
-// peut signifier "pas d'internet" OU "serveur MyKTAMap indispo (DNS,
-// SSL, Nginx, hébergeur)". Le message explicite les 2 cas.
+// 🆕 v1.9.3-B-side (KARMA "rend le modal plus jolie pour l'erreur") :
+// upgrade visuel — passage du style basique kta-modal (icône + titre + texte
+// + un bouton OK) au style élaboré kta-oom-modal-boite (header big avec
+// ⚠️ qui pulsent, sections 🔍 Causes / ⛔ Conséquence / ✅ Recommandation),
+// strictement symétrique avec _resetFlowOfflineWarning. Sémantique adaptée :
+//   - action ANNULÉE automatiquement (pas de bouton "Continuer quand même")
+//     car relancer le soft update offline ferait le même crash
+//   - ton rassurant ("aucune donnée perdue, app continue de fonctionner")
+//     car contrairement au reset, on n'a touché à rien
 function _softUpdateOfflineWarning() {
   const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
   const overlay = document.createElement("div");
-  overlay.className = "kta-modal-overlay";
+  overlay.id = "kta-soft-update-offline";
+  overlay.className = "kta-readme-modal-overlay";
   overlay.innerHTML =
-    '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">📡</div>' +
-      '<div class="kta-modal-titre">Pas Internet ou serveur indispo</div>' +
-      '<div class="kta-modal-texte">' +
-        'La mise à jour a besoin de joindre le serveur <code>' + origin + '</code> ' +
-        'pour télécharger les nouveaux fichiers. Causes possibles :' +
-        '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:22px; color:#a8b3c8; line-height:1.6;">' +
-          '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
-          '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
-          '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
-        '</ul>' +
-        'Reconnecte-toi ou réessaie plus tard.' +
-        '<br><br>' +
-        '<strong>Bonne nouvelle</strong> : aucune donnée n\'a été supprimée. Tu peux ' +
-        'continuer à utiliser l\'app normalement avec la version actuelle.' +
+    '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
+      '<div class="kta-readme-modal-header kta-oom-header">' +
+        '<span class="kta-oom-titre-big">' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+        '</span>' +
       '</div>' +
-      '<div class="kta-modal-actions" style="justify-content:center;">' +
-        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">OK</button>' +
+      '<div class="kta-readme-modal-corps kta-oom-corps">' +
+        '<div class="kta-oom-intro">' +
+          'La <strong>mise à jour douce</strong> a besoin de joindre le serveur ' +
+          '<code>' + origin + '</code> pour télécharger les nouveaux fichiers (HTML, JS, CSS, icônes). ' +
+          'Le ping de vérification a échoué — l\'opération est <strong>annulée</strong>.' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
+            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
+            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">✅ Bonne nouvelle</div>' +
+          '<p>' +
+            '<strong>Aucune donnée n\'a été supprimée.</strong> Le cache PWA, tes plans mémorisés, ' +
+            'ta session en cours et tes préférences sont <strong>intacts</strong>. ' +
+            'Tu peux continuer à utiliser l\'app normalement avec la version actuelle.' +
+          '</p>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔄 Recommandation</div>' +
+          '<p>' +
+            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que ' +
+            '<code>' + origin + '</code> répond bien, puis relance la mise à jour depuis ' +
+            '<strong>⚙️ Configuration → 🔄 Forcer la mise à jour</strong>.' +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kta-oom-actions" style="justify-content:center;">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">✓ J\'ai compris</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
   document.getElementById("kta-soft-update-offline-ok").addEventListener("click", function() {
     overlay.remove();
   });
+  // Cohérent avec _resetFlowOfflineWarning : clic backdrop ferme aussi
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
 function viderCacheAppli() {
@@ -2315,10 +2534,19 @@ function viderCacheAppli() {
   });
 }
 
-// Affiche d'abord le warning insistant "PAS DE CONNEXION INTERNET" en rouge
-// (style cohérent avec la modale OOM), puis bascule sur le flow de double
-// confirmation classique si l'utilisateur veut quand même continuer.
+// Affiche d'abord le warning insistant "PAS INTERNET OU SERVEUR INDISPO" en
+// rouge (style cohérent avec la modale OOM), puis bascule sur le flow de
+// double confirmation classique si l'utilisateur veut quand même continuer.
+//
+// 🆕 v1.9.3-B-side (KARMA "ca fonctionne en mise jours mais pas en mode tout
+// reset, il devrait nous dire serveur indispo ou pas internet") : message
+// aligné avec _softUpdateOfflineWarning car le ping cible désormais le serveur
+// MyKTAMap (<origin>/ping.html), pas Google. Un échec peut signifier "pas
+// d'internet" OU "serveur MyKTAMap indispo (DNS, SSL, Nginx, hébergeur)".
+// Pour le reset, c'est encore plus critique : sans serveur joignable, le SW
+// ne peut PAS re-cacher les assets → app inutilisable post-wipe.
 function _resetFlowOfflineWarning() {
+  const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
   const overlay = document.createElement("div");
   overlay.id = "kta-reset-offline";
   overlay.className = "kta-readme-modal-overlay";
@@ -2327,19 +2555,28 @@ function _resetFlowOfflineWarning() {
       '<div class="kta-readme-modal-header kta-oom-header">' +
         '<span class="kta-oom-titre-big">' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
-          '<span class="kta-oom-titre-text">PAS DE CONNEXION INTERNET</span>' +
+          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
           '<span class="kta-oom-warn-side">⚠️</span>' +
         '</span>' +
       '</div>' +
       '<div class="kta-readme-modal-corps kta-oom-corps">' +
         '<div class="kta-oom-intro">' +
-          'Tu es sur le point de <strong>tout réinitialiser</strong> alors que tu es <strong>hors ligne</strong>. ' +
-          'L\'application a besoin d\'Internet pour redescendre ses fichiers (HTML, JS, CSS, icônes) après le wipe.' +
+          'Tu es sur le point de <strong>tout réinitialiser</strong> alors que le serveur ' +
+          '<code>' + origin + '</code> est <strong>injoignable</strong>. ' +
+          'L\'application a besoin de ce serveur pour redescendre ses fichiers (HTML, JS, CSS, icônes) après le wipe.' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
+            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
+            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+          '</ul>' +
         '</div>' +
         '<div class="kta-oom-section">' +
           '<div class="kta-oom-section-titre">⛔ Conséquence si tu continues maintenant</div>' +
           '<ul class="kta-oom-list">' +
-            '<li><strong>L\'app sera inutilisable</strong> tant que tu n\'auras pas une connexion Internet.</li>' +
+            '<li><strong>L\'app sera inutilisable</strong> tant que le serveur ne sera pas joignable à nouveau.</li>' +
             '<li>Le splash et le loader ne s\'afficheront même pas — le navigateur cherchera les fichiers, ne les trouvera plus en cache, et restera bloqué.</li>' +
             '<li>Tous tes plans mémorisés, ta session en cours et tes préférences seront <strong>perdus définitivement</strong>.</li>' +
           '</ul>' +
@@ -2347,8 +2584,9 @@ function _resetFlowOfflineWarning() {
         '<div class="kta-oom-section">' +
           '<div class="kta-oom-section-titre">✅ Recommandation</div>' +
           '<p>' +
-            '<strong>Reconnecte-toi à Internet</strong> (Wi-Fi, 4G/5G) puis relance la réinitialisation. ' +
-            'L\'app aura ainsi une chance de se recharger correctement après le wipe.' +
+            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que <code>' + origin + '</code> ' +
+            'répond bien, puis relance la réinitialisation. L\'app aura ainsi une chance de se recharger ' +
+            'correctement après le wipe.' +
           '</p>' +
         '</div>' +
       '</div>' +
@@ -3862,8 +4100,11 @@ _setGroupeModeActif("tracker", isTracking, null);
               { label: "Annuler le dernier point", icon: "↩️",
                 desc: "Sur la zone en cours ou la dernière zone",
                 onClick: function() { if (window.removeLastZonePoint) window.removeLastZonePoint(); } },
-              { label: "Dernière zone fermée", icon: "✂️",
-                desc: nbZonesFermees + " zone(s) au total",
+              // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
+              // removeLastZone priorise désormais currentZone si existe,
+              // sinon la dernière fermée. Label adapté pour clarifier.
+              { label: "Dernière zone (en cours OU fermée)", icon: "✂️",
+                desc: nbZonesFermees + " zone(s) fermée(s) au total",
                 onClick: function() {
                   // Symetrique du fix roads : si la zone en cours vient
                   // d'etre supprimee, on ferme le mode UI (sinon icone
@@ -4017,17 +4258,26 @@ _setGroupeModeActif("tracker", isTracking, null);
                 onClick: function() {
                   if (window.removeLastStructurePoint) window.removeLastStructurePoint();
                 } },
-              { label: "Dernière structure fermée", icon: "✂️",
-                desc: nbStructFermees + " structure(s) au total",
+              // 🆕 v1.9.4 (KARMA "supprimer d'un coup le tracé en cours") :
+              // removeLastStructure priorise désormais currentStructure si
+              // existe, sinon la dernière fermée. Label adapté.
+              { label: "Dernière structure (en cours OU fermée)", icon: "✂️",
+                desc: nbStructFermees + " structure(s) fermée(s) au total",
                 onClick: function() {
                   const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (window.removeLastStructure) window.removeLastStructure();
                   const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
                   if (before && !after) _fermerModeStructure();
                 } },
-              // Note : sélection par clic carte non implémentée en A1.a
-              // (= ce mode existe pour zones via activerModeSuppressionZoneClic,
-              // on ajoutera son équivalent en A1.b si KARMA le souhaite).
+              // 🆕 v1.9.4 (KARMA) : sélection au clic carte pour les structures,
+              // pattern identique aux zones et tracés.
+              { label: "Sélectionner une structure à supprimer", icon: "🎯",
+                desc: "Clique sur la structure sur la carte (" + nbSelectables + " disponibles)",
+                onClick: function() {
+                  if (typeof window.activerModeSuppressionStructureClic === "function") {
+                    window.activerModeSuppressionStructureClic();
+                  }
+                } },
               { label: "Toutes les structures", icon: "🗑️", danger: true,
                 desc: "Action irréversible (" + nbSelectables + " supprimable(s))",
                 onClick: function() {
@@ -4539,6 +4789,145 @@ window.activerModeSuppressionZoneClic = function() {
   };
 
   window.map.on("click", _suppZoneClickHandler);
+};
+
+// =========================
+// 🏛️ SUPPRESSION STRUCTURE PAR CLIC CARTE (v1.9.4, KARMA)
+// =========================
+// Pattern copié sur activerModeSuppressionZoneClic + Trace, avec gestion
+// hybride polygon (piliers + murs) / polyline (fronts) via le helper
+// window.isStructurePolylineType exposé par structures.js.
+//
+//   - Structures POLYGON (pilier-1, pilier-2, mur) → test pointInPolygon
+//     puis fallback distance bord (TOLERANCE_BORD_PX = 20)
+//   - Structures POLYLINE (front-1, front-2) → test distance segment
+//     (TOLERANCE_TRACE_PX = 15, plus serré car les fronts sont fins)
+//
+// Si la structure cliquée == currentStructure → on ferme le mode UI
+// (pareil que pour zones, anti-state stale).
+let _suppStructureClickHandler = null;
+let _suppStructureFloater      = null;
+
+function _desactiverModeSuppressionStructure() {
+  if (_suppStructureClickHandler && window.map) {
+    window.map.off("click", _suppStructureClickHandler);
+    _suppStructureClickHandler = null;
+  }
+  if (_suppStructureFloater) {
+    _suppStructureFloater.remove();
+    _suppStructureFloater = null;
+  }
+}
+
+window.activerModeSuppressionStructureClic = function() {
+  if (!window.map) return;
+
+  const allStructures = window.getStructures ? (window.getStructures() || []) : [];
+  // Selectionnables = structures avec assez de points (min 2 polyline, 3 polygon)
+  const supprimables = allStructures.filter(function(s) {
+    if (!s || !Array.isArray(s.points)) return false;
+    const isLine = (typeof window.isStructurePolylineType === "function")
+                   && window.isStructurePolylineType(s.type);
+    const minPts = isLine ? 2 : 3;
+    return s.points.length >= minPts;
+  });
+  if (supprimables.length === 0) {
+    alert("Aucune structure à supprimer.");
+    return;
+  }
+
+  _desactiverModeSuppressionStructure();
+
+  _suppStructureFloater = document.createElement("div");
+  _suppStructureFloater.id = "kta-supp-structure-floater";
+  _suppStructureFloater.className = "kta-supp-trace-floater";  // reuse meme style charte
+  _suppStructureFloater.innerHTML =
+    '<span class="kta-supp-trace-icon">🎯</span>' +
+    '<span class="kta-supp-trace-msg">Clique sur une structure pour la <strong>supprimer</strong></span>' +
+    '<button class="kta-btn kta-btn-ghost" id="kta-supp-structure-annuler" type="button">✕ Annuler</button>';
+  document.body.appendChild(_suppStructureFloater);
+
+  document.getElementById("kta-supp-structure-annuler")
+    .addEventListener("click", _desactiverModeSuppressionStructure);
+
+  const TOLERANCE_BORD_PX  = 20;  // polygon fallback bord
+  const TOLERANCE_TRACE_PX = 15;  // polyline (fronts)
+
+  _suppStructureClickHandler = function(e) {
+    const cx = e.latlng.lng;
+    const cy = APP_CONFIG.imageHeight - e.latlng.lat;
+    const cp = { x: cx, y: cy };
+
+    let foundStruct = null;
+
+    // Étape 1 : test dans le polygone pour les structures polygon
+    // Itération inverse pour prendre la structure dessinée en dernier si
+    // plusieurs s'overlap (top z-order visuel).
+    for (let i = supprimables.length - 1; i >= 0; i--) {
+      const s = supprimables[i];
+      const isLine = (typeof window.isStructurePolylineType === "function")
+                     && window.isStructurePolylineType(s.type);
+      if (!isLine && _pointInPolygon(cp, s.points)) {
+        foundStruct = s;
+        break;
+      }
+    }
+
+    // Étape 2 : fallback distance bord/segment (utile pour les piliers
+    // petits où l'user clique à côté, ET pour les fronts qui sont des
+    // polylines fines).
+    if (!foundStruct) {
+      let closestDist = Infinity;
+      let closestStruct = null;
+      for (let z = 0; z < supprimables.length; z++) {
+        const s = supprimables[z];
+        const pts = s.points;
+        const isLine = (typeof window.isStructurePolylineType === "function")
+                       && window.isStructurePolylineType(s.type);
+        const tolerance = isLine ? TOLERANCE_TRACE_PX : TOLERANCE_BORD_PX;
+        // Pour polyline : segments ouverts (pts[N-1] → fin, pas de bouclage).
+        // Pour polygon : segments fermés (pts[N-1] → pts[0]).
+        const segCount = isLine ? pts.length - 1 : pts.length;
+        for (let i = 0; i < segCount; i++) {
+          const a = pts[i];
+          const b = pts[isLine ? (i + 1) : ((i + 1) % pts.length)];
+          if (!a || !b) continue;
+          const d = _pointSegmentDistanceFlat(cp, a, b);
+          if (d < closestDist && d <= tolerance) {
+            closestDist = d;
+            closestStruct = s;
+          }
+        }
+      }
+      if (closestStruct) foundStruct = closestStruct;
+    }
+
+    if (!foundStruct) {
+      console.log("[Suppr structure] Click hors structure et hors tolérance, ignoré");
+      return;
+    }
+
+    // Si la structure cliquée est la structure en cours, on ferme le mode UI
+    // après suppression (setStructures reset currentStructure indirectement
+    // via render — on capture la ref AVANT).
+    const currentBefore = (typeof window.getCurrentStructure === "function")
+                          ? window.getCurrentStructure() : null;
+    const closeMode = (currentBefore && currentBefore === foundStruct);
+
+    // Supprime la structure via le setter standard (anti désynchro avec
+    // l'état interne du module).
+    const currentStructures = window.getStructures ? window.getStructures() : [];
+    const filtered = currentStructures.filter(function(s) { return s !== foundStruct; });
+    if (window.setStructures) window.setStructures(filtered);
+    console.log("[Suppr structure] Supprimée :", foundStruct.type, "—",
+                filtered.length, "structure(s) restante(s)");
+
+    if (closeMode) _fermerModeStructure();
+
+    _desactiverModeSuppressionStructure();
+  };
+
+  window.map.on("click", _suppStructureClickHandler);
 };
 
 // =========================

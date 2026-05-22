@@ -437,15 +437,21 @@ function resetStructures() {
 // SUPPRIMER LA DERNIÈRE STRUCTURE FERMÉE
 // =========================
 function removeLastStructure() {
-  // Trouver la dernière structure fermée (différente de currentStructure)
-  for (let i = structuresData.length - 1; i >= 0; i--) {
-    if (structuresData[i] !== currentStructure) {
-      structuresData.splice(i, 1);
-      renderStructures();
-      return true;
-    }
+  // 🆕 v1.9.4 (KARMA "supprimer d'un coup la structure en cours") :
+  // priorité à la structure EN COURS si elle existe, sinon la dernière
+  // fermée. Cohérent avec removeLastRoad et removeLastZone (depuis v1.9.4).
+  if (currentStructure) {
+    const idx = structuresData.indexOf(currentStructure);
+    if (idx >= 0) structuresData.splice(idx, 1);
+    currentStructure = null;
+    renderStructures();
+    return true;
   }
-  return false;
+  // Pas de structure en cours → supprime la dernière fermée
+  if (structuresData.length === 0) return false;
+  structuresData.pop();
+  renderStructures();
+  return true;
 }
 
 // =========================
@@ -501,6 +507,10 @@ window.getCurrentStructure = function() {
 // =========================
 // EXPORT GLOBAL
 // =========================
+// 🆕 v1.9.4 : helper exposé pour que activerModeSuppressionStructureClic
+// (interface.js) sache quelle géométrie tester (polyline pour fronts,
+// polygon pour piliers + murs).
+window.isStructurePolylineType       = _isPolylineType;
 window.initStructures                = initStructures;
 window.toggleStructureMode           = toggleStructureMode;
 window.fermerStructureEnCours        = fermerStructureEnCours;

@@ -298,15 +298,24 @@ function resetZones() {
 // SUPPRIMER LA DERNIÈRE ZONE FERMÉE
 // =========================
 function removeLastZone() {
-  // Trouver la dernière zone fermée (différente de currentZone)
-  for (let i = zonesData.length - 1; i >= 0; i--) {
-    if (zonesData[i] !== currentZone) {
-      zonesData.splice(i, 1);
-      renderZones();
-      return true;
-    }
+  // 🆕 v1.9.4 (KARMA "on doit pouvoir supprimer d'un coup le tracé en cours,
+  // que last zone fermé actuellement") : priorité à la zone EN COURS si elle
+  // existe, sinon la dernière zone fermée.
+  // Avant : on skippait `currentZone` → impossible de supprimer une zone
+  // en cours d'un coup, l'user devait annuler chaque point un par un.
+  // Maintenant cohérent avec removeLastRoad qui pop la dernière sans skip.
+  if (currentZone) {
+    const idx = zonesData.indexOf(currentZone);
+    if (idx >= 0) zonesData.splice(idx, 1);
+    currentZone = null;
+    renderZones();
+    return true;
   }
-  return false;
+  // Pas de zone en cours → supprime la dernière zone fermée
+  if (zonesData.length === 0) return false;
+  zonesData.pop();
+  renderZones();
+  return true;
 }
 
 // =========================

@@ -173,6 +173,12 @@
         '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="Structures (piliers + murs)">' +
           '<span class="kta-refonte-counter-icon">🏛️</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
+        // 🆕 v1.9.3-B1d+ : 5e compteur pour les photos. Lecture async IDB
+        // dans updateCompteurs. Masqué via kta-refonte-counter-empty si 0
+        // (cohérent avec les autres compteurs à 0).
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="Photos attachées aux points">' +
+          '<span class="kta-refonte-counter-icon">📸</span><span class="kta-refonte-counter-val">0</span>' +
+        '</span>' +
       '</button>';
 
     document.body.appendChild(header);
@@ -235,6 +241,21 @@
 
     // Update initial des compteurs + valeurs
     updateCompteurs();
+
+    // 🆕 v1.9.3-B1d-fix5 : resize/orientationchange listeners pour le
+    // debordement du titre. Sans ça, l'user qui rotate ou resize la
+    // fenêtre verrait la version stale (cachée alors qu'il y a la place,
+    // ou visible alors qu'elle déborde) jusqu'au prochain polling 2s.
+    let _resizeDeb = null;
+    window.addEventListener("resize", function() {
+      // Debounce 80ms — sinon dispatch ×30/s pendant un drag-resize PC
+      clearTimeout(_resizeDeb);
+      _resizeDeb = setTimeout(_ajusterDebordementTitre, 80);
+    });
+    window.addEventListener("orientationchange", function() {
+      // 350ms après orientationchange : laisser iOS finir sa transition viewport
+      setTimeout(_ajusterDebordementTitre, 350);
+    });
   }
 
   // ============================================================
@@ -267,6 +288,55 @@
     _setCounterVal("kta-refonte-counter-roads",      nRoads);
     _setCounterVal("kta-refonte-counter-zones",      nZones);
     _setCounterVal("kta-refonte-counter-structures", nStructures);
+
+    // 🆕 v1.9.3-B1d+ : compteur photos (async IDB). Lecture rapide via
+    // index `by_plan`. Pas de await dans le sync updateCompteurs : on lance
+    // et on swap quand prêt. Si MyKTAMapPhotos indispo → reste à 0.
+    if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.countPhotosForPlan === "function") {
+      const planId = window._currentLoadedPlanId || "default";
+      window.MyKTAMapPhotos.countPhotosForPlan(planId).then(function(n) {
+        _setCounterVal("kta-refonte-counter-photos", n || 0);
+      }).catch(function() {
+        _setCounterVal("kta-refonte-counter-photos", 0);
+      });
+    } else {
+      _setCounterVal("kta-refonte-counter-photos", 0);
+    }
+
+    // 🆕 v1.9.3-B1d-fix5 : ajuste le débordement du titre après que le
+    // nom/version aient été posés. Utilise rAF pour laisser le browser
+    // peindre avant la mesure, sinon scrollWidth/clientWidth peuvent
+    // retourner des valeurs stale (= du frame précédent).
+    requestAnimationFrame(_ajusterDebordementTitre);
+  }
+
+  // 🆕 v1.9.3-B1d-fix5 : graceful degradation 2 niveaux quand le titre
+  // déborde sur les compteurs. Étapes :
+  //   1. Reset : on AFFICHE d'abord la version (cas user resize +
+  //      → larger : on veut retrouver la version).
+  //   2. Mesure : si titleEl.scrollWidth > clientWidth → on cache la
+  //      version (display:none, pas visibility:hidden — elle ne doit
+  //      pas occuper d'espace).
+  //   3. Si toujours trop large après hide version → le CSS
+  //      text-overflow:ellipsis sur #kta-refonte-plan-name s'occupe
+  //      naturellement de tronquer le nom (couleur héritée #f4c542 →
+  //      "..." dans la couleur du titre comme demandé par KARMA).
+  function _ajusterDebordementTitre() {
+    const titleEl   = document.querySelector(".kta-refonte-header-title");
+    const versionEl = document.getElementById("kta-refonte-plan-version");
+    if (!titleEl || !versionEl) return;
+
+    // Étape 1 : reset (réafficher la version pour mesurer le besoin réel)
+    versionEl.style.display = "";
+
+    // Mesure brute. +1 de tolérance pour les arrondis sub-pixel des navigateurs.
+    if (titleEl.scrollWidth > titleEl.clientWidth + 1) {
+      // Étape 2 : on cache la version
+      versionEl.style.display = "none";
+      // Étape 3 implicite : le CSS ellipsis sur le span name tronque
+      // automatiquement le nom si scrollWidth reste > clientWidth. Pas
+      // d'action JS à prendre — le browser gère.
+    }
   }
 
   function _setCounterVal(parentId, val) {
@@ -367,28 +437,38 @@
 
   // ResizeObserver helper — séparé pour pouvoir nettoyer/relancer si besoin.
   let _statusBarRO = null;
+
+  // 🔧 v1.9.3-B1d-fix3 (KARMA "cant find variable _syncH ligne 429") :
+  // Avant, `_syncH` était une fonction LOCALE à _setupStatusBarResizeObserver().
+  // Elle n'était donc pas visible depuis _onOrientationChange() (function
+  // statement au scope du module). Quand l'event orientationchange se
+  // déclenchait, ReferenceError → status bar pas remise à jour après rotation.
+  //
+  // Solution : promouvoir _syncH au scope du module. _statusBarEl est déjà
+  // au scope module, donc pas de capture de closure à gérer.
+  //
+  // _syncH : lit la hauteur réelle (offsetHeight inclut padding+border,
+  // donc safe-area-inset-bottom déjà compris vu que padding-bottom de
+  // la barre vaut env(safe-area-inset-bottom)). Écrit dans la variable
+  // CSS au niveau de :root pour cascade globale.
+  function _syncH() {
+    if (!_statusBarEl) return;
+    const h = _statusBarEl.offsetHeight;
+    if (h > 0) {
+      document.documentElement.style.setProperty("--kta-statusbar-h", h + "px");
+    }
+    // Notifier Leaflet pour qu'il recalcule la taille de la carte
+    // (sinon les tiles affichées hors-zone ne sont pas mises à jour
+    // avant la prochaine interaction utilisateur). Debounce via rAF.
+    if (window.map && typeof window.map.invalidateSize === "function") {
+      requestAnimationFrame(function() {
+        try { window.map.invalidateSize({ animate: false }); } catch(e) {}
+      });
+    }
+  }
+
   function _setupStatusBarResizeObserver() {
     if (!_statusBarEl || _statusBarRO) return;
-
-    // _syncH : lit la hauteur réelle (offsetHeight inclut padding+border,
-    // donc safe-area-inset-bottom déjà compris vu que padding-bottom de
-    // la barre vaut env(safe-area-inset-bottom)). Écrit dans la variable
-    // CSS au niveau de :root pour cascade globale.
-    function _syncH() {
-      if (!_statusBarEl) return;
-      const h = _statusBarEl.offsetHeight;
-      if (h > 0) {
-        document.documentElement.style.setProperty("--kta-statusbar-h", h + "px");
-      }
-      // Notifier Leaflet pour qu'il recalcule la taille de la carte
-      // (sinon les tiles affichées hors-zone ne sont pas mises à jour
-      // avant la prochaine interaction utilisateur). Debounce via rAF.
-      if (window.map && typeof window.map.invalidateSize === "function") {
-        requestAnimationFrame(function() {
-          try { window.map.invalidateSize({ animate: false }); } catch(e) {}
-        });
-      }
-    }
 
     if (typeof ResizeObserver !== "undefined") {
       _statusBarRO = new ResizeObserver(_syncH);
@@ -763,6 +843,14 @@
     }
     html += '</div>';
 
+    // 📸 Photos (v1.9.3-B1d+) — section async hydratée après injection DOM
+    // pour ne pas bloquer le render initial. Compteur "Chargement…" en
+    // placeholder puis swap avec total / taille / breakdown par point.
+    html += '<div class="kta-refonte-session-section" id="kta-refonte-session-photos-section">';
+    html += '<div class="kta-refonte-session-section-titre">📸 Photos <span class="kta-refonte-session-badge" id="kta-refonte-session-photos-badge">…</span></div>';
+    html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">Chargement…</div>';
+    html += '</div>';
+
     // 📐 Mesure simple + 🗺️ Itinéraire + 🚶 Tracker
     const tFoo = !!(window.getTrackingPosition && window.getTrackingPosition());
     if (mesure.length >= 2 || itineraire || tFoo) {
@@ -840,6 +928,79 @@
       if (e.target === overlay) _close();
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
+
+    // 🆕 v1.9.3-B1d+ : hydrate la section 📸 Photos en async (lecture IDB).
+    // Format affiché : badge "N" + breakdown par point ("Puits du chêne · 3 photos").
+    // Points sans photo ne sont pas listés (sinon trop verbeux pour des plans riches).
+    _hydraterPhotosModaleSession(points);
+  }
+
+  // Helper : hydrate la section 📸 Photos de la modale détail session avec
+  // les données IDB. Compte total + breakdown par point + taille agrégée.
+  function _hydraterPhotosModaleSession(points) {
+    const badge = document.getElementById("kta-refonte-session-photos-badge");
+    const body  = document.getElementById("kta-refonte-session-photos-body");
+    if (!badge || !body) return;
+
+    if (!window.MyKTAMapPhotos) {
+      badge.textContent = "0";
+      body.textContent = "Module photos indisponible (IndexedDB ?).";
+      return;
+    }
+
+    const planId = window._currentLoadedPlanId || "default";
+    window.MyKTAMapPhotos.getAllPhotosForPlan(planId).then(function(arr) {
+      const total = arr.length;
+      badge.textContent = total;
+      if (total === 0) {
+        body.textContent = "Aucune photo attachée. Édite un point et ajoute des photos via 📷 / 🖼️.";
+        return;
+      }
+      // Group par pointId pour breakdown
+      const byPoint = {};
+      let totalSize = 0;
+      arr.forEach(function(rec) {
+        const pid = String(rec.pointId || "");
+        if (!byPoint[pid]) byPoint[pid] = { count: 0, size: 0 };
+        byPoint[pid].count += 1;
+        byPoint[pid].size  += rec.size || (rec.blob && rec.blob.size) || 0;
+        totalSize += rec.size || (rec.blob && rec.blob.size) || 0;
+      });
+      // Map pointId → nom (depuis listePoints en session)
+      const nomByPid = {};
+      (points || []).forEach(function(p) {
+        nomByPid[String(p.id || "")] = p.nom || p.id || "(sans nom)";
+      });
+      // Format taille via le helper sessionExporter (déjà exposé)
+      const fmt = window._kta_formatBytes || function(n) {
+        if (n < 1024) return n + " o";
+        if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
+        return (n / (1024 * 1024)).toFixed(1) + " Mo";
+      };
+      let html = '<ul class="kta-refonte-session-list">';
+      Object.keys(byPoint).forEach(function(pid) {
+        const stats = byPoint[pid];
+        const nom = nomByPid[pid] || pid + " (point introuvable)";
+        const safeName = String(nom).replace(/[&<>"']/g, function(c) {
+          return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+        });
+        html += '<li>' +
+          '<strong>' + safeName + '</strong>' +
+          '<span class="kta-refonte-session-meta">' +
+            stats.count + ' photo' + (stats.count > 1 ? 's' : '') + ' · ' + fmt(stats.size) +
+          '</span>' +
+        '</li>';
+      });
+      html += '</ul>';
+      html += '<div class="kta-refonte-session-meta" style="margin-top:8px; text-align:right;">Total : <strong>' + fmt(totalSize) + '</strong></div>';
+
+      body.className = "";  // retire la classe "empty"
+      body.innerHTML = html;
+    }).catch(function(e) {
+      console.warn("[RefonteInterface] _hydraterPhotosModaleSession :", e);
+      badge.textContent = "?";
+      body.textContent = "Erreur de lecture IDB : " + (e.message || e);
+    });
   }
 
   // ============================================================
