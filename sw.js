@@ -29,7 +29,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.9.2";
+const CACHE_NAME = "myktamap-cache-v1.9.2-fix1";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -171,7 +171,18 @@ self.addEventListener("install", (event) => {
     caches.open(CACHE_NAME).then(async (cache) => {
       for (const asset of ASSETS_TO_CACHE) {
         try {
-          await cache.add(asset);
+          // 🆕 v1.9.2-cache-fix (KARMA "déployé via FTP mais je vois
+          // toujours v1.8.1") : `cache.add(url)` utilise le HTTP cache
+          // du navigateur par défaut. Si le navigateur avait un
+          // Cache-Control valide sur l'ancien fichier, il sert sa copie
+          // locale au lieu de fetch le nouveau FTP-déployé → le SW met
+          // l'ANCIENNE version dans son cache au bump CACHE_NAME.
+          //
+          // Fix : `cache: 'reload'` force le bypass du HTTP cache navigateur
+          // → fetch direct depuis le serveur → on récupère TOUJOURS la
+          // version la plus récente déployée en FTP, indépendamment de
+          // ce que le navigateur a en cache HTTP.
+          await cache.add(new Request(asset, { cache: "reload" }));
           console.log("[SW] Caché :", asset);
         } catch (err) {
           console.warn("[SW] Non caché :", asset, err);
