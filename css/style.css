@@ -3063,25 +3063,43 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  /* safe-area sur top et bottom pour ne pas masquer le contenu sous la status bar
-     et le home indicator iPhone (le fond, lui, s'étend bord à bord via inset:0) */
-  padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.9.2-fix12 (KARMA pivot) : padding overlay supprimé.
+     « j'en veux pas, je veux le modal full sans noir autour du modal ».
+     Le contenu (#planLoaderBox) prend désormais 100% de la viewport.
+     Les safe-areas iOS sont gérées au niveau du PADDING INTERNE de la
+     box (voir plus bas) → le contenu reste accessible sous le notch /
+     home indicator, mais le fond #1a1f2e couvre toute la viewport
+     y compris ces zones réservées. */
+  padding: 0;
   box-sizing: border-box;
   overflow-y: auto;
 }
 
 #planLoaderBox {
   width: 100%;
-  max-width: 520px;
+  /* 🆕 v1.9.2-fix12 : plein écran sans bordure noire autour. Le cap
+     ancien (520px mobile / 1100-2400px PC) est supprimé → la box prend
+     100% de la viewport. */
+  max-width: 100%;
   background: #1a1f2e;
   color: #e8eaf0;
-  border-radius: 14px;
-  padding: 24px;
+  /* Pas de border-radius / border / box-shadow : la box couvre tout,
+     ces décorations sont invisibles (coupées par le bord de l'écran)
+     ou apparaissent juste comme un trait disgracieux au sommet. */
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  /* Padding interne avec safe-area iOS (top/bottom) pour que le
+     contenu (logo, titre, ...) reste sous le notch / au-dessus du
+     home indicator. Le fond #1a1f2e couvre AUSSI ces zones, donc
+     visuellement la couleur s'étend bord à bord. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.65);
-  border: 1px solid rgba(255,255,255,0.08);
   font-family: Arial, sans-serif;
-  margin: auto 0;
+  margin: 0;
+  /* Min-height 100vh pour que la box couvre l'écran même quand le
+     contenu est court. */
+  min-height: 100vh;
 }
 
 /* ===== Loader-grid : layout vertical mobile/tablette (≤ 1023px),
@@ -3113,14 +3131,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
-  /* 🆕 v1.9.2-fix11 (KARMA "plein écran en largeur") : la box prend
-     toute la largeur disponible (= viewport - padding overlay 20px ×2).
-     Cap min(2400px, ...) pour éviter des lignes ultra-longues sur
-     écrans 4K ultra-wide qui nuiraient à la lisibilité. Padding interne
-     augmenté pour respirer aux extrémités. */
+  /* 🆕 v1.9.2-fix12 : box full edge-to-edge sans cap max-width.
+     Padding horizontal interne augmenté pour respirer sur les côtés
+     du contenu sans repousser la box elle-même. */
   #planLoaderBox {
-    max-width: min(2400px, 100%);
-    padding: 24px 56px;
+    padding-left: 56px;
+    padding-right: 56px;
   }
 
   .loader-grid {
@@ -3191,17 +3207,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     align-items: stretch;
   }
 
-  /* 🆕 v1.9.2 : box loader étiré pour prendre ~95% de la hauteur écran.
-     Le margin: auto 0 reste valide mais le min-height force la box à
-     occuper l'espace même si son contenu est court. */
+  /* 🆕 v1.9.2-fix12 : la box prend 100vh défini dans la base CSS
+     (cf. plus haut). Ici on ajoute juste le flex-column pour la
+     distribution interne (resume / grid / footer). PAS de border /
+     box-shadow ajoutés (box edge-to-edge, ces décorations ne sont
+     pas visibles). */
   #planLoaderBox {
-    min-height: calc(100vh - 40px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
     display: flex;
     flex-direction: column;
-    /* Glow doré subtil sur la bordure pour matérialiser visuellement
-       la box dans le grand espace écran. */
-    box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 80px rgba(244, 197, 66, 0.04);
-    border-color: rgba(244, 197, 66, 0.10);
   }
 
   /* La loader-grid (2 cols) prend le RESTE de la hauteur disponible
@@ -3268,12 +3281,12 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding et gap interne plus
-   généreux pour profiter de l'espace dispo. Largeur reste edge-to-edge
-   (cf. règle ≥ 1024px qui donne max-width: 100% cap 2400px). */
+/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding latéral plus généreux
+   (la box reste full edge-to-edge). */
 @media (min-width: 1440px) {
   #planLoaderBox {
-    padding: 32px 64px;
+    padding-left: 64px;
+    padding-right: 64px;
   }
   .loader-grid {
     gap: 0 56px;
@@ -3291,12 +3304,11 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : encore plus d'espace
-   interne. La box reste plein écran (= viewport - 40px overlay padding)
-   jusqu'à 2400px puis cap. */
+/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : padding latéral maxi. */
 @media (min-width: 1920px) {
   #planLoaderBox {
-    padding: 40px 96px;
+    padding-left: 96px;
+    padding-right: 96px;
   }
   .loader-grid {
     gap: 0 72px;
