@@ -3121,19 +3121,24 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   height: 20px;
   width: auto;
   display: block;
-  /* Animation lettre-par-lettre : on cache TOUTE l'image au départ
-     (inset 100% à droite = visible 0%) puis on révèle progressivement
-     jusqu'à 0% (visible 100%). `steps(5, end)` discretise la
-     transition en 5 paliers = visuellement K, K+A, K+A+R, K+A+R+M,
-     K+A+R+M+A. Durée totale 1.5s = ~0.3s par lettre. */
+  /* 🆕 v1.9.2-fix16 : animation lettre-par-lettre PLUS DOUCE (KARMA
+     « arrivée des lettres plus douce »). Avant : steps(5, end) =
+     5 jumps secs sans transition. Maintenant : 5 keyframes explicites
+     avec courbe cubic-bezier(0.45, 0.05, 0.55, 0.95) (ease-in-out
+     doux) entre chacune → la révélation glisse smooth d'une "lettre"
+     à l'autre tout en gardant des paliers visibles. Durée totale
+     allongée à 1.8s pour donner du poids visuel. */
   clip-path: inset(0 100% 0 0);
-  animation: kta-splash-karma-reveal 1.5s steps(5, end) 0.8s forwards;
+  animation: kta-splash-karma-reveal 1.8s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.8s forwards;
 }
 
 @keyframes kta-splash-karma-reveal {
-  to {
-    clip-path: inset(0 0 0 0);
-  }
+  0%   { clip-path: inset(0 100% 0 0); }   /* tout caché */
+  20%  { clip-path: inset(0 80%  0 0); }   /* K visible */
+  40%  { clip-path: inset(0 60%  0 0); }   /* + A */
+  60%  { clip-path: inset(0 40%  0 0); }   /* + R */
+  80%  { clip-path: inset(0 20%  0 0); }   /* + M */
+  100% { clip-path: inset(0 0    0 0); }   /* + A finale */
 }
 
 /* Quand le splash est en fade-out, la signature s'efface aussi (sinon
