@@ -1581,7 +1581,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-supp-trace-floater {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 107, 107, 0.5);
@@ -3304,11 +3304,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   border-radius: 0;
   border: none;
   box-shadow: none;
-  /* Padding interne avec safe-area iOS (top/bottom) pour que le
-     contenu (logo, titre, ...) reste sous le notch / au-dessus du
-     home indicator. Le fond #1a1f2e couvre AUSSI ces zones, donc
-     visuellement la couleur s'étend bord à bord. */
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px calc(24px + env(safe-area-inset-bottom, 0px));
+  /* Padding interne avec safe-area iOS UNIQUEMENT EN HAUT pour que le
+     contenu (logo, titre, ...) reste sous le notch.
+     🆕 v1.9.2-fullscreen3 (KARMA "trop de marge en bas en footer du
+     loader, comme avant en terme de marge") : retrait du safe-area-
+     inset-bottom (24px fixe au lieu de calc(24+safe)). La box s'étend
+     jusqu'au home indicator iOS — le contenu (Générer un plan, libs
+     cités) reste visible avec juste 24px de respiration. Le home
+     indicator pill iOS overlay seulement les derniers ~10px. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 24px;
   box-sizing: border-box;
   font-family: Arial, sans-serif;
   margin: 0;
@@ -3840,7 +3844,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
      d'une marge esthétique. Sans ça, en portrait sur iPhone avec notch, la
      boîte démarrait à 16px du bord → collait au notch quand le contenu
      dépassait. */
-  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px;
   box-sizing: border-box;
   animation: kta-fadein 0.18s ease;
   overflow-y: auto;
@@ -6086,7 +6090,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-iti-floater {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -8208,8 +8212,8 @@ body.kta-refonte-v1 .leaflet-top.leaflet-right {
      recouvrir.
      🆕 v1.9.2-fullscreen : `100dvh` au lieu de `100vh` (fallback `vh`
      gardé en premier pour iOS 15-). */
-  max-height: calc(100vh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
-  max-height: calc(100dvh - 44px - var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+  max-height: calc(100vh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
+  max-height: calc(100dvh - 44px - var(--kta-statusbar-h, 52px) - env(safe-area-inset-top, 0px) - 4px);
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;  /* Firefox */
@@ -8381,7 +8385,7 @@ body.kta-refonte-v1 .kta-compass-widget {
      (mise à jour par JS quand la barre wrap multi-ligne). Sans ça, si
      le footer grossit à 2 lignes, la boussole se retrouve cachée
      dessous. Fallback calc(52 + safe + 8) si JS pas chargé. */
-  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
 }
@@ -8389,7 +8393,7 @@ body.kta-refonte-v1 .kta-compass-widget {
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
-  bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -8416,7 +8420,7 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
   /* 🆕 v1.8.1-refonte-10 : padding-bottom suit la variable dynamique
      `--kta-statusbar-h` (qui inclut safe-area déjà) + 16px de respiration.
      Quand le footer wrap multi-ligne, les modales s'ajustent automatiquement. */
-  padding-bottom: calc(var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px))) + 16px);
+  padding-bottom: calc(var(--kta-statusbar-h, 52px) + 16px);
 }
 
 /* En landscape mobile, header est plus court (36px). Le footer suit
@@ -8425,7 +8429,7 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
 @media (max-height: 500px) and (orientation: landscape) {
   body.kta-refonte-v1 .kta-readme-modal-overlay {
     padding-top:    calc(36px + env(safe-area-inset-top, 0px) + 8px);
-    padding-bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px);
+    padding-bottom: calc(var(--kta-statusbar-h, 40px) + 8px);
   }
 }
 
@@ -8664,15 +8668,19 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    ───────────────────────────────────────────────────────────────── */
 
 /* 🆕 v1.8.1-refonte-10 : variable CSS partagée `--kta-statusbar-h` =
-   hauteur EFFECTIVE actuelle du status bar (incluant safe-area iPhone).
-   - Fallback CSS = 52px + safe (portrait standard, footer 1 ligne).
+   hauteur EFFECTIVE actuelle du status bar.
+   - Fallback CSS = 52px (portrait standard, footer 1 ligne).
    - JS (refonteInterface.js > ResizeObserver) la réécrit dynamiquement
      dès que la barre s'agrandit (wrap multi-ligne) ou se collapse.
    Tout ce qui dépend du bas de l'écran (#map bottom, boussole bottom,
    modales padding-bottom) consomme cette variable → réajustement
-   automatique sans JS supplémentaire. */
+   automatique sans JS supplémentaire.
+   🆕 v1.9.2-fullscreen3 (KARMA "comme avant en terme de marge") :
+   le `+ env(safe-area-inset-bottom)` est retiré — avec cover+translucent,
+   le footer s'étend jusqu'au home indicator iOS et son contenu reste
+   visible (le home indicator pill iOS n'overlay que les derniers pixels). */
 body.kta-refonte-v1 {
-  --kta-statusbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
+  --kta-statusbar-h: 52px;
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
@@ -8701,10 +8709,16 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
      Feedback KARMA : "si toute les informations sont afficher en footer
      on sort du cadre [...] agrandir le footer dynamiquement et passer
      a la ligne toute la partie qui sort". */
-  min-height: calc(52px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.9.2-fullscreen3 (KARMA "trop de marge en bas en footer mode
+     carte, on doit être comme avant en terme de marge") : retrait du
+     `+ env(safe-area-inset-bottom)` qui ajoutait ~21-34px sur iPhone
+     en cover. Le footer revient à 52px de hauteur compacte comme
+     avant cover. Les icônes latérales restent décalées via le padding
+     horizontal mobile (28px, anti-corner rounded). */
+  min-height: 52px;
   height: auto;
   padding-top: 4px;
-  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 4px;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
@@ -8735,11 +8749,14 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
   /* État replié : la barre garde une hauteur fixe minimaliste (pas de
      wrap car contenu masqué via opacity:0). On force min-height ET
-     height pour neutraliser l'auto-grow du mode ouvert. */
-  min-height: calc(20px + env(safe-area-inset-bottom, 0px));
-  height: calc(20px + env(safe-area-inset-bottom, 0px));
+     height pour neutraliser l'auto-grow du mode ouvert.
+     🆕 v1.9.2-fullscreen3 : retrait du safe-area-inset-bottom (cf. règle
+     statusbar plus haut) — la barre s'étend jusqu'au home indicator iOS
+     pour rester compacte. */
+  min-height: 20px;
+  height: 20px;
   padding-top: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: 0;
 }
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-content {
   opacity: 0;
@@ -8953,7 +8970,7 @@ body.kta-refonte-v1 #map {
      wrap multi-ligne et grandit, #map remonte automatiquement pour
      ne pas être recouvert. Fallback calc(52 + safe) si JS pas chargé.
      La variable inclut DÉJÀ safe-area-inset-bottom (le JS lit offsetHeight). */
-  bottom: var(--kta-statusbar-h, calc(52px + env(safe-area-inset-bottom, 0px)));
+  bottom: var(--kta-statusbar-h, 52px);
   height: auto;
   /* Transition douce pour suivre le changement de hauteur du statusbar
      (wrap/unwrap, collapse/expand) sans saccade visuelle */
@@ -8962,7 +8979,7 @@ body.kta-refonte-v1 #map {
 /* État collapsed : la variable JS prend déjà la nouvelle valeur (20+safe).
    Mais on garde un fallback CSS pour le cas où JS n'a pas encore tourné. */
 body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
-  bottom: var(--kta-statusbar-h, calc(20px + env(safe-area-inset-bottom, 0px)));
+  bottom: var(--kta-statusbar-h, 20px);
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -8994,18 +9011,19 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* 🆕 Statusbar landscape : min-height 40+safe (au lieu de height fixe).
+  /* 🆕 Statusbar landscape : min-height 40 (au lieu de height fixe).
      Permet à la barre de grandir aussi en landscape si les 4 stats wrap.
-     La variable --kta-statusbar-h fallback descend à 40+safe ici. */
+     🆕 v1.9.2-fullscreen3 : retrait des safe-area-inset-bottom (cf.
+     portrait plus haut, même logique). */
   body.kta-refonte-v1 {
-    --kta-statusbar-h: calc(40px + env(safe-area-inset-bottom, 0px));
+    --kta-statusbar-h: 40px;
   }
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    min-height: calc(40px + env(safe-area-inset-bottom, 0px));
+    min-height: 40px;
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-    min-height: calc(16px + env(safe-area-inset-bottom, 0px));
-    height: calc(16px + env(safe-area-inset-bottom, 0px));
+    min-height: 16px;
+    height: 16px;
   }
   /* #map bottom : la variable --kta-statusbar-h gère déjà tout (JS la
      met à jour quand le statusbar bouge). Pas de override hardcodé. */
@@ -9023,8 +9041,8 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
      🆕 v1.9.2-fullscreen : double déclaration vh/dvh. */
   body.kta-refonte-v1 .leaflet-top.leaflet-left,
   body.kta-refonte-v1 .leaflet-top.leaflet-right {
-    max-height: calc(100vh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
-    max-height: calc(100dvh - 36px - var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) - env(safe-area-inset-top, 0px) - 4px);
+    max-height: calc(100vh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
+    max-height: calc(100dvh - 36px - var(--kta-statusbar-h, 40px) - env(safe-area-inset-top, 0px) - 4px);
   }
   /* 🆕 v1.8.1-refonte-17 : boussole en BAS-CENTRÉE en landscape (pas
      bas-gauche comme en portrait). Sur petit écran horizontal, les
@@ -9036,7 +9054,7 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
      icones)". */
   body.kta-refonte-v1 .kta-compass-widget,
   body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
-    bottom: calc(var(--kta-statusbar-h, calc(40px + env(safe-area-inset-bottom, 0px))) + 8px) !important;
+    bottom: calc(var(--kta-statusbar-h, 40px) + 8px) !important;
     /* Centrage horizontal : left:50% + translateX(-50%). On annule la
        règle portrait `left: calc(10px + safe-left)` via la valeur 50%
        qui prime (plus spécifique dans la cascade media query). */

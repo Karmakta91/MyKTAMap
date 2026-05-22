@@ -58,7 +58,13 @@
 
   <!-- ICON CHROME INSTALL-->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
+<!-- 🆕 v1.9.2-fullscreen3 (KARMA "top toujours même couleur que body") :
+     theme-color aligné à body bg (#0a0d18) pour cohérence visuelle dès
+     le premier paint, AVANT que le CSS charge complètement. Affecte
+     l'address bar Android Chrome + certains backgrounds système. Sur
+     iOS PWA, c'est apple-mobile-web-app-status-bar-style qui prime,
+     mais theme-color complète sur les autres plateformes. -->
+<meta name="theme-color" content="#0a0d18">
 </head>
 
 <body>
