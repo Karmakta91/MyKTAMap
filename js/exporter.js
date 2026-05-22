@@ -191,6 +191,46 @@
           <!-- MODE AVANCÉ -->
           <div id="kta-export-avance" style="display:${modeInitial === 'avance' ? 'block' : 'none'};">
 
+            <!-- 🆕 v1.9.3-A1.b.3 (KARMA "on doit avoir la possibilité de
+                 remplacer l'image principal par un fond transparent, blanc,
+                 ou noir, pour afficher uniquement ce que on a calqué dessus") :
+                 sélecteur du fond d'export. 4 options radio :
+                 - image : comportement classique (calques image visibles)
+                 - blanc : fillRect blanc pour impression
+                 - noir : fillRect noir pour vue contraste
+                 - transparent : pas de fillRect (canvas alpha) -->
+            <div class="kta-aide-section">
+              <div class="kta-aide-section-titre">🎨 Fond d'export</div>
+              <p style="font-size:11.5px; color:#8892a4; margin:4px 0 8px 0; line-height:1.5;">
+                Choisis le fond du PNG exporté. Utile pour superposer tes
+                annotations sur un autre support (carte impression / fond
+                contraste / chevauchement transparent).
+              </p>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                <label class="kta-export-radio-row">
+                  <input type="radio" name="export_bg" value="image" checked>
+                  <span>🖼️ Image du plan <span style="color:#8892a4; font-size:11px;">(défaut)</span></span>
+                </label>
+                <label class="kta-export-radio-row">
+                  <input type="radio" name="export_bg" value="white">
+                  <span>⬜ Blanc <span style="color:#8892a4; font-size:11px;">(impression)</span></span>
+                </label>
+                <label class="kta-export-radio-row">
+                  <input type="radio" name="export_bg" value="black">
+                  <span>⬛ Noir <span style="color:#8892a4; font-size:11px;">(contraste)</span></span>
+                </label>
+                <label class="kta-export-radio-row">
+                  <input type="radio" name="export_bg" value="transparent">
+                  <span>⌬ Transparent <span style="color:#8892a4; font-size:11px;">(PNG alpha)</span></span>
+                </label>
+              </div>
+              <div id="kta-export-bg-info" style="display:none; margin-top:8px; padding:8px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.25); border-radius:6px; font-size:11.5px; color:#c8d0e0; line-height:1.5;">
+                ℹ️ Avec un fond personnalisé, les <strong>calques d'image</strong>
+                (plan + overlays) sont automatiquement ignorés. Les calques de
+                données + annotations restent affichés normalement.
+              </div>
+            </div>
+
             <!-- Calques d'image -->
             <div class="kta-aide-section">
               <div class="kta-aide-section-titre">🖼️ Calques d'image</div>
@@ -920,6 +960,47 @@
     xInput.addEventListener("input", _planifierApercu);
     yInput.addEventListener("input", _planifierApercu);
 
+    // 🆕 v1.9.3-A1.b.3 : sélecteur fond — toggle banner info + grise
+    // visuellement la section "Calques d'image" quand fond custom.
+    function _majBgState() {
+      const bgVal = _radioVal("export_bg") || "image";
+      const isCustom = (bgVal !== "image");
+      const infoEl = document.getElementById("kta-export-bg-info");
+      if (infoEl) infoEl.style.display = isCustom ? "block" : "none";
+      // Grise la section Calques d'image quand fond custom (pour signaler
+      // visuellement qu'elle n'aura pas d'effet sur le PNG sortant).
+      const imgLayersWrap = document.getElementById("kta-export-image-layers");
+      const imgSectionParent = imgLayersWrap?.parentElement;  // .kta-aide-section
+      if (imgSectionParent) {
+        imgSectionParent.style.opacity = isCustom ? "0.4" : "1";
+        imgSectionParent.style.pointerEvents = isCustom ? "none" : "";
+      }
+      // Si fond = transparent, force le format PNG (JPEG ne supporte pas
+      // l'alpha). Pratique : on coche PNG et on disable JPEG/WebP.
+      if (bgVal === "transparent") {
+        const pngRadio = modal.querySelector('input[name="format"][value="png"]');
+        if (pngRadio && !pngRadio.checked) {
+          pngRadio.checked = true;
+          pngRadio.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        modal.querySelectorAll('input[name="format"]').forEach(function(r) {
+          if (r.value !== "png") {
+            r.disabled = true;
+            r.parentElement?.classList.add("kta-disabled");
+          }
+        });
+      } else {
+        modal.querySelectorAll('input[name="format"]').forEach(function(r) {
+          r.disabled = false;
+          r.parentElement?.classList.remove("kta-disabled");
+        });
+      }
+    }
+    modal.querySelectorAll('input[name="export_bg"]').forEach(function(r) {
+      r.addEventListener("change", _majBgState);
+    });
+    _majBgState();  // état initial (en cas de restauration d'état)
+
     // Tous les autres inputs déclenchent l'aperçu
     modal.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(function(el) {
       el.addEventListener("change", _planifierApercu);
@@ -968,7 +1049,10 @@
       ann:         {},
       legende:     null,
       format:      _radioVal("format"),
-      resol:       _radioVal("resol")
+      resol:       _radioVal("resol"),
+      // 🆕 v1.9.3-A1.b.3 : choix de fond sauvegardé pour restauration
+      // d'état (cas du Sélectionner sur la carte → réouverture modale).
+      bg:          _radioVal("export_bg") || "image"
     };
     document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
       etat.imageLayers[cb.dataset.layerId] = cb.checked;
@@ -1031,6 +1115,8 @@
     });
     if (etat.format) _setRadio("format", etat.format);
     if (etat.resol)  _setRadio("resol",  etat.resol);
+    // 🆕 v1.9.3-A1.b.3 : restauration du choix de fond
+    if (etat.bg)     _setRadio("export_bg", etat.bg);
 
     if (etat.legende) {
       document.getElementById("kta-export-legende-on").checked = true;
@@ -1167,7 +1253,12 @@
       ann:         {},
       legende:     null,
       format:      _radioVal("format") || "png",
-      resol:       parseFloat(_radioVal("resol") || "1")
+      resol:       parseFloat(_radioVal("resol") || "1"),
+      // 🆕 v1.9.3-A1.b.3 (KARMA "fond transparent / blanc / noir / image") :
+      // sélecteur de fond. Valeurs : "image" (défaut), "white", "black",
+      // "transparent". Pour les 3 valeurs non-image, les calques d'image
+      // sont automatiquement ignorés au render canvas.
+      bg:          _radioVal("export_bg") || "image"
     };
     document.querySelectorAll('[data-layer-type="image"]').forEach(function(cb) {
       opts.imageLayers[cb.dataset.layerId] = cb.checked;
@@ -1327,10 +1418,31 @@
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
-    const ctx = canvas.getContext("2d");
+    // 🆕 v1.9.3-A1.b.3 : pour le fond transparent, on doit créer le
+    // context avec alpha: true (= default, mais on l'explicite). Le PNG
+    // sortant contiendra alors un canal alpha exploitable.
+    const ctx = canvas.getContext("2d", { alpha: true });
 
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, W, H);
+    // 🆕 v1.9.3-A1.b.3 : fond d'export selon opts.bg
+    //   - "image"       → fillRect blanc (sera couvert par l'image plan
+    //                     juste après, mais utile si baseImage échoue à
+    //                     charger pour avoir un fond propre au lieu de
+    //                     transparent par défaut).
+    //   - "white"       → fillRect blanc, baseImage + image layers SKIP
+    //   - "black"       → fillRect noir, baseImage + image layers SKIP
+    //   - "transparent" → pas de fillRect, baseImage + image layers SKIP
+    //                     → PNG avec canal alpha (les zones non peintes
+    //                     par les annotations restent transparentes).
+    const bg = opts.bg || "image";
+    const skipBaseImage = (bg !== "image");
+    if (bg === "image" || bg === "white") {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, W, H);
+    } else if (bg === "black") {
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, W, H);
+    }
+    // bg === "transparent" : on ne fait rien, le canvas reste vide → alpha
 
     // Toutes les coords plan sont multipliées par "scale" pour matcher le canvas
     const sc = function(v) { return v * scale; };
@@ -1364,21 +1476,31 @@
     }
 
     // ---------- image principale ----------
-    try {
-      const baseImg = await loadImage(config.plan.baseImage);
-      ctx.drawImage(baseImg, 0, 0, W, H);
-    } catch(e) { console.warn("[Export] base image :", e); }
+    // 🆕 v1.9.3-A1.b.3 : skip si fond custom (white/black/transparent).
+    // L'utilisateur a explicitement demandé à NE PAS afficher l'image
+    // du plan — on respecte ça en sautant le baseImage drawImage.
+    if (!skipBaseImage) {
+      try {
+        const baseImg = await loadImage(config.plan.baseImage);
+        ctx.drawImage(baseImg, 0, 0, W, H);
+      } catch(e) { console.warn("[Export] base image :", e); }
+    }
 
     // ---------- calques d'image cochés ----------
-    const layers = (config.imageLayers || []).slice().sort(function(a, b) {
-      return (a.order || 0) - (b.order || 0);
-    });
-    for (const layerCfg of layers) {
-      if (!opts.imageLayers[layerCfg.id]) continue;
-      try {
-        const img = await loadImage(layerCfg.file);
-        ctx.drawImage(img, 0, 0, W, H);
-      } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
+    // 🆕 v1.9.3-A1.b.3 : idem pour les image layers (calques tuiles V2,
+    // overlays multi-niveau, etc.). Skip global si fond custom — l'user
+    // veut UNIQUEMENT ses annotations sur le fond choisi.
+    if (!skipBaseImage) {
+      const layers = (config.imageLayers || []).slice().sort(function(a, b) {
+        return (a.order || 0) - (b.order || 0);
+      });
+      for (const layerCfg of layers) {
+        if (!opts.imageLayers[layerCfg.id]) continue;
+        try {
+          const img = await loadImage(layerCfg.file);
+          ctx.drawImage(img, 0, 0, W, H);
+        } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
+      }
     }
 
     // ---------- icônes (cache) ----------
