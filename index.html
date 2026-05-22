@@ -21,21 +21,20 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-retry-translucent (KARMA "retente avec black-translucent,
-       pourtant Leaflet arrive à avoir son top comme je veux donc il y a
-       forcément un tips pour que ça fonctionne dès le chargement").
-       Tentative MINIMALE : juste les 2 meta tags changés, AUCUN autre
-       changement CSS/JS. On verra si c'est suffisant pour faire matcher
-       le top du loader à ce que Leaflet affiche en mode carte. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
+       plus de problèmes que de bénéfice"). Multiples tentatives cover +
+       black-translucent ont créé soit une bande sombre en bas, soit la
+       status bar iOS qui hide/show de façon imprévisible. On reste sur
+       le comportement stable v1.9.1 : pas de cover, status bar opaque
+       noire, on perd ~47px en haut sur iPhone notché mais comportement
+       PRÉVISIBLE. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black-translucent" : la status bar iOS est transparente, iOS lit
-       la couleur de l'élément à top: 0 de la viewport pour tinter (ou
-       laisser passer en transparence). Combiné à viewport-fit=cover,
-       l'app prend tout l'écran. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
+       du contenu. Stable, l'heure iOS reste visible en permanence. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 

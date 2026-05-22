@@ -3276,12 +3276,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   position: fixed;
   inset: 0;
   z-index: 5000;
-  /* 🆕 v1.9.2-retry2 (KARMA "réussi mais bande sombre en bas") :
-     bg overlay = bg box (#1a1f2e) au lieu de rgba(5,8,15,0.92).
-     Garantit qu'AUCUNE bande sombre n'apparaît si le box (min-height
-     100dvh) ne fill pas le viewport sur iOS Safari ancien. La box
-     reste posée par-dessus avec son bg #1a1f2e → fusion visuelle. */
-  background: #1a1f2e;
+  background: rgba(5, 8, 15, 0.92);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -8682,11 +8677,11 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    Tout ce qui dépend du bas de l'écran (#map bottom, boussole bottom,
    modales padding-bottom) consomme cette variable → réajustement
    automatique sans JS supplémentaire.
-   🆕 v1.9.2-retry2 (KARMA cover réussi mais "gros bug bande en bas") :
-   retrait du `+ env(safe-area-inset-bottom)` qui créait une bande
-   sombre vide sous le footer avec cover (zone home indicator ~21-34px). */
+   Sans cover (état actuel après rollback final), safe-area-inset-bottom
+   = 0 sur iPhone donc le `+ env(...)` est un no-op. Conservé pour
+   robustesse si un jour cover est réintroduit. */
 body.kta-refonte-v1 {
-  --kta-statusbar-h: 52px;
+  --kta-statusbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
@@ -8715,13 +8710,12 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
      Feedback KARMA : "si toute les informations sont afficher en footer
      on sort du cadre [...] agrandir le footer dynamiquement et passer
      a la ligne toute la partie qui sort". */
-  /* 🆕 v1.9.2-retry2 : retrait safe-area-inset-bottom (cover réactivé
-     crée bande sombre sinon). Statusbar compact 52px, content flush
-     au bord physique du bas, home indicator overlay les derniers ~5-10px. */
-  min-height: 52px;
+  /* Sans cover (rollback final), safe-area-inset-bottom = 0 sur iPhone
+     donc no-op. Conservé pour robustesse si cover réintroduit. */
+  min-height: calc(52px + env(safe-area-inset-bottom, 0px));
   height: auto;
   padding-top: 4px;
-  padding-bottom: 4px;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
@@ -8751,12 +8745,11 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
   /* État replié : la barre garde une hauteur fixe minimaliste.
-     🆕 v1.9.2-retry2 : retrait safe-area-inset-bottom (cf. statusbar
-     plus haut, même rationale). */
-  min-height: 20px;
-  height: 20px;
+     safe-area-inset-bottom conservé pour robustesse (no-op sans cover). */
+  min-height: calc(20px + env(safe-area-inset-bottom, 0px));
+  height: calc(20px + env(safe-area-inset-bottom, 0px));
   padding-top: 0;
-  padding-bottom: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-content {
   opacity: 0;
@@ -9011,18 +9004,16 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* 🆕 v1.9.2-retry2 : statusbar landscape 40px fixe, idem portrait
-     (retrait safe-area-inset-bottom pour éviter la bande sombre avec
-     cover). */
+  /* Statusbar landscape : min-height 40+safe (no-op sans cover). */
   body.kta-refonte-v1 {
-    --kta-statusbar-h: 40px;
+    --kta-statusbar-h: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    min-height: 40px;
+    min-height: calc(40px + env(safe-area-inset-bottom, 0px));
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-    min-height: 16px;
-    height: 16px;
+    min-height: calc(16px + env(safe-area-inset-bottom, 0px));
+    height: calc(16px + env(safe-area-inset-bottom, 0px));
   }
   /* #map bottom : la variable --kta-statusbar-h gère déjà tout (JS la
      met à jour quand le statusbar bouge). Pas de override hardcodé. */
