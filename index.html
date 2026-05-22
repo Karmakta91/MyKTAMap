@@ -739,6 +739,11 @@
         mapEl.style.pointerEvents = "auto";
       }
       if (loadBtn) loadBtn.disabled = false;
+
+      // 🆕 v1.9.2-hotfix-loader-header : symétrique d'afficherLoader →
+      // retire la classe pour ré-afficher le header + statusbar refonte.
+      // Cf. js/main.js afficherLoader() pour le rationale détaillé.
+      document.body.classList.remove("kta-loader-active");
     };
 
     window.addEventListener("load", function () {

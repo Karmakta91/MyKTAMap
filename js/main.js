@@ -211,6 +211,11 @@ async function lancerApplication() {
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) overlay.style.display = "none";
 
+  // 🆕 v1.9.2-hotfix-loader-header : retire la classe pour ré-afficher
+  // le header + statusbar refonte (symétrique d'afficherLoader). Cf.
+  // afficherLoader() pour le rationale détaillé.
+  document.body.classList.remove("kta-loader-active");
+
   // 🌀 v152 : message overlay au moment du render carte (lourd sur V2)
   if (typeof window._majOverlayChargement === "function") {
     window._majOverlayChargement("Initialisation de la carte et des calques…");
@@ -702,6 +707,22 @@ function afficherLoader() {
   // Masquer #map pendant que le loader est visible
   const mapEl = document.getElementById("map");
   if (mapEl) mapEl.style.display = "none";
+
+  // 🆕 v1.9.2-hotfix-loader-header (KARMA "si je clique sur la rose des
+  // vents, retour au home avec le haut de la couleur du haut de leaflet.
+  // Mais si je clique sur le titre puis tous mes plans, retour sur home
+  // avec le haut en noir").
+  //
+  // Diagnostic : le refonte header (#kta-refonte-header, z:1200) reste
+  // visible "à travers" le planLoaderOverlay (z:5000) à cause du fond
+  // semi-opaque rgba(5,8,15,0.92) qui laisse 8% de transparence — le
+  // gradient #1a1f2e du header bleed-through en haut. Selon le chemin
+  // d'arrivée au home, le rendu compositing iOS varie (passage par
+  // overlay modal intermédiaire vs direct). Pour normaliser : on ajoute
+  // une classe `kta-loader-active` sur le body qui force le header et
+  // la statusbar refonte en display:none tant que le loader est visible.
+  // Garantit un rendu identique quel que soit le chemin d'arrivée.
+  document.body.classList.add("kta-loader-active");
 
   // Rafraîchir la liste des plans dans le loader
   if (typeof window.refreshPlansList === "function") {
