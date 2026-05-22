@@ -3113,11 +3113,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 }
 
 @media (min-width: 1024px) {
-  /* Loader plus large sur PC pour permettre le layout 2 colonnes.
-     Padding latéral augmenté pour bien respirer des deux côtés. */
+  /* 🆕 v1.9.2-fix11 (KARMA "plein écran en largeur") : la box prend
+     toute la largeur disponible (= viewport - padding overlay 20px ×2).
+     Cap min(2400px, ...) pour éviter des lignes ultra-longues sur
+     écrans 4K ultra-wide qui nuiraient à la lisibilité. Padding interne
+     augmenté pour respirer aux extrémités. */
   #planLoaderBox {
-    max-width: 1100px;
-    padding: 24px 40px;
+    max-width: min(2400px, 100%);
+    padding: 24px 56px;
   }
 
   .loader-grid {
@@ -3232,10 +3235,18 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     min-height: 0;
   }
 
-  /* Colonne ACTIONS (droite) : flex column avec drop zone qui prend
-     l'espace, "Générer un plan" pinned en bas via margin-top: auto.
-     Donne un layout équilibré sur la hauteur sans étirer le drop zone
-     de façon disgracieuse. */
+  /* Colonne ACTIONS (droite) — KARMA itéré v1.9.2-fix11 :
+     « le glisser déposer du zip est bien trop grand, il garde sa taille
+     initiale, mais marge suffisante pour garder en bas le bouton de
+     charger ce plan et Générer un plan ».
+     Layout :
+       - section-head au top (Ajouter un plan)
+       - panelZip prend l'espace restant (flex:1) avec drop-zone à sa
+         TAILLE NATURELLE en haut, puis "Charger ce plan" pinned en
+         bas via margin-top: auto à l'intérieur de panelZip
+       - loader-secondary-actions (Générer un plan) juste sous panelZip
+     Résultat : drop zone compacte au top, gros gap d'air visuel au
+     milieu, deux boutons "Charger / Générer" alignés en bas. */
   .loader-col-actions {
     display: flex;
     flex-direction: column;
@@ -3244,29 +3255,28 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    /* PAS de flex: 1 1 auto sur .zip-drop-zone (retiré du fix9 qui le
+       faisait grandir disgracieusement). La drop zone garde sa taille
+       naturelle définie par son style de base. */
   }
-  .loader-col-actions #panelZip .zip-drop-zone {
-    /* Drop zone qui grandit pour remplir le panelZip — plus accueillant
-       visuellement, drop area plus généreuse. */
-    flex: 1 1 auto;
-    min-height: 200px;
-  }
-  .loader-col-actions .loader-secondary-actions {
-    /* "Générer un plan" pinned en bas de la colonne */
+  .loader-col-actions #panelZip .loaderActions {
+    /* "Charger ce plan" pinned en bas de panelZip via auto margin.
+       Les éléments qui le précèdent (drop zone, fileName, hints) restent
+       au top dans leur flow naturel. L'espace vide entre eux et le bouton
+       est l'effet voulu = aération visuelle. */
     margin-top: auto;
   }
 }
 
-/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : box élargie pour profiter de
-   l'espace disponible. Bord noir réduit de ~410px à ~20px de chaque
-   côté sur un écran 1440px. Grid 2 colonnes plus aéré. */
+/* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding et gap interne plus
+   généreux pour profiter de l'espace dispo. Largeur reste edge-to-edge
+   (cf. règle ≥ 1024px qui donne max-width: 100% cap 2400px). */
 @media (min-width: 1440px) {
   #planLoaderBox {
-    max-width: 1400px;
-    padding: 32px 56px;
+    padding: 32px 64px;
   }
   .loader-grid {
-    gap: 0 48px;
+    gap: 0 56px;
   }
   .loader-col-plans .loader-plans-list {
     /* Hauteur scroll mieux adaptée à la grandeur écran */
@@ -3281,17 +3291,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   }
 }
 
-/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : encore plus généreux.
-   On reste sur 1700px max (avec marge ~110px de chaque côté à 1920px)
-   pour garder le contenu lisible. Au-delà de 2500px le loader ne
-   grandit plus = pas perdu dans des moniteurs 4K ultra-wide. */
+/* 🆕 v1.9.2 — Loader PC ULTRA-LARGE ≥ 1920px : encore plus d'espace
+   interne. La box reste plein écran (= viewport - 40px overlay padding)
+   jusqu'à 2400px puis cap. */
 @media (min-width: 1920px) {
   #planLoaderBox {
-    max-width: 1700px;
-    padding: 40px 80px;
+    padding: 40px 96px;
   }
   .loader-grid {
-    gap: 0 64px;
+    gap: 0 72px;
   }
   /* Resume button : limite légèrement plus large sur ultra-wide */
   #resumeBox {
