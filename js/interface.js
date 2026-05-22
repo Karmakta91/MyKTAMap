@@ -1806,9 +1806,20 @@ function afficherConfig() {
     legacyCb.addEventListener("change", function() {
       const wantNouvelle = !legacyCb.checked;  // cochée = legacy, donc !cochée = nouvelle
       if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-        window.RefonteInterface.setActive(wantNouvelle);
-        // Si user annule le reload → revert checkbox à l'état actuel
-        legacyCb.checked = (window._refonteInterfaceActive !== true);
+        // 🆕 v1.9.2-fix4 : setActive retourne une Promise (modale charte).
+        // On revert le checkbox si l'utilisateur annule (Plus tard / ✕ /
+        // backdrop / Échap) — le flag n'a PAS été écrit dans ce cas.
+        const result = window.RefonteInterface.setActive(wantNouvelle);
+        if (result && typeof result.then === "function") {
+          result.then(function(confirmed) {
+            if (!confirmed) {
+              legacyCb.checked = (window._refonteInterfaceActive !== true);
+            }
+          });
+        } else {
+          // Fallback ancien API sync (sécurité)
+          legacyCb.checked = (window._refonteInterfaceActive !== true);
+        }
       } else {
         // Fallback (module non chargé) — set direct localStorage
         try {

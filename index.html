@@ -2118,9 +2118,22 @@
         legacyCb.addEventListener("change", function() {
           const wantNouvelle = !legacyCb.checked;
           if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-            window.RefonteInterface.setActive(wantNouvelle);
-            // Si user annule le reload → revert checkbox à l'état actuel
-            legacyCb.checked = (window._refonteInterfaceActive !== true);
+            // 🆕 v1.9.2-fix4 : setActive retourne désormais une Promise.
+            // Si user clique "Recharger maintenant" → flag écrit + reload.
+            // Si user clique "Plus tard" / ✕ / Échap / backdrop → on revert
+            // le checkbox à l'état boot (le flag N'A PAS été écrit donc
+            // l'interface reste comme avant au prochain démarrage).
+            const result = window.RefonteInterface.setActive(wantNouvelle);
+            if (result && typeof result.then === "function") {
+              result.then(function(confirmed) {
+                if (!confirmed) {
+                  legacyCb.checked = (window._refonteInterfaceActive !== true);
+                }
+              });
+            } else {
+              // Fallback ancien API sync (sécurité)
+              legacyCb.checked = (window._refonteInterfaceActive !== true);
+            }
           } else {
             // Fallback (module non chargé) — set direct localStorage
             try {

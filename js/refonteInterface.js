@@ -920,16 +920,103 @@
   // ============================================================
   // API PUBLIQUE
   // ============================================================
+  // 🆕 v1.9.2-fix4 (KARMA "le modal qui apparaît doit respecter la
+  // charte graphique") : remplacement du `confirm()` natif OS (modale
+  // grise iOS/Android) par une modale custom .kta-readme-modal-boite
+  // avec accent doré (changement d'interface = action UI).
+  //
+  // Bonus : le flag est désormais écrit UNIQUEMENT si user confirme.
+  // Avant : _writeFlag(value) était appelé AVANT le confirm, donc si
+  // user annulait, le flag était déjà modifié dans localStorage et
+  // s'appliquait au prochain démarrage. Maintenant : flag écrit que
+  // si user clique "Recharger maintenant".
+  //
+  // setActive retourne une Promise<boolean> : true = confirmé+reload,
+  // false = annulé. Les callers (index.html, interface.js) attendent
+  // la Promise pour revert le checkbox si annulation.
   function _setActive(value) {
-    _writeFlag(value);
-    // Reload requis pour appliquer (la classe body + injection DOM doit
-    // se faire au boot pour rester safe).
     const label = value
       ? "la NOUVELLE interface (refonte)"
       : "l'ANCIENNE interface (classique)";
-    if (confirm("Tu utiliseras " + label + " au prochain démarrage. Recharger maintenant ?")) {
-      location.reload();
-    }
+
+    return _afficherConfirmInterfaceChange(label).then(function(confirmed) {
+      if (confirmed) {
+        _writeFlag(value);
+        location.reload();
+      }
+      return confirmed;
+    });
+  }
+
+  // Modale custom respectant la charte (.kta-readme-modal-boite +
+  // accent doré #f4c542). Pattern Promise-based identique à la modale
+  // "Forcer la mise à jour" du loader (cf. index.html). Fermable via
+  // ✕ / backdrop / Échap / "Plus tard" → résout false ; clic "Recharger
+  // maintenant" → résout true.
+  function _afficherConfirmInterfaceChange(label) {
+    return new Promise(function(resolve) {
+      // Cleanup éventuel d'une instance précédente
+      const existing = document.getElementById("kta-refonte-interface-confirm");
+      if (existing) existing.remove();
+
+      const overlay = document.createElement("div");
+      overlay.id = "kta-refonte-interface-confirm";
+      overlay.className = "kta-readme-modal-overlay";
+      overlay.style.display = "flex";
+
+      // Accent doré charte (#f4c542) — action UI (interface), pas
+      // destructive donc pas rouge, pas informative bleu non plus →
+      // doré qui matche l'identité visuelle MyKTAMap.
+      overlay.innerHTML =
+        '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto; max-height:92vh; border:1px solid rgba(244,197,66,0.4); box-shadow:0 0 32px rgba(244,197,66,0.18);">' +
+          '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(244,197,66,0.25);">' +
+            '<div class="kta-readme-modal-titre" style="color:#f4c542;">🎨 Changer d\'interface ?</div>' +
+            '<button class="kta-panneau-close" type="button" id="kta-rint-close" aria-label="Fermer">✕</button>' +
+          '</div>' +
+          '<div class="kta-readme-modal-corps" style="color:#c8d0e0;">' +
+            '<p style="margin:0 0 14px 0; line-height:1.55;">' +
+              'Tu vas passer à <strong style="color:#f4c542;">' + label + '</strong> au prochain démarrage de l\'app.' +
+            '</p>' +
+            '<div style="background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.22); border-radius:8px; padding:10px 14px; margin-bottom:8px;">' +
+              '<div style="font-weight:600; color:#f4c542; margin-bottom:6px;">✅ Préservé</div>' +
+              '<ul style="margin:0; padding-left:20px; line-height:1.6;">' +
+                '<li>Tes plans mémorisés</li>' +
+                '<li>Sessions auto-save en cours</li>' +
+                '<li>Préférences (perf, debug, etc.)</li>' +
+                '<li>Code d\'accès communautaire</li>' +
+              '</ul>' +
+            '</div>' +
+            '<p style="margin:0; line-height:1.55; font-size:13px; color:#8892a4;">' +
+              'L\'app doit être <strong>rechargée</strong> pour appliquer le changement. Tu peux le faire maintenant ou plus tard.' +
+            '</p>' +
+          '</div>' +
+          '<div class="kta-readme-modal-footer" style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.06); padding:12px 18px; flex-shrink:0;">' +
+            '<button class="kta-btn kta-btn-ghost" type="button" id="kta-rint-cancel">Plus tard</button>' +
+            '<button class="kta-btn kta-btn-primary" type="button" id="kta-rint-confirm" style="background:#f4c542; color:#0a0d18; border-color:#f4c542;">🔄 Recharger maintenant</button>' +
+          '</div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+
+      function _close(result) {
+        const ov = document.getElementById("kta-refonte-interface-confirm");
+        if (ov) ov.remove();
+        document.removeEventListener("keydown", _onEsc);
+        resolve(result);
+      }
+      function _onEsc(e) { if (e.key === "Escape") _close(false); }
+
+      document.getElementById("kta-rint-close").addEventListener("click", function() { _close(false); });
+      document.getElementById("kta-rint-cancel").addEventListener("click", function() { _close(false); });
+      document.getElementById("kta-rint-confirm").addEventListener("click", function() { _close(true); });
+
+      // Clic sur backdrop overlay (hors de la boîte) → ferme = annule
+      overlay.addEventListener("click", function(e) {
+        if (e.target === overlay) _close(false);
+      });
+
+      document.addEventListener("keydown", _onEsc);
+    });
   }
 
   window.RefonteInterface = {
