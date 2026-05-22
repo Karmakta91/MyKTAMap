@@ -2924,7 +2924,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: radial-gradient(ellipse at center, #0a0d18 0%, #03050a 100%);
+  /* 🆕 v1.9.2-fix6 : gradient `at top` (au lieu de `at center`) pour que
+     la zone iOS status bar (top de l'écran) lise la couleur LA PLUS
+     CLAIRE de la palette (#0a0d18 = charte body + Leaflet bg). Avant,
+     `at center` mettait #0a0d18 au milieu de l'écran et le top était
+     ~#060911 (dégradé vers #03050a aux bords) = perçu comme noir.
+     Maintenant le top est uniformément #0a0d18, cohérent avec toutes
+     les autres phases (loader, Leaflet). */
+  background: radial-gradient(ellipse at top, #0a0d18 0%, #03050a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3274,7 +3281,14 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   position: fixed;
   inset: 0;
   z-index: 5000;
-  background: rgba(5, 8, 15, 0.92);
+  /* 🆕 v1.9.2-fix6 (KARMA "leaflet doit faire un truc qu'on doit faire
+     avant qu'on le charge pour que ça fonctionne") : overlay bg aligné
+     à `#0a0d18` (charte body + .leaflet-container hack). Avant :
+     rgba(5,8,15,0.92) qui blendait à ~#050810 sur body — légèrement
+     plus sombre, perçu comme noir par iOS status bar transparent.
+     Maintenant : couleur uniforme `#0a0d18` du splash au loader à
+     Leaflet → iOS bar lit la MÊME teinte dans toutes les phases. */
+  background: #0a0d18;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -3306,13 +3320,10 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   box-shadow: none;
   /* Padding interne avec safe-area iOS UNIQUEMENT EN HAUT pour que le
      contenu (logo, titre, ...) reste sous le notch.
-     🆕 v1.9.2-fullscreen3 (KARMA "trop de marge en bas en footer du
-     loader, comme avant en terme de marge") : retrait du safe-area-
-     inset-bottom (24px fixe au lieu de calc(24+safe)). La box s'étend
-     jusqu'au home indicator iOS — le contenu (Générer un plan, libs
-     cités) reste visible avec juste 24px de respiration. Le home
-     indicator pill iOS overlay seulement les derniers ~10px. */
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 24px;
+     🆕 v1.9.2-fix6 (KARMA "trop de marge en bas en footer du loader") :
+     padding-bottom 24→14px pour réduire l'espace sous les crédits.
+     Le home indicator iOS overlay les derniers ~5-10px sans gêner. */
+  padding: calc(24px + env(safe-area-inset-top, 0px)) 24px 14px;
   box-sizing: border-box;
   font-family: Arial, sans-serif;
   margin: 0;
@@ -3413,13 +3424,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
           → plus de noir au-dessus / en-dessous
      RÈGLE : ne s'applique QUE sur PC (≥1024px) — mobile inchangé. */
   #planLoaderOverlay {
-    background-color: #050810;
+    /* 🆕 v1.9.2-fix6 : bg uniforme #0a0d18 (charte) au lieu de #050810
+       (plus sombre, créait un sliver "noir" au top vs Leaflet bg). */
+    background-color: #0a0d18;
     background-image:
       radial-gradient(circle, rgba(244, 197, 66, 0.07) 1px, transparent 1px),
       radial-gradient(ellipse 1400px 900px at center,
         rgba(38, 55, 88, 0.85) 0%,
         rgba(12, 18, 32, 0.96) 55%,
-        rgba(5, 8, 15, 1) 100%);
+        rgba(10, 13, 24, 1) 100%);
     background-size: 28px 28px, 100% 100%;
     background-position: center center, center center;
     background-repeat: repeat, no-repeat;
@@ -6649,8 +6662,11 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
      déterministe quelle que soit la taille de police calculée par le browser.
    - flex-shrink: 0 + box-sizing pour éviter les distorsions au resize. */
 .kta-loader-copyright {
-  margin-top: 18px;
-  padding-top: 14px;
+  /* 🆕 v1.9.2-fix6 (KARMA "footer loader marge à réduire") :
+     margin-top 18→10 + padding-top 14→8 = -14px sur l'espace au-dessus
+     du copyright. Plus compact, KARMA satisfait. */
+  margin-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 11px;
   color: #8892a4;
