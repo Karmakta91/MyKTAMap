@@ -7970,6 +7970,24 @@ body.kta-multilevel-active .kta-compass-widget {
    HEADER BAR (sticky top 44px)
    ───────────────────────────────────────────────────────────────── */
 
+/* 🆕 v1.9.2-hotfix-loader-header (KARMA "si je clique sur la rose des
+   vents, retour home avec haut couleur leaflet. Si je clique sur titre
+   puis tous mes plans, retour home avec haut noir") :
+   Quand le loader (home) est visible, on cache COMPLÈTEMENT le header
+   refonte et la statusbar refonte. Sans ça, comme le fond du loader
+   est rgba(5,8,15,0.92) (8% transparent), le gradient #1a1f2e du
+   header bleed-through en haut → "couleur leaflet visible".
+   Selon le chemin d'arrivée au home, le rendu compositing iOS varie
+   (clic direct sur 🌹 rose ↔ passage par modale switcher), ce qui
+   donne 2 visuels incohérents. Cette règle force le même rendu
+   (header & statusbar cachés) quel que soit le chemin.
+   La classe `kta-loader-active` est ajoutée par afficherLoader() dans
+   main.js et retirée par masquerLoader() dans index.html. */
+body.kta-loader-active .kta-refonte-header,
+body.kta-loader-active .kta-refonte-statusbar {
+  display: none !important;
+}
+
 body.kta-refonte-v1 .kta-refonte-header {
   position: fixed;
   top: 0;
