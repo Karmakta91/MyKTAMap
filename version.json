@@ -7,7 +7,7 @@
     "📊 Toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration du home — décocher pour aérer visuellement les plans très denses. Effet immédiat à chaud (sans reload), pref persistée entre les changements de plan.",
     "⚪ Tracker icône : rotation continue sans saut au franchissement du Nord. Avant : si tu changeais de cap (passage 350° → 10°), l'icône faisait un tour complet arrière pour se caler. Maintenant elle prend toujours le chemin angulaire le plus court.",
     "🎬 Splash refondu : signature KARMA animée en bas-droite (apparition lettre par lettre douce sur 1,8 s) + crédits libs/algo (🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra) en bas-gauche. Mêmes crédits ajoutés au footer de la home et de la modale Documentation.",
-    "🎨 Cohérence des couleurs : background du conteneur Leaflet aligné à la charte (#0a0d18 au lieu de noir pur). Plus de saut de teinte entre loader → map → retour loader.",
+    "🎨 Modale charte pour basculer entre nouvelle interface / ancienne interface (⚙️ Configuration → 🎨 Affichage) avec accent doré, texte adapté selon la direction (passage à la nouvelle vs retour à l'ancienne), boutons « Annuler / Valider ». Remplace le `confirm()` natif OS qui ne respectait pas la charte graphique.",
     "🧭 Tracker GPS dans le footer : LED ON (vert) / OFF (rouge) façon témoin hardware. Icône boussole 🧭 (plus de confusion avec le 🚶 du badge mode marche de l'itinéraire).",
     "🗺️ Stat itinéraire du footer cliquable → ouvre la modale Itinéraire (équivalent à l'ancien label bas-gauche, désormais masqué pour éviter le doublon).",
     "🎛️ Layers en grille horizontale dans Export images (mode Avancé) : sur PC, les calques (Puits, Carrière, Chemin, etc.) s'organisent en 3-4 colonnes au lieu de défiler verticalement.",
