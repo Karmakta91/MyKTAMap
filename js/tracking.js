@@ -109,8 +109,13 @@ function initTracking() {
 
 // 🐛 v161 fix : sentinel null au lieu de -999 (mon wrap-fix circulaire sur
 // delta > 180 retournait 360-999 = -639 < 2 → return immediat → icone bloquee).
-let _trackerRotationLast    = null;  // derniere valeur appliquee au DOM (null = jamais)
-let _trackerHeadingSmoothed = null;  // valeur lissee (exponential smoothing)
+let _trackerRotationLast      = null;  // derniere valeur smoothed (pour throttle)
+let _trackerHeadingSmoothed   = null;  // valeur lissee dans [0, 360] (pour smoothing)
+// 🆕 v1.9.2 : valeur CUMULÉE appliquée au CSS — peut être hors [0, 360]
+// (ex: -10, 370, 720, -45…). Évite le saut visuel arrière quand le tracker
+// franchit la frontière 0/360 (KARMA : "si je vais dans l'autre, l'icone
+// saute pour se caler"). Voir le bloc d'application ci-dessous.
+let _trackerRotationUnwrapped = null;
 
 function _applyRotationToTrackerMarker() {
   // Uniquement en tracking actif. Au repos / recalage seul, l'icone reste
@@ -150,22 +155,54 @@ function _applyRotationToTrackerMarker() {
   }
   _trackerRotationLast = _trackerHeadingSmoothed;
 
-  // ===== 3. APPLY =====
+  // ===== 3. CUMUL ROTATION HORS [0, 360] POUR ANIMATION CSS CONTINUE =====
+  // 🆕 v1.9.2 (KARMA bug : "icone saute pour se caler" au franchissement
+  // 0/360°).
+  //
+  // Problème : la CSS transition `transform: rotate(deg)` interprète les
+  // valeurs LITTÉRALEMENT. Si on passe de rotate(350deg) à rotate(10deg),
+  // le navigateur anime de 350 vers 10 = -340° (saut visuel arrière) au
+  // lieu de +20° (chemin court). Idem dans l'autre sens à travers le Nord.
+  //
+  // Fix : maintenir une valeur cumulée hors [0, 360] (peut être -10, 370,
+  // 720, -45, etc.) qui ne bouge QUE du delta court à chaque tick. Le CSS
+  // anime alors toujours dans le sens "naturel" = la direction physique
+  // réelle du tracker, sans saut.
+  //
+  // Exemple :
+  //   tick 1 : smoothed=350, unwrapped=350    → rotate(350deg)
+  //   tick 2 : smoothed=10,  delta court=+20° → unwrapped=370 → rotate(370deg)
+  //              le CSS anime 350→370 = +20° (chemin court) ✓
+  //   tick 3 : smoothed=350, delta court=-20° → unwrapped=350 → rotate(350deg)
+  //              le CSS anime 370→350 = -20° (chemin court) ✓
+  if (_trackerRotationUnwrapped === null) {
+    _trackerRotationUnwrapped = _trackerHeadingSmoothed;
+  } else {
+    // Module positif de la valeur cumulée pour calculer le delta vs smoothed
+    const currentMod = ((_trackerRotationUnwrapped % 360) + 360) % 360;
+    let delta = _trackerHeadingSmoothed - currentMod;
+    if (delta > 180)       delta -= 360;
+    else if (delta < -180) delta += 360;
+    _trackerRotationUnwrapped += delta;
+  }
+
+  // ===== 4. APPLY =====
   // getElement retourne le DIV wrapper (translate Leaflet). On cible son img enfant.
   // La transition CSS 0.3s (.kta-tracker-img) lisse visuellement.
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
   const img = el.querySelector(".kta-tracker-img");
   if (!img) return;
-  img.style.transform = "rotate(" + _trackerHeadingSmoothed + "deg)";
+  img.style.transform = "rotate(" + _trackerRotationUnwrapped + "deg)";
 }
 
 // Reset la rotation a 0° (icone pointant Nord = pose neutre). Appele au
 // stopTracking(). Vide aussi le smoothing buffer pour repartir propre au
 // prochain Play.
 function _resetRotationTrackerMarker() {
-  _trackerRotationLast    = null;
-  _trackerHeadingSmoothed = null;
+  _trackerRotationLast      = null;
+  _trackerHeadingSmoothed   = null;
+  _trackerRotationUnwrapped = null;  // 🆕 v1.9.2 : reset le cumul d'angles
   if (!markerPosition) return;
   const el = markerPosition.getElement && markerPosition.getElement();
   if (!el) return;
