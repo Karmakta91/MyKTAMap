@@ -74,17 +74,22 @@
   <div id="kta-status-tint" aria-hidden="true"
        style="position:fixed; top:0; left:0; right:0; height:60px; background:#1a1f2e; z-index:1; pointer-events:none;"></div>
 
-  <!-- 🆕 v1.9.2-fix5 (KARMA "elle est toujours là [la bande], trop frustrant") :
-       décoy BOTTOM en POSITION FIXED bottom:0 qui étend la couleur
-       charte jusqu'au bord physique inférieur. Si iOS dessine un
-       "letterbox" subtil dans la zone home indicator OU si la statusbar
-       n'arrive pas à fill via min-height: 100dvh, ce décoy garantit
-       que la couleur dessous (charte #1a1f2e) reste cohérente.
-       Z-index -1 = SOUS tout (mais pas dans le rendering : z:-1 inside
-       body est juste sous les autres enfants statiques de body).
-       Pointer-events: none = ne bloque rien. -->
+  <!-- 🆕 v1.9.2-fix6 (KARMA insight clé "ca fonctionne en horizontal, ca
+       fait ca que en vertical") :
+       Le bug "bande sombre en bas" ne se manifeste QU'EN PORTRAIT, jamais
+       en landscape. Or env(safe-area-inset-bottom) vaut ~21-34px en
+       portrait (zone home indicator iOS) et ~0 en landscape (pas de
+       home indicator au bord bas en landscape). C'est donc EXACTEMENT
+       cette zone qui pose problème.
+       Fix précis : decoy bottom avec height = env(safe-area-inset-bottom)
+       → couvre la zone home indicator AU PIXEL PRÈS en portrait,
+       invisible (height: 0) en landscape. Z-index 1500 = au-dessus de
+       Leaflet (z:400) et de la statusbar refonte (z:1000), sous les
+       modales (z:9999) et le splash (z:100000). Garantit que la zone
+       home indicator est peinte avec la couleur charte (#1a1f2e), sans
+       perturber landscape ni les autres breakpoints. -->
   <div id="kta-status-tint-bottom" aria-hidden="true"
-       style="position:fixed; bottom:0; left:0; right:0; height:60px; background:#1a1f2e; z-index:-1; pointer-events:none;"></div>
+       style="position:fixed; bottom:0; left:0; right:0; height:env(safe-area-inset-bottom, 0px); background:#1a1f2e; z-index:1500; pointer-events:none;"></div>
 
   <!-- ════════════════════════════════════════════════════════
        SVG PATTERNS — definitions partagees pour les zones (depuis Karma_dev / v169)
