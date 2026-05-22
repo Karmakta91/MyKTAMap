@@ -17,6 +17,9 @@
 // NE PAS cacher docs/CLAUDE.md (réservé aux agents IA / développeurs).
 // NE PAS cacher version.json (toujours fetched en réseau via cache-bust ?_=).
 // NE PAS cacher alert.json (idem — diffusion d'alertes publiques en temps réel).
+// NE PAS cacher ping.html (depuis v1.9.3 — ping santé serveur, doit toujours
+//   hit le serveur en live via cache-bust ?_= sinon false positive si serveur
+//   down après un succès précédent).
 // NE PAS cacher docs/nginx-csp-config.conf (fichier serveur, ne sert qu'à l'auteur).
 // Cacher docs/README_USER.md (utilisé par le modal Documentation in-app).
 // Cacher docs/AI_CONTEXT.md (squelette enrichi pour la modale 🤖 Aide IA — éditable).
@@ -29,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.9.3-B1a-ping-origin-magnitude-throttle";
+const CACHE_NAME = "myktamap-cache-v1.9.3-B1a-ping-html-file";
 
 const ASSETS_TO_CACHE = [
   "./",

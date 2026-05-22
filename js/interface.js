@@ -2125,7 +2125,14 @@ function _pingInternet() {
     // Pas besoin de mode "cors" explicite → moins de friction Nginx.
     // credentials: "omit" pour ne pas envoyer de cookies (le ping n'a
     // pas besoin de session, garde la requête neutre).
-    fetch(PING_URL, {
+    //
+    // 🆕 Cache-bust ?_=Date.now() : même pattern que version.json /
+    // alert.json (cf. CLAUDE.md §20). Garantit que le SW ne sert pas
+    // une réponse cachée d'un précédent ping (= false positive si le
+    // serveur est down maintenant mais OK avant). Chaque appel a une
+    // URL unique → cache miss → fetch réseau forcé.
+    const pingUrlCb = PING_URL + "?_=" + Date.now();
+    fetch(pingUrlCb, {
       method: "GET",
       cache:  "no-store",
       signal: ctrl.signal,
