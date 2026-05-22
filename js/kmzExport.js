@@ -194,7 +194,13 @@
     // STRUCTURE_STYLES de structures.js (jaune charte / orange / bleu foncé).
     "structure_pilier-1": { line: "#000000", fill: "#f4c542", fillAlpha: 0.85, width: 2 },
     "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
-    "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 }
+    "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
+    // 🆕 v1.9.3-A1.b.2 : fronts de taille — LineStrings épaisses sans
+    // contour. Couleurs inversées vs piliers (front 1ère = orange, front
+    // 2e = jaune). width: 5 dans KML car ≠ unité que le canvas Leaflet
+    // weight, ajusté visuellement pour rendre épais à l'échelle GPS.
+    "structure_front-1":  { line: "#ff9933", width: 5, alpha: 1 },
+    "structure_front-2":  { line: "#f4c542", width: 5, alpha: 1 }
   };
 
   function _genererStylesKml() {
@@ -468,9 +474,10 @@
           body += '</Folder>';
         }
       }
-      // 🆕 v1.9.3-A1.b.1 : Structures (piliers + murs) — calqué sur zones,
-      // styles dédiés (cf. _genererStylesKml > structure_*). Filtre niveau
-      // identique : structure tagguée au niveau du folder courant uniquement.
+      // 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures (piliers + murs + fronts) —
+      // calqué sur zones avec styles dédiés. Filtre niveau identique.
+      // Différenciation polyline (fronts) vs polygon (piliers/mur) au
+      // niveau du KML : LineString pour les fronts, Polygon pour le reste.
       if (opts.include.structures && opts.data.structures) {
         const structures = opts.data.structures.filter(function(s) {
           if (structureTypesSet && !structureTypesSet.has(s.type)) return false;
@@ -481,7 +488,27 @@
           body += '<Folder><name>🏛️ Structures (' + structures.length + ')</name>';
           structures.forEach(function(s) {
             const styleId = "structure_" + s.type;
-            body += _emitPolygon(s, styleId);
+            // Fronts (polylines) → KML LineString. Piliers/mur → Polygon.
+            // _emitLineString attend road.type pour le nom — on patch
+            // temporairement avec un objet adapté.
+            if (s.type === "front-1" || s.type === "front-2") {
+              if (!s.points || s.points.length < 2) return;
+              const coords = s.points
+                .map(function(p) { return _coord(planToGps(t, p.x, p.y)); })
+                .join(" ");
+              const nom = s.type === "front-1"
+                ? "Front de taille 1ère masse"
+                : "Front de taille 2e masse";
+              body += '<Placemark>' +
+                        '<name>' + _xmlEsc(nom) + '</name>' +
+                        '<styleUrl>#' + styleId + '</styleUrl>' +
+                        '<LineString><tessellate>1</tessellate>' +
+                          '<coordinates>' + coords + '</coordinates>' +
+                        '</LineString>' +
+                      '</Placemark>';
+            } else {
+              body += _emitPolygon(s, styleId);
+            }
           });
           body += '</Folder>';
         }

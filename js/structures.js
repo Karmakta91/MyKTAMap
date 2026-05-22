@@ -30,7 +30,17 @@
 // au tracé si APP_CONFIG.multiLevel === true).
 // =========================
 
-window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur"
+window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-1" | "front-2"
+
+// 🆕 v1.9.3-A1.b.2 : sous-types qui sont des POLYLINES (= suite de points
+// ouverte, comme une road) au lieu de polygones fermés. Les fronts de
+// taille représentent les LIMITES d'exploitation d'une couche — un tracé
+// épais sans contour qui longe le bord du massif. Tous les autres types
+// (pilier-1 / pilier-2 / mur) restent en polygones fermés.
+const STRUCTURE_TYPES_POLYLINE = ["front-1", "front-2"];
+function _isPolylineType(type) {
+  return STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0;
+}
 
 let structuresData = [];
 let currentStructure = null;
@@ -77,6 +87,30 @@ const STRUCTURE_STYLES = {
     fillOpacity: 0.85,
     weight:      3,
     opacity:     1
+  },
+  // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans contour
+  // qui représentent les limites d'exploitation d'une couche cataphile.
+  // Note KARMA : couleurs INVERSÉES vs piliers (front 1ère = orange,
+  // front 2e = jaune). Logique : les fronts de 1ère masse marquent
+  // l'avancée de l'exploitation (= plus "actif/dynamique" = orange),
+  // ceux de 2e masse les contours secondaires (= jaune).
+  // Pas de stroke contour (le polyline est juste de couleur unie).
+  // weight: 10 = bien plus épais que les roads (5) pour distinction visuelle.
+  "front-1": {
+    color:       "#ff9933",   // orange — utilisé en color (pas de stroke noir)
+    fillColor:   "#ff9933",   // pour cohérence si quelqu'un lit fillColor
+    fillOpacity: 1,           // (n.a. pour polyline mais conservé)
+    weight:      10,
+    opacity:     1,
+    isPolyline:  true         // marqueur pour render adapter
+  },
+  "front-2": {
+    color:       "#f4c542",   // jaune charte MKM
+    fillColor:   "#f4c542",
+    fillOpacity: 1,
+    weight:      10,
+    opacity:     1,
+    isPolyline:  true
   }
 };
 
@@ -148,13 +182,27 @@ function initStructures() {
       // ce que l'utilisateur voit / dessine est aussi à ce niveau).
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
         const _activeLvl = window.APP_CONFIG.activeLevel || 0;
-        if (currentStructure.type === "pilier-2") {
+        // 🆕 v1.9.3-A1.b.2 : front-2 suit la même règle que pilier-2
+        // (= niveau de la 2e masse = activeLevel - 1). Front-1 et autres
+        // restent au niveau actif.
+        if (currentStructure.type === "pilier-2" || currentStructure.type === "front-2") {
           currentStructure.level = _activeLvl - 1;
         } else {
           currentStructure.level = _activeLvl;
         }
       }
       structuresData.push(currentStructure);
+    }
+
+    // 🆕 v1.9.3-A1.b.2 : pour les types POLYLINE (fronts de taille), pas
+    // de fermeture par re-clic — c'est une ligne ouverte. L'utilisateur
+    // ferme via le bouton ✅ "Fermer la structure en cours" dans le menu.
+    // Les types POLYGON (piliers + mur) gardent le comportement re-clic
+    // proche du 1er point pour fermer.
+    if (_isPolylineType(currentStructure.type)) {
+      currentStructure.points.push({ x: x, y: y });
+      renderStructures();
+      return;
     }
 
     // Si le clic est proche du 1er point ET qu'on a au moins 3 points → fermer
@@ -207,7 +255,12 @@ function toggleStructureMode(type) {
 // FERMER LA STRUCTURE EN COURS
 // =========================
 function fermerStructureEnCours() {
-  if (!currentStructure || currentStructure.points.length < 3) {
+  if (!currentStructure) return false;
+  // 🆕 v1.9.3-A1.b.2 : minimum 2 points pour polyline (front), 3 pour
+  // polygon (pilier / mur). Sans ça, KARMA n'aurait pas pu fermer un
+  // front avec seulement 2 points (= ligne minimale valide).
+  const minPoints = _isPolylineType(currentStructure.type) ? 2 : 3;
+  if (currentStructure.points.length < minPoints) {
     return false;
   }
   // La fermeture est implicite : on ne stocke pas le point répété
@@ -241,7 +294,12 @@ function renderStructures() {
   // En mode M-LVL ON, le filtre niveau gère déjà la séparation visuelle
   // (pilier-2 est à level activeLevel-1, ne s'affiche qu'au bon niveau),
   // mais l'ordre Z reste cohérent dans tous les cas.
-  const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2 };
+  // 🆕 v1.9.3-A1.b.2 : ajout des fronts dans l'ordre Z. Les fronts sont
+  // des traces de limite d'exploitation — visuellement en arrière des
+  // piliers (qui sont des obstacles ponctuels saillants).
+  // Ordre final Z bas → haut :
+  //   mur < front-2 < front-1 < pilier-2 < pilier-1
+  const ordreType = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;
@@ -275,6 +333,11 @@ function renderStructures() {
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
     const style = STRUCTURE_STYLES[s.type] || STRUCTURE_STYLES["mur"];
 
+    // 🆕 v1.9.3-A1.b.2 : différenciation polyline (fronts) vs polygon
+    // (piliers + mur). Les fronts sont des lignes ouvertes épaisses
+    // sans contour (= juste color, pas de stroke noir comme les piliers).
+    const isPolyline = !!style.isPolyline;
+
     if (s === currentStructure) {
       // Structure en cours de tracé → polyline pointillée (aperçu) en
       // couleur fill de la structure pour que l'utilisateur voie ce
@@ -285,8 +348,11 @@ function renderStructures() {
         });
         structurePreviewLayer = L.polyline(latlngs, previewStyle).addTo(target);
 
-        // Petit cercle sur le 1er point pour indiquer la fermeture possible
-        if (s.points.length >= 3) {
+        // Petit cercle sur le 1er point pour indiquer la fermeture possible.
+        // Polygones : à partir de 3 points (= polygone fermable).
+        // Polylines : pas de marker de fermeture (la ligne se ferme via
+        // bouton ✅ "Fermer la structure en cours" du menu, pas par re-clic).
+        if (!isPolyline && s.points.length >= 3) {
           const p0 = s.points[0];
           const marker = L.circleMarker(convertCoord(p0.x, p0.y), {
             radius:      6,
@@ -299,6 +365,18 @@ function renderStructures() {
           structureLayers.push(marker);
         }
       }
+    } else if (isPolyline) {
+      // Front fermé → polyline solide épaisse colorée, pas de stroke
+      // contour (style.color = la couleur du polyline lui-même).
+      // Cohérent avec la demande KARMA "épais orange/jaune sans contour".
+      const polyline = L.polyline(latlngs, {
+        color:     style.color,
+        weight:    style.weight,
+        opacity:   style.opacity,
+        lineCap:   "round",
+        lineJoin:  "round"
+      }).addTo(target);
+      structureLayers.push(polyline);
     } else {
       // Structure fermée → polygone rempli avec stroke noir.
       const polygon = L.polygon(latlngs, style).addTo(target);
@@ -349,7 +427,9 @@ function removeLastStructurePoint() {
     const last = structuresData[structuresData.length - 1];
     if (!last.points || last.points.length === 0) return false;
     last.points.pop();
-    if (last.points.length < 3) {
+    // 🆕 v1.9.3-A1.b.2 : minimum dépend du type (2 pour polyline, 3 pour polygon)
+    const minPoints = _isPolylineType(last.type) ? 2 : 3;
+    if (last.points.length < minPoints) {
       // Plus assez de points → supprimer la structure entière
       structuresData.pop();
     }

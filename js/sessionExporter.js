@@ -564,7 +564,7 @@
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
     const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
     // 🆕 v1.9.3-A1.a : tri par sous-type pour les structures (UI filtre)
-    const structuresByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur"]);
+    const structuresByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
     const tagsList = _listerTagsPoints(d.points);
 
     function row(id, label, count, defaultChecked) {
@@ -632,9 +632,11 @@
         ${rowSub("adv_zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible.length, true)}
 
         ${row("adv_structures", "🏛️ Structures", (d.structures || []).length, true)}
-        ${rowSub("adv_structures_pilier-1", "🟡 Pilier 1ère masse", structuresByType["pilier-1"].length, true)}
-        ${rowSub("adv_structures_pilier-2", "🟠 Pilier 2e masse",   structuresByType["pilier-2"].length, true)}
-        ${rowSub("adv_structures_mur",      "🔵 Mur",               structuresByType["mur"].length,      true)}
+        ${rowSub("adv_structures_pilier-1", "🟡 Pilier 1ère masse",     structuresByType["pilier-1"].length, true)}
+        ${rowSub("adv_structures_pilier-2", "🟠 Pilier 2e masse",       structuresByType["pilier-2"].length, true)}
+        ${rowSub("adv_structures_mur",      "🔵 Mur",                   structuresByType["mur"].length,      true)}
+        ${rowSub("adv_structures_front-1",  "🟧 Front de taille 1ère",  structuresByType["front-1"].length,  true)}
+        ${rowSub("adv_structures_front-2",  "🟨 Front de taille 2e",    structuresByType["front-2"].length,  true)}
 
         <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
@@ -684,7 +686,7 @@
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
     syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
     // 🆕 v1.9.3-A1.a : sync parent ↔ enfants pour les structures
-    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur"]);
+    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur", "adv_structures_front-1", "adv_structures_front-2"]);
 
     // Synchro parent Points ↔ tags (dynamique : la liste varie selon les points)
     const tagsList = _listerTagsPoints(_compter().points);
@@ -726,7 +728,7 @@
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
     const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
     // 🆕 v1.9.3-A1.a : comptage structures pour l'UI Conversion
-    const structureCountByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur"]);
+    const structureCountByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
 
     function row(id, label, count, defaultChecked) {
       const disabled = count === 0 ? " disabled" : "";
@@ -783,11 +785,13 @@
       rowTypeSub("conv_zones_effondrement", "🟥 Effondrement", zoneCountByType.effondrement.length, true) +
       rowTypeSub("conv_zones_inaccessible", "⛔ Inaccessible", zoneCountByType.inaccessible.length, true);
 
-    // 🆕 v1.9.3-A1.a : sub-cases structures (3 sous-types)
+    // 🆕 v1.9.3-A1.a + A1.b.2 : sub-cases structures (5 sous-types incl. fronts)
     const structuresTypesHtml =
-      rowTypeSub("conv_structures_pilier-1", "🟡 Pilier 1ère masse", structureCountByType["pilier-1"].length, true) +
-      rowTypeSub("conv_structures_pilier-2", "🟠 Pilier 2e masse",   structureCountByType["pilier-2"].length, true) +
-      rowTypeSub("conv_structures_mur",      "🔵 Mur",               structureCountByType["mur"].length,      true);
+      rowTypeSub("conv_structures_pilier-1", "🟡 Pilier 1ère masse",    structureCountByType["pilier-1"].length, true) +
+      rowTypeSub("conv_structures_pilier-2", "🟠 Pilier 2e masse",      structureCountByType["pilier-2"].length, true) +
+      rowTypeSub("conv_structures_mur",      "🔵 Mur",                  structureCountByType["mur"].length,      true) +
+      rowTypeSub("conv_structures_front-1",  "🟧 Front de taille 1ère", structureCountByType["front-1"].length,  true) +
+      rowTypeSub("conv_structures_front-2",  "🟨 Front de taille 2e",   structureCountByType["front-2"].length,  true);
 
     return `
       <div class="kta-ses-intro">
@@ -938,7 +942,7 @@
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
     syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
     // 🆕 v1.9.3-A1.a : sync parent ↔ enfants structures dans Conversion
-    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur"]);
+    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur", "conv_structures_front-1", "conv_structures_front-2"]);
   }
 
   // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
@@ -1030,7 +1034,7 @@
     // 🆕 v1.9.3-A1.a : sous-types structures filtables. Si aucune checkbox
     // par type n'existe encore dans l'UI (= UI A1.a minimal), on inclut
     // les 3 sous-types par défaut.
-    const structureTypes = ["pilier-1", "pilier-2", "mur"].filter(function(t) {
+    const structureTypes = ["pilier-1", "pilier-2", "mur", "front-1", "front-2"].filter(function(t) {
       const cb = document.getElementById("adv_structures_" + t);
       return cb ? cb.checked : true;
     });
@@ -1248,8 +1252,8 @@
       // { data: [], structures: [...] } pour rester un data layer valide
       // chargeable directement comme structure.json.
       if (filteredStructures.length) {
-        const byType = _trierParType(filteredStructures, ["pilier-1", "pilier-2", "mur"]);
-        ["pilier-1", "pilier-2", "mur"].forEach(function(t) {
+        const byType = _trierParType(filteredStructures, ["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
+        ["pilier-1", "pilier-2", "mur", "front-1", "front-2"].forEach(function(t) {
           if (byType[t].length) {
             files.push({ name: "structures_" + t + ".json", payload: { data: [], structures: byType[t] } });
           }
@@ -1480,7 +1484,10 @@
     const structuresByType = {
       "pilier-1": allStructures.filter(function(s) { return s.type === "pilier-1"; }).length,
       "pilier-2": allStructures.filter(function(s) { return s.type === "pilier-2"; }).length,
-      "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length
+      "mur":      allStructures.filter(function(s) { return s.type === "mur";      }).length,
+      // 🆕 v1.9.3-A1.b.2 : compteurs fronts pour stats KMZ
+      "front-1":  allStructures.filter(function(s) { return s.type === "front-1";  }).length,
+      "front-2":  allStructures.filter(function(s) { return s.type === "front-2";  }).length
     };
 
     return {
@@ -1649,10 +1656,11 @@
     const rByT = stats.roadsByType;
     const zByT = stats.zonesByType;
     // 🆕 v1.9.3-A1.b.1 : compteur structures pour stats KMZ
-    const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0 };
+    const sByT = stats.structuresByType || { "pilier-1": 0, "pilier-2": 0, "mur": 0, "front-1": 0, "front-2": 0 };
     const roadsTotal = rByT.principal + rByT.secondaire + rByT.chemin;
     const zonesTotal = zByT.eau + zByT.remblais + zByT.effondrement + zByT.inaccessible;
-    const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"];
+    const structuresTotal = sByT["pilier-1"] + sByT["pilier-2"] + sByT["mur"]
+                          + (sByT["front-1"] || 0) + (sByT["front-2"] || 0);
 
     return '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">📦 Contenu à inclure</div>' +
@@ -1682,11 +1690,13 @@
         rowSub("kmz_inc_zones_effondrement", "🟥 Effondrement", zByT.effondrement, true) +
         rowSub("kmz_inc_zones_inaccessible", "⛔ Inaccessible", zByT.inaccessible, true) +
 
-        // --- 🆕 v1.9.3-A1.b.1 : Structures + sous-cases par sous-type ---
+        // --- 🆕 v1.9.3-A1.b.1 + A1.b.2 : Structures + 5 sous-types ---
         row("kmz_inc_structures", "🏛️ Structures", structuresTotal, true) +
-        rowSub("kmz_inc_structures_pilier-1", "🟡 Pilier 1ère masse", sByT["pilier-1"], true) +
-        rowSub("kmz_inc_structures_pilier-2", "🟠 Pilier 2e masse",   sByT["pilier-2"], true) +
-        rowSub("kmz_inc_structures_mur",      "🔵 Mur",               sByT["mur"],      true) +
+        rowSub("kmz_inc_structures_pilier-1", "🟡 Pilier 1ère masse",    sByT["pilier-1"], true) +
+        rowSub("kmz_inc_structures_pilier-2", "🟠 Pilier 2e masse",      sByT["pilier-2"], true) +
+        rowSub("kmz_inc_structures_mur",      "🔵 Mur",                  sByT["mur"],      true) +
+        rowSub("kmz_inc_structures_front-1",  "🟧 Front de taille 1ère", sByT["front-1"] || 0, true) +
+        rowSub("kmz_inc_structures_front-2",  "🟨 Front de taille 2e",   sByT["front-2"] || 0, true) +
 
         // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", "🪜 Jonctions interniveau", rByT.jonction, rByT.jonction > 0) : '') +
@@ -1743,7 +1753,7 @@
       _kmzSyncParent("kmz_inc_roads", ["kmz_inc_roads_principal", "kmz_inc_roads_secondaire", "kmz_inc_roads_chemin"]);
       _kmzSyncParent("kmz_inc_zones", ["kmz_inc_zones_eau", "kmz_inc_zones_remblais", "kmz_inc_zones_effondrement", "kmz_inc_zones_inaccessible"]);
       // 🆕 v1.9.3-A1.b.1 : sync parent ↔ enfants pour structures KMZ
-      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur"]);
+      _kmzSyncParent("kmz_inc_structures", ["kmz_inc_structures_pilier-1", "kmz_inc_structures_pilier-2", "kmz_inc_structures_mur", "kmz_inc_structures_front-1", "kmz_inc_structures_front-2"]);
       // Points : sous-cases par tag, IDs = kmz_inc_points_tag_<slug>
       const tagCheckboxes = document.querySelectorAll('[id^="kmz_inc_points_tag_"]');
       const tagIds = Array.from(tagCheckboxes).map(function(cb) { return cb.id; });
@@ -2160,7 +2170,7 @@
       if (structuresParent) {
         if (structuresParent.checked) {
           structureTypesSet = new Set();
-          ["pilier-1", "pilier-2", "mur"].forEach(function(t) {
+          ["pilier-1", "pilier-2", "mur", "front-1", "front-2"].forEach(function(t) {
             const cb = document.getElementById("kmz_inc_structures_" + t);
             if (cb && cb.checked) structureTypesSet.add(t);
           });
@@ -2168,7 +2178,7 @@
       } else {
         // Pas de checkbox UI → tout inclus par défaut (rétrocompat A1.b.1
         // avant ajout des checkboxes UI dans la modale KMZ)
-        structureTypesSet = new Set(["pilier-1", "pilier-2", "mur"]);
+        structureTypesSet = new Set(["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
       }
 
       console.log("[KMZ] Contenu :",

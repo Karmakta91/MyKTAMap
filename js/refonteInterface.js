@@ -747,9 +747,12 @@
       Object.keys(sByType).forEach(function(t) {
         // 🆕 v1.9.3-A1.a-fix (KARMA inversion) : 1ère masse → jaune,
         // 2e masse → orange. Icônes cohérentes avec les fills sur carte.
+        // 🆕 v1.9.3-A1.b.2 : fronts ajoutés (couleurs inversées vs piliers).
         const tLabel = t === "pilier-1" ? "Pilier 1ère masse 🟡" :
                        t === "pilier-2" ? "Pilier 2e masse 🟠" :
-                       t === "mur"      ? "Mur 🔵" : t;
+                       t === "mur"      ? "Mur 🔵" :
+                       t === "front-1"  ? "Front de taille 1ère masse 🟧" :
+                       t === "front-2"  ? "Front de taille 2e masse 🟨" : t;
         const nb = sByType[t];
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +

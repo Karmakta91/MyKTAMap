@@ -3821,6 +3821,16 @@ _setGroupeModeActif("tracker", isTracking, null);
       // foncé pour distinguer visuellement).
       { icone: "🔵", titre: "Mur (bleu foncé)",
         onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
+      // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
+      // contour). KARMA : "ce sont des tracé ok mais il reste dans
+      // 'structure'". Couleurs INVERSÉES vs piliers : front-1 = orange
+      // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
+      // Même règle multi-niveau que les piliers : front-2 auto-tagué
+      // activeLevel - 1.
+      { icone: "🟧", titre: "Front de taille 1ère masse (orange épais)",
+        onClick: function(btn) { _activerStructure("front-1", btn, "🟧"); } },
+      { icone: "🟨", titre: "Front de taille 2e masse (jaune épais) — niveau -1 auto",
+        onClick: function(btn) { _activerStructure("front-2", btn, "🟨"); } },
       { icone: "✅", titre: "Fermer la structure en cours",
         onClick: function() {
           if (!window.modeStructure) {
@@ -3829,7 +3839,13 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
           if (window.fermerStructureEnCours) {
             const ok = window.fermerStructureEnCours();
-            if (!ok) alert("Pose au moins 3 points avant de fermer la structure");
+            // 🆕 v1.9.3-A1.b.2 : minimum 2 points pour les fronts (polylines),
+            // 3 points pour les piliers/mur (polygones). Message adapté.
+            if (!ok) {
+              const isFront = window.modeStructure === "front-1" || window.modeStructure === "front-2";
+              const minPts = isFront ? 2 : 3;
+              alert("Pose au moins " + minPts + " points avant de fermer la structure");
+            }
           }
         }
       },

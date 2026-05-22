@@ -401,10 +401,26 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          out.roads.push({
-            id: pmId, nom: nom || undefined,
-            type: defaults.roadType, points: projected
-          });
+          // 🆕 v1.9.3-A1.b.2 : détection structure front via styleUrl.
+          // Notre KMZ export utilise "#structure_front-1" ou "_front-2"
+          // pour les fronts de taille. Sinon (= KMZ d'une autre app ou
+          // MyKTAMap pré-A1.b.2), comportement legacy : LineString = road.
+          const lineStyleEl = pm.querySelector(":scope > styleUrl");
+          const lineStyleUrl = lineStyleEl ? (lineStyleEl.textContent || "").trim() : "";
+          const frontMatch = lineStyleUrl.match(/^#structure_(front-1|front-2)$/);
+          if (frontMatch) {
+            // C'est un front de taille (polyline structure)
+            out.structures.push({
+              id: pmId, nom: nom || undefined,
+              type: frontMatch[1], points: projected
+            });
+          } else {
+            // Comportement legacy : LineString = road
+            out.roads.push({
+              id: pmId, nom: nom || undefined,
+              type: defaults.roadType, points: projected
+            });
+          }
           stats.kept++;
         } else { stats.skipped++; }
         continue;

@@ -479,12 +479,16 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🟠 2e masse : orange
           "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
           // 🔵 Mur : bleu foncé
-          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 }
+          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans
+          // contour. Couleurs inversées vs piliers (KARMA design).
+          "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
+          "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
         };
-        // 🆕 v1.9.3-A1.a-fix3 : cf. commentaire dans structures.js. Ordre
-        // Z cohérent avec la stratigraphie cataphile (1ère masse couvre
-        // la 2e masse en projection 2D du dessus).
-        const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2 };
+        // 🆕 v1.9.3-A1.a-fix3 + A1.b.2 : ordre Z avec fronts insérés
+        // entre mur (arrière) et piliers (devant) — cohérent avec
+        // structures.js > renderStructures.
+        const ordreStruct = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
         const structuresTriees = [...json.structures].sort(function(a, b) {
           return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
         });
@@ -494,12 +498,32 @@ function ajouterPointsDepuisJSON(url, layer) {
           window._ktaDataStructurePolygons = [];
         }
         structuresTriees.forEach(function(structure) {
-          if (!structure.points || structure.points.length < 3) return;
+          // 🆕 v1.9.3-A1.b.2 : min points dépend du type (2 pour polyline, 3 pour polygon)
+          const isPolyline = !!STRUCTURE_STYLES_DATA[structure.type]?.isPolyline;
+          const minPts = isPolyline ? 2 : 3;
+          if (!structure.points || structure.points.length < minPts) return;
           const style = STRUCTURE_STYLES_DATA[structure.type] || STRUCTURE_STYLES_DATA["mur"];
           const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
-          const polygon = L.polygon(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
+          let leafletLayer;
+          if (isPolyline) {
+            // Front de taille : polyline épaisse sans contour
+            leafletLayer = L.polyline(latlngs, {
+              color:    style.color,
+              weight:   style.weight,
+              opacity:  style.opacity,
+              lineCap:  "round",
+              lineJoin: "round",
+              interactive: false
+            }).addTo(layer);
+          } else {
+            // Pilier / mur : polygone rempli avec stroke noir
+            leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
+          }
+          // Note : on garde le nom `polygon` dans l'entry pour rétrocompat
+          // avec _filtreNiveauSurPolygonData qui lit entry.polygon. Le
+          // polyline Leaflet supporte setStyle aussi → no breakage.
           const entry = {
-            polygon:         polygon,
+            polygon:         leafletLayer,
             type:            structure.type,
             points:          structure.points,
             level:           Number.isInteger(structure.level) ? structure.level : 0,
@@ -507,8 +531,6 @@ function ajouterPointsDepuisJSON(url, layer) {
             origFillOpacity: style.fillOpacity ?? 0.85
           };
           window._ktaDataStructurePolygons.push(entry);
-          // Réutilise le filtre niveau zones car même mécanique (entry
-          // a .polygon + .level + origOpacity + origFillOpacity).
           _filtreNiveauSurPolygonData(entry);
         });
       }

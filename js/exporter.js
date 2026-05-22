@@ -178,7 +178,7 @@
               <div class="kta-aide-section-titre">📋 Contenu</div>
               <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
                 ✓ Image du plan + calques actuellement <strong>visibles</strong> sur la carte<br>
-                ✓ Annotations de la session (${nbPoints} point(s), ${nbRoads} tracé(s), ${nbZones} zone(s))<br>
+                ✓ Annotations de la session (${nbPoints} point(s), ${nbRoads} tracé(s), ${nbZones} zone(s)${(window.getStructures && window.getStructures().length > 0) ? ', ' + window.getStructures().length + ' structure(s)' : ''})<br>
                 ${_niveauxRapideTxt
                   ? '<span style="color:#f4c542;">🏗️ ' + _niveauxRapideTxt + '</span> — change le filtre via le bouton niveau pour exporter autre chose, ou passe en <strong>🎨 Mode avancé</strong> pour choisir explicitement<br>'
                   : ''}
@@ -734,15 +734,31 @@
     // Compter les routes et zones par type
     const roads = (window.getRoads ? window.getRoads() : []) || [];
     const zones = (window.getZones ? window.getZones() : []) || [];
+    // 🆕 v1.9.3-A1.b.2 : structures session (piliers + murs)
+    const structures = (window.getStructures ? window.getStructures() : []) || [];
+    const nbStructures = structures.length;
     const roadsByType = {
       principal:  roads.filter(function(r) { return r.type === "principal";  }).length,
       secondaire: roads.filter(function(r) { return r.type === "secondaire"; }).length,
       chemin:     roads.filter(function(r) { return r.type === "chemin";     }).length
     };
+    // 🆕 v1.9.3-A1.b.2-fix : ajout du compteur `inaccessible` qui manquait
+    // (causait "⛔ Inaccessible (undefined)" dans la modale annotations
+    // session — bug remonté KARMA après A1.b.1).
     const zonesByType = {
       eau:          zones.filter(function(z) { return z.type === "eau";          }).length,
       remblais:     zones.filter(function(z) { return z.type === "remblais";     }).length,
-      effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length
+      effondrement: zones.filter(function(z) { return z.type === "effondrement"; }).length,
+      inaccessible: zones.filter(function(z) { return z.type === "inaccessible"; }).length
+    };
+    // 🆕 v1.9.3-A1.b.2 : compteur sous-types structures pour la modale
+    // annotations session (parallèle à zonesByType). Inclut les fronts.
+    const structuresByType = {
+      "pilier-1": structures.filter(function(s) { return s.type === "pilier-1"; }).length,
+      "pilier-2": structures.filter(function(s) { return s.type === "pilier-2"; }).length,
+      "mur":      structures.filter(function(s) { return s.type === "mur";      }).length,
+      "front-1":  structures.filter(function(s) { return s.type === "front-1";  }).length,
+      "front-2":  structures.filter(function(s) { return s.type === "front-2";  }).length
     };
 
     // Position du tracker : toujours active (la position courante existe au minimum)
@@ -787,6 +803,15 @@
       rowSub("zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement, true) +
       rowSub("zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible, true) +
 
+      // 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) dans les
+      // annotations session de l'export image. Calqué sur le bloc zones.
+      row("structures", "🏛️ Structures", nbStructures, true) +
+      rowSub("structures_pilier-1", "🟡 Pilier 1ère masse",    structuresByType["pilier-1"], true) +
+      rowSub("structures_pilier-2", "🟠 Pilier 2e masse",      structuresByType["pilier-2"], true) +
+      rowSub("structures_mur",      "🔵 Mur",                  structuresByType["mur"],      true) +
+      rowSub("structures_front-1",  "🟧 Front de taille 1ère", structuresByType["front-1"], true) +
+      rowSub("structures_front-2",  "🟨 Front de taille 2e",   structuresByType["front-2"], true) +
+
       row("mesure",  "Mesure de distance",      nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
         <input type="checkbox" id="ann_tracker" ${trackerOk ? '' : 'disabled'}>
@@ -800,6 +825,8 @@
     setTimeout(function() {
       _syncAnnotParent("ann_roads", ["ann_roads_principal", "ann_roads_secondaire", "ann_roads_chemin"]);
       _syncAnnotParent("ann_zones", ["ann_zones_eau", "ann_zones_remblais", "ann_zones_effondrement", "ann_zones_inaccessible"]);
+      // 🆕 v1.9.3-A1.b.2 : sync parent↔enfants pour les structures (5 sous-types)
+      _syncAnnotParent("ann_structures", ["ann_structures_pilier-1", "ann_structures_pilier-2", "ann_structures_mur", "ann_structures_front-1", "ann_structures_front-2"]);
 
       // Sync parent Points ↔ tags
       const pointsTagIds = sessionTags.map(function(item) { return "ann_points_tag_" + _slugTagId(item.tag); });
@@ -949,7 +976,8 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       etat.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","mesure","tracker"].forEach(function(k) {
+    // 🆕 v1.9.3-A1.b.2 : structures dans les annotations exportables
+    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       etat.ann[k] = cb ? cb.checked : false;
     });
@@ -961,6 +989,11 @@
     ["eau","remblais","effondrement","inaccessible"].forEach(function(t) {
       const cb = document.getElementById("ann_zones_" + t);
       etat.ann["zones_" + t] = cb ? cb.checked : true;
+    });
+    // 🆕 v1.9.3-A1.b.2 : sous-types structures sauvegardés dans l'état
+    ["pilier-1","pilier-2","mur","front-1","front-2"].forEach(function(t) {
+      const cb = document.getElementById("ann_structures_" + t);
+      etat.ann["structures_" + t] = cb ? cb.checked : true;
     });
     const legOn = document.getElementById("kta-export-legende-on");
     if (legOn && legOn.checked) {
@@ -1142,7 +1175,9 @@
     document.querySelectorAll('[data-layer-type="data"]').forEach(function(cb) {
       opts.dataLayers[cb.dataset.layerId] = cb.checked;
     });
-    ["points","roads","zones","mesure","tracker"].forEach(function(k) {
+    // 🆕 v1.9.3-A1.b.2 : ajout de "structures" dans la liste des
+    // catégories d'annotations exportables.
+    ["points","roads","zones","structures","mesure","tracker"].forEach(function(k) {
       const cb = document.getElementById("ann_" + k);
       opts.ann[k] = cb ? cb.checked : false;
     });
@@ -1157,6 +1192,14 @@
       remblais:     document.getElementById("ann_zones_remblais")?.checked     ?? true,
       effondrement: document.getElementById("ann_zones_effondrement")?.checked ?? true,
       inaccessible: document.getElementById("ann_zones_inaccessible")?.checked ?? true
+    };
+    // 🆕 v1.9.3-A1.b.2 : sous-types structures (5 sous-cases incl. fronts)
+    opts.ann.structuresTypes = {
+      "pilier-1": document.getElementById("ann_structures_pilier-1")?.checked ?? true,
+      "pilier-2": document.getElementById("ann_structures_pilier-2")?.checked ?? true,
+      "mur":      document.getElementById("ann_structures_mur")?.checked      ?? true,
+      "front-1":  document.getElementById("ann_structures_front-1")?.checked  ?? true,
+      "front-2":  document.getElementById("ann_structures_front-2")?.checked  ?? true
     };
     // 🏗️ Multi-niveau (v148) : Set des niveaux coches dans la section dediee.
     // - null → multiLevel OFF pour ce plan → pas de filtrage niveau
@@ -1395,6 +1438,70 @@
         ctx.globalAlpha = s.opacity;
         ctx.lineJoin = "round";
         ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    // ---------- 🆕 v1.9.3-A1.b.2 : structures (piliers + murs + fronts) ----------
+    // Calqué sur le bloc zones ci-dessus. Styles cohérents avec
+    // structures.js > STRUCTURE_STYLES. Différenciation polygon (piliers,
+    // mur) vs polyline (fronts) au rendu canvas.
+    if (opts.ann.structures && window.getStructures) {
+      const structures = window.getStructures();
+      const SS = {
+        "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
+        "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+        "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
+        // Fronts : polylines épaisses sans contour. weight 10 (px Leaflet)
+        // converti via scale au canvas final.
+        "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
+        "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
+      };
+      // Ordre Z complet (cohérent structures.js + utils.js)
+      const ordreS = { "mur": 0, "front-2": 1, "front-1": 2, "pilier-2": 3, "pilier-1": 4 };
+      const filtreS = opts.ann.structuresTypes || {
+        "pilier-1": true, "pilier-2": true, "mur": true,
+        "front-1":  true, "front-2": true
+      };
+      const triees = [...structures]
+        .filter(function(s) { return filtreS[s.type] !== false; })
+        .filter(_itemPasseLevels)
+        .sort(function(a, b) {
+          return (ordreS[a.type] ?? 99) - (ordreS[b.type] ?? 99);
+        });
+      for (const st of triees) {
+        const s = SS[st.type] || SS["mur"];
+        const isPolyline = !!s.isPolyline;
+        // Minimum 2 points pour polyline, 3 pour polygon
+        const minPts = isPolyline ? 2 : 3;
+        if (!st.points || st.points.length < minPts) continue;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(sc(st.points[0].x), sc(st.points[0].y));
+        for (let i = 1; i < st.points.length; i++) {
+          ctx.lineTo(sc(st.points[i].x), sc(st.points[i].y));
+        }
+        if (isPolyline) {
+          // Front : polyline solide épaisse colorée, pas de fill ni
+          // de stroke noir contour. Round cap/join pour douceur visuelle.
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.weight * scale;
+          ctx.globalAlpha = s.opacity;
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        } else {
+          // Pilier / mur : polygon fermé + fill + stroke noir
+          ctx.closePath();
+          ctx.fillStyle = s.fillColor;
+          ctx.globalAlpha = s.fillOpacity;
+          ctx.fill();
+          ctx.strokeStyle = s.color;
+          ctx.lineWidth = s.weight * scale;
+          ctx.globalAlpha = s.opacity;
+          ctx.lineJoin = "round";
+          ctx.stroke();
+        }
         ctx.restore();
       }
     }
