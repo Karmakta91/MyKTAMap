@@ -383,11 +383,11 @@
               Préférence globale, conservée entre sessions.
             </p>
 
-            <label class="kta-perf-ultra-row" title="Active les 6 toggles ci-dessous en bloc">
+            <label class="kta-perf-ultra-row" title="Active les 7 toggles ci-dessous en bloc">
               <input type="checkbox" id="loader_perf_ultra">
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">🚀 Mode ULTRA (active tout)</span>
-                <span class="kta-perf-ultra-hint">Préset : active les 6 optims ci-dessous en bloc.</span>
+                <span class="kta-perf-ultra-hint">Préset : active les 7 optims ci-dessous en bloc.</span>
               </span>
             </label>
 
@@ -438,6 +438,23 @@
               <span class="kta-perf-ultra-text">
                 <span class="kta-perf-ultra-label">👁️ Ne rendre que les tracés visibles</span>
                 <span class="kta-perf-ultra-hint">Pop-in léger au pan, gros gain sur plans denses.</span>
+              </span>
+            </label>
+
+            <!-- 🆕 v1.9.2-hotfix-loader-zoom (KARMA "limiter le dezoom n'est
+                 present que dans la conf en mode carte, corrige pour qu'il
+                 soit aussi en mode home") : toggle mobileZoomLimit déplacé
+                 ici pour être accessible AVANT le chargement d'un plan.
+                 Utile : si l'user crash sur un gros plan au minZoom mobile,
+                 il peut désormais réactiver la limite depuis la home
+                 directement (au lieu d'avoir à charger un plan d'abord,
+                 risquer un crash, etc.). Cohérent avec le toggle map-mode
+                 dans interface.js _renderPerfUltraSection. -->
+            <label class="kta-perf-ultra-row kta-perf-ultra-row-danger">
+              <input type="checkbox" id="loader_perf_mobileZoomLimit">
+              <span class="kta-perf-ultra-text">
+                <span class="kta-perf-ultra-label">🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)</span>
+                <span class="kta-perf-ultra-hint"><strong>Coché par défaut</strong>. Plafonne le dézoom max sur smartphone pour éviter le crash OOM. <strong>Décocher</strong> = autorise le même dézoom que sur PC (vue d'ensemble) mais risque de crash sur gros plans. <strong>Reload requis</strong>.</span>
               </span>
             </label>
           </div>
@@ -1911,12 +1928,16 @@
         if (!window.PerfUltra) return;
         const ultraEl = document.getElementById("loader_perf_ultra");
         const map = {
-          "loader_perf_decim":        "decim",
-          "loader_perf_animOff":      "animOff",
-          "loader_perf_noIntersect":  "noIntersect",
-          "loader_perf_noTooltips":   "noTooltips",
-          "loader_perf_slowSave":     "slowSave",
-          "loader_perf_viewportCull": "viewportCull"
+          "loader_perf_decim":           "decim",
+          "loader_perf_animOff":         "animOff",
+          "loader_perf_noIntersect":     "noIntersect",
+          "loader_perf_noTooltips":      "noTooltips",
+          "loader_perf_slowSave":        "slowSave",
+          "loader_perf_viewportCull":    "viewportCull",
+          // 🆕 v1.9.2-hotfix-loader-zoom : 7e toggle ajouté pour parité
+          // avec la modale Configuration in-map (cf. interface.js
+          // _bindPerfUltraToggles ligne ~1571).
+          "loader_perf_mobileZoomLimit": "mobileZoomLimit"
         };
         // Sync visuel initial
         Object.keys(map).forEach(function(id) {
