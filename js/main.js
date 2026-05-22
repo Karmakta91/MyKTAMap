@@ -159,6 +159,17 @@ async function lancerApplication() {
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
   window.zonesInitialized     = false;
+  // 🆕 v1.9.3-A1.a-fix6 (KARMA "je fait une structure, change de plan,
+  // et je peux plus en faire") : flag reset au plan switch pour que
+  // initStructures() ré-attache le click handler sur la NOUVELLE map
+  // Leaflet (cleanupExistingMap dans map.js détruit l'ancienne map →
+  // tous les listeners attachés via window.map.on() sont perdus avec
+  // elle). Sans ce reset, structuresInitialized restait true → return
+  // early dans initStructures → click handler perdu, plus de dessin.
+  // Bug NON présent en zones car ce reset existait déjà pour
+  // zonesInitialized. Le flag structures avait été oublié dans le
+  // commit A1.a initial.
+  window.structuresInitialized = false;
 
   // 🏗️ Multi-niveau (v148) : lecture de la preference par plan (PlanRegistry)
   // + reset des etats de session (activeLevel = 0, visibleLevels = [0] a
@@ -480,6 +491,10 @@ function _libererRessourcesPlanPrecedent() {
   window.interfaceInitialized = false;
   window.roadInitialized      = false;
   window.zonesInitialized     = false;
+  // 🆕 v1.9.3-A1.a-fix6 : reset symétrique du flag structures
+  // (= mêmes raisons que zones/road : sans ce reset, le click handler
+  // ne se ré-attache pas sur la nouvelle map Leaflet au plan switch).
+  window.structuresInitialized = false;
 }
 
 // =========================
