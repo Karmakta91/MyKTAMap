@@ -103,18 +103,19 @@
         </div>
       </div>
 
-      <div id="splashFooter">
-        <!-- 🆕 v1.9.2-fix15 (KARMA pivot) : retrait du bloc #splashAuthor
-             ("Par [karma.png]") qui était centré dans le footer. La
-             signature KARMA est maintenant affichée en BAS À DROITE
-             du splash avec une animation lettre-par-lettre (cf.
-             #splashKarmaCorner plus bas). Le footer ne contient plus
-             que la mention de licence. -->
-        <div id="splashLicense">
-          Licence libre — usage non commercial<br>
-          <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
-        </div>
-      </div>
+      <!-- 🆕 v1.9.2-fix18 (KARMA pivot) : #splashFooter et #splashLicense
+           SORTIS du #splashBox pour pouvoir positionner la licence en
+           absolu au bas du splash, juste au-dessus de la signature KARMA
+           et des crédits libs. Le box principal contient désormais
+           uniquement le contenu central (logo, titre, progress, scale). -->
+    </div>
+
+    <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
+         KARMA + crédits libs. Position absolute pour décoreller du flux
+         vertical du #splashBox centré. -->
+    <div id="splashLicense">
+      Licence libre — usage non commercial<br>
+      <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
     </div>
 
     <!-- 🆕 v1.9.2-fix15 (KARMA) : signature KARMA en bas à droite, plus

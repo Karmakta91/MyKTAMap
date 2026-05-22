@@ -3069,25 +3069,33 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 /* "100" centré sur son tick comme les autres (au lieu de right-aligné qui le collait au "90") */
 .splash-scale-labels span:nth-child(11) { left: 100%; transform: translateX(-50%); }
 
-#splashFooter {
-  margin-top: 38px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  animation: splashTextIn 0.6s ease-out 0.85s both;
-}
+/* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM (orphelin après extraction
+   de #splashLicense en absolute). Règle CSS gardée vide en commentaire au
+   cas où on l'aurait raté quelque part — sinon elle ne s'applique plus. */
+/* #splashFooter — n'existe plus dans le DOM. */
 
-/* 🆕 v1.9.2-fix15 : règles #splashAuthor / .splash-by / #splashSignature
-   retirées (éléments supprimés du DOM splash). La signature KARMA est
-   désormais affichée via #splashKarmaCorner / #splashKarmaImg en bas
-   à droite avec animation lettre-par-lettre (cf. plus bas). */
+/* Règles #splashAuthor / .splash-by / #splashSignature retirées en fix15. */
 
+/* 🆕 v1.9.2-fix18 (KARMA "la partie Licence libre doit être plus bas,
+   juste au-dessus de la signature et lib cités") : licence positionnée
+   en ABSOLUTE au bas du splash, juste au-dessus de la rangée KARMA +
+   crédits libs (bottom 28px). Centrée horizontalement. */
 #splashLicense {
+  position: absolute;
+  bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
   font-size: 11px;
   color: #6c7689;
   line-height: 1.6;
   letter-spacing: 0.02em;
+  text-align: center;
+  max-width: calc(100% - 56px);  /* respect des 28px latéraux des crédits */
+  user-select: none;
+  pointer-events: none;
+  /* Animation : apparaît avec un léger delay après le contenu central */
+  animation: splashTextIn 0.6s ease-out 1.0s both;
+  z-index: 2;
 }
 
 .splash-license-detail {
@@ -3153,9 +3161,9 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   transition: opacity 0.3s ease-out;
 }
 
-/* Crédit Leaflet + JSZip — petit, discret, en BAS À GAUCHE du splash
-   (déplacé du centre dans fix15 pour libérer le bas-droit où s'affiche
-   désormais la signature KARMA animée). */
+/* Crédit Leaflet + JSZip + Dijkstra — petit, discret, en BAS À GAUCHE du
+   splash (déplacé du centre dans fix15 pour libérer le bas-droit où
+   s'affiche la signature KARMA animée). */
 #splashLeafletCredit {
   position: absolute;
   /* 🆕 v1.9.2-fix17 : 14px → 28px (même raison que splashKarmaCorner :
@@ -3166,6 +3174,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   font-size: 11px;
   color: #6c7689;
   letter-spacing: 0.02em;
+  /* 🆕 v1.9.2-fix18 (KARMA "le karma est légèrement plus haut que les
+     libs, doit être au même alignement") : on fixe la hauteur effective
+     du crédit à 20px = hauteur de #splashKarmaImg. Les deux éléments
+     ont ainsi leur "boîte" de la même hauteur visuelle → centres et
+     bords alignés à la même ligne de base. */
+  height: 20px;
+  line-height: 20px;
+  display: flex;
+  align-items: center;
   user-select: none;
   pointer-events: none;
   white-space: nowrap;
@@ -3186,12 +3203,16 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashProgressTrack { width: 200px; margin-top: 30px; }
   #splashScale { width: 200px; margin-top: 0; }
   .splash-scale-labels { font-size: 8px; }
-  #splashFooter { margin-top: 28px; }
-  /* 🆕 v1.9.2-fix15 : ancienne règle #splashSignature retirée (élément
-     supprimé), nouvelle règle pour #splashKarmaImg (signature animée
-     en bas à droite). Taille un peu réduite sur mobile. */
+  /* 🆕 v1.9.2-fix18 : #splashFooter retiré du DOM, règle obsolète
+     supprimée. Le KARMA img + crédits gardent leurs paliers mobiles. */
   #splashKarmaImg { height: 18px; }
-  #splashLeafletCredit { font-size: 10px; bottom: 10px; }
+  #splashLeafletCredit {
+    font-size: 10px;
+    /* Alignement avec karma image à la même hauteur (18px sur mobile) */
+    height: 18px;
+    line-height: 18px;
+  }
+  #splashLicense { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* Mode paysage mobile : compact */
@@ -3202,9 +3223,15 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   #splashProgressTrack { margin-top: 16px; }
   #splashScale { margin-top: 0; }
   .splash-scale-labels { font-size: 8px; height: 10px; }
-  #splashFooter { margin-top: 14px; gap: 6px; }
   #splashKarmaImg { height: 16px; }
-  #splashLicense { font-size: 10px; }
+  #splashLeafletCredit {
+    height: 16px;
+    line-height: 16px;
+  }
+  #splashLicense {
+    font-size: 10px;
+    bottom: calc(46px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* ==============================================
