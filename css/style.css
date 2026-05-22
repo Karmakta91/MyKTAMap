@@ -4849,6 +4849,50 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   flex-wrap: wrap;
 }
 
+/* 🆕 v1.9.3-A2 : sélecteur mode image (Upload vs Vierge) dans le créateur
+   de plan. Grille 2 colonnes (1 ligne sur mobile via responsive auto). */
+.kta-planner-image-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.kta-planner-image-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(140, 180, 255, 0.05);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+
+.kta-planner-image-mode-row:hover {
+  background: rgba(140, 180, 255, 0.10);
+}
+
+.kta-planner-image-mode-row input[type="radio"] {
+  flex-shrink: 0;
+  accent-color: #f4c542;
+}
+
+/* Mode sélectionné = bordure jaune charte */
+.kta-planner-image-mode-row:has(input[type="radio"]:checked) {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.5);
+}
+
+@media (max-width: 480px) {
+  .kta-planner-image-mode-grid {
+    grid-template-columns: 1fr;  /* 1 colonne sur mobile */
+  }
+}
+
 /* Display des dimensions auto-détectées (dans la section "Plan général") */
 .kta-planner-dim-display {
   display: flex;

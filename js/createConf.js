@@ -182,18 +182,81 @@ function afficherPlanner() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🖼️ Images principales</div>
 
-          <div class="kta-planner-upload-ligne">
-            <span class="kta-cfg-label">Image du plan <span class="kta-planner-req">*</span></span>
-            <label class="kta-planner-upload-btn" for="pl_baseImage">📂 Choisir</label>
-            <input type="file" id="pl_baseImage" accept="image/*" style="display:none">
-            <span class="kta-planner-upload-nom" id="pl_baseImage_nom">Aucun fichier</span>
+          <!-- 🆕 v1.9.3-A2 (KARMA "mode vierge dans le générateur, on peut
+               générer une image vide de X/Ypx avec une limite") : sélecteur
+               mode upload vs vierge. Avec vierge, l'utilisateur choisit
+               dimensions + couleur de fond, l'app génère un canvas et
+               l'utilise comme baseImage (= File injecté dans pl_baseImage). -->
+          <div class="kta-planner-image-mode-grid">
+            <label class="kta-planner-image-mode-row">
+              <input type="radio" name="pl_image_mode" value="upload" checked>
+              <span>📷 <strong>Depuis une image</strong> <span class="kta-planner-hint">(upload PNG / JPG)</span></span>
+            </label>
+            <label class="kta-planner-image-mode-row">
+              <input type="radio" name="pl_image_mode" value="vierge">
+              <span>🎨 <strong>Image vierge</strong> <span class="kta-planner-hint">(canvas généré)</span></span>
+            </label>
           </div>
 
-          <div class="kta-planner-upload-ligne">
-            <span class="kta-cfg-label">Carte de collision <span class="kta-planner-hint">(optionnel)</span></span>
-            <label class="kta-planner-upload-btn" for="pl_collision">📂 Choisir</label>
-            <input type="file" id="pl_collision" accept="image/*" style="display:none">
-            <span class="kta-planner-upload-nom" id="pl_collision_nom">Aucun fichier</span>
+          <!-- BLOC UPLOAD (existant, visible par défaut) -->
+          <div id="pl_image_upload_block">
+            <div class="kta-planner-upload-ligne">
+              <span class="kta-cfg-label">Image du plan <span class="kta-planner-req">*</span></span>
+              <label class="kta-planner-upload-btn" for="pl_baseImage">📂 Choisir</label>
+              <input type="file" id="pl_baseImage" accept="image/*" style="display:none">
+              <span class="kta-planner-upload-nom" id="pl_baseImage_nom">Aucun fichier</span>
+            </div>
+
+            <div class="kta-planner-upload-ligne">
+              <span class="kta-cfg-label">Carte de collision <span class="kta-planner-hint">(optionnel)</span></span>
+              <label class="kta-planner-upload-btn" for="pl_collision">📂 Choisir</label>
+              <input type="file" id="pl_collision" accept="image/*" style="display:none">
+              <span class="kta-planner-upload-nom" id="pl_collision_nom">Aucun fichier</span>
+            </div>
+          </div>
+
+          <!-- 🆕 BLOC VIERGE (caché par défaut, généré dynamiquement) -->
+          <div id="pl_image_vierge_block" style="display:none;">
+            <p class="kta-planner-info">
+              L'app génère un canvas PNG vide aux dimensions choisies, avec la couleur de fond sélectionnée.
+              Utile pour <strong>dessiner un plan from scratch</strong> (piliers, fronts de taille, tracés) sans image source.
+            </p>
+            <div class="kta-planner-grille">
+              <label class="kta-cfg-label">Largeur (px) <span class="kta-planner-req">*</span></label>
+              <input class="kta-cfg-input" id="pl_vierge_w" type="number" min="500" max="12000" step="100" value="4000">
+
+              <label class="kta-cfg-label">Hauteur (px) <span class="kta-planner-req">*</span></label>
+              <input class="kta-cfg-input" id="pl_vierge_h" type="number" min="500" max="12000" step="100" value="4000">
+            </div>
+            <p class="kta-planner-hint" style="margin:6px 0 10px 0; font-size:11.5px; color:#8892a4;">
+              Limites : 500 px min, 12000 px max (anti-crash mémoire mobile).
+            </p>
+
+            <div class="kta-cfg-label" style="margin-top:6px;">Couleur de fond</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
+              <label class="kta-export-radio-row">
+                <input type="radio" name="pl_vierge_color" value="white" checked>
+                <span>⬜ Blanc <span style="color:#8892a4; font-size:11px;">(papier)</span></span>
+              </label>
+              <label class="kta-export-radio-row">
+                <input type="radio" name="pl_vierge_color" value="gray">
+                <span>▫️ Gris clair <span style="color:#8892a4; font-size:11px;">(neutre)</span></span>
+              </label>
+              <label class="kta-export-radio-row">
+                <input type="radio" name="pl_vierge_color" value="black">
+                <span>⬛ Noir <span style="color:#8892a4; font-size:11px;">(contraste)</span></span>
+              </label>
+              <label class="kta-export-radio-row">
+                <input type="radio" name="pl_vierge_color" value="sepia">
+                <span>📜 Sépia <span style="color:#8892a4; font-size:11px;">(carte ancienne)</span></span>
+              </label>
+            </div>
+
+            <button id="pl_vierge_generate" class="kta-btn kta-btn-primary" type="button"
+                    style="margin-top:14px; width:100%; padding:10px;">
+              🎨 Générer l'image vide
+            </button>
+            <div id="pl_vierge_status" style="margin-top:8px; font-size:12px; color:#8892a4; min-height:18px;"></div>
           </div>
         </div>
 
@@ -366,6 +429,15 @@ function afficherPlanner() {
       if (v2CbBind.checked) _afficherAvertissementV2(v2CbBind);
     });
   }
+
+  // 🆕 v1.9.3-A2 : toggle mode image (upload / vierge) + handler de
+  // génération du canvas vide. Cf. handlers _onImageModeChange et
+  // _genererImageVierge plus bas dans le fichier.
+  document.querySelectorAll('input[name="pl_image_mode"]').forEach(function(r) {
+    r.addEventListener("change", _onImageModeChange);
+  });
+  const btnVierge = document.getElementById("pl_vierge_generate");
+  if (btnVierge) btnVierge.addEventListener("click", _genererImageVierge);
 
   document.getElementById("pl_addImageLayer").addEventListener("click", function() { _ajouterImageLayer(); });
   document.getElementById("pl_addDataLayer").addEventListener("click", function() { _ajouterDataLayer(); });
@@ -552,6 +624,129 @@ function _bindUploadLabel(inputId, nomId) {
   input.addEventListener("change", function() {
     const nom = document.getElementById(nomId);
     if (nom) nom.textContent = input.files[0] ? "✅ " + input.files[0].name : "Aucun fichier";
+  });
+}
+
+// =========================
+// 🆕 v1.9.3-A2 : MODE IMAGE VIERGE (créateur de plan)
+// =========================
+// Handler du sélecteur radio "Depuis une image" / "Image vierge".
+// Affiche le bloc correspondant et reset l'état de l'autre pour éviter
+// les confusions (ex: une image uploadée précédemment qui reste pendant
+// qu'on est en mode vierge).
+function _onImageModeChange() {
+  const mode = (document.querySelector('input[name="pl_image_mode"]:checked') || {}).value || "upload";
+  const blocUpload = document.getElementById("pl_image_upload_block");
+  const blocVierge = document.getElementById("pl_image_vierge_block");
+  if (blocUpload) blocUpload.style.display = (mode === "upload") ? "" : "none";
+  if (blocVierge) blocVierge.style.display = (mode === "vierge") ? "" : "none";
+
+  // Reset visuel du status vierge quand on bascule vers upload
+  if (mode === "upload") {
+    const statusEl = document.getElementById("pl_vierge_status");
+    if (statusEl) statusEl.textContent = "";
+  }
+  // Si on bascule vers vierge ET qu'un file est déjà dans pl_baseImage
+  // depuis un upload précédent, on le clear pour éviter ambiguïté.
+  // (Le user verra "Aucun fichier" dans le bloc upload qui est caché.)
+  if (mode === "vierge") {
+    const input = document.getElementById("pl_baseImage");
+    if (input && input.files && input.files.length > 0) {
+      try { input.value = ""; } catch(e) {}
+      const nom = document.getElementById("pl_baseImage_nom");
+      if (nom) nom.textContent = "Aucun fichier";
+    }
+  }
+}
+
+// Génère un canvas vide aux dimensions choisies + couleur de fond,
+// le convertit en File PNG et l'injecte dans pl_baseImage (= via
+// DataTransfer pour que le file input le voie comme un upload normal).
+// Trigger l'event "change" pour enchaîner le flow standard
+// (_lireImageDimensions + _appliquerDimensions).
+function _genererImageVierge() {
+  const statusEl = document.getElementById("pl_vierge_status");
+  const setStatus = function(msg, color) {
+    if (statusEl) {
+      statusEl.textContent = msg;
+      statusEl.style.color = color || "#8892a4";
+    }
+  };
+
+  // ───── Lecture des dimensions avec clamping ─────
+  let w = parseInt(document.getElementById("pl_vierge_w").value, 10);
+  let h = parseInt(document.getElementById("pl_vierge_h").value, 10);
+  if (!Number.isFinite(w) || w < 500)  w = 500;
+  if (!Number.isFinite(h) || h < 500)  h = 500;
+  if (w > 12000) w = 12000;
+  if (h > 12000) h = 12000;
+  // Re-écrit la valeur clampée dans l'input pour que l'user voie la limite
+  document.getElementById("pl_vierge_w").value = w;
+  document.getElementById("pl_vierge_h").value = h;
+
+  // ───── Couleur de fond ─────
+  const colorChoice = (document.querySelector('input[name="pl_vierge_color"]:checked') || {}).value || "white";
+  const PALETTE = {
+    white: "#ffffff",
+    gray:  "#e8e8e8",
+    black: "#000000",
+    sepia: "#f4e4bc"
+  };
+  const fillColor = PALETTE[colorChoice] || PALETTE.white;
+
+  setStatus("⏳ Génération du canvas " + w + "×" + h + " px…", "#8cb4ff");
+
+  // ───── Canvas off-screen + remplissage ─────
+  // Async via requestAnimationFrame pour ne pas freezer l'UI sur les
+  // gros canvas (12000×12000 = 144 MP allocations).
+  requestAnimationFrame(function() {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = fillColor;
+      ctx.fillRect(0, 0, w, h);
+
+      // ───── Conversion en Blob PNG ─────
+      canvas.toBlob(function(blob) {
+        if (!blob) {
+          setStatus("❌ Échec génération canvas (mémoire ?)", "#ff8c8c");
+          return;
+        }
+
+        // Nom de fichier descriptif pour que l'utilisateur retrouve
+        // dans le ZIP final ce que c'est (= image vierge K×K couleur).
+        const fileName = "plan_vierge_" + w + "x" + h + "_" + colorChoice + ".png";
+        const file = new File([blob], fileName, { type: "image/png" });
+
+        // ───── Injection dans le file input pl_baseImage ─────
+        // Utilise DataTransfer API : c'est la seule façon propre de set
+        // `input.files` programmatiquement (input.files est read-only mais
+        // peut être assigné via FileList depuis DataTransfer).
+        try {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          const input = document.getElementById("pl_baseImage");
+          input.files = dt.files;
+          // Trigger "change" event pour que le code existant
+          // (_lireImageDimensions, _appliquerDimensions) s'exécute.
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+        } catch(e) {
+          console.warn("[Planner vierge] DataTransfer failed :", e);
+          setStatus("❌ Erreur d'injection : " + (e.message || e), "#ff8c8c");
+          return;
+        }
+
+        // UX feedback
+        const nomEl = document.getElementById("pl_baseImage_nom");
+        if (nomEl) nomEl.textContent = "🎨 " + fileName;
+        setStatus("✅ Canvas généré : " + fileName + " (" + Math.round(blob.size / 1024) + " Ko)", "#6ce28a");
+      }, "image/png");
+    } catch(e) {
+      console.error("[Planner vierge] erreur :", e);
+      setStatus("❌ Erreur : " + (e.message || e), "#ff8c8c");
+    }
   });
 }
 
