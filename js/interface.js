@@ -1530,7 +1530,7 @@ function _renderPerfUltraSection() {
         qui nécessitent un reload du plan pour prendre effet.
       </p>
       ${row("cfg_perf_ultra", "🚀 Mode ULTRA (active tout)", s.ultra,
-            "Préset qui active les 6 toggles ci-dessous. Décocher = désactive tout.")}
+            "Préset qui active les 7 toggles ci-dessous. Décocher = désactive tout.")}
       <div style="border-top:1px solid rgba(255,255,255,0.08); margin:10px 0; padding-top:8px;"></div>
       ${row("cfg_perf_decim", "🪜 Décimer les tracés au dézoom", s.decim,
             "Simplifie les polylines via Ramer-Douglas-Peucker. Tracés moins lisses au dézoom mais bien plus rapides.")}
