@@ -21,20 +21,22 @@
 
   <link rel="stylesheet" href="lib/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/style.css">
-  <!-- 🆕 v1.9.2-rollback-final (KARMA "rollback les modif de full screen,
-       plus de problèmes que de bénéfice"). Multiples tentatives cover +
-       black-translucent ont créé soit une bande sombre en bas, soit la
-       status bar iOS qui hide/show de façon imprévisible. On reste sur
-       le comportement stable v1.9.1 : pas de cover, status bar opaque
-       noire, on perd ~47px en haut sur iPhone notché mais comportement
-       PRÉVISIBLE. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <!-- 🆕 v1.9.2-fix4 (KARMA "on teste ça") — RE-tentative cover +
+       black-translucent ISOLÉE : seulement ces 2 meta tags + retrait
+       du `+ env(safe-area-inset-bottom)` des règles footer/loader.
+       Le bug "bande sombre en bas" est causé par cette safe-area qui
+       devient ~21-34px avec cover. En la retirant, le footer est flush
+       au bord physique → pas de bande. Compromis : boutons proches
+       du home indicator iOS, mais négligeable en pratique. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
-       du contenu. Stable, l'heure iOS reste visible en permanence. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <!-- "black-translucent" : iOS status bar TRANSPARENTE par-dessus le
+       contenu. iOS lit la couleur de notre body (#1a1f2e, fix3) ou
+       du décoy (#kta-status-tint, fix2) pour tinter sa bande. Top
+       cohérent dès le premier paint, sans attendre Leaflet. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 

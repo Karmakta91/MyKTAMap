@@ -8683,11 +8683,13 @@ body.kta-refonte-v1 #kta-refonte-counters-btn:hover .kta-refonte-counter {
    Tout ce qui dépend du bas de l'écran (#map bottom, boussole bottom,
    modales padding-bottom) consomme cette variable → réajustement
    automatique sans JS supplémentaire.
-   Sans cover (état actuel après rollback final), safe-area-inset-bottom
-   = 0 sur iPhone donc le `+ env(...)` est un no-op. Conservé pour
-   robustesse si un jour cover est réintroduit. */
+   🆕 v1.9.2-fix4 (KARMA "on teste cover + translucent sans bande sombre") :
+   retrait du `+ env(safe-area-inset-bottom)` qui, avec cover réactivé,
+   créerait une bande sombre vide sous le footer (zone home indicator
+   ~21-34px ajoutée comme padding inutile). Sans ce + safe-bottom, le
+   footer est flush au bord physique du bas. */
 body.kta-refonte-v1 {
-  --kta-statusbar-h: calc(52px + env(safe-area-inset-bottom, 0px));
+  --kta-statusbar-h: 52px;
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
@@ -8716,12 +8718,12 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
      Feedback KARMA : "si toute les informations sont afficher en footer
      on sort du cadre [...] agrandir le footer dynamiquement et passer
      a la ligne toute la partie qui sort". */
-  /* Sans cover (rollback final), safe-area-inset-bottom = 0 sur iPhone
-     donc no-op. Conservé pour robustesse si cover réintroduit. */
-  min-height: calc(52px + env(safe-area-inset-bottom, 0px));
+  /* 🆕 v1.9.2-fix4 : avec cover réactivé, retrait du safe-area-inset-bottom
+     qui créerait une bande sombre. Statusbar compact 52px flush au bord. */
+  min-height: 52px;
   height: auto;
   padding-top: 4px;
-  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: 4px;
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 13px;
@@ -8751,11 +8753,12 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
   /* État replié : la barre garde une hauteur fixe minimaliste.
-     safe-area-inset-bottom conservé pour robustesse (no-op sans cover). */
-  min-height: calc(20px + env(safe-area-inset-bottom, 0px));
-  height: calc(20px + env(safe-area-inset-bottom, 0px));
+     🆕 v1.9.2-fix4 : safe-area-inset-bottom retiré (cf. statusbar
+     plus haut, même rationale anti-bande-sombre avec cover). */
+  min-height: 20px;
+  height: 20px;
   padding-top: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: 0;
 }
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed .kta-refonte-statusbar-content {
   opacity: 0;
@@ -9010,16 +9013,17 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   body.kta-refonte-v1 #map {
     top: calc(36px + env(safe-area-inset-top, 0px));
   }
-  /* Statusbar landscape : min-height 40+safe (no-op sans cover). */
+  /* 🆕 v1.9.2-fix4 : statusbar landscape 40px sans safe-area-inset-bottom
+     (anti-bande-sombre avec cover). */
   body.kta-refonte-v1 {
-    --kta-statusbar-h: calc(40px + env(safe-area-inset-bottom, 0px));
+    --kta-statusbar-h: 40px;
   }
   body.kta-refonte-v1 .kta-refonte-statusbar {
-    min-height: calc(40px + env(safe-area-inset-bottom, 0px));
+    min-height: 40px;
   }
   body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
-    min-height: calc(16px + env(safe-area-inset-bottom, 0px));
-    height: calc(16px + env(safe-area-inset-bottom, 0px));
+    min-height: 16px;
+    height: 16px;
   }
   /* #map bottom : la variable --kta-statusbar-h gère déjà tout (JS la
      met à jour quand le statusbar bouge). Pas de override hardcodé. */
