@@ -48,24 +48,28 @@ const STRUCT_CLOSE_TOLERANCE = 5;
 // Internal note KARMA : "techniquement ce sont des zones", donc style proche
 // de ZONE_STYLES mais avec stroke #000 systématique + fill plus saturé
 // (les structures représentent du physique solide, pas du marquage).
+//
+// 🆕 v1.9.3-A1.a-fix (KARMA "j'ai inversé les couleurs 1er masse / 2e masse") :
+//   - 1ère masse → JAUNE (#f4c542, couleur charte MKM)
+//   - 2e masse   → ORANGE (#ff9933)
 const STRUCTURE_STYLES = {
-  // 🟠 Pilier de 1ère masse : orange visible
+  // 🟡 Pilier de 1ère masse : jaune accent (= couleur charte MyKTAMap)
   "pilier-1": {
-    color:       "#000000",
-    fillColor:   "#ff9933",
-    fillOpacity: 0.85,
-    weight:      3,
-    opacity:     1
-  },
-  // 🟡 Pilier de 2e masse : jaune accent (= couleur charte MyKTAMap)
-  "pilier-2": {
     color:       "#000000",
     fillColor:   "#f4c542",
     fillOpacity: 0.85,
     weight:      3,
     opacity:     1
   },
-  // 🟦 Mur en pierre / béton : bleu foncé (KARMA "rond bleu dans le menu
+  // 🟠 Pilier de 2e masse : orange visible
+  "pilier-2": {
+    color:       "#000000",
+    fillColor:   "#ff9933",
+    fillOpacity: 0.85,
+    weight:      3,
+    opacity:     1
+  },
+  // 🔵 Mur en pierre / béton : bleu foncé (KARMA "rond bleu dans le menu
   // pour pas confondre avec icône eau")
   "mur": {
     color:       "#000000",
@@ -132,8 +136,23 @@ function initStructures() {
       };
       // 🏗️ Multi-niveau : tag avec le niveau actif si la feature est ON
       // pour ce plan. Sinon → aucun champ level (rétrocompat).
+      //
+      // 🆕 v1.9.3-A1.a-fix (KARMA insight cataphile) : un pilier de 2e
+      // masse représente structurellement la couche INFÉRIEURE visible
+      // depuis la couche courante (la masse "en dessous"). Donc en mode
+      // multi-niveau, on l'auto-tagge à `activeLevel - 1` au lieu de
+      // `activeLevel`. Logique : KARMA dessine un pilier 2e masse depuis
+      // le niveau 0 → la donnée pointe vers le niveau -1 (= la masse
+      // inférieure réelle dans la carrière).
+      // Les piliers 1ère masse et les murs restent au niveau actif (=
+      // ce que l'utilisateur voit / dessine est aussi à ce niveau).
       if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
-        currentStructure.level = window.APP_CONFIG.activeLevel || 0;
+        const _activeLvl = window.APP_CONFIG.activeLevel || 0;
+        if (currentStructure.type === "pilier-2") {
+          currentStructure.level = _activeLvl - 1;
+        } else {
+          currentStructure.level = _activeLvl;
+        }
       }
       structuresData.push(currentStructure);
     }

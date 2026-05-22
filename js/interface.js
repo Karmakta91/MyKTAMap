@@ -3786,14 +3786,18 @@ _setGroupeModeActif("tracker", isTracking, null);
     iconePrincipale: "🏛️",
     titre: "Structures (piliers / murs)",
     sousActions: [
-      // 🟠 Pilier 1ère masse : icone rond orange (cohérent avec le fill
-      // de la structure rendue sur la carte).
-      { icone: "🟠", titre: "Pilier 1ère masse (orange)",
-        onClick: function(btn) { _activerStructure("pilier-1", btn, "🟠"); } },
-      // 🟡 Pilier 2e masse : icone rond jaune (= couleur charte MKM,
-      // utilisé aussi par le fill).
-      { icone: "🟡", titre: "Pilier 2e masse (jaune)",
-        onClick: function(btn) { _activerStructure("pilier-2", btn, "🟡"); } },
+      // 🟡 Pilier 1ère masse : icone rond jaune (= couleur charte MKM,
+      // cohérent avec le fill #f4c542 de la structure rendue sur carte).
+      // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
+      // au draft initial qui avait orange / jaune dans le mauvais sens).
+      // En multi-niveau : tagué au niveau actif.
+      { icone: "🟡", titre: "Pilier 1ère masse (jaune)",
+        onClick: function(btn) { _activerStructure("pilier-1", btn, "🟡"); } },
+      // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
+      // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
+      // car structurellement la masse inférieure visible depuis l'actuelle.
+      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto",
+        onClick: function(btn) { _activerStructure("pilier-2", btn, "🟠"); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).

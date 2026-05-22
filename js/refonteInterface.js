@@ -745,8 +745,10 @@
       });
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(sByType).forEach(function(t) {
-        const tLabel = t === "pilier-1" ? "Pilier 1ère masse 🟠" :
-                       t === "pilier-2" ? "Pilier 2e masse 🟡" :
+        // 🆕 v1.9.3-A1.a-fix (KARMA inversion) : 1ère masse → jaune,
+        // 2e masse → orange. Icônes cohérentes avec les fills sur carte.
+        const tLabel = t === "pilier-1" ? "Pilier 1ère masse 🟡" :
+                       t === "pilier-2" ? "Pilier 2e masse 🟠" :
                        t === "mur"      ? "Mur 🔵" : t;
         const nb = sByType[t];
         html += '<li>' +
