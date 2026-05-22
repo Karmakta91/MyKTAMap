@@ -68,16 +68,23 @@
 
   <!-- 🆕 v1.9.2-fix2 (KARMA insight "le Leaflet encore chargé tinte le top
        comme je veux") : décoy DOM en POSITION FIXED top:0 qui mime le
-       comportement du refonte header (existant uniquement après Leaflet).
-       Présent dès le PREMIER paint HTML (avant scripts) → iOS Safari /
-       Chrome peuvent l'utiliser pour tinter leur status/address bar
-       avec la couleur charte refonte (#1a1f2e = start gradient header)
-       DÈS le chargement initial, sans attendre que Leaflet crée son
-       container. Z-index 1 = sous le splash (9999) / loader (5000) /
-       refonte header (1200) → JAMAIS visible visuellement (toujours
-       recouvert), mais existe dans le DOM pour sampling navigateur. -->
+       comportement du refonte header. Présent dès le PREMIER paint HTML
+       → iOS Safari / Chrome peuvent sampler sa couleur pour tinter
+       leur chrome système avec la charte (#1a1f2e). -->
   <div id="kta-status-tint" aria-hidden="true"
        style="position:fixed; top:0; left:0; right:0; height:60px; background:#1a1f2e; z-index:1; pointer-events:none;"></div>
+
+  <!-- 🆕 v1.9.2-fix5 (KARMA "elle est toujours là [la bande], trop frustrant") :
+       décoy BOTTOM en POSITION FIXED bottom:0 qui étend la couleur
+       charte jusqu'au bord physique inférieur. Si iOS dessine un
+       "letterbox" subtil dans la zone home indicator OU si la statusbar
+       n'arrive pas à fill via min-height: 100dvh, ce décoy garantit
+       que la couleur dessous (charte #1a1f2e) reste cohérente.
+       Z-index -1 = SOUS tout (mais pas dans le rendering : z:-1 inside
+       body est juste sous les autres enfants statiques de body).
+       Pointer-events: none = ne bloque rien. -->
+  <div id="kta-status-tint-bottom" aria-hidden="true"
+       style="position:fixed; bottom:0; left:0; right:0; height:60px; background:#1a1f2e; z-index:-1; pointer-events:none;"></div>
 
   <!-- ════════════════════════════════════════════════════════
        SVG PATTERNS — definitions partagees pour les zones (depuis Karma_dev / v169)
