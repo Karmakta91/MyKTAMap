@@ -312,6 +312,21 @@ window.getAllEmbeddedZones = function() {
     });
 };
 
+// 🆕 v1.9.3-A1.a : équivalent pour structures embarquées (lecture seule
+// via data layer). Utilisé en A1.b pour la collision pathfinder (les
+// structures bloquent comme les zones inaccessibles) + KMZ export
+// (embarquer le contenu data layer dans le .kmz).
+window.getAllEmbeddedStructures = function() {
+  if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
+  return window._ktaDataStructurePolygons
+    .filter(function(e) {
+      return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
+    })
+    .map(function(e) {
+      return { type: e.type, points: e.points, level: e.level || 0 };
+    });
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   fetch(url)
     .then(res => res.json())
@@ -434,6 +449,54 @@ function ajouterPointsDepuisJSON(url, layer) {
               });
             });
           }
+        });
+      }
+
+      // 🆕 v1.9.3-A1.a : Structures embarquées (piliers + murs) en lecture
+      // seule dans le même layer. Architecture STRICTEMENT calquée sur les
+      // zones data layer ci-dessous — structure.json est un data layer
+      // comme un autre (id "structure" dans plan-config.json), pas un
+      // fichier hardcoded. Son nom est conventionnel.
+      // Tri Z-index : mur (arrière) → pilier 1ère masse → pilier 2e masse
+      // (avant), cohérent avec le rendu session dans structures.js.
+      if (Array.isArray(json.structures) && json.structures.length > 0) {
+        // Mêmes styles que dans structures.js > STRUCTURE_STYLES, dupliqués
+        // ici pour le data layer (lecture seule, interactive: false).
+        // Cohérent avec la duplication ZONE_STYLES ↔ ZONE_STYLES_DATA.
+        const STRUCTURE_STYLES_DATA = {
+          // 🟡 1ère masse : jaune (couleur charte MKM)
+          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          // 🟠 2e masse : orange
+          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          // 🔵 Mur : bleu foncé
+          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 }
+        };
+        const ordreStruct = { "mur": 0, "pilier-1": 1, "pilier-2": 2 };
+        const structuresTriees = [...json.structures].sort(function(a, b) {
+          return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
+        });
+        // Registre dédié pour le filtre multi-niveau runtime (équivalent
+        // _ktaDataPolygons pour zones). Créé paresseusement au 1er load.
+        if (!Array.isArray(window._ktaDataStructurePolygons)) {
+          window._ktaDataStructurePolygons = [];
+        }
+        structuresTriees.forEach(function(structure) {
+          if (!structure.points || structure.points.length < 3) return;
+          const style = STRUCTURE_STYLES_DATA[structure.type] || STRUCTURE_STYLES_DATA["mur"];
+          const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
+          const polygon = L.polygon(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
+          const entry = {
+            polygon:         polygon,
+            type:            structure.type,
+            points:          structure.points,
+            level:           Number.isInteger(structure.level) ? structure.level : 0,
+            origOpacity:     style.opacity     ?? 1,
+            origFillOpacity: style.fillOpacity ?? 0.85
+          };
+          window._ktaDataStructurePolygons.push(entry);
+          // Réutilise le filtre niveau zones car même mécanique (entry
+          // a .polygon + .level + origOpacity + origFillOpacity).
+          _filtreNiveauSurPolygonData(entry);
         });
       }
 

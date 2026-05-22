@@ -35,6 +35,12 @@
       "visible": true
     },
     {
+      "id": "structure",
+      "label": "Structures",
+      "file": "data/test1/structure.json",
+      "visible": true
+    },
+    {
       "id": "editor",
       "label": "Mes annotations",
       "file": "data/test1/editor.json",

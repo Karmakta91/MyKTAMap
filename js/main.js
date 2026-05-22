@@ -31,6 +31,11 @@ async function initDataFromConfig() {
   window._ktaDataMarkers   = [];
   window._ktaDataPolylines = [];
   window._ktaDataPolygons  = [];
+  // 🆕 v1.9.3-A1.a : registre des structures embarquées via data layer
+  // (= structure.json chargé via plan-config.json comme zone.json l'est).
+  // Vidé au plan switch pour éviter que des structures du plan précédent
+  // restent référencées et soient ciblées par le filtre niveau actif.
+  window._ktaDataStructurePolygons = [];
   window._ktaImageOverlays = [];  // v162 : registre des image layers level-aware
 
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
@@ -362,6 +367,12 @@ window._etendreAvailableLevelsSiBesoin = function() {
     }
     if (Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {
+        if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
+      });
+    }
+    // 🆕 v1.9.3-A1.a : idem pour les structures data layer
+    if (Array.isArray(window._ktaDataStructurePolygons)) {
+      window._ktaDataStructurePolygons.forEach(function(entry) {
         if (entry && Number.isInteger(entry.level)) levelsFound.push(entry.level);
       });
     }
