@@ -2612,17 +2612,13 @@ Chaque bloc data-layer reçoit fond + bordure subtils pour le matérialiser comm
 
 ```css
 .leaflet-container {
-  /* 🆕 v1.9.2 : charte #0a0d18 au lieu de #000000 noir pur (cohérence
-     avec body bg + overlay loader). Hack maintenu lors de l'upgrade
-     Leaflet upstream. */
-  background: #0a0d18;
+  /* MyKTAMap : noir pur pour matcher l'overlay loader (...) */
+  background: #000000;
   outline-offset: 1px;
 }
 ```
 
-**Pourquoi** : cohérence visuelle avec la charte. `#0a0d18` est la couleur de base du body, du splash et du loader → la transition loader → leaflet → loader est visuellement invisible (pas de saut de teinte). Avant v1.9.2, c'était `#000000` (noir pur) mais ça créait un saut perceptible au retour du loader après chargement d'un plan.
-
-Sur iPhone PWA standalone, le sliver visible juste sous la status bar (avant le rendu des tuiles) reste dark — `#0a0d18` est suffisamment foncé pour préserver le tinting de la status bar iOS.
+**Pourquoi** : sur iPhone PWA standalone, iOS lit la couleur du haut de page pour tinter sa status bar (mode `black-translucent` sans `viewport-fit=cover`). En mettant le fond du container Leaflet en noir pur, le sliver visible juste sous la status bar (avant le rendu des tuiles) garde la status bar dark même quand la map est claire derrière. `#0a0d18` paraissait grisé sur iPhone, d'où le retour à `#000000` en v1.9.2 (la tentative cover a été rollback).
 
 ⚠️ **NE PAS REVENIR à `#ddd`** (le défaut Leaflet) sans avoir compris ce qu'on perd. Le commentaire dans le CSS explique l'intention. Lors d'un upgrade Leaflet upstream, **garder ce patch**.
 
