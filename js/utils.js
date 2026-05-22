@@ -292,6 +292,16 @@ window._applyLevelFilterToDataZones = function() {
   window._ktaDataPolygons.forEach(_filtreNiveauSurPolygonData);
 };
 
+// 🆕 v1.9.3-A1.a-fix5 : symétrique pour les structures data layer.
+// Appelé au changement de niveau pour re-filtrer la visibilité des
+// piliers/murs embarqués (lecture seule via structure.json data layer).
+// Réutilise _filtreNiveauSurPolygonData car le format `entry` est
+// strictement identique (polygon + level + origOpacity + origFillOpacity).
+window._applyLevelFilterToDataStructures = function() {
+  if (!Array.isArray(window._ktaDataStructurePolygons)) return;
+  window._ktaDataStructurePolygons.forEach(_filtreNiveauSurPolygonData);
+};
+
 // =========================
 // 🌍 GETTERS PUBLICS — embedded zones (data layers)
 // =========================

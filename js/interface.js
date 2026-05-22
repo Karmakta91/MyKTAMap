@@ -721,16 +721,21 @@ function ouvrirImportSession() {
         }
 
         dataParsee = data;
-        const nbPoints  = (data.editorPoints || []).length;
-        const nbMesure  = (data.measure && data.measure.points) ? data.measure.points.length : 0;
-        const nbTraces  = (data.roads || []).length;
-        const nbZones   = (data.zones || []).length;
+        const nbPoints     = (data.editorPoints || []).length;
+        const nbMesure     = (data.measure && data.measure.points) ? data.measure.points.length : 0;
+        const nbTraces     = (data.roads || []).length;
+        const nbZones      = (data.zones || []).length;
+        // 🆕 v1.9.3-A1.a-fix5 : structures dans l'aperçu d'import session
+        // (sinon KARMA voyait l'import accepté sans confirmation visuelle
+        // que les structures étaient bien dans le fichier).
+        const nbStructures = (data.structures || []).length;
 
         apercuEl.innerHTML = `
           <div style="display:flex; gap:14px; flex-wrap:wrap;">
             <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
             <span><strong style="color:#8cb4ff;">${nbTraces}</strong> tracé(s)</span>
             <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
+            <span><strong style="color:#8cb4ff;">${nbStructures}</strong> structure(s)</span>
             <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
           </div>
         `;
@@ -2758,6 +2763,12 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window.renderZones === "function") {
     try { window.renderZones(); } catch(e) {}
   }
+  // 🆕 v1.9.3-A1.a-fix5 : structures de session re-render aussi au
+  // changement de niveau (sinon les piliers/murs restaient figés à
+  // la visibilité du niveau initial).
+  if (typeof window.renderStructures === "function") {
+    try { window.renderStructures(); } catch(e) {}
+  }
   // Markers / points des layers DATA (puits, cataphile, etc.)
   if (typeof window._applyLevelFilterToDataPoints === "function") {
     try { window._applyLevelFilterToDataPoints(); } catch(e) {}
@@ -2769,6 +2780,13 @@ window.appliquerFiltreNiveau = function() {
   // Zones embarquees dans les calques DATA (json.zones[])
   if (typeof window._applyLevelFilterToDataZones === "function") {
     try { window._applyLevelFilterToDataZones(); } catch(e) {}
+  }
+  // 🆕 v1.9.3-A1.a-fix5 : structures embarquées dans les calques DATA
+  // (json.structures[]). Sans cet appel, les piliers/murs data layer
+  // restaient figés à la visibilité du niveau initial au boot et ne
+  // re-filtraient pas au changement de niveau.
+  if (typeof window._applyLevelFilterToDataStructures === "function") {
+    try { window._applyLevelFilterToDataStructures(); } catch(e) {}
   }
   // Points editor (session)
   if (typeof window._applyLevelFilterToEditorPoints === "function") {

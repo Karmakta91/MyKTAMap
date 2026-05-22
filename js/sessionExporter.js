@@ -563,6 +563,8 @@
     const d = _compter();
     const roadsByType = _trierParType(d.roads, ["principal", "secondaire", "chemin"]);
     const zonesByType = _trierParType(d.zones, ["eau", "remblais", "effondrement", "inaccessible"]);
+    // 🆕 v1.9.3-A1.a : tri par sous-type pour les structures (UI filtre)
+    const structuresByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur"]);
     const tagsList = _listerTagsPoints(d.points);
 
     function row(id, label, count, defaultChecked) {
@@ -629,6 +631,11 @@
         ${rowSub("adv_zones_effondrement", "🟥 Effondrement",  zonesByType.effondrement.length, true)}
         ${rowSub("adv_zones_inaccessible", "⛔ Inaccessible",  zonesByType.inaccessible.length, true)}
 
+        ${row("adv_structures", "🏛️ Structures", (d.structures || []).length, true)}
+        ${rowSub("adv_structures_pilier-1", "🟡 Pilier 1ère masse", structuresByType["pilier-1"].length, true)}
+        ${rowSub("adv_structures_pilier-2", "🟠 Pilier 2e masse",   structuresByType["pilier-2"].length, true)}
+        ${rowSub("adv_structures_mur",      "🔵 Mur",               structuresByType["mur"].length,      true)}
+
         <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
           <span>🧭 Position du tracker ${d.trackerPath.length > 1 ? '<span class="kta-ses-count">(+ tracé ' + d.trackerPath.length + ' pts)</span>' : ''}</span>
@@ -676,6 +683,8 @@
 
     syncParent("adv_roads", ["adv_roads_principal", "adv_roads_secondaire", "adv_roads_chemin"]);
     syncParent("adv_zones", ["adv_zones_eau", "adv_zones_remblais", "adv_zones_effondrement", "adv_zones_inaccessible"]);
+    // 🆕 v1.9.3-A1.a : sync parent ↔ enfants pour les structures
+    syncParent("adv_structures", ["adv_structures_pilier-1", "adv_structures_pilier-2", "adv_structures_mur"]);
 
     // Synchro parent Points ↔ tags (dynamique : la liste varie selon les points)
     const tagsList = _listerTagsPoints(_compter().points);
@@ -716,6 +725,8 @@
     const roadsExportables = (d.roads || []).filter(function(r) { return r.type !== "itinerary"; });
     const roadCountByType = _trierParType(roadsExportables, ["principal", "secondaire", "chemin"]);
     const zoneCountByType = _trierParType(d.zones || [],    ["eau", "remblais", "effondrement", "inaccessible"]);
+    // 🆕 v1.9.3-A1.a : comptage structures pour l'UI Conversion
+    const structureCountByType = _trierParType(d.structures || [], ["pilier-1", "pilier-2", "mur"]);
 
     function row(id, label, count, defaultChecked) {
       const disabled = count === 0 ? " disabled" : "";
@@ -772,6 +783,12 @@
       rowTypeSub("conv_zones_effondrement", "🟥 Effondrement", zoneCountByType.effondrement.length, true) +
       rowTypeSub("conv_zones_inaccessible", "⛔ Inaccessible", zoneCountByType.inaccessible.length, true);
 
+    // 🆕 v1.9.3-A1.a : sub-cases structures (3 sous-types)
+    const structuresTypesHtml =
+      rowTypeSub("conv_structures_pilier-1", "🟡 Pilier 1ère masse", structureCountByType["pilier-1"].length, true) +
+      rowTypeSub("conv_structures_pilier-2", "🟠 Pilier 2e masse",   structureCountByType["pilier-2"].length, true) +
+      rowTypeSub("conv_structures_mur",      "🔵 Mur",               structureCountByType["mur"].length,      true);
+
     return `
       <div class="kta-ses-intro">
         Convertit la session en <strong>calque de données</strong> prêt à intégrer dans
@@ -787,17 +804,19 @@
         ${roadsTypesHtml}
         ${row("conv_zones",  "⬛ Zones",            d.zones.length,  true)}
         ${zonesTypesHtml}
+        ${row("conv_structures", "🏛️ Structures",  (d.structures || []).length, true)}
+        ${structuresTypesHtml}
       </div>
 
       <div class="kta-ses-section">
         <div class="kta-ses-section-title">🎯 Granularité</div>
         <label class="kta-ses-radio-row">
           <input type="radio" name="conv_gran" value="basic" checked>
-          <span>📄 Basique <span class="kta-ses-radio-hint">(1 fichier par catégorie : points.json, roads.json, zones.json)</span></span>
+          <span>📄 Basique <span class="kta-ses-radio-hint">(1 fichier par catégorie : points.json, roads.json, zones.json, structure.json)</span></span>
         </label>
         <label class="kta-ses-radio-row">
           <input type="radio" name="conv_gran" value="fine">
-          <span>🔬 Fine <span class="kta-ses-radio-hint">(1 fichier par type : zones_eau.json, roads_principal.json...)</span></span>
+          <span>🔬 Fine <span class="kta-ses-radio-hint">(1 fichier par type : zones_eau.json, structures_pilier-1.json, etc.)</span></span>
         </label>
       </div>
     `;
@@ -918,6 +937,8 @@
     // Sync parent ↔ sub-checkboxes pour types road et zone
     syncParent("conv_roads", ["conv_roads_principal", "conv_roads_secondaire", "conv_roads_chemin"]);
     syncParent("conv_zones", ["conv_zones_eau",       "conv_zones_remblais",   "conv_zones_effondrement", "conv_zones_inaccessible"]);
+    // 🆕 v1.9.3-A1.a : sync parent ↔ enfants structures dans Conversion
+    syncParent("conv_structures", ["conv_structures_pilier-1", "conv_structures_pilier-2", "conv_structures_mur"]);
   }
 
   // Charge un fichier .json pour le sens data2ed, parse + re-render l'onglet pour afficher l'aperçu
