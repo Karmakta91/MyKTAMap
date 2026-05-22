@@ -29,7 +29,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.9.3-A2-mode-vierge";
+const CACHE_NAME = "myktamap-cache-v1.9.3-B1a-photos-idb";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -81,6 +81,10 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.9.3-A1.a : module structures (piliers 1ère/2e masse + murs).
   // Doit être caché pour fonctionner offline comme le reste.
   "./js/structures.js",
+  // 🆕 v1.9.3-B1 : module photos (backend IndexedDB + compression).
+  // Self-contained, exposé via window.MyKTAMapPhotos. Doit être caché
+  // pour que l'attachement photo fonctionne offline.
+  "./js/photos.js",
   "./js/exporter.js",
   "./js/sessionExporter.js",
   "./js/kmzExport.js",
