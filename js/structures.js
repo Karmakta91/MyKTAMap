@@ -229,10 +229,19 @@ function renderStructures() {
     structurePreviewLayer = null;
   }
 
-  // Ordre d'affichage : murs en dessous, piliers 1ère masse au milieu,
-  // piliers 2e masse au-dessus (les piliers 2e masse sont visuellement
-  // au-dessus des autres dans la carrière physique).
-  const ordreType = { "mur": 0, "pilier-1": 1, "pilier-2": 2 };
+  // 🆕 v1.9.3-A1.a-fix3 (KARMA "un pilier de 2nd masse, et forcement en
+  // dessous d'un 1er, en mode non M-LVL il se met au dessus") :
+  // Ordre d'affichage en vue 2D (= projection verticale du dessus) :
+  //   1. Murs en arrière (Z bas)
+  //   2. Piliers de 2e masse au milieu (couche basse de la carrière)
+  //   3. Piliers de 1ère masse devant (couche haute, masquent les 2e
+  //      masse là où ils se chevauchent dans la projection)
+  // Cohérent avec la stratigraphie cataphile : la 1ère masse est au-dessus
+  // de la 2e masse, donc en projection 2D du dessus, elle masque la 2e.
+  // En mode M-LVL ON, le filtre niveau gère déjà la séparation visuelle
+  // (pilier-2 est à level activeLevel-1, ne s'affiche qu'au bon niveau),
+  // mais l'ordre Z reste cohérent dans tous les cas.
+  const ordreType = { "mur": 0, "pilier-2": 1, "pilier-1": 2 };
   const structuresAffichage = [...structuresData].sort(function(a, b) {
     const oa = ordreType[a.type] !== undefined ? ordreType[a.type] : 99;
     const ob = ordreType[b.type] !== undefined ? ordreType[b.type] : 99;

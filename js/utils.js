@@ -471,7 +471,10 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🔵 Mur : bleu foncé
           "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 }
         };
-        const ordreStruct = { "mur": 0, "pilier-1": 1, "pilier-2": 2 };
+        // 🆕 v1.9.3-A1.a-fix3 : cf. commentaire dans structures.js. Ordre
+        // Z cohérent avec la stratigraphie cataphile (1ère masse couvre
+        // la 2e masse en projection 2D du dessus).
+        const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2 };
         const structuresTriees = [...json.structures].sort(function(a, b) {
           return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
         });
