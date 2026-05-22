@@ -8660,6 +8660,10 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
+  /* 🆕 v1.9.2-fix3 (KARMA "uniquement sur mobile, padding renforcé pour
+     éviter le clip des coins arrondis bottom-left/right de l'écran")
+     → règle mobile-only plus bas. Sur PC on garde 12px (pas de coins
+     arrondis à éviter). */
   padding: 0 12px;
   padding-left: calc(12px + env(safe-area-inset-left, 0px));
   padding-right: calc(12px + env(safe-area-inset-right, 0px));
@@ -8685,6 +8689,21 @@ body.kta-refonte-v1 .kta-refonte-statusbar {
      ne déborde pas sur le map de manière problématique. */
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* 🆕 v1.9.2-fix3 (KARMA "rajoute le petit fix pour les marges en footer
+   pour éviter le souci de bord arrondi, uniquement sur mobile, sinon
+   on perd un bout d'icône à droite et à gauche") :
+   sur écrans tactiles avec coins arrondis (iPhone, Android phones), le
+   premier stat 📐 à gauche et le bouton ▾▴ à droite étaient grignotés
+   par les coins de l'écran. On bump le padding latéral à 28px (même
+   valeur que le splash en fix17) pour décaler les icônes vers
+   l'intérieur. PC inchangé (12px car pas de coins arrondis à éviter). */
+@media (max-width: 480px), (max-height: 500px) and (orientation: landscape) {
+  body.kta-refonte-v1 .kta-refonte-statusbar {
+    padding-left: calc(28px + env(safe-area-inset-left, 0px));
+    padding-right: calc(28px + env(safe-area-inset-right, 0px));
+  }
 }
 
 body.kta-refonte-v1 .kta-refonte-statusbar-collapsed {
