@@ -654,9 +654,12 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🔵 Mur : bleu foncé
           "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
           // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans
-          // contour. Couleurs inversées vs piliers (KARMA design).
-          "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
-          "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
+          // contour.
+          // 🔧 v1.10.1-hotfix2 (KARMA "si orange = 2e masse, le front orange
+          // = 2e masse") : couleurs alignées sur les piliers (front-1 jaune
+          // comme pilier-1, front-2 orange comme pilier-2). Avant inversées.
+          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
+          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
         };
         // 🆕 v1.10.0-hotfix1 (KARMA "fronts au-dessus des piliers + logique
         // de niveau") : nouvel ordre Z mur < pilier-2 < pilier-1 < front-2 <

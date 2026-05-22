@@ -90,23 +90,25 @@ const STRUCTURE_STYLES = {
   },
   // 🆕 v1.9.3-A1.b.2 : fronts de taille — POLYLINES épaisses sans contour
   // qui représentent les limites d'exploitation d'une couche cataphile.
-  // Note KARMA : couleurs INVERSÉES vs piliers (front 1ère = orange,
-  // front 2e = jaune). Logique : les fronts de 1ère masse marquent
-  // l'avancée de l'exploitation (= plus "actif/dynamique" = orange),
-  // ceux de 2e masse les contours secondaires (= jaune).
+  // 🔧 v1.10.1-hotfix2 (KARMA "si orange = 2e masse, le front de taille
+  // orange et 2e masse") : couleurs alignées sur les piliers — front-1
+  // jaune comme pilier-1 (1ère masse), front-2 orange comme pilier-2
+  // (2e masse). Avant : inversées par "design" mais KARMA confirme que
+  // c'était une erreur — la cohérence couleur/masse est plus parlante
+  // sur le terrain (un trait orange = 2e masse, un trait jaune = 1ère).
   // Pas de stroke contour (le polyline est juste de couleur unie).
   // weight: 10 = bien plus épais que les roads (5) pour distinction visuelle.
   "front-1": {
-    color:       "#ff9933",   // orange — utilisé en color (pas de stroke noir)
-    fillColor:   "#ff9933",   // pour cohérence si quelqu'un lit fillColor
+    color:       "#f4c542",   // jaune charte MKM — 1ère masse (cohérent pilier-1)
+    fillColor:   "#f4c542",
     fillOpacity: 1,           // (n.a. pour polyline mais conservé)
     weight:      10,
     opacity:     1,
     isPolyline:  true         // marqueur pour render adapter
   },
   "front-2": {
-    color:       "#f4c542",   // jaune charte MKM
-    fillColor:   "#f4c542",
+    color:       "#ff9933",   // orange — 2e masse (cohérent pilier-2)
+    fillColor:   "#ff9933",
     fillOpacity: 1,
     weight:      10,
     opacity:     1,

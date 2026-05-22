@@ -196,11 +196,12 @@
     "structure_pilier-2": { line: "#000000", fill: "#ff9933", fillAlpha: 0.85, width: 2 },
     "structure_mur":      { line: "#000000", fill: "#1e3a8a", fillAlpha: 0.85, width: 2 },
     // 🆕 v1.9.3-A1.b.2 : fronts de taille — LineStrings épaisses sans
-    // contour. Couleurs inversées vs piliers (front 1ère = orange, front
-    // 2e = jaune). width: 5 dans KML car ≠ unité que le canvas Leaflet
+    // contour. width: 5 dans KML car ≠ unité que le canvas Leaflet
     // weight, ajusté visuellement pour rendre épais à l'échelle GPS.
-    "structure_front-1":  { line: "#ff9933", width: 5, alpha: 1 },
-    "structure_front-2":  { line: "#f4c542", width: 5, alpha: 1 }
+    // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
+    // front-2 orange = pilier-2 orange (alignement couleur/masse).
+    "structure_front-1":  { line: "#f4c542", width: 5, alpha: 1 },
+    "structure_front-2":  { line: "#ff9933", width: 5, alpha: 1 }
   };
 
   function _genererStylesKml() {

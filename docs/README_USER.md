@@ -1019,8 +1019,8 @@ Spécifique aux **carrières souterraines** : les structures permettent de carto
 | 🟡 **Pilier 1ère masse** | polygone | jaune | Pilier porteur du niveau supérieur (calcaire 1ère masse) |
 | 🟠 **Pilier 2e masse** | polygone | orange | Pilier du niveau inférieur (calcaire 2e masse). En mode multi-niveau, auto-taggé au niveau -1 |
 | 🔵 **Mur** | polygone | bleu | Mur de pierre sèche, parpaing, soutènement maçonné |
-| 🟧 **Front de taille 1ère masse** | polyligne | orange (trait) | Front d'exploitation niveau supérieur — c'est une LIGNE, pas un polygone fermé |
-| 🟨 **Front de taille 2e masse** | polyligne | jaune (trait) | Front d'exploitation niveau inférieur. En mode multi-niveau, auto-taggé au niveau -1 |
+| 🟨 **Front de taille 1ère masse** | polyligne | jaune (trait) | Front d'exploitation niveau supérieur — c'est une LIGNE, pas un polygone fermé |
+| 🟧 **Front de taille 2e masse** | polyligne | orange (trait) | Front d'exploitation niveau inférieur. En mode multi-niveau, auto-taggé au niveau -1 |
 
 ### Dessiner une structure
 

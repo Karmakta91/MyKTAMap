@@ -849,8 +849,8 @@
       rowSub("structures_pilier-1", "🟡 Pilier 1ère masse",    structuresByType["pilier-1"], true) +
       rowSub("structures_pilier-2", "🟠 Pilier 2e masse",      structuresByType["pilier-2"], true) +
       rowSub("structures_mur",      "🔵 Mur",                  structuresByType["mur"],      true) +
-      rowSub("structures_front-1",  "🟧 Front de taille 1ère", structuresByType["front-1"], true) +
-      rowSub("structures_front-2",  "🟨 Front de taille 2e",   structuresByType["front-2"], true) +
+      rowSub("structures_front-1",  "🟨 Front de taille 1ère", structuresByType["front-1"], true) +
+      rowSub("structures_front-2",  "🟧 Front de taille 2e",   structuresByType["front-2"], true) +
 
       row("mesure",  "Mesure de distance",      nbMesure,  false) +
       `<label class="kta-export-cb-row" style="${trackerOk ? '' : 'opacity:0.4;'}">
@@ -1576,8 +1576,10 @@
         "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
         // Fronts : polylines épaisses sans contour. weight 10 (px Leaflet)
         // converti via scale au canvas final.
-        "front-1":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true },
-        "front-2":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true }
+        // 🔧 v1.10.1-hotfix2 (KARMA) : front-1 jaune = pilier-1 jaune,
+        // front-2 orange = pilier-2 orange (alignement couleur/masse).
+        "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
+        "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
       };
       // 🆕 v1.10.0-hotfix1 : nouvel ordre Z mur < pilier-2 < pilier-1 <
       // front-2 < front-1 (fronts en avant-plan) + tri par level en M-LVL.

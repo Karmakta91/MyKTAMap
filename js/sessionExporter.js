@@ -735,8 +735,8 @@
         ${rowSub("adv_structures_pilier-1", "🟡 Pilier 1ère masse",     structuresByType["pilier-1"].length, true)}
         ${rowSub("adv_structures_pilier-2", "🟠 Pilier 2e masse",       structuresByType["pilier-2"].length, true)}
         ${rowSub("adv_structures_mur",      "🔵 Mur",                   structuresByType["mur"].length,      true)}
-        ${rowSub("adv_structures_front-1",  "🟧 Front de taille 1ère",  structuresByType["front-1"].length,  true)}
-        ${rowSub("adv_structures_front-2",  "🟨 Front de taille 2e",    structuresByType["front-2"].length,  true)}
+        ${rowSub("adv_structures_front-1",  "🟨 Front de taille 1ère",  structuresByType["front-1"].length,  true)}
+        ${rowSub("adv_structures_front-2",  "🟧 Front de taille 2e",    structuresByType["front-2"].length,  true)}
 
         ${row("adv_mesure", "📐 Mesure de distance", (d.mesure || []).length, (d.mesure || []).length > 0)}
 
@@ -911,8 +911,8 @@
       rowTypeSub("conv_structures_pilier-1", "🟡 Pilier 1ère masse",    structureCountByType["pilier-1"].length, true) +
       rowTypeSub("conv_structures_pilier-2", "🟠 Pilier 2e masse",      structureCountByType["pilier-2"].length, true) +
       rowTypeSub("conv_structures_mur",      "🔵 Mur",                  structureCountByType["mur"].length,      true) +
-      rowTypeSub("conv_structures_front-1",  "🟧 Front de taille 1ère", structureCountByType["front-1"].length,  true) +
-      rowTypeSub("conv_structures_front-2",  "🟨 Front de taille 2e",   structureCountByType["front-2"].length,  true);
+      rowTypeSub("conv_structures_front-1",  "🟨 Front de taille 1ère", structureCountByType["front-1"].length,  true) +
+      rowTypeSub("conv_structures_front-2",  "🟧 Front de taille 2e",   structureCountByType["front-2"].length,  true);
 
     return `
       <div class="kta-ses-intro">
@@ -2307,8 +2307,8 @@
         rowSub("kmz_inc_structures_pilier-1", "🟡 Pilier 1ère masse",    sByT["pilier-1"], true) +
         rowSub("kmz_inc_structures_pilier-2", "🟠 Pilier 2e masse",      sByT["pilier-2"], true) +
         rowSub("kmz_inc_structures_mur",      "🔵 Mur",                  sByT["mur"],      true) +
-        rowSub("kmz_inc_structures_front-1",  "🟧 Front de taille 1ère", sByT["front-1"] || 0, true) +
-        rowSub("kmz_inc_structures_front-2",  "🟨 Front de taille 2e",   sByT["front-2"] || 0, true) +
+        rowSub("kmz_inc_structures_front-1",  "🟨 Front de taille 1ère", sByT["front-1"] || 0, true) +
+        rowSub("kmz_inc_structures_front-2",  "🟧 Front de taille 2e",   sByT["front-2"] || 0, true) +
 
         // --- Jonctions (uniquement si multi-niveau) ---
         (mlOn ? row("kmz_inc_jonctions", "🪜 Jonctions interniveau", rByT.jonction, rByT.jonction > 0) : '') +

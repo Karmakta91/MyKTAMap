@@ -1618,8 +1618,8 @@ function afficherAide() {
             <span class="kta-aide-icone">🟡</span><span>Pilier 1ère masse (polygone, fill jaune)</span>
             <span class="kta-aide-icone">🟠</span><span>Pilier 2e masse (polygone, fill orange) — auto-taggé niveau -1 en M-LVL</span>
             <span class="kta-aide-icone">🔵</span><span>Mur (polygone, fill bleu)</span>
-            <span class="kta-aide-icone">🟧</span><span>Front de taille 1ère masse (polyligne, trait orange) — c'est une LIGNE, pas un polygone fermé</span>
-            <span class="kta-aide-icone">🟨</span><span>Front de taille 2e masse (polyligne, trait jaune) — auto-taggé niveau -1 en M-LVL</span>
+            <span class="kta-aide-icone">🟨</span><span>Front de taille 1ère masse (polyligne, trait jaune) — c'est une LIGNE, pas un polygone fermé</span>
+            <span class="kta-aide-icone">🟧</span><span>Front de taille 2e masse (polyligne, trait orange) — auto-taggé niveau -1 en M-LVL</span>
             <span class="kta-aide-icone">🧹</span><span>Effacer (dernier point / dernière structure en cours OU fermée / 🎯 sélection au clic carte / toutes)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
@@ -4202,10 +4202,10 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟧", titre: "Front de taille 1ère masse (orange épais)",
-        onClick: function(btn) { _activerStructure("front-1", btn, "🟧"); } },
-      { icone: "🟨", titre: "Front de taille 2e masse (jaune épais) — niveau -1 auto",
-        onClick: function(btn) { _activerStructure("front-2", btn, "🟨"); } },
+      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)",
+        onClick: function(btn) { _activerStructure("front-1", btn, "🟨"); } },
+      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto",
+        onClick: function(btn) { _activerStructure("front-2", btn, "🟧"); } },
       { icone: "✅", titre: "Fermer la structure en cours",
         onClick: function() {
           if (!window.modeStructure) {
