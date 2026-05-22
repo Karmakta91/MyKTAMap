@@ -698,6 +698,11 @@
   <script src="js/editor.js"></script>
   <script src="js/road.js"></script>
   <script src="js/zones.js"></script>
+  <!-- 🆕 v1.9.3-A1.a : structures (piliers + murs). Chargé APRÈS zones.js
+       car certaines fonctions partagent des helpers Leaflet et l'ordre
+       de définition n'est pas strict mais reste lisible (cohérence avec
+       le DOM dans la sidebar : Zones puis Structures). -->
+  <script src="js/structures.js"></script>
   <script src="js/exporter.js"></script>
   <script src="js/tableEditor.js"></script>
   <script src="js/searchPoints.js"></script>

@@ -75,6 +75,10 @@
       editorPoints: window.getEditorPoints  ? (window.getEditorPoints()  || []) : [],
       roads:        window.getRoads         ? (window.getRoads()         || []) : [],
       zones:        window.getZones         ? (window.getZones()         || []) : [],
+      // 🆕 v1.9.3-A1.a : structures (piliers + murs) — clés séparée pour
+      // ne pas casser la rétrocompat (anciens payloads sans 'structures'
+      // sont restaurés avec array vide via `payload.structures || []`).
+      structures:   window.getStructures    ? (window.getStructures()    || []) : [],
       measure:      window.getMeasurePoints ? (window.getMeasurePoints() || []) : []
       // tracker path : volontairement non persiste (cf. choix 3:b, tracker
       // experimental, ressusciter un trail fige serait trompeur sans pos.
@@ -96,6 +100,7 @@
     return state.editorPoints.length === 0
         && state.roads.length        === 0
         && state.zones.length        === 0
+        && (state.structures || []).length === 0
         && state.measure.length      === 0;
   }
 
@@ -157,6 +162,8 @@
       savedAt:      new Date().toISOString(),
       editorPoints: state.editorPoints,
       roads:        state.roads,
+      // 🆕 v1.9.3-A1.a : structures (piliers + murs)
+      structures:   state.structures || [],
       zones:        state.zones,
       measure:      state.measure
     };
@@ -216,7 +223,7 @@
 
   function _applyRestore(payload) {
     if (!payload) return null;
-    const restored = { points: 0, roads: 0, zones: 0, measure: 0 };
+    const restored = { points: 0, roads: 0, zones: 0, structures: 0, measure: 0 };
     try {
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
       // toggle calque "Ajout" sur points restaurés) — symmetric avec setRoads/setZones
@@ -293,6 +300,17 @@
         if (window.setZones)   window.setZones(payload.zones);
         restored.zones = payload.zones.length;
       }
+      // 🆕 v1.9.3-A1.a : restore des structures (piliers + murs).
+      // Rétrocompat : payload.structures peut être absent dans les saves
+      // antérieurs à v1.9.3 → on traite comme array vide (aucun reset
+      // non plus pour ne pas écraser des structures déjà présentes via
+      // un autre flow — mais en pratique resetStructures sera no-op
+      // puisque initStructures vide déjà l'état au plan switch).
+      if (Array.isArray(payload.structures)) {
+        if (window.resetStructures) window.resetStructures();
+        if (window.setStructures)   window.setStructures(payload.structures);
+        restored.structures = payload.structures.length;
+      }
       // setMeasurePoints redessine en interne (updateMesure)
       if (window.setMeasurePoints && Array.isArray(payload.measure)) {
         window.setMeasurePoints(payload.measure);
@@ -316,6 +334,8 @@
     if (window.setEditorPoints)  window.setEditorPoints([]);
     if (window.resetRoads)       window.resetRoads();
     if (window.resetZones)       window.resetZones();
+    // 🆕 v1.9.3-A1.a : structures purgées aussi lors d'un vidage
+    if (window.resetStructures)  window.resetStructures();
     if (window.setMeasurePoints) window.setMeasurePoints([]);
   }
 
@@ -325,17 +345,20 @@
 
   function _afficherModaleSession(restored) {
     if (!restored) return;
-    const total = restored.points + restored.roads + restored.zones + restored.measure;
+    const total = restored.points + restored.roads + restored.zones
+                + (restored.structures || 0) + restored.measure;
     if (total === 0) return;
 
     const existing = document.getElementById("kta-session-modal");
     if (existing) existing.remove();
 
     const parts = [];
-    if (restored.points)  parts.push(restored.points  + " point"  + (restored.points  > 1 ? "s" : ""));
-    if (restored.roads)   parts.push(restored.roads   + " tracé"  + (restored.roads   > 1 ? "s" : ""));
-    if (restored.zones)   parts.push(restored.zones   + " zone"   + (restored.zones   > 1 ? "s" : ""));
-    if (restored.measure) parts.push(restored.measure + " mesure" + (restored.measure > 1 ? "s" : ""));
+    if (restored.points)     parts.push(restored.points  + " point"  + (restored.points  > 1 ? "s" : ""));
+    if (restored.roads)      parts.push(restored.roads   + " tracé"  + (restored.roads   > 1 ? "s" : ""));
+    if (restored.zones)      parts.push(restored.zones   + " zone"   + (restored.zones   > 1 ? "s" : ""));
+    // 🆕 v1.9.3-A1.a : structures dans le feedback restauration session
+    if (restored.structures) parts.push(restored.structures + " structure" + (restored.structures > 1 ? "s" : ""));
+    if (restored.measure)    parts.push(restored.measure + " mesure" + (restored.measure > 1 ? "s" : ""));
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
     const planName = _currentPlanName();

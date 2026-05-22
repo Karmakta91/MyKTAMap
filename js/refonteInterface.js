@@ -167,6 +167,12 @@
         '<span class="kta-refonte-counter" id="kta-refonte-counter-zones" title="Zones">' +
           '<span class="kta-refonte-counter-icon">⬛</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
+        // 🆕 v1.9.3-A1.a : 4e compteur pour les structures (piliers + murs).
+        // Si trop chargé visuellement en landscape phone, on pourra masquer
+        // ce compteur sur petits écrans via CSS plus tard.
+        '<span class="kta-refonte-counter" id="kta-refonte-counter-structures" title="Structures (piliers + murs)">' +
+          '<span class="kta-refonte-counter-icon">🏛️</span><span class="kta-refonte-counter-val">0</span>' +
+        '</span>' +
       '</button>';
 
     document.body.appendChild(header);
@@ -248,15 +254,19 @@
       verEl.textContent = pc.plan.version;
     }
 
-    // Compteurs : points session + roads + zones (les data layers ne
-    // comptent pas — ce sont les annotations user qui nous intéressent)
-    const nPoints = (window.getEditorPoints && window.getEditorPoints() || []).length;
-    const nRoads  = (window.getRoads        && window.getRoads()        || []).length;
-    const nZones  = (window.getZones        && window.getZones()        || []).length;
+    // Compteurs : points session + roads + zones + structures (les data
+    // layers ne comptent pas — ce sont les annotations user qui nous
+    // intéressent).
+    const nPoints     = (window.getEditorPoints && window.getEditorPoints() || []).length;
+    const nRoads      = (window.getRoads        && window.getRoads()        || []).length;
+    const nZones      = (window.getZones        && window.getZones()        || []).length;
+    // 🆕 v1.9.3-A1.a
+    const nStructures = (window.getStructures   && window.getStructures()   || []).length;
 
-    _setCounterVal("kta-refonte-counter-points", nPoints);
-    _setCounterVal("kta-refonte-counter-roads",  nRoads);
-    _setCounterVal("kta-refonte-counter-zones",  nZones);
+    _setCounterVal("kta-refonte-counter-points",     nPoints);
+    _setCounterVal("kta-refonte-counter-roads",      nRoads);
+    _setCounterVal("kta-refonte-counter-zones",      nZones);
+    _setCounterVal("kta-refonte-counter-structures", nStructures);
   }
 
   function _setCounterVal(parentId, val) {
@@ -606,10 +616,12 @@
     const existing = document.getElementById("kta-refonte-session-modal");
     if (existing) { existing.remove(); return; }
 
-    const points  = (window.getEditorPoints  && window.getEditorPoints()  || []);
-    const roads   = (window.getRoads         && window.getRoads()         || []);
-    const zones   = (window.getZones         && window.getZones()         || []);
-    const mesure  = (window.getMeasurePoints && window.getMeasurePoints() || []);
+    const points     = (window.getEditorPoints  && window.getEditorPoints()  || []);
+    const roads      = (window.getRoads         && window.getRoads()         || []);
+    const zones      = (window.getZones         && window.getZones()         || []);
+    // 🆕 v1.9.3-A1.a : structures pour la modale détail session
+    const structures = (window.getStructures    && window.getStructures()    || []);
+    const mesure     = (window.getMeasurePoints && window.getMeasurePoints() || []);
     const scale   = (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
     const multiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel);
 
@@ -714,6 +726,32 @@
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
           '<span class="kta-refonte-session-meta">' + nb + ' zone' + (nb > 1 ? 's' : '') + '</span>' +
+        '</li>';
+      });
+      html += '</ul>';
+    }
+    html += '</div>';
+
+    // 🏛️ Structures (v1.9.3-A1.a) — piliers + murs
+    html += '<div class="kta-refonte-session-section">';
+    html += '<div class="kta-refonte-session-section-titre">🏛️ Structures <span class="kta-refonte-session-badge">' + structures.length + '</span></div>';
+    if (structures.length === 0) {
+      html += '<div class="kta-refonte-session-empty">Aucune structure tracée. Utilise 🏛️ Structures pour dessiner piliers et murs.</div>';
+    } else {
+      const sByType = {};
+      structures.forEach(function(s) {
+        const t = s.type || "?";
+        sByType[t] = (sByType[t] || 0) + 1;
+      });
+      html += '<ul class="kta-refonte-session-list">';
+      Object.keys(sByType).forEach(function(t) {
+        const tLabel = t === "pilier-1" ? "Pilier 1ère masse 🟠" :
+                       t === "pilier-2" ? "Pilier 2e masse 🟡" :
+                       t === "mur"      ? "Mur 🔵" : t;
+        const nb = sByType[t];
+        html += '<li>' +
+          '<strong>' + _esc(tLabel) + '</strong>' +
+          '<span class="kta-refonte-session-meta">' + nb + ' structure' + (nb > 1 ? 's' : '') + '</span>' +
         '</li>';
       });
       html += '</ul>';

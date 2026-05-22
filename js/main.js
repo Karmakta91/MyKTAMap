@@ -231,6 +231,13 @@ async function lancerApplication() {
   initEditor();
   initRoad();
   initZones();
+  // 🆕 v1.9.3-A1.a : init du module structures (piliers + murs). Doit
+  // venir après initZones() pour que window.map.on("click") soit déjà
+  // attaché — pas critique en pratique car les listeners se cumulent,
+  // mais on garde un ordre lisible.
+  if (typeof window.initStructures === "function") {
+    window.initStructures();
+  }
   initMeasure();
   initInterface();
   initTracking();
@@ -338,6 +345,8 @@ window._etendreAvailableLevelsSiBesoin = function() {
     };
     if (typeof window.getRoads        === "function") _push(window.getRoads());
     if (typeof window.getZones        === "function") _push(window.getZones());
+    // 🆕 v1.9.3-A1.a : structures aussi tagguées avec level (multi-niveau)
+    if (typeof window.getStructures   === "function") _push(window.getStructures());
     if (typeof window.getEditorPoints === "function") _push(window.getEditorPoints());
     // Data layers : levels stockes en _ktaLevel sur les markers, en .level sur
     // les entries polylines/polygons (cf. utils.js > ajouterPointsDepuisJSON).

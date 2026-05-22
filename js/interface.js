@@ -61,29 +61,37 @@ L.control.titleControl = function () {
 // PANNEAU "PLAN SWITCHER" — sélection rapide depuis le titre
 // =========================
 function _sessionAModif() {
-  const editorPts = (window.getEditorPoints  && window.getEditorPoints())  || [];
-  const roads     = (window.getRoads         && window.getRoads())         || [];
-  const zones     = (window.getZones         && window.getZones())         || [];
-  const measure   = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-  const trackPath = (window.getTrackingPath  && window.getTrackingPath())  || [];
+  const editorPts  = (window.getEditorPoints  && window.getEditorPoints())  || [];
+  const roads      = (window.getRoads         && window.getRoads())         || [];
+  const zones      = (window.getZones         && window.getZones())         || [];
+  // 🆕 v1.9.3-A1.a : structures comptent aussi comme modif (sinon
+  // l'utilisateur perdrait ses piliers sans avertissement au switch).
+  const structures = (window.getStructures    && window.getStructures())    || [];
+  const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
+  const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
   return editorPts.length > 0 || roads.length > 0 || zones.length > 0
+      || structures.length > 0
       || measure.length > 0   || trackPath.length > 1;
 }
 
 function _resumeSession() {
   // Liste détaillée des modifs en cours pour l'avertissement
   const items = [];
-  const editorPts = (window.getEditorPoints  && window.getEditorPoints())  || [];
-  const roads     = (window.getRoads         && window.getRoads())         || [];
-  const zones     = (window.getZones         && window.getZones())         || [];
-  const measure   = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-  const trackPath = (window.getTrackingPath  && window.getTrackingPath())  || [];
+  const editorPts  = (window.getEditorPoints  && window.getEditorPoints())  || [];
+  const roads      = (window.getRoads         && window.getRoads())         || [];
+  const zones      = (window.getZones         && window.getZones())         || [];
+  const structures = (window.getStructures    && window.getStructures())    || [];
+  const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
+  const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
 
-  if (editorPts.length > 0) items.push(editorPts.length + " point" + (editorPts.length > 1 ? "s" : "") + " ajouté" + (editorPts.length > 1 ? "s" : ""));
-  if (roads.length     > 0) items.push(roads.length     + " tracé"  + (roads.length     > 1 ? "s" : ""));
-  if (zones.length     > 0) items.push(zones.length     + " zone"   + (zones.length     > 1 ? "s" : ""));
-  if (measure.length   > 0) items.push("une mesure de distance");
-  if (trackPath.length > 1) items.push("le parcours du tracker");
+  if (editorPts.length  > 0) items.push(editorPts.length + " point" + (editorPts.length > 1 ? "s" : "") + " ajouté" + (editorPts.length > 1 ? "s" : ""));
+  if (roads.length      > 0) items.push(roads.length     + " tracé"  + (roads.length     > 1 ? "s" : ""));
+  if (zones.length      > 0) items.push(zones.length     + " zone"   + (zones.length     > 1 ? "s" : ""));
+  // 🆕 v1.9.3-A1.a : structures dans le résumé session (avertissement
+  // au changement de plan / retour loader).
+  if (structures.length > 0) items.push(structures.length + " structure" + (structures.length > 1 ? "s" : ""));
+  if (measure.length    > 0) items.push("une mesure de distance");
+  if (trackPath.length  > 1) items.push("le parcours du tracker");
   return items;
 }
 
@@ -564,7 +572,11 @@ function telechargerSessionJSON() {
     date_export: new Date().toISOString(),
     editorPoints: window.getEditorPoints ? window.getEditorPoints() : [],
     roads:        window.getRoads        ? window.getRoads()        : [],
-    zones:        window.getZones        ? window.getZones()        : []
+    zones:        window.getZones        ? window.getZones()        : [],
+    // 🆕 v1.9.3-A1.a : structures aussi dans le fallback JSON. Reste
+    // rétro-compatible — les anciens imports sans 'structures' tomberont
+    // sur l'array vide via `dataParsee.structures || []` côté import.
+    structures:   window.getStructures   ? window.getStructures()   : []
   };
 
   const json = JSON.stringify(data, null, 2);
@@ -772,6 +784,11 @@ function ouvrirImportSession() {
       if (window.setRoads)           window.setRoads(dataParsee.roads || []);
       if (window.resetZones)         window.resetZones();
       if (window.setZones)           window.setZones(dataParsee.zones || []);
+      // 🆕 v1.9.3-A1.a : restauration des structures depuis l'import
+      // session JSON. Rétrocompat : si l'import est antérieur à v1.9.3,
+      // dataParsee.structures sera undefined → array vide via `|| []`.
+      if (window.resetStructures)    window.resetStructures();
+      if (window.setStructures)      window.setStructures(dataParsee.structures || []);
 
       fermer();
     } catch(err) {
@@ -2254,7 +2271,7 @@ function _resetFlowConfirmation() {
         <ul style="text-align:left; margin:10px 0; padding-left:20px;">
           <li>Cache PWA (assets, Service Worker)</li>
           <li>Liste de plans mémorisés (registre + ZIPs locaux)</li>
-          <li>Session en cours (points / tracés / zones / mesures)</li>
+          <li>Session en cours (points / tracés / zones / structures / mesures)</li>
           <li>Préférences (mode performance, logs détaillés…)</li>
         </ul>
         <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
@@ -2406,6 +2423,17 @@ function _fermerModeZone() {
   try { m.desactiverFn(); } catch(e) {}
   if (m.btnEl) m.btnEl.classList.remove("kta-actif");
   delete _modesActifs["zone"];
+}
+
+// 🆕 v1.9.3-A1.a : symétrique pour les structures (piliers + murs).
+// Appelée par les onClicks de suppression dans l'accordéon Structures
+// quand une action de purge a vidé la structure en cours.
+function _fermerModeStructure() {
+  const m = _modesActifs["structure"];
+  if (!m) return;
+  try { m.desactiverFn(); } catch(e) {}
+  if (m.btnEl) m.btnEl.classList.remove("kta-actif");
+  delete _modesActifs["structure"];
 }
 
 // =========================
@@ -3707,6 +3735,116 @@ _setGroupeModeActif("tracker", isTracking, null);
                   // resetZones reset currentZone + window.modeZone → on ferme
                   // le mode UI inconditionnellement.
                   _fermerModeZone();
+                } }
+            ]
+          );
+        }
+      }
+    ]
+  });
+
+  // 🆕 v1.9.3-A1.a — 11. STRUCTURES (piliers + murs)
+  // Calqué sur Zones (techniquement c'est des polygones aussi) mais
+  // sémantique différente : représentent des éléments PHYSIQUES de la
+  // carrière (piliers de 1ère/2e masse, murs). Bloqueront le pathfinder
+  // en A1.b (pas encore actif en A1.a). Position : entre Zones et
+  // Tracker dans la sidebar droite refonte (ou en queue topright si
+  // legacy UI).
+  function _activerStructure(type, btnCible, iconeReflet) {
+    const dejaActif = window.modeStructure === type;
+    _desactiverTousLesModes();
+
+    // Désactivation interne structure (équivalent du flow zones)
+    if (window.modeStructure && typeof window.toggleStructureMode === "function") {
+      window.toggleStructureMode(window.modeStructure);
+    }
+    const grpS = _groupes["structures"];
+    if (grpS) grpS.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+    _setGroupeModeActif("structures", false);
+
+    if (dejaActif) return;
+
+    if (typeof window.toggleStructureMode === "function") {
+      window.toggleStructureMode(type);
+    }
+    btnCible.classList.add("kta-actif");
+    _modesActifs["structure"] = {
+      btnEl: btnCible,
+      desactiverFn: function() {
+        if (window.modeStructure && typeof window.toggleStructureMode === "function") {
+          window.toggleStructureMode(window.modeStructure);
+        }
+        if (grpS) grpS.subActions.forEach(function(b) { b.classList.remove("kta-actif"); });
+        _setGroupeModeActif("structures", false);
+      }
+    };
+    _setGroupeModeActif("structures", true, iconeReflet);
+  }
+
+  _creerGroupeAccordeon({
+    id: "structures",
+    iconePrincipale: "🏛️",
+    titre: "Structures (piliers / murs)",
+    sousActions: [
+      // 🟠 Pilier 1ère masse : icone rond orange (cohérent avec le fill
+      // de la structure rendue sur la carte).
+      { icone: "🟠", titre: "Pilier 1ère masse (orange)",
+        onClick: function(btn) { _activerStructure("pilier-1", btn, "🟠"); } },
+      // 🟡 Pilier 2e masse : icone rond jaune (= couleur charte MKM,
+      // utilisé aussi par le fill).
+      { icone: "🟡", titre: "Pilier 2e masse (jaune)",
+        onClick: function(btn) { _activerStructure("pilier-2", btn, "🟡"); } },
+      // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
+      // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
+      // foncé pour distinguer visuellement).
+      { icone: "🔵", titre: "Mur (bleu foncé)",
+        onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
+      { icone: "✅", titre: "Fermer la structure en cours",
+        onClick: function() {
+          if (!window.modeStructure) {
+            alert("Activez d'abord un type de structure (pilier ou mur)");
+            return;
+          }
+          if (window.fermerStructureEnCours) {
+            const ok = window.fermerStructureEnCours();
+            if (!ok) alert("Pose au moins 3 points avant de fermer la structure");
+          }
+        }
+      },
+      { icone: "🧹", titre: "Effacer",
+        onClick: function() {
+          const structures = window.getStructures ? window.getStructures() : [];
+          if (structures.length === 0) return;
+
+          const nbStructFermees = structures.length;
+          const nbSelectables = structures.filter(function(s) {
+            return s && Array.isArray(s.points) && s.points.length >= 3;
+          }).length;
+
+          _choixSuppression(
+            "Structures", "Que veux-tu effacer ?",
+            [
+              { label: "Annuler le dernier point", icon: "↩️",
+                desc: "Sur la structure en cours ou la dernière structure",
+                onClick: function() {
+                  if (window.removeLastStructurePoint) window.removeLastStructurePoint();
+                } },
+              { label: "Dernière structure fermée", icon: "✂️",
+                desc: nbStructFermees + " structure(s) au total",
+                onClick: function() {
+                  const before = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+                  if (window.removeLastStructure) window.removeLastStructure();
+                  const after = (typeof window.getCurrentStructure === "function") ? window.getCurrentStructure() : null;
+                  if (before && !after) _fermerModeStructure();
+                } },
+              // Note : sélection par clic carte non implémentée en A1.a
+              // (= ce mode existe pour zones via activerModeSuppressionZoneClic,
+              // on ajoutera son équivalent en A1.b si KARMA le souhaite).
+              { label: "Toutes les structures", icon: "🗑️", danger: true,
+                desc: "Action irréversible (" + nbSelectables + " supprimable(s))",
+                onClick: function() {
+                  if (window.resetStructures) window.resetStructures();
+                  _fermerModeStructure();
                 } }
             ]
           );
