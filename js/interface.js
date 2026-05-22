@@ -838,6 +838,55 @@ function _confirmerAction(titre, texte, callback) {
 // HELPER — modale de choix de suppression (plusieurs options)
 // options = [{ label, icon, onClick, danger }]
 // =========================
+// 🆕 v1.9.3-A1.b.2.5-fix2 (KARMA "fait ce modal plus en cohérence de
+// notre charte, pareille pour zone") : helper alert() charté.
+// Remplace les `alert()` natifs OS-styled (zones/structures) par une
+// modale charte (même pattern que _choixSuppression et popupChangerPlan).
+//
+// Paramètres :
+//   - titre : court (1-5 mots), affiché en bold
+//   - texte : phrase explicative, peut contenir du HTML léger
+//   - icone : emoji optionnel (default ⚠️ warning)
+//
+// Comportement : 1 bouton "OK" jaune charte, fermeture par clic OK ou
+// clic sur l'overlay extérieur. Pas de callback de retour — c'est juste
+// un alert (= info, pas de décision utilisateur à prendre).
+function _alertCharte(titre, texte, icone) {
+  const ic = icone || "⚠️";
+  const existing = document.getElementById("kta-alert-charte");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-alert-charte";
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal" style="max-width:420px;">' +
+      '<div class="kta-modal-icon">' + ic + '</div>' +
+      '<div class="kta-modal-titre">' + titre + '</div>' +
+      '<div class="kta-modal-texte">' + texte + '</div>' +
+      '<div class="kta-modal-actions">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-alert-charte-ok">OK</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  const btnOk = document.getElementById("kta-alert-charte-ok");
+  if (btnOk) {
+    btnOk.addEventListener("click", function() { overlay.remove(); });
+    // Focus auto pour permettre Enter direct
+    setTimeout(function() { try { btnOk.focus(); } catch(e) {} }, 0);
+  }
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+  // Escape ferme la modale
+  function _onKey(e) {
+    if (e.key === "Escape") {
+      overlay.remove();
+      document.removeEventListener("keydown", _onKey);
+    }
+  }
+  document.addEventListener("keydown", _onKey);
+}
+
 function _choixSuppression(titre, texte, options) {
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
@@ -3713,12 +3762,22 @@ _setGroupeModeActif("tracker", isTracking, null);
       { icone: "✅", titre: "Fermer la zone en cours",
         onClick: function() {
           if (!window.modeZone) {
-            alert("Activez d'abord un type de zone (remblais ou effondrement)");
+            _alertCharte(
+              "Aucune zone en cours",
+              "Active d'abord un type de zone (remblais, effondrement, eau, ou inaccessible) avant de tenter de la fermer.",
+              "⛔"
+            );
             return;
           }
           if (window.fermerZoneEnCours) {
             const ok = window.fermerZoneEnCours();
-            if (!ok) alert("Pose au moins 3 points avant de fermer la zone");
+            if (!ok) {
+              _alertCharte(
+                "Pas assez de points",
+                "Une zone est un polygone fermé. Place <strong>au moins 3 points</strong> sur la carte avant de la fermer.",
+                "📐"
+              );
+            }
           }
         }
       },
@@ -3846,17 +3905,33 @@ _setGroupeModeActif("tracker", isTracking, null);
       { icone: "✅", titre: "Fermer la structure en cours",
         onClick: function() {
           if (!window.modeStructure) {
-            alert("Activez d'abord un type de structure (pilier ou mur)");
+            _alertCharte(
+              "Aucune structure en cours",
+              "Active d'abord un type (pilier 1ère/2e masse, mur, ou front de taille 1ère/2e masse) avant de tenter de la fermer.",
+              "🏛️"
+            );
             return;
           }
           if (window.fermerStructureEnCours) {
             const ok = window.fermerStructureEnCours();
-            // 🆕 v1.9.3-A1.b.2 : minimum 2 points pour les fronts (polylines),
-            // 3 points pour les piliers/mur (polygones). Message adapté.
             if (!ok) {
+              // 🆕 v1.9.3-A1.b.2 + fix2 : message adapté au type (front
+              // = polyline 2pts min, pilier/mur = polygon 3pts min).
+              // Modale charte au lieu d'alert() natif.
               const isFront = window.modeStructure === "front-1" || window.modeStructure === "front-2";
-              const minPts = isFront ? 2 : 3;
-              alert("Pose au moins " + minPts + " points avant de fermer la structure");
+              if (isFront) {
+                _alertCharte(
+                  "Pas assez de points",
+                  "Un front de taille est un tracé. Place <strong>au moins 2 points</strong> sur la carte avant de le valider.",
+                  "📐"
+                );
+              } else {
+                _alertCharte(
+                  "Pas assez de points",
+                  "Un pilier ou un mur est un polygone fermé. Place <strong>au moins 3 points</strong> sur la carte avant de le fermer.",
+                  "📐"
+                );
+              }
             }
           }
         }
