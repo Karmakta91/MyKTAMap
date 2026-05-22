@@ -13,6 +13,18 @@ html, body {
      pourrait apparaître (rubber-band scroll, avant init Leaflet, et
      fallback si jamais un élément ne couvre pas tout). */
   background-color: #0a0d18;
+  /* 🆕 v1.9.2-hotfix-rotation (KARMA "tout grossi au retour vertical après
+     passage horizontal") : iOS Safari/WebKit a une feature historique de
+     "text autosizing" qui regonfle automatiquement le texte des blocs
+     larges après une rotation portrait→landscape→portrait. Le footer du
+     loader avait déjà ce fix en local (cf. .kta-loader-copyright), mais
+     pas le reste de l'app — donc titres / boutons / labels gonflent au
+     retour portrait. Solution standard : forcer 100% globalement sur
+     html+body pour neutraliser cette feature. -webkit- pour iOS Safari,
+     standard pour Chrome/Firefox. */
+  -webkit-text-size-adjust: 100%;
+     -moz-text-size-adjust: 100%;
+          text-size-adjust: 100%;
 }
 
 #map {
