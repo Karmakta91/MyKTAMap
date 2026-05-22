@@ -2073,12 +2073,31 @@ function ouvrirCalibrageEchelle() {
 // =========================
 // VIDER LE CACHE APPLICATIF
 // =========================
-// Vérification connexion Internet : timeout 5s, retourne Promise<boolean>.
-// Combine navigator.onLine (rapide) + fetch no-cors sur un endpoint léger
-// (Google generate_204 = endpoint historique pour ce check, retourne juste
-// un HTTP 204 No Content). En mode no-cors la promesse résout dès qu'un
-// network round-trip a lieu — donc fail = vrai offline. AbortSignal pour
-// gérer le timeout proprement.
+// 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être vers
+// https://myktamap.fr/ping.html, comme ça plus de bug du call de Google,
+// plus aucun appel externe. On assure que le serveur est dispo (ping ok,
+// SSL, nginx répond bien) avant de tenter une mise à jour. On attend un
+// retour 'OK' du ping").
+//
+// Vérification connexion Internet + disponibilité serveur MyKTAMap :
+//   - timeout 5s, retourne Promise<boolean>
+//   - navigator.onLine (rapide) en court-circuit si false
+//   - fetch GET sur PING_URL (config en tête de fichier)
+//   - body attendu : exactement "OK" (texte brut)
+//
+// Avantages vs ancien ping Google :
+//   ✅ Plus AUCUN appel externe (cohérent avec privacy + module
+//      networkAudit qui doit refléter ça dans sa whitelist)
+//   ✅ Si OK → on garantit que :
+//      • DNS résout myktamap.fr
+//      • TLS handshake réussit (SSL valide)
+//      • Nginx répond correctement
+//      • La PWA peut tenter le pull SW (skipWaiting + cache purge)
+//   ❌ "Internet OK mais myktamap.fr down" est traité comme offline
+//      (c'est voulu — pas la peine d'updater si le serveur ne répond pas)
+const PING_URL = "https://myktamap.fr/ping.html";
+const PING_EXPECTED_BODY = "OK";  // body attendu trim-comparé (case-insensitive)
+
 function _pingInternet() {
   return new Promise(function(resolve) {
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
@@ -2094,16 +2113,37 @@ function _pingInternet() {
       resolve(false);
     }, 5000);
     const ctrl = new AbortController();
-    fetch("https://www.gstatic.com/generate_204", {
+    // Mode "cors" + lecture du body (au lieu de no-cors qui résolvait
+    // sur n'importe quelle réponse réseau). Nécessite que myktamap.fr/
+    // ping.html serve Access-Control-Allow-Origin: * (ou same-origin si
+    // la PWA tourne sur myktamap.fr). En cas d'absence du header CORS,
+    // le fetch rejette → ping retourne false (= traite comme "serveur
+    // indispo"). KARMA s'assurera que Nginx renvoie le header correct.
+    fetch(PING_URL, {
       method: "GET",
-      mode:   "no-cors",
+      mode:   "cors",
       cache:  "no-store",
-      signal: ctrl.signal
-    }).then(function() {
+      signal: ctrl.signal,
+      credentials: "omit"  // pas de cookies envoyés
+    }).then(function(res) {
+      if (!res.ok) {
+        // Status HTTP non-2xx (404 si le fichier n'existe pas, 5xx Nginx
+        // en rade, etc.) → serveur "répond" mais pas correctement.
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(false);
+        return;
+      }
+      return res.text();
+    }).then(function(body) {
       if (done) return;
       done = true;
       clearTimeout(timer);
-      resolve(true);
+      // Comparaison stricte du body : doit être "OK" (trim + uppercase
+      // pour tolérer "ok\n" ou "Ok " selon comment Nginx serve le fichier).
+      const trimmed = (body || "").trim().toUpperCase();
+      resolve(trimmed === PING_EXPECTED_BODY);
     }).catch(function() {
       if (done) return;
       done = true;
@@ -2115,6 +2155,9 @@ function _pingInternet() {
 // Expose globalement pour les autres modules (ex: sessionExporter onglet KMZ qui
 // vérifie la connexion avant d'ouvrir un lien externe Google Maps).
 window._pingInternet = _pingInternet;
+// Expose aussi l'URL pour que d'autres modules (networkAudit, messages
+// d'erreur) puissent la mentionner sans hardcoder.
+window._pingInternetUrl = PING_URL;
 
 // =========================
 // 🔄 MISE À JOUR DOUCE — purge SW cache uniquement, préserve toutes les données
@@ -2205,17 +2248,28 @@ async function mettreAJourCodeSeul() {
   }
 }
 
-// Avertissement spécifique offline pour la mise à jour douce
+// Avertissement spécifique offline pour la mise à jour douce.
+// 🆕 v1.9.3-B-side (KARMA) : message adapté car le ping cible désormais
+// le serveur MyKTAMap (myktamap.fr/ping.html), pas Google. Donc un échec
+// peut signifier "pas d'internet" OU "serveur MyKTAMap indispo (DNS,
+// SSL, Nginx, hébergeur)". Le message explicite les 2 cas.
 function _softUpdateOfflineWarning() {
+  const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
       '<div class="kta-modal-icon">📡</div>' +
-      '<div class="kta-modal-titre">Pas de connexion Internet</div>' +
+      '<div class="kta-modal-titre">Pas Internet ou serveur indispo</div>' +
       '<div class="kta-modal-texte">' +
-        'La mise à jour a besoin d\'Internet pour télécharger les nouveaux fichiers. ' +
-        'Reconnecte-toi (Wi-Fi, 4G/5G) puis relance.' +
+        'La mise à jour a besoin de joindre le serveur <code>' + origin + '</code> ' +
+        'pour télécharger les nouveaux fichiers. Causes possibles :' +
+        '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:22px; color:#a8b3c8; line-height:1.6;">' +
+          '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
+          '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
+          '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+        '</ul>' +
+        'Reconnecte-toi ou réessaie plus tard.' +
         '<br><br>' +
         '<strong>Bonne nouvelle</strong> : aucune donnée n\'a été supprimée. Tu peux ' +
         'continuer à utiliser l\'app normalement avec la version actuelle.' +

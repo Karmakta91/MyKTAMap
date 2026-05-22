@@ -275,11 +275,11 @@
         <td><strong>Aucune</strong></td>
       </tr>
       <tr>
-        <td><code>https://www.gstatic.com/generate_204</code></td>
-        <td><code>GET</code> (mode <code>no-cors</code>)</td>
+        <td><code>https://myktamap.fr/ping.html</code></td>
+        <td><code>GET</code> (mode <code>cors</code>, body lu)</td>
         <td>Avant un reset complet, avant un Force update</td>
-        <td>Tester si tu as Internet (round-trip vide)</td>
-        <td><strong>Aucune</strong> (no-cors → pas de payload)</td>
+        <td>Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu &quot;OK&quot;)</td>
+        <td><strong>Aucune</strong> (GET sans paramètres, pas de cookies envoyés via <code>credentials: &quot;omit&quot;</code>)</td>
       </tr>
       <tr>
         <td><code>blob:&lt;origin&gt;/&lt;uuid&gt;</code></td>
@@ -308,17 +308,30 @@
   un serveur n'est jamais émise par l'app.</strong> Si un jour ça change, ce
   fichier sera mis à jour en conséquence et la version sera bumpée.</p>
 
-  <h3>À propos du ping <code>gstatic.com</code></h3>
+  <h3>À propos du ping <code>myktamap.fr/ping.html</code> (depuis v1.9.3)</h3>
 
-  <p><code>https://www.gstatic.com/generate_204</code> est un endpoint historique de
-  Google qui renvoie systématiquement un <code>HTTP 204 No Content</code>. C'est
-  l'endpoint utilisé par Chrome, Android, et de nombreuses apps pour
-  détecter une connexion Internet captive (style « page de login WiFi hôtel »).</p>
+  <p>Avant v1.9.3 : l'app utilisait <code>https://www.gstatic.com/generate_204</code>
+  (endpoint Google) pour détecter Internet. Depuis v1.9.3, l'app utilise
+  <strong>uniquement</strong> <code>https://myktamap.fr/ping.html</code> — un fichier statique
+  d'1 ligne hébergé sur le même domaine que l'auteur du projet. Le body
+  attendu est exactement <code>"OK"</code>.</p>
 
-  <p>L'app l'appelle en mode <code>no-cors</code>, ce qui signifie que <strong>le navigateur
-  n'envoie ni cookie, ni en-tête identifiant, ni payload</strong>, et <strong>ne peut
-  même pas lire le corps de la réponse</strong>. Ce ping sert uniquement à vérifier
-  le round-trip réseau (« y a-t-il Internet ? oui / non »).</p>
+  <p><strong>Pourquoi ce changement ?</strong> Plus aucun appel externe vers un service tiers,
+  même benin comme Google. Le ping vers <code>myktamap.fr</code> permet en outre de
+  vérifier <strong>en un seul appel</strong> :</p>
+
+  <ul>
+    <li>Connexion Internet active (DNS résout, route IP atteignable)</li>
+    <li>Certificat SSL <code>myktamap.fr</code> valide</li>
+    <li>Serveur Nginx en ligne et répond correctement</li>
+    <li>La PWA peut tenter le pull SW (skipWaiting + cache purge)</li>
+  </ul>
+
+  <p>L'app l'appelle en mode <code>cors</code> avec <code>credentials: "omit"</code> :
+  <strong>aucun cookie n'est envoyé</strong>, et seul le body <code>"OK"</code>
+  (texte brut) est lu pour vérification. Si le serveur répond autre chose
+  (404, 500, body différent), le ping est traité comme "indispo" et
+  l'app refuse de tenter la mise à jour douce.</p>
 
   <p>Si tu préfères ne pas faire ce ping du tout, <strong>active le mode hors-ligne
   strict</strong> (cf. plus bas) : il sera bloqué comme tout autre appel non local.</p>
@@ -441,7 +454,7 @@
     <li>Onglet <strong>Headers</strong> → cherche <code>Content-Security-Policy</code></li>
   </ol>
 
-  <p>La directive clé est <code>connect-src 'self' https://www.gstatic.com blob:;</code> —
+  <p>La directive clé est <code>connect-src 'self' https://myktamap.fr blob:;</code> —
   le navigateur n'acceptera pas d'envoyer des données ailleurs.</p>
 
   <h2>🧰 Stockage local — où vivent tes données</h2>

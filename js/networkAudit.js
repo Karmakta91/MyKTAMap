@@ -28,8 +28,9 @@
  *
  * Whitelist hardcodée (visible dans WHITELIST_HUMAN, exposée à l'UI) :
  *   - Même origine (l'app elle-même servie depuis location.origin)
- *   - https://www.gstatic.com/generate_204 (ping connectivité en mode
- *     no-cors → aucune donnée envoyée, juste un round-trip réseau)
+ *   - https://myktamap.fr/ping.html (ping connectivité + santé serveur,
+ *     body attendu "OK". Remplace depuis v1.9.3 l'ancien ping Google
+ *     gstatic.com/generate_204 — plus aucun appel externe non-MyKTAMap)
  *
  * Ordre de chargement critique
  * ----------------------------
@@ -92,10 +93,14 @@
         return u.origin === location.origin;
       } catch(e) { return false; }
     },
-    // Ping connectivité Google — mode no-cors, HTTP 204 No Content,
-    // aucune donnée envoyée, juste un round-trip pour tester la connexion.
+    // 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être
+    // vers https://myktamap.fr/ping.html, plus aucun appel externe vers
+    // Google") : ping connectivité + santé serveur MyKTAMap.
+    // Replace l'ancien gstatic.com/generate_204. Permet de vérifier en
+    // un appel : Internet OK + DNS myktamap.fr OK + SSL OK + Nginx OK.
+    // Le body attendu = "OK" (texte brut). Cf. js/interface.js _pingInternet.
     function(url) {
-      return url === "https://www.gstatic.com/generate_204";
+      return url === "https://myktamap.fr/ping.html";
     },
     // Blob URLs locales (URL.createObjectURL) — utilisées par le tiling V2
     // pour servir les tuiles JPEG depuis le ZIP en mémoire. 100% LOCALES
@@ -114,7 +119,7 @@
   // Descriptions human-readable (affichées dans la modale doc audit)
   const WHITELIST_HUMAN = [
     "Même origine (l'app elle-même : " + location.origin + ")",
-    "https://www.gstatic.com/generate_204 (ping connectivité, mode no-cors, aucune donnée envoyée — juste un HTTP 204 No Content)",
+    "https://myktamap.fr/ping.html (ping connectivité + santé serveur — DNS / SSL / Nginx, body attendu \"OK\". Remplace l'ancien ping Google, plus aucun appel externe non-MyKTAMap)",
     "blob: URLs (références locales au navigateur — utilisées par le tiling V2 pour servir les tuiles d'image depuis le ZIP en mémoire ; aucune fuite réseau possible)",
     "data: URLs (base64 inline — icônes SVG embarquées dans le code, exports image ; aucune fuite réseau possible)"
   ];
@@ -146,7 +151,9 @@
   // Classification automatique pour l'affichage UI (label coloré)
   function _classify(url) {
     if (!url) return "unknown";
-    if (url === "https://www.gstatic.com/generate_204") return "ping";
+    // 🆕 v1.9.3-B-side : nouveau ping santé serveur MyKTAMap (remplace
+    // l'ancien gstatic Google). Garde le label "ping" dans l'UI.
+    if (url === "https://myktamap.fr/ping.html") return "ping";
     // Les blob URLs sont 100% LOCALES au navigateur (créées via
     // URL.createObjectURL à partir de Blob déjà en mémoire — typiquement
     // les tuiles V2 du tiling). Aucune fuite réseau possible : c'est juste
