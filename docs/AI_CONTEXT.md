@@ -66,9 +66,12 @@ Pour **chaque** question :
 - ⛑️ **Mode urgence "Je suis perdu"** (sous-action du groupe 🧭 Tracker) : estime une zone de recherche à partir de dernière position + temps écoulé + indices visuels texte ; affiche cercle orange, markers violets pour les indices in-zone ; bloc dépliable "📚 Bonnes pratiques" ; rapport copiable
 - 📐 **Mesure de distance simple** (clic-clic, label bas-gauche)
 - 📏 **Distance totale des tracés** (filtre par type, highlight magenta)
-- ✏️ **Édition de points** (ajout, modification, suppression via popup)
+- ✏️ **Édition de points** (ajout, modification, suppression via popup). **Depuis v1.10.0** : modale d'édition unifiée ajout/modification + section 📸 Photos attachées (capture / galerie / viewer plein écran avec pinch-zoom + swipe nav). Max 5 photos par point.
+- 📸 **Photos POI** (depuis v1.10.0) : attache jusqu'à 5 photos par point ajouté, capture caméra mobile ou import galerie. Stockage IndexedDB 100 % local (jamais envoyé sur Internet). Compression auto JPEG q85 max 1920px. Inclues dans tous les exports (session ZIP + KMZ + générateur). Viewer plein écran (`window.MyKTAMapPhotoViewer`) avec pinch-zoom + pan + swipe horizontal navigation + flèches/raccourcis clavier. Cf section dédiée plus bas.
+- 🔐 **Code d'accès local PIN/Face ID** (depuis v1.10.0, optionnel) : PIN 4-6 chiffres + biométrie Face ID/Touch ID via WebAuthn. Activable depuis ⚙️ Configuration de la home uniquement. 100 % local (hash SHA-256 + salt, stocké localStorage). Barrière UX, PAS un chiffrement des données. 5 tentatives ratées = lockout définitif. Cf section dédiée plus bas.
 - 🛣️ **Tracés / Roads** : Principal / Secondaire / Chemin / Itinéraire
-- ⬛ **Zones** : Remblais / Effondrement / Eau
+- ⬛ **Zones** : Remblais / Effondrement / Eau / Inaccessible. Depuis v1.10.0 : la "Dernière zone fermée" priorise la zone EN COURS si elle existe (avant : skippée → impossible de supprimer une zone en cours d'un coup)
+- 🏛️ **Structures** (depuis v1.9.3) : 5 types — Pilier 1ère masse 🟡 / Pilier 2e masse 🟠 / Mur 🔵 (polygones) + Front de taille 1ère masse 🟧 / 2e masse 🟨 (polylignes). Architecture souterraine (piliers porteurs, murs, avancement d'exploitation). Aucun effet pathfinder (lecture seule). 4 modes de suppression depuis v1.10.0 (incl. ✂️ "en cours OU fermée" + 🎯 sélection au clic carte hybride polygon/polyline)
 - 💾 **Sauvegarde session** : Full / Avancé / Conversion (session → data layer)
 - 🖼️ **Export PNG** : Mode rapide / Mode avancé (avec légende, calques au choix, résolution)
 - 🌍 **Export KMZ géolocalisé** (depuis v170) : nouvel onglet dans 💾 Export Session. Calibrage par **2 points** (saisie x/y plan + lat/lng GPS pour chacun, via recherche / clic carte / saisie manuelle). L'app calcule une transformation affine 2D (rotation + scale + translation) et génère un fichier `.kmz` ouvrable dans Google Earth, OsmAnd, Locus, Avenza... Image plan en transparence configurable (slider 0-100%, défaut 60%). Granularité fine du contenu : sous-cases parent/enfants par tag de point, type de tracé, type de zone (pattern identique à l'Export PNG Avancé). Inclut session + embedded data layers. Calibrage persisté par plan (localStorage). Compatible multi-niveau (1 Folder KML par niveau).
@@ -84,6 +87,7 @@ Pour **chaque** question :
 - 📐 **Icônes adaptatives au zoom** (depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante au lieu de la taille écran fixe Leaflet par défaut. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Clamp 0.25 → 2× pour éviter les extrêmes (invisible ou énorme). Toggle dans ⚙️ Réglages → 🔍 Affichage (default ON, reload requis pour changement).
 - 🔍 **Double-clic sur un marker → zoom flyTo** (depuis v1.7.1) : un seul clic ouvre le popup (inchangé), un double-clic rapide (< 500ms) fait un flyTo smooth (0.6s) sur le point au zoom +2 clampé. Le popup éventuel est fermé pendant le flyTo. Ne s'applique pas au tracker ni au mode urgence (comportements spécifiques préservés).
 - 🔢 **Nouveau format de version semver-like** (depuis v1.7.1) : passage de vNNN (v173) à vX.Y.Z (v1.7.1). X = MAJOR (1 actuel, 2 quand backend), Y = MINOR (évolutions majeures), Z = PATCH (debug/UX). Mapping rétroactif des MINOR dans le README.md journal.
+- 🆕 **v1.10.0 (23/05/2026)** : Photos POI complètes (📸) + Code d'accès local PIN/Face ID (🔐) + suppression structures au clic + Zone/Structure en cours supprimables d'un coup + M-LVL default = niveaux [-1, 0, +1] visibles. Cf. survol détaillé dans les sections dédiées de cette liste.
 - 🎨 **Nouvelle interface en mode carte (refonte v1.9.1, polish v1.9.2 le 2026-05-22)** : la nouvelle interface est **activée par défaut**. Polish v1.9.2 = loader PC plein écran edge-to-edge, toutes les modales agrandies sur PC (Doc/Aide/Config/Légende multi-cols/Session/Tableau/Export), toggle « ⚪ Afficher les ronds aux intersections de tracés » (⚙️ Configuration home), tracker rotation continue sans saut au Nord, splash KARMA animé lettre par lettre + crédits 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra (algo pathfinder), background Leaflet aligné à la charte. Elle comprend :
   - **Header bar sticky 44px** en haut avec rose des vents cliquable (retour home avec garde-fou si session modifiée), nom du plan **cliquable** qui ouvre la modale refondue "🗂 Changer de plan" (carte highlight du plan en cours avec badge `● ACTIF` vert, liste des récents avec hover doré et flèche qui glisse, gros CTA bleu "📚 Voir tous mes plans" en bas), et compteurs cliquables (📍 points · 🛣 tracés · ⬛ zones) qui ouvrent une modale "📊 Détails de la session" listant tous les éléments avec leurs infos détaillées (nom/tag/coord pour les points, type/nb/distance par type pour les tracés et zones, mesures actives).
   - **Sidebars unifiées** gauche (Doc/Settings/Charger/Save) et droite (Recherche/Édition/Mesure + accordéons Tracés/Zones/Tracker) — barre verticale continue sans gap, sous-actions s'empilent en dessous au lieu d'apparaître à côté.
@@ -111,7 +115,10 @@ Pour **chaque** question :
 - 🎨 **Modales de re-sélection ZIP refondues** (depuis v172) : remplacement des `confirm()` natifs OS par 2 modales custom respectant la charte graphique :
   - **🚫 Nom différent** (rouge) : si l'user re-sélectionne un ZIP dont le `plan.name` ne correspond pas au plan ciblé → REFUS DÉFINITIF (1 seul bouton "J'ai compris"). Avant : "Charger quand même ?" qui créait des incohérences silencieuses. Pour vraiment charger ce ZIP : passer par 📦 Charger un nouveau plan.
   - **⚠️ Mode différent** (orange/warning) : si les flags `tiledV2`/`multiLevel` du ZIP diffèrent du registre → modale explicite avec carte par discordance (Avant → Maintenant). 2 boutons Annuler / Continuer.
-- 🏗️ **Générateur de plan** : Nouveau plan / Modifier existant (ZIP)
+- 🏗️ **Générateur de plan** : Nouveau plan / Modifier existant (ZIP) — depuis v1.10.0, 2 nouvelles features :
+  - **🎨 Image vierge** (depuis v1.9.3) : alternative à l'upload d'une image source. L'app génère un canvas vide aux dimensions choisies (500-12000 px) avec couleur de fond au choix (⬜ Blanc / ▫️ Gris clair / ⬛ Noir / 🌫️ Gris foncé). Utile pour dessiner un plan from scratch (piliers / fronts / tracés) sans image source — typique pour les cartographes qui visitent une carrière sans plan existant.
+  - **📦 Importer un datalayer ZIP en un clic** (v1.10.0) : encadré doré dans la section Calques de données. Permet d'injecter en 1 clic les calques (points / tracés / zones / structures) + photos d'un ZIP datalayer exporté depuis un autre plan via Conversion session→data. Mode Nouveau = remplit la liste. Mode Modifier = AJOUTE avec suffixe `_imported_<N>` si conflit d'id (préserve les calques existants). Photos IDB du plan courant **merge** avec celles du ZIP (déduplication par photoId).
+  - **📸 Inclure les photos attachées** (v1.10.0) : case visible en mode Modifier uniquement, cochée par défaut si le plan a des photos IDB. Embed automatique dans `data/photos/` du ZIP plan généré. Au load par un autre user, les photos sont restaurées automatiquement en IDB local + toast discret.
 - ⚙️ **Réglages** : calibrage échelle, debug, reset complet, etc.
 - 🚀 **Mode Performance ULTRA** (dans ⚙️ Réglages) : 6 toggles d'optimisation agressifs pour gros plans / appareils faibles — décimation tracés, désactivation animations Leaflet, abaissement seuil intersections, skip popups data-layer, auto-save lent, viewport culling. Préset ULTRA bloc ou ajustement individuel. N'affecte PAS l'image (gérée par mode performance au chargement).
 - 🤖 **Aide IA** : téléchargement de ce fichier de contexte
@@ -143,6 +150,45 @@ Pour **chaque** question :
 - **Chemin** (jaune fin)
 - **Itinéraire** (cyan néon, calculé automatiquement — pas tracé à la main)
 - **Jonction interniveau** (polyline magenta pointillée + ronds blanc/magenta aux 2 extrémités) — UNIQUEMENT disponible si le plan a le mode **multi-niveau** activé. Polyline multi-points (comme un tracé normal) qui sert de bridge unique entre 2 niveaux pour le pathfinder. Sémantique `fromLevel`/`toLevel` symétrique (pathfinder traverse dans les 2 sens). S'efface comme un tracé normal via 🧹.
+
+**Types de structures** (exhaustif — il n'en existe que 5, depuis v1.9.3) :
+- **🟡 Pilier 1ère masse** (polygone, fill jaune) — pilier porteur du niveau supérieur
+- **🟠 Pilier 2e masse** (polygone, fill orange) — pilier du niveau inférieur. Auto-taggé `level = -1` en mode multi-niveau
+- **🔵 Mur** (polygone, fill bleu) — mur de pierre sèche, parpaing, soutènement maçonné
+- **🟧 Front de taille 1ère masse** (polyligne, trait orange) — front d'exploitation niveau supérieur (LIGNE pas polygone)
+- **🟨 Front de taille 2e masse** (polyligne, trait jaune) — front d'exploitation niveau inférieur. Auto-taggé `level = -1`
+
+→ Il n'y a **PAS** d'autre type de structure. Pas de "voûte", "galerie", "puits maçonné", "consolidation béton" etc. Strictement ces 5 types. Le groupe sidebar est **🏛️ Structures**. Aucun effet pathfinder (lecture seule, c'est différent des zones inaccessibles ⛔ qui bloquent l'itinéraire). 4 modes de suppression (depuis v1.10.0) : ↩️ Annuler dernier point / ✂️ Dernière structure (en cours OU fermée) / 🎯 Sélectionner au clic carte (hybride polygon/polyline) / 🗑️ Toutes.
+
+**📸 Photos POI** (depuis v1.10.0, backend IDB-first) :
+- Max **5 photos par point** (limite anti-saturation IndexedDB navigateur, configurable via `MAX_PHOTOS_PER_POINT` dans `js/photos.js`)
+- Compression auto : canvas → JPEG q85, côté long max 1920 px. Une photo brute de 5-10 Mo passe à ~200-500 Ko
+- Stockage **100 % local** dans IndexedDB (`myktamap_photos` v1, store `photos`, indexes `by_plan` + `by_plan_point`). **Jamais envoyé sur Internet**, jamais lu par l'auteur — cohérent avec la promesse no-backend
+- UI éditeur : section "📸 Photos (N/5)" dans la modale d'édition POI avec grille 3 cols PC / 2 cols mobile, miniatures 80×80, spinner pendant compression, ✕ rouge marque pending delete + ↺ vert pour annuler
+- 2 boutons d'ajout : `📷 Prendre photo` (caméra mobile via `capture="environment"`) + `🖼️ Depuis la galerie` (file picker, sélection multiple)
+- Popup marker : miniatures 44×44 cliquables (img directes) + compteur "📸 N photos". Tap → viewer plein écran
+- Viewer plein écran (`window.MyKTAMapPhotoViewer`) : pinch-zoom 1-4×, pan, swipe horizontal pour navigation entre photos, flèches `← →` ou boutons `◂ ▸` overlay, raccourcis clavier PC (`Échap` ferme, `+ - 0` zoom, etc.)
+- Header bar refonte : 5e compteur **📸** (lecture async IDB) à côté de 📍 / 🛣 / ⬛ / 🏛️. Clic → modale "📊 Détails de la session" avec breakdown par point + total Mo
+- Inclus dans tous les exports (session Full / Avancé / Conversion / Générateur ZIP plan) — format unifié `photos/_index.json` + blobs. Re-import automatique au load
+- **⚠️ Pas d'envoi sur Internet** — c'est une des invariantes garanties par le module Privacy & Audit. WebAuthn et IndexedDB sont 100% local navigateur.
+
+**🔐 Code d'accès local PIN/Face ID** (depuis v1.10.0, optionnel) :
+- Module `js/pinLock.js` → `window.MyKTAMapPinLock`
+- Couche PERSO optionnelle par-dessus l'`UnlockGate` communautaire (qui reste actif). PIN 4-6 chiffres + biométrie Face ID/Touch ID via WebAuthn natif
+- **Modèle de sécurité honnête** : c'est une **barrière UX**, PAS un chiffrement des données. Les photos et sessions restent en clair en IDB/localStorage. Cohérent avec UnlockGate et la promesse no-backend
+- Hash `SHA-256(salt + pin)` via `crypto.subtle.digest`, salt random 16 bytes (`crypto.getRandomValues`). Stocké en `localStorage["myktamap_pin_v1"]`. **Jamais envoyé sur Internet**
+- WebAuthn : `authenticatorAttachment: "platform"` (Face ID / Touch ID / Windows Hello — pas de clé USB roaming), challenge random côté client (no backend = compromis assumé)
+- Activation/modification/désactivation **uniquement dans ⚙️ Configuration de la home** (cohérent avec la philo "réglages critiques loader-only" de v1.7.3). PAS de section dans ⚙️ Réglages map mode
+- 5 tentatives PIN ratées consécutives = **lockout définitif**. Pour sortir : réinstaller l'app OU contacter l'auteur (qui ne pourra rien faire — aucune donnée serveur). Biométrie ratée n'incrémente PAS le compteur
+- **Proposition d'activation one-shot** au 1er lancement post-update v1.10.0 : modale qui invite à activer. Refus → flag `myktamap_pin_proposal_done_v1` set, plus jamais re-proposé (l'user doit aller dans ⚙️ Configuration manuellement)
+- Aucune recovery en cas d'oubli (= cohérent UnlockGate, philosophie no-backend)
+- Boot : `main.js > initApp` ouvre la gate APRÈS UnlockGate (séquentiel), avant tout chargement de plan
+
+**🏗️ Mode multi-niveau — niveaux visibles par défaut** (depuis v1.10.0, KARMA) :
+- Au chargement d'un plan **avec multiLevel activé** : `visibleLevels` = `[-1, 0, +1]` (filtré par `availableLevels` disponibles)
+- Avant v1.10.0 : default était `[0]` strict
+- En single-level : `[0]` strict (rétrocompat absolue, comportement inchangé)
+- Le default `availableLevels` est `[-2, -1, 0, +1, +2]` (symétrique autour de 0)
 
 **Types de points / icônes built-in** (liste fermée) :
 - Puits : `pa` (Aération), `pb` (Bouchon), `pc` (Communication), `pe` (Égout), `ps` (Spéléo)

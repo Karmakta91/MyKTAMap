@@ -264,17 +264,25 @@ Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « déco
 
 Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe **tout ce qui était auparavant éparpillé** (drawer de perf, bouton de debug, bouton de reset) :
 
+> **Ordre des sections dans la modale (de haut en bas, identique au UI)** :
+
 1. **🖼️ Tiling de l'image (par plan)** — segmented control 5 presets (voir détail ci-dessous), qui choisit comment l'image principale est découpée en mémoire au chargement. Mémorisé **par plan** (un plan en Performance, un autre en Qualité, etc.).
 
 2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
 3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** *(depuis v1.7.3)* qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
-4. **🔄 Force update douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans ni à ta session active. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
+4. **🔒 Confidentialité & Audit** *(depuis v1.8.0)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
-5. **🔒 Confidentialité & Audit** *(depuis v1.8.0)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
+5. **🎨 Affichage** — toggles d'interface :
+   - **📜 Utiliser l'ancienne interface (classique v1.8.x)** — bascule entre la nouvelle interface (refonte v1.9.x, par défaut) et l'ancienne. Reload requis. Voir section **🎨 Nouvelle interface** plus bas pour les détails.
+   - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
 
-6. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire aussi. Double confirmation requise.
+6. **🔐 Code d'accès local (PIN / Face ID)** *(depuis v1.10.0)* — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+
+7. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
+
+8. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
 
 **Pourquoi cette refonte** : avant v1.7.3, le bouton de reset et le bouton 🐛 Logs étaient dans une section "Plus d'options" séparée, et le bloc Perf était un drawer à part. C'était confus. Désormais : **tout dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
@@ -848,6 +856,48 @@ Appuyez sur **🗑️** (à côté de ✏️). Une fenêtre s'ouvre avec deux op
 
 > ⚠️ **Tous les points** ne supprime que les points que **tu** as ajoutés — les points du plan original restent intacts.
 
+### ✏️ Modifier un point existant
+
+Cliquez sur un marker que vous avez ajouté → la popup affiche le bouton **✏️ Modifier** (bleu). Il ouvre la même fenêtre que pour l'ajout, **pré-remplie** avec le nom, le type, la description et les photos déjà attachées (si applicable).
+
+Tu peux changer ce que tu veux puis **💾 Enregistrer**. Si tu renommes le point ET qu'il a des photos, les photos suivent automatiquement (migration interne transparente).
+
+### 📸 Photos attachées aux points (depuis v1.10.0)
+
+Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockage navigateur). 100 % local — aucune photo n'est envoyée sur Internet.
+
+**Au moment de l'ajout ou de la modification** d'un point, la section **📸 Photos (N/5)** propose 2 boutons :
+
+| Bouton | Effet |
+|---|---|
+| **📷 Prendre photo** | Ouvre directement la caméra (sur mobile) pour shooter une nouvelle photo |
+| **🖼️ Depuis la galerie** | Ouvre le sélecteur de fichiers (mobile et PC), tu peux choisir plusieurs photos d'un coup |
+
+**Compression auto** : les photos sont compressées avant stockage (1920 px côté long max, qualité JPEG 85 %). Une photo brute de 5-10 Mo passe à ~200-500 Ko. Pour 5 photos = ~2 Mo par point.
+
+**Retirer une photo** : clic sur la croix ✕ rouge en haut à droite de la miniature → elle apparaît grisée avec hachures rouges (marquée à supprimer). Si tu changes d'avis, clic sur la flèche verte ↺ pour annuler. La vraie suppression n'a lieu qu'au moment où tu **💾 Enregistres**.
+
+**Si tu annules** la fenêtre d'édition au lieu de sauvegarder, **les photos que tu venais d'ajouter sont effacées** (cleanup auto). Les marquages à supprimer sont au contraire **annulés** — la photo reste.
+
+**Visualisation** :
+
+1. Dans la **popup** du marker (clic carte) : une rangée de miniatures 44×44 apparaît, avec le compteur "📸 N photos". Tap sur une miniature → ouvre le **viewer plein écran**.
+2. Dans le **viewer plein écran** :
+   - **Mobile** : pince à 2 doigts pour zoomer (1× à 4×), glisser pour déplacer, swipe horizontal pour passer à la photo précédente / suivante
+   - **PC** : molette pour zoomer, drag souris pour déplacer, flèches `← →` ou boutons `◂ ▸` overlay pour naviguer, `Échap` pour fermer
+3. Dans l'app : un compteur **📸 N** s'affiche dans la barre du haut (avec les autres compteurs 📍 / 🛣 / ⬛ / 🏛️). Clic dessus → modale "📊 Détails de la session" avec breakdown par point.
+
+**Partage / sauvegarde** : les photos sont **incluses** dans :
+- 💾 Enregistrer session → onglet 📦 Full / 🎨 Avancé / 🔄 Conversion → cocher "📸 Inclure les photos"
+- Re-import session ZIP → photos automatiquement restaurées
+- 📦 Générateur ZIP plan (mode Modifier) → option "📸 Inclure les photos attachées"
+- À la création d'un nouveau plan via le générateur, bouton "📦 Importer un datalayer ZIP en un clic" → tu peux récupérer les points + photos exportés depuis un autre plan
+
+**Limites techniques** :
+- Stockage local navigateur (IndexedDB) — quota ~50-200 Mo selon le device. Un toast d'avertissement t'avertit si tu approches du quota
+- Sur **iOS Safari standalone PWA**, le navigateur peut purger l'IDB en cas de manque d'espace ou de désinstall — exporte régulièrement tes plans + photos pour les sécuriser
+- En cas de reset complet de l'app (💥 Tout réinitialiser), **toutes les photos sont effacées** (cohérent avec le wipe complet)
+
 ---
 
 ## 🛣️ Tracer des routes
@@ -945,13 +995,65 @@ Cela permet par exemple de tracer un effondrement par-dessus un remblais sans qu
 
 ### 🧹 Effacer une zone
 
-Appuyez sur **🧹**. Une fenêtre s'ouvre avec trois options :
+Appuyez sur **🧹**. Une fenêtre s'ouvre avec ces options :
 
 | Option | Effet |
 |---|---|
 | **↩️ Annuler le dernier point** | Sur la zone en cours, ou sur la dernière zone fermée |
-| **✂️ Supprimer la dernière zone** | Retire la dernière zone fermée |
-| **🗑️ Effacer toutes les zones** | Efface absolument tout (irréversible) |
+| **✂️ Dernière zone (en cours OU fermée)** | Supprime la zone que tu es en train de dessiner si elle existe, sinon la dernière fermée |
+| **🎯 Sélectionner une zone à supprimer** | Active un mode où tu cliques sur une zone de la carte pour la supprimer |
+| **🗑️ Toutes les zones** | Efface absolument tout (irréversible) |
+
+---
+
+## 🏛️ Structures (piliers, murs, fronts de taille) — depuis v1.9.3
+
+Spécifique aux **carrières souterraines** : les structures permettent de cartographier les éléments physiques porteurs (piliers de soutènement, murs) et l'avancement du front d'exploitation (fronts de taille). Indépendant des tracés et des zones — c'est une 4ème couche d'annotation.
+
+> Tous les boutons sont dans le groupe **🏛️ Structures** de la barre latérale.
+
+### 5 sous-types disponibles
+
+| Type | Icône | Forme | Couleur | Usage typique |
+|---|---|---|---|---|
+| 🟡 **Pilier 1ère masse** | polygone | jaune | Pilier porteur du niveau supérieur (calcaire 1ère masse) |
+| 🟠 **Pilier 2e masse** | polygone | orange | Pilier du niveau inférieur (calcaire 2e masse). En mode multi-niveau, auto-taggé au niveau -1 |
+| 🔵 **Mur** | polygone | bleu | Mur de pierre sèche, parpaing, soutènement maçonné |
+| 🟧 **Front de taille 1ère masse** | polyligne | orange (trait) | Front d'exploitation niveau supérieur — c'est une LIGNE, pas un polygone fermé |
+| 🟨 **Front de taille 2e masse** | polyligne | jaune (trait) | Front d'exploitation niveau inférieur. En mode multi-niveau, auto-taggé au niveau -1 |
+
+### Dessiner une structure
+
+1. Clique le sous-type souhaité (🟡 / 🟠 / 🔵 / 🟧 / 🟨) — il devient actif (allumé)
+2. Clique successivement sur la carte pour ajouter les points
+3. **Piliers + Murs (polygones)** : minimum 3 points. Pour terminer, re-clique sur l'icône allumée → ferme automatiquement le polygone (relie le dernier point au premier)
+4. **Fronts de taille (polylignes)** : minimum 2 points. Pour terminer, re-clique sur l'icône allumée → valide la ligne sans la fermer
+
+Pendant le dessin, l'aperçu se met à jour en temps réel. La couleur et la transparence sont fixes par type.
+
+### 🧹 Effacer les structures
+
+Appuyez sur **🧹** dans le groupe Structures :
+
+| Option | Effet |
+|---|---|
+| **↩️ Annuler le dernier point** | Sur la structure en cours, ou sur la dernière structure |
+| **✂️ Dernière structure (en cours OU fermée)** | Supprime celle en train d'être dessinée si présente, sinon la dernière validée |
+| **🎯 Sélectionner une structure à supprimer** | Mode clic carte — sélectionne celle à effacer en cliquant dessus ou près de son bord |
+| **🗑️ Toutes les structures** | Efface absolument tout (irréversible) |
+
+> 💡 Le mode "🎯 Sélectionner" est pratique pour effacer une structure précise au milieu d'un plan riche, sans avoir à compter le "dernier ajouté".
+
+### Différence avec les zones
+
+| | Zones (⬛) | Structures (🏛️) |
+|---|---|---|
+| Forme | Polygone fermé uniquement | Polygone OU polyligne selon le type |
+| Couleurs | Eau / Remblais / Effondrement / Inaccessible | Pilier 1/2 / Mur / Front 1/2 |
+| Effet pathfinder | ⛔ Inaccessible **bloque** l'itinéraire | Aucun (lecture seule) |
+| Usage typique | Délimiter des zones de terrain (eau stagnante, etc.) | Cartographier l'architecture souterraine (piliers, murs, avancement) |
+
+> 🏗️ **Mode multi-niveau** : les Piliers 2e masse et Fronts de taille 2e masse sont **automatiquement taggés au niveau -1** à leur création (l'app considère que la 2e masse est en dessous). Les autres types prennent le niveau actif courant. Tu peux modifier les niveaux a posteriori via l'éditeur JSON.
 
 ---
 
@@ -1310,6 +1412,61 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 > Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
 
+### 🎨 Image vierge (depuis v1.9.3)
+
+Si tu veux créer un plan **from scratch** sans image source (par exemple pour dessiner uniquement des piliers / fronts de taille / tracés sur un canvas vide), tu peux générer une **image vierge**.
+
+Dans la section **🖼️ Images principales** du générateur, 2 modes radio :
+
+| Mode | Effet |
+|---|---|
+| **📷 Depuis une image** (par défaut) | Upload classique d'un PNG / JPG / WebP |
+| **🎨 Image vierge** | L'app génère un canvas vide aux dimensions et couleur que tu choisis |
+
+Quand tu sélectionnes **Image vierge** :
+
+- **Largeur** et **Hauteur** en pixels (500 min, 12 000 max — limites anti-crash mémoire mobile)
+- **Couleur de fond** :
+  - ⬜ **Blanc** : style papier — utile pour dessiner des plans architecturaux
+  - ▫️ **Gris clair** : neutre, écrit moins agressivement
+  - ⬛ **Noir** : style fond sombre (terrain dans l'obscurité, dessin trace blanche dessus)
+  - 🌫️ **Gris foncé** : entre neutre et sombre
+- Bouton **🎨 Générer l'image** : l'app crée le canvas + l'injecte automatiquement comme image principale. Les dimensions du plan se règlent en conséquence.
+
+Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **📦 Générer le ZIP** comme pour un plan normal. Une fois le plan chargé dans l'app, dessine ce que tu veux (piliers, fronts de taille, tracés, points) via les outils habituels.
+
+> 💡 **Cas typique** : un cartographe qui visite une carrière à explorer, sans plan papier existant, peut générer un plan vierge 4000×4000 noir à son arrivée, puis dessiner au fur et à mesure (avec le tracker comme repère). À la fin, le ZIP est partageable.
+
+### 📦 Importer un datalayer ZIP en un clic (depuis v1.10.0)
+
+Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **💾 Enregistrer la session → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
+
+**Cas d'usage typique** :
+1. KARMA voit un copain qui a annoté un plan (points + tracés + zones + structures + photos) et qui exporte un `data_<plan>.zip` via la Conversion
+2. Tu copies ce ZIP sur ton appareil (Drive, AirDrop, USB…)
+3. Dans le générateur, mode **Modifier existant** OU **Nouveau plan**, tu cliques le bouton 📦 Choisir un ZIP datalayer
+4. Le ZIP est parsé → des **calques data layer sont créés automatiquement** : `points` (points du copain), `roads` (tracés), `zones` (zones), `structure` (piliers/fronts). Si le ZIP contenait des photos, elles sont **gardées en mémoire** pour être embarquées au moment de la génération.
+5. Message vert "✅ N calque(s) créé(s) : points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
+6. Tu **📦 Générer le ZIP** comme d'habitude → le plan final contient tes calques d'origine (si Modifier) + les calques importés + le dossier `data/photos/` avec les blobs
+7. Au chargement de ce plan par n'importe quel utilisateur, les photos sont restaurées automatiquement dans IndexedDB et apparaissent dans les popups des markers
+
+**Comportement** :
+- **Mode Nouveau** : les calques importés deviennent les calques data du plan (la liste UI est vidée et remplie avec les calques du ZIP)
+- **Mode Modifier** : les calques existants du plan source sont **préservés** ; les calques du ZIP importé s'ajoutent avec **suffixe `_imported_<N>`** si conflit d'id (= n'écrase jamais les calques d'origine). Photos IDB du plan courant **merge** avec photos du ZIP (déduplication par photoId).
+
+> 📸 **Format du ZIP datalayer** attendu : c'est exactement ce que produit la **Conversion session → data layer** quand tu coches "📸 Inclure les photos attachées" (granularité Basique ou Fine peu importe). Contient `points.json` + `roads.json` + `zones.json` + `structure.json` (selon ce qui était présent dans la session source) + `photos/_index.json` + `photos/<photoId>.jpg`.
+
+### 📸 Inclure les photos attachées au plan (depuis v1.10.0)
+
+En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (stockées en IndexedDB locale via l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
+
+- **Cochée par défaut** : les photos IDB du plan sont embarquées dans le ZIP plan généré sous `data/photos/<photoId>.jpg`. Tu peux ainsi partager le plan complet (annotations + photos) à un autre appareil.
+- **Décochée** : le ZIP plan généré ne contient pas les photos. Plus léger en taille, mais l'utilisateur qui importe le ZIP ne récupèrera pas les photos.
+
+Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos sont **restaurées automatiquement** dans IndexedDB sous le planId local + un toast discret "📸 N photos restaurées depuis le plan" confirme.
+
+> ⚠️ Si tu décoches **ET** que tu as aussi importé un datalayer ZIP avec photos (cf. section précédente), seules les photos du datalayer importé seront embarquées. La case 📸 contrôle UNIQUEMENT les photos IDB du plan courant.
+
 ### 🧱 Convertir en V2 tuile (performance)
 
 Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
@@ -1522,20 +1679,36 @@ Affiche la légende complète des icônes et tracés, regroupés par catégorie 
 
 ---
 
-## ⚙️ Réglages
+## ⚙️ Réglages (en mode carte, par plan)
 
 > Accessible directement via le bouton **⚙️** de la barre latérale (clic direct, pas de sous-menu).
+>
+> Cette modale est focus **par plan** (réglages liés à ce plan ouvert). Pour les **réglages globaux** (interface, PIN, reset, etc.), passe par **⚙️ Configuration** sur la page d'accueil — cf section dédiée plus haut. La séparation est volontaire (depuis v1.7.3) : Réglages = ce qui concerne CE plan, Configuration = ce qui concerne l'app.
 
 Accédez aux paramètres en cliquant sur **⚙️** :
 
-- **Position initiale du tracker** : coordonnées de départ
-- **Détection des pas** : sensibilité, taille du pas, cooldown
+### 🧭 Tracking (spécifique au plan)
+- **Position initiale du tracker** : coordonnées de départ X/Y
+- **Détection des pas** : sensibilité (`stepThreshold`), taille du pas (`stepLength`), cooldown anti-rebond
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
-- **Debug** : activer les **Logs détaillés** (logs verbeux capteurs + tiling) + voir le mode performance actuel du plan (💤 Désactivé / 🔄 Auto / 🌟 Qualité / 🎯 Équilibré / ⚡ Performance)
-- **🗑️ Réinitialiser** : vide le cache et recharge l'application
-- **🐛 Logs** : affiche les journaux de débogage (utile en cas de problème)
 
-> Le mode performance ne se modifie qu'au chargement du plan (sélecteur 4 modes dans le chargeur).
+### 🔍 Affichage (préférence globale, partagée entre tous les plans)
+- **Icônes adaptatives au zoom** (`scaledMarkers`, depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
+- **Afficher les ronds aux intersections de tracés** (depuis v1.9.2) : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
+- **📜 Utiliser l'ancienne interface (classique v1.8.x)** : bascule entre la nouvelle interface (refonte v1.9.x, défaut) et l'ancienne. Reload requis. Mêmes effet que le toggle dans ⚙️ Configuration du loader.
+
+### 🛠️ Debug
+- **🐛 Logs détaillés** : active le verbose mode (logs capteurs tracker + tiling + détections). Utile pour diagnostiquer un problème.
+- Affichage du **mode performance** du plan en cours (💤 Désactivé / 🔄 Auto / 🌟 Qualité / 🎯 Équilibré / ⚡ Performance) — read-only ici, modifiable au prochain chargement du plan via le sélecteur du loader.
+
+### Actions
+- **Appliquer** : sauvegarde les changements
+- **🐛 Logs** : affiche les journaux de débogage capturés
+- **Réinitialiser** : remet les valeurs par défaut pour CE plan (ne supprime rien — c'est différent de **💥 Tout réinitialiser** dans ⚙️ Configuration loader, qui purge tout)
+
+> 💡 **Le mode performance ne se modifie qu'au chargement du plan** (sélecteur 5 presets dans le chargeur → ⚙️ Configuration → 🖼️ Tiling). Réglages affiche juste celui en cours.
+
+> ⚠️ **Pour activer / modifier le code d'accès local (PIN / Face ID)**, il faut passer par **⚙️ Configuration sur la page d'accueil** — la section 🔐 Code d'accès local n'est PAS dans ⚙️ Réglages (par design — réglage critique global, pas par plan).
 
 ### 🎯 Calibrer l'échelle
 
@@ -1568,6 +1741,45 @@ Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer
 > 💡 Le badge bypasse le snooze 24h : si vous avez cliqué "Plus tard" il y a quelques minutes mais que vous changez d'avis, cliquez le badge pour relancer la modale de mise à jour.
 
 > 💡 Si vous êtes déjà à jour, cliquer le badge affiche tout de même les notes de la dernière version — pratique pour relire ce qui a été changé dans la mise à jour que vous avez installée.
+
+---
+
+## 🔐 Code d'accès local (PIN / Face ID) — depuis v1.10.0
+
+Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
+
+> ⚠️ **C'est une barrière d'usage, pas un chiffrement des données.** Le verrouillage empêche l'ouverture normale de l'app, mais un attaquant motivé peut bypass via les DevTools. Les photos et sessions restent stockées en clair dans le navigateur. C'est exactement le même niveau de sécurité que le code d'accès communautaire existant — assumé honnêtement.
+
+### Activer le PIN
+
+1. Depuis la page d'accueil (chargeur) → bouton **⚙️ Configuration** en haut à droite
+2. Descends à la section **🔐 Code d'accès local**
+3. Clique **🔐 Activer le code d'accès**
+4. Choisis ton code (4 à 6 chiffres) puis confirme-le une seconde fois
+5. Si ton appareil supporte la biométrie (iPhone Face ID, iPad Touch ID, Android empreinte, Windows Hello…) une demande "Activer aussi la biométrie ?" apparaît. Accepter = au prochain démarrage tu déverrouilles d'un coup d'œil ou d'un doigt (sans saisir le code)
+
+> 📝 **Note bien ton code** quelque part de sûr. Aucune récupération n'est possible en cas d'oubli — tu serais obligé de tout réinitialiser (perte session + plans non mémorisés).
+
+### Au prochain démarrage de l'app
+
+L'écran de verrouillage apparaît automatiquement après le splash :
+
+- **Avec biométrie** : la demande Face ID / Touch ID apparaît immédiatement. Tu peux aussi annuler et saisir ton PIN à la place.
+- **Sans biométrie** : tu saisis directement ton PIN via le clavier numérique. Le dernier chiffre saisi est visible 0,5 s puis remplacé par ● (pattern iOS).
+
+### Modifier le PIN
+
+⚙️ Configuration → 🔐 Code d'accès local → **✏️ Modifier le code**. Validation par biométrie OU code actuel, puis saisie du nouveau PIN 2 fois.
+
+### Désactiver le PIN
+
+⚙️ Configuration → 🔐 Code d'accès local → **🔓 Désactiver**. Confirmation par biométrie OU code actuel. L'app ne demande plus de code au démarrage suivant.
+
+### Lockout : 5 tentatives ratées
+
+Pour des raisons de sécurité, après **5 codes incorrects à la suite**, l'app est verrouillée **définitivement** sur un écran rouge sans bouton de sortie. La seule façon de récupérer l'accès est de **💥 Tout réinitialiser** depuis l'écran d'accueil (perte de la session en cours et des plans non mémorisés).
+
+> Les biométries ratées ne comptent **pas** dans les 5 tentatives — la spec WebAuthn gère son propre lockout natif côté device. Tu peux annuler un Face ID par erreur sans craindre d'épuiser tes essais.
 
 ---
 

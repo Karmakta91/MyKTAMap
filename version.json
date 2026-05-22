@@ -1,17 +1,14 @@
 {
-  "version": "v1.9.2",
-  "released": "2026-05-22",
+  "version": "v1.10.0",
+  "released": "2026-05-23",
   "notes": [
-    "🏠 Page d'accueil PC plein écran : le loader prend désormais 100% de la viewport (largeur ET hauteur), sans bordure noire autour. Box edge-to-edge avec safe-area iOS gérée en interne pour ne pas masquer notch et home indicator.",
-    "🎨 Toutes les modales agrandies sur PC : Documentation, Aide, ⚙️ Configuration (home et map), Légende (multi-colonnes 2/3/4 selon la largeur), Enregistrer session, Éditeur tableau, Export images. Paliers progressifs 1400 / 1700 / 2000px selon ≥ 1024 / 1440 / 1920px.",
-    "📊 Toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration du home — décocher pour aérer visuellement les plans très denses. Effet immédiat à chaud (sans reload), pref persistée entre les changements de plan.",
-    "⚪ Tracker icône : rotation continue sans saut au franchissement du Nord. Avant : si tu changeais de cap (passage 350° → 10°), l'icône faisait un tour complet arrière pour se caler. Maintenant elle prend toujours le chemin angulaire le plus court.",
-    "🎬 Splash refondu : signature KARMA animée en bas-droite (apparition lettre par lettre douce sur 1,8 s) + crédits libs/algo (🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra) en bas-gauche. Mêmes crédits ajoutés au footer de la home et de la modale Documentation.",
-    "🎨 Modale charte pour basculer entre nouvelle interface / ancienne interface (⚙️ Configuration → 🎨 Affichage) avec accent doré, texte adapté selon la direction (passage à la nouvelle vs retour à l'ancienne), boutons « Annuler / Valider ». Remplace le `confirm()` natif OS qui ne respectait pas la charte graphique.",
-    "🧭 Tracker GPS dans le footer : LED ON (vert) / OFF (rouge) façon témoin hardware. Icône boussole 🧭 (plus de confusion avec le 🚶 du badge mode marche de l'itinéraire).",
-    "🗺️ Stat itinéraire du footer cliquable → ouvre la modale Itinéraire (équivalent à l'ancien label bas-gauche, désormais masqué pour éviter le doublon).",
-    "🎛️ Layers en grille horizontale dans Export images (mode Avancé) : sur PC, les calques (Puits, Carrière, Chemin, etc.) s'organisent en 3-4 colonnes au lieu de défiler verticalement.",
-    "🔧 Modale « Forcer la mise à jour » plus compacte sur PC (height: auto au lieu de prendre toute la hauteur).",
-    "💎 Fixes UX divers : bouton ▾▴ du footer compact quand replié, couleur ambre charte sur les stats du footer, configuration loader réordonnée (Affichage avant Force update), retrait du sous-action « 🗂️ Changer de plan » du menu Charger/Import (doublon avec rose des vents + titre cliquable)."
+    "📸 Photos POI complètes : attache jusqu'à 5 photos par point (caméra ou galerie), compressées auto (1920px max, JPEG q85). Stockage 100% local IndexedDB. Visualisation en miniatures dans la popup du marker + viewer plein écran avec pinch-zoom, pan, swipe horizontal et flèches navigation.",
+    "📸 Photos dans tous les exports : session Full, session Avancé, conversion session ↔ data layer, et générateur ZIP plan (mode Modifier ou import datalayer ZIP). Format unifié : ZIP avec session.json + photos/_index.json + blobs. Re-import restaure automatiquement.",
+    "📦 Bouton « Importer un datalayer ZIP en un clic » dans le générateur — permet de récupérer en un coup les points + tracés + zones + photos exportés depuis un autre plan via Conversion session → data layer.",
+    "🔐 Code d'accès local optionnel (PIN 4-6 chiffres + Face ID / Touch ID via WebAuthn) — accessible depuis ⚙️ Configuration de la page d'accueil. Verrouille l'app à chaque démarrage. 5 tentatives ratées → lockout définitif (reset complet requis). ⚠️ Barrière d'usage, pas un chiffrement des données. Note bien ton code : aucune récupération possible.",
+    "✏️ Modifier un point existant : clic sur un marker session → bouton « ✏️ Modifier » dans la popup → ouvre la fenêtre d'édition pré-remplie (nom, type, description, photos). Renommer un point migre automatiquement ses photos.",
+    "🎯 Sélectionner une structure à supprimer au clic (comme pour les tracés et zones depuis longtemps). Supprime la structure cliquée — pattern hybride polygon (piliers + murs) / polyline (fronts).",
+    "🧹 « Dernière X (en cours OU fermée) » : tu peux désormais supprimer la zone ou la structure que tu es en train de dessiner d'un seul clic, sans avoir à annuler chaque point un par un. Comportement aligné sur les tracés (existait déjà depuis v1).",
+    "🔎 Bug fixes : titre du plan dans la barre du haut tronqué proprement quand il déborde (cache la version d'abord, puis ellipsis sur le nom dans la couleur jaune charte). Fix status bar après rotation iOS. Fix miniature photo popup qui s'affichait avec un fond bleu sur certains navigateurs."
   ]
 }

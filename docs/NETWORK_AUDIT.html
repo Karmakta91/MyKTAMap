@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.9.2</strong> (22 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.10.0</strong> (23 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -541,6 +541,23 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.10.0</td>
+        <td>23/05/2026</td>
+        <td>
+          Ajouts massifs côté features (📸 photos POI complètes + 🔐 code
+          d'accès local PIN/Face ID). <strong>Aucune modification du module
+          Privacy &amp; Audit</strong> ni de sa whitelist — la promesse
+          100% client-side reste inchangée :
+          <ul style="margin: 4px 0 0 16px; padding: 0;">
+            <li>Les photos sont stockées <strong>uniquement en IndexedDB local</strong> (jamais envoyées sur Internet)</li>
+            <li>Le PIN est haché côté client (SHA-256 + salt random) et stocké en <strong>localStorage local</strong> (jamais envoyé sur Internet)</li>
+            <li>La biométrie utilise <strong>WebAuthn navigateur natif</strong> (Face ID / Touch ID via API <code>navigator.credentials</code>, 100% local navigateur, aucun fetch externe)</li>
+            <li>Le challenge WebAuthn est généré <strong>aléatoirement côté client</strong> (no backend — compromis assumé pour le niveau « barrière UX »)</li>
+            <li>Aucun ajout à la liste blanche : la connect-src reste <code>'self'</code> uniquement (avec le ping santé serveur same-origin déjà documenté)</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
         <td>v1.9.2</td>
         <td>22/05/2026</td>
         <td>
@@ -595,7 +612,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 22 mai 2026 — v1.9.2 (Privacy &amp; Audit inchangé depuis v1.8.1)<br>
+    Dernière mise à jour : 23 mai 2026 — v1.10.0 (Privacy &amp; Audit inchangé depuis v1.8.1)<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 

@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.9.2** (22 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.10.0** (23 mai 2026).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -279,6 +279,7 @@ retrouver sans cache hors-ligne).
 
 | Version | Date | Changement |
 |---|---|---|
+| v1.10.0 | 23/05/2026 | Ajouts massifs côté features (📸 photos POI complètes + 🔐 code d'accès local PIN/Face ID). **Aucune modification du module Privacy & Audit** ni de sa whitelist. Les photos restent en IndexedDB local (jamais envoyées sur Internet). Le PIN est haché côté client (SHA-256 + salt random) et stocké en localStorage local (jamais envoyé). La biométrie utilise WebAuthn navigateur natif (`navigator.credentials.*`, 100% local, aucun fetch externe — challenge généré aléatoirement côté client). Aucun ajout à la liste blanche. |
 | v1.9.2 | 22/05/2026 | Polish post-refonte UI. **Aucune modification du module Privacy & Audit** ni de sa whitelist. Document re-vérifié et validé conforme — la promesse 100% client-side reste inchangée. Mise à jour cosmétique de la modale d'audit réseau pour matcher la nouvelle charte (élargissement PC, alignement du loader, etc.). |
 | v1.9.1 | 21/05/2026 | Refonte UI majeure — nouvelle interface par défaut. **Aucune modification du module Privacy & Audit** ni de sa whitelist. Le module `networkAudit.js` continue de tracer 100% des requêtes réseau, et la liste blanche reste identique (`same-origin`, `gstatic.com/generate_204`, `blob:`, `data:`). Document re-vérifié conforme. |
 | v1.8.1 | 21/05/2026 | Consolidation Privacy & Audit : page d'audit en HTML formaté (au lieu de markdown brut intercepté par le SW), whitelist élargie à `blob:` et `data:` (références locales), classification `local-blob`/`local-data` distincte de `external`, CSP ajustée (`'unsafe-inline'` sur `script-src` + `blob:` sur `connect-src`), modale Configuration responsive PC 2 colonnes, fixes débordements UI. |
@@ -295,4 +296,4 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 22 mai 2026 — v1.9.2 (Privacy & Audit inchangé depuis v1.8.1)*
+*Dernière mise à jour : 23 mai 2026 — v1.10.0 (Privacy & Audit inchangé depuis v1.8.1)*

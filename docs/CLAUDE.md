@@ -2622,6 +2622,141 @@ Chaque bloc data-layer reçoit fond + bordure subtils pour le matérialiser comm
 
 ⚠️ **NE PAS REVENIR à `#ddd`** (le défaut Leaflet) sans avoir compris ce qu'on perd. Le commentaire dans le CSS explique l'intention. Lors d'un upgrade Leaflet upstream, **garder ce patch**.
 
+### 42. Système photos POI complet (depuis v1.10.0)
+
+Backend IDB-first + UI complète (capture / viewer / exports / générateur). 4 sous-phases livrées ensemble :
+
+**B1.a — Backend** : `js/photos.js` (~540 lignes IIFE) → `window.MyKTAMapPhotos`. DB IDB `myktamap_photos` v1, store `photos`, indexes `by_plan` et `by_plan_point`. Compression auto (canvas → JPEG q85, max 1920px côté long). Max **5 photos par point** (`MAX_PHOTOS_PER_POINT`). API complète : `addPhoto, getPhoto, getBlob, getObjectUrl, getPhotosForPoint, getAllPhotosForPlan, countPhotosForPoint, countPhotosForPlan, deletePhoto, deletePhotosForPoint, deletePhotosForPlan, renamePointId, restorePhoto, clearAll, getStorageInfo`.
+
+**B1.b — UI éditeur** : refactor `editor.js > afficherFormulaire(x, y, existingPoint)` avec 3ème argument optionnel pour le mode édition (avant : ajout uniquement). Section "📸 Photos (N/5)" avec grille 3 cols PC / 2 mobile, miniatures 80×80, spinner ⏳ pulse pendant compression+IDB write, ✕ pour pending delete (vignette grisée + hachures), ↺ pour annuler. 2 boutons d'ajout : `📷 Prendre photo` (`capture="environment"`) + `🖼️ Depuis la galerie` (multiple).
+
+**Stratégie 5a** : photos écrites en IDB DÈS l'ajout (sous pointId temporaire `_temp_<timestamp>_<rand>` en mode ajout), migration via `renamePointId` au save vers le vrai id (= nom). Cleanup à l'annulation : delete les photos uploadées cette session. En mode édition : `_photosPendingDelete` Set commit uniquement au save (= annuler ne perd pas de photos).
+
+Popup marker — `utils.js > buildPointPopupHtml + attachPopupPhotos(marker, pointId)` : bouton "✏️ Modifier" bleu pour points session + slot `.kta-popup-photos` hydraté en async via `popupopen` event Leaflet. Miniatures 44×44 (`<img class="kta-popup-photo-mini" role="button" tabindex="0">` directes cliquables, **PAS** `<button>` car les styles user-agent variables créaient un "fond bleu" visible). Tap → viewer plein écran. ObjectURLs révoquées au `popupclose` (anti memory leak).
+
+⚠️ **À ne PAS revenir au pattern `<button><img></button>`** pour les miniatures popup — testé, ça créait un fond bleu visible sur certains browsers (Chromium iOS notamment). L'`<img>` cliquable directe est le pattern propre.
+
+**B1.c — Viewer plein écran** : `js/photoViewer.js` (~310 lignes IIFE) → `window.MyKTAMapPhotoViewer = { open(photos, startIndex), close, isOpen }`. Modale fullscreen z-index 100000. Maison (pas de dep) :
+- Pinch-zoom 1× à 4× (2 doigts, scale center-based, clamp transform)
+- Pan (drag PC quand zoomé / 1 doigt mobile zoomé)
+- Swipe horizontal pour navigation (1 doigt mobile, zoom=1, threshold 50px)
+- Flèches `◂` `▸` + raccourcis clavier `← → + - 0 Échap`
+- Auto-reset transform à chaque changement de photo
+- `touch-action: none` sur viewport + `passive: false` sur touchmove/wheel → on contrôle tout le touch
+- Compteur "N / M" pastille jaune + ✕ rouge au hover
+
+**B1.d — Exports** complets (rétrocompat absolue : sans photos cochées ou 0 photo → format v1.9.2 strict) :
+
+| Voie | Output sans photos | Output avec photos |
+|---|---|---|
+| Session Full | `.json` pur | `.zip` (session.json + photos/) |
+| Session Avancé Single | `.json` pur | `.zip` (session.json + photos/) |
+| Session Avancé ZIP multi | `.zip` (N JSON) | `.zip` (N JSON + photos/) |
+| Conversion ed2data (basic 1 cat.) | `.json` direct | `.zip` (1 JSON + photos/) |
+| Conversion ed2data (basic N cat.) | `.zip` multi | `.zip` (N JSON + photos/) |
+| Conversion ed2data (fine) | `.zip` multi | `.zip` (N JSON + photos/) |
+| Conversion data2ed (ZIP input) | `.json` session | `.zip` session (réimportable) |
+| Re-import session ZIP | (rétrocompat .json) | wipe + restorePhoto IDB |
+| Re-import KMZ | (pas concerné) | (pas concerné, B1.d.β à venir) |
+
+Format ZIP unifié pour les 3 voies (Full / Avancé Single / Conversion) :
+```
+session.json (ou data layer)
+photos/
+├── _index.json   ← {version: 1, photos: {<photoId>: {pointId, mime, size, file}}}
+└── <photoId>.<ext>
+```
+
+Helpers communs dans sessionExporter.js : `_collecterPhotosPlan(pointIdsSet)`, `_extDepuisMime(mime)`, `_formatBytes(n)` (exposé `window._kta_formatBytes`), `_packerZipSession(payload, photos, filename)`, `_enrichirPointsAvecPhotos(points, photos)` (ajoute `point.photos = [photoIds]` sur clone). Filtre par `pointIdsSet` : les photos suivent le filtre des points (= si l'user filtre par tag, photos correspondantes seulement).
+
+**Re-import session** (interface.js > `_parseSessionZip(file)`) : détection ZIP vs JSON par extension + MIME. Extraction `session.json` + `photos/_index.json` + blobs. `_pendingPhotosToRestore` en variable de fermeture. Validateur async : `_restorerPhotos()` → `deletePhotosForPlan(planId)` (wipe) puis `restorePhoto` × N. Format multi-files (Avancé ZIP) **non pris en charge** en re-import (par design — format archive).
+
+**B1.d.γ — Générateur** (createConf.js) :
+- Mode Modifier : case "📸 Inclure les photos attachées (N · X Mo)" (compteur async) embed les photos IDB du plan courant dans `data/photos/`
+- Encadré dédié "📦 Importer un datalayer ZIP en un clic" (mode Nouveau ET Modifier) qui parse un ZIP datalayer exporté → crée les data layers correspondants + stocke photos dans `_plannerPhotosFromZip`
+- En mode Modifier : suffixe `_imported_<N>` sur l'id du calque si collision avec un calque existant (= n'écrase pas le plan source)
+- Au `_genererZip` : MERGE des 2 sources photos en mode Modifier (IDB + ZIP importé) avec déduplication par photoId. Sans la dédup-merge, importer 1 ZIP avec 2 photos écrasait les 10 photos IDB du plan → bug "ça casse tout" remonté KARMA.
+
+**Symétrie côté import** — `main.js > startImportedPlan` :
+- Détection `data/photos/_index.json` dans le ZIP plan
+- Wipe `deletePhotosForPlan(planId)` puis `restorePhoto` × N
+- Toast discret `OOMGuard.showToast("📸 N photos restaurées depuis le plan", "info")`
+
+**Header refonte** : 5e compteur 📸 (lecture async `countPhotosForPlan`) à côté de 📍/🛣/⬛/🏛️. Section dédiée dans la modale "📊 Détails de la session" : breakdown par point + total Mo.
+
+⚠️ **`data/editor.json` reste écrasé** par `PLANNER_EDITOR_JSON` vide au `_genererZip` (comportement v1.9.2 inchangé). Les points importés via datalayer ZIP apparaissent comme data layers `points` séparés (lecture seule), pas dans le calque "Mes annotations" éditable. Cohérent avec le modèle "session = éphémère, data = figé dans le plan".
+
+### 43. Code d'accès local PIN/Face ID optionnel (depuis v1.10.0)
+
+Couche perso optionnelle par-dessus `UnlockGate` (§36) qui reste la barrière communautaire avec mdp partagé. Différent : le PIN est propre à chaque user, choisi par lui.
+
+Module `js/pinLock.js` (~450 lignes IIFE) → `window.MyKTAMapPinLock`.
+
+**Modèle de sécurité honnête** :
+- Hash `SHA-256(salt + pin)` via `crypto.subtle.digest`
+- Salt random 16 bytes (`crypto.getRandomValues`) en b64
+- Stockage `localStorage["myktamap_pin_v1"]` = `{hashedPin, salt, attempts, hasBiometric, credentialId}`
+- **Barrière UX, PAS pseudo-crypto** : l'app étant 100% client-side, un attaquant motivé bypass via F12 (= `localStorage.clear()` en 5s). Cohérent UnlockGate.
+- Les données IDB (photos, sessions) ne sont **PAS** chiffrées (choix volontaire KARMA 6:a)
+- Aucune recovery en cas d'oubli → reset complet requis
+
+**API publique** :
+- `isEnabled() / isUnlocked() / isLockedOut() / getRemainingAttempts()` — état
+- `hasBiometric() / isBiometricSupported()` — biométrie
+- `enable(pin, useBiometric) / disable(pin) / unlock(pin) / unlockWithBiometric() / changePin(newPin) / reset()` — actions
+- `ouvrirGate()` — affiche la gate UI, résout au unlock (jamais en lockout)
+
+**Lockout** : 5 tentatives PIN ratées consécutives → lockout définitif (compteur persisté). Pour sortir : reset complet (`localStorage.clear()` via 💥 Tout réinitialiser efface aussi `myktamap_pin_v1`). Une biométrie ratée n'incrémente PAS `attempts` (WebAuthn gère son propre lockout natif device).
+
+**Biométrie WebAuthn** (Face ID / Touch ID / Windows Hello) :
+- Détection via `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
+- Enregistrement : `navigator.credentials.create({publicKey: {challenge: random, rp: {name: "MyKTAMap"}, user: {...}, pubKeyCredParams: [-7, -257], authenticatorSelection: {authenticatorAttachment: "platform", userVerification: "required"}, attestation: "none"}})`
+- Vérification : `navigator.credentials.get({publicKey: {challenge: random, allowCredentials: [{id, type: "public-key", transports: ["internal"]}], userVerification: "required"}})`
+- Challenge random **client-side** (no backend) — compromis assumé, niveau "barrière UX"
+- Si l'enregistrement biométrie échoue à l'activation → PIN activé sans biométrie (fallback graceful, error.pinActivatedWithoutBiometric = true signale au caller)
+
+**UI Gate plein écran** (`_afficherGateUI(onUnlock)`) :
+- Overlay z-index 100002 (au-dessus de tout)
+- Boîte 360px charte dorée avec icône 🔐 + titre + dots `●●●●` 6 emplacements
+- Pattern iOS 8:b : dernier chiffre saisi visible 0.5s puis remplacé par ●
+- Keypad numérique 3×4 custom (1-9 / biométrie ou empty / 0 / ⌫)
+- Auto-prompt biométrique 400ms après ouverture si configurée
+- Auto-submit dès 6 chiffres OU touche Enter pour 4-6
+- Clavier physique : chiffres + Backspace + Enter (Échap **bloqué** — l'user doit unlock)
+- Affichage "N tentative(s) restante(s)" avec classe `kta-pin-gate-attempts-warn` si ≤ 2
+
+**UI Lockout** (`_afficherLockoutUI()`) — screen rouge dramatique :
+- Pas de bouton de sortie (force l'user à reset via la home)
+- Message "🚫 Trop de tentatives" + explication "Comment sortir ?" → ⚙️ Configuration → 💥 Tout réinitialiser
+- Phrase en italique "Le brute force c'est mal, m'voyez." (clin d'œil KARMA validé)
+
+**UI activation/modification/désactivation** — `index.html` modale ⚙️ Configuration loader (choix 7:b "loader uniquement") :
+- Pas de section dans ⚙️ Réglages map mode (par design — cohérent avec la philo "réglages critiques dans le loader")
+- Status `✅ Activé · 🤳 biométrie configurée` ou `○ Désactivé`
+- Boutons contextuels via flow Promise-based `_demanderPin(titre, message, label)`
+- Activation : saisie PIN x2 + `confirm()` natif pour la biométrie (le `confirm()` natif est OK ici, cas marginal one-shot)
+- Modification (9:b) : biométrie OU ancien PIN d'abord, puis nouveau PIN x2
+- Désactivation : `confirm()` puis biométrie OU PIN
+
+**Intégration boot** — `main.js > initApp` après `UnlockGate.ouvrirGate()` :
+```js
+if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
+    && !window.MyKTAMapPinLock.isUnlocked()) {
+  await _splashEnd();
+  await window.MyKTAMapPinLock.ouvrirGate();
+}
+```
+
+**Pour bumper le `MAX_ATTEMPTS`** (= 5) : changer la constante en tête de pinLock.js. ⚠️ **Ne PAS exposer un bouton "Reset PIN" depuis le screen lockout** — bypass trivial. L'user qui oublie son PIN DOIT passer par le reset complet de l'app (= friction délibérée).
+
+**Pour bumper le PIN format** (= 4-6 chiffres) : modifier `PIN_MIN` et `PIN_MAX` en tête de pinLock.js + adapter le validateur `_validatePinInput` + le keypad UI (max chiffres affichés en dots).
+
+**À NE PAS faire** :
+- ❌ Réintroduire un bouton "Reset PIN" depuis le lockout (bypass trivial)
+- ❌ Stocker le PIN en clair (toujours `hashedPin` via SHA-256 + salt)
+- ❌ Ajouter une recovery email (no backend, cohérent avec UnlockGate)
+- ❌ Promettre que les données sont chiffrées (elles ne le sont pas — c'est explicite dans la doc et l'UI)
+
 ---
 
 ## 🚨 Pièges connus & règles importantes

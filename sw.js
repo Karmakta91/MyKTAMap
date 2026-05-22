@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.9.3-B1a-ping-html-file";
+const CACHE_NAME = "myktamap-cache-v1.10.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -72,6 +72,10 @@ const ASSETS_TO_CACHE = [
   // marche aussi en mode offline.
   "./js/refonteInterface.js",
   "./js/unlockGate.js",
+  // 🆕 v1.9.4 : code d'accès local optionnel (PIN/biométrie). Indispensable
+  // offline (la gate s'affiche au boot avant tout fetch réseau, donc le
+  // module DOIT être en cache).
+  "./js/pinLock.js",
   "./js/config.js",
   "./js/utils.js",
   "./js/measure.js",
@@ -88,6 +92,10 @@ const ASSETS_TO_CACHE = [
   // Self-contained, exposé via window.MyKTAMapPhotos. Doit être caché
   // pour que l'attachement photo fonctionne offline.
   "./js/photos.js",
+  // 🆕 v1.9.3-B1c : viewer photo plein écran (pinch-zoom + pan + swipe).
+  // Self-contained, exposé via window.MyKTAMapPhotoViewer. Caché pour
+  // visionnage offline des photos déjà attachées aux POI.
+  "./js/photoViewer.js",
   "./js/exporter.js",
   "./js/sessionExporter.js",
   "./js/kmzExport.js",

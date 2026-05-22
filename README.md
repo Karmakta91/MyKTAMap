@@ -9,9 +9,185 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (101 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (102 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-9-2" open>
+<details id="v1-10-0" open>
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.10.0 : Photos POI (capture + viewer + exports + générateur) + Code d'accès local PIN/Face ID</strong></summary>
+
+Release MINOR majeure (1.9.2 → 1.10.0) qui ajoute 2 systèmes complets,
+plus un bouquet de raffinements et de fixes. Saute v1.9.3 (qui était
+labellisé sur Karma_dev pour les chantiers intermédiaires structures +
+ping privacy, consolidé dans cette release).
+
+### 📸 Photos POI — système complet de bout en bout
+
+Backend `js/photos.js` (~540 lignes) basé IndexedDB :
+- DB `myktamap_photos` v1, store `photos`, 2 indexes `by_plan` et `by_plan_point`
+- Compression auto à l'ajout (canvas → JPEG q85, côté long max 1920 px)
+- Max **5 photos par point** (cf. KARMA "7: 5 par point")
+- API publique `window.MyKTAMapPhotos = {addPhoto, getPhoto, getBlob, getObjectUrl, getPhotosForPoint, deletePhoto, deletePhotosForPoint, deletePhotosForPlan, renamePointId, restorePhoto, countPhotosForPoint, countPhotosForPlan, getStorageInfo, MAX_PHOTOS_PER_POINT}`
+- 2 helpers IDB ajoutés : `renamePointId(planId, oldId, newId)` (migre les
+  records via cursor au renommage d'un point) + `restorePhoto(record)`
+  (upsert un record complet avec son id d'origine — utilisé par les
+  re-imports session/plan ZIP).
+
+UI éditeur — refactor `editor.js > afficherFormulaire(x, y, existingPoint)` :
+- 3ème argument `existingPoint` → mode édition unifié avec mode ajout
+- Section "📸 Photos (N/5)" : grille 3 cols PC / 2 cols mobile, miniatures
+  80×80, spinner ⏳ pulse pendant compression+IDB write, bouton ✕ rouge
+  marque pending delete (vignette grisée + hachures rouges), bouton ↺
+  vert annule la suppression
+- 2 boutons d'ajout : `📷 Prendre photo` (`<input capture="environment">`)
+  et `🖼️ Depuis la galerie` (input sans capture, multiple)
+- Stratégie 5a : photos en IDB dès l'ajout (sous pointId temporaire
+  `_temp_<timestamp>` en mode ajout) puis migration `renamePointId` au save
+- Cleanup à l'annulation : delete les photos uploadées cette session
+- Nouveau `window.modifierPointEditor(id, x, y)` exposé pour le popup
+
+Popup marker — `utils.js > buildPointPopupHtml + attachPopupPhotos` :
+- Bouton "✏️ Modifier" (bleu) pour points session
+- Slot `.kta-popup-photos` hydraté en async via `popupopen` event Leaflet
+- Miniatures 44×44 (img directes cliquables, role="button" + tabindex)
+- Tap → ouvre le viewer plein écran sur la bonne photo
+
+Viewer plein écran `js/photoViewer.js` (~310 lignes) — `window.MyKTAMapPhotoViewer` :
+- Modale fullscreen (overlay #000 z-index 100000)
+- Pinch-to-zoom maison (touch 2 doigts, scale 1-4, center-based)
+- Pan (drag PC quand zoomé / 1 doigt mobile quand zoomé)
+- Swipe horizontal pour navigation entre photos (1 doigt mobile, scale=1)
+- Flèches `◂` `▸` overlay PC + tactile, raccourcis clavier `← → + - 0`
+- Compteur "N / M" en pastille jaune, ✕ pour fermer (Échap + click backdrop)
+- Cleanup auto des ObjectURLs au close
+
+Exports — chaîne complète couverte :
+- **Session Full** (sessionExporter.js > `_exportFull`) : section "📸 Inclure
+  les photos attachées" + bouton produisant un `.zip` (`session.json` +
+  `photos/_index.json` + N blobs) si cochée et N>0, sinon `.json` pur
+- **Session Avancé** : section identique, filtre par points effectivement
+  exportés (`pointIdsSet`), `_genererZipAdvanced` enrichi du dossier `photos/`
+- **Conversion session→data** (ed2data) : section symétrique, sortie ZIP
+  forcée si photos cochées même en granularité Basique
+- **Conversion data→session** (data2ed) : détecte ZIP vs JSON à l'upload,
+  merge multi-fichiers data layer + extraction `photos/_index.json` + blobs.
+  Output `.zip` session si photos détectées
+- **Re-import session ZIP** (interface.js > `chargerFichier`) : helper
+  `_parseSessionZip(file)` qui extrait `session.json` + photos, validateur
+  async `_restorerPhotos()` qui wipe puis restore via `restorePhoto`
+
+Générateur (createConf.js > `_genererZip`) :
+- Mode Modifier : checkbox "📸 Inclure les photos attachées (N · X Mo)"
+  embed les photos IDB du plan courant dans `data/photos/`
+- Mode Nouveau / Modifier : encadré dédié "📦 Importer un datalayer ZIP en
+  un clic" qui parse un ZIP datalayer (exporté via Conv ed2data) → crée
+  les data layers correspondants (avec suffixe `_imported_<N>` en mode
+  Modifier pour ne pas écraser les calques existants) + stocke les photos
+  dans `_plannerPhotosFromZip` pour embed
+- Merge des 2 sources photos en mode Modifier (IDB + ZIP importé) avec
+  déduplication par photoId — fix KARMA "si on a déjà des datalayer
+  chargés et qu'on importe un ZIP avec photos ça casse tout" : avant on
+  remplaçait, maintenant on combine
+
+Symétrie côté import — `main.js > startImportedPlan` :
+- Détection `data/photos/_index.json` dans le ZIP plan importé
+- Wipe `deletePhotosForPlan(planId)` puis `restorePhoto` pour chaque record
+- Toast discret OOMGuard "📸 N photos restaurées depuis le plan"
+
+Header refonte — 5e compteur 📸 dans la barre top + section dédiée dans la
+modale "📊 Détails de la session" (breakdown par point avec total Mo).
+
+### 🔐 Code d'accès local PIN/Face ID optionnel
+
+Module `js/pinLock.js` (~450 lignes) — couche perso optionnelle par-dessus
+`UnlockGate` qui reste la barrière communautaire avec mdp partagé (cf. §36).
+
+API `window.MyKTAMapPinLock = {isEnabled, isUnlocked, isLockedOut,
+getRemainingAttempts, hasBiometric, isBiometricSupported, enable, disable,
+unlock, unlockWithBiometric, changePin, reset, ouvrirGate}`.
+
+Modèle de sécurité **honnête** (barrière UX, pas pseudo-crypto) :
+- Hash `SHA-256(salt + pin)` via `crypto.subtle.digest`
+- Salt random 16 bytes (`crypto.getRandomValues`) en b64
+- Stockage `localStorage["myktamap_pin_v1"]` = `{hashedPin, salt, attempts,
+  hasBiometric, credentialId}`
+- 5 tentatives PIN ratées → **lockout définitif** (cohérent UnlockGate),
+  reset complet requis pour sortir
+- Aucune recovery en cas d'oubli (cohérent philosophie no-backend)
+- Les données IDB (photos, sessions) ne sont PAS chiffrées — c'est explicite
+
+Biométrie Face ID/Touch ID via WebAuthn :
+- Détection `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable`
+- Enregistrement à l'activation avec `authenticatorAttachment: "platform"`
+  + `userVerification: "required"` + `attestation: "none"`
+- Challenge random client-side (sans backend) — compromis assumé, niveau
+  "barrière UX"
+- Une biométrie ratée n'incrémente PAS le compteur `attempts` (la spec
+  WebAuthn gère son propre lockout natif du device)
+
+UI Gate plein écran (z-index 100002) :
+- Modale 360px charte dorée, dots `●●●●` 6 emplacements
+- Pattern iOS 8:b : dernier chiffre saisi visible 0.5s puis ●
+- Keypad numérique 3×4 custom (0-9 + biométrie/empty + ⌫)
+- Auto-prompt biométrie 400ms après ouverture si configurée
+- Auto-submit dès 6 chiffres ou touche Enter pour 4-6
+- Clavier physique supporté (chiffres + Backspace + Enter, Échap bloqué)
+- Lockout screen rouge sans bouton de sortie (5 ratés)
+
+UI activation/modification/désactivation — `index.html` modale ⚙️ Configuration
+loader (cohérent KARMA 7:b "loader uniquement, pas dans Réglages map") :
+- Status `✅ Activé · 🤳 biométrie configurée` ou `○ Désactivé`
+- Boutons contextuels (Activer / Modifier / Désactiver) avec flow
+  Promise-based via `_demanderPin(titre, message, label)`
+- Activation : saisie PIN x2 + check biométrie via confirm
+- Modification (9:b) : biométrie OU ancien PIN → nouveau PIN x2
+- Désactivation : confirm + biométrie OU PIN
+
+Intégration boot `main.js > initApp` après `UnlockGate.ouvrirGate()` :
+- Si `MyKTAMapPinLock.isEnabled() && !isUnlocked()` → `ouvrirGate()`
+  bloque le boot jusqu'à unlock (ou jamais en lockout)
+
+### 🧹 Hotfixes suppressions (KARMA terrain)
+
+- `zones.js > removeLastZone()` priorise désormais `currentZone` (= zone
+  en cours de dessin) si elle existe, sinon dernière fermée. Avant : on
+  skippait `currentZone` → impossible de supprimer une zone en cours d'un
+  coup, l'user devait annuler chaque point un par un.
+- `structures.js > removeLastStructure()` : même fix symétrique.
+- Mode "🎯 Sélectionner une structure à supprimer" au clic carte (pattern
+  identique aux zones/tracés) — `activerModeSuppressionStructureClic`
+  avec gestion hybride polygon (pilier-1, pilier-2, mur — pointInPolygon
+  + tolerance bord 20px) / polyline (front-1, front-2 — distance segment
+  15px). Helper `window.isStructurePolylineType` exposé par structures.js.
+
+### 📦 Polish UX divers
+
+- Encadré dédié `📦 Importer un datalayer ZIP en un clic` dans le
+  générateur, sorti du titre où il était masqué (KARMA "pas très clair").
+- Statusbar refonte : fix scope `_syncH` (function statement local vs
+  scope module) qui causait `ReferenceError` au orientationchange / pageshow.
+- Header refonte : graceful degradation 2 niveaux quand le titre déborde
+  sur les compteurs (cache la version d'abord, puis ellipsis sur le nom
+  dans la couleur jaune charte). Hook `resize` + `orientationchange`.
+- Miniatures popup marker : abandon du wrapper `<button>` (trop de styles
+  user-agent variables) au profit de `<img role="button" tabindex="0">`
+  cliquable direct. Fix du "fond bleu visible" sur certains browsers.
+- Viewer plein écran : retrait du hint en bas ("Pincer / molette pour
+  zoomer…") qui masquait une partie de l'image en landscape mobile.
+- Modale offline pour Force update : style oom-modal-boite (avec
+  ⚠️ pulsants + sections 🔍 Causes / ✅ Bonne nouvelle / 🔄 Recommandation)
+  alignée sur la modale Reset offline. Avant : style basique unstyled.
+
+### 🐛 Bugs résolus
+
+- Wipe destructif des datalayers en mode Modifier au moment de l'import
+  ZIP datalayer → AJOUTE avec suffixe `_imported_<N>` au lieu de remplacer
+- Photos IDB du plan perdues quand on importait un ZIP datalayer avec
+  d'autres photos → MERGE des 2 sources avec dédup par photoId
+- `_syncH` ReferenceError au orientationchange/pageshow → promotion au
+  scope module
+
+</details>
+
+<details id="v1-9-2">
 <summary><strong>🗓️ 22/05/2026 — 💎 v1.9.2 : Polish post-refonte — loader fullscreen PC + modales agrandies + tracker rotation continue + splash KARMA animé</strong></summary>
 
 PATCH bump (1.9.1 → 1.9.2) consolidant 17 itérations de polish UX
