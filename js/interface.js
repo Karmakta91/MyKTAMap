@@ -2951,10 +2951,22 @@ window._fermerGroupeOuvertSide = function(side) {
 };
 
 function _ouvrirGroupe(id) {
-  // Fermer tous les autres groupes (sauf ceux qui ont un mode actif)
+  // 🆕 v1.9.3-A1.b.2.5 (KARMA "maintenant que on peut le fermer même en
+  // play, je veux que si j'ouvre un menu tracé ou autre il se ferme,
+  // même comportement que tous les autres menus") :
+  // Fermer TOUS les autres groupes, y compris ceux en mode actif. Le
+  // mode actif lui-même reste activé (tracker continue en background)
+  // — seul le tiroir des sous-actions se ferme. L'icône principale
+  // garde la classe kta-group-mode-actif pour feedback visuel.
+  //
+  // Avant : on préservait le tracker ouvert pour ne pas perdre l'accès
+  // à ⏹️ Stop. Mais ça créait une inconsistance UX (1 menu peut rester
+  // ouvert pendant qu'un autre s'ouvre). Maintenant cohérent partout :
+  // 1 seul menu ouvert à la fois (sauf clic externe qui respecte
+  // toujours le modeActif via _initClickExterieur, anti-fermeture
+  // accidentelle).
   Object.keys(_groupes).forEach(function(autreId) {
     if (autreId === id) return;
-    if (_groupes[autreId].modeActif) return; // ne pas fermer si mode actif
     _fermerGroupe(autreId);
   });
 

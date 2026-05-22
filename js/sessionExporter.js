@@ -2,7 +2,7 @@
 // SESSION EXPORTER — Modale d'export de session avec 3 modes
 // =========================
 // Modes disponibles :
-//   • 🚀 Full       — points + tracés + zones (sans tracker, sans mesure)
+//   • 🚀 Full       — points + tracés + zones + structures + mesure (sans tracker GPS)
 //   • 🎨 Avancé     — sélection fine + sortie 1 fichier ou ZIP multi-fichiers
 //                     (peut inclure le tracker en option)
 //   • 🔄 Conversion — convertit en calque de données (devmap-data) prêt à
@@ -374,6 +374,12 @@
       // l'export session. Rétrocompat : si getStructures n'existe pas
       // (ancien build), retourne array vide → pas de breakage.
       structures: window.getStructures   ? window.getStructures()    : [],
+      // 🆕 v1.9.3-A1.b.2.5 (KARMA "qu'il soit exporter dans l'export
+      // session") : mesure de distance dans l'export. Avant, elle était
+      // explicitement EXCLUE du mode Full / Avancé (commentaire ligne 5
+      // "sans mesure"). Maintenant incluse car KARMA en a besoin pour
+      // retrouver ses mesures entre sessions / appareils.
+      mesure:    window.getMeasurePoints ? window.getMeasurePoints()  : [],
       trackerOk: !!(window.getTrackingPosition && window.getTrackingPosition()),
       trackerPath: window.getTrackingPath ? window.getTrackingPath() : []
     };
@@ -548,7 +554,7 @@
     return `
       <div class="kta-ses-intro">
         Exporte la session complète pour pouvoir la réimporter et reprendre votre travail.
-        <br><span style="color:#8892a4;">N'inclut pas la mesure de distance ni la position du tracker.</span>
+        <br><span style="color:#8892a4;">Inclut points, tracés, zones, structures et mesure. Le tracker GPS reste exclu (état runtime éphémère).</span>
       </div>
       <div class="kta-ses-summary">
         <div>✏️ <strong>${d.points.length}</strong> point${d.points.length > 1 ? "s" : ""} ajouté${d.points.length > 1 ? "s" : ""}</div>
@@ -637,6 +643,8 @@
         ${rowSub("adv_structures_mur",      "🔵 Mur",                   structuresByType["mur"].length,      true)}
         ${rowSub("adv_structures_front-1",  "🟧 Front de taille 1ère",  structuresByType["front-1"].length,  true)}
         ${rowSub("adv_structures_front-2",  "🟨 Front de taille 2e",    structuresByType["front-2"].length,  true)}
+
+        ${row("adv_mesure", "📐 Mesure de distance", (d.mesure || []).length, (d.mesure || []).length > 0)}
 
         <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
@@ -995,9 +1003,12 @@
   // ---------- FULL ----------
   function _exportFull() {
     const d = _compter();
-    // 🆕 v1.9.3-A1.a : structures comptent aussi pour le test "session vide"
+    // 🆕 v1.9.3-A1.a + A1.b.2.5 : structures + mesure comptent aussi
+    // pour le test "session vide" (sinon un user qui n'a fait QUE de
+    // la mesure verrait "session vide" alors qu'il a contenu).
+    const mesureLen = (d.mesure || []).length;
     if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
-        && (d.structures || []).length === 0) {
+        && (d.structures || []).length === 0 && mesureLen === 0) {
       alert("Rien à exporter — la session est vide.");
       return;
     }
@@ -1009,7 +1020,10 @@
       roads:        d.roads,
       zones:        d.zones,
       // 🆕 v1.9.3-A1.a : structures (piliers + murs) dans l'export Full
-      structures:   d.structures || []
+      structures:   d.structures || [],
+      // 🆕 v1.9.3-A1.b.2.5 : mesure dans l'export Full (objet avec points
+      // pour cohérence avec le format attendu en import).
+      measure:      { points: d.mesure || [] }
     };
     _telechargerJSON(session, _filename("session"));
     _fermer();
@@ -1067,8 +1081,13 @@
       path: d.trackerPath
     } : null;
 
+    // 🆕 v1.9.3-A1.b.2.5 : checkbox mesure (UI fallback ON si absente)
+    const incMesureCb = document.getElementById("adv_mesure");
+    const incMesure = incMesureCb ? incMesureCb.checked : true;
+    const mesurePts = incMesure ? (d.mesure || []) : [];
+
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
-                + filteredStructures.length + (tracker ? 1 : 0);
+                + filteredStructures.length + mesurePts.length + (tracker ? 1 : 0);
     if (total === 0) {
       alert("Rien à exporter — sélectionnez au moins une catégorie.");
       return;
@@ -1088,17 +1107,19 @@
       if (filteredZones.length)      session.zones        = filteredZones;
       // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
       if (filteredStructures.length) session.structures   = filteredStructures;
+      // 🆕 v1.9.3-A1.b.2.5 : mesure dans le JSON Avancé
+      if (mesurePts.length)          session.measure      = { points: mesurePts };
       if (tracker)                   session.tracker      = tracker;
 
       _telechargerJSON(session, _filename("session"));
       _fermer();
     } else {
       // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
-      _genererZipAdvanced(filteredPoints, filteredRoads, filteredZones, filteredStructures, tracker);
+      _genererZipAdvanced(filteredPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, tracker);
     }
   }
 
-  function _genererZipAdvanced(points, roads, zones, structures, tracker) {
+  function _genererZipAdvanced(points, roads, zones, structures, mesurePts, tracker) {
     if (typeof JSZip === "undefined") {
       alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
       return;
@@ -1116,6 +1137,8 @@
     if (zones.length)      file("session_zones.json",      { zones: zones });
     // 🆕 v1.9.3-A1.a : fichier dédié pour les structures dans le ZIP Avancé
     if (structures.length) file("session_structures.json", { structures: structures });
+    // 🆕 v1.9.3-A1.b.2.5 : fichier dédié pour la mesure dans le ZIP Avancé
+    if (mesurePts && mesurePts.length) file("session_measure.json", { measure: { points: mesurePts } });
     if (tracker)           file("session_tracker.json",    { tracker: tracker });
 
     zip.generateAsync({ type: "blob" }).then(function(blob) {
