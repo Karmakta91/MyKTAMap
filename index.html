@@ -51,7 +51,16 @@
 
   <!-- ICON CHROME INSTALL-->
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111827">
+<!-- 🆕 v1.9.2-rollback4 (KARMA "premier chargement barre noire, après
+     Leaflet me la met comme je veux") : theme-color aligné à la
+     couleur de DÉPART du gradient header refonte (#1a1f2e). Ainsi le
+     status bar tinté par theme-color (Safari mobile, Android Chrome)
+     correspond visuellement au header refonte qui s'affiche après
+     chargement d'un plan. Avant : #111827 (un peu plus sombre, créait
+     un léger contraste perçu comme "saut de couleur"). Sur iPhone PWA
+     standalone, c'est apple-mobile-web-app-status-bar-style qui prime
+     (= black opaque), mais theme-color est utile partout ailleurs. -->
+<meta name="theme-color" content="#1a1f2e">
 </head>
 
 <body>
