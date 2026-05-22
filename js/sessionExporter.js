@@ -370,6 +370,10 @@
       points:    window.getEditorPoints  ? window.getEditorPoints()  : [],
       roads:     window.getRoads         ? window.getRoads()         : [],
       zones:     window.getZones         ? window.getZones()         : [],
+      // 🆕 v1.9.3-A1.a : structures (piliers + murs) incluses dans
+      // l'export session. Rétrocompat : si getStructures n'existe pas
+      // (ancien build), retourne array vide → pas de breakage.
+      structures: window.getStructures   ? window.getStructures()    : [],
       trackerOk: !!(window.getTrackingPosition && window.getTrackingPosition()),
       trackerPath: window.getTrackingPath ? window.getTrackingPath() : []
     };
@@ -966,7 +970,9 @@
   // ---------- FULL ----------
   function _exportFull() {
     const d = _compter();
-    if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0) {
+    // 🆕 v1.9.3-A1.a : structures comptent aussi pour le test "session vide"
+    if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
+        && (d.structures || []).length === 0) {
       alert("Rien à exporter — la session est vide.");
       return;
     }
@@ -976,7 +982,9 @@
       date_export: new Date().toISOString(),
       editorPoints: d.points,
       roads:        d.roads,
-      zones:        d.zones
+      zones:        d.zones,
+      // 🆕 v1.9.3-A1.a : structures (piliers + murs) dans l'export Full
+      structures:   d.structures || []
     };
     _telechargerJSON(session, _filename("session"));
     _fermer();
@@ -987,12 +995,23 @@
     const d = _compter();
     const incPoints = document.getElementById("adv_points")?.checked;
     const incTracker = document.getElementById("adv_tracker")?.checked;
+    // 🆕 v1.9.3-A1.a : checkbox pour structures (optionnel, default ON
+    // si la checkbox n'existe pas encore dans l'UI → fallback inclus).
+    const incStructuresCb = document.getElementById("adv_structures");
+    const incStructures = incStructuresCb ? incStructuresCb.checked : true;
 
     const roadTypes = ["principal", "secondaire", "chemin"].filter(function(t) {
       return document.getElementById("adv_roads_" + t)?.checked;
     });
     const zoneTypes = ["eau", "remblais", "effondrement", "inaccessible"].filter(function(t) {
       return document.getElementById("adv_zones_" + t)?.checked;
+    });
+    // 🆕 v1.9.3-A1.a : sous-types structures filtables. Si aucune checkbox
+    // par type n'existe encore dans l'UI (= UI A1.a minimal), on inclut
+    // les 3 sous-types par défaut.
+    const structureTypes = ["pilier-1", "pilier-2", "mur"].filter(function(t) {
+      const cb = document.getElementById("adv_structures_" + t);
+      return cb ? cb.checked : true;
     });
 
     // 🪜 v169 (Karma_dev) : jonctions interniveau toujours préservées dans
@@ -1005,6 +1024,10 @@
       return roadTypes.indexOf(r.type) >= 0;
     });
     const filteredZones = (d.zones || []).filter(function(z) { return zoneTypes.indexOf(z.type) >= 0; });
+    // 🆕 v1.9.3-A1.a : filtrage structures par type coché.
+    const filteredStructures = incStructures
+      ? (d.structures || []).filter(function(s) { return structureTypes.indexOf(s.type) >= 0; })
+      : [];
 
     // Filtrer les points par tags cochés
     let filteredPoints = [];
@@ -1019,7 +1042,8 @@
       path: d.trackerPath
     } : null;
 
-    const total = filteredPoints.length + filteredRoads.length + filteredZones.length + (tracker ? 1 : 0);
+    const total = filteredPoints.length + filteredRoads.length + filteredZones.length
+                + filteredStructures.length + (tracker ? 1 : 0);
     if (total === 0) {
       alert("Rien à exporter — sélectionnez au moins une catégorie.");
       return;
@@ -1034,20 +1058,22 @@
         version: "1.0",
         date_export: new Date().toISOString()
       };
-      if (filteredPoints.length)  session.editorPoints = filteredPoints;
-      if (filteredRoads.length)   session.roads        = filteredRoads;
-      if (filteredZones.length)   session.zones        = filteredZones;
-      if (tracker)                session.tracker      = tracker;
+      if (filteredPoints.length)     session.editorPoints = filteredPoints;
+      if (filteredRoads.length)      session.roads        = filteredRoads;
+      if (filteredZones.length)      session.zones        = filteredZones;
+      // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
+      if (filteredStructures.length) session.structures   = filteredStructures;
+      if (tracker)                   session.tracker      = tracker;
 
       _telechargerJSON(session, _filename("session"));
       _fermer();
     } else {
       // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
-      _genererZipAdvanced(filteredPoints, filteredRoads, filteredZones, tracker);
+      _genererZipAdvanced(filteredPoints, filteredRoads, filteredZones, filteredStructures, tracker);
     }
   }
 
-  function _genererZipAdvanced(points, roads, zones, tracker) {
+  function _genererZipAdvanced(points, roads, zones, structures, tracker) {
     if (typeof JSZip === "undefined") {
       alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
       return;
@@ -1060,10 +1086,12 @@
       zip.file(name, JSON.stringify(obj, null, 2));
     }
 
-    if (points.length) file("session_points.json", { editorPoints: points });
-    if (roads.length)  file("session_roads.json",  { roads: roads });
-    if (zones.length)  file("session_zones.json",  { zones: zones });
-    if (tracker)       file("session_tracker.json",{ tracker: tracker });
+    if (points.length)     file("session_points.json",     { editorPoints: points });
+    if (roads.length)      file("session_roads.json",      { roads: roads });
+    if (zones.length)      file("session_zones.json",      { zones: zones });
+    // 🆕 v1.9.3-A1.a : fichier dédié pour les structures dans le ZIP Avancé
+    if (structures.length) file("session_structures.json", { structures: structures });
+    if (tracker)           file("session_tracker.json",    { tracker: tracker });
 
     zip.generateAsync({ type: "blob" }).then(function(blob) {
       _telechargerBlob(blob, _filename("session", "zip"));
@@ -1087,6 +1115,10 @@
     const incPoints = document.getElementById("conv_points")?.checked;
     const incRoads  = document.getElementById("conv_roads")?.checked;
     const incZones  = document.getElementById("conv_zones")?.checked;
+    // 🆕 v1.9.3-A1.a : structures dans la conversion session → data layer.
+    // Default ON si la checkbox n'existe pas encore (A1.a UI minimal).
+    const incStructuresCb = document.getElementById("conv_structures");
+    const incStructures = incStructuresCb ? incStructuresCb.checked : true;
     const gran = document.querySelector('input[name="conv_gran"]:checked')?.value || "basic";
 
     // Filtrer les points par tags cochés
@@ -1126,14 +1158,25 @@
       ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
       : [];
 
-    const total = filteredPoints.length + filteredRoads.length + filteredZones.length;
+    // 🆕 v1.9.3-A1.a : filtrage structures par type (3 sous-types)
+    const structureTypesActifs = {
+      "pilier-1": document.getElementById("conv_structures_pilier-1")?.checked ?? true,
+      "pilier-2": document.getElementById("conv_structures_pilier-2")?.checked ?? true,
+      "mur":      document.getElementById("conv_structures_mur")?.checked      ?? true
+    };
+    const filteredStructures = incStructures
+      ? (d.structures || []).filter(function(s) { return structureTypesActifs[s.type] !== false; })
+      : [];
+
+    const total = filteredPoints.length + filteredRoads.length + filteredZones.length
+                + filteredStructures.length;
     if (total === 0) {
       alert("Rien à convertir — sélectionnez au moins une catégorie / un type non vide.");
       return;
     }
 
     if (gran === "basic") {
-      // Granularité basique : 1 fichier par catégorie (max 3)
+      // Granularité basique : 1 fichier par catégorie (max 4)
       const files = [];
       if (filteredPoints.length) {
         files.push({ name: "points.json", payload: { data: filteredPoints } });
@@ -1143,6 +1186,10 @@
       }
       if (filteredZones.length) {
         files.push({ name: "zones.json", payload: { data: [], zones: filteredZones } });
+      }
+      // 🆕 v1.9.3-A1.a : 4e catégorie en granularité basique
+      if (filteredStructures.length) {
+        files.push({ name: "structure.json", payload: { data: [], structures: filteredStructures } });
       }
       _telechargerConversionFiles(files);
     } else {
@@ -1175,6 +1222,19 @@
         });
       }
 
+      // 🆕 v1.9.3-A1.a : structures en granularité fine, 1 fichier par
+      // sous-type (pilier-1 / pilier-2 / mur). Format de payload :
+      // { data: [], structures: [...] } pour rester un data layer valide
+      // chargeable directement comme structure.json.
+      if (filteredStructures.length) {
+        const byType = _trierParType(filteredStructures, ["pilier-1", "pilier-2", "mur"]);
+        ["pilier-1", "pilier-2", "mur"].forEach(function(t) {
+          if (byType[t].length) {
+            files.push({ name: "structures_" + t + ".json", payload: { data: [], structures: byType[t] } });
+          }
+        });
+      }
+
       _telechargerConversionFiles(files);
     }
   }
@@ -1191,9 +1251,14 @@
                  : [];
     const roads  = Array.isArray(j.roads) ? j.roads : [];
     const zones  = Array.isArray(j.zones) ? j.zones : [];
+    // 🆕 v1.9.3-A1.a : structures dans le sens data layer → session.
+    // Rétrocompat : fichiers data layer pré-A1.a n'ont pas `structures`
+    // → tableau vide, pas de breakage.
+    const structures = Array.isArray(j.structures) ? j.structures : [];
 
-    if (points.length === 0 && roads.length === 0 && zones.length === 0) {
-      alert("Le fichier source ne contient ni points, ni tracés, ni zones convertibles.");
+    if (points.length === 0 && roads.length === 0 && zones.length === 0
+        && structures.length === 0) {
+      alert("Le fichier source ne contient ni points, ni tracés, ni zones, ni structures convertibles.");
       return;
     }
 
@@ -1202,9 +1267,10 @@
       version:     "1.0",
       date_export: new Date().toISOString()
     };
-    if (points.length) session.editorPoints = points;
-    if (roads.length)  session.roads        = roads;
-    if (zones.length)  session.zones        = zones;
+    if (points.length)     session.editorPoints = points;
+    if (roads.length)      session.roads        = roads;
+    if (zones.length)      session.zones        = zones;
+    if (structures.length) session.structures   = structures;
 
     // Nom du fichier de sortie : basé sur le fichier source
     const baseName = (_convUploadedName || "data").replace(/\.json$/i, "");
