@@ -63,7 +63,7 @@ function afficherPlanner() {
   modal.className = "kta-readme-modal-overlay";
 
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:660px;">
+    <div class="kta-readme-modal-boite kta-planner-modal-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">📦 Créer / Modifier un plan</span>
         <button class="kta-panneau-close" id="kta-planner-close">✕</button>
@@ -383,6 +383,51 @@ function afficherPlanner() {
           </div>
         </div>
 
+        <!-- 7. 🌐 GÉORÉFÉRENCEMENT GPS (optionnel, v1.14.20) -->
+        <!-- Embarque un calibrage 2 points (plan x/y ↔ GPS lat/lng) directement
+             dans le plan-config.json sous `plan.georef`. Rétro-compat absolue :
+             champ optionnel, ignoré par les anciennes versions. Si présent et
+             qu'aucun calibrage local n'existe pour ce plan au chargement, main.js
+             le propage vers KmzExport.setCalibration → auto-rempli dans 📡 Export
+             externe ET dans ⚙️ Réglages > 🌐 Géoréférencement (mode map). -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🌐 Géoréférencement GPS <span class="kta-planner-hint">(optionnel)</span></div>
+          <p class="kta-planner-info">
+            Embarque un <strong>calibrage 2 points</strong> dans le plan généré.
+            L'app pourra ensuite exporter en <strong>KMZ / GPX géolocalisé</strong>
+            (Google Earth, OsmAnd, Strava…) ou ré-importer un GPX externe sans
+            re-saisie. <strong>Laisse vide</strong> si tu n'as pas les coordonnées
+            GPS — pleinement rétro-compatible.
+          </p>
+          <div class="kta-kmz-section" style="margin:8px 0;">
+            <div class="kta-kmz-section-titre">📍 Point A</div>
+            <div class="kta-kmz-pt-grille">
+              <label class="kta-kmz-lbl">Plan x :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_x"   type="number" step="any">
+              <label class="kta-kmz-lbl">Plan y :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_y"   type="number" step="any">
+              <label class="kta-kmz-lbl">GPS lat :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_lat" type="number" step="any" placeholder="48.8580">
+              <label class="kta-kmz-lbl">GPS lng :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_lng" type="number" step="any" placeholder="2.2945">
+            </div>
+          </div>
+          <div class="kta-kmz-section" style="margin:8px 0;">
+            <div class="kta-kmz-section-titre">📍 Point B</div>
+            <div class="kta-kmz-pt-grille">
+              <label class="kta-kmz-lbl">Plan x :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_x"   type="number" step="any">
+              <label class="kta-kmz-lbl">Plan y :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_y"   type="number" step="any">
+              <label class="kta-kmz-lbl">GPS lat :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_lat" type="number" step="any" placeholder="48.8520">
+              <label class="kta-kmz-lbl">GPS lng :</label>
+              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_lng" type="number" step="any" placeholder="2.3050">
+            </div>
+          </div>
+          <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
+        </div>
+
         <div id="kta-planner-erreur" class="kta-conv-erreur" style="display:none;"></div>
 
         <div class="kta-conv-actions" style="margin-top:16px;">
@@ -632,6 +677,22 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
+
+  // 🌐 v1.14.20 — Géoréférencement GPS : si le plan-config.json importé
+  // contient `plan.georef = { pointA, pointB }`, on pré-remplit les 8
+  // inputs. Sinon les inputs restent vides (le champ est optionnel).
+  if (plan.georef && plan.georef.pointA && plan.georef.pointB) {
+    const gA = plan.georef.pointA;
+    const gB = plan.georef.pointB;
+    sv("pl_geo_A_x",   gA.x   ?? "");
+    sv("pl_geo_A_y",   gA.y   ?? "");
+    sv("pl_geo_A_lat", gA.lat ?? "");
+    sv("pl_geo_A_lng", gA.lng ?? "");
+    sv("pl_geo_B_x",   gB.x   ?? "");
+    sv("pl_geo_B_y",   gB.y   ?? "");
+    sv("pl_geo_B_lat", gB.lat ?? "");
+    sv("pl_geo_B_lng", gB.lng ?? "");
+  }
 
   // 🧱 Tiling V2 : checkbox visible selon le contexte (cf _majVisibiliteCheckboxV2)
   //   - Source V2 (section `tiling` presente) → defaut COCHE (re-tilage)
@@ -2265,6 +2326,42 @@ async function _genererZip() {
     };
     if (multiLevel)     planObj.multiLevel = true;
     if (tilingManifest) planObj.tiledV2    = true;
+
+    // 🌐 v1.14.20 — Géoréférencement GPS optionnel. Si TOUS les 8 champs
+    // sont remplis ET que le calibrage est valide (transform construisible),
+    // on embarque `plan.georef = { pointA, pointB }`. Sinon : champ totalement
+    // absent → rétro-compat absolue (les vieilles versions ignorent un champ
+    // inconnu sans broncher, cf. pattern multiLevel).
+    function _readGeo(id) {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const v = el.value;
+      if (v === "" || v == null) return null;
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : null;
+    }
+    const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
+                    lat: _readGeo("pl_geo_A_lat"), lng: _readGeo("pl_geo_A_lng") };
+    const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
+                    lat: _readGeo("pl_geo_B_lat"), lng: _readGeo("pl_geo_B_lng") };
+    const _allGeoFilled =
+      _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
+      _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;
+    if (_allGeoFilled) {
+      // Validation transform (refus si points colinéaires / distance nulle)
+      try {
+        if (window.KmzExport && typeof window.KmzExport.buildTransform === "function") {
+          window.KmzExport.buildTransform(
+            { x: _geoA.x, y: _geoA.y }, { x: _geoB.x, y: _geoB.y },
+            { lat: _geoA.lat, lng: _geoA.lng }, { lat: _geoB.lat, lng: _geoB.lng }
+          );
+        }
+        planObj.georef = { pointA: _geoA, pointB: _geoB };
+      } catch(e) {
+        _plannerErreur("Calibrage GPS invalide : " + e.message);
+        throw new Error("abort");
+      }
+    }
 
     const planConfigObj = {
       plan: planObj,

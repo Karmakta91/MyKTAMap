@@ -4952,6 +4952,43 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
    PLANNER — créateur de plan ZIP
    ============================================== */
 
+/* 🆕 v1.14.20 (KARMA « rend le modal générateur mieux géré sur PC ») :
+   la modale du générateur utilise désormais une largeur dédiée plus
+   confortable en PC (1100px max) tout en restant raisonnable. Le corps
+   passe en grille 2 colonnes sur écran large (≥1280px) pour réduire le
+   scroll vertical interminable — les sections s'affichent côte à côte
+   et l'user voit plus de contexte sans scroller. Sur mobile/tablette,
+   tout reste en colonne unique comme avant. */
+.kta-planner-modal-boite {
+  width: min(720px, 96vw) !important;
+  max-width: min(720px, 96vw) !important;
+}
+@media (min-width: 1024px) {
+  .kta-planner-modal-boite {
+    width: min(1100px, 94vw) !important;
+    max-width: min(1100px, 94vw) !important;
+  }
+}
+/* Layout 2 colonnes du CORPS en écran très large — les .kta-aide-section
+   filles se distribuent automatiquement en grille 2 colonnes (la 1ère
+   section « Importer KMZ » et la dernière « Actions » prennent toute la
+   largeur pour rester en pleine page). */
+@media (min-width: 1280px) {
+  #kta-planner-corps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 18px;
+    align-items: start;
+  }
+  /* Sections qui doivent rester en pleine largeur (importance / actions /
+     erreur) — span sur les 2 colonnes. */
+  #kta-planner-corps > .kta-aide-section:first-of-type,
+  #kta-planner-corps > #kta-planner-erreur,
+  #kta-planner-corps > .kta-conv-actions {
+    grid-column: 1 / -1;
+  }
+}
+
 .kta-planner-grille {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -8548,6 +8585,26 @@ a.kta-level-btn {
   border: 1px solid rgba(180, 82, 255, 0.40);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(180, 82, 255, 0.10);
   max-width: 560px;
+  /* v1.14.20 — KARMA « bug du modal Conversion V2 - Ressource nécessaire
+     en longueur notre grand classique ». Application du pattern containment
+     universel (déjà utilisé sur les modales alerte / lock / theme-confirm /
+     niv / légende / jct / iti / lost / session export) : hauteur auto
+     bornée à 88vh + flex column → le corps scrollable se borne dans la
+     boîte au lieu de la faire déborder. */
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+/* Header et footer figés ; le corps prend tout l'espace restant et scrolle. */
+.kta-v2-warn-boite .kta-readme-modal-header,
+.kta-v2-warn-boite .kta-tracker-warn-actions {
+  flex: 0 0 auto !important;
+}
+.kta-v2-warn-boite .kta-readme-modal-corps {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 .kta-v2-warn-header .kta-readme-modal-titre {
   color: #d29bff;

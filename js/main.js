@@ -616,11 +616,35 @@ async function chargerPlanServeur(planPath, registryEntry, presetChoisi) {
     if (window.PLAN_CONFIG.plan.multiLevel === true) planEntry.multiLevel = true;
     if (window.PLAN_CONFIG.plan.tiledV2    === true) planEntry.tiledV2    = true;
     _enregistrerPlanCharge(planEntry);
+
+    // 🌐 v1.14.20 — propagation du calibrage GPS embarqué dans le
+    // plan-config.json (plan.georef) vers KmzExport.setCalibration. Permet
+    // l'auto-remplissage dans 📡 Export externe et ⚙️ Réglages > 🌐
+    // Géoréférencement (mode map) sans intervention de l'user. Skip si un
+    // calibrage local existe déjà pour ce planId (priorité à l'user).
+    _propagerGeorefVersKmzExport(id);
   }
 
   _appEnCours    = false;
   _importDemande = false;
   await lancerApplication();
+}
+
+// 🌐 v1.14.20 — Helper de propagation du calibrage embarqué dans le
+// plan-config.json → KmzExport. Idempotent : ne touche pas un calibrage
+// local déjà saisi par l'user (priorité à la saisie manuelle).
+function _propagerGeorefVersKmzExport(planId) {
+  try {
+    const georef = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef;
+    if (!georef || !georef.pointA || !georef.pointB) return;
+    if (!window.KmzExport || typeof window.KmzExport.setCalibration !== "function") return;
+    // Skip si un calibrage local existe déjà (l'user a saisi manuellement → on respecte)
+    if (window.KmzExport.getCalibration && window.KmzExport.getCalibration(planId)) return;
+    window.KmzExport.setCalibration(planId, georef);
+    console.log("[Main] 🌐 Géoréférencement plan.georef propagé vers KmzExport (planId=" + planId + ")");
+  } catch(e) {
+    console.warn("[Main] _propagerGeorefVersKmzExport :", e);
+  }
 }
 
 // =========================
@@ -777,6 +801,11 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
     }
 
     _enregistrerPlanCharge(entry);
+
+    // 🌐 v1.14.20 — Propagation du calibrage GPS embarqué dans le
+    // plan-config.json vers KmzExport. Idempotent (skip si calibrage local
+    // existe déjà). Voir _propagerGeorefVersKmzExport pour les détails.
+    _propagerGeorefVersKmzExport(id);
   }
 
   // 🆕 v1.9.3-B1d.γ.3 : extraction + restore des photos depuis le ZIP plan.
