@@ -10851,16 +10851,19 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 
 /* === Palette thème clair === */
 body.kta-theme-light {
-  --kta-light-bg:           #f0e8d8;  /* beige cataphile, même que kta-emergency-light */
-  --kta-light-bg-elevated:  #fdf8eb;  /* fond modale, légèrement plus clair */
-  --kta-light-bg-deep:      #e5dcc5;  /* sidebar background, plus saturé */
+  /* 🔧 v1.13.0-fix6 (KARMA "en fond de body, je veux la même couleur que
+     le footer et le top") : body background unifié avec header + footer en
+     brun-beige #c9b88f. Le contraste se fait désormais via les modales
+     (#fdf8eb presque blanc) qui ressortent sur fond brun. */
+  --kta-light-bg:           #c9b88f;  /* body + container Leaflet (= bar) */
+  --kta-light-bg-elevated:  #fdf8eb;  /* fond modale, presque blanc */
+  --kta-light-bg-deep:      #e5dcc5;  /* sidebar interne + table headers */
   /* 🔧 v1.13.0-fix4 (KARMA "plus de contraste en mode clair, sur le top
-     comme en footer") : nouvelles teintes brun-beige nettement plus
-     contrastées que le body #f0e8d8, pour différencier visuellement
-     header + status bar du contenu principal. */
+     comme en footer") : bar variables, alignées sur --kta-light-bg
+     depuis fix6 (= même couleur partout pour la zone "fond"). */
   --kta-light-bg-bar:       #c9b88f;  /* header + footer status bar */
   --kta-light-bg-bar-deep:  #b8a576;  /* hover / actif sur bar items */
-  --kta-light-bg-bar-border:#9a8754; /* bordure forte de séparation bar / body */
+  --kta-light-bg-bar-border:#9a8754;  /* bordure forte de séparation bar / body */
   --kta-light-text:         #2a2620;  /* texte principal sombre */
   --kta-light-text-muted:   #6b6354;  /* texte secondaire */
   --kta-light-text-dim:     #8a8270;  /* texte tertiaire / dashes */
@@ -11569,7 +11572,8 @@ body.kta-theme-light {
 
 /* === LOADER plein écran === */
 body.kta-theme-light #planLoaderOverlay {
-  background: rgba(240, 232, 216, 0.96) !important;
+  /* 🔧 v1.13.0-fix6 : aligné sur la nouvelle couleur body #c9b88f */
+  background: rgba(201, 184, 143, 0.96) !important;
 }
 body.kta-theme-light #planLoaderBox {
   background: var(--kta-light-bg-elevated) !important;
