@@ -12312,6 +12312,168 @@ html.kta-theme-light #kta-alert-charte {
   background: rgba(40, 32, 20, 0.85) !important;
 }
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix11 — PLAN SWITCHER (clic titre) + SPLASH chargement plan
+ * ============================================================================
+ * KARMA "le bouton qui permet de lister les plans en mode carte quand
+ * on clique sur le titre, est en sombre, pareil pour le module quand
+ * le plan est en train de se charger quand on le lance depuis le home"
+ *
+ * 2 zones à couvrir :
+ *
+ *   1. Plan switcher (modale qui apparait au clic sur le titre du plan
+ *      dans le header mode carte) : J'avais fait des overrides sur la
+ *      classe .kta-refonte-plan-switch-* (préfixe "refonte") qui N'EXISTE
+ *      PAS. Les vraies classes sont .kta-plan-switcher-* (sans le refonte).
+ *
+ *   2. Splash KARMA (#splashOverlay) affiché pendant le chargement d'un
+ *      plan depuis la home : j'avais décidé de le garder en dark (cinéma-
+ *      tique) mais KARMA veut qu'il respecte le thème clair.
+ * ============================================================================ */
+
+/* === PLAN SWITCHER (clic titre header mode carte) === */
+html.kta-theme-light .kta-plan-switcher-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+  box-shadow: 0 10px 40px rgba(80, 60, 30, 0.18) !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-header {
+  background: #e5dcc5 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-titre {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-corps {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+}
+/* Bloc plan en cours (current) — jaune charte */
+html.kta-theme-light .kta-plan-switcher-current {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border: 1px solid rgba(244, 197, 66, 0.45) !important;
+}
+html.kta-theme-light .kta-plan-switcher-current-label {
+  color: #8b5a00 !important;
+}
+html.kta-theme-light .kta-plan-switcher-current-name {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-plan-switcher-current-icon {
+  color: #8b5a00 !important;
+}
+html.kta-theme-light .kta-plan-switcher-current-sub {
+  color: #6b6354 !important;
+}
+/* Titres de section "📚 Plans récents" / etc */
+html.kta-theme-light .kta-plan-switcher-section-titre {
+  color: #d9a82e !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+/* Lignes plans récents */
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-row {
+  background: rgba(0, 0, 0, 0.03) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-row:hover,
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-row:focus-visible {
+  background: rgba(244, 197, 66, 0.15) !important;
+  border-color: rgba(244, 197, 66, 0.45) !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-icon {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-name {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-sub {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-row-arrow {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-plan-switcher-modal-boite .kta-switcher-empty {
+  color: #6b6354 !important;
+}
+/* Footer + CTA "📚 Voir tous mes plans" */
+html.kta-theme-light .kta-plan-switcher-modal-footer {
+  background: #e5dcc5 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-plan-switcher-cta {
+  background: #f4c542 !important;
+  color: #2a2620 !important;
+  border: 1px solid #d9a82e !important;
+  font-weight: 600 !important;
+}
+html.kta-theme-light .kta-plan-switcher-cta:hover,
+html.kta-theme-light .kta-plan-switcher-cta:focus-visible {
+  background: #d9a82e !important;
+  color: #1a1612 !important;
+}
+
+/* === SPLASH (chargement plan, #splashOverlay) ===
+   KARMA "pareil pour le module quand le plan est en train de se charger
+   quand on le lance depuis le home". Le splash original (radial-gradient
+   noir) est remplacé en mode clair par un gradient beige-ocre cohérent
+   avec le reste de l'app, tout en gardant l'identité KARMA (titre jaune
+   charte, animations cinématiques inchangées). */
+html.kta-theme-light #splashOverlay {
+  background: radial-gradient(ellipse at center, #f0e8d8 0%, #c9b88f 100%) !important;
+}
+html.kta-theme-light #splashTitle {
+  color: #8b5a00 !important;
+  text-shadow: 0 2px 18px rgba(244, 197, 66, 0.45) !important;
+}
+html.kta-theme-light #splashSubtitle {
+  color: #6b6354 !important;
+}
+html.kta-theme-light #splashProgressTrack {
+  background: rgba(0, 0, 0, 0.10) !important;
+}
+html.kta-theme-light #splashProgressBar {
+  /* La barre de progression garde son gradient jaune charte mais on
+     ajuste le glow pour le fond clair */
+  box-shadow: 0 0 12px rgba(244, 197, 66, 0.65) !important;
+}
+/* Échelle 0-100 sous la barre — bandes alternées : remplace le #1a1f2e
+   sombre par un brun-beige cohérent fond clair */
+html.kta-theme-light .splash-scale-bar {
+  background: linear-gradient(
+    to right,
+    #f4c542 0%,    #f4c542 10%,
+    #9a8754 10%,   #9a8754 20%,
+    #f4c542 20%,   #f4c542 30%,
+    #9a8754 30%,   #9a8754 40%,
+    #f4c542 40%,   #f4c542 50%,
+    #9a8754 50%,   #9a8754 60%,
+    #f4c542 60%,   #f4c542 70%,
+    #9a8754 70%,   #9a8754 80%,
+    #f4c542 80%,   #f4c542 90%,
+    #9a8754 90%,   #9a8754 100%
+  ) !important;
+  border-color: rgba(154, 135, 84, 0.65) !important;
+}
+html.kta-theme-light .splash-scale-labels span {
+  color: #6b6354 !important;
+}
+html.kta-theme-light #splashLicense {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .splash-license-detail {
+  color: #8a8270 !important;
+}
+/* Crédits libs en bas du splash */
+html.kta-theme-light #splashCredits,
+html.kta-theme-light .splash-credits {
+  color: #6b6354 !important;
+}
+
 /* === Modale Configuration home (loaderConfigModal) avec wrapper kta-loader-config-boite === */
 html.kta-theme-light .kta-loader-config-boite {
   background: #fdf8eb !important;
