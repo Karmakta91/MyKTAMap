@@ -285,17 +285,28 @@ function afficherPlanner() {
           </div>
         </div>
 
-        <!-- v1.14.20-hotfix3 (KARMA « remonte calque de donnée, il tout en
-             bas il y a un bug ») : la section 📊 Calques de données est
-             désormais placée AVANT la section 🗂️ Calques image dans le DOM
-             pour qu'elle remonte dans la col-left en layout PC (ne se
-             retrouve plus seule en bas avec un trou à droite). L'ordre
-             reste logique : les calques de données contiennent les points/
-             tracés/zones, c'est le contenu sémantique principal d'un plan ;
-             les calques image sont plutôt de l'esthétique (légendes,
-             surimpressions). On les présente donc dans cet ordre. -->
+        <!-- v1.14.20-hotfix11 (KARMA capture : « dans générateur, met
+             calque image, juste après image principal — enlève cette
+             espace inutile ») : ordre Image → Calques image → Calques
+             de données rétabli (annule l'inversion de hotfix3). Plus
+             logique aussi : calques image (surimpressions / légendes)
+             sont liés directement à l'image principale juste au-dessus,
+             tandis que les calques de données (annotations) sont plus
+             autonomes. L'espace vide en bas à droite de la col-left
+             v1.14.20-hotfix3 disparaît avec ce nouvel ordre. -->
 
-        <!-- 3. CALQUES DONNÉES -->
+        <!-- 3. CALQUES IMAGE -->
+        <div class="kta-aide-section kta-pl-col-left">
+          <div class="kta-aide-section-titre">
+            🗂️ Calques image
+            <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
+          </div>
+          <div id="pl_imageLayers_list" class="kta-planner-layers-list">
+            <p class="kta-planner-empty">Aucun calque image</p>
+          </div>
+        </div>
+
+        <!-- 4. CALQUES DONNÉES -->
         <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">
             📊 Calques de données
@@ -324,17 +335,6 @@ function afficherPlanner() {
 
           <div id="pl_dataLayers_list" class="kta-planner-layers-list">
             <p class="kta-planner-empty">Aucun calque de données</p>
-          </div>
-        </div>
-
-        <!-- 4. CALQUES IMAGE -->
-        <div class="kta-aide-section kta-pl-col-left">
-          <div class="kta-aide-section-titre">
-            🗂️ Calques image
-            <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
-          </div>
-          <div id="pl_imageLayers_list" class="kta-planner-layers-list">
-            <p class="kta-planner-empty">Aucun calque image</p>
           </div>
         </div>
 
