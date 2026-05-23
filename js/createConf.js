@@ -2416,6 +2416,12 @@ async function _genererZip() {
 }
 
 window.afficherPlanner = afficherPlanner;
+// v1.14.20-hotfix6 : expose la modale Import KMZ pour qu'elle soit
+// utilisable depuis index.html (drop zone home qui route un KMZ direct
+// vers la conversion KMZ → ZIP MyKTAMap, sans passer par la modale
+// Planner). Accepte un fichier pré-fourni qui déclenche directement
+// l'analyse.
+window.afficherImporterKmz = _afficherImporterKmz;
 
 // =====================================================================
 // 🌍 MODALE IMPORT KMZ → ZIP MyKTAMap (Phase 1 MVP, depuis v173)

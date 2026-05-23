@@ -253,9 +253,12 @@
           <div class="loader-panel active" id="panelZip">
         <div class="zip-drop-zone" id="zipDropZone">
           <span class="zip-icon">📦</span>
-          Glisse ton archive ZIP ici<br>
+          Glisse ton archive <strong>ZIP</strong> ou un <strong>KMZ MyKTAMap</strong> ici<br>
           <span style="font-size:12px; opacity:0.6;">ou clique pour sélectionner</span>
-          <input id="zipFile" type="file" accept=".zip,application/zip">
+          <!-- v1.14.20-hotfix6 — accept étendu à .kmz : un KMZ déposé ici
+               est routé vers la modale d'import KMZ (afficherImporterKmz)
+               qui le reconvertit en ZIP MyKTAMap avec icônes préservées. -->
+          <input id="zipFile" type="file" accept=".zip,.kmz,application/zip,application/vnd.google-earth.kmz">
         </div>
         <div id="zipFileName"></div>
 
@@ -956,7 +959,23 @@
       });
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
-        zipFileName.textContent = f ? "✅ " + f.name : "";
+        if (!f) { zipFileName.textContent = ""; return; }
+        // v1.14.20-hotfix6 — si l'user a sélectionné un KMZ via le picker
+        // classique (au lieu du drag), on route vers la modale d'import
+        // KMZ comme pour le drop. Mêmes garanties : preview, conversion
+        // automatique en ZIP MyKTAMap avec icônes préservées.
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith(".kmz")) {
+          zipFileInput.value = "";  // vide le champ : on ne charge pas comme ZIP
+          if (typeof window.afficherImporterKmz === "function") {
+            zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
+            window.afficherImporterKmz(f);
+          } else {
+            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+          }
+          return;
+        }
+        zipFileName.textContent = "✅ " + f.name;
         // Sélection via input classique : pas de handle FS
         _currentFsHandle = null;
         // Note : pas d'auto-bascule de preset selon la taille — le mode "Auto" du
@@ -968,14 +987,28 @@
       zipDropZone.addEventListener("drop", function(e) {
         e.preventDefault(); zipDropZone.classList.remove("dragover");
         const f = e.dataTransfer.files[0];
-        if (f && f.name.toLowerCase().endsWith(".zip")) {
+        if (!f) return;
+        const lower = f.name.toLowerCase();
+        if (lower.endsWith(".zip")) {
           const dt = new DataTransfer(); dt.items.add(f);
           zipFileInput.files = dt.files;
           zipFileName.textContent = "✅ " + f.name;
           // Drop : pas de handle FS
           _currentFsHandle = null;
+        } else if (lower.endsWith(".kmz")) {
+          // v1.14.20-hotfix6 (KARMA « si je glisse un kmz dans Glisse ton
+          // archive zip, il me dit que je dois donner un zip ») : on route
+          // le KMZ vers la modale d'import dédiée (parse + reconstruction
+          // en ZIP MyKTAMap avec icônes/annotations préservées). L'user
+          // n'a pas à fermer ce drop et ouvrir le Générateur manuellement.
+          if (typeof window.afficherImporterKmz === "function") {
+            zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
+            window.afficherImporterKmz(f);
+          } else {
+            setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+          }
         } else {
-          setStatus("Le fichier doit être une archive .zip", true);
+          setStatus("Le fichier doit être une archive .zip ou un .kmz MyKTAMap", true);
         }
       });
 
