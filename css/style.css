@@ -11129,12 +11129,35 @@ body.kta-theme-light .kta-measure-angle-label {
   border: 1px solid var(--kta-light-border);
 }
 
-/* === Toasts (OOMGuard.showToast) === */
+/* === Toasts (OOMGuard.showToast) — 🔧 v1.13.0-fix (KARMA "Mode clair activé
+   en blanc presque invisible") : .kta-toast-msg avait color:#e8eaf0
+   hardcodé non couvert par mon ancien override .kta-toast. On force aussi
+   .kta-toast-msg, .kta-toast-close, .kta-toast-icon dans le contexte light. */
 body.kta-theme-light .kta-toast {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border-strong);
-  box-shadow: 0 4px 16px var(--kta-light-shadow);
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  border-left: 3px solid var(--kta-light-accent) !important;
+  box-shadow: 0 4px 16px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .kta-toast-msg {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-toast-icon {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-toast-close {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-toast-close:hover {
+  color: var(--kta-light-text) !important;
+}
+/* Types spécifiques — couleur de la bordure gauche */
+body.kta-theme-light .kta-toast-error {
+  border-left-color: #c0392b !important;
+}
+body.kta-theme-light .kta-toast-info {
+  border-left-color: #0a4f6b !important;
 }
 
 /* === Popups Leaflet (markers, zones) === */
@@ -11358,6 +11381,65 @@ body.kta-theme-light .leaflet-bar a.kta-disabled {
   color: var(--kta-light-text-dim) !important;
   opacity: 0.45 !important;
   cursor: not-allowed !important;
+}
+
+/* === Override global texte clair sur fond clair (catch-all) ===
+   🔧 v1.13.0-fix (KARMA "surement des effets de bord ailleurs") : nombre
+   d'éléments enfants (h1/h2/h3/p/span/li/strong/em/code/td/th dans les
+   modales et panneaux) ont un color: #e8eaf0 ou color: #fff hardcodé en
+   dark, non couverts par les overrides individuels. On force le texte
+   foncé dans le contexte light pour les conteneurs principaux du mode
+   carte (modales, popups, status bar, sidebar interne). */
+body.kta-theme-light .kta-readme-modal-corps h1,
+body.kta-theme-light .kta-readme-modal-corps h2,
+body.kta-theme-light .kta-readme-modal-corps h3,
+body.kta-theme-light .kta-readme-modal-corps h4,
+body.kta-theme-light .kta-readme-modal-corps h5,
+body.kta-theme-light .kta-readme-modal-corps p,
+body.kta-theme-light .kta-readme-modal-corps li,
+body.kta-theme-light .kta-readme-modal-corps span,
+body.kta-theme-light .kta-readme-modal-corps strong,
+body.kta-theme-light .kta-readme-modal-corps em,
+body.kta-theme-light .kta-readme-modal-corps label,
+body.kta-theme-light .kta-readme-modal-corps div {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-readme-modal-titre,
+body.kta-theme-light .kta-readme-modal-header * {
+  color: var(--kta-light-text) !important;
+}
+/* Popups Leaflet — enfants textuels */
+body.kta-theme-light .leaflet-popup-content h1,
+body.kta-theme-light .leaflet-popup-content h2,
+body.kta-theme-light .leaflet-popup-content h3,
+body.kta-theme-light .leaflet-popup-content p,
+body.kta-theme-light .leaflet-popup-content li,
+body.kta-theme-light .leaflet-popup-content span,
+body.kta-theme-light .leaflet-popup-content strong,
+body.kta-theme-light .leaflet-popup-content em,
+body.kta-theme-light .leaflet-popup-content div,
+body.kta-theme-light .leaflet-popup-content b,
+body.kta-theme-light .leaflet-popup-content a {
+  color: var(--kta-light-text) !important;
+}
+/* Footer status bar — refresh des enfants */
+body.kta-theme-light .kta-refonte-statusbar span,
+body.kta-theme-light .kta-refonte-statusbar div,
+body.kta-theme-light .kta-refonte-statusbar button {
+  color: var(--kta-light-text) !important;
+}
+/* En-tête refonte — refresh */
+body.kta-theme-light .kta-refonte-header span,
+body.kta-theme-light .kta-refonte-header div,
+body.kta-theme-light .kta-refonte-header button {
+  color: var(--kta-light-text) !important;
+}
+/* Détails modale Session — listes d'éléments */
+body.kta-theme-light .kta-refonte-session-corps span,
+body.kta-theme-light .kta-refonte-session-corps div,
+body.kta-theme-light .kta-refonte-session-corps li,
+body.kta-theme-light .kta-refonte-session-corps strong {
+  color: var(--kta-light-text);
 }
 
 /* === Splash quand on revient au mode carte (anti-FOUC) ===
