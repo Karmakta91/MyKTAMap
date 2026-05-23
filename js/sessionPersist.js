@@ -79,7 +79,15 @@
       // ne pas casser la rétrocompat (anciens payloads sans 'structures'
       // sont restaurés avec array vide via `payload.structures || []`).
       structures:   window.getStructures    ? (window.getStructures()    || []) : [],
-      measure:      window.getMeasurePoints ? (window.getMeasurePoints() || []) : []
+      // 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois,
+      // une mesure de surface, et une comme avant de distance") : les
+      // 2 mesures coexistent désormais en simultané. `measure` = la
+      // polyline DISTANCE (rétrocompat avec anciennes sessions), et
+      // `measureSurface` = le polygone SURFACE (nouveau).
+      measure:        window.getMeasurePoints        ? (window.getMeasurePoints()        || []) : [],
+      measureSurface: window.getMeasurePointsSurface ? (window.getMeasurePointsSurface() || []) : [],
+      // Mode actif (drive les clics + surligne la ligne du footer).
+      measureMode:  (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance"
       // tracker path : volontairement non persiste (cf. choix 3:b, tracker
       // experimental, ressusciter un trail fige serait trompeur sans pos.
       // recente du capteur).
@@ -311,10 +319,20 @@
         if (window.setStructures)   window.setStructures(payload.structures);
         restored.structures = payload.structures.length;
       }
-      // setMeasurePoints redessine en interne (updateMesure)
+      // 🆕 v1.12.0-fix : restore le mode actif (drive juste l'UI footer
+      // active line + cible des prochains clics, n'efface plus rien).
+      if (typeof window.setMeasureMode === "function" && typeof payload.measureMode === "string") {
+        window.setMeasureMode(payload.measureMode);
+      }
+      // setMeasurePoints (= polyline distance) — rétrocompat avec anciens payloads
       if (window.setMeasurePoints && Array.isArray(payload.measure)) {
         window.setMeasurePoints(payload.measure);
         restored.measure = payload.measure.length;
+      }
+      // 🆕 v1.12.0-fix : restore aussi le polygone surface séparément
+      if (window.setMeasurePointsSurface && Array.isArray(payload.measureSurface)) {
+        window.setMeasurePointsSurface(payload.measureSurface);
+        restored.measureSurface = payload.measureSurface.length;
       }
       // Mettre à jour le hash courant pour que le prochain poll ne détecte pas
       // les setters comme une modification utilisateur
@@ -336,7 +354,9 @@
     if (window.resetZones)       window.resetZones();
     // 🆕 v1.9.3-A1.a : structures purgées aussi lors d'un vidage
     if (window.resetStructures)  window.resetStructures();
-    if (window.setMeasurePoints) window.setMeasurePoints([]);
+    if (window.setMeasurePoints)        window.setMeasurePoints([]);
+    // 🆕 v1.12.0-fix : vide aussi la mesure de surface
+    if (window.setMeasurePointsSurface) window.setMeasurePointsSurface([]);
   }
 
   // ========== MODALE DE FEEDBACK ==========

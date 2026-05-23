@@ -68,10 +68,13 @@ function _sessionAModif() {
   // l'utilisateur perdrait ses piliers sans avertissement au switch).
   const structures = (window.getStructures    && window.getStructures())    || [];
   const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
+  // 🆕 v1.12.0-fix : surface compte aussi comme session active
+  const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
   const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
   return editorPts.length > 0 || roads.length > 0 || zones.length > 0
       || structures.length > 0
-      || measure.length > 0   || trackPath.length > 1;
+      || measure.length > 0   || measureSurf.length > 0
+      || trackPath.length > 1;
 }
 
 function _resumeSession() {
@@ -81,17 +84,20 @@ function _resumeSession() {
   const roads      = (window.getRoads         && window.getRoads())         || [];
   const zones      = (window.getZones         && window.getZones())         || [];
   const structures = (window.getStructures    && window.getStructures())    || [];
-  const measure    = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-  const trackPath  = (window.getTrackingPath  && window.getTrackingPath())  || [];
+  const measure     = (window.getMeasurePoints        && window.getMeasurePoints())        || [];
+  // 🆕 v1.12.0-fix : surface listée séparément dans le résumé
+  const measureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
+  const trackPath   = (window.getTrackingPath         && window.getTrackingPath())         || [];
 
   if (editorPts.length  > 0) items.push(editorPts.length + " point" + (editorPts.length > 1 ? "s" : "") + " ajouté" + (editorPts.length > 1 ? "s" : ""));
   if (roads.length      > 0) items.push(roads.length     + " tracé"  + (roads.length     > 1 ? "s" : ""));
   if (zones.length      > 0) items.push(zones.length     + " zone"   + (zones.length     > 1 ? "s" : ""));
   // 🆕 v1.9.3-A1.a : structures dans le résumé session (avertissement
   // au changement de plan / retour loader).
-  if (structures.length > 0) items.push(structures.length + " structure" + (structures.length > 1 ? "s" : ""));
-  if (measure.length    > 0) items.push("une mesure de distance");
-  if (trackPath.length  > 1) items.push("le parcours du tracker");
+  if (structures.length  > 0) items.push(structures.length + " structure" + (structures.length > 1 ? "s" : ""));
+  if (measure.length     > 0) items.push("une mesure de distance");
+  if (measureSurf.length > 0) items.push("une mesure de surface");
+  if (trackPath.length   > 1) items.push("le parcours du tracker");
   return items;
 }
 
@@ -612,6 +618,10 @@ function importerSessionJSON(file) {
       if (window.setMeasurePoints) {
         window.setMeasurePoints(data.measure && data.measure.points ? data.measure.points : []);
       }
+      // 🆕 v1.12.0-fix : restore aussi le polygone surface si présent dans le fichier importé
+      if (window.setMeasurePointsSurface) {
+        window.setMeasurePointsSurface(data.measureSurface && data.measureSurface.points ? data.measureSurface.points : []);
+      }
       if (window.resetRoads) window.resetRoads();
       if (window.setRoads) window.setRoads(data.roads || []);
 
@@ -913,6 +923,10 @@ function ouvrirImportSession() {
         if (window.resetMesure)        window.resetMesure();
         if (window.setMeasurePoints) {
           window.setMeasurePoints(dataParsee.measure && dataParsee.measure.points ? dataParsee.measure.points : []);
+        }
+        // 🆕 v1.12.0-fix : restore aussi le polygone surface si présent
+        if (window.setMeasurePointsSurface) {
+          window.setMeasurePointsSurface(dataParsee.measureSurface && dataParsee.measureSurface.points ? dataParsee.measureSurface.points : []);
         }
         if (window.resetRoads)         window.resetRoads();
         if (window.setRoads)           window.setRoads(dataParsee.roads || []);
@@ -1552,6 +1566,51 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🪫 Indicateur de batterie <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.12.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⚡</span><span>Chip header — en charge (vert)</span>
+            <span class="kta-aide-icone">🪫</span><span>Chip header — en décharge (couleur selon niveau)</span>
+            <span class="kta-aide-icone">🔋</span><span>Bloc 🔋 ÉTAT du mode urgence (level + état affichés en grand)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>3 points d'affichage</strong> : en-tête nouvelle interface (chip ⚡/🪫 à côté des compteurs session), footer modale 📋 Session active, bloc 🔋 ÉTAT mode urgence.
+            <strong>Warnings graduels</strong> via toast à 20 % / 10 % / 5 % (1 fois par seuil par cycle de décharge).
+            <strong>⚠️ Compatibilité limitée</strong> : Battery Status API dispo en Chromium uniquement (Android Chrome, PC Chrome/Edge).
+            Sur Safari iOS et Firefox récents, l'API a été retirée pour des raisons de privacy — la chip est alors <strong>masquée</strong>, sans message d'erreur.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📊 Stats session enrichies <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.12.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📊</span><span>Bloc stats en tête de la modale 📋 Session active</span>
+            <span class="kta-aide-icone">📋</span><span>Copier le résumé dans le presse-papier (texte plain, prêt pour Discord / SMS / mail)</span>
+            <span class="kta-aide-icone">💾</span><span>Export TXT — télécharge un fichier .txt avec le résumé complet</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Affichage : total annotations, breakdown par type (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures), <strong>distance cumulée</strong> des tracés (auto m → km), <strong>surface cumulée</strong> des zones (auto m² → ha), photos POI attachées, durée écoulée depuis le démarrage de session.
+            En multi-niveau (M-LVL), un breakdown additionnel par niveau s'affiche.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🎬 Replay de session tracker <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.12.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🎬</span><span>Bouton Replay dans le groupe 🧭 Tracker — ouvre la modale plein écran</span>
+            <span class="kta-aide-icone">▶️</span><span>Play / Pause / Restart / End — slider timeline + sélecteur de vitesse 0.5× → 10×</span>
+            <span class="kta-aide-icone">⛶</span><span>Toggle mode compact (bottom sheet) ↔ mode normal — pour libérer la carte pendant le replay</span>
+            <span class="kta-aide-icone">💾</span><span>Export CSV — fichier 5 colonnes <code>timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type</code> (+ <code>level</code> en M-LVL)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Pendant le tracking, l'app enregistre en interne une <strong>timeline</strong> des événements : démarrage, chaque pas PDR appliqué, chaque recalage.
+            Au clic sur 🎬, tu rejoues ta session avec un marker mobile jaune.
+            <strong>Trail multi-segments</strong> : les recalages (téléportations) sont sautés visuellement — pas de ligne droite artificielle.
+            <strong>Raccourcis clavier</strong> : Espace = play/pause · ← → = seek 1s · Échap = fermer.
+            Reset au changement de plan (RAM-only).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 3 modes : Full / Avancé / Conversion</span>
@@ -1570,9 +1629,10 @@ function afficherAide() {
           <div class="kta-aide-section-titre">🧭 Tracker</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
-            <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker</span>
+            <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker. <strong>(v1.12.0)</strong> auto-close après click + retour boussole automatique</span>
+            <span class="kta-aide-icone">🎬</span><span><strong>Replay de session tracker</strong> (v1.12.0) — slider timeline + play/pause + vitesse 0.5×→10× + export CSV. Mode compact auto au Play pour libérer la carte. Raccourcis Espace / ← → / Échap</span>
             <span class="kta-aide-icone">⛑️</span><span>Mode urgence "Je suis perdu" — estime la zone probable de ta position à partir de ta dernière position connue, du temps écoulé et d'indices visuels</span>
-            <span class="kta-aide-icone">🚨</span><span><strong>Mode urgence "panique"</strong> (v1.10.1) — affichage XL position + cap boussole + minimap auto-focus, pour retrouver ses repères vite en situation critique</span>
+            <span class="kta-aide-icone">🚨</span><span><strong>Mode urgence "panique"</strong> (v1.10.1) — affichage XL position + cap boussole + minimap auto-focus + 🔋 batterie (v1.12.0) + toggle 🗺️ itinéraire (v1.12.0), pour retrouver ses repères vite en situation critique</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#ff5555;">🚨 Mode urgence "panique" :</strong> bouton rouge distinctif,
@@ -1608,7 +1668,8 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">📐 Outils de mesure</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📐</span><span>Mesure de distance simple — clic pour poser des points, total affiché en bas-gauche</span>
+            <span class="kta-aide-icone">📐</span><span>Mesure de distance — clic pour poser des points, total affiché en bas-gauche (label <code>📐 Distance: X m</code>)</span>
+            <span class="kta-aide-icone">⬛</span><span><strong>Mesure de surface</strong> (v1.12.0) — toggle 📏/⬛ dans le groupe, dessine un polygone, l'app calcule l'aire en m² via Shoelace (auto ha au-delà de 10 000 m²)</span>
             <span class="kta-aide-icone">📏</span><span>Distance totale des tracés — sous-action du groupe Tracés, panneau flottant avec filtres par type</span>
             <span class="kta-aide-icone">🗺️</span><span>Itinéraire — chemin le plus court entre 2 points ou plus en suivant les routes existantes</span>
           </div>
@@ -3873,16 +3934,29 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
           modeRecalage = true;
           btnSub.classList.add("kta-actif");
-          _modesActifs["recalage"] = {
-            btnEl: btnSub,
-            desactiverFn: function() {
-              modeRecalage = false;
-              btnSub.classList.remove("kta-actif");
-              // 🆕 v1.8.0 (fix KARMA) : pas de reflet d'icône principale même si
-// tracking actif. Garde 🧭 toujours visible (cf. _doStart ci-dessus).
-_setGroupeModeActif("tracker", isTracking, null);
+          // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
+          // repartir sur la boussole") : helper exposé pour que tracking.js
+          // puisse appeler la même fn de désactivation après le clic carte
+          // (= retire .kta-actif + remet l'icône principale à 🧭).
+          const _desactiverFn = function() {
+            modeRecalage = false;
+            btnSub.classList.remove("kta-actif");
+            delete _modesActifs["recalage"];
+            // 🆕 v1.11.3-fix2 (KARMA "fix marche pas quand on est en play") :
+            // restore EXPLICITE de l'icône principale du groupe Tracker.
+            // _setGroupeModeActif(actif=true, iconeReflet=null) ne touche
+            // PAS à l'icône (= elle reste à 📍 set par l'activation), donc
+            // on doit la remettre à l'original (🧭) manuellement avant
+            // d'appeler la fn.
+            const g = _groupes["tracker"];
+            if (g && g.btnPrincipal && g.btnPrincipal.dataset.iconeOriginale) {
+              g.btnPrincipal.innerHTML = g.btnPrincipal.dataset.iconeOriginale;
             }
+            _setGroupeModeActif("tracker", isTracking, null);
           };
+          _modesActifs["recalage"] = { btnEl: btnSub, desactiverFn: _desactiverFn };
+          // Expose au scope global pour tracking.js
+          window._fermerModeRecalage = _desactiverFn;
           _setGroupeModeActif("tracker", true, "📍");
         }
       },
@@ -3923,7 +3997,44 @@ _setGroupeModeActif("tracker", isTracking, null);
             alert("Mode urgence indisponible (EmergencyMode non chargé).");
           }
         }
+      },
+      // 🆕 v1.11.3 V2.3 — 🎬 Replay du parcours tracker. Ouvre une modale
+      // avec slider timeline + play/pause + sélecteur vitesse (0.5x → 10x)
+      // + bouton export CSV. La timeline est cumulée depuis startTracking
+      // (les recalages 📍 sont marqués comme anchors). Visible si tracker
+      // jamais activé, mais clic affiche un toast informatif si timeline
+      // vide (= "active le tracking d'abord puis viens replay").
+      {
+        icone: "🎬",
+        titre: "Replay du parcours tracker (timeline datée)",
+        onClick: function() {
+          if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.ouvrirModale === "function") {
+            window.MyKTAMapTrackerReplay.ouvrirModale();
+          } else {
+            alert("Module Replay tracker indisponible. Recharge la page si le problème persiste.");
+          }
+        }
       }
+      // 🚫 v1.11.4 V2.4 : bouton 🔥 Heatmap retiré depuis v1.12.0
+      // (KARMA "on désactive ce module, on garde de côté le code").
+      // L'utilité n'était pas claire dans le contexte cataphile actuel
+      // (tracker session-only RAM, pas de cumul multi-session). Le code
+      // reste dans js/heatmap.js + le wiring est prêt — pour réactiver
+      // il suffit de restaurer le bloc ci-dessous + décommenter le
+      // <script> dans index.html + sw.js.
+      /*
+      ,{
+        icone: "🔥",
+        titre: "Heatmap — densité tracker + points",
+        onClick: function() {
+          if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
+            window.MyKTAMapHeatmap.ouvrirModale();
+          } else {
+            alert("Module Heatmap indisponible. Recharge la page si le problème persiste.");
+          }
+        }
+      }
+      */
     ]
   });
 
@@ -3933,9 +4044,19 @@ _setGroupeModeActif("tracker", isTracking, null);
     iconePrincipale: "📐",
     titre: "Mesure",
     sousActions: [
+      // 🔧 v1.12.0-fix (KARMA "le mode calcul de surface ne fonctionne pas
+      // ... le mode utilisation n'est pas logique") : refonte des 2 boutons
+      // mesure en 2 ACTIONS DISTINCTES exclusives au lieu d'un toggle séparé :
+      //   - 📐 Distance (polyline) : active mode mesure + force _measureMode="distance"
+      //   - ⬛ Surface  (polygone) : active mode mesure + force _measureMode="surface"
+      // Avant : le toggle 📏/⬛ changeait juste le mode SANS activer modeMesure,
+      // donc clic sur ⬛ alors que modeMesure=false → aucun effet au click carte.
+      // Maintenant : chaque bouton ACTIVE le mode mesure ET sélectionne son
+      // sous-mode. Click handlers identiques au pattern groupe Tracés (un seul
+      // sous-mode actif à la fois, re-clic désactive).
       {
         icone: "📐",
-        titre: "Activer la mesure",
+        titre: "Mesurer une DISTANCE (polyline)",
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
           _desactiverTousLesModes();
@@ -3943,6 +4064,11 @@ _setGroupeModeActif("tracker", isTracking, null);
             window.modeMesure = false;
             _setGroupeModeActif("mesure", false);
             return;
+          }
+          // Switch mode AVANT d'activer (cleanup propre des labels segments si
+          // on revient d'un mode surface).
+          if (typeof window.setMeasureMode === "function") {
+            window.setMeasureMode("distance");
           }
           window.modeMesure = true;
           btnSub.classList.add("kta-actif");
@@ -3954,27 +4080,95 @@ _setGroupeModeActif("tracker", isTracking, null);
               _setGroupeModeActif("mesure", false);
             }
           };
-          _setGroupeModeActif("mesure", true);
+          _setGroupeModeActif("mesure", true, "📐");
+        }
+      },
+      {
+        icone: "⬛",
+        titre: "Mesurer une SURFACE (polygone fermé)",
+        onClick: function(btnSub) {
+          const dejaActif = btnSub.classList.contains("kta-actif");
+          _desactiverTousLesModes();
+          if (dejaActif) {
+            window.modeMesure = false;
+            _setGroupeModeActif("mesure", false);
+            return;
+          }
+          // Switch mode AVANT d'activer pour cacher la polyline et afficher
+          // le polygon sur la map.
+          if (typeof window.setMeasureMode === "function") {
+            window.setMeasureMode("surface");
+          }
+          window.modeMesure = true;
+          btnSub.classList.add("kta-actif");
+          _modesActifs["mesure"] = {
+            btnEl: btnSub,
+            desactiverFn: function() {
+              window.modeMesure = false;
+              btnSub.classList.remove("kta-actif");
+              _setGroupeModeActif("mesure", false);
+            }
+          };
+          // Reflet sur le bouton principal du groupe pour qu'on voie d'un
+          // coup d'œil qu'on est en mode surface (au lieu de l'icône 📐 par
+          // défaut du groupe Mesure).
+          _setGroupeModeActif("mesure", true, "⬛");
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast(
+              "⬛ Mode Surface — clique 3 points minimum, l'aire s'affiche en bas-gauche.",
+              "info"
+            );
+          }
         }
       },
       {
         icone: "❌",
         titre: "Effacer (dernier point ou tout)",
         onClick: function() {
-          const pts = window.getMeasurePoints ? window.getMeasurePoints() : [];
-          if (pts.length === 0) return;
-          _choixSuppression(
-            "Mesure", "Que veux-tu effacer ?",
-            [
-              { label: "Dernier point", icon: "↩️",
-                desc: pts.length + " point(s) au total",
-                onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
-              },
-              { label: "Toute la mesure", icon: "🗑️", danger: true,
-                onClick: function() { if (window.resetMesure) window.resetMesure(); }
-              }
-            ]
-          );
+          // 🆕 v1.12.0-fix : 2 mesures indépendantes possibles → choix
+          // granulaire. "Dernier point" cible la mesure du mode actif
+          // (drive par window.getMeasureMode). Les boutons "Toute la X"
+          // n'apparaissent que si la mesure correspondante a au moins
+          // 1 point. Bouton "Tout effacer" disponible dès qu'au moins
+          // une des 2 mesures existe.
+          const ptsD = (window.getMeasurePoints        ? window.getMeasurePoints()        : []) || [];
+          const ptsS = (window.getMeasurePointsSurface ? window.getMeasurePointsSurface() : []) || [];
+          if (ptsD.length === 0 && ptsS.length === 0) return;
+
+          const activeMode = (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance";
+          const ptsActive  = (activeMode === "surface") ? ptsS : ptsD;
+          const labelActive = (activeMode === "surface") ? "⬛ surface" : "📐 distance";
+
+          const choix = [];
+          if (ptsActive.length > 0) {
+            choix.push({
+              label: "Dernier point — " + labelActive, icon: "↩️",
+              desc: ptsActive.length + " point(s) sur la mesure " + labelActive,
+              onClick: function() { if (window.removeLastMeasurePoint) window.removeLastMeasurePoint(); }
+            });
+          }
+          if (ptsD.length > 0) {
+            choix.push({
+              label: "Toute la distance 📐", icon: "🗑️", danger: true,
+              desc: ptsD.length + " point(s)",
+              onClick: function() { if (window.resetMesureMode) window.resetMesureMode("distance"); }
+            });
+          }
+          if (ptsS.length > 0) {
+            choix.push({
+              label: "Toute la surface ⬛", icon: "🗑️", danger: true,
+              desc: ptsS.length + " point(s)",
+              onClick: function() { if (window.resetMesureMode) window.resetMesureMode("surface"); }
+            });
+          }
+          if (ptsD.length > 0 && ptsS.length > 0) {
+            choix.push({
+              label: "Tout effacer (📐 + ⬛)", icon: "🗑️", danger: true,
+              onClick: function() { if (window.resetMesure) window.resetMesure(); }
+            });
+          }
+
+          _choixSuppression("Mesure", "Que veux-tu effacer ?", choix);
         }
       }
     ]

@@ -158,6 +158,14 @@
         '</button>' +
       '</div>' +
       '<button class="kta-refonte-header-btn kta-refonte-header-counters" id="kta-refonte-counters-btn" title="Résumé de la session" aria-label="Résumé">' +
+        // 🆕 v1.11.1 V2 (KARMA "trop d\'icônes sur mobile") : chip résumé
+        // unique 📊 visible UNIQUEMENT en mobile portrait. Sur desktop +
+        // tablette + mobile landscape, les 5 chips individuels (points,
+        // tracés, zones, structures, photos) + 🪫 batterie restent
+        // affichés. CSS @media (max-width: 480px) bascule l\'affichage.
+        '<span class="kta-refonte-counter kta-refonte-counter-summary" id="kta-refonte-counter-summary" title="Détails de la session — cliquer pour ouvrir">' +
+          '<span class="kta-refonte-counter-icon">📊</span><span class="kta-refonte-counter-val" id="kta-refonte-counter-summary-val">·</span>' +
+        '</span>' +
         '<span class="kta-refonte-counter" id="kta-refonte-counter-points" title="Points">' +
           '<span class="kta-refonte-counter-icon">📍</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
@@ -179,7 +187,16 @@
         '<span class="kta-refonte-counter" id="kta-refonte-counter-photos" title="Photos attachées aux points">' +
           '<span class="kta-refonte-counter-icon">📸</span><span class="kta-refonte-counter-val">0</span>' +
         '</span>' +
-      '</button>';
+      '</button>' +
+      // 🆕 v1.11.1-fix3 (KARMA "l'icône batterie est exclue de la surbrillance
+      // de session") : chip batterie SORTI du bouton compteurs pour être un
+      // sibling — il n'hérite plus du hover/focus surbrillance du groupe
+      // compteurs de session. Masqué par défaut (display:none) jusqu'à ce
+      // que BatteryGuard confirme que l'API est dispo (cf 8:a). La couleur
+      // dynamique est appliquée via inline style depuis _refreshBatteryUi.
+      '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
+        '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
+      '</span>';
 
     document.body.appendChild(header);
     _headerEl = header;
@@ -289,6 +306,18 @@
     _setCounterVal("kta-refonte-counter-zones",      nZones);
     _setCounterVal("kta-refonte-counter-structures", nStructures);
 
+    // 🆕 v1.11.1 (KARMA mobile compact) : chip résumé unique 📊 visible
+    // en mobile portrait. Valeur = somme totale des éléments de session
+    // (sans photos pour ne pas alourdir le calcul async — l'icône fait
+    // déjà comprendre "regroupé"). Si total = 0 → on affiche "·"
+    // (point médian) plutôt que "0" pour indiquer "rien à voir" sans
+    // chiffre trompeur.
+    const _totalSession = nPoints + nRoads + nZones + nStructures;
+    const _summaryEl = document.getElementById("kta-refonte-counter-summary-val");
+    if (_summaryEl) {
+      _summaryEl.textContent = _totalSession > 0 ? String(_totalSession) : "·";
+    }
+
     // 🆕 v1.9.3-B1d+ : compteur photos (async IDB). Lecture rapide via
     // index `by_plan`. Pas de await dans le sync updateCompteurs : on lance
     // et on swap quand prêt. Si MyKTAMapPhotos indispo → reste à 0.
@@ -383,6 +412,13 @@
         '<span class="kta-refonte-stat kta-refonte-stat-tracker-off" id="kta-refonte-stat-tracker">' +
           '<span class="kta-refonte-stat-icon">🧭</span><span class="kta-refonte-stat-val">OFF</span>' +
         '</span>' +
+        // 🚫 v1.12.0-fix (KARMA "la batterie est affichée en bas et en top,
+        // on l'affiche que en haut") : retiré du footer. La chip batterie
+        // du header (kta-refonte-counter-battery, à côté des compteurs session)
+        // reste l'unique point d'affichage permanent. Le mode urgence 🚨 a
+        // aussi son propre bloc 🔋 ÉTAT (XL) — c'est intentionnel et OK
+        // (contexte panique = on veut le voir en grand). Pas de redondance
+        // dans la barre status.
       '</div>' +
       '<button class="kta-refonte-statusbar-toggle" id="kta-refonte-statusbar-toggle" title="Réduire / agrandir la barre" aria-label="Toggle status bar">▾</button>';
 
@@ -552,12 +588,48 @@
   function refreshStatusBar() {
     if (!_statusBarEl) return;
 
-    // ── 📐 Mesure simple ──
-    const mesurePoints = (window.getMeasurePoints && window.getMeasurePoints()) || [];
-    if (mesurePoints.length >= 2) {
-      const distM = _calculerDistanceMesure(mesurePoints);
-      _setStat("kta-refonte-stat-mesure", _formatDist(distM));
+    // ── 📐 Mesure (distance et/ou surface) ──
+    // 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois, une
+    // mesure de surface, et une comme avant de distance") : les 2 mesures
+    // coexistent maintenant. Le footer a une icône statique 📐 + un val.
+    //
+    // 🔧 v1.12.0-fix2 (KARMA "petit bug en footer on a deux équaire") : on
+    // pilote l'icône statique pour ne pas avoir un doublon 📐 dans le val.
+    //   - Distance seule → icône 📐, val = "143 m"
+    //   - Surface seule  → icône ⬛, val = "4433 m²"
+    //   - Les 2 ensemble → icône 📐, val = "143 m · ⬛ 4433 m²"
+    //     (le ⬛ inline disambigue la surface, le 📐 statique = distance)
+    const mesurePointsD = (window.getMeasurePoints        && window.getMeasurePoints())        || [];
+    const mesurePointsS = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
+
+    function _fmtSurfaceVal(pts) {
+      if (pts.length < 3 || typeof window.polygonAreaM2 !== "function") return null;
+      const m2 = window.polygonAreaM2(pts) || 0;
+      return (typeof window.formatSurface === "function")
+        ? window.formatSurface(m2, 1)
+        : (m2 < 10000 ? Math.round(m2) + " m²" : (m2 / 10000).toFixed(2) + " ha");
+    }
+    function _fmtDistanceVal(pts) {
+      if (pts.length < 2) return null;
+      const distM = _calculerDistanceMesure(pts);
+      return _formatDist(distM);
+    }
+
+    const valD = _fmtDistanceVal(mesurePointsD);
+    const valS = _fmtSurfaceVal(mesurePointsS);
+    const mesureEl = document.getElementById("kta-refonte-stat-mesure");
+    const mesureIconEl = mesureEl ? mesureEl.querySelector(".kta-refonte-stat-icon") : null;
+    if (valD && valS) {
+      if (mesureIconEl) mesureIconEl.textContent = "📐";
+      _setStat("kta-refonte-stat-mesure", valD + " · ⬛ " + valS);
+    } else if (valS) {
+      if (mesureIconEl) mesureIconEl.textContent = "⬛";
+      _setStat("kta-refonte-stat-mesure", valS);
+    } else if (valD) {
+      if (mesureIconEl) mesureIconEl.textContent = "📐";
+      _setStat("kta-refonte-stat-mesure", valD);
     } else {
+      if (mesureIconEl) mesureIconEl.textContent = "📐";  // reset défaut quand vide
       _setStat("kta-refonte-stat-mesure", null);
     }
 
@@ -635,6 +707,96 @@
     }
   }
 
+  // ============================================================
+  // 🆕 v1.11.1 V2 — UI BATTERIE (KARMA 2:d)
+  // ============================================================
+  // Appliqué à chaque event Battery API (level / charging change) +
+  // un appel initial via forceCheck() au boot des panneaux.
+  // Si l'API n'est pas dispo (Safari iOS) → les 2 éléments restent
+  // masqués (display:none de leur HTML inline).
+  function _refreshBatteryUi(state) {
+    // 🆕 v1.11.1-fix3 (KARMA "enleve le fait de voir l'icône batterie si
+    // l'API pas dispo, cas iOS") : retour au choix 8:a original (cacher
+    // complètement). L'option B fallback `?` grisé a servi pour le debug
+    // initial mais n'a pas d'intérêt en prod — sur Safari iOS / Firefox
+    // l'user n'a rien à faire de ce chip.
+    if (!state || state.available === false) {
+      const chip = document.getElementById("kta-refonte-counter-battery");
+      const stat = document.getElementById("kta-refonte-stat-battery");
+      if (chip) chip.style.display = "none";
+      if (stat) stat.style.display = "none";
+      return;
+    }
+
+    const isUnavailable = false;  // arrivée ici = état dispo
+    const titleText = isUnavailable
+      ? "Batterie : non supporté par ce navigateur (Safari/Firefox récents)"
+      : "Batterie : " + state.label + (state.charging ? " — en charge" : "");
+
+    // Header chip (à droite du compteur 📸)
+    const chip = document.getElementById("kta-refonte-counter-battery");
+    if (chip) {
+      // 🔧 v1.11.1-fix2 : removeProperty + explicit "flex" pour bypass
+      // l'inline style="display:none;" initial du HTML. style.display = ""
+      // ne suffisait pas dans tous les browsers (race avec inline style).
+      chip.style.removeProperty("display");
+      chip.style.display = "flex";
+      chip.classList.toggle("kta-refonte-counter-battery-unavailable", isUnavailable);
+      const emojiEl = document.getElementById("kta-refonte-battery-emoji");
+      const valEl   = document.getElementById("kta-refonte-battery-val");
+      if (emojiEl) emojiEl.textContent = state.emoji;
+      if (valEl)   valEl.textContent   = state.label;
+      chip.style.color = state.color;
+      chip.title = titleText;
+    }
+    // Status bar stat
+    const stat = document.getElementById("kta-refonte-stat-battery");
+    if (stat) {
+      stat.style.removeProperty("display");
+      stat.style.display = "flex";
+      stat.classList.toggle("kta-refonte-stat-battery-unavailable", isUnavailable);
+      const valEl  = document.getElementById("kta-refonte-stat-battery-val");
+      const iconEl = document.getElementById("kta-refonte-stat-battery-icon");
+      if (iconEl) iconEl.textContent = state.emoji;
+      if (valEl)  valEl.textContent  = state.label;
+      stat.style.color = state.color;
+      stat.classList.remove("kta-refonte-stat-empty");
+      stat.title = titleText;
+    }
+  }
+
+  // Hook BatteryGuard onChange — posé une seule fois au boot UI refonte.
+  // Garde idempotent via flag _batteryHooked pour éviter le double-binding
+  // si _creerStatusBar/HeaderBar est re-appelée (cas rare au plan switch).
+  let _batteryHooked = false;
+  function _setupBatteryHook() {
+    if (_batteryHooked) return;
+    if (!window.BatteryGuard || typeof window.BatteryGuard.onChange !== "function") {
+      // Retry défensif (rare : peut arriver si scripts chargés hors ordre)
+      setTimeout(_setupBatteryHook, 500);
+      return;
+    }
+    _batteryHooked = true;
+    window.BatteryGuard.onChange(_refreshBatteryUi);
+    // 🔧 v1.11.1-fix2 (KARMA "forceCheck manuel marche mais pas auto") :
+    // 3 tentatives de sync initial pour bypass les races potentielles
+    // entre l'init async de BatteryGuard et le moment où on accroche le
+    // listener. À chaque tick, on appelle DIRECTEMENT _refreshBatteryUi
+    // avec le state actuel via _peek() (pas via forceCheck → notify, qui
+    // pourrait avoir un edge case si _listeners est inspecté à la mauvaise
+    // microtask).
+    try { window.BatteryGuard.forceCheck(); } catch (e) {}
+    function _syncDirect() {
+      try {
+        const peek = window.BatteryGuard._peek && window.BatteryGuard._peek();
+        if (peek && peek.state) _refreshBatteryUi(peek.state);
+      } catch(e) {}
+    }
+    _syncDirect();              // immédiat
+    setTimeout(_syncDirect, 100);  // après microtasks
+    setTimeout(_syncDirect, 500);  // après la promise getBattery typique
+  }
+
   // Helpers
   function _calculerDistanceMesure(points) {
     let total = 0;
@@ -690,7 +852,393 @@
   //   - Itinéraire actif (waypoints, distance, temps estimé)
   //   - Tracker (statut, position, distance parcourue)
   //
+  // 🆕 v1.11.2 V2.2 : bloc "📊 Stats agrégées" en TÊTE de la modale avec
+  // résumé chiffré + barres CSS + boutons Copier/Exporter TXT.
+  //
   // Pattern .kta-readme-modal-overlay pour cohérence charte projet.
+
+  // ─── Helpers stats agrégées (v1.11.2 V2.2) ───
+  function _calculerStatsAggregees(points, roads, zones, structures, mesure, scale) {
+    const stats = {
+      points: { total: points.length, byTag: {} },
+      roads:  { total: 0, distM: 0, byType: {} },
+      zones:  { total: zones.length, areaM2: 0, byType: {} },
+      structures: { total: structures.length, byType: {}, fronts_totalM: 0 },
+      photos: { total: 0, sizeMo: 0 },   // hydraté async
+      tracker:    { active: false, distM: 0 },
+      // 🔧 v1.12.0-fix : mesure = { distance (polyline), surface (polygone) }
+      mesure:     { distance: { points: 0, distM: 0 }, surface: { points: 0, areaM2: 0 } },
+      session:    { durationMs: 0 },
+      // 🏗️ Multi-niveau breakdown (rempli plus bas si MLVL)
+      byLevel: null
+    };
+
+    // Durée de session (depuis window._sessionStartTs set dans main.js > lancerApplication)
+    if (typeof window._sessionStartTs === "number") {
+      stats.session.durationMs = Date.now() - window._sessionStartTs;
+    }
+
+    // Points par tag (1er tag = catégorie principale)
+    points.forEach(function(p) {
+      const tag = (Array.isArray(p.tags) && p.tags.length > 0) ? p.tags[0] : "(sans tag)";
+      stats.points.byTag[tag] = (stats.points.byTag[tag] || 0) + 1;
+    });
+
+    // Roads : distance + breakdown par type (skip "itinerary" — c'est un calcul Pathfinder)
+    function _distRoadLocal(road) {
+      if (!road || !Array.isArray(road.points) || road.points.length < 2) return 0;
+      let t = 0;
+      for (let i = 1; i < road.points.length; i++) {
+        const dx = road.points[i].x - road.points[i-1].x;
+        const dy = road.points[i].y - road.points[i-1].y;
+        t += Math.sqrt(dx*dx + dy*dy);
+      }
+      return t / scale;
+    }
+    roads.forEach(function(r) {
+      if (r.type === "itinerary") return;
+      const d = _distRoadLocal(r);
+      stats.roads.total += 1;
+      stats.roads.distM += d;
+      const t = r.type || "?";
+      if (!stats.roads.byType[t]) stats.roads.byType[t] = { nb: 0, distM: 0 };
+      stats.roads.byType[t].nb += 1;
+      stats.roads.byType[t].distM += d;
+    });
+
+    // Zones : surface (shoelace) + breakdown par type
+    zones.forEach(function(z) {
+      const aM2 = (typeof window.polygonAreaM2 === "function")
+        ? (window.polygonAreaM2(z.points) || 0)
+        : 0;
+      stats.zones.areaM2 += aM2;
+      const t = z.type || "?";
+      if (!stats.zones.byType[t]) stats.zones.byType[t] = { nb: 0, areaM2: 0 };
+      stats.zones.byType[t].nb += 1;
+      stats.zones.byType[t].areaM2 += aM2;
+    });
+
+    // Structures : piliers (polygones) + mur + fronts (polylines = longueur)
+    structures.forEach(function(s) {
+      const t = s.type || "?";
+      if (!stats.structures.byType[t]) stats.structures.byType[t] = { nb: 0, areaM2: 0, longM: 0 };
+      stats.structures.byType[t].nb += 1;
+      // Polygon ? → aire. Polyline (front-1/2) ? → longueur.
+      if (t === "front-1" || t === "front-2") {
+        const d = _distRoadLocal(s);  // shape-similar : array .points
+        stats.structures.byType[t].longM += d;
+        stats.structures.fronts_totalM += d;
+      } else {
+        const aM2 = (typeof window.polygonAreaM2 === "function")
+          ? (window.polygonAreaM2(s.points) || 0)
+          : 0;
+        stats.structures.byType[t].areaM2 += aM2;
+      }
+    });
+
+    // 🔧 v1.12.0-fix : 2 mesures indépendantes (distance + surface).
+    // L'ancien paramètre `mesure` = polyline distance (rétrocompat),
+    // on lit en plus window.getMeasurePointsSurface() pour le polygone.
+    if (mesure.length >= 2) {
+      let m = 0;
+      for (let i = 1; i < mesure.length; i++) {
+        const dx = mesure[i].x - mesure[i-1].x;
+        const dy = mesure[i].y - mesure[i-1].y;
+        m += Math.sqrt(dx*dx + dy*dy);
+      }
+      stats.mesure.distance.points = mesure.length;
+      stats.mesure.distance.distM  = m / scale;
+    }
+    const mesureSurf = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
+    if (mesureSurf.length >= 3) {
+      stats.mesure.surface.points = mesureSurf.length;
+      stats.mesure.surface.areaM2 = (typeof window.polygonAreaM2 === "function")
+        ? (window.polygonAreaM2(mesureSurf) || 0)
+        : 0;
+    }
+
+    // Tracker : position + distance parcourue (si dispo via getTrackingPath)
+    if (window.getTrackingPosition && window.getTrackingPosition()) {
+      stats.tracker.active = true;
+      if (typeof window.getTrackingPath === "function") {
+        const path = window.getTrackingPath() || [];
+        if (path.length >= 2) {
+          let t = 0;
+          for (let i = 1; i < path.length; i++) {
+            const dx = path[i].x - path[i-1].x;
+            const dy = path[i].y - path[i-1].y;
+            t += Math.sqrt(dx*dx + dy*dy);
+          }
+          stats.tracker.distM = t / scale;
+        }
+      }
+    }
+
+    // 🏗️ Multi-niveau breakdown (si MLVL actif)
+    if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+      const byLevel = {};
+      function _ensure(lvl) {
+        if (!byLevel[lvl]) byLevel[lvl] = { points: 0, roads: 0, zones: 0, structures: 0 };
+        return byLevel[lvl];
+      }
+      points.forEach(function(p) { _ensure(p.level || 0).points += 1; });
+      roads.forEach(function(r) {
+        if (r.type === "itinerary") return;
+        if (r.type === "jonction") {
+          _ensure(r.fromLevel || 0).roads += 1;
+          if ((r.toLevel || 0) !== (r.fromLevel || 0)) _ensure(r.toLevel || 0).roads += 1;
+        } else {
+          _ensure(r.level || 0).roads += 1;
+        }
+      });
+      zones.forEach(function(z) { _ensure(z.level || 0).zones += 1; });
+      structures.forEach(function(s) { _ensure(s.level || 0).structures += 1; });
+      stats.byLevel = byLevel;
+    }
+
+    return stats;
+  }
+
+  // Helper : formate une durée en ms vers "Xh Ym" ou "Xm Ys"
+  function _formatDurationStats(ms) {
+    if (typeof ms !== "number" || ms < 0) return "—";
+    const s = Math.floor(ms / 1000);
+    if (s < 60) return s + "s";
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + " min" + (s % 60 > 0 ? " " + (s % 60) + "s" : "");
+    const h = Math.floor(m / 60);
+    return h + "h" + (m % 60 > 0 ? " " + (m % 60) + "min" : "");
+  }
+
+  // Format raccourci de distance / surface (avec fallback si helpers absents)
+  function _fdistStats(distM) {
+    if (typeof window.formatDistance === "function") return window.formatDistance(distM, 1);
+    if (distM >= 1000) return (distM / 1000).toFixed(2) + " km";
+    return distM.toFixed(1) + " m";
+  }
+  function _fsurfStats(areaM2) {
+    if (typeof window.formatSurface === "function") return window.formatSurface(areaM2, 1);
+    if (areaM2 >= 10000) return (areaM2 / 10000).toFixed(2) + " ha";
+    return Math.round(areaM2) + " m²";
+  }
+
+  // Génère le HTML du bloc "📊 Stats agrégées" — placé en TÊTE de la modale
+  function _genererStatsAggregeesHTML(stats, multiLevel) {
+    let h = '<div class="kta-refonte-stats-aggr">';
+    h += '<div class="kta-refonte-stats-aggr-titre">📊 Stats agrégées</div>';
+
+    // Durée
+    h += '<div class="kta-refonte-stats-row">';
+    h += '<span class="kta-refonte-stats-label">⏱️ Durée</span>';
+    h += '<span class="kta-refonte-stats-val">' + _formatDurationStats(stats.session.durationMs) + '</span>';
+    h += '</div>';
+
+    // 🛣 Tracés total + breakdown
+    if (stats.roads.total > 0) {
+      h += '<div class="kta-refonte-stats-row">';
+      h += '<span class="kta-refonte-stats-label">🛣 Tracés</span>';
+      h += '<span class="kta-refonte-stats-val"><strong>' + _fdistStats(stats.roads.distM) + '</strong> sur ' + stats.roads.total + ' tracé' + (stats.roads.total > 1 ? 's' : '') + '</span>';
+      h += '</div>';
+      // Barres par type
+      const totalRoadDist = stats.roads.distM || 1;
+      const ROAD_COLORS = { principal: "#00ff00", secondaire: "#b000ff", chemin: "#ffff00", jonction: "#ff4ecb" };
+      const ROAD_LABELS = { principal: "Principal", secondaire: "Secondaire", chemin: "Chemin", jonction: "Jonction" };
+      Object.keys(stats.roads.byType).forEach(function(t) {
+        const s = stats.roads.byType[t];
+        const pct = (s.distM / totalRoadDist) * 100;
+        h += '<div class="kta-refonte-stats-bar-row">';
+        h += '<span class="kta-refonte-stats-bar-label">' + (ROAD_LABELS[t] || t) + '</span>';
+        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ROAD_COLORS[t] || "#888") + ';"></div></div>';
+        h += '<span class="kta-refonte-stats-bar-val">' + _fdistStats(s.distM) + '</span>';
+        h += '</div>';
+      });
+    }
+
+    // ⬛ Zones total + breakdown
+    if (stats.zones.total > 0) {
+      h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
+      h += '<span class="kta-refonte-stats-label">⬛ Zones</span>';
+      h += '<span class="kta-refonte-stats-val"><strong>' + _fsurfStats(stats.zones.areaM2) + '</strong> sur ' + stats.zones.total + ' zone' + (stats.zones.total > 1 ? 's' : '') + '</span>';
+      h += '</div>';
+      const totalArea = stats.zones.areaM2 || 1;
+      const ZONE_COLORS = { eau: "#3aa9e8", remblais: "#5a5a68", effondrement: "#ff3333", inaccessible: "#7a0000" };
+      const ZONE_LABELS = { eau: "Eau", remblais: "Remblais", effondrement: "Effondrement", inaccessible: "Inaccessible" };
+      Object.keys(stats.zones.byType).forEach(function(t) {
+        const z = stats.zones.byType[t];
+        const pct = (z.areaM2 / totalArea) * 100;
+        h += '<div class="kta-refonte-stats-bar-row">';
+        h += '<span class="kta-refonte-stats-bar-label">' + (ZONE_LABELS[t] || t) + '</span>';
+        h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ZONE_COLORS[t] || "#888") + ';"></div></div>';
+        h += '<span class="kta-refonte-stats-bar-val">' + _fsurfStats(z.areaM2) + '</span>';
+        h += '</div>';
+      });
+    }
+
+    // 🏛️ Structures
+    if (stats.structures.total > 0) {
+      h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
+      h += '<span class="kta-refonte-stats-label">🏛️ Structures</span>';
+      const fronts = stats.structures.fronts_totalM;
+      const txt = stats.structures.total + ' structure' + (stats.structures.total > 1 ? 's' : '') +
+                  (fronts > 0 ? ' · fronts ' + _fdistStats(fronts) : '');
+      h += '<span class="kta-refonte-stats-val">' + txt + '</span>';
+      h += '</div>';
+      const STRUCT_LABELS = { "pilier-1": "Pilier 1ère 🟡", "pilier-2": "Pilier 2e 🟠", "mur": "Mur 🔵", "front-1": "Front 1ère 🟨", "front-2": "Front 2e 🟧" };
+      Object.keys(stats.structures.byType).forEach(function(t) {
+        const s = stats.structures.byType[t];
+        const detail = (t === "front-1" || t === "front-2")
+          ? _fdistStats(s.longM)
+          : (s.areaM2 > 0 ? _fsurfStats(s.areaM2) : s.nb + ' u.');
+        h += '<div class="kta-refonte-stats-bar-row">';
+        h += '<span class="kta-refonte-stats-bar-label">' + (STRUCT_LABELS[t] || t) + '</span>';
+        h += '<span class="kta-refonte-stats-bar-val" style="margin-left:auto;"><strong>' + s.nb + '</strong> · ' + detail + '</span>';
+        h += '</div>';
+      });
+    }
+
+    // 📸 Photos (placeholder — hydraté async dans _afficherModaleSessionDetail)
+    h += '<div class="kta-refonte-stats-row" id="kta-stats-photos-row" style="margin-top:8px; display:none;">';
+    h += '<span class="kta-refonte-stats-label">📸 Photos</span>';
+    h += '<span class="kta-refonte-stats-val" id="kta-stats-photos-val">…</span>';
+    h += '</div>';
+
+    // 🚶 Tracker
+    if (stats.tracker.active) {
+      h += '<div class="kta-refonte-stats-row" style="margin-top:8px;">';
+      h += '<span class="kta-refonte-stats-label">🚶 Tracker</span>';
+      h += '<span class="kta-refonte-stats-val">Actif · parcours ' + _fdistStats(stats.tracker.distM) + '</span>';
+      h += '</div>';
+    }
+
+    // 📐 Mesure de distance (polyline)
+    if (stats.mesure.distance.points >= 2) {
+      h += '<div class="kta-refonte-stats-row">';
+      h += '<span class="kta-refonte-stats-label">📐 Mesure distance</span>';
+      h += '<span class="kta-refonte-stats-val">' + _fdistStats(stats.mesure.distance.distM) + ' (' + stats.mesure.distance.points + ' pts)</span>';
+      h += '</div>';
+    }
+    // ⬛ Mesure de surface (polygone) — 🆕 v1.12.0-fix : 2 mesures coexistantes
+    if (stats.mesure.surface.points >= 3) {
+      const surfTxt = (typeof window.formatSurface === "function")
+        ? window.formatSurface(stats.mesure.surface.areaM2, 1)
+        : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
+      h += '<div class="kta-refonte-stats-row">';
+      h += '<span class="kta-refonte-stats-label">⬛ Mesure surface</span>';
+      h += '<span class="kta-refonte-stats-val">' + surfTxt + ' (' + stats.mesure.surface.points + ' pts)</span>';
+      h += '</div>';
+    }
+
+    // 🏗️ Multi-niveau breakdown
+    if (multiLevel && stats.byLevel) {
+      h += '<div class="kta-refonte-stats-mlvl">';
+      h += '<div class="kta-refonte-stats-mlvl-titre">🏗️ Répartition par niveau</div>';
+      const levels = Object.keys(stats.byLevel).map(Number).sort(function(a, b) { return a - b; });
+      levels.forEach(function(lvl) {
+        const b = stats.byLevel[lvl];
+        const sum = b.points + b.roads + b.zones + b.structures;
+        if (sum === 0) return;
+        h += '<div class="kta-refonte-stats-mlvl-row">';
+        h += '<span class="kta-refonte-stats-mlvl-lbl">Niv ' + lvl + '</span>';
+        h += '<span class="kta-refonte-stats-mlvl-val">' +
+          (b.points     > 0 ? '📍' + b.points + ' ' : '') +
+          (b.roads      > 0 ? '🛣' + b.roads + ' ' : '') +
+          (b.zones      > 0 ? '⬛' + b.zones + ' ' : '') +
+          (b.structures > 0 ? '🏛️' + b.structures : '') +
+        '</span>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+
+    // Boutons Copier + Exporter
+    h += '<div class="kta-refonte-stats-actions">';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-copier" type="button">📋 Copier</button>';
+    h += '<button class="kta-btn kta-btn-ghost" id="kta-stats-exporter" type="button">📤 Exporter en TXT</button>';
+    h += '</div>';
+
+    h += '</div>';  // .kta-refonte-stats-aggr
+    return h;
+  }
+
+  // Génère un résumé TXT/MD copiable (boutons Copier + Exporter)
+  function _genererStatsAggregeesTXT(stats, planName, multiLevel) {
+    const lines = [];
+    lines.push("# 📊 MyKTAMap — Résumé de session");
+    if (planName) lines.push("Plan : " + planName);
+    lines.push("Date : " + new Date().toLocaleString("fr-FR"));
+    lines.push("Durée : " + _formatDurationStats(stats.session.durationMs));
+    lines.push("");
+    if (stats.roads.total > 0) {
+      lines.push("## 🛣 Tracés");
+      lines.push("Total : " + _fdistStats(stats.roads.distM) + " sur " + stats.roads.total + " tracé(s)");
+      Object.keys(stats.roads.byType).forEach(function(t) {
+        const s = stats.roads.byType[t];
+        lines.push("- " + t + " : " + s.nb + " × " + _fdistStats(s.distM));
+      });
+      lines.push("");
+    }
+    if (stats.zones.total > 0) {
+      lines.push("## ⬛ Zones");
+      lines.push("Total : " + _fsurfStats(stats.zones.areaM2) + " sur " + stats.zones.total + " zone(s)");
+      Object.keys(stats.zones.byType).forEach(function(t) {
+        const z = stats.zones.byType[t];
+        lines.push("- " + t + " : " + z.nb + " × " + _fsurfStats(z.areaM2));
+      });
+      lines.push("");
+    }
+    if (stats.structures.total > 0) {
+      lines.push("## 🏛️ Structures");
+      lines.push("Total : " + stats.structures.total + (stats.structures.fronts_totalM > 0 ? " · fronts " + _fdistStats(stats.structures.fronts_totalM) : ""));
+      Object.keys(stats.structures.byType).forEach(function(t) {
+        const s = stats.structures.byType[t];
+        const det = (t === "front-1" || t === "front-2")
+          ? _fdistStats(s.longM)
+          : (s.areaM2 > 0 ? _fsurfStats(s.areaM2) : "");
+        lines.push("- " + t + " : " + s.nb + (det ? " · " + det : ""));
+      });
+      lines.push("");
+    }
+    if (stats.points.total > 0) {
+      lines.push("## 📍 Points");
+      lines.push("Total : " + stats.points.total);
+      Object.keys(stats.points.byTag).forEach(function(tag) {
+        lines.push("- " + tag + " : " + stats.points.byTag[tag]);
+      });
+      lines.push("");
+    }
+    if (stats.tracker.active) {
+      lines.push("## 🚶 Tracker");
+      lines.push("Actif · parcours " + _fdistStats(stats.tracker.distM));
+      lines.push("");
+    }
+    // 🆕 v1.12.0-fix : 2 mesures indépendantes — sortie séparée
+    if (stats.mesure.distance.points >= 2) {
+      lines.push("## 📐 Mesure de distance");
+      lines.push(_fdistStats(stats.mesure.distance.distM) + " sur " + stats.mesure.distance.points + " points");
+      lines.push("");
+    }
+    if (stats.mesure.surface.points >= 3) {
+      const surfTxt = (typeof window.formatSurface === "function")
+        ? window.formatSurface(stats.mesure.surface.areaM2, 1)
+        : (stats.mesure.surface.areaM2.toFixed(1) + " m²");
+      lines.push("## ⬛ Mesure de surface");
+      lines.push(surfTxt + " sur " + stats.mesure.surface.points + " points");
+      lines.push("");
+    }
+    if (multiLevel && stats.byLevel) {
+      lines.push("## 🏗️ Répartition par niveau");
+      const levels = Object.keys(stats.byLevel).map(Number).sort(function(a, b) { return a - b; });
+      levels.forEach(function(lvl) {
+        const b = stats.byLevel[lvl];
+        lines.push("- Niv " + lvl + " : " + b.points + " points, " + b.roads + " tracés, " + b.zones + " zones, " + b.structures + " structures");
+      });
+      lines.push("");
+    }
+    lines.push("---");
+    lines.push("Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr");
+    return lines.join("\n");
+  }
+
   function _afficherModaleSessionDetail() {
     // Cleanup éventuel d'une instance précédente
     const existing = document.getElementById("kta-refonte-session-modal");
@@ -727,8 +1275,18 @@
       return distM.toFixed(1) + " m";
     }
 
-    // ─── Construction du contenu ───
-    let html = "";
+    // ─── 🆕 v1.11.2 V2.2 : STATS AGRÉGÉES (KARMA 1:a+b+e+g+h+i · 2:a · 3:a · 4:b · 5:a · 6:a+c · 7:a · 8:a+c) ───
+    // Bloc en TÊTE avec :
+    //   - Durée de session (depuis lancerApplication, cf main.js)
+    //   - Distance totale tracés + breakdown par type + barre CSS
+    //   - Surface totale zones + breakdown + barre CSS
+    //   - Structures (nb piliers 1/2 + mur + longueur fronts en m)
+    //   - Photos (nb total + taille totale Mo via async)
+    //   - Tracker (distance parcourue si actif)
+    //   - Multi-niveau breakdown si MLVL
+    //   - Boutons Copier + Exporter TXT
+    const _stats = _calculerStatsAggregees(points, roads, zones, structures, mesure, scale);
+    let html = _genererStatsAggregeesHTML(_stats, multiLevel);
 
     // 📍 Points
     html += '<div class="kta-refonte-session-section">';
@@ -851,15 +1409,19 @@
     html += '<div id="kta-refonte-session-photos-body" class="kta-refonte-session-empty">Chargement…</div>';
     html += '</div>';
 
-    // 📐 Mesure simple + 🗺️ Itinéraire + 🚶 Tracker
+    // 📐 Mesure simple (distance) + ⬛ Mesure de surface + 🗺️ Itinéraire + 🚶 Tracker
     const tFoo = !!(window.getTrackingPosition && window.getTrackingPosition());
-    if (mesure.length >= 2 || itineraire || tFoo) {
+    // 🆕 v1.12.0-fix : récupère la mesure de surface séparément (les 2 mesures coexistent)
+    const mesureSurfDetail = (window.getMeasurePointsSurface && window.getMeasurePointsSurface()) || [];
+    const hasMesureDist = mesure.length >= 2;
+    const hasMesureSurf = mesureSurfDetail.length >= 3;
+    if (hasMesureDist || hasMesureSurf || itineraire || tFoo) {
       html += '<div class="kta-refonte-session-section">';
       html += '<div class="kta-refonte-session-section-titre">📊 Autres mesures</div>';
       html += '<ul class="kta-refonte-session-list">';
 
-      // Mesure simple
-      if (mesure.length >= 2) {
+      // 📐 Mesure simple (polyline distance)
+      if (hasMesureDist) {
         let total = 0;
         for (let i = 1; i < mesure.length; i++) {
           const dx = mesure[i].x - mesure[i-1].x;
@@ -869,6 +1431,20 @@
         html += '<li>' +
           '<strong>📐 Mesure simple</strong>' +
           '<span class="kta-refonte-session-meta">' + _formatDist(total / scale) + ' (' + mesure.length + ' points)</span>' +
+        '</li>';
+      }
+
+      // ⬛ Mesure de surface (polygone, depuis v1.12.0)
+      if (hasMesureSurf) {
+        const surfM2 = (typeof window.polygonAreaM2 === "function")
+          ? (window.polygonAreaM2(mesureSurfDetail) || 0)
+          : 0;
+        const surfTxt = (typeof window.formatSurface === "function")
+          ? window.formatSurface(surfM2, 1)
+          : (surfM2 < 10000 ? Math.round(surfM2) + " m²" : (surfM2 / 10000).toFixed(2) + " ha");
+        html += '<li>' +
+          '<strong>⬛ Mesure de surface</strong>' +
+          '<span class="kta-refonte-session-meta">' + surfTxt + ' (' + mesureSurfDetail.length + ' sommets)</span>' +
         '</li>';
       }
 
@@ -928,6 +1504,67 @@
       if (e.target === overlay) _close();
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
+
+    // 🆕 v1.11.2 V2.2 : wire-up boutons Copier + Exporter du bloc Stats agrégées
+    const _btnCopier = document.getElementById("kta-stats-copier");
+    const _btnExport = document.getElementById("kta-stats-exporter");
+    if (_btnCopier) {
+      _btnCopier.addEventListener("click", function() {
+        const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
+        const txt = _genererStatsAggregeesTXT(_stats, planName, multiLevel);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(function() {
+            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("📋 Résumé copié dans le presse-papier.", "info");
+          }).catch(function() {
+            if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("❌ Échec copie — copie manuelle requise.", "warn");
+          });
+        } else {
+          if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("Clipboard API indispo sur ce navigateur.", "warn");
+        }
+      });
+    }
+    if (_btnExport) {
+      _btnExport.addEventListener("click", function() {
+        const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
+        const txt = _genererStatsAggregeesTXT(_stats, planName, multiLevel);
+        const safePlan = String(planName).replace(/[^a-zA-Z0-9_-]/g, "_");
+        const date = new Date();
+        const dateStr = date.getFullYear() + "-" +
+                        String(date.getMonth() + 1).padStart(2, "0") + "-" +
+                        String(date.getDate()).padStart(2, "0");
+        const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = safePlan + "_stats_" + dateStr + ".txt";
+        link.click();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+        if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("📤 Résumé exporté en TXT.", "info");
+      });
+    }
+
+    // 🆕 v1.11.2 V2.2 : hydrate la ligne 📸 Photos du bloc Stats agrégées
+    // (compteur + taille totale via IDB async, indépendant de la section
+    // détaillée hydratée plus bas)
+    if (window.MyKTAMapPhotos && typeof window.MyKTAMapPhotos.getAllPhotosForPlan === "function") {
+      const planId = window._currentLoadedPlanId || "default";
+      window.MyKTAMapPhotos.getAllPhotosForPlan(planId).then(function(arr) {
+        const row = document.getElementById("kta-stats-photos-row");
+        const val = document.getElementById("kta-stats-photos-val");
+        if (!row || !val) return;
+        const total = arr.length;
+        if (total === 0) { row.style.display = "none"; return; }
+        row.style.display = "";
+        let totalSize = 0;
+        arr.forEach(function(rec) { totalSize += rec.size || (rec.blob && rec.blob.size) || 0; });
+        const fmtBytes = window._kta_formatBytes || function(n) {
+          if (n < 1024) return n + " o";
+          if (n < 1024 * 1024) return Math.round(n / 1024) + " Ko";
+          return (n / (1024 * 1024)).toFixed(1) + " Mo";
+        };
+        val.innerHTML = "<strong>" + total + "</strong> photo" + (total > 1 ? "s" : "") + " · " + fmtBytes(totalSize);
+      }).catch(function() { /* silent */ });
+    }
 
     // 🆕 v1.9.3-B1d+ : hydrate la section 📸 Photos en async (lecture IDB).
     // Format affiché : badge "N" + breakdown par point ("Puits du chêne · 3 photos").
@@ -1013,6 +1650,10 @@
       _creerHeaderBar();
       _creerStatusBar();
       _startPolling();
+      // 🆕 v1.11.1 V2 : abonnement BatteryGuard une fois les chips DOM
+      // créés (header + status bar). No-op silencieux si BatteryGuard
+      // n'est pas dispo (Safari iOS).
+      _setupBatteryHook();
     } else {
       // Retry court — la carte sera prête dans qq centaines de ms
       setTimeout(_setupQuandMapPrete, 200);

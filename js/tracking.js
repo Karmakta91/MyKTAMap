@@ -81,6 +81,36 @@ function initTracking() {
 
     if (polyline) polyline.setLatLngs([]);
     stepCount = 0;
+
+    // 🆕 v1.11.3 V2.3 : log timeline du recalage. Le clic carte recalage
+    // vide le tracé visible (polyline.setLatLngs([])) mais on garde la
+    // timeline historique pour le replay (= cumul depuis le start de
+    // tracking, pas effacé par les recalages successifs).
+    _pushTimelinePoint("recalage");
+
+    // 🆕 v1.11.3-fix (KARMA "quand on a fini de l'utiliser, on doit
+    // repartir sur la boussole") : auto-désactive le mode recalage après
+    // le clic. L'user a fait son recalage, on revient au mode tracker
+    // normal (icône boussole tourne avec le heading, sidebar 📍 grisée).
+    //
+    // 2 actions complémentaires :
+    //   1. Désactive l'UI sidebar via le helper de interface.js qui sait
+    //      retirer la classe .kta-actif du bouton 📍 + remettre l'icône
+    //      principale du tracker à 🧭.
+    //   2. Réapplique immédiatement la rotation du marker selon le
+    //      heading actuel (sinon l'icône reste figée à 0° jusqu'au
+    //      prochain event deviceorientation, ce qui peut prendre
+    //      plusieurs secondes).
+    if (window.modeRecalage) {
+      window.modeRecalage = false;
+      // Helper exposé par interface.js > _modesActifs["recalage"].desactiverFn
+      if (window._fermerModeRecalage && typeof window._fermerModeRecalage === "function") {
+        try { window._fermerModeRecalage(); } catch(e) {}
+      }
+    }
+    if (tracking) {
+      _applyRotationToTrackerMarker();
+    }
   });
 }
 
@@ -588,7 +618,10 @@ function avancer() {
   let newX = position.x + distance * Math.sin(rad);
   let newY = position.y - distance * Math.cos(rad);
 
-  if (estAccessible(newX, newY)) {
+  // 🆕 v1.11.3 V2.3 : capture du résultat collision pour pouvoir datater
+  // SEULEMENT si le pas a été appliqué (sinon doublon dans la timeline).
+  const _stepApplied = estAccessible(newX, newY);
+  if (_stepApplied) {
     position.x = newX;
     position.y = newY;
   } else {
@@ -596,6 +629,11 @@ function avancer() {
   }
 
   updateMap();
+
+  // Datage du point PDR (uniquement si pas n'a pas été bloqué)
+  if (_stepApplied) {
+    _pushTimelinePoint("pdr");
+  }
 }
 
 // =========================
@@ -616,8 +654,42 @@ function updateMap() {
 // =========================
 // CONTROLES
 // =========================
+// 🆕 v1.11.3 V2.3 : timeline timestamps. Array module-scope qui datage chaque
+// point du parcours tracker (Date.now + delta + type pdr/recalage/start +
+// niveau MLVL). Persistance RAM only — cohérent avec le tracker marqué
+// "expérimental" dans toute la doc. Reset au resetTrackingPosition().
+let _trackingTimeline = [];
+let _trackingStartTs  = null;
+
+// Helper interne : push une entrée timeline avec timestamp + type.
+// Lit position.x, position.y au moment de l'appel (= snapshot atomique).
+function _pushTimelinePoint(type) {
+  if (typeof position.x !== "number" || typeof position.y !== "number") return;
+  const now = Date.now();
+  if (_trackingStartTs === null) _trackingStartTs = now;
+  const entry = {
+    x: position.x,
+    y: position.y,
+    t: now,
+    deltaMs: now - _trackingStartTs,
+    type: type || "pdr"
+  };
+  // Multi-niveau : on tag aussi le niveau du tracker au moment du point
+  if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true) {
+    entry.level = typeof trackerLevel === "number" ? trackerLevel : (window.APP_CONFIG.activeLevel || 0);
+  }
+  _trackingTimeline.push(entry);
+}
+
 function startTracking() {
   tracking = true;
+  // 🆕 v1.11.3 V2.3 : init de la timeline au démarrage. Reset = nouveau
+  // cycle de tracking. Push un point initial "start" pour marquer l'origine
+  // temporelle.
+  _trackingStartTs  = Date.now();
+  _trackingTimeline = [];
+  _pushTimelinePoint("start");
+
   // 🏗️ Multi-niveau : snapshot du niveau actif au moment du Play. Le tracker
   // est considere comme "demarrant sur ce niveau". Le user peut changer via
   // recalage si necessaire. Sans effet si multiLevel = false.
@@ -666,6 +738,15 @@ function resetTrackingPosition() {
 
   if (polyline) {
     polyline.setLatLngs([]);
+  }
+
+  // 🆕 v1.11.3 V2.3 : reset complet de la timeline (= nouveau cycle).
+  // Si tracking actif, on push un "start" pour marquer la nouvelle origine.
+  _trackingTimeline = [];
+  _trackingStartTs  = null;
+  if (tracking) {
+    _trackingStartTs = Date.now();
+    _pushTimelinePoint("start");
   }
 
   updateMap();
@@ -734,6 +815,48 @@ window.getTrackingPath = function() {
   });
 };
 
+// 🆕 v1.11.3 V2.3 : exposition de la timeline complète (= path historique
+// avec timestamps + types + levels). Différent de getTrackingPath qui ne
+// retourne que les coords sans datage. La timeline survit aux recalages
+// (le path lui est reset à chaque recalage) → cumul depuis startTracking.
+//
+// Format : [{x, y, t (ms epoch), deltaMs (depuis start), type, level?}]
+//   type ∈ "start" | "pdr" | "recalage"
+//   level présent uniquement si APP_CONFIG.multiLevel === true
+window.getTrackingTimeline = function() {
+  return _trackingTimeline.slice();  // copie défensive
+};
+
+window.getTrackingStartTs = function() {
+  return _trackingStartTs;
+};
+
+// Helper pour calculer la distance totale parcourue d'après la timeline
+// (utile pour les stats agrégées + replay).
+window.getTrackingDistanceM = function() {
+  if (_trackingTimeline.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < _trackingTimeline.length; i++) {
+    const a = _trackingTimeline[i - 1];
+    const b = _trackingTimeline[i];
+    // On skip les segments AVANT/APRÈS un recalage (= téléportation, pas
+    // une distance physique parcourue).
+    if (b.type === "recalage" || a.type === "recalage" || a.type === "start") continue;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    total += Math.sqrt(dx * dx + dy * dy);
+  }
+  const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
+  return total / scale;
+};
+
+// Reset explicite de la timeline (utile pour le bouton "Effacer historique"
+// futur). API publique pour les modules consommateurs.
+window.resetTrackingTimeline = function() {
+  _trackingTimeline = [];
+  _trackingStartTs  = null;
+};
+
 // Recale la position du tracker sur des coords plan precises (typiquement
 // utilise depuis le bouton "📍 Je suis ici" d'une popup point — voir
 // utils.js > buildPointPopupHtml + interface.js wire-up).
@@ -746,6 +869,9 @@ window.recalerTrackerSurPoint = function(x, y, level) {
   position.y = y;
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;
+
+  // 🆕 v1.11.3 V2.3 : log timeline du recalage sur point existant
+  _pushTimelinePoint("recalage");
   // 🏗️ Multi-niveau (v148) : si un level explicite est fourni (depuis la popup
   // d'un point qui porte son level), on l'utilise. Sinon, par defaut on prend
   // le niveau actif (le user a cliqué un point visible donc forcément actif).

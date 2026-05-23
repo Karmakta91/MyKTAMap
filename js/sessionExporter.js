@@ -381,7 +381,12 @@
       // explicitement EXCLUE du mode Full / Avancé (commentaire ligne 5
       // "sans mesure"). Maintenant incluse car KARMA en a besoin pour
       // retrouver ses mesures entre sessions / appareils.
-      mesure:    window.getMeasurePoints ? window.getMeasurePoints()  : [],
+      mesure:        window.getMeasurePoints        ? window.getMeasurePoints()        : [],
+      // 🆕 v1.12.0-fix (KARMA "on peut faire en // 1 calcul de surface et 1
+      // de distance ... attention à ne pas mélanger") : la mesure de surface
+      // est désormais persistée séparément. Sans ce champ, l'export session
+      // perdrait le polygone surface au re-import.
+      mesureSurface: window.getMeasurePointsSurface ? window.getMeasurePointsSurface() : [],
       trackerOk: !!(window.getTrackingPosition && window.getTrackingPosition()),
       trackerPath: window.getTrackingPath ? window.getTrackingPath() : []
     };
@@ -738,7 +743,8 @@
         ${rowSub("adv_structures_front-1",  "🟨 Front de taille 1ère",  structuresByType["front-1"].length,  true)}
         ${rowSub("adv_structures_front-2",  "🟧 Front de taille 2e",    structuresByType["front-2"].length,  true)}
 
-        ${row("adv_mesure", "📐 Mesure de distance", (d.mesure || []).length, (d.mesure || []).length > 0)}
+        ${row("adv_mesure",        "📐 Mesure de distance", (d.mesure || []).length,        (d.mesure || []).length > 0)}
+        ${row("adv_mesure_surface","⬛ Mesure de surface",  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
 
         <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
           <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
@@ -1418,9 +1424,11 @@
     // 🆕 v1.9.3-A1.a + A1.b.2.5 : structures + mesure comptent aussi
     // pour le test "session vide" (sinon un user qui n'a fait QUE de
     // la mesure verrait "session vide" alors qu'il a contenu).
-    const mesureLen = (d.mesure || []).length;
+    const mesureLen     = (d.mesure        || []).length;
+    // 🆕 v1.12.0-fix : surface aussi prise en compte pour le test "session vide"
+    const mesureSurfLen = (d.mesureSurface || []).length;
     if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
-        && (d.structures || []).length === 0 && mesureLen === 0) {
+        && (d.structures || []).length === 0 && mesureLen === 0 && mesureSurfLen === 0) {
       alert("Rien à exporter — la session est vide.");
       return;
     }
@@ -1451,7 +1459,9 @@
         structures:   d.structures || [],
         // 🆕 v1.9.3-A1.b.2.5 : mesure dans l'export Full (objet avec points
         // pour cohérence avec le format attendu en import).
-        measure:      { points: d.mesure || [] }
+        measure:      { points: d.mesure || [] },
+        // 🆕 v1.12.0-fix : mesure de surface dans l'export Full
+        measureSurface: { points: d.mesureSurface || [] }
       };
       // 🆕 v1.9.3-B1d : info récap photos dans le JSON pour aider l'import
       // (le re-import sait combien attendre).
@@ -1532,9 +1542,14 @@
     const incMesureCb = document.getElementById("adv_mesure");
     const incMesure = incMesureCb ? incMesureCb.checked : true;
     const mesurePts = incMesure ? (d.mesure || []) : [];
+    // 🆕 v1.12.0-fix : checkbox mesure surface (UI fallback ON si absente).
+    // Polygone valide à partir de 3 sommets → cap à 0 si en-dessous.
+    const incMesureSurfCb = document.getElementById("adv_mesure_surface");
+    const incMesureSurf = incMesureSurfCb ? incMesureSurfCb.checked : true;
+    const mesureSurfPts = (incMesureSurf && (d.mesureSurface || []).length >= 3) ? (d.mesureSurface || []) : [];
 
     const total = filteredPoints.length + filteredRoads.length + filteredZones.length
-                + filteredStructures.length + mesurePts.length + (tracker ? 1 : 0);
+                + filteredStructures.length + mesurePts.length + mesureSurfPts.length + (tracker ? 1 : 0);
     if (total === 0) {
       alert("Rien à exporter — sélectionnez au moins une catégorie.");
       return;
@@ -1575,8 +1590,10 @@
         // 🆕 v1.9.3-A1.a : structures dans le JSON Avancé (single file)
         if (filteredStructures.length) session.structures   = filteredStructures;
         // 🆕 v1.9.3-A1.b.2.5 : mesure dans le JSON Avancé
-        if (mesurePts.length)          session.measure      = { points: mesurePts };
-        if (tracker)                   session.tracker      = tracker;
+        if (mesurePts.length)          session.measure        = { points: mesurePts };
+        // 🆕 v1.12.0-fix : mesure de surface dans le JSON Avancé
+        if (mesureSurfPts.length)      session.measureSurface = { points: mesureSurfPts };
+        if (tracker)                   session.tracker        = tracker;
         if (photos.length > 0) {
           session.photosCount   = photos.length;
           session.photosTotalKB = Math.round(pack.totalSize / 1024);
@@ -1598,12 +1615,12 @@
       } else {
         // ZIP multi-fichiers — chaque catégorie dans un fichier session séparé
         // + dossier photos/ si photos cochées
-        _genererZipAdvanced(enrichedPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, tracker, photos);
+        _genererZipAdvanced(enrichedPoints, filteredRoads, filteredZones, filteredStructures, mesurePts, mesureSurfPts, tracker, photos);
       }
     });
   }
 
-  function _genererZipAdvanced(points, roads, zones, structures, mesurePts, tracker, photos) {
+  function _genererZipAdvanced(points, roads, zones, structures, mesurePts, mesureSurfPts, tracker, photos) {
     if (typeof JSZip === "undefined") {
       alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
       return;
@@ -1623,6 +1640,8 @@
     if (structures.length) file("session_structures.json", { structures: structures });
     // 🆕 v1.9.3-A1.b.2.5 : fichier dédié pour la mesure dans le ZIP Avancé
     if (mesurePts && mesurePts.length) file("session_measure.json", { measure: { points: mesurePts } });
+    // 🆕 v1.12.0-fix : fichier dédié pour la mesure de surface dans le ZIP Avancé
+    if (mesureSurfPts && mesureSurfPts.length) file("session_measureSurface.json", { measureSurface: { points: mesureSurfPts } });
     if (tracker)           file("session_tracker.json",    { tracker: tracker });
 
     // 🆕 v1.9.3-B1d+ : dossier photos/ + _index.json (même format que le

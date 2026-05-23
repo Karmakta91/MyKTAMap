@@ -174,10 +174,18 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.11.0</strong> (23 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.12.0</strong> (23 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.12.0 (Pack terrain V2)</strong> : aucune nouvelle connexion réseau introduite. Les 4 fonctionnalités V2
+    (🪫 batterie, 📊 stats, 🎬 replay tracker, 🔥 heatmap désactivée) sont <strong>100 % client-side</strong>.
+    La Battery Status API utilisée par <code>batteryGuard.js</code> lit une info <strong>locale</strong> du navigateur
+    (pas de fetch). Le replay tracker lit la timeline en RAM. L'export CSV/TXT génère un Blob local téléchargé
+    directement.
   </p>
 
   <h2>🎯 La promesse en une ligne</h2>
@@ -541,6 +549,21 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.12.0</td>
+        <td>23/05/2026</td>
+        <td>
+          <strong>Pack terrain V2</strong> — consolidation de 4 fonctionnalités V2.1 → V2.4 :
+          🪫 <strong>batterie</strong> (Battery Status API navigateur, lecture locale, 0 fetch réseau),
+          📊 <strong>stats session enrichies + ⬛ mesure de surface</strong> (calculs Shoelace 100% local),
+          🎬 <strong>replay tracker + export CSV</strong> (timeline en RAM, Blob download local),
+          🔥 <strong>heatmap</strong> (implémentée mais DÉSACTIVÉE en v1.12.0, code en standby).
+          <strong>Aucune nouvelle connexion réseau introduite</strong> — toutes les V2 sont strictement client-side.
+          Le header <code>Permissions-Policy: battery=(self)</code> a été ajouté côté Nginx pour ouvrir l'accès à
+          l'API navigateur en top-level (sinon certains contextes sandbox bloquaient l'API même en Chromium).
+          Cela ne change rien au comportement réseau de l'app.
+        </td>
+      </tr>
+      <tr>
         <td>v1.11.0</td>
         <td>23/05/2026</td>
         <td>
@@ -640,7 +663,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 23 mai 2026 — v1.11.0 (Privacy &amp; Audit inchangé depuis v1.8.1)<br>
+    Dernière mise à jour : 23 mai 2026 — v1.12.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0)<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 

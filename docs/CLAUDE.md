@@ -45,7 +45,18 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
 │   │                              + flags _orientationListenerAttached/_motionListenerAttached
 │   │                              (idempotency contre fuite après plan switch)
-│   ├── measure.js              ← Mesure de distance
+│   │                              + _trackingTimeline / _trackingStartTs (v1.12.0)
+│   ├── trackerReplay.js        ← v1.12.0 — Modale Replay tracker + Export CSV
+│   │                              window.TrackerReplay = { ouvrir, fermer, exporterCSV }
+│   ├── batteryGuard.js         ← v1.12.0 — Indicateur batterie + warnings graduels
+│   │                              window.BatteryGuard = { init, forceCheck, onChange, ... }
+│   ├── heatmap.js              ← v1.12.0 — Heatmap (DÉSACTIVÉ, code en standby)
+│   │                              ⚠️ NON chargé : script commenté dans index.html
+│   │                              + retiré de sw.js > ASSETS_TO_CACHE
+│   ├── emergencyMode.js        ← Mode urgence "panique" (depuis v1.10.1)
+│   │                              + toggle 🗺️ Itinéraire dans minimap (v1.12.0)
+│   │                              + rotation paysage cascade invalidateSize (v1.12.0)
+│   ├── measure.js              ← Mesure de distance + ⬛ Surface (v1.12.0 : 2 modes)
 │   ├── editor.js               ← Ajout de points + EDITOR_TAG_LABELS
 │   ├── road.js                 ← Tracés routes (Principal/Secondaire/Chemin/itinerary)
 │   │                              + cercles intersections (chemin>secondaire>principal)
@@ -3106,6 +3117,314 @@ Le format unifié (avec `kind`) est strictement INTERNE au module pour le rendu 
 - ❌ Mixer roads/zones/structures dans `getAllPoints()` — idem
 - ❌ Ajouter le raccourci Ctrl+K en mode global SI un MCP/extension utilise déjà ce binding (à valider en cas de feature à la VSCode-style). Si conflit, basculer sur Ctrl+Shift+P ou `/`.
 
+### 48. V2.1 — BatteryGuard (depuis v1.12.0)
+
+Module `js/batteryGuard.js` (~280 lignes IIFE) → `window.BatteryGuard = { init, forceCheck, getState, onChange, getStatusLabel, isAvailable }`.
+
+#### 48.1 Source de données
+
+API standard `navigator.getBattery()` (Battery Status API). Le module appelle `init()` au boot (depuis `main.js`), puis attache 4 listeners sur l'objet `BatteryManager` :
+- `levelchange` → notify(state)
+- `chargingchange` → notify(state)
+- `chargingtimechange` + `dischargingtimechange` → ignorés (pas utiles pour notre UX)
+
+Throttle 5s entre 2 `notify()` (anti-flicker) + polling de secours toutes les 30s.
+
+#### 48.2 Compatibilité
+
+| Navigateur | Support |
+|---|---|
+| Chrome / Edge / Samsung Internet (Android, PC) | ✅ |
+| Firefox récent (>72) | ❌ (désactivé par défaut côté Mozilla) |
+| Safari iOS / macOS | ❌ (jamais implémenté côté Apple) |
+
+Si l'API est absente, `BatteryGuard.isAvailable()` retourne `false`. Tous les listeners externes (`onChange`) reçoivent alors un state `{available: false}` pour qu'ils puissent masquer leur UI.
+
+#### 48.3 Warnings graduels
+
+3 seuils : 20%, 10%, 5%. Chaque seuil envoie un toast `OOMGuard.showToast(...)` **1 seule fois par cycle de décharge**.
+
+```js
+const LS_KEY_WARNINGS = "myktamap_battery_warnings_v1";
+// { cycleId: "<timestamp>", sentLevels: [20, 10, 5] }
+```
+
+Le `cycleId` est régénéré dès qu'on repasse en charge OU qu'on remonte au-dessus de 50% (cycle "renouvelé"). Sinon, le set `sentLevels` empêche le spam.
+
+#### 48.4 Permissions-Policy nginx
+
+Sans le header, certains contextes (iframe, sandbox) bloquent l'API même en Chromium :
+
+```nginx
+# docs/nginx-csp-config.conf
+add_header Permissions-Policy "battery=(self), ...";
+```
+
+#### 48.5 Sync forcée au boot
+
+L'API peut être dispo mais le `BatteryManager` pas encore initialisé au paint initial. Donc `main.js > lancerApplication` appelle `BatteryGuard.forceCheck()` en **4 attempts cascade** :
+- t=0 (immédiat)
+- t=300ms
+- t=1000ms
+- t=3000ms
+
+Une fois que ça marche, le subsequent `onChange` prend le relais.
+
+#### 48.6 3 points d'affichage
+
+1. **Chip header** (refonteInterface.js) — sortie de `kta-refonte-counters-btn` pour ne pas être surlignée en hover sidebar. Format : `⚡ 78%` (charge) ou `🪫 23%` (décharge, couleur selon niveau).
+2. **Footer modale Session active** (refonteInterface.js > `_afficherModaleSessionDetail`) — ligne `🔋 État · 🪫 23% · Discharging`.
+3. **Bloc 🔋 ÉTAT du mode urgence** (emergencyMode.js > `_tick`) — label long avec source + pct.
+
+#### 48.7 À NE PAS faire
+
+- ❌ Importer directement `navigator.getBattery()` dans un autre module — passer par `BatteryGuard.onChange()` qui gère le throttle + fallback
+- ❌ Afficher un placeholder `?` ou `--` si API indispo — masquer complètement le widget (chip header : `display: none`)
+- ❌ Spammer le warning toast à chaque polling tick — utiliser le pattern `sentLevels` localStorage
+
+### 49. V2.2 — Stats session enrichies + ⬛ Mesure de surface (depuis v1.12.0)
+
+#### 49.1 Stats agrégées
+
+Implémentation dans `js/refonteInterface.js` :
+- `_calculerStatsAggregees()` : lit `getEditorPoints()`, `getRoads()`, `getZones()`, `getStructures()`, comptabilise par type + calcule distance/surface cumulée.
+- `_genererStatsAggregeesHTML(stats)` : génère le bloc HTML inséré en TÊTE de `_afficherModaleSessionDetail`.
+- `_genererStatsAggregeesTXT(stats)` : version texte plain pour le presse-papier et l'export.
+
+Boutons :
+- 📋 **Copier** : `navigator.clipboard.writeText(_genererStatsAggregeesTXT(stats))`
+- 💾 **Export TXT** : `Blob` + `URL.createObjectURL` + `<a download>`
+
+#### 49.2 Helpers `js/utils.js`
+
+```js
+function formatSurface(areaM2, decimalsM2) {
+  if (areaM2 >= 10000) return (areaM2 / 10000).toFixed(2) + " ha";
+  if (areaM2 < 100)    return areaM2.toFixed(decimalsM2 ?? 1) + " m²";
+  return Math.round(areaM2) + " m²";
+}
+function polygonArea(points) { /* shoelace, retourne aire en px² plan */ }
+function polygonAreaM2(points) {
+  const px2 = polygonArea(points);
+  const scale = window.APP_CONFIG?.scale || 1; // px/m
+  return px2 / (scale * scale);
+}
+```
+
+#### 49.3 Mode mesure de surface
+
+Refonte `js/measure.js` complète :
+- 2 layers Leaflet séparés : `polylineMesure` (mode distance) + `polygonMesure` (mode surface)
+- `_refreshMesureLayer()` : switch les layers selon `_mode`
+- `_afficherMesureValeur()` : label adaptatif `📐 Distance: X m` ou `⬛ Surface: X m²`
+- API publique :
+  - `window.setMeasureMode("distance"|"surface")` → switch mode + clear points + redraw
+  - `window.getMeasureMode()` → mode courant
+  - `window.getMeasureValue()` → valeur formatée
+  - `window.setMeasurePoints(pts)` → restore (utilisé par SessionPersist)
+
+#### 49.4 Persistance SessionPersist
+
+`js/sessionPersist.js` ajoute `measureMode` au payload :
+
+```js
+{
+  ...,
+  measureMode:   window.getMeasureMode?.() || "distance",
+  measurePoints: window.getMeasurePoints?.() || []
+}
+```
+
+**Restore order critique** : `setMeasureMode(payload.measureMode)` AVANT `setMeasurePoints(payload.measurePoints)` — sinon les points sont ajoutés au mauvais layer.
+
+#### 49.5 Durée session
+
+`window._sessionStartTs = Date.now()` posé dans `main.js > lancerApplication` (et reset au plan switch dans `_libererRessourcesPlanPrecedent`). Lu par `_calculerStatsAggregees` pour le `formatDuree(now - _sessionStartTs)`.
+
+#### 49.6 À NE PAS faire
+
+- ❌ Calculer la surface en pixels² et la présenter telle quelle — toujours convertir via `polygonAreaM2(points)` qui prend en compte `APP_CONFIG.scale`
+- ❌ Considérer que `_mode = "surface"` interdit la mesure en m linéaires — l'user veut pouvoir basculer librement entre modes sans perdre l'état
+- ❌ Sauvegarder les distances/surfaces calculées dans SessionPersist — recalculer à chaque restore est instantané et garantit la cohérence avec les annotations actuelles
+
+### 50. V2.3 — Replay tracker + Export CSV (depuis v1.12.0)
+
+#### 50.1 Instrumentation `js/tracking.js`
+
+Ajout d'une **timeline interne** :
+
+```js
+let _trackingTimeline = []; // [{ts_ms, x, y, type, level}, ...]
+let _trackingStartTs  = null;
+
+function _pushTimelinePoint(type) {
+  _trackingTimeline.push({
+    ts_ms: Date.now(),
+    x:     _currentPos.x,
+    y:     _currentPos.y,
+    type:  type,                       // "start" | "pdr" | "recalage"
+    level: window.APP_CONFIG?.currentLevel ?? null
+  });
+}
+```
+
+4 sites instrumentés :
+- `startTracking()` → `_trackingStartTs = Date.now(); _pushTimelinePoint("start")`
+- `avancer()` (1 pas PDR appliqué) → `_pushTimelinePoint("pdr")`
+- Click recalage (handler `_handleRecalageClick`) → `_pushTimelinePoint("recalage")`
+- `recalerTrackerSurPoint()` → `_pushTimelinePoint("recalage")`
+
+API publique exposée :
+- `window.getTrackingTimeline()` → `[...]`
+- `window.getTrackingStartTs()` → number | null
+- `window.getTrackingDistanceM()` → number (calculé sur timeline, hors recalages)
+- `window.resetTrackingTimeline()` → vide le tableau + reset `_trackingStartTs`
+
+#### 50.2 Module `js/trackerReplay.js`
+
+`window.TrackerReplay = { ouvrir, fermer, exporterCSV }` (~500 lignes IIFE).
+
+Architecture :
+- **Modale plein écran** (`#kta-tracker-replay-overlay`) avec slider `<input type="range">` + boutons commande + canvas overlay sur la carte
+- **Mode compact** (bottom sheet) : `setCompactMode(true)` au Play, désactive `pointer-events: auto` sur l'overlay pour laisser passer les interactions carte
+- **Trail** : `L.polyline` multi-segments — un nouveau segment à chaque type `recalage` (= téléportation, pas de ligne droite artificielle)
+- **Marker mobile** : `L.circleMarker` jaune `radius: 8`
+- **Raccourcis clavier** : `document.addEventListener("keydown", _onKey)` pour Espace / ← → / Échap
+
+#### 50.3 Export CSV
+
+```js
+function exporterCSV() {
+  const timeline = window.getTrackingTimeline();
+  const startTs  = window.getTrackingStartTs();
+  const mlvl     = !!window.APP_CONFIG?.multiLevel;
+  
+  let csv = "timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type";
+  if (mlvl) csv += ",level";
+  csv += "\n";
+  
+  timeline.forEach(pt => {
+    const delta = pt.ts_ms - startTs;
+    let row = `${pt.ts_ms},${delta},${pt.x},${pt.y},${pt.type}`;
+    if (mlvl) row += `,${pt.level ?? ""}`;
+    csv += row + "\n";
+  });
+  
+  // Download via Blob + <a download>
+}
+```
+
+#### 50.4 Reset au plan switch
+
+`main.js > _libererRessourcesPlanPrecedent` :
+```js
+if (window.TrackerReplay) window.TrackerReplay.fermer();
+if (window.resetTrackingTimeline) window.resetTrackingTimeline();
+```
+
+#### 50.5 À NE PAS faire
+
+- ❌ Tracer un segment de polyline entre 2 points dont l'un est de type `recalage` — c'est une téléportation, pas un déplacement réel
+- ❌ Garder la modale en mode "full" pendant le replay — bascule auto en compact dès le Play pour libérer la carte
+- ❌ Persister `_trackingTimeline` au localStorage — RAM-only suffit, la session de tracking est éphémère (typiquement < 4h)
+- ❌ Inclure les events `boussole` ou `tick` dans la timeline — seuls les 3 types `{start, pdr, recalage}` sont pertinents (les autres seraient du bruit, +1000 events/sec pour rien)
+
+### 51. V2.4 — Heatmap (DÉSACTIVÉ, code en standby — depuis v1.12.0)
+
+Module `js/heatmap.js` (~380 lignes IIFE) implémenté mais **désactivé à l'usage**.
+
+Décision auteur : pas d'utilité concrète sur le terrain démontrée (les zones de passage sont déjà identifiables via les tracés + structures + zones existantes). Le code reste dans le repo en standby pour réactivation rapide si le besoin émerge.
+
+#### 51.1 Désactivation appliquée
+
+3 endroits modifiés pour désactiver :
+1. `index.html` → `<!-- <script src="js/heatmap.js"></script> -->` (commenté)
+2. `sw.js > ASSETS_TO_CACHE` → `// "./js/heatmap.js",` (commenté)
+3. `js/interface.js` → bloc bouton 🔥 commenté `/* ... */` (groupe Stats/Analyse)
+
+L'en-tête de `js/heatmap.js` documente les **4 étapes pour réactiver** (cf. commentaire en haut du fichier).
+
+#### 51.2 Implémentation (référence si réactivation)
+
+- Canvas overlay : `L.imageOverlay(dataUrl, bounds, opts)` avec dataUrl générée par un canvas hors-DOM
+- **Radial gradient** par point source via `ctx.createRadialGradient` + `ctx.globalCompositeOperation = "lighter"` (blending additif pour empiler les contributions)
+- **Colormap** bleu → vert → jaune → rouge : pixel manipulation via `getImageData` + map d'intensité (0..1) sur le LUT couleur, puis `putImageData`
+- 3 sources togglables :
+  - Timeline tracker (`window.getTrackingTimeline()`)
+  - Points editor session (`window.getEditorPoints()`)
+  - Data layer points (tous les points embedded via `window.getAllEmbeddedPoints()`)
+- Sliders rayon (10-120 px) + intensité (0.2-3×)
+
+#### 51.3 Pour réactiver
+
+1. Décommenter `<script src="js/heatmap.js">` dans `index.html`
+2. Restaurer `"./js/heatmap.js",` dans `sw.js > ASSETS_TO_CACHE`
+3. Restaurer le bouton 🔥 Heatmap dans `js/interface.js` (groupe Stats/Analyse, chercher `/* 🚫 v1.12.0 désactivé` pour trouver le bloc commenté)
+4. Bump `CACHE_NAME` dans `sw.js`
+
+### 52. Mode urgence — fixes v1.12.0
+
+#### 52.1 Rotation paysage (orientation change)
+
+Avant : la minimap Leaflet ne se redimensionnait pas seule à la rotation device → tuiles décalées, marker tracker hors zone visible.
+
+Fix : listener `orientationchange` + `resize` qui appelle `invalidateSize()` en cascade (3 retries 80/300/700ms pour gérer les transitions iOS Safari lentes) + `fitBounds` pour refit complet :
+
+```js
+_orientationListener = function() {
+  if (!_miniMap) return;
+  function _retry() {
+    try {
+      _miniMap.invalidateSize({ animate: false });
+      const pc = window.PLAN_CONFIG;
+      if (pc?.plan) {
+        _miniMap.fitBounds([[0, 0], [pc.plan.imageHeight, pc.plan.imageWidth]]);
+      }
+    } catch(e) {}
+  }
+  setTimeout(_retry, 80);
+  setTimeout(_retry, 300);
+  setTimeout(_retry, 700);
+};
+window.addEventListener("orientationchange", _orientationListener);
+window.addEventListener("resize",            _orientationListener);
+```
+
+Cleanup au `desactiver()` pour ne pas garder des appels invalidateSize zombies après fermeture du mode.
+
+#### 52.2 Décimation itinéraire (anti-crash gros plan)
+
+Avant : itinéraire 1000-3000 pts → polyline énorme dans Leaflet pendant que tout le reste tourne en parallèle → OOM ou main thread bloqué.
+
+Fix dans `_addRoadsToMiniMap` :
+- **Skip total** si itinéraire > 500 pts
+- **Décimation 1 pt/N** sinon, cap 100 pts
+- **Cap total 5000 pts** sur l'ensemble des polylines de la minimap
+- Toggle ☑️ 🗺️ Itinéraire dans header pour réafficher manuellement (skipé par défaut)
+
+#### 52.3 Toggle 🗺️ Itinéraire visibilité (cyan + halo)
+
+Le toggle réaffiche l'itinéraire, mais sur fond minimap zoomé serré + désaturé, weight 3 dashed était quasi invisible. Fix :
+- **Cyan vif weight 6** (ligne pleine, no dashArray)
+- **Halo blanc weight 10** dessous (2 polylines superposées) pour outline visible sur n'importe quel fond
+- `lineCap: "round"` + `lineJoin: "round"` pour masquer les gaps de décimation
+
+Persistance choix : `localStorage["myktamap_emergency_show_iti_v1"] = "1"|"0"`.
+
+#### 52.4 Bouton 📍 Recalage auto-close
+
+Avant : après click recalage, l'icône 📍 du groupe Tracker restait active (surlignée) jusqu'au prochain stop tracker — laissait penser que le mode était toujours actif.
+
+Fix dans le handler de click recalage : avant l'appel à `_setGroupeModeActif("tracker", true, null)` (qui ne touche pas l'icône quand `actif=true && iconeReflet=null`), restore explicite de l'icône originale :
+```js
+const g = _groupes.tracker;
+if (g && g.btnPrincipal && g.btnPrincipal.dataset.iconeOriginale) {
+  g.btnPrincipal.innerHTML = g.btnPrincipal.dataset.iconeOriginale;
+}
+_setGroupeModeActif("tracker", true, null);
+```
+
+`window._fermerModeRecalage()` exposé pour pouvoir le call depuis n'importe où.
 
 ---
 

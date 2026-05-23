@@ -4,7 +4,30 @@
 
 ---
 
-## 🆕 Nouveautés v1.11.0 (23/05/2026)
+## 🆕 Nouveautés v1.12.0 (23/05/2026) — Pack terrain V2
+
+> Cette release consolide 4 fonctionnalités terrain (V2.1 → V2.4) ajoutées entre v1.11.0 et v1.12.0, validées une par une sur le terrain.
+
+- 🪫 **Indicateur de batterie + alertes** : un nouveau chip ⚡/🪫 s'affiche dans l'en-tête de la nouvelle interface (à côté des compteurs session), dans le footer des stats session, et dans le bloc 🔋 du **mode urgence**. Le niveau (%) et l'état (en charge / en décharge) sont rafraîchis en temps réel quand le navigateur expose cette info (✅ Android Chrome + PC Chrome ; ❌ iOS Safari + Firefox récents — la chip est alors masquée, sans erreur). 3 **alertes graduelles** sont envoyées sous forme de toast discret : 20% (orange), 10% (rouge), 5% (rouge pulsant). Chaque seuil n'est envoyé qu'une fois par cycle de décharge (pas de spam si tu oscilles autour de la valeur).
+
+- 📊 **Statistiques de session enrichies + ⬛ Mesure de surface** : la modale **📋 Session active** affiche désormais le total d'annotations, le breakdown par type (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures), la **distance cumulée** des tracés (auto m → km), la **surface cumulée** des zones (auto m² → ha), les photos attachées, et la durée écoulée depuis le début de session. Boutons 📋 **Copier** et 💾 **Export TXT** pour partager. En multi-niveau (M-LVL), un breakdown additionnel par niveau s'affiche.
+  - **Bonus** : la mesure de distance 📐 a désormais un mode ⬛ **Surface**. Toggle 📏/⬛ dans le groupe Mesure. Tu dessines un polygone clic à clic et l'app affiche l'aire en m² (auto bascule en ha au-delà de 10 000 m²). Le mode et le polygone sont persistés dans la session.
+
+- 🎬 **Replay de session tracker** : nouveau bouton 🎬 dans le groupe Tracker. Ouvre une modale plein écran avec **slider timeline + play/pause/restart/end + vitesse 0.5× à 10×**. À l'appui sur ▶️ Play, la modale bascule automatiquement en mode compact (bottom sheet) pour libérer la carte. Le trail rejoue ta session avec un marker mobile jaune (les recalages sont sautés visuellement = pas de ligne entre 2 points téléportés). Raccourcis clavier : Espace = play/pause, ← → = seek, Échap = fermer. Bouton 💾 **Export CSV** qui produit un fichier 5 colonnes `timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type` — exploitable dans Excel/LibreOffice/Numbers ou tout outil d'analyse.
+
+- 🔥 **Heatmap (densité d'activité)** — **module conservé mais désactivé** dans v1.12.0 par décision auteur (pas d'utilité concrète sur le terrain démontrée — les zones de passage sont déjà identifiables via les tracés). Le code reste dans le repo en standby et peut être réactivé en 4 étapes documentées si le besoin émerge.
+
+### 🩹 Fixes intégrés à v1.12.0
+
+- 🚨 **Mode urgence — paysage** : la minimap ne se décalait plus correctement au passage horizontal. Corrigé via 3 passes `invalidateSize` après rotation pour gérer les transitions iOS lentes.
+- 🚨 **Mode urgence — gros plan + itinéraire** : crash mémoire si l'itinéraire dépassait 1000+ points. Maintenant : itinéraire skipé par défaut dans la minimap, mais **toggle ☑️ Itinéraire** dans le header pour le réafficher manuellement (rendu en cyan vif + halo blanc pour rester visible).
+- 🧭 **Bouton 📍 Recalage** : quand tu cliques sur un point pour recaler, le mode se referme automatiquement et l'icône boussole reprend la main (avant : l'icône recalage restait active jusqu'au prochain stop tracker).
+- 🔐 **Modale PIN proposal après update PC** : la hauteur était trop grande, la moitié vide. Corrigée.
+- 📱 **En-tête mobile** : les 5 compteurs (📍/🛣️/⬛/🏛️/📸) sont désormais regroupés en un seul chip 📊 cliquable qui ouvre la modale Session — gain de place avec la nouvelle chip batterie.
+
+---
+
+## 🗓️ Anciennes nouveautés — v1.11.0 (23/05/2026)
 
 > **🌐 Nouveau domaine** : MyKTAMap est désormais accessible à **[myktamap.fr](https://myktamap.fr)** (l'ancien `myktamap.is-underground.fr` redirige automatiquement). Mets à jour tes raccourcis / favoris !
 
@@ -695,9 +718,46 @@ La position calculée dérive inévitablement. Dès que vous reconnaissez un rep
 1. Appuyez sur **📍** — le bouton s'allume en vert
 2. Appuyez sur le point du plan correspondant à votre position réelle
 3. L'icône se déplace à l'emplacement choisi et le tracé repart de zéro
-4. Appuyez à nouveau sur **📍** pour désactiver le mode recalage
+4. *(depuis v1.12.0)* Le mode recalage se referme automatiquement après le clic et l'icône directionnelle (cône bleu) reprend la main — plus besoin de re-cliquer sur 📍 pour désactiver le mode
 
 > Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage.
+
+### 🎬 Replay de session tracker *(depuis v1.12.0)*
+
+Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
+
+**Comment ça marche** :
+
+- Pendant que tu fais du tracking, l'app enregistre en interne une **timeline** : pour chaque pas PDR appliqué, chaque recalage manuel, et l'instant de démarrage, elle stocke `(timestamp_epoch_ms, x_plan, y_plan, type)`.
+- Au clic sur 🎬, une modale plein écran s'ouvre avec :
+  - **Slider timeline** (gauche → droite = début → fin)
+  - Boutons **⏮ Restart · ▶️ Play · ⏸ Pause · ⏭ End**
+  - Sélecteur de **vitesse** : 0.5× · 1× · 2× · 5× · 10×
+  - Bouton **💾 Export CSV**
+  - Bouton **⛶** pour basculer en mode compact (bottom sheet) qui libère la carte
+- À l'appui sur **▶️ Play**, la modale **bascule automatiquement en mode compact** — tu vois la carte en grand pendant que le marker jaune rejoue tes pas. Le trail (ligne) s'allonge au fur et à mesure.
+
+**Raccourcis clavier** :
+
+| Touche | Action |
+|---|---|
+| Espace | Play / Pause |
+| ← | Reculer de 1s |
+| → | Avancer de 1s |
+| Échap | Fermer la modale |
+
+**Bouton 💾 Export CSV** produit un fichier `.csv` à 5 colonnes (ou 6 en M-LVL) :
+
+```
+timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
+```
+
+- `type` = `start` (démarrage tracking), `pdr` (pas PDR appliqué), `recalage` (recalage manuel)
+- Ouvrable dans Excel / LibreOffice / Numbers / Python pandas / R / etc.
+
+**Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
+
+**Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
 
 ### ⚙️ Réglages du tracker
 
@@ -851,8 +911,11 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 - 📍 **Position XL** : coordonnées plan affichées en énorme caractères (lisible à un mètre du téléphone)
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
+- ☑️ **Toggle 🗺️ Itinéraire** *(depuis v1.12.0)* : checkbox dans l'en-tête. Par défaut **décochée** (protection anti-crash sur très gros plans). Coche-la pour réafficher ton itinéraire actif dans la minimap — rendu en **cyan vif + halo blanc** pour rester visible sur le fond zoomé serré. Préférence persistée entre 2 ouvertures du mode urgence.
+- 🔋 **Batterie** *(depuis v1.12.0)* : le bloc 🔋 ÉTAT affiche désormais le niveau de batterie en temps réel quand l'API est dispo (Chromium uniquement). Critique en mode panique — tu sais immédiatement combien de temps il te reste avant que le tel ne s'éteigne.
 - 🌗 **Thèmes** : sombre par défaut, clair en option (selon l'environnement extérieur — pénombre vs lumière vive)
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
+- 📱 **Paysage** *(depuis v1.12.0)* : la minimap se recadre correctement quand tu tournes le téléphone à l'horizontale ou inverses le portrait — fini les décalages au passage rotation.
 
 **Quand l'utiliser ?**
 - Tu paniques à un croisement et tu as besoin de te re-orienter rapidement
@@ -915,13 +978,90 @@ Chaque action déclenche un **toast discret** en bas : `↩ Annulé : Pose du po
 
 ---
 
-## 📐 Mesure de distance
+## 🪫 Indicateur de batterie *(depuis v1.12.0)*
+
+L'app surveille en temps réel le niveau de batterie du téléphone (quand le navigateur expose cette info) et affiche un indicateur compact à 3 endroits :
+
+| Endroit | Apparence |
+|---|---|
+| **En-tête** de la nouvelle interface (à côté des compteurs session) | Chip compact `⚡ 78%` (en charge, vert) ou `🪫 23%` (en décharge, couleur selon niveau) |
+| **Footer** de la modale 📋 Session active | Ligne `🔋 État · 🪫 23% · Discharging` |
+| **Bloc 🔋 ÉTAT** du mode urgence 🚨 | Label long `🪫 23% · décharge` |
+
+### Niveaux et couleurs
+
+| % | Couleur | Comportement |
+|---|---|---|
+| ≥ 50 % | Vert / neutre | OK |
+| 20-49 % | Jaune-orange | Surveille |
+| 10-19 % | Orange foncé + toast `🪫 Batterie faible — pense à recharger` (1 fois) |
+| 5-9 % | Rouge + toast `🪫 Batterie critique — sortie recommandée` (1 fois) |
+| < 5 % | Rouge pulsant + toast `🚨 Batterie critique — moins de 5%` (1 fois) |
+
+Chaque seuil n'envoie son toast **qu'une seule fois** par cycle de décharge (pas de spam si tu oscilles autour de 10 %, 12 %, 9 %, etc.). Le compteur de seuils est reset dès que tu repasses en charge ou que tu remontes au-dessus de 50 %.
+
+### Compatibilité navigateur
+
+L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est **plus disponible partout** :
+
+| Navigateur | Support |
+|---|---|
+| Chrome Android / PC | ✅ Oui |
+| Edge Android / PC | ✅ Oui |
+| Samsung Internet | ✅ Oui |
+| Safari iOS / macOS | ❌ Non (l'API a été retirée pour des raisons de privacy / fingerprinting) |
+| Firefox récent | ❌ Non (l'API a été désactivée par défaut) |
+
+> 🪫 **Si l'API n'est pas dispo** sur ton téléphone, la chip batterie est **simplement masquée** — aucun message d'erreur ne s'affiche. C'est normal sur iOS. Tu vois quand même le niveau dans le mode urgence si tu tiens à l'avoir en grand.
+
+---
+
+## 📊 Statistiques de session *(depuis v1.12.0)*
+
+La modale **📋 Session active** (accessible depuis l'en-tête nouvelle interface, chip 📊 sur mobile) affiche désormais un bloc de statistiques en tête de modale.
+
+### Ce que tu vois
+
+| Stat | Valeur |
+|---|---|
+| **Total annotations** | Somme de tous les éléments (points + tracés + zones + structures) |
+| **Breakdown par type** | 📍 N points · 🛣️ M tracés · ⬛ K zones · 🏛️ L structures |
+| **Distance totale** | Somme des longueurs des tracés (auto m → km au-delà de 1 000 m) |
+| **Surface totale** | Somme des aires des zones (auto m² → ha au-delà de 10 000 m²) |
+| **Photos POI** | Nombre de photos attachées aux points |
+| **Durée session** | Temps écoulé depuis le démarrage de l'app sur ce plan (`HH:MM:SS`) |
+
+En **multi-niveau (M-LVL)**, un breakdown additionnel par niveau s'affiche (ex: `Niveau -1: 12 pts · 3 tracés` / `Niveau 0: 45 pts · 8 tracés`).
+
+### Partager le résumé
+
+2 boutons en bas du bloc stats :
+
+- **📋 Copier** : copie un résumé texte dans le presse-papier (formaté pour Discord, SMS, mail)
+- **💾 Export TXT** : télécharge un fichier `.txt` avec le même contenu
+
+Pratique pour faire un point de session avec ton binôme à la sortie, ou pour archiver l'état d'avancement de la cartographie.
+
+---
+
+## 📐 Mesure de distance et ⬛ Mesure de surface *(depuis v1.12.0)*
 
 > Tous les boutons de mesure se trouvent dans le groupe **📐 Mesure** de la barre latérale.
 
+### 📐 Mode Distance (par défaut)
+
 1. Appuyez sur **📐** — le mode mesure s'active (bouton vert)
 2. Cliquez sur le plan pour poser des points
-3. La distance totale s'affiche en bas à gauche, en mètres
+3. La distance totale s'affiche en bas à gauche, en mètres (`📐 Distance: X m`)
+
+### ⬛ Mode Surface *(depuis v1.12.0)*
+
+1. Dans le groupe **📐 Mesure**, appuyez sur le toggle **📏/⬛** pour basculer en mode surface
+2. Cliquez sur le plan pour dessiner un **polygone** (au moins 3 points)
+3. L'aire s'affiche en bas à gauche, en m² (`⬛ Surface: X m²`)
+4. Au-delà de 10 000 m², l'app affiche automatiquement en hectares (ha)
+
+> **Comment ça marche** : l'app applique la formule de Shoelace aux coordonnées plan et convertit en m² via l'échelle calibrée du plan (`APP_CONFIG.scale` en px/m). La précision dépend donc de la calibration initiale du plan (`📏 ÉCHELLE` dans ⚙️ Réglages).
 
 ### ❌ Effacer la mesure
 
@@ -930,10 +1070,12 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 | Option | Effet |
 |---|---|
 | **↩️ Dernier point** | Annule uniquement le dernier point cliqué (idéal en cas d'erreur de clic) |
-| **🗑️ Toute la mesure** | Efface tous les points et remet la distance à zéro |
+| **🗑️ Toute la mesure** | Efface tous les points et remet la distance/surface à zéro |
 | Annuler | Ferme la fenêtre sans rien supprimer |
 
 > Tu peux retirer plusieurs points un par un en cliquant successivement **❌ → ↩️ Dernier point**.
+
+> 💾 Le mode (distance/surface) et les points sont persistés dans la sauvegarde session — au reload ou import session, ta mesure en cours est restaurée à l'identique.
 
 ---
 

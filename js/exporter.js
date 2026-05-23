@@ -117,7 +117,9 @@
     const nbPoints  = window.getEditorPoints  ? window.getEditorPoints().length  : 0;
     const nbRoads   = window.getRoads         ? window.getRoads().length         : 0;
     const nbZones   = window.getZones         ? window.getZones().length         : 0;
-    const nbMesure  = window.getMeasurePoints ? window.getMeasurePoints().length : 0;
+    const nbMesure  = window.getMeasurePoints        ? window.getMeasurePoints().length        : 0;
+    // 🆕 v1.12.0-fix : surface comptée séparément pour l'affichage de la modale export
+    const nbMesureSurf = window.getMeasurePointsSurface ? window.getMeasurePointsSurface().length : 0;
     const nbTrackerPath = window.getTrackingPath ? window.getTrackingPath().length : 0;
     const trackerOk = window.getTrackingPosition && window.getTrackingPosition() !== null;
 
@@ -184,6 +186,7 @@
                   : ''}
                 ✓ Format PNG, résolution originale<br>
                 ${nbMesure > 0 ? '✓ Mesure de distance (' + nbMesure + ' points)<br>' : ''}
+                ${nbMesureSurf >= 3 ? '✓ Mesure de surface (' + nbMesureSurf + ' sommets)<br>' : ''}
               </p>
             </div>
           </div>
@@ -1971,8 +1974,9 @@
       drawMarker(img, p.x, p.y, 50 * scale);
     }
 
-    // ---------- mesure ----------
+    // ---------- mesure (distance + surface) ----------
     if (opts.ann.mesure && window.getMeasurePoints) {
+      // 📐 Polyline distance (rouge plein, comme avant)
       const m = window.getMeasurePoints();
       if (m && m.length > 0) {
         ctx.save();
@@ -1985,6 +1989,26 @@
         }
         ctx.stroke();
         ctx.restore();
+      }
+      // ⬛ Polygone surface (v1.12.0-fix) — même couleur que distance
+      // mais fill semi-transparent (cohérent avec le rendu Leaflet on-screen).
+      if (window.getMeasurePointsSurface) {
+        const ms = window.getMeasurePointsSurface();
+        if (ms && ms.length >= 3) {
+          ctx.save();
+          ctx.strokeStyle = "red";
+          ctx.fillStyle   = "rgba(255, 0, 0, 0.18)";
+          ctx.lineWidth   = 3 * scale;
+          ctx.beginPath();
+          ctx.moveTo(sc(ms[0].x), sc(ms[0].y));
+          for (let i = 1; i < ms.length; i++) {
+            ctx.lineTo(sc(ms[i].x), sc(ms[i].y));
+          }
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
 

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.11.0-history-grisage-fix";
+const CACHE_NAME = "myktamap-cache-v1.12.0-emergency-cardinal-under-cap";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -101,6 +101,16 @@ const ASSETS_TO_CACHE = [
   // en RAM, mais le module JS doit être disponible offline pour réagir
   // aux Ctrl+Z / Ctrl+Y).
   "./js/historyManager.js",
+  // 🆕 v1.11.1 V2 : BatteryGuard (indicateur batterie + warnings).
+  // Module léger, no-op gracieux si Battery API indispo (Safari iOS).
+  "./js/batteryGuard.js",
+  // 🆕 v1.11.3 V2.3 : TrackerReplay (modale replay timeline tracker + export CSV).
+  "./js/trackerReplay.js",
+  // 🚫 v1.11.4 V2.4 : Heatmap — DÉSACTIVÉ depuis v1.12.0 (cf. commentaire
+  // dans index.html). Le fichier reste dans le repo mais pas chargé ni caché.
+  // Pour réactiver : décommenter le <script> dans index.html + restaurer
+  // "./js/heatmap.js" ci-dessous + restaurer le bouton 🔥 dans interface.js.
+  // "./js/heatmap.js",
   "./js/exporter.js",
   // 🆕 v1.10.3 : module Export PDF imprimable (jsPDF + canvas exporter).
   // Doit être caché pour fonctionner offline.

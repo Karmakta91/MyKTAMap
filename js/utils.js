@@ -144,6 +144,64 @@ function formatDistance(distM, decimalsM) {
 window.formatDistance = formatDistance;
 
 // =========================
+// FORMATAGE D'UNE SURFACE (m² ↔ ha) — depuis v1.11.2 (V2.2)
+// =========================
+// Reçoit une surface en m² et retourne une string formatée :
+// - < 10 000 m²  → "X m²" (entier, sauf si < 100 m² → 1 décimale)
+// - ≥ 10 000 m² → "X.XX ha" (hectares, toujours 2 décimales)
+// Décision KARMA : PAS de bascule vers km² (= 1 000 000 m²) car les
+// surfaces souterraines typiques (carrières, salles) sont entre 100 m²
+// et quelques hectares. km² serait disproportionné et illisible.
+// 1 ha = 10 000 m² (= 100 m × 100 m).
+function formatSurface(areaM2, decimalsM2) {
+  if (typeof areaM2 !== "number" || isNaN(areaM2) || areaM2 < 0) return "—";
+  if (areaM2 >= 10000) {
+    return (areaM2 / 10000).toFixed(2) + " ha";
+  }
+  // < 100 m² : 1 décimale (précision utile pour les petites surfaces)
+  // ≥ 100 m² : entier (precision pixel-level inutile au-delà)
+  if (areaM2 < 100) {
+    const dec = (typeof decimalsM2 === "number") ? decimalsM2 : 1;
+    return areaM2.toFixed(dec) + " m²";
+  }
+  return Math.round(areaM2) + " m²";
+}
+window.formatSurface = formatSurface;
+
+// =========================
+// AIRE D'UN POLYGONE — Shoelace formula (depuis v1.11.2 V2.2)
+// =========================
+// Calcule l'aire d'un polygone simple (non auto-intersectant) en pixels²
+// via la formule des lacets (Gauss / shoelace). L'aire retournée est en
+// valeur absolue (les polygones CCW vs CW donnent la même valeur).
+//
+// Pour convertir en m² : diviser par (APP_CONFIG.scale)² puisque scale
+// est en px/m, donc 1 px² = (1/scale)² m².
+//
+// Fonctionne avec un array de {x, y} (≥ 3 points requis pour avoir une aire).
+function polygonArea(points) {
+  if (!Array.isArray(points) || points.length < 3) return 0;
+  let sum = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    sum += (a.x * b.y) - (b.x * a.y);
+  }
+  return Math.abs(sum) / 2;  // px²
+}
+window.polygonArea = polygonArea;
+
+// Convertit une aire en pixels² vers m² via APP_CONFIG.scale (px/m).
+// Si scale absent → retourne null (pas de conversion possible).
+function polygonAreaM2(points) {
+  const areaPx2 = polygonArea(points);
+  const scale = (window.APP_CONFIG && window.APP_CONFIG.scale) || null;
+  if (!scale || scale <= 0) return null;
+  return areaPx2 / (scale * scale);  // px² / (px/m)² = m²
+}
+window.polygonAreaM2 = polygonAreaM2;
+
+// =========================
 // HTML POPUP D'UN POINT — helper commun (editor + embedded)
 // =========================
 // Construit le HTML d'une popup Leaflet pour un point, avec 2 boutons :
@@ -1235,9 +1293,24 @@ async function telechargerPlan() {
     }
     if (_markerFails > 0) console.warn("[Export rapide]", _markerFails, "icône(s) sur", deferredMarkers.length, "n'ont pas pu être dessinées");
 
-    // ---------- mesure ----------
+    // ---------- mesure (distance + surface) ----------
+    // 📐 Polyline distance (legacy)
     const measurePoints = window.getMeasurePoints ? window.getMeasurePoints() : [];
     drawPolyline(measurePoints, { color: "red", weight: 3, opacity: 1 });
+    // ⬛ Polygone surface (v1.12.0-fix) — fill semi-transparent rouge, même
+    // teinte que la polyline pour cohérence visuelle, avec stroke plein.
+    if (window.getMeasurePointsSurface) {
+      const measureSurf = window.getMeasurePointsSurface() || [];
+      if (measureSurf.length >= 3) {
+        drawPolygon(measureSurf, {
+          color:       "red",
+          weight:      3,
+          opacity:     1,
+          fillColor:   "red",
+          fillOpacity: 0.18
+        });
+      }
+    }
 
     // ---------- tracker (chemin parcouru + position courante) ----------
     if (window.getTrackingPath) {

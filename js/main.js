@@ -154,6 +154,12 @@ async function lancerApplication() {
   }
   _appEnCours = true;
 
+  // 🆕 v1.11.2 V2.2 : timestamp de début de session pour calculer la
+  // durée (modale Détails session). Set à chaque démarrage de
+  // lancerApplication (= nouveau plan chargé). Reset dans
+  // _libererRessourcesPlanPrecedent au plan switch.
+  window._sessionStartTs = Date.now();
+
   try {
   // Reset complet de l'interface
   window.interfaceInitialized = false;
@@ -295,6 +301,23 @@ async function lancerApplication() {
     try { window._refonteInterfacePostInit(); } catch(e) {
       console.warn("[Refonte UI] postInit error:", e);
     }
+  }
+
+  // 🆕 v1.11.1 V2 (KARMA "il faut que forceCheck soit call à l'init map") :
+  // Force un sync BatteryGuard ici, garanti après que :
+  //   1. refonteInterface.js a fini son postInit (chips DOM créés)
+  //   2. batteryGuard.js IIFE a eu le temps d'init son state via getBattery()
+  // 4 tentatives décalées dans le temps pour bypass toute race condition
+  // possible entre l'init async de l'API Battery et l'attachement du listener.
+  // No-op gracieux si BatteryGuard indispo.
+  if (window.BatteryGuard && typeof window.BatteryGuard.forceCheck === "function") {
+    function _batteryForceSync() {
+      try { window.BatteryGuard.forceCheck(); } catch(e) {}
+    }
+    _batteryForceSync();              // immédiat
+    setTimeout(_batteryForceSync, 300);   // après getBattery().then typique
+    setTimeout(_batteryForceSync, 1000);  // safety net si promise lente
+    setTimeout(_batteryForceSync, 3000);  // dernière chance (3s = limite raisonnable)
   }
 
   // Resize defensif (iOS PWA viewport-fit=cover) :
@@ -471,6 +494,29 @@ function _libererRessourcesPlanPrecedent() {
   if (window.HistoryManager && typeof window.HistoryManager.reset === "function") {
     try { window.HistoryManager.reset(); } catch(e) {}
   }
+
+  // 🆕 v1.11.2 V2.2 : reset du timestamp début de session au plan switch.
+  // Utilisé par la modale Détails session pour afficher la durée de la
+  // session courante (depuis le chargement du plan ≈ KARMA 3:a "depuis
+  // le 1er ajout" — compromis pragmatique, le 1er ajout est typiquement
+  // dans les premières secondes après chargement).
+  window._sessionStartTs = null;
+
+  // 🆕 v1.11.3 V2.3 : reset de la timeline tracker au plan switch.
+  // Cohérent avec le reset RAM only choisi pour V2.3. Si TrackerReplay
+  // est ouvert, on le ferme aussi pour éviter qu'il garde des refs vers
+  // une map détruite.
+  if (window.MyKTAMapTrackerReplay && typeof window.MyKTAMapTrackerReplay.fermer === "function") {
+    try { window.MyKTAMapTrackerReplay.fermer(); } catch(e) {}
+  }
+  if (typeof window.resetTrackingTimeline === "function") {
+    try { window.resetTrackingTimeline(); } catch(e) {}
+  }
+
+  // 🚫 v1.11.4 V2.4 : reset Heatmap retiré depuis v1.12.0 (module désactivé).
+  // Le check `window.MyKTAMapHeatmap` aurait été no-op silencieusement
+  // puisque le module n'est plus chargé, mais on retire la ligne pour
+  // garder main.js propre. Si on réactive, restaurer ce bloc.
 
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
   if (window._baseTiles && window._baseTiles.length > 0) {

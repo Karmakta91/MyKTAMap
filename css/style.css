@@ -5833,6 +5833,55 @@ img.kta-popup-photo-mini:focus-visible {
   font-family: inherit;
 }
 
+/* 🆕 v1.11.2-fix2 : header actions = container des contrôles à droite
+   du titre. Aligne le toggle "🗺️ Itinéraire" + le bouton thème côte à côte. */
+.kta-emergency-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Toggle "🗺️ Itinéraire" — checkbox stylée façon chip cliquable.
+   En landscape mobile (cf media query plus haut), on réduit la taille pour
+   ne pas écraser l'espace du header (déjà compact). */
+.kta-emergency-toggle-iti {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  background: transparent;
+  transition: background 0.12s, opacity 0.12s;
+  opacity: 0.7;
+  user-select: none;
+}
+.kta-emergency-toggle-iti:hover { opacity: 1; }
+.kta-emergency-toggle-iti input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: currentColor;
+  margin: 0;
+}
+.kta-emergency-toggle-iti input:checked ~ span,
+.kta-emergency-toggle-iti:has(input:checked) {
+  opacity: 1;
+}
+.kta-emergency-dark  .kta-emergency-toggle-iti:has(input:checked) {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: #00d4ff;
+  color: #00d4ff;
+}
+.kta-emergency-light .kta-emergency-toggle-iti:has(input:checked) {
+  background: rgba(0, 86, 153, 0.12);
+  border-color: #005699;
+  color: #005699;
+}
+
 .kta-emergency-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -5861,22 +5910,33 @@ img.kta-popup-photo-mini:focus-visible {
   border-radius: 12px;
 }
 
-/* Overlay centré au-dessus du minimap : titre + heading num + cap card +
-   cercle compass. Tout en flex column centré vertical/horizontal. */
+/* Overlay au-dessus du minimap.
+   🔧 v1.12.0-fix3 (KARMA "met le SE/S en dessous de CAP plus logique, et
+   descend encore un peu les degrés vu qu'on a gagné de la place en bas") :
+     - TOP    = 🧭 CAP + cardinal (SE/S/N/...) groupés via .heading-top
+     - CENTRE = libre (minimap + marker boussole visibles)
+     - BOTTOM = degrés en gros (187°), poussés tout en bas */
 .kta-emergency-bloc-heading-overlay {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
+  justify-content: space-between;
   z-index: 2;
   pointer-events: none;  /* le minimap derrière ne reçoit pas de clics non plus */
-  padding: 14px;
+  padding: 10px 14px 0 14px;  /* bottom 0 → degrés collés au bord */
 }
 .kta-emergency-bloc-heading-overlay > * {
   pointer-events: auto;  /* mais les enfants restent interactifs (clic compass futur) */
+}
+
+/* TOP group : 🧭 CAP + cardinal (SE/S/N/...) empilés sans gap excessif */
+.kta-emergency-heading-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 
 .kta-emergency-bloc-meta {
@@ -5938,6 +5998,32 @@ img.kta-popup-photo-mini:focus-visible {
   text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
 }
 
+/* 🔧 v1.12.0-fix (KARMA "le CAP et le S en bas (ou N, SE...) doit être en
+   orange chartre") : label "🧭 CAP" + cardinal (N/S/SE/...) en jaune
+   charte #f4c542 (dark) / ocre #b8740b (light), cohérent avec l'ancien
+   compass-n et le ring jaune de la nouvelle boussole tracker.
+   Le num (degrés en gros) garde sa couleur d'origine (blanc dark / sombre
+   light) pour rester lisible en grand. */
+.kta-emergency-dark  .kta-emergency-bloc-heading-overlay .kta-emergency-label,
+.kta-emergency-dark  .kta-emergency-heading-card {
+  color: #f4c542;
+}
+.kta-emergency-light .kta-emergency-bloc-heading-overlay .kta-emergency-label,
+.kta-emergency-light .kta-emergency-heading-card {
+  color: #b8740b;
+}
+
+/* 🔧 v1.12.0-fix (KARMA "et cap en gras, plus visible") : override le
+   label CAP uniquement (scoped à l'overlay heading) pour qu'il soit
+   plus gras et plus gros que les autres labels (📍 POSITION, 🔋 ÉTAT,
+   etc.) qui restent en 11px / opacity 0.85. */
+.kta-emergency-bloc-heading-overlay .kta-emergency-label {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 1;
+}
+
 .kta-emergency-compass {
   margin-top: 8px;
   width: 160px;
@@ -5996,6 +6082,116 @@ img.kta-popup-photo-mini:focus-visible {
    en JS mais double sécurité CSS */
 .kta-emergency-mini-map .leaflet-control-container,
 .kta-emergency-mini-map .leaflet-bottom { display: none !important; }
+
+/* 🆕 v1.12.0-fix : mode "sans image de fond" — appliqué quand l'user a choisi
+   "Continuer sans image" sur la modale d'avertissement d'image volumineuse,
+   ou quand baseImage est indisponible. Background discrètement texturé pour
+   indiquer visuellement l'absence d'image (au lieu d'un noir/beige plat qui
+   pourrait laisser penser à un bug). Les roads/zones/structures vectoriels
+   restent parfaitement visibles. */
+.kta-emergency-mini-map.kta-em-mini-map-noimg .leaflet-container {
+  background-image:
+    linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255,255,255,0.03) 25%, transparent 25%);
+  background-size: 16px 16px;
+}
+.kta-emergency-light .kta-emergency-mini-map.kta-em-mini-map-noimg .leaflet-container {
+  background-image:
+    linear-gradient(45deg, rgba(0,0,0,0.04) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(0,0,0,0.04) 25%, transparent 25%);
+}
+
+/* 🆕 v1.12.0-fix (KARMA "on mais le centre de la bousole triangle rouge a
+   ma position, et le rond rouge sur le cercle jaune bouge pour indiquer le
+   nord") : marker tracker stylisé en boussole attachée à la position.
+   Remplace l'ancien gros compass widget centré + le L.circleMarker rouge.
+   Structure :
+     - .kta-em-mini-tracker-ring     = cercle jaune (cadran)
+     - .kta-em-mini-tracker-rotor    = container rotatif (tient le point N)
+     - .kta-em-mini-tracker-north-dot = point rouge sur le cercle
+     - .kta-em-mini-tracker-triangle = triangle rouge centré (position) */
+.kta-em-mini-tracker-wrap {
+  pointer-events: none;
+  background: none !important;
+  border: none !important;
+}
+/* 🔧 v1.12.0-fix (KARMA "affiche le triangle rouge le rond jaune en
+   légérement plus gros (x2)") : toutes les tailles doublées. */
+.kta-em-mini-tracker {
+  position: relative;
+  width: 104px;
+  height: 104px;
+}
+.kta-em-mini-tracker-ring {
+  position: absolute;
+  inset: 8px;
+  border: 3px solid #f4c542;       /* jaune charte (épaissi à 3px pour bon ratio) */
+  border-radius: 50%;
+  background: rgba(10, 13, 24, 0.35);
+  box-shadow: 0 0 14px rgba(244, 197, 66, 0.55);
+}
+.kta-em-mini-tracker-rotor {
+  position: absolute;
+  inset: 8px;
+  pointer-events: none;
+  /* origin au centre pour rotation propre. Pas de transition CSS — le
+     polling boussole gère la cadence (250ms throttle 1°). */
+  transform-origin: center center;
+  will-change: transform;
+}
+/* 🔧 v1.12.0-fix (KARMA "le triangle ne tourne plus dans la direction où
+   on va") : rotor séparé pour le triangle, tourne avec +heading via
+   _updateTrackerTriangleRotor. Origin centre, full size pour que la
+   rotation soit propre autour de la pointe centrée du triangle. */
+.kta-em-mini-tracker-triangle-rotor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: center center;
+  will-change: transform;
+}
+.kta-em-mini-tracker-north-dot {
+  position: absolute;
+  top: -10px;                      /* posé juste à l'extérieur du ring */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 20px;
+  background: #ff3b30;
+  border: 2.5px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 59, 48, 0.85), 0 0 18px rgba(255, 59, 48, 0.45);
+}
+.kta-em-mini-tracker-triangle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -52%);   /* léger ajustement vertical pour centrer la pointe */
+  color: #ff3b30;
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 900;
+  filter:
+    drop-shadow(0 0 7px rgba(255, 59, 48, 0.85))
+    drop-shadow(0 0 14px rgba(255, 59, 48, 0.45));
+}
+/* Thème clair : adapte le ring et les dots */
+.kta-emergency-light .kta-em-mini-tracker-ring {
+  border-color: #b8740b;
+  background: rgba(240, 232, 216, 0.5);
+  box-shadow: 0 0 8px rgba(184, 116, 11, 0.45);
+}
+.kta-emergency-light .kta-em-mini-tracker-north-dot {
+  background: #c0392b;
+  border-color: #fff;
+  box-shadow: 0 0 6px rgba(192, 57, 43, 0.7);
+}
+.kta-emergency-light .kta-em-mini-tracker-triangle {
+  color: #c0392b;
+  filter:
+    drop-shadow(0 0 3px rgba(192, 57, 43, 0.7))
+    drop-shadow(0 0 7px rgba(192, 57, 43, 0.35));
+}
 
 .kta-emergency-compass-needle {
   font-size: 60px;
@@ -6072,6 +6268,33 @@ img.kta-popup-photo-mini:focus-visible {
   .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
 }
 
+/* 🆕 v1.11.2-fix (KARMA "décalage en horizontal mode urgence") : layout
+   landscape mobile dédié. Sur écran bas (≤ 500px haut) en landscape, on
+   force 2 colonnes (sinon scroll vertical bloqué) + tailles réduites
+   pour que tout rentre sans scroll. La minimap se redimensionne via
+   le listener orientationchange (cf emergencyMode.js > _orientationListener). */
+@media (max-height: 500px) and (orientation: landscape) {
+  .kta-emergency-overlay    { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .kta-emergency-box        { max-width: none; gap: 8px; }
+  .kta-emergency-grid       { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .kta-emergency-titre      { font-size: 17px; }
+  .kta-emergency-value      { font-size: 22px; }
+  .kta-emergency-pos-gps    { font-size: 16px; }
+  .kta-emergency-heading-num { font-size: 32px; }
+  .kta-emergency-heading-card { font-size: 18px; }
+  .kta-emergency-bloc       { padding: 8px 10px; }
+  .kta-emergency-bloc-heading { min-height: 160px; }
+  .kta-emergency-compass    { width: 90px; height: 90px; }
+  .kta-emergency-compass-needle { font-size: 34px; }
+  .kta-emergency-exit-btn   { padding: 10px; font-size: 12px; }
+  .kta-emergency-mini-map   { min-height: 140px; }
+  /* Toggle "🗺️ Itinéraire" réduit en landscape pour ne pas surcharger header */
+  .kta-emergency-header-actions { gap: 8px; }
+  .kta-emergency-toggle-iti { padding: 4px 8px; font-size: 11px; gap: 4px; }
+  .kta-emergency-toggle-iti input[type="checkbox"] { width: 13px; height: 13px; }
+  .kta-emergency-theme-btn { width: 36px; height: 36px; font-size: 18px; }
+}
+
 /* =====================================================================
    MODALE PROPOSITION D'ACTIVATION POST-UPDATE (v1.10.0)
    One-shot après update : invite l'user à activer le PIN. Si refus → flag
@@ -6081,6 +6304,14 @@ img.kta-popup-photo-mini:focus-visible {
   max-width: 520px !important;
   border: 1.5px solid rgba(244, 197, 66, 0.35) !important;
   box-shadow: 0 8px 40px rgba(244, 197, 66, 0.15) !important;
+  /* 🆕 v1.11.1-fix (KARMA "trop long en hauteur sur PC, moitié vide") :
+     même cas que la modale Export Images (v1.9.2-fix14). Le parent
+     .kta-readme-modal-boite a un height: 88vh sur PC qui étire la
+     boîte malgré son contenu court (~250px). On force height: auto
+     + max-height pour limiter au contenu réel, comme on l'a fait pour
+     .kta-export-modal-boite et .kta-pdf-modal-boite. */
+  height: auto !important;
+  max-height: 90vh !important;
 }
 
 .kta-pin-proposal-info {
@@ -7316,6 +7547,27 @@ img.kta-popup-photo-mini:focus-visible {
 
 .kta-measure-distance .kta-measure-distance-icon {
   margin-right: 6px;
+}
+
+/* 🆕 v1.12.0-fix (KARMA "en footer, on peux afficher a la fois, une mesure
+   de surface, et une comme avant de distance") : le label bas-gauche peut
+   désormais contenir 2 lignes simultanées (distance + surface). On stack
+   verticalement et on surligne la ligne du mode actif via une bordure
+   gauche colorée jaune charte. */
+.kta-measure-distance .kta-measure-line {
+  display: block;
+  padding: 2px 0 2px 8px;
+  border-left: 3px solid transparent;
+  line-height: 1.35;
+}
+.kta-measure-distance .kta-measure-line + .kta-measure-line {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(244, 197, 66, 0.25);
+}
+.kta-measure-distance .kta-measure-active-line {
+  border-left-color: #f4c542;
+  background: rgba(244, 197, 66, 0.08);
 }
 
 /* 🆕 v1.9.3-A1.b.2.5 — labels longueur par segment + angles (KARMA :
@@ -9132,6 +9384,75 @@ body.kta-refonte-v1 .kta-refonte-counter-empty .kta-refonte-counter-val {
   color: #8892a4;
 }
 
+/* 🆕 v1.11.1 V2 (KARMA "trop d'icônes sur mobile") : chip résumé 📊
+   visible UNIQUEMENT en mobile portrait. Sur desktop/tablette/landscape,
+   il est masqué et les 5 chips individuels (📍🛣⬛🏛️📸) + 🪫 sont
+   affichés. En mobile portrait, on inverse : seul 📊 est visible et il
+   suffit de cliquer sur le bouton parent pour ouvrir la modale Détails.
+   Le chip 🪫 batterie reste affiché en permanence (info critique). */
+body.kta-refonte-v1 .kta-refonte-counter-summary {
+  display: none;  /* masqué par défaut (desktop) */
+  background: rgba(244, 197, 66, 0.10);  /* accent jaune charte subtil */
+  border-color: rgba(244, 197, 66, 0.30);
+}
+body.kta-refonte-v1 .kta-refonte-counter-summary .kta-refonte-counter-icon {
+  font-size: 14px;
+}
+body.kta-refonte-v1 .kta-refonte-counter-summary .kta-refonte-counter-val {
+  color: #f4c542;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mobile portrait : un seul chip résumé visible.
+   Breakpoint 480px = phone portrait standard (iPhone SE/Mini, Android compact). */
+@media (max-width: 480px) {
+  body.kta-refonte-v1 #kta-refonte-counter-points,
+  body.kta-refonte-v1 #kta-refonte-counter-roads,
+  body.kta-refonte-v1 #kta-refonte-counter-zones,
+  body.kta-refonte-v1 #kta-refonte-counter-structures,
+  body.kta-refonte-v1 #kta-refonte-counter-photos {
+    display: none !important;  /* masque les 5 compteurs individuels */
+  }
+  body.kta-refonte-v1 .kta-refonte-counter-summary {
+    display: flex !important;  /* révèle le chip résumé 📊 */
+  }
+  /* Le chip 🪫 batterie reste visible (cf. son propre display:none initial
+     géré par BatteryGuard — si dispo il sera révélé via JS, indépendamment
+     de cette media query). Le 🪫 est volontairement gardé en mobile car
+     c'est une info critique en sous-sol. */
+}
+
+/* 🆕 v1.11.1 V2 : chip batterie (KARMA 2:d + 4:a code couleur).
+   La couleur est appliquée en inline-style depuis _refreshBatteryUi
+   (refonteInterface.js) selon le niveau actuel. La valeur monospace
+   pour stabilité visuelle au changement (87% → 88% ne décale pas). */
+body.kta-refonte-v1 .kta-refonte-counter-battery {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+body.kta-refonte-v1 .kta-refonte-counter-battery .kta-refonte-counter-val {
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, "SF Mono", monospace;
+  /* La couleur est inline depuis JS (vert/jaune/orange/rouge/bleu) */
+  color: inherit;
+}
+body.kta-refonte-v1 .kta-refonte-stat-battery .kta-refonte-stat-val {
+  font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+/* 🆕 v1.11.1-fix3 (KARMA "icône batterie exclue de la surbrillance
+   session") : le chip batterie sort du bouton compteurs et devient un
+   sibling dans le header. Il garde sa propre carrosserie visuelle (fond
+   + bordure subtils) mais avec une petite marge gauche pour le séparer
+   du bouton compteurs. Pas de cursor pointer (pas cliquable, c'est de
+   l'info seulement). */
+body.kta-refonte-v1 .kta-refonte-header-battery {
+  margin-left: 6px;
+  cursor: default;
+  flex-shrink: 0;  /* ne pas écraser en landscape mobile chargé */
+}
+
 /* Mobile portrait : compteurs simplifiés */
 @media (max-width: 480px) {
   body.kta-refonte-v1 .kta-refonte-header-counters {
@@ -9578,6 +9899,124 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
 }
 .kta-refonte-session-section:last-child {
   margin-bottom: 0;
+}
+
+/* 🆕 v1.11.2 V2.2 : Bloc Stats agrégées en TÊTE de la modale Détails de session.
+   Layout : tableau résumé compact + barres horizontales par type + boutons d'action.
+   Cohérent avec la charte (accent jaune doré, fond panneau subtil). */
+.kta-refonte-stats-aggr {
+  margin-bottom: 18px;
+  background: rgba(244, 197, 66, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.22);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.kta-refonte-stats-aggr-titre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+.kta-refonte-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 13px;
+}
+.kta-refonte-stats-label {
+  color: #c8d0e0;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.kta-refonte-stats-val {
+  color: #e8eaf0;
+  text-align: right;
+  font-size: 12.5px;
+}
+.kta-refonte-stats-val strong {
+  color: #f4c542;
+  font-weight: 700;
+}
+
+/* Barres horizontales — visuel proportion par type (KARMA 4:b) */
+.kta-refonte-stats-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 3px 0 3px 14px;
+  font-size: 11.5px;
+}
+.kta-refonte-stats-bar-label {
+  color: #8892a4;
+  min-width: 88px;
+  flex-shrink: 0;
+}
+.kta-refonte-stats-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.kta-refonte-stats-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.kta-refonte-stats-bar-val {
+  color: #c8d0e0;
+  min-width: 70px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+}
+
+/* Section Multi-niveau (si APP_CONFIG.multiLevel) */
+.kta-refonte-stats-mlvl {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 6px;
+}
+.kta-refonte-stats-mlvl-titre {
+  font-size: 12px;
+  color: #8cb4ff;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.kta-refonte-stats-mlvl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  padding: 2px 0;
+}
+.kta-refonte-stats-mlvl-lbl {
+  color: #c8d0e0;
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", monospace;
+}
+.kta-refonte-stats-mlvl-val {
+  color: #e8eaf0;
+  letter-spacing: 0.5px;
+}
+
+/* Boutons Copier + Exporter */
+.kta-refonte-stats-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  justify-content: flex-end;
+}
+.kta-refonte-stats-actions .kta-btn {
+  font-size: 12px;
+  padding: 5px 10px;
 }
 
 .kta-refonte-session-section-titre {
