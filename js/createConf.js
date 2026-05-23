@@ -281,18 +281,17 @@ function afficherPlanner() {
           </div>
         </div>
 
-        <!-- 3. CALQUES IMAGE -->
-        <div class="kta-aide-section kta-pl-col-left">
-          <div class="kta-aide-section-titre">
-            🗂️ Calques image
-            <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
-          </div>
-          <div id="pl_imageLayers_list" class="kta-planner-layers-list">
-            <p class="kta-planner-empty">Aucun calque image</p>
-          </div>
-        </div>
+        <!-- v1.14.20-hotfix3 (KARMA « remonte calque de donnée, il tout en
+             bas il y a un bug ») : la section 📊 Calques de données est
+             désormais placée AVANT la section 🗂️ Calques image dans le DOM
+             pour qu'elle remonte dans la col-left en layout PC (ne se
+             retrouve plus seule en bas avec un trou à droite). L'ordre
+             reste logique : les calques de données contiennent les points/
+             tracés/zones, c'est le contenu sémantique principal d'un plan ;
+             les calques image sont plutôt de l'esthétique (légendes,
+             surimpressions). On les présente donc dans cet ordre. -->
 
-        <!-- 4. CALQUES DONNÉES -->
+        <!-- 3. CALQUES DONNÉES -->
         <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">
             📊 Calques de données
@@ -321,6 +320,17 @@ function afficherPlanner() {
 
           <div id="pl_dataLayers_list" class="kta-planner-layers-list">
             <p class="kta-planner-empty">Aucun calque de données</p>
+          </div>
+        </div>
+
+        <!-- 4. CALQUES IMAGE -->
+        <div class="kta-aide-section kta-pl-col-left">
+          <div class="kta-aide-section-titre">
+            🗂️ Calques image
+            <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
+          </div>
+          <div id="pl_imageLayers_list" class="kta-planner-layers-list">
+            <p class="kta-planner-empty">Aucun calque image</p>
           </div>
         </div>
 
