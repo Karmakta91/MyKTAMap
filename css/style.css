@@ -11040,12 +11040,14 @@ body.kta-theme-light .kta-refonte-statusbar-toggle:hover {
    pour le fond des icônes") : background des icônes passe en brun-beige
    #c9b88f (= var(--kta-light-bg-bar)) pour s'harmoniser avec header +
    footer. Hover en #b8a576 (= var(--kta-light-bg-bar-deep), plus foncé). */
-body.kta-theme-light .leaflet-bar a {
+body.kta-theme-light .leaflet-bar a,
+html.kta-theme-light .leaflet-bar a {
   background: var(--kta-light-bg-bar) !important;
   color: var(--kta-light-text) !important;
   border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
 }
-body.kta-theme-light .leaflet-bar a:hover {
+body.kta-theme-light .leaflet-bar a:hover,
+html.kta-theme-light .leaflet-bar a:hover {
   background: var(--kta-light-bg-bar-deep) !important;
   color: #1a1612 !important;
 }
@@ -11106,14 +11108,25 @@ body.kta-theme-light .leaflet-bar {
   box-shadow: 0 2px 6px var(--kta-light-shadow) !important;
 }
 
-/* Layers toggle (haut-droite Leaflet — control des calques) */
-body.kta-theme-light .leaflet-control-layers-toggle {
-  background-color: #fdf8eb !important;
+/* Layers toggle (haut-droite Leaflet — control des calques).
+   v1.14.13 (KARMA) : aligné sur --kta-light-bg-bar (au lieu de #fdf8eb)
+   pour avoir LA MÊME couleur que les autres boutons .leaflet-bar a en
+   mode clair → cohérence visuelle des contrôles flottants. Taille déjà
+   32×32 héritée des règles base. SVG hamburger conservé. */
+body.kta-theme-light .leaflet-control-layers-toggle,
+html.kta-theme-light .leaflet-control-layers-toggle {
+  background-color: var(--kta-light-bg-bar) !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='%232a2620' d='M1 1h16v2H1zm0 4h16v2H1zm0 4h16v2H1zm0 4h16v2H1z'/%3E%3C/svg%3E") !important;
+  border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
 }
-body.kta-theme-light .leaflet-control-layers {
-  background: #fdf8eb !important;
-  color: #2a2620 !important;
+body.kta-theme-light .leaflet-control-layers-toggle:hover,
+html.kta-theme-light .leaflet-control-layers-toggle:hover {
+  background-color: var(--kta-light-bg-bar-deep) !important;
+}
+body.kta-theme-light .leaflet-control-layers,
+html.kta-theme-light .leaflet-control-layers {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
   box-shadow: 0 4px 12px var(--kta-light-shadow) !important;
 }
@@ -12028,15 +12041,13 @@ body.kta-theme-light .leaflet-tooltip {
   box-shadow: 0 2px 8px var(--kta-light-shadow);
 }
 
-/* === Zoom controls Leaflet (haut-droite) === */
-body.kta-theme-light .leaflet-bar a {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  border-bottom: 1px solid var(--kta-light-border);
-}
-body.kta-theme-light .leaflet-bar a:hover {
-  background: var(--kta-light-accent-bg);
-}
+/* === Zoom controls Leaflet (haut-droite) ===
+   v1.14.13 — DUPLICATE retirée (KARMA « fais passer le fond de calque
+   Leaflet même couleur que les autres icônes »). Cette règle re-déclarait
+   .leaflet-bar a avec --kta-light-bg-elevated (beige clair) sans
+   !important, créant une incohérence visuelle avec la définition
+   canonique plus haut qui utilise --kta-light-bg-bar (beige pierreux,
+   cohérent avec les autres icônes sidebar). La canonique reste seule. */
 
 /* === Modale Niveaux M-LVL === */
 body.kta-theme-light .kta-mlvl-niveau-row,

@@ -1,13 +1,13 @@
 {
-  "version": "v1.14.12",
+  "version": "v1.14.13",
   "released": "2026-05-24",
   "notes": [
-    "🐛 V3.2.m — Refonte complète de la modale 📥 Importer (KARMA : « toujours pas bon le modal import, sépare en 2 possibilités comme on a fait pour exporter »). Le pattern cards-en-grille v1.14.5 → v1.14.11 se cassait régulièrement sur certains UA (les divs internes débordaient dans la grille parente, les emojis 📥/📤 rendus comme texte 'NaN'). Tentatives v1.14.7 (button → div role=button) et v1.14.11 (!important sur flex) n'ont pas tenu sur tous les navigateurs.",
-    "🔧 Refactor pattern onglets — la modale réutilise désormais EXACTEMENT le pattern .kta-ses-tabs / .kta-ses-tab / .kta-ses-intro / .kta-ses-summary / .kta-ses-actions / .kta-ses-btn de la modale 💾 Enregistrer session (Full / Avancé / Conversion / Export externe). 2 onglets : 📥 Session (active par défaut) / 📤 GPX. Description + extensions acceptées + détails dans le corps. Footer 2 boutons : Annuler + « 📂 Choisir un fichier » (jaune charte). Clic onglet → swap contenu ; click bouton OK → délègue à ouvrirImportSession() ou window.ouvrirImportGpx().",
-    "♻️ Nouvelle API window.SessionExporterStyles.inject() — expose l'injecteur de styles .kta-ses-* de sessionExporter.js pour usage externe (la modale Import l'appelle au boot pour que les styles soient dispos même si Enregistrer session n'a jamais été ouverte). Idempotent — vérifie déjà l'existence du <style id=\"kta-session-export-styles\"> avant d'injecter.",
-    "🗑️ Code mort retiré — toutes les classes CSS .kta-import-choix-card / -grille / -icone / -titre / -desc / -ext + leurs variants theme light sont supprimées. Bilan -100+ lignes CSS. Seul .kta-import-choix-boite est conservé (juste max-width + flex column pour aligner avec la modale Enregistrer session).",
-    "⌨️ Accessibilité conservée — Enter valide (= choisir un fichier dans l'onglet actif), Escape annule, click backdrop = annule.",
-    "🏷️ Sources de vérité v1.14.12 : version.json → \"v1.14.12\", js/copyright.js > __MKM__.build → \"v1.14.12\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.12-import-tabs\".",
-    "🛡️ Confidentialité — refactor UI/UX pur, aucune modification réseau. NETWORK_AUDIT inchangé."
+    "🎨 V3.2.n — Cohérence des contrôles flottants Leaflet en mode clair (KARMA : « tu arriverais à faire passer le fond de calque Leaflet même couleur que les autres icônes, tout aussi gros d'ailleurs, et même logique en sombre »). Les boutons zoom +/- et le toggle 📋 calques apparaissaient sur un fond beige TRÈS clair (#fdf8eb), distinct des autres icônes sidebar (☰ Légende, 🔍 Recherche, etc.) qui utilisent le fond beige PIERREUX (--kta-light-bg-bar = #c9b88f). Visuellement incohérent.",
+    "🐛 Cause 1 — Duplication CSS : une 2e déclaration de body.kta-theme-light .leaflet-bar a (sans !important, plus loin dans le fichier) re-définissait le background en --kta-light-bg-elevated (clair), créant des cas où elle battait la canonique malgré le !important. Règle dupliquée retirée.",
+    "🐛 Cause 2 — .leaflet-control-layers-toggle (le bouton ☰ qui ouvre le panneau calques tile-server / data-layers) avait son propre fond #fdf8eb hardcodé. Aligné sur --kta-light-bg-bar pour matcher les autres .leaflet-bar a. SVG hamburger sombre conservé.",
+    "✅ Résultat — en mode clair, TOUS les contrôles flottants Leaflet (zoom +/-, calques ☰, sidebar gauche actions) utilisent désormais le même fond pierreux beige cohérent. Hover unifié sur --kta-light-bg-bar-deep. Mode sombre : déjà aligné depuis le début (#1a1f2e partout), pas de changement.",
+    "♿ Sélecteurs dupliqués body.kta-theme-light + html.kta-theme-light sur les règles canoniques pour cohérence avec le pattern v1.13.0-fix5 (modales appendées à documentElement).",
+    "🏷️ Sources de vérité v1.14.13 : version.json → \"v1.14.13\", js/copyright.js > __MKM__.build → \"v1.14.13\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.13-leaflet-bg\".",
+    "🛡️ Confidentialité — fix CSS pur, aucune modification réseau. NETWORK_AUDIT inchangé."
   ]
 }
