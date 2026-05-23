@@ -2303,9 +2303,7 @@ Aux anciens qui ont relevé les galeries au crayon, plan en main, génération a
 
 ### Aux beta-testeurs et testeuses terrain
 
-À celles et ceux qui ont accepté de descendre avec une version `1.x.y-beta` instable, de remonter avec des screenshots de bugs, de signaler les frictions UX, de proposer des features impossibles à imaginer depuis un bureau. Vos retours ont façonné chaque hotfix.
-
-> *Liste personnelle à compléter par KARMA avant push main.*
+À celles et ceux qui ont accepté de descendre avec une version `1.x.y-beta` instable, de remonter avec des screenshots de bugs, de signaler les frictions UX, de proposer des features impossibles à imaginer depuis un bureau. Aux quelques camarades qui ont testé chaque release sous terre, dans le noir, dans le froid, et qui ont pris la peine de raconter ce qui clochait. Vos retours ont façonné chaque hotfix — sans vous, l'app serait restée un prototype confortable depuis un canapé.
 
 ### Aux outils libres
 
