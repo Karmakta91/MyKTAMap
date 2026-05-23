@@ -10955,11 +10955,26 @@ body.kta-theme-light .leaflet-bar a.kta-actif:hover {
   color: #fff !important;
   box-shadow: inset 0 0 0 2px #4caf76 !important;
 }
-/* Bouton principal en mode actif (sa pulsation jaune doit rester visible) */
+/* Bouton principal en mode actif — 🔧 v1.13.0-fix (KARMA "quand un icône
+   est actif, il doit rester en fond blanc, pas transparent") : fond BLANC
+   solide au lieu de l'ancien rgba(244,197,66,0.22) qui se fondait dans
+   le beige #e5dcc5 de la sidebar. Bordure jaune charte pour signaler
+   l'état actif, glow doré pour pulsation visible. */
 body.kta-theme-light .leaflet-bar a.kta-group-mode-actif {
-  background: var(--kta-light-accent-bg) !important;
+  background: #ffffff !important;
   color: #2a2620 !important;
-  box-shadow: inset 0 0 0 2px var(--kta-light-accent-hover) !important;
+  box-shadow: inset 0 0 0 2px var(--kta-light-accent) !important;
+}
+body.kta-theme-light .leaflet-bar a.kta-group-mode-actif:hover {
+  background: #fff8e1 !important;  /* hover : très légère teinte jaune sur blanc */
+  color: #1a1612 !important;
+}
+/* Pulsation de l'état actif (animation .kta-group-mode-actif::after) — on
+   adapte la couleur du pseudo-element à l'accent jaune charte pour rester
+   visible sur le fond blanc. */
+body.kta-theme-light .leaflet-bar a.kta-group-mode-actif::after {
+  background: var(--kta-light-accent) !important;
+  opacity: 0.6 !important;
 }
 /* Sous-action urgence (rouge distinctif — kept en clair pour rester
    identifiable) */
