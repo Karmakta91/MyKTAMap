@@ -2258,9 +2258,83 @@ Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'éq
 
 ---
 
+## 📖 Le topo
+
+> *Une carte n'a jamais remplacé la sortie. Elle aide juste à ne pas se perdre.*
+
+### D'où ça vient
+
+MyKTAMap est née d'un besoin simple : avoir, **dans la poche**, une carte cataphile **fiable, hors-ligne, et qui ne fuite pas**. Pas un app store qui demande l'accès à tes contacts pour afficher un plan. Pas un site qui te traque dès que tu cliques. Pas un cloud qui décide demain de t'envoyer une newsletter ou de revendre tes traces.
+
+Juste un fichier `.zip` qui contient le plan, ouvert dans un onglet de navigateur, qui marche **sans réseau**, et qui te laisse **entièrement le contrôle** sur ce que tu fais avec.
+
+### À qui ça s'adresse
+
+À celles et ceux qui descendent. Cataphiles parisiens, spéléos amateurs, urbexeurs prudents, secouristes formés au milieu souterrain, chercheurs en patrimoine — bref, à toute personne qui a un usage **légitime et respectueux** de ces lieux et qui veut un outil qui ne mette personne en danger (ni les gens ni les lieux).
+
+L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les sorties guidées par les anciens, la transmission orale, la mémoire collective. Elle vient **en complément**, comme un calque numérique qu'on superpose à ces savoirs — pas un substitut.
+
+### La philosophie
+
+- 🌐 **100 % hors-ligne par défaut** — l'app fonctionne sans réseau une fois le plan chargé. Tu peux la lancer en avion, dans le métro, ou à 30 m sous terre.
+- 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Le seul fetch externe possible est la mise à jour du code de l'app (et tu peux le couper). L'auditeur peut vérifier dans `🔒 Audit réseau`.
+- 📦 **Propriété des données** — tes annotations, tes photos, tes mesures sont stockées **localement**, dans le navigateur. Personne d'autre que toi n'y a accès. Tu peux tout exporter à tout moment (`💾 Enregistrer session`) et tout effacer en 2 clics (`💥 Tout réinitialiser`).
+- 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, le forker, l'auditer, le bricoler pour ton usage. Pas de boîte noire, pas de marketing.
+- ⚖️ **Discrétion = respect** — un plan partagé n'importe comment, c'est un lieu fragilisé. L'app ne contient aucun plan par défaut ; c'est à chaque utilisateur de charger les siens, et de **ne pas les diffuser** au-delà du cercle de confiance.
+
+### Ce que l'app n'est pas
+
+- ❌ **Pas un GPS sous terre** — la géolocalisation native ne marche pas sous roche. Le « tracker » de l'app est un **podomètre + direction** qui dérive vite ; il faut recaler régulièrement.
+- ❌ **Pas une garantie de sécurité** — la carte donne le chemin, pas l'oxygène. Tu restes seul·e juge des risques (effondrements, eau, gaz, fatigue).
+- ❌ **Pas un annuaire** — l'app ne référence pas les lieux. Elle affiche ce que tu lui donnes, point.
+- ❌ **Pas un réseau social** — pas de compte, pas de profil, pas de partage en un clic. Tu choisis à qui tu envoies ton `.zip`, et comment.
+
+> Si tu cherches une appli grand public clé-en-main avec des avis et des étoiles, ce n'est pas ici. Si tu cherches un outil qui te laisse maître de tes données et de ton anonymat sous terre, **bienvenue**.
+
 ---
 
-**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires).
+## 🙏 Remerciements
+
+MyKTAMap n'existerait pas sans le travail, le savoir et la patience de beaucoup de monde. Ce projet est porté par **une seule personne** côté développement (KARMA), mais il s'appuie sur des **communautés**, des **outils libres**, et des **gens** qui ont pris le temps de transmettre.
+
+### À la communauté cataphile
+
+Aux anciens qui ont relevé les galeries au crayon, plan en main, génération après génération. Aux passionnés qui ont compilé, numérisé, recoupé, vérifié. À celles et ceux qui transmettent — en sortie, en cours d'initiation, en chuchotant à un débutant « non, par là, pas par là ». MyKTAMap n'est qu'un **outil de plus** dans cette longue chaîne. Sans vos plans, sans vos histoires, sans votre vigilance, cette app n'aurait rien à afficher.
+
+### Aux beta-testeurs et testeuses terrain
+
+À celles et ceux qui ont accepté de descendre avec une version `1.x.y-beta` instable, de remonter avec des screenshots de bugs, de signaler les frictions UX, de proposer des features impossibles à imaginer depuis un bureau. Vos retours ont façonné chaque hotfix.
+
+> *Liste personnelle à compléter par KARMA avant push main.*
+
+### Aux outils libres
+
+MyKTAMap repose entièrement sur des **briques open-source**. Sans ces projets, l'app n'existerait simplement pas :
+
+- 🍃 **[Leaflet](https://leafletjs.com/)** — moteur cartographique interactif. Cœur de l'affichage des plans.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** — lecture et écriture des archives `.zip` côté navigateur (plans, sessions, exports).
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** — génération de PDF imprimables (A0 → A4, portrait/paysage).
+- 🧭 **Algorithme de Dijkstra** (1959) — calcul du plus court chemin pour les itinéraires assistés.
+- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — format d'échange avec TopoDroid, OsmAnd, Strava, Garmin et l'écosystème outdoor.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API. Maintenus par des milliers de personnes qu'on ne croisera jamais et à qui on doit énormément.
+
+### À l'écosystème PWA
+
+Aux navigateurs (Chromium, Firefox, Safari, leur fork mobile) qui implémentent les standards modernes du web et permettent à une simple page de fonctionner comme une app native sans dépendance à un store.
+
+### À l'assistant de développement
+
+Une bonne partie du code de cette version a été co-écrite avec **Claude (Anthropic)**, assistant IA qui a accompagné le développement sur des dizaines de sessions. C'est un outil au même titre que Leaflet ou JSZip — utile, documenté honnêtement, et qui ne remplace ni la vision ni les décisions finales (toujours côté humain).
+
+### À toi qui lis ce guide
+
+Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exactement l'état d'esprit que ces lieux demandent — **prendre le temps, comprendre avant d'agir, respecter ce qu'on ne maîtrise pas encore**.
+
+> Si tu veux contribuer — un retour bug, une suggestion, un plan à partager dans le cercle de confiance, un coup de main sur la doc — passe par l'issue tracker du repo ou les canaux habituels de la communauté.
+
+---
+
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires) · 🌐 GPX 1.1 (échange outdoor).
 
 *MyKTAMap — Guide Utilisateur*
 *Ces lieux sont fragiles. La discrétion est une forme de respect.*
