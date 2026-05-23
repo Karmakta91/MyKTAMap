@@ -1,11 +1,11 @@
 {
-  "version": "v1.14.6",
+  "version": "v1.14.7",
   "released": "2026-05-24",
   "notes": [
-    "🛑 V3.2.g — Confirmation user avant reload sur toggle thème (KARMA UX) : en home → Configuration, cocher ou décocher « ☀️ Activer le thème CLAIR » déclenchait un location.reload() instant via setThemeAndReload — surprenant et frustrant si clic accidentel. Maintenant le toggle ouvre une confirm() native bloquante (« Activer le thème CLAIR/SOMBRE va relancer l'application pour appliquer le changement proprement. Confirmer ? »).",
-    "↩️ Rollback visuel si l'utilisateur annule — la case à cocher reprend automatiquement son état précédent (pas d'incohérence entre l'UI et le thème réellement appliqué).",
-    "🎯 Choix volontaire d'une confirm() native (vs modale custom MyKTAMap) : le reload tue de toute façon toute UI custom en cours, autant utiliser un dialog bloquant garanti immune au thème en cours d'application. Plus simple, plus fiable, zéro surface d'attaque CSS.",
-    "🏷️ Sources de vérité v1.14.6 : version.json → \"v1.14.6\", js/copyright.js > __MKM__.build → \"v1.14.6\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.6-theme-confirm\".",
-    "🛡️ Confidentialité — patch index.html exclusivement (handler checkbox), aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
+    "🐛 V3.2.h — Fix layout cassé de la modale 📥 Importer (KARMA screenshot : « il y a un soucis sur le modal »). Les 2 cards s'éclataient (icônes rendues comme texte 'NaN', divs internes débordaient dans la grille parente au lieu d'être empilés dans chaque card). Cause : les balises <button> peuvent refuser display:flex; flex-direction:column dans certaines combinaisons UA/CSS, ce qui faisait sortir les enfants du flow attendu.",
+    "🔧 Fix : remplacement <button type=\"button\"> → <div role=\"button\" tabindex=\"0\"> sur les 2 cards (.kta-import-choix-card). Activation clavier (Enter / Space) ajoutée manuellement pour conserver l'accessibilité native du <button>. CSS .kta-import-choix-card renforcé avec !important sur display/flex-direction/align-items pour blinder contre toute surcharge future, + outline focus-visible bleu pour l'accessibilité au clavier.",
+    "🎨 Restauration de l'icône 📥 sur la sous-action « Importer » dans le menu ⬇️ Charger (KARMA : « remet le même icône qu'avant — plus de soucis de doublon ») — l'icône folder neutre 📂 introduite en v1.14.5 n'est plus nécessaire maintenant qu'il n'y a qu'une seule entrée dans le menu. Le titre de la modale et l'aide ❓ utilisent aussi 📥 pour cohérence visuelle.",
+    "🏷️ Sources de vérité v1.14.7 : version.json → \"v1.14.7\", js/copyright.js > __MKM__.build → \"v1.14.7\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.7-import-card-fix\".",
+    "🛡️ Confidentialité — fix UI uniquement, aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
   ]
 }

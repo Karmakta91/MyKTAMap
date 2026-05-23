@@ -11257,9 +11257,12 @@ body.kta-theme-light .kta-toast-info {
   .kta-import-choix-grille { grid-template-columns: 1fr; }
 }
 .kta-import-choix-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  /* v1.14.7 — !important sur le display/flex pour blinder contre des
+     surcharges potentielles d'autres règles. Le rendu était cassé chez
+     KARMA (les divs internes débordaient dans la grille parente). */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
   text-align: center;
   gap: 8px;
   padding: 18px 14px 14px;
@@ -11268,8 +11271,17 @@ body.kta-theme-light .kta-toast-info {
   border-radius: 10px;
   cursor: pointer;
   font-family: inherit;
+  font-size: 14px;
   color: #e8eaf0;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+  user-select: none;
   transition: background 0.14s, border-color 0.14s, transform 0.14s;
+}
+.kta-import-choix-card:focus-visible {
+  outline: 2px solid #8cb4ff;
+  outline-offset: 2px;
 }
 .kta-import-choix-card:hover {
   background: rgba(140, 180, 255, 0.14);

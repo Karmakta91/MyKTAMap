@@ -787,7 +787,7 @@ window.ouvrirImportChoix = function() {
   modal.innerHTML = ''
     + '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh;">'
     +   '<div class="kta-readme-modal-header">'
-    +     '<span class="kta-readme-modal-titre">📂 Importer</span>'
+    +     '<span class="kta-readme-modal-titre">📥 Importer</span>'
     +     '<button class="kta-panneau-close" id="kta-import-choix-close" type="button">✕</button>'
     +   '</div>'
     +   '<div class="kta-readme-modal-corps">'
@@ -798,7 +798,12 @@ window.ouvrirImportChoix = function() {
     +     '</p>'
     +     '<div class="kta-import-choix-grille">'
     +       // === Card 1 : Session ===
-    +       '<button type="button" class="kta-import-choix-card" id="kta-import-choix-session">'
+    +       // v1.14.7 — div role=button au lieu de <button> : sur certains
+    +       // user-agents, <button> refuse `display: flex; flex-direction:
+    +       // column` correctement et les divs internes débordent dans la
+    +       // grille parente (bug visible chez KARMA — emojis rendus "NaN",
+    +       // contenu mélangé entre les 2 cards).
+    +       '<div role="button" tabindex="0" class="kta-import-choix-card" id="kta-import-choix-session">'
     +         '<div class="kta-import-choix-icone">📥</div>'
     +         '<div class="kta-import-choix-titre">Session MyKTAMap</div>'
     +         '<div class="kta-import-choix-desc">'
@@ -806,9 +811,9 @@ window.ouvrirImportChoix = function() {
     +           '(points + tracés + zones + structures + photos).'
     +         '</div>'
     +         '<div class="kta-import-choix-ext">.json · .zip</div>'
-    +       '</button>'
+    +       '</div>'
     +       // === Card 2 : GPX ===
-    +       '<button type="button" class="kta-import-choix-card" id="kta-import-choix-gpx">'
+    +       '<div role="button" tabindex="0" class="kta-import-choix-card" id="kta-import-choix-gpx">'
     +         '<div class="kta-import-choix-icone">📤</div>'
     +         '<div class="kta-import-choix-titre">Fichier GPX externe</div>'
     +         '<div class="kta-import-choix-desc">'
@@ -816,7 +821,7 @@ window.ouvrirImportChoix = function() {
     +           'Strava, Garmin… <em>Nécessite un calibrage GPS du plan.</em>'
     +         '</div>'
     +         '<div class="kta-import-choix-ext">.gpx</div>'
-    +       '</button>'
+    +       '</div>'
     +     '</div>'
     +   '</div>'
     + '</div>';
@@ -833,11 +838,23 @@ window.ouvrirImportChoix = function() {
     }
   });
 
-  document.getElementById("kta-import-choix-session").addEventListener("click", function() {
+  function _bindCardActivation(id, action) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("click", action);
+    // role=button n'a pas l'activation clavier native — on l'ajoute manuellement
+    el.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        action();
+      }
+    });
+  }
+  _bindCardActivation("kta-import-choix-session", function() {
     _fermer();
     ouvrirImportSession();
   });
-  document.getElementById("kta-import-choix-gpx").addEventListener("click", function() {
+  _bindCardActivation("kta-import-choix-gpx", function() {
     _fermer();
     if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
     else alert("Module import GPX indisponible");
@@ -1702,7 +1719,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📂</span><span><strong>Importer</strong> (v1.14.5 unifié) — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
+            <span class="kta-aide-icone">📥</span><span><strong>Importer</strong> (v1.14.5 unifié) — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
             <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
@@ -3935,7 +3952,10 @@ function initInterface() {
     titre: "Charger / Import",
     position: "topleft",
     sousActions: [
-      { icone: "📂", titre: "Importer (session MyKTAMap ou GPX externe)", onClick: function() {
+      // v1.14.7 : retour à l'icône 📥 (l'icône classique d'import) — KARMA :
+      // « plus de soucis de doublon » maintenant qu'il n'y a qu'une seule
+      // entrée dans le menu, l'icône folder neutre 📂 n'était plus nécessaire.
+      { icone: "📥", titre: "Importer (session MyKTAMap ou GPX externe)", onClick: function() {
           if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
           else ouvrirImportSession();
         } },
