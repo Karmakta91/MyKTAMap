@@ -11939,6 +11939,94 @@ html.kta-theme-light .kta-readme-modal-overlay textarea:focus {
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
 }
 
+/* === Sommaire / TOC des modales Doc/Aide (kta-readme-toc-*) ===
+   🔧 v1.13.0-fix9 (KARMA "pb de sommaire, dans les sous menu mes plans
+   il faut intégrer ça mieux, moins contraste, on doit mieux voir la
+   séparation entre les différents plans dans la liste telle que on le
+   voyait avant en sombre") : mes catch-all `.kta-readme-modal-corps *
+   { color: ... !important }` écrasaient les nuances hiérarchiques du
+   sommaire (H2 bold / H3 muted / bullet subtil / border-left). Du coup
+   tout devenait noir uniforme — perte totale de la lisibilité.
+
+   Solution : règles dédiées avec sélecteur plus spécifique
+   (`html.kta-theme-light .kta-readme-toc-*`) qui battent le catch-all
+   et restaurent la hiérarchie visuelle, adaptée au fond clair :
+     - H2 = texte foncé bold #2a2620 (titre de section)
+     - H3 = texte muted #6b6354 (sous-items, ex: "Mes plans" → items)
+     - Bullet = ocre subtle #8b7c5a (puce discrète)
+     - Border-left sublist = trait ocre clair, visible sur fond clair
+     - Hover = teint jaune léger
+     - Active = jaune charte + bold */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-row {
+  /* Reset le catch-all et redéfinit le fond/texte directement */
+  background: transparent !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-row:hover {
+  background: rgba(244, 197, 66, 0.08) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-row:has(.kta-readme-toc-link.active) {
+  background: rgba(244, 197, 66, 0.18) !important;
+}
+/* H2 = titres de section (Premiers pas, Mes plans, etc.) */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link {
+  color: #2a2620 !important;
+  font-weight: 500 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h2 {
+  font-weight: 700 !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link:hover {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link.active {
+  color: #8b5a00 !important;
+  font-weight: 700 !important;
+}
+/* H3 = sous-items (genre les plans dans "Mes plans") — muted, plus aéré */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h3 {
+  color: #6b6354 !important;
+  font-weight: 400 !important;
+  border-radius: 4px !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h3:hover {
+  background: rgba(244, 197, 66, 0.08) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-link-h3.active {
+  background: rgba(244, 197, 66, 0.22) !important;
+  color: #8b5a00 !important;
+  font-weight: 600 !important;
+}
+/* Border-left de la sous-liste H3 — trait ocre visible sur fond clair */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-sublist {
+  border-left: 1px solid rgba(154, 135, 84, 0.4) !important;
+}
+/* Bullet (puce H2) — couleur subtile pour différencier du texte */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-bullet {
+  color: #8b7c5a !important;
+}
+/* Toggle ▾ (chevron pour replier) */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-toggle {
+  color: #8b7c5a !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-toggle:hover {
+  color: #2a2620 !important;
+}
+/* Séparation visuelle subtile entre items H2 — border-bottom très léger
+   pour aérer la lecture, comme on l'avait en sombre */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-item > .kta-readme-toc-row {
+  border-bottom: 1px solid rgba(154, 135, 84, 0.15) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-item:last-child > .kta-readme-toc-row {
+  border-bottom: none !important;
+}
+/* Sous-items H3 : pas de border-bottom (on garde le border-left de la
+   sublist comme indicateur de hiérarchie) */
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-sublist li > .kta-readme-toc-link-h3 {
+  border-bottom: none !important;
+}
+
 /* === Modale Configuration home (loaderConfigModal) avec wrapper kta-loader-config-boite === */
 html.kta-theme-light .kta-loader-config-boite {
   background: #fdf8eb !important;
