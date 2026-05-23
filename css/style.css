@@ -11791,3 +11791,171 @@ body.kta-theme-light #kta-load-message {
 /* === Bandeau alerte publique (loaderAlertBtn rouge pulsant) ===
    Volontairement non-modifié : le rouge alerte reste rouge en clair pour
    garder son côté "urgence à voir absolument". */
+
+/* === 🔧 v1.13.0-fix3 (KARMA "LE BOUTON QUI permet de charger le dernier
+   plan ne prend pas la modif, les modals non plus") : .loader-btn-resume
+   a un linear-gradient bleu/dark hardcodé + color:#e8eaf0 + strong:#8cb4ff.
+   On override avec un fond blanc + accent jaune charte cohérent. */
+body.kta-theme-light .loader-btn-resume {
+  background: linear-gradient(135deg, #ffffff 0%, #fbf3e0 100%) !important;
+  border: 1px solid var(--kta-light-accent) !important;
+  color: var(--kta-light-text) !important;
+  box-shadow: 0 2px 6px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .loader-btn-resume:hover {
+  background: linear-gradient(135deg, #fffaef 0%, #f4ecd4 100%) !important;
+  border-color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .loader-btn-resume strong {
+  color: #8b5a00 !important;
+  font-weight: 700 !important;
+}
+
+/* === Autres .loader-btn-* non couverts précédemment === */
+body.kta-theme-light .loader-btn-ghost {
+  background: rgba(0,0,0,0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .loader-btn-ghost:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .loader-btn-mini {
+  background: rgba(0,0,0,0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .loader-btn-mini:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .loader-btn-fs {
+  background: rgba(0,0,0,0.05) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .loader-btn-fs:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .loader-btn-secondary.loader-btn-danger {
+  background: rgba(220, 50, 50, 0.10) !important;
+  color: #b02020 !important;
+  border: 1px solid rgba(220, 50, 50, 0.45) !important;
+}
+body.kta-theme-light .loader-btn-secondary.loader-btn-danger:hover {
+  background: rgba(220, 50, 50, 0.20) !important;
+}
+body.kta-theme-light .loader-btn-secondary.kta-debug-toggle.active {
+  background: rgba(244, 197, 66, 0.20) !important;
+  color: var(--kta-light-text) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === 🔧 v1.13.0-fix3 (KARMA "les modals non plus") : renforcement des
+   overrides modales — on cible le wrapper overlay ET la boite + descendants
+   typed avec une force suffisante pour battre les règles inline et les
+   styles enfants hardcodés (h1/strong/code/em/...).
+
+   Au passage on couvre aussi le pattern modale "loader-config-boite" qui
+   sert pour Configuration home + tout ce qui utilise le wrapper
+   .kta-readme-modal-overlay. */
+body.kta-theme-light .kta-readme-modal-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  box-shadow: 0 10px 40px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-header {
+  background: var(--kta-light-bg-deep) !important;
+  border-bottom: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-titre {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+}
+/* Force texte foncé sur TOUS les enfants des modales — les enfants peuvent
+   avoir h1/h2/h3/p/li/span/strong/em/code/td/th/label avec couleur dark
+   hardcodée. La règle catch-all précédente sur `* { color: ... }` n'avait
+   pas !important — on rejoue avec !important pour la fiabilité. */
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps * {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps a {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps code {
+  background: rgba(0,0,0,0.06) !important;
+  color: #8b3a00 !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+  color: #1a1612 !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps i,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps blockquote {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps blockquote {
+  background: rgba(244, 197, 66, 0.08) !important;
+  border-left: 4px solid var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table th,
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table td {
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table th {
+  background: var(--kta-light-bg-deep) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps details {
+  background: rgba(0,0,0,0.02) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary {
+  background: rgba(244, 197, 66, 0.08) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary:hover {
+  background: var(--kta-light-accent-bg) !important;
+}
+/* Bouton ✕ close */
+body.kta-theme-light .kta-readme-modal-overlay .kta-panneau-close {
+  background: rgba(0,0,0,0.05) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay .kta-panneau-close:hover {
+  background: rgba(220, 50, 50, 0.15) !important;
+  border-color: rgba(220, 50, 50, 0.5) !important;
+  color: #b02020 !important;
+}
+/* Inputs dans les modales (cherche, perf, etc.) */
+body.kta-theme-light .kta-readme-modal-overlay input[type="text"],
+body.kta-theme-light .kta-readme-modal-overlay input[type="number"],
+body.kta-theme-light .kta-readme-modal-overlay input[type="search"],
+body.kta-theme-light .kta-readme-modal-overlay input[type="password"],
+body.kta-theme-light .kta-readme-modal-overlay select,
+body.kta-theme-light .kta-readme-modal-overlay textarea {
+  background: #fff !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .kta-readme-modal-overlay input:focus,
+body.kta-theme-light .kta-readme-modal-overlay select:focus,
+body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
+  border-color: var(--kta-light-accent) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
+}
