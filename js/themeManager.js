@@ -155,6 +155,25 @@
     return setTheme(_current === "dark" ? "light" : "dark");
   }
 
+  // v1.14.2 (KARMA) : changement de thème = reload complet de l'app.
+  // Le swap "live" via _applyToDom marchait à 90% mais a toujours laissé
+  // des bugs résiduels sur le bandeau top / certains modals chargés avant
+  // le toggle. Plus simple et bullet-proof : on persiste le choix en
+  // localStorage puis location.reload() — au boot l'app se reconstruit
+  // dans le bon thème sans aucun état héritant.
+  // Si le thème demandé est déjà actif → no-op (pas de reload inutile).
+  function setThemeAndReload(theme) {
+    if (VALID_THEMES.indexOf(theme) < 0) {
+      console.warn("[ThemeManager] setThemeAndReload : valeur invalide", theme);
+      return false;
+    }
+    if (theme === _current) return false;
+    _writePersisted(theme);
+    console.log("[ThemeManager] persisté →", theme, "— reload…");
+    location.reload();
+    return true;
+  }
+
   function onChange(cb) {
     if (typeof cb !== "function") return;
     _listeners.push(cb);
@@ -164,12 +183,13 @@
   // EXPORT GLOBAL
   // ============================================================
   window.ThemeManager = {
-    init:        init,
-    getCurrent:  getCurrent,
-    setTheme:    setTheme,
-    toggleTheme: toggleTheme,
-    onChange:    onChange,
-    isLight:     isLight
+    init:              init,
+    getCurrent:        getCurrent,
+    setTheme:          setTheme,
+    setThemeAndReload: setThemeAndReload,
+    toggleTheme:       toggleTheme,
+    onChange:          onChange,
+    isLight:           isLight
   };
 
   // Auto-init au chargement (le DOM body est dispo car ce script est chargé

@@ -1584,7 +1584,7 @@ function afficherAide() {
           <div class="kta-aide-section-titre">⚙️ Paramètres</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug — réglages <strong>par plan</strong></span>
-            <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> (v1.13.0) — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Choix persisté globalement par appareil. Concerne tout le mode carte (sidebar, footer, modales, container Leaflet) — la home reste sombre.</span>
+            <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> (v1.13.0, v1.14.2 reload) — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un reload complet de l'app pour éviter les bugs résiduels d'affichage. Choix persisté globalement par appareil.</span>
             <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
@@ -3813,45 +3813,20 @@ function initInterface() {
   });
 
   // 2. PARAMÈTRES (solo)
-  // 🔧 v1.13.0 (KARMA choix A:a "toggle = sous-action de ⚙️ Paramètres") :
-  // ⚙️ Paramètres passe en sousActions pour accueillir le toggle thème.
-  // 2 sous-actions :
-  //   - ⚙️ Réglages → ouvre la modale config (= ancien comportement solo)
-  //   - ☀️ Mode clair / 🌙 Mode sombre → toggle ThemeManager (label dynamique)
+  // 🔧 v1.14.2 (KARMA) : le toggle thème est retiré du mode map. Il a été
+  // déplacé exclusivement vers la modale Configuration home — et tout
+  // changement de thème déclenche désormais un reload complet de l'app
+  // (ThemeManager.setThemeAndReload) pour éviter les bugs résiduels de
+  // bandeau top / modales chargées avant le toggle qu'on n'a jamais
+  // réussi à régler avec un swap "live".
+  // ⚙️ Paramètres redevient donc une soloAction qui ouvre direct la
+  // modale Configuration (= comportement d'avant v1.13.0).
   _creerGroupeAccordeon({
     id: "settings",
     iconePrincipale: "⚙️",
     titre: "Paramètres",
     position: "topleft",
-    sousActions: [
-      {
-        icone: "⚙️",
-        titre: "Réglages, calibrage, debug",
-        onClick: function() { afficherConfig(); }
-      },
-      {
-        icone: (window.ThemeManager && window.ThemeManager.isLight()) ? "🌙" : "☀️",
-        titre: "Basculer thème clair / sombre",
-        onClick: function(btnSub) {
-          if (!window.ThemeManager) return;
-          const nouveau = window.ThemeManager.toggleTheme() ? window.ThemeManager.getCurrent() : window.ThemeManager.getCurrent();
-          // Met à jour l'icône du bouton selon le nouveau thème
-          if (btnSub) {
-            btnSub.innerHTML = (nouveau === "light") ? "🌙" : "☀️";
-            btnSub.title = (nouveau === "light")
-              ? "Mode CLAIR actif — clic pour passer en sombre"
-              : "Mode SOMBRE actif — clic pour passer en clair";
-          }
-          // Toast pour confirmation visuelle
-          if (window.OOMGuard && window.OOMGuard.showToast) {
-            window.OOMGuard.showToast(
-              (nouveau === "light") ? "☀️ Mode clair activé" : "🌙 Mode sombre activé",
-              "info"
-            );
-          }
-        }
-      }
-    ]
+    soloAction: function() { afficherConfig(); }
   });
 
   // 2bis. RECHERCHE (solo)

@@ -559,7 +559,7 @@
                ThemeManager → réglage unique persisté en localStorage. -->
           <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(244, 197, 66, 0.08); border-color: rgba(244, 197, 66, 0.30);">
             <input type="checkbox" id="loaderThemeLightCb">
-            <span><strong>☀️ Activer le thème CLAIR</strong> — fond beige cataphile au lieu du fond noir. Choix mémorisé globalement, valable pour la home, les modales, et tout le mode carte. Effet immédiat.</span>
+            <span><strong>☀️ Activer le thème CLAIR</strong> — fond beige cataphile au lieu du fond noir. Choix mémorisé globalement, valable pour la home, les modales, et tout le mode carte. <em>⚠️ Le changement déclenche un reload complet de l'app (v1.14.2).</em></span>
           </label>
         </div>
 
@@ -2612,22 +2612,19 @@
       }
 
       // 🆕 v1.13.0-fix2 (KARMA "possibilité d'activer ou non depuis le conf home") :
-      // toggle thème CLAIR / SOMBRE accessible depuis la modale Configuration home.
-      // Lié au même ThemeManager que le toggle ⚙️ Paramètres en mode carte —
-      // réglage unique persisté en localStorage ("myktamap_theme_v1").
-      // Au boot : la checkbox est synchronisée avec l'état courant.
-      // Au change : applique via ThemeManager.setTheme().
-      // En complément : on s'abonne à ThemeManager.onChange pour resynchro
-      // si le user change le thème depuis le toggle map-mode après avoir
-      // ouvert la modale.
+      // toggle thème CLAIR / SOMBRE — accessible UNIQUEMENT depuis la modale
+      // Configuration home (KARMA v1.14.2 : retrait du toggle équivalent en
+      // mode map). Persistance globale en localStorage ("myktamap_theme_v1").
+      //
+      // v1.14.2 : le changement déclenche un reload complet de l'app via
+      // ThemeManager.setThemeAndReload(). Le swap "live" laissait toujours
+      // des bugs résiduels sur le bandeau top / modales chargées avant le
+      // toggle qu'on n'a jamais réussi à régler. Reload = état propre garanti.
       const themeLightCb = document.getElementById("loaderThemeLightCb");
       if (themeLightCb && window.ThemeManager) {
         try { themeLightCb.checked = window.ThemeManager.isLight(); } catch(e) {}
         themeLightCb.addEventListener("change", function() {
-          window.ThemeManager.setTheme(themeLightCb.checked ? "light" : "dark");
-        });
-        window.ThemeManager.onChange(function(theme) {
-          themeLightCb.checked = (theme === "light");
+          window.ThemeManager.setThemeAndReload(themeLightCb.checked ? "light" : "dark");
         });
       }
 
