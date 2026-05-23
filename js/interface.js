@@ -767,97 +767,101 @@ window.ouvrirImportGpx = function() {
 };
 
 // =========================
-// 📥 IMPORT — modale de choix (v1.14.5 → refactor onglets v1.14.12)
+// 📥 IMPORT — modale de choix (refonte from-scratch v1.14.17)
 // =========================
-// Unification (KARMA UX) : un seul bouton "📥 Importer" dans le menu ⬇️
-// Charger, qui ouvre une modale avec 2 onglets (pattern identique à la
-// modale 💾 Enregistrer session : Full / Avancé / Conversion / Export
-// externe).
+// KARMA : « le modal ne va pas mieux, reprend depuis 0 sans toute nos
+// itérations, et génère-moi un modal qui était historiquement import
+// session, à deux choix, comme enregistrer session, ou export image ».
 //
-// v1.14.12 (KARMA « toujours pas bon le modal import, sépare en 2
-// possibilités comme on a fait pour exporter ») : abandon du pattern
-// cards-en-grille (.kta-import-choix-card) qui se cassait régulièrement
-// sur certains UA (divs internes débordaient dans la grille parente,
-// emojis rendus "NaN"). Pattern onglets = plus simple, plus fiable, 100%
-// cohérent avec la modale Enregistrer session.
+// On calque le pattern de la modale « 🖼️ Exporter en PNG/JPG »
+// (window.ouvrirExportModal dans js/exporter.js) qui marche parfaitement
+// depuis longtemps : deux gros boutons .kta-conv-sens-btn en haut pour
+// le choix de mode + 2 sections de contenu togglées par display.
+//
+// Pas de dépendance sur les styles dynamiques de sessionExporter.js
+// (cause des bugs v1.14.5 → v1.14.16). On utilise UNIQUEMENT des classes
+// CSS statiques déjà présentes dans css/style.css :
+//   - .kta-readme-modal-overlay / -boite / -header / -titre / -corps
+//   - .kta-panneau-close (bouton ✕)
+//   - .kta-conv-sens-wrap / -btn / -label / -desc (sélecteur de mode)
+//   - .kta-aide-section / -section-titre (panneaux de contenu)
+//   - .kta-btn / -btn-primary / -btn-ghost (boutons d'action)
 window.ouvrirImportChoix = function() {
-  const existing = document.getElementById("kta-import-choix-modal");
-  if (existing) { existing.remove(); return; }
+  // Suppr d'éventuelles modales orphelines avec l'ancien id
+  ["kta-import-choix-modal", "kta-import-choix-modal-v2"].forEach(function(id) {
+    const old = document.getElementById(id);
+    if (old) old.remove();
+  });
 
-  // v1.14.12 — réutilise les styles .kta-ses-* de la modale Enregistrer
-  // session (injectés via window.SessionExporterStyles.inject). Idempotent.
-  if (window.SessionExporterStyles && typeof window.SessionExporterStyles.inject === "function") {
-    window.SessionExporterStyles.inject();
-  }
-
-  // État local : onglet actif (rien d'écrit en localStorage — pas de
-  // besoin de persister, c'est juste un sélecteur ponctuel).
-  let _activeTab = "session"; // "session" | "gpx"
+  let _mode = "session"; // "session" | "gpx"
 
   const modal = document.createElement("div");
-  modal.id = "kta-import-choix-modal";
+  modal.id = "kta-import-choix-modal-v2";
   modal.className = "kta-readme-modal-overlay";
-  modal.innerHTML = ''
-    + '<div class="kta-readme-modal-boite kta-import-choix-boite">'
-    +   '<div class="kta-readme-modal-header">'
-    +     '<span class="kta-readme-modal-titre">📥 Importer</span>'
-    +     '<button class="kta-panneau-close" id="kta-import-choix-close" type="button">✕</button>'
-    +   '</div>'
-    +   // === Onglets — mêmes classes .kta-ses-tabs / .kta-ses-tab que la
-    +   // modale Enregistrer session, pour réutiliser le styling existant.
-    +   '<div class="kta-ses-tabs">'
-    +     '<button type="button" class="kta-ses-tab active" data-imp-tab="session">📥 Session</button>'
-    +     '<button type="button" class="kta-ses-tab"        data-imp-tab="gpx">📤 GPX</button>'
-    +   '</div>'
-    +   '<div class="kta-readme-modal-corps" id="kta-import-choix-content"></div>'
-    +   '<div class="kta-ses-actions">'
-    +     '<button class="kta-ses-btn kta-ses-btn-secondary" id="kta-import-choix-cancel" type="button">Annuler</button>'
-    +     '<button class="kta-ses-btn kta-ses-btn-primary"   id="kta-import-choix-ok"     type="button">📂 Choisir un fichier</button>'
-    +   '</div>'
-    + '</div>';
+  modal.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:560px; max-height:88vh; height:auto; display:flex; flex-direction:column;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">📥 Importer un fichier</span>' +
+        '<button class="kta-panneau-close" id="kta-imp2-close" type="button" aria-label="Fermer">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps" style="overflow-y:auto;">' +
+
+        // === SÉLECTEUR DE MODE (2 gros boutons côte-à-côte) ===
+        '<div class="kta-conv-sens-wrap">' +
+          '<button class="kta-conv-sens-btn active" id="kta-imp2-mode-session" type="button">' +
+            '<span class="kta-conv-sens-label">📥 Session MyKTAMap</span>' +
+            '<span class="kta-conv-sens-desc">.json ou .zip exporté depuis l\'app</span>' +
+          '</button>' +
+          '<button class="kta-conv-sens-btn" id="kta-imp2-mode-gpx" type="button">' +
+            '<span class="kta-conv-sens-label">📤 Fichier GPX externe</span>' +
+            '<span class="kta-conv-sens-desc">TopoDroid, OsmAnd, Strava, Garmin…</span>' +
+          '</button>' +
+        '</div>' +
+
+        // === PANEL SESSION (visible par défaut) ===
+        '<div id="kta-imp2-panel-session">' +
+          '<div class="kta-aide-section">' +
+            '<div class="kta-aide-section-titre">📋 Contenu</div>' +
+            '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
+              '✓ Fichier <code>session.json</code> ou <code>.zip</code> exporté depuis 💾 Enregistrer session<br>' +
+              '✓ Restaure tes <strong>annotations</strong> : points, tracés, zones, structures, mesure en cours<br>' +
+              '✓ Si le fichier est un <code>.zip</code> : <strong>photos</strong> rattachées aux points également restaurées<br>' +
+              '✓ Choix après preview : remplacer ou fusionner avec ta session actuelle' +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+
+        // === PANEL GPX (masqué par défaut) ===
+        '<div id="kta-imp2-panel-gpx" style="display:none;">' +
+          '<div class="kta-aide-section">' +
+            '<div class="kta-aide-section-titre">📋 Contenu</div>' +
+            '<p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">' +
+              '✓ Fichier <code>.gpx</code> standard GPX 1.1 depuis : ' +
+              '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin</strong>…<br>' +
+              '✓ Les <strong>waypoints</strong> deviennent des points · les <strong>tracks</strong> deviennent des tracés<br>' +
+              '✓ <strong>Calibrage GPS du plan requis</strong> (sinon message d\'erreur t\'invitant à le faire via 📡 Export externe)<br>' +
+              '✓ Roundtrip MyKTAMap : si le GPX vient d\'une autre instance MyKTAMap, les niveaux M-LVL sont restaurés' +
+            '</p>' +
+          '</div>' +
+        '</div>' +
+
+      '</div>' +
+
+      // === ACTIONS (footer fixe) ===
+      '<div style="display:flex; justify-content:flex-end; gap:10px; padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06);">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-imp2-cancel" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-imp2-ok"     type="button">📂 Choisir un fichier</button>' +
+      '</div>' +
+    '</div>';
 
   document.documentElement.appendChild(modal);
 
-  function _renderTab() {
-    // Highlight onglet actif
-    modal.querySelectorAll(".kta-ses-tab").forEach(function(t) {
-      t.classList.toggle("active", t.dataset.impTab === _activeTab);
-    });
-    const content = document.getElementById("kta-import-choix-content");
-    if (!content) return;
-
-    if (_activeTab === "session") {
-      content.innerHTML = ''
-        + '<p class="kta-ses-intro">'
-        +   '📥 <strong>Session MyKTAMap</strong> — un fichier <code>session.json</code> '
-        +   'ou un <code>.zip</code> exporté depuis l\'app (depuis 💾 Enregistrer session). '
-        +   'Contient tes <strong>annotations</strong> : points, tracés, zones, structures, '
-        +   'mesure en cours, et photos rattachées si c\'est un ZIP.'
-        + '</p>'
-        + '<div class="kta-ses-summary">'
-        +   '<strong>📁 Extensions acceptées :</strong> <code>.json</code> · <code>.zip</code>'
-        +   '<br>'
-        +   '<strong>🔄 Restauration :</strong> les annotations remplacent ou fusionnent '
-        +   'avec ta session courante (choix proposé après preview).'
-        + '</div>';
-    } else {
-      content.innerHTML = ''
-        + '<p class="kta-ses-intro">'
-        +   '📤 <strong>Fichier GPX externe</strong> — depuis une autre app outdoor : '
-        +   '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin</strong>… '
-        +   'Les waypoints deviennent des points, les tracks deviennent des tracés.'
-        + '</p>'
-        + '<div class="kta-ses-summary">'
-        +   '<strong>📁 Extensions acceptées :</strong> <code>.gpx</code>'
-        +   '<br>'
-        +   '<strong>🌐 Calibrage GPS requis :</strong> le plan doit avoir un calibrage 2 points '
-        +   '(📡 Export externe) pour transformer les coordonnées WGS84 en coords plan locales.'
-        +   '<br>'
-        +   '<strong>↻ Roundtrip :</strong> les GPX exportés depuis MyKTAMap (commentaires '
-        +   '<code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code>) sont ré-importables avec '
-        +   'restauration des niveaux M-LVL.'
-        + '</div>';
-    }
+  function _setMode(nouveau) {
+    _mode = nouveau;
+    document.getElementById("kta-imp2-mode-session").classList.toggle("active", nouveau === "session");
+    document.getElementById("kta-imp2-mode-gpx").classList.toggle("active",     nouveau === "gpx");
+    document.getElementById("kta-imp2-panel-session").style.display = (nouveau === "session") ? "block" : "none";
+    document.getElementById("kta-imp2-panel-gpx").style.display     = (nouveau === "gpx")     ? "block" : "none";
   }
 
   function _fermer() {
@@ -866,10 +870,10 @@ window.ouvrirImportChoix = function() {
   }
   function _onKey(e) {
     if (e.key === "Escape") _fermer();
-    else if (e.key === "Enter") _validate();
+    else if (e.key === "Enter") _valider();
   }
-  function _validate() {
-    const choix = _activeTab;
+  function _valider() {
+    const choix = _mode;
     _fermer();
     if (choix === "session") {
       ouvrirImportSession();
@@ -879,19 +883,13 @@ window.ouvrirImportChoix = function() {
     }
   }
 
-  document.getElementById("kta-import-choix-close").addEventListener("click", _fermer);
-  document.getElementById("kta-import-choix-cancel").addEventListener("click", _fermer);
-  document.getElementById("kta-import-choix-ok").addEventListener("click", _validate);
+  document.getElementById("kta-imp2-close").addEventListener("click",  _fermer);
+  document.getElementById("kta-imp2-cancel").addEventListener("click", _fermer);
+  document.getElementById("kta-imp2-ok").addEventListener("click",     _valider);
+  document.getElementById("kta-imp2-mode-session").addEventListener("click", function() { _setMode("session"); });
+  document.getElementById("kta-imp2-mode-gpx").addEventListener("click",     function() { _setMode("gpx"); });
   modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
-  modal.querySelectorAll(".kta-ses-tab").forEach(function(tab) {
-    tab.addEventListener("click", function() {
-      _activeTab = tab.dataset.impTab;
-      _renderTab();
-    });
-  });
   document.addEventListener("keydown", _onKey);
-
-  _renderTab();
 };
 
 // =========================

@@ -1,12 +1,13 @@
 {
-  "version": "v1.14.16",
+  "version": "v1.14.17",
   "released": "2026-05-24",
   "notes": [
-    "🐛 V3.2.q — Fix rendu cassé de la modale 📥 Importer en pleine largeur (KARMA capture : « ça va pas du tout le modal, je comprends pas, on a déjà fait ça plein de fois »). La modale s'étalait sur toute la largeur du viewport et les onglets s'empilaient verticalement à gauche au lieu d'être horizontaux. Cause identifiée : la modale dépendait des styles .kta-ses-tabs / .kta-ses-tab / .kta-ses-intro / .kta-ses-summary / .kta-ses-actions / .kta-ses-btn injectés DYNAMIQUEMENT par sessionExporter.js via window.SessionExporterStyles.inject() (introduit en v1.14.12). Si le SW servait une ancienne version de sessionExporter.js (avant v1.14.12), l'API n'existait pas → aucun style injecté → rendu cassé.",
-    "🔧 Fix : tous les styles minimaux nécessaires pour la modale Import sont désormais inscrits en CSS statique dans css/style.css (scopés sur #kta-import-choix-modal). Plus aucune dépendance sur l'API dynamique. Les styles sont garantis dispo dès le boot car css/style.css est chargé d'office par index.html — résilient au cache SW, aux versions désynchronisées, et aux modules JS non chargés.",
-    "💪 Renforcement .kta-import-choix-boite — max-width:560px + width:95% basculés en !important pour battre la règle base .kta-readme-modal-boite qui fixe width:min(1400px, 96vw) en PC ≥1024px.",
-    "🌗 Theme light inclus — variants beige + ambre charte pour onglets, intro, summary, actions, boutons primary (jaune charte) et secondary (gris discret).",
-    "🏷️ Sources de vérité v1.14.16 : version.json → \"v1.14.16\", js/copyright.js > __MKM__.build → \"v1.14.16\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.16-import-static-css\".",
-    "🛡️ Confidentialité — fix CSS pur (+~140 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
+    "🧹 V3.2.r — Refonte FROM SCRATCH de la modale 📥 Importer (KARMA : « le modal ne va pas mieux, reprend depuis 0 sans toute nos itérations, et génère-moi un modal qui était historiquement import session, à deux choix, comme enregistrer session ou export image »). On abandonne TOUTES les itérations v1.14.5 → v1.14.16 (cards-en-grille, onglets dynamiques, injecteur de styles externe) qui ont accumulé bugs sur bugs.",
+    "✨ Nouvelle approche — calquée sur la modale 🖼️ Exporter PNG/JPG (window.ouvrirExportModal, eprouvée et stable depuis longtemps) : 2 gros boutons .kta-conv-sens-btn côte-à-côte tout en haut pour le choix de mode (📥 Session MyKTAMap / 📤 Fichier GPX externe), + 2 panels .kta-aide-section togglés par display:none. Footer 2 boutons : Annuler (kta-btn-ghost) + 📂 Choisir un fichier (kta-btn-primary jaune charte).",
+    "🛡️ Zéro nouveau CSS — la modale utilise EXCLUSIVEMENT des classes déjà présentes dans css/style.css (.kta-readme-modal-overlay/-boite/-header/-titre/-corps, .kta-panneau-close, .kta-conv-sens-wrap/-btn/-label/-desc, .kta-aide-section/-section-titre, .kta-btn/-btn-primary/-btn-ghost). Styles inline minimaux pour max-width 560px + flex column. Aucune dépendance sur un module externe ou un injecteur dynamique.",
+    "🗑️ Code mort — retrait de toutes les classes CSS .kta-import-choix-* (-boite + overrides #kta-import-choix-modal .kta-ses-*) accumulées en v1.14.5 → v1.14.16. Bilan -170 lignes CSS. Retrait aussi de l'API window.SessionExporterStyles.inject (introduite en v1.14.12 pour la modale Import, plus aucun consumer aujourd'hui).",
+    "⌨️ Accessibilité — Enter valide le mode sélectionné, Escape annule, click backdrop = annule, click ✕ = annule.",
+    "🏷️ Sources de vérité v1.14.17 : version.json → \"v1.14.17\", js/copyright.js > __MKM__.build → \"v1.14.17\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.17-import-restart\".",
+    "🛡️ Confidentialité — refonte UI/CSS pur, aucune modification réseau. NETWORK_AUDIT inchangé."
   ]
 }

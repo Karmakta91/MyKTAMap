@@ -450,14 +450,11 @@
     _afficherModal();
   };
 
-  // v1.14.12 — expose l'injecteur de styles pour les autres modales qui
-  // réutilisent le pattern .kta-ses-tabs / .kta-ses-tab / .kta-ses-intro
-  // / .kta-ses-summary / .kta-ses-actions / .kta-ses-btn (ex: modale
-  // Import dans js/interface.js). Idempotent — vérifie déjà l'existence
-  // du <style id="kta-session-export-styles"> avant d'injecter.
-  window.SessionExporterStyles = {
-    inject: _injecterStyles
-  };
+  // v1.14.12 → v1.14.17 : exposition window.SessionExporterStyles.inject
+  // retirée. La modale Import a été repensée en v1.14.17 pour utiliser
+  // exclusivement des classes CSS statiques (pattern .kta-conv-sens-* de
+  // exporter.js). Plus aucun module externe ne dépend de cet injecteur,
+  // les styles .kta-ses-* restent purement internes à sessionExporter.
 
   // ========== COMPTAGES ==========
   function _compter() {
