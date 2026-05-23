@@ -10854,6 +10854,13 @@ body.kta-theme-light {
   --kta-light-bg:           #f0e8d8;  /* beige cataphile, même que kta-emergency-light */
   --kta-light-bg-elevated:  #fdf8eb;  /* fond modale, légèrement plus clair */
   --kta-light-bg-deep:      #e5dcc5;  /* sidebar background, plus saturé */
+  /* 🔧 v1.13.0-fix4 (KARMA "plus de contraste en mode clair, sur le top
+     comme en footer") : nouvelles teintes brun-beige nettement plus
+     contrastées que le body #f0e8d8, pour différencier visuellement
+     header + status bar du contenu principal. */
+  --kta-light-bg-bar:       #c9b88f;  /* header + footer status bar */
+  --kta-light-bg-bar-deep:  #b8a576;  /* hover / actif sur bar items */
+  --kta-light-bg-bar-border:#9a8754; /* bordure forte de séparation bar / body */
   --kta-light-text:         #2a2620;  /* texte principal sombre */
   --kta-light-text-muted:   #6b6354;  /* texte secondaire */
   --kta-light-text-dim:     #8a8270;  /* texte tertiaire / dashes */
@@ -10876,50 +10883,65 @@ body.kta-theme-light {
   color: var(--kta-light-text);
 }
 
-/* === HEADER refonte === */
+/* === HEADER refonte ===
+   🔧 v1.13.0-fix4 (KARMA "plus de contraste en mode clair, sur le top
+   comme en footer") : background brun-beige #c9b88f (vs ancien #e5dcc5
+   trop proche du body #f0e8d8) + bordure forte 2px en bas + ombre
+   subtile pour profondeur. */
 body.kta-theme-light .kta-refonte-header {
-  background: var(--kta-light-bg-deep);
-  color: var(--kta-light-text);
-  border-bottom: 1px solid var(--kta-light-border);
+  background: var(--kta-light-bg-bar) !important;
+  color: var(--kta-light-text) !important;
+  border-bottom: 2px solid var(--kta-light-bg-bar-border) !important;
+  box-shadow: 0 2px 4px rgba(80, 60, 30, 0.18) !important;
 }
 body.kta-theme-light .kta-refonte-header * {
-  color: var(--kta-light-text);
+  color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-refonte-plan-name {
   color: var(--kta-light-text) !important;
+  font-weight: 700 !important;
 }
 body.kta-theme-light .kta-refonte-counter {
-  background: rgba(0,0,0,0.05);
-  border: 1px solid var(--kta-light-border);
-  color: var(--kta-light-text);
+  background: rgba(255, 255, 255, 0.45) !important;  /* compteurs en blanc
+                                                         semi-trans sur fond brun pour ressortir */
+  border: 1px solid var(--kta-light-bg-bar-border) !important;
+  color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-refonte-counter:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
+  background: #ffffff !important;
+  border-color: var(--kta-light-accent) !important;
 }
 body.kta-theme-light .kta-refonte-counters-btn:hover {
-  background: var(--kta-light-accent-bg);
+  background: rgba(255, 255, 255, 0.6) !important;
 }
 
-/* === STATUS BAR footer === */
+/* === STATUS BAR footer ===
+   🔧 v1.13.0-fix4 : même traitement que le header — brun-beige contrasté
+   + bordure forte en haut + ombre vers le haut pour la profondeur. */
 body.kta-theme-light .kta-refonte-statusbar {
-  background: var(--kta-light-bg-deep);
-  color: var(--kta-light-text);
-  border-top: 1px solid var(--kta-light-border);
+  background: var(--kta-light-bg-bar) !important;
+  color: var(--kta-light-text) !important;
+  border-top: 2px solid var(--kta-light-bg-bar-border) !important;
+  box-shadow: 0 -2px 4px rgba(80, 60, 30, 0.18) !important;
 }
 body.kta-theme-light .kta-refonte-statusbar * {
-  color: var(--kta-light-text);
+  color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .kta-refonte-stat {
-  background: rgba(0,0,0,0.04);
-  border: 1px solid var(--kta-light-border);
+  background: rgba(255, 255, 255, 0.45) !important;  /* idem header : blanc semi-trans
+                                                         pour ressortir sur fond brun */
+  border: 1px solid var(--kta-light-bg-bar-border) !important;
 }
 body.kta-theme-light .kta-refonte-stat-empty {
-  opacity: 0.5;
+  opacity: 0.55 !important;
 }
 body.kta-theme-light .kta-refonte-statusbar-toggle {
-  color: var(--kta-light-text);
-  background: rgba(0,0,0,0.04);
+  color: var(--kta-light-text) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid var(--kta-light-bg-bar-border) !important;
+}
+body.kta-theme-light .kta-refonte-statusbar-toggle:hover {
+  background: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* === SIDEBARS Leaflet — boutons principaux + sous-actions ===
