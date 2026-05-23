@@ -667,7 +667,7 @@ window.ouvrirImportGpx = function() {
           '<div class="kta-aide-section" style="background:rgba(220,50,50,0.10); border-color:rgba(220,50,50,0.30);">' +
             '<p style="color:#b02020; font-weight:600;">⚠️ Ce plan n\'est pas calibré GPS.</p>' +
             '<p>Pour importer un GPX, l\'app a besoin de savoir comment transformer les coordonnées WGS84 (lat/lng) en coordonnées plan locales. Cette transformation est définie par 2 points de calibrage (plan ↔ GPS).</p>' +
-            '<p><strong>Comment calibrer</strong> : ferme cette fenêtre → 💾 Enregistrer session → onglet 🌍 KMZ → suis le flow 2 points de calibrage. Une fois fait, reviens ici pour importer ton GPX.</p>' +
+            '<p><strong>Comment calibrer</strong> : ferme cette fenêtre → 💾 Enregistrer session → onglet 📡 Export externe → saisis 2 points (x/y plan + GPS lat/lng). Une fois fait, reviens ici pour importer ton GPX.</p>' +
           '</div>'
         :
           '<div class="kta-aide-section">' +
@@ -1746,7 +1746,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 5 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · 🌍 KMZ · <strong>📤 GPX (v1.14.0)</strong></span>
+            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 4 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · <strong>📡 Export externe (KMZ + GPX, v1.14.1)</strong></span>
             <span class="kta-aide-icone">🖼️</span><span>Exporter en PNG/JPG — modale avec mode Rapide / Avancé</span>
             <span class="kta-aide-icone">📤</span><span><strong>Exporter en PDF imprimable</strong> (v1.10.3) — A0 à A4 × portrait/paysage, légende positionnable dans un coin</span>
           </div>

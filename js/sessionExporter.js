@@ -15,7 +15,18 @@
   "use strict";
 
   let _modal = null;
-  let _activeTab = "full"; // "full" | "advanced" | "conversion"
+  let _activeTab = "full"; // "full" | "advanced" | "conversion" | "extern"
+
+  // v1.14.1 — onglet unifié "📡 Export externe" (KMZ + GPX partagent
+  // le même calibrage GPS 2 points). Persisté côté localStorage pour
+  // ré-ouvrir sur le dernier format choisi.
+  const _EXTERN_FMT_KEY = "myktamap_extern_format_v1";
+  let _externFormat = (function() {
+    try {
+      const v = localStorage.getItem(_EXTERN_FMT_KEY);
+      return (v === "gpx" || v === "kmz") ? v : "kmz";
+    } catch(e) { return "kmz"; }
+  })();
 
   // État de l'onglet Conversion (bidirectionnel depuis 08/05/2026)
   let _convDirection      = "ed2data"; // "ed2data" (session→data) | "data2ed" (data→session)
@@ -354,6 +365,79 @@
         min-width: 36px;
         text-align: right;
       }
+
+      /* 📡 v1.14.1 — Sélecteur de format (KMZ/GPX) en pills segmentées */
+      .kta-ses-format-pills {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: rgba(0,0,0,0.25);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 8px;
+        margin-bottom: 8px;
+      }
+      .kta-ses-fmt-pill {
+        flex: 1;
+        padding: 8px 12px;
+        background: transparent;
+        color: #8892a4;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-family: inherit;
+        font-weight: 600;
+        transition: all 0.12s;
+      }
+      .kta-ses-fmt-pill:hover {
+        color: #c0c8d8;
+        background: rgba(140,180,255,0.06);
+      }
+      .kta-ses-fmt-pill.active {
+        background: linear-gradient(180deg, rgba(140,180,255,0.25), rgba(140,180,255,0.12));
+        color: #e8eaf0;
+        border-color: rgba(140,180,255,0.45);
+        box-shadow: 0 1px 0 rgba(140,180,255,0.15) inset;
+      }
+      .kta-ses-fmt-desc {
+        font-size: 12px;
+        color: #a8b2c4;
+        margin: 4px 2px 0;
+        line-height: 1.5;
+      }
+      .kta-ses-fmt-desc strong {
+        color: #e8eaf0;
+      }
+
+      /* Theme light : sélecteur format + onglets unifiés */
+      body.kta-theme-light .kta-ses-format-pills,
+      html.kta-theme-light .kta-ses-format-pills {
+        background: rgba(0,0,0,0.05);
+        border-color: rgba(0,0,0,0.12);
+      }
+      body.kta-theme-light .kta-ses-fmt-pill,
+      html.kta-theme-light .kta-ses-fmt-pill {
+        color: #6b5e3a;
+      }
+      body.kta-theme-light .kta-ses-fmt-pill:hover,
+      html.kta-theme-light .kta-ses-fmt-pill:hover {
+        background: rgba(244,197,66,0.12);
+        color: #3a2f15;
+      }
+      body.kta-theme-light .kta-ses-fmt-pill.active,
+      html.kta-theme-light .kta-ses-fmt-pill.active {
+        background: linear-gradient(180deg, #f4c542, #e8b537);
+        color: #3a2f15;
+        border-color: #c99a1f;
+      }
+      body.kta-theme-light .kta-ses-fmt-desc,
+      html.kta-theme-light .kta-ses-fmt-desc {
+        color: #6b5e3a;
+      }
+      body.kta-theme-light .kta-ses-fmt-desc strong,
+      html.kta-theme-light .kta-ses-fmt-desc strong {
+        color: #3a2f15;
+      }
     `;
     document.head.appendChild(s);
   }
@@ -491,8 +575,7 @@
           <button class="kta-ses-tab" data-tab="full">🚀 Full</button>
           <button class="kta-ses-tab" data-tab="advanced">🎨 Avancé</button>
           <button class="kta-ses-tab" data-tab="conversion">🔄 Conversion</button>
-          <button class="kta-ses-tab" data-tab="kmz">🌍 KMZ</button>
-          <button class="kta-ses-tab" data-tab="gpx">📤 GPX</button>
+          <button class="kta-ses-tab" data-tab="extern">📡 Export externe</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
@@ -563,14 +646,13 @@
       // n'est pas dans le DOM dans ce cas).
       setTimeout(_majCompteurPhotosConvEd2Data, 0);
     }
-    else if (_activeTab === "kmz") {
-      c.innerHTML = _renderKmz();
-      // 🌍 v169 (Karma_dev) : binding handlers spécifique KMZ après injection
-      // HTML (autocomplete + clic carte + validations + aperçu coins)
+    else if (_activeTab === "extern") {
+      // v1.14.1 — onglet unifié : KMZ + GPX partagent le calibrage 2 points.
+      c.innerHTML = _renderExtern();
+      // Bind handlers calibrage (autocomplete + clic carte + validations + aperçu coins)
       setTimeout(_bindKmzHandlers, 0);
-    }
-    else if (_activeTab === "gpx") {
-      c.innerHTML = _renderGpx();
+      // Bind handlers du sélecteur de format (pills KMZ/GPX)
+      setTimeout(_bindExternFmtHandlers, 0);
     }
   }
 
@@ -1299,8 +1381,11 @@
     if (_activeTab === "full")              _exportFull();
     else if (_activeTab === "advanced")     _exportAdvanced();
     else if (_activeTab === "conversion")   _exportConversion();
-    else if (_activeTab === "kmz")          _exportKmz();
-    else if (_activeTab === "gpx")          _exportGpx();
+    else if (_activeTab === "extern") {
+      // v1.14.1 — dispatch selon format choisi (radio pill)
+      if (_externFormat === "gpx") _exportGpxViaExtern();
+      else                          _exportKmz();
+    }
   }
 
   // ========================================================
@@ -2155,34 +2240,17 @@
     });
   }
 
-  // ---------- RENDU HTML ONGLET KMZ ----------
-  function _renderKmz() {
-    // Restaure le calibrage sauvé pour ce plan s'il existe
+  // ---------- RENDU CALIBRAGE COMMUN KMZ/GPX (v1.14.1) ----------
+  // Le calibrage GPS 2 points est partagé entre KMZ et GPX : on le saisit
+  // une seule fois, peu importe le format de sortie choisi.
+  function _renderCalibrageCommun() {
     const planId = _kmzCurrentPlanId();
     const saved  = (window.KmzExport && window.KmzExport.getCalibration)
                     ? window.KmzExport.getCalibration(planId) : null;
     const pA     = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
     const pB     = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
 
-    const mlOn   = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-    const niveauxBloc = mlOn
-      ? '<div class="kta-kmz-section">' +
-          '<div class="kta-kmz-section-titre">🏗️ Niveaux à inclure</div>' +
-          '<p style="font-size:11.5px; color:#8892a4; margin:4px 0;">' +
-            'Par défaut : tous les niveaux disponibles (1 Folder KML par niveau).' +
-          '</p>' +
-          '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
-        '</div>'
-      : '';
-
     return '' +
-      '<div class="kta-ses-intro">' +
-        '🌍 Export <strong>geolocalise</strong> au format KMZ (Google Earth, OsmAnd, Locus, Avenza...). ' +
-        'Calibrage par <strong>2 points</strong> (saisis x/y plan + coordonnées GPS réelles), ' +
-        'l\'app calcule la transformation rotation+échelle+translation pour positionner ' +
-        'le plan et toutes les annotations sur le globe.' +
-      '</div>' +
-
       // ===== Calibrage Point A =====
       '<div class="kta-kmz-section">' +
         '<div class="kta-kmz-section-titre">📍 Point A — calibrage</div>' +
@@ -2229,12 +2297,94 @@
         '<div id="kmz_apercu" class="kta-kmz-apercu">' +
           '<em style="color:#8892a4;">Renseigne les 2 points pour voir l\'aperçu...</em>' +
         '</div>' +
+      '</div>';
+  }
+
+  // ---------- RENDU OPTIONS KMZ (contenu + niveaux) ----------
+  function _renderOptsKmz() {
+    const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const niveauxBloc = mlOn
+      ? '<div class="kta-kmz-section">' +
+          '<div class="kta-kmz-section-titre">🏗️ Niveaux à inclure</div>' +
+          '<p style="font-size:11.5px; color:#8892a4; margin:4px 0;">' +
+            'Par défaut : tous les niveaux disponibles (1 Folder KML par niveau).' +
+          '</p>' +
+          '<div id="kta-kmz-levels-chips" class="kta-kmz-chips"></div>' +
+        '</div>'
+      : '';
+    return _kmzRenderContenu(mlOn) + niveauxBloc;
+  }
+
+  // ---------- RENDU ONGLET UNIFIÉ "📡 Export externe" (v1.14.1) ----------
+  // Fusionne les anciens onglets KMZ + GPX : 1 saisie de calibrage GPS,
+  // puis sélecteur de format (pills) qui toggle les options spécifiques.
+  function _renderExtern() {
+    const fmt = (_externFormat === "gpx") ? "gpx" : "kmz";
+    const introFmt = (fmt === "kmz")
+      ? '🌍 <strong>KMZ</strong> — plan + annotations posés sur le globe (Google Earth, OsmAnd, Avenza, Locus). Image overlay + folders KML par niveau.'
+      : '📤 <strong>GPX 1.1</strong> — waypoints + tracks standards (TopoDroid, OsmAnd, Strava, GPSies). Niveaux M-LVL préservés via commentaire.';
+
+    return '' +
+      '<div class="kta-ses-intro">' +
+        '📡 <strong>Export vers une autre app cartographique</strong>. ' +
+        'Calibre 2 points (saisis x/y plan + coordonnées GPS réelles), ' +
+        'puis choisis le format de sortie. Le calibrage est sauvegardé et ' +
+        'partagé entre KMZ et GPX.' +
       '</div>' +
 
-      // ===== Contenu à inclure (granularite fine, pattern IMAGE AVANCE) =====
-      _kmzRenderContenu(mlOn) +
+      // ===== Calibrage GPS commun =====
+      _renderCalibrageCommun() +
 
-      niveauxBloc;
+      // ===== Sélecteur de format =====
+      '<div class="kta-kmz-section">' +
+        '<div class="kta-kmz-section-titre">📤 Format de sortie</div>' +
+        '<div class="kta-ses-format-pills" role="tablist">' +
+          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "kmz" ? "active" : "") + '" data-fmt="kmz" role="tab" aria-selected="' + (fmt === "kmz") + '">🌍 KMZ</button>' +
+          '<button type="button" class="kta-ses-fmt-pill ' + (fmt === "gpx" ? "active" : "") + '" data-fmt="gpx" role="tab" aria-selected="' + (fmt === "gpx") + '">📤 GPX</button>' +
+        '</div>' +
+        '<p class="kta-ses-fmt-desc" id="kta-extern-fmt-desc">' + introFmt + '</p>' +
+      '</div>' +
+
+      // ===== Options KMZ (visible si fmt=kmz) =====
+      '<div id="kta-extern-opts-kmz" class="kta-extern-opts"' + (fmt === "kmz" ? '' : ' style="display:none;"') + '>' +
+        _renderOptsKmz() +
+      '</div>' +
+
+      // ===== Options GPX (visible si fmt=gpx) =====
+      '<div id="kta-extern-opts-gpx" class="kta-extern-opts"' + (fmt === "gpx" ? '' : ' style="display:none;"') + '>' +
+        _renderOptsGpx() +
+      '</div>';
+  }
+
+  // ---------- Handlers du sélecteur de format (pills KMZ/GPX) ----------
+  function _bindExternFmtHandlers() {
+    if (!_modal) return;
+    const pills = _modal.querySelectorAll(".kta-ses-fmt-pill");
+    pills.forEach(function(p) {
+      p.addEventListener("click", function() {
+        const f = p.dataset.fmt;
+        if (f !== "kmz" && f !== "gpx") return;
+        _externFormat = f;
+        try { localStorage.setItem(_EXTERN_FMT_KEY, f); } catch(e) {}
+        // Toggle pills
+        pills.forEach(function(pp) {
+          const on = pp.dataset.fmt === f;
+          pp.classList.toggle("active", on);
+          pp.setAttribute("aria-selected", on ? "true" : "false");
+        });
+        // Toggle options + maj desc
+        const optsKmz = document.getElementById("kta-extern-opts-kmz");
+        const optsGpx = document.getElementById("kta-extern-opts-gpx");
+        if (optsKmz) optsKmz.style.display = (f === "kmz") ? "" : "none";
+        if (optsGpx) optsGpx.style.display = (f === "gpx") ? "" : "none";
+        const desc = document.getElementById("kta-extern-fmt-desc");
+        if (desc) {
+          desc.innerHTML = (f === "kmz")
+            ? '🌍 <strong>KMZ</strong> — plan + annotations posés sur le globe (Google Earth, OsmAnd, Avenza, Locus). Image overlay + folders KML par niveau.'
+            : '📤 <strong>GPX 1.1</strong> — waypoints + tracks standards (TopoDroid, OsmAnd, Strava, GPSies). Niveaux M-LVL préservés via commentaire.';
+        }
+      });
+    });
   }
 
   // ---------- RENDU SECTION CONTENU (sous-cases par tag/type) ----------
@@ -2887,40 +3037,19 @@
   }
 
   // ============================================================
-  // 📤 GPX EXPORT — v1.14.0
+  // 📤 GPX EXPORT — v1.14.0 (refactor v1.14.1 : options seules, calibrage
+  // partagé via onglet unifié "📡 Export externe")
   // ============================================================
-  function _renderGpx() {
-    const calibre = !!(window.GpxIO && window.GpxIO.verifierCalibrage && window.GpxIO.verifierCalibrage());
+  function _renderOptsGpx() {
     const sessionPoints = window.getEditorPoints ? (window.getEditorPoints() || []) : [];
     const sessionRoads  = window.getRoads        ? (window.getRoads()        || []) : [];
     const embeddedPts   = window.getAllEmbeddedPoints ? (window.getAllEmbeddedPoints() || []) : [];
     const tracesNonIti  = sessionRoads.filter(function(r) { return r && r.type !== "itinerary"; });
     const itiCount      = sessionRoads.filter(function(r) { return r && r.type === "itinerary"; }).length;
 
-    if (!calibre) {
-      return (
-        '<div class="kta-ses-intro">' +
-          '<strong>📤 Export GPX</strong> — produit un fichier <code>.gpx</code> standard ' +
-          '(GPX 1.1) compatible avec les apps spéléo / outdoor : ' +
-          '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, etc.</strong> Les points (waypoints) ' +
-          'et les tracés (tracks) sont projetés en coordonnées GPS WGS84 via le calibrage du plan.' +
-        '</div>' +
-        '<div class="kta-ses-empty" style="margin-top:20px;">' +
-          '⚠️ Ce plan n\'est pas encore calibré GPS.<br><br>' +
-          '<strong>Va dans l\'onglet 🌍 KMZ</strong> et configure 2 points de calibrage ' +
-          '(saisis 2 paires plan↔GPS) — le calibrage est partagé avec l\'export GPX.' +
-        '</div>'
-      );
-    }
-
     return (
-      '<div class="kta-ses-intro">' +
-        '<strong>📤 Export GPX</strong> — produit un fichier <code>.gpx</code> standard ' +
-        '(GPX 1.1) compatible avec les apps spéléo / outdoor : ' +
-        '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, etc.</strong>' +
-      '</div>' +
       '<div class="kta-ses-section">' +
-        '<div class="kta-ses-section-title">📍 Contenu à exporter</div>' +
+        '<div class="kta-ses-section-title">📍 Contenu à exporter (GPX)</div>' +
         '<label class="kta-ses-cb-row">' +
           '<input type="checkbox" id="gpx_points" checked>' +
           '<span>📍 <strong>Points session</strong> <span class="kta-ses-count">(' + sessionPoints.length + ')</span></span>' +
@@ -2939,22 +3068,47 @@
         '</label>' +
       '</div>' +
       '<div class="kta-ses-summary" style="margin-top:14px;">' +
-        '<strong>📐 Format de sortie :</strong> GPX 1.1 XML standard. Les niveaux M-LVL ' +
-        'sont préservés via un commentaire <code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code> ' +
-        'sur chaque waypoint et tracé — un re-import dans MyKTAMap restaure le niveau original.' +
-        '<br><br>' +
-        '<strong>🔄 Roundtrip MyKTAMap ↔ MyKTAMap :</strong> tu peux exporter, partager, ' +
-        'puis ré-importer sur un autre device — les annotations sont restaurées avec ' +
-        'les coordonnées plan exactes (à la précision du calibrage GPS près).' +
+        '<strong>📐 Format :</strong> GPX 1.1 XML standard. Les niveaux M-LVL ' +
+        'sont préservés via un commentaire <code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code>.' +
+        '<br>' +
+        '<strong>🔄 Roundtrip :</strong> ré-importable dans MyKTAMap avec niveaux + coords plan restaurés.' +
       '</div>'
     );
   }
 
-  function _exportGpx() {
+  // Sauvegarde le calibrage saisi dans le formulaire (réutilise les mêmes
+  // inputs kmz_A_x... que l'export KMZ), puis lance GpxIO.exporter.
+  // Le calibrage est ainsi partagé entre les deux formats.
+  function _exportGpxViaExtern() {
+    if (!window.KmzExport) {
+      alert("Module KmzExport non chargé.");
+      return;
+    }
     if (!window.GpxIO) {
       alert("Module GpxIO indisponible — rechargement nécessaire");
       return;
     }
+    // 1) Valider + persister calibrage (même validation que _exportKmz)
+    const c = _kmzLireCalib();
+    if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
+        c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
+      alert("Les 8 champs de calibrage sont obligatoires (4 par point).");
+      return;
+    }
+    try {
+      window.KmzExport.buildTransform(
+        { x: c.pointA.x, y: c.pointA.y },
+        { x: c.pointB.x, y: c.pointB.y },
+        { lat: c.pointA.lat, lng: c.pointA.lng },
+        { lat: c.pointB.lat, lng: c.pointB.lng }
+      );
+    } catch(e) {
+      alert("Calibrage invalide : " + e.message);
+      return;
+    }
+    window.KmzExport.setCalibration(_kmzCurrentPlanId(), c);
+
+    // 2) Lire les options GPX
     const incPoints   = document.getElementById("gpx_points")   && document.getElementById("gpx_points").checked;
     const incEmbedded = document.getElementById("gpx_embedded") && document.getElementById("gpx_embedded").checked;
     const incRoads    = document.getElementById("gpx_roads")    && document.getElementById("gpx_roads").checked;
@@ -2973,7 +3127,6 @@
       if (!r.ok) {
         alert("Export GPX impossible : " + r.msg);
       } else {
-        // Feedback bref (le téléchargement se déclenche tout seul)
         if (window.OOMGuard && window.OOMGuard.showToast) {
           window.OOMGuard.showToast(
             "📤 GPX exporté : " + r.counts.wpts + " waypoint(s) + " + r.counts.trks + " tracé(s)",

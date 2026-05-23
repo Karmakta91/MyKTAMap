@@ -1,16 +1,13 @@
 {
-  "version": "v1.14.0",
+  "version": "v1.14.1",
   "released": "2026-05-23",
   "notes": [
-    "📤📥 V3.2 — GPX import + export — première feature de la Phase 1 quick wins V3 (KARMA validation matrice impact/effort). Réutilise intégralement le calibrage KMZ existant (window.KmzExport.buildTransform / planToGps / gpsToPlan) pour la transformation plan ↔ WGS84.",
-    "📤 Export GPX — nouvel onglet « 📤 GPX » dans la modale 💾 Enregistrer la session, à côté de 🚀 Full / 🎨 Avancé / 🔄 Conversion / 🌍 KMZ. Produit un fichier .gpx au format standard GPX 1.1 (compatible TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc.). Options : choix de ce qui est exporté (points session, points embedded data layers, tracés session hors itinéraire, itinéraire actif).",
-    "📥 Import GPX — nouvelle sous-action « 📤 Importer un fichier GPX » dans le groupe ⬇️ Charger de la sidebar gauche. File picker .gpx → preview (X waypoints + Y tracks) → confirmation user → ajout aux annotations de session. Snapshot HistoryManager intégré, donc Ctrl+Z annule l'import si tu changes d'avis.",
-    "🔄 Roundtrip MyKTAMap ↔ MyKTAMap — les niveaux M-LVL sont préservés dans les commentaires GPX <cmt>MyKTAMap level=N</cmt> sur chaque waypoint et tracé. Un re-import dans MyKTAMap restaure le niveau original. Type des tracés (principal/secondaire/chemin/itinerary) préservé via l'élément <type>.",
-    "🛡️ Garde-fous import — détection des points hors bounds du plan (calibrage trop différent) → ignorés avec avertissement explicite dans la preview. Vérif que le plan a un calibrage valide avant tout import — sinon message clair invitant à passer par 🌍 KMZ pour calibrer.",
-    "📦 Nouveau module js/gpxIO.js (~360 lignes IIFE) → window.GpxIO = { exporter, parser, importer, verifierCalibrage }. Parser GPX 1.1 robuste (DOMParser + détection erreurs). Générateur avec metadata + waypoints + tracks. Multi-segments tracks supportés (concaténés en un seul tracé par <trk>).",
-    "🏛️ Pas de nouvelle dépendance — pure vanilla JS, utilise DOMParser natif du navigateur. Aucune librairie tierce ajoutée.",
-    "🛡️ Confidentialité — aucune nouvelle connexion réseau introduite. Le module gpxIO.js opère uniquement sur des fichiers locaux (FileReader pour import, Blob URL pour export). Aucun fetch, aucun ping. Le SW cache un fichier de plus (./js/gpxIO.js) au boot, toujours same-origin (couvert par la règle de whitelist existante).",
-    "🏷️ Sources de vérité v1.14.0 : version.json → \"v1.14.0\", js/copyright.js > __MKM__.build → \"v1.14.0\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.0-gpx-io\", js/gpxIO.js ajouté à ASSETS_TO_CACHE.",
-    "📘 Documentation à jour : README.md (entrée v1-14-0 dans le journal), docs/README_USER.md (section Nouveautés v1.14.0 — comment exporter / importer un GPX, compatibilité apps), docs/AI_CONTEXT.md (entrée v1.14.0 + survol fonctionnalité GPX), docs/CLAUDE.md (section 54 GpxIO), docs/NETWORK_AUDIT.html + .md (mention same-origin no fetch)."
+    "📡 V3.2.b — Unification des onglets export externe (KARMA UX) : les anciens onglets « 🌍 KMZ » et « 📤 GPX » de la modale 💾 Enregistrer la session sont fusionnés en un seul onglet « 📡 Export externe ». Plus logique : on saisit le calibrage GPS 2 points UNE seule fois (au lieu d'être obligé de passer par l'onglet KMZ pour pouvoir exporter en GPX), puis on choisit le format de sortie via un sélecteur pills (KMZ / GPX).",
+    "🎨 UI sélecteur de format — pills segmentées (style toggle) au-dessus des options spécifiques. Switch immédiat KMZ ↔ GPX sans perdre la saisie du calibrage. Persistance du dernier format choisi en localStorage (myktamap_extern_format_v1) → ré-ouvre toujours sur le format que tu utilises le plus.",
+    "🔗 Calibrage GPS partagé — point A + point B + aperçu coins lat/lng tout en haut de l'onglet, communs aux deux formats. À l'export GPX, le calibrage saisi est sauvegardé (KmzExport.setCalibration) avant la génération — donc tout import GPX ultérieur réutilise le même calibrage sans re-saisie.",
+    "✂️ Pas de régression — le calcul/logique d'export KMZ (image overlay + folders KML par niveau + opacité + tags points) et GPX (waypoints + tracks + cmt MyKTAMap level=N) sont strictement identiques à v1.14.0. Refactor cosmétique + ergonomique uniquement, pas de changement de format de fichier produit.",
+    "📘 Documentation aide ❓ mise à jour — la description Enregistrer session passe de « 5 onglets : Full · Avancé · Conversion · KMZ · GPX » à « 4 onglets : Full · Avancé · Conversion · Export externe (KMZ + GPX) ». La modale Import GPX renvoie vers l'onglet 📡 Export externe pour calibrer.",
+    "🏷️ Sources de vérité v1.14.1 : version.json → \"v1.14.1\", js/copyright.js > __MKM__.build → \"v1.14.1\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.1-extern-tab\".",
+    "🛡️ Confidentialité — aucune modification réseau, refactor 100% UI/UX côté client. Same-origin, no fetch, no telemetry. NETWORK_AUDIT inchangé sur le fond."
   ]
 }
