@@ -2620,11 +2620,30 @@
       // ThemeManager.setThemeAndReload(). Le swap "live" laissait toujours
       // des bugs résiduels sur le bandeau top / modales chargées avant le
       // toggle qu'on n'a jamais réussi à régler. Reload = état propre garanti.
+      //
+      // v1.14.6 (KARMA) : confirmation user avant reload — l'ancien
+      // comportement déclenchait le reload instant au clic checkbox, ce qui
+      // surprenait. Maintenant : confirm() natif + rollback de l'état
+      // checkbox si l'utilisateur annule. Pas de toast custom (le reload
+      // tue la page de toute façon, autant un confirm bloquant garantit
+      // que rien n'est en cours).
       const themeLightCb = document.getElementById("loaderThemeLightCb");
       if (themeLightCb && window.ThemeManager) {
         try { themeLightCb.checked = window.ThemeManager.isLight(); } catch(e) {}
         themeLightCb.addEventListener("change", function() {
-          window.ThemeManager.setThemeAndReload(themeLightCb.checked ? "light" : "dark");
+          const cible = themeLightCb.checked ? "light" : "dark";
+          const libelle = (cible === "light") ? "CLAIR" : "SOMBRE";
+          const ok = window.confirm(
+            "Activer le thème " + libelle + " va relancer l'application " +
+            "pour appliquer le changement proprement.\n\n" +
+            "Confirmer ?"
+          );
+          if (!ok) {
+            // Rollback visuel — restaure l'état précédent de la checkbox.
+            themeLightCb.checked = !themeLightCb.checked;
+            return;
+          }
+          window.ThemeManager.setThemeAndReload(cible);
         });
       }
 

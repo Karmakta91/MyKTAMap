@@ -1,12 +1,11 @@
 {
-  "version": "v1.14.5",
+  "version": "v1.14.6",
   "released": "2026-05-24",
   "notes": [
-    "📂 V3.2.f — Unification de l'import (KARMA UX) : les 2 sous-actions « 📥 Importer session » et « 📤 Importer GPX » du menu ⬇️ Charger sont fusionnées en une seule « 📂 Importer ». Les icônes 📥 / 📤 étaient trop proches → confusion à l'usage. Pattern miroir de la modale 💾 Enregistrer session.",
-    "🎴 Nouvelle modale window.ouvrirImportChoix() à 2 grandes cards cliquables : 📥 Session MyKTAMap (.json / .zip avec annotations + photos) ou 📤 GPX externe (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS du plan). Description, extensions acceptées et avertissement « calibrage GPS requis » visible sur la card GPX. Clic sur une card → fermeture du choix + ouverture de la modale d'import correspondante (ouvrirImportSession ou window.ouvrirImportGpx).",
-    "🎨 CSS .kta-import-choix-grille + .kta-import-choix-card en grille 2 colonnes (1 colonne en mobile portrait ≤520px). Variants dark (palette bleue ambiance carte) + light (palette beige/ambre charte) avec hover translateY pour feedback tactile.",
-    "📘 Aide ❓ section ⬇️ Charger / Import : l'ancien doublet 2 entrées est remplacé par une seule entrée « 📂 Importer (v1.14.5 unifié) » qui décrit les 2 cards.",
-    "🏷️ Sources de vérité v1.14.5 : version.json → \"v1.14.5\", js/copyright.js > __MKM__.build → \"v1.14.5\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.5-import-choix\".",
-    "🛡️ Confidentialité — refactor UI/UX pur, aucune nouvelle connexion réseau. Les imports restent strictement locaux (FileReader). NETWORK_AUDIT inchangé."
+    "🛑 V3.2.g — Confirmation user avant reload sur toggle thème (KARMA UX) : en home → Configuration, cocher ou décocher « ☀️ Activer le thème CLAIR » déclenchait un location.reload() instant via setThemeAndReload — surprenant et frustrant si clic accidentel. Maintenant le toggle ouvre une confirm() native bloquante (« Activer le thème CLAIR/SOMBRE va relancer l'application pour appliquer le changement proprement. Confirmer ? »).",
+    "↩️ Rollback visuel si l'utilisateur annule — la case à cocher reprend automatiquement son état précédent (pas d'incohérence entre l'UI et le thème réellement appliqué).",
+    "🎯 Choix volontaire d'une confirm() native (vs modale custom MyKTAMap) : le reload tue de toute façon toute UI custom en cours, autant utiliser un dialog bloquant garanti immune au thème en cours d'application. Plus simple, plus fiable, zéro surface d'attaque CSS.",
+    "🏷️ Sources de vérité v1.14.6 : version.json → \"v1.14.6\", js/copyright.js > __MKM__.build → \"v1.14.6\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.6-theme-confirm\".",
+    "🛡️ Confidentialité — patch index.html exclusivement (handler checkbox), aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
   ]
 }
