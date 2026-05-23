@@ -8204,6 +8204,14 @@ a.kta-level-btn {
 /* Modal sélecteur de niveau */
 .kta-niv-modal-boite {
   max-width: 460px;
+  /* 🔧 v1.13.0-fix15 (KARMA "la fenêtre de Niveau pour saisir le niveau
+     actif et les calques visibles a le fameux bug de longueur, contrôle
+     aussi le mode sombre") : même cas que .kta-pin-proposal-boite et
+     .kta-export-modal-boite. Le parent .kta-readme-modal-boite a
+     height: 88vh qui étire la box alors que son contenu est court
+     (segmented control niveaux + ~5 toggles). On force au contenu réel. */
+  height: auto !important;
+  max-height: 90vh !important;
 }
 .kta-niv-segmented {
   display: flex;
@@ -8339,6 +8347,17 @@ a.kta-level-btn {
 /* Modal création jonction */
 .kta-jct-modal-boite {
   max-width: 460px;
+  /* 🔧 v1.13.0-fix15 : idem .kta-niv-modal-boite, fix height pour contenu court */
+  height: auto !important;
+  max-height: 90vh !important;
+}
+
+/* 🔧 v1.13.0-fix15 (KARMA "pareil pour légende") : modal Légende affiche
+   une grille d'icônes + traits courte → ne doit pas occuper 88vh. */
+.kta-legende-modal-boite {
+  max-width: 720px;
+  height: auto !important;
+  max-height: 90vh !important;
 }
 .kta-jct-grille {
   display: grid;
