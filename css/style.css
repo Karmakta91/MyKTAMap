@@ -11523,3 +11523,271 @@ body.kta-theme-light .kta-refonte-header-action-btn:hover {
 /* === Splash KARMA (reste dark, mais juste au cas où une transition
    est visible pendant le boot, on n'override rien) === */
 /* (volontairement vide) */
+
+/* ============================================================================
+ * 🔧 v1.13.0-fix2 — EXTENSION DU THÈME CLAIR À LA HOME + LOADER + DOCS UI
+ * ============================================================================
+ * KARMA "active le mode clair partout, home, les modal, les doc afficher
+ * dans l'UI readme, audit, aide, et possibilité d'activer ou non depuis
+ * le conf home".
+ *
+ * Lève la restriction "mode carte uniquement" → le thème clair s'applique
+ * désormais à : body, loader plein écran (#planLoaderOverlay + Box), home
+ * cards (Mes plans, Récents, Reprendre), boutons home, modale Config home,
+ * modale Audit réseau (NetDoc + NetLog), drawer perf, toggles paranoia,
+ * inputs file, status messages.
+ *
+ * Le splash KARMA animé est volontairement laissé en dark (cinématique de
+ * lancement). C'est la seule exception.
+ * ============================================================================ */
+
+body.kta-theme-light {
+  background-color: var(--kta-light-bg) !important;
+}
+
+/* === LOADER plein écran === */
+body.kta-theme-light #planLoaderOverlay {
+  background: rgba(240, 232, 216, 0.96) !important;
+}
+body.kta-theme-light #planLoaderBox {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #planLoaderBox * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light #planLoaderBox strong,
+body.kta-theme-light #planLoaderBox h1,
+body.kta-theme-light #planLoaderBox h2,
+body.kta-theme-light #planLoaderBox h3 {
+  color: #1a1612;
+}
+body.kta-theme-light #planLoaderBox a {
+  color: var(--kta-light-accent-hover);
+}
+body.kta-theme-light #planLoaderBox a:hover {
+  color: #8b5a00;
+}
+
+/* === Boutons home === */
+body.kta-theme-light .loader-btn-help,
+body.kta-theme-light .loader-btn-secondary {
+  background: rgba(0,0,0,0.05) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .loader-btn-help:hover,
+body.kta-theme-light .loader-btn-secondary:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === Footer copyright loader === */
+body.kta-theme-light .kta-loader-copyright {
+  background: var(--kta-light-bg-deep) !important;
+  color: var(--kta-light-text-muted) !important;
+  border-top: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-loader-copyright * {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-loader-copyright strong {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-loader-copyright a {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-loader-copyright-warn {
+  color: #8b3a00 !important;
+}
+
+/* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP === */
+body.kta-theme-light #myPlansBox,
+body.kta-theme-light #resumeBox,
+body.kta-theme-light #panelZip {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light #myPlansBox *,
+body.kta-theme-light #resumeBox *,
+body.kta-theme-light #panelZip * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light #allPlansList li,
+body.kta-theme-light .plan-card {
+  background: rgba(0,0,0,0.03) !important;
+  border: 1px solid var(--kta-light-border) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #allPlansList li:hover,
+body.kta-theme-light .plan-card:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === Tous les boutons primaires du loader (id="loader…") === */
+body.kta-theme-light #loadPlanBtn,
+body.kta-theme-light #fsAccessBtn,
+body.kta-theme-light #importListBtn,
+body.kta-theme-light #exportListBtn,
+body.kta-theme-light #loaderPlannerBtn,
+body.kta-theme-light #loaderResetBtn,
+body.kta-theme-light #loaderForceUpdateBtn,
+body.kta-theme-light #loaderAlertBtn,
+body.kta-theme-light #loaderHelpBtn,
+body.kta-theme-light #loaderConfigBtn,
+body.kta-theme-light #loaderNetDocBtn,
+body.kta-theme-light #loaderNetLogBtn,
+body.kta-theme-light #loaderShowLogsBtn {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light #loadPlanBtn:hover,
+body.kta-theme-light #fsAccessBtn:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === Drawer perf + sections aide === */
+body.kta-theme-light .kta-loader-perf-drawer,
+body.kta-theme-light .kta-aide-section {
+  background: rgba(0,0,0,0.02);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-loader-perf-drawer-titre,
+body.kta-theme-light .kta-aide-section-titre {
+  color: var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-loader-perf-hint {
+  color: var(--kta-light-text-muted);
+}
+body.kta-theme-light .kta-perf-btn {
+  background: rgba(0,0,0,0.04);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-perf-btn:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-perf-btn.active {
+  background: #ffffff;
+  border-color: var(--kta-light-accent);
+  color: var(--kta-light-text);
+  box-shadow: inset 0 0 0 1px var(--kta-light-accent);
+}
+
+/* === Toggles checkbox (paranoia / legacy / showInter / themeLight) === */
+body.kta-theme-light .kta-net-paranoia-toggle {
+  background: rgba(244, 197, 66, 0.06) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-net-paranoia-toggle * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-net-paranoia-toggle:hover {
+  background: rgba(244, 197, 66, 0.12) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === PIN status loader home === */
+body.kta-theme-light .kta-loader-pin-status {
+  background: rgba(0,0,0,0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-loader-pin-status * {
+  color: var(--kta-light-text);
+}
+
+/* === Modale Configuration home === */
+body.kta-theme-light .kta-loader-config-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .kta-loader-config-corps {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-loader-config-corps * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-perf-titre {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-perf-desc {
+  color: var(--kta-light-text-muted) !important;
+}
+
+/* === Modale Audit réseau (NetDoc + NetLog) === */
+body.kta-theme-light #loaderNetDocModal .kta-readme-modal-boite,
+body.kta-theme-light #loaderNetLogModal .kta-readme-modal-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #loaderNetLogTbody tr {
+  background: rgba(0,0,0,0.02) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #loaderNetLogTbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.05) !important;
+}
+body.kta-theme-light #loaderNetLogTbody td {
+  border-bottom: 1px solid var(--kta-light-border) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #loaderNetDocWhitelist {
+  background: rgba(0,0,0,0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+}
+body.kta-theme-light #loaderNetLogMeta {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light #loaderParanoiaBadge {
+  background: rgba(220, 50, 50, 0.15) !important;
+  color: #b02020 !important;
+  border: 1px solid rgba(220, 50, 50, 0.4) !important;
+}
+
+/* === Petites modales système (Force update / plan introuvable / yes-no) === */
+body.kta-theme-light #kta-fu-cancel,
+body.kta-theme-light #kta-fu-ok,
+body.kta-theme-light #kta-fu-close,
+body.kta-theme-light #ktaYesNoOk,
+body.kta-theme-light #ktaYesNoCancel,
+body.kta-theme-light #kta-plan-infos-close,
+body.kta-theme-light #kta-mode-warn-ok,
+body.kta-theme-light #kta-mode-warn-cancel,
+body.kta-theme-light #kta-mode-warn-close,
+body.kta-theme-light #kta-zipname-error-ok,
+body.kta-theme-light #kta-zipname-error-close,
+body.kta-theme-light #ktaPinPromptOk,
+body.kta-theme-light #ktaPinPromptCancel {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+
+/* === Inputs file (loader) === */
+body.kta-theme-light #planLoaderBox input[type="file"] {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light #planLoaderBox input[type="file"]::-webkit-file-upload-button {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+
+/* === Status messages home === */
+body.kta-theme-light #loaderStatus,
+body.kta-theme-light #kta-load-message {
+  color: var(--kta-light-text-muted) !important;
+}
+
+/* === Bandeau alerte publique (loaderAlertBtn rouge pulsant) ===
+   Volontairement non-modifié : le rouge alerte reste rouge en clair pour
+   garder son côté "urgence à voir absolument". */

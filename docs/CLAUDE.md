@@ -3462,22 +3462,27 @@ body.kta-theme-light {
 }
 ```
 
-#### 53.4 Scope strict
+#### 53.4 Scope (étendu globalement en v1.13.0-fix2)
+
+🔧 **v1.13.0-fix2 (KARMA "active le mode clair partout")** : scope étendu de "mode carte uniquement" → **toute l'app** sauf splash + viewer photos.
 
 ✅ Couvert :
-- `.kta-refonte-header` + `.kta-refonte-statusbar` + `.kta-refonte-sidebar*`
-- `.kta-readme-modal-*` (pattern utilisé partout : Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay)
-- `.kta-measure-distance` + `.kta-iti-distance` + segments/angles
-- `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-bar`
-- `.kta-choix-suppr-*`, `.kta-conv-sens-btn`, `.kta-tag-suggestion`
-- `.kta-toast`
-- `.kta-search-*`, `.kta-iti-*`, `.kta-mlvl-*`, `.kta-legende-*`
+- **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.plan-card`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`
+- **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
+- **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`
+- **Modale Audit** : `#loaderNetDocModal`, `#loaderNetLogModal`, `#loaderNetLogTbody`, `#loaderNetDocWhitelist`, `#loaderParanoiaBadge`
+- **Mode carte** : `.kta-refonte-header`, `.kta-refonte-statusbar`, `.kta-refonte-sidebar*`
+- **Sidebars Leaflet** : `.leaflet-bar a` (boutons groupes), `.leaflet-bar a.kta-sub` (sous-actions), `.leaflet-bar a.kta-actif` (vert), `.leaflet-bar a.kta-group-mode-actif` (fond blanc solide, KARMA fix "icône actif fond blanc pas transparent")
+- **Modales du pattern principal** : `.kta-readme-modal-*` (Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, M-LVL, Replay) — couvre aussi les titres + descendants h1/h2/h3/p/li/span/strong/em/div via règles catch-all
+- **Labels Leaflet** : `.kta-measure-distance` + `.kta-iti-distance` + segments + angles
+- **Leaflet natif** : `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-control-layers-*`
+- **Toasts** : `.kta-toast`, `.kta-toast-msg`, `.kta-toast-icon`, `.kta-toast-close` (KARMA fix "Mode clair activé presque invisible")
+- **Toggles paranoia / legacy / showInter / themeLight** : `.kta-net-paranoia-toggle`
+- **Petites modales système** : `#kta-fu-*` (force update), `#ktaYesNo*`, `#ktaPinPrompt*`, `#kta-plan-infos-*`, `#kta-mode-warn-*`, `#kta-zipname-error-*`
 
 ❌ Volontairement non couverts (restent dark) :
-- Splash KARMA (cinématique, doit être contrastée)
-- Loader home (`#kta-loader`, `.kta-loader-*`)
-- Modale Configuration home + Plan switcher home
-- Viewer photos plein écran (overlay sombre par essence)
+- Splash KARMA animé (cinématique de lancement, contrastes dark nécessaires)
+- Viewer photos plein écran (overlay sombre par essence pour bonne lecture des photos)
 
 #### 53.5 Sync mode urgence
 

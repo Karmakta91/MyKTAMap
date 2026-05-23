@@ -6,13 +6,11 @@
  */
 
 // =========================
-// THEME MANAGER — v1.13.0
+// THEME MANAGER — v1.13.0 (étendu en v1.13.0-fix2)
 // =========================
-// Toggle thème clair/sombre LIMITÉ au mode carte (KARMA choix 1:b).
+// Toggle thème clair/sombre GLOBAL (KARMA "active le mode clair partout").
 //
-// - Pas appliqué sur splash / loader / modale Configuration home (qui restent
-//   dark — c'est avant le mode carte).
-// - Persistance GLOBALE en localStorage (KARMA choix B:a), pas par plan.
+// - Persistance globale en localStorage (KARMA choix B:a), pas par plan.
 //   Le user qui choisit clair l'a partout, toujours.
 // - Background base mode clair = #f0e8d8 (beige cataphile, KARMA choix D:b)
 //   déjà utilisé en mode urgence light → cohérence.
@@ -31,12 +29,33 @@
 //     isLight()     → bool helper
 //   };
 //
-// Limitations scope :
-//   - Mode carte uniquement (sidebar visible, plan chargé)
-//   - Le mode urgence garde son propre toggle 🔆/🌑 local mais on synchronise
-//     son état initial avec ThemeManager au boot de l'overlay (cf
-//     emergencyMode.js > activer()).
-//   - La home n'est PAS retoughée (volontairement, pas dans le scope V3.1)
+// Scope :
+//   ✅ Couvert (mode clair s'applique) :
+//      - Loader plein écran (#planLoaderOverlay)
+//      - Modale Configuration home (#loaderConfigModal)
+//      - Modale Documentation (kta-readme-modal-* pattern)
+//      - Modale Audit réseau (loaderNetDocModal + loaderNetLogModal)
+//      - Modale Aide (kta-aide-* pattern)
+//      - Modale Plan switcher home
+//      - Mode carte entier (sidebar, header, footer, container Leaflet)
+//      - Toutes les modales ouvertes en mode carte (Session, Recherche,
+//        Itinéraire, Mesure, Édition, Export, Réglages, Légende, M-LVL,
+//        Replay tracker, etc.)
+//      - Popups Leaflet + tooltips + zoom controls
+//      - Toasts (OOMGuard.showToast)
+//
+//   ❌ Volontairement non couvert (reste dark) :
+//      - Splash KARMA animé (cinématique de lancement, contrastes dark
+//        nécessaires pour l'animation fade)
+//      - Viewer photos plein écran (cohérent pour lire les photos)
+//
+// Toggle UI à 2 endroits (mêmes prefs, sync via onChange) :
+//   - Sidebar gauche → ⚙️ Paramètres → ☀️/🌙 Thème (mode carte)
+//   - Modale Configuration home → checkbox "☀️ Activer le thème CLAIR"
+//
+// Le mode urgence garde son propre toggle 🔆/🌑 LOCAL mais on synchronise
+// son état initial avec ThemeManager au boot de l'overlay (cf
+// emergencyMode.js > activer()).
 // =========================
 
 (function() {

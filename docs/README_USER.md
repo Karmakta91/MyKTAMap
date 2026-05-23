@@ -8,29 +8,32 @@
 
 > Première release de la phase V3.
 
-### 🎨 Thème clair (limité au mode carte)
+### 🎨 Thème clair (partout dans l'app)
 
 L'app accepte désormais **2 thèmes** :
 - 🌙 **Sombre** (par défaut) — comme avant
 - ☀️ **Clair** — fond beige cataphile `#f0e8d8`, accent jaune `#f4c542` conservé, texte foncé pour la lisibilité plein jour
 
-**Comment l'activer** : sidebar gauche → groupe **⚙️ Paramètres** → nouvelle sous-action **☀️ Mode clair** (ou **🌙 Mode sombre** si tu es déjà en clair). Le switch est instantané, pas de reload requis.
+**Comment l'activer** — 2 endroits, même réglage :
+
+1. **Depuis la home** (avant de charger un plan) : clic sur ⚙️ Configuration → section "🎨 Affichage" → coche **☀️ Activer le thème CLAIR**. Effet immédiat.
+2. **Depuis le mode carte** (plan chargé) : sidebar gauche → groupe **⚙️ Paramètres** → nouvelle sous-action **☀️ Mode clair** (ou **🌙 Mode sombre** si déjà en clair). Switch instantané.
 
 **Ce qui change** :
-- Sidebar gauche + droite
-- En-tête (compteurs, nom du plan)
-- Status bar du footer (mesures, tracker, batterie)
-- Container de la carte (fond beige au lieu de noir)
-- Labels mesure / itinéraire en bas-gauche
-- **Toutes les modales** ouvertes depuis le mode carte : Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay tracker…
-- Popups markers + zoom controls + tooltips Leaflet
+- **Home** : loader plein écran, listes "Mes plans" / "Récents" / "Reprendre", boutons d'import/export, footer copyright
+- **Modale Configuration home** entière (perf, debug, accessibilité, audit réseau, code d'accès, etc.)
+- **Modale Documentation 📖** et **Modale Aide ❓** (lecture des docs sur fond beige confortable)
+- **Modale Audit réseau 🔒** (journal réseau + page de transparence)
+- **Mode carte entier** : sidebar gauche + droite, header, footer status bar, container Leaflet, labels mesure/itinéraire
+- **Toutes les modales** ouvertes depuis le mode carte : Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Légende, Niveaux M-LVL, Replay tracker, etc.
+- **Popups markers + zoom controls + tooltips Leaflet**
+- **Toasts** (notifications discrètes)
 
 **Ce qui ne change pas (volontaire)** :
-- Le splash KARMA reste sombre (cinématique de lancement, jolie quel que soit le contexte)
-- La home reste sombre (loader, modale Configuration, modale Plan switcher) — ce sont les écrans avant le mode carte
-- Le viewer photos plein écran reste sombre (cohérent pour la lecture des photos)
+- Le splash KARMA animé reste sombre (cinématique de lancement, contraste nécessaire pour l'animation)
+- Le viewer photos plein écran reste sombre (cohérent pour la lecture des photos en plein contraste)
 
-**Le choix est persisté globalement** : il vaut pour tous tes plans, sur cet appareil. Si tu reset l'app complètement, le choix revient à sombre.
+**Le choix est persisté globalement** : il vaut pour la home ET le mode carte, sur cet appareil. Si tu reset l'app complètement, le choix revient à sombre.
 
 **Mode urgence 🚨** : à l'ouverture du mode urgence, ton thème global est appliqué automatiquement. Tu gardes le toggle 🔆/🌑 local pour basculer ponctuellement pendant une sortie (utile si tu veux ton écran en lampe d'appoint en sous-sol sans changer ta pref globale).
 
