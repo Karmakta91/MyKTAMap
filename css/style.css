@@ -10851,16 +10851,14 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
 
 /* === Palette thème clair === */
 body.kta-theme-light {
-  /* 🔧 v1.13.0-fix6 (KARMA "en fond de body, je veux la même couleur que
-     le footer et le top") : body background unifié avec header + footer en
-     brun-beige #c9b88f. Le contraste se fait désormais via les modales
-     (#fdf8eb presque blanc) qui ressortent sur fond brun. */
-  --kta-light-bg:           #c9b88f;  /* body + container Leaflet (= bar) */
+  /* 🔄 v1.13.0-fix7 (KARMA "RB la dernière modif de fond, je parlais du
+     fond du home") : rollback du body uniforme — body re-passe en beige
+     clair #f0e8d8 (mode carte). Le fond brun-beige est désormais réservé
+     au HOME (= #planLoaderOverlay + #planLoaderBox + sections home). */
+  --kta-light-bg:           #f0e8d8;  /* body mode carte + container Leaflet */
   --kta-light-bg-elevated:  #fdf8eb;  /* fond modale, presque blanc */
   --kta-light-bg-deep:      #e5dcc5;  /* sidebar interne + table headers */
-  /* 🔧 v1.13.0-fix4 (KARMA "plus de contraste en mode clair, sur le top
-     comme en footer") : bar variables, alignées sur --kta-light-bg
-     depuis fix6 (= même couleur partout pour la zone "fond"). */
+  /* Bar variables (header + footer mode carte) — distinctes du body */
   --kta-light-bg-bar:       #c9b88f;  /* header + footer status bar */
   --kta-light-bg-bar-deep:  #b8a576;  /* hover / actif sur bar items */
   --kta-light-bg-bar-border:#9a8754;  /* bordure forte de séparation bar / body */
@@ -11570,13 +11568,16 @@ body.kta-theme-light {
   background-color: var(--kta-light-bg) !important;
 }
 
-/* === LOADER plein écran === */
+/* === LOADER plein écran ===
+   🔧 v1.13.0-fix7 (KARMA "je parlais du fond du home") : home = même
+   couleur que le header + footer du mode carte (brun-beige #c9b88f).
+   Le contraste interne se fait via les cartes (Reprendre, Mes plans,
+   Récents) qui ressortent en blanc/beige clair sur ce fond brun. */
 body.kta-theme-light #planLoaderOverlay {
-  /* 🔧 v1.13.0-fix6 : aligné sur la nouvelle couleur body #c9b88f */
   background: rgba(201, 184, 143, 0.96) !important;
 }
 body.kta-theme-light #planLoaderBox {
-  background: var(--kta-light-bg-elevated) !important;
+  background: var(--kta-light-bg-bar) !important;  /* brun-beige uniforme */
   color: var(--kta-light-text) !important;
 }
 body.kta-theme-light #planLoaderBox * {
@@ -11627,13 +11628,17 @@ body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
 }
 
-/* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP === */
+/* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP ===
+   🔧 v1.13.0-fix7 : sur fond brun-beige #c9b88f, les cards ressortent
+   désormais en blanc-clair #fdf8eb avec bordure plus marquée pour
+   bien se détacher du fond. */
 body.kta-theme-light #myPlansBox,
 body.kta-theme-light #resumeBox,
 body.kta-theme-light #panelZip {
   background: var(--kta-light-bg-elevated) !important;
   color: var(--kta-light-text) !important;
-  border: 1px solid var(--kta-light-border) !important;
+  border: 1px solid var(--kta-light-bg-bar-border) !important;
+  box-shadow: 0 2px 8px rgba(80, 60, 30, 0.15) !important;
 }
 body.kta-theme-light #myPlansBox *,
 body.kta-theme-light #resumeBox *,
