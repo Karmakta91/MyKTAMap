@@ -77,7 +77,7 @@ function afficherPlanner() {
              génère un ZIP MyKTAMap utilisable. Cohérent avec la position A
              validée (= dans le Générateur). Conditionnel via le feature flag
              KTA_KMZ_IMPORT_UI_ENABLED en tête de createConf.js. -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-full">
           <div class="kta-aide-section-titre">🌍 Importer depuis un KMZ <span class="kta-planner-hint">(MyKTAMap round-trip)</span></div>
           <p class="kta-planner-info">
             Tu as un fichier <strong>.kmz</strong> exporté depuis MyKTAMap ?
@@ -90,7 +90,7 @@ function afficherPlanner() {
         ` : ``}
 
         <!-- ZIP OPTIONNEL -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-full">
           <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
             <span>📂 Charger un ZIP existant <span class="kta-planner-hint">(optionnel)</span></span>
             <!-- 📥 Bouton Conf exemple — déplacé ici depuis la home loader en v1.7.3.
@@ -131,7 +131,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 1. MÉTADONNÉES -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">📋 Informations du plan</div>
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">Nom <span class="kta-planner-req">*</span></label>
@@ -200,7 +200,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 2. IMAGES -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">🖼️ Images principales</div>
 
           <!-- 🆕 v1.9.3-A2 (KARMA "mode vierge dans le générateur, on peut
@@ -282,7 +282,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 3. CALQUES IMAGE -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">
             🗂️ Calques image
             <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
@@ -293,7 +293,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 4. CALQUES DONNÉES -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-left">
           <div class="kta-aide-section-titre">
             📊 Calques de données
             <button class="kta-planner-add-btn" id="pl_addDataLayer" type="button">+ Ajouter</button>
@@ -325,7 +325,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 5. TRACKING -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-right">
           <div class="kta-aide-section-titre">🧭 Tracking</div>
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">
@@ -358,7 +358,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 6. ICÔNES & TAGS -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-right">
           <div class="kta-aide-section-titre">
             🎨 Icônes &amp; Tags
             <div style="display:inline-flex;gap:6px;margin-left:10px;">
@@ -391,7 +391,7 @@ function afficherPlanner() {
              n existe pour ce plan au chargement, main.js le propage vers
              KmzExport.setCalibration => auto-rempli dans Export externe
              ET dans Reglages > Georeferencement (mode map). -->
-        <div class="kta-aide-section">
+        <div class="kta-aide-section kta-pl-col-right">
           <div class="kta-aide-section-titre">🌐 Géoréférencement GPS <span class="kta-planner-hint">(optionnel)</span></div>
           <p class="kta-planner-info">
             Embarque un <strong>calibrage 2 points</strong> dans le plan généré.
@@ -429,9 +429,9 @@ function afficherPlanner() {
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
 
-        <div id="kta-planner-erreur" class="kta-conv-erreur" style="display:none;"></div>
+        <div id="kta-planner-erreur" class="kta-conv-erreur kta-pl-col-full" style="display:none;"></div>
 
-        <div class="kta-conv-actions" style="margin-top:16px;">
+        <div class="kta-conv-actions kta-pl-col-full" style="margin-top:16px;">
           <button class="kta-btn kta-btn-ghost" id="kta-planner-annuler">Annuler</button>
           <button class="kta-btn kta-btn-primary" id="kta-planner-generer">📦 Générer le ZIP</button>
         </div>

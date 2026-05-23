@@ -4969,23 +4969,31 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
     max-width: min(1100px, 94vw) !important;
   }
 }
-/* Layout 2 colonnes du CORPS en écran très large — les .kta-aide-section
-   filles se distribuent automatiquement en grille 2 colonnes (la 1ère
-   section « Importer KMZ » et la dernière « Actions » prennent toute la
-   largeur pour rester en pleine page). */
+/* Layout 2 colonnes du CORPS en écran très large (KARMA v1.14.20 +
+   v1.14.21 : « bcp de zone blanche, et géoréférencement on le met à
+   droite après icône et tag »). Assignment EXPLICITE des sections aux
+   colonnes via classes .kta-pl-col-* — grid-auto-flow: row dense pour
+   combler les trous (les sections de hauteur variable peuvent se
+   réorganiser pour minimiser les zones blanches). */
 @media (min-width: 1280px) {
   #kta-planner-corps {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px 18px;
     align-items: start;
+    grid-auto-flow: row dense;
   }
-  /* Sections qui doivent rester en pleine largeur (importance / actions /
-     erreur) — span sur les 2 colonnes. */
-  #kta-planner-corps > .kta-aide-section:first-of-type,
-  #kta-planner-corps > #kta-planner-erreur,
-  #kta-planner-corps > .kta-conv-actions {
+  /* Pleine largeur (KMZ import / ZIP existant / erreur / actions) */
+  #kta-planner-corps > .kta-pl-col-full {
     grid-column: 1 / -1;
+  }
+  /* Colonne gauche explicite — sections principales de saisie */
+  #kta-planner-corps > .kta-pl-col-left {
+    grid-column: 1;
+  }
+  /* Colonne droite explicite — sections secondaires (tracking + icônes + géoréf) */
+  #kta-planner-corps > .kta-pl-col-right {
+    grid-column: 2;
   }
 }
 
