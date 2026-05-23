@@ -1,13 +1,14 @@
 {
-  "version": "v1.14.10",
+  "version": "v1.14.11",
   "released": "2026-05-24",
   "notes": [
-    "🎨 V3.2.k — Modale Arrêt de l'application fidèle à la charte (KARMA). Le confirm() natif du bouton 🔌 (v1.14.8) est remplacé par une modale custom #kta-shutdown-confirm-modal — pattern miroir de la modale switch thème v1.14.9 mais avec accent rouge brique pour signaler l'action destructive.",
-    "✨ Composition de la modale — header 🔌 (titre « Arrêter MyKTAMap ? » + ✕), corps avec grosse icône rouge 🔌 ombrée, message principal explicite (« stopper proprement / fermer la fenêtre »), hint italique encadré rappelant le comportement fallback si le navigateur refuse close(), 2 boutons : Annuler (ghost, auto-focus défensif) + « 🔌 Arrêter MyKTAMap » (gradient rouge danger avec ombre).",
-    "⌨️ Accessibilité — Enter confirme, Escape annule, click backdrop = annule, focus initial sur Annuler (action sûre, KARMA-safe : on évite que Enter valide instantanément une action destructive).",
-    "🪟 Overlay fallback « Application arrêtée » repassé en classes CSS propres — les styles inline du v1.14.8 sont remplacés par .kta-shutdown-fallback-overlay / -boite / -icone / -titre / -msg / -reload. Bordure rouge brique cohérente avec la modale de confirmation, bouton « 🔄 Recharger MyKTAMap » en jaune charte (cohérence cross-thème comme le bouton « Activer et relancer »).",
-    "🌗 Variants theme light intégraux — modale confirm + overlay fallback : beige cataphile #fdf8eb avec bordure rouge brique, hint sur fond rouge doux, titre / msg dans la palette text-muted MyKTAMap. Le bouton primary garde son jaune charte (signature marque).",
-    "🏷️ Sources de vérité v1.14.10 : version.json → \"v1.14.10\", js/copyright.js > __MKM__.build → \"v1.14.10\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.10-shutdown-modal\".",
-    "🛡️ Confidentialité — patch UI/CSS pur dans index.html + css/style.css, aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
+    "🔒 V3.2.l — Le bouton 🔌 « Arrêt de l'application » (v1.14.8-v1.14.10) est remplacé par 🔒 « Verrouiller » (KARMA UX : « plutôt que éteindre qui sert à rien, on fait verrouiller »). Cohérent : window.close() était de toute façon refusé par la majorité des navigateurs sur onglet web classique, le fallback overlay « Application arrêtée » ne servait à rien. Verrouiller a un vrai usage = protéger l'accès sans fermer.",
+    "🎯 Comportement du bouton 🔒 — flow en 2 branches selon l'état du code d'accès local (PinLock, cf. js/pinLock.js) : (1) Aucun PIN configuré → modale d'info charte (icône 🔐 bleu + message + hint italique) avec 2 boutons : Fermer (ghost) et « ⚙️ Ouvrir Configuration » (primary jaune charte) qui ouvre directement la modale ⚙️ pour activer le PIN. (2) PIN actif → modale confirm charte (icône 🔒 bleu + message expliquant le flow + hint usage « prêter ton téléphone ») avec 2 boutons : Annuler + « 🔒 Verrouiller maintenant ». À confirmation : cleanup des modules actifs (tracker GPS, mode urgence, replay, watchdog OOM, lost mode) puis location.reload() — au boot js/main.js détecte isEnabled() && !isUnlocked() et affiche la gate PIN avant le reste de l'init.",
+    "🎨 Charte fidèle — accent bleu charte (#8cb4ff / #aac6ff) pour le bouton header + les modales (action neutre/sécurité, pas destructive). Variants theme light intégraux (beige + ambre + bouton primary jaune charte cohérent avec « Activer et relancer » du switch thème).",
+    "🌗 Fix bug v1.13.0 résiduel — la modale « Session précédente restaurée » (.kta-session-modal-* dans js/sessionPersist.js, affichée au chargement d'un plan avec session existante) restait en sombre en theme light (KARMA signalement). Ajout overrides body.kta-theme-light + html.kta-theme-light pour boîte, icône ↻, titre, plan, détail.",
+    "🗑️ Code mort retiré — toutes les classes CSS .kta-shutdown-* (v1.14.8 → v1.14.10) sont supprimées du style.css. Plus aucun chemin de code ne les instancie. Bilan -174 lignes CSS.",
+    "📘 Aide ❓ section Autres : entrée 🔌 remplacée par 🔒 (description Verrouiller + comportement selon présence du PIN).",
+    "🏷️ Sources de vérité v1.14.11 : version.json → \"v1.14.11\", js/copyright.js > __MKM__.build → \"v1.14.11\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.11-lock-btn\".",
+    "🛡️ Confidentialité — patch UI/CSS pur + JS dans index.html, aucune nouvelle connexion réseau, aucun nouveau stockage. Réutilise l'API MyKTAMapPinLock existante (déjà auditée v1.9.4-V1). NETWORK_AUDIT inchangé."
   ]
 }

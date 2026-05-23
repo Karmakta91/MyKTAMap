@@ -3776,32 +3776,32 @@ img.kta-popup-photo-mini:focus-visible {
   color: #e8eaf0;
 }
 
-/* 🔌 v1.14.8 — Bouton arrêt de l'application. Accent rouge discret pour
-   signaler son caractère destructif (mais reste cohérent visuellement
-   avec les autres .loader-btn-help). Hover plus marqué pour confirmer
-   l'intention de l'utilisateur avant le confirm() natif. */
-.loader-btn-help.loader-btn-shutdown {
-  background: rgba(220, 80, 80, 0.10);
-  border-color: rgba(220, 80, 80, 0.30);
-  color: #ff8080;
+/* 🔒 v1.14.11 — Bouton Verrouiller (remplace 🔌 Arrêt v1.14.8 retiré).
+   Accent bleu charte (action neutre/sécurité, pas destructive) — cohérent
+   avec la palette des autres .loader-btn-help. Hover marqué pour confirmer
+   l'intention avant la modale de confirmation. */
+.loader-btn-help.loader-btn-lock {
+  background: rgba(140, 180, 255, 0.10);
+  border-color: rgba(140, 180, 255, 0.35);
+  color: #aac6ff;
 }
-.loader-btn-help.loader-btn-shutdown:hover {
-  background: rgba(220, 80, 80, 0.22);
-  border-color: rgba(220, 80, 80, 0.55);
-  color: #ffcccc;
+.loader-btn-help.loader-btn-lock:hover {
+  background: rgba(140, 180, 255, 0.22);
+  border-color: rgba(140, 180, 255, 0.60);
+  color: #e8eaf0;
 }
-/* Theme light — variant ambre/rouge brique */
-body.kta-theme-light .loader-btn-help.loader-btn-shutdown,
-html.kta-theme-light .loader-btn-help.loader-btn-shutdown {
-  background: rgba(160, 24, 24, 0.10) !important;
-  border-color: rgba(160, 24, 24, 0.30) !important;
-  color: #a01818 !important;
+/* Theme light — variant ambre charte */
+body.kta-theme-light .loader-btn-help.loader-btn-lock,
+html.kta-theme-light .loader-btn-help.loader-btn-lock {
+  background: rgba(244, 197, 66, 0.15) !important;
+  border-color: rgba(161, 110, 16, 0.35) !important;
+  color: #6b4d10 !important;
 }
-body.kta-theme-light .loader-btn-help.loader-btn-shutdown:hover,
-html.kta-theme-light .loader-btn-help.loader-btn-shutdown:hover {
-  background: rgba(160, 24, 24, 0.22) !important;
-  border-color: rgba(160, 24, 24, 0.55) !important;
-  color: #6b0e0e !important;
+body.kta-theme-light .loader-btn-help.loader-btn-lock:hover,
+html.kta-theme-light .loader-btn-help.loader-btn-lock:hover {
+  background: rgba(244, 197, 66, 0.30) !important;
+  border-color: rgba(161, 110, 16, 0.60) !important;
+  color: #3a2f15 !important;
 }
 
 /* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
@@ -11405,61 +11405,73 @@ html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
   background: linear-gradient(180deg, #ffd866, #e8b537) !important;
 }
 
-/* === 🔌 v1.14.10 — Modale confirmation Arrêt de l'application ===
-   Pattern miroir de .kta-theme-confirm-* (v1.14.9). Accent rouge brique
-   sur la boîte + bouton primary pour signaler l'action destructive. */
-.kta-shutdown-confirm-overlay {
+/* === 🔒 v1.14.11 — Modales Verrouiller MyKTAMap ===
+   Remplace .kta-shutdown-confirm-* (v1.14.10) suite à KARMA « plutôt que
+   éteindre qui sert à rien, on fait verrouiller (si password actif) ».
+   Pattern miroir de .kta-theme-confirm-* (v1.14.9). Accent bleu charte
+   (action neutre/sécurité, pas destructive) sur la modale confirm.
+   Variant nopin = modale d'info quand aucun PIN n'est configuré. */
+.kta-lock-confirm-overlay,
+.kta-lock-nopin-overlay {
   background: rgba(5, 8, 15, 0.78) !important;
 }
-.kta-shutdown-confirm-boite {
+.kta-lock-confirm-boite,
+.kta-lock-nopin-boite {
   max-width: 480px;
   height: auto !important;
   max-height: 88vh !important;
   display: flex !important;
   flex-direction: column !important;
-  border: 1px solid rgba(220, 80, 80, 0.40) !important;
-  box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.14),
+  border: 1px solid rgba(140, 180, 255, 0.40) !important;
+  box-shadow: 0 0 0 1px rgba(140, 180, 255, 0.14),
               0 18px 60px rgba(0, 0, 0, 0.65) !important;
 }
-.kta-shutdown-confirm-corps {
+.kta-lock-confirm-corps,
+.kta-lock-nopin-corps {
   padding: 22px 24px 14px !important;
   text-align: center;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
-.kta-shutdown-confirm-icone {
+.kta-lock-confirm-icone,
+.kta-lock-nopin-icone {
   font-size: 56px;
   line-height: 1;
   margin: 4px 0 14px;
-  color: #ff8080;
-  text-shadow: 0 0 28px rgba(220, 80, 80, 0.45);
+  color: #8cb4ff;
+  text-shadow: 0 0 28px rgba(140, 180, 255, 0.40);
 }
-.kta-shutdown-confirm-msg {
+.kta-lock-confirm-msg,
+.kta-lock-nopin-msg {
   color: #e8eaf0;
   font-size: 14.5px;
   line-height: 1.55;
   margin: 0 0 12px;
 }
-.kta-shutdown-confirm-msg strong {
-  color: #ffb8b8;
+.kta-lock-confirm-msg strong,
+.kta-lock-nopin-msg strong {
+  color: #aac6ff;
   font-weight: 700;
 }
-.kta-shutdown-confirm-hint {
+.kta-lock-confirm-hint,
+.kta-lock-nopin-hint {
   color: #8892a4;
   font-size: 12px;
   line-height: 1.5;
   margin: 6px 0 0;
   padding: 8px 12px;
-  background: rgba(220, 80, 80, 0.07);
-  border-left: 2px solid rgba(220, 80, 80, 0.40);
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 2px solid rgba(140, 180, 255, 0.40);
   border-radius: 0 4px 4px 0;
   text-align: left;
 }
-.kta-shutdown-confirm-hint em {
+.kta-lock-confirm-hint em,
+.kta-lock-nopin-hint em {
   font-style: italic;
 }
-.kta-shutdown-confirm-actions {
+.kta-lock-confirm-actions,
+.kta-lock-nopin-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
@@ -11467,150 +11479,121 @@ html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   flex: 0 0 auto;
 }
-.kta-shutdown-confirm-actions .kta-btn {
-  min-width: 120px;
+.kta-lock-confirm-actions .kta-btn,
+.kta-lock-nopin-actions .kta-btn {
+  min-width: 130px;
 }
-/* Bouton primary spécial rouge danger (au lieu du jaune kta-btn-primary). */
-.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok {
-  background: linear-gradient(180deg, #d44a4a, #b03030) !important;
-  border: 1px solid #8a1818 !important;
-  color: #fff !important;
-  font-weight: 700 !important;
-  box-shadow: 0 2px 8px rgba(220, 80, 80, 0.35) !important;
-}
-.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok:hover {
-  background: linear-gradient(180deg, #e85a5a, #c04040) !important;
-  box-shadow: 0 3px 14px rgba(220, 80, 80, 0.50) !important;
-}
-.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
-
-/* Variant theme light — beige / rouge brique */
-body.kta-theme-light .kta-shutdown-confirm-overlay,
-html.kta-theme-light .kta-shutdown-confirm-overlay {
-  background: rgba(40, 32, 20, 0.55) !important;
-}
-body.kta-theme-light .kta-shutdown-confirm-boite,
-html.kta-theme-light .kta-shutdown-confirm-boite {
-  background: var(--kta-light-bg-elevated) !important;
-  color: var(--kta-light-text) !important;
-  border-color: rgba(160, 24, 24, 0.45) !important;
-  box-shadow: 0 0 0 1px rgba(160, 24, 24, 0.10),
-              0 18px 60px rgba(80, 60, 30, 0.30) !important;
-}
-body.kta-theme-light .kta-shutdown-confirm-icone,
-html.kta-theme-light .kta-shutdown-confirm-icone {
-  color: #a01818;
-  text-shadow: 0 0 28px rgba(160, 24, 24, 0.30);
-}
-body.kta-theme-light .kta-shutdown-confirm-msg,
-html.kta-theme-light .kta-shutdown-confirm-msg {
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-shutdown-confirm-msg strong,
-html.kta-theme-light .kta-shutdown-confirm-msg strong {
-  color: #6b0e0e !important;
-}
-body.kta-theme-light .kta-shutdown-confirm-hint,
-html.kta-theme-light .kta-shutdown-confirm-hint {
-  color: var(--kta-light-text-muted) !important;
-  background: rgba(160, 24, 24, 0.10) !important;
-  border-left-color: rgba(160, 24, 24, 0.45) !important;
-}
-body.kta-theme-light .kta-shutdown-confirm-actions,
-html.kta-theme-light .kta-shutdown-confirm-actions {
-  border-top-color: var(--kta-light-border) !important;
-}
-
-/* === 🔌 v1.14.10 — Overlay fallback « Application arrêtée » ===
-   Remplace les styles inline du v1.14.8 par des classes CSS propres.
-   Cohérent avec la modale de confirmation (même palette rouge brique
-   + bouton primary jaune charte pour le recharge). */
-.kta-shutdown-fallback-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483647;
-  background: #0a0d14;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-  animation: kta-fadein 0.25s ease;
-}
-.kta-shutdown-fallback-boite {
-  max-width: 440px;
-  width: 100%;
-  text-align: center;
-  background: #1a1f2e;
-  border: 1px solid rgba(220, 80, 80, 0.40);
-  border-radius: 14px;
-  padding: 32px 26px 26px;
-  box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.14),
-              0 24px 80px rgba(0, 0, 0, 0.75);
-}
-.kta-shutdown-fallback-icone {
-  font-size: 56px;
-  line-height: 1;
-  margin-bottom: 18px;
-  color: #ff8080;
-  text-shadow: 0 0 28px rgba(220, 80, 80, 0.45);
-}
-.kta-shutdown-fallback-titre {
-  font-size: 22px;
-  font-weight: 800;
-  color: #ffb8b8;
-  letter-spacing: 0.01em;
-  margin-bottom: 14px;
-}
-.kta-shutdown-fallback-msg {
-  font-size: 14px;
-  color: #c0c8d8;
-  line-height: 1.55;
-  margin-bottom: 22px;
-}
-.kta-shutdown-fallback-reload {
+/* Bouton primary : jaune charte MyKTAMap (cohérent avec « Activer et
+   relancer » du switch thème — signature visuelle de la marque). */
+.kta-lock-confirm-actions .kta-lock-confirm-ok,
+.kta-lock-nopin-actions .kta-lock-nopin-ok {
   background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
   border: 1px solid #c99a1f !important;
   color: #2a1f08 !important;
   font-weight: 700 !important;
-  padding: 11px 22px !important;
-  border-radius: 8px !important;
-  font-size: 14px !important;
-  cursor: pointer;
   box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
-  transition: all 0.14s;
 }
-.kta-shutdown-fallback-reload:hover {
+.kta-lock-confirm-actions .kta-lock-confirm-ok:hover,
+.kta-lock-nopin-actions .kta-lock-nopin-ok:hover {
   background: linear-gradient(180deg, #ffd866, #e8b537) !important;
   box-shadow: 0 3px 14px rgba(244, 197, 66, 0.45) !important;
 }
-/* Variant theme light pour l'overlay fallback */
-body.kta-theme-light .kta-shutdown-fallback-overlay,
-html.kta-theme-light .kta-shutdown-fallback-overlay {
-  background: var(--kta-light-bg) !important;
+.kta-lock-confirm-actions .kta-lock-confirm-ok:focus-visible,
+.kta-lock-nopin-actions .kta-lock-nopin-ok:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
-body.kta-theme-light .kta-shutdown-fallback-boite,
-html.kta-theme-light .kta-shutdown-fallback-boite {
+
+/* Variant theme light — beige + accent ambre */
+body.kta-theme-light .kta-lock-confirm-overlay,
+html.kta-theme-light .kta-lock-confirm-overlay,
+body.kta-theme-light .kta-lock-nopin-overlay,
+html.kta-theme-light .kta-lock-nopin-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+body.kta-theme-light .kta-lock-confirm-boite,
+html.kta-theme-light .kta-lock-confirm-boite,
+body.kta-theme-light .kta-lock-nopin-boite,
+html.kta-theme-light .kta-lock-nopin-boite {
   background: var(--kta-light-bg-elevated) !important;
-  border-color: rgba(160, 24, 24, 0.45) !important;
-  box-shadow: 0 24px 80px rgba(80, 60, 30, 0.30) !important;
+  color: var(--kta-light-text) !important;
+  border-color: rgba(161, 110, 16, 0.40) !important;
+  box-shadow: 0 0 0 1px rgba(161, 110, 16, 0.10),
+              0 18px 60px rgba(80, 60, 30, 0.30) !important;
 }
-body.kta-theme-light .kta-shutdown-fallback-icone,
-html.kta-theme-light .kta-shutdown-fallback-icone {
-  color: #a01818;
+body.kta-theme-light .kta-lock-confirm-icone,
+html.kta-theme-light .kta-lock-confirm-icone,
+body.kta-theme-light .kta-lock-nopin-icone,
+html.kta-theme-light .kta-lock-nopin-icone {
+  color: #a16e10;
+  text-shadow: 0 0 28px rgba(161, 110, 16, 0.30);
 }
-body.kta-theme-light .kta-shutdown-fallback-titre,
-html.kta-theme-light .kta-shutdown-fallback-titre {
-  color: #6b0e0e !important;
+body.kta-theme-light .kta-lock-confirm-msg,
+html.kta-theme-light .kta-lock-confirm-msg,
+body.kta-theme-light .kta-lock-nopin-msg,
+html.kta-theme-light .kta-lock-nopin-msg {
+  color: var(--kta-light-text) !important;
 }
-body.kta-theme-light .kta-shutdown-fallback-msg,
-html.kta-theme-light .kta-shutdown-fallback-msg {
+body.kta-theme-light .kta-lock-confirm-msg strong,
+html.kta-theme-light .kta-lock-confirm-msg strong,
+body.kta-theme-light .kta-lock-nopin-msg strong,
+html.kta-theme-light .kta-lock-nopin-msg strong {
+  color: #6b4d10 !important;
+}
+body.kta-theme-light .kta-lock-confirm-hint,
+html.kta-theme-light .kta-lock-confirm-hint,
+body.kta-theme-light .kta-lock-nopin-hint,
+html.kta-theme-light .kta-lock-nopin-hint {
+  color: var(--kta-light-text-muted) !important;
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-left-color: rgba(161, 110, 16, 0.55) !important;
+}
+body.kta-theme-light .kta-lock-confirm-actions,
+html.kta-theme-light .kta-lock-confirm-actions,
+body.kta-theme-light .kta-lock-nopin-actions,
+html.kta-theme-light .kta-lock-nopin-actions {
+  border-top-color: var(--kta-light-border) !important;
+}
+
+/* === ↻ v1.14.11 — Theme light overrides pour la modale « Session
+   précédente restaurée » (.kta-session-modal-*). KARMA : « en mode clair,
+   le modal quand on charge la dernière carte session précédente restaurée
+   n'est pas en mode clair ». La modale est append à document.body donc
+   body.kta-theme-light suffit, mais on ajoute html.kta-theme-light par
+   cohérence avec le pattern de la v1.13.0-fix5. */
+body.kta-theme-light .kta-session-modal-boite,
+html.kta-theme-light .kta-session-modal-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border-color: rgba(161, 110, 16, 0.45) !important;
+  box-shadow: 0 16px 48px rgba(80, 60, 30, 0.30) !important;
+}
+body.kta-theme-light .kta-session-modal-icon,
+html.kta-theme-light .kta-session-modal-icon {
+  background: rgba(244, 197, 66, 0.30) !important;
+  border-color: rgba(161, 110, 16, 0.55) !important;
+  color: #a16e10 !important;
+  box-shadow: 0 0 24px rgba(244, 197, 66, 0.30) !important;
+}
+body.kta-theme-light .kta-session-modal-titre,
+html.kta-theme-light .kta-session-modal-titre {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-session-modal-plan,
+html.kta-theme-light .kta-session-modal-plan {
+  color: #a16e10 !important;
+}
+body.kta-theme-light .kta-session-modal-detail,
+html.kta-theme-light .kta-session-modal-detail {
   color: var(--kta-light-text-muted) !important;
 }
+
+/* v1.14.11 : tous les styles .kta-shutdown-* (v1.14.8 → v1.14.10) ont
+   été retirés en même temps que le bouton 🔌 Arrêt de l'application —
+   plus aucun chemin de code n'instancie #kta-shutdown-confirm-modal ni
+   #kta-shutdown-overlay. Le remplaçant fonctionnel est le bouton 🔒
+   Verrouiller (cf. .kta-lock-confirm-* / .kta-lock-nopin-* plus haut).
+   Aussi retiré : .loader-btn-shutdown (CSS bouton header). */
 
 /* === 📂 v1.14.5 — Modale Import (choix session vs GPX) ===
    Cards cliquables grandes (icône + titre + desc + extension), grille

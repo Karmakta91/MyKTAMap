@@ -194,11 +194,13 @@
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
           <button class="loader-btn-help" id="loaderConfigBtn" type="button" title="Configuration (perf, debug, reset)">⚙️</button>
-          <!-- 🔌 v1.14.8 (KARMA) : arrêt propre de l'app — confirm() puis
-               cleanup des modules actifs (tracker GPS, mode urgence, etc.)
-               puis window.close() avec fallback message si le navigateur
-               refuse la fermeture (cas onglet ouvert manuellement). -->
-          <button class="loader-btn-help loader-btn-shutdown" id="loaderShutdownBtn" type="button" title="Arrêter proprement l'application">🔌</button>
+          <!-- 🔒 v1.14.11 (KARMA) : remplace le bouton ☠️ Arrêt (v1.14.8) qui
+               ne servait à rien (window.close() refusé par les navigateurs sur
+               onglet classique). Maintenant : verrouille l'app si un PIN est
+               configuré. Si pas de PIN → modale info qui renvoie vers ⚙️
+               Configuration. Si PIN actif → cleanup + reload → la gate PIN
+               s'affiche au boot, l'user doit re-saisir le code. -->
+          <button class="loader-btn-help loader-btn-lock" id="loaderLockBtn" type="button" title="Verrouiller l'application (saisie du code requis pour reprendre)">🔒</button>
         </div>
       </div>
 
@@ -1976,56 +1978,112 @@
         });
       }
 
-      // === BOUTON 🔌 ARRÊT DE L'APPLICATION (v1.14.8) ===
-      // KARMA : « peux-tu faire un bouton Arrêt de l'application, une sorte
-      // de shutdown propre sans fermer par croix ou swipe mobile ».
+      // === BOUTON 🔒 VERROUILLER L'APPLICATION (v1.14.11) ===
+      // KARMA : « plutôt que éteindre qui sert à rien, on fait verrouiller
+      // (si password actif) ».
       //
-      // Flow : modale custom de confirmation (charte MyKTAMap, v1.14.10)
-      // → cleanup des modules actifs (tracker GPS, mode urgence, replay,
-      // watchdog OOM) → tentative window.close().
+      // Remplace l'ancien bouton 🔌 Shutdown (v1.14.8-v1.14.10) qui était
+      // largement bloqué par window.close() refusé sur les onglets web
+      // classiques.
       //
-      // window.close() ne fonctionne que si :
-      //   - la fenêtre a été ouverte par script (rare), OU
-      //   - l'app est lancée en mode PWA standalone (display:standalone)
-      //
-      // Si le navigateur refuse la fermeture (cas onglet ouvert manuellement),
-      // on affiche un overlay « Application arrêtée » dans la charte + bouton
-      // Recharger.
+      // Flow :
+      //   1. Si PinLock pas activé → modale info « Aucun mot de passe »
+      //      avec bouton qui ouvre la modale ⚙️ Configuration.
+      //   2. Si PinLock activé → modale confirm « Verrouiller MyKTAMap ? » →
+      //      si oui → cleanup modules actifs → location.reload() → au boot,
+      //      la gate PIN s'affiche (cf. js/main.js qui appelle
+      //      MyKTAMapPinLock.ouvrirGate si isEnabled && !isUnlocked).
 
-      // v1.14.10 (KARMA) : modale de confirmation fidèle à la charte (pattern
-      // miroir de _confirmThemeSwitch). Promise-based. Accent rouge pour
-      // signaler l'action destructive.
-      function _confirmShutdown() {
+      // Modale d'info « pas de PIN configuré » — pattern charte MyKTAMap.
+      function _afficherLockNoPinInfo() {
+        const old = document.getElementById("kta-lock-nopin-modal");
+        if (old) old.remove();
+
+        const modal = document.createElement("div");
+        modal.id = "kta-lock-nopin-modal";
+        modal.className = "kta-readme-modal-overlay kta-lock-nopin-overlay";
+        modal.innerHTML =
+          '<div class="kta-readme-modal-boite kta-lock-nopin-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">🔒 Verrouiller MyKTAMap</span>' +
+              '<button class="kta-panneau-close" id="kta-lock-nopin-close" type="button" aria-label="Fermer">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps kta-lock-nopin-corps">' +
+              '<div class="kta-lock-nopin-icone">🔐</div>' +
+              '<p class="kta-lock-nopin-msg">' +
+                'Aucun <strong>code d\'accès local</strong> n\'est configuré pour cette ' +
+                'installation — il n\'y a donc rien à verrouiller.' +
+              '</p>' +
+              '<p class="kta-lock-nopin-hint">' +
+                '<em>Pour activer un code d\'accès (PIN 4-6 chiffres + biométrie ' +
+                'Face ID / Touch ID optionnelle), ouvre <strong>⚙️ Configuration</strong> ' +
+                '→ section <strong>🔐 Code d\'accès local</strong>.</em>' +
+              '</p>' +
+            '</div>' +
+            '<div class="kta-lock-nopin-actions">' +
+              '<button class="kta-btn kta-btn-ghost" id="kta-lock-nopin-cancel" type="button">Fermer</button>' +
+              '<button class="kta-btn kta-btn-primary kta-lock-nopin-ok" id="kta-lock-nopin-config" type="button">' +
+                '⚙️ Ouvrir Configuration' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(modal);
+
+        function _close() {
+          modal.remove();
+          document.removeEventListener("keydown", _onKey);
+        }
+        function _onKey(e) {
+          if (e.key === "Escape" || e.key === "Enter") _close();
+        }
+        document.getElementById("kta-lock-nopin-close").addEventListener("click", _close);
+        document.getElementById("kta-lock-nopin-cancel").addEventListener("click", _close);
+        document.getElementById("kta-lock-nopin-config").addEventListener("click", function() {
+          _close();
+          if (typeof _ouvrirLoaderConfig === "function") _ouvrirLoaderConfig();
+        });
+        modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+        document.addEventListener("keydown", _onKey);
+
+        setTimeout(function() {
+          const okBtn = document.getElementById("kta-lock-nopin-config");
+          if (okBtn) okBtn.focus();
+        }, 50);
+      }
+
+      // Modale confirm « Verrouiller MyKTAMap ? » — pattern charte, accent
+      // bleu (action neutre/sécurité, pas destructive comme l'ancien shutdown).
+      function _confirmLock() {
         return new Promise(function(resolve) {
-          const old = document.getElementById("kta-shutdown-confirm-modal");
+          const old = document.getElementById("kta-lock-confirm-modal");
           if (old) old.remove();
 
           const modal = document.createElement("div");
-          modal.id = "kta-shutdown-confirm-modal";
-          modal.className = "kta-readme-modal-overlay kta-shutdown-confirm-overlay";
+          modal.id = "kta-lock-confirm-modal";
+          modal.className = "kta-readme-modal-overlay kta-lock-confirm-overlay";
           modal.innerHTML =
-            '<div class="kta-readme-modal-boite kta-shutdown-confirm-boite">' +
+            '<div class="kta-readme-modal-boite kta-lock-confirm-boite">' +
               '<div class="kta-readme-modal-header">' +
-                '<span class="kta-readme-modal-titre">🔌 Arrêter MyKTAMap ?</span>' +
-                '<button class="kta-panneau-close" id="kta-shutdown-confirm-close" type="button" aria-label="Annuler">✕</button>' +
+                '<span class="kta-readme-modal-titre">🔒 Verrouiller MyKTAMap ?</span>' +
+                '<button class="kta-panneau-close" id="kta-lock-confirm-close" type="button" aria-label="Annuler">✕</button>' +
               '</div>' +
-              '<div class="kta-readme-modal-corps kta-shutdown-confirm-corps">' +
-                '<div class="kta-shutdown-confirm-icone">🔌</div>' +
-                '<p class="kta-shutdown-confirm-msg">' +
-                  'L\'application va <strong>stopper proprement</strong> tous les modules actifs ' +
-                  '(tracker GPS, mode urgence, replay, watchdog mémoire), puis tenter de ' +
-                  '<strong>fermer la fenêtre</strong>.' +
+              '<div class="kta-readme-modal-corps kta-lock-confirm-corps">' +
+                '<div class="kta-lock-confirm-icone">🔒</div>' +
+                '<p class="kta-lock-confirm-msg">' +
+                  'L\'application va <strong>stopper proprement</strong> les modules ' +
+                  'actifs (tracker GPS, mode urgence, replay) puis <strong>relancer</strong> ' +
+                  'pour afficher la <strong>gate PIN</strong>. Tu devras saisir ton code ' +
+                  'd\'accès pour reprendre.' +
                 '</p>' +
-                '<p class="kta-shutdown-confirm-hint">' +
-                  '<em>Sur un onglet web classique, le navigateur peut refuser la fermeture ' +
-                  'automatique — dans ce cas un écran « Application arrêtée » s\'affichera ' +
-                  'avec un bouton « Recharger » pour relancer en 1 clic.</em>' +
+                '<p class="kta-lock-confirm-hint">' +
+                  '<em>Utile si tu prêtes ton téléphone, ou si tu veux protéger l\'accès ' +
+                  'sans fermer l\'onglet.</em>' +
                 '</p>' +
               '</div>' +
-              '<div class="kta-shutdown-confirm-actions">' +
-                '<button class="kta-btn kta-btn-ghost" id="kta-shutdown-confirm-cancel" type="button">Annuler</button>' +
-                '<button class="kta-btn kta-btn-primary kta-shutdown-confirm-ok" id="kta-shutdown-confirm-ok" type="button">' +
-                  '🔌 Arrêter MyKTAMap' +
+              '<div class="kta-lock-confirm-actions">' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-lock-confirm-cancel" type="button">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary kta-lock-confirm-ok" id="kta-lock-confirm-ok" type="button">' +
+                  '🔒 Verrouiller maintenant' +
                 '</button>' +
               '</div>' +
             '</div>';
@@ -2040,34 +2098,35 @@
             if (e.key === "Escape") _close(false);
             else if (e.key === "Enter") _close(true);
           }
-          document.getElementById("kta-shutdown-confirm-close").addEventListener("click", function() { _close(false); });
-          document.getElementById("kta-shutdown-confirm-cancel").addEventListener("click", function() { _close(false); });
-          document.getElementById("kta-shutdown-confirm-ok").addEventListener("click", function() { _close(true); });
+          document.getElementById("kta-lock-confirm-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-lock-confirm-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-lock-confirm-ok").addEventListener("click", function() { _close(true); });
           modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
           document.addEventListener("keydown", _onKey);
 
-          // Auto-focus sur Annuler (action sûre) — pour Enter on aurait
-          // tendance à valider une action destructive sans réfléchir, donc
-          // focus défensif sur l'annulation.
           setTimeout(function() {
-            const cancelBtn = document.getElementById("kta-shutdown-confirm-cancel");
-            if (cancelBtn) cancelBtn.focus();
+            const okBtn = document.getElementById("kta-lock-confirm-ok");
+            if (okBtn) okBtn.focus();
           }, 50);
         });
       }
 
-      const shutdownBtn = document.getElementById("loaderShutdownBtn");
-      if (shutdownBtn) {
-        shutdownBtn.addEventListener("click", function() {
-          _confirmShutdown().then(function(ok) {
+      const lockBtn = document.getElementById("loaderLockBtn");
+      if (lockBtn) {
+        lockBtn.addEventListener("click", function() {
+          const pinActif = !!(window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled && window.MyKTAMapPinLock.isEnabled());
+          if (!pinActif) {
+            _afficherLockNoPinInfo();
+            return;
+          }
+          _confirmLock().then(function(ok) {
             if (!ok) return;
-
-            // === 1) Cleanup des modules potentiellement actifs ===
-            // Chaque appel est défensif : on essaie/catch sans faire planter
-            // le shutdown si un module n'est pas chargé ou throw.
+            // Cleanup défensif des modules potentiellement actifs (mêmes que
+            // l'ancien shutdown — on coupe avant reload pour éviter qu'un
+            // intervalle de tracker continue à écrire pendant le teardown).
             function _safeCall(fn, label) {
               try { if (typeof fn === "function") fn(); }
-              catch(e) { console.warn("[Shutdown] cleanup " + label + " :", e); }
+              catch(e) { console.warn("[Lock] cleanup " + label + " :", e); }
             }
             _safeCall(window.Tracker && window.Tracker.stop, "Tracker.stop");
             _safeCall(window.EmergencyMode && window.EmergencyMode.desactiver, "EmergencyMode.desactiver");
@@ -2075,33 +2134,10 @@
             _safeCall(window.OOMGuard && window.OOMGuard.stop, "OOMGuard.stop");
             _safeCall(window.LostMode && window.LostMode.desactiver, "LostMode.desactiver");
 
-            // === 2) Tentative de fermeture ===
-            try { window.close(); } catch(e) {}
-
-            // === 3) Fallback : overlay « Application arrêtée » fidèle charte ===
-            // v1.14.10 : pure CSS class (.kta-shutdown-fallback-*) au lieu des
-            // styles inline du v1.14.8. Permet d'utiliser les variables CSS
-            // de thème + variant light proprement.
-            setTimeout(function() {
-              const ov = document.createElement("div");
-              ov.id = "kta-shutdown-overlay";
-              ov.className = "kta-shutdown-fallback-overlay";
-              ov.innerHTML =
-                '<div class="kta-shutdown-fallback-boite">' +
-                  '<div class="kta-shutdown-fallback-icone">🔌</div>' +
-                  '<div class="kta-shutdown-fallback-titre">Application arrêtée</div>' +
-                  '<div class="kta-shutdown-fallback-msg">' +
-                    'Le navigateur n\'autorise pas la fermeture automatique de cet onglet. ' +
-                    'Tu peux fermer la fenêtre manuellement, ou recharger pour relancer MyKTAMap.' +
-                  '</div>' +
-                  '<button id="kta-shutdown-reload" class="kta-btn kta-btn-primary kta-shutdown-fallback-reload" type="button">' +
-                    '🔄 Recharger MyKTAMap' +
-                  '</button>' +
-                '</div>';
-              document.body.appendChild(ov);
-              const rb = document.getElementById("kta-shutdown-reload");
-              if (rb) rb.addEventListener("click", function() { location.reload(); });
-            }, 200);
+            // Reload → main.js détecte isEnabled() && !isUnlocked() → affiche
+            // la gate PIN avant la suite de l'init. L'user devra saisir le
+            // code pour reprendre.
+            location.reload();
           });
         });
       }
