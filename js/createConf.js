@@ -383,13 +383,14 @@ function afficherPlanner() {
           </div>
         </div>
 
-        <!-- 7. 🌐 GÉORÉFÉRENCEMENT GPS (optionnel, v1.14.20) -->
-        <!-- Embarque un calibrage 2 points (plan x/y ↔ GPS lat/lng) directement
-             dans le plan-config.json sous `plan.georef`. Rétro-compat absolue :
-             champ optionnel, ignoré par les anciennes versions. Si présent et
-             qu'aucun calibrage local n'existe pour ce plan au chargement, main.js
-             le propage vers KmzExport.setCalibration → auto-rempli dans 📡 Export
-             externe ET dans ⚙️ Réglages > 🌐 Géoréférencement (mode map). -->
+        <!-- 7. Georeferencement GPS (optionnel, v1.14.20) -->
+        <!-- Embarque un calibrage 2 points (plan x/y vs GPS lat/lng)
+             directement dans le plan-config.json sous plan.georef.
+             Retro-compat absolue : champ optionnel, ignore par les
+             anciennes versions. Si present et qu aucun calibrage local
+             n existe pour ce plan au chargement, main.js le propage vers
+             KmzExport.setCalibration => auto-rempli dans Export externe
+             ET dans Reglages > Georeferencement (mode map). -->
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🌐 Géoréférencement GPS <span class="kta-planner-hint">(optionnel)</span></div>
           <p class="kta-planner-info">
