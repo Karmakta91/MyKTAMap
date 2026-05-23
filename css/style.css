@@ -911,6 +911,9 @@ a.kta-sub.kta-sous-action-urgence:hover {
   max-width: 560px;
   border: 2px solid rgba(255, 107, 53, 0.45);
   box-shadow: 0 0 0 1px rgba(255, 107, 53, 0.10), 0 18px 60px rgba(0,0,0,0.6);
+  /* 🔧 v1.13.0-fix16 : fix hauteur 88vh étirée pour cette modale courte */
+  height: auto !important;
+  max-height: 90vh !important;
 }
 .kta-lost-header {
   background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 107, 53, 0.05));
@@ -2444,6 +2447,11 @@ img.kta-popup-photo-mini:focus-visible {
   text-align: center;
   color: #e8eaf0;
   animation: kta-session-pop-in 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.18);
+  /* 🔧 v1.13.0-fix16 (KARMA "bug de longueur sur enregistrer session,
+     pareil je suis perdu, itinéraire pareil") : même cas que niv/legende/
+     pin-proposal — modale courte sur 88vh étire en hauteur. */
+  height: auto !important;
+  max-height: 90vh !important;
 }
 
 @keyframes kta-session-pop-in {
@@ -6956,6 +6964,9 @@ img.kta-popup-photo-mini:focus-visible {
    ══════════════════════════════════════════════ */
 .kta-iti-modal-boite {
   max-width: 540px;
+  /* 🔧 v1.13.0-fix16 : fix hauteur 88vh étirée pour cette modale courte */
+  height: auto !important;
+  max-height: 90vh !important;
 }
 
 .kta-iti-corps {
@@ -12922,6 +12933,124 @@ html.kta-theme-light .kta-load-message {
 html.kta-theme-light .kta-load-hint {
   color: #6b6354 !important;
   border-top: 1px solid rgba(154, 135, 84, 0.25) !important;
+}
+
+/* ============================================================================
+ * 🔧 v1.13.0-fix16 — RECHERCHE UNIFIÉE (Ctrl+K) + ONGLETS MODE rapide/avancé
+ * + HAUTEUR MODALES Session/Iti/Perdu + autres
+ * ============================================================================
+ * KARMA reports : (a) "bug affichage recherche unifié" (input dark sur
+ * fond clair illisible), (b) "petit bug en export png en mode clair,
+ * pareil enregistrer session", (c) "bug de longueur sur enregistrer
+ * session", (d) "pareil je suis perdu", (e) "itinéraire pareil".
+ * ============================================================================ */
+
+/* === Recherche unifiée Ctrl+K — input + filtres (CSS inline injecté
+   par searchPoints.js > _injecterStyles, on l'override en externe avec
+   spécificité + !important) === */
+html.kta-theme-light .kta-search-input-wrap {
+  background: #fdf8eb !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.25) !important;
+}
+html.kta-theme-light .kta-search-input-wrap input {
+  background: #ffffff !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+}
+html.kta-theme-light .kta-search-input-wrap input:focus {
+  border-color: #f4c542 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
+}
+html.kta-theme-light .kta-search-input-wrap input::placeholder {
+  color: #8a8270 !important;
+}
+html.kta-theme-light .kta-search-info {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-search-clear-filters {
+  background: rgba(220, 50, 50, 0.10) !important;
+  color: #b02020 !important;
+  border: 1px solid rgba(220, 50, 50, 0.30) !important;
+}
+html.kta-theme-light .kta-search-clear-filters:hover {
+  background: rgba(220, 50, 50, 0.20) !important;
+}
+/* Lignes de filtres : Catégorie / Calques / Tags */
+html.kta-theme-light .kta-search-filters {
+  background: transparent !important;
+}
+html.kta-theme-light .kta-search-filter-label {
+  color: #6b6354 !important;
+  font-weight: 700 !important;
+}
+html.kta-theme-light .kta-search-filter-chip {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(154, 135, 84, 0.30) !important;
+}
+html.kta-theme-light .kta-search-filter-chip:hover {
+  background: rgba(244, 197, 66, 0.12) !important;
+  border-color: rgba(244, 197, 66, 0.50) !important;
+}
+html.kta-theme-light .kta-search-filter-chip.active {
+  background: rgba(244, 197, 66, 0.30) !important;
+  border-color: #f4c542 !important;
+  color: #2a2620 !important;
+  font-weight: 600 !important;
+}
+/* Groupes de résultats (Points / Tracés / Zones / Structures) */
+html.kta-theme-light .kta-search-group-titre {
+  color: #d9a82e !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.30) !important;
+}
+html.kta-theme-light .kta-search-result-item {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid rgba(154, 135, 84, 0.18) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-search-result-item:hover,
+html.kta-theme-light .kta-search-result-item.kta-search-selected {
+  background: rgba(244, 197, 66, 0.15) !important;
+  border-color: rgba(244, 197, 66, 0.50) !important;
+}
+html.kta-theme-light .kta-search-result-item .kta-search-result-meta,
+html.kta-theme-light .kta-search-result-item .kta-search-result-sub {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-search-result-item strong,
+html.kta-theme-light .kta-search-result-item mark {
+  background: rgba(244, 197, 66, 0.40) !important;
+  color: #1a1612 !important;
+  padding: 0 2px !important;
+  border-radius: 2px !important;
+}
+
+/* === Onglets "Mode rapide / Mode avancé" (.kta-conv-sens-btn) — bug
+   visible sur Export PNG + Enregistrer Session. L'onglet actif avait
+   un fond bleu nuit #1a3a5c hardcodé qui détonnait en clair. */
+html.kta-theme-light .kta-conv-sens-btn {
+  background: rgba(0, 0, 0, 0.03) !important;
+  color: #6b6354 !important;
+  border: 1px solid rgba(154, 135, 84, 0.30) !important;
+}
+html.kta-theme-light .kta-conv-sens-btn:hover:not(.active) {
+  background: rgba(244, 197, 66, 0.12) !important;
+  color: #2a2620 !important;
+  border-color: rgba(244, 197, 66, 0.45) !important;
+}
+html.kta-theme-light .kta-conv-sens-btn.active {
+  background: #f4c542 !important;
+  border-color: #d9a82e !important;
+  color: #2a2620 !important;
+  font-weight: 600 !important;
+}
+html.kta-theme-light .kta-conv-sens-btn .kta-conv-sens-label {
+  color: inherit !important;
+}
+html.kta-theme-light .kta-conv-sens-btn .kta-conv-sens-desc {
+  color: inherit !important;
+  opacity: 0.75 !important;
 }
 
 /* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
