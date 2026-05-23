@@ -12688,6 +12688,190 @@ html.kta-theme-light .kta-pin-gate-lockout-explication p {
   color: #4a3f30 !important;
 }
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix13 — INTÉGRATION HOME EN MODE CLAIR (cards arrondies)
+ * ============================================================================
+ * KARMA "peux tu arrondir les différentes box Mes plans / Ajouter un
+ * plan, améliorer l'intégration mode light".
+ *
+ * Layout home en clair : 2 boxes principales sur le grid (Mes plans à
+ * gauche, Ajouter un plan à droite). Avant ce fix, elles n'avaient pas
+ * de border-radius ni de border claire — visuellement plates sur le
+ * fond brun-beige.
+ *
+ * Solution :
+ *   1. #myPlansBox = box complète (wrapper déjà existant qui contient
+ *      header + filtres + liste) → border-radius 14px + bordure ocre
+ *      douce + padding + ombre
+ *   2. Couple .loader-section-head ("Ajouter un plan") + .loader-panel
+ *      #panelZip = fusionnés visuellement en 1 card unique. Head a
+ *      border-radius top, panel a border-radius bottom, séparation
+ *      interne via border 1px léger.
+ *   3. .zip-drop-zone (drop zone interne) : style harmonisé sur fond
+ *      blanc cassé + bordure pointillée ocre claire.
+ *   4. Bouton "Charger ce plan" + "Générer un plan" + "Reprendre" :
+ *      arrondis cohérents avec les cards.
+ * ============================================================================ */
+
+/* === Card "Mes plans" === */
+html.kta-theme-light #myPlansBox {
+  background: #fdf8eb !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-radius: 14px !important;
+  padding: 14px 18px 16px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
+}
+/* Le header interne de myPlansBox : transparent (puisque la box parent
+   a déjà son fond), juste bordure-bottom pour séparer du contenu. */
+html.kta-theme-light #myPlansBox .loader-section-head {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
+  border-radius: 0 !important;
+  padding: 2px 0 10px 0 !important;
+  margin: 0 0 10px 0 !important;
+  color: #2a2620 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+
+/* === Card "Ajouter un plan" = section-head + panel fusionnés === */
+/* Le head devient le titre du card (haut arrondi) */
+html.kta-theme-light .loader-col-actions > .loader-section-head {
+  background: #fdf8eb !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
+  border-radius: 14px 14px 0 0 !important;
+  padding: 12px 18px !important;
+  margin: 0 !important;
+  color: #2a2620 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  box-shadow: 0 -1px 0 0 transparent !important;  /* reset pour éviter conflicts */
+}
+/* Le panel qui suit (panelZip) devient le corps du card (bas arrondi) */
+html.kta-theme-light .loader-col-actions > .loader-panel {
+  background: #fdf8eb !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-top: none !important;  /* la séparation est déjà sur le head */
+  border-radius: 0 0 14px 14px !important;
+  padding: 14px 18px 16px !important;
+  margin: 0 0 14px 0 !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
+}
+
+/* === Drop zone ZIP interne === */
+html.kta-theme-light .zip-drop-zone {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 2px dashed rgba(154, 135, 84, 0.55) !important;
+  border-radius: 10px !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .zip-drop-zone:hover,
+html.kta-theme-light .zip-drop-zone.drag-over {
+  background: rgba(244, 197, 66, 0.10) !important;
+  border-color: #f4c542 !important;
+}
+html.kta-theme-light .zip-icon {
+  color: #8b5a00 !important;
+}
+html.kta-theme-light #zipFileName {
+  color: #6b6354 !important;
+}
+
+/* === Bouton "Reprendre" (loader-btn-resume) — affinage radius + ombre === */
+html.kta-theme-light .loader-btn-resume {
+  border-radius: 12px !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.12) !important;
+}
+
+/* === Bouton "Charger ce plan" (#loadPlanBtn) — primary, arrondi === */
+html.kta-theme-light #loadPlanBtn {
+  background: #f4c542 !important;
+  color: #2a2620 !important;
+  border: 1px solid #d9a82e !important;
+  border-radius: 10px !important;
+  font-weight: 700 !important;
+  padding: 12px 18px !important;
+  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
+}
+html.kta-theme-light #loadPlanBtn:hover {
+  background: #d9a82e !important;
+  color: #1a1612 !important;
+}
+
+/* === Bouton "Générer un plan" (secondary, arrondi cohérent) === */
+html.kta-theme-light #loaderPlannerBtn {
+  border-radius: 10px !important;
+  padding: 11px 18px !important;
+}
+
+/* === Bouton "FS Access" (🔐 Autoriser l'accès permanent) === */
+html.kta-theme-light .loader-btn-fs {
+  background: rgba(140, 180, 255, 0.10) !important;
+  color: #0a4f6b !important;
+  border: 1px solid rgba(10, 79, 107, 0.30) !important;
+  border-radius: 8px !important;
+}
+html.kta-theme-light .loader-btn-fs:hover {
+  background: rgba(140, 180, 255, 0.20) !important;
+  border-color: rgba(10, 79, 107, 0.50) !important;
+}
+html.kta-theme-light .fs-access-info {
+  color: #6b6354 !important;
+}
+
+/* === Filtres "Afficher les plans serveur" === */
+html.kta-theme-light .loader-plans-filter-row {
+  background: transparent !important;
+  border-radius: 6px !important;
+  padding: 6px 8px !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .loader-plans-filter-row:hover {
+  background: rgba(244, 197, 66, 0.10) !important;
+}
+
+/* === Liste des plans (allPlansList) — les lignes individuelles === */
+html.kta-theme-light .loader-plans-list .plan-card,
+html.kta-theme-light .loader-plans-list li {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border: 1px solid rgba(154, 135, 84, 0.20) !important;
+  border-radius: 10px !important;
+  color: #2a2620 !important;
+  padding: 10px 14px !important;
+  margin-bottom: 6px !important;
+  box-shadow: 0 1px 3px rgba(80, 60, 30, 0.06) !important;
+}
+html.kta-theme-light .loader-plans-list .plan-card:hover,
+html.kta-theme-light .loader-plans-list li:hover {
+  background: rgba(244, 197, 66, 0.10) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+
+/* === Section actions (boutons mini export/import liste) === */
+html.kta-theme-light .loader-btn-mini {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(154, 135, 84, 0.30) !important;
+  border-radius: 6px !important;
+}
+html.kta-theme-light .loader-btn-mini:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: #f4c542 !important;
+  color: #1a1612 !important;
+}
+
+/* === Box Resume (Reprendre) — quand visible, doit aussi être arrondi === */
+html.kta-theme-light #resumeBox {
+  border-radius: 14px !important;
+  padding: 0 !important;  /* le bouton resume porte déjà son padding */
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 /* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
 html.kta-theme-light .kta-pin-proposal-boite {
   background: #fdf8eb !important;
