@@ -194,6 +194,11 @@
           <button class="loader-btn-help loader-btn-alert" id="loaderAlertBtn" type="button" title="Voir l'alerte en cours">🚨</button>
           <button class="loader-btn-help" id="loaderHelpBtn" type="button" title="Documentation utilisateur">📖</button>
           <button class="loader-btn-help" id="loaderConfigBtn" type="button" title="Configuration (perf, debug, reset)">⚙️</button>
+          <!-- 🔌 v1.14.8 (KARMA) : arrêt propre de l'app — confirm() puis
+               cleanup des modules actifs (tracker GPS, mode urgence, etc.)
+               puis window.close() avec fallback message si le navigateur
+               refuse la fermeture (cas onglet ouvert manuellement). -->
+          <button class="loader-btn-help loader-btn-shutdown" id="loaderShutdownBtn" type="button" title="Arrêter proprement l'application">🔌</button>
         </div>
       </div>
 
@@ -1968,6 +1973,86 @@
           if (e.key === "Escape" && configModal.style.display !== "none") {
             _fermerLoaderConfig();
           }
+        });
+      }
+
+      // === BOUTON 🔌 ARRÊT DE L'APPLICATION (v1.14.8) ===
+      // KARMA : « peux-tu faire un bouton Arrêt de l'application, une sorte
+      // de shutdown propre sans fermer par croix ou swipe mobile ».
+      //
+      // Flow : confirm() bloquant → cleanup des modules actifs (tracker GPS,
+      // mode urgence, replay, watchdog OOM) → tentative window.close().
+      //
+      // window.close() ne fonctionne que si :
+      //   - la fenêtre a été ouverte par script (rare), OU
+      //   - l'app est lancée en mode PWA standalone (display:standalone)
+      //
+      // Si le navigateur refuse la fermeture (cas onglet ouvert manuellement),
+      // on affiche un message plein écran « tu peux fermer cet onglet
+      // manuellement » + un fallback bouton pour retry.
+      const shutdownBtn = document.getElementById("loaderShutdownBtn");
+      if (shutdownBtn) {
+        shutdownBtn.addEventListener("click", function() {
+          const ok = window.confirm(
+            "Arrêter MyKTAMap ?\n\n" +
+            "L'application va stopper le tracker GPS / mode urgence / replay " +
+            "actifs (si en cours), puis tenter de fermer la fenêtre. " +
+            "Sur un onglet web classique, le navigateur peut refuser la " +
+            "fermeture — dans ce cas, tu pourras fermer l'onglet manuellement."
+          );
+          if (!ok) return;
+
+          // === 1) Cleanup des modules potentiellement actifs ===
+          // Chaque appel est défensif : on essaie/catch sans faire planter
+          // le shutdown si un module n'est pas chargé ou throw.
+          function _safeCall(fn, label) {
+            try { if (typeof fn === "function") fn(); }
+            catch(e) { console.warn("[Shutdown] cleanup " + label + " :", e); }
+          }
+          // Tracker GPS
+          _safeCall(window.Tracker && window.Tracker.stop, "Tracker.stop");
+          // Mode urgence (overlay rouge)
+          _safeCall(window.EmergencyMode && window.EmergencyMode.desactiver, "EmergencyMode.desactiver");
+          // Replay tracker (lecture de session)
+          _safeCall(window.TrackerReplay && window.TrackerReplay.arreter, "TrackerReplay.arreter");
+          // OOM Guard (watchdog mémoire avec interval)
+          _safeCall(window.OOMGuard && window.OOMGuard.stop, "OOMGuard.stop");
+          // Lost mode
+          _safeCall(window.LostMode && window.LostMode.desactiver, "LostMode.desactiver");
+
+          // === 2) Tentative de fermeture ===
+          // window.close() est silencieux si le browser refuse — il faut donc
+          // détecter l'échec via un setTimeout de fallback.
+          try { window.close(); } catch(e) {}
+
+          // === 3) Fallback : écran « arrêté » avec message ===
+          // Si on est toujours là après 200ms, c'est que window.close() a été
+          // refusé. On masque le loader et affiche un overlay propre.
+          setTimeout(function() {
+            const ov = document.createElement("div");
+            ov.id = "kta-shutdown-overlay";
+            ov.style.cssText = "position:fixed;inset:0;z-index:2147483647;" +
+              "background:#0a0d14;color:#e8eaf0;display:flex;flex-direction:column;" +
+              "align-items:center;justify-content:center;text-align:center;padding:24px;" +
+              "font-family:Arial,sans-serif;";
+            ov.innerHTML =
+              '<div style="font-size:48px;margin-bottom:18px;">🔌</div>' +
+              '<div style="font-size:20px;font-weight:700;color:#8cb4ff;margin-bottom:10px;">' +
+                'Application arrêtée' +
+              '</div>' +
+              '<div style="font-size:14px;color:#c0c8d8;max-width:380px;line-height:1.5;margin-bottom:18px;">' +
+                'Le navigateur n\'autorise pas la fermeture automatique de cet onglet. ' +
+                'Tu peux fermer la fenêtre manuellement, ou recharger pour relancer MyKTAMap.' +
+              '</div>' +
+              '<button id="kta-shutdown-reload" type="button" style="padding:10px 20px;' +
+                'background:#8cb4ff;color:#0a0d14;border:none;border-radius:6px;' +
+                'font-size:14px;font-weight:600;cursor:pointer;">' +
+                '🔄 Recharger MyKTAMap' +
+              '</button>';
+            document.body.appendChild(ov);
+            const rb = document.getElementById("kta-shutdown-reload");
+            if (rb) rb.addEventListener("click", function() { location.reload(); });
+          }, 200);
         });
       }
 

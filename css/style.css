@@ -3776,6 +3776,34 @@ img.kta-popup-photo-mini:focus-visible {
   color: #e8eaf0;
 }
 
+/* 🔌 v1.14.8 — Bouton arrêt de l'application. Accent rouge discret pour
+   signaler son caractère destructif (mais reste cohérent visuellement
+   avec les autres .loader-btn-help). Hover plus marqué pour confirmer
+   l'intention de l'utilisateur avant le confirm() natif. */
+.loader-btn-help.loader-btn-shutdown {
+  background: rgba(220, 80, 80, 0.10);
+  border-color: rgba(220, 80, 80, 0.30);
+  color: #ff8080;
+}
+.loader-btn-help.loader-btn-shutdown:hover {
+  background: rgba(220, 80, 80, 0.22);
+  border-color: rgba(220, 80, 80, 0.55);
+  color: #ffcccc;
+}
+/* Theme light — variant ambre/rouge brique */
+body.kta-theme-light .loader-btn-help.loader-btn-shutdown,
+html.kta-theme-light .loader-btn-help.loader-btn-shutdown {
+  background: rgba(160, 24, 24, 0.10) !important;
+  border-color: rgba(160, 24, 24, 0.30) !important;
+  color: #a01818 !important;
+}
+body.kta-theme-light .loader-btn-help.loader-btn-shutdown:hover,
+html.kta-theme-light .loader-btn-help.loader-btn-shutdown:hover {
+  background: rgba(160, 24, 24, 0.22) !important;
+  border-color: rgba(160, 24, 24, 0.55) !important;
+  color: #6b0e0e !important;
+}
+
 /* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
    Gap volontairement faible pour les coller visuellement. */
 .loader-header-actions {
