@@ -450,6 +450,15 @@
     _afficherModal();
   };
 
+  // v1.14.12 — expose l'injecteur de styles pour les autres modales qui
+  // réutilisent le pattern .kta-ses-tabs / .kta-ses-tab / .kta-ses-intro
+  // / .kta-ses-summary / .kta-ses-actions / .kta-ses-btn (ex: modale
+  // Import dans js/interface.js). Idempotent — vérifie déjà l'existence
+  // du <style id="kta-session-export-styles"> avant d'injecter.
+  window.SessionExporterStyles = {
+    inject: _injecterStyles
+  };
+
   // ========== COMPTAGES ==========
   function _compter() {
     return {

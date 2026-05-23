@@ -11595,121 +11595,26 @@ html.kta-theme-light .kta-session-modal-detail {
    Verrouiller (cf. .kta-lock-confirm-* / .kta-lock-nopin-* plus haut).
    Aussi retiré : .loader-btn-shutdown (CSS bouton header). */
 
-/* === 📂 v1.14.5 — Modale Import (choix session vs GPX) ===
-   Cards cliquables grandes (icône + titre + desc + extension), grille
-   responsive (2 colonnes en desktop, 1 colonne en mobile portrait). */
-.kta-import-choix-grille {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 8px;
-}
-@media (max-width: 520px) {
-  .kta-import-choix-grille { grid-template-columns: 1fr; }
-}
-.kta-import-choix-card {
-  /* v1.14.7 — !important sur le display/flex pour blinder contre des
-     surcharges potentielles d'autres règles. Le rendu était cassé chez
-     KARMA (les divs internes débordaient dans la grille parente). */
+/* === 📥 v1.14.5 → refactor v1.14.12 — Modale Import (choix session vs GPX) ===
+   Le pattern cards-en-grille v1.14.5-v1.14.11 (.kta-import-choix-card)
+   se cassait régulièrement sur certains UA (divs internes débordaient
+   dans la grille parente, emojis rendus "NaN"). Remplacé par le pattern
+   onglets .kta-ses-tabs / .kta-ses-tab, identique à la modale 💾
+   Enregistrer session — plus fiable, 100% cohérent visuellement, et
+   ne nécessite aucun nouveau CSS spécifique (les styles sont injectés
+   par sessionExporter.js via window.SessionExporterStyles.inject).
+
+   Toutes les classes .kta-import-choix-* (-grille / -card / -icone /
+   -titre / -desc / -ext) sont retirées ici. */
+.kta-import-choix-boite {
+  /* Boîte un peu plus large pour aligner avec la modale Enregistrer
+     session (max-width:560px). */
+  max-width: 560px;
+  width: 95%;
+  height: auto !important;
+  max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
-  align-items: center !important;
-  text-align: center;
-  gap: 8px;
-  padding: 18px 14px 14px;
-  background: rgba(140, 180, 255, 0.06);
-  border: 1px solid rgba(140, 180, 255, 0.22);
-  border-radius: 10px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
-  color: #e8eaf0;
-  -webkit-appearance: none;
-  appearance: none;
-  outline: none;
-  user-select: none;
-  transition: background 0.14s, border-color 0.14s, transform 0.14s;
-}
-.kta-import-choix-card:focus-visible {
-  outline: 2px solid #8cb4ff;
-  outline-offset: 2px;
-}
-.kta-import-choix-card:hover {
-  background: rgba(140, 180, 255, 0.14);
-  border-color: rgba(140, 180, 255, 0.45);
-  transform: translateY(-1px);
-}
-.kta-import-choix-card:active {
-  transform: translateY(0);
-}
-.kta-import-choix-icone {
-  font-size: 36px;
-  line-height: 1;
-}
-.kta-import-choix-titre {
-  font-size: 14px;
-  font-weight: 700;
-  color: #8cb4ff;
-}
-.kta-import-choix-desc {
-  font-size: 12px;
-  line-height: 1.5;
-  color: #c0c8d8;
-  flex: 1;
-}
-.kta-import-choix-desc code {
-  background: rgba(255,255,255,0.06);
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 11px;
-}
-.kta-import-choix-desc em {
-  color: #f4c542;
-  font-style: normal;
-  font-size: 11.5px;
-}
-.kta-import-choix-ext {
-  font-family: ui-monospace, monospace;
-  font-size: 11px;
-  color: #8892a4;
-  padding: 3px 8px;
-  background: rgba(0,0,0,0.25);
-  border-radius: 10px;
-  letter-spacing: 0.04em;
-}
-/* Theme light — palette beige/ambre cohérente */
-body.kta-theme-light .kta-import-choix-card,
-html.kta-theme-light .kta-import-choix-card {
-  background: rgba(244,197,66,0.10) !important;
-  border-color: rgba(161,110,16,0.28) !important;
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-import-choix-card:hover,
-html.kta-theme-light .kta-import-choix-card:hover {
-  background: rgba(244,197,66,0.22) !important;
-  border-color: rgba(161,110,16,0.55) !important;
-}
-body.kta-theme-light .kta-import-choix-titre,
-html.kta-theme-light .kta-import-choix-titre {
-  color: #6b4d10 !important;
-}
-body.kta-theme-light .kta-import-choix-desc,
-html.kta-theme-light .kta-import-choix-desc {
-  color: var(--kta-light-text-muted) !important;
-}
-body.kta-theme-light .kta-import-choix-desc code,
-html.kta-theme-light .kta-import-choix-desc code {
-  background: rgba(0,0,0,0.06) !important;
-  color: var(--kta-light-text) !important;
-}
-body.kta-theme-light .kta-import-choix-desc em,
-html.kta-theme-light .kta-import-choix-desc em {
-  color: #a16e10 !important;
-}
-body.kta-theme-light .kta-import-choix-ext,
-html.kta-theme-light .kta-import-choix-ext {
-  background: rgba(0,0,0,0.08) !important;
-  color: var(--kta-light-text-muted) !important;
 }
 
 /* === Popups Leaflet (markers, zones) ===
