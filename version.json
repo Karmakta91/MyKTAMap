@@ -1,11 +1,12 @@
 {
-  "version": "v1.14.4",
-  "released": "2026-05-23",
+  "version": "v1.14.5",
+  "released": "2026-05-24",
   "notes": [
-    "🐛 V3.2.e — Fix popups Leaflet restées en sombre malgré le mode clair (KARMA : « en mode layer, si je clique sur un point dans datalayer, je vois toujours le modal en sombre »). Bug de spécificité CSS : les règles dark base de .leaflet-popup-content-wrapper / .leaflet-popup-tip / .leaflet-popup-content utilisent toutes !important (background:#1a1f2e !important), donc les overrides theme-light sans !important étaient battus → popups embedded + session restaient sombres.",
-    "🔧 Fix : ajout systématique de !important sur les overrides theme-light pour les popups Leaflet — wrapper, tip, content, close-button, titre <b>, .kta-popup-point .kta-popup-desc, .kta-popup-actions (séparateur), boutons .kta-popup-btn / .kta-popup-btn-here (vert) / .kta-popup-btn-aller (jaune accent) / .kta-popup-btn-delete (rouge) / .kta-popup-btn-edit / .kta-popup-btn-add, inputs/textareas/selects. Application à la fois sur body.kta-theme-light ET html.kta-theme-light (popups appendés dans .leaflet-popup-pane sous body, mais on garde la cohérence).",
-    "🎨 Palette light cohérente sur les boutons popup — jaune charte sur « Aller » (action principale), vert assombri sur « Je suis ici » (recalage positif), rouge brique sur « Supprimer », ambre sur les actions secondaires. Plus rien ne reste bleu nuit dans un popup en mode clair.",
-    "🏷️ Sources de vérité v1.14.4 : version.json → \"v1.14.4\", js/copyright.js > __MKM__.build → \"v1.14.4\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.4-popup-light\".",
-    "🛡️ Confidentialité — fix CSS pur. Aucune modification réseau, aucun nouveau fetch. NETWORK_AUDIT inchangé."
+    "📂 V3.2.f — Unification de l'import (KARMA UX) : les 2 sous-actions « 📥 Importer session » et « 📤 Importer GPX » du menu ⬇️ Charger sont fusionnées en une seule « 📂 Importer ». Les icônes 📥 / 📤 étaient trop proches → confusion à l'usage. Pattern miroir de la modale 💾 Enregistrer session.",
+    "🎴 Nouvelle modale window.ouvrirImportChoix() à 2 grandes cards cliquables : 📥 Session MyKTAMap (.json / .zip avec annotations + photos) ou 📤 GPX externe (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS du plan). Description, extensions acceptées et avertissement « calibrage GPS requis » visible sur la card GPX. Clic sur une card → fermeture du choix + ouverture de la modale d'import correspondante (ouvrirImportSession ou window.ouvrirImportGpx).",
+    "🎨 CSS .kta-import-choix-grille + .kta-import-choix-card en grille 2 colonnes (1 colonne en mobile portrait ≤520px). Variants dark (palette bleue ambiance carte) + light (palette beige/ambre charte) avec hover translateY pour feedback tactile.",
+    "📘 Aide ❓ section ⬇️ Charger / Import : l'ancien doublet 2 entrées est remplacé par une seule entrée « 📂 Importer (v1.14.5 unifié) » qui décrit les 2 cards.",
+    "🏷️ Sources de vérité v1.14.5 : version.json → \"v1.14.5\", js/copyright.js > __MKM__.build → \"v1.14.5\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.5-import-choix\".",
+    "🛡️ Confidentialité — refactor UI/UX pur, aucune nouvelle connexion réseau. Les imports restent strictement locaux (FileReader). NETWORK_AUDIT inchangé."
   ]
 }

@@ -767,6 +767,84 @@ window.ouvrirImportGpx = function() {
 };
 
 // =========================
+// 📂 IMPORT — modale de choix (v1.14.5)
+// =========================
+// Unification (KARMA UX) : un seul bouton "📂 Importer" dans le menu ⬇️
+// Charger, qui ouvre une modale à 2 cards :
+//   - 📥 Importer une session (.json / .zip)
+//   - 📤 Importer un GPX (.gpx)
+// Avant v1.14.5 il y avait 2 sous-actions séparées (📥 / 📤) avec des
+// icônes trop proches, d'où confusion. Pattern miroir de la modale
+// "💾 Enregistrer session" qui regroupe Full / Avancé / Conversion /
+// Export externe dans un seul point d'entrée.
+window.ouvrirImportChoix = function() {
+  const existing = document.getElementById("kta-import-choix-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id = "kta-import-choix-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = ''
+    + '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh;">'
+    +   '<div class="kta-readme-modal-header">'
+    +     '<span class="kta-readme-modal-titre">📂 Importer</span>'
+    +     '<button class="kta-panneau-close" id="kta-import-choix-close" type="button">✕</button>'
+    +   '</div>'
+    +   '<div class="kta-readme-modal-corps">'
+    +     '<p style="font-size:13px; color:#8892a4; margin:0 0 16px; line-height:1.5;">'
+    +       'Choisis le type de fichier à importer. La session contient tes annotations '
+    +       'MyKTAMap (points, tracés, zones, structures, photos). Un GPX vient d\'une '
+    +       'autre app outdoor (TopoDroid, OsmAnd, Avenza, Strava, Garmin…).'
+    +     '</p>'
+    +     '<div class="kta-import-choix-grille">'
+    +       // === Card 1 : Session ===
+    +       '<button type="button" class="kta-import-choix-card" id="kta-import-choix-session">'
+    +         '<div class="kta-import-choix-icone">📥</div>'
+    +         '<div class="kta-import-choix-titre">Session MyKTAMap</div>'
+    +         '<div class="kta-import-choix-desc">'
+    +           'Fichier <code>session.json</code> ou <code>.zip</code> exporté depuis l\'app '
+    +           '(points + tracés + zones + structures + photos).'
+    +         '</div>'
+    +         '<div class="kta-import-choix-ext">.json · .zip</div>'
+    +       '</button>'
+    +       // === Card 2 : GPX ===
+    +       '<button type="button" class="kta-import-choix-card" id="kta-import-choix-gpx">'
+    +         '<div class="kta-import-choix-icone">📤</div>'
+    +         '<div class="kta-import-choix-titre">Fichier GPX externe</div>'
+    +         '<div class="kta-import-choix-desc">'
+    +           'GPX 1.1 standard depuis TopoDroid, OsmAnd, Avenza, GPSies, '
+    +           'Strava, Garmin… <em>Nécessite un calibrage GPS du plan.</em>'
+    +         '</div>'
+    +         '<div class="kta-import-choix-ext">.gpx</div>'
+    +       '</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+
+  document.documentElement.appendChild(modal);
+
+  function _fermer() { modal.remove(); }
+  document.getElementById("kta-import-choix-close").addEventListener("click", _fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _fermer(); });
+  document.addEventListener("keydown", function _onKey(e) {
+    if (e.key === "Escape" && document.getElementById("kta-import-choix-modal")) {
+      _fermer();
+      document.removeEventListener("keydown", _onKey);
+    }
+  });
+
+  document.getElementById("kta-import-choix-session").addEventListener("click", function() {
+    _fermer();
+    ouvrirImportSession();
+  });
+  document.getElementById("kta-import-choix-gpx").addEventListener("click", function() {
+    _fermer();
+    if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
+    else alert("Module import GPX indisponible");
+  });
+};
+
+// =========================
 // IMPORT SESSION — modale plein écran
 // =========================
 function ouvrirImportSession() {
@@ -1624,8 +1702,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
-            <span class="kta-aide-icone">📤</span><span><strong>Importer un GPX</strong> (v1.14.0) — depuis TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc. Réutilise le calibrage KMZ. Preview avant import, Ctrl+Z pour annuler.</span>
+            <span class="kta-aide-icone">📂</span><span><strong>Importer</strong> (v1.14.5 unifié) — un seul bouton qui ouvre une modale à 2 cards : 📥 <strong>Session MyKTAMap</strong> (.json / .zip avec photos) ou 📤 <strong>GPX externe</strong> (TopoDroid, OsmAnd, Avenza, Strava, Garmin… nécessite calibrage GPS). Preview avant import, Ctrl+Z pour annuler.</span>
             <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
@@ -3847,19 +3924,20 @@ function initInterface() {
   // ouvre déjà la même modale via _retourLoaderAvecConfirm. En mode
   // legacy, le clic sur le titre du plan en haut centre fait le même
   // boulot (togglePlanSwitcher). Plus de doublon dans le menu Import.
+  // 🆕 v1.14.5 (KARMA UX) : les 2 sous-actions « 📥 Importer session » et
+  // « 📤 Importer GPX » sont fusionnées en une seule « 📂 Importer » qui
+  // ouvre une modale de choix (2 cards : session vs GPX). Avant, les
+  // icônes 📥 / 📤 étaient trop proches → confusion à l'usage. Pattern
+  // miroir de la modale 💾 Enregistrer session.
   _creerGroupeAccordeon({
     id: "charger",
     iconePrincipale: "⬇️",
     titre: "Charger / Import",
     position: "topleft",
     sousActions: [
-      { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
-      // 🆕 v1.14.0 : Import GPX — réutilise le calibrage KMZ existant pour
-      // transformer les coords WGS84 → plan local. Si pas de calibrage,
-      // alerte explicite invitant à passer par 💾 → KMZ pour calibrer.
-      { icone: "📤", titre: "Importer un fichier GPX (depuis TopoDroid, OsmAnd, etc.)", onClick: function() {
-          if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
-          else alert("Module import GPX indisponible");
+      { icone: "📂", titre: "Importer (session MyKTAMap ou GPX externe)", onClick: function() {
+          if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
+          else ouvrirImportSession();
         } },
       { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
