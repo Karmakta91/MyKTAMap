@@ -48,6 +48,14 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   ├── gpxIO.js                ← v1.14.0 — Import + Export GPX 1.1 (réutilise calibrage
 │   │                              KMZ). window.GpxIO = { exporter, parser, importer,
 │   │                              verifierCalibrage, _appliquerImport }
+│   │                              v1.15.0 : ajout track <desc> à l'export/parse + 'jonction'
+│   │                              dans validTypes (roundtrip parfait).
+│   ├── gpxImport.js            ← v1.15.0 — Reconversion d'un GPX MyKTAMap en ZIP MyKTAMap
+│   │                              utilisable (pendant exact de kmzImport.js). Génère un
+│   │                              canvas vierge auto-calibré sur les bounds GPS du GPX.
+│   │                              window.GpxImport = { estGpxMyktamap, extraireGpx,
+│   │                              extraireBoundsGps, genererCanvasVierge, ingestParsed,
+│   │                              genererZipMyktamap }
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
 │   │                              + flags _orientationListenerAttached/_motionListenerAttached
 │   │                              (idempotency contre fuite après plan switch)
@@ -3950,6 +3958,95 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
    - Modifier les valeurs de couleur de la charte (fait l'objet de plusieurs itérations validées).
    - Supprimer un tag built-in (régression silencieuse sur les anciens plans).
    - Réinitialiser le `localStorage` ou `IndexedDB` sans avertissement utilisateur.
+
+---
+
+### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)
+
+Module `js/gpxImport.js` (~310 lignes IIFE) → `window.GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`.
+
+**Pendant exact de `js/kmzImport.js`** (cf §32 bis) pour le format GPX. Couple symétrique gpxIO (export+import session) ↔ gpxImport (reconversion en ZIP autonome).
+
+#### 55.1 Spécificité GPX vs KMZ : pas d'image plan
+
+Un KMZ contient un `<GroundOverlay>` qui pointe vers une image de plan — c'est cette image qui sert de baseImage au ZIP MyKTAMap reconstruit. Un **GPX, lui, n'a que des coordonnées GPS** sans support d'image plan natif.
+
+Solution v1.15.0 : **génération automatique d'un canvas vierge** aux dimensions choisies par l'user (4000×4000 par défaut, 4 couleurs : sépia/blanc/gris/noir). Le canvas est calibré sur les bounds GPS du GPX :
+
+- **Coin BL** du canvas (x=0, y=H) ↔ `(lat_min, lng_min)`
+- **Coin TR** du canvas (x=W, y=0) ↔ `(lat_max, lng_max)`
+- Marge de 5% autour pour éviter que les annotations soient pile sur les bords
+
+Le calibrage `pointA` + `pointB` est embarqué dans `plan-config.json > plan.georef`, propagé vers `KmzExport.setCalibration` au load via `main.js > _propagerGeorefVersKmzExport`. L'user peut ensuite remplacer le canvas par une vraie image en mode Modifier le plan.
+
+#### 55.2 Détection GPX MyKTAMap
+
+`estGpxMyktamap(gpxDoc)` retourne `true` si :
+1. Attribut `creator="MyKTAMap…"` sur la racine `<gpx>`
+2. **OU** `<metadata><author><name>MyKTAMap…</name>`
+3. **OU** présence d'au moins un `<cmt>MyKTAMap level=N</cmt>` (signature posée par gpxIO.js > _genererGpx)
+
+Si non-MyKTAMap : warn dans le résumé mais pas blocking (l'user peut quand même générer un ZIP, les tags/types par défaut s'appliqueront aux Placemarks orphelins).
+
+#### 55.3 Calcul des bounds GPS
+
+`extraireBoundsGps(parsed)` itère sur **tous** les `wpt.lat/lng` et `trkpt.lat/lng` pour calculer `latMin`, `latMax`, `lngMin`, `lngMax`. Marge de 5% appliquée (avec fallback 0.0005° si Δ = 0). Retourne `null` si aucune coordonnée valide trouvée.
+
+#### 55.4 Ingestion parsed → points / roads
+
+`ingestParsed(parsed, transform, opts)` utilise `window.KmzExport.gpsToPlan(t, lat, lng)` pour la transformation inverse (GPS → pixels). Préservations :
+
+- **Tag points** depuis `<sym>` ou `<type>`, fallback `opts.pointTag` ou `"default"`
+- **Type tracés** depuis `<type>` parmi `{principal, secondaire, chemin, itinerary, jonction}`, fallback `opts.roadType` ou `"chemin"`
+- **Levels M-LVL** depuis `<cmt>MyKTAMap level=N</cmt>` sur waypoints ET tracks
+- **Descriptions** depuis `<desc>` sur waypoints ET tracks
+- **Filtre bounds** : points hors `[−50, W+50] × [−50, H+50]` rangés dans `stats.outOfBounds`
+
+#### 55.5 Restauration des icônes
+
+Pareil que `kmzImport.js > hotfix4+hotfix10` : fetch `icon/<tag>.png` depuis l'app courante pour chaque tag rencontré dans les points. `icon/iconetrack.png` toujours embarqué (default + track). Cached SW → marche offline.
+
+#### 55.6 Options optionnelles V2 + M-LVL
+
+Identiques au flow KMZ (cf §32 bis) :
+
+- **`opts.tilingV2`** → re-tile le canvas vierge en tuiles 512×512 via `window.MyKTAMapTilingV2` (exposée par createConf.js). Utile uniquement si l'user prévoit de remplacer le canvas par une grande image ensuite ; sinon V1 plat suffit pour un canvas vide.
+- **`opts.multiLevel`** → ajoute `plan.multiLevel = true` au JSON (utile si le GPX MyKTAMap contenait des annotations multi-niveau).
+- **`opts.onTilingProgress(done, total, currentZ)`** → callback de progression pour l'overlay UI.
+
+#### 55.7 UI : `_afficherImporterGpx` dans createConf.js
+
+Modale mirroir de `_afficherImporterKmz` (mêmes classes `.kta-kmz-imp-boite`, mêmes patterns visuels). Diffère sur :
+
+- Pas de section "calibrage extracté" — le calibrage est automatique
+- Section "Canvas vierge" : 2 inputs dimensions + 4 radios couleur
+- Section "Types par défaut" : 2 dropdowns (point tag + road type), pas de zone (GPX n'a pas de polygons)
+
+Exposée via `window.afficherImporterGpx = _afficherImporterGpx`.
+
+#### 55.8 Routing depuis les drop zones
+
+- `index.html > #zipDropZone` (loader home) : détecte `.gpx` → appelle `window.afficherImporterGpx(file)`
+- `js/createConf.js > _routerFichierImport` (drop zone générateur) : pareil
+
+Les 2 drop zones acceptent désormais `.zip` / `.kmz` / `.gpx` avec routing automatique. Pas d'erreur UX si l'user dépose un GPX là où il s'attendait à mettre un ZIP — l'app le route automatiquement vers la bonne modale.
+
+#### 55.9 ZIP MyKTAMap généré
+
+Structure finale :
+
+```
+plan_<nom>_from_gpx.zip
+├── plan-config.json    (avec plan.georef pour propagation auto)
+├── data/
+│   ├── baseImage.png   (canvas vierge généré)
+│   └── imported.json   (data layer "imported" : points + roads)
+└── icon/
+    ├── iconetrack.png  (default + track)
+    └── <tag>.png       (1 par tag rencontré, fetched depuis l'app)
+```
+
+Le ZIP est strictement compatible avec les autres pipelines (chargement classique, mode Modifier, Export externe, etc.) — c'est un ZIP MyKTAMap normal.
 
 ---
 

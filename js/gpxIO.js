@@ -179,6 +179,12 @@
     tracks.forEach(function(r) {
       lines.push('  <trk>');
       lines.push('    <name>' + _xmlEsc(r.label || r.type || "Tracé") + '</name>');
+      // v1.15.0 — ajout de <desc> sur les tracks (description du road) pour
+      // roundtrip MyKTAMap. Avant ce fix, la description du tracé était
+      // perdue à l'export GPX (seul le name était écrit).
+      if (r.description) {
+        lines.push('    <desc>' + _xmlEsc(r.description) + '</desc>');
+      }
       lines.push('    <type>' + _xmlEsc(r.type || "trace") + '</type>');
       if (Number.isInteger(r.level)) {
         lines.push('    <cmt>MyKTAMap level=' + r.level + '</cmt>');
@@ -260,10 +266,12 @@
     for (let i = 0; i < trks.length; i++) {
       const trk = trks[i];
       const nameEl = trk.getElementsByTagName("name")[0];
+      const descEl = trk.getElementsByTagName("desc")[0];  // v1.15.0
       const typeEl = trk.getElementsByTagName("type")[0];
       const cmtEl  = trk.getElementsByTagName("cmt")[0];
       const track = {
         name:  nameEl ? nameEl.textContent.trim() : null,
+        desc:  descEl ? descEl.textContent.trim() : null,  // v1.15.0
         type:  typeEl ? typeEl.textContent.trim() : null,
         cmt:   cmtEl  ? cmtEl.textContent.trim()  : null,
         points: []
@@ -380,15 +388,18 @@
           if (trk.cmt && /MyKTAMap level=(-?\d+)/.test(trk.cmt)) {
             level = parseInt(RegExp.$1, 10);
           }
-          // Map type GPX → type road MyKTAMap (si reconnu)
-          const validTypes = ["principal", "secondaire", "chemin", "itinerary"];
+          // Map type GPX → type road MyKTAMap (si reconnu).
+          // v1.15.0 — ajout de "jonction" pour roundtrip complet (sans ça,
+          // un tracé jonction exporté revenait en chemin à l'import).
+          const validTypes = ["principal", "secondaire", "chemin", "itinerary", "jonction"];
           const type = (trk.type && validTypes.indexOf(trk.type) >= 0) ? trk.type : "chemin";
           nouveauxTraces.push({
-            id:     "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
-            type:   type,
-            label:  trk.name || "(Tracé importé GPX)",
-            points: points,
-            level:  Number.isInteger(level) ? level : 0
+            id:          "gpx_trk_" + Date.now() + "_" + nouveauxTraces.length,
+            type:        type,
+            label:       trk.name || "(Tracé importé GPX)",
+            description: trk.desc || undefined,  // v1.15.0 — préserve la desc track
+            points:      points,
+            level:       Number.isInteger(level) ? level : 0
           });
         });
 

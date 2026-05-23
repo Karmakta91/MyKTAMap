@@ -9,7 +9,64 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (108 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (109 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v1-15-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.15.0 : 📤 Import GPX → ZIP MyKTAMap + consolidation cycle v1.14.x</strong></summary>
+
+Release MINOR (bump Y : 1.14.x → 1.15.0). Consolidation du cycle v1.14.x complet (toutes les features depuis v1.13.0) + **nouveau module dédié `js/gpxImport.js`** pour reconvertir un GPX MyKTAMap en ZIP MyKTAMap utilisable.
+
+### 📂 Import unifié 3 formats (drop zone home + générateur)
+
+Le drop zone du loader/home et celui du générateur acceptent désormais 3 extensions :
+
+| Format | Pipeline |
+|---|---|
+| `.zip` | Chargement classique d'un plan MyKTAMap existant |
+| `.kmz` | `window.afficherImporterKmz(file)` — reconversion avec image plan + icônes + annotations préservées (cf v1.14.20) |
+| `.gpx` | **NOUVEAU** `window.afficherImporterGpx(file)` — canvas vierge auto-calibré sur les bounds GPS + annotations |
+
+L'extension est détectée et routée automatiquement vers la modale d'import correspondante.
+
+### 🆕 Nouveau module `js/gpxImport.js` (~310 lignes)
+
+Pendant exact de `js/kmzImport.js` pour le format GPX :
+
+- **`estGpxMyktamap(gpxDoc)`** — détection via attribut `creator="MyKTAMap…"`, balise `<metadata><author><name>` ou présence de `<cmt>MyKTAMap level=N</cmt>`
+- **`extraireGpx(file)`** — parsing (réutilise `window.GpxIO.parser`)
+- **`extraireBoundsGps(parsed)`** — calcul lat/lng min/max sur waypoints + trkpts avec marge de 5%
+- **`genererCanvasVierge(w, h, color)`** — canvas PNG (sépia / blanc / gris / noir)
+- **`ingestParsed(parsed, transform, opts)`** — transformation des coords GPS → pixels via `KmzExport.buildTransform`, préservation des tags / types / levels via `<sym>` / `<type>` / `<cmt>`
+- **`genererZipMyktamap(opts)`** — orchestre tout : génère canvas + calibrage auto + data layer "imported" + planConfig avec `plan.georef` pour auto-propagation + restauration icônes via fetch app
+
+API exposée : `window.GpxImport = { ... }`.
+
+### 🎴 Nouvelle modale UI `_afficherImporterGpx` (createConf.js)
+
+Pattern visuel strictement identique à `_afficherImporterKmz` (.kta-kmz-imp-boite + .kta-aide-section + .kta-conv-drop) : upload → analyse → résumé (nb wpts/trks + bounds GPS + détection MyKTAMap) → config (nom/version/auteur + dimensions canvas + couleur + tag/type fallback + V2 + M-LVL) → génération ZIP.
+
+### 🔧 Check up `gpxIO.js` — 3 fixes mineurs pour roundtrip parfait
+
+1. **Export tracks** : ajout de `<desc>` (description du tracé, perdue avant ce fix)
+2. **Parse tracks** : extraction `<desc>` → `track.desc`
+3. **Roundtrip jonction** : ajout de `"jonction"` dans `validTypes` (avant ce fix, un tracé jonction exporté revenait en chemin à l'import)
+
+### ↻ Round-trip MyKTAMap GPX
+
+Un GPX exporté MyKTAMap puis ré-importé via 📤 Import GPX restaure : tags points (via `<sym>` / `<type>`), types tracés (`principal` / `secondaire` / `chemin` / `itinerary` / `jonction`), niveaux M-LVL (`<cmt>MyKTAMap level=N</cmt>`), descriptions waypoints + tracks, nom du plan (`<metadata><name>`).
+
+### 📂 Sources de vérité
+
+- `version.json` → `"v1.15.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.15.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.15.0-gpx-import"`
+- Nouveau fichier `js/gpxImport.js` ajouté à `ASSETS_TO_CACHE`
+
+### 🛡️ Confidentialité
+
+Module 100% local. Seul fetch externe : `icon/<tag>.png` depuis l'app courante (déjà cached SW, marche offline) pour restaurer les icônes des tags MyKTAMap ingérés. Aucun nouveau call réseau. `NETWORK_AUDIT` inchangé sur le fond.
+
+</details>
 
 <details id="v1-14-0" open>
 <summary><strong>🗓️ 23/05/2026 — 🚀 v1.14.0 : 📤📥 GPX import + export (Phase 1 V3 quick wins)</strong></summary>
@@ -90,7 +147,7 @@ Options dans l'onglet GPX :
 
 </details>
 
-<details id="v1-13-0" open>
+<details id="v1-13-0">
 <summary><strong>🗓️ 23/05/2026 — 🚀 v1.13.0 : Thème CLAIR global + Itinéraire mode urgence ré-activé par défaut + Fix hauteurs modales</strong></summary>
 
 Release MINOR (bump Y : 1.12.x → 1.13.0). Première release de la phase **V3** (KARMA validation 8:b = releases incrémentales).

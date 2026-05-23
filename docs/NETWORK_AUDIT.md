@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.14.0** (23 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.15.0** (24 mai 2026).
+>
+> **v1.15.0 (📤 Import GPX → ZIP MyKTAMap)** : nouveau module `js/gpxImport.js` (~310 lignes). 100% local côté fichiers (`FileReader` + `DOMParser` + canvas natif + `JSZip` + `Blob`). Une seule particularité réseau : pour restaurer les icônes des tags ingérés (default, track, et tous les tags rencontrés dans les waypoints du GPX), le module fait `fetch("icon/<tag>.png")` sur l'app courante (**same-origin**, déjà whitelisté). Ces icônes sont cached par le Service Worker → le fetch est servi depuis le cache local et marche offline. Aucun nouveau call vers un domaine tiers. Le SW cache un fichier de plus (`./js/gpxImport.js`) au boot, toujours same-origin.
 >
 > **v1.14.0 (📤📥 GPX import + export)** : aucune nouvelle connexion réseau introduite. Le nouveau module `js/gpxIO.js` (~360 lignes) opère **uniquement** sur des fichiers locaux : `FileReader` pour la lecture en import, `Blob` + URL.createObjectURL pour le téléchargement en export. Aucun fetch, aucun ping. Le parsing GPX utilise `DOMParser` natif du navigateur, pas de lib tierce. Le SW cache un fichier de plus (`./js/gpxIO.js`) au boot, toujours same-origin.
 >
@@ -307,4 +309,4 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 23 mai 2026 — v1.14.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin)*
+*Dernière mise à jour : 24 mai 2026 — v1.15.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin, aucune nouvelle whitelist en v1.15.0 — `gpxImport.js` same-origin + fetch icônes app cached SW)*

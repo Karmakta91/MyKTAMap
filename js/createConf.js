@@ -92,7 +92,7 @@ function afficherPlanner() {
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section kta-pl-col-full">
           <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-            <span>📂 Charger un ZIP <span class="kta-planner-hint">ou un KMZ MyKTAMap (optionnel)</span></span>
+            <span>📂 Charger un ZIP <span class="kta-planner-hint">ou un KMZ / GPX MyKTAMap (optionnel)</span></span>
             <!-- 📥 Bouton Conf exemple — déplacé ici depuis la home loader en v1.7.3.
                  Permet de télécharger le ZIP d'exemple myktamap.zip pour avoir un
                  plan de référence à modifier (workflow recommandé pour débutants). -->
@@ -103,22 +103,23 @@ function afficherPlanner() {
             </button>
           </div>
           <p class="kta-planner-info">
-            Tu peux importer un <strong>ZIP MyKTAMap</strong> existant pour pré-remplir
-            le formulaire et le modifier, OU un <strong>KMZ MyKTAMap</strong> (export
-            géolocalisé qu'on a généré précédemment via Export externe) que l'app
-            reconvertira automatiquement en ZIP MyKTAMap utilisable
-            (icônes / annotations / image plan préservées).
-            Sinon, remplis simplement le formulaire pour créer un nouveau plan from scratch.
+            3 formats acceptés :
+            <strong>ZIP MyKTAMap</strong> (modifier un plan existant),
+            <strong>KMZ MyKTAMap</strong> (export Export externe → reconverti automatiquement
+            avec image plan + icônes + annotations) ou
+            <strong>GPX MyKTAMap</strong> (waypoints + tracks → canvas vierge auto-calibré
+            sur les bounds GPS + annotations). Sinon, remplis simplement le formulaire pour
+            créer un nouveau plan from scratch.
           </p>
 
           <div class="kta-conv-drop" id="kta-planner-zip-drop" style="position:relative; overflow:hidden;">
             <span style="font-size:28px;">📦</span>
-            <span id="kta-planner-zip-label">Glisse un ZIP ou un KMZ ici ou clique pour sélectionner</span>
+            <span id="kta-planner-zip-label">Glisse un ZIP, KMZ ou GPX ici ou clique pour sélectionner</span>
 
             <input
               type="file"
               id="kta-planner-zip-input"
-              accept=".zip,.kmz,application/zip,application/vnd.google-earth.kmz"
+              accept=".zip,.kmz,.gpx,application/zip,application/vnd.google-earth.kmz,application/gpx+xml"
               style="
                 position:absolute;
                 inset:0;
@@ -587,10 +588,11 @@ function afficherPlanner() {
     zipInput.value = "";
   });
 
-  // v1.14.20-hotfix4 : route ZIP vers _chargerZipModifier (flow classique),
-  // KMZ vers _afficherImporterKmz (flow KMZ qui parse + reconstruit un ZIP
-  // MyKTAMap valide avec icônes préservées). Un seul drop zone visuellement
-  // pour l'user, mais 2 pipelines internes selon l'extension.
+  // v1.14.20-hotfix4 / v1.15.0 — route 3 extensions vers leur pipeline :
+  //   .zip → _chargerZipModifier (flow classique modification)
+  //   .kmz → _afficherImporterKmz (parse + reconstruction ZIP avec icônes)
+  //   .gpx → _afficherImporterGpx (canvas vierge auto-calibré + annotations)
+  // Un seul drop zone visuellement pour l'user, 3 pipelines internes.
   function _routerFichierImport(f) {
     if (!f) return;
     const lower = f.name.toLowerCase();
@@ -598,17 +600,19 @@ function afficherPlanner() {
       _plannerMode = "modifier";
       _chargerZipModifier(f);
     } else if (lower.endsWith(".kmz")) {
-      // Le pipeline KMZ ouvre sa propre modale (extraction + preview +
-      // confirmation user avant génération du ZIP MyKTAMap). On laisse
-      // _afficherImporterKmz prendre le relais et on n'utilise pas
-      // _plannerMode (le KMZ produit son propre ZIP à télécharger).
       if (typeof _afficherImporterKmz === "function") {
         _afficherImporterKmz(f);
       } else {
         _plannerZipStatus("❌ Module d'import KMZ indisponible", true);
       }
+    } else if (lower.endsWith(".gpx")) {
+      if (typeof _afficherImporterGpx === "function") {
+        _afficherImporterGpx(f);
+      } else {
+        _plannerZipStatus("❌ Module d'import GPX indisponible", true);
+      }
     } else {
-      _plannerZipStatus("❌ Le fichier doit être un .zip ou un .kmz", true);
+      _plannerZipStatus("❌ Le fichier doit être un .zip, un .kmz ou un .gpx", true);
     }
   }
 
@@ -2952,3 +2956,368 @@ function _escHtml(s) {
     return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
   });
 }
+
+// =====================================================================
+// 📤 MODALE IMPORT GPX → ZIP MyKTAMap (depuis v1.15.0)
+// =====================================================================
+// Pipeline complet en 1 modale (mirroir de _afficherImporterKmz) :
+//   1. Upload d'un fichier .gpx (MyKTAMap export, signature creator)
+//   2. Parsing automatique (gpxImport.js > extraireGpx)
+//   3. Affichage du résumé : nb waypoints, nb tracks, bounds GPS
+//   4. Choix dimensions canvas + couleur + tag/type par défaut + V2 + M-LVL
+//   5. Bouton "Générer le ZIP" qui télécharge le ZIP MyKTAMap utilisable
+//
+// Différence majeure vs KMZ : un GPX n'a pas d'image plan. On GÉNÈRE un
+// canvas vierge (mode « image vierge » du générateur classique) calibré
+// automatiquement sur les bounds GPS du GPX.
+// =====================================================================
+
+let _gpxImportState = null;  // { gpxDoc, parsed, bounds, file }
+
+function _afficherImporterGpx(prefilledFile) {
+  const existing = document.getElementById("kta-gpx-import-modal");
+  if (existing) { existing.remove(); return; }
+
+  const modal = document.createElement("div");
+  modal.id        = "kta-gpx-import-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite kta-kmz-imp-boite">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">📤 Importer un GPX → ZIP MyKTAMap</span>
+        <button class="kta-panneau-close" id="kta-gpx-imp-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps" id="kta-kmz-imp-corps">
+
+        <p class="kta-planner-info" style="margin-bottom:14px;">
+          Sélectionne un fichier <strong>.gpx</strong> précédemment exporté par MyKTAMap
+          (📡 Export externe → onglet GPX). L'app génère un ZIP MyKTAMap utilisable
+          avec un <strong>canvas vierge calibré automatiquement</strong> sur les bounds GPS du GPX
+          — tu pourras remplacer le canvas par une vraie image plan ensuite en mode
+          « Modifier le plan ».
+        </p>
+        <div style="padding:8px 12px; background:rgba(140,180,255,0.06); border:1px solid rgba(140,180,255,0.22); border-radius:6px; font-size:12px; color:#c0c8d8; margin-bottom:14px;">
+          <strong style="color:#8cb4ff;">ℹ️ Round-trip MyKTAMap</strong> — un GPX exporté depuis
+          MyKTAMap conserve les tags points (via <code>&lt;sym&gt;</code>),
+          les types de tracé (<code>&lt;type&gt;</code>) et les niveaux M-LVL
+          (<code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code>) — tous restaurés au ré-import.
+        </div>
+
+        <!-- 1. UPLOAD -->
+        <div class="kta-aide-section" id="kta-gpx-imp-step-upload">
+          <div class="kta-aide-section-titre">📂 Fichier GPX</div>
+          <div class="kta-conv-drop" id="kta-gpx-imp-drop" style="position:relative; overflow:hidden;">
+            <span style="font-size:28px;">📤</span>
+            <span id="kta-gpx-imp-label">Glisse un .gpx ici ou clique pour sélectionner</span>
+            <input type="file" id="kta-gpx-imp-input" accept=".gpx,application/gpx+xml"
+              style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; z-index:5;">
+          </div>
+          <div id="kta-gpx-imp-status" style="margin-top:8px;font-size:13px;min-height:18px;"></div>
+        </div>
+
+        <!-- 2. RÉSUMÉ -->
+        <div class="kta-aide-section" id="kta-gpx-imp-step-resume" style="display:none;">
+          <div class="kta-aide-section-titre">📊 Aperçu du contenu détecté</div>
+          <div id="kta-gpx-imp-resume" class="kta-conv-stats"></div>
+        </div>
+
+        <!-- 3. CONFIG IMPORT -->
+        <div class="kta-aide-section" id="kta-gpx-imp-step-config" style="display:none;">
+          <div class="kta-aide-section-titre">⚙️ Configuration de l'import</div>
+
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">Nom du plan <span class="kta-planner-req">*</span></label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-name" type="text" placeholder="ex: Plan GPX importé">
+
+            <label class="kta-cfg-label">Version</label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-version" type="text" placeholder="v1" value="v1">
+
+            <label class="kta-cfg-label">Auteur</label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-author" type="text" placeholder="ex: KARMA — Import GPX">
+          </div>
+
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">
+            <strong>Canvas vierge</strong> — un fond uni est généré aux dimensions choisies. La calibration
+            GPS est automatique (bounds du GPX). Tu pourras remplacer ce canvas par une vraie image plan
+            ensuite via 🏗️ Générer un plan → Modifier.
+          </p>
+
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">Largeur (px)</label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-w" type="number" min="500" max="12000" step="100" value="4000">
+
+            <label class="kta-cfg-label">Hauteur (px)</label>
+            <input class="kta-cfg-input" id="kta-gpx-imp-h" type="number" min="500" max="12000" step="100" value="4000">
+          </div>
+
+          <div class="kta-cfg-label" style="margin-top:8px;">Couleur du canvas</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:4px;">
+            <label class="kta-export-radio-row">
+              <input type="radio" name="gpx_imp_color" value="white">
+              <span>⬜ Blanc <span style="color:#8892a4; font-size:11px;">(papier)</span></span>
+            </label>
+            <label class="kta-export-radio-row">
+              <input type="radio" name="gpx_imp_color" value="gray">
+              <span>▫️ Gris clair <span style="color:#8892a4; font-size:11px;">(neutre)</span></span>
+            </label>
+            <label class="kta-export-radio-row">
+              <input type="radio" name="gpx_imp_color" value="black">
+              <span>⬛ Noir <span style="color:#8892a4; font-size:11px;">(contraste)</span></span>
+            </label>
+            <label class="kta-export-radio-row">
+              <input type="radio" name="gpx_imp_color" value="sepia" checked>
+              <span>📜 Sépia <span style="color:#8892a4; font-size:11px;">(carte ancienne)</span></span>
+            </label>
+          </div>
+
+          <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">
+            <strong>Types par défaut</strong> — fallback pour les waypoints / tracks <em>sans</em>
+            <code>&lt;sym&gt;</code> / <code>&lt;type&gt;</code> reconnu. Les GPX MyKTAMap encodent
+            le tag/type directement et sont restaurés tels quels.
+          </p>
+
+          <div class="kta-planner-grille">
+            <label class="kta-cfg-label">📍 Points → tag</label>
+            <select class="kta-cfg-input" id="kta-gpx-imp-point-tag">
+              <option value="default" selected>Par défaut (icône générique)</option>
+              <option value="pa">Puits Aération (pa)</option>
+              <option value="pb">Puits Bouchon (pb)</option>
+              <option value="pc">Puits Communication (pc)</option>
+              <option value="pe">Puits Égout (pe)</option>
+              <option value="ps">Puits Spéléo (ps)</option>
+              <option value="salle">Salle (salle)</option>
+              <option value="chatiere">Chatière (chatiere)</option>
+              <option value="passage">Passage (passage)</option>
+              <option value="danger">Danger (danger)</option>
+              <option value="info">Info (info)</option>
+            </select>
+
+            <label class="kta-cfg-label">🛣️ Tracks → type</label>
+            <select class="kta-cfg-input" id="kta-gpx-imp-road-type">
+              <option value="chemin" selected>Chemin (jaune fin)</option>
+              <option value="secondaire">Secondaire (violet)</option>
+              <option value="principal">Principal (vert épais)</option>
+            </select>
+          </div>
+
+          <!-- Options V2 + M-LVL (cohérent avec _afficherImporterKmz hotfix12) -->
+          <div style="margin-top:14px;">
+            <label class="kta-planner-tiling-v2-row" title="Decoupe le canvas en tuiles 512x512 sur 4 niveaux de zoom. Reduction memoire massive sur les gros plans.">
+              <input type="checkbox" id="kta-gpx-imp-v2">
+              <span>
+                <strong>🧱 Convertir en V2 tuile (performance)</strong>
+                <em>Re-tile le canvas vierge en tuiles 512×512. Utile uniquement si tu prévois de remplacer le canvas par une grande image ensuite. Pour un canvas vide, V1 suffit largement.</em>
+              </span>
+            </label>
+            <label class="kta-planner-multilevel-row" style="margin-top:8px;">
+              <input type="checkbox" id="kta-gpx-imp-mlvl">
+              <span>
+                <strong>🏗️ Plan multi-niveau (avancé)</strong>
+                <em>Active la gestion des étages dans le plan-config.json généré. Coche si ton GPX MyKTAMap contenait des annotations multi-niveau (préservées via <code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code>).</em>
+              </span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="kta-aide-actions" style="padding:14px 18px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:10px; justify-content:flex-end;">
+        <button class="kta-btn kta-btn-ghost" id="kta-gpx-imp-annuler">Annuler</button>
+        <button class="kta-btn kta-btn-primary" id="kta-gpx-imp-generer" disabled>📦 Générer le ZIP MyKTAMap</button>
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(modal);
+  _gpxImportState = null;
+
+  const _close = function() {
+    modal.remove();
+    _gpxImportState = null;
+  };
+  document.getElementById("kta-gpx-imp-close").addEventListener("click", _close);
+  document.getElementById("kta-gpx-imp-annuler").addEventListener("click", _close);
+  modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+
+  const input   = document.getElementById("kta-gpx-imp-input");
+  const labelEl = document.getElementById("kta-gpx-imp-label");
+  input.addEventListener("change", async function() {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    labelEl.textContent = "📦 " + file.name;
+    await _gpxImpAnalyserFichier(file);
+  });
+
+  document.getElementById("kta-gpx-imp-generer").addEventListener("click", _gpxImpGenerer);
+
+  // Si fichier pré-fourni (drop zone home avec .gpx ou drop dans générateur),
+  // lance directement l'analyse.
+  if (prefilledFile) {
+    if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
+    setTimeout(function() { _gpxImpAnalyserFichier(prefilledFile); }, 0);
+  }
+}
+
+async function _gpxImpAnalyserFichier(file) {
+  const status = document.getElementById("kta-gpx-imp-status");
+  status.textContent = "⏳ Analyse du GPX en cours…";
+  status.style.color = "#8cb4ff";
+
+  if (!window.GpxImport || !window.GpxIO) {
+    status.textContent = "❌ Module GpxImport / GpxIO non chargé";
+    status.style.color = "#ff8c8c";
+    return;
+  }
+  try {
+    const { gpxDoc, parsed } = await window.GpxImport.extraireGpx(file);
+
+    // Détection MyKTAMap (warn si non-MyKTAMap mais pas blocking)
+    const isMkm = window.GpxImport.estGpxMyktamap(gpxDoc);
+
+    // Bounds GPS
+    const bounds = window.GpxImport.extraireBoundsGps(parsed);
+    if (!bounds || bounds.count === 0) {
+      status.textContent = "❌ Aucune coordonnée GPS valide dans ce GPX";
+      status.style.color = "#ff8c8c";
+      return;
+    }
+
+    _gpxImportState = {
+      file: file,
+      gpxDoc: gpxDoc,
+      parsed: parsed,
+      bounds: bounds,
+      isMyktamap: isMkm
+    };
+
+    // Résumé HTML
+    const sourceLine = isMkm
+      ? '<div style="color:#6ce28a;">✅ GPX MyKTAMap détecté — round-trip complet (tags, niveaux M-LVL préservés)</div>'
+      : '<div style="color:#ffb380;">⚠️ GPX tiers (TopoDroid / OsmAnd / Strava…) — types par défaut appliqués aux waypoints/tracks sans <code>&lt;sym&gt;</code> ou <code>&lt;type&gt;</code> reconnu</div>';
+    const dLat = bounds.latMax - bounds.latMin;
+    const dLng = bounds.lngMax - bounds.lngMin;
+    document.getElementById("kta-gpx-imp-resume").innerHTML = `
+      ${sourceLine}
+      <div>📍 <strong>Waypoints</strong> : ${parsed.waypoints.length}</div>
+      <div>🛣️ <strong>Tracks</strong> : ${parsed.tracks.length}</div>
+      <div>🌐 <strong>Bounds GPS</strong> : lat ${bounds.latMin.toFixed(5)} → ${bounds.latMax.toFixed(5)} (Δ ${dLat.toFixed(5)}°), lng ${bounds.lngMin.toFixed(5)} → ${bounds.lngMax.toFixed(5)} (Δ ${dLng.toFixed(5)}°)</div>
+      <div>📐 <strong>Calibrage auto</strong> : coin BL = (lat_min, lng_min), coin TR = (lat_max, lng_max)</div>
+    `;
+
+    document.getElementById("kta-gpx-imp-step-resume").style.display = "";
+    document.getElementById("kta-gpx-imp-step-config").style.display = "";
+
+    // Pré-remplit le nom du plan depuis metadata.name si dispo
+    const nameInput = document.getElementById("kta-gpx-imp-name");
+    if (nameInput && !nameInput.value && parsed.metadata && parsed.metadata.name) {
+      nameInput.value = parsed.metadata.name + " (depuis GPX)";
+    }
+
+    document.getElementById("kta-gpx-imp-generer").disabled = false;
+
+    status.textContent = "✅ GPX analysé — configure ci-dessous puis Générer le ZIP";
+    status.style.color = "#6ce28a";
+  } catch(err) {
+    status.textContent = "❌ " + (err.message || err);
+    status.style.color = "#ff8c8c";
+  }
+}
+
+async function _gpxImpGenerer() {
+  if (!_gpxImportState) return;
+  const state = _gpxImportState;
+  const btnGen = document.getElementById("kta-gpx-imp-generer");
+  const status = document.getElementById("kta-gpx-imp-status");
+
+  const name    = (document.getElementById("kta-gpx-imp-name")?.value || "").trim();
+  const version = (document.getElementById("kta-gpx-imp-version")?.value || "").trim() || "v1";
+  const author  = (document.getElementById("kta-gpx-imp-author")?.value || "").trim() || "Import GPX";
+  const w       = parseInt(document.getElementById("kta-gpx-imp-w").value, 10) || 4000;
+  const h       = parseInt(document.getElementById("kta-gpx-imp-h").value, 10) || 4000;
+  const colorEl = document.querySelector('input[name="gpx_imp_color"]:checked');
+  const color   = colorEl ? colorEl.value : "sepia";
+  const pointTag = document.getElementById("kta-gpx-imp-point-tag").value;
+  const roadType = document.getElementById("kta-gpx-imp-road-type").value;
+  const tilingV2On   = !!document.getElementById("kta-gpx-imp-v2")?.checked;
+  const multiLevelOn = !!document.getElementById("kta-gpx-imp-mlvl")?.checked;
+
+  if (!name) {
+    status.textContent = "⚠️ Le nom du plan est obligatoire";
+    status.style.color = "#ffb380";
+    return;
+  }
+
+  btnGen.disabled = true;
+  btnGen.textContent = "⏳ Génération…";
+  status.textContent = "⏳ Conversion en cours…";
+  status.style.color = "#8cb4ff";
+
+  // Overlay V2 progress si demandé (réutilise pattern KMZ)
+  let v2Overlay = null;
+  if (tilingV2On) {
+    v2Overlay = document.createElement("div");
+    v2Overlay.id = "kta-gpx-imp-v2-progress";
+    v2Overlay.className = "kta-modal-overlay";
+    v2Overlay.style.zIndex = "100000";
+    v2Overlay.innerHTML =
+      '<div class="kta-modal">' +
+        '<div class="kta-modal-icon">🧱</div>' +
+        '<div class="kta-modal-titre">Conversion V2 tuile : génération des tuiles…</div>' +
+        '<div class="kta-modal-texte">' +
+          '<div id="kta-gpx-v2-progress-text" style="margin-bottom:10px;">Initialisation…</div>' +
+          '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
+            '<div id="kta-gpx-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(v2Overlay);
+  }
+  const onTilingProgress = tilingV2On ? function(done, total, currentZ) {
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const txt = document.getElementById("kta-gpx-v2-progress-text");
+    const bar = document.getElementById("kta-gpx-v2-progress-bar");
+    if (txt) txt.textContent = "Niveau z=" + currentZ + " · " + done + " / " + total + " tuiles (" + pct + "%)";
+    if (bar) bar.style.width = pct + "%";
+  } : null;
+
+  try {
+    const result = await window.GpxImport.genererZipMyktamap({
+      planName:         name,
+      planVersion:      version,
+      planAuthor:       author,
+      parsed:           state.parsed,
+      bounds:           state.bounds,
+      canvasWidth:      w,
+      canvasHeight:     h,
+      canvasColor:      color,
+      pointTag:         pointTag,
+      roadType:         roadType,
+      tilingV2:         tilingV2On,
+      multiLevel:       multiLevelOn,
+      onTilingProgress: onTilingProgress
+    });
+
+    // Téléchargement
+    const url = URL.createObjectURL(result.blob);
+    const a   = document.createElement("a");
+    a.href = url;
+    a.download = "plan_" + name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase() + "_from_gpx.zip";
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+
+    const s = result.stats;
+    status.innerHTML = "✅ ZIP généré ! " +
+      (s.kept || 0) + " annotations importées, " +
+      (s.outOfBounds || 0) + " hors-bounds ignorée(s), " +
+      (s.skipped || 0) + " skippée(s).";
+    status.style.color = "#6ce28a";
+  } catch(err) {
+    status.textContent = "❌ Erreur génération : " + (err.message || err);
+    status.style.color = "#ff8c8c";
+  } finally {
+    if (v2Overlay && v2Overlay.parentNode) v2Overlay.remove();
+    btnGen.textContent = "📦 Générer le ZIP MyKTAMap";
+    btnGen.disabled = false;
+  }
+}
+
+window.afficherImporterGpx = _afficherImporterGpx;

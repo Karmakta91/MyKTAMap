@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.14.20-hotfix12-kmz-v2-mlvl";
+const CACHE_NAME = "myktamap-cache-v1.15.0-gpx-import";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -122,6 +122,8 @@ const ASSETS_TO_CACHE = [
   "./js/kmzImport.js",
   // 🆕 v1.14.0 : GPX import + export (réutilise calibrage KMZ)
   "./js/gpxIO.js",
+  // 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré)
+  "./js/gpxImport.js",
   "./js/tableEditor.js",
   "./js/searchPoints.js",
   "./js/createConf.js",

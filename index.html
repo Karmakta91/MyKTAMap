@@ -253,12 +253,13 @@
           <div class="loader-panel active" id="panelZip">
         <div class="zip-drop-zone" id="zipDropZone">
           <span class="zip-icon">📦</span>
-          Glisse ton archive <strong>ZIP</strong> ou un <strong>KMZ MyKTAMap</strong> ici<br>
+          Glisse ton archive <strong>ZIP</strong>, un <strong>KMZ</strong> ou un <strong>GPX MyKTAMap</strong> ici<br>
           <span style="font-size:12px; opacity:0.6;">ou clique pour sélectionner</span>
-          <!-- v1.14.20-hotfix6 — accept étendu à .kmz : un KMZ déposé ici
-               est routé vers la modale d'import KMZ (afficherImporterKmz)
-               qui le reconvertit en ZIP MyKTAMap avec icônes préservées. -->
-          <input id="zipFile" type="file" accept=".zip,.kmz,application/zip,application/vnd.google-earth.kmz">
+          <!-- v1.14.20-hotfix6 + v1.15.0 — accept étendu à .kmz et .gpx :
+               un KMZ ou un GPX déposé ici est routé vers sa modale d'import
+               dédiée (afficherImporterKmz / afficherImporterGpx) qui le
+               reconvertit en ZIP MyKTAMap utilisable. -->
+          <input id="zipFile" type="file" accept=".zip,.kmz,.gpx,application/zip,application/vnd.google-earth.kmz,application/gpx+xml">
         </div>
         <div id="zipFileName"></div>
 
@@ -801,6 +802,9 @@
        via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
        kmzExport.js. -->
   <script src="js/gpxIO.js"></script>
+  <!-- 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré + annotations
+       restaurées). Doit charger APRÈS gpxIO.js et kmzExport.js. -->
+  <script src="js/gpxImport.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/planRegistry.js"></script>
   <script src="js/sessionPersist.js"></script>
@@ -960,18 +964,26 @@
       zipFileInput.addEventListener("change", function () {
         const f = zipFileInput.files[0];
         if (!f) { zipFileName.textContent = ""; return; }
-        // v1.14.20-hotfix6 — si l'user a sélectionné un KMZ via le picker
-        // classique (au lieu du drag), on route vers la modale d'import
-        // KMZ comme pour le drop. Mêmes garanties : preview, conversion
-        // automatique en ZIP MyKTAMap avec icônes préservées.
+        // v1.14.20-hotfix6 / v1.15.0 — route KMZ et GPX vers leur modale
+        // d'import dédiée. Pour un ZIP MyKTAMap classique : flow direct.
         const lower = f.name.toLowerCase();
         if (lower.endsWith(".kmz")) {
-          zipFileInput.value = "";  // vide le champ : on ne charge pas comme ZIP
+          zipFileInput.value = "";
           if (typeof window.afficherImporterKmz === "function") {
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
             setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
+          }
+          return;
+        }
+        if (lower.endsWith(".gpx")) {
+          zipFileInput.value = "";
+          if (typeof window.afficherImporterGpx === "function") {
+            zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
+            window.afficherImporterGpx(f);
+          } else {
+            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
           }
           return;
         }
@@ -996,19 +1008,27 @@
           // Drop : pas de handle FS
           _currentFsHandle = null;
         } else if (lower.endsWith(".kmz")) {
-          // v1.14.20-hotfix6 (KARMA « si je glisse un kmz dans Glisse ton
-          // archive zip, il me dit que je dois donner un zip ») : on route
-          // le KMZ vers la modale d'import dédiée (parse + reconstruction
-          // en ZIP MyKTAMap avec icônes/annotations préservées). L'user
-          // n'a pas à fermer ce drop et ouvrir le Générateur manuellement.
+          // v1.14.20-hotfix6 — route KMZ vers la modale d'import dédiée
+          // (parse + reconstruction en ZIP MyKTAMap avec icônes/annotations
+          // préservées).
           if (typeof window.afficherImporterKmz === "function") {
             zipFileName.textContent = "🌍 " + f.name + " — ouverture de l'import KMZ…";
             window.afficherImporterKmz(f);
           } else {
             setStatus("Module d'import KMZ indisponible — ouvre 🏗️ Générer un plan et utilise l'import KMZ depuis là.", true);
           }
+        } else if (lower.endsWith(".gpx")) {
+          // v1.15.0 — route GPX vers la nouvelle modale d'import GPX
+          // (parse + canvas vierge auto-calibré + reconstruction ZIP
+          // MyKTAMap). Cohérent avec le flow KMZ.
+          if (typeof window.afficherImporterGpx === "function") {
+            zipFileName.textContent = "📤 " + f.name + " — ouverture de l'import GPX…";
+            window.afficherImporterGpx(f);
+          } else {
+            setStatus("Module d'import GPX indisponible — ouvre 🏗️ Générer un plan et utilise l'import GPX depuis là.", true);
+          }
         } else {
-          setStatus("Le fichier doit être une archive .zip ou un .kmz MyKTAMap", true);
+          setStatus("Le fichier doit être une archive .zip, un .kmz ou un .gpx MyKTAMap", true);
         }
       });
 

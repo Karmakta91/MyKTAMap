@@ -4,6 +4,67 @@
 
 ---
 
+## 🆕 Nouveautés v1.15.0 (24/05/2026) — 📤 Import GPX → ZIP MyKTAMap
+
+> Consolidation du cycle v1.14.x complet + nouveau module dédié à l'import GPX.
+
+### 📂 Drop zone home et générateur — 3 formats acceptés
+
+Désormais tu peux glisser dans la zone « 📦 Charger un plan » de la home **ou** dans la zone d'upload du générateur 🏗️ **trois types de fichiers** :
+
+| Format | Comportement |
+|---|---|
+| `.zip` | Chargement classique d'un plan MyKTAMap existant |
+| `.kmz` | Reconversion automatique en ZIP MyKTAMap utilisable (image plan + icônes + annotations préservées) — *cf v1.14.20* |
+| `.gpx` | **Nouveau v1.15.0** — Génère un ZIP MyKTAMap avec **canvas vierge auto-calibré** sur les bounds GPS du GPX + annotations restaurées |
+
+L'app détecte l'extension automatiquement et ouvre la modale d'import correspondante.
+
+### 📤 Import GPX → ZIP MyKTAMap (le module dédié)
+
+Tu as un GPX exporté depuis MyKTAMap (via 📡 Export externe → onglet GPX) et tu veux **le retransformer en plan utilisable** sur un autre device ? C'est ce que fait ce nouveau module.
+
+**Flow d'import :**
+1. Glisse le `.gpx` dans le drop zone home **ou** dans le générateur, **ou** clique « 🌍 Ouvrir l'import KMZ → Glisse un .gpx »
+2. L'app analyse le GPX et affiche un résumé : nb waypoints, nb tracks, **bounds GPS** (lat/lng min/max) + signature « ✅ GPX MyKTAMap détecté »
+3. Tu configures :
+   - **Nom / version / auteur** du plan (pré-rempli depuis `<metadata><name>` si dispo)
+   - **Dimensions canvas** (largeur × hauteur en pixels, défaut 4000×4000)
+   - **Couleur du canvas** (sépia / blanc / gris clair / noir)
+   - **Tag/type par défaut** pour les waypoints/tracks sans `<sym>` ou `<type>` reconnu (= fallback uniquement, les GPX MyKTAMap encodent le tag directement)
+   - **🧱 V2 tuilé** (optionnel — utile uniquement si tu prévois de remplacer le canvas par une grande image ensuite)
+   - **🏗️ Plan multi-niveau** (optionnel — coche si ton GPX contenait des annotations multi-niveau)
+4. Click « 📦 Générer le ZIP MyKTAMap » → téléchargement automatique du fichier `plan_<nom>_from_gpx.zip`
+
+### 🌐 Calibrage GPS automatique
+
+Le module calcule les **bounds GPS** du GPX (lat min/max + lng min/max + 5% de marge autour) et établit un calibrage automatique :
+- **Coin bas-gauche du canvas** = `(lat_min, lng_min)`
+- **Coin haut-droit du canvas** = `(lat_max, lng_max)`
+
+Le calibrage est embarqué dans `plan-config.json > plan.georef = { pointA, pointB }` et **propagé automatiquement** vers `KmzExport.setCalibration(planId, georef)` au chargement du plan (cf v1.14.20 pattern). Conséquence : tes annotations sont placées aux **bons pixels relativement aux bounds**, et tu peux directement ré-exporter en KMZ / GPX ou ré-importer un nouveau GPX externe sans re-saisir le calibrage.
+
+### ↻ Round-trip GPX parfait
+
+Un GPX exporté depuis MyKTAMap puis ré-importé via 📤 Import GPX restaure :
+- ✅ **Tags points** (via `<sym>` / `<type>`)
+- ✅ **Types tracés** : `principal`, `secondaire`, `chemin`, `itinerary`, **`jonction`** *(ajouté en v1.15.0 — avant ce fix, jonction revenait en chemin)*
+- ✅ **Niveaux M-LVL** (via `<cmt>MyKTAMap level=N</cmt>` sur waypoints et tracks)
+- ✅ **Descriptions** des waypoints **ET des tracks** *(track desc ajoutée en v1.15.0 — avant ce fix elle était perdue à l'export)*
+- ✅ **Nom du plan** (via `<metadata><name>`)
+
+### 🎨 Remplacer le canvas par une vraie image
+
+Le canvas vierge n'est qu'un fond pour situer les annotations. Pour mettre **une vraie image de plan** dessous :
+1. Ouvre le ZIP généré dans 🏗️ Générer un plan → mode Modifier
+2. Remplace `baseImage` par ton image (PNG/JPG)
+3. Re-saisis ou ajuste le calibrage GPS si l'image n'est pas alignée sur les bounds par défaut
+4. Re-génère le ZIP — tes annotations sont conservées
+
+> 🛡️ **Confidentialité** — l'import GPX est 100% local. Le seul fetch externe est `icon/<tag>.png` depuis l'app courante (déjà cached par le Service Worker, marche offline) pour restaurer les icônes du tracker et des tags MyKTAMap. Aucun nouveau call réseau.
+
+---
+
 ## 🆕 Nouveautés v1.14.0 (23/05/2026) — 📤📥 GPX import + export
 
 > Première feature de la Phase 1 V3 quick wins.
