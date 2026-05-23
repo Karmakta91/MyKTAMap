@@ -13053,6 +13053,121 @@ html.kta-theme-light .kta-conv-sens-btn .kta-conv-sens-desc {
   opacity: 0.75 !important;
 }
 
+/* === Enregistrer la session (#kta-session-export-modal) — tous styles
+   inline injectés par sessionExporter.js > _injecterStyles. Override
+   complet avec spécificité ID + !important. ============================ */
+
+/* Fix hauteur : la modale n'a pas de classe spécifique, donc on scope
+   sur l'ID #kta-session-export-modal pour cibler PRÉCISÉMENT cette
+   modale (général dark + light) */
+#kta-session-export-modal .kta-readme-modal-boite {
+  height: auto !important;
+  max-height: 90vh !important;
+  max-width: 720px !important;
+}
+
+/* Onglets Full / Avancé / Conversion / KMZ */
+html.kta-theme-light .kta-ses-tabs {
+  background: var(--kta-light-bg-bar) !important;
+  border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
+}
+html.kta-theme-light .kta-ses-tab {
+  background: transparent !important;
+  color: var(--kta-light-text-muted) !important;
+  border: 1px solid transparent !important;
+}
+html.kta-theme-light .kta-ses-tab:hover {
+  background: rgba(244, 197, 66, 0.15) !important;
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-tab.active {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border-color: var(--kta-light-accent) !important;
+  border-bottom-color: #fdf8eb !important;
+  font-weight: 700 !important;
+}
+
+/* Contenu interne */
+html.kta-theme-light .kta-ses-content {
+  background: #fdf8eb !important;
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-intro {
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-section-title {
+  color: var(--kta-light-accent-hover) !important;
+}
+html.kta-theme-light .kta-ses-cb-row {
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-cb-row:hover {
+  background: rgba(244, 197, 66, 0.10) !important;
+}
+html.kta-theme-light .kta-ses-cb-row .kta-ses-count {
+  color: var(--kta-light-text-muted) !important;
+}
+html.kta-theme-light .kta-ses-radio-row {
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-radio-row:hover {
+  background: rgba(244, 197, 66, 0.10) !important;
+}
+html.kta-theme-light .kta-ses-radio-row .kta-ses-radio-hint {
+  color: var(--kta-light-text-muted) !important;
+}
+
+/* Bloc résumé (kta-ses-summary) — adapter sur fond clair */
+html.kta-theme-light .kta-ses-summary {
+  background: rgba(244, 197, 66, 0.10) !important;
+  border: 1px solid rgba(244, 197, 66, 0.35) !important;
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-ses-summary strong {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-ses-summary .kta-ses-zero {
+  color: var(--kta-light-text-muted) !important;
+}
+html.kta-theme-light .kta-ses-empty {
+  color: #b02020 !important;
+}
+
+/* Footer actions + boutons */
+html.kta-theme-light .kta-ses-actions {
+  background: #fdf8eb !important;
+  border-top: 1px solid var(--kta-light-border) !important;
+}
+html.kta-theme-light .kta-ses-btn-primary {
+  background: var(--kta-light-accent) !important;
+  color: #2a2620 !important;
+  border: 1px solid var(--kta-light-accent-hover) !important;
+}
+html.kta-theme-light .kta-ses-btn-primary:hover {
+  background: var(--kta-light-accent-hover) !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-ses-btn-primary:disabled {
+  background: rgba(244, 197, 66, 0.30) !important;
+  color: rgba(0, 0, 0, 0.40) !important;
+}
+html.kta-theme-light .kta-ses-btn-secondary {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
+html.kta-theme-light .kta-ses-btn-secondary:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* === Onglet KMZ — blocs calibrage + apperçu === */
+html.kta-theme-light .kta-kmz-section {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border: 1px solid var(--kta-light-border) !important;
+  color: var(--kta-light-text) !important;
+}
+
 /* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
 html.kta-theme-light .kta-pin-proposal-boite {
   background: #fdf8eb !important;
