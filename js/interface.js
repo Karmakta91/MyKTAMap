@@ -1,6 +1,6 @@
 ﻿/*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * https://myktamap.is-underground.fr — Licence CC BY-NC-SA 4.0
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
@@ -1459,13 +1459,19 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🔍 Rechercher un point</div>
+          <div class="kta-aide-section-titre">🔍 Recherche unifiée <span style="font-size:10px; color:#8892a4; font-weight:400;">(Ctrl+K)</span></div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">🔍</span><span>Trouver un point par nom, id, tag ou description (clic direct)</span>
+            <span class="kta-aide-icone">📍</span><span>Points (nom, id, tag, description, état)</span>
+            <span class="kta-aide-icone">🛣️</span><span>Tracés (label, type, niveau M-LVL)</span>
+            <span class="kta-aide-icone">⬛</span><span>Zones (type, niveau)</span>
+            <span class="kta-aide-icone">🏛️</span><span>Structures (piliers, murs, fronts)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            Cherche dans tous les calques de données et tes points ajoutés. Au clic sur un résultat,
-            la carte se centre sur le point avec un flash visuel et le popup s'ouvre.
+            <strong>Depuis v1.10.3 :</strong> la recherche couvre désormais 4 catégories.
+            <strong>Raccourci clavier Ctrl+K</strong> (Cmd+K sur Mac) pour ouvrir/fermer instantanément.
+            Résultats groupés par catégorie avec compteurs. Au clic : centre + flash visuel
+            (cercle pour les points, polyline dashed pour les tracés, polygon transparent pour zones / piliers).
+            Filtre par catégorie + calque + tag.
           </p>
         </div>
 
@@ -1531,11 +1537,33 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⏪ Historique (Undo / Redo) <span style="font-size:10px; color:#8892a4; font-weight:400;">(Ctrl+Z / Ctrl+Y)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⏪</span><span>Annuler la dernière action (Ctrl+Z) — jusqu'à 50 actions</span>
+            <span class="kta-aide-icone">⏩</span><span>Rétablir l'action annulée (Ctrl+Y ou Ctrl+Shift+Z)</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Depuis v1.11.0 :</strong> couvre les 4 catégories d'annotations dessinables —
+            ✏️ points, 🛣️ tracés, ⬛ zones, 🏛️ structures. Granularité atomique (1 clic = 1 annulable).
+            Toast discret à chaque action. Boutons sidebar auto-grisés quand la pile est vide.
+            Historique en RAM (perdu au reload), reset auto au changement de plan.
+            <strong>⚠️ Photos exclues</strong> (suppression IDB irréversible).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 3 modes : Full / Avancé / Conversion</span>
-            <span class="kta-aide-icone">🖼️</span><span>Exporter le plan en image — modale avec mode Rapide / Avancé</span>
+            <span class="kta-aide-icone">🖼️</span><span>Exporter en PNG/JPG — modale avec mode Rapide / Avancé</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Exporter en PDF imprimable</strong> (v1.10.3) — A0 à A4 × portrait/paysage, légende positionnable dans un coin</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>📤 PDF v1.10.3 :</strong> 10 formats (A0/A1/A2/A3/A4 × portrait/paysage), choix
+            des calques data + image au cas par cas, légende overlay 4-coins avec 3 tailles et 4 styles
+            (dont 🆕 « Pro fond blanc » par défaut pour l'impression papier). Reprend la même
+            chaîne de rendu que l'export PNG avancé pour cohérence visuelle parfaite.
+          </p>
         </div>
 
         <div class="kta-aide-section">
@@ -1544,7 +1572,17 @@ function afficherAide() {
             <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
             <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker</span>
             <span class="kta-aide-icone">⛑️</span><span>Mode urgence "Je suis perdu" — estime la zone probable de ta position à partir de ta dernière position connue, du temps écoulé et d'indices visuels</span>
+            <span class="kta-aide-icone">🚨</span><span><strong>Mode urgence "panique"</strong> (v1.10.1) — affichage XL position + cap boussole + minimap auto-focus, pour retrouver ses repères vite en situation critique</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff5555;">🚨 Mode urgence "panique" :</strong> bouton rouge distinctif,
+            <strong>différent</strong> du ⛑️ "Je suis perdu" (qui calcule une zone). Ici on suppose que tu sais où tu es
+            (le tracker l'affiche) mais que <strong>tu paniques et tu as besoin d'infos vitales en gros</strong> :
+            <strong>position XL</strong> (coords plan), <strong>cap boussole en gros</strong> (sens de marche, aiguille
+            tournée), <strong>minimap auto-focus</strong> avec les <strong>roads / zones / structures du plan en arrière-plan</strong>
+            (utile pour repérer chemins, sorties, dangers). Wake Lock automatique (l'écran ne s'éteint pas).
+            Permissions capteurs auto-demandées si pas déjà accordées. Sortie via le ✕.
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#ff8a5c;">⛑️ Mode urgence :</strong> sous-action orange distinctive. Tu indiques où tu étais (recherche
             d'un point existant, clic sur la carte ou position tracker), <strong>depuis combien de temps</strong>, et
@@ -2268,7 +2306,7 @@ function ouvrirCalibrageEchelle() {
 // 🆕 v1.9.3-B-side-fix (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
 // mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
 // PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
-//   - Prod (myktamap.is-underground.fr) → https://myktamap.is-underground.fr/ping.html
+//   - Prod (myktamap.fr) → https://myktamap.fr/ping.html
 //   - Dev  (devmap.is-underground.fr)   → https://devmap.is-underground.fr/ping.html
 //   - Prod future (myktamap.fr)         → https://myktamap.fr/ping.html
 //   - Local (localhost:8080)            → http://localhost:8080/ping.html
@@ -3658,9 +3696,105 @@ function initInterface() {
               alert("Erreur lors de l'export du plan : " + (err && err.message ? err.message : err));
             });
           }
+        } },
+      // 🆕 v1.10.3 : Export PDF imprimable A4/A3 portrait/paysage (via jsPDF).
+      // Réutilise le canvas généré par exporter.js pour cohérence visuelle.
+      { icone: "📤", titre: "Exporter en PDF imprimable", onClick: function() {
+          if (window.MyKTAMapPdfExport && window.MyKTAMapPdfExport.afficherModale) {
+            window.MyKTAMapPdfExport.afficherModale();
+          } else {
+            alert("Module PDF non chargé. Recharge la page si le problème persiste.");
+          }
         } }
     ]
   });
+
+  // 🆕 v1.11.0 : 5'. HISTORIQUE (Undo / Redo) — groupe dédié, placé À LA
+  // FIN de la sidebar GAUCHE (KARMA "met l'icône historique à gauche dans
+  // la barre à la fin"). Position topleft + déclaré APRÈS save = dernier
+  // groupe de la colonne gauche.
+  // Raccourcis clavier Ctrl+Z / Ctrl+Y déjà actifs au niveau global
+  // (cf. js/historyManager.js), les boutons UI sont pour la découvrabilité
+  // + l'usage mobile sans clavier. Auto-grisés quand la pile est vide
+  // (via HistoryManager.onChange).
+  _creerGroupeAccordeon({
+    id: "history",
+    iconePrincipale: "⏪",
+    titre: "Historique (Ctrl+Z / Ctrl+Y)",
+    position: "topleft",
+    sousActions: [
+      {
+        icone: "⏪",
+        titre: "Annuler la dernière action (Ctrl+Z)",
+        onClick: function(btnSub) {
+          if (!window.HistoryManager) return;
+          if (!window.HistoryManager.canUndo()) {
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast("Rien à annuler.", "info");
+            }
+            return;
+          }
+          window.HistoryManager.undo();
+        }
+      },
+      {
+        icone: "⏩",
+        titre: "Rétablir l'action annulée (Ctrl+Y)",
+        onClick: function(btnSub) {
+          if (!window.HistoryManager) return;
+          if (!window.HistoryManager.canRedo()) {
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast("Rien à rétablir.", "info");
+            }
+            return;
+          }
+          window.HistoryManager.redo();
+        }
+      }
+    ]
+  });
+
+  // 🆕 v1.11.0 (KARMA "le grisage marche pas") : grisage des 2 boutons
+  // selon canUndo/canRedo. v1 cherchait dans le DOM via data-groupe-id
+  // qui n'existe pas → fix : on récupère directement les <a> sous-actions
+  // via _groupes["history"].subActions (array exposé par _creerGroupeAccordeon
+  // ligne ~3506) ; ordre conservé = [⏪ Undo, ⏩ Redo] (= ordre de déclaration
+  // dans sousActions ci-dessus).
+  (function _wireHistoryUiState() {
+    if (!window.HistoryManager) return;
+    const grp = _groupes["history"];
+    if (!grp || !Array.isArray(grp.subActions) || grp.subActions.length < 2) {
+      console.warn("[HistoryUI] grisage indisponible — _groupes[history].subActions manquant ou incomplet.");
+      return;
+    }
+    const btnUndo = grp.subActions[0];  // ⏪
+    const btnRedo = grp.subActions[1];  // ⏩
+    function _applyDisabled(btn, disabled) {
+      if (!btn) return;
+      if (disabled) {
+        btn.classList.add("kta-disabled-state");
+        btn.style.opacity = "0.4";
+        btn.style.cursor = "not-allowed";
+        btn.style.pointerEvents = "auto"; // garder cliquable pour afficher le toast "Rien à annuler"
+      } else {
+        btn.classList.remove("kta-disabled-state");
+        btn.style.opacity = "";
+        btn.style.cursor = "";
+        btn.style.pointerEvents = "";
+      }
+    }
+    function _sync(state) {
+      _applyDisabled(btnUndo, !state.canUndo);
+      _applyDisabled(btnRedo, !state.canRedo);
+    }
+    // Sync initial (état au boot = piles vides après init)
+    _sync({
+      canUndo: window.HistoryManager.canUndo(),
+      canRedo: window.HistoryManager.canRedo()
+    });
+    // Listener pour les futurs changements
+    window.HistoryManager.onChange(_sync);
+  })();
 
   // 6. TRACKER
   let isTracking = false;
@@ -3770,6 +3904,23 @@ _setGroupeModeActif("tracker", isTracking, null);
             window.LostMode.open();
           } else {
             alert("Mode urgence indisponible (LostMode non chargé).");
+          }
+        }
+      },
+      // 🆕 v1.10.1 — 🚨 Mode urgence "panique" : différent du ⛑️ Je suis
+      // perdu (qui calcule une zone de recherche). Ici c'est juste de
+      // l'AFFICHAGE en grand des infos vitales (position + cap boussole),
+      // désactive tout le superflu. Utile pour lire ses coordonnées et
+      // son heading en grand format sans avoir à pinch-zoomer la sidebar.
+      {
+        icone: "🚨",
+        titre: "Mode urgence — Affichage XL (position + cap)",
+        cssClass: "kta-sous-action-urgence",
+        onClick: function() {
+          if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
+            window.EmergencyMode.activer();
+          } else {
+            alert("Mode urgence indisponible (EmergencyMode non chargé).");
           }
         }
       }
@@ -3998,12 +4149,17 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               { label: "Tous les tracés", icon: "🗑️", danger: true,
-                desc: "Action irréversible",
+                desc: "Annulable via ⏪ Ctrl+Z",
                 onClick: function() {
+                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetRoads) window.resetRoads();
                   // resetRoads vide tout y compris currentRoad ET coupe
                   // window.modeRoad → on doit fermer le mode UI sans condition.
                   _fermerModeRoad();
+                  if (window.HistoryManager && _hb) {
+                    window.HistoryManager.record("Supprimer tous les tracés", _hb);
+                  }
                 } }
             ]
           );
@@ -4122,12 +4278,17 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               { label: "Toutes les zones", icon: "🗑️", danger: true,
-                desc: "Action irréversible",
+                desc: "Annulable via ⏪ Ctrl+Z",
                 onClick: function() {
+                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetZones) window.resetZones();
                   // resetZones reset currentZone + window.modeZone → on ferme
                   // le mode UI inconditionnellement.
                   _fermerModeZone();
+                  if (window.HistoryManager && _hb) {
+                    window.HistoryManager.record("Supprimer toutes les zones", _hb);
+                  }
                 } }
             ]
           );
@@ -4279,10 +4440,15 @@ _setGroupeModeActif("tracker", isTracking, null);
                   }
                 } },
               { label: "Toutes les structures", icon: "🗑️", danger: true,
-                desc: "Action irréversible (" + nbSelectables + " supprimable(s))",
+                desc: "Annulable via ⏪ Ctrl+Z (" + nbSelectables + " supprimable(s))",
                 onClick: function() {
+                  // 🆕 v1.11.0 Undo/Redo : snapshot before reset
+                  const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;
                   if (window.resetStructures) window.resetStructures();
                   _fermerModeStructure();
+                  if (window.HistoryManager && _hb) {
+                    window.HistoryManager.record("Supprimer toutes les structures", _hb);
+                  }
                 } }
             ]
           );
@@ -4643,6 +4809,9 @@ window.activerModeSuppressionTraceClic = function() {
     const currentBefore = (typeof window.getCurrentRoad === "function") ? window.getCurrentRoad() : null;
     const closeRoadMode = (currentBefore && currentBefore === closestRoad);
 
+    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+
     // Supprime la road
     const currentRoads = window.getRoads ? window.getRoads() : [];
     const filtered = currentRoads.filter(function(r) { return r !== closestRoad; });
@@ -4654,6 +4823,10 @@ window.activerModeSuppressionTraceClic = function() {
     if (closeRoadMode) _fermerModeRoad();
 
     _desactiverModeSuppressionTrace();
+
+    if (window.HistoryManager && _historyBefore) {
+      window.HistoryManager.record("Supprimer tracé au clic (" + (closestRoad.type || "?") + ")", _historyBefore);
+    }
   };
 
   window.map.on("click", _suppTraceClickHandler);
@@ -4776,6 +4949,9 @@ window.activerModeSuppressionZoneClic = function() {
     const currentBefore = (typeof window.getCurrentZone === "function") ? window.getCurrentZone() : null;
     const closeZoneMode = (currentBefore && currentBefore === foundZone);
 
+    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+
     // Supprime la zone
     const currentZones = window.getZones ? window.getZones() : [];
     const filtered = currentZones.filter(function(z) { return z !== foundZone; });
@@ -4786,6 +4962,10 @@ window.activerModeSuppressionZoneClic = function() {
     if (closeZoneMode) _fermerModeZone();
 
     _desactiverModeSuppressionZone();
+
+    if (window.HistoryManager && _historyBefore) {
+      window.HistoryManager.record("Supprimer zone au clic (" + (foundZone.type || "?") + ")", _historyBefore);
+    }
   };
 
   window.map.on("click", _suppZoneClickHandler);
@@ -4916,6 +5096,8 @@ window.activerModeSuppressionStructureClic = function() {
 
     // Supprime la structure via le setter standard (anti désynchro avec
     // l'état interne du module).
+    // 🆕 v1.11.0 Undo/Redo : snapshot before
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
     const currentStructures = window.getStructures ? window.getStructures() : [];
     const filtered = currentStructures.filter(function(s) { return s !== foundStruct; });
     if (window.setStructures) window.setStructures(filtered);
@@ -4925,6 +5107,10 @@ window.activerModeSuppressionStructureClic = function() {
     if (closeMode) _fermerModeStructure();
 
     _desactiverModeSuppressionStructure();
+
+    if (window.HistoryManager && _historyBefore) {
+      window.HistoryManager.record("Supprimer structure au clic (" + (foundStruct.type || "?") + ")", _historyBefore);
+    }
   };
 
   window.map.on("click", _suppStructureClickHandler);
@@ -6582,6 +6768,36 @@ function afficherLegende() {
     </div>
   `;
 
+  // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : ajout section
+  // Structures (piliers + mur en polygones, fronts en polylines). Couleurs
+  // cohérentes avec STRUCTURE_STYLES (structures.js) et le hotfix v1.10.1-2
+  // (front-1 jaune = pilier-1, front-2 orange = pilier-2).
+  const contenuStructures = `
+    <div class="kta-aide-section">
+      <div class="kta-aide-section-titre">🏛️ Structures</div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#f4c542; opacity:0.85; height:14px; border:2px solid #000000;"></span>
+        <span class="kta-legende-label">Pilier 1ère masse</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#ff9933; opacity:0.85; height:14px; border:2px solid #000000;"></span>
+        <span class="kta-legende-label">Pilier 2e masse</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#1e3a8a; opacity:0.85; height:14px; border:2px solid #000000;"></span>
+        <span class="kta-legende-label">Mur</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#f4c542;"></span>
+        <span class="kta-legende-label">Front de taille 1ère masse</span>
+      </div>
+      <div class="kta-legende-ligne">
+        <span class="kta-legende-trait" style="background:#ff9933;"></span>
+        <span class="kta-legende-label">Front de taille 2e masse</span>
+      </div>
+    </div>
+  `;
+
   // 🆕 v1.9.2-fix13 : retrait du style inline `max-width:480px` qui
   // bloquait l'agrandissement PC. La modale utilise désormais les tailles
   // standard de .kta-readme-modal-boite (mobile : min(960px, 96vw),
@@ -6598,6 +6814,7 @@ function afficherLegende() {
         ${contenuIcones}
         ${contenuTracés}
         ${contenuZones}
+        ${contenuStructures}
       </div>
     </div>
   `;
@@ -6646,7 +6863,7 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
     "contient uniquement la documentation utilisateur brute. Réessaye depuis l'app " +
     "quand le service worker aura mis `AI_CONTEXT.md` en cache.\n\n" +
     "**Auteur** : Flavien VIDAL (alias KARMA) · **Licence** : CC BY-NC-SA 4.0 · " +
-    "**Site** : https://myktamap.is-underground.fr\n\n" +
+    "**Site** : https://myktamap.fr\n\n" +
     "Date d'export : " + dateExport + " · Build : " + buildVersion + "\n\n" +
     "---\n\n" +
     (readmeUserText || "_Documentation utilisateur également indisponible._") +

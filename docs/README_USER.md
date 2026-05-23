@@ -4,6 +4,20 @@
 
 ---
 
+## 🆕 Nouveautés v1.11.0 (23/05/2026)
+
+> **🌐 Nouveau domaine** : MyKTAMap est désormais accessible à **[myktamap.fr](https://myktamap.fr)** (l'ancien `myktamap.is-underground.fr` redirige automatiquement). Mets à jour tes raccourcis / favoris !
+
+- ⏪ **Undo / Redo global (Ctrl+Z / Ctrl+Y)** : tu peux désormais **annuler jusqu'à 50 actions** sur les 4 catégories d'annotations dessinables (✏️ points, 🛣️ tracés, ⬛ zones, 🏛️ structures). Raccourcis clavier **Ctrl+Z** pour annuler, **Ctrl+Y** ou **Ctrl+Shift+Z** pour rétablir. Aussi accessible via le nouveau groupe **⏪ Historique** dans la sidebar (boutons ⏪ / ⏩, grisés quand il n'y a rien à annuler / rétablir). Reset auto au changement de plan. ⚠️ Les **photos** attachées aux points sont exclues du périmètre (leur suppression reste irréversible).
+- 📤 **Export PDF imprimable** : nouveau bouton dans **⬆️ Enregistrer**. Choisis la taille (A0 → A4) et l'orientation (portrait/paysage), inclus tes calques au cas par cas, et place la légende dans le coin de ton choix. Style « Pro fond blanc » par défaut pour l'impression papier. Voir section **⬆️ Sauvegarder et partager** plus bas pour le détail.
+- 🔍 **Recherche unifiée (Ctrl+K)** : la recherche couvre désormais les **points + tracés + zones + structures**. Raccourci clavier **Ctrl+K** (ou Cmd+K sur Mac) pour ouvrir/fermer instantanément. Résultats groupés par catégorie avec compteurs.
+- 🏛️ **Structures dans tous les exports** : si ton plan contient des piliers/murs/fronts dans son data layer (`structure.json`), ils étaient visibles sur la carte mais manquaient dans l'export PNG rapide, PNG avancé et PDF. C'est désormais corrigé partout, avec le bon ordre Z (fronts au-dessus des piliers).
+- 🗺️ **Légende enrichie** : section 🏛️ Structures ajoutée dans la légende affichée à l'écran (🗺️), dans la légende exportée PNG, et dans le PDF.
+- 🚨 **Mode urgence** : zoom de la minimap ajusté pour un meilleur compromis lisibilité ↔ environnement immédiat (~20-50 m d'horizon autour du tracker).
+- 🖼️ **Modale Export images renommée** : « Exporter le plan » → « **Exporter en PNG/JPG** » pour clairement distinguer du nouveau « **Exporter en PDF imprimable** ».
+
+---
+
 ## 🔴 Avertissements importants
 
 ### 🔐 Confidentialité des données — à lire en premier
@@ -93,7 +107,7 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 ### 🌐 Migration vers `myktamap.fr` (depuis v163)
 
-L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.is-underground.fr`).
+L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.fr`).
 
 **Comment es-tu informé ?**
 
@@ -136,7 +150,7 @@ L'application est protégée par un **mot de passe unique commun** à tous les u
 
 MyKTAMap peut être installée comme application native sur Mobile — sans passer par l'App Store/Play Store :
 
-1. Ouvrez `myktamap.is-underground.fr` dans **chrome/safari**
+1. Ouvrez `myktamap.fr` dans **chrome/safari**
 2. Appuyez sur le bouton de partage ↑ en bas de l'écran
 3. Sélectionnez **"Sur l'écran d'accueil"**
 4. Confirmez — une icône apparaît sur votre écran d'accueil
@@ -148,7 +162,7 @@ MyKTAMap peut être installée comme application native sur Mobile — sans pass
 
 MyKTAMap peut être installée comme application native sur PC egalement — sans installer un exécutable.
 
-1. Ouvrez `myktamap.is-underground.fr` dans **chrome**
+1. Ouvrez `myktamap.fr` dans **chrome**
 2. Appuyez sur le bouton "Installer" à coté de l'URL
 3. Confirmez — une icône apparaît sur votre bureau
 4. Lancez toujours l'application depuis cette icône
@@ -306,7 +320,7 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 
 > MyKTAMap utilise une **nouvelle interface en mode carte** activée par défaut depuis v1.9.1. Plus claire, plus tactile, mieux adaptée mobile-first. L'ancienne reste accessible en un clic.
 >
-> **Polish v1.9.2** (22/05/2026) : page d'accueil PC plein écran sans bordure noire, toutes les modales agrandies sur grand écran (Doc, Aide, ⚙️ Configuration, Légende multi-colonnes, Enregistrer session, Éditeur tableau, Export images), nouveau toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration, rotation tracker continue sans saut au franchissement du Nord, splash refondu avec signature KARMA animée + crédits libs (🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra).
+> **Polish v1.9.2** (22/05/2026) : page d'accueil PC plein écran sans bordure noire, toutes les modales agrandies sur grand écran (Doc, Aide, ⚙️ Configuration, Légende multi-colonnes, Enregistrer session, Éditeur tableau, Export images), nouveau toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration, rotation tracker continue sans saut au franchissement du Nord, splash refondu avec signature KARMA animée + crédits libs (🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra).
 
 **Ce qui change visuellement** :
 
@@ -544,50 +558,90 @@ Au clic sur un plan dans le menu :
 
 ---
 
-## 🔍 Rechercher un point
+## 🔍 Recherche unifiée
 
-Le bouton **🔍** dans la barre latérale ouvre une fenêtre de recherche rapide pour trouver n'importe quel point du plan.
+Le bouton **🔍** dans la barre latérale **OU** le raccourci clavier **Ctrl+K** (`Cmd+K` sur Mac) ouvre la fenêtre de recherche.
+
+> 🆕 **Depuis v1.10.3** : la recherche couvre désormais **4 catégories** : 📍 Points · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures (piliers / mur / fronts). Avant, seuls les points étaient cherchables.
 
 ### 🔎 Ce qu'on peut chercher
 
-- Le **nom** du point (ex: "Puits Aération")
-- Son **identifiant** (ex: "PA1")
+**Pour les points** :
+- Le **nom** (ex: "Puits Aération")
+- L'**identifiant** (ex: "PA1")
 - Un **tag** (ex: "pa", "danger", "elec")
-- Sa **description**
-- Son **état**
+- La **description**
+- L'**état**
+
+**Pour les tracés / zones / structures** :
+- Le **label** (auto-généré du type "Tracé Principal #3" ou "Pilier 1ère masse #1" si pas explicite)
+- Le **type** en français (`Principal`, `Eau`, `Pilier 1ère masse`...)
+- Le **niveau** (en mode multi-niveau)
 
 La recherche est **insensible aux accents et à la casse** — taper "aeration" trouvera aussi "Aération".
 
 ### ⚙️ Comment ça marche
 
-1. Cliquez sur **🔍** dans la barre latérale
-2. (Optionnel) Cochez des **chips de filtre** sous le champ pour restreindre par calque ou par tag
+1. **Ouvre** : cliquez sur **🔍** OU tape **Ctrl+K** (Cmd+K)
+2. (Optionnel) Cochez des **chips de filtre** sous le champ
 3. Tapez votre recherche dans le champ — les résultats s'affichent en temps réel
 4. Naviguez avec les flèches **↑** / **↓** ou avec le curseur
-5. Validez avec **Entrée** ou par un clic sur le résultat
-6. La carte se centre sur le point avec un **cercle orange** autour pour le repérer, et le popup d'information s'ouvre
+5. Validez avec **Entrée** ou par un clic
+6. La carte se centre sur l'élément :
+   - **Point** → cercle orange autour + popup d'information
+   - **Tracé** ou **front** → polyline jaune en pointillés 4 sec + popup info
+   - **Zone** ou **pilier / mur** → polygon jaune transparent 4 sec + popup info
 
-### 🎚️ Filtres (calques + tags)
+> 🔁 **Re-tape Ctrl+K** quand la modale est déjà ouverte → elle se ferme. Pratique pour aller-retour rapide.
 
-Sous le champ de recherche, deux lignes de chips :
+### 🎚️ Filtres (Catégorie + Calques + Tags)
 
-- **Calques** : un chip par calque (Puits, Carrière, Mes ajouts, etc.). Cliquez pour activer (jaune) ou désactiver. Aucun chip actif = tous les calques affichés.
-- **Tags** : un chip par tag rencontré dans les points (pa, ouvert, fermé, aeration, etc.). Mêmes règles.
+Sous le champ de recherche, jusqu'à trois lignes de chips :
+
+- 🆕 **Catégorie** : 4 chips `📍 Points (N)` · `🛣️ Tracés (M)` · `⬛ Zones (K)` · `🏛️ Structures (L)` avec compteur par catégorie. Cliquez pour activer (jaune) ou désactiver. Aucun chip actif = toutes les catégories visibles. Cette ligne n'apparaît que si **au moins 2 catégories ont du contenu** sur le plan.
+- **Calques** : un chip par calque (Puits, Carrière, Mes ajouts, etc.) — **uniquement pour les points** (les autres catégories n'ont pas de notion "calque").
+- **Tags** : un chip par tag rencontré dans les points (pa, ouvert, fermé, aeration, etc.) — **uniquement pour les points**.
 
 **Logique de combinaison** :
 - **Plusieurs chips dans la même ligne** = OR (n'importe lequel)
-- **Entre les deux lignes** = ET (calque ∈ {sélection} ET tag ∈ {sélection})
+- **Entre les lignes** = ET
 - Le champ texte reste un filtre supplémentaire (en ET)
 
-Le bouton **✕ Effacer les filtres** apparaît à droite du compteur quand au moins un chip est actif. Les filtres sont **réinitialisés à chaque ouverture** de la fenêtre de recherche.
+Le bouton **✕ Effacer les filtres** apparaît à droite du compteur quand au moins un chip est actif. Les filtres sont **réinitialisés à chaque ouverture** de la fenêtre.
+
+### 📊 Rendu groupé
+
+Les résultats sont **regroupés par catégorie** avec des en-têtes :
+
+```
+📍 POINTS (12)
+  ┌─────┐
+  │ icn │ PA1  Puits Aération
+  │     │   Puits · aeration · ouvert · x:4843 y:2002
+  └─────┘
+  ...
+
+🛣️ TRACÉS (3)
+  ┌─────┐
+  │ 🛣️  │ Tracé Principal session #1
+  │     │   Session · Principal · Niv 0 · 8 pts
+  └─────┘
+  ...
+
+⬛ ZONES (1)
+  ...
+
+🏛️ STRUCTURES (2)
+  ...
+```
 
 ### 🧭 Périmètre
 
-La recherche couvre **tous les calques de données du plan** (puits, véhicules, etc.) ainsi que **tes points ajoutés**. Les résultats incluent :
-- Une miniature de l'icône du point
-- Son ID en bleu et son nom
-- Le calque d'origine (chip "Puits", "Véhicule"...)
-- Ses tags et coordonnées
+La recherche couvre :
+- **Points** : tous les calques de données du plan (puits, véhicules, etc.) + tes points ajoutés (session)
+- **Tracés** : ta session + les routes embarquées dans les data layers
+- **Zones** : idem
+- **Structures** : idem
 
 ---
 
@@ -787,6 +841,77 @@ Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de 
 **⚠️ À ne pas faire** — Ne suis pas l'eau (diaclases dangereuses). Ne tente pas un passage inconnu juste parce qu'il "monte". Ne te fie pas au tracker téléphone (il dérive sous stress).
 
 > ⚠️ Ces conseils sont des **principes généraux** issus de la pratique cataphile. Ils ne remplacent pas la formation, l'équipement et le bon sens. La règle d'or reste : prévenir quelqu'un en surface AVANT la sortie, avec heure de retour estimée.
+
+### 🚨 Mode urgence "panique" — depuis v1.10.1
+
+> 💡 **Ne pas confondre avec ⛑️ "Je suis perdu"** : le ⛑️ calcule une zone théorique (où tu peux être à partir d'une dernière position connue + temps écoulé). Le 🚨, lui, suppose que **tu SAIS où tu es** (le tracker l'affiche), mais que **tu paniques et tu as besoin d'infos vitales en gros pour réagir vite**.
+
+Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique" plein écran qui regroupe en un coup d'œil :
+
+- 📍 **Position XL** : coordonnées plan affichées en énorme caractères (lisible à un mètre du téléphone)
+- 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
+- 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
+- 🌗 **Thèmes** : sombre par défaut, clair en option (selon l'environnement extérieur — pénombre vs lumière vive)
+- 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
+
+**Quand l'utiliser ?**
+- Tu paniques à un croisement et tu as besoin de te re-orienter rapidement
+- Tu cherches un détail visuel sur le plan (un pilier, un puits) qui devrait être tout près
+- Tu veux vérifier que tu vas dans la bonne direction (cap boussole)
+- Tu dois lire ta position en grand pour la transmettre à quelqu'un (radio, SMS) sans plisser les yeux
+
+**Permissions** : la première fois, le navigateur demande l'accès aux **capteurs d'orientation** du téléphone (pour la boussole). Accepte — sans ça, la boussole reste figée.
+
+**Sortie** : appuie sur le ✕ en haut à droite pour fermer le mode.
+
+> ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
+
+---
+
+## ⏪ Undo / Redo *(depuis v1.11.0)*
+
+Tu peux **annuler** et **rétablir** tes actions sur le plan, jusqu'à **50 actions en arrière**.
+
+### Raccourcis clavier (recommandé)
+
+| Raccourci | Action |
+|---|---|
+| **Ctrl+Z** (`Cmd+Z` Mac) | Annuler la dernière action |
+| **Ctrl+Y** (`Cmd+Y` Mac) | Rétablir l'action annulée |
+| **Ctrl+Shift+Z** (`Cmd+Shift+Z` Mac) | Rétablir (alternative) |
+
+> 💡 Les raccourcis ne se déclenchent pas si tu es en train de taper dans un champ texte — pour ne pas casser l'undo natif du navigateur dans les inputs.
+
+### Boutons dans la sidebar
+
+Un nouveau groupe **⏪ Historique** apparaît dans la **sidebar gauche, en dernière position** (juste sous **⬆️ Enregistrer**, après Doc / Paramètres / Charger / Enregistrer). Il contient 2 sous-actions :
+- ⏪ **Annuler** (= Ctrl+Z)
+- ⏩ **Rétablir** (= Ctrl+Y)
+
+Les boutons sont **grisés** (opacité réduite + curseur barré) quand il n'y a rien à annuler / rétablir. Cliquer sur un bouton grisé affiche quand même un toast court (« Rien à annuler. » / « Rien à rétablir. ») pour confirmer l'action vide.
+
+### Ce qui est couvert
+
+- ✏️ **Points** : ajout, modification (nom/tag/desc/level), suppression dernier, suppression au clic
+- 🛣️ **Tracés** : chaque clic posant un sommet (= 1 entrée) + suppression dernier + suppression au clic + "Tous les tracés"
+- ⬛ **Zones** : idem + fermeture par retour au 1er point
+- 🏛️ **Structures** : idem (piliers, mur, fronts)
+
+Chaque action déclenche un **toast discret** en bas : `↩ Annulé : Pose du point PA1` ou `↪ Refait : Suppression de Zone Eau`.
+
+### Ce qui n'est PAS couvert
+
+- ❌ **Photos** attachées aux points : leur suppression reste **irréversible** (les blobs sont effacés de la base IndexedDB locale, pas restaurables)
+- ❌ **Imports de session** : un import qui écrase ta session n'est pas annulable via Ctrl+Z (utilise l'auto-save SessionPersist pour récupérer)
+- ❌ **Tracker** (mode capteurs en temps réel)
+- ❌ **Mesure de distance** (= outil éphémère, pas une mutation persistante)
+
+### Cycle de vie de l'historique
+
+- **RAM only** : l'historique est gardé en mémoire vive uniquement, **perdu au reload** de la page (c'est volontaire, pour éviter de bloater le stockage local).
+- **Reset au changement de plan** : si tu charges un autre plan, l'historique est vidé (logique : tu ne veux pas annuler une action faite sur un autre plan).
+- **Limite 50 actions** : au-delà, les plus anciennes sont oubliées (FIFO).
+- **Une nouvelle action efface le redo** : si tu fais 5 undo puis poses un nouveau point, le redo devient impossible (logique de branche d'historique).
 
 ---
 
@@ -1229,7 +1354,9 @@ Téléchargement direct si 1 seul fichier, ZIP sinon.
 
 > 💡 La conversion est utile pour figer une partie de ton travail dans un plan permanent. Une fois converties en data layer, ces données ne sont plus modifiables depuis l'application.
 
-### 🖼️ Exporter le plan en image
+### 🖼️ Exporter en PNG/JPG
+
+> 🆕 **v1.10.3** : la modale s'appelait avant « Exporter le plan », renommée en « **Exporter en PNG/JPG** » pour clairement distinguer du nouveau « **Exporter en PDF imprimable** » (voir section suivante).
 
 Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :
 
@@ -1252,6 +1379,68 @@ Pour un contrôle précis sur tout ce que tu exportes :
 - **Aperçu** : un mini-canvas se met à jour en temps réel pour visualiser le résultat
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
+
+### 📤 Exporter en PDF imprimable *(depuis v1.10.3)*
+
+Appuyez sur **⬆️ → 📤 PDF imprimable**. Génère un PDF prêt à imprimer avec header (titre + métadonnées) et légende positionnable.
+
+**Cas d'usage typiques** :
+- 🖨️ Impression papier pour emporter sur le terrain (A4, A3, voire grands formats)
+- 📧 Partage par email à un collègue qui n'a pas l'app
+- 📁 Archive durable d'une session importante
+
+#### 📐 Formats supportés
+
+| Format | Dimensions | Usage typique |
+|---|---|---|
+| **A0** | 841×1189 mm | Plotter pro, affiche murale |
+| **A1** | 594×841 mm | Grand format, atelier |
+| **A2** | 420×594 mm | Affiche, présentation |
+| **A3** | 297×420 mm | Papier A3 |
+| **A4** | 210×297 mm | Papier standard *(défaut paysage)* |
+
+× **Portrait** ou **Paysage** (10 combinaisons total).
+
+#### 🗂️ Choix de contenu
+
+Comme l'export PNG avancé, tu coches exactement ce que tu veux inclure :
+
+- **📦 Annotations de session** — Points / Tracés / Zones / Structures (compteurs en temps réel basés sur ta session)
+- **🖼️ Image de base & calques** — case « Image plan de base » + 1 case par `imageLayers[]` du plan (calques d'image type légende, annotations photo, etc.). Pré-cochage = visibilité actuelle sur la carte.
+- **📊 Calques de données** — 1 case par `dataLayers[]` du plan (puits, véhicules, chemins, structure embedded, etc.). Le calque `editor` apparaît avec un label spécial « Mes annotations (= calque session) ».
+- **🎨 Mise en page** — case Header (titre + métadonnées en haut)
+- **📏 Qualité** — Standard ×1 (défaut, recommandé A3/A4) · HD ×2 (fichier plus lourd, recommandé A0/A1) · Brouillon ×0.5
+
+> ⚠️ A0/A1 + qualité ×2 peut prendre 30-60 sec sur mobile (gros canvas).
+
+#### 🗗️ Légende — overlay 4-coins
+
+Au lieu d'un footer dédié, la légende est posée comme un overlay sur le plan, au coin de ton choix. Configure dans la section **🗺️ Légende** :
+
+- **Activer** : checkbox « Inclure la légende posée sur le plan »
+- **📍 Position** : 4 radios — ↖ Haut-gauche · ↗ Haut-droite · ↙ Bas-gauche *(défaut)* · ↘ Bas-droite
+- **📏 Taille** : Compact (icônes 16px) · Standard (22px) · Large (30px)
+- **🎨 Style** :
+  - 🆕 **Pro fond blanc** *(défaut)* — adapté impression papier (texte foncé, accent bleu marine)
+  - **Sombre opaque** — fond charte dark, accent jaune
+  - **Sombre semi-transp.** — laisse voir le plan en transparence sous la légende
+  - **Filigrane discret** — version la plus discrète
+
+La légende contient automatiquement :
+- 🕳️ Puits + 🪜 Accès + ⚠️ Signalétique (icônes des points effectivement présents sur le plan)
+- 🛣️ Tracés (par type)
+- ⬛ Zones (par type)
+- 🏛️ Structures (piliers / mur / fronts, depuis v1.10.3)
+
+> 🎯 **Filtre par usage réel** : un icône / type n'apparaît dans la légende QUE s'il est présent au moins une fois sur le plan exporté. Tu n'auras pas un type « Pilier 2e masse » affiché si tu n'en as dessiné aucun.
+
+#### 📛 Crédits
+
+Le PDF généré porte la signature `Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr` en bas à droite. Nom du fichier : `<plan>_<date>.pdf`.
+
+> ⚠️ **Aucun emoji dans le texte natif PDF** (la lib jsPDF utilise Helvetica latin1 qui ne supporte pas Unicode). Les emojis dans la légende sont OK car celle-ci est rendue en image canvas avant d'être collée dans le PDF.
+
+---
 
 ### 🌍 Exporter en KMZ géolocalisé (Google Earth, OsmAnd, Locus, Avenza)
 
@@ -1815,6 +2004,10 @@ Utilisez **⚙️ → 🗑️ Réinitialiser** avec une connexion Internet pour 
 Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'équipe technique.
 
 ---
+
+---
+
+**Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie interactive) · 📦 JSZip (lecture/écriture des archives ZIP) · 📤 jsPDF (export PDF imprimable) · 🧭 Dijkstra (calcul du plus court chemin pour les itinéraires).
 
 *MyKTAMap — Guide Utilisateur*
 *Ces lieux sont fragiles. La discrétion est une forme de respect.*

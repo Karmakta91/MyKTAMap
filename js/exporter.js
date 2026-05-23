@@ -151,7 +151,7 @@
            kta-export-modal-boite pour ajustements ciblés (cf. CSS). -->
       <div class="kta-readme-modal-boite kta-export-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">🖼️ Exporter le plan</span>
+          <span class="kta-readme-modal-titre">🖼️ Exporter en PNG/JPG</span>
           <button class="kta-panneau-close" id="kta-export-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
@@ -315,6 +315,7 @@
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_icones" checked><span>Icônes (puits, signalétique, etc.)</span></label>
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_traces" checked><span>Tracés (routes / chemins)</span></label>
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_zones" checked><span>Zones (remblais / effondrements)</span></label>
+                  <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_structures" checked><span>🏛️ Structures (piliers / mur / fronts)</span></label>
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_track"><span>Tag du tracker</span></label>
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_meta" checked><span>Métadonnées du plan (nom, version, auteur, date)</span></label>
                 </div>
@@ -1088,11 +1089,12 @@
         style:   _radioVal("leg_style"),
         size:    _radioVal("leg_size"),
         contenu: {
-          icones: document.getElementById("leg_c_icones").checked,
-          traces: document.getElementById("leg_c_traces").checked,
-          zones:  document.getElementById("leg_c_zones").checked,
-          track:  document.getElementById("leg_c_track").checked,
-          meta:   document.getElementById("leg_c_meta").checked
+          icones:     document.getElementById("leg_c_icones").checked,
+          traces:     document.getElementById("leg_c_traces").checked,
+          zones:      document.getElementById("leg_c_zones").checked,
+          structures: (document.getElementById("leg_c_structures") || {}).checked === true,
+          track:      document.getElementById("leg_c_track").checked,
+          meta:       document.getElementById("leg_c_meta").checked
         }
       };
     }
@@ -1331,11 +1333,12 @@
         style:    _radioVal("leg_style") || "opaque",
         size:     _radioVal("leg_size")  || "standard",
         contenu: {
-          icones: document.getElementById("leg_c_icones").checked,
-          traces: document.getElementById("leg_c_traces").checked,
-          zones:  document.getElementById("leg_c_zones").checked,
-          track:  document.getElementById("leg_c_track").checked,
-          meta:   document.getElementById("leg_c_meta").checked
+          icones:     document.getElementById("leg_c_icones").checked,
+          traces:     document.getElementById("leg_c_traces").checked,
+          zones:      document.getElementById("leg_c_zones").checked,
+          structures: (document.getElementById("leg_c_structures") || {}).checked === true,
+          track:      document.getElementById("leg_c_track").checked,
+          meta:       document.getElementById("leg_c_meta").checked
         }
       };
     }
@@ -1696,7 +1699,7 @@
     const deferredMarkers = []; // [{p, layerId}]
 
     // ---------- couches data (markers + roads/zones embarqués) ----------
-    const _diagAdv = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embPoints: 0, fetchFails: 0 };
+    const _diagAdv = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
     const _debugAdv = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
     for (const layerCfg of (config.dataLayers || [])) {
       const cocheModale = !!opts.dataLayers[layerCfg.id];
@@ -1707,6 +1710,12 @@
       let pts = [];
       let embeddedRoads = [];
       let embeddedZones = [];
+      // 🆕 v1.10.3-structures-embed-fix (KARMA "structures bien incluses ?") :
+      // les piliers/murs/fronts définis dans un data layer (data/<plan>/structure.json
+      // ou même inline dans un autre .json) étaient lus pour le runtime
+      // Leaflet (utils.js > ajouterPointsDepuisJSON ligne 645) mais PAS
+      // pour l'export canvas. Bug oublié à l'ajout des structures v1.9.3.
+      let embeddedStructures = [];
 
       if (layerCfg.id === "editor") {
         if (opts.ann.points && window.getEditorPoints) pts = window.getEditorPoints();
@@ -1717,7 +1726,8 @@
           pts = j.data || [];
           embeddedRoads = Array.isArray(j.roads) ? j.roads : [];
           embeddedZones = Array.isArray(j.zones) ? j.zones : [];
-          if (_debugAdv) console.log("[Export avancé] fetch", layerCfg.id, "→ pts:", pts.length, "roads:", embeddedRoads.length, "zones:", embeddedZones.length);
+          embeddedStructures = Array.isArray(j.structures) ? j.structures : [];
+          if (_debugAdv) console.log("[Export avancé] fetch", layerCfg.id, "→ pts:", pts.length, "roads:", embeddedRoads.length, "zones:", embeddedZones.length, "structures:", embeddedStructures.length);
         } catch(e) {
           _diagAdv.fetchFails++;
           console.warn("[Export avancé] fetch échoué pour", layerCfg.id, "→", layerCfg.file, e);
@@ -1774,6 +1784,54 @@
         _drawPolygon(z.points || [], ZS_EMBED[z.type] || ZS_EMBED.remblais);
         _diagAdv.embZones++;
       });
+
+      // 🆕 v1.10.3-structures-embed-fix : structures embarquées (piliers,
+      // mur, fronts). Couleurs + tri Z cohérents avec le bloc structures
+      // SESSION (ligne ~1574 dans ce fichier) + utils.js > telechargerPlan
+      // futur. Ordre Z : mur < pilier-2 < pilier-1 < front-2 < front-1
+      // (fronts au-dessus, hotfix v1.10.0-hotfix1).
+      // Filtre par opts.ann.structures + opts.ann.structuresTypes (les
+      // mêmes que pour les structures session — cohérent avec la modale
+      // Avancé qui n'a qu'un seul groupe de checkbox pour les structures).
+      if (opts.ann.structures && embeddedStructures.length > 0) {
+        const SS_EMBED = {
+          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
+          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
+        };
+        const ordreS_E = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        const filtreS_E = opts.ann.structuresTypes || {
+          "pilier-1": true, "pilier-2": true, "mur": true,
+          "front-1":  true, "front-2": true
+        };
+        const _mlOnEmbS = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+        const trieesEmb = [...embeddedStructures]
+          .filter(function(s) { return filtreS_E[s.type] !== false; })
+          .filter(_itemPasseLevels)
+          .sort(function(a, b) {
+            if (_mlOnEmbS) {
+              const la = Number.isInteger(a.level) ? a.level : 0;
+              const lb = Number.isInteger(b.level) ? b.level : 0;
+              if (la !== lb) return la - lb;
+            }
+            return (ordreS_E[a.type] ?? 99) - (ordreS_E[b.type] ?? 99);
+          });
+        for (const st of trieesEmb) {
+          const s = SS_EMBED[st.type] || SS_EMBED["mur"];
+          const isPolyline = !!s.isPolyline;
+          const minPts = isPolyline ? 2 : 3;
+          if (!st.points || st.points.length < minPts) continue;
+          if (isPolyline) {
+            _drawPolyline(st.points, s);
+          } else {
+            _drawPolygon(st.points, s);
+          }
+          if (typeof _diagAdv.embStructs !== "number") _diagAdv.embStructs = 0;
+          _diagAdv.embStructs++;
+        }
+      }
 
       // Routes embarquées
       // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
@@ -2018,6 +2076,19 @@
         titreSection: "#8cb4ff",
         titrePrincipal: "#c0c8d8",
         meta:         "#7a8298"
+      },
+      // 🆕 v1.10.3-pdf-v3 (KARMA "pas en theme sombre, un truc plus pro
+      // mais même principe") : style print/impression — fond blanc opaque,
+      // texte foncé, accent bleu saturé. Adapté aux PDF/print, lisible à
+      // l'œil sur papier sans inverser la palette dark-on-screen.
+      print:     {
+        bg:           "rgba(255,255,255,1)",      // blanc pur
+        border:       "rgba(30,58,138,0.55)",     // bleu marine #1e3a8a opacité
+        borderW:      1.5,
+        text:         "#1a1f2e",                  // quasi-noir charte
+        titreSection: "#1e3a8a",                  // bleu marine saturé
+        titrePrincipal: "#0a0d18",                // noir profond
+        meta:         "#555c6e"                   // gris foncé pour les métas
       }
     };
     const S = STYLES[leg.style] || STYLES.opaque;
@@ -2139,6 +2210,21 @@
         { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
         { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
         { label: "Inaccessible", fillColor: "#7a0000", borderColor: "#5a0a0a" }
+      ]});
+    }
+
+    // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : section
+    // Structures. Polygones (piliers + mur) avec stroke noir + fill couleur ;
+    // polylines (fronts) avec lineColor uni. Couleurs cohérentes avec
+    // STRUCTURE_STYLES (structures.js) et les helpers d'export PNG/KMZ
+    // (front-1 jaune = pilier-1, front-2 orange = pilier-2 — hotfix v1.10.1-2).
+    if (leg.contenu.structures) {
+      entrees.push({ section: "🏛️ Structures", lignes: [
+        { label: "Pilier 1ère masse",    fillColor: "#f4c542", borderColor: "#000000" },
+        { label: "Pilier 2e masse",      fillColor: "#ff9933", borderColor: "#000000" },
+        { label: "Mur",                  fillColor: "#1e3a8a", borderColor: "#000000" },
+        { label: "Front de taille 1ère", lineColor:  "#f4c542" },
+        { label: "Front de taille 2e",   lineColor:  "#ff9933" }
       ]});
     }
 
@@ -2390,7 +2476,192 @@
     if (colDroite.length > 0) {
       await _dessinerSections(colDroite, xColDroite, cyColStart);
     }
+
+    // 🆕 v1.10.3-pdf-v3 (KARMA "générer une image de la légende") :
+    // retourne les dimensions effectivement dessinées pour permettre à
+    // pdfExport.js d'extraire la boîte légende et la coller dans le PDF.
+    return { boiteW: boiteW, boiteH: boiteH, bx: bx, by: by };
   }
+
+  // =========================
+  // 🆕 v1.10.3 (PDF) : API PUBLIQUE — exposé pour pdfExport.js
+  // =========================
+  // Wrapper qui prend les opts simplifiées de pdfExport.js et construit le
+  // dict complet attendu par _genererCanvasExport. Évite de réimplémenter
+  // tout le pipeline de rendu canvas (icônes, zones, tracés, structures…).
+  //
+  // Forme attendue (toutes les clés sont optionnelles sauf ann) :
+  //   {
+  //     ann:               { points, roads, zones, structures, pointsTags,
+  //                          roadsTypes, zonesTypes, structuresTypes, levels },
+  //     scale:             1     // resol (1=natif, 0.5=½, 2=HD)
+  //     bg:                "image"|"white"|"black"|"transparent"
+  //     imageLayers:       { id: bool, ... } ← OBLIGATOIRE depuis v2 (PDF v2)
+  //     dataLayers:        { id: bool, ... } ← OBLIGATOIRE depuis v2 (PDF v2)
+  //   }
+  //
+  // Fallback rétrocompat v1 (booléens globaux) :
+  //   {
+  //     includeBaseImage:  bool   (= bg blanc si false)
+  //     includeImgLayers:  bool   (auto-coche TOUS les calques image)
+  //     includeDataLayers: bool   (auto-coche TOUS les calques data)
+  //   }
+  //
+  // Retourne : Promise<HTMLCanvasElement>
+  async function _publicGenererCanvas(userOpts) {
+    const config = window.PLAN_CONFIG;
+    const fullOpts = {
+      ann:         userOpts.ann || {},
+      legende:     null,
+      format:      "png",
+      resol:       userOpts.scale || 1,
+      bg:          userOpts.bg    || "image",
+      imageLayers: {},
+      dataLayers:  {}
+    };
+
+    // 🆕 v2 (PDF v2) : si userOpts.imageLayers est un objet non-vide, on
+    // l'utilise tel quel. Sinon, fallback v1 = auto-list booléen global.
+    if (userOpts.imageLayers && typeof userOpts.imageLayers === "object"
+        && Object.keys(userOpts.imageLayers).length > 0) {
+      fullOpts.imageLayers = userOpts.imageLayers;
+    } else if (userOpts.includeImgLayers !== false && userOpts.bg !== "white"
+        && userOpts.bg !== "black" && userOpts.bg !== "transparent") {
+      (config && config.imageLayers || []).forEach(function(l) {
+        fullOpts.imageLayers[l.id] = true;
+      });
+    }
+
+    // 🆕 v2 (PDF v2) : idem pour les data layers — control fin via dict.
+    if (userOpts.dataLayers && typeof userOpts.dataLayers === "object"
+        && Object.keys(userOpts.dataLayers).length > 0) {
+      fullOpts.dataLayers = userOpts.dataLayers;
+    } else if (userOpts.includeDataLayers !== false) {
+      (config && config.dataLayers || []).forEach(function(l) {
+        fullOpts.dataLayers[l.id] = true;
+      });
+    }
+
+    // pointsTags : si absent, on autorise tout (tousActifs:true)
+    if (!fullOpts.ann.pointsTags) {
+      fullOpts.ann.pointsTags = { tagsCoches: new Set(), untaggedCoche: false, tousActifs: true };
+    }
+
+    return await _genererCanvasExport(fullOpts, false);
+  }
+  window.MyKTAMapExporterGenererCanvas = _publicGenererCanvas;
+
+  // =========================
+  // 🆕 v1.10.3-pdf-v3 : Génère un canvas standalone de la LÉGENDE seule
+  // =========================
+  // Approche KARMA "comme l'export PNG, on génère une image de la légende
+  // que l'on colle dans le PDF". Évite tous les problèmes de font/emoji de
+  // jsPDF Helvetica latin1, car la légende est une vraie image raster avec
+  // ses icônes PNG, ses traits, ses polygones, ses emojis de sections.
+  //
+  // Pipeline :
+  //   1. Crée un canvas temporaire grand (3000×3000 — large pour les
+  //      légendes les plus chargées avec multi-niveau + icônes nombreuses)
+  //   2. Appelle _dessinerLegende dessus, position forcée "haut-gauche"
+  //      avec une petite marge interne (pour le shadow/border).
+  //   3. _dessinerLegende retourne {boiteW, boiteH, bx, by} = la zone
+  //      effectivement dessinée.
+  //   4. Crée un canvas final aux dimensions exactes, drawImage le crop.
+  //
+  // legContenu : { icones, traces, zones, structures, track, meta }
+  // bg : "transparent" (défaut) ou "opaque" (= la légende sur fond plein,
+  //      utile si le footer PDF a un fond pâle qui s'accommode mal du
+  //      semi-transparent natif de la boîte légende).
+  //
+  // Retourne : Promise<HTMLCanvasElement | null>
+  //            (null si aucun contenu — pas d'icônes connues, pas de
+  //             tracé, etc. — le caller doit gérer ce cas)
+  async function _publicGenererCanvasLegende(userOpts) {
+    userOpts = userOpts || {};
+    const legContenu = userOpts.contenu || {
+      icones: true, traces: true, zones: true, structures: true, track: false, meta: false
+    };
+    const legSize  = userOpts.size  || "standard";
+    const legStyle = userOpts.style || "opaque";
+    const scale    = userOpts.scale || 1;
+
+    // Collecte des tagsUtilises pour ne montrer que les tags présents dans
+    // les annotations actuelles + data layers — cohérent avec l'export PNG
+    // avancé (filtre par usage réel).
+    const tagsUtilises = userOpts.tagsUtilises || new Set();
+    if (!userOpts.tagsUtilises) {
+      // Auto-collecte session + embedded data layers (via helpers globaux)
+      const pushTags = function(p) {
+        if (p && Array.isArray(p.tags)) p.tags.forEach(function(t) {
+          if (t && String(t).trim()) tagsUtilises.add(String(t));
+        });
+      };
+      if (typeof window.getEditorPoints === "function") window.getEditorPoints().forEach(pushTags);
+      // Data layers : fetch tous les points connus du dataLayerGroups Leaflet,
+      // sinon scan _ktaDataMarkers (mais pas toujours rempli avec les tags).
+      // Simplification : on fetch chaque dataLayer du plan-config.
+      const cfg = window.PLAN_CONFIG;
+      if (cfg && Array.isArray(cfg.dataLayers)) {
+        for (const l of cfg.dataLayers) {
+          if (l.id === "editor") continue;
+          try {
+            const r = await fetch(l.file);
+            const j = await r.json();
+            (j.data || []).forEach(pushTags);
+          } catch(e) { /* silent — un calque peut être indisponible */ }
+        }
+      }
+    }
+
+    // Canvas temporaire suffisamment grand pour les légendes les plus
+    // chargées. On garde un petit padding pour les ombres/bordures.
+    const TMP_W = 3000, TMP_H = 3000;
+    const tmpCanvas = document.createElement("canvas");
+    tmpCanvas.width  = TMP_W;
+    tmpCanvas.height = TMP_H;
+    const tmpCtx = tmpCanvas.getContext("2d", { alpha: true });
+
+    // Options de légende : position forcée haut-gauche pour simplifier le
+    // crop. customX/Y = 0 pour coller au bord (marges gérées par caller).
+    const leg = {
+      position: "haut-gauche",
+      customX:  0,
+      customY:  0,
+      style:    legStyle,
+      size:     legSize,
+      contenu:  legContenu
+    };
+
+    const iconCache = {};
+    let dims;
+    try {
+      dims = await _dessinerLegende(tmpCtx, leg, TMP_W, TMP_H, scale, iconCache, tagsUtilises);
+    } catch(e) {
+      console.warn("[Export legende] échec dessin :", e);
+      return null;
+    }
+    if (!dims || dims.boiteW <= 0 || dims.boiteH <= 0) {
+      // _dessinerLegende retourne early si entrees.length === 0 — pas de
+      // contenu cochable. Caller doit gérer.
+      return null;
+    }
+
+    // Canvas final aux dimensions exactes (+ petit padding pour bordure)
+    const PAD = 2;
+    const W = Math.ceil(dims.boiteW + 2 * PAD);
+    const H = Math.ceil(dims.boiteH + 2 * PAD);
+    const finalCanvas = document.createElement("canvas");
+    finalCanvas.width  = W;
+    finalCanvas.height = H;
+    const fctx = finalCanvas.getContext("2d", { alpha: true });
+    fctx.drawImage(
+      tmpCanvas,
+      dims.bx - PAD, dims.by - PAD, W, H,
+      0, 0, W, H
+    );
+    return finalCanvas;
+  }
+  window.MyKTAMapExporterGenererCanvasLegende = _publicGenererCanvasLegende;
 
   // =========================
   // HELPERS — visibilité actuelle des calques

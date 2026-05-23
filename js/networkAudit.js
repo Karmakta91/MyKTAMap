@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  *
  * MODULE : networkAudit.js (introduit en v1.8.0 — Privacy & Audit)
@@ -93,7 +93,7 @@
   // → Plus AUCUN domaine externe dans la whitelist. Promesse "100%
   // client-side, aucun appel externe non-MyKTAMap" respectée à la lettre.
   const WHITELIST_PATTERNS = [
-    // Same-origin : l'app elle-même (myktamap.is-underground.fr, devmap,
+    // Same-origin : l'app elle-même (myktamap.fr, devmap,
     // myktamap.fr, localhost…). Inclut automatiquement le ping
     // <origin>/ping.html (cf. js/interface.js _pingInternet).
     function(url) {

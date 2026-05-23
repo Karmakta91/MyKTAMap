@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  * Voir LICENSE a la racine du projet.
  */
@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.10.0-hotfix1";
+const CACHE_NAME = "myktamap-cache-v1.11.0-history-grisage-fix";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -96,7 +96,15 @@ const ASSETS_TO_CACHE = [
   // Self-contained, exposé via window.MyKTAMapPhotoViewer. Caché pour
   // visionnage offline des photos déjà attachées aux POI.
   "./js/photoViewer.js",
+  // 🆕 v1.11.0 : Undo/Redo global (snapshot RAM + raccourcis clavier).
+  // Doit être caché pour fonctionner offline (l'historique est lui-même
+  // en RAM, mais le module JS doit être disponible offline pour réagir
+  // aux Ctrl+Z / Ctrl+Y).
+  "./js/historyManager.js",
   "./js/exporter.js",
+  // 🆕 v1.10.3 : module Export PDF imprimable (jsPDF + canvas exporter).
+  // Doit être caché pour fonctionner offline.
+  "./js/pdfExport.js",
   "./js/sessionExporter.js",
   "./js/kmzExport.js",
   "./js/kmzImport.js",
@@ -110,12 +118,17 @@ const ASSETS_TO_CACHE = [
   "./js/updateChecker.js",
   "./js/alertChecker.js",
   "./js/lostMode.js",
+  // 🆕 v1.10.1 : Mode urgence (panique) — module léger, indispensable
+  // offline (l'user peut être en sous-sol sans réseau quand il en a besoin).
+  "./js/emergencyMode.js",
   "./js/compass.js",
   "./js/interface.js",
   "./js/main.js",
 
   // Librairies
   "./lib/jszip.min.js",
+  // 🆕 v1.10.3 : jsPDF UMD pour l'export PDF imprimable.
+  "./lib/jspdf.umd.min.js",
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",

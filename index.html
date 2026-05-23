@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
-  Site : https://myktamap.is-underground.fr
+  Site : https://myktamap.fr
   Licence : CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike)
   https://creativecommons.org/licenses/by-nc-sa/4.0/
 
@@ -129,12 +129,12 @@
     </div>
 
     <!-- Crédits librairies + algos — discret, en bas à GAUCHE pour
-         libérer le bas-droit pour KARMA. Mention des 2 libs majeures
-         (Leaflet mapping, JSZip ZIP I/O) + de l'algo Dijkstra du
-         pathfinder (utilisé pour le calcul d'itinéraires sur le
-         réseau de tracés). KARMA s'en souvient : "djakarta" était une
-         confusion phonétique avec Dijkstra. -->
-    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra</div>
+         libérer le bas-droit pour KARMA. Mention des libs majeures
+         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF) + de
+         l'algo Dijkstra du pathfinder (utilisé pour le calcul
+         d'itinéraires sur le réseau de tracés). KARMA s'en souvient :
+         "djakarta" était une confusion phonétique avec Dijkstra. -->
+    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -329,7 +329,7 @@
              projet, en cohérence avec le crédit affiché en bas-gauche
              du splash. Ligne séparée pour la lisibilité. -->
         <div class="kta-loader-credits">
-          🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra
+          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra
         </div>
       </div>
     </div>
@@ -737,7 +737,18 @@
        Self-contained, exposé via window.MyKTAMapPhotoViewer. Doit charger
        APRÈS photos.js (pas de dep stricte mais cohérence d'ordre). -->
   <script src="js/photoViewer.js"></script>
+  <!-- 🆕 v1.11.0 : HistoryManager (Undo/Redo). Doit charger APRÈS les
+       modules de mutation (editor/road/zones/structures) pour que les
+       getters/setters globaux soient déjà définis au moment de
+       _captureState() / _applyState(). Et AVANT interface.js qui s'abonne
+       via HistoryManager.onChange pour griser les boutons ⏪/⏩. -->
+  <script src="js/historyManager.js"></script>
   <script src="js/exporter.js"></script>
+  <!-- 🆕 v1.10.3 : Export PDF imprimable via jsPDF. La lib UMD doit être
+       chargée AVANT pdfExport.js (sinon window.jspdf n'existe pas et le
+       module log un warn de disponibilité). -->
+  <script src="lib/jspdf.umd.min.js"></script>
+  <script src="js/pdfExport.js"></script>
   <script src="js/tableEditor.js"></script>
   <script src="js/searchPoints.js"></script>
   <script src="js/sessionExporter.js"></script>
@@ -751,6 +762,10 @@
   <script src="js/updateChecker.js"></script>
   <script src="js/alertChecker.js"></script>
   <script src="js/lostMode.js"></script>
+  <!-- 🆕 v1.10.1 : Mode urgence (panique) — affichage XL position + cap
+       boussole + thèmes clair/sombre. Différent du LostMode (calcul de
+       zone). Self-contained, exposé via window.EmergencyMode. -->
+  <script src="js/emergencyMode.js"></script>
   <script src="js/compass.js"></script>
 
   <!-- 🎨 REFONTE UI v1 (branche Refonte_interface) — chargé AVANT

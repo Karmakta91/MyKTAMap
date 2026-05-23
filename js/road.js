@@ -113,6 +113,13 @@ function initRoad() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
+    // 🆕 v1.11.0 Undo/Redo : snapshot AVANT toute mutation (création
+    // de currentRoad OU ajout d'un sommet à l'existant). Label adapté
+    // selon que c'est le 1er point d'une nouvelle road ou un sommet
+    // additionnel.
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _isNewRoad = !currentRoad;
+
     if (!currentRoad) {
       currentRoad = {
         type: window.modeRoad,
@@ -141,6 +148,18 @@ function initRoad() {
     console.log("[Road] point ajouté", x, y);
 
     renderRoads();
+
+    if (window.HistoryManager && _historyBefore) {
+      const typeLabel = window.modeRoad === "principal"  ? "Principal"
+                      : window.modeRoad === "secondaire" ? "Secondaire"
+                      : window.modeRoad === "chemin"     ? "Chemin"
+                      : window.modeRoad === "jonction"   ? "Jonction"
+                      : window.modeRoad;
+      const lbl = _isNewRoad
+        ? "Nouveau tracé " + typeLabel
+        : "Sommet sur tracé " + typeLabel;
+      window.HistoryManager.record(lbl, _historyBefore);
+    }
   });
 }
 
@@ -721,9 +740,15 @@ function resetRoads() {
 // =========================
 function removeLastRoad() {
   if (roadsData.length === 0) return false;
+  // 🆕 v1.11.0 Undo/Redo : snapshot before
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
   const removed = roadsData.pop();
   if (currentRoad === removed) currentRoad = null;
   renderRoads();
+  if (window.HistoryManager && _historyBefore) {
+    const typeLabel = removed && removed.type ? removed.type : "tracé";
+    window.HistoryManager.record("Supprimer dernier tracé (" + typeLabel + ")", _historyBefore);
+  }
   return true;
 }
 

@@ -1,16 +1,14 @@
 {
-  "version": "v1.10.0-hotfix1",
+  "version": "v1.11.0",
   "released": "2026-05-23",
   "notes": [
-    "🔧 Hotfix structures : fronts de taille désormais affichés AU-DESSUS des piliers (l'avancement d'exploitation est plus visible que l'architecture statique). En multi-niveau, tri par niveau respecté (niveau bas en arrière).",
-    "🔧 Hotfix couleurs : alignement universel couleur/masse — un trait jaune = 1ère masse, un trait orange = 2e masse (peu importe que ce soit un pilier ou un front). Avant, les fronts avaient les couleurs inversées vs les piliers, source de confusion sur le terrain.",
-    "📸 Photos POI complètes : attache jusqu'à 5 photos par point (caméra ou galerie), compressées auto (1920px max, JPEG q85). Stockage 100% local IndexedDB. Visualisation en miniatures dans la popup du marker + viewer plein écran avec pinch-zoom, pan, swipe horizontal et flèches navigation.",
-    "📸 Photos dans tous les exports : session Full, session Avancé, conversion session ↔ data layer, et générateur ZIP plan (mode Modifier ou import datalayer ZIP). Format unifié : ZIP avec session.json + photos/_index.json + blobs. Re-import restaure automatiquement.",
-    "📦 Bouton « Importer un datalayer ZIP en un clic » dans le générateur — permet de récupérer en un coup les points + tracés + zones + photos exportés depuis un autre plan via Conversion session → data layer.",
-    "🔐 Code d'accès local optionnel (PIN 4-6 chiffres + Face ID / Touch ID via WebAuthn) — accessible depuis ⚙️ Configuration de la page d'accueil. Verrouille l'app à chaque démarrage. 5 tentatives ratées → lockout définitif (réinstaller l'app ou contacter l'auteur). ⚠️ Barrière d'usage, pas un chiffrement des données. Note bien ton code : aucune récupération possible.",
-    "✏️ Modifier un point existant : clic sur un marker session → bouton « ✏️ Modifier » dans la popup → ouvre la fenêtre d'édition pré-remplie (nom, type, description, photos). Renommer un point migre automatiquement ses photos.",
-    "🎯 Sélectionner une structure à supprimer au clic (comme pour les tracés et zones depuis longtemps). Supprime la structure cliquée — pattern hybride polygon (piliers + murs) / polyline (fronts).",
-    "🧹 « Dernière X (en cours OU fermée) » : tu peux désormais supprimer la zone ou la structure que tu es en train de dessiner d'un seul clic, sans avoir à annuler chaque point un par un. Comportement aligné sur les tracés (existait déjà depuis v1).",
-    "🏗️ Mode multi-niveau : par défaut, les niveaux -1, 0 et +1 sont visibles (au lieu de juste 0). Tu vois immédiatement les passages entre étages au chargement d'un plan multi-niveau."
+    "🚨 IMPORTANT — Nouveau domaine officiel : MyKTAMap est désormais à myktamap.fr (anciennement myktamap.is-underground.fr). L'ancien domaine redirige automatiquement. Mets à jour tes raccourcis / favoris.",
+    "⏪ Undo / Redo global (Ctrl+Z / Ctrl+Y) — annule jusqu'à 50 actions sur les 4 catégories d'annotations dessinables : ✏️ points · 🛣️ tracés · ⬛ zones · 🏛️ structures. Granularité atomique (1 clic = 1 annulable). Raccourcis clavier Ctrl+Z (Cmd+Z sur Mac), Ctrl+Y et Ctrl+Shift+Z. Aussi 2 boutons sidebar ⏪/⏩ dans un nouveau groupe Historique (auto-grisés quand la pile est vide). Toast discret à chaque action. Reset auto au plan switch. ⚠️ Photos POI exclues du périmètre undo (suppression IDB reste irréversible).",
+    "📤 Export PDF imprimable : nouveau bouton dans ⬆️ Enregistrer. Formats A0/A1/A2/A3/A4 portrait ou paysage. Header (titre + métadonnées) automatique, légende positionnable dans un coin (4 positions × 3 tailles × 4 styles dont fond blanc « Pro » pour l'impression papier). Réutilise la même chaîne de rendu canvas que l'export PNG avancé — cohérence visuelle parfaite.",
+    "🔍 Recherche unifiée (Ctrl+K) : la recherche couvre désormais points + tracés + zones + structures. Résultats groupés par catégorie (📍 Points / 🛣️ Tracés / ⬛ Zones / 🏛️ Structures) avec compteurs. Filtres catégorie + calque + tag. Au clic : centre la carte + flash de l'élément (cercle pour les points, polyline dashed pour les tracés, polygon transparent pour zones / piliers / mur).",
+    "🏛️ Fix structures dans tous les exports : les piliers/mur/fronts dessinés dans un data layer du plan (structure.json) étaient visibles sur la carte mais manquaient dans l'export PNG rapide ⚡, l'export PNG avancé 🎨 et le PDF 📤. Bug oublié post-update v1.9.3 → désormais inclus partout, avec tri Z correct (mur < pilier-2 < pilier-1 < front-2 < front-1).",
+    "🗺️ Légende enrichie : section 🏛️ Structures ajoutée dans la légende in-app, dans la légende exportée PNG (avec case dédiée dans la modale Export Avancé) et dans le PDF. Filtre par usage réel : un icône / type ne s'affiche que s'il est présent au moins une fois sur le plan exporté.",
+    "🚨 Mode urgence — zoom minimap ajusté pour un compromis lisibilité ↔ environnement immédiat (~20-50m d'horizon autour du tracker).",
+    "🖼️ Modale Export images renommée : « Exporter le plan » → « Exporter en PNG/JPG » pour clairement distinguer du nouveau « Exporter en PDF imprimable »."
   ]
 }

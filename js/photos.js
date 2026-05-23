@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  *
  * MODULE : photos.js (introduit en B1.a — phase B "Enrichissement contenu")

@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * https://myktamap.is-underground.fr — Licence CC BY-NC-SA 4.0
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
@@ -462,6 +462,14 @@ function _libererRessourcesPlanPrecedent() {
   // avant le démontage de la map.
   if (window.LostMode && typeof window.LostMode._onPlanSwitch === "function") {
     try { window.LostMode._onPlanSwitch(); } catch(e) {}
+  }
+
+  // 🆕 v1.11.0 Undo/Redo : reset historique au plan switch (KARMA 11:a).
+  // L'historique est par-plan : aucune raison de garder les snapshots
+  // d'un plan dans la pile quand on en charge un autre (les setters
+  // restaureraient des données qui ne correspondent pas au nouveau plan).
+  if (window.HistoryManager && typeof window.HistoryManager.reset === "function") {
+    try { window.HistoryManager.reset(); } catch(e) {}
   }
 
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs

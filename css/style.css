@@ -2855,6 +2855,27 @@ img.kta-popup-photo-mini:focus-visible {
   }
 }
 
+/* 🆕 v1.10.3 — Modale Export PDF (.kta-pdf-modal-boite).
+   Hérite de .kta-readme-modal-boite mais reste plus compacte que la modale
+   Export Images : moins d'options (pas de calques détaillés ni d'aperçu),
+   donc une largeur intermédiaire suffit. Mobile : height:auto avec max-h. */
+.kta-pdf-modal-boite {
+  height: auto !important;
+  max-height: 90vh !important;
+}
+@media (min-width: 1024px) {
+  .kta-pdf-modal-boite {
+    max-width: 760px !important;
+    width: min(760px, 92vw) !important;
+  }
+}
+@media (min-width: 1440px) {
+  .kta-pdf-modal-boite {
+    max-width: 820px !important;
+    width: min(820px, 88vw) !important;
+  }
+}
+
 
 /* 🆕 v1.9.2-fix13 — Légende sur PC : layout multi-colonnes pour
    profiter de la largeur agrandie. Les sections (Puits / Accès /
@@ -5711,6 +5732,344 @@ img.kta-popup-photo-mini:focus-visible {
   .kta-pin-gate-titre { font-size: 18px; }
   .kta-pin-gate-key { font-size: 20px; padding: 13px 0; }
   .kta-pin-gate-key-bio { font-size: 22px; }
+}
+
+/* =====================================================================
+   🚨 MODE URGENCE — v1.10.1
+   Overlay plein écran avec position GPS + cap boussole en GROS, désactive
+   tout le superflu. 2 thèmes : sombre (visibilité nocturne) / clair
+   (lampe d'appoint).
+   ===================================================================== */
+
+.kta-emergency-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100003;  /* au-dessus de tout, même de la PIN gate */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  overflow-y: auto;
+  animation: kta-emergency-fadein 0.2s ease-out;
+}
+
+@keyframes kta-emergency-fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 🌑 THÈME SOMBRE — visibilité nocturne sous terre */
+.kta-emergency-dark {
+  background: #0a0d18;
+  color: #f0f4ff;
+}
+.kta-emergency-dark .kta-emergency-titre        { color: #ff6b6b; }
+.kta-emergency-dark .kta-emergency-label        { color: #8892a4; }
+.kta-emergency-dark .kta-emergency-value        { color: #f4c542; }
+.kta-emergency-dark .kta-emergency-sub          { color: #c8d0e0; }
+.kta-emergency-dark .kta-emergency-bloc         { background: rgba(255,255,255,0.04); border-color: rgba(244,197,66,0.25); }
+.kta-emergency-dark .kta-emergency-compass      { background: rgba(244,197,66,0.08); border-color: rgba(244,197,66,0.4); }
+.kta-emergency-dark .kta-emergency-compass-n    { color: #f4c542; }
+.kta-emergency-dark .kta-emergency-compass-needle { color: #ff6b6b; text-shadow: 0 0 12px rgba(255,107,107,0.6); }
+.kta-emergency-dark .kta-emergency-hint         { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.3); color: #ffb380; }
+.kta-emergency-dark .kta-emergency-exit-btn     { background: #f4c542; color: #0a0d18; border-color: #f4c542; }
+.kta-emergency-dark .kta-emergency-exit-btn:hover { background: #ffd860; }
+.kta-emergency-dark .kta-emergency-theme-btn    { background: rgba(255,255,255,0.08); color: #f4c542; }
+
+/* 🔆 THÈME CLAIR — lampe d'appoint, max brightness */
+.kta-emergency-light {
+  background: #ffffff;
+  color: #0a0d18;
+}
+.kta-emergency-light .kta-emergency-titre        { color: #c0392b; }
+.kta-emergency-light .kta-emergency-label        { color: #4a5468; }
+.kta-emergency-light .kta-emergency-value        { color: #b8740b; }
+.kta-emergency-light .kta-emergency-sub          { color: #2c3848; }
+.kta-emergency-light .kta-emergency-bloc         { background: rgba(0,0,0,0.04); border-color: rgba(184,116,11,0.35); }
+.kta-emergency-light .kta-emergency-compass      { background: rgba(184,116,11,0.1); border-color: rgba(184,116,11,0.5); }
+.kta-emergency-light .kta-emergency-compass-n    { color: #b8740b; }
+.kta-emergency-light .kta-emergency-compass-needle { color: #c0392b; text-shadow: 0 0 8px rgba(192,57,43,0.4); }
+.kta-emergency-light .kta-emergency-hint         { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); color: #c0392b; }
+.kta-emergency-light .kta-emergency-exit-btn     { background: #c0392b; color: #ffffff; border-color: #c0392b; }
+.kta-emergency-light .kta-emergency-exit-btn:hover { background: #a02818; }
+.kta-emergency-light .kta-emergency-theme-btn    { background: rgba(0,0,0,0.08); color: #b8740b; }
+
+/* Layout commun aux 2 thèmes */
+.kta-emergency-box {
+  width: 100%;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.kta-emergency-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.kta-emergency-titre {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 12px rgba(255, 107, 107, 0.5);
+}
+
+.kta-emergency-theme-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  transition: background 0.12s;
+  font-family: inherit;
+}
+
+.kta-emergency-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.kta-emergency-bloc {
+  border: 1.5px solid;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kta-emergency-bloc-heading {
+  grid-column: 1 / -1;  /* pleine largeur pour la boussole */
+  align-items: center;
+  text-align: center;
+  /* 🔧 v1.10.2-fix3 : bloc heading transformé en conteneur relatif pour
+     positionner le minimap full bloc + overlay centré au-dessus. */
+  position: relative;
+  min-height: 320px;
+  padding: 0 !important;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+/* Overlay centré au-dessus du minimap : titre + heading num + cap card +
+   cercle compass. Tout en flex column centré vertical/horizontal. */
+.kta-emergency-bloc-heading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 2;
+  pointer-events: none;  /* le minimap derrière ne reçoit pas de clics non plus */
+  padding: 14px;
+}
+.kta-emergency-bloc-heading-overlay > * {
+  pointer-events: auto;  /* mais les enfants restent interactifs (clic compass futur) */
+}
+
+.kta-emergency-bloc-meta {
+  grid-column: 1 / -1;
+}
+
+.kta-emergency-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.kta-emergency-value {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: "SF Mono", Monaco, Consolas, monospace;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.kta-emergency-pos-gps {
+  font-size: 22px;  /* GPS un peu plus petit (longs floats) */
+}
+
+.kta-emergency-sub {
+  font-size: 12.5px;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* Heading bloc — texte par-dessus le minimap, donc halo prononcé pour lisibilité */
+.kta-emergency-heading-num {
+  font-size: 56px;
+  font-weight: 800;
+  text-shadow: 0 0 12px rgba(0, 0, 0, 0.85),
+               0 0 24px rgba(0, 0, 0, 0.6);
+}
+
+.kta-emergency-heading-card {
+  font-size: 28px;
+  font-weight: 700;
+  opacity: 0.95;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.8),
+               0 0 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Thème clair : halo blanc au lieu de noir */
+.kta-emergency-light .kta-emergency-heading-num,
+.kta-emergency-light .kta-emergency-heading-card {
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.95),
+               0 0 24px rgba(255, 255, 255, 0.7);
+}
+.kta-emergency-light .kta-emergency-bloc-heading-overlay .kta-emergency-label {
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.9);
+}
+.kta-emergency-dark .kta-emergency-bloc-heading-overlay .kta-emergency-label {
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.85);
+}
+
+.kta-emergency-compass {
+  margin-top: 8px;
+  width: 160px;
+  height: 160px;
+  border: 3px solid;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 🔧 v1.10.2-fix8 (KARMA "ca parait flooté dans le rond, défloute") :
+     - retrait du backdrop-filter: blur(2px) qui floutait la portion de
+       minimap derrière le cercle compass (cause principale du "flou
+       dans le rond")
+     - background plus opaque pour compenser (lisibilité conservée sans
+       blur, mais on voit moins la map à travers le cercle — compromis
+       acceptable car le bloc heading entier montre déjà la map en
+       background, le rond compass est juste là pour cadrer l'aiguille). */
+  background: rgba(0, 0, 0, 0.55);
+}
+/* Thème clair : fond clair plus opaque sans blur */
+.kta-emergency-light .kta-emergency-compass {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* 🆕 v1.10.2 + fix3 (KARMA "il peut prendre tout le rectangle cap") :
+   minimap Leaflet remplit TOUT le bloc heading (pas juste le rond compass).
+   Position absolute inset:0 → fill le bloc parent.
+   border-radius hérite du parent (12px du bloc, pas 50%). */
+.kta-emergency-mini-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  overflow: hidden;  /* clip Leaflet tiles à l'arrondi */
+}
+
+/* 🔧 v1.10.2-fix4 (KARMA "affiche les roads c'est utile pour trouver son
+   chemin") : filter appliqué UNIQUEMENT à l'image base du plan, pas à
+   tout le minimap. Les polylines roads restent vives et lisibles. Cible
+   .leaflet-image-layer (= l'imageOverlay du plan). Les polylines sont
+   rendues sur canvas/SVG dans .leaflet-overlay-pane au-dessus, donc non
+   affectées par ce filter.
+   🔧 v1.10.2-fix8 (KARMA "un peu moins en map, défloute") :
+   - brightness 0.55 → 0.72 (moins assombri, plus net visuellement)
+   - saturate 0.4 → 0.55 (un peu plus de couleurs, moins terne)
+   La map reste désaturée pour ne pas voler la vedette aux annotations,
+   mais elle est plus claire et lisible. */
+.kta-emergency-mini-map .leaflet-image-layer {
+  filter: brightness(0.72) saturate(0.55);
+}
+/* Override le background des tiles Leaflet pour le thème */
+.kta-emergency-dark  .kta-emergency-mini-map .leaflet-container { background: #0a0d18; }
+.kta-emergency-light .kta-emergency-mini-map .leaflet-container { background: #f0e8d8; }
+/* Cache les controls Leaflet du mini (zoom, attribution) — déjà desactivés
+   en JS mais double sécurité CSS */
+.kta-emergency-mini-map .leaflet-control-container,
+.kta-emergency-mini-map .leaflet-bottom { display: none !important; }
+
+.kta-emergency-compass-needle {
+  font-size: 60px;
+  line-height: 1;
+  /* 🔧 v1.10.2-fix1 : transition retirée pour rotation unwrapped — la
+     transition causait un flicker visuel quand la valeur appliquée
+     dépassait ±360°. Le throttle 1° + polling 250ms suffit à un
+     mouvement fluide perçu sans transition CSS. */
+  transform-origin: center 50%;
+  position: relative;
+  z-index: 2;  /* devant le minimap */
+  /* Glow rouge accentué pour rester lisible par-dessus le minimap */
+  filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.85))
+          drop-shadow(0 0 18px rgba(255, 107, 107, 0.55));
+}
+
+.kta-emergency-compass-n {
+  position: absolute;
+  top: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  z-index: 2;  /* devant le minimap */
+  /* Halo pour rester lisible */
+  text-shadow: 0 0 6px currentColor, 0 0 12px rgba(0,0,0,0.6);
+}
+
+/* Meta bloc — lignes label / value */
+.kta-emergency-meta-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(127, 127, 127, 0.2);
+}
+.kta-emergency-meta-row:last-child { border-bottom: none; }
+.kta-emergency-meta-label { font-weight: 600; letter-spacing: 0.04em; }
+.kta-emergency-meta-value { font-family: "SF Mono", Monaco, Consolas, monospace; }
+
+/* Hint */
+.kta-emergency-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px 16px;
+  border: 1.5px solid;
+  border-radius: 8px;
+}
+
+/* Bouton sortir — gros et visible */
+.kta-emergency-exit-btn {
+  padding: 18px 20px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  border: 2px solid;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+/* Mobile compact : grille 1 colonne, heading bloc plus compact */
+@media (max-width: 540px) {
+  .kta-emergency-grid       { grid-template-columns: 1fr; }
+  .kta-emergency-titre      { font-size: 19px; }
+  .kta-emergency-value      { font-size: 26px; }
+  .kta-emergency-pos-gps    { font-size: 18px; }
+  .kta-emergency-heading-num { font-size: 44px; }
+  .kta-emergency-heading-card { font-size: 22px; }
+  .kta-emergency-bloc-heading { min-height: 260px; }
+  .kta-emergency-compass    { width: 130px; height: 130px; }
+  .kta-emergency-compass-needle { font-size: 48px; }
+  .kta-emergency-exit-btn   { padding: 16px; font-size: 14px; }
 }
 
 /* =====================================================================

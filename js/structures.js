@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  * Voir LICENSE a la racine du projet.
  */
@@ -165,6 +165,19 @@ function initStructures() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
+    // 🆕 v1.11.0 Undo/Redo : snapshot before. Le label se construit
+    // ensuite selon que c'est une nouvelle structure, un sommet de plus
+    // ou une fermeture (cas polygon).
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _isNewStruct = !currentStructure;
+    const _typeKey = window.modeStructure;
+    const _typeLabel = _typeKey === "pilier-1" ? "Pilier 1ère masse"
+                     : _typeKey === "pilier-2" ? "Pilier 2e masse"
+                     : _typeKey === "mur"      ? "Mur"
+                     : _typeKey === "front-1"  ? "Front 1ère masse"
+                     : _typeKey === "front-2"  ? "Front 2e masse"
+                     : _typeKey;
+
     if (!currentStructure) {
       currentStructure = {
         type: window.modeStructure,
@@ -204,6 +217,10 @@ function initStructures() {
     if (_isPolylineType(currentStructure.type)) {
       currentStructure.points.push({ x: x, y: y });
       renderStructures();
+      if (window.HistoryManager && _historyBefore) {
+        const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
+        window.HistoryManager.record(lbl, _historyBefore);
+      }
       return;
     }
 
@@ -215,12 +232,19 @@ function initStructures() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= STRUCT_CLOSE_TOLERANCE) {
         fermerStructureEnCours();
+        if (window.HistoryManager && _historyBefore) {
+          window.HistoryManager.record("Fermer " + _typeLabel, _historyBefore);
+        }
         return;
       }
     }
 
     currentStructure.points.push({ x: x, y: y });
     renderStructures();
+    if (window.HistoryManager && _historyBefore) {
+      const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
+      window.HistoryManager.record(lbl, _historyBefore);
+    }
   });
 }
 
@@ -457,17 +481,26 @@ function removeLastStructure() {
   // 🆕 v1.9.4 (KARMA "supprimer d'un coup la structure en cours") :
   // priorité à la structure EN COURS si elle existe, sinon la dernière
   // fermée. Cohérent avec removeLastRoad et removeLastZone (depuis v1.9.4).
+  // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
   if (currentStructure) {
     const idx = structuresData.indexOf(currentStructure);
     if (idx >= 0) structuresData.splice(idx, 1);
     currentStructure = null;
     renderStructures();
+    if (window.HistoryManager && _historyBefore) {
+      window.HistoryManager.record("Supprimer structure en cours", _historyBefore);
+    }
     return true;
   }
   // Pas de structure en cours → supprime la dernière fermée
   if (structuresData.length === 0) return false;
-  structuresData.pop();
+  const removed = structuresData.pop();
   renderStructures();
+  if (window.HistoryManager && _historyBefore) {
+    const typeLabel = removed && removed.type ? removed.type : "structure";
+    window.HistoryManager.record("Supprimer dernière structure (" + typeLabel + ")", _historyBefore);
+  }
   return true;
 }
 

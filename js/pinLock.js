@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
  * Voir LICENSE a la racine du projet.
  */
@@ -715,8 +715,8 @@
             '<li><strong>Réinstaller complètement l\'app</strong> (supprime ' +
               'le PIN + la session + les plans non mémorisés).</li>' +
             '<li><strong>Contacter l\'auteur</strong> via ' +
-              '<a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener" ' +
-              'style="color:#8cb4ff;">myktamap.is-underground.fr</a> — ' +
+              '<a href="https://myktamap.fr" target="_blank" rel="noopener" ' +
+              'style="color:#8cb4ff;">myktamap.fr</a> — ' +
               '⚠️ il ne pourra pas récupérer ton code (aucune donnée stockée côté serveur).</li>' +
           '</ol>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +

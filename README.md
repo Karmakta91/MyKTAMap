@@ -2,16 +2,170 @@
 > Application web de **cartographie souterraine** — visualisation, annotation et déplacement simulé sur plan image (carrières, galeries, sites souterrains/industriels).
 
 **🌍 Environnements :**
-- 🟢 Production : [myktamap.is-underground.fr](https://myktamap.is-underground.fr)
+- 🟢 Production : [myktamap.fr](https://myktamap.fr)
 - 🔧 Développement : [devmap.is-underground.fr](https://devmap.is-underground.fr)
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (103 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (105 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-10-0-hotfix1" open>
+<details id="v1-11-0" open>
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.11.0 : Undo / Redo global (Ctrl+Z / Ctrl+Y) + consolidation v1.10.3</strong></summary>
+
+Release MINOR (bump Y : 1.10.x → 1.11.0) car ajout d'une feature transversale qui touche 5 modules. Consolide aussi tout le contenu v1.10.3 (PDF + Recherche unifiée + Fix structures + Migration domaine) — voir l'entrée v1.10.3 ci-dessous pour le détail de ces blocs (mergés tels quels dans v1.11.0).
+
+### ⏪ Undo / Redo global — la nouveauté principale
+
+Nouveau module **`js/historyManager.js`** (~250 lignes IIFE) → `window.HistoryManager = { record, captureState, recordAction, undo, redo, canUndo, canRedo, reset, onChange }`.
+
+**Périmètre** (KARMA `1:b`) :
+- ✏️ Editor points (ajout / modification / suppression dernière / suppression au clic)
+- 🛣️ Tracés (clic carte ajoutant un sommet OU créant une nouvelle road / suppression dernier / suppression au clic / "tous les tracés")
+- ⬛ Zones (idem + fermeture par retour au 1er point)
+- 🏛️ Structures (idem + fermeture polygones / polylines fronts)
+- ❌ **Photos POI EXCLUES** (suppression IDB irréversible — restore demanderait un cache RAM des blobs qui explose vite)
+- ❌ Import session : pas couvert (race conditions)
+
+**Choix de design** (KARMA validés tout en haut du topo `1:b · 2:a · 3:b · 4:c · 5:a · 6:a · 7:a · 8:c · 9:a · 10:b · 11:a+b`) :
+
+| | Choix | Détail |
+|---|---|---|
+| 1 | Périmètre | 4 catégories d'annotations dessinables, photos hors-scope |
+| 2 | Granularité | Action atomique (1 clic = 1 entrée) |
+| 3 | Profondeur | 50 actions FIFO (cap RAM raisonnable) |
+| 4 | Activation | **Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z** + 2 boutons sidebar dans un nouveau groupe `⏪ Historique` |
+| 5 | Persistance | RAM only (perte au reload, cohérent session active) |
+| 6 | UX feedback | Toast discret `↩ Annulé : <label>` / `↪ Refait : <label>` via `OOMGuard.showToast` |
+| 7 | Session persist | Save auto à chaque undo/redo (force flag) |
+| 8 | Approche | **Snapshot hybride** : à chaque action, capture deep clone des arrays `{editorPoints, roads, zones, structures}` |
+| 9 | Photos | Exclues |
+| 10 | Boutons | Grisés (`opacity: 0.4` + cursor not-allowed) si pile vide, via `HistoryManager.onChange` |
+| 11 | Reset historique | Au plan switch (`main.js > _libererRessourcesPlanPrecedent`) + au reload (RAM-only fait l'affaire) |
+
+**Anti-vol focus clavier** : le raccourci Ctrl+Z ne se déclenche pas si l'user est en train de taper dans un INPUT/TEXTAREA/contenteditable (l'undo natif du navigateur reste fonctionnel pour ces champs).
+
+**Sites instrumentés** (snapshot before + mutation + record après) :
+- `js/editor.js` : `_ajouterPointSession` (branches création + modification IN PLACE), `removeLastEditorPoint`
+- `js/road.js` : handler `map.on("mousedown")` (création + ajout sommet), `removeLastRoad`
+- `js/zones.js` : handler `map.on("click")` (création + ajout + fermeture par 1er point), `removeLastZone` (couvre `currentZone` et dernière fermée)
+- `js/structures.js` : handler `map.on("click")` (création + ajout + fermeture polygon), `removeLastStructure`
+- `js/interface.js` : suppression au clic (roads/zones/structures), boutons "Tous les tracés / Toutes les zones / Toutes les structures" (libellé `desc` mis à jour : "Annulable via ⏪ Ctrl+Z" au lieu de "Action irréversible")
+
+**Wiring** :
+- `index.html` : `<script src="js/historyManager.js">` chargé APRÈS les modules de mutation (editor/road/zones/structures) et AVANT interface.js (qui s'abonne via `HistoryManager.onChange` pour griser les boutons).
+- `sw.js > ASSETS_TO_CACHE` : `./js/historyManager.js` ajouté.
+- `main.js > _libererRessourcesPlanPrecedent` : appelle `HistoryManager.reset()` avant `map.remove()`.
+
+**Bump version 3 sources** :
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.11.0-undoredo`
+- `js/copyright.js > __MKM__.build` → `"v1.11.0"`
+- `version.json > version` → `"v1.11.0"` + notes consolidées (Undo en 1er + items v1.10.3)
+
+### Pour les futurs dev / agents IA
+
+**Pour rendre une nouvelle mutation undo-able** :
+1. Au début de la fonction de mutation, capturer : `const _hb = window.HistoryManager ? window.HistoryManager.captureState() : null;`
+2. Faire la mutation comme avant
+3. À la fin : `if (window.HistoryManager && _hb) { window.HistoryManager.record("Label lisible", _hb); }`
+
+**À NE PAS instrumenter** :
+- Les setters utilisés par les imports (`setEditorPoints` / `setRoads` / etc.) — ils seraient déclenchés par SessionPersist au boot et créeraient des entrées d'historique artificielles
+- Les modifications de tracker (capteurs temps réel, hors périmètre)
+- Les opérations photos IDB (cf. point 9 du topo)
+
+**À tester après modification du périmètre** :
+- Ouvrir un plan, ajouter qq points / tracés / zones / structures
+- Ctrl+Z plusieurs fois → tout revient en arrière dans le bon ordre
+- Ctrl+Y → tout revient en avant
+- Faire une nouvelle action après un undo → la pile redo est vidée
+- Plan switch → l'historique est reset (`HistoryManager._peek()` retourne `{undo: [], redo: []}`)
+- Reload → idem (RAM-only)
+
+</details>
+
+<details id="v1-10-3">
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.10.3 : Export PDF imprimable + Recherche unifiée (Ctrl+K) + Fix structures embedded + Migration domaine</strong></summary>
+
+Release majeure qui consolide les nouveautés V1.suite (post-v1.10.0) :
+
+### 📤 Export PDF imprimable (nouveau)
+- Nouveau module `js/pdfExport.js` (~700 lignes IIFE) → `window.MyKTAMapPdfExport = { afficherModale, genererPdf }`.
+- Lib **jsPDF UMD** (`lib/jspdf.umd.min.js`, ~356 KB) embarquée dans le SW.
+- Modale dédiée accessible depuis ⬆️ **Enregistrer** → **📤 Exporter en PDF imprimable** (à côté de l'export PNG).
+- **Formats étendus A0/A1/A2/A3/A4** × portrait/paysage (10 combinaisons) :
+  - A0 = 841×1189 mm (plotter pro)
+  - A4 = 210×297 mm (papier standard) — défaut paysage
+- **Calques granulaires** (inspiré export PNG avancé) :
+  - Section **🖼️ Image de base & calques** : 1 checkbox par `imageLayers[]` du plan
+  - Section **📊 Calques de données** : 1 checkbox par `dataLayers[]` (puits, vehicule, chemin, structure, editor…)
+  - Pré-cochage = visibilité actuelle sur la carte au moment de l'ouverture de la modale
+- **Pipeline canvas** : réutilise `_genererCanvasExport` (exporter.js) via nouveau wrapper public `window.MyKTAMapExporterGenererCanvas(opts)` — cohérence visuelle avec l'export PNG avancé.
+- **Légende = overlay 4-coins** :
+  - Pose la légende canvas en image PNG par-dessus la zone du plan (pas en footer dédié comme la v1 trop intrusive).
+  - 4 positions : ↖ Haut-gauche · ↗ Haut-droite · ↙ Bas-gauche (défaut) · ↘ Bas-droite
+  - 3 tailles : Compact (icônes 16px) · Standard (22px) · Large (30px)
+  - **4 styles** : 🆕 **Pro fond blanc** (défaut, adapté impression) · Sombre opaque · Sombre semi-transp. · Filigrane discret
+  - Nouveau helper public `window.MyKTAMapExporterGenererCanvasLegende(opts)` qui retourne un canvas standalone de la légende (réutilise `_dessinerLegende` enrichi avec return `{boiteW, boiteH, bx, by}` à la fin).
+  - Filtre par usage réel : un icône / type ne s'affiche que s'il est présent au moins une fois sur le plan exporté.
+- **Crédits libs** dans le splash + footer loader : `🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra`.
+
+### 🔍 Recherche unifiée (Ctrl/Cmd+K)
+- Extension du module existant `js/searchPoints.js` (832 → ~1050 lignes).
+- **4 catégories** désormais cherchables : 📍 Points · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures (session + embedded data layers).
+- **Raccourci global Ctrl/Cmd+K** : toggle la modale (anti-vol de focus si input/textarea actif, sauf si la modale est déjà ouverte).
+- **Résultats groupés par catégorie** avec headers `📍 Points (N) · 🛣️ Tracés (M) · ⬛ Zones (K) · 🏛️ Structures (L)`.
+- **Filtres** : nouvelle ligne **Catégorie** (4 chips) en haut, en plus des filtres `Calques`/`Tags` historiques pour les points.
+- **Interaction au clic** :
+  - Points → centre + popup marker + cercle jaune 3s (comportement v1.7.x préservé)
+  - Tracés / fronts → centre sur centroïde + polyline jaune dashed 4s
+  - Zones / piliers / mur → centre + polygon jaune transparent 4s
+  - Popup info adapté : label + type FR + niveau M-LVL + nb points + layer
+- **API publique inchangée** : `SearchPoints.getAllPoints()` et `findByQuery()` continuent de retourner du format point-only (compat Pathfinder + Itinéraire).
+
+### 🏛️ Fix structures embedded — comblement d'un trou v1.9.3
+Audit qui a révélé que les structures (piliers + mur + fronts) **dessinées dans un data layer** (`data/<plan>/structure.json` ou autre) étaient :
+- ✅ Affichées sur la carte (`utils.js > ajouterPointsDepuisJSON` lit `json.structures`)
+- ✅ Présentes dans les exports session (Full / Avancé / Conversion) et KMZ
+- ❌ **Manquantes dans `utils.js > telechargerPlan`** (export PNG rapide) — bloc structures complètement absent (session ET embedded)
+- ❌ **Manquantes dans `exporter.js > _genererCanvasExport`** (export PNG avancé + PDF) — uniquement les structures session étaient dessinées, pas les embedded
+
+Fix appliqué :
+1. `utils.js > telechargerPlan` : ajout de 2 blocs (structures session juste après les zones, et structures embedded dans la boucle data layers entre zones et roads embedded). Tri Z `mur < pilier-2 < pilier-1 < front-2 < front-1` + filtre WYSIWYG niveau.
+2. `exporter.js > _genererCanvasExport` boucle data layers : ajout de `embeddedStructures = Array.isArray(j.structures) ? j.structures : []` + bloc de rendu équivalent au session (réutilise les helpers `_drawPolygon`/`_drawPolyline`).
+3. Compteurs `_diagAdv.embStructs` et `_diag.embStructs` pour le débogage.
+
+### 🗺️ Légende enrichie avec section Structures
+- **Légende in-app** (`interface.js > afficherLegende`) : ajout d'une section dédiée 🏛️ Structures avec 5 lignes (piliers 1ère/2e masse + mur en polygones, fronts en polylines).
+- **Légende exportée PNG** (`exporter.js > _dessinerLegende`) : nouvelle case `leg_c_structures` dans la modale Avancé + section conditionnelle dans le rendu canvas. Couleurs cohérentes avec `STRUCTURE_STYLES` (hotfix v1.10.1-hotfix2 : front-1 jaune = pilier-1, front-2 orange = pilier-2).
+- **Légende PDF** : reprise automatique via le helper canvas légende standalone.
+
+### 🌐 Migration domaine `is-underground.fr` → `myktamap.fr`
+- 34 fichiers patchés via `sed` : tous les modules JS, HTML, docs et LICENSE.
+- 2 fichiers volontairement préservés :
+  - `docs/nginx-redirect-old-domain.conf` (conf serveur de l'ancien domaine, doit garder `myktamap.is-underground.fr` dans `server_name` / cert paths / kill switch)
+  - `docs/alert-migration-domaine-sauvegarde.json` (archive de l'alerte de migration v163+)
+- Crédits PDF mis à jour : `Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr`.
+
+### 🚨 Mode urgence — ajustement zoom minimap
+Plusieurs itérations sur l'offset zoom de la minimap mode urgence :
+- v1.10.1 original : `MINIMAP_ZOOM_OFFSET = 4` (vue ~30-60m)
+- v1.10.2-fix7 : 4 → **2** (KARMA "moins zoomé" — trop loin finalement)
+- v1.10.3-fix1 : 2 → `maxZoom` (KARMA "zoom à fond" — bug rendu à zoom 10 sur image L.CRS.Simple)
+- v1.10.3-fix2 : maxZoom → **5** (équilibre finalisé — ~20-50m d'horizon, clampé à `Math.min(maxZ, baseZ+5)`)
+
+### 🖼️ Modale Export images renommée
+- Titre : `🖼️ Exporter le plan` → **`🖼️ Exporter en PNG/JPG`** pour clairement distinguer du nouveau **`📤 Exporter en PDF imprimable`** (UX explicite, plus de confusion).
+
+### 📦 Fichiers impactés (résumé)
+- **Nouveau** : `js/pdfExport.js`, `lib/jspdf.umd.min.js`
+- **Modifiés** : `js/exporter.js` (wrapper public + section structures légende), `js/searchPoints.js` (extension 4 catégories + Ctrl+K), `js/interface.js` (sous-action PDF + légende structures + titre Export PNG/JPG), `js/utils.js` (fix structures dans `telechargerPlan`), `js/emergencyMode.js` (zoom minimap), `sw.js` (cache name + nouveau JS/lib), `css/style.css` (`.kta-pdf-modal-boite` + `print` style), `index.html` (script tags + crédits splash/loader), `docs/README_USER.md` (crédits footer + nouveautés), et 30+ autres fichiers patchés pour la migration domaine.
+- **Bump SW** : `myktamap-cache-v1.10.3-...` (plusieurs incréments pendant le dev).
+
+</details>
+
+<details id="v1-10-0-hotfix1">
 <summary><strong>🗓️ 23/05/2026 — 🔧 v1.10.0-hotfix1 : Structures — fronts au-dessus + couleurs alignées sur piliers</strong></summary>
 
 Patch correctif rapide après le release v1.10.0 du même jour. 2 ajustements
@@ -1577,7 +1731,7 @@ L'annonce migration était diffusée par 2 canaux distincts :
 <summary><strong>🗓️ 15/05/2026 (suite 11) — 🌐 v163 : Multi-alertes + annonce migration `myktamap.fr`</strong></summary>
 
 
-Préparation de la migration de domaine du site historique `myktamap.is-underground.fr` vers le nouveau `myktamap.fr` (prévue **15 juillet 2026**). Approche cohabitation 60j (pas de kill switch immédiat) pour éviter toute perte de données utilisateur.
+Préparation de la migration de domaine du site historique `myktamap.fr` vers le nouveau `myktamap.fr` (prévue **15 juillet 2026**). Approche cohabitation 60j (pas de kill switch immédiat) pour éviter toute perte de données utilisateur.
 
 #### 1. Refactor `alertChecker.js` — support multi-alertes
 
@@ -1619,7 +1773,7 @@ CSS : 4 nouvelles classes `.loader-btn-alert-{emergency|warning|info|none}` (l'a
 
 #### 3. Nouveau module `js/migrationNotice.js` — modal pédagogique one-shot
 
-Affichée **uniquement** sur `myktamap.is-underground.fr` (hostname gate strict), au premier lancement post-update.
+Affichée **uniquement** sur `myktamap.fr` (hostname gate strict), au premier lancement post-update.
 
 **Persistance** :
 - `"permanent"` → vue définitivement (clic "J'ai compris")
@@ -1665,7 +1819,7 @@ Hook splash identique aux autres modules (`notifySplashEnded`).
 - Anciens déploiements `alert.json` mono-alerte → fonctionnent identiquement (auto-wrap dans `alerts:[{...}]` avec id `legacy-<released>`)
 - Anciennes clés localStorage `myktamap_alert_seen` → fallback pour acquit des legacy-mono
 - Badge 🚨 sur déploiements sans alert.json → classe `loader-btn-alert-none` (gris discret)
-- Hostname autre que `myktamap.is-underground.fr` → `migrationNotice.js` totalement silencieux
+- Hostname autre que `myktamap.fr` → `migrationNotice.js` totalement silencieux
 
 ---
 
@@ -5039,7 +5193,7 @@ iOS cache l'icône PWA de manière agressive. Pour forcer le rafraîchissement a
 1. Sur l'iPhone : appui long sur l'icône MyKTAMap → Supprimer l'app
 2. Réglages → Safari → Effacer historique et données
 3. Ferme Safari complètement (swipe up dans le sélecteur d'apps)
-4. Rouvre `myktamap.is-underground.fr` dans Safari
+4. Rouvre `myktamap.fr` dans Safari
 5. Partager ↑ → Sur l'écran d'accueil
 
 L'icône est servie depuis `icon/mkm.png` — vérifier sa disponibilité directe avec `https://devmap.is-underground.fr/icon/mkm.png`.

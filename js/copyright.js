@@ -1,7 +1,7 @@
 /*!
  * MyKTAMap — Application de cartographie pour cataphiles
  * (c) 2026 Flavien VIDAL (alias KARMA)
- * Site : https://myktamap.is-underground.fr
+ * Site : https://myktamap.fr
  *
  * Licence : CC BY-NC-SA 4.0 (Creative Commons Attribution - NonCommercial - ShareAlike)
  * https://creativecommons.org/licenses/by-nc-sa/4.0/
@@ -36,10 +36,10 @@
     name:      "MyKTAMap",
     author:    "Flavien VIDAL (alias KARMA)",
     copyright: "(c) 2026 Flavien VIDAL",
-    site:      "https://myktamap.is-underground.fr",
+    site:      "https://myktamap.fr",
     license:   "CC BY-NC-SA 4.0",
     licenseUrl:"https://creativecommons.org/licenses/by-nc-sa/4.0/",
-    build:     "v1.10.0-hotfix1",
+    build:     "v1.11.0",
     note:      "Usage commercial interdit sans accord ecrit prealable."
   });
 
@@ -53,7 +53,7 @@
     console.log(
       "%c MyKTAMap %c (c) 2026 Flavien VIDAL (alias KARMA) %c\n" +
       "Licence : CC BY-NC-SA 4.0 — Usage commercial INTERDIT sans accord ecrit prealable.\n" +
-      "Site officiel : https://myktamap.is-underground.fr\n" +
+      "Site officiel : https://myktamap.fr\n" +
       "Toute reproduction commerciale expose le contrevenant a des poursuites (art. L.335-2 CPI).",
       "background:#f4c542; color:#1a1f2e; font-weight:800; font-size:14px; padding:4px 8px; border-radius:4px 0 0 4px;",
       "background:#1a1f2e; color:#f4c542; font-size:13px; padding:4px 8px; border-radius:0 4px 4px 0;",
@@ -120,7 +120,7 @@
         '<strong>MyKTAMap</strong> &copy; 2026 Flavien VIDAL<br>' +
         'Licence : <strong>CC BY-NC-SA 4.0</strong><br>' +
         'Usage commercial <strong style="color:#ff6b6b;">INTERDIT</strong> sans accord ecrit prealable.<br>' +
-        '<a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener">myktamap.is-underground.fr</a>' +
+        '<a href="https://myktamap.fr" target="_blank" rel="noopener">myktamap.fr</a>' +
       '</div>' +
       '<button class="kta-devtools-warn-close" type="button" aria-label="Fermer">&times;</button>';
     document.body.appendChild(t);

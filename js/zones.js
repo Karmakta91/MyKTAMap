@@ -117,6 +117,16 @@ function initZones() {
     const x = e.latlng.lng;
     const y = APP_CONFIG.imageHeight - e.latlng.lat;
 
+    // 🆕 v1.11.0 Undo/Redo : snapshot avant toute mutation (création de
+    // currentZone, ajout d'un sommet, fermeture par retour au 1er point).
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _isNewZone = !currentZone;
+    const _typeLabel = (window.modeZone === "eau" ? "Eau"
+                      : window.modeZone === "remblais" ? "Remblais"
+                      : window.modeZone === "effondrement" ? "Effondrement"
+                      : window.modeZone === "inaccessible" ? "Inaccessible"
+                      : window.modeZone);
+
     if (!currentZone) {
       currentZone = {
         type: window.modeZone,
@@ -138,12 +148,21 @@ function initZones() {
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist <= CLOSE_TOLERANCE) {
         fermerZoneEnCours();
+        if (window.HistoryManager && _historyBefore) {
+          window.HistoryManager.record("Fermer zone " + _typeLabel, _historyBefore);
+        }
         return;
       }
     }
 
     currentZone.points.push({ x: x, y: y });
     renderZones();
+    if (window.HistoryManager && _historyBefore) {
+      const lbl = _isNewZone
+        ? "Nouvelle zone " + _typeLabel
+        : "Sommet sur zone " + _typeLabel;
+      window.HistoryManager.record(lbl, _historyBefore);
+    }
   });
 }
 
@@ -301,20 +320,26 @@ function removeLastZone() {
   // 🆕 v1.9.4 (KARMA "on doit pouvoir supprimer d'un coup le tracé en cours,
   // que last zone fermé actuellement") : priorité à la zone EN COURS si elle
   // existe, sinon la dernière zone fermée.
-  // Avant : on skippait `currentZone` → impossible de supprimer une zone
-  // en cours d'un coup, l'user devait annuler chaque point un par un.
-  // Maintenant cohérent avec removeLastRoad qui pop la dernière sans skip.
+  // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
   if (currentZone) {
     const idx = zonesData.indexOf(currentZone);
     if (idx >= 0) zonesData.splice(idx, 1);
     currentZone = null;
     renderZones();
+    if (window.HistoryManager && _historyBefore) {
+      window.HistoryManager.record("Supprimer zone en cours", _historyBefore);
+    }
     return true;
   }
   // Pas de zone en cours → supprime la dernière zone fermée
   if (zonesData.length === 0) return false;
-  zonesData.pop();
+  const removed = zonesData.pop();
   renderZones();
+  if (window.HistoryManager && _historyBefore) {
+    const typeLabel = removed && removed.type ? removed.type : "zone";
+    window.HistoryManager.record("Supprimer dernière zone (" + typeLabel + ")", _historyBefore);
+  }
   return true;
 }
 

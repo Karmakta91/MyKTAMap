@@ -14,7 +14,7 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 
 - **Page unique** (PWA) : `index.html`
 - **Stack** : HTML/CSS/JS vanilla + Leaflet (pas de framework, pas de bundler)
-- **Production** : https://myktamap.is-underground.fr
+- **Production** : https://myktamap.fr
 - **Dev** : https://devmap.is-underground.fr
 - **Auteur** : Flavien VIDAL (alias KARMA)
 - **Licence** : **CC BY-NC-SA 4.0** — usage non commercial, partage à l'identique, attribution requise. Usage commercial **strictement interdit** sans accord écrit préalable.
@@ -1845,7 +1845,7 @@ Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au re
   - Champ saisie masqué
   - Message "🚫 Trop de tentatives" + sous-texte italique "Le brute force c'est mal, m'voyez." (clin d'œil validé KARMA)
   - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
-  - Lien externe vers `myktamap.is-underground.fr` pour contacter l'auteur si l'user a légitimement perdu son accès
+  - Lien externe vers `myktamap.fr` pour contacter l'auteur si l'user a légitimement perdu son accès
 
 #### 36.4 Position dans le flow `main.js > initApp`
 
@@ -2757,6 +2757,356 @@ if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
 - ❌ Ajouter une recovery email (no backend, cohérent avec UnlockGate)
 - ❌ Promettre que les données sont chiffrées (elles ne le sont pas — c'est explicite dans la doc et l'UI)
 
+### 47. Undo / Redo global Ctrl+Z / Ctrl+Y (depuis v1.11.0)
+
+Module `js/historyManager.js` (~250 lignes IIFE) → `window.HistoryManager`. Snapshot hybride RAM-only, limité à 50 entrées FIFO, raccourcis clavier globaux + 2 boutons sidebar dans un nouveau groupe `⏪ Historique`.
+
+#### 47.1 Approche technique — snapshot hybride
+
+À chaque mutation, on prend une photo DEEP CLONE des arrays `{editorPoints, roads, zones, structures}` (utilisé `structuredClone` si dispo, sinon JSON.parse(JSON.stringify(...))) :
+
+```js
+function _captureState() {
+  return {
+    editorPoints: deepClone(window.getEditorPoints?.() || []),
+    roads:        deepClone(window.getRoads?.() || []),
+    zones:        deepClone(window.getZones?.() || []),
+    structures:   deepClone(window.getStructures?.() || [])
+  };
+}
+```
+
+À l'undo, on applique le snapshot via les setters publics :
+```js
+function _applyState(s) {
+  window.setEditorPoints?.(s.editorPoints);
+  window.resetRoads?.();      window.setRoads?.(s.roads);
+  window.resetZones?.();      window.setZones?.(s.zones);
+  window.resetStructures?.(); window.setStructures?.(s.structures);
+}
+```
+
+Note : pour roads/zones/structures, on passe par `reset() + set()` car `set()` seul ajoute au lieu de remplacer dans certaines implémentations (= cohérent avec le pattern existant dans SessionPersist).
+
+#### 47.2 API publique
+
+```js
+window.HistoryManager = {
+  record(label, beforeState?)  // push une entrée d'historique
+  captureState()                // retourne snapshot complet
+  recordAction(label, fn)       // helper : capture + fn() + record
+  undo() / redo()               // applique state ± précédent / suivant
+  canUndo() / canRedo()         // booléens pour griser les boutons
+  reset()                       // vide les 2 piles
+  onChange(cb)                  // listener pour sync UI
+};
+```
+
+#### 47.3 Pattern d'instrumentation
+
+Pour chaque mutation à rendre annulable :
+```js
+const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+// ... mutation
+if (window.HistoryManager && _historyBefore) {
+  window.HistoryManager.record("Label lisible", _historyBefore);
+}
+```
+
+Le check `window.HistoryManager &&` permet une dégradation gracieuse si le module n'est pas encore chargé (early boot).
+
+#### 47.4 Sites instrumentés (v1.11.0 initial)
+
+| Module | Site | Label |
+|---|---|---|
+| `editor.js > _ajouterPointSession` | branche création | "Ajouter le point <nom>" |
+| `editor.js > _ajouterPointSession` | branche modification in-place | "Modifier le point <nom>" |
+| `editor.js > removeLastEditorPoint` | début | "Supprimer dernier point" |
+| `road.js > map.on("mousedown")` | clic carte mode road | "Nouveau tracé <type>" OU "Sommet sur tracé <type>" |
+| `road.js > removeLastRoad` | début | "Supprimer dernier tracé (<type>)" |
+| `zones.js > map.on("click")` | clic carte mode zone | "Nouvelle zone <type>" / "Sommet sur zone <type>" / "Fermer zone <type>" |
+| `zones.js > removeLastZone` | branches currentZone + dernière fermée | "Supprimer zone en cours" / "Supprimer dernière zone (<type>)" |
+| `structures.js > map.on("click")` | clic carte mode structure | "Nouveau <type>" / "Sommet sur <type>" / "Fermer <type>" |
+| `structures.js > removeLastStructure` | branches | "Supprimer structure en cours" / "Supprimer dernière structure (<type>)" |
+| `interface.js > suppr trace au clic` | onclick map | "Supprimer tracé au clic (<type>)" |
+| `interface.js > suppr zone au clic` | onclick map | "Supprimer zone au clic (<type>)" |
+| `interface.js > suppr structure au clic` | onclick map | "Supprimer structure au clic (<type>)" |
+| `interface.js > "Tous les tracés"` | onClick menu | "Supprimer tous les tracés" |
+| `interface.js > "Toutes les zones"` | onClick menu | "Supprimer toutes les zones" |
+| `interface.js > "Toutes les structures"` | onClick menu | "Supprimer toutes les structures" |
+
+#### 47.5 Sites volontairement NON instrumentés
+
+- ❌ **`setEditorPoints`/`setRoads`/`setZones`/`setStructures`** : utilisés par SessionPersist au boot pour restaurer la session — instrumenter ici créerait des entrées d'historique artificielles juste après le load
+- ❌ **`resetRoads`/`resetZones`/`resetStructures`** (appelés directement) : idem, utilisés par les imports + au plan switch + en interne par `setXxx`
+- ❌ **`window.ajouterPointEditor`** (utilisé par LostMode pour les markers indices) : c'est un usage technique, pas une mutation user
+- ❌ **Photos** (`MyKTAMapPhotos.deletePhoto`, etc.) : IDB irréversible, hors périmètre KARMA 9:a
+- ❌ **Itinéraire calculé** (Pathfinder) : c'est un dérivé du graphe, recalculable
+
+#### 47.6 Raccourcis clavier
+
+Listener global dans `historyManager.js` IIFE :
+```js
+document.addEventListener("keydown", function(e) {
+  const isMod = e.ctrlKey || e.metaKey;
+  if (!isMod) return;
+  const key = (e.key || "").toLowerCase();
+  if (key !== "z" && key !== "y") return;
+  // Anti-vol focus
+  const ae = document.activeElement;
+  const isInputFocus = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || (ae.getAttribute && ae.getAttribute("contenteditable") === "true"));
+  if (isInputFocus) return;
+  if (key === "z" && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); undo(); }
+  else if (key === "y" || (key === "z" && e.shiftKey)) { e.preventDefault(); e.stopPropagation(); redo(); }
+});
+```
+
+⚠️ **Conflit potentiel avec Ctrl+K** (Recherche unifiée, §46) : non, car les 2 raccourcis utilisent des touches différentes (Z/Y pour Undo/Redo, K pour Recherche). Mais si on ajoute d'autres raccourcis futurs, vérifier la non-collision.
+
+#### 47.7 UI sidebar — groupe ⏪ Historique
+
+Créé dans `interface.js > initInterface` juste AVANT le groupe Édition (l'historique vient logiquement avant les outils qu'il annule).
+
+```js
+_creerGroupeAccordeon({
+  id: "history",
+  iconePrincipale: "⏪",
+  titre: "Historique (Ctrl+Z / Ctrl+Y)",
+  sousActions: [
+    { icone: "⏪", titre: "Annuler la dernière action (Ctrl+Z)", onClick: ... },
+    { icone: "⏩", titre: "Rétablir l'action annulée (Ctrl+Y)", onClick: ... }
+  ]
+});
+```
+
+**Grisage** (`KARMA 10:b`) : juste après la création du groupe, IIFE `_wireHistoryUiState()` qui :
+1. Retrouve les 2 boutons dans le DOM via `document.querySelector('[data-groupe-id="history"]')` + textContent commençant par l'emoji
+2. S'abonne à `HistoryManager.onChange(state)` pour appliquer `style.opacity = "0.4"` + `cursor: "not-allowed"` si la pile correspondante est vide
+3. Sync initial via `setTimeout 100ms` pour laisser le DOM se construire
+
+#### 47.8 Reset au plan switch
+
+`main.js > _libererRessourcesPlanPrecedent` appelle `HistoryManager.reset()` AVANT `map.remove()`. Cohérent avec le pattern des autres modules (LostMode, distance totale, etc.).
+
+#### 47.9 Save SessionPersist forcé après undo/redo
+
+Le polling auto-save (1.5s) ne se déclenche que sur mutation détectée. Or après un undo, l'état change MAIS pourrait revenir avant la prochaine fenêtre de polling → perte si reload. D'où le force-save explicite dans `undo()` et `redo()` :
+```js
+function _saveSession() {
+  if (window.SessionPersist?.save) {
+    try { window.SessionPersist.save({ force: true }); } catch(e) {}
+  }
+}
+```
+
+#### 47.10 Pour les futures features à rendre undo-able
+
+Quand on ajoute un nouveau type d'annotation dessinable (ex: 📝 notes textuelles, 🪨 marqueurs géologie en V3), il faudra :
+
+1. **Ajouter dans `_captureState`** et `_applyState` :
+   ```js
+   notes: deepClone(window.getNotes?.() || []),
+   // ...
+   if (window.resetNotes) window.resetNotes();
+   if (window.setNotes && Array.isArray(s.notes)) window.setNotes(s.notes);
+   ```
+
+2. **Exposer `window.getNotes/setNotes/resetNotes`** dans le nouveau module (pattern existant)
+
+3. **Instrumenter les sites de mutation** dans le nouveau module avec le pattern snapshot+record
+
+4. **Pas besoin** de modifier `historyManager.js` pour les UI / raccourcis / boutons (c'est automatique)
+
+⚠️ **Penser au reset au plan switch** : `_libererRessourcesPlanPrecedent` couvre déjà le `HistoryManager.reset()` qui vide TOUTES les piles d'un coup — pas de boulot supplémentaire.
+
+### 44. Export PDF imprimable (depuis v1.10.3)
+
+Module `js/pdfExport.js` (~700 lignes IIFE) → `window.MyKTAMapPdfExport = { afficherModale, genererPdf }`. Lib **jsPDF UMD** (`lib/jspdf.umd.min.js`) chargée AVANT le module dans index.html.
+
+#### 44.1 Pipeline
+
+```
+[modale PDF options] → _lireOptionsModale() → opts
+opts → _genererCanvasPlan() → await window.MyKTAMapExporterGenererCanvas(...)
+       (wrapper public dans exporter.js qui appelle _genererCanvasExport)
+canvas → pdf.addImage(canvas.toDataURL("image/jpeg", 0.88), "JPEG", ...)
+opts.incLegende ? → _dessinerLegendeOverlay() → await window.MyKTAMapExporterGenererCanvasLegende(...)
+                  → pdf.addImage(legCanvas.toDataURL("image/png"), "PNG", ...) en overlay 4-coins
+opts.incHeader ? → _dessinerHeader() (titre + métas via pdf.text())
+crédit footer (1 ligne pdf.text, sans emoji)
+pdf.save(filename)
+```
+
+#### 44.2 Formats
+
+Constante `FORMATS` (objet) mappe `"<size>-<orient>"` → `{format, orientation, label}`. 5 tailles × 2 orientations = 10 entrées :
+- `a0-portrait/landscape` (841×1189 mm) → plotter pro
+- `a1-portrait/landscape` (594×841) → grand format
+- `a2-portrait/landscape` (420×594) → affiche
+- `a3-portrait/landscape` (297×420) → papier A3
+- `a4-portrait/landscape` (210×297) → papier standard *(défaut paysage)*
+
+Constante `PDF_SIZES` (array de `{key, label, hint}`) utilisée pour rendre les radios "Taille" + "Orientation" séparément dans la modale (UX plus claire qu'un dropdown 10 entrées).
+
+#### 44.3 Calques granulaires (inspiré export PNG avancé)
+
+Modale auto-liste `PLAN_CONFIG.imageLayers[]` et `PLAN_CONFIG.dataLayers[]` :
+- Section **🖼️ Image de base & calques** : checkbox "Image plan de base" + 1 checkbox par `imageLayers[]`
+- Section **📊 Calques de données** : 1 checkbox par `dataLayers[]` avec label spécial pour `editor` (= calque session)
+- Pré-cochage = visibilité actuelle sur la carte (via helpers `_getVisibleImageLayerIds` / `_getVisibleDataLayerIds` locaux — duplique exporter.js volontairement pour éviter dep cross-module)
+
+`_lireOptionsModale` capte ces choix dans `opts.imageLayers = {id: bool}` et `opts.dataLayers = {id: bool}`. Le wrapper `_publicGenererCanvas` de exporter.js accepte ce format granulaire (rétrocompat v1 avec booléens globaux préservée pour les futurs callers).
+
+#### 44.4 Légende = overlay 4-coins (v3.1)
+
+Décision design : **PAS de footer dédié**, légende posée en overlay sur le plan au coin choisi. Plus de gain de surface pour le plan, et cohérent avec l'export PNG avancé.
+
+Fonction `_dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH)` :
+1. Génère le canvas légende via `window.MyKTAMapExporterGenererCanvasLegende({contenu, size, style, scale: 2})`
+2. Calcule largeur cible en mm selon `legSize` : Compact=22%, Standard=28%, Large=35% de la largeur du plan
+3. Cap auto à 70% de la hauteur du plan si trop haut (cas plans étroits)
+4. Padding 3mm depuis le bord choisi
+5. Pose via `pdf.addImage(dataUrl, "PNG", legX, legY, legWmm, legHmm)`
+
+Helper public dans exporter.js : `window.MyKTAMapExporterGenererCanvasLegende(userOpts)` :
+- Crée un canvas temporaire 3000×3000
+- Force position `haut-gauche` à (0,0)
+- Appelle `_dessinerLegende` avec un setup canvas isolé
+- `_dessinerLegende` retourne désormais `{boiteW, boiteH, bx, by}` à la fin
+- Crop le canvas final aux dims exactes via `drawImage`
+- Auto-collecte `tagsUtilises` via `getEditorPoints()` + `fetch` des data layers si pas fourni explicitement
+- Retourne `Promise<HTMLCanvasElement | null>` (null si aucun contenu cochable)
+
+#### 44.5 Nouveau style `print`
+
+4ème entrée dans `STYLES` de `_dessinerLegende` (à côté de opaque/semi/filigrane) :
+- bg : `rgba(255,255,255,1)` blanc pur
+- border : `rgba(30,58,138,0.55)` bleu marine
+- text : `#1a1f2e` quasi-noir
+- titreSection : `#1e3a8a` bleu marine saturé
+- meta : `#555c6e` gris foncé
+
+Adapté impression papier (vs styles dark theme natifs de l'app).
+
+#### 44.6 ⚠️ Pas d'emoji dans pdf.text()
+
+jsPDF Helvetica latin1 → emojis Unicode rendus en mojibake (`📍` → `O=UI...`). **Règle absolue** : aucun caractère hors Latin-1 dans les chaînes passées à `pdf.text()`. Le crédit footer "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr" est OK (· = U+00B7 dans Latin-1).
+
+Les emojis dans la légende sont OK car la légende est rendue en image canvas (= browser DOM rendering qui supporte Unicode) avant d'être posée dans le PDF via `addImage`.
+
+#### 44.7 Wiring index.html / sw.js
+
+- `<script src="lib/jspdf.umd.min.js">` AVANT `<script src="js/pdfExport.js">` (jsPDF doit créer `window.jspdf` avant que le module check `_checkJsPDF`)
+- `sw.js > ASSETS_TO_CACHE` : `./lib/jspdf.umd.min.js` + `./js/pdfExport.js`
+- Crédits dans le splash + footer loader : `🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra`
+
+#### 44.8 Pour ajouter une nouvelle taille (futur)
+
+1. Ajouter dans `PDF_SIZES` (array) — `{key, label, hint}`
+2. Ajouter les 2 variantes portrait/paysage dans `FORMATS` (dict) — `{format, orientation, label}`
+3. Le radio "Taille" s'auto-régénère via `PDF_SIZES.map(...)` dans la modale
+4. Le mapping `"<size>-<orient>"` est composé dynamiquement dans `_lireOptionsModale`
+
+### 45. Fix structures embedded dans exports canvas (depuis v1.10.3)
+
+Audit qui a révélé un trou : les structures (piliers + mur + fronts) embarquées dans les data layers (`data/<plan>/structure.json` ou tout autre JSON avec champ `structures: [...]`) étaient :
+- ✅ Affichées en runtime Leaflet via `utils.js > ajouterPointsDepuisJSON` (lignes 638-720 ~)
+- ✅ Présentes dans exports session (Full / Avancé / Conversion) + KMZ
+- ❌ **Manquantes** dans `utils.js > telechargerPlan` (export PNG rapide) — bloc complètement absent
+- ❌ **Manquantes** dans `exporter.js > _genererCanvasExport` (export PNG avancé + PDF) — uniquement session
+
+**Cause** : oubli post-update v1.9.3 lors de l'ajout des structures. Les helpers existaient (`getAllEmbeddedStructures` exposé par `utils.js`), mais pas appelés depuis les pipelines canvas.
+
+**Fix v1.10.3** :
+- `utils.js > telechargerPlan` : ajout de 2 blocs (structures session entre zones session et roads ; structures embedded dans la boucle data layers entre zones embed et roads embed). Tri Z `mur < pilier-2 < pilier-1 < front-2 < front-1`, filtre `passeFiltreNiveau`, couleurs alignées sur `STRUCTURE_STYLES` + hotfix v1.10.1-2.
+- `exporter.js > _genererCanvasExport` : ajout `embeddedStructures = Array.isArray(j.structures) ? j.structures : []` dans la boucle data layers + bloc de rendu identique (filtre `opts.ann.structures` + `opts.ann.structuresTypes`, niveau via `_itemPasseLevels`, helpers `_drawPolygon`/`_drawPolyline`).
+- Compteurs `_diag.embStructs` et `_diagAdv.embStructs` ajoutés pour le debug.
+
+**Pour les futurs trous éventuels** : si un nouveau type d'annotation est ajouté (genre `notes` ou `photos_geo` à terme), bien penser à le câbler dans LES 4 PIPELINES :
+1. `utils.js > telechargerPlan` (PNG rapide ⚡) — session + embedded
+2. `exporter.js > _genererCanvasExport` (PNG avancé 🎨 + PDF 📤) — session + embedded
+3. `sessionExporter.js` (3 modes Full / Avancé / Conversion) — session + embedded
+4. `kmzExport.js` (KMZ géolocalisé) — session + embedded
+
+Le runtime Leaflet (`utils.js > ajouterPointsDepuisJSON`) ne doit jamais être oublié non plus, mais il est généralement le premier site implémenté.
+
+### 46. Recherche unifiée — 4 catégories + Ctrl+K (depuis v1.10.3)
+
+Extension du module `js/searchPoints.js` (832 → ~1050 lignes) qui ne cherchait que les points avant. Désormais : **points + tracés + zones + structures**.
+
+#### 46.1 Architecture
+
+Format unifié d'item interne : `{kind: "point"|"road"|"zone"|"structure", item, layerId, layerLabel, label, searchableText}` retourné par `_tousLesItems()` (privé au module — n'EST PAS exposé via `SearchPoints.*` pour préserver l'API consommée par Pathfinder + Itinéraire qui attendent du format point-only).
+
+Collecteurs ajoutés :
+- `_collecterRoads()` : session via `window.getRoads()` + embedded via `window.getAllEmbeddedRoads()`
+- `_collecterZones()` : idem
+- `_collecterStructures()` : idem
+
+Auto-label si l'item n'en a pas explicitement : `"Pilier 1ère masse session #2"`, `"Tracé Principal data #5"`, etc.
+
+`searchableText` pré-calculé = `label + type + label FR du type + level si M-LVL + (tags pour les points)`.
+
+#### 46.2 Scoring unifié
+
+`_filtrer(query)` opère sur `_tousLesItems()` (filtré par `_matchesFiltersUnified`) :
+- Points : scoring riche sur nom/id/tags/desc/état (= comportement v1.7.x préservé)
+- Roads/Zones/Structures : scoring sur `label` + `searchableText` (moins de champs car structure plus simple)
+
+Tri intra-catégorie : score décroissant, puis alphabétique sur `label`. Le groupement par catégorie est fait dans `_renderResultats`.
+
+#### 46.3 Filtres
+
+3 dimensions cumulatives (AND entre, OR intra) :
+- **Catégorie** *(nouveau v1.10.3)* : `_filterKinds` Set<"point"|"road"|"zone"|"structure">. Ligne chips affichée uniquement si ≥ 2 catégories ont du contenu.
+- **Calque** (legacy, points-only) : `_filterLayers` Set<layerId>
+- **Tag** (legacy, points-only) : `_filterTags` Set<tag>
+
+Reset des 3 à chaque ouverture + dans le bouton "✕ Effacer les filtres".
+
+#### 46.4 Rendu groupé
+
+`_renderResultats` réécrit en utilisant `_renderResultRow(it, visIdx, isFirst)` :
+- Groupage par `kind` avec headers `📍 Points (N)`, `🛣️ Tracés (M)`, etc.
+- Ordre fixe : point → road → zone → structure
+- Icônes adaptées : PNG du tag pour points, emoji `_KIND_EMOJI[kind]` pour les autres
+- Meta enrichie : type FR (`Principal`, `Eau`, `Pilier 1ère masse`...), niveau (`Niv 0`, `Niv -1 ↔ Niv 0` pour jonctions), nb points (`8 pts`)
+
+#### 46.5 Raccourci Ctrl/Cmd+K
+
+Listener global `keydown` au top du module IIFE (donc actif dès le chargement). Logique :
+1. Check `(e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && !e.altKey && !e.shiftKey`
+2. **Anti-vol de focus** : si un INPUT/TEXTAREA/contenteditable est focus, on ne déclenche QUE si la modale est déjà ouverte (= toggle close)
+3. `e.preventDefault()` + `e.stopPropagation()` pour ne pas conflicter avec les bindings browser/OS
+4. Toggle : si modale ouverte → close ; sinon → `window.ouvrirRecherche()`
+
+#### 46.6 Interaction au clic d'un résultat
+
+`_aller(item)` dispatch selon `item.kind` :
+- `point` → `_allerVersPoint(it)` = flow v1.7.x préservé (setView + popup marker + cercle jaune 3s)
+- `road / zone / structure` → `_allerVersAnnotation(it)` :
+  - Centre de la carte = centroïde simple (moyenne x/y des points)
+  - Cleanup flash précédent + nouveau overlay :
+    - **Polyline** (roads + fronts) : `L.polyline` jaune dashed weight 10 opacity 0.85
+    - **Polygon** (zones + piliers + mur) : `L.polygon` jaune transparent fill 30% border 4px
+  - Popup info adapté : label + type FR + niveau + nb points + layer
+  - Auto-cleanup après **4 sec** (vs 3 sec pour les points — donne plus de temps de visualiser un polygone qu'un cercle)
+
+#### 46.7 API publique inchangée
+
+Pour ne pas casser Pathfinder + Itinéraire :
+- `window.SearchPoints.getAllPoints()` → toujours `[{point, layerId, layerLabel}]` (format point-only)
+- `window.SearchPoints.findByQuery(q)` → idem
+
+Le format unifié (avec `kind`) est strictement INTERNE au module pour le rendu UI.
+
+#### 46.8 À NE PAS faire
+
+- ❌ Exposer `_tousLesItems()` publiquement sans wrap dédié — casserait Pathfinder
+- ❌ Mixer roads/zones/structures dans `getAllPoints()` — idem
+- ❌ Ajouter le raccourci Ctrl+K en mode global SI un MCP/extension utilise déjà ce binding (à valider en cas de feature à la VSCode-style). Si conflit, basculer sur Ctrl+Shift+P ou `/`.
+
+
 ---
 
 ## 🚨 Pièges connus & règles importantes
@@ -2999,7 +3349,7 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 
 ## 🔗 Liens & références
 
-- **Production** : https://myktamap.is-underground.fr
+- **Production** : https://myktamap.fr
 - **Dev** : https://devmap.is-underground.fr
 - **Licence** : CC BY-NC-SA 4.0 — voir `LICENSE` à la racine
 - **Collaboration** : ouverte sur demande, contact via le site officiel

@@ -1,0 +1,973 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * Site : https://myktamap.fr
+ * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
+ * Voir LICENSE a la racine du projet.
+ */
+
+// =========================
+// 📤 EXPORT PDF IMPRIMABLE — v1.10.3 (v2 : A0→A4 + calques granulaires)
+// =========================
+// Exporte le plan en PDF imprimable A0/A1/A2/A3/A4 portrait/paysage.
+// Réutilise la chaîne `exporter.js > _genererCanvasExport` (= même canvas
+// que l'export PNG avancé) pour cohérence visuelle, puis pose le canvas
+// dans un jsPDF avec :
+//   - Header : titre + nom plan + version + auteur + date + échelle
+//   - Image plan downscalée pour rentrer dans la page
+//   - Footer : légende compacte (catégories incluses)
+//
+// Lib : jsPDF v2.5+ (UMD) chargée depuis lib/jspdf.umd.min.js. Si non
+// disponible, message d'erreur clair.
+//
+// API publique :
+//   window.MyKTAMapPdfExport = {
+//     afficherModale, genererPdf
+//   };
+// =========================
+
+(function() {
+  "use strict";
+
+  // Marges PDF en mm
+  const PDF_MARGIN_MM     = 12;
+  const HEADER_HEIGHT_MM  = 18;
+  // 🆕 v1.10.3-pdf-v3 (KARMA "en plus gros") : 55mm (au lieu de 40) car
+  // la légende est rendue en image canvas size "large" (icônes 30px +
+  // texte 18pt) et style "print" — il faut plus de hauteur pour qu'elle
+  // soit lisible sur A4. ~26% de la zone A4 paysage (page 210mm haute,
+  // marge 12 + header 18 + footer 55 = 85mm utilisé, plan 125mm haut).
+  // A3/A2/A1/A0 → négligeable car footer fixe en mm vs page très grande.
+  const FOOTER_HEIGHT_MM  = 55;
+  // JPEG quality du canvas → image PDF (compromis taille / qualité)
+  const JPEG_QUALITY      = 0.88;
+
+  // Formats supportés (jsPDF accepte format string ou [w, h] mm).
+  // Étendu A0 → A4 (v1.10.3-pdf-v2). A0/A1 = formats grand plan d'impression
+  // pro / plotter, utile pour cartes murales.
+  // ⚠️ A0 + scale ×2 = canvas ~30 Mpx → JPEG ~25 Mo → durée d'encodage 30-60 s
+  // sur mobile. Limite raisonnable côté UI : scale ×1 par défaut pour A0.
+  const FORMATS = {
+    "a0-portrait":  { format: "a0", orientation: "portrait",  label: "A0 portrait (841×1189 mm)" },
+    "a0-landscape": { format: "a0", orientation: "landscape", label: "A0 paysage (1189×841 mm)"  },
+    "a1-portrait":  { format: "a1", orientation: "portrait",  label: "A1 portrait (594×841 mm)"  },
+    "a1-landscape": { format: "a1", orientation: "landscape", label: "A1 paysage (841×594 mm)"   },
+    "a2-portrait":  { format: "a2", orientation: "portrait",  label: "A2 portrait (420×594 mm)"  },
+    "a2-landscape": { format: "a2", orientation: "landscape", label: "A2 paysage (594×420 mm)"   },
+    "a3-portrait":  { format: "a3", orientation: "portrait",  label: "A3 portrait (297×420 mm)"  },
+    "a3-landscape": { format: "a3", orientation: "landscape", label: "A3 paysage (420×297 mm)"   },
+    "a4-portrait":  { format: "a4", orientation: "portrait",  label: "A4 portrait (210×297 mm)"  },
+    "a4-landscape": { format: "a4", orientation: "landscape", label: "A4 paysage (297×210 mm)"   }
+  };
+
+  // Tailles disponibles (pour le 1er radio "taille") et orientations (2e radio)
+  const PDF_SIZES = [
+    { key: "a0", label: "A0",  hint: "841×1189 mm — plotter pro"   },
+    { key: "a1", label: "A1",  hint: "594×841 mm — grand format"   },
+    { key: "a2", label: "A2",  hint: "420×594 mm — affiche"        },
+    { key: "a3", label: "A3",  hint: "297×420 mm — papier A3"      },
+    { key: "a4", label: "A4",  hint: "210×297 mm — papier standard"}
+  ];
+
+  // ============================================================
+  // CHECK DISPONIBILITÉ
+  // ============================================================
+  function _checkJsPDF() {
+    if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
+      return false;
+    }
+    return true;
+  }
+
+  function _checkExporter() {
+    return typeof window._genererCanvasExportPublic === "function"
+        || typeof window.MyKTAMapExporter !== "undefined";
+  }
+
+  // ============================================================
+  // STYLES — réutilise le subset kta-ses-* de sessionExporter
+  // ============================================================
+  // sessionExporter.js définit les styles `.kta-ses-*` mais via injection
+  // à l'ouverture de SA modale. Si l'user ouvre la modale PDF sans avoir
+  // encore ouvert la modale session, les styles n'existent pas.
+  // On injecte un subset minimal idempotent au premier appel.
+  function _injecterStylesPdf() {
+    if (document.getElementById("kta-pdf-styles")) return;
+    const style = document.createElement("style");
+    style.id = "kta-pdf-styles";
+    style.textContent = `
+      .kta-pdf-modal-boite .kta-readme-modal-corps { color: #c8d0e0; padding: 18px; overflow-y: auto; }
+      .kta-pdf-modal-boite .kta-ses-intro { font-size: 13px; color: #c0c8d8; margin-bottom: 16px; line-height: 1.5; }
+      .kta-pdf-modal-boite .kta-ses-section { margin-bottom: 18px; }
+      .kta-pdf-modal-boite .kta-ses-section-title { font-size: 12px; font-weight: 600; color: #8cb4ff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+      .kta-pdf-modal-boite .kta-ses-cb-row,
+      .kta-pdf-modal-boite .kta-ses-radio-row { display: flex; align-items: center; gap: 10px; padding: 6px 4px; font-size: 13px; color: #e8eaf0; cursor: pointer; border-radius: 4px; }
+      .kta-pdf-modal-boite .kta-ses-cb-row:hover,
+      .kta-pdf-modal-boite .kta-ses-radio-row:hover { background: rgba(140,180,255,0.06); }
+      .kta-pdf-modal-boite .kta-ses-cb-row input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #8cb4ff; }
+      .kta-pdf-modal-boite .kta-ses-radio-row input[type="radio"] { accent-color: #8cb4ff; }
+      .kta-pdf-modal-boite .kta-ses-count { color: #8892a4; font-size: 12px; }
+      .kta-pdf-modal-boite .kta-conv-erreur { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.4); border-radius: 6px; padding: 10px; color: #ff8c8c; font-size: 13px; margin-top: 10px; }
+      .kta-pdf-modal-boite .kta-conv-actions { display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.06); }
+      /* Radios compacts en grille (taille + orientation) */
+      .kta-pdf-radios-inline { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+      @media (min-width: 700px) { .kta-pdf-radios-inline { grid-template-columns: 1fr 1fr 1fr; } }
+      .kta-pdf-radio-inline { margin: 0; }
+      .kta-pdf-radio-inline .kta-ses-radio-hint { color: #8892a4; font-size: 11px; margin-left: 6px; font-style: italic; }
+      /* Sous-blocs calques (image + data layers auto-listés) */
+      .kta-pdf-layer-block { margin: 4px 0 0 28px; padding: 6px 10px; background: rgba(140,180,255,0.04); border: 1px solid rgba(140,180,255,0.15); border-radius: 6px; }
+      .kta-pdf-cb-sub { margin-left: 0; padding: 4px 0; font-size: 12.5px; }
+    `;
+    document.head.appendChild(style);
+  }
+
+  // ============================================================
+  // MODALE OPTIONS
+  // ============================================================
+  function afficherModale() {
+    _injecterStylesPdf();
+
+    const existing = document.getElementById("kta-pdf-modal");
+    if (existing) { existing.remove(); return; }
+
+    if (!_checkJsPDF()) {
+      alert("📤 jsPDF non chargé.\n\nLa lib jsPDF (lib/jspdf.umd.min.js) doit être déployée sur le serveur. Contacte l'auteur si le problème persiste.");
+      return;
+    }
+
+    // Stats actuelles pour les compteurs (session uniquement)
+    const points     = (window.getEditorPoints  && window.getEditorPoints())  || [];
+    const roads      = (window.getRoads         && window.getRoads())         || [];
+    const zones      = (window.getZones         && window.getZones())         || [];
+    const structures = (window.getStructures    && window.getStructures())    || [];
+
+    // Calques du plan (auto-listés comme dans l'export PNG avancé)
+    const cfg          = window.PLAN_CONFIG || {};
+    const imageLayers  = (cfg.imageLayers || []);
+    const dataLayers   = (cfg.dataLayers  || []);
+    const visibleImg   = _getVisibleImageLayerIds(cfg);
+    const visibleData  = _getVisibleDataLayerIds(cfg);
+
+    const modal = document.createElement("div");
+    modal.id = "kta-pdf-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.style.display = "flex";
+
+    modal.innerHTML =
+      '<div class="kta-readme-modal-boite kta-pdf-modal-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">📤 Export PDF imprimable</span>' +
+          '<button class="kta-panneau-close" id="kta-pdf-close" type="button">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+
+          '<p class="kta-ses-intro">' +
+            'Génère un PDF imprimable du plan (A0 à A4 portrait/paysage) avec ' +
+            'header (titre + métadonnées) et footer (légende compacte). ' +
+            'Inspiré du formulaire d\'export image avancé pour le contrôle fin des calques.' +
+          '</p>' +
+
+          // 📐 Format de page — 2 lignes : taille + orientation
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">📐 Taille de page</div>' +
+            '<div class="kta-pdf-radios-inline">' +
+              PDF_SIZES.map(function(s, i) {
+                return _radioRowInline("pdf_size", s.key, s.label, s.hint, i === 4 /* A4 par défaut */);
+              }).join("") +
+            '</div>' +
+          '</div>' +
+
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">↔️ Orientation</div>' +
+            '<div class="kta-pdf-radios-inline">' +
+              _radioRowInline("pdf_orient", "portrait",  "📄 Portrait",  "",  false) +
+              _radioRowInline("pdf_orient", "landscape", "📃 Paysage",   "",  true)  +
+            '</div>' +
+          '</div>' +
+
+          // 📦 Annotations de session (cohérent avec export PNG avancé)
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">📦 Annotations de session</div>' +
+            _cbRow("pdf_inc_points",     "✏️ Points ajoutés",  points.length,     true) +
+            _cbRow("pdf_inc_roads",      "🛣️ Tracés",         roads.length,      true) +
+            _cbRow("pdf_inc_zones",      "⬛ Zones",           zones.length,      true) +
+            _cbRow("pdf_inc_structures", "🏛️ Structures",     structures.length, true) +
+          '</div>' +
+
+          // 🖼️ Image de base + Calques image (auto-listés depuis plan-config)
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">🖼️ Image de base & calques</div>' +
+            _cbRow("pdf_inc_baseimage", "🗺️ Image plan de base", null, true) +
+            (imageLayers.length === 0
+              ? '<p style="font-size:12px; color:#8892a4; margin:6px 0 0 28px;">Aucun calque image dans ce plan.</p>'
+              : '<div class="kta-pdf-layer-block">' +
+                  imageLayers.map(function(l) {
+                    const checked = visibleImg.indexOf(l.id) >= 0;
+                    return _cbRowSub("pdf_img_layer_" + _slug(l.id), "🗂️ " + (l.label || l.id), null, checked, l.id);
+                  }).join("") +
+                '</div>'
+            ) +
+          '</div>' +
+
+          // 📊 Calques de données (puits, vehicules, etc. — auto-listés)
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">📊 Calques de données</div>' +
+            (dataLayers.length === 0
+              ? '<p style="font-size:12px; color:#8892a4; margin:0;">Aucun calque de données dans ce plan.</p>'
+              : '<div class="kta-pdf-layer-block">' +
+                  dataLayers.map(function(l) {
+                    const checked = visibleData.indexOf(l.id) >= 0;
+                    const isEditor = l.id === "editor";
+                    const label = isEditor
+                      ? "✏️ " + (l.label || "Mes annotations") + " (= calque session)"
+                      : "📁 " + (l.label || l.id);
+                    return _cbRowSub("pdf_data_layer_" + _slug(l.id), label, null, checked, l.id);
+                  }).join("") +
+                '</div>'
+            ) +
+          '</div>' +
+
+          // 🎨 Mise en page
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">🎨 Mise en page</div>' +
+            _cbRow("pdf_inc_header", "📋 Header (titre + métadonnées)", null, true) +
+          '</div>' +
+
+          // 🗺️ Légende — overlay 4-coins inspiré de l'export PNG avancé
+          // (KARMA v3.1 "inclus la légende différemment, trop intrusif").
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">🗺️ Légende</div>' +
+            _cbRow("pdf_inc_legende", "Inclure la légende posée sur le plan", null, true) +
+            '<div id="pdf_leg_options" style="margin-left:28px; margin-top:6px;">' +
+              '<div style="font-size:11px; color:#8892a4; margin-bottom:6px;">📍 Position</div>' +
+              '<div class="kta-pdf-radios-inline">' +
+                _radioRowInline("pdf_leg_pos", "haut-gauche",  "↖ Haut-gauche",   "", false) +
+                _radioRowInline("pdf_leg_pos", "haut-droit",   "↗ Haut-droite",   "", false) +
+                _radioRowInline("pdf_leg_pos", "bas-gauche",   "↙ Bas-gauche",    "", true)  +
+                _radioRowInline("pdf_leg_pos", "bas-droit",    "↘ Bas-droite",    "", false) +
+              '</div>' +
+              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">📏 Taille</div>' +
+              '<div class="kta-pdf-radios-inline">' +
+                _radioRowInline("pdf_leg_size", "compact",  "Compact",  "icônes 16px", false) +
+                _radioRowInline("pdf_leg_size", "standard", "Standard", "icônes 22px", true)  +
+                _radioRowInline("pdf_leg_size", "large",    "Large",    "icônes 30px", false) +
+              '</div>' +
+              '<div style="font-size:11px; color:#8892a4; margin:8px 0 6px;">🎨 Style</div>' +
+              '<div class="kta-pdf-radios-inline">' +
+                _radioRowInline("pdf_leg_style", "print",     "Pro (fond blanc)",     "", true) +
+                _radioRowInline("pdf_leg_style", "opaque",    "Sombre opaque",        "", false) +
+                _radioRowInline("pdf_leg_style", "semi",      "Sombre semi-transp.",  "", false) +
+                _radioRowInline("pdf_leg_style", "filigrane", "Filigrane discret",    "", false) +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          // 📏 Qualité — recommandation par taille
+          '<div class="kta-ses-section">' +
+            '<div class="kta-ses-section-title">📏 Qualité</div>' +
+            _radioRow("pdf_scale", "1",   "Standard (× 1) — recommandé pour A3/A4", true) +
+            _radioRow("pdf_scale", "2",   "Haute définition (× 2) — recommandé A0/A1, fichier plus lourd", false) +
+            _radioRow("pdf_scale", "0.5", "Brouillon (× 0.5) — fichier léger", false) +
+            '<p style="font-size:11px; color:#8892a4; margin:6px 0 0 4px; font-style:italic;">' +
+              '⚠️ A0/A1 + ×2 peut prendre 30-60 s sur mobile (canvas très large).' +
+            '</p>' +
+          '</div>' +
+
+          '<div id="pdf_err" class="kta-conv-erreur" style="display:none;"></div>' +
+
+        '</div>' +
+        '<div class="kta-conv-actions" style="padding:14px 24px 18px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-pdf-annuler" type="button">Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-pdf-generer" type="button">📤 Générer le PDF</button>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(modal);
+
+    function _close() {
+      try { modal.remove(); } catch(e) {}
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    document.addEventListener("keydown", _onKey);
+
+    document.getElementById("kta-pdf-close").addEventListener("click", _close);
+    document.getElementById("kta-pdf-annuler").addEventListener("click", _close);
+    modal.addEventListener("click", function(e) { if (e.target === modal) _close(); });
+
+    document.getElementById("kta-pdf-generer").addEventListener("click", function() {
+      const opts = _lireOptionsModale();
+      _afficherProgression(modal, "Génération du canvas du plan…");
+      // setTimeout pour laisser le browser repeindre la modale progression
+      setTimeout(async function() {
+        try {
+          await genererPdf(opts);
+          _close();
+        } catch (err) {
+          console.error("[PdfExport] échec :", err);
+          _afficherErreur(modal, err.message || String(err));
+        }
+      }, 50);
+    });
+  }
+
+  function _radioRow(name, value, label, checked) {
+    return '<label class="kta-ses-radio-row">' +
+             '<input type="radio" name="' + name + '" value="' + value + '"' + (checked ? " checked" : "") + '>' +
+             '<span>' + label + '</span>' +
+           '</label>';
+  }
+
+  // Radio compact en ligne (pour grilles taille/orientation)
+  function _radioRowInline(name, value, label, hint, checked) {
+    return '<label class="kta-ses-radio-row kta-pdf-radio-inline">' +
+             '<input type="radio" name="' + name + '" value="' + value + '"' + (checked ? " checked" : "") + '>' +
+             '<span>' + label +
+               (hint ? ' <span class="kta-ses-radio-hint">' + hint + '</span>' : "") +
+             '</span>' +
+           '</label>';
+  }
+
+  function _cbRow(id, label, count, defaultChecked) {
+    const dim = (count === 0) ? ' style="opacity:0.5;"' : "";
+    const dis = (count === 0) ? " disabled" : "";
+    const checked = (count !== 0 && defaultChecked) ? " checked" : "";
+    const cnt = (typeof count === "number") ? ' <span class="kta-ses-count">(' + count + ')</span>' : "";
+    return '<label class="kta-ses-cb-row"' + dim + '>' +
+             '<input type="checkbox" id="' + id + '"' + checked + dis + '>' +
+             '<span>' + label + cnt + '</span>' +
+           '</label>';
+  }
+
+  // Checkbox row pour un sous-élément (calque) — porte un data-layer-id
+  // pour récupération en boucle dans _lireOptionsModale.
+  function _cbRowSub(id, label, count, defaultChecked, layerId) {
+    const dim = (count === 0) ? ' style="opacity:0.5;"' : "";
+    const dis = (count === 0) ? " disabled" : "";
+    const checked = defaultChecked ? " checked" : "";
+    const cnt = (typeof count === "number") ? ' <span class="kta-ses-count">(' + count + ')</span>' : "";
+    const dataAttr = layerId ? ' data-layer-id="' + _escAttr(layerId) + '"' : "";
+    return '<label class="kta-ses-cb-row kta-pdf-cb-sub"' + dim + '>' +
+             '<input type="checkbox" id="' + id + '"' + dataAttr + checked + dis + '>' +
+             '<span>' + label + cnt + '</span>' +
+           '</label>';
+  }
+
+  function _escAttr(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // Slugify d'un id de calque pour un id DOM safe (cohérent avec exporter.js > _slugLayerId)
+  function _slug(id) {
+    return String(id).replace(/[^a-z0-9_-]/gi, "_");
+  }
+
+  // Liste des calques image visibles actuellement sur la carte (cohérent
+  // avec exporter.js > _getVisibleImageLayerIds — duplique pour éviter
+  // une dép cross-module).
+  function _getVisibleImageLayerIds(config) {
+    const ids = [];
+    (config.imageLayers || []).forEach(function(l) {
+      if (window.map) {
+        let visible = false;
+        window.map.eachLayer(function(layer) {
+          if (window.L && layer instanceof window.L.ImageOverlay && layer._url === l.file) visible = true;
+        });
+        if (visible) ids.push(l.id);
+      } else if (l.visible) {
+        ids.push(l.id);
+      }
+    });
+    return ids;
+  }
+
+  function _getVisibleDataLayerIds(config) {
+    const ids = [];
+    (config.dataLayers || []).forEach(function(l) {
+      const lg = window.dataLayerGroups && window.dataLayerGroups[l.id];
+      if (lg && window.map && window.map.hasLayer(lg)) ids.push(l.id);
+      else if (!lg && l.visible) ids.push(l.id);
+    });
+    return ids;
+  }
+
+  function _lireOptionsModale() {
+    const sizeKey   = (document.querySelector('input[name="pdf_size"]:checked')   || {}).value || "a4";
+    const orientKey = (document.querySelector('input[name="pdf_orient"]:checked') || {}).value || "landscape";
+    const fmtKey    = sizeKey + "-" + orientKey;
+    const scaleVal  = parseFloat((document.querySelector('input[name="pdf_scale"]:checked') || {}).value || "1") || 1;
+
+    // Collecte des calques cochés (auto-listés depuis plan-config)
+    const imageLayers = {};
+    document.querySelectorAll('input[id^="pdf_img_layer_"]').forEach(function(cb) {
+      const id = cb.getAttribute("data-layer-id");
+      if (id) imageLayers[id] = cb.checked;
+    });
+    const dataLayers = {};
+    document.querySelectorAll('input[id^="pdf_data_layer_"]').forEach(function(cb) {
+      const id = cb.getAttribute("data-layer-id");
+      if (id) dataLayers[id] = cb.checked;
+    });
+
+    // Légende — options regroupées (v3.1)
+    const legPosition = (document.querySelector('input[name="pdf_leg_pos"]:checked')   || {}).value || "bas-gauche";
+    const legSize     = (document.querySelector('input[name="pdf_leg_size"]:checked')  || {}).value || "standard";
+    const legStyle    = (document.querySelector('input[name="pdf_leg_style"]:checked') || {}).value || "print";
+
+    return {
+      formatKey:     fmtKey,
+      formatDef:     FORMATS[fmtKey] || FORMATS["a4-landscape"],
+      scale:         scaleVal,
+      incPoints:     _cbVal("pdf_inc_points"),
+      incRoads:      _cbVal("pdf_inc_roads"),
+      incZones:      _cbVal("pdf_inc_zones"),
+      incStructures: _cbVal("pdf_inc_structures"),
+      incBaseImage:  _cbVal("pdf_inc_baseimage"),
+      imageLayers:   imageLayers,
+      dataLayers:    dataLayers,
+      incHeader:     _cbVal("pdf_inc_header"),
+      // 🆕 v3.1 (KARMA "légende en coin comme export PNG") : nouvelles
+      // options légende — désormais overlay sur le plan, plus footer dédié.
+      incLegende:    _cbVal("pdf_inc_legende"),
+      legPosition:   legPosition,   // "haut-gauche"|"haut-droit"|"bas-gauche"|"bas-droit"
+      legSize:       legSize,       // "compact"|"standard"|"large"
+      legStyle:      legStyle       // "print"|"opaque"|"semi"|"filigrane"
+    };
+  }
+
+  function _cbVal(id) {
+    const el = document.getElementById(id);
+    return !!(el && el.checked);
+  }
+
+  // Renvoie true si au moins un data layer du plan (autre qu'editor) est
+  // coché dans la modale PDF. Utilisé pour décider si la légende doit
+  // afficher la section "Icônes" (un data layer = sûrement des points
+  // avec leurs tags + icônes).
+  function _aDataLayerCoche(opts, kind) {
+    if (!opts.dataLayers) return false;
+    const ids = Object.keys(opts.dataLayers);
+    return ids.some(function(id) {
+      return id !== "editor" && opts.dataLayers[id] === true;
+    });
+  }
+
+  function _afficherProgression(modal, msg) {
+    const corps = modal.querySelector(".kta-readme-modal-corps");
+    if (!corps) return;
+    corps.innerHTML =
+      '<div style="text-align:center; padding:40px 20px;">' +
+        '<div style="font-size:42px; margin-bottom:14px;">⏳</div>' +
+        '<div style="font-size:15px; color:#e8eaf0; font-weight:600;">' + msg + '</div>' +
+        '<div style="font-size:12.5px; color:#8892a4; margin-top:10px;">Cela peut prendre quelques secondes sur les gros plans…</div>' +
+      '</div>';
+  }
+
+  function _afficherErreur(modal, msg) {
+    const corps = modal.querySelector(".kta-readme-modal-corps");
+    if (!corps) return;
+    corps.innerHTML =
+      '<div style="padding:20px;">' +
+        '<div style="font-size:36px; text-align:center; margin-bottom:10px;">❌</div>' +
+        '<div style="background:rgba(255,107,107,0.1); border:1px solid rgba(255,107,107,0.4); border-radius:6px; padding:12px; color:#ff8c8c; font-size:13.5px;">' +
+          '<strong>Échec de la génération PDF :</strong><br>' + _escHtml(msg) +
+        '</div>' +
+      '</div>';
+  }
+
+  function _escHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  // ============================================================
+  // GÉNÉRATION PDF
+  // ============================================================
+  async function genererPdf(opts) {
+    if (!_checkJsPDF()) {
+      throw new Error("jsPDF non chargé (lib/jspdf.umd.min.js manquant)");
+    }
+    const jsPDF = window.jspdf.jsPDF;
+
+    // Étape 1 : générer le canvas via la chaîne export PNG avancé.
+    // _genererCanvasPlan retourne une Promise<Canvas> car
+    // window.MyKTAMapExporterGenererCanvas est async (charge images, etc.).
+    const canvas = await _genererCanvasPlan(opts);
+    if (!canvas) {
+      throw new Error("Échec génération canvas du plan");
+    }
+
+    // Étape 2 : créer le doc PDF
+    const def = opts.formatDef;
+    const pdf = new jsPDF({
+      orientation: def.orientation,
+      unit:        "mm",
+      format:      def.format,
+      compress:    true
+    });
+
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = PDF_MARGIN_MM;
+    const headerH = opts.incHeader ? HEADER_HEIGHT_MM : 0;
+
+    // 🆕 v3.1 (KARMA) : plus de footer dédié — la légende devient un
+    // overlay positionné dans un coin de la zone plan (comme export PNG).
+    // On garde juste une mini-ligne de crédit en bas dans la marge.
+    const creditH = 5; // mm — hauteur réservée pour le crédit "Généré par MyKTAMap..."
+
+    // Zone disponible pour l'image — gagne toute la hauteur du footer
+    const imageZoneX = margin;
+    const imageZoneY = margin + headerH;
+    const imageZoneW = pageW - 2 * margin;
+    const imageZoneH = pageH - 2 * margin - headerH - creditH;
+
+    // Étape 3 : header
+    if (opts.incHeader) {
+      _dessinerHeader(pdf, pageW, margin, headerH);
+    }
+
+    // Étape 4 : image plan (downscale auto pour rentrer)
+    const canvasW = canvas.width;
+    const canvasH = canvas.height;
+    const ratioCanvas = canvasW / canvasH;
+    const ratioZone   = imageZoneW / imageZoneH;
+    let imgW, imgH;
+    if (ratioCanvas > ratioZone) {
+      imgW = imageZoneW;
+      imgH = imgW / ratioCanvas;
+    } else {
+      imgH = imageZoneH;
+      imgW = imgH * ratioCanvas;
+    }
+    // Centre dans la zone
+    const imgX = imageZoneX + (imageZoneW - imgW) / 2;
+    const imgY = imageZoneY + (imageZoneH - imgH) / 2;
+    const imgData = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+    pdf.addImage(imgData, "JPEG", imgX, imgY, imgW, imgH, undefined, "FAST");
+
+    // Étape 5 : légende — overlay 4-coins sur la zone du plan
+    // 🆕 v3.1 (KARMA "ajoute l'option export PNG : choisir où, OU dans un
+    // coin") : la légende n'est plus en footer dédié, elle est rendue en
+    // image PNG via le helper canvas et posée par-dessus le plan au coin
+    // demandé. Cohérent avec le rendu en overlay de l'export PNG.
+    if (opts.incLegende) {
+      await _dessinerLegendeOverlay(pdf, opts, imgX, imgY, imgW, imgH);
+    }
+
+    // Étape 6 : crédit MyKTAMap (1 ligne discrète dans la marge basse)
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(7);
+    pdf.setTextColor(140, 140, 140);
+    const credit = "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr";
+    pdf.text(credit, pageW - margin, pageH - margin / 2, { align: "right" });
+
+    // Étape 7 : save
+    const planName = _planNameSafe();
+    const date = _dateString();
+    const filename = planName + "_" + date + ".pdf";
+    pdf.save(filename);
+    console.log("[PdfExport] PDF généré :", filename);
+  }
+
+  // ============================================================
+  // GÉNÉRER CANVAS PLAN — réutilise exporter.js
+  // ============================================================
+  // exporter.js expose un helper `_genererCanvasExport(opts)` via le mode
+  // Avancé. On l'appelle avec les options adaptées (catégories, scale, etc.).
+  // Si l'API a changé / pas exposée, on retombe sur une exception explicite.
+  function _genererCanvasPlan(opts) {
+    // Construit les annotations (ann) compatibles avec _genererCanvasExport
+    // de exporter.js. Format inspiré de exporter.js > _exporterAvance.
+    const ann = {
+      points:     opts.incPoints,
+      roads:      opts.incRoads,
+      zones:      opts.incZones,
+      structures: opts.incStructures,
+      // Sous-types : on inclut tous (l'user filtre via la modale globale,
+      // pas via les sous-cases ici pour simplifier la modale PDF).
+      pointsTags:      null,  // null = tous
+      roadsTypes:      { principal: true, secondaire: true, chemin: true, jonction: true, itinerary: true },
+      zonesTypes:      { eau: true, remblais: true, effondrement: true, inaccessible: true },
+      structuresTypes: { "pilier-1": true, "pilier-2": true, "mur": true, "front-1": true, "front-2": true },
+      // Multi-niveau : tous les niveaux disponibles
+      levels:          null
+    };
+
+    // Appelle le helper public exposé par exporter.js (sinon throw)
+    if (typeof window.MyKTAMapExporterGenererCanvas !== "function") {
+      throw new Error("exporter.js > MyKTAMapExporterGenererCanvas non disponible. " +
+                      "Le module exporter.js doit exposer son canvas pour le PDF.");
+    }
+    // Si l'user décoche "Image plan de base" → bg blanc (papier).
+    const bg = (opts.incBaseImage === false) ? "white" : "image";
+    return window.MyKTAMapExporterGenererCanvas({
+      ann:          ann,
+      scale:        opts.scale || 1,
+      bg:           bg,
+      // ✅ NEW v2 : passe les calques individuels au lieu d'un booléen global.
+      // Cohérent avec ce que produit l'export PNG avancé (checkbox par calque).
+      imageLayers:  opts.imageLayers || {},
+      dataLayers:   opts.dataLayers  || {}
+    });
+  }
+
+  // ============================================================
+  // HEADER
+  // ============================================================
+  function _dessinerHeader(pdf, pageW, margin, headerH) {
+    const pc = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const planName = pc.name    || "Plan sans nom";
+    const planVer  = pc.version || "";
+    const planAuth = pc.author  || "";
+    const scale    = (window.APP_CONFIG && window.APP_CONFIG.scale) || null;
+    const date     = _dateLisible();
+
+    // Titre principal — gros, jaune charte si support, sinon noir
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(16);
+    pdf.setTextColor(20, 20, 20);
+    pdf.text(planName, margin, margin + 6);
+
+    // Sous-ligne : version + auteur + date + échelle
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(80, 80, 80);
+    const parts = [];
+    if (planVer)  parts.push("Version : " + planVer);
+    if (planAuth) parts.push("Auteur : "  + planAuth);
+    parts.push("Date d'export : " + date);
+    if (scale)    parts.push("Échelle : " + scale.toFixed(2) + " px/m");
+    const subline = parts.join("  ·  ");
+    pdf.text(subline, margin, margin + 11);
+
+    // Ligne de séparation
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, margin + headerH - 2, pageW - margin, margin + headerH - 2);
+
+    // MyKTAMap logo text en haut à droite
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(180, 140, 30);
+    pdf.text("MyKTAMap", pageW - margin, margin + 6, { align: "right" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(7.5);
+    pdf.setTextColor(120, 120, 120);
+    pdf.text("Cartographie souterraine", pageW - margin, margin + 10, { align: "right" });
+  }
+
+  // ============================================================
+  // FOOTER — LÉGENDE COMPACTE
+  // ============================================================
+  // ============================================================
+  // 🆕 v3.1 (KARMA "ajoute l'option export PNG, OU dans un coin") :
+  // dessine la légende en OVERLAY sur la zone du plan, à un des 4 coins.
+  // ============================================================
+  async function _dessinerLegendeOverlay(pdf, opts, planX, planY, planW, planH) {
+    if (typeof window.MyKTAMapExporterGenererCanvasLegende !== "function") {
+      console.warn("[PdfExport] Helper légende indispo — overlay skip.");
+      return;
+    }
+    let legCanvas;
+    try {
+      legCanvas = await window.MyKTAMapExporterGenererCanvasLegende({
+        contenu: {
+          icones:     opts.incPoints || _aDataLayerCoche(opts, "points"),
+          traces:     opts.incRoads,
+          zones:      opts.incZones,
+          structures: opts.incStructures,
+          track:      false,
+          meta:       false   // déjà dans le header PDF
+        },
+        size:  opts.legSize  || "standard",
+        style: opts.legStyle || "print",
+        scale: 2
+      });
+    } catch(e) {
+      console.warn("[PdfExport] Helper légende KO :", e);
+      return;
+    }
+    if (!legCanvas) return; // aucun contenu cochable → silent
+
+    // Calcul de la taille cible en mm sur la page PDF.
+    // Largeur cible : ratio fixe % de la largeur du plan selon legSize :
+    //   compact  → 22%   standard → 28%   large → 35%
+    // → reste lisible sans masquer une trop grande partie du plan.
+    const WIDTH_RATIO = { compact: 0.22, standard: 0.28, large: 0.35 };
+    const sizeKey = opts.legSize || "standard";
+    const wRatio  = WIDTH_RATIO[sizeKey] || 0.28;
+    let legWmm = planW * wRatio;
+    let legHmm = legWmm * (legCanvas.height / legCanvas.width);
+
+    // Si la légende dépasse 70% de la hauteur du plan (cas plans très
+    // étroits ou contenu très long), on recale sur la hauteur max
+    // disponible et on recalcule la largeur proportionnellement.
+    const maxHmm = planH * 0.70;
+    if (legHmm > maxHmm) {
+      legHmm = maxHmm;
+      legWmm = legHmm * (legCanvas.width / legCanvas.height);
+    }
+
+    // Padding interne entre la légende et le bord de la zone plan
+    const PAD = 3; // mm
+
+    let legX, legY;
+    switch (opts.legPosition) {
+      case "haut-gauche":
+        legX = planX + PAD;
+        legY = planY + PAD;
+        break;
+      case "haut-droit":
+        legX = planX + planW - legWmm - PAD;
+        legY = planY + PAD;
+        break;
+      case "bas-droit":
+        legX = planX + planW - legWmm - PAD;
+        legY = planY + planH - legHmm - PAD;
+        break;
+      case "bas-gauche":
+      default:
+        legX = planX + PAD;
+        legY = planY + planH - legHmm - PAD;
+        break;
+    }
+
+    const dataUrl = legCanvas.toDataURL("image/png");
+    pdf.addImage(dataUrl, "PNG", legX, legY, legWmm, legHmm, undefined, "FAST");
+  }
+
+  // ============================================================
+  // 🗃️ DEAD CODE — ancien footer légende (v2 → v3.0). Conservé en
+  // commentaire pour archive, plus appelé depuis v3.1 (KARMA).
+  // ============================================================
+  async function _dessinerFooterLegende(pdf, pageW, pageH, margin, footerH, opts) {
+    const footerY = pageH - margin - footerH;
+
+    // Ligne de séparation
+    pdf.setDrawColor(180, 180, 180);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, footerY, pageW - margin, footerY);
+
+    // 🆕 v1.10.3-pdf-v3 : tentative de pose d'un canvas légende complet
+    // (icônes natives + structures + tracés + zones), généré par
+    // window.MyKTAMapExporterGenererCanvasLegende (cf. exporter.js).
+    // Si dispo → on colle l'image et on rend juste la ligne de crédit.
+    // Si indispo → fallback texte ancien (compat v2, juste les types).
+    if (typeof window.MyKTAMapExporterGenererCanvasLegende === "function") {
+      try {
+        const legCanvas = await window.MyKTAMapExporterGenererCanvasLegende({
+          contenu: {
+            icones:     opts.incPoints || _aDataLayerCoche(opts, "points"),
+            traces:     opts.incRoads,
+            zones:      opts.incZones,
+            structures: opts.incStructures,
+            track:      false,  // exporté à part si tracker actif (futur)
+            meta:       false   // déjà dans le header PDF
+          },
+          // 🆕 v1.10.3-pdf-v3 (KARMA "on l'affiche en plus gros, et pas
+          // en thème sombre un truc plus pro mais même principe") :
+          //   - size "large" : icônes 30px (vs 22 standard) + texte 18pt
+          //     (vs 14) → légende lisible même à l'échelle PDF.
+          //   - style "print" : fond blanc, texte foncé, accent bleu
+          //     marine — adapté à l'impression papier.
+          //   - scale 2 : double la résolution canvas pour éviter l'effet
+          //     pixelisé quand jsPDF rescale l'image dans le PDF.
+          size:  "large",
+          style: "print",
+          scale: 2
+        });
+        if (legCanvas) {
+          // Calcule les dimensions cibles en mm — on rentre la légende
+          // dans la zone footer en respectant le ratio. La zone disponible
+          // pour la légende = pageW - 2*margin × footerH - 8 (place pour
+          // le crédit bas).
+          const zoneW = pageW - 2 * margin;
+          const zoneH = footerH - 8;
+          const cW = legCanvas.width;
+          const cH = legCanvas.height;
+          const ratioC = cW / cH;
+          const ratioZ = zoneW / zoneH;
+          let imgWmm, imgHmm;
+          if (ratioC > ratioZ) {
+            imgWmm = zoneW;
+            imgHmm = imgWmm / ratioC;
+          } else {
+            imgHmm = zoneH;
+            imgWmm = imgHmm * ratioC;
+          }
+          // Centre dans la zone (horizontal) — vertical : aligné en haut
+          // de la zone (sous la ligne de séparation).
+          const imgX = margin + (zoneW - imgWmm) / 2;
+          const imgY = footerY + 1;
+          const dataUrl = legCanvas.toDataURL("image/png");
+          pdf.addImage(dataUrl, "PNG", imgX, imgY, imgWmm, imgHmm, undefined, "FAST");
+
+          // Crédit MyKTAMap en bas (toujours en texte jsPDF, sans emoji)
+          pdf.setFont("helvetica", "italic");
+          pdf.setFontSize(7);
+          pdf.setTextColor(140, 140, 140);
+          const credit = "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr";
+          pdf.text(credit, pageW - margin, pageH - margin + 0.5, { align: "right" });
+          return; // ← pipeline canvas réussi, on skip le fallback texte
+        }
+      } catch(e) {
+        console.warn("[PdfExport] Helper légende KO, fallback texte :", e);
+      }
+    }
+
+    // Fallback texte (anciens labels jsPDF) — utilisé si le helper canvas
+    // est indisponible OU retourne null (aucun contenu).
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(60, 60, 60);
+    pdf.text("Légende", margin, footerY + 5);
+
+    // 🆕 v1.10.3-pdf-v2.2 (KARMA "légende ne marche que pour la session,
+    // pas les datalayer") : combine session + tous les éléments embedded
+    // dans les calques data (puits.json, chemin.json, etc. peuvent contenir
+    // des roads/zones/structures). Utilise les helpers globaux exposés par
+    // road.js / utils.js (cohérent avec sessionExporter + emergencyMode).
+    function _collectTypes(sessionItems, embeddedFn) {
+      const types = {};
+      (sessionItems || []).forEach(function(it) { if (it && it.type) types[it.type] = true; });
+      if (typeof embeddedFn === "function") {
+        (embeddedFn() || []).forEach(function(it) { if (it && it.type) types[it.type] = true; });
+      }
+      return types;
+    }
+
+    // Collecte les items à afficher (catégories incluses ET non vides).
+    // Sources : session (getRoads/Zones/Structures) + embedded data layers
+    // (getAllEmbeddedRoads/Zones/Structures) — couvre les puits, chemins,
+    // structures dessinés dans les fichiers du plan (data layers).
+    const items = [];
+    if (opts.incRoads) {
+      const types = _collectTypes(
+        window.getRoads && window.getRoads(),
+        window.getAllEmbeddedRoads
+      );
+      if (types["principal"])  items.push({ swatch: "#27c97e", label: "Tracé principal" });
+      if (types["secondaire"]) items.push({ swatch: "#a78cf4", label: "Tracé secondaire" });
+      if (types["chemin"])     items.push({ swatch: "#f4c542", label: "Chemin" });
+      if (types["jonction"])   items.push({ swatch: "#ff4ecb", label: "Jonction" });
+      if (types["itinerary"])  items.push({ swatch: "#00d4ff", label: "Itinéraire" });
+    }
+    if (opts.incZones) {
+      const types = _collectTypes(
+        window.getZones && window.getZones(),
+        window.getAllEmbeddedZones
+      );
+      if (types["eau"])           items.push({ swatch: "#60a5fa", label: "Zone Eau" });
+      if (types["remblais"])      items.push({ swatch: "#5a6680", label: "Remblais" });
+      if (types["effondrement"])  items.push({ swatch: "#ef4444", label: "Effondrement" });
+      if (types["inaccessible"])  items.push({ swatch: "#7f1d1d", label: "Inaccessible" });
+    }
+    if (opts.incStructures) {
+      const types = _collectTypes(
+        window.getStructures && window.getStructures(),
+        window.getAllEmbeddedStructures
+      );
+      if (types["pilier-1"]) items.push({ swatch: "#f4c542", label: "Pilier 1ère masse" });
+      if (types["pilier-2"]) items.push({ swatch: "#ff9933", label: "Pilier 2e masse" });
+      if (types["mur"])      items.push({ swatch: "#1e3a8a", label: "Mur" });
+      if (types["front-1"])  items.push({ swatch: "#f4c542", label: "Front 1ère" });
+      if (types["front-2"])  items.push({ swatch: "#ff9933", label: "Front 2e" });
+    }
+
+    // 🏷️ Icônes des points : si des data layers de points sont cochés,
+    // on ajoute une mention "Points (voir le plan)" pour signaler leur
+    // présence sans dérouler tous les tags (économie d'espace).
+    //
+    // ⚠️ NE PAS AJOUTER D'EMOJI dans les labels passés à pdf.text() :
+    // jsPDF par défaut utilise Helvetica (latin1) et rend les emojis
+    // Unicode en mojibake ("📍" devient "O=UI..."). Pour ajouter des
+    // emojis il faudrait embarquer une font TTF avec coverage emoji
+    // (+500 Ko), pas justifié pour 1 ligne de légende.
+    if (opts.incPoints || (opts.dataLayers && Object.keys(opts.dataLayers).some(function(k) { return opts.dataLayers[k] && k !== "editor"; }))) {
+      // Couleur neutre pour signaler les icônes (pas de swatch coloré possible
+      // sans rendre les images jsPDF — coûteux).
+      items.push({ swatch: "#8cb4ff", label: "Points (voir le plan)" });
+    }
+
+    if (items.length === 0) {
+      pdf.setFont("helvetica", "italic");
+      pdf.setFontSize(8);
+      pdf.setTextColor(140, 140, 140);
+      pdf.text("Aucun élément annoté inclus.", margin, footerY + 11);
+    } else {
+      // Disposition en colonnes (auto-fit)
+      const colW = 38;  // mm par item
+      const rowH = 4.5; // mm par ligne
+      const maxRows = Math.max(1, Math.floor((footerH - 8) / rowH));
+      const startY = footerY + 9;
+      const availW = pageW - 2 * margin;
+      const nCols = Math.max(1, Math.floor(availW / colW));
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      items.forEach(function(item, i) {
+        const col = i % nCols;
+        const row = Math.floor(i / nCols);
+        if (row >= maxRows) return;
+        const x = margin + col * colW;
+        const y = startY + row * rowH;
+        // Swatch rectangle 4×2 mm
+        pdf.setFillColor.apply(pdf, _hexToRgb(item.swatch));
+        pdf.rect(x, y - 1.8, 4, 2, "F");
+        // Label
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(item.label, x + 5, y);
+      });
+    }
+
+    // Footer pied : crédit MyKTAMap + URL site
+    pdf.setFont("helvetica", "italic");
+    pdf.setFontSize(7);
+    pdf.setTextColor(140, 140, 140);
+    const credit = "Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr";
+    pdf.text(credit, pageW - margin, pageH - margin + 0.5, { align: "right" });
+  }
+
+  // ============================================================
+  // UTILS
+  // ============================================================
+  function _planNameSafe() {
+    const pc = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) || {};
+    const raw = pc.name || "plan";
+    return raw.replace(/[^a-zA-Z0-9_-]/g, "_");
+  }
+
+  function _dateString() {
+    const d = new Date();
+    return d.getFullYear() + "-" +
+           String(d.getMonth() + 1).padStart(2, "0") + "-" +
+           String(d.getDate()).padStart(2, "0");
+  }
+
+  function _dateLisible() {
+    const d = new Date();
+    return String(d.getDate()).padStart(2, "0") + "/" +
+           String(d.getMonth() + 1).padStart(2, "0") + "/" +
+           d.getFullYear() + " " +
+           String(d.getHours()).padStart(2, "0") + ":" +
+           String(d.getMinutes()).padStart(2, "0");
+  }
+
+  function _hexToRgb(hex) {
+    const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
+    if (!m) return [128, 128, 128];
+    return [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)];
+  }
+
+  // ============================================================
+  // EXPORT GLOBAL
+  // ============================================================
+  window.MyKTAMapPdfExport = {
+    afficherModale: afficherModale,
+    genererPdf:     genererPdf
+  };
+
+  console.log("[PdfExport] Module chargé (jsPDF dispo : " + _checkJsPDF() + ")");
+})();

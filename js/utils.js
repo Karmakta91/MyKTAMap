@@ -1,6 +1,6 @@
 /*!
  * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
- * https://myktamap.is-underground.fr — Licence CC BY-NC-SA 4.0
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
  * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
  */
 
@@ -960,7 +960,7 @@ async function telechargerPlan() {
     const deferredMarkers = []; // [{point, layerId}]
 
     // Compteurs diagnostic (activés si APP_CONFIG.debugMode)
-    const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embPoints: 0, fetchFails: 0 };
+    const _diag = { layersVisited: 0, layersSkipped: 0, embZones: 0, embRoads: 0, embStructs: 0, embPoints: 0, fetchFails: 0 };
     const _debug = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode);
 
     if (config.dataLayers && Array.isArray(config.dataLayers)) {
@@ -999,6 +999,48 @@ async function telechargerPlan() {
               if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(z)) return;
               drawPolygon(z.points || [], ZONE_STYLES_EMBED[z.type] || ZONE_STYLES_EMBED.remblais);
               _diag.embZones++;
+            });
+          }
+
+          // 🆕 v1.10.3-structures-embed-fix (KARMA "structures bien
+          // incluses ?") : Structures embarquées (piliers + mur + fronts)
+          // dans le mode export rapide. Trou découvert post-update v1.9.3 :
+          // ajouterPointsDepuisJSON (runtime Leaflet) les affichait bien,
+          // mais telechargerPlan ne les dessinait pas dans le canvas.
+          // Tri Z + couleurs cohérents avec utils.js > ajouterPointsDepuisJSON
+          // et exporter.js > _genererCanvasExport (mode avancé).
+          if (Array.isArray(json.structures) && json.structures.length > 0) {
+            const STRUCT_STYLES_EMBED = {
+              "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
+              "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+              "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
+              // Fronts = polylines épaisses, pas de fill, color cohérent avec piliers
+              "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
+              "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
+            };
+            // Tri Z hotfix v1.10.0-hotfix1 : mur < pilier-2 < pilier-1 < front-2 < front-1
+            const ordreStruct = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+            const _mlOnStructEmb = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+            [...json.structures].sort(function(a, b) {
+              if (_mlOnStructEmb) {
+                const la = Number.isInteger(a.level) ? a.level : 0;
+                const lb = Number.isInteger(b.level) ? b.level : 0;
+                if (la !== lb) return la - lb;
+              }
+              return (ordreStruct[a.type] ?? 99) - (ordreStruct[b.type] ?? 99);
+            }).forEach(function(s) {
+              if (typeof window.passeFiltreNiveau === "function" && !window.passeFiltreNiveau(s)) return;
+              const style = STRUCT_STYLES_EMBED[s.type] || STRUCT_STYLES_EMBED["mur"];
+              const isPolyline = !!style.isPolyline;
+              const minPts = isPolyline ? 2 : 3;
+              if (!s.points || s.points.length < minPts) return;
+              if (isPolyline) {
+                drawPolyline(s.points, style);
+              } else {
+                drawPolygon(s.points, style);
+              }
+              if (typeof _diag.embStructs !== "number") _diag.embStructs = 0;
+              _diag.embStructs++;
             });
           }
 
@@ -1057,6 +1099,49 @@ async function telechargerPlan() {
     })) {
       const style = ZONE_STYLES_EXPORT[zone.type] || ZONE_STYLES_EXPORT.remblais;
       drawPolygon(zone.points || [], style);
+    }
+
+    // ---------- 🆕 v1.10.3-structures-session-fix (KARMA "structures bien
+    // incluses ?") : structures SESSION (piliers + mur + fronts) dans le
+    // mode export rapide. Trou identique au bloc embedded ci-dessus :
+    // découvert post-update v1.9.3, telechargerPlan ne dessinait pas du
+    // tout les structures (ni session ni embedded). Le rendu canvas se
+    // place entre zones (en-dessous) et routes (au-dessus) — cohérent
+    // avec le runtime Leaflet et l'export PNG avancé. ----------
+    if (window.getStructures) {
+      const structures = window.getStructures().filter(function(s) {
+        return typeof window.passeFiltreNiveau !== "function" || window.passeFiltreNiveau(s);
+      });
+      if (structures.length > 0) {
+        const STRUCT_STYLES_SESSION = {
+          "pilier-1": { color: "#000000", fillColor: "#f4c542", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "pilier-2": { color: "#000000", fillColor: "#ff9933", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "mur":      { color: "#000000", fillColor: "#1e3a8a", fillOpacity: 0.85, weight: 3, opacity: 1 },
+          "front-1":  { color: "#f4c542", weight: 10, opacity: 1, isPolyline: true },
+          "front-2":  { color: "#ff9933", weight: 10, opacity: 1, isPolyline: true }
+        };
+        // Tri Z hotfix v1.10.0-hotfix1 : mur < pilier-2 < pilier-1 < front-2 < front-1
+        const ordreStructS = { "mur": 0, "pilier-2": 1, "pilier-1": 2, "front-2": 3, "front-1": 4 };
+        const _mlOnStructSess = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+        [...structures].sort(function(a, b) {
+          if (_mlOnStructSess) {
+            const la = Number.isInteger(a.level) ? a.level : 0;
+            const lb = Number.isInteger(b.level) ? b.level : 0;
+            if (la !== lb) return la - lb;
+          }
+          return (ordreStructS[a.type] ?? 99) - (ordreStructS[b.type] ?? 99);
+        }).forEach(function(s) {
+          const style = STRUCT_STYLES_SESSION[s.type] || STRUCT_STYLES_SESSION["mur"];
+          const isPolyline = !!style.isPolyline;
+          const minPts = isPolyline ? 2 : 3;
+          if (!s.points || s.points.length < minPts) return;
+          if (isPolyline) {
+            drawPolyline(s.points, style);
+          } else {
+            drawPolygon(s.points, style);
+          }
+        });
+      }
     }
 
     // ---------- routes ----------

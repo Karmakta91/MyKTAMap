@@ -1,14 +1,22 @@
 // =========================
-// SEARCH POINTS — Recherche rapide d'un point
+// SEARCH POINTS — Recherche unifiée (v1.10.3-search-unified)
 // =========================
-// Permet à l'utilisateur de chercher un point par son nom, id, tag,
-// description ou état dans tous les calques de données + la session.
+// Permet à l'utilisateur de chercher dans 4 catégories d'annotations :
+//   📍 Points    (data layers + session)
+//   🛣️ Tracés    (roads session + getAllEmbeddedRoads)
+//   ⬛ Zones     (zones session + getAllEmbeddedZones)
+//   🏛️ Structures (structures session + getAllEmbeddedStructures)
 //
 // Workflow :
-//   1. Modale ouverte par window.ouvrirRecherche()
+//   1. Modale ouverte par window.ouvrirRecherche() OU Ctrl/Cmd+K
 //   2. Champ de recherche live debounced 200ms
-//   3. Liste de résultats avec icône + métadonnées
+//   3. Résultats groupés par catégorie (📍 Points (N) · 🛣️ Tracés (M)…)
 //   4. Clic sur un résultat → carte centrée + popup + flash visuel
+//
+// Histoire :
+//   v1.7.x → recherche points uniquement
+//   v1.10.3 (KARMA "1:b · 2:b · 3:a · 5:b · 6:a+b · 7:a · 8:a+b+c") →
+//   extension à roads/zones/structures + raccourci clavier + groupes.
 // =========================
 
 (function() {
@@ -25,6 +33,9 @@
   // Filtres actifs (réinitialisés à chaque ouverture de modale)
   let _filterLayers = new Set();    // Set<layerId> — vide = tous les calques
   let _filterTags   = new Set();    // Set<tag>     — vide = tous les tags
+  // 🆕 v1.10.3-search-unified : filtre par catégorie (kind). Set<"point"|"road"|"zone"|"structure">
+  // Vide = toutes les catégories actives (comportement par défaut "tout voir").
+  let _filterKinds  = new Set();
 
   // ========== STYLES INJECTÉS ==========
   function _injecterStyles() {
@@ -244,8 +255,39 @@
     // Réinitialise les filtres à chaque ouverture (état "propre")
     _filterLayers = new Set();
     _filterTags   = new Set();
+    _filterKinds  = new Set();
     _afficherModal();
   };
+
+  // 🆕 v1.10.3-search-unified : raccourci clavier global Ctrl/Cmd+K
+  // Ouvre la modale de recherche sauf si l'user est en train de taper
+  // dans un input/textarea/contenteditable (anti-vol de focus).
+  document.addEventListener("keydown", function(e) {
+    const key = (e.key || "").toLowerCase();
+    const isCmdK = (e.ctrlKey || e.metaKey) && key === "k" && !e.altKey && !e.shiftKey;
+    if (!isCmdK) return;
+    // Si on est focus sur un champ texte, ne pas voler le focus (l'user pourrait
+    // vouloir le binding Ctrl+K natif de son OS = couper-ligne en bash, etc.).
+    // EXCEPTION : si la modale de recherche est déjà ouverte, on autorise le
+    // toggle pour fermer/rouvrir.
+    const ae = document.activeElement;
+    const isInputFocused = ae && (
+      ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" ||
+      (ae.getAttribute && ae.getAttribute("contenteditable") === "true")
+    );
+    const searchAlreadyOpen = !!document.getElementById("kta-search-modal");
+    if (isInputFocused && !searchAlreadyOpen) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // Toggle : si déjà ouverte → fermer, sinon ouvrir
+    if (searchAlreadyOpen) {
+      const existing = document.getElementById("kta-search-modal");
+      if (existing) existing.remove();
+      _modal = null;
+    } else {
+      window.ouvrirRecherche();
+    }
+  });
 
   // API utilitaire exposée pour les autres modules (Pathfinder par ex.) qui
   // veulent énumérer tous les points (data layers + editor) sans ouvrir la
@@ -302,7 +344,7 @@
     });
   }
 
-  // Test si un point passe les filtres actifs
+  // Test si un point passe les filtres actifs (legacy — points uniquement)
   // Logique : AND entre catégories, OR à l'intérieur d'une catégorie
   function _matchesFilters(it) {
     if (_filterLayers.size > 0 && !_filterLayers.has(it.layerId)) return false;
@@ -310,6 +352,26 @@
       const tags = Array.isArray(it.point.tags) ? it.point.tags : [];
       const hasMatch = tags.some(function(t) { return _filterTags.has(t); });
       if (!hasMatch) return false;
+    }
+    return true;
+  }
+
+  // 🆕 v1.10.3-search-unified : version unifiée pour les 4 catégories.
+  // - filterKinds (Set vide = tout) : filtre par "point"|"road"|"zone"|"structure"
+  // - filterLayers : pour points uniquement (tracés/zones/structures n'ont pas de "layer" au sens calque)
+  // - filterTags  : pour points uniquement (les autres n'ont pas de tags)
+  function _matchesFiltersUnified(it) {
+    // Filtre catégorie
+    if (_filterKinds.size > 0 && !_filterKinds.has(it.kind)) return false;
+    // Filtre layer + tags : ne s'applique QUE aux points (les autres catégories
+    // n'ont pas de structure "calque" comparable et pas de tags).
+    if (it.kind === "point") {
+      if (_filterLayers.size > 0 && !_filterLayers.has(it.layerId)) return false;
+      if (_filterTags.size > 0) {
+        const tags = Array.isArray(it.item.tags) ? it.item.tags : [];
+        const hasMatch = tags.some(function(t) { return _filterTags.has(t); });
+        if (!hasMatch) return false;
+      }
     }
     return true;
   }
@@ -329,14 +391,14 @@
     modal.innerHTML = `
       <div class="kta-readme-modal-boite">
         <div class="kta-readme-modal-header">
-          <span class="kta-readme-modal-titre">🔍 Rechercher un point</span>
+          <span class="kta-readme-modal-titre">🔍 Recherche unifiée <span style="font-size:11px; color:#8892a4; font-weight:400; margin-left:8px;">Ctrl+K</span></span>
           <button class="kta-panneau-close" id="kta-search-close">✕</button>
         </div>
         <div class="kta-readme-modal-corps">
 
           <div class="kta-search-input-wrap">
             <input type="text" id="kta-search-input"
-              placeholder="🔍 Tape un nom, un id, un tag, une description..."
+              placeholder="🔍 Cherche un point, tracé, zone, structure..."
               autocomplete="off">
           </div>
 
@@ -376,8 +438,9 @@
 
     // Charger le cache au besoin
     _chargerCache().then(function() {
-      infoEl.textContent = _tousLesPoints().length + " point(s) disponible(s)";
-      _renderFiltres();           // chips calques + tags
+      const total = _tousLesItems().length;
+      infoEl.textContent = total + " élément(s) disponible(s)";
+      _renderFiltres();           // chips catégorie + calques + tags
       _renderResultats("");
       input.focus();
     }).catch(function(err) {
@@ -398,6 +461,10 @@
         } else if (type === "tag") {
           if (_filterTags.has(value)) _filterTags.delete(value);
           else _filterTags.add(value);
+        } else if (type === "kind") {
+          // 🆕 v1.10.3-search-unified : filtre catégorie
+          if (_filterKinds.has(value)) _filterKinds.delete(value);
+          else _filterKinds.add(value);
         }
         chip.classList.toggle("active");
         _updateClearButton();
@@ -411,6 +478,7 @@
       clearBtn.addEventListener("click", function() {
         _filterLayers = new Set();
         _filterTags   = new Set();
+        _filterKinds  = new Set();
         _renderFiltres();
         _updateClearButton();
         _renderResultats(input.value.trim());
@@ -513,6 +581,143 @@
     return (_pointsCache || []).concat(editor);
   }
 
+  // ========== 🆕 v1.10.3-search-unified : COLLECTEURS ROADS/ZONES/STRUCTURES ==========
+  // Labels lisibles par type (cohérent UI app)
+  const _ROAD_TYPE_LABEL   = { principal: "Principal", secondaire: "Secondaire", chemin: "Chemin", jonction: "Jonction", itinerary: "Itinéraire" };
+  const _ZONE_TYPE_LABEL   = { eau: "Eau", remblais: "Remblais", effondrement: "Effondrement", inaccessible: "Inaccessible" };
+  const _STRUCT_TYPE_LABEL = { "pilier-1": "Pilier 1ère masse", "pilier-2": "Pilier 2e masse", "mur": "Mur", "front-1": "Front 1ère", "front-2": "Front 2e" };
+
+  // Icônes emoji utilisés dans les résultats (pas d'image PNG dédiée pour
+  // roads/zones/structures — emojis plus rapides et cohérents UI).
+  const _KIND_EMOJI = { point: "📍", road: "🛣️", zone: "⬛", structure: "🏛️" };
+
+  // Collecte les roads (session + embedded data layers) avec label auto si manquant.
+  // Retourne format unifié [{kind:"road", item:road, layerId, layerLabel, label, searchableText}]
+  function _collecterRoads() {
+    const out = [];
+    const sessionRoads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+    sessionRoads.forEach(function(r, idx) {
+      if (!r) return;
+      const lbl = r.label || (_ROAD_TYPE_LABEL[r.type] || r.type || "Tracé") + " session #" + (idx + 1);
+      out.push({
+        kind: "road",
+        item: r,
+        layerId: "session",
+        layerLabel: "Session",
+        label: lbl,
+        searchableText: [lbl, r.type, _ROAD_TYPE_LABEL[r.type] || "", r.label || "", Number.isInteger(r.level) ? "niveau " + r.level : ""].join(" ")
+      });
+    });
+    const embRoads = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : [];
+    embRoads.forEach(function(r, idx) {
+      if (!r) return;
+      const lbl = r.label || (_ROAD_TYPE_LABEL[r.type] || r.type || "Tracé") + " data #" + (idx + 1);
+      out.push({
+        kind: "road",
+        item: r,
+        layerId: r._layerId || "data",
+        layerLabel: r._layerLabel || "Data layer",
+        label: lbl,
+        searchableText: [lbl, r.type, _ROAD_TYPE_LABEL[r.type] || "", r.label || "", Number.isInteger(r.level) ? "niveau " + r.level : ""].join(" ")
+      });
+    });
+    return out;
+  }
+
+  function _collecterZones() {
+    const out = [];
+    const sessionZones = (typeof window.getZones === "function") ? (window.getZones() || []) : [];
+    sessionZones.forEach(function(z, idx) {
+      if (!z) return;
+      const lbl = z.label || "Zone " + (_ZONE_TYPE_LABEL[z.type] || z.type || "") + " session #" + (idx + 1);
+      out.push({
+        kind: "zone",
+        item: z,
+        layerId: "session",
+        layerLabel: "Session",
+        label: lbl,
+        searchableText: [lbl, z.type, _ZONE_TYPE_LABEL[z.type] || "", z.label || "", Number.isInteger(z.level) ? "niveau " + z.level : ""].join(" ")
+      });
+    });
+    const embZones = (typeof window.getAllEmbeddedZones === "function") ? (window.getAllEmbeddedZones() || []) : [];
+    embZones.forEach(function(z, idx) {
+      if (!z) return;
+      const lbl = z.label || "Zone " + (_ZONE_TYPE_LABEL[z.type] || z.type || "") + " data #" + (idx + 1);
+      out.push({
+        kind: "zone",
+        item: z,
+        layerId: z._layerId || "data",
+        layerLabel: z._layerLabel || "Data layer",
+        label: lbl,
+        searchableText: [lbl, z.type, _ZONE_TYPE_LABEL[z.type] || "", z.label || "", Number.isInteger(z.level) ? "niveau " + z.level : ""].join(" ")
+      });
+    });
+    return out;
+  }
+
+  function _collecterStructures() {
+    const out = [];
+    const sessionStructs = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
+    sessionStructs.forEach(function(s, idx) {
+      if (!s) return;
+      const lbl = s.label || (_STRUCT_TYPE_LABEL[s.type] || s.type || "Structure") + " session #" + (idx + 1);
+      out.push({
+        kind: "structure",
+        item: s,
+        layerId: "session",
+        layerLabel: "Session",
+        label: lbl,
+        searchableText: [lbl, s.type, _STRUCT_TYPE_LABEL[s.type] || "", s.label || "", Number.isInteger(s.level) ? "niveau " + s.level : ""].join(" ")
+      });
+    });
+    const embStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
+    embStructs.forEach(function(s, idx) {
+      if (!s) return;
+      const lbl = s.label || (_STRUCT_TYPE_LABEL[s.type] || s.type || "Structure") + " data #" + (idx + 1);
+      out.push({
+        kind: "structure",
+        item: s,
+        layerId: s._layerId || "data",
+        layerLabel: s._layerLabel || "Data layer",
+        label: lbl,
+        searchableText: [lbl, s.type, _STRUCT_TYPE_LABEL[s.type] || "", s.label || "", Number.isInteger(s.level) ? "niveau " + s.level : ""].join(" ")
+      });
+    });
+    return out;
+  }
+
+  // Retourne TOUS les items (points + roads + zones + structures) dans un
+  // format unifié. Utilisé par la modale de recherche UNIQUEMENT — n'est
+  // PAS exposé via SearchPoints.* pour ne pas casser Pathfinder et autres
+  // modules qui consomment getAllPoints/findByQuery (format point-only).
+  function _tousLesItems() {
+    const items = [];
+    // Points : on garde le format historique mais on l'enrichit avec kind
+    _tousLesPoints().forEach(function(it) {
+      const p = it.point;
+      const lbl = p.nom || p.id || "Point sans nom";
+      items.push({
+        kind: "point",
+        item: p,
+        layerId: it.layerId,
+        layerLabel: it.layerLabel,
+        label: lbl,
+        // Pour les points, on garde un searchableText riche (nom + id + tags + desc + état)
+        searchableText: [
+          lbl, p.id || "", p.nom || "",
+          Array.isArray(p.tags) ? p.tags.join(" ") : "",
+          p.description || "", p.etat || ""
+        ].join(" "),
+        // Compat avec _ouvrirPopupEtFlash actuel (qui attend item.point) :
+        point: p
+      });
+    });
+    Array.prototype.push.apply(items, _collecterRoads());
+    Array.prototype.push.apply(items, _collecterZones());
+    Array.prototype.push.apply(items, _collecterStructures());
+    return items;
+  }
+
   // ========== NORMALISATION POUR RECHERCHE ==========
   function _normalize(s) {
     if (s === null || s === undefined) return "";
@@ -528,6 +733,32 @@
     const tags   = _availableTags();
 
     let html = "";
+
+    // 🆕 v1.10.3-search-unified : filtres catégorie (4 chips)
+    // Affichés en premier car ils restructurent le plus la liste de résultats.
+    // Compteurs live = nombre d'items par catégorie dans la session+data layers.
+    const allItems  = _tousLesItems();
+    const kindCount = { point: 0, road: 0, zone: 0, structure: 0 };
+    allItems.forEach(function(it) { kindCount[it.kind] = (kindCount[it.kind] || 0) + 1; });
+    const KIND_DEFS = [
+      { id: "point",     label: "📍 Points"     },
+      { id: "road",      label: "🛣️ Tracés"     },
+      { id: "zone",      label: "⬛ Zones"      },
+      { id: "structure", label: "🏛️ Structures" }
+    ];
+    const kindsAvecContenu = KIND_DEFS.filter(function(k) { return kindCount[k.id] > 0; });
+    if (kindsAvecContenu.length >= 2) {  // pas la peine d'afficher s'il n'y a qu'une catégorie
+      html += '<div class="kta-search-filters-row">';
+      html += '<span class="kta-search-filters-label">Catégorie</span>';
+      html += '<div class="kta-search-filters-chips">';
+      kindsAvecContenu.forEach(function(k) {
+        const active = _filterKinds.has(k.id);
+        html += '<button type="button" class="kta-search-chip' + (active ? " active" : "") + '"'
+              + ' data-filter-type="kind" data-filter-value="' + _escapeAttr(k.id) + '">'
+              + _escapeHtml(k.label) + ' (' + kindCount[k.id] + ')</button>';
+      });
+      html += '</div></div>';
+    }
 
     if (layers.length > 0) {
       html += '<div class="kta-search-filters-row">';
@@ -561,92 +792,102 @@
   function _updateClearButton() {
     const btn = document.getElementById("kta-search-clear-filters");
     if (!btn) return;
-    const hasFilters = (_filterLayers.size > 0 || _filterTags.size > 0);
+    const hasFilters = (_filterLayers.size > 0 || _filterTags.size > 0 || _filterKinds.size > 0);
     btn.style.display = hasFilters ? "inline-block" : "none";
   }
 
-  // ========== RECHERCHE & TRI ==========
+  // ========== RECHERCHE & TRI (v1.10.3-search-unified) ==========
+  // Scoring sur les 4 catégories :
+  //   - Points : nom, id, tags, description, état (comme avant)
+  //   - Roads/Zones/Structures : label, type (label FR), level (niveau N)
+  // Tri intra-catégorie par score décroissant, puis alphabétique sur le label.
+  // Le grouping par catégorie est fait par _renderResultats (pas ici).
   function _filtrer(query) {
-    // Application des filtres calques + tags AVANT le filtrage textuel
-    const tousPoints = _tousLesPoints().filter(_matchesFilters);
-    if (!query) return tousPoints.slice();
+    // Application des filtres unifiés (kind + layers + tags) AVANT le filtrage textuel
+    const tousItems = _tousLesItems().filter(_matchesFiltersUnified);
+    if (!query) return tousItems.slice();
 
     const q = _normalize(query);
     const matches = [];
 
-    for (const it of tousPoints) {
-      const p = it.point;
-      const nom  = _normalize(p.nom || "");
-      const id   = _normalize(p.id || "");
-      const desc = _normalize(p.description || "");
-      const etat = _normalize(p.etat || "");
-      const tags = (Array.isArray(p.tags) ? p.tags.map(_normalize).join(" ") : "");
-
+    for (const it of tousItems) {
       let score = 0;
 
-      // Match exact dans nom → 100
-      if (nom === q) score = 100;
-      // Match au début du nom → 80
-      else if (nom.startsWith(q)) score = 80;
-      // Match dans le nom → 60
-      else if (nom.includes(q)) score = 60;
-      // Match exact dans id → 50
-      else if (id === q) score = 50;
-      // Match au début de l'id → 40
-      else if (id.startsWith(q)) score = 40;
-      // Match dans l'id → 30
-      else if (id.includes(q)) score = 30;
-      // Match dans tags → 20
-      else if (tags.includes(q)) score = 20;
-      // Match dans description ou état → 10
-      else if (desc.includes(q) || etat.includes(q)) score = 10;
+      if (it.kind === "point") {
+        const p    = it.item;
+        const nom  = _normalize(p.nom || "");
+        const id   = _normalize(p.id || "");
+        const desc = _normalize(p.description || "");
+        const etat = _normalize(p.etat || "");
+        const tags = (Array.isArray(p.tags) ? p.tags.map(_normalize).join(" ") : "");
+        if      (nom === q)              score = 100;
+        else if (nom.startsWith(q))      score = 80;
+        else if (nom.includes(q))        score = 60;
+        else if (id === q)               score = 50;
+        else if (id.startsWith(q))       score = 40;
+        else if (id.includes(q))         score = 30;
+        else if (tags.includes(q))       score = 20;
+        else if (desc.includes(q) || etat.includes(q)) score = 10;
+      } else {
+        // Roads/Zones/Structures : match sur le searchableText pré-calculé
+        // (label + type + label FR du type + level). Scoring plus simple
+        // car moins de champs à différencier en priorité.
+        const text = _normalize(it.searchableText || "");
+        const lbl  = _normalize(it.label || "");
+        if      (lbl === q)         score = 100;
+        else if (lbl.startsWith(q)) score = 80;
+        else if (lbl.includes(q))   score = 60;
+        else if (text.includes(q))  score = 30;
+      }
 
       if (score > 0) matches.push({ item: it, score: score });
     }
 
     matches.sort(function(a, b) {
       if (a.score !== b.score) return b.score - a.score;
-      return _normalize(a.item.point.nom || a.item.point.id || "")
-        .localeCompare(_normalize(b.item.point.nom || b.item.point.id || ""));
+      return _normalize(a.item.label).localeCompare(_normalize(b.item.label));
     });
 
     return matches.map(function(m) { return m.item; });
   }
 
-  // ========== RENDU DES RÉSULTATS ==========
+  // ========== RENDU DES RÉSULTATS (v1.10.3-search-unified) ==========
+  // Rendu groupé par catégorie (📍 Points, 🛣️ Tracés, ⬛ Zones, 🏛️ Structures)
+  // avec headers de section + compteurs par catégorie. Limite 50 résultats
+  // au total répartis sur les 4 catégories (au prorata par défaut).
   function _renderResultats(query) {
-    const resEl = document.getElementById("kta-search-results");
+    const resEl  = document.getElementById("kta-search-results");
     const infoEl = document.getElementById("kta-search-info");
     if (!resEl) return;
 
     const filtered = _filtrer(query);
     const LIMITE = 50;
     const visibles = filtered.slice(0, LIMITE);
-    const surplus = filtered.length - visibles.length;
+    const surplus  = filtered.length - visibles.length;
 
     if (query) {
       infoEl.textContent = filtered.length === 0
         ? "Aucun résultat"
         : filtered.length + " résultat(s)";
     } else {
-      const total           = _tousLesPoints().length;
-      const filtersActive   = (_filterLayers.size > 0 || _filterTags.size > 0);
+      const total = _tousLesItems().length;
+      const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0 || _filterKinds.size > 0);
       if (filtersActive) {
-        infoEl.textContent = filtered.length + " sur " + total + " point(s) (filtré)";
+        infoEl.textContent = filtered.length + " sur " + total + " élément(s) (filtré)";
       } else {
-        infoEl.textContent = total + " point(s) disponible(s)";
+        infoEl.textContent = total + " élément(s) disponible(s)";
       }
     }
 
     if (filtered.length === 0) {
-      const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0);
+      const filtersActive = (_filterLayers.size > 0 || _filterTags.size > 0 || _filterKinds.size > 0);
       let msg;
       if (query) {
-        msg = 'Aucun point ne correspond à <strong>' + _escapeHtml(query) + '</strong>';
+        msg = 'Aucun élément ne correspond à <strong>' + _escapeHtml(query) + '</strong>';
       } else if (filtersActive) {
-        msg = 'Aucun point ne correspond aux filtres actifs';
+        msg = 'Aucun élément ne correspond aux filtres actifs';
       } else {
-        msg = 'Tape une recherche pour trouver un point';
+        msg = 'Tape une recherche pour trouver un point, un tracé, une zone ou une structure';
       }
       resEl.innerHTML = `
         <div class="kta-search-empty">
@@ -657,38 +898,37 @@
       return;
     }
 
-    let html = "";
-    _visibles = visibles;  // mémoriser pour les listeners (les clics se fient à l'index local)
-    visibles.forEach(function(it, idx) {
-      const p = it.point;
-      const iconUrl = _getIconUrl(p);
-      const tags = Array.isArray(p.tags) ? p.tags : [];
-      const xy = (typeof p.x === "number" && typeof p.y === "number")
-        ? '<span class="kta-search-coords">x:' + p.x + ' y:' + p.y + '</span>'
-        : '';
+    // Groupage par catégorie (préserve l'ordre interne du score / alphabétique)
+    const groups = { point: [], road: [], zone: [], structure: [] };
+    visibles.forEach(function(it) {
+      if (groups[it.kind]) groups[it.kind].push(it);
+    });
+    const KIND_HEADERS = {
+      point:     "📍 Points",
+      road:      "🛣️ Tracés",
+      zone:      "⬛ Zones",
+      structure: "🏛️ Structures"
+    };
+    const KIND_ORDER = ["point", "road", "zone", "structure"];
 
-      // data-visible-idx référence l'index dans la liste actuellement affichée
-      // (et non plus _pointsCache, qui ne contient que les data layers externes)
-      html += '<div class="kta-search-result' + (idx === 0 && query ? " active" : "") + '" data-visible-idx="' + idx + '">';
-      html += '<div class="kta-search-icon">';
-      if (iconUrl) html += '<img src="' + _escapeAttr(iconUrl) + '" alt="">';
-      else         html += '<span style="font-size:18px; opacity:0.4;">📍</span>';
+    _visibles = visibles;  // mémoriser pour les listeners (les clics se fient à l'index local)
+
+    let html = "";
+    let visIdx = 0;
+    let firstResultMarked = false;
+
+    KIND_ORDER.forEach(function(kind) {
+      const items = groups[kind];
+      if (!items || items.length === 0) return;
+      html += '<div class="kta-search-group-header" style="padding:8px 6px 4px; font-size:11px; color:#8cb4ff; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; border-top:1px solid rgba(255,255,255,0.04); margin-top:4px;">';
+      html += _escapeHtml(KIND_HEADERS[kind]) + ' <span style="color:#8892a4; font-weight:400;">(' + items.length + ')</span>';
       html += '</div>';
-      html += '<div class="kta-search-content">';
-      html += '<div class="kta-search-name">';
-      if (p.id) html += '<span class="kta-search-id">' + _escapeHtml(p.id) + '</span>';
-      html += _escapeHtml(p.nom || "(sans nom)");
-      html += '</div>';
-      html += '<div class="kta-search-meta">';
-      html += '<span class="layer-tag">' + _escapeHtml(it.layerLabel) + '</span>';
-      tags.slice(0, 4).forEach(function(t) {
-        html += '<span class="tag-chip">' + _escapeHtml(t) + '</span>';
+      items.forEach(function(it) {
+        const isFirst = !firstResultMarked && query;
+        firstResultMarked = true;
+        html += _renderResultRow(it, visIdx, isFirst);
+        visIdx++;
       });
-      if (tags.length > 4) html += '<span class="tag-chip">+' + (tags.length - 4) + '</span>';
-      if (xy) html += ' ' + xy;
-      html += '</div>';
-      html += '</div>';
-      html += '</div>';
     });
 
     if (surplus > 0) {
@@ -697,7 +937,7 @@
 
     resEl.innerHTML = html;
 
-    // Listeners
+    // Listeners — un seul handler par row, utilise data-visible-idx
     resEl.querySelectorAll(".kta-search-result").forEach(function(el) {
       el.addEventListener("click", function() {
         const idx = parseInt(el.dataset.visibleIdx);
@@ -705,6 +945,76 @@
         if (it) _aller(it);
       });
     });
+  }
+
+  // Rendu d'une ligne résultat selon le kind. Visuellement homogène, mais
+  // l'icône + le contenu meta varient par catégorie.
+  function _renderResultRow(it, visIdx, isFirst) {
+    const activeClass = isFirst ? " active" : "";
+    let html = '<div class="kta-search-result' + activeClass + '" data-visible-idx="' + visIdx + '">';
+
+    // Icône : pour les points → image PNG du tag ; pour les autres → emoji.
+    html += '<div class="kta-search-icon">';
+    if (it.kind === "point") {
+      const iconUrl = _getIconUrl(it.item);
+      if (iconUrl) html += '<img src="' + _escapeAttr(iconUrl) + '" alt="">';
+      else         html += '<span style="font-size:18px; opacity:0.4;">📍</span>';
+    } else {
+      html += '<span style="font-size:22px;">' + _escapeHtml(_KIND_EMOJI[it.kind] || "?") + '</span>';
+    }
+    html += '</div>';
+
+    html += '<div class="kta-search-content">';
+
+    // Nom principal — varie selon le kind
+    if (it.kind === "point") {
+      const p = it.item;
+      html += '<div class="kta-search-name">';
+      if (p.id) html += '<span class="kta-search-id">' + _escapeHtml(p.id) + '</span>';
+      html += _escapeHtml(p.nom || "(sans nom)");
+      html += '</div>';
+    } else {
+      // Roads/Zones/Structures : juste le label
+      html += '<div class="kta-search-name">' + _escapeHtml(it.label) + '</div>';
+    }
+
+    // Meta — varie selon le kind
+    html += '<div class="kta-search-meta">';
+    html += '<span class="layer-tag">' + _escapeHtml(it.layerLabel) + '</span>';
+    if (it.kind === "point") {
+      const p = it.item;
+      const tags = Array.isArray(p.tags) ? p.tags : [];
+      tags.slice(0, 4).forEach(function(t) {
+        html += '<span class="tag-chip">' + _escapeHtml(t) + '</span>';
+      });
+      if (tags.length > 4) html += '<span class="tag-chip">+' + (tags.length - 4) + '</span>';
+      if (typeof p.x === "number" && typeof p.y === "number") {
+        html += ' <span class="kta-search-coords">x:' + p.x + ' y:' + p.y + '</span>';
+      }
+    } else {
+      const r = it.item;
+      // Type lisible (badge couleur)
+      const typeLabel = (it.kind === "road"      ? (_ROAD_TYPE_LABEL[r.type]   || r.type)
+                        : it.kind === "zone"     ? (_ZONE_TYPE_LABEL[r.type]   || r.type)
+                        : it.kind === "structure"? (_STRUCT_TYPE_LABEL[r.type] || r.type)
+                        : (r.type || ""));
+      if (typeLabel) html += '<span class="tag-chip">' + _escapeHtml(typeLabel) + '</span>';
+      // Niveau si M-LVL ou level présent
+      if (Number.isInteger(r.level)) {
+        html += '<span class="tag-chip">Niv ' + r.level + '</span>';
+      } else if (r.type === "jonction" && (Number.isInteger(r.fromLevel) || Number.isInteger(r.toLevel))) {
+        html += '<span class="tag-chip">Niv ' + (r.fromLevel != null ? r.fromLevel : "?") + ' ↔ ' + (r.toLevel != null ? r.toLevel : "?") + '</span>';
+      }
+      // Nombre de points (info utile pour les polygones)
+      if (Array.isArray(r.points)) {
+        html += ' <span class="kta-search-coords">' + r.points.length + ' pt' + (r.points.length > 1 ? "s" : "") + '</span>';
+      }
+    }
+    html += '</div>';
+
+    html += '</div>';  // end content
+    html += '</div>';  // end result
+    return html;
   }
 
   // ========== RÉCUPÉRATION DE L'ICÔNE ==========
@@ -724,33 +1034,115 @@
     return config.icons.default || null;
   }
 
-  // ========== ALLER À UN POINT ==========
+  // ========== ALLER À UN POINT/ROAD/ZONE/STRUCTURE (v1.10.3-search-unified) ==========
+  // Dispatcher selon le kind de l'item — points utilisent l'ancien flow,
+  // les 3 autres utilisent _allerVersAnnotation (centroïde + flash overlay).
   function _aller(item) {
-    const p = item.point;
-    if (typeof p.x !== "number" || typeof p.y !== "number") {
-      alert("Ce point n'a pas de coordonnées valides");
-      return;
-    }
-
-    if (!window.map || !APP_CONFIG) return;
+    if (!window.map || !window.APP_CONFIG) return;
 
     // Fermer la modale
     if (_modal) _modal.remove();
     _modal = null;
     if (_filtreTimer) { clearTimeout(_filtreTimer); _filtreTimer = null; }
 
+    if (item.kind === "point") {
+      _allerVersPoint(item);
+    } else {
+      _allerVersAnnotation(item);
+    }
+  }
+
+  // Va vers un point (comportement v1.7.x préservé pour compat)
+  function _allerVersPoint(item) {
+    const p = item.item || item.point;  // compat ancien format (point) + nouveau (item)
+    if (typeof p.x !== "number" || typeof p.y !== "number") {
+      alert("Ce point n'a pas de coordonnées valides");
+      return;
+    }
     const latlng = convertCoord(p.x, p.y);
-
-    // setView (sans animation) plutôt que flyTo : évite toute dérive cumulative.
-    // L'animation flyTo peut introduire des erreurs d'arrondi qui s'accumulent
-    // d'une recherche à l'autre.
     window.map.setView(latlng, window.map.getZoom(), { animate: false });
+    window.map.invalidateSize();
+    // _ouvrirPopupEtFlash attend item.point — on assure la rétrocompat
+    const compatItem = { point: p, layerId: item.layerId, layerLabel: item.layerLabel };
+    _ouvrirPopupEtFlash(compatItem, latlng);
+  }
 
-    // Forcer Leaflet à recalculer ses dimensions internes (au cas où)
+  // 🆕 v1.10.3-search-unified : va vers une road / zone / structure.
+  // Calcule le centroïde, centre la carte dessus, pose un overlay flash
+  // (polyline jaune ou polygon jaune) + popup info.
+  function _allerVersAnnotation(item) {
+    const ann = item.item;
+    if (!ann || !Array.isArray(ann.points) || ann.points.length === 0) {
+      alert("Élément sans points — impossible de localiser.");
+      return;
+    }
+
+    // Centroïde simple = moyenne des coords plan
+    let sumX = 0, sumY = 0;
+    ann.points.forEach(function(pt) { sumX += pt.x; sumY += pt.y; });
+    const cx = sumX / ann.points.length;
+    const cy = sumY / ann.points.length;
+    const center = convertCoord(cx, cy);
+    window.map.setView(center, window.map.getZoom(), { animate: false });
     window.map.invalidateSize();
 
-    // Ouvrir popup et entourer immédiatement (pas besoin d'attendre l'animation)
-    _ouvrirPopupEtFlash(item, latlng);
+    // Cleanup d'un éventuel overlay flash précédent
+    if (_flashLayer) {
+      try { window.map.removeLayer(_flashLayer); } catch(e) {}
+      _flashLayer = null;
+    }
+
+    // Construit l'overlay de flash selon le kind + type
+    const latlngs = ann.points.map(function(pt) { return convertCoord(pt.x, pt.y); });
+
+    const isPolyline = (item.kind === "road" || (item.kind === "structure" && (ann.type === "front-1" || ann.type === "front-2")));
+    if (isPolyline) {
+      _flashLayer = L.polyline(latlngs, {
+        color: "#ffaa00",
+        weight: 10,
+        opacity: 0.85,
+        dashArray: "8 6",
+        interactive: false,
+        pane: "overlayPane"
+      }).addTo(window.map);
+    } else {
+      // Polygon (zone, pilier, mur)
+      _flashLayer = L.polygon(latlngs, {
+        color: "#ffaa00",
+        weight: 4,
+        opacity: 0.9,
+        fillColor: "#ffcc44",
+        fillOpacity: 0.30,
+        interactive: false,
+        pane: "overlayPane"
+      }).addTo(window.map);
+    }
+
+    // Popup info — contenu adapté au kind
+    let popupHtml = "<b>" + _escapeHtml(item.label) + "</b>";
+    const typeLabel = (item.kind === "road"      ? (_ROAD_TYPE_LABEL[ann.type]   || ann.type)
+                      : item.kind === "zone"     ? (_ZONE_TYPE_LABEL[ann.type]   || ann.type)
+                      : item.kind === "structure"? (_STRUCT_TYPE_LABEL[ann.type] || ann.type)
+                      : ann.type);
+    if (typeLabel) popupHtml += "<br>Type : " + _escapeHtml(typeLabel);
+    if (Number.isInteger(ann.level)) popupHtml += "<br>Niveau : " + ann.level;
+    if (ann.type === "jonction" && Number.isInteger(ann.fromLevel) && Number.isInteger(ann.toLevel)) {
+      popupHtml += "<br>Jonction : niv " + ann.fromLevel + " ↔ niv " + ann.toLevel;
+    }
+    if (Array.isArray(ann.points)) popupHtml += '<br><small style="opacity:0.6;">' + ann.points.length + " point(s) · " + _escapeHtml(item.layerLabel) + "</small>";
+
+    L.popup({ autoClose: true, closeOnClick: true })
+      .setLatLng(center)
+      .setContent(popupHtml)
+      .openOn(window.map);
+
+    // Disparition automatique du flash après 4 secondes
+    setTimeout(function() {
+      if (_flashLayer) {
+        try { window.map.removeLayer(_flashLayer); } catch(e) {}
+        _flashLayer = null;
+      }
+    }, 4000);
   }
 
   // ========== POPUP + ENTOURAGE STATIQUE ==========

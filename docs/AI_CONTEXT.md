@@ -9,7 +9,7 @@
 ## ⚖️ Mentions légales
 
 - **Auteur** : Flavien VIDAL (alias KARMA)
-- **Site officiel** : https://myktamap.is-underground.fr
+- **Site officiel** : https://myktamap.fr
 - **Licence** : **CC BY-NC-SA 4.0** — Attribution, NonCommercial, ShareAlike
   - Usage non commercial autorisé avec attribution + partage à l'identique
   - **Usage commercial strictement interdit** sans accord écrit préalable de l'auteur
@@ -33,7 +33,7 @@
 > - Supposer qu'une fonctionnalité existe parce qu'elle "devrait" exister ou parce que c'est "courant".
 > - Reformuler le périmètre de l'app au-delà de ce que la doc décrit.
 >
-> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via https://myktamap.is-underground.fr."*
+> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via https://myktamap.fr."*
 
 ---
 
@@ -88,6 +88,15 @@ Pour **chaque** question :
 - 🔍 **Double-clic sur un marker → zoom flyTo** (depuis v1.7.1) : un seul clic ouvre le popup (inchangé), un double-clic rapide (< 500ms) fait un flyTo smooth (0.6s) sur le point au zoom +2 clampé. Le popup éventuel est fermé pendant le flyTo. Ne s'applique pas au tracker ni au mode urgence (comportements spécifiques préservés).
 - 🔢 **Nouveau format de version semver-like** (depuis v1.7.1) : passage de vNNN (v173) à vX.Y.Z (v1.7.1). X = MAJOR (1 actuel, 2 quand backend), Y = MINOR (évolutions majeures), Z = PATCH (debug/UX). Mapping rétroactif des MINOR dans le README.md journal.
 - 🆕 **v1.10.0 (23/05/2026)** : Photos POI complètes (📸) + Code d'accès local PIN/Face ID (🔐) + suppression structures au clic + Zone/Structure en cours supprimables d'un coup + M-LVL default = niveaux [-1, 0, +1] visibles. Cf. survol détaillé dans les sections dédiées de cette liste.
+- 🆕 **v1.11.0 (23/05/2026)** : **⏪ Undo / Redo global (Ctrl+Z / Ctrl+Y)** sur les 4 catégories d'annotations dessinables. Module `js/historyManager.js` (~250 lignes IIFE) → `window.HistoryManager = { record, captureState, recordAction, undo, redo, canUndo, canRedo, reset, onChange }`. Snapshot hybride (deep clone des arrays `{editorPoints, roads, zones, structures}` à chaque action), limite 50 entrées FIFO, RAM-only (perte au reload, reset auto au plan switch). Raccourcis clavier globaux Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (anti-vol focus si input/textarea actif). 2 boutons sidebar dans un nouveau groupe `⏪ Historique` (auto-grisés via `HistoryManager.onChange`). Toast discret via `OOMGuard.showToast` à chaque action. Save SessionPersist forcé après chaque undo/redo. **Photos exclues** (IDB irréversible). Sites instrumentés : editor.js (création/modif/removeLast), road.js / zones.js / structures.js (clic carte + removeLast), interface.js (suppression au clic + "Tous les X"). Reset historique dans main.js > `_libererRessourcesPlanPrecedent`.
+- 🆕 **v1.10.3 (23/05/2026)** : **Export PDF imprimable** (📤) + **Recherche unifiée Ctrl+K** (🔍) + **Fix structures embedded dans tous les exports canvas** (🏛️) + **Migration domaine `myktamap.is-underground.fr` → `myktamap.fr`** (🌐). Détails :
+  - 📤 Export PDF dans **⬆️ Enregistrer → 📤 PDF imprimable**. Formats A0/A1/A2/A3/A4 × portrait/paysage. Calques granulaires (1 case par `imageLayers` + 1 case par `dataLayers` du plan, pré-cochage = visibilité actuelle). Légende = overlay 4-coins (↖/↗/↙/↘) avec 3 tailles (compact 16px / standard 22px / large 30px) et 4 styles (Pro fond blanc *défaut* / sombre opaque / sombre semi / filigrane). Pipeline canvas réutilise `_genererCanvasExport` via wrapper public `window.MyKTAMapExporterGenererCanvas`. Mojibake emoji jsPDF Helvetica contourné par rendu de la légende en image canvas avant collage. Module : `js/pdfExport.js`, ~700 lignes, lib `lib/jspdf.umd.min.js`.
+  - 🔍 Recherche unifiée (Ctrl/Cmd+K depuis n'importe où dans l'app) — couvre désormais 4 catégories : 📍 Points · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures (session + embedded data layers). Résultats groupés par catégorie avec compteurs. Nouveau filtre "Catégorie" en plus des filtres legacy "Calques" et "Tags" (points-only). Au clic : centre + flash polyline dashed jaune (tracés/fronts) ou polygon transparent (zones/piliers/mur) 4 sec + popup info. Module : `js/searchPoints.js`, 832→1050 lignes. API publique (`SearchPoints.getAllPoints`/`findByQuery`) inchangée pour préserver Pathfinder + Itinéraire.
+  - 🏛️ Fix structures embedded : trou découvert post-update v1.9.3, les piliers/mur/fronts dessinés dans un data layer (`structure.json`) étaient visibles sur la map mais manquaient dans `utils.js > telechargerPlan` (export PNG rapide ⚡) ET dans `exporter.js > _genererCanvasExport` (export PNG avancé 🎨 + PDF 📤). Désormais inclus partout, avec tri Z correct (mur < pilier-2 < pilier-1 < front-2 < front-1) + filtre WYSIWYG niveau.
+  - 🗺️ Légende enrichie : section 🏛️ Structures dans la légende in-app (interface.js > afficherLegende), dans la légende exportée PNG (case `leg_c_structures` dans la modale Avancé), et dans le PDF (automatique via canvas).
+  - 🌐 Migration domaine : 34 fichiers patchés (modules JS, HTML, docs, LICENSE). 2 préservés volontairement : `docs/nginx-redirect-old-domain.conf` (conf serveur de transition) + `docs/alert-migration-domaine-sauvegarde.json` (archive alerte).
+  - 🚨 Mode urgence : `MINIMAP_ZOOM_OFFSET` ajusté à 5 (équilibre lisibilité ↔ horizon ~20-50m).
+  - 🖼️ Modale Export images renommée : « Exporter le plan » → « Exporter en PNG/JPG » pour clairement distinguer du nouveau « Exporter en PDF imprimable ».
 - 🎨 **Nouvelle interface en mode carte (refonte v1.9.1, polish v1.9.2 le 2026-05-22)** : la nouvelle interface est **activée par défaut**. Polish v1.9.2 = loader PC plein écran edge-to-edge, toutes les modales agrandies sur PC (Doc/Aide/Config/Légende multi-cols/Session/Tableau/Export), toggle « ⚪ Afficher les ronds aux intersections de tracés » (⚙️ Configuration home), tracker rotation continue sans saut au Nord, splash KARMA animé lettre par lettre + crédits 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra (algo pathfinder), background Leaflet aligné à la charte. Elle comprend :
   - **Header bar sticky 44px** en haut avec rose des vents cliquable (retour home avec garde-fou si session modifiée), nom du plan **cliquable** qui ouvre la modale refondue "🗂 Changer de plan" (carte highlight du plan en cours avec badge `● ACTIF` vert, liste des récents avec hover doré et flèche qui glisse, gros CTA bleu "📚 Voir tous mes plans" en bas), et compteurs cliquables (📍 points · 🛣 tracés · ⬛ zones) qui ouvrent une modale "📊 Détails de la session" listant tous les éléments avec leurs infos détaillées (nom/tag/coord pour les points, type/nb/distance par type pour les tracés et zones, mesures actives).
   - **Sidebars unifiées** gauche (Doc/Settings/Charger/Save) et droite (Recherche/Édition/Mesure + accordéons Tracés/Zones/Tracker) — barre verticale continue sans gap, sous-actions s'empilent en dessous au lieu d'apparaître à côté.
@@ -282,7 +291,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 ### A. Première utilisation sur mobile
 
-1. Ouvre https://myktamap.is-underground.fr dans Safari (iOS) ou Chrome (Android).
+1. Ouvre https://myktamap.fr dans Safari (iOS) ou Chrome (Android).
 2. Ajoute l'app à l'écran d'accueil (iOS : bouton Partager → "Sur l'écran d'accueil" / Android : menu ⋮ → "Installer l'application").
 3. Relance depuis l'icône installée — l'app devient autonome (PWA, fonctionne hors connexion une fois les assets cachés).
 4. Au premier lancement, le loader propose les plans de démo (test1 / test2). Clique l'un d'eux → ✅ Charger.
@@ -397,7 +406,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 > Mots-clés : "changement de domaine", "nouvelle adresse", "myktamap.fr", "is-underground.fr", "déménagement", "ancienne adresse".
 
-**Contexte** : MyKTAMap change de domaine officiel. La nouvelle adresse `myktamap.fr` remplacera `myktamap.is-underground.fr` à partir du **15 juillet 2026**.
+**Contexte** : MyKTAMap change de domaine officiel. La nouvelle adresse `myktamap.fr` remplacera `myktamap.fr` à partir du **15 juillet 2026**.
 
 **Sur l'ancien domaine** (jusqu'au 15 juillet 2026) :
 - Modal pédagogique au premier lancement (rappel) + alerte info permanente via le badge 🚨
@@ -766,6 +775,159 @@ La collaboration est **ouverte sur demande**. Contacte l'auteur via le site offi
 ### Puis-je consulter le code source ?
 
 Le code source n'est **pas distribué publiquement**. Il n'existe pas de dépôt Git ouvert. Pour toute question technique précise, l'auteur reste joignable via le site officiel.
+
+### J. Exporter en PDF imprimable (depuis v1.10.3)
+
+> Mots-clés : "exporter en PDF", "imprimer le plan", "PDF imprimable", "format A0/A1/A2/A3/A4", "PDF portrait paysage", "PDF avec légende", "papier", "impression terrain", "PDF Google Earth", "PDF Avenza", "carte papier", "atlas papier".
+
+**Accès** : ⬆️ **Enregistrer** → 📤 **Exporter en PDF imprimable** (bouton à côté de l'export PNG).
+
+**Modale options** :
+1. **📐 Taille** : A0 / A1 / A2 / A3 / A4 (5 radios) — défaut A4
+2. **↔️ Orientation** : Portrait / Paysage (2 radios) — défaut Paysage
+3. **📦 Annotations de session** : Points / Tracés / Zones / Structures (compteurs live, cases grisées si 0)
+4. **🖼️ Image de base & calques** : checkbox Image plan + 1 case par `imageLayers[]` du plan
+5. **📊 Calques de données** : 1 case par `dataLayers[]` du plan (puits, vehicules, structure…). Le calque "editor" apparaît marqué `(= calque session)`. Pré-cochage = visibilité actuelle sur la carte.
+6. **🎨 Mise en page** : checkbox Header (titre + métadonnées)
+7. **🗺️ Légende** :
+   - Toggle "Inclure la légende posée sur le plan"
+   - Position : ↖ Haut-gauche · ↗ Haut-droite · ↙ Bas-gauche *(défaut)* · ↘ Bas-droite
+   - Taille : Compact (icônes 16px) · Standard (22px) · Large (30px)
+   - Style : 🆕 **Pro fond blanc** *(défaut, impression papier)* · Sombre opaque · Sombre semi-transp. · Filigrane discret
+8. **📏 Qualité** : Standard ×1 *(recommandé A3/A4)* · HD ×2 *(recommandé A0/A1, fichier plus lourd)* · Brouillon ×0.5
+
+**Pipeline interne** : `_genererCanvasPlan(opts)` appelle `window.MyKTAMapExporterGenererCanvas` (réutilise le canvas de l'export PNG avancé) → encode JPEG q88 → `pdf.addImage(...)`. La légende est rendue séparément via `window.MyKTAMapExporterGenererCanvasLegende` puis collée en overlay PNG au coin choisi.
+
+**Filename** : `<plan>_<date>.pdf`
+
+**Crédit footer** (1 ligne discrète en bas à droite) : `Généré par MyKTAMap · CC BY-NC-SA 4.0 · myktamap.fr`
+
+**Limitations connues** :
+- jsPDF Helvetica n'a que la couverture Latin-1 — **aucun emoji dans le texte natif PDF**. Les emojis dans la légende OK car la légende est une image canvas raster avant collage.
+- A0/A1 + qualité ×2 : 30-60 sec de génération sur mobile (gros canvas).
+- Pas de footer dédié (la légende est en overlay sur le plan) — on gagne ~25-40% de zone plan vs un footer fixe.
+
+### M. Undo / Redo global Ctrl+Z / Ctrl+Y (depuis v1.11.0)
+
+> Mots-clés : "annuler", "undo", "Ctrl+Z", "Cmd+Z", "rétablir", "redo", "Ctrl+Y", "annuler ma dernière action", "j'ai supprimé par erreur", "j'ai cliqué par accident", "remettre comme avant", "historique des actions", "annuler le tracé", "annuler le point", "récupérer un point supprimé", "raccourci clavier annuler".
+
+**Accès** :
+- **Raccourcis clavier global** (recommandé) :
+  - **Ctrl+Z** ou **Cmd+Z** → annuler
+  - **Ctrl+Y** ou **Cmd+Y** → rétablir
+  - **Ctrl+Shift+Z** ou **Cmd+Shift+Z** → rétablir (convention Mac/Linux)
+- **Boutons sidebar** : nouveau groupe **⏪ Historique** avec 2 sous-actions ⏪ Annuler / ⏩ Rétablir, auto-grisées quand la pile est vide
+
+**Ce que l'undo couvre** :
+- ✏️ Editor points : ajout, modification (nom/tag/desc/level), suppression dernier, suppression au clic
+- 🛣️ Tracés : chaque clic posant un sommet, suppression dernier, suppression au clic, "Tous les tracés"
+- ⬛ Zones : idem + fermeture par retour au 1er point
+- 🏛️ Structures : idem (piliers polygon + fronts polyline)
+
+**Ce que l'undo NE couvre PAS** :
+- ❌ **Photos POI** : leur suppression reste **irréversible** (les blobs sont effacés de IndexedDB locale, pas restaurables). Décision design : restore exigerait un cache RAM des blobs qui explose vite sur photos haute résolution.
+- ❌ **Import de session** : un import qui écrase ta session n'est pas Ctrl+Z-able (race conditions). Utiliser SessionPersist (auto-save toutes les 1.5s) pour récupérer si problème.
+- ❌ **Tracker** : capteurs temps réel, pas une mutation persistante
+- ❌ **Mesure** : outil éphémère, pas dans le périmètre "session"
+
+**Caractéristiques** :
+- **Limite** : 50 actions max (FIFO — au-delà, les plus anciennes sont oubliées)
+- **Granularité** : action atomique (1 clic = 1 annulable, pas un groupe)
+- **Persistance** : RAM only (perdu au reload). Cohérent avec philosophie "session active = par session de travail".
+- **Reset auto au plan switch** : changer de plan vide l'historique (pas d'undo cross-plan)
+- **Toast feedback** : `↩ Annulé : Pose du point PA1` ou `↪ Refait : Suppression de Zone Eau #2` (via `OOMGuard.showToast`)
+- **Save SessionPersist forcé** après chaque undo/redo (pas perdu si reload juste après)
+
+**Anti-vol focus clavier** : Ctrl+Z est intercepté UNIQUEMENT si l'utilisateur n'est pas en train de taper dans un INPUT/TEXTAREA/contenteditable. Ça permet de garder l'undo natif du navigateur fonctionnel dans les champs texte.
+
+**API publique** (pour les futurs modules à instrumenter) :
+- `window.HistoryManager.captureState()` → renvoie `{editorPoints, roads, zones, structures}` deep clone
+- `window.HistoryManager.record(label, beforeState)` → push une entrée
+- `window.HistoryManager.recordAction(label, mutationFn)` → helper combinant capture + run + record
+- `window.HistoryManager.undo()` / `redo()` / `canUndo()` / `canRedo()` / `reset()` / `onChange(cb)`
+
+**Conseil à donner à l'utilisateur** :
+- "Je viens de supprimer un point par erreur" → Ctrl+Z immédiatement
+- "Je veux récupérer la session précédente" → ⚠️ Ctrl+Z ne suffit PAS si tu as reload la page entre temps. Utiliser SessionPersist (toast bleu au boot proposant de restaurer).
+- "Je veux annuler une suppression de photo" → ⚠️ **impossible**, c'est irréversible. Re-importer le ZIP du plan si tu as une sauvegarde.
+
+### L. Mode urgence "panique" 🚨 — différent de ⛑️ "Je suis perdu" (depuis v1.10.1)
+
+> Mots-clés : "mode panique", "je panique", "affichage XL", "position en grand", "mode urgence rapide", "boussole géante", "panic mode", "mode 911", "info vitale en gros", "écran lisible loin", "minimap urgence", "differencier mode urgence", "🚨 vs ⛑️".
+
+**⚠️ Distinction importante** : il existe **deux modes urgence distincts** dans MyKTAMap, ne pas les confondre :
+
+| | ⛑️ Je suis perdu | 🚨 Mode panique |
+|---|---|---|
+| Hypothèse | Tu **NE SAIS PAS** où tu es | Tu **SAIS** où tu es (le tracker l'affiche) |
+| Objectif | Estimer une zone probable | Lire vite des infos vitales en gros |
+| Calcul | Cercle = vitesse × temps, intersection avec indices visuels | Aucun calcul — affichage XL en temps réel |
+| Sortie utile | Zone orange + indices violets + rapport texte copiable | Coords XL + cap boussole géant + minimap focus |
+| Quand l'utiliser | "Je n'ai plus aucun repère depuis 30 min" | "Je panique à un croisement, j'ai besoin de me re-orienter vite" |
+| Module source | `js/lostMode.js` | `js/emergencyMode.js` (v1.10.1) |
+
+**Accès 🚨 panique** : sidebar → **🧭 Tracker** → bouton rouge **🚨** (à côté du ⛑️ orange).
+
+**Ce que le mode affiche** :
+- 📍 **Position XL** : coordonnées plan en énormes caractères (lisible à 1 m du téléphone — situation où tu ne veux pas plisser les yeux ni approcher)
+- 🧭 **Boussole géante avec aiguille tournée** : sens de marche basé sur le magnétomètre + accéléromètre. Mise à jour live via les capteurs d'orientation du téléphone (DeviceOrientationEvent).
+- 🗺️ **Minimap auto-focus** centrée en permanence sur le tracker (~20-50 m d'horizon à zoom 5). Affiche les **roads + zones + structures du plan en arrière-plan** pour repérer chemins/sorties/dangers à proximité immédiate.
+- 🌗 **Thèmes** : sombre par défaut, basculement clair possible (à choisir selon la luminosité extérieure).
+- 🔋 **Wake Lock** activé : l'écran ne s'éteint pas tant que le mode est actif.
+
+**Permissions** : `DeviceOrientationEvent.requestPermission()` (iOS) déclenché au 1er Play du mode si pas déjà accordé. Sans permission, la boussole reste figée mais la position XL + la minimap continuent de marcher (le tracker est indépendant des capteurs d'orientation).
+
+**Wake Lock** : `navigator.wakeLock.request("screen")` posé à l'ouverture du mode, relâché à la fermeture (✕).
+
+**Quand recommander chacun** :
+- L'utilisateur dit "je suis perdu", "je ne sais plus où je suis", "je veux estimer ma zone" → ⛑️ Je suis perdu
+- L'utilisateur dit "je panique", "j'ai besoin d'infos vite en gros", "je dois lire ma position pour la transmettre", "je veux me re-orienter au plus vite" → 🚨 Mode panique
+- L'utilisateur peut aussi enchaîner les deux : utiliser le ⛑️ pour estimer une zone, puis le 🚨 pour avancer dans la zone en gardant un œil sur le cap
+
+**Limitations** :
+- Le 🚨 suppose que le tracker est actif et donne une position fiable. Sur un plan où le tracker n'est pas démarré, le mode panique reste utilisable mais la "position XL" reste vide / désactivée.
+- Comme tout l'app : aucune transmission automatique vers les secours. Pour communiquer, tu lis tes coords XL et tu les envoies par SMS/radio toi-même.
+- La boussole utilise le magnétomètre, **faussée à proximité de structures métalliques** (béton armé, voies ferrées). Vérifier la cohérence en pivotant le téléphone sur place avant de se fier au cap.
+
+### K. Recherche unifiée — 4 catégories + Ctrl+K (depuis v1.10.3)
+
+> Mots-clés : "rechercher un tracé", "rechercher une zone", "rechercher une structure", "rechercher un pilier", "recherche rapide", "command palette", "Ctrl+K", "Cmd+K", "raccourci recherche", "raccourci clavier recherche", "barre de recherche", "filtre par catégorie".
+
+**Avant v1.10.3** : la recherche ne couvrait que les **points** (data layers + session).
+
+**Depuis v1.10.3** : la recherche couvre **4 catégories** :
+- 📍 **Points** : data layers + session (comportement préservé)
+- 🛣️ **Tracés** : session + embedded (auto-label "Tracé Principal #3" si pas de label)
+- ⬛ **Zones** : session + embedded (auto-label "Zone Eau #1")
+- 🏛️ **Structures** : session + embedded (auto-label "Pilier 1ère masse #2")
+
+**Accès** :
+- Bouton **🔍** dans la barre latérale droite (comme avant)
+- 🆕 **Raccourci clavier Ctrl+K** (`Cmd+K` sur Mac) — depuis n'importe où dans l'app. Toggle : ferme la modale si elle est déjà ouverte.
+- Anti-vol de focus : Ctrl+K ne se déclenche pas si l'user est en train de taper dans un input/textarea (sauf si la modale recherche est déjà ouverte → on autorise le close).
+
+**UX modale** :
+- Champ search en haut, focus auto à l'ouverture
+- Sous le champ : filtres chips en 3 lignes (selon disponibilité du contenu) :
+  - **🆕 Catégorie** : 4 chips `📍 Points (N) · 🛣️ Tracés (M) · ⬛ Zones (K) · 🏛️ Structures (L)` avec compteur live. Affiché uniquement si ≥ 2 catégories ont du contenu.
+  - **Calques** (points-only) : chip par data layer
+  - **Tags** (points-only) : chip par tag
+- Résultats **groupés par catégorie** avec headers `📍 POINTS (12)`, `🛣️ TRACÉS (3)`, etc.
+- Cases grisées si compteur = 0
+
+**Au clic d'un résultat** :
+- **Point** → centre + popup marker + cercle jaune 3 sec *(inchangé v1.7.x)*
+- **Tracé / front de taille** → centre sur centroïde + polyline jaune dashed 4 sec + popup info
+- **Zone / pilier / mur** → centre + polygon jaune transparent 4 sec + popup info
+- Popup info : label + type FR (`Principal`, `Pilier 1ère masse`...) + niveau M-LVL si actif + nb points + layer d'origine
+
+**Champs cherchés** :
+- Points : nom + id + tags + description + état
+- Roads/Zones/Structures : label + type + label FR du type + niveau
+
+**Limitations connues** :
+- Le filtre "Calque" et "Tag" ne s'applique QUE aux points (les tracés/zones/structures n'ont pas de structure équivalente).
+- API publique `SearchPoints.getAllPoints()` et `findByQuery()` continuent de retourner du format point-only (pour préserver Pathfinder + Itinéraire). Le format unifié 4-cat est strictement interne au module.
 
 ---
 

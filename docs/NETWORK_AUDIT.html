@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.10.0</strong> (23 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.11.0</strong> (23 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -299,7 +299,7 @@
   </table>
 
   <p><code>&lt;origin&gt;</code> = le domaine sur lequel l'app est servie. Pour la prod c'est
-  <code>myktamap.is-underground.fr</code> (ou <code>myktamap.fr</code> après le 15 juillet 2026).
+  <code>myktamap.fr</code> (ou <code>myktamap.fr</code> après le 15 juillet 2026).
   Pour dev : <code>devmap.is-underground.fr</code>. Sur ton réseau local en développement :
   <code>localhost</code> ou IP locale.</p>
 
@@ -316,7 +316,7 @@
   domaine que l'app</strong> (same-origin) :</p>
 
   <ul>
-    <li>Prod : <code>https://myktamap.is-underground.fr/ping.html</code></li>
+    <li>Prod : <code>https://myktamap.fr/ping.html</code></li>
     <li>Dev : <code>https://devmap.is-underground.fr/ping.html</code></li>
     <li>Future prod : <code>https://myktamap.fr/ping.html</code></li>
   </ul>
@@ -541,6 +541,34 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.11.0</td>
+        <td>23/05/2026</td>
+        <td>
+          Release MINOR : ⏪ <strong>Undo/Redo global</strong> ajouté (raccourcis Ctrl+Z / Ctrl+Y + boutons sidebar).
+          Module <code>js/historyManager.js</code> 100% client-side, snapshots en RAM uniquement
+          (jamais persistés sur disque ni localStorage), reset au reload + plan switch.
+          <strong>Aucune modification de la whitelist du module Privacy &amp; Audit</strong> :
+          tout l'historique vit en mémoire vive locale, jamais transmis.
+          Consolidation aussi de v1.10.3 (PDF + Recherche unifiée + Fix structures + Migration domaine — voir entrées ci-dessous).
+        </td>
+      </tr>
+      <tr>
+        <td>v1.10.3</td>
+        <td>23/05/2026</td>
+        <td>
+          Release V1.suite : 📤 Export PDF imprimable + 🔍 Recherche unifiée
+          Ctrl+K + 🏛️ Fix structures embedded + 🌐 Migration domaine officielle
+          <code>myktamap.is-underground.fr</code> → <code>myktamap.fr</code>.
+          <strong>Aucune modification de la whitelist du module Privacy &amp; Audit</strong> :
+          <ul style="margin: 4px 0 0 16px; padding: 0;">
+            <li>📤 jsPDF UMD (~356 KB) servi en local depuis <code>lib/jspdf.umd.min.js</code> (same-origin, couvert par la règle existante)</li>
+            <li>🔍 Recherche unifiée : extension purement client-side du module <code>searchPoints.js</code>, aucune nouvelle requête réseau</li>
+            <li>🌐 Migration domaine : 34 fichiers patchés pour pointer sur <code>myktamap.fr</code>. L'ancien domaine redirige via la conf Nginx versionnée dans <code>docs/nginx-redirect-old-domain.conf</code>. Côté privacy/audit, c'est un simple changement de FQDN — same-origin reste same-origin.</li>
+            <li>connect-src reste <code>'self'</code> + le ping santé serveur same-origin déjà documenté</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
         <td>v1.10.0</td>
         <td>23/05/2026</td>
         <td>
@@ -608,11 +636,11 @@
 
   <p>Si tu observes <strong>n'importe quelle requête réseau</strong> émise par MyKTAMap
   qui ne figure pas dans la liste blanche ci-dessus, contacte l'auteur
-  immédiatement via <a href="https://myktamap.is-underground.fr" target="_blank" rel="noopener noreferrer">myktamap.is-underground.fr</a>.
+  immédiatement via <a href="https://myktamap.fr" target="_blank" rel="noopener noreferrer">myktamap.fr</a>.
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 23 mai 2026 — v1.10.0 (Privacy &amp; Audit inchangé depuis v1.8.1)<br>
+    Dernière mise à jour : 23 mai 2026 — v1.11.0 (Privacy &amp; Audit inchangé depuis v1.8.1)<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 
