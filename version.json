@@ -1,13 +1,12 @@
 {
-  "version": "v1.14.8",
+  "version": "v1.14.9",
   "released": "2026-05-24",
   "notes": [
-    "🔌 V3.2.i — Nouveau bouton « Arrêt de l'application » dans le header du loader home (KARMA UX). Petit bouton rouge discret à droite du ⚙️ Configuration, qui permet de fermer proprement l'app sans avoir à utiliser la croix de l'onglet ou le swipe mobile.",
-    "🧹 Cleanup propre avant fermeture — au clic du bouton 🔌 : confirm() bloquant explicite (rappel des modules qui vont être stoppés) → arrêt défensif (try/catch chacun) des modules potentiellement actifs : Tracker GPS, EmergencyMode (overlay rouge), TrackerReplay (lecture session), OOMGuard (watchdog mémoire), LostMode. Chaque appel est protégé : un module indispo / qui throw n'empêche pas le shutdown des autres.",
-    "🪟 window.close() avec fallback overlay — tentative de fermeture native après cleanup. Fonctionne en mode PWA standalone (display:standalone). Si le navigateur refuse (cas onglet web classique → la spec n'autorise close() que sur fenêtres ouvertes par script), un overlay plein écran 🔌 « Application arrêtée » s'affiche avec message explicite + bouton « 🔄 Recharger MyKTAMap » pour relancer en 1 clic.",
-    "🎨 Style cohérent — bouton 32×32px aligné avec les autres .loader-btn-help (🚨 alerte, 📖 doc, ⚙️ config). Accent rouge discret pour signaler le caractère destructif sans agresser visuellement. Variant theme light (rouge brique sur fond beige) inclus.",
-    "📘 Aide ❓ section « Autres » : nouvelle entrée 🔌 décrivant le bouton.",
-    "🏷️ Sources de vérité v1.14.8 : version.json → \"v1.14.8\", js/copyright.js > __MKM__.build → \"v1.14.8\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.8-shutdown-btn\".",
-    "🛡️ Confidentialité — feature 100% locale, aucune nouvelle connexion réseau. Le shutdown ne nettoie pas le localStorage / le cache SW (sinon prochain démarrage cassé) — il stoppe seulement les modules runtime. NETWORK_AUDIT inchangé."
+    "🎨 V3.2.j — Modale confirmation switch thème fidèle à la charte MyKTAMap (KARMA). Le confirm() natif du navigateur (v1.14.6) est remplacé par une modale custom (#kta-theme-confirm-modal) qui reprend les codes visuels du projet : bleu nuit + accent jaune charte (#f4c542) en dark, beige cataphile + ambre en light.",
+    "✨ Composition de la modale — header (icône cible ☀️ ou 🌙 + titre « Activer le thème CLAIR/SOMBRE ? » + bouton ✕), corps avec grosse icône pulsée (animation kta-theme-icone-pulse 2.4s), message principal avec gras coloré sur le mot CLAIR / SOMBRE, hint italique encadré expliquant pourquoi reload (« garantit un rendu sans bugs résiduels »), footer 2 boutons (Annuler ghost + « ☀️ Activer et relancer » primary jaune charte avec gradient + ombre douce).",
+    "⌨️ Accessibilité — Enter confirme, Escape annule, click backdrop = annule, bouton OK auto-focus, focus-visible outline blanc sur le primary. Promise-based : retourne true (confirmé) ou false (annulé/escape/backdrop) avant le setThemeAndReload.",
+    "🌗 Variant theme light parfaitement aligné — backdrop café translucide, boîte beige #fdf8eb avec bordure ambre, hint sur fond jaune doux, bouton primary toujours jaune charte (cohérence cross-thème : la marque MyKTAMap reste jaune même en clair).",
+    "🏷️ Sources de vérité v1.14.9 : version.json → \"v1.14.9\", js/copyright.js > __MKM__.build → \"v1.14.9\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.9-theme-modal\".",
+    "🛡️ Confidentialité — patch UI/CSS pur dans index.html + css/style.css, aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
   ]
 }

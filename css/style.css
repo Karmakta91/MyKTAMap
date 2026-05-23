@@ -11272,6 +11272,139 @@ body.kta-theme-light .kta-toast-info {
   border-left-color: #0a4f6b !important;
 }
 
+/* === ☀️🌙 v1.14.9 — Modale confirmation switch thème (charte MyKTAMap) ===
+   Remplace le confirm() natif v1.14.6 par une modale fidèle à la charte
+   (bleu nuit + accent jaune en dark, beige + ambre en light). Apparaît
+   AVANT le reload, donc dans le thème courant (qu'on est en train de
+   quitter) — les 2 variants doivent être impeccables. */
+.kta-theme-confirm-overlay {
+  /* Backdrop renforcé pour focus utilisateur sur la décision */
+  background: rgba(5, 8, 15, 0.78) !important;
+}
+.kta-theme-confirm-boite {
+  max-width: 460px;
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border: 1px solid rgba(244, 197, 66, 0.32) !important;
+  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.12),
+              0 18px 60px rgba(0, 0, 0, 0.65) !important;
+}
+.kta-theme-confirm-corps {
+  padding: 22px 24px 14px !important;
+  text-align: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.kta-theme-confirm-icone {
+  font-size: 56px;
+  line-height: 1;
+  margin: 4px 0 14px;
+  text-shadow: 0 0 24px rgba(244, 197, 66, 0.32);
+  animation: kta-theme-icone-pulse 2.4s ease-in-out infinite;
+}
+@keyframes kta-theme-icone-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.92; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+.kta-theme-confirm-msg {
+  color: #e8eaf0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.kta-theme-confirm-msg strong {
+  font-weight: 700;
+}
+.kta-theme-confirm-hint {
+  color: #8892a4;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 2px solid rgba(140, 180, 255, 0.35);
+  border-radius: 0 4px 4px 0;
+  text-align: left;
+}
+.kta-theme-confirm-hint em {
+  font-style: italic;
+}
+.kta-theme-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 18px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+}
+.kta-theme-confirm-actions .kta-btn {
+  min-width: 110px;
+}
+/* Bouton primary spécial : accent jaune charte (au lieu du bleu standard
+   .kta-btn-primary) pour rappeler la couleur signature MyKTAMap. */
+.kta-theme-confirm-actions .kta-theme-confirm-ok {
+  background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
+  border: 1px solid #c99a1f !important;
+  color: #2a1f08 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
+}
+.kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
+  background: linear-gradient(180deg, #ffd866, #e8b537) !important;
+  box-shadow: 0 3px 14px rgba(244, 197, 66, 0.45) !important;
+}
+.kta-theme-confirm-actions .kta-theme-confirm-ok:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* === Variant theme LIGHT === */
+body.kta-theme-light .kta-theme-confirm-overlay,
+html.kta-theme-light .kta-theme-confirm-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+body.kta-theme-light .kta-theme-confirm-boite,
+html.kta-theme-light .kta-theme-confirm-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border-color: rgba(161, 110, 16, 0.40) !important;
+  box-shadow: 0 0 0 1px rgba(161, 110, 16, 0.10),
+              0 18px 60px rgba(80, 60, 30, 0.30) !important;
+}
+body.kta-theme-light .kta-theme-confirm-msg,
+html.kta-theme-light .kta-theme-confirm-msg {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-theme-confirm-hint,
+html.kta-theme-light .kta-theme-confirm-hint {
+  color: var(--kta-light-text-muted) !important;
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-left-color: rgba(161, 110, 16, 0.55) !important;
+}
+body.kta-theme-light .kta-theme-confirm-icone,
+html.kta-theme-light .kta-theme-confirm-icone {
+  text-shadow: 0 0 24px rgba(161, 110, 16, 0.35);
+}
+body.kta-theme-light .kta-theme-confirm-actions,
+html.kta-theme-light .kta-theme-confirm-actions {
+  border-top-color: var(--kta-light-border) !important;
+}
+/* En light, le bouton primary garde son jaune charte mais ajusté contraste */
+body.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok,
+html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok {
+  background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
+  border-color: #c99a1f !important;
+  color: #3a2f15 !important;
+  box-shadow: 0 2px 8px rgba(161, 110, 16, 0.25) !important;
+}
+body.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover,
+html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
+  background: linear-gradient(180deg, #ffd866, #e8b537) !important;
+}
+
 /* === 📂 v1.14.5 — Modale Import (choix session vs GPX) ===
    Cards cliquables grandes (icône + titre + desc + extension), grille
    responsive (2 colonnes en desktop, 1 colonne en mobile portrait). */

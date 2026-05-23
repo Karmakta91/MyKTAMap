@@ -2707,28 +2707,85 @@
       // toggle qu'on n'a jamais réussi à régler. Reload = état propre garanti.
       //
       // v1.14.6 (KARMA) : confirmation user avant reload — l'ancien
-      // comportement déclenchait le reload instant au clic checkbox, ce qui
-      // surprenait. Maintenant : confirm() natif + rollback de l'état
-      // checkbox si l'utilisateur annule. Pas de toast custom (le reload
-      // tue la page de toute façon, autant un confirm bloquant garantit
-      // que rien n'est en cours).
+      // comportement déclenchait le reload instant au clic checkbox.
+      // v1.14.9 (KARMA) : remplacement du confirm() natif par une modale
+      // custom fidèle à la charte graphique MyKTAMap (bleu nuit / accent
+      // jaune charte, variant light beige / ambre). Promise-based avec
+      // Escape pour annuler et Enter pour confirmer.
+      function _confirmThemeSwitch(cible) {
+        return new Promise(function(resolve) {
+          // Suppr modale existante éventuelle (sécurité double-clic)
+          const old = document.getElementById("kta-theme-confirm-modal");
+          if (old) old.remove();
+
+          const cibleIcone   = (cible === "light") ? "☀️" : "🌙";
+          const cibleLibelle = (cible === "light") ? "CLAIR" : "SOMBRE";
+          const cibleColor   = (cible === "light") ? "#f4c542" : "#8cb4ff";
+
+          const modal = document.createElement("div");
+          modal.id = "kta-theme-confirm-modal";
+          modal.className = "kta-readme-modal-overlay kta-theme-confirm-overlay";
+          modal.innerHTML =
+            '<div class="kta-readme-modal-boite kta-theme-confirm-boite">' +
+              '<div class="kta-readme-modal-header">' +
+                '<span class="kta-readme-modal-titre">' + cibleIcone + ' Activer le thème ' + cibleLibelle + ' ?</span>' +
+                '<button class="kta-panneau-close" id="kta-theme-confirm-close" type="button" aria-label="Annuler">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps kta-theme-confirm-corps">' +
+                '<div class="kta-theme-confirm-icone" style="color:' + cibleColor + ';">' + cibleIcone + '</div>' +
+                '<p class="kta-theme-confirm-msg">' +
+                  'Passer en thème <strong style="color:' + cibleColor + ';">' + cibleLibelle + '</strong> va ' +
+                  '<strong>relancer l\'application</strong> pour appliquer le changement proprement.' +
+                '</p>' +
+                '<p class="kta-theme-confirm-hint">' +
+                  '<em>Le reload garantit un rendu sans bugs résiduels (bandeau top, modales) qu\'on n\'a jamais réussi à régler avec un swap « live ».</em>' +
+                '</p>' +
+              '</div>' +
+              '<div class="kta-theme-confirm-actions">' +
+                '<button class="kta-btn kta-btn-ghost" id="kta-theme-confirm-cancel" type="button">Annuler</button>' +
+                '<button class="kta-btn kta-btn-primary kta-theme-confirm-ok" id="kta-theme-confirm-ok" type="button">' +
+                  cibleIcone + ' Activer et relancer' +
+                '</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(modal);
+
+          function _close(value) {
+            modal.remove();
+            document.removeEventListener("keydown", _onKey);
+            resolve(value);
+          }
+          function _onKey(e) {
+            if (e.key === "Escape") _close(false);
+            else if (e.key === "Enter") _close(true);
+          }
+          document.getElementById("kta-theme-confirm-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-theme-confirm-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-theme-confirm-ok").addEventListener("click", function() { _close(true); });
+          modal.addEventListener("click", function(e) { if (e.target === modal) _close(false); });
+          document.addEventListener("keydown", _onKey);
+
+          // Auto-focus sur "Activer et relancer" pour permettre Enter direct
+          setTimeout(function() {
+            const okBtn = document.getElementById("kta-theme-confirm-ok");
+            if (okBtn) okBtn.focus();
+          }, 50);
+        });
+      }
+
       const themeLightCb = document.getElementById("loaderThemeLightCb");
       if (themeLightCb && window.ThemeManager) {
         try { themeLightCb.checked = window.ThemeManager.isLight(); } catch(e) {}
         themeLightCb.addEventListener("change", function() {
           const cible = themeLightCb.checked ? "light" : "dark";
-          const libelle = (cible === "light") ? "CLAIR" : "SOMBRE";
-          const ok = window.confirm(
-            "Activer le thème " + libelle + " va relancer l'application " +
-            "pour appliquer le changement proprement.\n\n" +
-            "Confirmer ?"
-          );
-          if (!ok) {
-            // Rollback visuel — restaure l'état précédent de la checkbox.
-            themeLightCb.checked = !themeLightCb.checked;
-            return;
-          }
-          window.ThemeManager.setThemeAndReload(cible);
+          _confirmThemeSwitch(cible).then(function(ok) {
+            if (!ok) {
+              // Rollback visuel — restaure l'état précédent de la checkbox.
+              themeLightCb.checked = !themeLightCb.checked;
+              return;
+            }
+            window.ThemeManager.setThemeAndReload(cible);
+          });
         });
       }
 
