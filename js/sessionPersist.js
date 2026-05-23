@@ -109,7 +109,12 @@
         && state.roads.length        === 0
         && state.zones.length        === 0
         && (state.structures || []).length === 0
-        && state.measure.length      === 0;
+        && state.measure.length      === 0
+        // 🐛 v1.12.0-fix (KARMA "une surface n'est pas persistée") : sans
+        // ce check, un user qui a UNIQUEMENT dessiné un polygone surface
+        // verrait son état considéré "vide" → localStorage purgé → perte
+        // au reload. Surface compte aussi comme contenu.
+        && (state.measureSurface || []).length === 0;
   }
 
   // ========== STORAGE ==========
@@ -173,7 +178,15 @@
       // 🆕 v1.9.3-A1.a : structures (piliers + murs)
       structures:   state.structures || [],
       zones:        state.zones,
-      measure:      state.measure
+      measure:      state.measure,
+      // 🐛 v1.12.0-fix (KARMA "une surface n'est pas persistée à la
+      // différence de mesure") : le payload écrit dans localStorage
+      // doit inclure measureSurface ET measureMode, sinon _gatherState
+      // les remonte correctement mais save() les jette. Bug introduit
+      // lors de la refonte 2 mesures coexistantes — j'avais ajouté les
+      // champs dans _gatherState mais pas dans le payload final.
+      measureSurface: state.measureSurface || [],
+      measureMode:    state.measureMode    || "distance"
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -231,7 +244,9 @@
 
   function _applyRestore(payload) {
     if (!payload) return null;
-    const restored = { points: 0, roads: 0, zones: 0, structures: 0, measure: 0 };
+    // 🆕 v1.12.0-fix : measureSurface tracké séparément pour le compteur
+    // de la modale de feedback "Session restaurée".
+    const restored = { points: 0, roads: 0, zones: 0, structures: 0, measure: 0, measureSurface: 0 };
     try {
       // setEditorPoints redessine désormais en interne (depuis 09/05/2026, fix bug
       // toggle calque "Ajout" sur points restaurés) — symmetric avec setRoads/setZones
@@ -366,7 +381,9 @@
   function _afficherModaleSession(restored) {
     if (!restored) return;
     const total = restored.points + restored.roads + restored.zones
-                + (restored.structures || 0) + restored.measure;
+                + (restored.structures || 0) + restored.measure
+                // 🆕 v1.12.0-fix : surface compte aussi pour décider d'afficher
+                + (restored.measureSurface || 0);
     if (total === 0) return;
 
     const existing = document.getElementById("kta-session-modal");
@@ -378,7 +395,9 @@
     if (restored.zones)      parts.push(restored.zones   + " zone"   + (restored.zones   > 1 ? "s" : ""));
     // 🆕 v1.9.3-A1.a : structures dans le feedback restauration session
     if (restored.structures) parts.push(restored.structures + " structure" + (restored.structures > 1 ? "s" : ""));
-    if (restored.measure)    parts.push(restored.measure + " mesure" + (restored.measure > 1 ? "s" : ""));
+    if (restored.measure)    parts.push("mesure distance");
+    // 🆕 v1.12.0-fix : surface dans le feedback de restauration
+    if (restored.measureSurface) parts.push("mesure surface");
 
     // Nom du plan en cours (échappé) pour que l'utilisateur voie clairement de quel plan vient la session
     const planName = _currentPlanName();
