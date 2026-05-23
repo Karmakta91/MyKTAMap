@@ -5,16 +5,13 @@
       "id":       "incendie-V2-idf-2026-05-recommence",
       "level":    "emergency",
       "title":    "🔥 INCENDIE EN COURS — Carrière V2 (Île-de-France)",
-      "message":  "Incendie EN COURS dans la carrière V2 (Île-de-France). C'est une reprise — le feu redémarre. Évacue par la sortie la plus proche et NE redescends sous AUCUN prétexte tant que la situation n'est pas confirmée maîtrisée.",
+      "message":  "Incendie EN COURS dans la carrière V2 (Île-de-France). C'est une reprise — le feu redémarre. NE DESCENDS PAS tant que la situation n'est pas confirmée maîtrisée.",
       "details": [
         "🔥 Situation : incendie actif, propagation en cours, fumées denses",
         "⛔ NE DESCENDS PAS dans la V2 (Île-de-France) tant que l'alerte est active",
-        "🚪 Si tu es sous terre : évacue immédiatement par la sortie la plus proche, en suivant les courants d'air FRAIS (pas les fumées)",
-        "😷 Couvre ta bouche / ton nez avec un tissu humide si tu traverses une zone enfumée",
-        "🤝 Préviens les autres cataphiles que tu croises — ils ne sont pas forcément au courant",
-        "📞 Préviens les secours (112 / 18) dès que tu captes du réseau en surface",
-        "🚫 NE PUBLIE PAS l'info publiquement sur les réseaux sociaux (risque sur-fréquentation pompiers + spectateurs)",
-        "⏰ Cette alerte sera retirée quand la situation sera confirmée maîtrisée par un cataphile expérimenté sur place"
+        "🤝 Préviens les autres cataphiles autour de toi (groupes Signal/Telegram, IRL, etc.) — beaucoup ne sont pas au courant",
+        "🚫 NE PUBLIE PAS l'info sur les réseaux sociaux publics (risque sur-fréquentation pompiers + spectateurs + curieux)",
+        "⏰ Cette alerte sera retirée quand la situation sera confirmée maîtrisée"
       ],
       "released": "2026-05-23T18:00:00Z"
     }
