@@ -531,7 +531,30 @@
 
     const zip = new JSZip();
 
-    // Image baseImage (préservée verbatim — choix 6=A validé KARMA)
+    // v1.14.20-hotfix12 (KARMA « depuis import KMZ, on doit pouvoir cocher
+    // un mode V2 pour regénérer les tuiles. Pareil M-LVL ») : si l'option
+    // tilingV2 est cochée ET que window.MyKTAMapTilingV2 est dispo (fourni
+    // par createConf.js > _genererTuilesV2 exposé v1.14.20-hotfix12), on
+    // re-tile l'image plate du KMZ vers une structure V2 (tuiles 512×512
+    // sur 4 niveaux de zoom) ajoutée au ZIP. Le manifest est posé dans
+    // planConfig.tiling et planObj.tiledV2 = true. La baseImage plate
+    // reste embarquée comme fallback pour les anciens runtimes.
+    let tilingManifest = null;
+    let v2Dims = null;
+    if (opts.tilingV2 === true && typeof window.MyKTAMapTilingV2 === "function") {
+      try {
+        const v2 = await window.MyKTAMapTilingV2(opts.baseImage, zip, opts.onTilingProgress);
+        tilingManifest = v2.manifest;
+        v2Dims = v2.dims;
+      } catch(e) {
+        console.error("[KmzImport] Échec tilingV2 :", e);
+        // On continue sans V2 — le ZIP sera un V1 plat utilisable
+      }
+    }
+
+    // Image baseImage (préservée verbatim — choix 6=A validé KARMA).
+    // Si V2 actif, baseImage reste embarquée comme fallback (cohérent avec
+    // le générateur classique createConf.js qui fait pareil).
     const baseFilename = opts.baseImageFilename || "baseImage.png";
     zip.file("data/" + baseFilename, opts.baseImage);
 
@@ -546,13 +569,19 @@
     // ZIP MyKTAMap sous `icon/<tag>.png`, et peuple planConfig.icons avec
     // le mapping tag → chemin. Le caller passe opts.assets (le dict complet
     // des fichiers du KMZ, déjà extrait par extraireKmz).
+    // v1.14.20-hotfix12 — dimensions post-V2 si re-tilage (l'auto-crop
+    // peut avoir réduit la zone effectivement tuilée par rapport à
+    // l'image source).
+    const finalW = v2Dims ? v2Dims.width  : opts.imageW;
+    const finalH = v2Dims ? v2Dims.height : opts.imageH;
+
     const planConfig = {
       plan: {
         name: opts.planName || "Plan importé KMZ",
         version: opts.planVersion || "v1",
         author: opts.planAuthor || "Import KMZ",
-        imageWidth: opts.imageW,
-        imageHeight: opts.imageH,
+        imageWidth: finalW,
+        imageHeight: finalH,
         baseImage: baseFilename
       },
       icons: {
@@ -562,6 +591,10 @@
       imageLayers: [],
       dataLayers: []
     };
+    // v1.14.20-hotfix12 — flags optionnels (cohérent createConf.js > _genererZip)
+    if (opts.multiLevel === true) planConfig.plan.multiLevel = true;
+    if (tilingManifest)           planConfig.plan.tiledV2    = true;
+    if (tilingManifest)           planConfig.tiling          = tilingManifest;
 
     // === Restauration des icônes embarquées dans le KMZ source ===
     // Pattern d'embed côté kmzExport.js : zip.folder("files/icons").file(

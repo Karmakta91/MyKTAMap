@@ -2422,6 +2422,13 @@ window.afficherPlanner = afficherPlanner;
 // Planner). Accepte un fichier pré-fourni qui déclenche directement
 // l'analyse.
 window.afficherImporterKmz = _afficherImporterKmz;
+// v1.14.20-hotfix12 (KARMA « depuis import KMZ, on doit pouvoir cocher
+// un mode V2 pour regénérer les tuiles. Pareil M-LVL ») : expose la
+// fonction de tuilage V2 pour qu'elle soit utilisable depuis kmzImport
+// .js > genererZipMyktamap (re-tilage de l'image plate du KMZ vers un
+// plan V2 utilisable même sur mobile). Le M-LVL est juste un flag dans
+// le plan-config.json, pas besoin d'API.
+window.MyKTAMapTilingV2 = _genererTuilesV2;
 
 // =====================================================================
 // 🌍 MODALE IMPORT KMZ → ZIP MyKTAMap (Phase 1 MVP, depuis v173)
@@ -2538,6 +2545,29 @@ function _afficherImporterKmz(prefilledFile) {
               <option value="effondrement">Effondrement (rouge)</option>
               <option value="inaccessible">Inaccessible (hachures rouge)</option>
             </select>
+          </div>
+
+          <!-- v1.14.20-hotfix12 (KARMA « depuis import KMZ on doit pouvoir
+               cocher un mode V2 pour regénérer les tuiles, pareil M-LVL »).
+               Options optionnelles appliquées au ZIP MyKTAMap généré : V2
+               re-tile l'image plate du KMZ en tuiles 512×512 (utile pour
+               une utilisation mobile sans saturer la mémoire), M-LVL active
+               le multi-niveau dans le plan-config.json. -->
+          <div style="margin-top:14px;">
+            <label class="kta-planner-tiling-v2-row" title="Decoupe l'image plate du KMZ en tuiles 512x512 sur 4 niveaux de zoom. Reduction memoire massive sur les gros plans (>50 Mo).">
+              <input type="checkbox" id="kta-kmz-imp-v2">
+              <span>
+                <strong>🧱 Convertir en V2 tuile (performance)</strong>
+                <em>Re-génère les tuiles à partir de l'image plate du KMZ — utile si le plan d'origine était en V2 et qu'on veut retrouver le rendu fluide sur mobile. Génération lourde (1-5 minutes selon la taille). Recommandé sur PC.</em>
+              </span>
+            </label>
+            <label class="kta-planner-multilevel-row" style="margin-top:8px;">
+              <input type="checkbox" id="kta-kmz-imp-mlvl">
+              <span>
+                <strong>🏗️ Plan multi-niveau (avancé)</strong>
+                <em>Active la gestion des étages (Niv 0, 1, 2…) + jonctions interniveau dans le plan-config.json généré. Ne coche que si le plan d'origine était multi-niveau et que tu vas re-saisir / re-importer les niveaux ensuite.</em>
+              </span>
+            </label>
           </div>
         </div>
 
@@ -2792,6 +2822,9 @@ async function _kmzImpGenerer() {
   const pointTag = document.getElementById("kta-kmz-imp-point-tag").value;
   const roadType = document.getElementById("kta-kmz-imp-road-type").value;
   const zoneType = document.getElementById("kta-kmz-imp-zone-type").value;
+  // v1.14.20-hotfix12 — options optionnelles du flow KMZ
+  const tilingV2On = !!document.getElementById("kta-kmz-imp-v2")?.checked;
+  const multiLevelOn = !!document.getElementById("kta-kmz-imp-mlvl")?.checked;
 
   if (!name) {
     status.textContent = "⚠️ Le nom du plan est obligatoire";
@@ -2819,29 +2852,72 @@ async function _kmzImpGenerer() {
     else if (/webp/i.test(mime)) ext = "webp";
     const baseImageFilename = "baseImage." + ext;
 
-    const blob = await window.KmzImport.genererZipMyktamap({
-      planName:          name,
-      planVersion:       version,
-      planAuthor:        author,
-      baseImage:         state.overlay.hrefBlob,
-      baseImageFilename: baseImageFilename,
-      imageW:            state.imageW,
-      imageH:            state.imageH,
-      // v1.14.20-hotfix4 — on passe TOUS les assets extraits du KMZ pour que
-      // genererZipMyktamap puisse récupérer les icônes embarquées (files/
-      // icons/<tag>.png posé par kmzExport.js) et les remettre dans le ZIP
-      // MyKTAMap sous icon/<tag>.png avec mapping planConfig.icons.
-      assets:            state.assets,
-      imported: {
-        points:     ingested.points,
-        roads:      ingested.roads,
-        zones:      ingested.zones,
-        // 🆕 v1.9.3-A1.b.1 : passage des structures détectées via
-        // styleUrl="#structure_*" dans le KMZ. Si KMZ legacy sans
-        // structures → ingested.structures = [] → no-op silencieux.
-        structures: ingested.structures || []
-      }
-    });
+    // v1.14.20-hotfix12 — overlay de progression V2 (réutilise le pattern
+    // du générateur classique). Affiché uniquement si tilingV2On.
+    let v2Overlay = null;
+    if (tilingV2On) {
+      v2Overlay = document.createElement("div");
+      v2Overlay.id = "kta-kmz-imp-v2-progress";
+      v2Overlay.className = "kta-modal-overlay";
+      v2Overlay.style.zIndex = "100000";
+      v2Overlay.innerHTML =
+        '<div class="kta-modal">' +
+          '<div class="kta-modal-icon">🧱</div>' +
+          '<div class="kta-modal-titre">Conversion V2 tuile : génération des tuiles…</div>' +
+          '<div class="kta-modal-texte">' +
+            '<div id="kta-kmz-v2-progress-text" style="margin-bottom:10px;">Initialisation…</div>' +
+            '<div style="background:rgba(255,255,255,0.06); border-radius:6px; height:8px; overflow:hidden;">' +
+              '<div id="kta-kmz-v2-progress-bar" style="height:100%; width:0%; background:#b452ff; transition:width 0.2s;"></div>' +
+            '</div>' +
+            '<p style="font-size:11.5px; color:#8892a4; margin:14px 0 0; line-height:1.5;">' +
+              '⚠️ Ne ferme pas l\'onglet pendant la conversion. Sur mobile, le navigateur peut killer la page si la mémoire sature.' +
+            '</p>' +
+          '</div>' +
+        '</div>';
+      document.documentElement.appendChild(v2Overlay);
+    }
+
+    const onTilingProgress = tilingV2On ? function(done, total, currentZ) {
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const txt = document.getElementById("kta-kmz-v2-progress-text");
+      const bar = document.getElementById("kta-kmz-v2-progress-bar");
+      if (txt) txt.textContent = "Niveau z=" + currentZ + " · " + done + " / " + total + " tuiles (" + pct + "%)";
+      if (bar) bar.style.width = pct + "%";
+    } : null;
+
+    let blob;
+    try {
+      blob = await window.KmzImport.genererZipMyktamap({
+        planName:          name,
+        planVersion:       version,
+        planAuthor:        author,
+        baseImage:         state.overlay.hrefBlob,
+        baseImageFilename: baseImageFilename,
+        imageW:            state.imageW,
+        imageH:            state.imageH,
+        // v1.14.20-hotfix4 — on passe TOUS les assets extraits du KMZ pour que
+        // genererZipMyktamap puisse récupérer les icônes embarquées (files/
+        // icons/<tag>.png posé par kmzExport.js) et les remettre dans le ZIP
+        // MyKTAMap sous icon/<tag>.png avec mapping planConfig.icons.
+        assets:            state.assets,
+        // v1.14.20-hotfix12 — options optionnelles : V2 re-tile l'image
+        // plate du KMZ, M-LVL ajoute plan.multiLevel=true au plan-config.
+        tilingV2:          tilingV2On,
+        multiLevel:        multiLevelOn,
+        onTilingProgress:  onTilingProgress,
+        imported: {
+          points:     ingested.points,
+          roads:      ingested.roads,
+          zones:      ingested.zones,
+          // 🆕 v1.9.3-A1.b.1 : passage des structures détectées via
+          // styleUrl="#structure_*" dans le KMZ. Si KMZ legacy sans
+          // structures → ingested.structures = [] → no-op silencieux.
+          structures: ingested.structures || []
+        }
+      });
+    } finally {
+      if (v2Overlay && v2Overlay.parentNode) v2Overlay.remove();
+    }
 
     // Téléchargement
     const url = URL.createObjectURL(blob);
