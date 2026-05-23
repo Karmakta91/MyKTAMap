@@ -140,6 +140,12 @@
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
   <script src="js/copyright.js"></script>
 
+  <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
+       Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
+       même le splash si l'user avait choisi clair (évite un FOUC dark→light).
+       Init synchrone via le script lui-même au chargement. -->
+  <script src="js/themeManager.js"></script>
+
   <!-- 🔒 NETWORK AUDIT — v1.8.0 "Privacy & Audit".
        Instrumente fetch / XHR / sendBeacon / WebSocket / EventSource AVANT
        que tout autre module ne puisse émettre une requête réseau. Sans cet

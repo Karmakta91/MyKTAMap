@@ -4,6 +4,46 @@
 
 ---
 
+## 🆕 Nouveautés v1.13.0 (23/05/2026) — Thème clair + Itinéraire mode urgence
+
+> Première release de la phase V3.
+
+### 🎨 Thème clair (limité au mode carte)
+
+L'app accepte désormais **2 thèmes** :
+- 🌙 **Sombre** (par défaut) — comme avant
+- ☀️ **Clair** — fond beige cataphile `#f0e8d8`, accent jaune `#f4c542` conservé, texte foncé pour la lisibilité plein jour
+
+**Comment l'activer** : sidebar gauche → groupe **⚙️ Paramètres** → nouvelle sous-action **☀️ Mode clair** (ou **🌙 Mode sombre** si tu es déjà en clair). Le switch est instantané, pas de reload requis.
+
+**Ce qui change** :
+- Sidebar gauche + droite
+- En-tête (compteurs, nom du plan)
+- Status bar du footer (mesures, tracker, batterie)
+- Container de la carte (fond beige au lieu de noir)
+- Labels mesure / itinéraire en bas-gauche
+- **Toutes les modales** ouvertes depuis le mode carte : Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay tracker…
+- Popups markers + zoom controls + tooltips Leaflet
+
+**Ce qui ne change pas (volontaire)** :
+- Le splash KARMA reste sombre (cinématique de lancement, jolie quel que soit le contexte)
+- La home reste sombre (loader, modale Configuration, modale Plan switcher) — ce sont les écrans avant le mode carte
+- Le viewer photos plein écran reste sombre (cohérent pour la lecture des photos)
+
+**Le choix est persisté globalement** : il vaut pour tous tes plans, sur cet appareil. Si tu reset l'app complètement, le choix revient à sombre.
+
+**Mode urgence 🚨** : à l'ouverture du mode urgence, ton thème global est appliqué automatiquement. Tu gardes le toggle 🔆/🌑 local pour basculer ponctuellement pendant une sortie (utile si tu veux ton écran en lampe d'appoint en sous-sol sans changer ta pref globale).
+
+### 🗺️ Mode urgence — Itinéraire visible par défaut
+
+La case à cocher **🗺️ Itinéraire** dans l'en-tête du mode urgence (introduite en v1.11.2 comme protection anti-crash) est **retirée**. L'itinéraire actif est de nouveau affiché par défaut dans la minimap dès l'ouverture du mode urgence — comme dans les premières versions.
+
+**Pourquoi le toggle est retiré** : la cause racine des crashes n'était pas l'itinéraire mais le chargement complet du JPG du plan en très haute résolution. Depuis v1.12.0, ce problème est géré automatiquement (modale d'avertissement pour les gros JPG + chargement intelligent des tuiles V2). L'itinéraire peut donc rester visible en toute sécurité.
+
+L'itinéraire dans la minimap garde toutes ses optimisations : décimation auto pour les itinéraires longs + halo blanc pour rester visible sur fond zoomé serré.
+
+---
+
 ## 🆕 Nouveautés v1.12.0 (23/05/2026) — Pack terrain V2
 
 > Cette release consolide 4 fonctionnalités terrain (V2.1 → V2.4) ajoutées entre v1.11.0 et v1.12.0, validées une par une sur le terrain.

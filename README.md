@@ -9,9 +9,99 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (106 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (107 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-12-0" open>
+<details id="v1-13-0" open>
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.13.0 : Thème CLAIR mode carte + Itinéraire mode urgence ré-activé par défaut</strong></summary>
+
+Release MINOR (bump Y : 1.12.x → 1.13.0). Première release de la phase **V3** (KARMA validation 8:b = releases incrémentales).
+
+### 🎨 Thème CLAIR (limité au mode carte) — KARMA choix 1:b
+
+Nouveau module **`js/themeManager.js`** (~150 lignes IIFE) → `window.ThemeManager = { init, getCurrent, setTheme, toggleTheme, onChange, isLight }`.
+
+**Activation** : toggle ☀️ Mode clair / 🌙 Mode sombre dans le groupe **⚙️ Paramètres** de la sidebar gauche (nouvelle sous-action à côté de "⚙️ Réglages"). KARMA choix A:a.
+
+**Persistance** : globale toutes plans, `localStorage["myktamap_theme_v1"]`. KARMA choix B:a — un user qui passe en clair l'a partout, toujours.
+
+**Couleurs** (KARMA choix D:b + E:a) :
+
+| Rôle | Dark (défaut) | Light (v1.13.0) |
+|---|---|---|
+| Background base | `#0a0d18` | `#f0e8d8` (beige cataphile, identique mode urgence light) |
+| Background modale | `#1a1f2e` | `#fdf8eb` |
+| Texte principal | `#c0c8d8` | `#2a2620` |
+| Border | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.12)` |
+| Accent | `#f4c542` (jaune) | `#f4c542` (jaune, **inchangé**) |
+| Sidebar | `#0f1320` | `#e5dcc5` |
+
+**Scope** (mode carte uniquement) : sidebar gauche + droite, header, status bar footer, container Leaflet, labels bas-gauche (mesure / iti), popups markers, tooltips, zoom controls, et **toutes les modales ouvertes depuis le mode carte** (Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay tracker, etc.).
+
+**Hors scope (restent dark)** : splash KARMA animé (cinématique), loader home, modale Configuration home, modale Plan switcher home. Volontaire : ces écrans précèdent le mode carte.
+
+**Sync mode urgence** : à l'ouverture du mode urgence, le thème global est appliqué automatiquement. Le toggle 🔆/🌑 LOCAL du mode urgence reste fonctionnel pour basculer ponctuellement pendant la sortie (cas lampe d'appoint en sous-sol) sans modifier la pref globale.
+
+**Meta theme-color** : statusbar mobile iOS/Android mise à jour dynamiquement à chaque switch (#f0e8d8 clair / #111827 sombre).
+
+**~350 lignes de CSS** ajoutées en fin de `css/style.css` avec stratégie variables (`--kta-light-bg`, `--kta-light-text`, etc.) pour minimiser la duplication. Scoped sur `body.kta-theme-light .selector`.
+
+### 🗺️ Mode urgence — itinéraire réactivé par défaut sans toggle
+
+La case à cocher `🗺️ Itinéraire` dans l'en-tête du mode urgence est **retirée**. L'itinéraire actif est désormais toujours affiché dans la minimap, avec :
+- Décimation automatique pour les itinéraires longs (>500 pts → skip, >100 pts → 1/N)
+- Cap total 5000 pts sur l'ensemble des polylines (anti-OOM)
+- Rendu cyan vif weight 6 + halo blanc weight 10 (visible sur fond minimap zoomé serré)
+
+**Raison** : la cause racine des crashes précédents n'était PAS l'itinéraire mais le chargement complet du JPG volumineux. Le fix anti-crash JPG + tiles V2 viewport-aware (introduits en v1.12.0) gèrent ça correctement → on peut réactiver l'itinéraire en toute sécurité.
+
+L'ancienne clé localStorage `myktamap_emergency_show_iti_v1` reste sans effet (nettoyée automatiquement au prochain reset complet).
+
+### 📦 Fichiers impactés
+
+- **Nouveau** : `js/themeManager.js`
+- **Modifiés** :
+  - `index.html` (script tag avant networkAudit.js, anti-FOUC)
+  - `js/interface.js` (groupe ⚙️ Paramètres : solo → sousActions [Réglages, Thème])
+  - `js/emergencyMode.js` (suppression toggle 🗺️ Itinéraire + sync ThemeManager au activer())
+  - `css/style.css` (~350 lignes de overrides scoped `body.kta-theme-light`)
+  - `sw.js` (CACHE_NAME → `myktamap-cache-v1.13.0-theme-light` + `./js/themeManager.js` dans ASSETS_TO_CACHE)
+  - `js/copyright.js` (build → `v1.13.0`)
+  - `version.json` (version + 8 notes détaillées)
+  - Docs : README.md (cette entrée), `docs/README_USER.md`, `docs/AI_CONTEXT.md`, `docs/CLAUDE.md`
+
+### Pour les futurs dev / agents IA
+
+**Pour ajouter une modale qui supporte le thème clair** :
+
+1. Utilise le pattern `kta-readme-modal-overlay` + `kta-readme-modal-boite` → c'est couvert automatiquement par les overrides existants.
+2. Si tu introduis une nouvelle classe CSS de fond/texte custom, ajoute son variant `body.kta-theme-light .ma-nouvelle-classe { ... }` dans le bloc dédié de `style.css`.
+
+**Pour écouter les changements de thème** depuis un module qui dépend de l'état :
+
+```js
+if (window.ThemeManager) {
+  window.ThemeManager.onChange(function(theme) {
+    // theme = "dark" ou "light"
+    // refresh ton UI
+  });
+}
+```
+
+**Pour récupérer l'état courant** au boot d'un module :
+
+```js
+const isLight = window.ThemeManager && window.ThemeManager.isLight();
+```
+
+**À NE PAS faire** :
+- ❌ Stocker le thème ailleurs qu'en localStorage `myktamap_theme_v1` (= source de vérité unique)
+- ❌ Forcer un thème sur un screen hors mode carte (la home doit rester sombre par design)
+- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe `kta-theme-light` directement (pas notifié, pas persisté)
+
+</details>
+
+<details id="v1-12-0">
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.12.0 : Pack terrain V2 — 🪫 Batterie · 📊 Stats++ + ⬛ Surface · 🎬 Replay tracker · 🔥 Heatmap (standby)</strong></summary>
 <summary><strong>🗓️ 23/05/2026 — 🚀 v1.12.0 : Pack terrain V2 — 🪫 Batterie · 📊 Stats++ + ⬛ Surface · 🎬 Replay tracker · 🔥 Heatmap (standby)</strong></summary>
 
 Release MINOR (bump Y : 1.11.x → 1.12.0) qui consolide la **phase V2** du roadmap : 4 fonctionnalités terrain implémentées et livrées (1 désactivée à l'usage mais gardée en standby dans le repo) entre v1.11.0 et v1.12.0. Toutes validées une par une côté terrain par KARMA.

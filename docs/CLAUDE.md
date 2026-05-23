@@ -42,6 +42,9 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   ├── utils.js                ← convertCoord, choisirIcone, getIconUrlForPoint, telechargerPlan
 │   ├── tiling.js               ← Tuilage image base (perfPreset)
 │   ├── map.js                  ← Init Leaflet (preferCanvas:true), calques, _iconMap, TAGS_BUILTIN
+│   ├── themeManager.js         ← v1.13.0 — Toggle thème clair/sombre limité mode carte
+│   │                              window.ThemeManager = { init, getCurrent, setTheme,
+│   │                              toggleTheme, onChange, isLight }
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
 │   │                              + flags _orientationListenerAttached/_motionListenerAttached
 │   │                              (idempotency contre fuite après plan switch)
@@ -3425,6 +3428,99 @@ _setGroupeModeActif("tracker", true, null);
 ```
 
 `window._fermerModeRecalage()` exposé pour pouvoir le call depuis n'importe où.
+
+### 53. ThemeManager — thème clair / sombre limité mode carte (depuis v1.13.0)
+
+Module `js/themeManager.js` (~150 lignes IIFE) → `window.ThemeManager = { init, getCurrent, setTheme, toggleTheme, onChange, isLight }`.
+
+#### 53.1 Activation & persistance
+
+- `localStorage["myktamap_theme_v1"]` = `"dark"` (défaut) | `"light"` — globale par appareil, jamais par plan
+- Au boot : `ThemeManager.init()` lit le localStorage et applique `body.kta-theme-light` (ou retire)
+- `setTheme(t)` : applique + persiste + notifie les listeners + update `<meta name="theme-color">` (statusbar mobile)
+- `toggleTheme()` : flip dark ⇄ light
+
+#### 53.2 Position du toggle UI
+
+Sous-action dans le groupe `⚙️ Paramètres` de la sidebar gauche (KARMA choix A:a) — `interface.js > _creerGroupeAccordeon({ id: "settings", sousActions: [...] })`. Avant v1.13.0 ce groupe utilisait `soloAction: afficherConfig` → migré en `sousActions: [⚙️ Réglages, ☀️/🌙 Thème]`. Le clic sur ⚙️ déplie maintenant 2 boutons au lieu d'ouvrir directement la modale config.
+
+#### 53.3 Stratégie CSS (~350 lignes)
+
+Tout dans `css/style.css` en fin de fichier, scoped sur `body.kta-theme-light .selector`. Variables CSS dédiées :
+
+```css
+body.kta-theme-light {
+  --kta-light-bg:           #f0e8d8;
+  --kta-light-bg-elevated:  #fdf8eb;
+  --kta-light-bg-deep:      #e5dcc5;
+  --kta-light-text:         #2a2620;
+  --kta-light-text-muted:   #6b6354;
+  --kta-light-border:       rgba(0,0,0,0.12);
+  --kta-light-accent:       #f4c542;       /* jaune charte conservé */
+  --kta-light-accent-hover: #d9a82e;
+  --kta-light-shadow:       rgba(80,60,30,0.18);
+}
+```
+
+#### 53.4 Scope strict
+
+✅ Couvert :
+- `.kta-refonte-header` + `.kta-refonte-statusbar` + `.kta-refonte-sidebar*`
+- `.kta-readme-modal-*` (pattern utilisé partout : Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay)
+- `.kta-measure-distance` + `.kta-iti-distance` + segments/angles
+- `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-bar`
+- `.kta-choix-suppr-*`, `.kta-conv-sens-btn`, `.kta-tag-suggestion`
+- `.kta-toast`
+- `.kta-search-*`, `.kta-iti-*`, `.kta-mlvl-*`, `.kta-legende-*`
+
+❌ Volontairement non couverts (restent dark) :
+- Splash KARMA (cinématique, doit être contrastée)
+- Loader home (`#kta-loader`, `.kta-loader-*`)
+- Modale Configuration home + Plan switcher home
+- Viewer photos plein écran (overlay sombre par essence)
+
+#### 53.5 Sync mode urgence
+
+Le mode urgence garde son toggle 🔆/🌑 LOCAL (theme local `_theme` interne). Au `activer()`, on lit `ThemeManager.isLight()` pour initialiser `_theme` au boot de l'overlay :
+
+```js
+function activer() {
+  if (window.ThemeManager && typeof window.ThemeManager.isLight === "function") {
+    _theme = window.ThemeManager.isLight() ? "light" : "dark";
+  }
+  // ...
+}
+```
+
+Le toggle local du mode urgence ne propage PAS à `ThemeManager` (volontaire — cas d'usage : "lampe d'appoint en sous-sol pendant 30 sec" sans changer la pref globale).
+
+#### 53.6 Ordre de chargement
+
+`<script src="js/themeManager.js">` chargé **juste après** `js/copyright.js` dans `index.html` :
+- Copyright = pas de DOM, juste console banner → OK
+- ThemeManager = doit s'appliquer AVANT le rendu pour éviter le FOUC (flash dark → light)
+- Le reste des modules (debug, perfUltra, unlockGate, pinLock, main, etc.) peut alors lire `window.ThemeManager`
+
+#### 53.7 Pour étendre
+
+**Ajouter une modale qui supporte le thème** : utilise le pattern `kta-readme-modal-overlay` + `kta-readme-modal-boite` → c'est couvert automatiquement. Si tu introduis une nouvelle classe custom de fond/texte, ajoute son variant `body.kta-theme-light .ma-classe { ... }` dans le bloc dédié.
+
+**Écouter les changements de thème** depuis un module dépendant :
+```js
+if (window.ThemeManager) {
+  window.ThemeManager.onChange(function(theme) {
+    // theme = "dark" | "light"
+    // refresh ton UI ici
+  });
+}
+```
+
+#### 53.8 À NE PAS faire
+
+- ❌ Stocker le thème ailleurs qu'en `localStorage["myktamap_theme_v1"]` (= source de vérité unique)
+- ❌ Forcer un thème sur un screen hors mode carte — la home reste dark par design (KARMA choix 1:b)
+- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe directement (pas notifié, pas persisté)
+- ❌ Inventer de nouvelles couleurs custom — utilise les variables `--kta-light-*` pour la cohérence
 
 ---
 

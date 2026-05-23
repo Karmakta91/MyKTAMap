@@ -10835,3 +10835,555 @@ body.kta-refonte-v1:has(.kta-refonte-statusbar-collapsed) #map {
   cursor: default;
 }
 
+/* ============================================================================
+ * 🎨 v1.13.0 — THÈME CLAIR (LIMITÉ AU MODE CARTE)
+ * ============================================================================
+ * Activé par body.kta-theme-light (= window.ThemeManager.setTheme("light")).
+ * KARMA choix : background beige cataphile #f0e8d8 (D:b) + accent jaune
+ * #f4c542 conservé (E:a) + persistance globale localStorage (B:a).
+ *
+ * Scope : tout ce qui s'affiche EN MODE CARTE (sidebar, footer, modales
+ * ouvertes depuis le mode carte, label bas-gauche, marker tracker compass).
+ *
+ * Splash / loader / modale Configuration home ne sont PAS retoughés
+ * volontairement (restent dark, ce sont les écrans hors-mode-carte).
+ * ============================================================================ */
+
+/* === Palette thème clair === */
+body.kta-theme-light {
+  --kta-light-bg:           #f0e8d8;  /* beige cataphile, même que kta-emergency-light */
+  --kta-light-bg-elevated:  #fdf8eb;  /* fond modale, légèrement plus clair */
+  --kta-light-bg-deep:      #e5dcc5;  /* sidebar background, plus saturé */
+  --kta-light-text:         #2a2620;  /* texte principal sombre */
+  --kta-light-text-muted:   #6b6354;  /* texte secondaire */
+  --kta-light-text-dim:     #8a8270;  /* texte tertiaire / dashes */
+  --kta-light-border:       rgba(0,0,0,0.12);
+  --kta-light-border-strong:rgba(0,0,0,0.22);
+  --kta-light-accent:       #f4c542;  /* jaune charte conservé */
+  --kta-light-accent-hover: #d9a82e;  /* version plus contrastée pour hover */
+  --kta-light-accent-bg:    rgba(244,197,66,0.22);
+  --kta-light-shadow:       rgba(80,60,30,0.18);
+}
+
+/* === Container Leaflet (carte) === */
+body.kta-theme-light .leaflet-container {
+  background: var(--kta-light-bg) !important;
+}
+
+/* === Body / arrière-plan général === */
+body.kta-theme-light {
+  background: var(--kta-light-bg);
+  color: var(--kta-light-text);
+}
+
+/* === HEADER refonte === */
+body.kta-theme-light .kta-refonte-header {
+  background: var(--kta-light-bg-deep);
+  color: var(--kta-light-text);
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-header * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-plan-name {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-refonte-counter {
+  background: rgba(0,0,0,0.05);
+  border: 1px solid var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-counter:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-refonte-counters-btn:hover {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === STATUS BAR footer === */
+body.kta-theme-light .kta-refonte-statusbar {
+  background: var(--kta-light-bg-deep);
+  color: var(--kta-light-text);
+  border-top: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-statusbar * {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-stat {
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-stat-empty {
+  opacity: 0.5;
+}
+body.kta-theme-light .kta-refonte-statusbar-toggle {
+  color: var(--kta-light-text);
+  background: rgba(0,0,0,0.04);
+}
+
+/* === SIDEBARS (groupes accordéons gauche + droite) === */
+body.kta-theme-light .kta-refonte-sidebar,
+body.kta-theme-light .kta-refonte-sidebar-right {
+  background: var(--kta-light-bg-deep);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-groupe-btn,
+body.kta-theme-light .kta-groupe-btn-principal {
+  background: rgba(0,0,0,0.04);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-groupe-btn:hover,
+body.kta-theme-light .kta-groupe-btn-principal:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-groupe-btn-principal.kta-group-mode-actif {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+  box-shadow: 0 0 8px rgba(244, 197, 66, 0.4);
+}
+body.kta-theme-light .kta-groupe-sous-actions {
+  background: var(--kta-light-bg-elevated);
+  border: 1px solid var(--kta-light-border);
+  box-shadow: 0 4px 12px var(--kta-light-shadow);
+}
+body.kta-theme-light .kta-groupe-sous-action {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-groupe-sous-action:hover {
+  background: var(--kta-light-accent-bg);
+}
+body.kta-theme-light .kta-groupe-sous-action.kta-actif {
+  background: var(--kta-light-accent-bg);
+  border-left: 3px solid var(--kta-light-accent);
+}
+
+/* === MODALES (kta-readme-modal-* pattern utilisé partout) === */
+body.kta-theme-light .kta-readme-modal-overlay {
+  background: rgba(40, 32, 20, 0.55);
+}
+body.kta-theme-light .kta-readme-modal-boite {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+  box-shadow: 0 10px 40px var(--kta-light-shadow);
+}
+body.kta-theme-light .kta-readme-modal-header {
+  background: var(--kta-light-bg-deep);
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-readme-modal-titre {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-readme-modal-corps {
+  color: var(--kta-light-text);
+  background: var(--kta-light-bg-elevated);
+}
+body.kta-theme-light .kta-readme-modal-corps * {
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-readme-modal-corps code {
+  background: rgba(0,0,0,0.06);
+  color: #8b3a00;
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-readme-modal-corps strong {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-panneau-close {
+  background: rgba(0,0,0,0.05);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-panneau-close:hover {
+  background: rgba(220, 50, 50, 0.15);
+  border-color: rgba(220, 50, 50, 0.5);
+  color: #b02020;
+}
+
+/* === Inputs / select / textarea dans modales === */
+body.kta-theme-light .kta-readme-modal-corps input[type="text"],
+body.kta-theme-light .kta-readme-modal-corps input[type="number"],
+body.kta-theme-light .kta-readme-modal-corps input[type="search"],
+body.kta-theme-light .kta-readme-modal-corps input[type="password"],
+body.kta-theme-light .kta-readme-modal-corps select,
+body.kta-theme-light .kta-readme-modal-corps textarea {
+  background: #fff;
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border-strong);
+}
+body.kta-theme-light .kta-readme-modal-corps input:focus,
+body.kta-theme-light .kta-readme-modal-corps select:focus,
+body.kta-theme-light .kta-readme-modal-corps textarea:focus {
+  border-color: var(--kta-light-accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25);
+}
+
+/* === Boutons génériques (btn primary / secondary / danger / etc.) === */
+body.kta-theme-light .kta-btn,
+body.kta-theme-light .kta-btn-primary,
+body.kta-theme-light .kta-btn-secondary {
+  background: var(--kta-light-bg-deep);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border-strong);
+}
+body.kta-theme-light .kta-btn-primary {
+  background: var(--kta-light-accent);
+  color: #2a2620;
+  border-color: var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-btn-primary:hover {
+  background: var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-btn:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+
+/* === Labels mesure / itinéraire (bas-gauche Leaflet) === */
+body.kta-theme-light .kta-measure-distance {
+  background: var(--kta-light-bg-elevated) !important;
+  color: #8b3a00 !important;
+  border-color: var(--kta-light-accent-hover) !important;
+  box-shadow: 0 4px 12px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .kta-measure-distance .kta-measure-active-line {
+  border-left-color: var(--kta-light-accent-hover);
+  background: rgba(244, 197, 66, 0.18);
+}
+body.kta-theme-light .kta-measure-distance .kta-measure-line + .kta-measure-line {
+  border-top-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-iti-distance,
+body.kta-theme-light .kta-rd-total-pill {
+  background: var(--kta-light-bg-elevated) !important;
+  color: #0a4f6b !important;
+  border-color: rgba(10, 79, 107, 0.4) !important;
+  box-shadow: 0 4px 12px var(--kta-light-shadow) !important;
+}
+
+/* === Labels segments + angles (mesure) === */
+body.kta-theme-light .kta-measure-seg-label {
+  background: var(--kta-light-bg-elevated);
+  color: #8b3a00;
+  border: 1px solid var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-measure-angle-label {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text-muted);
+  border: 1px solid var(--kta-light-border);
+}
+
+/* === Toasts (OOMGuard.showToast) === */
+body.kta-theme-light .kta-toast {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border-strong);
+  box-shadow: 0 4px 16px var(--kta-light-shadow);
+}
+
+/* === Popups Leaflet (markers, zones) === */
+body.kta-theme-light .leaflet-popup-content-wrapper,
+body.kta-theme-light .leaflet-popup-tip {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  box-shadow: 0 3px 14px var(--kta-light-shadow);
+}
+body.kta-theme-light .leaflet-popup-content {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .leaflet-popup-close-button {
+  color: var(--kta-light-text-muted) !important;
+}
+
+/* === Plan switcher (titre clickable + modale) === */
+body.kta-theme-light .kta-refonte-plan-switch-modal-overlay {
+  background: rgba(40, 32, 20, 0.55);
+}
+body.kta-theme-light .kta-refonte-plan-switch-modal {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-plan-card {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-plan-card.kta-refonte-plan-card-active {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-refonte-plan-card:hover {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === Modale Aide / Doc (kta-aide-* / kta-readme-*) === */
+body.kta-theme-light .kta-aide-section-titre {
+  color: var(--kta-light-accent-hover);
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-aide-icone {
+  color: var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-aide-grille {
+  color: var(--kta-light-text);
+}
+
+/* === Recherche unifiée (Ctrl+K) === */
+body.kta-theme-light .kta-search-modal-boite,
+body.kta-theme-light .kta-search-result-item {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-search-result-item:hover,
+body.kta-theme-light .kta-search-result-item.kta-search-selected {
+  background: var(--kta-light-accent-bg);
+}
+body.kta-theme-light .kta-search-filter-chip {
+  background: rgba(0,0,0,0.05);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-search-filter-chip.active {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+  color: var(--kta-light-text);
+}
+
+/* === Tableaux / lignes (édition JSON, stats, etc.) === */
+body.kta-theme-light table {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light table th {
+  background: var(--kta-light-bg-deep);
+  color: var(--kta-light-text);
+  border-bottom: 2px solid var(--kta-light-border-strong);
+}
+body.kta-theme-light table td {
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light tr:hover {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === Modale Replay tracker (v1.12.0 V2.3) === */
+body.kta-theme-light .kta-tracker-replay-modal,
+body.kta-theme-light .kta-tracker-replay-controls {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-tracker-replay-slider {
+  background: var(--kta-light-bg-deep);
+}
+
+/* === Stats agrégées dans modale Session active === */
+body.kta-theme-light .kta-refonte-stats-row {
+  border-bottom: 1px dashed var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-stats-label {
+  color: var(--kta-light-text-muted);
+}
+body.kta-theme-light .kta-refonte-stats-val {
+  color: var(--kta-light-text);
+  font-weight: 600;
+}
+
+/* === Stats détaillées (liste éléments) === */
+body.kta-theme-light .kta-refonte-session-section-titre {
+  color: var(--kta-light-accent-hover);
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-session-list li {
+  border-bottom: 1px solid var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-refonte-session-meta {
+  color: var(--kta-light-text-muted);
+}
+
+/* === Photos viewer (overlay sombre par essence — on garde dark même en
+   light mode, c'est cohérent pour la lisibilité des photos) === */
+
+/* === Modale d'export (PNG / PDF / KMZ / Session) === */
+body.kta-theme-light .kta-export-cb-row,
+body.kta-theme-light .kta-export-sub-cb-row,
+body.kta-theme-light .kta-ses-cb-row {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-export-cb-row:hover,
+body.kta-theme-light .kta-ses-cb-row:hover {
+  background: var(--kta-light-accent-bg);
+}
+body.kta-theme-light .kta-conv-sens-btn {
+  background: rgba(0,0,0,0.03);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-conv-sens-btn:hover,
+body.kta-theme-light .kta-conv-sens-btn.active {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+
+/* === Itinéraire (modale calcul + waypoints + chips évitement) === */
+body.kta-theme-light .kta-iti-modal-boite,
+body.kta-theme-light .kta-iti-waypoint-item,
+body.kta-theme-light .kta-iti-avoid-chip {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-iti-avoid-chip {
+  background: rgba(255, 140, 0, 0.15);
+  color: #8b3a00;
+}
+
+/* === Tag autocomplete suggestions === */
+body.kta-theme-light .kta-tag-suggestion {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-tag-suggestion:hover,
+body.kta-theme-light .kta-tag-suggestion.kta-active {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === Hint / accordions / sections expandables === */
+body.kta-theme-light .kta-aide-section,
+body.kta-theme-light details {
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light summary {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light summary:hover {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === Confirmation suppressions (kta-choix-suppr) === */
+body.kta-theme-light .kta-choix-suppr-overlay {
+  background: rgba(40, 32, 20, 0.55);
+}
+body.kta-theme-light .kta-choix-suppr-boite {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-choix-suppr-btn {
+  background: rgba(0,0,0,0.04);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-choix-suppr-btn:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-choix-suppr-btn.kta-danger {
+  background: rgba(220, 50, 50, 0.1);
+  color: #b02020;
+  border-color: rgba(220, 50, 50, 0.4);
+}
+body.kta-theme-light .kta-choix-suppr-btn.kta-danger:hover {
+  background: rgba(220, 50, 50, 0.2);
+}
+
+/* === Refresh button du chip Counter Session (mobile compact) === */
+body.kta-theme-light .kta-refonte-counters-btn {
+  color: var(--kta-light-text);
+}
+
+/* === Bouton ⏪ / ⏩ Historique grisé === */
+body.kta-theme-light .kta-groupe-sous-action.kta-disabled {
+  color: var(--kta-light-text-dim);
+  opacity: 0.5;
+}
+
+/* === Splash quand on revient au mode carte (anti-FOUC) ===
+   Le splash original reste dark dans tous les cas (cinématique), on
+   ne le retouche pas. Mais si jamais une modale d'attente brève s'affiche
+   pendant la transition home → carte, elle suit le thème. */
+
+/* === Footer du panneau Doc IA / Aide IA === */
+body.kta-theme-light .kta-aide-ia-footer,
+body.kta-theme-light .kta-readme-modal-corps blockquote {
+  background: rgba(244, 197, 66, 0.1);
+  border-left: 4px solid var(--kta-light-accent);
+  color: var(--kta-light-text);
+}
+
+/* === Section Mes plans dans la modale Plan switcher (refonte v1.2) === */
+body.kta-theme-light .kta-refonte-plan-grid-titre {
+  color: var(--kta-light-accent-hover);
+}
+
+/* === Tooltips Leaflet === */
+body.kta-theme-light .leaflet-tooltip {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border-strong);
+  box-shadow: 0 2px 8px var(--kta-light-shadow);
+}
+
+/* === Zoom controls Leaflet (haut-droite) === */
+body.kta-theme-light .leaflet-bar a {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+  border-bottom: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .leaflet-bar a:hover {
+  background: var(--kta-light-accent-bg);
+}
+
+/* === Modale Niveaux M-LVL === */
+body.kta-theme-light .kta-mlvl-niveau-row,
+body.kta-theme-light .kta-mlvl-card {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-mlvl-niveau-row.kta-mlvl-actif,
+body.kta-theme-light .kta-mlvl-card.kta-mlvl-actif {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+body.kta-theme-light .kta-mlvl-niveau-badge {
+  background: var(--kta-light-bg-deep);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+
+/* === Légende in-app (kta-legende-*) === */
+body.kta-theme-light .kta-legende-modal-boite {
+  background: var(--kta-light-bg-elevated);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-legende-section-titre {
+  color: var(--kta-light-accent-hover);
+}
+body.kta-theme-light .kta-legende-item {
+  border-bottom: 1px solid var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+
+/* === Boutons d'action header (PIN, theme emergency, etc.) === */
+body.kta-theme-light .kta-refonte-header-action-btn {
+  background: rgba(0,0,0,0.05);
+  color: var(--kta-light-text);
+  border: 1px solid var(--kta-light-border);
+}
+body.kta-theme-light .kta-refonte-header-action-btn:hover {
+  background: var(--kta-light-accent-bg);
+  border-color: var(--kta-light-accent);
+}
+
+/* === Splash KARMA (reste dark, mais juste au cas où une transition
+   est visible pendant le boot, on n'override rien) === */
+/* (volontairement vide) */

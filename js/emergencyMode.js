@@ -46,14 +46,14 @@
   // module pour pouvoir l'ajouter ET le retirer proprement.
   let _orientationListener = null;
 
-  // 🆕 v1.11.2-fix2 (KARMA "je veux pouvoir afficher l'itinéraire au cocher") :
-  // Toggle pour afficher l'itinéraire dans la minimap. Default OFF (protection
-  // anti-crash sur gros plan). Lu depuis localStorage pour persister le choix.
-  const LS_SHOW_ITI_KEY = "myktamap_emergency_show_iti_v1";
-  let _showItineraryInMinimap = false;
-  try {
-    _showItineraryInMinimap = localStorage.getItem(LS_SHOW_ITI_KEY) === "1";
-  } catch(e) {}
+  // 🔧 v1.13.0 (KARMA "on réactive itinéraire sans le menu cocher comme
+  // avant, on le voyait bien si ca crashait pas") : la toggle conditionnelle
+  // est retirée. L'itinéraire est désormais toujours affiché dans la minimap
+  // (avec décimation + halo blanc + cyan vif pour visibilité). La cause
+  // racine du crash n'était pas l'itinéraire mais l'image JPG volumineuse,
+  // désormais gérée par l'anti-crash + V2 viewport-aware tiles (v1.12.0).
+  // Note : l'ancienne clé localStorage "myktamap_emergency_show_iti_v1" reste
+  // sans effet, sera nettoyée automatiquement au prochain reset complet.
 
   // 🔧 v1.10.2-fix1 (KARMA "comportement de saut comme on avait avant car
   // il peut pas faire plus que un tour complet") : pattern rotation
@@ -127,16 +127,9 @@
         '<div class="kta-emergency-header">' +
           '<span class="kta-emergency-titre">🚨 MODE URGENCE</span>' +
           '<div class="kta-emergency-header-actions">' +
-            // 🆕 v1.11.2-fix2 (KARMA "je veux pouvoir afficher l\'itinéraire
-            // au cocher") : checkbox optionnelle pour réafficher l\'itinéraire
-            // dans la minimap. Default OFF (= protection anti-crash sur gros
-            // plan, cf décimation/skip dans _addRoadsToMiniMap). Persistance
-            // localStorage myktamap_emergency_show_iti_v1 pour conserver
-            // le choix entre 2 ouvertures du mode.
-            '<label class="kta-emergency-toggle-iti" for="kta-emergency-show-iti" title="Afficher l\'itinéraire dans la minimap (peut ralentir sur très gros plan)">' +
-              '<input type="checkbox" id="kta-emergency-show-iti"' + (_showItineraryInMinimap ? " checked" : "") + '>' +
-              '<span>🗺️ Itinéraire</span>' +
-            '</label>' +
+            // 🔧 v1.13.0 : toggle 🗺️ Itinéraire RETIRÉ. L'itinéraire actif
+            // est toujours affiché dans la minimap (anti-crash JPG géré
+            // séparément par _resolveMiniMapImageSource depuis v1.12.0).
             '<button class="kta-emergency-theme-btn" id="kta-emergency-theme" title="Basculer clair / sombre" type="button">' +
               (_theme === "dark" ? "🔆" : "🌑") +
             '</button>' +
@@ -222,67 +215,12 @@
       setTheme(_theme === "dark" ? "light" : "dark");
     });
 
-    // 🆕 v1.11.2-fix2 (KARMA toggle itinéraire) : handler du checkbox dans
-    // le header. Au change → update flag + persistance localStorage + redraw
-    // des roads dans la minimap (clean + re-add avec la nouvelle config).
-    const itiCb = document.getElementById("kta-emergency-show-iti");
-    function _onItiToggle() {
-      _showItineraryInMinimap = !!(itiCb && itiCb.checked);
-      try {
-        localStorage.setItem(LS_SHOW_ITI_KEY, _showItineraryInMinimap ? "1" : "0");
-      } catch(e) {}
-      // 🆕 v1.11.3-debug : logs explicites pour diagnostiquer si la
-      // checkbox tire et si l'itinéraire est trouvé dans getRoads.
-      const sessionRoads = (window.getRoads && window.getRoads()) || [];
-      const itinerary = sessionRoads.find(function(r) { return r.type === "itinerary"; });
-      const embRoads = (window.getAllEmbeddedRoads && window.getAllEmbeddedRoads()) || [];
-      const itiEmb = embRoads.find(function(r) { return r.type === "itinerary"; });
-      console.log("[Emergency] toggle itinéraire :",
-                  "checked =", _showItineraryInMinimap,
-                  "| miniMap =", !!_miniMap,
-                  "| roads session =", sessionRoads.length,
-                  "| itinéraire session =", !!itinerary,
-                  "| itinéraire embedded =", !!itiEmb,
-                  "| pts =", itinerary ? itinerary.points.length : (itiEmb ? itiEmb.points.length : 0));
-      _redrawRoadsInMinimap();
-    }
-    if (itiCb) {
-      itiCb.addEventListener("change", _onItiToggle);
-    }
-    // 🆕 v1.11.3-fix2 (failsafe) : si l'event "change" ne tire pas correctement
-    // dans certains browsers / contexts, on ajoute aussi un listener sur le
-    // <label> parent qui tire au click. C'est belt-and-braces, dans la plupart
-    // des browsers le clic label → toggle input → change event suffit.
-    const itiLabel = itiCb ? itiCb.closest(".kta-emergency-toggle-iti") : null;
-    if (itiLabel) {
-      itiLabel.addEventListener("click", function(e) {
-        // Si le clic vient DIRECTEMENT sur l'input, le change event suit déjà.
-        // Si vient du span/label parent, on laisse aussi le mécanisme natif
-        // (label cliquable toggle l'input). Un petit setTimeout 0 permet de
-        // s'assurer que itiCb.checked reflète l'état post-toggle.
-        if (e.target === itiCb) return;
-        setTimeout(_onItiToggle, 0);
-      });
-    }
+    // 🔧 v1.13.0 : handlers de la toggle 🗺️ Itinéraire RETIRÉS (toggle
+    // supprimée du HTML). L'itinéraire est toujours rendu dans la minimap
+    // via _addRoadsToMiniMap (avec décimation + halo blanc).
 
     // Echap = sortie (cas PC). Sur mobile : bouton ↩️
     document.addEventListener("keydown", _onKey);
-  }
-
-  // 🆕 v1.11.2-fix2 : redraw des roads en minimap (clean + re-add).
-  // Utilisé quand l'user toggle la checkbox "🗺️ Itinéraire" — on n'a pas
-  // besoin de tout reconstruire (zones/structures inchangées), juste les
-  // road layers.
-  function _redrawRoadsInMinimap() {
-    if (!_miniMap) return;
-    // Cleanup uniquement les road layers, garder zones + structures
-    _miniRoadLayers.forEach(function(l) { try { l.remove(); } catch(e) {} });
-    _miniRoadLayers = [];
-    // Re-add avec le nouveau flag
-    const pc = window.PLAN_CONFIG;
-    if (pc && pc.plan) {
-      _addRoadsToMiniMap(pc.plan.imageHeight || 0);
-    }
   }
 
   function _onKey(ev) {
@@ -419,6 +357,14 @@
   // ============================================================
   function activer() {
     if (_overlay) return;  // déjà actif
+
+    // 🆕 v1.13.0 : sync thème initial avec ThemeManager global. Si l'user
+    // est en mode clair partout dans l'app, le mode urgence s'ouvre aussi
+    // en clair. Il garde son toggle 🔆/🌑 local pour basculer ponctuellement
+    // (ex: lampe d'appoint en sous-sol) sans changer le réglage global.
+    if (window.ThemeManager && typeof window.ThemeManager.isLight === "function") {
+      _theme = window.ThemeManager.isLight() ? "light" : "dark";
+    }
 
     // 🔧 v1.10.2-fix2 (KARMA "si les accès aux capteurs non pas déjà
     // été validés, on doit nous le demander sinon boussole marche pas") :
@@ -1221,14 +1167,11 @@
 
       // Spécial itinéraire : peut être TRÈS long, on décime plus fort
       // ou on skip complètement si très volumineux.
+      // 🔧 v1.13.0 : itinéraire désormais TOUJOURS rendu (toggle retirée).
+      // La décimation + cap conservés pour anti-OOM, le rendu cyan + halo
+      // blanc reste pour visibilité.
       let pts = road.points;
       if (road.type === "itinerary") {
-        // 🆕 v1.11.2-fix2 (KARMA toggle) : si l'user n'a pas coché
-        // "🗺️ Itinéraire" dans le header, on skip TOUS les itinéraires.
-        if (!_showItineraryInMinimap) {
-          skippedItinerary++;
-          return;
-        }
         if (pts.length > 500) {
           // Skip silencieux des itinéraires très longs (gros plan avec
           // beaucoup de waypoints). L'user voit déjà la position XL +

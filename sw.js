@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.12.0-fix-surface-persist";
+const CACHE_NAME = "myktamap-cache-v1.13.0-theme-light";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -64,6 +64,8 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
+  "./js/themeManager.js",
   "./js/networkAudit.js",
   "./js/debug.js",
   "./js/perfUltra.js",
