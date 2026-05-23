@@ -13168,6 +13168,93 @@ html.kta-theme-light .kta-kmz-section {
   color: var(--kta-light-text) !important;
 }
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix18 — MODALES PROGRESS .kta-modal (forcer mise à jour / reset)
+ * ============================================================================
+ * KARMA "dernier bug, forcer la mise à jour, et surement tout reset
+ * affiche toujours la popup de reset en cours en sombre".
+ *
+ * Cause : ces modales utilisent la classe générique .kta-modal-* (et non
+ * .kta-readme-modal-*) — pattern différent. Pas couverte par mes
+ * overrides précédents.
+ *
+ * Modales concernées :
+ *   - mettreAJourCodeSeul() (interface.js l.2478) : overlay "Mise à jour
+ *     en cours…" avec étapes (ping, SW, purge cache, reload)
+ *   - viderCacheAppli() (l.2614+) : overlay "Reset en cours…"
+ *   - Confirm dialogs divers (Session en cours, Yes/No, etc.)
+ *
+ * Couvert maintenant : .kta-modal-overlay + .kta-modal + .kta-modal-titre
+ * + .kta-modal-texte + .kta-modal-icon + .kta-modal-actions.
+ * ============================================================================ */
+html.kta-theme-light .kta-modal-overlay {
+  background: rgba(40, 32, 20, 0.65) !important;
+}
+html.kta-theme-light .kta-modal {
+  background: #fdf8eb !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  box-shadow: 0 12px 40px rgba(80, 60, 30, 0.25) !important;
+}
+html.kta-theme-light .kta-modal-danger {
+  border-color: #c0392b !important;
+  box-shadow: 0 12px 40px rgba(80, 60, 30, 0.25),
+              0 0 0 1px #c0392b !important;
+}
+html.kta-theme-light .kta-modal-icon {
+  /* L'emoji ⚠️/🔄/⏳ garde sa couleur native, mais s'assurer qu'il
+     reste visible sur fond clair */
+  color: var(--kta-light-text) !important;
+}
+html.kta-theme-light .kta-modal-titre {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-modal-texte {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-modal-texte strong {
+  color: #b02020 !important;  /* strong souvent utilisé pour warning rouge */
+}
+html.kta-theme-light .kta-modal-texte em,
+html.kta-theme-light .kta-modal-texte i {
+  color: var(--kta-light-text-muted) !important;
+}
+/* Boutons d'action dans .kta-modal-actions — peuvent être .kta-btn ou
+   custom inline. On force le style cohérent. */
+html.kta-theme-light .kta-modal-actions button {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+html.kta-theme-light .kta-modal-actions button:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary,
+html.kta-theme-light .kta-modal-actions button.kta-btn-primary {
+  background: var(--kta-light-accent) !important;
+  color: #2a2620 !important;
+  border-color: var(--kta-light-accent-hover) !important;
+}
+html.kta-theme-light .kta-modal-actions button.kta-modal-btn-primary:hover,
+html.kta-theme-light .kta-modal-actions button.kta-btn-primary:hover {
+  background: var(--kta-light-accent-hover) !important;
+}
+html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger,
+html.kta-theme-light .kta-modal-actions button.kta-btn-danger {
+  background: rgba(220, 50, 50, 0.10) !important;
+  color: #b02020 !important;
+  border-color: rgba(220, 50, 50, 0.45) !important;
+}
+html.kta-theme-light .kta-modal-actions button.kta-modal-btn-danger:hover,
+html.kta-theme-light .kta-modal-actions button.kta-btn-danger:hover {
+  background: rgba(220, 50, 50, 0.22) !important;
+}
+
 /* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
 html.kta-theme-light .kta-pin-proposal-boite {
   background: #fdf8eb !important;
