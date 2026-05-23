@@ -12872,6 +12872,39 @@ html.kta-theme-light #resumeBox {
   box-shadow: none !important;
 }
 
+/* === 🔧 v1.13.0-fix14 — OVERLAY CHARGEMENT PLAN (kta-load-overlay)
+   KARMA "quand je clique sur un plan, la fenêtre de chargement (avant
+   arriver sur leaflet) est toujours en sombre". Cette modale apparaît
+   entre le clic sur "Charger ce plan" / "Reprendre" et l'init Leaflet,
+   avec spinner + message d'étape ("Extraction tuiles...", "Init map..."
+   etc.). Visible plusieurs secondes sur les plans V2 tuilés. */
+html.kta-theme-light .kta-load-overlay {
+  background: rgba(240, 232, 216, 0.92) !important;  /* beige semi-trans */
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+html.kta-theme-light .kta-load-box {
+  background: #fdf8eb !important;
+  border: 1px solid rgba(244, 197, 66, 0.45) !important;
+  color: #2a2620 !important;
+  box-shadow: 0 12px 40px rgba(80, 60, 30, 0.25),
+              0 0 32px rgba(244, 197, 66, 0.18) !important;
+}
+html.kta-theme-light .kta-load-spinner {
+  border: 4px solid rgba(244, 197, 66, 0.18) !important;
+  border-top-color: #d9a82e !important;
+}
+html.kta-theme-light .kta-load-titre {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-load-message {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-load-hint {
+  color: #6b6354 !important;
+  border-top: 1px solid rgba(154, 135, 84, 0.25) !important;
+}
+
 /* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
 html.kta-theme-light .kta-pin-proposal-boite {
   background: #fdf8eb !important;
