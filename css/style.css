@@ -3801,7 +3801,7 @@ body.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
 body.kta-theme-light .loader-btn-help.loader-btn-lock:active,
 html.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
 html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
-  background: rgba(0,0,0,0.05) !important;
+  background: #ffffff !important;
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
@@ -12197,10 +12197,16 @@ body.kta-theme-light #planLoaderBox a:hover {
   color: #8b5a00;
 }
 
-/* === Boutons home === */
+/* === Boutons home ===
+   v1.14.20-hotfix5 (KARMA « le fond de l'icône verrouillé n'est pas blanc
+   toujours transparent ») : remplacement du fond rgba(0,0,0,0.05) (5%
+   noir = quasi-transparent sur fond beige du loader-header → l'user
+   percevait ça comme « transparent ») par un vrai blanc opaque #ffffff.
+   S'applique uniformément aux 3 boutons utilitaires du header :
+   📖 Documentation, ⚙️ Configuration, 🔒 Verrouiller. */
 body.kta-theme-light .loader-btn-help,
 body.kta-theme-light .loader-btn-secondary {
-  background: rgba(0,0,0,0.05) !important;
+  background: #ffffff !important;
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
