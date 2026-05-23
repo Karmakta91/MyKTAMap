@@ -10949,25 +10949,28 @@ body.kta-theme-light .kta-refonte-statusbar-toggle:hover {
    🔧 v1.13.0-fix (KARMA "le mode clair ne comprend pas les icônes dans les
    menus déroulants gauche et droite") : les vraies classes utilisées par
    _creerGroupeAccordeon sont `.leaflet-bar a` (bouton principal) et
-   `.leaflet-bar a.kta-sub` (sous-action), pas les `.kta-groupe-*` que
-   j'avais utilisés. Les règles dark d'origine utilisent `!important` (cf
-   ligne 624) donc nos overrides light doivent aussi être `!important`. */
+   `.leaflet-bar a.kta-sub` (sous-action). !important pour battre les
+   règles dark.
+   🔧 v1.13.0-fix8 (KARMA "utilise la couleur de fond du footer et top,
+   pour le fond des icônes") : background des icônes passe en brun-beige
+   #c9b88f (= var(--kta-light-bg-bar)) pour s'harmoniser avec header +
+   footer. Hover en #b8a576 (= var(--kta-light-bg-bar-deep), plus foncé). */
 body.kta-theme-light .leaflet-bar a {
-  background: #fdf8eb !important;
-  color: #2a2620 !important;
-  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
+  background: var(--kta-light-bg-bar) !important;
+  color: var(--kta-light-text) !important;
+  border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
 }
 body.kta-theme-light .leaflet-bar a:hover {
-  background: #f4ecd4 !important;
+  background: var(--kta-light-bg-bar-deep) !important;
   color: #1a1612 !important;
 }
 body.kta-theme-light .leaflet-bar a.kta-sub {
-  background: #fbf3e0 !important;
-  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
-  color: #2a2620 !important;
+  background: var(--kta-light-bg-bar) !important;
+  border-bottom: 1px solid var(--kta-light-bg-bar-border) !important;
+  color: var(--kta-light-text) !important;
 }
 body.kta-theme-light .leaflet-bar a.kta-sub:hover {
-  background: #f4ecd4 !important;
+  background: var(--kta-light-bg-bar-deep) !important;
   color: #1a1612 !important;
 }
 /* État actif (mode mesure / édition / etc. en cours) — vert kept pour rester
@@ -10978,18 +10981,19 @@ body.kta-theme-light .leaflet-bar a.kta-actif:hover {
   color: #fff !important;
   box-shadow: inset 0 0 0 2px #4caf76 !important;
 }
-/* Bouton principal en mode actif — 🔧 v1.13.0-fix (KARMA "quand un icône
-   est actif, il doit rester en fond blanc, pas transparent") : fond BLANC
-   solide au lieu de l'ancien rgba(244,197,66,0.22) qui se fondait dans
-   le beige #e5dcc5 de la sidebar. Bordure jaune charte pour signaler
-   l'état actif, glow doré pour pulsation visible. */
+/* Bouton principal en mode actif — fond BLANC solide pour se détacher du
+   fond brun-beige des autres icônes. Le contraste blanc-sur-brun est
+   maximal et lit immédiatement "ce bouton est en mode actif".
+   🔧 v1.13.0-fix (KARMA "quand un icône est actif, il doit rester en
+   fond blanc, pas transparent") + v1.13.0-fix8 (cohérent avec le fond
+   brun des autres icônes — le blanc tranche encore mieux). */
 body.kta-theme-light .leaflet-bar a.kta-group-mode-actif {
   background: #ffffff !important;
   color: #2a2620 !important;
   box-shadow: inset 0 0 0 2px var(--kta-light-accent) !important;
 }
 body.kta-theme-light .leaflet-bar a.kta-group-mode-actif:hover {
-  background: #fff8e1 !important;  /* hover : très légère teinte jaune sur blanc */
+  background: #fff8e1 !important;
   color: #1a1612 !important;
 }
 /* Pulsation de l'état actif (animation .kta-group-mode-actif::after) — on
