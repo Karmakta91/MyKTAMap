@@ -43,13 +43,13 @@ let _plannerOrigAssets = {};
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
 
-// 🌍 v173 : feature flag pour l'UI Import KMZ. Mis à false pour la release
-// v173 — le code est en place (js/kmzImport.js + modale _afficherImporterKmz)
-// mais l'entrée UI dans le planner est cachée. Réactiver = remettre à true.
-// Justification : Phase 1 (round-trip MyKTAMap only) en place mais pas
-// finalisée à la satisfaction de KARMA pour release publique → on push v173
-// sans exposer une fonctionnalité incomplète.
-const KTA_KMZ_IMPORT_UI_ENABLED = false;
+// 🌍 v173 : feature flag pour l'UI Import KMZ.
+// v1.14.20-hotfix4 : ACTIVÉ (KARMA validation finale du flow — icônes
+// désormais préservées par genererZipMyktamap > opts.assets, plus de
+// raison de cacher l'entrée). En complément, le drop zone classique
+// « Charger un ZIP existant » accepte aussi maintenant les fichiers .kmz
+// et route automatiquement vers le flow KMZ.
+const KTA_KMZ_IMPORT_UI_ENABLED = true;
 
 // =========================
 // MODALE PRINCIPALE
@@ -92,7 +92,7 @@ function afficherPlanner() {
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section kta-pl-col-full">
           <div class="kta-aide-section-titre" style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-            <span>📂 Charger un ZIP existant <span class="kta-planner-hint">(optionnel)</span></span>
+            <span>📂 Charger un ZIP <span class="kta-planner-hint">ou un KMZ MyKTAMap (optionnel)</span></span>
             <!-- 📥 Bouton Conf exemple — déplacé ici depuis la home loader en v1.7.3.
                  Permet de télécharger le ZIP d'exemple myktamap.zip pour avoir un
                  plan de référence à modifier (workflow recommandé pour débutants). -->
@@ -103,18 +103,22 @@ function afficherPlanner() {
             </button>
           </div>
           <p class="kta-planner-info">
-            Tu peux importer un ZIP existant pour pré-remplir le formulaire.
-            Sinon, remplis simplement le formulaire pour créer un nouveau plan.
+            Tu peux importer un <strong>ZIP MyKTAMap</strong> existant pour pré-remplir
+            le formulaire et le modifier, OU un <strong>KMZ MyKTAMap</strong> (export
+            géolocalisé qu'on a généré précédemment via Export externe) que l'app
+            reconvertira automatiquement en ZIP MyKTAMap utilisable
+            (icônes / annotations / image plan préservées).
+            Sinon, remplis simplement le formulaire pour créer un nouveau plan from scratch.
           </p>
 
           <div class="kta-conv-drop" id="kta-planner-zip-drop" style="position:relative; overflow:hidden;">
             <span style="font-size:28px;">📦</span>
-            <span id="kta-planner-zip-label">Glisse un ZIP ici ou clique pour sélectionner</span>
+            <span id="kta-planner-zip-label">Glisse un ZIP ou un KMZ ici ou clique pour sélectionner</span>
 
             <input
               type="file"
               id="kta-planner-zip-input"
-              accept=".zip,application/zip"
+              accept=".zip,.kmz,application/zip,application/vnd.google-earth.kmz"
               style="
                 position:absolute;
                 inset:0;
@@ -583,17 +587,33 @@ function afficherPlanner() {
     zipInput.value = "";
   });
 
-  zipInput.addEventListener("change", function() {
-    const f = zipInput.files[0];
+  // v1.14.20-hotfix4 : route ZIP vers _chargerZipModifier (flow classique),
+  // KMZ vers _afficherImporterKmz (flow KMZ qui parse + reconstruit un ZIP
+  // MyKTAMap valide avec icônes préservées). Un seul drop zone visuellement
+  // pour l'user, mais 2 pipelines internes selon l'extension.
+  function _routerFichierImport(f) {
     if (!f) return;
-
-    if (!f.name.toLowerCase().endsWith(".zip")) {
-      _plannerZipStatus("❌ Le fichier doit être un .zip", true);
-      return;
+    const lower = f.name.toLowerCase();
+    if (lower.endsWith(".zip")) {
+      _plannerMode = "modifier";
+      _chargerZipModifier(f);
+    } else if (lower.endsWith(".kmz")) {
+      // Le pipeline KMZ ouvre sa propre modale (extraction + preview +
+      // confirmation user avant génération du ZIP MyKTAMap). On laisse
+      // _afficherImporterKmz prendre le relais et on n'utilise pas
+      // _plannerMode (le KMZ produit son propre ZIP à télécharger).
+      if (typeof _afficherImporterKmz === "function") {
+        _afficherImporterKmz(f);
+      } else {
+        _plannerZipStatus("❌ Module d'import KMZ indisponible", true);
+      }
+    } else {
+      _plannerZipStatus("❌ Le fichier doit être un .zip ou un .kmz", true);
     }
+  }
 
-    _plannerMode = "modifier";
-    _chargerZipModifier(f);
+  zipInput.addEventListener("change", function() {
+    _routerFichierImport(zipInput.files[0]);
   });
 
   zipDrop.addEventListener("dragover", function(e) {
@@ -608,16 +628,7 @@ function afficherPlanner() {
   zipDrop.addEventListener("drop", function(e) {
     e.preventDefault();
     zipDrop.classList.remove("dragover");
-
-    const f = e.dataTransfer.files[0];
-
-    if (!f || !f.name.toLowerCase().endsWith(".zip")) {
-      _plannerZipStatus("❌ Le fichier doit être un .zip", true);
-      return;
-    }
-
-    _plannerMode = "modifier";
-    _chargerZipModifier(f);
+    _routerFichierImport(e.dataTransfer.files[0]);
   });
 
   document.getElementById("kta-planner-generer").addEventListener("click", _genererZip);
@@ -2424,7 +2435,7 @@ window.afficherPlanner = afficherPlanner;
 
 let _kmzImportState = null;  // { kmlDoc, assets, overlay, transform, imageW, imageH, stats }
 
-function _afficherImporterKmz() {
+function _afficherImporterKmz(prefilledFile) {
   const existing = document.getElementById("kta-kmz-import-modal");
   if (existing) { existing.remove(); return; }
 
@@ -2548,6 +2559,16 @@ function _afficherImporterKmz() {
     labelEl.textContent = "📦 " + file.name;
     await _kmzImpAnalyserFichier(file);
   });
+
+  // v1.14.20-hotfix4 — si un fichier KMZ a été pré-fourni (cas où l'user
+  // a glissé un .kmz dans le drop zone principal du générateur), on
+  // lance directement l'analyse sans demander de re-sélectionner.
+  if (prefilledFile) {
+    if (labelEl) labelEl.textContent = "📦 " + prefilledFile.name;
+    // Lance l'analyse de manière asynchrone (la modale est déjà attachée
+    // au DOM donc tous les getElementById fonctionneront).
+    setTimeout(function() { _kmzImpAnalyserFichier(prefilledFile); }, 0);
+  }
 
   // Generate button
   document.getElementById("kta-kmz-imp-generer").addEventListener("click", async function() {
@@ -2796,6 +2817,11 @@ async function _kmzImpGenerer() {
       baseImageFilename: baseImageFilename,
       imageW:            state.imageW,
       imageH:            state.imageH,
+      // v1.14.20-hotfix4 — on passe TOUS les assets extraits du KMZ pour que
+      // genererZipMyktamap puisse récupérer les icônes embarquées (files/
+      // icons/<tag>.png posé par kmzExport.js) et les remettre dans le ZIP
+      // MyKTAMap sous icon/<tag>.png avec mapping planConfig.icons.
+      assets:            state.assets,
       imported: {
         points:     ingested.points,
         roads:      ingested.roads,

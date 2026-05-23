@@ -513,6 +513,13 @@
     // v173 fix : champ `icons` ajouté pour éviter le crash TypeError au boot
     // (creerIcones lit iconConfig.track/default). Sans ces 2 valeurs au minimum,
     // map.js > initMapFromConfig throw → écran noir au chargement du plan.
+    //
+    // v1.14.20-hotfix4 (KARMA « quand je renvois un KMZ de chez nous je perd
+    // les icônes ») : copie aussi les icônes embarquées dans le KMZ (path
+    // `files/icons/<tag>.png` posé par kmzExport.js ligne 622-642) vers le
+    // ZIP MyKTAMap sous `icon/<tag>.png`, et peuple planConfig.icons avec
+    // le mapping tag → chemin. Le caller passe opts.assets (le dict complet
+    // des fichiers du KMZ, déjà extrait par extraireKmz).
     const planConfig = {
       plan: {
         name: opts.planName || "Plan importé KMZ",
@@ -529,6 +536,26 @@
       imageLayers: [],
       dataLayers: []
     };
+
+    // === Restauration des icônes embarquées dans le KMZ source ===
+    // Pattern d'embed côté kmzExport.js : zip.folder("files/icons").file(
+    // tag + ".png", blob). Donc côté assets on cherche tout ce qui matche
+    // "files/icons/<tag>.<ext>" ou simplement "icons/<tag>.<ext>" si le
+    // KMZ a été ré-archivé manuellement. Pour chaque trouvée : copie dans
+    // le ZIP MyKTAMap + mapping dans planConfig.icons.
+    if (opts.assets && typeof opts.assets === "object") {
+      for (const path of Object.keys(opts.assets)) {
+        const m = path.match(/(?:^|\/)icons\/([^\/]+)\.(png|jpe?g|webp|svg|gif)$/i);
+        if (!m) continue;
+        const tag = m[1];
+        const ext = m[2].toLowerCase();
+        const iconBlob = opts.assets[path];
+        if (!iconBlob) continue;
+        const targetName = "icon/" + tag + "." + ext;
+        zip.file(targetName, iconBlob);
+        planConfig.icons[tag] = targetName;
+      }
+    }
 
     // Data layer "imported" qui groupe tous les éléments importés.
     // 🆕 v1.9.3-A1.b.1 : ajout des structures (piliers + murs). Si le KMZ
