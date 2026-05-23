@@ -85,10 +85,24 @@
   // APPLICATION DOM
   // ============================================================
   function _applyToDom(theme) {
+    // 🔧 v1.13.0-fix5 (KARMA "tous les modals se chargent en mode sombre") :
+    // beaucoup de modales sont append à document.documentElement (= <html>),
+    // pas à <body>. Le selector `body.kta-theme-light .modal` ne matchait
+    // donc jamais parce que la modale est SIBLING de body, pas descendante.
+    // Fix : on applique la classe à <html> (documentElement) en plus de body.
+    // Le CSS continue d'utiliser `body.kta-theme-light` partout pour le
+    // contenu intra-body, ET les modales sont désormais couvertes par
+    // `.kta-theme-light .modal` (ou tout sélecteur sans prefix body).
+    const html = document.documentElement;
     const body = document.body;
-    if (!body) return;
-    body.classList.toggle("kta-theme-light", theme === "light");
-    body.classList.toggle("kta-theme-dark",  theme === "dark");
+    if (html) {
+      html.classList.toggle("kta-theme-light", theme === "light");
+      html.classList.toggle("kta-theme-dark",  theme === "dark");
+    }
+    if (body) {
+      body.classList.toggle("kta-theme-light", theme === "light");
+      body.classList.toggle("kta-theme-dark",  theme === "dark");
+    }
     // Meta theme-color (statusbar mobile) — change la couleur du chrome
     // browser sur iOS/Android pour matcher le thème.
     let meta = document.querySelector("meta[name='theme-color']");

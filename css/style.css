@@ -11814,6 +11814,262 @@ body.kta-theme-light #kta-load-message {
    Volontairement non-modifié : le rouge alerte reste rouge en clair pour
    garder son côté "urgence à voir absolument". */
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix5 — MODALES APPEND À documentElement (= <html>)
+ * ============================================================================
+ * KARMA "tous les modals se chargent en mode sombre" : beaucoup de modales
+ * sont créées via `document.documentElement.appendChild(modal)` (= enfant
+ * direct de <html>, SIBLING de <body>). Le sélecteur `body.kta-theme-light
+ * .modal` ne matche donc JAMAIS car la modale est hors-body.
+ *
+ * Fix complet :
+ *   1. ThemeManager applique la classe sur <html> aussi (cf themeManager.js).
+ *   2. Ce bloc redonne TOUS les overrides modales critiques avec sélecteur
+ *      `html.kta-theme-light` (= matche la classe sur <html> et trouve les
+ *      modales en descendance directe).
+ *
+ * Les selectors `body.kta-theme-light .*` continuent d'exister pour le
+ * contenu intra-body (sidebar, footer, header, plan, etc.) qui reste
+ * couvert.
+ * ============================================================================ */
+
+html.kta-theme-light .kta-readme-modal-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+  box-shadow: 0 10px 40px rgba(80,60,30,0.18) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-header {
+  background: #e5dcc5 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-titre {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps * {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps a {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps code {
+  background: rgba(0,0,0,0.06) !important;
+  color: #8b3a00 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps strong,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h1,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h2,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h3,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps h4 {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps em,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps i {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps blockquote {
+  background: rgba(244, 197, 66, 0.08) !important;
+  border-left: 4px solid #f4c542 !important;
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table th,
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table td {
+  border-color: rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps table th {
+  background: #e5dcc5 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps details {
+  background: rgba(0,0,0,0.02) !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary {
+  background: rgba(244, 197, 66, 0.08) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps summary:hover {
+  background: rgba(244, 197, 66, 0.22) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-panneau-close {
+  background: rgba(0,0,0,0.05) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay .kta-panneau-close:hover {
+  background: rgba(220, 50, 50, 0.15) !important;
+  border-color: rgba(220, 50, 50, 0.5) !important;
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay input[type="text"],
+html.kta-theme-light .kta-readme-modal-overlay input[type="number"],
+html.kta-theme-light .kta-readme-modal-overlay input[type="search"],
+html.kta-theme-light .kta-readme-modal-overlay input[type="password"],
+html.kta-theme-light .kta-readme-modal-overlay select,
+html.kta-theme-light .kta-readme-modal-overlay textarea {
+  background: #fff !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+}
+html.kta-theme-light .kta-readme-modal-overlay input:focus,
+html.kta-theme-light .kta-readme-modal-overlay select:focus,
+html.kta-theme-light .kta-readme-modal-overlay textarea:focus {
+  border-color: #f4c542 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
+}
+
+/* === Modale Configuration home (loaderConfigModal) avec wrapper kta-loader-config-boite === */
+html.kta-theme-light .kta-loader-config-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+}
+html.kta-theme-light .kta-loader-config-corps {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-loader-config-corps * {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-perf-titre {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-perf-desc {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-perf-btn {
+  background: rgba(0,0,0,0.04) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-perf-btn:hover {
+  background: rgba(244,197,66,0.22) !important;
+  border-color: #f4c542 !important;
+}
+html.kta-theme-light .kta-perf-btn.active {
+  background: #ffffff !important;
+  border-color: #f4c542 !important;
+  box-shadow: inset 0 0 0 1px #f4c542 !important;
+}
+html.kta-theme-light .kta-net-paranoia-toggle {
+  background: rgba(244, 197, 66, 0.06) !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-net-paranoia-toggle * {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-aide-section {
+  background: rgba(0,0,0,0.02) !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-aide-section-titre {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-loader-perf-hint {
+  color: #6b6354 !important;
+}
+
+/* === Audit réseau (loaderNetDocModal + loaderNetLogModal) === */
+html.kta-theme-light #loaderNetLogTbody tr {
+  background: rgba(0,0,0,0.02) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light #loaderNetLogTbody tr:nth-child(even) {
+  background: rgba(0,0,0,0.05) !important;
+}
+html.kta-theme-light #loaderNetLogTbody td {
+  border-bottom: 1px solid rgba(0,0,0,0.12) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light #loaderNetDocWhitelist {
+  background: rgba(0,0,0,0.04) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light #loaderNetLogMeta {
+  color: #6b6354 !important;
+}
+html.kta-theme-light #loaderParanoiaBadge {
+  background: rgba(220, 50, 50, 0.15) !important;
+  color: #b02020 !important;
+  border: 1px solid rgba(220, 50, 50, 0.4) !important;
+}
+
+/* === Modale Choix suppression (apparaît sur clic ❌ Mesure, ❌ Tracé, etc.) === */
+html.kta-theme-light .kta-choix-suppr-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+html.kta-theme-light .kta-choix-suppr-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+}
+html.kta-theme-light .kta-choix-suppr-btn {
+  background: rgba(0,0,0,0.04) !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-choix-suppr-btn:hover {
+  background: rgba(244,197,66,0.22) !important;
+  border-color: #f4c542 !important;
+}
+html.kta-theme-light .kta-choix-suppr-btn.kta-danger {
+  background: rgba(220, 50, 50, 0.1) !important;
+  color: #b02020 !important;
+  border-color: rgba(220, 50, 50, 0.4) !important;
+}
+
+/* === Toast (OOMGuard) === */
+html.kta-theme-light .kta-toast {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+  border-left: 3px solid #f4c542 !important;
+  box-shadow: 0 4px 16px rgba(80,60,30,0.18) !important;
+}
+html.kta-theme-light .kta-toast-msg,
+html.kta-theme-light .kta-toast-icon {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-toast-close {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-toast-error {
+  border-left-color: #c0392b !important;
+}
+html.kta-theme-light .kta-toast-info {
+  border-left-color: #0a4f6b !important;
+}
+
+/* === Modale Replay tracker + Audit + autres modales spécifiques === */
+html.kta-theme-light .kta-tracker-replay-modal,
+html.kta-theme-light .kta-tracker-replay-controls,
+html.kta-theme-light .kta-search-modal-boite,
+html.kta-theme-light .kta-iti-modal-boite,
+html.kta-theme-light .kta-iti-waypoint-item,
+html.kta-theme-light .kta-iti-avoid-chip {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-search-result-item {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border-color: rgba(0,0,0,0.12) !important;
+}
+html.kta-theme-light .kta-search-result-item:hover,
+html.kta-theme-light .kta-search-result-item.kta-search-selected {
+  background: rgba(244,197,66,0.22) !important;
+}
+
 /* === 🔧 v1.13.0-fix3 (KARMA "LE BOUTON QUI permet de charger le dernier
    plan ne prend pas la modif, les modals non plus") : .loader-btn-resume
    a un linear-gradient bleu/dark hardcodé + color:#e8eaf0 + strong:#8cb4ff.
