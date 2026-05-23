@@ -1,14 +1,16 @@
 {
-  "version": "v1.10.0",
+  "version": "v1.10.0-hotfix1",
   "released": "2026-05-23",
   "notes": [
+    "🔧 Hotfix structures : fronts de taille désormais affichés AU-DESSUS des piliers (l'avancement d'exploitation est plus visible que l'architecture statique). En multi-niveau, tri par niveau respecté (niveau bas en arrière).",
+    "🔧 Hotfix couleurs : alignement universel couleur/masse — un trait jaune = 1ère masse, un trait orange = 2e masse (peu importe que ce soit un pilier ou un front). Avant, les fronts avaient les couleurs inversées vs les piliers, source de confusion sur le terrain.",
     "📸 Photos POI complètes : attache jusqu'à 5 photos par point (caméra ou galerie), compressées auto (1920px max, JPEG q85). Stockage 100% local IndexedDB. Visualisation en miniatures dans la popup du marker + viewer plein écran avec pinch-zoom, pan, swipe horizontal et flèches navigation.",
     "📸 Photos dans tous les exports : session Full, session Avancé, conversion session ↔ data layer, et générateur ZIP plan (mode Modifier ou import datalayer ZIP). Format unifié : ZIP avec session.json + photos/_index.json + blobs. Re-import restaure automatiquement.",
     "📦 Bouton « Importer un datalayer ZIP en un clic » dans le générateur — permet de récupérer en un coup les points + tracés + zones + photos exportés depuis un autre plan via Conversion session → data layer.",
-    "🔐 Code d'accès local optionnel (PIN 4-6 chiffres + Face ID / Touch ID via WebAuthn) — accessible depuis ⚙️ Configuration de la page d'accueil. Verrouille l'app à chaque démarrage. 5 tentatives ratées → lockout définitif (reset complet requis). ⚠️ Barrière d'usage, pas un chiffrement des données. Note bien ton code : aucune récupération possible.",
+    "🔐 Code d'accès local optionnel (PIN 4-6 chiffres + Face ID / Touch ID via WebAuthn) — accessible depuis ⚙️ Configuration de la page d'accueil. Verrouille l'app à chaque démarrage. 5 tentatives ratées → lockout définitif (réinstaller l'app ou contacter l'auteur). ⚠️ Barrière d'usage, pas un chiffrement des données. Note bien ton code : aucune récupération possible.",
     "✏️ Modifier un point existant : clic sur un marker session → bouton « ✏️ Modifier » dans la popup → ouvre la fenêtre d'édition pré-remplie (nom, type, description, photos). Renommer un point migre automatiquement ses photos.",
     "🎯 Sélectionner une structure à supprimer au clic (comme pour les tracés et zones depuis longtemps). Supprime la structure cliquée — pattern hybride polygon (piliers + murs) / polyline (fronts).",
     "🧹 « Dernière X (en cours OU fermée) » : tu peux désormais supprimer la zone ou la structure que tu es en train de dessiner d'un seul clic, sans avoir à annuler chaque point un par un. Comportement aligné sur les tracés (existait déjà depuis v1).",
-    "🔎 Bug fixes : titre du plan dans la barre du haut tronqué proprement quand il déborde (cache la version d'abord, puis ellipsis sur le nom dans la couleur jaune charte). Fix status bar après rotation iOS. Fix miniature photo popup qui s'affichait avec un fond bleu sur certains navigateurs."
+    "🏗️ Mode multi-niveau : par défaut, les niveaux -1, 0 et +1 sont visibles (au lieu de juste 0). Tu vois immédiatement les passages entre étages au chargement d'un plan multi-niveau."
   ]
 }

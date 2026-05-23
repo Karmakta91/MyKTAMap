@@ -9,9 +9,70 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (102 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (103 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
-<details id="v1-10-0" open>
+<details id="v1-10-0-hotfix1" open>
+<summary><strong>🗓️ 23/05/2026 — 🔧 v1.10.0-hotfix1 : Structures — fronts au-dessus + couleurs alignées sur piliers</strong></summary>
+
+Patch correctif rapide après le release v1.10.0 du même jour. 2 ajustements
+structures remontés par KARMA terrain :
+
+### 1. Z-order des fronts inversé
+
+**Avant** (v1.10.0 et antérieures) :
+```
+mur < front-2 < front-1 < pilier-2 < pilier-1   (du fond vers l'avant-plan)
+```
+→ Les fronts de taille étaient masqués par les piliers (architecture statique).
+
+**Après** :
+```
+mur < pilier-2 < pilier-1 < front-2 < front-1   (du fond vers l'avant-plan)
+```
+→ Les fronts sont désormais **en avant-plan**, plus visibles. Logique : un front
+de taille = limite d'exploitation = élément "actif" plus parlant visuellement
+que les piliers statiques.
+
+**Tri par niveau en M-LVL** : tri primaire par `level` ascendant (niveau bas en
+arrière, niveau haut au-dessus) avant le tri par type. Cohérent avec le pattern
+roads (§31.5 CLAUDE.md).
+
+3 endroits synchronisés : `js/structures.js > renderStructures`, `js/utils.js >
+ajouterPointsDepuisJSON`, `js/exporter.js > _genererCanvasExport`.
+
+### 2. Couleurs fronts alignées sur piliers
+
+**Avant** : convention couleur **inversée** entre piliers et fronts par "design" :
+- Pilier 1ère masse = jaune `#f4c542` 🟡
+- Pilier 2e masse  = orange `#ff9933` 🟠
+- Front 1ère masse = **orange** `#ff9933` 🟧 (incohérent)
+- Front 2e masse   = **jaune** `#f4c542` 🟨 (incohérent)
+
+KARMA confirme terrain : "si orange = 2e masse, le front de taille orange = 2e
+masse". La cohérence couleur/masse est plus parlante (un trait orange = 2e
+masse partout, un trait jaune = 1ère masse partout, peu importe pilier ou front).
+
+**Après** :
+- Front 1ère masse = jaune `#f4c542` 🟨 (cohérent pilier-1)
+- Front 2e masse   = orange `#ff9933` 🟧 (cohérent pilier-2)
+
+5 fichiers code modifiés (toutes les définitions de styles + UI buttons) :
+`structures.js`, `utils.js`, `exporter.js`, `kmzExport.js`, `interface.js`
+(sidebar group + emoji passé au `_activerStructure`).
+
+Emojis UI updatés partout (`interface.js` aide, `refonteInterface.js` modale
+détail session, `sessionExporter.js` Avancé + Conversion + KMZ, `exporter.js`
+checkboxes). Docs sync : `docs/AI_CONTEXT.md` + `docs/README_USER.md`.
+
+### Rétrocompat
+
+Les plans existants (ZIPs) avec des fronts dessinés AVANT v1.10.0-hotfix1
+gardent leur `type: "front-1"` ou `"front-2"` en JSON — c'est juste leur
+**affichage** qui change. Aucune migration de données, aucun breakage.
+
+</details>
+
+<details id="v1-10-0">
 <summary><strong>🗓️ 23/05/2026 — 🚀 v1.10.0 : Photos POI (capture + viewer + exports + générateur) + Code d'accès local PIN/Face ID</strong></summary>
 
 Release MINOR majeure (1.9.2 → 1.10.0) qui ajoute 2 systèmes complets,
