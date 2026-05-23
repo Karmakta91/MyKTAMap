@@ -12027,6 +12027,291 @@ html.kta-theme-light .kta-readme-modal-overlay .kta-readme-toc-sublist li > .kta
   border-bottom: none !important;
 }
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix10 — BOUTONS .kta-btn-* + MODALE UPDATE + ALERTES
+ * ============================================================================
+ * KARMA "les boutons des modal en mode clair s'affiche moin bien, il
+ * fonctionne mais bizarre graphiquement, pas de contraste, revoit le
+ * CSS, et le modal de mise a jours call depuis le footer s'affiche en
+ * sombre. controle aussi les alerts."
+ *
+ * 3 zones à reprendre :
+ *
+ *   1. Boutons modales (.kta-btn-*) — overrides précédents incomplets :
+ *      .kta-btn-ghost et .kta-btn-link non couverts → restent dark.
+ *
+ *   2. Modale Update (#kta-update-modal) — inline styles dans le HTML
+ *      generated par afficherModaleUpdateDispo : background:rgba(140,180,
+ *      255,0.06) pour bloc versions + couleurs hardcodées #8892a4, #c8d0e0,
+ *      #8cb4ff, #f4c542 sur les span enfants. Mes catch-all couvrent text
+ *      mais PAS les backgrounds inline (qui battent CSS sans !important).
+ *
+ *   3. Alertes (.kta-alert-*) — emergency rouge volontairement DRAMATIQUE
+ *      (focus max). Garde le rouge même en clair MAIS adapte la lisibilité
+ *      du msg/details qui ont des couleurs trop muted (ffe4d4, c8d0e0).
+ *      .kta-alert-absent-* (modale "Aucune alerte") = mode plus neutre,
+ *      doit suivre le thème clair.
+ * ============================================================================ */
+
+/* === Boutons .kta-btn-* === */
+html.kta-theme-light .kta-btn {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+}
+html.kta-theme-light .kta-btn:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: #f4c542 !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-btn-primary {
+  background: #f4c542 !important;
+  color: #2a2620 !important;
+  border: 1px solid #d9a82e !important;
+  font-weight: 600 !important;
+}
+html.kta-theme-light .kta-btn-primary:hover {
+  background: #d9a82e !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-btn-secondary {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+}
+html.kta-theme-light .kta-btn-secondary:hover {
+  background: rgba(244, 197, 66, 0.15) !important;
+  border-color: #f4c542 !important;
+}
+/* Ghost = transparent avec bordure, souvent pour "Annuler" ou "Plus tard" */
+html.kta-theme-light .kta-btn-ghost {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: #6b6354 !important;
+  border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}
+html.kta-theme-light .kta-btn-ghost:hover {
+  background: rgba(0, 0, 0, 0.08) !important;
+  color: #2a2620 !important;
+  border-color: rgba(0, 0, 0, 0.30) !important;
+}
+/* Link = bouton ressemblant à un lien texte, souvent pour actions
+   secondaires / dangereuses ("Forcer un reset complet à la place") */
+html.kta-theme-light .kta-btn-link {
+  background: transparent !important;
+  color: #d9a82e !important;
+  border: none !important;
+  text-decoration: underline !important;
+}
+html.kta-theme-light .kta-btn-link:hover {
+  color: #8b5a00 !important;
+}
+/* Variante danger (Reset complet) */
+html.kta-theme-light .kta-btn.kta-btn-danger,
+html.kta-theme-light .kta-btn-secondary.kta-btn-danger {
+  background: rgba(220, 50, 50, 0.10) !important;
+  color: #b02020 !important;
+  border: 1px solid rgba(220, 50, 50, 0.45) !important;
+}
+html.kta-theme-light .kta-btn.kta-btn-danger:hover,
+html.kta-theme-light .kta-btn-secondary.kta-btn-danger:hover {
+  background: rgba(220, 50, 50, 0.20) !important;
+}
+/* Lien-danger spécifique update modal */
+html.kta-theme-light .kta-update-link-danger {
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-update-link-danger:hover {
+  color: #8a1818 !important;
+}
+
+/* === Modale UPDATE (#kta-update-modal) — override des inline styles ===
+   Les inline styles dans le HTML d'afficherModaleUpdateDispo utilisent des
+   backgrounds en rgba(140,180,255,0.06) et des couleurs dark (#8892a4,
+   #c8d0e0, #8cb4ff). On les remplace ciblé. Note : style="" inline est
+   battu par notre selector ID + !important (cascade origin author
+   important > inline non-important). */
+html.kta-theme-light #kta-update-modal .kta-readme-modal-corps {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+}
+/* Bloc des 2 versions (Installée → Disponible) */
+html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,180,255"] {
+  background: rgba(244, 197, 66, 0.10) !important;
+  border: 1px solid rgba(244, 197, 66, 0.35) !important;
+}
+html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,180,255"] > div {
+  color: #6b6354 !important;
+}
+html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,180,255"] > div strong {
+  color: #2a2620 !important;
+}
+/* La flèche centrale "→" */
+html.kta-theme-light #kta-update-modal .kta-aide-section > div[style*="rgba(140,180,255"] > div[style*="font-size:20px"] {
+  color: #d9a82e !important;
+}
+/* Bloc "Mise à jour douce (recommandée)" — vert kept mais texte clair */
+html.kta-theme-light #kta-update-modal div[style*="rgba(108,226,138"] {
+  background: rgba(46, 139, 87, 0.12) !important;
+  border-color: rgba(46, 139, 87, 0.40) !important;
+}
+html.kta-theme-light #kta-update-modal div[style*="rgba(108,226,138"] > div[style*="font-weight:700"] {
+  color: #1f6b3a !important;
+}
+html.kta-theme-light #kta-update-modal div[style*="rgba(108,226,138"] > div:not([style*="font-weight"]) {
+  color: #2a2620 !important;
+}
+/* Bloc "Reset complet" — rouge kept */
+html.kta-theme-light #kta-update-modal div[style*="rgba(255,107,107"] {
+  background: rgba(220, 50, 50, 0.08) !important;
+  border-color: rgba(220, 50, 50, 0.35) !important;
+}
+html.kta-theme-light #kta-update-modal div[style*="rgba(255,107,107"] > div[style*="font-weight:700"] {
+  color: #b02020 !important;
+}
+html.kta-theme-light #kta-update-modal div[style*="rgba(255,107,107"] > div:not([style*="font-weight"]) {
+  color: #2a2620 !important;
+}
+
+/* === Alertes publiques === */
+/* Alerte EMERGENCY (rouge dramatique) — garde le ton rouge même en clair
+   car c'est volontaire pour focus max. Mais le msg + details doivent
+   rester lisibles. */
+html.kta-theme-light .kta-alert-overlay {
+  background: rgba(40, 32, 20, 0.85) !important;
+}
+html.kta-theme-light .kta-alert-boite {
+  background: #fdf8eb !important;
+  border: 2px solid #c0392b !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-header {
+  background: linear-gradient(135deg, rgba(220, 50, 50, 0.22), rgba(220, 50, 50, 0.08)) !important;
+  border-bottom: 1px solid rgba(220, 50, 50, 0.50) !important;
+}
+html.kta-theme-light .kta-alert-title-text {
+  color: #8a1818 !important;
+  text-shadow: 0 0 6px rgba(220, 50, 50, 0.30) !important;
+}
+html.kta-theme-light .kta-alert-pulse-side {
+  color: #c0392b !important;
+  text-shadow: 0 0 8px rgba(220, 50, 50, 0.50) !important;
+}
+html.kta-theme-light .kta-alert-msg {
+  color: #2a2620 !important;
+  font-weight: 500 !important;
+}
+html.kta-theme-light .kta-alert-details {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-alert-released {
+  color: #6b6354 !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-alert-btn-ok {
+  background: #c0392b !important;
+  border: 1px solid #8a1818 !important;
+  color: #fff !important;
+}
+html.kta-theme-light .kta-alert-btn-ok:hover {
+  background: #a82e22 !important;
+}
+/* Variantes warning (orange) + info (bleu) */
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-warning .kta-alert-boite {
+  border-color: #d97a1c !important;
+}
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-warning .kta-alert-header {
+  background: linear-gradient(135deg, rgba(217, 122, 28, 0.22), rgba(217, 122, 28, 0.08)) !important;
+  border-bottom: 1px solid rgba(217, 122, 28, 0.50) !important;
+}
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-warning .kta-alert-title-text {
+  color: #8b4a0c !important;
+}
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-info .kta-alert-boite {
+  border-color: #0a4f6b !important;
+}
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-info .kta-alert-header {
+  background: linear-gradient(135deg, rgba(10, 79, 107, 0.20), rgba(10, 79, 107, 0.08)) !important;
+  border-bottom: 1px solid rgba(10, 79, 107, 0.50) !important;
+}
+html.kta-theme-light .kta-alert-overlay.kta-alert-level-info .kta-alert-title-text {
+  color: #0a4f6b !important;
+}
+
+/* Alerte ABSENTE ("✅ Aucune alerte en cours" / offline) — modale neutre,
+   doit suivre le thème clair sans drama rouge */
+html.kta-theme-light .kta-alert-absent-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+html.kta-theme-light .kta-alert-absent-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+  box-shadow: 0 10px 40px rgba(80, 60, 30, 0.18) !important;
+}
+html.kta-theme-light .kta-alert-absent-header {
+  background: #e5dcc5 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-alert-absent-icon {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-absent-title {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-absent-msg {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-absent-msg strong {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-alert-absent-version-block {
+  background: rgba(244, 197, 66, 0.10) !important;
+  border: 1px solid rgba(244, 197, 66, 0.35) !important;
+}
+html.kta-theme-light .kta-alert-absent-version-released {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-alert-absent-version-released strong {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-absent-version-notes-titre {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-alert-absent-version-notes {
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-alert-absent-version-notes li {
+  color: #4a3f30 !important;
+}
+
+/* Modale sélecteur d'alertes (cascade plusieurs alertes) */
+html.kta-theme-light #kta-alert-selector-modal,
+html.kta-theme-light .kta-alert-selector-row {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+html.kta-theme-light .kta-alert-selector-row:hover {
+  background: rgba(244, 197, 66, 0.10) !important;
+}
+html.kta-theme-light .kta-alert-selector-row-emergency {
+  border-left: 4px solid #c0392b !important;
+}
+html.kta-theme-light .kta-alert-selector-row-warning {
+  border-left: 4px solid #d97a1c !important;
+}
+html.kta-theme-light .kta-alert-selector-row-info {
+  border-left: 4px solid #0a4f6b !important;
+}
+html.kta-theme-light .kta-alert-selector-row-seen {
+  opacity: 0.65 !important;
+}
+
+/* Modale charte communautaire au boot (#kta-alert-charte) */
+html.kta-theme-light #kta-alert-charte {
+  background: rgba(40, 32, 20, 0.85) !important;
+}
+
 /* === Modale Configuration home (loaderConfigModal) avec wrapper kta-loader-config-boite === */
 html.kta-theme-light .kta-loader-config-boite {
   background: #fdf8eb !important;
