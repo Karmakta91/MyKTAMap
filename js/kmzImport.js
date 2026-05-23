@@ -569,6 +569,8 @@
     // "files/icons/<tag>.<ext>" ou simplement "icons/<tag>.<ext>" si le
     // KMZ a été ré-archivé manuellement. Pour chaque trouvée : copie dans
     // le ZIP MyKTAMap + mapping dans planConfig.icons.
+    let _hasTrackIcon   = false;
+    let _hasDefaultIcon = false;
     if (opts.assets && typeof opts.assets === "object") {
       for (const path of Object.keys(opts.assets)) {
         const m = path.match(/(?:^|\/)icons\/([^\/]+)\.(png|jpe?g|webp|svg|gif)$/i);
@@ -580,6 +582,46 @@
         const targetName = "icon/" + tag + "." + ext;
         zip.file(targetName, iconBlob);
         planConfig.icons[tag] = targetName;
+        if (tag === "track")   _hasTrackIcon = true;
+        if (tag === "default") _hasDefaultIcon = true;
+      }
+    }
+
+    // v1.14.20-hotfix10 (KARMA « perte de l'icône tracker, on doit repartir
+    // en default pour le tracker si non c'est bien ») : si le KMZ source
+    // n'embarquait PAS d'icône `track` (cas où aucun point n'avait ce tag
+    // — typique d'un KMZ V2 sans tracker), on tente de fetcher l'icône
+    // depuis l'app courante (qui la sert sous icon/iconetrack.png). Idem
+    // pour `default` si absente. Cached par le SW donc fonctionne aussi
+    // offline.
+    async function _tenterFetchIconeApp(relativePath) {
+      try {
+        const r = await fetch(relativePath);
+        if (r && r.ok) {
+          const blob = await r.blob();
+          if (blob && blob.size > 0) return blob;
+        }
+      } catch(e) {}
+      return null;
+    }
+    if (!_hasTrackIcon) {
+      const fetched = await _tenterFetchIconeApp("icon/iconetrack.png");
+      if (fetched) {
+        zip.file("icon/iconetrack.png", fetched);
+        planConfig.icons.track = "icon/iconetrack.png";
+      } else if (planConfig.icons.default && _hasDefaultIcon) {
+        // Fallback : pointer track sur l'icône default qu'on a sauvée.
+        planConfig.icons.track = planConfig.icons.default;
+      }
+    }
+    if (!_hasDefaultIcon) {
+      const fetched = await _tenterFetchIconeApp("icon/iconetrack.png");
+      if (fetched) {
+        // Réutilise iconetrack comme default si pas mieux dans le KMZ.
+        zip.file("icon/iconetrack.png", fetched);
+        planConfig.icons.default = "icon/iconetrack.png";
+        // Et si track était vide aussi, on l'aligne sur default
+        if (!_hasTrackIcon) planConfig.icons.track = "icon/iconetrack.png";
       }
     }
 
