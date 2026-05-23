@@ -8589,6 +8589,28 @@ a.kta-level-btn {
 /* Pattern identique au tracker warning (cf. ci-dessous) mais avec un accent
    violet (la couleur du V2 dans le planner et les badges plan). Conversion
    lourde donc on conseille PC, avec details memoire/CPU/duree. */
+/* v1.14.20-hotfix7 (KARMA « bug import KMZ en longueur notre fameux
+   classique ») : application du pattern containment universel à la
+   modale 🌍 Import KMZ. Le contenu (upload + résumé + config + actions
+   d'import) peut largement dépasser 88vh sur mobile portrait avec un
+   KMZ MyKTAMap riche en placemarks. */
+.kta-kmz-imp-boite {
+  max-width: 620px;
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.kta-kmz-imp-boite .kta-readme-modal-header,
+.kta-kmz-imp-boite .kta-aide-actions {
+  flex: 0 0 auto !important;
+}
+.kta-kmz-imp-boite #kta-kmz-imp-corps {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+
 .kta-v2-warn-boite {
   border: 1px solid rgba(180, 82, 255, 0.40);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), 0 0 24px rgba(180, 82, 255, 0.10);

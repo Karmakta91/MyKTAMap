@@ -2449,7 +2449,7 @@ function _afficherImporterKmz(prefilledFile) {
   modal.id        = "kta-kmz-import-modal";
   modal.className = "kta-readme-modal-overlay";
   modal.innerHTML = `
-    <div class="kta-readme-modal-boite" style="max-width:620px;">
+    <div class="kta-readme-modal-boite kta-kmz-imp-boite">
       <div class="kta-readme-modal-header">
         <span class="kta-readme-modal-titre">🌍 Importer un KMZ → ZIP MyKTAMap</span>
         <button class="kta-panneau-close" id="kta-kmz-imp-close">✕</button>
