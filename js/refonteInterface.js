@@ -81,20 +81,21 @@
   // ============================================================
   // LECTURE FLAG (au chargement du module)
   // ============================================================
-  // Retourne TRUE si la nouvelle interface est active.
-  // C'est TRUE par défaut sauf si l'user a explicitement coché "ancienne".
+  // v1.14.19 (KARMA « supprime la possibilité d'utiliser l'ancienne
+  // interface ») : le flag legacy est désactivé. La nouvelle interface
+  // est désormais imposée pour tout le monde. On nettoie aussi le
+  // localStorage des anciens users qui auraient le flag legacy actif,
+  // pour éviter qu'un cache navigateur ne les laisse coincés sur
+  // l'ancienne version morte.
   function _readFlag() {
-    try {
-      return localStorage.getItem(LS_LEGACY) !== "1";
-    } catch(e) { return true; }  // localStorage indispo → on prend le défaut (nouvelle)
+    try { localStorage.removeItem(LS_LEGACY); } catch(e) {}
+    return true;
   }
 
-  // Set la nouvelle interface ON (value=true) ou OFF (value=false = legacy).
+  // Conservée pour compat des callers existants, mais ne fait plus rien
+  // de fonctionnel — la valeur est toujours true.
   function _writeFlag(value) {
-    try {
-      if (value) localStorage.removeItem(LS_LEGACY);     // remove = défaut = nouvelle
-      else       localStorage.setItem(LS_LEGACY, "1");   // set = legacy = ancienne
-    } catch(e) {}
+    try { localStorage.removeItem(LS_LEGACY); } catch(e) {}
   }
 
   // Exposer l'état tôt pour que interface.js puisse le lire avant init

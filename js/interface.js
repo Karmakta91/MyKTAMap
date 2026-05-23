@@ -1710,7 +1710,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⚙️ Paramètres</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug — réglages <strong>par plan</strong></span>
+            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug, <strong>🌐 Géoréférencement GPS (v1.14.19)</strong> — réglages <strong>par plan</strong>. Le calibrage GPS saisi ici est auto-rempli quand tu ouvres 📡 Export externe.</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> (v1.13.0, v1.14.2 reload) — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un reload complet de l'app pour éviter les bugs résiduels d'affichage. Choix persisté globalement par appareil.</span>
             <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
           </div>
@@ -2267,6 +2267,159 @@ function _bindMultiLevelToggle() {
 }
 
 // =========================
+// 🌐 GÉORÉFÉRENCEMENT GPS — section de la modale ⚙️ Configuration
+// =========================
+// v1.14.19 (KARMA « rajoute la possibilité de faire le géo référencement
+// depuis les paramètres en mode map, auto remplis ensuite si je retourne
+// dans exporter »).
+//
+// Persistance via window.KmzExport.setCalibration(planId, c) — exactement
+// le même backend que la modale 📡 Export externe (sessionExporter.js).
+// Du coup, calibrage saisi ici → automatiquement pré-rempli quand l'user
+// va dans Export externe.
+//
+// Convention d'IDs : préfixe `cfg_kmz_` pour ne pas entrer en collision
+// avec les `kmz_A_x` etc. de sessionExporter (au cas où les 2 modales
+// seraient ouvertes en même temps — improbable mais propre).
+function _renderCfgGeorefSection() {
+  // Pré-charge le calibrage actuel s'il existe
+  const planId = window._currentLoadedPlanId || "default";
+  const saved  = (window.KmzExport && window.KmzExport.getCalibration)
+                  ? window.KmzExport.getCalibration(planId) : null;
+  const pA = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
+  const pB = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
+
+  return '' +
+    '<div class="kta-aide-section">' +
+      '<div class="kta-aide-section-titre">🌐 Géoréférencement GPS</div>' +
+      '<p style="font-size:12px; color:#8892a4; margin:4px 0 12px; line-height:1.5;">' +
+        'Calibre le plan en saisissant <strong>2 points de référence</strong> ' +
+        '(coordonnées x/y plan + lat/lng GPS WGS84). MyKTAMap calcule la ' +
+        'transformation rotation+échelle+translation pour projeter toutes les ' +
+        'annotations sur le globe. Le calibrage est <strong>persisté localement ' +
+        'par plan</strong> et automatiquement pré-rempli quand tu ouvres ' +
+        '<strong>📡 Export externe</strong> (KMZ / GPX) ou que tu importes un GPX.' +
+      '</p>' +
+
+      // ===== Point A =====
+      '<div class="kta-kmz-section" style="margin:8px 0;">' +
+        '<div class="kta-kmz-section-titre">📍 Point A</div>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<input type="number" id="cfg_kmz_A_x"   value="' + pA.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<input type="number" id="cfg_kmz_A_y"   value="' + pA.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">GPS lat :</label>' +
+          '<input type="number" id="cfg_kmz_A_lat" value="' + pA.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8580">' +
+          '<label class="kta-kmz-lbl">GPS lng :</label>' +
+          '<input type="number" id="cfg_kmz_A_lng" value="' + pA.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.2945">' +
+        '</div>' +
+      '</div>' +
+
+      // ===== Point B =====
+      '<div class="kta-kmz-section" style="margin:8px 0;">' +
+        '<div class="kta-kmz-section-titre">📍 Point B</div>' +
+        '<div class="kta-kmz-pt-grille">' +
+          '<label class="kta-kmz-lbl">Plan x :</label>' +
+          '<input type="number" id="cfg_kmz_B_x"   value="' + pB.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">Plan y :</label>' +
+          '<input type="number" id="cfg_kmz_B_y"   value="' + pB.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
+          '<label class="kta-kmz-lbl">GPS lat :</label>' +
+          '<input type="number" id="cfg_kmz_B_lat" value="' + pB.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8520">' +
+          '<label class="kta-kmz-lbl">GPS lng :</label>' +
+          '<input type="number" id="cfg_kmz_B_lng" value="' + pB.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.3050">' +
+        '</div>' +
+      '</div>' +
+
+      '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
+
+      '<div style="display:flex; gap:8px; flex-wrap:wrap;">' +
+        '<button class="kta-btn kta-btn-primary" type="button" id="cfg_kmz_save">' +
+          '💾 Sauvegarder le calibrage' +
+        '</button>' +
+        '<button class="kta-btn kta-btn-ghost"   type="button" id="cfg_kmz_clear">' +
+          '🗑️ Effacer' +
+        '</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function _bindCfgGeorefHandlers() {
+  const btnSave   = document.getElementById("cfg_kmz_save");
+  const btnClear  = document.getElementById("cfg_kmz_clear");
+  const statusEl  = document.getElementById("cfg_kmz_status");
+  if (!btnSave || !btnClear) return;  // section pas dans le DOM (sécurité)
+
+  function _setStatus(msg, type) {
+    if (!statusEl) return;
+    const color = (type === "ok") ? "#6ce28a" : (type === "err") ? "#ff8080" : "#8892a4";
+    statusEl.style.color = color;
+    statusEl.textContent = msg || "";
+  }
+
+  function _readVal(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const v = el.value;
+    if (v === "" || v == null) return null;
+    const n = parseFloat(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  btnSave.addEventListener("click", function() {
+    if (!window.KmzExport) {
+      _setStatus("Module KmzExport indisponible.", "err");
+      return;
+    }
+    const c = {
+      pointA: { x: _readVal("cfg_kmz_A_x"), y: _readVal("cfg_kmz_A_y"),
+                lat: _readVal("cfg_kmz_A_lat"), lng: _readVal("cfg_kmz_A_lng") },
+      pointB: { x: _readVal("cfg_kmz_B_x"), y: _readVal("cfg_kmz_B_y"),
+                lat: _readVal("cfg_kmz_B_lat"), lng: _readVal("cfg_kmz_B_lng") }
+    };
+    // Validation : tous les 8 champs requis
+    if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
+        c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
+      _setStatus("Les 8 champs sont obligatoires (4 par point).", "err");
+      return;
+    }
+    // Validation transform (lève si points colinéaires ou distance nulle)
+    try {
+      window.KmzExport.buildTransform(
+        { x: c.pointA.x, y: c.pointA.y },
+        { x: c.pointB.x, y: c.pointB.y },
+        { lat: c.pointA.lat, lng: c.pointA.lng },
+        { lat: c.pointB.lat, lng: c.pointB.lng }
+      );
+    } catch(e) {
+      _setStatus("Calibrage invalide : " + e.message, "err");
+      return;
+    }
+    // Persistance
+    const planId = window._currentLoadedPlanId || "default";
+    window.KmzExport.setCalibration(planId, c);
+    _setStatus("✅ Calibrage sauvegardé. Auto-rempli dans 📡 Export externe.", "ok");
+    if (window.OOMGuard && window.OOMGuard.showToast) {
+      window.OOMGuard.showToast("🌐 Calibrage GPS sauvegardé", "info");
+    }
+  });
+
+  btnClear.addEventListener("click", function() {
+    ["A_x","A_y","A_lat","A_lng","B_x","B_y","B_lat","B_lng"].forEach(function(k) {
+      const el = document.getElementById("cfg_kmz_" + k);
+      if (el) el.value = "";
+    });
+    // Efface aussi la version persistée (préfixe identique à
+    // KMZ_CALIB_LS_PREFIX dans js/kmzExport.js).
+    try {
+      const planId = window._currentLoadedPlanId || "default";
+      localStorage.removeItem("myktamap_kmz_calib_" + planId);
+    } catch(e) {}
+    _setStatus("Calibrage effacé.", null);
+  });
+}
+
+// =========================
 // CONFIG — modale plein écran
 // =========================
 function afficherConfig() {
@@ -2374,16 +2527,7 @@ function afficherConfig() {
 
         ${_renderPerfUltraSection()}
 
-        <!-- 🎨 Affichage : choix interface (nouvelle = défaut depuis
-             v1.8.1-refonte-8, ancienne = opt-in pour conservateurs ou
-             en cas de bug bloquant sur la refonte). -->
-        <div class="kta-aide-section">
-          <div class="kta-perf-titre">🎨 Affichage</div>
-          <label class="kta-net-paranoia-toggle" style="background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22);">
-            <input type="checkbox" id="kta-cfg-legacy-cb" ${window._refonteInterfaceActive === true ? "" : "checked"}>
-            <span><strong>📜 Utiliser l'ancienne interface (classique v1.8.x)</strong> — par défaut tu utilises la <strong>nouvelle interface</strong> (header bar avec compteurs, sidebars unifiées gauche/droite, status bar). Coche cette case si tu préfères l'ancienne (icônes empilées sans header). <strong>Reload requis</strong> au toggle.</span>
-          </label>
-        </div>
+        ${_renderCfgGeorefSection()}
 
         <!--
           🆕 v1.7.3 (suite KARMA) : bouton 🗑️ Réinitialiser RETIRÉ de la modale ⚙️
@@ -2411,44 +2555,13 @@ function afficherConfig() {
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();
 
-  // 🎨 Affichage : toggle "Utiliser l'ancienne interface" (LEGACY).
-  // Sémantique inversée depuis v1.8.1-refonte-8 :
-  //   - case cochée  = ancienne interface (legacy)
-  //   - case décochée = nouvelle interface (refonte, défaut)
-  // RefonteInterface.setActive(value) prend la valeur DE LA NOUVELLE
-  // interface (true = nouvelle, false = legacy). Donc on l'appelle avec
-  // !checkbox.checked.
-  const legacyCb = document.getElementById("kta-cfg-legacy-cb");
-  if (legacyCb) {
-    legacyCb.addEventListener("change", function() {
-      const wantNouvelle = !legacyCb.checked;  // cochée = legacy, donc !cochée = nouvelle
-      if (window.RefonteInterface && typeof window.RefonteInterface.setActive === "function") {
-        // 🆕 v1.9.2-fix4 : setActive retourne une Promise (modale charte).
-        // On revert le checkbox si l'utilisateur annule (Plus tard / ✕ /
-        // backdrop / Échap) — le flag n'a PAS été écrit dans ce cas.
-        const result = window.RefonteInterface.setActive(wantNouvelle);
-        if (result && typeof result.then === "function") {
-          result.then(function(confirmed) {
-            if (!confirmed) {
-              legacyCb.checked = (window._refonteInterfaceActive !== true);
-            }
-          });
-        } else {
-          // Fallback ancien API sync (sécurité)
-          legacyCb.checked = (window._refonteInterfaceActive !== true);
-        }
-      } else {
-        // Fallback (module non chargé) — set direct localStorage
-        try {
-          if (wantNouvelle) localStorage.removeItem("myktamap_legacy_interface");
-          else              localStorage.setItem("myktamap_legacy_interface", "1");
-        } catch(e) {}
-        if (confirm("Interface " + (wantNouvelle ? "nouvelle" : "ancienne") + " au prochain démarrage. Recharger ?")) {
-          location.reload();
-        }
-      }
-    });
-  }
+  // 🌐 v1.14.19 (KARMA « rajoute la possibilité de faire le géo référencement
+  // depuis les paramètres en mode map, auto remplis ensuite si je retourne
+  // dans exporter ») : bind les handlers de la nouvelle section
+  // 🌐 Géoréférencement GPS. Sauve via KmzExport.setCalibration(planId, c)
+  // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
+  // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
+  _bindCfgGeorefHandlers();
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
   // uniquement via le générateur de plan désormais. Les fonctions
