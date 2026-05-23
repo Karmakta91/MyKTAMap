@@ -10922,42 +10922,79 @@ body.kta-theme-light .kta-refonte-statusbar-toggle {
   background: rgba(0,0,0,0.04);
 }
 
-/* === SIDEBARS (groupes accordéons gauche + droite) === */
-body.kta-theme-light .kta-refonte-sidebar,
-body.kta-theme-light .kta-refonte-sidebar-right {
-  background: var(--kta-light-bg-deep);
-  border-color: var(--kta-light-border);
+/* === SIDEBARS Leaflet — boutons principaux + sous-actions ===
+   🔧 v1.13.0-fix (KARMA "le mode clair ne comprend pas les icônes dans les
+   menus déroulants gauche et droite") : les vraies classes utilisées par
+   _creerGroupeAccordeon sont `.leaflet-bar a` (bouton principal) et
+   `.leaflet-bar a.kta-sub` (sous-action), pas les `.kta-groupe-*` que
+   j'avais utilisés. Les règles dark d'origine utilisent `!important` (cf
+   ligne 624) donc nos overrides light doivent aussi être `!important`. */
+body.kta-theme-light .leaflet-bar a {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
 }
-body.kta-theme-light .kta-groupe-btn,
-body.kta-theme-light .kta-groupe-btn-principal {
-  background: rgba(0,0,0,0.04);
-  color: var(--kta-light-text);
-  border: 1px solid var(--kta-light-border);
+body.kta-theme-light .leaflet-bar a:hover {
+  background: #f4ecd4 !important;
+  color: #1a1612 !important;
 }
-body.kta-theme-light .kta-groupe-btn:hover,
-body.kta-theme-light .kta-groupe-btn-principal:hover {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
+body.kta-theme-light .leaflet-bar a.kta-sub {
+  background: #fbf3e0 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.08) !important;
+  color: #2a2620 !important;
 }
-body.kta-theme-light .kta-groupe-btn-principal.kta-group-mode-actif {
-  background: var(--kta-light-accent-bg);
-  border-color: var(--kta-light-accent);
-  box-shadow: 0 0 8px rgba(244, 197, 66, 0.4);
+body.kta-theme-light .leaflet-bar a.kta-sub:hover {
+  background: #f4ecd4 !important;
+  color: #1a1612 !important;
 }
-body.kta-theme-light .kta-groupe-sous-actions {
-  background: var(--kta-light-bg-elevated);
-  border: 1px solid var(--kta-light-border);
-  box-shadow: 0 4px 12px var(--kta-light-shadow);
+/* État actif (mode mesure / édition / etc. en cours) — vert kept pour rester
+   reconnaissable (cohérent avec dark) mais légèrement adapté en clair */
+body.kta-theme-light .leaflet-bar a.kta-actif,
+body.kta-theme-light .leaflet-bar a.kta-actif:hover {
+  background: #2e8b57 !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 2px #4caf76 !important;
 }
-body.kta-theme-light .kta-groupe-sous-action {
-  color: var(--kta-light-text);
+/* Bouton principal en mode actif (sa pulsation jaune doit rester visible) */
+body.kta-theme-light .leaflet-bar a.kta-group-mode-actif {
+  background: var(--kta-light-accent-bg) !important;
+  color: #2a2620 !important;
+  box-shadow: inset 0 0 0 2px var(--kta-light-accent-hover) !important;
 }
-body.kta-theme-light .kta-groupe-sous-action:hover {
-  background: var(--kta-light-accent-bg);
+/* Sous-action urgence (rouge distinctif — kept en clair pour rester
+   identifiable) */
+body.kta-theme-light a.kta-sub.kta-sous-action-urgence {
+  background: #c0392b !important;
+  color: #fff !important;
 }
-body.kta-theme-light .kta-groupe-sous-action.kta-actif {
-  background: var(--kta-light-accent-bg);
-  border-left: 3px solid var(--kta-light-accent);
+body.kta-theme-light a.kta-sub.kta-sous-action-urgence:hover {
+  background: #a33024 !important;
+}
+
+/* Background des conteneurs leaflet-bar (= la "barre" qui contient les
+   boutons) — par défaut transparent, mais on s'assure que la bordure
+   externe est cohérente en clair */
+body.kta-theme-light .leaflet-bar {
+  border: 1px solid var(--kta-light-border-strong) !important;
+  box-shadow: 0 2px 6px var(--kta-light-shadow) !important;
+}
+
+/* Layers toggle (haut-droite Leaflet — control des calques) */
+body.kta-theme-light .leaflet-control-layers-toggle {
+  background-color: #fdf8eb !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='%232a2620' d='M1 1h16v2H1zm0 4h16v2H1zm0 4h16v2H1zm0 4h16v2H1z'/%3E%3C/svg%3E") !important;
+}
+body.kta-theme-light .leaflet-control-layers {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  box-shadow: 0 4px 12px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .leaflet-control-layers-expanded label {
+  color: #2a2620 !important;
+}
+body.kta-theme-light .leaflet-control-layers-separator {
+  border-top: 1px solid var(--kta-light-border) !important;
 }
 
 /* === MODALES (kta-readme-modal-* pattern utilisé partout) === */
@@ -11300,10 +11337,12 @@ body.kta-theme-light .kta-refonte-counters-btn {
   color: var(--kta-light-text);
 }
 
-/* === Bouton ⏪ / ⏩ Historique grisé === */
-body.kta-theme-light .kta-groupe-sous-action.kta-disabled {
-  color: var(--kta-light-text-dim);
-  opacity: 0.5;
+/* === Bouton ⏪ / ⏩ Historique grisé (pile vide) === */
+body.kta-theme-light .leaflet-bar a.kta-sub.kta-disabled,
+body.kta-theme-light .leaflet-bar a.kta-disabled {
+  color: var(--kta-light-text-dim) !important;
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
 }
 
 /* === Splash quand on revient au mode carte (anti-FOUC) ===
