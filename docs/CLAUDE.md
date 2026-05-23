@@ -3436,53 +3436,77 @@ Module `js/themeManager.js` (~150 lignes IIFE) → `window.ThemeManager = { init
 #### 53.1 Activation & persistance
 
 - `localStorage["myktamap_theme_v1"]` = `"dark"` (défaut) | `"light"` — globale par appareil, jamais par plan
-- Au boot : `ThemeManager.init()` lit le localStorage et applique `body.kta-theme-light` (ou retire)
-- `setTheme(t)` : applique + persiste + notifie les listeners + update `<meta name="theme-color">` (statusbar mobile)
+- Au boot : `ThemeManager.init()` lit le localStorage et applique la classe `.kta-theme-light` sur **`document.documentElement` ET sur `document.body`** (les 2 — critique pour matcher les modales appendées à `<html>` qui sont sibling de body)
+- `setTheme(t)` : applique + persiste + notifie les listeners + update `<meta name="theme-color">` (statusbar mobile : #f0e8d8 clair / #111827 sombre)
 - `toggleTheme()` : flip dark ⇄ light
 
-#### 53.2 Position du toggle UI
+#### 53.2 Position du toggle UI — 2 endroits synchronisés
 
-Sous-action dans le groupe `⚙️ Paramètres` de la sidebar gauche (KARMA choix A:a) — `interface.js > _creerGroupeAccordeon({ id: "settings", sousActions: [...] })`. Avant v1.13.0 ce groupe utilisait `soloAction: afficherConfig` → migré en `sousActions: [⚙️ Réglages, ☀️/🌙 Thème]`. Le clic sur ⚙️ déplie maintenant 2 boutons au lieu d'ouvrir directement la modale config.
+1. **Sidebar gauche (mode carte)** : groupe `⚙️ Paramètres` (KARMA choix A:a) → `interface.js > _creerGroupeAccordeon({ id: "settings", sousActions: [⚙️ Réglages, ☀️/🌙 Thème] })`. Avant v1.13.0 ce groupe utilisait `soloAction: afficherConfig` (clic direct sur ⚙️ ouvrait la modale) → migré en sousActions pour héberger le toggle.
 
-#### 53.3 Stratégie CSS (~350 lignes)
+2. **Modale Configuration home** : checkbox `#loaderThemeLightCb` dans la section "🔍 Affichage" (script handler `index.html` ~ligne 2620). Au boot, sync via `ThemeManager.isLight()` ; au `change` : `ThemeManager.setTheme(checked ? "light" : "dark")`.
 
-Tout dans `css/style.css` en fin de fichier, scoped sur `body.kta-theme-light .selector`. Variables CSS dédiées :
+Les 2 toggles sont **synchronisés via `ThemeManager.onChange()`** — changer depuis l'un met à jour l'autre automatiquement.
+
+#### 53.3 Stratégie CSS (~1200 lignes au final)
+
+Tout dans `css/style.css` en fin de fichier, scoped sur **`body.kta-theme-light .selector`** (pour le contenu intra-body) ET **`html.kta-theme-light .selector`** (pour les modales appendées à `documentElement` qui sont sibling de body). Variables CSS dédiées :
 
 ```css
 body.kta-theme-light {
-  --kta-light-bg:           #f0e8d8;
-  --kta-light-bg-elevated:  #fdf8eb;
-  --kta-light-bg-deep:      #e5dcc5;
-  --kta-light-text:         #2a2620;
-  --kta-light-text-muted:   #6b6354;
-  --kta-light-border:       rgba(0,0,0,0.12);
-  --kta-light-accent:       #f4c542;       /* jaune charte conservé */
-  --kta-light-accent-hover: #d9a82e;
-  --kta-light-shadow:       rgba(80,60,30,0.18);
+  --kta-light-bg:            #f0e8d8;  /* body + container Leaflet (beige cataphile) */
+  --kta-light-bg-bar:        #c9b88f;  /* header + footer + sidebar + icônes (brun-beige) */
+  --kta-light-bg-bar-deep:   #b8a576;  /* hover sur bar items */
+  --kta-light-bg-bar-border: #9a8754;  /* bordure forte entre bar/body */
+  --kta-light-bg-elevated:   #fdf8eb;  /* modales + cards (presque blanc) */
+  --kta-light-bg-deep:       #e5dcc5;  /* table headers + sidebar interne */
+  --kta-light-text:          #2a2620;
+  --kta-light-text-muted:    #6b6354;
+  --kta-light-text-dim:      #8a8270;
+  --kta-light-border:        rgba(0,0,0,0.12);
+  --kta-light-border-strong: rgba(0,0,0,0.22);
+  --kta-light-accent:        #f4c542;  /* jaune charte conservé */
+  --kta-light-accent-hover:  #d9a82e;
+  --kta-light-accent-bg:     rgba(244,197,66,0.22);
+  --kta-light-shadow:        rgba(80,60,30,0.18);
 }
 ```
 
-#### 53.4 Scope (étendu globalement en v1.13.0-fix2)
+**Pourquoi 2 prefixes selector ?** Beaucoup de modales sont créées via `document.documentElement.appendChild(modal)` (cf grep dans `js/*.js`) — elles sont enfant direct de `<html>`, sibling de `<body>`. Le selector `body.kta-theme-light .modal` ne matche pas. D'où `html.kta-theme-light .modal` en complément.
 
-🔧 **v1.13.0-fix2 (KARMA "active le mode clair partout")** : scope étendu de "mode carte uniquement" → **toute l'app** sauf splash + viewer photos.
+**Pourquoi `!important` partout ?** De nombreux modules JS (searchPoints.js, sessionExporter.js, etc.) injectent leurs styles via `<style>` inline. Ces styles externes battent les CSS du fichier sans `!important`. On force avec `!important` pour gagner la spécificité.
+
+#### 53.4 Scope final (toute l'app)
 
 ✅ Couvert :
-- **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.plan-card`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`
-- **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
-- **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`
+- **Home** : `#planLoaderOverlay`, `#planLoaderBox`, `#myPlansBox`, `#resumeBox`, `#panelZip`, `#allPlansList`, `.plan-card`, `.kta-loader-copyright`, `.kta-loader-perf-*`, `.kta-loader-pin-*`, `.loader-btn-resume` (bouton Reprendre), `.zip-drop-zone`
+- **Boutons home** : `.loader-btn-help`, `.loader-btn-secondary`, `.loader-btn-ghost`, `.loader-btn-mini`, `.loader-btn-fs`, `#loadPlanBtn`, `#fsAccessBtn`, `#importListBtn`, `#exportListBtn`, `#loaderPlannerBtn`, `#loaderResetBtn`, `#loaderForceUpdateBtn`, `#loaderHelpBtn`, `#loaderConfigBtn`, `#loaderNetDocBtn`, `#loaderNetLogBtn`, `#loaderShowLogsBtn`
+- **Splash chargement plan** : `#splashOverlay` (radial gradient beige), `#splashTitle` (ocre), `#splashSubtitle`, `#splashProgressTrack/Bar`, `.splash-scale-bar` (bandes alternées ocre)
+- **Modale Config home** : `.kta-loader-config-boite`, `.kta-loader-config-corps`, `.kta-perf-*`, `.kta-net-paranoia-toggle`
 - **Modale Audit** : `#loaderNetDocModal`, `#loaderNetLogModal`, `#loaderNetLogTbody`, `#loaderNetDocWhitelist`, `#loaderParanoiaBadge`
-- **Mode carte** : `.kta-refonte-header`, `.kta-refonte-statusbar`, `.kta-refonte-sidebar*`
-- **Sidebars Leaflet** : `.leaflet-bar a` (boutons groupes), `.leaflet-bar a.kta-sub` (sous-actions), `.leaflet-bar a.kta-actif` (vert), `.leaflet-bar a.kta-group-mode-actif` (fond blanc solide, KARMA fix "icône actif fond blanc pas transparent")
-- **Modales du pattern principal** : `.kta-readme-modal-*` (Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, M-LVL, Replay) — couvre aussi les titres + descendants h1/h2/h3/p/li/span/strong/em/div via règles catch-all
+- **Auth gates** : `#kta-unlock-overlay` (code communautaire), `.kta-pin-gate-overlay` (PIN keypad), `.kta-pin-gate-bio-btn` (biométrie), `.kta-pin-proposal-boite` (post-update), `.kta-pin-gate-overlay-lockout`
+- **Plan switcher** (clic titre header) : `.kta-plan-switcher-overlay`, `.kta-plan-switcher-modal-boite`, `.kta-plan-switcher-current`, `.kta-switcher-row` + enfants
+- **Mode carte** : `.kta-refonte-header`, `.kta-refonte-statusbar`, `.kta-refonte-sidebar*`, `.kta-refonte-counter`, `.kta-refonte-stat`
+- **Sidebars Leaflet** : `.leaflet-bar a` (boutons groupes, fond brun-beige), `.leaflet-bar a.kta-sub` (sous-actions, fond brun-beige), `.leaflet-bar a.kta-actif` (vert), `.leaflet-bar a.kta-group-mode-actif` (fond **blanc solide** + bordure jaune charte — KARMA fix "icône actif fond blanc pas transparent")
+- **Modales du pattern principal** : `.kta-readme-modal-*` (Session, Recherche, Itinéraire, Mesure, Édition, Export, Réglages, Aide, Doc IA, Légende, M-LVL, Replay) — couvre aussi les descendants h1/h2/h3/p/li/span/strong/em/div via catch-all `* { color: var(--kta-light-text) !important }` dans `html.kta-theme-light .kta-readme-modal-overlay .kta-readme-modal-corps`
+- **Sommaire / TOC** : `.kta-readme-toc-row/-link/-link-h2/-link-h3/-bullet/-toggle/-sublist` — hiérarchie restaurée (H2 bold foncé, H3 muted, border-left ocre, hover jaune)
+- **Modale Update** (depuis badge version footer) : `#kta-update-modal` avec overrides des inline styles via attribute selectors `[style*="rgba(140,180,255"]` etc.
+- **Modale Enregistrer session** : `#kta-session-export-modal` + onglets `.kta-ses-tab` + boutons `.kta-ses-btn-*` + items `.kta-ses-cb-row/.kta-ses-radio-row/.kta-ses-summary`
+- **Onglets Mode rapide/avancé** : `.kta-conv-sens-btn` + `.active` (jaune charte plein)
+- **Recherche unifiée Ctrl+K** : `.kta-search-input-wrap` + `input` (fond blanc + focus jaune), `.kta-search-result-item` + hover/selected, `.kta-search-filter-chip` + active, `.kta-search-group-titre`
 - **Labels Leaflet** : `.kta-measure-distance` + `.kta-iti-distance` + segments + angles
-- **Leaflet natif** : `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-control-layers-*`
-- **Toasts** : `.kta-toast`, `.kta-toast-msg`, `.kta-toast-icon`, `.kta-toast-close` (KARMA fix "Mode clair activé presque invisible")
-- **Toggles paranoia / legacy / showInter / themeLight** : `.kta-net-paranoia-toggle`
-- **Petites modales système** : `#kta-fu-*` (force update), `#ktaYesNo*`, `#ktaPinPrompt*`, `#kta-plan-infos-*`, `#kta-mode-warn-*`, `#kta-zipname-error-*`
+- **Leaflet natif** : `.leaflet-container`, `.leaflet-popup-*`, `.leaflet-tooltip`, `.leaflet-control-layers-*`, `.leaflet-bar`
+- **Toasts** : `.kta-toast`, `.kta-toast-msg`, `.kta-toast-icon`, `.kta-toast-close`, `.kta-toast-info/error` (border-left adaptée)
+- **Modales progress `.kta-modal-*`** : Mise à jour en cours, Reset en cours, Session en cours, Yes/No
+- **Modale Choix suppression** : `.kta-choix-suppr-*`
+- **Modale chargement plan** : `.kta-load-overlay` + `.kta-load-box` + `.kta-load-spinner` (ocre)
+- **Boutons généraux** : `.kta-btn`, `.kta-btn-primary` (jaune), `.kta-btn-secondary`, `.kta-btn-ghost`, `.kta-btn-link`, `.kta-btn-danger`
+- **Alertes publiques** : `.kta-alert-*` (emergency rouge kept dramatique, warning orange, info bleu, absent neutre, selector cascade)
+- **Stats agrégées + détail Session active** : `.kta-refonte-stats-*` + `.kta-refonte-session-*`
 
 ❌ Volontairement non couverts (restent dark) :
-- Splash KARMA animé (cinématique de lancement, contrastes dark nécessaires)
-- Viewer photos plein écran (overlay sombre par essence pour bonne lecture des photos)
+- **Splash KARMA cinématique** au tout début du boot (animation rotation boussole, contrastes dark requis pour l'effet fade-in lettres)
+- **Viewer photos plein écran** (overlay sombre par essence pour bonne lecture des photos)
 
 #### 53.5 Sync mode urgence
 
@@ -3508,7 +3532,21 @@ Le toggle local du mode urgence ne propage PAS à `ThemeManager` (volontaire —
 
 #### 53.7 Pour étendre
 
-**Ajouter une modale qui supporte le thème** : utilise le pattern `kta-readme-modal-overlay` + `kta-readme-modal-boite` → c'est couvert automatiquement. Si tu introduis une nouvelle classe custom de fond/texte, ajoute son variant `body.kta-theme-light .ma-classe { ... }` dans le bloc dédié.
+**Ajouter une modale qui supporte le thème** :
+
+1. **Pattern A (recommandé)** : utilise `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` → couvert automatiquement via les règles catch-all `html.kta-theme-light .kta-readme-modal-overlay *`. Si ta modale a un contenu **COURT**, ajoute aussi sur sa classe spécifique :
+   ```css
+   .ma-modal-boite {
+     max-width: ...;
+     height: auto !important;
+     max-height: 90vh !important;
+   }
+   ```
+   pour éviter le bug 88vh étiré (cf §53.9 ci-dessous).
+
+2. **Pattern B (modale custom hors `kta-readme-modal-*`)** : il faut écrire les overrides manuellement avec `html.kta-theme-light .ma-classe { ... !important }` dans `style.css`. **Toujours utiliser `!important`** car de nombreux modules injectent leurs styles en `<style>` inline qui battent CSS externe non-important.
+
+3. **Si tu append la modale à `document.documentElement`** (pattern majoritaire dans le projet) : utilise le sélecteur `html.kta-theme-light .ma-classe` (PAS `body.kta-theme-light`) — sinon la classe `.kta-theme-light` sur `<body>` ne peut pas matcher car la modale est sibling de body.
 
 **Écouter les changements de thème** depuis un module dépendant :
 ```js
@@ -3523,9 +3561,38 @@ if (window.ThemeManager) {
 #### 53.8 À NE PAS faire
 
 - ❌ Stocker le thème ailleurs qu'en `localStorage["myktamap_theme_v1"]` (= source de vérité unique)
-- ❌ Forcer un thème sur un screen hors mode carte — la home reste dark par design (KARMA choix 1:b)
-- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe directement (pas notifié, pas persisté)
+- ❌ Appliquer la classe `.kta-theme-light` à un autre élément que `<html>` et `<body>` (les modales ajoutées à `documentElement` doivent matcher via `html.kta-theme-light .modal`)
+- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe directement (pas notifié, pas persisté, désync entre les 2 toggles UI sidebar/Config-home)
 - ❌ Inventer de nouvelles couleurs custom — utilise les variables `--kta-light-*` pour la cohérence
+- ❌ Oublier `!important` dans les overrides — les styles inline injectés par certains modules (searchPoints.js, sessionExporter.js, sidebar par `<style>`) battent les CSS externes non-important
+
+#### 53.9 Bug 88vh étiré sur modales courtes (fix général)
+
+Pattern récurrent depuis v1.9.2 : `.kta-readme-modal-boite { height: 88vh }` sur PC étire les modales courtes (contenu ~300px) à 88vh avec moitié vide en dessous. Fix appliqué progressivement :
+
+| Modale | Release | Classe |
+|---|---|---|
+| Export PNG | v1.9.2-fix14 | `.kta-export-modal-boite` |
+| Export PDF | v1.10.3 | `.kta-pdf-modal-boite` |
+| PIN proposal | v1.11.1 | `.kta-pin-proposal-boite` |
+| Image volumineuse (mode urgence) | v1.12.0 | `[max-width: 460px]` |
+| **Niveaux M-LVL** | v1.13.0 | `.kta-niv-modal-boite` |
+| **Légende** | v1.13.0 | `.kta-legende-modal-boite` |
+| **Jonction interniveau** | v1.13.0 | `.kta-jct-modal-boite` |
+| **Itinéraire** | v1.13.0 | `.kta-iti-modal-boite` |
+| **Je suis perdu** | v1.13.0 | `.kta-lost-modal-boite` |
+| **Enregistrer session** | v1.13.0 | `#kta-session-export-modal .kta-readme-modal-boite` (modale sans classe spécifique) |
+
+**Pattern uniforme** :
+```css
+.ma-modal-boite {
+  max-width: ...;
+  height: auto !important;
+  max-height: 90vh !important;
+}
+```
+
+**Important** : ce fix est **général (dark + light)**, pas scope `body.kta-theme-light`. Toute nouvelle modale avec contenu court doit suivre ce pattern dès sa création — pas un fix réactif post-feedback user.
 
 ---
 

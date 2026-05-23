@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.12.0</strong> (23 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.13.0</strong> (23 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.13.0 (Thème CLAIR + Itinéraire mode urgence + Fix hauteurs modales)</strong> : aucune nouvelle connexion réseau introduite. Le nouveau module
+    <code>js/themeManager.js</code> (~150 lignes) opère <strong>uniquement</strong> en <code>localStorage</code>
+    (clé <code>myktamap_theme_v1</code>) + classes CSS sur <code>&lt;html&gt;</code> et <code>&lt;body&gt;</code>.
+    Aucun fetch, aucun ping. Les ~1200 lignes de CSS overrides ajoutées sont chargées via <code>css/style.css</code>
+    same-origin déjà whitelisté. Le seul effet observable côté réseau : le SW cache un fichier de plus
+    (<code>./js/themeManager.js</code>) au boot.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -549,6 +558,22 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.13.0</td>
+        <td>23/05/2026</td>
+        <td>
+          <strong>Thème CLAIR global + Itinéraire mode urgence + Fix hauteurs modales</strong> — première
+          release V3. Module <code>js/themeManager.js</code> (~150 lignes) qui opère
+          <strong>uniquement</strong> en <code>localStorage["myktamap_theme_v1"]</code> + classes CSS sur
+          <code>&lt;html&gt;</code> et <code>&lt;body&gt;</code>. Aucun fetch réseau, aucun ping.
+          ~1200 lignes de CSS overrides ajoutées dans <code>css/style.css</code> (chargé via le SW
+          same-origin existant, déjà whitelisté). Le SW cache un fichier de plus au boot :
+          <code>./js/themeManager.js</code> — toujours same-origin, couvert par la règle de whitelist
+          existante. <strong>Aucune nouvelle connexion réseau introduite</strong>, aucune modification
+          de la whitelist du module Privacy &amp; Audit. Le mode hors-ligne strict continue de fonctionner
+          exactement comme avant (le toggle ne fait pas de requête, juste un switch de classe CSS locale).
+        </td>
+      </tr>
+      <tr>
         <td>v1.12.0</td>
         <td>23/05/2026</td>
         <td>
@@ -663,7 +688,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 23 mai 2026 — v1.12.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0)<br>
+    Dernière mise à jour : 23 mai 2026 — v1.13.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — themeManager.js same-origin)<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 

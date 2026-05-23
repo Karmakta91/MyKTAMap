@@ -4,7 +4,7 @@
 
 ---
 
-## 🆕 Nouveautés v1.13.0 (23/05/2026) — Thème clair + Itinéraire mode urgence
+## 🆕 Nouveautés v1.13.0 (23/05/2026) — Thème clair (partout) + Itinéraire mode urgence + Fix hauteurs modales
 
 > Première release de la phase V3.
 
@@ -12,26 +12,33 @@
 
 L'app accepte désormais **2 thèmes** :
 - 🌙 **Sombre** (par défaut) — comme avant
-- ☀️ **Clair** — fond beige cataphile `#f0e8d8`, accent jaune `#f4c542` conservé, texte foncé pour la lisibilité plein jour
+- ☀️ **Clair** — fond beige cataphile `#f0e8d8` / barres et icônes brun-beige `#c9b88f` / accent jaune `#f4c542` conservé, texte foncé pour la lisibilité plein jour
 
 **Comment l'activer** — 2 endroits, même réglage :
 
-1. **Depuis la home** (avant de charger un plan) : clic sur ⚙️ Configuration → section "🎨 Affichage" → coche **☀️ Activer le thème CLAIR**. Effet immédiat.
+1. **Depuis la home** (avant de charger un plan) : clic sur ⚙️ Configuration → section "🔍 Affichage" → coche **☀️ Activer le thème CLAIR**. Effet immédiat.
 2. **Depuis le mode carte** (plan chargé) : sidebar gauche → groupe **⚙️ Paramètres** → nouvelle sous-action **☀️ Mode clair** (ou **🌙 Mode sombre** si déjà en clair). Switch instantané.
 
-**Ce qui change** :
-- **Home** : loader plein écran, listes "Mes plans" / "Récents" / "Reprendre", boutons d'import/export, footer copyright
+Les 2 toggles sont synchronisés : changer depuis l'un met à jour l'autre automatiquement.
+
+**Ce qui change (= partout)** :
+- **Home** : loader plein écran, listes "Mes plans" / "Récents" / "Reprendre", boutons d'import/export, footer copyright (cards arrondies + ombrage subtil)
+- **Splash de chargement** d'un plan : gradient beige + titre ocre + barre échelle ocre
 - **Modale Configuration home** entière (perf, debug, accessibilité, audit réseau, code d'accès, etc.)
-- **Modale Documentation 📖** et **Modale Aide ❓** (lecture des docs sur fond beige confortable)
+- **Modale Documentation 📖** et **Modale Aide ❓** (lecture des docs sur fond beige confortable, hiérarchie du sommaire préservée)
 - **Modale Audit réseau 🔒** (journal réseau + page de transparence)
-- **Mode carte entier** : sidebar gauche + droite, header, footer status bar, container Leaflet, labels mesure/itinéraire
-- **Toutes les modales** ouvertes depuis le mode carte : Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Légende, Niveaux M-LVL, Replay tracker, etc.
+- **Code d'accès communautaire (Unlock Gate)** et **PIN local (PinGate keypad)** au démarrage : fond beige + accent jaune charte
+- **Modale Plan switcher** (au clic sur le titre du plan en haut)
+- **Mode carte entier** : sidebar gauche + droite (icônes brun-beige), header, footer status bar, container Leaflet, labels mesure/itinéraire
+- **Toutes les modales** ouvertes depuis le mode carte : Session active, Enregistrer session, Recherche unifiée Ctrl+K, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Légende, Niveaux M-LVL, Replay tracker, Choix suppression, Je suis perdu, etc.
+- **Modales système** : Mise à jour en cours, Reset en cours, Session en cours, confirmations Yes/No
 - **Popups markers + zoom controls + tooltips Leaflet**
 - **Toasts** (notifications discrètes)
+- **Alertes publiques** (rouge emergency, orange warning, bleu info) — la sémantique de niveau est préservée tout en s'adaptant au fond clair
 
 **Ce qui ne change pas (volontaire)** :
-- Le splash KARMA animé reste sombre (cinématique de lancement, contraste nécessaire pour l'animation)
-- Le viewer photos plein écran reste sombre (cohérent pour la lecture des photos en plein contraste)
+- Le **splash KARMA animé** au tout début reste sombre (cinématique de lancement, contraste nécessaire pour l'animation rotation boussole)
+- Le **viewer photos plein écran** reste sombre (cohérent pour la lecture des photos en plein contraste)
 
 **Le choix est persisté globalement** : il vaut pour la home ET le mode carte, sur cet appareil. Si tu reset l'app complètement, le choix revient à sombre.
 
@@ -44,6 +51,18 @@ La case à cocher **🗺️ Itinéraire** dans l'en-tête du mode urgence (intro
 **Pourquoi le toggle est retiré** : la cause racine des crashes n'était pas l'itinéraire mais le chargement complet du JPG du plan en très haute résolution. Depuis v1.12.0, ce problème est géré automatiquement (modale d'avertissement pour les gros JPG + chargement intelligent des tuiles V2). L'itinéraire peut donc rester visible en toute sécurité.
 
 L'itinéraire dans la minimap garde toutes ses optimisations : décimation auto pour les itinéraires longs + halo blanc pour rester visible sur fond zoomé serré.
+
+### 📏 Fix hauteurs modales courtes (dark + light)
+
+Plusieurs modales étaient étirées en hauteur sur PC (88vh) avec moitié vide en dessous du contenu. **v1.13.0 corrige ce bug pour 6 modales courtes** :
+- Niveaux (M-LVL)
+- Légende in-app
+- Création de jonction interniveau
+- Itinéraire
+- Je suis perdu
+- Enregistrer la session
+
+Maintenant elles s'ajustent au contenu réel avec un `max-height: 90vh` pour rester scrollables si jamais le contenu déborde.
 
 ---
 

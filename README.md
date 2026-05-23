@@ -12,38 +12,90 @@
 > _Le journal est long (107 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
 
 <details id="v1-13-0" open>
-<summary><strong>🗓️ 23/05/2026 — 🚀 v1.13.0 : Thème CLAIR mode carte + Itinéraire mode urgence ré-activé par défaut</strong></summary>
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.13.0 : Thème CLAIR global + Itinéraire mode urgence ré-activé par défaut + Fix hauteurs modales</strong></summary>
 
 Release MINOR (bump Y : 1.12.x → 1.13.0). Première release de la phase **V3** (KARMA validation 8:b = releases incrémentales).
 
-### 🎨 Thème CLAIR (limité au mode carte) — KARMA choix 1:b
+Cette release a évolué en 2 phases successives :
+- **Phase 1** (release initiale) : thème clair limité au mode carte (KARMA choix 1:b initial)
+- **Phase 2** (extension élargie) : KARMA "active le mode clair partout, home, les modal, les doc affichés dans l'UI readme, audit, aide, et possibilité d'activer ou non depuis le conf home" → scope étendu à toute l'app + 19 hotfixes itératifs sur la couverture CSS pour s'assurer qu'aucune surface ne reste en sombre.
+
+### 🎨 Thème CLAIR — scope GLOBAL
 
 Nouveau module **`js/themeManager.js`** (~150 lignes IIFE) → `window.ThemeManager = { init, getCurrent, setTheme, toggleTheme, onChange, isLight }`.
 
-**Activation** : toggle ☀️ Mode clair / 🌙 Mode sombre dans le groupe **⚙️ Paramètres** de la sidebar gauche (nouvelle sous-action à côté de "⚙️ Réglages"). KARMA choix A:a.
+**Activation à 2 endroits synchronisés** :
+- Sidebar gauche → groupe **⚙️ Paramètres** → sous-action ☀️ Mode clair / 🌙 Mode sombre (mode carte)
+- Modale Configuration home → checkbox **☀️ Activer le thème CLAIR** (home)
 
-**Persistance** : globale toutes plans, `localStorage["myktamap_theme_v1"]`. KARMA choix B:a — un user qui passe en clair l'a partout, toujours.
+Les 2 toggles pointent sur le même `localStorage["myktamap_theme_v1"]` via `ThemeManager`. `setTheme()` notifie via `onChange()` → l'UI des 2 toggles est resyncronisée automatiquement.
 
-**Couleurs** (KARMA choix D:b + E:a) :
+**Persistance globale par appareil** (KARMA choix B:a) — pas par plan.
+
+**Palette finale** (KARMA choix D:b + E:a + ajustements terrain) :
 
 | Rôle | Dark (défaut) | Light (v1.13.0) |
 |---|---|---|
-| Background base | `#0a0d18` | `#f0e8d8` (beige cataphile, identique mode urgence light) |
-| Background modale | `#1a1f2e` | `#fdf8eb` |
+| Body / container Leaflet | `#0a0d18` | `#f0e8d8` (beige cataphile) |
+| Header + Footer + Sidebar icons | `#0f1320` | **`#c9b88f`** (brun-beige, contraste fort) |
+| Home loader background | `#1a1f2e` | **`#c9b88f`** (= header/footer mode carte) |
+| Background modale | `#1a1f2e` | `#fdf8eb` (presque blanc) |
 | Texte principal | `#c0c8d8` | `#2a2620` |
-| Border | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.12)` |
-| Accent | `#f4c542` (jaune) | `#f4c542` (jaune, **inchangé**) |
-| Sidebar | `#0f1320` | `#e5dcc5` |
+| Border léger | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.12)` |
+| Border fort (bars) | — | `#9a8754` (ocre) |
+| Accent | `#f4c542` (jaune) | `#f4c542` (**conservé** — cohérence charte) |
+| Accent hover | `#ffd970` | `#d9a82e` (ocre plus contrasté) |
 
-**Scope** (mode carte uniquement) : sidebar gauche + droite, header, status bar footer, container Leaflet, labels bas-gauche (mesure / iti), popups markers, tooltips, zoom controls, et **toutes les modales ouvertes depuis le mode carte** (Session, Recherche, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Aide, Doc IA, Légende, Niveaux M-LVL, Replay tracker, etc.).
+Variables CSS dédiées :
+```css
+body.kta-theme-light {
+  --kta-light-bg: #f0e8d8;
+  --kta-light-bg-bar: #c9b88f;
+  --kta-light-bg-bar-deep: #b8a576;
+  --kta-light-bg-bar-border: #9a8754;
+  --kta-light-bg-elevated: #fdf8eb;
+  --kta-light-bg-deep: #e5dcc5;
+  --kta-light-text: #2a2620;
+  --kta-light-text-muted: #6b6354;
+  --kta-light-text-dim: #8a8270;
+  --kta-light-border: rgba(0,0,0,0.12);
+  --kta-light-border-strong: rgba(0,0,0,0.22);
+  --kta-light-accent: #f4c542;
+  --kta-light-accent-hover: #d9a82e;
+  --kta-light-accent-bg: rgba(244,197,66,0.22);
+  --kta-light-shadow: rgba(80,60,30,0.18);
+}
+```
 
-**Hors scope (restent dark)** : splash KARMA animé (cinématique), loader home, modale Configuration home, modale Plan switcher home. Volontaire : ces écrans précèdent le mode carte.
+**Scope final** (~800 lignes de CSS overrides scopés `html.kta-theme-light` + `body.kta-theme-light`) :
 
-**Sync mode urgence** : à l'ouverture du mode urgence, le thème global est appliqué automatiquement. Le toggle 🔆/🌑 LOCAL du mode urgence reste fonctionnel pour basculer ponctuellement pendant la sortie (cas lampe d'appoint en sous-sol) sans modifier la pref globale.
+✅ **Couvert** :
+- Home : `#planLoaderOverlay`, `#planLoaderBox`, listes Mes plans / Récents / Reprendre, panel ZIP, boutons home, footer copyright
+- Splash KARMA pendant chargement plan : background gradient beige + titre ocre + scale-bar bandes ocre
+- Modales home : Configuration, Documentation 📖, Aide ❓, Audit réseau 🔒 (NetDoc + NetLog)
+- UnlockGate + PinGate (keypad) + PinProposal post-update
+- Modale Plan switcher (clic sur titre header) — classes `.kta-plan-switcher-*`
+- Mode carte : sidebars (`.leaflet-bar a` + `.kta-sub` icônes brun-beige), header, footer status bar, container Leaflet
+- Modales mode carte : Session active, Recherche Ctrl+K, Itinéraire, Mesure, Édition, Export PNG/PDF/KMZ, Réglages, Légende, Niveaux M-LVL, Replay tracker, Choix suppression
+- Modale Update (download + version comparison + actions) — overrides inline styles via attribute selectors `[style*="rgba(140,180,255"]`
+- Modales d'alertes publiques (emergency rouge dramatique kept + warning orange + info bleu + absent neutre + selector cascade)
+- Modales progress `.kta-modal-*` (Mise à jour en cours, Reset en cours, Session en cours, Yes/No)
+- Toasts (`.kta-toast-*`)
+- Popups Leaflet, tooltips, zoom controls, control layers
+- `.kta-load-overlay` (chargement plan avec spinner)
+- Recherche unifiée (Ctrl+K) — CSS inline injecté par searchPoints.js, overridé avec `!important`
+- Onglets `.kta-conv-sens-btn` (Mode rapide/avancé) + `.kta-ses-tab` (Full/Avancé/Conversion/KMZ)
+- Boutons `.kta-btn`, `.kta-btn-primary`, `.kta-btn-secondary`, `.kta-btn-ghost`, `.kta-btn-link`, `.kta-btn-danger`, `.kta-ses-btn-*`
 
-**Meta theme-color** : statusbar mobile iOS/Android mise à jour dynamiquement à chaque switch (#f0e8d8 clair / #111827 sombre).
+❌ **Volontairement non couverts** (restent dark) :
+- Splash KARMA cinématique au tout début du boot (animation rotation boussole — contraste dark requis)
+- Viewer photos plein écran (lecture des photos en plein contraste sombre, cohérent)
 
-**~350 lignes de CSS** ajoutées en fin de `css/style.css` avec stratégie variables (`--kta-light-bg`, `--kta-light-text`, etc.) pour minimiser la duplication. Scoped sur `body.kta-theme-light .selector`.
+**Sync mode urgence 🚨** : à l'ouverture, applique le thème global automatiquement. Le toggle 🔆/🌑 LOCAL du mode urgence reste fonctionnel pour basculer ponctuellement pendant la sortie (cas "lampe d'appoint en sous-sol pendant 30 sec") sans modifier la pref globale.
+
+**Meta theme-color** : statusbar mobile iOS/Android mise à jour dynamiquement (#f0e8d8 clair / #111827 sombre).
+
+**Application sur HTML + body** : le ThemeManager applique la classe sur `document.documentElement` ET sur `document.body`. Critique pour couvrir les modales appendées à `document.documentElement` (cas de la majorité des modales de l'app) qui sont SIBLING de body, pas descendantes — les selectors `body.kta-theme-light .modal` ne suffisaient pas. Les selectors `html.kta-theme-light .modal` ont été ajoutés en complément.
 
 ### 🗺️ Mode urgence — itinéraire réactivé par défaut sans toggle
 
@@ -56,25 +108,42 @@ La case à cocher `🗺️ Itinéraire` dans l'en-tête du mode urgence est **re
 
 L'ancienne clé localStorage `myktamap_emergency_show_iti_v1` reste sans effet (nettoyée automatiquement au prochain reset complet).
 
+### 📏 Fix hauteur modales courtes (88vh → auto)
+
+Le pattern `.kta-readme-modal-boite { height: 88vh }` étirait les modales courtes en hauteur sur PC, laissant la moitié vide. Pattern historique déjà fixé sur `.kta-pin-proposal-boite` / `.kta-export-modal-boite` / `.kta-pdf-modal-boite`. **v1.13.0 généralise le fix à toutes les modales restantes** (général dark + light) :
+
+- `.kta-niv-modal-boite` (Niveaux M-LVL)
+- `.kta-legende-modal-boite` (Légende in-app)
+- `.kta-jct-modal-boite` (Création jonction interniveau)
+- `.kta-iti-modal-boite` (Itinéraire)
+- `.kta-lost-modal-boite` (Je suis perdu)
+- `#kta-session-export-modal .kta-readme-modal-boite` (Enregistrer session — modale sans classe spécifique)
+
+Pattern uniforme :
+```css
+height: auto !important;
+max-height: 90vh !important;
+```
+
 ### 📦 Fichiers impactés
 
 - **Nouveau** : `js/themeManager.js`
 - **Modifiés** :
-  - `index.html` (script tag avant networkAudit.js, anti-FOUC)
-  - `js/interface.js` (groupe ⚙️ Paramètres : solo → sousActions [Réglages, Thème])
-  - `js/emergencyMode.js` (suppression toggle 🗺️ Itinéraire + sync ThemeManager au activer())
-  - `css/style.css` (~350 lignes de overrides scoped `body.kta-theme-light`)
-  - `sw.js` (CACHE_NAME → `myktamap-cache-v1.13.0-theme-light` + `./js/themeManager.js` dans ASSETS_TO_CACHE)
+  - `index.html` (script themeManager avant networkAudit, anti-FOUC + checkbox `#loaderThemeLightCb` dans modale Config home + handler JS)
+  - `js/interface.js` (groupe ⚙️ Paramètres : solo → sousActions [Réglages, Thème] + sweep aide modale)
+  - `js/emergencyMode.js` (suppression toggle 🗺️ Itinéraire + sync ThemeManager au activer() + bouton recalage auto-close)
+  - `css/style.css` (~1200 lignes de overrides scoped `html.kta-theme-light` / `body.kta-theme-light` + 6 fix hauteurs modales)
+  - `sw.js` (CACHE_NAME + `./js/themeManager.js` dans ASSETS_TO_CACHE)
   - `js/copyright.js` (build → `v1.13.0`)
-  - `version.json` (version + 8 notes détaillées)
-  - Docs : README.md (cette entrée), `docs/README_USER.md`, `docs/AI_CONTEXT.md`, `docs/CLAUDE.md`
+  - `version.json` (version + notes consolidées)
+  - Docs : README.md (cette entrée), `docs/README_USER.md`, `docs/AI_CONTEXT.md`, `docs/CLAUDE.md`, `docs/NETWORK_AUDIT.html` + `.md`
 
 ### Pour les futurs dev / agents IA
 
 **Pour ajouter une modale qui supporte le thème clair** :
 
-1. Utilise le pattern `kta-readme-modal-overlay` + `kta-readme-modal-boite` → c'est couvert automatiquement par les overrides existants.
-2. Si tu introduis une nouvelle classe CSS de fond/texte custom, ajoute son variant `body.kta-theme-light .ma-nouvelle-classe { ... }` dans le bloc dédié de `style.css`.
+1. Pattern A (recommandé) : utilise `.kta-readme-modal-overlay` + `.kta-readme-modal-boite` → couvert automatiquement via les règles `html.kta-theme-light .kta-readme-modal-overlay *`. Si ta modale a un contenu COURT, ajoute aussi `height: auto !important; max-height: 90vh !important` sur sa classe spécifique pour éviter le 88vh étiré.
+2. Pattern B (modale custom hors `kta-readme-modal-*`) : il faut écrire les overrides manuellement avec `html.kta-theme-light .ma-classe { ... !important }` dans `style.css`. **Toujours utiliser `!important`** car de nombreux modules injectent leurs styles en `<style>` inline qui battent CSS externe non-important.
 
 **Pour écouter les changements de thème** depuis un module qui dépend de l'état :
 
@@ -94,9 +163,10 @@ const isLight = window.ThemeManager && window.ThemeManager.isLight();
 ```
 
 **À NE PAS faire** :
-- ❌ Stocker le thème ailleurs qu'en localStorage `myktamap_theme_v1` (= source de vérité unique)
-- ❌ Forcer un thème sur un screen hors mode carte (la home doit rester sombre par design)
-- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe `kta-theme-light` directement (pas notifié, pas persisté)
+- ❌ Stocker le thème ailleurs qu'en `localStorage["myktamap_theme_v1"]` (= source de vérité unique)
+- ❌ Appliquer la classe `kta-theme-light` à un autre élément que `<html>` et `<body>` (les modales ajoutées à `documentElement` doivent matcher via `html.kta-theme-light .modal`)
+- ❌ Bypass `ThemeManager.setTheme()` en appliquant la classe directement (pas notifié, pas persisté, désync entre les 2 toggles UI)
+- ❌ Inventer de nouvelles couleurs custom — utilise les variables `--kta-light-*` pour la cohérence
 
 </details>
 
