@@ -1,13 +1,11 @@
 {
-  "version": "v1.14.2",
+  "version": "v1.14.3",
   "released": "2026-05-23",
   "notes": [
-    "🔄 V3.2.c — Toggle thème = reload complet de l'app (KARMA stabilité) : le changement clair ↔ sombre déclenche désormais un location.reload() après persistance localStorage. Le swap « live » via classes CSS marchait à 90% mais laissait toujours des bugs résiduels sur le bandeau top et certaines modales chargées avant le toggle qu'on n'a jamais réussi à régler malgré les ~20 hotfixes v1.13.0. Reload = état propre garanti, zéro héritage d'état.",
-    "🗑️ Retrait du toggle thème en mode map (sidebar ⚙️ Paramètres). Il a été déplacé exclusivement vers la modale Configuration home → checkbox « ☀️ Activer le thème CLAIR ». Le groupe ⚙️ Paramètres redevient une soloAction qui ouvre directement la modale Réglages (= comportement d'avant v1.13.0). Cohérent avec la philosophie « le thème se choisit avant d'entrer dans la carte, pas pendant ».",
-    "🧰 Nouvelle API ThemeManager.setThemeAndReload(theme) — persiste en localStorage puis location.reload(). No-op si le thème demandé est déjà actif. setTheme() classique conservé pour usage interne (mode urgence sync, etc.).",
-    "📘 Documentation aide ❓ mise à jour — section thème indique désormais « activable uniquement depuis la home → Configuration » + « le toggle déclenche un reload complet ». Modale Configuration home : libellé checkbox prévient du reload imminent (⚠️).",
-    "✂️ Pas d'impact fonctionnel sur le reste — KMZ/GPX, recherche, itinéraire, mode urgence, export PDF/PNG, calques, Photos IDB : tout intact. Refactor purement UX/UI + 1 ligne reload.",
-    "🏷️ Sources de vérité v1.14.2 : version.json → \"v1.14.2\", js/copyright.js > __MKM__.build → \"v1.14.2\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.2-theme-reload\".",
-    "🛡️ Confidentialité — aucune modification réseau, aucun nouveau fetch. Reload local. NETWORK_AUDIT inchangé."
+    "🐛 V3.2.d — Fix bug récurrent « modal trop long » sur les modales d'alerte publique (KARMA signalement). La modale détail (🚨 alerte en cours, ex : incendie V2 IDF) et le sélecteur (📋 N alertes actives quand N>1) pouvaient dépasser la hauteur viewport sur mobile portrait — le bouton « J'ai compris » devenait inaccessible et les détails listés (5 puces ou plus) débordaient.",
+    "🔧 Application du pattern de containment universel (déjà appliqué aux modales niv / légende / jct / iti / lost / session export) : .kta-alert-boite et .kta-alert-selector-boite forcent height:auto + max-height:88vh + display:flex + flex-direction:column avec !important. Le corps (.kta-alert-corps / .kta-alert-selector-corps) prend flex:1 1 auto + min-height:0 + overflow-y:auto → scroll interne au contenu, header (titre pulsé) et footer (bouton OK) restent figés au-dessus/en-dessous.",
+    "✂️ Pas d'impact sur la modale « alerte absente / déjà à jour » (.kta-alert-absent-boite) — elle utilise déjà un pattern différent et solide (overlay scrollable + flex-start + margin auto + safe-area-inset-top iOS v172).",
+    "🏷️ Sources de vérité v1.14.3 : version.json → \"v1.14.3\", js/copyright.js > __MKM__.build → \"v1.14.3\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.3-alert-modal\".",
+    "🛡️ Confidentialité — aucune modification réseau, fix CSS pur. NETWORK_AUDIT inchangé."
   ]
 }

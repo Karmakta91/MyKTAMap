@@ -5198,6 +5198,14 @@ img.kta-popup-photo-mini:focus-visible {
 
 .kta-alert-boite {
   max-width: 560px;
+  /* v1.14.3 — fix bug récurrent "modal trop long" sur alerte : on force
+     hauteur auto bornée à 88vh + flex column pour que le corps scrolle
+     dans la boîte au lieu de la faire déborder (pattern déjà appliqué
+     aux modales niv / légende / jct / iti / lost / session export). */
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
   border: 2px solid #ff6b6b !important;
   box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.20),
               0 0 30px rgba(255, 107, 107, 0.45),
@@ -5248,6 +5256,18 @@ img.kta-popup-photo-mini:focus-visible {
 
 .kta-alert-corps {
   padding: 18px 20px !important;
+  /* v1.14.3 — corps scrollable quand le détail dépasse la hauteur de
+     boîte. flex:1 1 auto pour prendre tout l'espace restant entre header
+     et footer "J'ai compris", min-height:0 nécessaire pour autoriser le
+     shrink dans flex (sinon le contenu impose sa hauteur intrinsèque). */
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+}
+/* Header + footer doivent rester fixes au-dessus/au-dessous du scroll */
+.kta-alert-header,
+.kta-alert-actions {
+  flex: 0 0 auto !important;
 }
 .kta-alert-msg {
   color: #ffe4d4;
@@ -8019,11 +8039,18 @@ img.kta-popup-photo-mini:focus-visible {
 }
 .kta-alert-selector-boite {
   max-width: 540px;
-  height: auto;
-  max-height: 80vh;
+  /* v1.14.3 — bornes forcées en !important + flex column (cf .kta-alert-boite) */
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 .kta-alert-selector-corps {
   padding: 14px 18px;
+  /* v1.14.3 — corps scrollable si N alertes dépasse la hauteur */
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
 }
 .kta-alert-selector-hint {
   font-size: 12.5px;
