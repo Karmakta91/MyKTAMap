@@ -371,13 +371,32 @@
       tagsRencontres.add(tag);
       const ll = planToGps(t, p.x, p.y);
       const nom = p.nom || p.id || "(point)";
-      const desc = p.description ? '<description>' + _xmlEsc(p.description) + '</description>' : '';
+      // v1.14.20-hotfix9 (KARMA « on perd la descriptions des points dans
+      // le kmz, ou Google ne l'affiche pas ») : wrapper la description en
+      // <![CDATA[...]]> pour que Google Earth l'interprète en HTML (les
+      // retours à la ligne \n natifs étaient invisibles, Google rend la
+      // description en HTML inline → \n ignorés). On échappe le ]] et
+      // ]]> internes pour éviter de casser le CDATA, et on convertit \n
+      // en <br/>. L'import KMZ fait l'opération inverse pour préserver
+      // le format texte original au roundtrip.
+      const desc = p.description ? _emitDescriptionCdata(p.description) : '';
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
                '<styleUrl>#point_' + tag + '</styleUrl>' +
                '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
              '</Placemark>';
+    }
+
+    // Helper CDATA pour les descriptions HTML compatibles Google Earth.
+    function _emitDescriptionCdata(text) {
+      const s = String(text == null ? "" : text);
+      // \n natif → <br/> pour préservation visuelle dans le balloon Google Earth.
+      // CDATA ne nécessite pas d'XML-escape mais on doit éviter de fermer le
+      // CDATA prématurément si la description contenait littéralement "]]>"
+      // (très rare, mais défensif).
+      const html = s.replace(/]]>/g, "]]]]><![CDATA[>").replace(/\n/g, "<br/>");
+      return '<description><![CDATA[' + html + ']]></description>';
     }
 
     function _emitLineString(road, styleId) {

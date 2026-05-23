@@ -361,7 +361,16 @@
       const pm = placemarks[i];
       stats.total++;
       const nom = (pm.getElementsByTagName("name")[0]?.textContent || "").trim();
-      const desc = (pm.getElementsByTagName("description")[0]?.textContent || "").trim();
+      let desc = (pm.getElementsByTagName("description")[0]?.textContent || "").trim();
+      // v1.14.20-hotfix9 — l'export KMZ wrappe la description en CDATA et
+      // convertit \n en <br/> pour que Google Earth affiche correctement
+      // les sauts de ligne dans le balloon. À l'import on inverse pour
+      // préserver le format texte original : <br/>, <br>, <br /> → \n.
+      // Pattern strict (case-insensitive) pour ne pas toucher d'autres balises
+      // HTML qui pourraient être présentes dans une description tierce.
+      if (desc) {
+        desc = desc.replace(/<br\s*\/?>/gi, "\n");
+      }
       const pmId = pm.getAttribute("id") || ("pm_" + i);
 
       // Helper pour parser une string "lng,lat[,alt] lng,lat[,alt] ..."
