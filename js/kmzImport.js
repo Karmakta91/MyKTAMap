@@ -372,6 +372,19 @@
         }).filter(function(p) { return isFinite(p.lat) && isFinite(p.lng); });
       };
 
+      // v1.14.20-hotfix8 (KARMA « pk l'export KMZ ne sauvegarde pas les
+      // icônes comme on veut pour pouvoir re-importer ensuite ») :
+      // détection du tag/type depuis le <styleUrl> du Placemark (encodé
+      // par kmzExport.js sous la forme #point_<tag> / #road_<type> /
+      // #zone_<type>). Avant ce fix, seuls les sous-types « structure »
+      // (#structure_pilier-1/2/mur/front-1/2) étaient lus — les Points,
+      // Roads et Zones tombaient tous sur le tag/type par défaut imposé
+      // par la modale Import, perdant l'info à l'import. Maintenant : on
+      // lit le styleUrl pour tout, fallback aux défauts seulement si
+      // styleUrl absent ou non reconnu.
+      const _styleEl = pm.querySelector(":scope > styleUrl");
+      const _styleUrl = _styleEl ? (_styleEl.textContent || "").trim() : "";
+
       // Point — chercher en descendant DIRECT pour éviter les sous-MultiGeometry
       const pointCoords = pm.querySelector(":scope > Point > coordinates");
       if (pointCoords) {
@@ -379,10 +392,13 @@
         if (pts.length >= 1) {
           const px = gpsToPixel(transform, pts[0].lat, pts[0].lng);
           if (_inBounds(px)) {
+            // Tag depuis styleUrl #point_<tag>, fallback défaut
+            const ptMatch = _styleUrl.match(/^#point_(.+)$/);
+            const tag = (ptMatch && ptMatch[1]) ? ptMatch[1] : defaults.pointTag;
             out.points.push({
               id: pmId, nom: nom, description: desc || undefined,
               x: Math.round(px.x), y: Math.round(px.y),
-              tags: [defaults.pointTag]
+              tags: [tag]
             });
             stats.kept++;
           } else {
@@ -401,13 +417,12 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // 🆕 v1.9.3-A1.b.2 : détection structure front via styleUrl.
-          // Notre KMZ export utilise "#structure_front-1" ou "_front-2"
-          // pour les fronts de taille. Sinon (= KMZ d'une autre app ou
-          // MyKTAMap pré-A1.b.2), comportement legacy : LineString = road.
-          const lineStyleEl = pm.querySelector(":scope > styleUrl");
-          const lineStyleUrl = lineStyleEl ? (lineStyleEl.textContent || "").trim() : "";
-          const frontMatch = lineStyleUrl.match(/^#structure_(front-1|front-2)$/);
+          // 🆕 v1.9.3-A1.b.2 + v1.14.20-hotfix8 : détection via styleUrl.
+          // Notre KMZ export utilise :
+          //   #structure_front-1 / front-2 → structure polyline
+          //   #road_principal / secondaire / chemin / jonction / itinerary → road
+          // Sinon (KMZ tiers) → fallback defaults.roadType.
+          const frontMatch = _styleUrl.match(/^#structure_(front-1|front-2)$/);
           if (frontMatch) {
             // C'est un front de taille (polyline structure)
             out.structures.push({
@@ -415,10 +430,12 @@
               type: frontMatch[1], points: projected
             });
           } else {
-            // Comportement legacy : LineString = road
+            // Type road depuis styleUrl, fallback défaut
+            const roadMatch = _styleUrl.match(/^#road_(principal|secondaire|chemin|jonction|itinerary)$/);
+            const roadType = (roadMatch && roadMatch[1]) ? roadMatch[1] : defaults.roadType;
             out.roads.push({
               id: pmId, nom: nom || undefined,
-              type: defaults.roadType, points: projected
+              type: roadType, points: projected
             });
           }
           stats.kept++;
@@ -441,13 +458,11 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // 🆕 v1.9.3-A1.b.1 : détection structure vs zone via styleUrl.
-          // Notre KMZ export utilise "#structure_<type>" pour les piliers
-          // et murs. Sinon (= KMZ d'une autre app, ou KMZ MyKTAMap legacy
-          // sans structures), comportement existant : import comme zone.
-          const styleUrlEl = pm.querySelector(":scope > styleUrl");
-          const styleUrl = styleUrlEl ? (styleUrlEl.textContent || "").trim() : "";
-          const structMatch = styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
+          // 🆕 v1.9.3-A1.b.1 + v1.14.20-hotfix8 : détection via styleUrl.
+          //   #structure_pilier-1 / pilier-2 / mur → structure polygone
+          //   #zone_eau / remblais / effondrement / inaccessible → zone
+          // Sinon (KMZ tiers) → fallback defaults.zoneType.
+          const structMatch = _styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
           if (structMatch) {
             // C'est une structure (pilier 1ère masse / 2e masse / mur).
             // On préserve le sous-type extrait du styleUrl pour respecter
@@ -457,10 +472,12 @@
               type: structMatch[1], points: projected
             });
           } else {
-            // Comportement legacy : zone avec le type par défaut.
+            // Type zone depuis styleUrl, fallback défaut
+            const zoneMatch = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible)$/);
+            const zoneType = (zoneMatch && zoneMatch[1]) ? zoneMatch[1] : defaults.zoneType;
             out.zones.push({
               id: pmId, nom: nom || undefined,
-              type: defaults.zoneType, points: projected
+              type: zoneType, points: projected
             });
           }
           stats.kept++;

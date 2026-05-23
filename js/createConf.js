@@ -2500,8 +2500,12 @@ function _afficherImporterKmz(prefilledFile) {
           </div>
 
           <p class="kta-planner-info" style="margin-top:12px; margin-bottom:4px;">
-            <strong>Types par défaut</strong> — les Placemarks du KMZ n'ont pas de type MyKTAMap
-            explicite, choisis comment les ranger :
+            <strong>Types par défaut</strong> — fallback pour les Placemarks <em>sans</em>
+            styleUrl reconnu. Les KMZ exportés depuis MyKTAMap encodent le tag/type
+            directement (<code>#point_&lt;tag&gt;</code>, <code>#road_&lt;type&gt;</code>,
+            <code>#zone_&lt;type&gt;</code>, <code>#structure_&lt;sous-type&gt;</code>) et
+            sont restaurés tels quels — ces choix ci-dessous ne s'appliquent qu'aux
+            Placemarks orphelins (ex: KMZ tiers Google Earth / OsmAnd / IGN scan).
           </p>
 
           <div class="kta-planner-grille">
