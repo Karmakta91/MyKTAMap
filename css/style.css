@@ -3790,12 +3790,21 @@ img.kta-popup-photo-mini:focus-visible {
   border-color: rgba(140, 180, 255, 0.60);
   color: #e8eaf0;
 }
-/* v1.14.14 (KARMA) : en theme light, le bouton 🔒 Verrouiller adopte
-   le MÊME fond blanc/discret que 📖 Documentation et ⚙️ Configuration
-   (règle générique .loader-btn-help à ~ligne 12148, rgba(0,0,0,0.05)).
-   On ne sur-définit donc plus le variant ambre — la règle générique
-   prend le relais automatiquement → cohérence visuelle parfaite entre
-   les boutons utilitaires du header loader. */
+/* v1.14.15 (KARMA « je vois pas le fond blanc pour verouiller ») :
+   le bouton lock apparaissait en ambre permanent à cause du sticky :hover
+   sur mobile (après tap, le :hover reste collé jusqu'à un tap ailleurs).
+   Fix global : on neutralise aussi explicitement focus/active pour ce
+   bouton ET on déplace le :hover ambre dans @media (hover: hover) (cf
+   plus bas dans ce fichier) pour qu'il ne s'active que sur les devices
+   avec un vrai pointeur (mouse, trackpad), pas sur tactile. */
+body.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
+body.kta-theme-light .loader-btn-help.loader-btn-lock:active,
+html.kta-theme-light .loader-btn-help.loader-btn-lock:focus,
+html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
+  background: rgba(0,0,0,0.05) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+}
 
 /* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
    Gap volontairement faible pour les coller visuellement. */
@@ -12144,10 +12153,16 @@ body.kta-theme-light .loader-btn-secondary {
   color: var(--kta-light-text) !important;
   border: 1px solid var(--kta-light-border-strong) !important;
 }
-body.kta-theme-light .loader-btn-help:hover,
-body.kta-theme-light .loader-btn-secondary:hover {
-  background: var(--kta-light-accent-bg) !important;
-  border-color: var(--kta-light-accent) !important;
+/* v1.14.15 (KARMA) : :hover encapsulé dans @media (hover: hover) pour
+   ne s'activer que sur les devices avec un vrai pointeur (mouse). Sur
+   tactile, après tap, le :hover restait sticky → le bouton apparaissait
+   en ambre permanent (vu sur le bouton 🔒 Verrouiller dernier tappé). */
+@media (hover: hover) {
+  body.kta-theme-light .loader-btn-help:hover,
+  body.kta-theme-light .loader-btn-secondary:hover {
+    background: var(--kta-light-accent-bg) !important;
+    border-color: var(--kta-light-accent) !important;
+  }
 }
 
 /* === Footer copyright loader === */

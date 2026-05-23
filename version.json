@@ -1,11 +1,12 @@
 {
-  "version": "v1.14.14",
+  "version": "v1.14.15",
   "released": "2026-05-24",
   "notes": [
-    "🎨 V3.2.o — Cohérence du bouton 🔒 Verrouiller en mode clair (KARMA : « en mode clair, le fond icône verrouillé doit être blanc comme doc, config »). Le variant ambre v1.14.11 (fond rgba(244,197,66,0.15) jaune translucide) était distinct visuellement des 2 autres boutons utilitaires du header loader (📖 Documentation et ⚙️ Configuration) qui utilisent la règle générique .loader-btn-help (fond rgba(0,0,0,0.05), quasi-blanc sur le beige du loader).",
-    "🔧 Fix : retrait du variant spécifique body.kta-theme-light .loader-btn-help.loader-btn-lock — la règle générique .loader-btn-help du theme light prend désormais le relais automatiquement → fond identique pour 📖 doc / ⚙️ config / 🔒 lock. Hover unifié sur --kta-light-accent-bg.",
-    "✂️ Mode sombre inchangé — le variant dark .loader-btn-help.loader-btn-lock (fond bleu légèrement plus accentué que les autres) est conservé, KARMA n'a signalé l'incohérence qu'en mode clair.",
-    "🏷️ Sources de vérité v1.14.14 : version.json → \"v1.14.14\", js/copyright.js > __MKM__.build → \"v1.14.14\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.14-lock-bg\".",
-    "🛡️ Confidentialité — patch CSS pur (-12 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
+    "🐛 V3.2.p — Fix sticky :hover ambre sur le bouton 🔒 Verrouiller en theme light (KARMA capture : « je vois pas le fond blanc pour verouiller »). Sur mobile, après tap, le :hover restait collé sur le bouton jusqu'à un tap ailleurs → le bouton apparaissait en ambre permanent (background --kta-light-accent-bg + bordure --kta-light-accent) alors que 📖 doc et ⚙️ config restaient en gris neutre. Le fix v1.14.14 (retrait du variant ambre spécifique au lock) ne résolvait pas le problème — la cause réelle était sur la pseudo-classe :hover, pas sur la règle de base.",
+    "🔧 Solution globale — encapsulation du :hover ambre des .loader-btn-help / .loader-btn-secondary en theme light dans @media (hover: hover). Le hover ne s'active désormais que sur les devices avec un vrai pointeur (souris, trackpad). Sur tactile : plus de sticky hover ambre → cohérence visuelle stable entre tous les boutons utilitaires du header.",
+    "🛡️ Solution chirurgicale en complément — règle explicite pour body.kta-theme-light .loader-btn-help.loader-btn-lock:focus / :active qui force le fond gris neutre sur ces 2 états (au cas où le focus persisterait après tap sur certains UA tactiles).",
+    "🌗 Mode sombre inchangé — KARMA n'a signalé l'incohérence qu'en mode clair.",
+    "🏷️ Sources de vérité v1.14.15 : version.json → \"v1.14.15\", js/copyright.js > __MKM__.build → \"v1.14.15\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.15-sticky-hover\".",
+    "🛡️ Confidentialité — fix CSS pur (+18 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
   ]
 }
