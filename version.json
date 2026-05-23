@@ -1,12 +1,12 @@
 {
-  "version": "v1.14.15",
+  "version": "v1.14.16",
   "released": "2026-05-24",
   "notes": [
-    "🐛 V3.2.p — Fix sticky :hover ambre sur le bouton 🔒 Verrouiller en theme light (KARMA capture : « je vois pas le fond blanc pour verouiller »). Sur mobile, après tap, le :hover restait collé sur le bouton jusqu'à un tap ailleurs → le bouton apparaissait en ambre permanent (background --kta-light-accent-bg + bordure --kta-light-accent) alors que 📖 doc et ⚙️ config restaient en gris neutre. Le fix v1.14.14 (retrait du variant ambre spécifique au lock) ne résolvait pas le problème — la cause réelle était sur la pseudo-classe :hover, pas sur la règle de base.",
-    "🔧 Solution globale — encapsulation du :hover ambre des .loader-btn-help / .loader-btn-secondary en theme light dans @media (hover: hover). Le hover ne s'active désormais que sur les devices avec un vrai pointeur (souris, trackpad). Sur tactile : plus de sticky hover ambre → cohérence visuelle stable entre tous les boutons utilitaires du header.",
-    "🛡️ Solution chirurgicale en complément — règle explicite pour body.kta-theme-light .loader-btn-help.loader-btn-lock:focus / :active qui force le fond gris neutre sur ces 2 états (au cas où le focus persisterait après tap sur certains UA tactiles).",
-    "🌗 Mode sombre inchangé — KARMA n'a signalé l'incohérence qu'en mode clair.",
-    "🏷️ Sources de vérité v1.14.15 : version.json → \"v1.14.15\", js/copyright.js > __MKM__.build → \"v1.14.15\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.15-sticky-hover\".",
-    "🛡️ Confidentialité — fix CSS pur (+18 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
+    "🐛 V3.2.q — Fix rendu cassé de la modale 📥 Importer en pleine largeur (KARMA capture : « ça va pas du tout le modal, je comprends pas, on a déjà fait ça plein de fois »). La modale s'étalait sur toute la largeur du viewport et les onglets s'empilaient verticalement à gauche au lieu d'être horizontaux. Cause identifiée : la modale dépendait des styles .kta-ses-tabs / .kta-ses-tab / .kta-ses-intro / .kta-ses-summary / .kta-ses-actions / .kta-ses-btn injectés DYNAMIQUEMENT par sessionExporter.js via window.SessionExporterStyles.inject() (introduit en v1.14.12). Si le SW servait une ancienne version de sessionExporter.js (avant v1.14.12), l'API n'existait pas → aucun style injecté → rendu cassé.",
+    "🔧 Fix : tous les styles minimaux nécessaires pour la modale Import sont désormais inscrits en CSS statique dans css/style.css (scopés sur #kta-import-choix-modal). Plus aucune dépendance sur l'API dynamique. Les styles sont garantis dispo dès le boot car css/style.css est chargé d'office par index.html — résilient au cache SW, aux versions désynchronisées, et aux modules JS non chargés.",
+    "💪 Renforcement .kta-import-choix-boite — max-width:560px + width:95% basculés en !important pour battre la règle base .kta-readme-modal-boite qui fixe width:min(1400px, 96vw) en PC ≥1024px.",
+    "🌗 Theme light inclus — variants beige + ambre charte pour onglets, intro, summary, actions, boutons primary (jaune charte) et secondary (gris discret).",
+    "🏷️ Sources de vérité v1.14.16 : version.json → \"v1.14.16\", js/copyright.js > __MKM__.build → \"v1.14.16\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.16-import-static-css\".",
+    "🛡️ Confidentialité — fix CSS pur (+~140 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
   ]
 }

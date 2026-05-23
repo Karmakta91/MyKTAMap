@@ -11621,15 +11621,165 @@ html.kta-theme-light .kta-session-modal-detail {
 
    Toutes les classes .kta-import-choix-* (-grille / -card / -icone /
    -titre / -desc / -ext) sont retirées ici. */
+/* v1.14.16 (KARMA) — la modale Import dépendait des styles .kta-ses-*
+   injectés dynamiquement par sessionExporter.js. Si le SW servait une
+   ancienne version (avant l'API window.SessionExporterStyles.inject de
+   v1.14.12), le styling n'était pas appliqué → modale en pleine largeur,
+   onglets empilés verticalement, contenu débordant. Fix : on inscrit ici
+   en CSS statique tous les styles minimaux nécessaires pour la modale
+   Import, indépendamment du module sessionExporter. */
 .kta-import-choix-boite {
-  /* Boîte un peu plus large pour aligner avec la modale Enregistrer
-     session (max-width:560px). */
-  max-width: 560px;
-  width: 95%;
+  /* width override la base .kta-readme-modal-boite (min(1400px, 96vw) en PC).
+     !important pour ne pas se faire battre par la règle @media du base. */
+  max-width: 560px !important;
+  width: 95% !important;
   height: auto !important;
   max-height: 90vh !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+/* === Pattern .kta-ses-tabs / .kta-ses-tab — copié depuis le styling
+   dynamique de sessionExporter.js pour résilience. Si sessionExporter
+   ré-injecte ses propres styles, ils sont fonctionnellement identiques
+   (sauf que ceux du JS ont une spécificité 0,1,0 — les nôtres sont aussi
+   0,1,0 mais déclarés en CSS statique = priorité égale, le dernier déclaré
+   gagne, ce qui est OK). */
+#kta-import-choix-modal .kta-ses-tabs {
+  display: flex !important;
+  gap: 4px !important;
+  padding: 12px 18px 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  flex: 0 0 auto !important;
+}
+#kta-import-choix-modal .kta-ses-tab {
+  flex: 1 1 0 !important;
+  padding: 10px 8px !important;
+  background: transparent !important;
+  color: #8892a4 !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px 6px 0 0 !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  font-weight: 500 !important;
+  transition: all 0.12s !important;
+}
+#kta-import-choix-modal .kta-ses-tab:hover {
+  color: #c0c8d8 !important;
+  background: rgba(140,180,255,0.05) !important;
+}
+#kta-import-choix-modal .kta-ses-tab.active {
+  color: #8cb4ff !important;
+  background: rgba(140,180,255,0.10) !important;
+  border-color: rgba(140,180,255,0.30) !important;
+  border-bottom-color: transparent !important;
+}
+#kta-import-choix-modal .kta-readme-modal-corps {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  padding: 18px !important;
+}
+#kta-import-choix-modal .kta-ses-intro {
+  font-size: 13px !important;
+  color: #c0c8d8 !important;
+  margin-bottom: 16px !important;
+  line-height: 1.5 !important;
+}
+#kta-import-choix-modal .kta-ses-summary {
+  background: rgba(140,180,255,0.06) !important;
+  border: 1px solid rgba(140,180,255,0.18) !important;
+  border-radius: 6px !important;
+  padding: 12px 14px !important;
+  font-size: 13px !important;
+  color: #c0c8d8 !important;
+  line-height: 1.7 !important;
+}
+#kta-import-choix-modal .kta-ses-summary strong {
+  color: #e8eaf0 !important;
+}
+#kta-import-choix-modal .kta-ses-actions {
+  display: flex !important;
+  gap: 10px !important;
+  justify-content: flex-end !important;
+  padding: 14px 18px !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+  flex: 0 0 auto !important;
+}
+#kta-import-choix-modal .kta-ses-btn {
+  padding: 10px 18px !important;
+  border-radius: 6px !important;
+  border: none !important;
+  cursor: pointer !important;
+  font-size: 13px !important;
+  font-family: inherit !important;
+  font-weight: 600 !important;
+  transition: all 0.12s !important;
+}
+#kta-import-choix-modal .kta-ses-btn-primary {
+  background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
+  border: 1px solid #c99a1f !important;
+  color: #2a1f08 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
+}
+#kta-import-choix-modal .kta-ses-btn-primary:hover {
+  background: linear-gradient(180deg, #ffd866, #e8b537) !important;
+}
+#kta-import-choix-modal .kta-ses-btn-secondary {
+  background: rgba(255,255,255,0.06) !important;
+  color: #c0c8d8 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+}
+#kta-import-choix-modal .kta-ses-btn-secondary:hover {
+  background: rgba(255,255,255,0.10) !important;
+}
+
+/* Theme light — variant pour la modale Import (cohérent avec les autres
+   modales charte light) */
+body.kta-theme-light #kta-import-choix-modal .kta-ses-tabs,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-tabs {
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-tab,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-tab {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-tab:hover,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-tab:hover {
+  background: rgba(244,197,66,0.10) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-tab.active,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-tab.active {
+  background: rgba(244,197,66,0.20) !important;
+  color: #6b4d10 !important;
+  border-color: rgba(161,110,16,0.40) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-intro,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-intro {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-summary,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-summary {
+  background: rgba(244,197,66,0.10) !important;
+  border-color: rgba(161,110,16,0.30) !important;
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-summary strong,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-summary strong {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-actions,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-actions {
+  border-top-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light #kta-import-choix-modal .kta-ses-btn-secondary,
+html.kta-theme-light #kta-import-choix-modal .kta-ses-btn-secondary {
+  background: rgba(0,0,0,0.05) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
 }
 
 /* === Popups Leaflet (markers, zones) ===
