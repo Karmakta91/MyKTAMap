@@ -1,13 +1,11 @@
 {
-  "version": "v1.14.13",
+  "version": "v1.14.14",
   "released": "2026-05-24",
   "notes": [
-    "🎨 V3.2.n — Cohérence des contrôles flottants Leaflet en mode clair (KARMA : « tu arriverais à faire passer le fond de calque Leaflet même couleur que les autres icônes, tout aussi gros d'ailleurs, et même logique en sombre »). Les boutons zoom +/- et le toggle 📋 calques apparaissaient sur un fond beige TRÈS clair (#fdf8eb), distinct des autres icônes sidebar (☰ Légende, 🔍 Recherche, etc.) qui utilisent le fond beige PIERREUX (--kta-light-bg-bar = #c9b88f). Visuellement incohérent.",
-    "🐛 Cause 1 — Duplication CSS : une 2e déclaration de body.kta-theme-light .leaflet-bar a (sans !important, plus loin dans le fichier) re-définissait le background en --kta-light-bg-elevated (clair), créant des cas où elle battait la canonique malgré le !important. Règle dupliquée retirée.",
-    "🐛 Cause 2 — .leaflet-control-layers-toggle (le bouton ☰ qui ouvre le panneau calques tile-server / data-layers) avait son propre fond #fdf8eb hardcodé. Aligné sur --kta-light-bg-bar pour matcher les autres .leaflet-bar a. SVG hamburger sombre conservé.",
-    "✅ Résultat — en mode clair, TOUS les contrôles flottants Leaflet (zoom +/-, calques ☰, sidebar gauche actions) utilisent désormais le même fond pierreux beige cohérent. Hover unifié sur --kta-light-bg-bar-deep. Mode sombre : déjà aligné depuis le début (#1a1f2e partout), pas de changement.",
-    "♿ Sélecteurs dupliqués body.kta-theme-light + html.kta-theme-light sur les règles canoniques pour cohérence avec le pattern v1.13.0-fix5 (modales appendées à documentElement).",
-    "🏷️ Sources de vérité v1.14.13 : version.json → \"v1.14.13\", js/copyright.js > __MKM__.build → \"v1.14.13\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.13-leaflet-bg\".",
-    "🛡️ Confidentialité — fix CSS pur, aucune modification réseau. NETWORK_AUDIT inchangé."
+    "🎨 V3.2.o — Cohérence du bouton 🔒 Verrouiller en mode clair (KARMA : « en mode clair, le fond icône verrouillé doit être blanc comme doc, config »). Le variant ambre v1.14.11 (fond rgba(244,197,66,0.15) jaune translucide) était distinct visuellement des 2 autres boutons utilitaires du header loader (📖 Documentation et ⚙️ Configuration) qui utilisent la règle générique .loader-btn-help (fond rgba(0,0,0,0.05), quasi-blanc sur le beige du loader).",
+    "🔧 Fix : retrait du variant spécifique body.kta-theme-light .loader-btn-help.loader-btn-lock — la règle générique .loader-btn-help du theme light prend désormais le relais automatiquement → fond identique pour 📖 doc / ⚙️ config / 🔒 lock. Hover unifié sur --kta-light-accent-bg.",
+    "✂️ Mode sombre inchangé — le variant dark .loader-btn-help.loader-btn-lock (fond bleu légèrement plus accentué que les autres) est conservé, KARMA n'a signalé l'incohérence qu'en mode clair.",
+    "🏷️ Sources de vérité v1.14.14 : version.json → \"v1.14.14\", js/copyright.js > __MKM__.build → \"v1.14.14\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.14-lock-bg\".",
+    "🛡️ Confidentialité — patch CSS pur (-12 lignes), aucune modification réseau. NETWORK_AUDIT inchangé."
   ]
 }

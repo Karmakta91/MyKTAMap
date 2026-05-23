@@ -3790,19 +3790,12 @@ img.kta-popup-photo-mini:focus-visible {
   border-color: rgba(140, 180, 255, 0.60);
   color: #e8eaf0;
 }
-/* Theme light — variant ambre charte */
-body.kta-theme-light .loader-btn-help.loader-btn-lock,
-html.kta-theme-light .loader-btn-help.loader-btn-lock {
-  background: rgba(244, 197, 66, 0.15) !important;
-  border-color: rgba(161, 110, 16, 0.35) !important;
-  color: #6b4d10 !important;
-}
-body.kta-theme-light .loader-btn-help.loader-btn-lock:hover,
-html.kta-theme-light .loader-btn-help.loader-btn-lock:hover {
-  background: rgba(244, 197, 66, 0.30) !important;
-  border-color: rgba(161, 110, 16, 0.60) !important;
-  color: #3a2f15 !important;
-}
+/* v1.14.14 (KARMA) : en theme light, le bouton 🔒 Verrouiller adopte
+   le MÊME fond blanc/discret que 📖 Documentation et ⚙️ Configuration
+   (règle générique .loader-btn-help à ~ligne 12148, rgba(0,0,0,0.05)).
+   On ne sur-définit donc plus le variant ambre — la règle générique
+   prend le relais automatiquement → cohérence visuelle parfaite entre
+   les boutons utilitaires du header loader. */
 
 /* Conteneur des boutons utilitaires du header loader (🚨 alerte + 📖 doc).
    Gap volontairement faible pour les coller visuellement. */
