@@ -12474,6 +12474,243 @@ html.kta-theme-light .splash-credits {
   color: #6b6354 !important;
 }
 
+/* ============================================================================
+ * 🔧 v1.13.0-fix12 — UNLOCK GATE + PIN GATE + PIN PROPOSAL
+ * ============================================================================
+ * KARMA "pareil pour le modal pour enrengistrer un mdp, et pour le saisir
+ * a la relance" :
+ *
+ *   - "saisir un mdp à la relance" = #kta-unlock-overlay (barrière commu-
+ *     nautaire au boot, code d'accès) OU .kta-pin-gate-overlay (PIN local
+ *     post-installation)
+ *   - "enregistrer un mdp" = .kta-pin-proposal-boite (modale qui propose
+ *     l'activation du PIN après une mise à jour)
+ *
+ * Toutes ces couches sont au-dessus du splash, en pleine charte sombre.
+ * On les bascule en clair tout en gardant l'identité (jaune charte,
+ * accent rouge pour le lockout/erreur).
+ * ============================================================================ */
+
+/* === UNLOCK GATE (barrière communautaire au boot) === */
+html.kta-theme-light #kta-unlock-overlay {
+  background: linear-gradient(135deg, #f0e8d8 0%, #c9b88f 100%) !important;
+}
+html.kta-theme-light .kta-unlock-box {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 2px solid rgba(244, 197, 66, 0.55) !important;
+  box-shadow: 0 8px 40px rgba(80, 60, 30, 0.25) !important;
+}
+html.kta-theme-light .kta-unlock-icon {
+  /* L'icône 🗝️ reste émoji natif, juste s'assurer qu'elle est visible */
+  color: #8b5a00 !important;
+}
+html.kta-theme-light .kta-unlock-titre {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-unlock-info {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-unlock-info a {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-unlock-info a:hover {
+  color: #8b5a00 !important;
+}
+html.kta-theme-light #kta-unlock-input {
+  background: #ffffff !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+}
+html.kta-theme-light #kta-unlock-input:focus {
+  border-color: #f4c542 !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
+  outline: none !important;
+}
+html.kta-theme-light #kta-unlock-btn {
+  background: #f4c542 !important;
+  color: #2a2620 !important;
+  border: 1px solid #d9a82e !important;
+  font-weight: 600 !important;
+}
+html.kta-theme-light #kta-unlock-btn:hover {
+  background: #d9a82e !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-unlock-error {
+  color: #b02020 !important;
+  background: rgba(220, 50, 50, 0.10) !important;
+  border: 1px solid rgba(220, 50, 50, 0.30) !important;
+}
+html.kta-theme-light .kta-unlock-success {
+  color: #1f6b3a !important;
+  background: rgba(46, 139, 87, 0.10) !important;
+  border: 1px solid rgba(46, 139, 87, 0.30) !important;
+}
+html.kta-theme-light .kta-unlock-warn {
+  color: #8b4a0c !important;
+  background: rgba(217, 122, 28, 0.10) !important;
+  border: 1px solid rgba(217, 122, 28, 0.30) !important;
+}
+html.kta-theme-light .kta-unlock-lockout {
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-unlock-lockout-titre {
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-unlock-lockout-msg {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-unlock-lockout-hint {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-unlock-signature {
+  color: #6b6354 !important;
+}
+
+/* === PIN GATE (saisie PIN au boot quand activé) === */
+html.kta-theme-light .kta-pin-gate-overlay {
+  background: linear-gradient(135deg, #f0e8d8 0%, #c9b88f 100%) !important;
+}
+html.kta-theme-light .kta-pin-gate-box {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 2px solid rgba(244, 197, 66, 0.55) !important;
+  box-shadow: 0 8px 40px rgba(80, 60, 30, 0.25) !important;
+}
+html.kta-theme-light .kta-pin-gate-icon {
+  color: #8b5a00 !important;
+}
+html.kta-theme-light .kta-pin-gate-titre {
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-pin-gate-soustitre {
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-pin-gate-dots {
+  /* le conteneur des dots — pas de background spécifique */
+}
+html.kta-theme-light .kta-pin-dot {
+  background: rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-pin-dot-filled {
+  background: #f4c542 !important;
+  border-color: #d9a82e !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-pin-dot-visible {
+  color: #2a2620 !important;
+  font-weight: 700 !important;
+}
+html.kta-theme-light .kta-pin-gate-err {
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-pin-gate-attempts {
+  color: #6b6354 !important;
+}
+html.kta-theme-light .kta-pin-gate-attempts-warn {
+  color: #8b4a0c !important;
+}
+/* Touches du keypad */
+html.kta-theme-light .kta-pin-gate-key {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+}
+html.kta-theme-light .kta-pin-gate-key:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: #f4c542 !important;
+}
+html.kta-theme-light .kta-pin-gate-key:active {
+  background: rgba(244, 197, 66, 0.30) !important;
+}
+html.kta-theme-light .kta-pin-gate-key-empty {
+  background: transparent !important;
+  border: none !important;
+}
+html.kta-theme-light .kta-pin-gate-key-erase {
+  background: rgba(220, 50, 50, 0.08) !important;
+  color: #b02020 !important;
+  border-color: rgba(220, 50, 50, 0.30) !important;
+}
+html.kta-theme-light .kta-pin-gate-key-erase:hover {
+  background: rgba(220, 50, 50, 0.18) !important;
+  border-color: rgba(220, 50, 50, 0.50) !important;
+}
+html.kta-theme-light .kta-pin-gate-key-validate {
+  background: #f4c542 !important;
+  color: #2a2620 !important;
+  border-color: #d9a82e !important;
+  font-weight: 700 !important;
+}
+html.kta-theme-light .kta-pin-gate-key-validate:hover:not(:disabled) {
+  background: #d9a82e !important;
+  color: #1a1612 !important;
+}
+html.kta-theme-light .kta-pin-gate-key-validate:disabled {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: #8a8270 !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  opacity: 0.55 !important;
+}
+/* Bouton biométrie (Face ID / Touch ID) */
+html.kta-theme-light .kta-pin-gate-bio-btn {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(244, 197, 66, 0.45) !important;
+}
+html.kta-theme-light .kta-pin-gate-bio-btn:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: #d9a82e !important;
+}
+html.kta-theme-light .kta-pin-gate-bio-btn:active {
+  background: rgba(244, 197, 66, 0.30) !important;
+}
+/* Lockout (5 tentatives ratées) */
+html.kta-theme-light .kta-pin-gate-overlay-lockout {
+  background: linear-gradient(135deg, #f5e0d5 0%, #d8a89a 100%) !important;
+}
+html.kta-theme-light .kta-pin-gate-box-lockout {
+  background: #fdf8eb !important;
+  border: 2px solid #c0392b !important;
+}
+html.kta-theme-light .kta-pin-gate-box-lockout .kta-pin-gate-titre {
+  color: #b02020 !important;
+}
+html.kta-theme-light .kta-pin-gate-lockout-explication {
+  background: rgba(220, 50, 50, 0.08) !important;
+  border: 1px solid rgba(220, 50, 50, 0.30) !important;
+  color: #4a3f30 !important;
+}
+html.kta-theme-light .kta-pin-gate-lockout-explication p {
+  color: #4a3f30 !important;
+}
+
+/* === PIN PROPOSAL (modale post-update qui propose d'activer le PIN) === */
+html.kta-theme-light .kta-pin-proposal-boite {
+  background: #fdf8eb !important;
+  color: #2a2620 !important;
+  border: 1px solid rgba(0, 0, 0, 0.22) !important;
+}
+html.kta-theme-light .kta-pin-proposal-info {
+  background: rgba(140, 180, 255, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  color: #2a2620 !important;
+}
+html.kta-theme-light .kta-pin-proposal-info-titre {
+  color: #d9a82e !important;
+}
+html.kta-theme-light .kta-pin-proposal-info p {
+  color: #2a2620 !important;
+}
+/* Override inline style rgba(244,197,66,0.06) du 2e info block */
+html.kta-theme-light .kta-pin-proposal-boite .kta-pin-proposal-info[style*="rgba(244,197,66"] {
+  background: rgba(244, 197, 66, 0.12) !important;
+  border-color: rgba(244, 197, 66, 0.35) !important;
+}
+
 /* === Modale Configuration home (loaderConfigModal) avec wrapper kta-loader-config-boite === */
 html.kta-theme-light .kta-loader-config-boite {
   background: #fdf8eb !important;
