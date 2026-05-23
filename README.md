@@ -9,7 +9,86 @@
 
 ## 📋 Journal des modifications
 
-> _Le journal est long (107 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+> _Le journal est long (108 entrées). Clique sur une entrée pour déplier son détail. Les **2 plus récentes** sont dépliées par défaut._
+
+<details id="v1-14-0" open>
+<summary><strong>🗓️ 23/05/2026 — 🚀 v1.14.0 : 📤📥 GPX import + export (Phase 1 V3 quick wins)</strong></summary>
+
+Release MINOR (bump Y : 1.13.x → 1.14.0). Première feature de la **Phase 1 V3 quick wins** (KARMA validation matrice impact/effort).
+
+### 📤📥 GPX import + export
+
+Réutilise intégralement le calibrage KMZ existant (`window.KmzExport.buildTransform / planToGps / gpsToPlan`) pour la transformation plan ↔ WGS84.
+
+**📤 Export GPX** : nouvel onglet **« 📤 GPX »** dans la modale `💾 Enregistrer la session`, à côté de 🚀 Full / 🎨 Avancé / 🔄 Conversion / 🌍 KMZ. Produit un fichier `.gpx` au format **GPX 1.1 standard** (compatible TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc.).
+
+Options dans l'onglet GPX :
+- 📍 Points session (`editorPoints`)
+- 🗂️ Points embedded (data layers)
+- 🛣️ Tracés session (hors itinéraire par défaut)
+- 🗺️ Itinéraire actif (option, souvent éphémère)
+
+**📥 Import GPX** : nouvelle sous-action **« 📤 Importer un fichier GPX »** dans le groupe `⬇️ Charger` de la sidebar gauche. Flow :
+1. File picker `.gpx`
+2. Parser GPX 1.1 (DOMParser natif, robuste détection erreurs)
+3. **Preview** : X waypoints + Y tracks à importer (+ warnings si points hors bounds du plan)
+4. Confirmation user
+5. Ajout aux annotations session
+6. **Snapshot HistoryManager** → Ctrl+Z annule l'import
+
+### 🔄 Roundtrip MyKTAMap ↔ MyKTAMap
+
+- Niveaux M-LVL préservés via commentaires `<cmt>MyKTAMap level=N</cmt>` sur waypoints et tracks
+- Type des tracés (principal/secondaire/chemin/itinerary) préservé via `<type>`
+- Tag principal de point préservé via `<sym>` et `<type>`
+- Re-import dans MyKTAMap restaure les annotations à la précision du calibrage GPS près
+
+### 🛡️ Garde-fous
+
+- **Détection points hors bounds du plan** (calibrage trop différent / GPX d'un autre site) → ignorés avec avertissement explicite dans la preview
+- **Vérif calibrage** avant tout import — sinon message clair invitant à passer par `🌍 KMZ` pour calibrer (2 points)
+- **Pas de nouvelle dépendance** — pure vanilla JS, `DOMParser` natif
+
+### 📦 Fichiers impactés
+
+- **Nouveau** : `js/gpxIO.js` (~360 lignes IIFE) → `window.GpxIO = { exporter, parser, importer, verifierCalibrage }`
+- **Modifiés** :
+  - `js/kmzExport.js` (+ fonction `gpsToPlan` inverse de `planToGps`, exposée dans l'API publique)
+  - `js/sessionExporter.js` (nouvel onglet GPX dans la modale + `_renderGpx` + `_exportGpx`)
+  - `js/interface.js` (nouvelle sous-action 📤 dans groupe ⬇️ Charger + modale d'import GPX avec preview)
+  - `index.html` (script `gpxIO.js` après `kmzExport.js`)
+  - `sw.js` (cache `./js/gpxIO.js` + bump `CACHE_NAME`)
+  - `js/copyright.js` (build → v1.14.0)
+  - `version.json` (release notes)
+  - Docs : README.md (cette entrée), `docs/README_USER.md`, `docs/AI_CONTEXT.md`, `docs/CLAUDE.md`, `docs/NETWORK_AUDIT.*`
+
+### Pour les futurs dev / agents IA
+
+**Format GPX 1.1 produit / accepté** :
+```xml
+<gpx version="1.1" creator="MyKTAMap" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>...</name><time>...</time></metadata>
+  <wpt lat="..." lon="...">
+    <name>...</name><desc>...</desc>
+    <type>tag</type><sym>tag</sym>
+    <cmt>MyKTAMap level=N</cmt>
+  </wpt>
+  <trk>
+    <name>...</name><type>principal|secondaire|chemin|itinerary</type>
+    <cmt>MyKTAMap level=N</cmt>
+    <trkseg>
+      <trkpt lat="..." lon="..."/>
+    </trkseg>
+  </trk>
+</gpx>
+```
+
+**Pour étendre** :
+- Nouveaux types de tracés → ajouter dans le filtre `validTypes` de `gpxIO.js > importer`
+- Support GPX 1.0 (legacy) → non prévu, contourner via conversion préalable user-side
+- Extensions Garmin/Strava custom → non parsées, ignorées silencieusement
+
+</details>
 
 <details id="v1-13-0" open>
 <summary><strong>🗓️ 23/05/2026 — 🚀 v1.13.0 : Thème CLAIR global + Itinéraire mode urgence ré-activé par défaut + Fix hauteurs modales</strong></summary>

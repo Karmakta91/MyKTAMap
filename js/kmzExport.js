@@ -128,6 +128,38 @@
     };
   }
 
+  // 🆕 v1.14.0 : Convertit (lat,lng) GPS en (x,y) plan via la transformation
+  // inverse. Utilisé pour l'import GPX (apps tierces fournissent des coords
+  // WGS84 qu'on doit ramener dans le repère plan local).
+  //
+  // Inverse exact de planToGps :
+  //   1. (lat,lng) → mètres relatifs à refGps via projection equirectangulaire
+  //   2. mètres → pixels via 1/metresParPixel
+  //   3. rotation inverse (-rotation)
+  //   4. unflip Y (y plan = -dy + refPlan.y)
+  function gpsToPlan(t, lat, lng) {
+    if (!t) return null;
+    // Position relative à refGps en degrés
+    const dlatDeg = lat - t.refGps.lat;
+    const dlngDeg = lng - t.refGps.lng;
+    // Degrés → mètres (projection equirectangulaire locale, valide quelques km)
+    const dxMetres = dlngDeg * 111320 * Math.cos(t.latMoyenne * Math.PI / 180);
+    const dyMetres = dlatDeg * 110540;
+    // Mètres → pixels (inverse de metresParPixel)
+    const dxRot = dxMetres / t.metresParPixel;
+    const dyRot = dyMetres / t.metresParPixel;
+    // Rotation inverse : matrice rotation transposée (cos / -sin)
+    const cosR = Math.cos(-t.rotation);  // ou cos(rotation), même valeur
+    const sinR = Math.sin(-t.rotation);
+    const dx = dxRot * cosR - dyRot * sinR;
+    const dy = dxRot * sinR + dyRot * cosR;
+    // Position relative → absolue (unflip Y)
+    return {
+      x: t.refPlan.x + dx,
+      y: t.refPlan.y - dy
+    };
+  }
+
   // =========================
   // PERSISTANCE
   // =========================
@@ -628,6 +660,7 @@
   window.KmzExport = {
     buildTransform:  buildTransform,
     planToGps:       planToGps,
+    gpsToPlan:       gpsToPlan,    // 🆕 v1.14.0 : inverse pour import GPX
     getCalibration:  getCalibration,
     setCalibration:  setCalibration,
     genererKml:      genererKml,

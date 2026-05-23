@@ -791,6 +791,10 @@
   <script src="js/sessionExporter.js"></script>
   <script src="js/kmzExport.js"></script>
   <script src="js/kmzImport.js"></script>
+  <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
+       via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
+       kmzExport.js. -->
+  <script src="js/gpxIO.js"></script>
   <script src="js/createConf.js"></script>
   <script src="js/planRegistry.js"></script>
   <script src="js/sessionPersist.js"></script>

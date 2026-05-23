@@ -492,6 +492,7 @@
           <button class="kta-ses-tab" data-tab="advanced">🎨 Avancé</button>
           <button class="kta-ses-tab" data-tab="conversion">🔄 Conversion</button>
           <button class="kta-ses-tab" data-tab="kmz">🌍 KMZ</button>
+          <button class="kta-ses-tab" data-tab="gpx">📤 GPX</button>
         </div>
 
         <div class="kta-ses-content" id="kta-ses-content"></div>
@@ -567,6 +568,9 @@
       // 🌍 v169 (Karma_dev) : binding handlers spécifique KMZ après injection
       // HTML (autocomplete + clic carte + validations + aperçu coins)
       setTimeout(_bindKmzHandlers, 0);
+    }
+    else if (_activeTab === "gpx") {
+      c.innerHTML = _renderGpx();
     }
   }
 
@@ -1296,6 +1300,7 @@
     else if (_activeTab === "advanced")     _exportAdvanced();
     else if (_activeTab === "conversion")   _exportConversion();
     else if (_activeTab === "kmz")          _exportKmz();
+    else if (_activeTab === "gpx")          _exportGpx();
   }
 
   // ========================================================
@@ -2876,6 +2881,110 @@
     } catch(e) {
       console.error("[KMZ] Erreur génération :", e);
       alert("Erreur lors de la génération du KMZ : " + (e.message || e));
+    } finally {
+      if (btnDl) { btnDl.disabled = false; btnDl.textContent = "Télécharger"; }
+    }
+  }
+
+  // ============================================================
+  // 📤 GPX EXPORT — v1.14.0
+  // ============================================================
+  function _renderGpx() {
+    const calibre = !!(window.GpxIO && window.GpxIO.verifierCalibrage && window.GpxIO.verifierCalibrage());
+    const sessionPoints = window.getEditorPoints ? (window.getEditorPoints() || []) : [];
+    const sessionRoads  = window.getRoads        ? (window.getRoads()        || []) : [];
+    const embeddedPts   = window.getAllEmbeddedPoints ? (window.getAllEmbeddedPoints() || []) : [];
+    const tracesNonIti  = sessionRoads.filter(function(r) { return r && r.type !== "itinerary"; });
+    const itiCount      = sessionRoads.filter(function(r) { return r && r.type === "itinerary"; }).length;
+
+    if (!calibre) {
+      return (
+        '<div class="kta-ses-intro">' +
+          '<strong>📤 Export GPX</strong> — produit un fichier <code>.gpx</code> standard ' +
+          '(GPX 1.1) compatible avec les apps spéléo / outdoor : ' +
+          '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, etc.</strong> Les points (waypoints) ' +
+          'et les tracés (tracks) sont projetés en coordonnées GPS WGS84 via le calibrage du plan.' +
+        '</div>' +
+        '<div class="kta-ses-empty" style="margin-top:20px;">' +
+          '⚠️ Ce plan n\'est pas encore calibré GPS.<br><br>' +
+          '<strong>Va dans l\'onglet 🌍 KMZ</strong> et configure 2 points de calibrage ' +
+          '(saisis 2 paires plan↔GPS) — le calibrage est partagé avec l\'export GPX.' +
+        '</div>'
+      );
+    }
+
+    return (
+      '<div class="kta-ses-intro">' +
+        '<strong>📤 Export GPX</strong> — produit un fichier <code>.gpx</code> standard ' +
+        '(GPX 1.1) compatible avec les apps spéléo / outdoor : ' +
+        '<strong>TopoDroid, OsmAnd, Avenza, GPSies, Strava, etc.</strong>' +
+      '</div>' +
+      '<div class="kta-ses-section">' +
+        '<div class="kta-ses-section-title">📍 Contenu à exporter</div>' +
+        '<label class="kta-ses-cb-row">' +
+          '<input type="checkbox" id="gpx_points" checked>' +
+          '<span>📍 <strong>Points session</strong> <span class="kta-ses-count">(' + sessionPoints.length + ')</span></span>' +
+        '</label>' +
+        '<label class="kta-ses-cb-row">' +
+          '<input type="checkbox" id="gpx_embedded" ' + (embeddedPts.length > 0 ? "checked" : "disabled") + '>' +
+          '<span>🗂️ <strong>Points embedded</strong> (calques data du plan) <span class="kta-ses-count">(' + embeddedPts.length + ')</span></span>' +
+        '</label>' +
+        '<label class="kta-ses-cb-row">' +
+          '<input type="checkbox" id="gpx_roads" checked>' +
+          '<span>🛣️ <strong>Tracés session</strong> (hors itinéraire) <span class="kta-ses-count">(' + tracesNonIti.length + ')</span></span>' +
+        '</label>' +
+        '<label class="kta-ses-cb-row" style="' + (itiCount === 0 ? "opacity:0.5;" : "") + '">' +
+          '<input type="checkbox" id="gpx_iti" ' + (itiCount === 0 ? "disabled" : "") + '>' +
+          '<span>🗺️ <strong>Itinéraire actif</strong> (souvent éphémère) <span class="kta-ses-count">(' + itiCount + ')</span></span>' +
+        '</label>' +
+      '</div>' +
+      '<div class="kta-ses-summary" style="margin-top:14px;">' +
+        '<strong>📐 Format de sortie :</strong> GPX 1.1 XML standard. Les niveaux M-LVL ' +
+        'sont préservés via un commentaire <code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code> ' +
+        'sur chaque waypoint et tracé — un re-import dans MyKTAMap restaure le niveau original.' +
+        '<br><br>' +
+        '<strong>🔄 Roundtrip MyKTAMap ↔ MyKTAMap :</strong> tu peux exporter, partager, ' +
+        'puis ré-importer sur un autre device — les annotations sont restaurées avec ' +
+        'les coordonnées plan exactes (à la précision du calibrage GPS près).' +
+      '</div>'
+    );
+  }
+
+  function _exportGpx() {
+    if (!window.GpxIO) {
+      alert("Module GpxIO indisponible — rechargement nécessaire");
+      return;
+    }
+    const incPoints   = document.getElementById("gpx_points")   && document.getElementById("gpx_points").checked;
+    const incEmbedded = document.getElementById("gpx_embedded") && document.getElementById("gpx_embedded").checked;
+    const incRoads    = document.getElementById("gpx_roads")    && document.getElementById("gpx_roads").checked;
+    const incIti      = document.getElementById("gpx_iti")      && document.getElementById("gpx_iti").checked;
+
+    const btnDl = document.getElementById("kta-ses-download");
+    if (btnDl) { btnDl.disabled = true; btnDl.textContent = "Génération…"; }
+
+    try {
+      const r = window.GpxIO.exporter({
+        incPoints:   !!incPoints,
+        incEmbedded: !!incEmbedded,
+        incRoads:    !!incRoads,
+        incIti:      !!incIti
+      });
+      if (!r.ok) {
+        alert("Export GPX impossible : " + r.msg);
+      } else {
+        // Feedback bref (le téléchargement se déclenche tout seul)
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(
+            "📤 GPX exporté : " + r.counts.wpts + " waypoint(s) + " + r.counts.trks + " tracé(s)",
+            "info"
+          );
+        }
+        _fermer();
+      }
+    } catch(e) {
+      console.error("[GPX] Erreur export :", e);
+      alert("Erreur lors de la génération du GPX : " + (e.message || e));
     } finally {
       if (btnDl) { btnDl.disabled = false; btnDl.textContent = "Télécharger"; }
     }

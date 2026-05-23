@@ -636,6 +636,137 @@ function importerSessionJSON(file) {
 }
 
 // =========================
+// 📤 IMPORT GPX — v1.14.0
+// =========================
+// Modale d'import d'un fichier GPX externe (TopoDroid, OsmAnd, Avenza,
+// etc.). Réutilise la calibration KMZ existante (window.KmzExport
+// .getCalibration / gpsToPlan) pour transformer les coords WGS84 → plan.
+// Flow : sélection fichier → preview (X points / Y tracés) → confirm
+// → ajout aux annotations session avec snapshot HistoryManager (undo OK).
+window.ouvrirImportGpx = function() {
+  const existing = document.getElementById("kta-import-gpx-modal");
+  if (existing) { existing.remove(); return; }
+
+  if (!window.GpxIO) {
+    alert("Module GPX IO indisponible — rechargement nécessaire");
+    return;
+  }
+  const calibre = window.GpxIO.verifierCalibrage();
+
+  const overlay = document.createElement("div");
+  overlay.id = "kta-import-gpx-modal";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite" style="max-width:560px; height:auto !important; max-height:90vh !important;">' +
+      '<div class="kta-readme-modal-header">' +
+        '<span class="kta-readme-modal-titre">📤 Importer un fichier GPX</span>' +
+        '<button class="kta-panneau-close" id="kta-import-gpx-close" type="button">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        (!calibre ?
+          '<div class="kta-aide-section" style="background:rgba(220,50,50,0.10); border-color:rgba(220,50,50,0.30);">' +
+            '<p style="color:#b02020; font-weight:600;">⚠️ Ce plan n\'est pas calibré GPS.</p>' +
+            '<p>Pour importer un GPX, l\'app a besoin de savoir comment transformer les coordonnées WGS84 (lat/lng) en coordonnées plan locales. Cette transformation est définie par 2 points de calibrage (plan ↔ GPS).</p>' +
+            '<p><strong>Comment calibrer</strong> : ferme cette fenêtre → 💾 Enregistrer session → onglet 🌍 KMZ → suis le flow 2 points de calibrage. Une fois fait, reviens ici pour importer ton GPX.</p>' +
+          '</div>'
+        :
+          '<div class="kta-aide-section">' +
+            '<p>L\'import GPX ajoute les <strong>waypoints</strong> (points) et <strong>tracks</strong> (tracés) du fichier aux annotations de session du plan courant.</p>' +
+            '<p><strong>Compatibilité</strong> : GPX 1.1 standard (TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc.). Les commentaires <code>MyKTAMap level=N</code> sont reconnus pour restaurer le niveau M-LVL si le GPX vient de MyKTAMap.</p>' +
+            '<p><strong>Annulable</strong> : si l\'import ne te convient pas après preview, tu peux faire Ctrl+Z (Undo) pour revenir en arrière.</p>' +
+          '</div>' +
+          '<div class="kta-aide-section">' +
+            '<label class="kta-net-paranoia-toggle" style="cursor:pointer;">' +
+              '<input type="file" accept=".gpx,application/gpx+xml" id="kta-import-gpx-file" style="display:none;">' +
+              '<span style="display:flex; align-items:center; gap:8px;">' +
+                '<span style="font-size:22px;">📁</span>' +
+                '<span><strong>Sélectionner un fichier .gpx</strong></span>' +
+              '</span>' +
+            '</label>' +
+            '<div id="kta-import-gpx-preview" style="margin-top:12px;"></div>' +
+          '</div>'
+        ) +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  document.getElementById("kta-import-gpx-close").addEventListener("click", function() {
+    overlay.remove();
+  });
+
+  if (!calibre) return;
+
+  // File picker handler
+  let _pendingPreview = null;
+  const fileInput = document.getElementById("kta-import-gpx-file");
+  const previewEl = document.getElementById("kta-import-gpx-preview");
+
+  // Click sur le label déclenche le file picker
+  const labelEl = fileInput.closest("label");
+  if (labelEl) {
+    labelEl.addEventListener("click", function(e) {
+      if (e.target !== fileInput) {
+        e.preventDefault();
+        fileInput.click();
+      }
+    });
+  }
+
+  fileInput.addEventListener("change", function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    previewEl.innerHTML = '<p style="color:#8892a4;">⏳ Lecture en cours…</p>';
+
+    window.GpxIO.importer(file, { confirmAdd: false }).then(function(r) {
+      if (!r.ok) {
+        previewEl.innerHTML = '<div style="background:rgba(220,50,50,0.10); border:1px solid rgba(220,50,50,0.30); padding:10px 14px; border-radius:6px; color:#b02020;"><strong>❌ Erreur :</strong> ' + r.msg + '</div>';
+        return;
+      }
+      _pendingPreview = r;
+      let warnHtml = '';
+      if (r.preview.outOfBoundsWpt > 0) {
+        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">⚠️ ' + r.preview.outOfBoundsWpt + ' waypoint(s) sont hors du plan et seront ignorés (peut-être un mauvais calibrage ?)</div>';
+      }
+      if (r.preview.outOfBoundsTrk > 0) {
+        warnHtml += '<div style="color:#8b4a0c; font-size:12px; margin-top:6px;">⚠️ ' + r.preview.outOfBoundsTrk + ' tracé(s) sont hors du plan et seront ignorés</div>';
+      }
+      previewEl.innerHTML =
+        '<div style="background:rgba(244,197,66,0.12); border:1px solid rgba(244,197,66,0.40); padding:12px 14px; border-radius:6px;">' +
+          '<div style="font-weight:700; margin-bottom:8px;">📊 Aperçu de l\'import</div>' +
+          '<div>📍 <strong>' + r.preview.wpts + '</strong> waypoint(s) à ajouter</div>' +
+          '<div>🛣️ <strong>' + r.preview.trks + '</strong> tracé(s) à ajouter</div>' +
+          (r.preview.metadata && r.preview.metadata.name ? '<div style="margin-top:6px; font-size:12px; color:#6b6354;">Source : ' + r.preview.metadata.name + '</div>' : '') +
+          warnHtml +
+        '</div>' +
+        '<div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">' +
+          '<button class="kta-btn kta-btn-ghost"   id="kta-import-gpx-cancel" type="button">Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" id="kta-import-gpx-confirm" type="button" ' +
+                  (r.preview.wpts === 0 && r.preview.trks === 0 ? "disabled" : "") + '>Confirmer l\'import</button>' +
+        '</div>';
+
+      document.getElementById("kta-import-gpx-cancel").addEventListener("click", function() {
+        _pendingPreview = null;
+        previewEl.innerHTML = '';
+        fileInput.value = '';
+      });
+      document.getElementById("kta-import-gpx-confirm").addEventListener("click", function() {
+        if (!_pendingPreview || !_pendingPreview._toApply) return;
+        window.GpxIO._appliquerImport(_pendingPreview._toApply.points, _pendingPreview._toApply.tracks);
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast(
+            "📤 Import GPX OK : " + _pendingPreview._toApply.points.length + " point(s) + " +
+            _pendingPreview._toApply.tracks.length + " tracé(s) ajoutés. Ctrl+Z pour annuler.",
+            "info"
+          );
+        }
+        overlay.remove();
+      });
+    });
+  });
+};
+
+// =========================
 // IMPORT SESSION — modale plein écran
 // =========================
 function ouvrirImportSession() {
@@ -1494,6 +1625,7 @@ function afficherAide() {
           <div class="kta-aide-section-titre">⬇️ Charger / Import</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📥</span><span>Importer une session sauvegardée</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Importer un GPX</strong> (v1.14.0) — depuis TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc. Réutilise le calibrage KMZ. Preview avant import, Ctrl+Z pour annuler.</span>
             <span class="kta-aide-icone">📊</span><span>Éditer un fichier JSON sous forme de tableau</span>
             <span class="kta-aide-icone">🗂️</span><span>Changer de plan (revenir au home)</span>
           </div>
@@ -1614,7 +1746,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 3 modes : Full / Avancé / Conversion</span>
+            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 5 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · 🌍 KMZ · <strong>📤 GPX (v1.14.0)</strong></span>
             <span class="kta-aide-icone">🖼️</span><span>Exporter en PNG/JPG — modale avec mode Rapide / Avancé</span>
             <span class="kta-aide-icone">📤</span><span><strong>Exporter en PDF imprimable</strong> (v1.10.3) — A0 à A4 × portrait/paysage, légende positionnable dans un coin</span>
           </div>
@@ -3747,6 +3879,13 @@ function initInterface() {
     position: "topleft",
     sousActions: [
       { icone: "📥", titre: "Importer une session", onClick: ouvrirImportSession },
+      // 🆕 v1.14.0 : Import GPX — réutilise le calibrage KMZ existant pour
+      // transformer les coords WGS84 → plan local. Si pas de calibrage,
+      // alerte explicite invitant à passer par 💾 → KMZ pour calibrer.
+      { icone: "📤", titre: "Importer un fichier GPX (depuis TopoDroid, OsmAnd, etc.)", onClick: function() {
+          if (typeof window.ouvrirImportGpx === "function") window.ouvrirImportGpx();
+          else alert("Module import GPX indisponible");
+        } },
       { icone: "📊", titre: "Éditer un fichier JSON", onClick: function() {
           if (window.ouvrirTableEditor) window.ouvrirTableEditor();
           else alert("Module éditeur de tableau indisponible");

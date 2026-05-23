@@ -4,6 +4,55 @@
 
 ---
 
+## 🆕 Nouveautés v1.14.0 (23/05/2026) — 📤📥 GPX import + export
+
+> Première feature de la Phase 1 V3 quick wins.
+
+### 📤 Exporter ta session en GPX
+
+Nouvel onglet **« 📤 GPX »** dans la modale `💾 Enregistrer la session` (sidebar gauche → ⬆️ Enregistrer → 💾). Tu peux désormais produire un fichier `.gpx` standard (GPX 1.1) compatible avec les apps spéléo / outdoor : **TopoDroid, OsmAnd, Avenza, GPSies, Strava, Garmin, etc.**
+
+Tu choisis ce que tu exportes :
+- 📍 Points session
+- 🗂️ Points embedded (calques data du plan)
+- 🛣️ Tracés session (hors itinéraire par défaut)
+- 🗺️ Itinéraire actif (option)
+
+Le fichier est téléchargé directement avec un nom auto type `myktamap_NomDuPlan_2026-05-23.gpx`.
+
+### 📥 Importer un GPX externe
+
+Nouvelle sous-action **« 📤 Importer un fichier GPX »** dans le groupe `⬇️ Charger` de la sidebar gauche. Tu peux importer un GPX produit par n'importe quelle app (relevés TopoDroid, traces Strava de tes balades en surface, points OsmAnd, etc.) pour les ajouter aux annotations de ton plan.
+
+Flow d'import :
+1. Tu sélectionnes le fichier `.gpx`
+2. L'app affiche une **preview** : X waypoints + Y tracés à importer
+3. Tu confirmes (ou tu annules)
+4. Les annotations sont ajoutées à ta session courante
+5. Tu peux **Ctrl+Z** pour annuler l'import si tu changes d'avis (HistoryManager inclus)
+
+### ⚠️ Calibrage requis
+
+Pour utiliser GPX (import ou export), le plan doit avoir un **calibrage GPS** (2 points plan ↔ GPS). C'est le même calibrage que pour l'export KMZ — donc si tu as déjà calibré pour Google Earth, GPX fonctionne immédiatement.
+
+Sinon : passe par **💾 → 🌍 KMZ** pour configurer 2 points de calibrage, puis reviens à l'onglet GPX.
+
+### 🔄 Roundtrip MyKTAMap ↔ MyKTAMap
+
+Si tu exportes en GPX depuis ton PC puis importes sur ton mobile (ou inversement), les annotations sont restaurées avec :
+- ✅ Le nom et la description des points
+- ✅ Le tag principal (puits, accès, salle…)
+- ✅ Le niveau M-LVL si multi-niveau actif
+- ✅ Le type de tracé (principal/secondaire/chemin/itinéraire)
+- ✅ Les coordonnées plan exactes (à la précision du calibrage GPS)
+
+### 🛡️ Garde-fous
+
+- **Points hors plan détectés** : si ton GPX contient des points qui tombent en dehors des bounds du plan (calibrage différent / mauvais site), l'app te le signale dans la preview et les ignore au lieu de les ajouter.
+- **Vérification du calibrage** : si le plan n'est pas calibré, l'app t'invite explicitement à passer par KMZ pour calibrer avant.
+
+---
+
 ## 🆕 Nouveautés v1.13.0 (23/05/2026) — Thème clair (partout) + Itinéraire mode urgence + Fix hauteurs modales
 
 > Première release de la phase V3.

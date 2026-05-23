@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.13.0** (23 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.14.0** (23 mai 2026).
+>
+> **v1.14.0 (📤📥 GPX import + export)** : aucune nouvelle connexion réseau introduite. Le nouveau module `js/gpxIO.js` (~360 lignes) opère **uniquement** sur des fichiers locaux : `FileReader` pour la lecture en import, `Blob` + URL.createObjectURL pour le téléchargement en export. Aucun fetch, aucun ping. Le parsing GPX utilise `DOMParser` natif du navigateur, pas de lib tierce. Le SW cache un fichier de plus (`./js/gpxIO.js`) au boot, toujours same-origin.
 >
 > **v1.13.0 (Thème CLAIR + Itinéraire mode urgence + Fix hauteurs modales)** : aucune nouvelle connexion réseau introduite. Le nouveau module `js/themeManager.js` (~150 lignes) opère **uniquement** en `localStorage` (clé `myktamap_theme_v1`) + classes CSS sur `<html>` et `<body>`. Aucun fetch, aucun ping. Les ~1200 lignes de CSS overrides ajoutées sont chargées via `css/style.css` same-origin déjà whitelisté. Le seul effet observable côté réseau : le SW cache un fichier de plus (`./js/themeManager.js`) au boot.
 >
@@ -283,6 +285,7 @@ retrouver sans cache hors-ligne).
 
 | Version | Date | Changement |
 |---|---|---|
+| v1.14.0 | 23/05/2026 | **📤📥 GPX import + export** — première feature Phase 1 V3 quick wins. Nouveau module `js/gpxIO.js` (~360 lignes) qui opère uniquement sur des fichiers locaux : `FileReader` (import), `Blob` + `URL.createObjectURL` (export download), `DOMParser` natif (parse XML). Aucun fetch, aucun ping. Le SW cache un fichier de plus (`./js/gpxIO.js`) au boot, toujours same-origin (couvert par la règle de whitelist existante). Réutilise intégralement le calibrage KMZ existant (`window.KmzExport.planToGps` + nouveau `gpsToPlan`) — pas de nouvelle data envoyée nulle part. **Aucune nouvelle connexion réseau introduite**, aucune modification de la whitelist du module Privacy & Audit. |
 | v1.13.0 | 23/05/2026 | **Thème CLAIR global + Itinéraire mode urgence + Fix hauteurs modales** — première release V3. Module `js/themeManager.js` (~150 lignes) qui opère **uniquement** en `localStorage["myktamap_theme_v1"]` + classes CSS sur `<html>` et `<body>`. Aucun fetch réseau, aucun ping. ~1200 lignes de CSS overrides ajoutées dans `css/style.css` (chargé via le SW same-origin existant, déjà whitelisté). Le SW cache un fichier de plus au boot : `./js/themeManager.js` — toujours same-origin, couvert par la règle de whitelist existante. **Aucune nouvelle connexion réseau introduite**, aucune modification de la whitelist du module Privacy & Audit. Le mode hors-ligne strict continue de fonctionner exactement comme avant (le toggle ne fait pas de requête, juste un switch de classe CSS locale). |
 | v1.12.0 | 23/05/2026 | **Pack terrain V2** — consolidation de 4 fonctionnalités V2.1 → V2.4 : 🪫 **batterie** (Battery Status API navigateur, lecture locale, 0 fetch réseau), 📊 **stats session enrichies + ⬛ mesure de surface** (calculs Shoelace 100% local), 🎬 **replay tracker + export CSV** (timeline en RAM, Blob download local), 🔥 **heatmap** (implémentée mais DÉSACTIVÉE en v1.12.0, code en standby). **Aucune nouvelle connexion réseau introduite** — toutes les V2 sont strictement client-side. Le header `Permissions-Policy: battery=(self)` a été ajouté côté Nginx (`docs/nginx-csp-config.conf`) pour ouvrir l'accès à l'API navigateur en top-level (sinon certains contextes sandbox bloquaient l'API même en Chromium). Cela ne change rien au comportement réseau de l'app. |
 | v1.11.0 | 23/05/2026 | Release MINOR : ⏪ **Undo/Redo global** ajouté (raccourcis Ctrl+Z / Ctrl+Y + boutons sidebar). Module `js/historyManager.js` 100% client-side, snapshots en RAM uniquement (jamais persistés sur disque ni localStorage), reset au reload + plan switch. **Aucune modification de la whitelist du module Privacy & Audit** : tout l'historique vit en mémoire vive locale, jamais transmis. Consolidation aussi de v1.10.3 (PDF + Recherche unifiée + Fix structures + Migration domaine — voir entrées ci-dessous pour le détail). |
@@ -304,4 +307,4 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 23 mai 2026 — v1.13.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin)*
+*Dernière mise à jour : 23 mai 2026 — v1.14.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin)*

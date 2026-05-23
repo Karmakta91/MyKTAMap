@@ -45,6 +45,9 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   ├── themeManager.js         ← v1.13.0 — Toggle thème clair/sombre limité mode carte
 │   │                              window.ThemeManager = { init, getCurrent, setTheme,
 │   │                              toggleTheme, onChange, isLight }
+│   ├── gpxIO.js                ← v1.14.0 — Import + Export GPX 1.1 (réutilise calibrage
+│   │                              KMZ). window.GpxIO = { exporter, parser, importer,
+│   │                              verifierCalibrage, _appliquerImport }
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
 │   │                              + flags _orientationListenerAttached/_motionListenerAttached
 │   │                              (idempotency contre fuite après plan switch)
@@ -3593,6 +3596,97 @@ Pattern récurrent depuis v1.9.2 : `.kta-readme-modal-boite { height: 88vh }` su
 ```
 
 **Important** : ce fix est **général (dark + light)**, pas scope `body.kta-theme-light`. Toute nouvelle modale avec contenu court doit suivre ce pattern dès sa création — pas un fix réactif post-feedback user.
+
+---
+
+### 54. GpxIO — Import + Export GPX (depuis v1.14.0)
+
+Module `js/gpxIO.js` (~360 lignes IIFE) → `window.GpxIO = { exporter, parser, importer, verifierCalibrage, _appliquerImport }`.
+
+#### 54.1 Réutilise le calibrage KMZ
+
+GpxIO **n'a pas sa propre calibration** : il réutilise intégralement celle de KmzExport (cf §32). Logique : si l'user a déjà calibré pour exporter en KMZ vers Google Earth, le même calibrage marche pour GPX vers TopoDroid/OsmAnd/etc.
+
+API utilisée :
+- `window.KmzExport.planToGps(t, x, y)` → `{lat, lng}` (pour export)
+- `window.KmzExport.gpsToPlan(t, lat, lng)` → `{x, y}` (nouveau v1.14.0, **inverse exact**, pour import)
+- `window.KmzExport.getCalibration(planId)` → `{transform, ...}` (lecture localStorage)
+
+#### 54.2 Format GPX 1.1 produit
+
+```xml
+<gpx version="1.1" creator="MyKTAMap (myktamap.fr)" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>...</name>
+    <desc>Export GPX depuis MyKTAMap — N point(s), M tracé(s)</desc>
+    <author><name>MyKTAMap</name><link href="https://myktamap.fr"/></author>
+    <time>2026-05-23T18:00:00.000Z</time>
+  </metadata>
+  <wpt lat="..." lon="...">
+    <name>Nom du point</name>
+    <desc>Description longue</desc>
+    <type>tag_principal</type>
+    <sym>tag_principal</sym>           <!-- même valeur, GPX standard recommande les 2 -->
+    <cmt>MyKTAMap level=-1</cmt>        <!-- préservation niveau M-LVL pour roundtrip -->
+  </wpt>
+  <trk>
+    <name>Label du tracé</name>
+    <type>principal</type>              <!-- principal | secondaire | chemin | itinerary -->
+    <cmt>MyKTAMap level=0</cmt>
+    <trkseg>
+      <trkpt lat="..." lon="..."/>
+      <trkpt lat="..." lon="..."/>
+    </trkseg>
+  </trk>
+</gpx>
+```
+
+#### 54.3 Flow export
+
+`window.GpxIO.exporter({incPoints, incEmbedded, incRoads, incIti, filename})` → `{ok, msg, counts, filename}`. Génère + télécharge directement via Blob URL. Pas de fichier intermédiaire.
+
+UI : onglet `gpx` dans `sessionExporter.js > _afficherModal` (avec les autres : full/advanced/conversion/kmz). `_renderGpx()` génère le HTML (info calibrage + checkboxes options). `_exportGpx()` lit les options et appelle l'API.
+
+#### 54.4 Flow import (2 phases : preview puis confirm)
+
+`window.GpxIO.importer(file, {confirmAdd: false})` → Promise → `{ok, msg, preview, _toApply: {points, tracks}}`.
+
+Si `confirmAdd: false` (défaut UI) :
+- Parse le fichier
+- Transforme coords WGS84 → plan via `gpsToPlan`
+- Détecte les points hors bounds du plan (out-of-bounds) → ignorés
+- Détecte le niveau M-LVL depuis `<cmt>MyKTAMap level=N</cmt>` si présent
+- Map type GPX `<type>` → type road valide (sinon fallback "chemin")
+- Retourne preview sans toucher à la session
+
+L'UI affiche la preview (X waypoints + Y tracks + warnings hors-bounds) et l'user confirme → second call avec `confirmAdd: true` OU directement via `window.GpxIO._appliquerImport(points, tracks)`.
+
+`_appliquerImport` :
+1. **Snapshot HistoryManager** AVANT (pour permettre Undo)
+2. `setEditorPoints(current.concat(newPoints))`
+3. `setRoads(current.concat(newTracks))`
+4. `HistoryManager.record("Import GPX : N points, M tracés", _hb)`
+
+#### 54.5 Garde-fous
+
+- **Vérif calibrage** avant tout import/export : `verifierCalibrage()` → `false` si aucun `getCalibration(planId).transform`. UI affiche message explicite invitant à passer par KMZ.
+- **Out-of-bounds detection** : tout point dont les coords plan après transformation tombent hors du rectangle `[-50, imgW+50] × [-50, imgH+50]` est ignoré (tolérance 50px pour les bords).
+- **Tracks partiels** : si tous les points d'un `<trk>` sont hors bounds, le tracé entier est skipé (avec compteur dans la preview).
+- **Tracks trop courts** : `<trkseg>` avec moins de 2 points valides est skipé.
+- **Multi-segments tracks** : tous les `<trkseg>` d'un `<trk>` sont concaténés en un seul tracé MyKTAMap (les segments multi sont rares en pratique pour des plans souterrains).
+
+#### 54.6 Pour étendre
+
+- **Nouveaux types de tracés** : ajouter dans le filtre `validTypes` de `gpxIO.js > importer` (~ligne 290)
+- **Support GPX 1.0** (legacy) : non prévu — l'user peut convertir via gpsbabel ou un outil online avant import
+- **Extensions Garmin / Strava** : non parsées, ignorées silencieusement par DOMParser
+- **Nouveaux champs preservés** : ajouter dans `_genererGpx` (export) + dans le parser `importer` (lecture)
+
+#### 54.7 À NE PAS faire
+
+- ❌ Inventer son propre calibrage parallèle au KMZ — toujours passer par `window.KmzExport` pour la cohérence
+- ❌ Bypass `_appliquerImport` et muter directement les arrays editorPoints/roads — sinon pas de snapshot HistoryManager et l'user perd l'Undo
+- ❌ Charger une lib GPX externe (gpxparser, togpx, etc.) — DOMParser natif suffit largement et évite les dépendances
 
 ---
 
