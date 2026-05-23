@@ -11244,18 +11244,121 @@ body.kta-theme-light .kta-toast-info {
   border-left-color: #0a4f6b !important;
 }
 
-/* === Popups Leaflet (markers, zones) === */
+/* === Popups Leaflet (markers, zones) ===
+   v1.14.4 — fix bug "popup data layer en sombre malgré mode clair" :
+   les règles dark base utilisent toutes !important (background:#1a1f2e
+   !important), donc les overrides light DOIVENT aussi avoir !important
+   sinon ils sont battus en spécificité. Cas signalé par KARMA quand on
+   clique un point embedded data layer. */
 body.kta-theme-light .leaflet-popup-content-wrapper,
-body.kta-theme-light .leaflet-popup-tip {
-  background: var(--kta-light-bg-elevated);
-  color: var(--kta-light-text);
-  box-shadow: 0 3px 14px var(--kta-light-shadow);
+html.kta-theme-light .leaflet-popup-content-wrapper {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border: 1px solid var(--kta-light-border) !important;
+  box-shadow: 0 3px 14px var(--kta-light-shadow) !important;
 }
-body.kta-theme-light .leaflet-popup-content {
-  color: var(--kta-light-text);
+body.kta-theme-light .leaflet-popup-tip,
+html.kta-theme-light .leaflet-popup-tip,
+body.kta-theme-light .leaflet-popup-tip-container .leaflet-popup-tip,
+html.kta-theme-light .leaflet-popup-tip-container .leaflet-popup-tip {
+  background: var(--kta-light-bg-elevated) !important;
+  box-shadow: none !important;
 }
-body.kta-theme-light .leaflet-popup-close-button {
+body.kta-theme-light .leaflet-popup-content,
+html.kta-theme-light .leaflet-popup-content {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .leaflet-popup-content b,
+html.kta-theme-light .leaflet-popup-content b {
+  color: var(--kta-light-accent-strong, #a16e10) !important;
+}
+body.kta-theme-light .leaflet-popup-close-button,
+html.kta-theme-light .leaflet-popup-close-button {
   color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .leaflet-popup-close-button:hover,
+html.kta-theme-light .leaflet-popup-close-button:hover {
+  color: var(--kta-light-text) !important;
+}
+/* Description point dans popup (.kta-popup-point .kta-popup-desc) */
+body.kta-theme-light .kta-popup-point .kta-popup-desc,
+html.kta-theme-light .kta-popup-point .kta-popup-desc {
+  color: var(--kta-light-text-muted) !important;
+}
+/* Barre d'actions du popup (séparateur top) */
+body.kta-theme-light .kta-popup-actions,
+html.kta-theme-light .kta-popup-actions {
+  border-top: 1px solid var(--kta-light-border) !important;
+}
+/* Boutons d'action génériques (.kta-popup-btn — bleus dark) */
+body.kta-theme-light .kta-popup-actions .kta-popup-btn,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn {
+  background: rgba(161, 110, 16, 0.10) !important;
+  border-color: rgba(161, 110, 16, 0.40) !important;
+  color: #6b4d10 !important;
+}
+body.kta-theme-light .kta-popup-actions .kta-popup-btn:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn:hover {
+  background: rgba(161, 110, 16, 0.22) !important;
+}
+/* Bouton "📍 Je suis ici" — vert (accent positif) */
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-here,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-here {
+  background: rgba(56, 142, 60, 0.12) !important;
+  border-color: rgba(56, 142, 60, 0.45) !important;
+  color: #2e7032 !important;
+}
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-here:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-here:hover {
+  background: rgba(56, 142, 60, 0.25) !important;
+}
+/* Bouton "🚶 Aller" — jaune (accent principal mode clair) */
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-aller,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-aller {
+  background: var(--kta-light-accent) !important;
+  border-color: #c99a1f !important;
+  color: #3a2f15 !important;
+}
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-aller:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-aller:hover {
+  background: #e8b537 !important;
+}
+/* Bouton 🗑 Supprimer — rouge danger */
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-delete,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-delete {
+  background: rgba(180, 30, 30, 0.10) !important;
+  border-color: rgba(180, 30, 30, 0.45) !important;
+  color: #a01818 !important;
+}
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-delete:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-delete:hover {
+  background: rgba(180, 30, 30, 0.22) !important;
+}
+/* Bouton ✏️ Éditer / ➕ Ajouter — repris du même bleu ambre */
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-edit,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit,
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-add,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-add {
+  background: rgba(161, 110, 16, 0.10) !important;
+  border-color: rgba(161, 110, 16, 0.40) !important;
+  color: #6b4d10 !important;
+}
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-edit:hover,
+body.kta-theme-light .kta-popup-actions .kta-popup-btn-add:hover,
+html.kta-theme-light .kta-popup-actions .kta-popup-btn-add:hover {
+  background: rgba(161, 110, 16, 0.22) !important;
+}
+/* Inputs/textareas dans popup (édition inline) */
+body.kta-theme-light .leaflet-popup-content input,
+html.kta-theme-light .leaflet-popup-content input,
+body.kta-theme-light .leaflet-popup-content textarea,
+html.kta-theme-light .leaflet-popup-content textarea,
+body.kta-theme-light .leaflet-popup-content select,
+html.kta-theme-light .leaflet-popup-content select {
+  background: var(--kta-light-bg) !important;
+  border: 1px solid var(--kta-light-border) !important;
+  color: var(--kta-light-text) !important;
 }
 
 /* === Plan switcher (titre clickable + modale) === */

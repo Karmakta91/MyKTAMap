@@ -1,11 +1,11 @@
 {
-  "version": "v1.14.3",
+  "version": "v1.14.4",
   "released": "2026-05-23",
   "notes": [
-    "🐛 V3.2.d — Fix bug récurrent « modal trop long » sur les modales d'alerte publique (KARMA signalement). La modale détail (🚨 alerte en cours, ex : incendie V2 IDF) et le sélecteur (📋 N alertes actives quand N>1) pouvaient dépasser la hauteur viewport sur mobile portrait — le bouton « J'ai compris » devenait inaccessible et les détails listés (5 puces ou plus) débordaient.",
-    "🔧 Application du pattern de containment universel (déjà appliqué aux modales niv / légende / jct / iti / lost / session export) : .kta-alert-boite et .kta-alert-selector-boite forcent height:auto + max-height:88vh + display:flex + flex-direction:column avec !important. Le corps (.kta-alert-corps / .kta-alert-selector-corps) prend flex:1 1 auto + min-height:0 + overflow-y:auto → scroll interne au contenu, header (titre pulsé) et footer (bouton OK) restent figés au-dessus/en-dessous.",
-    "✂️ Pas d'impact sur la modale « alerte absente / déjà à jour » (.kta-alert-absent-boite) — elle utilise déjà un pattern différent et solide (overlay scrollable + flex-start + margin auto + safe-area-inset-top iOS v172).",
-    "🏷️ Sources de vérité v1.14.3 : version.json → \"v1.14.3\", js/copyright.js > __MKM__.build → \"v1.14.3\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.3-alert-modal\".",
-    "🛡️ Confidentialité — aucune modification réseau, fix CSS pur. NETWORK_AUDIT inchangé."
+    "🐛 V3.2.e — Fix popups Leaflet restées en sombre malgré le mode clair (KARMA : « en mode layer, si je clique sur un point dans datalayer, je vois toujours le modal en sombre »). Bug de spécificité CSS : les règles dark base de .leaflet-popup-content-wrapper / .leaflet-popup-tip / .leaflet-popup-content utilisent toutes !important (background:#1a1f2e !important), donc les overrides theme-light sans !important étaient battus → popups embedded + session restaient sombres.",
+    "🔧 Fix : ajout systématique de !important sur les overrides theme-light pour les popups Leaflet — wrapper, tip, content, close-button, titre <b>, .kta-popup-point .kta-popup-desc, .kta-popup-actions (séparateur), boutons .kta-popup-btn / .kta-popup-btn-here (vert) / .kta-popup-btn-aller (jaune accent) / .kta-popup-btn-delete (rouge) / .kta-popup-btn-edit / .kta-popup-btn-add, inputs/textareas/selects. Application à la fois sur body.kta-theme-light ET html.kta-theme-light (popups appendés dans .leaflet-popup-pane sous body, mais on garde la cohérence).",
+    "🎨 Palette light cohérente sur les boutons popup — jaune charte sur « Aller » (action principale), vert assombri sur « Je suis ici » (recalage positif), rouge brique sur « Supprimer », ambre sur les actions secondaires. Plus rien ne reste bleu nuit dans un popup en mode clair.",
+    "🏷️ Sources de vérité v1.14.4 : version.json → \"v1.14.4\", js/copyright.js > __MKM__.build → \"v1.14.4\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.4-popup-light\".",
+    "🛡️ Confidentialité — fix CSS pur. Aucune modification réseau, aucun nouveau fetch. NETWORK_AUDIT inchangé."
   ]
 }
