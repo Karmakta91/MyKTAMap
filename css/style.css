@@ -11405,6 +11405,213 @@ html.kta-theme-light .kta-theme-confirm-actions .kta-theme-confirm-ok:hover {
   background: linear-gradient(180deg, #ffd866, #e8b537) !important;
 }
 
+/* === 🔌 v1.14.10 — Modale confirmation Arrêt de l'application ===
+   Pattern miroir de .kta-theme-confirm-* (v1.14.9). Accent rouge brique
+   sur la boîte + bouton primary pour signaler l'action destructive. */
+.kta-shutdown-confirm-overlay {
+  background: rgba(5, 8, 15, 0.78) !important;
+}
+.kta-shutdown-confirm-boite {
+  max-width: 480px;
+  height: auto !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border: 1px solid rgba(220, 80, 80, 0.40) !important;
+  box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.14),
+              0 18px 60px rgba(0, 0, 0, 0.65) !important;
+}
+.kta-shutdown-confirm-corps {
+  padding: 22px 24px 14px !important;
+  text-align: center;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.kta-shutdown-confirm-icone {
+  font-size: 56px;
+  line-height: 1;
+  margin: 4px 0 14px;
+  color: #ff8080;
+  text-shadow: 0 0 28px rgba(220, 80, 80, 0.45);
+}
+.kta-shutdown-confirm-msg {
+  color: #e8eaf0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.kta-shutdown-confirm-msg strong {
+  color: #ffb8b8;
+  font-weight: 700;
+}
+.kta-shutdown-confirm-hint {
+  color: #8892a4;
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  background: rgba(220, 80, 80, 0.07);
+  border-left: 2px solid rgba(220, 80, 80, 0.40);
+  border-radius: 0 4px 4px 0;
+  text-align: left;
+}
+.kta-shutdown-confirm-hint em {
+  font-style: italic;
+}
+.kta-shutdown-confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding: 12px 18px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex: 0 0 auto;
+}
+.kta-shutdown-confirm-actions .kta-btn {
+  min-width: 120px;
+}
+/* Bouton primary spécial rouge danger (au lieu du jaune kta-btn-primary). */
+.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok {
+  background: linear-gradient(180deg, #d44a4a, #b03030) !important;
+  border: 1px solid #8a1818 !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(220, 80, 80, 0.35) !important;
+}
+.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok:hover {
+  background: linear-gradient(180deg, #e85a5a, #c04040) !important;
+  box-shadow: 0 3px 14px rgba(220, 80, 80, 0.50) !important;
+}
+.kta-shutdown-confirm-actions .kta-shutdown-confirm-ok:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* Variant theme light — beige / rouge brique */
+body.kta-theme-light .kta-shutdown-confirm-overlay,
+html.kta-theme-light .kta-shutdown-confirm-overlay {
+  background: rgba(40, 32, 20, 0.55) !important;
+}
+body.kta-theme-light .kta-shutdown-confirm-boite,
+html.kta-theme-light .kta-shutdown-confirm-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  color: var(--kta-light-text) !important;
+  border-color: rgba(160, 24, 24, 0.45) !important;
+  box-shadow: 0 0 0 1px rgba(160, 24, 24, 0.10),
+              0 18px 60px rgba(80, 60, 30, 0.30) !important;
+}
+body.kta-theme-light .kta-shutdown-confirm-icone,
+html.kta-theme-light .kta-shutdown-confirm-icone {
+  color: #a01818;
+  text-shadow: 0 0 28px rgba(160, 24, 24, 0.30);
+}
+body.kta-theme-light .kta-shutdown-confirm-msg,
+html.kta-theme-light .kta-shutdown-confirm-msg {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-shutdown-confirm-msg strong,
+html.kta-theme-light .kta-shutdown-confirm-msg strong {
+  color: #6b0e0e !important;
+}
+body.kta-theme-light .kta-shutdown-confirm-hint,
+html.kta-theme-light .kta-shutdown-confirm-hint {
+  color: var(--kta-light-text-muted) !important;
+  background: rgba(160, 24, 24, 0.10) !important;
+  border-left-color: rgba(160, 24, 24, 0.45) !important;
+}
+body.kta-theme-light .kta-shutdown-confirm-actions,
+html.kta-theme-light .kta-shutdown-confirm-actions {
+  border-top-color: var(--kta-light-border) !important;
+}
+
+/* === 🔌 v1.14.10 — Overlay fallback « Application arrêtée » ===
+   Remplace les styles inline du v1.14.8 par des classes CSS propres.
+   Cohérent avec la modale de confirmation (même palette rouge brique
+   + bouton primary jaune charte pour le recharge). */
+.kta-shutdown-fallback-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  background: #0a0d14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+  animation: kta-fadein 0.25s ease;
+}
+.kta-shutdown-fallback-boite {
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  background: #1a1f2e;
+  border: 1px solid rgba(220, 80, 80, 0.40);
+  border-radius: 14px;
+  padding: 32px 26px 26px;
+  box-shadow: 0 0 0 1px rgba(220, 80, 80, 0.14),
+              0 24px 80px rgba(0, 0, 0, 0.75);
+}
+.kta-shutdown-fallback-icone {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 18px;
+  color: #ff8080;
+  text-shadow: 0 0 28px rgba(220, 80, 80, 0.45);
+}
+.kta-shutdown-fallback-titre {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffb8b8;
+  letter-spacing: 0.01em;
+  margin-bottom: 14px;
+}
+.kta-shutdown-fallback-msg {
+  font-size: 14px;
+  color: #c0c8d8;
+  line-height: 1.55;
+  margin-bottom: 22px;
+}
+.kta-shutdown-fallback-reload {
+  background: linear-gradient(180deg, #f4c542, #d9a82e) !important;
+  border: 1px solid #c99a1f !important;
+  color: #2a1f08 !important;
+  font-weight: 700 !important;
+  padding: 11px 22px !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(244, 197, 66, 0.30) !important;
+  transition: all 0.14s;
+}
+.kta-shutdown-fallback-reload:hover {
+  background: linear-gradient(180deg, #ffd866, #e8b537) !important;
+  box-shadow: 0 3px 14px rgba(244, 197, 66, 0.45) !important;
+}
+/* Variant theme light pour l'overlay fallback */
+body.kta-theme-light .kta-shutdown-fallback-overlay,
+html.kta-theme-light .kta-shutdown-fallback-overlay {
+  background: var(--kta-light-bg) !important;
+}
+body.kta-theme-light .kta-shutdown-fallback-boite,
+html.kta-theme-light .kta-shutdown-fallback-boite {
+  background: var(--kta-light-bg-elevated) !important;
+  border-color: rgba(160, 24, 24, 0.45) !important;
+  box-shadow: 0 24px 80px rgba(80, 60, 30, 0.30) !important;
+}
+body.kta-theme-light .kta-shutdown-fallback-icone,
+html.kta-theme-light .kta-shutdown-fallback-icone {
+  color: #a01818;
+}
+body.kta-theme-light .kta-shutdown-fallback-titre,
+html.kta-theme-light .kta-shutdown-fallback-titre {
+  color: #6b0e0e !important;
+}
+body.kta-theme-light .kta-shutdown-fallback-msg,
+html.kta-theme-light .kta-shutdown-fallback-msg {
+  color: var(--kta-light-text-muted) !important;
+}
+
 /* === 📂 v1.14.5 — Modale Import (choix session vs GPX) ===
    Cards cliquables grandes (icône + titre + desc + extension), grille
    responsive (2 colonnes en desktop, 1 colonne en mobile portrait). */

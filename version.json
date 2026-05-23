@@ -1,12 +1,13 @@
 {
-  "version": "v1.14.9",
+  "version": "v1.14.10",
   "released": "2026-05-24",
   "notes": [
-    "🎨 V3.2.j — Modale confirmation switch thème fidèle à la charte MyKTAMap (KARMA). Le confirm() natif du navigateur (v1.14.6) est remplacé par une modale custom (#kta-theme-confirm-modal) qui reprend les codes visuels du projet : bleu nuit + accent jaune charte (#f4c542) en dark, beige cataphile + ambre en light.",
-    "✨ Composition de la modale — header (icône cible ☀️ ou 🌙 + titre « Activer le thème CLAIR/SOMBRE ? » + bouton ✕), corps avec grosse icône pulsée (animation kta-theme-icone-pulse 2.4s), message principal avec gras coloré sur le mot CLAIR / SOMBRE, hint italique encadré expliquant pourquoi reload (« garantit un rendu sans bugs résiduels »), footer 2 boutons (Annuler ghost + « ☀️ Activer et relancer » primary jaune charte avec gradient + ombre douce).",
-    "⌨️ Accessibilité — Enter confirme, Escape annule, click backdrop = annule, bouton OK auto-focus, focus-visible outline blanc sur le primary. Promise-based : retourne true (confirmé) ou false (annulé/escape/backdrop) avant le setThemeAndReload.",
-    "🌗 Variant theme light parfaitement aligné — backdrop café translucide, boîte beige #fdf8eb avec bordure ambre, hint sur fond jaune doux, bouton primary toujours jaune charte (cohérence cross-thème : la marque MyKTAMap reste jaune même en clair).",
-    "🏷️ Sources de vérité v1.14.9 : version.json → \"v1.14.9\", js/copyright.js > __MKM__.build → \"v1.14.9\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.9-theme-modal\".",
+    "🎨 V3.2.k — Modale Arrêt de l'application fidèle à la charte (KARMA). Le confirm() natif du bouton 🔌 (v1.14.8) est remplacé par une modale custom #kta-shutdown-confirm-modal — pattern miroir de la modale switch thème v1.14.9 mais avec accent rouge brique pour signaler l'action destructive.",
+    "✨ Composition de la modale — header 🔌 (titre « Arrêter MyKTAMap ? » + ✕), corps avec grosse icône rouge 🔌 ombrée, message principal explicite (« stopper proprement / fermer la fenêtre »), hint italique encadré rappelant le comportement fallback si le navigateur refuse close(), 2 boutons : Annuler (ghost, auto-focus défensif) + « 🔌 Arrêter MyKTAMap » (gradient rouge danger avec ombre).",
+    "⌨️ Accessibilité — Enter confirme, Escape annule, click backdrop = annule, focus initial sur Annuler (action sûre, KARMA-safe : on évite que Enter valide instantanément une action destructive).",
+    "🪟 Overlay fallback « Application arrêtée » repassé en classes CSS propres — les styles inline du v1.14.8 sont remplacés par .kta-shutdown-fallback-overlay / -boite / -icone / -titre / -msg / -reload. Bordure rouge brique cohérente avec la modale de confirmation, bouton « 🔄 Recharger MyKTAMap » en jaune charte (cohérence cross-thème comme le bouton « Activer et relancer »).",
+    "🌗 Variants theme light intégraux — modale confirm + overlay fallback : beige cataphile #fdf8eb avec bordure rouge brique, hint sur fond rouge doux, titre / msg dans la palette text-muted MyKTAMap. Le bouton primary garde son jaune charte (signature marque).",
+    "🏷️ Sources de vérité v1.14.10 : version.json → \"v1.14.10\", js/copyright.js > __MKM__.build → \"v1.14.10\", sw.js > CACHE_NAME → \"myktamap-cache-v1.14.10-shutdown-modal\".",
     "🛡️ Confidentialité — patch UI/CSS pur dans index.html + css/style.css, aucune nouvelle connexion réseau. NETWORK_AUDIT inchangé."
   ]
 }
