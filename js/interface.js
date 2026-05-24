@@ -1818,6 +1818,23 @@ function afficherAide() {
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             Permet de créer un nouveau plan ou de modifier un plan existant à partir d'une archive ZIP.
+            <strong>Depuis v1.17.0 :</strong> 2 modes — <strong>🚀 Simple</strong> (juste image + nom + version + V2/M-LVL → ZIP prêt en 30 sec)
+            et <strong>⚙️ Avancé</strong> (calques, tracking, icônes, géoréf GPS, <strong>🏷️ légende plan-level</strong>).
+            Sticky en localStorage. Mode Modifier force toujours Avancé pour préserver les customs du plan source.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">⭐ Favoris points <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.16.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">⭐</span><span>Bouton dans la popup d'un POI — toggle ☆ inactif / ⭐ actif (ambre)</span>
+            <span class="kta-aide-icone">⭐</span><span>Groupe sidebar gauche (juste après M-LVL) — flyout latéral listant les favoris du plan courant</span>
+            <span class="kta-aide-icone">🎯</span><span>Clic sur un favori → centre la carte + flash circleMarker orange 3 s + ouvre la popup du marker original</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Stockage local</strong> par plan (<code>localStorage["myktamap_favoris_v1"]</code> indexé par planId).
+            <strong>Snapshots complets</strong> des points (id, nom, coordonnées, tag, calque) — résilience si le point est déplacé ou supprimé du data layer.
+            <strong>Non partagé via les exports</strong> (= vue locale par appareil, par design). Persistant à travers les sessions et survit à un reload.
           </p>
         </div>
 
