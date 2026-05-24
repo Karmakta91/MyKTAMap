@@ -863,13 +863,27 @@ function ajouterPointsDepuisJSON(url, layer) {
           const hasNoteRO = !!(road.description && String(road.description).trim());
           const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
           if (hasNoteRO && typeof window.attacherNotePopup === "function") {
-            const _roadTypeLabelsRO = {
-              principal:  "🟩 Tracé principal",
-              secondaire: "🟪 Tracé secondaire",
-              chemin:     "🟨 Chemin",
-              jonction:   "🪜 Jonction interniveau",
-              itinerary:  "🗺️ Itinéraire"
-            };
+            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            const _roadEmojisRO = { principal: "🟩", secondaire: "🟪", chemin: "🟨", jonction: "🪜", itinerary: "🗺️" };
+            function _roadROTitle(t) {
+              if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+                if (String(t).startsWith("cust-")) {
+                  const e = window.LegendCustomization.findCustomEntry(t);
+                  if (e) return "✨ " + e.label;
+                }
+                if (_roadEmojisRO[t]) {
+                  return _roadEmojisRO[t] + " " + window.LegendCustomization.getLabel("traces", t);
+                }
+              }
+              const LBL = {
+                principal:  "🟩 Tracé principal",
+                secondaire: "🟪 Tracé secondaire",
+                chemin:     "🟨 Chemin",
+                jonction:   "🪜 Jonction interniveau",
+                itinerary:  "🗺️ Itinéraire"
+              };
+              return LBL[t] || ("Tracé " + t);
+            }
             const ghostRO = L.polyline(latlngs, {
               weight:              Math.max((style.weight || 3) + 14, 18),
               opacity:             0,
@@ -887,7 +901,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               ghostRO,
               function() { return road.description; },
               null,
-              _roadTypeLabelsRO[road.type] || ("Tracé " + road.type),
+              _roadROTitle(road.type),
               { mode: "readonly" }
             );
           }
@@ -1009,13 +1023,27 @@ function ajouterPointsDepuisJSON(url, layer) {
             leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
-            const _structTypeLabelsRO = {
-              "pilier-1": "🟡 Pilier 1ère masse",
-              "pilier-2": "🟠 Pilier 2e masse",
-              "mur":      "🔵 Mur",
-              "front-1":  "🟨 Front de taille 1ère masse",
-              "front-2":  "🟧 Front de taille 2e masse"
-            };
+            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            const _structEmojisRO = { "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵", "front-1": "🟨", "front-2": "🟧" };
+            function _structROTitle(t) {
+              if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+                if (String(t).startsWith("cust-")) {
+                  const e = window.LegendCustomization.findCustomEntry(t);
+                  if (e) return "✨ " + e.label;
+                }
+                if (_structEmojisRO[t]) {
+                  return _structEmojisRO[t] + " " + window.LegendCustomization.getLabel("structures", t);
+                }
+              }
+              const LBL = {
+                "pilier-1": "🟡 Pilier 1ère masse",
+                "pilier-2": "🟠 Pilier 2e masse",
+                "mur":      "🔵 Mur",
+                "front-1":  "🟨 Front de taille 1ère masse",
+                "front-2":  "🟧 Front de taille 2e masse"
+              };
+              return LBL[t] || ("Structure " + t);
+            }
             let cibleStructRO = leafletLayer;
             if (isPolyline) {
               // Ghost transparente épaisse pour ergonomie clic sur le front
@@ -1036,7 +1064,7 @@ function ajouterPointsDepuisJSON(url, layer) {
               cibleStructRO,
               function() { return structure.description; },
               null,
-              _structTypeLabelsRO[structure.type] || ("Structure " + structure.type),
+              _structROTitle(structure.type),
               { mode: "readonly" }
             );
           }
@@ -1088,17 +1116,31 @@ function ajouterPointsDepuisJSON(url, layer) {
             : Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
           if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
-            const _zoneTypeLabelsRO = {
-              eau:          "💧 Zone Eau",
-              remblais:     "⬛ Zone Remblais",
-              effondrement: "🟥 Zone Effondrement",
-              inaccessible: "⛔ Zone Inaccessible"
-            };
+            // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+            const _zoneEmojisRO = { eau: "💧", remblais: "⬛", effondrement: "🟥", inaccessible: "⛔" };
+            function _zoneROTitle(t) {
+              if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+                if (String(t).startsWith("cust-")) {
+                  const e = window.LegendCustomization.findCustomEntry(t);
+                  if (e) return "✨ " + e.label;
+                }
+                if (_zoneEmojisRO[t]) {
+                  return _zoneEmojisRO[t] + " " + window.LegendCustomization.getLabel("zones", t);
+                }
+              }
+              const LBL = {
+                eau:          "💧 Zone Eau",
+                remblais:     "⬛ Zone Remblais",
+                effondrement: "🟥 Zone Effondrement",
+                inaccessible: "⛔ Zone Inaccessible"
+              };
+              return LBL[t] || ("Zone " + t);
+            }
             window.attacherNotePopup(
               polygon,
               function() { return zone.description; },
               null,
-              _zoneTypeLabelsRO[zone.type] || ("Zone " + zone.type),
+              _zoneROTitle(zone.type),
               { mode: "readonly" }
             );
           }

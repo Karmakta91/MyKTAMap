@@ -142,11 +142,18 @@ function initZones() {
     // currentZone, ajout d'un sommet, fermeture par retour au 1er point).
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
     const _isNewZone = !currentZone;
-    const _typeLabel = (window.modeZone === "eau" ? "Eau"
-                      : window.modeZone === "remblais" ? "Remblais"
-                      : window.modeZone === "effondrement" ? "Effondrement"
-                      : window.modeZone === "inaccessible" ? "Inaccessible"
-                      : window.modeZone);
+    // 🐛 v1.16.0 step2-drawable-fix2 : label custom = user-defined
+    let _typeLabel;
+    if (window.LegendCustomization && String(window.modeZone).startsWith("cust-")) {
+      const e = window.LegendCustomization.findCustomEntry(window.modeZone);
+      _typeLabel = e ? e.label : window.modeZone;
+    } else {
+      _typeLabel = (window.modeZone === "eau" ? "Eau"
+                  : window.modeZone === "remblais" ? "Remblais"
+                  : window.modeZone === "effondrement" ? "Effondrement"
+                  : window.modeZone === "inaccessible" ? "Inaccessible"
+                  : window.modeZone);
+    }
 
     if (!currentZone) {
       currentZone = {
@@ -332,17 +339,36 @@ function renderZones() {
       if (typeof window.attacherNotePopup === "function" &&
           window._aucunModeEditionActif()) {
         const _zoneRef = zone;  // référence directe à l'objet
-        const _zoneTypeLabels = {
-          eau:          "💧 Zone Eau",
-          remblais:     "⬛ Zone Remblais",
-          effondrement: "🟥 Zone Effondrement",
-          inaccessible: "⛔ Zone Inaccessible"
+        // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC
+        const _zoneEmojis = {
+          eau:          "💧",
+          remblais:     "⬛",
+          effondrement: "🟥",
+          inaccessible: "⛔"
         };
+        function _zonePopupTitle(t) {
+          if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+            if (String(t).startsWith("cust-")) {
+              const e = window.LegendCustomization.findCustomEntry(t);
+              if (e) return "✨ " + e.label;
+            }
+            if (_zoneEmojis[t]) {
+              return _zoneEmojis[t] + " " + window.LegendCustomization.getLabel("zones", t);
+            }
+          }
+          const LBL = {
+            eau:          "💧 Zone Eau",
+            remblais:     "⬛ Zone Remblais",
+            effondrement: "🟥 Zone Effondrement",
+            inaccessible: "⛔ Zone Inaccessible"
+          };
+          return LBL[t] || ("Zone " + t);
+        }
         window.attacherNotePopup(
           polygon,
           function() { return _zoneRef.description; },
           function(v) { _zoneRef.description = v; },
-          _zoneTypeLabels[zone.type] || ("Zone " + zone.type)
+          _zonePopupTitle(zone.type)
         );
       }
     }

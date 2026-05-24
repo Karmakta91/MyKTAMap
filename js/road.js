@@ -171,11 +171,18 @@ function initRoad() {
     renderRoads();
 
     if (window.HistoryManager && _historyBefore) {
-      const typeLabel = window.modeRoad === "principal"  ? "Principal"
-                      : window.modeRoad === "secondaire" ? "Secondaire"
-                      : window.modeRoad === "chemin"     ? "Chemin"
-                      : window.modeRoad === "jonction"   ? "Jonction"
-                      : window.modeRoad;
+      // 🐛 v1.16.0 step2-drawable-fix2 : label custom = user-defined
+      let typeLabel;
+      if (window.LegendCustomization && String(window.modeRoad).startsWith("cust-")) {
+        const e = window.LegendCustomization.findCustomEntry(window.modeRoad);
+        typeLabel = e ? e.label : window.modeRoad;
+      } else {
+        typeLabel = window.modeRoad === "principal"  ? "Principal"
+                  : window.modeRoad === "secondaire" ? "Secondaire"
+                  : window.modeRoad === "chemin"     ? "Chemin"
+                  : window.modeRoad === "jonction"   ? "Jonction"
+                  : window.modeRoad;
+      }
       const lbl = _isNewRoad
         ? "Nouveau tracé " + typeLabel
         : "Sommet sur tracé " + typeLabel;
@@ -677,11 +684,22 @@ function renderRoads() {
         road !== currentRoad &&
         window._aucunModeEditionActif()) {
       const _roadRef = road;
-      const _roadTypeLabels = {
-        principal:  "🟩 Tracé principal",
-        secondaire: "🟪 Tracé secondaire",
-        chemin:     "🟨 Chemin"
-      };
+      // 🐛 v1.16.0 step2-drawable-fix2 : titre popup résolu via LC pour les
+      // customs ET les built-in (qui peuvent être renommés via ✏️ Modifier).
+      const _roadEmojis = { principal: "🟩", secondaire: "🟪", chemin: "🟨" };
+      function _roadPopupTitle(t) {
+        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+          if (String(t).startsWith("cust-")) {
+            const e = window.LegendCustomization.findCustomEntry(t);
+            if (e) return "✨ " + e.label;
+          }
+          if (_roadEmojis[t]) {
+            return _roadEmojis[t] + " " + window.LegendCustomization.getLabel("traces", t);
+          }
+        }
+        const LBL = { principal: "🟩 Tracé principal", secondaire: "🟪 Tracé secondaire", chemin: "🟨 Chemin" };
+        return LBL[t] || ("Tracé " + t);
+      }
       const ghostWeight = Math.max((style.weight || 3) + 14, 18);
       const ghost = L.polyline(latlngs, {
         weight:               ghostWeight,
@@ -695,7 +713,7 @@ function renderRoads() {
         ghost,
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; },
-        _roadTypeLabels[road.type] || ("Tracé " + road.type)
+        _roadPopupTitle(road.type)
       );
     }
 

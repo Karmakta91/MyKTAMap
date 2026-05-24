@@ -541,13 +541,38 @@ function renderStructures() {
       if (typeof window.attacherNotePopup === "function" &&
           window._aucunModeEditionActif()) {
         const _structRef = s;
-        const _structTypeLabels = {
-          "pilier-1": "🟡 Pilier 1ère masse",
-          "pilier-2": "🟠 Pilier 2e masse",
-          "mur":      "🔵 Mur",
-          "front-1":  "🟨 Front de taille 1ère masse",
-          "front-2":  "🟧 Front de taille 2e masse"
+        // 🐛 v1.16.0 step2-drawable-fix2 (KARMA "le nom des structure est
+        // un cust-mpj... pas le nom que j'ai donné") : le titre de la popup
+        // doit être le libellé défini par l'utilisateur (LC.findCustomEntry
+        // pour les customs, LC.getLabel pour les built-in — ce qui permet
+        // aussi de respecter un éventuel rename via ✏️ Modifier sur un
+        // built-in). Fallback hardcodé si LC indisponible.
+        const _structEmojis = {
+          "pilier-1": "🟡", "pilier-2": "🟠", "mur": "🔵",
+          "front-1":  "🟨", "front-2":  "🟧"
         };
+        function _structPopupTitle(t) {
+          if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+            // Custom : ✨ + label utilisateur
+            if (String(t).startsWith("cust-")) {
+              const e = window.LegendCustomization.findCustomEntry(t);
+              if (e) return "✨ " + e.label;
+            }
+            // Built-in : emoji + label (possiblement renommé via LC)
+            if (_structEmojis[t]) {
+              return _structEmojis[t] + " " + window.LegendCustomization.getLabel("structures", t);
+            }
+          }
+          // Fallback legacy
+          const LBL = {
+            "pilier-1": "🟡 Pilier 1ère masse",
+            "pilier-2": "🟠 Pilier 2e masse",
+            "mur":      "🔵 Mur",
+            "front-1":  "🟨 Front de taille 1ère masse",
+            "front-2":  "🟧 Front de taille 2e masse"
+          };
+          return LBL[t] || ("Structure " + t);
+        }
         let cibleClic = layer;
         if (isPolyline) {
           // Ghost transparente épaisse par-dessus le front visible
@@ -564,7 +589,7 @@ function renderStructures() {
           cibleClic,
           function() { return _structRef.description; },
           function(v) { _structRef.description = v; },
-          _structTypeLabels[s.type] || ("Structure " + s.type)
+          _structPopupTitle(s.type)
         );
       }
     }
