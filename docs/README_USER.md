@@ -4,7 +4,26 @@
 
 ---
 
-## 🆕 Nouveautés v1.20.0 (24/05/2026) — Polish UX + DX
+## 🆕 Nouveautés v1.19.1 (24/05/2026) — Release consolidée
+
+> Cette release regroupe **plusieurs cycles d'amélioration** accumulés depuis v1.16.1. Le saut est volontairement **PATCH** (v1.16.1 → v1.19.1) car l'essentiel est constitué de fixes et de polish, même si quelques features moyennes sont présentes. Les sections détaillées ci-dessous décrivent chaque sujet.
+
+### Vue d'ensemble
+
+| Sujet | Catégorie |
+|---|---|
+| 🚀 Générateur accessible : mode Simple + Légende plan-level | Feature |
+| 🌍 Roundtrip légende avec ton KMZ / GPX | Feature |
+| 📊 État mémoire (transparence + debug) | Feature |
+| 📚 Aide intégrée enrichie | Polish |
+| 🆙 Détection mises à jour plus robuste | Polish |
+| 🔄 Toast quand une mise à jour mineure est appliquée | Polish |
+| 🩹 Auto-save par plan (sessions indépendantes) | Fix UX majeur |
+| 🩹 Boussole derrière le footer / tableau mobile / modales logs thème clair | Fixes UI |
+
+---
+
+## 🆕 (Détails) Polish UX + DX
 
 > Pas de feature visible directement mais 3 améliorations de qualité qui rendent l'app plus claire à utiliser et plus sûre.
 

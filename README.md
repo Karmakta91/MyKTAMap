@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.20.0` (24/05/2026)
+**📦 Version courante** : `v1.19.1` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.20.0](#-derniere-release--v1200)
+1. [🚀 Dernière release — v1.19.1](#-derniere-release--v1191)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,39 +40,23 @@
 
 ---
 
-## 🚀 Dernière release — v1.20.0
+## 🚀 Dernière release — v1.19.1
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.19.x) : **Cycle « Polish UX + DX »**. 3 améliorations de qualité qui rendent l'app plus claire à utiliser et plus sûre à déployer : (1) Aide intégrée enrichie (2 sections manquantes pour MemInspector + Légende personnalisable), (2) Update Checker en vrai semver (anti-bug latent + détection downgrade serveur), (3) Toast non-bloquant quand un nouveau Service Worker prend le contrôle pendant la session. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+📅 **24 mai 2026** — Release **PATCH** consolidée (Z+1 sur v1.16.1 — saut PATCH car le pack accumulé est **surtout** des fixes + polish, malgré la présence de quelques features moyennes). Contenu :
 
----
+- 🚀 **Générateur accessible** : nouveau mode Simple (image + nom + version + V2/M-LVL → ZIP en 30 sec) + mode Avancé inchangé + nouvelle source de vérité plan-level `plan.customLegend`
+- 🌍 **Roundtrip légende KMZ + GPX** : la légende personnalisée du plan voyage avec les exports, restaurée auto au ré-import. Compat externe préservée (apps tierces ignorent silencieusement).
+- 📊 **État mémoire (Inspecteur)** : nouvel outil de transparence accessible depuis ⚙️ Configuration loader. Topo lisible localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime. Bouton 📋 Copier le rapport.
+- 🎯 **Polish UX + DX** : Aide intégrée enrichie (2 sections), Update Checker en vrai semver, Toast non-bloquant au changement de SW.
+- 🩹 **Fixes UI** : auto-save par plan, ⭐ Favoris dans l'Aide, tableau MemInspector mobile, boussole derrière le footer, modales logs illisibles en thème clair.
 
-## 🚀 Release précédente — v1.19.0
-
-📅 **24 mai 2026** — Release MINOR (Y+1 sur v1.18.x) : nouvel outil de transparence & debug **📊 État mémoire** (Memory Inspector). Modale dédiée accessible depuis ⚙️ Configuration loader > section « 📊 Inspecteur ». Affiche un topo lisible de tout ce qui est chargé localement par l'app.
-
----
-
-## 🚀 Release précédente — v1.18.1
-
-📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.18.0) : extension du roundtrip `customLegend` au format GPX + visibilité dans les preview d'import KMZ/GPX.
-
----
-
-## 🚀 Release précédente — v1.18.0
-
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.17.x) : **Roundtrip KMZ de la légende plan-level**. Embed dans un fichier annexe `myktamap-extras.json` du KMZ ZIP (ignoré par Google Earth, OsmAnd, Avenza).
-
----
-
-## 🚀 Release précédente — v1.17.0
-
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.16.x) : **Générateur accessible**. Nouveau mode **Simple** dans la modale 📦 Créer / Modifier un plan (image + nom + version + V2/M-LVL → ZIP prêt à charger), mode **Avancé** = comportement v1.16.x complet. Nouvelle source de vérité **`plan.customLegend`** (cascade niveau plan, éditable via section dédiée en mode Avancé).
+Détails complets dans le [Journal des modifications](#-journal-des-modifications) (chaque sous-feature documentée séparément, l'historique Git préserve les itérations dev).
 
 ---
 
 ## 🚀 Release précédente — v1.16.1
 
-📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.16.0) : **auto-save par plan** (slot localStorage indexé par planId + migration transparente de l'ancien slot unique). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans avoir besoin de restaurer un snapshot.
+📅 **24 mai 2026** — Hotfix PATCH (Z+1 sur v1.16.0) : auto-save par plan (slot localStorage indexé par planId + migration legacy transparente). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans charger de snapshot.
 
 ---
 
@@ -886,8 +870,42 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-20-0" open>
-<summary><strong>🗓️ 24/05/2026 — 🚀 v1.20.0 : Cycle « Polish UX + DX »</strong></summary>
+<details id="v1-19-1" open>
+<summary><strong>🗓️ 24/05/2026 — 🩹 v1.19.1 : Release PATCH consolidée (fixes + polish + features moyennes accumulées)</strong></summary>
+
+Release **PATCH** (bump Z : 1.16.1 → 1.19.1). Choix d'un saut PATCH (et non MINOR × 4) car le pack accumulé est **surtout** des fixes et du polish, malgré la présence de quelques features moyennes. Les sous-sections ci-dessous documentent chaque sujet livré séparément (l'historique Git préserve les itérations dev fines avec leurs commits granulaires).
+
+### 📦 Sujets livrés dans cette release
+
+| Sujet | Type | Section détaillée |
+|---|---|---|
+| 🚀 Générateur accessible (Mode Simple/Avancé + Légende plan-level) | Feature | Voir v1.17.0 ci-dessous |
+| 🌍 Roundtrip KMZ de la légende plan-level | Feature | Voir v1.18.0 ci-dessous |
+| 🌍 Roundtrip GPX + preview d'import KMZ/GPX | Fix + polish | Voir v1.18.1 ci-dessous |
+| 📊 Inspecteur mémoire (transparence + debug) | Feature | Voir v1.19.0 ci-dessous |
+| 🎯 Polish UX + DX (Aide enrichie + UpdateChecker semver + Toast SW) | Polish | Voir v1.20.0 ci-dessous |
+| 🩹 Fixes UI accumulés (auto-save par plan, tableau mobile, boussole z-index, logs thème clair) | Fixes | Disséminés dans les sections ci-dessous + historique Git |
+
+### 🎯 Cohérence du cycle
+
+Toutes ces livraisons forment un cycle cohérent autour de **la légende personnalisée d'un plan** (édition session → édition plan-level → portabilité KMZ → portabilité GPX → visibilité d'import) + **outils de transparence** (Memory Inspector + Polish UX + DX).
+
+### 📂 Sources de vérité v1.19.1
+
+- `version.json` → `"v1.19.1"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.19.1"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.19.1"`
+- 1 nouveau fichier ajouté à `ASSETS_TO_CACHE` : `js/memInspector.js`
+- Modifs internes à : `js/createConf.js`, `js/sessionExporter.js`, `js/kmzExport.js`, `js/kmzImport.js`, `js/gpxIO.js`, `js/gpxImport.js`, `js/interface.js`, `js/updateChecker.js`, `js/debug.js`, `js/sessionPersist.js`, `js/sessionBackups.js`, `index.html`, `css/style.css` (+ doc full)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucun nouveau call extérieur. Tous les ajouts sont 100 % locaux : lecture localStorage / IndexedDB / Cache API pour MemInspector, fichiers annexes dans les ZIP KMZ/GPX générés, hooks `navigator.serviceWorker` côté client, fonction pure `compareSemver`. **NETWORK_AUDIT couvre tout ce cycle** sans changement de surface — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-20-0">
+<summary><strong>🗓️ 24/05/2026 — 🎯 v1.20.0 (sous-itération de v1.19.1) : Cycle « Polish UX + DX »</strong></summary>
 
 Release MINOR (bump Y : 1.19.x → 1.20.0). 3 améliorations de qualité indépendantes regroupées en 1 release :
 

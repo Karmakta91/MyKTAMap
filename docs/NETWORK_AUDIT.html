@@ -174,14 +174,28 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.19.1</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.20.0 (Cycle « Polish UX + DX »)</strong> :
+    <strong>v1.19.1 (PATCH consolidée — 1.16.1 → 1.19.1)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. Pack accumulé regroupé en 1 release PATCH
+    car SURTOUT des fixes + polish. Contenu 100 % local : Générateur Simple/Avancé + édition
+    légende plan-level, roundtrip légende KMZ + GPX (fichiers annexes locaux ignorés par les
+    apps tierces), nouveau module <code>js/memInspector.js</code> (lecture seule), Polish
+    (Aide enrichie HTML, <code>compareSemver()</code> fonction pure, hook
+    <code>controllerchange</code> toast OOMGuard local), Fixes (auto-save par plan, CSS thème
+    clair des modales logs). <strong>1 nouveau fichier</strong> ajouté à
+    <code>ASSETS_TO_CACHE</code> : <code>js/memInspector.js</code>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.20.0 (Cycle « Polish UX + DX »)</strong> <em>(sous-itération de v1.19.1, jamais déployée séparément)</em> :
     <strong>AUCUNE nouvelle surface réseau, aucun nouveau fichier</strong>. 3 améliorations
     indépendantes : (1) Aide intégrée enrichie (HTML statique), (2) helper
     <code>compareSemver()</code> dans <code>js/updateChecker.js</code> (fonction pure sans I/O,
@@ -681,8 +695,21 @@
     </thead>
     <tbody>
       <tr>
-        <td>v1.20.0</td>
+        <td>v1.19.1</td>
         <td>24/05/2026</td>
+        <td>
+          <strong>Release PATCH consolidée</strong> (1.16.1 → 1.19.1) — <strong>aucune nouvelle
+          surface réseau</strong>. Pack accumulé en 1 release PATCH car SURTOUT fixes + polish.
+          Contenu 100% local : Générateur Simple/Avancé + Légende plan-level + Roundtrip KMZ/GPX
+          (fichiers annexes locaux) + MemInspector (lecture seule) + Polish (Aide / semver / toast SW)
+          + Fixes (auto-save par plan, CSS thème clair logs). 1 nouveau fichier ajouté à
+          <code>ASSETS_TO_CACHE</code> : <code>js/memInspector.js</code>.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
+      <tr>
+        <td>v1.20.0</td>
+        <td>(sous-itération dev)</td>
         <td>
           <strong>Cycle « Polish UX + DX »</strong> — <strong>aucune nouvelle surface réseau,
           aucun nouveau fichier</strong>. (1) Aide intégrée enrichie (sections HTML statiques
