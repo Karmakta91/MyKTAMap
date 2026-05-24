@@ -11750,6 +11750,50 @@ html.kta-theme-light .kta-note-popup-textarea:focus {
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20) !important;
 }
 
+/* Mode readonly (data layer) — pas de textarea, juste affichage texte */
+.kta-note-popup-readonly-label {
+  font-size: 11px;
+  color: #8892a4;
+  margin: 4px 0 6px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+.kta-note-popup-readonly-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #c8d0e0;
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 2px solid rgba(140, 180, 255, 0.35);
+  border-radius: 0 4px 4px 0;
+  padding: 6px 10px;
+  margin: 4px 0;
+  /* Préserve les retours à la ligne saisis par l'auteur (sans wrap forcé
+     pour préserver le formattage). */
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.kta-note-popup-readonly-empty {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+  text-align: center;
+  margin: 8px 0;
+}
+
+/* Theme light : variant beige + accent jaune charte */
+body.kta-theme-light .kta-note-popup-readonly-label,
+html.kta-theme-light .kta-note-popup-readonly-label {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-note-popup-readonly-text,
+html.kta-theme-light .kta-note-popup-readonly-text {
+  color: var(--kta-light-text) !important;
+  background: rgba(244, 197, 66, 0.12) !important;
+  border-left-color: rgba(161, 110, 16, 0.45) !important;
+}
+
 /* v1.14.17 (KARMA « reprend depuis 0 sans toutes nos itérations ») :
    tous les styles spécifiques à la modale Import (.kta-import-choix-* et
    les overrides #kta-import-choix-modal .kta-ses-*) sont retirés. La

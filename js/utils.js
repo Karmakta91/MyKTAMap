@@ -211,18 +211,28 @@ window.polygonAreaM2 = polygonAreaM2;
 // place (cf. css/style.css > .leaflet-popup-content-wrapper).
 //
 // Signature :
-//   attacherNotePopup(layer, getDescr, setDescr, titreType)
+//   attacherNotePopup(layer, getDescr, setDescr, titreType, opts)
 //     - layer    : L.Polygon | L.Polyline | L.CircleMarker
 //     - getDescr : () => string | undefined   (lecteur courant)
 //     - setDescr : (newDesc: string) => void  (écrit dans le data model)
+//                  En mode readonly : peut être null (jamais appelé).
 //     - titreType: string (affiché dans le header du popup, ex "Zone Eau")
+//     - opts     : { mode: "edit" | "readonly" }  (défaut "edit")
 //
-// Persistance : le setDescr met à jour l'objet en mémoire. La sauvegarde
-// disque suit le flow normal (sessionPersist.js polling) — pas de save
-// forcée ici. HistoryManager.record est appelé pour rendre la note
-// undo-able (Ctrl+Z).
-window.attacherNotePopup = function(layer, getDescr, setDescr, titreType) {
+// Mode "edit" (session) : textarea + bouton 💾 Sauver. Le popup s'ouvre
+// au clic même si la note est vide (= invitation à saisir). HistoryManager
+// + SessionPersist.save sont déclenchés au save pour Ctrl+Z et persistance
+// immédiate.
+//
+// Mode "readonly" (data layer) : juste affichage texte de la note (white-
+// space:pre-wrap pour préserver les retours à la ligne). Pas de textarea,
+// pas de bouton. À NE BINDER que si une note est présente — sinon le user
+// clique pour rien sur un data layer qui était silencieux avant. C'est au
+// caller de vérifier `description` avant d'appeler le helper en readonly.
+window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
+  opts = opts || {};
+  const mode = (opts.mode === "readonly") ? "readonly" : "edit";
 
   function _esc(s) {
     return String(s == null ? "" : s)
@@ -233,6 +243,20 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType) {
 
   function _renderPopupHtml() {
     const current = getDescr() || "";
+    if (mode === "readonly") {
+      // Pas de textarea, juste le texte affiché. Si pas de note → message
+      // explicite (en pratique on ne devrait pas arriver ici car le caller
+      // vérifie en amont, mais robustesse pour les cas limites).
+      const corps = current
+        ? '<div class="kta-note-popup-readonly-text">' + _esc(current) + '</div>'
+        : '<div class="kta-note-popup-readonly-empty"><em>(aucune note)</em></div>';
+      return '<div class="kta-popup-point kta-note-popup kta-note-popup-readonly-mode">' +
+               '<b>' + _esc(titreType) + '</b>' +
+               '<div class="kta-note-popup-readonly-label">📖 Note (lecture seule)</div>' +
+               corps +
+             '</div>';
+    }
+    // Mode edit (session)
     return '<div class="kta-popup-point kta-note-popup">' +
              '<b>' + _esc(titreType) + '</b>' +
              '<div class="kta-note-popup-wrap">' +
@@ -261,6 +285,8 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType) {
     // changé depuis le bind initial — peut arriver après undo/redo).
     const fresh = _renderPopupHtml();
     if (evt && evt.popup) evt.popup.setContent(fresh);
+    // Mode readonly : rien à wirer, juste afficher le texte. Skip.
+    if (mode === "readonly") return;
     // Recherche dans le DOM (popup vient juste d'être injectée).
     setTimeout(function() {
       const popupRoot = document.querySelector(".leaflet-popup-content .kta-note-popup");
@@ -755,7 +781,28 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
           const latlngs = road.points.map(function(p) { return convertCoord(p.x, p.y); });
-          const polyline = L.polyline(latlngs, { ...style, interactive: false }).addTo(layer);
+          // v1.16.0 step 1 — si une note (description) est embarquée dans le
+          // data layer, on rend la polyline interactive pour binder un popup
+          // readonly. Sinon : interactive:false (comportement d'avant — pas
+          // d'intrusion au clic).
+          const hasNoteRO = !!(road.description && String(road.description).trim());
+          const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: hasNoteRO })).addTo(layer);
+          if (hasNoteRO && typeof window.attacherNotePopup === "function") {
+            const _roadTypeLabelsRO = {
+              principal:  "🟩 Tracé principal",
+              secondaire: "🟪 Tracé secondaire",
+              chemin:     "🟨 Chemin",
+              jonction:   "🪜 Jonction interniveau",
+              itinerary:  "🗺️ Itinéraire"
+            };
+            window.attacherNotePopup(
+              polyline,
+              function() { return road.description; },
+              null,
+              _roadTypeLabelsRO[road.type] || ("Tracé " + road.type),
+              { mode: "readonly" }
+            );
+          }
           // 🏗️ Multi-niveau (v148) : registre pour filtre runtime. Si le JSON
           // de la route contient un champ `level`, on l'utilise. Sinon = 0.
           const entry = {
@@ -854,6 +901,8 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!structure.points || structure.points.length < minPts) return;
           const style = STRUCTURE_STYLES_DATA[structure.type] || STRUCTURE_STYLES_DATA["mur"];
           const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
+          // v1.16.0 step 1 — note readonly conditionnelle (cf roads ci-dessus)
+          const hasNoteROStruct = !!(structure.description && String(structure.description).trim());
           let leafletLayer;
           if (isPolyline) {
             // Front de taille : polyline épaisse sans contour
@@ -863,11 +912,27 @@ function ajouterPointsDepuisJSON(url, layer) {
               opacity:  style.opacity,
               lineCap:  "round",
               lineJoin: "round",
-              interactive: false
+              interactive: hasNoteROStruct
             }).addTo(layer);
           } else {
             // Pilier / mur : polygone rempli avec stroke noir
-            leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
+            leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
+          }
+          if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
+            const _structTypeLabelsRO = {
+              "pilier-1": "🟡 Pilier 1ère masse",
+              "pilier-2": "🟠 Pilier 2e masse",
+              "mur":      "🔵 Mur",
+              "front-1":  "🟨 Front de taille 1ère masse",
+              "front-2":  "🟧 Front de taille 2e masse"
+            };
+            window.attacherNotePopup(
+              leafletLayer,
+              function() { return structure.description; },
+              null,
+              _structTypeLabelsRO[structure.type] || ("Structure " + structure.type),
+              { mode: "readonly" }
+            );
           }
           // Note : on garde le nom `polygon` dans l'entry pour rétrocompat
           // avec _filtreNiveauSurPolygonData qui lit entry.polygon. Le
@@ -910,10 +975,27 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!zone.points || zone.points.length < 3) return;
           const style = ZONE_STYLES_DATA[zone.type] || ZONE_STYLES_DATA.remblais;
           const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
+          // v1.16.0 step 1 — note readonly conditionnelle (cf roads/structures ci-dessus)
+          const hasNoteROZone = !!(zone.description && String(zone.description).trim());
           const polyOpts = (zone.type === "inaccessible")
-            ? Object.assign({}, style, { interactive: false, renderer: window._inaccessibleDataRenderer })
-            : Object.assign({}, style, { interactive: false });
+            ? Object.assign({}, style, { interactive: hasNoteROZone, renderer: window._inaccessibleDataRenderer })
+            : Object.assign({}, style, { interactive: hasNoteROZone });
           const polygon = L.polygon(latlngs, polyOpts).addTo(layer);
+          if (hasNoteROZone && typeof window.attacherNotePopup === "function") {
+            const _zoneTypeLabelsRO = {
+              eau:          "💧 Zone Eau",
+              remblais:     "⬛ Zone Remblais",
+              effondrement: "🟥 Zone Effondrement",
+              inaccessible: "⛔ Zone Inaccessible"
+            };
+            window.attacherNotePopup(
+              polygon,
+              function() { return zone.description; },
+              null,
+              _zoneTypeLabelsRO[zone.type] || ("Zone " + zone.type),
+              { mode: "readonly" }
+            );
+          }
           // 🏗️ Multi-niveau (v148) : registre pour filtre runtime.
           // 🚫 v169 (Karma_dev) : on stocke aussi `type` et `points` (coords
           // plan x/y) pour que Pathfinder puisse identifier les zones
