@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.20.0-dev-pack";
+const CACHE_NAME = "myktamap-cache-v1.20.0-dev-pack2";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -75,6 +75,8 @@ const ASSETS_TO_CACHE = [
   "./js/statsGlobales.js",
   // 🆕 v1.21.0 : Tutorial — onboarding cards premier-lancement
   "./js/tutorial.js",
+  // 🆕 Karma_dev : UserProfile — mini profil utilisateur (surnom + photo) en IDB dédiée
+  "./js/userProfile.js",
   // 🆕 v1.22.0 : ProfileExportImport — profil utilisateur complet (remplace l'ancien export liste plans)
   "./js/profileExportImport.js",
   "./js/debug.js",

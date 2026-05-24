@@ -186,15 +186,22 @@
        Auto-lancement déclenché depuis main.js > _splashEnd. Depuis v1.21.0. -->
   <script src="js/tutorial.js"></script>
 
+  <!-- 👤 USER PROFILE — Mini profil utilisateur (surnom + photo optionnelle).
+       Stocké dans une IDB dédiée `myktamap_profile`. Affiché dans le bandeau
+       en-tête du loader avec avatar (photo ou initiale colorée déterministe)
+       + surnom + bouton ⚙️ Détails. Karma_dev (Cycle Karma_dev pending). -->
+  <script src="js/userProfile.js"></script>
+
   <!-- 📦 PROFILE EXPORT/IMPORT — Profil utilisateur complet (registry +
-       préférences + favoris + sessions + snapshots + tutorial + photos
-       optionnel + crashes optionnel). Remplace l'ancien export "liste de
-       plans" tout en gardant la rétro-compat (détection auto du format
-       legacy `myktamap-plans-list`). API : window.ProfileExportImport = {
-       buildProfile, computeSectionSizes, exportToFile, parseProfile,
-       computeImportStats, applyProfile, isLegacyFormat }. EXCLUS par
-       design : ZIPs binaires des plans + PIN/Unlock (sécurité). Depuis
-       v1.22.0. -->
+       préférences + favoris + sessions + snapshots + tutorial + user +
+       photos optionnel + crashes optionnel). Remplace l'ancien export
+       "liste de plans" tout en gardant la rétro-compat (détection auto du
+       format legacy `myktamap-plans-list`). API :
+       window.ProfileExportImport = { buildProfile, computeSectionSizes,
+       exportToFile, parseProfile, computeImportStats, applyProfile,
+       isLegacyFormat }. EXCLUS par design : ZIPs binaires des plans +
+       PIN/Unlock (sécurité). Depuis v1.22.0. Section `user` (surnom +
+       photo profil) ajoutée Karma_dev. -->
   <script src="js/profileExportImport.js"></script>
 
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
@@ -247,6 +254,26 @@
         </div>
       </div>
 
+      <!-- 👤 BANDEAU PROFIL — Karma_dev pending : mini-profil utilisateur
+           (avatar + surnom + bouton ⚙️ Détails). Position en haut du
+           loader, juste sous le header. Avatar = photo si uploadée, sinon
+           initiale du surnom dans cercle coloré déterministe. Si pas de
+           surnom : affiche "Mon profil" en placeholder italique avec
+           avatar 👤 gris. Module : js/userProfile.js. Détails (édition,
+           stats, export/import) : modale #kta-profile-details-modal. -->
+      <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
+           tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
+        <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
+          <!-- contenu généré dynamiquement par _refreshProfileBar() -->
+        </div>
+        <div class="kta-loader-profile-info">
+          <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting">Bienvenue</div>
+          <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
+        </div>
+        <button type="button" class="kta-loader-profile-btn-details" id="kta-loader-profile-details-btn"
+                title="Voir les détails de mon profil (édition, export, import)">⚙️</button>
+      </div>
+
       <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
       <div id="resumeBox" style="display:none; margin-bottom:14px;">
         <button id="resumeBtn" class="loader-btn-resume">
@@ -262,14 +289,12 @@
         <!-- ▬▬▬ COLONNE GAUCHE (60% PC) : 📚 Mes plans ▬▬▬ -->
         <div class="loader-col loader-col-plans">
 
-          <!-- 📚 MES PLANS -->
+          <!-- 📚 MES PLANS — Karma_dev : les boutons d'export/import profil
+               ont été retirés d'ici pour être regroupés dans la nouvelle
+               modale "Mon profil" (cf. bandeau #kta-loader-profile-bar). -->
           <div id="myPlansBox" style="display:none; margin-bottom:14px;">
             <div class="loader-section-head">
               <span>📚 Mes plans</span>
-              <div class="loader-section-actions">
-                <button class="loader-btn-mini" id="exportListBtn" title="Exporter mon profil (plans + préférences + favoris + sessions + snapshots)">💾</button>
-                <button class="loader-btn-mini" id="importListBtn" title="Importer un profil (compatible aussi avec les anciens fichiers de liste de plans)">📂</button>
-              </div>
             </div>
 
             <!-- Filtres (v170) : toggle pour cacher les plans serveur (persisté localStorage) -->
@@ -2044,6 +2069,368 @@
           importListFile.value = "";  // reset input pour permettre re-sélection
         });
       }
+
+      // === 👤 BANDEAU PROFIL UTILISATEUR (Karma_dev) ===
+      // Init au boot + refresh sur changement via UserProfile.onChange.
+      // Le bandeau est cliquable (toute la zone) ET le bouton ⚙️ dédié.
+      // Click → ouvre la modale détails (édition surnom / photo / stats /
+      // export / import / reset).
+      async function _initLoaderProfileBar() {
+        const bar = document.getElementById("kta-loader-profile-bar");
+        if (!bar || !window.UserProfile) return;
+        try { await window.UserProfile.init(); } catch(e) {}
+        await _refreshLoaderProfileBar();
+        bar.style.display = "";  // révèle (default = none)
+        // Listener changement (notifie sur setSurnom / setPhoto / removePhoto / clear)
+        window.UserProfile.onChange(function() {
+          _refreshLoaderProfileBar();
+        });
+        // Open modale au clic (bandeau OU bouton ⚙️ — pareil)
+        const openHandler = function(e) {
+          // Le bouton ⚙️ stoppe la propagation pour pas double-trigger
+          if (e.target && e.target.id === "kta-loader-profile-details-btn") {
+            e.stopPropagation();
+          }
+          _ouvrirModaleProfilDetails();
+        };
+        bar.addEventListener("click", openHandler);
+        // Accessibilité clavier (Enter/Espace sur bandeau focusable)
+        bar.addEventListener("keydown", function(e) {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            _ouvrirModaleProfilDetails();
+          }
+        });
+      }
+
+      let _profileBarObjectUrl = null;  // tracker pour révoquer au refresh
+      async function _refreshLoaderProfileBar() {
+        if (!window.UserProfile) return;
+        const snap = window.UserProfile.get();
+        const avatarWrap = document.getElementById("kta-loader-profile-avatar");
+        const surnomEl   = document.getElementById("kta-loader-profile-surnom");
+        const greetingEl = document.getElementById("kta-loader-profile-greeting");
+        if (!avatarWrap || !surnomEl) return;
+        // Surnom display
+        const hasName = !!(snap.surnom && snap.surnom.trim());
+        if (hasName) {
+          surnomEl.textContent = snap.surnom;
+          surnomEl.classList.remove("kta-loader-profile-surnom-empty");
+          if (greetingEl) greetingEl.textContent = "Bienvenue";
+        } else {
+          surnomEl.textContent = "Mon profil";
+          surnomEl.classList.add("kta-loader-profile-surnom-empty");
+          if (greetingEl) greetingEl.textContent = "Bienvenue";
+        }
+        // Avatar : photo si dispo, sinon initiale colorée
+        // Cleanup ancien objectURL
+        if (_profileBarObjectUrl) {
+          try { URL.revokeObjectURL(_profileBarObjectUrl); } catch(e) {}
+          _profileBarObjectUrl = null;
+        }
+        if (snap.hasPhoto) {
+          try {
+            const url = await window.UserProfile.getPhotoObjectUrl();
+            if (url) {
+              _profileBarObjectUrl = url;
+              avatarWrap.innerHTML =
+                '<img class="kta-loader-profile-avatar-img" src="' + url + '" alt="Avatar de ' +
+                  (snap.surnom || "profil").replace(/"/g, "&quot;") + '">';
+              return;
+            }
+          } catch(e) {
+            console.warn("[Profile] avatar photo échec, fallback initiale :", e);
+          }
+        }
+        // Fallback initiale
+        const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
+        const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
+        if (hasName) {
+          avatarWrap.innerHTML =
+            '<div class="kta-loader-profile-avatar-initial" style="background:' +
+              color.bg + '; color:' + color.fg + ';">' + initial + '</div>';
+        } else {
+          // Vraiment vide : silhouette grise neutre, pas d'initiale
+          avatarWrap.innerHTML =
+            '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">👤</div>';
+        }
+      }
+
+      // === MODALE "Détails du profil" ===
+      // Pattern .kta-readme-modal-overlay. Édition inline (surnom contenteditable),
+      // bouton modifier/retirer photo (input file caché), stats agrégées,
+      // boutons export profil / import profil / reset.
+      function _ouvrirModaleProfilDetails() {
+        // Cleanup d'une modale précédente
+        const ex = document.getElementById("kta-profile-details-modal");
+        if (ex) ex.parentNode.removeChild(ex);
+
+        if (!window.UserProfile) {
+          alert("Module UserProfile non disponible.");
+          return;
+        }
+        const snap = window.UserProfile.get();
+
+        const overlay = document.createElement("div");
+        overlay.id = "kta-profile-details-modal";
+        overlay.className = "kta-readme-modal-overlay";
+        overlay.innerHTML =
+          '<div class="kta-readme-modal-boite kta-profile-details-boite">' +
+            '<div class="kta-readme-modal-header">' +
+              '<span class="kta-readme-modal-titre">👤 Mon profil</span>' +
+              '<button type="button" class="kta-panneau-close" id="kta-profile-details-close" aria-label="Fermer">✕</button>' +
+            '</div>' +
+            '<div class="kta-readme-modal-corps kta-profile-details-corps">' +
+              // — Identité (gros avatar + surnom inline) —
+              '<div class="kta-profile-details-identity">' +
+                '<div class="kta-profile-details-avatar-big" id="kta-profile-details-avatar"></div>' +
+                '<div class="kta-profile-details-photo-actions">' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-btn">📷 Photo</button>' +
+                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-mini" id="kta-profile-details-photo-remove" style="' + (snap.hasPhoto ? '' : 'display:none;') + '">🗑️ Retirer</button>' +
+                  '<input type="file" id="kta-profile-details-photo-input" accept="image/*" style="display:none;">' +
+                '</div>' +
+                '<div class="kta-profile-details-name-row">' +
+                  '<label class="kta-profile-details-label" for="kta-profile-details-surnom">Surnom</label>' +
+                  '<input type="text" id="kta-profile-details-surnom" class="kta-profile-details-input" ' +
+                    'placeholder="Ex: Karma, Spéléo42, etc." maxlength="40" ' +
+                    'value="' + (snap.surnom || "").replace(/"/g, "&quot;") + '">' +
+                  '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-details-save-name" style="display:none;">💾 Enregistrer</button>' +
+                '</div>' +
+                '<p class="kta-profile-details-hint">Le surnom est local à cet appareil. Il sert juste à personnaliser ton accueil et à signer tes exports de profil.</p>' +
+              '</div>' +
+
+              // — Stats compactes —
+              '<div class="kta-profile-details-stats" id="kta-profile-details-stats">' +
+                '<div class="kta-profile-details-stats-loading">⏳ Calcul des stats…</div>' +
+              '</div>' +
+
+              // — Actions profil —
+              '<div class="kta-profile-details-actions">' +
+                '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">📤 Exporter mon profil</button>' +
+                '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">📥 Importer un profil</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">🗑️ Réinitialiser le profil (ici)</button>' +
+              '</div>' +
+
+              '<p class="kta-profile-details-footer-hint">' +
+                'L\'export inclut <strong>tout</strong> (registre des plans, préférences, favoris, sessions, snapshots, identité…). ' +
+                'Le PIN/Face ID et le code communautaire ne sont jamais exportés (sécurité). ' +
+                'Les ZIPs binaires des plans non plus (trop lourd).' +
+              '</p>' +
+            '</div>' +
+          '</div>';
+        document.documentElement.appendChild(overlay);
+
+        // Render avatar initial dans la modale (gros format)
+        _refreshProfileDetailsAvatar(snap);
+
+        // Calcul stats async
+        _refreshProfileDetailsStats();
+
+        // Fermeture
+        const closeFn = function() {
+          const m = document.getElementById("kta-profile-details-modal");
+          if (m) m.parentNode.removeChild(m);
+          document.removeEventListener("keydown", escFn);
+        };
+        const escFn = function(e) { if (e.key === "Escape" || e.key === "Esc") closeFn(); };
+        document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);
+        overlay.addEventListener("click", function(e) { if (e.target === overlay) closeFn(); });
+        document.addEventListener("keydown", escFn);
+
+        // Bind handlers édition surnom (live + save button)
+        const surnomInput = document.getElementById("kta-profile-details-surnom");
+        const saveBtn     = document.getElementById("kta-profile-details-save-name");
+        let _originalSurnom = surnomInput.value;
+        surnomInput.addEventListener("input", function() {
+          saveBtn.style.display = (surnomInput.value !== _originalSurnom) ? "" : "none";
+        });
+        saveBtn.addEventListener("click", async function() {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "⏳";
+          try {
+            await window.UserProfile.setSurnom(surnomInput.value);
+            _originalSurnom = surnomInput.value;
+            saveBtn.textContent = "✅";
+            setTimeout(function() {
+              saveBtn.style.display = "none";
+              saveBtn.disabled = false;
+              saveBtn.textContent = "💾 Enregistrer";
+            }, 700);
+          } catch(e) {
+            alert("Échec : " + (e.message || e));
+            saveBtn.disabled = false;
+            saveBtn.textContent = "💾 Enregistrer";
+          }
+        });
+        // Submit aussi sur Enter
+        surnomInput.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") { e.preventDefault(); if (saveBtn.style.display !== "none") saveBtn.click(); }
+        });
+
+        // Photo : upload
+        const photoBtn   = document.getElementById("kta-profile-details-photo-btn");
+        const photoInput = document.getElementById("kta-profile-details-photo-input");
+        const removeBtn  = document.getElementById("kta-profile-details-photo-remove");
+        photoBtn.addEventListener("click", function() { photoInput.click(); });
+        photoInput.addEventListener("change", async function() {
+          const f = photoInput.files[0];
+          if (!f) return;
+          photoBtn.disabled = true;
+          photoBtn.textContent = "⏳ Compression…";
+          try {
+            await window.UserProfile.setPhoto(f);
+            const snap2 = window.UserProfile.get();
+            _refreshProfileDetailsAvatar(snap2);
+            removeBtn.style.display = "";
+            photoBtn.textContent = "🔄 Changer la photo";
+          } catch(e) {
+            alert("Échec upload photo : " + (e.message || e));
+            photoBtn.textContent = "📷 Photo";
+          }
+          photoBtn.disabled = false;
+          photoInput.value = "";
+        });
+        removeBtn.addEventListener("click", async function() {
+          if (!confirm("Retirer la photo de profil ?")) return;
+          try {
+            await window.UserProfile.removePhoto();
+            const snap2 = window.UserProfile.get();
+            _refreshProfileDetailsAvatar(snap2);
+            removeBtn.style.display = "none";
+            photoBtn.textContent = "📷 Photo";
+          } catch(e) { alert("Échec : " + (e.message || e)); }
+        });
+
+        // Boutons export / import (réutilise ProfileExportImport + le file picker
+        // déjà présent dans le DOM = #importListFile)
+        document.getElementById("kta-profile-details-export").addEventListener("click", function() {
+          if (window.ProfileExportImport && window.ProfileExportImport.ouvrirExportModale) {
+            window.ProfileExportImport.ouvrirExportModale();
+          } else {
+            alert("Module ProfileExportImport indisponible.");
+          }
+        });
+        document.getElementById("kta-profile-details-import").addEventListener("click", function() {
+          const fileInput = document.getElementById("importListFile");
+          if (fileInput) fileInput.click();
+        });
+
+        // Reset profil
+        document.getElementById("kta-profile-details-reset").addEventListener("click", async function() {
+          if (!confirm("Réinitialiser TON profil (surnom + photo) sur CET appareil ?\n\nNe touche pas à tes plans, sessions ou favoris. Reverse uniquement à un profil vierge.")) return;
+          try {
+            await window.UserProfile.clear();
+            // Refresh modale en place
+            const snap2 = window.UserProfile.get();
+            surnomInput.value = "";
+            _originalSurnom = "";
+            saveBtn.style.display = "none";
+            removeBtn.style.display = "none";
+            photoBtn.textContent = "📷 Photo";
+            _refreshProfileDetailsAvatar(snap2);
+          } catch(e) { alert("Échec : " + (e.message || e)); }
+        });
+      }
+
+      let _profileDetailsObjectUrl = null;
+      async function _refreshProfileDetailsAvatar(snap) {
+        const avatarEl = document.getElementById("kta-profile-details-avatar");
+        if (!avatarEl || !window.UserProfile) return;
+        if (_profileDetailsObjectUrl) {
+          try { URL.revokeObjectURL(_profileDetailsObjectUrl); } catch(e) {}
+          _profileDetailsObjectUrl = null;
+        }
+        snap = snap || window.UserProfile.get();
+        if (snap.hasPhoto) {
+          try {
+            const url = await window.UserProfile.getPhotoObjectUrl();
+            if (url) {
+              _profileDetailsObjectUrl = url;
+              avatarEl.innerHTML = '<img class="kta-profile-details-avatar-photo" src="' + url + '" alt="Photo profil">';
+              return;
+            }
+          } catch(e) {}
+        }
+        const hasName = !!(snap.surnom && snap.surnom.trim());
+        const initial = hasName ? window.UserProfile.getInitial(snap.surnom) : "👤";
+        const color   = window.UserProfile.getAvatarColor(snap.surnom || "");
+        if (hasName) {
+          avatarEl.innerHTML =
+            '<div class="kta-profile-details-avatar-initial" style="background:' + color.bg + '; color:' + color.fg + ';">' +
+              initial +
+            '</div>';
+        } else {
+          avatarEl.innerHTML =
+            '<div class="kta-profile-details-avatar-initial kta-profile-details-avatar-empty">👤</div>';
+        }
+      }
+
+      async function _refreshProfileDetailsStats() {
+        const statsEl = document.getElementById("kta-profile-details-stats");
+        if (!statsEl) return;
+        // Compteurs simples sync
+        let nbPlans = 0, nbFavoris = 0, nbSessions = 0, nbBackups = 0;
+        try {
+          const raw = localStorage.getItem("myktamap_plans");
+          const parsed = raw ? JSON.parse(raw) : null;
+          if (parsed && Array.isArray(parsed.plans)) nbPlans = parsed.plans.length;
+        } catch(e) {}
+        try {
+          const favRaw = localStorage.getItem("myktamap_favoris_v1");
+          if (favRaw) {
+            const fp = JSON.parse(favRaw);
+            if (fp && fp.byPlan) {
+              Object.keys(fp.byPlan).forEach(function(pid) {
+                nbFavoris += (fp.byPlan[pid] || []).length;
+              });
+            }
+          }
+        } catch(e) {}
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith("myktamap_session_v1_")) nbSessions++;
+          }
+        } catch(e) {}
+        if (window.SessionBackups && window.SessionBackups.listAll) {
+          try { const arr = await window.SessionBackups.listAll(); nbBackups = arr.length; } catch(e) {}
+        }
+        // Photos POI (count + bytes total)
+        let nbPhotos = 0, photosBytes = 0;
+        if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.getAllPhotosForPlan) {
+          try {
+            const raw = localStorage.getItem("myktamap_plans");
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed && Array.isArray(parsed.plans)) {
+              for (const p of parsed.plans) {
+                if (!p.id) continue;
+                const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
+                if (Array.isArray(photos)) {
+                  nbPhotos += photos.length;
+                  photos.forEach(function(ph) { photosBytes += (ph.size || 0); });
+                }
+              }
+            }
+          } catch(e) {}
+        }
+        function _fmtBytes(n) {
+          if (!n) return "0 B";
+          if (n < 1024) return n + " B";
+          if (n < 1024*1024) return (n/1024).toFixed(1) + " KB";
+          return (n/1048576).toFixed(1) + " MB";
+        }
+        statsEl.innerHTML =
+          '<div class="kta-profile-stat-grid">' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">🗂️ plans</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">💾 sessions</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">⭐ favoris</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">📦 snapshots</span></div>' +
+            '<div class="kta-profile-stat-cell kta-profile-stat-cell-wide"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">📸 photos POI (' + _fmtBytes(photosBytes) + ')</span></div>' +
+          '</div>';
+      }
+
+      // Init bandeau au boot du loader (différé pour laisser UserProfile.init())
+      setTimeout(_initLoaderProfileBar, 100);
 
       function afficherChoixImportListe(stats) {
         return new Promise(function(resolve) {

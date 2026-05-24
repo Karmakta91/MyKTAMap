@@ -260,6 +260,51 @@
     }
   }
 
+  // v1.21.0 Karma_dev — section "user" (surnom + photo profil)
+  // Photo profil est petite (max 512px côté long, JPEG q88 ≈ 30-60 KB),
+  // donc base64 inline = OK sans bascule ZIP obligatoire.
+  async function _collectUser() {
+    if (!window.UserProfile) return null;
+    try {
+      const snap = window.UserProfile.get();
+      const user = {
+        surnom:    snap.surnom || "",
+        createdAt: snap.createdAt || null,
+        updatedAt: snap.updatedAt || null
+      };
+      if (snap.hasPhoto) {
+        const blob = await window.UserProfile.getPhotoBlob();
+        if (blob) {
+          const b64 = await _blobToBase64(blob);
+          user.photoMime = snap.photoMime || blob.type || "image/jpeg";
+          user.photoData = b64;
+          user.photoSize = blob.size;
+        }
+      }
+      return user;
+    } catch(e) {
+      console.warn("[ProfileExportImport] user collect échec :", e);
+      return null;
+    }
+  }
+
+  async function _restoreUser(userSection) {
+    if (!userSection || !window.UserProfile) return { ok: false, reason: "no-section-or-module" };
+    try {
+      if (typeof userSection.surnom === "string") {
+        await window.UserProfile.setSurnom(userSection.surnom);
+      }
+      if (userSection.photoData) {
+        const blob = _base64ToBlob(userSection.photoData, userSection.photoMime || "image/jpeg");
+        if (blob) await window.UserProfile.setPhoto(blob);
+      }
+      return { ok: true };
+    } catch(e) {
+      console.warn("[ProfileExportImport] user restore échec :", e);
+      return { ok: false, error: String(e) };
+    }
+  }
+
   // ───────── BUILD PROFIL ─────────
 
   /**
@@ -283,6 +328,7 @@
     if (include.sessions !== false)    profile.sections.sessions    = _collectSessions();
     if (include.tutorial !== false)    profile.sections.tutorial    = _collectTutorial();
     // Async sections
+    if (include.user !== false)        profile.sections.user        = await _collectUser();
     if (include.backups !== false)     profile.sections.backups     = await _collectBackups();
     if (include.photos === true)       profile.sections.photos      = await _collectPhotos();
     if (include.crashes === true)      profile.sections.crashes     = await _collectCrashes();
@@ -327,6 +373,22 @@
     };
     // Tutorial
     sizes.tutorial = { count: 1, bytes: 20 };
+    // User profile (v1.21.0 Karma_dev) — async (peut contenir photo)
+    if (window.UserProfile && typeof window.UserProfile.get === "function") {
+      try {
+        const snap = window.UserProfile.get();
+        let bytes = (snap.surnom || "").length * 2; // approx UTF-16
+        let count = (snap.surnom ? 1 : 0);
+        if (snap.hasPhoto) {
+          const blob = await window.UserProfile.getPhotoBlob();
+          if (blob) bytes += Math.round(blob.size * 1.34); // base64 inflation
+          count += 1;
+        }
+        sizes.user = { count: count, bytes: bytes };
+      } catch(e) { sizes.user = { count: 0, bytes: 0 }; }
+    } else {
+      sizes.user = { count: 0, bytes: 0 };
+    }
     // Backups (async)
     try {
       const backups = await _collectBackups();
@@ -440,6 +502,7 @@
     if (!profile || !profile.sections) return null;
     const s = profile.sections;
     return {
+      user:        s.user        ? ((s.user.surnom ? 1 : 0) + (s.user.photoData ? 1 : 0)) : 0,
       registry:    s.registry    ? ((s.registry.plans || []).length) : 0,
       preferences: s.preferences ? Object.keys(s.preferences).length : 0,
       favoris:     s.favoris     ? Object.keys(s.favoris.byPlan || {}).reduce(function(acc, pid) {
@@ -639,6 +702,16 @@
       }
     }
 
+    // ─── User profile (v1.21.0 Karma_dev — surnom + photo) ───
+    if (include.user !== false && s.user) {
+      try {
+        const r = await _restoreUser(s.user);
+        result.applied.user = (r && r.ok) ? 1 : 0;
+      } catch(e) {
+        console.warn("[ProfileExportImport] apply user échec :", e);
+      }
+    }
+
     // ─── Crashes (debug only, écriture IDB myktamap_crashes) ───
     if (include.crashes !== false && Array.isArray(s.crashes) && s.crashes.length > 0) {
       try {
@@ -734,6 +807,7 @@
     html += '</p>';
 
     html += '<div class="kta-profile-sections">';
+    html += _renderSectionRow("user",        "👤", "Identité utilisateur",            sizes.user,        true,  "Surnom + photo de profil (image compressée 512px JPEG). Stockée dans l'IDB <code>myktamap_profile</code>.");
     html += _renderSectionRow("registry",    "🗂️", "Liste des plans (méta)",         sizes.registry,    true,  "Liste des plans connus (ID, nom, version, source). <strong>Sans</strong> les ZIPs binaires.");
     html += _renderSectionRow("preferences", "⚙️", "Préférences",                     sizes.preferences, true,  "Réglages utilisateur : thème, mode perf, debug, paranoia, mode Simple/Avancé Générateur, prefs Freehand, etc.");
     html += _renderSectionRow("favoris",     "⭐", "Favoris",                          sizes.favoris,     true,  "Tous les POI marqués favoris (tous plans confondus).");
@@ -943,6 +1017,7 @@
 
     // Sections présentes dans le profil
     html += '<div class="kta-profile-sections">';
+    if (stats.user > 0)    html += _renderImportSection("user",     "👤", "Identité utilisateur", stats.user);
     html += _renderImportSection("registry",    "🗂️", "Liste des plans",     stats.registry);
     html += _renderImportSection("preferences", "⚙️", "Préférences",         stats.preferences);
     html += _renderImportSection("favoris",     "⭐", "Favoris",              stats.favoris);
