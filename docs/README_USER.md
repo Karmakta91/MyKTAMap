@@ -2340,7 +2340,7 @@ L'app n'a **aucune ambition de remplacer** les vieux plans papier annotés, les 
 - 🌐 **100 % hors-ligne par défaut** — l'app fonctionne sans réseau une fois le plan chargé. Tu peux la lancer en avion, dans le métro, ou à 30 m sous terre.
 - 🔒 **Zéro télémétrie** — aucun service tiers n'est appelé pour te suivre. Le seul fetch externe possible est la mise à jour du code de l'app (et tu peux le couper). L'auditeur peut vérifier dans `🔒 Audit réseau`.
 - 📦 **Propriété des données** — tes annotations, tes photos, tes mesures sont stockées **localement**, dans le navigateur. Personne d'autre que toi n'y a accès. Tu peux tout exporter à tout moment (`💾 Enregistrer session`) et tout effacer en 2 clics (`💥 Tout réinitialiser`).
-- 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, le forker, l'auditer, le bricoler pour ton usage. Pas de boîte noire, pas de marketing.
+- 🤝 **Code ouvert** — la licence est `CC BY-NC-SA 4.0`. Tu peux lire le code, l'auditer. Pas de boîte noire, pas de marketing.
 - ⚖️ **Discrétion = respect** — un plan partagé n'importe comment, c'est un lieu fragilisé. L'app ne contient aucun plan par défaut ; c'est à chaque utilisateur de charger les siens, et de **ne pas les diffuser** au-delà du cercle de confiance.
 
 ### Ce que l'app n'est pas
@@ -2389,7 +2389,7 @@ Une bonne partie du code de cette version a été co-écrite avec **Claude (Anth
 
 Pour avoir pris 10 minutes à lire au lieu de cliquer aveuglément. C'est exactement l'état d'esprit que ces lieux demandent — **prendre le temps, comprendre avant d'agir, respecter ce qu'on ne maîtrise pas encore**.
 
-> Si tu veux contribuer — un retour bug, une suggestion, un plan à partager dans le cercle de confiance, un coup de main sur la doc — passe par l'issue tracker du repo ou les canaux habituels de la communauté.
+> Si tu veux contribuer — un retour bug, une suggestion, un coup de main sur la doc — passe par l'issue tracker du repo ou les canaux habituels de la communauté.
 
 ---
 
