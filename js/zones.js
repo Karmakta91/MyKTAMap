@@ -73,6 +73,27 @@ const ZONE_STYLE_PREVIEW = {
   dashArray: "8 5"
 };
 
+// 🆕 v1.16.0 step2-drawable : résolution dynamique du style des zones —
+// supporte les types CUSTOM via LegendCustomization. Si le type matche un
+// id custom catégorie "zones", construit un style à partir de fillColor +
+// borderColor (= color).
+function _resolveZoneStyle(type) {
+  if (ZONE_STYLES[type]) return ZONE_STYLES[type];
+  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    if (e && e.category === "zones") {
+      return {
+        color:       e.borderColor || e.fillColor || "#888",
+        fillColor:   e.fillColor || "#888",
+        fillOpacity: 0.7,
+        weight:      3,
+        opacity:     1
+      };
+    }
+  }
+  return null;
+}
+
 // =========================
 // CIBLE DE RENDU — calque "Mes annotations"
 // =========================
@@ -265,7 +286,8 @@ function renderZones() {
     if (!_zonePasseFiltre(zone)) return;
 
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
-    const style = ZONE_STYLES[zone.type] || ZONE_STYLES.remblais;
+    // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
+    const style = _resolveZoneStyle(zone.type) || ZONE_STYLES.remblais;
 
     if (zone === currentZone) {
       // Zone en cours de tracé → polyline pointillée (aperçu)

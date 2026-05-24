@@ -5042,6 +5042,93 @@ _setGroupeModeActif("tracker", isTracking, null);
     ]
   });
 
+  // 🆕 v1.16.0 step2-drawable : injection des boutons des entrées CUSTOM
+  // dans les groupes traces / zones / structures de la sidebar. Permet à
+  // l'utilisateur de DESSINER directement les types qu'il a ajoutés via le
+  // bouton ✏️ Modifier de la légende.
+  //
+  // Chaque bouton :
+  //   - icône = swatch couleur (lineColor pour polylines, fillColor pour
+  //     polygones) ou img si iconUrl
+  //   - title = "✨ <label>"
+  //   - data-custom-id = entry.id (pour identifier / retirer plus tard)
+  //   - click → appelle _activerRoute/_activerZone/_activerStructure avec
+  //     entry.id comme type (les helpers passent ça à toggleXMode qui le
+  //     stocke comme road.type / zone.type / structure.type)
+  //
+  // Hook LegendCustomization.onCustomEntriesChange → refresh quand un
+  // custom est ajouté/supprimé/modifié pour que la sidebar suive en live.
+  function _injecterBoutonsCustomSidebar() {
+    const mapping = [
+      { groupeId: "traces",     lcCat: "traces",     activerFn: _activerRoute     },
+      { groupeId: "zones",      lcCat: "zones",      activerFn: _activerZone      },
+      { groupeId: "structures", lcCat: "structures", activerFn: _activerStructure }
+    ];
+    const LC = window.LegendCustomization;
+    if (!LC) return;
+
+    mapping.forEach(function(m) {
+      const grp = _groupes[m.groupeId];
+      if (!grp || !grp.container) return;
+
+      // 1) Retire les boutons custom existants (data-custom-id) du DOM ET
+      //    du tableau subActions, pour repartir propre.
+      grp.container.querySelectorAll('a.kta-sub[data-custom-id]').forEach(function(el) {
+        el.remove();
+      });
+      grp.subActions = grp.subActions.filter(function(el) {
+        return !el.dataset || !el.dataset.customId;
+      });
+
+      // 2) Construit les nouveaux boutons depuis LC.listCustomEntries.
+      //    Filtre les invisibles.
+      const customs = LC.listCustomEntries(m.lcCat).filter(function(e) { return e.visible; });
+      customs.forEach(function(e) {
+        const btn = L.DomUtil.create("a", "kta-sub kta-hidden", grp.container);
+        btn.href            = "javascript:void(0)";
+        btn.title           = "✨ " + e.label;
+        btn.dataset.customId = e.id;
+        btn.dataset.subId    = "custom-" + e.id;
+
+        // Swatch visuel : trait coloré pour polyline, carré pour polygon,
+        // image pour icones (mais icones ne sont pas dessinables — exclues
+        // de cette injection — cf. mapping ci-dessus).
+        if (e.geometry === "polyline") {
+          btn.innerHTML = '<span style="display:inline-block;width:16px;height:3px;background:' + (e.lineColor || '#888') + ';vertical-align:middle;border-radius:1px;"></span>';
+        } else {
+          // polygon (zones, structures pilier/mur, ou traces sans lineColor → fallback)
+          const fill   = e.fillColor || e.lineColor || '#888';
+          const border = e.borderColor || e.lineColor || fill;
+          btn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;background:' + fill + ';border:1px solid ' + border + ';vertical-align:middle;border-radius:2px;"></span>';
+        }
+
+        // Bind click → active le mode pour ce custom (réutilise les helpers
+        // existants — fonctionnent avec n'importe quel type string).
+        L.DomEvent.on(btn, "click", function(ev) {
+          L.DomEvent.stop(ev); L.DomEvent.preventDefault(ev);
+          m.activerFn(e.id, btn, "✨");
+        });
+
+        grp.subActions.push(btn);
+
+        // Si le groupe est ouvert, on rend le bouton visible tout de suite
+        if (_groupeOuvert === m.groupeId || grp.modeActif) {
+          btn.classList.remove("kta-hidden");
+        }
+      });
+    });
+  }
+
+  // Premier remplissage au load (au cas où des customs sont déjà persistés)
+  _injecterBoutonsCustomSidebar();
+
+  // Refresh automatique sur tout changement (add / remove / update / reset)
+  if (window.LegendCustomization && typeof window.LegendCustomization.onCustomEntriesChange === "function") {
+    window.LegendCustomization.onCustomEntriesChange(function() {
+      _injecterBoutonsCustomSidebar();
+    });
+  }
+
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 

@@ -315,6 +315,65 @@ window.LegendCustomization = (function() {
     return "cust-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e6).toString(36);
   }
 
+  // ─────────────────────────────────────────────
+  // Listeners de mutation des customs
+  // ─────────────────────────────────────────────
+  //
+  // Permet à d'autres modules (interface.js pour la sidebar dynamique,
+  // road.js / structures.js / zones.js pour invalider d'éventuels caches
+  // de style) de réagir quand un custom est ajouté/supprimé/modifié.
+  //
+  // Usage :
+  //   const unsubscribe = LegendCustomization.onCustomEntriesChange(function() {
+  //     // re-render UI
+  //   });
+  //   ...
+  //   unsubscribe();
+  const _customChangeListeners = [];
+  function onCustomEntriesChange(fn) {
+    if (typeof fn !== "function") return function() {};
+    _customChangeListeners.push(fn);
+    return function() {
+      const idx = _customChangeListeners.indexOf(fn);
+      if (idx >= 0) _customChangeListeners.splice(idx, 1);
+    };
+  }
+  function _fireCustomChange() {
+    _customChangeListeners.forEach(function(fn) {
+      try { fn(); } catch(e) { console.warn("[LegendCustomization] listener custom-change erreur :", e); }
+    });
+  }
+
+  // Lookup d'une entrée custom par ID (session OU plan).
+  function findCustomEntry(id) {
+    if (!id) return null;
+    const fromSession = _sessionState.customEntries.find(function(e) { return e.id === id; });
+    if (fromSession) return Object.assign({}, fromSession, { source: "session" });
+    const fromPlan = _planState.customEntries.find(function(e) { return e.id === id; });
+    if (fromPlan) return Object.assign({}, fromPlan, { source: "plan" });
+    return null;
+  }
+
+  // Géométrie par catégorie : détermine la nature géométrique de l'entrée
+  // custom pour qu'elle soit DESSINABLE sur la carte.
+  //   - traces      → toujours "polyline" (les routes sont des lignes)
+  //   - zones       → toujours "polygon"  (les zones sont des surfaces)
+  //   - structures  → "polyline" (front de taille) OU "polygon" (pilier/mur)
+  //                   ← user choix à la création
+  //   - icones      → "marker" (n/a pour le dessin, juste pour la légende)
+  //
+  // Si entry.geometry est manquant à la création, on déduit le défaut.
+  function _defaultGeometry(category, providedGeometry) {
+    if (category === "traces")    return "polyline";
+    if (category === "zones")     return "polygon";
+    if (category === "icones")    return "marker";
+    if (category === "structures") {
+      if (providedGeometry === "polyline" || providedGeometry === "polygon") return providedGeometry;
+      return "polygon"; // défaut structure = polygone (pilier/mur)
+    }
+    return "polyline";
+  }
+
   function addCustomEntry(entry) {
     if (!entry || !entry.category) return null;
     if (CATEGORIES.indexOf(entry.category) < 0) return null;
@@ -322,6 +381,10 @@ window.LegendCustomization = (function() {
     const clean = {
       id:          id,
       category:    entry.category,
+      // 🆕 v1.16.0 step2-drawable : geometry pour rendre les entrées custom
+      // DESSINABLES (toggleXMode + render appliquent le bon style selon la
+      // géométrie). Si non fourni, on déduit du category.
+      geometry:    _defaultGeometry(entry.category, entry.geometry),
       label:       String(entry.label || "").trim() || "Sans nom",
       // Renders optionnels — au moins UN doit être présent pour le render
       lineColor:   entry.lineColor   || null,
@@ -331,6 +394,7 @@ window.LegendCustomization = (function() {
     };
     _sessionState.customEntries.push(clean);
     _persistSession();
+    _fireCustomChange();
     return id;
   }
 
@@ -339,6 +403,7 @@ window.LegendCustomization = (function() {
     if (idx >= 0) {
       _sessionState.customEntries.splice(idx, 1);
       _persistSession();
+      _fireCustomChange();
       return true;
     }
     // Si c'est une entrée du PLAN (non éditable), on la cache via hidden
@@ -346,6 +411,7 @@ window.LegendCustomization = (function() {
     const planEntry = _planState.customEntries.find(function(e) { return e.id === id; });
     if (planEntry) {
       setCustomEntryVisibility(id, false);
+      _fireCustomChange();
       return true;
     }
     return false;
@@ -360,13 +426,16 @@ window.LegendCustomization = (function() {
     if (patch.fillColor   !== undefined) e.fillColor   = patch.fillColor   || null;
     if (patch.borderColor !== undefined) e.borderColor = patch.borderColor || null;
     if (patch.iconUrl     !== undefined) e.iconUrl     = patch.iconUrl     || null;
+    if (patch.geometry === "polyline" || patch.geometry === "polygon") e.geometry = patch.geometry;
     _persistSession();
+    _fireCustomChange();
     return true;
   }
 
   function resetSession() {
     _sessionState = _emptyState();
     _persistSession();
+    _fireCustomChange();
   }
 
   // ─────────────────────────────────────────────
@@ -609,6 +678,25 @@ window.LegendCustomization = (function() {
             '<option value="icones">🏷️ Icônes (URL image)</option>' +
           '</select>' +
         '</div>' +
+        // 🆕 v1.16.0 step2-drawable : pour les STRUCTURES uniquement, ajout
+        // d'un choix de géométrie polyline/polygon pour différencier "front
+        // de taille" (= polyline, comme front-1/front-2 built-in) de
+        // "pilier/mur" (= polygon, comme pilier-1/pilier-2/mur built-in).
+        // Pour les autres catégories, la géométrie est implicite (traces =
+        // polyline, zones = polygon).
+        '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-geom-wrap">' +
+          '<label class="kta-cfg-label">Type de structure</label>' +
+          '<div style="display:flex; gap:6px;">' +
+            '<label class="kta-export-radio-row" style="flex:1;">' +
+              '<input type="radio" name="kta-lc-add-geom" value="polygon" checked>' +
+              '<span>🟦 Polygone fermé <span style="color:#8892a4; font-size:11px;">(pilier/mur)</span></span>' +
+            '</label>' +
+            '<label class="kta-export-radio-row" style="flex:1;">' +
+              '<input type="radio" name="kta-lc-add-geom" value="polyline">' +
+              '<span>➖ Ligne ouverte <span style="color:#8892a4; font-size:11px;">(front de taille)</span></span>' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
         '<div style="margin-bottom:10px;">' +
           '<label class="kta-cfg-label">Libellé</label>' +
           '<input class="kta-cfg-input" id="kta-lc-add-label" type="text" placeholder="Ex : Pilier ancien">' +
@@ -648,32 +736,58 @@ window.LegendCustomization = (function() {
     wrap.addEventListener("click", function(e) { if (e.target === wrap) fermerAdd(); });
 
     const catSel = document.getElementById("kta-lc-add-cat");
+    const geomWrap = document.getElementById("kta-lc-add-geom-wrap");
     const lineWrap = document.getElementById("kta-lc-add-line-wrap");
     const fillWrap = document.getElementById("kta-lc-add-fill-wrap");
     const iconWrap = document.getElementById("kta-lc-add-icon-wrap");
 
+    function _getStructGeometry() {
+      const r = wrap.querySelector('input[name="kta-lc-add-geom"]:checked');
+      return r ? r.value : "polygon";
+    }
+
     function _majChamps() {
       const cat = catSel.value;
       if (cat === "icones") {
+        geomWrap.style.display = "none";
         lineWrap.style.display = "none";
         fillWrap.style.display = "none";
         iconWrap.style.display = "block";
       } else {
         iconWrap.style.display = "none";
         if (cat === "traces") {
+          geomWrap.style.display = "none";
           lineWrap.style.display = "block";
           fillWrap.style.display = "none";
         } else if (cat === "zones") {
+          geomWrap.style.display = "none";
           lineWrap.style.display = "none";
           fillWrap.style.display = "block";
           document.getElementById("kta-lc-add-fill-on").checked = true;
         } else {
-          lineWrap.style.display = "block";
-          fillWrap.style.display = "block";
+          // structures → afficher le sélecteur de géométrie + ajuster
+          // les champs de couleur selon le choix.
+          geomWrap.style.display = "block";
+          const geom = _getStructGeometry();
+          if (geom === "polyline") {
+            // Front de taille : couleur trait obligatoire, pas de fill
+            lineWrap.style.display = "block";
+            fillWrap.style.display = "none";
+            document.getElementById("kta-lc-add-line-on").checked = true;
+          } else {
+            // Pilier/mur : couleur fill obligatoire, trait optionnel pour bordure
+            lineWrap.style.display = "block";
+            fillWrap.style.display = "block";
+            document.getElementById("kta-lc-add-fill-on").checked = true;
+          }
         }
       }
     }
     catSel.addEventListener("change", _majChamps);
+    // Re-render quand l'user change la géométrie d'une structure
+    wrap.querySelectorAll('input[name="kta-lc-add-geom"]').forEach(function(r) {
+      r.addEventListener("change", _majChamps);
+    });
     _majChamps();
 
     document.getElementById("kta-lc-add-ok").addEventListener("click", function() {
@@ -681,6 +795,19 @@ window.LegendCustomization = (function() {
       const label = (document.getElementById("kta-lc-add-label").value || "").trim();
       if (!label) { alert("Donne un libellé à l'entrée."); return; }
       const entry = { category: cat, label: label };
+
+      // 🆕 v1.16.0 step2-drawable : géométrie. Pour structures = choix user,
+      // sinon implicite via category.
+      if (cat === "structures") {
+        entry.geometry = _getStructGeometry();
+      } else if (cat === "traces") {
+        entry.geometry = "polyline";
+      } else if (cat === "zones") {
+        entry.geometry = "polygon";
+      } else {
+        entry.geometry = "marker";
+      }
+
       if (cat === "icones") {
         const url = (document.getElementById("kta-lc-add-icon").value || "").trim();
         if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
@@ -691,7 +818,20 @@ window.LegendCustomization = (function() {
         if (lineOn) entry.lineColor = document.getElementById("kta-lc-add-line").value;
         if (fillOn) {
           entry.fillColor = document.getElementById("kta-lc-add-fill").value;
-          if (cat === "zones" && !lineOn) entry.borderColor = entry.fillColor;
+          if ((cat === "zones" || (cat === "structures" && entry.geometry === "polygon")) && !lineOn) {
+            // Polygones : bordure par défaut = même couleur que fill
+            entry.borderColor = entry.fillColor;
+          }
+        }
+        // Pour les structures polyline (front), lineColor est obligatoire.
+        // Pour les polygones, fillColor est obligatoire.
+        if (entry.geometry === "polyline" && !entry.lineColor) {
+          alert("Active la couleur du trait pour ce type de structure (front de taille).");
+          return;
+        }
+        if (entry.geometry === "polygon" && !entry.fillColor) {
+          alert("Active la couleur de remplissage pour ce type de structure (pilier/mur).");
+          return;
         }
         if (!entry.lineColor && !entry.fillColor) {
           alert("Active au moins une couleur (trait ou remplissage).");
@@ -736,6 +876,10 @@ window.LegendCustomization = (function() {
     removeCustomEntry:     removeCustomEntry,
     updateCustomEntry:     updateCustomEntry,
     resetSession:          resetSession,
+    findCustomEntry:       findCustomEntry,
+
+    // Hook listener (sidebar dynamique, invalidation styles, etc.)
+    onCustomEntriesChange: onCustomEntriesChange,
 
     // UI helpers
     categoryTitle:         categoryTitle,

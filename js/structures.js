@@ -39,7 +39,47 @@ window.modeStructure = null; // null | "pilier-1" | "pilier-2" | "mur" | "front-
 // (pilier-1 / pilier-2 / mur) restent en polygones fermés.
 const STRUCTURE_TYPES_POLYLINE = ["front-1", "front-2"];
 function _isPolylineType(type) {
-  return STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0;
+  if (STRUCTURE_TYPES_POLYLINE.indexOf(type) >= 0) return true;
+  // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, lit la géométrie
+  // déclarée dans LegendCustomization (polyline = front, polygon = pilier).
+  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    if (e && e.category === "structures") return e.geometry === "polyline";
+  }
+  return false;
+}
+
+// 🆕 v1.16.0 step2-drawable : résolution dynamique du style — supporte
+// les types CUSTOM via LegendCustomization. Pour polyline (front custom),
+// retourne un style polyline-like. Pour polygon (pilier/mur custom),
+// retourne un style polygon-like.
+function _resolveStructureStyle(type) {
+  if (STRUCTURE_STYLES[type]) return STRUCTURE_STYLES[type];
+  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    if (e && e.category === "structures") {
+      if (e.geometry === "polyline") {
+        const col = e.lineColor || "#888";
+        return {
+          color:       col,
+          fillColor:   col,
+          fillOpacity: 1,
+          weight:      10,
+          opacity:     1,
+          isPolyline:  true
+        };
+      } else {
+        return {
+          color:       e.borderColor || "#000",
+          fillColor:   e.fillColor || "#888",
+          fillOpacity: 0.85,
+          weight:      3,
+          opacity:     1
+        };
+      }
+    }
+  }
+  return null;
 }
 
 let structuresData = [];
@@ -171,12 +211,21 @@ function initStructures() {
     const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
     const _isNewStruct = !currentStructure;
     const _typeKey = window.modeStructure;
-    const _typeLabel = _typeKey === "pilier-1" ? "Pilier 1ère masse"
-                     : _typeKey === "pilier-2" ? "Pilier 2e masse"
-                     : _typeKey === "mur"      ? "Mur"
-                     : _typeKey === "front-1"  ? "Front 1ère masse"
-                     : _typeKey === "front-2"  ? "Front 2e masse"
-                     : _typeKey;
+    // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, le label vient de
+    // LegendCustomization (le libellé que l'utilisateur a saisi).
+    function _resolveTypeLabel(k) {
+      if (k === "pilier-1") return "Pilier 1ère masse";
+      if (k === "pilier-2") return "Pilier 2e masse";
+      if (k === "mur")      return "Mur";
+      if (k === "front-1")  return "Front 1ère masse";
+      if (k === "front-2")  return "Front 2e masse";
+      if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+        const e = window.LegendCustomization.findCustomEntry(k);
+        if (e) return e.label || k;
+      }
+      return k;
+    }
+    const _typeLabel = _resolveTypeLabel(_typeKey);
 
     if (!currentStructure) {
       currentStructure = {
@@ -394,7 +443,8 @@ function renderStructures() {
     if (!_structurePasseFiltre(s)) return;
 
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
-    const style = STRUCTURE_STYLES[s.type] || STRUCTURE_STYLES["mur"];
+    // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
+    const style = _resolveStructureStyle(s.type) || STRUCTURE_STYLES["mur"];
 
     // 🆕 v1.9.3-A1.b.2 : différenciation polyline (fronts) vs polygon
     // (piliers + mur). Les fronts sont des lignes ouvertes épaisses

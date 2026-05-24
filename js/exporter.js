@@ -1061,6 +1061,20 @@
             '<option value="icones">🏷️ Icônes (URL image)</option>' +
           '</select>' +
         '</div>' +
+        // 🆕 v1.16.0 step2-drawable : choix géométrie pour STRUCTURES.
+        '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-geom-wrap">' +
+          '<label class="kta-cfg-label">Type de structure</label>' +
+          '<div style="display:flex; gap:6px;">' +
+            '<label class="kta-export-radio-row" style="flex:1;">' +
+              '<input type="radio" name="kta-legend-add-geom" value="polygon" checked>' +
+              '<span>🟦 Polygone fermé <span style="color:#8892a4; font-size:11px;">(pilier/mur)</span></span>' +
+            '</label>' +
+            '<label class="kta-export-radio-row" style="flex:1;">' +
+              '<input type="radio" name="kta-legend-add-geom" value="polyline">' +
+              '<span>➖ Ligne ouverte <span style="color:#8892a4; font-size:11px;">(front de taille)</span></span>' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
         '<div style="margin-bottom:10px;">' +
           '<label class="kta-cfg-label">Libellé</label>' +
           '<input class="kta-cfg-input" id="kta-legend-add-label" type="text" placeholder="Ex : Pilier ancien">' +
@@ -1104,14 +1118,21 @@
     wrap.addEventListener("click", function(e) { if (e.target === wrap) fermerAdd(); });
 
     const catSel = document.getElementById("kta-legend-add-cat");
+    const geomWrap = document.getElementById("kta-legend-add-geom-wrap");
     const lineWrap = document.getElementById("kta-legend-add-line-wrap");
     const fillWrap = document.getElementById("kta-legend-add-fill-wrap");
     const iconWrap = document.getElementById("kta-legend-add-icon-wrap");
+
+    function _getStructGeom() {
+      const r = wrap.querySelector('input[name="kta-legend-add-geom"]:checked');
+      return r ? r.value : "polygon";
+    }
 
     function _majChamps() {
       const cat = catSel.value;
       // Icônes → uniquement iconUrl. Autres → couleurs trait/fill selon le type.
       if (cat === "icones") {
+        geomWrap.style.display = "none";
         lineWrap.style.display = "none";
         fillWrap.style.display = "none";
         iconWrap.style.display = "block";
@@ -1119,21 +1140,36 @@
         iconWrap.style.display = "none";
         // Tracés : trait obligatoire, fill caché.
         // Zones : fill obligatoire, trait optionnel pour bordure.
-        // Structures : libre (trait OU fill).
+        // Structures : géométrie au choix → trait OU fill selon ce choix.
         if (cat === "traces") {
+          geomWrap.style.display = "none";
           lineWrap.style.display = "block";
           fillWrap.style.display = "none";
         } else if (cat === "zones") {
+          geomWrap.style.display = "none";
           lineWrap.style.display = "none";
           fillWrap.style.display = "block";
           document.getElementById("kta-legend-add-fill-on").checked = true;
         } else {
-          lineWrap.style.display = "block";
-          fillWrap.style.display = "block";
+          // structures
+          geomWrap.style.display = "block";
+          const g = _getStructGeom();
+          if (g === "polyline") {
+            lineWrap.style.display = "block";
+            fillWrap.style.display = "none";
+            document.getElementById("kta-legend-add-line-on").checked = true;
+          } else {
+            lineWrap.style.display = "block";
+            fillWrap.style.display = "block";
+            document.getElementById("kta-legend-add-fill-on").checked = true;
+          }
         }
       }
     }
     catSel.addEventListener("change", _majChamps);
+    wrap.querySelectorAll('input[name="kta-legend-add-geom"]').forEach(function(r) {
+      r.addEventListener("change", _majChamps);
+    });
     _majChamps();
 
     document.getElementById("kta-legend-add-ok").addEventListener("click", function() {
@@ -1144,6 +1180,18 @@
         return;
       }
       const entry = { category: cat, label: label };
+
+      // 🆕 v1.16.0 step2-drawable : géométrie
+      if (cat === "structures") {
+        entry.geometry = _getStructGeom();
+      } else if (cat === "traces") {
+        entry.geometry = "polyline";
+      } else if (cat === "zones") {
+        entry.geometry = "polygon";
+      } else {
+        entry.geometry = "marker";
+      }
+
       if (cat === "icones") {
         const url = (document.getElementById("kta-legend-add-icon").value || "").trim();
         if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
@@ -1154,8 +1202,18 @@
         if (lineOn) entry.lineColor = document.getElementById("kta-legend-add-line").value;
         if (fillOn) {
           entry.fillColor = document.getElementById("kta-legend-add-fill").value;
-          // Pour zones : bordure = même couleur que fill (visu cohérent).
-          if (cat === "zones" && !lineOn) entry.borderColor = entry.fillColor;
+          // Pour zones/structures polygones : bordure par défaut = même couleur que fill
+          if ((cat === "zones" || (cat === "structures" && entry.geometry === "polygon")) && !lineOn) {
+            entry.borderColor = entry.fillColor;
+          }
+        }
+        if (entry.geometry === "polyline" && !entry.lineColor) {
+          alert("Active la couleur du trait pour ce type (front de taille / ligne).");
+          return;
+        }
+        if (entry.geometry === "polygon" && !entry.fillColor) {
+          alert("Active la couleur de remplissage pour ce type (polygone).");
+          return;
         }
         if (!entry.lineColor && !entry.fillColor) {
           alert("Active au moins une couleur (trait ou remplissage).");
@@ -1890,8 +1948,29 @@
       };
       const ordre = { eau: 0, remblais: 1, effondrement: 2, inaccessible: 3 };
       const filtreZ = opts.ann.zonesTypes || { eau: true, remblais: true, effondrement: true, inaccessible: true };
+      // 🆕 v1.16.0 step2-drawable : résolution custom pour les zones
+      function _styleZoneExp(type) {
+        if (ZS[type]) return ZS[type];
+        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.category === "zones") {
+            return {
+              color:       e.borderColor || e.fillColor || "#888",
+              fillColor:   e.fillColor   || "#888",
+              fillOpacity: 0.7,
+              weight:      3,
+              opacity:     1
+            };
+          }
+        }
+        return ZS.remblais;
+      }
       const triees = [...zones]
-        .filter(function(z) { return filtreZ[z.type] !== false; })
+        .filter(function(z) {
+          // Custom zones toujours OK (pas dans filtreZ qui ne liste que built-in)
+          if (String(z.type).startsWith("cust-")) return true;
+          return filtreZ[z.type] !== false;
+        })
         // 🏗️ Multi-niveau : filtre sur les niveaux coches dans la modale Avancé
         .filter(_itemPasseLevels)
         .sort(function(a, b) {
@@ -1899,7 +1978,7 @@
         });
       for (const z of triees) {
         if (!z.points || z.points.length < 3) continue;
-        const s = ZS[z.type] || ZS.remblais;
+        const s = _styleZoneExp(z.type);
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(sc(z.points[0].x), sc(z.points[0].y));
@@ -1944,9 +2023,36 @@
         "pilier-1": true, "pilier-2": true, "mur": true,
         "front-1":  true, "front-2": true
       };
+      // 🆕 v1.16.0 step2-drawable : résolution custom pour les structures.
+      // Pour polyline (front custom) : style isPolyline + lineColor.
+      // Pour polygon (pilier/mur custom) : style polygon avec fill + border.
+      function _styleStructExp(type) {
+        if (SS[type]) return SS[type];
+        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.category === "structures") {
+            if (e.geometry === "polyline") {
+              return { color: e.lineColor || "#888", weight: 10, opacity: 1, isPolyline: true };
+            } else {
+              return {
+                color:       e.borderColor || "#000",
+                fillColor:   e.fillColor || "#888",
+                fillOpacity: 0.85,
+                weight:      3,
+                opacity:     1
+              };
+            }
+          }
+        }
+        return SS["mur"];
+      }
       const _multiLevelOnExp = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
       const triees = [...structures]
-        .filter(function(s) { return filtreS[s.type] !== false; })
+        .filter(function(s) {
+          // Custom structures toujours OK
+          if (String(s.type).startsWith("cust-")) return true;
+          return filtreS[s.type] !== false;
+        })
         .filter(_itemPasseLevels)
         .sort(function(a, b) {
           if (_multiLevelOnExp) {
@@ -1957,7 +2063,7 @@
           return (ordreS[a.type] ?? 99) - (ordreS[b.type] ?? 99);
         });
       for (const st of triees) {
-        const s = SS[st.type] || SS["mur"];
+        const s = _styleStructExp(st.type);
         const isPolyline = !!s.isPolyline;
         // Minimum 2 points pour polyline, 3 pour polygon
         const minPts = isPolyline ? 2 : 3;
@@ -2260,15 +2366,29 @@
         // ronds blanc+magenta plus bas pour parite avec l'on-map.
         jonction:    { color: "#ff4ecb", weight: 5 }
       };
+      // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM (cust-XXX), on
+      // résout la couleur via LegendCustomization.findCustomEntry. Sinon
+      // fallback "white".
+      function _styleRoadExp(type) {
+        if (RS[type]) return RS[type];
+        if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.category === "traces") return { color: e.lineColor || "white", weight: 5 };
+        }
+        return { color: "white", weight: 5 };
+      }
       const filtreR = opts.ann.roadsTypes || { principal: true, secondaire: true, chemin: true };
       for (const r of roads) {
         if (!r.points || r.points.length === 0) continue;
         // Jonctions toujours autorisees si multiLevel ON (pas dans le filtreR
         // qui ne liste que principal/secondaire/chemin). Sinon respect filtreR.
-        if (r.type !== "jonction" && filtreR[r.type] === false) continue;
+        // 🆕 v1.16.0 step2-drawable : les customs (cust-XXX) sont toujours
+        // exportés (pas filtrés par roadsTypes qui ne liste que les
+        // built-in). KARMA peut les masquer via le toggle visibilité.
+        if (r.type !== "jonction" && !String(r.type).startsWith("cust-") && filtreR[r.type] === false) continue;
         // 🏗️ Multi-niveau : filtre sur les niveaux choisis dans la modale.
         if (!_itemPasseLevels(r)) continue;
-        const s = RS[r.type] || { color: "white", weight: 5 };
+        const s = _styleRoadExp(r.type);
         ctx.save();
         ctx.strokeStyle = s.color;
         ctx.lineWidth = s.weight * scale;

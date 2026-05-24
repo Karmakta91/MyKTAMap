@@ -50,6 +50,27 @@ const ROAD_INTERSECTION_PRIORITY = {
 };
 const ROAD_INTERSECTION_RADIUS = 8;  // 16px de diamètre
 
+// 🆕 v1.16.0 step2-drawable : résolution dynamique du style pour les types
+// CUSTOM ajoutés via LegendCustomization. Si type est un id custom (commence
+// par "cust-" et trouvé dans LC.findCustomEntry), retourne un style construit
+// à partir de l'entry.lineColor. Sinon ROAD_STYLES[type] (comportement
+// historique pour les 5 types built-in).
+function _resolveRoadStyle(type) {
+  if (ROAD_STYLES[type]) return ROAD_STYLES[type];
+  if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+    const e = window.LegendCustomization.findCustomEntry(type);
+    if (e && e.category === "traces") {
+      return {
+        color:       e.lineColor || "#ffffff",
+        weight:      5,
+        opacity:     1,
+        smoothFactor: 2.5
+      };
+    }
+  }
+  return null;
+}
+
 // =========================
 // INIT
 // =========================
@@ -609,7 +630,9 @@ function renderRoads() {
     }
 
     const latlngs = workPoints.map(p => convertCoord(p.x, p.y));
-    const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
+    // 🆕 v1.16.0 step2-drawable : résolution dynamique du style — supporte
+    // les types CUSTOM via LegendCustomization (cf _resolveRoadStyle).
+    const style = _resolveRoadStyle(road.type) || { color: "white", weight: 5, opacity: 1 };
     const target = _targetLayerForRoad(road.type);
 
     let polyline;
