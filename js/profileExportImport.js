@@ -964,23 +964,135 @@
         btn.textContent = "✅ Importé !";
         setTimeout(function() {
           _fermerModales();
-          if (window.OOMGuard && window.OOMGuard.showToast) {
-            const parts = [];
-            Object.keys(res.applied).forEach(function(k) {
-              if (res.applied[k] > 0) parts.push(res.applied[k] + " " + k);
-            });
-            window.OOMGuard.showToast(
-              "📥 Profil importé (mode " + mode + ") : " + (parts.join(" · ") || "rien à appliquer"),
-              "info"
-            );
-          }
-          // Refresh la liste des plans visible côté loader
-          if (typeof window.refreshPlansList === "function") {
-            try { window.refreshPlansList(); } catch(e) {}
-          }
+          // Refresh GRANULAIRE des modules qui supportent le live update.
+          // Pour les autres (prefs, thème, perfPreset, tutoriel flag, etc.),
+          // on propose un reload doux via modale charte.
+          _refreshAfterImport().then(function() {
+            _afficherModaleImportTermine(res, mode);
+          });
         }, 800);
       });
     });
+  }
+
+  /**
+   * Refresh granulaire des modules qui supportent le live update après import.
+   * Les modules qui ne supportent PAS le live (thème, perfPreset, etc.)
+   * nécessiteront un reload via _afficherModaleImportTermine.
+   */
+  async function _refreshAfterImport() {
+    // (1) Liste des plans visible côté loader
+    if (typeof window.refreshPlansList === "function") {
+      try { window.refreshPlansList(); } catch(e) {}
+    }
+    // (2) Bandeau profil utilisateur (force re-init IDB + notify listeners)
+    if (window.UserProfile && typeof window.UserProfile.init === "function") {
+      try {
+        // _initialized flag est privé au module, on force le re-read en
+        // appelant init() qui early-return si déjà initialisé. Mais comme
+        // _restoreUser a déjà appelé setSurnom + setPhoto qui notifient,
+        // les listeners devraient déjà avoir été déclenchés. Belt-and-suspenders.
+        await window.UserProfile.init();
+      } catch(e) {}
+    }
+    // (3) Favoris : reload du plan courant si applicable
+    if (window.Favoris && window._currentLoadedPlanId && typeof window.Favoris.loadPlan === "function") {
+      try { window.Favoris.loadPlan(window._currentLoadedPlanId); } catch(e) {}
+    }
+    // (4) SessionBackups : ses listeners notifient via onChange (déjà ok)
+    return true;
+  }
+
+  /**
+   * Modale custom charte (cf §35 CLAUDE.md, pattern Promise-based) qui
+   * confirme l'import + propose un reload doux pour garantir que TOUT est
+   * pris en compte (thème, prefs, perfPreset, tutoriel flag, etc. qui ne
+   * supportent pas le live update).
+   */
+  function _afficherModaleImportTermine(res, mode) {
+    // Cleanup éventuel
+    const ex = document.getElementById("kta-profile-import-done-modal");
+    if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+
+    // Construit le résumé des sections appliquées
+    const SECTION_LABELS = {
+      user:        "👤 Identité",
+      registry:    "🗂️ Plans",
+      preferences: "⚙️ Préférences",
+      favoris:     "⭐ Favoris",
+      sessions:    "💾 Sessions",
+      backups:     "📦 Snapshots",
+      tutorial:    "🎓 Tutoriel",
+      photos:      "📸 Photos POI",
+      crashes:     "📋 Crashes"
+    };
+    const parts = [];
+    Object.keys(res.applied || {}).forEach(function(k) {
+      if (res.applied[k] > 0) {
+        const lbl = SECTION_LABELS[k] || k;
+        parts.push('<li><strong>' + lbl + '</strong> : ' + res.applied[k] + '</li>');
+      }
+    });
+    const summaryHtml = parts.length
+      ? '<ul style="margin:8px 0 12px 18px; padding:0;">' + parts.join("") + '</ul>'
+      : '<p style="font-style:italic; color:#8892a4;">Rien n\'a été appliqué (toutes les sections étaient vides ou décochées).</p>';
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-profile-import-done-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:480px; height:auto !important; max-height:88vh !important; border-color:rgba(110,226,135,0.55); box-shadow:0 0 24px rgba(110,226,135,0.18);">' +
+        '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(110,226,135,0.25);">' +
+          '<span class="kta-readme-modal-titre" style="color:#6ee287;">✅ Profil importé</span>' +
+          '<button type="button" class="kta-panneau-close" id="kta-profile-import-done-close" aria-label="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p style="margin-top:4px;">' +
+            'Mode <strong>' + _escHtml(mode) + '</strong>. Sections appliquées :' +
+          '</p>' +
+          summaryHtml +
+          '<div style="background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; padding:10px 12px; margin:10px 0;">' +
+            '🔄 <strong>Recharger l\'app est recommandé</strong> pour appliquer ' +
+            'pleinement les préférences (thème, mode perf, tutoriel, etc.). ' +
+            'Sans reload, certains changements ne seront visibles qu\'au prochain démarrage.' +
+          '</div>' +
+          '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
+            'Tu peux choisir « Plus tard » et reload manuellement quand tu veux (F5 ou bouton ↻).' +
+          '</p>' +
+        '</div>' +
+        '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-profile-import-done-later"  style="flex:1;">⏱️ Plus tard</button>' +
+          '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-import-done-reload" style="flex:1;">🔄 Recharger maintenant</button>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    const _close = function() {
+      document.removeEventListener("keydown", _onEsc);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+    const _onEsc = function(e) {
+      if (e.key === "Escape" || e.key === "Esc") {
+        e.stopPropagation();
+        _close();
+      }
+    };
+    document.getElementById("kta-profile-import-done-close").addEventListener("click", _close);
+    document.getElementById("kta-profile-import-done-later").addEventListener("click", _close);
+    document.getElementById("kta-profile-import-done-reload").addEventListener("click", function() {
+      // Reload pleine page : garantit que TOUS les modules relisent leur état
+      try { window.location.reload(); }
+      catch(e) { window.location.href = window.location.href; }
+    });
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    document.addEventListener("keydown", _onEsc);
+
+    // Focus auto sur "Recharger" (action recommandée)
+    setTimeout(function() {
+      const btn = document.getElementById("kta-profile-import-done-reload");
+      if (btn) btn.focus();
+    }, 50);
   }
 
   function _renderImportContent(profile, stats, isLegacy, fileName) {
