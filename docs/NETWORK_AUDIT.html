@@ -174,55 +174,53 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (25 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
   </p>
 
-  <p class="meta" style="margin-top:6px; border-left: 3px solid #f4c542; padding-left: 12px; background: rgba(244, 197, 66, 0.06);">
-    🚧 <strong>Karma_dev pending (en cours, non releasé sur main)</strong> : 4 sujets accumulés
-    en attente du prochain push main. (1) Tutoriel premier-lancement enrichi (8 cards) — nouveau
-    module <code>js/tutorial.js</code> purement local (HTML statique + flag
-    <code>localStorage["myktamap_tutorial_seen_v1"]</code>). (2) Stats globales export PDF —
-    extension de <code>js/statsGlobales.js</code> via jsPDF déjà chargé (Blob téléchargé
-    localement). (3) Export / Import de profil utilisateur complet — nouveau module
-    <code>js/profileExportImport.js</code> qui remplace l'ancien export « liste de plans » par
-    un export profil complet (registry + préférences + favoris + sessions + snapshots +
-    tutorial + <strong>user</strong> + photos POI optionnelles + crashes optionnels). 100 % local :
-    lecture localStorage + IDB read-only + Blob téléchargé localement.
-    <strong>Exclusions par design</strong> : ZIPs binaires des plans (trop lourds) + PIN/Face ID
-    + UnlockGate communautaire (sécurité, jamais exportés). Rétro-compat absolue avec l'ancien
-    format <code>myktamap-plans-list</code>.
-    (4) <strong>Mode profil utilisateur intégré au loader</strong> — nouveau module
-    <code>js/userProfile.js</code> + <strong>nouvelle DB IDB <code>myktamap_profile</code> v1</strong>
-    store <code>profile</code> (1 entry unique <code>id="me"</code> : surnom + photoBlob +
-    photoMime + createdAt + updatedAt). Photo compressée localement via canvas (max 512px côté
-    long, JPEG q88 → ~30-60 KB). Aucun fetch externe, aucune transmission. La photo est lue
-    depuis l'IDB locale, son ObjectURL est créé via <code>URL.createObjectURL</code> et révoqué
-    au refresh (pas de leak). Section <code>user</code> ajoutée à <code>ProfileExportImport</code>
-    (photo base64 inline dans le JSON exporté, cochée par défaut car légère). Tout reste sur
-    Karma_dev en attente du push main avec versioning final.
-    <strong>Aucune nouvelle surface réseau</strong> pour aucun des 4 sujets,
-    <strong>1 nouvelle DB IDB</strong> documentée : <code>myktamap_profile</code>.
-  </p>
-
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.20.0 (Cycle « Robustesse + Stats & Communauté »)</strong> :
-    <strong>AUCUNE nouvelle surface réseau</strong>. 4 features 100 % locales :
+    <strong>v1.20.0 (Cycle complet « Robustesse + Stats + Onboarding + Profil »)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. 8 features 100 % locales regroupées
+    en une seule release MINOR (Y+1 sur v1.19.1) :
     (1) Skip snapshot identique = lecture IDB read-only.
-    (2) Nouveau module <code>js/crashReports.js</code> (~220 lignes) + nouvelle DB IDB
-    <code>myktamap_crashes</code> v1 store <code>crashes</code> FIFO 5 (archive auto des
-    kills mémoire détectés par OOMGuard, lit <code>localStorage["kta_debug_logs"]</code>
-    + méta IDB SessionBackups). Aucun fetch externe.
+    (2) Nouveau module <code>js/crashReports.js</code> (~220 lignes) + <strong>nouvelle DB
+    IDB <code>myktamap_crashes</code></strong> v1 store <code>crashes</code> FIFO 5 (archive
+    auto des kills mémoire détectés par OOMGuard, lit
+    <code>localStorage["kta_debug_logs"]</code> + méta IDB SessionBackups). Aucun fetch
+    externe.
     (3) Favoris export/import = Blob téléchargé localement + <code>File.text()</code> à
     l'import — fichier JSON purement local.
     (4) Nouveau module <code>js/statsGlobales.js</code> (~520 lignes) = lecture des
-    getters internes + lecture IDB <code>myktamap_photos</code>.
+    getters internes + lecture IDB <code>myktamap_photos</code> + nouvelle méthode
+    <code>exportToPDF</code> via jsPDF déjà chargé (Blob A4 téléchargé localement).
+    (5) Clause anti-fork « Périmètre myktamap.fr » (modale Net Doc loader + NETWORK_AUDIT).
+    (6) Nouveau module <code>js/tutorial.js</code> (~250 lignes) = HTML statique en mémoire
+    + flag <code>localStorage["myktamap_tutorial_seen_v1"]</code>. 8 cards auto-affichées au
+    tout premier lancement.
+    (7) Nouveau module <code>js/profileExportImport.js</code> (~1100 lignes) qui remplace
+    l'ancien export « liste de plans » par un export profil complet (9 sections : user +
+    registry + preferences + favoris + sessions + snapshots + tutorial + photos POI
+    optionnelles + crashes optionnels). Format JSON unique versionné. 100 % local : lecture
+    localStorage + IDB read-only + Blob téléchargé localement. <strong>Exclusions par
+    design</strong> : ZIPs binaires des plans + PIN/Face ID + UnlockGate communautaire
+    (sécurité, jamais exportés). Rétro-compat absolue avec l'ancien format
+    <code>myktamap-plans-list</code>.
+    (8) Nouveau module <code>js/userProfile.js</code> (~370 lignes) + <strong>nouvelle DB
+    IDB <code>myktamap_profile</code></strong> v1 store <code>profile</code> (1 entry
+    unique <code>id="me"</code> : surnom + photoBlob + photoMime + createdAt + updatedAt).
+    Photo compressée localement via canvas (max 512px, JPEG q88 → ~30-60 KB). ObjectURL
+    créé via <code>URL.createObjectURL</code> et révoqué au refresh (pas de leak). Section
+    <code>user</code> ajoutée à <code>ProfileExportImport</code> (photo base64 inline dans
+    le JSON, cochée par défaut car légère).
     Rapports copiés (crash, stats) restent locaux (presse-papier navigateur).
-    <strong>2 nouveaux fichiers</strong> ajoutés à <code>ASSETS_TO_CACHE</code> :
-    <code>js/crashReports.js</code> + <code>js/statsGlobales.js</code>.
-    <strong>1 nouvelle DB IDB</strong> : <code>myktamap_crashes</code>.
+    <strong>5 nouveaux fichiers</strong> ajoutés à <code>ASSETS_TO_CACHE</code> :
+    <code>js/crashReports.js</code> + <code>js/statsGlobales.js</code> +
+    <code>js/tutorial.js</code> + <code>js/userProfile.js</code> +
+    <code>js/profileExportImport.js</code>.
+    <strong>2 nouvelles DB IDB</strong> : <code>myktamap_crashes</code> +
+    <code>myktamap_profile</code>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
     <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
@@ -765,15 +763,22 @@
     <tbody>
       <tr>
         <td>v1.20.0</td>
-        <td>24/05/2026</td>
+        <td>25/05/2026</td>
         <td>
-          <strong>Cycle « Robustesse + Stats & Communauté »</strong> — <strong>aucune nouvelle
-          surface réseau</strong>. 4 features 100% locales : skip snapshot identique (lecture IDB),
-          nouveau module <code>js/crashReports.js</code> + DB <code>myktamap_crashes</code> v1
-          (archive auto des kills mémoire, FIFO 5), Favoris export/import JSON (Blob local),
-          nouveau module <code>js/statsGlobales.js</code> (lecture getters internes + IDB photos).
-          2 nouveaux fichiers ajoutés à <code>ASSETS_TO_CACHE</code>, 1 nouvelle DB IDB documentée.
-          + Clause anti-fork « Périmètre myktamap.fr ».
+          <strong>Cycle complet « Robustesse + Stats + Onboarding + Profil »</strong> —
+          <strong>aucune nouvelle surface réseau</strong>. 8 features 100% locales regroupées
+          en une seule release MINOR :
+          (1) Skip snapshot identique (lecture IDB),
+          (2) <code>js/crashReports.js</code> + DB <code>myktamap_crashes</code> v1 FIFO 5,
+          (3) Favoris export/import JSON,
+          (4) <code>js/statsGlobales.js</code> + export PDF via jsPDF,
+          (5) Clause anti-fork « Périmètre myktamap.fr »,
+          (6) <code>js/tutorial.js</code> 8 cards onboarding,
+          (7) <code>js/profileExportImport.js</code> profil complet (remplace l'ancien export
+          liste de plans, rétro-compat absolue),
+          (8) <code>js/userProfile.js</code> + DB <code>myktamap_profile</code> v1 (mode profil
+          utilisateur intégré au loader : avatar + surnom).
+          5 nouveaux fichiers à <code>ASSETS_TO_CACHE</code>, 2 nouvelles DB IDB documentées.
           <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
         </td>
       </tr>

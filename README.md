@@ -8,9 +8,7 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.20.0` (24/05/2026)
-
-> ℹ️ **Note dev** : des évolutions sont actuellement **accumulées sur `Karma_dev`** en attente du prochain push main (tutoriel premier-lancement enrichi 8 cards, export PDF des stats, export/import de profil complet, **mode profil utilisateur intégré au loader avec surnom + photo dans une nouvelle IDB `myktamap_profile`**, etc.). Au moment de la release officielle, on bumpera proprement la version finale (PATCH ou MINOR selon le poids du contenu). Les sources de vérité publiques (`version.json`, `js/copyright.js`, `sw.js > CACHE_NAME`) restent sur `v1.20.0` tant que le push main n'a pas eu lieu.
+**📦 Version courante** : `v1.20.0` (25/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -44,17 +42,26 @@
 
 ## 🚀 Dernière release — v1.20.0
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle « Robustesse + Stats & Communauté »**. 4 features qui se complètent :
+📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle complet « Robustesse + Stats + Onboarding + Profil »**. 8 features regroupées en une seule release :
+
+**🛡️ Filet de sécurité & robustesse**
 
 - 🪤 **Skip snapshot identique** : économie FIFO des slots backups (boot sans changement = 0 slot consommé)
-- 📋 **Crash report auto IDB** : archive auto des kills mémoire détectés (debug + diagnostic facilité)
-- ⭐ **Favoris export/import JSON** : partage cross-appareil de tes POI préférés
-- 📊 **Statistiques globales du plan** : modale agrégée session + data layers embedded
+- 📋 **Crash report auto IDB** : archive auto des kills mémoire détectés (debug + diagnostic facilité) — nouvelle DB IDB `myktamap_crashes`
 - 🛡️ **Clause anti-fork dans Audit** : précision que la garantie de sécurité s'applique uniquement à `myktamap.fr`
 
-Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+**📊 Stats & partage communauté**
 
-> ℹ️ **Karma_dev pending** — Des évolutions supplémentaires sont en cours d'accumulation sur la branche dev en attente du prochain push main : tutoriel premier-lancement enrichi (8 cards), export PDF des stats globales, refonte du bouton « Exporter ma liste de plans » en export/import de profil utilisateur complet (registry + préférences + favoris + sessions + snapshots + tutoriel + photos optionnelles + crashes optionnels, avec rétro-compatibilité absolue avec l'ancien format `myktamap-plans-list`). Au moment du push main, le versioning sera bumpé proprement (PATCH ou MINOR selon le poids).
+- ⭐ **Favoris export/import JSON** : partage cross-appareil de tes POI préférés
+- 📊 **Statistiques globales du plan** : modale agrégée session + data layers embedded + **export PDF A4 via jsPDF**
+
+**🎓 Onboarding & profil utilisateur**
+
+- 🎓 **Tutoriel premier-lancement enrichi** (8 cards) : Bienvenue / Charger-créer / Annoter / Tracker GPS / Recherche Ctrl+K + Favoris / Multi-niveau M-LVL / Sauver-partager / Outils annexes — rejouable via 📚 Aide
+- 📦 **Export/Import de profil utilisateur COMPLET** : remplace l'ancien export « liste de plans ». 9 sections (user / registry / preferences / favoris / sessions / backups / tutorial / photos POI / crashes). PIN/Face ID + UnlockGate jamais exportés (sécurité). Rétro-compat absolue avec l'ancien format `myktamap-plans-list`. Modale post-import « ✅ Profil importé » avec proposition de reload doux.
+- 👤 **Mode profil utilisateur intégré au loader** : nouveau bandeau en-tête (avatar + surnom + bouton ⚙️ Détails). Photo + surnom stockés dans nouvelle DB IDB `myktamap_profile`. Avatar default = initiale colorée déterministe (hash). Modale détails : édition surnom inline + upload/retrait photo + stats agrégées + boutons export/import/reset.
+
+Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
 
 ---
 
@@ -889,11 +896,11 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
 <details id="v1-20-0" open>
-<summary><strong>🗓️ 24/05/2026 — 🚀 v1.20.0 : Cycle « Robustesse + Stats & Communauté »</strong></summary>
+<summary><strong>🗓️ 25/05/2026 — 🚀 v1.20.0 : Cycle complet « Robustesse + Stats + Onboarding + Profil »</strong></summary>
 
-Release MINOR (bump Y : 1.19.1 → 1.20.0). 4 features cohérentes qui se complètent.
+Release MINOR (bump Y : 1.19.1 → 1.20.0). 8 features regroupées en une seule release : 4 sur la robustesse + stats du début de cycle, 4 sur l'onboarding + profil utilisateur ajoutées en fin de cycle Karma_dev.
 
-### 🪤 (1/4) Skip snapshot identique — économie FIFO
+### 🪤 (1/8) Skip snapshot identique — économie FIFO
 
 `js/sessionBackups.js > snapshot()` vérifie désormais le **dernier snapshot IDB du même plan** avant de consommer un slot FIFO. Cas typique réglé : boot-pre-restore après un reload sans modif → hash in-memory `null` (reset au load) MAIS hash IDB identique → skip.
 
@@ -901,7 +908,7 @@ Release MINOR (bump Y : 1.19.1 → 1.20.0). 4 features cohérentes qui se compl�
 
 Nouveau helper interne `_getLastSnapshotForPlan(planId)` qui réutilise `listAll()` (déjà trié desc par id).
 
-### 📋 (2/4) Crash report auto IDB — module `js/crashReports.js` (~220 lignes)
+### 📋 (2/8) Crash report auto IDB — module `js/crashReports.js` (~220 lignes)
 
 API publique :
 ```js
@@ -932,7 +939,7 @@ Plus un bouton global « 🗑️ Tout vider ».
 
 **Format du rapport texte** (`formatReportText`) : markdown-like avec séparateurs ASCII, prêt à coller dans Discord / mail / GitHub pour partager au mainteneur.
 
-### ⭐ (3/4) Favoris export / import JSON — partage cross-appareil
+### ⭐ (3/8) Favoris export / import JSON — partage cross-appareil
 
 `js/favoris.js` étendu avec 4 nouvelles méthodes :
 
@@ -965,7 +972,7 @@ importFromFile(file, opts)      // wrap depuis input type=file
 - Badge avec compteur plan courant + total cross-plan « N (+ M autres plans) »
 - Helper `_hydrateFavorisBadge()` (function declaration hoisted dans `_afficherModaleSessionDetail`)
 
-### 📊 (4/4) Stats globales du plan — module `js/statsGlobales.js` (~520 lignes)
+### 📊 (4/8) Stats globales du plan — module `js/statsGlobales.js` (~520 lignes) + export PDF
 
 API publique :
 ```js
@@ -997,13 +1004,136 @@ window.StatsGlobales = {
 **Accès** : gros bouton CTA bleu en tête de modale 📊 Détails session :
 > 📊 Voir les statistiques globales du plan (session + data layers embedded)
 
+**Bonus export PDF (depuis Karma_dev)** : nouvelle méthode `exportToPDF(opts)` dans `statsGlobales.js` qui réutilise jsPDF déjà chargé. A4 portrait avec header + tableaux par section. Bouton « 📤 Export PDF » dans le footer de la modale Stats. Emojis remplacés par texte plain dans `pdf.text()` (jsPDF Helvetica latin1 only — cf §44.6 CLAUDE.md).
+
+### 🛡️ (5/8) Clause anti-fork myktamap.fr
+
+Nouvelle section dans Audit (Configuration loader + `docs/NETWORK_AUDIT`) qui précise que la garantie de sécurité et non-télémétrie s'applique **UNIQUEMENT au domaine officiel `myktamap.fr`** (+ `devmap.is-underground.fr`). Le code source étant public (CC BY-NC-SA), toute copie/fork tiers peut contenir des modifications non contrôlées.
+
+**Comment vérifier** : URL dans la barre d'adresse + cadenas HTTPS valide.
+
+### 🎓 (6/8) Tutoriel premier-lancement enrichi — module `js/tutorial.js` (~250 lignes)
+
+API publique :
+```js
+window.Tutorial = { ouvrir(), fermer(), isFirstLaunch(), markAsSeen() };
+```
+
+**Auto-affiché au tout premier lancement** via flag `localStorage["myktamap_tutorial_seen_v1"]`, différé 600ms après `_splashEnd` pour laisser le splash se finir proprement.
+
+**8 cards séquentielles** :
+1. Bienvenue + clause anti-fork
+2. Charger ou créer un plan (distinction Drop ZIP natif vs KMZ/GPX **idéalement exportés depuis MyKTAMap** pour roundtrip complet)
+3. Annoter
+4. Tracker GPS expérimental
+5. Trouver vite avec Ctrl+K + Favoris
+6. Multi-niveau M-LVL
+7. Sauver et partager (exports PNG/PDF/KMZ/GPX/Profil)
+8. Outils annexes (Mode urgence / Replay tracker / etc.)
+
+**Navigation** : Précédent / Suivant + pastilles cliquables + raccourcis ← → Enter Échap + bouton Passer. Pas de close au backdrop (anti dismiss accidentel). Animation fade-in 0.25s entre cards.
+
+**Rejouable** via 📚 Aide → nouvelle sous-action « 🎓 (Re)voir le tutoriel ».
+
+### 📦 (7/8) Export / Import de profil utilisateur complet — module `js/profileExportImport.js` (~1100 lignes)
+
+Remplace l'ancien export « Exporter ma liste de plans » par un export **profil utilisateur complet**.
+
+API publique :
+```js
+window.ProfileExportImport = {
+  buildProfile(opts), computeSectionSizes(),
+  exportToFile(opts), parseProfile(input),
+  computeImportStats(profile), applyProfile(profile, opts),
+  isLegacyFormat(input),
+  ouvrirExportModale(), ouvrirImportModale(file), fermerModales()
+};
+```
+
+**Format JSON unique versionné** : `{type: "myktamap-profile-export", version: 1, exportedAt, appVersion, sections}`.
+
+**9 sections** disponibles :
+
+| Section | Default | Description |
+|---|---|---|
+| 👤 `user` | ✅ Cochée | Surnom + photo profil (base64 inline, ~30-60 KB après compression 512px JPEG q88) |
+| 🗂️ `registry` | ✅ Cochée | Liste des plans connus (méta uniquement, **sans** les ZIPs binaires) |
+| ⚙️ `preferences` | ✅ Cochée | Réglages utilisateur (thème, perfPreset, debug, paranoia, mode Simple/Avancé Générateur, etc.) |
+| ⭐ `favoris` | ✅ Cochée | Tous les POI marqués favoris (tous plans confondus) |
+| 💾 `sessions` | ✅ Cochée | Slots `myktamap_session_v1_<planId>` (annotations en cours par plan) |
+| 📦 `backups` | ✅ Cochée | 10 snapshots FIFO par plan (auto + manuels) |
+| 🎓 `tutorial` | ✅ Cochée | Flag `myktamap_tutorial_seen_v1` |
+| 📸 `photos` POI | ❌ Décochée | Photos attachées aux points (lourd, opt-in explicite) |
+| 📋 `crashes` | ❌ Décochée | Historique des crashs (debug, peut contenir logs sensibles) |
+
+**EXCLUS PAR DESIGN** :
+- ZIPs binaires des plans (trop lourd — l'user re-déposera ses fichiers ZIP sur le nouvel appareil)
+- PIN/Face ID local + UnlockGate communautaire (sécurité — l'user redéfinit son PIN sur le nouvel appareil)
+
+**Rétro-compat absolue** avec l'ancien format `myktamap-plans-list` (détection auto via `parseProfile.format`). Bannière jaune « ⚠️ Format ancien détecté » + import limité à la section registry.
+
+**Mode import** : `merge` (défaut, anti-doublon) OU `replace` (vide les sections cochées avant injection).
+
+**Modale post-import « ✅ Profil importé »** : résumé des sections appliquées + encadré jaune « 🔄 Recharger l'app est recommandé pour appliquer pleinement les préférences ». 2 boutons : « ⏱️ Plus tard » + « 🔄 Recharger maintenant » (focus auto = action recommandée).
+
+### 👤 (8/8) Mode profil utilisateur intégré au loader — module `js/userProfile.js` (~370 lignes)
+
+Mini profil utilisateur (surnom + photo optionnelle) avec stockage dédié et UI intégrée au loader.
+
+API publique :
+```js
+window.UserProfile = {
+  init(), get(), getPhotoBlob(), getPhotoObjectUrl(),
+  setSurnom(string), setPhoto(File|Blob), removePhoto(), clear(),
+  onChange(cb),
+  getInitial(surnom), getAvatarColor(surnom), PALETTE
+};
+```
+
+**Stockage** : nouvelle DB IDB `myktamap_profile` v1 / store `profile` keyPath `id` (entry unique `id="me"` : surnom + photoBlob + photoMime + createdAt + updatedAt).
+
+**Compression auto photo** via canvas (max 512px côté long, JPEG q88 → ~30-60 KB). Limite raisonnable d'entrée brute (50 MB) pour éviter de crasher le compresseur sur une image RAW gigantesque.
+
+**Palette charte 10 couleurs déterministes** (hash djb2 du surnom → index) pour l'avatar default :
+| # | Couleur | Usage |
+|---|---|---|
+| 0 | `#f4c542` (doré charte) | défaut + fallback no-name |
+| 1-9 | bleu, rouge doux, vert, magenta, cyan, brun-beige, orange, violet, turquoise | distribution déterministe |
+
+**UI bandeau `#kta-loader-profile-bar`** en en-tête du loader (AVANT le grid `loader-grid`) :
+- Avatar 52px (44px mobile / 58px PC) — photo si uploadée, sinon initiale du surnom dans cercle coloré
+- Greeting "Bienvenue"
+- Surnom cliquable (italique muted si vide)
+- Bouton ⚙️ Détails dédié
+- Toute la zone cliquable → ouvre la modale Détails
+
+**Modale Détails du profil** :
+- Avatar grand format 96px (112px PC) — clic pour upload OU bouton 📷 Photo / 🗑️ Retirer
+- Surnom éditable inline (input text + bouton 💾 Enregistrer apparaît au change + Enter submit)
+- Stats agrégées 4-cells (📍/🛣️/⬛/🏛️) + ligne dédiée (📸 photos POI count + Mo)
+- 3 boutons : 📤 Exporter mon profil / 📥 Importer un profil / 🗑️ Réinitialiser le profil
+- Modale reset charte (cf §35) au lieu de `confirm()` natif
+
+**Anciens boutons `exportListBtn` / `importListBtn` à côté de « 📚 Mes plans » RETIRÉS** — regroupés dans la modale Détails.
+
+**Mode clair** : bandeau profil aligné sur les autres cards du loader (`#myPlansBox`, `#resumeBox`, « Ajouter un plan ») — fond `#fdf8eb` + bordure ocre + radius 14px + ombre warm.
+
+**Integration ProfileExportImport** : section `user` ajoutée via `_collectUser()` async (encode photo en base64) et `_restoreUser()` au restore (decode + setPhoto). Cochée par défaut car légère.
+
 ### 📂 Sources de vérité v1.20.0
 
 - `version.json` → `"v1.20.0"`
 - `js/copyright.js` > `__MKM__.build` → `"v1.20.0"`
 - `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.20.0"`
-- **2 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` : `js/crashReports.js` + `js/statsGlobales.js`
-- **1 nouvelle DB IDB** : `myktamap_crashes` v1 / store `crashes` (FIFO 5 entries, geré par crashReports.js)
+- **5 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` :
+  - `js/crashReports.js` (~220 lignes)
+  - `js/statsGlobales.js` (~520 lignes + exportToPDF)
+  - `js/tutorial.js` (~250 lignes)
+  - `js/userProfile.js` (~370 lignes)
+  - `js/profileExportImport.js` (~1100 lignes)
+- **2 nouvelles DB IDB** :
+  - `myktamap_crashes` v1 / store `crashes` (FIFO 5 entries)
+  - `myktamap_profile` v1 / store `profile` (1 entry unique `id="me"`)
 - Modifs internes à : `js/sessionBackups.js`, `js/oomGuard.js`, `js/favoris.js`, `js/refonteInterface.js`, `js/memInspector.js`, `index.html`, `css/style.css`
 
 ### 🛡️ Confidentialité
@@ -1012,9 +1142,13 @@ window.StatsGlobales = {
 - Skip snapshot = lecture IDB read-only
 - Crash Reports = lecture localStorage (logs debug.js) + lecture IDB (SessionBackups méta) + écriture IDB (myktamap_crashes)
 - Favoris export/import = Blob téléchargé localement + `File.text()` à l'import
-- Stats globales = lecture des getters internes (`window.getRoads`, `window.getZones`, etc.) + IDB MyKTAMapPhotos
+- Stats globales = lecture des getters internes (`window.getRoads`, `window.getZones`, etc.) + IDB MyKTAMapPhotos + PDF généré localement via jsPDF (lib locale)
+- Tutorial = HTML statique en mémoire + flag localStorage
+- ProfileExportImport = lecture localStorage + IDB read-only + Blob téléchargé localement / `File.text()` + IDB write à l'import
+- UserProfile = IDB locale `myktamap_profile`, ObjectURL créé via `URL.createObjectURL` (révoqué au refresh, pas de leak)
+- Photo profil voyage en base64 inline dans le JSON exporté UNIQUEMENT si l'user coche la section 👤 Identité
 
-Aucun fetch externe. Rapports copiés restent locaux (presse-papier navigateur). **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates, version et nouvelle DB IDB `myktamap_crashes` documentée.
+Aucun fetch externe. Rapports copiés restent locaux (presse-papier navigateur). **NETWORK_AUDIT mis à jour** avec les 2 nouvelles DB IDB (`myktamap_crashes` + `myktamap_profile`).
 
 </details>
 
