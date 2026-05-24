@@ -1828,11 +1828,17 @@
       ? (d.zones || []).filter(function(z) { return zoneTypesActifs[z.type] !== false; })
       : [];
 
-    // 🆕 v1.9.3-A1.a : filtrage structures par type (3 sous-types)
+    // 🆕 v1.9.3-A1.a + A1.b.2 : filtrage structures par type (5 sous-types
+    // incl. fronts). v1.20.0-fix1 : front-1 et front-2 étaient absents de
+    // ce dict → toujours inclus quoi que coche l'user (bug silencieux car
+    // structureTypesActifs[type] = undefined !== false = true). Maintenant
+    // les checkboxes UI sont respectées pour les 5 sous-types.
     const structureTypesActifs = {
       "pilier-1": document.getElementById("conv_structures_pilier-1")?.checked ?? true,
       "pilier-2": document.getElementById("conv_structures_pilier-2")?.checked ?? true,
-      "mur":      document.getElementById("conv_structures_mur")?.checked      ?? true
+      "mur":      document.getElementById("conv_structures_mur")?.checked      ?? true,
+      "front-1":  document.getElementById("conv_structures_front-1")?.checked  ?? true,
+      "front-2":  document.getElementById("conv_structures_front-2")?.checked  ?? true
     };
     const filteredStructures = incStructures
       ? (d.structures || []).filter(function(s) { return structureTypesActifs[s.type] !== false; })

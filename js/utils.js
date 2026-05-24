@@ -792,6 +792,51 @@ window._applyLevelFilterToDataStructures = function() {
 };
 
 // =========================
+// 🌍 GETTERS PUBLICS — embedded points (data layers) — v1.20.0-fix1
+// =========================
+// Symetrique de window.getEditorPoints (editor.js) : expose les points
+// embarques dans les data layers (puits.json, vehicule.json, etc.) sous
+// forme reutilisable par les exports + stats globales + modale Detail
+// session. Sans ce helper, statsGlobales.js ne comptait QUE les points
+// de session (bug remonte KARMA 25/05/2026).
+//
+// Source : window._ktaDataMarkers (array de markers Leaflet, alimente
+// par ajouterPointsDepuisJSON ligne ~901). Chaque marker contient :
+//   - getLatLng() → coordonnees Leaflet
+//   - _ktaLevel  → niveau M-LVL
+//   - _ktaNom    → nom du point
+//   - _ktaId     → id du point
+//   - _ktaTags   → tableau de tags
+//
+// Conversion lat/lng Leaflet → x/y plan :
+//   convertCoord(x, y) = [imageHeight - y, x]  (cf js/utils.js > convertCoord)
+//   Donc inverse : x = lng, y = imageHeight - lat
+//
+// Renvoie [{x, y, nom, id, tags, level}, ...] — meme format que
+// window.getEditorPoints() (points session) pour permettre concatenation
+// directe sans transformation.
+window.getAllEmbeddedPoints = function() {
+  if (!Array.isArray(window._ktaDataMarkers)) return [];
+  const imgH = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || 0;
+  const out = [];
+  window._ktaDataMarkers.forEach(function(m) {
+    if (!m || typeof m.getLatLng !== "function") return;
+    try {
+      const ll = m.getLatLng();
+      out.push({
+        x:     ll.lng,
+        y:     imgH - ll.lat,
+        nom:   m._ktaNom  || "",
+        id:    m._ktaId   || "",
+        tags:  Array.isArray(m._ktaTags) ? m._ktaTags : [],
+        level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0
+      });
+    } catch(e) {}
+  });
+  return out;
+};
+
+// =========================
 // 🌍 GETTERS PUBLICS — embedded zones (data layers)
 // =========================
 // Symetrique de window.getAllEmbeddedRoads (road.js) : expose les zones
