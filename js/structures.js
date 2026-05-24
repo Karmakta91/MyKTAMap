@@ -287,7 +287,15 @@ function toggleStructureMode(type) {
     currentStructure = null;
   }
 
-  renderStructures();
+  // v1.16.0 step 1d : re-render TOUS les layers session + sync data layer
+  // KMZ. Pourquoi tous : un mode actif doit retirer ghosts/popups des 3
+  // types d'éléments pour ne pas intercepter les clics du tracé en cours.
+  // Cf utils.js > _kta_syncAllNoteUiForModeChange.
+  if (typeof window._kta_syncAllNoteUiForModeChange === "function") {
+    window._kta_syncAllNoteUiForModeChange();
+  } else {
+    renderStructures();  // fallback si utils.js pas chargé
+  }
   console.log("[Structures] Mode :", window.modeStructure);
 }
 
@@ -403,6 +411,17 @@ function renderStructures() {
       //   en cours dans son style final.
       // - Polygon (pilier/mur) en cours : preview pointillé (dashArray
       //   "8 5") pour bien signaler que ce n'est pas encore fermé.
+      //
+      // 🐛 v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure ;
+      // popup s'ouvre au bout du trait pendant le tracé") : la structure
+      // EN COURS DE TRACÉ doit RESTER SANS ghost ni popup, sinon (a) la
+      // ghost intercepte le clic suivant pour fermer/continuer le tracé
+      // (bubblingMouseEvents:false), et (b) le popup s'ouvre au point
+      // qu'on vient juste de poser. Le popup note s'éditera APRÈS
+      // validation (= fermeture) du tracé, quand `s !== currentStructure`.
+      // Bug introduit en step1 par une fusion ratée de `} else if` qui
+      // avait collé le rendu "fermé" + ghost + popup dans la branche
+      // currentStructure au lieu de la branche else.
       if (s.points.length >= 1) {
         if (isPolyline) {
           // Front en cours : style final solide, pas de pointillé
@@ -437,57 +456,67 @@ function renderStructures() {
           }
         }
       }
-    let layer;
-    if (isPolyline) {
-      // Front fermé → polyline solide épaisse colorée, pas de stroke
-      // contour (style.color = la couleur du polyline lui-même).
-      // Cohérent avec la demande KARMA "épais orange/jaune sans contour".
-      layer = L.polyline(latlngs, {
-        color:     style.color,
-        weight:    style.weight,
-        opacity:   style.opacity,
-        lineCap:   "round",
-        lineJoin:  "round"
-      }).addTo(target);
     } else {
-      // Structure fermée → polygone rempli avec stroke noir.
-      layer = L.polygon(latlngs, style).addTo(target);
-    }
-    structureLayers.push(layer);
-
-    // 📝 v1.16.0 step 1 — popup note au clic sur toutes les structures
-    //
-    // v1.16.0 step 1c — pour les fronts (polylines), on ajoute une ghost
-    // transparente plus épaisse (idem pattern road.js) pour ergonomie au
-    // clic. Pour les polygones (piliers/murs), l'aire du polygone capte
-    // déjà bien les clics donc pas de ghost nécessaire.
-    if (typeof window.attacherNotePopup === "function") {
-      const _structRef = structure;
-      const _structTypeLabels = {
-        "pilier-1": "🟡 Pilier 1ère masse",
-        "pilier-2": "🟠 Pilier 2e masse",
-        "mur":      "🔵 Mur",
-        "front-1":  "🟨 Front de taille 1ère masse",
-        "front-2":  "🟧 Front de taille 2e masse"
-      };
-      let cibleClic = layer;
+      // Structure FERMÉE (≠ currentStructure) → rendu final + popup note.
+      let layer;
       if (isPolyline) {
-        // Ghost transparente épaisse par-dessus le front visible
-        const ghostStruct = L.polyline(latlngs, {
-          weight:               Math.max((style.weight || 10) + 12, 22),
-          opacity:              0,
-          interactive:          true,
-          bubblingMouseEvents:  false
+        // Front fermé → polyline solide épaisse colorée, pas de stroke
+        // contour (style.color = la couleur du polyline lui-même).
+        // Cohérent avec la demande KARMA "épais orange/jaune sans contour".
+        layer = L.polyline(latlngs, {
+          color:     style.color,
+          weight:    style.weight,
+          opacity:   style.opacity,
+          lineCap:   "round",
+          lineJoin:  "round"
         }).addTo(target);
-        structureLayers.push(ghostStruct);
-        cibleClic = ghostStruct;
+      } else {
+        // Structure fermée → polygone rempli avec stroke noir.
+        layer = L.polygon(latlngs, style).addTo(target);
       }
-      window.attacherNotePopup(
-        cibleClic,
-        function() { return _structRef.description; },
-        function(v) { _structRef.description = v; },
-        _structTypeLabels[structure.type] || ("Structure " + structure.type)
-      );
+      structureLayers.push(layer);
+
+      // 📝 v1.16.0 step 1 — popup note au clic sur toutes les structures
+      //
+      // v1.16.0 step 1c — pour les fronts (polylines), on ajoute une ghost
+      // transparente plus épaisse (idem pattern road.js) pour ergonomie au
+      // clic. Pour les polygones (piliers/murs), l'aire du polygone capte
+      // déjà bien les clics donc pas de ghost nécessaire.
+      //
+      // 🆕 v1.16.0 step 1d : on n'installe ghost + popup QUE si aucun mode
+      // tracé/zone/structure n'est actif. Sinon la ghost intercepterait
+      // les clics map destinés à ajouter des points au tracé en cours.
+      // À la désactivation du mode, toggleStructureMode → renderStructures
+      // → ghosts ré-installés. Idem pattern road.js / zones.js (cf utils.js).
+      if (typeof window.attacherNotePopup === "function" &&
+          window._aucunModeEditionActif()) {
+        const _structRef = s;
+        const _structTypeLabels = {
+          "pilier-1": "🟡 Pilier 1ère masse",
+          "pilier-2": "🟠 Pilier 2e masse",
+          "mur":      "🔵 Mur",
+          "front-1":  "🟨 Front de taille 1ère masse",
+          "front-2":  "🟧 Front de taille 2e masse"
+        };
+        let cibleClic = layer;
+        if (isPolyline) {
+          // Ghost transparente épaisse par-dessus le front visible
+          const ghostStruct = L.polyline(latlngs, {
+            weight:               Math.max((style.weight || 10) + 12, 22),
+            opacity:              0,
+            interactive:          true,
+            bubblingMouseEvents:  false
+          }).addTo(target);
+          structureLayers.push(ghostStruct);
+          cibleClic = ghostStruct;
+        }
+        window.attacherNotePopup(
+          cibleClic,
+          function() { return _structRef.description; },
+          function(v) { _structRef.description = v; },
+          _structTypeLabels[s.type] || ("Structure " + s.type)
+        );
+      }
     }
   });
 }

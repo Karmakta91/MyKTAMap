@@ -229,6 +229,78 @@ window.polygonAreaM2 = polygonAreaM2;
 // pas de bouton. À NE BINDER que si une note est présente — sinon le user
 // clique pour rien sur un data layer qui était silencieux avant. C'est au
 // caller de vérifier `description` avant d'appeler le helper en readonly.
+// =========================
+// HELPER : aucun mode édition actif ?
+// =========================
+// v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure, et le
+// popup s'ouvre au bout du trait pendant le tracé") :
+//
+// Pendant qu'un mode tracé/zone/structure est actif, les ghost polylines
+// (transparentes épaisses pour ergonomie clic des notes) INTERCEPTENT les
+// clics destinés à ajouter un point au tracé en cours (bubblingMouseEvents:
+// false sur les ghosts → map.on("click"/"mousedown") jamais appelé).
+//
+// Solution : au moment du render (renderRoads, renderStructures,
+// ajouterPointsDepuisJSON), on n'installe les ghosts + popups que si AUCUN
+// mode édition n'est actif. Quand un mode s'active/désactive, le toggle
+// re-render → ghosts dynamiquement (dé)installés.
+//
+// Pour structures.js + road.js : ON N'INSTALLE PAS NON PLUS le popup sur
+// la structure / road EN COURS DE TRACÉ (s === currentStructure /
+// road === currentRoad), même si le mode est désactivé (cas limite à la
+// fermeture). La note s'éditera après validation finale du tracé.
+window._aucunModeEditionActif = function() {
+  return !window.modeRoad && !window.modeZone && !window.modeStructure;
+};
+
+// Registre des ghost polylines installées sur le DATA LAYER (lectures
+// seules KMZ). Un data layer est rendu UNE seule fois à l'import — on
+// peut pas re-render comme renderRoads/Structures. Donc on garde la
+// référence de chaque ghost ici, plus son layer parent, pour pouvoir
+// la détacher/rattacher dynamiquement quand un mode d'édition s'active /
+// se désactive.
+window._kta_dataLayerNoteGhosts = window._kta_dataLayerNoteGhosts || [];
+
+// Détache (mode actif) ou rattache (mode désactivé) tous les ghosts
+// data layer. Appelé par toggleRoadMode / toggleStructureMode /
+// toggleZoneMode après mise à jour des flags window.modeRoad / etc.
+window._kta_syncDataLayerNoteGhosts = function() {
+  const aucunMode = window._aucunModeEditionActif();
+  window._kta_dataLayerNoteGhosts.forEach(function(entry) {
+    if (!entry || !entry.ghost || !entry.parent) return;
+    try {
+      if (aucunMode) {
+        // Pas de mode actif → ghost actif sur la map. addTo() est idempotent
+        // (Leaflet le détache silencieusement avant de réattacher).
+        entry.ghost.addTo(entry.parent);
+      } else {
+        // Mode actif → on retire le ghost pour que les clics passent au map.
+        // .remove() est safe même si déjà détaché.
+        entry.ghost.remove();
+      }
+    } catch(e) { /* layer parent détaché entre-temps → ignore */ }
+  });
+};
+
+// Purge le registre (à appeler avant un nouveau load de data layer pour
+// éviter d'accumuler des références mortes après changement de plan).
+window._kta_resetDataLayerNoteGhosts = function() {
+  window._kta_dataLayerNoteGhosts = [];
+};
+
+// Re-rend road + zones + structures + sync data layer ghosts. À appeler
+// par chaque toggle (toggleRoadMode, toggleZoneMode, toggleStructureMode)
+// quand le flag de mode change : un mode active désactive les ghosts /
+// popups des 3 layers session ET du data layer, et vice versa.
+window._kta_syncAllNoteUiForModeChange = function() {
+  try { if (typeof window.renderRoads === "function") window.renderRoads(); } catch(e) {}
+  try { if (typeof window.renderZones === "function") window.renderZones(); } catch(e) {}
+  try { if (typeof window.renderStructures === "function") window.renderStructures(); } catch(e) {}
+  if (typeof window._kta_syncDataLayerNoteGhosts === "function") {
+    window._kta_syncDataLayerNoteGhosts();
+  }
+};
+
 window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) {
   if (!layer || typeof layer.bindPopup !== "function") return;
   opts = opts || {};
@@ -803,7 +875,14 @@ function ajouterPointsDepuisJSON(url, layer) {
               opacity:             0,
               interactive:         true,
               bubblingMouseEvents: false
-            }).addTo(layer);
+            });
+            // v1.16.0 step 1d : on n'attache le ghost à la map QUE si aucun
+            // mode édition n'est actif maintenant. Sinon il sera attaché plus
+            // tard par _kta_syncDataLayerNoteGhosts quand le mode s'arrête.
+            if (window._aucunModeEditionActif()) {
+              ghostRO.addTo(layer);
+            }
+            window._kta_dataLayerNoteGhosts.push({ ghost: ghostRO, parent: layer });
             window.attacherNotePopup(
               ghostRO,
               function() { return road.description; },
@@ -945,7 +1024,12 @@ function ajouterPointsDepuisJSON(url, layer) {
                 opacity:             0,
                 interactive:         true,
                 bubblingMouseEvents: false
-              }).addTo(layer);
+              });
+              // v1.16.0 step 1d : attach conditionnel (cf roads ci-dessus)
+              if (window._aucunModeEditionActif()) {
+                ghostStructRO.addTo(layer);
+              }
+              window._kta_dataLayerNoteGhosts.push({ ghost: ghostStructRO, parent: layer });
               cibleStructRO = ghostStructRO;
             }
             window.attacherNotePopup(

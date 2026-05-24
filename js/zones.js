@@ -192,7 +192,13 @@ function toggleZoneMode(type) {
     currentZone = null;
   }
 
-  renderZones();
+  // v1.16.0 step 1d : re-render TOUS les layers session + sync data layer
+  // KMZ. Cf utils.js > _kta_syncAllNoteUiForModeChange.
+  if (typeof window._kta_syncAllNoteUiForModeChange === "function") {
+    window._kta_syncAllNoteUiForModeChange();
+  } else {
+    renderZones();  // fallback si utils.js pas chargé
+  }
   console.log("[Zones] Mode :", window.modeZone);
 }
 
@@ -296,7 +302,13 @@ function renderZones() {
       // 📝 v1.16.0 step 1 — popup au clic pour éditer la note (description)
       // Capture l'index de la zone dans la closure pour pouvoir lire/écrire
       // la dernière valeur même si zonesData change (renderZones).
-      if (typeof window.attacherNotePopup === "function") {
+      //
+      // 🐛 v1.16.0 step 1d : on ne binde le popup que si aucun mode édition
+      // n'est actif (sinon le clic sur un polygone zone ouvre la popup ET
+      // ajoute un point au tracé en cours — UX cassée). Re-render au toggle
+      // mode → re-bind du popup. Idem pattern road.js / structures.js.
+      if (typeof window.attacherNotePopup === "function" &&
+          window._aucunModeEditionActif()) {
         const _zoneRef = zone;  // référence directe à l'objet
         const _zoneTypeLabels = {
           eau:          "💧 Zone Eau",

@@ -37,6 +37,12 @@ async function initDataFromConfig() {
   // restent référencées et soient ciblées par le filtre niveau actif.
   window._ktaDataStructurePolygons = [];
   window._ktaImageOverlays = [];  // v162 : registre des image layers level-aware
+  // v1.16.0 step 1d : registre des ghosts note du data layer KMZ. Vidé
+  // au switch de plan pour éviter d'accumuler des références mortes
+  // référant aux layerGroups du plan précédent (cf utils.js).
+  if (typeof window._kta_resetDataLayerNoteGhosts === "function") {
+    window._kta_resetDataLayerNoteGhosts();
+  }
 
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
   // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.

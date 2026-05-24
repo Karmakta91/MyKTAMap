@@ -175,6 +175,15 @@ function toggleRoadMode(type) {
     currentRoad = null;
   }
 
+  // v1.16.0 step 1d : re-render TOUS les layers session (roads + zones +
+  // structures) + sync data layer KMZ. Pourquoi tous : un mode actif quel
+  // qu'il soit doit retirer ghosts/popups des 3 types d'éléments pour ne
+  // pas intercepter les clics destinés au tracé en cours. Cf utils.js >
+  // _kta_syncAllNoteUiForModeChange.
+  if (typeof window._kta_syncAllNoteUiForModeChange === "function") {
+    window._kta_syncAllNoteUiForModeChange();
+  }
+
   console.log("[Road] Mode :", window.modeRoad);
 }
 
@@ -627,8 +636,23 @@ function renderRoads() {
     // ghost qui capte les clics et binde le popup — la polyline visible
     // garde son weight d'origine pour le rendu. Marge ~7-9 px de chaque
     // côté du trait → ergonomie tactile mobile sans toucher au visuel.
+    //
+    // 🐛 v1.16.0 step 1d (KARMA "je ne peux plus tracer aucune structure ;
+    // popup au bout du trait pendant tracé") :
+    //
+    // - Pas de ghost sur la road EN COURS DE TRACÉ (road === currentRoad).
+    //   Sinon la ghost intercepte le clic suivant pour ajouter un sommet
+    //   (bubblingMouseEvents:false → map.on("mousedown") jamais appelé).
+    //
+    // - Pas de ghost non plus si UN MODE édition est actif (modeRoad /
+    //   modeZone / modeStructure). Sinon les ghosts des roads CLOSED
+    //   intercepteraient les clics destinés à tracer une nouvelle road /
+    //   zone / structure proche. Sur toggle du mode, renderRoads est rappelé
+    //   → ghosts dynamiquement (dé)installés.
     if (typeof window.attacherNotePopup === "function" &&
-        road.type !== "itinerary" && road.type !== "jonction") {
+        road.type !== "itinerary" && road.type !== "jonction" &&
+        road !== currentRoad &&
+        window._aucunModeEditionActif()) {
       const _roadRef = road;
       const _roadTypeLabels = {
         principal:  "🟩 Tracé principal",
