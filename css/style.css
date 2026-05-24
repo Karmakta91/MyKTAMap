@@ -9895,12 +9895,23 @@ body.kta-refonte-v1 .kta-compass-widget {
   bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
+  /* 🆕 v1.19.0-fix2 (KARMA "bug boussole derrière le footer") : le status
+     bar refonte a `z-index: 1200`, la boussole base est à 1050 → si la
+     variable --kta-statusbar-h n'est pas à jour (ResizeObserver pas encore
+     ticked, ou viewport en transition orientation), la boussole se
+     retrouve EN-DESSOUS du footer dans la stack et est masquée. Fix
+     définitif : forcer z-index 1250 (= footer 1200 + 50) en mode refonte
+     pour garantir que la boussole reste TOUJOURS visible, indépendamment
+     du positionnement calculé. Combiné au bottom dynamique, double
+     protection. */
+  z-index: 1250 !important;
 }
 /* Multi-niveau : pas de changement de position en bottom-left, la
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
   bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
+  z-index: 1250 !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────
