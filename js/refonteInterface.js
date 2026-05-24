@@ -1611,17 +1611,25 @@
           if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
           return parts.length ? parts.join(" ") : "vide";
         }
-        let h = '<ul class="kta-refonte-session-list" style="margin:0;">';
+        // 🐛 v1.16.0-fix (KARMA "entre chaque snap, il y a bcp espace vide
+        // inutile") : la classe .kta-refonte-session-list applique
+        // padding:7px 0 + display:flex column + gap:2px sur chaque li,
+        // pensé pour les listes verticales (points/tracés où strong est sur
+        // une ligne et meta sur la ligne en dessous). Pour les backups on
+        // veut une ligne unique compacte → on override avec une classe
+        // dédiée .kta-backups-list qui annule ces règles et utilise un
+        // layout horizontal serré (padding 4px, items en ligne).
+        let h = '<ul class="kta-refonte-session-list kta-backups-list">';
         arr.forEach(function(b) {
           const planLbl = b.planName || b.planId || "(plan inconnu)";
-          h += '<li style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">' +
-                 '<div style="flex:1 1 200px; min-width:0;">' +
+          h += '<li>' +
+                 '<span class="kta-backup-info">' +
                    '<strong>' + _fmtDate(b.createdAt) + '</strong>' +
-                   '<span class="kta-refonte-session-meta">' +
+                   ' <span class="kta-refonte-session-meta">' +
                      _esc(planLbl) + ' · ' + _countContent(b.payload) +
                      ' · <em style="opacity:0.7;">' + _esc(b.reason || "auto") + '</em>' +
                    '</span>' +
-                 '</div>' +
+                 '</span>' +
                  '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
                    'data-backup-restore="' + b.id + '" title="Restaurer ce snapshot (recharge l\'app)">' +
                    '↻ Restaurer' +

@@ -10273,6 +10273,39 @@ body.kta-refonte-v1 .kta-readme-modal-overlay {
   padding: 8px 0;
 }
 
+/* ==============================================
+   🐛 v1.16.0-fix — Backups list compact
+   ==============================================
+   KARMA : « entre chaque snap, il y a bcp espace vide inutile ».
+   La classe .kta-refonte-session-list par défaut est verticale
+   (column, gap 2px, padding 7px) pour les listes points/tracés où
+   chaque item a 2 lignes (strong + meta). Pour les backups on veut
+   une ligne unique compacte avec boutons action en bout de ligne.
+   Override via une classe combinée .kta-backups-list. */
+.kta-refonte-session-list.kta-backups-list li {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  flex-wrap: wrap;
+}
+.kta-backups-list .kta-backup-info {
+  flex: 1 1 200px;
+  min-width: 0;
+  line-height: 1.35;
+  font-size: 12.5px;
+}
+.kta-backups-list .kta-backup-info .kta-refonte-session-meta {
+  /* Pas de retour à la ligne forcé : strong + meta sur la même ligne
+     si la place le permet, sinon meta passe en dessous naturellement. */
+  white-space: normal;
+}
+.kta-backups-list .kta-btn {
+  /* Boutons en bout de ligne, taille compacte. .kta-btn-small a déjà
+     padding réduit ; on enlève le margin par défaut. */
+  margin: 0;
+}
+
 /* Compteurs du header — feedback visuel cliquable */
 body.kta-refonte-v1 #kta-refonte-counters-btn {
   cursor: pointer;
