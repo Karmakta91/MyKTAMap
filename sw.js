@@ -73,11 +73,11 @@ const ASSETS_TO_CACHE = [
   "./js/memInspector.js",
   // 🆕 v1.20.0 : StatsGlobales — modale stats agrégées plan complet (session + embedded)
   "./js/statsGlobales.js",
-  // 🆕 v1.21.0 : Tutorial — onboarding cards premier-lancement
+  // 🆕 Karma_dev pending : Tutorial — onboarding cards premier-lancement (8 cards)
   "./js/tutorial.js",
-  // 🆕 Karma_dev : UserProfile — mini profil utilisateur (surnom + photo) en IDB dédiée
+  // 🆕 Karma_dev pending : UserProfile — mini profil utilisateur (surnom + photo) en IDB dédiée
   "./js/userProfile.js",
-  // 🆕 v1.22.0 : ProfileExportImport — profil utilisateur complet (remplace l'ancien export liste plans)
+  // 🆕 Karma_dev pending : ProfileExportImport — profil utilisateur complet (remplace l'ancien export liste plans)
   "./js/profileExportImport.js",
   "./js/debug.js",
   "./js/perfUltra.js",
