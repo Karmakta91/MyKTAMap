@@ -9896,7 +9896,7 @@ body.kta-refonte-v1 .kta-compass-widget {
      entre boussole flottante et footer statique, sans risque de
      chevauchement perçu même si le footer grossit à 2 lignes ou que
      la variable --kta-statusbar-h tarde à se mettre à jour. */
-  bottom: calc(var(--kta-statusbar-h, 52px) + 20px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 56px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
   /* 🆕 v1.19.0-fix2 (KARMA "bug boussole derrière le footer") : le status
@@ -9914,7 +9914,7 @@ body.kta-refonte-v1 .kta-compass-widget {
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
-  bottom: calc(var(--kta-statusbar-h, 52px) + 20px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 56px) !important;
   z-index: 1250 !important;
 }
 
