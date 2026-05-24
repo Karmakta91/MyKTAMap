@@ -2036,12 +2036,23 @@
       //   - "myktamap-plans-list"     (legacy ≤ v1.21.x) → bannière "format ancien"
       //     + import limité à la section registry (= ancien comportement préservé)
       // Le file picker reste le même (#importListFile), seule la logique change.
+      // 🐛 Fix Karma_dev : on découple le bind du handler `change` (qui doit
+      // toujours être attaché car le file picker est trigger maintenant depuis
+      // la modale Détails profil) du bind du click sur `importListBtn` (qui a
+      // été retiré du DOM avec la refonte profil). Avant : `if (importListBtn
+      // && importListFile)` → false dès qu'on retirait le bouton → change
+      // handler jamais attaché → "Importer profil" ne faisait rien.
       const importListBtn = document.getElementById("importListBtn");
       const importListFile = document.getElementById("importListFile");
       if (importListBtn && importListFile) {
+        // Ancien bouton encore présent (config legacy) : on garde son click.
         importListBtn.addEventListener("click", function() {
           importListFile.click();
         });
+      }
+      if (importListFile) {
+        // Handler change INDÉPENDANT du bouton — sert AUSSI à la modale
+        // Détails profil qui trigger ce file picker via getElementById + click().
         importListFile.addEventListener("change", async function() {
           const file = importListFile.files[0];
           if (!file) return;
