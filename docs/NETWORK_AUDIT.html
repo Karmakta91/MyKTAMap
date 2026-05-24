@@ -174,10 +174,25 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.18.1</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.19.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.19.0 (📊 État mémoire — Inspecteur de transparence & debug)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. Nouveau module <code>js/memInspector.js</code>
+    (~580 lignes) chargé tôt dans <code>index.html</code> (juste après <code>networkAudit.js</code>)
+    et ajouté à <code>ASSETS_TO_CACHE</code>. L'Inspecteur fait UNIQUEMENT de la <strong>lecture locale</strong> :
+    <code>localStorage</code> (itération + getItem), IndexedDB (<code>open</code> read-only +
+    <code>objectStore.count()</code> — pas de read des entries), Cache API (<code>caches.keys()</code> +
+    <code>caches.open().keys()</code> — URLs only), <code>navigator.storage.estimate()</code>. Aucun fetch
+    externe, aucune transmission. Le rapport copié (bouton 📋) reste local (presse-papier navigateur).
+    Bonus transparence : l'Inspecteur EST lui-même un outil d'audit qui rend visible TOUT ce que MyKTAMap
+    a écrit localement.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -650,6 +665,19 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.19.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>📊 État mémoire — Inspecteur de transparence &amp; debug</strong> —
+          <strong>aucune nouvelle surface réseau</strong>. Nouveau module <code>js/memInspector.js</code>
+          (~580 lignes) ajouté à <code>ASSETS_TO_CACHE</code>, accessible depuis ⚙️ Configuration loader.
+          Lecture locale UNIQUEMENT (localStorage, IndexedDB read-only, Cache API URLs, storage.estimate).
+          Bouton 📋 Copier le rapport (presse-papier local). Aucune transmission. Bonus transparence :
+          rend visible TOUT ce que MyKTAMap a écrit localement.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.18.1</td>
         <td>24/05/2026</td>

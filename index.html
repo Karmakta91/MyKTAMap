@@ -154,6 +154,14 @@
        de requête réseau, donc l'ordre est OK. Cf. docs/NETWORK_AUDIT.md -->
   <script src="js/networkAudit.js"></script>
 
+  <!-- 📊 MEM INSPECTOR — Topo lisible de ce qui est chargé en mémoire
+       (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime).
+       Accessible depuis ⚙️ Configuration loader → section 📊 Inspecteur.
+       Pas de dépendance bloquante, peut être chargé n'importe où dans la
+       chaîne — placé ici à côté de NetworkAudit pour cohérence
+       « outils d'inspection & transparence ». Depuis v1.19.0. -->
+  <script src="js/memInspector.js"></script>
+
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>
 
@@ -500,6 +508,25 @@
           <p class="kta-loader-perf-hint" style="margin-top:8px;">
             Toggle active la console verbeuse (tracker, fetch, etc.). Le bouton 📋 affiche les logs capturés directement (utile aussi sans plan chargé).
           </p>
+        </div>
+
+        <!-- 📊 Inspecteur mémoire (depuis v1.19.0)
+             Outil de transparence + debug. Affiche un topo lisible de tout
+             ce qui est chargé en mémoire localement par l'app :
+               - localStorage (clés MyKTAMap + tailles)
+               - IndexedDB (bases + entries par store)
+               - Cache PWA (cache actif + assets)
+               - Storage estimate navigateur (usage/quota)
+               - Runtime (plan chargé, session active, modules)
+             Bouton 📋 Copier le rapport pour partager par DM en cas de bug. -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">📊 Inspecteur</div>
+          <p class="kta-loader-perf-hint" style="margin-bottom:10px;">
+            Topo lisible de ce qui est actuellement <strong>chargé en mémoire</strong> côté navigateur : localStorage, IndexedDB, Cache PWA, état runtime. Utile pour comprendre la consommation et diagnostiquer un problème.
+          </p>
+          <button class="loader-btn-secondary" type="button" id="loaderMemInspectorBtn" style="width:100%;">
+            📊 Voir l'état mémoire
+          </button>
         </div>
 
         <!-- 🔒 Confidentialité & Audit réseau (v1.8.0 "Privacy & Audit")
@@ -2767,6 +2794,22 @@
             window.afficherLogsDebug();
           } else {
             setStatus("Fonction de logs indisponible", true);
+          }
+        });
+      }
+
+      // 🆕 v1.19.0 — 📊 Inspecteur mémoire. Ouvre la modale de topo lisible
+      // (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime).
+      // Module js/memInspector.js chargé tôt (juste après networkAudit).
+      // Même z-index que les autres modales — la modale Inspector passe
+      // au-dessus de Configuration (DOM order), au close on retrouve Config.
+      const memInspectBtn = document.getElementById("loaderMemInspectorBtn");
+      if (memInspectBtn) {
+        memInspectBtn.addEventListener("click", function() {
+          if (window.MemInspector && typeof window.MemInspector.ouvrir === "function") {
+            window.MemInspector.ouvrir();
+          } else {
+            setStatus("Module MemInspector indisponible — recharge la page", true);
           }
         });
       }

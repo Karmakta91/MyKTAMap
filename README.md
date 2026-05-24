@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.18.1` (24/05/2026)
+**📦 Version courante** : `v1.19.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.18.1](#-derniere-release--v1181)
+1. [🚀 Dernière release — v1.19.0](#-derniere-release--v1190)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,9 +40,15 @@
 
 ---
 
-## 🚀 Dernière release — v1.18.1
+## 🚀 Dernière release — v1.19.0
 
-📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.18.0) : **extension du roundtrip `customLegend` au format GPX + visibilité dans les preview d'import**. La v1.18.0 couvrait uniquement le KMZ ; cette release ajoute GPX (via `<extensions>` standard sous `<metadata>`) et affiche explicitement « ✅ Légende personnalisée du plan détectée » dans les modales d'import KMZ et GPX avant la génération du ZIP MyKTAMap reconstruit. Plus de surprises : l'utilisateur sait exactement ce qui voyage.
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.18.x) : **Nouvel outil de transparence & debug 📊 État mémoire**. Modale dédiée accessible depuis ⚙️ Configuration loader > nouvelle section « 📊 Inspecteur ». Affiche un topo lisible et compréhensible de tout ce qui est chargé localement par l'app : localStorage, IndexedDB, Cache PWA, Storage estimate navigateur, Runtime (plan chargé, session active, modules chargés). Bouton 📋 Copier le rapport pour partager par DM en cas de bug. **Aucune nouvelle surface réseau** — lecture locale uniquement. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.18.1
+
+📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.18.0) : extension du roundtrip `customLegend` au format GPX + visibilité dans les preview d'import KMZ/GPX.
 
 ---
 
@@ -874,7 +880,94 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-18-1" open>
+<details id="v1-19-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.19.0 : 📊 État mémoire — Inspecteur de transparence & debug</strong></summary>
+
+Release MINOR (bump Y : 1.18.x → 1.19.0). Nouvel outil de transparence + debug accessible depuis ⚙️ Configuration loader > nouvelle section « 📊 Inspecteur » : un topo lisible et compréhensible de tout ce qui est chargé en mémoire localement par l'app.
+
+### 🎯 Use cases
+
+- **Diagnostiquer un bug** « ma session disparaît », « mes photos ne sont plus là », « le plan ne charge pas »
+- **Vérifier qu'un reset complet a bien purgé tout** (avant/après comparaison)
+- **Voir la consommation mémoire** avant un export volumineux (KMZ avec 200 photos par ex.)
+- **Partager un rapport** par DM au mainteneur (bouton 📋 Copier formate en texte plain)
+
+### 🆕 Module `js/memInspector.js` (~580 lignes IIFE)
+
+API publique :
+```js
+window.MemInspector = {
+  ouvrir(),         // affiche la modale + lance la collecte
+  fermer(),         // ferme la modale
+  collecter(),      // Promise<Report> — collecte async
+  formatBytes(n),   // helper formatage (B / KB / MB / GB)
+  getReportText(r)  // texte plain markdown-like pour copier
+};
+```
+
+Collecte 100% async, tolérante aux APIs absentes (`indexedDB.databases()` indispo sur vieux navigateurs, `navigator.storage.estimate()` indispo sur iOS Safari < 14, etc.) — warn console + skip de la section qui échoue, jamais de modale cassée.
+
+### 📊 5 sections affichées
+
+| Section | Contenu |
+|---|---|
+| 🧠 **Runtime** | Version app + plan chargé (nom/version/dims/M-LVL/V2/calques/légende custom) + session active (📍 N points / 🛣️ M tracés / ⬛ K zones / 🏛️ structures + état mesure/tracker/iti) + APP_CONFIG (debug/perfPreset/M-LVL) + modules chargés/manquants |
+| 🗂️ **localStorage** | Liste des clés MyKTAMap triées par taille décroissante, total en bytes pretty-print, mini-barre de proportion par clé |
+| 💾 **IndexedDB** | 3 bases connues (`myktamap_handles`, `myktamap_backups`, `myktamap_photos`) + scan natif via `indexedDB.databases()` (Chrome/Firefox récent) pour détecter bases tierces. Count par store. |
+| 📦 **Cache PWA** | Liste des caches existants, marquage du cache actif (★, détection via `__MKM__.build`), échantillon des 12 premiers assets cachés |
+| 📊 **Storage estimate** | `navigator.storage.estimate()` → usage / quota / % avec barre couleur (vert → jaune → rouge selon usage) |
+
+### 📋 Bouton « Copier le rapport »
+
+Formate l'intégralité du rapport en texte plain markdown-like prêt à coller dans Discord / mail / GitHub issue :
+
+```
+=========================================
+MyKTAMap — Rapport État Mémoire
+=========================================
+📅 Timestamp : 2026-05-24T22:30:00.000Z
+📦 Version app : v1.19.0
+
+🧠 RUNTIME
+─────────────────────────────────────────
+Plan chargé : Carrière du Val V3 (4000×2251)
+  Auteur : KARMA
+  M-LVL : ON | V2 tuilé : OFF
+  Calques image : 1 | Calques data : 4
+  Légende custom plan : OUI
+Session active : 14 points, 8 tracés, 3 zones, 1 structures
+…
+```
+
+Fallback `execCommand("copy")` pour les navigateurs sans Clipboard API (anciens browsers + contextes non-sécurisés HTTP).
+
+### 🎛️ UI Modale
+
+Modale `.kta-readme-modal-overlay` standard. Boîte spacieuse (720px mobile → 920px PC ≥ 1024px → 1100px PC ≥ 1440px). Sections card-stack avec headers ambre charte + total à droite. Tableau localStorage avec barre de proportion par clé. Tags colorés (vert ON / rouge warn / gris dim) pour visualisation rapide des états. Header avec timestamp + version app pour traçabilité du rapport. Bouton 🔄 Rafraîchir + 📋 Copier en footer.
+
+### 📂 Sources de vérité v1.19.0
+
+- `version.json` → `"v1.19.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.19.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.19.0"`
+- **Nouveau fichier** `js/memInspector.js` (~580 lignes) ajouté à `ASSETS_TO_CACHE`
+- Balise `<script>` ajoutée dans `index.html` juste après `js/networkAudit.js` (cohérence « outils d'inspection & transparence »)
+- ~80 lignes UI ajoutées dans la modale Configuration loader (nouvelle section + handler)
+- ~310 lignes CSS dans `css/style.css` (dark + light theme variants)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. L'Inspecteur ne fait QUE de la lecture locale :
+- `localStorage` : itération `localStorage.length` + `getItem`
+- `IndexedDB` : `indexedDB.open()` read-only + `objectStore.count()` (pas de read des entries)
+- `Cache API` : `caches.keys()` + `caches.open().keys()` (URLs only, pas de read des blobs)
+- `navigator.storage.estimate()` : pure lecture API navigateur
+
+Aucun fetch externe. Aucune transmission de données. Le rapport copié reste local (presse-papier navigateur). **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-18-1">
 <summary><strong>🗓️ 24/05/2026 — 🩹 v1.18.1 : Roundtrip GPX `customLegend` + preview d'import KMZ/GPX</strong></summary>
 
 Hotfix PATCH (bump Z : 1.18.0 → 1.18.1). Complète la v1.18.0 sur 3 axes :

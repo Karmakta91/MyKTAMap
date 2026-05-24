@@ -4459,6 +4459,144 @@ Format d'affichage uniforme :
 
 ---
 
+### 60. v1.19.0 — Memory Inspector (transparence + debug)
+
+Module `js/memInspector.js` (~580 lignes IIFE) → `window.MemInspector = { ouvrir, fermer, collecter, formatBytes, getReportText }`. Outil de transparence + debug accessible depuis ⚙️ Configuration loader > nouvelle section « 📊 Inspecteur ». Aucune écriture, lecture locale uniquement.
+
+#### 60.1 Architecture & collecte async
+
+`collecter()` retourne `Promise<Report>` avec 5 sections collectées en parallèle via `Promise.all` (sauf `localStorage` qui est synchrone) :
+
+```js
+async function collecter() {
+  const ts = new Date().toISOString();
+  const runtime = _collectRuntime();          // sync
+  const localS  = _collectLocalStorage();     // sync
+  const [idb, cachePwa, storageEst] = await Promise.all([
+    _collectIndexedDB(),
+    _collectCachePWA(),
+    _collectStorageEstimate()
+  ]);
+  return { timestamp, runtime, localStorage, indexedDB, cachePWA, storageEstimate };
+}
+```
+
+**Tolérance aux APIs absentes** : chaque collecte est wrappée dans `try/catch` + retourne un champ `error` (string) si une API échoue. Le rendu UI affiche un `⚠️` warning sur la section concernée mais le reste de la modale reste fonctionnel. Aucune section ne peut planter la modale entière.
+
+#### 60.2 Filtrage localStorage
+
+`_collectLocalStorage` itère `localStorage.length` puis filtre par regex `/^myktamap_/i` + exceptions (`app_user_prefs`, `kta_*`). Taille calculée en bytes via `value.length * 2` (UTF-16 = 2 bytes/char en moyenne — approximation suffisante pour un topo, pas un audit byte-exact). Tri décroissant par taille.
+
+**À NE PAS faire** : itérer tout `localStorage` sans filtre — risque de leak de clés d'autres apps si le user navigue sur d'autres sites depuis le même profil browser (web SDKs publicitaires, etc.).
+
+#### 60.3 IndexedDB : 3 bases connues + scan natif
+
+```js
+const KNOWN_IDB_DBS = [
+  { name: "myktamap_handles", stores: ["handles", "blobs"] },
+  { name: "myktamap_backups", stores: ["backups"] },
+  { name: "myktamap_photos",  stores: ["photos"] }
+];
+```
+
+**Pattern hybride** : tente d'abord `indexedDB.databases()` (Chrome 71+, Firefox 126+) pour découvrir les bases présentes. Si dispo, on filtre les `KNOWN_IDB_DBS` aux bases effectivement détectées + on ajoute les bases tierces inattendues. Si l'API native est indispo (Safari, vieux Firefox), fallback : on tente d'ouvrir toutes les bases connues (peut créer une base vide si elle n'existait pas — acceptable pour un outil de debug).
+
+Pour chaque base : `_openDb(name)` → `db.transaction([storeName], "readonly")` → `objectStore.count()`. **Read-only strict** : pas de read des entries (= économie mémoire + privacy).
+
+#### 60.4 Cache PWA
+
+`caches.keys()` puis détection du cache actif via `window.__MKM__.build` → `myktamap-cache-<build>` (fallback regex `/^myktamap-cache-/`). Pour le cache actif : `caches.open(name).keys()` puis échantillon des **12 premiers assets** (URLs pathname only via `new URL(r.url).pathname`). Le tronquage à 12 évite l'info overload pour les sessions avec 100+ assets cachés.
+
+**Pas de read des blobs** : `caches.match()` ne sert jamais ici, seulement `.keys()` pour les URLs.
+
+#### 60.5 Storage estimate
+
+`navigator.storage.estimate()` → `{ usage, quota }`. Calcul `usagePct = usage / quota * 100`. Affiché avec barre gradient CSS `linear-gradient(90deg, #6ee28a 0%, #f4c542 70%, #ff8c8c 100%)` → la couleur passe du vert au rouge selon le % d'usage, signal visuel intuitif quand l'utilisateur s'approche du quota.
+
+#### 60.6 Runtime : modules + plan + session + APP_CONFIG
+
+`KNOWN_MODULES` = liste hardcodée de 27 noms (`PlanRegistry`, `SessionPersist`, `MemInspector`, etc.). Pour chacun : check `window[name] != null`. Sépare entre `modulesLoaded` (présents) et `modulesMissing` (absents). Les manquants apparaissent en `⚠️` warning rouge dans l'UI — utile pour diagnostiquer un problème de chargement (ex: balise `<script>` qui rate, fichier manquant du cache PWA, etc.).
+
+**Plan chargé** : lecture défensive de `window.PLAN_CONFIG.plan.{name, version, author, imageWidth, imageHeight, multiLevel, tiledV2, customLegend}` + `imageLayers.length` + `dataLayers.length`.
+
+**Session active** : appel des getters publics (`getEditorPoints`, `getRoads`, `getZones`, `getStructures`, `getMeasurePoints`, `getTrackingActif`) si présents. Filter sur `r.type === "itinerary"` pour détecter un itinéraire actif. Tout dans `try/catch` — l'inspecteur peut être lancé depuis le loader home (sans plan chargé), tous les getters retournent alors `undefined` → 0 partout, pas d'erreur.
+
+**APP_CONFIG** : extract des champs pertinents UNIQUEMENT (debugMode, perfPreset, scaledMarkers, showRoadIntersections, multiLevel, activeLevel) — pas tout l'objet (info overload).
+
+#### 60.7 UI Modale & sections
+
+Modale `.kta-readme-modal-overlay` standard. Boîte `.kta-mem-inspector-boite` spacieuse :
+- 720px (mobile)
+- 920px (PC ≥ 1024px)
+- 1100px (PC ≥ 1440px)
+
+**Sections card-stack** : chaque section a une classe `.kta-mem-section` (fond léger + border ambre). Header `.kta-mem-section-titre` avec emoji + libellé + pastille total à droite (`.kta-mem-total`).
+
+**Tableau localStorage** (`.kta-mem-table`) : 2 colonnes (Clé / Taille). Sous chaque clé, mini-barre `.kta-mem-bar-wrap > .kta-mem-bar-fill` avec largeur proportionnelle au % de la taille totale → visualisation intuitive de ce qui consomme le plus.
+
+**Tags colorés** :
+- `.kta-mem-tag` (ambre) : flag d'option activée
+- `.kta-mem-tag-on` (vert) : état actif (tracker ON, iti actif)
+- `.kta-mem-tag-warn` (rouge) : warning (debug ON)
+- `.kta-mem-tag-dim` (gris) : info passive
+
+**Barre quota** (storage estimate) : `.kta-mem-quota-bar > .kta-mem-quota-fill` avec gradient vert → jaune → rouge selon `width: <usagePct>%`.
+
+**Footer** : 🔄 Rafraîchir (relance `collecter()` + re-render) + 📋 Copier le rapport.
+
+#### 60.8 Rapport texte (Copier)
+
+`getReportText(rep)` formate l'intégralité en texte plain markdown-like prêt à coller dans Discord / mail / GitHub. Format avec séparateurs ASCII `─────────────────────────────────────────` + emojis pour repères visuels. Hiérarchie indentée 2 spaces.
+
+**Clipboard write** :
+```js
+function _copyToClipboard(text) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    return navigator.clipboard.writeText(text);
+  }
+  // Fallback execCommand pour les contextes non-sécurisés HTTP
+  return new Promise(function(resolve, reject) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    if (ok) resolve(); else reject(new Error("execCommand copy failed"));
+  });
+}
+```
+
+Feedback visuel : bouton "📋 Copier le rapport" → "✅ Copié !" pendant 1800ms après succès.
+
+#### 60.9 Pièges & conventions
+
+⚠️ **Ne PAS faire de read d'entries IndexedDB** dans la collecte — risque de RAM blow-up sur une base avec 10 000 entries. `objectStore.count()` est O(1) et suffit pour un topo.
+
+⚠️ **Ne PAS exposer les valeurs localStorage** dans la modale — c'est un risque de leak si l'utilisateur fait un screenshot. On expose seulement la clé + la taille.
+
+⚠️ **Filtrer le prefix MyKTAMap strict** dans localStorage — éviter les clés d'autres apps (cf §60.2).
+
+⚠️ **L'inspecteur peut être ouvert depuis la home** (= pas de plan chargé). Tous les getters d'annotations doivent être defensif (`if (typeof window.getX === "function")`) sinon l'inspecteur plante au loader.
+
+⚠️ **Modale empilée sur Configuration** : même z-index `99999`, ouverture en DOM order → MemInspector passe au-dessus de Configuration. Au close, l'utilisateur retrouve Configuration intacte (Configuration ne se ferme pas).
+
+⚠️ **Pas de polling automatique** : la collecte est manuelle (à l'ouverture + au clic 🔄 Rafraîchir). Pas de tick périodique qui pourrait alourdir la perf. L'utilisateur fait l'effort explicite si besoin.
+
+#### 60.10 Pour ajouter une nouvelle section au rapport
+
+1. Créer la fonction `_collectXxx()` (async ou sync) qui retourne `{ ...data, error?: string }`
+2. L'ajouter dans `collecter()` (dans le `Promise.all` si async, ou en assignation directe si sync)
+3. Ajouter le rendu HTML dans `_renderReport(rep)` (nouvelle section card-stack)
+4. Ajouter la sortie texte dans `getReportText(rep)` (nouvelle section avec séparateur)
+5. Si nouvelle UI : ajouter CSS dans la zone `🆕 v1.19.0 — Memory Inspector` de `style.css` + variants thème clair
+
+**Exemples de futures sections candidates** : Service Worker state (`navigator.serviceWorker.getRegistration()` → scope, controlling/installing/waiting), History stack (`HistoryManager.canUndo/canRedo` + nb d'entries en pile), Backups recents details (lecture des 3 derniers backups via `SessionBackups.listAll`).
+
+---
+
 ### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)
 
 Module `js/gpxImport.js` (~310 lignes IIFE) → `window.GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`.

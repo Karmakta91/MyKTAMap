@@ -14893,3 +14893,375 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   border-color: var(--kta-light-accent) !important;
   color: var(--kta-light-text) !important;
 }
+
+/* ===========================================================
+   🆕 v1.19.0 — Memory Inspector
+   Modale topo lisible de ce qui est chargé en mémoire
+   =========================================================== */
+
+.kta-mem-inspector-boite {
+  max-width:  720px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 88vh !important;
+  display:    flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .kta-mem-inspector-boite { max-width: 920px; }
+}
+@media (min-width: 1440px) {
+  .kta-mem-inspector-boite { max-width: 1100px; }
+}
+
+.kta-mem-loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.kta-mem-header-stamp {
+  font-size: 12px;
+  color: #8892a4;
+  text-align: center;
+  margin: 4px 0 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+
+.kta-mem-section {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+}
+.kta-mem-section-titre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kta-mem-total {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #c8d0e0;
+  padding: 2px 8px;
+  background: rgba(140, 180, 255, 0.10);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 10px;
+}
+
+.kta-mem-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+}
+.kta-mem-row:last-child { border-bottom: none; }
+.kta-mem-lbl {
+  flex: 0 0 auto;
+  min-width: 110px;
+  font-weight: 600;
+  color: #8892a4;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.kta-mem-val {
+  flex: 1 1 auto;
+  color: #e8eaf0;
+  word-break: break-word;
+}
+.kta-mem-dim    { color: #8892a4; font-size: 11.5px; }
+.kta-mem-num    { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; color: #c8d0e0; text-align: right; white-space: nowrap; }
+.kta-mem-warn   { color: #ff8c8c; font-size: 12px; font-weight: 500; }
+
+.kta-mem-flags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.kta-mem-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(244, 197, 66, 0.14);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  white-space: nowrap;
+}
+.kta-mem-tag-dim {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8892a4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+.kta-mem-tag-on {
+  background: rgba(110, 226, 138, 0.16);
+  color: #6ee28a;
+  border-color: rgba(110, 226, 138, 0.35);
+}
+.kta-mem-tag-warn {
+  background: rgba(255, 140, 140, 0.16);
+  color: #ff8c8c;
+  border-color: rgba(255, 140, 140, 0.35);
+}
+
+/* Table localStorage */
+.kta-mem-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.kta-mem-table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.kta-mem-table thead th.kta-mem-num { text-align: right; }
+.kta-mem-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+.kta-mem-table tbody tr:last-child td { border-bottom: none; }
+.kta-mem-table code {
+  font-size: 11.5px;
+  color: #c8d0e0;
+  background: rgba(140, 180, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.kta-mem-bar-wrap {
+  margin-top: 3px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.kta-mem-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f4c542, #d9a82e);
+  transition: width 0.3s ease;
+}
+
+/* IDB database blocks */
+.kta-mem-db {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(140, 180, 255, 0.04);
+  border: 1px solid rgba(140, 180, 255, 0.12);
+  border-radius: 6px;
+}
+.kta-mem-db-titre {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #c8d0e0;
+  margin-bottom: 4px;
+}
+.kta-mem-db-titre code {
+  font-size: 12px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.kta-mem-store {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 14px;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-mem-store-name {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #c8d0e0;
+}
+
+/* Cache PWA list */
+.kta-mem-cache-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-mem-cache-row code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.kta-mem-cache-active {
+  background: rgba(244, 197, 66, 0.06);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.kta-mem-cache-active code {
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+}
+.kta-mem-cache-star {
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+  color: #f4c542;
+}
+.kta-mem-cache-sample {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.kta-mem-sample-titre {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.kta-mem-asset {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #8cb4ff;
+  padding: 2px 0;
+  word-break: break-all;
+}
+
+/* Storage estimate bar */
+.kta-mem-quota-bar {
+  display: inline-block;
+  width: 160px;
+  max-width: 60%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.kta-mem-quota-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ee28a 0%, #f4c542 70%, #ff8c8c 100%);
+  transition: width 0.3s ease;
+}
+
+.kta-mem-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===========================================================
+   🆕 v1.19.0 — Variants thème clair (Memory Inspector)
+   =========================================================== */
+body.kta-theme-light .kta-mem-header-stamp,
+html.kta-theme-light .kta-mem-header-stamp,
+body.kta-theme-light .kta-mem-section,
+html.kta-theme-light .kta-mem-section {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-section-titre,
+html.kta-theme-light .kta-mem-section-titre {
+  color: var(--kta-light-accent-hover) !important;
+  border-bottom-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-mem-total,
+html.kta-theme-light .kta-mem-total {
+  background: rgba(140, 180, 255, 0.15) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-row,
+html.kta-theme-light .kta-mem-row {
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-lbl,
+html.kta-theme-light .kta-mem-lbl,
+body.kta-theme-light .kta-mem-dim,
+html.kta-theme-light .kta-mem-dim {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-mem-val,
+html.kta-theme-light .kta-mem-val,
+body.kta-theme-light .kta-mem-num,
+html.kta-theme-light .kta-mem-num {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-tag,
+html.kta-theme-light .kta-mem-tag {
+  background: var(--kta-light-accent-bg) !important;
+  color: var(--kta-light-accent-hover) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-mem-tag-dim,
+html.kta-theme-light .kta-mem-tag-dim {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--kta-light-text-muted) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-table code,
+html.kta-theme-light .kta-mem-table code,
+body.kta-theme-light .kta-mem-cache-row code,
+html.kta-theme-light .kta-mem-cache-row code {
+  background: rgba(140, 180, 255, 0.10) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-db,
+html.kta-theme-light .kta-mem-db {
+  background: rgba(140, 180, 255, 0.06) !important;
+  border-color: rgba(140, 180, 255, 0.20) !important;
+}
+body.kta-theme-light .kta-mem-db-titre code,
+html.kta-theme-light .kta-mem-db-titre code {
+  color: #1e3a8a !important;
+  background: rgba(140, 180, 255, 0.12) !important;
+}
+body.kta-theme-light .kta-mem-bar-wrap,
+html.kta-theme-light .kta-mem-bar-wrap,
+body.kta-theme-light .kta-mem-quota-bar,
+html.kta-theme-light .kta-mem-quota-bar {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+body.kta-theme-light .kta-mem-cache-active,
+html.kta-theme-light .kta-mem-cache-active {
+  background: var(--kta-light-accent-bg) !important;
+}
+body.kta-theme-light .kta-mem-asset,
+html.kta-theme-light .kta-mem-asset {
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-mem-footer,
+html.kta-theme-light .kta-mem-footer {
+  border-top-color: var(--kta-light-border) !important;
+}

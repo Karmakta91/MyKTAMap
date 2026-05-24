@@ -4,6 +4,36 @@
 
 ---
 
+## 🆕 Nouveautés v1.19.0 (24/05/2026) — 📊 État mémoire
+
+> Nouvel outil de transparence pour comprendre exactement ce que l'app a chargé en mémoire dans ton navigateur. Pratique pour diagnostiquer un problème, vérifier ce qui consomme de la place, ou envoyer un rapport au mainteneur en cas de bug.
+
+### 📊 Voir l'état mémoire
+
+Depuis l'écran d'accueil, clique sur **⚙️ Configuration** puis dans la nouvelle section **📊 Inspecteur**, clique sur **📊 Voir l'état mémoire**. Une fenêtre s'ouvre avec un topo lisible en 5 sections :
+
+| Section | Ce que tu vois |
+|---|---|
+| 🧠 **Runtime** | Version de l'app, plan chargé (nom, dimensions, options activées), session active (combien de points/tracés/zones/structures tu as), modules JS chargés/manquants |
+| 🗂️ **localStorage** | Liste des données MyKTAMap stockées localement avec leur taille (favoris, préférences, sessions, etc.) |
+| 💾 **IndexedDB** | Bases de données locales (ZIPs mémorisés des plans, snapshots de session, photos POI) avec le nombre d'éléments dans chaque |
+| 📦 **Cache PWA** | Liste des assets cachés par le Service Worker pour le mode hors-ligne (mise en évidence du cache actif) |
+| 📊 **Storage estimate** | Combien d'espace ton navigateur a réservé à l'app et combien tu en utilises (barre verte → rouge selon usage) |
+
+### 📋 Copier le rapport
+
+Bouton **📋 Copier le rapport** en bas de la fenêtre : copie tout dans le presse-papier sous forme de texte lisible, prêt à coller dans un message Discord, un mail ou un ticket GitHub. **Utile si tu remontes un bug** : tu joins le rapport et le mainteneur a immédiatement le contexte technique sans avoir à te demander 15 trucs.
+
+### 🔄 Rafraîchir
+
+Bouton **🔄 Rafraîchir** : recalcule tout (par exemple après un import, pour voir le delta). La fenêtre garde ton contexte, pas besoin de tout refermer/réouvrir.
+
+### 🛡️ Lecture seule, 100% local
+
+L'Inspecteur **ne fait QUE de la lecture** locale dans ton navigateur. Aucune donnée n'est envoyée vers Internet, aucune écriture n'est faite. Cohérent avec la philosophie zéro-télémétrie de MyKTAMap.
+
+---
+
 ## 🆕 Hotfix v1.18.1 (24/05/2026) — La légende voyage aussi en GPX + preview clair
 
 > Petit complément à v1.18.0 sur 2 axes : (1) la légende personnalisée du plan voyage aussi avec le format **GPX** (pas seulement le KMZ), et (2) quand tu importes un KMZ ou un GPX, tu vois explicitement avant la génération si une légende est embarquée.
