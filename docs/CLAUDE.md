@@ -4161,6 +4161,131 @@ Dans `js/sessionBackups.js` :
 
 ---
 
+### 58. v1.17.0 — Générateur accessible : Mode Simple/Avancé + Légende plan-level (depuis v1.17.0)
+
+Refonte UX du Générateur 📦 Créer / Modifier un plan (`js/createConf.js`). Deux changements liés : un switcher Simple/Avancé pour rendre le démarrage d'un plan trivial, et une nouvelle source de vérité `plan.customLegend` pour partager une légende personnalisée avec tous les utilisateurs d'un plan.
+
+#### 58.1 Switcher Simple/Avancé
+
+**Helpers ajoutés** (top-level `js/createConf.js`) :
+
+- `_lirePlannerMode()` → string `"simple"|"avance"` (lit `localStorage["myktamap_planner_mode"]`, default `"simple"` au tout premier launch)
+- `_ecrirePlannerMode(mode)` → persist localStorage
+- `_appliquerPlannerMode(mode)` → applique au DOM (toggle bouton actif, set `data-planner-mode` sur `#kta-planner-corps`, met à jour le hint texte, masque le switcher en mode Modifier, auto-charge les icônes built-in en Simple)
+
+**HTML** : nouveau bloc `<div class="kta-planner-mode-switcher">` avec 2 boutons (data-mode="simple" / data-mode="avance") + `<p class="kta-planner-mode-hint">` juste après l'ouverture de `#kta-planner-corps`.
+
+**Sections cachées en Simple via marqueur `data-planner-advanced="1"`** :
+
+| Section | Type |
+|---|---|
+| Row `pl_collision` (intra Images) | Champ inline |
+| 3. Calques image | Section complète |
+| 4. Calques données | Section complète |
+| 5. Tracking | Section complète |
+| 6. Icônes & Tags | Section complète |
+| 6 bis. 🏷️ Légende du plan (nouveau) | Section complète |
+| 7. Géoréférencement GPS | Section complète |
+
+**Règle CSS unique** dans `css/style.css` (vers ligne 14820) :
+
+```css
+#kta-planner-corps[data-planner-mode="simple"] [data-planner-advanced="1"] {
+  display: none !important;
+}
+```
+
+**Auto-chargement icônes built-in en Simple** : dans `_appliquerPlannerMode`, si `mode === "simple"` et que `#pl_icons_list` ne contient aucune `.kta-planner-icon-row`, on appelle `_chargerIconesDefaut()` automatiquement. Sinon le ZIP généré serait vide d'icônes → markers data layer cassés au load (404 silencieux).
+
+**Mode Modifier forcé en Avancé** : quand l'utilisateur charge un ZIP existant via le drop zone (`_chargerZipModifier` → `_preRemplirFormulaire`), `_plannerMode === "modifier"` → `_appliquerPlannerMode` override le mode demandé et force `"avance"` + masque le switcher (`#kta-planner-mode-switcher.style.display = "none"`). Justification : passer en Simple en mode Modifier écraserait les customs / dataLayers / imageLayers / icons custom du plan source au `_genererZip` (= les sections cachées ne sont pas lues → arrays vides en sortie). Préserve l'intégrité du plan modifié.
+
+#### 58.2 Éditeur légende plan-level (mode Avancé)
+
+Nouvelle source de vérité **`plan-config.json > plan.customLegend`** (cascade niveau plan, lue par `LegendCustomization.loadPlanState()` au boot du plan). Format identique à `getSessionState()` : `{ schemaVersion, labels, hidden, customEntries }`.
+
+**Architecture sans modifier `legendCustomization.js`** : l'éditeur `LC.ouvrirEditeur` mute la session courante (pas conçu pour un state externe). On utilise un **pattern de swap session ↔ plan** dans `_ouvrirEditeurLegendePlan` :
+
+```js
+function _ouvrirEditeurLegendePlan() {
+  const LC = window.LegendCustomization;
+  // 1. Sauvegarde la session courante
+  const savedSession = LC.getSessionState();
+  // 2. Charge le state plan dans la session pour permettre l'édition
+  LC.loadSessionState(_plannerPlanLegend || null);
+  // 3. Ouvre l'éditeur normal (qui mute la session)
+  LC.ouvrirEditeur({
+    onClose: function() {
+      // 4. Capture du state édité
+      _plannerPlanLegend = _plannerLegendStateNormalize(LC.getSessionState());
+      // 5. Restore la session vraie
+      LC.loadSessionState(savedSession);
+      // 6. Refresh status display
+      _plannerLegendStatus();
+    }
+  });
+}
+```
+
+⚠️ **Side effect transient pendant l'édition** : la session est temporairement remplacée par le state plan en cours d'édition. Acceptable car le Générateur s'ouvre depuis le loader home (pas dans map mode) → l'user n'observe pas l'écart. Si on déplaçait le Générateur en map mode plus tard, il faudrait soit refactorer `LC.ouvrirEditeur` pour accepter un `stateOverride` + `onCommit`, soit suspendre les listeners visuels pendant le swap.
+
+**Normalisation `_plannerLegendStateNormalize(state)`** : retourne `null` si tous les arrays/objects sont vides (zéro override). Évite de polluer `plan-config.json` avec un `customLegend: { labels:{}, hidden:{}, customEntries:[] }` inutile + cache PWA bumpé pour rien chez les utilisateurs.
+
+**Status display `_plannerLegendStatus()`** : « ✏️ Personnalisée : N renommés · M masqués · K customs » (avec classe `.kta-planner-legend-status-actif` = accent ambre) ou « ✏️ Aucune personnalisation (cascade défaut MKM) » (gris muted).
+
+**Pre-fill en mode Modifier** : `_preRemplirFormulaire` lit `config.plan.customLegend` du ZIP source, passe par `_plannerLegendStateNormalize`, assigne à `_plannerPlanLegend`, appelle `_plannerLegendStatus()` puis `_appliquerPlannerMode("avance")` (cohérence : si le plan source a une légende custom, l'user doit voir/éditer cette section).
+
+**Embed au `_genererZip`** : juste après les flags conditionnels (multiLevel, tiledV2, georef) → `if (_plannerPlanLegend) planObj.customLegend = _plannerPlanLegend;`. Rétro-compat absolue : champ totalement absent sinon (pattern multiLevel — les versions ≤ v1.16.x ignorent un champ inconnu sans broncher).
+
+#### 58.3 État global module
+
+```js
+let _plannerPlanLegend = null;  // null = pas de perso (cascade défaut MKM)
+const PLANNER_MODE_LS_KEY = "myktamap_planner_mode";  // "simple" | "avance"
+```
+
+Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `afficherPlanner`).
+
+#### 58.4 CSS ajouté (~140 lignes en fin de `css/style.css`)
+
+| Classe | Rôle |
+|---|---|
+| `.kta-planner-mode-switcher` | Conteneur flex centré du segmented control |
+| `.kta-planner-mode-btn` | Bouton mode (default ghost, `.kta-actif` = jaune charte + texte sombre + shadow) |
+| `.kta-planner-mode-hint` | Phrase d'aide italique sous le switcher |
+| `.kta-planner-legend-status` | Bloc status display (gris muted par défaut) |
+| `.kta-planner-legend-status-actif` | État perso actif (fond accent ambre, texte saturé) |
+| `.kta-planner-legend-actions` | Conteneur flex des 2 boutons (✏️ Modifier + 🔄 Reset) |
+
+**Variants thème clair** : ~30 lignes `body.kta-theme-light` / `html.kta-theme-light` qui basculent sur les variables `--kta-light-*` (cf §53 pour le pattern complet). Couvre les 6 classes ci-dessus.
+
+#### 58.5 Pièges & conventions
+
+⚠️ **Ne PAS lire les sections cachées au `_genererZip`** : les sections Avancé sont seulement masquées en CSS (`display: none`), pas démontées du DOM. `_genererZip` lit toujours les inputs via `getElementById` → les valeurs sont récupérées même en mode Simple (= valeurs default vides). C'est l'effet voulu (un plan généré en Simple a zéro custom layer / icons / tracking custom / georef), mais à garder en tête si on ajoute un futur champ "avancé" qui nécessite une valeur non-vide pour fonctionner.
+
+⚠️ **Ordre dans `_appliquerPlannerMode`** : on applique l'attribut `data-planner-mode` AVANT le toggle des boutons et l'auto-load icônes. Cela permet aux modules consommateurs de lire l'attribut dans leurs handlers `change`/`click` sans timing race.
+
+⚠️ **Mode Modifier override sticky** : même si l'user a `localStorage["myktamap_planner_mode"] = "simple"`, `_appliquerPlannerMode` force `"avance"` dès que `_plannerMode === "modifier"`. Le sticky n'est PAS écrasé (l'user retrouvera Simple au prochain "Nouveau plan").
+
+⚠️ **Swap session ↔ plan** : si une exception est levée dans `LC.ouvrirEditeur` AVANT le `onClose`, la session reste désynchronisée. Acceptable car l'éditeur est testé et stable depuis v1.16.0, mais à monitorer si on ajoute des features qui peuvent faire planter l'éditeur.
+
+⚠️ **Pas exposé via API publique** : `_plannerPlanLegend` reste un état module-local. Si on a besoin d'y accéder depuis un autre module (ex: pour debug ou pour un futur "Export/Import légende plan-level seul"), il faudra exposer un getter `window.PlannerLegend = { get, set, reset, isEmpty }` au top du module.
+
+#### 58.6 Pour étendre
+
+**Ajouter un nouveau champ "avancé" dans le Générateur** :
+1. Ajouter le HTML avec marqueur `data-planner-advanced="1"` sur le wrapper (section ou row selon granularité)
+2. Lire la valeur dans `_genererZip` SANS supposer qu'elle est non-vide (= dégradation gracieuse en Simple)
+3. Si la valeur en Simple DOIT être non-vide (ex: nouvelle feature obligatoire), ajouter un default raisonnable dans `_appliquerPlannerMode` quand mode === "simple"
+
+**Migrer un champ "avancé" vers Simple** :
+1. Retirer le marqueur `data-planner-advanced="1"` du wrapper
+2. Tester que le mode Simple reste lisible (la section est ajoutée au layout)
+3. Mettre à jour la doc utilisateur (`docs/README_USER.md`) + entrée AI_CONTEXT.md
+
+**Plan-level UI pour une autre cascade** (ex: `plan.customIcons`) : suivre le pattern de swap dans `_ouvrirEditeurLegendePlan` — sauvegarde state courant, charge état plan, ouvre éditeur standard, capture au close, restore.
+
+---
+
 ### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)
 
 Module `js/gpxImport.js` (~310 lignes IIFE) → `window.GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`.

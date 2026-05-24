@@ -43,6 +43,36 @@ let _plannerOrigAssets = {};
 let _plannerPhotosFromZip = [];
 let _plannerMode       = "nouveau";
 
+// 🆕 v1.17.0 — État de la légende plan-level (= source de vérité pour
+// `plan.customLegend` du plan-config.json généré). null = pas de
+// personnalisation (cascade défaut MKM). Sinon : objet sérialisable au
+// format `LegendCustomization.getSessionState()` :
+//   { schemaVersion, labels, hidden, customEntries }
+// Modifié par l'éditeur ouvert depuis la section "🏷️ Légende du plan"
+// (mode Avancé uniquement). Embed dans le ZIP final via _genererZip.
+// Reset à chaque ouverture de modale, pre-rempli en mode Modifier depuis
+// `config.plan.customLegend` du ZIP source.
+let _plannerPlanLegend = null;
+
+// 🆕 v1.17.0 — Clé localStorage pour la persistance sticky du mode Simple/
+// Avancé du Générateur. Valeurs : "simple" (default) | "avance". Lu au boot
+// de la modale via _lirePlannerMode. Forcé à "avance" en mode Modifier
+// (impossible de simplifier l'édition d'un plan existant sans risquer de
+// perdre customs / dataLayers / imageLayers / icons custom).
+const PLANNER_MODE_LS_KEY = "myktamap_planner_mode";
+
+function _lirePlannerMode() {
+  try {
+    const v = localStorage.getItem(PLANNER_MODE_LS_KEY);
+    if (v === "avance" || v === "simple") return v;
+  } catch(e) {}
+  return "simple";  // default au tout premier launch
+}
+
+function _ecrirePlannerMode(mode) {
+  try { localStorage.setItem(PLANNER_MODE_LS_KEY, mode); } catch(e) {}
+}
+
 // 🌍 v173 : feature flag pour l'UI Import KMZ.
 // v1.14.20-hotfix4 : ACTIVÉ (KARMA validation finale du flow — icônes
 // désormais préservées par genererZipMyktamap > opts.assets, plus de
@@ -70,6 +100,19 @@ function afficherPlanner() {
       </div>
 
       <div class="kta-readme-modal-corps" id="kta-planner-corps">
+
+        <!-- 🆕 v1.17.0 — SWITCHER SIMPLE / AVANCÉ
+             Mode Simple = strict minimum (image + nom + version + auteur +
+             V2 + M-LVL). Mode Avancé = formulaire complet (= comportement
+             v1.16.x et antérieur). Default = Simple, persisté en localStorage.
+             En mode Modifier (chargement d'un ZIP existant), on force
+             Avancé + on masque le switcher pour éviter de perdre les
+             customs / dataLayers / imageLayers / icons custom du plan source. -->
+        <div class="kta-planner-mode-switcher" id="kta-planner-mode-switcher" role="tablist" aria-label="Mode du générateur">
+          <button type="button" class="kta-planner-mode-btn" data-mode="simple" role="tab">🚀 Simple</button>
+          <button type="button" class="kta-planner-mode-btn" data-mode="avance" role="tab">⚙️ Avancé</button>
+        </div>
+        <p class="kta-planner-mode-hint" id="kta-planner-mode-hint"></p>
 
         ${KTA_KMZ_IMPORT_UI_ENABLED ? `
         <!-- 🌍 IMPORT KMZ (depuis v173) : entrée alternative au planner classique.
@@ -233,7 +276,7 @@ function afficherPlanner() {
               <span class="kta-planner-upload-nom" id="pl_baseImage_nom">Aucun fichier</span>
             </div>
 
-            <div class="kta-planner-upload-ligne">
+            <div class="kta-planner-upload-ligne" data-planner-advanced="1">
               <span class="kta-cfg-label">Carte de collision <span class="kta-planner-hint">(optionnel)</span></span>
               <label class="kta-planner-upload-btn" for="pl_collision">📂 Choisir</label>
               <input type="file" id="pl_collision" accept="image/*" style="display:none">
@@ -297,7 +340,7 @@ function afficherPlanner() {
              v1.14.20-hotfix3 disparaît avec ce nouvel ordre. -->
 
         <!-- 3. CALQUES IMAGE -->
-        <div class="kta-aide-section kta-pl-col-left">
+        <div class="kta-aide-section kta-pl-col-left" data-planner-advanced="1">
           <div class="kta-aide-section-titre">
             🗂️ Calques image
             <button class="kta-planner-add-btn" id="pl_addImageLayer">+ Ajouter</button>
@@ -308,7 +351,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 4. CALQUES DONNÉES -->
-        <div class="kta-aide-section kta-pl-col-left">
+        <div class="kta-aide-section kta-pl-col-left" data-planner-advanced="1">
           <div class="kta-aide-section-titre">
             📊 Calques de données
             <button class="kta-planner-add-btn" id="pl_addDataLayer" type="button">+ Ajouter</button>
@@ -340,7 +383,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 5. TRACKING -->
-        <div class="kta-aide-section kta-pl-col-right">
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">🧭 Tracking</div>
           <div class="kta-planner-grille">
             <label class="kta-cfg-label">
@@ -373,7 +416,7 @@ function afficherPlanner() {
         </div>
 
         <!-- 6. ICÔNES & TAGS -->
-        <div class="kta-aide-section kta-pl-col-right">
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">
             🎨 Icônes &amp; Tags
             <div style="display:inline-flex;gap:6px;margin-left:10px;">
@@ -398,6 +441,34 @@ function afficherPlanner() {
           </div>
         </div>
 
+        <!-- 🆕 v1.17.0 — 6 bis. LÉGENDE DU PLAN (plan-level)
+             Personnalisation cascade NIVEAU PLAN : appliquée à TOUS les
+             utilisateurs qui chargeront ce plan (l'user peut toujours
+             surcharger sa session par-dessus). Stocké dans
+             plan-config.json > plan.customLegend. Format identique à
+             LegendCustomization.getSessionState() : { schemaVersion,
+             labels, hidden, customEntries }.
+
+             Pattern : l'éditeur LegendCustomization.ouvrirEditeur écrit
+             dans la session courante. Donc au click "✏️ Modifier", on
+             swap temporairement la session avec _plannerPlanLegend, on
+             ouvre l'éditeur, et au close on capture le state édité puis
+             on restore la session. Subtil mais évite de modifier le
+             module legendCustomization.js pour cette release. -->
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
+          <div class="kta-aide-section-titre">🏷️ Légende du plan <span class="kta-planner-hint">(plan-level)</span></div>
+          <p class="kta-planner-info">
+            Personnalisation appliquée à <strong>TOUS les utilisateurs</strong> qui chargeront ce plan
+            (renommages, masquages, entrées custom dessinables). L'utilisateur peut toujours
+            <strong>surcharger sa propre session</strong> par-dessus (cascade <code>session &gt; plan &gt; défaut</code>).
+          </p>
+          <div id="pl_legend_status" class="kta-planner-legend-status">Aucune personnalisation</div>
+          <div class="kta-planner-legend-actions">
+            <button type="button" class="kta-btn kta-btn-primary" id="pl_legend_edit">✏️ Modifier la légende du plan</button>
+            <button type="button" class="kta-btn kta-btn-ghost"   id="pl_legend_reset">🔄 Reset</button>
+          </div>
+        </div>
+
         <!-- 7. Georeferencement GPS (optionnel, v1.14.20) -->
         <!-- Embarque un calibrage 2 points (plan x/y vs GPS lat/lng)
              directement dans le plan-config.json sous plan.georef.
@@ -406,7 +477,7 @@ function afficherPlanner() {
              n existe pour ce plan au chargement, main.js le propage vers
              KmzExport.setCalibration => auto-rempli dans Export externe
              ET dans Reglages > Georeferencement (mode map). -->
-        <div class="kta-aide-section kta-pl-col-right">
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
           <div class="kta-aide-section-titre">🌐 Géoréférencement GPS <span class="kta-planner-hint">(optionnel)</span></div>
           <p class="kta-planner-info">
             Embarque un <strong>calibrage 2 points</strong> dans le plan généré.
@@ -462,6 +533,19 @@ function afficherPlanner() {
   _plannerOrigAssets = {};
   _plannerPhotosFromZip = [];  // 🆕 v1.9.3-B1d.γ.2 : reset buffer photos ZIP
   _plannerMode       = "nouveau";
+  _plannerPlanLegend = null;   // 🆕 v1.17.0 : reset état légende plan-level
+
+  // 🆕 v1.17.0 — Initialisation du mode Simple/Avancé. Lecture sticky
+  // localStorage, default "simple" au tout premier launch. _appliquerPlannerMode
+  // fait la mise à jour DOM (toggle bouton actif + attribut data sur corps).
+  _appliquerPlannerMode(_lirePlannerMode());
+
+  document.querySelectorAll("#kta-planner-mode-switcher .kta-planner-mode-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      _appliquerPlannerMode(btn.dataset.mode);
+      _ecrirePlannerMode(btn.dataset.mode);
+    });
+  });
 
   document.getElementById("kta-planner-close").addEventListener("click", function() { modal.remove(); });
   document.getElementById("kta-planner-annuler").addEventListener("click", function() { modal.remove(); });
@@ -635,7 +719,175 @@ function afficherPlanner() {
     _routerFichierImport(e.dataTransfer.files[0]);
   });
 
+  // 🆕 v1.17.0 — Légende plan-level : 2 boutons (✏️ Modifier + 🔄 Reset).
+  // L'éditeur LegendCustomization.ouvrirEditeur écrit dans la session.
+  // On swap temporairement session ↔ _plannerPlanLegend pour permettre
+  // l'édition, et on restore la session vraie au close.
+  const btnLegEdit  = document.getElementById("pl_legend_edit");
+  const btnLegReset = document.getElementById("pl_legend_reset");
+  if (btnLegEdit) {
+    btnLegEdit.addEventListener("click", function() {
+      _ouvrirEditeurLegendePlan();
+    });
+  }
+  if (btnLegReset) {
+    btnLegReset.addEventListener("click", function() {
+      if (!_plannerPlanLegend) {
+        _plannerLegendStatus();
+        return;
+      }
+      if (confirm("Effacer la personnalisation de légende du plan ?\n\nLa cascade reviendra à la valeur par défaut MKM.")) {
+        _plannerPlanLegend = null;
+        _plannerLegendStatus();
+      }
+    });
+  }
+  _plannerLegendStatus();  // état initial (= "Aucune personnalisation" au boot)
+
   document.getElementById("kta-planner-generer").addEventListener("click", _genererZip);
+}
+
+// =========================
+// 🆕 v1.17.0 — MODE SIMPLE / AVANCÉ
+// =========================
+// Applique le mode au DOM : data-planner-mode sur le corps + toggle des
+// boutons actifs + hint texte. Auto-charge les icônes built-in en mode
+// Simple (sinon le ZIP serait généré sans icônes → markers data layer
+// cassés). En mode Modifier, on force "avance" et on masque le switcher
+// pour éviter de perdre les customs / dataLayers / imageLayers / icons
+// custom du plan source (passer en Simple les écraserait au _genererZip).
+function _appliquerPlannerMode(mode) {
+  if (mode !== "simple" && mode !== "avance") mode = "simple";
+
+  // Mode Modifier → force Avancé (override toute préférence sticky)
+  if (_plannerMode === "modifier") mode = "avance";
+
+  const corps = document.getElementById("kta-planner-corps");
+  if (corps) corps.setAttribute("data-planner-mode", mode);
+
+  // Toggle bouton actif
+  document.querySelectorAll("#kta-planner-mode-switcher .kta-planner-mode-btn").forEach(function(btn) {
+    btn.classList.toggle("kta-actif", btn.dataset.mode === mode);
+  });
+
+  // Hint texte sous le switcher
+  const hint = document.getElementById("kta-planner-mode-hint");
+  if (hint) {
+    if (mode === "simple") {
+      hint.textContent = "🚀 Mode Simple : juste le minimum vital (image + nom + version + V2/M-LVL). Les icônes par défaut sont chargées automatiquement.";
+    } else {
+      hint.textContent = "⚙️ Mode Avancé : toutes les options (calques image + données, tracking, icônes custom, géoréférencement GPS, légende plan-level).";
+    }
+  }
+
+  // Masquer le switcher en mode Modifier (forcé en Avancé)
+  const sw = document.getElementById("kta-planner-mode-switcher");
+  if (sw) sw.style.display = (_plannerMode === "modifier") ? "none" : "";
+
+  // 🆕 Auto-load icônes built-in en mode Simple si la liste est vide.
+  // Sinon en Simple, l'user qui n'a pas cliqué "↺ Charger défauts" générerait
+  // un ZIP sans icônes (markers data layer cassés au load). En mode Avancé,
+  // on laisse l'user gérer (il peut vouloir partir de zéro).
+  if (mode === "simple") {
+    const list = document.getElementById("pl_icons_list");
+    const hasIcons = list && list.querySelectorAll(".kta-planner-icon-row").length > 0;
+    if (!hasIcons && typeof _chargerIconesDefaut === "function") {
+      try { _chargerIconesDefaut(); } catch(e) {
+        console.warn("[Planner] Auto-load icônes built-in (Simple mode) :", e);
+      }
+    }
+  }
+}
+
+// =========================
+// 🆕 v1.17.0 — LÉGENDE PLAN-LEVEL
+// =========================
+// Ouvre l'éditeur LegendCustomization en mode "édition plan-level" via le
+// pattern de swap session ↔ plan. Étapes :
+//   1. Sauvegarde de l'état session courant
+//   2. Charge _plannerPlanLegend (ou état vide) dans la session
+//   3. Ouvre l'éditeur (qui mute la session)
+//   4. Au close : capture session courante → _plannerPlanLegend
+//   5. Restore la session originelle
+//   6. Refresh le status display
+function _ouvrirEditeurLegendePlan() {
+  if (!window.LegendCustomization || typeof window.LegendCustomization.ouvrirEditeur !== "function") {
+    alert("Module LegendCustomization indisponible.");
+    return;
+  }
+  const LC = window.LegendCustomization;
+  // Étape 1 : capture de la session courante (pour la restaurer après édition)
+  let savedSession = null;
+  if (typeof LC.getSessionState === "function") {
+    try { savedSession = LC.getSessionState(); } catch(e) { savedSession = null; }
+  }
+  // Étape 2 : charge le state du plan en cours d'édition dans la session
+  if (typeof LC.loadSessionState === "function") {
+    try { LC.loadSessionState(_plannerPlanLegend || null); } catch(e) {
+      console.warn("[Planner] loadSessionState échec :", e);
+    }
+  }
+  // Étape 3 : ouverture de l'éditeur normal. Au onClose, on capture
+  // le state édité puis on restore la session vraie.
+  LC.ouvrirEditeur({
+    onChange: function() {
+      // Aucun side-effect ici — on capture uniquement au close (sinon
+      // re-render permanent à chaque tweak de l'éditeur).
+    },
+    onClose: function() {
+      // Étape 4 : capture du state édité
+      let editedState = null;
+      if (typeof LC.getSessionState === "function") {
+        try { editedState = LC.getSessionState(); } catch(e) {}
+      }
+      _plannerPlanLegend = _plannerLegendStateNormalize(editedState);
+      // Étape 5 : restore de la session originelle
+      if (typeof LC.loadSessionState === "function") {
+        try { LC.loadSessionState(savedSession || null); } catch(e) {
+          console.warn("[Planner] Restore session échec :", e);
+        }
+      }
+      // Étape 6 : refresh status display
+      _plannerLegendStatus();
+    }
+  });
+}
+
+// Normalise un state : retourne null si vide (zéro override), sinon objet
+// sérialisable propre. Évite d'écrire un customLegend tout vide dans le
+// plan-config.json (pollution inutile + cache PWA bumpé pour rien).
+function _plannerLegendStateNormalize(state) {
+  if (!state || typeof state !== "object") return null;
+  const labels  = state.labels        || {};
+  const hidden  = state.hidden        || {};
+  const customs = state.customEntries || [];
+  const hasLabels  = Object.keys(labels).length  > 0;
+  const hasHidden  = (Array.isArray(hidden) ? hidden.length : Object.keys(hidden).length) > 0;
+  const hasCustoms = Array.isArray(customs) && customs.length > 0;
+  if (!hasLabels && !hasHidden && !hasCustoms) return null;
+  return state;
+}
+
+// Met à jour le status display de la section légende plan-level.
+function _plannerLegendStatus() {
+  const el = document.getElementById("pl_legend_status");
+  if (!el) return;
+  if (!_plannerPlanLegend) {
+    el.textContent = "✏️ Aucune personnalisation (cascade défaut MKM)";
+    el.classList.remove("kta-planner-legend-status-actif");
+    return;
+  }
+  const labels  = Object.keys(_plannerPlanLegend.labels        || {}).length;
+  const hiddenC = (Array.isArray(_plannerPlanLegend.hidden)
+                    ? _plannerPlanLegend.hidden.length
+                    : Object.keys(_plannerPlanLegend.hidden || {}).length);
+  const customs = (_plannerPlanLegend.customEntries || []).length;
+  const parts = [];
+  if (labels  > 0) parts.push(labels  + " renommé" + (labels  > 1 ? "s" : ""));
+  if (hiddenC > 0) parts.push(hiddenC + " masqué"  + (hiddenC > 1 ? "s" : ""));
+  if (customs > 0) parts.push(customs + " custom"  + (customs > 1 ? "s" : ""));
+  el.textContent = "✏️ Personnalisée : " + parts.join(" · ");
+  el.classList.add("kta-planner-legend-status-actif");
 }
 // =========================
 // CHARGER ZIP POUR MODIFICATION
@@ -703,6 +955,16 @@ function _preRemplirFormulaire(config) {
   // du champ = false implicite (retro-compat plans v147 et avant).
   const mlEl = document.getElementById("pl_multiLevel");
   if (mlEl) mlEl.checked = (plan.multiLevel === true);
+
+  // 🆕 v1.17.0 — Légende plan-level : pre-fill depuis plan.customLegend si
+  // présent dans le ZIP source. Sinon null (= cascade défaut MKM). Refresh
+  // status display + bascule en Avancé (mode Modifier le force déjà mais
+  // on appelle _appliquerPlannerMode pour sync l'UI + masquer le switcher).
+  _plannerPlanLegend = (plan.customLegend && typeof plan.customLegend === "object")
+                        ? _plannerLegendStateNormalize(plan.customLegend)
+                        : null;
+  if (typeof _plannerLegendStatus === "function") _plannerLegendStatus();
+  if (typeof _appliquerPlannerMode === "function") _appliquerPlannerMode("avance");
 
   // 🌐 v1.14.20 — Géoréférencement GPS : si le plan-config.json importé
   // contient `plan.georef = { pointA, pointB }`, on pré-remplit les 8
@@ -2352,6 +2614,16 @@ async function _genererZip() {
     };
     if (multiLevel)     planObj.multiLevel = true;
     if (tilingManifest) planObj.tiledV2    = true;
+
+    // 🆕 v1.17.0 — Légende plan-level : si l'utilisateur a personnalisé
+    // la légende dans le Générateur (section "🏷️ Légende du plan" en mode
+    // Avancé), embed l'état dans `planObj.customLegend`. Rétro-compat
+    // absolue : champ totalement absent si rien à personnaliser (les
+    // versions ≤ v1.16.x ignorent un champ inconnu sans broncher, et
+    // `_plannerLegendStateNormalize` retourne null pour un état vide,
+    // donc pas de pollution du JSON même si l'user a ouvert/fermé
+    // l'éditeur sans rien modifier).
+    if (_plannerPlanLegend) planObj.customLegend = _plannerPlanLegend;
 
     // 🌐 v1.14.20 — Géoréférencement GPS optionnel. Si TOUS les 8 champs
     // sont remplis ET que le calibrage est valide (transform construisible),

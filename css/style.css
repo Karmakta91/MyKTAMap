@@ -14761,3 +14761,135 @@ body.kta-theme-light .kta-legend-label:focus {
   border-color: var(--kta-light-accent) !important;
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25);
 }
+
+/* ===========================================================
+   🆕 v1.17.0 — Switcher Simple/Avancé du Générateur
+   =========================================================== */
+
+.kta-planner-mode-switcher {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin: 4px 0 6px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.kta-planner-mode-btn {
+  flex: 1 1 auto;
+  max-width: 200px;
+  padding: 10px 18px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: #c8d0e0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.kta-planner-mode-btn:hover {
+  background: rgba(244, 197, 66, 0.10);
+  color: #f4c542;
+}
+.kta-planner-mode-btn.kta-actif {
+  background: #f4c542;
+  color: #1a1f2e;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(244, 197, 66, 0.35);
+}
+
+.kta-planner-mode-hint {
+  margin: 0 0 12px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-style: italic;
+  color: #8892a4;
+  text-align: center;
+  line-height: 1.4;
+}
+
+/* Masquage automatique des sections avancées en mode Simple.
+   data-planner-advanced="1" est appliqué dans le HTML de createConf.js
+   sur toutes les sections / inputs réservés au mode Avancé. */
+#kta-planner-corps[data-planner-mode="simple"] [data-planner-advanced="1"] {
+  display: none !important;
+}
+
+/* ===========================================================
+   🆕 v1.17.0 — Section légende plan-level (Avancé only)
+   =========================================================== */
+
+.kta-planner-legend-status {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: #8892a4;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  font-style: italic;
+  line-height: 1.5;
+}
+.kta-planner-legend-status.kta-planner-legend-status-actif {
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.08);
+  border-color: rgba(244, 197, 66, 0.25);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.kta-planner-legend-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.kta-planner-legend-actions .kta-btn {
+  flex: 0 1 auto;
+}
+
+/* ===========================================================
+   🆕 v1.17.0 — Variants thème clair
+   =========================================================== */
+
+body.kta-theme-light .kta-planner-mode-switcher,
+html.kta-theme-light .kta-planner-mode-switcher {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .kta-planner-mode-btn,
+html.kta-theme-light .kta-planner-mode-btn {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-planner-mode-btn:hover,
+html.kta-theme-light .kta-planner-mode-btn:hover {
+  background: var(--kta-light-accent-bg) !important;
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-planner-mode-btn.kta-actif,
+html.kta-theme-light .kta-planner-mode-btn.kta-actif {
+  background: var(--kta-light-accent) !important;
+  color: var(--kta-light-text) !important;
+  border-color: var(--kta-light-border-strong) !important;
+}
+
+body.kta-theme-light .kta-planner-mode-hint,
+html.kta-theme-light .kta-planner-mode-hint {
+  color: var(--kta-light-text-muted) !important;
+}
+
+body.kta-theme-light .kta-planner-legend-status,
+html.kta-theme-light .kta-planner-legend-status {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border) !important;
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-planner-legend-status-actif,
+html.kta-theme-light .kta-planner-legend-status-actif {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+  color: var(--kta-light-text) !important;
+}

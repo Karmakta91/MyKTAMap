@@ -4,6 +4,46 @@
 
 ---
 
+## 🆕 Nouveautés v1.17.0 (24/05/2026) — Générateur accessible
+
+> Le Générateur 📦 Créer / Modifier un plan a désormais 2 modes : **Simple** (par défaut pour les nouveaux plans) et **Avancé** (= comportement précédent). Plus une nouvelle façon de **partager une légende personnalisée** avec tous les utilisateurs d'un plan.
+
+### 🚀 Mode Simple — démarrer un plan en 30 secondes
+
+Quand tu cliques sur **🏗️ Générer un plan** depuis l'écran d'accueil, tu arrives désormais sur le mode **Simple** qui te demande juste le strict minimum :
+
+- **Une image** (upload PNG/JPG) OU un **canvas vierge** (avec dimensions + couleur de fond au choix : sépia, blanc, gris, noir)
+- Le **nom du plan**
+- Une **version** (default "V1")
+- Un **auteur** (optionnel — laisse vide si tu veux rester anonyme)
+- Les options **🏗️ Multi-niveau** et **🧱 V2 tuilé** si pertinent pour ton plan
+
+Clique sur 📦 Générer le ZIP → tu obtiens un plan prêt à charger immédiatement. Aucune autre saisie nécessaire — les icônes par défaut sont auto-chargées et tous les paramètres techniques (tracking, calques, etc.) prennent des valeurs raisonnables.
+
+### ⚙️ Mode Avancé — pour les plans complexes
+
+Bascule via le switcher en haut de la modale. Le mode Avancé te donne accès à tout ce qu'il y avait avant : carte de collision, calques image (légendes superposées), calques de données (points/tracés/zones précalculés), tracking custom, icônes custom, géoréférencement GPS, **et nouvelle section : 🏷️ Légende du plan** (cf ci-dessous).
+
+Ton choix est mémorisé entre les sessions (localStorage). Si tu charges un ZIP existant pour le modifier, le mode bascule automatiquement sur Avancé pour éviter de perdre tes customs en switchant vers Simple par erreur.
+
+### 🏷️ Légende personnalisée à l'échelle du plan (Avancé)
+
+Dans le mode Avancé du Générateur, nouvelle section **🏷️ Légende du plan**. Tu peux désormais **renommer les libellés de légende** (« Eau » → « Lac du fond »), **masquer les types inutilisés**, et **ajouter tes propres types dessinables** — qui s'appliqueront automatiquement à **tous les utilisateurs** qui chargeront ton plan.
+
+C'est la cascade niveau **plan** (un cran entre les défauts MKM et la session de chaque utilisateur). Tes utilisateurs peuvent toujours surcharger par-dessus avec leur propre session sans perdre tes choix.
+
+**Workflow** :
+1. Bouton **✏️ Modifier la légende du plan** → ouvre l'éditeur de légende habituel
+2. Tu fais tes personnalisations (renommer, masquer, ajouter customs dessinables)
+3. Tu fermes l'éditeur → ton état est capturé
+4. Au moment du 📦 Générer le ZIP, c'est embarqué dans `plan-config.json`
+
+Status affiché en live : « ✏️ Personnalisée : 3 renommés · 2 masqués · 1 custom » ou « ✏️ Aucune personnalisation (cascade défaut MKM) ».
+
+**Astuce** : pour reset, bouton 🔄 Reset à côté.
+
+---
+
 ## 🆕 Hotfix v1.16.1 (24/05/2026) — Auto-save PAR PLAN
 
 > Petite amélioration qui change beaucoup à l'usage quotidien si tu jongles entre plusieurs plans dans la même journée.

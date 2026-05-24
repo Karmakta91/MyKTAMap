@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.16.1` (24/05/2026)
+**📦 Version courante** : `v1.17.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.16.1](#-derniere-release--v1161)
+1. [🚀 Dernière release — v1.17.0](#-derniere-release--v1170)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,9 +40,15 @@
 
 ---
 
-## 🚀 Dernière release — v1.16.1
+## 🚀 Dernière release — v1.17.0
 
-📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.16.0) : **auto-save par plan** (slot localStorage indexé par planId + migration transparente de l'ancien slot unique). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans avoir besoin de restaurer un snapshot. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.16.x) : **Générateur accessible**. Nouveau mode **Simple** dans la modale 📦 Créer / Modifier un plan — l'utilisateur démarre un nouveau plan en 30 secondes (image + nom + version + V2/M-LVL → ZIP prêt à charger), sans avoir à toucher aux calques, tracking, icônes custom, etc. Le mode **Avancé** (= comportement v1.16.x) reste disponible via un switcher sticky en haut de la modale. **Nouvelle source de vérité plan-level legend** : section dédiée « 🏷️ Légende du plan » dans le mode Avancé qui embed les renommages / masquages / customs dans `plan-config.json > plan.customLegend` (= cascade niveau plan, partagée à tous les utilisateurs du plan). Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.16.1
+
+📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.16.0) : **auto-save par plan** (slot localStorage indexé par planId + migration transparente de l'ancien slot unique). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans avoir besoin de restaurer un snapshot.
 
 ---
 
@@ -856,7 +862,83 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-16-1" open>
+<details id="v1-17-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.17.0 : Générateur accessible — Mode Simple + Légende plan-level</strong></summary>
+
+Release MINOR (bump Y : 1.16.x → 1.17.0). Refonte UX du Générateur 📦 Créer / Modifier un plan : ajout d'un mode **Simple** focalisé débutants + nouvelle source de vérité **`plan.customLegend`** pour partager la personnalisation de légende avec tous les utilisateurs d'un plan.
+
+### 🚀 Step 1 — Mode Simple / Avancé du Générateur
+
+Switcher segmented control en haut de la modale, persistance sticky en localStorage (`myktamap_planner_mode`, default `simple` au premier launch).
+
+**Mode Simple** (strict minimum) :
+
+- 📋 Métadonnées : nom, version, auteur (optionnel)
+- 🖼️ Image principale : upload OU canvas vierge avec dims + couleur (4 presets sépia/blanc/gris/noir, 500-12000 px)
+- 🏗️ M-LVL (multi-niveau) — checkbox toujours visible (option courte mais structurante)
+- 🧱 V2 (tiledV2) — checkbox visible quand image dispo (cf `_majVisibiliteCheckboxV2`)
+- Auto-chargement des icônes built-in au boot du mode Simple (sinon ZIP sans icônes → markers data layer cassés au load)
+
+**Mode Avancé** (= comportement v1.16.x complet) :
+
+- Tout ce qui précède + carte de collision + calques image + calques données + tracking + icônes custom + géoréférencement GPS + **🏷️ Légende du plan** (nouveau, cf step 2)
+
+**Marqueurs `data-planner-advanced="1"`** : appliqué dans le HTML sur les 5 sections complètes (Calques image, Calques données, Tracking, Icônes, Géoréférencement) + la nouvelle section Légende plan-level + la row collision intra-Images. Règle CSS unique : `#kta-planner-corps[data-planner-mode="simple"] [data-planner-advanced="1"] { display: none !important }`.
+
+**Mode Modifier forcé en Avancé** : quand l'utilisateur charge un ZIP existant via le drop zone ou le file picker (`_chargerZipModifier`), `_plannerMode = "modifier"` → `_appliquerPlannerMode("avance")` est appelé dans `_preRemplirFormulaire`, et le switcher est masqué via `style.display = "none"`. Évite de perdre les customs / dataLayers / imageLayers / icons custom du plan source (passer en Simple les écraserait silencieusement au `_genererZip`).
+
+### 🏷️ Step 2 — Éditeur légende plan-level (Avancé only)
+
+Nouvelle section dédiée « 🏷️ Légende du plan » dans le mode Avancé. Embed l'état dans `plan-config.json > plan.customLegend` (cascade niveau plan : appliquée à tous les utilisateurs qui chargeront ce plan, surchargeable par leur session).
+
+**Architecture sans modifier `legendCustomization.js`** :
+
+L'éditeur `LegendCustomization.ouvrirEditeur` est conçu pour muter la session courante. Pour l'utiliser sur un state plan-level, on applique un **pattern de swap** :
+
+```js
+function _ouvrirEditeurLegendePlan() {
+  // 1. Sauvegarde de la session courante
+  const savedSession = LC.getSessionState();
+  // 2. Charge le state plan dans la session pour permettre l'édition
+  LC.loadSessionState(_plannerPlanLegend || null);
+  // 3. Ouvre l'éditeur (qui mute la session)
+  LC.ouvrirEditeur({
+    onClose: function() {
+      // 4. Capture du state édité
+      _plannerPlanLegend = _plannerLegendStateNormalize(LC.getSessionState());
+      // 5. Restore la session vraie
+      LC.loadSessionState(savedSession);
+      // 6. Refresh status display
+      _plannerLegendStatus();
+    }
+  });
+}
+```
+
+**Normalisation `_plannerLegendStateNormalize`** : retourne `null` si tous les arrays/objects sont vides (zéro override). Évite de polluer le `plan-config.json` avec un `customLegend: { labels:{}, hidden:{}, customEntries:[] }` inutile (cache PWA bumpé pour rien chez les utilisateurs).
+
+**Status display dynamique** : « ✏️ Personnalisée : N renommés · M masqués · K customs » (en accent ambre charte) ou « ✏️ Aucune personnalisation (cascade défaut MKM) » (en gris muted).
+
+**Boutons** : ✏️ Modifier la légende du plan + 🔄 Reset (avec `confirm()` natif).
+
+**Pre-fill en mode Modifier** : `_preRemplirFormulaire` lit `config.plan.customLegend` du ZIP source et pré-remplit `_plannerPlanLegend` via la même normalisation. Permet l'édition itérative du plan sans repartir de zéro.
+
+**Embed au `_genererZip`** : juste après les autres flags conditionnels (multiLevel, tiledV2, georef) → `if (_plannerPlanLegend) planObj.customLegend = _plannerPlanLegend`. Rétro-compat absolue : champ totalement absent sinon, les versions ≤ v1.16.x ignorent un champ inconnu sans broncher (pattern multiLevel).
+
+### 📂 Sources de vérité v1.17.0
+
+- `version.json` → `"v1.17.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.17.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.17.0"`
+- Aucun nouveau fichier — modifs internes à `js/createConf.js` (~300 lignes ajoutées : 6 nouvelles fonctions top-level + handlers + 1 nouvelle section HTML) et `css/style.css` (~140 lignes ajoutées : switcher + section légende + variants thème clair)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Le mode Simple/Avancé est un toggle UI local (persisté en localStorage). L'éditeur légende plan-level réutilise l'éditeur existant (qui mute la session locale, restaurée au close du swap). La nouvelle source de vérité `plan-config.json > plan.customLegend` reste un fichier 100% local embarqué dans le ZIP MyKTAMap. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-16-1">
 <summary><strong>🗓️ 24/05/2026 — 🩹 v1.16.1 : Hotfix auto-save PAR PLAN (slot localStorage indexé par planId)</strong></summary>
 
 Hotfix **PATCH** (bump Z : 1.16.0 → 1.16.1). Une seule modification structurelle, mais avec un fort impact UX terrain.
