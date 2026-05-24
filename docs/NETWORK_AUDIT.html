@@ -174,40 +174,27 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.22.0</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
   </p>
 
-  <p class="meta" style="margin-top:6px;">
-    <strong>v1.22.0 (Export / Import de profil utilisateur complet)</strong> :
-    <strong>AUCUNE nouvelle surface réseau</strong>. Nouveau module
-    <code>js/profileExportImport.js</code> (~640 lignes) qui remplace l'ancien export
-    « liste de plans » par un export profil complet (registry + préférences + favoris +
-    sessions + snapshots + tutorial + photos optionnelles + crashes optionnels). 100 % local :
-    lecture localStorage + IDB read-only + Blob téléchargé localement via
-    <code>URL.createObjectURL</code>. À l'import : lecture du fichier via
-    <code>File.text()</code> + écriture localStorage + IDB write. Photos POI base64 inline si
-    incluses (jamais transmises). <strong>Exclusions par design</strong> : ZIPs binaires des
-    plans (trop lourds), PIN/Face ID local + UnlockGate communautaire (jamais exportés —
-    risque fuite). Rétro-compat absolue avec l'ancien format <code>myktamap-plans-list</code>.
-    <strong>1 nouveau fichier</strong> ajouté à <code>ASSETS_TO_CACHE</code> :
-    <code>js/profileExportImport.js</code>.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
-    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
-  </p>
-
-  <p class="meta" style="margin-top:6px;">
-    <strong>v1.21.0 (Cycle « Onboarding + Export »)</strong> :
-    <strong>AUCUNE nouvelle surface réseau</strong>. 2 features 100 % locales :
-    (1) Tutorial = HTML statique en mémoire + flag <code>localStorage["myktamap_tutorial_seen_v1"]</code>.
-    (2) Stats globales export PDF = utilise jsPDF déjà chargé (lib locale), génère un Blob téléchargé
-    localement. Aucun fetch externe.
-    <strong>1 nouveau fichier</strong> ajouté à <code>ASSETS_TO_CACHE</code> :
-    <code>js/tutorial.js</code>.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
-    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+  <p class="meta" style="margin-top:6px; border-left: 3px solid #f4c542; padding-left: 12px; background: rgba(244, 197, 66, 0.06);">
+    🚧 <strong>Karma_dev pending (en cours, non releasé sur main)</strong> : 3 sujets accumulés
+    en attente du prochain push main. (1) Tutoriel premier-lancement enrichi (8 cards) — nouveau
+    module <code>js/tutorial.js</code> purement local (HTML statique + flag
+    <code>localStorage["myktamap_tutorial_seen_v1"]</code>). (2) Stats globales export PDF —
+    extension de <code>js/statsGlobales.js</code> via jsPDF déjà chargé (Blob téléchargé
+    localement). (3) Export / Import de profil utilisateur complet — nouveau module
+    <code>js/profileExportImport.js</code> qui remplace l'ancien export « liste de plans » par
+    un export profil complet (registry + préférences + favoris + sessions + snapshots +
+    tutorial + photos optionnelles + crashes optionnels). 100 % local : lecture localStorage
+    + IDB read-only + Blob téléchargé localement. <strong>Exclusions par design</strong> :
+    ZIPs binaires des plans (trop lourds) + PIN/Face ID + UnlockGate communautaire (sécurité,
+    jamais exportés). Rétro-compat absolue avec l'ancien format
+    <code>myktamap-plans-list</code>. Tout reste sur Karma_dev en attente du push main avec
+    versioning final. <strong>Aucune nouvelle surface réseau</strong> pour aucun des 3 sujets.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -240,21 +227,6 @@
     <code>controllerchange</code> toast OOMGuard local), Fixes (auto-save par plan, CSS thème
     clair des modales logs). <strong>1 nouveau fichier</strong> ajouté à
     <code>ASSETS_TO_CACHE</code> : <code>js/memInspector.js</code>.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
-    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
-  </p>
-
-  <p class="meta" style="margin-top:6px;">
-    <strong>v1.20.0 (Cycle « Polish UX + DX »)</strong> <em>(sous-itération de v1.19.1, jamais déployée séparément)</em> :
-    <strong>AUCUNE nouvelle surface réseau, aucun nouveau fichier</strong>. 3 améliorations
-    indépendantes : (1) Aide intégrée enrichie (HTML statique), (2) helper
-    <code>compareSemver()</code> dans <code>js/updateChecker.js</code> (fonction pure sans I/O,
-    exposée via <code>window.UpdateChecker.compareSemver</code>), (3) hook client
-    <code>navigator.serviceWorker.addEventListener("controllerchange")</code> dans
-    <code>index.html</code> qui affiche un toast non-bloquant quand le SW prend le contrôle
-    (= event navigateur 100 % local, aucun fetch externe). Le SW MyKTAMap fait déjà
-    <code>skipWaiting()</code> + <code>clients.claim()</code> — le nouveau hook se contente d'observer.
-    Modifs internes à 3 modules (~155 lignes total). Bump <code>CACHE_NAME</code> uniquement.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
     <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
@@ -782,31 +754,6 @@
     </thead>
     <tbody>
       <tr>
-        <td>v1.22.0</td>
-        <td>25/05/2026</td>
-        <td>
-          <strong>Export / Import de profil utilisateur complet</strong> — <strong>aucune nouvelle
-          surface réseau</strong>. Nouveau module <code>js/profileExportImport.js</code> (~640 lignes)
-          qui remplace l'ancien export « liste de plans » par un export profil complet (registry +
-          préférences + favoris + sessions + snapshots + tutorial + photos optionnelles + crashes
-          optionnels). 100% local. Rétro-compat absolue avec l'ancien format
-          <code>myktamap-plans-list</code>. Exclusions design : ZIPs binaires + PIN/UnlockGate.
-          1 nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code>.
-          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
-        </td>
-      </tr>
-      <tr>
-        <td>v1.21.0</td>
-        <td>24/05/2026</td>
-        <td>
-          <strong>Cycle « Onboarding + Export »</strong> — <strong>aucune nouvelle surface réseau</strong>.
-          2 features 100% locales : nouveau module <code>js/tutorial.js</code> (HTML statique + flag
-          <code>localStorage["myktamap_tutorial_seen_v1"]</code>), extension Stats globales export PDF
-          via jsPDF déjà chargé (Blob local). 1 nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code>.
-          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
-        </td>
-      </tr>
-      <tr>
         <td>v1.20.0</td>
         <td>24/05/2026</td>
         <td>
@@ -816,6 +763,7 @@
           (archive auto des kills mémoire, FIFO 5), Favoris export/import JSON (Blob local),
           nouveau module <code>js/statsGlobales.js</code> (lecture getters internes + IDB photos).
           2 nouveaux fichiers ajoutés à <code>ASSETS_TO_CACHE</code>, 1 nouvelle DB IDB documentée.
+          + Clause anti-fork « Périmètre myktamap.fr ».
           <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
         </td>
       </tr>
@@ -829,20 +777,6 @@
           (fichiers annexes locaux) + MemInspector (lecture seule) + Polish (Aide / semver / toast SW)
           + Fixes (auto-save par plan, CSS thème clair logs). 1 nouveau fichier ajouté à
           <code>ASSETS_TO_CACHE</code> : <code>js/memInspector.js</code>.
-          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
-        </td>
-      </tr>
-      <tr>
-        <td>v1.20.0</td>
-        <td>(sous-itération dev)</td>
-        <td>
-          <strong>Cycle « Polish UX + DX »</strong> — <strong>aucune nouvelle surface réseau,
-          aucun nouveau fichier</strong>. (1) Aide intégrée enrichie (sections HTML statiques
-          MemInspector + Légende personnalisable), (2) <code>compareSemver()</code> dans
-          UpdateChecker (fonction pure + détection downgrade serveur), (3) hook
-          <code>controllerchange</code> client qui affiche un toast OOMGuard non-bloquant
-          quand un nouveau SW prend le contrôle. Modifs internes à 3 modules. Bump
-          <code>CACHE_NAME</code> au format final (fin des suffixes <code>-fixes</code> dev).
           <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
         </td>
       </tr>
