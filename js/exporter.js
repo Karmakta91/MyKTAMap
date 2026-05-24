@@ -323,6 +323,26 @@
                   <label class="kta-export-cb-row"><input type="checkbox" id="leg_c_meta" checked><span>Métadonnées du plan (nom, version, auteur, date)</span></label>
                 </div>
 
+                <!-- 🆕 v1.16.0 step 2 : panneau « Personnaliser les libellés »
+                     (rename + show/hide par entrée + entrées custom). Section
+                     collapsible pour pas alourdir la modale au défaut. -->
+                <details class="kta-legend-custom-details" style="margin-top:14px; border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:8px;">
+                  <summary style="cursor:pointer; font-weight:600; color:#e8eaf0; padding:4px; user-select:none;">
+                    ✏️ Personnaliser les libellés
+                  </summary>
+                  <div id="kta-legend-custom-body" style="margin-top:10px;">
+                    <!-- Peuplé dynamiquement par _peuplerLegendCustom() au moment de l'ouverture du modal -->
+                  </div>
+                  <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                    <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-add">
+                      ➕ Ajouter une entrée
+                    </button>
+                    <button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-legend-custom-reset" title="Restaure les libellés défaut (efface vos overrides session)">
+                      🔄 Reset session
+                    </button>
+                  </div>
+                </details>
+
               </div>
             </div>
 
@@ -375,6 +395,8 @@
     _peuplerCalquesData(config, dataLayersVisibles);
     _peuplerAnnotations(nbPoints, nbRoads, nbZones, nbMesure, trackerOk, nbTrackerPath);
     _peuplerNiveaux();
+    // 🆕 v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
+    _peuplerLegendCustom();
 
     // Restaurer un état précédent (utilisé quand on revient d'une sélection 🎯)
     if (etatPrecedent) _restaurerEtat(etatPrecedent);
@@ -902,6 +924,279 @@
   }
 
   // =========================
+  // 🏷️ v1.16.0 step 2 : peupler le panneau « Personnaliser les libellés »
+  // =========================
+  //
+  // Pour chaque catégorie (icones, traces, zones, structures), liste les
+  // entrées résolues via LegendCustomization.listEntries + listCustomEntries.
+  // Chaque ligne expose :
+  //   - checkbox visibilité (cochée = visible)
+  //   - input texte libellé (placeholder = label défaut)
+  //   - badge source (📋 plan / ✏️ moi / défaut)
+  //   - bouton 🗑️ pour supprimer une entrée custom (session uniquement)
+  //
+  // Pour les ICÔNES (~21 entrées), liste pliée dans un sous-<details> pour
+  // ne pas étouffer la modale. Les 3 autres catégories (4-5 entrées chacune)
+  // sont toujours dépliées.
+  function _peuplerLegendCustom() {
+    const cont = document.getElementById("kta-legend-custom-body");
+    if (!cont) return;
+    const LC = window.LegendCustomization;
+    if (!LC) {
+      cont.innerHTML = '<p style="font-size:12px; color:#8892a4; margin:0;">' +
+        'Module LegendCustomization non disponible.</p>';
+      return;
+    }
+
+    function _esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function _sourceBadge(source) {
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="Override de votre session">✏️</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="Défini par le plan">📋</span>';
+      return                          '<span class="kta-legend-src kta-legend-src-default" title="Libellé défaut MKM">·</span>';
+    }
+
+    function _renderEntryRow(e, isCustomEntry) {
+      // Pour les icones standard (non-custom), pas d'iconUrl dans la définition
+      // par défaut → on essaie de la résoudre via _iconePourTag pour afficher
+      // un swatch image.
+      let iconUrl = e.iconUrl;
+      if (!iconUrl && e.category === "icones" && typeof _iconePourTag === "function") {
+        try { iconUrl = _iconePourTag(e.key); } catch(err) { iconUrl = null; }
+      }
+      // Visual cue (swatch couleur / icône à gauche du libellé pour repérage)
+      let swatch = '';
+      if (iconUrl) {
+        swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
+      } else if (e.lineColor) {
+        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(e.lineColor) + ';flex:0 0 16px;border-radius:1px;"></span>';
+      } else if (e.fillColor) {
+        const border = e.borderColor ? ('border:1px solid ' + _esc(e.borderColor) + ';') : '';
+        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(e.fillColor) + ';' + border + 'flex:0 0 14px;border-radius:2px;"></span>';
+      } else {
+        swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
+      }
+
+      const dataAttrs = isCustomEntry
+        ? 'data-custom-id="' + _esc(e.id) + '"'
+        : 'data-cat="' + _esc(e.category) + '" data-key="' + _esc(e.key) + '"';
+
+      const placeholder = isCustomEntry ? _esc(e.label) : _esc(e.defaultLabel);
+      const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
+
+      // Bouton 🗑️ uniquement pour les custom entries (suppression session)
+      const btnRm = isCustomEntry
+        ? '<button type="button" class="kta-legend-rm" title="Supprimer cette entrée custom" ' + dataAttrs + '>🗑️</button>'
+        : '';
+
+      return '<div class="kta-legend-row" ' + dataAttrs + '>' +
+               '<label class="kta-legend-vis" title="Afficher cette entrée dans la légende">' +
+                 '<input type="checkbox" class="kta-legend-vis-cb" ' +
+                   (e.visible ? "checked" : "") + ' ' + dataAttrs + '>' +
+               '</label>' +
+               swatch +
+               '<input type="text" class="kta-legend-label" placeholder="' + placeholder + '" ' +
+                 'value="' + value + '" ' + dataAttrs + '>' +
+               _sourceBadge(e.source) +
+               btnRm +
+             '</div>';
+    }
+
+    let html = "";
+    LC.listCategories().forEach(function(cat) {
+      const title = LC.categoryTitle(cat);
+      const entries = LC.listEntries(cat);
+      const customs = LC.listCustomEntries(cat);
+
+      // Icones : section collapsible (~21 entrées). Les 3 autres dépliées.
+      const isIcones = (cat === "icones");
+      const sectionOpen = isIcones ? "" : "open";
+
+      html += '<details class="kta-legend-cat" ' + sectionOpen + '>' +
+                '<summary>' + _esc(title) +
+                  ' <span class="kta-legend-count">(' + (entries.length + customs.length) + ')</span>' +
+                '</summary>' +
+                '<div class="kta-legend-cat-body">';
+
+      entries.forEach(function(e) { html += _renderEntryRow(e, false); });
+      customs.forEach(function(e) { html += _renderEntryRow(e, true); });
+
+      html += '</div></details>';
+    });
+
+    cont.innerHTML = html;
+  }
+
+  // Ouvre une mini-modale pour ajouter une entrée custom à la légende.
+  // 4 champs : catégorie / libellé / couleur trait (optionnel) / couleur
+  // fill (optionnel). L'utilisateur peut faire :
+  //   - Catégorie "icones" + iconUrl       → entry icône (mais pas d'UI
+  //     pour uploader une icône en step 2 — placé pour step 2c suivant)
+  //   - Catégorie "traces"     + lineColor → ligne dans Tracés
+  //   - Catégorie "zones"      + fillColor → polygone dans Zones
+  //   - Catégorie "structures" + lineColor OU fillColor → idem
+  function _ouvrirAddCustomEntryDialog() {
+    // Mini-modale charte MKM. On utilise .kta-readme-modal-overlay
+    // (z-index 99999) mais bumpé à 100100 inline pour passer AU-DESSUS
+    // de la modale Export PNG parente (qui occupe la même classe).
+    const wrap = document.createElement("div");
+    wrap.className = "kta-readme-modal-overlay kta-legend-add-overlay";
+    wrap.style.zIndex = "100100";
+    wrap.innerHTML =
+      '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
+          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">➕ Nouvelle entrée légende</h3>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-add-close" style="padding:2px 8px;">✕</button>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;">' +
+          '<label class="kta-cfg-label">Catégorie</label>' +
+          '<select class="kta-cfg-input" id="kta-legend-add-cat">' +
+            '<option value="traces">🛣️ Tracés</option>' +
+            '<option value="zones">⬛ Zones</option>' +
+            '<option value="structures">🏛️ Structures</option>' +
+            '<option value="icones">🏷️ Icônes (URL image)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;">' +
+          '<label class="kta-cfg-label">Libellé</label>' +
+          '<input class="kta-cfg-input" id="kta-legend-add-label" type="text" placeholder="Ex : Pilier ancien">' +
+        '</div>' +
+        '<div style="margin-bottom:10px;" id="kta-legend-add-line-wrap">' +
+          '<label class="kta-cfg-label">Couleur de trait (ligne)</label>' +
+          '<input class="kta-cfg-input" id="kta-legend-add-line" type="color" value="#00ff00" style="height:32px; padding:2px;">' +
+          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
+            '<input type="checkbox" id="kta-legend-add-line-on" checked>' +
+            '<span>Activer le trait</span>' +
+          '</label>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;" id="kta-legend-add-fill-wrap">' +
+          '<label class="kta-cfg-label">Couleur de remplissage</label>' +
+          '<input class="kta-cfg-input" id="kta-legend-add-fill" type="color" value="#3aa9e8" style="height:32px; padding:2px;">' +
+          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
+            '<input type="checkbox" id="kta-legend-add-fill-on">' +
+            '<span>Activer le remplissage</span>' +
+          '</label>' +
+        '</div>' +
+        '<div style="margin-bottom:10px; display:none;" id="kta-legend-add-icon-wrap">' +
+          '<label class="kta-cfg-label">URL de l\'icône (.png / .svg / data:)</label>' +
+          '<input class="kta-cfg-input" id="kta-legend-add-icon" type="text" placeholder="https://... ou data:image/...">' +
+          '<p style="font-size:11px; color:#8892a4; margin:4px 0 0 0;">' +
+            "L'image doit être accessible (URL publique ou data: URI). " +
+            "Upload local non supporté en step 2." +
+          '</p>' +
+        '</div>' +
+        '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-legend-add-cancel">Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-legend-add-ok">✅ Ajouter</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(wrap);
+
+    function fermerAdd() { try { wrap.remove(); } catch(e) {} }
+
+    document.getElementById("kta-legend-add-close").addEventListener("click", fermerAdd);
+    document.getElementById("kta-legend-add-cancel").addEventListener("click", fermerAdd);
+    wrap.addEventListener("click", function(e) { if (e.target === wrap) fermerAdd(); });
+
+    const catSel = document.getElementById("kta-legend-add-cat");
+    const lineWrap = document.getElementById("kta-legend-add-line-wrap");
+    const fillWrap = document.getElementById("kta-legend-add-fill-wrap");
+    const iconWrap = document.getElementById("kta-legend-add-icon-wrap");
+
+    function _majChamps() {
+      const cat = catSel.value;
+      // Icônes → uniquement iconUrl. Autres → couleurs trait/fill selon le type.
+      if (cat === "icones") {
+        lineWrap.style.display = "none";
+        fillWrap.style.display = "none";
+        iconWrap.style.display = "block";
+      } else {
+        iconWrap.style.display = "none";
+        // Tracés : trait obligatoire, fill caché.
+        // Zones : fill obligatoire, trait optionnel pour bordure.
+        // Structures : libre (trait OU fill).
+        if (cat === "traces") {
+          lineWrap.style.display = "block";
+          fillWrap.style.display = "none";
+        } else if (cat === "zones") {
+          lineWrap.style.display = "none";
+          fillWrap.style.display = "block";
+          document.getElementById("kta-legend-add-fill-on").checked = true;
+        } else {
+          lineWrap.style.display = "block";
+          fillWrap.style.display = "block";
+        }
+      }
+    }
+    catSel.addEventListener("change", _majChamps);
+    _majChamps();
+
+    document.getElementById("kta-legend-add-ok").addEventListener("click", function() {
+      const cat   = catSel.value;
+      const label = (document.getElementById("kta-legend-add-label").value || "").trim();
+      if (!label) {
+        alert("Donne un libellé à l'entrée.");
+        return;
+      }
+      const entry = { category: cat, label: label };
+      if (cat === "icones") {
+        const url = (document.getElementById("kta-legend-add-icon").value || "").trim();
+        if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
+        entry.iconUrl = url;
+      } else {
+        const lineOn = document.getElementById("kta-legend-add-line-on").checked;
+        const fillOn = document.getElementById("kta-legend-add-fill-on").checked;
+        if (lineOn) entry.lineColor = document.getElementById("kta-legend-add-line").value;
+        if (fillOn) {
+          entry.fillColor = document.getElementById("kta-legend-add-fill").value;
+          // Pour zones : bordure = même couleur que fill (visu cohérent).
+          if (cat === "zones" && !lineOn) entry.borderColor = entry.fillColor;
+        }
+        if (!entry.lineColor && !entry.fillColor) {
+          alert("Active au moins une couleur (trait ou remplissage).");
+          return;
+        }
+      }
+      if (window.LegendCustomization) {
+        window.LegendCustomization.addCustomEntry(entry);
+        _peuplerLegendCustom();
+        _planifierApercu();
+      }
+      fermerAdd();
+    });
+  }
+
+  // Lit les valeurs courantes du panneau Légende Custom et appelle les
+  // setters de LegendCustomization pour persister les overrides session.
+  // Appelé sur tout change/input du panneau (debounce léger via apercu).
+  function _appliquerLegendCustomFromUI(target) {
+    const LC = window.LegendCustomization;
+    if (!LC || !target) return;
+    const cat = target.getAttribute("data-cat");
+    const key = target.getAttribute("data-key");
+    const customId = target.getAttribute("data-custom-id");
+
+    if (target.classList.contains("kta-legend-vis-cb")) {
+      if (customId) {
+        LC.setCustomEntryVisibility(customId, target.checked);
+      } else if (cat && key) {
+        LC.setSessionVisibility(cat, key, target.checked);
+      }
+    } else if (target.classList.contains("kta-legend-label")) {
+      if (customId) {
+        LC.updateCustomEntry(customId, { label: target.value });
+      } else if (cat && key) {
+        LC.setSessionLabel(cat, key, target.value);
+      }
+    }
+  }
+
+  // =========================
   // ATTACHER LES LISTENERS
   // =========================
   function _attacherListeners(modal, modeInitial) {
@@ -963,6 +1258,60 @@
     const yInput = document.getElementById("kta-export-leg-y");
     xInput.addEventListener("input", _planifierApercu);
     yInput.addEventListener("input", _planifierApercu);
+
+    // 🆕 v1.16.0 step 2 : listeners du panneau « Personnaliser les libellés ».
+    // Délégation sur le conteneur pour gérer les rows ajoutées dynamiquement
+    // (entrées custom ajoutées via ➕). Tout change/input recalcule l'aperçu.
+    const legendCustomBody = document.getElementById("kta-legend-custom-body");
+    if (legendCustomBody) {
+      legendCustomBody.addEventListener("change", function(e) {
+        if (e.target.matches(".kta-legend-vis-cb")) {
+          _appliquerLegendCustomFromUI(e.target);
+          _planifierApercu();
+        }
+      });
+      legendCustomBody.addEventListener("input", function(e) {
+        if (e.target.matches(".kta-legend-label")) {
+          _appliquerLegendCustomFromUI(e.target);
+          _planifierApercu();
+        }
+      });
+      legendCustomBody.addEventListener("click", function(e) {
+        if (e.target.matches(".kta-legend-rm")) {
+          const id = e.target.getAttribute("data-custom-id");
+          if (id && window.LegendCustomization) {
+            window.LegendCustomization.removeCustomEntry(id);
+            _peuplerLegendCustom();
+            _planifierApercu();
+          }
+        }
+      });
+    }
+
+    const btnLegAdd = document.getElementById("kta-legend-custom-add");
+    if (btnLegAdd) {
+      btnLegAdd.addEventListener("click", function() {
+        _ouvrirAddCustomEntryDialog();
+      });
+    }
+
+    const btnLegReset = document.getElementById("kta-legend-custom-reset");
+    if (btnLegReset) {
+      btnLegReset.addEventListener("click", function() {
+        if (!window.LegendCustomization) return;
+        // Confirmation simple via window.confirm — pas de modale custom pour
+        // garder le code léger (action peu fréquente).
+        const ok = window.confirm(
+          "Effacer tous vos overrides de session sur la légende ?\n\n" +
+          "(les libellés défaut du plan reviennent ; ce qui est défini dans " +
+          "le plan-config reste actif)"
+        );
+        if (!ok) return;
+        window.LegendCustomization.resetSession();
+        _peuplerLegendCustom();
+        _planifierApercu();
+      });
+    }
 
     // 🆕 v1.9.3-A1.b.3 : sélecteur fond — toggle banner info + grise
     // visuellement la section "Calques d'image" quand fond custom.
@@ -2134,19 +2483,16 @@
       metaLignes = [titre + ver + auteur, dd + "/" + mm + "/" + aaaa];
     }
 
+    // 🆕 v1.16.0 step 2 : pour les 4 catégories (icones, traces, zones,
+    // structures), on délègue à window.LegendCustomization qui applique la
+    // cascade session > plan > default. Les libellés peuvent être renommés
+    // et certaines entrées peuvent être cachées par l'utilisateur (UI
+    // dans la modale Export PNG). Fallback gracieux si le module n'est
+    // pas dispo (legacy hardcodés conservés en commentaire ci-dessous).
+    const LC = window.LegendCustomization;
+
     // Icônes — découpées en 3 sous-groupes (cohérent avec la légende d'aide)
     if (leg.contenu.icones && config.icons) {
-      const LBL = {
-        salle: "Salle", pa: "Puits Aération", pc: "Puits Comblé",
-        pb: "Puits Bouché", pe: "Puits au sol / Bassin", ps: "Puits extraction",
-        peo: "Puits à échelon ouvert", pef: "Puits à échelon fermé",
-        eso: "Escalier service ouvert", esf: "Escalier service fermé",
-        cao: "Cavage ouvert", caf: "Cavage fermé",
-        passage: "Passage", chatiere: "Chatière", vehicule: "Véhicule",
-        danger: "Danger", info: "Information", elec: "Électricité", epure: "Épure",
-        plaque: "Plaque indication"
-      };
-
       const exclu = ["default"];
       if (!leg.contenu.track) exclu.push("track");
 
@@ -2168,6 +2514,17 @@
       // (tagsUtilises peut être null/undefined en mode preview rapide → pas de filtre)
       const filtreUsage = tagsUtilises && tagsUtilises.size >= 0;
 
+      // Libellé résolu (cascade LegendCustomization si dispo, sinon fallback).
+      function _iconLabel(tag) {
+        if (LC) return LC.getLabel("icones", tag);
+        // Fallback : si le module n'est pas chargé, on retombe sur le tag brut.
+        return tag;
+      }
+      function _iconVisible(tag) {
+        if (LC) return LC.isVisible("icones", tag);
+        return true;
+      }
+
       // Construire chaque sous-groupe
       GROUPES_ICONES.forEach(function(groupe) {
         const lignes = [];
@@ -2175,9 +2532,10 @@
           if (exclu.includes(tag)) return;
           if (!tagsConnus.has(tag)) return;
           if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
+          if (!_iconVisible(tag)) return;                      // ← v1.16.0 step 2 : show/hide
           const url = _iconePourTag(tag);
           if (!url) return;
-          lignes.push({ label: LBL[tag] || tag, iconUrl: url });
+          lignes.push({ label: _iconLabel(tag), iconUrl: url });
         });
         if (lignes.length > 0) entrees.push({ section: groupe.titre, lignes: lignes });
       });
@@ -2194,6 +2552,7 @@
         if (exclu.includes(tag)) return;
         if (clesGroupees.has(tag)) return;
         if (filtreUsage && !tagsUtilises.has(tag)) return;  // ← filtre par usage réel
+        if (!_iconVisible(tag)) return;
         // Récupérer l'URL : plan-config → _iconMap → default
         let url = _iconePourTag(tag);
         if (!url) {
@@ -2205,9 +2564,20 @@
              || null;
         }
         if (!url) return;
-        lignesAutres.push({ label: LBL[tag] || tag, iconUrl: url });
+        lignesAutres.push({ label: _iconLabel(tag), iconUrl: url });
       });
       if (lignesAutres.length > 0) entrees.push({ section: "🏷️ Autres", lignes: lignesAutres });
+
+      // 🆕 v1.16.0 step 2 : entrées custom catégorie "icones" ajoutées par
+      // l'user (cascade plan + session). Visible si isVisible et si iconUrl.
+      if (LC) {
+        const customsIcones = LC.listCustomEntries("icones")
+          .filter(function(e) { return e.visible && e.iconUrl; })
+          .map(function(e) { return { label: e.label, iconUrl: e.iconUrl }; });
+        if (customsIcones.length > 0) {
+          entrees.push({ section: "✨ Custom (icônes)", lignes: customsIcones });
+        }
+      }
     }
 
     // Tracés
@@ -2216,12 +2586,25 @@
     // le pathfinder. Visible dans la légende sans condition (si l'export ne
     // contient pas de jonction, la ligne reste mais inerte — minor).
     if (leg.contenu.traces) {
-      entrees.push({ section: "🛣️ Tracés", lignes: [
-        { label: "Route principale",      lineColor: "#00ff00" },
-        { label: "Route secondaire",      lineColor: "#b000ff" },
-        { label: "Chemin",                lineColor: "#ffff00" },
-        { label: "Jonction interniveau",  lineColor: "#ff4ecb" }
-      ]});
+      const lignes = LC
+        ? LC.listEntries("traces")
+            .filter(function(e) { return e.visible; })
+            .map(function(e) { return { label: e.label, lineColor: e.lineColor }; })
+        : [
+            { label: "Route principale",      lineColor: "#00ff00" },
+            { label: "Route secondaire",      lineColor: "#b000ff" },
+            { label: "Chemin",                lineColor: "#ffff00" },
+            { label: "Jonction interniveau",  lineColor: "#ff4ecb" }
+          ];
+      // Ajout des customs traces
+      if (LC) {
+        LC.listCustomEntries("traces")
+          .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
+          .forEach(function(e) {
+            lignes.push({ label: e.label, lineColor: e.lineColor || e.fillColor });
+          });
+      }
+      if (lignes.length > 0) entrees.push({ section: "🛣️ Tracés", lignes: lignes });
     }
 
     // Zones
@@ -2229,12 +2612,24 @@
     // bloquante pour le pathfinder (contrainte dure). Couleur uni rouge
     // foncé (pas de hachures dans cette pipe canvas — voir ZONE_STYLES_EXPORT).
     if (leg.contenu.zones) {
-      entrees.push({ section: "⬛ Zones", lignes: [
-        { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
-        { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
-        { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
-        { label: "Inaccessible", fillColor: "#7a0000", borderColor: "#5a0a0a" }
-      ]});
+      const lignes = LC
+        ? LC.listEntries("zones")
+            .filter(function(e) { return e.visible; })
+            .map(function(e) { return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor }; })
+        : [
+            { label: "Eau",          fillColor: "#3aa9e8", borderColor: "#0066aa" },
+            { label: "Remblais",     fillColor: "#5a5a68", borderColor: "#3a3a44" },
+            { label: "Effondrement", fillColor: "#ff3333", borderColor: "#cc0000" },
+            { label: "Inaccessible", fillColor: "#7a0000", borderColor: "#5a0a0a" }
+          ];
+      if (LC) {
+        LC.listCustomEntries("zones")
+          .filter(function(e) { return e.visible && e.fillColor; })
+          .forEach(function(e) {
+            lignes.push({ label: e.label, fillColor: e.fillColor, borderColor: e.borderColor || e.fillColor });
+          });
+      }
+      if (lignes.length > 0) entrees.push({ section: "⬛ Zones", lignes: lignes });
     }
 
     // 🏛️ v1.10.3 (KARMA "structures pas dans la légende") : section
@@ -2243,13 +2638,32 @@
     // STRUCTURE_STYLES (structures.js) et les helpers d'export PNG/KMZ
     // (front-1 jaune = pilier-1, front-2 orange = pilier-2 — hotfix v1.10.1-2).
     if (leg.contenu.structures) {
-      entrees.push({ section: "🏛️ Structures", lignes: [
-        { label: "Pilier 1ère masse",    fillColor: "#f4c542", borderColor: "#000000" },
-        { label: "Pilier 2e masse",      fillColor: "#ff9933", borderColor: "#000000" },
-        { label: "Mur",                  fillColor: "#1e3a8a", borderColor: "#000000" },
-        { label: "Front de taille 1ère", lineColor:  "#f4c542" },
-        { label: "Front de taille 2e",   lineColor:  "#ff9933" }
-      ]});
+      const lignes = LC
+        ? LC.listEntries("structures")
+            .filter(function(e) { return e.visible; })
+            .map(function(e) {
+              // Distingue polylines (front-X : lineColor) des polygones
+              // (pilier-X / mur : fillColor + borderColor). LegendCustomization
+              // expose les 3 champs, on prend ceux qui sont set.
+              if (e.lineColor) return { label: e.label, lineColor: e.lineColor };
+              return { label: e.label, fillColor: e.fillColor, borderColor: e.borderColor };
+            })
+        : [
+            { label: "Pilier 1ère masse",    fillColor: "#f4c542", borderColor: "#000000" },
+            { label: "Pilier 2e masse",      fillColor: "#ff9933", borderColor: "#000000" },
+            { label: "Mur",                  fillColor: "#1e3a8a", borderColor: "#000000" },
+            { label: "Front de taille 1ère", lineColor:  "#f4c542" },
+            { label: "Front de taille 2e",   lineColor:  "#ff9933" }
+          ];
+      if (LC) {
+        LC.listCustomEntries("structures")
+          .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
+          .forEach(function(e) {
+            if (e.lineColor) lignes.push({ label: e.label, lineColor: e.lineColor });
+            else             lignes.push({ label: e.label, fillColor: e.fillColor, borderColor: e.borderColor || e.fillColor });
+          });
+      }
+      if (lignes.length > 0) entrees.push({ section: "🏛️ Structures", lignes: lignes });
     }
 
     if (entrees.length === 0 && metaLignes.length === 0) return;

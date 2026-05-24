@@ -87,7 +87,15 @@
       measure:        window.getMeasurePoints        ? (window.getMeasurePoints()        || []) : [],
       measureSurface: window.getMeasurePointsSurface ? (window.getMeasurePointsSurface() || []) : [],
       // Mode actif (drive les clics + surligne la ligne du footer).
-      measureMode:  (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance"
+      measureMode:  (typeof window.getMeasureMode === "function") ? window.getMeasureMode() : "distance",
+      // 🆕 v1.16.0 step 2 : overrides de la légende personnalisée (libellés
+      // renommés, entrées cachées, entrées custom ajoutées). Optionnel et
+      // vide par défaut — n'occupe rien dans le localStorage si l'user
+      // n'a rien personnalisé. Rétrocompat : payload.customLegend absent
+      // dans les anciens saves → traité comme état vide au restore.
+      customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
+                      ? window.LegendCustomization.getSessionState()
+                      : null
       // tracker path : volontairement non persiste (cf. choix 3:b, tracker
       // experimental, ressusciter un trail fige serait trompeur sans pos.
       // recente du capteur).
@@ -105,6 +113,14 @@
   }
 
   function _isEmptyState(state) {
+    // 🆕 v1.16.0 step 2 : si l'user a UNIQUEMENT personnalisé sa légende
+    // (sans rien dessiner), on garde quand même la session pour ne pas
+    // perdre ses overrides. Une session est "vide" seulement si rien du
+    // tout n'est défini, y compris la légende.
+    const lcEmpty = !state.customLegend
+                 || (!state.customLegend.labels       || Object.keys(state.customLegend.labels).length === 0)
+                 && (!state.customLegend.hidden       || Object.keys(state.customLegend.hidden).length === 0)
+                 && (!state.customLegend.customEntries || state.customLegend.customEntries.length === 0);
     return state.editorPoints.length === 0
         && state.roads.length        === 0
         && state.zones.length        === 0
@@ -114,7 +130,8 @@
         // ce check, un user qui a UNIQUEMENT dessiné un polygone surface
         // verrait son état considéré "vide" → localStorage purgé → perte
         // au reload. Surface compte aussi comme contenu.
-        && (state.measureSurface || []).length === 0;
+        && (state.measureSurface || []).length === 0
+        && lcEmpty;
   }
 
   // ========== STORAGE ==========
@@ -186,7 +203,12 @@
       // lors de la refonte 2 mesures coexistantes — j'avais ajouté les
       // champs dans _gatherState mais pas dans le payload final.
       measureSurface: state.measureSurface || [],
-      measureMode:    state.measureMode    || "distance"
+      measureMode:    state.measureMode    || "distance",
+      // 🆕 v1.16.0 step 2 : overrides légende (libellés + visibilité +
+      // entrées custom). null si LegendCustomization n'a pas encore été
+      // chargé ou si l'user n'a rien personnalisé — c'est OK, le restore
+      // gère gracieusement payload.customLegend == null.
+      customLegend:   state.customLegend   || null
     };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -349,6 +371,13 @@
         window.setMeasurePointsSurface(payload.measureSurface);
         restored.measureSurface = payload.measureSurface.length;
       }
+      // 🆕 v1.16.0 step 2 : restore des overrides légende. Rétrocompat OK
+      // (anciens payloads n'ont pas customLegend → loadSessionState(null)
+      // initialise l'état vide). Le module LegendCustomization peut être
+      // absent au boot très précoce — guard.
+      if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
+        window.LegendCustomization.loadSessionState(payload.customLegend);
+      }
       // Mettre à jour le hash courant pour que le prochain poll ne détecte pas
       // les setters comme une modification utilisateur
       _lastHash = _hashState(_gatherState());
@@ -369,6 +398,11 @@
     if (window.resetZones)       window.resetZones();
     // 🆕 v1.9.3-A1.a : structures purgées aussi lors d'un vidage
     if (window.resetStructures)  window.resetStructures();
+    // 🆕 v1.16.0 step 2 : reset des overrides légende session (les valeurs
+    // du plan restent — c'est le niveau supérieur de la cascade).
+    if (window.LegendCustomization && typeof window.LegendCustomization.resetSession === "function") {
+      window.LegendCustomization.resetSession();
+    }
     if (window.setMeasurePoints)        window.setMeasurePoints([]);
     // 🆕 v1.12.0-fix : vide aussi la mesure de surface
     if (window.setMeasurePointsSurface) window.setMeasurePointsSurface([]);

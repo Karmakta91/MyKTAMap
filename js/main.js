@@ -43,6 +43,14 @@ async function initDataFromConfig() {
   if (typeof window._kta_resetDataLayerNoteGhosts === "function") {
     window._kta_resetDataLayerNoteGhosts();
   }
+  // v1.16.0 step 2 : charge la couche "plan" de la légende personnalisée
+  // (PLAN_CONFIG.customLegend). Doit être appelé APRÈS que PLAN_CONFIG
+  // est en place — startApp() est invoqué après load du plan-config.json.
+  // Le niveau "session" (= overrides utilisateur) est chargé séparément
+  // par SessionPersist._applyRestore().
+  if (window.LegendCustomization && typeof window.LegendCustomization.loadPlanState === "function") {
+    window.LegendCustomization.loadPlanState();
+  }
 
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
   // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.

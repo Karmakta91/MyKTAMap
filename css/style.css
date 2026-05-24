@@ -14287,3 +14287,167 @@ body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
   outline: none !important;
   box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25) !important;
 }
+
+/* ==============================================
+   🆕 v1.16.0 step 2 : Personnalisation de la légende (modale Export PNG)
+   ============================================== */
+
+.kta-legend-custom-details {
+  background: rgba(255,255,255,0.02);
+  font-size: 12.5px;
+}
+.kta-legend-custom-details > summary {
+  list-style: none;
+}
+.kta-legend-custom-details > summary::-webkit-details-marker { display: none; }
+.kta-legend-custom-details > summary::before {
+  content: "▶ ";
+  font-size: 10px;
+  color: #8892a4;
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.kta-legend-custom-details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.kta-legend-cat {
+  margin: 6px 0;
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 5px;
+  padding: 4px 6px;
+  background: rgba(0,0,0,0.15);
+}
+.kta-legend-cat > summary {
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: #c8d0e0;
+  padding: 3px 0;
+  user-select: none;
+}
+.kta-legend-cat > summary::-webkit-details-marker { display: none; }
+.kta-legend-cat > summary::before {
+  content: "▶ ";
+  font-size: 9px;
+  color: #8892a4;
+  margin-right: 4px;
+  display: inline-block;
+  transition: transform 0.15s;
+}
+.kta-legend-cat[open] > summary::before {
+  transform: rotate(90deg);
+}
+.kta-legend-count {
+  color: #8892a4;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+.kta-legend-cat-body {
+  padding: 4px 0 2px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kta-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.kta-legend-vis {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.kta-legend-vis-cb {
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4d8aff;
+}
+
+.kta-legend-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #0d1117;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 12px;
+  padding: 3px 6px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.kta-legend-label::placeholder {
+  color: #6c7385;
+  font-style: italic;
+}
+.kta-legend-label:focus {
+  border-color: #4d8aff;
+}
+
+.kta-legend-src {
+  font-size: 10.5px;
+  flex: 0 0 auto;
+  opacity: 0.65;
+  cursor: help;
+}
+.kta-legend-src-session { color: #f4c542; opacity: 1; }
+.kta-legend-src-plan    { color: #8cb4ff; opacity: 1; }
+.kta-legend-src-default { color: #6c7385; }
+
+.kta-legend-rm {
+  background: transparent;
+  border: 1px solid rgba(255, 80, 80, 0.3);
+  color: #ff7070;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  flex: 0 0 auto;
+}
+.kta-legend-rm:hover {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: rgba(255, 80, 80, 0.6);
+}
+
+/* Mini-modale "Ajouter une entrée custom" — réutilise les classes
+   kta-modal* existantes ; juste un override de z-index pour passer
+   au-dessus de la modale Export. */
+.kta-legend-add-overlay {
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+}
+
+/* Theme clair — overrides pour lisibilité */
+body.kta-theme-light .kta-legend-cat {
+  background: rgba(0,0,0,0.04);
+  border-color: var(--kta-light-border-strong);
+}
+body.kta-theme-light .kta-legend-cat > summary {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-legend-count {
+  color: #555;
+}
+body.kta-theme-light .kta-legend-label {
+  background: var(--kta-light-bg) !important;
+  color: var(--kta-light-text) !important;
+  border-color: var(--kta-light-border-strong) !important;
+}
+body.kta-theme-light .kta-legend-label::placeholder {
+  color: #999;
+}
+body.kta-theme-light .kta-legend-label:focus {
+  border-color: var(--kta-light-accent) !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.25);
+}
