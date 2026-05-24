@@ -4597,6 +4597,108 @@ Feedback visuel : bouton "📋 Copier le rapport" → "✅ Copié !" pendant 180
 
 ---
 
+### 61. v1.20.0 — Polish UX + DX (3 améliorations indépendantes)
+
+Release MINOR de qualité, 3 sujets indépendants regroupés.
+
+#### 61.1 Aide intégrée enrichie (`js/interface.js > afficherAide`)
+
+2 nouvelles sections ajoutées à la modale 📚 Aide / Doc :
+
+- **📊 Inspecteur mémoire (v1.19.0)** — 7 puces qui détaillent les 5 sections de la modale Memory Inspector + le bouton 📋 Copier le rapport. Cas d'usage debug explicites + précision « 100 % local, aucune donnée transmise ».
+- **🏷️ Légende personnalisable (v1.16.0 + v1.17.0 + v1.18.x)** — 7 puces qui synthétisent la cascade complète : 3 niveaux (session > plan > défaut MKM), 2 points d'édition (session via Export PNG / map mode, plan-level via Générateur Avancé), 4 catégories couvertes (icônes / tracés / zones / structures), roundtrip KMZ + GPX, détection au preview d'import.
+
+Placement : entre « 📊 Stats session enrichies » et « 🎬 Replay tracker » pour regrouper les outils de visualisation/transparence.
+
+Bonus : enrichissement section existante « 🏗️ Créer / Modifier un plan » avec mention du Mode Simple/Avancé (cf §58).
+
+#### 61.2 Update Checker en vrai semver (`js/updateChecker.js`)
+
+Nouveau helper interne `compareSemver(a, b)` :
+
+```js
+function compareSemver(a, b) {
+  function _parse(v) {
+    if (v == null) return [0];
+    const clean = String(v).replace(/^v/i, "").split("-")[0];
+    return clean.split(".").map(function(n) {
+      const x = parseInt(n, 10);
+      return isNaN(x) ? 0 : x;
+    });
+  }
+  const pa = _parse(a);
+  const pb = _parse(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const na = pa[i] || 0;
+    const nb = pb[i] || 0;
+    if (na > nb) return  1;
+    if (na < nb) return -1;
+  }
+  return 0;
+}
+```
+
+**Anti-bug latent** : `"v1.7.10" < "v1.7.9"` en string (lexicographique). Pas un bug aujourd'hui (`check()` n'utilise que `===`), mais protège contre toute future utilisation de `<` ou `>`.
+
+**Nouveau cas géré dans `check()`** : downgrade serveur. Si `compareSemver(remote.version, known) < 0` → on retourne `{ status: "downgrade-detected" }` sans afficher la modale d'update et SANS mettre à jour `_setKnownVersion` (on garde la version installée comme référence pour ne pas perdre le repère semver de l'user).
+
+**API publique** : `window.UpdateChecker.compareSemver(a, b)` exposé. Formats acceptés :
+- `"v1.7.10"` (avec prefixe v)
+- `"1.7.10"` (sans prefixe)
+- `"v1.7.10-fix2"` (suffix après `-` ignoré → `[1, 7, 10]`)
+- `"v143"` (legacy pré-v1.7.1, traité comme `[143]`)
+
+`showCurrent()` (déclenchée au clic badge version footer) utilise aussi `compareSemver` : `_cmpShow <= 0` → message neutre "à jour" (= égalité OU downgrade serveur → pas de fausse promesse d'upgrade).
+
+#### 61.3 Force update auto-proposé sur mismatch CACHE_NAME (`index.html`)
+
+Nouveau hook dans `index.html` (script SW register) :
+
+```js
+let _swIsInitialControl = !navigator.serviceWorker.controller;
+navigator.serviceWorker.addEventListener("controllerchange", function() {
+  if (_swIsInitialControl) {
+    _swIsInitialControl = false;
+    return; // Premier install — pas de toast
+  }
+  // Vraie update : un ancien controller a été remplacé
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(
+      "🔄 Mise à jour mineure appliquée — assets fraîchement rechargés.",
+      "info"
+    );
+  }
+});
+```
+
+**Pourquoi ça marche** : le SW MyKTAMap fait déjà `self.skipWaiting()` au install (sw.js ligne 254) + `self.clients.claim()` au activate (ligne 277). Donc dès qu'un nouveau SW s'install (bump CACHE_NAME serveur), il prend immédiatement le contrôle des pages ouvertes → `controllerchange` fire dans la session courante.
+
+**Garde-fou `_swIsInitialControl`** critique : `navigator.serviceWorker.controller === null` au premier load (= page pas encore contrôlée). Le SW arrive après l'install, fire `controllerchange` pour la PREMIÈRE fois → c'est l'install initial, PAS une mise à jour. On skip ce premier événement, sinon on afficherait un toast trompeur au tout premier lancement PWA.
+
+**Bonus traçabilité** : hook `reg.addEventListener("updatefound")` qui log l'état du nouveau SW en console à chaque transition. Visible dans 🐛 Logs détaillés (debugMode ON). Aide à diagnostiquer le cas où un nouveau SW s'install mais reste en "installed" sans atteindre "activated" (= bug du SW lui-même).
+
+#### 61.4 À NE PAS faire
+
+- ❌ **Utiliser `<` ou `>` direct sur des strings de version** — toujours passer par `UpdateChecker.compareSemver()`. Si tu vois un `if (v1 < v2)` quelque part avec des strings semver, c'est un bug latent.
+- ❌ **Skip le garde-fou `_swIsInitialControl`** — sans lui, le toast "Mise à jour mineure" apparaîtrait au tout premier lancement PWA de chaque user (= trompeur, ce n'est pas une mise à jour, c'est juste l'install).
+- ❌ **Notifier l'user d'une "mise à jour" sans bumper CACHE_NAME** — le toast ne fire que si le SW change. Si on push juste des fichiers non-cachés (genre `alert.json`, `version.json`), aucun toast → c'est cohérent (pas une mise à jour du code applicatif).
+- ❌ **Mettre à jour `_setKnownVersion` lors d'un downgrade-detected** — on garderait alors la version OLDER comme référence et au prochain check, la même "downgrade" serait re-détectée. Pattern : ne pas écraser `_knownVersion` quand `cmp < 0`.
+
+#### 61.5 Cycle dev avec CACHE_NAME suffixes
+
+Pendant le dev d'une release (validation terrain entre fixes), pattern utilisé :
+- Release initiale : `CACHE_NAME = "myktamap-cache-v1.X.Y"`
+- Fix 1 (CSS, sans bump version visible) : `myktamap-cache-v1.X.Y-fixes`
+- Fix 2 : `myktamap-cache-v1.X.Y-fixes2`
+- Etc.
+
+Quand la release finale est mergée sur main, on règle le CACHE_NAME au format final propre (sans suffix). Cf bump v1.20.0 qui reset `-fixes2` → `-` plus rien.
+
+Le toast `controllerchange` fire à chaque bump du suffix → l'user voit clairement que des fixes mineurs ont été appliqués entre 2 sessions sans avoir à comprendre la mécanique CACHE_NAME / SW.
+
+---
+
 ### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)
 
 Module `js/gpxImport.js` (~310 lignes IIFE) → `window.GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`.

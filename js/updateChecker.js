@@ -115,6 +115,42 @@
     localStorage.removeItem(LS_POSTPONED);
   }
 
+  // 🆕 v1.20.0 — Comparison sémantique X.Y.Z (au lieu de comparison string).
+  // Bug latent évité : "v1.7.10" en comparaison string est lexicographiquement
+  // PLUS PETIT que "v1.7.9" (parce que "1" < "9" au char[5]). Donc si on
+  // utilisait `<` ou `>` quelque part, on déduirait à tort que v1.7.10 est
+  // plus ancien que v1.7.9. Actuellement on n'utilise que `===` qui détecte
+  // n'importe quelle différence, mais on profite de ce refactor pour :
+  //   1. Détecter le cas downgrade serveur (remote < known) → ne pas proposer
+  //      une "mise à jour" qui régresse
+  //   2. Exposer publiquement compareSemver pour usages futurs (changelog
+  //      viewer entre 2 versions, MemInspector, etc.)
+  //
+  // Format accepté : "v1.7.10", "1.7.10", "v1.7.10-fix2" (le suffix est
+  // ignoré), "v143" (vieux format pré-v1.7.1, traité comme [143]).
+  function compareSemver(a, b) {
+    function _parse(v) {
+      if (v == null) return [0];
+      // Strip prefixe "v" + tout suffix après "-" (= variantes dev "-fix2")
+      const clean = String(v).replace(/^v/i, "").split("-")[0];
+      // Split sur "." et coerce en int (NaN → 0)
+      return clean.split(".").map(function(n) {
+        const x = parseInt(n, 10);
+        return isNaN(x) ? 0 : x;
+      });
+    }
+    const pa = _parse(a);
+    const pb = _parse(b);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+      const na = pa[i] || 0;
+      const nb = pb[i] || 0;
+      if (na > nb) return  1;
+      if (na < nb) return -1;
+    }
+    return 0;
+  }
+
   async function check() {
     let remote;
     try {
@@ -138,13 +174,33 @@
       return { status: "first-run", remote };
     }
 
-    // Version identique : rien à faire
-    if (known === remote.version) {
+    // 🆕 v1.20.0 — Compare en vrai semver (au lieu d'égalité string).
+    const cmp = compareSemver(remote.version, known);
+
+    // Version identique (cmp === 0) : rien à faire
+    if (cmp === 0) {
       // On rafraîchit la data quand même (notes peuvent avoir changé sans bump)
       _setKnownVersion(remote.version, remote);
       return { status: "up-to-date", version: remote.version };
     }
 
+    // 🆕 v1.20.0 — Downgrade serveur détecté (remote < known) : ne PAS proposer
+    // une "mise à jour" qui régresse. Cas marginal (l'auteur a roll-back une
+    // release sur le CDN) mais important : éviter de surprendre l'user qui
+    // verrait sa version installée régresser après un clic « Mise à jour ».
+    // On rafraîchit silencieusement la known data sans modale ni snooze.
+    if (cmp < 0) {
+      console.warn(
+        "[UpdateChecker] ⚠️ Downgrade serveur détecté :",
+        known, "→", remote.version,
+        "(remote plus ancien que installé — skip modale)"
+      );
+      // On ne touche PAS à _setKnownVersion : on garde la version installée
+      // comme référence pour ne pas perdre le repère semver de l'user.
+      return { status: "downgrade-detected", local: known, remote };
+    }
+
+    // Sinon cmp > 0 : vraie nouvelle version dispo côté serveur
     // Version différente — utilisateur a snoozé récemment ?
     if (_isSnoozed()) {
       console.log("[UpdateChecker] Update dispo mais snoozée (< 24h) :",
@@ -234,8 +290,12 @@
 
     const known = _getKnownVersion() || (window.__MKM__ && window.__MKM__.build) || "?";
 
-    if (!remote || !remote.version || remote.version === known) {
-      // Pas d'update dispo — message neutre
+    // 🆕 v1.20.0 — Compare en vrai semver (au lieu d'égalité string) pour
+    // gérer aussi le cas downgrade serveur (remote < known) → message neutre
+    // "à jour" (= pas de fausse promesse d'upgrade qui régresserait).
+    const _cmpShow = remote && remote.version ? compareSemver(remote.version, known) : 0;
+    if (!remote || !remote.version || _cmpShow <= 0) {
+      // Pas d'update dispo (égalité OU downgrade serveur) — message neutre
       if (typeof window.afficherModaleAlerteAbsente === "function") {
         window.afficherModaleAlerteAbsente("up-to-date");
       } else {
@@ -283,6 +343,10 @@
     showCurrent: showCurrent,
     onCheck: onCheck,
     getCurrentVersion: _getKnownVersion,
-    getLastKnownData: _getLastKnownData
+    getLastKnownData: _getLastKnownData,
+    // 🆕 v1.20.0 — Helper exposé pour usages externes (changelog viewer,
+    // MemInspector, comparaisons inter-versions). Retourne -1 / 0 / +1.
+    // Format accepté : "v1.7.10", "1.7.10", "v1.7.10-fix2", "v143" (legacy).
+    compareSemver: compareSemver
   };
 })();

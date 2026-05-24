@@ -174,10 +174,25 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.19.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.20.0 (Cycle « Polish UX + DX »)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucun nouveau fichier</strong>. 3 améliorations
+    indépendantes : (1) Aide intégrée enrichie (HTML statique), (2) helper
+    <code>compareSemver()</code> dans <code>js/updateChecker.js</code> (fonction pure sans I/O,
+    exposée via <code>window.UpdateChecker.compareSemver</code>), (3) hook client
+    <code>navigator.serviceWorker.addEventListener("controllerchange")</code> dans
+    <code>index.html</code> qui affiche un toast non-bloquant quand le SW prend le contrôle
+    (= event navigateur 100 % local, aucun fetch externe). Le SW MyKTAMap fait déjà
+    <code>skipWaiting()</code> + <code>clients.claim()</code> — le nouveau hook se contente d'observer.
+    Modifs internes à 3 modules (~155 lignes total). Bump <code>CACHE_NAME</code> uniquement.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -665,6 +680,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.20.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>Cycle « Polish UX + DX »</strong> — <strong>aucune nouvelle surface réseau,
+          aucun nouveau fichier</strong>. (1) Aide intégrée enrichie (sections HTML statiques
+          MemInspector + Légende personnalisable), (2) <code>compareSemver()</code> dans
+          UpdateChecker (fonction pure + détection downgrade serveur), (3) hook
+          <code>controllerchange</code> client qui affiche un toast OOMGuard non-bloquant
+          quand un nouveau SW prend le contrôle. Modifs internes à 3 modules. Bump
+          <code>CACHE_NAME</code> au format final (fin des suffixes <code>-fixes</code> dev).
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.19.0</td>
         <td>24/05/2026</td>

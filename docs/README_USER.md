@@ -4,6 +4,31 @@
 
 ---
 
+## 🆕 Nouveautés v1.20.0 (24/05/2026) — Polish UX + DX
+
+> Pas de feature visible directement mais 3 améliorations de qualité qui rendent l'app plus claire à utiliser et plus sûre.
+
+### 📚 Aide intégrée enrichie
+
+L'aide (📚 Doc dans la sidebar) couvre maintenant 2 sujets qui manquaient :
+
+- **📊 Inspecteur mémoire** : section complète qui explique chaque section de la modale Memory Inspector (v1.19.0), comment utiliser le bouton 📋 Copier le rapport, et les cas d'usage debug.
+- **🏷️ Légende personnalisable** : synthèse de la cascade complète (session → plan → défaut MKM), des 2 points d'édition (perso session vs partagée via Générateur), du roundtrip KMZ/GPX, et de la détection au preview d'import.
+
+### 🆙 Détection plus robuste des mises à jour
+
+Quand l'app vérifie s'il y a une nouvelle version sur le serveur, elle utilise maintenant une vraie comparaison **sémantique** (v1.7.10 est bien plus récent que v1.7.9, etc.). Avant on comparait juste les chaînes de caractères, ce qui aurait pu créer des comportements bizarres au passage de v1.7.9 → v1.7.10. **Nouveau bénéfice** : si l'auteur roll-back une release côté serveur (cas marginal), l'app ne te propose plus une « mise à jour » qui te ferait régresser.
+
+### 🔄 Toast quand une mise à jour mineure est appliquée
+
+Tu connais cette situation où tu rechargeais et tu te demandais « tiens, ça réagit différemment d'un coup, qu'est-ce qui s'est passé ? ». Maintenant, quand le Service Worker remplace silencieusement les assets cachés (= je viens de pousser un fix sans bumper la version visible), un petit toast non-bloquant apparaît :
+
+> 🔄 Mise à jour mineure appliquée — assets fraîchement rechargés.
+
+Tu sais que c'est normal et tu peux continuer. Pas de double-prise de tête.
+
+---
+
 ## 🆕 Nouveautés v1.19.0 (24/05/2026) — 📊 État mémoire
 
 > Nouvel outil de transparence pour comprendre exactement ce que l'app a chargé en mémoire dans ton navigateur. Pratique pour diagnostiquer un problème, vérifier ce qui consomme de la place, ou envoyer un rapport au mainteneur en cas de bug.

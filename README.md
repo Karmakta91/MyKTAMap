@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.19.0` (24/05/2026)
+**📦 Version courante** : `v1.20.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.19.0](#-derniere-release--v1190)
+1. [🚀 Dernière release — v1.20.0](#-derniere-release--v1200)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,9 +40,15 @@
 
 ---
 
-## 🚀 Dernière release — v1.19.0
+## 🚀 Dernière release — v1.20.0
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.18.x) : **Nouvel outil de transparence & debug 📊 État mémoire**. Modale dédiée accessible depuis ⚙️ Configuration loader > nouvelle section « 📊 Inspecteur ». Affiche un topo lisible et compréhensible de tout ce qui est chargé localement par l'app : localStorage, IndexedDB, Cache PWA, Storage estimate navigateur, Runtime (plan chargé, session active, modules chargés). Bouton 📋 Copier le rapport pour partager par DM en cas de bug. **Aucune nouvelle surface réseau** — lecture locale uniquement. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.19.x) : **Cycle « Polish UX + DX »**. 3 améliorations de qualité qui rendent l'app plus claire à utiliser et plus sûre à déployer : (1) Aide intégrée enrichie (2 sections manquantes pour MemInspector + Légende personnalisable), (2) Update Checker en vrai semver (anti-bug latent + détection downgrade serveur), (3) Toast non-bloquant quand un nouveau Service Worker prend le contrôle pendant la session. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.19.0
+
+📅 **24 mai 2026** — Release MINOR (Y+1 sur v1.18.x) : nouvel outil de transparence & debug **📊 État mémoire** (Memory Inspector). Modale dédiée accessible depuis ⚙️ Configuration loader > section « 📊 Inspecteur ». Affiche un topo lisible de tout ce qui est chargé localement par l'app.
 
 ---
 
@@ -880,7 +886,81 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-19-0" open>
+<details id="v1-20-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.20.0 : Cycle « Polish UX + DX »</strong></summary>
+
+Release MINOR (bump Y : 1.19.x → 1.20.0). 3 améliorations de qualité indépendantes regroupées en 1 release :
+
+### 📚 (1/3) Aide intégrée enrichie
+
+2 sections manquantes ajoutées dans la modale 📚 Aide / Doc (`interface.js > afficherAide`) :
+
+**📊 Inspecteur mémoire (v1.19.0)** — Liste détaillée des 5 sections affichées dans la modale Memory Inspector (Runtime, localStorage, IndexedDB, Cache PWA, Storage estimate) + bouton 📋 Copier le rapport + cas d'usage debug. Précise « Lecture seule, 100 % local — aucune donnée transmise ».
+
+**🏷️ Légende personnalisable (v1.16.0 + v1.17.0 + v1.18.x)** — Synthèse complète de la cascade `session > plan > défaut MKM` : explication des 2 points d'édition (session-locale via 🖼️ Export PNG ou map mode, plan-level partagée via Générateur Avancé), des 4 catégories couvertes (icônes / tracés / zones / structures), du roundtrip KMZ (v1.18.0) et GPX (v1.18.1), et de la détection au preview d'import (« ✅ Légende personnalisée détectée »).
+
+Bonus : enrichissement section existante « 🏗️ Créer / Modifier un plan » avec mention du Mode Simple/Avancé du Générateur (v1.17.0).
+
+### 🆙 (2/3) Update Checker en vrai semver
+
+Refactor `js/updateChecker.js` : ajout d'un helper interne `compareSemver(a, b)` qui parse les versions en `[X, Y, Z]` et compare numériquement, au lieu de la comparaison string actuelle.
+
+**Anti-bug latent** : `"v1.7.10" < "v1.7.9"` en comparaison string (le `10` se compare lexicographiquement comme `1` puis `0` au char[4], vs `9`). Pas un bug aujourd'hui (on n'utilisait que `===` qui détecte n'importe quelle différence), mais le refactor protège contre toute future utilisation de `<` ou `>` quelque part.
+
+**Nouveau cas géré** : downgrade serveur (= remote.version PLUS ANCIENNE que la version installée chez l'user). Cas marginal (l'auteur a roll-back une release sur le CDN) mais important : on ne propose PAS une « mise à jour » qui régresserait :
+
+```js
+const cmp = compareSemver(remote.version, known);
+if (cmp === 0) return { status: "up-to-date" };
+if (cmp < 0) {
+  console.warn("[UpdateChecker] ⚠️ Downgrade serveur détecté — skip modale");
+  return { status: "downgrade-detected", local: known, remote };
+}
+// cmp > 0 : vraie nouvelle version, proposer l'update
+```
+
+**API publique étendue** : `window.UpdateChecker.compareSemver(a, b)` exposé pour usages futurs (changelog viewer entre 2 versions, MemInspector, etc.). Format accepté : `"v1.7.10"`, `"1.7.10"`, `"v1.7.10-fix2"` (suffix ignoré), `"v143"` (legacy pré-v1.7.1, traité comme `[143]`).
+
+### 🔄 (3/3) Force update auto-proposé sur mismatch CACHE_NAME
+
+Nouveau hook sur `navigator.serviceWorker.addEventListener("controllerchange")` dans `index.html`. Quand un nouveau Service Worker prend le contrôle pendant la session (= bump CACHE_NAME côté serveur), un toast non-bloquant via OOMGuard explique :
+
+```
+🔄 Mise à jour mineure appliquée — assets fraîchement rechargés.
+```
+
+**Garde-fou critique** : on skip le PREMIER `controllerchange` si la page n'avait pas de controller au load. C'est le cas du tout premier install PWA — pas une « mise à jour », c'est juste l'arrivée initiale du SW. Sans ce filtre, on afficherait un toast trompeur au premier lancement.
+
+```js
+let _swIsInitialControl = !navigator.serviceWorker.controller;
+navigator.serviceWorker.addEventListener("controllerchange", function() {
+  if (_swIsInitialControl) {
+    _swIsInitialControl = false;
+    return; // Premier install, pas de toast
+  }
+  // Vraie update : afficher le toast
+  window.OOMGuard.showToast("🔄 Mise à jour mineure appliquée...", "info");
+});
+```
+
+Le SW MyKTAMap fait déjà `self.skipWaiting()` au install + `self.clients.claim()` au activate (cf `sw.js`), donc le nouveau SW prend le contrôle immédiatement → `controllerchange` fire dans la session courante sans attendre un reload manuel.
+
+**Bonus traçabilité** : hook `reg.addEventListener("updatefound")` pour logger l'état du nouveau SW en console (visible dans 🐛 Logs détaillés si debugMode ON). Aide à diagnostiquer le cas où un nouveau SW s'install mais n'arrive jamais à activate (= bug du SW lui-même).
+
+### 📂 Sources de vérité v1.20.0
+
+- `version.json` → `"v1.20.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.20.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.20.0"` (= retour au format final propre, fin des suffixes `-fixes` / `-fixes2` du dev)
+- Aucun nouveau fichier — modifs internes à `js/interface.js` (~70 lignes : 2 sections Aide), `js/updateChecker.js` (~50 lignes : compareSemver + intégration), `index.html` (~35 lignes : hooks SW client)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Le hook `controllerchange` est 100 % local (event navigateur). `compareSemver` est une fonction pure sans I/O. L'enrichissement de l'Aide est purement HTML statique injecté côté client. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-19-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.19.0 : 📊 État mémoire — Inspecteur de transparence & debug</strong></summary>
 
 Release MINOR (bump Y : 1.18.x → 1.19.0). Nouvel outil de transparence + debug accessible depuis ⚙️ Configuration loader > nouvelle section « 📊 Inspecteur » : un topo lisible et compréhensible de tout ce qui est chargé en mémoire localement par l'app.

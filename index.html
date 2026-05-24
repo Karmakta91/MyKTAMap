@@ -3407,10 +3407,51 @@
 <script>
   // Enregistrement Service Worker (PWA)
   if ("serviceWorker" in navigator) {
+    // 🆕 v1.20.0 — Hook "controllerchange" pour notifier l'user quand un
+    // nouveau SW prend le contrôle pendant la session. Cas typique : on a
+    // bumpé CACHE_NAME côté serveur (ex: -fixes2), le SW s'install + activate
+    // + skipWaiting + clients.claim → controllerchange fire → on affiche
+    // un toast non-bloquant pour expliquer pourquoi le reload a fetché des
+    // nouveaux assets. Sans ce hook, l'user ne voit rien et peut se demander
+    // pourquoi "ça réagit différemment d'un coup".
+    //
+    // Garde-fou : on skip le PREMIER controllerchange si la page n'avait pas
+    // de controller au load (= cas du tout premier install PWA). On ne veut
+    // notifier que les "vraies" updates (= ancien controller → nouveau).
+    let _swIsInitialControl = !navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", function() {
+      if (_swIsInitialControl) {
+        _swIsInitialControl = false;
+        // Premier install — pas de toast, c'est normal
+        return;
+      }
+      // Vraie update : un ancien controller a été remplacé.
+      console.log("[PWA] 🔄 Nouveau SW a pris le contrôle (cache mis à jour)");
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(
+          "🔄 Mise à jour mineure appliquée — assets fraîchement rechargés.",
+          "info"
+        );
+      }
+    });
+
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js")
         .then(function (reg) {
           console.log("[PWA] Service Worker enregistré", reg);
+
+          // 🆕 v1.20.0 — Log updatefound pour traçabilité (visible dans
+          // 🐛 Logs détaillés si debugMode ON). Aide à diagnostiquer le cas
+          // où un nouveau SW s'install mais n'arrive jamais à activate
+          // (ex: bug du SW lui-même).
+          reg.addEventListener("updatefound", function() {
+            const newSw = reg.installing;
+            if (!newSw) return;
+            console.log("[PWA] 📥 Nouveau SW détecté en installation");
+            newSw.addEventListener("statechange", function() {
+              console.log("[PWA] 📥 État SW installing :", newSw.state);
+            });
+          });
         })
         .catch(function (err) {
           console.warn("[PWA] Erreur SW :", err);

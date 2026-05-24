@@ -1882,6 +1882,38 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📊 Inspecteur mémoire <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.19.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">📊</span><span>Bouton « 📊 Voir l'état mémoire » dans ⚙️ Configuration loader (home) → nouvelle section 📊 Inspecteur</span>
+            <span class="kta-aide-icone">🗂️</span><span>localStorage : clés MyKTAMap triées par taille + mini-barre de proportion</span>
+            <span class="kta-aide-icone">💾</span><span>IndexedDB : 3 bases (handles / backups / photos) + scan natif des bases tierces, count par store</span>
+            <span class="kta-aide-icone">📦</span><span>Cache PWA : liste des caches, marquage du cache actif (★), échantillon 12 premiers assets</span>
+            <span class="kta-aide-icone">📈</span><span>Storage estimate : usage / quota navigateur avec barre couleur (vert → jaune → rouge)</span>
+            <span class="kta-aide-icone">🧠</span><span>Runtime : plan chargé, session active (📍/🛣️/⬛/🏛️), modules JS chargés/manquants</span>
+            <span class="kta-aide-icone">📋</span><span>Bouton 📋 Copier le rapport → texte plain markdown-like prêt à coller dans Discord / mail / GitHub</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            Outil de <strong>transparence + debug</strong>. Affiche un topo lisible de tout ce que MyKTAMap a écrit localement dans ton navigateur. Pratique pour diagnostiquer un bug (« ma session disparaît », « mes photos ne sont plus là ») ou vérifier qu'un reset complet a bien purgé tout. <strong>Lecture seule, 100 % local</strong> — aucune donnée transmise.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🏷️ Légende personnalisable <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.16.0 + v1.17.0 + v1.18.x)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">✏️</span><span><strong>Cascade 3 niveaux</strong> : session &gt; plan &gt; défaut MKM (chaque niveau surcharge le suivant)</span>
+            <span class="kta-aide-icone">📐</span><span>Édition <strong>session</strong> (perso, locale) : modale 🖼️ Export PNG → « Personnaliser les libellés » ou bouton ✏️ Modifier dans 🗺️ Légende mode carte</span>
+            <span class="kta-aide-icone">🏗️</span><span>Édition <strong>plan-level</strong> (partagée avec tous les utilisateurs du plan) : Générateur de plan en <strong>mode Avancé</strong> → section « 🏷️ Légende du plan » (v1.17.0)</span>
+            <span class="kta-aide-icone">✨</span><span>4 catégories couvertes : 📍 icônes / 🛣️ tracés / ⬛ zones / 🏛️ structures — renommer, masquer, ou ajouter des entrées <strong>custom dessinables</strong></span>
+            <span class="kta-aide-icone">🌍</span><span><strong>Roundtrip KMZ</strong> (v1.18.0) : la légende plan-level voyage avec ton KMZ exporté → restaurée auto au ré-import dans une autre instance MyKTAMap. Ignorée par Google Earth / OsmAnd / Avenza.</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Roundtrip GPX</strong> (v1.18.1) : pareil pour GPX via <code>&lt;extensions&gt;</code> standard sous <code>&lt;metadata&gt;</code>. Compatible TopoDroid, OsmAnd, Strava, etc.</span>
+            <span class="kta-aide-icone">👁️</span><span>Au ré-import (KMZ ou GPX), le résumé/preview affiche explicitement « ✅ Légende personnalisée du plan détectée : N renommés · M masqués · K customs » avant la génération du ZIP MyKTAMap.</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Cas d'usage</strong> : un cataphile qui crée un plan d'une carrière peut renommer « Eau » en « Lac du fond », masquer les types qu'il n'utilise jamais, et ajouter ses propres types dessinables (« Niche votive », « Stèle », etc.). Ces personnalisations s'appliquent <strong>automatiquement</strong> à tous ceux qui chargeront son plan, en KMZ comme en GPX. Chaque utilisateur peut toujours surcharger sa propre session par-dessus sans rien casser.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🎬 Replay de session tracker <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.12.0)</span></div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">🎬</span><span>Bouton Replay dans le groupe 🧭 Tracker — ouvre la modale plein écran</span>
