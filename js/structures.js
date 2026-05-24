@@ -456,6 +456,11 @@ function renderStructures() {
     structureLayers.push(layer);
 
     // 📝 v1.16.0 step 1 — popup note au clic sur toutes les structures
+    //
+    // v1.16.0 step 1c — pour les fronts (polylines), on ajoute une ghost
+    // transparente plus épaisse (idem pattern road.js) pour ergonomie au
+    // clic. Pour les polygones (piliers/murs), l'aire du polygone capte
+    // déjà bien les clics donc pas de ghost nécessaire.
     if (typeof window.attacherNotePopup === "function") {
       const _structRef = structure;
       const _structTypeLabels = {
@@ -465,8 +470,20 @@ function renderStructures() {
         "front-1":  "🟨 Front de taille 1ère masse",
         "front-2":  "🟧 Front de taille 2e masse"
       };
+      let cibleClic = layer;
+      if (isPolyline) {
+        // Ghost transparente épaisse par-dessus le front visible
+        const ghostStruct = L.polyline(latlngs, {
+          weight:               Math.max((style.weight || 10) + 12, 22),
+          opacity:              0,
+          interactive:          true,
+          bubblingMouseEvents:  false
+        }).addTo(target);
+        structureLayers.push(ghostStruct);
+        cibleClic = ghostStruct;
+      }
       window.attacherNotePopup(
-        layer,
+        cibleClic,
         function() { return _structRef.description; },
         function(v) { _structRef.description = v; },
         _structTypeLabels[structure.type] || ("Structure " + structure.type)

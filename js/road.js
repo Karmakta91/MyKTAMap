@@ -620,6 +620,13 @@ function renderRoads() {
     // 📝 v1.16.0 step 1 — popup note au clic. Exclus itinéraire (éphémère)
     // et jonction (multi-niveau, gérée séparément). Reste : principal /
     // secondaire / chemin → éditables.
+    //
+    // v1.16.0 step 1c (KARMA « augmenter zone cliquable autour du trait ») :
+    // on ajoute une polyline « ghost » TRANSPARENTE par-dessus la vraie,
+    // beaucoup plus épaisse (weight base + 14 px, mini 18 px). C'est cette
+    // ghost qui capte les clics et binde le popup — la polyline visible
+    // garde son weight d'origine pour le rendu. Marge ~7-9 px de chaque
+    // côté du trait → ergonomie tactile mobile sans toucher au visuel.
     if (typeof window.attacherNotePopup === "function" &&
         road.type !== "itinerary" && road.type !== "jonction") {
       const _roadRef = road;
@@ -628,8 +635,17 @@ function renderRoads() {
         secondaire: "🟪 Tracé secondaire",
         chemin:     "🟨 Chemin"
       };
+      const ghostWeight = Math.max((style.weight || 3) + 14, 18);
+      const ghost = L.polyline(latlngs, {
+        weight:               ghostWeight,
+        opacity:              0,           // invisible
+        interactive:          true,
+        bubblingMouseEvents:  false,
+        // Pas de renderer forcé : suit le default preferCanvas:true du map
+      }).addTo(target);
+      roadLayers.push(ghost);
       window.attacherNotePopup(
-        polyline,
+        ghost,
         function() { return _roadRef.description; },
         function(v) { _roadRef.description = v; },
         _roadTypeLabels[road.type] || ("Tracé " + road.type)

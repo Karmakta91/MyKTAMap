@@ -785,8 +785,11 @@ function ajouterPointsDepuisJSON(url, layer) {
           // data layer, on rend la polyline interactive pour binder un popup
           // readonly. Sinon : interactive:false (comportement d'avant — pas
           // d'intrusion au clic).
+          // v1.16.0 step 1c — on garde la polyline visible non-interactive
+          // (rendu inchangé) et on ajoute une ghost TRANSPARENTE épaisse
+          // par-dessus uniquement si note présente. Ergonomie clic mobile.
           const hasNoteRO = !!(road.description && String(road.description).trim());
-          const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: hasNoteRO })).addTo(layer);
+          const polyline = L.polyline(latlngs, Object.assign({}, style, { interactive: false })).addTo(layer);
           if (hasNoteRO && typeof window.attacherNotePopup === "function") {
             const _roadTypeLabelsRO = {
               principal:  "🟩 Tracé principal",
@@ -795,8 +798,14 @@ function ajouterPointsDepuisJSON(url, layer) {
               jonction:   "🪜 Jonction interniveau",
               itinerary:  "🗺️ Itinéraire"
             };
+            const ghostRO = L.polyline(latlngs, {
+              weight:              Math.max((style.weight || 3) + 14, 18),
+              opacity:             0,
+              interactive:         true,
+              bubblingMouseEvents: false
+            }).addTo(layer);
             window.attacherNotePopup(
-              polyline,
+              ghostRO,
               function() { return road.description; },
               null,
               _roadTypeLabelsRO[road.type] || ("Tracé " + road.type),
@@ -901,21 +910,23 @@ function ajouterPointsDepuisJSON(url, layer) {
           if (!structure.points || structure.points.length < minPts) return;
           const style = STRUCTURE_STYLES_DATA[structure.type] || STRUCTURE_STYLES_DATA["mur"];
           const latlngs = structure.points.map(function(p) { return convertCoord(p.x, p.y); });
-          // v1.16.0 step 1 — note readonly conditionnelle (cf roads ci-dessus)
+          // v1.16.0 step 1 + 1c — note readonly conditionnelle + ghost
+          // transparent épais pour les polylines (fronts) si note présente.
           const hasNoteROStruct = !!(structure.description && String(structure.description).trim());
           let leafletLayer;
           if (isPolyline) {
-            // Front de taille : polyline épaisse sans contour
+            // Front de taille : polyline épaisse visible non-interactive
+            // (ghost en dessus si note pour ergonomie clic).
             leafletLayer = L.polyline(latlngs, {
               color:    style.color,
               weight:   style.weight,
               opacity:  style.opacity,
               lineCap:  "round",
               lineJoin: "round",
-              interactive: hasNoteROStruct
+              interactive: false
             }).addTo(layer);
           } else {
-            // Pilier / mur : polygone rempli avec stroke noir
+            // Pilier / mur : polygone rempli (l'aire capte les clics directement)
             leafletLayer = L.polygon(latlngs, Object.assign({}, style, { interactive: hasNoteROStruct })).addTo(layer);
           }
           if (hasNoteROStruct && typeof window.attacherNotePopup === "function") {
@@ -926,8 +937,19 @@ function ajouterPointsDepuisJSON(url, layer) {
               "front-1":  "🟨 Front de taille 1ère masse",
               "front-2":  "🟧 Front de taille 2e masse"
             };
+            let cibleStructRO = leafletLayer;
+            if (isPolyline) {
+              // Ghost transparente épaisse pour ergonomie clic sur le front
+              const ghostStructRO = L.polyline(latlngs, {
+                weight:              Math.max((style.weight || 10) + 12, 22),
+                opacity:             0,
+                interactive:         true,
+                bubblingMouseEvents: false
+              }).addTo(layer);
+              cibleStructRO = ghostStructRO;
+            }
             window.attacherNotePopup(
-              leafletLayer,
+              cibleStructRO,
               function() { return structure.description; },
               null,
               _structTypeLabelsRO[structure.type] || ("Structure " + structure.type),
