@@ -378,18 +378,43 @@ window.LegendCustomization = (function() {
     if (!entry || !entry.category) return null;
     if (CATEGORIES.indexOf(entry.category) < 0) return null;
     const id = entry.id || _newId();
+    const geom = _defaultGeometry(entry.category, entry.geometry);
+    // 🐛 v1.16.0 step2-drawable-fix (KARMA "il me fait les deux, le polygone
+    // et un trait en plus") : on NORMALISE les champs de couleur en fonction
+    // de la géométrie pour éviter qu'une entrée polygone stocke aussi un
+    // lineColor (qui était ensuite rendu comme TRAIT dans la légende, en
+    // double avec le polygone sur la carte).
+    //   - polyline  → lineColor seul (fillColor & borderColor = null)
+    //   - polygon   → fillColor + borderColor (lineColor = null)
+    //   - marker    → iconUrl (pas de couleurs)
+    let lineColor   = entry.lineColor   || null;
+    let fillColor   = entry.fillColor   || null;
+    let borderColor = entry.borderColor || null;
+    if (geom === "polyline") {
+      fillColor   = null;
+      borderColor = null;
+    } else if (geom === "polygon") {
+      // Si l'utilisateur a fourni lineColor mais pas borderColor (cas du
+      // dialog où la checkbox "trait" était cochée pour un polygone), on
+      // promeut lineColor en borderColor pour la bordure du polygone. Puis
+      // on retire lineColor (sinon le swatch légende le lirait en priorité
+      // et afficherait un trait fantôme à côté du polygone).
+      if (!borderColor && lineColor) borderColor = lineColor;
+      if (!borderColor && fillColor) borderColor = fillColor;
+      lineColor = null;
+    }
     const clean = {
       id:          id,
       category:    entry.category,
       // 🆕 v1.16.0 step2-drawable : geometry pour rendre les entrées custom
       // DESSINABLES (toggleXMode + render appliquent le bon style selon la
       // géométrie). Si non fourni, on déduit du category.
-      geometry:    _defaultGeometry(entry.category, entry.geometry),
+      geometry:    geom,
       label:       String(entry.label || "").trim() || "Sans nom",
-      // Renders optionnels — au moins UN doit être présent pour le render
-      lineColor:   entry.lineColor   || null,
-      fillColor:   entry.fillColor   || null,
-      borderColor: entry.borderColor || null,
+      // Renders optionnels — normalisés par géométrie ci-dessus
+      lineColor:   lineColor,
+      fillColor:   fillColor,
+      borderColor: borderColor,
       iconUrl:     entry.iconUrl     || null
     };
     _sessionState.customEntries.push(clean);
@@ -533,14 +558,21 @@ window.LegendCustomization = (function() {
         }
       }
 
+      // 🐛 v1.16.0 step2-drawable-fix : utilise GEOMETRY comme discriminator
+      // primaire pour le swatch (au lieu de "lineColor first"). Évite qu'un
+      // polygon avec lineColor stocké en accident soit affiché en trait.
       let swatch = '';
       if (iconUrl) {
         swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
-      } else if (e.lineColor) {
-        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(e.lineColor) + ';flex:0 0 16px;border-radius:1px;"></span>';
-      } else if (e.fillColor) {
-        const border = e.borderColor ? ('border:1px solid ' + _esc(e.borderColor) + ';') : '';
-        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(e.fillColor) + ';' + border + 'flex:0 0 14px;border-radius:2px;"></span>';
+      } else if (e.geometry === "polyline" || (!e.geometry && e.lineColor && !e.fillColor)) {
+        // Polyline (front custom) ou legacy entry avec lineColor seul
+        const col = e.lineColor || e.fillColor || "#888";
+        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(col) + ';flex:0 0 16px;border-radius:1px;"></span>';
+      } else if (e.geometry === "polygon" || e.fillColor) {
+        // Polygone (zones, structures pilier/mur) ou legacy avec fillColor
+        const fill   = e.fillColor || e.lineColor || "#888";
+        const border = e.borderColor || e.lineColor || fill;
+        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(fill) + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
       } else {
         swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
       }
@@ -767,6 +799,12 @@ window.LegendCustomization = (function() {
         } else {
           // structures → afficher le sélecteur de géométrie + ajuster
           // les champs de couleur selon le choix.
+          // 🐛 v1.16.0 step2-drawable-fix : pour POLYGONE, on cache le
+          // selecteur "trait" pour éviter que l'utilisateur saisisse une
+          // couleur de trait par méprise (qui sera ensuite ignorée par le
+          // resolver et l'addCustomEntry normalise — mais autant nettoyer
+          // l'UI). Pour la BORDURE d'un polygone, l'utilisateur peut
+          // utiliser un éditeur plus tard (ou on prend fillColor par défaut).
           geomWrap.style.display = "block";
           const geom = _getStructGeometry();
           if (geom === "polyline") {
@@ -775,8 +813,9 @@ window.LegendCustomization = (function() {
             fillWrap.style.display = "none";
             document.getElementById("kta-lc-add-line-on").checked = true;
           } else {
-            // Pilier/mur : couleur fill obligatoire, trait optionnel pour bordure
-            lineWrap.style.display = "block";
+            // Pilier/mur : couleur fill obligatoire, pas de trait séparé
+            // (la bordure prend fillColor par défaut au render).
+            lineWrap.style.display = "none";
             fillWrap.style.display = "block";
             document.getElementById("kta-lc-add-fill-on").checked = true;
           }

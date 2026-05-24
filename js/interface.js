@@ -3917,6 +3917,11 @@ function _creerGroupeAccordeon(config) {
         btnSub.href      = "javascript:void(0)";
         btnSub.title     = sub.titre;
         if (sub.refClassName) btnSub.dataset.refClassName = sub.refClassName;
+        // 🆕 v1.16.0 step2-drawable-fix : marqueur des boutons « type »
+        // (activent un mode de dessin). Les customs s'insèrent ENTRE les
+        // types et les outils dans la sidebar (cf KARMA "on ajoute les
+        // icônes avant Valider et Effacer").
+        if (sub.isTypeAction) btnSub.dataset.typeAction = "1";
 
         L.DomEvent.on(btnSub, "click", function(e) {
           L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
@@ -4661,11 +4666,11 @@ _setGroupeModeActif("tracker", isTracking, null);
   const _sousActionsTraces = [];
 
   _sousActionsTraces.push(
-    { icone: "🟩", titre: "Route principale",
+    { icone: "🟩", titre: "Route principale", isTypeAction: true,
       onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
-    { icone: "🟪", titre: "Route secondaire",
+    { icone: "🟪", titre: "Route secondaire", isTypeAction: true,
       onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
-    { icone: "🟨", titre: "Chemin",
+    { icone: "🟨", titre: "Chemin", isTypeAction: true,
       onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } }
   );
 
@@ -4673,6 +4678,7 @@ _setGroupeModeActif("tracker", isTracking, null);
     _sousActionsTraces.push({
       icone: "🪜",
       titre: "Jonction interniveau",
+      isTypeAction: true,
       onClick: function(btn) {
         // Toggle (Bug 4 fix v148.test) : si le mode jonction est deja actif,
         // re-clic = on désactive proprement le mode (cohérent avec le
@@ -4790,16 +4796,16 @@ _setGroupeModeActif("tracker", isTracking, null);
     iconePrincipale: "⬛",
     titre: "Zones (remblais / effondrements / eau / inaccessible)",
     sousActions: [
-      { icone: "⬛", titre: "Zone de remblais",
+      { icone: "⬛", titre: "Zone de remblais", isTypeAction: true,
         onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
-      { icone: "🟥", titre: "Zone d'effondrement",
+      { icone: "🟥", titre: "Zone d'effondrement", isTypeAction: true,
         onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
-      { icone: "🟦", titre: "Zone d'eau",
+      { icone: "🟦", titre: "Zone d'eau", isTypeAction: true,
         onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
       // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
       // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
       // pour le calcul d'itinéraire (= contrainte dure).
-      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)",
+      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)", isTypeAction: true,
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
       { icone: "✅", titre: "Fermer la zone en cours",
         onClick: function() {
@@ -4930,17 +4936,17 @@ _setGroupeModeActif("tracker", isTracking, null);
       // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
       // au draft initial qui avait orange / jaune dans le mauvais sens).
       // En multi-niveau : tagué au niveau actif.
-      { icone: "🟡", titre: "Pilier 1ère masse (jaune)",
+      { icone: "🟡", titre: "Pilier 1ère masse (jaune)", isTypeAction: true,
         onClick: function(btn) { _activerStructure("pilier-1", btn, "🟡"); } },
       // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
       // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
       // car structurellement la masse inférieure visible depuis l'actuelle.
-      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto",
+      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto", isTypeAction: true,
         onClick: function(btn) { _activerStructure("pilier-2", btn, "🟠"); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).
-      { icone: "🔵", titre: "Mur (bleu foncé)",
+      { icone: "🔵", titre: "Mur (bleu foncé)", isTypeAction: true,
         onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
       // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
@@ -4948,9 +4954,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)",
+      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)", isTypeAction: true,
         onClick: function(btn) { _activerStructure("front-1", btn, "🟨"); } },
-      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto",
+      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto", isTypeAction: true,
         onClick: function(btn) { _activerStructure("front-2", btn, "🟧"); } },
       { icone: "✅", titre: "Fermer la structure en cours",
         onClick: function() {
@@ -5080,23 +5086,36 @@ _setGroupeModeActif("tracker", isTracking, null);
         return !el.dataset || !el.dataset.customId;
       });
 
-      // 2) Construit les nouveaux boutons depuis LC.listCustomEntries.
+      // 2) Trouve l'ANCRE = premier bouton non-type (= outil : ✅ Valider,
+      //    🧹 Effacer, 📏 Distance, etc.). Les customs s'insèrent JUSTE
+      //    AVANT cette ancre, donc ENTRE les types built-in et les outils.
+      //    KARMA : « on ajoute les icônes avant Valider et avant Effacer ».
+      const allSubs   = Array.from(grp.container.querySelectorAll('a.kta-sub'));
+      const ancreBtn  = allSubs.find(function(b) { return !b.dataset.typeAction; });
+      // Position dans subActions où insérer (= index du 1er non-type-action,
+      // sinon en queue si tous sont des types).
+      const ancreIdx  = ancreBtn
+        ? grp.subActions.indexOf(ancreBtn)
+        : grp.subActions.length;
+
+      // 3) Construit les nouveaux boutons depuis LC.listCustomEntries.
       //    Filtre les invisibles.
       const customs = LC.listCustomEntries(m.lcCat).filter(function(e) { return e.visible; });
-      customs.forEach(function(e) {
-        const btn = L.DomUtil.create("a", "kta-sub kta-hidden", grp.container);
+      customs.forEach(function(e, i) {
+        // 🐛 v1.16.0 step2-drawable-fix : geometry first pour le swatch.
+        const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
+        // L.DomUtil.create sans parent → on attache via insertBefore
+        const btn = L.DomUtil.create("a", "kta-sub kta-hidden");
         btn.href            = "javascript:void(0)";
         btn.title           = "✨ " + e.label;
         btn.dataset.customId = e.id;
         btn.dataset.subId    = "custom-" + e.id;
 
-        // Swatch visuel : trait coloré pour polyline, carré pour polygon,
-        // image pour icones (mais icones ne sont pas dessinables — exclues
-        // de cette injection — cf. mapping ci-dessus).
-        if (e.geometry === "polyline") {
-          btn.innerHTML = '<span style="display:inline-block;width:16px;height:3px;background:' + (e.lineColor || '#888') + ';vertical-align:middle;border-radius:1px;"></span>';
+        // Swatch visuel selon la géométrie déclarée
+        if (isLine) {
+          const col = e.lineColor || e.fillColor || '#888';
+          btn.innerHTML = '<span style="display:inline-block;width:16px;height:3px;background:' + col + ';vertical-align:middle;border-radius:1px;"></span>';
         } else {
-          // polygon (zones, structures pilier/mur, ou traces sans lineColor → fallback)
           const fill   = e.fillColor || e.lineColor || '#888';
           const border = e.borderColor || e.lineColor || fill;
           btn.innerHTML = '<span style="display:inline-block;width:12px;height:12px;background:' + fill + ';border:1px solid ' + border + ';vertical-align:middle;border-radius:2px;"></span>';
@@ -5109,7 +5128,13 @@ _setGroupeModeActif("tracker", isTracking, null);
           m.activerFn(e.id, btn, "✨");
         });
 
-        grp.subActions.push(btn);
+        // Insère AVANT l'ancre dans le DOM, et au bon index dans subActions
+        if (ancreBtn) {
+          grp.container.insertBefore(btn, ancreBtn);
+        } else {
+          grp.container.appendChild(btn);
+        }
+        grp.subActions.splice(ancreIdx + i, 0, btn);
 
         // Si le groupe est ouvert, on rend le bouton visible tout de suite
         if (_groupeOuvert === m.groupeId || grp.modeActif) {
@@ -7498,15 +7523,22 @@ function afficherLegende() {
   contenuStructures += _ligneStructLine("front-1", "#f4c542");
   contenuStructures += _ligneStructLine("front-2", "#ff9933");
   // Customs structures
+  // 🐛 v1.16.0 step2-drawable-fix : utilise GEOMETRY comme discriminator
+  // (au lieu de "lineColor first") — sinon une entrée polygon avec
+  // lineColor stocké en accident apparaissait comme trait dans la légende
+  // EN PLUS du polygone sur la carte → KARMA voyait les deux représentations.
   if (LC) {
     LC.listCustomEntries("structures")
       .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
       .forEach(function(e) {
-        if (e.lineColor) {
-          contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${e.lineColor};"></span><span class="kta-legende-label">${e.label}</span></div>`;
+        const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
+        if (isLine) {
+          const col = e.lineColor || e.fillColor;
+          contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${col};"></span><span class="kta-legende-label">${e.label}</span></div>`;
         } else {
-          const border = e.borderColor || e.fillColor;
-          contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${e.fillColor}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${e.label}</span></div>`;
+          const fill   = e.fillColor || e.lineColor;
+          const border = e.borderColor || e.lineColor || fill;
+          contenuStructures += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${e.label}</span></div>`;
         }
       });
   }
@@ -7697,14 +7729,18 @@ function afficherLegende() {
     sx += _ligneStructLine("front-1", "#f4c542");
     sx += _ligneStructLine("front-2", "#ff9933");
     if (LC) {
+      // 🐛 v1.16.0 step2-drawable-fix : geometry first
       LC.listCustomEntries("structures")
         .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
         .forEach(function(e) {
-          if (e.lineColor) {
-            sx += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${e.lineColor};"></span><span class="kta-legende-label">${e.label}</span></div>`;
+          const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
+          if (isLine) {
+            const col = e.lineColor || e.fillColor;
+            sx += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${col};"></span><span class="kta-legende-label">${e.label}</span></div>`;
           } else {
-            const border = e.borderColor || e.fillColor;
-            sx += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${e.fillColor}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${e.label}</span></div>`;
+            const fill   = e.fillColor || e.lineColor;
+            const border = e.borderColor || e.lineColor || fill;
+            sx += `<div class="kta-legende-ligne"><span class="kta-legende-trait" style="background:${fill}; opacity:0.85; height:14px; border:2px solid ${border};"></span><span class="kta-legende-label">${e.label}</span></div>`;
           }
         });
     }

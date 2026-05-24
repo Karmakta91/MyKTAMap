@@ -969,14 +969,17 @@
         try { iconUrl = _iconePourTag(e.key); } catch(err) { iconUrl = null; }
       }
       // Visual cue (swatch couleur / icône à gauche du libellé pour repérage)
+      // 🐛 v1.16.0 step2-drawable-fix : geometry first (cf legendCustomization.js)
       let swatch = '';
       if (iconUrl) {
         swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
-      } else if (e.lineColor) {
-        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(e.lineColor) + ';flex:0 0 16px;border-radius:1px;"></span>';
-      } else if (e.fillColor) {
-        const border = e.borderColor ? ('border:1px solid ' + _esc(e.borderColor) + ';') : '';
-        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(e.fillColor) + ';' + border + 'flex:0 0 14px;border-radius:2px;"></span>';
+      } else if (e.geometry === "polyline" || (!e.geometry && e.lineColor && !e.fillColor)) {
+        const col = e.lineColor || e.fillColor || "#888";
+        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(col) + ';flex:0 0 16px;border-radius:1px;"></span>';
+      } else if (e.geometry === "polygon" || e.fillColor) {
+        const fill   = e.fillColor || e.lineColor || "#888";
+        const border = e.borderColor || e.lineColor || fill;
+        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(fill) + ';border:1px solid ' + _esc(border) + ';flex:0 0 14px;border-radius:2px;"></span>';
       } else {
         swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
       }
@@ -1152,6 +1155,8 @@
           document.getElementById("kta-legend-add-fill-on").checked = true;
         } else {
           // structures
+          // 🐛 v1.16.0 step2-drawable-fix : pour polygone, on cache le
+          // sélecteur "trait" (cf legendCustomization.js).
           geomWrap.style.display = "block";
           const g = _getStructGeom();
           if (g === "polyline") {
@@ -1159,7 +1164,7 @@
             fillWrap.style.display = "none";
             document.getElementById("kta-legend-add-line-on").checked = true;
           } else {
-            lineWrap.style.display = "block";
+            lineWrap.style.display = "none";
             fillWrap.style.display = "block";
             document.getElementById("kta-legend-add-fill-on").checked = true;
           }
@@ -2776,11 +2781,20 @@
             { label: "Front de taille 2e",   lineColor:  "#ff9933" }
           ];
       if (LC) {
+        // 🐛 v1.16.0 step2-drawable-fix : geometry first comme discriminator
         LC.listCustomEntries("structures")
           .filter(function(e) { return e.visible && (e.lineColor || e.fillColor); })
           .forEach(function(e) {
-            if (e.lineColor) lignes.push({ label: e.label, lineColor: e.lineColor });
-            else             lignes.push({ label: e.label, fillColor: e.fillColor, borderColor: e.borderColor || e.fillColor });
+            const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
+            if (isLine) {
+              lignes.push({ label: e.label, lineColor: e.lineColor || e.fillColor });
+            } else {
+              lignes.push({
+                label:       e.label,
+                fillColor:   e.fillColor || e.lineColor,
+                borderColor: e.borderColor || e.lineColor || e.fillColor
+              });
+            }
           });
       }
       if (lignes.length > 0) entrees.push({ section: "🏛️ Structures", lignes: lignes });
