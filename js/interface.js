@@ -388,22 +388,34 @@ function _confirmEtChargerPlan(planId) {
   }
 
   // Session active → modale d'avertissement
+  // 🐛 v1.16.0-fix (KARMA "les deux garde-fou — les données non exportées
+  // seront perdues — avec les autosaves et snap c'est plus totalement
+  // vrai, il faut adapter") : reformulation pour refléter le filet de
+  // sécurité SessionPersist (auto-save par plan) + SessionBackups (10
+  // snapshots FIFO IDB). La session du plan courant n'est pas PERDUE en
+  // changeant de plan — elle est sauvegardée et restaurée au retour.
   const overlay = document.createElement("div");
   overlay.className = "kta-modal-overlay";
   overlay.innerHTML =
     '<div class="kta-modal">' +
-      '<div class="kta-modal-icon">⚠️</div>' +
-      '<div class="kta-modal-titre">Session en cours</div>' +
+      '<div class="kta-modal-icon">🗂️</div>' +
+      '<div class="kta-modal-titre">Charger un autre plan</div>' +
       '<div class="kta-modal-texte">' +
-        'Vous avez des modifications non enregistrées sur le plan en cours :' +
+        'Session actuellement active sur le plan en cours :' +
         '<ul style="text-align:left; margin:10px 0 14px 0; padding-left:24px; color:#a8b3c8; line-height:1.6; list-style-type:disc;">' +
           items.map(function(it) { return '<li style="color:#a8b3c8;">' + escapeHtmlSwitcher(it) + '</li>'; }).join("") +
         '</ul>' +
-        'Charger « <strong>' + escapeHtmlSwitcher(plan.name || plan.id) + '</strong> » va vous faire perdre ces modifications.' +
+        '<strong style="color:#6ce28a;">✅ La session du plan courant est sauvegardée</strong> ' +
+        'et sera restaurée à ton retour sur ce plan.<br>' +
+        '<span style="color:#a8b3c8; font-size:12.5px;">' +
+          '📦 Les 10 derniers snapshots restent dispos dans 📊 Détails de ' +
+          'session › Backups pour revenir à un état antérieur si besoin.' +
+        '</span><br><br>' +
+        'Charger « <strong>' + escapeHtmlSwitcher(plan.name || plan.id) + '</strong> » ?' +
       '</div>' +
       '<div class="kta-modal-actions">' +
         '<button class="kta-btn kta-btn-ghost"   id="kta-switch-annuler">Annuler</button>' +
-        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">Charger quand même</button>' +
+        '<button class="kta-btn kta-btn-primary" id="kta-switch-confirmer">📚 Charger</button>' +
       '</div>' +
     '</div>';
   document.documentElement.appendChild(overlay);
@@ -2094,12 +2106,18 @@ function afficherPopupChangerPlan() {
   overlay.className = "kta-readme-modal-overlay";
 
   overlay.innerHTML = `
-    <div class="kta-modal" style="max-width:400px;">
+    <div class="kta-modal" style="max-width:440px;">
       <div class="kta-modal-icon">🗂️</div>
       <div class="kta-modal-titre">Changer de plan</div>
       <div class="kta-modal-texte">
-        Tu vas quitter la session en cours pour revenir à la liste de tes plans.<br>
-        <strong>Les données non exportées seront perdues.</strong>
+        Tu vas quitter la session en cours pour revenir à la liste de tes plans.<br><br>
+        <strong style="color:#6ce28a;">✅ Ta session est sauvegardée automatiquement</strong>
+        et sera restaurée quand tu reviendras sur ce plan.<br>
+        <span style="color:#a8b3c8; font-size:12.5px;">
+          📦 Les 10 derniers snapshots restent aussi disponibles dans
+          📊 Détails de session › Backups récents pour revenir à un état
+          antérieur à tout moment.
+        </span>
       </div>
       <div class="kta-modal-actions">
         <button class="kta-btn kta-btn-ghost" id="popupResterIci">Rester ici</button>
