@@ -1603,6 +1603,29 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #b4ccff !important;
 }
 
+/* 🆕 v1.16.0 step 3 — Bouton "⭐ Favori" : accent jaune ambre charte.
+   État inactif (☆) = couleur ambre opaque atténuée. État actif (⭐) =
+   ambre pleinement saturé + bordure plus marquée pour feedback visuel
+   immédiat au toggle. */
+.kta-popup-actions .kta-popup-btn-fav {
+  background: rgba(244, 197, 66, 0.08) !important;
+  border-color: rgba(244, 197, 66, 0.3) !important;
+  color: #b89a4a !important;
+}
+.kta-popup-actions .kta-popup-btn-fav:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  color: #f4c542 !important;
+}
+.kta-popup-actions .kta-popup-btn-fav.kta-fav-active {
+  background: rgba(244, 197, 66, 0.22) !important;
+  border-color: rgba(244, 197, 66, 0.65) !important;
+  color: #f4c542 !important;
+  box-shadow: 0 0 0 1px rgba(244, 197, 66, 0.2) inset;
+}
+.kta-popup-actions .kta-popup-btn-fav.kta-fav-active:hover {
+  background: rgba(244, 197, 66, 0.32) !important;
+}
+
 /* 🆕 v1.9.3-B1d — Slot photos dans le popup point. Vide par défaut
    (hydraté async via attachPopupPhotos au popupopen). Masqué si vide
    pour ne pas créer d'espace blanc. */

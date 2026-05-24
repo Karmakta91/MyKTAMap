@@ -51,6 +51,13 @@ async function initDataFromConfig() {
   if (window.LegendCustomization && typeof window.LegendCustomization.loadPlanState === "function") {
     window.LegendCustomization.loadPlanState();
   }
+  // v1.16.0 step 3 : charge les favoris du plan courant. Le module
+  // Favoris stocke la liste indexée par planId — switch de plan = swap
+  // de la liste active. Le planId est window._currentLoadedPlanId
+  // (défini par le plan switcher / loader).
+  if (window.Favoris && typeof window.Favoris.loadPlan === "function") {
+    window.Favoris.loadPlan(window._currentLoadedPlanId || null);
+  }
 
   // Détection : la session SessionPersist contient-elle des editor points pour ce plan ?
   // Si oui, on SKIP le fetch de data/editor.json car le restore est autoritaire.

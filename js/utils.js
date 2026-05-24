@@ -415,7 +415,7 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
 // Wire-up via onclick inline (window.itineraireYAller / window.itineraireAjouterWaypoint
 // dans interface.js). Echappement HTML/string strict pour eviter les injections
 // si un point a un nom avec apostrophe ou guillemet.
-function buildPointPopupHtml(point, isEditorSession) {
+function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");
   // Echappement HTML pour le contenu affiche
@@ -427,6 +427,20 @@ function buildPointPopupHtml(point, isEditorSession) {
   const jsId   = id.replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/\r?\n/g, " ");
   const x = Number(point.x) || 0;
   const y = Number(point.y) || 0;
+  // 🆕 v1.16.0 step 3 — Favori : layerInfo passé par les callers
+  // (editor.js → { layerId: "editor", layerLabel: "Mes ajouts" }, utils.js
+  // ajouterPointsDepuisJSON → { layerId: <data layer id>, layerLabel: <label> }).
+  // Si absent, on déduit du flag isEditorSession.
+  const _layerId    = (layerInfo && layerInfo.layerId)    || (isEditorSession ? "editor" : "data");
+  const _layerLabel = (layerInfo && layerInfo.layerLabel) || (isEditorSession ? "Mes ajouts" : "");
+  const _firstTag   = (Array.isArray(point.tags) && point.tags[0]) || "default";
+  // Échappement attribut pour les chaînes embarquées en data-* / args inline
+  function _escAttr(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  const isFav = !!(window.Favoris && window.Favoris.isFav(point.id));
 
   // Bouton Supprimer : visible UNIQUEMENT pour les points de la session
   // utilisateur en cours (listePoints). Detection via le 2eme argument
@@ -487,12 +501,59 @@ function buildPointPopupHtml(point, isEditorSession) {
                'title="Ajoute ce point comme waypoint d\'un itinéraire">' +
                '➕ Itinéraire' +
              '</button>' +
+             // 🆕 v1.16.0 step 3 — Favori : toggle ajout/retrait des favoris.
+             // Le label et la classe initiale dépendent de l'état actuel.
+             // Au clic, window.toggleFavoriPoint mute l'état + rafraîchit le
+             // libellé du bouton in-place (pas de re-render du popup entier).
+             '<button class="kta-popup-btn kta-popup-btn-fav' + (isFav ? ' kta-fav-active' : '') + '" type="button" ' +
+               'data-fav-pointid="' + _escAttr(jsId) + '" ' +
+               'onclick="window.toggleFavoriPoint(\'' + jsId + '\',' + x + ',' + y + ",'" + jsName + "','" + _firstTag + "','" + _layerId + "','" + _escAttr(_layerLabel) + "'); return false;\" " +
+               'title="' + (isFav ? "Retirer des favoris" : "Mettre en favori") + '">' +
+               (isFav ? '⭐ Favori' : '☆ Favori') +
+             '</button>' +
            '</div>' +
            editRow +
            deleteRow +
          '</div>';
 }
 window.buildPointPopupHtml = buildPointPopupHtml;
+
+// 🆕 v1.16.0 step 3 — Favori : toggle handler global appelé depuis le
+// bouton ⭐ inline dans la popup. Reçoit le snapshot complet (pas juste
+// l'ID) pour pouvoir construire l'entrée favori sans relookup. Refresh
+// in-place le libellé du bouton dans toutes les popups ouvertes pour
+// CE pointId (cas où la même popup serait référencée à plusieurs
+// endroits — rare mais robuste).
+window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel) {
+  if (!window.Favoris) return;
+  const snapshot = {
+    pointId:    pointId,
+    nom:        nom,
+    x:          x,
+    y:          y,
+    tag:        tag        || "default",
+    layerId:    layerId    || "editor",
+    layerLabel: layerLabel || ""
+  };
+  const res = window.Favoris.toggle(snapshot);
+  // Refresh le libellé du bouton ⭐ dans la popup ouverte (ou plusieurs si
+  // ce pointId apparaît à plusieurs endroits — improbable mais robuste).
+  const nowFav = window.Favoris.isFav(pointId);
+  document.querySelectorAll('.kta-popup-btn-fav[data-fav-pointid]').forEach(function(btn) {
+    if (btn.getAttribute("data-fav-pointid") === pointId) {
+      btn.textContent = nowFav ? "⭐ Favori" : "☆ Favori";
+      btn.classList.toggle("kta-fav-active", nowFav);
+      btn.title = nowFav ? "Retirer des favoris" : "Mettre en favori";
+    }
+  });
+  // Toast discret (réutilise OOMGuard ou alertCharte si dispo, sinon console)
+  if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+    window.OOMGuard.showToast(
+      (nowFav ? "⭐ Ajouté aux favoris : " : "☆ Retiré des favoris : ") + (nom || pointId),
+      "info"
+    );
+  }
+};
 
 // =========================
 // 📸 attachPopupPhotos(marker, pointId) — v1.9.3-B1d
@@ -766,6 +827,28 @@ window.getAllEmbeddedStructures = function() {
 };
 
 function ajouterPointsDepuisJSON(url, layer) {
+  // 🆕 v1.16.0 step 3 : reverse-lookup pour identifier le calque de
+  // data layer auquel appartient ce JSON. Sert au bouton ⭐ Favori
+  // pour stocker le bon layerId/layerLabel dans le snapshot. Pas de
+  // dependency sur un nouveau paramètre — on retrouve via la map des
+  // dataLayerGroups.
+  function _resolveLayerInfo(targetLayer) {
+    if (!window.dataLayerGroups) return null;
+    for (const id in window.dataLayerGroups) {
+      if (window.dataLayerGroups[id] === targetLayer) {
+        let label = id;
+        const cfg = window.PLAN_CONFIG && window.PLAN_CONFIG.dataLayers;
+        if (Array.isArray(cfg)) {
+          const lc = cfg.find(function(d) { return d.id === id; });
+          if (lc && lc.label) label = lc.label;
+        }
+        return { layerId: id, layerLabel: label };
+      }
+    }
+    return null;
+  }
+  const _layerInfo = _resolveLayerInfo(layer);
+
   fetch(url)
     .then(res => res.json())
     .then(json => {
@@ -790,8 +873,9 @@ function ajouterPointsDepuisJSON(url, layer) {
             // Popup avec boutons "Y aller" / "Itinéraire" — helper commun.
             // 2e argument false → point d'un data layer (lecture seule), pas
             // de bouton "🗑️ Supprimer" affiche.
+            // 🆕 v1.16.0 step 3 : 3e arg = layerInfo pour le bouton ⭐ Favori
             const popupHtml = (typeof window.buildPointPopupHtml === "function")
-              ? window.buildPointPopupHtml(p, false)
+              ? window.buildPointPopupHtml(p, false, _layerInfo)
               : ("<b>" + (p.nom || "") + "</b><br>" + (p.description || ""));
             marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
             // 📸 v1.9.3-B1d : hydrate les miniatures photos dans le popup à

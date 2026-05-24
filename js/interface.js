@@ -3972,7 +3972,14 @@ function _creerGroupeAccordeon(config) {
       useFlyout:        config.useFlyout === true,
       sousActionsConfig: config.sousActions || [],
       lcCat:             config.lcCat || null,
-      customActivator:   config.customActivator || null
+      customActivator:   config.customActivator || null,
+      // 🆕 v1.16.0 step 3 : si fourni, override de sousActionsConfig au
+      // moment de l'ouverture du flyout. Permet aux groupes qui ont une
+      // liste de sub-actions dynamique (ex: ⭐ Favoris) de la recalculer
+      // à chaque ouverture sans rebuild du groupe entier.
+      dynamicSousActions: (typeof config.dynamicSousActions === "function")
+                           ? config.dynamicSousActions
+                           : null
     };
 
     return div;
@@ -4070,7 +4077,12 @@ function _ouvrirFlyout(groupId) {
 
   // Construit la liste finale des actions : types built-in + customs
   // (insérés AVANT les outils, cf step2-drawable-fix) + outils.
-  const baseActions = (grp.sousActionsConfig || []).slice();
+  // 🆕 v1.16.0 step 3 : si le groupe a un `dynamicSousActions` (cas du
+  // groupe ⭐ Favoris dont la liste varie à chaque ouverture), on l'appelle
+  // pour obtenir la liste fraîche au lieu de relire sousActionsConfig.
+  const baseActions = (typeof grp.dynamicSousActions === "function")
+                        ? (grp.dynamicSousActions() || [])
+                        : (grp.sousActionsConfig || []).slice();
   const allActions  = baseActions.slice();
   if (window.LegendCustomization && grp.lcCat && typeof window.LegendCustomization.listCustomEntries === "function") {
     const customs = window.LegendCustomization.listCustomEntries(grp.lcCat).filter(function(e) { return e.visible; });
@@ -5497,6 +5509,141 @@ _setGroupeModeActif("tracker", isTracking, null);
     window.LegendCustomization.onCustomEntriesChange(function() {
       _injecterBoutonsCustomSidebar();
     });
+  }
+
+  // 🆕 v1.16.0 step 3 — Groupe sidebar ⭐ FAVORIS (flyout)
+  //
+  // Liste les points favoris du plan courant. Chaque entrée du flyout :
+  //   - swatch (icône du tag si dispo) + libellé snapshot
+  //   - click → centre la carte sur le point + flash visuel (cercle pulsant)
+  //   - bouton 🗑️ pour retirer le favori
+  //
+  // Le flyout est rebuilt à chaque ouverture (sousActionsConfig vide ; on
+  // injecte les favoris dynamiquement via un customActivator-like). On
+  // exploite le fait que _ouvrirFlyout liste sousActionsConfig + customs
+  // de LC.lcCat — donc on passe une lcCat "factice" et un build dynamique
+  // via... hmm en fait pour Favoris on a une logique différente, le
+  // flyout doit lister les FAVORIS, pas des entrées LC. Plus simple :
+  // on définit un sousActionsConfig dynamique recalculé à chaque ouverture
+  // — ou on customise _ouvrirFlyout pour supporter un buildSousActions
+  // hook. Choix le plus simple : un hook `dynamicSousActions: () => [...]`.
+  // Si présent, override sousActionsConfig au moment du build flyout.
+  _creerGroupeAccordeon({
+    id: "favoris",
+    iconePrincipale: "⭐",
+    titre: "Favoris",
+    useFlyout: true,
+    // Pas de lcCat ni customActivator — c'est une catégorie indépendante.
+    // sousActions résolus DYNAMIQUEMENT au moment de l'ouverture du flyout
+    // via dynamicSousActions ci-dessous (cf _ouvrirFlyout).
+    dynamicSousActions: function() {
+      if (!window.Favoris) return [];
+      const favs = window.Favoris.getAll();
+      if (favs.length === 0) {
+        return [{
+          icone: "ℹ️",
+          titre: "(aucun favori — clique ⭐ dans une popup pour ajouter)",
+          onClick: function() {}  // no-op
+        }];
+      }
+      return favs.map(function(f) {
+        // Swatch = icône du tag si dispo (PLAN_CONFIG.icons[tag])
+        const tag = f.tag || "default";
+        let iconHtml;
+        if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons && window.PLAN_CONFIG.icons[tag]) {
+          iconHtml = '<img src="' + window.PLAN_CONFIG.icons[tag] + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
+        } else if (window._iconMap && window._iconMap[tag]) {
+          const io = window._iconMap[tag];
+          const url = io._kta_iconUrl || (io.options && io.options.iconUrl);
+          if (url) iconHtml = '<img src="' + url + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
+        }
+        if (!iconHtml) iconHtml = "📍";
+
+        return {
+          icone: iconHtml,
+          titre: f.nom,
+          // pas isTypeAction → s'affiche dans le bloc "outils" du flyout
+          // mais on n'utilise pas le séparateur car c'est uniformément des
+          // favoris (pas de types built-in distincts à séparer).
+          onClick: function() {
+            _allerVersFavori(f);
+          }
+        };
+      });
+    }
+  });
+
+  // Refresh du flyout Favoris quand la liste change (ajout / retrait via
+  // popup ⭐). Si le flyout est ouvert pour favoris, on le re-render en
+  // place. Sinon no-op (sera fresh au prochain open).
+  if (window.Favoris && typeof window.Favoris.onChange === "function") {
+    window.Favoris.onChange(function() {
+      if (_currentFlyout && _currentFlyout.dataset.groupId === "favoris") {
+        _ouvrirFlyout("favoris");
+      }
+    });
+  }
+
+  // Helper "aller vers un favori" : centre la carte + flash (cercle
+  // pulsant 3s) + open popup si un marker correspondant existe.
+  function _allerVersFavori(fav) {
+    if (!fav || !window.map) return;
+    const latlng = convertCoord(fav.x, fav.y);
+    window.map.setView(latlng, window.map.getZoom(), { animate: false });
+    window.map.invalidateSize();
+
+    // Cleanup d'un éventuel flash précédent
+    if (window._favFlashLayer) {
+      try { window.map.removeLayer(window._favFlashLayer); } catch(e) {}
+      window._favFlashLayer = null;
+    }
+
+    // Cercle d'entourage statique (cohérent avec _ouvrirPopupEtFlash de
+    // searchPoints.js — même couleur orange charte).
+    window._favFlashLayer = L.circleMarker(latlng, {
+      radius:       28,
+      color:        "#ffaa00",
+      fillColor:    "#ffcc44",
+      fillOpacity:  0,
+      weight:       3,
+      opacity:      0.9,
+      interactive:  false
+    }).addTo(window.map);
+
+    // Tentative d'ouvrir le popup du marker existant (session ou data
+    // layer). Matching par coords plan x/y (tolerance < 0.5 px).
+    let foundMarker = null;
+    function _scanLayer(lyr) {
+      if (foundMarker || !lyr || !lyr.eachLayer) return;
+      lyr.eachLayer(function(m) {
+        if (foundMarker) return;
+        if (m.getLatLng) {
+          const ll = m.getLatLng();
+          const mx = ll.lng;
+          const my = APP_CONFIG.imageHeight - ll.lat;
+          if (Math.abs(mx - fav.x) < 0.5 && Math.abs(my - fav.y) < 0.5) {
+            foundMarker = m;
+          }
+        }
+      });
+    }
+    if (window.layerEditor) _scanLayer(window.layerEditor);
+    if (!foundMarker && window.dataLayerGroups) {
+      Object.keys(window.dataLayerGroups).forEach(function(id) {
+        _scanLayer(window.dataLayerGroups[id]);
+      });
+    }
+    if (foundMarker && foundMarker.openPopup) {
+      foundMarker.openPopup();
+    }
+
+    // Le flash disparaît après 3 secondes
+    setTimeout(function() {
+      if (window._favFlashLayer) {
+        try { window.map.removeLayer(window._favFlashLayer); } catch(e) {}
+        window._favFlashLayer = null;
+      }
+    }, 3000);
   }
 
   // Initialiser le clic extérieur (une seule fois)

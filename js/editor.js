@@ -707,8 +707,10 @@ function _ajouterMarker(point) {
   // Popup avec boutons "Y aller" / "Itinéraire" / "Supprimer" — helper commun.
   // 2e argument true → c'est un point de la session courante (listePoints) →
   // bouton "🗑️ Supprimer" affiche dans la popup.
+  // 🆕 v1.16.0 step 3 : passe layerInfo pour que le bouton ⭐ Favori
+  // puisse construire le snapshot avec le bon layerId/layerLabel.
   const popupHtml = (typeof window.buildPointPopupHtml === "function")
-    ? window.buildPointPopupHtml(point, true)
+    ? window.buildPointPopupHtml(point, true, { layerId: "editor", layerLabel: "Mes ajouts" })
     : ("<b>" + point.nom + "</b><br>" + (point.description || ""));
   marker.bindPopup(popupHtml, window.KTA_POPUP_OPTS);
 
