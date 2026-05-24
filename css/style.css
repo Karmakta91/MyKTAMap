@@ -9887,12 +9887,16 @@ body.kta-refonte-sidebar-right-collapsed .leaflet-top.leaflet-right > .leaflet-c
 body.kta-refonte-v1 .kta-compass-widget {
   /* top: auto annule la règle de base à top:80px qui s'applique en v1. */
   top: auto !important;
-  /* 🆕 v1.8.1-refonte-10 : boussole posée au-dessus du status bar (+8px gap).
+  /* 🆕 v1.8.1-refonte-10 : boussole posée au-dessus du status bar.
      Suit la hauteur dynamique du status bar via `--kta-statusbar-h`
-     (mise à jour par JS quand la barre wrap multi-ligne). Sans ça, si
-     le footer grossit à 2 lignes, la boussole se retrouve cachée
-     dessous. Fallback calc(52 + safe + 8) si JS pas chargé. */
-  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
+     (mise à jour par JS quand la barre wrap multi-ligne).
+     🆕 v1.19.0-fix3 (KARMA "met la légèrement plus haute, pas sur le
+     footer mais au-dessus") : gap augmenté de 8px → 20px pour une vraie
+     respiration visuelle. Garantit qu'on lit clairement la séparation
+     entre boussole flottante et footer statique, sans risque de
+     chevauchement perçu même si le footer grossit à 2 lignes ou que
+     la variable --kta-statusbar-h tarde à se mettre à jour. */
+  bottom: calc(var(--kta-statusbar-h, 52px) + 20px) !important;
   left: calc(10px + env(safe-area-inset-left, 0px));
   transition: bottom 0.2s ease-out;
   /* 🆕 v1.19.0-fix2 (KARMA "bug boussole derrière le footer") : le status
@@ -9910,7 +9914,7 @@ body.kta-refonte-v1 .kta-compass-widget {
    présence ou non du bouton Niveau ne change rien (il est en haut). */
 body.kta-refonte-v1.kta-multilevel-active .kta-compass-widget {
   top: auto !important;
-  bottom: calc(var(--kta-statusbar-h, 52px) + 8px) !important;
+  bottom: calc(var(--kta-statusbar-h, 52px) + 20px) !important;
   z-index: 1250 !important;
 }
 
