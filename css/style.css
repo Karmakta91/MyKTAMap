@@ -14906,6 +14906,19 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   max-height: 88vh !important;
   display:    flex;
   flex-direction: column;
+  /* Filet de sécurité mobile : si un contenu très long arrive à passer
+     les autres protections (word-break, overflow-wrap), on coupe net
+     pour éviter le scroll horizontal de toute la modale. Le corps
+     interne (.kta-readme-modal-corps) garde son scroll vertical natif. */
+  overflow-x: hidden;
+}
+.kta-mem-inspector-boite .kta-readme-modal-corps {
+  /* Idem : pas de scroll horizontal au niveau corps */
+  overflow-x: hidden;
+  /* min-width:0 nécessaire pour que les flex children respectent les
+     contraintes width (sinon flex-shrink:1 ne s'applique pas sur le
+     contenu intrinsique = comportement par défaut flex). */
+  min-width: 0;
 }
 @media (min-width: 1024px) {
   .kta-mem-inspector-boite { max-width: 920px; }
@@ -14939,6 +14952,13 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 8px;
+  /* Filet anti-débordement mobile : si un contenu très long passe les
+     autres protections (word-break, overflow-wrap), on coupe net pour
+     éviter le scroll horizontal de la modale. min-width:0 nécessaire
+     pour que les flex children respectent les contraintes width. Fix
+     v1.19.0-fix1 (KARMA "le tableau sort du cadre sur mobile"). */
+  min-width: 0;
+  overflow-x: hidden;
 }
 .kta-mem-section-titre {
   font-size: 14px;
@@ -15026,6 +15046,12 @@ html.kta-theme-light .kta-planner-legend-status-actif {
 /* Table localStorage */
 .kta-mem-table {
   width: 100%;
+  max-width: 100%;
+  /* table-layout: fixed → force le respect des widths colonnes, sinon
+     les <code> avec longues clés (myktamap_session_v1_<planId>, hashs)
+     forcent la cellule à prendre la largeur du mot → débordement mobile.
+     Fix v1.19.0-fix1 (KARMA "le tableau sort du cadre sur mobile"). */
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
 }
@@ -15039,11 +15065,21 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   padding: 4px 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.10);
 }
-.kta-mem-table thead th.kta-mem-num { text-align: right; }
+.kta-mem-table thead th.kta-mem-num {
+  text-align: right;
+  /* Colonne Taille : width fixe pour libérer un max à la colonne Clé.
+     90 px suffit pour "1023.5 KB" et "999.99 MB" sans wrap. */
+  width: 90px;
+}
 .kta-mem-table tbody td {
   padding: 6px 8px;
   border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
   vertical-align: middle;
+  /* Force le wrap des contenus longs (urls, clés monospace) au lieu de
+     déborder horizontalement. word-break: break-word est plus doux que
+     break-all : préserve les coupures naturelles quand possible. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .kta-mem-table tbody tr:last-child td { border-bottom: none; }
 .kta-mem-table code {
@@ -15052,6 +15088,14 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   background: rgba(140, 180, 255, 0.06);
   padding: 1px 5px;
   border-radius: 3px;
+  /* Critique pour mobile : sans ces 2 props, les longues clés monospace
+     (myktamap_session_v1_<long-planId>) forcent un overflow horizontal
+     de toute la modale. inline-block + max-width: 100% borne la largeur. */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 .kta-mem-bar-wrap {
   margin-top: 3px;
@@ -15086,6 +15130,11 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   background: rgba(140, 180, 255, 0.08);
   padding: 1px 5px;
   border-radius: 3px;
+  /* Wrap si nom de base très long sur petit écran */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 .kta-mem-store {
   display: flex;
@@ -15118,6 +15167,15 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   background: rgba(255, 255, 255, 0.04);
   padding: 1px 6px;
   border-radius: 3px;
+  /* Wrap des longs cache names sur mobile (myktamap-cache-vX.Y.Z) */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+/* Container du cache row : forcer le wrap aussi */
+.kta-mem-cache-row {
+  flex-wrap: wrap;
 }
 .kta-mem-cache-active {
   background: rgba(244, 197, 66, 0.06);
@@ -15153,6 +15211,8 @@ html.kta-theme-light .kta-planner-legend-status-actif {
   color: #8cb4ff;
   padding: 2px 0;
   word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 /* Storage estimate bar */
