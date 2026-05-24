@@ -2208,7 +2208,7 @@
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">📤 Exporter mon profil</button>' +
                 '<button type="button" class="kta-btn kta-btn-secondary" id="kta-profile-details-import">📥 Importer un profil</button>' +
-                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">🗑️ Réinitialiser le profil (ici)</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-details-reset">🗑️ Réinitialiser le profil</button>' +
               '</div>' +
 
               '<p class="kta-profile-details-footer-hint">' +
@@ -2315,9 +2315,11 @@
           if (fileInput) fileInput.click();
         });
 
-        // Reset profil
+        // Reset profil — modale custom charte (cf §35 CLAUDE.md, pattern
+        // Promise-based, .kta-readme-modal-overlay + accent rouge danger).
         document.getElementById("kta-profile-details-reset").addEventListener("click", async function() {
-          if (!confirm("Réinitialiser TON profil (surnom + photo) sur CET appareil ?\n\nNe touche pas à tes plans, sessions ou favoris. Reverse uniquement à un profil vierge.")) return;
+          const ok = await _confirmResetProfilModale();
+          if (!ok) return;
           try {
             await window.UserProfile.clear();
             // Refresh modale en place
@@ -2329,6 +2331,77 @@
             photoBtn.textContent = "📷 Photo";
             _refreshProfileDetailsAvatar(snap2);
           } catch(e) { alert("Échec : " + (e.message || e)); }
+        });
+      }
+
+      /**
+       * Modale custom charte pour confirmer la réinitialisation du profil.
+       * Pattern Promise-based (résout true = continuer, false = annuler).
+       * Z-index 100001 pour passer au-dessus de la modale parente "Détails
+       * du profil" (qui est à 99999 via .kta-readme-modal-overlay).
+       */
+      function _confirmResetProfilModale() {
+        return new Promise(function(resolve) {
+          // Cleanup d'une instance précédente éventuelle (anti-empilement)
+          const ex = document.getElementById("kta-profile-reset-confirm-modal");
+          if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+
+          const overlay = document.createElement("div");
+          overlay.id = "kta-profile-reset-confirm-modal";
+          overlay.className = "kta-readme-modal-overlay";
+          overlay.style.zIndex = "100001";  // au-dessus de la modale parente
+          overlay.innerHTML =
+            '<div class="kta-readme-modal-boite" style="max-width:440px; height:auto !important; max-height:88vh !important; border-color:rgba(255,140,140,0.55); box-shadow:0 0 24px rgba(255,140,140,0.18);">' +
+              '<div class="kta-readme-modal-header" style="border-bottom-color:rgba(255,140,140,0.25);">' +
+                '<span class="kta-readme-modal-titre" style="color:#ff8c8c;">🗑️ Réinitialiser le profil ?</span>' +
+                '<button type="button" class="kta-panneau-close" id="kta-profile-reset-close" aria-label="Annuler">✕</button>' +
+              '</div>' +
+              '<div class="kta-readme-modal-corps">' +
+                '<p style="margin-top:4px;">' +
+                  'Cette action va effacer <strong>uniquement ton identité</strong> sur cet appareil :' +
+                '</p>' +
+                '<ul style="margin:8px 0 12px 18px; padding:0;">' +
+                  '<li>Ton <strong>surnom</strong></li>' +
+                  '<li>Ta <strong>photo de profil</strong></li>' +
+                '</ul>' +
+                '<div style="background:rgba(110,226,135,0.06); border:1px solid rgba(110,226,135,0.22); border-radius:6px; padding:10px 12px; margin-bottom:8px;">' +
+                  '<strong style="color:#6ee287;">✅ Ne sont PAS touchés :</strong> ' +
+                  'tes plans, sessions actives, favoris, snapshots, photos POI, préférences.' +
+                '</div>' +
+                '<p style="font-size:12px; color:#8892a4; font-style:italic; margin:8px 0 0;">' +
+                  'Tu peux refaire un profil tout de suite après (surnom + photo).' +
+                '</p>' +
+              '</div>' +
+              '<div class="kta-profile-footer" style="display:flex; gap:8px; padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06);">' +
+                '<button type="button" class="kta-btn kta-btn-ghost"  id="kta-profile-reset-cancel" style="flex:1;">Annuler</button>' +
+                '<button type="button" class="kta-btn kta-btn-danger" id="kta-profile-reset-go"     style="flex:1;">🗑️ Réinitialiser</button>' +
+              '</div>' +
+            '</div>';
+          document.documentElement.appendChild(overlay);
+
+          const _close = function(result) {
+            document.removeEventListener("keydown", _onEsc);
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            resolve(!!result);
+          };
+          const _onEsc = function(e) {
+            if (e.key === "Escape" || e.key === "Esc") {
+              e.stopPropagation();  // pas fermer la modale parente
+              _close(false);
+            }
+          };
+
+          document.getElementById("kta-profile-reset-close").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-profile-reset-cancel").addEventListener("click", function() { _close(false); });
+          document.getElementById("kta-profile-reset-go").addEventListener("click", function() { _close(true); });
+          overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(false); });
+          document.addEventListener("keydown", _onEsc);
+
+          // Focus accessibilité : focus auto sur "Annuler" (sécuritaire)
+          setTimeout(function() {
+            const btn = document.getElementById("kta-profile-reset-cancel");
+            if (btn) btn.focus();
+          }, 50);
         });
       }
 
