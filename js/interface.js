@@ -4327,6 +4327,55 @@ function initInterface() {
     }
     // Bouton Niveau (avant les groupes accordéon topleft)
     _initLevelFilterControl();
+
+    // 🆕 v1.16.0 step 3 (KARMA "met plutôt l'icône favoris dans le menu
+    // de gauche, juste après M-LVL") — Groupe ⭐ FAVORIS positionné en
+    // topleft, AJOUTÉ APRÈS la pastille M-LVL → apparaît juste sous
+    // elle dans la sidebar gauche. Pattern flyout (panel latéral, pas
+    // cascade verticale) pour scalabilité.
+    //
+    // dynamicSousActions = liste recalculée à chaque ouverture du flyout
+    // depuis window.Favoris.getAll() — reflète en live les ajouts/retraits
+    // via le bouton ⭐ dans les popups POI. _allerVersFavori est défini
+    // plus bas dans initInterface (hoisting JS).
+    _creerGroupeAccordeon({
+      id: "favoris",
+      iconePrincipale: "⭐",
+      titre: "Favoris",
+      position: "topleft",
+      useFlyout: true,
+      dynamicSousActions: function() {
+        if (!window.Favoris) return [];
+        const favs = window.Favoris.getAll();
+        if (favs.length === 0) {
+          return [{
+            icone: "ℹ️",
+            titre: "(aucun favori — clique ⭐ dans une popup pour ajouter)",
+            onClick: function() {}  // no-op
+          }];
+        }
+        return favs.map(function(f) {
+          const tag = f.tag || "default";
+          let iconHtml;
+          if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons && window.PLAN_CONFIG.icons[tag]) {
+            iconHtml = '<img src="' + window.PLAN_CONFIG.icons[tag] + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
+          } else if (window._iconMap && window._iconMap[tag]) {
+            const io = window._iconMap[tag];
+            const url = io._kta_iconUrl || (io.options && io.options.iconUrl);
+            if (url) iconHtml = '<img src="' + url + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
+          }
+          if (!iconHtml) iconHtml = "📍";
+
+          return {
+            icone: iconHtml,
+            titre: f.nom,
+            onClick: function() {
+              _allerVersFavori(f);
+            }
+          };
+        });
+      }
+    });
   }
 
   // ===== Watcher pour le contrôle des couches Leaflet =====
@@ -5511,71 +5560,14 @@ _setGroupeModeActif("tracker", isTracking, null);
     });
   }
 
-  // 🆕 v1.16.0 step 3 — Groupe sidebar ⭐ FAVORIS (flyout)
+  // 🆕 v1.16.0 step 3 — Refresh du flyout Favoris quand la liste change
+  // (ajout / retrait via popup ⭐). Si le flyout est ouvert pour favoris,
+  // on le re-render en place. Sinon no-op (sera fresh au prochain open).
   //
-  // Liste les points favoris du plan courant. Chaque entrée du flyout :
-  //   - swatch (icône du tag si dispo) + libellé snapshot
-  //   - click → centre la carte sur le point + flash visuel (cercle pulsant)
-  //   - bouton 🗑️ pour retirer le favori
-  //
-  // Le flyout est rebuilt à chaque ouverture (sousActionsConfig vide ; on
-  // injecte les favoris dynamiquement via un customActivator-like). On
-  // exploite le fait que _ouvrirFlyout liste sousActionsConfig + customs
-  // de LC.lcCat — donc on passe une lcCat "factice" et un build dynamique
-  // via... hmm en fait pour Favoris on a une logique différente, le
-  // flyout doit lister les FAVORIS, pas des entrées LC. Plus simple :
-  // on définit un sousActionsConfig dynamique recalculé à chaque ouverture
-  // — ou on customise _ouvrirFlyout pour supporter un buildSousActions
-  // hook. Choix le plus simple : un hook `dynamicSousActions: () => [...]`.
-  // Si présent, override sousActionsConfig au moment du build flyout.
-  _creerGroupeAccordeon({
-    id: "favoris",
-    iconePrincipale: "⭐",
-    titre: "Favoris",
-    useFlyout: true,
-    // Pas de lcCat ni customActivator — c'est une catégorie indépendante.
-    // sousActions résolus DYNAMIQUEMENT au moment de l'ouverture du flyout
-    // via dynamicSousActions ci-dessous (cf _ouvrirFlyout).
-    dynamicSousActions: function() {
-      if (!window.Favoris) return [];
-      const favs = window.Favoris.getAll();
-      if (favs.length === 0) {
-        return [{
-          icone: "ℹ️",
-          titre: "(aucun favori — clique ⭐ dans une popup pour ajouter)",
-          onClick: function() {}  // no-op
-        }];
-      }
-      return favs.map(function(f) {
-        // Swatch = icône du tag si dispo (PLAN_CONFIG.icons[tag])
-        const tag = f.tag || "default";
-        let iconHtml;
-        if (window.PLAN_CONFIG && window.PLAN_CONFIG.icons && window.PLAN_CONFIG.icons[tag]) {
-          iconHtml = '<img src="' + window.PLAN_CONFIG.icons[tag] + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
-        } else if (window._iconMap && window._iconMap[tag]) {
-          const io = window._iconMap[tag];
-          const url = io._kta_iconUrl || (io.options && io.options.iconUrl);
-          if (url) iconHtml = '<img src="' + url + '" alt="" style="width:18px;height:18px;object-fit:contain;">';
-        }
-        if (!iconHtml) iconHtml = "📍";
-
-        return {
-          icone: iconHtml,
-          titre: f.nom,
-          // pas isTypeAction → s'affiche dans le bloc "outils" du flyout
-          // mais on n'utilise pas le séparateur car c'est uniformément des
-          // favoris (pas de types built-in distincts à séparer).
-          onClick: function() {
-            _allerVersFavori(f);
-          }
-        };
-      });
-    }
-  });
-
-  // Refresh du flyout Favoris quand la liste change (ajout / retrait via
-  // popup ⭐). Si le flyout est ouvert pour favoris, on le re-render en
-  // place. Sinon no-op (sera fresh au prochain open).
+  // Note : le groupe ⭐ Favoris LUI-MÊME est créé plus haut (juste après
+  // _initLevelFilterControl, position topleft pour apparaître juste sous
+  // la pastille M-LVL dans la sidebar gauche — cf KARMA "met plutôt
+  // l'icône favoris dans le menu de gauche, juste après M-LVL").
   if (window.Favoris && typeof window.Favoris.onChange === "function") {
     window.Favoris.onChange(function() {
       if (_currentFlyout && _currentFlyout.dataset.groupId === "favoris") {
