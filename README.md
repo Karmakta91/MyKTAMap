@@ -10,7 +10,7 @@
 
 **📦 Version courante** : `v1.20.0` (24/05/2026)
 
-> ℹ️ **Note dev** : des évolutions sont actuellement **accumulées sur `Karma_dev`** en attente du prochain push main (tutoriel premier-lancement, export PDF des stats, export/import de profil complet, etc.). Au moment de la release officielle, on bumpera proprement la version finale (PATCH ou MINOR selon le poids du contenu). Les sources de vérité publiques (`version.json`, `js/copyright.js`, `sw.js > CACHE_NAME`) restent sur `v1.20.0` tant que le push main n'a pas eu lieu.
+> ℹ️ **Note dev** : des évolutions sont actuellement **accumulées sur `Karma_dev`** en attente du prochain push main (tutoriel premier-lancement enrichi 8 cards, export PDF des stats, export/import de profil complet, **mode profil utilisateur intégré au loader avec surnom + photo dans une nouvelle IDB `myktamap_profile`**, etc.). Au moment de la release officielle, on bumpera proprement la version finale (PATCH ou MINOR selon le poids du contenu). Les sources de vérité publiques (`version.json`, `js/copyright.js`, `sw.js > CACHE_NAME`) restent sur `v1.20.0` tant que le push main n'a pas eu lieu.
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---

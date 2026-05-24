@@ -181,7 +181,7 @@
   </p>
 
   <p class="meta" style="margin-top:6px; border-left: 3px solid #f4c542; padding-left: 12px; background: rgba(244, 197, 66, 0.06);">
-    🚧 <strong>Karma_dev pending (en cours, non releasé sur main)</strong> : 3 sujets accumulés
+    🚧 <strong>Karma_dev pending (en cours, non releasé sur main)</strong> : 4 sujets accumulés
     en attente du prochain push main. (1) Tutoriel premier-lancement enrichi (8 cards) — nouveau
     module <code>js/tutorial.js</code> purement local (HTML statique + flag
     <code>localStorage["myktamap_tutorial_seen_v1"]</code>). (2) Stats globales export PDF —
@@ -189,12 +189,22 @@
     localement). (3) Export / Import de profil utilisateur complet — nouveau module
     <code>js/profileExportImport.js</code> qui remplace l'ancien export « liste de plans » par
     un export profil complet (registry + préférences + favoris + sessions + snapshots +
-    tutorial + photos optionnelles + crashes optionnels). 100 % local : lecture localStorage
-    + IDB read-only + Blob téléchargé localement. <strong>Exclusions par design</strong> :
-    ZIPs binaires des plans (trop lourds) + PIN/Face ID + UnlockGate communautaire (sécurité,
-    jamais exportés). Rétro-compat absolue avec l'ancien format
-    <code>myktamap-plans-list</code>. Tout reste sur Karma_dev en attente du push main avec
-    versioning final. <strong>Aucune nouvelle surface réseau</strong> pour aucun des 3 sujets.
+    tutorial + <strong>user</strong> + photos POI optionnelles + crashes optionnels). 100 % local :
+    lecture localStorage + IDB read-only + Blob téléchargé localement.
+    <strong>Exclusions par design</strong> : ZIPs binaires des plans (trop lourds) + PIN/Face ID
+    + UnlockGate communautaire (sécurité, jamais exportés). Rétro-compat absolue avec l'ancien
+    format <code>myktamap-plans-list</code>.
+    (4) <strong>Mode profil utilisateur intégré au loader</strong> — nouveau module
+    <code>js/userProfile.js</code> + <strong>nouvelle DB IDB <code>myktamap_profile</code> v1</strong>
+    store <code>profile</code> (1 entry unique <code>id="me"</code> : surnom + photoBlob +
+    photoMime + createdAt + updatedAt). Photo compressée localement via canvas (max 512px côté
+    long, JPEG q88 → ~30-60 KB). Aucun fetch externe, aucune transmission. La photo est lue
+    depuis l'IDB locale, son ObjectURL est créé via <code>URL.createObjectURL</code> et révoqué
+    au refresh (pas de leak). Section <code>user</code> ajoutée à <code>ProfileExportImport</code>
+    (photo base64 inline dans le JSON exporté, cochée par défaut car légère). Tout reste sur
+    Karma_dev en attente du push main avec versioning final.
+    <strong>Aucune nouvelle surface réseau</strong> pour aucun des 4 sujets,
+    <strong>1 nouvelle DB IDB</strong> documentée : <code>myktamap_profile</code>.
   </p>
 
   <p class="meta" style="margin-top:6px;">
