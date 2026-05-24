@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.20.0` (24/05/2026)
+**📦 Version courante** : `v1.21.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.20.0](#-derniere-release--v1200)
+1. [🚀 Dernière release — v1.21.0](#-derniere-release--v1210)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,16 +40,21 @@
 
 ---
 
-## 🚀 Dernière release — v1.20.0
+## 🚀 Dernière release — v1.21.0
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle « Robustesse + Stats & Communauté »**. 4 features qui se complètent :
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Onboarding + Export + Outil créatif »**. 3 features qui se complètent :
 
-- 🪤 **Skip snapshot identique** : économie FIFO des slots backups (boot sans changement = 0 slot consommé)
-- 📋 **Crash report auto IDB** : archive auto des kills mémoire détectés (debug + diagnostic facilité)
-- ⭐ **Favoris export/import JSON** : partage cross-appareil de tes POI préférés
-- 📊 **Statistiques globales du plan** : modale agrégée session + data layers embedded
+- 🎓 **Tutoriel premier-lancement** : 5 cards séquentielles présentant les fonctions essentielles, auto-affiché au 1er boot et rejouable depuis Aide
+- 📤 **Stats globales export PDF** : extension de la modale Stats avec génération PDF A4 portrait (texte/tableaux, léger et partageable)
+- ✏️ **Mode dessin libre (freehand)** : nouveau type d'annotation à main levée dans les Tracés (capture continue + lissage RDP)
 
 Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.20.0
+
+📅 **24 mai 2026** — Release MINOR : Cycle « Robustesse + Stats & Communauté » (Skip snapshot identique + Crash report auto IDB + Favoris export/import JSON + Statistiques globales du plan).
 
 ---
 
@@ -883,7 +888,94 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-20-0" open>
+<details id="v1-21-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.21.0 : Cycle « Onboarding + Export + Outil créatif »</strong></summary>
+
+Release MINOR (bump Y : 1.20.0 → 1.21.0). 3 features qui se complètent.
+
+### 🎓 (1/3) Tutoriel premier-lancement — module `js/tutorial.js` (~180 lignes)
+
+Nouveau module IIFE → `window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }`.
+
+**Auto-affiché au tout premier lancement** (détecté via `localStorage["myktamap_tutorial_seen_v1"]`). Différé 600ms après `_splashEnd` (avec re-check 2s si une modale prioritaire — update/alerte critique — est ouverte au moment du tick).
+
+**5 cards séquentielles** :
+1. 🌟 Bienvenue + nature 100 % offline + zéro télémétrie
+2. 🗂️ Chargement / création d'un plan (📚 Mes plans / drop ZIP/KMZ/GPX / 🏗️ Générer)
+3. ✏️ Annoter ton plan (points / tracés / zones / structures + auto-save + Ctrl+Z)
+4. 🔍 Trouver vite (Ctrl+K Recherche unifiée + ⭐ Favoris + 🗺️ Itinéraire)
+5. 📊 Pour aller plus loin (Aide / Détails session / Configuration / Enregistrer session)
+
+**Navigation** : Précédent / Suivant + pastilles cliquables (nav directe) + raccourcis clavier (← → Enter Échap) + bouton « Passer le tutoriel ». **Pas de close sur backdrop** (= éviter dismiss accidentel pendant la lecture). Animation fade-in 0.25s entre cards.
+
+**Rejouable à tout moment** via 📚 Aide → nouvelle sous-action « 🎓 (Re)voir le tutoriel ».
+
+CSS dédié `.kta-tutorial-*` (~180 lignes : layout + cards + progress dots + animations + variants thème clair).
+
+### 📤 (2/3) Stats globales — Export PDF — extension `js/statsGlobales.js`
+
+Nouvelle fonction `exportToPDF(opts)` via jsPDF (déjà chargé). Format **A4 portrait, texte/tableaux uniquement** (pas de rendu carte = léger + rapide + partageable).
+
+**Sections du PDF** (avec pagination auto) :
+- Header principal "MyKTAMap - Statistiques du plan" + sous-titre nom plan + version
+- Bloc plan info : auteur / dimensions / échelle / flags multi-niveau+V2 / date rapport
+- Section Totaux (tableau 2 col avec breakdown session vs embedded)
+- Section Points par tag (tableau 2 col)
+- Section Tracés par type avec distance cumulée (tableau 3 col)
+- Section Zones par type avec surface cumulée (tableau 3 col)
+- Section Structures par type (tableau 2 col)
+- Section Breakdown par niveau si M-LVL actif (tableau 3 col)
+- Section Géoréférencement GPS si présent
+- Footer crédit "Généré par MyKTAMap..." sur chaque page
+
+**⚠️ Respect §44.6 CLAUDE.md** : jsPDF Helvetica latin1 → emojis Unicode rendus en mojibake. Tous les libellés du PDF sont en texte plain (« Points » au lieu de « 📍 Points »).
+
+**Nom fichier** : `MyKTAMap_Stats_<plan>_<date>.pdf`.
+
+**UI** : nouveau bouton « 📤 Export PDF » dans le footer de la modale Stats globales, à côté de « 📋 Copier le rapport ». Feedback visuel pendant génération.
+
+### ✏️ (3/3) Mode dessin libre (freehand) — module `js/freehand.js` (~270 lignes)
+
+Nouveau module IIFE → `window.Freehand = { activer, desactiver, isActive, toggle, getPrefs, setPrefs }`.
+
+**Nouveau type d'annotation `freehand`** qui s'ajoute aux Tracés existants (principal / secondaire / chemin / itinerary / jonction). Différence fondamentale : **capture continue mousemove/touchmove** au lieu de clics successifs.
+
+**Capture** : listeners map mousedown/mousemove/mouseup (+ touch équivalents pour mobile) :
+- Throttle 16ms (~60Hz) pour éviter ~1000 pts par cm
+- Anti-spam : skip si distance au dernier point < 3 px
+- Drag map temporairement désactivé pendant le geste (sinon la carte se déplace sous les pieds)
+
+**Lissage RDP itératif post-capture** au mouseup avec epsilon dynamique selon zoom (réduit le nombre de points en préservant la forme).
+
+**Stockage** : objet road avec `{type: "freehand", points, level, freehandColor, freehandWidth}` → réutilise TOUTE l'infra existante :
+- Rendu via `renderRoads` + nouveau helper `_resolveFreehandStyle(road)`
+- Persistance SessionPersist (auto-save par plan)
+- Exports KMZ/GPX/JSON (type "freehand" préservé)
+- Undo/Redo via HistoryManager (snapshot avant mousedown + record après RDP)
+- Filtre niveau-aware (level prop)
+- Suppression au clic / dernier / tous (filtre `roads.filter(r.type === ...)`)
+
+**⚠️ Exclu du Pathfinder automatiquement** : `allowedTypes` whitelist dans `js/pathfinder.js > _buildGraph` = `['principal', 'secondaire', 'chemin']` par défaut → le type `freehand` n'y entre pas. C'est l'effet voulu : un dessin libre **n'est pas** un chemin praticable, on ne veut surtout pas qu'il pollue le calcul d'itinéraire.
+
+**Préférences** : couleur (`#ff5252` rouge vif défaut) + épaisseur (4 défaut) persistées en `localStorage["myktamap_freehand_prefs_v1"]`. Modifiables via console pour les power-users : `window.Freehand.setPrefs({color: "#00ff00", width: 6})`. UI personnalisable arrivera en v1.22.0 si besoin.
+
+**Activation** : sidebar Tracés → nouvelle sous-action « ✏️ Crayon (dessin libre) ». **Toggle indépendant** des autres modes road (window.modeRoad) — l'user peut basculer entre Principal et Freehand sans perdre le contexte. Classe `.kta-actif` togglée sur le bouton pour feedback visuel.
+
+### 📂 Sources de vérité v1.21.0
+
+- `version.json` → `"v1.21.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.21.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.21.0"`
+- **2 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` : `js/tutorial.js` + `js/freehand.js`
+- Modifs internes à : `js/main.js` (auto-boot tutoriel post-splash), `js/interface.js` (sous-actions Aide + Tracés), `js/road.js` (style freehand + intégration dans renderRoads), `js/statsGlobales.js` (exportToPDF + bouton UI), `js/memInspector.js` (KNOWN_MODULES), `index.html` + `sw.js`, `css/style.css` (~180 lignes Tutorial + variants thème clair)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. **Tutorial** = HTML statique en mémoire + flag localStorage. **Stats PDF** = utilise jsPDF déjà chargé (lib locale, pas de fetch), génère un Blob téléchargé localement. **Freehand** = listeners DOM map + stockage road dans le système SessionPersist existant. Aucun fetch externe, aucune transmission. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-20-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.20.0 : Cycle « Robustesse + Stats & Communauté »</strong></summary>
 
 Release MINOR (bump Y : 1.19.1 → 1.20.0). 4 features cohérentes qui se complètent.

@@ -4470,7 +4470,15 @@ function initInterface() {
             window.afficherModaleAideIA();
           }
         } },
-      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende }
+      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende },
+      // 🆕 v1.21.0 — Rejouer le tutoriel premier-lancement à tout moment.
+      // markAsSeen est posé au boot par Tutorial.ouvrir() pour que l'auto-popup
+      // ne re-déclenche pas, mais l'user peut rejouer manuellement ici.
+      { icone: "🎓", titre: "(Re)voir le tutoriel", onClick: function() {
+          if (window.Tutorial && typeof window.Tutorial.ouvrir === "function") {
+            window.Tutorial.ouvrir();
+          }
+        } }
     ]
   });
 
@@ -5135,6 +5143,27 @@ _setGroupeModeActif("tracker", isTracking, null);
         // reset visuel) + delete _modesActifs["road"]. Comportement
         // identique à un re-clic sur le bouton du type actif.
         _fermerModeRoad();
+      }
+    },
+    // 🆕 v1.21.0 — Mode crayon à main levée (freehand). Toggle indépendant
+    // des autres types (window.modeRoad) car la capture continue est gérée
+    // par js/freehand.js avec ses propres listeners map. Ne désactive PAS
+    // les autres modes — l'user peut très bien avoir un tracé Principal en
+    // cours et basculer sur Freehand pour annoter à côté. Quand freehand
+    // est actif, le drag map est temporairement désactivé pendant le geste
+    // mousedown→mouseup (sinon la carte se déplace sous nos pieds).
+    { icone: "✏️", titre: "Crayon (dessin libre)",
+      onClick: function(btn) {
+        if (!window.Freehand || typeof window.Freehand.toggle !== "function") {
+          _alertCharte(
+            "Module Freehand indisponible",
+            "Recharge la page pour que le module js/freehand.js soit chargé.",
+            "⚠️"
+          );
+          return;
+        }
+        const nowActive = window.Freehand.toggle();
+        if (btn) btn.classList.toggle("kta-actif", nowActive);
       }
     },
     { icone: "📏", titre: "Distance totale (filtres)",

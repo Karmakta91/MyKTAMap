@@ -15379,6 +15379,182 @@ html.kta-theme-light .kta-mem-footer {
 }
 
 /* ===========================================================
+   🆕 v1.21.0 — Tutoriel premier-lancement (modale onboarding)
+   =========================================================== */
+
+.kta-tutorial-boite {
+  max-width:  560px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 86vh !important;
+  display:    flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .kta-tutorial-boite { max-width: 640px; }
+}
+
+.kta-tutorial-header {
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+}
+
+.kta-tutorial-corps {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 320px;
+}
+
+.kta-tutorial-card {
+  padding: 8px 4px;
+  animation: kta-tutorial-fade-in 0.25s ease-out;
+}
+@keyframes kta-tutorial-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kta-tutorial-card-emoji {
+  font-size: 52px;
+  text-align: center;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.kta-tutorial-card-titre {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f4c542;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.kta-tutorial-card-texte {
+  font-size: 14px;
+  color: #c8d0e0;
+  line-height: 1.6;
+}
+.kta-tutorial-card-texte p { margin: 0 0 10px; }
+.kta-tutorial-card-texte p:last-child { margin-bottom: 0; }
+.kta-tutorial-card-texte ul {
+  margin: 8px 0 10px;
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.kta-tutorial-card-texte ul li { margin-bottom: 3px; }
+.kta-tutorial-card-texte strong { color: #f4c542; font-weight: 600; }
+.kta-tutorial-card-texte code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.10);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.kta-tutorial-card-hint {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #8cb4ff;
+  font-style: italic;
+}
+
+.kta-tutorial-footer {
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kta-tutorial-progress {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.kta-tutorial-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.kta-tutorial-dot:hover {
+  background: rgba(244, 197, 66, 0.40);
+  transform: scale(1.15);
+}
+.kta-tutorial-dot.kta-tutorial-dot-active {
+  background: #f4c542;
+  border-color: rgba(244, 197, 66, 0.50);
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.50);
+  transform: scale(1.20);
+}
+
+.kta-tutorial-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kta-tutorial-actions .kta-btn {
+  flex: 0 1 auto;
+}
+@media (max-width: 480px) {
+  .kta-tutorial-actions .kta-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-tutorial-header,
+html.kta-theme-light .kta-tutorial-header {
+  border-bottom-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-tutorial-card-titre,
+html.kta-theme-light .kta-tutorial-card-titre {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte,
+html.kta-theme-light .kta-tutorial-card-texte {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte strong,
+html.kta-theme-light .kta-tutorial-card-texte strong {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte code,
+html.kta-theme-light .kta-tutorial-card-texte code {
+  background: rgba(140, 180, 255, 0.15) !important;
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-tutorial-card-hint,
+html.kta-theme-light .kta-tutorial-card-hint {
+  background: rgba(140, 180, 255, 0.12) !important;
+  border-color: rgba(140, 180, 255, 0.30) !important;
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-tutorial-footer,
+html.kta-theme-light .kta-tutorial-footer {
+  border-top-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-tutorial-dot,
+html.kta-theme-light .kta-tutorial-dot {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+}
+body.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active,
+html.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active {
+  background: var(--kta-light-accent) !important;
+  border-color: var(--kta-light-accent-hover) !important;
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.60) !important;
+}
+
+/* ===========================================================
    🆕 v1.20.0 — CTA Stats globales depuis modale Détails session
    =========================================================== */
 

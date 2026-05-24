@@ -1043,6 +1043,33 @@ async function _splashEnd() {
     if (window.AlertChecker && typeof window.AlertChecker.notifySplashEnded === "function") {
       window.AlertChecker.notifySplashEnded();
     }
+
+    // 🆕 v1.21.0 — Tutoriel premier-lancement. Auto-déclenché UNIQUEMENT si
+    // c'est le tout premier boot (flag `myktamap_tutorial_seen_v1` absent).
+    // Différé encore +600ms pour laisser le temps aux alertes/updates de
+    // s'afficher en premier (priorité : info critique > onboarding). L'user
+    // peut rejouer à tout moment via 📚 Aide → 🎓 (Re)voir le tutoriel.
+    if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function" && window.Tutorial.isFirstLaunch()) {
+      setTimeout(function() {
+        // Re-check au cas où une autre modale (update, alerte critique) soit
+        // ouverte à ce moment — on attend qu'elle soit fermée avant d'afficher
+        // le tutoriel. Skip si flag déjà marqué pendant le délai (race rare).
+        const blockingModal = document.querySelector(".kta-readme-modal-overlay") ||
+                              document.querySelector("#kta-update-modal");
+        if (blockingModal) {
+          // Modale prioritaire ouverte → on retente dans 2s
+          setTimeout(function() {
+            if (window.Tutorial && window.Tutorial.isFirstLaunch && window.Tutorial.isFirstLaunch()) {
+              try { window.Tutorial.ouvrir(); } catch(e) { console.warn("[Tutorial] auto-open échec :", e); }
+            }
+          }, 2000);
+          return;
+        }
+        try { window.Tutorial.ouvrir(); } catch(e) {
+          console.warn("[Tutorial] auto-open échec :", e);
+        }
+      }, 600);
+    }
   }, 500);
 }
 

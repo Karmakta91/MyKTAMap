@@ -534,6 +534,7 @@
         '</div>' +
         '<div class="kta-readme-modal-footer kta-stats-glob-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 Rafraîchir</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 Export PDF</button>' +
           '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 Copier le rapport</button>' +
         '</div>' +
       '</div>';
@@ -554,6 +555,26 @@
           setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
         }
       }).catch(function(e) { alert("Échec copie : " + (e.message || e)); });
+    });
+
+    // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
+    document.getElementById("kta-stats-glob-pdf").addEventListener("click", function() {
+      if (!_lastReport) {
+        alert("Aucune donnée à exporter — rafraîchis d'abord.");
+        return;
+      }
+      const btn = document.getElementById("kta-stats-glob-pdf");
+      const orig = btn ? btn.textContent : null;
+      if (btn) { btn.disabled = true; btn.textContent = "⏳ Génération…"; }
+      exportToPDF({ report: _lastReport }).then(function(res) {
+        if (btn) {
+          btn.textContent = "✅ PDF téléchargé";
+          setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
+        }
+      }).catch(function(e) {
+        if (btn) { btn.textContent = orig; btn.disabled = false; }
+        alert("Échec génération PDF : " + (e.message || e));
+      });
     });
 
     _refreshAndRender();
@@ -588,11 +609,283 @@
     });
   }
 
+  // ───────── EXPORT PDF (v1.21.0) ─────────
+  //
+  // Format A4 portrait via jsPDF (déjà chargé par pdfExport.js / index.html).
+  // Texte/tableaux uniquement, pas de rendu de carte (= cf v1.21.0 choix
+  // KARMA "PDF léger, partageable, rapide"). Pagination auto si dépasse la
+  // page (= grosses carrières avec beaucoup de tags).
+  //
+  // ⚠️ Rappel CLAUDE.md §44.6 : jsPDF Helvetica latin1 → emojis Unicode
+  // rendus en mojibake (`📍` devient `O=UI...`). Donc on remplace tous
+  // les emojis par du texte plain (« Points », « Tracés », etc.) pour le
+  // contenu textuel. Les sections gardent leur emoji uniquement comme
+  // marqueur visuel dans le code, jamais écrit dans pdf.text().
+  //
+  async function exportToPDF(opts) {
+    opts = opts || {};
+    if (typeof window.jspdf === "undefined" || !window.jspdf.jsPDF) {
+      throw new Error("jsPDF non chargé (lib/jspdf.umd.min.js manquant)");
+    }
+    const jsPDF = window.jspdf.jsPDF;
+
+    // Compute le rapport si pas fourni
+    const rep = opts.report || (await compute());
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit:        "mm",
+      format:      "a4",
+      compress:    true
+    });
+
+    const pageW   = pdf.internal.pageSize.getWidth();   // 210
+    const pageH   = pdf.internal.pageSize.getHeight();  // 297
+    const margin  = 15;
+    const lineH   = 5;     // mm par ligne de texte 10pt
+    const sectionGap = 4;
+    let y = margin;
+
+    function _newPageIfNeeded(needed) {
+      if (y + needed > pageH - margin - 8) {
+        // Footer crédit sur la page courante avant break
+        _drawFooterCredit();
+        pdf.addPage();
+        y = margin;
+      }
+    }
+
+    function _drawFooterCredit() {
+      pdf.setFontSize(8);
+      pdf.setTextColor(140, 140, 140);
+      const credit = "Genere par MyKTAMap " + (rep.runtime ? rep.runtime.appVersion : ((window.__MKM__ && window.__MKM__.build) || "?")) +
+                     " - myktamap.fr - " +
+                     new Date(rep.timestamp).toLocaleString("fr-FR");
+      pdf.text(credit, pageW / 2, pageH - 8, { align: "center" });
+    }
+
+    function _drawTitle(text, size, color) {
+      pdf.setFontSize(size || 14);
+      pdf.setTextColor((color && color[0]) || 30, (color && color[1]) || 58, (color && color[2]) || 138);
+      pdf.text(text, margin, y);
+      y += (size || 14) * 0.4;
+    }
+
+    function _drawSectionTitle(text) {
+      _newPageIfNeeded(12);
+      pdf.setFontSize(12);
+      pdf.setTextColor(244, 197, 66);  // ambre charte
+      pdf.text(text, margin, y);
+      y += 2;
+      // Underline
+      pdf.setDrawColor(244, 197, 66);
+      pdf.setLineWidth(0.4);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 5;
+      pdf.setTextColor(40, 40, 40);
+    }
+
+    function _drawText(text, size) {
+      _newPageIfNeeded(lineH);
+      pdf.setFontSize(size || 10);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text(text, margin, y);
+      y += lineH;
+    }
+
+    function _drawKV(key, val) {
+      _newPageIfNeeded(lineH);
+      pdf.setFontSize(10);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(key + " :", margin, y);
+      pdf.setTextColor(40, 40, 40);
+      pdf.text(String(val || ""), margin + 50, y);
+      y += lineH;
+    }
+
+    function _drawTable2col(rows, leftLbl, rightLbl) {
+      _newPageIfNeeded(lineH + 2);
+      // Header
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(leftLbl,  margin, y);
+      pdf.text(rightLbl, pageW - margin, y, { align: "right" });
+      y += 1.5;
+      pdf.setDrawColor(180, 180, 180);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 3;
+      // Rows
+      pdf.setFontSize(10);
+      pdf.setTextColor(40, 40, 40);
+      rows.forEach(function(r) {
+        _newPageIfNeeded(lineH);
+        pdf.text(String(r[0]), margin, y);
+        pdf.text(String(r[1]), pageW - margin, y, { align: "right" });
+        y += lineH - 1;
+      });
+      y += 1;
+    }
+
+    function _drawTable3col(rows, lbl1, lbl2, lbl3) {
+      _newPageIfNeeded(lineH + 2);
+      const colW = (pageW - 2 * margin) / 3;
+      pdf.setFontSize(9);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(lbl1, margin, y);
+      pdf.text(lbl2, margin + colW, y, { align: "right" });
+      pdf.text(lbl3, pageW - margin, y, { align: "right" });
+      y += 1.5;
+      pdf.setDrawColor(180, 180, 180);
+      pdf.setLineWidth(0.2);
+      pdf.line(margin, y, pageW - margin, y);
+      y += 3;
+      pdf.setFontSize(10);
+      pdf.setTextColor(40, 40, 40);
+      rows.forEach(function(r) {
+        _newPageIfNeeded(lineH);
+        pdf.text(String(r[0]), margin, y);
+        pdf.text(String(r[1]), margin + colW, y, { align: "right" });
+        pdf.text(String(r[2]), pageW - margin, y, { align: "right" });
+        y += lineH - 1;
+      });
+      y += 1;
+    }
+
+    // ─── HEADER PRINCIPAL ───
+    pdf.setFont("helvetica", "bold");
+    _drawTitle("MyKTAMap - Statistiques du plan", 18, [30, 58, 138]);
+    y += 2;
+    pdf.setFont("helvetica", "normal");
+
+    const meta = rep.planMeta;
+    pdf.setFontSize(13);
+    pdf.setTextColor(244, 197, 66);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(meta.name + (meta.version ? "  " + meta.version : ""), margin, y);
+    y += 6;
+    pdf.setFont("helvetica", "normal");
+
+    // Plan meta
+    if (meta.author)               _drawKV("Auteur",            meta.author);
+    if (meta.imageW && meta.imageH) _drawKV("Dimensions",        meta.imageW + " x " + meta.imageH + " px");
+    if (meta.scale && meta.scale !== 1) _drawKV("Echelle",       meta.scale.toFixed(1) + " px/m");
+    const flags = [];
+    if (meta.multiLevel) flags.push("Multi-niveau");
+    if (meta.tiledV2)    flags.push("V2 tuile");
+    if (flags.length) _drawKV("Flags", flags.join(", "));
+    _drawKV("Rapport genere", new Date(rep.timestamp).toLocaleString("fr-FR"));
+    y += sectionGap;
+
+    // ─── TOTAUX ───
+    const t = rep.totals;
+    _drawSectionTitle("Totaux (session + data layers embedded)");
+    _drawTable2col([
+      ["Points",      t.points     + "  (" + rep.session.points     + " session + " + rep.embedded.points     + " embedded)"],
+      ["Traces",      t.roads      + "  (" + rep.session.roads      + " session + " + rep.embedded.roads      + " embedded)"],
+      ["Zones",       t.zones      + "  (" + rep.session.zones      + " session + " + rep.embedded.zones      + " embedded)"],
+      ["Structures",  t.structures + "  (" + rep.session.structures + " session + " + rep.embedded.structures + " embedded)"],
+      ["Photos POI",  String(t.photos)]
+    ], "Categorie", "Total");
+    y += sectionGap;
+
+    // ─── POINTS PAR TAG ───
+    if (t.points > 0) {
+      _drawSectionTitle("Points par tag");
+      const sorted = Object.keys(rep.pointsByTag).sort(function(a, b) {
+        return rep.pointsByTag[b] - rep.pointsByTag[a];
+      });
+      _drawTable2col(sorted.map(function(tag) {
+        return [tag, rep.pointsByTag[tag]];
+      }), "Tag", "Nombre");
+      y += sectionGap;
+    }
+
+    // ─── TRACÉS PAR TYPE ───
+    if (t.roads > 0) {
+      _drawSectionTitle("Traces par type (cumul : " + _formatDist(rep.roadsTotalDistM).replace("²", "2") + ")");
+      const sorted = Object.keys(rep.roadsByType).sort(function(a, b) {
+        return rep.roadsByType[b] - rep.roadsByType[a];
+      });
+      _drawTable3col(sorted.map(function(type) {
+        const d = rep.roadsDistByTypeM[type] || 0;
+        return [type, rep.roadsByType[type], _formatDist(d)];
+      }), "Type", "Nombre", "Distance");
+      y += sectionGap;
+    }
+
+    // ─── ZONES PAR TYPE ───
+    if (t.zones > 0) {
+      _drawSectionTitle("Zones par type (cumul : " + _formatSurf(rep.zonesTotalAreaM2).replace("²", "2") + ")");
+      const sorted = Object.keys(rep.zonesByType).sort(function(a, b) {
+        return rep.zonesByType[b] - rep.zonesByType[a];
+      });
+      _drawTable3col(sorted.map(function(type) {
+        const s = rep.zonesAreaByTypeM2[type] || 0;
+        return [type, rep.zonesByType[type], _formatSurf(s).replace("²", "2")];
+      }), "Type", "Nombre", "Surface");
+      y += sectionGap;
+    }
+
+    // ─── STRUCTURES PAR TYPE ───
+    if (t.structures > 0) {
+      _drawSectionTitle("Structures par type");
+      const sorted = Object.keys(rep.structsByType).sort(function(a, b) {
+        return rep.structsByType[b] - rep.structsByType[a];
+      });
+      _drawTable2col(sorted.map(function(type) {
+        return [type, rep.structsByType[type]];
+      }), "Type", "Nombre");
+      y += sectionGap;
+    }
+
+    // ─── M-LVL BREAKDOWN ───
+    if (rep.multiLevelBreakdown) {
+      _drawSectionTitle("Breakdown par niveau");
+      const lvlKeys = Object.keys(rep.multiLevelBreakdown).sort(function(a, b) {
+        return parseInt(a, 10) - parseInt(b, 10);
+      });
+      const rows = lvlKeys.map(function(k) {
+        const b = rep.multiLevelBreakdown[k];
+        return [
+          "Niveau " + k,
+          "P:" + b.points + "  T:" + b.roads + "  Z:" + b.zones + "  S:" + b.structures,
+          (b.points + b.roads + b.zones + b.structures) + " total"
+        ];
+      });
+      _drawTable3col(rows, "Niveau", "Detail", "Total");
+      y += sectionGap;
+    }
+
+    // ─── GÉORÉFÉRENCEMENT ───
+    if (rep.georef && rep.georef.pointA && rep.georef.pointB) {
+      _drawSectionTitle("Georeferencement GPS");
+      const a = rep.georef.pointA;
+      const b = rep.georef.pointB;
+      _drawKV("Point A (plan -> GPS)", "px (" + a.x + ", " + a.y + ") -> (" + a.lat + ", " + a.lng + ")");
+      _drawKV("Point B (plan -> GPS)", "px (" + b.x + ", " + b.y + ") -> (" + b.lat + ", " + b.lng + ")");
+      y += sectionGap;
+    }
+
+    // ─── FOOTER CRÉDIT (page courante) ───
+    _drawFooterCredit();
+
+    // ─── SAVE ───
+    const planName = (meta.name || "Plan").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
+    const dateStr  = new Date(rep.timestamp).toISOString().slice(0, 10);
+    const filename = "MyKTAMap_Stats_" + planName + "_" + dateStr + ".pdf";
+    pdf.save(filename);
+
+    return { ok: true, filename: filename };
+  }
+
   // ───────── EXPORT API ─────────
   window.StatsGlobales = {
     ouvrir:        ouvrir,
     fermer:        fermer,
     compute:       compute,
-    getReportText: getReportText
+    getReportText: getReportText,
+    // 🆕 v1.21.0
+    exportToPDF:   exportToPDF
   };
 })();

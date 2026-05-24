@@ -71,6 +71,30 @@ function _resolveRoadStyle(type) {
   return null;
 }
 
+// 🆕 v1.21.0 — Résolution du style pour le type "freehand" : la couleur et
+// l'épaisseur viennent des propriétés stockées sur l'objet road lui-même
+// (road.freehandColor / road.freehandWidth), pas d'une table globale. Cela
+// permet à chaque trait freehand d'avoir ses propres réglages. Si la road
+// n'a pas ces props (cas: import legacy d'un freehand mal formé), fallback
+// sur les préférences globales Freehand ou défauts.
+function _resolveFreehandStyle(road) {
+  let color = (road && road.freehandColor) || null;
+  let width = (road && typeof road.freehandWidth === "number") ? road.freehandWidth : null;
+  if (!color && window.Freehand && typeof window.Freehand.getPrefs === "function") {
+    try {
+      const p = window.Freehand.getPrefs();
+      color = p.color;
+      if (width == null) width = p.width;
+    } catch(e) {}
+  }
+  return {
+    color:        color || "#ff5252",
+    weight:       width || 4,
+    opacity:      1,
+    smoothFactor: 1.5  // léger smoothing Leaflet supplémentaire
+  };
+}
+
 // =========================
 // INIT
 // =========================
@@ -639,7 +663,14 @@ function renderRoads() {
     const latlngs = workPoints.map(p => convertCoord(p.x, p.y));
     // 🆕 v1.16.0 step2-drawable : résolution dynamique du style — supporte
     // les types CUSTOM via LegendCustomization (cf _resolveRoadStyle).
-    const style = _resolveRoadStyle(road.type) || { color: "white", weight: 5, opacity: 1 };
+    // 🆕 v1.21.0 : type "freehand" = style résolu depuis les props de la road
+    // elle-même (freehandColor + freehandWidth), pas d'une table globale.
+    let style;
+    if (road.type === "freehand") {
+      style = _resolveFreehandStyle(road);
+    } else {
+      style = _resolveRoadStyle(road.type) || { color: "white", weight: 5, opacity: 1 };
+    }
     const target = _targetLayerForRoad(road.type);
 
     let polyline;
