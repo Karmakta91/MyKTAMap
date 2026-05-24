@@ -249,7 +249,9 @@
     // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
     // 🆕 v1.21.0
-    "Tutorial"
+    "Tutorial",
+    // 🆕 v1.22.0
+    "ProfileExportImport"
   ];
 
   function _collectRuntime() {

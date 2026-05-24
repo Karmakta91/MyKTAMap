@@ -186,6 +186,17 @@
        Auto-lancement déclenché depuis main.js > _splashEnd. Depuis v1.21.0. -->
   <script src="js/tutorial.js"></script>
 
+  <!-- 📦 PROFILE EXPORT/IMPORT — Profil utilisateur complet (registry +
+       préférences + favoris + sessions + snapshots + tutorial + photos
+       optionnel + crashes optionnel). Remplace l'ancien export "liste de
+       plans" tout en gardant la rétro-compat (détection auto du format
+       legacy `myktamap-plans-list`). API : window.ProfileExportImport = {
+       buildProfile, computeSectionSizes, exportToFile, parseProfile,
+       computeImportStats, applyProfile, isLegacyFormat }. EXCLUS par
+       design : ZIPs binaires des plans + PIN/Unlock (sécurité). Depuis
+       v1.22.0. -->
+  <script src="js/profileExportImport.js"></script>
+
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>
 
@@ -256,8 +267,8 @@
             <div class="loader-section-head">
               <span>📚 Mes plans</span>
               <div class="loader-section-actions">
-                <button class="loader-btn-mini" id="exportListBtn" title="Exporter ma liste">💾</button>
-                <button class="loader-btn-mini" id="importListBtn" title="Charger une liste">📂</button>
+                <button class="loader-btn-mini" id="exportListBtn" title="Exporter mon profil (plans + préférences + favoris + sessions + snapshots)">💾</button>
+                <button class="loader-btn-mini" id="importListBtn" title="Importer un profil (compatible aussi avec les anciens fichiers de liste de plans)">📂</button>
               </div>
             </div>
 
@@ -1955,13 +1966,24 @@
         });
       }
 
-      // === EXPORTER LA LISTE ===
+      // === EXPORTER LE PROFIL (v1.22.0) ===
+      // L'ancien bouton "Exporter ma liste" devient "Exporter mon profil" :
+      // plus seulement la liste des plans, mais aussi préférences + favoris
+      // + sessions + snapshots + tutorial (+ photos / crashes optionnels).
+      // Modale dédiée avec checkboxes granulaires + tailles MB par section.
+      // L'ancien format `myktamap-plans-list` reste accepté à l'import via
+      // rétro-compat (cf parseProfile détection auto).
       const exportListBtn = document.getElementById("exportListBtn");
       if (exportListBtn) {
         exportListBtn.addEventListener("click", function() {
-          if (window.PlanRegistry) {
-            window.PlanRegistry.exportToFile();
-            setStatus("Liste exportée");
+          if (window.ProfileExportImport && typeof window.ProfileExportImport.ouvrirExportModale === "function") {
+            window.ProfileExportImport.ouvrirExportModale();
+          } else {
+            // Fallback : ancien comportement si module pas chargé
+            if (window.PlanRegistry) {
+              window.PlanRegistry.exportToFile();
+              setStatus("Liste exportée (mode legacy — module ProfileExportImport non chargé)");
+            }
           }
         });
       }
@@ -1981,7 +2003,14 @@
         });
       }
 
-      // === IMPORTER UNE LISTE ===
+      // === IMPORTER UN PROFIL (v1.22.0) ===
+      // Le bouton ouvre désormais une modale unifiée qui détecte automatiquement
+      // le format du JSON déposé :
+      //   - "myktamap-profile-export" (nouveau v1.22.0+) → import par sections
+      //     avec checkboxes granulaires + mode merge/replace
+      //   - "myktamap-plans-list"     (legacy ≤ v1.21.x) → bannière "format ancien"
+      //     + import limité à la section registry (= ancien comportement préservé)
+      // Le file picker reste le même (#importListFile), seule la logique change.
       const importListBtn = document.getElementById("importListBtn");
       const importListFile = document.getElementById("importListFile");
       if (importListBtn && importListFile) {
@@ -1991,25 +2020,28 @@
         importListFile.addEventListener("change", async function() {
           const file = importListFile.files[0];
           if (!file) return;
-          try {
-            const stats = await window.PlanRegistry.statsImport(file);
-            if (!stats.ok) {
-              setStatus("Erreur : " + stats.error, true);
-              importListFile.value = "";
-              return;
+          if (window.ProfileExportImport && typeof window.ProfileExportImport.ouvrirImportModale === "function") {
+            try {
+              await window.ProfileExportImport.ouvrirImportModale(file);
+            } catch(e) {
+              setStatus("Erreur ouverture import : " + (e.message || e), true);
             }
-            // Demander à l'utilisateur quel mode
-            const choix = await afficherChoixImportListe(stats);
-            if (!choix) { importListFile.value = ""; return; }
-            const r = await window.PlanRegistry.importFromFile(file, choix);
-            setStatus(choix === "replace"
-              ? "Liste remplacée — " + r.count + " plan(s)"
-              : "Liste fusionnée — " + (stats.newOnes) + " nouveau(x), " + stats.duplicates + " ignoré(s)");
-            window.refreshPlansList();
-          } catch(e) {
-            setStatus("Erreur : " + (e.message || e), true);
+          } else {
+            // Fallback : ancien comportement si module pas chargé (très improbable
+            // car ProfileExportImport est dans ASSETS_TO_CACHE depuis v1.22.0)
+            try {
+              const stats = await window.PlanRegistry.statsImport(file);
+              if (!stats.ok) { setStatus("Erreur : " + stats.error, true); importListFile.value = ""; return; }
+              const choix = await afficherChoixImportListe(stats);
+              if (!choix) { importListFile.value = ""; return; }
+              const r = await window.PlanRegistry.importFromFile(file, choix);
+              setStatus(choix === "replace"
+                ? "Liste remplacée — " + r.count + " plan(s)"
+                : "Liste fusionnée — " + (stats.newOnes) + " nouveau(x), " + stats.duplicates + " ignoré(s)");
+              window.refreshPlansList();
+            } catch(e) { setStatus("Erreur : " + (e.message || e), true); }
           }
-          importListFile.value = "";
+          importListFile.value = "";  // reset input pour permettre re-sélection
         });
       }
 

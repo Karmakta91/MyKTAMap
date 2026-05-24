@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.21.0` (24/05/2026)
+**📦 Version courante** : `v1.22.0` (25/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.21.0](#-derniere-release--v1210)
+1. [🚀 Dernière release — v1.22.0](#-derniere-release--v1220)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,7 +40,17 @@
 
 ---
 
-## 🚀 Dernière release — v1.21.0
+## 🚀 Dernière release — v1.22.0
+
+📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.21.0) : **Export / Import de profil utilisateur complet**. Le bouton « Exporter ma liste de plans » devient « Exporter mon profil » et embarque désormais bien plus que la liste : préférences + favoris + sessions actives + snapshots IDB + tutoriel + photos POI optionnelles + crashes optionnels. Modale dédiée avec checkboxes granulaires et tailles MB par section. Rétro-compatibilité totale : les anciens fichiers `myktamap-plans-list` restent importables.
+
+Sécurité by design : PIN/Face ID + UnlockGate communautaire **jamais exportés** (risque fuite). ZIPs binaires des plans **jamais inclus** (trop lourd) — l'user re-dépose les fichiers ZIP sur le nouvel appareil.
+
+Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.21.0
 
 📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Onboarding + Export »**. 2 features qui se complètent :
 
@@ -887,7 +897,115 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-21-0" open>
+<details id="v1-22-0" open>
+<summary><strong>🗓️ 25/05/2026 — 🚀 v1.22.0 : Export / Import de profil utilisateur complet</strong></summary>
+
+Release MINOR (bump Y : 1.21.0 → 1.22.0). Refonte de l'ancien bouton « Exporter ma liste de plans » qui ne couvrait que la section registry.
+
+### 🎯 Sémantique
+
+Le bouton **« 📤 Exporter mon profil »** (loader home, icône 💾 dans la section « 📚 Mes plans ») permet désormais de sauvegarder TOUT le contexte utilisateur pour migration vers un autre appareil ou backup général :
+
+| Section | Contenu | Default |
+|---|---|---|
+| 🗂️ Registry | Liste des plans (méta seulement, **sans les ZIPs binaires**) | ☑️ cochée |
+| ⚙️ Préférences | `app_user_prefs` + theme + paranoia + planner_mode + freehand_prefs + perf_toggles + … | ☑️ cochée |
+| ⭐ Favoris | Toutes les listes par plan | ☑️ cochée |
+| 💾 Sessions actives | Slots `myktamap_session_v1_<planId>` (annotations en cours) | ☑️ cochée |
+| 📦 Snapshots | 10 derniers snapshots FIFO par plan (IDB `myktamap_backups`) | ☑️ cochée |
+| 🎓 Tutoriel vu | Flag `myktamap_tutorial_seen_v1` | ☑️ cochée |
+| 📸 Photos POI | Photos attachées aux points (base64 inline, **lourd**) | ☐ décochée |
+| 📋 Rapports de crash | Historique des crashs détectés (debug) | ☐ décochée |
+
+### 🛡️ Exclusions par design
+
+- **ZIPs binaires des plans** (`myktamap_handles > blobs`) : trop lourd pour un fichier d'export. L'user re-dépose les fichiers ZIP sur le nouvel appareil, le registry méta suffit à reconstruire la liste.
+- **PIN/Face ID local** (`myktamap_pin_v1`) + **UnlockGate communautaire** (`myktamap_unlock_v1`) : **jamais exportés**. Risque de fuite si l'export est partagé par erreur. L'user redéfinit son PIN sur le nouvel appareil.
+
+### 📦 Nouveau module `js/profileExportImport.js` (~640 lignes IIFE)
+
+```js
+window.ProfileExportImport = {
+  buildProfile(opts),         // assemble selon checkboxes
+  computeSectionSizes(),      // pour afficher les MB par section
+  exportToFile(opts),         // build + Blob + download
+  parseProfile(input),        // valide + retourne {ok, profile, format, error}
+  computeImportStats(profile),// pour preview UI avant apply
+  applyProfile(profile, opts),// injecte (mode merge/replace)
+  isLegacyFormat(input),      // helper détection rétro-compat
+  // UI
+  ouvrirExportModale(),
+  ouvrirImportModale(file),
+  fermerModales()
+};
+```
+
+### 🎛️ Modale Export
+
+- Checkboxes granulaires une par section avec affichage `<emoji> <label> (N · X MB)` + hint explicatif sous chaque ligne
+- Sections vides automatiquement disabled
+- Total estimé du fichier en bas, mis à jour en live au toggle des cases
+- Banner rouge en haut : rappel que PIN/Face ID/UnlockGate ne sont jamais inclus
+- Bouton « 📤 Exporter » → JSON + download `myktamap_profile_<date>.json`
+
+### 📥 Modale Import
+
+Detection automatique du format à l'ouverture :
+- 🟢 **Bannière verte** « ✅ Profil MyKTAMap valide » → flow complet (toutes sections)
+- 🟠 **Bannière orange** « ⚠️ Format ancien détecté » → import limité à la section registry uniquement, suggestion d'exporter en nouveau format
+
+Preview infos : nom fichier + date export + version app source.
+
+**Mode merge** (défaut) : ajoute sans écraser, anti-doublon sur les IDs (planId pour registry, pointId pour favoris). Sessions actives non écrasées si déjà présentes localement (= ne pas écraser le travail en cours de l'user sur l'appareil cible).
+
+**Mode replace** : vide les sections cochées chez l'user avant d'injecter. Double-confirmation via `confirm()` natif.
+
+### 📂 Format JSON unique versionné
+
+```json
+{
+  "type":       "myktamap-profile-export",
+  "version":    1,
+  "exportedAt": "2026-05-25T...",
+  "appVersion": "v1.22.0",
+  "sections": {
+    "registry":     { "plans": [...], "lastPlanId": "..." },
+    "preferences":  { "app_user_prefs": {...}, "myktamap_theme_v1": "dark", ... },
+    "favoris":      { "byPlan": {...}, "favVersion": 1 },
+    "sessions":     { "<planId>": {...}, "__legacy__": {...} },
+    "backups":      [ {id, payload, planId, ...}, ... ],
+    "tutorial":     { "seen": true },
+    "photos":       { "photos": [{id, planId, pointId, mime, size, data: "<base64>"}, ...] },
+    "crashes":      [...]
+  }
+}
+```
+
+Photos POI en **base64 inline** (vs ZIP+binaires séparés) — simplicité de manipulation au prix d'un fichier potentiellement gros (~50 MB avec photos).
+
+### 🔁 Rétro-compatibilité absolue
+
+`parseProfile()` détecte le `type` :
+- `"myktamap-profile-export"` (v1.22.0+) → flow complet
+- `"myktamap-plans-list"` (legacy ≤ v1.21.x) → wrap automatique dans un profil minimal `{registry: {plans: [...]}}` pour réutiliser `applyProfile()`. L'user voit la bannière orange « Format ancien » mais l'import marche.
+
+**Pas de breaking change** — les anciens fichiers d'export restent utilisables.
+
+### 📂 Sources de vérité v1.22.0
+
+- `version.json` → `"v1.22.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.22.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.22.0"`
+- **1 nouveau fichier** ajouté à `ASSETS_TO_CACHE` : `js/profileExportImport.js`
+- Modifs internes à : `index.html` (refonte handlers `exportListBtn` + `importListBtn` vers les nouvelles modales, avec fallback legacy si module pas chargé), `js/memInspector.js` (KNOWN_MODULES + ProfileExportImport), `css/style.css` (~230 lignes nouvelles classes `.kta-profile-*` + variants thème clair)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Le profil est généré localement (lecture localStorage + IDB read-only + sérialisation JSON + Blob téléchargé via `URL.createObjectURL`). L'import lit le fichier local via `File.text()` + écrit localStorage + IDB (write). Aucun fetch externe. Photos POI base64 inline restent dans le fichier (jamais transmises). **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-21-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.21.0 : Cycle « Onboarding + Export »</strong></summary>
 
 Release MINOR (bump Y : 1.20.0 → 1.21.0). 2 features qui se complètent.
