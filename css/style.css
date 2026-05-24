@@ -14312,6 +14312,50 @@ body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
 }
 
 /* ==============================================
+   🆕 v1.16.0-fix — Boussole widget (mode réduit) en thème clair
+   ==============================================
+   KARMA : « en mode clair, si je clique sur boussole, quand elle est en
+   mode réduite sur la carte elle est en sombre. »
+
+   Le widget compass (.kta-compass-widget) était hardcodé sur fond sombre
+   (rgba(26,31,46,0.88) = charte dark) sans override theme-light. En mode
+   clair, l'utilisateur voyait un bloc sombre incongru sur le fond
+   beige cataphile.
+
+   Override : fond beige clair charte cataphile + texte sombre + bordure
+   ambre charte (cohérent avec les modales en thème clair).
+   ============================================== */
+body.kta-theme-light .kta-compass-widget {
+  background: rgba(253, 248, 235, 0.92) !important;     /* --kta-light-bg-elevated avec alpha */
+  border-color: var(--kta-light-accent) !important;     /* jaune charte */
+  box-shadow: 0 6px 20px var(--kta-light-shadow) !important;
+}
+body.kta-theme-light .kta-compass-widget:hover {
+  border-color: var(--kta-light-accent-hover) !important;
+  box-shadow: 0 6px 24px var(--kta-light-shadow),
+              0 0 18px rgba(244, 197, 66, 0.18) !important;
+}
+
+body.kta-theme-light .kta-compass-close {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-compass-close:hover,
+body.kta-theme-light .kta-compass-close:focus {
+  background: rgba(255, 107, 107, 0.15) !important;
+  color: #c33 !important;
+}
+
+/* Rose des vents : drop-shadow ambre conservé (lisible sur beige aussi).
+   En revanche, le texte cardinal (.kta-compass-info) reste en jaune
+   accent car il est sur le fond ambre clair → lisible aussi en mode
+   clair. Si KARMA trouve le contraste insuffisant on bumpera au noir
+   charte (--kta-light-text). */
+body.kta-theme-light .kta-compass-info {
+  color: var(--kta-light-accent-hover) !important;       /* ambre plus saturé pour contraste */
+  text-shadow: 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* ==============================================
    🆕 v1.16.0 step2-flyout : Sidebar flyout (panneau latéral)
    ==============================================
    KARMA : « quand on va avoir trop icone. il faut modifier UI, pas de
