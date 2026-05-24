@@ -8,7 +8,12 @@
 // SESSION PERSIST — auto-sauvegarde de la session active
 // =========================
 // Stratégie :
-//  - Slot unique dans localStorage (clé STORAGE_KEY)
+//  - 🆕 v1.16.1 — Slot PAR PLAN dans localStorage : `myktamap_session_v1_<planId>`.
+//    Plus de wipe au plan switch. L'user peut quitter le plan A, charger le
+//    plan B, faire des modifs, puis revenir sur A → ses modifs sur A sont
+//    restaurées automatiquement (avant : la session A était écrasée par
+//    le polling de B après quelques secondes, ou wipée immédiatement au
+//    `clear()` du plan-mismatch).
 //  - Polling périodique : compare un hash de l'état avec le dernier sauvegardé
 //  - Save aussi sur beforeunload + visibilitychange (mobile mise en arrière-plan)
 //  - Restore appelé par main.js après lancerApplication() via onPlanLoaded(planId)
@@ -16,15 +21,25 @@
 //
 // API : window.SessionPersist
 //   - onPlanLoaded(planId)    → à appeler après chargement complet d'un plan
-//   - save()                  → force une sauvegarde immédiate
-//   - clear()                 → efface la session sauvegardée
-//   - getSaved()              → retourne le payload mémorisé ou null
+//   - save()                  → force une sauvegarde immédiate (du plan courant)
+//   - clear()                 → efface la session du plan courant
+//   - getSaved(planId?)       → retourne le payload mémorisé ou null
+//                                (planId optionnel ; sinon = plan courant)
 // =========================
 
 (function() {
   "use strict";
 
-  const STORAGE_KEY      = "myktamap_session_v1";
+  // 🆕 v1.16.1 — Préfixe + helper pour générer la clé par plan.
+  // Ancien format unique « myktamap_session_v1 » migré au boot vers
+  // « myktamap_session_v1_<planId> » via _migrerAncienSlotUniqueSiBesoin.
+  const STORAGE_PREFIX = "myktamap_session_v1_";
+  function _storageKeyFor(planId) {
+    if (!planId) return null;
+    return STORAGE_PREFIX + planId;
+  }
+  // Ancien slot unique conservé en lecture seule pour la migration au boot.
+  const STORAGE_KEY_LEGACY = "myktamap_session_v1";
   const POLL_INTERVAL_MS      = 1500;   // défaut (~real-time)
   const POLL_INTERVAL_SLOW_MS = 30000;  // mode 🚀 PerfUltra.slowSave (30s)
 
@@ -52,6 +67,64 @@
       clearTimeout(_phase2TimeoutId);
       _phase2TimeoutId = null;
     }
+  }
+
+  // ========== MIGRATION LEGACY (v1.16.0 → v1.16.1) ==========
+
+  // 🆕 v1.16.1 — L'ancien slot unique `myktamap_session_v1` est déplacé
+  // vers le slot per-plan `myktamap_session_v1_<savedPlanId>` quand on
+  // boot pour la 1ère fois sur la nouvelle version. Idempotent : appelé
+  // à chaque `onPlanLoaded` mais ne fait rien si l'ancien slot est
+  // déjà absent (= déjà migré OU jamais utilisé).
+  //
+  // Cas géré :
+  //  - Ancien slot présent + payload.planId valide → migre + supprime
+  //    l'ancien slot (idempotence stricte garantie ensuite).
+  //  - Ancien slot présent mais payload corrompu / planId manquant →
+  //    supprime l'ancien (impossible à migrer, laisser le slot legacy
+  //    serait juste pollution).
+  //  - Si le slot per-plan cible existe déjà avec un payload plus récent
+  //    (savedAt plus récent) → on NE écrase PAS, on supprime juste le
+  //    legacy. Évite de revenir en arrière si l'user a déjà bossé sur
+  //    le plan après l'update.
+  function _migrerAncienSlotUniqueSiBesoin() {
+    let raw;
+    try { raw = localStorage.getItem(STORAGE_KEY_LEGACY); } catch(e) { return; }
+    if (!raw) return;
+    let payload;
+    try { payload = JSON.parse(raw); } catch(e) {
+      try { localStorage.removeItem(STORAGE_KEY_LEGACY); } catch(e) {}
+      return;
+    }
+    if (!payload || !payload.planId) {
+      try { localStorage.removeItem(STORAGE_KEY_LEGACY); } catch(e) {}
+      return;
+    }
+    const newKey = _storageKeyFor(payload.planId);
+    if (!newKey) {
+      try { localStorage.removeItem(STORAGE_KEY_LEGACY); } catch(e) {}
+      return;
+    }
+    // Si le nouveau slot existe déjà et est plus récent, ne pas écraser
+    let existing;
+    try {
+      const existingRaw = localStorage.getItem(newKey);
+      existing = existingRaw ? JSON.parse(existingRaw) : null;
+    } catch(e) { existing = null; }
+    const legacyTs   = Date.parse(payload.savedAt  || 0) || 0;
+    const existingTs = Date.parse(existing && existing.savedAt || 0) || 0;
+    if (!existing || legacyTs > existingTs) {
+      try {
+        localStorage.setItem(newKey, raw);
+        console.log("[SessionPersist] Migration legacy → per-plan : slot copié pour", payload.planId);
+      } catch(e) {
+        console.warn("[SessionPersist] Migration échouée (quota ?) :", e);
+        return;  // garder l'ancien slot, retry au prochain boot
+      }
+    } else {
+      console.log("[SessionPersist] Migration : slot per-plan plus récent, legacy ignoré pour", payload.planId);
+    }
+    try { localStorage.removeItem(STORAGE_KEY_LEGACY); } catch(e) {}
   }
 
   // ========== ETAT COURANT ==========
@@ -179,8 +252,14 @@
     if (hash === _lastHash) return false; // pas de changement depuis dernier save
 
     if (_isEmptyState(state)) {
-      // Etat vide → on efface l'éventuelle sauvegarde existante (utile après "Effacer la session")
-      try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+      // Etat vide → on efface l'éventuelle sauvegarde existante du plan
+      // courant (utile après "Effacer la session"). 🆕 v1.16.1 : on touche
+      // UNIQUEMENT au slot du plan courant — les autres plans gardent
+      // leur session.
+      const _k = _storageKeyFor(_currentPlanId);
+      if (_k) {
+        try { localStorage.removeItem(_k); } catch(e) {}
+      }
       _lastHash = hash;
       return false;
     }
@@ -210,8 +289,13 @@
       // gère gracieusement payload.customLegend == null.
       customLegend:   state.customLegend   || null
     };
+    // 🆕 v1.16.1 : écriture dans le slot par-plan. Si pas de planId set
+    // (cas dégénéré, pré-onPlanLoaded), skip — on ne peut pas savoir
+    // quel plan on est en train de sauvegarder.
+    const _writeKey = _storageKeyFor(_currentPlanId);
+    if (!_writeKey) return false;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      localStorage.setItem(_writeKey, JSON.stringify(payload));
       _lastHash = hash;
       _quotaWarned = false;  // reset si le save remarche après libération de place
       return true;
@@ -239,9 +323,15 @@
     }
   }
 
-  function getSaved() {
+  // 🆕 v1.16.1 — getSaved accepte un planId optionnel. Sans argument →
+  // lit le slot du plan courant (`_currentPlanId`). Avec argument → lit
+  // le slot du plan demandé. Utilisé par SessionBackups pour snapshotter
+  // toujours le bon slot, et par onPlanLoaded pour vérifier au boot.
+  function getSaved(planId) {
+    const lookupId = planId || _currentPlanId;
+    if (!lookupId) return null;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(_storageKeyFor(lookupId));
       if (!raw) return null;
       const payload = JSON.parse(raw);
       if (!payload || payload.version !== VERSION) return null;
@@ -260,7 +350,12 @@
     if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
       try { window.SessionBackups.snapshot("before-clear-session"); } catch(e) {}
     }
-    try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+    // 🆕 v1.16.1 : on efface UNIQUEMENT le slot du plan courant — les
+    // autres plans gardent leur session intacte.
+    const _k = _storageKeyFor(_currentPlanId);
+    if (_k) {
+      try { localStorage.removeItem(_k); } catch(e) {}
+    }
     _lastHash = null;
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
     // l'user clique "🗑️ Effacer la session" dans la modale de feedback
@@ -519,10 +614,16 @@
   // ========== HOOK PRINCIPAL ==========
 
   // Appelé par main.js > lancerApplication() après init complète
-  // Logique :
-  //  - Si la session sauvegardée correspond à ce planId → restore + toast
-  //  - Si elle correspond à un AUTRE planId → purge (cf. choix 5:a "un plan a été chargé entre temps")
-  //  - Démarre le polling pour la nouvelle session
+  // Logique (🆕 v1.16.1, slots per-plan) :
+  //  - Migre l'ancien slot unique `myktamap_session_v1` (legacy v1.16.0
+  //    et avant) vers le nouveau slot per-plan si présent.
+  //  - Lit `myktamap_session_v1_<planId>` du plan demandé.
+  //  - Si présent → restore + toast.
+  //  - Si absent → rien à restaurer (=  plan nouveau OU jamais sauvé).
+  //  - Plus de wipe au plan switch : la session d'un autre plan reste
+  //    dans son slot et sera restaurée naturellement quand l'user
+  //    reviendra sur ce plan.
+  //  - Démarre le polling pour la session courante.
   function onPlanLoaded(planId) {
     _stopPolling();
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sinon, si
@@ -535,33 +636,40 @@
     _currentPlanId = planId || null;
     _lastHash = null;
 
+    // 🆕 v1.16.1 — Migration ancien slot unique → per-plan (idempotente).
+    // Si on a une session legacy stockée dans `myktamap_session_v1`, on
+    // la déplace vers `myktamap_session_v1_<savedPlanId>` au boot. Comme
+    // ça les users qui mettent à jour depuis v1.16.0 ne perdent rien.
+    _migrerAncienSlotUniqueSiBesoin();
+
     if (!_currentPlanId) {
       // Pas de planId connu → on ne touche pas au stockage existant, on démarre quand même le poll
       _startPolling();
       return null;
     }
 
-    const saved = getSaved();
+    const saved = getSaved();  // lit le slot du plan courant
     let restored = null;
     if (saved) {
-      // Double-check : planId ET planName doivent matcher
-      // (anti-collision : 2 plans locaux avec même nom+version produisent le même genLocalId)
+      // Double-check planName : avec slots per-plan, le risque de
+      // collision d'ID est très faible (slot dédié par planId). Mais
+      // si deux plans locaux différents finissent par avoir le même
+      // genLocalId (cas marginal), on évite quand même de charger la
+      // mauvaise session. Pas de wipe ici : on skip silencieusement et
+      // on laisse le slot tel quel — il pourrait être encore utile au
+      // bon plan si on y revient.
       const currentName = _currentPlanName();
-      const idMatch     = (saved.planId === _currentPlanId);
       const nameMatch   = (!saved.planName || !currentName)
-                            ? true                              // pas de nom des deux côtés → on accepte le match d'ID seul
-                            : (saved.planName === currentName); // les deux côtés ont un nom → on compare
+                            ? true
+                            : (saved.planName === currentName);
 
-      if (idMatch && nameMatch) {
+      if (nameMatch) {
         restored = _applyRestore(saved);
         if (restored) _afficherModaleSession(restored);
-      } else {
-        if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-          console.log("[SessionPersist] Session écartée — saved=", saved.planId, "/", saved.planName,
-                      " current=", _currentPlanId, "/", currentName,
-                      " (idMatch:", idMatch, ", nameMatch:", nameMatch, ")");
-        }
-        clear();
+      } else if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+        console.log("[SessionPersist] Session écartée (nameMatch ko) — saved=",
+                    saved.planId, "/", saved.planName,
+                    " current=", _currentPlanId, "/", currentName);
       }
     }
     _startPolling();

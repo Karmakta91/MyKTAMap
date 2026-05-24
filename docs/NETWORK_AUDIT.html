@@ -174,27 +174,39 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.16.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.16.1</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
   </p>
 
   <p class="meta" style="margin-top:6px;">
+    <strong>v1.16.1 (Hotfix auto-save PAR PLAN)</strong> : <strong>AUCUNE nouvelle surface réseau, aucun
+    nouveau fichier</strong>. Modification purement structurelle au niveau localStorage local : remplacement
+    du slot unique <code>localStorage["myktamap_session_v1"]</code> par un slot indexé par planId
+    <code>localStorage["myktamap_session_v1_&lt;planId&gt;"]</code> dans <code>js/sessionPersist.js</code>.
+    Helpers internes + migration silencieuse au boot via <code>_migrerAncienSlotUniqueSiBesoin()</code>.
+    <code>js/sessionBackups.js</code> ajusté pour lire/écrire le bon slot per-plan + appeler
+    <code>PlanRegistry.setLastPlanId(targetPlanId)</code> avant le reload. Le SW cache uniquement un bump
+    du <code>CACHE_NAME</code> (<code>myktamap-cache-v1.16.1</code>), pas de nouveau fichier.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> +
+    <code>https://www.gstatic.com</code> (ping connectivité).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
     <strong>v1.16.0 (UX & filet de sécurité)</strong> : 4 nouveaux modules, <strong>AUCUNE nouvelle
     surface réseau</strong>. (1) <code>js/legendCustomization.js</code> — cascade libellés / visibilité /
     customs, persistance dans le payload <code>SessionPersist</code> existant (clé localStorage
-    <code>myktamap_session_v1</code>). (2) <code>js/favoris.js</code> — favoris points par plan,
-    nouvelle clé <code>localStorage["myktamap_favoris_v1"]</code> indexée par planId (local-only).
+    <code>myktamap_session_v1</code> jusqu'à v1.16.0, puis <code>myktamap_session_v1_&lt;planId&gt;</code>
+    per-plan depuis v1.16.1). (2) <code>js/favoris.js</code> — favoris points par plan, nouvelle clé
+    <code>localStorage["myktamap_favoris_v1"]</code> indexée par planId (local-only).
     (3) <code>js/sessionBackups.js</code> — 10 snapshots FIFO via <strong>nouvelle IndexedDB</strong>
     <code>myktamap_backups</code> v1 (store <code>backups</code>), pas de fetch externe. Restore par
     écriture localStorage + <code>location.reload()</code> (pas d'appel réseau). (4) Hotfixes CSS thème
     clair compass + reformulation des modales « Changer de plan » : changements UI purs, zéro impact
     réseau. <strong>Tous les fetchs restent same-origin</strong>. Le SW cache 3 fichiers JS de plus
     au boot (<code>./js/legendCustomization.js</code>, <code>./js/favoris.js</code>,
-    <code>./js/sessionBackups.js</code>), toujours same-origin. <strong>Liste blanche
-    <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>
-    (ping connectivité).
+    <code>./js/sessionBackups.js</code>), toujours same-origin.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -593,6 +605,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.16.1</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>Hotfix auto-save PAR PLAN</strong> — <strong>aucune nouvelle surface réseau, aucun
+          nouveau fichier</strong>. Remplacement du slot unique <code>localStorage["myktamap_session_v1"]</code>
+          par un slot indexé par planId <code>localStorage["myktamap_session_v1_&lt;planId&gt;"]</code>
+          dans <code>js/sessionPersist.js</code>. Migration silencieuse au boot via
+          <code>_migrerAncienSlotUniqueSiBesoin()</code>. <code>js/sessionBackups.js</code> ajusté pour
+          lire/écrire le bon slot per-plan + appeler <code>PlanRegistry.setLastPlanId(targetPlanId)</code>
+          avant le reload. Bump SW <code>CACHE_NAME</code> uniquement.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.16.0</td>
         <td>24/05/2026</td>

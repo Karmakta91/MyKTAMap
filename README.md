@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.16.0` (24/05/2026)
+**📦 Version courante** : `v1.16.1` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.16.0](#-derniere-release--v1160)
+1. [🚀 Dernière release — v1.16.1](#-derniere-release--v1161)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,7 +40,13 @@
 
 ---
 
-## 🚀 Dernière release — v1.16.0
+## 🚀 Dernière release — v1.16.1
+
+📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.16.0) : **auto-save par plan** (slot localStorage indexé par planId + migration transparente de l'ancien slot unique). Quitter un plan → revenir : la session reprend exactement où elle s'était arrêtée pour CE plan, sans avoir besoin de restaurer un snapshot. Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.16.0
 
 📅 **24 mai 2026** — Cycle « **UX & filet de sécurité** » : **4 features majeures** qui se complètent + plusieurs polishs UI conséquents.
 
@@ -850,7 +856,68 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-16-0" open>
+<details id="v1-16-1" open>
+<summary><strong>🗓️ 24/05/2026 — 🩹 v1.16.1 : Hotfix auto-save PAR PLAN (slot localStorage indexé par planId)</strong></summary>
+
+Hotfix **PATCH** (bump Z : 1.16.0 → 1.16.1). Une seule modification structurelle, mais avec un fort impact UX terrain.
+
+### 🎯 Problème résolu
+
+Avant v1.16.1, `SessionPersist` écrivait dans un **slot unique** `localStorage["myktamap_session_v1"]`. Quand l'utilisateur switchait de plan, le helper `onPlanLoaded` détectait le mismatch `planId` et faisait **`clear()`** systématiquement → la session du plan précédent était écrasée par celle du plan courant. Conséquence : pour récupérer la session d'un plan déjà visité dans la journée, il fallait **obligatoirement passer par un snapshot** (Backup IDB) — alors qu'on aurait juste voulu retomber sur l'état d'avant en revenant naturellement sur le plan.
+
+### 💾 Nouvelle structure localStorage
+
+**Slot PAR PLAN** indexé par `planId` :
+
+| Avant v1.16.1 | Depuis v1.16.1 |
+|---|---|
+| `myktamap_session_v1` (un seul, écrasé au switch) | `myktamap_session_v1_<planId>` (N slots indépendants) |
+
+Helper interne dans `sessionPersist.js` :
+
+```js
+const STORAGE_PREFIX  = "myktamap_session_v1_";
+function _storageKeyFor(planId) {
+  if (!planId) return null;
+  return STORAGE_PREFIX + planId;
+}
+const STORAGE_KEY_LEGACY = "myktamap_session_v1";   // pour migration uniquement
+```
+
+Toutes les opérations (`save`, `getSaved`, `clear`, lecture initiale) ciblent désormais `_storageKeyFor(_currentPlanId)`. Le wipe automatique au mismatch dans `onPlanLoaded` est supprimé — chaque plan garde sa session en parallèle dans son slot dédié.
+
+### 🔄 Migration transparente (pas de perte au upgrade)
+
+Au boot, `_migrerAncienSlotUniqueSiBesoin()` :
+
+1. Lit `localStorage["myktamap_session_v1"]` (ancien slot)
+2. Si payload valide avec `planId` :
+   - Calcule la nouvelle clé `_storageKeyFor(payload.planId)`
+   - Si un slot per-plan plus récent existe déjà → garde le récent, supprime l'ancien
+   - Sinon → copie le legacy dans la nouvelle clé puis supprime le legacy
+3. Si payload corrompu ou sans planId → suppression silencieuse
+
+L'utilisateur qui upgrade depuis v1.16.0 (ou antérieur) ne perd **rien** : sa session active continue à fonctionner dans le nouveau format.
+
+### 📦 SessionBackups aligné
+
+- `_readCurrentSessionPayload()` lit en priorité le slot per-plan du planId courant, fallback sur l'ancien slot unique si pas encore migré
+- `restore(id)` écrit le payload dans la clé `myktamap_session_v1_ + targetPlanId` (extrait de `entry.payload.planId` ou `entry.planId`), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` avant le `location.reload()` pour basculer automatiquement sur le bon plan
+
+### 🏷️ Sources de vérité v1.16.1
+
+- `version.json` → `"v1.16.1"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.16.1"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.16.1"`
+- Aucun nouveau fichier — modifs internes à `js/sessionPersist.js` et `js/sessionBackups.js`
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. La modification est purement structurelle au niveau localStorage local. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-16-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.16.0 : Cycle « UX & filet de sécurité » — Notes, Légende personnalisable, Favoris, Backup multi-rotations sessions</strong></summary>
 
 Release MINOR (bump Y : 1.15.0 → 1.16.0). **4 features majeures qui se complètent** + plusieurs polishs UI conséquents.

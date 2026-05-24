@@ -353,9 +353,9 @@ Helpers : `PlanRegistry.getPerfPreset(id)` / `setPerfPreset(id, preset)`. Valida
 
 ### 9. Auto-save de session (`sessionPersist.js`, depuis 08/05/2026)
 
-Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]`.
+Sauvegarde silencieuse de la session active (editor + roads + zones + measure) dans `localStorage["myktamap_session_v1"]` jusqu'à v1.16.0, puis **per-plan `myktamap_session_v1_<planId>` depuis v1.16.1** (cf §57).
 
-**Stratégie** : slot unique, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
+**Stratégie** : ~~slot unique~~ **slot PAR PLAN (v1.16.1+)**, polling 1.5s, comparaison de hash pour détecter les modifs, save aussi sur `beforeunload` + `visibilitychange`. Tracker path EXCLU (PDR expérimental). **Depuis v1.8.1** : itinéraires (`road.type === "itinerary"`) INCLUS via **restore en 2 phases** :
 
 - **Phase 1 (immédiate)** au `onPlanLoaded` : restore de toutes les roads SAUF itinéraires + tous les autres calques (editor, zones, measure). L'user voit son contexte de travail apparaître.
 - **Phase 2 (+1500ms via `setTimeout`)** : ajout de l'itinéraire à la session (via `setRoads(getRoads().concat(itineraires))`). 1500ms est le compromis qui laisse Leaflet finir son `fitBounds` initial + les tuiles V2 se placer + les autres modules s'initialiser (Pathfinder, label distance, etc.).
@@ -4057,7 +4057,7 @@ Stockage IDB : DB `myktamap_backups` v1 / store `backups` / key `id` (timestamp 
 3. Avant destructif : `sessionPersist.js > clear()` appelle `snapshot("before-clear-session")` avant le wipe
 4. Manuel : bouton 📆 Snapshot maintenant
 
-**Restore par reload** : écrit payload dans `localStorage["myktamap_session_v1"]` puis `location.reload()` → SessionPersist restaure naturellement. Pas de hot-swap des structures Leaflet (fragile).
+**Restore par reload** : écrit payload dans `localStorage["myktamap_session_v1"]` puis `location.reload()` → SessionPersist restaure naturellement. Pas de hot-swap des structures Leaflet (fragile). **⚠️ v1.16.1+** : la clé est désormais `myktamap_session_v1_<planId>` (per-plan slot, cf §57), et `restore` appelle `PlanRegistry.setLastPlanId(targetPlanId)` avant le reload pour recharger automatiquement le bon plan.
 
 **UI section 📦 Backups récents** dans `refonteInterface.js > _afficherModaleSessionDetail` :
 - Filtrée sur plan courant (via `b.planId === window._currentLoadedPlanId`)
@@ -4091,6 +4091,73 @@ Stockage IDB : DB `myktamap_backups` v1 / store `backups` / key `id` (timestamp 
 - ❌ Faire un restore live des structures Leaflet pour SessionBackups (fragile) — passer par localStorage + reload
 - ❌ Filtrer les snapshots par planId au niveau du module — la filtration est UI-only (snapshots restent cross-plan en IDB pour permettre retour à un autre plan)
 - ❌ Préfixer le label utilisateur par "✨" dans le flyout — le swatch coloré est déjà un marqueur visuel suffisant (cf KARMA "j'ai des étoiles en icône pour tous")
+
+---
+
+### 57. v1.16.1 — Auto-save PAR PLAN (hotfix depuis v1.16.1)
+
+Hotfix PATCH au-dessus de v1.16.0. Une seule modif structurelle, fort impact UX terrain : **chaque plan a désormais SON propre slot localStorage**. Plus besoin de charger un snapshot quand on quitte un plan, va sur un autre, et revient sur le premier — la session reprend exactement où elle s'était arrêtée pour CE plan.
+
+#### 57.1 Problème résolu
+
+Avant v1.16.1, `SessionPersist` écrivait dans un **slot unique** `localStorage["myktamap_session_v1"]`. Quand l'utilisateur switchait de plan, le helper `onPlanLoaded` détectait le mismatch `planId` et faisait `clear()` systématiquement → la session du plan précédent était écrasée par celle du plan courant. Pour récupérer la session d'un plan déjà visité, il fallait obligatoirement passer par un snapshot (Backup IDB) — alors qu'on aurait juste voulu retomber sur l'état d'avant en revenant naturellement sur le plan.
+
+#### 57.2 Structure localStorage par plan
+
+Helpers dans `js/sessionPersist.js` :
+
+```js
+const STORAGE_PREFIX = "myktamap_session_v1_";
+function _storageKeyFor(planId) {
+  if (!planId) return null;
+  return STORAGE_PREFIX + planId;
+}
+const STORAGE_KEY_LEGACY = "myktamap_session_v1";   // pour migration uniquement
+```
+
+Toutes les opérations `save / getSaved / clear / lecture initiale` ciblent désormais `_storageKeyFor(_currentPlanId)`. Le wipe automatique sur mismatch dans `onPlanLoaded` est **supprimé** — chaque plan garde sa session en parallèle dans son slot dédié.
+
+| Avant v1.16.1 | Depuis v1.16.1 |
+|---|---|
+| `myktamap_session_v1` (un seul, écrasé au switch) | `myktamap_session_v1_<planId>` (N slots indépendants) |
+
+#### 57.3 Migration transparente
+
+Au boot, `_migrerAncienSlotUniqueSiBesoin()` (appelé depuis `init()`) :
+
+1. Lit `localStorage["myktamap_session_v1"]` (ancien slot)
+2. Si payload valide avec `planId` :
+   - Calcule la nouvelle clé `_storageKeyFor(payload.planId)`
+   - Si un slot per-plan plus récent existe déjà (comparaison `savedAt`) → garde le récent, supprime l'ancien
+   - Sinon → copie le legacy dans la nouvelle clé puis supprime le legacy
+3. Si payload corrompu ou sans planId → suppression silencieuse
+
+L'utilisateur qui upgrade depuis v1.16.0 ou antérieur ne perd **rien** : sa session active continue à fonctionner dans le nouveau format.
+
+#### 57.4 SessionBackups aligné
+
+Dans `js/sessionBackups.js` :
+
+- `_readCurrentSessionPayload()` lit en priorité le slot per-plan du planId courant (`window._currentLoadedPlanId` ou `PlanRegistry.getLastPlanId()`), fallback sur l'ancien slot unique si pas encore migré (cas du tout premier snapshot pre-migration au boot)
+- `restore(id)` écrit le payload dans la clé `myktamap_session_v1_ + targetPlanId` (extrait de `entry.payload.planId` ou `entry.planId`), puis appelle `PlanRegistry.setLastPlanId(targetPlanId)` AVANT le `location.reload()` → l'app recharge automatiquement le bon plan au reload, et SessionPersist restaure naturellement le bon slot
+
+#### 57.5 Sources de vérité v1.16.1
+
+- `version.json` → `"v1.16.1"`
+- `js/copyright.js > __MKM__.build` → `"v1.16.1"`
+- `sw.js > CACHE_NAME` → `"myktamap-cache-v1.16.1"`
+- Aucun nouveau fichier — modifs internes à `js/sessionPersist.js` et `js/sessionBackups.js`
+
+#### 57.6 Confidentialité
+
+**Aucune nouvelle surface réseau**. La modification est purement structurelle au niveau localStorage local. NETWORK_AUDIT inchangé sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+#### 57.7 À NE PAS faire
+
+- ❌ Lire/écrire directement `localStorage["myktamap_session_v1"]` (legacy) dans un nouveau module — toujours utiliser `_storageKeyFor(planId)` via SessionPersist
+- ❌ Remettre un `clear()` systématique au mismatch planId dans `onPlanLoaded` — détruirait la session du plan précédent (régression vers le comportement v1.16.0)
+- ❌ Supprimer la migration `_migrerAncienSlotUniqueSiBesoin` avant d'être certain que tous les utilisateurs ont au moins booté une fois en v1.16.1+ (laisser quelques cycles de safety net)
+- ❌ Faire un restore SessionBackups sans appeler `PlanRegistry.setLastPlanId(targetPlanId)` avant le reload — sinon l'app recharge le dernier plan ouvert, qui peut être différent du plan source du snapshot
 
 ---
 

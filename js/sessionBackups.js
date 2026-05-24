@@ -192,16 +192,27 @@ window.SessionBackups = (function() {
   // ─────────────────────────────────────────────
   function _readCurrentSessionPayload() {
     // On lit le payload depuis SessionPersist qui maintient déjà la dernière
-    // version sauvée dans localStorage. Si pas de SessionPersist OU pas de
-    // payload → on lit directement la clé localStorage utilisée par
-    // SessionPersist (key "myktamap_session_v1").
+    // version sauvée dans localStorage. 🆕 v1.16.1 — SessionPersist utilise
+    // désormais des slots PAR PLAN (myktamap_session_v1_<planId>) au lieu
+    // d'un slot unique. getSaved() sans argument lit le slot du plan
+    // courant — exactement ce qu'on veut snapshotter ici.
     try {
       if (window.SessionPersist && typeof window.SessionPersist.getSaved === "function") {
         return window.SessionPersist.getSaved();
       }
-      const raw = localStorage.getItem("myktamap_session_v1");
-      if (!raw) return null;
-      return JSON.parse(raw);
+      // Fallback ultra-défensif si SessionPersist pas chargé. On scan les
+      // clés par préfixe pour trouver le slot du plan courant si possible.
+      const planId = window._currentLoadedPlanId || null;
+      if (planId) {
+        const raw = localStorage.getItem("myktamap_session_v1_" + planId);
+        if (raw) return JSON.parse(raw);
+      }
+      // Legacy slot (avant migration v1.16.1) — peut encore exister au
+      // tout 1er boot post-update si _migrerAncienSlotUniqueSiBesoin
+      // n'a pas encore tourné.
+      const rawLegacy = localStorage.getItem("myktamap_session_v1");
+      if (rawLegacy) return JSON.parse(rawLegacy);
+      return null;
     } catch(e) {
       console.warn("[SessionBackups] read session payload échec :", e);
       return null;
@@ -259,15 +270,21 @@ window.SessionBackups = (function() {
   // Restore
   // ─────────────────────────────────────────────
   //
-  // Stratégie : on écrit le payload du backup dans localStorage
-  // (myktamap_session_v1) PUIS on demande à l'utilisateur de recharger
-  // la page. SessionPersist se chargera de restaurer au prochain boot.
+  // Stratégie : on écrit le payload du backup dans le slot per-plan
+  // localStorage (myktamap_session_v1_<planId>) PUIS on demande à
+  // l'utilisateur de recharger la page. SessionPersist se charge de
+  // restaurer au prochain boot.
+  //
+  // 🆕 v1.16.1 — Bonus : si le backup vient d'un AUTRE plan que celui
+  // actuellement chargé, on force `PlanRegistry.lastPlanId` au planId
+  // du backup pour que l'app boote sur le bon plan au reload. Sinon
+  // l'app rouvrait le plan courant et ignorait le slot du plan du
+  // backup → user voyait "rien restauré".
   //
   // Pourquoi pas restaurer en live : le restore implique de SWITCHER de
-  // plan (si le backup est d'un autre plan), de réinitialiser les
-  // structures Leaflet, etc. → trop complexe, fragile. Un simple
-  // location.reload après écriture localStorage est robuste et utilise
-  // la pipeline standard de boot.
+  // plan, de réinitialiser les structures Leaflet, etc. → trop complexe,
+  // fragile. Un simple location.reload après écriture localStorage est
+  // robuste et utilise la pipeline standard de boot.
   function restore(id) {
     return _tx("readonly").then(function(store) {
       return new Promise(function(resolve, reject) {
@@ -282,8 +299,24 @@ window.SessionBackups = (function() {
         req.onerror = function() { reject(req.error); };
       });
     }).then(function(entry) {
+      const targetPlanId = (entry.payload && entry.payload.planId) || entry.planId;
+      if (!targetPlanId) {
+        throw new Error("Backup sans planId (corrompu ?)");
+      }
       try {
-        localStorage.setItem("myktamap_session_v1", JSON.stringify(entry.payload));
+        // 🆕 v1.16.1 : slot per-plan
+        localStorage.setItem(
+          "myktamap_session_v1_" + targetPlanId,
+          JSON.stringify(entry.payload)
+        );
+        // 🆕 v1.16.1 : force PlanRegistry.lastPlanId pour que l'app
+        // rouvre le bon plan au reload. Si le backup vient du plan
+        // actuellement chargé → no-op (déjà à la bonne valeur).
+        if (window.PlanRegistry && typeof window.PlanRegistry.setLastPlanId === "function") {
+          try { window.PlanRegistry.setLastPlanId(targetPlanId); } catch(e) {
+            console.warn("[SessionBackups] PlanRegistry.setLastPlanId échec :", e);
+          }
+        }
         return { restored: true, entry: entry };
       } catch(e) {
         throw new Error("Écriture localStorage échec : " + e.message);

@@ -4,6 +4,25 @@
 
 ---
 
+## 🆕 Hotfix v1.16.1 (24/05/2026) — Auto-save PAR PLAN
+
+> Petite amélioration qui change beaucoup à l'usage quotidien si tu jongles entre plusieurs plans dans la même journée.
+
+### 💾 Chaque plan garde sa propre session active
+
+Avant : un seul slot d'auto-save partagé. Quand tu passais du plan A au plan B, la session du plan A était écrasée → pour la récupérer en revenant sur A, il fallait obligatoirement passer par un snapshot (📦 Backups récents).
+
+Maintenant : **chaque plan a son propre slot localStorage**. Tu quittes le plan A, tu vas sur B, tu travailles dessus, tu reviens sur A → tu retombes exactement sur l'état où tu avais laissé A. Sans rien faire, sans charger de snapshot, sans modale.
+
+**Concrètement** :
+- Plan A travaillé jusqu'à 14h → switch plan B → switch plan C → switch retour A → l'app restaure automatiquement l'état de 14h pour A
+- Les **snapshots 📦 Backups récents** restent disponibles en complément, comme avant (filet de sécurité pour revenir à un état antérieur d'un même plan)
+- La migration depuis v1.16.0 est **transparente** : ta session active à l'ouverture est copiée dans le nouveau slot du bon plan, rien ne se perd
+
+🛡️ **Aucune nouvelle donnée transmise** — la modification est purement structurelle au niveau de la mémoire locale de ton navigateur.
+
+---
+
 ## 🆕 Nouveautés v1.16.0 (24/05/2026) — UX & filet de sécurité
 
 > Cycle de 4 features qui se complètent pour rendre l'app plus confortable au quotidien + un filet de sécurité contre les actions regrettables.
