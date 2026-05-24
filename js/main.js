@@ -297,9 +297,38 @@ async function lancerApplication() {
   initInterface();
   initTracking();
 
+  // 🆕 v1.16.0 step 4 : init SessionBackups + snapshot AVANT restore.
+  //
+  // L'ordre est important :
+  //   1. SessionBackups.init() ouvre IDB + démarre timer auto 5 min
+  //   2. Snapshot IMMÉDIAT de localStorage (= état de la session "en place"
+  //      avant la restore actuelle). Cas critique : plan switch — le
+  //      localStorage contient la session du PLAN PRÉCÉDENT, on la backup
+  //      avant que onPlanLoaded ne la "déclasse" et que les saves auto
+  //      de la nouvelle session l'écrasent. Si on snapshote APRÈS restore,
+  //      cette session du plan précédent serait perdue.
+  //   3. Puis SessionPersist.onPlanLoaded fait son boulot normal (restore
+  //      si planId matche, sinon ignore).
+  //   4. Et un second snapshot APRÈS restore (= état restauré = ce que
+  //      voit l'utilisateur). Permet un point de retour récent même si
+  //      l'init n'a rien capté (cas session vide au boot).
+  if (window.SessionBackups && typeof window.SessionBackups.init === "function") {
+    window.SessionBackups.init().then(function() {
+      try { window.SessionBackups.snapshot("boot-pre-restore"); } catch(e) {}
+    });
+  }
+
   // Restauration de session si correspond au plan courant (et démarrage du polling auto-save)
   if (window.SessionPersist) {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
+  }
+
+  // Second snapshot APRÈS restore (cf bloc ci-dessus).
+  if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
+    // Léger délai pour laisser le restore Phase 1 finir (setRoads, etc.).
+    setTimeout(function() {
+      try { window.SessionBackups.snapshot("boot-after-restore"); } catch(e) {}
+    }, 500);
   }
 
   // Si la session restaurée contient un road de type "itinerary", afficher

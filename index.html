@@ -800,6 +800,11 @@
        `window.Favoris && window.Favoris.isFav(...)` qui no-op si pas
        encore chargé. -->
   <script src="js/favoris.js"></script>
+  <!-- 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en
+       IDB). Doit charger AVANT sessionPersist.js (qui appelle
+       SessionBackups.snapshot avant de wipe) — sessionPersist.js fait
+       un guard `window.SessionBackups && ...` donc ordre flexible. -->
+  <script src="js/sessionBackups.js"></script>
   <script src="js/exporter.js"></script>
   <!-- 🆕 v1.10.3 : Export PDF imprimable via jsPDF. La lib UMD doit être
        chargée AVANT pdfExport.js (sinon window.jspdf n'existe pas et le

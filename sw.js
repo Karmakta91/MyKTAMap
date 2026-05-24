@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.16.0-step3-favoris-left";
+const CACHE_NAME = "myktamap-cache-v1.16.0-step4-backups";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -118,6 +118,8 @@ const ASSETS_TO_CACHE = [
   "./js/legendCustomization.js",
   // 🆕 v1.16.0 step 3 : module Favoris (points POI par plan)
   "./js/favoris.js",
+  // 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en IDB)
+  "./js/sessionBackups.js",
   "./js/exporter.js",
   // 🆕 v1.10.3 : module Export PDF imprimable (jsPDF + canvas exporter).
   // Doit être caché pour fonctionner offline.

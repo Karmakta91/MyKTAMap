@@ -1476,6 +1476,31 @@
       html += '</div>';
     }
 
+    // ─── 🆕 v1.16.0 step 4 : 📦 Backups récents (10 FIFO IDB) ───
+    //
+    // Section listée en bas de la modale. Hydratée async via
+    // window.SessionBackups.listAll() après ouverture de la modale.
+    // 2 boutons d'action en tête : 📦 Snapshot maintenant + 🗑️ Tout vider.
+    html += '<div class="kta-refonte-session-section" id="kta-refonte-session-backups-section">';
+    html += '<div class="kta-refonte-session-section-titre">📦 Backups récents <span class="kta-refonte-session-badge" id="kta-refonte-session-backups-badge">…</span></div>';
+    html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+              'Filet de sécurité : 10 derniers snapshots automatiques de ta session ' +
+              '(toutes plans confondus). Auto toutes les 5 min + avant chaque action ' +
+              'destructive. Tu peux restaurer un snapshot pour revenir à cet état (reload).' +
+            '</div>';
+    html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-snapshot">' +
+                '📆 Snapshot maintenant' +
+              '</button>' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-backups-clearall">' +
+                '🗑️ Tout vider' +
+              '</button>' +
+            '</div>';
+    html += '<div id="kta-refonte-session-backups-list">' +
+              '<div style="font-size:12px; color:#8892a4; font-style:italic;">Chargement…</div>' +
+            '</div>';
+    html += '</div>';
+
     // ─── Création de la modale ───
     const overlay = document.createElement("div");
     overlay.id = "kta-refonte-session-modal";
@@ -1541,6 +1566,143 @@
         link.click();
         setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
         if (window.OOMGuard && window.OOMGuard.showToast) window.OOMGuard.showToast("📤 Résumé exporté en TXT.", "info");
+      });
+    }
+
+    // 🆕 v1.16.0 step 4 : hydrate la section 📦 Backups récents — listAll
+    // IDB async puis injecte la liste + wire les boutons restore / remove.
+    function _renderBackupsSection() {
+      const listEl  = document.getElementById("kta-refonte-session-backups-list");
+      const badgeEl = document.getElementById("kta-refonte-session-backups-badge");
+      if (!listEl || !badgeEl) return;
+      if (!window.SessionBackups || typeof window.SessionBackups.listAll !== "function") {
+        listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">Module SessionBackups indisponible.</div>';
+        badgeEl.textContent = "—";
+        return;
+      }
+      window.SessionBackups.listAll().then(function(arr) {
+        badgeEl.textContent = String(arr.length);
+        if (arr.length === 0) {
+          listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' +
+                               'Aucun snapshot pour le moment. Le 1<sup>er</sup> sera créé sous peu (auto 5 min).' +
+                             '</div>';
+          return;
+        }
+        function _esc(s) {
+          return String(s == null ? "" : s).replace(/[&<>"']/g, function(c) {
+            return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+          });
+        }
+        function _fmtDate(ts) {
+          const d = new Date(ts);
+          const j = String(d.getDate()).padStart(2, "0");
+          const m = String(d.getMonth() + 1).padStart(2, "0");
+          const a = d.getFullYear();
+          const h = String(d.getHours()).padStart(2, "0");
+          const mn = String(d.getMinutes()).padStart(2, "0");
+          return j + "/" + m + "/" + a + " " + h + ":" + mn;
+        }
+        function _countContent(p) {
+          if (!p) return "vide";
+          const parts = [];
+          if (p.editorPoints   && p.editorPoints.length)   parts.push(p.editorPoints.length + "📍");
+          if (p.roads          && p.roads.length)          parts.push(p.roads.length + "🛣");
+          if (p.zones          && p.zones.length)          parts.push(p.zones.length + "⬛");
+          if (p.structures     && p.structures.length)     parts.push(p.structures.length + "🏛️");
+          return parts.length ? parts.join(" ") : "vide";
+        }
+        let h = '<ul class="kta-refonte-session-list" style="margin:0;">';
+        arr.forEach(function(b) {
+          const planLbl = b.planName || b.planId || "(plan inconnu)";
+          h += '<li style="display:flex; flex-wrap:wrap; align-items:center; gap:6px;">' +
+                 '<div style="flex:1 1 200px; min-width:0;">' +
+                   '<strong>' + _fmtDate(b.createdAt) + '</strong>' +
+                   '<span class="kta-refonte-session-meta">' +
+                     _esc(planLbl) + ' · ' + _countContent(b.payload) +
+                     ' · <em style="opacity:0.7;">' + _esc(b.reason || "auto") + '</em>' +
+                   '</span>' +
+                 '</div>' +
+                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                   'data-backup-restore="' + b.id + '" title="Restaurer ce snapshot (recharge l\'app)">' +
+                   '↻ Restaurer' +
+                 '</button>' +
+                 '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" ' +
+                   'data-backup-remove="' + b.id + '" title="Supprimer ce snapshot">' +
+                   '🗑️' +
+                 '</button>' +
+               '</li>';
+        });
+        h += '</ul>';
+        listEl.innerHTML = h;
+        // Wire les boutons restore / remove
+        listEl.querySelectorAll("[data-backup-restore]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            const id = Number(btn.getAttribute("data-backup-restore"));
+            const ok = window.confirm(
+              "Restaurer ce snapshot ?\n\n" +
+              "L'application va recharger. La session actuelle (non sauvegardée " +
+              "dans un autre backup) sera remplacée par l'état du snapshot."
+            );
+            if (!ok) return;
+            window.SessionBackups.restore(id).then(function() {
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast("📦 Snapshot restauré — reload…", "info");
+              }
+              setTimeout(function() { location.reload(); }, 400);
+            }).catch(function(err) {
+              alert("Échec restauration : " + (err && err.message ? err.message : err));
+            });
+          });
+        });
+        listEl.querySelectorAll("[data-backup-remove]").forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            const id = Number(btn.getAttribute("data-backup-remove"));
+            window.SessionBackups.remove(id).then(function() {
+              _renderBackupsSection();  // refresh
+            });
+          });
+        });
+      }).catch(function(err) {
+        listEl.innerHTML = '<div style="font-size:12px; color:#ff8c8c;">Erreur chargement : ' +
+                            (err && err.message ? err.message : String(err)) + '</div>';
+      });
+    }
+    _renderBackupsSection();
+
+    // Boutons d'action : 📆 Snapshot maintenant + 🗑️ Tout vider
+    const _btnSnap = document.getElementById("kta-refonte-session-backups-snapshot");
+    if (_btnSnap) {
+      _btnSnap.addEventListener("click", function() {
+        if (!window.SessionBackups) return;
+        window.SessionBackups.snapshot("manual").then(function(entry) {
+          if (entry) {
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast("📦 Snapshot créé.", "info");
+            }
+            _renderBackupsSection();
+          } else {
+            if (window.OOMGuard && window.OOMGuard.showToast) {
+              window.OOMGuard.showToast("Aucun changement depuis le dernier snapshot — skip.", "info");
+            }
+          }
+        });
+      });
+    }
+    const _btnClearBk = document.getElementById("kta-refonte-session-backups-clearall");
+    if (_btnClearBk) {
+      _btnClearBk.addEventListener("click", function() {
+        const ok = window.confirm(
+          "Supprimer tous les snapshots ?\n\n" +
+          "Action irréversible. Tu perdras la capacité de revenir en arrière " +
+          "jusqu'au prochain auto-snapshot (~5 min)."
+        );
+        if (!ok) return;
+        window.SessionBackups.clearAll().then(function() {
+          _renderBackupsSection();
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast("🗑️ Backups effacés.", "info");
+          }
+        });
       });
     }
 

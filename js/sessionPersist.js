@@ -253,6 +253,13 @@
   }
 
   function clear() {
+    // 🆕 v1.16.0 step 4 : snapshot AVANT le wipe pour permettre de
+    // revenir en arrière depuis 📦 Backups. Best effort — async IDB,
+    // peut ne pas finir si l'user reload tout de suite. Le périodique
+    // 5 min couvre déjà la majorité des cas.
+    if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
+      try { window.SessionBackups.snapshot("before-clear-session"); } catch(e) {}
+    }
     try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
     _lastHash = null;
     // 🆕 v1.8.1 : annule la phase 2 de restore en attente. Sans ça, si
