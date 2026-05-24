@@ -858,6 +858,37 @@
   //
   // Pattern .kta-readme-modal-overlay pour cohérence charte projet.
 
+  // ─── 🆕 v1.20.0-fix1+ : helper LegendCustomization pour respecter la cascade
+  // session > plan > default partout dans la modale Détails session + bloc
+  // stats agrégées. Si l'user renomme "Eau" → "Lac d'eau" via LC, la modale
+  // doit l'afficher (avant ce helper, labels hardcoded → rename invisible).
+  // Gère aussi les entrées custom (cust-XYZ) ajoutées par l'user : préfixées
+  // par ✨ pour bien les distinguer des built-ins.
+  // category : "icones" | "traces" | "zones" | "structures"
+  // type     : "eau" | "principal" | "pilier-1" | "cust-mYzZ123" | etc.
+  // fallback : label hardcoded de secours si LC absent OU type inconnu
+  function _lcLabel(category, type, fallback) {
+    if (typeof type !== "string" || !type) return fallback || "?";
+    // Entrée custom (cust-XYZ) : préfixe ✨ pour la distinguer visuellement
+    if (type.indexOf("cust-") === 0) {
+      if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+        try {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.label) return "✨ " + e.label;
+        } catch(err) {}
+      }
+      return fallback || type;
+    }
+    // Built-in : cascade session > plan > default
+    if (window.LegendCustomization && typeof window.LegendCustomization.getLabel === "function") {
+      try {
+        const lbl = window.LegendCustomization.getLabel(category, type);
+        if (lbl) return lbl;
+      } catch(err) {}
+    }
+    return fallback || type;
+  }
+
   // ─── Helpers stats agrégées (v1.11.2 V2.2) ───
   function _calculerStatsAggregees(points, roads, zones, structures, mesure, scale) {
     const stats = {
@@ -1048,7 +1079,7 @@
         const s = stats.roads.byType[t];
         const pct = (s.distM / totalRoadDist) * 100;
         h += '<div class="kta-refonte-stats-bar-row">';
-        h += '<span class="kta-refonte-stats-bar-label">' + (ROAD_LABELS[t] || t) + '</span>';
+        h += '<span class="kta-refonte-stats-bar-label">' + _lcLabel("traces", t, ROAD_LABELS[t]) + '</span>';
         h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ROAD_COLORS[t] || "#888") + ';"></div></div>';
         h += '<span class="kta-refonte-stats-bar-val">' + _fdistStats(s.distM) + '</span>';
         h += '</div>';
@@ -1068,7 +1099,7 @@
         const z = stats.zones.byType[t];
         const pct = (z.areaM2 / totalArea) * 100;
         h += '<div class="kta-refonte-stats-bar-row">';
-        h += '<span class="kta-refonte-stats-bar-label">' + (ZONE_LABELS[t] || t) + '</span>';
+        h += '<span class="kta-refonte-stats-bar-label">' + _lcLabel("zones", t, ZONE_LABELS[t]) + '</span>';
         h += '<div class="kta-refonte-stats-bar"><div class="kta-refonte-stats-bar-fill" style="width:' + pct.toFixed(1) + '%; background:' + (ZONE_COLORS[t] || "#888") + ';"></div></div>';
         h += '<span class="kta-refonte-stats-bar-val">' + _fsurfStats(z.areaM2) + '</span>';
         h += '</div>';
@@ -1091,7 +1122,7 @@
           ? _fdistStats(s.longM)
           : (s.areaM2 > 0 ? _fsurfStats(s.areaM2) : s.nb + ' u.');
         h += '<div class="kta-refonte-stats-bar-row">';
-        h += '<span class="kta-refonte-stats-bar-label">' + (STRUCT_LABELS[t] || t) + '</span>';
+        h += '<span class="kta-refonte-stats-bar-label">' + _lcLabel("structures", t, STRUCT_LABELS[t]) + '</span>';
         h += '<span class="kta-refonte-stats-bar-val" style="margin-left:auto;"><strong>' + s.nb + '</strong> · ' + detail + '</span>';
         h += '</div>';
       });
@@ -1309,7 +1340,12 @@
     } else {
       html += '<ul class="kta-refonte-session-list">';
       points.forEach(function(p) {
-        const tag    = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : "—";
+        const rawTag = Array.isArray(p.tags) && p.tags.length > 0 ? p.tags[0] : "";
+        // 🆕 v1.20.0-fix1+ : LC.getLabel("icones", tag) respecte cascade
+        // session>plan>default. Si l'user a renommé "Puits A" → "Puits N",
+        // affichage à jour ici aussi. Fallback = tag brut si LC indispo OU
+        // si tag inconnu. Si pas de tag → "—" pour la lisibilité.
+        const tag    = rawTag ? _lcLabel("icones", rawTag, rawTag) : "—";
         const nom    = p.nom || p.id || "(sans nom)";
         const coord  = Math.round(p.x || 0) + ", " + Math.round(p.y || 0);
         const level  = multiLevel ? ' · 🏗 N' + (p.level || 0) : '';
@@ -1341,10 +1377,12 @@
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(byType).forEach(function(t) {
         const stats = byType[t];
-        const tLabel = t === "principal" ? "Principal" :
-                       t === "secondaire" ? "Secondaire" :
-                       t === "chemin" ? "Chemin" :
-                       t === "jonction" ? "Jonction interniveau" : t;
+        // 🆕 v1.20.0-fix1+ : LC.getLabel("traces", t) respecte cascade session>plan>default
+        const fallback = t === "principal" ? "Principal" :
+                         t === "secondaire" ? "Secondaire" :
+                         t === "chemin" ? "Chemin" :
+                         t === "jonction" ? "Jonction interniveau" : t;
+        const tLabel = _lcLabel("traces", t, fallback);
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
           '<span class="kta-refonte-session-meta">' +
@@ -1369,10 +1407,18 @@
       });
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(zByType).forEach(function(t) {
-        const tLabel = t === "eau" ? "Eau 🟦" :
-                       t === "remblais" ? "Remblais ⬛" :
-                       t === "effondrement" ? "Effondrement 🟥" :
-                       t === "inaccessible" ? "Inaccessible ⛔" : t;
+        // 🆕 v1.20.0-fix1+ : LC.getLabel("zones", t) respecte la cascade.
+        // Emoji conservé en suffixe pour cohérence visuelle (LC.getLabel
+        // ne renvoie que le label texte sans emoji décoratif).
+        const fallbackTxt = t === "eau" ? "Eau" :
+                            t === "remblais" ? "Remblais" :
+                            t === "effondrement" ? "Effondrement" :
+                            t === "inaccessible" ? "Inaccessible" : t;
+        const emojiSuffix = t === "eau" ? " 🟦" :
+                            t === "remblais" ? " ⬛" :
+                            t === "effondrement" ? " 🟥" :
+                            t === "inaccessible" ? " ⛔" : "";
+        const tLabel = _lcLabel("zones", t, fallbackTxt) + emojiSuffix;
         const nb = zByType[t];
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
@@ -1396,14 +1442,19 @@
       });
       html += '<ul class="kta-refonte-session-list">';
       Object.keys(sByType).forEach(function(t) {
-        // 🆕 v1.9.3-A1.a-fix (KARMA inversion) : 1ère masse → jaune,
-        // 2e masse → orange. Icônes cohérentes avec les fills sur carte.
-        // 🆕 v1.9.3-A1.b.2 : fronts ajoutés (couleurs inversées vs piliers).
-        const tLabel = t === "pilier-1" ? "Pilier 1ère masse 🟡" :
-                       t === "pilier-2" ? "Pilier 2e masse 🟠" :
-                       t === "mur"      ? "Mur 🔵" :
-                       t === "front-1"  ? "Front de taille 1ère masse 🟨" :
-                       t === "front-2"  ? "Front de taille 2e masse 🟧" : t;
+        // 🆕 v1.20.0-fix1+ : LC.getLabel("structures", t) respecte cascade.
+        // Emoji conservé en suffixe (LC.getLabel = label texte sans emoji).
+        const fallbackTxt = t === "pilier-1" ? "Pilier 1ère masse" :
+                            t === "pilier-2" ? "Pilier 2e masse" :
+                            t === "mur"      ? "Mur" :
+                            t === "front-1"  ? "Front de taille 1ère masse" :
+                            t === "front-2"  ? "Front de taille 2e masse" : t;
+        const emojiSuffix = t === "pilier-1" ? " 🟡" :
+                            t === "pilier-2" ? " 🟠" :
+                            t === "mur"      ? " 🔵" :
+                            t === "front-1"  ? " 🟨" :
+                            t === "front-2"  ? " 🟧" : "";
+        const tLabel = _lcLabel("structures", t, fallbackTxt) + emojiSuffix;
         const nb = sByType[t];
         html += '<li>' +
           '<strong>' + _esc(tLabel) + '</strong>' +
