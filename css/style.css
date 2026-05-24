@@ -15340,3 +15340,101 @@ body.kta-theme-light .kta-mem-footer,
 html.kta-theme-light .kta-mem-footer {
   border-top-color: var(--kta-light-border) !important;
 }
+
+/* ===========================================================
+   🆕 v1.20.0-fix1 — Modales Logs (debug + réseau) thème clair
+   Bug remonté KARMA : fond #0d1117 hardcodé + texte clair
+   #c8d0e0 → illisible en mode clair (clair sur clair).
+   =========================================================== */
+
+/* ───────────────────────────────────────────────────────────
+   Modale 🐛 Logs de débogage — Classes générées dynamiquement
+   par js/debug.js > _refreshModal (depuis v1.20.0-fix1, avant
+   les couleurs étaient inline → pas overridables).
+   ─────────────────────────────────────────────────────────── */
+.kta-debug-log-line {
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #c8d0e0;
+  word-break: break-all;
+}
+.kta-debug-log-line.kta-debug-log-error { color: #ff6b6b; }
+.kta-debug-log-line.kta-debug-log-warn  { color: #ffcc00; }
+.kta-debug-log-line.kta-debug-log-crash { color: #888; }
+
+/* Overrides thème clair — fond zone logs + couleurs lignes */
+body.kta-theme-light #kta-debug-logzone,
+html.kta-theme-light #kta-debug-logzone {
+  background: var(--kta-light-bg-deep) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-debug-log-line,
+html.kta-theme-light .kta-debug-log-line {
+  color: var(--kta-light-text) !important;
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-debug-log-line.kta-debug-log-error,
+html.kta-theme-light .kta-debug-log-line.kta-debug-log-error {
+  /* Rouge plus saturé pour rester lisible sur fond clair */
+  color: #b91c1c !important;
+}
+body.kta-theme-light .kta-debug-log-line.kta-debug-log-warn,
+html.kta-theme-light .kta-debug-log-line.kta-debug-log-warn {
+  /* Orange ambré pour contraste sur fond clair (le jaune clair ne marche pas) */
+  color: #b45309 !important;
+}
+body.kta-theme-light .kta-debug-log-line.kta-debug-log-crash,
+html.kta-theme-light .kta-debug-log-line.kta-debug-log-crash {
+  color: var(--kta-light-text-muted) !important;
+}
+
+/* ───────────────────────────────────────────────────────────
+   Modale 📋 Journal réseau — overrides thème clair
+   ─────────────────────────────────────────────────────────── */
+body.kta-theme-light .kta-net-log-meta,
+html.kta-theme-light .kta-net-log-meta {
+  background: rgba(140, 180, 255, 0.10) !important;
+  border-bottom-color: rgba(140, 180, 255, 0.30) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-net-log-table-wrap,
+html.kta-theme-light .kta-net-log-table-wrap {
+  background: var(--kta-light-bg-deep) !important;
+}
+body.kta-theme-light .kta-net-log-table,
+html.kta-theme-light .kta-net-log-table {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-net-log-table thead,
+html.kta-theme-light .kta-net-log-table thead {
+  background: var(--kta-light-bg-bar) !important;
+}
+body.kta-theme-light .kta-net-log-table thead th,
+html.kta-theme-light .kta-net-log-table thead th {
+  color: #1e3a8a !important;
+  border-bottom-color: rgba(140, 180, 255, 0.40) !important;
+}
+body.kta-theme-light .kta-net-log-table tbody td,
+html.kta-theme-light .kta-net-log-table tbody td {
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-net-log-table tbody tr:hover,
+html.kta-theme-light .kta-net-log-table tbody tr:hover {
+  background: rgba(140, 180, 255, 0.10) !important;
+}
+/* Couleurs des cellules : adapter au fond clair pour rester lisible */
+body.kta-theme-light .kta-net-cell-time,
+html.kta-theme-light .kta-net-cell-time {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-net-cell-kind,
+html.kta-theme-light .kta-net-cell-kind,
+body.kta-theme-light .kta-net-cell-url,
+html.kta-theme-light .kta-net-cell-url {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-net-cell-method,
+html.kta-theme-light .kta-net-cell-method {
+  /* Jaune charte plus saturé pour rester lisible sur fond clair */
+  color: var(--kta-light-accent-hover) !important;
+}

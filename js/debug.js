@@ -96,13 +96,16 @@
   function _refreshModal() {
     const zone = document.getElementById("kta-debug-logzone");
     if (!zone) return;
+    // 🆕 v1.20.0-fix1 : utilise des classes CSS (au lieu de inline colors)
+    // pour permettre les overrides thème clair. Voir css/style.css >
+    // `.kta-debug-log-line` + `body.kta-theme-light .kta-debug-log-*`.
     zone.innerHTML = _logBuffer.map(function(entry) {
-      let color = "#c8d0e0";
-      if (entry.includes("[ERROR]") || entry.includes("[UNCAUGHT]") || entry.includes("[PROMISE]")) color = "#ff6b6b";
-      else if (entry.includes("[WARN]"))  color = "#ffcc00";
-      else if (entry.includes("CRASH"))   color = "#888";
-      return '<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);color:' + color + ';word-break:break-all;">' +
-             entry.replace(/&/g,"&amp;").replace(/</g,"&lt;") + '</div>';
+      let cls = "kta-debug-log-line";
+      if (entry.includes("[ERROR]") || entry.includes("[UNCAUGHT]") || entry.includes("[PROMISE]")) cls += " kta-debug-log-error";
+      else if (entry.includes("[WARN]")) cls += " kta-debug-log-warn";
+      else if (entry.includes("CRASH"))  cls += " kta-debug-log-crash";
+      return '<div class="' + cls + '">' +
+             entry.replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</div>';
     }).join("");
     zone.scrollTop = zone.scrollHeight;
   }
