@@ -4090,7 +4090,12 @@ function _ouvrirFlyout(groupId) {
         }
         return {
           icone:        iconHtml,
-          titre:        "✨ " + e.label,
+          // 🐛 v1.16.0 step2-flyout-fix (KARMA "pour les nouveaux ajouts en
+          // légende j'ai des étoiles en icône pour tous dans le menu normal") :
+          // on retire le préfixe "✨ " du libellé — le swatch coloré (icône
+          // de gauche) différencie déjà visuellement un custom d'un built-in,
+          // le préfixe étoile était redondant.
+          titre:        e.label,
           isTypeAction: true,
           isCustom:     true,
           customType:   e.id,
@@ -4185,38 +4190,58 @@ function _ouvrirFlyout(groupId) {
 function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
   const rect    = btnPrincipal.getBoundingClientRect();
   const padding = 8;
-  // Mesure réelle après attachement DOM
+  const vpW     = window.innerWidth;
+  const vpH     = window.innerHeight;
+  const safeMargin = 12;
+
+  // 🐛 v1.16.0 step2-flyout-fix (KARMA "le modal doit pouvoir se dérouler
+  // et ne pas sortir du cadre en horizontal") : on COMPUTE la max-height
+  // en pixels réels (pas en vh) pour garantir que le panneau ne déborde
+  // jamais du viewport — particulièrement en landscape mobile où 78vh peut
+  // dépasser 80% de l'écran et où Safari iOS a parfois des soucis avec vh
+  // (URL bar dynamique, safe-area, etc.). Le scroll INTERNE prend le relais.
+  const maxH = Math.max(120, vpH - 2 * safeMargin);
+  fly.style.maxHeight = maxH + "px";
+
+  // Idem pour la largeur (utile en portrait étroit où 280px peut être trop
+  // large par rapport au viewport, et en landscape étroit où l'espace
+  // dispo de chaque côté de la sidebar est limité).
+  const maxW = Math.max(180, vpW - 2 * safeMargin);
+  fly.style.maxWidth = Math.min(maxW, 320) + "px";
+
+  // Mesure réelle après application des max-* (le navigateur clamp si
+  // le contenu est trop grand, sinon offsetHeight reflète le contenu).
   const flyWidth  = fly.offsetWidth  || 240;
   const flyHeight = fly.offsetHeight || 200;
 
-  // Position verticale : aligné au top du bouton, clampé au viewport
+  // Position verticale : aligné au top du bouton, clampé au viewport.
+  // Si le panel dépasserait en bas → on le remonte. Si le top dépasse
+  // déjà en bas (cas extrême), on clamp à safeMargin.
   let top = rect.top;
-  if (top + flyHeight > window.innerHeight - 12) {
-    top = window.innerHeight - flyHeight - 12;
+  if (top + flyHeight > vpH - safeMargin) {
+    top = vpH - flyHeight - safeMargin;
   }
-  if (top < 12) top = 12;
+  if (top < safeMargin) top = safeMargin;
 
   // Position horizontale : selon sidebar (topleft → flyout à droite ;
-  // topright → flyout à gauche). Clamp au viewport.
+  // topright → flyout à gauche). Clamp + bascule si pas de place.
   let left;
   const isLeft = (sidebarPosition === "topleft");
   if (isLeft) {
     left = rect.right + padding;
-    if (left + flyWidth > window.innerWidth - 12) {
-      // Bascule à gauche si pas de place à droite
+    if (left + flyWidth > vpW - safeMargin) {
       left = rect.left - flyWidth - padding;
     }
   } else {
     left = rect.left - flyWidth - padding;
-    if (left < 12) {
-      // Bascule à droite si pas de place à gauche
+    if (left < safeMargin) {
       left = rect.right + padding;
     }
   }
   // Clamp final
-  if (left < 12) left = 12;
-  if (left + flyWidth > window.innerWidth - 12) {
-    left = window.innerWidth - flyWidth - 12;
+  if (left < safeMargin) left = safeMargin;
+  if (left + flyWidth > vpW - safeMargin) {
+    left = vpW - flyWidth - safeMargin;
   }
 
   fly.style.top  = top  + "px";

@@ -14317,10 +14317,31 @@ body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
   flex-direction: column;
   gap: 6px;
   min-width: 220px;
-  max-width: 280px;
-  max-height: 78vh;
+  /* max-width et max-height définies dynamiquement par _positionnerFlyout
+     (inline style) pour s'adapter au viewport réel — particulièrement
+     pour le mode landscape mobile où vh peut être instable (URL bar
+     dynamique iOS Safari, safe-area, etc.). */
   overflow-y: auto;
+  overflow-x: hidden;
+  /* 🐛 v1.16.0 step2-flyout-fix : meilleure visibilité scrollbar sur
+     desktop (gros plans ou customs nombreux) pour signaler que le panel
+     déroule. Sur mobile, le scroll touch fonctionne sans indicateur. */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 180, 255, 0.4) transparent;
   animation: kta-flyout-in 0.16s ease-out;
+}
+.kta-group-flyout::-webkit-scrollbar {
+  width: 8px;
+}
+.kta-group-flyout::-webkit-scrollbar-track {
+  background: transparent;
+}
+.kta-group-flyout::-webkit-scrollbar-thumb {
+  background: rgba(140, 180, 255, 0.35);
+  border-radius: 4px;
+}
+.kta-group-flyout::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 180, 255, 0.55);
 }
 
 @keyframes kta-flyout-in {
@@ -14336,6 +14357,21 @@ body.kta-theme-light .kta-readme-modal-overlay textarea:focus {
   padding: 4px 4px 6px 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 4px;
+  /* 🐛 v1.16.0 step2-flyout-fix : header sticky pour que l'utilisateur
+     sache toujours sur quel groupe il est en train de scroller dans une
+     longue liste de types + customs. Sticky simple — position relative
+     au .kta-group-flyout qui scrolle. */
+  position: sticky;
+  top: 0;
+  background: #1a1f2e;
+  z-index: 2;
+  /* Compense le padding du parent pour que le sticky s'étende sur toute
+     la largeur (sinon on voit les items défiler à droite du header). */
+  margin-left:  -10px;
+  margin-right: -10px;
+  padding-left:  10px;
+  padding-right: 10px;
+  padding-top:    8px;
 }
 
 .kta-group-flyout-title {
@@ -14429,6 +14465,9 @@ body.kta-theme-light .kta-group-flyout {
 }
 body.kta-theme-light .kta-group-flyout-header {
   border-bottom-color: var(--kta-light-border);
+  /* Sticky header bg adapté au theme clair (sinon transparent → items
+     défilent visibles en filigrane sous le titre). */
+  background: var(--kta-light-bg-elevated);
 }
 body.kta-theme-light .kta-group-flyout-title {
   color: var(--kta-light-text);
