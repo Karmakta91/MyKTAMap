@@ -42,11 +42,10 @@
 
 ## 🚀 Dernière release — v1.21.0
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Onboarding + Export + Outil créatif »**. 3 features qui se complètent :
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Onboarding + Export »**. 2 features qui se complètent :
 
 - 🎓 **Tutoriel premier-lancement** : 5 cards séquentielles présentant les fonctions essentielles, auto-affiché au 1er boot et rejouable depuis Aide
 - 📤 **Stats globales export PDF** : extension de la modale Stats avec génération PDF A4 portrait (texte/tableaux, léger et partageable)
-- ✏️ **Mode dessin libre (freehand)** : nouveau type d'annotation à main levée dans les Tracés (capture continue + lissage RDP)
 
 Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
 
@@ -889,9 +888,15 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
 <details id="v1-21-0" open>
-<summary><strong>🗓️ 24/05/2026 — 🚀 v1.21.0 : Cycle « Onboarding + Export + Outil créatif »</strong></summary>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.21.0 : Cycle « Onboarding + Export »</strong></summary>
 
-Release MINOR (bump Y : 1.20.0 → 1.21.0). 3 features qui se complètent.
+Release MINOR (bump Y : 1.20.0 → 1.21.0). 2 features qui se complètent.
+
+> *Note : un 3e sujet « Mode dessin libre (freehand) » était initialement
+> prévu dans ce cycle mais a été retiré avant release sur main suite à
+> retour KARMA. Le module `js/freehand.js` reste dans l'historique Git
+> (commit `bfb8134` puis retrait) pour réactivation future si la demande
+> émerge.*
 
 ### 🎓 (1/3) Tutoriel premier-lancement — module `js/tutorial.js` (~180 lignes)
 
@@ -934,44 +939,17 @@ Nouvelle fonction `exportToPDF(opts)` via jsPDF (déjà chargé). Format **A4 po
 
 **UI** : nouveau bouton « 📤 Export PDF » dans le footer de la modale Stats globales, à côté de « 📋 Copier le rapport ». Feedback visuel pendant génération.
 
-### ✏️ (3/3) Mode dessin libre (freehand) — module `js/freehand.js` (~270 lignes)
-
-Nouveau module IIFE → `window.Freehand = { activer, desactiver, isActive, toggle, getPrefs, setPrefs }`.
-
-**Nouveau type d'annotation `freehand`** qui s'ajoute aux Tracés existants (principal / secondaire / chemin / itinerary / jonction). Différence fondamentale : **capture continue mousemove/touchmove** au lieu de clics successifs.
-
-**Capture** : listeners map mousedown/mousemove/mouseup (+ touch équivalents pour mobile) :
-- Throttle 16ms (~60Hz) pour éviter ~1000 pts par cm
-- Anti-spam : skip si distance au dernier point < 3 px
-- Drag map temporairement désactivé pendant le geste (sinon la carte se déplace sous les pieds)
-
-**Lissage RDP itératif post-capture** au mouseup avec epsilon dynamique selon zoom (réduit le nombre de points en préservant la forme).
-
-**Stockage** : objet road avec `{type: "freehand", points, level, freehandColor, freehandWidth}` → réutilise TOUTE l'infra existante :
-- Rendu via `renderRoads` + nouveau helper `_resolveFreehandStyle(road)`
-- Persistance SessionPersist (auto-save par plan)
-- Exports KMZ/GPX/JSON (type "freehand" préservé)
-- Undo/Redo via HistoryManager (snapshot avant mousedown + record après RDP)
-- Filtre niveau-aware (level prop)
-- Suppression au clic / dernier / tous (filtre `roads.filter(r.type === ...)`)
-
-**⚠️ Exclu du Pathfinder automatiquement** : `allowedTypes` whitelist dans `js/pathfinder.js > _buildGraph` = `['principal', 'secondaire', 'chemin']` par défaut → le type `freehand` n'y entre pas. C'est l'effet voulu : un dessin libre **n'est pas** un chemin praticable, on ne veut surtout pas qu'il pollue le calcul d'itinéraire.
-
-**Préférences** : couleur (`#ff5252` rouge vif défaut) + épaisseur (4 défaut) persistées en `localStorage["myktamap_freehand_prefs_v1"]`. Modifiables via console pour les power-users : `window.Freehand.setPrefs({color: "#00ff00", width: 6})`. UI personnalisable arrivera en v1.22.0 si besoin.
-
-**Activation** : sidebar Tracés → nouvelle sous-action « ✏️ Crayon (dessin libre) ». **Toggle indépendant** des autres modes road (window.modeRoad) — l'user peut basculer entre Principal et Freehand sans perdre le contexte. Classe `.kta-actif` togglée sur le bouton pour feedback visuel.
-
 ### 📂 Sources de vérité v1.21.0
 
 - `version.json` → `"v1.21.0"`
 - `js/copyright.js` > `__MKM__.build` → `"v1.21.0"`
 - `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.21.0"`
-- **2 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` : `js/tutorial.js` + `js/freehand.js`
-- Modifs internes à : `js/main.js` (auto-boot tutoriel post-splash), `js/interface.js` (sous-actions Aide + Tracés), `js/road.js` (style freehand + intégration dans renderRoads), `js/statsGlobales.js` (exportToPDF + bouton UI), `js/memInspector.js` (KNOWN_MODULES), `index.html` + `sw.js`, `css/style.css` (~180 lignes Tutorial + variants thème clair)
+- **1 nouveau fichier** ajouté à `ASSETS_TO_CACHE` : `js/tutorial.js`
+- Modifs internes à : `js/main.js` (auto-boot tutoriel post-splash), `js/interface.js` (sous-action Aide « 🎓 (Re)voir le tutoriel »), `js/statsGlobales.js` (exportToPDF + bouton UI), `js/memInspector.js` (KNOWN_MODULES + Tutorial), `index.html` + `sw.js`, `css/style.css` (~180 lignes Tutorial + variants thème clair)
 
 ### 🛡️ Confidentialité
 
-Aucune nouvelle surface réseau. **Tutorial** = HTML statique en mémoire + flag localStorage. **Stats PDF** = utilise jsPDF déjà chargé (lib locale, pas de fetch), génère un Blob téléchargé localement. **Freehand** = listeners DOM map + stockage road dans le système SessionPersist existant. Aucun fetch externe, aucune transmission. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+Aucune nouvelle surface réseau. **Tutorial** = HTML statique en mémoire + flag localStorage. **Stats PDF** = utilise jsPDF déjà chargé (lib locale, pas de fetch), génère un Blob téléchargé localement. Aucun fetch externe, aucune transmission. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
 
 </details>
 

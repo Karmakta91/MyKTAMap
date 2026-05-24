@@ -249,7 +249,7 @@
     // 🆕 v1.20.0
     "CrashReports", "StatsGlobales",
     // 🆕 v1.21.0
-    "Tutorial", "Freehand"
+    "Tutorial"
   ];
 
   function _collectRuntime() {

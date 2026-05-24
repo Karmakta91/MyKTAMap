@@ -181,15 +181,13 @@
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.21.0 (Cycle « Onboarding + Export + Outil créatif »)</strong> :
-    <strong>AUCUNE nouvelle surface réseau</strong>. 3 features 100 % locales :
+    <strong>v1.21.0 (Cycle « Onboarding + Export »)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. 2 features 100 % locales :
     (1) Tutorial = HTML statique en mémoire + flag <code>localStorage["myktamap_tutorial_seen_v1"]</code>.
     (2) Stats globales export PDF = utilise jsPDF déjà chargé (lib locale), génère un Blob téléchargé
-    localement. (3) Mode dessin libre = listeners DOM map mousedown/mousemove/mouseup, stockage road
-    dans le système SessionPersist existant + préférences en
-    <code>localStorage["myktamap_freehand_prefs_v1"]</code>. Aucun fetch externe.
-    <strong>2 nouveaux fichiers</strong> ajoutés à <code>ASSETS_TO_CACHE</code> :
-    <code>js/tutorial.js</code> + <code>js/freehand.js</code>.
+    localement. Aucun fetch externe.
+    <strong>1 nouveau fichier</strong> ajouté à <code>ASSETS_TO_CACHE</code> :
+    <code>js/tutorial.js</code>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
     <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
@@ -769,14 +767,10 @@
         <td>v1.21.0</td>
         <td>24/05/2026</td>
         <td>
-          <strong>Cycle « Onboarding + Export + Outil créatif »</strong> — <strong>aucune nouvelle
-          surface réseau</strong>. 3 features 100% locales : nouveau module <code>js/tutorial.js</code>
-          (HTML statique + flag <code>localStorage["myktamap_tutorial_seen_v1"]</code>), extension
-          Stats globales export PDF via jsPDF déjà chargé (Blob local), nouveau module
-          <code>js/freehand.js</code> (capture continue mousedown/mousemove + lissage RDP, stockage
-          road dans SessionPersist existant + préférences en
-          <code>localStorage["myktamap_freehand_prefs_v1"]</code>).
-          2 nouveaux fichiers ajoutés à <code>ASSETS_TO_CACHE</code>.
+          <strong>Cycle « Onboarding + Export »</strong> — <strong>aucune nouvelle surface réseau</strong>.
+          2 features 100% locales : nouveau module <code>js/tutorial.js</code> (HTML statique + flag
+          <code>localStorage["myktamap_tutorial_seen_v1"]</code>), extension Stats globales export PDF
+          via jsPDF déjà chargé (Blob local). 1 nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code>.
           <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
         </td>
       </tr>

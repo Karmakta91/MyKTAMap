@@ -4,9 +4,9 @@
 
 ---
 
-## 🆕 Nouveautés v1.21.0 (24/05/2026) — Onboarding + Export + Outil créatif
+## 🆕 Nouveautés v1.21.0 (24/05/2026) — Onboarding + Export
 
-> 3 features qui se complètent : un tutoriel pour les nouveaux, un export PDF des stats du plan, et un mode crayon pour annoter à main levée.
+> 2 features qui se complètent : un tutoriel pour les nouveaux, et un export PDF des stats du plan.
 
 ### 🎓 Tutoriel premier-lancement
 
@@ -23,25 +23,6 @@ Tu connais la modale **📊 Statistiques du plan** (accessible via 📊 Détails
 Le PDF est léger (texte + tableaux uniquement, pas la carte) → idéal pour partager une « fiche technique » de plan par mail, l'imprimer, ou archiver. Pagination automatique si tu as une grosse carrière avec beaucoup de tags / types.
 
 Nom du fichier : `MyKTAMap_Stats_<NomDuPlan>_<date>.pdf`.
-
-### ✏️ Mode dessin libre (crayon)
-
-Nouvelle sous-action **✏️ Crayon (dessin libre)** dans le groupe **🛣️ Tracés** de la sidebar. Active-le → tu peux tracer **à main levée** sur la carte avec ta souris (PC) ou ton doigt (mobile) — un peu comme un crayon dans un logiciel de dessin.
-
-Use cases :
-- **Entourer rapidement une zone d'intérêt**
-- **Fléchage** sur un détail à expliquer
-- **Annotation graphique libre** sans avoir à cliquer point par point
-
-Le trait est automatiquement **lissé** après que tu relâches (pour éviter qu'il soit en escalier sur les mouvements rapides). Annulable via **Ctrl+Z** comme tout le reste. Sauvegardé dans ta session avec le reste.
-
-**Couleur par défaut** : rouge vif, **épaisseur** : 4. Pour personnaliser (power-users), via la console :
-```js
-window.Freehand.setPrefs({ color: "#00ff00", width: 6 });
-```
-Une vraie UI de personnalisation arrivera dans une release future si la demande est là.
-
-**Note** : un freehand n'est pas considéré comme un « vrai » chemin praticable — il est exclu du calcul d'itinéraire (qui ne prend que les Principal / Secondaire / Chemin). C'est volontaire : le crayon est une annotation graphique, pas un tronçon de carrière.
 
 ---
 
