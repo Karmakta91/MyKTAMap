@@ -16592,17 +16592,26 @@ html.kta-theme-light .kta-net-cell-method {
 }
 
 /* ─── THÈME CLAIR — overrides bandeau + modale ─── */
+/* Karma_dev fix UX : aligné sur le pattern card "Mes plans" / "Reprendre" /
+   "Ajouter un plan" pour cohérence visuelle. Fond uni #fdf8eb (= variable
+   --kta-light-bg-elevated) + bordure ocre douce + radius 14px + ombre
+   diffuse warm. Évite le gradient doré/bleu qui détonnait sur le fond
+   beige cataphile du loader clair. */
 body.kta-theme-light .kta-loader-profile-bar,
 html.kta-theme-light .kta-loader-profile-bar {
-  background: linear-gradient(135deg, rgba(244,197,66,0.18), rgba(140,180,255,0.10)) !important;
-  border-color: rgba(154,135,84,0.40) !important;
+  background: #fdf8eb !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
 }
 body.kta-theme-light .kta-loader-profile-bar:hover,
 html.kta-theme-light .kta-loader-profile-bar:hover,
 body.kta-theme-light .kta-loader-profile-bar:focus-visible,
 html.kta-theme-light .kta-loader-profile-bar:focus-visible {
-  background: linear-gradient(135deg, rgba(244,197,66,0.30), rgba(140,180,255,0.16)) !important;
+  /* Hover : juste subtle tint warm + bordure ambre */
+  background: #fdfaef !important;
   border-color: var(--kta-light-accent-hover, #d9a82e) !important;
+  box-shadow: 0 5px 18px rgba(80, 60, 30, 0.14) !important;
 }
 body.kta-theme-light .kta-loader-profile-avatar-wrap,
 html.kta-theme-light .kta-loader-profile-avatar-wrap {
