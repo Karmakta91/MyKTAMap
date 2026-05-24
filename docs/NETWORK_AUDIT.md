@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.15.0** (24 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.16.0** (24 mai 2026).
+>
+> **v1.16.0 (UX & filet de sécurité)** : 4 nouveaux modules, **AUCUNE nouvelle surface réseau**. (1) `js/legendCustomization.js` — cascade libellés/visibilité/customs, persistance dans le payload `SessionPersist` existant (localStorage `myktamap_session_v1`). (2) `js/favoris.js` — favoris points par plan, nouvelle clé `localStorage["myktamap_favoris_v1"]` indexée par planId (local-only). (3) `js/sessionBackups.js` — 10 snapshots FIFO via **nouvelle IndexedDB** `myktamap_backups` v1 (store `backups`), pas de fetch externe. Restore par écriture localStorage + `location.reload()` (pas d'appel réseau). (4) Hotfixes CSS thème clair compass + reformulation des modales « Changer de plan » : changements UI purs, zéro impact réseau. **Tous les fetchs restent same-origin**. Le SW cache 3 fichiers JS de plus au boot (`./js/legendCustomization.js`, `./js/favoris.js`, `./js/sessionBackups.js`), toujours same-origin. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping connectivité).
 >
 > **v1.15.0 (📤 Import GPX → ZIP MyKTAMap)** : nouveau module `js/gpxImport.js` (~310 lignes). 100% local côté fichiers (`FileReader` + `DOMParser` + canvas natif + `JSZip` + `Blob`). Une seule particularité réseau : pour restaurer les icônes des tags ingérés (default, track, et tous les tags rencontrés dans les waypoints du GPX), le module fait `fetch("icon/<tag>.png")` sur l'app courante (**same-origin**, déjà whitelisté). Ces icônes sont cached par le Service Worker → le fetch est servi depuis le cache local et marche offline. Aucun nouveau call vers un domaine tiers. Le SW cache un fichier de plus (`./js/gpxImport.js`) au boot, toujours same-origin.
 >
@@ -309,4 +311,4 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 24 mai 2026 — v1.15.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin, aucune nouvelle whitelist en v1.15.0 — `gpxImport.js` same-origin + fetch icônes app cached SW)*
+*Dernière mise à jour : 24 mai 2026 — v1.16.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin, aucune nouvelle whitelist en v1.15.0 — `gpxImport.js` same-origin + fetch icônes app cached SW, **aucune nouvelle whitelist en v1.16.0** — `legendCustomization.js` / `favoris.js` / `sessionBackups.js` zéro fetch externe, nouvelle DB IDB `myktamap_backups` strictement locale)*

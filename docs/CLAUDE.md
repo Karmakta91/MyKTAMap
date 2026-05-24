@@ -56,6 +56,26 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 │   │                              window.GpxImport = { estGpxMyktamap, extraireGpx,
 │   │                              extraireBoundsGps, genererCanvasVierge, ingestParsed,
 │   │                              genererZipMyktamap }
+│   ├── legendCustomization.js  ← v1.16.0 — Cascade session > plan > default pour les
+│   │                              libellés / visibilité / entrées custom de la légende.
+│   │                              4 catégories : icones/traces/zones/structures. Entrées
+│   │                              custom DESSINABLES via `geometry` (polyline/polygon).
+│   │                              window.LegendCustomization = { getLabel, isVisible,
+│   │                              listEntries, listCustomEntries, addCustomEntry,
+│   │                              removeCustomEntry, setSessionLabel, setSessionVisibility,
+│   │                              ouvrirEditeur, findCustomEntry, onCustomEntriesChange }
+│   ├── favoris.js              ← v1.16.0 — Favoris points POI par plan, stockage
+│   │                              localStorage["myktamap_favoris_v1"] indexé par planId.
+│   │                              Snapshots complets des points (résilience).
+│   │                              window.Favoris = { loadPlan, getAll, isFav,
+│   │                              findByPointId, add, remove, toggle, onChange }
+│   ├── sessionBackups.js       ← v1.16.0 — Backup multi-rotations sessions, 10 snapshots
+│   │                              FIFO en IDB (DB myktamap_backups v1 / store backups).
+│   │                              4 triggers : auto 5min, boot pre/post restore, avant
+│   │                              SessionPersist.clear, manuel. Restore par écriture
+│   │                              localStorage + reload.
+│   │                              window.SessionBackups = { init, snapshot, listAll,
+│   │                              restore, remove, clearAll, onChange }
 │   ├── tracking.js             ← Tracker capteurs mobile (PDR, expérimental)
 │   │                              + flags _orientationListenerAttached/_motionListenerAttached
 │   │                              (idempotency contre fuite après plan switch)
@@ -3958,6 +3978,119 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
    - Modifier les valeurs de couleur de la charte (fait l'objet de plusieurs itérations validées).
    - Supprimer un tag built-in (régression silencieuse sur les anciens plans).
    - Réinitialiser le `localStorage` ou `IndexedDB` sans avertissement utilisateur.
+
+---
+
+### 56. v1.16.0 — UX & filet de sécurité (4 features) — depuis v1.16.0
+
+Cycle de raffinement : Notes / Légende personnalisable / Favoris / Backup multi-rotations. **Aucune nouvelle surface réseau**.
+
+#### 56.1 Notes (description) sur zones / tracés / structures
+
+Helper global `window.attacherNotePopup(layer, getDescr, setDescr, titreType, opts)` dans `utils.js` :
+- Mode `edit` (session) : textarea multiligne + bouton 💾 Sauver + `HistoryManager.record` + `SessionPersist.save({force: true})`
+- Mode `readonly` (data layer KMZ) : juste affichage texte avec `white-space: pre-wrap`
+
+**Ghost polyline transparente épaisse** (weight + 14 px, opacity 0, `bubblingMouseEvents: false`) ajoutée par-dessus les polylines visibles pour augmenter la zone cliquable. **Skip ghost/popup quand un mode édition est actif** via `window._aucunModeEditionActif()` + `window._kta_syncAllNoteUiForModeChange()` au toggle (sinon clics map interceptés).
+
+**Fix structural majeur** dans `structures.js > renderStructures` : la branche `if (s === currentStructure)` n'était pas correctement fermée → ghost installé sur la structure EN COURS DE TRACÉ → impossible de continuer. Réorganisation en `if (s === currentStructure) { preview } else { closed + ghost + popup }`.
+
+Roundtrip complet : session JSON, KMZ (`<description>` CDATA via `_emitDescriptionCdata`), GPX (`<cmt>` / `<desc>` déjà géré).
+
+#### 56.2 Légende personnalisable — `js/legendCustomization.js`
+
+Module IIFE ~600 lignes → `window.LegendCustomization`. Cascade 3 niveaux : session > plan (`PLAN_CONFIG.customLegend`) > default. 4 catégories : `icones` / `traces` / `zones` / `structures`.
+
+API publique : `getLabel / isVisible / getSource / listEntries / listCustomEntries / findCustomEntry / setSessionLabel / setSessionVisibility / addCustomEntry / removeCustomEntry / updateCustomEntry / resetSession / setCustomEntryVisibility / loadSessionState / getSessionState / loadPlanState / ouvrirEditeur / onCustomEntriesChange / categoryTitle / listCategories`.
+
+**Entrées custom DESSINABLES** : champ `geometry: "polyline" | "polygon"` (pour structures, choix utilisateur ; auto pour traces=polyline et zones=polygon). **Normalisation au stockage** dans `addCustomEntry` : polygon → on supprime `lineColor` (promu en `borderColor` si pas set), polyline → on supprime `fillColor` + `borderColor`. Évite swatch trait fantôme.
+
+**Style resolvers** : `road.js > _resolveRoadStyle(type)`, `zones.js > _resolveZoneStyle(type)`, `structures.js > _resolveStructureStyle(type)` + `_isPolylineType(type)`. Tous consultent `LC.findCustomEntry` pour les types `cust-*`.
+
+**Persistance** : champ `customLegend` ajouté au payload `SessionPersist`. `_isEmptyState` modifié pour ne pas purger si SEULE la légende est customisée.
+
+**UI éditeur** : panel inline dans modale Export PNG (`exporter.js > _peuplerLegendCustom`) + bouton ✏️ **Modifier** dans fenêtre 🗺️ Légende (`interface.js > afficherLegende`) qui ouvre `LC.ouvrirEditeur({onChange, onClose})` — modale standalone z-index 100050. Au `onChange`, refresh in-place via `_construireContenuLegende()`.
+
+**Popup titres résolus via LC** dans road.js / zones.js / structures.js / utils.js (data layer) — helper inline `_xxxPopupTitle(t)` qui distingue custom (`✨ + label`) vs built-in (emoji + LC.getLabel cascade-respectant). Fallback legacy hardcodé si LC indisponible.
+
+#### 56.3 Flyout sidebar — pivot UI scalabilité
+
+Pour les groupes traces / zones / structures, **remplace la cascade verticale** par un PANEL latéral adjacent au bouton principal. `interface.js > _creerGroupeAccordeon` reçoit `useFlyout: true` + `lcCat` + `customActivator` + optionnel `dynamicSousActions: () => [...]` (utilisé par Favoris).
+
+Fonctions ajoutées : `_toggleFlyout / _ouvrirFlyout / _fermerFlyout / _positionnerFlyout`. Position calculée via `getBoundingClientRect`, clamp viewport, bascule auto si pas de place. **Max-height + max-width en pixels réels** (pas en vh, robuste landscape mobile iOS). Header sticky.
+
+CSS dédié : `.kta-group-flyout` + sous-classes + variants thème clair. Scrollbar custom webkit + Firefox `scrollbar-width: thin`.
+
+**`_setGroupeModeActif`** : skip `_ouvrirGroupe(id)` pour les groupes flyout (pas d'expansion accordéon).
+
+**Bouton ✅ Valider tracé** ajouté (équivalent strict re-clic type actif via `_fermerModeRoad`). Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
+
+**Fix message structures Fermer pour customs polyline** : utilise `window.isStructurePolylineType()` qui consulte LC (avant hardcodé `front-1 || front-2`).
+
+#### 56.4 Favoris points — `js/favoris.js`
+
+Module IIFE ~180 lignes → `window.Favoris = { loadPlan, getAll, isFav, findByPointId, add, remove, toggle, onChange }`.
+
+Stockage `localStorage["myktamap_favoris_v1"]` indexé par planId. **Snapshots complets** des points (résilience si point déplacé/supprimé).
+
+**Bouton ⭐ Favori dans popup POI** : `utils.js > buildPointPopupHtml` signature étendue avec 3e arg `layerInfo = {layerId, layerLabel}`. Toggle inline via `window.toggleFavoriPoint(...)` + refresh in-place du libellé dans toutes les popups ouvertes pour ce pointId.
+
+Reverse-lookup `layerInfo` dans `ajouterPointsDepuisJSON` (data layer) : scan `window.dataLayerGroups` + lecture `PLAN_CONFIG.dataLayers` pour le label.
+
+**Groupe sidebar ⭐ Favoris position topleft juste après M-LVL** (cf KARMA "met plutôt l'icône favoris dans le menu de gauche, juste après M-LVL"). Inséré dans le bloc `if (window._refonteInterfaceActive === true)` de `initInterface`, AVANT les autres groupes accordéon topleft, avec `dynamicSousActions: () => Favoris.getAll().map(...)`.
+
+Helper `_allerVersFavori(fav)` : `map.setView` + flash circleMarker orange 3s + tentative d'ouvrir popup marker original (matching coords plan < 0.5 px).
+
+Refresh auto via `Favoris.onChange` : si flyout Favoris ouvert au moment d'un ajout/retrait → rebuild en live.
+
+#### 56.5 Backup multi-rotations sessions — `js/sessionBackups.js`
+
+Module IIFE ~280 lignes → `window.SessionBackups = { init, snapshot, listAll, restore, remove, clearAll, onChange }`. 10 snapshots FIFO en IndexedDB.
+
+Stockage IDB : DB `myktamap_backups` v1 / store `backups` / key `id` (timestamp ms) / value `{id, createdAt, reason, planId, planName, payload}` / max 10 entries FIFO via `_enforceLimit`.
+
+**Hash djb2** cohérent avec SessionPersist pour skip duplicates.
+
+**4 triggers** :
+1. Auto périodique : `setInterval` 5 min, hash check
+2. Au boot : 2 snapshots — AVANT `_applyRestore("boot-pre-restore")` (cas critique plan switch — capture session du plan précédent dans localStorage AVANT que onPlanLoaded ne la déclasse) + APRÈS avec `setTimeout 500ms` ("boot-after-restore")
+3. Avant destructif : `sessionPersist.js > clear()` appelle `snapshot("before-clear-session")` avant le wipe
+4. Manuel : bouton 📆 Snapshot maintenant
+
+**Restore par reload** : écrit payload dans `localStorage["myktamap_session_v1"]` puis `location.reload()` → SessionPersist restaure naturellement. Pas de hot-swap des structures Leaflet (fragile).
+
+**UI section 📦 Backups récents** dans `refonteInterface.js > _afficherModaleSessionDetail` :
+- Filtrée sur plan courant (via `b.planId === window._currentLoadedPlanId`)
+- Badge avec compteur + sous-info `(+N autres plans)` si snapshots existent en IDB pour d'autres plans
+- Liste compacte (`.kta-backups-list` : `flex-direction: row, padding 4px 0`) : date FR + counts + reason + boutons [↻ Restaurer] [🗑️]
+- Boutons d'action : 📆 Snapshot maintenant + 🗑️ Tout vider
+
+#### 56.6 Hotfixes UI/UX
+
+**Thème clair compass widget** : nouveaux overrides `body.kta-theme-light .kta-compass-widget*` — fond `rgba(253,248,235,0.92)` (--kta-light-bg-elevated), bordure ambre charte, bouton close lisible, texte cardinal ambre saturé pour contraste sur fond clair.
+
+**Garde-fous « Changer de plan » reformulés** : les 2 modales (rose des vents/titre → home, et plan spécifique dans switcher) ne disent plus « Les données non exportées seront perdues » (trompeur avec autosave + snapshots) mais affichent un message rassurant : « ✅ Ta session est sauvegardée et sera restaurée à ton retour. 📦 Les 10 derniers snapshots restent dispos dans 📊 Détails de session › Backups récents ». Icône ⚠️ → 🗂️, bouton « Charger quand même » → « 📚 Charger ».
+
+#### 56.7 Sources de vérité v1.16.0
+
+- `version.json` → `"v1.16.0"`
+- `js/copyright.js > __MKM__.build` → `"v1.16.0"`
+- `sw.js > CACHE_NAME` → `"myktamap-cache-v1.16.0"`
+- 3 nouveaux fichiers ajoutés à `ASSETS_TO_CACHE` : `js/legendCustomization.js`, `js/favoris.js`, `js/sessionBackups.js`
+- 3 nouvelles balises `<script>` insérées dans `index.html` après `utils.js`
+
+#### 56.8 Confidentialité
+
+**Aucun nouveau call réseau**. Tous les fetchs restent same-origin. Backups en IDB local (`myktamap_backups`), favoris en localStorage (`myktamap_favoris_v1`), LegendCustomization persiste dans payload SessionPersist déjà existant (`myktamap_session_v1`). **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+#### 56.9 À NE PAS faire
+
+- ❌ Bypass `_kta_syncAllNoteUiForModeChange` quand on ajoute un nouveau type de mode édition — les ghosts/popups intercepteraient les clics map
+- ❌ Stocker `lineColor` ET `fillColor` sur le MÊME custom entry — la normalisation dans `addCustomEntry` retire l'un des deux selon `geometry`
+- ❌ Append un bouton custom à la FIN du container sidebar — utiliser le marker `data-type-action="1"` + `insertBefore`
+- ❌ Faire un restore live des structures Leaflet pour SessionBackups (fragile) — passer par localStorage + reload
+- ❌ Filtrer les snapshots par planId au niveau du module — la filtration est UI-only (snapshots restent cross-plan en IDB pour permettre retour à un autre plan)
+- ❌ Préfixer le label utilisateur par "✨" dans le flyout — le swatch coloré est déjà un marqueur visuel suffisant (cf KARMA "j'ai des étoiles en icône pour tous")
 
 ---
 

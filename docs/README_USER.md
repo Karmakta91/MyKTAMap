@@ -4,6 +4,87 @@
 
 ---
 
+## 🆕 Nouveautés v1.16.0 (24/05/2026) — UX & filet de sécurité
+
+> Cycle de 4 features qui se complètent pour rendre l'app plus confortable au quotidien + un filet de sécurité contre les actions regrettables.
+
+### 📝 Notes (description) sur zones / tracés / structures
+
+Tu peux désormais **annoter chaque zone, tracé et structure** avec une note libre multiligne. Clique sur l'élément → la popup affiche un champ « Note » en bas avec un bouton 💾 Sauver. La note est :
+
+- 💾 **Sauvegardée immédiatement** dans la session (auto-save SessionPersist)
+- ↩️ **Annulable** via Ctrl+Z
+- 📦 **Embarquée dans les exports** session, KMZ (description CDATA) et GPX (`<cmt>` / `<desc>`)
+- 🗒️ **Lecture seule** sur les data layer KMZ (= plans partagés où l'auteur a déjà mis des notes)
+
+**Astuce ergonomie** : la zone cliquable autour d'un tracé a été élargie pour faciliter le tap sur mobile. Quand tu trace un nouvel élément, la popup ne s'ouvre PAS automatiquement → elle apparaît seulement après validation du tracé.
+
+### 🏷️ Légende personnalisable — Renommage + masquage + entrées custom DESSINABLES
+
+La légende n'est plus figée. Tu peux **renommer** les libellés (« Eau » → « Lac du fond »), **masquer** les entrées inutilisées, et **ajouter tes propres types** d'annotations directement DESSINABLES sur la carte.
+
+**2 manières d'accéder à l'éditeur** :
+1. Modale **🖼️ Export PNG** → coche « Inclure la légende » → déplie « ✏️ Personnaliser les libellés »
+2. Fenêtre **🗺️ Légende mode carte** → nouveau bouton **✏️ Modifier** dans le header
+
+**Ajouter une entrée custom dessinable** :
+- ➕ Ajouter une entrée → choisis catégorie (Tracés / Zones / Structures / Icônes)
+- Pour **Structures**, choix géométrie : 🟦 Polygone (pilier/mur) ou ➖ Ligne (front de taille)
+- Saisis libellé + couleur(s) → ✅ Ajouter
+- Un **nouveau bouton apparaît automatiquement dans la sidebar** du groupe correspondant → click pour activer le mode → dessine sur la carte
+
+**Cascade** : tes overrides session priment sur les libellés du plan (PLAN_CONFIG.customLegend défini par l'auteur), qui priment sur les libellés défaut. Tu peux toujours revenir aux défauts via 🔄 **Reset session**.
+
+### 🎛️ Sidebar — passage au panel latéral pour Tracés / Zones / Structures
+
+Pour éviter que les icônes débordent de l'écran quand tu cumules beaucoup de types built-in + customs, les 3 groupes Tracés / Zones / Structures s'ouvrent désormais dans un **panel latéral** (au lieu de cascader verticalement). Les boutons sont rendus avec **icône + libellé textuel** côte à côte, plus lisible et plus compact.
+
+**Ordre dans chaque panel** :
+1. Types built-in (🟩 Principal, 🟪 Secondaire, etc.)
+2. Séparateur
+3. Tes customs (✨)
+4. Bouton **✅ Valider / Fermer** *(nouveau dans Tracés)*
+5. Bouton 🧹 Effacer
+
+**Nouveau bouton ✅ Valider dans Tracés** : équivalent strict d'un re-clic sur le type actif. Permet de valider un tracé en cours quel que soit le type (built-in OU custom).
+
+### ⭐ Favoris — Points POI par plan
+
+Marque tes points POI préférés (entrée carrière, point de rendez-vous, etc.) pour y revenir vite. Bouton ⭐ dans la popup de chaque POI (état ☆ ambre clair → ⭐ ambre saturé au toggle).
+
+**Nouveau groupe ⭐ Favoris dans la sidebar gauche** (juste sous la pastille M-LVL si multi-niveau actif). Click sur l'icône → panel avec la liste de tes favoris du plan courant. Click sur un favori → la carte centre dessus + cercle orange pulsant 3 secondes + popup du marker original ouverte.
+
+**Par plan** : chaque plan a ses propres favoris. Switch de plan = swap automatique de la liste active. Tes favoris sont **persistés localement** dans le navigateur (localStorage), pas embarqués dans les exports (= vue locale par appareil).
+
+### 📦 Backup multi-rotations sessions — Filet de sécurité
+
+L'app conserve maintenant les **10 dernières sauvegardes** de ta session en local (IndexedDB). Tu peux **revenir à n'importe lequel** de ces états antérieurs en un click.
+
+**Quand un snapshot est créé automatiquement** :
+- Toutes les 5 minutes si la session a changé depuis le dernier snapshot
+- À chaque ouverture de l'app (capture l'état restauré)
+- Juste avant chaque action destructive (vider la session, switch de plan)
+- Manuellement via le bouton 📆 Snapshot maintenant
+
+**Accès** : ouvre la modale **📊 Détails de session** (clic sur les compteurs du header) → scroll en bas → section **📦 Backups récents**. Chaque ligne affiche date FR + counts + raison (auto / boot / manuel) + boutons ↻ Restaurer et 🗑️ Supprimer.
+
+**Restauration** : clic ↻ Restaurer → confirmation → l'app recharge avec l'état du snapshot (basculement automatique de plan si le snapshot vient d'un autre plan).
+
+**Filtre par plan** : la liste affiche uniquement les snapshots du plan courant. Si tu as des snapshots d'autres plans, ils sont notés `(+N autres plans)` dans le badge — ils restent en IDB et apparaîtront quand tu chargeras le plan correspondant.
+
+### 💬 Garde-fous « Changer de plan » reformulés
+
+Quand tu cliques sur la rose des vents 🧭 ou le titre du plan en haut, la modale « Changer de plan » affichait avant : « *Les données non exportées seront perdues* ». Avec l'auto-save + les snapshots, ce message est devenu trompeur. Reformulation rassurante :
+
+> ✅ Ta session est sauvegardée automatiquement et sera restaurée quand tu reviendras sur ce plan.
+> 📦 Les 10 derniers snapshots restent dispos dans 📊 Détails de session › Backups récents.
+
+### 🧭 Fix thème clair — Boussole widget
+
+Le widget boussole (mode réduit en haut-gauche de la carte) restait avec son fond sombre quand le thème clair était actif. Maintenant : fond beige clair + texte ambre cohérent avec le reste de l'UI en mode clair.
+
+---
+
 ## 🆕 Nouveautés v1.15.0 (24/05/2026) — 📤 Import GPX → ZIP MyKTAMap
 
 > Consolidation du cycle v1.14.x complet + nouveau module dédié à l'import GPX.

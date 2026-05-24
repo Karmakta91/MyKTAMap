@@ -174,10 +174,36 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.14.0</strong> (23 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.16.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.16.0 (UX & filet de sécurité)</strong> : 4 nouveaux modules, <strong>AUCUNE nouvelle
+    surface réseau</strong>. (1) <code>js/legendCustomization.js</code> — cascade libellés / visibilité /
+    customs, persistance dans le payload <code>SessionPersist</code> existant (clé localStorage
+    <code>myktamap_session_v1</code>). (2) <code>js/favoris.js</code> — favoris points par plan,
+    nouvelle clé <code>localStorage["myktamap_favoris_v1"]</code> indexée par planId (local-only).
+    (3) <code>js/sessionBackups.js</code> — 10 snapshots FIFO via <strong>nouvelle IndexedDB</strong>
+    <code>myktamap_backups</code> v1 (store <code>backups</code>), pas de fetch externe. Restore par
+    écriture localStorage + <code>location.reload()</code> (pas d'appel réseau). (4) Hotfixes CSS thème
+    clair compass + reformulation des modales « Changer de plan » : changements UI purs, zéro impact
+    réseau. <strong>Tous les fetchs restent same-origin</strong>. Le SW cache 3 fichiers JS de plus
+    au boot (<code>./js/legendCustomization.js</code>, <code>./js/favoris.js</code>,
+    <code>./js/sessionBackups.js</code>), toujours same-origin. <strong>Liste blanche
+    <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>
+    (ping connectivité).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.15.0 (📤 Import GPX → ZIP MyKTAMap)</strong> : nouveau module <code>js/gpxImport.js</code>
+    (~310 lignes). 100% local côté fichiers (<code>FileReader</code> + <code>DOMParser</code> + canvas natif
+    + <code>JSZip</code> + <code>Blob</code>). Une seule particularité réseau : pour restaurer les icônes
+    des tags ingérés, le module fait <code>fetch("icon/&lt;tag&gt;.png")</code> sur l'app courante
+    (<strong>same-origin</strong>, déjà whitelisté). Icônes cached par le Service Worker → marche offline.
+    Aucun nouveau call vers un domaine tiers.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -568,6 +594,34 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.16.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>UX & filet de sécurité</strong> — 4 nouveaux modules,
+          <strong>aucune nouvelle surface réseau</strong>. <code>js/legendCustomization.js</code>
+          persiste dans le payload SessionPersist existant. <code>js/favoris.js</code>
+          ajoute la clé <code>localStorage["myktamap_favoris_v1"]</code> indexée par planId
+          (local-only). <code>js/sessionBackups.js</code> ouvre une <strong>nouvelle IndexedDB</strong>
+          <code>myktamap_backups</code> v1 (store <code>backups</code>) pour 10 snapshots FIFO
+          — pas de fetch externe, restore par écriture localStorage + reload. Hotfixes CSS thème clair
+          compass + reformulation des modales « Changer de plan » : changements UI purs.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>. Le SW cache 3 fichiers
+          JS de plus au boot, tous same-origin.
+        </td>
+      </tr>
+      <tr>
+        <td>v1.15.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>📤 Import GPX → ZIP MyKTAMap</strong> — nouveau module
+          <code>js/gpxImport.js</code> (~310 lignes). 100% local côté fichiers
+          (<code>FileReader</code> + <code>DOMParser</code> + canvas natif + <code>JSZip</code>
+          + <code>Blob</code>). Une seule particularité réseau : <code>fetch("icon/&lt;tag&gt;.png")</code>
+          same-origin pour restaurer les icônes des tags ingérés (cached SW, marche offline).
+          Aucun nouveau call vers un domaine tiers.
+        </td>
+      </tr>
+      <tr>
         <td>v1.14.0</td>
         <td>23/05/2026</td>
         <td>
@@ -715,7 +769,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 23 mai 2026 — v1.14.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — themeManager.js same-origin, aucune nouvelle whitelist en v1.14.0 — gpxIO.js same-origin)<br>
+    Dernière mise à jour : 24 mai 2026 — v1.16.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — themeManager.js same-origin, aucune nouvelle whitelist en v1.14.0 — gpxIO.js same-origin, aucune nouvelle whitelist en v1.15.0 — gpxImport.js same-origin + fetch icônes app cached SW, <strong>aucune nouvelle whitelist en v1.16.0</strong> — legendCustomization.js / favoris.js / sessionBackups.js zéro fetch externe, nouvelle DB IDB myktamap_backups strictement locale)<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 
