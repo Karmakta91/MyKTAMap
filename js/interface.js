@@ -3847,7 +3847,12 @@ function _setGroupeModeActif(id, actif, iconeReflet) {
     // classe, l'user n'aurait aucun feedback visuel que tracker tourne
     // une fois le groupe replié.
     if (g.btnPrincipal) g.btnPrincipal.classList.add("kta-group-mode-actif");
-    _ouvrirGroupe(id);
+    // 🆕 v1.16.0 step2-flyout : pas d'expansion accordéon pour les groupes
+    // en mode flyout (= traces/zones/structures). L'expansion est gérée
+    // séparément par _ouvrirFlyout (panel latéral, pas cascade verticale).
+    if (!g.useFlyout) {
+      _ouvrirGroupe(id);
+    }
   } else {
     if (g.btnPrincipal && g.btnPrincipal.dataset.iconeOriginale) {
       g.btnPrincipal.innerHTML = g.btnPrincipal.dataset.iconeOriginale;
@@ -3908,6 +3913,15 @@ function _creerGroupeAccordeon(config) {
         }
         config.soloAction();
       });
+    } else if (config.useFlyout === true) {
+      // 🆕 v1.16.0 step2-flyout : ne crée PAS les sub-actions dans le DOM
+      // de la sidebar. Elles sont rendues dans un PANEL latéral à
+      // l'ouverture (cf _ouvrirFlyout). Avantage : pas de cascade
+      // verticale qui déborde l'écran avec beaucoup de types + customs.
+      L.DomEvent.on(btnPrincipal, "click", function(e) {
+        L.DomEvent.stop(e); L.DomEvent.preventDefault(e);
+        _toggleFlyout(config.id);
+      });
     } else {
       // Créer les sous-actions (cachées par défaut)
       (config.sousActions || []).forEach(function(sub) {
@@ -3950,12 +3964,263 @@ function _creerGroupeAccordeon(config) {
       // pour permettre au bouton ≡ de réduction de fermer le groupe
       // ouvert dans SA sidebar avant de collapser. Lit la même config
       // que pour le L.control({position}).
-      position:     pos  // "topleft" ou "topright"
+      position:     pos,  // "topleft" ou "topright"
+      // 🆕 v1.16.0 step2-flyout : stocke la config pour le rendu du flyout
+      // (sousActionsConfig est la liste raw des sous-actions, lcCat est la
+      // catégorie LegendCustomization pour pull des customs, customActivator
+      // est le helper d'activation pour un id custom).
+      useFlyout:        config.useFlyout === true,
+      sousActionsConfig: config.sousActions || [],
+      lcCat:             config.lcCat || null,
+      customActivator:   config.customActivator || null
     };
 
     return div;
   };
   ctrl.addTo(window.map);
+}
+
+// =========================
+// 🆕 v1.16.0 step2-flyout : Flyout panel latéral
+// =========================
+//
+// Remplace la cascade verticale des sub-actions par un panneau ouvert à
+// côté du bouton principal du groupe. Évite que la sidebar déborde l'écran
+// quand l'utilisateur cumule beaucoup de types + customs (cf KARMA
+// scalability concern v1.16.0 step2-flyout).
+
+let _currentFlyout = null;
+
+function _toggleFlyout(groupId) {
+  if (_currentFlyout && _currentFlyout.dataset.groupId === groupId) {
+    _fermerFlyout();
+    return;
+  }
+  _ouvrirFlyout(groupId);
+}
+
+function _fermerFlyout() {
+  if (_currentFlyout) {
+    try { _currentFlyout.remove(); } catch(e) {}
+    _currentFlyout = null;
+  }
+  document.removeEventListener("click",    _onDocClickFlyout, true);
+  document.removeEventListener("touchend", _onDocClickFlyout, true);
+  window.removeEventListener("resize",     _onResizeFlyout);
+  window.removeEventListener("scroll",     _onResizeFlyout, true);
+}
+
+function _onDocClickFlyout(e) {
+  if (!_currentFlyout) return;
+  if (_currentFlyout.contains(e.target)) return;
+  // Le clic sur le bouton principal du groupe associé est géré par son
+  // propre handler (_toggleFlyout) qui inversera proprement → on le laisse
+  // faire son toggle sans fermer ici (sinon double-close).
+  const grpId = _currentFlyout.dataset.groupId;
+  const grp = _groupes[grpId];
+  if (grp && grp.btnPrincipal && grp.btnPrincipal.contains(e.target)) return;
+  _fermerFlyout();
+}
+
+function _onResizeFlyout() {
+  if (!_currentFlyout) return;
+  const grpId = _currentFlyout.dataset.groupId;
+  const grp = _groupes[grpId];
+  if (!grp) return;
+  _positionnerFlyout(_currentFlyout, grp.btnPrincipal, grp.position);
+}
+
+function _ouvrirFlyout(groupId) {
+  // Ferme un éventuel autre flyout en cours
+  _fermerFlyout();
+  // Ferme aussi tout groupe accordéon ouvert (cohérence "1 menu à la fois")
+  if (_groupeOuvert) _fermerGroupe(_groupeOuvert);
+
+  const grp = _groupes[groupId];
+  if (!grp || !grp.useFlyout) return;
+  if (!grp.btnPrincipal) return;
+
+  const fly = document.createElement("div");
+  fly.className = "kta-group-flyout";
+  fly.dataset.groupId = groupId;
+
+  // Header
+  const header = document.createElement("div");
+  header.className = "kta-group-flyout-header";
+  const titleEl = document.createElement("span");
+  titleEl.className = "kta-group-flyout-title";
+  titleEl.textContent = (grp.btnPrincipal.title || groupId);
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "kta-group-flyout-close";
+  closeBtn.title = "Fermer";
+  closeBtn.textContent = "✕";
+  closeBtn.addEventListener("click", function(ev) {
+    ev.stopPropagation();
+    _fermerFlyout();
+  });
+  header.appendChild(titleEl);
+  header.appendChild(closeBtn);
+  fly.appendChild(header);
+
+  // Grid de boutons
+  const grid = document.createElement("div");
+  grid.className = "kta-group-flyout-grid";
+  fly.appendChild(grid);
+
+  // Construit la liste finale des actions : types built-in + customs
+  // (insérés AVANT les outils, cf step2-drawable-fix) + outils.
+  const baseActions = (grp.sousActionsConfig || []).slice();
+  const allActions  = baseActions.slice();
+  if (window.LegendCustomization && grp.lcCat && typeof window.LegendCustomization.listCustomEntries === "function") {
+    const customs = window.LegendCustomization.listCustomEntries(grp.lcCat).filter(function(e) { return e.visible; });
+    if (customs.length > 0) {
+      const firstNonTypeIdx = allActions.findIndex(function(a) { return !a.isTypeAction; });
+      const insertIdx = firstNonTypeIdx >= 0 ? firstNonTypeIdx : allActions.length;
+      const customActions = customs.map(function(e) {
+        const isLine = (e.geometry === "polyline") || (!e.geometry && e.lineColor && !e.fillColor);
+        let iconHtml;
+        if (isLine) {
+          const col = e.lineColor || e.fillColor || '#888';
+          iconHtml = '<span style="display:inline-block;width:18px;height:3px;background:' + col + ';vertical-align:middle;border-radius:1px;"></span>';
+        } else {
+          const fill   = e.fillColor || e.lineColor || '#888';
+          const border = e.borderColor || e.lineColor || fill;
+          iconHtml = '<span style="display:inline-block;width:14px;height:14px;background:' + fill + ';border:1px solid ' + border + ';vertical-align:middle;border-radius:2px;"></span>';
+        }
+        return {
+          icone:        iconHtml,
+          titre:        "✨ " + e.label,
+          isTypeAction: true,
+          isCustom:     true,
+          customType:   e.id,
+          onClick:      function(btn) {
+            if (typeof grp.customActivator === "function") grp.customActivator(e.id, btn);
+          }
+        };
+      });
+      allActions.splice(insertIdx, 0, ...customActions);
+    }
+  }
+
+  // Détermine le type courant actif pour ce groupe (pour kta-actif visuel)
+  const currentMode = (function() {
+    if (groupId === "traces")     return window.modeRoad      || null;
+    if (groupId === "zones")      return window.modeZone      || null;
+    if (groupId === "structures") return window.modeStructure || null;
+    return null;
+  })();
+
+  // Indique où insérer le séparateur (entre dernier type-action et premier
+  // non-type-action). Si pas de mix, pas de séparateur.
+  let sepInserted = false;
+
+  allActions.forEach(function(sub, idx) {
+    // Séparateur visuel avant la 1ère sub-action non-type-action
+    if (!sepInserted && !sub.isTypeAction && idx > 0 && allActions[idx-1].isTypeAction) {
+      const sep = document.createElement("div");
+      sep.className = "kta-group-flyout-sep";
+      grid.appendChild(sep);
+      sepInserted = true;
+    }
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "kta-group-flyout-btn";
+    if (sub.isTypeAction) btn.dataset.typeAction = "1";
+    if (sub.customType)   btn.dataset.customType = sub.customType;
+
+    const iconEl = document.createElement("span");
+    iconEl.className = "kta-group-flyout-btn-icon";
+    iconEl.innerHTML = sub.icone || "";
+    const lblEl = document.createElement("span");
+    lblEl.className = "kta-group-flyout-btn-label";
+    lblEl.textContent = sub.titre || "";
+    btn.appendChild(iconEl);
+    btn.appendChild(lblEl);
+
+    // Marqueur actif visuel si le mode actuel matche ce type
+    if (currentMode && (sub.customType === currentMode)) {
+      btn.classList.add("kta-actif");
+    } else if (currentMode && !sub.customType && sub.isTypeAction) {
+      // Pour les types built-in, on n'a pas l'ID dans le config sub-action
+      // (l'ID est dans la closure onClick). Heuristique : on regarde si le
+      // titre contient le nom du mode. Fallback approximatif — KARMA peut
+      // toujours désactiver via re-clic sur le bouton actuel dans le sidebar.
+      // Pour une match exacte, il faudrait stocker un `typeKey` dans la config.
+      // Voir improvement potentiel : sub.typeKey === currentMode.
+      if (sub.typeKey && sub.typeKey === currentMode) {
+        btn.classList.add("kta-actif");
+      }
+    }
+
+    btn.addEventListener("click", function(ev) {
+      ev.stopPropagation();
+      // Ferme le flyout AVANT de déclencher l'action — sinon le mode actif
+      // ouvre des modales (ex : suppression) qui se mélangeraient avec le
+      // flyout encore ouvert.
+      _fermerFlyout();
+      try { sub.onClick(btn); } catch(err) {
+        console.warn("[Flyout] action click erreur :", err);
+      }
+    });
+    grid.appendChild(btn);
+  });
+
+  document.body.appendChild(fly);
+  _positionnerFlyout(fly, grp.btnPrincipal, grp.position);
+  _currentFlyout = fly;
+
+  // Click externe / scroll / resize → ferme ou repositionne
+  // setTimeout pour éviter que le click ayant déclenché l'ouverture
+  // ne re-déclenche immédiatement la fermeture (bubble).
+  setTimeout(function() {
+    document.addEventListener("click",    _onDocClickFlyout, true);
+    document.addEventListener("touchend", _onDocClickFlyout, true);
+    window.addEventListener("resize",     _onResizeFlyout);
+    window.addEventListener("scroll",     _onResizeFlyout, true);
+  }, 0);
+}
+
+function _positionnerFlyout(fly, btnPrincipal, sidebarPosition) {
+  const rect    = btnPrincipal.getBoundingClientRect();
+  const padding = 8;
+  // Mesure réelle après attachement DOM
+  const flyWidth  = fly.offsetWidth  || 240;
+  const flyHeight = fly.offsetHeight || 200;
+
+  // Position verticale : aligné au top du bouton, clampé au viewport
+  let top = rect.top;
+  if (top + flyHeight > window.innerHeight - 12) {
+    top = window.innerHeight - flyHeight - 12;
+  }
+  if (top < 12) top = 12;
+
+  // Position horizontale : selon sidebar (topleft → flyout à droite ;
+  // topright → flyout à gauche). Clamp au viewport.
+  let left;
+  const isLeft = (sidebarPosition === "topleft");
+  if (isLeft) {
+    left = rect.right + padding;
+    if (left + flyWidth > window.innerWidth - 12) {
+      // Bascule à gauche si pas de place à droite
+      left = rect.left - flyWidth - padding;
+    }
+  } else {
+    left = rect.left - flyWidth - padding;
+    if (left < 12) {
+      // Bascule à droite si pas de place à gauche
+      left = rect.right + padding;
+    }
+  }
+  // Clamp final
+  if (left < 12) left = 12;
+  if (left + flyWidth > window.innerWidth - 12) {
+    left = window.innerWidth - flyWidth - 12;
+  }
+
+  fly.style.top  = top  + "px";
+  fly.style.left = left + "px";
 }
 
 // =========================
@@ -4666,11 +4931,11 @@ _setGroupeModeActif("tracker", isTracking, null);
   const _sousActionsTraces = [];
 
   _sousActionsTraces.push(
-    { icone: "🟩", titre: "Route principale", isTypeAction: true,
+    { icone: "🟩", titre: "Route principale", isTypeAction: true, typeKey: "principal",
       onClick: function(btn) { _activerRoute("principal",  btn, "🟩"); } },
-    { icone: "🟪", titre: "Route secondaire", isTypeAction: true,
+    { icone: "🟪", titre: "Route secondaire", isTypeAction: true, typeKey: "secondaire",
       onClick: function(btn) { _activerRoute("secondaire", btn, "🟪"); } },
-    { icone: "🟨", titre: "Chemin", isTypeAction: true,
+    { icone: "🟨", titre: "Chemin", isTypeAction: true, typeKey: "chemin",
       onClick: function(btn) { _activerRoute("chemin",     btn, "🟨"); } }
   );
 
@@ -4679,6 +4944,7 @@ _setGroupeModeActif("tracker", isTracking, null);
       icone: "🪜",
       titre: "Jonction interniveau",
       isTypeAction: true,
+      typeKey: "jonction",
       onClick: function(btn) {
         // Toggle (Bug 4 fix v148.test) : si le mode jonction est deja actif,
         // re-clic = on désactive proprement le mode (cohérent avec le
@@ -4762,7 +5028,11 @@ _setGroupeModeActif("tracker", isTracking, null);
     id: "traces",
     iconePrincipale: "🛣️",
     titre: "Tracés / Routes",
-    sousActions: _sousActionsTraces
+    sousActions: _sousActionsTraces,
+    // 🆕 v1.16.0 step2-flyout : panel latéral au lieu de cascade verticale
+    useFlyout: true,
+    lcCat: "traces",
+    customActivator: function(customId, btn) { _activerRoute(customId, btn, "✨"); }
   });
 
   // 10. ZONES (polygones remplis : remblais / effondrement)
@@ -4795,17 +5065,21 @@ _setGroupeModeActif("tracker", isTracking, null);
     id: "zones",
     iconePrincipale: "⬛",
     titre: "Zones (remblais / effondrements / eau / inaccessible)",
+    // 🆕 v1.16.0 step2-flyout : panel latéral
+    useFlyout: true,
+    lcCat: "zones",
+    customActivator: function(customId, btn) { _activerZone(customId, btn, "✨"); },
     sousActions: [
-      { icone: "⬛", titre: "Zone de remblais", isTypeAction: true,
+      { icone: "⬛", titre: "Zone de remblais", isTypeAction: true, typeKey: "remblais",
         onClick: function(btn) { _activerZone("remblais",     btn, "⬛"); } },
-      { icone: "🟥", titre: "Zone d'effondrement", isTypeAction: true,
+      { icone: "🟥", titre: "Zone d'effondrement", isTypeAction: true, typeKey: "effondrement",
         onClick: function(btn) { _activerZone("effondrement", btn, "🟥"); } },
-      { icone: "🟦", titre: "Zone d'eau", isTypeAction: true,
+      { icone: "🟦", titre: "Zone d'eau", isTypeAction: true, typeKey: "eau",
         onClick: function(btn) { _activerZone("eau",          btn, "🟦"); } },
       // 🚫 v169 (Karma_dev) : zone bloquante pour le pathfinder. Hachures
       // rouge/noir 45°. Tout segment de route qui traverse est inutilisable
       // pour le calcul d'itinéraire (= contrainte dure).
-      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)", isTypeAction: true,
+      { icone: "⛔", titre: "Zone inaccessible (bloque l'itinéraire)", isTypeAction: true, typeKey: "inaccessible",
         onClick: function(btn) { _activerZone("inaccessible", btn, "⛔"); } },
       { icone: "✅", titre: "Fermer la zone en cours",
         onClick: function() {
@@ -4930,23 +5204,27 @@ _setGroupeModeActif("tracker", isTracking, null);
     id: "structures",
     iconePrincipale: "🏛️",
     titre: "Structures (piliers / murs)",
+    // 🆕 v1.16.0 step2-flyout : panel latéral
+    useFlyout: true,
+    lcCat: "structures",
+    customActivator: function(customId, btn) { _activerStructure(customId, btn, "✨"); },
     sousActions: [
       // 🟡 Pilier 1ère masse : icone rond jaune (= couleur charte MKM,
       // cohérent avec le fill #f4c542 de la structure rendue sur carte).
       // KARMA-fix : 1ère masse en JAUNE (couleurs inversées par rapport
       // au draft initial qui avait orange / jaune dans le mauvais sens).
       // En multi-niveau : tagué au niveau actif.
-      { icone: "🟡", titre: "Pilier 1ère masse (jaune)", isTypeAction: true,
+      { icone: "🟡", titre: "Pilier 1ère masse (jaune)", isTypeAction: true, typeKey: "pilier-1",
         onClick: function(btn) { _activerStructure("pilier-1", btn, "🟡"); } },
       // 🟠 Pilier 2e masse : icone rond orange (fill #ff9933).
       // En multi-niveau : AUTO-tagué à `activeLevel - 1` (cf. structures.js)
       // car structurellement la masse inférieure visible depuis l'actuelle.
-      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto", isTypeAction: true,
+      { icone: "🟠", titre: "Pilier 2e masse (orange) — niveau -1 auto", isTypeAction: true, typeKey: "pilier-2",
         onClick: function(btn) { _activerStructure("pilier-2", btn, "🟠"); } },
       // 🔵 Mur : KARMA "rond bleu pour pas confondre avec icône eau"
       // (la zone eau utilise 🟦 carré bleu clair, ici on prend ROND bleu
       // foncé pour distinguer visuellement).
-      { icone: "🔵", titre: "Mur (bleu foncé)", isTypeAction: true,
+      { icone: "🔵", titre: "Mur (bleu foncé)", isTypeAction: true, typeKey: "mur",
         onClick: function(btn) { _activerStructure("mur", btn, "🔵"); } },
       // 🆕 v1.9.3-A1.b.2 : fronts de taille (polylines épaisses sans
       // contour). KARMA : "ce sont des tracé ok mais il reste dans
@@ -4954,9 +5232,9 @@ _setGroupeModeActif("tracker", isTracking, null);
       // (cohérent avec pilier-2), front-2 = jaune (cohérent avec pilier-1).
       // Même règle multi-niveau que les piliers : front-2 auto-tagué
       // activeLevel - 1.
-      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)", isTypeAction: true,
+      { icone: "🟨", titre: "Front de taille 1ère masse (jaune épais)", isTypeAction: true, typeKey: "front-1",
         onClick: function(btn) { _activerStructure("front-1", btn, "🟨"); } },
-      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto", isTypeAction: true,
+      { icone: "🟧", titre: "Front de taille 2e masse (orange épais) — niveau -1 auto", isTypeAction: true, typeKey: "front-2",
         onClick: function(btn) { _activerStructure("front-2", btn, "🟧"); } },
       { icone: "✅", titre: "Fermer la structure en cours",
         onClick: function() {
@@ -5076,6 +5354,18 @@ _setGroupeModeActif("tracker", isTracking, null);
     mapping.forEach(function(m) {
       const grp = _groupes[m.groupeId];
       if (!grp || !grp.container) return;
+
+      // 🆕 v1.16.0 step2-flyout : pour les groupes en mode FLYOUT, les
+      // customs sont pullés lazily à chaque _ouvrirFlyout. On ne touche
+      // PAS au DOM de la sidebar (pas de cascade).
+      if (grp.useFlyout) {
+        // Si le flyout est actuellement ouvert pour ce groupe, on le
+        // rebuild pour refléter la nouvelle liste de customs.
+        if (_currentFlyout && _currentFlyout.dataset.groupId === m.groupeId) {
+          _ouvrirFlyout(m.groupeId);
+        }
+        return;
+      }
 
       // 1) Retire les boutons custom existants (data-custom-id) du DOM ET
       //    du tableau subActions, pour repartir propre.
