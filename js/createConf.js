@@ -2974,6 +2974,51 @@ async function _kmzImpAnalyserFichier(file) {
       ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ${overlays.length - 1} autre(s) GroundOverlay ignorés en MVP (1er pris comme baseImage).</div>` : "";
     const mgWarn = mgCount > 0
       ? `<div style="color:#ffb380; font-size:12px; margin-top:4px;">⚠️ ${mgCount} MultiGeometry détecté(s) — sauté(s) en Phase 1 MVP (Phase 2 les éclatera).</div>` : "";
+
+    // 🆕 v1.18.1 — Détection de la légende plan-level embarquée dans le KMZ
+    // (cf §59 CLAUDE.md). Cherche `myktamap-extras.json` dans les assets,
+    // parse son champ `customLegend` et affiche un résumé dans le preview
+    // pour rassurer l'user : « ✅ Légende personnalisée détectée — sera
+    // restaurée au boot du plan reconstruit ». Si le fichier est absent
+    // (KMZ tiers ou MyKTAMap < v1.18.0), aucune ligne ajoutée (= silence
+    // strictement équivalent à v1.18.0 minus l'info de transparence).
+    let legendInfo = "";
+    if (assets && typeof assets === "object") {
+      const extrasKey = Object.keys(assets).find(function(p) {
+        return /(?:^|\/)myktamap-extras\.json$/i.test(p);
+      });
+      if (extrasKey) {
+        try {
+          const blob   = assets[extrasKey];
+          if (blob && typeof blob.text === "function") {
+            const txt    = await blob.text();
+            const extras = JSON.parse(txt);
+            const cl     = extras && extras.customLegend;
+            if (cl && typeof cl === "object") {
+              const renamed = Object.keys(cl.labels || {}).length;
+              const hiddenN = Array.isArray(cl.hidden)
+                              ? cl.hidden.length
+                              : Object.keys(cl.hidden || {}).length;
+              const customN = Array.isArray(cl.customEntries) ? cl.customEntries.length : 0;
+              if (renamed > 0 || hiddenN > 0 || customN > 0) {
+                const parts = [];
+                if (renamed > 0) parts.push(renamed + " renommé"  + (renamed > 1 ? "s" : ""));
+                if (hiddenN > 0) parts.push(hiddenN + " masqué"   + (hiddenN > 1 ? "s" : ""));
+                if (customN > 0) parts.push(customN + " custom"   + (customN > 1 ? "s" : ""));
+                legendInfo = `<div style="color:#6ce28a; font-size:12px; margin-top:6px;">
+                  ✅ <strong>Légende personnalisée du plan détectée</strong> :
+                  ${parts.join(" · ")}
+                  <span style="color:#8892a4;">(restaurée au boot du plan reconstruit)</span>
+                </div>`;
+              }
+            }
+          }
+        } catch(e) {
+          console.warn("[KmzImport-UI] ⚠️ Échec parse myktamap-extras.json (preview) :", e);
+        }
+      }
+    }
+
     document.getElementById("kta-kmz-imp-resume").innerHTML = `
       <div>📄 <strong>Document KML</strong> : ${_escHtml(docName)}</div>
       <div>🖼️ <strong>Image plan</strong> : ${dims.width} × ${dims.height} px
@@ -2986,7 +3031,7 @@ async function _kmzImpAnalyserFichier(file) {
         · ⬛ <strong>${pgCount}</strong> polygones
         <span style="color:#8892a4;">(${pmCount} Placemark total)</span>
       </div>
-      ${overlaysExtra}${mgWarn}
+      ${legendInfo}${overlaysExtra}${mgWarn}
     `;
 
     // Pré-remplir le nom à partir du Document KML
@@ -3467,12 +3512,41 @@ async function _gpxImpAnalyserFichier(file) {
       : '<div style="color:#ffb380;">⚠️ GPX tiers (TopoDroid / OsmAnd / Strava…) — types par défaut appliqués aux waypoints/tracks sans <code>&lt;sym&gt;</code> ou <code>&lt;type&gt;</code> reconnu</div>';
     const dLat = bounds.latMax - bounds.latMin;
     const dLng = bounds.lngMax - bounds.lngMin;
+
+    // 🆕 v1.18.1 — Détection légende plan-level embarquée via
+    // <extensions><myktamap:customLegend>...</myktamap:customLegend></extensions>
+    // sous <metadata> (cf §59 CLAUDE.md + gpxIO.js > parser). Affiche un
+    // résumé dans le preview pour rassurer l'user : « ✅ Légende personnalisée
+    // détectée — sera restaurée au boot du plan reconstruit ». Skip silencieux
+    // si absente (= GPX tiers ou MyKTAMap < v1.18.1).
+    let legendInfo = "";
+    const cl = parsed.metadata && parsed.metadata.customLegend;
+    if (cl && typeof cl === "object") {
+      const renamed = Object.keys(cl.labels || {}).length;
+      const hiddenN = Array.isArray(cl.hidden)
+                      ? cl.hidden.length
+                      : Object.keys(cl.hidden || {}).length;
+      const customN = Array.isArray(cl.customEntries) ? cl.customEntries.length : 0;
+      if (renamed > 0 || hiddenN > 0 || customN > 0) {
+        const parts = [];
+        if (renamed > 0) parts.push(renamed + " renommé"  + (renamed > 1 ? "s" : ""));
+        if (hiddenN > 0) parts.push(hiddenN + " masqué"   + (hiddenN > 1 ? "s" : ""));
+        if (customN > 0) parts.push(customN + " custom"   + (customN > 1 ? "s" : ""));
+        legendInfo = `<div style="color:#6ce28a; font-size:12px; margin-top:6px;">
+          ✅ <strong>Légende personnalisée du plan détectée</strong> :
+          ${parts.join(" · ")}
+          <span style="color:#8892a4;">(restaurée au boot du plan reconstruit)</span>
+        </div>`;
+      }
+    }
+
     document.getElementById("kta-gpx-imp-resume").innerHTML = `
       ${sourceLine}
       <div>📍 <strong>Waypoints</strong> : ${parsed.waypoints.length}</div>
       <div>🛣️ <strong>Tracks</strong> : ${parsed.tracks.length}</div>
       <div>🌐 <strong>Bounds GPS</strong> : lat ${bounds.latMin.toFixed(5)} → ${bounds.latMax.toFixed(5)} (Δ ${dLat.toFixed(5)}°), lng ${bounds.lngMin.toFixed(5)} → ${bounds.lngMax.toFixed(5)} (Δ ${dLng.toFixed(5)}°)</div>
       <div>📐 <strong>Calibrage auto</strong> : coin BL = (lat_min, lng_min), coin TR = (lat_max, lng_max)</div>
+      ${legendInfo}
     `;
 
     document.getElementById("kta-gpx-imp-step-resume").style.display = "";

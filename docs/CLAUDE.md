@@ -4416,6 +4416,47 @@ Le ZIP MyKTAMap reconstruit contient désormais `plan-config.json > plan.customL
 4. **Bump version** : si le nouveau champ change la sémantique du parsing (ex: nouveau schéma incompatible), bumper `version: 2` dans l'extras + lire la version au parse pour gérer les 2 cas. Sinon `version: 1` reste.
 5. **Doc** : update §59.2 (format), CLAUDE.md, README.md, AI_CONTEXT.md.
 
+#### 59.10 v1.18.1 — Extension au format GPX + preview d'import (KMZ + GPX)
+
+Cette release étend le pattern §59 au format GPX et ajoute la visibilité côté preview d'import.
+
+**Format GPX embed** : `<extensions>` standard GPX 1.1 sous `<metadata>` (PAS un fichier annexe — GPX est un XML monolithique, pas un ZIP). Namespace `xmlns:myktamap="https://myktamap.fr/gpx/ext/v1"` déclaré au root `<gpx>`. La balise `<myktamap:customLegend>` contient le payload wrapper JSON sérialisé + escapé XML (identique au KMZ).
+
+```xml
+<gpx ... xmlns:myktamap="https://myktamap.fr/gpx/ext/v1">
+  <metadata>
+    <name>...</name>
+    <desc>...</desc>
+    <extensions>
+      <myktamap:customLegend>{"type":"myktamap-gpx-extras","version":1,"customLegend":{...}}</myktamap:customLegend>
+    </extensions>
+  </metadata>
+  ...
+</gpx>
+```
+
+**Parser tolérant au namespace** (`gpxIO.js > parser`) : scan des enfants directs de `<extensions>` via `localName === "customlegend"` (case insensitive). Permet de lire correctement même si l'user a édité le GPX à la main sans déclaration `xmlns:myktamap` propre.
+
+**`importer()` (session) ignore silencieusement** : `customLegend` extraite par le parser n'est jamais appliquée au scope session — c'est strictement plan-level. Seul `gpxImport.js > genererZipMyktamap` (reconversion en ZIP MyKTAMap autonome) l'injecte dans `planConfig.plan.customLegend`.
+
+**Preview d'import KMZ + GPX** (`createConf.js` :
+- `_kmzImpAnalyserFichier` (KMZ) : parse async de `myktamap-extras.json` extrait par `extraireKmz`, affichage dans le résumé
+- `_gpxImpAnalyserFichier` (GPX) : lecture directe de `parsed.metadata.customLegend` (déjà extrait par `gpxIO.js > parser`)
+
+Format d'affichage uniforme :
+```html
+<div style="color:#6ce28a;">
+  ✅ <strong>Légende personnalisée du plan détectée</strong> :
+  N renommés · M masqués · K customs
+  <span>(restaurée au boot du plan reconstruit)</span>
+</div>
+```
+
+**À NE PAS faire pour GPX** :
+- ❌ **Ne pas mettre `<myktamap:customLegend>` au top-level `<gpx>`** — le schéma GPX 1.1 n'autorise pas des éléments arbitraires au root. Toujours sous `<metadata>/<extensions>`.
+- ❌ **Ne pas appliquer `customLegend` dans `gpxIO.js > importer`** — l'import session ne doit jamais muter `PLAN_CONFIG.customLegend` (= cascade plan, pas session). La cascade serait écrasée silencieusement à chaque import GPX, mauvaise UX.
+- ❌ **Ne pas hardcoder le namespace `xmlns:myktamap`** dans le parser — utiliser `localName` + endsWith pour tolérer les GPX édités à la main.
+
 ---
 
 ### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)

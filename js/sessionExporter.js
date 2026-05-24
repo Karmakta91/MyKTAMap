@@ -3102,12 +3102,30 @@
           '<input type="checkbox" id="gpx_iti" ' + (itiCount === 0 ? "disabled" : "") + '>' +
           '<span>🗺️ <strong>Itinéraire actif</strong> (souvent éphémère) <span class="kta-ses-count">(' + itiCount + ')</span></span>' +
         '</label>' +
+        // 🆕 v1.18.1 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap via GPX).
+        // Symétrique de la checkbox KMZ v1.18.0. Cochée par défaut SI le plan
+        // a une customLegend non-vide, grisée à 0 sinon. Embed dans
+        // <extensions><myktamap:customLegend> sous <metadata> GPX standard.
+        // Ignoré par les apps tierces (TopoDroid, OsmAnd…), parsé par gpxIO.
+        (function() {
+          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
+          const has = !!(cl && typeof cl === "object" &&
+            ((cl.labels && Object.keys(cl.labels).length) ||
+             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
+             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          return '<label class="kta-ses-cb-row" style="' + (has ? "" : "opacity:0.5;") + '">' +
+            '<input type="checkbox" id="gpx_legend" ' + (has ? "checked" : "disabled") + '>' +
+            '<span>🏷️ <strong>Légende personnalisée du plan</strong> ' +
+              '<span class="kta-ses-count">(' + (has ? 1 : 0) + ')</span></span>' +
+          '</label>';
+        })() +
       '</div>' +
       '<div class="kta-ses-summary" style="margin-top:14px;">' +
         '<strong>📐 Format :</strong> GPX 1.1 XML standard. Les niveaux M-LVL ' +
         'sont préservés via un commentaire <code>&lt;cmt&gt;MyKTAMap level=N&lt;/cmt&gt;</code>.' +
         '<br>' +
-        '<strong>🔄 Roundtrip :</strong> ré-importable dans MyKTAMap avec niveaux + coords plan restaurés.' +
+        '<strong>🔄 Roundtrip :</strong> ré-importable dans MyKTAMap avec niveaux + coords plan restaurés ' +
+        '+ légende personnalisée du plan (depuis v1.18.1, via <code>&lt;extensions&gt;</code> standard ignorées par les apps tierces).' +
       '</div>'
     );
   }
@@ -3149,6 +3167,9 @@
     const incEmbedded = document.getElementById("gpx_embedded") && document.getElementById("gpx_embedded").checked;
     const incRoads    = document.getElementById("gpx_roads")    && document.getElementById("gpx_roads").checked;
     const incIti      = document.getElementById("gpx_iti")      && document.getElementById("gpx_iti").checked;
+    // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique KMZ v1.18.0).
+    // Embed dans <extensions><myktamap:customLegend> sous <metadata> GPX.
+    const incLegend   = document.getElementById("gpx_legend")   && document.getElementById("gpx_legend").checked;
 
     const btnDl = document.getElementById("kta-ses-download");
     if (btnDl) { btnDl.disabled = true; btnDl.textContent = "Génération…"; }
@@ -3158,7 +3179,15 @@
         incPoints:   !!incPoints,
         incEmbedded: !!incEmbedded,
         incRoads:    !!incRoads,
-        incIti:      !!incIti
+        incIti:      !!incIti,
+        // 🆕 v1.18.1 — Légende plan-level via <extensions> GPX standard.
+        // Skip si checkbox décochée OU si pas de customLegend dans le plan.
+        planCustomLegend: (function() {
+          if (!incLegend) return null;
+          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
+          if (!cl || typeof cl !== "object") return null;
+          return cl;
+        })()
       });
       if (!r.ok) {
         alert("Export GPX impossible : " + r.msg);

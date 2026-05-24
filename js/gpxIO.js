@@ -104,6 +104,12 @@
     const incEmbedded = opts.incEmbedded !== false;
     const incRoads    = opts.incRoads    !== false;
     const incIti      = opts.incIti      === true;
+    // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique kmzExport).
+    // Si opts.planCustomLegend est présent et non-null, embed dans
+    // <extensions><myktamap:customLegend>...</myktamap:customLegend></extensions>
+    // sous <metadata>. Skip silencieux si null/absent.
+    const planCustomLegend = (opts.planCustomLegend && typeof opts.planCustomLegend === "object")
+                              ? opts.planCustomLegend : null;
 
     // Collecte des annotations à exporter
     const sessionPoints   = incPoints && window.getEditorPoints ? (window.getEditorPoints() || []) : [];
@@ -119,7 +125,7 @@
     });
 
     // Génère le GPX XML
-    const xml = _genererGpx(allPoints, tracesAExporter, t);
+    const xml = _genererGpx(allPoints, tracesAExporter, t, planCustomLegend);
 
     // Télécharge
     const planName = _currentPlanName().replace(/[^\w\-]+/g, "_");
@@ -141,10 +147,14 @@
   // ============================================================
   // GÉNÉRATEUR GPX 1.1
   // ============================================================
-  function _genererGpx(points, tracks, t) {
+  function _genererGpx(points, tracks, t, planCustomLegend) {
     const lines = [];
     lines.push('<?xml version="1.0" encoding="UTF-8"?>');
-    lines.push('<gpx version="1.1" creator="MyKTAMap (myktamap.fr)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">');
+    // 🆕 v1.18.1 — Ajout du namespace `xmlns:myktamap` au root <gpx> pour
+    // permettre l'extension `<myktamap:customLegend>` sous <metadata>.
+    // Strictement transparent pour les apps tierces (TopoDroid, OsmAnd…)
+    // qui ignorent les namespaces inconnus dans les `<extensions>` standards.
+    lines.push('<gpx version="1.1" creator="MyKTAMap (myktamap.fr)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:myktamap="https://myktamap.fr/gpx/ext/v1" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">');
 
     // Métadonnées
     lines.push('  <metadata>');
@@ -152,6 +162,23 @@
     lines.push('    <desc>Export GPX depuis MyKTAMap — ' + points.length + ' point(s), ' + tracks.length + ' tracé(s)</desc>');
     lines.push('    <author><name>MyKTAMap</name><link href="https://myktamap.fr"><text>myktamap.fr</text></link></author>');
     lines.push('    <time>' + _isoNow() + '</time>');
+    // 🆕 v1.18.1 — Roundtrip légende plan-level. Embed le state complet en
+    // JSON brut (CDATA inutile car _xmlEsc gère les & et < / > du JSON).
+    // Format ouvert {type, version, exportedAt, customLegend} aligné sur
+    // myktamap-extras.json côté KMZ (cf §59.2 CLAUDE.md). Les apps tierces
+    // ignorent les <extensions> sous <metadata>. Parsé par parser() côté
+    // import → utilisé par gpxImport.js > genererZipMyktamap au ré-import.
+    if (planCustomLegend) {
+      const extrasPayload = JSON.stringify({
+        type:          "myktamap-gpx-extras",
+        version:       1,
+        exportedAt:    _isoNow(),
+        customLegend:  planCustomLegend
+      });
+      lines.push('    <extensions>');
+      lines.push('      <myktamap:customLegend>' + _xmlEsc(extrasPayload) + '</myktamap:customLegend>');
+      lines.push('    </extensions>');
+    }
     lines.push('  </metadata>');
 
     // Waypoints (= points editor + embedded)
@@ -234,6 +261,46 @@
       if (nameEl) metadata.name = nameEl.textContent.trim();
       if (descEl) metadata.desc = descEl.textContent.trim();
       if (timeEl) metadata.time = timeEl.textContent.trim();
+
+      // 🆕 v1.18.1 — Roundtrip légende plan-level (symétrique kmzImport).
+      // Extrait `<extensions><myktamap:customLegend>` qui peut contenir
+      // soit le payload wrapper complet {type, version, exportedAt,
+      // customLegend} soit (legacy/permissif) directement l'état customLegend.
+      // Utilisé par gpxImport.js > genererZipMyktamap pour injecter dans
+      // planConfig.plan.customLegend au ré-import GPX → ZIP autonome.
+      // Ignoré silencieusement par importer() qui n'opère que sur session.
+      const extEl = meta.getElementsByTagName("extensions")[0];
+      if (extEl) {
+        // getElementsByTagNameNS gère mal les fichiers sans déclaration namespace
+        // (cas où l'user a édité manuellement le GPX). On scanne tous les enfants
+        // direct par localName == "customLegend" pour être tolérant.
+        let clEl = null;
+        const children = extEl.children || [];
+        for (let i = 0; i < children.length; i++) {
+          const c = children[i];
+          const ln = (c.localName || c.nodeName || "").toLowerCase();
+          if (ln === "customlegend" || ln.endsWith(":customlegend")) {
+            clEl = c;
+            break;
+          }
+        }
+        if (clEl) {
+          const raw = (clEl.textContent || "").trim();
+          if (raw) {
+            try {
+              const parsed = JSON.parse(raw);
+              // 2 formats acceptés : wrapper {type, customLegend} OU état brut
+              if (parsed && parsed.customLegend && typeof parsed.customLegend === "object") {
+                metadata.customLegend = parsed.customLegend;
+              } else if (parsed && (parsed.labels || parsed.hidden || parsed.customEntries)) {
+                metadata.customLegend = parsed;
+              }
+            } catch(e) {
+              console.warn("[GpxIO] ⚠️ Échec parse <myktamap:customLegend> (ignoré) :", e);
+            }
+          }
+        }
+      }
     }
 
     // Waypoints

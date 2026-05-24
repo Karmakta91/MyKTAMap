@@ -4,6 +4,33 @@
 
 ---
 
+## 🆕 Hotfix v1.18.1 (24/05/2026) — La légende voyage aussi en GPX + preview clair
+
+> Petit complément à v1.18.0 sur 2 axes : (1) la légende personnalisée du plan voyage aussi avec le format **GPX** (pas seulement le KMZ), et (2) quand tu importes un KMZ ou un GPX, tu vois explicitement avant la génération si une légende est embarquée.
+
+### 🌍 GPX export — Légende incluse
+
+Quand tu fais 💾 Enregistrer session → onglet 🌍 KMZ/GPX → section GPX, nouvelle case **🏷️ Légende personnalisée du plan** (à côté des cases Points/Tracés/Itinéraire). Cochée par défaut si ton plan a une légende personnalisée, grisée à 0 sinon.
+
+**Compat externe** : ton GPX reste **100 % compatible** avec TopoDroid, OsmAnd, Strava, Avenza, Garmin, etc. La légende est embarquée dans une balise `<extensions>` standard que ces apps ignorent silencieusement.
+
+### 👁️ Preview clair à l'import
+
+Quand tu importes un KMZ ou un GPX via 🏗️ Générer un plan → drop-zone → choix d'import, le résumé/preview AVANT la génération du ZIP MyKTAMap affiche désormais explicitement :
+
+```
+✅ Légende personnalisée du plan détectée : 3 renommés · 2 masqués · 1 custom
+   (restaurée au boot du plan reconstruit)
+```
+
+Si rien n'est embarqué (KMZ d'une app tierce, ou plan sans personnalisation), la ligne ne s'affiche pas — pas de bruit visuel inutile. Tu sais toujours exactement ce qui sera dans ton plan avant de cliquer sur Générer.
+
+### 🛡️ Aucune donnée transmise
+
+Comme toujours dans MyKTAMap : tout est local. La balise `<extensions>` GPX est dans ton fichier local, parsée localement à l'import. Aucun fetch externe, aucune télémétrie.
+
+---
+
 ## 🆕 Nouveautés v1.18.0 (24/05/2026) — La légende voyage avec ton KMZ
 
 > Suite directe de v1.17.0. Quand tu personnalises la légende d'un plan via le Générateur, ces personnalisations restent désormais avec ton plan même quand tu l'exportes en KMZ pour le partager à un ami qui utilise une autre instance de MyKTAMap.

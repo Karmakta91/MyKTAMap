@@ -174,10 +174,25 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.18.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.18.1</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.18.1 (Roundtrip GPX <code>customLegend</code> + preview d'import KMZ/GPX)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucun nouveau fichier</strong>. Hotfix qui étend la v1.18.0
+    (KMZ uniquement) au format GPX via <code>&lt;extensions&gt;&lt;myktamap:customLegend&gt;</code>
+    standard sous <code>&lt;metadata&gt;</code> (xmlns:myktamap déclaré au root <code>&lt;gpx&gt;</code>).
+    Les apps tierces (TopoDroid, OsmAnd, Strava, Avenza, Garmin) ignorent les <code>&lt;extensions&gt;</code>
+    sous <code>&lt;metadata&gt;</code> standardement. Bonus UX : les modales d'import KMZ et GPX affichent
+    explicitement « ✅ Légende personnalisée détectée » dans le résumé avant la génération du ZIP MyKTAMap
+    reconstruit (parse local async via <code>Blob.text() + JSON.parse</code> pour KMZ, lecture directe
+    <code>parsed.metadata.customLegend</code> pour GPX). Aucun fetch externe. Le SW cache uniquement un
+    bump du <code>CACHE_NAME</code> (<code>myktamap-cache-v1.18.1</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -635,6 +650,19 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.18.1</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>Roundtrip GPX <code>customLegend</code> + preview d'import KMZ/GPX</strong> —
+          <strong>aucune nouvelle surface réseau, aucun nouveau fichier</strong>. Hotfix qui étend la
+          v1.18.0 (KMZ) au format GPX via <code>&lt;extensions&gt;&lt;myktamap:customLegend&gt;</code>
+          standard sous <code>&lt;metadata&gt;</code>. Preview d'import (KMZ + GPX) affiche désormais
+          explicitement la légende détectée. Modifs internes à 4 modules (gpxIO, gpxImport,
+          sessionExporter, createConf, ~135 lignes total). Bump SW <code>CACHE_NAME</code> uniquement.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.18.0</td>
         <td>24/05/2026</td>

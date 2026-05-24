@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.18.0` (24/05/2026)
+**📦 Version courante** : `v1.18.1` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.18.0](#-derniere-release--v1180)
+1. [🚀 Dernière release — v1.18.1](#-derniere-release--v1181)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,9 +40,15 @@
 
 ---
 
-## 🚀 Dernière release — v1.18.0
+## 🚀 Dernière release — v1.18.1
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.17.x) : **Roundtrip KMZ de la légende plan-level**. La personnalisation embarquée dans un plan (via la nouvelle section « 🏷️ Légende du plan » du Générateur v1.17.0) voyage désormais avec le KMZ exporté — au ré-import dans une autre instance MyKTAMap, elle est restaurée automatiquement. Embed dans un fichier annexe `myktamap-extras.json` du KMZ ZIP (ignoré par Google Earth, OsmAnd, Avenza). Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+📅 **24 mai 2026** — Hotfix **PATCH** (Z+1 sur v1.18.0) : **extension du roundtrip `customLegend` au format GPX + visibilité dans les preview d'import**. La v1.18.0 couvrait uniquement le KMZ ; cette release ajoute GPX (via `<extensions>` standard sous `<metadata>`) et affiche explicitement « ✅ Légende personnalisée du plan détectée » dans les modales d'import KMZ et GPX avant la génération du ZIP MyKTAMap reconstruit. Plus de surprises : l'utilisateur sait exactement ce qui voyage.
+
+---
+
+## 🚀 Release précédente — v1.18.0
+
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.17.x) : **Roundtrip KMZ de la légende plan-level**. Embed dans un fichier annexe `myktamap-extras.json` du KMZ ZIP (ignoré par Google Earth, OsmAnd, Avenza).
 
 ---
 
@@ -868,7 +874,66 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-18-0" open>
+<details id="v1-18-1" open>
+<summary><strong>🗓️ 24/05/2026 — 🩹 v1.18.1 : Roundtrip GPX `customLegend` + preview d'import KMZ/GPX</strong></summary>
+
+Hotfix PATCH (bump Z : 1.18.0 → 1.18.1). Complète la v1.18.0 sur 3 axes :
+
+### 🌍 GPX export — Embed via `<extensions>` standard
+
+`js/gpxIO.js > exporter` accepte un nouveau champ `opts.planCustomLegend`. Si présent, embed dans `<extensions><myktamap:customLegend>…</myktamap:customLegend></extensions>` **sous `<metadata>`** du GPX (= conforme au schéma GPX 1.1). Le namespace `xmlns:myktamap="https://myktamap.fr/gpx/ext/v1"` est déclaré sur le root `<gpx>`. Payload identique au KMZ : wrapper JSON `{type: "myktamap-gpx-extras", version: 1, exportedAt, customLegend}` sérialisé et escapé XML.
+
+**Compat externe** : strictement transparent pour TopoDroid, OsmAnd, Strava, Avenza, Garmin, etc. — les `<extensions>` sous `<metadata>` sont standardement ignorées par les parsers GPX qui ne reconnaissent pas le namespace.
+
+### 📥 GPX parser + reconversion
+
+`js/gpxIO.js > parser` extrait l'éventuelle `<extensions><myktamap:customLegend>` (matching insensible au namespace via `localName === "customlegend"` pour tolérer les GPX sans déclaration `xmlns:myktamap`) et la pose dans `parsed.metadata.customLegend`.
+
+Matching tolérant à 2 formats :
+- Wrapper complet `{type, version, exportedAt, customLegend}` (= cas normal MyKTAMap)
+- État brut `{labels, hidden, customEntries}` (= permissif pour les GPX édités à la main)
+
+Skip silencieux si JSON corrompu (warn console + skip — pas de blocage de l'import).
+
+`js/gpxImport.js > genererZipMyktamap` injecte `parsed.metadata.customLegend` dans `planConfig.plan.customLegend` du ZIP MyKTAMap reconstruit. La cascade `LegendCustomization.loadPlanState` l'appliquera au boot du plan importé.
+
+**`importer()` (= import dans session courante) ignore silencieusement** la `customLegend` extraite — c'est une cascade plan-level, pas session-level. L'import ne mute que les annotations de la session (points, tracés).
+
+### 🎛️ GPX export UI — Checkbox parallèle au KMZ
+
+Nouvelle checkbox `🏷️ Légende personnalisée du plan` dans la modale 💾 Enregistrer session > onglet 🌍 KMZ/GPX > section 📍 Contenu à exporter (GPX). Comportement strictement identique à la checkbox KMZ v1.18.0 :
+
+- Plan AVEC customLegend → cochée par défaut, compteur `(1)`
+- Plan SANS customLegend → décochée + grisée à 0
+
+### 👁️ Preview d'import KMZ + GPX
+
+Les 2 modales d'import (`_afficherImporterKmz` et `_afficherImporterGpx` dans `createConf.js`) affichent désormais explicitement dans le résumé/preview, AVANT la génération du ZIP MyKTAMap :
+
+```
+✅ Légende personnalisée du plan détectée : 3 renommés · 2 masqués · 1 custom
+    (restaurée au boot du plan reconstruit)
+```
+
+**KMZ** : parse async de `myktamap-extras.json` extrait par `extraireKmz`.
+**GPX** : lecture directe de `parsed.metadata.customLegend` (déjà extrait par `gpxIO.js > parser`).
+
+Skip silencieux si fichier absent (KMZ tiers, MyKTAMap < v1.18.0 ; GPX tiers, MyKTAMap < v1.18.1).
+
+### 📂 Sources de vérité v1.18.1
+
+- `version.json` → `"v1.18.1"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.18.1"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.18.1"`
+- Aucun nouveau fichier — modifs internes à `js/gpxIO.js` (~45 lignes : exporter + parser), `js/gpxImport.js` (~15 lignes : reconversion), `js/sessionExporter.js` (~25 lignes : UI GPX + plumbing), `js/createConf.js` (~50 lignes : preview KMZ + GPX)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. La balise `<extensions>` GPX est embarquée localement dans le fichier généré + parsée localement à l'import (`DOMParser` natif). Aucun fetch externe. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-18-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.18.0 : Roundtrip KMZ de la légende plan-level</strong></summary>
 
 Release MINOR (bump Y : 1.17.x → 1.18.0). La nouvelle source de vérité `plan.customLegend` introduite en v1.17.0 voyage désormais avec le format de partage KMZ.

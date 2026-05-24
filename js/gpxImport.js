@@ -320,6 +320,20 @@
     if (tilingManifest)           planConfig.plan.tiledV2    = true;
     if (tilingManifest)           planConfig.tiling          = tilingManifest;
 
+    // 🆕 v1.18.1 — Roundtrip légende plan-level via GPX (symétrique
+    // kmzImport.js + §59 CLAUDE.md). Le parser gpxIO.js extrait l'éventuelle
+    // balise <extensions><myktamap:customLegend> sous <metadata> et la pose
+    // dans `parsed.metadata.customLegend`. On l'injecte ici dans
+    // `planConfig.plan.customLegend` du ZIP MyKTAMap reconstruit — la cascade
+    // LegendCustomization.loadPlanState l'appliquera au boot du plan importé.
+    // Skip silencieux si absente (GPX tiers ou MyKTAMap < v1.18.1).
+    const _planCustomLegend = opts.parsed
+                              && opts.parsed.metadata
+                              && opts.parsed.metadata.customLegend;
+    if (_planCustomLegend && typeof _planCustomLegend === "object") {
+      planConfig.plan.customLegend = _planCustomLegend;
+    }
+
     // === Restauration icônes default + track depuis l'app courante ===
     // Fetch les icônes par défaut comme kmzImport.js > hotfix10.
     async function _tenterFetchIconeApp(relativePath) {
