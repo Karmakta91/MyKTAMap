@@ -381,6 +381,330 @@ window.LegendCustomization = (function() {
   }
 
   // ─────────────────────────────────────────────
+  // ÉDITEUR STANDALONE (modale dédiée)
+  // ─────────────────────────────────────────────
+  //
+  // Ouvre une modale charte MKM qui contient le même panneau de personnalisation
+  // que la modale Export PNG, mais utilisable depuis n'importe où dans l'UI
+  // (typiquement : bouton « ✏️ Modifier » dans la fenêtre Légende mode carte).
+  //
+  // L'editeur appelle les setters de session du module → SessionPersist.save
+  // se déclenche automatiquement via _persistSession.
+  //
+  // opts = { onChange: () => void }    (callback à chaque modification)
+  //        { onClose:  () => void }    (callback à la fermeture)
+  function ouvrirEditeur(opts) {
+    opts = opts || {};
+
+    // Si déjà ouvert → close (toggle)
+    const existing = document.getElementById("kta-legend-editor-modal");
+    if (existing) { existing.remove(); if (opts.onClose) opts.onClose(); return; }
+
+    function _esc(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    const modal = document.createElement("div");
+    modal.id = "kta-legend-editor-modal";
+    modal.className = "kta-readme-modal-overlay";
+    modal.style.zIndex = "100050";  // au-dessus de la modale Légende (qui est à 99999)
+    modal.innerHTML =
+      '<div class="kta-readme-modal-boite" style="width:auto; max-width:560px; height:auto; max-height:90vh; padding:0; overflow:hidden; display:flex; flex-direction:column;">' +
+        '<div class="kta-readme-modal-header" style="padding:14px 16px;">' +
+          '<span class="kta-readme-modal-titre">✏️ Personnaliser la légende</span>' +
+          '<button class="kta-panneau-close" id="kta-legend-editor-close" type="button">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps" id="kta-legend-editor-body" style="padding:14px 16px; overflow-y:auto; flex:1 1 auto;">' +
+          '<p style="font-size:12px; color:#8892a4; margin:0 0 12px 0; line-height:1.5;">' +
+            'Renomme les libellés, masque les entrées que tu n\'utilises pas, ' +
+            'ou ajoute des entrées custom. Les modifications sont sauvegardées ' +
+            'automatiquement dans ta session.' +
+          '</p>' +
+          '<div id="kta-legend-editor-list"></div>' +
+        '</div>' +
+        '<div style="padding:12px 16px; border-top:1px solid rgba(255,255,255,0.08); display:flex; gap:8px; flex-wrap:wrap; justify-content:space-between;">' +
+          '<div style="display:flex; gap:8px;">' +
+            '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-add">' +
+              '➕ Ajouter une entrée' +
+            '</button>' +
+            '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-legend-editor-reset" title="Restaure les libellés défaut">' +
+              '🔄 Reset session' +
+            '</button>' +
+          '</div>' +
+          '<button class="kta-btn kta-btn-primary kta-btn-small" type="button" id="kta-legend-editor-done">' +
+            '✅ Terminer' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(modal);
+
+    function _sourceBadge(source) {
+      if (source === "session") return '<span class="kta-legend-src kta-legend-src-session" title="Override de votre session">✏️</span>';
+      if (source === "plan")    return '<span class="kta-legend-src kta-legend-src-plan"    title="Défini par le plan">📋</span>';
+      return                          '<span class="kta-legend-src kta-legend-src-default" title="Libellé défaut MKM">·</span>';
+    }
+
+    function _renderEntryRow(e, isCustomEntry) {
+      // Pour les icones standard, essaie de résoudre l'iconUrl via _iconePourTag
+      // (helper global d'exporter.js — peut être absent si l'utilisateur a
+      // ouvert cet éditeur sans avoir d'abord chargé exporter.js).
+      let iconUrl = e.iconUrl;
+      if (!iconUrl && e.category === "icones" && typeof window._iconePourTag === "function") {
+        try { iconUrl = window._iconePourTag(e.key); } catch(err) { iconUrl = null; }
+      } else if (!iconUrl && e.category === "icones") {
+        // Fallback : essaie PLAN_CONFIG.icons puis window._iconMap directement
+        const cfg = window.PLAN_CONFIG;
+        if (cfg && cfg.icons && cfg.icons[e.key]) iconUrl = cfg.icons[e.key];
+        else if (window._iconMap && window._iconMap[e.key]) {
+          const iobj = window._iconMap[e.key];
+          iconUrl = iobj._kta_iconUrl || (iobj.options && iobj.options.iconUrl) || null;
+        }
+      }
+
+      let swatch = '';
+      if (iconUrl) {
+        swatch = '<img src="' + _esc(iconUrl) + '" alt="" style="width:16px;height:16px;object-fit:contain;flex:0 0 16px;">';
+      } else if (e.lineColor) {
+        swatch = '<span style="display:inline-block;width:16px;height:3px;background:' + _esc(e.lineColor) + ';flex:0 0 16px;border-radius:1px;"></span>';
+      } else if (e.fillColor) {
+        const border = e.borderColor ? ('border:1px solid ' + _esc(e.borderColor) + ';') : '';
+        swatch = '<span style="display:inline-block;width:14px;height:14px;background:' + _esc(e.fillColor) + ';' + border + 'flex:0 0 14px;border-radius:2px;"></span>';
+      } else {
+        swatch = '<span style="display:inline-block;width:14px;height:14px;flex:0 0 14px;"></span>';
+      }
+
+      const dataAttrs = isCustomEntry
+        ? 'data-custom-id="' + _esc(e.id) + '"'
+        : 'data-cat="' + _esc(e.category) + '" data-key="' + _esc(e.key) + '"';
+
+      const placeholder = isCustomEntry ? _esc(e.label) : _esc(e.defaultLabel);
+      const value = (e.label === e.defaultLabel && !isCustomEntry) ? "" : _esc(e.label);
+
+      const btnRm = isCustomEntry
+        ? '<button type="button" class="kta-legend-rm" title="Supprimer cette entrée custom" ' + dataAttrs + '>🗑️</button>'
+        : '';
+
+      return '<div class="kta-legend-row" ' + dataAttrs + '>' +
+               '<label class="kta-legend-vis" title="Afficher cette entrée dans la légende">' +
+                 '<input type="checkbox" class="kta-legend-vis-cb" ' +
+                   (e.visible ? "checked" : "") + ' ' + dataAttrs + '>' +
+               '</label>' +
+               swatch +
+               '<input type="text" class="kta-legend-label" placeholder="' + placeholder + '" ' +
+                 'value="' + value + '" ' + dataAttrs + '>' +
+               _sourceBadge(e.source) +
+               btnRm +
+             '</div>';
+    }
+
+    function _render() {
+      const cont = document.getElementById("kta-legend-editor-list");
+      if (!cont) return;
+      let html = "";
+      CATEGORIES.forEach(function(cat) {
+        const title = categoryTitle(cat);
+        const entries = listEntries(cat);
+        const customs = listCustomEntries(cat);
+        const isIcones = (cat === "icones");
+        const sectionOpen = isIcones ? "" : "open";
+        html += '<details class="kta-legend-cat" ' + sectionOpen + '>' +
+                  '<summary>' + _esc(title) +
+                    ' <span class="kta-legend-count">(' + (entries.length + customs.length) + ')</span>' +
+                  '</summary>' +
+                  '<div class="kta-legend-cat-body">';
+        entries.forEach(function(e) { html += _renderEntryRow(e, false); });
+        customs.forEach(function(e) { html += _renderEntryRow(e, true); });
+        html += '</div></details>';
+      });
+      cont.innerHTML = html;
+    }
+
+    _render();
+
+    function _applyFromUI(target) {
+      const cat = target.getAttribute("data-cat");
+      const key = target.getAttribute("data-key");
+      const customId = target.getAttribute("data-custom-id");
+
+      if (target.classList.contains("kta-legend-vis-cb")) {
+        if (customId) setCustomEntryVisibility(customId, target.checked);
+        else if (cat && key) setSessionVisibility(cat, key, target.checked);
+      } else if (target.classList.contains("kta-legend-label")) {
+        if (customId) updateCustomEntry(customId, { label: target.value });
+        else if (cat && key) setSessionLabel(cat, key, target.value);
+      }
+      if (opts.onChange) opts.onChange();
+    }
+
+    const body = document.getElementById("kta-legend-editor-list");
+    if (body) {
+      body.addEventListener("change", function(e) {
+        if (e.target.matches(".kta-legend-vis-cb")) _applyFromUI(e.target);
+      });
+      body.addEventListener("input", function(e) {
+        if (e.target.matches(".kta-legend-label")) _applyFromUI(e.target);
+      });
+      body.addEventListener("click", function(e) {
+        if (e.target.matches(".kta-legend-rm")) {
+          const id = e.target.getAttribute("data-custom-id");
+          if (id) {
+            removeCustomEntry(id);
+            _render();
+            if (opts.onChange) opts.onChange();
+          }
+        }
+      });
+    }
+
+    document.getElementById("kta-legend-editor-add").addEventListener("click", function() {
+      _ouvrirAddDialog(function() {
+        _render();
+        if (opts.onChange) opts.onChange();
+      });
+    });
+
+    document.getElementById("kta-legend-editor-reset").addEventListener("click", function() {
+      const ok = window.confirm(
+        "Effacer tous vos overrides de session sur la légende ?\n\n" +
+        "(les libellés défaut du plan reviennent ; ce qui est défini dans " +
+        "le plan-config reste actif)"
+      );
+      if (!ok) return;
+      resetSession();
+      _render();
+      if (opts.onChange) opts.onChange();
+    });
+
+    function fermer() {
+      try { modal.remove(); } catch(e) {}
+      if (opts.onClose) opts.onClose();
+    }
+    document.getElementById("kta-legend-editor-close").addEventListener("click", fermer);
+    document.getElementById("kta-legend-editor-done").addEventListener("click", fermer);
+    modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+  }
+
+  // Mini-modale « Ajouter une entrée custom » — utilisée par ouvrirEditeur.
+  // Reprend la même structure que la version inline d'exporter.js mais en
+  // version standalone (= peut être appelée hors contexte Export PNG).
+  function _ouvrirAddDialog(onAdded) {
+    const wrap = document.createElement("div");
+    wrap.className = "kta-readme-modal-overlay";
+    wrap.style.zIndex = "100100";  // au-dessus de l'éditeur (100050)
+    wrap.innerHTML =
+      '<div class="kta-readme-modal-boite" style="width:auto; max-width:420px; height:auto; max-height:90vh; padding:20px; overflow-y:auto;">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; gap:8px;">' +
+          '<h3 style="margin:0; font-size:16px; color:#e8eaf0;">➕ Nouvelle entrée légende</h3>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" type="button" id="kta-lc-add-close" style="padding:2px 8px;">✕</button>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;">' +
+          '<label class="kta-cfg-label">Catégorie</label>' +
+          '<select class="kta-cfg-input" id="kta-lc-add-cat">' +
+            '<option value="traces">🛣️ Tracés</option>' +
+            '<option value="zones">⬛ Zones</option>' +
+            '<option value="structures">🏛️ Structures</option>' +
+            '<option value="icones">🏷️ Icônes (URL image)</option>' +
+          '</select>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;">' +
+          '<label class="kta-cfg-label">Libellé</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-label" type="text" placeholder="Ex : Pilier ancien">' +
+        '</div>' +
+        '<div style="margin-bottom:10px;" id="kta-lc-add-line-wrap">' +
+          '<label class="kta-cfg-label">Couleur de trait (ligne)</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-line" type="color" value="#00ff00" style="height:32px; padding:2px;">' +
+          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
+            '<input type="checkbox" id="kta-lc-add-line-on" checked>' +
+            '<span>Activer le trait</span>' +
+          '</label>' +
+        '</div>' +
+        '<div style="margin-bottom:10px;" id="kta-lc-add-fill-wrap">' +
+          '<label class="kta-cfg-label">Couleur de remplissage</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-fill" type="color" value="#3aa9e8" style="height:32px; padding:2px;">' +
+          '<label class="kta-export-cb-row" style="margin-top:4px;">' +
+            '<input type="checkbox" id="kta-lc-add-fill-on">' +
+            '<span>Activer le remplissage</span>' +
+          '</label>' +
+        '</div>' +
+        '<div style="margin-bottom:10px; display:none;" id="kta-lc-add-icon-wrap">' +
+          '<label class="kta-cfg-label">URL de l\'icône (.png / .svg / data:)</label>' +
+          '<input class="kta-cfg-input" id="kta-lc-add-icon" type="text" placeholder="https://... ou data:image/...">' +
+        '</div>' +
+        '<div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">' +
+          '<button class="kta-btn kta-btn-ghost"   type="button" id="kta-lc-add-cancel">Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" type="button" id="kta-lc-add-ok">✅ Ajouter</button>' +
+        '</div>' +
+      '</div>';
+
+    document.body.appendChild(wrap);
+
+    function fermerAdd() { try { wrap.remove(); } catch(e) {} }
+
+    document.getElementById("kta-lc-add-close").addEventListener("click", fermerAdd);
+    document.getElementById("kta-lc-add-cancel").addEventListener("click", fermerAdd);
+    wrap.addEventListener("click", function(e) { if (e.target === wrap) fermerAdd(); });
+
+    const catSel = document.getElementById("kta-lc-add-cat");
+    const lineWrap = document.getElementById("kta-lc-add-line-wrap");
+    const fillWrap = document.getElementById("kta-lc-add-fill-wrap");
+    const iconWrap = document.getElementById("kta-lc-add-icon-wrap");
+
+    function _majChamps() {
+      const cat = catSel.value;
+      if (cat === "icones") {
+        lineWrap.style.display = "none";
+        fillWrap.style.display = "none";
+        iconWrap.style.display = "block";
+      } else {
+        iconWrap.style.display = "none";
+        if (cat === "traces") {
+          lineWrap.style.display = "block";
+          fillWrap.style.display = "none";
+        } else if (cat === "zones") {
+          lineWrap.style.display = "none";
+          fillWrap.style.display = "block";
+          document.getElementById("kta-lc-add-fill-on").checked = true;
+        } else {
+          lineWrap.style.display = "block";
+          fillWrap.style.display = "block";
+        }
+      }
+    }
+    catSel.addEventListener("change", _majChamps);
+    _majChamps();
+
+    document.getElementById("kta-lc-add-ok").addEventListener("click", function() {
+      const cat   = catSel.value;
+      const label = (document.getElementById("kta-lc-add-label").value || "").trim();
+      if (!label) { alert("Donne un libellé à l'entrée."); return; }
+      const entry = { category: cat, label: label };
+      if (cat === "icones") {
+        const url = (document.getElementById("kta-lc-add-icon").value || "").trim();
+        if (!url) { alert("URL d'icône requise pour cette catégorie."); return; }
+        entry.iconUrl = url;
+      } else {
+        const lineOn = document.getElementById("kta-lc-add-line-on").checked;
+        const fillOn = document.getElementById("kta-lc-add-fill-on").checked;
+        if (lineOn) entry.lineColor = document.getElementById("kta-lc-add-line").value;
+        if (fillOn) {
+          entry.fillColor = document.getElementById("kta-lc-add-fill").value;
+          if (cat === "zones" && !lineOn) entry.borderColor = entry.fillColor;
+        }
+        if (!entry.lineColor && !entry.fillColor) {
+          alert("Active au moins une couleur (trait ou remplissage).");
+          return;
+        }
+      }
+      addCustomEntry(entry);
+      fermerAdd();
+      if (typeof onAdded === "function") onAdded();
+    });
+  }
+
+  // ─────────────────────────────────────────────
   // API publique
   // ─────────────────────────────────────────────
   return {
@@ -415,6 +739,11 @@ window.LegendCustomization = (function() {
 
     // UI helpers
     categoryTitle:         categoryTitle,
-    listCategories:        listCategories
+    listCategories:        listCategories,
+
+    // Éditeur standalone (modale dédiée — utilisée depuis la fenêtre
+    // Légende en mode carte, mais réutilisable de n'importe quel endroit
+    // de l'UI). opts = { onChange, onClose }
+    ouvrirEditeur:         ouvrirEditeur
   };
 })();
