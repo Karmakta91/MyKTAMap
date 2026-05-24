@@ -1580,11 +1580,36 @@
         badgeEl.textContent = "—";
         return;
       }
-      window.SessionBackups.listAll().then(function(arr) {
-        badgeEl.textContent = String(arr.length);
+      window.SessionBackups.listAll().then(function(arrAll) {
+        // 🐛 v1.16.0-fix (KARMA "dans la liste des snap, je dois voir que
+        // la liste des snap de ce plan, pas les autres") : filtre sur
+        // window._currentLoadedPlanId. Les snapshots d'autres plans restent
+        // en IDB (utiles pour le retour à un autre plan) mais ne sont pas
+        // affichés dans la liste de CE plan.
+        const currentPlanId = window._currentLoadedPlanId || null;
+        const arr = arrAll.filter(function(b) {
+          // Si le snapshot n'a pas de planId (cas legacy ou session vide),
+          // on l'affiche quand même — il pourrait correspondre. Sinon on
+          // exige une correspondance stricte.
+          if (!b.planId) return true;
+          if (!currentPlanId) return true;  // pas de plan chargé → tout afficher
+          return b.planId === currentPlanId;
+        });
+        // Badge : compteur de CE plan + en sous-info, total tous plans
+        // confondus pour que l'user sache que des snapshots d'autres plans
+        // existent ailleurs.
+        const otherPlans = arrAll.length - arr.length;
+        if (otherPlans > 0) {
+          badgeEl.innerHTML = String(arr.length) +
+            ' <span style="opacity:0.55; font-weight:400; font-size:0.85em;">' +
+            '(+' + otherPlans + ' autres plans)</span>';
+        } else {
+          badgeEl.textContent = String(arr.length);
+        }
         if (arr.length === 0) {
+          const planSuffix = currentPlanId ? " pour ce plan" : "";
           listEl.innerHTML = '<div style="font-size:12px; color:#8892a4; font-style:italic;">' +
-                               'Aucun snapshot pour le moment. Le 1<sup>er</sup> sera créé sous peu (auto 5 min).' +
+                               'Aucun snapshot' + planSuffix + ' pour le moment. Le 1<sup>er</sup> sera créé sous peu (auto 5 min).' +
                              '</div>';
           return;
         }
@@ -1621,12 +1646,14 @@
         // layout horizontal serré (padding 4px, items en ligne).
         let h = '<ul class="kta-refonte-session-list kta-backups-list">';
         arr.forEach(function(b) {
-          const planLbl = b.planName || b.planId || "(plan inconnu)";
+          // 🐛 v1.16.0-fix : on n'affiche plus le planName dans le meta
+          // puisque la liste est filtrée sur le plan courant (= tous les
+          // snapshots affichés sont du même plan, l'info serait redondante).
           h += '<li>' +
                  '<span class="kta-backup-info">' +
                    '<strong>' + _fmtDate(b.createdAt) + '</strong>' +
                    ' <span class="kta-refonte-session-meta">' +
-                     _esc(planLbl) + ' · ' + _countContent(b.payload) +
+                     _countContent(b.payload) +
                      ' · <em style="opacity:0.7;">' + _esc(b.reason || "auto") + '</em>' +
                    '</span>' +
                  '</span>' +
