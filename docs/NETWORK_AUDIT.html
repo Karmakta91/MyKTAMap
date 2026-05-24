@@ -174,10 +174,25 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.17.0</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.18.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.18.0 (Roundtrip KMZ de la légende plan-level)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucun nouveau fichier</strong>. Suite directe v1.17.0 :
+    la <code>PLAN_CONFIG.customLegend</code> éditable depuis le Générateur voyage désormais avec le
+    KMZ exporté via un fichier annexe <code>myktamap-extras.json</code> embarqué dans le ZIP KMZ
+    (à côté de <code>doc.kml</code>). Les apps tierces (Google Earth, OsmAnd, Avenza) ignorent ce
+    fichier inconnu sans broncher. Au ré-import KMZ → MyKTAMap, <code>kmzImport.js</code> détecte
+    le fichier, parse son <code>customLegend</code> et l'injecte dans
+    <code>plan-config.json &gt; plan.customLegend</code> du ZIP MyKTAMap reconstruit. Aucun fetch
+    externe — tout est local (génération + parse via <code>Blob.text()</code> + <code>JSON.parse</code>).
+    Le SW cache uniquement un bump du <code>CACHE_NAME</code> (<code>myktamap-cache-v1.18.0</code>),
+    aucun nouveau fichier. <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -620,6 +635,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.18.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>Roundtrip KMZ de la légende plan-level</strong> — <strong>aucune nouvelle surface
+          réseau, aucun nouveau fichier</strong>. Suite directe v1.17.0 : la
+          <code>PLAN_CONFIG.customLegend</code> voyage avec le KMZ exporté via un fichier annexe
+          <code>myktamap-extras.json</code> dans le ZIP KMZ. Ignoré par les apps tierces, parsé par
+          <code>kmzImport.js</code> au ré-import → injecté dans <code>planConfig.plan.customLegend</code>
+          du ZIP MyKTAMap reconstruit. Modifs internes à 3 modules (kmzExport, sessionExporter,
+          kmzImport, ~70 lignes total). Bump SW <code>CACHE_NAME</code> uniquement.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.17.0</td>
         <td>24/05/2026</td>

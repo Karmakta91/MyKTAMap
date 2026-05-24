@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.17.0` (24/05/2026)
+**📦 Version courante** : `v1.18.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.17.0](#-derniere-release--v1170)
+1. [🚀 Dernière release — v1.18.0](#-derniere-release--v1180)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,9 +40,15 @@
 
 ---
 
-## 🚀 Dernière release — v1.17.0
+## 🚀 Dernière release — v1.18.0
 
-📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.16.x) : **Générateur accessible**. Nouveau mode **Simple** dans la modale 📦 Créer / Modifier un plan — l'utilisateur démarre un nouveau plan en 30 secondes (image + nom + version + V2/M-LVL → ZIP prêt à charger), sans avoir à toucher aux calques, tracking, icônes custom, etc. Le mode **Avancé** (= comportement v1.16.x) reste disponible via un switcher sticky en haut de la modale. **Nouvelle source de vérité plan-level legend** : section dédiée « 🏷️ Légende du plan » dans le mode Avancé qui embed les renommages / masquages / customs dans `plan-config.json > plan.customLegend` (= cascade niveau plan, partagée à tous les utilisateurs du plan). Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.17.x) : **Roundtrip KMZ de la légende plan-level**. La personnalisation embarquée dans un plan (via la nouvelle section « 🏷️ Légende du plan » du Générateur v1.17.0) voyage désormais avec le KMZ exporté — au ré-import dans une autre instance MyKTAMap, elle est restaurée automatiquement. Embed dans un fichier annexe `myktamap-extras.json` du KMZ ZIP (ignoré par Google Earth, OsmAnd, Avenza). Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.17.0
+
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.16.x) : **Générateur accessible**. Nouveau mode **Simple** dans la modale 📦 Créer / Modifier un plan (image + nom + version + V2/M-LVL → ZIP prêt à charger), mode **Avancé** = comportement v1.16.x complet. Nouvelle source de vérité **`plan.customLegend`** (cascade niveau plan, éditable via section dédiée en mode Avancé).
 
 ---
 
@@ -862,7 +868,70 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-17-0" open>
+<details id="v1-18-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.18.0 : Roundtrip KMZ de la légende plan-level</strong></summary>
+
+Release MINOR (bump Y : 1.17.x → 1.18.0). La nouvelle source de vérité `plan.customLegend` introduite en v1.17.0 voyage désormais avec le format de partage KMZ.
+
+### 🎯 Problème résolu
+
+Avant v1.18.0, un utilisateur qui personnalisait la légende d'un plan via le Générateur (renommer « Eau » → « Lac du fond », masquer un type, ajouter des customs dessinables) → embed dans `plan-config.json > plan.customLegend` du ZIP → partage du ZIP à un autre user OK. Mais s'il exportait en KMZ pour la portabilité cross-app (Google Earth, OsmAnd, autre instance MyKTAMap), la légende custom était **perdue** au passage. Au ré-import KMZ → MyKTAMap (qui régénère un ZIP MyKTAMap reconstruit), la légende repartait à zéro (cascade défaut MKM).
+
+### 📦 Embed côté export (`kmzExport.js`)
+
+Nouveau champ `opts.planCustomLegend` accepté par `genererKmz`. Si présent et non-null, embed dans un fichier annexe `myktamap-extras.json` à côté de `doc.kml` dans le ZIP KMZ :
+
+```json
+{
+  "type":         "myktamap-kmz-extras",
+  "version":      1,
+  "exportedAt":   "2026-05-24T22:00:00.000Z",
+  "customLegend": { "schemaVersion": 1, "labels": {...}, "hidden": {...}, "customEntries": [...] }
+}
+```
+
+**Format ouvert** : le wrapper `{ type, version, exportedAt, customLegend }` permet d'ajouter d'autres extras MyKTAMap plus tard (favoris partagés, notes globales, etc.) sans bumper la version du format. Les apps tierces (Google Earth, OsmAnd, Avenza) ignorent les fichiers inconnus du ZIP KMZ sans broncher — le KMZ reste 100 % standard pour elles.
+
+### 🎛️ UI côté export (`sessionExporter.js`)
+
+Nouvelle checkbox **« 🏷️ Légende personnalisée du plan »** dans la modale 💾 Enregistrer session > onglet 🌍 KMZ > section 📦 Contenu à inclure. Comportement :
+
+- Plan AVEC customLegend (cascade plan non-vide) → checkbox cochée par défaut, compteur `(1)`
+- Plan SANS customLegend (cascade défaut MKM) → checkbox décochée + grisée à 0, pas d'incident
+
+Lecture de `window.PLAN_CONFIG.customLegend` au render. Passage à `genererKmz` via `opts.planCustomLegend` calculé conditionnellement (skip si checkbox décochée).
+
+### 📥 Parse côté import (`kmzImport.js`)
+
+Détection de `myktamap-extras.json` dans les assets extraits par `extraireKmz` (capture déjà tous les fichiers non-KML sans filtre — aucune modif nécessaire à l'extraction). Matching tolérant à la casse + au chemin :
+
+```js
+const extrasKey = Object.keys(opts.assets).find(function(p) {
+  return /(?:^|\/)myktamap-extras\.json$/i.test(p);
+});
+```
+
+Si trouvé → parse JSON → injection dans `planConfig.plan.customLegend` du ZIP MyKTAMap reconstruit. La cascade `LegendCustomization` l'appliquera automatiquement au boot du plan importé via `loadPlanState()` (cf §58.2 CLAUDE.md).
+
+**Skip silencieux** dans 3 cas :
+- Fichier absent (KMZ d'une app tierce, ou KMZ MyKTAMap < v1.18.0) → comportement v1.17.x préservé
+- Fichier corrompu (JSON parse error) → warn console + skip
+- Champ `customLegend` absent ou non-objet dans le JSON → skip
+
+### 📂 Sources de vérité v1.18.0
+
+- `version.json` → `"v1.18.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.18.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.18.0"`
+- Aucun nouveau fichier — modifs internes à `js/kmzExport.js` (~15 lignes), `js/sessionExporter.js` (~30 lignes : UI + plumbing), `js/kmzImport.js` (~25 lignes)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Le fichier `myktamap-extras.json` est embarqué localement dans le KMZ généré (= fichier 100 % local) et parsé localement à l'import (`extraireKmz` puis `JSON.parse` sur le contenu blob). Aucun fetch externe. **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+</details>
+
+<details id="v1-17-0">
 <summary><strong>🗓️ 24/05/2026 — 🚀 v1.17.0 : Générateur accessible — Mode Simple + Légende plan-level</strong></summary>
 
 Release MINOR (bump Y : 1.16.x → 1.17.0). Refonte UX du Générateur 📦 Créer / Modifier un plan : ajout d'un mode **Simple** focalisé débutants + nouvelle source de vérité **`plan.customLegend`** pour partager la personnalisation de légende avec tous les utilisateurs d'un plan.

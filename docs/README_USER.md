@@ -4,6 +4,24 @@
 
 ---
 
+## 🆕 Nouveautés v1.18.0 (24/05/2026) — La légende voyage avec ton KMZ
+
+> Suite directe de v1.17.0. Quand tu personnalises la légende d'un plan via le Générateur, ces personnalisations restent désormais avec ton plan même quand tu l'exportes en KMZ pour le partager à un ami qui utilise une autre instance de MyKTAMap.
+
+### 🌍 Roundtrip KMZ ↔ MyKTAMap
+
+Tu as personnalisé ta légende dans le Générateur (renommé « Eau » → « Lac du fond », masqué un type, ajouté un type custom dessinable) ? Maintenant quand tu fais 💾 Enregistrer session → 🌍 KMZ, ta personnalisation suit le plan.
+
+**Côté export** : nouvelle case **« 🏷️ Légende personnalisée du plan »** dans le panneau « 📦 Contenu à inclure » de l'export KMZ. Cochée par défaut si ton plan a une légende personnalisée. Décocher si tu veux exporter une version « neutre » (= cascade défaut MKM pour les destinataires).
+
+**Côté import** : quand un ami importe ton KMZ via 🏗️ Générer un plan → drop-zone, et qu'il choisit l'option d'import KMZ, l'app détecte automatiquement la légende personnalisée et la restaure dans le `plan-config.json` du nouveau plan MyKTAMap qu'il crée. **Aucune action de sa part**.
+
+### 🛡️ Compatibilité externe préservée
+
+Le KMZ généré reste **100 % compatible** avec les apps tierces (Google Earth, OsmAnd, Avenza, ArcGIS Earth, Locus). Le fichier `myktamap-extras.json` ajouté est ignoré silencieusement par ces apps (elles ne lisent que le `doc.kml`). Tu peux donc partager tes plans avec n'importe qui sans te soucier du destinataire.
+
+---
+
 ## 🆕 Nouveautés v1.17.0 (24/05/2026) — Générateur accessible
 
 > Le Générateur 📦 Créer / Modifier un plan a désormais 2 modes : **Simple** (par défaut pour les nouveaux plans) et **Avancé** (= comportement précédent). Plus une nouvelle façon de **partager une légende personnalisée** avec tous les utilisateurs d'un plan.

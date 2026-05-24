@@ -4286,6 +4286,138 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 
 ---
 
+### 59. v1.18.0 — Roundtrip KMZ de la légende plan-level (depuis v1.18.0)
+
+Suite directe de §58 (v1.17.0). La nouvelle source de vérité `PLAN_CONFIG.customLegend` (cascade niveau plan) voyage désormais avec le format KMZ exporté, pour permettre le partage cross-app de la personnalisation de légende d'un plan.
+
+#### 59.1 Pattern d'embed : fichier annexe au doc.kml
+
+Décision design (validée KARMA) : **fichier JSON séparé** dans le ZIP KMZ, pas un `<ExtendedData>` dans le `doc.kml`. Avantages :
+
+- KML reste 100 % standard, lisible par toute app sans surcharge XML
+- Plus simple à parser (1 `JSON.parse` vs un parcours DOM avec namespace custom)
+- Extensible : on peut ajouter d'autres « extras » MyKTAMap dans le même fichier plus tard sans bumper la version du format
+
+Pattern parallèle aux icônes embed (`files/icons/<tag>.png` côté export, regex `(?:^|\/)icons\/...` côté import) : on suit la même philosophie « fichier annexe ignoré par les apps tierces ».
+
+#### 59.2 Format `myktamap-extras.json`
+
+```json
+{
+  "type":         "myktamap-kmz-extras",
+  "version":      1,
+  "exportedAt":   "2026-05-24T22:00:00.000Z",
+  "customLegend": {
+    "schemaVersion":  1,
+    "labels":         { "icones.salle": "Salle du fond", ... },
+    "hidden":         { "zones.remblais": true, ... },
+    "customEntries":  [ { id, label, category, geometry, lineColor, ... } ]
+  }
+}
+```
+
+**Wrapper extensible** : le top-level `{ type, version, exportedAt }` permet d'ajouter d'autres champs MyKTAMap futurs (`favoris`, `notes`, `customIcons`, etc.) sans changer la version 1 du format. Le `customLegend` est strictement le retour de `LegendCustomization.getSessionState()`.
+
+#### 59.3 Export (`kmzExport.js > genererKmz`)
+
+Nouveau champ `opts.planCustomLegend`. Si présent et de type `"object"`, embed dans le ZIP juste après `zip.file("doc.kml", kml)` :
+
+```js
+if (opts.planCustomLegend && typeof opts.planCustomLegend === "object") {
+  const extras = {
+    type:          "myktamap-kmz-extras",
+    version:       1,
+    exportedAt:    new Date().toISOString(),
+    customLegend:  opts.planCustomLegend
+  };
+  zip.file("myktamap-extras.json", JSON.stringify(extras, null, 2));
+}
+```
+
+#### 59.4 UI Export (`sessionExporter.js > _kmzRenderContenu` + `_exportKmz`)
+
+Nouvelle checkbox via helper `row(id, label, count, checked)` :
+
+```js
+row("kmz_inc_legend",
+    "🏷️ Légende personnalisée du plan",
+    hasCustomLegend ? 1 : 0,
+    hasCustomLegend)
+```
+
+Détection `hasCustomLegend` via IIFE qui check `labels/hidden/customEntries` non-vides dans `window.PLAN_CONFIG.customLegend`.
+
+Passage à `genererKmz` via opts :
+
+```js
+planCustomLegend: (function() {
+  if (!document.getElementById("kmz_inc_legend")?.checked) return null;
+  const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
+  if (!cl || typeof cl !== "object") return null;
+  return cl;
+})()
+```
+
+#### 59.5 Import (`kmzImport.js > genererZipMyktamap`)
+
+`extraireKmz` (ligne 82) capture **déjà** tous les fichiers non-KML dans `assets` sans filtre → `myktamap-extras.json` est automatiquement disponible dans `opts.assets`, aucune modif à l'extraction.
+
+Dans `genererZipMyktamap`, juste après les flags `multiLevel`/`tiledV2` (vers ligne 600), détection + parse + injection :
+
+```js
+const extrasKey = Object.keys(opts.assets).find(function(p) {
+  return /(?:^|\/)myktamap-extras\.json$/i.test(p);
+});
+if (extrasKey) {
+  try {
+    const txt = await opts.assets[extrasKey].text();
+    const extras = JSON.parse(txt);
+    if (extras && extras.customLegend && typeof extras.customLegend === "object") {
+      planConfig.plan.customLegend = extras.customLegend;
+    }
+  } catch(e) {
+    console.warn("[KmzImport] ⚠️ Échec parse myktamap-extras.json (ignoré) :", e);
+  }
+}
+```
+
+**Matching tolérant** : regex `(?:^|\/)myktamap-extras\.json$/i` capture le fichier qu'il soit à la racine du ZIP ou dans un sous-dossier, et insensible à la casse (certains zip-writers normalisent les noms).
+
+#### 59.6 Cascade après import
+
+Le ZIP MyKTAMap reconstruit contient désormais `plan-config.json > plan.customLegend`. Au boot du plan importé, `js/main.js > initApp` appelle `LegendCustomization.loadPlanState()` qui lit `window.PLAN_CONFIG.customLegend` et le normalise en `_planState`. La cascade `session > plan > default` applique alors automatiquement les overrides à tous les `getLabel` / `isVisible` (cf §56.2 et CLAUDE.md §LegendCustomization).
+
+**Pas de hook spécifique à ajouter** : la cascade est déjà en place depuis v1.16.0, on ne fait que rendre `plan.customLegend` populated automatiquement après un round-trip KMZ.
+
+#### 59.7 Compat externe + skip silencieux
+
+✅ **Apps tierces compatibles** (Google Earth, OsmAnd, Avenza, ArcGIS Earth, Locus, Strava) : ignorent les fichiers inconnus du ZIP KMZ sans broncher. Le `doc.kml` reste valide standard. Aucun warning, aucune erreur côté lecteur tiers.
+
+✅ **KMZ MyKTAMap < v1.18.0** : `extrasKey` est `undefined` → skip silencieux. Le ré-import fonctionne exactement comme avant (= légende défaut MKM côté re-importeur).
+
+✅ **Fichier corrompu** : `JSON.parse` throw dans le `try` → catch + warn console + skip. Le reste de l'import KMZ continue normalement (= le ZIP reconstruit est utilisable, juste sans customLegend).
+
+✅ **Champ `customLegend` absent ou non-objet** : skip silencieux. Évite d'injecter une valeur garbage dans `planConfig.plan.customLegend`.
+
+#### 59.8 À NE PAS faire
+
+- ❌ **Ne pas filtrer les fichiers dans `extraireKmz`** sous prétexte de "ne capturer que les images" — cela casserait notre récupération de `myktamap-extras.json` (et toute future feature qui ajouterait d'autres extras).
+- ❌ **Ne pas mettre la checkbox UI dans la modale Export PNG** — c'est spécifique au format KMZ (= partage cross-app). Le PNG export n'a pas de notion de plan-config.
+- ❌ **Ne pas tenter d'embarquer la session-level customLegend** (cascade session) — décision design KARMA validée : seul le niveau plan voyage avec le KMZ. La session reste éphémère par définition, pas pertinente pour un destinataire.
+- ❌ **Ne pas écraser un `plan.customLegend` existant** dans `planConfig.plan` sans warn — pour l'instant on écrase en aveugle car `genererZipMyktamap` part d'un planConfig neuf. Si plus tard on supporte un mode "merge KMZ avec un plan existant", revoir cette logique.
+
+#### 59.9 Pour étendre (futurs extras)
+
+**Pour ajouter un nouveau champ "extra" embarqué dans le KMZ** (ex: `favoris`, `customIcons`, `notes`) :
+
+1. **Export** : ajouter `opts.<nom>` dans `genererKmz`, l'inclure dans l'objet `extras` du même `myktamap-extras.json` (pas créer un nouveau fichier — on garde **un seul** fichier extras pour limiter la surface).
+2. **UI** : ajouter une checkbox dans `_kmzRenderContenu` (idem pattern `kmz_inc_legend`), passage conditionnel dans `_exportKmz`.
+3. **Import** : dans le bloc de parse existant de `myktamap-extras.json`, ajouter `if (extras.<nom>) { ... }` qui injecte dans le bon endroit du `planConfig` reconstruit.
+4. **Bump version** : si le nouveau champ change la sémantique du parsing (ex: nouveau schéma incompatible), bumper `version: 2` dans l'extras + lire la version au parse pour gérer les 2 cas. Sinon `version: 1` reste.
+5. **Doc** : update §59.2 (format), CLAUDE.md, README.md, AI_CONTEXT.md.
+
+---
+
 ### 55. GpxImport — Reconversion GPX → ZIP MyKTAMap (depuis v1.15.0)
 
 Module `js/gpxImport.js` (~310 lignes IIFE) → `window.GpxImport = { estGpxMyktamap, extraireGpx, extraireBoundsGps, genererCanvasVierge, ingestParsed, genererZipMyktamap }`.

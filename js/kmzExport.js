@@ -625,6 +625,15 @@
   //   - imageBlob : Blob du plan PNG/JPEG (ou null pour skip GroundOverlay)
   //   - imageFilename : "data/TestMAP.png" (sera mis dans files/<basename>)
   //   - iconsToEmbed : { tag → URL/blob } (résolu par caller via RUNTIME_ASSETS ou _iconMap)
+  //   - planCustomLegend : objet `LegendCustomization.getSessionState()` du
+  //                        niveau plan (cf §58.2 CLAUDE.md). Si présent et
+  //                        non-null, embed dans `myktamap-extras.json`
+  //                        annexe au doc.kml. Les apps tierces (Google Earth,
+  //                        OsmAnd, Avenza) ignorent ce fichier inconnu sans
+  //                        broncher. Au ré-import MyKTAMap, parsé par
+  //                        kmzImport.js > _extraireExtras et injecté dans
+  //                        plan-config.json > plan.customLegend du ZIP
+  //                        reconstruit — la légende voyage avec le plan.
   //
   // Retourne Promise<Blob> du KMZ généré.
   async function genererKmz(opts) {
@@ -669,6 +678,21 @@
     // Generation KML
     const kml = genererKml(Object.assign({}, opts, { imageBaseUrl: imageBaseUrl }));
     zip.file("doc.kml", kml);
+
+    // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
+    // Embed `customLegend` dans un fichier JSON annexe au doc.kml. Les apps
+    // tierces ignorent les fichiers inconnus du ZIP KMZ — c'est strictement
+    // une donnée MyKTAMap. Format ouvert pour ajouter d'autres « extras » plus
+    // tard (favoris partagés, notes globales, etc.) sans bumper la version.
+    if (opts.planCustomLegend && typeof opts.planCustomLegend === "object") {
+      const extras = {
+        type:          "myktamap-kmz-extras",
+        version:       1,
+        exportedAt:    new Date().toISOString(),
+        customLegend:  opts.planCustomLegend
+      };
+      zip.file("myktamap-extras.json", JSON.stringify(extras, null, 2));
+    }
 
     // Generation du KMZ blob
     return zip.generateAsync({

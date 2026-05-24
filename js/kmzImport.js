@@ -600,6 +600,36 @@
     if (tilingManifest)           planConfig.plan.tiledV2    = true;
     if (tilingManifest)           planConfig.tiling          = tilingManifest;
 
+    // 🆕 v1.18.0 — Roundtrip légende plan-level (cf §58.2 CLAUDE.md +
+    // kmzExport.js > genererKmz). Si le KMZ source contient `myktamap-extras.json`
+    // (= généré par une autre instance MyKTAMap v1.18.0+), on extrait son
+    // champ `customLegend` et on l'injecte dans `planConfig.plan.customLegend`
+    // du ZIP MyKTAMap reconstruit. La cascade LegendCustomization > loadPlanState
+    // l'appliquera automatiquement au boot du plan importé. Skip silencieux
+    // si fichier absent (KMZ d'une app tierce, ou KMZ MyKTAMap < v1.18.0).
+    // Tolérant aux variantes de casse / chemin (certains zip-writers ré-archivent
+    // avec normalisation du chemin).
+    if (opts.assets && typeof opts.assets === "object") {
+      const extrasKey = Object.keys(opts.assets).find(function(p) {
+        return /(?:^|\/)myktamap-extras\.json$/i.test(p);
+      });
+      if (extrasKey) {
+        try {
+          const extrasBlob = opts.assets[extrasKey];
+          if (extrasBlob && typeof extrasBlob.text === "function") {
+            const txt = await extrasBlob.text();
+            const extras = JSON.parse(txt);
+            if (extras && extras.customLegend && typeof extras.customLegend === "object") {
+              planConfig.plan.customLegend = extras.customLegend;
+              console.log("[KmzImport] ✅ Légende plan-level restaurée depuis myktamap-extras.json");
+            }
+          }
+        } catch(e) {
+          console.warn("[KmzImport] ⚠️ Échec parse myktamap-extras.json (ignoré) :", e);
+        }
+      }
+    }
+
     // === Restauration des icônes embarquées dans le KMZ source ===
     // Pattern d'embed côté kmzExport.js : zip.folder("files/icons").file(
     // tag + ".png", blob). Donc côté assets on cherche tout ce qui matche

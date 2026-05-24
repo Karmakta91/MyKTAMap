@@ -2495,6 +2495,22 @@
 
         // --- Itineraire actif ---
         row("kmz_inc_iti", "🗺️ Itinéraire actif", rByT.itinerary, rByT.itinerary > 0) +
+
+        // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
+        // Coche par défaut SI le plan a une customLegend. Si le plan est
+        // « nu » (cascade défaut MKM), la case s'affiche grisée à 0 — pas
+        // d'incident, juste rien à embarquer.
+        (function() {
+          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
+          const hasCustomLegend = !!(cl && typeof cl === "object" &&
+            ((cl.labels && Object.keys(cl.labels).length) ||
+             (cl.hidden && (Array.isArray(cl.hidden) ? cl.hidden.length : Object.keys(cl.hidden).length)) ||
+             (Array.isArray(cl.customEntries) && cl.customEntries.length)));
+          return row("kmz_inc_legend",
+                     "🏷️ Légende personnalisée du plan",
+                     hasCustomLegend ? 1 : 0,
+                     hasCustomLegend);
+        })() +
       '</div>';
   }
 
@@ -3021,7 +3037,21 @@
         },
         imageBlob:     imageBlob,
         imageFilename: imageFilename,
-        iconsToEmbed:  iconsToEmbed
+        iconsToEmbed:  iconsToEmbed,
+        // 🆕 v1.18.0 — Légende plan-level (roundtrip MyKTAMap ↔ MyKTAMap).
+        // Embed `PLAN_CONFIG.customLegend` dans un fichier annexe
+        // `myktamap-extras.json` du KMZ ZIP. Lu par kmzImport.js au ré-import
+        // → injecté dans plan-config.json > plan.customLegend du ZIP MyKTAMap
+        // reconstruit. Les apps tierces (Google Earth, OsmAnd) ignorent ce
+        // fichier inconnu sans broncher. Skip si checkbox décochée ou si le
+        // plan courant n'a pas de customLegend (rien à embarquer).
+        planCustomLegend: (function() {
+          const inclLegend = !!document.getElementById("kmz_inc_legend")?.checked;
+          if (!inclLegend) return null;
+          const cl = window.PLAN_CONFIG && window.PLAN_CONFIG.customLegend;
+          if (!cl || typeof cl !== "object") return null;
+          return cl;
+        })()
       });
 
       // Téléchargement
