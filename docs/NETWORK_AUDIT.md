@@ -45,6 +45,42 @@ suite du document t'explique comment.
 
 ---
 
+## 🛡️ Périmètre de cette garantie : `myktamap.fr`
+
+> **⚠️ Cette garantie de sécurité et de non-télémétrie s'applique
+> UNIQUEMENT au domaine officiel `myktamap.fr`** (et à l'environnement
+> de développement `devmap.is-underground.fr`, géré par le même auteur).
+
+Le code source de MyKTAMap est **public** sous licence CC BY-NC-SA 4.0. Il
+peut donc être **copié, forké, miroir ou redéployé** par n'importe qui dans
+le monde. Toute installation tierce — peu importe qu'elle se présente sous
+un autre nom, un autre domaine, ou même qu'elle clame être « MyKTAMap » —
+peut contenir des **modifications dont nous ne sommes pas responsables** :
+
+- du code de tracking ajouté (analytics, fingerprinting)
+- de l'exfiltration discrète de données vers un serveur tiers
+- du code malveillant injecté (vol de données, redirection, etc.)
+- des modifications subtiles de la liste blanche réseau
+
+Nous n'avons **aucun moyen** de vérifier ce qui se passe sur ces
+installations parallèles. Aucune mesure technique ne peut empêcher
+quelqu'un de prendre notre code et de le modifier.
+
+### Comment t'assurer que tu es sur le vrai site ?
+
+1. Vérifie l'URL dans la **barre d'adresse** de ton navigateur
+2. Elle doit commencer par `https://myktamap.fr` ou `https://devmap.is-underground.fr`
+3. Vérifie que le cadenas 🔒 est présent (HTTPS valide, certificat émis par Let's Encrypt)
+4. Si l'URL ne correspond pas, **tout ce qui est écrit dans cette page ne te concerne pas** — c'est une copie tierce sur laquelle nous n'avons aucun contrôle
+
+> *NB : pour les utilisateurs qui veulent self-héberger MyKTAMap (cas
+> légitime — c'est tout l'intérêt d'un code open source), c'est parfaitement
+> autorisé sous la licence CC BY-NC-SA. Mais dans ce cas, **c'est toi qui es
+> responsable** de garantir l'intégrité de ta propre installation à tes
+> utilisateurs.*
+
+---
+
 ## 🏛️ Le modèle technique (en bref)
 
 MyKTAMap est une **Progressive Web App (PWA)** servie comme un site web

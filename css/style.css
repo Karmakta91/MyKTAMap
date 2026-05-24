@@ -9271,6 +9271,43 @@ body.kta-multilevel-active .kta-compass-widget {
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(140, 180, 255, 0.18);
 }
+/* 🆕 v1.20.0-fix1 — Section dédiée "Périmètre myktamap.fr" (clause
+   anti-fork/copie). Encadrement orange/saumon pour signaler une mise
+   en garde importante sans tomber dans le rouge alarmiste. */
+.kta-net-doc-section.kta-net-doc-section-domain {
+  padding: 12px 14px;
+  background: rgba(255, 140, 100, 0.06);
+  border: 1px solid rgba(255, 140, 100, 0.28);
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.kta-net-doc-section.kta-net-doc-section-domain .kta-net-doc-section-titre {
+  color: #ffae80;
+  border-bottom-color: rgba(255, 140, 100, 0.30);
+}
+.kta-net-doc-section.kta-net-doc-section-domain code {
+  background: rgba(255, 140, 100, 0.14);
+  color: #ffae80;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+/* Variants thème clair */
+body.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain,
+html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain {
+  background: rgba(180, 80, 30, 0.08) !important;
+  border-color: rgba(180, 80, 30, 0.35) !important;
+}
+body.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain .kta-net-doc-section-titre,
+html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain .kta-net-doc-section-titre {
+  color: #b45309 !important;
+  border-bottom-color: rgba(180, 80, 30, 0.35) !important;
+}
+body.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain code,
+html.kta-theme-light .kta-net-doc-section.kta-net-doc-section-domain code {
+  background: rgba(180, 80, 30, 0.12) !important;
+  color: #b45309 !important;
+}
 .kta-net-doc-hint {
   font-size: 13px;
   color: #c8d0e0;
