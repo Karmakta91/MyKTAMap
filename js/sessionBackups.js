@@ -241,29 +241,66 @@ window.SessionBackups = (function() {
     }
     const h = _hash(payload);
     if (h === _hashLastSnapshot) {
-      // Aucun changement depuis le dernier snapshot → skip pour ne pas
-      // remplir les 10 slots avec des duplicates.
+      // Aucun changement depuis le dernier snapshot in-memory → skip
+      // pour ne pas remplir les 10 slots avec des duplicates.
       return Promise.resolve(null);
     }
-    const entry = {
-      id:        Date.now(),
-      createdAt: Date.now(),
-      reason:    reason || "auto",
-      planId:    payload.planId   || null,
-      planName:  payload.planName || null,
-      payload:   payload
-    };
-    return _put(entry)
-      .then(function() { return _enforceLimit(); })
-      .then(function() {
+
+    // 🆕 v1.20.0 — Skip aussi si le hash matche le DERNIER SNAPSHOT IDB
+    // du même plan. Cas typique : boot-pre-restore après un reload sans
+    // modif → `_hashLastSnapshot` est null (in-memory reset au load) MAIS
+    // le snapshot IDB le plus récent du même plan a le même hash que la
+    // session restaurée. Économie : 1 boot identique = 0 nouveau slot
+    // FIFO consommé. Sans cette optim, un user qui ouvre/ferme la PWA
+    // 10 fois sans modif voit ses 10 derniers snapshots rotated en
+    // duplicates inutiles.
+    return _getLastSnapshotForPlan(payload.planId).then(function(lastPersisted) {
+      if (lastPersisted && _hash(lastPersisted.payload) === h) {
+        // Identique au dernier persisté du même plan → skip + sync mémoire
         _hashLastSnapshot = h;
-        _emit();
-        return entry;
-      })
-      .catch(function(err) {
-        console.warn("[SessionBackups] snapshot échec :", err);
+        if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+          console.log("[SessionBackups] Skip snapshot (hash identique au dernier IDB du plan)", payload.planId);
+        }
         return null;
-      });
+      }
+      // Vraie modif depuis le dernier snapshot persisté → créer l'entry
+      const entry = {
+        id:        Date.now(),
+        createdAt: Date.now(),
+        reason:    reason || "auto",
+        planId:    payload.planId   || null,
+        planName:  payload.planName || null,
+        payload:   payload
+      };
+      return _put(entry)
+        .then(function() { return _enforceLimit(); })
+        .then(function() {
+          _hashLastSnapshot = h;
+          _emit();
+          return entry;
+        });
+    }).catch(function(err) {
+      console.warn("[SessionBackups] snapshot échec :", err);
+      return null;
+    });
+  }
+
+  // 🆕 v1.20.0 — Récupère le snapshot le plus récent (= id le plus grand)
+  // pour un planId donné. Utilisé par snapshot() pour skip-if-identical.
+  // Retourne `null` si aucun snapshot pour ce plan ou si planId vide.
+  function _getLastSnapshotForPlan(planId) {
+    if (!planId) return Promise.resolve(null);
+    return listAll().then(function(arr) {
+      // listAll() est déjà trié desc par id (cf doc en tête), donc le 1er
+      // matching planId est le plus récent.
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i].planId === planId) return arr[i];
+      }
+      return null;
+    }).catch(function(e) {
+      console.warn("[SessionBackups] _getLastSnapshotForPlan échec :", e);
+      return null;
+    });
   }
 
   // ─────────────────────────────────────────────

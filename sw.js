@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.19.1";
+const CACHE_NAME = "myktamap-cache-v1.20.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -67,8 +67,12 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
-  // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime)
+  // 🆕 v1.20.0 : CrashReports — archive auto des kills mémoire (IDB myktamap_crashes)
+  "./js/crashReports.js",
+  // 🆕 v1.19.0 : MemInspector — topo lisible mémoire (localStorage, IDB, cache, runtime, crashes)
   "./js/memInspector.js",
+  // 🆕 v1.20.0 : StatsGlobales — modale stats agrégées plan complet (session + embedded)
+  "./js/statsGlobales.js",
   "./js/debug.js",
   "./js/perfUltra.js",
   // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag

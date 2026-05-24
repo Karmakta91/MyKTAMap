@@ -1289,6 +1289,18 @@
     const _stats = _calculerStatsAggregees(points, roads, zones, structures, mesure, scale);
     let html = _genererStatsAggregeesHTML(_stats, multiLevel);
 
+    // 🆕 v1.20.0 — CTA vers la modale Stats globales du plan (qui couvre
+    // session + data layers embedded, vs cette modale qui couvre session
+    // uniquement). Pour bien différencier les 2 vues à l'user.
+    html += '<div class="kta-refonte-session-cta-stats-glob">' +
+              '<button type="button" class="kta-btn kta-btn-primary" id="kta-refonte-session-open-stats-glob">' +
+                '📊 Voir les statistiques globales du plan (session + data layers embedded)' +
+              '</button>' +
+              '<div style="font-size:11.5px; color:#8892a4; margin-top:4px; text-align:center; font-style:italic;">' +
+                'Cette modale = SESSION uniquement &middot; Stats globales = SESSION + tous les calques data du plan' +
+              '</div>' +
+            '</div>';
+
     // 📍 Points
     html += '<div class="kta-refonte-session-section">';
     html += '<div class="kta-refonte-session-section-titre">📍 Points ajoutés <span class="kta-refonte-session-badge">' + points.length + '</span></div>';
@@ -1476,6 +1488,35 @@
       html += '</div>';
     }
 
+    // ─── 🆕 v1.20.0 : ⭐ Favoris — Export/Import JSON ───
+    //
+    // Section dédiée pour partager les favoris cross-appareil (avant v1.20.0
+    // les favoris étaient strictement locaux par appareil, par design). Boutons
+    // 📤 Exporter (plan courant OU tous les plans) et 📥 Importer (mode merge
+    // anti-doublon par défaut). Compteur affiché : N favoris pour le plan
+    // courant + total cross-plan.
+    html += '<div class="kta-refonte-session-section" id="kta-refonte-session-favoris-section">';
+    html += '<div class="kta-refonte-session-section-titre">⭐ Favoris <span class="kta-refonte-session-badge" id="kta-refonte-session-favoris-badge">…</span></div>';
+    html += '<div style="font-size:12px; color:#8892a4; margin-bottom:8px; line-height:1.5;">' +
+              'Tes POI marqués favoris (entrée carrière, RDV, lieux d\'intérêt). ' +
+              'Stockés localement par appareil. Tu peux les <strong>partager</strong> ' +
+              'à un autre cataphile via export/import JSON.' +
+            '</div>';
+    html += '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-current">' +
+                '📤 Exporter (plan courant)' +
+              '</button>' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-export-all">' +
+                '📤 Exporter (tous les plans)' +
+              '</button>' +
+              '<button type="button" class="kta-btn kta-btn-ghost kta-btn-small" id="kta-refonte-session-favoris-import">' +
+                '📥 Importer un JSON' +
+              '</button>' +
+              '<input type="file" id="kta-refonte-session-favoris-import-file" accept=".json,application/json" style="display:none;">' +
+            '</div>';
+    html += '<div id="kta-refonte-session-favoris-status" style="font-size:11.5px; color:#8892a4; min-height:14px; font-style:italic;"></div>';
+    html += '</div>';
+
     // ─── 🆕 v1.16.0 step 4 : 📦 Backups récents (10 FIFO IDB) ───
     //
     // Section listée en bas de la modale. Hydratée async via
@@ -1530,6 +1571,20 @@
       if (e.target === overlay) _close();
     });
     document.getElementById("kta-refonte-session-close").addEventListener("click", _close);
+
+    // 🆕 v1.20.0 — CTA Stats globales du plan (modale dédiée)
+    const _btnStatsGlob = document.getElementById("kta-refonte-session-open-stats-glob");
+    if (_btnStatsGlob) {
+      _btnStatsGlob.addEventListener("click", function() {
+        if (window.StatsGlobales && typeof window.StatsGlobales.ouvrir === "function") {
+          window.StatsGlobales.ouvrir();
+        } else {
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast("Module StatsGlobales indisponible — recharge la page", "warn");
+          }
+        }
+      });
+    }
 
     // 🆕 v1.11.2 V2.2 : wire-up boutons Copier + Exporter du bloc Stats agrégées
     const _btnCopier = document.getElementById("kta-stats-copier");
@@ -1739,6 +1794,115 @@
           }
         });
       });
+    }
+
+    // 🆕 v1.20.0 — Section ⭐ Favoris : export/import JSON
+    _hydrateFavorisBadge();
+    const _btnFavExportCur = document.getElementById("kta-refonte-session-favoris-export-current");
+    const _btnFavExportAll = document.getElementById("kta-refonte-session-favoris-export-all");
+    const _btnFavImport    = document.getElementById("kta-refonte-session-favoris-import");
+    const _favImportInput  = document.getElementById("kta-refonte-session-favoris-import-file");
+    const _favStatus       = document.getElementById("kta-refonte-session-favoris-status");
+
+    function _setFavStatus(msg, isOk) {
+      if (!_favStatus) return;
+      _favStatus.textContent = msg || "";
+      _favStatus.style.color = isOk === true ? "#6ee28a"
+                              : isOk === false ? "#ff8c8c"
+                              : "#8892a4";
+    }
+
+    if (_btnFavExportCur) {
+      _btnFavExportCur.addEventListener("click", function() {
+        if (!window.Favoris || typeof window.Favoris.exportToFile !== "function") {
+          _setFavStatus("Module Favoris indisponible", false); return;
+        }
+        const list = window.Favoris.getAll();
+        if (!list || list.length === 0) {
+          _setFavStatus("Aucun favori sur le plan courant à exporter", false); return;
+        }
+        try {
+          window.Favoris.exportToFile({ scope: "current-plan" });
+          _setFavStatus("📤 Export plan courant : " + list.length + " favori" + (list.length > 1 ? "s" : "") + " téléchargé(s)", true);
+        } catch(e) {
+          _setFavStatus("Échec export : " + (e.message || e), false);
+        }
+      });
+    }
+    if (_btnFavExportAll) {
+      _btnFavExportAll.addEventListener("click", function() {
+        if (!window.Favoris || typeof window.Favoris.exportToFile !== "function") {
+          _setFavStatus("Module Favoris indisponible", false); return;
+        }
+        try {
+          const payload = window.Favoris.exportToFile({ scope: "all" });
+          const total = Object.keys(payload.byPlan).reduce(function(acc, pid) {
+            return acc + (payload.byPlan[pid] || []).length;
+          }, 0);
+          const plans = Object.keys(payload.byPlan).length;
+          if (total === 0) {
+            _setFavStatus("Aucun favori sur aucun plan à exporter", false);
+          } else {
+            _setFavStatus("📤 Export tous plans : " + total + " favori" + (total > 1 ? "s" : "") +
+                          " sur " + plans + " plan" + (plans > 1 ? "s" : "") + " téléchargé(s)", true);
+          }
+        } catch(e) {
+          _setFavStatus("Échec export : " + (e.message || e), false);
+        }
+      });
+    }
+    if (_btnFavImport && _favImportInput) {
+      _btnFavImport.addEventListener("click", function() { _favImportInput.click(); });
+      _favImportInput.addEventListener("change", function(e) {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = ""; // reset pour permettre re-sélection du même fichier
+        if (!file) return;
+        if (!window.Favoris || typeof window.Favoris.importFromFile !== "function") {
+          _setFavStatus("Module Favoris indisponible", false); return;
+        }
+        _setFavStatus("⏳ Import en cours…", null);
+        window.Favoris.importFromFile(file, { mode: "merge" }).then(function(res) {
+          if (!res || !res.ok) {
+            _setFavStatus("❌ Import échoué : " + (res && res.error || "raison inconnue"), false);
+            return;
+          }
+          const parts = [];
+          if (res.added > 0)    parts.push(res.added    + " ajouté"   + (res.added    > 1 ? "s" : ""));
+          if (res.skipped > 0)  parts.push(res.skipped  + " doublon"  + (res.skipped  > 1 ? "s skippé(s)" : " skippé"));
+          if (res.replaced > 0) parts.push(res.replaced + " remplacé" + (res.replaced > 1 ? "s" : ""));
+          if (parts.length === 0) parts.push("rien à importer (fichier vide ?)");
+          _setFavStatus(
+            "✅ Import OK (" + (res.plansTouched.length) + " plan" + (res.plansTouched.length > 1 ? "s" : "") +
+            " touché) : " + parts.join(" · "),
+            true
+          );
+          _hydrateFavorisBadge();
+        });
+      });
+    }
+
+    // 🆕 v1.20.0 — Hydrate le badge ⭐ Favoris (compteur plan courant + total).
+    // Fonction declaration (hoisted) : l'appel au début du bloc favoris
+    // (`_hydrateFavorisBadge()` ligne plus haut) fonctionne grâce au hoisting.
+    function _hydrateFavorisBadge() {
+      const badge = document.getElementById("kta-refonte-session-favoris-badge");
+      if (!badge) return;
+      if (!window.Favoris) { badge.textContent = "?"; return; }
+      const currentList = window.Favoris.getAll() || [];
+      const currentN = currentList.length;
+      let totalN = currentN;
+      try {
+        const payload = window.Favoris.exportToJson({ scope: "all" });
+        const plans = Object.keys(payload.byPlan || {});
+        totalN = plans.reduce(function(acc, pid) { return acc + (payload.byPlan[pid] || []).length; }, 0);
+      } catch(e) {}
+      if (totalN === 0) {
+        badge.textContent = "0";
+      } else if (currentN === totalN) {
+        badge.textContent = currentN + "";
+      } else {
+        badge.textContent = currentN + " (+ " + (totalN - currentN) + " autres plans)";
+      }
     }
 
     // 🆕 v1.11.2 V2.2 : hydrate la ligne 📸 Photos du bloc Stats agrégées

@@ -174,10 +174,30 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.19.1</strong> (24 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (24 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.20.0 (Cycle « Robustesse + Stats & Communauté »)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. 4 features 100 % locales :
+    (1) Skip snapshot identique = lecture IDB read-only.
+    (2) Nouveau module <code>js/crashReports.js</code> (~220 lignes) + nouvelle DB IDB
+    <code>myktamap_crashes</code> v1 store <code>crashes</code> FIFO 5 (archive auto des
+    kills mémoire détectés par OOMGuard, lit <code>localStorage["kta_debug_logs"]</code>
+    + méta IDB SessionBackups). Aucun fetch externe.
+    (3) Favoris export/import = Blob téléchargé localement + <code>File.text()</code> à
+    l'import — fichier JSON purement local.
+    (4) Nouveau module <code>js/statsGlobales.js</code> (~520 lignes) = lecture des
+    getters internes + lecture IDB <code>myktamap_photos</code>.
+    Rapports copiés (crash, stats) restent locaux (presse-papier navigateur).
+    <strong>2 nouveaux fichiers</strong> ajoutés à <code>ASSETS_TO_CACHE</code> :
+    <code>js/crashReports.js</code> + <code>js/statsGlobales.js</code>.
+    <strong>1 nouvelle DB IDB</strong> : <code>myktamap_crashes</code>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -694,6 +714,19 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.20.0</td>
+        <td>24/05/2026</td>
+        <td>
+          <strong>Cycle « Robustesse + Stats & Communauté »</strong> — <strong>aucune nouvelle
+          surface réseau</strong>. 4 features 100% locales : skip snapshot identique (lecture IDB),
+          nouveau module <code>js/crashReports.js</code> + DB <code>myktamap_crashes</code> v1
+          (archive auto des kills mémoire, FIFO 5), Favoris export/import JSON (Blob local),
+          nouveau module <code>js/statsGlobales.js</code> (lecture getters internes + IDB photos).
+          2 nouveaux fichiers ajoutés à <code>ASSETS_TO_CACHE</code>, 1 nouvelle DB IDB documentée.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.19.1</td>
         <td>24/05/2026</td>

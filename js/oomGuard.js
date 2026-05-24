@@ -261,6 +261,20 @@
       userAgent: info.userAgent
     };
 
+    // 🆕 v1.20.0 — Archive automatique du crash en IDB via CrashReports.
+    // L'appel est fire-and-forget (Promise non awaited) car _checkPreviousKill
+    // est appelé synchrone au boot du module. Le crash report sera consultable
+    // depuis Memory Inspector (⚙️ Configuration → 📊 Inspecteur) → section
+    // « 📋 Derniers crashs ». Pratique pour diagnostiquer les patterns
+    // récurrents et partager au mainteneur.
+    if (window.CrashReports && typeof window.CrashReports.saveCrash === "function") {
+      try {
+        window.CrashReports.saveCrash(_pendingKillInfo);
+      } catch(e) {
+        console.warn("[OOMGuard] CrashReports.saveCrash échec :", e);
+      }
+    }
+
     _clearMarker();
   }
 

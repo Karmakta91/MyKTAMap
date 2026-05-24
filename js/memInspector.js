@@ -80,7 +80,9 @@
   const KNOWN_IDB_DBS = [
     { name: "myktamap_handles", stores: ["handles", "blobs"] },
     { name: "myktamap_backups", stores: ["backups"] },
-    { name: "myktamap_photos",  stores: ["photos"] }
+    { name: "myktamap_photos",  stores: ["photos"] },
+    // 🆕 v1.20.0 — Crash Reports (cf js/crashReports.js)
+    { name: "myktamap_crashes", stores: ["crashes"] }
   ];
 
   function _openDb(name) {
@@ -243,7 +245,9 @@
     "HistoryManager", "MyKTAMapPinLock", "UnlockGate", "OOMGuard",
     "NetworkAudit", "UpdateChecker", "AlertChecker", "PerfUltra",
     "CompassWidget", "TrackerReplay", "Pathfinder", "SearchPoints",
-    "MyKTAMapPdfExport", "RefonteInterface", "MemInspector"
+    "MyKTAMapPdfExport", "RefonteInterface", "MemInspector",
+    // 🆕 v1.20.0
+    "CrashReports", "StatsGlobales"
   ];
 
   function _collectRuntime() {
@@ -320,15 +324,31 @@
     return result;
   }
 
+  // ========== COLLECTE : Crash Reports (v1.20.0) ==========
+  async function _collectCrashReports() {
+    const result = { reports: [], error: null };
+    try {
+      if (!window.CrashReports || typeof window.CrashReports.listAll !== "function") {
+        result.error = "Module CrashReports non chargé";
+        return result;
+      }
+      result.reports = await window.CrashReports.listAll();
+    } catch(e) {
+      result.error = String(e.message || e);
+    }
+    return result;
+  }
+
   // ========== COLLECTE GLOBALE ==========
   async function collecter() {
     const ts = new Date().toISOString();
     const runtime = _collectRuntime();
     const localS = _collectLocalStorage();
-    const [idb, cachePwa, storageEst] = await Promise.all([
+    const [idb, cachePwa, storageEst, crashes] = await Promise.all([
       _collectIndexedDB(),
       _collectCachePWA(),
-      _collectStorageEstimate()
+      _collectStorageEstimate(),
+      _collectCrashReports()
     ]);
     return {
       timestamp:       ts,
@@ -336,7 +356,8 @@
       localStorage:    localS,
       indexedDB:       idb,
       cachePWA:        cachePwa,
-      storageEstimate: storageEst
+      storageEstimate: storageEst,
+      crashReports:    crashes
     };
   }
 
@@ -444,6 +465,30 @@
       lines.push("Usage : " + _formatBytes(rep.storageEstimate.usage));
       lines.push("Quota : " + _formatBytes(rep.storageEstimate.quota));
       lines.push("Utilisé : " + (rep.storageEstimate.usagePct != null ? rep.storageEstimate.usagePct.toFixed(2) + " %" : "—"));
+    }
+    lines.push("");
+
+    // 🆕 v1.20.0 — Crash Reports
+    const cr = rep.crashReports || { reports: [], error: null };
+    lines.push("📋 DERNIERS CRASHS DÉTECTÉS");
+    lines.push("─────────────────────────────────────────");
+    if (cr.error) {
+      lines.push("⚠️ " + cr.error);
+    } else if (cr.reports.length === 0) {
+      lines.push("(aucun crash détecté)");
+    } else {
+      cr.reports.forEach(function(entry) {
+        const dateTxt = new Date(entry.timestamp).toISOString();
+        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : "(aucun plan)";
+        const ageSec  = entry.killInfo && entry.killInfo.ageSec != null ? entry.killInfo.ageSec + "s" : "?";
+        const logsN   = (entry.logs || []).length;
+        lines.push("• #" + entry.id + "  " + dateTxt +
+                   "  v" + (entry.appVersion || "?") +
+                   "  plan=" + planTxt +
+                   "  age=" + ageSec +
+                   "  logs=" + logsN);
+      });
+      lines.push("(détails complets de chaque crash via 📋 Voir détails dans la modale Inspector)");
     }
     lines.push("");
     lines.push("=========================================");
@@ -648,7 +693,131 @@
     }
     html += '</div>';
 
+    // === Section CRASH REPORTS (v1.20.0) ===
+    const cr = rep.crashReports || { reports: [], error: null };
+    html += '<div class="kta-mem-section">';
+    html += '<div class="kta-mem-section-titre">📋 Derniers crashs détectés';
+    if (cr.reports.length > 0) {
+      html += ' <span class="kta-mem-total">' + cr.reports.length + ' / 5</span>';
+    }
+    html += '</div>';
+    if (cr.error) {
+      html += '<div class="kta-mem-warn">⚠️ ' + _escapeHtml(cr.error) + '</div>';
+    } else if (cr.reports.length === 0) {
+      html += '<div class="kta-mem-dim">(aucun crash détecté — l\'app n\'a jamais été killed brutalement, ou les rapports ont été purgés)</div>';
+    } else {
+      cr.reports.forEach(function(entry) {
+        const planTxt = entry.killInfo && entry.killInfo.planId ? entry.killInfo.planId : "(aucun plan)";
+        const dateTxt = new Date(entry.timestamp).toLocaleString("fr-FR");
+        const ageSec = entry.killInfo && entry.killInfo.ageSec;
+        const logsCount = (entry.logs || []).length;
+        html += '<div class="kta-mem-crash-row" data-crash-id="' + entry.id + '">';
+        html += '<div class="kta-mem-crash-head">';
+        html += '<span class="kta-mem-crash-icon">💥</span>';
+        html += '<span class="kta-mem-crash-date">' + _escapeHtml(dateTxt) + '</span>';
+        if (entry.appVersion) html += ' <span class="kta-mem-tag-dim">' + _escapeHtml(entry.appVersion) + '</span>';
+        html += '</div>';
+        html += '<div class="kta-mem-crash-meta">';
+        html += '🗂️ ' + _escapeHtml(planTxt);
+        if (ageSec != null) html += ' &middot; ⏱️ ' + ageSec + 's avant détection';
+        html += ' &middot; 📋 ' + logsCount + ' log' + (logsCount > 1 ? 's' : '');
+        if (entry.sessionSnapMeta) html += ' &middot; 📦 snap session présent';
+        html += '</div>';
+        html += '<div class="kta-mem-crash-actions">';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-view" data-crash-id="' + entry.id + '">📋 Voir détails</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-copy" data-crash-id="' + entry.id + '">📋 Copier</button>';
+        html += '<button type="button" class="kta-btn kta-btn-ghost kta-mem-crash-del"  data-crash-id="' + entry.id + '" title="Supprimer ce rapport">🗑️</button>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '<div style="margin-top:10px; text-align:right;">';
+      html += '<button type="button" class="kta-btn kta-btn-ghost" id="kta-mem-crash-clear-all" style="font-size:11px;">🗑️ Tout vider</button>';
+      html += '</div>';
+    }
+    html += '</div>';
+
     return html;
+  }
+
+  // ───────── HANDLERS CRASH REPORTS (v1.20.0) ─────────
+  // Bind après chaque render — les boutons sont dynamiques par crash report.
+  function _bindCrashHandlers() {
+    document.querySelectorAll(".kta-mem-crash-view").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const id = parseInt(btn.dataset.crashId, 10);
+        _afficherCrashDetail(id);
+      });
+    });
+    document.querySelectorAll(".kta-mem-crash-copy").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const id = parseInt(btn.dataset.crashId, 10);
+        _copierCrashReport(id, btn);
+      });
+    });
+    document.querySelectorAll(".kta-mem-crash-del").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const id = parseInt(btn.dataset.crashId, 10);
+        if (!confirm("Supprimer ce rapport de crash ?")) return;
+        if (window.CrashReports && typeof window.CrashReports.remove === "function") {
+          window.CrashReports.remove(id).then(_refreshAndRender);
+        }
+      });
+    });
+    const clearAllBtn = document.getElementById("kta-mem-crash-clear-all");
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener("click", function() {
+        if (!confirm("Vider TOUS les rapports de crash ?")) return;
+        if (window.CrashReports && typeof window.CrashReports.clearAll === "function") {
+          window.CrashReports.clearAll().then(_refreshAndRender);
+        }
+      });
+    }
+  }
+
+  function _afficherCrashDetail(id) {
+    if (!_lastReport || !_lastReport.crashReports) return;
+    const entry = (_lastReport.crashReports.reports || []).find(function(e) { return e.id === id; });
+    if (!entry) return;
+    if (!window.CrashReports || typeof window.CrashReports.formatReportText !== "function") return;
+    const txt = window.CrashReports.formatReportText(entry);
+    // Modale simple : un <pre> avec le rapport texte intégral
+    const overlay = document.createElement("div");
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100100"; // au-dessus de la modale MemInspector
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:760px; height:auto; max-height:88vh;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">📋 Détails du crash #' + id + '</span>' +
+          '<button type="button" class="kta-panneau-close kta-mem-crash-detail-close">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<pre class="kta-mem-crash-detail-pre">' + _escapeHtml(txt) + '</pre>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    const close = function() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); };
+    overlay.querySelector(".kta-mem-crash-detail-close").addEventListener("click", close);
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", function _esc(e) {
+      if (e.key === "Escape") { close(); document.removeEventListener("keydown", _esc); }
+    });
+  }
+
+  function _copierCrashReport(id, btn) {
+    if (!_lastReport || !_lastReport.crashReports) return;
+    const entry = (_lastReport.crashReports.reports || []).find(function(e) { return e.id === id; });
+    if (!entry) return;
+    if (!window.CrashReports || typeof window.CrashReports.formatReportText !== "function") return;
+    const txt = window.CrashReports.formatReportText(entry);
+    _copyToClipboard(txt).then(function() {
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = "✅ Copié !";
+        setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
+      }
+    }).catch(function(e) {
+      alert("Échec de la copie : " + (e.message || e));
+    });
   }
 
   let _lastReport = null;
@@ -660,6 +829,9 @@
     try {
       _lastReport = await collecter();
       corps.innerHTML = _renderReport(_lastReport);
+      // 🆕 v1.20.0 — Bind handlers de la section Crash Reports (boutons
+      // dynamiques par crash). Re-bindé à chaque render (rafraîchir, suppr…).
+      _bindCrashHandlers();
     } catch(e) {
       corps.innerHTML = '<div class="kta-mem-warn">❌ Erreur lors de la collecte : ' + _escapeHtml(e.message || e) + '</div>';
     }

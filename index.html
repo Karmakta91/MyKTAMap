@@ -154,13 +154,30 @@
        de requête réseau, donc l'ordre est OK. Cf. docs/NETWORK_AUDIT.md -->
   <script src="js/networkAudit.js"></script>
 
+  <!-- 📋 CRASH REPORTS — Archive auto des kills mémoire détectés par OOMGuard.
+       DOIT être chargé AVANT oomGuard.js (qui l'appelle dans _checkPreviousKill).
+       API : window.CrashReports = { saveCrash, listAll, remove, clearAll,
+       formatReportText }. Stockage IDB myktamap_crashes v1, FIFO 5 entries.
+       Consultable depuis Memory Inspector → section 📋 Derniers crashs.
+       Depuis v1.20.0. -->
+  <script src="js/crashReports.js"></script>
+
   <!-- 📊 MEM INSPECTOR — Topo lisible de ce qui est chargé en mémoire
-       (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime).
-       Accessible depuis ⚙️ Configuration loader → section 📊 Inspecteur.
-       Pas de dépendance bloquante, peut être chargé n'importe où dans la
-       chaîne — placé ici à côté de NetworkAudit pour cohérence
-       « outils d'inspection & transparence ». Depuis v1.19.0. -->
+       (localStorage / IndexedDB / Cache PWA / Storage estimate / Runtime /
+       Crash Reports v1.20.0). Accessible depuis ⚙️ Configuration loader →
+       section 📊 Inspecteur. Pas de dépendance bloquante, peut être chargé
+       n'importe où dans la chaîne — placé ici à côté de NetworkAudit pour
+       cohérence « outils d'inspection & transparence ». Depuis v1.19.0. -->
   <script src="js/memInspector.js"></script>
+
+  <!-- 📊 STATS GLOBALES — Modale d'agrégation plan complet (session + data
+       layers embedded). Sections : points par tag, tracés par type +
+       distance cumulée, zones par type + surface cumulée, structures,
+       photos, M-LVL breakdown, géoréf. Accessible depuis modale 📊 Détails
+       session > bouton « 📊 Voir stats globales du plan ». API :
+       window.StatsGlobales = { ouvrir, fermer, compute, getReportText }.
+       Depuis v1.20.0. -->
+  <script src="js/statsGlobales.js"></script>
 
   <!-- DEBUG — capture silencieuse, accessible via ⚙️ -->
   <script src="js/debug.js"></script>

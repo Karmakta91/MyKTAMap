@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.19.1` (24/05/2026)
+**📦 Version courante** : `v1.20.0` (24/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.19.1](#-derniere-release--v1191)
+1. [🚀 Dernière release — v1.20.0](#-derniere-release--v1200)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,7 +40,20 @@
 
 ---
 
-## 🚀 Dernière release — v1.19.1
+## 🚀 Dernière release — v1.20.0
+
+📅 **24 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle « Robustesse + Stats & Communauté »**. 4 features qui se complètent :
+
+- 🪤 **Skip snapshot identique** : économie FIFO des slots backups (boot sans changement = 0 slot consommé)
+- 📋 **Crash report auto IDB** : archive auto des kills mémoire détectés (debug + diagnostic facilité)
+- ⭐ **Favoris export/import JSON** : partage cross-appareil de tes POI préférés
+- 📊 **Statistiques globales du plan** : modale agrégée session + data layers embedded
+
+Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.19.1
 
 📅 **24 mai 2026** — Release **PATCH** consolidée (Z+1 sur v1.16.1 — saut PATCH car le pack accumulé est **surtout** des fixes + polish, malgré la présence de quelques features moyennes). Contenu :
 
@@ -870,7 +883,137 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-19-1" open>
+<details id="v1-20-0" open>
+<summary><strong>🗓️ 24/05/2026 — 🚀 v1.20.0 : Cycle « Robustesse + Stats & Communauté »</strong></summary>
+
+Release MINOR (bump Y : 1.19.1 → 1.20.0). 4 features cohérentes qui se complètent.
+
+### 🪤 (1/4) Skip snapshot identique — économie FIFO
+
+`js/sessionBackups.js > snapshot()` vérifie désormais le **dernier snapshot IDB du même plan** avant de consommer un slot FIFO. Cas typique réglé : boot-pre-restore après un reload sans modif → hash in-memory `null` (reset au load) MAIS hash IDB identique → skip.
+
+Économie : un user qui ouvre/ferme la PWA 10 fois sans modif voyait ses 10 derniers snapshots rotated en duplicates inutiles. Maintenant : 0 slot consommé sur boot identique.
+
+Nouveau helper interne `_getLastSnapshotForPlan(planId)` qui réutilise `listAll()` (déjà trié desc par id).
+
+### 📋 (2/4) Crash report auto IDB — module `js/crashReports.js` (~220 lignes)
+
+API publique :
+```js
+window.CrashReports = {
+  saveCrash(killInfo),   // archive auto-déclenchée par OOMGuard
+  listAll(),             // Promise<CrashReport[]> trié desc par timestamp
+  remove(id),
+  clearAll(),
+  formatReportText(entry)  // texte plain pour copier
+};
+```
+
+Stockage : DB IDB dédiée `myktamap_crashes` v1 / store `crashes` / FIFO **5 entries**.
+
+**Hook dans `js/oomGuard.js > _checkPreviousKill`** : quand un kill mémoire est détecté au boot, on appelle automatiquement `CrashReports.saveCrash(killInfo)` qui archive :
+
+- `killInfo` : ageSec (depuis dernier heartbeat), planId, userAgent
+- `appVersion` : `__MKM__.build` au moment du crash
+- `logs` : 50 derniers logs du buffer debug.js (lus depuis `localStorage["kta_debug_logs"]`, qui survit au crash)
+- `sessionSnapMeta` : méta-infos du dernier snapshot SessionBackups du même plan (= état au plus récent auto-backup avant le crash)
+
+**Section MemInspector dédiée** : « 📋 Derniers crashs (N / 5) » avec affichage card par entry (date, plan, ageSec, nb logs, présence sessionSnap) + 3 boutons par crash :
+- « 📋 Voir détails » → ouvre une modale `<pre>` avec le rapport formaté complet
+- « 📋 Copier » → presse-papier
+- « 🗑️ » → supprime ce rapport
+
+Plus un bouton global « 🗑️ Tout vider ».
+
+**Format du rapport texte** (`formatReportText`) : markdown-like avec séparateurs ASCII, prêt à coller dans Discord / mail / GitHub pour partager au mainteneur.
+
+### ⭐ (3/4) Favoris export / import JSON — partage cross-appareil
+
+`js/favoris.js` étendu avec 4 nouvelles méthodes :
+
+```js
+exportToJson({scope})           // scope: "all" | "current-plan"
+exportToFile({scope, filename}) // déclenche download Blob
+importFromJson(input, {mode, targetPlanId})  // mode: "merge" | "replace"
+importFromFile(file, opts)      // wrap depuis input type=file
+```
+
+**Format JSON** ouvert + versionné (extensible) :
+```json
+{
+  "type":       "myktamap-favoris-export",
+  "version":    1,
+  "exportedAt": "2026-05-24T...",
+  "appVersion": "v1.20.0",
+  "scope":      "all" | "current-plan",
+  "byPlan":     { "<planId>": [favoris...], ... }
+}
+```
+
+**Modes import** :
+- `merge` (défaut) : ajoute aux favoris existants, anti-doublon sur `pointId`
+- `replace` : vide le plan cible puis injecte
+
+**UI** dans modale 📊 Détails session → nouvelle section ⭐ Favoris :
+- 3 boutons : 📤 Exporter (plan courant), 📤 Exporter (tous les plans), 📥 Importer un JSON
+- Status display dynamique (vert OK / rouge erreur / gris transit)
+- Badge avec compteur plan courant + total cross-plan « N (+ M autres plans) »
+- Helper `_hydrateFavorisBadge()` (function declaration hoisted dans `_afficherModaleSessionDetail`)
+
+### 📊 (4/4) Stats globales du plan — module `js/statsGlobales.js` (~520 lignes)
+
+API publique :
+```js
+window.StatsGlobales = {
+  ouvrir(),
+  fermer(),
+  compute(),               // Promise<StatsReport>
+  getReportText(report)    // texte plain pour copier
+};
+```
+
+**Distinction clé avec 📊 Détails session** : Détails session couvre LA SESSION (annotations en RAM), Stats globales couvre LE PLAN COMPLET (session + data layers embedded). Hint explicatif dans le CTA pour bien différencier.
+
+**Modale dédiée** avec sections :
+
+| Section | Contenu |
+|---|---|
+| Header plan | nom + version + auteur + dimensions + flags M-LVL/V2 |
+| Grille totaux | cartes 📍/🛣️/⬛/🏛️/📸 avec breakdown session vs embed |
+| 📍 Points par tag | triés desc par count |
+| 🛣️ Tracés par type | count + distance cumulée (auto m → km via `window.formatDistance`) |
+| ⬛ Zones par type | count + surface cumulée (auto m² → ha via `window.formatSurface`) |
+| 🏛️ Structures par type | count par type |
+| 🏗️ Breakdown par niveau (si M-LVL ON) | 📍/🛣️/⬛/🏛️ par niveau, jonctions taggées sur `max(fromLevel, toLevel)` |
+| 🌐 Géoréférencement | si `plan.georef` présent, coords A + B |
+
+**Bouton 📋 Copier le rapport** : format texte plain markdown-like prêt à coller dans Discord / mail / GitHub pour partager des stats de plan.
+
+**Accès** : gros bouton CTA bleu en tête de modale 📊 Détails session :
+> 📊 Voir les statistiques globales du plan (session + data layers embedded)
+
+### 📂 Sources de vérité v1.20.0
+
+- `version.json` → `"v1.20.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.20.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.20.0"`
+- **2 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` : `js/crashReports.js` + `js/statsGlobales.js`
+- **1 nouvelle DB IDB** : `myktamap_crashes` v1 / store `crashes` (FIFO 5 entries, geré par crashReports.js)
+- Modifs internes à : `js/sessionBackups.js`, `js/oomGuard.js`, `js/favoris.js`, `js/refonteInterface.js`, `js/memInspector.js`, `index.html`, `css/style.css`
+
+### 🛡️ Confidentialité
+
+**Aucune nouvelle surface réseau**. Tous les ajouts sont 100 % locaux :
+- Skip snapshot = lecture IDB read-only
+- Crash Reports = lecture localStorage (logs debug.js) + lecture IDB (SessionBackups méta) + écriture IDB (myktamap_crashes)
+- Favoris export/import = Blob téléchargé localement + `File.text()` à l'import
+- Stats globales = lecture des getters internes (`window.getRoads`, `window.getZones`, etc.) + IDB MyKTAMapPhotos
+
+Aucun fetch externe. Rapports copiés restent locaux (presse-papier navigateur). **NETWORK_AUDIT inchangé** sur le fond — mise à jour des dates, version et nouvelle DB IDB `myktamap_crashes` documentée.
+
+</details>
+
+<details id="v1-19-1">
 <summary><strong>🗓️ 24/05/2026 — 🩹 v1.19.1 : Release PATCH consolidée (fixes + polish + features moyennes accumulées)</strong></summary>
 
 Release **PATCH** (bump Z : 1.16.1 → 1.19.1). Choix d'un saut PATCH (et non MINOR × 4) car le pack accumulé est **surtout** des fixes et du polish, malgré la présence de quelques features moyennes. Les sous-sections ci-dessous documentent chaque sujet livré séparément (l'historique Git préserve les itérations dev fines avec leurs commits granulaires).

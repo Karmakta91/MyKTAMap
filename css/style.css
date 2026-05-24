@@ -15342,6 +15342,323 @@ html.kta-theme-light .kta-mem-footer {
 }
 
 /* ===========================================================
+   🆕 v1.20.0 — CTA Stats globales depuis modale Détails session
+   =========================================================== */
+
+.kta-refonte-session-cta-stats-glob {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 8px;
+  text-align: center;
+}
+.kta-refonte-session-cta-stats-glob .kta-btn {
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  font-size: 13px;
+  padding: 10px 14px;
+}
+body.kta-theme-light .kta-refonte-session-cta-stats-glob,
+html.kta-theme-light .kta-refonte-session-cta-stats-glob {
+  background: rgba(140, 180, 255, 0.10) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+}
+
+/* ===========================================================
+   🆕 v1.20.0 — Statistiques globales du plan (modale dédiée)
+   =========================================================== */
+
+.kta-stats-glob-boite {
+  max-width:  680px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 88vh !important;
+  display:    flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .kta-stats-glob-boite { max-width: 820px; }
+}
+
+.kta-stats-glob-loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.kta-stats-glob-header {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: rgba(244, 197, 66, 0.06);
+  border: 1px solid rgba(244, 197, 66, 0.25);
+  border-radius: 8px;
+}
+.kta-stats-glob-plan-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 4px;
+}
+.kta-stats-glob-meta {
+  font-size: 12px;
+  color: #8892a4;
+  line-height: 1.5;
+}
+.kta-stats-glob-dim {
+  color: #8892a4;
+  font-weight: 400;
+  font-size: 13px;
+}
+
+.kta-stats-glob-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.kta-stats-glob-card {
+  padding: 10px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  text-align: center;
+}
+.kta-stats-glob-card-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f4c542;
+  line-height: 1.1;
+}
+.kta-stats-glob-card-label {
+  font-size: 11px;
+  color: #c8d0e0;
+  margin-top: 4px;
+}
+.kta-stats-glob-card-sub {
+  font-size: 10px;
+  color: #8892a4;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+.kta-stats-glob-section {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  min-width: 0;
+  overflow-x: hidden;
+}
+.kta-stats-glob-section-titre {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kta-stats-glob-total {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #8cb4ff;
+  padding: 2px 8px;
+  background: rgba(140, 180, 255, 0.10);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 10px;
+}
+.kta-stats-glob-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kta-stats-glob-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  color: #c8d0e0;
+  border-radius: 4px;
+}
+.kta-stats-glob-row:hover {
+  background: rgba(140, 180, 255, 0.04);
+}
+.kta-stats-glob-row-lbl {
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+.kta-stats-glob-row-lbl code {
+  font-size: 11.5px;
+  color: #c8d0e0;
+  background: rgba(140, 180, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.kta-stats-glob-row-num {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #f4c542;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.kta-stats-glob-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-stats-glob-header,
+html.kta-theme-light .kta-stats-glob-header {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-stats-glob-plan-name,
+html.kta-theme-light .kta-stats-glob-plan-name {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-stats-glob-meta,
+html.kta-theme-light .kta-stats-glob-meta,
+body.kta-theme-light .kta-stats-glob-dim,
+html.kta-theme-light .kta-stats-glob-dim,
+body.kta-theme-light .kta-stats-glob-card-sub,
+html.kta-theme-light .kta-stats-glob-card-sub {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-stats-glob-card,
+html.kta-theme-light .kta-stats-glob-card,
+body.kta-theme-light .kta-stats-glob-section,
+html.kta-theme-light .kta-stats-glob-section {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-stats-glob-card-num,
+html.kta-theme-light .kta-stats-glob-card-num,
+body.kta-theme-light .kta-stats-glob-section-titre,
+html.kta-theme-light .kta-stats-glob-section-titre,
+body.kta-theme-light .kta-stats-glob-row-num,
+html.kta-theme-light .kta-stats-glob-row-num {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-stats-glob-card-label,
+html.kta-theme-light .kta-stats-glob-card-label,
+body.kta-theme-light .kta-stats-glob-row,
+html.kta-theme-light .kta-stats-glob-row,
+body.kta-theme-light .kta-stats-glob-row-lbl,
+html.kta-theme-light .kta-stats-glob-row-lbl {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-stats-glob-total,
+html.kta-theme-light .kta-stats-glob-total {
+  background: rgba(140, 180, 255, 0.15) !important;
+  color: var(--kta-light-text) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+}
+body.kta-theme-light .kta-stats-glob-footer,
+html.kta-theme-light .kta-stats-glob-footer {
+  border-top-color: var(--kta-light-border) !important;
+}
+
+/* ===========================================================
+   🆕 v1.20.0 — Memory Inspector : Section Crash Reports
+   =========================================================== */
+
+.kta-mem-crash-row {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 140, 140, 0.06);
+  border: 1px solid rgba(255, 140, 140, 0.22);
+  border-radius: 6px;
+}
+.kta-mem-crash-row:first-of-type { margin-top: 4px; }
+.kta-mem-crash-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.kta-mem-crash-icon { font-size: 14px; }
+.kta-mem-crash-date {
+  font-weight: 600;
+  color: #ff8c8c;
+}
+.kta-mem-crash-meta {
+  font-size: 11.5px;
+  color: #8892a4;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.kta-mem-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kta-mem-crash-actions .kta-btn {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+}
+
+/* Détail crash report — modale modale avec <pre> scrollable */
+.kta-mem-crash-detail-pre {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c8d0e0;
+  background: #0d1117;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-height: calc(88vh - 100px);
+  overflow-y: auto;
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-mem-crash-row,
+html.kta-theme-light .kta-mem-crash-row {
+  background: rgba(255, 140, 140, 0.10) !important;
+  border-color: rgba(255, 140, 140, 0.35) !important;
+}
+body.kta-theme-light .kta-mem-crash-head,
+html.kta-theme-light .kta-mem-crash-head {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-crash-date,
+html.kta-theme-light .kta-mem-crash-date {
+  color: #b91c1c !important;
+}
+body.kta-theme-light .kta-mem-crash-meta,
+html.kta-theme-light .kta-mem-crash-meta {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-mem-crash-detail-pre,
+html.kta-theme-light .kta-mem-crash-detail-pre {
+  background: var(--kta-light-bg-deep) !important;
+  color: var(--kta-light-text) !important;
+}
+
+/* ===========================================================
    🆕 v1.20.0-fix1 — Modales Logs (debug + réseau) thème clair
    Bug remonté KARMA : fond #0d1117 hardcodé + texte clair
    #c8d0e0 → illisible en mode clair (clair sur clair).

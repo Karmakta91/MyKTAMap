@@ -4,6 +4,57 @@
 
 ---
 
+## 🆕 Nouveautés v1.20.0 (24/05/2026) — Robustesse + Stats & Communauté
+
+> 4 features qui se complètent : économie pour tes backups, archive auto des crashes, partage de tes favoris cross-appareil, et statistiques agrégées de tout un plan.
+
+### 🪤 Backups plus malins
+
+Avant : si tu rouvrais l'app 10 fois sans rien changer, tu consommais tes 10 derniers slots de snapshots automatiques avec des doublons inutiles. Maintenant : l'app détecte que rien n'a changé depuis le dernier snapshot et SKIP. Tes snapshots gardent leur diversité.
+
+### 📋 Rapports de crash automatiques
+
+Quand l'app détecte au démarrage que la session précédente s'est terminée brutalement (= kill mémoire mobile typique iOS Safari / Chrome Android), elle archive maintenant **automatiquement** un rapport de debug contenant :
+
+- L'heure approximative du crash
+- Le plan qui était chargé
+- Les 50 derniers logs juste avant le crash
+- Les méta-infos du dernier snapshot de session disponible
+
+Consultable depuis **⚙️ Configuration → 📊 Voir l'état mémoire → section 📋 Derniers crashs**. Chaque rapport a un bouton « Voir détails » (texte complet) et « Copier » (presse-papier, prêt à coller dans un DM au mainteneur). Limite : 5 rapports max (rotation FIFO).
+
+Tu peux ainsi facilement remonter un bug récurrent avec tout le contexte technique nécessaire, sans avoir à reproduire manuellement.
+
+### ⭐ Favoris partageables (export / import JSON)
+
+Tes favoris sont toujours stockés localement par appareil (par design), mais tu peux désormais les **partager** à un autre cataphile qui utilise MyKTAMap :
+
+1. Tu vas dans **📊 Détails de la session** → nouvelle section ⭐ Favoris
+2. Tu cliques sur **📤 Exporter (plan courant)** pour exporter juste les favoris du plan que tu regardes, OU **📤 Exporter (tous les plans)** pour tout
+3. Tu obtiens un fichier `.json` que tu envoies via Discord / mail / WhatsApp / clé USB / etc.
+4. Le destinataire clique sur **📥 Importer un JSON** depuis la même section et choisit le fichier
+
+Par défaut, l'import est en mode **merge** : il ajoute aux favoris existants sans rien écraser, en évitant les doublons (même pointId). Tes propres favoris sont préservés.
+
+### 📊 Statistiques globales du plan
+
+Nouvelle modale qui agrège **tout le plan** : pas juste ta session active (= ce que tu as toi-même dessiné), mais aussi tous les data layers embedded (= ce qui est figé dans le plan).
+
+Accessible depuis **📊 Détails de la session** → gros bouton bleu « 📊 Voir les statistiques globales du plan ». Contenu :
+
+- **Header plan** : nom, version, auteur, dimensions, flags (multi-niveau, V2 tuilé)
+- **Totaux** : 📍 N points / 🛣️ N tracés / ⬛ N zones / 🏛️ N structures / 📸 N photos (avec breakdown session vs embed)
+- **Points par tag** : combien de puits, de chatières, de plaques, etc.
+- **Tracés par type** : nombre + distance cumulée par type (Principal / Secondaire / Chemin), auto m → km
+- **Zones par type** : nombre + surface cumulée par type (Eau / Remblais / Effondrement / Inaccessible), auto m² → ha
+- **Structures par type** : piliers / murs / fronts de taille
+- **Breakdown par niveau** (si multi-niveau actif)
+- **Géoréférencement** (si calibrage GPS embarqué dans le plan)
+
+Bouton **📋 Copier le rapport** pour envoyer ces stats à quelqu'un (format texte plain). Pratique pour évaluer une carrière dans son ensemble, comparer 2 plans, ou partager une « fiche technique » de plan.
+
+---
+
 ## 🆕 Nouveautés v1.19.1 (24/05/2026) — Release consolidée
 
 > Cette release regroupe **plusieurs cycles d'amélioration** accumulés depuis v1.16.1. Le saut est volontairement **PATCH** (v1.16.1 → v1.19.1) car l'essentiel est constitué de fixes et de polish, même si quelques features moyennes sont présentes. Les sections détaillées ci-dessous décrivent chaque sujet.
