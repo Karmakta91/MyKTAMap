@@ -407,8 +407,11 @@
       const nom = road.type === "itinerary" ? "🗺️ Itinéraire"
                 : road.type === "jonction"  ? "🪜 Jonction"
                 : road.type.charAt(0).toUpperCase() + road.type.slice(1);
+      // v1.16.0 step 1 — description (note) CDATA + \n → <br/> (cf hotfix9 sur points)
+      const desc = road.description ? _emitDescriptionCdata(road.description) : '';
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
+               desc +
                '<styleUrl>#' + styleId + '</styleUrl>' +
                '<LineString><tessellate>1</tessellate><coordinates>' + coords +
                '</coordinates></LineString>' +
@@ -432,8 +435,11 @@
       else if (zone.type === "pilier-2") nom = "Pilier 2e masse";
       else if (zone.type === "mur") nom = "Mur";
       else nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
+      // v1.16.0 step 1 — description (note) CDATA + \n → <br/>
+      const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
+               desc +
                '<styleUrl>#' + styleId + '</styleUrl>' +
                '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
                coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +

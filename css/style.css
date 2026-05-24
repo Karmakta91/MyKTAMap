@@ -11697,6 +11697,59 @@ html.kta-theme-light .kta-session-modal-detail {
    Verrouiller (cf. .kta-lock-confirm-* / .kta-lock-nopin-* plus haut).
    Aussi retiré : .loader-btn-shutdown (CSS bouton header). */
 
+/* === 📝 v1.16.0 step 1 — Popup note (zones / tracés / structures) ===
+   Le popup utilise les mêmes classes Leaflet que les popups points
+   (.leaflet-popup-content-wrapper → déjà variantisé clair/sombre v1.14.4)
+   + classes spécifiques .kta-note-popup-* pour le textarea et le wrapper. */
+.kta-note-popup .kta-note-popup-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+.kta-note-popup-textarea {
+  width: 100%;
+  min-width: 220px;
+  min-height: 80px;
+  padding: 8px 10px !important;
+  font-family: Arial, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  background: #0d1117 !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 6px !important;
+  color: #e8eaf0 !important;
+  resize: vertical;
+  box-sizing: border-box !important;
+}
+.kta-note-popup-textarea:focus {
+  outline: none !important;
+  border-color: rgba(140,180,255,0.5) !important;
+}
+.kta-note-popup-actions {
+  margin-top: 4px !important;
+  padding-top: 6px !important;
+}
+.kta-note-popup-status {
+  font-size: 12px;
+  text-align: center;
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+/* Theme light — beige cataphile + ambre charte */
+body.kta-theme-light .kta-note-popup-textarea,
+html.kta-theme-light .kta-note-popup-textarea {
+  background: var(--kta-light-bg) !important;
+  border: 1px solid var(--kta-light-border-strong) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-note-popup-textarea:focus,
+html.kta-theme-light .kta-note-popup-textarea:focus {
+  border-color: var(--kta-light-accent) !important;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20) !important;
+}
+
 /* v1.14.17 (KARMA « reprend depuis 0 sans toutes nos itérations ») :
    tous les styles spécifiques à la modale Import (.kta-import-choix-* et
    les overrides #kta-import-choix-modal .kta-ses-*) sont retirés. La

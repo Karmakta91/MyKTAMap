@@ -436,6 +436,7 @@
             // C'est un front de taille (polyline structure)
             out.structures.push({
               id: pmId, nom: nom || undefined,
+              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
               type: frontMatch[1], points: projected
             });
           } else {
@@ -444,6 +445,7 @@
             const roadType = (roadMatch && roadMatch[1]) ? roadMatch[1] : defaults.roadType;
             out.roads.push({
               id: pmId, nom: nom || undefined,
+              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
               type: roadType, points: projected
             });
           }
@@ -478,6 +480,7 @@
             // ce que le KMZ exportait à l'origine.
             out.structures.push({
               id: pmId, nom: nom || undefined,
+              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
               type: structMatch[1], points: projected
             });
           } else {
@@ -486,6 +489,7 @@
             const zoneType = (zoneMatch && zoneMatch[1]) ? zoneMatch[1] : defaults.zoneType;
             out.zones.push({
               id: pmId, nom: nom || undefined,
+              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
               type: zoneType, points: projected
             });
           }

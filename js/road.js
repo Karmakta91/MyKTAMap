@@ -603,18 +603,37 @@ function renderRoads() {
     const style = ROAD_STYLES[road.type] || { color: "white", weight: 5, opacity: 1 };
     const target = _targetLayerForRoad(road.type);
 
+    let polyline;
     if (road.type === "itinerary") {
       // Itineraire : SVG + className pour le filtre CSS drop-shadow (halo neon)
       const opts = Object.assign({}, style, {
         renderer:  L.svg(),
         className: "kta-itinerary-polyline"
       });
-      const polyline = L.polyline(latlngs, opts).addTo(target);
-      roadLayers.push(polyline);
+      polyline = L.polyline(latlngs, opts).addTo(target);
     } else {
       // Roads session normales : canvas par defaut (preferCanvas)
-      const polyline = L.polyline(latlngs, style).addTo(target);
-      roadLayers.push(polyline);
+      polyline = L.polyline(latlngs, style).addTo(target);
+    }
+    roadLayers.push(polyline);
+
+    // 📝 v1.16.0 step 1 — popup note au clic. Exclus itinéraire (éphémère)
+    // et jonction (multi-niveau, gérée séparément). Reste : principal /
+    // secondaire / chemin → éditables.
+    if (typeof window.attacherNotePopup === "function" &&
+        road.type !== "itinerary" && road.type !== "jonction") {
+      const _roadRef = road;
+      const _roadTypeLabels = {
+        principal:  "🟩 Tracé principal",
+        secondaire: "🟪 Tracé secondaire",
+        chemin:     "🟨 Chemin"
+      };
+      window.attacherNotePopup(
+        polyline,
+        function() { return _roadRef.description; },
+        function(v) { _roadRef.description = v; },
+        _roadTypeLabels[road.type] || ("Tracé " + road.type)
+      );
     }
 
     // 🏗️ Multi-niveau : marqueurs visuels aux extremites des jonctions

@@ -437,22 +437,40 @@ function renderStructures() {
           }
         }
       }
-    } else if (isPolyline) {
+    let layer;
+    if (isPolyline) {
       // Front fermé → polyline solide épaisse colorée, pas de stroke
       // contour (style.color = la couleur du polyline lui-même).
       // Cohérent avec la demande KARMA "épais orange/jaune sans contour".
-      const polyline = L.polyline(latlngs, {
+      layer = L.polyline(latlngs, {
         color:     style.color,
         weight:    style.weight,
         opacity:   style.opacity,
         lineCap:   "round",
         lineJoin:  "round"
       }).addTo(target);
-      structureLayers.push(polyline);
     } else {
       // Structure fermée → polygone rempli avec stroke noir.
-      const polygon = L.polygon(latlngs, style).addTo(target);
-      structureLayers.push(polygon);
+      layer = L.polygon(latlngs, style).addTo(target);
+    }
+    structureLayers.push(layer);
+
+    // 📝 v1.16.0 step 1 — popup note au clic sur toutes les structures
+    if (typeof window.attacherNotePopup === "function") {
+      const _structRef = structure;
+      const _structTypeLabels = {
+        "pilier-1": "🟡 Pilier 1ère masse",
+        "pilier-2": "🟠 Pilier 2e masse",
+        "mur":      "🔵 Mur",
+        "front-1":  "🟨 Front de taille 1ère masse",
+        "front-2":  "🟧 Front de taille 2e masse"
+      };
+      window.attacherNotePopup(
+        layer,
+        function() { return _structRef.description; },
+        function(v) { _structRef.description = v; },
+        _structTypeLabels[structure.type] || ("Structure " + structure.type)
+      );
     }
   });
 }

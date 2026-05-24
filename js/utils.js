@@ -202,6 +202,113 @@ function polygonAreaM2(points) {
 window.polygonAreaM2 = polygonAreaM2;
 
 // =========================
+// 📝 NOTE POPUP — helper commun (zones / roads / structures, v1.16.0 step 1)
+// =========================
+// Attache un popup Leaflet à un layer (polygon/polyline/circle) avec un
+// textarea pour éditer la note (= champ description du modèle data).
+// Mêmes classes CSS que les popups points (.kta-popup-point) pour
+// hériter automatiquement des overrides thème clair/sombre déjà en
+// place (cf. css/style.css > .leaflet-popup-content-wrapper).
+//
+// Signature :
+//   attacherNotePopup(layer, getDescr, setDescr, titreType)
+//     - layer    : L.Polygon | L.Polyline | L.CircleMarker
+//     - getDescr : () => string | undefined   (lecteur courant)
+//     - setDescr : (newDesc: string) => void  (écrit dans le data model)
+//     - titreType: string (affiché dans le header du popup, ex "Zone Eau")
+//
+// Persistance : le setDescr met à jour l'objet en mémoire. La sauvegarde
+// disque suit le flow normal (sessionPersist.js polling) — pas de save
+// forcée ici. HistoryManager.record est appelé pour rendre la note
+// undo-able (Ctrl+Z).
+window.attacherNotePopup = function(layer, getDescr, setDescr, titreType) {
+  if (!layer || typeof layer.bindPopup !== "function") return;
+
+  function _esc(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function _renderPopupHtml() {
+    const current = getDescr() || "";
+    return '<div class="kta-popup-point kta-note-popup">' +
+             '<b>' + _esc(titreType) + '</b>' +
+             '<div class="kta-note-popup-wrap">' +
+               '<textarea class="kta-note-popup-textarea" rows="4" ' +
+                 'placeholder="Note libre (multilignes possibles)…">' +
+                 _esc(current) +
+               '</textarea>' +
+               '<div class="kta-popup-actions kta-note-popup-actions">' +
+                 '<button class="kta-popup-btn kta-popup-btn-aller kta-note-popup-save" type="button">' +
+                   '💾 Sauver la note' +
+                 '</button>' +
+               '</div>' +
+               '<div class="kta-note-popup-status" style="display:none;"></div>' +
+             '</div>' +
+           '</div>';
+  }
+
+  layer.bindPopup(_renderPopupHtml(), window.KTA_POPUP_OPTS || { autoPan: true, closeButton: true });
+
+  // À chaque ouverture (= y compris après re-render), on rebind le bouton save.
+  // L'event popupopen est fiable car Leaflet le déclenche après l'injection DOM
+  // de la popup, et content est rebuilt à chaque ouverture si on a forcé
+  // setPopupContent avant.
+  layer.on("popupopen", function(evt) {
+    // Re-render le contenu pour avoir la valeur à jour (au cas où elle a
+    // changé depuis le bind initial — peut arriver après undo/redo).
+    const fresh = _renderPopupHtml();
+    if (evt && evt.popup) evt.popup.setContent(fresh);
+    // Recherche dans le DOM (popup vient juste d'être injectée).
+    setTimeout(function() {
+      const popupRoot = document.querySelector(".leaflet-popup-content .kta-note-popup");
+      if (!popupRoot) return;
+      const textarea = popupRoot.querySelector(".kta-note-popup-textarea");
+      const saveBtn  = popupRoot.querySelector(".kta-note-popup-save");
+      const statusEl = popupRoot.querySelector(".kta-note-popup-status");
+      if (!textarea || !saveBtn) return;
+
+      saveBtn.addEventListener("click", function() {
+        const newDescr = textarea.value.trim();
+        // Snapshot HistoryManager pour Ctrl+Z
+        const _historyBefore = (window.HistoryManager && window.HistoryManager.captureState)
+          ? window.HistoryManager.captureState() : null;
+        try {
+          setDescr(newDescr || undefined);
+          if (statusEl) {
+            statusEl.style.display = "block";
+            statusEl.textContent = "✅ Note sauvegardée";
+            statusEl.style.color = "#6ce28a";
+          }
+          if (window.HistoryManager && _historyBefore && window.HistoryManager.record) {
+            window.HistoryManager.record(
+              "Note " + titreType,
+              _historyBefore
+            );
+          }
+          // Force la sauvegarde session imminente (sinon attendre le polling 1.5s).
+          if (window.SessionPersist && window.SessionPersist.save) {
+            window.SessionPersist.save();
+          }
+          // Auto-close après 800 ms pour feedback rapide
+          setTimeout(function() {
+            if (layer && layer.closePopup) layer.closePopup();
+          }, 800);
+        } catch(e) {
+          if (statusEl) {
+            statusEl.style.display = "block";
+            statusEl.textContent = "❌ Erreur : " + (e.message || e);
+            statusEl.style.color = "#ff8080";
+          }
+        }
+      });
+    }, 0);
+  });
+};
+
+// =========================
 // HTML POPUP D'UN POINT — helper commun (editor + embedded)
 // =========================
 // Construit le HTML d'une popup Leaflet pour un point, avec 2 boutons :

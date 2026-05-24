@@ -292,6 +292,25 @@ function renderZones() {
         : style;
       const polygon = L.polygon(latlngs, polygonOpts).addTo(target);
       zoneLayers.push(polygon);
+
+      // 📝 v1.16.0 step 1 — popup au clic pour éditer la note (description)
+      // Capture l'index de la zone dans la closure pour pouvoir lire/écrire
+      // la dernière valeur même si zonesData change (renderZones).
+      if (typeof window.attacherNotePopup === "function") {
+        const _zoneRef = zone;  // référence directe à l'objet
+        const _zoneTypeLabels = {
+          eau:          "💧 Zone Eau",
+          remblais:     "⬛ Zone Remblais",
+          effondrement: "🟥 Zone Effondrement",
+          inaccessible: "⛔ Zone Inaccessible"
+        };
+        window.attacherNotePopup(
+          polygon,
+          function() { return _zoneRef.description; },
+          function(v) { _zoneRef.description = v; },
+          _zoneTypeLabels[zone.type] || ("Zone " + zone.type)
+        );
+      }
     }
   });
 }
