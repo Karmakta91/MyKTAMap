@@ -4960,6 +4960,30 @@ _setGroupeModeActif("tracker", isTracking, null);
   }
 
   _sousActionsTraces.push(
+    // 🆕 v1.16.0 step2-flyout-valider (KARMA "rajoute un bouton Valider
+    // dans tracé, qui fait la même chose que fermer le tracé en cours") :
+    // bouton générique qui valide le tracé en cours quel que soit son
+    // type (principal, secondaire, chemin, jonction, OU custom ✨). C'est
+    // l'équivalent d'un re-clic sur le type actif (toggle off → road
+    // reste dans roadsData mais window.modeRoad/currentRoad → null).
+    // Pas isTypeAction → s'affiche APRÈS les types dans le flyout (après
+    // le séparateur visuel).
+    { icone: "✅", titre: "Valider le tracé en cours",
+      onClick: function() {
+        if (!window.modeRoad) {
+          _alertCharte(
+            "Aucun tracé en cours",
+            "Active d'abord un type (🟩 Principal, 🟪 Secondaire, 🟨 Chemin) ou un tracé custom ✨ avant de valider.",
+            "🛣️"
+          );
+          return;
+        }
+        // _fermerModeRoad fait : desactiverFn() (= toggleRoadMode +
+        // reset visuel) + delete _modesActifs["road"]. Comportement
+        // identique à un re-clic sur le bouton du type actif.
+        _fermerModeRoad();
+      }
+    },
     { icone: "📏", titre: "Distance totale (filtres)",
         onClick: function() {
           if (typeof window.ouvrirRoadsDistanceFloater === "function") {
@@ -5251,18 +5275,24 @@ _setGroupeModeActif("tracker", isTracking, null);
             if (!ok) {
               // 🆕 v1.9.3-A1.b.2 + fix2 : message adapté au type (front
               // = polyline 2pts min, pilier/mur = polygon 3pts min).
-              // Modale charte au lieu d'alert() natif.
-              const isFront = window.modeStructure === "front-1" || window.modeStructure === "front-2";
-              if (isFront) {
+              // 🐛 v1.16.0 step2-flyout-valider : pour les CUSTOM structures,
+              // window.isStructurePolylineType consulte LegendCustomization
+              // pour distinguer polyline (front custom) vs polygon (pilier
+              // custom). Avant : check hardcodé sur "front-1/front-2" qui
+              // tombait toujours sur "polygon, 3 points" pour les customs
+              // → message faux pour un custom polyline.
+              const isLine = (typeof window.isStructurePolylineType === "function")
+                && window.isStructurePolylineType(window.modeStructure);
+              if (isLine) {
                 _alertCharte(
                   "Pas assez de points",
-                  "Un front de taille est un tracé. Place <strong>au moins 2 points</strong> sur la carte avant de le valider.",
+                  "Un front de taille (ligne ouverte) est un tracé. Place <strong>au moins 2 points</strong> sur la carte avant de le valider.",
                   "📐"
                 );
               } else {
                 _alertCharte(
                   "Pas assez de points",
-                  "Un pilier ou un mur est un polygone fermé. Place <strong>au moins 3 points</strong> sur la carte avant de le fermer.",
+                  "Un pilier / mur (polygone fermé) doit avoir <strong>au moins 3 points</strong>. Place les points sur la carte avant de le fermer.",
                   "📐"
                 );
               }
