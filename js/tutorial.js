@@ -69,16 +69,20 @@
         "<p><strong>4 façons</strong> de démarrer depuis la page d'accueil :</p>" +
         "<ul>" +
           "<li><strong>📚 Mes plans</strong> : recharge un plan que tu as déjà importé ou créé (mémorisé localement)</li>" +
-          "<li><strong>📦 Drop ZIP / KMZ / GPX</strong> : dépose simplement un fichier dans la zone dédiée. " +
-            "Routage automatique selon l'extension</li>" +
+          "<li><strong>📦 Drop ZIP</strong> : dépose simplement un fichier ZIP MyKTAMap dans la zone dédiée. " +
+            "C'est le format natif — chargement direct, sans conversion.</li>" +
           "<li><strong>🏗️ Générer un plan → Mode Simple</strong> : démarre un plan vide en 30 secondes " +
             "(image OU canvas vierge + nom + version + options M-LVL/V2 → ZIP prêt)</li>" +
           "<li><strong>🏗️ Générer un plan → Mode Avancé</strong> : contrôle total (calques data, tracking " +
             "config, icônes custom, géoréférencement GPS, légende plan-level personnalisée)</li>" +
         "</ul>" +
-        "<p>📥 <strong>Import cross-format</strong> : un KMZ Google Earth ou un GPX TopoDroid/OsmAnd peut " +
-        "être <strong>reconverti</strong> en plan MyKTAMap utilisable. Pour GPX (qui n'a pas d'image), " +
-        "l'app génère un canvas vierge auto-calibré sur les bounds GPS du fichier.</p>" +
+        "<p>📥 <strong>Import KMZ / GPX</strong> : la zone drop accepte aussi les fichiers <code>.kmz</code> " +
+        "et <code>.gpx</code> avec routage automatique vers le bon pipeline de reconversion. <strong>⚠️ Idéalement " +
+        "exportés depuis MyKTAMap</strong> (= roundtrip complet : tags, niveaux M-LVL, descriptions, " +
+        "légende personnalisée, photos POI, tout est préservé). Un KMZ Google Earth ou un GPX TopoDroid/" +
+        "OsmAnd reste importable mais en partiel — les infos absentes du format standard (tags MyKTAMap, " +
+        "niveaux, etc.) sont remplacées par des défauts. Pour GPX (qui n'a pas d'image), l'app génère un " +
+        "canvas vierge auto-calibré sur les bounds GPS du fichier.</p>" +
         "<p>🔄 <strong>Persistance</strong> : ton plan est mémorisé dans IndexedDB. Au prochain lancement, " +
         "tu le retrouves dans 📚 Mes plans sans avoir à le re-déposer.</p>"
     },
