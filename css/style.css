@@ -15812,7 +15812,12 @@ html.kta-theme-light .kta-profile-footer {
 .kta-tutorial-progress {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  /* 🆕 v1.21.3 : wrap pour les 22 cartes (avant 8 → 22). Sans wrap, sur mobile
+     les dots débordaient (22 × 10px + 21 × 8px = 388px > 360-400px viewport). */
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  max-width: 100%;
+  padding: 0 4px;
 }
 .kta-tutorial-dot {
   width: 10px;
@@ -15822,6 +15827,7 @@ html.kta-theme-light .kta-profile-footer {
   border: 1px solid rgba(255, 255, 255, 0.10);
   cursor: pointer;
   padding: 0;
+  flex-shrink: 0;
   transition: background 0.15s ease, transform 0.15s ease;
 }
 .kta-tutorial-dot:hover {
@@ -15833,6 +15839,17 @@ html.kta-theme-light .kta-profile-footer {
   border-color: rgba(244, 197, 66, 0.50);
   box-shadow: 0 0 6px rgba(244, 197, 66, 0.50);
   transform: scale(1.20);
+}
+/* 🆕 v1.21.3 : dots compacts sur viewport étroit (mobile portrait) — évite le
+   wrap multi-ligne disgracieux + garde la barre lisible. */
+@media (max-width: 480px) {
+  .kta-tutorial-progress {
+    gap: 4px 5px;
+  }
+  .kta-tutorial-dot {
+    width: 7px;
+    height: 7px;
+  }
 }
 
 .kta-tutorial-actions {
