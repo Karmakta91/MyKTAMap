@@ -16838,6 +16838,133 @@ html.kta-theme-light .kta-loader-profile-stat-val {
   letter-spacing: 0.5px;
 }
 
+/* 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les lister")
+   — Section stats agrégées par plan dans la modale 👤 Mon profil. Calcul
+   séquentiel anti-crash (cf index.html > _calculerStatsPlansAggregees). */
+.kta-profile-plansstats {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.kta-profile-plansstats-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8d0e0;
+  margin-bottom: 8px;
+}
+.kta-profile-plansstats-wrap {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.kta-profile-plansstats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-profile-plansstats-table thead th {
+  position: sticky;
+  top: 0;
+  background: rgba(244, 197, 66, 0.10);
+  color: #f4c542;
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.30);
+  font-size: 11px;
+}
+.kta-profile-plansstats-table thead th:first-child { text-align: left; }
+.kta-profile-plansstats-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.kta-profile-plansstats-table tbody tr:last-child { border-bottom: none; }
+.kta-profile-plansstats-table tbody td {
+  padding: 5px 8px;
+  vertical-align: middle;
+}
+.kta-profile-plansstats-table .kta-pps-name {
+  text-align: left;
+  word-break: break-word;
+  max-width: 180px;
+}
+.kta-profile-plansstats-table .kta-pps-num {
+  text-align: center;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 11.5px;
+}
+.kta-pps-version {
+  font-size: 10px;
+  color: #8892a4;
+  margin-left: 4px;
+}
+.kta-pps-current {
+  color: #6ce28a;
+  font-size: 10px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.kta-profile-plansstats-table .kta-pps-row-current {
+  background: rgba(108, 226, 138, 0.06);
+}
+.kta-profile-plansstats-table tfoot th {
+  background: rgba(244, 197, 66, 0.04);
+  color: #f4c542;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-top: 1px solid rgba(244, 197, 66, 0.30);
+  font-size: 11.5px;
+}
+.kta-profile-plansstats-table tfoot th:first-child { text-align: left; }
+.kta-profile-plansstats-note {
+  margin: 6px 0 0;
+  font-size: 10.5px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Thème clair — section plans stats */
+body.kta-theme-light .kta-profile-plansstats,
+html.kta-theme-light .kta-profile-plansstats {
+  border-top-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-header,
+html.kta-theme-light .kta-profile-plansstats-header {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-wrap,
+html.kta-theme-light .kta-profile-plansstats-wrap {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-table,
+html.kta-theme-light .kta-profile-plansstats-table {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-table thead th,
+html.kta-theme-light .kta-profile-plansstats-table thead th {
+  background: var(--kta-light-accent-bg) !important;
+  color: #6b4d10 !important;
+  border-bottom-color: rgba(161, 110, 16, 0.30) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-table tbody tr,
+html.kta-theme-light .kta-profile-plansstats-table tbody tr {
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-profile-plansstats-table tfoot th,
+html.kta-theme-light .kta-profile-plansstats-table tfoot th {
+  background: rgba(161, 110, 16, 0.06) !important;
+  color: #6b4d10 !important;
+  border-top-color: rgba(161, 110, 16, 0.30) !important;
+}
+body.kta-theme-light .kta-pps-version,
+html.kta-theme-light .kta-pps-version {
+  color: var(--kta-light-text-muted) !important;
+}
+
 /* Actions */
 .kta-profile-details-actions {
   display: flex;

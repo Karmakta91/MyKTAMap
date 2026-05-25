@@ -2780,7 +2780,168 @@
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">⭐ favoris</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">📦 snapshots</span></div>' +
             '<div class="kta-profile-stat-cell kta-profile-stat-cell-wide"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">📸 photos POI (' + _fmtBytes(photosBytes) + ')</span></div>' +
+          '</div>' +
+          // 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les
+          // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
+          // section enrichie avec calcul SÉQUENTIEL plan par plan (anti-crash :
+          // KARMA "si on fait tout les plan d'un coup ca crash a 100%, il faut
+          // donc de facons séquentiel, cumuler un plan par un plan").
+          // Squelette rendu d'abord, le calcul peuple le tbody progressivement
+          // via `_calculerStatsPlansAggregees` (cf ci-après).
+          '<div class="kta-profile-plansstats" id="kta-profile-plansstats">' +
+            '<div class="kta-profile-plansstats-header" id="kta-profile-plansstats-header">' +
+              '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— préparation…</span>' +
+            '</div>' +
+            '<div class="kta-profile-plansstats-wrap">' +
+              '<table class="kta-profile-plansstats-table">' +
+                '<thead>' +
+                  '<tr>' +
+                    '<th>Plan</th>' +
+                    '<th title="Points d\'intérêt ajoutés à la session de ce plan">📍</th>' +
+                    '<th title="Tracés (Principal / Secondaire / Chemin / Jonction)">🛣️</th>' +
+                    '<th title="Distance totale des tracés (en m/km si plan calibré, sinon pixels image)">↔</th>' +
+                  '</tr>' +
+                '</thead>' +
+                '<tbody id="kta-profile-plansstats-tbody"></tbody>' +
+                '<tfoot id="kta-profile-plansstats-tfoot"></tfoot>' +
+              '</table>' +
+            '</div>' +
+            '<p class="kta-profile-plansstats-note">' +
+              'Calcul séquentiel pour éviter de saturer la mémoire sur mobile. ' +
+              'Les distances sont en pixels image (universelles) — pour le plan courant, ' +
+              'la valeur s\'affiche aussi en m/km si calibré.' +
+            '</p>' +
           '</div>';
+
+        // Lancement async du calcul agrégé séquentiel (anti-crash)
+        // Géré HORS du innerHTML synchrone pour ne pas bloquer le rendu.
+        _calculerStatsPlansAggregees();
+      }
+
+      // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
+      // Itère le PlanRegistry, pour chaque plan lit son slot localStorage
+      // `myktamap_session_v1_<planId>` (lecture instantanée), compte
+      // editorPoints + roads et somme la longueur cumulée des tracés en
+      // pixels. `await new Promise(r => setTimeout(r, 0))` entre 2 plans
+      // pour laisser respirer le thread UI (vital sur mobile avec 10+ plans).
+      // Le tbody est peuplé progressivement → l'user voit la liste grossir
+      // au lieu d'attendre un blocking compute.
+      async function _calculerStatsPlansAggregees() {
+        const headerEl = document.getElementById("kta-profile-plansstats-header");
+        const tbodyEl  = document.getElementById("kta-profile-plansstats-tbody");
+        const tfootEl  = document.getElementById("kta-profile-plansstats-tfoot");
+        if (!tbodyEl || !tfootEl) return;
+
+        let plans = [];
+        if (window.PlanRegistry && typeof window.PlanRegistry.list === "function") {
+          try { plans = window.PlanRegistry.list() || []; } catch(e) {}
+        }
+        if (plans.length === 0) {
+          if (headerEl) headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— aucun plan enregistré</span>';
+          return;
+        }
+
+        // Totaux cumulés (mis à jour à chaque plan)
+        let totalPois = 0, totalRoads = 0, totalDistPx = 0;
+        let nbAvecSession = 0;
+        // Scale du plan COURANT (si chargé + calibré) pour conversion m/km
+        const _currentId = window._currentLoadedPlanId || null;
+        const _currentScale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
+                              ? window.APP_CONFIG.scale : null;
+
+        // Helper : compute distance px d'un set de roads
+        function _sumRoadsDistPx(roads) {
+          if (!Array.isArray(roads)) return 0;
+          let total = 0;
+          roads.forEach(function(r) {
+            if (!r || !Array.isArray(r.points)) return;
+            for (let k = 1; k < r.points.length; k++) {
+              const a = r.points[k - 1], b = r.points[k];
+              if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
+              const dx = b.x - a.x, dy = b.y - a.y;
+              total += Math.sqrt(dx * dx + dy * dy);
+            }
+          });
+          return total;
+        }
+
+        // Format distance pour une row (m/km si scale dispo, sinon px)
+        function _fmtDist(distPx, isCurrent) {
+          if (distPx <= 0) return "—";
+          if (isCurrent && _currentScale && typeof window.formatDistance === "function") {
+            return window.formatDistance(distPx / _currentScale, 0);
+          }
+          // Pixels avec formatage compact
+          if (distPx < 1000) return Math.round(distPx) + " px";
+          return (distPx / 1000).toFixed(1) + "k px";
+        }
+
+        // ════════ ITÉRATION SÉQUENTIELLE ANTI-CRASH ════════
+        for (let i = 0; i < plans.length; i++) {
+          const plan = plans[i];
+
+          // Yield au thread UI entre chaque plan (vital mobile)
+          // ⚠️ NE JAMAIS retirer ce await — c'est ce qui empêche le freeze
+          // sur 10+ plans, surtout avec des sessions chargées.
+          await new Promise(function(r) { setTimeout(r, 0); });
+
+          // Update progress header
+          if (headerEl) {
+            headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— calcul ' + (i + 1) + '/' + plans.length + '…</span>';
+          }
+
+          // Lecture session localStorage (instantané, pas d'IO async)
+          let pois = 0, roads = 0, distPx = 0;
+          try {
+            const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+            if (raw) {
+              const data = JSON.parse(raw);
+              pois  = Array.isArray(data.editorPoints) ? data.editorPoints.length : 0;
+              roads = Array.isArray(data.roads)         ? data.roads.length         : 0;
+              distPx = _sumRoadsDistPx(data.roads);
+              if (pois > 0 || roads > 0) nbAvecSession++;
+            }
+          } catch(e) {
+            // payload corrompu → skip silencieusement
+          }
+
+          totalPois  += pois;
+          totalRoads += roads;
+          totalDistPx += distPx;
+
+          // Append row au tbody (rendu progressif visible par l'user)
+          const isCurrent = (plan.id === _currentId);
+          const planName  = plan.name || plan.id;
+          const safeLabel = String(planName).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const versionTag = plan.version ? ' <span class="kta-pps-version">' + String(plan.version).replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</span>' : '';
+          const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé">●</span>' : '';
+          const row = document.createElement("tr");
+          row.className = isCurrent ? "kta-pps-row-current" : "";
+          row.innerHTML =
+            '<td class="kta-pps-name">' + safeLabel + versionTag + currentTag + '</td>' +
+            '<td class="kta-pps-num">' + pois + '</td>' +
+            '<td class="kta-pps-num">' + roads + '</td>' +
+            '<td class="kta-pps-num">' + _fmtDist(distPx, isCurrent) + '</td>';
+          tbodyEl.appendChild(row);
+
+          // Mise à jour live du footer (totaux cumulés)
+          tfootEl.innerHTML =
+            '<tr>' +
+              '<th>Total (' + nbAvecSession + ' plan' + (nbAvecSession > 1 ? "s" : "") + ' avec session)</th>' +
+              '<th class="kta-pps-num">' + totalPois + '</th>' +
+              '<th class="kta-pps-num">' + totalRoads + '</th>' +
+              '<th class="kta-pps-num">' +
+                (totalDistPx <= 0 ? "—" :
+                 (_currentScale ? window.formatDistance(totalDistPx / _currentScale, 0) + " ≈"
+                                : (totalDistPx >= 1000 ? (totalDistPx / 1000).toFixed(1) + "k px" : Math.round(totalDistPx) + " px"))) +
+              '</th>' +
+            '</tr>';
+        }
+
+        // Header final (calcul terminé)
+        if (headerEl) {
+          headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— ' + plans.length + ' plan' + (plans.length > 1 ? "s" : "") + '</span>';
+        }
       }
 
       // Init bandeau au boot du loader (différé pour laisser UserProfile.init())
