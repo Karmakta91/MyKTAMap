@@ -1153,9 +1153,9 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 ---
 
-## ✏️ Ajouter des points
+## 📍 Ajouter des points
 
-> Tous les boutons d'édition se trouvent dans le groupe **✏️ Édition** de la barre latérale.
+> Tous les boutons d'édition se trouvent dans le groupe **✏️ Édition** de la barre latérale. La sous-action **📍 Ajouter un point** active le mode "poser un point" — clic sur la carte = nouveau point.
 
 1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité

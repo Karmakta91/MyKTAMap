@@ -2076,7 +2076,7 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">✏️ Édition de points</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point (clic sur la carte = nouveau point)</span>
+            <span class="kta-aide-icone">📍</span><span>Activer le mode ajout de point (clic sur la carte = nouveau point)</span>
             <span class="kta-aide-icone">📸</span><span>Photos attachées au point (max 5) — section dans la modale d'ajout/édition. Boutons 📷 Prendre / 🖼️ Galerie</span>
             <span class="kta-aide-icone">✏️</span><span>Modifier un point existant — bouton bleu dans la popup du marker (relance la même modale pré-remplie)</span>
             <span class="kta-aide-icone">🌐</span><span><strong>Coords GPS dans le popup</strong> (v1.21.2) — si le plan est <strong>géoréférencé</strong>, le popup d'un point affiche automatiquement les coordonnées GPS (lat/lng WGS84) calculées juste après la description, avec un bouton <strong>📋</strong> pour copier dans le presse-papier. Actif pour <strong>tous les points</strong> (session ET calques de données).</span>
@@ -5341,7 +5341,13 @@ _setGroupeModeActif("tracker", isTracking, null);
     titre: "Édition de points",
     sousActions: [
       {
-        icone: "✏️",
+        // 🆕 v1.21.3 (KARMA "c'est pas la punaise mais un crayon") : icône
+        // 📍 pour la sous-action "poser un point sur la carte". Avant : ✏️
+        // identique au bouton principal du groupe Édition → doublon visuel
+        // + sémantiquement faux. Le crayon reste pour "éditer un point
+        // existant" (popup → ✏️ Modifier) ; la punaise pour "poser un
+        // point précis", convention universelle en cartographie.
+        icone: "📍",
         titre: "Activer le mode ajout de point",
         onClick: function(btnSub) {
           const dejaActif = btnSub.classList.contains("kta-actif");
