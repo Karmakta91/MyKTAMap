@@ -639,30 +639,87 @@
     const finalW = v2Dims ? v2Dims.width  : opts.imageW;
     const finalH = v2Dims ? v2Dims.height : opts.imageH;
 
-    // 🆕 v1.21.0-fix6 (KARMA : "je perd aussi le georéférencement (paradoxale
-    // pour un GPX et KMZ)") : embed `plan.georef` à partir des coins GPS du
-    // GroundOverlay KML. Le calibrage 2 points couvre la diagonale SW→NE de
-    // l'image (= max stretching pour précision optimale du buildTransform).
-    // Sans ce georef, le KMZ ré-importé perdait son calibrage et l'user
-    // devait re-saisir manuellement les 8 champs dans Réglages > 🌐 Géoref.
-    // Pattern symétrique gpxImport.js > planConfig.plan.georef.
+    // 🐛 v1.21.1 (audit fix #9) : V2 auto-crop produisait des coords
+    // décalées. L'auto-crop de _genererTuilesV2 détecte les marges blanches
+    // et retire les pixels [0, cropX] × [0, cropY] → les annotations
+    // (ingested.points/roads/zones/structures), projetées AVANT le crop
+    // avec les dims ORIGINALES (opts.imageW × opts.imageH), pointent vers
+    // des coords obsolètes dans le repère POST-crop. De même, le georef
+    // calculé avec finalW/finalH mais les corners SW/NE GPS originaux
+    // (qui couvrent l'image PRÉ-crop entière) était mathématiquement faux.
     //
+    // Fix : si v2Dims.cropOffset présent, on translate toutes les coords
+    // par (-cropX, -cropY) et on recalcule le georef avec les coordonnées
+    // GPS interpolées des nouveaux coins post-crop.
+    const cropOffset = (v2Dims && v2Dims.cropOffset) ? v2Dims.cropOffset : null;
+    if (cropOffset && opts.imported) {
+      function _translate(items) {
+        if (!Array.isArray(items)) return;
+        items.forEach(function(it) {
+          if (typeof it.x === "number" && typeof it.y === "number") {
+            it.x -= cropOffset.x;
+            it.y -= cropOffset.y;
+          }
+          if (Array.isArray(it.points)) {
+            it.points.forEach(function(p) {
+              if (typeof p.x === "number" && typeof p.y === "number") {
+                p.x -= cropOffset.x;
+                p.y -= cropOffset.y;
+              }
+            });
+          }
+        });
+      }
+      _translate(opts.imported.points);
+      _translate(opts.imported.roads);
+      _translate(opts.imported.zones);
+      _translate(opts.imported.structures);
+    }
+
+    // 🆕 v1.21.0-fix6 + v1.21.1 audit fix #9 : embed `plan.georef` à partir
+    // des coins GPS du GroundOverlay KML, ajusté pour le crop V2 si applicable.
     // Convention plan MyKTAMap (cf convertCoord = [imgH - y, x]) :
     //   - coin SW visuel = (x=0, y=H)        → corners.sw GPS
     //   - coin NE visuel = (x=W, y=0)        → corners.ne GPS
     //
-    // On utilise finalW/H (post-V2 si applicable) pour rester cohérent avec
-    // les coords runtime du plan reconstruit. Si V2 a cropé les marges, le
-    // georef reste juste car la transformation se base sur l'espace plan
-    // réel post-crop.
+    // Si crop V2 actif, les nouveaux coins SW/NE post-crop correspondent
+    // dans l'image originale à des positions intérieures dont on calcule
+    // les GPS par interpolation linéaire (cas LatLonBox axis-aligned —
+    // approximation acceptable pour LatLonQuad avec rotation faible).
     let _georef = null;
     if (opts.overlayCorners && opts.overlayCorners.sw && opts.overlayCorners.ne
         && isFinite(opts.overlayCorners.sw.lat) && isFinite(opts.overlayCorners.sw.lng)
         && isFinite(opts.overlayCorners.ne.lat) && isFinite(opts.overlayCorners.ne.lng)) {
-      _georef = {
-        pointA: { x: 0, y: finalH, lat: opts.overlayCorners.sw.lat, lng: opts.overlayCorners.sw.lng },
-        pointB: { x: finalW, y: 0, lat: opts.overlayCorners.ne.lat, lng: opts.overlayCorners.ne.lng }
-      };
+      const sw = opts.overlayCorners.sw;
+      const ne = opts.overlayCorners.ne;
+      if (cropOffset) {
+        // Recalcul des GPS des nouveaux coins SW/NE post-crop.
+        // Convention plan : (x=0, y=opts.imageH) = SW image originale = sw.lat/lng.
+        // Le nouveau (x=0, y=finalH) post-crop correspond à (cropX, cropY+finalH)
+        // dans l'image originale. Idem (x=finalW, y=0) post-crop → (cropX+finalW, cropY).
+        // Interpolation linéaire pour récupérer leur GPS :
+        //   frac_x = x_orig / opts.imageW  → lng = sw.lng + frac_x * (ne.lng - sw.lng)
+        //   frac_y = y_orig / opts.imageH  → lat = ne.lat - frac_y * (ne.lat - sw.lat)
+        function _interpGps(xOrig, yOrig) {
+          const fx = xOrig / opts.imageW;
+          const fy = yOrig / opts.imageH;
+          return {
+            lng: sw.lng + fx * (ne.lng - sw.lng),
+            lat: ne.lat - fy * (ne.lat - sw.lat)
+          };
+        }
+        const swPost = _interpGps(cropOffset.x,            cropOffset.y + finalH);
+        const nePost = _interpGps(cropOffset.x + finalW,   cropOffset.y);
+        _georef = {
+          pointA: { x: 0,      y: finalH, lat: swPost.lat, lng: swPost.lng },
+          pointB: { x: finalW, y: 0,      lat: nePost.lat, lng: nePost.lng }
+        };
+      } else {
+        _georef = {
+          pointA: { x: 0,      y: finalH, lat: sw.lat, lng: sw.lng },
+          pointB: { x: finalW, y: 0,      lat: ne.lat, lng: ne.lng }
+        };
+      }
     }
 
     const planConfig = {
