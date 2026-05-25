@@ -380,12 +380,42 @@
       // en <br/>. L'import KMZ fait l'opération inverse pour préserver
       // le format texte original au roundtrip.
       const desc = p.description ? _emitDescriptionCdata(p.description) : '';
+      // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL via ExtendedData
+      const extData = _emitExtendedDataLevel(Number.isInteger(p.level) ? p.level : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
+               extData +
                '<styleUrl>#point_' + tag + '</styleUrl>' +
                '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
              '</Placemark>';
+    }
+
+    // 🆕 v1.21.1 (audit fix #14) : Helper ExtendedData KML pour préserver
+    // les méta MyKTAMap (level M-LVL, fromLevel/toLevel pour jonctions) au
+    // roundtrip MKM→KMZ→MKM. Sans ça, les niveaux étaient perdus (chaque
+    // Placemark ne portait QUE son styleUrl, le folder parent encodait le
+    // niveau mais kmzImport.ingestPlacemarks ne le réextrayait pas).
+    //
+    // Format KML standard <ExtendedData> + <Data name="..."><value>...</value></Data>
+    // — transparent pour Google Earth/OsmAnd/etc. (ignore les Data inconnues),
+    // mais lu par kmzImport.ingestPlacemarks pour repopulater item.level.
+    //
+    // Convention de namespace : préfixe `mkm:` pour éviter collision avec
+    // d'autres apps qui auraient leurs propres <Data>.
+    function _emitExtendedDataLevel(level, extra) {
+      const parts = [];
+      if (Number.isInteger(level)) {
+        parts.push('<Data name="mkm:level"><value>' + level + '</value></Data>');
+      }
+      if (extra && Number.isInteger(extra.fromLevel)) {
+        parts.push('<Data name="mkm:fromLevel"><value>' + extra.fromLevel + '</value></Data>');
+      }
+      if (extra && Number.isInteger(extra.toLevel)) {
+        parts.push('<Data name="mkm:toLevel"><value>' + extra.toLevel + '</value></Data>');
+      }
+      if (parts.length === 0) return '';
+      return '<ExtendedData>' + parts.join('') + '</ExtendedData>';
     }
 
     // Helper CDATA pour les descriptions HTML compatibles Google Earth.
@@ -409,9 +439,14 @@
                 : road.type.charAt(0).toUpperCase() + road.type.slice(1);
       // v1.16.0 step 1 — description (note) CDATA + \n → <br/> (cf hotfix9 sur points)
       const desc = road.description ? _emitDescriptionCdata(road.description) : '';
+      // 🆕 v1.21.1 (audit fix #14) : level + fromLevel/toLevel pour jonctions
+      const extData = (road.type === "jonction")
+        ? _emitExtendedDataLevel(null, { fromLevel: road.fromLevel, toLevel: road.toLevel })
+        : _emitExtendedDataLevel(Number.isInteger(road.level) ? road.level : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
+               extData +
                '<styleUrl>#' + styleId + '</styleUrl>' +
                '<LineString><tessellate>1</tessellate><coordinates>' + coords +
                '</coordinates></LineString>' +
@@ -437,9 +472,12 @@
       else nom = zone.type.charAt(0).toUpperCase() + zone.type.slice(1);
       // v1.16.0 step 1 — description (note) CDATA + \n → <br/>
       const desc = zone.description ? _emitDescriptionCdata(zone.description) : '';
+      // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL
+      const extData = _emitExtendedDataLevel(Number.isInteger(zone.level) ? zone.level : null);
       return '<Placemark>' +
                '<name>' + _xmlEsc(nom) + '</name>' +
                desc +
+               extData +
                '<styleUrl>#' + styleId + '</styleUrl>' +
                '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
                coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +
@@ -565,6 +603,8 @@
               body += '<Placemark>' +
                         '<name>' + _xmlEsc(nom) + '</name>' +
                         (s.description ? _emitDescriptionCdata(s.description) : '') +
+                        // 🆕 v1.21.1 (audit fix #14) : level M-LVL pour fronts
+                        _emitExtendedDataLevel(Number.isInteger(s.level) ? s.level : null) +
                         '<styleUrl>#' + styleId + '</styleUrl>' +
                         '<LineString><tessellate>1</tessellate>' +
                           '<coordinates>' + coords + '</coordinates>' +

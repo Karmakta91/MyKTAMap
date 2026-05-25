@@ -381,6 +381,29 @@
         }).filter(function(p) { return isFinite(p.lat) && isFinite(p.lng); });
       };
 
+      // 🆕 v1.21.1 (audit fix #14) : extraction des ExtendedData MyKTAMap
+      // (mkm:level, mkm:fromLevel, mkm:toLevel). Pattern symétrique au
+      // _emitExtendedDataLevel de kmzExport.js. Préserve les niveaux M-LVL
+      // au roundtrip MKM→KMZ→MKM. Si absent (KMZ tiers ou KMZ MKM < v1.21.1),
+      // retourne null sur chaque champ → fallback level 0 côté caller.
+      const _mkmData = (function() {
+        const out = { level: null, fromLevel: null, toLevel: null };
+        const dataEls = pm.querySelectorAll(":scope > ExtendedData > Data");
+        for (let j = 0; j < dataEls.length; j++) {
+          const el = dataEls[j];
+          const name = el.getAttribute("name") || "";
+          if (name.indexOf("mkm:") !== 0) continue;
+          const valEl = el.querySelector("value");
+          if (!valEl) continue;
+          const v = parseInt((valEl.textContent || "").trim(), 10);
+          if (!Number.isFinite(v)) continue;
+          if (name === "mkm:level")     out.level     = v;
+          if (name === "mkm:fromLevel") out.fromLevel = v;
+          if (name === "mkm:toLevel")   out.toLevel   = v;
+        }
+        return out;
+      })();
+
       // v1.14.20-hotfix8 (KARMA « pk l'export KMZ ne sauvegarde pas les
       // icônes comme on veut pour pouvoir re-importer ensuite ») :
       // détection du tag/type depuis le <styleUrl> du Placemark (encodé
@@ -404,11 +427,14 @@
             // Tag depuis styleUrl #point_<tag>, fallback défaut
             const ptMatch = _styleUrl.match(/^#point_(.+)$/);
             const tag = (ptMatch && ptMatch[1]) ? ptMatch[1] : defaults.pointTag;
-            out.points.push({
+            const _pt = {
               id: pmId, nom: nom, description: desc || undefined,
               x: Math.round(px.x), y: Math.round(px.y),
               tags: [tag]
-            });
+            };
+            // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL si présent
+            if (Number.isInteger(_mkmData.level)) _pt.level = _mkmData.level;
+            out.points.push(_pt);
             stats.kept++;
           } else {
             stats.outOfBounds++;
@@ -438,20 +464,17 @@
           // perdait silencieusement le type custom au roundtrip MKM→KMZ→MKM.
           const frontMatch = _styleUrl.match(/^#structure_(front-1|front-2)$/);
           const frontCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
-          if (frontMatch) {
-            // C'est un front de taille (polyline structure)
-            out.structures.push({
+          if (frontMatch || frontCustMatch) {
+            // C'est un front de taille (polyline structure) OU structure custom polyline
+            const stType = frontMatch ? frontMatch[1] : frontCustMatch[1];
+            const _st = {
               id: pmId, nom: nom || undefined,
               description: desc || undefined,
-              type: frontMatch[1], points: projected
-            });
-          } else if (frontCustMatch) {
-            // Structure polyline CUSTOM (dessinable via LegendCustomization)
-            out.structures.push({
-              id: pmId, nom: nom || undefined,
-              description: desc || undefined,
-              type: frontCustMatch[1], points: projected
-            });
+              type: stType, points: projected
+            };
+            // 🆕 v1.21.1 (audit fix #14) : préserve level M-LVL
+            if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
+            out.structures.push(_st);
           } else {
             // Type road : built-in OU custom
             const roadMatch = _styleUrl.match(/^#road_(principal|secondaire|chemin|jonction|itinerary)$/);
@@ -461,11 +484,19 @@
                              : (roadCustMatch && roadCustMatch[1])
                                ? roadCustMatch[1]
                                : defaults.roadType;
-            out.roads.push({
+            const _rd = {
               id: pmId, nom: nom || undefined,
               description: desc || undefined,
               type: roadType, points: projected
-            });
+            };
+            // 🆕 v1.21.1 (audit fix #14) : level + jonction fromLevel/toLevel
+            if (roadType === "jonction") {
+              if (Number.isInteger(_mkmData.fromLevel)) _rd.fromLevel = _mkmData.fromLevel;
+              if (Number.isInteger(_mkmData.toLevel))   _rd.toLevel   = _mkmData.toLevel;
+            } else if (Number.isInteger(_mkmData.level)) {
+              _rd.level = _mkmData.level;
+            }
+            out.roads.push(_rd);
           }
           stats.kept++;
         } else { stats.skipped++; }
@@ -495,19 +526,16 @@
           // Sinon (KMZ tiers) → fallback defaults.zoneType.
           const structMatch     = _styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
           const structCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
-          if (structMatch) {
-            out.structures.push({
+          if (structMatch || structCustMatch) {
+            const stType = structMatch ? structMatch[1] : structCustMatch[1];
+            const _st = {
               id: pmId, nom: nom || undefined,
               description: desc || undefined,
-              type: structMatch[1], points: projected
-            });
-          } else if (structCustMatch) {
-            // Structure polygon CUSTOM
-            out.structures.push({
-              id: pmId, nom: nom || undefined,
-              description: desc || undefined,
-              type: structCustMatch[1], points: projected
-            });
+              type: stType, points: projected
+            };
+            // 🆕 v1.21.1 (audit fix #14) : level M-LVL
+            if (Number.isInteger(_mkmData.level)) _st.level = _mkmData.level;
+            out.structures.push(_st);
           } else {
             const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible)$/);
             const zoneCustMatch = _styleUrl.match(/^#zone_(cust-[A-Za-z0-9_-]+)$/);
@@ -516,11 +544,14 @@
                              : (zoneCustMatch && zoneCustMatch[1])
                                ? zoneCustMatch[1]
                                : defaults.zoneType;
-            out.zones.push({
+            const _zn = {
               id: pmId, nom: nom || undefined,
               description: desc || undefined,
               type: zoneType, points: projected
-            });
+            };
+            // 🆕 v1.21.1 (audit fix #14) : level M-LVL
+            if (Number.isInteger(_mkmData.level)) _zn.level = _mkmData.level;
+            out.zones.push(_zn);
           }
           stats.kept++;
         } else { stats.skipped++; }
