@@ -130,6 +130,25 @@ function afficherPlanner() {
             🌍 Ouvrir l'import KMZ
           </button>
         </div>
+
+        <!-- 📤 IMPORT GPX (v1.21.0-fix6) : parité avec l'import KMZ ci-dessus.
+             KARMA : "il faut ajouter au meme titre que import KMZ import GPX
+             dans le générateur avancé". Ouvre _afficherImporterGpx() qui
+             génère un canvas vierge auto-calibré sur les bounds GPS du GPX
+             puis reconstruit un ZIP MyKTAMap utilisable (cf §55 CLAUDE.md). -->
+        <div class="kta-aide-section kta-pl-col-full">
+          <div class="kta-aide-section-titre">📤 Importer depuis un GPX <span class="kta-planner-hint">(canvas vierge auto-calibré)</span></div>
+          <p class="kta-planner-info">
+            Tu as un fichier <strong>.gpx</strong> exporté depuis MyKTAMap ou une app tierce
+            (TopoDroid, OsmAnd, Strava, etc.) ?
+            L'app génère un canvas vierge dimensionné automatiquement sur les bounds GPS
+            des points/tracés, et reconstruit un ZIP MyKTAMap utilisable.
+            <br><span class="kta-planner-hint">⚠️ Idéalement exporté depuis MyKTAMap pour roundtrip complet (tags, niveaux M-LVL, descriptions).</span>
+          </p>
+          <button class="kta-btn kta-btn-primary" id="kta-planner-open-gpx-import" type="button" style="width:100%; padding:12px;">
+            📤 Ouvrir l'import GPX
+          </button>
+        </div>
         ` : ``}
 
         <!-- ZIP OPTIONNEL -->
@@ -558,6 +577,23 @@ function afficherPlanner() {
   if (btnKmzImport) {
     btnKmzImport.addEventListener("click", function() {
       _afficherImporterKmz();
+    });
+  }
+
+  // 📤 v1.21.0-fix6 (KARMA "ajouter au meme titre que import KMZ import GPX
+  // dans le générateur avancé") : bouton parallèle pour le pipeline GPX →
+  // ZIP MyKTAMap (canvas vierge auto-calibré sur bounds GPS du GPX).
+  // Pattern identique au bouton KMZ ci-dessus.
+  const btnGpxImport = document.getElementById("kta-planner-open-gpx-import");
+  if (btnGpxImport) {
+    btnGpxImport.addEventListener("click", function() {
+      if (typeof _afficherImporterGpx === "function") {
+        _afficherImporterGpx();
+      } else if (typeof window.afficherImporterGpx === "function") {
+        window.afficherImporterGpx();
+      } else {
+        alert("Module d'import GPX indisponible (js/gpxImport.js non chargé).");
+      }
     });
   }
 
@@ -3216,6 +3252,11 @@ async function _kmzImpGenerer() {
         baseImageFilename: baseImageFilename,
         imageW:            state.imageW,
         imageH:            state.imageH,
+        // 🆕 v1.21.0-fix6 : pass des 4 coins GPS du GroundOverlay KMZ pour
+        // que genererZipMyktamap puisse embed `plan.georef` (calibrage 2
+        // points SW↔NE). Sans ça, le KMZ ré-importé perdait son calibrage
+        // GPS et l'user devait re-saisir les 8 champs dans Réglages.
+        overlayCorners:    state.overlay.corners,
         // v1.14.20-hotfix4 — on passe TOUS les assets extraits du KMZ pour que
         // genererZipMyktamap puisse récupérer les icônes embarquées (files/
         // icons/<tag>.png posé par kmzExport.js) et les remettre dans le ZIP

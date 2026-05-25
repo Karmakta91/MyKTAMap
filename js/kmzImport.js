@@ -579,6 +579,32 @@
     const finalW = v2Dims ? v2Dims.width  : opts.imageW;
     const finalH = v2Dims ? v2Dims.height : opts.imageH;
 
+    // 🆕 v1.21.0-fix6 (KARMA : "je perd aussi le georéférencement (paradoxale
+    // pour un GPX et KMZ)") : embed `plan.georef` à partir des coins GPS du
+    // GroundOverlay KML. Le calibrage 2 points couvre la diagonale SW→NE de
+    // l'image (= max stretching pour précision optimale du buildTransform).
+    // Sans ce georef, le KMZ ré-importé perdait son calibrage et l'user
+    // devait re-saisir manuellement les 8 champs dans Réglages > 🌐 Géoref.
+    // Pattern symétrique gpxImport.js > planConfig.plan.georef.
+    //
+    // Convention plan MyKTAMap (cf convertCoord = [imgH - y, x]) :
+    //   - coin SW visuel = (x=0, y=H)        → corners.sw GPS
+    //   - coin NE visuel = (x=W, y=0)        → corners.ne GPS
+    //
+    // On utilise finalW/H (post-V2 si applicable) pour rester cohérent avec
+    // les coords runtime du plan reconstruit. Si V2 a cropé les marges, le
+    // georef reste juste car la transformation se base sur l'espace plan
+    // réel post-crop.
+    let _georef = null;
+    if (opts.overlayCorners && opts.overlayCorners.sw && opts.overlayCorners.ne
+        && isFinite(opts.overlayCorners.sw.lat) && isFinite(opts.overlayCorners.sw.lng)
+        && isFinite(opts.overlayCorners.ne.lat) && isFinite(opts.overlayCorners.ne.lng)) {
+      _georef = {
+        pointA: { x: 0, y: finalH, lat: opts.overlayCorners.sw.lat, lng: opts.overlayCorners.sw.lng },
+        pointB: { x: finalW, y: 0, lat: opts.overlayCorners.ne.lat, lng: opts.overlayCorners.ne.lng }
+      };
+    }
+
     const planConfig = {
       plan: {
         name: opts.planName || "Plan importé KMZ",
@@ -586,7 +612,9 @@
         author: opts.planAuthor || "Import KMZ",
         imageWidth: finalW,
         imageHeight: finalH,
-        baseImage: baseFilename
+        baseImage: baseFilename,
+        // v1.21.0-fix6 : georef si dispo (pattern aligné gpxImport)
+        ...(_georef ? { georef: _georef } : {})
       },
       // 🆕 v1.21.0-fix5 (KARMA : "l'icone du tracker est toujours perdu et
       // commence en 0, 0 (pas 50% comme en générateur habituel)") : ajout
