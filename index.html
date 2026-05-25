@@ -275,18 +275,13 @@
           <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
         </div>
         <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
-             Hydratées async par _refreshLoaderProfileBar. Cohérentes avec
-             la fenêtre Mémoire (storage estimate) + tracking session. -->
-        <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true">
-          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-time" title="Temps total passé sur l'app (toutes sessions cumulées)">
-            <span class="kta-loader-profile-stat-icon">⏱️</span>
-            <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-time-val">—</span>
-          </div>
-          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-storage" title="Taille réelle de TES données MyKTAMap stockées localement : localStorage (préférences, sessions, favoris) + IndexedDB (plans mémorisés, photos POI, snapshots, profil, crashes). N'inclut PAS le Cache PWA volatile.">
-            <span class="kta-loader-profile-stat-icon">💾</span>
-            <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-storage-val">—</span>
-          </div>
-        </div>
+             🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
+             profile les 2 ou 3 stats") : stats désormais rendues
+             DYNAMIQUEMENT via _renderProfileBarStatsSlots selon
+             localStorage["myktamap_loader_bar_stats_v1"]. Default :
+             ["time", "storage"]. Pool : time / storage / plans.
+             Cap dur 3 max (mobile). Section de choix dans modale Profil. -->
+        <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true"></div>
       </div>
 
       <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
@@ -2130,6 +2125,10 @@
         const bar = document.getElementById("kta-loader-profile-bar");
         if (!bar || !window.UserProfile) return;
         try { await window.UserProfile.init(); } catch(e) {}
+        // 🆕 v1.21.3 : construit les slots stats selon les prefs user AVANT
+        // de hydrater (sinon les querySelectorAll dans _hydrateProfileBarStats
+        // tombent sur un container vide).
+        _renderProfileBarStatsSlots(_getProfileBarStatsKeys());
         await _refreshLoaderProfileBar();
         bar.style.display = "";  // révèle (default = none)
         // Listener changement (notifie sur setSurnom / setPhoto / removePhoto / clear)
@@ -2268,6 +2267,72 @@
         const h = Math.floor(m / 60);
         const remM = m % 60;
         return remM > 0 ? h + "h " + remM + "min" : h + "h";
+      }
+
+      // 🆕 v1.21.3 (KARMA "on doit pouvoir choisir dans profile les 2 ou 3
+      // stats du bandeau accueil") : système dynamique de stats configurables.
+      //
+      // - PROFILE_BAR_STATS = pool de stats disponibles (3 actuellement,
+      //   extensible si besoin).
+      // - localStorage key `myktamap_loader_bar_stats_v1` = array de keys
+      //   sélectionnées par l'user (default ["time", "storage"]).
+      // - _renderProfileBarStatsSlots(keys) construit le DOM dynamiquement.
+      // - _hydrateProfileBarStats() itère les slots présents (pas hardcodé)
+      //   et remplit les valeurs selon la key.
+      const PROFILE_BAR_STATS = {
+        time: {
+          icon:  "⏱️",
+          title: "Temps total passé sur l'app (toutes sessions cumulées)"
+        },
+        storage: {
+          icon:  "💾",
+          title: "Taille réelle de TES données MyKTAMap stockées localement : localStorage (préférences, sessions, favoris) + IndexedDB (plans mémorisés, photos POI, snapshots, profil, crashes). N'inclut PAS le Cache PWA volatile."
+        },
+        plans: {
+          icon:  "🗺️",
+          title: "Nombre de plans dans ton registre MyKTAMap (visités au moins une fois)"
+        }
+      };
+      const PROFILE_BAR_STATS_LS_KEY = "myktamap_loader_bar_stats_v1";
+      const PROFILE_BAR_STATS_MAX    = 3;  // cap mobile (et général)
+
+      function _getProfileBarStatsKeys() {
+        try {
+          const raw = localStorage.getItem(PROFILE_BAR_STATS_LS_KEY);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr) && arr.length > 0) {
+              // Filtre les keys valides (anti-corruption) et applique le cap
+              const filtered = arr.filter(function(k) { return !!PROFILE_BAR_STATS[k]; });
+              return filtered.slice(0, PROFILE_BAR_STATS_MAX);
+            }
+          }
+        } catch(e) {}
+        // Default : time + storage (= comportement v1.21.1+)
+        return ["time", "storage"];
+      }
+      function _setProfileBarStatsKeys(arr) {
+        try { localStorage.setItem(PROFILE_BAR_STATS_LS_KEY, JSON.stringify(arr)); } catch(e) {}
+      }
+
+      // Construit dynamiquement les slots dans le bandeau profil
+      function _renderProfileBarStatsSlots(keys) {
+        const wrap = document.getElementById("kta-loader-profile-stats");
+        if (!wrap) return;
+        wrap.innerHTML = "";
+        keys.forEach(function(k) {
+          const cfg = PROFILE_BAR_STATS[k];
+          if (!cfg) return;
+          const div = document.createElement("div");
+          div.className = "kta-loader-profile-stat";
+          div.id = "kta-loader-profile-stat-" + k;
+          div.title = cfg.title;
+          div.dataset.statKey = k;
+          div.innerHTML =
+            '<span class="kta-loader-profile-stat-icon">' + cfg.icon + '</span>' +
+            '<span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-' + k + '-val">—</span>';
+          wrap.appendChild(div);
+        });
       }
 
       // Formattage bytes : "12 KB" / "1.2 MB" / "234 MB"
@@ -2447,26 +2512,36 @@
         _storageCalcCache = null;
       };
 
-      // Hydrate les 2 stats compactes du bandeau profil
+      // Hydrate les stats compactes du bandeau profil — refactor dynamique
+      // 🆕 v1.21.3 : itère les slots PRÉSENTS dans le DOM (data-stat-key)
+      // au lieu de hardcoder time/storage. Permet d'ajouter de nouvelles
+      // stats au pool PROFILE_BAR_STATS sans toucher à cette fonction.
       async function _hydrateProfileBarStats() {
-        // Temps : total persisté + delta live depuis dernier tick (si visible)
-        const totalEl = document.getElementById("kta-loader-profile-stat-time-val");
-        if (totalEl) {
-          const liveDelta = (_timeLastTick === null) ? 0 : (Date.now() - _timeLastTick);
-          const totalMs = _readTotalTimeMs() + liveDelta;
-          totalEl.textContent = _formatDuration(totalMs);
-        }
-        // Storage : calcul ciblé MyKTAMap (LS + IDB stores connus). Cache 30s
-        // pour éviter recalcul à chaque ouverture du loader.
-        // 🐛 v1.21.3-fix : remplaçait navigator.storage.estimate() qui retournait
-        // toute la consommation de l'origine (y compris Cache PWA volatile).
-        const storageEl = document.getElementById("kta-loader-profile-stat-storage-val");
-        if (storageEl) {
-          try {
-            const bytes = await _getStorageMyktamapCached();
-            storageEl.textContent = _formatBytesShort(bytes);
-          } catch(e) {
-            storageEl.textContent = "—";
+        const slots = document.querySelectorAll("#kta-loader-profile-stats [data-stat-key]");
+        for (const slot of slots) {
+          const key   = slot.dataset.statKey;
+          const valEl = slot.querySelector(".kta-loader-profile-stat-val");
+          if (!valEl) continue;
+          if (key === "time") {
+            const liveDelta = (_timeLastTick === null) ? 0 : (Date.now() - _timeLastTick);
+            const totalMs = _readTotalTimeMs() + liveDelta;
+            valEl.textContent = _formatDuration(totalMs);
+          } else if (key === "storage") {
+            try {
+              const bytes = await _getStorageMyktamapCached();
+              valEl.textContent = _formatBytesShort(bytes);
+            } catch(e) {
+              valEl.textContent = "—";
+            }
+          } else if (key === "plans") {
+            try {
+              const n = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
+                        ? (window.PlanRegistry.getAll() || []).length
+                        : 0;
+              valEl.textContent = n;
+            } catch(e) {
+              valEl.textContent = "—";
+            }
           }
         }
       }
@@ -2519,6 +2594,23 @@
                 '<div class="kta-profile-details-stats-loading">⏳ Calcul des stats…</div>' +
               '</div>' +
 
+              // 🆕 v1.21.3 (KARMA "on doit dans ce cas pouvoir choisir dans
+              // profile les 2 ou 3 stats du bandeau") : section toggle pour
+              // configurer quelles stats apparaissent dans le bandeau home.
+              // Cap dur 3 (cf PROFILE_BAR_STATS_MAX) pour rester lisible
+              // sur mobile compact.
+              '<div class="kta-profile-barstats">' +
+                '<div class="kta-profile-barstats-header">🎨 Stats du bandeau d\'accueil</div>' +
+                '<p class="kta-profile-barstats-hint">' +
+                  'Choisis 1 à 3 stats à afficher dans l\'en-tête du loader. Cap mobile pour rester compact.' +
+                '</p>' +
+                '<div class="kta-profile-barstats-options" id="kta-profile-barstats-options">' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="time"> <span>⏱️ Temps total</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="storage"> <span>💾 Sauvegarde</span></label>' +
+                  '<label class="kta-profile-barstats-cb"><input type="checkbox" data-bar-stat-key="plans"> <span>🗺️ Plans visités</span></label>' +
+                '</div>' +
+              '</div>' +
+
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">📤 Exporter mon profil</button>' +
@@ -2551,6 +2643,45 @@
         document.getElementById("kta-profile-details-close").addEventListener("click", closeFn);
         overlay.addEventListener("click", function(e) { if (e.target === overlay) closeFn(); });
         document.addEventListener("keydown", escFn);
+
+        // 🆕 v1.21.3 : bind des checkboxes "Stats du bandeau d'accueil".
+        // Cap dur PROFILE_BAR_STATS_MAX (3). Au moins 1 stat requise.
+        // À chaque change : sauve + re-render bandeau + re-hydrate les valeurs.
+        (function() {
+          const cbs = document.querySelectorAll(".kta-profile-barstats-cb input[type=checkbox][data-bar-stat-key]");
+          if (cbs.length === 0) return;
+          const current = new Set(_getProfileBarStatsKeys());
+          cbs.forEach(function(cb) {
+            cb.checked = current.has(cb.dataset.barStatKey);
+          });
+          function _onChange(e) {
+            const allCbs = Array.from(cbs);
+            const checked = allCbs.filter(function(c) { return c.checked; });
+            // Cap dur 3 : si on dépasse, on uncheck cette case + toast
+            if (checked.length > PROFILE_BAR_STATS_MAX) {
+              e.target.checked = false;
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast("⚠️ Max " + PROFILE_BAR_STATS_MAX + " stats dans le bandeau", "warn");
+              }
+              return;
+            }
+            // Au moins 1 stat : si l'user décoche la dernière, on annule
+            if (checked.length === 0) {
+              e.target.checked = true;
+              if (window.OOMGuard && window.OOMGuard.showToast) {
+                window.OOMGuard.showToast("⚠️ Au moins 1 stat requise", "warn");
+              }
+              return;
+            }
+            // Save + re-render bandeau live
+            const keys = allCbs.filter(function(c) { return c.checked; })
+                               .map(function(c) { return c.dataset.barStatKey; });
+            _setProfileBarStatsKeys(keys);
+            _renderProfileBarStatsSlots(keys);
+            _hydrateProfileBarStats();
+          }
+          cbs.forEach(function(cb) { cb.addEventListener("change", _onChange); });
+        })();
 
         // Bind handlers édition surnom (live + save button)
         const surnomInput = document.getElementById("kta-profile-details-surnom");
