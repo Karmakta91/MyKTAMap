@@ -3151,12 +3151,28 @@
         const zonesByType = _countBy(sessZones.concat(embedZones), function(z) { return z.type || "remblais"; });
         const structsByType = _countBy(sessStructs.concat(embedStructs), function(s) { return s.type || "pilier-1"; });
 
+        // Distance + scale (px/m) du plan courant. Si scale dispo, on calcule
+        // aussi distM en mètres → cohérent cross-plan dans la modale Profil
+        // (les autres plans lisent distM via leur cache, persisté avec leur
+        // propre scale au moment du load).
+        // 🐛 v1.21.4 (KARMA "il m'affiche KM pour le dernier plan charger,
+        // sinon en px") : avant on retournait juste distPx → impossible de
+        // convertir pour les autres plans (scale inconnue). Maintenant on
+        // persiste distM dans le cache aussi → conversion universelle.
+        const distPx = _sumRoadsDistPx(sessRoads) + _sumRoadsDistPx(embedRoads);
+        const scale  = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
+                       ? window.APP_CONFIG.scale
+                       : null;
+        const distM  = scale ? (distPx / scale) : null;
+
         return {
           pois:   editorPts.length + embedPts.length,
           roads:  sessRoads.length + embedRoads.length,
           zones:  sessZones.length + embedZones.length,
           structs: sessStructs.length + embedStructs.length,
-          distPx: _sumRoadsDistPx(sessRoads) + _sumRoadsDistPx(embedRoads),
+          distPx: distPx,
+          distM:  distM,
+          scale:  scale,
           breakdowns: {
             pointsByTag:   pointsByTag,
             roadsByType:   roadsByType,
@@ -3218,7 +3234,11 @@
         }
 
         // Totaux cumulés (mis à jour à chaque plan)
-        let totalPois = 0, totalRoads = 0, totalDistPx = 0;
+        let totalPois = 0, totalRoads = 0;
+        // 🐛 v1.21.4 : cumul séparé pour les distM convertibles vs distPx
+        // orphelins (= plans sans scale connue). On affiche le total en m/km
+        // avec un suffix "+N plan(s) en px" si certains sont orphelins.
+        let totalDistM = 0, totalDistPxOrphan = 0, nbPxOrphan = 0;
         let nbAvecData = 0, nbPartial = 0;
         // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
         const aggBreakdowns = {
@@ -3227,18 +3247,26 @@
           zonesByType:   {},
           structsByType: {}
         };
-        // Scale du plan COURANT (si chargé + calibré) pour conversion m/km
+        // ID du plan courant (pour marqueur ● dans la table)
+        // 🐛 v1.21.4 : la variable _currentScale a été retirée — chaque plan
+        // a désormais sa propre `scale` dans son cache (via `_computePlanStatsLive`
+        // qui la persiste au load du plan). Plus besoin de hack "scale courant
+        // pour tous les plans" → conversion m/km précise par plan.
         const _currentId = window._currentLoadedPlanId || null;
-        const _currentScale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
-                              ? window.APP_CONFIG.scale : null;
 
-        // Format distance pour une row (m/km si scale dispo, sinon px)
-        function _fmtDist(distPx, isCurrent) {
-          if (distPx <= 0) return "—";
-          if (isCurrent && _currentScale && typeof window.formatDistance === "function") {
-            return window.formatDistance(distPx / _currentScale, 0);
+        // Format distance pour une row (m/km si distM connu, sinon pixels).
+        // 🐛 v1.21.4 (KARMA "il m'affiche KM pour le dernier plan charger,
+        // sinon en px") : avant on convertissait UNIQUEMENT le plan courant
+        // via _currentScale → tous les autres plans en pixels. Maintenant
+        // chaque plan stocke sa propre scale dans le cache → distM précis
+        // pour tous les plans déjà ouverts.
+        function _fmtDist(stats) {
+          const distM  = stats && typeof stats.distM === "number" ? stats.distM : null;
+          const distPx = stats && typeof stats.distPx === "number" ? stats.distPx : 0;
+          if (distM !== null && distM > 0 && typeof window.formatDistance === "function") {
+            return window.formatDistance(distM, 0);
           }
-          // Pixels avec formatage compact
+          if (distPx <= 0) return "—";
           if (distPx < 1000) return Math.round(distPx) + " px";
           return (distPx / 1000).toFixed(1) + "k px";
         }
@@ -3254,33 +3282,42 @@
         //      "myktamap_session_v1_<id>" + marqueur "⚠️" partiel (data layers
         //      manquants — il faut ouvrir le plan pour avoir le total complet)
         function _resoudreStatsPlan(plan) {
-          // Cas 1 : plan courant → live
+          // Cas 1 : plan courant → live (avec distM + scale via APP_CONFIG)
           if (plan.id === _currentId) {
             const live = _computePlanStatsLive();
             return {
-              pois: live.pois, roads: live.roads, distPx: live.distPx,
+              pois: live.pois, roads: live.roads,
+              distPx: live.distPx,
+              distM:  live.distM,    // ← v1.21.4 : mètres précis avec scale courante
+              scale:  live.scale,
               breakdowns: live.breakdowns || null,
               source: "live"
             };
           }
-          // Cas 2 : cache localStorage
+          // Cas 2 : cache localStorage. Tolère 2 formats :
+          //   • v1.21.4+ : cache contient distM + scale (= mètres convertibles)
+          //   • v1.21.3  : cache contient juste distPx (= pixels seulement)
+          //                → traité comme partial (réopen plan pour upgrade)
           try {
             const raw = localStorage.getItem("myktamap_plan_stats_v1_" + plan.id);
             if (raw) {
               const cached = JSON.parse(raw);
               if (cached && typeof cached.pois === "number") {
+                const hasDistM = (typeof cached.distM === "number");
                 return {
                   pois:   cached.pois || 0,
                   roads:  cached.roads || 0,
                   distPx: cached.distPx || 0,
+                  distM:  hasDistM ? cached.distM : null,
+                  scale:  cached.scale || null,
                   breakdowns: cached.breakdowns || null,
-                  source: "cache"
+                  source: hasDistM ? "cache" : "cache-legacy"   // v1.21.3 → marqueur ⚠️
                 };
               }
             }
           } catch(e) {}
-          // Cas 3 : fallback session-only (partial — pas de breakdowns par
-          // type pour les data layers embedded, juste session)
+          // Cas 3 : fallback session-only (partial — pas de scale, pas de
+          // breakdowns par type pour les data layers embedded)
           let pois = 0, roads = 0, distPx = 0;
           let pointsByTag = {}, roadsByType = {};
           try {
@@ -3292,13 +3329,13 @@
               pois  = eps.length;
               roads = rds.length;
               distPx = _sumRoadsDistPx(rds);
-              // Breakdowns session seulement (pour camemberts partiels)
               pointsByTag = _countBy(eps, _firstTagOf);
               roadsByType = _countBy(rds, function(r) { return r.type || "principal"; });
             }
           } catch(e) {}
           return {
             pois: pois, roads: roads, distPx: distPx,
+            distM: null, scale: null,
             breakdowns: {
               pointsByTag:   pointsByTag,
               roadsByType:   roadsByType,
@@ -3327,13 +3364,23 @@
           const pois  = stats.pois;
           const roads = stats.roads;
           const distPx = stats.distPx;
-          const isPartial = (stats.source === "session-only");
+          const distM  = stats.distM;
+          // 🐛 v1.21.4 : "partial" inclut désormais aussi "cache-legacy"
+          // (cache v1.21.3 sans distM/scale). L'user doit re-ouvrir le plan
+          // pour upgrader son cache au format v1.21.4 avec mètres.
+          const isPartial = (stats.source === "session-only" || stats.source === "cache-legacy");
           if (pois > 0 || roads > 0) nbAvecData++;
           if (isPartial)            nbPartial++;
 
           totalPois  += pois;
           totalRoads += roads;
-          totalDistPx += distPx;
+          // Cumul intelligent : distM si dispo, sinon distPx orphelin
+          if (typeof distM === "number" && distM > 0) {
+            totalDistM += distM;
+          } else if (distPx > 0) {
+            totalDistPxOrphan += distPx;
+            nbPxOrphan++;
+          }
 
           // 🆕 v1.21.3 : merge des breakdowns dans l'agrégat cross-plan
           if (stats.breakdowns) {
@@ -3358,21 +3405,34 @@
             '<td class="kta-pps-name">' + safeLabel + versionTag + currentTag + partialTag + '</td>' +
             '<td class="kta-pps-num">' + pois + '</td>' +
             '<td class="kta-pps-num">' + roads + '</td>' +
-            '<td class="kta-pps-num">' + _fmtDist(distPx, isCurrent) + '</td>';
+            '<td class="kta-pps-num">' + _fmtDist(stats) + '</td>';
           tbodyEl.appendChild(row);
 
-          // Mise à jour live du footer (totaux cumulés)
+          // Mise à jour live du footer (totaux cumulés).
+          // 🐛 v1.21.4 : cumul intelligent en 3 cas :
+          //   • Tout en distM → "12.5 km"
+          //   • Mix distM + px orphan → "12.5 km (+ N en px)"
+          //   • Tout en px → "X k px" (= cas tous plans jamais ouverts)
+          let totalDistStr;
+          if (totalDistM > 0 && nbPxOrphan === 0) {
+            totalDistStr = window.formatDistance(totalDistM, 0);
+          } else if (totalDistM > 0 && nbPxOrphan > 0) {
+            totalDistStr = window.formatDistance(totalDistM, 0) +
+                           ' <span style="color:#f4c542; font-size:10px;" title="' + nbPxOrphan + ' plan' + (nbPxOrphan > 1 ? "s" : "") + ' sans scale connue, distance en pixels uniquement">(+ ' + nbPxOrphan + ' ⚠️ px)</span>';
+          } else if (totalDistPxOrphan > 0) {
+            totalDistStr = (totalDistPxOrphan >= 1000
+                            ? (totalDistPxOrphan / 1000).toFixed(1) + "k px"
+                            : Math.round(totalDistPxOrphan) + " px");
+          } else {
+            totalDistStr = "—";
+          }
           const partialSuffix = nbPartial > 0 ? ', <span style="color:#f4c542;">' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
           tfootEl.innerHTML =
             '<tr>' +
               '<th>Total (' + nbAvecData + ' avec données' + partialSuffix + ')</th>' +
               '<th class="kta-pps-num">' + totalPois + '</th>' +
               '<th class="kta-pps-num">' + totalRoads + '</th>' +
-              '<th class="kta-pps-num">' +
-                (totalDistPx <= 0 ? "—" :
-                 (_currentScale ? window.formatDistance(totalDistPx / _currentScale, 0) + " ≈"
-                                : (totalDistPx >= 1000 ? (totalDistPx / 1000).toFixed(1) + "k px" : Math.round(totalDistPx) + " px"))) +
-              '</th>' +
+              '<th class="kta-pps-num">' + totalDistStr + '</th>' +
             '</tr>';
         }
 

@@ -127,7 +127,12 @@
   }
 
   function _colorForKey(category, key) {
-    if (category === "roads"      && _PALETTE_ROADS[key])      return _PALETTE_ROADS[key];
+    // 🐛 v1.21.4 (KARMA "même couler entre route principal et jonction de
+    // niveau") : accepte aussi les alias LegendCustomization ("traces"
+    // alias de "roads", "icones" alias de "tags") pour résilience.
+    // Avant : ma modale Profil envoyait "traces" → mismatch palette →
+    // fallback hash → collision possible principal/jonction (même hash %10).
+    if ((category === "roads"  || category === "traces") && _PALETTE_ROADS[key])   return _PALETTE_ROADS[key];
     if (category === "zones"      && _PALETTE_ZONES[key])      return _PALETTE_ZONES[key];
     if (category === "structures" && _PALETTE_STRUCTS[key])    return _PALETTE_STRUCTS[key];
     // Fallback : palette générique cycle via hash
