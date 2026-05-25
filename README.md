@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.20.0` (25/05/2026)
+**📦 Version courante** : `v1.21.0` (25/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.20.0](#-derniere-release--v1200)
+1. [🚀 Dernière release — v1.21.0](#-derniere-release--v1210)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,7 +40,20 @@
 
 ---
 
-## 🚀 Dernière release — v1.20.0
+## 🚀 Dernière release — v1.21.0
+
+📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Stats avancées + QoL UX »**. 4 features qui complètent le polish v1.20.0 :
+
+- 📊 **Export CSV** des annotations (ZIP avec 4 fichiers points/roads/zones/structures, UTF-8 BOM + sep `;` compat Excel)
+- 📊 **Graphes camembert** SVG natifs dans Stats globales (4 sections breakdown — coloration charte cohérente avec la carte)
+- 🎯 **Raccourcis clavier** E M Z S T L B R (toggle, anti-vol focus, skip si modale ouverte)
+- 🎬 **Mode présentation** (touche F) — cache header + sidebars + footer, garde carte + zoom + boussole
+
+Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.20.0
 
 📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.19.1) : **Cycle complet « Robustesse + Stats + Onboarding + Profil »**. 8 features regroupées en une seule release :
 
@@ -895,7 +908,129 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-20-0" open>
+<details id="v1-21-0" open>
+<summary><strong>🗓️ 25/05/2026 — 🚀 v1.21.0 : Cycle « Stats avancées + QoL UX »</strong></summary>
+
+Release MINOR (bump Y : 1.20.0 → 1.21.0). 4 features qui complètent le polish v1.20.0 (release massive de 8 features la veille) sans embarquer de chantier lourd. Scope validé KARMA via topo design (4 questions AskUserQuestion).
+
+### 📊 S1 — Export CSV des annotations
+
+Nouveau bouton « 📊 Export CSV » dans le footer de la modale 📊 Stats globales (à côté de PDF + Copier rapport).
+
+Génère un **ZIP avec 5 fichiers** :
+- `points.csv` : 1 ligne par point (source/id/nom/x/y/level/tags/etat/description)
+- `roads.csv` : 1 ligne par tracé (source/type/nb_points/distance_m/level/fromLevel/toLevel/description)
+- `zones.csv` : 1 ligne par zone (source/type/nb_points/surface_m2/level/description)
+- `structures.csv` : 1 ligne par structure (source/type/nb_points/surface_m2/longueur_m/level/description)
+- `_README.txt` : explication format pour l'utilisateur
+
+**Format CSV** :
+- **UTF-8 avec BOM** (`﻿` en tête) — Excel auto-detect encoding
+- **Séparateur `;`** (compat Excel FR par défaut)
+- **Escape RFC4180** : si valeur contient `;` `"` ou newline → wrap en `"..."` + double les `"` internes
+- **Colonne `source`** : `session` (annotations en cours) ou `embedded` (data layers du plan) — permet filtrage tableur
+
+**Scope** : inclut session + embedded data layers (cohérent avec scope de Stats globales = plan COMPLET).
+
+**Distances en mètres** via `APP_CONFIG.scale` (px/m). **Surfaces en m²** via shoelace formula. Helpers réutilisés : `_polylineLenM`, `_polygonAreaM2` (factorisés depuis `_polylinePxLength` + `_polygonAreaPx` existants).
+
+**API** : `window.StatsGlobales.exportToCSV()` → `Promise<{ok, filename, counts}>`. Utilise JSZip déjà chargé.
+
+### 📊 S2 — Graphes camembert SVG natifs
+
+Camemberts SVG inline (0 dep externe) dans **4 sections breakdown** de la modale Stats globales :
+
+| Section | Catégorie | Palette |
+|---|---|---|
+| 📍 Points par tag | `tags` | Cycle 10 couleurs via hash djb2 (déterministe) |
+| 🛣️ Tracés par type | `roads` | principal=#00ff00 · secondaire=#b000ff · chemin=#ffff00 · jonction=#ff4ecb |
+| ⬛ Zones par type | `zones` | eau=#3aa9e8 · remblais=#5a5a68 · effondrement=#ff3333 · inaccessible=#7a0000 |
+| 🏛️ Structures par type | `structures` | pilier-1=#f4c542 · pilier-2=#ff9933 · mur=#1e3a8a · front-1=#f4c542 · front-2=#ff9933 |
+
+**Algo SVG natif** : pour chaque slice, math `cos/sin` sur l'angle de début → coords sur cercle → path SVG `<path d="M cx cy L x1 y1 A r r 0 large 1 x2 y2 Z" fill="color"/>`. `large` = 1 si arc > 180°. Cas dégénéré (1 seul slice) → `<circle>` plein pour éviter le bug arc-360°.
+
+**Layout** : flex 2 colonnes responsive — camembert 160px à gauche + légende textuelle à droite. Légende = 1 row par slice avec swatch coloré + label `LC.getLabel()` (cascade respectée) + count + pourcentage. Tri desc par count (gros slice en premier visuellement).
+
+Helper `_lcLabelStat(category, type, fallback)` qui mappe la catégorie statsGlobales → catégorie LegendCustomization (`roads`→`traces`, `tags`→`icones`, etc.). Gère aussi les entrées custom (`cust-XYZ`) avec préfixe ✨.
+
+**CSS** : nouvelles classes `.kta-stats-glob-pie-wrap` / `.kta-stats-glob-pie-svg` / `.kta-stats-glob-pie-legend` + variants thème clair.
+
+### 🎯 U4 — Raccourcis clavier globaux
+
+Nouveau module `js/shortcuts.js` (~180 lignes IIFE) → `window.KtaShortcuts = { listMapping, trigger }`.
+
+**Pack de 8 raccourcis** :
+
+| Touche | Action | Trigger |
+|---|---|---|
+| `E` | ✏️ Édition | click `_groupes.edition.btnPrincipal` |
+| `M` | 📐 Mesure | click `_groupes.mesure.btnPrincipal` |
+| `Z` | ⬛ Zones | click `_groupes.zones.btnPrincipal` |
+| `S` | 🏛️ Structures | click `_groupes.structures.btnPrincipal` |
+| `T` | 🧭 Tracker | click `_groupes.tracker.btnPrincipal` |
+| `L` | 🗺️ Légende | `window.afficherLegende()` |
+| `B` | 🧭 Boussole widget | `window.CompassWidget.toggle()` |
+| `R` | 🔍 Recherche unifiée | `window.ouvrirRecherche()` (alt à Ctrl+K) |
+
+**Sémantique** : toggle (re-pression = ferme l'outil, équivalent re-click sur le bouton sidebar).
+
+**Garde-fous** :
+- Skip si modificateur Ctrl/Cmd/Alt/Shift (= laisse passer raccourcis browser/OS)
+- Skip si focus dans INPUT/TEXTAREA/SELECT/contenteditable (anti-vol focus, cf §47.6)
+- Skip si modale lourde ouverte (`.kta-readme-modal-overlay` visible, splash, UnlockGate, PIN gate, loading overlay)
+- Skip si mode présentation actif (cf U1) — anti-trigger accidentel pendant démo
+
+**Exposition `_groupes`** : `interface.js` ajoute `window._groupes = _groupes` (même référence — `window._groupes[id]` voit les ajouts faits via `_groupes[id] = {...}`). Lecture uniquement côté shortcuts, mutations restent locales à `_creerGroupeAccordeon`.
+
+### 🎬 U1 — Mode présentation
+
+Nouveau module `js/presentationMode.js` (~130 lignes IIFE) → `window.PresentationMode = { activate, deactivate, toggle, isActive }`.
+
+**Activation** : touche `F` (toggle). Désactivation : `F` à nouveau OU `Échap`.
+
+**Que cache-t-il / garde-t-il** :
+
+| Élément | Comportement |
+|---|---|
+| 🟥 Header refonte (`.kta-refonte-header`) | Caché (display:none) |
+| 🟥 Status bar refonte (`.kta-refonte-statusbar`) | Caché |
+| 🟥 Sidebar droite Leaflet (controls custom) | Tout caché |
+| 🟥 Sidebar gauche Leaflet (controls custom) | Caché SAUF zoom natif |
+| 🟩 Zoom natif Leaflet (`.leaflet-control-zoom`) | Conservé (utile démo) |
+| 🟩 Widget boussole (`.kta-compass-widget`) | Conservé, repositionné bottom safe-area |
+| 🟩 Carte | Plein écran (top/bottom = safe-area uniquement) |
+
+**Feedback UX** : toast `OOMGuard.showToast("🎬 Mode présentation activé — F ou Échap pour sortir", "info")` au activate (3s). Au deactivate : silencieux.
+
+**Recalcul Leaflet** : `map.invalidateSize({animate:false})` au activate ET au deactivate (header/footer cachés/restaurés = dimensions carte changent).
+
+**Anti-conflit avec U4** : quand `PresentationMode.isActive()` retourne `true`, le keydown handler de `shortcuts.js` skip toutes les actions (sauf F qui appartient à presentationMode).
+
+**Body class** : `body.kta-presentation-mode` ajoutée/retirée. Le CSS associé (~50 lignes en fin de `style.css`) gère tous les `display:none !important` et le repositionnement de la carte + boussole.
+
+### 📂 Sources de vérité v1.21.0
+
+- `version.json` → `"v1.21.0"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.21.0"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.21.0"`
+- **2 nouveaux fichiers** ajoutés à `ASSETS_TO_CACHE` :
+  - `js/shortcuts.js` (~180 lignes — U4)
+  - `js/presentationMode.js` (~130 lignes — U1)
+- Modifs internes : `js/statsGlobales.js` (+280 lignes : exportToCSV + camemberts SVG + helper _lcLabelStat), `js/interface.js` (+8 lignes : `window._groupes = _groupes`), `css/style.css` (+150 lignes : pie chart styles + presentation mode), `index.html` (+8 lignes : 2 nouveaux `<script>` + commentaires)
+
+### 🛡️ Confidentialité
+
+**Aucune nouvelle surface réseau**. Tout 100% local :
+- CSV : généré via Blob + JSZip déjà chargé → download local
+- Camemberts : SVG inline rendu côté client
+- Raccourcis clavier : event listeners locaux
+- Mode présentation : toggle CSS body class
+
+Aucun fetch externe. **NETWORK_AUDIT à jour** — mention nouveaux fichiers + features dans la section v1.21.0.
+
+</details>
+
+<details id="v1-20-0">
 <summary><strong>🗓️ 25/05/2026 — 🚀 v1.20.0 : Cycle complet « Robustesse + Stats + Onboarding + Profil »</strong></summary>
 
 Release MINOR (bump Y : 1.19.1 → 1.20.0). 8 features regroupées en une seule release : 4 sur la robustesse + stats du début de cycle, 4 sur l'onboarding + profil utilisateur ajoutées en fin de cycle Karma_dev.

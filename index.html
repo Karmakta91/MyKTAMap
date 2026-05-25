@@ -944,6 +944,19 @@
   <script src="js/refonteInterface.js"></script>
 
   <script src="js/interface.js"></script>
+
+  <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
+       Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
+       de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).
+       Anti-vol focus + skip si modale ouverte. -->
+  <script src="js/shortcuts.js"></script>
+
+  <!-- 🆕 v1.21.0 (U1) : Mode présentation (touche F). Cache header +
+       sidebars + footer, garde zoom Leaflet + boussole. Toggle via touche
+       F ou window.PresentationMode.toggle(). Désactive les raccourcis U4
+       pendant qu'il est actif (anti-trigger accidentel pendant démo). -->
+  <script src="js/presentationMode.js"></script>
+
   <script src="js/main.js"></script>
 
   <!-- LOADER SCRIPT -->

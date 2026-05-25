@@ -83,6 +83,155 @@
     return (window.APP_CONFIG && window.APP_CONFIG.scale) || 1;
   }
 
+  // ───────── 🆕 v1.21.0 : CAMEMBERTS SVG INLINE ─────────
+  //
+  // KARMA : "Camembert pour breakdown par type (Recommandé)".
+  // SVG natif (0 dep externe). Coloration via palette charte cohérente
+  // avec les rendus carte. Layout : camembert à gauche + légende à droite.
+  //
+  // Palettes par catégorie alignées sur les rendus Leaflet (cf road.js,
+  // zones.js, structures.js) + utils.js pour data layers.
+
+  const _PALETTE_ROADS = {
+    principal:  "#00ff00",
+    secondaire: "#b000ff",
+    chemin:     "#ffff00",
+    jonction:   "#ff4ecb",
+    itinerary:  "#00d4ff"  // cyan néon iti (au cas où)
+  };
+  const _PALETTE_ZONES = {
+    eau:           "#3aa9e8",
+    remblais:      "#5a5a68",
+    effondrement:  "#ff3333",
+    inaccessible:  "#7a0000"
+  };
+  const _PALETTE_STRUCTS = {
+    "pilier-1": "#f4c542",
+    "pilier-2": "#ff9933",
+    "mur":      "#1e3a8a",
+    "front-1":  "#f4c542",  // même que pilier-1 (alignement charte v1.10.1-hotfix2)
+    "front-2":  "#ff9933"   // même que pilier-2
+  };
+  // Palette générique pour points par tag (10 couleurs cycle via hash djb2)
+  const _PALETTE_TAGS = [
+    "#f4c542", "#8cb4ff", "#6ee287", "#ff8c8c", "#ff4ecb",
+    "#00d4ff", "#a78bfa", "#ffb380", "#34d399", "#c9b88f"
+  ];
+
+  // djb2 — déterministe pour qu'un même tag ait toujours la même couleur
+  function _djb2Hash(str) {
+    let h = 5381;
+    const s = String(str || "");
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+    return Math.abs(h | 0);
+  }
+
+  function _colorForKey(category, key) {
+    if (category === "roads"      && _PALETTE_ROADS[key])      return _PALETTE_ROADS[key];
+    if (category === "zones"      && _PALETTE_ZONES[key])      return _PALETTE_ZONES[key];
+    if (category === "structures" && _PALETTE_STRUCTS[key])    return _PALETTE_STRUCTS[key];
+    // Fallback : palette générique cycle via hash
+    return _PALETTE_TAGS[_djb2Hash(key) % _PALETTE_TAGS.length];
+  }
+
+  // Resolve label via LegendCustomization si dispo (cascade session > plan > default).
+  // Cohérent avec le helper _lcLabel de refonteInterface.js (v1.20.0-fix2).
+  function _lcLabelStat(category, type, fallback) {
+    if (typeof type !== "string" || !type) return fallback || "?";
+    // Entrée custom (cust-XYZ) : préfixe ✨
+    if (type.indexOf("cust-") === 0) {
+      if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+        try {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.label) return "✨ " + e.label;
+        } catch(err) {}
+      }
+      return fallback || type;
+    }
+    // Built-in cascade
+    if (window.LegendCustomization && typeof window.LegendCustomization.getLabel === "function") {
+      try {
+        // Mapping category statsGlobales → LC category
+        const lcCat = (category === "roads") ? "traces"
+                    : (category === "tags")  ? "icones"
+                    : category;
+        const lbl = window.LegendCustomization.getLabel(lcCat, type);
+        if (lbl) return lbl;
+      } catch(err) {}
+    }
+    return fallback || type;
+  }
+
+  /**
+   * Génère un camembert SVG inline + légende textuelle à droite.
+   * @param {Object} data       - {key: count, ...}
+   * @param {String} category   - "roads"|"zones"|"structures"|"tags" (pour palette + LC labels)
+   * @param {Number} size       - taille en px (recommandé 160)
+   * @returns {String} HTML <div> contenant SVG + légende
+   */
+  function _renderPieChart(data, category, size) {
+    size = size || 160;
+    const r = size / 2 - 4;        // rayon (avec marge)
+    const cx = size / 2;
+    const cy = size / 2;
+    const keys = Object.keys(data || {});
+    if (keys.length === 0) return "";
+    const total = keys.reduce(function(s, k) { return s + (data[k] || 0); }, 0);
+    if (total === 0) return "";
+
+    // Tri desc par count (le plus gros slice en premier visuellement)
+    const sortedKeys = keys.slice().sort(function(a, b) { return (data[b] || 0) - (data[a] || 0); });
+
+    // Cas 1 seul slice : cercle plein (le path SVG arc dégénère à 360°)
+    let svgSlices = "";
+    if (sortedKeys.length === 1) {
+      const k0 = sortedKeys[0];
+      const color = _colorForKey(category, k0);
+      svgSlices = '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + color + '" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>';
+    } else {
+      let startAngle = -Math.PI / 2;  // démarre en haut (12h)
+      sortedKeys.forEach(function(k) {
+        const pct = (data[k] || 0) / total;
+        const endAngle = startAngle + pct * 2 * Math.PI;
+        const x1 = cx + r * Math.cos(startAngle);
+        const y1 = cy + r * Math.sin(startAngle);
+        const x2 = cx + r * Math.cos(endAngle);
+        const y2 = cy + r * Math.sin(endAngle);
+        const largeArc = (endAngle - startAngle) > Math.PI ? 1 : 0;
+        const color = _colorForKey(category, k);
+        svgSlices += '<path d="M ' + cx.toFixed(2) + ' ' + cy.toFixed(2) +
+                     ' L ' + x1.toFixed(2) + ' ' + y1.toFixed(2) +
+                     ' A ' + r.toFixed(2) + ' ' + r.toFixed(2) + ' 0 ' + largeArc + ' 1 ' +
+                     x2.toFixed(2) + ' ' + y2.toFixed(2) +
+                     ' Z" fill="' + color + '" stroke="rgba(0,0,0,0.35)" stroke-width="1"/>';
+        startAngle = endAngle;
+      });
+    }
+
+    // Légende à droite : swatch + label + count + pct
+    let legend = '<div class="kta-stats-glob-pie-legend">';
+    sortedKeys.forEach(function(k) {
+      const n = data[k] || 0;
+      const pct = ((n / total) * 100).toFixed(1);
+      const color = _colorForKey(category, k);
+      const lbl = _lcLabelStat(category, k, k);
+      legend += '<div class="kta-stats-glob-pie-legend-row">' +
+                  '<span class="kta-stats-glob-pie-legend-swatch" style="background:' + color + ';"></span>' +
+                  '<span class="kta-stats-glob-pie-legend-lbl">' + _escapeHtml(lbl) + '</span>' +
+                  '<span class="kta-stats-glob-pie-legend-num">' + n + ' <span class="kta-stats-glob-pie-legend-pct">(' + pct + '%)</span></span>' +
+                '</div>';
+    });
+    legend += '</div>';
+
+    return '<div class="kta-stats-glob-pie-wrap">' +
+             '<svg class="kta-stats-glob-pie-svg" viewBox="0 0 ' + size + ' ' + size +
+                  '" width="' + size + '" height="' + size + '" aria-hidden="true">' +
+               svgSlices +
+             '</svg>' +
+             legend +
+           '</div>';
+  }
+
   // ───────── COLLECTE ─────────
 
   /**
@@ -290,28 +439,23 @@
     }
     html += '</div>';
 
-    // Points par tag
+    // Points par tag — 🆕 v1.21.0 : camembert SVG inline + légende
     if (t.points > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">📍 Points par tag</div>';
-      html += '<div class="kta-stats-glob-list">';
-      Object.keys(rep.pointsByTag).sort(function(a, b) {
-        return rep.pointsByTag[b] - rep.pointsByTag[a];
-      }).forEach(function(tag) {
-        html += '<div class="kta-stats-glob-row">' +
-                  '<span class="kta-stats-glob-row-lbl"><code>' + _escapeHtml(tag) + '</code></span>' +
-                  '<span class="kta-stats-glob-row-num">' + rep.pointsByTag[tag] + '</span>' +
-                '</div>';
-      });
-      html += '</div></div>';
+      html += _renderPieChart(rep.pointsByTag, "tags", 160);
+      html += '</div>';
     }
 
-    // Tracés par type + distance
+    // Tracés par type + distance — 🆕 v1.21.0 : camembert SVG inline (count) +
+    // liste détaillée avec distance cumulée par type (l'info distance reste utile,
+    // pas représentable par le camembert qui ne montre que le count).
     if (t.roads > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">🛣️ Tracés ' +
               '<span class="kta-stats-glob-total">' + _formatDist(rep.roadsTotalDistM) + ' cumulés</span></div>';
-      html += '<div class="kta-stats-glob-list">';
+      html += _renderPieChart(rep.roadsByType, "roads", 160);
+      html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
       const sortedTypes = Object.keys(rep.roadsByType).sort(function(a, b) {
         return rep.roadsByType[b] - rep.roadsByType[a];
       });
@@ -319,46 +463,40 @@
         const n = rep.roadsByType[type];
         const d = rep.roadsDistByTypeM[type] || 0;
         html += '<div class="kta-stats-glob-row">' +
-                  '<span class="kta-stats-glob-row-lbl">' + _escapeHtml(type) + '</span>' +
+                  '<span class="kta-stats-glob-row-lbl">' + _escapeHtml(_lcLabelStat("roads", type, type)) + '</span>' +
                   '<span class="kta-stats-glob-row-num">' + n + ' &middot; ' + _formatDist(d) + '</span>' +
                 '</div>';
       });
       html += '</div></div>';
     }
 
-    // Zones par type + surface
+    // Zones par type + surface — idem : camembert + liste détaillée
     if (t.zones > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">⬛ Zones ' +
               '<span class="kta-stats-glob-total">' + _formatSurf(rep.zonesTotalAreaM2) + ' cumulés</span></div>';
-      html += '<div class="kta-stats-glob-list">';
+      html += _renderPieChart(rep.zonesByType, "zones", 160);
+      html += '<div class="kta-stats-glob-list kta-stats-glob-list-compact">';
       Object.keys(rep.zonesByType).sort(function(a, b) {
         return rep.zonesByType[b] - rep.zonesByType[a];
       }).forEach(function(type) {
         const n = rep.zonesByType[type];
         const s = rep.zonesAreaByTypeM2[type] || 0;
         html += '<div class="kta-stats-glob-row">' +
-                  '<span class="kta-stats-glob-row-lbl">' + _escapeHtml(type) + '</span>' +
+                  '<span class="kta-stats-glob-row-lbl">' + _escapeHtml(_lcLabelStat("zones", type, type)) + '</span>' +
                   '<span class="kta-stats-glob-row-num">' + n + ' &middot; ' + _formatSurf(s) + '</span>' +
                 '</div>';
       });
       html += '</div></div>';
     }
 
-    // Structures par type
+    // Structures par type — camembert seul (pas d'info distance/surface cumulée
+    // distincte par type ici, déjà couverte par la liste de la modale Détails session)
     if (t.structures > 0) {
       html += '<div class="kta-stats-glob-section">';
       html += '<div class="kta-stats-glob-section-titre">🏛️ Structures</div>';
-      html += '<div class="kta-stats-glob-list">';
-      Object.keys(rep.structsByType).sort(function(a, b) {
-        return rep.structsByType[b] - rep.structsByType[a];
-      }).forEach(function(type) {
-        html += '<div class="kta-stats-glob-row">' +
-                  '<span class="kta-stats-glob-row-lbl">' + _escapeHtml(type) + '</span>' +
-                  '<span class="kta-stats-glob-row-num">' + rep.structsByType[type] + '</span>' +
-                '</div>';
-      });
-      html += '</div></div>';
+      html += _renderPieChart(rep.structsByType, "structures", 160);
+      html += '</div>';
     }
 
     // Multi-niveau
@@ -534,6 +672,7 @@
         '</div>' +
         '<div class="kta-readme-modal-footer kta-stats-glob-footer">' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 Rafraîchir</button>' +
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 Export CSV</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 Export PDF</button>' +
           '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 Copier le rapport</button>' +
         '</div>' +
@@ -555,6 +694,22 @@
           setTimeout(function() { if (btn) btn.textContent = orig; }, 1800);
         }
       }).catch(function(e) { alert("Échec copie : " + (e.message || e)); });
+    });
+
+    // 🆕 v1.21.0 — Bouton Export CSV (ZIP 4 fichiers : points/roads/zones/structures).
+    document.getElementById("kta-stats-glob-csv").addEventListener("click", function() {
+      const btn = document.getElementById("kta-stats-glob-csv");
+      const orig = btn ? btn.textContent : null;
+      if (btn) { btn.disabled = true; btn.textContent = "⏳ Génération…"; }
+      exportToCSV().then(function() {
+        if (btn) {
+          btn.textContent = "✅ ZIP téléchargé";
+          setTimeout(function() { if (btn) { btn.textContent = orig; btn.disabled = false; } }, 1800);
+        }
+      }).catch(function(e) {
+        if (btn) { btn.textContent = orig; btn.disabled = false; }
+        alert("Échec génération CSV : " + (e.message || e));
+      });
     });
 
     // 🆕 v1.21.0 — Bouton Export PDF (A4 portrait, texte/tableaux seuls).
@@ -879,12 +1034,203 @@
     return { ok: true, filename: filename };
   }
 
+  // ───────── EXPORT CSV (v1.21.0) ─────────
+  //
+  // KARMA : "Export CSV des annotations (tableur friendly)".
+  // 1 ZIP avec 4 fichiers CSV (points/roads/zones/structures), UTF-8 BOM +
+  // séparateur `;` (compat Excel FR par défaut). Inclut session + embedded
+  // data layers (cohérent avec le scope StatsGlobales : plan COMPLET).
+  // Colonne `source` = "session" ou "embedded" pour permettre filtrage Excel.
+  //
+  // Reuse JSZip déjà chargé dans index.html (lib/jszip.min.js, pré-requis
+  // multi-modules : kmzExport, profileExportImport, etc.).
+
+  // Helper CSV : escape une valeur pour cellule CSV-RFC4180.
+  // Si contient `;`, `"` ou newline → wrap en `"..."` + double les `"`.
+  function _csvEscape(v) {
+    if (v == null) return "";
+    const s = String(v);
+    if (s.indexOf(";") >= 0 || s.indexOf("\"") >= 0 || s.indexOf("\n") >= 0 || s.indexOf("\r") >= 0) {
+      return "\"" + s.replace(/"/g, "\"\"") + "\"";
+    }
+    return s;
+  }
+
+  // Construit un CSV à partir d'un array d'objets + l'ordre des colonnes.
+  // UTF-8 BOM ajouté en tête (Excel FR auto-detect encoding).
+  function _buildCsv(rows, columns) {
+    const BOM = "﻿";
+    const sep = ";";
+    let csv = BOM + columns.join(sep) + "\r\n";
+    rows.forEach(function(row) {
+      const line = columns.map(function(col) { return _csvEscape(row[col]); }).join(sep);
+      csv += line + "\r\n";
+    });
+    return csv;
+  }
+
+  // Helper : distance polyline en mètres (factorisation depuis _polylinePxLength + scale)
+  function _polylineLenM(pts) {
+    if (!Array.isArray(pts) || pts.length < 2) return 0;
+    const scale = _scalePxPerM();
+    if (scale <= 0) return 0;
+    return _polylinePxLength(pts) / scale;
+  }
+  function _polygonAreaM2(pts) {
+    if (!Array.isArray(pts) || pts.length < 3) return 0;
+    const scale = _scalePxPerM();
+    if (scale <= 0) return 0;
+    return _polygonAreaPx(pts) / (scale * scale);
+  }
+
+  async function exportToCSV() {
+    if (typeof JSZip !== "function" && typeof window.JSZip !== "function") {
+      throw new Error("JSZip indisponible. Recharge la page pour récupérer la lib.");
+    }
+    const ZipLib = (typeof JSZip === "function") ? JSZip : window.JSZip;
+    const zip    = new ZipLib();
+
+    const planConf = window.PLAN_CONFIG || {};
+    const planMeta = planConf.plan || {};
+    const planName = (planMeta.name || "Plan").replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 40);
+    const dateStr  = new Date().toISOString().slice(0, 10);
+
+    // Collecte session + embedded de chaque type
+    const sessionPts  = (typeof window.getEditorPoints      === "function") ? (window.getEditorPoints()      || []) : [];
+    const embeddedPts = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
+
+    const sessionRoads  = (typeof window.getRoads             === "function") ? (window.getRoads()             || []) : [];
+    const embeddedRoads = (typeof window.getAllEmbeddedRoads  === "function") ? (window.getAllEmbeddedRoads()  || []) : [];
+
+    const sessionZones  = (typeof window.getZones             === "function") ? (window.getZones()             || []) : [];
+    const embeddedZones = (typeof window.getAllEmbeddedZones  === "function") ? (window.getAllEmbeddedZones()  || []) : [];
+
+    const sessionStructs  = (typeof window.getStructures            === "function") ? (window.getStructures()            || []) : [];
+    const embeddedStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
+
+    // ─── POINTS ───
+    const pointsCols = ["source", "id", "nom", "x", "y", "level", "tags", "etat", "description"];
+    const pointsRows = [];
+    function _addPoint(p, source) {
+      pointsRows.push({
+        source:      source,
+        id:          p.id || "",
+        nom:         p.nom || "",
+        x:           (typeof p.x === "number") ? Math.round(p.x) : "",
+        y:           (typeof p.y === "number") ? Math.round(p.y) : "",
+        level:       (typeof p.level === "number") ? p.level : 0,
+        tags:        Array.isArray(p.tags) ? p.tags.join(",") : "",
+        etat:        p.etat || "",
+        description: p.description || ""
+      });
+    }
+    sessionPts.forEach(function(p)  { _addPoint(p, "session");  });
+    embeddedPts.forEach(function(p) { _addPoint(p, "embedded"); });
+    zip.file("points.csv", _buildCsv(pointsRows, pointsCols));
+
+    // ─── ROADS ───
+    const roadsCols = ["source", "type", "nb_points", "distance_m", "level", "fromLevel", "toLevel", "description"];
+    const roadsRows = [];
+    function _addRoad(r, source) {
+      const isJonction = r.type === "jonction";
+      roadsRows.push({
+        source:      source,
+        type:        r.type || "",
+        nb_points:   Array.isArray(r.points) ? r.points.length : 0,
+        distance_m:  _polylineLenM(r.points).toFixed(2),
+        level:       isJonction ? "" : ((typeof r.level === "number") ? r.level : 0),
+        fromLevel:   isJonction ? ((typeof r.fromLevel === "number") ? r.fromLevel : "") : "",
+        toLevel:     isJonction ? ((typeof r.toLevel   === "number") ? r.toLevel   : "") : "",
+        description: r.description || ""
+      });
+    }
+    sessionRoads.forEach(function(r)  { _addRoad(r, "session");  });
+    embeddedRoads.forEach(function(r) { _addRoad(r, "embedded"); });
+    zip.file("roads.csv", _buildCsv(roadsRows, roadsCols));
+
+    // ─── ZONES ───
+    const zonesCols = ["source", "type", "nb_points", "surface_m2", "level", "description"];
+    const zonesRows = [];
+    function _addZone(z, source) {
+      zonesRows.push({
+        source:      source,
+        type:        z.type || "",
+        nb_points:   Array.isArray(z.points) ? z.points.length : 0,
+        surface_m2:  _polygonAreaM2(z.points).toFixed(2),
+        level:       (typeof z.level === "number") ? z.level : 0,
+        description: z.description || ""
+      });
+    }
+    sessionZones.forEach(function(z)  { _addZone(z, "session");  });
+    embeddedZones.forEach(function(z) { _addZone(z, "embedded"); });
+    zip.file("zones.csv", _buildCsv(zonesRows, zonesCols));
+
+    // ─── STRUCTURES ───
+    // Fronts (front-1/2) = polylines → longueur. Piliers/mur = polygones → surface.
+    const structsCols = ["source", "type", "nb_points", "surface_m2", "longueur_m", "level", "description"];
+    const structsRows = [];
+    function _addStruct(s, source) {
+      const isPolyline = (s.type === "front-1" || s.type === "front-2");
+      structsRows.push({
+        source:      source,
+        type:        s.type || "",
+        nb_points:   Array.isArray(s.points) ? s.points.length : 0,
+        surface_m2:  isPolyline ? "" : _polygonAreaM2(s.points).toFixed(2),
+        longueur_m:  isPolyline ? _polylineLenM(s.points).toFixed(2) : "",
+        level:       (typeof s.level === "number") ? s.level : 0,
+        description: s.description || ""
+      });
+    }
+    sessionStructs.forEach(function(s)  { _addStruct(s, "session");  });
+    embeddedStructs.forEach(function(s) { _addStruct(s, "embedded"); });
+    zip.file("structures.csv", _buildCsv(structsRows, structsCols));
+
+    // ─── README dans le ZIP pour expliquer le format ───
+    const readme =
+      "MyKTAMap — Export CSV des annotations\r\n" +
+      "Plan : " + (planMeta.name || "") + "\r\n" +
+      "Date : " + new Date().toISOString() + "\r\n\r\n" +
+      "FICHIERS :\r\n" +
+      "  points.csv     — Points (puits, accès, signalétique, etc.)\r\n" +
+      "  roads.csv      — Tracés (principal, secondaire, chemin, jonction)\r\n" +
+      "  zones.csv      — Zones (eau, remblais, effondrement, inaccessible)\r\n" +
+      "  structures.csv — Structures (pilier-1/2, mur, front-1/2)\r\n\r\n" +
+      "FORMAT :\r\n" +
+      "  - UTF-8 avec BOM (compat Excel)\r\n" +
+      "  - Séparateur : `;` (compat Excel FR par défaut)\r\n" +
+      "  - Colonne `source` : 'session' (annotations en cours) ou 'embedded' (data layers du plan)\r\n" +
+      "  - Distances en mètres (calculées via APP_CONFIG.scale)\r\n" +
+      "  - Surfaces en m² (shoelace formula)\r\n\r\n" +
+      "Ouverture : double-clic dans Excel/LibreOffice/Numbers, ou import dans ton outil BI préféré.\r\n";
+    zip.file("_README.txt", "﻿" + readme);
+
+    // ─── PACK ZIP + DOWNLOAD ───
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    const url  = URL.createObjectURL(blob);
+    const filename = "MyKTAMap_CSV_" + planName + "_" + dateStr + ".zip";
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function() {
+      a.remove();
+      URL.revokeObjectURL(url);
+    }, 500);
+
+    return { ok: true, filename: filename, counts: {
+      points: pointsRows.length,
+      roads:  roadsRows.length,
+      zones:  zonesRows.length,
+      structures: structsRows.length
+    }};
+  }
+
   // ───────── EXPORT API ─────────
   window.StatsGlobales = {
     ouvrir:        ouvrir,
     fermer:        fermer,
     compute:       compute,
     getReportText: getReportText,
+    exportToCSV:   exportToCSV,
     // 🆕 v1.21.0
     exportToPDF:   exportToPDF
   };

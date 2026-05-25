@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.20.0-fix2";
+const CACHE_NAME = "myktamap-cache-v1.21.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -79,6 +79,10 @@ const ASSETS_TO_CACHE = [
   "./js/userProfile.js",
   // 🆕 v1.20.0 : ProfileExportImport — profil utilisateur complet (remplace l'ancien export liste plans)
   "./js/profileExportImport.js",
+  // 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R)
+  "./js/shortcuts.js",
+  // 🆕 v1.21.0 (U1) : Mode présentation (touche F, cache UI sauf carte+zoom+boussole)
+  "./js/presentationMode.js",
   "./js/debug.js",
   "./js/perfUltra.js",
   // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag

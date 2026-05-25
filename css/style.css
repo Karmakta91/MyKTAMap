@@ -15952,6 +15952,100 @@ html.kta-theme-light .kta-refonte-session-cta-stats-glob {
   flex-direction: column;
   gap: 2px;
 }
+/* 🆕 v1.21.0 : version compacte de la liste sous les camemberts */
+.kta-stats-glob-list-compact {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(140, 180, 255, 0.18);
+  opacity: 0.92;
+}
+
+/* 🆕 v1.21.0 : camemberts SVG + légende textuelle */
+.kta-stats-glob-pie-wrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 4px;
+  flex-wrap: wrap;
+}
+.kta-stats-glob-pie-svg {
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.30));
+}
+.kta-stats-glob-pie-legend {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.kta-stats-glob-pie-legend-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #c8d0e0;
+}
+.kta-stats-glob-pie-legend-row:hover {
+  background: rgba(140, 180, 255, 0.06);
+}
+.kta-stats-glob-pie-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.20);
+}
+.kta-stats-glob-pie-legend-lbl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #e8eaf0;
+}
+.kta-stats-glob-pie-legend-num {
+  font-variant-numeric: tabular-nums;
+  color: #c8d0e0;
+  font-weight: 600;
+}
+.kta-stats-glob-pie-legend-pct {
+  color: #8892a4;
+  font-weight: 400;
+  font-size: 11px;
+}
+
+/* Thème clair — overrides camemberts */
+body.kta-theme-light .kta-stats-glob-pie-legend-row,
+html.kta-theme-light .kta-stats-glob-pie-legend-row {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-stats-glob-pie-legend-row:hover,
+html.kta-theme-light .kta-stats-glob-pie-legend-row:hover {
+  background: rgba(0, 0, 0, 0.05) !important;
+}
+body.kta-theme-light .kta-stats-glob-pie-legend-lbl,
+html.kta-theme-light .kta-stats-glob-pie-legend-lbl {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-stats-glob-pie-legend-num,
+html.kta-theme-light .kta-stats-glob-pie-legend-num {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-stats-glob-pie-legend-pct,
+html.kta-theme-light .kta-stats-glob-pie-legend-pct {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-stats-glob-list-compact,
+html.kta-theme-light .kta-stats-glob-list-compact {
+  border-top-color: rgba(154, 135, 84, 0.30) !important;
+}
+body.kta-theme-light .kta-stats-glob-pie-svg,
+html.kta-theme-light .kta-stats-glob-pie-svg {
+  filter: drop-shadow(0 2px 6px rgba(80, 60, 30, 0.18)) !important;
+}
 .kta-stats-glob-row {
   display: flex;
   justify-content: space-between;
@@ -16689,3 +16783,46 @@ html.kta-theme-light .kta-profile-details-footer-hint {
   background: rgba(0,0,0,0.04) !important;
   color: var(--kta-light-text-dim, #8a8270) !important;
 }
+
+/* ============================================================
+   🎬 v1.21.0 (U1) — Mode présentation
+   ============================================================
+   KARMA : "Cache header + sidebars + footer (garde zoom + boussole)".
+   Toggle via touche F (presentationMode.js). Cache tous les éléments UI
+   pour ne laisser que la carte + zoom Leaflet + widget boussole. */
+
+body.kta-presentation-mode .kta-refonte-header,
+body.kta-presentation-mode .kta-refonte-statusbar {
+  display: none !important;
+}
+
+/* Sidebars Leaflet (gauche + droite) cachées en mode présentation —
+   SAUF le zoom natif Leaflet qui reste utile pour la démo. La sélecteur
+   :not(.leaflet-control-zoom) garde uniquement le control zoom visible
+   dans la sidebar gauche. Sidebar droite cachée entièrement (aucun
+   control essentiel à la démo dedans). */
+body.kta-presentation-mode .leaflet-top.leaflet-left > *:not(.leaflet-control-zoom) {
+  display: none !important;
+}
+body.kta-presentation-mode .leaflet-top.leaflet-right > * {
+  display: none !important;
+}
+
+/* Map plein écran : reset top/bottom (header + footer cachés = 100vh utiles).
+   Override la variable --kta-statusbar-h qui sinon laisserait l'espace footer. */
+body.kta-presentation-mode #map {
+  top: env(safe-area-inset-top, 0px) !important;
+  bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+
+/* Garde le widget boussole visible et non perturbé — sa position bottom
+   référence --kta-statusbar-h qu'on doit override pour qu'il colle au
+   vrai bas de viewport en mode présentation (sinon il flotterait à
+   la position où le footer aurait été). */
+body.kta-presentation-mode .kta-compass-widget {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
+}
+
+/* Petit indicateur discret en haut-droite "Mode présentation" ?
+   Choix design : non, l'overlay distrait. Le toast au activate
+   (OOMGuard.showToast 3s) suffit comme rappel. */

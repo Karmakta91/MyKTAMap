@@ -3813,6 +3813,13 @@ function _activerJonctionMode(btnCible, fromLvl, toLvl) {
 // + maintien forcé en ouvert si un mode est actif
 
 const _groupes = {}; // { groupeId: { container, btnPrincipal, subActions: [], modeActif: false } }
+// 🆕 v1.21.0 (U4) : expose pour le module js/shortcuts.js qui doit pouvoir
+// trigger un click sur btnPrincipal[id] depuis un raccourci clavier global.
+// Lecture uniquement côté consumers — les mutations restent locales à
+// _creerGroupeAccordeon. Pas de risque de casse car la référence reste
+// stable après init (chaque ajout `_groupes[id] = {...}` est aussi visible
+// via `window._groupes[id]` puisque c'est le MÊME objet).
+window._groupes = _groupes;
 let _groupeOuvert = null;
 
 function _fermerGroupe(id) {

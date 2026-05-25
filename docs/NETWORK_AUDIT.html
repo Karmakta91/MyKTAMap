@@ -174,10 +174,39 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.20.0</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.21.0</strong> (25 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.0 (Cycle « Stats avancées + QoL UX »)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. 4 features 100% locales :
+    (1) <strong>Export CSV des annotations</strong> dans Stats globales
+    (<code>window.StatsGlobales.exportToCSV</code>) — ZIP avec 4 CSV
+    (points/roads/zones/structures) + README, UTF-8 BOM + séparateur
+    <code>;</code> (compat Excel FR). Génération via Blob + JSZip déjà chargé,
+    téléchargé localement. Aucun fetch.
+    (2) <strong>Graphes camembert SVG natifs</strong> dans Stats globales —
+    rendu inline 100% côté client (0 dep externe), math <code>cos/sin</code>
+    + path arc. Palette charte cohérente avec les rendus carte. Aucune
+    transmission.
+    (3) Nouveau module <code>js/shortcuts.js</code> (~180 lignes) —
+    <strong>raccourcis clavier globaux</strong> (E M Z S T L B R) = event
+    listeners locaux qui trigger des clicks DOM sur <code>_groupes[id].btnPrincipal</code>
+    ou appellent <code>window.afficherLegende</code> / <code>CompassWidget.toggle</code>
+    / <code>ouvrirRecherche</code>. Aucun fetch.
+    (4) Nouveau module <code>js/presentationMode.js</code> (~130 lignes) —
+    <strong>mode présentation</strong> via touche F = toggle CSS body class
+    <code>kta-presentation-mode</code> + <code>map.invalidateSize</code>. Aucune
+    communication réseau.
+    <strong>2 nouveaux fichiers</strong> ajoutés à <code>ASSETS_TO_CACHE</code> :
+    <code>js/shortcuts.js</code> + <code>js/presentationMode.js</code>.
+    Le SW cache uniquement un bump du <code>CACHE_NAME</code>
+    (<code>myktamap-cache-v1.21.0</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -761,6 +790,24 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.21.0</td>
+        <td>25/05/2026</td>
+        <td>
+          <strong>Cycle « Stats avancées + QoL UX »</strong> —
+          <strong>aucune nouvelle surface réseau</strong>. 4 features 100% locales :
+          (S1) <code>StatsGlobales.exportToCSV</code> = ZIP avec 4 CSV + README (Blob + JSZip
+          local, UTF-8 BOM + sep `;`).
+          (S2) Camemberts SVG inline natifs dans 4 sections Stats globales (rendu côté client,
+          0 dep externe).
+          (U4) <code>js/shortcuts.js</code> = raccourcis clavier E M Z S T L B R
+          (listeners locaux, anti-vol focus, skip si modale ouverte).
+          (U1) <code>js/presentationMode.js</code> = mode démo touche F
+          (toggle CSS body class).
+          2 nouveaux fichiers à <code>ASSETS_TO_CACHE</code>.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.20.0</td>
         <td>25/05/2026</td>
