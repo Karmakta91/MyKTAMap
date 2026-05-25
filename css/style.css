@@ -16800,15 +16800,17 @@ html.kta-theme-light .kta-loader-profile-stat-val {
 }
 .kta-profile-stat-grid {
   display: grid;
+  /* 🆕 v1.21.3 : 6 cells au lieu de 5 (ajout sauvegarde).
+     Mobile 2 cols × 3 rows / PC 3 cols × 2 rows = layout équilibré. */
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 @media (min-width: 600px) {
   .kta-profile-stat-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   .kta-profile-stat-cell-wide {
-    grid-column: span 4;
+    grid-column: span 3;
   }
 }
 .kta-profile-stat-cell {
@@ -16822,6 +16824,11 @@ html.kta-theme-light .kta-loader-profile-stat-val {
 }
 .kta-profile-stat-cell-wide {
   grid-column: span 2;
+}
+/* 🆕 v1.21.3 : taille de police réduite pour les valeurs bytes "12.3 MB"
+   (par rapport aux chiffres seuls comme "47 plans"). */
+.kta-profile-stat-num-bytes {
+  font-size: 17px !important;
 }
 .kta-profile-stat-num {
   font-size: 22px;
@@ -16919,6 +16926,67 @@ body.kta-theme-light .kta-profile-barstats-cb:hover,
 html.kta-theme-light .kta-profile-barstats-cb:hover {
   background: rgba(0, 0, 0, 0.05) !important;
   border-color: rgba(161, 110, 16, 0.40) !important;
+}
+
+/* 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque plan
+   stat détailé les graph et tout") — Section camemberts agrégés cross-plan
+   dans la modale 👤 Mon profil, après la table "📊 Mes plans". Réutilise
+   le rendu de window.StatsGlobales.renderPieChart (cf statsGlobales.js). */
+.kta-profile-pies-wrap {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.kta-profile-pies-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c8d0e0;
+  margin-bottom: 10px;
+}
+.kta-profile-pies-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 720px) {
+  .kta-profile-pies-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1200px) {
+  .kta-profile-pies-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.kta-profile-pies-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.kta-profile-pies-card-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f4c542;
+  margin-bottom: 6px;
+}
+/* Thème clair — section camemberts */
+body.kta-theme-light .kta-profile-pies-wrap,
+html.kta-theme-light .kta-profile-pies-wrap {
+  border-top-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-profile-pies-header,
+html.kta-theme-light .kta-profile-pies-header {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-pies-card,
+html.kta-theme-light .kta-profile-pies-card {
+  background: rgba(0, 0, 0, 0.02) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-profile-pies-card-title,
+html.kta-theme-light .kta-profile-pies-card-title {
+  color: #6b4d10 !important;
 }
 
 /* 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les lister")

@@ -1232,6 +1232,14 @@
     getReportText: getReportText,
     exportToCSV:   exportToCSV,
     // 🆕 v1.21.0
-    exportToPDF:   exportToPDF
+    exportToPDF:   exportToPDF,
+    // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
+    // plan stat détailé les graph et tout") : expose renderPieChart pour
+    // la modale Profil > section "📊 Mes plans" → permet de réutiliser
+    // l'algo camembert SVG + légende sans dupliquer le code.
+    // data = { key: count, ... }
+    // category = "tags" | "traces" | "zones" | "structures"
+    // size = pixels (default 160)
+    renderPieChart: _renderPieChart
   };
 })();

@@ -3023,13 +3023,21 @@
           if (n < 1024*1024) return (n/1024).toFixed(1) + " KB";
           return (n/1048576).toFixed(1) + " MB";
         }
+        // 🆕 v1.21.3 (KARMA "il manque le sauvegarde (la taille)") : 6e cell
+        // dans la grid stats — taille totale MyKTAMap (= même valeur que la
+        // stat 💾 du bandeau home, calcul ciblé LS + IDB).
+        let storageTotalBytes = 0;
+        try {
+          storageTotalBytes = await _getStorageMyktamapCached();
+        } catch(e) {}
         statsEl.innerHTML =
           '<div class="kta-profile-stat-grid">' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPlans + '</span><span class="kta-profile-stat-lbl">🗂️ plans</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbSessions + '</span><span class="kta-profile-stat-lbl">💾 sessions</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbFavoris + '</span><span class="kta-profile-stat-lbl">⭐ favoris</span></div>' +
             '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbBackups + '</span><span class="kta-profile-stat-lbl">📦 snapshots</span></div>' +
-            '<div class="kta-profile-stat-cell kta-profile-stat-cell-wide"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">📸 photos POI (' + _fmtBytes(photosBytes) + ')</span></div>' +
+            '<div class="kta-profile-stat-cell"><span class="kta-profile-stat-num">' + nbPhotos + '</span><span class="kta-profile-stat-lbl">📸 photos POI (' + _fmtBytes(photosBytes) + ')</span></div>' +
+            '<div class="kta-profile-stat-cell" title="Taille totale réelle des données MyKTAMap (localStorage + IndexedDB, hors Cache PWA volatile)"><span class="kta-profile-stat-num kta-profile-stat-num-bytes">' + _fmtBytes(storageTotalBytes) + '</span><span class="kta-profile-stat-lbl">💾 sauvegarde</span></div>' +
           '</div>' +
           // 🆕 v1.21.3 (KARMA "récuperer les stat global de chaque plan pour les
           // lister (ne pas avoir a rentrer dans le plan pour consulter)") :
@@ -3097,6 +3105,34 @@
         return total;
       }
 
+      // 🆕 v1.21.3 (KARMA "rajoute comme on voit sur chaque plan stat détailé
+      // les graph et tout") : breakdowns par catégorie pour camemberts.
+      // Helper qui produit { key: count } depuis un array d'items typés.
+      function _countBy(items, accessor) {
+        const out = {};
+        if (!Array.isArray(items)) return out;
+        items.forEach(function(it) {
+          if (!it) return;
+          const k = accessor(it);
+          if (k == null || k === "") return;
+          out[k] = (out[k] || 0) + 1;
+        });
+        return out;
+      }
+      // Helper : retourne le 1er tag d'un point (default "default")
+      function _firstTagOf(p) {
+        if (Array.isArray(p.tags) && p.tags.length > 0) return p.tags[0];
+        return "default";
+      }
+      // Helper : merge un objet { key: count } dans un autre (mutation)
+      function _mergeBreakdown(target, src) {
+        if (!src || typeof src !== "object") return target;
+        Object.keys(src).forEach(function(k) {
+          target[k] = (target[k] || 0) + (src[k] || 0);
+        });
+        return target;
+      }
+
       function _computePlanStatsLive() {
         // Agrège session (getters) + embedded (registries en mémoire).
         // Le plan COURANT a tout ce qu'il faut chargé.
@@ -3104,10 +3140,29 @@
         const embedPts    = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
         const sessRoads   = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
         const embedRoads  = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : [];
+        const sessZones   = (typeof window.getZones === "function") ? (window.getZones() || []) : [];
+        const embedZones  = (typeof window.getAllEmbeddedZones === "function") ? (window.getAllEmbeddedZones() || []) : [];
+        const sessStructs = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
+        const embedStructs = (typeof window.getAllEmbeddedStructures === "function") ? (window.getAllEmbeddedStructures() || []) : [];
+
+        // Breakdowns par catégorie (pour camemberts agrégés cross-plan)
+        const pointsByTag = _countBy(editorPts.concat(embedPts), _firstTagOf);
+        const roadsByType = _countBy(sessRoads.concat(embedRoads), function(r) { return r.type || "principal"; });
+        const zonesByType = _countBy(sessZones.concat(embedZones), function(z) { return z.type || "remblais"; });
+        const structsByType = _countBy(sessStructs.concat(embedStructs), function(s) { return s.type || "pilier-1"; });
+
         return {
           pois:   editorPts.length + embedPts.length,
           roads:  sessRoads.length + embedRoads.length,
+          zones:  sessZones.length + embedZones.length,
+          structs: sessStructs.length + embedStructs.length,
           distPx: _sumRoadsDistPx(sessRoads) + _sumRoadsDistPx(embedRoads),
+          breakdowns: {
+            pointsByTag:   pointsByTag,
+            roadsByType:   roadsByType,
+            zonesByType:   zonesByType,
+            structsByType: structsByType
+          },
           ts:     Date.now(),
           source: "live"
         };
@@ -3165,6 +3220,13 @@
         // Totaux cumulés (mis à jour à chaque plan)
         let totalPois = 0, totalRoads = 0, totalDistPx = 0;
         let nbAvecData = 0, nbPartial = 0;
+        // 🆕 v1.21.3 : agrégation des breakdowns cross-plan pour les camemberts
+        const aggBreakdowns = {
+          pointsByTag:   {},
+          roadsByType:   {},
+          zonesByType:   {},
+          structsByType: {}
+        };
         // Scale du plan COURANT (si chargé + calibré) pour conversion m/km
         const _currentId = window._currentLoadedPlanId || null;
         const _currentScale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
@@ -3195,7 +3257,11 @@
           // Cas 1 : plan courant → live
           if (plan.id === _currentId) {
             const live = _computePlanStatsLive();
-            return { pois: live.pois, roads: live.roads, distPx: live.distPx, source: "live" };
+            return {
+              pois: live.pois, roads: live.roads, distPx: live.distPx,
+              breakdowns: live.breakdowns || null,
+              source: "live"
+            };
           }
           // Cas 2 : cache localStorage
           try {
@@ -3207,23 +3273,40 @@
                   pois:   cached.pois || 0,
                   roads:  cached.roads || 0,
                   distPx: cached.distPx || 0,
+                  breakdowns: cached.breakdowns || null,
                   source: "cache"
                 };
               }
             }
           } catch(e) {}
-          // Cas 3 : fallback session-only (partial)
+          // Cas 3 : fallback session-only (partial — pas de breakdowns par
+          // type pour les data layers embedded, juste session)
           let pois = 0, roads = 0, distPx = 0;
+          let pointsByTag = {}, roadsByType = {};
           try {
             const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
             if (raw) {
               const data = JSON.parse(raw);
-              pois  = Array.isArray(data.editorPoints) ? data.editorPoints.length : 0;
-              roads = Array.isArray(data.roads)         ? data.roads.length         : 0;
-              distPx = _sumRoadsDistPx(data.roads);
+              const eps = Array.isArray(data.editorPoints) ? data.editorPoints : [];
+              const rds = Array.isArray(data.roads) ? data.roads : [];
+              pois  = eps.length;
+              roads = rds.length;
+              distPx = _sumRoadsDistPx(rds);
+              // Breakdowns session seulement (pour camemberts partiels)
+              pointsByTag = _countBy(eps, _firstTagOf);
+              roadsByType = _countBy(rds, function(r) { return r.type || "principal"; });
             }
           } catch(e) {}
-          return { pois: pois, roads: roads, distPx: distPx, source: "session-only" };
+          return {
+            pois: pois, roads: roads, distPx: distPx,
+            breakdowns: {
+              pointsByTag:   pointsByTag,
+              roadsByType:   roadsByType,
+              zonesByType:   {},
+              structsByType: {}
+            },
+            source: "session-only"
+          };
         }
 
         // ════════ ITÉRATION SÉQUENTIELLE ANTI-CRASH ════════
@@ -3251,6 +3334,14 @@
           totalPois  += pois;
           totalRoads += roads;
           totalDistPx += distPx;
+
+          // 🆕 v1.21.3 : merge des breakdowns dans l'agrégat cross-plan
+          if (stats.breakdowns) {
+            _mergeBreakdown(aggBreakdowns.pointsByTag,   stats.breakdowns.pointsByTag);
+            _mergeBreakdown(aggBreakdowns.roadsByType,   stats.breakdowns.roadsByType);
+            _mergeBreakdown(aggBreakdowns.zonesByType,   stats.breakdowns.zonesByType);
+            _mergeBreakdown(aggBreakdowns.structsByType, stats.breakdowns.structsByType);
+          }
 
           // Append row au tbody (rendu progressif visible par l'user)
           const isCurrent = (plan.id === _currentId);
@@ -3292,6 +3383,60 @@
             : '';
           headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— ' + plans.length + ' plan' + (plans.length > 1 ? "s" : "") + '</span>' + partialNote;
         }
+
+        // 🆕 v1.21.3 (KARMA "dans les stat, rajoute comme on voit sur chaque
+        // plan stat détailé les graph et tout") : section camemberts SVG
+        // agrégés cross-plan, après la table. Réutilise renderPieChart
+        // exposé par window.StatsGlobales (= même rendu que la modale Stats
+        // Globales d'un plan, mais agrégé sur tous les plans accessibles).
+        _renderProfilePies(aggBreakdowns);
+      }
+
+      // 🆕 v1.21.3 — Rend la section camemberts dans la modale Profil.
+      // Construit ou met à jour le DOM #kta-profile-pies (après la table
+      // "📊 Mes plans"). Une grille de 4 camemberts max (4 catégories) ;
+      // chaque camembert n'apparaît QUE si sa catégorie a des données.
+      function _renderProfilePies(breakdowns) {
+        const wrap = document.getElementById("kta-profile-plansstats");
+        if (!wrap) return;
+        // Cleanup précédent (en cas de re-render)
+        const ex = document.getElementById("kta-profile-pies");
+        if (ex) ex.remove();
+
+        // StatsGlobales.renderPieChart accessible ?
+        const renderPie = (window.StatsGlobales && typeof window.StatsGlobales.renderPieChart === "function")
+                          ? window.StatsGlobales.renderPieChart
+                          : null;
+        if (!renderPie) return;
+
+        // Une cat à afficher = breakdown non vide
+        const sections = [
+          { key: "pointsByTag",   category: "tags",       label: "📍 Points par tag" },
+          { key: "roadsByType",   category: "traces",     label: "🛣️ Tracés par type" },
+          { key: "zonesByType",   category: "zones",      label: "⬛ Zones par type" },
+          { key: "structsByType", category: "structures", label: "🏛️ Structures par type" }
+        ];
+        const activeSections = sections.filter(function(s) {
+          const data = breakdowns[s.key] || {};
+          return Object.keys(data).length > 0;
+        });
+        if (activeSections.length === 0) return;  // rien à dessiner
+
+        const piesContainer = document.createElement("div");
+        piesContainer.id = "kta-profile-pies";
+        piesContainer.className = "kta-profile-pies-wrap";
+        let html = '<div class="kta-profile-pies-header">📊 Répartition par catégorie <span style="color:#8892a4; font-size:11px; font-weight:400;">(agrégée sur tes plans)</span></div>';
+        html += '<div class="kta-profile-pies-grid">';
+        activeSections.forEach(function(s) {
+          const data = breakdowns[s.key] || {};
+          html += '<div class="kta-profile-pies-card">' +
+                    '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
+                    renderPie(data, s.category, 140) +
+                  '</div>';
+        });
+        html += '</div>';
+        piesContainer.innerHTML = html;
+        wrap.appendChild(piesContainer);
       }
 
       // Init bandeau au boot du loader (différé pour laisser UserProfile.init())
