@@ -335,12 +335,15 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 ### C. Ajouter un point sur la carte
 
-1. Dans la barre latérale, ouvre le groupe **✏️ Édition de points**.
-2. Active le mode (bouton devient vert ✓).
+1. Dans la barre latérale, clique sur l'icône **✏️ Édition** (depuis v1.21.3 c'est un **clic direct** = toggle ON/OFF, plus de menu déroulant).
+2. L'icône devient surlignée — le mode ajout est actif.
 3. Clique sur la carte à l'endroit voulu — une modale s'ouvre.
 4. Saisis le nom, choisis un type (puits, info, salle…) et éventuellement une description.
 5. ✅ Ajouter.
 6. Le point est sauvegardé automatiquement dans la session (auto-save toutes les 1.5s).
+7. Re-clic sur ✏️ pour sortir du mode.
+
+**Pour supprimer un point** : clic sur le marker → popup → bouton **🗑️ Supprimer ce point**. Pour annuler : `Ctrl+Z`.
 
 ### D. Tracer une route
 

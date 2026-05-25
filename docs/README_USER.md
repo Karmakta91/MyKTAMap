@@ -1153,9 +1153,11 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 ---
 
-## 📍 Ajouter des points
+## ✏️ Ajouter des points
 
-> Tous les boutons d'édition se trouvent dans le groupe **✏️ Édition** de la barre latérale. La sous-action **📍 Ajouter un point** active le mode "poser un point" — clic sur la carte = nouveau point.
+> Le bouton **✏️ Édition** de la barre latérale est désormais un **clic direct** (depuis v1.21.3). Plus de menu déroulant : 1 clic = toggle ON/OFF du mode ajout. En ON (icône surlignée), chaque clic sur la carte pose un nouveau point.
+>
+> Pour **supprimer un point** : clic sur le marker → popup → bouton **🗑️ Supprimer ce point**. Pour annuler : <code>Ctrl+Z</code>.
 
 1. Appuyez sur **✏️** — le mode ajout s'active (bouton vert)
 2. Cliquez sur le plan à l'emplacement souhaité

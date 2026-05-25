@@ -189,8 +189,10 @@
       emoji: "📍",
       titre: "Points d'intérêt (POI)",
       texte:
-        "<p><strong>Sidebar droite → ✏️ Édition → 📍 Ajouter un point</strong></p>" +
-        "<p>Clique sur la carte pour placer un marker. Une modale s'ouvre avec :</p>" +
+        "<p><strong>Sidebar droite → ✏️ (clic direct = active le mode ajout)</strong></p>" +
+        "<p>Clic sur l'icône ✏️ pour démarrer le mode ajout (la pastille devient surlignée). " +
+        "Ensuite, chaque clic sur la carte pose un nouveau marker. Re-clic sur ✏️ pour sortir " +
+        "du mode. Une modale s'ouvre à chaque point avec :</p>" +
         "<ul>" +
           "<li><strong>Nom</strong> (= identifiant unique, sert aux exports et au pathfinder)</li>" +
           "<li><strong>Tags</strong> : icône typée parmi les built-ins (puits aération, salle, chatière, " +

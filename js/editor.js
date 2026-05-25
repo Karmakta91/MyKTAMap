@@ -132,7 +132,7 @@ function afficherFormulaire(x, y, existingPoint) {
   if (existing) existing.remove();
 
   const isEdit = !!(existingPoint && typeof existingPoint === "object");
-  const titreModale  = isEdit ? "✏️ Modifier le point" : "📍 Ajouter un point";
+  const titreModale  = isEdit ? "✏️ Modifier le point" : "✏️ Ajouter un point";
   const labelBouton  = isEdit ? "💾 Enregistrer"        : "✅ Ajouter";
   const tagInitial   = isEdit && existingPoint.tags && existingPoint.tags.length > 0
                        ? existingPoint.tags[0]

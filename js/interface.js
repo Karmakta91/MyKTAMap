@@ -2076,11 +2076,11 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">✏️ Édition de points</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">📍</span><span>Activer le mode ajout de point (clic sur la carte = nouveau point)</span>
+            <span class="kta-aide-icone">✏️</span><span><strong>Activer le mode ajout</strong> — clic direct sur l'icône ✏️ (plus de menu déroulant depuis v1.21.3) → toggle ON/OFF. En ON, chaque clic sur la carte pose un nouveau point.</span>
             <span class="kta-aide-icone">📸</span><span>Photos attachées au point (max 5) — section dans la modale d'ajout/édition. Boutons 📷 Prendre / 🖼️ Galerie</span>
             <span class="kta-aide-icone">✏️</span><span>Modifier un point existant — bouton bleu dans la popup du marker (relance la même modale pré-remplie)</span>
             <span class="kta-aide-icone">🌐</span><span><strong>Coords GPS dans le popup</strong> (v1.21.2) — si le plan est <strong>géoréférencé</strong>, le popup d'un point affiche automatiquement les coordonnées GPS (lat/lng WGS84) calculées juste après la description, avec un bouton <strong>📋</strong> pour copier dans le presse-papier. Actif pour <strong>tous les points</strong> (session ET calques de données).</span>
-            <span class="kta-aide-icone">🗑️</span><span>Effacer (dernier point ou tous les points)</span>
+            <span class="kta-aide-icone">🗑️</span><span><strong>Supprimer un point</strong> — clic sur le marker → popup → bouton <strong>🗑️ Supprimer ce point</strong>. Pour annuler une suppression accidentelle : <code>Ctrl+Z</code>.</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#f4c542;">📸 Photos POI (depuis v1.10.0) :</strong> attache jusqu'à <strong>5 photos par point</strong>
@@ -5335,66 +5335,49 @@ _setGroupeModeActif("tracker", isTracking, null);
   });
 
   // 8. ÉDITION
+  // 🆕 v1.21.3 (KARMA "on garde le crayon, mais on enleve la poubelle […]
+  // c'est plus un menu déroulant juste le crayon") :
+  //   • Avant : groupe accordéon avec 2 sous-actions [✏️ Ajouter, 🗑️ Effacer].
+  //   • Maintenant : soloAction sur le bouton principal ✏️ qui toggle
+  //     directement le mode ajout de point. Plus de menu déroulant.
+  //   • La sous-action 🗑️ a été retirée — la suppression d'un point se
+  //     fait désormais via la popup du marker (bouton 🗑️ Supprimer ce point)
+  //     ou Ctrl+Z (Undo) pour annuler la dernière action. Wipe complet :
+  //     passer par Reset session.
+  //   • Toggle visuel via classe `.kta-group-mode-actif` sur le btnPrincipal
+  //     (gérée à la main ici car _setGroupeModeActif est pensée pour
+  //     subActions/flyout, on évite l'overhead inutile pour un solo toggle).
   _creerGroupeAccordeon({
     id: "edition",
     iconePrincipale: "✏️",
-    titre: "Édition de points",
-    sousActions: [
-      {
-        // 🆕 v1.21.3 (KARMA "c'est pas la punaise mais un crayon") : icône
-        // 📍 pour la sous-action "poser un point sur la carte". Avant : ✏️
-        // identique au bouton principal du groupe Édition → doublon visuel
-        // + sémantiquement faux. Le crayon reste pour "éditer un point
-        // existant" (popup → ✏️ Modifier) ; la punaise pour "poser un
-        // point précis", convention universelle en cartographie.
-        icone: "📍",
-        titre: "Activer le mode ajout de point",
-        onClick: function(btnSub) {
-          const dejaActif = btnSub.classList.contains("kta-actif");
-          _desactiverTousLesModes();
-          if (dejaActif) {
-            window.modeEdition = false;
-            _setGroupeModeActif("edition", false);
-            return;
-          }
-          window.modeEdition = true;
-          btnSub.classList.add("kta-actif");
-          _modesActifs["edition"] = {
-            btnEl: btnSub,
-            desactiverFn: function() {
-              window.modeEdition = false;
-              btnSub.classList.remove("kta-actif");
-              _setGroupeModeActif("edition", false);
-            }
-          };
-          _setGroupeModeActif("edition", true);
-        }
-      },
-      {
-        icone: "🗑️",
-        titre: "Effacer (dernier point ou tous)",
-        onClick: function() {
-          const pts = window.getEditorPoints ? window.getEditorPoints() : [];
-          if (pts.length === 0) return;
-          _choixSuppression(
-            "Points ajoutés", "Que veux-tu effacer ?",
-            [
-              { label: "Dernier point", icon: "↩️",
-                desc: pts.length + " point(s) au total — supprime le plus récent",
-                onClick: function() { if (window.removeLastEditorPoint) window.removeLastEditorPoint(); }
-              },
-              { label: "Tous les points", icon: "🗑️", danger: true,
-                desc: "Action irréversible",
-                onClick: function() {
-                  if (window.setEditorPoints) window.setEditorPoints([]);
-                  if (window.renderEditorPoints) window.renderEditorPoints();
-                }
-              }
-            ]
-          );
-        }
+    titre: "Ajouter un point (clic = toggle mode)",
+    soloAction: function() {
+      const grp = _groupes["edition"];
+      if (!grp || !grp.btnPrincipal) return;
+      const btn = grp.btnPrincipal;
+      const dejaActif = btn.classList.contains("kta-group-mode-actif");
+      // Toujours désactiver les autres modes avant de basculer (cohérent
+      // avec les sub-actions historiques).
+      _desactiverTousLesModes();
+      if (dejaActif) {
+        window.modeEdition = false;
+        btn.classList.remove("kta-group-mode-actif");
+        grp.modeActif = false;
+        delete _modesActifs["edition"];
+        return;
       }
-    ]
+      window.modeEdition = true;
+      btn.classList.add("kta-group-mode-actif");
+      grp.modeActif = true;
+      _modesActifs["edition"] = {
+        btnEl: btn,
+        desactiverFn: function() {
+          window.modeEdition = false;
+          btn.classList.remove("kta-group-mode-actif");
+          grp.modeActif = false;
+        }
+      };
+    }
   });
 
   // 9. TRACÉS
