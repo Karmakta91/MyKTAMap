@@ -66,15 +66,66 @@
   // ============================================================
   // CHECK CALIBRAGE
   // ============================================================
+  //
+  // 🐛 v1.21.0-fix4 (KARMA : "bug export GPX malgré le calibrage il me dit
+  // que je ne l'ai pas fait") : avant ce fix, on cherchait `calib.transform`
+  // dans le calibrage persisté — MAIS `KmzExport.setCalibration` ne stocke
+  // que `{pointA, pointB}` (cf js/kmzExport.js > setCalibration ligne 178),
+  // pas de champ `transform`. Le transform est calculé À LA DEMANDE via
+  // `buildTransform(planA, planB, gpsA, gpsB)`. Donc `verifierCalibrage()`
+  // retournait toujours `false` et l'export GPX bloquait avec "pas calibré"
+  // même quand le user avait bien saisi ses 8 champs.
+  //
+  // Fix : vérifie les 8 champs requis (x/y/lat/lng × pointA/pointB) puis
+  // calcule `transform` au vol. Symétrique exact à ce que fait KMZ
+  // (sessionExporter.js > _exportKmz ligne 2811).
+
+  function _calibComplet(calib) {
+    if (!calib || !calib.pointA || !calib.pointB) return false;
+    const pA = calib.pointA;
+    const pB = calib.pointB;
+    function _isNum(v) { return typeof v === "number" && Number.isFinite(v); }
+    return _isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
+        && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng);
+  }
+
   function verifierCalibrage() {
     if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") return false;
     const calib = window.KmzExport.getCalibration(_currentPlanId());
-    return !!(calib && calib.transform);
+    if (!_calibComplet(calib)) return false;
+    // Vérifie en plus que buildTransform ne lève pas (ex: 2 points identiques
+    // ou GPS à distance nulle → throw côté KmzExport.buildTransform pour
+    // signaler un calibrage dégénéré).
+    if (typeof window.KmzExport.buildTransform !== "function") return false;
+    try {
+      window.KmzExport.buildTransform(
+        { x: calib.pointA.x, y: calib.pointA.y },
+        { x: calib.pointB.x, y: calib.pointB.y },
+        { lat: calib.pointA.lat, lng: calib.pointA.lng },
+        { lat: calib.pointB.lat, lng: calib.pointB.lng }
+      );
+      return true;
+    } catch(e) {
+      // Calibrage présent mais dégénéré (2 points identiques, etc.)
+      return false;
+    }
   }
 
   function _getTransform() {
-    const calib = window.KmzExport.getCalibration(_currentPlanId());
-    return calib && calib.transform || null;
+    const calib = window.KmzExport && window.KmzExport.getCalibration
+                  ? window.KmzExport.getCalibration(_currentPlanId())
+                  : null;
+    if (!_calibComplet(calib)) return null;
+    try {
+      return window.KmzExport.buildTransform(
+        { x: calib.pointA.x, y: calib.pointA.y },
+        { x: calib.pointB.x, y: calib.pointB.y },
+        { lat: calib.pointA.lat, lng: calib.pointA.lng },
+        { lat: calib.pointB.lat, lng: calib.pointB.lng }
+      );
+    } catch(e) {
+      return null;
+    }
   }
 
   // ============================================================
