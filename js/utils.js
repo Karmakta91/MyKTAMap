@@ -415,6 +415,77 @@ window.attacherNotePopup = function(layer, getDescr, setDescr, titreType, opts) 
 // Wire-up via onclick inline (window.itineraireYAller / window.itineraireAjouterWaypoint
 // dans interface.js). Echappement HTML/string strict pour eviter les injections
 // si un point a un nom avec apostrophe ou guillemet.
+
+// 🆕 v1.21.2 (KARMA "vue que on sait convertir coordonné px en georef, si
+// georef fait, on rajoute, juste aprés descriptions les coordonée GPS du
+// point") : helper qui calcule les coords GPS d'un point plan si le plan
+// courant a un calibrage utilisable. Retourne null si pas de calib (= pas
+// d'affichage GPS dans la popup, comportement legacy).
+//
+// Cache léger : on rebuild la transform à chaque appel mais ça reste O(1)
+// (quelques cos/sin), et getCalibration lit localStorage 1×. Acceptable
+// même avec 200+ markers (=200 popups). Si perf devient un souci on pourra
+// mémoïser au niveau du module utils.js.
+function _planXyToGps(x, y) {
+  try {
+    if (!window.KmzExport) return null;
+    const planId = window._currentLoadedPlanId || "default";
+    const calib = (typeof window.KmzExport.getCalibration === "function")
+                  ? window.KmzExport.getCalibration(planId) : null;
+    if (!calib || !calib.pointA || !calib.pointB) return null;
+    const A = calib.pointA, B = calib.pointB;
+    if (typeof A.x !== "number" || typeof A.y !== "number"
+        || typeof B.x !== "number" || typeof B.y !== "number"
+        || typeof A.lat !== "number" || typeof A.lng !== "number"
+        || typeof B.lat !== "number" || typeof B.lng !== "number") return null;
+    if (typeof window.KmzExport.buildTransform !== "function") return null;
+    if (typeof window.KmzExport.planToGps     !== "function") return null;
+    const t = window.KmzExport.buildTransform(
+      { x: A.x, y: A.y }, { x: B.x, y: B.y },
+      { lat: A.lat, lng: A.lng }, { lat: B.lat, lng: B.lng }
+    );
+    return window.KmzExport.planToGps(t, x, y);
+  } catch(e) {
+    return null;  // calib dégénéré (2 points identiques, etc.)
+  }
+}
+
+// Formatte une paire {lat, lng} en string "48.85661° N, 2.35222° E".
+// Précision 5 décimales ≈ 1.1 m (suffisant pour usage cataphile, pas
+// d'overprécision trompeuse vu que le calibrage 2-points a quelques
+// mètres d'incertitude intrinsèque).
+function _formatGps(ll) {
+  if (!ll || typeof ll.lat !== "number" || typeof ll.lng !== "number") return "";
+  const latStr = Math.abs(ll.lat).toFixed(5) + "° " + (ll.lat >= 0 ? "N" : "S");
+  const lngStr = Math.abs(ll.lng).toFixed(5) + "° " + (ll.lng >= 0 ? "E" : "W");
+  return latStr + ", " + lngStr;
+}
+
+// Copie une string dans le presse-papier — appelé par le bouton 📋 inline
+// dans la popup. Toast feedback si OOMGuard dispo.
+window.kta_copierGps = function(txt) {
+  if (!txt) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function() {
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast("📋 Copié : " + txt, "info");
+      }
+    }).catch(function() {});
+  } else {
+    // Fallback ancien : textarea + execCommand. Rare en 2026 mais conserve
+    // un chemin si le contexte n'est pas https/localhost.
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = txt; ta.style.position = "fixed"; ta.style.left = "-9999px";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy"); document.body.removeChild(ta);
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast("📋 Copié : " + txt, "info");
+      }
+    } catch(e) {}
+  }
+};
+
 function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   const nom  = String(point.nom || "(sans nom)");
   const desc = String(point.description || "");
@@ -481,9 +552,30 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
   // pour ne pas créer d'espace blanc si pas de photos.
   const photosSlot = '<div class="kta-popup-photos" data-pointid="' + jsId + '"></div>';
 
+  // 🆕 v1.21.2 (KARMA "si georef fait, on rajoute, juste aprés descriptions
+  // les coordonée GPS du point") : ligne coords GPS si le plan est calibré.
+  // Affichée pour TOUS les points (session ET data layer — restriction
+  // explicite par KARMA "dans le cadre des point uniquement. session, ou
+  // datalayer"). Click sur l'icône 📋 → copie dans presse-papier.
+  let gpsLineHtml = "";
+  const _gpsLatLng = _planXyToGps(x, y);
+  if (_gpsLatLng) {
+    const gpsStr = _formatGps(_gpsLatLng);
+    const gpsAttr = _escAttr(gpsStr);
+    gpsLineHtml =
+      '<div class="kta-popup-gps" title="Coordonnées GPS calculées via le calibrage du plan">' +
+        '<span class="kta-popup-gps-icon">🌐</span>' +
+        '<code class="kta-popup-gps-val">' + gpsStr + '</code>' +
+        '<button class="kta-popup-gps-copy" type="button" ' +
+          'onclick="window.kta_copierGps(\'' + gpsAttr.replace(/'/g, "\\'") + '\'); return false;" ' +
+          'title="Copier les coordonnées GPS">📋</button>' +
+      '</div>';
+  }
+
   return '<div class="kta-popup-point">' +
            '<b>' + safeName + '</b>' +
            (safeDesc ? '<br><span class="kta-popup-desc">' + safeDesc + '</span>' : '') +
+           gpsLineHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
              '<button class="kta-popup-btn kta-popup-btn-here" type="button" ' +

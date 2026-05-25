@@ -892,18 +892,29 @@ html, body {
      - Match hors zone   : gris #8892a4 static
    ========================================================= */
 
-/* Sous-action ⛑️ dans la sidebar — distinctif rouge urgence */
+/* Sous-action ⛑️ + 🚨 dans la sidebar / flyout — distinctif ROUGE urgence
+   (cf v1.21.2 KARMA "met je suis perdu et urgence a la fin du menu tracker
+   avec un fond rouge"). Applique à la cascade legacy (a.kta-sub) ET au
+   flyout v1.16.0 (button.kta-group-flyout-btn). */
 .kta-sous-action-urgence,
-a.kta-sub.kta-sous-action-urgence {
-  background: rgba(255, 107, 53, 0.10) !important;
-  border-color: rgba(255, 107, 53, 0.45) !important;
-  color: #ff8a5c !important;
+a.kta-sub.kta-sous-action-urgence,
+button.kta-group-flyout-btn.kta-sous-action-urgence {
+  background: rgba(220, 38, 38, 0.18) !important;
+  border-color: rgba(220, 38, 38, 0.55) !important;
+  color: #ff5a5a !important;
 }
 .kta-sous-action-urgence:hover,
-a.kta-sub.kta-sous-action-urgence:hover {
-  background: rgba(255, 107, 53, 0.22) !important;
-  border-color: rgba(255, 107, 53, 0.70) !important;
-  color: #ffb088 !important;
+a.kta-sub.kta-sous-action-urgence:hover,
+button.kta-group-flyout-btn.kta-sous-action-urgence:hover {
+  background: rgba(220, 38, 38, 0.32) !important;
+  border-color: rgba(220, 38, 38, 0.85) !important;
+  color: #ff8080 !important;
+}
+/* Label intérieur du bouton flyout — force le rouge sur le texte sinon il
+   reste avec la couleur héritée de .kta-group-flyout-btn-label */
+button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-label,
+button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
+  color: inherit !important;
 }
 
 /* Modale Lost Mode — bordure rouge urgence */
@@ -1506,6 +1517,54 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   color: #c8d0e0;
   font-size: 12px;
   line-height: 1.4;
+}
+
+/* 🆕 v1.21.2 (KARMA "on rajoute juste aprés descriptions les coordonée GPS
+   du point") : ligne coords GPS calculées via le calibrage. Discrète mais
+   sélectionnable + bouton 📋 copier. Visible uniquement si le plan a un
+   calibrage utilisable (sinon le bloc n'est même pas généré côté JS). */
+.kta-popup-point .kta-popup-gps {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: rgba(140, 180, 255, 0.10);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  border-radius: 4px;
+  font-size: 11.5px;
+}
+.kta-popup-point .kta-popup-gps-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: 0.85;
+}
+.kta-popup-point .kta-popup-gps-val {
+  flex: 1;
+  color: #a8c5ff;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  user-select: all;
+  background: transparent;
+  padding: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+.kta-popup-point .kta-popup-gps-copy {
+  flex-shrink: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 2px !important;
+  font-size: 13px !important;
+  color: #8cb4ff !important;
+  cursor: pointer;
+  opacity: 0.75;
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+.kta-popup-point .kta-popup-gps-copy:hover {
+  opacity: 1;
 }
 
 .kta-popup-actions {
@@ -11288,13 +11347,23 @@ body.kta-theme-light .leaflet-bar a.kta-group-mode-actif::after {
   opacity: 0.6 !important;
 }
 /* Sous-action urgence (rouge distinctif — kept en clair pour rester
-   identifiable) */
-body.kta-theme-light a.kta-sub.kta-sous-action-urgence {
+   identifiable). v1.21.2 : applique au flyout button en plus de la cascade
+   legacy (cf KARMA "pareil en mode clair"). */
+body.kta-theme-light a.kta-sub.kta-sous-action-urgence,
+body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence {
   background: #c0392b !important;
+  border-color: #a33024 !important;
   color: #fff !important;
 }
-body.kta-theme-light a.kta-sub.kta-sous-action-urgence:hover {
+body.kta-theme-light a.kta-sub.kta-sous-action-urgence:hover,
+body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence:hover {
   background: #a33024 !important;
+  border-color: #8b261c !important;
+}
+/* Force la couleur blanche sur le label/icône interne en clair (idem dark) */
+body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-label,
+body.kta-theme-light button.kta-group-flyout-btn.kta-sous-action-urgence .kta-group-flyout-btn-icon {
+  color: #fff !important;
 }
 
 /* Background des conteneurs leaflet-bar (= la "barre" qui contient les
@@ -11950,6 +12019,20 @@ html.kta-theme-light .leaflet-popup-close-button:hover {
 body.kta-theme-light .kta-popup-point .kta-popup-desc,
 html.kta-theme-light .kta-popup-point .kta-popup-desc {
   color: var(--kta-light-text-muted) !important;
+}
+/* 🆕 v1.21.2 : ligne coords GPS du popup point — adapté pour le clair. */
+body.kta-theme-light .kta-popup-point .kta-popup-gps,
+html.kta-theme-light .kta-popup-point .kta-popup-gps {
+  background: rgba(40, 80, 160, 0.08) !important;
+  border-color: rgba(40, 80, 160, 0.30) !important;
+}
+body.kta-theme-light .kta-popup-point .kta-popup-gps-val,
+html.kta-theme-light .kta-popup-point .kta-popup-gps-val {
+  color: #1a4a9e !important;
+}
+body.kta-theme-light .kta-popup-point .kta-popup-gps-copy,
+html.kta-theme-light .kta-popup-point .kta-popup-gps-copy {
+  color: #1a4a9e !important;
 }
 /* Barre d'actions du popup (séparateur top) */
 body.kta-theme-light .kta-popup-actions,

@@ -2,7 +2,7 @@
 // SESSION EXPORTER — Modale d'export de session avec 3 modes
 // =========================
 // Modes disponibles :
-//   • 🚀 Full       — points + tracés + zones + structures + mesure (sans tracker GPS)
+//   • 🚀 Full       — points + tracés + zones + structures + mesure + tracker (timeline GPS si présente)
 //   • 🎨 Avancé     — sélection fine + sortie 1 fichier ou ZIP multi-fichiers
 //                     (peut inclure le tracker en option)
 //   • 🔄 Conversion — convertit en calque de données (devmap-data) prêt à
@@ -478,7 +478,22 @@
       // perdrait le polygone surface au re-import.
       mesureSurface: window.getMeasurePointsSurface ? window.getMeasurePointsSurface() : [],
       trackerOk: !!(window.getTrackingPosition && window.getTrackingPosition()),
-      trackerPath: window.getTrackingPath ? window.getTrackingPath() : []
+      trackerPath: window.getTrackingPath ? window.getTrackingPath() : [],
+      // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
+      // si non fait le") : timeline temporelle complète (persistée depuis
+      // v1.21.2 dans SessionPersist) + startTs. C'est ce qui permet aux
+      // exports session de transporter aussi l'historique GPS daté de
+      // l'user (= heatmap multi-sessions / replay multi-appareils).
+      // Ces champs s'ajoutent à trackerPath (rendu Leaflet runtime) sans
+      // le remplacer — pour rétrocompat avec sessions exportées avant
+      // v1.21.2. NB : exclu volontairement de la conversion data layer
+      // (ed2data) qui reste un format "devmap-data lecture seule".
+      trackerTimeline: (typeof window.getTrackingTimeline === "function")
+                         ? (window.getTrackingTimeline() || [])
+                         : [],
+      trackerStartTs:  (typeof window.getTrackingStartTs === "function")
+                         ? (window.getTrackingStartTs() || null)
+                         : null
     };
   }
 
@@ -731,7 +746,7 @@
     return `
       <div class="kta-ses-intro">
         Exporte la session complète pour pouvoir la réimporter et reprendre votre travail.
-        <br><span style="color:#8892a4;">Inclut points, tracés, zones, structures et mesure. Le tracker GPS reste exclu (état runtime éphémère).</span>
+        <br><span style="color:#8892a4;">Inclut points, tracés, zones, structures, mesure et la timeline tracker GPS si présente (utile pour la heatmap).</span>
       </div>
       <div class="kta-ses-summary">
         <div>✏️ <strong>${d.points.length}</strong> point${d.points.length > 1 ? "s" : ""} ajouté${d.points.length > 1 ? "s" : ""}</div>
@@ -838,10 +853,21 @@
         ${row("adv_mesure",        "📐 Mesure de distance", (d.mesure || []).length,        (d.mesure || []).length > 0)}
         ${row("adv_mesure_surface","⬛ Mesure de surface",  (d.mesureSurface || []).length, (d.mesureSurface || []).length >= 3)}
 
-        <label class="kta-ses-cb-row" style="${d.trackerOk ? "" : "opacity:0.4;"}">
-          <input type="checkbox" id="adv_tracker" ${d.trackerOk ? "" : "disabled"}>
-          <span>🧭 Position du tracker ${d.trackerPath.length > 1 ? '<span class="kta-ses-count">(+ tracé ' + d.trackerPath.length + ' pts)</span>' : ''}</span>
-        </label>
+        ${(function() {
+          // 🆕 v1.21.2 : tracker activable dès qu'il y a une timeline historisée
+          // (= heatmap multi-sessions) ou un path runtime ou une position courante.
+          const trkAvailable = d.trackerOk
+                               || (d.trackerPath || []).length > 0
+                               || (d.trackerTimeline || []).length > 0;
+          const parts = [];
+          if ((d.trackerPath || []).length > 1) parts.push("tracé " + d.trackerPath.length + " pts");
+          if ((d.trackerTimeline || []).length > 0) parts.push("timeline " + d.trackerTimeline.length + " évt");
+          const detailHtml = parts.length ? '<span class="kta-ses-count">(' + parts.join(" + ") + ')</span>' : '';
+          return `<label class="kta-ses-cb-row" style="${trkAvailable ? "" : "opacity:0.4;"}">
+            <input type="checkbox" id="adv_tracker" ${trkAvailable ? "" : "disabled"} ${trkAvailable ? "checked" : ""}>
+            <span>🧭 Tracker GPS ${detailHtml}</span>
+          </label>`;
+        })()}
       </div>
 
       <!-- 🆕 v1.9.3-B1d+ : section 📸 Photos (auto-cachée si 0 photo, peuplée
@@ -1559,6 +1585,29 @@
         // 🆕 v1.12.0-fix : mesure de surface dans l'export Full
         measureSurface: { points: d.mesureSurface || [] }
       };
+
+      // 🆕 v1.21.2 (KARMA "tu enrengister dans export session le tracker ?
+      // si non fait le, ignoré et supprimé lors d'une conversion data layer") :
+      // tracker GPS dans l'export Full → permet de transporter l'historique
+      // multi-sessions (heatmap + replay cross-appareil). On embed :
+      //   - position : pose courante du marker (objet ou null)
+      //   - path     : polyline runtime visible Leaflet (rendu carte session)
+      //   - timeline : timeline temporelle datée [{x,y,t,deltaMs,type,level?}]
+      //                ← survit aux reloads depuis v1.21.2 SessionPersist
+      //   - startTs  : timestamp UNIX du startTracking
+      // Champ totalement absent si timeline vide ET pas de path runtime
+      // (= user n'a jamais tracké) → rétrocompat absolue avec anciens
+      // imports devmap-session pré-v1.21.2 (ignoré silencieusement).
+      const _hasTracker = (d.trackerOk || (d.trackerPath || []).length > 0 ||
+                           (d.trackerTimeline || []).length > 0);
+      if (_hasTracker) {
+        session.tracker = {
+          position: d.trackerOk ? (window.getTrackingPosition && window.getTrackingPosition() || null) : null,
+          path:     d.trackerPath || [],
+          timeline: d.trackerTimeline || [],
+          startTs:  d.trackerStartTs  || null
+        };
+      }
       // 🆕 v1.9.3-B1d : info récap photos dans le JSON pour aider l'import
       // (le re-import sait combien attendre).
       if (photos.length > 0) {
@@ -1642,9 +1691,14 @@
       filteredPoints = _filtrerPointsParTags(d.points, sel.tagsCoches, sel.untaggedCoche);
     }
 
-    const tracker = (incTracker && d.trackerOk) ? {
-      position: window.getTrackingPosition(),
-      path: d.trackerPath
+    const _hasTrkData = (d.trackerOk
+                         || (d.trackerPath || []).length > 0
+                         || (d.trackerTimeline || []).length > 0);
+    const tracker = (incTracker && _hasTrkData) ? {
+      position: d.trackerOk ? (window.getTrackingPosition && window.getTrackingPosition() || null) : null,
+      path:     d.trackerPath || [],
+      timeline: d.trackerTimeline || [],
+      startTs:  d.trackerStartTs || null
     } : null;
 
     // 🆕 v1.9.3-A1.b.2.5 : checkbox mesure (UI fallback ON si absente)

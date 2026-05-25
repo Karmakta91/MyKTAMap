@@ -179,7 +179,24 @@
   // ============================================================
   // RENDU CANVAS
   // ============================================================
-  function _renderCanvas(points, opts) {
+  // 🆕 v1.21.2 (KARMA "je trouve les zone afficher par heatmap tres aléatoire") :
+  // refonte du rendu pour donner du sens à la heatmap.
+  //
+  // Avant : on dessinait UN blob gaussien par point ET la normalisation
+  // s'arrêtait au plafond `alpha = intensity * 0.4` (= 0.4 par blob, max 1.0).
+  // Si l'user avait peu de points dispersés → toute la heatmap stagnait dans
+  // le bleu/vert pâle, jamais de rouge → "joli mais random".
+  //
+  // Après :
+  // 1. Le collecteur passe désormais des SEGMENTS (paire de points + flag
+  //    closed pour les polygones zones) — les points isolés deviennent
+  //    `[{x,y,x,y}]` (segment dégénéré). On itère ces segments avec
+  //    interpolation : pour tracé/tracker/zone, plein de petites
+  //    contributions le long de la ligne → vraie traînée visible.
+  // 2. Après le pass additive, on cherche le MAX d'intensité atteint et
+  //    on RE-NORMALISE pour que le pixel le plus dense = rouge (1.0),
+  //    le moins dense visible = bleu (≈0.05). Plus de "joli stagne en vert".
+  function _renderCanvas(segments, opts) {
     const pc = window.PLAN_CONFIG;
     if (!pc || !pc.plan) return null;
     const imgW = pc.plan.imageWidth  || 1000;
@@ -197,35 +214,79 @@
     canvas.height = H;
     const ctx = canvas.getContext("2d");
 
-    // 1. Build intensity field (somme des gradients gaussiens)
-    const radius = (opts.radius || DEFAULT_RADIUS_PX) * scale;
+    const radius    = (opts.radius || DEFAULT_RADIUS_PX) * scale;
     const intensity = opts.intensity || DEFAULT_INTENSITY;
+    // Pas d'échantillonnage le long d'un segment : assez fin pour que les
+    // blobs se chevauchent (1 sample tous les radius/3 px) → traînée lisse.
+    // Cap inférieur à 2px pour ne pas exploser le nombre de blobs sur des
+    // segments très longs avec petit rayon.
+    const sampleStep = Math.max(2, radius * 0.33);
 
-    // Pour la perf, on dessine des cercles avec gradient radial directement
-    // sur le canvas en mode 'lighter' (additive). Plus simple que de gérer
-    // un ImageData pixel-par-pixel et tout aussi efficace pour < 5000 points.
     ctx.globalCompositeOperation = "lighter";
-    points.forEach(function(p) {
-      const px = p.x * scale;
-      const py = (imgH - p.y) * scale;  // flip Y pour Leaflet CRS.Simple
+
+    // Helper : dessine 1 blob gaussien à (px, py) [coords canvas]
+    const alphaCenter = Math.min(1, intensity * 0.18);  // un peu plus doux qu'avant pour profiter de la re-normalisation
+    function _drawBlob(px, py) {
       const grad = ctx.createRadialGradient(px, py, 0, px, py, radius);
-      const alpha = Math.min(1, intensity * 0.4);  // alpha center
-      grad.addColorStop(0,   "rgba(255, 255, 255, " + alpha + ")");
-      grad.addColorStop(0.5, "rgba(255, 255, 255, " + (alpha * 0.5) + ")");
+      grad.addColorStop(0,   "rgba(255, 255, 255, " + alphaCenter + ")");
+      grad.addColorStop(0.5, "rgba(255, 255, 255, " + (alphaCenter * 0.5) + ")");
       grad.addColorStop(1,   "rgba(255, 255, 255, 0)");
       ctx.fillStyle = grad;
       ctx.fillRect(px - radius, py - radius, radius * 2, radius * 2);
+    }
+
+    // Helper : convertit un point plan {x, y} en coords canvas [px, py].
+    function _toCanvas(p) {
+      return [p.x * scale, (imgH - p.y) * scale];
+    }
+
+    // 1. Pass additive — pour chaque segment [a, b] on dessine plusieurs
+    //    blobs régulièrement espacés entre a et b. Si a === b (point isolé),
+    //    on dessine 1 seul blob.
+    (segments || []).forEach(function(seg) {
+      if (!seg || !seg.a) return;
+      const [ax, ay] = _toCanvas(seg.a);
+      // Cas point isolé : a === b ou pas de b
+      if (!seg.b || (seg.a.x === seg.b.x && seg.a.y === seg.b.y)) {
+        _drawBlob(ax, ay);
+        return;
+      }
+      const [bx, by] = _toCanvas(seg.b);
+      const dx = bx - ax, dy = by - ay;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist <= sampleStep) {
+        _drawBlob(ax, ay);
+        _drawBlob(bx, by);
+        return;
+      }
+      const n = Math.max(2, Math.ceil(dist / sampleStep));
+      for (let k = 0; k <= n; k++) {
+        const t = k / n;
+        _drawBlob(ax + dx * t, ay + dy * t);
+      }
     });
 
-    // 2. Apply colormap : lit l'intensité du canvas et remplace par la couleur heat
+    // 2. Trouve le max d'intensité atteint dans le canvas. C'est notre
+    //    pivot pour la re-normalisation — sans ça, sur des données
+    //    sparse on resterait dans le bleu pâle (cf bug KARMA).
     const imgData = ctx.getImageData(0, 0, W, H);
     const data = imgData.data;
+    let maxAlpha = 0;
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] > maxAlpha) maxAlpha = data[i];
+    }
+    if (maxAlpha <= 0) return canvas;  // canvas vide
+
+    // 3. Applique le colormap avec normalisation : v_norm = alpha / maxAlpha
+    //    → le pixel le plus dense = 1.0 = rouge, le moins dense ≈ 0 = bleu/transparent.
+    const invMax = 1 / maxAlpha;
     for (let i = 0; i < data.length; i += 4) {
-      const v = data[i + 3] / 255;  // alpha = intensité (mode lighter)
-      if (v <= 0.02) {
+      const a = data[i + 3];
+      if (a < 3) {  // seuil cut-off (≈1% du max possible)
         data[i] = 0; data[i+1] = 0; data[i+2] = 0; data[i+3] = 0;
         continue;
       }
+      const v = a * invMax;  // 0..1 normalisé
       const c = _colorAt(v);
       data[i]     = c[0];
       data[i + 1] = c[1];
@@ -263,53 +324,136 @@
   }
 
   // ============================================================
-  // COLLECTE DES POINTS SOURCES
+  // COLLECTE DES SEGMENTS SOURCES
   // ============================================================
-  function _collecterPoints(opts) {
-    const pts = [];
+  // 🆕 v1.21.2 (KARMA pertinence) : le collecteur retourne des SEGMENTS
+  // [{a:{x,y}, b:{x,y}}] et non plus des points. Le rendu interpole le
+  // long de chaque segment pour produire de vraies traînées continues
+  // (vs scatter de blobs aux vertices). Un point isolé est représenté
+  // par un segment dégénéré `{a:pt, b:null}` (rendu = 1 seul blob).
+  //
+  // Trois familles d'inputs :
+  //   • Trail : suite de points conceptuellement reliée (tracker timeline,
+  //             tracé road, polygone zone fermé, polyline structure)
+  //             → émet (n-1) segments + segment de fermeture si polygon.
+  //   • Point isolé : marker data layer, editor point, pilier structure
+  //             → émet 1 segment dégénéré.
 
-    // Tracker timeline (points pdr/recalage/start)
+  // Helper : segmente une polyline {points:[{x,y}]}, polygone fermé si `closed`.
+  function _pushPolylineSegs(segs, pts, closed) {
+    if (!Array.isArray(pts) || pts.length === 0) return;
+    if (pts.length === 1) {
+      segs.push({ a: { x: pts[0].x, y: pts[0].y }, b: null });
+      return;
+    }
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1], b = pts[i];
+      if (typeof a.x !== "number" || typeof a.y !== "number") continue;
+      if (typeof b.x !== "number" || typeof b.y !== "number") continue;
+      segs.push({ a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y } });
+    }
+    if (closed && pts.length >= 3) {
+      const first = pts[0], last = pts[pts.length - 1];
+      segs.push({ a: { x: last.x, y: last.y }, b: { x: first.x, y: first.y } });
+    }
+  }
+
+  // Helper : itère sur une liste d'items {points:[{x,y}]} ou points uniques {x,y}.
+  function _pushShapesAsSegs(segs, items, closed) {
+    if (!Array.isArray(items)) return;
+    items.forEach(function(it) {
+      if (!it) return;
+      if (Array.isArray(it.points) && it.points.length > 0) {
+        _pushPolylineSegs(segs, it.points, !!closed);
+      } else if (typeof it.x === "number" && typeof it.y === "number") {
+        segs.push({ a: { x: it.x, y: it.y }, b: null });
+      }
+    });
+  }
+
+  function _collecterSegments(opts) {
+    const segs = [];
+
+    // 🚶 Tracker timeline — chaîne ordonnée par t. On découpe la timeline
+    // en sous-séquences contiguës (= sans recalage / sans gap >5min). À
+    // l'intérieur d'une sous-séquence, chaque paire consécutive forme un
+    // segment marché.
+    //
+    //   - "start" : début d'une session, n'est PAS relié au point précédent.
+    //   - "recalage" : téléport (recalage manuel sur point) → coupe la chaîne.
+    //   - dt > 5min : pause longue → coupe la chaîne (pas de marche continue).
     if (opts.srcTracker && typeof window.getTrackingTimeline === "function") {
-      const timeline = window.getTrackingTimeline();
+      const timeline = window.getTrackingTimeline() || [];
+      const MAX_GAP_MS = 5 * 60 * 1000;  // 5 min
+      let prev = null;
       timeline.forEach(function(p) {
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          pts.push({ x: p.x, y: p.y });
+        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+        const isBreak = (p.type === "start") || (p.type === "recalage")
+                        || (prev && typeof p.t === "number" && typeof prev.t === "number"
+                            && (p.t - prev.t) > MAX_GAP_MS);
+        if (prev && !isBreak) {
+          segs.push({ a: { x: prev.x, y: prev.y }, b: { x: p.x, y: p.y } });
+        } else {
+          // Point d'ancrage isolé (début/recalage) — on l'affiche quand même
+          // comme un blob, c'est sémantiquement "tu es passé là".
+          segs.push({ a: { x: p.x, y: p.y }, b: null });
         }
+        prev = p;
       });
     }
 
-    // Editor points session
+    // ✏️ Editor points — points isolés (POIs)
     if (opts.srcEditor && typeof window.getEditorPoints === "function") {
       (window.getEditorPoints() || []).forEach(function(p) {
         if (typeof p.x === "number" && typeof p.y === "number") {
-          pts.push({ x: p.x, y: p.y });
+          segs.push({ a: { x: p.x, y: p.y }, b: null });
         }
       });
     }
 
-    // Data layer points (puits, vehicules, etc.) — TOUS les data layers du plan
-    if (opts.srcDataLayers) {
-      const pc = window.PLAN_CONFIG;
-      if (pc && Array.isArray(pc.dataLayers)) {
-        // Lecture synchrone via les cached points si possible. Sinon fetch async.
-        // Pour l'instant, on use le cache _ktaDataMarkers si dispo (markers Leaflet
-        // qui ont leur latlng) → reconvert en coords plan.
-        if (window._ktaDataMarkers) {
-          Object.keys(window._ktaDataMarkers).forEach(function(layerId) {
-            const markers = window._ktaDataMarkers[layerId] || [];
-            markers.forEach(function(m) {
-              if (m && m.getLatLng) {
-                const ll = m.getLatLng();
-                const imgH = pc.plan.imageHeight;
-                pts.push({ x: ll.lng, y: imgH - ll.lat });
-              }
-            });
-          });
-        }
-      }
+    // 🛣️ Tracés session — chaque road est une polyline OUVERTE
+    if (opts.srcRoads && typeof window.getRoads === "function") {
+      _pushShapesAsSegs(segs, window.getRoads() || [], false);
     }
 
-    return pts;
+    // ⬛ Zones session — polygones FERMÉS (segment de fermeture last→first)
+    if (opts.srcZones && typeof window.getZones === "function") {
+      _pushShapesAsSegs(segs, window.getZones() || [], true);
+    }
+
+    // 🏛️ Structures — mix : piliers (point unique), murs/fronts (polylines)
+    if (opts.srcStructures && typeof window.getStructures === "function") {
+      _pushShapesAsSegs(segs, window.getStructures() || [], false);
+    }
+
+    // 📊 Data layers — points isolés
+    // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
+    // L.marker (cf. utils.js). L'ancienne lecture `Object.keys()[k].length`
+    // donnait NaN car .length sur un marker = undefined.
+    if (opts.srcDataLayers && Array.isArray(window._ktaDataMarkers)) {
+      const pc = window.PLAN_CONFIG;
+      const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+      window._ktaDataMarkers.forEach(function(m) {
+        if (m && typeof m.getLatLng === "function") {
+          const ll = m.getLatLng();
+          if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
+        }
+      });
+    }
+
+    return segs;
+  }
+
+  // Compteur sync de vertices pour l'affichage des badges de la modale.
+  function _countVertices(items) {
+    if (!Array.isArray(items)) return 0;
+    let n = 0;
+    items.forEach(function(it) {
+      if (!it) return;
+      if (Array.isArray(it.points)) n += it.points.length;
+      else if (typeof it.x === "number" && typeof it.y === "number") n += 1;
+    });
+    return n;
   }
 
   // ============================================================
@@ -318,19 +462,25 @@
   function afficher(opts) {
     opts = opts || {};
     _lastOpts = opts;
-    const pts = _collecterPoints(opts);
-    if (pts.length === 0) {
+    const segs = _collecterSegments(opts);
+    if (segs.length === 0) {
       if (window.OOMGuard && window.OOMGuard.showToast) {
-        window.OOMGuard.showToast("🔥 Aucun point pour la heatmap. Active une source (tracker, points, calques).", "warn");
+        window.OOMGuard.showToast("🔥 Aucune donnée pour la heatmap. Active une source (tracker, points, tracés, calques).", "warn");
       }
       effacer();
       return;
     }
-    const canvas = _renderCanvas(pts, opts);
+    const canvas = _renderCanvas(segs, opts);
     if (!canvas) return;
     _placerOverlay(canvas);
     if (window.OOMGuard && window.OOMGuard.showToast) {
-      window.OOMGuard.showToast("🔥 Heatmap : " + pts.length + " points dessinés.", "info");
+      // Compteur informatif : nb de segments + nb d'éléments "linéaires"
+      let nLines = 0, nDots = 0;
+      segs.forEach(function(s) { if (s.b) nLines++; else nDots++; });
+      const parts = [];
+      if (nLines > 0) parts.push(nLines + " segment" + (nLines > 1 ? "s" : ""));
+      if (nDots  > 0) parts.push(nDots  + " point" + (nDots  > 1 ? "s" : ""));
+      window.OOMGuard.showToast("🔥 Heatmap : " + parts.join(" + ") + " (normalisé sur le pixel le plus chaud).", "info");
     }
   }
 
@@ -355,12 +505,23 @@
     // Compteurs live pour aider l'user à voir ce qu'il va activer
     const nTracker = (typeof window.getTrackingTimeline === "function") ? window.getTrackingTimeline().length : 0;
     const nEditor  = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []).length : 0;
-    let nDataLayers = 0;
-    if (window._ktaDataMarkers) {
-      Object.keys(window._ktaDataMarkers).forEach(function(k) {
-        nDataLayers += (window._ktaDataMarkers[k] || []).length;
-      });
-    }
+    // 🆕 v1.21.2 (KARMA "rajoute aussi road session, zone, structure") :
+    // tracés / zones / structures session. On compte les vertices car c'est
+    // ce qui sera réellement utilisé par la heatmap (un tracé long crée plus
+    // de chaleur qu'un tracé court — sémantique "densité de présence").
+    const roadsArr  = (typeof window.getRoads      === "function") ? (window.getRoads()      || []) : [];
+    const zonesArr  = (typeof window.getZones      === "function") ? (window.getZones()      || []) : [];
+    const structArr = (typeof window.getStructures === "function") ? (window.getStructures() || []) : [];
+    const nRoads      = roadsArr.length;
+    const nRoadsPts   = _countVertices(roadsArr);
+    const nZones      = zonesArr.length;
+    const nZonesPts   = _countVertices(zonesArr);
+    const nStruct     = structArr.length;
+    const nStructPts  = _countVertices(structArr);
+    // 🐛 v1.21.2 fix NaN : _ktaDataMarkers est un FLAT array de L.marker
+    // (cf. utils.js). Avant : Object.keys + index → NaN car .length sur un
+    // marker unique.
+    const nDataLayers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
 
     // Default values (reprend les opts précédentes si dispo)
     const o = _lastOpts || {};
@@ -368,6 +529,9 @@
     const intensity = o.intensity || DEFAULT_INTENSITY;
     const srcTracker     = (o.srcTracker     !== undefined) ? o.srcTracker     : (nTracker > 0);
     const srcEditor      = (o.srcEditor      !== undefined) ? o.srcEditor      : (nEditor  > 0);
+    const srcRoads       = (o.srcRoads       !== undefined) ? o.srcRoads       : (nRoads   > 0);
+    const srcZones       = (o.srcZones       !== undefined) ? o.srcZones       : (nZones   > 0);
+    const srcStructures  = (o.srcStructures  !== undefined) ? o.srcStructures  : (nStruct  > 0);
     const srcDataLayers  = (o.srcDataLayers  !== undefined) ? o.srcDataLayers  : (nDataLayers > 0);
 
     const modal = document.createElement("div");
@@ -381,8 +545,11 @@
           '<button class="kta-panneau-close" id="kta-heatmap-close" type="button">✕</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps" style="padding:14px 16px;">' +
-          '<p style="font-size:13px; color:#c8d0e0; margin-top:0;">' +
-            'Visualise les zones les plus denses (parcours tracker, points ajoutés, calques de données).' +
+          '<p style="font-size:13px; color:#c8d0e0; margin-top:0; line-height:1.4;">' +
+            'Affiche où la <strong>densité d\'éléments</strong> est la plus forte. Les tracés et tracker sont interpolés ' +
+            'le long de leurs segments (vraies traînées continues, pas des points isolés). ' +
+            '<span style="color:#ff8a5c;">Le pixel le plus dense = rouge</span>, le moins dense = bleu — ' +
+            'la coloration s\'auto-adapte aux données sélectionnées.' +
           '</p>' +
 
           '<div class="kta-heatmap-section">' +
@@ -396,6 +563,21 @@
               '<input type="checkbox" id="kta-hm-src-editor"' + (srcEditor && nEditor > 0 ? " checked" : "") + (nEditor === 0 ? " disabled" : "") + '>' +
               '<span>✏️ Points ajoutés (session)</span>' +
               '<span class="kta-heatmap-cb-count">' + nEditor + ' pts</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-roads"' + (srcRoads && nRoads > 0 ? " checked" : "") + (nRoads === 0 ? " disabled" : "") + '>' +
+              '<span>🛣️ Tracés (session)</span>' +
+              '<span class="kta-heatmap-cb-count">' + nRoads + ' tracé' + (nRoads > 1 ? "s" : "") + ' / ' + nRoadsPts + ' pts</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-zones"' + (srcZones && nZones > 0 ? " checked" : "") + (nZones === 0 ? " disabled" : "") + '>' +
+              '<span>⬛ Zones (session)</span>' +
+              '<span class="kta-heatmap-cb-count">' + nZones + ' zone' + (nZones > 1 ? "s" : "") + ' / ' + nZonesPts + ' pts</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-struct"' + (srcStructures && nStruct > 0 ? " checked" : "") + (nStruct === 0 ? " disabled" : "") + '>' +
+              '<span>🏛️ Structures (session)</span>' +
+              '<span class="kta-heatmap-cb-count">' + nStruct + ' / ' + nStructPts + ' pts</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-data"' + (srcDataLayers && nDataLayers > 0 ? " checked" : "") + (nDataLayers === 0 ? " disabled" : "") + '>' +
@@ -447,10 +629,16 @@
     });
 
     document.getElementById("kta-hm-appliquer").addEventListener("click", function() {
+      // 🆕 v1.21.2 : nouvelles sources roads/zones/structures. Les .checked
+      // sont guardés via `?.` car la checkbox peut être disabled / absente
+      // si la catégorie est vide (cf. rendu conditionnel ci-dessus).
       const opts = {
-        srcTracker:    document.getElementById("kta-hm-src-tracker").checked,
-        srcEditor:     document.getElementById("kta-hm-src-editor").checked,
-        srcDataLayers: document.getElementById("kta-hm-src-data").checked,
+        srcTracker:    !!document.getElementById("kta-hm-src-tracker")?.checked,
+        srcEditor:     !!document.getElementById("kta-hm-src-editor")?.checked,
+        srcRoads:      !!document.getElementById("kta-hm-src-roads")?.checked,
+        srcZones:      !!document.getElementById("kta-hm-src-zones")?.checked,
+        srcStructures: !!document.getElementById("kta-hm-src-struct")?.checked,
+        srcDataLayers: !!document.getElementById("kta-hm-src-data")?.checked,
         radius:        parseInt(rEl.value, 10),
         intensity:     parseFloat(iEl.value)
       };

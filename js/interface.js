@@ -1002,6 +1002,13 @@ function ouvrirImportSession() {
     const photosBadge  = nbPhotos > 0
       ? '<span><strong style="color:#f4c542;">📸 ' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? "s" : "") + '</span>'
       : '';
+    // 🆕 v1.21.2 : tracker (path/timeline) si présent dans la session
+    const _trk     = data.tracker || null;
+    const trkPathN = _trk && Array.isArray(_trk.path) ? _trk.path.length : 0;
+    const trkTimeN = _trk && Array.isArray(_trk.timeline) ? _trk.timeline.length : 0;
+    const trackerBadge = (trkPathN > 0 || trkTimeN > 0)
+      ? '<span><strong style="color:#7fd1a2;">📡 tracker</strong> (' + trkPathN + ' pt, ' + trkTimeN + ' évt)</span>'
+      : '';
 
     apercuEl.innerHTML = `
       <div style="display:flex; gap:14px; flex-wrap:wrap;">
@@ -1010,6 +1017,7 @@ function ouvrirImportSession() {
         <span><strong style="color:#8cb4ff;">${nbZones}</strong> zone(s)</span>
         <span><strong style="color:#8cb4ff;">${nbStructures}</strong> structure(s)</span>
         <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
+        ${trackerBadge}
         ${photosBadge}
       </div>
     `;
@@ -1206,6 +1214,26 @@ function ouvrirImportSession() {
         // dataParsee.structures sera undefined → array vide via `|| []`.
         if (window.resetStructures)    window.resetStructures();
         if (window.setStructures)      window.setStructures(dataParsee.structures || []);
+
+        // 🆕 v1.21.2 : restore timeline + startTs du tracker si présent dans
+        // le fichier session. Format : session.tracker = {position, path,
+        // timeline, startTs}. On ne restaure QUE la timeline + startTs : le
+        // path (polyline) et la position sont des artefacts runtime liés à
+        // l'instance de plan courante et n'ont pas vocation à survivre à un
+        // import cross-session. Mirroir de SessionPersist (mêmes 2 champs).
+        // Compat : si absent → tracker non touché.
+        if (dataParsee.tracker && typeof dataParsee.tracker === "object"
+            && Array.isArray(dataParsee.tracker.timeline)
+            && typeof window.setTrackingTimeline === "function") {
+          try {
+            window.setTrackingTimeline(
+              dataParsee.tracker.timeline,
+              dataParsee.tracker.startTs || null
+            );
+          } catch(e) {
+            console.warn("[Import session] setTrackingTimeline failed :", e);
+          }
+        }
 
         _pendingPhotosToRestore = null;  // cleanup
         fermer();
@@ -4457,6 +4485,13 @@ function _ouvrirFlyout(groupId) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "kta-group-flyout-btn";
+    // 🆕 v1.21.2 (KARMA "met je suis perdu et urgence a la fin du menu tracker
+    // avec un fond rouge") : propage la cssClass de la sub-action sur le
+    // bouton flyout, comme déjà fait dans la cascade verticale legacy
+    // (cf bloc else "Créer les sous-actions" + extraCls). Avant, la classe
+    // kta-sous-action-urgence n'était pas appliquée en mode flyout, donc
+    // le fond rouge des modes urgence/lost n'apparaissait pas.
+    if (sub.cssClass)     btn.classList.add(sub.cssClass);
     if (sub.isTypeAction) btn.dataset.typeAction = "1";
     if (sub.customType)   btn.dataset.customType = sub.customType;
 
@@ -5062,35 +5097,6 @@ _setGroupeModeActif("tracker", isTracking, null);
           }
         }
       },
-      {
-        icone: "⛑️",
-        titre: "Je suis perdu — Mode urgence",
-        cssClass: "kta-sous-action-urgence",
-        onClick: function() {
-          if (window.LostMode && typeof window.LostMode.open === "function") {
-            window.LostMode.open();
-          } else {
-            alert("Mode urgence indisponible (LostMode non chargé).");
-          }
-        }
-      },
-      // 🆕 v1.10.1 — 🚨 Mode urgence "panique" : différent du ⛑️ Je suis
-      // perdu (qui calcule une zone de recherche). Ici c'est juste de
-      // l'AFFICHAGE en grand des infos vitales (position + cap boussole),
-      // désactive tout le superflu. Utile pour lire ses coordonnées et
-      // son heading en grand format sans avoir à pinch-zoomer la sidebar.
-      {
-        icone: "🚨",
-        titre: "Mode urgence — Affichage XL (position + cap)",
-        cssClass: "kta-sous-action-urgence",
-        onClick: function() {
-          if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
-            window.EmergencyMode.activer();
-          } else {
-            alert("Mode urgence indisponible (EmergencyMode non chargé).");
-          }
-        }
-      },
       // 🆕 v1.11.3 V2.3 — 🎬 Replay du parcours tracker. Ouvre une modale
       // avec slider timeline + play/pause + sélecteur vitesse (0.5x → 10x)
       // + bouton export CSV. La timeline est cumulée depuis startTracking
@@ -5121,21 +5127,42 @@ _setGroupeModeActif("tracker", isTracking, null);
             alert("Module Heatmap indisponible. Recharge la page si le problème persiste.");
           }
         }
-      }
-      // (ancien bloc commenté retiré — réactivation effective v1.21.2)
-      /*
-      ,{
-        icone: "🔥",
-        titre: "Heatmap — densité tracker + points (LEGACY commenté)",
+      },
+      // 🆕 v1.21.2 (KARMA "met je suis perdu et urgence a la fin du menu
+      // tracker avec un fond rouge") : les 2 modes urgence sont placés EN
+      // FIN du flyout pour les séparer visuellement des fonctions de
+      // navigation/visualisation normales. cssClass = kta-sous-action-urgence
+      // applique le fond rouge distinctif (cf css/style.css §sous-action-urgence
+      // + light theme override §11290).
+      {
+        icone: "⛑️",
+        titre: "Je suis perdu — Mode urgence",
+        cssClass: "kta-sous-action-urgence",
         onClick: function() {
-          if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
-            window.MyKTAMapHeatmap.ouvrirModale();
+          if (window.LostMode && typeof window.LostMode.open === "function") {
+            window.LostMode.open();
           } else {
-            alert("Module Heatmap indisponible. Recharge la page si le problème persiste.");
+            alert("Mode urgence indisponible (LostMode non chargé).");
+          }
+        }
+      },
+      // 🆕 v1.10.1 — 🚨 Mode urgence "panique" : différent du ⛑️ Je suis
+      // perdu (qui calcule une zone de recherche). Ici c'est juste de
+      // l'AFFICHAGE en grand des infos vitales (position + cap boussole),
+      // désactive tout le superflu. Utile pour lire ses coordonnées et
+      // son heading en grand format sans avoir à pinch-zoomer la sidebar.
+      {
+        icone: "🚨",
+        titre: "Mode urgence — Affichage XL (position + cap)",
+        cssClass: "kta-sous-action-urgence",
+        onClick: function() {
+          if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
+            window.EmergencyMode.activer();
+          } else {
+            alert("Mode urgence indisponible (EmergencyMode non chargé).");
           }
         }
       }
-      */
     ]
   });
 
