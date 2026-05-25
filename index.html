@@ -2143,6 +2143,15 @@
         const surnomEl   = document.getElementById("kta-loader-profile-surnom");
         const greetingEl = document.getElementById("kta-loader-profile-greeting");
         if (!avatarWrap || !surnomEl) return;
+
+        // 🐛 v1.21.1-fix1 (KARMA "j'ai que un —") : hydrate les stats AVANT
+        // toute autre opération (et hors await) pour garantir que les valeurs
+        // s'affichent même si le bloc photo plus bas fait un early return
+        // (cas user avec photo de profil) ou throw silencieusement.
+        // Avant le fix : `_hydrateProfileBarStats()` à la fin → skip si
+        // `snap.hasPhoto && url` → tous les users avec photo voyaient "—".
+        _hydrateProfileBarStats();
+
         // Surnom display
         const hasName = !!(snap.surnom && snap.surnom.trim());
         if (hasName) {
@@ -2186,11 +2195,6 @@
           avatarWrap.innerHTML =
             '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">👤</div>';
         }
-
-        // 🆕 v1.21.1 : hydrate les 2 stats compactes du bandeau (async).
-        // Ne bloque pas l'affichage du bandeau (les valeurs apparaissent
-        // ~100-300ms après le surnom/avatar).
-        _hydrateProfileBarStats();
       }
 
       // 🆕 v1.21.1 : tracking temps app cumulé (toutes sessions).

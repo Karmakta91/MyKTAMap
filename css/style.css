@@ -16419,22 +16419,24 @@ html.kta-theme-light .kta-net-cell-method {
   display: none !important;
 }
 
-/* 🆕 v1.21.1 : stats compactes adaptatives à droite du bandeau profil.
-   - Mobile < 600px : cachées entièrement (espace insuffisant)
-   - Tablet 600-1023px : 1 stat seulement (temps OU storage selon ordre DOM)
-   - Desktop ≥ 1024px : 2 stats visibles
-   Espace libéré par retrait du bouton ⚙️ utilisé pour ces stats. */
+/* 🆕 v1.21.1 (KARMA fix1) : stats compactes adaptatives à droite du
+   bandeau profil. Breakpoints élargis pour montrer 1 stat dès mobile
+   moyen (iPhone SE/standard 375-400px) au lieu de 600px qui cachait
+   tout sur mobile.
+   - Mobile < 400px : cachées (très petits écrans, bandeau saturé)
+   - Mobile 400-1023px : 1 stat (⏱️ temps) — 💾 storage caché
+   - Desktop ≥ 1024px : 2 stats visibles */
 .kta-loader-profile-stats {
   flex: 0 0 auto;
-  display: none;  /* default : mobile = caché */
-  gap: 10px;
+  display: none;  /* default : très petit mobile = caché */
+  gap: 8px;
   align-items: center;
 }
-@media (min-width: 600px) {
+@media (min-width: 400px) {
   .kta-loader-profile-stats {
     display: flex;
   }
-  /* Tablet : cache la 2e stat (storage) pour ne garder QUE le temps */
+  /* Mobile moyen + tablet : cache la 2e stat (storage), garde uniquement temps */
   .kta-loader-profile-stat#kta-loader-profile-stat-storage {
     display: none;
   }
