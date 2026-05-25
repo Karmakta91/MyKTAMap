@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.21.1-fix2";
+const CACHE_NAME = "myktamap-cache-v1.21.1-wakelock";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -83,6 +83,8 @@ const ASSETS_TO_CACHE = [
   "./js/shortcuts.js",
   // 🆕 v1.21.0 (U1) : Mode présentation (touche F, cache UI sauf carte+zoom+boussole)
   "./js/presentationMode.js",
+  // 🆕 v1.21.1+ : Wake Lock API — toggle "Garder l'écran allumé" dans Réglages
+  "./js/wakeLock.js",
   "./js/debug.js",
   "./js/perfUltra.js",
   // 🎨 Refonte UI v1 (branche Refonte_interface). Module no-op si flag

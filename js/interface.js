@@ -2737,6 +2737,25 @@ function afficherConfig() {
           <!-- 🆕 v1.21.0-fix3 (KARMA) : bouton "🎬 Activer le mode présentation"
                DÉPLACÉ TOUT EN HAUT de la modale Réglages (avant la 1ère section)
                pour accès en 1 vue dès l'ouverture, mobile-friendly. -->
+
+          <!-- 🆕 v1.21.1+ (KARMA) : toggle Wake Lock API — empêche l'écran de
+               s'éteindre tant que l'app est ouverte. Utile cataphile pour ne
+               pas avoir à débloquer son téléphone toutes les 30s en cavité.
+               Compatibilité : Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA),
+               PAS Firefox (Bug 1589554). Toggle masqué automatiquement si
+               l'API n'est pas supportée. -->
+          <label class="kta-perf-ultra-row" id="cfg_wake_lock_row" style="margin-top:8px; display:none;">
+            <input type="checkbox" id="cfg_wake_lock">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">🔆 Garder l'écran allumé (Wake Lock)</span>
+              <span class="kta-perf-ultra-hint">
+                Empêche la mise en veille de l'écran tant que l'app est ouverte.
+                <strong>Idéal en cavité</strong> pour ne pas avoir à débloquer son téléphone
+                toutes les 30s. Persistant entre sessions. Le wake lock est auto-relâché
+                quand tu changes d'onglet/app, et ré-activé au retour si la case est cochée.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div class="kta-aide-section">
@@ -2820,6 +2839,34 @@ function afficherConfig() {
         }
       }, 50);
     });
+  }
+
+  // 🆕 v1.21.1+ (KARMA Wake Lock) : toggle "Garder l'écran allumé".
+  // Visible UNIQUEMENT si l'API navigator.wakeLock est supportée par le
+  // browser (Chrome/Edge/Safari iOS 16.4+, PAS Firefox).
+  // Sync UI ↔ state via window.WakeLock.isEnabled() + setEnabled().
+  const wlRow = document.getElementById("cfg_wake_lock_row");
+  const wlCb  = document.getElementById("cfg_wake_lock");
+  if (wlRow && wlCb && window.WakeLock) {
+    if (window.WakeLock.isSupported()) {
+      wlRow.style.display = "";  // révèle (default = none pour rétrocompat)
+      wlCb.checked = window.WakeLock.isEnabled();
+      wlCb.addEventListener("change", function() {
+        window.WakeLock.setEnabled(wlCb.checked);
+        // Feedback toast (optionnel, discret)
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(
+            wlCb.checked
+              ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
+              : "🔅 Mise en veille écran ré-activée",
+            "info"
+          );
+        }
+      });
+    } else {
+      // API pas supportée → on garde le row caché (display:none par défaut
+      // dans le HTML). Pas de message UI (ne pas frustrer l'user Firefox).
+    }
   }
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation

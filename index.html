@@ -971,6 +971,12 @@
        pendant qu'il est actif (anti-trigger accidentel pendant démo). -->
   <script src="js/presentationMode.js"></script>
 
+  <!-- 🆕 v1.21.1+ (KARMA) : Wake Lock API — empêche l'écran de s'éteindre
+       tant que l'app est ouverte (toggle dans ⚙️ Réglages > 🔍 Affichage).
+       Compatibilité : Chrome/Edge 84+, Safari iOS 16.4+, PAS Firefox.
+       Boot auto-init lit la pref localStorage et acquire si activée. -->
+  <script src="js/wakeLock.js"></script>
+
   <script src="js/main.js"></script>
 
   <!-- LOADER SCRIPT -->
