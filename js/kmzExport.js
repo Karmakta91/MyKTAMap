@@ -557,8 +557,14 @@
               const nom = s.type === "front-1"
                 ? "Front de taille 1ère masse"
                 : "Front de taille 2e masse";
+              // 🐛 v1.21.1 (audit fix #7) : émission de <description> manquante
+              // pour les fronts (asymétrie avec _emitPolygon piliers/mur qui
+              // l'émettait via _emitDescriptionCdata). Sans ça, la description
+              // d'un front se perdait à l'export KMZ → pas affichée Google Earth,
+              // pas roundtrip-able MKM→KMZ→MKM.
               body += '<Placemark>' +
                         '<name>' + _xmlEsc(nom) + '</name>' +
+                        (s.description ? _emitDescriptionCdata(s.description) : '') +
                         '<styleUrl>#' + styleId + '</styleUrl>' +
                         '<LineString><tessellate>1</tessellate>' +
                           '<coordinates>' + coords + '</coordinates>' +

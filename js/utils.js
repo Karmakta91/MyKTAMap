@@ -823,14 +823,17 @@ window.getAllEmbeddedPoints = function() {
     if (!m || typeof m.getLatLng !== "function") return;
     try {
       const ll = m.getLatLng();
-      out.push({
+      const item = {
         x:     ll.lng,
         y:     imgH - ll.lat,
         nom:   m._ktaNom  || "",
         id:    m._ktaId   || "",
         tags:  Array.isArray(m._ktaTags) ? m._ktaTags : [],
         level: (typeof m._ktaLevel === "number") ? m._ktaLevel : 0
-      });
+      };
+      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      if (m._ktaDescription) item.description = m._ktaDescription;
+      out.push(item);
     } catch(e) {}
   });
   return out;
@@ -852,7 +855,10 @@ window.getAllEmbeddedZones = function() {
       return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
     })
     .map(function(e) {
-      return { type: e.type, points: e.points, level: e.level || 0 };
+      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      const out = { type: e.type, points: e.points, level: e.level || 0 };
+      if (e.description) out.description = e.description;
+      return out;
     });
 };
 
@@ -864,10 +870,22 @@ window.getAllEmbeddedStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return [];
   return window._ktaDataStructurePolygons
     .filter(function(e) {
-      return e && e.type && Array.isArray(e.points) && e.points.length >= 3;
+      // 🆕 v1.21.1 (audit fix #6) : seuil min de points dépend du type.
+      // Fronts (front-1/front-2) = polylines = min 2 points. Piliers/mur
+      // (et types custom polygon) = polygones = min 3 points. Avant le
+      // filtre >= 3 strict excluait les fronts → KMZ/GPX export sans les
+      // fronts data layer (alors qu'ils étaient visibles à l'écran via
+      // ajouterPointsDepuisJSON qui accepte minPts = 2 pour polylines).
+      if (!e || !e.type || !Array.isArray(e.points)) return false;
+      const isPolyline = (e.type === "front-1" || e.type === "front-2");
+      const minPts = isPolyline ? 2 : 3;
+      return e.points.length >= minPts;
     })
     .map(function(e) {
-      return { type: e.type, points: e.points, level: e.level || 0 };
+      // 🆕 v1.21.1 (audit fix #8) : expose description embedded
+      const out = { type: e.type, points: e.points, level: e.level || 0 };
+      if (e.description) out.description = e.description;
+      return out;
     });
 };
 
@@ -943,6 +961,9 @@ function ajouterPointsDepuisJSON(url, layer) {
           marker._ktaNom  = p.nom || "";
           marker._ktaId   = p.id  || "";
           marker._ktaTags = Array.isArray(p.tags) ? p.tags : [];
+          // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+          // (cohérent avec _ktaDataPolylines/Polygons/Structures).
+          marker._ktaDescription = p.description || "";
           window._ktaDataMarkers.push(marker);
           _filtreNiveauSurMarkerData(marker);  // applique le filtre courant
 
@@ -1036,9 +1057,15 @@ function ajouterPointsDepuisJSON(url, layer) {
           }
           // 🏗️ Multi-niveau (v148) : registre pour filtre runtime. Si le JSON
           // de la route contient un champ `level`, on l'utilise. Sinon = 0.
+          // 🆕 v1.21.1 (audit fix #8) : stocke aussi type + points + description
+          // pour que getAllEmbeddedRoads expose les méta complètes au KMZ/GPX
+          // export. Avant : description perdue à l'export embedded data layers.
           const entry = {
             polyline:    polyline,
+            type:        road.type,
+            points:      road.points,
             level:       Number.isInteger(road.level) ? road.level : 0,
+            description: road.description || undefined,
             origOpacity: style.opacity ?? 1
           };
           window._ktaDataPolylines.push(entry);
@@ -1205,6 +1232,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:            structure.type,
             points:          structure.points,
             level:           Number.isInteger(structure.level) ? structure.level : 0,
+            // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+            description:     structure.description || undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.85
           };
@@ -1283,6 +1312,8 @@ function ajouterPointsDepuisJSON(url, layer) {
             type:            zone.type,
             points:          zone.points,
             level:           Number.isInteger(zone.level) ? zone.level : 0,
+            // 🆕 v1.21.1 (audit fix #8) : description embarquée pour KMZ/GPX export
+            description:     zone.description || undefined,
             origOpacity:     style.opacity     ?? 1,
             origFillOpacity: style.fillOpacity ?? 0.7
           };
