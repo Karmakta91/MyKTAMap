@@ -182,17 +182,17 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
-### 👤 Profil utilisateur *(depuis v1.21.0)*
+### 👤 Profil utilisateur *(depuis v1.21.0, enrichi v1.21.4)*
 
-Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et deux statistiques rapides sur ton usage de l'app.
+Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
 
 **Ce que tu vois sur le bandeau** :
 
 - **Avatar** : photo perso (carrée, ~64 px) OU initiale colorée auto-générée si pas de photo. La couleur de l'initiale est choisie déterministiquement (via hash djb2 du surnom) parmi une palette de 10 couleurs de la charte — ton avatar reste donc visuellement stable d'une session à l'autre tant que tu ne changes pas de surnom.
 - **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
-- **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* :
-  - 📍 **Total points** : nombre cumulé de points cartographiés (tous plans confondus)
+- **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* — désormais **configurables** depuis la modale Profil (voir plus bas). Par défaut :
   - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
+  - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (depuis v1.21.4 — fiabilisée, voir plus bas)
 
 > 💡 **Charte light theme (depuis v1.21.1)** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
 
@@ -204,6 +204,72 @@ Clic sur le bandeau profil → modale **👤 Mon profil** :
 - **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant stockage IndexedDB pour ne pas saturer ton quota navigateur.
 - **🗑️ Reset profil** : bouton de remise à zéro (modale de confirmation charte — pas de `confirm()` natif système). Vide le surnom + photo + compteurs.
 
+#### 📊 Grid stats *(enrichie en v1.21.4)*
+
+La modale Profil affiche désormais **6 cells de stats globales** (au lieu de 5) :
+
+| Cell | Description |
+|---|---|
+| 🗂️ **N plans** | Nombre de plans dans ton registre (serveur + locaux) |
+| 💾 **N sessions** | Nombre total de sessions sauvegardées (per-plan slots) |
+| ⭐ **N favoris** | Nombre cumulé de points marqués favoris, tous plans confondus |
+| 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO) |
+| 📸 **N photos POI** | Nombre de photos attachées à des points + taille totale |
+| 💾 **N MB sauvegarde** *(nouveau v1.21.4)* | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
+
+#### 📊 Mes plans *(nouveau v1.21.4)*
+
+Section **"📊 Mes plans"** sous la grid : **table progressive** qui liste chaque plan de ton registre avec :
+
+- 📍 **POIs** : nombre de points (count session + count embedded dans les data layers)
+- 🛣️ **Tracés** : nombre de tracés (idem session + embedded)
+- ↔ **Distance totale** : somme cumulée en m ou km si le plan est calibré (sinon affichée en pixels)
+- Footer **cumul global** sur tous les plans
+
+> ⚠️ **Marqueur "partial"** : un plan que tu n'as **jamais ouvert dans cette release** apparaît avec un badge ⚠️ orange. Ses data layers ne sont pas encore en cache → seuls les counts session (locaux à l'app) sont disponibles. **Solution** : ouvre le plan une fois, le cache se remplit automatiquement, et la prochaine fois que tu rouvres la modale Profil, la row devient complète.
+
+La table se construit **séquentiellement** (un plan à la fois) pour ne pas saturer la mémoire — comportement anti-crash sur mobile pour les utilisateurs avec 20+ plans en registre.
+
+#### 📊 Répartition par catégorie *(nouveau v1.21.4)*
+
+Section **"📊 Répartition par catégorie"** : **4 camemberts SVG** agrégés cross-plan qui donnent une vision globale de ta cartographie :
+
+| Camembert | Découpage |
+|---|---|
+| 📍 **Points par tag** | Tous les points (session + embedded) regroupés par tag (puits aération, accès ouvert, salle, etc.) |
+| 🛣️ **Tracés par type** | Principal / Secondaire / Chemin / Jonction interniveau |
+| ⬛ **Zones par type** | Eau / Remblais / Effondrement / Inaccessible |
+| 🏛️ **Structures par type** | Piliers (1ère / 2e masse) / Murs / Fronts de taille |
+
+Le rendu visuel est **identique** à celui du camembert de la page **Stats Globales** d'un plan ouvert — même palette de couleurs, mêmes labels, même comportement. Au fur et à mesure que tu ouvres tes plans et que leurs data layers se chargent, les camemberts s'enrichissent automatiquement avec les breakdowns réels.
+
+#### 🎨 Stats du bandeau accueil *(nouveau v1.21.4)*
+
+Section **"🎨 Stats du bandeau accueil"** : **choisis quelles stats apparaissent** dans le bandeau profil de la home (1 à 3 stats max).
+
+**Pool disponible actuellement** :
+- ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app
+- 💾 **Sauvegarde** : taille des données MyKTAMap stockées localement
+- 🗺️ **Plans visités** : nombre de plans présents dans ton registre
+
+**Règles** :
+- **Cap dur de 3 stats max** : tu ne peux pas en activer plus de 3, même si tu coches plus
+- **Au moins 1 stat requise** : tu ne peux pas tout décocher (le bandeau aurait un vide gênant)
+- **Defaults** : `["time", "storage"]` (Temps + Sauvegarde) — choix terrain de KARMA
+
+**Mise à jour instantanée** : le bandeau home se re-render **live** dès que tu coches/décoches sans avoir besoin de recharger la page.
+
+#### 💾 Stat sauvegarde fiabilisée *(v1.21.4)*
+
+**Problème résolu** : avant v1.21.4, la stat "Sauvegarde" (visible dans le bandeau home + dans la grid de la modale Profil) **fluctuait de façon erratique** selon l'état du Cache PWA. Tu pouvais voir 80 Mo, puis 320 Mo, puis 50 Mo selon les phases de purge automatique du navigateur — alors que tes données réelles n'avaient pas bougé.
+
+**Depuis v1.21.4** :
+- **Calcul ciblé MyKTAMap** : on additionne uniquement les entrées localStorage avec préfixe `myktamap_*` + les 6 stores IndexedDB connus de l'app (handles, blobs, backups, photos, etc.). Le Cache PWA volatile (qui contient le code JS/CSS de l'app et n'est PAS une donnée user) est désormais **exclu** du calcul.
+- **Cache 30 s** : le calcul est cumulé puis cached 30 secondes pour ne pas réinterroger IndexedDB en boucle quand tu ouvres/fermes des modales rapidement.
+- **Tooltip mis à jour** : "Taille des données MyKTAMap (LS + IDB)" + précision "hors Cache PWA".
+
+Résultat : la valeur est **stable, prévisible, et reflète vraiment ce que tu as cartographié**.
+
 **Import / export du profil** :
 
 Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avancé → section "Identité user"). Pratique pour transférer ton identité visuelle vers un autre appareil. À l'import d'un profil :
@@ -211,6 +277,14 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
+
+#### Workflow utilisateur typique à la mise à jour v1.21.3 → v1.21.4
+
+1. Au reload, tes N plans dans le registre s'affichent dans la table **📊 Mes plans** avec un badge ⚠️ `partial` (les data layers ne sont pas encore en cache pour cette release).
+2. À mesure que tu **ouvres chaque plan**, le cache stats se remplit automatiquement → la row redevient complète au prochain ouverture de la modale Profil.
+3. **Les camemberts s'enrichissent progressivement** avec les vrais breakdowns dès que les data layers de chaque plan ont été chargés au moins une fois.
+
+> 💡 Si tu veux que TOUT soit complet d'un coup, ouvre chaque plan une fois (clic sur la ligne du plan dans 📚 Mes plans → splash → home → suivant). La modale Profil reflétera l'intégralité dès la prochaine ouverture.
 
 ### 📚 Gestion de votre liste de plans
 
@@ -309,11 +383,20 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
    - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
    - **🔆 Garder l'écran allumé** *(depuis v1.21.1)* — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
-6. **🔐 Code d'accès local (PIN / Face ID)** *(depuis v1.10.0)* — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+6. **📚 Plans serveur** *(nouveau v1.21.4)* — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
+   - **Désactive l'auto-discovery** du fichier `data/index.json` au boot de l'app — l'app ne va plus interroger le serveur pour lister les plans de démo ou les plans publics hébergés.
+   - **Masque le toggle "🌐 Afficher plans serveur"** du home (devient inutile puisqu'il n'y a plus rien à afficher).
+   - **Exclut les plans `type === "server"` des stats agrégées** de la modale Profil → ne fausse plus le count "Plans visités" avec des plans que tu n'utilises jamais.
+   - **Reload requis** pour effet complet (l'auto-discovery se fait au splash, pas en cours de session).
+   - **Default OFF** (rétrocompatibilité absolue — l'app continue d'auto-découvrir les plans serveur tant que tu n'as pas explicitement coché cette case).
 
-7. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
+   > 💡 **Cas d'usage** : tu utilises MyKTAMap uniquement avec tes propres plans locaux et tu ne veux pas voir les plans de démo / tests du serveur qui polluent ta liste. Coche cette case → reload → ta liste 📚 Mes plans ne contient plus que TES plans.
 
-8. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
+7. **🔐 Code d'accès local (PIN / Face ID)** *(depuis v1.10.0)* — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+
+8. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
+
+9. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
 
 **Pourquoi cette refonte** : avant v1.7.3, le bouton de reset et le bouton 🐛 Logs étaient dans une section "Plus d'options" séparée, et le bloc Perf était un drawer à part. C'était confus. Désormais : **tout dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
@@ -818,6 +901,19 @@ Deux sliders en bas de la modale, mise à jour temps réel :
 |---|---|---|
 | **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
 | **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
+
+#### 🏗️ Filtre par niveau M-LVL *(nouveau v1.21.4)*
+
+Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
+
+- **Chips par niveau** : une pastille cliquable par niveau disponible dans le plan (`Niv -2`, `Niv -1`, `Niv 0`, `Niv 1`...)
+- **Pré-sélection** : les niveaux **actuellement visibles** sur la carte sont pré-cochés automatiquement
+- **Bouton ⇅ Tout** : (dé)coche tout d'un clic
+- **Effet** : la heatmap restreint la collecte aux items qui appartiennent aux niveaux sélectionnés. Pratique pour générer une heatmap dédiée au RDC uniquement (par exemple), ou pour comparer la densité entre 2 étages sans pollution croisée.
+
+> 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
+
+> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout (comportement v1.21.3 strict préservé).
 
 #### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
 
