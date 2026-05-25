@@ -1750,7 +1750,9 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⚙️ Paramètres</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug, <strong>🌐 Géoréférencement GPS (v1.14.19)</strong> — réglages <strong>par plan</strong>. Le calibrage GPS saisi ici est auto-rempli quand tu ouvres 📡 Export externe.</span>
+            <span class="kta-aide-icone">⚙️</span><span>Réglages, calibrage de l'échelle, debug, <strong>🌐 Géoréférencement GPS (v1.14.19)</strong> — réglages <strong>par plan</strong>. Le calibrage GPS saisi ici est auto-rempli quand tu ouvres 📡 Export externe. <strong>(v1.21.0-fix1)</strong> les 2 points de calibrage acceptent <strong>🔍 Chercher un point</strong> et <strong>📍 Cliquer carte</strong> pour saisir les coords plan (parité avec la modale Export).</span>
+            <span class="kta-aide-icone">🎬</span><span><strong>Mode présentation</strong> (v1.21.0-fix3) — bouton <strong>« 🎬 Activer le mode présentation »</strong> placé <strong>tout en haut</strong> de la modale Réglages pour accès en 1 vue. Avant : seule la touche <kbd>F</kbd> y donnait accès (inaccessible sur mobile sans clavier physique). Sortie : touche <kbd>F</kbd> / <kbd>Échap</kbd> (PC) ou bouton flottant ✕ (mobile).</span>
+            <span class="kta-aide-icone">🔆</span><span><strong>Garder l'écran allumé (Wake Lock)</strong> (v1.21.1) — toggle dans Réglages (et aussi dans ⚙️ Configuration loader). Empêche la mise en veille tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas débloquer son téléphone toutes les 30s. Persistant entre sessions, auto-relâché en arrière-plan, ré-activé au retour. Compat Chrome 84+, Edge 84+, Safari iOS 16.4+ (PWA). Toggle masqué si l'API n'est pas supportée (Firefox).</span>
             <span class="kta-aide-icone">☀️</span><span><strong>Thème clair / sombre</strong> (v1.13.0, v1.14.2 reload) — bascule entre fond beige cataphile (clair) et fond noir nuit (sombre, défaut). Activable <strong>uniquement depuis la home → Configuration → ☀️ Activer le thème CLAIR</strong>. Le toggle déclenche un reload complet de l'app pour éviter les bugs résiduels d'affichage. Choix persisté globalement par appareil.</span>
             <span class="kta-aide-icone">🚀</span><span>Mode Performance ULTRA (dans ⚙️ Réglages) — pour les gros plans qui crashent</span>
           </div>
@@ -1849,6 +1851,22 @@ function afficherAide() {
             <strong>Depuis v1.17.0 :</strong> 2 modes — <strong>🚀 Simple</strong> (juste image + nom + version + V2/M-LVL → ZIP prêt en 30 sec)
             et <strong>⚙️ Avancé</strong> (calques, tracking, icônes, géoréf GPS, <strong>🏷️ légende plan-level</strong>).
             Sticky en localStorage. Mode Modifier force toujours Avancé pour préserver les customs du plan source.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">👤 Mode profil <span style="font-size:10px; color:#8892a4; font-weight:400;">(v1.21.0)</span></div>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">👤</span><span><strong>Bandeau profil</strong> en en-tête du loader (au-dessus de « Mes plans ») — avatar + surnom + mini-stats globales (📍 points · 🛣️ tracés · ⬛ zones · 🏛️ structures + temps cumulé, persistés v1.21.1-fix2)</span>
+            <span class="kta-aide-icone">✏️</span><span>Clic sur le <strong>surnom</strong> ou l'<strong>avatar</strong> → modale d'édition (surnom libre + upload photo profil)</span>
+            <span class="kta-aide-icone">🖼️</span><span>Photo profil compressée auto (max 512px, JPEG q88) — sinon avatar par défaut = initiale du surnom dans un cercle coloré déterministe (hash → palette MKM)</span>
+            <span class="kta-aide-icone">📦</span><span>Profil exportable / importable via le module <strong>ProfileExportImport</strong> (section « user » dans le payload) — partage cross-appareil sans backend</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
+            <strong>Stockage 100 % local</strong> dans une IDB dédiée (<code>myktamap_profile</code>) — surnom + photo (Blob) + timestamps.
+            Aucune donnée transmise. Profil par défaut vide (👤 anonyme) : aucun user existant n'est forcé de configurer.
+            <strong>Stats bandeau</strong> (v1.21.1-fix1/fix2) : dès 2 stats dispo le bandeau les affiche en mobile médian,
+            temps cumulé survit aux reloads.
           </p>
         </div>
 
@@ -1961,7 +1979,8 @@ function afficherAide() {
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">⬆️ Enregistrer</div>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 4 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · <strong>📡 Export externe (KMZ + GPX, v1.14.1)</strong></span>
+            <span class="kta-aide-icone">💾</span><span>Enregistrer la session — modale avec 4 onglets : 🚀 Full · 🎨 Avancé · 🔄 Conversion · <strong>📡 Export externe (KMZ + GPX, v1.14.1)</strong>. <strong>(v1.21.2)</strong> l'export Full embarque désormais la <strong>timeline tracker complète</strong> (path runtime + timeline temporelle datée + startTs) → permet de transporter l'historique GPS cross-appareil (heatmap multi-sessions + replay multi-appareils). Ignoré en conversion data layer.</span>
+            <span class="kta-aide-icone">📡</span><span><strong>Checkbox tracker — mode Avancé</strong> (v1.21.2 enrichie) — dans la modale 🖼️ Export image, la case « Position du tracker » montre maintenant le compteur de points du tracé (ex : « + tracé 142 pts ») pour visualiser ce qui sera gravé sur l'image.</span>
             <span class="kta-aide-icone">🖼️</span><span>Exporter en PNG/JPG — modale avec mode Rapide / Avancé</span>
             <span class="kta-aide-icone">📤</span><span><strong>Exporter en PDF imprimable</strong> (v1.10.3) — A0 à A4 × portrait/paysage, légende positionnable dans un coin</span>
           </div>
@@ -1975,13 +1994,25 @@ function afficherAide() {
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Tracker</div>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            <strong>Refonte flyout (v1.21.2)</strong> — le groupe Tracker s'ouvre désormais en panneau latéral
+            (flyout) pour accueillir ses ~8 sous-actions sans déborder. Ordre du menu, du haut vers le bas :
+          </p>
           <div class="kta-aide-grille">
-            <span class="kta-aide-icone">▶️⏹️</span><span>Démarrer / arrêter le tracking par capteurs (expérimental)</span>
-            <span class="kta-aide-icone">📍</span><span>Mode recalage : clic sur la carte pour repositionner le marker. <strong>(v1.12.0)</strong> auto-close après click + retour boussole automatique</span>
-            <span class="kta-aide-icone">🎬</span><span><strong>Replay de session tracker</strong> (v1.12.0) — slider timeline + play/pause + vitesse 0.5×→10× + export CSV. Mode compact auto au Play pour libérer la carte. Raccourcis Espace / ← → / Échap</span>
-            <span class="kta-aide-icone">⛑️</span><span>Mode urgence "Je suis perdu" — estime la zone probable de ta position à partir de ta dernière position connue, du temps écoulé et d'indices visuels</span>
-            <span class="kta-aide-icone">🚨</span><span><strong>Mode urgence "panique"</strong> (v1.10.1) — affichage XL position + cap boussole + minimap auto-focus + 🔋 batterie (v1.12.0) + toggle 🗺️ itinéraire (v1.12.0), pour retrouver ses repères vite en situation critique</span>
+            <span class="kta-aide-icone">▶️⏹️</span><span><strong>Play / Stop</strong> — démarrer / arrêter le tracking par capteurs PDR (expérimental). Icône dynamique ▶️↔⏹️ selon l'état</span>
+            <span class="kta-aide-icone">🧭</span><span><strong>Boussole</strong> (v1.21.2) — toggle du widget Nord magnétique (orientation utile en cavité)</span>
+            <span class="kta-aide-icone">📍</span><span><strong>Mode recalage</strong> — clic sur la carte ou sur un point existant pour repositionner le marker. Auto-close après click + retour boussole automatique</span>
+            <span class="kta-aide-icone">🗺️</span><span><strong>Calculer un itinéraire</strong> — ouvre la modale itinéraire (waypoints, mode de vitesse, évitements)</span>
+            <span class="kta-aide-icone">🎬</span><span><strong>Replay de session tracker</strong> (v1.12.0) — modale plein écran : slider timeline + play/pause + vitesse 0.5×→10× + export CSV. Mode compact auto au Play pour libérer la carte. Raccourcis Espace / ← → / Échap</span>
+            <span class="kta-aide-icone">🔥</span><span><strong>Heatmap densité</strong> (v1.21.2, réactivé) — segments interpolés + normalisation auto + <strong>6 sources cochables</strong> : 🚶 Tracker timeline · ✏️ Points session · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures · 📊 Calques de données</span>
+            <span class="kta-aide-icone" style="background:rgba(255,80,80,0.18); border-radius:4px;">⛑️</span><span><strong>Je suis perdu</strong> — <span style="color:#ff8a5c;">FOND ROUGE (urgence)</span> — calcule une zone probable de ta position à partir de ta dernière position connue, du temps écoulé et d'indices visuels</span>
+            <span class="kta-aide-icone" style="background:rgba(255,80,80,0.18); border-radius:4px;">🚨</span><span><strong>Mode urgence XL "panique"</strong> (v1.10.1) — <span style="color:#ff8a5c;">FOND ROUGE (urgence)</span> — affichage XL position + cap boussole + minimap auto-focus + 🔋 batterie + toggle 🗺️ itinéraire</span>
           </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#ff5555;">🚨 Démarcation visuelle :</strong> les 2 derniers boutons (⛑️ et 🚨) sont placés
+            en <strong>fin de menu</strong> avec un <strong>fond rouge distinctif</strong> pour les séparer des fonctions
+            de navigation normales. Avant v1.21.2, ils étaient intercalés entre 🗺️ Itinéraire et 🎬 Replay.
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
             <strong style="color:#ff5555;">🚨 Mode urgence "panique" :</strong> bouton rouge distinctif,
             <strong>différent</strong> du ⛑️ "Je suis perdu" (qui calcule une zone). Ici on suppose que tu sais où tu es
@@ -2048,6 +2079,7 @@ function afficherAide() {
             <span class="kta-aide-icone">✏️</span><span>Activer le mode ajout de point (clic sur la carte = nouveau point)</span>
             <span class="kta-aide-icone">📸</span><span>Photos attachées au point (max 5) — section dans la modale d'ajout/édition. Boutons 📷 Prendre / 🖼️ Galerie</span>
             <span class="kta-aide-icone">✏️</span><span>Modifier un point existant — bouton bleu dans la popup du marker (relance la même modale pré-remplie)</span>
+            <span class="kta-aide-icone">🌐</span><span><strong>Coords GPS dans le popup</strong> (v1.21.2) — si le plan est <strong>géoréférencé</strong>, le popup d'un point affiche automatiquement les coordonnées GPS (lat/lng WGS84) calculées juste après la description, avec un bouton <strong>📋</strong> pour copier dans le presse-papier. Actif pour <strong>tous les points</strong> (session ET calques de données).</span>
             <span class="kta-aide-icone">🗑️</span><span>Effacer (dernier point ou tous les points)</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
