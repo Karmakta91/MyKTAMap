@@ -182,6 +182,36 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
+### 👤 Profil utilisateur *(depuis v1.21.0)*
+
+Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et deux statistiques rapides sur ton usage de l'app.
+
+**Ce que tu vois sur le bandeau** :
+
+- **Avatar** : photo perso (carrée, ~64 px) OU initiale colorée auto-générée si pas de photo. La couleur de l'initiale est choisie déterministiquement (via hash djb2 du surnom) parmi une palette de 10 couleurs de la charte — ton avatar reste donc visuellement stable d'une session à l'autre tant que tu ne changes pas de surnom.
+- **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
+- **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* :
+  - 📍 **Total points** : nombre cumulé de points cartographiés (tous plans confondus)
+  - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
+
+> 💡 **Charte light theme (depuis v1.21.1)** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
+
+**Modifier ton profil** :
+
+Clic sur le bandeau profil → modale **👤 Mon profil** :
+
+- **✏️ Surnom** : tape ce que tu veux (lettres / chiffres / espace). Sert uniquement à personnaliser l'affichage local.
+- **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant stockage IndexedDB pour ne pas saturer ton quota navigateur.
+- **🗑️ Reset profil** : bouton de remise à zéro (modale de confirmation charte — pas de `confirm()` natif système). Vide le surnom + photo + compteurs.
+
+**Import / export du profil** :
+
+Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avancé → section "Identité user"). Pratique pour transférer ton identité visuelle vers un autre appareil. À l'import d'un profil :
+
+- Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
+
+> 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
+
 ### 📚 Gestion de votre liste de plans
 
 L'application mémorise tous les plans que vous chargez, qu'ils viennent du serveur ou de votre disque local.
@@ -277,6 +307,7 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 5. **🎨 Affichage** — toggles d'interface :
    - **📜 Utiliser l'ancienne interface (classique v1.8.x)** — bascule entre la nouvelle interface (refonte v1.9.x, par défaut) et l'ancienne. Reload requis. Voir section **🎨 Nouvelle interface** plus bas pour les détails.
    - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
+   - **🔆 Garder l'écran allumé** *(depuis v1.21.1)* — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
 6. **🔐 Code d'accès local (PIN / Face ID)** *(depuis v1.10.0)* — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
 
@@ -490,6 +521,25 @@ Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôl
 
 > 📐 **Depuis v1.7.1** : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille proportionnelle au plan (avant : elles paraissaient énormes et voilaient la carte). Tu peux désactiver ce comportement dans ⚙️ Réglages → 🔍 Affichage → "📐 Adapter la taille des icônes au zoom" si tu préfères le comportement Leaflet par défaut (icônes taille écran fixe).
 
+### 🌐 Coordonnées GPS dans les popups *(depuis v1.21.2)*
+
+Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" pour le calibrage 2 points), un nouvel élément apparaît dans les popups des points :
+
+```
+📌 Nom du point
+[Description si présente]
+🌐 48.85661° N, 2.35222° E  📋
+```
+
+- Affiché juste après la description (ligne nouvelle).
+- Format **décimal 5 chiffres** (~1 m de précision).
+- Bouton **📋** : copie les coordonnées dans le presse-papier (format `lat, lng` prêt à coller dans Google Maps, OsmAnd, SMS de localisation, etc.).
+- Visible pour les **points de session ET les points des data layers** (puits, véhicules, etc.).
+- **Pas affiché** pour les tracés / zones / structures (ce sont des géométries multi-points, pas une coordonnée unique).
+- Si le plan **n'est pas calibré**, la ligne n'apparaît pas (rétro-compat absolue).
+
+> 💡 **Cas d'usage typique** : en sortie cataphile, tu trouves un puits non répertorié, tu l'ajoutes via ✏️, tu cliques dessus → tu peux instantanément copier ses coords GPS pour les envoyer à un binôme par SMS ou pour les pointer plus tard dans Google Earth.
+
 ---
 
 ## 🧭 Présentation de l'interface
@@ -635,6 +685,25 @@ La recherche couvre :
 
 > Tous les boutons du tracker se trouvent dans le groupe **🧭 Tracker** de la barre latérale.
 
+### 🆕 Panneau latéral Tracker *(depuis v1.21.2)*
+
+Le bouton **🧭 Tracker** ouvre désormais un **panneau latéral (flyout)** adjacent au bouton principal, plutôt qu'une cascade verticale en colonne qui débordait souvent du viewport mobile. C'est plus lisible, plus stable visuellement, et toutes les sous-actions sont accessibles sans scroll.
+
+**Sous-actions disponibles dans le flyout** (ordre fixe) :
+
+| Icône | Action |
+|---|---|
+| **▶️** / **⏹️** | Play / Stop tracking (l'icône bascule dynamiquement selon l'état) |
+| **🧭** | Boussole (widget rose des vents) |
+| **📍** | Recalage position |
+| **🗺️** | Calculer un itinéraire |
+| **🎬** | Replay de session tracker *(depuis v1.12.0)* |
+| **🔥** | Heatmap *(réactivée v1.21.2)* — voir section dédiée |
+| **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
+| **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
+
+> 🚨 **Les 2 modes urgence sont délibérément placés en FIN de panneau avec un fond rouge vif** pour les rendre instantanément identifiables visuellement. En situation de stress, tu sais où regarder.
+
 ### ▶️ Démarrer le tracking
 
 Appuyez sur **▶️** pour démarrer.
@@ -721,6 +790,48 @@ timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
 **Cas des recalages** : un recalage = téléportation. Visuellement, le trail saute (pas de ligne entre le point N et N+1 si type = recalage) pour ne pas afficher une ligne droite qui n'a pas de réalité géographique.
 
 **Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
+
+### 🔥 Heatmap — densité de passage *(réactivée v1.21.2)*
+
+Le bouton **🔥 Heatmap** dans le flyout **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
+
+> 📌 **Historique** : la heatmap avait été désactivée en v1.12.0 (pas d'utilité concrète démontrée à l'époque). Elle est de retour en v1.21.2 avec une **refonte complète de la pertinence** : interpolation le long des segments + normalisation par histogramme + filtres timeline tracker.
+
+#### 🗂️ 6 sources cochables (combinables)
+
+Tu choisis ce qui contribue à la chaleur affichée :
+
+| Source | Contenu |
+|---|---|
+| 🧭 **Tracker timeline** | Tous les points de ta session de tracking (filtré : skip recalages = téléport, skip starts, skip gaps > 5 min) |
+| 📍 **Points session** | Tes points ajoutés via l'éditeur |
+| 🛣️ **Tracés session** | Tes routes (Principal / Secondaire / Chemin) tracées en session |
+| ⬛ **Zones session** | Tes zones (eau / remblais / effondrement / inaccessible) |
+| 🏛️ **Structures session** | Tes piliers / murs / fronts |
+| 📊 **Calques de données** | Tous les éléments embarqués dans les data layers du plan (points + roads + zones + structures + fronts) |
+
+#### 🎚️ Réglages live
+
+Deux sliders en bas de la modale, mise à jour temps réel :
+
+| Slider | Plage | Effet |
+|---|---|---|
+| **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
+| **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
+
+#### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
+
+- **Interpolation le long des segments** : pour les tracés / zones / structures polylines / timeline tracker, l'app distribue des points de chaleur **le long du chemin** au lieu d'un seul point par sommet. Résultat : tu vois de vraies **traînées continues**, pas des "perles" espacées.
+- **Normalisation par histogramme** : le pixel le plus dense de l'image = rouge pur, le moins dense = bleu pur, gradient lissé entre. **Auto-adaptatif** : pas besoin de régler manuellement les seuils, ça marche aussi bien sur un plan de 20 points que sur un plan de 5000.
+- **Filtre timeline tracker** : skip les téléportations (recalages), les starts, et les gaps > 5 min (pause sans bouger ne doit pas générer de chaleur fantôme).
+
+#### 💡 Cas d'usage
+
+- **Identifier les axes principaux** d'une carrière : ce qui ressort rouge = par où tu passes vraiment, vs ce qui ressort bleu = exploré une fois
+- **Audit de complétude** : zones bleues = sous-cartographiées → prochain objectif terrain
+- **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
+
+> ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
 
 ### ⚙️ Réglages du tracker
 
@@ -1429,18 +1540,22 @@ Si tu actives le mode sur un plan existant :
 Appuyez sur **⬆️ → 💾**. Une modale s'ouvre avec **3 onglets** au choix :
 
 #### 🚀 Full
-Exporte tout en un seul fichier `devmap-session` (points ajoutés, tracés, zones).
+Exporte tout en un seul fichier `devmap-session` (points ajoutés, tracés, zones, structures).
 Pratique pour sauvegarder ta session et la reprendre plus tard.
 
-> 📌 La mesure de distance et la position du tracker ne sont **pas** incluses en mode Full.
+> 📌 La mesure de distance n'est pas incluse en mode Full.
+
+> 🆕 **Tracker inclus en Full (depuis v1.21.2)** : si le tracker est actif (ou a été utilisé pendant cette session), sa **position actuelle + chemin parcouru + timeline complète + timestamp de démarrage** sont embarqués dans le payload sous `session.tracker`. À la ré-importation, ta session de tracking est **fidèlement restaurée** (timeline + replay possible). Si le tracker n'a jamais été activé, le champ est simplement absent (rétro-compat).
 
 #### 🎨 Avancé
 Sélection précise de ce que tu veux exporter :
 
 - ✏️ **Points ajoutés** + cases par tag (avec icône miniature) + une catégorie spéciale `(sans tag)` pour les points sans tags. Tu peux donc exporter par exemple uniquement les points avec le tag `pa` ou `danger`.
 - 🛣️ **Tracés** + cases par type (principaux, secondaires, chemins)
-- ⬛ **Zones** + cases par type (eau, remblais, effondrement)
-- 🧭 **Position du tracker** *(en option)* — inclut aussi le chemin parcouru s'il existe
+- ⬛ **Zones** + cases par type (eau, remblais, effondrement, inaccessible)
+- 🏛️ **Structures** + cases par type (piliers / mur / fronts)
+- 🧭 **Tracker** *(en option, depuis v1.21.2 enrichi)* — si coché, la case affiche en temps réel un compteur : *« timeline N évt · tracé M pts »*. À l'export inclut : position actuelle + chemin parcouru + timeline complète + timestamp de démarrage. Re-import restaure tout via `setTrackingTimeline` → ton replay 🎬 est fonctionnel après ré-import.
+- 👤 **Identité user** *(depuis v1.21.0)* — case dédiée pour inclure ton **profil** (surnom + photo + compteurs). Utile pour migrer ton identité visuelle vers un autre appareil. À l'import, un toast modal suggère un reload pour que le bandeau profil soit mis à jour partout dans l'UI.
 
 **Format de sortie** au choix :
 - 📄 **Un seul fichier session** (.json — réimportable comme une sauvegarde classique)
@@ -1449,7 +1564,9 @@ Sélection précise de ce que tu veux exporter :
 #### 🔄 Conversion
 Convertit ta session en **calque de données** prêt à intégrer dans un plan définitif via le fichier `plan-config.json`.
 
-Cases à cocher : Points / Tracés / Zones (avec **filtrage par tag** pour les points, comme en Avancé). Pas de tracker en conversion.
+Cases à cocher : Points / Tracés / Zones / Structures (avec **filtrage par tag** pour les points, comme en Avancé).
+
+> 📌 **Le tracker est volontairement IGNORÉ en mode Conversion** (depuis v1.21.2). Le tracker est par nature **éphémère et expérimental** (PDR sujet à dérive) — le figer en data layer permanent serait trompeur pour les futurs utilisateurs du plan. Si tu veux archiver une session de tracking, utilise le mode **Full** ou **Avancé** (= ré-importable comme session, pas figé dans le plan).
 
 **Granularité** au choix :
 - 📄 **Basique** : 1 fichier par catégorie (`points.json`, `roads.json`, `zones.json`)
@@ -1990,6 +2107,22 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 - **Icônes adaptatives au zoom** (`scaledMarkers`, depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
 - **Afficher les ronds aux intersections de tracés** (depuis v1.9.2) : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
 - **📜 Utiliser l'ancienne interface (classique v1.8.x)** : bascule entre la nouvelle interface (refonte v1.9.x, défaut) et l'ancienne. Reload requis. Mêmes effet que le toggle dans ⚙️ Configuration du loader.
+- **🔆 Garder l'écran allumé** *(depuis v1.21.1)* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
+
+### 🎬 Mode présentation *(depuis v1.21.0)*
+
+- **🎬 Lancer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection). Avant v1.21.0, ce mode n'était accessible que via la touche **F** au clavier — inaccessible sur mobile. Maintenant, un seul bouton tactile suffit.
+- La touche **F** reste disponible comme raccourci PC pour les habitués.
+
+### 🎯 Pickers géoréférencement *(depuis v1.21.0)*
+
+Avant v1.21.0, les pickers 2-points (calibrage GPS pour KMZ / GPX) n'étaient accessibles que dans la modale **Enregistrer session → 🌍 KMZ**. Désormais ils sont aussi disponibles dans **⚙️ Réglages → onglet Géoréférencement** :
+
+- **🔍 Recherche d'un point** sur le plan pour auto-remplir x/y
+- **📍 Clic carte** pour pointer une position directement
+- Saisie manuelle lat/lng GPS pour finaliser le calibrage
+
+Le calibrage saisi ici est partagé avec les exports KMZ / GPX du même plan (persistance par plan via localStorage). Pratique pour valider ton calibrage **hors flow d'export** (par exemple en début de session terrain).
 
 ### 🛠️ Debug
 - **🐛 Logs détaillés** : active le verbose mode (logs capteurs tracker + tiling + détections). Utile pour diagnostiquer un problème.
