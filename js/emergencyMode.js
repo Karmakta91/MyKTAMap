@@ -256,14 +256,42 @@
     }
 
     // 🌍 GPS (si calibrage KMZ dispo pour ce plan)
+    // 🐛 v1.21.1 (audit fix #1, critique sécurité) : avant on cherchait
+    // `calib.transform` qui n'est JAMAIS persisté par KmzExport.setCalibration
+    // (qui stocke uniquement {pointA, pointB}). Clone exact du bug fix4 dans
+    // gpxIO.js. Conséquence : le bloc GPS du mode urgence ÉTAIT TOUJOURS MASQUÉ,
+    // même pour un plan calibré. Pile la situation où l'user en a besoin
+    // (perdu en cata, secours à guider).
+    // Fix : construire le transform à la demande via KmzExport.buildTransform
+    // (pattern identique à gpxIO.js > _getTransform après v1.21.0-fix4).
     const blocGps = document.getElementById("kta-em-bloc-gps");
     const gpsEl   = document.getElementById("kta-em-pos-gps");
     if (pos && blocGps && gpsEl) {
       const planId = window._currentLoadedPlanId || "default";
       const calib  = (window.KmzExport && typeof window.KmzExport.getCalibration === "function")
                      ? window.KmzExport.getCalibration(planId) : null;
-      if (calib && calib.transform) {
-        const gpsTxt = _formatGPS(calib.transform, pos);
+      let _emTransform = null;
+      if (calib && calib.pointA && calib.pointB
+          && typeof window.KmzExport.buildTransform === "function") {
+        const pA = calib.pointA, pB = calib.pointB;
+        const _isNum = function(v) { return typeof v === "number" && Number.isFinite(v); };
+        if (_isNum(pA.x) && _isNum(pA.y) && _isNum(pA.lat) && _isNum(pA.lng)
+            && _isNum(pB.x) && _isNum(pB.y) && _isNum(pB.lat) && _isNum(pB.lng)) {
+          try {
+            _emTransform = window.KmzExport.buildTransform(
+              { x: pA.x, y: pA.y },
+              { x: pB.x, y: pB.y },
+              { lat: pA.lat, lng: pA.lng },
+              { lat: pB.lat, lng: pB.lng }
+            );
+          } catch(e) {
+            // Calibrage présent mais dégénéré (points colinéaires, etc.)
+            _emTransform = null;
+          }
+        }
+      }
+      if (_emTransform) {
+        const gpsTxt = _formatGPS(_emTransform, pos);
         if (gpsTxt) {
           blocGps.style.display = "";
           gpsEl.textContent = gpsTxt;
