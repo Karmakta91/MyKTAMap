@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.21.1** (25 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.21.2** (25 mai 2026).
+>
+> **v1.21.2 (Cycle « Profil user + Wake Lock + Heatmap réactivée + Popup GPS »)** : **AUCUNE nouvelle surface réseau**. 4 features 100 % locales. (1) Nouveau module `js/userProfile.js` (~388 lignes) + **nouvelle DB IDB `myktamap_profile` v1 store `profile`** (1 entry unique `id="me"` avec surnom + photoBlob + photoMime + createdAt + updatedAt). Photo compressée localement via canvas (max 512px côté long, JPEG q88 → ~30-60 KB). Aucun fetch externe, aucune transmission. ObjectURL créé via `URL.createObjectURL` et révoqué par les consumers (pas de leak). Section `user` ajoutée à `ProfileExportImport` (photo base64 inline dans le JSON exporté, légère donc cochée par défaut). (2) Nouveau module `js/wakeLock.js` (~178 lignes) — Wake Lock API navigateur (`navigator.wakeLock.request("screen")`) pour empêcher l'écran de s'éteindre en cavité. **Permission politique navigateur** (pas de user prompt explicite, accordée silencieusement en HTTPS si l'onglet a le focus). 0 fetch réseau. Persistance pure localStorage (`myktamap_wake_lock_v1` boolean string). **Hidden via `WakeLock.isSupported()` si non supporté** (Firefox 2026 bug #1589554, Safari < 16.4). Auto-release par le browser au visibilitychange→hidden (cohérent best practice). Pas de fingerprinting via cette API (toggle binaire, aucune info device exposée). (3) **Heatmap RÉACTIVÉE** (`js/heatmap.js` ~661 lignes, désactivée en standby depuis v1.12.0). Maintenant que la timeline tracker est persistée en localStorage via SessionPersist (cf v1.21.1) + SessionBackups, la heatmap peut afficher des passages cumulés cross-sessions. Rendu **100 % canvas local** (radial gradients additifs + colormap bleu→vert→jaune→rouge via `getImageData`/`putImageData`). 1 `canvas.toDataURL("image/png")` consommé UNIQUEMENT par `L.imageOverlay` (overlay Leaflet local). 0 fetch externe, 0 leak (le data URL est un blob mémoire navigateur jamais POSTé). (4) **Popup point — ligne coords GPS** (`js/utils.js > buildPointPopupHtml`) : si le plan est calibré KMZ, calcule GPS via `KmzExport.planToGps` (transformation affine 2D pure côté client, jamais d'appel à un service de géocodage). Bouton 📋 copie via `navigator.clipboard.writeText` (Clipboard API, permission silencieuse en HTTPS scope tab + fallback `execCommand`). String GPS escapée via `_escAttr` (escape HTML attribut) + replace des `'` pour le onclick inline → **surface XSS validée** (la valeur GPS provient d'un calcul JS sur les coords numériques du plan, jamais d'input user). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping connectivité). **4 nouveaux fichiers** au cache SW (`./js/userProfile.js`, `./js/profileExportImport.js`, `./js/wakeLock.js`, `./js/heatmap.js` réactivé) + 1 nouvelle DB IDB documentée (`myktamap_profile`).
 >
 > **v1.21.1 (Release PATCH — Audit imports/exports/roundtrips)** : **AUCUNE nouvelle surface réseau**. Pack consolidé de 9 bugs critiques découverts via audit ciblé après accumulation de 6 hotfixes post-v1.21.0. 100% local — fixes internes aux modules d'import/export : emergencyMode (sécurité GPS), sessionExporter (filtres customs), kmzImport+kmzExport (regex + ExtendedData M-LVL + V2 crop offset), gpxImport (validTypes), utils (registries embedded). Le SW cache uniquement un bump du `CACHE_NAME` (`myktamap-cache-v1.21.1`). Aucun nouveau fichier. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping connectivité).
 >
@@ -289,6 +291,51 @@ code).
 
 ---
 
+## 🪪 Permissions API navigateur utilisées
+
+L'app utilise un nombre limité d'API navigateur qui peuvent demander
+une permission. **Aucune** de ces API ne fait sortir de donnée du
+navigateur. Tableau exhaustif :
+
+| API | Quand | Permission requise ? | Donnée envoyée ? |
+|---|---|---|---|
+| **Geolocation API** | Calibrage KMZ + Mode urgence si l'user le déclenche | Oui (prompt navigateur explicite) | **Aucune** (lecture pure, jamais transmise) |
+| **DeviceMotion / DeviceOrientation** | Tracker (PDR + boussole) | Oui sur iOS (prompt explicite via user gesture) | **Aucune** (lecture pure capteurs locaux) |
+| **Wake Lock API** *(NOUVEAU v1.21.1)* | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
+| **Clipboard API** *(usage étendu v1.21.2)* | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
+| **WebAuthn (`navigator.credentials`)** | Activation Face ID / Touch ID / Windows Hello pour le PIN | Oui (prompt natif device) | **Aucune** (challenge généré côté client, validation locale) |
+| **Battery Status API** | Indicateur batterie sidebar + mode urgence | Politique navigateur (header `Permissions-Policy: battery=(self)` côté Nginx) | **Aucune** (lecture pure) |
+| **Screen Orientation API** | Correction heading boussole en landscape | Aucune | **Aucune** |
+| **Storage API (`navigator.storage.estimate`, `persist`)** | Inspecteur mémoire + auto-persist mobile | Oui (`persist` prompt navigateur sur certains browsers) | **Aucune** |
+
+### À propos du Wake Lock API (v1.21.1+)
+
+- **Hidden si non supporté** : `WakeLock.isSupported()` vérifie l'existence
+  de `navigator.wakeLock.request` avant tout affichage. Sur Firefox
+  (bug Mozilla #1589554 toujours ouvert en 2026) et Safari < 16.4,
+  le toggle "Garder l'écran allumé" n'apparaît tout simplement pas dans
+  les Réglages. Aucune erreur silencieuse.
+- **Pas de fingerprinting** : l'API ne renvoie qu'un objet sentinel
+  binaire `WakeLockSentinel`. Aucune info device (modèle, batterie,
+  capteurs) n'est exposée. La pref est en `localStorage` strict.
+- **Auto-release** : le browser libère automatiquement le lock au
+  `visibilitychange→hidden`. Le module ré-acquire au retour visible si
+  l'option est activée. Cohérent best practice MDN.
+- **Pas de pingback serveur** : 0 fetch réseau dans `wakeLock.js`
+  (vérifiable via le journal réseau intégré → Méthode 1).
+
+### À propos de la Clipboard API (extension v1.21.2)
+
+- Usage en **écriture seule** (`navigator.clipboard.writeText`),
+  jamais en lecture (`readText`).
+- L'app **n'accède jamais** au contenu du presse-papier de l'user.
+- Trigger toujours sur **user click explicite** (bouton 📋 inline,
+  pas d'écriture passive au load).
+- Fallback `document.execCommand("copy")` via textarea hors-écran si
+  l'API n'est pas dispo (HTTP non-sécurisé, vieux browsers).
+
+---
+
 ## 🧰 Stockage local — où vivent tes données
 
 Toutes tes données sont **strictement locales** à ton appareil et à ton
@@ -296,8 +343,12 @@ navigateur. Tu peux les inspecter et les supprimer toi-même via `F12` :
 
 | Espace | Contenu | Comment l'inspecter |
 |---|---|---|
-| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, paranoia, etc.) | F12 → Application → Local Storage |
+| **localStorage** | Préférences (`debugMode`, `perfPreset` par plan, `unlock gate`, alertes acquittées, préfs d'évitement itinéraire, paranoia, `myktamap_wake_lock_v1` boolean depuis v1.21.1, `myktamap_session_v1_<planId>` per-plan **enrichi depuis v1.21.2 avec trackerTimeline + trackerStartTs** — impact taille : ~1800 entries × ~80 bytes ≈ ~140 KB pour une session de 30 min de tracking continu, soit ~2 % du quota 5 MB localStorage typique navigateur, etc.) | F12 → Application → Local Storage |
 | **IndexedDB → `myktamap_handles`** | Handles FS Access API (Chrome desktop) + blobs ZIP des plans mémorisés (mobile/Safari/Firefox) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_backups`** (v1.16.0+) | 10 snapshots FIFO de session, **embed depuis v1.21.2 la trackerTimeline** (impact taille IDB proportionnel) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_photos`** (v1.10.0+) | Photos POI compressées localement, max 5/point | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_crashes`** (v1.20.0+) | Crash reports OOM (archive auto FIFO 5) | F12 → Application → IndexedDB |
+| **IndexedDB → `myktamap_profile`** (v1.21.0+) | **NOUVEAU v1.21.0** — Surnom + photo profil utilisateur (1 seule entry `id="me"`, schema v1). Photo en Blob IDB, compressée canvas (max 512px JPEG q88). Jamais transmise. | F12 → Application → IndexedDB |
 | **Cache Storage** | Assets PWA pour le mode hors-ligne | F12 → Application → Cache Storage |
 | **Service Worker** | Code du SW qui gère le cache | F12 → Application → Service Workers |
 
@@ -343,6 +394,7 @@ retrouver sans cache hors-ligne).
 
 | Version | Date | Changement |
 |---|---|---|
+| v1.21.2 | 25/05/2026 | **🪪 Profil + 🔆 Wake Lock + 🔥 Heatmap réactivée + 🌐 Popup GPS** — cycle de 4 features 100 % locales. **Aucune nouvelle connexion réseau**. (1) `js/userProfile.js` + nouvelle DB IDB `myktamap_profile` v1 (surnom + photo compressée canvas, max 512px JPEG q88 ≈ 30-60 KB, jamais transmise). (2) `js/wakeLock.js` — `navigator.wakeLock.request("screen")`, permission politique navigateur (pas de prompt user), hidden si non supporté (Firefox bug #1589554, Safari < 16.4), 0 fetch réseau, 0 fingerprinting, pref `localStorage["myktamap_wake_lock_v1"]`. (3) **Heatmap réactivée** — `js/heatmap.js` ré-inclus dans `index.html` + cache SW. Rendu 100 % canvas local (radial gradients + colormap via `getImageData`/`putImageData`). `canvas.toDataURL` consommé exclusivement par `L.imageOverlay` interne (jamais POSTé). (4) **Popup point — ligne GPS** (`utils.js > buildPointPopupHtml`) : calcul 100 % client-side via `KmzExport.planToGps` (transformation affine 2D pure, aucun appel à un service de géocodage type Nominatim/Google). Bouton 📋 utilise `navigator.clipboard.writeText` (Clipboard API, écriture seule, scope tab, permission silencieuse en HTTPS) + fallback `execCommand`. String GPS escapée via `_escAttr` + replace des `'` pour le `onclick` inline → **surface XSS validée** (la valeur GPS provient d'un calcul JS sur les coords numériques du plan, jamais d'input user). Bonus impact : trackerTimeline + trackerStartTs sont désormais embarqués dans les exports session (Full + Avancé) — **coords en x/y plan local, pas GPS** (validé contre leak GPS implicite : si plan calibré, la calib est dans `localStorage` séparé, pas dans le payload session). Sessions importables/réimportables sans fuite GPS. **2 nouvelles permissions API documentées** dans la nouvelle section dédiée : Wake Lock (politique navigateur) + Clipboard (writeText user-initiated). **1 nouvelle DB IDB documentée** : `myktamap_profile`. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. Verdict audit : **✅ aucune régression privacy — MyKTAMap reste strictement offline-first**. |
 | v1.14.0 | 23/05/2026 | **📤📥 GPX import + export** — première feature Phase 1 V3 quick wins. Nouveau module `js/gpxIO.js` (~360 lignes) qui opère uniquement sur des fichiers locaux : `FileReader` (import), `Blob` + `URL.createObjectURL` (export download), `DOMParser` natif (parse XML). Aucun fetch, aucun ping. Le SW cache un fichier de plus (`./js/gpxIO.js`) au boot, toujours same-origin (couvert par la règle de whitelist existante). Réutilise intégralement le calibrage KMZ existant (`window.KmzExport.planToGps` + nouveau `gpsToPlan`) — pas de nouvelle data envoyée nulle part. **Aucune nouvelle connexion réseau introduite**, aucune modification de la whitelist du module Privacy & Audit. |
 | v1.13.0 | 23/05/2026 | **Thème CLAIR global + Itinéraire mode urgence + Fix hauteurs modales** — première release V3. Module `js/themeManager.js` (~150 lignes) qui opère **uniquement** en `localStorage["myktamap_theme_v1"]` + classes CSS sur `<html>` et `<body>`. Aucun fetch réseau, aucun ping. ~1200 lignes de CSS overrides ajoutées dans `css/style.css` (chargé via le SW same-origin existant, déjà whitelisté). Le SW cache un fichier de plus au boot : `./js/themeManager.js` — toujours same-origin, couvert par la règle de whitelist existante. **Aucune nouvelle connexion réseau introduite**, aucune modification de la whitelist du module Privacy & Audit. Le mode hors-ligne strict continue de fonctionner exactement comme avant (le toggle ne fait pas de requête, juste un switch de classe CSS locale). |
 | v1.12.0 | 23/05/2026 | **Pack terrain V2** — consolidation de 4 fonctionnalités V2.1 → V2.4 : 🪫 **batterie** (Battery Status API navigateur, lecture locale, 0 fetch réseau), 📊 **stats session enrichies + ⬛ mesure de surface** (calculs Shoelace 100% local), 🎬 **replay tracker + export CSV** (timeline en RAM, Blob download local), 🔥 **heatmap** (implémentée mais DÉSACTIVÉE en v1.12.0, code en standby). **Aucune nouvelle connexion réseau introduite** — toutes les V2 sont strictement client-side. Le header `Permissions-Policy: battery=(self)` a été ajouté côté Nginx (`docs/nginx-csp-config.conf`) pour ouvrir l'accès à l'API navigateur en top-level (sinon certains contextes sandbox bloquaient l'API même en Chromium). Cela ne change rien au comportement réseau de l'app. |
@@ -365,4 +417,26 @@ Le document sera corrigé et le code patché en priorité absolue.
 
 ---
 
-*Dernière mise à jour : 24 mai 2026 — v1.16.0 (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin, aucune nouvelle whitelist en v1.15.0 — `gpxImport.js` same-origin + fetch icônes app cached SW, **aucune nouvelle whitelist en v1.16.0** — `legendCustomization.js` / `favoris.js` / `sessionBackups.js` zéro fetch externe, nouvelle DB IDB `myktamap_backups` strictement locale)*
+*Dernière mise à jour : 25 mai 2026 — **v1.21.2** (Privacy & Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — `themeManager.js` same-origin, aucune nouvelle whitelist en v1.14.0 — `gpxIO.js` same-origin, aucune nouvelle whitelist en v1.15.0 — `gpxImport.js` same-origin + fetch icônes app cached SW, aucune nouvelle whitelist en v1.16.0 — `legendCustomization.js` / `favoris.js` / `sessionBackups.js` zéro fetch externe + DB IDB `myktamap_backups` strictement locale, **aucune nouvelle whitelist en v1.21.2** — `userProfile.js` + `wakeLock.js` + `heatmap.js` réactivé + popup GPS `kta_copierGps` tous strictement client-side, nouvelle DB IDB `myktamap_profile` strictement locale, 2 nouvelles permissions API documentées : Wake Lock + Clipboard, surface XSS popup GPS auditée et validée — escape `_escAttr` + replace quotes appliqués, valeur GPS issue d'un calcul pur sur coords numériques jamais d'input user)*
+
+---
+
+## 🔎 Synthèse audit v1.21.2
+
+**Verdict global : ✅ aucune régression — MyKTAMap reste strictement offline-first et privacy-respectueux.**
+
+| Module / Périmètre | Audit | Conclusion |
+|---|---|---|
+| `js/userProfile.js` (388 lignes) | `grep -n "fetch\|XMLHttpRequest\|sendBeacon\|navigator\.geolocation\|navigator\.share"` → 0 hit | ✅ 100 % local. Photo compressée canvas avant write IDB. Aucune fuite via `Image.onerror` (URL.revokeObjectURL appelé dans onload ET onerror). ObjectURL crée à la demande, caller responsable du revoke. |
+| `js/profileExportImport.js` (1207 lignes) | Audit fetch/XHR : 0. Photo embed base64 inline dans JSON exporté via `_blobToBase64`. Download via `URL.createObjectURL` + `a.click()`. | ✅ 100 % local. Aucune transmission. |
+| `js/wakeLock.js` (178 lignes) | Audit fetch : 0. Permission politique navigateur (pas user prompt). Hidden si non supporté. Pas de fingerprinting (lock binaire). | ✅ 0 surface réseau ajoutée. |
+| `js/heatmap.js` (661 lignes — RÉACTIVÉ) | Audit fetch : 0. `canvas.toDataURL` consommé par `L.imageOverlay` uniquement (jamais POSTé). | ✅ Rendu canvas local pur. |
+| `js/sessionExporter.js` (trackerTimeline embed) | trackerTimeline = coords `{x, y, t, deltaMs, type}` en pixels plan local (jamais GPS). Si plan calibré, la calib KMZ reste dans `localStorage` séparé, non incluse dans le payload session exporté. | ✅ Pas de leak GPS implicite via les exports session. |
+| `js/utils.js > buildPointPopupHtml` (popup GPS) | Calcul 100 % client-side via `KmzExport.planToGps`. Aucun appel à un géocodeur externe (Nominatim, Google, etc.). Bouton 📋 = `navigator.clipboard.writeText` (écriture seule, scope tab, HTTPS silencieux). | ✅ 0 nouvelle requête réseau. |
+| Surface XSS popup GPS (inline `onclick="window.kta_copierGps(...)"`) | Source de la string GPS = `_formatGps(lat, lng)` qui formate des **nombres** (toFixed). Jamais d'input user. Escape `_escAttr` (HTML attr) appliqué AVANT injection. `.replace(/'/g, "\\'")` appliqué pour le contexte single-quoted JS. | ✅ Surface XSS auditée et validée. |
+| Validation re-import session (trackerTimeline) | `tracking.js > _trackingTimeline.push` exige des champs typés. `setTrackingTimeline` (si appelé via import) doit filtrer `{x, y, t, type}` numérique/string. **À vérifier en cas d'évolution future** si un import session non-fiable est ouvert au user (cas actuel : les sessions importées sont uniquement celles que l'user a exportées lui-même). | ⚠️ P3 — pas une régression v1.21.2, mais point d'attention général pour les futurs imports non-confiance. |
+| Nouvelle DB IDB `myktamap_profile` | Schema v1. 1 entry unique `id="me"`. Lecture/écriture readonly/readwrite normale. Pas d'index secondaire ni de relation cross-DB. | ✅ Strictement isolée. |
+| Permissions API navigateur | Wake Lock (politique nav, silencieuse) + Clipboard (writeText user-initiated, écriture seule). Documentées dans nouvelle section dédiée. | ✅ Nouveau périmètre transparent. |
+| CSP `connect-src` | Inchangé : `'self'` + `https://www.gstatic.com` | ✅ Garantie active anti-exfiltration préservée. |
+
+**Aucune vraie vulnérabilité détectée.** Le seul point P3 (validation défensive du re-import session) est un point d'hygiène pour l'avenir, pas une régression v1.21.2.
