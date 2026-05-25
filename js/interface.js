@@ -2664,6 +2664,24 @@ function afficherConfig() {
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
 
+        <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
+             Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
+             (mobile-friendly + accessible en 1 vue). Avant : enfoui dans la
+             section 🔍 Affichage en bas. Plus pratique d'avoir cet accès
+             rapide visible dès l'ouverture des Réglages. Pour SORTIR sur
+             mobile : bouton flottant ✕ créé par presentationMode.js. -->
+        <div class="kta-aide-section kta-cfg-presentation-section">
+          <button class="kta-btn kta-btn-primary" type="button" id="cfg_presentation_btn"
+                  style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; font-size:14px;">
+            <span style="font-size:20px;">🎬</span>
+            <span><strong>Activer le mode présentation</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px; text-align:center;">
+            Cache header + sidebars + footer pour libérer toute la surface pour la carte.
+            Sortie : <kbd>F</kbd> ou <kbd>Échap</kbd> (PC), ou bouton flottant ✕ en haut-droite (mobile).
+          </div>
+        </div>
+
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
           <div class="kta-cfg-grille">
@@ -2716,22 +2734,9 @@ function afficherConfig() {
                > #loaderShowIntersectionsCb). Logique : c'est une pref d'affichage
                qui survit aux changements de plan, son toggle "à la racine" suffit. -->
 
-          <!-- 🆕 v1.21.0-fix2 : Mode présentation accessible depuis la modale
-               (mobile-friendly : touche F inaccessible sans clavier physique).
-               Pour SORTIR sur mobile : bouton flottant ✕ créé par
-               presentationMode.js > activate(). -->
-          <div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.08);">
-            <button class="kta-btn kta-btn-ghost" type="button" id="cfg_presentation_btn"
-                    style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
-              <span style="font-size:18px;">🎬</span>
-              <span>Activer le mode présentation</span>
-            </button>
-            <div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.5; padding:0 4px;">
-              Cache header + sidebars + footer pour libérer toute la surface visuelle pour la carte.
-              Garde zoom + boussole pour la démo. Sortie : touche <kbd>F</kbd> ou <kbd>Échap</kbd>
-              (PC), ou bouton flottant ✕ en haut-droite (mobile).
-            </div>
-          </div>
+          <!-- 🆕 v1.21.0-fix3 (KARMA) : bouton "🎬 Activer le mode présentation"
+               DÉPLACÉ TOUT EN HAUT de la modale Réglages (avant la 1ère section)
+               pour accès en 1 vue dès l'ouverture, mobile-friendly. -->
         </div>
 
         <div class="kta-aide-section">

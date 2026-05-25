@@ -16823,6 +16823,20 @@ body.kta-presentation-mode .kta-compass-widget {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
 
+/* 🆕 v1.21.0-fix3 : section "Mode présentation" en tête de la modale
+   Réglages — visuellement distinguée du reste (centrage + accent doré
+   subtil) pour signaler "action principale rapide" et non pas un
+   réglage à éditer. Pas de titre de section (le bouton est explicite). */
+.kta-cfg-presentation-section {
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.06), rgba(140, 180, 255, 0.04)) !important;
+  border-color: rgba(244, 197, 66, 0.25) !important;
+}
+body.kta-theme-light .kta-cfg-presentation-section,
+html.kta-theme-light .kta-cfg-presentation-section {
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.18), rgba(140, 180, 255, 0.08)) !important;
+  border-color: rgba(154, 135, 84, 0.40) !important;
+}
+
 /* 🆕 v1.21.0-fix2 : bouton flottant ✕ pour sortir du mode présentation
    sur MOBILE (la touche F est inaccessible sans clavier physique).
    Position fixed top-right, safe-area-aware iOS PWA. Petit (32×32) +
