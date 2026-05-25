@@ -1599,6 +1599,23 @@ Exemples :
 
 ⚠️ **Classe CSS `.kta-iti-search-result` orpheline** : utilisée historiquement dans le modal Itinéraire (`interface.js`) ET dans le KMZ initial mais **jamais définie en CSS** (seule `.kta-iti-search-item` l'est). Le KMZ est passé à `.kta-kmz-search-item` dédiée (cf. commit `e7b0a80`). Le bug existe probablement encore côté Itinéraire — à fixer si remonté.
 
+⚠️ **`transform` JAMAIS persisté — toujours rebuild on-demand** (pattern critique, source de v1.21.1 #1 + v1.21.2 #4) : `KmzExport.setCalibration(planId, calib)` stocke UNIQUEMENT `{pointA, pointB}` en localStorage. Le `transform` (résultat de `buildTransform`) est volumineux + dérivable, donc reconstruit à la demande :
+
+```js
+// ❌ MAUVAIS — calib.transform n'existe JAMAIS dans le storage
+const calib = KmzExport.getCalibration(planId);
+const gps = KmzExport.planToGps(calib.transform, x, y);  // ← undefined → crash
+
+// ✅ BON — rebuild on-demand
+const calib = KmzExport.getCalibration(planId);
+if (!calib || !calib.pointA || !calib.pointB) return null;  // pas calibré
+const t = KmzExport.buildTransform(calib.pointA.plan, calib.pointB.plan,
+                                    calib.pointA.gps,  calib.pointB.gps);
+const gps = KmzExport.planToGps(t, x, y);
+```
+
+Pattern utilisé par `gpxIO.js` (export/import), `emergencyMode.js > _tick` (bloc GPS, fix v1.21.2), `utils.js > buildPointPopupHtml` (ligne 🌐 coords GPS popup POI, v1.21.2).
+
 #### 32.8 Pour ajouter une nouvelle catégorie d'export KMZ (futur)
 
 Si on ajoute un nouveau type d'objet à exporter (ex: photos géolocalisées, audio notes) :
@@ -3356,27 +3373,48 @@ if (window.TrackerReplay) window.TrackerReplay.fermer();
 if (window.resetTrackingTimeline) window.resetTrackingTimeline();
 ```
 
-#### 50.5 À NE PAS faire
+#### 50.5 Persistance timeline (depuis v1.21.2)
+
+**Changement v1.21.2** : la timeline est désormais persistée (auparavant RAM-only). 3 surfaces concernées :
+
+1. **`sessionPersist.js`** : payload enrichi avec `trackerTimeline` + `trackerStartTs`. Restore via `window.setTrackingTimeline(timeline, startTs)` au load.
+2. **`sessionExporter.js`** : Full + Avancé incluent désormais `session.tracker = {position, path, timeline, startTs}`. Conversion ed2data **IGNORE** le tracker (incompatible avec data layer figé).
+3. **`sessionBackups.js`** : `_isPayloadEmpty` inclut `etk` (empty tracker timeline) dans la heuristique skip-snapshot.
+
+**Setter `window.setTrackingTimeline(timeline, startTs)`** dans `tracking.js` avec filtrage défensif :
+
+```js
+window.setTrackingTimeline = function(timeline, startTs) {
+  if (!Array.isArray(timeline)) return;
+  _trackingTimeline = timeline.filter(function(e) {
+    return e && typeof e.x === "number" && typeof e.y === "number"
+        && typeof e.t === "number" && typeof e.type === "string";
+  });
+  _trackingStartTs = (typeof startTs === "number") ? startTs : null;
+};
+```
+
+⚠️ **Convention de nommage** : la timeline interne utilise `ts_ms` au runtime mais le payload sérialisé utilise `t` (raccourci). Le setter accepte `t` (format export). Veiller à la cohérence si on ajoute un nouveau site de persistance.
+
+#### 50.6 À NE PAS faire
 
 - ❌ Tracer un segment de polyline entre 2 points dont l'un est de type `recalage` — c'est une téléportation, pas un déplacement réel
 - ❌ Garder la modale en mode "full" pendant le replay — bascule auto en compact dès le Play pour libérer la carte
-- ❌ Persister `_trackingTimeline` au localStorage — RAM-only suffit, la session de tracking est éphémère (typiquement < 4h)
+- ❌ ~~Persister `_trackingTimeline` au localStorage~~ → **changé en v1.21.2**, désormais persisté via sessionPersist (cf §50.5)
 - ❌ Inclure les events `boussole` ou `tick` dans la timeline — seuls les 3 types `{start, pdr, recalage}` sont pertinents (les autres seraient du bruit, +1000 events/sec pour rien)
+- ❌ Bypass `setTrackingTimeline` pour restaurer — le filtrage défensif protège contre les payloads corrompus (anciens exports manuels édités, etc.)
 
-### 51. V2.4 — Heatmap (DÉSACTIVÉ, code en standby — depuis v1.12.0)
+### 51. V2.4 — Heatmap (RÉACTIVÉE + refonte majeure en v1.21.2 — depuis v1.12.0)
 
-Module `js/heatmap.js` (~380 lignes IIFE) implémenté mais **désactivé à l'usage**.
+Module `js/heatmap.js` (~380 lignes IIFE en v1.12.0, **REFONTE majeure en v1.21.2**, cf §62.2).
 
-Décision auteur : pas d'utilité concrète sur le terrain démontrée (les zones de passage sont déjà identifiables via les tracés + structures + zones existantes). Le code reste dans le repo en standby pour réactivation rapide si le besoin émerge.
+**Historique** : v1.12.0 = implémenté avec 3 sources mais désactivé (pas d'utilité concrète terrain démontrée). v1.21.2 = **réactivé + ré-écrit** avec 6 sources togglables, interpolation segments, filtrage timeline défensif. Bouton 🔥 dans le groupe Stats/Analyse de la sidebar.
 
-#### 51.1 Désactivation appliquée
+#### 51.1 Désactivation v1.12.0 → réactivation v1.21.2
 
-3 endroits modifiés pour désactiver :
-1. `index.html` → `<!-- <script src="js/heatmap.js"></script> -->` (commenté)
-2. `sw.js > ASSETS_TO_CACHE` → `// "./js/heatmap.js",` (commenté)
-3. `js/interface.js` → bloc bouton 🔥 commenté `/* ... */` (groupe Stats/Analyse)
+**v1.12.0** : 3 endroits avaient été commentés pour désactiver (index.html script, sw.js ASSETS_TO_CACHE, interface.js bouton 🔥).
 
-L'en-tête de `js/heatmap.js` documente les **4 étapes pour réactiver** (cf. commentaire en haut du fichier).
+**v1.21.2** : tout réactivé. Le bouton 🔥 est de nouveau visible dans le groupe Stats/Analyse. Refonte de l'algo elle-même documentée dans §62.2.
 
 #### 51.2 Implémentation (référence si réactivation)
 
@@ -4026,6 +4064,31 @@ CSS dédié : `.kta-group-flyout` + sous-classes + variants thème clair. Scroll
 **Bouton ✅ Valider tracé** ajouté (équivalent strict re-clic type actif via `_fermerModeRoad`). Cohérence 3 groupes : `[types built-in] + [séparateur] + [customs ✨] + [✅ Valider/Fermer] + [🧹 Effacer]`.
 
 **Fix message structures Fermer pour customs polyline** : utilise `window.isStructurePolylineType()` qui consulte LC (avant hardcodé `front-1 || front-2`).
+
+**⚠️ Fix critique v1.21.2 — propagation `cssClass`** : `_ouvrirFlyout` DOIT propager `sub.cssClass` aux boutons rendus :
+
+```js
+// Dans _ouvrirFlyout, pour chaque sub-action :
+const btn = document.createElement("button");
+btn.className = "kta-flyout-btn";
+if (sub.cssClass) btn.classList.add(sub.cssClass);  // ← propagation requise
+```
+
+Avant v1.21.2 : `cssClass` était silencieusement ignoré → impossible de styler une sous-action spécifique (ex: rouge pour 🚨 urgences, vert pour ▶️ Play tracker).
+
+**Pattern `dynamicIcon` + `isActive` (v1.21.2)** : les sous-actions peuvent désormais déclarer 2 callbacks ré-évalués à chaque ouverture du flyout :
+
+```js
+{
+  icone:       "▶️",                                    // fallback statique
+  dynamicIcon: () => isTracking() ? "⏹️" : "▶️",       // icône calculée
+  titre:       "Démarrer / Arrêter tracker",
+  isActive:    () => isTracking(),                      // bool → classe kta-actif
+  onClick:     ...
+}
+```
+
+Utilisé v1.21.2 pour le toggle tracker (▶️ ↔ ⏹️) dans le flyout 🧭 Tracker. Permet d'afficher l'état courant sans devoir re-rendre la sidebar entière.
 
 #### 56.4 Favoris points — `js/favoris.js`
 
@@ -4785,6 +4848,107 @@ plan_<nom>_from_gpx.zip
 ```
 
 Le ZIP est strictement compatible avec les autres pipelines (chargement classique, mode Modifier, Export externe, etc.) — c'est un ZIP MyKTAMap normal.
+
+---
+
+### 62. v1.21.2 — Tracker session + Heatmap pertinente + GPS popup + Urgences (depuis v1.21.2)
+
+Release PATCH consolidée (bump Z : 1.21.1 → 1.21.2). 7 sujets indépendants regroupés pour polish post-v1.21.1.
+
+#### 62.1 Tracker timeline dans export session
+
+`sessionExporter.js` Full + Avancé incluent désormais `session.tracker = {position, path, timeline, startTs}` (auparavant tracker entièrement exclu).
+
+`sessionPersist.js` enrichit le payload localStorage :
+```js
+payload.trackerTimeline = window.getTrackingTimeline?.() || [];
+payload.trackerStartTs  = window.getTrackingStartTs?.()  || null;
+```
+
+Restore au boot via `window.setTrackingTimeline(payload.trackerTimeline, payload.trackerStartTs)` (cf §50.5 pour le setter avec filtrage défensif).
+
+**Conversion ed2data IGNORE le tracker** (volontaire) : un data layer est figé dans le plan, un tracker est par essence éphémère + utilisateur-spécifique. Inclure le tracker dans `data/<plan>/imported.json` créerait des données fantôme à chaque réouverture.
+
+#### 62.2 Heatmap refonte majeure
+
+**6 sources togglables** (vs 3 en v1.12.0) : `tracker timeline` / `editor points` / `roads` / `zones` / `structures` / `dataLayers`.
+
+**Pattern collecteur → segments** : chaque collecteur retourne un array de segments `[{a:{x,y}, b:{x,y}|null}]`. Si `b === null` → segment dégénéré (point isolé). Permet d'interpoler la chaleur le long des polylines/polygones, pas juste sur les vertices.
+
+**Interpolation** : pas de `radius × 0.33` entre `a` et `b`. Pour `radius=40px` → 1 point heat tous les ~13px le long du segment.
+
+**Normalisation post-additive** : après accumulation additive de tous les gradients (composition `lighter`), pixel-walk de la canvas avec `getImageData` → trouve `maxAlpha` → normalise toutes les valeurs en `(alpha/maxAlpha) × 255`. Évite les hot-spots écrasants quand 100 sources se cumulent au même endroit.
+
+**Filtre timeline défensif** : skip les entries de type `recalage` (téléportation = pas un déplacement réel), `start` (point de départ artificiel), et tout `gap > 5min` entre 2 entries consécutives (= pause utilisateur, pas une route empruntée à grande vitesse).
+
+**Reset au plan switch** : `main.js > _libererRessourcesPlanPrecedent` appelle `window.Heatmap.effacer()` (cohérence avec les autres modules level-aware).
+
+⚠️ **Quand on ajoute une nouvelle source au collecteur** : retourner toujours le format `[{a, b}]` (pas `[{x, y}]`), même pour des points isolés (`b: null`). Sinon l'interpolation ne marche pas et le rendu est creux.
+
+#### 62.3 GPS popup POI
+
+`utils.js > buildPointPopupHtml` ajoute une ligne `🌐 coords GPS lat, lng` (cliquable, copie au presse-papier) SI le plan est calibré.
+
+3 helpers ajoutés :
+- `_planXyToGps(x, y)` → `{lat, lng}` ou `null` (lookup `KmzExport.getCalibration(planId)` + `buildTransform` on-demand, cf §32.7)
+- `_formatGps(lat, lng)` → `"43.6047, 1.4442"` (4 décimales, ~11m de précision)
+- `window.kta_copierGps(lat, lng)` → exposé global pour le `onclick` du span GPS dans le popup. Utilise `navigator.clipboard.writeText` avec fallback `execCommand("copy")`.
+
+Skip silencieux si plan non calibré (= la ligne `🌐` n'apparaît pas du tout, pas de placeholder vide).
+
+#### 62.4 Fix mode urgence calibrage GPS
+
+`emergencyMode.js > _tick` : clone exact du fix v1.21.1 #1 (transform jamais persisté). Avant : `calib.transform` cherché directement → toujours `undefined` → bloc GPS toujours masqué. Après : `buildTransform` on-demand.
+
+⚠️ **Critique sécurité** : le bloc GPS du mode urgence est l'info principale pour qu'un utilisateur perdu puisse communiquer sa position à des secours externes (Google Maps, GPS standalone, etc.). Le bug le rendait inutilisable.
+
+#### 62.5 Flyout sidebar étendu au Tracker
+
+Groupe 🧭 Tracker (`interface.js`) passe en `useFlyout: true`. Auparavant cascade verticale (sous-actions empilées sous le bouton principal) → désormais panel latéral (pattern §56.3).
+
+Profite des nouveaux patterns v1.21.2 :
+- `dynamicIcon` : icône Play/Stop dynamique (▶️ ↔ ⏹️)
+- `isActive` : la sous-action tracker brille en vert (`kta-actif`) quand le tracking tourne
+- `cssClass` propagation : permet de styler chaque sous-action individuellement
+
+Détails complets dans §56.3 (sous-section v1.21.2 ajoutée).
+
+#### 62.6 Urgences en fin de sidebar, fond rouge
+
+Réordonnancement visuel : les sous-actions urgences (`🚨 Je suis perdu`, `🚨 Panique`) sont déplacées en FIN de sidebar avec fond rouge pulsant (CSS `kta-emergency-btn`).
+
+Cohérence avec le pattern UX général : actions critiques en zone facilement accessible (bas-droite pour droitier) + signalisation visuelle forte (rouge + pulse).
+
+#### 62.7 WakeLock global — `js/wakeLock.js`
+
+Nouveau module IIFE (~150 lignes) → `window.WakeLock = { acquire, release, toggle, isActive, isSupported, onChange }`.
+
+Wraps `navigator.wakeLock.request("screen")` :
+- Toggle ☑️ « Garder l'écran allumé » dans **2 endroits synchronisés** (pattern identique au toggle thème §53) :
+  1. ⚙️ Réglages map mode
+  2. ⚙️ Configuration home
+- Persiste `localStorage["myktamap_wake_lock_v1"]` (boolean)
+- **Re-acquire automatique sur `visibilitychange`** : navigateurs libèrent le wake lock quand l'onglet perd le focus → on le ré-acquiert au retour au premier plan (sinon l'user croit que ça marche mais l'écran s'éteint après un blur/refocus)
+- Skip silencieux si API indispo (Safari < 16.4, vieux Firefox)
+
+⚠️ **Différent du wake lock du mode urgence** (§ Wake Lock dans emergencyMode.js, hardcoded à l'activation/désactivation du mode). Le module global vit indépendamment et reste actif même hors mode urgence.
+
+#### 62.8 Sources de vérité v1.21.2
+
+- `version.json` → `"v1.21.2"`
+- `js/copyright.js > __MKM__.build` → `"v1.21.2"`
+- `sw.js > CACHE_NAME` → cumulé (cf §22)
+- 1 nouveau fichier ajouté à `ASSETS_TO_CACHE` : `js/wakeLock.js`
+- Réactivations dans `index.html` + `sw.js` : `js/heatmap.js` (commenté en v1.12.0, re-activé)
+
+#### 62.9 À NE PAS faire
+
+- ❌ Bypass `setTrackingTimeline` pour restaurer une timeline depuis un payload — le filtrage défensif protège contre les corruptions (anciens exports manuels, entries malformées d'extension tierce, etc.)
+- ❌ Inclure le tracker dans Conversion ed2data — figerait une donnée éphémère + user-spécifique dans le data layer du plan
+- ❌ Modifier un collecteur Heatmap pour retourner `[{x, y}]` au lieu de `[{a, b}]` — casserait l'interpolation segments
+- ❌ Stocker `calib.transform` dans le retour de `getCalibration()` — le pattern actuel est rebuild on-demand via `buildTransform` (cf §32.7 piège ajouté)
+- ❌ Coder un wake lock en parallèle dans un autre module — utiliser `WakeLock.acquire()` / `WakeLock.release()` qui gèrent re-acquire visibilitychange + persistance + sync UI
+- ❌ Ajouter une sous-action critique (genre suppression destructive) sans `cssClass` rouge ET sans la mettre en fin de groupe — la cohérence visuelle "actions dangereuses = rouge + fin" est un guide UX
 
 ---
 
