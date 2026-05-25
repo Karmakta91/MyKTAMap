@@ -236,8 +236,17 @@
     }
 
     // Helper : convertit un point plan {x, y} en coords canvas [px, py].
+    // 🐛 v1.21.2-fix (KARMA "il me met des zone ou il n'y a rien") : retire
+    // le flip Y bogué. Le canvas est overlay sur Leaflet avec bounds
+    // [[0,0], [imgH, imgW]], donc canvas pixel (0,0) est rendu à Leaflet
+    // (lat=imgH, lng=0) = haut du plan. Pour qu'un blob au canvas cy=py*scale
+    // tombe à Leaflet lat=imgH-py (= position du plan point (x,y) via
+    // convertCoord = [imgH-y, x]), il faut NE PAS appliquer le flip ici.
+    // L'ancien `(imgH - p.y) * scale` rendait la heatmap miroir verticalement,
+    // bug masqué tant que les blobs étaient isolés mais flagrant après le
+    // passage aux traînées continues (segments interpolés v1.21.2).
     function _toCanvas(p) {
-      return [p.x * scale, (imgH - p.y) * scale];
+      return [p.x * scale, p.y * scale];
     }
 
     // 1. Pass additive — pour chaque segment [a, b] on dessine plusieurs
