@@ -2329,6 +2329,16 @@
       }
 
       // Itère un store IDB et accumule les bytes (Blobs + JSON metadata)
+      // 🐛 v1.21.3-fix2 (KARMA "valeur sauvegarde pas bonne, j'ai 150 Mo de
+      // plans en mémoire") : le helper ratait les stores qui mettent la
+      // valeur Blob/Handle DIRECTEMENT comme `store.put(blob, id)` (cas de
+      // myktamap_handles.handles + myktamap_handles.blobs). Mon code
+      // cherchait `val.blob.size` qui n'existe pas pour ces stores → 0 bytes
+      // comptés pour potentiellement des MB de ZIPs plans mémorisés.
+      // Fix : détection 3 cas :
+      //   1. Valeur EST un Blob (a `.size` + `.type` typique Blob)
+      //   2. Valeur est un objet wrapper (cherche les champs Blob déclarés)
+      //   3. Valeur est un objet opaque (FileSystemHandle) → ~200 bytes flat
       function _accStoreBytes(db, storeName, blobFields) {
         return new Promise(function(resolve) {
           if (!db.objectStoreNames.contains(storeName)) { resolve(0); return; }
@@ -2341,24 +2351,43 @@
               const cur = e.target.result;
               if (!cur) { resolve(total); return; }
               const val = cur.value;
+              // Compte la clé (string ID typique 30-50 chars)
+              try {
+                if (typeof cur.key === "string") total += cur.key.length * 2;
+              } catch(e) {}
               if (val) {
-                // Blobs (taille réelle binaire)
-                for (let i = 0; i < blobFields.length; i++) {
-                  const f = blobFields[i];
-                  if (val[f] && typeof val[f].size === "number") {
-                    total += val[f].size;
+                // CAS 1 : la valeur EST elle-même un Blob (cf saveBlob :
+                // store.put(blob, id) → cursor.value = Blob directement)
+                if (val instanceof Blob) {
+                  total += val.size || 0;
+                } else if (typeof val.kind === "string"
+                           && (val.kind === "file" || val.kind === "directory")) {
+                  // CAS 3 : FileSystemHandle (kind = "file" | "directory").
+                  // Pas de .size accessible, mais l'objet est léger.
+                  total += 200;  // estimation flat (metadata interne navigateur)
+                } else {
+                  // CAS 2 : objet wrapper avec champs typés
+                  // - Champs Blob déclarés → use .size réel
+                  let blobBytes = 0;
+                  for (let i = 0; i < blobFields.length; i++) {
+                    const f = blobFields[i];
+                    if (val[f] && typeof val[f].size === "number"
+                        && typeof val[f].type === "string") {
+                      blobBytes += val[f].size;
+                    }
                   }
+                  // Reste : approx via JSON.stringify (UTF-16 = ×2). On skip
+                  // les champs Blob déjà comptés ci-dessus.
+                  try {
+                    const clean = {};
+                    for (const k in val) {
+                      if (blobFields.indexOf(k) >= 0) continue;
+                      clean[k] = val[k];
+                    }
+                    total += JSON.stringify(clean).length * 2;
+                  } catch(e) {}
+                  total += blobBytes;
                 }
-                // Reste : approx via JSON.stringify (UTF-16 = ×2). On skip
-                // les champs Blob déjà comptés ci-dessus.
-                try {
-                  const clean = {};
-                  for (const k in val) {
-                    if (blobFields.indexOf(k) >= 0) continue;
-                    clean[k] = val[k];
-                  }
-                  total += JSON.stringify(clean).length * 2;
-                } catch(e) {}
               }
               cur.continue();
             };
@@ -2403,15 +2432,20 @@
         return total;
       }
 
-      async function _getStorageMyktamapCached() {
+      async function _getStorageMyktamapCached(forceRefresh) {
         const now = Date.now();
-        if (_storageCalcCache && (now - _storageCalcCache.ts) < _STORAGE_CACHE_MS) {
+        if (!forceRefresh && _storageCalcCache && (now - _storageCalcCache.ts) < _STORAGE_CACHE_MS) {
           return _storageCalcCache.bytes;
         }
         const bytes = await _calculerStorageMyktamapBytes();
         _storageCalcCache = { ts: now, bytes: bytes };
         return bytes;
       }
+      // Exposé global pour permettre de forcer un recalcul depuis ailleurs
+      // (ex: après import/export profil, après reset, etc.)
+      window._kta_invalidateStorageCalcCache = function() {
+        _storageCalcCache = null;
+      };
 
       // Hydrate les 2 stats compactes du bandeau profil
       async function _hydrateProfileBarStats() {
@@ -2832,9 +2866,13 @@
         const tfootEl  = document.getElementById("kta-profile-plansstats-tfoot");
         if (!tbodyEl || !tfootEl) return;
 
+        // 🐛 v1.21.3-fix2 (KARMA "il voit aucun plan enrengistrer alors que
+        // j'en ai 3") : l'API PlanRegistry est `.getAll()`, pas `.list()`
+        // (que j'avais inventé). Mon code retournait undefined → "aucun
+        // plan enregistré" alors que le registre était plein.
         let plans = [];
-        if (window.PlanRegistry && typeof window.PlanRegistry.list === "function") {
-          try { plans = window.PlanRegistry.list() || []; } catch(e) {}
+        if (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
+          try { plans = window.PlanRegistry.getAll() || []; } catch(e) {}
         }
         if (plans.length === 0) {
           if (headerEl) headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— aucun plan enregistré</span>';
