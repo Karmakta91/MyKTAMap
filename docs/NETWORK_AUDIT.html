@@ -174,10 +174,60 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.21.1</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.21.3</strong> (25 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.3 (Release PATCH anti-crash mobile)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. Pack consolidé des 10 P0
+    identifiés par l'audit lecture seule (cf rapport interne KARMA). 100 % local
+    — fixes runtime sur la robustesse mémoire/leaks/race conditions, sans nouveau
+    fichier ni nouvelle API navigateur. Modifs internes : <code>js/main.js</code>
+    (P0-1 fix <code>_skipEditorJsonLoad</code> sur slot per-plan + P0-8 tracking
+    des <code>_ktaBatteryForceTimers</code> + P0-10 purge étendue de
+    <code>_libererRessourcesPlanPrecedent</code>), <code>js/utils.js</code>
+    (P0-6 token <code>_ktaDataLayerLoadToken</code> anti-zombies rAF data layer),
+    <code>js/tracking.js</code> (P0-2/3 cap dur <code>MAX_TIMELINE_ENTRIES=20000</code>
+    + décimation FIFO préservant les ancres <code>start</code>/<code>recalage</code>),
+    <code>js/heatmap.js</code> (P0-4 <code>canvas.toBlob</code> +
+    <code>URL.createObjectURL</code>/revoke + <code>MAX_DIM</code> dynamique 1024
+    sur device low-mem ; P0-5 seuil <code>MAX_SEGMENTS=50000</code> avec warning
+    OOMGuard explicite avant ANR), <code>sw.js</code> (P0-7 LRU eviction debounced
+    30s sur cache dynamique, cap 800 entrées non-statiques, <code>_staticAssetUrls</code>
+    Set protège l'app shell de toute eviction). Le pack v1.21.2 (jamais shipped
+    main seule) est intégralement inclus ici (flyout Tracker + Heatmap réactivée
+    + Wake Lock + tracker dans export session + GPS popup + urgences end).
+    Le SW cache uniquement un bump du <code>CACHE_NAME</code>
+    (<code>myktamap-cache-v1.21.3-anticrash</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.2 (Cycle « Profil + Wake Lock + Heatmap réactivée + Popup GPS » — Karma_dev, intégré dans v1.21.3)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. 4 features 100 % locales.
+    (1) Nouveau module <code>js/userProfile.js</code> + nouvelle DB IDB
+    <code>myktamap_profile</code> v1 (surnom + photo compressée canvas max 512px
+    JPEG q88 ≈ 30-60 KB, jamais transmise).
+    (2) Nouveau module <code>js/wakeLock.js</code> —
+    <code>navigator.wakeLock.request("screen")</code>, permission politique
+    navigateur (pas de prompt user), hidden si non supporté (Firefox, Safari < 16.4),
+    0 fetch réseau, 0 fingerprinting.
+    (3) <strong>Heatmap réactivée</strong> (désactivée en standby depuis v1.12.0).
+    Rendu 100 % canvas local. <code>canvas.toDataURL</code> consommé exclusivement
+    par <code>L.imageOverlay</code> interne.
+    (4) <strong>Popup point — ligne coords GPS</strong> via
+    <code>KmzExport.planToGps</code> (transformation affine 2D pure côté client,
+    aucun appel à un service de géocodage). Bouton 📋 utilise
+    <code>navigator.clipboard.writeText</code> (Clipboard API, écriture seule,
+    scope tab, permission silencieuse en HTTPS) + fallback <code>execCommand</code>.
+    Surface XSS auditée et validée (valeur GPS formatée par <code>toFixed</code>,
+    pas d'input user, escape <code>_escAttr</code> + replace quotes appliqués).
+    <strong>2 nouvelles permissions API documentées</strong> : Wake Lock + Clipboard.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -804,6 +854,44 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.21.3</td>
+        <td>25/05/2026</td>
+        <td>
+          <strong>Release PATCH anti-crash mobile</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission, aucun nouveau fichier</strong>.
+          Pack des 10 P0 de l'audit lecture seule. Fixes runtime sur la robustesse
+          mémoire/leaks/race conditions : cap dur timeline tracker (20 000 entries),
+          <code>canvas.toBlob</code> + revoke ObjectURL pour heatmap,
+          <code>MAX_DIM</code> dynamique 1024 sur device low-mem, seuil
+          <code>MAX_SEGMENTS=50000</code> avec warning OOMGuard, token génération
+          anti-zombies rAF data layer au plan switch, tracking timers BatteryGuard
+          pour clear au switch, purge étendue <code>_libererRessourcesPlanPrecedent</code>,
+          fix slot legacy <code>_skipEditorJsonLoad</code>, LRU eviction SW cap
+          800 entrées dynamiques avec <code>_staticAssetUrls</code> protégés.
+          Pack v1.21.2 (jamais shipped main seule) intégralement inclus.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — promesse offline-first préservée.
+        </td>
+      </tr>
+      <tr>
+        <td>v1.21.2</td>
+        <td>25/05/2026</td>
+        <td>
+          <strong>Cycle « Profil + Wake Lock + Heatmap réactivée + Popup GPS »</strong> —
+          intégré dans v1.21.3 (jamais shipped main seule).
+          <strong>Aucune nouvelle connexion réseau</strong>. 4 features 100 % locales.
+          (1) <code>js/userProfile.js</code> + nouvelle DB IDB <code>myktamap_profile</code> v1
+          (surnom + photo compressée canvas, jamais transmise).
+          (2) <code>js/wakeLock.js</code> — Wake Lock API, permission politique
+          navigateur, 0 fetch, 0 fingerprinting.
+          (3) Heatmap réactivée — rendu 100 % canvas local.
+          (4) Popup point ligne coords GPS via <code>KmzExport.planToGps</code>
+          (calcul client-side pur) + bouton 📋 Clipboard API.
+          <strong>2 nouvelles permissions API documentées</strong> : Wake Lock + Clipboard.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.21.1</td>
         <td>25/05/2026</td>
