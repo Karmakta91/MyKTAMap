@@ -183,7 +183,18 @@
     });
 
     // === Tracks → roads ===
+    // 🆕 v1.21.1 (audit fix #4) : ajout du préfixe `cust-` comme type valide
+    // pour préserver les entrées custom Légende (dessinables, cf §31.6
+    // CLAUDE.md) au roundtrip MKM→GPX→MKM. Avant, `validTypes.indexOf` strict
+    // → tout type `cust-XYZ` revenait à `opts.roadType` (typiquement "chemin")
+    // au ré-import. Symétrique au fix KMZ import #3 ci-dessus.
     const validTypes = ["principal", "secondaire", "chemin", "itinerary", "jonction"];
+    function _isValidRoadType(t) {
+      if (typeof t !== "string" || !t) return false;
+      if (validTypes.indexOf(t) >= 0) return true;
+      if (t.indexOf("cust-") === 0) return true;  // custom Légende
+      return false;
+    }
     parsed.tracks.forEach(function(trk, i) {
       const projected = [];
       trk.points.forEach(function(p) {
@@ -192,7 +203,7 @@
         projected.push({ x: Math.round(px.x), y: Math.round(px.y) });
       });
       if (projected.length < 2) { stats.skipped++; return; }
-      const type = (trk.type && validTypes.indexOf(trk.type) >= 0) ? trk.type : (opts.roadType || "chemin");
+      const type = _isValidRoadType(trk.type) ? trk.type : (opts.roadType || "chemin");
       let level = 0;
       if (trk.cmt && /MyKTAMap level=(-?\d+)/.test(trk.cmt)) {
         level = parseInt(RegExp.$1, 10);

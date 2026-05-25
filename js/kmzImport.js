@@ -428,24 +428,42 @@
           });
           // 🆕 v1.9.3-A1.b.2 + v1.14.20-hotfix8 : détection via styleUrl.
           // Notre KMZ export utilise :
-          //   #structure_front-1 / front-2 → structure polyline
-          //   #road_principal / secondaire / chemin / jonction / itinerary → road
+          //   #structure_front-1 / front-2 / cust-XYZ → structure polyline
+          //   #road_principal / secondaire / chemin / jonction / itinerary / cust-XYZ → road
           // Sinon (KMZ tiers) → fallback defaults.roadType.
+          //
+          // 🆕 v1.21.1 (audit fix #3) : regex élargie pour capturer aussi
+          // les types `cust-*` (entrées custom légende). Avant la regex stricte
+          // `^#road_(principal|...)$` ne matchait pas → fallback roadType
+          // perdait silencieusement le type custom au roundtrip MKM→KMZ→MKM.
           const frontMatch = _styleUrl.match(/^#structure_(front-1|front-2)$/);
+          const frontCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
           if (frontMatch) {
             // C'est un front de taille (polyline structure)
             out.structures.push({
               id: pmId, nom: nom || undefined,
-              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
+              description: desc || undefined,
               type: frontMatch[1], points: projected
             });
+          } else if (frontCustMatch) {
+            // Structure polyline CUSTOM (dessinable via LegendCustomization)
+            out.structures.push({
+              id: pmId, nom: nom || undefined,
+              description: desc || undefined,
+              type: frontCustMatch[1], points: projected
+            });
           } else {
-            // Type road depuis styleUrl, fallback défaut
+            // Type road : built-in OU custom
             const roadMatch = _styleUrl.match(/^#road_(principal|secondaire|chemin|jonction|itinerary)$/);
-            const roadType = (roadMatch && roadMatch[1]) ? roadMatch[1] : defaults.roadType;
+            const roadCustMatch = _styleUrl.match(/^#road_(cust-[A-Za-z0-9_-]+)$/);
+            const roadType = (roadMatch && roadMatch[1])
+                             ? roadMatch[1]
+                             : (roadCustMatch && roadCustMatch[1])
+                               ? roadCustMatch[1]
+                               : defaults.roadType;
             out.roads.push({
               id: pmId, nom: nom || undefined,
-              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
+              description: desc || undefined,
               type: roadType, points: projected
             });
           }
@@ -469,27 +487,38 @@
             const px = gpsToPixel(transform, p.lat, p.lng);
             return { x: Math.round(px.x), y: Math.round(px.y) };
           });
-          // 🆕 v1.9.3-A1.b.1 + v1.14.20-hotfix8 : détection via styleUrl.
-          //   #structure_pilier-1 / pilier-2 / mur → structure polygone
-          //   #zone_eau / remblais / effondrement / inaccessible → zone
+          // 🆕 v1.9.3-A1.b.1 + v1.14.20-hotfix8 + v1.21.1 audit fix #3 :
+          // détection via styleUrl, élargie aux types `cust-*` (entrées
+          // custom Légende dessinables) pour roundtrip MKM→KMZ→MKM complet.
+          //   #structure_pilier-1 / pilier-2 / mur / cust-XYZ → structure polygone
+          //   #zone_eau / remblais / effondrement / inaccessible / cust-XYZ → zone
           // Sinon (KMZ tiers) → fallback defaults.zoneType.
-          const structMatch = _styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
+          const structMatch     = _styleUrl.match(/^#structure_(pilier-1|pilier-2|mur)$/);
+          const structCustMatch = _styleUrl.match(/^#structure_(cust-[A-Za-z0-9_-]+)$/);
           if (structMatch) {
-            // C'est une structure (pilier 1ère masse / 2e masse / mur).
-            // On préserve le sous-type extrait du styleUrl pour respecter
-            // ce que le KMZ exportait à l'origine.
             out.structures.push({
               id: pmId, nom: nom || undefined,
-              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
+              description: desc || undefined,
               type: structMatch[1], points: projected
             });
+          } else if (structCustMatch) {
+            // Structure polygon CUSTOM
+            out.structures.push({
+              id: pmId, nom: nom || undefined,
+              description: desc || undefined,
+              type: structCustMatch[1], points: projected
+            });
           } else {
-            // Type zone depuis styleUrl, fallback défaut
-            const zoneMatch = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible)$/);
-            const zoneType = (zoneMatch && zoneMatch[1]) ? zoneMatch[1] : defaults.zoneType;
+            const zoneMatch     = _styleUrl.match(/^#zone_(eau|remblais|effondrement|inaccessible)$/);
+            const zoneCustMatch = _styleUrl.match(/^#zone_(cust-[A-Za-z0-9_-]+)$/);
+            const zoneType = (zoneMatch && zoneMatch[1])
+                             ? zoneMatch[1]
+                             : (zoneCustMatch && zoneCustMatch[1])
+                               ? zoneCustMatch[1]
+                               : defaults.zoneType;
             out.zones.push({
               id: pmId, nom: nom || undefined,
-              description: desc || undefined,  // v1.16.0 step 1 — note roundtrip
+              description: desc || undefined,
               type: zoneType, points: projected
             });
           }

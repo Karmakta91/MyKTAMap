@@ -1611,14 +1611,27 @@
     // ce bypass, le filter `roadTypes.indexOf(r.type) >= 0` les retirerait
     // silencieusement car "jonction" n'est PAS dans roadTypes (qui ne liste
     // que principal/secondaire/chemin). Idem dans Conversion plus bas.
+    //
+    // 🆕 v1.21.1 (audit fix #5) : bypass parallèle pour les types `cust-*`
+    // (entrées custom Légende dessinables). Sans ce bypass, les roads/zones/
+    // structures custom étaient SILENCIEUSEMENT droppées de l'export Avancé.
+    // Symétrique au fix KMZ export #2.
+    function _isCustom(t) { return typeof t === "string" && t.indexOf("cust-") === 0; }
     const filteredRoads = (d.roads || []).filter(function(r) {
-      if (r.type === "jonction") return true;  // bypass : toujours inclus
+      if (r.type === "jonction") return true;     // bypass jonction
+      if (_isCustom(r.type))     return true;     // 🆕 bypass customs
       return roadTypes.indexOf(r.type) >= 0;
     });
-    const filteredZones = (d.zones || []).filter(function(z) { return zoneTypes.indexOf(z.type) >= 0; });
+    const filteredZones = (d.zones || []).filter(function(z) {
+      if (_isCustom(z.type))     return true;     // 🆕 bypass customs
+      return zoneTypes.indexOf(z.type) >= 0;
+    });
     // 🆕 v1.9.3-A1.a : filtrage structures par type coché.
     const filteredStructures = incStructures
-      ? (d.structures || []).filter(function(s) { return structureTypes.indexOf(s.type) >= 0; })
+      ? (d.structures || []).filter(function(s) {
+          if (_isCustom(s.type)) return true;     // 🆕 bypass customs
+          return structureTypes.indexOf(s.type) >= 0;
+        })
       : [];
 
     // Filtrer les points par tags cochés
@@ -2994,6 +3007,25 @@
         // avant ajout des checkboxes UI dans la modale KMZ)
         structureTypesSet = new Set(["pilier-1", "pilier-2", "mur", "front-1", "front-2"]);
       }
+
+      // 🆕 v1.21.1 (audit fix #2) : enrichissement des Sets avec les types
+      // custom (cust-XYZ) rencontrés dans les items. Sans ça, les roads/zones/
+      // structures custom (dessinables via éditeur Légende, cf §31.6 CLAUDE.md)
+      // étaient SILENCIEUSEMENT droppées du KMZ car les Sets ne contiennent que
+      // les types built-in. Décision design : si l'user a coché le parent
+      // (Roads/Zones/Structures), TOUS les customs partent — pas de UI dédiée
+       // pour cocher/décocher les customs individuels (= bonne par défaut).
+      function _addCustsToSet(set, items) {
+        if (!set || !Array.isArray(items)) return;
+        items.forEach(function(it) {
+          if (it && typeof it.type === "string" && it.type.indexOf("cust-") === 0) {
+            set.add(it.type);
+          }
+        });
+      }
+      _addCustsToSet(roadTypesSet,      allRoads);
+      _addCustsToSet(zoneTypesSet,      allZones);
+      _addCustsToSet(structureTypesSet, allStructures);
 
       console.log("[KMZ] Contenu :",
         allPoints.length, "points,",
