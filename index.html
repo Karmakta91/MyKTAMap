@@ -261,6 +261,9 @@
            surnom : affiche "Mon profil" en placeholder italique avec
            avatar 👤 gris. Module : js/userProfile.js. Détails (édition,
            stats, export/import) : modale #kta-profile-details-modal. -->
+      <!-- 🆕 v1.21.1 (KARMA) : bouton ⚙️ Détails RETIRÉ — toute la box est
+           cliquable pour ouvrir la modale Détails. Espace libéré utilisé
+           pour 2 stats compactes adaptatives (temps app + Mo storage). -->
       <div id="kta-loader-profile-bar" class="kta-loader-profile-bar" role="button"
            tabindex="0" aria-label="Mon profil utilisateur" style="display:none;">
         <div class="kta-loader-profile-avatar-wrap" id="kta-loader-profile-avatar">
@@ -270,8 +273,19 @@
           <div class="kta-loader-profile-greeting" id="kta-loader-profile-greeting">Bienvenue</div>
           <div class="kta-loader-profile-surnom" id="kta-loader-profile-surnom">Mon profil</div>
         </div>
-        <button type="button" class="kta-loader-profile-btn-details" id="kta-loader-profile-details-btn"
-                title="Voir les détails de mon profil (édition, export, import)">⚙️</button>
+        <!-- 🆕 v1.21.1 : stats compactes (cachées mobile < 600px via CSS).
+             Hydratées async par _refreshLoaderProfileBar. Cohérentes avec
+             la fenêtre Mémoire (storage estimate) + tracking session. -->
+        <div class="kta-loader-profile-stats" id="kta-loader-profile-stats" aria-hidden="true">
+          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-time" title="Temps total passé sur l'app (toutes sessions cumulées)">
+            <span class="kta-loader-profile-stat-icon">⏱️</span>
+            <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-time-val">—</span>
+          </div>
+          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-storage" title="Taille totale des données MyKTAMap stockées localement (localStorage + IDB)">
+            <span class="kta-loader-profile-stat-icon">💾</span>
+            <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-storage-val">—</span>
+          </div>
+        </div>
       </div>
 
       <!-- ▶️ Reprendre le dernier plan (visible si lastPlanId existe) -->
@@ -2109,15 +2123,9 @@
         window.UserProfile.onChange(function() {
           _refreshLoaderProfileBar();
         });
-        // Open modale au clic (bandeau OU bouton ⚙️ — pareil)
-        const openHandler = function(e) {
-          // Le bouton ⚙️ stoppe la propagation pour pas double-trigger
-          if (e.target && e.target.id === "kta-loader-profile-details-btn") {
-            e.stopPropagation();
-          }
-          _ouvrirModaleProfilDetails();
-        };
-        bar.addEventListener("click", openHandler);
+        // 🆕 v1.21.1 : bouton ⚙️ retiré (KARMA) — toute la box est cliquable.
+        // Click anywhere → ouvre la modale Détails.
+        bar.addEventListener("click", function() { _ouvrirModaleProfilDetails(); });
         // Accessibilité clavier (Enter/Espace sur bandeau focusable)
         bar.addEventListener("keydown", function(e) {
           if (e.key === "Enter" || e.key === " ") {
@@ -2177,6 +2185,100 @@
           // Vraiment vide : silhouette grise neutre, pas d'initiale
           avatarWrap.innerHTML =
             '<div class="kta-loader-profile-avatar-initial kta-loader-profile-avatar-empty">👤</div>';
+        }
+
+        // 🆕 v1.21.1 : hydrate les 2 stats compactes du bandeau (async).
+        // Ne bloque pas l'affichage du bandeau (les valeurs apparaissent
+        // ~100-300ms après le surnom/avatar).
+        _hydrateProfileBarStats();
+      }
+
+      // 🆕 v1.21.1 : tracking temps app cumulé (toutes sessions).
+      // Stocké dans `localStorage["myktamap_total_time_ms"]`. Incrémenté
+      // toutes les 30s tant que la page est visible (et au beforeunload pour
+      // capturer la session en cours). Pattern similaire au heartbeat OOMGuard.
+      const _TOTAL_TIME_LS_KEY = "myktamap_total_time_ms";
+      const _TIME_TICK_MS      = 30000;  // sauvegarde toutes les 30s
+      let _timeLastTick = Date.now();
+      function _readTotalTimeMs() {
+        try {
+          const v = parseInt(localStorage.getItem(_TOTAL_TIME_LS_KEY), 10);
+          return Number.isFinite(v) && v >= 0 ? v : 0;
+        } catch(e) { return 0; }
+      }
+      function _writeTotalTimeMs(ms) {
+        try { localStorage.setItem(_TOTAL_TIME_LS_KEY, String(ms)); } catch(e) {}
+      }
+      function _flushTotalTime() {
+        if (document.hidden) return;  // ne compte pas le temps onglet caché
+        const now = Date.now();
+        const delta = now - _timeLastTick;
+        _timeLastTick = now;
+        if (delta > 0 && delta < 5 * 60 * 1000) {  // skip si > 5min (suspended)
+          _writeTotalTimeMs(_readTotalTimeMs() + delta);
+        }
+      }
+      setInterval(_flushTotalTime, _TIME_TICK_MS);
+      window.addEventListener("beforeunload", _flushTotalTime);
+      window.addEventListener("pagehide",     _flushTotalTime);
+      document.addEventListener("visibilitychange", function() {
+        if (document.hidden) _flushTotalTime();
+        else _timeLastTick = Date.now();  // reset tick au retour visibility
+      });
+
+      // Formattage temps humain : "12h 34min" / "45min" / "12s"
+      function _formatDuration(ms) {
+        if (typeof ms !== "number" || ms < 0) return "—";
+        const s = Math.floor(ms / 1000);
+        if (s < 60) return s + "s";
+        const m = Math.floor(s / 60);
+        if (m < 60) return m + "min";
+        const h = Math.floor(m / 60);
+        const remM = m % 60;
+        return remM > 0 ? h + "h " + remM + "min" : h + "h";
+      }
+
+      // Formattage bytes : "12 KB" / "1.2 MB" / "234 MB"
+      function _formatBytesShort(n) {
+        if (n == null || isNaN(n)) return "—";
+        const num = Number(n);
+        if (num < 1024)            return num + " B";
+        if (num < 1024 * 1024)     return (num / 1024).toFixed(0) + " KB";
+        if (num < 1024 * 1024 * 1024) return (num / (1024 * 1024)).toFixed(1) + " MB";
+        return (num / (1024 * 1024 * 1024)).toFixed(2) + " GB";
+      }
+
+      // Hydrate les 2 stats compactes du bandeau profil
+      async function _hydrateProfileBarStats() {
+        // Temps : total cumulé + session en cours
+        const totalEl = document.getElementById("kta-loader-profile-stat-time-val");
+        if (totalEl) {
+          // total persisté + (now - dernier tick) pour temps live
+          const totalMs = _readTotalTimeMs() + (Date.now() - _timeLastTick);
+          totalEl.textContent = _formatDuration(totalMs);
+        }
+        // Storage : navigator.storage.estimate() (async, gracieux fallback)
+        const storageEl = document.getElementById("kta-loader-profile-stat-storage-val");
+        if (storageEl) {
+          if (navigator.storage && typeof navigator.storage.estimate === "function") {
+            try {
+              const est = await navigator.storage.estimate();
+              if (est && typeof est.usage === "number") {
+                storageEl.textContent = _formatBytesShort(est.usage);
+                return;
+              }
+            } catch(e) {}
+          }
+          // Fallback : approximation via localStorage.length × 2 (UTF-16)
+          let approx = 0;
+          try {
+            for (let i = 0; i < localStorage.length; i++) {
+              const k = localStorage.key(i);
+              const v = localStorage.getItem(k);
+              approx += (k || "").length * 2 + (v || "").length * 2;
+            }
+          } catch(e) {}
+          storageEl.textContent = _formatBytesShort(approx) + "+";  // + = approx
         }
       }
 

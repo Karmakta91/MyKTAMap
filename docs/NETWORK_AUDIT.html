@@ -174,10 +174,24 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.21.0</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.21.1</strong> (25 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.1 (Release PATCH — Audit imports/exports/roundtrips)</strong> :
+    <strong>AUCUNE nouvelle surface réseau</strong>. Pack consolidé de 9 bugs
+    critiques découverts via audit ciblé (agent général-purpose) après accumulation
+    de 6 hotfixes post-v1.21.0. 100% local — fixes internes aux modules d'import/
+    export : <code>emergencyMode</code> (sécurité GPS), <code>sessionExporter</code>
+    (filtres customs), <code>kmzImport</code>+<code>kmzExport</code> (regex
+    custom + ExtendedData M-LVL + V2 crop offset), <code>gpxImport</code>
+    (validTypes), <code>utils</code> (registries embedded). Le SW cache uniquement
+    un bump du <code>CACHE_NAME</code> (<code>myktamap-cache-v1.21.1</code>).
+    Aucun nouveau fichier. <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -790,6 +804,21 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.21.1</td>
+        <td>25/05/2026</td>
+        <td>
+          <strong>Release PATCH — Audit imports/exports/roundtrips</strong> —
+          <strong>aucune nouvelle surface réseau</strong>. Pack consolidé de
+          9 bugs critiques découverts via audit ciblé (agent général-purpose).
+          5 batchs : sécurité (mode urgence GPS bloc), customs `cust-*` préservés
+          dans KMZ/GPX/Session exports+imports, embedded data layers (descriptions
+          + fronts polylines), niveaux M-LVL roundtrip KMZ via ExtendedData,
+          V2 tiling auto-crop offset annotations + georef. Aucun nouveau fichier,
+          modifs internes à 6 modules existants.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+        </td>
+      </tr>
       <tr>
         <td>v1.21.0</td>
         <td>25/05/2026</td>

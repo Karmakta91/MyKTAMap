@@ -8,14 +8,14 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.21.0` (25/05/2026)
+**📦 Version courante** : `v1.21.1` (25/05/2026)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
 
 ## 📑 Sommaire
 
-1. [🚀 Dernière release — v1.21.0](#-derniere-release--v1210)
+1. [🚀 Dernière release — v1.21.1](#-derniere-release--v1211)
 2. [🧭 Introduction](#-introduction)
 3. [🛠️ Fonctionnalités principales](#%EF%B8%8F-fonctionnalites-principales)
 4. [🏗️ Architecture applicative](#%EF%B8%8F-architecture-applicative)
@@ -40,7 +40,21 @@
 
 ---
 
-## 🚀 Dernière release — v1.21.0
+## 🚀 Dernière release — v1.21.1
+
+📅 **25 mai 2026** — Release **PATCH** (Z+1 sur v1.21.0) : **Audit imports/exports/roundtrips**. Pack consolidé de 9 bugs critiques découverts via audit ciblé (agent général-purpose) après accumulation de 6 hotfixes post-v1.21.0 qui suggérait des patterns latents.
+
+- 🚨 **Sécurité** : bloc GPS du mode urgence ne s'affichait JAMAIS (clone bug fix4 dans `emergencyMode.js`) → critique pour user perdu en cata
+- 🎨 **Types custom préservés partout** : 4 bugs liés au traitement de 2e zone des `cust-*` (KMZ export drop, KMZ import regex stricte, GPX import validTypes, Session Avancé filtre)
+- 📦 **Embedded data layers** : fronts (polylines) filtrés out, descriptions perdues dans tous les registries runtime
+- 🏗️ **Niveaux M-LVL roundtrip KMZ** : levels aplatis à 0 (fonctionnaient uniquement via folder parent, jamais ré-extraits) → fix via `<ExtendedData>` standard KML
+- 🧱 **V2 tiling auto-crop** : annotations + georef décalés du cropOffset si auto-crop des marges déclenché
+
+Détails techniques dans le [Journal des modifications](#-journal-des-modifications).
+
+---
+
+## 🚀 Release précédente — v1.21.0
 
 📅 **25 mai 2026** — Release **MINOR** (Y+1 sur v1.20.0) : **Cycle « Stats avancées + QoL UX »**. 4 features qui complètent le polish v1.20.0 :
 
@@ -908,7 +922,95 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-21-0" open>
+<details id="v1-21-1" open>
+<summary><strong>🗓️ 25/05/2026 — 🩹 v1.21.1 : Release PATCH — Audit imports/exports (9 bugs critiques fixés)</strong></summary>
+
+Release PATCH (bump Z : 1.21.0 → 1.21.1). Audit ciblé via agent général-purpose après accumulation de 6 hotfixes post-v1.21.0 qui suggéraient des bugs latents structurels. Audit retournait 9 bugs critiques + 6 mineurs, dont 9 critiques traités en 5 batchs cohérents.
+
+### 🚨 Batch sécurité (1 bug)
+
+**#1 — Mode urgence : bloc GPS toujours masqué (clone bug fix4)**
+
+`js/emergencyMode.js > _tick` ligne 265 faisait `if (calib && calib.transform)` MAIS `KmzExport.setCalibration` ne stocke QUE `{pointA, pointB}` (jamais de transform — calculé à la demande). Clone exact du bug fix v1.21.0-fix4 dans gpxIO.js, manqué lors du grep initial qui ne touchait que GPX.
+
+Conséquence critique : le bloc GPS du mode urgence était TOUJOURS masqué, même sur plan calibré. Pile la situation où l'user en a besoin (perdu en cata, guider les secours par téléphone via coordonnées).
+
+Fix : pattern identique à `gpxIO.js > _getTransform()` — vérifie les 8 champs `Number.isFinite` + `try buildTransform()` pour détecter calibrage dégénéré + appel `_formatGPS` si OK.
+
+### 🎨 Batch A Customs — Types `cust-*` plus jamais perdus (4 bugs)
+
+Avant, les entrées custom (`cust-XYZ`) ajoutées via éditeur LegendCustomization (cf §31.6 CLAUDE.md) étaient traitées en 2e zone partout : SILENCIEUSEMENT droppées ou ramenées au type default.
+
+| Bug | Module | Fix |
+|---|---|---|
+| **#2** | `sessionExporter.js > _exportKmz` | `roadTypesSet`/`zoneTypesSet`/`structureTypesSet` construits depuis 3-4-5 checkboxes hardcodées → enrichissement via helper `_addCustsToSet(set, items)` qui ajoute tous les `cust-*` rencontrés |
+| **#3** | `kmzImport.js > ingestPlacemarks` | Regex `^#road_(principal\|...)$` stricte → ajout 6 nouvelles regex parallèles `^#X_(cust-[A-Za-z0-9_-]+)$` pour roads/zones/structures-polygon/structures-polyline |
+| **#4** | `gpxImport.js > ingestParsed` | `validTypes.indexOf(t) >= 0` strict → helper `_isValidRoadType(t)` qui accepte validTypes OU prefix `cust-` |
+| **#5** | `sessionExporter.js > _exportSessionAvance` | Filter `roadTypes.indexOf(r.type) >= 0` drop customs (bypass jonction existait depuis v169 mais pas customs) → helper `_isCustom(t)` + bypass parallèle dans 3 filters |
+
+### 📦 Batch B Embedded — Data layers (3 bugs)
+
+| Bug | Module | Fix |
+|---|---|---|
+| **#6** | `utils.js > getAllEmbeddedStructures` | Filtre `points.length >= 3` excluait fronts (polylines, min 2 pts) → seuil type-dependent (`isPolyline ? 2 : 3`) |
+| **#7** | `kmzExport.js > genererKml branche fronts` | `<description>` non émise (asymétrie avec `_emitPolygon` piliers/mur) → ajout `(s.description ? _emitDescriptionCdata(...) : '')` |
+| **#8** | `utils.js > ajouterPointsDepuisJSON` + 4 getters | `_ktaDataMarkers/Polylines/Polygons/Structures` ne stockaient PAS `description` → ajout dans les 3 entries + `_ktaDescription` sur markers + getters l'exposent conditionnellement |
+
+### 🏗️ Batch C M-LVL — Roundtrip KMZ (1 bug)
+
+**#14 — Niveaux M-LVL aplatis à 0 au roundtrip KMZ**
+
+Avant : `kmzExport.js` encodait le niveau M-LVL UNIQUEMENT via le folder parent (`<Folder><name>🏗️ Niveau N</name>`). `kmzImport.js > ingestPlacemarks` itère sur les Placemarks et n'inspecte PAS la hiérarchie folder. Conséquence : ROUNDTRIP MKM→KMZ→MKM aplatissait tous les niveaux à 0. Pire pour les jonctions (fromLevel + toLevel essentiels perdus → jonction inutilisable au pathfinder).
+
+Fix : format KML natif `<ExtendedData><Data name="mkm:level"><value>N</value></Data></ExtendedData>`. Avantages :
+- Transparent pour Google Earth/OsmAnd/etc. (ignorent les Data inconnues)
+- Préfixe `mkm:` évite collision avec d'autres apps
+- Standard KML 2.2 (pas un namespace exotique)
+
+**ÉCRITURE** : nouveau helper `_emitExtendedDataLevel(level, extra)` qui retourne le bloc `<ExtendedData>` si level défini. Appelé dans `_emitPlacemark` (points), `_emitLineString` (roads — level OU fromLevel+toLevel pour jonctions), `_emitPolygon` (zones + structures piliers/mur), branche fronts inline.
+
+**LECTURE** : helper `_mkmData` IIFE au début de chaque Placemark itéré dans `kmzImport.js > ingestPlacemarks`. Scan `:scope > ExtendedData > Data[name^="mkm:"]` + `parseInt`. Chaque branche d'`out.X.push` reçoit le level conditionnel sur `Number.isInteger(_mkmData.X)`.
+
+**Rétro-compat** : si KMZ tiers ou KMZ MKM < v1.21.1 → ExtendedData absent → level reste défini par le caller (typiquement 0). Aucun changement de comportement pour les apps tierces.
+
+### 🧱 Batch D V2-crop — Bug edge case mais sévère (1 bug)
+
+**#9 — V2 tiling auto-crop : annotations + georef décalés**
+
+`createConf.js > _genererTuilesV2` fait un auto-crop des marges blanches si bbox détectée < 90% du canvas. Retourne `dims.cropOffset = {x, y}`. `kmzImport.js > genererZipMyktamap` utilisait :
+- `finalW/H` = dims POST-crop
+- annotations projetées AVANT crop avec `opts.imageW/H` (dims ORIGINALES)
+- `planConfig.plan.georef` avec `finalW/H` mais `corners.sw/ne` GPS originaux (couvrent image PRÉ-crop)
+
+Conséquences (visibles sur scan IGN avec bordures, KMZ V2 re-tilé) :
+1. Annotations décalées de `cropOffset` (tous les points dérapés haut-gauche)
+2. Georef faux mathématiquement (calibrage complètement à côté)
+
+**Fix en 2 parties** :
+- Helper `_translate(items)` qui soustrait `cropOffset` à chaque coord (item.x/y direct + item.points[].x/y pour polylines/polygons) sur points/roads/zones/structures
+- Recalcul du georef post-crop par interpolation linéaire des nouveaux coins SW/NE : `frac_x/y` dans le repère original → lerp entre `sw` et `ne` GPS. Approximation valable pour LatLonBox axis-aligned (= la majorité). LatLonQuad avec rotation = approximation acceptable (cropOffset rare sur LatLonQuad)
+
+Note : `gpxImport.js` n'a PAS le même bug en pratique car canvas uniforme = pas d'auto-crop déclenché (bbox = 100%).
+
+### 📂 Sources de vérité v1.21.1
+
+- `version.json` → `"v1.21.1"`
+- `js/copyright.js` > `__MKM__.build` → `"v1.21.1"`
+- `sw.js` > `CACHE_NAME` → `"myktamap-cache-v1.21.1"`
+- **Aucun nouveau fichier**
+- Modifs internes à 6 fichiers : `js/emergencyMode.js` (+30), `js/sessionExporter.js` (+50), `js/kmzImport.js` (+150), `js/kmzExport.js` (+50), `js/gpxImport.js` (+8), `js/utils.js` (+30). Total ~350 lignes ajoutées.
+
+### 🛡️ Confidentialité
+
+**Aucune nouvelle surface réseau**. 100% local. NETWORK_AUDIT inchangé sur le fond — mise à jour de la version uniquement.
+
+### ⚠️ Action terrain
+
+Les KMZ ré-importés avant ce fix (v1.21.0 ou antérieur) ont leurs levels/descriptions/types-custom déjà perdus dans le ZIP MyKTAMap reconstruit. **Ré-importer depuis le KMZ source** pour bénéficier du fix complet. Idem plan V2 avec auto-crop : ré-import nécessaire.
+
+</details>
+
+<details id="v1-21-0">
 <summary><strong>🗓️ 25/05/2026 — 🚀 v1.21.0 : Cycle « Stats avancées + QoL UX »</strong></summary>
 
 Release MINOR (bump Y : 1.20.0 → 1.21.0). 4 features qui complètent le polish v1.20.0 (release massive de 8 features la veille) sans embarquer de chantier lourd. Scope validé KARMA via topo design (4 questions AskUserQuestion).
