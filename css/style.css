@@ -16826,3 +16826,86 @@ body.kta-presentation-mode .kta-compass-widget {
 /* Petit indicateur discret en haut-droite "Mode présentation" ?
    Choix design : non, l'overlay distrait. Le toast au activate
    (OOMGuard.showToast 3s) suffit comme rappel. */
+
+/* ============================================================
+   🌐 v1.21.0-fix1 — Géoref picker (Réglages + Enregistrer KMZ)
+   ============================================================
+   Classes déplacées depuis le <style> inline de sessionExporter.js
+   vers ici (permanent), pour que la section 🌐 Géoréférencement de
+   ⚙️ Réglages puisse les utiliser sans dépendre de l'ouverture
+   préalable de 💾 Enregistrer. Pattern identique au picker KMZ. */
+
+.kta-kmz-pt-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.kta-kmz-search-results {
+  margin-top: 6px;
+  padding: 8px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.kta-kmz-search-item {
+  padding: 6px 10px;
+  margin: 2px 0;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  transition: background 0.12s;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+.kta-kmz-search-item:hover {
+  background: rgba(140,180,255,0.14);
+  color: #e8eaf0;
+}
+.kta-kmz-search-item strong {
+  color: #8cb4ff;
+  font-weight: 600;
+}
+.kta-kmz-search-item .kta-kmz-search-meta {
+  color: #8892a4;
+  font-size: 11px;
+}
+.kta-kmz-search-empty {
+  padding: 8px 10px;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Variants thème clair pour le picker */
+body.kta-theme-light .kta-kmz-search-results,
+html.kta-theme-light .kta-kmz-search-results {
+  background: rgba(0,0,0,0.06) !important;
+  border-color: var(--kta-light-border-strong, rgba(0,0,0,0.22)) !important;
+}
+body.kta-theme-light .kta-kmz-search-item,
+html.kta-theme-light .kta-kmz-search-item {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-kmz-search-item:hover,
+html.kta-theme-light .kta-kmz-search-item:hover {
+  background: rgba(244,197,66,0.18) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-kmz-search-item strong,
+html.kta-theme-light .kta-kmz-search-item strong {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-kmz-search-empty,
+html.kta-theme-light .kta-kmz-search-empty,
+body.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta,
+html.kta-theme-light .kta-kmz-search-item .kta-kmz-search-meta {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}

@@ -2369,6 +2369,12 @@ function _renderCfgGeorefSection() {
       '</p>' +
 
       // ===== Point A =====
+      // 🆕 v1.21.0-fix1 : ajout des 2 boutons d'aide à la saisie (parité
+      // UX avec la modale 💾 Enregistrer > 📡 Export externe) :
+      //   - 🔍 Chercher un point : autocomplete sur POI plan → fill x/y
+      //   - 📍 Cliquer carte : mode pick → clic sur la carte fill x/y
+      // Les coords GPS lat/lng restent saisies manuellement (l'app ne
+      // connaît pas le GPS du plan tant que la calibration n'existe pas).
       '<div class="kta-kmz-section" style="margin:8px 0;">' +
         '<div class="kta-kmz-section-titre">📍 Point A</div>' +
         '<div class="kta-kmz-pt-grille">' +
@@ -2381,6 +2387,11 @@ function _renderCfgGeorefSection() {
           '<label class="kta-kmz-lbl">GPS lng :</label>' +
           '<input type="number" id="cfg_kmz_A_lng" value="' + pA.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.2945">' +
         '</div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">🔍 Chercher un point</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">📍 Cliquer carte</button>' +
+        '</div>' +
+        '<div id="cfg_kmz_A_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       // ===== Point B =====
@@ -2396,6 +2407,11 @@ function _renderCfgGeorefSection() {
           '<label class="kta-kmz-lbl">GPS lng :</label>' +
           '<input type="number" id="cfg_kmz_B_lng" value="' + pB.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.3050">' +
         '</div>' +
+        '<div class="kta-kmz-pt-actions">' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">🔍 Chercher un point</button>' +
+          '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">📍 Cliquer carte</button>' +
+        '</div>' +
+        '<div id="cfg_kmz_B_search_results" class="kta-kmz-search-results" style="display:none;"></div>' +
       '</div>' +
 
       '<div id="cfg_kmz_status" style="font-size:12px; margin:8px 2px 4px; min-height:18px;"></div>' +
@@ -2484,6 +2500,137 @@ function _bindCfgGeorefHandlers() {
     } catch(e) {}
     _setStatus("Calibrage effacé.", null);
   });
+
+  // 🆕 v1.21.0-fix1 : boutons 🔍 Chercher / 📍 Cliquer carte (parité UX
+  // avec la modale 💾 Enregistrer > 📡 Export externe). Pattern identique
+  // à sessionExporter.js > _kmzOuvrirRecherche / _kmzActiverModeClic mais
+  // sur les IDs `cfg_kmz_*` (au lieu de `kmz_*`).
+  ["A", "B"].forEach(function(letter) {
+    const btnSearch = document.getElementById("cfg_kmz_" + letter + "_search");
+    const btnClick  = document.getElementById("cfg_kmz_" + letter + "_click");
+    if (btnSearch) btnSearch.addEventListener("click", function() { _cfgOuvrirRechercheGeoref(letter); });
+    if (btnClick)  btnClick.addEventListener("click",  function() { _cfgActiverModeClicGeoref(letter); });
+  });
+}
+
+// ───────── 🔍 RECHERCHE POI (Géoref Réglages — v1.21.0-fix1) ─────────
+// Autocomplete inline qui réutilise window.SearchPoints.findByQuery
+// (déjà chargé par js/searchPoints.js). Pattern identique au picker
+// utilisé dans la modale Enregistrer KMZ.
+function _cfgOuvrirRechercheGeoref(letter) {
+  const res = document.getElementById("cfg_kmz_" + letter + "_search_results");
+  if (!res) return;
+  res.style.display = "block";
+  res.innerHTML =
+    '<input type="text" id="cfg_kmz_' + letter + '_search_q" class="kta-cfg-input" ' +
+      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+    '<div id="cfg_kmz_' + letter + '_search_list"></div>';
+  const input = document.getElementById("cfg_kmz_" + letter + "_search_q");
+  const list  = document.getElementById("cfg_kmz_" + letter + "_search_list");
+  if (!input || !list) return;
+  input.focus();
+  let debTimer = null;
+  input.addEventListener("input", function() {
+    const q = input.value.trim();
+    if (debTimer) clearTimeout(debTimer);
+    if (!q || !window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
+      list.innerHTML = "";
+      return;
+    }
+    debTimer = setTimeout(async function() {
+      let results = [];
+      try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
+      if (input.value.trim() !== q) return;
+      if (results.length === 0) {
+        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        return;
+      }
+      list.innerHTML = results.slice(0, 10).map(function(it, i) {
+        const p = it.point;
+        const nom = p.nom || p.id || "(point)";
+        const metaParts = [];
+        if (p.id && p.id !== nom) metaParts.push(p.id);
+        if (Number.isFinite(p.x) && Number.isFinite(p.y)) {
+          metaParts.push("x=" + p.x + ", y=" + p.y);
+        }
+        const meta = metaParts.length > 0
+          ? '<span class="kta-kmz-search-meta">(' + metaParts.join(" · ") + ')</span>'
+          : '';
+        return '<div class="kta-kmz-search-item" data-idx="' + i + '">' +
+                 '<strong>' + nom + '</strong>' + meta +
+               '</div>';
+      }).join("");
+      list.querySelectorAll(".kta-kmz-search-item").forEach(function(row, i) {
+        row.addEventListener("click", function() {
+          const p = results[i].point;
+          const xEl = document.getElementById("cfg_kmz_" + letter + "_x");
+          const yEl = document.getElementById("cfg_kmz_" + letter + "_y");
+          if (xEl) xEl.value = p.x;
+          if (yEl) yEl.value = p.y;
+          res.style.display = "none";
+        });
+      });
+    }, 150);
+  });
+}
+
+// ───────── 📍 MODE CLIC CARTE (Géoref Réglages — v1.21.0-fix1) ─────────
+// Masque temporairement la modale ⚙️ Réglages, active un listener
+// `map.on("click")` qui remplit x/y du Point cible et restaure la modale.
+// Pattern identique à sessionExporter.js > _kmzActiverModeClic.
+let _cfgGeorefClickActive  = false;
+let _cfgGeorefClickHandler = null;
+let _cfgGeorefClickTarget  = null;
+
+function _cfgActiverModeClicGeoref(letter) {
+  if (!window.map) return;
+  _cfgDesactiverModeClicGeoref();  // annule un mode précédent éventuel
+  _cfgGeorefClickActive = true;
+  _cfgGeorefClickTarget = letter;
+  _cfgGeorefClickHandler = function(e) {
+    const x = e.latlng.lng;
+    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) ? (window.APP_CONFIG.imageHeight - e.latlng.lat) : e.latlng.lat;
+    const xEl = document.getElementById("cfg_kmz_" + letter + "_x");
+    const yEl = document.getElementById("cfg_kmz_" + letter + "_y");
+    if (xEl) xEl.value = Math.round(x * 100) / 100;
+    if (yEl) yEl.value = Math.round(y * 100) / 100;
+    _cfgDesactiverModeClicGeoref();
+    const cfgModal = document.getElementById("kta-cfg-modal");
+    if (cfgModal) cfgModal.style.display = "";
+  };
+  window.map.on("click", _cfgGeorefClickHandler);
+  // Cache la modale Réglages le temps du clic
+  const cfgModal = document.getElementById("kta-cfg-modal");
+  if (cfgModal) cfgModal.style.display = "none";
+  // Floater visuel pour indiquer le mode (réutilise les classes existantes
+  // .kta-iti-floater stylées par la mesure d'itinéraire — visuellement
+  // cohérent avec le picker de la modale Enregistrer KMZ).
+  const fl = document.createElement("div");
+  fl.id = "kta-cfg-georef-click-floater";
+  fl.className = "kta-iti-floater";
+  fl.innerHTML =
+    '<span class="kta-iti-floater-icon">📍</span>' +
+    '<span class="kta-iti-floater-msg">Clique sur la carte pour saisir le Point ' + letter + '</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_kmz_click_cancel" type="button">Annuler</button>';
+  document.body.appendChild(fl);
+  const cancelBtn = document.getElementById("cfg_kmz_click_cancel");
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", function() {
+      _cfgDesactiverModeClicGeoref();
+      const m = document.getElementById("kta-cfg-modal");
+      if (m) m.style.display = "";
+    });
+  }
+}
+
+function _cfgDesactiverModeClicGeoref() {
+  if (!_cfgGeorefClickActive) return;
+  _cfgGeorefClickActive = false;
+  _cfgGeorefClickTarget = null;
+  if (window.map && _cfgGeorefClickHandler) window.map.off("click", _cfgGeorefClickHandler);
+  _cfgGeorefClickHandler = null;
+  const fl = document.getElementById("kta-cfg-georef-click-floater");
+  if (fl) fl.remove();
 }
 
 // =========================
