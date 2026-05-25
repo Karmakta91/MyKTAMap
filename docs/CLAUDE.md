@@ -3434,6 +3434,34 @@ Module `js/heatmap.js` (~380 lignes IIFE en v1.12.0, **REFONTE majeure en v1.21.
 3. Restaurer le bouton 🔥 Heatmap dans `js/interface.js` (groupe Stats/Analyse, chercher `/* 🚫 v1.12.0 désactivé` pour trouver le bloc commenté)
 4. Bump `CACHE_NAME` dans `sw.js`
 
+#### 51.4 Filtre niveau M-LVL (depuis v1.21.4)
+
+Nouvelle option `opts.levels` dans `Heatmap.generer(opts)` : `Set<number>` des niveaux à inclure. Si `Set` vide OU `multiLevel === false` → bypass total (tous items inclus, comportement v1.21.2 strict).
+
+**Helper interne `_passeFiltreLevel(item, levels)`** appelé par tous les collecteurs (tracker timeline / editor / roads / zones / structures / dataLayers) après le filtre par source toggle. Logique :
+
+```js
+function _passeFiltreLevel(item, levels) {
+  if (!levels || levels.size === 0) return true;  // bypass
+  // Jonction interniveau : visible si l'un des 2 niveaux ∈ levels
+  if (item && item.type === "jonction") {
+    const f = (typeof item.fromLevel === "number") ? item.fromLevel : 0;
+    const t = (typeof item.toLevel   === "number") ? item.toLevel   : 0;
+    return levels.has(f) || levels.has(t);
+  }
+  const lvl = (item && typeof item.level === "number") ? item.level : 0;
+  return levels.has(lvl);
+}
+```
+
+**Sémantique jonction = symétrique** (cohérent avec §26.5 Pathfinder) : `{from:0, to:1}` est strictement équivalent à `{from:1, to:0}`. Le helper renvoie `true` si AU MOINS UN des 2 niveaux est sélectionné.
+
+**Sémantique items sans level** : traités comme `level: 0` (rétro-compat v147, identique à `_passeFiltreNiveau` global).
+
+**UI** : la modale Heatmap affiche une nouvelle section "🏗️ Niveaux" sous les sources togglables, visible UNIQUEMENT si `APP_CONFIG.multiLevel === true`. Chips pour chaque niveau de `APP_CONFIG.availableLevels`, sélection multi avec mémo dans `_lastOpts.levels` (= persistance le temps de la session). Re-générer recalcule avec le nouveau filtre.
+
+⚠️ **Penser à filtrer AVANT l'interpolation segments** : `_passeFiltreLevel` doit être appelé sur l'item entier (la road/zone/jonction), pas par segment. Sinon les jonctions seraient filtrées au mauvais niveau si on découpe d'abord en segments.
+
 ### 52. Mode urgence — fixes v1.12.0
 
 #### 52.1 Rotation paysage (orientation change)
@@ -4949,6 +4977,247 @@ Wraps `navigator.wakeLock.request("screen")` :
 - ❌ Stocker `calib.transform` dans le retour de `getCalibration()` — le pattern actuel est rebuild on-demand via `buildTransform` (cf §32.7 piège ajouté)
 - ❌ Coder un wake lock en parallèle dans un autre module — utiliser `WakeLock.acquire()` / `WakeLock.release()` qui gèrent re-acquire visibilitychange + persistance + sync UI
 - ❌ Ajouter une sous-action critique (genre suppression destructive) sans `cssClass` rouge ET sans la mettre en fin de groupe — la cohérence visuelle "actions dangereuses = rouge + fin" est un guide UX
+
+---
+
+### 63. v1.21.4 — Stats Profil enrichies + filtre Heatmap M-LVL + préfs UX (depuis v1.21.4)
+
+Release PATCH (bump Z : 1.21.3 → 1.21.4). 7 sujets indépendants regroupés. Documente ici les nouveaux patterns + pièges introduits. Le filtre Heatmap M-LVL est documenté à part dans §51.4 (sous-section dédiée à Heatmap).
+
+#### 63.1 Stats Profil — Cache localStorage par plan
+
+Format clé : `localStorage["myktamap_plan_stats_v1_<planId>"]`. 1 entrée par plan visité.
+
+```json
+{
+  "pois":      42,
+  "roads":     8,
+  "zones":     3,
+  "distPx":    12340.5,
+  "breakdowns": {
+    "pointsByTag":   { "pa": 3, "salle": 12, ... },
+    "roadsByType":   { "principal": 4, "chemin": 2, "secondaire": 2 },
+    "zonesByType":   { "eau": 1, "remblais": 2 },
+    "structsByType": { "pilier-1": 5, "front-1": 3 }
+  },
+  "ts":     1747923456789,
+  "source": "live"  // ou "session-only-partial"
+}
+```
+
+**Cascade calcul** (helpers `_lirePlanStats(id)` / `_persisterStatsPlan(id, data)` dans `statsGlobales.js`) :
+- **Plan COURANT** : calcul **live** (registries en mémoire `getEditorPoints/getRoads/getZones/getStructures` + `getAllEmbedded*`). `source: "live"`.
+- **Autres plans** : lecture cache. Si pas de cache → fallback `localStorage["myktamap_session_v1_<id>"]` (SessionPersist, cf §57) = session-only (pas d'embedded data layers). `source: "session-only-partial"` + marqueur visuel `⚠️ partial` dans l'UI.
+
+**Hook auto-persist** : `window._persisterStatsPlanCourant()` exposé global, appelé depuis `main.js > lancerApplication` avec `setTimeout(_, 800)` pour laisser passer le rAF batch du rendu Leaflet + les fetch async des data layers embedded. Sans le defer 800ms, on capturait `getAllEmbeddedRoads() = []` → cache pollué avec un résultat vide.
+
+#### 63.2 Pattern critique — Calcul stats cross-plan séquentiel anti-crash
+
+**KARMA warning explicite** : un calcul parallèle (`Promise.all(plans.map(_computePlanStats))`) saturait le main thread mobile et figeait l'app jusqu'au kill OOM. **10+ plans = inutilisable** sur smartphone milieu de gamme.
+
+**Pattern reproductible** (utilisable pour tout calcul lourd cross-plan) :
+
+```js
+async function _computeStatsAggregeesProfile() {
+  const plans = window.PlanRegistry.getAll();  // ← .getAll() PAS .list() (cf §63.5)
+  const agg = { pois: 0, roads: 0, zones: 0, structs: 0, distM: 0, breakdowns: {...} };
+
+  for (const p of plans) {
+    if (!p || !p.id) continue;
+    if (window._loaderSkipServerPlans && window._loaderSkipServerPlans() && p.type === "server") continue;
+
+    const stats = await _lirePlanStats(p.id);    // ← cache OU session-only
+    if (!stats) continue;
+
+    agg.pois  += stats.pois  || 0;
+    agg.roads += stats.roads || 0;
+    // ... merge breakdowns via _mergeBreakdown(agg.breakdowns.X, stats.breakdowns.X)
+
+    // 🔑 YIELD AU THREAD UI avant le prochain plan
+    await new Promise(function(r) { setTimeout(r, 0); });
+  }
+  return agg;
+}
+```
+
+**Pourquoi `setTimeout(0)` et pas `requestAnimationFrame` ou `queueMicrotask`** :
+- `requestAnimationFrame` : ne fire que ~16ms et bloque si l'onglet est inactif (tab background)
+- `queueMicrotask` : task de même priorité que l'await, ne yield PAS au thread UI (rendu, scroll, input)
+- `setTimeout(0)` : macrotask → vraie pause + repriorisation du paint + input handlers entre 2 itérations
+
+**Yield au thread UI vital sur mobile** : sur PC, 50 plans à 10ms chacun = 500ms bloquant tolérable. Sur smartphone, le même calcul prend 30-80ms par plan (CPU plus lent + RAM contrainte) → bloque le scroll + freeze visuel → l'user croit l'app crashed → tape l'écran 20 fois → quand le calcul finit enfin, file de 20 events dans Leaflet = vrai crash.
+
+**Sites du projet utilisant ce pattern** :
+- `js/statsGlobales.js > _computeStatsAggregeesProfile` (v1.21.4)
+- `js/profileExportImport.js > computeSectionSizes` (v1.20.0 enrichi — itère les sections IDB pour le grand total export)
+
+Si tu ajoutes un nouveau calcul itératif cross-plan ou cross-store, **toujours suivre le pattern `for...await + setTimeout(0)`**. Ne JAMAIS faire `Promise.all` sur du calcul lourd cross-plan.
+
+#### 63.3 `window.StatsGlobales.renderPieChart` exposé publiquement
+
+Helper SVG natif `_renderPieChart(data, category, size)` (cf §1.21.0 — v1.21.0 historique des stats globales) désormais **exposé via `window.StatsGlobales.renderPieChart`**. Réutilisable dans toute modale qui veut un camembert SVG cohérent avec la palette charte (sans dépendance externe, sans dupliquer la logique d'arc SVG).
+
+**Signature** :
+```js
+window.StatsGlobales.renderPieChart(data, category, size)
+  // data     : { tag1: count1, tag2: count2, ... }  ou null
+  // category : "points" | "roads" | "zones" | "structures"
+  //            (détermine la palette via cycle hash djb2 ou couleur charte)
+  // size     : pixels (défaut 160 desktop, ~120 mobile)
+  // → retourne un HTMLDivElement contenant <svg> + <legend>
+```
+
+**Cas particuliers gérés** :
+- 1 slice → `<circle>` plein (pas d'arc)
+- 0 slice → null retourné (caller doit gérer)
+- Slices > 180° → arc avec flag `large=1`
+
+**Site v1.21.4 utilisant ce helper** : section "📊 Camemberts agrégés cross-plan" dans la modale Profil → 4 pies (pointsByTag / roadsByType / zonesByType / structsByType) construits à partir de `agg.breakdowns.X` post-cross-plan merge.
+
+**Pour étendre** : si une future modale veut un 5e camembert (ex: "tags par niveau M-LVL"), réutiliser le helper directement. NE PAS recopier la logique SVG dans un autre module.
+
+#### 63.4 Pref "Skip plans serveur au démarrage"
+
+`localStorage["myktamap_skip_server_plans_v1"]` (boolean string `"1"` / `"0"` / absent). Helper global `window._loaderSkipServerPlans()` retourne `true/false`. Toggle UI dans la modale ⚙️ Configuration loader (uniquement, pas en map mode).
+
+**Cascade des effets quand `true`** :
+1. **`main.js > initApp`** : skip l'appel `decouvrirPlansServeur()` au boot → le registre ne contient pas les plans serveur, économie de fetch `data/index.json` + N `plan-config.json`
+2. **Home `refreshPlansList`** : le toggle "Afficher les plans serveur" est masqué (`display: none`) ET son state forcé à `false` (filtre l'affichage si le registre contient des plans serveur résiduels d'une session précédente)
+3. **Stats agrégées Profil** : la boucle `for (const p of plans)` skip les `p.type === "server"`
+
+**Use case** : utilisateurs offline-only ou paranoia totale (cf §40) qui ne veulent JAMAIS de fetch automatique au boot. La pref est lue très tôt (avant `decouvrirPlansServeur`), donc aucun fetch parasite même au tout premier boot après activation.
+
+**À NE PAS faire** : lire `_loaderSkipServerPlans()` après `decouvrirPlansServeur` a déjà tourné — c'est trop tard, le registre est rempli. Toujours check AVANT d'appeler la découverte.
+
+#### 63.5 ⚠️ Piège — `PlanRegistry.list()` n'existe pas, utiliser `.getAll()`
+
+Bug v1.21.4-fix : code écrit avec `PlanRegistry.list()` (intuitivement pensé "lister les plans"). **Pas de méthode `list()` dans `planRegistry.js`** — l'API publique est `getAll()` qui retourne l'array des entries.
+
+```js
+// ❌ MAUVAIS — PlanRegistry.list n'existe pas → undefined.forEach() crash
+const plans = window.PlanRegistry.list();  
+plans.forEach(p => ...);
+
+// ✅ BON
+const plans = window.PlanRegistry.getAll();
+plans.forEach(p => ...);
+```
+
+API publique exhaustive de `PlanRegistry` (cf `js/planRegistry.js`) :
+- `init()` / `getAll()` / `findById(id)` / `addOrUpdate(entry)` / `remove(id)`
+- `getLastPlanId()` / `setLastPlanId(id)`
+- `getPerfPreset(id)` / `setPerfPreset(id, preset)`
+- `syncModeFlags(id, flags)` (cf §33.7)
+
+**Aucune méthode `list`**. Si tu cherches "lister les plans" → c'est `getAll()`.
+
+#### 63.6 ⚠️ Piège — IDB stores où la valeur EST le Blob/Handle (pas un wrapper)
+
+Bug v1.21.4-fix : helper `_accStoreBytes(db, storeName, accumulator)` itérait les stores en supposant que chaque valeur est un objet wrapper avec champ `blob` :
+
+```js
+// ❌ MAUVAIS — assume value = {blob: <Blob>}
+cursor.continue(function(c) {
+  const v = c.value;
+  if (v && v.blob instanceof Blob) accumulator.bytes += v.blob.size;
+});
+```
+
+Cela ratait silencieusement 2 stores du projet où la valeur **EST** directement le Blob/Handle :
+
+| DB | Store | Forme `store.put(...)` | Type valeur |
+|---|---|---|---|
+| `myktamap_handles` | `handles` | `store.put(handle, id)` | `FileSystemHandle` (kind="file"\|"directory") |
+| `myktamap_handles` | `blobs` | `store.put(blob, id)` | `Blob` |
+| `myktamap_photos` | `photos` | `store.put({id, blob, mime, ...}, id)` | Wrapper objet `{blob, ...}` |
+| `myktamap_backups` | `backups` | `store.put({id, payload, ...}, id)` | Wrapper objet |
+| `myktamap_profile` | `profile` | `store.put({id, surnom, photoBlob, ...}, id)` | Wrapper objet `{photoBlob, ...}` |
+
+**Pattern correct** : détection à 3 branches :
+
+```js
+function _accStoreBytes(db, storeName, acc) {
+  const tx = db.transaction([storeName], "readonly");
+  const store = tx.objectStore(storeName);
+  store.openCursor().onsuccess = function(e) {
+    const cursor = e.target.result;
+    if (!cursor) return;
+    const v = cursor.value;
+    if (v instanceof Blob) {
+      acc.bytes += v.size;
+    } else if (v && v.kind && (v.kind === "file" || v.kind === "directory")) {
+      acc.bytes += 0;  // FileSystemHandle = pointeur, taille inconnue sans .getFile()
+    } else if (v && typeof v === "object") {
+      // wrapper objet : sommer tous les Blob trouvés (photoBlob, blob, ...)
+      for (const k of Object.keys(v)) {
+        if (v[k] instanceof Blob) acc.bytes += v[k].size;
+      }
+    }
+    cursor.continue();
+  };
+}
+```
+
+**Tout code qui itère un store IDB pour calculer une taille** doit suivre ce pattern triple. Sites du projet impactés (audit en v1.21.4) :
+- `js/statsGlobales.js > _calculerSauvegardeProfile` (fix v1.21.4)
+- `js/profileExportImport.js > computeSectionSizes` (déjà correct car connaissait les stores wrappers spécifiquement)
+- `js/memInspector.js > _collectIndexedDB` (lecture count uniquement, pas concerné par les bytes)
+
+**Si tu ajoutes un nouveau store IDB** : documente sa forme (`store.put(X, id)` où X = quoi) dans le commentaire d'en-tête du module qui ouvre la DB, pour les futurs auditeurs.
+
+#### 63.7 Choix configurable des stats du bandeau accueil
+
+`localStorage["myktamap_loader_bar_stats_v1"]` = `JSON.stringify([key1, key2, key3])` (array de 0-3 keys parmi pool).
+
+**Pool actuel** : `["time", "storage", "plans"]`
+- `time` : temps cumulé sur l'app (cumul `_sessionStartTs` deltas, persisté à part)
+- `storage` : taille totale MyKTAMap (= cf §63.6, calcul ciblé localStorage + IDB)
+- `plans` : nombre de plans dans le registre
+
+**Cap 3 max** : 3 slots dans le bandeau, le 4e item se voit refusé via une `OOMGuard.showToast("info")` "Maximum 3 stats actives".
+
+**Pattern dynamique** (helpers dans `js/userProfile.js` ou similaire) :
+```js
+_getProfileBarStatsKeys()                   // → array
+_setProfileBarStatsKeys(arr)                // valide cap + persist
+_renderProfileBarStatsSlots(container)      // rebuild le DOM dynamiquement
+```
+
+**Modale "Configurer les stats du bandeau"** : ouverte depuis le ⚙️ Détails profil. Checkboxes pool, drag-handles pour réordonner (TODO future si demandé), preview live.
+
+**Pour ajouter une nouvelle stat au pool** :
+1. Ajouter la key dans `POOL_STATS_KEYS` array (ex: `"levels-visited"`)
+2. Implémenter `_computeStatXxx()` (async ou sync) qui retourne `{value: string, label: string, icon: string}`
+3. Ajouter le case dans le switch de `_renderProfileBarStatsSlots`
+4. Ajouter le label dans la modale de config
+
+#### 63.8 Sources de vérité v1.21.4
+
+- `version.json` → `"v1.21.4"`
+- `js/copyright.js > __MKM__.build` → `"v1.21.4"`
+- `sw.js > CACHE_NAME` → `"myktamap-cache-v1.21.4"`
+- **Aucun nouveau fichier**. Modifs internes : `index.html` (modales config bandeau + skip serveur), `js/heatmap.js` (filtre M-LVL), `js/main.js` (hook `_persisterStatsPlanCourant` + skip serveur cascade), `js/statsGlobales.js` (renderPieChart exposé + stats cross-plan séquentielles), `css/style.css` (camemberts cross-plan + chips niveaux Heatmap).
+
+#### 63.9 Confidentialité
+
+**Aucune nouvelle surface réseau, aucune nouvelle permission**. Tout local :
+- localStorage : 3 nouvelles keys (`myktamap_plan_stats_v1_<id>`, `myktamap_loader_bar_stats_v1`, `myktamap_skip_server_plans_v1`)
+- IDB : lecture read-only des stores existants pour le calcul de sauvegarde (pas de nouvelle DB)
+- Aucun fetch réseau ajouté
+- Aucune API navigateur supplémentaire
+
+NETWORK_AUDIT inchangé sur le fond — mise à jour des dates et de la version affichée uniquement.
+
+#### 63.10 À NE PAS faire
+
+- ❌ Faire `Promise.all(plans.map(_compute))` au lieu de `for...await + setTimeout(0)` pour le calcul stats cross-plan — saturera le main thread mobile, crash garanti à 10+ plans
+- ❌ Utiliser `PlanRegistry.list()` — n'existe pas, utiliser `getAll()` (cf §63.5)
+- ❌ Assumer qu'un store IDB stocke toujours `{blob, ...}` — certains stores stockent directement le Blob/Handle (cf §63.6)
+- ❌ Lire `_loaderSkipServerPlans()` après que `decouvrirPlansServeur` ait déjà tourné — toujours check AVANT le boot
+- ❌ Persister les stats du plan courant SYNC (avant `lancerApplication` finit) — les data layers embedded ne sont pas encore fetched → cache pollué avec un résultat partiel. Toujours `setTimeout(_, 800)` après `lancerApplication`
+- ❌ Recopier la logique SVG du camembert dans un autre module — utiliser `window.StatsGlobales.renderPieChart(data, category, size)` qui maintient la cohérence palette
+- ❌ Ajouter une 4e stat au bandeau sans cap de validation — `_setProfileBarStatsKeys` refuse > 3 (sinon overflow visuel + perf au render)
+- ❌ Calculer la sauvegarde via `navigator.storage.estimate()` — retourne TOUTE l'origine (Cache PWA inclus, volatile). Toujours utiliser le calcul ciblé `_accStoreBytes` (cf §63.6)
 
 ---
 
