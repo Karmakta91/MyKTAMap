@@ -174,10 +174,40 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.21.3</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.21.4</strong> (25 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.4 (Release PATCH — Stats plans agrégées + Wake Lock global + skipServer + Heatmap M-LVL filter)</strong> :
+    <strong>AUCUNE nouvelle surface réseau ajoutée</strong>. 7 sujets 100 % locaux, dont
+    <strong>1 bonus côté réseau</strong> (skip d'1 fetch au boot si l'user active la nouvelle pref
+    <code>myktamap_skip_server_plans_v1</code>).
+    (1) Helper <code>_calculerStorageMyktamapBytes</code> (index.html) : itère localStorage prefix
+    <code>MyKTAMap</code> + 6 stores IDB en read-only via cursor, cache 30s en variable JS module-scope
+    (jamais persisté). AUCUN fetch externe, AUCUNE écriture.
+    (2) Helpers <code>_computePlanStatsLive</code> + <code>_persisterStatsPlanCourant</code> :
+    agrégation session + embedded en mémoire, écrit
+    <code>localStorage["myktamap_plan_stats_v1_&lt;id&gt;"]</code> = counts uniquement
+    (jamais de Blob/photo data).
+    (3) Stats agrégées séquentielles (<code>_calculerStatsPlansAggregees</code>) : lecture
+    localStorage uniquement, pas de fetch, anti-crash mobile via yield <code>setTimeout(0)</code>.
+    (4) Camemberts SVG agrégés cross-plan : rendu 100 % canvas/SVG client-side via
+    <code>window.StatsGlobales.renderPieChart</code>. Palette charte hardcodée.
+    (5) <code>PROFILE_BAR_STATS</code> configurable : nouvelle localStorage key
+    <code>myktamap_loader_bar_stats_v1</code> = array de keys, persistance pure locale.
+    (6) <strong>Option « skip plans serveur »</strong> : nouvelle localStorage key
+    <code>myktamap_skip_server_plans_v1</code> = boolean. Si active,
+    <code>main.js &gt; initApp</code> <strong>NE FAIT PLUS</strong>
+    <code>fetch("data/index.json")</code> au boot → <strong>RÉDUIT</strong> la surface réseau
+    (1 fetch en moins par boot). Default OFF (comportement v1.21.3 strict).
+    (7) Filtre M-LVL Heatmap : <code>opts.levels</code> Set&lt;number&gt; consommée en mémoire JS.
+    <strong>3 nouvelles localStorage keys documentées</strong> (toutes strictement locales).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> :
+    <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+    Verdict audit : <strong>✅ aucune régression — bonus : -1 fetch boot si skipServer ON</strong>.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -855,6 +885,31 @@
     </thead>
     <tbody>
       <tr>
+        <td>v1.21.4</td>
+        <td>25/05/2026</td>
+        <td>
+          <strong>Release PATCH — Stats plans agrégées + Wake Lock global + skipServer + Heatmap M-LVL</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission, aucun nouveau fichier</strong>.
+          7 sujets 100 % locaux. <strong>Bonus côté réseau : -1 fetch au boot</strong> si l'user active la
+          pref <code>myktamap_skip_server_plans_v1</code> (skip <code>fetch("data/index.json")</code>
+          conditionnel, default OFF).
+          Sujets audités : (1) <code>_calculerStorageMyktamapBytes</code> (lecture pure localStorage + 6 stores
+          IDB read-only via cursor, cache 30s module-scope), (2) <code>_computePlanStatsLive</code> +
+          <code>_persisterStatsPlanCourant</code> (agrégation in-memory + cache localStorage counts uniquement,
+          pas de Blob/photo), (3) <code>_calculerStatsPlansAggregees</code> (lecture localStorage séquentielle
+          avec yield <code>setTimeout(0)</code> anti-crash mobile), (4) camemberts SVG agrégés cross-plan
+          (rendu canvas/SVG natif via <code>window.StatsGlobales.renderPieChart</code>, palette charte
+          hardcodée), (5) <code>PROFILE_BAR_STATS</code> configurable (nouvelle localStorage key
+          <code>myktamap_loader_bar_stats_v1</code>), (6) option skip plans serveur (nouvelle localStorage
+          key <code>myktamap_skip_server_plans_v1</code>, bonus réseau), (7) filtre M-LVL Heatmap
+          (<code>opts.levels</code> Set&lt;number&gt; mémoire JS).
+          <strong>3 nouvelles localStorage keys documentées</strong>, toutes strictement locales
+          (calcul + agrégation client-side pur).
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — MyKTAMap reste strictement offline-first.
+        </td>
+      </tr>
+      <tr>
         <td>v1.21.3</td>
         <td>25/05/2026</td>
         <td>
@@ -1203,7 +1258,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 24 mai 2026 — v1.16.0 (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 — themeManager.js same-origin, aucune nouvelle whitelist en v1.14.0 — gpxIO.js same-origin, aucune nouvelle whitelist en v1.15.0 — gpxImport.js same-origin + fetch icônes app cached SW, <strong>aucune nouvelle whitelist en v1.16.0</strong> — legendCustomization.js / favoris.js / sessionBackups.js zéro fetch externe, nouvelle DB IDB myktamap_backups strictement locale)<br>
+    Dernière mise à jour : 25 mai 2026 — <strong>v1.21.4</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 → v1.21.3 (cf. tableau historique). <strong>Aucune nouvelle whitelist en v1.21.4</strong> — 7 sujets 100 % locaux + 3 nouvelles localStorage keys toutes strictement locales (calcul/agrégation client-side pur). <strong>Bonus côté réseau v1.21.4</strong> : nouvelle pref <code>myktamap_skip_server_plans_v1</code> qui SUPPRIME le <code>fetch("data/index.json")</code> au boot si activée (-1 fetch par boot, default OFF = comportement v1.21.3 strict). C'est le <strong>premier opt-in qui RÉDUIT la surface réseau</strong> depuis l'introduction de l'audit en v1.8.0.<br>
     © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
   </div>
 
