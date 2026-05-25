@@ -282,7 +282,7 @@
             <span class="kta-loader-profile-stat-icon">⏱️</span>
             <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-time-val">—</span>
           </div>
-          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-storage" title="Taille totale des données MyKTAMap stockées localement (localStorage + IDB)">
+          <div class="kta-loader-profile-stat" id="kta-loader-profile-stat-storage" title="Taille réelle de TES données MyKTAMap stockées localement : localStorage (préférences, sessions, favoris) + IndexedDB (plans mémorisés, photos POI, snapshots, profil, crashes). N'inclut PAS le Cache PWA volatile.">
             <span class="kta-loader-profile-stat-icon">💾</span>
             <span class="kta-loader-profile-stat-val" id="kta-loader-profile-stat-storage-val">—</span>
           </div>
@@ -2280,6 +2280,139 @@
         return (num / (1024 * 1024 * 1024)).toFixed(2) + " GB";
       }
 
+      // 🐛 v1.21.3-fix (KARMA "valeur sauvegarde dans profil varie bizarement") :
+      // L'ancien code utilisait navigator.storage.estimate() qui retourne TOUTE
+      // la consommation de l'origine, y compris le Cache PWA volatile (eviction
+      // LRU v1.21.3 → fluctuation visible). Le tooltip annonçait pourtant
+      // "données MyKTAMap (localStorage + IDB)" → mensonge.
+      //
+      // Fix : calcul ciblé qui scanne uniquement les sources MyKTAMap fiables :
+      //   - localStorage keys prefix "myktamap_" / "kta_" / "app_user_prefs"
+      //   - IDB stores connus (handles/blobs, backups, photos, profile, crashes)
+      //
+      // Cache mémoire 30s pour éviter de recalculer à chaque ouverture du
+      // loader (le scan IDB est rapide mais inutile en re-render).
+      let _storageCalcCache = null;  // { ts: number, bytes: number }
+      const _STORAGE_CACHE_MS = 30000;
+      const _IDB_STORES = [
+        { db: "myktamap_handles", store: "handles", blobFields: [] },
+        { db: "myktamap_handles", store: "blobs",   blobFields: ["blob"] },
+        { db: "myktamap_backups", store: "backups", blobFields: [] },
+        { db: "myktamap_photos",  store: "photos",  blobFields: ["blob"] },
+        { db: "myktamap_profile", store: "profile", blobFields: ["photoBlob"] },
+        { db: "myktamap_crashes", store: "crashes", blobFields: [] }
+      ];
+
+      // Ouvre une DB IDB en lecture seule SANS la créer si absente. Utilise
+      // indexedDB.open(name) sans version → ouvre la version actuelle. Si la
+      // DB n'existe pas, ça la créera vide (overhead trivial accepté, alternative
+      // databases() pas dispo Safari).
+      function _openIdbReadOnly(dbName) {
+        return new Promise(function(resolve) {
+          let upgradeNeeded = false;
+          const req = indexedDB.open(dbName);
+          req.onupgradeneeded = function() { upgradeNeeded = true; };
+          req.onsuccess = function() {
+            const db = req.result;
+            // Si on a déclenché un upgrade = la DB n'existait pas. On la ferme + delete.
+            if (upgradeNeeded) {
+              db.close();
+              try { indexedDB.deleteDatabase(dbName); } catch(e) {}
+              resolve(null);
+              return;
+            }
+            resolve(db);
+          };
+          req.onerror = function() { resolve(null); };
+          req.onblocked = function() { resolve(null); };
+        });
+      }
+
+      // Itère un store IDB et accumule les bytes (Blobs + JSON metadata)
+      function _accStoreBytes(db, storeName, blobFields) {
+        return new Promise(function(resolve) {
+          if (!db.objectStoreNames.contains(storeName)) { resolve(0); return; }
+          let total = 0;
+          try {
+            const tx = db.transaction([storeName], "readonly");
+            const os = tx.objectStore(storeName);
+            const req = os.openCursor();
+            req.onsuccess = function(e) {
+              const cur = e.target.result;
+              if (!cur) { resolve(total); return; }
+              const val = cur.value;
+              if (val) {
+                // Blobs (taille réelle binaire)
+                for (let i = 0; i < blobFields.length; i++) {
+                  const f = blobFields[i];
+                  if (val[f] && typeof val[f].size === "number") {
+                    total += val[f].size;
+                  }
+                }
+                // Reste : approx via JSON.stringify (UTF-16 = ×2). On skip
+                // les champs Blob déjà comptés ci-dessus.
+                try {
+                  const clean = {};
+                  for (const k in val) {
+                    if (blobFields.indexOf(k) >= 0) continue;
+                    clean[k] = val[k];
+                  }
+                  total += JSON.stringify(clean).length * 2;
+                } catch(e) {}
+              }
+              cur.continue();
+            };
+            req.onerror = function() { resolve(total); };
+          } catch(e) { resolve(total); }
+        });
+      }
+
+      async function _calculerStorageMyktamapBytes() {
+        let total = 0;
+        // 1. localStorage MyKTAMap-specific
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (!k) continue;
+            if (k.startsWith("myktamap_") || k.startsWith("kta_") || k === "app_user_prefs") {
+              const v = localStorage.getItem(k) || "";
+              total += (k.length + v.length) * 2; // UTF-16
+            }
+          }
+        } catch(e) {}
+        // 2. IDB stores MyKTAMap (lecture seule, skip si DB absente)
+        const seenDbs = {};
+        for (let i = 0; i < _IDB_STORES.length; i++) {
+          const spec = _IDB_STORES[i];
+          try {
+            let db = seenDbs[spec.db];
+            if (db === undefined) {
+              db = await _openIdbReadOnly(spec.db);
+              seenDbs[spec.db] = db;  // peut être null
+            }
+            if (!db) continue;
+            const bytes = await _accStoreBytes(db, spec.store, spec.blobFields);
+            total += bytes;
+          } catch(e) {}
+        }
+        // 3. Close les DBs ouvertes
+        for (const dbName in seenDbs) {
+          const db = seenDbs[dbName];
+          if (db) { try { db.close(); } catch(e) {} }
+        }
+        return total;
+      }
+
+      async function _getStorageMyktamapCached() {
+        const now = Date.now();
+        if (_storageCalcCache && (now - _storageCalcCache.ts) < _STORAGE_CACHE_MS) {
+          return _storageCalcCache.bytes;
+        }
+        const bytes = await _calculerStorageMyktamapBytes();
+        _storageCalcCache = { ts: now, bytes: bytes };
+        return bytes;
+      }
+
       // Hydrate les 2 stats compactes du bandeau profil
       async function _hydrateProfileBarStats() {
         // Temps : total persisté + delta live depuis dernier tick (si visible)
@@ -2289,28 +2422,18 @@
           const totalMs = _readTotalTimeMs() + liveDelta;
           totalEl.textContent = _formatDuration(totalMs);
         }
-        // Storage : navigator.storage.estimate() (async, gracieux fallback)
+        // Storage : calcul ciblé MyKTAMap (LS + IDB stores connus). Cache 30s
+        // pour éviter recalcul à chaque ouverture du loader.
+        // 🐛 v1.21.3-fix : remplaçait navigator.storage.estimate() qui retournait
+        // toute la consommation de l'origine (y compris Cache PWA volatile).
         const storageEl = document.getElementById("kta-loader-profile-stat-storage-val");
         if (storageEl) {
-          if (navigator.storage && typeof navigator.storage.estimate === "function") {
-            try {
-              const est = await navigator.storage.estimate();
-              if (est && typeof est.usage === "number") {
-                storageEl.textContent = _formatBytesShort(est.usage);
-                return;
-              }
-            } catch(e) {}
-          }
-          // Fallback : approximation via localStorage.length × 2 (UTF-16)
-          let approx = 0;
           try {
-            for (let i = 0; i < localStorage.length; i++) {
-              const k = localStorage.key(i);
-              const v = localStorage.getItem(k);
-              approx += (k || "").length * 2 + (v || "").length * 2;
-            }
-          } catch(e) {}
-          storageEl.textContent = _formatBytesShort(approx) + "+";  // + = approx
+            const bytes = await _getStorageMyktamapCached();
+            storageEl.textContent = _formatBytesShort(bytes);
+          } catch(e) {
+            storageEl.textContent = "—";
+          }
         }
       }
 

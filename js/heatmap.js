@@ -397,11 +397,29 @@
     }
   }
 
+  // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+  // helper qui détermine si un item (point/road/zone/structure) passe le filtre
+  // niveau. `levelSet` est un Set<number> | null (null = pas de filtre).
+  // Gestion spéciale jonctions interniveau : visible si fromLevel OU toLevel
+  // dans le set (cohérent avec le pattern `passeFiltreNiveau` de road.js).
+  function _passeFiltreLevel(item, levelSet) {
+    if (!levelSet) return true;  // null = pas de filtre
+    if (!item) return false;
+    // Jonction interniveau
+    if (item.type === "jonction") {
+      return levelSet.has(item.fromLevel || 0) || levelSet.has(item.toLevel || 0);
+    }
+    // Item standard
+    return levelSet.has(item.level || 0);
+  }
+
   // Helper : itère sur une liste d'items {points:[{x,y}]} ou points uniques {x,y}.
-  function _pushShapesAsSegs(segs, items, closed) {
+  // 🆕 v1.21.3 : 4e arg `levelSet` filtre par niveau (skip items hors set).
+  function _pushShapesAsSegs(segs, items, closed, levelSet) {
     if (!Array.isArray(items)) return;
     items.forEach(function(it) {
       if (!it) return;
+      if (!_passeFiltreLevel(it, levelSet)) return;
       if (Array.isArray(it.points) && it.points.length > 0) {
         _pushPolylineSegs(segs, it.points, !!closed);
       } else if (typeof it.x === "number" && typeof it.y === "number") {
@@ -412,6 +430,10 @@
 
   function _collecterSegments(opts) {
     const segs = [];
+    // 🆕 v1.21.3 : levelSet pour filtrage M-LVL. null = pas de filtre (M-LVL
+    // off OU user n'a pas restreint). Si présent, ne contient QUE les niveaux
+    // cochés par l'user dans la modale heatmap.
+    const levelSet = (opts.levels instanceof Set) ? opts.levels : null;
 
     // 🚶 Tracker timeline — chaîne ordonnée par t. On découpe la timeline
     // en sous-séquences contiguës (= sans recalage / sans gap >5min). À
@@ -421,12 +443,20 @@
     //   - "start" : début d'une session, n'est PAS relié au point précédent.
     //   - "recalage" : téléport (recalage manuel sur point) → coupe la chaîne.
     //   - dt > 5min : pause longue → coupe la chaîne (pas de marche continue).
+    //   - 🆕 v1.21.3 : level pas dans levelSet → skip entry + casse la chaîne
+    //     (équivalent à un saut de niveau, on ne relie pas par un segment).
     if (opts.srcTracker && typeof window.getTrackingTimeline === "function") {
       const timeline = window.getTrackingTimeline() || [];
       const MAX_GAP_MS = 5 * 60 * 1000;  // 5 min
       let prev = null;
       timeline.forEach(function(p) {
         if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+        // Filtre niveau (si actif). Le tracker timeline n'a pas de `type`
+        // jonction, donc on teste directement `p.level`.
+        if (levelSet && !levelSet.has(p.level || 0)) {
+          prev = null;  // casse la chaîne
+          return;
+        }
         const isBreak = (p.type === "start") || (p.type === "recalage")
                         || (prev && typeof p.t === "number" && typeof prev.t === "number"
                             && (p.t - prev.t) > MAX_GAP_MS);
@@ -441,28 +471,28 @@
       });
     }
 
-    // ✏️ Editor points — points isolés (POIs)
+    // ✏️ Editor points — points isolés (POIs). Filtre level par point.
     if (opts.srcEditor && typeof window.getEditorPoints === "function") {
       (window.getEditorPoints() || []).forEach(function(p) {
-        if (typeof p.x === "number" && typeof p.y === "number") {
-          segs.push({ a: { x: p.x, y: p.y }, b: null });
-        }
+        if (typeof p.x !== "number" || typeof p.y !== "number") return;
+        if (!_passeFiltreLevel(p, levelSet)) return;
+        segs.push({ a: { x: p.x, y: p.y }, b: null });
       });
     }
 
     // 🛣️ Tracés session — chaque road est une polyline OUVERTE
     if (opts.srcRoads && typeof window.getRoads === "function") {
-      _pushShapesAsSegs(segs, window.getRoads() || [], false);
+      _pushShapesAsSegs(segs, window.getRoads() || [], false, levelSet);
     }
 
     // ⬛ Zones session — polygones FERMÉS (segment de fermeture last→first)
     if (opts.srcZones && typeof window.getZones === "function") {
-      _pushShapesAsSegs(segs, window.getZones() || [], true);
+      _pushShapesAsSegs(segs, window.getZones() || [], true, levelSet);
     }
 
     // 🏛️ Structures — mix : piliers (point unique), murs/fronts (polylines)
     if (opts.srcStructures && typeof window.getStructures === "function") {
-      _pushShapesAsSegs(segs, window.getStructures() || [], false);
+      _pushShapesAsSegs(segs, window.getStructures() || [], false, levelSet);
     }
 
     // 📊 Data layers — 4 sous-types filtrables INDÉPENDAMMENT (KARMA "rajoute
@@ -487,21 +517,25 @@
     // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
     // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
     // L.marker (cf. utils.js), pas un objet layerId → markers.
+    // 🆕 v1.21.3 : filtre niveau via marker._ktaLevel (cf utils.js > ajouterPointsDepuisJSON).
     if (_dlP && Array.isArray(window._ktaDataMarkers)) {
       const pc = window.PLAN_CONFIG;
       const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
       window._ktaDataMarkers.forEach(function(m) {
         if (m && typeof m.getLatLng === "function") {
+          if (levelSet && !levelSet.has(m._ktaLevel || 0)) return;
           const ll = m.getLatLng();
           if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
         }
       });
     }
     // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
+    // 🆕 v1.21.3 : entry.level (cf utils.js) + jonctions (entry.fromLevel/toLevel)
     if (_dlR && Array.isArray(window._ktaDataPolylines)) {
       window._ktaDataPolylines.forEach(function(entry) {
         // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
         if (!entry || !Array.isArray(entry.points)) return;
+        if (!_passeFiltreLevel(entry, levelSet)) return;
         _pushPolylineSegs(segs, entry.points, false);
       });
     }
@@ -509,6 +543,7 @@
     if (_dlZ && Array.isArray(window._ktaDataPolygons)) {
       window._ktaDataPolygons.forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
+        if (!_passeFiltreLevel(entry, levelSet)) return;
         _pushPolylineSegs(segs, entry.points, true);
       });
     }
@@ -518,6 +553,7 @@
     if (_dlS && Array.isArray(window._ktaDataStructurePolygons)) {
       window._ktaDataStructurePolygons.forEach(function(entry) {
         if (!entry || !Array.isArray(entry.points)) return;
+        if (!_passeFiltreLevel(entry, levelSet)) return;
         const isPolyline = (entry.type === "front-1" || entry.type === "front-2");
         _pushPolylineSegs(segs, entry.points, !isPolyline);
       });
@@ -664,6 +700,32 @@
     const srcDataZones      = (o.srcDataZones      !== undefined) ? o.srcDataZones      : (_legacyDL || dlZones.n     > 0);
     const srcDataStructures = (o.srcDataStructures !== undefined) ? o.srcDataStructures : (_legacyDL || dlStructs.n   > 0);
 
+    // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+    // détection M-LVL + construction de la liste des niveaux disponibles.
+    // - `availableLevels` : tous les niveaux du plan (cf APP_CONFIG, default [-2..2])
+    // - `visibleLevels`   : niveaux actuellement visibles sur la carte (modale Niveaux)
+    // - Default des checkboxes : niveaux visibles courants (si dispo dans _lastOpts,
+    //   on les reprend pour conserver le choix de l'user entre 2 ouvertures).
+    const _isMultiLevel = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    let _availableLevels = [];
+    let _defaultLevelsSet = null;
+    if (_isMultiLevel) {
+      _availableLevels = Array.isArray(window.APP_CONFIG.availableLevels)
+                         ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
+                         : [-2, -1, 0, 1, 2];
+      const _visibleLevels = Array.isArray(window.APP_CONFIG.visibleLevels)
+                             ? window.APP_CONFIG.visibleLevels
+                             : [0];
+      // Reprend les niveaux cochés au précédent run si présents, sinon visibles courants
+      if (o.levels instanceof Set) {
+        _defaultLevelsSet = o.levels;
+      } else if (Array.isArray(o.levels)) {
+        _defaultLevelsSet = new Set(o.levels);
+      } else {
+        _defaultLevelsSet = new Set(_visibleLevels);
+      }
+    }
+
     const modal = document.createElement("div");
     modal.id = "kta-heatmap-modal";
     modal.className = "kta-readme-modal-overlay";
@@ -738,6 +800,32 @@
             '</label>' +
           '</div>' +
 
+          // 🆕 v1.21.3 (KARMA "rajoute le filtre par LVL dans Heatmap si M-LVL actif") :
+          // section "Niveaux" rendue UNIQUEMENT si multiLevel actif. Cases
+          // pré-cochées sur les niveaux actuellement visibles (cohérent avec
+          // la modale "Niveaux" globale de l'app).
+          (_isMultiLevel ?
+            '<div class="kta-heatmap-section">' +
+              '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
+                '<span>🏗️ Niveaux à inclure</span>' +
+                '<button type="button" id="kta-hm-lvl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="Tout cocher / décocher les niveaux">⇅ Tout</button>' +
+              '</div>' +
+              '<div class="kta-heatmap-levels-row" style="display:flex; flex-wrap:wrap; gap:6px 10px; padding:4px 0;">' +
+                _availableLevels.map(function(lvl) {
+                  const isChecked = _defaultLevelsSet && _defaultLevelsSet.has(lvl);
+                  const lblTxt = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+                  return '<label class="kta-heatmap-level-chip" style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; background:rgba(244,197,66,0.06); border:1px solid rgba(244,197,66,0.20); border-radius:14px; cursor:pointer; font-size:12px;">' +
+                           '<input type="checkbox" data-level="' + lvl + '" class="kta-hm-lvl-cb"' + (isChecked ? " checked" : "") + '>' +
+                           '<span>Niv ' + lblTxt + '</span>' +
+                         '</label>';
+                }).join("") +
+              '</div>' +
+              '<p style="font-size:11px; color:#8892a4; font-style:italic; margin:6px 0 0; line-height:1.4;">' +
+                'Filtre cumulé avec les sources ci-dessus. Une jonction interniveau est incluse si AU MOINS un de ses 2 niveaux est coché.' +
+              '</p>' +
+            '</div>'
+            : '') +
+
           '<div class="kta-heatmap-section">' +
             '<div class="kta-heatmap-section-titre">🎨 Paramètres visuels</div>' +
             '<div class="kta-heatmap-slider-row">' +
@@ -796,6 +884,18 @@
       });
     }
 
+    // 🆕 v1.21.3 : bouton "⇅ Tout" toggle des niveaux (M-LVL). Même pattern
+    // que le toggle data layers ci-dessus.
+    const _lvlAllBtn = document.getElementById("kta-hm-lvl-toggleall");
+    if (_lvlAllBtn) {
+      _lvlAllBtn.addEventListener("click", function() {
+        const cbs = Array.from(document.querySelectorAll(".kta-hm-lvl-cb"));
+        if (cbs.length === 0) return;
+        const anyChecked = cbs.some(function(el) { return el.checked; });
+        cbs.forEach(function(el) { el.checked = !anyChecked; });
+      });
+    }
+
     document.getElementById("kta-hm-appliquer").addEventListener("click", function() {
       // 🆕 v1.21.2 : sources session (roads/zones/structures) + 4 sous-flags
       // data layer indépendants (points/tracés/zones/structures). Les .checked
@@ -814,6 +914,19 @@
         radius:            parseInt(rEl.value, 10),
         intensity:         parseFloat(iEl.value)
       };
+      // 🆕 v1.21.3 : si M-LVL actif, lit les checkboxes niveau et construit
+      // un Set passé au collecteur. Si l'user a tout décoché, on envoie un
+      // Set vide → aucun niveau → heatmap vide (toast warning naturel).
+      if (_isMultiLevel) {
+        const lvlSet = new Set();
+        document.querySelectorAll(".kta-hm-lvl-cb").forEach(function(cb) {
+          if (cb.checked) {
+            const lvl = parseInt(cb.dataset.level, 10);
+            if (!isNaN(lvl)) lvlSet.add(lvl);
+          }
+        });
+        opts.levels = lvlSet;
+      }
       afficher(opts);
       _close();
     });
