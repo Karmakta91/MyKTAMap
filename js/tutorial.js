@@ -189,7 +189,7 @@
       emoji: "📍",
       titre: "Points d'intérêt (POI)",
       texte:
-        "<p><strong>Sidebar droite → ✏️ Édition → 📍 Ajouter un point</strong></p>" +
+        "<p><strong>Sidebar droite → ✏️ Édition → ✏️ Ajouter un point</strong></p>" +
         "<p>Clique sur la carte pour placer un marker. Une modale s'ouvre avec :</p>" +
         "<ul>" +
           "<li><strong>Nom</strong> (= identifiant unique, sert aux exports et au pathfinder)</li>" +
