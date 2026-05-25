@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.21.3` (25/05/2026) — PATCH anti-crash (audit P0 mobile)
-**📦 Précédentes shipped main** : `v1.21.1` ; v1.21.2 = pack consolidé Karma_dev (jamais shipped seule, intégrée dans v1.21.3)
+**📦 Version courante** : `v1.21.4` (25/05/2026) — PATCH « Profil enrichi + Heatmap M-LVL + Stats cross-plan »
+**📦 Précédentes shipped main** : `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
