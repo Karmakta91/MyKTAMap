@@ -3068,6 +3068,66 @@
         _calculerStatsPlansAggregees();
       }
 
+      // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+      // helper de calcul "stats complètes d'un plan" qui agrège session
+      // (localStorage) + data layers embedded (registries en mémoire).
+      // À utiliser pour le plan COURANT (chargé) — il a besoin que les
+      // registries _ktaDataMarkers/Polylines/Polygons/StructurePolygons soient
+      // peuplés (= via utils.js > ajouterPointsDepuisJSON). Pour les autres
+      // plans, on lit le CACHE localStorage `myktamap_plan_stats_v1_<id>`
+      // qui a été persisté par _persisterStatsPlanCourant au dernier load.
+      //
+      // Format cache : { pois, roads, distPx, nbPolys, ts, source: "live" }
+      //   - pois    : count des points (session + embedded)
+      //   - roads   : count des roads (session + embedded)
+      //   - distPx  : longueur totale des roads en pixels (= unité plan)
+      //   - ts      : timestamp du calcul (pour invalidation future si besoin)
+      function _sumRoadsDistPx(roads) {
+        if (!Array.isArray(roads)) return 0;
+        let total = 0;
+        roads.forEach(function(r) {
+          if (!r || !Array.isArray(r.points)) return;
+          for (let k = 1; k < r.points.length; k++) {
+            const a = r.points[k - 1], b = r.points[k];
+            if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
+            const dx = b.x - a.x, dy = b.y - a.y;
+            total += Math.sqrt(dx * dx + dy * dy);
+          }
+        });
+        return total;
+      }
+
+      function _computePlanStatsLive() {
+        // Agrège session (getters) + embedded (registries en mémoire).
+        // Le plan COURANT a tout ce qu'il faut chargé.
+        const editorPts   = (typeof window.getEditorPoints === "function") ? (window.getEditorPoints() || []) : [];
+        const embedPts    = (typeof window.getAllEmbeddedPoints === "function") ? (window.getAllEmbeddedPoints() || []) : [];
+        const sessRoads   = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+        const embedRoads  = (typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : [];
+        return {
+          pois:   editorPts.length + embedPts.length,
+          roads:  sessRoads.length + embedRoads.length,
+          distPx: _sumRoadsDistPx(sessRoads) + _sumRoadsDistPx(embedRoads),
+          ts:     Date.now(),
+          source: "live"
+        };
+      }
+
+      // Persiste les stats COMPLÈTES du plan courant dans localStorage.
+      // Appelé depuis main.js après lancerApplication terminé (defer 800ms
+      // pour laisser le temps aux data layers async de finir leur ajout via
+      // rAF batch — cf utils.js > ajouterPointsDepuisJSON BATCH=50).
+      window._persisterStatsPlanCourant = function() {
+        const planId = window._currentLoadedPlanId;
+        if (!planId) return;
+        try {
+          const stats = _computePlanStatsLive();
+          localStorage.setItem("myktamap_plan_stats_v1_" + planId, JSON.stringify(stats));
+        } catch(e) {
+          console.warn("[ProfileStats] Persist plan stats échec :", e);
+        }
+      };
+
       // 🆕 v1.21.3 — Calcul SÉQUENTIEL plan par plan des stats agrégées.
       // Itère le PlanRegistry, pour chaque plan lit son slot localStorage
       // `myktamap_session_v1_<planId>` (lecture instantanée), compte
@@ -3104,27 +3164,11 @@
 
         // Totaux cumulés (mis à jour à chaque plan)
         let totalPois = 0, totalRoads = 0, totalDistPx = 0;
-        let nbAvecSession = 0;
+        let nbAvecData = 0, nbPartial = 0;
         // Scale du plan COURANT (si chargé + calibré) pour conversion m/km
         const _currentId = window._currentLoadedPlanId || null;
         const _currentScale = (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number" && window.APP_CONFIG.scale > 0)
                               ? window.APP_CONFIG.scale : null;
-
-        // Helper : compute distance px d'un set de roads
-        function _sumRoadsDistPx(roads) {
-          if (!Array.isArray(roads)) return 0;
-          let total = 0;
-          roads.forEach(function(r) {
-            if (!r || !Array.isArray(r.points)) return;
-            for (let k = 1; k < r.points.length; k++) {
-              const a = r.points[k - 1], b = r.points[k];
-              if (!a || !b || typeof a.x !== "number" || typeof b.x !== "number") continue;
-              const dx = b.x - a.x, dy = b.y - a.y;
-              total += Math.sqrt(dx * dx + dy * dy);
-            }
-          });
-          return total;
-        }
 
         // Format distance pour une row (m/km si scale dispo, sinon px)
         function _fmtDist(distPx, isCurrent) {
@@ -3135,6 +3179,51 @@
           // Pixels avec formatage compact
           if (distPx < 1000) return Math.round(distPx) + " px";
           return (distPx / 1000).toFixed(1) + "k px";
+        }
+
+        // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+        // 3 sources de stats avec fallback en cascade par plan :
+        //   1. Plan COURANT → calcul live via _computePlanStatsLive (registries
+        //      en mémoire = session + data layers embedded chargés)
+        //   2. Plan déjà ouvert au moins une fois → cache localStorage
+        //      "myktamap_plan_stats_v1_<id>" (rempli par _persisterStatsPlanCourant
+        //      dans main.js après lancerApplication)
+        //   3. Plan jamais ouvert → fallback session-only via localStorage
+        //      "myktamap_session_v1_<id>" + marqueur "⚠️" partiel (data layers
+        //      manquants — il faut ouvrir le plan pour avoir le total complet)
+        function _resoudreStatsPlan(plan) {
+          // Cas 1 : plan courant → live
+          if (plan.id === _currentId) {
+            const live = _computePlanStatsLive();
+            return { pois: live.pois, roads: live.roads, distPx: live.distPx, source: "live" };
+          }
+          // Cas 2 : cache localStorage
+          try {
+            const raw = localStorage.getItem("myktamap_plan_stats_v1_" + plan.id);
+            if (raw) {
+              const cached = JSON.parse(raw);
+              if (cached && typeof cached.pois === "number") {
+                return {
+                  pois:   cached.pois || 0,
+                  roads:  cached.roads || 0,
+                  distPx: cached.distPx || 0,
+                  source: "cache"
+                };
+              }
+            }
+          } catch(e) {}
+          // Cas 3 : fallback session-only (partial)
+          let pois = 0, roads = 0, distPx = 0;
+          try {
+            const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
+            if (raw) {
+              const data = JSON.parse(raw);
+              pois  = Array.isArray(data.editorPoints) ? data.editorPoints.length : 0;
+              roads = Array.isArray(data.roads)         ? data.roads.length         : 0;
+              distPx = _sumRoadsDistPx(data.roads);
+            }
+          } catch(e) {}
+          return { pois: pois, roads: roads, distPx: distPx, source: "session-only" };
         }
 
         // ════════ ITÉRATION SÉQUENTIELLE ANTI-CRASH ════════
@@ -3151,20 +3240,13 @@
             headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— calcul ' + (i + 1) + '/' + plans.length + '…</span>';
           }
 
-          // Lecture session localStorage (instantané, pas d'IO async)
-          let pois = 0, roads = 0, distPx = 0;
-          try {
-            const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
-            if (raw) {
-              const data = JSON.parse(raw);
-              pois  = Array.isArray(data.editorPoints) ? data.editorPoints.length : 0;
-              roads = Array.isArray(data.roads)         ? data.roads.length         : 0;
-              distPx = _sumRoadsDistPx(data.roads);
-              if (pois > 0 || roads > 0) nbAvecSession++;
-            }
-          } catch(e) {
-            // payload corrompu → skip silencieusement
-          }
+          const stats = _resoudreStatsPlan(plan);
+          const pois  = stats.pois;
+          const roads = stats.roads;
+          const distPx = stats.distPx;
+          const isPartial = (stats.source === "session-only");
+          if (pois > 0 || roads > 0) nbAvecData++;
+          if (isPartial)            nbPartial++;
 
           totalPois  += pois;
           totalRoads += roads;
@@ -3175,20 +3257,24 @@
           const planName  = plan.name || plan.id;
           const safeLabel = String(planName).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
           const versionTag = plan.version ? ' <span class="kta-pps-version">' + String(plan.version).replace(/&/g, "&amp;").replace(/</g, "&lt;") + '</span>' : '';
-          const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé">●</span>' : '';
+          const currentTag = isCurrent ? ' <span class="kta-pps-current" title="Plan actuellement chargé (stats live + data layers)">●</span>' : '';
+          // 🆕 v1.21.3 : marqueur ⚠️ si stats partielles (session-only, data
+          // layers absents car plan jamais ouvert dans cette release)
+          const partialTag = isPartial ? ' <span class="kta-pps-partial" title="⚠️ Stats partielles : session uniquement (les data layers embedded ne sont pas inclus). Ouvre ce plan une fois pour avoir les stats complètes en cache.">⚠️</span>' : '';
           const row = document.createElement("tr");
-          row.className = isCurrent ? "kta-pps-row-current" : "";
+          row.className = isCurrent ? "kta-pps-row-current" : (isPartial ? "kta-pps-row-partial" : "");
           row.innerHTML =
-            '<td class="kta-pps-name">' + safeLabel + versionTag + currentTag + '</td>' +
+            '<td class="kta-pps-name">' + safeLabel + versionTag + currentTag + partialTag + '</td>' +
             '<td class="kta-pps-num">' + pois + '</td>' +
             '<td class="kta-pps-num">' + roads + '</td>' +
             '<td class="kta-pps-num">' + _fmtDist(distPx, isCurrent) + '</td>';
           tbodyEl.appendChild(row);
 
           // Mise à jour live du footer (totaux cumulés)
+          const partialSuffix = nbPartial > 0 ? ', <span style="color:#f4c542;">' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + '</span>' : '';
           tfootEl.innerHTML =
             '<tr>' +
-              '<th>Total (' + nbAvecSession + ' plan' + (nbAvecSession > 1 ? "s" : "") + ' avec session)</th>' +
+              '<th>Total (' + nbAvecData + ' avec données' + partialSuffix + ')</th>' +
               '<th class="kta-pps-num">' + totalPois + '</th>' +
               '<th class="kta-pps-num">' + totalRoads + '</th>' +
               '<th class="kta-pps-num">' +
@@ -3201,7 +3287,10 @@
 
         // Header final (calcul terminé)
         if (headerEl) {
-          headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— ' + plans.length + ' plan' + (plans.length > 1 ? "s" : "") + '</span>';
+          const partialNote = nbPartial > 0
+            ? ' <span style="color:#f4c542; font-size:11px;">(' + nbPartial + ' ⚠️ partiel' + (nbPartial > 1 ? "s" : "") + ' — ouvre une fois pour stats complètes)</span>'
+            : '';
+          headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— ' + plans.length + ' plan' + (plans.length > 1 ? "s" : "") + '</span>' + partialNote;
         }
       }
 

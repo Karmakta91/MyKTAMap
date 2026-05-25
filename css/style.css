@@ -16992,6 +16992,18 @@ html.kta-theme-light .kta-profile-barstats-cb:hover {
 .kta-profile-plansstats-table .kta-pps-row-current {
   background: rgba(108, 226, 138, 0.06);
 }
+/* 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+   marqueur "partial" — plan jamais ouvert dans cette release, on n'a
+   accès qu'aux stats de session (data layers embedded manquants). */
+.kta-pps-partial {
+  color: #f4c542;
+  font-size: 11px;
+  margin-left: 4px;
+  cursor: help;
+}
+.kta-profile-plansstats-table .kta-pps-row-partial {
+  background: rgba(244, 197, 66, 0.04);
+}
 .kta-profile-plansstats-table tfoot th {
   background: rgba(244, 197, 66, 0.04);
   color: #f4c542;

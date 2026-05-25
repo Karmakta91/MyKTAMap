@@ -423,6 +423,20 @@ async function lancerApplication() {
   }
 
   console.log("[Main] Application lancée");
+
+  // 🆕 v1.21.3 (KARMA "les stat de plan ne comprenne que les session") :
+  // persiste les stats COMPLÈTES du plan courant (session + embedded data
+  // layers) dans localStorage pour que la modale Profil > "📊 Mes plans"
+  // affiche les chiffres réels même pour les plans non chargés. Defer 800ms
+  // pour laisser les data layers async (rAF batch dans utils.js) finir leur
+  // ajout aux registries _ktaDataMarkers/Polylines/Polygons/Structure.
+  if (typeof window._persisterStatsPlanCourant === "function") {
+    setTimeout(function() {
+      try { window._persisterStatsPlanCourant(); } catch(e) {
+        console.warn("[Main] _persisterStatsPlanCourant échec :", e);
+      }
+    }, 800);
+  }
   } finally {
     _appEnCours = false;
     // 🌀 v152 : ferme l'overlay de chargement plein écran (lancé par
