@@ -309,6 +309,17 @@
           pointB: { x: pB_plan.x, y: pB_plan.y, lat: pB_gps.lat, lng: pB_gps.lng }
         }
       },
+      // 🆕 v1.21.0-fix5 (symétrique kmzImport) : section `tracking` centrée
+      // sur le plan (W/2 × H/2) au lieu de défaut 0/0 qui place le tracker
+      // au coin haut-gauche. Cohérent avec createConf.js > _genererZip.
+      tracking: {
+        startX:        Math.round(finalW / 2),
+        startY:        Math.round(finalH / 2),
+        scale:         50,
+        stepLength:    0.75,
+        stepThreshold: 1.2,
+        stepCooldown:  280
+      },
       icons: {
         default: "icon/iconetrack.png",
         track:   "icon/iconetrack.png"
@@ -369,7 +380,11 @@
       planConfig.dataLayers.push({
         id:      "imported",
         label:   "Annotations importées (GPX)",
-        file:    "imported.json",
+        // 🐛 v1.21.0-fix5 (symétrique kmzImport) : file = "data/imported.json"
+        // pour matcher la clé d'enregistrement de l'asset (sinon resolution
+        // RUNTIME_ASSETS échoue silencieusement → fetch URL relative → 404
+        // → roads jamais chargées → Pathfinder ne voit aucun réseau).
+        file:    "data/imported.json",
         visible: true
       });
       const payload = {

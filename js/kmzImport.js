@@ -588,6 +588,20 @@
         imageHeight: finalH,
         baseImage: baseFilename
       },
+      // 🆕 v1.21.0-fix5 (KARMA : "l'icone du tracker est toujours perdu et
+      // commence en 0, 0 (pas 50% comme en générateur habituel)") : ajout
+      // d'une section `tracking` avec startX/startY centrés sur le plan,
+      // cohérent avec createConf.js > _genererZip qui met W/2 × H/2 quand
+      // pl_startX / pl_startY ne sont pas saisis. Sans ça, le tracker
+      // démarre à (0, 0) = coin haut-gauche du plan, désorientant.
+      tracking: {
+        startX:        Math.round(finalW / 2),
+        startY:        Math.round(finalH / 2),
+        scale:         50,    // default raisonnable px/m (modifiable Réglages)
+        stepLength:    0.75,  // default raisonnable taille d'un pas (m)
+        stepThreshold: 1.2,
+        stepCooldown:  280
+      },
       icons: {
         default: "icon/iconetrack.png",
         track:   "icon/iconetrack.png"
@@ -707,7 +721,18 @@
       planConfig.dataLayers.push({
         id: "imported",
         label: "Annotations importées (KMZ)",
-        file: "imported.json",
+        // 🐛 v1.21.0-fix5 (KARMA : "bug en reimport KMZ, les tracés bien que
+        // visible ne sont plus pris en compte par itinéraire") : avant on
+        // mettait `file: "imported.json"` (sans préfixe data/). Au load, la
+        // résolution `getRuntimeAssetUrl("imported.json")` échouait silencieux
+        // car l'asset est enregistré sous `data/imported.json`. Le fetch
+        // tentait alors l'URL relative `"imported.json"` → 404 → roads jamais
+        // chargées en runtime → Pathfinder ne voit aucun réseau → "Aucune
+        // route disponible". Les markers étaient visibles car le fetch des
+        // POIs est tolérant aux 404 partiels (chaque point indépendant).
+        // Pattern aligné sur createConf.js > _genererZip > dataLayers.push
+        // qui utilise `"data/" + fileName`.
+        file: "data/imported.json",
         visible: true
       });
 
