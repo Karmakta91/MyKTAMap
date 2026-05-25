@@ -435,53 +435,62 @@
       _pushShapesAsSegs(segs, window.getStructures() || [], false);
     }
 
-    // 📊 Data layers — TOUT le contenu des calques de données :
-    // points (markers) + tracés (polylines) + zones (polygons) + structures
-    // (polygones piliers/murs OU polylines fronts). Les 4 registres sont
+    // 📊 Data layers — 4 sous-types filtrables INDÉPENDAMMENT (KARMA "rajoute
+    // la possibilité de filter les calque de donnée"). Les 4 registres sont
     // peuplés AU CHARGEMENT du layer dans utils.js > ajouterPointsDepuisJSON,
     // indépendamment du toggle de visibilité — donc inclus même si le data
-    // layer est actuellement masqué (KARMA "il faut que heatmap voit aussi
-    // les tracé en datalayer visible ou non").
-    if (opts.srcDataLayers) {
-      // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
-      // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
-      // L.marker (cf. utils.js), pas un objet layerId → markers.
-      if (Array.isArray(window._ktaDataMarkers)) {
-        const pc = window.PLAN_CONFIG;
-        const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
-        window._ktaDataMarkers.forEach(function(m) {
-          if (m && typeof m.getLatLng === "function") {
-            const ll = m.getLatLng();
-            if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
-          }
-        });
-      }
-      // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
-      if (Array.isArray(window._ktaDataPolylines)) {
-        window._ktaDataPolylines.forEach(function(entry) {
-          // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
-          if (!entry || !Array.isArray(entry.points)) return;
-          _pushPolylineSegs(segs, entry.points, false);
-        });
-      }
-      // ⬛ Zones data layer (polygones FERMÉS)
-      if (Array.isArray(window._ktaDataPolygons)) {
-        window._ktaDataPolygons.forEach(function(entry) {
-          if (!entry || !Array.isArray(entry.points)) return;
-          _pushPolylineSegs(segs, entry.points, true);
-        });
-      }
-      // 🏛️ Structures data layer : mix polylines (front-1/2) + polygones
-      // (pilier-1/2/mur). Détection via type — cf STRUCTURE_STYLES_DATA
-      // utils.js > .isPolyline. Si type inconnu, on traite en polygon fermé
-      // (comportement majoritaire pour les structures historiques).
-      if (Array.isArray(window._ktaDataStructurePolygons)) {
-        window._ktaDataStructurePolygons.forEach(function(entry) {
-          if (!entry || !Array.isArray(entry.points)) return;
-          const isPolyline = (entry.type === "front-1" || entry.type === "front-2");
-          _pushPolylineSegs(segs, entry.points, !isPolyline);
-        });
-      }
+    // layer est actuellement masqué ("visible ou non").
+    //
+    // Rétrocompat : l'ancien `opts.srcDataLayers` (1 master toggle) est encore
+    // accepté → seed les 4 sous-flags à `true` si non explicitement set. Permet
+    // aux _lastOpts d'avant v1.21.2-dl-filter de continuer à fonctionner.
+    const _legacyDL = (opts.srcDataLayers === true)
+                      && (opts.srcDataPoints     === undefined)
+                      && (opts.srcDataRoads      === undefined)
+                      && (opts.srcDataZones      === undefined)
+                      && (opts.srcDataStructures === undefined);
+    const _dlP = _legacyDL ? true : !!opts.srcDataPoints;
+    const _dlR = _legacyDL ? true : !!opts.srcDataRoads;
+    const _dlZ = _legacyDL ? true : !!opts.srcDataZones;
+    const _dlS = _legacyDL ? true : !!opts.srcDataStructures;
+
+    // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
+    // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
+    // L.marker (cf. utils.js), pas un objet layerId → markers.
+    if (_dlP && Array.isArray(window._ktaDataMarkers)) {
+      const pc = window.PLAN_CONFIG;
+      const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+      window._ktaDataMarkers.forEach(function(m) {
+        if (m && typeof m.getLatLng === "function") {
+          const ll = m.getLatLng();
+          if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
+        }
+      });
+    }
+    // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
+    if (_dlR && Array.isArray(window._ktaDataPolylines)) {
+      window._ktaDataPolylines.forEach(function(entry) {
+        // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
+        if (!entry || !Array.isArray(entry.points)) return;
+        _pushPolylineSegs(segs, entry.points, false);
+      });
+    }
+    // ⬛ Zones data layer (polygones FERMÉS)
+    if (_dlZ && Array.isArray(window._ktaDataPolygons)) {
+      window._ktaDataPolygons.forEach(function(entry) {
+        if (!entry || !Array.isArray(entry.points)) return;
+        _pushPolylineSegs(segs, entry.points, true);
+      });
+    }
+    // 🏛️ Structures data layer : mix polylines (front-1/2) + polygones
+    // (pilier-1/2/mur). Détection via type — cf STRUCTURE_STYLES_DATA
+    // utils.js > .isPolyline.
+    if (_dlS && Array.isArray(window._ktaDataStructurePolygons)) {
+      window._ktaDataStructurePolygons.forEach(function(entry) {
+        if (!entry || !Array.isArray(entry.points)) return;
+        const isPolyline = (entry.type === "front-1" || entry.type === "front-2");
+        _pushPolylineSegs(segs, entry.points, !isPolyline);
+      });
     }
 
     return segs;
@@ -565,10 +574,10 @@
     // (cf. utils.js). Avant : Object.keys + index → NaN car .length sur un
     // marker unique.
     const nDataMarkers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
-    // 🆕 v1.21.2 (KARMA "il faut que heatmap voit aussi les tracé en datalayer
-    // visible ou non") : compte aussi les tracés/zones/structures embarqués.
-    // _ktaDataPolylines peut contenir des "circleMarker d'extrémité jonction"
-    // sans `.points` → on les exclut du compte vertices.
+    // 🆕 v1.21.2 (KARMA "rajoute la possibilité de filter les calque de donnée") :
+    // 4 compteurs séparés pour cocher/décocher indépendamment points / tracés /
+    // zones / structures côté data layer. _ktaDataPolylines peut contenir
+    // des "circleMarker d'extrémité jonction" sans `.points` → on les exclut.
     function _countDataLayerEntries(arr) {
       if (!Array.isArray(arr)) return { n: 0, pts: 0 };
       let n = 0, pts = 0;
@@ -582,9 +591,6 @@
     const dlRoads   = _countDataLayerEntries(window._ktaDataPolylines);
     const dlZones   = _countDataLayerEntries(window._ktaDataPolygons);
     const dlStructs = _countDataLayerEntries(window._ktaDataStructurePolygons);
-    // Total "calques de données" = points (markers) + traces (roads+zones+structs)
-    const nDataLayers = nDataMarkers + dlRoads.n + dlZones.n + dlStructs.n;
-    const nDataLayersPts = nDataMarkers + dlRoads.pts + dlZones.pts + dlStructs.pts;
 
     // Default values (reprend les opts précédentes si dispo)
     const o = _lastOpts || {};
@@ -595,7 +601,17 @@
     const srcRoads       = (o.srcRoads       !== undefined) ? o.srcRoads       : (nRoads   > 0);
     const srcZones       = (o.srcZones       !== undefined) ? o.srcZones       : (nZones   > 0);
     const srcStructures  = (o.srcStructures  !== undefined) ? o.srcStructures  : (nStruct  > 0);
-    const srcDataLayers  = (o.srcDataLayers  !== undefined) ? o.srcDataLayers  : (nDataLayers > 0);
+    // 4 sous-flags data layer. Rétrocompat : si _lastOpts a l'ancien
+    // srcDataLayers=true (1 master), seed les 4 à true.
+    const _legacyDL = (o.srcDataLayers === true)
+                      && (o.srcDataPoints     === undefined)
+                      && (o.srcDataRoads      === undefined)
+                      && (o.srcDataZones      === undefined)
+                      && (o.srcDataStructures === undefined);
+    const srcDataPoints     = (o.srcDataPoints     !== undefined) ? o.srcDataPoints     : (_legacyDL || nDataMarkers  > 0);
+    const srcDataRoads      = (o.srcDataRoads      !== undefined) ? o.srcDataRoads      : (_legacyDL || dlRoads.n     > 0);
+    const srcDataZones      = (o.srcDataZones      !== undefined) ? o.srcDataZones      : (_legacyDL || dlZones.n     > 0);
+    const srcDataStructures = (o.srcDataStructures !== undefined) ? o.srcDataStructures : (_legacyDL || dlStructs.n   > 0);
 
     const modal = document.createElement("div");
     modal.id = "kta-heatmap-modal";
@@ -616,7 +632,7 @@
           '</p>' +
 
           '<div class="kta-heatmap-section">' +
-            '<div class="kta-heatmap-section-titre">📦 Sources à inclure</div>' +
+            '<div class="kta-heatmap-section-titre">🗺️ Session courante</div>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-tracker"' + (srcTracker && nTracker > 0 ? " checked" : "") + (nTracker === 0 ? " disabled" : "") + '>' +
               '<span>🚶 Tracker (timeline)</span>' +
@@ -624,33 +640,50 @@
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-editor"' + (srcEditor && nEditor > 0 ? " checked" : "") + (nEditor === 0 ? " disabled" : "") + '>' +
-              '<span>✏️ Points ajoutés (session)</span>' +
+              '<span>✏️ Points ajoutés</span>' +
               '<span class="kta-heatmap-cb-count">' + nEditor + ' pts</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-roads"' + (srcRoads && nRoads > 0 ? " checked" : "") + (nRoads === 0 ? " disabled" : "") + '>' +
-              '<span>🛣️ Tracés (session)</span>' +
+              '<span>🛣️ Tracés</span>' +
               '<span class="kta-heatmap-cb-count">' + nRoads + ' tracé' + (nRoads > 1 ? "s" : "") + ' / ' + nRoadsPts + ' pts</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-zones"' + (srcZones && nZones > 0 ? " checked" : "") + (nZones === 0 ? " disabled" : "") + '>' +
-              '<span>⬛ Zones (session)</span>' +
+              '<span>⬛ Zones</span>' +
               '<span class="kta-heatmap-cb-count">' + nZones + ' zone' + (nZones > 1 ? "s" : "") + ' / ' + nZonesPts + ' pts</span>' +
             '</label>' +
             '<label class="kta-heatmap-cb-row">' +
               '<input type="checkbox" id="kta-hm-src-struct"' + (srcStructures && nStruct > 0 ? " checked" : "") + (nStruct === 0 ? " disabled" : "") + '>' +
-              '<span>🏛️ Structures (session)</span>' +
+              '<span>🏛️ Structures</span>' +
               '<span class="kta-heatmap-cb-count">' + nStruct + ' / ' + nStructPts + ' pts</span>' +
             '</label>' +
-            '<label class="kta-heatmap-cb-row" title="Inclut TOUT le contenu des calques de données (points + tracés + zones + structures), visibles ou masqués">' +
-              '<input type="checkbox" id="kta-hm-src-data"' + (srcDataLayers && nDataLayers > 0 ? " checked" : "") + (nDataLayers === 0 ? " disabled" : "") + '>' +
-              '<span>📊 Calques de données <span style="font-size:10px; color:#8892a4; font-weight:400;">(points + tracés + zones + structures, visibles ou non)</span></span>' +
-              '<span class="kta-heatmap-cb-count">' +
-                nDataMarkers + ' pts' +
-                (dlRoads.n   > 0 ? ' · ' + dlRoads.n   + ' tracé'    + (dlRoads.n   > 1 ? "s" : "") : '') +
-                (dlZones.n   > 0 ? ' · ' + dlZones.n   + ' zone'     + (dlZones.n   > 1 ? "s" : "") : '') +
-                (dlStructs.n > 0 ? ' · ' + dlStructs.n + ' struct'   + (dlStructs.n > 1 ? "s" : "") : '') +
-              '</span>' +
+          '</div>' +
+
+          '<div class="kta-heatmap-section">' +
+            '<div class="kta-heatmap-section-titre" style="display:flex; align-items:center; gap:8px;">' +
+              '<span>📊 Calques de données <span style="font-size:10px; color:#8892a4; font-weight:400; text-transform:none; letter-spacing:0;">(visibles ou non)</span></span>' +
+              '<button type="button" id="kta-hm-dl-toggleall" style="margin-left:auto; background:transparent; border:1px solid rgba(255,138,92,0.4); color:#ff8a5c; padding:2px 8px; font-size:10px; border-radius:4px; cursor:pointer; text-transform:none; letter-spacing:0; font-weight:600;" title="Tout cocher / décocher les 4 sources data layer">⇅ Tout</button>' +
+            '</div>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-data-points"' + (srcDataPoints && nDataMarkers > 0 ? " checked" : "") + (nDataMarkers === 0 ? " disabled" : "") + '>' +
+              '<span>📍 Points</span>' +
+              '<span class="kta-heatmap-cb-count">' + nDataMarkers + ' pt' + (nDataMarkers > 1 ? "s" : "") + '</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-data-roads"' + (srcDataRoads && dlRoads.n > 0 ? " checked" : "") + (dlRoads.n === 0 ? " disabled" : "") + '>' +
+              '<span>🛣️ Tracés</span>' +
+              '<span class="kta-heatmap-cb-count">' + dlRoads.n + ' tracé' + (dlRoads.n > 1 ? "s" : "") + ' / ' + dlRoads.pts + ' pts</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-data-zones"' + (srcDataZones && dlZones.n > 0 ? " checked" : "") + (dlZones.n === 0 ? " disabled" : "") + '>' +
+              '<span>⬛ Zones</span>' +
+              '<span class="kta-heatmap-cb-count">' + dlZones.n + ' zone' + (dlZones.n > 1 ? "s" : "") + ' / ' + dlZones.pts + ' pts</span>' +
+            '</label>' +
+            '<label class="kta-heatmap-cb-row">' +
+              '<input type="checkbox" id="kta-hm-src-data-struct"' + (srcDataStructures && dlStructs.n > 0 ? " checked" : "") + (dlStructs.n === 0 ? " disabled" : "") + '>' +
+              '<span>🏛️ Structures</span>' +
+              '<span class="kta-heatmap-cb-count">' + dlStructs.n + ' / ' + dlStructs.pts + ' pts</span>' +
             '</label>' +
           '</div>' +
 
@@ -696,19 +729,39 @@
       _close();
     });
 
+    // 🆕 v1.21.2 : bouton "⇅ Tout" toggle global des 4 sous-cases data layer.
+    // Si au moins une case est cochée → tout décocher. Sinon → tout cocher
+    // (en respectant les disabled = on ne force pas une case sans données).
+    const _dlAllBtn = document.getElementById("kta-hm-dl-toggleall");
+    if (_dlAllBtn) {
+      _dlAllBtn.addEventListener("click", function() {
+        const ids = ["kta-hm-src-data-points", "kta-hm-src-data-roads",
+                     "kta-hm-src-data-zones",  "kta-hm-src-data-struct"];
+        const enabled = ids.map(function(id) { return document.getElementById(id); })
+                          .filter(function(el) { return el && !el.disabled; });
+        if (enabled.length === 0) return;
+        const anyChecked = enabled.some(function(el) { return el.checked; });
+        enabled.forEach(function(el) { el.checked = !anyChecked; });
+      });
+    }
+
     document.getElementById("kta-hm-appliquer").addEventListener("click", function() {
-      // 🆕 v1.21.2 : nouvelles sources roads/zones/structures. Les .checked
+      // 🆕 v1.21.2 : sources session (roads/zones/structures) + 4 sous-flags
+      // data layer indépendants (points/tracés/zones/structures). Les .checked
       // sont guardés via `?.` car la checkbox peut être disabled / absente
       // si la catégorie est vide (cf. rendu conditionnel ci-dessus).
       const opts = {
-        srcTracker:    !!document.getElementById("kta-hm-src-tracker")?.checked,
-        srcEditor:     !!document.getElementById("kta-hm-src-editor")?.checked,
-        srcRoads:      !!document.getElementById("kta-hm-src-roads")?.checked,
-        srcZones:      !!document.getElementById("kta-hm-src-zones")?.checked,
-        srcStructures: !!document.getElementById("kta-hm-src-struct")?.checked,
-        srcDataLayers: !!document.getElementById("kta-hm-src-data")?.checked,
-        radius:        parseInt(rEl.value, 10),
-        intensity:     parseFloat(iEl.value)
+        srcTracker:        !!document.getElementById("kta-hm-src-tracker")?.checked,
+        srcEditor:         !!document.getElementById("kta-hm-src-editor")?.checked,
+        srcRoads:          !!document.getElementById("kta-hm-src-roads")?.checked,
+        srcZones:          !!document.getElementById("kta-hm-src-zones")?.checked,
+        srcStructures:     !!document.getElementById("kta-hm-src-struct")?.checked,
+        srcDataPoints:     !!document.getElementById("kta-hm-src-data-points")?.checked,
+        srcDataRoads:      !!document.getElementById("kta-hm-src-data-roads")?.checked,
+        srcDataZones:      !!document.getElementById("kta-hm-src-data-zones")?.checked,
+        srcDataStructures: !!document.getElementById("kta-hm-src-data-struct")?.checked,
+        radius:            parseInt(rEl.value, 10),
+        intensity:         parseFloat(iEl.value)
       };
       afficher(opts);
       _close();
