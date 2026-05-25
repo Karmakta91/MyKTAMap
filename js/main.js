@@ -1216,7 +1216,16 @@ async function _splashEnd() {
   }
 
   // Auto-discovery serveur (data/index.json)
-  await decouvrirPlansServeur();
+  // 🆕 v1.21.3 (KARMA "rajoute une option — ne pas charger les plan serveur
+  // au démarrage") : skip total si l'user a coché la pref dans ⚙️ Configuration
+  // loader → section 📚 Plans serveur. Default OFF (rétrocompat).
+  const _skipServer = (typeof window._loaderSkipServerPlans === "function")
+                      && window._loaderSkipServerPlans();
+  if (_skipServer) {
+    console.log("[Main] Auto-discovery serveur SKIPPÉ (pref user : myktamap_skip_server_plans_v1)");
+  } else {
+    await decouvrirPlansServeur();
+  }
 
   // RÉTRO-COMPAT : si rien n'est dans le registre ET qu'un plan racine existe,
   // le charger automatiquement comme avant

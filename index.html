@@ -677,6 +677,26 @@
           </label>
         </div>
 
+        <!-- 🆕 v1.21.3 (KARMA "rajoute une option dans les parametre — ne pas
+             charger les plan serveur au démarrage, ete en // si actif on a pu
+             le cocher decocher du home afficher les plan serveur. car la plus
+             part des user ne veule pas voir les plan server. peut en plus
+             fausser nos statistique") : pref dédiée pour skip l'auto-discovery
+             serveur (`data/index.json`) au boot. Si actif :
+               • main.js > initApp skip l'appel à decouvrirPlansServeur()
+               • Le toggle "Afficher plans serveur" du home est masqué
+               • Les plans `type === "server"` sont filtrés des stats agrégées
+                 du bandeau profil + section "📊 Mes plans"
+             Reload requis pour effet immédiat (sinon les plans serveur déjà
+             chargés au boot courant restent). -->
+        <div class="kta-aide-section">
+          <div class="kta-perf-titre">📚 Plans serveur</div>
+          <label class="kta-net-paranoia-toggle" style="margin-top:10px; background: rgba(180, 140, 255, 0.06); border-color: rgba(180, 140, 255, 0.30);">
+            <input type="checkbox" id="loaderSkipServerPlansCb">
+            <span><strong>🚫 Ne pas charger les plans serveur au démarrage</strong> — désactive l'auto-discovery (<code>data/index.json</code>) au boot et masque le toggle "Afficher plans serveur" du home. Les plans <strong>type "serveur"</strong> seront aussi exclus des statistiques agrégées du bandeau profil. <em>⚠️ Reload requis pour effet complet.</em></span>
+          </label>
+        </div>
+
         <!-- 🔐 Code d'accès local (v1.9.4 — KARMA 7:b "loader uniquement").
              Couche perso optionnelle par-dessus UnlockGate communautaire.
              Cf. js/pinLock.js pour le moteur (hash SHA-256 + WebAuthn
@@ -1418,6 +1438,21 @@
         localStorage.setItem(LS_SHOW_SERVER, value ? "true" : "false");
       }
 
+      // 🆕 v1.21.3 (KARMA "ne pas charger les plan serveur au démarrage") :
+      // pref dédiée — désactive l'auto-discovery serveur (`data/index.json`)
+      // au boot, masque le toggle "Afficher plans serveur" du home, et filtre
+      // les plans `type === "server"` des stats agrégées du bandeau profil.
+      // Default = false (rétrocompat : comportement v1.21.0+ inchangé pour
+      // les users qui n'ont jamais touché cette pref).
+      // 🔍 Exposé global pour permettre à main.js d'y accéder au boot.
+      const LS_SKIP_SERVER = "myktamap_skip_server_plans_v1";
+      window._loaderSkipServerPlans = function() {
+        return localStorage.getItem(LS_SKIP_SERVER) === "true";
+      };
+      function _loaderSetSkipServerPlans(value) {
+        localStorage.setItem(LS_SKIP_SERVER, value ? "true" : "false");
+      }
+
       // ════════════════════════════════════════════════════════════════════
       // 🚫 v171 : Modale "Erreur — nom du ZIP ne correspond pas"
       // ════════════════════════════════════════════════════════════════════
@@ -1658,7 +1693,13 @@
         // Si l'user a décoché → on retire tous les plans type === "server" de
         // la liste (mais on les laisse dans le PlanRegistry — c'est juste un
         // filtre d'affichage, ré-active toujours possible via le toggle).
-        const showServer = _loaderShowServerPlans();
+        // 🆕 v1.21.3 : nouvelle pref `skipServerPlans` (Configuration loader).
+        // Si actif → on FORCE le filtre serveur (peu importe le toggle home,
+        // qui est de toute façon masqué visuellement). Cohérent avec le
+        // message "le toggle disparaît" demandé par KARMA.
+        const skipServer = (typeof window._loaderSkipServerPlans === "function")
+                           && window._loaderSkipServerPlans();
+        const showServer = !skipServer && _loaderShowServerPlans();
         const filtered = showServer ? all : all.filter(function(p) { return p.type !== "server"; });
 
         // Sync visuelle de la checkbox (au cas où refreshPlansList est appelé
@@ -2062,6 +2103,45 @@
           window.refreshPlansList();
         });
       }
+
+      // 🆕 v1.21.3 — Wire-up de la pref "Ne pas charger les plans serveur".
+      // Sync au boot + change handler. Masque automatiquement le toggle
+      // "Afficher plans serveur" du home si pref active (= toggle inutile
+      // quand les plans serveur sont déjà skippés à la racine).
+      function _syncSkipServerPlansUI() {
+        const skipCb = document.getElementById("loaderSkipServerPlansCb");
+        if (skipCb) skipCb.checked = window._loaderSkipServerPlans();
+        // Masque/montre le toggle home selon la pref
+        const homeFilterRow = document.querySelector(".loader-plans-filters");
+        if (homeFilterRow) {
+          homeFilterRow.style.display = window._loaderSkipServerPlans() ? "none" : "";
+        }
+      }
+      const skipServerCb = document.getElementById("loaderSkipServerPlansCb");
+      if (skipServerCb) {
+        skipServerCb.checked = window._loaderSkipServerPlans();
+        skipServerCb.addEventListener("change", function() {
+          _loaderSetSkipServerPlans(skipServerCb.checked);
+          _syncSkipServerPlansUI();
+          // Re-render liste home immédiatement (filtre les plans serveur déjà
+          // dans le registre, sans reload). Le re-discovery ne se fera qu'au
+          // prochain reload — l'user voit déjà l'effet visuel principal.
+          if (typeof window.refreshPlansList === "function") {
+            try { window.refreshPlansList(); } catch(e) {}
+          }
+          // Toast informatif sur le reload pour effet complet
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast(
+              skipServerCb.checked
+                ? "🚫 Plans serveur masqués. Reload requis pour skip l'auto-discovery au boot."
+                : "✅ Plans serveur réactivés. Reload requis pour ré-importer la liste serveur.",
+              "info"
+            );
+          }
+        });
+      }
+      // Sync initial du masquage du toggle home (au cas où pref active au boot)
+      _syncSkipServerPlansUI();
 
       // === IMPORTER UN PROFIL (v1.22.0) ===
       // Le bouton ouvre désormais une modale unifiée qui détecte automatiquement
@@ -2535,10 +2615,15 @@
             }
           } else if (key === "plans") {
             try {
-              const n = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
-                        ? (window.PlanRegistry.getAll() || []).length
-                        : 0;
-              valEl.textContent = n;
+              let arr = (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function")
+                        ? (window.PlanRegistry.getAll() || [])
+                        : [];
+              // 🆕 v1.21.3 : si pref skipServer active, exclut les plans
+              // serveur du count (cohérent avec "ne pas fausser les stats").
+              if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
+                arr = arr.filter(function(p) { return p.type !== "server"; });
+              }
+              valEl.textContent = arr.length;
             } catch(e) {
               valEl.textContent = "—";
             }
@@ -3004,6 +3089,13 @@
         let plans = [];
         if (window.PlanRegistry && typeof window.PlanRegistry.getAll === "function") {
           try { plans = window.PlanRegistry.getAll() || []; } catch(e) {}
+        }
+        // 🆕 v1.21.3 (KARMA "peut en plus fausser nos statistique") : si la
+        // pref `skipServerPlans` est active, on exclut les plans `type ===
+        // "server"` des stats (gonflerait artificiellement le count Plans
+        // pour les users qui ne veulent pas les voir).
+        if (typeof window._loaderSkipServerPlans === "function" && window._loaderSkipServerPlans()) {
+          plans = plans.filter(function(p) { return p.type !== "server"; });
         }
         if (plans.length === 0) {
           if (headerEl) headerEl.innerHTML = '📊 Mes plans <span style="color:#8892a4; font-size:11px; font-weight:400;">— aucun plan enregistré</span>';
