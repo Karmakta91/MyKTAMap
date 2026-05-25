@@ -435,19 +435,53 @@
       _pushShapesAsSegs(segs, window.getStructures() || [], false);
     }
 
-    // 📊 Data layers — points isolés
-    // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
-    // L.marker (cf. utils.js). L'ancienne lecture `Object.keys()[k].length`
-    // donnait NaN car .length sur un marker = undefined.
-    if (opts.srcDataLayers && Array.isArray(window._ktaDataMarkers)) {
-      const pc = window.PLAN_CONFIG;
-      const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
-      window._ktaDataMarkers.forEach(function(m) {
-        if (m && typeof m.getLatLng === "function") {
-          const ll = m.getLatLng();
-          if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
-        }
-      });
+    // 📊 Data layers — TOUT le contenu des calques de données :
+    // points (markers) + tracés (polylines) + zones (polygons) + structures
+    // (polygones piliers/murs OU polylines fronts). Les 4 registres sont
+    // peuplés AU CHARGEMENT du layer dans utils.js > ajouterPointsDepuisJSON,
+    // indépendamment du toggle de visibilité — donc inclus même si le data
+    // layer est actuellement masqué (KARMA "il faut que heatmap voit aussi
+    // les tracé en datalayer visible ou non").
+    if (opts.srcDataLayers) {
+      // 📍 Points isolés (markers L.marker en latlng → re-flip vers plan)
+      // 🐛 v1.21.2 fix NaN : `window._ktaDataMarkers` est un FLAT array de
+      // L.marker (cf. utils.js), pas un objet layerId → markers.
+      if (Array.isArray(window._ktaDataMarkers)) {
+        const pc = window.PLAN_CONFIG;
+        const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+        window._ktaDataMarkers.forEach(function(m) {
+          if (m && typeof m.getLatLng === "function") {
+            const ll = m.getLatLng();
+            if (ll) segs.push({ a: { x: ll.lng, y: imgH - ll.lat }, b: null });
+          }
+        });
+      }
+      // 🛣️ Tracés data layer (entry.points en coords plan {x,y}, polylines OUVERTES)
+      if (Array.isArray(window._ktaDataPolylines)) {
+        window._ktaDataPolylines.forEach(function(entry) {
+          // Skip les entries "circleMarker d'extrémité jonction" (pas de points)
+          if (!entry || !Array.isArray(entry.points)) return;
+          _pushPolylineSegs(segs, entry.points, false);
+        });
+      }
+      // ⬛ Zones data layer (polygones FERMÉS)
+      if (Array.isArray(window._ktaDataPolygons)) {
+        window._ktaDataPolygons.forEach(function(entry) {
+          if (!entry || !Array.isArray(entry.points)) return;
+          _pushPolylineSegs(segs, entry.points, true);
+        });
+      }
+      // 🏛️ Structures data layer : mix polylines (front-1/2) + polygones
+      // (pilier-1/2/mur). Détection via type — cf STRUCTURE_STYLES_DATA
+      // utils.js > .isPolyline. Si type inconnu, on traite en polygon fermé
+      // (comportement majoritaire pour les structures historiques).
+      if (Array.isArray(window._ktaDataStructurePolygons)) {
+        window._ktaDataStructurePolygons.forEach(function(entry) {
+          if (!entry || !Array.isArray(entry.points)) return;
+          const isPolyline = (entry.type === "front-1" || entry.type === "front-2");
+          _pushPolylineSegs(segs, entry.points, !isPolyline);
+        });
+      }
     }
 
     return segs;
@@ -530,7 +564,27 @@
     // 🐛 v1.21.2 fix NaN : _ktaDataMarkers est un FLAT array de L.marker
     // (cf. utils.js). Avant : Object.keys + index → NaN car .length sur un
     // marker unique.
-    const nDataLayers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
+    const nDataMarkers = Array.isArray(window._ktaDataMarkers) ? window._ktaDataMarkers.length : 0;
+    // 🆕 v1.21.2 (KARMA "il faut que heatmap voit aussi les tracé en datalayer
+    // visible ou non") : compte aussi les tracés/zones/structures embarqués.
+    // _ktaDataPolylines peut contenir des "circleMarker d'extrémité jonction"
+    // sans `.points` → on les exclut du compte vertices.
+    function _countDataLayerEntries(arr) {
+      if (!Array.isArray(arr)) return { n: 0, pts: 0 };
+      let n = 0, pts = 0;
+      arr.forEach(function(e) {
+        if (!e || !Array.isArray(e.points)) return;
+        n++;
+        pts += e.points.length;
+      });
+      return { n: n, pts: pts };
+    }
+    const dlRoads   = _countDataLayerEntries(window._ktaDataPolylines);
+    const dlZones   = _countDataLayerEntries(window._ktaDataPolygons);
+    const dlStructs = _countDataLayerEntries(window._ktaDataStructurePolygons);
+    // Total "calques de données" = points (markers) + traces (roads+zones+structs)
+    const nDataLayers = nDataMarkers + dlRoads.n + dlZones.n + dlStructs.n;
+    const nDataLayersPts = nDataMarkers + dlRoads.pts + dlZones.pts + dlStructs.pts;
 
     // Default values (reprend les opts précédentes si dispo)
     const o = _lastOpts || {};
@@ -588,10 +642,15 @@
               '<span>🏛️ Structures (session)</span>' +
               '<span class="kta-heatmap-cb-count">' + nStruct + ' / ' + nStructPts + ' pts</span>' +
             '</label>' +
-            '<label class="kta-heatmap-cb-row">' +
+            '<label class="kta-heatmap-cb-row" title="Inclut TOUT le contenu des calques de données (points + tracés + zones + structures), visibles ou masqués">' +
               '<input type="checkbox" id="kta-hm-src-data"' + (srcDataLayers && nDataLayers > 0 ? " checked" : "") + (nDataLayers === 0 ? " disabled" : "") + '>' +
-              '<span>📊 Calques de données</span>' +
-              '<span class="kta-heatmap-cb-count">' + nDataLayers + ' pts</span>' +
+              '<span>📊 Calques de données <span style="font-size:10px; color:#8892a4; font-weight:400;">(points + tracés + zones + structures, visibles ou non)</span></span>' +
+              '<span class="kta-heatmap-cb-count">' +
+                nDataMarkers + ' pts' +
+                (dlRoads.n   > 0 ? ' · ' + dlRoads.n   + ' tracé'    + (dlRoads.n   > 1 ? "s" : "") : '') +
+                (dlZones.n   > 0 ? ' · ' + dlZones.n   + ' zone'     + (dlZones.n   > 1 ? "s" : "") : '') +
+                (dlStructs.n > 0 ? ' · ' + dlStructs.n + ' struct'   + (dlStructs.n > 1 ? "s" : "") : '') +
+              '</span>' +
             '</label>' +
           '</div>' +
 
