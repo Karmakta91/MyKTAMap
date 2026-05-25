@@ -11,7 +11,9 @@
 // =========================
 // Affiché AUTOMATIQUEMENT au tout premier lancement (détecté via flag
 // localStorage `myktamap_tutorial_seen_v1`). Réaffichable à tout moment
-// depuis 📚 Aide > sous-action « 🎓 (Re)voir le tutoriel ».
+// depuis le bouton 🎓 dans le header de la modale 📖 Documentation
+// (cf. interface.js > afficherReadme — depuis v1.21.3 ; auparavant
+// accessible via 📚 Aide > sous-action « 🎓 (Re)voir le tutoriel »).
 //
 // 🆕 v1.21.3 (KARMA "rajoute des diapo, pour décrire mieu chaque fonction") :
 // passage de 8 cards à 22 cards focalisées. Chaque card couvre UN sujet précis
@@ -77,7 +79,7 @@
         "Le code est public sur GitHub (<code>Karmakta91/MyKTAMap</code>). Cette garantie s'applique " +
         "<strong>UNIQUEMENT</strong> au domaine officiel <code>myktamap.fr</code>.</p>" +
         "<p>Ce petit tour t'aide à découvrir l'app en quelques minutes. Tu peux le passer à tout moment " +
-        "et le rejouer via <strong>📚 Aide → 🎓 (Re)voir le tutoriel</strong>.</p>",
+        "et le rejouer via <strong>📖 Documentation → bouton 🎓</strong> dans le header de la modale.</p>",
       hint: "Tu peux naviguer avec les flèches ◂ ▸ ou les touches ← → / Espace de ton clavier."
     },
 
@@ -684,7 +686,7 @@
         "<p>📚 <strong>Aide intégrée</strong> (sidebar gauche → 📚) : doc complète de chaque fonction. " +
         "Si tu te demandes « comment fait-on X ? », c'est là.</p>" +
         "<p><strong>Bonne exploration ! 🚀</strong></p>",
-      hint: "Tu peux rejouer ce tutoriel à tout moment via 📚 Aide → 🎓 (Re)voir le tutoriel."
+      hint: "Tu peux rejouer ce tutoriel à tout moment via le bouton 🎓 en haut de la modale 📖 Documentation."
     }
   ];
 

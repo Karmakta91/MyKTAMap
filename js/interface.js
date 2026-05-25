@@ -1650,6 +1650,12 @@ function _ouvrirReadmeModal(html) {
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="Afficher ou masquer le sommaire" title="Afficher ou masquer le sommaire">📚</button>
         <span class="kta-readme-modal-titre">📖 Documentation</span>
+        <!-- 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
+             haut de la doc README a coté tu titre Documentation") : bouton
+             d'accès au tutoriel directement dans le header de la modale doc,
+             juste à gauche du ✕. Remplace la sous-action 🎓 retirée du menu
+             📚 Aide pour rendre l'onboarding plus découvrable. -->
+        <button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d'onboarding" title="🎓 (Re)voir le tutoriel d'onboarding">🎓</button>
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
       <div class="kta-readme-modal-layout" id="kta-readme-layout">
@@ -1700,6 +1706,20 @@ function _ouvrirReadmeModal(html) {
 
   document.getElementById("kta-readme-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  // 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en haut
+  // de la doc README") : handler du bouton 🎓 dans le header → ouvre le
+  // tutoriel. La modale Documentation reste ouverte derrière (le tutoriel
+  // se pose par-dessus grâce à son z-index plus élevé). À la fermeture
+  // du tutoriel, l'user retrouve sa doc à l'endroit où il était.
+  const _readmeTutorialBtn = document.getElementById("kta-readme-tutorial-btn");
+  if (_readmeTutorialBtn) {
+    _readmeTutorialBtn.addEventListener("click", function() {
+      if (window.Tutorial && typeof window.Tutorial.ouvrir === "function") {
+        window.Tutorial.ouvrir();
+      }
+    });
+  }
 }
 
 // =========================
@@ -4791,15 +4811,13 @@ function initInterface() {
             window.afficherModaleAideIA();
           }
         } },
-      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende },
+      { icone: "🗺️", titre: "Légende",       onClick: afficherLegende }
       // 🆕 v1.21.0 — Rejouer le tutoriel premier-lancement à tout moment.
-      // markAsSeen est posé au boot par Tutorial.ouvrir() pour que l'auto-popup
-      // ne re-déclenche pas, mais l'user peut rejouer manuellement ici.
-      { icone: "🎓", titre: "(Re)voir le tutoriel", onClick: function() {
-          if (window.Tutorial && typeof window.Tutorial.ouvrir === "function") {
-            window.Tutorial.ouvrir();
-          }
-        } }
+      // 🔄 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
+      // haut de la doc README") : retiré de ce menu, désormais accessible
+      // via le bouton 🎓 directement dans le header de la modale 📖
+      // Documentation (afficherReadme). Markedasseen est toujours posé au
+      // boot par Tutorial.ouvrir() pour empêcher l'auto-popup.
     ]
   });
 

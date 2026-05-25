@@ -2151,6 +2151,45 @@ img.kta-popup-photo-mini:focus-visible {
   color: #f4c542;
 }
 
+/* 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en haut
+   de la doc README a coté tu titre Documentation") : bouton 🎓 d'accès
+   au tutoriel dans le header de la modale Documentation. Positionné à
+   gauche du ✕ via flex order naturel (justify-content: space-between
+   sur le header + ce bouton après le titre dans le DOM = penché à droite).
+   Style cohérent avec .kta-readme-toc-toggle-btn pour symétrie visuelle. */
+.kta-readme-tutorial-btn {
+  background: rgba(244, 197, 66, 0.10);
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  color: #f4c542;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.kta-readme-tutorial-btn:hover {
+  background: rgba(244, 197, 66, 0.22);
+  border-color: rgba(244, 197, 66, 0.55);
+  transform: scale(1.05);
+}
+/* Thème clair — adapté à la charte ambre du light mode */
+body.kta-theme-light .kta-readme-tutorial-btn,
+html.kta-theme-light .kta-readme-tutorial-btn {
+  background: rgba(161, 110, 16, 0.10) !important;
+  border-color: rgba(161, 110, 16, 0.45) !important;
+  color: #6b4d10 !important;
+}
+body.kta-theme-light .kta-readme-tutorial-btn:hover,
+html.kta-theme-light .kta-readme-tutorial-btn:hover {
+  background: rgba(161, 110, 16, 0.22) !important;
+}
+
 /* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
 .kta-readme-modal-layout {
   flex: 1;

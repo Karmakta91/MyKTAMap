@@ -1111,7 +1111,8 @@ async function _splashEnd() {
     // c'est le tout premier boot (flag `myktamap_tutorial_seen_v1` absent).
     // Différé encore +600ms pour laisser le temps aux alertes/updates de
     // s'afficher en premier (priorité : info critique > onboarding). L'user
-    // peut rejouer à tout moment via 📚 Aide → 🎓 (Re)voir le tutoriel.
+    // peut rejouer à tout moment via le bouton 🎓 dans le header de la
+    // modale 📖 Documentation (depuis v1.21.3).
     if (window.Tutorial && typeof window.Tutorial.isFirstLaunch === "function" && window.Tutorial.isFirstLaunch()) {
       setTimeout(function() {
         // Re-check au cas où une autre modale (update, alerte critique) soit
