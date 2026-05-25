@@ -669,6 +669,16 @@
             <input type="checkbox" id="loaderThemeLightCb">
             <span><strong>☀️ Activer le thème CLAIR</strong> — fond beige cataphile au lieu du fond noir. Choix mémorisé globalement, valable pour la home, les modales, et tout le mode carte. <em>⚠️ Le changement déclenche un reload complet de l'app (v1.14.2).</em></span>
           </label>
+          <!-- 🆕 v1.21.1+ (KARMA "on doit pouvoir l'activer aussi depuis
+               parametre du home") : toggle Wake Lock dans Configuration home
+               aussi (parité avec ⚙️ Réglages map mode). Visible UNIQUEMENT
+               si WakeLock.isSupported() (Chrome/Edge/Safari iOS 16.4+,
+               PAS Firefox). Sync UI ↔ state via window.WakeLock — les 2
+               toggles (home + map mode) pointent sur le même module. -->
+          <label class="kta-net-paranoia-toggle" id="loaderWakeLockRow" style="margin-top:10px; background: rgba(140, 180, 255, 0.06); border-color: rgba(140, 180, 255, 0.22); display:none;">
+            <input type="checkbox" id="loaderWakeLockCb">
+            <span><strong>🔆 Garder l'écran allumé (Wake Lock)</strong> — empêche la mise en veille de l'écran tant que l'app est ouverte. <strong>Idéal en cavité</strong> pour ne pas avoir à débloquer son téléphone toutes les 30s. Auto-relâché si tu changes d'onglet/app, ré-activé au retour. <em>Compat : Chrome/Edge/Safari iOS 16.4+ (toggle caché si Firefox).</em></span>
+          </label>
         </div>
 
         <!-- 🔐 Code d'accès local (v1.9.4 — KARMA 7:b "loader uniquement").
@@ -3618,6 +3628,38 @@
             window.ThemeManager.setThemeAndReload(cible);
           });
         });
+      }
+
+      // 🆕 v1.21.1+ (KARMA "on doit pouvoir l'activer aussi depuis parametre
+      // du home") : toggle Wake Lock dans Configuration home. Parité avec
+      // ⚙️ Réglages map mode > 🔍 Affichage. Les 2 toggles pointent sur le
+      // même window.WakeLock → state synchronisé entre les 2 modales.
+      const loaderWlRow = document.getElementById("loaderWakeLockRow");
+      const loaderWlCb  = document.getElementById("loaderWakeLockCb");
+      if (loaderWlRow && loaderWlCb && window.WakeLock) {
+        if (window.WakeLock.isSupported()) {
+          loaderWlRow.style.display = "";  // révèle (default = none)
+          loaderWlCb.checked = window.WakeLock.isEnabled();
+          loaderWlCb.addEventListener("change", function() {
+            window.WakeLock.setEnabled(loaderWlCb.checked);
+            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+              window.OOMGuard.showToast(
+                loaderWlCb.checked
+                  ? "🔆 Écran maintenu allumé tant que l'app est ouverte"
+                  : "🔅 Mise en veille écran ré-activée",
+                "info"
+              );
+            }
+          });
+          // Sync UI si le state change ailleurs (ex: toggle dans ⚙️ Réglages
+          // map mode pendant que la home est ouverte en arrière-plan)
+          window.WakeLock.onChange(function(state) {
+            if (loaderWlCb && loaderWlCb.checked !== state.enabled) {
+              loaderWlCb.checked = state.enabled;
+            }
+          });
+        }
+        // Sinon : row caché par défaut (display:none HTML), pas de message.
       }
 
       // ═══════════════════════════════════════════════════════════════
