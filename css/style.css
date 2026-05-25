@@ -16419,32 +16419,29 @@ html.kta-theme-light .kta-net-cell-method {
   display: none !important;
 }
 
-/* 🆕 v1.21.1 (KARMA fix1) : stats compactes adaptatives à droite du
-   bandeau profil. Breakpoints élargis pour montrer 1 stat dès mobile
-   moyen (iPhone SE/standard 375-400px) au lieu de 600px qui cachait
-   tout sur mobile.
-   - Mobile < 400px : cachées (très petits écrans, bandeau saturé)
-   - Mobile 400-1023px : 1 stat (⏱️ temps) — 💾 storage caché
-   - Desktop ≥ 1024px : 2 stats visibles */
+/* 🆕 v1.21.1-fix2 (KARMA "on a la place en longueur pour en afficher
+   une deuxieme sur mobile") : breakpoint abaissé à 380px pour afficher
+   les 2 stats dès mobile médian (iPhone Mini 375, Galaxy S20 412, etc.).
+   - Mobile < 380px : cachées (très petits écrans uniquement)
+   - Mobile/Tablet/Desktop ≥ 380px : 2 stats visibles (temps + storage) */
 .kta-loader-profile-stats {
   flex: 0 0 auto;
   display: none;  /* default : très petit mobile = caché */
-  gap: 8px;
+  gap: 6px;       /* gap réduit pour compacité mobile */
   align-items: center;
 }
-@media (min-width: 400px) {
+@media (min-width: 380px) {
   .kta-loader-profile-stats {
     display: flex;
   }
-  /* Mobile moyen + tablet : cache la 2e stat (storage), garde uniquement temps */
-  .kta-loader-profile-stat#kta-loader-profile-stat-storage {
-    display: none;
-  }
 }
-@media (min-width: 1024px) {
-  /* Desktop : les 2 stats visibles */
-  .kta-loader-profile-stat#kta-loader-profile-stat-storage {
-    display: flex;
+/* Stat compacte revue pour gagner en compacité sur mobile —
+   override de la déclaration plus bas pour ajuster mobile spécifiquement.
+   La déclaration mobile-first compacte est dans la suite via media query. */
+@media (min-width: 600px) {
+  .kta-loader-profile-stat {
+    padding: 4px 10px !important;
+    min-width: 60px !important;
   }
 }
 .kta-loader-profile-stat {
@@ -16452,11 +16449,12 @@ html.kta-theme-light .kta-net-cell-method {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px 10px;
+  /* Mobile-first compact (overridé > 600px via media query au-dessus) */
+  padding: 4px 8px;
+  min-width: 52px;
   background: rgba(0,0,0,0.18);
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 8px;
-  min-width: 60px;
 }
 .kta-loader-profile-stat-icon {
   font-size: 14px;

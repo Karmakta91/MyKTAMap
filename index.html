@@ -2197,13 +2197,24 @@
         }
       }
 
-      // 🆕 v1.21.1 : tracking temps app cumulé (toutes sessions).
-      // Stocké dans `localStorage["myktamap_total_time_ms"]`. Incrémenté
-      // toutes les 30s tant que la page est visible (et au beforeunload pour
-      // capturer la session en cours). Pattern similaire au heartbeat OOMGuard.
+      // 🆕 v1.21.1-fix2 (KARMA "temps session en cours pas général") :
+      // tracking temps app CUMULÉ (toutes sessions). Stocké dans
+      // `localStorage["myktamap_total_time_ms"]`.
+      //
+      // 🐛 Bug v1.21.1-fix1 : `_flushTotalTime` avait `if (document.hidden)
+      // return` au début, ce qui faisait skip TOUS les flushes après
+      // visibilitychange→hidden (qui fire AVANT beforeunload/pagehide).
+      // Conséquence : à la fermeture de l'onglet, le delta de la session
+      // courante n'était JAMAIS persisté → l'user voyait son temps repartir
+      // à 0 à chaque reload.
+      //
+      // Fix : sentinel `_timeLastTick = null` pour stopper le comptage
+      // quand l'onglet devient caché. Le flush écrit toujours si tick valide
+      // (qu'il soit appelé via heartbeat, visibilitychange, beforeunload ou
+      // pagehide). Au retour de visibility, on remet `_timeLastTick = Date.now()`.
       const _TOTAL_TIME_LS_KEY = "myktamap_total_time_ms";
       const _TIME_TICK_MS      = 30000;  // sauvegarde toutes les 30s
-      let _timeLastTick = Date.now();
+      let _timeLastTick = Date.now();   // null = onglet caché, sinon timestamp
       function _readTotalTimeMs() {
         try {
           const v = parseInt(localStorage.getItem(_TOTAL_TIME_LS_KEY), 10);
@@ -2214,11 +2225,11 @@
         try { localStorage.setItem(_TOTAL_TIME_LS_KEY, String(ms)); } catch(e) {}
       }
       function _flushTotalTime() {
-        if (document.hidden) return;  // ne compte pas le temps onglet caché
+        if (_timeLastTick === null) return;  // déjà flushé (onglet caché)
         const now = Date.now();
         const delta = now - _timeLastTick;
         _timeLastTick = now;
-        if (delta > 0 && delta < 5 * 60 * 1000) {  // skip si > 5min (suspended)
+        if (delta > 0 && delta < 5 * 60 * 1000) {  // skip si > 5min (suspended/standby)
           _writeTotalTimeMs(_readTotalTimeMs() + delta);
         }
       }
@@ -2226,8 +2237,12 @@
       window.addEventListener("beforeunload", _flushTotalTime);
       window.addEventListener("pagehide",     _flushTotalTime);
       document.addEventListener("visibilitychange", function() {
-        if (document.hidden) _flushTotalTime();
-        else _timeLastTick = Date.now();  // reset tick au retour visibility
+        if (document.hidden) {
+          _flushTotalTime();      // flush ce qui a couru avant de devenir caché
+          _timeLastTick = null;   // stop comptage tant que caché
+        } else {
+          _timeLastTick = Date.now();  // reprendre comptage au retour visibility
+        }
       });
 
       // Formattage temps humain : "12h 34min" / "45min" / "12s"
@@ -2254,11 +2269,11 @@
 
       // Hydrate les 2 stats compactes du bandeau profil
       async function _hydrateProfileBarStats() {
-        // Temps : total cumulé + session en cours
+        // Temps : total persisté + delta live depuis dernier tick (si visible)
         const totalEl = document.getElementById("kta-loader-profile-stat-time-val");
         if (totalEl) {
-          // total persisté + (now - dernier tick) pour temps live
-          const totalMs = _readTotalTimeMs() + (Date.now() - _timeLastTick);
+          const liveDelta = (_timeLastTick === null) ? 0 : (Date.now() - _timeLastTick);
+          const totalMs = _readTotalTimeMs() + liveDelta;
           totalEl.textContent = _formatDuration(totalMs);
         }
         // Storage : navigator.storage.estimate() (async, gracieux fallback)
