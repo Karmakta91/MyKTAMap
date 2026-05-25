@@ -981,7 +981,17 @@ window.getAllEmbeddedStructures = function() {
     });
 };
 
+// 🐛 v1.21.3 (audit P0-6) : token de génération pour annuler les rAF en
+// cours quand le plan switch. Avant : une boucle rAF self-recursive pouvait
+// continuer à ajouter des markers DANS LE LAYER DU PLAN PRÉCÉDENT, ce qui
+// retenait des refs vers un layerGroup orphelin (fuite mémoire + zombies).
+// Maintenant : chaque appel snapshot le token courant, exit silencieux si
+// le token a changé entre 2 batches. Le token est bumpé par
+// `_libererRessourcesPlanPrecedent` dans main.js.
+window._ktaDataLayerLoadToken = window._ktaDataLayerLoadToken || 0;
+
 function ajouterPointsDepuisJSON(url, layer) {
+  const _loadToken = window._ktaDataLayerLoadToken;
   // 🆕 v1.16.0 step 3 : reverse-lookup pour identifier le calque de
   // data layer auquel appartient ce JSON. Sert au bouton ⭐ Favori
   // pour stocker le bon layerId/layerLabel dans le snapshot. Pas de
@@ -1014,6 +1024,10 @@ function ajouterPointsDepuisJSON(url, layer) {
       let index = 0;
 
       function ajouterBatch() {
+        // 🐛 v1.21.3 (audit P0-6) : abort si on a switché de plan entre 2 batches.
+        // Sinon les markers atterrissent dans le layerGroup du plan précédent
+        // (déjà détruit ou en cours de destruction par _libererRessourcesPlanPrecedent).
+        if (_loadToken !== window._ktaDataLayerLoadToken) return;
         const fin = Math.min(index + BATCH, points.length);
         for (let i = index; i < fin; i++) {
           const p = points[i];

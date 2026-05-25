@@ -656,10 +656,43 @@ function updateMap() {
 // =========================
 // 🆕 v1.11.3 V2.3 : timeline timestamps. Array module-scope qui datage chaque
 // point du parcours tracker (Date.now + delta + type pdr/recalage/start +
-// niveau MLVL). Persistance RAM only — cohérent avec le tracker marqué
-// "expérimental" dans toute la doc. Reset au resetTrackingPosition().
+// niveau MLVL).
+// 🆕 v1.21.2 : la timeline est désormais persistée via SessionPersist /
+// SessionBackups (le commentaire "RAM only" précédent est obsolète depuis
+// cette release — la timeline survit aux reloads).
+// 🐛 v1.21.3 (audit P0-2/3) : cap dur + décimation FIFO. Sans cap, une
+// session 6h en cavité atteint ~150k entries × 120 bytes = ~18 Mo RAM,
+// sérialisé toutes les 1.5s en localStorage (cap navigateur 5-10 Mo)
+// → QuotaExceededError → session non sauvée pendant des heures.
+// On garde toujours les ancres importantes (start + recalage) qui marquent
+// les ruptures de chaîne lisibles par la heatmap / replay ; on décime
+// uniquement les `pdr` les plus anciens.
+const MAX_TIMELINE_ENTRIES = 20000;   // cap dur (~2.4 Mo, ~30 min de PDR dense)
+const TIMELINE_TRIM_TO     = 18000;   // après dépassement, on trim à ce niveau
 let _trackingTimeline = [];
 let _trackingStartTs  = null;
+
+// Helper interne : trim FIFO de la timeline en préservant les ancres
+// (`start` + `recalage`). Appelé quand on dépasse MAX_TIMELINE_ENTRIES.
+function _decimateTimeline() {
+  if (_trackingTimeline.length <= MAX_TIMELINE_ENTRIES) return;
+  // Partition : on garde TOUTES les ancres (start/recalage) + les PDR les
+  // plus récents. Si même en enlevant tous les PDR on dépasse le cap, on
+  // garde les ancres + récents en FIFO classique.
+  const anchors = [];
+  const pdrs    = [];
+  _trackingTimeline.forEach(function(e) {
+    if (e.type === "start" || e.type === "recalage") anchors.push(e);
+    else pdrs.push(e);
+  });
+  const budgetForPdr = Math.max(0, TIMELINE_TRIM_TO - anchors.length);
+  // Garde les `budgetForPdr` PDR les plus RÉCENTS (slice depuis la fin)
+  const keptPdrs = pdrs.length > budgetForPdr ? pdrs.slice(pdrs.length - budgetForPdr) : pdrs;
+  // Re-merge en respectant l'ordre temporel (par .t)
+  const merged = anchors.concat(keptPdrs).sort(function(a, b) { return a.t - b.t; });
+  _trackingTimeline = merged;
+  console.log("[Tracking] Timeline décimée à", _trackingTimeline.length, "entries (cap", MAX_TIMELINE_ENTRIES, ")");
+}
 
 // Helper interne : push une entrée timeline avec timestamp + type.
 // Lit position.x, position.y au moment de l'appel (= snapshot atomique).
@@ -679,6 +712,11 @@ function _pushTimelinePoint(type) {
     entry.level = typeof trackerLevel === "number" ? trackerLevel : (window.APP_CONFIG.activeLevel || 0);
   }
   _trackingTimeline.push(entry);
+  // Cap dur : décime si on dépasse. Coût amorti O(N) mais déclenché 1×
+  // tous les ~2000 push (= ~2000 secondes de marche) → négligeable.
+  if (_trackingTimeline.length > MAX_TIMELINE_ENTRIES) {
+    _decimateTimeline();
+  }
 }
 
 function startTracking() {
@@ -880,6 +918,14 @@ window.setTrackingTimeline = function(timeline, startTs) {
   });
   _trackingTimeline = cleaned;
   _trackingStartTs  = (typeof startTs === "number") ? startTs : null;
+  // 🐛 v1.21.3 (audit P0-3) : applique le cap au restore. Un payload
+  // corrompu / multi-session cumulé / Backup ancien pouvait injecter 50k+
+  // entries → OOM en cascade au boot. _decimateTimeline préserve les
+  // ancres start/recalage et trim les PDR les plus anciens.
+  if (_trackingTimeline.length > MAX_TIMELINE_ENTRIES) {
+    console.warn("[Tracking] Restore timeline trop grande :", _trackingTimeline.length, "→ décimation");
+    _decimateTimeline();
+  }
 };
 
 // Recale la position du tracker sur des coords plan precises (typiquement

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.21.1-flyout-tracker-heatmap-exportsession-hmsources-urgenceend-hmsegments-popupgps-hmyflip-hmdltraces-hmdlfilter";
+const CACHE_NAME = "myktamap-cache-v1.21.3-anticrash";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -260,6 +260,11 @@ self.addEventListener("install", (event) => {
           // version la plus récente déployée en FTP, indépendamment de
           // ce que le navigateur a en cache HTTP.
           await cache.add(new Request(asset, { cache: "reload" }));
+          // 🐛 v1.21.3 (audit P0-7) : enregistre l'URL absolue de l'asset
+          // dans le set "intouchable" pour que la LRU eviction ne supprime
+          // jamais l'app shell.
+          const absUrl = _cacheKeyOf(asset);
+          if (absUrl) _staticAssetUrls.add(absUrl);
           console.log("[SW] Caché :", asset);
         } catch (err) {
           console.warn("[SW] Non caché :", asset, err);
@@ -271,12 +276,22 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
 });
 
+
 // =========================
 // ACTIVATE
 // =========================
 
 self.addEventListener("activate", (event) => {
   console.log("[SW] Activation");
+
+  // 🐛 v1.21.3 (audit P0-7) : si le SW redémarre (mais que le cache existe
+  // déjà installé via une session précédente), on doit re-populer
+  // _staticAssetUrls avant le 1er fetch. Sinon la LRU eviction au prochain
+  // appel à _scheduleEviction pourrait considérer les statics comme évinçables.
+  ASSETS_TO_CACHE.forEach((asset) => {
+    const absUrl = _cacheKeyOf(asset);
+    if (absUrl) _staticAssetUrls.add(absUrl);
+  });
 
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -297,6 +312,51 @@ self.addEventListener("activate", (event) => {
 // =========================
 // FETCH
 // =========================
+
+// 🐛 v1.21.3 (audit P0-7) : LRU cap pour le cache dynamique. Avant : chaque
+// requête réseau était ajoutée au cache sans limite, donc en consultant 20
+// plans différents le cache pouvait grossir de plusieurs centaines de Mo,
+// déclenchant la purge OS qui détruit aussi les assets app critiques (cycle
+// CacheStorage+IDB atomique). Maintenant : on cap à MAX_DYNAMIC_ENTRIES en
+// excluant les URLs précachées au install (qui doivent rester intouchables).
+const MAX_DYNAMIC_ENTRIES = 800;  // ~120 Mo si tiles ~150 KB en moyenne
+const _staticAssetUrls = new Set(); // populé au install ci-dessous
+
+// Helper : normalise un URL ou request en une clé de comparaison
+function _cacheKeyOf(reqOrUrl) {
+  try {
+    if (typeof reqOrUrl === "string") return new URL(reqOrUrl, self.location.origin).href;
+    if (reqOrUrl && reqOrUrl.url) return reqOrUrl.url;
+  } catch(e) {}
+  return null;
+}
+
+// LRU debounced : déclenché après un cache.put, en async. Au lieu de tourner
+// à chaque requête, on planifie 1× toutes les 30s max via un flag.
+let _evictionScheduled = false;
+function _scheduleEviction() {
+  if (_evictionScheduled) return;
+  _evictionScheduled = true;
+  // setTimeout n'est pas dispo dans tous les SW (workers limitent les timers)
+  // mais Chrome/Safari modernes supportent. Fallback : run direct.
+  const _run = () => {
+    _evictionScheduled = false;
+    caches.open(CACHE_NAME).then((cache) => cache.keys().then((reqs) => {
+      // Filtre : ne touche qu'aux entrées DYNAMIQUES (pas précachées au install).
+      const dynamic = reqs.filter((r) => !_staticAssetUrls.has(_cacheKeyOf(r)));
+      if (dynamic.length <= MAX_DYNAMIC_ENTRIES) return;
+      // FIFO : delete les plus anciens (en début d'array = insertion plus
+      // ancienne, c'est la sémantique Cache API standard).
+      const toEvict = dynamic.length - MAX_DYNAMIC_ENTRIES + 50;  // +50 = buffer pour éviter le yo-yo
+      const slice = dynamic.slice(0, toEvict);
+      return Promise.all(slice.map((r) => cache.delete(r))).then(() => {
+        console.log("[SW] LRU eviction :", slice.length, "entrées (cache dynamique cap " + MAX_DYNAMIC_ENTRIES + ")");
+      });
+    })).catch((e) => console.warn("[SW] LRU eviction erreur :", e));
+  };
+  // Délai pour debounce (évite N evictions consécutives sur burst de fetch)
+  try { setTimeout(_run, 30000); } catch(e) { _run(); }
+}
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
@@ -321,6 +381,8 @@ self.addEventListener("fetch", (event) => {
 
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
+            // 🐛 v1.21.3 (P0-7) : planifie une eviction LRU si on a dépassé le cap.
+            _scheduleEviction();
           });
 
           return networkResponse;

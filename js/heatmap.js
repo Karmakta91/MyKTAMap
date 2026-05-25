@@ -52,10 +52,17 @@
   let _overlay     = null;  // L.imageOverlay
   let _canvas      = null;  // canvas standalone
   let _lastOpts    = null;  // pour le redraw au zoom
+  let _overlayUrl  = null;  // 🐛 v1.21.3 (P0-4) : ObjectURL du dernier overlay (à revoke)
 
   // Defaults
   const DEFAULT_RADIUS_PX = 40;     // rayon du gradient radial
   const DEFAULT_INTENSITY = 1.0;    // multiplicateur global
+  // 🐛 v1.21.3 (audit P0-5) : seuil au-delà duquel _renderCanvas refuse de
+  // dessiner (warning OOMGuard à la place). Empêche les heatmaps avec
+  // millions de blobs qui bloquent le main thread >10s → ANR / kill OS.
+  // 50000 segments × ~10 samples/segment = 500k blobs canvas — déjà long
+  // mais survivable. Au-delà = abort avec message clair pour l'user.
+  const MAX_SEGMENTS = 50000;
 
   // ============================================================
   // STYLES INJECTÉS
@@ -202,9 +209,15 @@
     const imgW = pc.plan.imageWidth  || 1000;
     const imgH = pc.plan.imageHeight || 1000;
 
-    // Downscale pour perf : on travaille sur un canvas qui ne dépasse pas
-    // 2048×2048 max, puis Leaflet l'étire à la taille du plan via bounds.
-    const MAX_DIM = 2048;
+    // Downscale pour perf : on travaille sur un canvas avec un cap qui
+    // s'adapte à la mémoire device.
+    // 🐛 v1.21.3 (audit P0-4) : avant cap fixe 2048×2048 = 16 Mo RGBA →
+    // +clone getImageData = 32 Mo → +toDataURL PNG ~10 Mo → pic transitoire
+    // ~40 Mo. iPhone PWA budget ~500 Mo → OOM sur plans ≥5000 px. On baisse
+    // à 1024 sur device low-mem (deviceMemory < 6 Go ou heuristique mobile).
+    const _lowMem = (typeof navigator.deviceMemory === "number" && navigator.deviceMemory < 6)
+                    || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
+    const MAX_DIM = _lowMem ? 1024 : 2048;
     const scale = Math.min(1, MAX_DIM / Math.max(imgW, imgH));
     const W = Math.round(imgW * scale);
     const H = Math.round(imgH * scale);
@@ -317,19 +330,36 @@
     const imgW = pc.plan.imageWidth  || 1000;
     const imgH = pc.plan.imageHeight || 1000;
 
-    // Cleanup éventuel
+    // Cleanup éventuel — overlay précédent + ObjectURL associé.
     if (_overlay) {
       try { window.map.removeLayer(_overlay); } catch(e) {}
       _overlay = null;
     }
+    if (_overlayUrl) {
+      try { URL.revokeObjectURL(_overlayUrl); } catch(e) {}
+      _overlayUrl = null;
+    }
 
-    const dataUrl = canvas.toDataURL("image/png");
-    _overlay = L.imageOverlay(dataUrl, [[0, 0], [imgH, imgW]], {
-      opacity:     0.7,
-      interactive: false,
-      pane:        "overlayPane"
-    }).addTo(window.map);
-    _canvas = canvas;
+    // 🐛 v1.21.3 (audit P0-4) : on remplace toDataURL → toBlob +
+    // URL.createObjectURL. Avant : toDataURL encode synchrone en base64 PNG
+    // (~10 Mo de string pour un canvas 2048²) puis Leaflet redécode dans
+    // un <img> → pic transitoire ~40 Mo. Avec toBlob, le PNG reste binaire
+    // en mémoire (1 seul payload, pas de doublon base64) et l'<img> stream
+    // directement depuis l'ObjectURL. Économie typique : ~10 Mo par render.
+    canvas.toBlob(function(blob) {
+      if (!blob) {
+        // Safari iOS peut retourner null sur canvas trop gros (silencieux)
+        console.warn("[Heatmap] canvas.toBlob a retourné null — canvas trop gros ?");
+        return;
+      }
+      _overlayUrl = URL.createObjectURL(blob);
+      _overlay = L.imageOverlay(_overlayUrl, [[0, 0], [imgH, imgW]], {
+        opacity:     0.7,
+        interactive: false,
+        pane:        "overlayPane"
+      }).addTo(window.map);
+      _canvas = canvas;
+    }, "image/png");
   }
 
   // ============================================================
@@ -522,6 +552,21 @@
       effacer();
       return;
     }
+    // 🐛 v1.21.3 (audit P0-5) : garde-fou anti-ANR — au-delà de MAX_SEGMENTS,
+    // le pipeline canvas génère plusieurs millions de blobs et bloque le
+    // main thread >10s. Abort propre avec warning explicite plutôt que kill OS.
+    if (segs.length > MAX_SEGMENTS) {
+      console.warn("[Heatmap] Refus de rendre " + segs.length + " segments (max " + MAX_SEGMENTS + ")");
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast(
+          "🔥 Trop d'éléments pour la heatmap (" + segs.length + " > " + MAX_SEGMENTS +
+          "). Décoche des sources pour réduire la charge.",
+          "warn"
+        );
+      }
+      effacer();
+      return;
+    }
     const canvas = _renderCanvas(segs, opts);
     if (!canvas) return;
     _placerOverlay(canvas);
@@ -540,6 +585,12 @@
     if (_overlay) {
       try { window.map.removeLayer(_overlay); } catch(e) {}
       _overlay = null;
+    }
+    // 🐛 v1.21.3 (audit P0-4) : revoke l'ObjectURL pour libérer le Blob PNG
+    // (sans ça, le Blob reste pinné en mémoire tant que le tab vit).
+    if (_overlayUrl) {
+      try { URL.revokeObjectURL(_overlayUrl); } catch(e) {}
+      _overlayUrl = null;
     }
     _canvas = null;
     _lastOpts = null;

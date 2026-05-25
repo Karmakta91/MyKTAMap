@@ -65,21 +65,33 @@ async function initDataFromConfig() {
   // avec ceux de la session dans le layerEditor — mais ces markers JSON ne sont
   // PAS dans listePoints, donc tout render ultérieur (suppression, ajout) les efface
   // silencieusement, et le contrôle des calques peut sembler ne pas les gérer.
+  //
+  // 🐛 v1.21.3 (audit anti-crash P0-1) : avant ce fix, on lisait le slot
+  // legacy unique `myktamap_session_v1` qui n'est plus écrit depuis la
+  // migration v1.16.1 vers le slot per-plan `myktamap_session_v1_<planId>`.
+  // Résultat : `_skipEditorJsonLoad` restait toujours false → `data/editor.json`
+  // se chargeait async PAR-DESSUS la session restaurée → bug silencieux 100%
+  // reproductible sur tout plan moderne avec un editor.json fourni.
+  // Fix : passer par `window.SessionPersist.getSaved(planId)` qui pointe sur
+  // le slot per-plan via le bon préfixe.
   let _skipEditorJsonLoad = false;
   try {
-    const raw = localStorage.getItem("myktamap_session_v1");
-    if (raw) {
-      const saved = JSON.parse(raw);
-      const planId = window._currentLoadedPlanId;
+    const planId = window._currentLoadedPlanId;
+    const saved  = (window.SessionPersist && typeof window.SessionPersist.getSaved === "function")
+                   ? window.SessionPersist.getSaved(planId)
+                   : null;
+    if (saved) {
       const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "";
-      const idMatch   = saved && saved.planId === planId;
+      const idMatch   = saved.planId === planId;
       const nameMatch = (!saved.planName || !planName) ? true : (saved.planName === planName);
       if (idMatch && nameMatch && Array.isArray(saved.editorPoints) && saved.editorPoints.length > 0) {
         _skipEditorJsonLoad = true;
         console.log("[Main] Session active avec", saved.editorPoints.length, "point(s) editor → skip data/editor.json (session autoritative)");
       }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.warn("[Main] _skipEditorJsonLoad detection failed :", e);
+  }
 
   config.dataLayers.forEach(function(layerConfig) {
     if (_skipEditorJsonLoad && layerConfig.id === "editor") return;
@@ -364,10 +376,18 @@ async function lancerApplication() {
     function _batteryForceSync() {
       try { window.BatteryGuard.forceCheck(); } catch(e) {}
     }
-    _batteryForceSync();              // immédiat
-    setTimeout(_batteryForceSync, 300);   // après getBattery().then typique
-    setTimeout(_batteryForceSync, 1000);  // safety net si promise lente
-    setTimeout(_batteryForceSync, 3000);  // dernière chance (3s = limite raisonnable)
+    // 🐛 v1.21.3 (audit P0-8) : on stocke les IDs des 3 setTimeout dans
+    // window._ktaBatteryForceTimers pour pouvoir les clear au plan switch.
+    // Avant : 4 callbacks pendants × N switches = jusqu'à 12 callbacks
+    // orphelins qui tirent refreshStatusBar sur un DOM peut-être reconstruit.
+    if (Array.isArray(window._ktaBatteryForceTimers)) {
+      window._ktaBatteryForceTimers.forEach(function(id) { clearTimeout(id); });
+    }
+    window._ktaBatteryForceTimers = [];
+    _batteryForceSync();              // immédiat (pas un timeout, pas à tracker)
+    window._ktaBatteryForceTimers.push(setTimeout(_batteryForceSync, 300));   // après getBattery().then typique
+    window._ktaBatteryForceTimers.push(setTimeout(_batteryForceSync, 1000));  // safety net si promise lente
+    window._ktaBatteryForceTimers.push(setTimeout(_batteryForceSync, 3000));  // dernière chance (3s = limite raisonnable)
   }
 
   // Resize defensif (iOS PWA viewport-fit=cover) :
@@ -605,6 +625,46 @@ function _libererRessourcesPlanPrecedent() {
 
   // Runtime assets (blob URLs des fichiers ZIP importés)
   resetRuntimeAssets();
+
+  // 🐛 v1.21.3 (audit P0-6/9) : bump le token data layer load. Tout rAF
+  // récursif en cours dans ajouterPointsDepuisJSON exit silencieusement
+  // à la prochaine itération → fini les markers atterrissant dans le
+  // layerGroup du plan précédent (zombies + fuite). Doit être fait AVANT
+  // que window.dataLayerGroups soit vidé / reconstruit.
+  window._ktaDataLayerLoadToken = (window._ktaDataLayerLoadToken || 0) + 1;
+
+  // 🐛 v1.21.3 (audit P0-10) : purge explicite des 4 registres data layer.
+  // Sans ça, ils cumulaient entre les switches → fuite mémoire linéaire et
+  // les helpers getAllEmbeddedRoads/Structures retournaient un mix des plans.
+  // Note : ne pas détacher les Leaflet layers d'abord — map.remove() ci-dessus
+  // a déjà tout déconnecté, on vide juste les arrays JS.
+  if (Array.isArray(window._ktaDataMarkers))            window._ktaDataMarkers.length            = 0;
+  if (Array.isArray(window._ktaDataPolylines))          window._ktaDataPolylines.length          = 0;
+  if (Array.isArray(window._ktaDataPolygons))           window._ktaDataPolygons.length           = 0;
+  if (Array.isArray(window._ktaDataStructurePolygons))  window._ktaDataStructurePolygons.length  = 0;
+  if (Array.isArray(window._kta_dataLayerNoteGhosts))   window._kta_dataLayerNoteGhosts.length   = 0;
+
+  // 🐛 v1.21.3 (audit P0-8) : clear les timers BatteryGuard.forceCheck en
+  // attente. Sans ça, switch 3× rapidement = 9 callbacks orphelins qui tirent
+  // refreshStatusBar sur un DOM peut-être reconstruit.
+  if (Array.isArray(window._ktaBatteryForceTimers)) {
+    window._ktaBatteryForceTimers.forEach(function(id) { clearTimeout(id); });
+    window._ktaBatteryForceTimers.length = 0;
+  }
+
+  // 🐛 v1.21.3 (audit P0-10) : revoke les ObjectURL des photos affichées
+  // (sinon les Blob restent pinned tant que le tab vit). Le Set vit dans
+  // editor.js / photos.js, on appelle leur cleanup helper si exposé.
+  if (typeof window._revokeAllPhotoObjectUrls === "function") {
+    try { window._revokeAllPhotoObjectUrls(); } catch(e) {}
+  }
+
+  // 🐛 v1.21.3 (audit P0-10) : désactive le mode urgence XL si actif —
+  // emergencyMode.js retient un _orientationListener sur window qui resterait
+  // sinon attaché jusqu'à la fermeture du tab.
+  if (window.EmergencyMode && typeof window.EmergencyMode.desactiver === "function") {
+    try { window.EmergencyMode.desactiver(); } catch(e) {}
+  }
 
   // Flags d'init des modules (forcent re-init au prochain lancerApplication)
   window.interfaceInitialized = false;
