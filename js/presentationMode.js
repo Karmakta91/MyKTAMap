@@ -63,10 +63,37 @@
     return false;
   }
 
+  // 🆕 v1.21.0-fix2 : bouton flottant ✕ pour sortir sur mobile (touche F
+  // et Échap inaccessibles sans clavier physique). Petit, semi-transparent
+  // en haut-droite. Position safe-area-aware iOS PWA.
+  function _createExitButton() {
+    if (document.getElementById("kta-presentation-exit-btn")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "kta-presentation-exit-btn";
+    btn.className = "kta-presentation-exit-btn";
+    btn.setAttribute("aria-label", "Sortir du mode présentation");
+    btn.title = "Sortir du mode présentation (F ou Échap)";
+    btn.innerHTML = "✕";
+    btn.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      deactivate();
+    });
+    document.body.appendChild(btn);
+  }
+
+  function _removeExitButton() {
+    const btn = document.getElementById("kta-presentation-exit-btn");
+    if (btn) btn.remove();
+  }
+
   function activate() {
     if (_active) return;
     _active = true;
     document.body.classList.add(BODY_CLASS);
+    // Bouton flottant ✕ pour sortir sur mobile (touche F inaccessible)
+    _createExitButton();
     // Force Leaflet à recalculer la taille de la carte (header + footer cachés
     // → plus d'espace dispo). Sans ça, certains rendus peuvent rester sur
     // les anciennes dimensions jusqu'à un drag/zoom user.
@@ -76,7 +103,7 @@
     // Toast d'aide (3s) pour rappeler comment sortir
     if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
       window.OOMGuard.showToast(
-        "🎬 Mode présentation activé — F ou Échap pour sortir",
+        "🎬 Mode présentation activé — F / Échap (PC) ou ✕ en haut-droite (mobile) pour sortir",
         "info"
       );
     }
@@ -86,6 +113,7 @@
     if (!_active) return;
     _active = false;
     document.body.classList.remove(BODY_CLASS);
+    _removeExitButton();
     if (window.map && typeof window.map.invalidateSize === "function") {
       try { window.map.invalidateSize({ animate: false }); } catch(e) {}
     }

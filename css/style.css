@@ -16823,9 +16823,64 @@ body.kta-presentation-mode .kta-compass-widget {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 12px) !important;
 }
 
-/* Petit indicateur discret en haut-droite "Mode présentation" ?
-   Choix design : non, l'overlay distrait. Le toast au activate
-   (OOMGuard.showToast 3s) suffit comme rappel. */
+/* 🆕 v1.21.0-fix2 : bouton flottant ✕ pour sortir du mode présentation
+   sur MOBILE (la touche F est inaccessible sans clavier physique).
+   Position fixed top-right, safe-area-aware iOS PWA. Petit (32×32) +
+   semi-transparent (40% opacity) pour ne pas distraire en démo, opaque
+   au hover/tap. Z-index supérieur au widget boussole (qui est ~1500). */
+.kta-presentation-exit-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(10, 13, 24, 0.55);
+  color: #f4c542;
+  border: 1.5px solid rgba(244, 197, 66, 0.55);
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0.45;
+  transition: opacity 0.18s, background 0.18s, transform 0.18s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  line-height: 1;
+}
+.kta-presentation-exit-btn:hover,
+.kta-presentation-exit-btn:focus-visible,
+.kta-presentation-exit-btn:active {
+  opacity: 1;
+  background: rgba(10, 13, 24, 0.85);
+  border-color: #f4c542;
+  outline: none;
+  transform: scale(1.06);
+}
+.kta-presentation-exit-btn:active {
+  transform: scale(0.94);
+}
+
+/* Variant thème clair */
+body.kta-theme-light .kta-presentation-exit-btn,
+html.kta-theme-light .kta-presentation-exit-btn {
+  background: rgba(253, 248, 235, 0.75) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  border-color: var(--kta-light-accent-hover, #d9a82e) !important;
+  box-shadow: 0 2px 8px rgba(80, 60, 30, 0.20) !important;
+}
+body.kta-theme-light .kta-presentation-exit-btn:hover,
+html.kta-theme-light .kta-presentation-exit-btn:hover,
+body.kta-theme-light .kta-presentation-exit-btn:focus-visible,
+html.kta-theme-light .kta-presentation-exit-btn:focus-visible {
+  background: rgba(253, 248, 235, 0.95) !important;
+}
 
 /* ============================================================
    🌐 v1.21.0-fix1 — Géoref picker (Réglages + Enregistrer KMZ)

@@ -2715,6 +2715,23 @@ function afficherConfig() {
                UNIQUEMENT depuis ⚙️ Configuration du loader/home (cf. index.html
                > #loaderShowIntersectionsCb). Logique : c'est une pref d'affichage
                qui survit aux changements de plan, son toggle "à la racine" suffit. -->
+
+          <!-- 🆕 v1.21.0-fix2 : Mode présentation accessible depuis la modale
+               (mobile-friendly : touche F inaccessible sans clavier physique).
+               Pour SORTIR sur mobile : bouton flottant ✕ créé par
+               presentationMode.js > activate(). -->
+          <div style="margin-top:12px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.08);">
+            <button class="kta-btn kta-btn-ghost" type="button" id="cfg_presentation_btn"
+                    style="width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+              <span style="font-size:18px;">🎬</span>
+              <span>Activer le mode présentation</span>
+            </button>
+            <div style="font-size:11.5px; color:#8892a4; margin-top:6px; line-height:1.5; padding:0 4px;">
+              Cache header + sidebars + footer pour libérer toute la surface visuelle pour la carte.
+              Garde zoom + boussole pour la démo. Sortie : touche <kbd>F</kbd> ou <kbd>Échap</kbd>
+              (PC), ou bouton flottant ✕ en haut-droite (mobile).
+            </div>
+          </div>
         </div>
 
         <div class="kta-aide-section">
@@ -2776,6 +2793,29 @@ function afficherConfig() {
   // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
   // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
   _bindCfgGeorefHandlers();
+
+  // 🎬 v1.21.0-fix2 (KARMA mobile-friendly) : bouton "Activer le mode
+  // présentation" dans la section 🔍 Affichage. Sur mobile, la touche F
+  // est inaccessible faute de clavier physique → ce bouton est le seul
+  // chemin pour entrer dans le mode. Sortie : touche F/Échap (PC) ou
+  // bouton flottant ✕ injecté par presentationMode.js > activate().
+  const btnPresentation = document.getElementById("cfg_presentation_btn");
+  if (btnPresentation) {
+    btnPresentation.addEventListener("click", function() {
+      // Ferme la modale Réglages AVANT d'activer le mode (sinon le mode
+      // présentation laisse la modale ouverte par-dessus la carte).
+      const cfgModal = document.getElementById("kta-cfg-modal");
+      if (cfgModal) cfgModal.remove();
+      // Active après un micro-délai pour laisser le DOM se nettoyer.
+      setTimeout(function() {
+        if (window.PresentationMode && typeof window.PresentationMode.activate === "function") {
+          window.PresentationMode.activate();
+        } else {
+          alert("Module PresentationMode indisponible.");
+        }
+      }, 50);
+    });
+  }
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation
   // uniquement via le générateur de plan désormais. Les fonctions
