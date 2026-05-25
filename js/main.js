@@ -563,10 +563,13 @@ function _libererRessourcesPlanPrecedent() {
     try { window.resetTrackingTimeline(); } catch(e) {}
   }
 
-  // 🚫 v1.11.4 V2.4 : reset Heatmap retiré depuis v1.12.0 (module désactivé).
-  // Le check `window.MyKTAMapHeatmap` aurait été no-op silencieusement
-  // puisque le module n'est plus chargé, mais on retire la ligne pour
-  // garder main.js propre. Si on réactive, restaurer ce bloc.
+  // 🔥 v1.21.2 (KARMA "on reactive") : reset Heatmap au plan switch.
+  // Si le module est chargé ET qu'un overlay est actif sur la carte du
+  // plan précédent, on l'efface AVANT d'invalider la carte Leaflet
+  // (sinon référence morte vers l'ancien overlay).
+  if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.effacer === "function") {
+    try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
+  }
 
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
   if (window._baseTiles && window._baseTiles.length > 0) {

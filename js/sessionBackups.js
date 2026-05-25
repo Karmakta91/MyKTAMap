@@ -227,10 +227,15 @@ window.SessionBackups = (function() {
     const est = !payload.structures     || payload.structures.length     === 0;
     const emt = !payload.measure        || payload.measure.length        === 0;
     const ems = !payload.measureSurface || payload.measureSurface.length === 0;
+    // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking") :
+    // la timeline tracker GPS compte comme contenu — un user qui a fait
+    // une session de tracking sans annoter génère quand même un backup
+    // utile (la heatmap multi-sessions le consommera).
+    const etk = !payload.trackerTimeline || payload.trackerTimeline.length === 0;
     // Légende personnalisée : on ne considère pas comme "contenu" pour le
     // snapshot — un user qui n'a fait que customiser la légende ne génère
     // pas un backup utile.
-    return ept && ert && ezt && est && emt && ems;
+    return ept && ert && ezt && est && emt && ems && etk;
   }
 
   function snapshot(reason) {

@@ -857,6 +857,31 @@ window.resetTrackingTimeline = function() {
   _trackingStartTs  = null;
 };
 
+// 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking comme
+// ca la fonction [heatmap] devient pertinante") : setter pour restore depuis
+// SessionPersist / SessionBackups. Permet à la timeline tracker de survivre
+// aux reloads → cumul multi-sessions exploitable par la heatmap.
+//
+// Filtrage défensif : on n'accepte que les entries qui ont x/y/t/type
+// valides, pour ne pas polluer la timeline runtime avec des entries
+// corrompues d'un payload tiers.
+window.setTrackingTimeline = function(timeline, startTs) {
+  if (!Array.isArray(timeline)) return;
+  const cleaned = [];
+  timeline.forEach(function(e) {
+    if (!e || typeof e !== "object") return;
+    if (typeof e.x !== "number" || typeof e.y !== "number") return;
+    if (typeof e.t !== "number") return;
+    if (typeof e.type !== "string") return;
+    const out = { x: e.x, y: e.y, t: e.t, type: e.type };
+    if (typeof e.deltaMs === "number") out.deltaMs = e.deltaMs;
+    if (Number.isInteger(e.level))     out.level   = e.level;
+    cleaned.push(out);
+  });
+  _trackingTimeline = cleaned;
+  _trackingStartTs  = (typeof startTs === "number") ? startTs : null;
+};
+
 // Recale la position du tracker sur des coords plan precises (typiquement
 // utilise depuis le bouton "📍 Je suis ici" d'une popup point — voir
 // utils.js > buildPointPopupHtml + interface.js wire-up).

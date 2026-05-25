@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.21.1-wakelock2";
+const CACHE_NAME = "myktamap-cache-v1.21.1-flyout-tracker-heatmap";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -126,11 +126,12 @@ const ASSETS_TO_CACHE = [
   "./js/batteryGuard.js",
   // 🆕 v1.11.3 V2.3 : TrackerReplay (modale replay timeline tracker + export CSV).
   "./js/trackerReplay.js",
-  // 🚫 v1.11.4 V2.4 : Heatmap — DÉSACTIVÉ depuis v1.12.0 (cf. commentaire
-  // dans index.html). Le fichier reste dans le repo mais pas chargé ni caché.
-  // Pour réactiver : décommenter le <script> dans index.html + restaurer
-  // "./js/heatmap.js" ci-dessous + restaurer le bouton 🔥 dans interface.js.
-  // "./js/heatmap.js",
+  // 🔥 v1.21.2 : Heatmap RÉACTIVÉE — la timeline tracker GPS est maintenant
+  // persistée dans SessionPersist + SessionBackups, donc la heatmap peut
+  // enfin agréger des trajectoires multi-sessions (= cas d'usage qui
+  // justifiait son existence initiale, validé maintenant que la persistance
+  // est en place).
+  "./js/heatmap.js",
   // 🆕 v1.16.0 step 2 : module de personnalisation de la légende (cascade
   // session > plan > default). Doit être caché pour fonctionner offline.
   "./js/legendCustomization.js",

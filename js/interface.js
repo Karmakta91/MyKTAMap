@@ -4462,23 +4462,31 @@ function _ouvrirFlyout(groupId) {
 
     const iconEl = document.createElement("span");
     iconEl.className = "kta-group-flyout-btn-icon";
-    iconEl.innerHTML = sub.icone || "";
+    // 🆕 v1.21.2 (KARMA tracker flyout) : support icône dynamique pour les
+    // sous-actions dont l'apparence dépend d'un état runtime (ex: ▶️↔⏹️
+    // pour Play/Stop du tracker). Sinon icône statique habituelle.
+    iconEl.innerHTML = (typeof sub.dynamicIcon === "function")
+                       ? (sub.dynamicIcon() || sub.icone || "")
+                       : (sub.icone || "");
     const lblEl = document.createElement("span");
     lblEl.className = "kta-group-flyout-btn-label";
     lblEl.textContent = sub.titre || "";
     btn.appendChild(iconEl);
     btn.appendChild(lblEl);
 
-    // Marqueur actif visuel si le mode actuel matche ce type
-    if (currentMode && (sub.customType === currentMode)) {
+    // Marqueur actif visuel — 2 chemins :
+    // (1) sub.isActive() : function custom qui retourne bool. Utilisé par
+    //     les groupes qui ont PLUSIEURS modes actifs en parallèle (ex:
+    //     tracker = Play + Recalage + Boussole peuvent être tous actifs).
+    // (2) currentMode (fallback historique) : pour les groupes traces/
+    //     zones/structures qui ont 1 SEUL mode actif à la fois.
+    if (typeof sub.isActive === "function") {
+      try { if (sub.isActive()) btn.classList.add("kta-actif"); } catch(e) {}
+    } else if (currentMode && (sub.customType === currentMode)) {
       btn.classList.add("kta-actif");
     } else if (currentMode && !sub.customType && sub.isTypeAction) {
       // Pour les types built-in, on n'a pas l'ID dans le config sub-action
-      // (l'ID est dans la closure onClick). Heuristique : on regarde si le
-      // titre contient le nom du mode. Fallback approximatif — KARMA peut
-      // toujours désactiver via re-clic sur le bouton actuel dans le sidebar.
-      // Pour une match exacte, il faudrait stocker un `typeKey` dans la config.
-      // Voir improvement potentiel : sub.typeKey === currentMode.
+      // (l'ID est dans la closure onClick). Heuristique : typeKey.
       if (sub.typeKey && sub.typeKey === currentMode) {
         btn.classList.add("kta-actif");
       }
@@ -4926,15 +4934,25 @@ function initInterface() {
   })();
 
   // 6. TRACKER
+  // 🆕 v1.21.2 (KARMA "on commence a voir bcp icone") : migration vers le
+  // pattern flyout (panel latéral, cf §16 CLAUDE.md) car la cascade verticale
+  // débordait avec ~7 sous-actions. Spécificités tracker vs traces/zones/
+  // structures : (a) icône dynamique ▶️↔⏹️ selon état tracking →
+  // dynamicIcon function (b) plusieurs modes actifs en parallèle
+  // (Play + Recalage + Boussole) → isActive function par sub-action.
   let isTracking = false;
   _creerGroupeAccordeon({
     id: "tracker",
     iconePrincipale: "🧭",
     titre: "Tracker",
+    useFlyout: true,
     sousActions: [
       {
         icone: "▶️",
         titre: "Démarrer / arrêter le tracking",
+        // Icône dynamique selon état tracking — relu à chaque ouverture flyout
+        dynamicIcon: function() { return isTracking ? "⏹️" : "▶️"; },
+        isActive:    function() { return isTracking === true; },
         onClick: function(btnSub) {
           if (isTracking) {
             // Arrêt : pas d'avertissement, direct.
@@ -4974,6 +4992,11 @@ function initInterface() {
       {
         icone: "🧭",
         titre: "Afficher la boussole (Nord)",
+        // 🆕 v1.21.2 : actif si le widget compass est visible (sync au re-ouvert flyout)
+        isActive: function() {
+          return !!(window.CompassWidget && typeof window.CompassWidget.isVisible === "function"
+                    && window.CompassWidget.isVisible());
+        },
         onClick: function(btnSub) {
           if (!window.CompassWidget) return;
           window.CompassWidget.toggle();
@@ -4989,6 +5012,8 @@ function initInterface() {
       {
         icone: "📍",
         titre: "Mode recalage",
+        // 🆕 v1.21.2 : actif si le mode recalage est en cours (sync au re-ouvert flyout)
+        isActive: function() { return window.modeRecalage === true; },
         onClick: function(btnSub) {
           if (typeof modeRecalage === "undefined") return;
           const dejaActif = btnSub.classList.contains("kta-actif");
@@ -5082,18 +5107,26 @@ _setGroupeModeActif("tracker", isTracking, null);
             alert("Module Replay tracker indisponible. Recharge la page si le problème persiste.");
           }
         }
+      },
+      // 🔥 v1.21.2 RÉACTIVÉ (KARMA "on reactive") — pertinent maintenant que
+      // la timeline tracker GPS est persistée dans SessionPersist /
+      // SessionBackups (= cumul multi-session exploitable).
+      {
+        icone: "🔥",
+        titre: "Heatmap — densité tracker + points",
+        onClick: function() {
+          if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
+            window.MyKTAMapHeatmap.ouvrirModale();
+          } else {
+            alert("Module Heatmap indisponible. Recharge la page si le problème persiste.");
+          }
+        }
       }
-      // 🚫 v1.11.4 V2.4 : bouton 🔥 Heatmap retiré depuis v1.12.0
-      // (KARMA "on désactive ce module, on garde de côté le code").
-      // L'utilité n'était pas claire dans le contexte cataphile actuel
-      // (tracker session-only RAM, pas de cumul multi-session). Le code
-      // reste dans js/heatmap.js + le wiring est prêt — pour réactiver
-      // il suffit de restaurer le bloc ci-dessous + décommenter le
-      // <script> dans index.html + sw.js.
+      // (ancien bloc commenté retiré — réactivation effective v1.21.2)
       /*
       ,{
         icone: "🔥",
-        titre: "Heatmap — densité tracker + points",
+        titre: "Heatmap — densité tracker + points (LEGACY commenté)",
         onClick: function() {
           if (window.MyKTAMapHeatmap && typeof window.MyKTAMapHeatmap.ouvrirModale === "function") {
             window.MyKTAMapHeatmap.ouvrirModale();

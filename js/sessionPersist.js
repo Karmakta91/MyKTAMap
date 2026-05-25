@@ -168,10 +168,28 @@
       // dans les anciens saves → traité comme état vide au restore.
       customLegend: (window.LegendCustomization && window.LegendCustomization.getSessionState)
                       ? window.LegendCustomization.getSessionState()
-                      : null
-      // tracker path : volontairement non persiste (cf. choix 3:b, tracker
-      // experimental, ressusciter un trail fige serait trompeur sans pos.
-      // recente du capteur).
+                      : null,
+
+      // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking
+      // comme ca la fonction [heatmap] devient pertinante") :
+      // persistance de la timeline tracker GPS. Avant : RAM-only (perte
+      // au reload) → la heatmap multi-sessions ne pouvait jamais agréger
+      // des trajectoires cumulées sur plusieurs sorties.
+      //
+      // Format : [{x, y, t, deltaMs, type, level?}, ...]
+      //   type ∈ "start" | "pdr" | "recalage"
+      //
+      // Note : le `path` runtime du tracker (= polyline visible Leaflet)
+      // reste non persisté (volontaire — pas de trail visuel survivant au
+      // reload, cohérent avec le pattern "tracker session-only" pour le
+      // rendu carte). Seule la TIMELINE temporelle est gardée pour stats
+      // / heatmap / replay multi-sessions.
+      trackerTimeline: (typeof window.getTrackingTimeline === "function")
+                         ? (window.getTrackingTimeline() || [])
+                         : [],
+      trackerStartTs:  (typeof window.getTrackingStartTs  === "function")
+                         ? (window.getTrackingStartTs()  || null)
+                         : null
     };
   }
 
@@ -479,6 +497,17 @@
       // absent au boot très précoce — guard.
       if (window.LegendCustomization && typeof window.LegendCustomization.loadSessionState === "function") {
         window.LegendCustomization.loadSessionState(payload.customLegend);
+      }
+
+      // 🆕 v1.21.2 (KARMA "on active dans la sauvegarde auto le tracking") :
+      // restore de la timeline tracker GPS. Rétrocompat : anciens payloads
+      // n'ont pas trackerTimeline → setTrackingTimeline guarded sur Array.
+      // Le tracker n'est PAS automatiquement redémarré (= juste la timeline
+      // est rechargée, prête pour heatmap / replay / stats). L'user doit
+      // cliquer ▶️ Play pour ré-acquérir les capteurs et continuer.
+      if (typeof window.setTrackingTimeline === "function" && Array.isArray(payload.trackerTimeline)) {
+        window.setTrackingTimeline(payload.trackerTimeline, payload.trackerStartTs || null);
+        restored.trackerTimeline = payload.trackerTimeline.length;
       }
       // Mettre à jour le hash courant pour que le prochain poll ne détecte pas
       // les setters comme une modification utilisateur

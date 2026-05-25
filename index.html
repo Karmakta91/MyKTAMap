@@ -900,17 +900,13 @@
        APRÈS tracking.js (qui expose getTrackingTimeline) et AVANT interface.js
        (qui ajoute le bouton 🎬 dans la sidebar). -->
   <script src="js/trackerReplay.js"></script>
-  <!-- 🆕 v1.11.4 V2.4 : Heatmap densité — DÉSACTIVÉ depuis v1.12.0
-       (KARMA "on désactive ce module, on garde de côté le code").
-       Le fichier js/heatmap.js reste dans le repo pour ré-activation
-       future éventuelle (cas d'usage long terme avec cumul tracker
-       multi-session non couvert en V2). Pour réactiver :
-         1. Décommenter le <script> ci-dessous
-         2. Restaurer "./js/heatmap.js" dans sw.js > ASSETS_TO_CACHE
-         3. Restaurer le bouton 🔥 dans interface.js groupe Tracker
-         4. Restaurer le reset au plan switch dans main.js
-       <script src="js/heatmap.js"></script>
-  -->
+  <!-- 🆕 v1.21.2 (KARMA "on reactive [la heatmap]") : Heatmap densité
+       RÉACTIVÉE après que la timeline tracker GPS est maintenant persistée
+       (cf v1.21.2 SessionPersist trackerTimeline). Désactivée v1.12.0 →
+       v1.21.2. Le cas d'usage initial "cumul multi-session" qui justifiait
+       son existence est maintenant viable car la timeline survit aux
+       reloads. Doit charger APRÈS tracking.js (timeline) et trackerReplay.js. -->
+  <script src="js/heatmap.js"></script>
   <!-- 🆕 v1.16.0 step 2 : module de personnalisation de la légende
        (cascade session > plan > default ; libellés + visibilité +
        entrées custom). Doit charger AVANT exporter.js (qui lit le
