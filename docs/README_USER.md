@@ -241,7 +241,13 @@ Section **"📊 Répartition par catégorie"** : **4 camemberts SVG** agrégés 
 | ⬛ **Zones par type** | Eau / Remblais / Effondrement / Inaccessible |
 | 🏛️ **Structures par type** | Piliers (1ère / 2e masse) / Murs / Fronts de taille |
 
-Le rendu visuel est **identique** à celui du camembert de la page **Stats Globales** d'un plan ouvert — même palette de couleurs, mêmes labels, même comportement. Au fur et à mesure que tu ouvres tes plans et que leurs data layers se chargent, les camemberts s'enrichissent automatiquement avec les breakdowns réels.
+Le rendu visuel est **identique** à celui du camembert de la page **Stats Globales** d'un plan ouvert — même palette de couleurs, **mais avec une différence importante** :
+
+> 💡 **Labels par défaut TOUJOURS** (depuis v1.21.5-fix1) : sur cette section cross-plan home, on affiche les libellés **génériques built-in** (`Principal`, `Secondaire`, `Chemin`, `Jonction` pour les tracés ; `Eau`, `Remblais`, `Effondrement`, `Inaccessible` pour les zones). Si tu as renommé un type dans la légende d'un plan spécifique (par exemple « principal » → « route de surface » sur ton plan A), ce renommage **n'apparaît PAS ici** — c'est volontaire pour garder une vision cohérente cross-plan. Le renommage local reste visible normalement dans la modale Stats Globales **in-plan** du plan A.
+
+> 📌 **Limitation cache** : pour les plans **jamais rouvert depuis v1.21.4**, seules les annotations de **session** (`SessionPersist` localStorage) sont contribuées aux camemberts — pas les data layers embedded du ZIP (les `data/*.json`). Si tu vois des "secondaire" / "level -1" qui te paraissent manquants, **rouvre le plan une fois** : le cache complet (incluant les data layers embedded) sera regénéré automatiquement après ~800 ms. Au prochain retour à la home, les camemberts seront à jour.
+
+Au fur et à mesure que tu ouvres tes plans et que leurs data layers se chargent, les camemberts s'enrichissent automatiquement avec les breakdowns réels.
 
 #### 🎨 Stats du bandeau accueil *(nouveau v1.21.4)*
 
@@ -642,7 +648,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
 
-> 💡 **Calque "Mes annotations"** dans le contrôle des couches Leaflet (en haut à droite de la carte) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
+> 💡 **Calque "Mes annotations"** dans la modale ≡ Filtres (en haut à droite de la carte, bouton trois barres horizontales — *depuis v1.21.5 c'est notre modale unifiée custom, pas le Leaflet natif*) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
@@ -928,6 +934,45 @@ Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous
 - **Présentation visuelle** d'une session : screenshot heatmap + commentaire pour partager une vision macro du plan exploré
 
 > ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
+
+### ≡ Modale Filtres unifiée *(refonte v1.21.5)*
+
+Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre la **modale Filtres unifiée**. Elle remplace le contrôle des couches Leaflet natif (qui ne gérait que les images et les calques de données) par une fenêtre qui regroupe **7 sections** de filtrage :
+
+| Section | Filtre quoi |
+|---|---|
+| 🖼️ **Calques d'image** | Image de base + calques additionnels (légende, signalétique, etc.) |
+| 📊 **Calques de données** | Les calques `puits`, `vehicule`, `cataphile`, `editor` (= Mes annotations), etc. |
+| 🏗️ **Niveaux M-LVL** *(si plan multi-niveau)* | Niveau actif (dessin) + niveaux visibles (multi-sélection) — **synchronisé** avec la modale Niveaux classique |
+| 🏷️ **Tags des points** *(nouveau v1.21.5)* | Filtre par tag (puits aération, salle, chatière...). Liste auto = tags **réellement présents** dans le plan avec compteur. |
+| 🛣️ **Types de tracés** *(nouveau v1.21.5)* | Principal / Secondaire / Chemin / Jonction + customs |
+| ⬛ **Types de zones** *(nouveau v1.21.5)* | Eau / Remblais / Effondrement / Inaccessible + customs |
+| 🏛️ **Types de structures** *(nouveau v1.21.5)* | Pilier 1ère masse / Pilier 2è masse / Mur / Front 1 / Front 2 + customs |
+
+**Comment ça marche :**
+
+- **Live update** : chaque toggle (case cochée/décochée) applique le filtre **immédiatement** sur la carte (anti-flicker debounce 200 ms pour les plans denses).
+- **Sections accordéon** : clic sur l'en-tête d'une section pour replier/déplier. Toutes ouvertes par défaut.
+- **Boutons rapides par section** : `👁️ Tout` et `🚫 Aucun` pour basculer tous les éléments d'un coup.
+- **Bouton 🔄 Tout afficher** (footer) : reset tous les filtres runtime (tags + types) à leur état neutre (= tout visible). Ne touche PAS aux toggles M-LVL ni aux calques image/data — chacun gardé indépendant.
+- **Status footer** : compte les filtres actifs en bas (`Filtres actifs : tags, tracés`) en jaune si au moins un actif, gris si tout neutre.
+
+**Persistance par plan** *(nouveau v1.21.5)* :
+
+Les filtres tags + types sont **sauvegardés dans la session du plan** (`SessionPersist`). Si tu actives "masquer les puits" sur le plan A, puis tu changes pour le plan B, puis tu reviens sur A → tes filtres sont **automatiquement restaurés**. Chaque plan a ses propres filtres.
+
+**Synchronisation M-LVL bidirectionnelle** *(nouveau v1.21.5)* :
+
+La section 🏗️ M-LVL de la modale Filtres **cohabite** avec la pastille M-LVL et la modale Niveaux classique. Toute action d'un côté est répercutée de l'autre :
+
+- Tu coches `Niv 1` dans la modale Filtres → la modale Niveaux et la carte sont mises à jour.
+- Tu utilises la pastille M-LVL pour changer de niveau actif → si la modale Filtres est ouverte, sa section 🏗️ se rafraîchit en live.
+
+> 💡 **Cas d'usage typique** : tu travailles sur une grande carrière avec beaucoup de tags. Tu n'es intéressé que par les puits ouverts (tags `peo` et `cao`) pour planifier un parcours d'aération. Ouvre ≡ Filtres → section 🏷️ Tags → clique 🚫 Aucun puis recoche `peo` + `cao`. La carte affiche seulement ces 2 catégories. Sauvegardé automatiquement pour ce plan.
+
+> 📌 **Compatibilité** : les anciennes sessions (v1.21.4 et antérieures) sont restaurées sans filtre actif (= tout visible, comportement strict v1.21.4). La première interaction avec la modale crée l'état et le persiste à la prochaine sauvegarde automatique (≤ 1.5 s).
+
+> ⚠️ **Le tracé en cours est toujours visible** : si tu es en train de tracer une route et que tu décoches son type dans le filtre, **le tracé courant reste visible** pour ne pas te perdre. Les autres tracés du même type sont masqués comme prévu. Idem pour zones et structures en cours.
 
 ### ⚙️ Réglages du tracker
 

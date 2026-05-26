@@ -5221,4 +5221,257 @@ NETWORK_AUDIT inchangé sur le fond — mise à jour des dates et de la version 
 
 ---
 
+### 64. v1.21.5 — Refonte filtre Leaflet (modale ≡ unifiée + filtrage runtime tags/types)
+
+Release PATCH (bump Z : 1.21.4 → 1.21.5). Refonte UX complète du bouton `≡` Leaflet topright. Module **nouveau** `js/filterPanel.js` (~655 lignes IIFE).
+
+#### 64.1 Architecture
+
+**Avant** : `js/map.js` ligne 389 (env.) faisait `L.control.layers(null, overlays).addTo(map)` → control natif Leaflet qui togglait image + data layers en cochant/décochant des cases. Pas de filtre tag/type.
+
+**Après** : `L.control.layers(...)` **supprimé**. `js/map.js` expose `window._ktaOverlays = overlays;` pour que FilterPanel puisse les toggler. Un nouveau custom control `L.control.ktaFilterControl` (défini dans `interface.js`) est ajouté topright avec la même icône `&#9776;` (≡ trois barres horizontales — KARMA : « visuelement meme icone des troi barre noir horizontal »). Au clic → `window.FilterPanel.ouvrir()`.
+
+#### 64.2 État runtime global
+
+```js
+window._ktaRuntimeFilters = {
+  tags:        Set<string> | null,   // null = pas de filtre (tout visible)
+  roadTypes:   Set<string> | null,
+  zoneTypes:   Set<string> | null,
+  structTypes: Set<string> | null
+};
+```
+
+**Convention `null`** = rétro-compat. Tout module level-aware (road.js, zones.js, structures.js, editor.js, utils.js) check `if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.X)` AVANT de filtrer → si null, comportement v1.21.4 strict.
+
+#### 64.3 API publique `window.FilterPanel`
+
+- `ouvrir() / fermer() / isVisible()` — modale
+- `getState()` → retourne `window._ktaRuntimeFilters` (référence directe)
+- `setFilters(partial)` — mute par champ (tags, roadTypes, ...) + déclenche `_scheduleApply` + `_notify`
+- `onChange(cb)` — subscribe aux changements (debounce 200ms)
+- `applyFilters()` — force re-render via `window.appliquerFiltreRuntime`
+- `onLevelChange()` — appelée par `appliquerFiltreNiveau` quand le M-LVL change ailleurs → re-render la section M-LVL si la modale est ouverte (sync bidirectionnel)
+
+#### 64.4 Cascade re-render — `window.appliquerFiltreRuntime`
+
+Helper global dans `interface.js`, alias de `appliquerFiltreNiveau` :
+
+```js
+window.appliquerFiltreRuntime = function() {
+  if (typeof window.appliquerFiltreNiveau === "function") {
+    window.appliquerFiltreNiveau();
+  }
+};
+```
+
+**Pourquoi un alias ?** Les modules level-aware (renderRoads, renderZones, renderStructures, _applyLevelFilterToData*) appliquent runtime+niveau dans la même passe de rendu. Pas besoin de 2 passes distinctes.
+
+#### 64.5 Hooks runtime niveau modules
+
+**road.js > renderRoads** (après `_passeFiltreNiveau`) :
+```js
+if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.roadTypes
+    && road.type !== "itinerary" && road !== currentRoad) {
+  if (!window._ktaRuntimeFilters.roadTypes.has(road.type)) return;
+}
+```
+
+**zones.js > renderZones** (après `_zonePasseFiltre`) :
+```js
+if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
+    && zone !== currentZone) {
+  if (!window._ktaRuntimeFilters.zoneTypes.has(zone.type)) return;
+}
+```
+
+**structures.js > renderStructures** (après `_structurePasseFiltre`) :
+```js
+if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
+    && s !== currentStructure) {
+  if (!window._ktaRuntimeFilters.structTypes.has(s.type)) return;
+}
+```
+
+**editor.js > _ajouterMarker** : pose `marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : []`. Puis `_appliquerFiltreNiveauSurMarker` combine niveau + tag filter :
+```js
+if (visible && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags) {
+  const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0])
+              || (marker._ktaTag)
+              || "default";
+  if (!window._ktaRuntimeFilters.tags.has(tag)) visible = false;
+}
+```
+
+**utils.js > _filtreNiveauSurPolygonData** étendu avec param `kindForRuntime` ("zones" | "structs") — passé par `_applyLevelFilterToDataZones` ("zones") et `_applyLevelFilterToDataStructures` ("structs"). Permet de distinguer le filtre runtime à appliquer (zoneTypes vs structTypes) sur les polygons embedded.
+
+#### 64.6 Préservation `currentRoad`/`currentZone`/`currentStructure`
+
+⚠️ **Critique** : le tracé/zone/structure EN COURS de dessin bypass le filtre runtime. Sinon : user trace une route Principal pendant que filtre Principal=off → le tracé courant disparaît instantanément → user perdu.
+
+Implémenté via `road !== currentRoad` (et équivalent) dans chaque hook. Le re-render normal une fois le mode désactivé applique le filtre comme prévu.
+
+**Itinéraires** (`road.type === "itinerary"`) toujours bypassés aussi : calculés par Pathfinder, doivent rester visibles peu importe le filtre.
+
+#### 64.7 Live update + debounce 200ms
+
+Chaque toggle (input change, mini-action Tout/Aucun, reset all) appelle `_scheduleApply()` qui debounce `applyFilters()` à 200ms. Évite le freeze sur plans denses lors de clics rapides successifs (ex : `_toggleAll` enchaîné).
+
+#### 64.8 Persistance per-plan via SessionPersist
+
+**Sérialisation** : Sets → Arrays via `_serializeRuntimeFilters()` dans `sessionPersist.js > _gatherState()` :
+```js
+runtimeFilters: _serializeRuntimeFilters()  // {tags: [...]|null, roadTypes: [...]|null, ...}
+```
+
+**Restore** : Array → Set via `_toSet(arr)` dans `_restore()` :
+```js
+if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
+  const rf = payload.runtimeFilters;
+  if (!window._ktaRuntimeFilters) {
+    window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
+  }
+  function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
+  window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
+  window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
+  window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
+  window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+  // Apply après timeout 200ms pour laisser les markers session être restaurés (phase 2 itineraries)
+  setTimeout(function() {
+    if (typeof window.appliquerFiltreRuntime === "function") {
+      try { window.appliquerFiltreRuntime(); } catch(e) {}
+    }
+  }, 200);
+}
+```
+
+⚠️ **Timing 200ms** : aligné avec la phase 2 de restore des itineraries (cf §9). Sinon, les markers session ne seraient pas encore re-créés → filter inopérant.
+
+#### 64.9 Sync M-LVL bidirectionnel
+
+**Sens 1 : modale Niveaux → FilterPanel** :
+`interface.js > appliquerFiltreNiveau` appelle en fin de fonction :
+```js
+if (window.FilterPanel && typeof window.FilterPanel.onLevelChange === "function") {
+  try { window.FilterPanel.onLevelChange(); } catch(e) {}
+}
+```
+`onLevelChange()` re-render la section M-LVL via `_renderLevelsSection` + `_bindLevelHandlers(sec)` si la modale est ouverte.
+
+**Sens 2 : FilterPanel → modale Niveaux** :
+Les handlers de la section M-LVL mutent directement `APP_CONFIG.visibleLevels` puis appellent `window.appliquerFiltreNiveau()` qui propage à tous les modules level-aware + la pastille M-LVL.
+
+#### 64.10 Énumération tags (KARMA "Seulement ceux présents")
+
+`_enumerateTags()` :
+1. Itère `getEditorPoints()` (session)
+2. Itère `window._ktaDataMarkers` (data layer markers, posés par `utils.js > ajouterPointsDepuisJSON`)
+3. Pour chaque marker, prend `m._ktaTags[0]` ou `"default"` fallback
+4. Count par tag, tri desc
+5. Retourne `[{tag, count, iconUrl?}]` avec `iconUrl` lookuped via `window._iconMap[tag]`
+
+Si 0 tag → section affiche "Aucun point dans cette session."
+
+#### 64.11 À NE PAS faire
+
+- ❌ Réintroduire `L.control.layers(null, overlays)` natif — casserait l'ergonomie unifiée (2 modales redondantes pour le filtre)
+- ❌ Bypass `currentRoad`/`currentZone`/`currentStructure` dans les hooks runtime — le user qui dessine perd son tracé en cours instantanément
+- ❌ Filtrer `road.type === "itinerary"` ou `s === currentStructure` — toujours bypass (cf §64.6)
+- ❌ Stocker `_ktaRuntimeFilters` dans une key localStorage globale séparée — utiliser le payload SessionPersist (`runtimeFilters` champ) pour cohérence per-plan
+- ❌ Sérialiser des Sets en JSON direct (`JSON.stringify(new Set(...))` retourne `"{}"`) — toujours convertir en Array via `Array.from(set)` avant
+- ❌ Appliquer `appliquerFiltreRuntime()` synchroniquement au boot SessionPersist — utiliser `setTimeout(_, 200)` pour laisser la phase 2 restore (itineraries) finir
+- ❌ Appeler `_enumerateTags()` ou `_enumerateTypes()` dans une boucle de render — coûteux (itère session + embedded à chaque appel). Cache l'résultat si utilisé plusieurs fois dans la même passe de render
+- ❌ Modifier `window._ktaRuntimeFilters` directement depuis un autre module — passer par `FilterPanel.setFilters({...})` pour bénéficier de `_scheduleApply` + `_notify`
+
+#### 64.12 Pour étendre
+
+**Ajouter un nouvel axe de filtre runtime** (ex: `photoTags` pour filtrer par tag photo) :
+1. Ajouter le champ dans `window._ktaRuntimeFilters` initialization (filterPanel.js IIFE start)
+2. Ajouter le helper `_enumerateXxx()` qui retourne la liste des valeurs présentes
+3. Ajouter le rendu section via `_section(...)` dans `_renderAllSections`
+4. Ajouter le hook runtime dans le module concerné (lecture `if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.xxx) ...`)
+5. Ajouter la sérialisation/désérialisation dans `_serializeRuntimeFilters` et le restore SessionPersist
+6. Ajouter le status footer line dans `_updateStatus`
+7. Ajouter dans `setFilters` partial handler
+
+**Sources de vérité v1.21.5** :
+- `version.json` → `"v1.21.5"`
+- `js/copyright.js > __MKM__.build` → `"v1.21.5"`
+- `sw.js > CACHE_NAME` → `"myktamap-cache-v1.21.5-filterpanel"`
+- 1 nouveau fichier `js/filterPanel.js` (~655 lignes) ajouté à `ASSETS_TO_CACHE` + balise `<script>` dans `index.html` après `interface.js`
+
+#### 64.13 v1.21.5-fix1 — 4 fixes post-release suite tests terrain
+
+Fixes appliqués sans bump version (CACHE_NAME inchangé `myktamap-cache-v1.21.5-filterpanel`).
+
+**Fix 1 — CSS FilterPanel COMPLÈTEMENT OUBLIÉ à la release initiale** : ~280 lignes manquantes pour les classes `.kta-fp-*`. Le navigateur affichait tout en flux brut (PNG tag icons à leur taille naturelle 50×50, checkboxes default inline, pas de padding ni alignement). Diagnostic immédiat sur screenshot KARMA : chips empilés sans grid, label/count smashed sur l'icône.
+
+Ajout (`css/style.css` +280 lignes en fin de fichier, après la section v1.21.4 KMZ light theme) :
+- `.kta-fp-boite` : max-width 560/720px PC, height auto + max-height 90vh (anti bug 88vh étiré)
+- `.kta-fp-section` (details) : accordéon avec border ambre + chevron `▸/▾` qui pivote via `transform: rotate(90deg)` au `[open]`
+- `.kta-fp-chips-grid` : `grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))` — 1 col mobile < 480px, auto-fill sinon
+- `.kta-fp-chip` : Flexbox avec **icône width/height 22px object-fit:contain** (critique — sinon PNG natif 50×50), label `flex: 1 + ellipsis`, count badge pill ambré
+- `.kta-fp-chip-off` : opacity 0.5 + label `text-decoration: line-through` + count grisé (signal visuel "masqué")
+- `.kta-fp-row-cb` : Image/Data layers row simple (pas de grid)
+- `.kta-fp-lvl-segmented` + `.kta-fp-lvl-btn` : M-LVL pills horizontaux, actif = fond jaune charte `#f4c542` + texte `#1a1f2e`
+- `.kta-fp-mini-btn` : Tout/Aucun mini-boutons bleus translucides `rgba(140,180,255,...)`
+- `.kta-fp-footer` : Reset + status, fond dark + border-top ambré
+- `.kta-filter-ctrl a` : override Leaflet `.leaflet-bar a` default pour assurer le `≡` propre 30×30 fond blanc
+- **Thème clair** : variants complets `body/html.kta-theme-light` via variables `--kta-light-*` (cf §53 pattern)
+
+⚠️ **Leçon** : quand on crée un nouveau module IIFE qui pose son propre HTML via classes custom, **vérifier visuellement le rendu AVANT de release** — pas juste compter sur la logique JS pour valider. Le CSS oublié ne plante pas, ne génère aucun warning console, mais rend l'UI inutilisable.
+
+**Fix 2 — Exclusion `type === "itinerary"` du filtre** : `_enumerateTypes(category)` dans `filterPanel.js` itère toutes les roads pour construire `counts[type]`. Il prenait au passage le pseudo-type `"itinerary"` posé par Pathfinder sur la road de navigation calculée → apparaissait comme un type filtrable dans la section "🛣️ Types de tracés" alors que c'est un dérivé, pas un choix utilisateur.
+
+```js
+if (category === "roads" && it.type === "itinerary") return;  // skip
+```
+
+Cohérent avec le hook runtime dans `road.js > renderRoads` qui bypass déjà `road.type === "itinerary" && road !== currentRoad` (cf §64.5). Le filtre `roadTypes` ne touche jamais aux itineraries.
+
+**Fix 3 — Stats Home : labels TOUJOURS par défaut** (KARMA : « *en stat général, on doit toujours prendre la valeur par default* »).
+
+Avant : `_renderProfilePies` (index.html) appelait `renderPie(data, s.category, 140)` → `_renderPieChart` consultait `_lcLabelStat` → `LegendCustomization.getLabel` cascade session > plan > default → appliquait le renommage local du plan A (« principal » → « route de surface ») à l'agrégat cross-plan home.
+
+Fix : ajout d'un 4e param `useDefaultLabels` à `_renderPieChart` :
+
+```js
+function _renderPieChart(data, category, size, useDefaultLabels) {
+  // ...
+  const _labelFn = useDefaultLabels ? _defaultLabelStat : _lcLabelStat;
+  // ... dans la légende : _labelFn(category, k, k) au lieu de _lcLabelStat
+}
+```
+
+Nouveau helper `_defaultLabelStat(category, type, fallback)` qui consulte UNIQUEMENT `LegendCustomization.getDefaultLabel(lcCat, type)` (court-circuite la cascade). Préserve le préfixe `✨` pour les customs `cust-*` (qui n'ont pas de version "default" — toujours custom par essence).
+
+L'appel `index.html > _renderProfilePies` passe `true` → cross-plan home a des labels génériques cohérents. La modale Stats GLOBALES **in-plan** garde l'appel sans 4e arg → cascade LC normale préservée.
+
+**Fix 4 — Stats Home : secondaire / level -1 manquants** (KARMA : « *les route secondaire ou taguer lvl -1 ne semble pas pris en compte* »).
+
+**Audit confirme pas de drop technique** dans `_computePlanStatsLive` (index.html) :
+- `getRoads()` retourne toutes les roads sans filtre
+- `getAllEmbeddedRoads()` retourne toutes les embedded (pas de filtre layer.hasLayer depuis v146)
+- `_countBy(sessRoads.concat(embedRoads), function(r) { return r.type || "principal"; })` ne filtre pas par type ni level
+
+**2 régressions silencieuses identifiées** dans `_resoudreStatsPlan` (index.html) :
+
+**(a)** Le cache v1.21.3 sans champ `breakdowns` (release antérieure) retournait `breakdowns: cached.breakdowns || null` → `null` → ligne `_mergeBreakdown` plus loin checkait `if (stats.breakdowns)` → **skip total du plan** dans l'agrégation des 4 camemberts. Fix : check explicite `cached.breakdowns && typeof === "object"`. Si absent ou corrompu, **fall through au cas 3** (session-only) au lieu de skip → au moins les données session du plan sont contribuées.
+
+**(b)** Le fallback `session-only` (cas 3) ne lisait que `data.editorPoints` + `data.roads` du payload SessionPersist → les zones et structures du plan étaient ignorées dans l'agrégation, et donc les `secondaire`/`chemin`/jonctions M-LVL absents de la section "🛣️ Tracés par type" pour les plans jamais rouvert depuis v1.21.4. Fix : extension de la lecture à `data.zones` + `data.structures` (toujours présents dans le payload depuis v1.9.3-A1.a) → `zonesByType` et `structsByType` correctement remplis.
+
+**Limitation acceptée** : la session-only ne lit pas les **data layers embedded** (les `data/*.json` du ZIP). Si un user a tous ses tracés `secondaire` ou en niveau -1 stockés dans un data layer du plan (pas en session) et n'a jamais rouvert ce plan depuis v1.21.4 → ils restent invisibles dans Stats Home tant que le plan n'est pas rouvert une fois (la réouverture déclenche `_persisterStatsPlanCourant` qui régénère le cache complet avec tous les breakdowns embedded).
+
+**Sources fix1** : `js/filterPanel.js` (+5), `js/statsGlobales.js` (+35), `index.html` (+13 net), `css/style.css` (+280). Pas de bump version.
+
+#### 64.14 À NE PAS faire (post-fix1)
+
+- ❌ Créer un nouveau module IIFE avec ses propres classes CSS custom sans **également écrire le CSS** dans `style.css` ET vérifier visuellement le rendu avant release. Le CSS oublié n'est jamais signalé par les outils (pas de warning, pas de plantage)
+- ❌ Inclure `road.type === "itinerary"` dans l'énumération de types user-chooseable — c'est un dérivé Pathfinder, le type est posé automatiquement (cf `road.js > _calculerItineraire`)
+- ❌ Bypass `useDefaultLabels` dans `_renderPieChart` pour les vues cross-plan — sinon les labels session/plan-level du plan COURANT polluent l'agrégat des autres plans
+- ❌ Réintroduire le check `breakdowns: cached.breakdowns || null` sans fall-through — fait skip totalement les plans avec cache pré-v1.21.4
+- ❌ Limiter le fallback session-only à `editorPoints + roads` — penser à inclure aussi `zones` + `structures` (présents dans le payload SessionPersist depuis v1.9.3-A1.a)
+
+---
+
 **Bon code ! 🚀**

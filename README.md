@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.21.4` (25/05/2026) — PATCH « Profil enrichi + Heatmap M-LVL + Stats cross-plan »
-**📦 Précédentes shipped main** : `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
+**📦 Version courante** : `v1.21.5` (26/05/2026) — PATCH « Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types »
+**📦 Précédentes shipped main** : `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,74 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-21-1" open>
+<details id="v1-21-5" open>
+<summary><strong>🗓️ 26/05/2026 — ≡ v1.21.5 : Release PATCH — Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types</strong></summary>
+
+Release PATCH (bump Z : 1.21.4 → 1.21.5). Refonte UX complète du bouton ≡ Leaflet topright.
+
+### ≡ Modale Filtres unifiée
+
+**Avant** : le bouton ≡ (trois barres horizontales) en haut à droite ouvrait `L.control.layers(null, overlays)` natif Leaflet → filtre image + data layers uniquement.
+
+**Après** : remplacement par notre custom `L.control.ktaFilterControl()` qui garde la même icône visuelle (KARMA : « visuelement meme icone des troi barre noir horizontal ») mais ouvre désormais la modale unifiée `js/filterPanel.js` (~655 lignes IIFE) avec **7 sections accordéon** :
+
+- 🖼️ Calques d'image (= ancien Leaflet natif)
+- 📊 Calques de données (= ancien Leaflet natif)
+- 🏗️ Niveaux M-LVL (cohabite + sync bidirectionnel avec la modale Niveaux existante via `FilterPanel.onLevelChange()`)
+- 🏷️ **Tags des points** (nouveau) — énumération auto, seuls les tags présents
+- 🛣️ **Types de tracés** (nouveau) — Principal/Secondaire/Chemin/Jonction + customs
+- ⬛ **Types de zones** (nouveau) — Eau/Remblais/Effondrement/Inaccessible + customs
+- 🏛️ **Types de structures** (nouveau) — Pilier 1ère/2è masse/Mur/Front 1/2 + customs
+
+### ⚡ Live update + debounce 200ms
+
+Chaque toggle déclenche un re-render via `_scheduleApply` debouncé à 200ms (anti-freeze sur plans denses lors de clics rapides). KARMA : « Live (chaque toggle = effet immédiat) ».
+
+### 💾 Persistance per-plan via SessionPersist
+
+Nouveau champ `payload.runtimeFilters` (Sets sérialisés en Arrays). Restore au boot après les markers session (timeout 200ms aligné avec la phase 2 itineraries). Chaque plan a ses propres filtres mémorisés.
+
+### 🔧 Hooks runtime niveau modules
+
+`js/road.js > renderRoads`, `js/zones.js > renderZones`, `js/structures.js > renderStructures` consultent `window._ktaRuntimeFilters.{roadTypes,zoneTypes,structTypes}` après `_passeFiltreNiveau`. `js/editor.js > _ajouterMarker` pose `marker._ktaTags = point.tags.slice()` puis `_appliquerFiltreNiveauSurMarker` combine niveau + tag filter en une seule passe. **`currentRoad`/`currentZone`/`currentStructure` bypass** (tracé en cours toujours visible). **Itinéraires** (`type === "itinerary"`) toujours bypassés aussi.
+
+### 🩹 v1.21.5-fix1 — 4 fixes post-release (26/05/2026)
+
+Suite tests terrain KARMA, 4 régressions corrigées sans bump version (fix incrémental, même CACHE_NAME) :
+
+1. **CSS FilterPanel OUBLIÉ à la release** : ~280 lignes manquantes pour les classes `.kta-fp-*` → rendu catastrophique en flux brut avec PNG icônes 50×50 et checkboxes default. Ajout du CSS complet : chips Flexbox compact avec icône miniature 22×22 + label ellipsé + count badge pill ambré, accordéon `<details>/<summary>` avec chevron ▸/▾, grid responsive (1 col mobile < 480px, auto-fill minmax(180px) sinon), pills M-LVL segmented horizontaux, footer Reset + status. **Variants thème clair complets** via variables `--kta-light-*`.
+2. **Exclusion `type === "itinerary"`** du `_enumerateTypes` (`filterPanel.js`) : dérivé Pathfinder calculé, pas un type user-chooseable. Cohérent avec le hook runtime qui bypass déjà `road.type === "itinerary"` dans `renderRoads`.
+3. **Stats Home labels TOUJOURS par défaut** (KARMA : « *en stat général, on doit toujours prendre la valeur par default* ») : nouveau helper `_defaultLabelStat(category, type, fallback)` dans `statsGlobales.js` qui consulte UNIQUEMENT `LegendCustomization.getDefaultLabel` (court-circuite la cascade session > plan > default). `_renderPieChart` accepte un 4e arg `useDefaultLabels` qui aiguille la résolution. L'appel `_renderProfilePies` (`index.html`) passe `true` → les camemberts cross-plan Profil affichent `Principal/Secondaire/Chemin/Jonction` générique même si le plan A renomme « principal » en « route de surface ». Modale Stats GLOBALES in-plan : comportement inchangé (4e arg absent → cascade LC normale).
+4. **Stats Home — secondaire / level -1 manquants** (KARMA : « *les route secondaire ou taguer lvl -1 ne semble pas pris en compte* ») : audit confirme pas de drop technique dans `_computePlanStatsLive` (pas de filtre type ni level). Mais 2 régressions silencieuses :
+   - **(a)** Cache v1.21.3 sans champ `breakdowns` retournait `breakdowns: null` → skip total du plan dans l'agrégation. Fix : check `cached.breakdowns && typeof === "object"` → si absent, **fall through au cas 3** (session-only) au lieu de skip.
+   - **(b)** Fallback session-only ne lisait que `editorPoints` + `roads`. Extension à `data.zones` + `data.structures` (toujours présents depuis v1.9.3-A1.a).
+   - **Limitation acceptée** : session-only ne lit pas les **data layers embedded** (`data/*.json` du ZIP) — si tous les "secondaire" / level -1 sont en data layer et le plan n'a jamais été rouvert depuis v1.21.4, ils restent invisibles jusqu'à réouverture (qui régénère le cache complet via `_persisterStatsPlanCourant`).
+
+**Sources fix1** : `js/filterPanel.js` (+5 lignes), `js/statsGlobales.js` (+35 lignes), `index.html` (+12 lignes Stats + 1 ligne param renderPie), `css/style.css` (+280 lignes CSS FilterPanel dark + light). **Pas de bump version** — fix incrémental.
+
+### 📦 Sources de vérité
+
+- `version.json` → `v1.21.5`
+- `js/copyright.js > __MKM__.build` → `v1.21.5`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.21.5-filterpanel`
+- **1 nouveau fichier** : `js/filterPanel.js` (~655 lignes), ajouté à `ASSETS_TO_CACHE`
+
+### 🛡️ Confidentialité
+
+**Aucune nouvelle surface réseau, aucune nouvelle permission**. Tout local : Sets en RAM, persistance dans le payload SessionPersist déjà existant, pas de nouvelle key localStorage globale, pas de nouvelle DB IDB. NETWORK_AUDIT mis à jour avec verdict ✅ aucune régression.
+
+### 📚 Doc
+
+- README_USER : nouvelle section « ≡ Modale Filtres unifiée » avec tableau des 7 sections + cas d'usage + note sur la rétro-compat
+- AI_CONTEXT : entrée v1.21.5 au top de la timeline « Versions »
+- CLAUDE.md : nouvelle section §64 « v1.21.5 — Refonte filtre Leaflet » avec architecture détaillée + pièges + pour étendre
+- NETWORK_AUDIT.md + .html : paragraphe v1.21.5 + entrée tableau historique
+
+⚠️ **Action terrain** : ne nécessite PAS de ré-import. Les anciennes sessions v1.21.4 sont restaurées avec `runtimeFilters = null` partout (= tout visible, comportement strict v1.21.4). La première interaction avec la modale ≡ crée l'état et le persiste au prochain save throttle (≤ 1.5 s).
+
+</details>
+
+<details id="v1-21-1">
 <summary><strong>🗓️ 25/05/2026 — 🩹 v1.21.1 : Release PATCH — Audit imports/exports (9 bugs critiques fixés)</strong></summary>
 
 Release PATCH (bump Z : 1.21.0 → 1.21.1). Audit ciblé via agent général-purpose après accumulation de 6 hotfixes post-v1.21.0 qui suggéraient des bugs latents structurels. Audit retournait 9 bugs critiques + 6 mineurs, dont 9 critiques traités en 5 batchs cohérents.

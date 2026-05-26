@@ -174,10 +174,38 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.21.4</strong> (25 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.21.5</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.5-fix1 (4 fixes post-release suite tests terrain KARMA — sans bump version)</strong> :
+    <strong>AUCUN impact réseau</strong>. (1) Ajout ~280 lignes CSS pour les classes <code>.kta-fp-*</code>
+    oubliées à la release v1.21.5 — pur styling, aucun fetch ajouté. (2) Exclusion <code>type === "itinerary"</code>
+    du <code>_enumerateTypes</code> — filtre interne. (3) Stats Home labels TOUJOURS par défaut — nouveau helper
+    <code>_defaultLabelStat</code> qui lit <code>LegendCustomization.getDefaultLabel</code> (module local).
+    (4) Stats Home — extension fallback session-only à <code>data.zones</code> + <code>data.structures</code>
+    (lecture localStorage payload SessionPersist déjà existant). <strong>Liste blanche <code>connect-src</code>
+    inchangée</strong>. Verdict : ✅ aucune régression — fix incrémental.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.21.5 (Release PATCH — Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types)</strong> :
+    <strong>AUCUNE nouvelle surface réseau ajoutée</strong>. 1 sujet, 100 % client-side. Le bouton ≡ (trois barres
+    horizontales) en haut à droite ouvrait précédemment le <code>L.control.layers</code> natif Leaflet (filtre image +
+    data layers uniquement). Désormais il ouvre la nouvelle modale <code>js/filterPanel.js</code> (~655 lignes IIFE)
+    qui ajoute 4 nouveaux axes de filtre <strong>runtime</strong> : tags des points, types de tracés, types de zones,
+    types de structures. Toutes les listes énumérées sont <strong>calculées localement</strong> depuis les arrays en
+    mémoire (<code>getEditorPoints()</code>, <code>getRoads()</code>, registries <code>_ktaData*</code>). Aucun fetch,
+    aucune transmission. Le filtrage runtime mute uniquement <code>window._ktaRuntimeFilters</code> (4 Sets en RAM)
+    puis déclenche un re-render Leaflet local via <code>window.appliquerFiltreRuntime()</code>.
+    <strong>Persistance per-plan</strong> : nouveau champ <code>runtimeFilters</code> dans le payload SessionPersist
+    (<code>localStorage["myktamap_session_v1_&lt;planId&gt;"]</code>). Pas de nouvelle key localStorage globale, pas
+    de nouvelle DB IDB. <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> +
+    <code>https://www.gstatic.com</code> (ping connectivité). <strong>1 nouveau fichier</strong> ajouté au cache SW :
+    <code>./js/filterPanel.js</code>. Verdict audit : <strong>✅ aucune régression</strong>.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -884,6 +912,24 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.21.5</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release PATCH — Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission</strong>.
+          Le bouton ≡ topright ouvrait précédemment le <code>L.control.layers</code> natif Leaflet (image + data
+          layers uniquement). Désormais il ouvre la nouvelle modale <code>js/filterPanel.js</code> qui ajoute
+          4 axes de filtre runtime : tags points, types tracés, types zones, types structures. Toutes les
+          listes sont calculées localement depuis les arrays en mémoire. Le filtrage mute uniquement
+          <code>window._ktaRuntimeFilters</code> en RAM puis déclenche un re-render Leaflet local.
+          <strong>Persistance per-plan</strong> via nouveau champ <code>runtimeFilters</code> dans le payload
+          SessionPersist déjà existant (pas de nouvelle key localStorage globale).
+          <strong>1 nouveau fichier</strong> ajouté au cache SW : <code>./js/filterPanel.js</code>.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — MyKTAMap reste strictement offline-first.
+        </td>
+      </tr>
       <tr>
         <td>v1.21.4</td>
         <td>25/05/2026</td>
