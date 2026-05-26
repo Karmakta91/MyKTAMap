@@ -572,19 +572,43 @@
   // 1 page A4 par équipe avec briefing texte. La carte miniature avec
   // overlay sera ajoutée en Phase 2 (nécessite render canvas du plan + zone).
   // MVP : texte structuré + cadre observations vide pour impression papier.
-  function exporterPDF(scenarioId) {
+  // 🆕 v1.22.0-fix5 (KARMA "on n'a pas une image de chaque zone dans le pdf
+  // exporter") : exporterPDF est désormais async pour générer un canvas du
+  // plan + cropper la zone de chaque équipe avec overlay couleur + markers.
+  async function exporterPDF(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Scénario introuvable.", "error");
+      _toast("⚠️ Scénario introuvable.", "error");
       return null;
     }
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ jsPDF non chargé.", "error");
+      _toast("⚠️ jsPDF non chargé.", "error");
       return null;
     }
     if (!s.groupes || s.groupes.length === 0) {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Aucune équipe dans ce scénario.", "warn");
+      _toast("⚠️ Aucune équipe dans ce scénario.", "warn");
       return null;
+    }
+    _toast("⏳ Génération du PDF (canvas du plan en cours)…", "info");
+    // 🆕 v1.22.0-fix5 — Génère UNE fois le canvas plan complet avec calques
+    // image + data layers visibles. Sera croppé par équipe. Si échec → PDF
+    // text-only (fallback MVP).
+    let fullCanvas = null;
+    if (window.MyKTAMapExporterGenererCanvas && typeof window.MyKTAMapExporterGenererCanvas === "function") {
+      try {
+        fullCanvas = await window.MyKTAMapExporterGenererCanvas({
+          scale:             1,
+          bg:                "image",
+          includeImgLayers:  true,
+          includeDataLayers: true,
+          ann: {
+            points: false, roads: false, zones: false, structures: false,
+            jonctions: false, itineraire: false
+          }
+        });
+      } catch(e) {
+        console.warn("[SecoursMode] Canvas plan échec, fallback text-only :", e);
+      }
     }
     try {
       const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
@@ -606,6 +630,34 @@
                  margin + 2, margin + 11);
         pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
         let y = margin + 22;
+        // 🆕 v1.22.0-fix5 — Insère une carte miniature de la zone de l'équipe
+        // avec overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire)
+        if (fullCanvas) {
+          try {
+            const cropped = _cropCanvasForTeam(fullCanvas, g, couleur.hex);
+            if (cropped) {
+              const imgWmm = pageW - 2 * margin;        // pleine largeur
+              const imgHmm = imgWmm * cropped.height / cropped.width;
+              const capped = Math.min(90, imgHmm);     // cap hauteur 90 mm
+              const finalHmm = capped;
+              const finalWmm = capped * cropped.width / cropped.height;
+              const xCentered = (pageW - finalWmm) / 2;
+              pdf.addImage(cropped.toDataURL("image/jpeg", 0.85), "JPEG",
+                           xCentered, y, finalWmm, finalHmm);
+              // Petit cadre autour de l'image
+              pdf.setDrawColor(150);
+              pdf.rect(xCentered, y, finalWmm, finalHmm);
+              y += finalHmm + 5;
+              // Légende sous l'image
+              pdf.setFontSize(8); pdf.setTextColor(120); pdf.setFont(undefined, "italic");
+              pdf.text("Carte miniature — zone de recherche assignee", pageW / 2, y, { align: "center" });
+              y += 5;
+              pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
+            }
+          } catch(e) {
+            console.warn("[SecoursMode] Crop canvas échec pour équipe " + g.nom + " :", e);
+          }
+        }
         // Section Contexte
         pdf.setFontSize(11); pdf.setFont(undefined, "bold");
         pdf.text("CONTEXTE DE L'INCIDENT", margin, y); y += 5;
@@ -676,6 +728,204 @@
       if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Erreur génération PDF : " + e.message, "error");
       return null;
     }
+  }
+
+  // 🆕 v1.22.0-fix5 — Calcule la bbox d'une équipe (waypoints + zone polygon + roads
+  // sélectionnés) en coordonnées plan. Retourne {x, y, w, h} ou null si rien.
+  function _computeTeamBbox(g) {
+    const xs = [], ys = [];
+    function _add(p) {
+      if (p && typeof p.x === "number" && typeof p.y === "number") {
+        xs.push(p.x); ys.push(p.y);
+      }
+    }
+    if (g.entree) _add(g.entree);
+    if (g.sortie) _add(g.sortie);
+    (g.intermediaires || []).forEach(_add);
+    (g.itineraireSuggere || []).forEach(_add);
+    if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
+      g.zonePolygon.forEach(_add);
+    }
+    if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+      g.zoneRoadIds.forEach(function(rid) {
+        const road = allRoads.find(function(r) { return r.id === rid; });
+        if (road && Array.isArray(road.points)) road.points.forEach(_add);
+      });
+    }
+    if (xs.length === 0) return null;
+    const minX = Math.min.apply(null, xs);
+    const maxX = Math.max.apply(null, xs);
+    const minY = Math.min.apply(null, ys);
+    const maxY = Math.max.apply(null, ys);
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  // 🆕 v1.22.0-fix5 — Crop le canvas plan pour la zone de l'équipe + dessine
+  // l'overlay (polygone + markers entrée/sortie + intermédiaires + itinéraire).
+  // Retourne un nouveau canvas ou null si bbox invalide.
+  function _cropCanvasForTeam(fullCanvas, g, hexColor) {
+    const bbox = _computeTeamBbox(g);
+    if (!bbox || bbox.w < 1 || bbox.h < 1) {
+      // Fallback : si pas de bbox utilisable, retourne un mini canvas du plan entier
+      return _resizeCanvasFit(fullCanvas, 800, 600);
+    }
+    // ⚠️ Convention plan → canvas : pas d'inversion Y ici car exporter.js
+    // génère son canvas avec y=0 au TOP (orientation image standard).
+    // _computeTeamBbox retourne des coords plan (y=0 au top de l'image
+    // exportée). Donc bbox.x/y/w/h sont directement utilisables.
+    //
+    // Padding 15 % autour de la bbox pour respirer
+    const pad = Math.max(bbox.w, bbox.h, 100) * 0.15;
+    let sx = Math.max(0, bbox.x - pad);
+    let sy = Math.max(0, bbox.y - pad);
+    let sw = Math.min(fullCanvas.width  - sx, bbox.w + 2 * pad);
+    let sh = Math.min(fullCanvas.height - sy, bbox.h + 2 * pad);
+    if (sw < 50 || sh < 50) return _resizeCanvasFit(fullCanvas, 800, 600);
+
+    // Canvas de sortie : ratio préservé, max 1000 px de côté
+    const maxOut = 1000;
+    let outW, outH;
+    if (sw >= sh) {
+      outW = Math.min(maxOut, sw);
+      outH = outW * sh / sw;
+    } else {
+      outH = Math.min(maxOut, sh);
+      outW = outH * sw / sh;
+    }
+    const out = document.createElement("canvas");
+    out.width = Math.round(outW);
+    out.height = Math.round(outH);
+    const ctx = out.getContext("2d");
+    // Background blanc (au cas où l'image source a un alpha)
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(fullCanvas, sx, sy, sw, sh, 0, 0, out.width, out.height);
+
+    // Helpers pour mapper plan → canvas de sortie
+    const sX = out.width  / sw;
+    const sY = out.height / sh;
+    function _toCanvas(p) {
+      return { x: (p.x - sx) * sX, y: (p.y - sy) * sY };
+    }
+    // RGB pour fill semi-transparent
+    const rgb = _hexToRgb(hexColor);
+
+    // 1. Zone polygon (fill 30 % + border 3 px)
+    if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+      ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.30)";
+      ctx.strokeStyle = hexColor;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      g.zonePolygon.forEach(function(p, i) {
+        const c = _toCanvas(p);
+        if (i === 0) ctx.moveTo(c.x, c.y);
+        else ctx.lineTo(c.x, c.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    // 2. Zone roads (halo couleur sur chaque road sélectionnée)
+    if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+      ctx.strokeStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.55)";
+      ctx.lineWidth = 8;
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      g.zoneRoadIds.forEach(function(rid) {
+        const road = allRoads.find(function(r) { return r.id === rid; });
+        if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
+        ctx.beginPath();
+        road.points.forEach(function(p, i) {
+          const c = _toCanvas(p);
+          if (i === 0) ctx.moveTo(c.x, c.y);
+          else ctx.lineTo(c.x, c.y);
+        });
+        ctx.stroke();
+      });
+    }
+    // 3. Itinéraire suggéré (dashed couleur équipe, weight 4)
+    if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+      ctx.strokeStyle = hexColor;
+      ctx.lineWidth = 4;
+      ctx.setLineDash([10, 6]);
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.beginPath();
+      g.itineraireSuggere.forEach(function(p, i) {
+        const c = _toCanvas(p);
+        if (i === 0) ctx.moveTo(c.x, c.y);
+        else ctx.lineTo(c.x, c.y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);   // reset
+    }
+    // 4. Intermédiaires (cercles couleur équipe + numéro)
+    if (Array.isArray(g.intermediaires)) {
+      g.intermediaires.forEach(function(w, i) {
+        if (!w || typeof w.x !== "number") return;
+        const c = _toCanvas(w);
+        _drawTeamMarker(ctx, c.x, c.y, 7, "#ffffff", hexColor);
+        ctx.fillStyle = "#000";
+        ctx.font = "bold 12px sans-serif";
+        ctx.textAlign = "left"; ctx.textBaseline = "middle";
+        ctx.fillText(String(i + 1), c.x + 9, c.y);
+      });
+    }
+    // 5. Entrée (cercle border vert + fill couleur équipe)
+    if (g.entree && typeof g.entree.x === "number") {
+      const c = _toCanvas(g.entree);
+      _drawTeamMarker(ctx, c.x, c.y, 9, "#00cc44", hexColor);
+      ctx.fillStyle = "#00cc44";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+      ctx.strokeText("ENTREE", c.x + 12, c.y);
+      ctx.fillText("ENTREE", c.x + 12, c.y);
+    }
+    // 6. Sortie (cercle border rouge OU orange si boucle)
+    if (g.sortie && typeof g.sortie.x === "number") {
+      const c = _toCanvas(g.sortie);
+      const isBoucle = _samePoint(g.entree, g.sortie);
+      _drawTeamMarker(ctx, c.x, c.y, isBoucle ? 11 : 9,
+                      isBoucle ? "#ffaa00" : "#cc0000", hexColor);
+      ctx.fillStyle = isBoucle ? "#ffaa00" : "#cc0000";
+      ctx.font = "bold 11px sans-serif";
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 3;
+      const lbl = isBoucle ? "BOUCLE" : "SORTIE";
+      // Décale l'étiquette pour ne pas chevaucher celle de l'entrée si même point
+      const dx = isBoucle ? 14 : 12;
+      const dy = isBoucle ? 14 : 0;
+      ctx.strokeText(lbl, c.x + dx, c.y + dy);
+      ctx.fillText(lbl, c.x + dx, c.y + dy);
+    }
+    return out;
+  }
+
+  // Helper canvas marker : disque couleur équipe + bord coloré (entrée/sortie/etc)
+  function _drawTeamMarker(ctx, x, y, r, borderColor, fillColor) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 2 * Math.PI);
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  }
+
+  // Fallback : redimensionne le canvas plan entier dans maxW × maxH (préserve ratio).
+  function _resizeCanvasFit(src, maxW, maxH) {
+    const ratio = Math.min(maxW / src.width, maxH / src.height);
+    const out = document.createElement("canvas");
+    out.width = Math.round(src.width * ratio);
+    out.height = Math.round(src.height * ratio);
+    const ctx = out.getContext("2d");
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(src, 0, 0, out.width, out.height);
+    return out;
   }
 
   // Helpers PDF
@@ -1392,9 +1642,14 @@
           _recalculerItineraireGroupe(s.id, btn.getAttribute("data-gid"));
         });
       });
-      // Export PDF
+      // Export PDF — async depuis fix5 (génère canvas plan + crop par équipe)
       corps.querySelectorAll('[data-action="export-pdf"]').forEach(function(btn) {
-        btn.addEventListener("click", function() { exporterPDF(s.id); });
+        btn.addEventListener("click", function() {
+          Promise.resolve(exporterPDF(s.id)).catch(function(e) {
+            console.warn("[SecoursMode] exporterPDF rejected :", e);
+            _toast("⚠️ Erreur PDF : " + (e.message || e), "error");
+          });
+        });
       });
       // Export KMZ
       corps.querySelectorAll('[data-action="export-kmz"]').forEach(function(btn) {
