@@ -18735,6 +18735,38 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 .kta-secours-parcours-row[data-role="sortie"][data-loop="1"] {
   border-left: 4px solid #ff8c00;
 }
+
+/* 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un niveau") :
+   chip "Niv X" dans le header de la card équipe, à côté du nom de l'équipe,
+   pour signaler à l'utilisateur le niveau M-LVL de référence assigné. */
+.kta-secours-groupe-level-chip {
+  flex-shrink: 0;
+  display: inline-block;
+  background: rgba(244, 197, 66, 0.20);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.40);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+  margin-right: 4px;
+}
+body.kta-theme-light .kta-secours-groupe-level-chip,
+html.kta-theme-light .kta-secours-groupe-level-chip {
+  background: rgba(244, 197, 66, 0.40) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  border-color: rgba(217, 168, 46, 0.60) !important;
+}
+
+/* Mini-modale "Nouvelle équipe" (v1.23.3) — réutilise pattern form */
+.kta-secours-newequipe-boite {
+  max-width: 480px !important;
+  width: calc(100vw - 24px);
+  height: auto !important;
+  max-height: 90vh !important;
+}
 .kta-secours-parcours-emoji {
   flex-shrink: 0;
   font-size: 14px;

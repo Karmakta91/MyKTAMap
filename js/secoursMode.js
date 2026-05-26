@@ -312,6 +312,89 @@
     return true;
   }
 
+  // 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un
+  // niveau") : mini-prompt qui demande nom + niveau M-LVL avant d'ajouter
+  // une équipe. Ouvert depuis "+ Ajouter une équipe" sur les plans
+  // multi-niveau (M-LVL actif). Sur plan mono-niveau, on bypass et on
+  // ajoute direct avec nom auto (cohérent v1.22.x).
+  function _ouvrirCreerEquipeMlvlPrompt(scenarioId) {
+    if (!window.APP_CONFIG || !Array.isArray(window.APP_CONFIG.availableLevels)) {
+      addGroupe(scenarioId, null);
+      _switchView("edit");
+      return;
+    }
+    const levels = window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; });
+    const activeLevel = (typeof window.APP_CONFIG.activeLevel === "number")
+                        ? window.APP_CONFIG.activeLevel : 0;
+    const existing = document.getElementById("kta-secours-newequipe-modal");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-newequipe-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    const levelsHtml = levels.map(function(lvl) {
+      const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+      const sel = (lvl === activeLevel) ? " selected" : "";
+      return '<option value="' + lvl + '"' + sel + '>Niveau ' + lbl + '</option>';
+    }).join('');
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-newequipe-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">➕ Nouvelle équipe</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-form-row">' +
+            '<label for="kta-sec-newequipe-nom">🚨 Nom de l\'équipe</label>' +
+            '<input type="text" id="kta-sec-newequipe-nom" placeholder="(laisser vide pour auto Alpha/Bravo/...)" maxlength="40">' +
+          '</div>' +
+          '<div class="kta-secours-form-row">' +
+            '<label for="kta-sec-newequipe-level">🏗️ Niveau M-LVL de référence</label>' +
+            '<select id="kta-sec-newequipe-level">' +
+              '<option value="">— Sans niveau (équipe traverse plusieurs étages) —</option>' +
+              levelsHtml +
+            '</select>' +
+          '</div>' +
+          '<div class="kta-secours-form-hint">' +
+            '💡 Le niveau de référence indique à quel étage l\'équipe opère ' +
+            '(affiché en chip dans la card équipe + dans le PDF/KMZ exporté). ' +
+            'Tu peux le changer plus tard via le select couleur de la card. ' +
+            'Choisis "Sans niveau" si l\'équipe traverse plusieurs étages via des jonctions.' +
+          '</div>' +
+          '<div class="kta-secours-form-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">← Annuler</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">✓ Créer l\'équipe</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) {
+      b.addEventListener("click", _close);
+    });
+    overlay.querySelectorAll('[data-action="confirm"]').forEach(function(b) {
+      b.addEventListener("click", function() {
+        const nomEl = document.getElementById("kta-sec-newequipe-nom");
+        const lvlEl = document.getElementById("kta-sec-newequipe-level");
+        const nom = nomEl ? nomEl.value.trim() : "";
+        const lvlVal = lvlEl ? lvlEl.value : "";
+        const level = (lvlVal === "" || lvlVal == null) ? null : parseInt(lvlVal, 10);
+        addGroupe(scenarioId, nom || null, level);
+        _close();
+        _switchView("edit");
+      });
+    });
+    setTimeout(function() {
+      const inp = document.getElementById("kta-sec-newequipe-nom");
+      if (inp) inp.focus();
+    }, 50);
+  }
+
   // 🆕 v1.23.2 Phase 2 / Feature G (KARMA roadmap §65.12 "Recherche unifiée
   // Ctrl+K → assigner à équipe en 2 clics") : mini-modale qui ouvre depuis
   // searchPoints.js quand l'user clique le bouton 📌 sur un résultat point.
@@ -525,7 +608,10 @@
 
   // Ajoute un groupe vide à un scénario. couleurIdx auto-assigné au prochain
   // libre dans la palette (cyclique si > 10 équipes).
-  function addGroupe(scenarioId, nom) {
+  // 🆕 v1.23.3 — accept un 3e arg `level` (number | null) pour assigner
+  // directement le niveau M-LVL de référence à la création (sinon récupéré
+  // depuis APP_CONFIG.activeLevel par défaut dans le constructor du groupe).
+  function addGroupe(scenarioId, nom, level) {
     const s = get(scenarioId);
     if (!s) return null;
     const safeName = (typeof nom === "string" && nom.trim())
@@ -536,6 +622,16 @@
       nom:               safeName,
       couleurIdx:        s.groupes.length % PALETTE.length,
       membres:           [],
+      // 🆕 v1.23.3 (KARMA "on doit pouvoir crée une équipe et lui assigné
+      // une zone sur un niveau") : niveau M-LVL de RÉFÉRENCE de l'équipe.
+      // Type : number | null (null = équipe pas assignée à un niveau, cas
+      // plan mono-niveau ou équipe traversant plusieurs étages via jonctions).
+      // Cohérent avec rendu overlay carte + filtre M-LVL au render.
+      // Défini par défaut depuis APP_CONFIG.activeLevel si M-LVL actif.
+      level:             (level != null) ? level
+                       : (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true
+                          && typeof window.APP_CONFIG.activeLevel === "number")
+                         ? window.APP_CONFIG.activeLevel : null,
       // 🆕 v1.22.0-fix2 (KARMA "je dois pouvoir entrer par le même point de
       // sortie et balayer la zone, avoir des points intermédiaires") :
       // parcours = entree + intermediaires[] + sortie. Pathfinder itère
@@ -578,6 +674,11 @@
     if ("sortie" in partial) g.sortie = partial.sortie;
     if ("intermediaires" in partial && Array.isArray(partial.intermediaires)) {
       g.intermediaires = partial.intermediaires.slice();
+    }
+    // 🆕 v1.23.3 — niveau M-LVL de référence de l'équipe (number | null)
+    if ("level" in partial) {
+      g.level = (typeof partial.level === "number" && Number.isInteger(partial.level))
+                ? partial.level : null;
     }
     if ("zoneType" in partial) g.zoneType = partial.zoneType;  // "polygon"|"roads"|null
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
@@ -1619,10 +1720,40 @@
       const zoneFmt = g.zoneType === "polygon" ? "⬛ Polygone (" + (g.zonePolygon ? g.zonePolygon.length : 0) + " sommets)"
                     : g.zoneType === "roads"   ? "🛣️ " + (g.zoneRoadIds ? g.zoneRoadIds.length : 0) + " tracés"
                     : "Non définie";
+      // 🆕 v1.23.3 — chip "Niv X" dans le header de la card si g.level défini
+      // (formatage cohérent : 0 → RDC, +1/-1 → "+1"/"-1", null → "Sans niveau")
+      const lvlChip = (typeof g.level === "number")
+                      ? '<span class="kta-secours-groupe-level-chip" title="Niveau M-LVL de référence de l\'équipe">' +
+                        '🏗️ ' + (g.level === 0 ? "RDC" : (g.level > 0 ? "+" + g.level : String(g.level))) +
+                        '</span>'
+                      : '';
+      // 🆕 v1.23.3 — Select éditable pour changer le niveau de référence
+      // (uniquement visible si M-LVL actif et availableLevels disponible)
+      let levelSelectRow = '';
+      const mlvlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+      if (mlvlOn) {
+        const availLevels = (Array.isArray(window.APP_CONFIG.availableLevels))
+                            ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
+                            : [];
+        const levelOptions = '<option value=""' + (g.level == null ? ' selected' : '') +
+                             '>— Sans niveau —</option>' +
+                             availLevels.map(function(lvl) {
+                               const lbl = (lvl === 0) ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl));
+                               const sel = (lvl === g.level) ? ' selected' : '';
+                               return '<option value="' + lvl + '"' + sel + '>Niveau ' + lbl + '</option>';
+                             }).join('');
+        levelSelectRow = '<div class="kta-secours-groupe-row">' +
+                           '<label>🏗️ Niveau M-LVL</label>' +
+                           '<select data-action="change-level" data-gid="' + _escAttr(g.id) + '">' +
+                             levelOptions +
+                           '</select>' +
+                         '</div>';
+      }
       html += '<div class="kta-secours-groupe-card" data-gid="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
                 '<div class="kta-secours-groupe-header">' +
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
+                  lvlChip +
                   '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="Supprimer">🗑️</button>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
@@ -1639,6 +1770,7 @@
                       }).join('') +
                     '</select>' +
                   '</div>' +
+                  levelSelectRow +
                   '<div class="kta-secours-groupe-stats">' +
                     '<span>📍 Zone : <strong>' + zoneFmt + '</strong></span>' +
                     '<span>📏 Distance : <strong>' + distFmt + '</strong></span>' +
@@ -2067,11 +2199,22 @@
           obs.observe(hmModal.parentNode || document.body, { childList: true });
         });
       });
-      // Ajouter équipe
+      // 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un
+      // niveau") : "+ Ajouter une équipe" ouvre désormais un mini-prompt qui
+      // demande nom + niveau (dropdown des availableLevels). Si plan
+      // mono-niveau (M-LVL OFF), comportement v1.22.x strict préservé (juste
+      // addGroupe avec nom auto).
       corps.querySelectorAll('[data-action="add-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          addGroupe(s.id, null);   // nom auto via PALETTE
-          _switchView("edit");      // re-render
+          const isMlvl = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+          if (!isMlvl) {
+            // Plan mono-niveau : ajout direct avec nom auto (cohérent v1.22.x)
+            addGroupe(s.id, null);
+            _switchView("edit");
+            return;
+          }
+          // Plan multi-niveau : ouvre la mini-prompt
+          _ouvrirCreerEquipeMlvlPrompt(s.id);
         });
       });
       // 🆕 v1.23.0 Phase 2 / Feature E — Auto-création 1 équipe par niveau M-LVL
@@ -2094,9 +2237,11 @@
                 " équipe(s). Ajouter " + levels.length + " nouvelle(s) équipe(s) (1 par niveau) ?")) return;
           }
           // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
+          // 🆕 v1.23.3 : passe le level explicitement à addGroupe → g.level
+          // est correctement set (pas écrasé par APP_CONFIG.activeLevel défaut).
           levels.forEach(function(lvl) {
             const nom = "Niveau " + (lvl === 0 ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl)));
-            const g = addGroupe(s.id, nom);
+            const g = addGroupe(s.id, nom, lvl);
             // Pré-set le level de l'entrée à ce niveau (sera défini via clic carte
             // ensuite, mais le level par défaut est posé pour cohérence Pathfinder).
             // L'user peut overrider si besoin. On ne crée PAS de waypoint placeholder
@@ -2128,6 +2273,15 @@
         sel.addEventListener("change", function() {
           updateGroupe(s.id, sel.getAttribute("data-gid"), { couleurIdx: parseInt(sel.value, 10) });
           _switchView("edit");      // re-render pour update du swatch
+        });
+      });
+      // 🆕 v1.23.3 — Change level M-LVL de référence de l'équipe
+      corps.querySelectorAll('[data-action="change-level"]').forEach(function(sel) {
+        sel.addEventListener("change", function() {
+          const v = sel.value;
+          const level = (v === "" || v == null) ? null : parseInt(v, 10);
+          updateGroupe(s.id, sel.getAttribute("data-gid"), { level: level });
+          _switchView("edit");      // re-render pour update du chip
         });
       });
       // Delete groupe

@@ -174,10 +174,20 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.23.2</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.23.3</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.23.3 (Release PATCH — Équipe Mode Secours avec level M-LVL assignable)</strong> :
+    <strong>AUCUN impact réseau</strong>. Bug logique terrain : ajout du champ <code>g.level</code> au
+    modèle équipe (number | null), mini-modale création avec dropdown niveau, chip + select éditable
+    dans card équipe, fix Feature E (passe level explicite à addGroupe). Toutes modifs DOM local +
+    lecture <code>APP_CONFIG.availableLevels</code> + persistance localStorage existant.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -970,6 +980,19 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.23.3</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release PATCH — Équipe Mode Secours avec level M-LVL assignable</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission</strong>.
+          Bug logique terrain : ajout champ <code>g.level</code> au modèle équipe (number | null),
+          mini-modale création avec dropdown niveau, chip + select éditable dans card,
+          fix Feature E auto-création par niveau.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.23.2</td>
         <td>26/05/2026</td>

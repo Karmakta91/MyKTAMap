@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.23.2** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.23.3** (26 mai 2026).
+>
+> **v1.23.3 (Release PATCH — Équipe Mode Secours avec level M-LVL assignable)** : **AUCUN impact réseau**. Bug logique terrain : ajout du champ `g.level` au modèle équipe (number | null), mini-modale création avec dropdown niveau, chip + select éditable dans card équipe, fix Feature E (passe level explicite). Toutes les modifs sont DOM local + lecture/écriture `APP_CONFIG.availableLevels` (déjà en mémoire) + persistance dans le payload scénario localStorage existant. Aucun fetch ajouté. **Liste blanche `connect-src` inchangée**. Verdict : ✅ aucune régression.
 >
 > **v1.23.2 (Release PATCH — Feature G + Audit UX terrain)** : **AUCUN impact réseau**. Feature G (Ctrl+K → assigner POI à équipe en 2 clics) est pure manipulation DOM locale : lecture state Mode Secours via `SecoursMode.isOpen()` + `getCurrentScenarioId()`, écriture waypoint via `_appliquerWaypoint` local. Aucun fetch ajouté. 4 fixes UX (modale safe center cascade, touch targets WCAG media query, boucle data-loop cohérence, z-index stack close cascade) sont CSS pur + DOM cleanup. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. Verdict : ✅ aucune régression — Phase 2 Mode Secours 100% complète strictement offline-first.
 >

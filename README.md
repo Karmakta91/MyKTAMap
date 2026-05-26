@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.2` (26/05/2026) — PATCH « Feature G + Audit UX » — Ctrl+K → assigner POI à équipe (Phase 2 100% complète 7/7) + 4 fixes UX audit terrain (modale safe center cascade, touch targets WCAG, cohérence boucle, z-index stack)
-**📦 Précédentes shipped main** : `v1.23.1` (Emergency safe center + Heatmap Régler MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0)
+**📦 Version courante** : `v1.23.3` (26/05/2026) — PATCH « Équipe Mode Secours avec level M-LVL assignable » — bug logique terrain : on doit pouvoir créer une équipe et lui assigner un niveau M-LVL en plus de l'auto-création par niveau
+**📦 Précédentes shipped main** : `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,55 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-2" open>
+<details id="v1-23-3" open>
+<summary><strong>🗓️ 26/05/2026 — 🏗️ v1.23.3 : Release PATCH — Équipe Mode Secours avec level M-LVL assignable</strong></summary>
+
+Release PATCH (bump Z : 1.23.2 → 1.23.3). Bug de logique remonté par KARMA terrain : « on doit pouvoir en plus de l'auto complete crée une équipe et lui assigné une zone sur un niveau ».
+
+### 🏗️ Nouveau champ `g.level` au modèle équipe
+
+Type : `number | null` (null = équipe sans niveau, traversée multi-étages via jonctions).
+
+- Auto-défini depuis `APP_CONFIG.activeLevel` à la création par défaut (cohérent contexte M-LVL)
+- Whitelist `updateGroupe` étendue
+- `addGroupe(scenarioId, nom, level?)` — signature étendue avec 3e arg optionnel
+
+### 🆕 Mini-modale "➕ Nouvelle équipe" (plans M-LVL uniquement)
+
+Sur plans multi-niveau, "+ Ajouter une équipe" ouvre désormais un mini-prompt :
+- Input nom (vide = auto Alpha/Bravo/...)
+- Dropdown niveau M-LVL (`availableLevels` + option « — Sans niveau —», pré-set sur `activeLevel`)
+- Boutons ✓ Créer + ← Annuler
+
+Plans mono-niveau : comportement v1.22.x strict préservé (ajout direct).
+
+### 🆕 Affichage level dans card équipe
+
+- **Chip** `🏗️ RDC` (ou `+1`, `-1`...) dans le header de la card, à côté du nom (style pill ambré charte)
+- **Select éditable** "🏗️ Niveau M-LVL" dans le body (uniquement si M-LVL actif) → changement à n'importe quel moment
+
+### 🐛 Fix Feature E (auto-création par niveau)
+
+Avant : la boucle ne passait pas `level` à `addGroupe` → le constructor lisait `APP_CONFIG.activeLevel` courant → toutes les équipes auto-créées avaient le MÊME level. Maintenant : `addGroupe(s.id, nom, lvl)` → chaque équipe a son level distinct cohérent avec son nom.
+
+### 📦 Sources de vérité v1.23.3
+
+- `version.json` → `v1.23.3`
+- `js/copyright.js > __MKM__.build` → `v1.23.3`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.3`
+
+### 📂 Modifs
+
+- `js/secoursMode.js` (+~110 lignes : champ level + mini-prompt + chip + select + handler change-level + fix Feature E)
+- `css/style.css` (+~30 lignes : `.kta-secours-groupe-level-chip` + `.kta-secours-newequipe-boite` + variants light theme)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Le champ level est purement local (persisté dans le scénario localStorage existant). NETWORK_AUDIT inchangé sur le fond.
+
+</details>
+
+<details id="v1-23-2">
 <summary><strong>🗓️ 26/05/2026 — 🎯 v1.23.2 : Release PATCH — Feature G (Phase 2 100%) + Audit UX terrain</strong></summary>
 
 Release PATCH (bump Z : 1.23.1 → 1.23.2). Phase 2 Mode Secours **100% complète** (7/7 features) + 4 fixes UX prioritisés via audit agent dédié.
