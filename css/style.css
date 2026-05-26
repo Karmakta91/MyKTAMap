@@ -19197,18 +19197,28 @@ html.kta-theme-light .kta-secours-pick-result strong {
    prennent toute la largeur et boutons partagent l'espace équitablement.
    Pattern réutilisable pour tout bandeau flex multi-actions. */
 @media (max-width: 540px) {
+  /* 🐛 hotfix6 (KARMA "dans plan terminée - Equipe terain bcp espace apré
+     la date de fin et les bouton en bas") : compaction du bandeau sur
+     mobile. Avant : gap 12px + padding 12 14 + boutons stretch flex 1 1
+     auto = beaucoup de blanc visuel entre info et actions, et entre
+     actions inégalement étirées. Désormais : gap réduit, padding réduit,
+     actions empilées column (boutons compacts à hauteur naturelle). */
   .kta-secours-lancer-bandeau {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
   }
   .kta-secours-lancer-bandeau-actions {
+    /* Empile les boutons verticalement à hauteur naturelle (au lieu
+       d'inégalement étirés en row). Plus compact + moins de blanc. */
+    flex-direction: column;
     width: 100%;
-    justify-content: stretch;
+    gap: 6px;
   }
   .kta-secours-lancer-bandeau-actions .kta-btn {
-    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
-    /* word-break pour éviter qu'un libellé long déborde sa cellule */
     word-break: break-word;
   }
 }
