@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.1` (26/05/2026) — PATCH « 2 fixes UX post-Phase 2 » — Emergency modale coupée (`align-items: safe center`) + Heatmap ⚙️ Régler restore Mode Secours (MutationObserver)
-**📦 Précédentes shipped main** : `v1.23.0` (Mode Secours Phase 2 cross-app, jamais shipped main séparément) ; `v1.22.0` (Mode Secours Phase 1 MVP, jamais shipped main séparément) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0)
+**📦 Version courante** : `v1.23.2` (26/05/2026) — PATCH « Feature G + Audit UX » — Ctrl+K → assigner POI à équipe (Phase 2 100% complète 7/7) + 4 fixes UX audit terrain (modale safe center cascade, touch targets WCAG, cohérence boucle, z-index stack)
+**📦 Précédentes shipped main** : `v1.23.1` (Emergency safe center + Heatmap Régler MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,59 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-1" open>
+<details id="v1-23-2" open>
+<summary><strong>🗓️ 26/05/2026 — 🎯 v1.23.2 : Release PATCH — Feature G (Phase 2 100%) + Audit UX terrain</strong></summary>
+
+Release PATCH (bump Z : 1.23.1 → 1.23.2). Phase 2 Mode Secours **100% complète** (7/7 features) + 4 fixes UX prioritisés via audit agent dédié.
+
+### 📌 Feature G — Ctrl+K → assigner POI à équipe en 2 clics
+
+Dernière feature de la roadmap §65.12 (Phase 2). Bouton 📌 visible sur chaque résultat point de la recherche unifiée Ctrl+K UNIQUEMENT si Mode Secours est ouvert avec un scénario actif.
+
+- Mini-modale dédiée (z-index 100002) : sélection équipe + role (Entrée/Étape/Sortie)
+- Préserve `point.id` → détection boucle entrée=sortie fonctionne via `_samePoint`
+- Workflow : Ctrl+K → tape POI → 📌 → choix équipe + role → ✓ → Ctrl+K stays open
+- Idéal scénarios urgence multi-équipes avec mêmes 3-4 puits d'accès
+
+### 🐛 4 fixes UX (audit agent dédié post-Phase 2)
+
+| Sévérité | Fix |
+|---|---|
+| 🔴 **P1** | `.kta-readme-modal-overlay` → `align-items: safe center` (cascade fix v1.23.1 sur la BASE de TOUTES les modales : Aide, KMZ, Stats, Mode Secours, Pick waypoint, Assigner, etc.) |
+| 🟠 **P2** | Touch targets `.kta-btn-xs` mobile : media query `(max-width: 480px)` → `min-width: 36px; min-height: 36px` (WCAG 2.5.5 AA) |
+| 🟠 **P2** | Cohérence boucle entrée=sortie modale vs carte : `_samePoint` détecté → `data-loop="1"` sur entrée+sortie → border-left orange `#ff8c00` (cohérent avec marker carte ↻ Boucle) |
+| 🟠 **P2** | Z-index stack assign-modal vs Ctrl+K : ferme la modale Recherche AVANT d'ouvrir Assigner (snapshot point + label local) — évite stack orphelin si Esc |
+
+### 📊 Phase 2 100% complète
+
+7/7 features livrées (A KML cross-app + B Pathfinder avoidances + C Lost Mode bridge + D Heatmap + E M-LVL auto-équipes + F Favoris quick-pick + G Ctrl+K → assigner). Plus de feature reportée. **Phase 3 (v1.24.0)** reste pour : statut temps réel équipes + QR code share + timer incident + observations terrain.
+
+### 📦 Sources de vérité v1.23.2
+
+- `version.json` → `v1.23.2`
+- `js/copyright.js > __MKM__.build` → `v1.23.2`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.2`
+
+### 📂 Modifs
+
+- `js/searchPoints.js` (+~25 lignes : bouton 📌 conditionnel + handler avec close Ctrl+K)
+- `js/secoursMode.js` (+~110 lignes : `ouvrirAssignerModale` + détection boucle parcours)
+- `css/style.css` (+~135 lignes : Feature G CSS + 4 fixes UX + variants thème clair)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. NETWORK_AUDIT mis à jour ✅.
+
+### 🟢 4 fixes UX reportés à v1.24 (P3 polish)
+
+- Toast unifié (séquence cumulée export KMZ → 1 seul toast avec update)
+- `aria-label` globaux sur les 12 boutons icon-only
+- Audit contraste light theme 10 couleurs palette OTAN
+- Helper `_formatLevel(n)` pour cohérence "RDC" vs "niv 0"
+
+</details>
+
+<details id="v1-23-1">
 <summary><strong>🗓️ 26/05/2026 — 🩹 v1.23.1 : Release PATCH — 2 fixes UX post-Phase 2</strong></summary>
 
 Release PATCH (bump Z : 1.23.0 → 1.23.1). 2 fixes UX remontés par KARMA en tests terrain v1.23.0. Aucune nouvelle surface réseau, compat 100% v1.23.0.

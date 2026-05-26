@@ -1741,17 +1741,22 @@
     html += '<div class="kta-secours-parcours-titre">🗺️ Parcours :</div>';
     html += '<div class="kta-secours-parcours-list">';
     // Entrée
-    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", "Entrée");
+    // 🐛 v1.23.2-fix (KARMA audit UX P2 — cohérence boucle modale vs carte) :
+    // détecte la boucle entrée=sortie pour passer un flag aux rows entrée
+    // et sortie (border-left orange au lieu de vert/rouge, cohérent avec
+    // l'overlay carte qui rend un marker orange "↻ Boucle").
+    const isBoucle = _samePoint(g.entree, g.sortie);
+    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", "Entrée", isBoucle);
     // Intermédiaires
     (g.intermediaires || []).forEach(function(w, i) {
-      html += _renderWaypointRow(g, "intermediaire", w, i, "▾", "Étape " + (i + 1));
+      html += _renderWaypointRow(g, "intermediaire", w, i, "▾", "Étape " + (i + 1), false);
     });
     // Bouton "Ajouter étape intermédiaire"
     html += '<button class="kta-btn kta-btn-ghost kta-btn-sm kta-secours-parcours-add"' +
             ' data-action="add-intermediaire" data-gid="' + _escAttr(g.id) + '">' +
             '➕ Ajouter une étape intermédiaire</button>';
     // Sortie
-    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", "Sortie");
+    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", "Sortie", isBoucle);
     // Hint si entrée === sortie (boucle)
     if (g.entree && g.sortie && _samePoint(g.entree, g.sortie)) {
       html += '<div class="kta-secours-parcours-hint">↻ <em>Boucle détectée — l\'équipe entre et sort par le même point.</em></div>';
@@ -1761,7 +1766,7 @@
     return html;
   }
 
-  function _renderWaypointRow(g, role, w, idx, emoji, defaultLabel) {
+  function _renderWaypointRow(g, role, w, idx, emoji, defaultLabel, isBoucle) {
     const gid = _escAttr(g.id);
     const isInter = (role === "intermediaire");
     const idxAttr = isInter ? ' data-idx="' + idx + '"' : '';
@@ -1774,7 +1779,11 @@
     } else {
       label = '<em class="kta-secours-parcours-todo">non défini</em>';
     }
-    let html = '<div class="kta-secours-parcours-row" data-role="' + role + '"' + idxAttr + '>' +
+    // 🆕 v1.23.2-fix UX P2 — data-loop="1" sur entrée+sortie si boucle
+    // (border-left orange via CSS, cohérent avec l'overlay carte)
+    const loopAttr = (isBoucle && (role === "entree" || role === "sortie"))
+                     ? ' data-loop="1"' : '';
+    let html = '<div class="kta-secours-parcours-row" data-role="' + role + '"' + idxAttr + loopAttr + '>' +
                  '<span class="kta-secours-parcours-emoji">' + emoji + '</span>' +
                  '<span class="kta-secours-parcours-label">' +
                    '<strong>' + defaultLabel + '</strong> : ' + label +

@@ -947,6 +947,9 @@
     });
     // 🆕 v1.23.2 Feature G — Bouton 📌 Assigner à équipe (clic indépendant
     // du _aller — stopPropagation pour pas pan/zoom le map)
+    // 🐛 v1.23.2-fix (audit UX P2 — z-index stack) : ferme la modale Recherche
+    // AVANT d'ouvrir Assigner pour éviter le stack (Esc dans Assigner aurait
+    // laissé la Recherche orpheline visible).
     resEl.querySelectorAll(".kta-search-result-assign").forEach(function(btn) {
       btn.addEventListener("click", function(e) {
         e.stopPropagation();
@@ -955,7 +958,12 @@
         const it = _visibles[idx];
         if (!it || it.kind !== "point") return;
         if (window.SecoursMode && typeof window.SecoursMode.ouvrirAssignerModale === "function") {
-          window.SecoursMode.ouvrirAssignerModale(it.item, it.layerLabel || it.layerId || null);
+          // Snapshot le point + label AVANT de fermer la modale (sinon _visibles
+          // peut être vidé par le close)
+          const point = it.item;
+          const layerLabel = it.layerLabel || it.layerId || null;
+          if (_modal) { _modal.remove(); _modal = null; }
+          window.SecoursMode.ouvrirAssignerModale(point, layerLabel);
         }
       });
     });

@@ -2048,7 +2048,13 @@ img.kta-popup-photo-mini:focus-visible {
   z-index: 99999;
   background: rgba(5, 8, 15, 0.88);
   display: flex;
-  align-items: center;
+  /* 🐛 v1.23.2-fix (KARMA audit UX P1) : safe center pour éviter le bug
+     "modale coupée" quand la boîte est plus grande que le viewport
+     (mobile portrait + safe-area-inset-top + contenu dense). Cohérent
+     avec le fix v1.23.1 sur .kta-emergency-overlay. Bénéfice cascade
+     pour TOUTES les modales du projet (Aide, KMZ, Stats, Mode Secours,
+     Pick waypoint, Assigner à équipe, etc.). */
+  align-items: safe center;
   justify-content: center;
   padding: 16px;
   box-sizing: border-box;
@@ -18721,6 +18727,14 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   border-left: 3px solid rgba(255, 255, 255, 0.30);
   margin-left: 8px;
 }
+/* 🐛 v1.23.2-fix (KARMA audit UX P2 — cohérence boucle modale vs carte) :
+   quand entrée=sortie détecté (data-loop="1"), border-left orange (cohérent
+   avec marker orange "↻ Boucle" sur l'overlay carte). Override les rules
+   data-role="entree" et data-role="sortie" via priority spec (2 selectors). */
+.kta-secours-parcours-row[data-role="entree"][data-loop="1"],
+.kta-secours-parcours-row[data-role="sortie"][data-loop="1"] {
+  border-left: 4px solid #ff8c00;
+}
 .kta-secours-parcours-emoji {
   flex-shrink: 0;
   font-size: 14px;
@@ -18746,6 +18760,18 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
   font-size: 11px !important;
   padding: 2px 6px !important;
   min-width: 24px;
+}
+/* 🐛 v1.23.2-fix (KARMA audit UX P2 — touch targets sous WCAG 2.5.5) :
+   sur mobile portrait, les .kta-btn-xs (boutons ✏️/🗑️/📍 inline waypoints)
+   sont trop petits pour le pouce. WCAG min 24×24 (AA), recommandation 44×44.
+   Compromis : 36×36 sur mobile uniquement (préserve la compacité desktop). */
+@media (max-width: 480px) {
+  .kta-btn-xs {
+    min-width: 36px !important;
+    min-height: 36px !important;
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+  }
 }
 .kta-secours-parcours-add {
   align-self: flex-start;

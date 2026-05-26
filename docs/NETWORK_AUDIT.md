@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.23.1** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.23.2** (26 mai 2026).
+>
+> **v1.23.2 (Release PATCH — Feature G + Audit UX terrain)** : **AUCUN impact réseau**. Feature G (Ctrl+K → assigner POI à équipe en 2 clics) est pure manipulation DOM locale : lecture state Mode Secours via `SecoursMode.isOpen()` + `getCurrentScenarioId()`, écriture waypoint via `_appliquerWaypoint` local. Aucun fetch ajouté. 4 fixes UX (modale safe center cascade, touch targets WCAG media query, boucle data-loop cohérence, z-index stack close cascade) sont CSS pur + DOM cleanup. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. Verdict : ✅ aucune régression — Phase 2 Mode Secours 100% complète strictement offline-first.
 >
 > **v1.23.1 (Release PATCH — 2 fixes UX post-Phase 2)** : **AUCUN impact réseau**. Les 2 fixes sont purement client-side : (1) `.kta-emergency-overlay` CSS `align-items: safe center` (CSS Box Alignment Level 3) qui corrige le bug "modale coupée" sur mobile portrait — pas de code JS modifié. (2) MutationObserver dans `secoursMode.js > config-heatmap-secours` handler qui observe la suppression du DOM `#kta-heatmap-modal` pour restaurer la modale Mode Secours — purement DOM local. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — Mode Secours reste strictement offline-first.
 >

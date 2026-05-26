@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.23.1</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.23.2</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.23.2 (Release PATCH — Feature G + Audit UX terrain)</strong> :
+    <strong>AUCUN impact réseau</strong>. Feature G (Ctrl+K → assigner POI à équipe en 2 clics)
+    est pure manipulation DOM locale : lecture state Mode Secours, écriture waypoint local.
+    4 fixes UX (modale safe center cascade, touch targets WCAG, boucle data-loop, z-index stack)
+    sont CSS pur + DOM cleanup. <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — Phase 2 Mode Secours 100% complète strictement offline-first.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -961,6 +970,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.23.2</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release PATCH — Feature G + Audit UX terrain</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission</strong>.
+          Feature G : Ctrl+K → assigner POI à équipe en 2 clics (DOM local).
+          4 fixes UX : modale <code>safe center</code> cascade BASE, touch targets WCAG,
+          boucle <code>data-loop</code> cohérence, z-index stack close cascade.
+          <strong>Phase 2 Mode Secours 100% complète (7/7).</strong>
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.23.1</td>
         <td>26/05/2026</td>
