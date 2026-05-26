@@ -6394,6 +6394,22 @@
       return;
     }
     _toast("⏳ Recherche des POI dans la zone…", "info");
+    // 🐛 hotfix4 (KARMA "des points sont détectés dans la zone alors qu'il
+    // sont en dehors") : pré-calcul du niveau de référence pour le filtre
+    // M-LVL strict. Priorité : level du 1er sommet du polygon → level entrée
+    // → level activeLevel APP_CONFIG → 0. Garantit qu'on filtre les POI au
+    // BON niveau (avant : si entree.level absent ET p.level défini, on ne
+    // filtrait PAS → POI d'autres niveaux ajoutés à tort).
+    const mlvlActive = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    let refLevel = 0;
+    if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)
+        && g.zonePolygon.length > 0 && typeof g.zonePolygon[0].level === "number") {
+      refLevel = g.zonePolygon[0].level;
+    } else if (g.entree && typeof g.entree.level === "number") {
+      refLevel = g.entree.level;
+    } else if (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number") {
+      refLevel = window.APP_CONFIG.activeLevel;
+    }
     Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
       if (!Array.isArray(all)) all = [];
       // Set des POI déjà présents dans le parcours (par pointId OU coords)
@@ -6402,15 +6418,21 @@
         if (_samePoint(p, g.sortie)) return true;
         return (g.intermediaires || []).some(function(w) { return _samePoint(p, w); });
       };
+      // Compteurs debug (visibles dans 🐛 Logs si debugMode ON)
+      let cntTotal = 0, cntSkipLevel = 0, cntSkipOutside = 0, cntSkipDup = 0;
       // Filtre les POI dans la zone
       const candidats = [];
       all.forEach(function(entry) {
+        cntTotal++;
         const p = entry.point || entry;
         if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        // Skip si M-LVL actif et niveau différent de l'entrée (cohérent pathfinder)
-        if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true
-            && typeof p.level === "number" && typeof g.entree.level === "number"
-            && p.level !== g.entree.level) return;
+        // 🐛 hotfix4 — Filtre M-LVL STRICT : POI sans level traité comme
+        // level 0 implicite (cohérent rétro-compat plans v147+). Skip si
+        // niveau du POI != refLevel calculé ci-dessus.
+        if (mlvlActive) {
+          const pLvl = (typeof p.level === "number") ? p.level : 0;
+          if (pLvl !== refLevel) { cntSkipLevel++; return; }
+        }
         // Test zone
         let inside = false;
         if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
@@ -6427,20 +6449,27 @@
             }
           }
         }
-        if (!inside) return;
-        if (dejaPresent({ x: p.x, y: p.y, pointId: p.id })) return;
+        if (!inside) { cntSkipOutside++; return; }
+        if (dejaPresent({ x: p.x, y: p.y, pointId: p.id })) { cntSkipDup++; return; }
         // Distance à l'entrée pour le tri
         const dx = p.x - g.entree.x, dy = p.y - g.entree.y;
         const distFromEntree = Math.sqrt(dx * dx + dy * dy);
         candidats.push({
           x:       p.x,
           y:       p.y,
-          level:   typeof p.level === "number" ? p.level : (g.entree.level || 0),
+          level:   typeof p.level === "number" ? p.level : refLevel,
           pointId: p.id || null,
           label:   p.nom || p.id || null,
           _d:      distFromEntree
         });
       });
+      // Log debug (visible dans 🐛 Logs si debugMode ON)
+      console.log("[SecoursMode] POI dans zone — refLevel=" + refLevel +
+                  " mlvl=" + mlvlActive + " total=" + cntTotal +
+                  " skipLevel=" + cntSkipLevel +
+                  " skipOutside=" + cntSkipOutside +
+                  " skipDup=" + cntSkipDup +
+                  " retained=" + candidats.length);
       if (candidats.length === 0) {
         _toast("ℹ️ Aucun POI trouvé dans la zone (qui ne soit pas déjà dans le parcours).", "info");
         return;
