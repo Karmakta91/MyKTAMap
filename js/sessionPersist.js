@@ -189,7 +189,28 @@
                          : [],
       trackerStartTs:  (typeof window.getTrackingStartTs  === "function")
                          ? (window.getTrackingStartTs()  || null)
-                         : null
+                         : null,
+
+      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet — persistance per-plan") :
+      // état des filtres runtime du FilterPanel (tags, types road/zone/struct).
+      // Sérialisation Set → Array ; null = pas de filtre (tout visible).
+      // Au restore, on reconvertit Array → Set côté loader. Rétrocompat :
+      // payload.runtimeFilters absent dans les anciens saves → ignoré.
+      runtimeFilters: _serializeRuntimeFilters()
+    };
+  }
+
+  // Sérialise window._ktaRuntimeFilters (Sets → Arrays) pour le payload JSON.
+  // null reste null (= pas de filtre actif).
+  function _serializeRuntimeFilters() {
+    const f = window._ktaRuntimeFilters;
+    if (!f || typeof f !== "object") return null;
+    function _s(set) { return (set instanceof Set) ? Array.from(set) : null; }
+    return {
+      tags:        _s(f.tags),
+      roadTypes:   _s(f.roadTypes),
+      zoneTypes:   _s(f.zoneTypes),
+      structTypes: _s(f.structTypes)
     };
   }
 
@@ -305,7 +326,10 @@
       // entrées custom). null si LegendCustomization n'a pas encore été
       // chargé ou si l'user n'a rien personnalisé — c'est OK, le restore
       // gère gracieusement payload.customLegend == null.
-      customLegend:   state.customLegend   || null
+      customLegend:   state.customLegend   || null,
+      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : filtres runtime
+      // FilterPanel (tags + types road/zone/struct) persistés per-plan.
+      runtimeFilters:  state.runtimeFilters  || null
     };
     // 🆕 v1.16.1 : écriture dans le slot par-plan. Si pas de planId set
     // (cas dégénéré, pré-onPlanLoaded), skip — on ne peut pas savoir
@@ -509,6 +533,40 @@
         window.setTrackingTimeline(payload.trackerTimeline, payload.trackerStartTs || null);
         restored.trackerTimeline = payload.trackerTimeline.length;
       }
+
+      // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet — persistance per-plan") :
+      // restore des filtres runtime FilterPanel. Array → Set côté loader.
+      // Rétrocompat : anciens payloads sans runtimeFilters → état par défaut
+      // (tous filtres null = tout visible). Le runtime accepte aussi null
+      // partiel par champ (ex : tags=null + roadTypes=["principal"]).
+      if (payload.runtimeFilters && typeof payload.runtimeFilters === "object") {
+        const rf = payload.runtimeFilters;
+        if (!window._ktaRuntimeFilters) {
+          window._ktaRuntimeFilters = { tags: null, roadTypes: null, zoneTypes: null, structTypes: null };
+        }
+        function _toSet(arr) { return Array.isArray(arr) ? new Set(arr) : null; }
+        window._ktaRuntimeFilters.tags        = _toSet(rf.tags);
+        window._ktaRuntimeFilters.roadTypes   = _toSet(rf.roadTypes);
+        window._ktaRuntimeFilters.zoneTypes   = _toSet(rf.zoneTypes);
+        window._ktaRuntimeFilters.structTypes = _toSet(rf.structTypes);
+        const _active = [];
+        if (window._ktaRuntimeFilters.tags        !== null) _active.push("tags");
+        if (window._ktaRuntimeFilters.roadTypes   !== null) _active.push("roadTypes");
+        if (window._ktaRuntimeFilters.zoneTypes   !== null) _active.push("zoneTypes");
+        if (window._ktaRuntimeFilters.structTypes !== null) _active.push("structTypes");
+        restored.runtimeFilters = _active.length;
+        // Applique immédiatement le filtre runtime sur la map (les modules
+        // de rendu lisent _ktaRuntimeFilters à chaque pass). On déclenche le
+        // re-render via le helper global. Throttle pour éviter de courir
+        // avant que les markers session soient eux-mêmes restaurés (phase 2
+        // de _restore — itineraries +1500ms).
+        setTimeout(function() {
+          if (typeof window.appliquerFiltreRuntime === "function") {
+            try { window.appliquerFiltreRuntime(); } catch(e) {}
+          }
+        }, 200);
+      }
+
       // Mettre à jour le hash courant pour que le prochain poll ne détecte pas
       // les setters comme une modification utilisateur
       _lastHash = _hashState(_gatherState());

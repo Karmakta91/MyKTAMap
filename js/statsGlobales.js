@@ -167,14 +167,50 @@
     return fallback || type;
   }
 
+  // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours prendre la
+  // valeur par default") : helper qui retourne le label par défaut UNIQUEMENT
+  // (court-circuite la cascade session > plan > default de LegendCustomization).
+  // Utilisé dans le rendu camemberts cross-plan home : l'user a pu renommer
+  // "principal" → "route de surface" sur le plan A, mais sur la modale Profil
+  // home on agrège plusieurs plans → afficher des labels génériques cohérents.
+  function _defaultLabelStat(category, type, fallback) {
+    if (typeof type !== "string" || !type) return fallback || "?";
+    // Entrée custom (cust-XYZ) : préfixe ✨ — même traitement que _lcLabelStat
+    // car les customs n'ont JAMAIS de version "default" (ils sont par essence
+    // personnalisés). Le préfixe ✨ signale visuellement l'origine.
+    if (type.indexOf("cust-") === 0) {
+      if (window.LegendCustomization && typeof window.LegendCustomization.findCustomEntry === "function") {
+        try {
+          const e = window.LegendCustomization.findCustomEntry(type);
+          if (e && e.label) return "✨ " + e.label;
+        } catch(err) {}
+      }
+      return fallback || type;
+    }
+    // Built-in : on prend STRICTEMENT le DEFAULT_LABELS du module, jamais le
+    // session.labels ni le plan.labels.
+    if (window.LegendCustomization && typeof window.LegendCustomization.getDefaultLabel === "function") {
+      try {
+        const lcCat = (category === "roads") ? "traces"
+                    : (category === "tags")  ? "icones"
+                    : category;
+        const lbl = window.LegendCustomization.getDefaultLabel(lcCat, type);
+        if (lbl) return lbl;
+      } catch(err) {}
+    }
+    return fallback || type;
+  }
+
   /**
    * Génère un camembert SVG inline + légende textuelle à droite.
-   * @param {Object} data       - {key: count, ...}
-   * @param {String} category   - "roads"|"zones"|"structures"|"tags" (pour palette + LC labels)
-   * @param {Number} size       - taille en px (recommandé 160)
+   * @param {Object}  data              - {key: count, ...}
+   * @param {String}  category          - "roads"|"zones"|"structures"|"tags" (palette + labels)
+   * @param {Number}  size              - taille en px (recommandé 160)
+   * @param {Boolean} useDefaultLabels  - 🆕 v1.21.5-fix1 : si true, force les labels
+   *                                       par défaut (bypass LC cascade). Utile cross-plan.
    * @returns {String} HTML <div> contenant SVG + légende
    */
-  function _renderPieChart(data, category, size) {
+  function _renderPieChart(data, category, size, useDefaultLabels) {
     size = size || 160;
     const r = size / 2 - 4;        // rayon (avec marge)
     const cx = size / 2;
@@ -214,12 +250,16 @@
     }
 
     // Légende à droite : swatch + label + count + pct
+    // 🆕 v1.21.5-fix1 : si useDefaultLabels === true (cross-plan home),
+    // on bypass la cascade LC pour afficher les labels génériques cohérents
+    // entre plans (sinon le renommage local d'un plan A polluerait l'agrégat).
+    const _labelFn = useDefaultLabels ? _defaultLabelStat : _lcLabelStat;
     let legend = '<div class="kta-stats-glob-pie-legend">';
     sortedKeys.forEach(function(k) {
       const n = data[k] || 0;
       const pct = ((n / total) * 100).toFixed(1);
       const color = _colorForKey(category, k);
-      const lbl = _lcLabelStat(category, k, k);
+      const lbl = _labelFn(category, k, k);
       legend += '<div class="kta-stats-glob-pie-legend-row">' +
                   '<span class="kta-stats-glob-pie-legend-swatch" style="background:' + color + ';"></span>' +
                   '<span class="kta-stats-glob-pie-legend-lbl">' + _escapeHtml(lbl) + '</span>' +

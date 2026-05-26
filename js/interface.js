@@ -4009,6 +4009,23 @@ window.appliquerFiltreNiveau = function() {
   if (typeof window._applyLevelFilterToImageLayers === "function") {
     try { window._applyLevelFilterToImageLayers(); } catch(e) {}
   }
+
+  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : sync M-LVL bidirectionnel.
+  // Quand visibleLevels change (via modale Niveaux), notifie FilterPanel pour
+  // qu'il rafraîchisse la section M-LVL si la modale est ouverte.
+  if (window.FilterPanel && typeof window.FilterPanel.onLevelChange === "function") {
+    try { window.FilterPanel.onLevelChange(); } catch(e) {}
+  }
+};
+
+// 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : helper global qui cascade
+// le re-render après changement des filtres runtime (tags, types, etc.).
+// Alias de appliquerFiltreNiveau car les modules level-aware appliquent
+// aussi window._ktaRuntimeFilters dans la même passe de rendu.
+window.appliquerFiltreRuntime = function() {
+  if (typeof window.appliquerFiltreNiveau === "function") {
+    window.appliquerFiltreNiveau();
+  }
 };
 
 // _ouvrirCreationJonction : modal pour saisir fromLevel/toLevel avant
@@ -4701,6 +4718,42 @@ function _initLayersControlWatcher() {
 }
 
 // =========================
+// 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton custom ≡ qui remplace
+// le L.control.layers natif. Au clic, ouvre la modale FilterPanel unifiée
+// (Images + Data layers + M-LVL + Tags + Types Road/Zone/Struct).
+// =========================
+L.control.ktaFilterControl = function() {
+  const ctrl = L.control({ position: "topright" });
+  ctrl.onAdd = function() {
+    const div = L.DomUtil.create("div", "leaflet-bar leaflet-control kta-filter-ctrl");
+    // 🐛 v1.21.5-fix2 (KARMA "en mode sombre, je fond de l'icone filtre est
+    // blanc au lieu du fond habituel en mode sombre") : on NE hardcode PAS
+    // color/background en inline. Le styling vient de :
+    //   • Leaflet base (.leaflet-bar a) — fond blanc + texte noir par défaut
+    //   • MyKTAMap dark theme override (body.kta-refonte-v1 .leaflet-bar a)
+    //   • MyKTAMap light theme override (html.kta-theme-light .leaflet-bar a)
+    // → match automatique du thème courant comme les autres boutons sidebar.
+    div.innerHTML =
+      '<a href="#" role="button" aria-label="Filtres" title="Filtres (Images, Données, Niveaux, Tags, Types)" ' +
+      'style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:18px;line-height:1;text-decoration:none;">' +
+      '&#9776;' +  // ≡ (trois barres horizontales)
+      '</a>';
+    // Empêche le clic de propager au map (pan/zoom)
+    L.DomEvent.disableClickPropagation(div);
+    L.DomEvent.on(div, "click", function(e) {
+      L.DomEvent.preventDefault(e);
+      if (window.FilterPanel && typeof window.FilterPanel.ouvrir === "function") {
+        window.FilterPanel.ouvrir();
+      } else {
+        console.warn("[Interface] FilterPanel non chargé");
+      }
+    });
+    return div;
+  };
+  return ctrl;
+};
+
+// =========================
 // INIT INTERFACE — barre 9 groupes (accordéons)
 // =========================
 function initInterface() {
@@ -4713,6 +4766,10 @@ function initInterface() {
   _groupeOuvert = null;
 
   L.control.titleControl().addTo(window.map);
+
+  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : bouton ≡ custom topright
+  // qui ouvre la modale FilterPanel unifiée (remplace L.control.layers natif).
+  L.control.ktaFilterControl().addTo(window.map);
 
   // 🆕 Refonte UI v1.2 (KARMA) :
   //   1. Bouton ≡ de réduction de chaque sidebar (gauche + droite)

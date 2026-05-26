@@ -292,6 +292,14 @@ function renderZones() {
     if (!zone.points || zone.points.length === 0) return;
     if (!_zonePasseFiltre(zone)) return;
 
+    // 🆕 v1.21.5 (KARMA "filtre par type de zone") : runtime type filter
+    // via FilterPanel. currentZone bypass (zone en cours de dessin doit
+    // rester visible peu importe le filtre).
+    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.zoneTypes
+        && zone !== currentZone) {
+      if (!window._ktaRuntimeFilters.zoneTypes.has(zone.type)) return;
+    }
+
     const latlngs = zone.points.map(function(p) { return convertCoord(p.x, p.y); });
     // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
     const style = _resolveZoneStyle(zone.type) || ZONE_STYLES.remblais;

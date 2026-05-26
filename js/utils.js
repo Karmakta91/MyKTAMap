@@ -830,10 +830,34 @@ function _passeFiltreDataLevel(lvl) {
   return visibles.indexOf(Number.isInteger(lvl) ? lvl : 0) >= 0;
 }
 
+// 🆕 v1.21.5 (KARMA "filtre par tag/type runtime") : helpers de check des
+// filtres runtime FilterPanel. Tous retournent `true` si le filtre est
+// désactivé (null) → rétrocompat absolue avec le code v1.21.4.
+function _passeFiltreRuntimeTag(tag) {
+  const f = window._ktaRuntimeFilters;
+  if (!f || !f.tags) return true;
+  return f.tags.has(tag || "default");
+}
+function _passeFiltreRuntimeType(category, type) {
+  const f = window._ktaRuntimeFilters;
+  if (!f) return true;
+  const set = (category === "roads")  ? f.roadTypes
+            : (category === "zones")  ? f.zoneTypes
+            : (category === "structs") ? f.structTypes
+            : null;
+  if (!set) return true;
+  return set.has(type);
+}
+
 // === MARKERS data layers ===
 function _filtreNiveauSurMarkerData(marker) {
   if (!marker) return;
-  const visible = _passeFiltreDataLevel(marker._ktaLevel);
+  let visible = _passeFiltreDataLevel(marker._ktaLevel);
+  // 🆕 v1.21.5 : combinaison filtre tag runtime
+  if (visible) {
+    const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0]) || "default";
+    if (!_passeFiltreRuntimeTag(tag)) visible = false;
+  }
   try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
   if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
 }
@@ -847,7 +871,11 @@ window._applyLevelFilterToDataPoints = function() {
 // filtre redevient visible (sinon on perdrait l'opacite si elle est < 1).
 function _filtreNiveauSurPolylineData(entry) {
   if (!entry || !entry.polyline) return;
-  const visible = _passeFiltreDataLevel(entry.level);
+  let visible = _passeFiltreDataLevel(entry.level);
+  // 🆕 v1.21.5 : combinaison filtre runtime type road
+  if (visible && entry.type) {
+    if (!_passeFiltreRuntimeType("roads", entry.type)) visible = false;
+  }
   try {
     entry.polyline.setStyle({ opacity: visible ? entry.origOpacity : 0 });
   } catch(e) {}
@@ -858,9 +886,16 @@ window._applyLevelFilterToDataRoads = function() {
 };
 
 // === POLYGONS data layers (zones embarquees) ===
-function _filtreNiveauSurPolygonData(entry) {
+// 🆕 v1.21.5 : `kindForRuntime` permet de différencier zone vs structure
+// (le même format de polygon entry est utilisé pour les 2). Passé par les
+// wrappers _applyLevelFilterToDataZones / _applyLevelFilterToDataStructures.
+function _filtreNiveauSurPolygonData(entry, kindForRuntime) {
   if (!entry || !entry.polygon) return;
-  const visible = _passeFiltreDataLevel(entry.level);
+  let visible = _passeFiltreDataLevel(entry.level);
+  // 🆕 v1.21.5 : combinaison filtre runtime type zone OU structure
+  if (visible && entry.type && kindForRuntime) {
+    if (!_passeFiltreRuntimeType(kindForRuntime, entry.type)) visible = false;
+  }
   try {
     entry.polygon.setStyle({
       opacity:     visible ? entry.origOpacity     : 0,
@@ -870,17 +905,13 @@ function _filtreNiveauSurPolygonData(entry) {
 }
 window._applyLevelFilterToDataZones = function() {
   if (!Array.isArray(window._ktaDataPolygons)) return;
-  window._ktaDataPolygons.forEach(_filtreNiveauSurPolygonData);
+  window._ktaDataPolygons.forEach(function(e) { _filtreNiveauSurPolygonData(e, "zones"); });
 };
 
 // 🆕 v1.9.3-A1.a-fix5 : symétrique pour les structures data layer.
-// Appelé au changement de niveau pour re-filtrer la visibilité des
-// piliers/murs embarqués (lecture seule via structure.json data layer).
-// Réutilise _filtreNiveauSurPolygonData car le format `entry` est
-// strictement identique (polygon + level + origOpacity + origFillOpacity).
 window._applyLevelFilterToDataStructures = function() {
   if (!Array.isArray(window._ktaDataStructurePolygons)) return;
-  window._ktaDataStructurePolygons.forEach(_filtreNiveauSurPolygonData);
+  window._ktaDataStructurePolygons.forEach(function(e) { _filtreNiveauSurPolygonData(e, "structs"); });
 };
 
 // =========================

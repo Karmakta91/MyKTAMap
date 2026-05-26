@@ -615,6 +615,16 @@ function renderRoads() {
     // 🏗️ Multi-niveau : skip si la road ne passe pas le filtre du niveau actif.
     if (!_passeFiltreNiveau(road)) return;
 
+    // 🆕 v1.21.5 (KARMA "filtre par type de road") : runtime type filter via
+    // FilterPanel. window._ktaRuntimeFilters.roadTypes :
+    //   • null    → tout visible (default, rétrocompat)
+    //   • Set     → seuls les types dans le Set sont visibles
+    // Itinéraire + currentRoad bypass (cohérent avec _passeFiltreNiveau).
+    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.roadTypes
+        && road.type !== "itinerary" && road !== currentRoad) {
+      if (!window._ktaRuntimeFilters.roadTypes.has(road.type)) return;
+    }
+
     // 🚀 PerfUltra viewport culling : skip si AABB hors du viewport (sauf itinéraire,
     // qu'on garde toujours visible pour la navigation continue).
     if (_viewportCull && _vpBox && road.type !== "itinerary") {

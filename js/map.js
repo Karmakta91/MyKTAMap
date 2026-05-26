@@ -380,13 +380,21 @@ async function initMapFromConfig() {
     if (layerConfig.visible && niveauVisible) overlay.addTo(map);
     overlays[layerConfig.label] = overlay;
     window._ktaImageOverlays.push({
+      // 🆕 v1.21.5 (FilterPanel) : id ajouté pour permettre le match
+      // par identifiant stable (le label peut contenir des espaces / accents).
+      id:      layerConfig.id || layerConfig.label,
       overlay: overlay,
       label:   layerConfig.label,
       level:   lvl
     });
   });
 
-  L.control.layers(null, overlays).addTo(map);
+  // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : on remplace le L.control.layers
+  // natif par notre propre bouton ≡ qui ouvre la modale FilterPanel unifiée
+  // (Images + Data + M-LVL + Tags + Types Road/Zone/Struct). On expose les
+  // overlays globalement pour que FilterPanel puisse les toggler.
+  window._ktaOverlays = overlays;
+  // ANCIEN : L.control.layers(null, overlays).addTo(map);
 
   // Collision
   await initCollisionMap(config.plan.collisionImage);

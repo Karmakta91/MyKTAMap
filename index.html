@@ -981,6 +981,14 @@
 
   <script src="js/interface.js"></script>
 
+  <!-- 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : modale FilterPanel
+       unifiée qui remplace L.control.layers natif (≡). Filtre Image +
+       Data layers + M-LVL + Tags + Types Road/Zone/Struct en live.
+       Doit charger APRÈS interface.js (utilise appliquerFiltreNiveau /
+       appliquerFiltreRuntime) et APRÈS sessionPersist.js (lecture
+       payload.runtimeFilters au restore). -->
+  <script src="js/filterPanel.js"></script>
+
   <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
        Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
        de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).
@@ -3298,11 +3306,20 @@
           //   • v1.21.4+ : cache contient distM + scale (= mètres convertibles)
           //   • v1.21.3  : cache contient juste distPx (= pixels seulement)
           //                → traité comme partial (réopen plan pour upgrade)
+          // 🐛 v1.21.5-fix1 (KARMA "les route secondaire ou taguer lvl -1 ne
+          // semble pas pris en compte en stat general plan") : si le cache
+          // existe mais N'A PAS de breakdowns (cache antérieur à v1.21.3, ou
+          // entry corrompue), on NE retourne PAS breakdowns:null (qui ferait
+          // skip totalement ce plan dans l'agrégation des camemberts). On
+          // FALL THROUGH au cas 3 (session-only) pour avoir au moins les
+          // breakdowns session — sans les embedded data layers, mais c'est
+          // mieux que rien.
           try {
             const raw = localStorage.getItem("myktamap_plan_stats_v1_" + plan.id);
             if (raw) {
               const cached = JSON.parse(raw);
-              if (cached && typeof cached.pois === "number") {
+              if (cached && typeof cached.pois === "number"
+                  && cached.breakdowns && typeof cached.breakdowns === "object") {
                 const hasDistM = (typeof cached.distM === "number");
                 return {
                   pois:   cached.pois || 0,
@@ -3310,27 +3327,38 @@
                   distPx: cached.distPx || 0,
                   distM:  hasDistM ? cached.distM : null,
                   scale:  cached.scale || null,
-                  breakdowns: cached.breakdowns || null,
+                  breakdowns: cached.breakdowns,
                   source: hasDistM ? "cache" : "cache-legacy"   // v1.21.3 → marqueur ⚠️
                 };
               }
             }
           } catch(e) {}
-          // Cas 3 : fallback session-only (partial — pas de scale, pas de
-          // breakdowns par type pour les data layers embedded)
+          // Cas 3 : fallback session-only (partial — pas de scale, pas
+          // d'embedded data layers : on ne lit QUE le payload SessionPersist
+          // du plan, jamais les data/*.json embedded qui demandent un fetch).
+          // 🆕 v1.21.5-fix1 (KARMA "les route secondaire ou taguer lvl -1 ne
+          // semble pas pris en compte") : on étend désormais zones + structures
+          // du payload session (rétrocompat v1.9.3-A1.a+ qui les a ajoutées).
+          // Les niveaux M-LVL et tous les types (secondaire, chemin, jonction)
+          // sont préservés tels quels — pas de filtre par type ni par level.
           let pois = 0, roads = 0, distPx = 0;
           let pointsByTag = {}, roadsByType = {};
+          let zonesByType = {}, structsByType = {};
           try {
             const raw = localStorage.getItem("myktamap_session_v1_" + plan.id);
             if (raw) {
               const data = JSON.parse(raw);
               const eps = Array.isArray(data.editorPoints) ? data.editorPoints : [];
               const rds = Array.isArray(data.roads) ? data.roads : [];
+              const zns = Array.isArray(data.zones) ? data.zones : [];
+              const sts = Array.isArray(data.structures) ? data.structures : [];
               pois  = eps.length;
               roads = rds.length;
               distPx = _sumRoadsDistPx(rds);
-              pointsByTag = _countBy(eps, _firstTagOf);
-              roadsByType = _countBy(rds, function(r) { return r.type || "principal"; });
+              pointsByTag   = _countBy(eps, _firstTagOf);
+              roadsByType   = _countBy(rds, function(r) { return r.type || "principal"; });
+              zonesByType   = _countBy(zns, function(z) { return z.type || "remblais"; });
+              structsByType = _countBy(sts, function(s) { return s.type || "pilier-1"; });
             }
           } catch(e) {}
           return {
@@ -3339,8 +3367,8 @@
             breakdowns: {
               pointsByTag:   pointsByTag,
               roadsByType:   roadsByType,
-              zonesByType:   {},
-              structsByType: {}
+              zonesByType:   zonesByType,
+              structsByType: structsByType
             },
             source: "session-only"
           };
@@ -3491,7 +3519,12 @@
           const data = breakdowns[s.key] || {};
           html += '<div class="kta-profile-pies-card">' +
                     '<div class="kta-profile-pies-card-title">' + s.label + '</div>' +
-                    renderPie(data, s.category, 140) +
+                    // 🆕 v1.21.5-fix1 (KARMA "en stat général, on doit toujours
+                    // prendre la valeur par default") : 4e arg true = bypass la
+                    // cascade LegendCustomization (qui appliquerait le renommage
+                    // local du plan A à l'agrégat cross-plan home). Cross-plan =
+                    // labels par défaut cohérents partout.
+                    renderPie(data, s.category, 140, true) +
                   '</div>';
         });
         html += '</div>';

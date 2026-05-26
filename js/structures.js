@@ -442,6 +442,13 @@ function renderStructures() {
     if (!s.points || s.points.length === 0) return;
     if (!_structurePasseFiltre(s)) return;
 
+    // 🆕 v1.21.5 (KARMA "filtre par type de structure") : runtime type
+    // filter via FilterPanel. currentStructure bypass (en cours de dessin).
+    if (window._ktaRuntimeFilters && window._ktaRuntimeFilters.structTypes
+        && s !== currentStructure) {
+      if (!window._ktaRuntimeFilters.structTypes.has(s.type)) return;
+    }
+
     const latlngs = s.points.map(function(p) { return convertCoord(p.x, p.y); });
     // 🆕 v1.16.0 step2-drawable : résolution dynamique (custom support)
     const style = _resolveStructureStyle(s.type) || STRUCTURE_STYLES["mur"];

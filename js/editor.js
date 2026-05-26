@@ -729,6 +729,10 @@ function _ajouterMarker(point) {
   // (Le point.level est aussi conserve dans listePoints, mais on duplique sur
   // l'objet marker pour eviter une lookup au moment du filter visuel.)
   marker._ktaLevel = Number.isInteger(point.level) ? point.level : 0;
+  // 🆕 v1.21.5 (KARMA "filtre par tag") : stocke aussi les tags sur le
+  // marker (1er tag est celui qui détermine l'icône → c'est le tag de
+  // filtrage). Cohérent avec data layer markers (cf utils.js ligne 1055).
+  marker._ktaTags = Array.isArray(point.tags) ? point.tags.slice() : [];
 
   // Tracking pour permettre une suppression ciblée plus tard (sans clearLayers
   // qui efface aussi roads/zones partageant le meme layerEditor).
@@ -746,17 +750,23 @@ function _ajouterMarker(point) {
 // que remove/addLayer pour preserver l'integration avec layerEditor.
 function _appliquerFiltreNiveauSurMarker(marker) {
   if (!marker) return;
+  let visible = true;
+  // 🏗️ Multi-niveau (feature off → tout visible, retro-compat)
   const multi = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
-  if (!multi) {
-    // Feature off → tout visible (retro-compat)
-    try { marker.setOpacity(1); } catch(e) {}
-    if (marker._icon) marker._icon.style.pointerEvents = "";
-    return;
+  if (multi) {
+    const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+      ? window.APP_CONFIG.visibleLevels : [0];
+    const lvl = Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0;
+    if (visibles.indexOf(lvl) < 0) visible = false;
   }
-  const visibles = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
-    ? window.APP_CONFIG.visibleLevels : [0];
-  const lvl = Number.isInteger(marker._ktaLevel) ? marker._ktaLevel : 0;
-  const visible = visibles.indexOf(lvl) >= 0;
+  // 🆕 v1.21.5 (KARMA "filtre par tag") : filtre runtime via FilterPanel.
+  // Lit le 1er tag du marker (_ktaTags ou .options.icon).
+  if (visible && window._ktaRuntimeFilters && window._ktaRuntimeFilters.tags) {
+    const tag = (Array.isArray(marker._ktaTags) && marker._ktaTags[0])
+                || (marker._ktaTag)
+                || "default";
+    if (!window._ktaRuntimeFilters.tags.has(tag)) visible = false;
+  }
   try { marker.setOpacity(visible ? 1 : 0); } catch(e) {}
   if (marker._icon) marker._icon.style.pointerEvents = visible ? "" : "none";
 }
