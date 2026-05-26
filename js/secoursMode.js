@@ -2269,21 +2269,34 @@
             '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">Comptage des photos…</div>' +
           '</label>' +
 
+          // 🐛 hotfix5 (KARMA "dans Rapport Equipier, le .mkmsec.report.json
+          // le titre va sur la description") : structure HTML revue —
+          // wrapper label + sub dans un div column pour empiler verticalement.
+          // Avant : button flex row avec icon + label + sub côte à côte →
+          // label long (".mkmsec.report.json") + sub long se chevauchaient
+          // ou wrappaient mal. Fix : icon (flex-shrink:0) + div column
+          // (flex:1 min-width:0) contenant label puis sub.
           '<div class="kta-secours-rapport-formats">' +
             '<button class="kta-btn kta-btn-primary kta-secours-rapport-fmt-btn" data-action="rapport-export-pdf">' +
               '<span class="kta-secours-rapport-fmt-icon">📄</span>' +
-              '<span class="kta-secours-rapport-fmt-label">PDF imprimable</span>' +
-              '<span class="kta-secours-rapport-fmt-sub">A4 portrait, photos en annexe</span>' +
+              '<span class="kta-secours-rapport-fmt-content">' +
+                '<span class="kta-secours-rapport-fmt-label">PDF imprimable</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">A4 portrait, photos en annexe</span>' +
+              '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-export-json">' +
               '<span class="kta-secours-rapport-fmt-icon">📦</span>' +
-              '<span class="kta-secours-rapport-fmt-label">.mkmsec.report.json</span>' +
-              '<span class="kta-secours-rapport-fmt-sub">Data structuré (autonome avec photos en base64)</span>' +
+              '<span class="kta-secours-rapport-fmt-content">' +
+                '<span class="kta-secours-rapport-fmt-label">.mkmsec.report.json</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">Data structuré (autonome avec photos en base64)</span>' +
+              '</span>' +
             '</button>' +
             '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-copy-text">' +
               '<span class="kta-secours-rapport-fmt-icon">📋</span>' +
-              '<span class="kta-secours-rapport-fmt-label">Copier texte</span>' +
-              '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
+              '<span class="kta-secours-rapport-fmt-content">' +
+                '<span class="kta-secours-rapport-fmt-label">Copier texte</span>' +
+                '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
+              '</span>' +
             '</button>' +
           '</div>' +
 

@@ -20059,12 +20059,25 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
 .kta-secours-rapport-fmt-icon {
   font-size: 22px;
   flex-shrink: 0;
+  line-height: 1;
+}
+/* 🐛 hotfix5 — Wrapper column pour empiler label + sub verticalement.
+   Avant : les 3 spans (icon, label, sub) étaient flex row direct →
+   label long (.mkmsec.report.json) + sub long se chevauchaient.
+   Désormais : icon + content (column) avec label puis sub empilés. */
+.kta-secours-rapport-fmt-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;       /* indispensable pour ellipsis label trop long */
+  gap: 2px;
 }
 .kta-secours-rapport-fmt-label {
   display: block;
   font-weight: 700;
   font-size: 14px;
-  margin-bottom: 2px;
+  line-height: 1.25;
+  word-break: break-word;   /* fallback long token type .mkmsec.report.json */
 }
 .kta-secours-rapport-fmt-sub {
   display: block;
@@ -20072,11 +20085,7 @@ html.kta-theme-light .kta-secours-lancer-bandeau-archived .kta-secours-lancer-ba
   opacity: 0.75;
   font-weight: 400;
   font-style: italic;
-}
-.kta-secours-rapport-fmt-btn > div,
-.kta-secours-rapport-fmt-btn > span:not(.kta-secours-rapport-fmt-icon) {
-  flex: 1;
-  min-width: 0;
+  line-height: 1.35;
 }
 
 /* Variants thème clair */
