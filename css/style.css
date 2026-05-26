@@ -7751,6 +7751,48 @@ html.kta-theme-light .kta-secours-context-imported-row strong {
   color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
 
+/* 🆕 v1.23.0 Phase 2 / Feature D — Bloc outils d'analyse (heatmap) dans
+   la section 📝 Contexte de la modale Mode Secours. */
+.kta-secours-tool-block {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 140, 0, 0.08);
+  border: 1px solid rgba(255, 140, 0, 0.25);
+  border-left: 4px solid #ff8c00;
+  border-radius: 6px;
+}
+.kta-secours-tool-block-titre {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffaa66;
+  margin-bottom: 4px;
+}
+.kta-secours-tool-block-desc {
+  font-size: 11px;
+  color: #c8d0e0;
+  line-height: 1.45;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+.kta-secours-tool-block-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+body.kta-theme-light .kta-secours-tool-block,
+html.kta-theme-light .kta-secours-tool-block {
+  background: rgba(255, 140, 0, 0.10) !important;
+  border-color: rgba(255, 140, 0, 0.40) !important;
+}
+body.kta-theme-light .kta-secours-tool-block-titre,
+html.kta-theme-light .kta-secours-tool-block-titre {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-tool-block-desc,
+html.kta-theme-light .kta-secours-tool-block-desc {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+
 /* 🆕 v1.23.0 — Section "🛑 Pause entre les arrêts" dans modale itinéraire */
 .kta-iti-pause-row {
   display: flex;

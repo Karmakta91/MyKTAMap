@@ -1264,6 +1264,13 @@
     _modal = null;
     clearOverlay();
     _currentScenarioId = null;
+    // 🆕 v1.23.0 Feature D — Cleanup heatmap si encore active (l'user a
+    // fermé la modale sans toggler off)
+    if (_secoursHeatmapActive && window.MyKTAMapHeatmap
+        && typeof window.MyKTAMapHeatmap.effacer === "function") {
+      try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
+      _secoursHeatmapActive = false;
+    }
   }
 
   function _onKeyDown(e) {
@@ -1429,6 +1436,9 @@
                 // 🆕 v1.23.0 Phase 2 / Feature C — Affichage du lastKnownPoint
                 // + zoneIncertitude si pré-rempli depuis Lost Mode.
                 _renderContextImportedBlock(s) +
+                // 🆕 v1.23.0 Phase 2 / Feature D — Toggle Heatmap pour visualiser
+                // les zones probables d'activité (timeline tracker + annotations).
+                _renderHeatmapToolBlock() +
               '</div>' +
             '</details>';
 
@@ -1514,6 +1524,49 @@
               '</div>';
     });
     return html;
+  }
+
+  // 🆕 v1.23.0 Phase 2 / Feature D — Bloc outils d'analyse heatmap
+  // dans la section Contexte de la modale Mode Secours. Permet à l'user
+  // d'afficher la heatmap d'activité (timeline tracker + annotations) pour
+  // visualiser les zones probables où le disparu est passé → aide à
+  // dessiner les zones de recherche pertinentes pour les équipes.
+  //
+  // ⚠️ La heatmap utilise les sources locales (= ce qui est dans CE
+  // device). Cas d'usage 1 : le disparu utilisait MyKTAMap et a exporté
+  // sa session avec timeline → le PC secours importe la session, sa
+  // timeline est dispo. Cas d'usage 2 : le PC secours a déjà cartographié
+  // le réseau (tracker actif lors de ses sorties précédentes) → la heatmap
+  // montre les zones bien connues vs les zones blanches (sous-explorées).
+  let _secoursHeatmapActive = false;
+
+  function _renderHeatmapToolBlock() {
+    // Skip si le module Heatmap n'est pas chargé (rétro-compat)
+    if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.afficher !== "function") {
+      return "";
+    }
+    const isActive = _secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible &&
+                     window.MyKTAMapHeatmap.isVisible();
+    return '<div class="kta-secours-tool-block">' +
+             '<div class="kta-secours-tool-block-titre">🔍 Outils d\'analyse</div>' +
+             '<div class="kta-secours-tool-block-desc">' +
+               'La heatmap visualise les zones où l\'activité a été enregistrée ' +
+               '(timeline tracker, points, tracés). Utile pour identifier les ' +
+               'zones probables à fouiller en priorité.' +
+             '</div>' +
+             '<div class="kta-secours-tool-block-actions">' +
+               '<button class="kta-btn kta-btn-' + (isActive ? "primary" : "secondary") +
+                 ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
+                 (isActive ? "🔥 Masquer la heatmap" : "🔥 Afficher la heatmap d'activité") +
+               '</button>' +
+               (isActive
+                 ? '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="config-heatmap-secours" ' +
+                   'title="Ouvre la modale Heatmap classique pour ajuster sources/rayon/intensité">' +
+                   '⚙️ Régler' +
+                 '</button>'
+                 : '') +
+             '</div>' +
+           '</div>';
   }
 
   // 🆕 v1.23.0 Phase 2 / Feature C — Bloc lecture seule lastKnownPoint +
@@ -1797,6 +1850,56 @@
             context: { lastKnownPoint: null, zoneIncertitude: null }
           });
           _switchView("edit");
+        });
+      });
+      // 🆕 v1.23.0 Feature D — Toggle heatmap d'activité Mode Secours
+      corps.querySelectorAll('[data-action="toggle-heatmap-secours"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.MyKTAMapHeatmap) { _toast("⚠️ Module Heatmap indisponible.", "error"); return; }
+          if (_secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible()) {
+            window.MyKTAMapHeatmap.effacer();
+            _secoursHeatmapActive = false;
+            _toast("🔥 Heatmap masquée.", "info");
+          } else {
+            // Active overlay si pas déjà actif (sinon la modale cache tout)
+            if (!_overlayLayer) {
+              renderOverlay(_currentScenarioId);
+              if (_modal) _modal.style.display = "none";
+              _showOverlayFloater();
+            }
+            // Affiche la heatmap avec toutes les sources principales activées
+            // (tracker timeline = principal indice "où le disparu est passé")
+            try {
+              window.MyKTAMapHeatmap.afficher({
+                srcTracker:    true,
+                srcEditor:     true,
+                srcRoads:      true,
+                srcZones:      false,
+                srcStructures: false,
+                srcDataLayers: false,
+                radius:        40,
+                intensity:     1.0
+              });
+              _secoursHeatmapActive = true;
+              _toast("🔥 Heatmap affichée — Bouton ⚙️ Régler pour ajuster sources/intensité.", "info");
+            } catch(e) {
+              console.warn("[SecoursMode] Heatmap échec :", e);
+              _toast("⚠️ Erreur heatmap : " + e.message, "error");
+            }
+          }
+          _switchView("edit");   // re-render pour update label bouton
+        });
+      });
+      // 🆕 v1.23.0 Feature D — Ouvre la modale Heatmap classique pour réglages avancés
+      corps.querySelectorAll('[data-action="config-heatmap-secours"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.ouvrirModale !== "function") {
+            _toast("⚠️ Modale Heatmap indisponible.", "error");
+            return;
+          }
+          // Ferme la modale Mode Secours temporairement (sinon stack z-index)
+          if (_modal) _modal.style.display = "none";
+          window.MyKTAMapHeatmap.ouvrirModale();
         });
       });
       // Ajouter équipe
