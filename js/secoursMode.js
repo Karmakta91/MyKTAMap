@@ -3271,6 +3271,10 @@
     _modal = null;
     clearOverlay();
     _currentScenarioId = null;
+    // 🐛 hotfix1 — Cleanup du setInterval timer (sinon fuite mémoire :
+    // le timer continuait à tourner après fermeture modale sans plus
+    // rien à update — _currentScenarioId=null + DOM modale retirée).
+    _stopLiveTimer();
     // 🆕 v1.23.0 Feature D — Cleanup heatmap si encore active (l'user a
     // fermé la modale sans toggler off)
     if (_secoursHeatmapActive && window.MyKTAMapHeatmap
@@ -3316,9 +3320,16 @@
     if (view === "edit")   corps.innerHTML = _renderEditView();
     if (view === "live")   corps.innerHTML = _renderLiveView();   // 🆕 v1.24.0 Phase 3
     _bindViewHandlers(view);
-    // 🆕 v1.24.0 Phase 3 — Démarre/arrête le timer global selon la vue
-    if (view === "live") _startLiveTimer();
-    else                 _stopLiveTimer();
+    // 🆕 v1.24.0 Phase 3 — Timer global pour rafraîchir l'affichage des durées
+    // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit continuer à
+    // tourner même si modal secour fermer") : démarre le timer dès qu'une
+    // execution est active sur le scénario courant, peu importe la vue
+    // (live OU edit avec bandeau PLAN ACTIF). Avant : timer ne tournait
+    // qu'en vue "live" → bandeau Edit affichait une durée stale.
+    const s = _currentScenarioId ? get(_currentScenarioId) : null;
+    const execActive = s && _estExecutionActive(s);
+    if (view === "live" || execActive) _startLiveTimer();
+    else                               _stopLiveTimer();
   }
 
   // 🆕 v1.24.0 Phase 3 — Timer global pour rafraîchir l'affichage des durées
@@ -3668,7 +3679,13 @@
                    ' PLAN ACTIF — ' + _escHtml(roleLabel) +
                  '</div>' +
                  '<div class="kta-secours-lancer-bandeau-sub">' +
-                   '⏱️ Lancé depuis ' + dureeStr +
+                   // 🐛 hotfix1 (KARMA "le timer après avoir démarré doit
+                   // continuer à tourner même si modal secour fermer") :
+                   // data-live-timer="duree" pour que _majLiveTimers refresh
+                   // ce texte toutes les 1s (cohérent avec le timer de la
+                   // vue Live). Avant : string statique qui ne s'updatait
+                   // qu'au re-render de la vue.
+                   '⏱️ Lancé depuis <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
                    (exec.pausedAt ? ' · ⏸️ En pause' : '') +
                  '</div>' +
                '</div>' +
