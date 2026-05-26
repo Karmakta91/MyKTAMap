@@ -1142,6 +1142,66 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 **Sortie** : appuie sur le ✕ en haut à droite pour fermer le mode.
 
+### 🚨 Mode Secours — depuis v1.22.0 (Phase 1 MVP)
+
+Outil opérationnel pour **assigner méthodiquement des équipes de secours** à des zones de recherche d'un plan cataphile. Cas d'usage : une personne est portée disparue dans un réseau dense, plusieurs équipes arrivent en surface, le PC secours doit coordonner « qui ratisse quoi » avec un briefing clair et imprimable.
+
+> 💡 **Différent du ⛑️ Je suis perdu** : ⛑️ c'est *toi* qui es perdu, tu cherches à te retrouver. **🚨 Mode Secours** c'est *quelqu'un d'autre* qui est perdu, tu organises les équipes qui vont le chercher.
+
+#### Accès
+
+Bouton 🚨 dans le groupe **🧭 Tracker** (flyout urgences), à côté de ⛑️ Je suis perdu et 🚨 Panique. Fond rouge urgence cohérent.
+
+#### Workflow
+
+1. **Liste des scénarios** — Tu vois tous les scénarios sauvegardés pour ce plan (max 10, FIFO).
+2. **➕ Nouveau scénario** — Stepper léger : Nom + Notes contexte + Heure d'incident.
+3. **Édition free-form** — 3 sections accordéon :
+   - **📝 Contexte** : nom, heure d'incident, notes (ex: « Marc parti vers 14h pour vérifier galerie Est… »)
+   - **🚨 Équipes** : ajoute autant d'équipes que nécessaire. Pour chaque équipe : nom (auto Alpha/Bravo/Charlie...), couleur (palette OTAN 10 couleurs fixe), membres (CSV), entrée/sortie (clic carte), zone (polygone OU sélection de tracés), itinéraire suggéré (calc auto via Pathfinder)
+   - **📤 Export** : PDF imprimable (1 page/équipe) + KMZ géolocalisé (cross-app)
+
+#### Modes interactifs map
+
+| Bouton | Action |
+|---|---|
+| 📍 Entrée | 1 clic carte = capture la position d'entrée de l'équipe |
+| 🚪 Sortie | 1 clic carte = capture la position de sortie |
+| ⬛ Définir zone | Choix : (a) polygone multi-clic + double-clic pour fermer, OU (b) sélection de tracés au clic (re-clic = retirer, highlight rouge pour les sélectionnés) |
+| 🗺️ Calc. itinéraire | Calcule automatiquement le chemin le plus court entre entrée et sortie en suivant les galeries existantes (via Pathfinder), affiche distance + durée estimée (vitesse 0.5 m/s méthodique) |
+
+#### Visualisation carte
+
+Bouton **🗺️ Voir sur carte** dans le header de l'édit. Affiche pour chaque équipe (couleur dédiée) :
+- Zone polygone (fillOpacity 30 %) OU halo couleur sur les tracés sélectionnés
+- Marker 📍 Entrée (cercle border vert + fill couleur équipe)
+- Marker 🚪 Sortie (cercle border rouge + fill couleur équipe)
+- Itinéraire suggéré (polyline dashed couleur équipe)
+
+Auto-refresh à chaque modif. Re-cliquer le bouton pour masquer.
+
+#### Multi-scénarios par plan
+
+Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l'Est » vs « si par le Sud »). Bouton 🗐 Dupliquer pour cloner un scénario et tester une variante sans perdre l'original. Cap 10 scénarios par plan (au-delà, le plus ancien est purgé automatiquement).
+
+#### Exports
+
+**📄 PDF imprimable** : 1 page A4 portrait par équipe avec bandeau couleur + sections Contexte/Membres/Mission/Itinéraire + cadre Observations vide 60mm (à remplir au stylo au retour terrain). Filename `Secours_<nom_scénario>_<date>.pdf`.
+
+**🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
+
+> ⚠️ **Limitations MVP Phase 1** :
+> - Le PDF ne contient pas encore de carte miniature (briefing 100 % texte). Tu peux juxtaposer un plan papier classique.
+> - Le KMZ ne contient pas encore les zones visualisables dans Google Earth / OsmAnd (uniquement re-importable dans MyKTAMap).
+> - Ces 2 limitations seront levées en Phase 2 (v1.23.0).
+
+#### Roadmap
+
+- **Phase 2 (v1.23.0)** — Intégrations approfondies : auto pré-fill depuis Lost Mode, import auto Favoris taggés entrée/sortie, suggestion zones via Heatmap si timeline tracker du disparu disponible, sélection rapide via Ctrl+K, suggestion auto équipes par étage M-LVL, Pathfinder avoidances cross-équipes (pas de chevauchement), **KML cross-app pour Google Earth**, **carte miniature dans le PDF**.
+- **Phase 3 (v1.24.0)** — Statut temps réel par équipe (non démarré / en cours / terminé / rappelé), **QR code share** unidirectionnel PC secours → device équipe (lecture seule, robustesse réseau souterrain), timer global depuis incidentAt, observations terrain via QR scan au retour.
+
+> 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
+
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
 ---

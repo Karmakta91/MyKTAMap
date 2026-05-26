@@ -5464,6 +5464,172 @@ L'appel `index.html > _renderProfilePies` passe `true` → cross-plan home a des
 
 **Sources fix1** : `js/filterPanel.js` (+5), `js/statsGlobales.js` (+35), `index.html` (+13 net), `css/style.css` (+280). Pas de bump version.
 
+### 65. v1.22.0 — Mode Secours Phase 1 MVP (depuis v1.22.0)
+
+Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) → `window.SecoursMode`. Outil opérationnel pour assigner des équipes de recherche à des zones d'un plan cataphile. Bouton 🚨 dans le flyout urgences (Tracker), modale 3 vues (list/create/edit free-form). Persistance per-plan multi-scénarios via localStorage `myktamap_secours_v1_<planId>`. Palette OTAN 10 couleurs fixe. 3 modes interactifs map (point / polygon / roads). Pathfinder intégré pour pré-calcul itinéraires. Overlay carte couleur transparent par équipe. Exports PDF (1 page/équipe) + KMZ (extension myktamap-extras.json).
+
+#### 65.1 Architecture & API
+
+`window.SecoursMode = { init, reset, ouvrir, fermer, isOpen, getCurrentScenarioId, list, get, create, update, delete, duplicate, addGroupe, updateGroupe, removeGroupe, recalculerItineraires, exporterPDF, exporterKMZ, renderOverlay, clearOverlay, setFocus, onChange, PALETTE, MAX_SCENARIOS, VITESSE_MPS_DEFAUT }`.
+
+**State module-level** :
+- `_scenarios: Array` — cache chargé via _loadScenarios depuis localStorage
+- `_currentScenarioId: string | null` — scénario en cours d'édition
+- `_modal: HTMLElement | null` — DOM root de la modale
+- `_overlayLayer: L.LayerGroup | null` — layer Leaflet de l'overlay carte
+- `_focusedGroupeId: string | null` — mode focus single team
+- `_activeMapMode: "point"|"polygon"|"roads"|null` — mode interactif courant
+- `_mapModeCtx: object | null` — contexte du mode (groupeId, points, roadIds, etc.)
+
+**Format scénario** (cf JSDoc en tête de secoursMode.js) :
+```js
+{
+  id, nom, createdAt, updatedAt,
+  context: { incidentAt, lastKnownPoint, zoneIncertitude, notes },
+  groupes: [{
+    id, nom, couleurIdx, membres,
+    entree, sortie,                         // {x, y, level, pointId?} | null
+    zoneType: "polygon"|"roads"|null,
+    zonePolygon, zoneRoadIds,               // exclusifs
+    itineraireSuggere, distanceM, dureeEstimeeMin,
+    statut, observations
+  }],
+  pointsCles: [...]
+}
+```
+
+#### 65.2 Cycle de vie & cleanup
+
+- **init** : appelé par `main.js > lancerApplication` après `SessionPersist.onPlanLoaded`. Charge les scénarios du plan courant depuis localStorage.
+- **reset** : appelé par `main.js > _libererRessourcesPlanPrecedent` au plan switch. Ferme modale + purge overlay + vide `_scenarios` in-memory (la persistance localStorage per-plan reste intacte).
+- **fermer** : ferme la modale + appelle clearOverlay + set _currentScenarioId = null.
+
+#### 65.3 Persistance per-plan multi-scénarios
+
+localStorage `myktamap_secours_v1_<planId>` = array de scénarios.
+Cap FIFO `MAX_SCENARIOS = 10` (au-delà, suppression du plus ancien par createdAt).
+Quota toast via OOMGuard si `QuotaExceededError` (pattern sessionPersist).
+KARMA validation : « Oui — N scénarios sauvegardés par plan ».
+
+#### 65.4 Palette OTAN 10 couleurs
+
+`PALETTE` constante avec 10 entries `{hex, nom}` :
+- Alpha #ff4444 (rouge), Bravo #4488ff, Charlie #44cc44, Delta #ffcc00 (ambre charte), Echo #ff4ecb (magenta = jonctions), Foxtrot #00d4ff (cyan = itinéraire), Golf #ff8c00, Hotel #9d44ff, India #8b5a2b, Juliet #404040
+
+couleurIdx auto-cyclique au create d'équipe (`s.groupes.length % PALETTE.length`).
+
+#### 65.5 3 modes interactifs map
+
+Pattern : `_hideModalForMap` (display:none) → floater bottom rouge avec instruction + actions → `map.on("click")` listener → `_finishMapMode` (cleanup + restore modale via _showModalAfterMap + _switchView("edit")).
+
+**POINT** (`_startDefiningPoint`) : `map.once("click")` auto-cleanup. Capture {x, y, level} via `APP_CONFIG.activeLevel`. Plan→latlng via convention `imageHeight - y`.
+
+**POLYGON** (`_startDefiningZonePolygon`) : multi-clic. Preview L.polyline dashed rouge mise à jour à chaque sommet ajouté. Double-clic = ferme (min 3 sommets). Floater compte les sommets.
+
+**ROADS** (`_startDefiningZoneRoads`) : hook click sur chaque polyline session (`getRoads()`) + embedded (`_ktaDataPolylines` registry). Re-clic toggle. Preserve `_kta_originalStyle` sur chaque layer cliqué pour restore propre. Skip `road.type === "itinerary"`.
+
+⚠️ **Préserver les styles originaux** : `_kta_originalStyle` posé sur chaque layer modifié pour pouvoir restore exactement à l'état d'origine au cleanup. Sans ça, les polylines clignotent en rouge persistant après fermeture du mode.
+
+#### 65.6 Pathfinder intégration
+
+`_recalculerItineraireGroupe(scenarioId, groupeId)` :
+1. Vérifie entree + sortie définies (toast warn sinon)
+2. Appel async `Pathfinder.computeRoute([entree, sortie], {})` (async depuis v1.21.x pour expansion avoid tags)
+3. Convertit `result.totalDistance` (px) → distM via `APP_CONFIG.scale`
+4. Calcule `dureeEstimeeMin = distM / VITESSE_MPS_DEFAUT (0.5 m/s) / 60`
+5. Update groupe avec `itineraireSuggere`, `distanceM`, `dureeEstimeeMin`
+6. Toast feedback + re-render edit view
+
+`recalculerItineraires(scenarioId)` : version batch qui itère tous les groupes du scénario.
+
+#### 65.7 Map overlay (renderOverlay)
+
+Pour chaque équipe (skip si focus actif et pas la focusée) :
+- **Zone polygone** → L.polygon weight 3, opacity 0.85, fillColor couleur + fillOpacity 0.30
+- **Zone roads** → L.polyline halo weight 10, opacity 0.55 par roadId
+- **Entrée** → L.circleMarker radius 9, border #00cc44, fill couleur
+- **Sortie** → L.circleMarker radius 9, border #cc0000, fill couleur
+- **Itinéraire** → L.polyline weight 5, dashed "10 6", couleur
+
+Toutes les couches taggées d'un tooltip "🚨 nom équipe" (ou role : Entrée/Sortie/Itinéraire).
+
+**Auto-refresh** : `_commitMutation` détecte si overlay actif pour ce scénario → appelle `renderOverlay` pour update live.
+
+#### 65.8 Export PDF (1 page A4 par équipe)
+
+Via jsPDF déjà chargé pour pdfExport.js. Layout texte :
+- Header bold "PLAN DE SECOURS — Nom équipe"
+- Bandeau couleur équipe (fillRect + text blanc)
+- Sections : CONTEXTE / MEMBRES / MISSION / ITINÉRAIRE
+- Cadre OBSERVATIONS vide 60mm (impression papier)
+- Footer crédit MyKTAMap build + timestamp
+
+⚠️ **Limitation MVP** : pas de carte miniature avec overlay. Briefing 100 % texte. Phase 2 ajoutera un canvas snapshot du plan + zone via approche similaire à pdfExport.js > _genererCanvasPlan.
+
+#### 65.9 Export KMZ (extension myktamap-extras.json)
+
+Délègue à `KmzExport.genererKmz` avec 2 nouveaux opts :
+- `secoursPlan` : scénario complet embarqué dans `myktamap-extras.json > secoursPlan`
+- `secoursPalette` : palette pour Phase 2 (KML injection visible cross-app)
+
+Pré-condition : plan calibré KMZ. Transform reconstruit on-demand via `KmzExport.buildTransform` (pattern §32.7 anti-fuite).
+
+`kmzExport.js > genererKmz` étendu : check `_hasExtras` sur les 2 champs (planCustomLegend + secoursPlan), wrapper extensible `{type: "myktamap-kmz-extras", version: 1, exportedAt, customLegend?, secoursPlan?}`.
+
+⚠️ **Limitation MVP** : seul l'extras.json embarque le scénario (MyKTAMap re-import natif fonctionnel). Le `doc.kml` ne contient PAS encore les Placemarks/Polygons cross-app pour Google Earth / OsmAnd. KARMA a choisi « KMZ géolocalisé cross-app » — cette partie est Phase 2 (injection Folder "🚨 Secours" avec Placemarks entrées/sorties + Polygons zones).
+
+#### 65.10 À NE PAS faire
+
+- ❌ Persister `_currentScenarioId` ou `_overlayLayer` au plan switch — toujours reset
+- ❌ Garder les styles modifiés des polylines au cleanup du mode roads — toujours restore `_kta_originalStyle`
+- ❌ Skip `map.once` au mode POINT → utiliser `map.on` simple → fuit le handler après usage
+- ❌ Faire `JSON.parse(localStorage.getItem(...))` sans try/catch et sans filtre défensif des entries (chaque scénario doit avoir au moins id + nom)
+- ❌ Reassign `recalculerItineraires` après le export `window.SecoursMode = {...}` — l'export capture la ref à la position du code. Toujours faire le reassign AVANT l'export final.
+- ❌ Confondre `secoursPlan` (Phase 1) et `secoursPlan.groupes[].statut` (Phase 3 future) — `statut` est défini mais pas encore exploité.
+- ❌ Ajouter des champs sensibles (positions GPS exactes en clair, photos de la victime, données médicales) dans le payload `secoursPlan` qui voyage dans le KMZ. Cohérence avec la philo cataphile « pas de données identifiantes dans les exports partageables ». Si Phase 3 ajoute des observations terrain, prévoir un opt-in explicite.
+
+#### 65.11 Pour étendre
+
+**Ajouter un nouveau champ d'équipe** (genre `equipementSpecial`) :
+1. Ajouter dans `addGroupe` defaults
+2. Whitelist dans `updateGroupe` partial
+3. Render dans `_renderGroupesList` card
+4. Persiste auto via `_commitMutation`
+
+**Ajouter un nouveau type de zone** (genre "circle") :
+1. Ajouter `zoneType: "circle"` + `zoneCircle: {cx, cy, radius}` dans groupes
+2. Nouveau mode interactif map `_startDefiningZoneCircle` (1 clic centre + 1 clic rayon)
+3. Render dans `_renderGroupeOverlay` via L.circle
+4. PDF + KMZ exports adaptés
+
+**Ajouter un statut temps réel (Phase 3)** :
+1. Setter `setGroupeStatut(scenarioId, groupeId, "en_cours")` (déjà whitelisted dans updateGroupe)
+2. Visual : tooltip overlay change selon statut, icône PDF différente
+3. Sync via QR code → mini-modale "Scanner pour mettre à jour"
+4. Timer global depuis `incidentAt` visible en permanence
+
+#### 65.12 Roadmap phases suivantes (validées KARMA)
+
+**Phase 2 — Intégrations** (v1.23.0) :
+- Lost Mode → auto pre-fill `context.lastKnownPoint` + `zoneIncertitude`
+- Favoris → import auto des favoris taggés `entrée/sortie` dans pointsCles
+- Heatmap → si timeline tracker du disparu importée, suggestion zones probables
+- Recherche unifiée Ctrl+K → étend pour assigner un point à une équipe en 2 clics
+- M-LVL → suggestion auto "Groupe 1 = RDC, Groupe 2 = -1"
+- Pathfinder avoidances cross-équipes — la zone d'une équipe devient "préférence éviter" pour les autres (pas de chevauchement involontaire)
+- **KML cross-app** (folder 🚨 Secours avec Placemarks + Polygons)
+- **Carte miniature PDF** (canvas snapshot du plan + overlay zone équipe)
+
+**Phase 3 — Statut temps réel** (v1.24.0) :
+- Statut par équipe : `non_demarré / en_cours / terminé / rappelé`
+- 1 user maintient l'état sur son device (PC secours surface)
+- **QR code share** : envoie l'état initial aux devices équipes (lecture seule, anti-réseau souterrain)
+- Au retour, scanner QR depuis device équipe pour reverser observations (`.mkmsec.observations.json`)
+- Timer global depuis `incidentAt` visible toujours, signal stress visuel après seuils
+- Re-export PDF "rapport final" avec observations remplies
+
+---
+
 #### 64.14 À NE PAS faire (post-fix1)
 
 - ❌ Créer un nouveau module IIFE avec ses propres classes CSS custom sans **également écrire le CSS** dans `style.css` ET vérifier visuellement le rendu avant release. Le CSS oublié n'est jamais signalé par les outils (pas de warning, pas de plantage)

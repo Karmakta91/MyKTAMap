@@ -1,6 +1,10 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.21.5** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.22.0** (26 mai 2026).
+>
+> **v1.22.0 (Release MINOR — Mode Secours Phase 1 MVP)** : **AUCUNE nouvelle surface réseau ajoutée**. Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) qui assigne des équipes de recherche à des zones d'un plan. 100% local : (1) **Persistance per-plan** via 1 nouvelle localStorage key `myktamap_secours_v1_<planId>` (array de scénarios, cap FIFO 10 par plan, aucune transmission). (2) **Modes interactifs map** : capture coordonnées via Leaflet `map.on("click")` listeners locaux, pas de fetch externe. (3) **Pathfinder integration** : appel `Pathfinder.computeRoute` local (algo Dijkstra sur graphe in-memory du plan, aucun service de routing externe). (4) **Overlay carte** : L.layerGroup avec L.polygon / L.polyline / L.circleMarker — pur rendering Leaflet, aucun fetch. (5) **Export PDF** : via jsPDF (déjà chargé, lib locale), Blob téléchargé client-side. (6) **Export KMZ** : délégué à `KmzExport.genererKmz` existant, étend `myktamap-extras.json` avec champ `secoursPlan` (wrapper extensible identique pattern §59 v1.18.x). Aucune nouvelle whitelist `connect-src` requise. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — Mode Secours est strictement offline-first.
+>
+> **v1.21.5-fix1 (4 fixes post-release suite tests terrain KARMA — sans bump version)**
 >
 > **v1.21.5-fix1 (4 fixes post-release suite tests terrain KARMA — sans bump version)** : **AUCUN impact réseau**. (1) Ajout ~280 lignes CSS pour les classes `.kta-fp-*` oubliées à la release v1.21.5 — pur styling, aucun fetch ajouté. (2) Exclusion `type === "itinerary"` du `_enumerateTypes` — filtre interne, pas de réseau. (3) Stats Home labels TOUJOURS par défaut — nouveau helper `_defaultLabelStat` qui lit `LegendCustomization.getDefaultLabel` (module local). (4) Stats Home — extension fallback session-only à `data.zones` + `data.structures` (lecture localStorage payload SessionPersist déjà existant, pas de nouveau localStorage key). **Liste blanche `connect-src` inchangée**. Verdict : ✅ aucune régression — fix incrémental.
 >

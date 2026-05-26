@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.21.5` (26/05/2026) — PATCH « Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types »
-**📦 Précédentes shipped main** : `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
+**📦 Version courante** : `v1.22.0` (26/05/2026) — MINOR « Mode Secours Phase 1 MVP » — outil opérationnel pour assigner des équipes de recherche à des zones du plan (multi-scénarios, export PDF + KMZ)
+**📦 Précédentes shipped main** : `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,63 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-21-5" open>
+<details id="v1-22-0" open>
+<summary><strong>🗓️ 26/05/2026 — 🚨 v1.22.0 : Release MINOR — Mode Secours Phase 1 MVP (équipes + zones + exports PDF/KMZ)</strong></summary>
+
+Release MINOR (bump Y : 1.21.5 → 1.22.0). Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) : outil opérationnel pour assigner méthodiquement des équipes de recherche à des zones d'un plan cataphile. **Cas d'usage terrain** : une personne portée disparue, plusieurs équipes arrivent en surface, le PC secours assigne chaque équipe à une portion du réseau avec point d'entrée/sortie, itinéraire suggéré et durée estimée.
+
+### 🚨 Bouton sidebar + modale 3 vues
+
+Nouvelle sous-action 🚨 « Mode Secours » dans le groupe 🧭 Tracker (flyout urgences) à côté de ⛑️ Je suis perdu et 🚨 Panique. Modale `.kta-secours-modal-boite` avec 3 vues : **LIST** (scénarios sauvegardés du plan), **CREATE** (stepper léger : nom + notes + heure incident), **EDIT** (free-form 3 sections accordéon : 📝 Contexte, 🚨 Équipes, 📤 Export).
+
+### 💾 Persistance per-plan multi-scénarios
+
+`localStorage["myktamap_secours_v1_<planId>"]` = array de scénarios. Cap FIFO 10 par plan. KARMA validation « Oui — N scénarios sauvegardés par plan » : permet de comparer plusieurs hypothèses (« si parti par l'Est » vs « si par le Sud »).
+
+### 🎨 Palette fixe 10 couleurs OTAN
+
+Alpha rouge / Bravo bleu / Charlie vert / Delta jaune ambre / Echo magenta / Foxtrot cyan / Golf orange / Hotel violet / India brun / Juliet gris. Cohérent charte MyKTAMap (Delta = ambre, Echo = jonctions, Foxtrot = itinéraire).
+
+### 🗺️ 3 modes interactifs map
+
+Pattern hérité du floater itinéraire avoid-click :
+- **POINT** (entrée/sortie) : 1 clic carte via `map.once("click")`
+- **POLYGON** (zone) : multi-clics + double-clic pour fermer (min 3 sommets, preview L.polyline dashed rouge)
+- **ROADS** (zone tracés) : multi-clic sur polylines existantes avec highlight rouge weight 8
+
+### 🛣️ Pathfinder integration
+
+Bouton 🗺️ « Calc. itinéraire » par équipe utilise `Pathfinder.computeRoute([entree, sortie])` (async). Calcul auto distM + dureeEstimeeMin (vitesse moyenne cataphile = 0.5 m/s).
+
+### 🎨 Overlay carte couleur transparent (KARMA validé)
+
+`renderOverlay` rend par équipe : polygon fillOpacity 0.30, halo polyline weight 10 (zones roads), circleMarker entrée/sortie avec border vert/rouge + fill couleur équipe, polyline dashed pour itinéraire. Mode focus (setFocus(groupeId)) masque autres équipes. Auto-refresh à chaque mutation.
+
+### 📄 Export PDF + 🌍 Export KMZ
+
+- **PDF** : 1 page A4 par équipe via jsPDF. Layout texte structuré : en-tête + bandeau couleur équipe + sections Contexte/Membres/Mission/Itinéraire/Observations (cadre vide 60mm). ⚠️ Limitation MVP : pas de carte miniature (Phase 2).
+- **KMZ** : étend `myktamap-extras.json > secoursPlan` (cf §59 pattern roundtrip). MyKTAMap re-import natif fonctionnel. ⚠️ Limitation MVP : KML doc.kml ne contient pas encore les Placemarks/Polygons cross-app (Phase 2).
+
+### 📊 Roadmap phases suivantes
+
+KARMA validation « Phase complète 3+ releases ». Phase 2 (v1.23.0) = intégrations Lost Mode + Favoris + Heatmap + Recherche + M-LVL + Pathfinder avoidances cross-équipes + KML cross-app + carte miniature PDF. Phase 3 (v1.24.0) = statut temps réel + QR code share + timer incident + observations terrain.
+
+### 📦 Sources de vérité v1.22.0
+
+- `version.json` → `v1.22.0`
+- `js/copyright.js > __MKM__.build` → `v1.22.0`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.22.0-secours`
+- **1 nouveau fichier** : `js/secoursMode.js` (~1500 lignes), ajouté à `ASSETS_TO_CACHE`
+- **1 modif** : `js/kmzExport.js` accepte `opts.secoursPlan` dans extras.json
+- **1 nouvelle key localStorage** : `myktamap_secours_v1_<planId>`
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. Tout local (localStorage + Leaflet RAM + Blob téléchargement). NETWORK_AUDIT inchangé sur le fond — verdict ✅ aucune régression.
+
+</details>
+
+<details id="v1-21-5">
 <summary><strong>🗓️ 26/05/2026 — ≡ v1.21.5 : Release PATCH — Refonte filtre Leaflet → modale ≡ unifiée + filtrage runtime tags/types</strong></summary>
 
 Release PATCH (bump Z : 1.21.4 → 1.21.5). Refonte UX complète du bouton ≡ Leaflet topright.

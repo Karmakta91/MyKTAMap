@@ -174,10 +174,28 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.21.5</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.22.0</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.22.0 (Release MINOR — Mode Secours Phase 1 MVP)</strong> :
+    <strong>AUCUNE nouvelle surface réseau ajoutée</strong>. Nouveau module
+    <code>js/secoursMode.js</code> (~1500 lignes IIFE) qui assigne des équipes de
+    recherche à des zones d'un plan. 100 % local :
+    (1) <strong>Persistance per-plan</strong> via 1 nouvelle localStorage key
+    <code>myktamap_secours_v1_&lt;planId&gt;</code> (cap FIFO 10).
+    (2) <strong>Modes interactifs map</strong> via Leaflet listeners locaux.
+    (3) <strong>Pathfinder integration</strong> : Dijkstra in-memory.
+    (4) <strong>Overlay carte</strong> : pur rendering Leaflet.
+    (5) <strong>Export PDF</strong> via jsPDF local + Blob téléchargé.
+    (6) <strong>Export KMZ</strong> : étend <code>myktamap-extras.json &gt; secoursPlan</code>
+    (wrapper extensible §59 v1.18.x).
+    <strong>1 nouveau fichier</strong> ajouté au cache SW.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — Mode Secours strictement offline-first.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -912,6 +930,24 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.22.0</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release MINOR — Mode Secours Phase 1 MVP</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission</strong>.
+          Nouveau module <code>js/secoursMode.js</code> (~1500 lignes) qui orchestre les briques
+          existantes (Pathfinder, Leaflet, jsPDF, KmzExport) pour assigner des équipes de
+          recherche à des zones d'un plan. 100 % local : <strong>1 nouvelle localStorage key
+          <code>myktamap_secours_v1_&lt;planId&gt;</code></strong> (per-plan, cap FIFO 10).
+          Modes interactifs map = Leaflet listeners. Pathfinder = Dijkstra in-memory.
+          Overlay = L.layerGroup local. PDF = jsPDF + Blob. KMZ = extension
+          <code>myktamap-extras.json &gt; secoursPlan</code>.
+          <strong>1 nouveau fichier</strong> ajouté au cache SW.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — Mode Secours strictement offline-first.
+        </td>
+      </tr>
       <tr>
         <td>v1.21.5</td>
         <td>26/05/2026</td>
