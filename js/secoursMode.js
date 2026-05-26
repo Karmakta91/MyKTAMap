@@ -1364,7 +1364,7 @@
     if (_activeMapMode) _cancelMapMode();
     if (!window.map) return;
     _activeMapMode = "point";
-    _mapModeCtx = { groupeId: groupeId, role: role, idx: idx };
+    _mapModeCtx = { groupeId: groupeId, role: role, idx: idx, allPoints: [] };
     _hideModalForMap();
     const lbl = role === "entree" ? "ENTRÉE"
               : role === "sortie" ? "SORTIE"
@@ -1374,6 +1374,16 @@
       "<br><span style=\"font-size:11px; opacity:0.85;\">💡 Astuce : snap auto au POI le plus proche dans un rayon de 30 px.</span>",
       [{ label: "Annuler", action: "cancel" }]
     );
+    // 🐛 v1.22.0-fix3 : pré-fetch async des points pour snap sync au clic
+    // (SearchPoints.getAllPoints retourne un Promise depuis v1.21.x — on
+    // l'attend ICI pour pouvoir l'utiliser synchrone dans _onMapClickPoint).
+    if (window.SearchPoints && typeof window.SearchPoints.getAllPoints === "function") {
+      Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
+        if (_mapModeCtx) _mapModeCtx.allPoints = Array.isArray(all) ? all : [];
+      }).catch(function(e) {
+        console.warn("[SecoursMode] Pre-fetch points échec :", e);
+      });
+    }
     window.map.once("click", _onMapClickPoint);
   }
 
@@ -1405,25 +1415,24 @@
 
   // Helper : cherche le POI le plus proche (x, y) en pixels plan, rayon en px.
   // Retourne {x, y, pointId, nom} ou null.
+  // 🐛 v1.22.0-fix3 : utilise la liste pré-fetched dans _mapModeCtx.allPoints
+  // (cf _startDefiningPoint) car SearchPoints.getAllPoints est async — pas
+  // appelable directement depuis le click handler synchrone.
   function _trouverPoiProche(x, y, radiusPx) {
-    if (!window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") return null;
-    try {
-      const all = window.SearchPoints.getAllPoints() || [];
-      let best = null, bestD = Infinity;
-      all.forEach(function(entry) {
-        const p = entry.point || entry;
-        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
-        const dx = p.x - x, dy = p.y - y;
-        const d = Math.sqrt(dx * dx + dy * dy);
-        if (d < bestD && d <= radiusPx) {
-          bestD = d;
-          best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom };
-        }
-      });
-      return best;
-    } catch(e) {
-      return null;
-    }
+    const all = (_mapModeCtx && Array.isArray(_mapModeCtx.allPoints)) ? _mapModeCtx.allPoints : [];
+    if (all.length === 0) return null;
+    let best = null, bestD = Infinity;
+    all.forEach(function(entry) {
+      const p = entry.point || entry;
+      if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+      const dx = p.x - x, dy = p.y - y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < bestD && d <= radiusPx) {
+        bestD = d;
+        best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom };
+      }
+    });
+    return best;
   }
 
   // 🆕 v1.22.0-fix2 — applique un waypoint sélectionné (depuis search OU clic)
@@ -1518,7 +1527,12 @@
     });
 
     // Autocomplete debounce 150ms
+    // 🐛 v1.22.0-fix3 : SearchPoints.findByQuery est ASYNC (Promise) depuis
+    // v1.21.x — pas un array. On gère le Promise via .then() avec un token
+    // de query pour ignorer les résultats obsolètes (race condition si l'user
+    // tape vite).
     let _searchTimer = null;
+    let _searchSeq = 0;
     function _doSearch() {
       const q = input.value.trim();
       if (!q || q.length < 1) {
@@ -1529,8 +1543,12 @@
         results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Module Recherche indisponible.</div>';
         return;
       }
-      try {
-        const found = window.SearchPoints.findByQuery(q) || [];
+      const mySeq = ++_searchSeq;
+      results.innerHTML = '<div class="kta-secours-pick-hint">⏳ Recherche…</div>';
+      Promise.resolve(window.SearchPoints.findByQuery(q)).then(function(found) {
+        // Si une nouvelle query a été lancée entre-temps, ignore ce résultat
+        if (mySeq !== _searchSeq) return;
+        if (!Array.isArray(found)) found = [];
         if (found.length === 0) {
           results.innerHTML = '<div class="kta-secours-pick-hint">Aucun résultat pour « ' + _escHtml(q) + ' ».</div>';
           return;
@@ -1568,9 +1586,10 @@
             _appliquerWaypoint(groupeId, role, idx, wp);
           });
         });
-      } catch(e) {
+      }).catch(function(e) {
+        if (mySeq !== _searchSeq) return;
         results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Erreur recherche : ' + _escHtml(e.message || String(e)) + '</div>';
-      }
+      });
     }
     input.addEventListener("input", function() {
       clearTimeout(_searchTimer);
