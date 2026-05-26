@@ -648,12 +648,13 @@
     }
   }
 
-  // Import scénario depuis fichier (File ou string JSON).
-  // Validation stricte du format avant injection. Re-génère un nouvel id
-  // pour éviter collision avec un scénario existant du même planId.
-  // Si le planId source diffère du plan courant, demande confirm() à l'user.
-  // Retourne { ok: bool, scenario?: object, warning?: string, error?: string }
-  async function importerScenario(input) {
+  // 🆕 v1.23.5 — Parse + validation SEULE (pas d'injection). Retourne le
+  // payload + warning éventuel sur plan différent, MAIS ne touche pas au
+  // cache _scenarios. Permet à `_ouvrirImportMkmsecPicker` d'afficher une
+  // modale preview AVANT injection définitive (cf §35 — confirm() natif
+  // banni, modale Promise-based charte requise).
+  // Retourne : { ok: bool, payload?: object, warning?: string, error?: string }
+  async function _parsePayloadMkmsec(input) {
     let text;
     try {
       if (input instanceof File || input instanceof Blob) {
@@ -690,37 +691,32 @@
       return { ok: false, error: "Scénario invalide (champs nom + groupes requis)" };
     }
 
-    // Check correspondance plan
+    // Détection plan différent → renvoyé comme warning, pas comme erreur.
+    // La décision finale (importer ou annuler) est prise dans la modale preview.
     let warning = null;
     const currentPlanId = window._currentLoadedPlanId;
     const importedPlanId = payload.plan && payload.plan.id;
     if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
-      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
       const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
-      const confirmMsg =
-        "⚠️ Ce scénario vient d'un PLAN DIFFÉRENT :\n\n" +
-        "  • Plan source : " + importedPlanName + " (" + importedPlanId + ")\n" +
-        "  • Plan courant : " + currentPlanName + " (" + currentPlanId + ")\n\n" +
-        "Les coordonnées des waypoints et zones n'auront pas le même sens.\n" +
-        "Importer quand même ?";
-      if (!window.confirm(confirmMsg)) {
-        return { ok: false, error: "Import annulé par l'utilisateur (plan différent)" };
-      }
       warning = "Plan d'origine différent : " + importedPlanName;
     }
 
-    // Re-génère un nouvel id pour éviter collision (l'user peut importer
-    // plusieurs fois le même fichier, ou le source aurait pu être créé sur
-    // un device avec la même seed temporelle)
+    return { ok: true, payload: payload, warning: warning };
+  }
+
+  // 🆕 v1.23.5 — Injection SEULE depuis un payload déjà validé. Re-génère
+  // les ids (scénario + groupes) pour éviter collision, applique le filtre
+  // défensif anti-pollution, push + commit. À appeler APRÈS confirmation
+  // user via modale preview.
+  // Retourne : { ok: bool, scenario: object } (jamais d'erreur ici car le
+  // payload est déjà validé par _parsePayloadMkmsec)
+  function _appliquerPayloadImport(payload) {
     const sc = payload.scenario;
     sc.id = _genId("secours");
     sc.updatedAt = _nowIso();
-    // Régénère aussi les IDs internes des groupes (collision potentielle)
     if (Array.isArray(sc.groupes)) {
       sc.groupes.forEach(function(g) { g.id = _genId("G"); });
     }
-    // Filtre défensif : ne garde que les champs whitelisted du scenario
-    // (anti-pollution si un attaquant injecte des champs custom)
     const cleanScenario = {
       id:         sc.id,
       nom:        String(sc.nom || "").slice(0, 200),
@@ -730,11 +726,42 @@
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : []
     };
-
-    // Ajoute au cache + persiste
     _scenarios.push(cleanScenario);
     _commitMutation(cleanScenario);
-    return { ok: true, scenario: cleanScenario, warning: warning };
+    return { ok: true, scenario: cleanScenario };
+  }
+
+  // Import scénario depuis fichier (File ou string JSON) — API publique
+  // exposée via window.SecoursMode.importerScenario. Combine parse + apply
+  // pour les callers programmatiques (legacy v1.23.4) qui n'ont PAS besoin
+  // de preview interactif. La modale preview est gérée séparément par
+  // _ouvrirImportMkmsecPicker (déclenchée par bouton UI).
+  //
+  // ⚠️ Cette signature préserve la rétro-compat v1.23.4 : si plan différent,
+  // bascule sur confirm() natif (= comportement v1.23.4). Pour le flow UI
+  // moderne (modale charte), utiliser le picker.
+  //
+  // Retourne : { ok: bool, scenario?: object, warning?: string, error?: string }
+  async function importerScenario(input) {
+    const parsed = await _parsePayloadMkmsec(input);
+    if (!parsed.ok) return parsed;
+    // Si plan différent, demande confirm() (preserve comportement v1.23.4 pour
+    // les callers programmatiques sans UI)
+    if (parsed.warning) {
+      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
+      const importedPlanName = (parsed.payload.plan && parsed.payload.plan.name) || "(plan inconnu)";
+      const confirmMsg =
+        "⚠️ Ce scénario vient d'un PLAN DIFFÉRENT :\n\n" +
+        "  • Plan source : " + importedPlanName + "\n" +
+        "  • Plan courant : " + currentPlanName + "\n\n" +
+        "Les coordonnées des waypoints et zones n'auront pas le même sens.\n" +
+        "Importer quand même ?";
+      if (!window.confirm(confirmMsg)) {
+        return { ok: false, error: "Import annulé par l'utilisateur (plan différent)" };
+      }
+    }
+    const applied = _appliquerPayloadImport(parsed.payload);
+    return { ok: true, scenario: applied.scenario, warning: parsed.warning };
   }
 
   // 🆕 v1.23.4 — File picker pour l'import .mkmsec.json depuis la vue LIST.
@@ -751,21 +778,181 @@
       const file = input.files && input.files[0];
       document.body.removeChild(input);
       if (!file) return;
-      let result;
+      // 🆕 v1.23.5 — Flow split : parse seul, AVANT injection.
+      let parsed;
       try {
-        result = await importerScenario(file);
+        parsed = await _parsePayloadMkmsec(file);
       } catch(e) {
         console.warn("[SecoursMode] _ouvrirImportMkmsecPicker exception :", e);
-        result = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+        parsed = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
       }
-      _afficherResultatImport(result, file.name);
-      if (result && result.ok) {
+      // Si erreur de parse/validation → modale d'erreur direct (pas de preview)
+      if (!parsed.ok) {
+        _afficherResultatImport({ ok: false, error: parsed.error }, file.name);
+        return;
+      }
+      // Sinon : modale preview avec callback de confirmation.
+      _afficherPreviewImport(parsed.payload, parsed.warning, file.name, function(confirmer) {
+        if (!confirmer) return;  // user a annulé
+        const applied = _appliquerPayloadImport(parsed.payload);
+        _afficherResultatImport({
+          ok:       true,
+          scenario: applied.scenario,
+          warning:  parsed.warning
+        }, file.name);
         // Refresh vue liste pour montrer le nouveau scénario
         _switchView("list");
-      }
+      });
     });
     document.body.appendChild(input);
     input.click();
+  }
+
+  // 🆕 v1.23.5 — Modale preview AVANT injection définitive d'un payload
+  // .mkmsec.json. Charte Promise-via-callback (pattern §35 : confirm()
+  // natif banni → modale custom Promise-based). Affiche détails complets :
+  // nom + date export + version app + plan source + liste des équipes
+  // (avec level + nb membres + zone définie ?) + warning éventuel si plan
+  // différent (bandeau orange) + boutons "❌ Annuler" / "✓ Importer".
+  //
+  // Args : payload (validé par _parsePayloadMkmsec), warning (string|null),
+  //        sourceFilename (string), onDone(confirmer: bool) callback.
+  function _afficherPreviewImport(payload, warning, sourceFilename, onDone) {
+    // Cleanup éventuelle modale précédente
+    const existing = document.getElementById("kta-secours-import-preview");
+    if (existing) existing.remove();
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-import-preview";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100010";
+
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite";
+    boite.style.maxWidth = "560px";
+    boite.style.height = "auto";
+    boite.style.maxHeight = "90vh";
+    boite.style.borderLeft = "6px solid #8cb4ff";
+
+    const sc = payload.scenario || {};
+    const planSrc = payload.plan || {};
+    const dateExport = payload.exportedAt
+                       ? new Date(payload.exportedAt).toLocaleString("fr-FR")
+                       : "(date inconnue)";
+    const appVer = payload.appVersion || "(version inconnue)";
+
+    // Mini-résumé des équipes (max 8 affichées, "+N autres" si plus)
+    const groupes = Array.isArray(sc.groupes) ? sc.groupes : [];
+    let equipesHtml = "";
+    if (groupes.length === 0) {
+      equipesHtml = '<p style="color:#8892a4; font-style:italic; margin:8px 0 0;">Aucune équipe définie.</p>';
+    } else {
+      const visibles = groupes.slice(0, 8);
+      equipesHtml = '<ul class="kta-secours-import-preview-equipes">';
+      visibles.forEach(function(g) {
+        const couleur = (PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0]).hex;
+        const nbMembres = Array.isArray(g.membres) ? g.membres.length : 0;
+        const hasZone = g.zoneType === "polygon" || g.zoneType === "roads";
+        const hasParcours = g.entree && g.sortie;
+        const levelChip = (typeof g.level === "number")
+                          ? ' · 🏗️ ' + _formatLevelShort(g.level)
+                          : "";
+        equipesHtml += '<li>' +
+                         '<span class="kta-secours-import-preview-couleur" style="background:' + couleur + ';"></span>' +
+                         '<strong>' + _escHtml(g.nom || "(sans nom)") + '</strong>' +
+                         '<span class="kta-secours-import-preview-meta">' +
+                           ' · 👥 ' + nbMembres + ' membre' + (nbMembres > 1 ? 's' : '') +
+                           (hasZone ? ' · ⬛ zone' : '') +
+                           (hasParcours ? ' · 🚪 parcours' : '') +
+                           levelChip +
+                         '</span>' +
+                       '</li>';
+      });
+      if (groupes.length > 8) {
+        equipesHtml += '<li style="color:#8892a4; font-style:italic;">+ ' + (groupes.length - 8) + ' autre' + (groupes.length - 8 > 1 ? 's' : '') + '…</li>';
+      }
+      equipesHtml += '</ul>';
+    }
+
+    let warningBlock = "";
+    if (warning) {
+      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
+      const importedPlanName = planSrc.name || "(plan inconnu)";
+      warningBlock = '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+                       '⚠️ <strong>Attention — plan d\'origine différent</strong><br>' +
+                       '<span style="font-size:13px; line-height:1.5;">' +
+                         'Ce scénario a été créé sur le plan <strong>' + _escHtml(importedPlanName) + '</strong> ' +
+                         '(différent du plan courant <strong>' + _escHtml(currentPlanName) + '</strong>). ' +
+                         'Les coordonnées des waypoints et zones n\'auront pas le même sens visuel sur ce plan. ' +
+                         'Importer quand même est utile si tu veux récupérer les noms d\'équipes / membres / notes ' +
+                         'mais tu devras probablement redéfinir les zones et entrées/sorties.' +
+                       '</span>' +
+                     '</div>';
+    }
+
+    const inner = '<div class="kta-readme-modal-header">' +
+                    '<h2 style="margin:0; color:#8cb4ff;">📥 Aperçu de l\'import</h2>' +
+                    '<button class="kta-readme-modal-close" data-action="cancel-preview" aria-label="Annuler">✕</button>' +
+                  '</div>' +
+                  '<div class="kta-readme-modal-corps">' +
+                    '<p style="margin:0 0 14px 0;">Vérifie le contenu de ce fichier avant de l\'importer dans le Mode Secours du plan courant.</p>' +
+
+                    '<div class="kta-secours-import-preview-card">' +
+                      '<div class="kta-secours-import-preview-titre">' + _escHtml(sc.nom || "(sans nom)") + '</div>' +
+                      '<div class="kta-secours-import-preview-grid">' +
+                        '<div><span class="kta-secours-import-preview-label">📂 Fichier source</span>' +
+                          '<code>' + _escHtml(sourceFilename || "(fichier)") + '</code></div>' +
+                        '<div><span class="kta-secours-import-preview-label">📅 Date d\'export</span>' +
+                          _escHtml(dateExport) + '</div>' +
+                        '<div><span class="kta-secours-import-preview-label">🏷️ Version app source</span>' +
+                          '<code>' + _escHtml(appVer) + '</code></div>' +
+                        '<div><span class="kta-secours-import-preview-label">🗺️ Plan source</span>' +
+                          _escHtml(planSrc.name || "(plan inconnu)") +
+                          (planSrc.version ? ' <code>' + _escHtml(planSrc.version) + '</code>' : '') +
+                        '</div>' +
+                      '</div>' +
+                    '</div>' +
+
+                    '<div class="kta-secours-import-preview-section">' +
+                      '<h3 style="margin:14px 0 6px 0; color:#f4c542;">🚨 Équipes incluses (' + groupes.length + ')</h3>' +
+                      equipesHtml +
+                    '</div>' +
+
+                    warningBlock +
+
+                    '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
+                      '<button class="kta-btn kta-btn-ghost" data-action="cancel-preview">❌ Annuler</button>' +
+                      '<button class="kta-btn kta-btn-primary" data-action="confirm-preview">✓ Importer ce scénario</button>' +
+                    '</div>' +
+                  '</div>';
+
+    boite.innerHTML = inner;
+    overlay.appendChild(boite);
+
+    function _close(confirmer) {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+      try { onDone(!!confirmer); } catch(e) {}
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(false); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close(false);
+    });
+    overlay.querySelectorAll('[data-action="cancel-preview"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _close(false); });
+    });
+    overlay.querySelectorAll('[data-action="confirm-preview"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _close(true); });
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // Helper local — format court d'un niveau pour la preview équipes.
+  // 0 → "RDC", >0 → "+N", <0 → "-N". Idempotent avec le chip card équipe.
+  function _formatLevelShort(level) {
+    if (level === 0) return "RDC";
+    return (level > 0 ? "+" : "") + level;
   }
 
   // 🆕 v1.23.4 — Modale de feedback post-import. Succès = vert + bouton
@@ -1518,7 +1705,110 @@
       ctx.strokeText(lbl, c.x + dx, c.y + dy);
       ctx.fillText(lbl, c.x + dx, c.y + dy);
     }
+    // 🆕 v1.23.5 — Mini-légende intégrée bas-droite, rend la carte auto-
+    // explicative au terrain (le secouriste n'a pas à lire la doc app).
+    // Liste uniquement les éléments effectivement présents pour cette équipe.
+    _drawTeamLegende(ctx, out.width, out.height, g, hexColor);
     return out;
+  }
+
+  // 🆕 v1.23.5 — Dessine une mini-légende compacte dans le coin bas-droit
+  // du canvas carte miniature. Lignes : carré couleur + libellé.
+  // N'affiche QUE les éléments présents pour cette équipe (évite légende
+  // inutile pleine d'items non utilisés).
+  function _drawTeamLegende(ctx, canvasW, canvasH, g, hexColor) {
+    const items = [];
+    if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+      items.push({ type: "zone-poly", label: "Zone (polygone)" });
+    }
+    if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds) && g.zoneRoadIds.length > 0) {
+      items.push({ type: "zone-roads", label: "Zone (tracés)" });
+    }
+    if (g.entree && typeof g.entree.x === "number") {
+      items.push({ type: "entree", label: "Entrée" });
+    }
+    if (g.sortie && typeof g.sortie.x === "number") {
+      const isBoucle = _samePoint(g.entree, g.sortie);
+      items.push({
+        type:  isBoucle ? "boucle" : "sortie",
+        label: isBoucle ? "Boucle (entrée=sortie)" : "Sortie"
+      });
+    }
+    if (Array.isArray(g.intermediaires) && g.intermediaires.length > 0) {
+      items.push({ type: "interm", label: g.intermediaires.length + " intermédiaire" + (g.intermediaires.length > 1 ? "s" : "") });
+    }
+    if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+      items.push({ type: "iti", label: "Itinéraire" });
+    }
+    if (items.length === 0) return;
+
+    // Dimensions légende
+    ctx.font = "11px sans-serif";
+    const lineH = 16;
+    const swatchW = 16;
+    const swatchGap = 6;
+    const pad = 8;
+    let maxTextW = 0;
+    items.forEach(function(it) {
+      const w = ctx.measureText(it.label).width;
+      if (w > maxTextW) maxTextW = w;
+    });
+    const boxW = pad + swatchW + swatchGap + maxTextW + pad;
+    const boxH = pad + items.length * lineH + pad - 4;
+
+    // Position bas-droite avec marge 8px
+    const boxX = canvasW - boxW - 8;
+    const boxY = canvasH - boxH - 8;
+
+    // Background blanc semi-opaque + border léger
+    ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+    ctx.strokeStyle = "rgba(0, 0, 0, 0.45)";
+    ctx.lineWidth = 1;
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+
+    // Items
+    const rgb = _hexToRgb(hexColor);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    items.forEach(function(it, i) {
+      const cy = boxY + pad + i * lineH + lineH / 2 - 2;
+      const swX = boxX + pad;
+      const swY = cy - 7;
+      // Dessin du swatch selon type
+      if (it.type === "zone-poly") {
+        ctx.fillStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.30)";
+        ctx.fillRect(swX, swY, swatchW, 14);
+        ctx.strokeStyle = hexColor; ctx.lineWidth = 2;
+        ctx.strokeRect(swX + 1, swY + 1, swatchW - 2, 12);
+      } else if (it.type === "zone-roads") {
+        ctx.strokeStyle = "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + ",0.55)";
+        ctx.lineWidth = 5; ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(swX + 2, cy);
+        ctx.lineTo(swX + swatchW - 2, cy);
+        ctx.stroke();
+      } else if (it.type === "iti") {
+        ctx.strokeStyle = hexColor;
+        ctx.lineWidth = 3; ctx.setLineDash([4, 3]); ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(swX + 1, cy);
+        ctx.lineTo(swX + swatchW - 1, cy);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      } else if (it.type === "entree") {
+        _drawTeamMarker(ctx, swX + swatchW / 2, cy, 5, "#00cc44", hexColor);
+      } else if (it.type === "sortie") {
+        _drawTeamMarker(ctx, swX + swatchW / 2, cy, 5, "#cc0000", hexColor);
+      } else if (it.type === "boucle") {
+        _drawTeamMarker(ctx, swX + swatchW / 2, cy, 6, "#ffaa00", hexColor);
+      } else if (it.type === "interm") {
+        _drawTeamMarker(ctx, swX + swatchW / 2, cy, 4, "#ffffff", hexColor);
+      }
+      // Label
+      ctx.fillStyle = "#1a1f2e";
+      ctx.fillText(it.label, swX + swatchW + swatchGap, cy);
+    });
   }
 
   // Helper canvas marker : disque couleur équipe + bord coloré (entrée/sortie/etc)

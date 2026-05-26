@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.4` (26/05/2026) — PATCH « Mode Secours : export/import autonome `.mkmsec.json` + fix Heatmap Régler » — partage cross-appareil sans devoir exporter toute la session (use case « opérateur chef de surface » ↔ « secouriste »)
-**📦 Précédentes shipped main** : `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan)
+**📦 Version courante** : `v1.23.5` (26/05/2026) — PATCH polish « Mode Secours : modale preview AVANT import + mini-légende carte PDF » — UX terrain auto-explicative
+**📦 Précédentes shipped main** : `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,74 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-4" open>
+<details id="v1-23-5" open>
+<summary><strong>🗓️ 26/05/2026 — 👁️ v1.23.5 : Release PATCH polish — Modale preview AVANT import .mkmsec.json + mini-légende carte PDF</strong></summary>
+
+Release PATCH (bump Z : 1.23.4 → 1.23.5). Polish UX terrain post-v1.23.4. 2 sujets indépendants :
+
+### 👁️ Modale preview AVANT import `.mkmsec.json`
+
+**Avant v1.23.5** : `parse → confirm() natif si plan différent → injection silencieuse → modale feedback`. Le `confirm()` natif OS cassait la charte (cf §35 doc qui dit qu'on doit basculer en modale Promise-based).
+
+**Depuis v1.23.5** : `parse → modale preview charte → user confirme → injection → modale feedback`. La preview affiche :
+
+- Nom du scénario
+- Fichier source
+- Date d'export
+- Version app source
+- Plan source (avec version)
+- Liste des équipes (max 8 + « +N autres » si plus) avec couleur OTAN + nb membres + niveau M-LVL + indicateurs zone/parcours
+- Bandeau orange détaillé si plan d'origine différent
+
+Boutons « ❌ Annuler » / « ✓ Importer ce scénario ». Backdrop click + Échap = annuler. Évite les imports accidentels.
+
+### 🔧 Refactor JS
+
+`importerScenario(input)` split en 2 fonctions internes :
+
+```js
+async function _parsePayloadMkmsec(input) {
+  // validation seule, pas d'injection
+  return { ok, payload?, warning?, error? };
+}
+
+function _appliquerPayloadImport(payload) {
+  // injection seule (regénère ids + filtre défensif + push + commit)
+  return { ok, scenario };
+}
+```
+
+`importerScenario` reste exposé en API publique en combinant les 2 (préserve rétro-compat v1.23.4 avec `confirm()` natif legacy pour callers programmatiques sans UI). Le picker UI `_ouvrirImportMkmsecPicker` utilise désormais le flow split + modale preview au milieu.
+
+### 🗺️ Mini-légende intégrée dans la carte PDF Mode Secours
+
+La carte miniature par équipe (implémentée en v1.22.0-fix5 — image plan + overlay zone + entrée vert + sortie rouge/orange boucle + itinéraire dashed + intermédiaires numérotés) reçoit désormais une **mini-légende intégrée bas-droite**.
+
+Pattern WYSIWYG : n'affiche QUE les éléments effectivement présents pour cette équipe (zone polygone OU zone roads, entrée, sortie ou boucle, intermédiaires avec compteur, itinéraire). Rend le brief auto-explicatif pour le secouriste qui n'a jamais ouvert l'app — il comprend immédiatement les codes couleurs en regardant son papier.
+
+**Helper `_drawTeamLegende(ctx, canvasW, canvasH, g, hexColor)`** : dessine sur le canvas 2D. Box blanc semi-opaque (rgba 0.92) avec bordure 1px noire 45% opacité. Pour chaque item : swatch coloré 16×14px + label noir. Swatches adaptés au type (carré fillé + border pour zone polygon, ligne épaisse pour zone roads, ligne dashed pour itinéraire, cercle marker pour entrée/sortie/boucle/intermédiaires). Réutilise `_drawTeamMarker` existant.
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. La modale preview est pure UI charte locale (lit le payload déjà parsé en RAM, écrit rien). La mini-légende PDF est dessinée sur le canvas en local (pas de fetch d'icônes externes — tout est trait/forme vectorielle).
+
+### 📦 Sources de vérité v1.23.5
+
+- `version.json` → `v1.23.5`
+- `js/copyright.js > __MKM__.build` → `v1.23.5`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.5`
+
+Aucun nouveau fichier. Modifs :
+- `js/secoursMode.js` (+~280 lignes : split `_parsePayloadMkmsec`/`_appliquerPayloadImport` + `_afficherPreviewImport` modale charte + `_formatLevelShort` helper + `_drawTeamLegende` helper canvas)
+- `css/style.css` (+~125 lignes : `.kta-secours-import-preview-card` + grid + equipes + couleur swatch + meta + variants light theme)
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.23.4 (modale preview est une amélioration UX du flow existant, format `.mkmsec.json` v1 inchangé). `window.SecoursMode.importerScenario` reste utilisable en programmatique avec le comportement v1.23.4 (confirm() natif si plan différent). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-23-4">
 <summary><strong>🗓️ 26/05/2026 — 📤 v1.23.4 : Release PATCH — Mode Secours : export/import autonome `.mkmsec.json` + fix Heatmap Régler</strong></summary>
 
 Release PATCH (bump Z : 1.23.3 → 1.23.4). Demande KARMA terrain : « on doit pouvoir exporter un plan de secour, que on poura importer sur un autre appareil (sans a avoir a exporter une session full) ca nous servira quoi qu'il arrive pour mode 'operateur chef de surface' et 'secouriste' ».

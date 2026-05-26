@@ -174,10 +174,26 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.23.4</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.23.5</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.23.5 (Release PATCH polish — Modale preview AVANT import + mini-légende intégrée carte PDF Mode Secours)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission</strong>. Polish UX terrain post-v1.23.4.
+    (1) <strong>Modale preview AVANT import .mkmsec.json</strong> : remplace <code>confirm()</code>
+    natif OS (qui cassait la charte) par une modale Promise-based charte qui affiche le contenu
+    du fichier (nom, équipes, plan source) AVANT l'injection définitive. Pure UI charte locale.
+    Refactor JS : <code>importerScenario</code> split en <code>_parsePayloadMkmsec</code> (validation
+    seule) + <code>_appliquerPayloadImport</code> (injection seule).
+    (2) <strong>Mini-légende intégrée carte PDF</strong> : la carte miniature par équipe (v1.22.0-fix5)
+    reçoit une mini-légende WYSIWYG bas-droite (zone, entrée, sortie, intermédiaires, itinéraire).
+    Helper <code>_drawTeamLegende</code> qui dessine sur canvas 2D en local — pas de fetch d'icônes
+    externes, tout est trait/forme vectorielle.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — UI charte locale + canvas vectoriel pur.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -996,6 +1012,22 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.23.5</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release PATCH polish — Modale preview AVANT import + mini-légende intégrée carte PDF Mode Secours</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission</strong>.
+          Modale preview charte (Promise-based) qui remplace <code>confirm()</code> natif OS
+          pour le flow import <code>.mkmsec.json</code> : affiche le contenu du fichier
+          (nom + équipes + plan source) AVANT l'injection définitive. Refactor JS :
+          split <code>_parsePayloadMkmsec</code> / <code>_appliquerPayloadImport</code>.
+          Mini-légende WYSIWYG intégrée dans la carte miniature par équipe (zone, entrée,
+          sortie, intermédiaires, itinéraire). Helper canvas 2D pur, pas de fetch externe.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.23.4</td>
         <td>26/05/2026</td>

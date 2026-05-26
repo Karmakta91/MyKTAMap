@@ -18225,6 +18225,114 @@ html.kta-theme-light .kta-fp-status {
 .kta-secours-list-header-actions .kta-btn {
   font-size: 14px;
 }
+
+/* 🆕 v1.23.5 — Modale preview AVANT import .mkmsec.json (charte Promise-based) */
+.kta-secours-import-preview-card {
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.30);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 8px 0;
+}
+.kta-secours-import-preview-titre {
+  font-size: 17px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+}
+.kta-secours-import-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+@media (max-width: 480px) {
+  .kta-secours-import-preview-grid { grid-template-columns: 1fr; }
+}
+.kta-secours-import-preview-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.kta-secours-import-preview-grid code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  word-break: break-all;
+}
+.kta-secours-import-preview-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  font-weight: 600;
+}
+.kta-secours-import-preview-section {
+  margin-top: 4px;
+}
+.kta-secours-import-preview-equipes {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-secours-import-preview-equipes li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+}
+.kta-secours-import-preview-couleur {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex: 0 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.30);
+}
+.kta-secours-import-preview-meta {
+  color: #8892a4;
+  font-size: 12px;
+}
+
+/* Thème clair */
+body.kta-theme-light .kta-secours-import-preview-card,
+html.kta-theme-light .kta-secours-import-preview-card {
+  background: rgba(140, 180, 255, 0.10) !important;
+  border-color: rgba(140, 180, 255, 0.45) !important;
+}
+body.kta-theme-light .kta-secours-import-preview-titre,
+html.kta-theme-light .kta-secours-import-preview-titre {
+  color: #d9a82e !important;
+}
+body.kta-theme-light .kta-secours-import-preview-grid,
+html.kta-theme-light .kta-secours-import-preview-grid,
+body.kta-theme-light .kta-secours-import-preview-equipes li,
+html.kta-theme-light .kta-secours-import-preview-equipes li {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-import-preview-label,
+html.kta-theme-light .kta-secours-import-preview-label,
+body.kta-theme-light .kta-secours-import-preview-meta,
+html.kta-theme-light .kta-secours-import-preview-meta {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-import-preview-equipes li,
+html.kta-theme-light .kta-secours-import-preview-equipes li {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+}
 .kta-secours-hint {
   color: #c8d0e0;
   font-size: 13px;
