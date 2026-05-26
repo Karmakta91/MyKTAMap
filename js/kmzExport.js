@@ -730,13 +730,26 @@
     // tierces ignorent les fichiers inconnus du ZIP KMZ — c'est strictement
     // une donnée MyKTAMap. Format ouvert pour ajouter d'autres « extras » plus
     // tard (favoris partagés, notes globales, etc.) sans bumper la version.
-    if (opts.planCustomLegend && typeof opts.planCustomLegend === "object") {
+    // 🆕 v1.22.0 (KARMA "définir un plan de secours") : embed un scénario
+    // Mode Secours via opts.secoursPlan dans le même myktamap-extras.json.
+    // Plusieurs champs peuvent coexister (customLegend + secoursPlan), c'est
+    // le but du wrapper extensible.
+    const _hasExtras = !!(
+      (opts.planCustomLegend && typeof opts.planCustomLegend === "object") ||
+      (opts.secoursPlan      && typeof opts.secoursPlan      === "object")
+    );
+    if (_hasExtras) {
       const extras = {
         type:          "myktamap-kmz-extras",
         version:       1,
-        exportedAt:    new Date().toISOString(),
-        customLegend:  opts.planCustomLegend
+        exportedAt:    new Date().toISOString()
       };
+      if (opts.planCustomLegend && typeof opts.planCustomLegend === "object") {
+        extras.customLegend = opts.planCustomLegend;
+      }
+      if (opts.secoursPlan && typeof opts.secoursPlan === "object") {
+        extras.secoursPlan = opts.secoursPlan;
+      }
       zip.file("myktamap-extras.json", JSON.stringify(extras, null, 2));
     }
 

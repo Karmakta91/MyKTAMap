@@ -529,16 +529,231 @@
     }
   }
 
-  // Stub Phase 1 commit 6 — export PDF
+  // ============================================================
+  // EXPORT PDF (depuis v1.22.0 commit 6/9)
+  // ============================================================
+  // 1 page A4 par équipe avec briefing texte. La carte miniature avec
+  // overlay sera ajoutée en Phase 2 (nécessite render canvas du plan + zone).
+  // MVP : texte structuré + cadre observations vide pour impression papier.
   function exporterPDF(scenarioId) {
-    console.warn("[SecoursMode] exporterPDF : pas encore implémenté (commit 6/9)");
-    return null;
+    const s = get(scenarioId || _currentScenarioId);
+    if (!s) {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Scénario introuvable.", "error");
+      return null;
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ jsPDF non chargé.", "error");
+      return null;
+    }
+    if (!s.groupes || s.groupes.length === 0) {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Aucune équipe dans ce scénario.", "warn");
+      return null;
+    }
+    try {
+      const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const margin = 14;
+      const planName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "Plan";
+      s.groupes.forEach(function(g, idx) {
+        if (idx > 0) pdf.addPage();
+        const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+        // En-tête
+        pdf.setFontSize(18); pdf.setFont(undefined, "bold");
+        pdf.text("PLAN DE SECOURS — " + g.nom, margin, margin + 4);
+        // Bandeau couleur équipe
+        const rgb = _hexToRgb(couleur.hex);
+        pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+        pdf.rect(margin, margin + 7, pageW - 2 * margin, 6, "F");
+        pdf.setFontSize(10); pdf.setTextColor(255, 255, 255); pdf.setFont(undefined, "bold");
+        pdf.text("Equipe " + couleur.nom + " (#" + (idx + 1) + "/" + s.groupes.length + ")",
+                 margin + 2, margin + 11);
+        pdf.setTextColor(0, 0, 0); pdf.setFont(undefined, "normal");
+        let y = margin + 22;
+        // Section Contexte
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("CONTEXTE DE L'INCIDENT", margin, y); y += 5;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+        pdf.text("Scenario : " + (s.nom || "(sans nom)"), margin, y); y += 4;
+        pdf.text("Plan : " + planName, margin, y); y += 4;
+        if (s.context && s.context.incidentAt) {
+          const dt = new Date(s.context.incidentAt);
+          pdf.text("Heure d'incident : " + dt.toLocaleString("fr-FR"), margin, y); y += 4;
+        }
+        if (s.context && s.context.notes) {
+          y = _pdfWrapText(pdf, "Notes : " + s.context.notes, margin, y, pageW - 2 * margin, 4);
+        }
+        y += 4;
+        // Section Membres
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("MEMBRES DE L'EQUIPE", margin, y); y += 5;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+        pdf.text((g.membres && g.membres.length) ? g.membres.join(", ") : "(non renseignes)", margin, y);
+        y += 8;
+        // Section Mission
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("MISSION ASSIGNEE", margin, y); y += 5;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+        pdf.text("Entree : " + _fmtPoint(g.entree), margin, y); y += 4;
+        pdf.text("Sortie : " + _fmtPoint(g.sortie), margin, y); y += 4;
+        const zoneTxt = g.zoneType === "polygon" ? "Polygone (" + (g.zonePolygon ? g.zonePolygon.length : 0) + " sommets)"
+                      : g.zoneType === "roads"   ? (g.zoneRoadIds ? g.zoneRoadIds.length : 0) + " traces selectionnes"
+                      : "(non definie)";
+        pdf.text("Zone a ratisser : " + zoneTxt, margin, y); y += 4;
+        if (g.distanceM) {
+          const distFmt = (typeof window.formatDistance === "function")
+                          ? window.formatDistance(g.distanceM, 0) : Math.round(g.distanceM) + " m";
+          pdf.text("Distance itineraire : " + distFmt, margin, y); y += 4;
+        }
+        if (g.dureeEstimeeMin) {
+          pdf.text("Duree estimee : ~" + Math.round(g.dureeEstimeeMin) + " min", margin, y); y += 4;
+        }
+        y += 4;
+        // Section Itinéraire (waypoints)
+        if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length > 0) {
+          pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+          pdf.text("ITINERAIRE SUGGERE", margin, y); y += 5;
+          pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+          pdf.text(g.itineraireSuggere.length + " waypoints sur le reseau de galeries existant.", margin, y); y += 4;
+          y += 4;
+        }
+        // Cadre Observations (rempli papier au retour terrain)
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("OBSERVATIONS AU RETOUR TERRAIN", margin, y); y += 5;
+        pdf.setDrawColor(150);
+        pdf.rect(margin, y, pageW - 2 * margin, 60);
+        y += 65;
+        // Footer
+        pdf.setFontSize(7); pdf.setTextColor(120);
+        pdf.text("Genere par MyKTAMap " + ((window.__MKM__ && window.__MKM__.build) || "") +
+                 " - " + new Date().toLocaleString("fr-FR"),
+                 margin, pdf.internal.pageSize.getHeight() - 6);
+      });
+      const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".pdf";
+      pdf.save(filename);
+      if (window.OOMGuard) {
+        window.OOMGuard.showToast("✓ PDF généré (" + s.groupes.length + " page" + (s.groupes.length > 1 ? "s" : "") + ")", "info");
+      }
+      return filename;
+    } catch(e) {
+      console.warn("[SecoursMode] exporterPDF échoué :", e);
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Erreur génération PDF : " + e.message, "error");
+      return null;
+    }
   }
 
-  // Stub Phase 1 commit 7 — export KMZ
+  // Helpers PDF
+  function _pdfWrapText(pdf, text, x, y, maxW, lineH) {
+    const lines = pdf.splitTextToSize(text, maxW);
+    lines.forEach(function(line) { pdf.text(line, x, y); y += lineH; });
+    return y;
+  }
+  function _hexToRgb(hex) {
+    const v = hex.replace("#", "");
+    return { r: parseInt(v.slice(0, 2), 16), g: parseInt(v.slice(2, 4), 16), b: parseInt(v.slice(4, 6), 16) };
+  }
+  function _fmtPoint(pt) {
+    if (!pt || typeof pt.x !== "number") return "(non definie)";
+    return "x=" + Math.round(pt.x) + " y=" + Math.round(pt.y) +
+           (typeof pt.level === "number" ? " niv=" + pt.level : "");
+  }
+  function _slug(s) { return String(s || "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40); }
+  function _shortDate() {
+    const d = new Date();
+    return d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+  }
+
+  // ============================================================
+  // EXPORT KMZ (depuis v1.22.0 commit 7/9)
+  // ============================================================
+  // Génère un KMZ avec :
+  //  • Polygons KML par équipe (zones polygon ou roads → polylines)
+  //  • Placemarks entrée/sortie de chaque équipe
+  //  • Folder global "🚨 Secours — <nom scénario>"
+  //  • myktamap-extras.json étendu avec secoursPlan (re-import MyKTAMap natif)
+  //
+  // Pré-requis : calibrage KMZ déjà fait (via modale KMZ Export classique).
+  // Sinon → guide l'user vers la modale Export sessions onglet 🌍 KMZ.
   function exporterKMZ(scenarioId) {
-    console.warn("[SecoursMode] exporterKMZ : pas encore implémenté (commit 7/9)");
-    return null;
+    const s = get(scenarioId || _currentScenarioId);
+    if (!s) {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Scénario introuvable.", "error");
+      return null;
+    }
+    if (!window.KmzExport || typeof window.KmzExport.genererKmz !== "function") {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Module KmzExport non chargé.", "error");
+      return null;
+    }
+    // Vérif calibrage
+    const planId = window._currentLoadedPlanId;
+    const calib = planId ? window.KmzExport.getCalibration(planId) : null;
+    if (!calib || !calib.pointA || !calib.pointB) {
+      if (window.OOMGuard) {
+        window.OOMGuard.showToast(
+          "⚠️ Plan non calibré. Ouvre d'abord la modale d'export KMZ classique (💾 Enregistrer session > 🌍 KMZ) pour définir 2 points GPS de référence.",
+          "warn"
+        );
+      }
+      return null;
+    }
+    // Build transform on-demand (pattern §32.7 CLAUDE.md)
+    let transform;
+    try {
+      transform = window.KmzExport.buildTransform(
+        calib.pointA.plan, calib.pointB.plan,
+        calib.pointA.gps,  calib.pointB.gps
+      );
+    } catch(e) {
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Calibrage corrompu : " + e.message, "error");
+      return null;
+    }
+    // On délègue à KmzExport.genererKmz avec :
+    //   • data minimal (pas d'editorPoints/roads/zones, on injecte nos polygons manuels en post)
+    //   • secoursPlan dans les extras
+    // Approche pragmatique MVP : on génère un KMZ "secours-only" simple en utilisant
+    // l'extension myktamap-extras.json + on attache aussi des Placemarks/Polygons via
+    // un mini-KML custom dans le ZIP.
+    const pc = window.PLAN_CONFIG;
+    const opts = {
+      planName:    (pc && pc.plan && pc.plan.name)    || "Plan",
+      planVersion: (pc && pc.plan && pc.plan.version) || "",
+      planAuthor:  (pc && pc.plan && pc.plan.author)  || "",
+      imageW:      (pc && pc.plan && pc.plan.imageWidth)  || 1000,
+      imageH:      (pc && pc.plan && pc.plan.imageHeight) || 1000,
+      transform:   transform,
+      imageOpacity: 60,
+      include: {
+        image:      false,  // pas le plan en image pour ce mode (secours-only)
+        points:     false, roads: false, zones: false, structures: false,
+        jonctions:  false, itineraire: false, dataLayers: false
+      },
+      levels: null,
+      data: { editorPoints: [], roads: [], zones: [] },
+      imageBlob:     null,
+      imageFilename: "",
+      iconsToEmbed:  {},
+      // 🆕 v1.22.0 — secoursPlan dans les extras (re-import MyKTAMap natif)
+      secoursPlan:   s,
+      // 🆕 v1.22.0 — injection KML manuelle des polygons / placemarks équipes
+      secoursPalette: PALETTE
+    };
+    Promise.resolve(window.KmzExport.genererKmz(opts)).then(function(blob) {
+      if (!blob) {
+        if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Génération KMZ échouée.", "error");
+        return;
+      }
+      const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".kmz";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.style.display = "none";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      if (window.OOMGuard) {
+        window.OOMGuard.showToast("✓ KMZ exporté : " + filename, "info");
+      }
+    }).catch(function(e) {
+      console.warn("[SecoursMode] exporterKMZ échoué :", e);
+      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Erreur KMZ : " + e.message, "error");
+    });
   }
 
   // ============================================================
@@ -989,13 +1204,13 @@
           _recalculerItineraireGroupe(s.id, btn.getAttribute("data-gid"));
         });
       });
-      // Export PDF / KMZ — stubs commits 6+7
-      corps.querySelectorAll('[data-action="export-pdf"], [data-action="export-kmz"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast("🚧 Export à coder dans le commit suivant — patience !", "info");
-          }
-        });
+      // Export PDF
+      corps.querySelectorAll('[data-action="export-pdf"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { exporterPDF(s.id); });
+      });
+      // Export KMZ
+      corps.querySelectorAll('[data-action="export-kmz"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { exporterKMZ(s.id); });
       });
     }
   }

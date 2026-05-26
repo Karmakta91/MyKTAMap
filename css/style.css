@@ -18246,3 +18246,54 @@ body.kta-theme-light .kta-secours-groupe-nom,
 html.kta-theme-light .kta-secours-groupe-nom {
   color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
+
+/* Floater compact en bas de l'écran pendant les modes interactifs map
+   (entrée / sortie / zone polygon / zone roads). Pattern hérité du
+   floater itinéraire avoid-click (cf interface.js). */
+.kta-secours-floater {
+  position: fixed;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100000;
+  background: rgba(20, 25, 38, 0.95);
+  border: 2px solid #ff4444;
+  border-radius: 10px;
+  padding: 12px 16px;
+  box-shadow: 0 6px 24px rgba(255, 68, 68, 0.40);
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  backdrop-filter: blur(8px);
+}
+.kta-secours-floater-msg {
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+.kta-secours-floater-msg strong {
+  color: #ff8c00;
+}
+.kta-secours-floater-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+@media (max-width: 480px) {
+  .kta-secours-floater {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    padding: 10px 12px;
+  }
+  .kta-secours-floater-msg { font-size: 12px; }
+}
+
+body.kta-theme-light .kta-secours-floater,
+html.kta-theme-light .kta-secours-floater {
+  background: rgba(253, 248, 235, 0.95) !important;
+}
+body.kta-theme-light .kta-secours-floater-msg,
+html.kta-theme-light .kta-secours-floater-msg {
+  color: var(--kta-light-text, #2a2620) !important;
+}
