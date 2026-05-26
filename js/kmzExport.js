@@ -484,6 +484,197 @@
              '</Placemark>';
     }
 
+    // 🆕 v1.23.0 Phase 2 Feature A — Émet le Folder Secours complet pour le KMZ.
+    // Cross-app : Google Earth, OsmAnd, Avenza, Locus, ArcGIS Earth, Strava...
+    // Retourne { folder: string, styles: string }.
+    function _emitSecoursFolder(opts, secoursPlan, palette) {
+      const t = opts.transform;
+      const groupes = secoursPlan.groupes || [];
+      if (groupes.length === 0) return { folder: "", styles: "" };
+
+      let styles = "";
+      let folder = '<Folder><name>🚨 Secours — ' + _xmlEsc(secoursPlan.nom || "Plan de secours") + '</name>';
+      const ctxDesc = [];
+      if (secoursPlan.context && secoursPlan.context.incidentAt) {
+        ctxDesc.push("Incident : " + secoursPlan.context.incidentAt);
+      }
+      ctxDesc.push(groupes.length + " équipe" + (groupes.length > 1 ? "s" : ""));
+      if (secoursPlan.context && secoursPlan.context.notes) {
+        ctxDesc.push("Notes : " + secoursPlan.context.notes);
+      }
+      folder += '<description>' + _emitDescriptionCdata(ctxDesc.join("\n")) + '</description>';
+
+      // Styles fixes communs (entrée vert, sortie rouge, sortie boucle orange)
+      styles += '<Style id="secours_entree">' +
+                  '<IconStyle><color>ff44cc00</color><scale>1.2</scale>' +
+                    '<Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-circle.png</href></Icon>' +
+                  '</IconStyle>' +
+                  '<LabelStyle><color>ff44cc00</color><scale>0.9</scale></LabelStyle>' +
+                '</Style>';
+      styles += '<Style id="secours_sortie">' +
+                  '<IconStyle><color>ff0000cc</color><scale>1.2</scale>' +
+                    '<Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-circle.png</href></Icon>' +
+                  '</IconStyle>' +
+                  '<LabelStyle><color>ff0000cc</color><scale>0.9</scale></LabelStyle>' +
+                '</Style>';
+      styles += '<Style id="secours_sortie_boucle">' +
+                  '<IconStyle><color>ff00aaff</color><scale>1.3</scale>' +
+                    '<Icon><href>http://maps.google.com/mapfiles/kml/paddle/orange-circle.png</href></Icon>' +
+                  '</IconStyle>' +
+                  '<LabelStyle><color>ff00aaff</color><scale>0.9</scale></LabelStyle>' +
+                '</Style>';
+
+      // Style par INDEX de palette : 1 polygon + 1 lineString itinéraire +
+      // 1 placemark intermédiaire par couleur (tinted blank circle)
+      palette.forEach(function(c, idx) {
+        const colorFill = _kmlColor(c.hex, 0.30);   // 30 % fill polygon
+        const colorLine = _kmlColor(c.hex, 1.0);    // 100 % outline
+        const colorTint = _kmlColor(c.hex, 1.0);    // tint icon intermédiaire
+        // Polygon zone
+        styles += '<Style id="secours_zone_' + idx + '">' +
+                    '<LineStyle><color>' + colorLine + '</color><width>3</width></LineStyle>' +
+                    '<PolyStyle><color>' + colorFill + '</color><fill>1</fill><outline>1</outline></PolyStyle>' +
+                  '</Style>';
+        // Halo roads (line plus épaisse semi-transparente)
+        styles += '<Style id="secours_zoneroad_' + idx + '">' +
+                    '<LineStyle><color>' + _kmlColor(c.hex, 0.55) + '</color><width>8</width></LineStyle>' +
+                  '</Style>';
+        // LineString itinéraire (dashed via gx, ou solid si non supporté — KML std)
+        styles += '<Style id="secours_iti_' + idx + '">' +
+                    '<LineStyle><color>' + colorLine + '</color><width>5</width></LineStyle>' +
+                  '</Style>';
+        // Intermédiaire : icon teinté couleur équipe
+        styles += '<Style id="secours_etape_' + idx + '">' +
+                    '<IconStyle><color>' + colorTint + '</color><scale>1.0</scale>' +
+                      '<Icon><href>http://maps.google.com/mapfiles/kml/paddle/wht-circle.png</href></Icon>' +
+                    '</IconStyle>' +
+                    '<LabelStyle><color>' + colorTint + '</color><scale>0.8</scale></LabelStyle>' +
+                  '</Style>';
+      });
+
+      // Helper : retourne le L.latLng (lat, lng) GPS pour un waypoint plan {x, y}
+      function _wpToGps(w) {
+        return planToGps(t, w.x, w.y);
+      }
+
+      // Pour chaque équipe → un sous-Folder
+      groupes.forEach(function(g) {
+        const idx = (g.couleurIdx || 0) % palette.length;
+        const couleurNom = palette[idx].nom || ("Équipe " + (idx + 1));
+        const couleurHex = palette[idx].hex;
+        let sub = '<Folder><name>🚨 ' + _xmlEsc(g.nom || couleurNom) + ' (' + _xmlEsc(couleurNom) + ')</name>';
+
+        // Description riche HTML
+        const descParts = [];
+        if (Array.isArray(g.membres) && g.membres.length > 0) {
+          descParts.push("Membres : " + g.membres.join(", "));
+        }
+        if (typeof g.distanceM === "number") {
+          descParts.push("Distance : " + Math.round(g.distanceM) + " m");
+        }
+        if (typeof g.dureeEstimeeMin === "number") {
+          descParts.push("Durée estimée : ~" + Math.round(g.dureeEstimeeMin) + " min");
+        }
+        if (g.statut) descParts.push("Statut : " + g.statut);
+        if (descParts.length > 0) {
+          sub += '<description>' + _emitDescriptionCdata(descParts.join("\n")) + '</description>';
+        }
+
+        // 1. Zone polygon
+        if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+          const ring = g.zonePolygon.slice();
+          ring.push(g.zonePolygon[0]);   // ferme le ring
+          const coords = ring.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
+          sub += '<Placemark>' +
+                   '<name>⬛ Zone ' + _xmlEsc(g.nom) + '</name>' +
+                   '<styleUrl>#secours_zone_' + idx + '</styleUrl>' +
+                   '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
+                   coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +
+                 '</Placemark>';
+        }
+        // 2. Zone roads (halo par road sélectionnée)
+        if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+          g.zoneRoadIds.forEach(function(rid) {
+            const road = allRoads.find(function(r) { return r.id === rid; });
+            if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
+            const coords = road.points.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
+            sub += '<Placemark>' +
+                     '<name>🛣️ Tracé zone ' + _xmlEsc(g.nom) + '</name>' +
+                     '<styleUrl>#secours_zoneroad_' + idx + '</styleUrl>' +
+                     '<LineString><tessellate>1</tessellate><coordinates>' +
+                     coords + '</coordinates></LineString>' +
+                   '</Placemark>';
+          });
+        }
+        // 3. Entrée
+        if (g.entree && typeof g.entree.x === "number") {
+          const ll = _wpToGps(g.entree);
+          const lbl = g.entree.label || g.entree.pointId || "";
+          sub += '<Placemark>' +
+                   '<name>📍 Entrée ' + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                   '<styleUrl>#secours_entree</styleUrl>' +
+                   '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                 '</Placemark>';
+        }
+        // 4. Intermédiaires numérotés
+        if (Array.isArray(g.intermediaires)) {
+          g.intermediaires.forEach(function(w, i) {
+            if (!w || typeof w.x !== "number") return;
+            const ll = _wpToGps(w);
+            const lbl = w.label || w.pointId || "";
+            sub += '<Placemark>' +
+                     '<name>▾ Étape ' + (i + 1) + ' (' + _xmlEsc(g.nom) + ')' +
+                     (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                     '<styleUrl>#secours_etape_' + idx + '</styleUrl>' +
+                     '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                   '</Placemark>';
+          });
+        }
+        // 5. Sortie (rouge OU orange si entrée = sortie)
+        if (g.sortie && typeof g.sortie.x === "number") {
+          const ll = _wpToGps(g.sortie);
+          // Détection boucle (par pointId ou coords avec tolérance 0.5 px)
+          const isBoucle = g.entree && (
+            (g.entree.pointId && g.sortie.pointId && g.entree.pointId === g.sortie.pointId) ||
+            (Math.abs((g.entree.x || 0) - (g.sortie.x || 0)) < 0.5 &&
+             Math.abs((g.entree.y || 0) - (g.sortie.y || 0)) < 0.5)
+          );
+          const lbl = g.sortie.label || g.sortie.pointId || "";
+          const styleId = isBoucle ? "secours_sortie_boucle" : "secours_sortie";
+          const namePrefix = isBoucle ? "↻ Boucle " : "🚪 Sortie ";
+          sub += '<Placemark>' +
+                   '<name>' + namePrefix + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                   '<styleUrl>#' + styleId + '</styleUrl>' +
+                   '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                 '</Placemark>';
+        }
+        // 6. Itinéraire suggéré (LineString)
+        if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+          const coords = g.itineraireSuggere.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
+          let itiDesc = "";
+          if (typeof g.distanceM === "number" && typeof g.dureeEstimeeMin === "number") {
+            itiDesc = '<description>' + _emitDescriptionCdata(
+              Math.round(g.distanceM) + " m — ~" + Math.round(g.dureeEstimeeMin) + " min"
+            ) + '</description>';
+          }
+          sub += '<Placemark>' +
+                   '<name>🗺️ Itinéraire ' + _xmlEsc(g.nom) + '</name>' +
+                   itiDesc +
+                   '<styleUrl>#secours_iti_' + idx + '</styleUrl>' +
+                   '<LineString><tessellate>1</tessellate><coordinates>' +
+                   coords + '</coordinates></LineString>' +
+                 '</Placemark>';
+        }
+        sub += '</Folder>';
+        folder += sub;
+      });
+
+      folder += '</Folder>';
+      return { folder: folder, styles: styles };
+    }
+
     // === Construction des Folders ===
     // Si multiLevel : 1 sous-folder par niveau visible. Sinon : 1 folder unique.
     const mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
@@ -639,6 +830,27 @@
       }
     }
 
+    // 🆕 v1.23.0 Phase 2 Feature A (KARMA "Complet : LineString itinéraire +
+    // Placemarks intermédiaires numérotés") — Folder secours visible dans
+    // Google Earth/OsmAnd/Avenza/etc. Contient pour chaque équipe :
+    //   • Polygon zone (fill 30 % + outline) OU LineStrings halo si zoneType=roads
+    //   • Placemark Entrée (icon vert)
+    //   • Placemarks Intermédiaires (icon couleur équipe avec numéro 1, 2, ...)
+    //   • Placemark Sortie (icon rouge OU orange si boucle entrée=sortie)
+    //   • LineString Itinéraire (couleur équipe weight 5)
+    //
+    // Apps tierces qui ignorent les <Folder> imbriqués affichent quand même
+    // tous les Placemarks à plat (compat dégradée OK).
+    let secoursFolder = "";
+    let secoursStyles = "";
+    if (opts.secoursPlan && typeof opts.secoursPlan === "object"
+        && Array.isArray(opts.secoursPlan.groupes) && opts.secoursPlan.groupes.length > 0
+        && Array.isArray(opts.secoursPalette) && opts.secoursPalette.length > 0) {
+      const sec = _emitSecoursFolder(opts, opts.secoursPlan, opts.secoursPalette);
+      secoursFolder = sec.folder;
+      secoursStyles = sec.styles;
+    }
+
     // === Styles icones (un par tag rencontre + default) ===
     let stylesIcones = "";
     tagsRencontres.forEach(function(tag) {
@@ -657,9 +869,11 @@
           ) + '</description>' +
           _genererStylesKml() +
           stylesIcones +
+          secoursStyles +
           (groundOverlay || "") +
           foldersByLevel +
           itineraireFolder +
+          secoursFolder +
         '</Document>' +
       '</kml>';
   }
