@@ -174,10 +174,20 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.25.2</strong> (27 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.25.3</strong> (27 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.25.3 (Release PATCH onboarding — Carte « 🚨 Mode Secours » ajoutée au tutoriel)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun changement de code applicatif</strong>.
+    Pure update tutoriel onboarding (texte HTML statique pré-chargé dans le module
+    <code>js/tutorial.js</code>). Carte 13/23 insérée entre carte 12 (Modes urgence) et carte
+    précédente 13 (Recherche), 22 → 23 cards.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — release tutoriel strict.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1130,6 +1140,18 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.25.3</td>
+        <td>27/05/2026</td>
+        <td>
+          <strong>Release PATCH onboarding — Carte « 🚨 Mode Secours » ajoutée au tutoriel premier-lancement</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission, aucun changement de code applicatif</strong>.
+          Pure update tutoriel : carte 13/23 insérée entre carte 12 (Modes urgence) et carte
+          précédente 13 (Recherche), 22 → 23 cards. Modifs : <code>js/tutorial.js</code> uniquement.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.25.2</td>
         <td>27/05/2026</td>

@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.25.2** (27 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.25.3** (27 mai 2026).
+>
+> **v1.25.3 (Release PATCH onboarding — Carte « 🚨 Mode Secours » ajoutée au tutoriel)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement de code applicatif**. Pure update tutoriel onboarding (texte HTML statique pré-chargé dans le module `js/tutorial.js`). Carte 13/23 insérée entre carte 12 (Modes urgence) et carte précédente 13 (Recherche), 22 → 23 cards. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — release tutoriel strict.
 >
 > **v1.25.2 (Release PATCH docs Mode Secours)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement de code applicatif**. Pure update documentation suite audit KARMA : section §67 (~400 lignes) dans `docs/CLAUDE.md` consolide les évolutions Mode Secours v1.23.2 → v1.25.1 + §68 corrige format calibrage KMZ ; nouvelle section Phase 3 (~250 lignes) dans `docs/README_USER.md` (user-facing) + correction 2 mentions « roadmap Phase 3 à venir » ; nouvelle section recette M. (~210 lignes) dans `docs/AI_CONTEXT.md` pour modale Aide IA ; nouvelle section Mode Secours (~60 lignes) dans `js/interface.js > afficherAide` pour modale Aide intégrée. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — release docs strict.
 >

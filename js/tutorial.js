@@ -20,7 +20,12 @@
 // au lieu d'empiler 4-6 features par diapo. Lecture plus digeste, nouveau
 // utilisateur découvre la richesse de l'app sans submergement.
 //
-// Plan des 22 cartes :
+// 🆕 v1.25.3 (KARMA "rajoute le du coup aussi on onbarding si c'est pas fait") :
+// ajout carte 13 "🚨 Mode Secours" → 22 → 23 cards. Insérée juste après les
+// modes urgence (carte 12) pour bien différencier les 3 modes "urgence" :
+// ⛑️ Je suis perdu (moi) / 🚨 Panique (moi) / 🚨 Mode Secours (équipe).
+//
+// Plan des 23 cartes :
 //   1. 🌟 Bienvenue
 //   2. 🛡️ Privacy & offline-first
 //   3. 🗂️ Charger un plan existant
@@ -33,16 +38,17 @@
 //   10. 🏷️ Légende personnalisable (cascade 3 niveaux)
 //   11. 🧭 Tracker PDR + Replay
 //   12. ⛑️🚨 Modes urgence
-//   13. 🔍 Recherche unifiée Ctrl+K
-//   14. ⭐ Favoris
-//   15. 🗺️ Itinéraire pathfinder + évitements
-//   16. 📐 Mesures + 📏 Distance totale
-//   17. 🏗️ Multi-niveau M-LVL
-//   18. 📊 Stats globales + 🔥 Heatmap
-//   19. 💾 Exports session JSON / KMZ / GPX
-//   20. 🖼️ Exports images PNG / PDF
-//   21. 🛡️ Sauvegardes auto + Undo Ctrl+Z
-//   22. ⚙️ Config & outils annexes
+//   13. 🚨 Mode Secours (coordination équipes)              ← v1.25.3
+//   14. 🔍 Recherche unifiée Ctrl+K
+//   15. ⭐ Favoris
+//   16. 🗺️ Itinéraire pathfinder + évitements
+//   17. 📐 Mesures + 📏 Distance totale
+//   18. 🏗️ Multi-niveau M-LVL
+//   19. 📊 Stats globales + 🔥 Heatmap
+//   20. 💾 Exports session JSON / KMZ / GPX
+//   21. 🖼️ Exports images PNG / PDF
+//   22. 🛡️ Sauvegardes auto + Undo Ctrl+Z
+//   23. ⚙️ Config & outils annexes
 //
 // API : window.Tutorial = { ouvrir, fermer, isFirstLaunch, markAsSeen }
 //
@@ -61,12 +67,13 @@
   // ⚠️ Pas de fetch d'images externes — tout est emoji / texte pour rester offline-first.
   // 🆕 v1.21.3 : passage 8 → 22 cards (KARMA "rajoute des diapo pour décrire mieu
   // chaque fonction"). Découpe granulaire : 1 sujet = 1 carte = lecture digeste.
+  // 🆕 v1.25.3 : 22 → 23 cards (ajout carte 13 « 🚨 Mode Secours » après modes urgence).
   const CARDS = [
     // ═══════════════════════════════════════════════════════════════════════
     // SECTION A : ACCUEIL & CONFIANCE (1-2)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 1/22 — Bienvenue ───
+    // ─── 1/23 — Bienvenue ───
     {
       emoji: "🌟",
       titre: "Bienvenue sur MyKTAMap",
@@ -83,7 +90,7 @@
       hint: "Tu peux naviguer avec les flèches ◂ ▸ ou les touches ← → / Espace de ton clavier."
     },
 
-    // ─── 2/22 — Privacy & offline ───
+    // ─── 2/23 — Privacy & offline ───
     {
       emoji: "🛡️",
       titre: "100 % hors-ligne, 100 % privé",
@@ -111,7 +118,7 @@
     // SECTION B : DÉMARRER (3-5)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 3/22 — Charger un plan existant ───
+    // ─── 3/23 — Charger un plan existant ───
     {
       emoji: "🗂️",
       titre: "Charger un plan existant",
@@ -135,7 +142,7 @@
         "canvas vierge auto-calibré sur les bounds GPS du fichier.</p>"
     },
 
-    // ─── 4/22 — Créer un plan : Mode Simple ───
+    // ─── 4/23 — Créer un plan : Mode Simple ───
     {
       emoji: "🏗️",
       titre: "Créer un plan — Mode Simple",
@@ -156,7 +163,7 @@
       hint: "Pour basculer en Mode Avancé : bouton « 🎨 Avancé » en haut du générateur."
     },
 
-    // ─── 5/22 — Créer un plan : Mode Avancé ───
+    // ─── 5/23 — Créer un plan : Mode Avancé ───
     {
       emoji: "🎨",
       titre: "Créer un plan — Mode Avancé",
@@ -186,7 +193,7 @@
     // SECTION C : ANNOTER (6-10)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 6/22 — Points POI ───
+    // ─── 6/23 — Points POI ───
     {
       emoji: "📍",
       titre: "Points d'intérêt (POI)",
@@ -215,7 +222,7 @@
         "</ul>"
     },
 
-    // ─── 7/22 — Tracés ───
+    // ─── 7/23 — Tracés ───
     {
       emoji: "🛣️",
       titre: "Tracés (routes et chemins)",
@@ -237,7 +244,7 @@
         "<strong>📏 Distance totale</strong> (surlignage magenta cumulé).</p>"
     },
 
-    // ─── 8/22 — Zones ───
+    // ─── 8/23 — Zones ───
     {
       emoji: "⬛",
       titre: "Zones (Eau, remblais, inaccessible…)",
@@ -259,7 +266,7 @@
         "<p>💬 <strong>Note sur une zone</strong> : popup → textarea. Embarquée dans les exports.</p>"
     },
 
-    // ─── 9/22 — Structures ───
+    // ─── 9/23 — Structures ───
     {
       emoji: "🏛️",
       titre: "Structures (piliers, murs, fronts)",
@@ -283,7 +290,7 @@
         "<p>📊 <strong>Stats de comptage</strong> : visibles dans 📊 Détails session avec breakdown par type.</p>"
     },
 
-    // ─── 10/22 — Légende personnalisable ───
+    // ─── 10/23 — Légende personnalisable ───
     {
       emoji: "🏷️",
       titre: "Légende personnalisable",
@@ -313,7 +320,7 @@
     // SECTION D : TRACKER & URGENCE (11-12)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 11/22 — Tracker + Replay ───
+    // ─── 11/23 — Tracker + Replay ───
     {
       emoji: "🧭",
       titre: "Tracker de position (PDR) + Replay",
@@ -342,7 +349,7 @@
         "(carte suivante).</p>"
     },
 
-    // ─── 12/22 — Modes urgence ───
+    // ─── 12/23 — Modes urgence ───
     {
       emoji: "⛑️",
       titre: "Modes urgence (Je suis perdu / Panique)",
@@ -369,11 +376,59 @@
       hint: "Les modes urgence ne remplacent JAMAIS un appel aux secours. C'est un outil d'appoint pour communiquer ta position aux secours."
     },
 
+    // ─── 13/23 — Mode Secours (coordination équipes de recherche) ───
+    // 🆕 v1.25.3 — Ajout post-audit doc Phase 3 (KARMA "rajoute le du coup
+    // aussi on onbarding si c'est pas fait"). Carte dense couvrant les 2 états
+    // CRÉATION + EXÉCUTION pour bien différencier des 2 modes urgence
+    // précédents (⛑️ Je suis perdu et 🚨 panique = TOI, vs 🚨 Mode Secours =
+    // QUELQU'UN D'AUTRE est perdu et tu organises les secours).
+    {
+      emoji: "🚨",
+      titre: "Mode Secours (coordination d'équipes de recherche)",
+      texte:
+        "<p>⚠️ <strong>3 modes \"urgence\" distincts</strong> dans MyKTAMap, ne pas confondre :</p>" +
+        "<ul>" +
+          "<li>⛑️ <strong>Je suis perdu</strong> = TOI tu te cherches</li>" +
+          "<li>🚨 <strong>Mode panique</strong> = TOI tu paniques (cf. carte précédente)</li>" +
+          "<li>🚨 <strong>Mode Secours</strong> = QUELQU'UN D'AUTRE est perdu, tu coordonnes la recherche</li>" +
+        "</ul>" +
+        "<p>Accès : sidebar → flyout 🧭 Tracker → bouton rouge <strong>🚨 Mode Secours</strong>.</p>" +
+        "<p>Le scénario a <strong>2 états distincts</strong> :</p>" +
+        "<p>📝 <strong>État 1 — CRÉATION</strong> (planning à froid OU sur le moment) :</p>" +
+        "<ul>" +
+          "<li>Créer un scénario nommé (« Recherche Marc 26/05 »)</li>" +
+          "<li>Ajouter des équipes (palette OTAN Alpha/Bravo/Charlie...) avec parcours " +
+            "<strong>entrée + intermédiaires + sortie</strong> + zone de recherche + itinéraire " +
+            "auto-calculé (Pathfinder évite les chevauchements entre équipes)</li>" +
+          "<li>Auto pré-remplissage depuis ⛑️ Lost Mode (dernière position connue + zone d'incertitude)</li>" +
+          "<li>Multi-niveau M-LVL supporté (auto 1 équipe par étage si besoin)</li>" +
+          "<li>Export <strong>3 formats</strong> : PDF imprimable A4 avec carte miniature + KMZ géolocalisé " +
+            "cross-app (Google Earth / OsmAnd) + <code>.mkmsec.json</code> autonome pour partage cross-appareil</li>" +
+        "</ul>" +
+        "<p>🚀 <strong>État 2 — EXÉCUTION TERRAIN</strong> (incident déclenché, vue Live temps réel) :</p>" +
+        "<ul>" +
+          "<li>Bouton <strong>« 🚀 Lancer le plan de secours »</strong> + modale sélection rôle</li>" +
+          "<li><strong>👤 Opérateur surface</strong> : PC chef, vue d'ensemble cards multi-équipes + statut " +
+            "+ dernière obs + bouton « 🚨 Prendre la main » avec retour automatique</li>" +
+          "<li><strong>🚨 Équipier</strong> : sur le terrain, stepper visuel cliquable + observations + " +
+            "<strong>7 statuts rapides</strong> (RAS / Suspect / Bloqué / Indice / Aide demandée / " +
+            "Demi-tour forcé / <strong>Victime trouvée</strong> = card rouge clignotante côté PC) + " +
+            "photos (max 5/étape, IDB local dédié)</li>" +
+          "<li><strong>🚑 Secouriste libre</strong> : renfort sans équipe pré-assignée, notes en vrac " +
+            "chronologiques avec timestamps</li>" +
+          "<li>Timer global avec pause juste · Bandeau « 📦 PLAN TERMINÉ » après arrêt</li>" +
+        "</ul>" +
+        "<p>📤 <strong>Rapport au fil des étapes</strong> à tout moment (bouton dans chaque vue Live) : " +
+        "PDF imprimable / <code>.mkmsec.report.json</code> autonome / texte presse-papier. " +
+        "3 scopes selon ton rôle (global opérateur / équipier seul / notes secouriste).</p>",
+      hint: "Phase 3 single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par .mkmsec.report.json (mail / clé USB / AirDrop). QR code share viendra en v1.27.0+."
+    },
+
     // ═══════════════════════════════════════════════════════════════════════
-    // SECTION E : NAVIGATION & RECHERCHE (13-15)
+    // SECTION E : NAVIGATION & RECHERCHE (14-16)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 13/22 — Recherche unifiée Ctrl+K ───
+    // ─── 14/23 — Recherche unifiée Ctrl+K ───
     {
       emoji: "🔍",
       titre: "Recherche unifiée (Ctrl+K)",
@@ -402,7 +457,7 @@
         "</ul>"
     },
 
-    // ─── 14/22 — Favoris ───
+    // ─── 15/23 — Favoris ───
     {
       emoji: "⭐",
       titre: "Favoris (POI rapides)",
@@ -433,7 +488,7 @@
         "planId. Snapshots complets des points = résilience même si le point est déplacé ou supprimé.</p>"
     },
 
-    // ─── 15/22 — Itinéraire pathfinder ───
+    // ─── 16/23 — Itinéraire pathfinder ───
     {
       emoji: "🗺️",
       titre: "Itinéraire pathfinder",
@@ -462,7 +517,7 @@
         "avec halo SVG drop-shadow.</p>"
     },
 
-    // ─── 16/22 — Mesures ───
+    // ─── 17/23 — Mesures ───
     {
       emoji: "📐",
       titre: "Mesures (distance, surface, total)",
@@ -495,7 +550,7 @@
     // SECTION F : MULTI-NIVEAU & STATS (17-18)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 17/22 — Multi-niveau ───
+    // ─── 18/23 — Multi-niveau ───
     {
       emoji: "🏗️",
       titre: "Multi-niveau (M-LVL)",
@@ -522,7 +577,7 @@
       hint: "Si ta carrière est mono-niveau, ignore cette feature — laissée pour l'usage avancé uniquement."
     },
 
-    // ─── 18/22 — Stats globales + Heatmap ───
+    // ─── 19/23 — Stats globales + Heatmap ───
     {
       emoji: "📊",
       titre: "Stats globales + Heatmap",
@@ -557,7 +612,7 @@
     // SECTION G : EXPORTS (19-20)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 19/22 — Exports session JSON / KMZ / GPX ───
+    // ─── 20/23 — Exports session JSON / KMZ / GPX ───
     {
       emoji: "💾",
       titre: "Exports session — JSON, KMZ, GPX",
@@ -589,7 +644,7 @@
         "exclu (= data layer figé, lecture seule).</p>"
     },
 
-    // ─── 20/22 — Exports images PNG / PDF ───
+    // ─── 21/23 — Exports images PNG / PDF ───
     {
       emoji: "🖼️",
       titre: "Exports images (PNG, PDF imprimable)",
@@ -623,7 +678,7 @@
     // SECTION H : SÉCURITÉ DES DONNÉES & OUTILS (21-22)
     // ═══════════════════════════════════════════════════════════════════════
 
-    // ─── 21/22 — Sauvegardes auto + Undo ───
+    // ─── 22/23 — Sauvegardes auto + Undo ───
     {
       emoji: "🛡️",
       titre: "Sauvegardes & Undo — filet de sécurité",
@@ -655,7 +710,7 @@
         "Tu peux toujours récupérer en exportant manuellement le JSON.</p>"
     },
 
-    // ─── 22/22 — Outils annexes ───
+    // ─── 23/23 — Outils annexes ───
     {
       emoji: "⚙️",
       titre: "Configuration & outils annexes",

@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.25.2` (27/05/2026) — PATCH docs « Mode Secours complètes (CLAUDE §67 + README_USER Phase 3 + AI_CONTEXT recette M + Aide intégrée) ». Aucun changement code applicatif
-**📦 Précédentes shipped main** : `v1.25.1` (3 fixes UX) ; `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain)
+**📦 Version courante** : `v1.25.3` (27/05/2026) — PATCH onboarding « Carte 13/23 Mode Secours ajoutée au tutoriel premier-lancement (22 → 23 cards) »
+**📦 Précédentes shipped main** : `v1.25.2` (docs Mode Secours complètes) ; `v1.25.1` (3 fixes UX) ; `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,41 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-25-2" open>
+<details id="v1-25-3" open>
+<summary><strong>🗓️ 27/05/2026 — 🎓 v1.25.3 : Release PATCH onboarding — Carte « 🚨 Mode Secours » ajoutée au tutoriel (22 → 23 cards)</strong></summary>
+
+Release PATCH onboarding (bump Z : 1.25.2 → 1.25.3). Demande KARMA : « rajoute le du coup aussi on onbarding si c'est pas fait » suite à l'audit doc v1.25.2 qui a révélé que le Mode Secours était documenté dans la modale Aide intégrée mais PAS dans le tutoriel premier-lancement.
+
+### 🆕 Carte 13/23 insérée
+
+Position : entre la carte 12 « ⛑️🚨 Modes urgence » et la carte précédente 13 (Recherche Ctrl+K, désormais 14/23). Toutes les cartes 14 → 22 décalées de +1 (14 → 15, etc., jusqu'à 22 → 23). Renumérotation cosmétique des commentaires devs `// ─── X/23 — ` (pas affichés à l'écran).
+
+### 📋 Contenu de la carte
+
+- **Distinction** des 3 modes « urgence » MyKTAMap :
+  - ⛑️ Je suis perdu = TOI
+  - 🚨 Panique = TOI
+  - 🚨 Mode Secours = **QUELQU'UN D'AUTRE** est perdu, tu coordonnes
+- **État 1 — CRÉATION** : équipes (palette OTAN), parcours (entrée + intermédiaires + sortie), zones de recherche, itinéraires Pathfinder avec avoidances cross-équipes, niveau M-LVL par équipe, exports 3 formats (PDF / KMZ / `.mkmsec.json`)
+- **État 2 — EXÉCUTION TERRAIN** : bouton « 🚀 Lancer le plan », modale sélection rôle, 3 vues Live (👤 Opérateur surface / 🚨 Équipier step-by-step / 🚑 Secouriste libre), 7 statuts d'étape, photos IDB local dédié, timer pause juste, bandeau « 📦 PLAN TERMINÉ »
+- **Rapport au fil des étapes** : 3 formats × 3 scopes, disponible en cours d'exécution + après arrêt
+- **Hint** : warning single-device + roadmap QR code share v1.27.0+
+
+### 📦 Sources de vérité v1.25.3
+
+- `version.json` → `v1.25.3`
+- `js/copyright.js > __MKM__.build` → `v1.25.3`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.25.3`
+
+Aucun nouveau fichier. Modifs : `js/tutorial.js` uniquement (+~80 lignes : carte 13 + ~25 lignes renumérotation commentaires + 5 lignes doc en tête).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.25.2. **Le tutoriel ne s'affiche PAS automatiquement à l'update** (flag `myktamap_tutorial_seen_v1` reste en localStorage). Pour le revoir : 📖 Documentation → bouton 🎓 (re-jouer le tutoriel). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-25-2">
 <summary><strong>🗓️ 27/05/2026 — 📚 v1.25.2 : Release PATCH docs — Mode Secours complètes (Phase 3 + tous patchs v1.23.2 → v1.25.1)</strong></summary>
 
 Release PATCH docs (bump Z : 1.25.1 → 1.25.2). Demande KARMA suite à v1.25.1 : « fait un tour des doc voir si le mode secours est bien détaillé pour mode édition et 3 mode opérateur ».
