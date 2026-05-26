@@ -6847,6 +6847,14 @@ function _setItiPauseMinutes(min) {
 // s'applique aussi au calcul des durées Mode Secours).
 window.getItiPauseEnabled = _getItiPauseEnabled;
 window.getItiPauseMinutes = _getItiPauseMinutes;
+// 🆕 v1.23.6 — Setters exposés pour permettre à Mode Secours (et autres
+// modules futurs) de modifier la pause depuis leur propre UI. Persistance
+// localStorage immédiate via _setItiPauseEnabled/_setItiPauseMinutes.
+// Pas de side-effect global au set (pas de re-render auto) — le caller
+// est responsable de recalculer ce qui dépend de la pause (durées
+// estimées d'itinéraire, durées d'équipes Mode Secours, etc.).
+window.setItiPauseEnabled = _setItiPauseEnabled;
+window.setItiPauseMinutes = _setItiPauseMinutes;
 
 function _getItiSpeedPreset() {
   try {

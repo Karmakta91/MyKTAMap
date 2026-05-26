@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.5` (26/05/2026) — PATCH polish « Mode Secours : modale preview AVANT import + mini-légende carte PDF » — UX terrain auto-explicative
-**📦 Précédentes shipped main** : `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡)
+**📦 Version courante** : `v1.23.6` (26/05/2026) — PATCH « Mode Secours : réglage de la pause par point accessible depuis le module » — cohérence cross-feature avec l'itinéraire principal
+**📦 Précédentes shipped main** : `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,62 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-5" open>
+<details id="v1-23-6" open>
+<summary><strong>🗓️ 26/05/2026 — 🛑 v1.23.6 : Release PATCH — Réglage pause par point accessible depuis Mode Secours</strong></summary>
+
+Release PATCH (bump Z : 1.23.5 → 1.23.6). Demande KARMA terrain : « rend la possibilité de regler le temps de pause par point, que on a fait dans itineraire, depuis le module secour ».
+
+### 🛑 Bloc Pause dans Mode Secours
+
+Nouveau bloc « 🛑 Pause entre les arrêts » dans la section 📝 Contexte de la vue Edit (juste après le bloc 🔍 Outils d'analyse / heatmap) :
+
+- Checkbox « Activer la pause par point »
+- Input number 0-120 min (step 1)
+- Hint explicatif « *S'applique aussi à l'itinéraire principal de l'app.* »
+
+Au changement → persiste localStorage + recalcule auto les durées estimées de toutes les équipes du scénario + toast feedback résumant le nombre de durées recalculées.
+
+### 🔧 Setters globaux exposés
+
+`js/interface.js` expose désormais en plus des getters existants :
+
+```js
+window.setItiPauseEnabled(bool);   // persiste localStorage
+window.setItiPauseMinutes(number); // clamp [0, 120], persiste
+```
+
+Permet à Mode Secours (et tout module futur) de modifier les prefs sans dupliquer la logique localStorage. **Pas de side-effect global au set** — le caller est responsable de recalculer ce qui en dépend (cohérent avec le pattern getter/setter du projet).
+
+### 🆕 Helper `_recalculerToutesDureesEquipes(scenarioId)`
+
+Itère les équipes avec itinéraire calculé (`distanceM > 0`), calcule nb waypoints effectif (entrée + intermédiaires + sortie), appelle `window.getItiTempsMinutes(distM, nbWp)` pour la nouvelle durée. Si delta > 0.01 min → update + commit. Retourne le nombre d'équipes mises à jour. Pas async (calcul arithmétique pur) → toast unique résumé.
+
+### ✨ Cohérence cross-feature
+
+Les prefs pause sont les MÊMES entre la modale Itinéraire et la modale Mode Secours (même localStorage keys `myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes`). Si l'user change la pause depuis Mode Secours → l'itinéraire principal du tracker recalcule sa durée au prochain affichage. Cohérence garantie sans duplication.
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. Pure UI lecture/écriture localStorage (clés déjà existantes depuis v1.23.0). Aucun fetch ajouté.
+
+### 📦 Sources de vérité v1.23.6
+
+- `version.json` → `v1.23.6`
+- `js/copyright.js > __MKM__.build` → `v1.23.6`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.6`
+
+Aucun nouveau fichier. Modifs :
+- `js/interface.js` (+8 lignes : exposition `window.setItiPauseEnabled`/`setItiPauseMinutes`)
+- `js/secoursMode.js` (+~95 lignes : `_renderPauseToolBlock` + `_recalculerToutesDureesEquipes` + 2 handlers change)
+- `css/style.css` (+~75 lignes : `.kta-secours-pause-row` + `.kta-secours-pause-toggle` + `.kta-secours-pause-input-wrap` + variants light theme)
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.23.5 (helpers globaux setters ajoutés en additif, getters/comportement legacy strictement préservés). Les scénarios existants gardent leurs `dureeEstimeeMin` actuels — le recalcul auto se déclenche UNIQUEMENT au changement explicite de la pref depuis la nouvelle UI (pas au boot). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-23-5">
 <summary><strong>🗓️ 26/05/2026 — 👁️ v1.23.5 : Release PATCH polish — Modale preview AVANT import .mkmsec.json + mini-légende carte PDF</strong></summary>
 
 Release PATCH (bump Z : 1.23.4 → 1.23.5). Polish UX terrain post-v1.23.4. 2 sujets indépendants :

@@ -2232,6 +2232,11 @@
                 // 🆕 v1.23.0 Phase 2 / Feature D — Toggle Heatmap pour visualiser
                 // les zones probables d'activité (timeline tracker + annotations).
                 _renderHeatmapToolBlock() +
+                // 🆕 v1.23.6 — Réglage de la pause par point (partage avec
+                // l'itinéraire principal — cf interface.js > _getItiPauseEnabled
+                // + _getItiPauseMinutes). Au change → recalcul auto des durées
+                // estimées de toutes les équipes du scénario.
+                _renderPauseToolBlock() +
               '</div>' +
             '</details>';
 
@@ -2417,6 +2422,78 @@
                '</button>' +
              '</div>' +
            '</div>';
+  }
+
+  // 🆕 v1.23.6 — Bloc UI pour régler la pause par point depuis Mode Secours.
+  // Lit/écrit les MÊMES prefs que la modale Itinéraire (helpers globaux
+  // window.getItiPauseEnabled/Minutes + window.setItiPauseEnabled/Minutes).
+  // Au changement → recalcul auto des durées estimées de toutes les équipes
+  // du scénario courant (sinon les `dureeEstimeeMin` cached restent stale).
+  // Skip silencieux si les setters globaux ne sont pas exposés (rétro-compat
+  // si interface.js est ancien — ne devrait pas arriver après v1.23.6).
+  function _renderPauseToolBlock() {
+    if (typeof window.getItiPauseEnabled !== "function"
+        || typeof window.getItiPauseMinutes !== "function"
+        || typeof window.setItiPauseEnabled !== "function"
+        || typeof window.setItiPauseMinutes !== "function") {
+      return "";
+    }
+    const enabled = !!window.getItiPauseEnabled();
+    const minutes = window.getItiPauseMinutes();
+    return '<div class="kta-secours-tool-block">' +
+             '<div class="kta-secours-tool-block-titre">🛑 Pause entre les arrêts</div>' +
+             '<div class="kta-secours-tool-block-desc">' +
+               'Temps de pause appliqué à chaque arrêt intermédiaire ' +
+               '(entrée et sortie exclues) pour le calcul de la durée ' +
+               'estimée d\'un parcours d\'équipe. <em>Partagé avec ' +
+               'l\'itinéraire principal de l\'app.</em>' +
+             '</div>' +
+             '<div class="kta-secours-pause-row">' +
+               '<label class="kta-secours-pause-toggle">' +
+                 '<input type="checkbox" id="kta-sec-pause-enabled" ' +
+                   (enabled ? 'checked' : '') + '>' +
+                 ' <span>Activer la pause par point</span>' +
+               '</label>' +
+               '<div class="kta-secours-pause-input-wrap" ' +
+                  (enabled ? '' : 'style="opacity:0.5;"') + '>' +
+                 '<label for="kta-sec-pause-min">Durée :</label>' +
+                 '<input type="number" id="kta-sec-pause-min" min="0" max="120" step="1" ' +
+                   'value="' + Math.round(minutes) + '" ' +
+                   (enabled ? '' : 'disabled') + '>' +
+                 '<span class="kta-secours-pause-unit">min</span>' +
+               '</div>' +
+             '</div>' +
+           '</div>';
+  }
+
+  // 🆕 v1.23.6 — Recalcule les durées estimées de toutes les équipes du
+  // scénario qui ont un itinéraire déjà calculé (distanceM connue). Utilisé
+  // au changement de pref pause pour éviter les valeurs stale affichées
+  // dans les cards équipes + le PDF/KMZ.
+  // Pas async (juste recalcul arithmétique via getItiTempsMinutes), donc
+  // pas de toast en cascade — un seul toast résumé à la fin.
+  function _recalculerToutesDureesEquipes(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) return 0;
+    if (typeof window.getItiTempsMinutes !== "function") return 0;
+    let updated = 0;
+    s.groupes.forEach(function(g) {
+      if (typeof g.distanceM !== "number" || g.distanceM <= 0) return;
+      // Calcul du nb waypoints effectif (entree + intermediaires + sortie)
+      const nbWp = (g.entree ? 1 : 0)
+                 + (Array.isArray(g.intermediaires) ? g.intermediaires.length : 0)
+                 + (g.sortie ? 1 : 0);
+      const newDuree = window.getItiTempsMinutes(g.distanceM, nbWp);
+      if (Math.abs((g.dureeEstimeeMin || 0) - newDuree) > 0.01) {
+        g.dureeEstimeeMin = newDuree;
+        updated++;
+      }
+    });
+    if (updated > 0) {
+      s.updatedAt = _nowIso();
+      _commitMutation(s);
+    }
+    return updated;
   }
 
   // 🆕 v1.23.0 Phase 2 / Feature C — Bloc lecture seule lastKnownPoint +
@@ -2789,6 +2866,42 @@
           obs.observe(hmModal.parentNode || document.body, { childList: true });
         });
       });
+      // 🆕 v1.23.6 — Handlers du bloc Pause configurable.
+      // Au change → persiste localStorage (via setters globaux exposés par
+      // interface.js) + recalcule durées de toutes les équipes du scénario
+      // courant (via _recalculerToutesDureesEquipes) + re-render edit pour
+      // update visuel des chips durée dans les cards équipes + toast feedback.
+      const pauseEnabledCb = document.getElementById("kta-sec-pause-enabled");
+      const pauseMinInput = document.getElementById("kta-sec-pause-min");
+      if (pauseEnabledCb && typeof window.setItiPauseEnabled === "function") {
+        pauseEnabledCb.addEventListener("change", function() {
+          window.setItiPauseEnabled(pauseEnabledCb.checked);
+          const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
+          _toast(
+            pauseEnabledCb.checked
+              ? "✓ Pause activée" + (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : "")
+              : "✓ Pause désactivée" + (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : ""),
+            "info"
+          );
+          _switchView("edit");   // re-render pour update opacité input + cards
+        });
+      }
+      if (pauseMinInput && typeof window.setItiPauseMinutes === "function") {
+        // Au "change" (blur + Enter), pas "input" (évite recalc à chaque chiffre tapé)
+        pauseMinInput.addEventListener("change", function() {
+          const raw = parseFloat(pauseMinInput.value);
+          const v = Math.max(0, Math.min(120, isFinite(raw) ? raw : 0));
+          pauseMinInput.value = String(Math.round(v));  // clamp visuel immédiat
+          window.setItiPauseMinutes(v);
+          const updated = _recalculerToutesDureesEquipes(_currentScenarioId);
+          _toast(
+            "✓ Pause : " + Math.round(v) + " min" +
+              (updated > 0 ? " — " + updated + " durée" + (updated > 1 ? "s" : "") + " recalculée" + (updated > 1 ? "s" : "") : ""),
+            "info"
+          );
+          _switchView("edit");
+        });
+      }
       // 🆕 v1.23.3 (KARMA "crée une équipe et lui assigné une zone sur un
       // niveau") : "+ Ajouter une équipe" ouvre désormais un mini-prompt qui
       // demande nom + niveau (dropdown des availableLevels). Si plan
