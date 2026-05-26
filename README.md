@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.25.0` (26/05/2026) — MINOR « Rapport au fil des étapes » — 3 formats (📄 PDF / 📦 JSON / 📋 Texte) pour chaque rôle (Opérateur / Équipier / Secouriste). Disponible en cours d'exécution + après arrêt
-**📦 Précédentes shipped main** : `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours)
+**📦 Version courante** : `v1.25.1` (26/05/2026) — PATCH 3 fixes UX « toast controllerchange silencé en prod + bandeau CTA spacing + header sticky renforcé »
+**📦 Précédentes shipped main** : `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,58 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-25-0" open>
+<details id="v1-25-1" open>
+<summary><strong>🗓️ 26/05/2026 — 🩹 v1.25.1 : Release PATCH 3 fixes UX (toast controllerchange silencé + bandeau spacing + header sticky renforcé)</strong></summary>
+
+Release PATCH (bump Z : 1.25.0 → 1.25.1). 3 bugs UX remontés KARMA terrain.
+
+### 🐛 Bug 1 — Toast `controllerchange` spammait en dev
+
+**Root cause** : le hook `navigator.serviceWorker.addEventListener("controllerchange")` ajouté en v1.20.0 affichait un toast « 🔄 Mise à jour mineure appliquée — assets fraîchement rechargés. » à CHAQUE prise de contrôle d'un nouveau SW. Sur les cycles dev fréquents (v1.23.x → v1.24.0 → v1.24.1 ... 10+ updates en 24h), spam visuel massif. KARMA qualifie de « popup style log de dev ».
+
+**Fix** : Toast conditionnel à `APP_CONFIG.debugMode === true` + prefix `[DEBUG]` dans le message. En prod (debugMode OFF), aucun toast visible. Le `console.log("[PWA] 🔄 Nouveau SW...")` reste TOUJOURS actif pour traçabilité dans 🐛 Logs détaillés.
+
+### 🐛 Bug 2 — Menu Opérateur passe derrière header sticky
+
+**Root cause** : fix v1.24.2 (background opaque + box-shadow + z-index 10) ne suffisait pas. Un stacking context conflictuel laissait passer le scroll des cards en filigrane derrière le header sticky en vue Live Mode Opérateur.
+
+**Fix renforcement triple** :
+
+```css
+.kta-secours-live-header {
+  background: #1a1f2e;           /* SOLID, pas gradient */
+  z-index: 100;                   /* 10 → 100 */
+  isolation: isolate;             /* nouveau stacking context forcé */
+  border-bottom-width: 2px;       /* démarcation visuelle */
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);  /* relief prononcé */
+}
+```
+
+### 🐛 Bug 3 — Bandeau CTA touche les boutons header
+
+**Root cause** : `.kta-secours-lancer-bandeau` n'avait que `margin-bottom: 14px`, pas de `margin-top`. Visuellement collé contre les boutons header (← Liste / titre / 🗺️ Voir sur carte).
+
+**Fix** : Ajout `margin-top: 14px` pour aérer.
+
+### 🌞 Variant thème clair
+
+`body.kta-theme-light .kta-secours-live-header` reçoit aussi le renforcement v1.25.1 : `border-bottom-width: 2px` + `box-shadow: 0 6px 14px rgba(80, 60, 30, 0.30)`.
+
+### 📦 Sources de vérité v1.25.1
+
+- `version.json` → `v1.25.1`
+- `js/copyright.js > __MKM__.build` → `v1.25.1`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.25.1`
+
+Aucun nouveau fichier. Modifs : `index.html` (toast controllerchange conditionnel debugMode) + `css/style.css` (~20 lignes).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.25.0 (toast `controllerchange` ré-activable en activant debugMode si besoin de traçabilité dev). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-25-0">
 <summary><strong>🗓️ 26/05/2026 — 📤 v1.25.0 : Release MINOR — Rapport au fil des étapes pour les 3 rôles (Opérateur / Équipier / Secouriste)</strong></summary>
 
 Release MINOR (bump Y : 1.24.x → 1.25.0). Demande KARMA : « on doit pouvoir générer un rapport au fil des étapes pour chaque type Operator, Equipier, Secour ».

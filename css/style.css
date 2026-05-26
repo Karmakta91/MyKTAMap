@@ -19161,6 +19161,10 @@ html.kta-theme-light .kta-secours-pick-result strong {
   gap: 12px;
   padding: 12px 14px;
   border-radius: 8px;
+  /* 🐛 v1.25.1 (KARMA "prêt à déclencher le plan touche les boutons au dessus,
+     le descendre un peu") : margin-top 14px pour aérer entre le header edit
+     (boutons Liste / titre / toggle-overlay) et le bandeau CTA jaune. */
+  margin-top: 14px;
   margin-bottom: 14px;
   flex-wrap: wrap;
 }
@@ -19293,21 +19297,28 @@ html.kta-theme-light .kta-secours-pick-result strong {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  /* 🐛 v1.24.2 (KARMA "bug du modal opérateur tout défile derrière l'entête
-     Operateur surface : scénario") : background OPAQUE pour que le contenu
-     qui scroll en-dessous ne se voit pas à travers le header sticky.
-     Avant : rgba(...,0.85) → les cards opérateur passaient en filigrane
-     derrière le header → illisible. Box-shadow + bordure pour démarquer
-     visuellement du contenu sous-jacent. z-index 10 pour passer au-dessus
-     des cards (qui n'ont pas de z-index spécifique = z-index auto). */
-  background: linear-gradient(135deg, #1f2740, #0e1424);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45);
+  /* 🐛 v1.25.1 (KARMA "tout le menu déroulant operatur passe dériére son
+     entete Opérateur de surface") : fix v1.24.2 (background opaque) ne
+     suffisait pas car un stacking context conflictuel laissait passer
+     le scroll en filigrane. Renforcement :
+     • background SOLID #1a1f2e (pas gradient — couleur unique pour
+       éviter ambiguïté d'opacité sur certains browsers Chromium mobile)
+     • z-index: 100 (au lieu de 10) pour passer au-dessus de tout
+       (cards opérateur, badges, contenu scroll)
+     • isolation: isolate force un nouveau stacking context qui empêche
+       les enfants scroll de remonter visuellement
+     • border-bottom marqué + box-shadow plus prononcée pour démarquer
+       visuellement le header de la zone de scroll qui le suit. */
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom-width: 2px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
   border-radius: 6px;
   margin-bottom: 10px;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: 100;
+  isolation: isolate;
   flex-wrap: wrap;
 }
 .kta-secours-live-header-titre {
@@ -19833,11 +19844,13 @@ html.kta-theme-light .kta-secours-lancer-equipe-select {
 }
 body.kta-theme-light .kta-secours-live-header,
 html.kta-theme-light .kta-secours-live-header {
-  /* 🐛 v1.24.2 — Background opaque pour masquer le scroll qui passe en
-     dessous (cf bug Mode Opérateur "tout défile derrière l'entête") */
+  /* 🐛 v1.25.1 — Renforcement (cf v1.25.1 dark mode) : background opaque
+     + border-bottom prononcé + box-shadow plus visible. isolation: isolate
+     hérité de la règle parent. */
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
   border: 1px solid var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
-  box-shadow: 0 4px 8px rgba(80, 60, 30, 0.20) !important;
+  border-bottom-width: 2px !important;
+  box-shadow: 0 6px 14px rgba(80, 60, 30, 0.30) !important;
 }
 body.kta-theme-light .kta-secours-live-header-titre,
 html.kta-theme-light .kta-secours-live-header-titre {

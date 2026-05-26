@@ -5030,10 +5030,17 @@
         return;
       }
       // Vraie update : un ancien controller a été remplacé.
+      // Log console TOUJOURS (utile pour debug + traçabilité dans 🐛 Logs).
       console.log("[PWA] 🔄 Nouveau SW a pris le contrôle (cache mis à jour)");
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      // 🆕 v1.25.1 (KARMA "popup style log de dev en mode mise à jour") :
+      // Toast UNIQUEMENT en debugMode. En prod, l'user ne voit rien — le
+      // log console reste pour les devs qui inspectent. Avant : toast à
+      // CHAQUE bump cache → spam visuel sur les cycles dev fréquents
+      // (v1.23.x → v1.24.0 → v1.24.1 ... 10+ updates en 24h).
+      const debugOn = !!(window.APP_CONFIG && window.APP_CONFIG.debugMode === true);
+      if (debugOn && window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
         window.OOMGuard.showToast(
-          "🔄 Mise à jour mineure appliquée — assets fraîchement rechargés.",
+          "🔄 [DEBUG] Mise à jour mineure appliquée — assets fraîchement rechargés.",
           "info"
         );
       }

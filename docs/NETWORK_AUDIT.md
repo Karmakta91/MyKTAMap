@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.25.0** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.25.1** (26 mai 2026).
+>
+> **v1.25.1 (Release PATCH 3 fixes UX)** : **AUCUN impact réseau, aucune nouvelle permission, aucun nouveau store**. 3 fixes UX terrain : (1) toast `controllerchange` v1.20.0 désormais conditionnel à `APP_CONFIG.debugMode === true` (le `console.log` reste actif pour traçabilité dev mais aucun toast en prod — le hook réseau lui-même est INCHANGÉ, juste l'affichage UI silencé). (2) Header sticky vue Live Mode Opérateur renforcé (background solid + z-index 100 + `isolation: isolate` + box-shadow prononcé). (3) Bandeau CTA « Prêt à déclencher » reçoit `margin-top: 14px`. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — fix UX strict.
 >
 > **v1.25.0 (Release MINOR — Rapport au fil des étapes pour les 3 rôles)** : **AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store**. Génération de rapports d'exécution Mode Secours dans 3 formats (PDF via jsPDF déjà chargé / JSON `.mkmsec.report.json` autonome / texte presse-papier) pour 3 scopes (Opérateur global / Équipier individuel / Secouriste notes libres). 100 % client-side : jsPDF (lib locale chargée depuis lib/jspdf.umd.min.js), Blob URLs locales avec téléchargement natif `<a download>`, FileReader pour base64 photos (lecture IDB locale `myktamap_secours_photos` déjà documenté v1.24.0), `navigator.clipboard.writeText` avec fallback `execCommand("copy")`. Aucun fetch ajouté, aucune transmission cloud. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — rapports strictement offline-first et 100 % local.
 >
