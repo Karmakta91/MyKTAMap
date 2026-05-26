@@ -960,14 +960,18 @@
   //
   // Pré-requis : calibrage KMZ déjà fait (via modale KMZ Export classique).
   // Sinon → guide l'user vers la modale Export sessions onglet 🌍 KMZ.
-  function exporterKMZ(scenarioId) {
+  // 🆕 v1.23.0 (KARMA "il faudrai avoir le plan en fond a 60%") : exporterKMZ
+  // devient ASYNC pour fetch l'image plan (RUNTIME_ASSETS si dispo, sinon
+  // fetch HTTP) avant de la passer en GroundOverlay 60 % opacity. Pattern
+  // strictement identique à sessionExporter.js:2906-2930.
+  async function exporterKMZ(scenarioId) {
     const s = get(scenarioId || _currentScenarioId);
     if (!s) {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Scénario introuvable.", "error");
+      _toast("⚠️ Scénario introuvable.", "error");
       return null;
     }
     if (!window.KmzExport || typeof window.KmzExport.genererKmz !== "function") {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Module KmzExport non chargé.", "error");
+      _toast("⚠️ Module KmzExport non chargé.", "error");
       return null;
     }
     // 🐛 v1.23.0-fixB (KARMA "georef pas pris en compte dans mode secour
@@ -1007,34 +1011,62 @@
       _toast("⚠️ Calibrage corrompu : " + e.message, "error");
       return null;
     }
-    // On délègue à KmzExport.genererKmz avec :
-    //   • data minimal (pas d'editorPoints/roads/zones, on injecte nos polygons manuels en post)
-    //   • secoursPlan dans les extras
-    // Approche pragmatique MVP : on génère un KMZ "secours-only" simple en utilisant
-    // l'extension myktamap-extras.json + on attache aussi des Placemarks/Polygons via
-    // un mini-KML custom dans le ZIP.
+    _toast("⏳ Génération KMZ en cours (fetch image plan)…", "info");
+    // 🆕 v1.23.0 (KARMA "il faudrai avoir le plan en fond a 60%") : on fetch
+    // l'image plan pour la passer en GroundOverlay opacity 60 %. Donne aux
+    // équipes de secours le CONTEXTE SPATIAL (puits, galeries, structures
+    // sur le fond) en + des zones colorées. Pattern aligné sessionExporter.
     const pc = window.PLAN_CONFIG;
+    let imageBlob = null;
+    let imageFilename = null;
+    if (pc && pc.plan && pc.plan.baseImage) {
+      const baseImagePath = pc.plan.baseImage;
+      const fullPath = baseImagePath.indexOf("/") >= 0 ? baseImagePath : ("data/" + baseImagePath);
+      imageFilename = baseImagePath;
+      // Tentative 1 : RUNTIME_ASSETS (cas ZIP local importé)
+      if (window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[fullPath]) {
+        const asset = window.RUNTIME_ASSETS[fullPath];
+        if (asset.file instanceof Blob) {
+          imageBlob = asset.file;
+        } else if (asset.url) {
+          try { const r = await fetch(asset.url); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
+        }
+      }
+      // Tentative 2 : fetch direct (cas plan serveur HTTP)
+      if (!imageBlob) {
+        try { const r = await fetch(fullPath); if (r.ok) imageBlob = await r.blob(); } catch(e) {}
+      }
+      if (!imageBlob) {
+        console.warn("[SecoursMode] Image plan introuvable → KMZ généré sans GroundOverlay");
+        imageFilename = null;
+      }
+    }
+
+    // On délègue à KmzExport.genererKmz avec :
+    //   • GroundOverlay 60 % (le plan en fond pour contexte spatial — v1.23.0)
+    //   • data session vides (on injecte nos polygons via secoursPlan extras)
+    //   • secoursPlan + secoursPalette dans les extras (KML Folder visible)
     const opts = {
-      planName:    (pc && pc.plan && pc.plan.name)    || "Plan",
-      planVersion: (pc && pc.plan && pc.plan.version) || "",
-      planAuthor:  (pc && pc.plan && pc.plan.author)  || "",
-      imageW:      (pc && pc.plan && pc.plan.imageWidth)  || 1000,
-      imageH:      (pc && pc.plan && pc.plan.imageHeight) || 1000,
-      transform:   transform,
-      imageOpacity: 60,
+      planName:      (pc && pc.plan && pc.plan.name)    || "Plan",
+      planVersion:   (pc && pc.plan && pc.plan.version) || "",
+      planAuthor:    (pc && pc.plan && pc.plan.author)  || "",
+      imageW:        (pc && pc.plan && pc.plan.imageWidth)  || 1000,
+      imageH:        (pc && pc.plan && pc.plan.imageHeight) || 1000,
+      transform:     transform,
+      imageOpacity:  60,                         // 60 % = lecture sans masquer
       include: {
-        image:      false,  // pas le plan en image pour ce mode (secours-only)
+        image:      !!imageBlob,                  // ✓ si fetch OK
         points:     false, roads: false, zones: false, structures: false,
         jonctions:  false, itineraire: false, dataLayers: false
       },
       levels: null,
       data: { editorPoints: [], roads: [], zones: [] },
-      imageBlob:     null,
-      imageFilename: "",
+      imageBlob:     imageBlob,
+      imageFilename: imageFilename,
       iconsToEmbed:  {},
       // 🆕 v1.22.0 — secoursPlan dans les extras (re-import MyKTAMap natif)
       secoursPlan:   s,
-      // 🆕 v1.22.0 — injection KML manuelle des polygons / placemarks équipes
+      // 🆕 v1.22.0 — injection KML Folder cross-app (Polygons + Placemarks + LineStrings)
       secoursPalette: PALETTE
     };
     Promise.resolve(window.KmzExport.genererKmz(opts)).then(function(blob) {
@@ -1667,7 +1699,13 @@
       });
       // Export KMZ
       corps.querySelectorAll('[data-action="export-kmz"]').forEach(function(btn) {
-        btn.addEventListener("click", function() { exporterKMZ(s.id); });
+        btn.addEventListener("click", function() {
+          // 🆕 v1.23.0 — exporterKMZ est async (fetch plan image) — catch les rejets
+          Promise.resolve(exporterKMZ(s.id)).catch(function(e) {
+            console.warn("[SecoursMode] exporterKMZ rejected :", e);
+            _toast("⚠️ Erreur KMZ : " + (e.message || e), "error");
+          });
+        });
       });
     }
   }
