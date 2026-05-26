@@ -1063,6 +1063,10 @@
                   _renderParcoursSection(g) +
                   '<div class="kta-secours-groupe-actions">' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">⬛ Définir zone</button>' +
+                    // 🆕 v1.22.0-fix4 (KARMA "on peut avoir un bouton tous les
+                    // points dans la zone de recherche") — ajoute tous les POI
+                    // dans la zone comme intermédiaires triés par proximité.
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="add-pois-zone" data-gid="' + _escAttr(g.id) + '" title="Ajoute tous les POI de la zone comme étapes (triés par proximité de l\'entrée)">✨ POI de la zone</button>' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">🗺️ Calc. itinéraire</button>' +
                   '</div>' +
                 '</div>' +
@@ -1135,6 +1139,53 @@
     if (a.pointId && b.pointId) return a.pointId === b.pointId;
     return Math.abs((a.x || 0) - (b.x || 0)) < 0.5
         && Math.abs((a.y || 0) - (b.y || 0)) < 0.5;
+  }
+
+  // 🆕 v1.22.0-fix4 — Helpers géométrie pour "POI dans la zone"
+  // Ray-casting (cohérent avec pathfinder.js > _pointInPolygon)
+  function _pointInPolygon(p, poly) {
+    if (!Array.isArray(poly) || poly.length < 3) return false;
+    let inside = false;
+    const x = p.x, y = p.y;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y;
+      const xj = poly[j].x, yj = poly[j].y;
+      const intersect = ((yi > y) !== (yj > y)) &&
+                        (x < (xj - xi) * (y - yi) / (yj - yi + 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Distance d'un point à un segment AB (en pixels)
+  function _distPointSegment(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) {
+      // Segment dégénéré = un point
+      const ddx = p.x - a.x, ddy = p.y - a.y;
+      return Math.sqrt(ddx * ddx + ddy * ddy);
+    }
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const cx = a.x + t * dx, cy = a.y + t * dy;
+    const ddx = p.x - cx, ddy = p.y - cy;
+    return Math.sqrt(ddx * ddx + ddy * ddy);
+  }
+
+  // Distance min d'un point à une polyline (toutes ses sections)
+  function _distPointPolyline(p, points) {
+    if (!Array.isArray(points) || points.length === 0) return Infinity;
+    if (points.length === 1) {
+      const dx = p.x - points[0].x, dy = p.y - points[0].y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+    let minD = Infinity;
+    for (let i = 0; i < points.length - 1; i++) {
+      const d = _distPointSegment(p, points[i], points[i + 1]);
+      if (d < minD) minD = d;
+    }
+    return minD;
   }
 
   // ============================================================
@@ -1329,6 +1380,12 @@
           _ouvrirChoixZoneMode(btn.getAttribute("data-gid"));
         });
       });
+      // 🆕 v1.22.0-fix4 — POI de la zone (ajoute tous les POI comme étapes)
+      corps.querySelectorAll('[data-action="add-pois-zone"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _ajouterPoisDansZone(s.id, btn.getAttribute("data-gid"));
+        });
+      });
       // Calc itinéraire (commit 4)
       corps.querySelectorAll('[data-action="calc-iti"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -1437,6 +1494,7 @@
 
   // 🆕 v1.22.0-fix2 — applique un waypoint sélectionné (depuis search OU clic)
   // au bon endroit dans le groupe (entree, sortie ou intermediaires[idx]).
+  // 🆕 v1.22.0-fix4 — déclenche auto-recalc de l'itinéraire si déjà calc une fois.
   function _appliquerWaypoint(groupeId, role, idx, wp) {
     const s = get(_currentScenarioId);
     if (!s) return;
@@ -1455,9 +1513,11 @@
       }
       updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
     }
+    _scheduleAutoRecalc(_currentScenarioId, groupeId);
   }
 
   // 🆕 v1.22.0-fix2 — clear un waypoint (entree, sortie → null ; intermediaire → splice)
+  // 🆕 v1.22.0-fix4 — auto-recalc déclenché aussi si user enlève un waypoint
   function _clearWaypoint(groupeId, role, idx) {
     const s = get(_currentScenarioId);
     if (!s) return;
@@ -1474,6 +1534,7 @@
         updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
       }
     }
+    _scheduleAutoRecalc(_currentScenarioId, groupeId);
     _switchView("edit");
   }
 
@@ -2010,6 +2071,121 @@
     } else {
       console.log("[SecoursMode] " + (type || "info").toUpperCase() + " — " + msg);
     }
+  }
+
+  // 🆕 v1.22.0-fix4 (KARMA "on peut avoir aussi un bouton tous les points
+  // dans la zone de recherche") : ajoute en intermédiaires TOUS les POI
+  // qui tombent dans la zone définie de l'équipe (polygon ou roads buffer
+  // 30 px). Skip les POI déjà présents en entrée/sortie/intermédiaires.
+  // Tri par distance croissante à l'entrée → l'itinéraire suggéré est plus
+  // efficace (greedy nearest neighbor approximation).
+  function _ajouterPoisDansZone(scenarioId, groupeId) {
+    const s = get(scenarioId);
+    if (!s) return;
+    const g = s.groupes.find(function(x) { return x.id === groupeId; });
+    if (!g) return;
+    if (!g.zoneType) {
+      _toast("⚠️ Définis d'abord une zone (polygone ou tracés) via ⬛ Définir zone.", "warn");
+      return;
+    }
+    if (!g.entree) {
+      _toast("⚠️ Définis d'abord une entrée pour ordonner les POI par proximité.", "warn");
+      return;
+    }
+    if (!window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") {
+      _toast("⚠️ Module Recherche indisponible.", "error");
+      return;
+    }
+    _toast("⏳ Recherche des POI dans la zone…", "info");
+    Promise.resolve(window.SearchPoints.getAllPoints()).then(function(all) {
+      if (!Array.isArray(all)) all = [];
+      // Set des POI déjà présents dans le parcours (par pointId OU coords)
+      const dejaPresent = function(p) {
+        if (_samePoint(p, g.entree)) return true;
+        if (_samePoint(p, g.sortie)) return true;
+        return (g.intermediaires || []).some(function(w) { return _samePoint(p, w); });
+      };
+      // Filtre les POI dans la zone
+      const candidats = [];
+      all.forEach(function(entry) {
+        const p = entry.point || entry;
+        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+        // Skip si M-LVL actif et niveau différent de l'entrée (cohérent pathfinder)
+        if (window.APP_CONFIG && window.APP_CONFIG.multiLevel === true
+            && typeof p.level === "number" && typeof g.entree.level === "number"
+            && p.level !== g.entree.level) return;
+        // Test zone
+        let inside = false;
+        if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
+          inside = _pointInPolygon(p, g.zonePolygon);
+        } else if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+          for (let i = 0; i < g.zoneRoadIds.length; i++) {
+            const road = allRoads.find(function(r) { return r.id === g.zoneRoadIds[i]; });
+            if (!road || !Array.isArray(road.points)) continue;
+            if (_distPointPolyline(p, road.points) <= 30) {  // buffer 30 px
+              inside = true;
+              break;
+            }
+          }
+        }
+        if (!inside) return;
+        if (dejaPresent({ x: p.x, y: p.y, pointId: p.id })) return;
+        // Distance à l'entrée pour le tri
+        const dx = p.x - g.entree.x, dy = p.y - g.entree.y;
+        const distFromEntree = Math.sqrt(dx * dx + dy * dy);
+        candidats.push({
+          x:       p.x,
+          y:       p.y,
+          level:   typeof p.level === "number" ? p.level : (g.entree.level || 0),
+          pointId: p.id || null,
+          label:   p.nom || p.id || null,
+          _d:      distFromEntree
+        });
+      });
+      if (candidats.length === 0) {
+        _toast("ℹ️ Aucun POI trouvé dans la zone (qui ne soit pas déjà dans le parcours).", "info");
+        return;
+      }
+      // Tri par distance croissante à l'entrée (greedy nearest neighbor)
+      candidats.sort(function(a, b) { return a._d - b._d; });
+      // Strip le _d helper avant save
+      const newIntermediaires = (g.intermediaires || []).slice().concat(
+        candidats.map(function(c) {
+          return { x: c.x, y: c.y, level: c.level, pointId: c.pointId, label: c.label };
+        })
+      );
+      updateGroupe(scenarioId, groupeId, { intermediaires: newIntermediaires });
+      _toast("✓ " + candidats.length + " POI ajouté" + (candidats.length > 1 ? "s" : "") +
+             " comme étapes intermédiaires (triés par proximité de l'entrée).", "info");
+      _switchView("edit");
+    }).catch(function(e) {
+      console.warn("[SecoursMode] _ajouterPoisDansZone échoué :", e);
+      _toast("⚠️ Erreur : " + (e.message || e), "error");
+    });
+  }
+
+  // 🆕 v1.22.0-fix4 (KARMA "quand j'ajoute un point il ne s'ajoute pas à
+  // l'itinéraire") : auto-recalc de l'itinéraire au changement de waypoints.
+  // Debounce 500 ms pour éviter N calc consécutifs si l'user ajoute plusieurs
+  // points rapidement. Skip si entrée OU sortie manquante (Pathfinder
+  // throw sinon → toast bruyant inutile).
+  const _autoRecalcTimers = {};   // groupeId → setTimeout handle
+  function _scheduleAutoRecalc(scenarioId, groupeId) {
+    if (_autoRecalcTimers[groupeId]) clearTimeout(_autoRecalcTimers[groupeId]);
+    _autoRecalcTimers[groupeId] = setTimeout(function() {
+      delete _autoRecalcTimers[groupeId];
+      const s = get(scenarioId);
+      if (!s) return;
+      const g = s.groupes.find(function(x) { return x.id === groupeId; });
+      // Auto-recalc UNIQUEMENT si l'itinéraire avait déjà été calculé une fois
+      // (= itineraireSuggere non null). Sinon l'user n'a pas encore demandé
+      // de calc, on respecte ce choix. Évite aussi le toast progress au premier
+      // ajout (l'user va cliquer "Calc itinéraire" lui-même).
+      if (!g || !g.entree || !g.sortie || !g.itineraireSuggere) return;
+      _recalculerItineraireGroupe(scenarioId, groupeId);
+    }, 500);
   }
 
   // Override stub commit 1
