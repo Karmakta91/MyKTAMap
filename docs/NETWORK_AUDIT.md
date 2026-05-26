@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.23.6** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.23.7** (26 mai 2026).
+>
+> **v1.23.7 (Release PATCH fix CSS — Header card équipe M-LVL : bouton 🗑️ sortait du cadre)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement JS**. Bug remonté KARMA terrain sur mobile portrait + chip M-LVL `🏗️ RDC` (depuis v1.23.3) qui faisait sortir le bouton 🗑️ du cadre de la card équipe. Fix purement CSS 3 axes : `flex-wrap: wrap` sur header + `min-width: 0; flex: 1 1 120px` sur input nom + `flex-shrink: 0` sur bouton 🗑️. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — fix purement CSS additif.
 >
 > **v1.23.6 (Release PATCH — Réglage pause par point accessible depuis Mode Secours)** : **AUCUN impact réseau, aucune nouvelle permission**. Cohérence cross-feature : le bloc « 🛑 Pause entre les arrêts » dans Mode Secours lit/écrit les MÊMES localStorage keys (`myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes`) que la modale Itinéraire principale. Pure UI lecture/écriture localStorage existantes depuis v1.23.0. Aucun fetch ajouté. Setters globaux `window.setItiPauseEnabled` + `window.setItiPauseMinutes` exposés dans `interface.js` (pattern symétrique aux getters déjà publics depuis v1.23.0). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — UI charte locale + localStorage existant.
 >

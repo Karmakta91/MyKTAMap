@@ -18608,6 +18608,13 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  /* 🐛 v1.23.7 (KARMA "la poubelle pour supprimer sors du cadre a cause
+     de l'icone M-LVL") : autorise le wrap des items du header sur mobile
+     portrait étroit. Sans flex-wrap, le bouton 🗑️ sort du cadre quand le
+     chip level + input nom + bouton compétissaient pour la largeur. Avec
+     flex-wrap, le bouton passe sous l'input si manque de place — préférable
+     à sortir hors cadre. */
+  flex-wrap: wrap;
 }
 .kta-secours-groupe-swatch {
   width: 18px;
@@ -18617,7 +18624,8 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   border: 1px solid rgba(0, 0, 0, 0.30);
 }
 .kta-secours-groupe-nom {
-  flex: 1;
+  flex: 1 1 120px;       /* 🐛 v1.23.7 : flex-basis 120px = compromis lisibilité */
+  min-width: 0;          /* 🐛 v1.23.7 : indispensable pour permettre la compression flex */
   background: transparent;
   border: none;
   border-bottom: 1px dashed rgba(244, 197, 66, 0.30);
@@ -18625,6 +18633,12 @@ html.kta-theme-light .kta-secours-import-preview-equipes li {
   font-size: 14px;
   font-weight: 600;
   padding: 4px 2px;
+}
+/* 🐛 v1.23.7 — Force flex-shrink: 0 sur le bouton supprimer pour qu'il ne
+   soit jamais coupé. Par défaut les enfants flex ont shrink:1 → le bouton
+   se compressait visuellement et apparaissait tronqué. */
+.kta-secours-groupe-header > button[data-action="del-groupe"] {
+  flex-shrink: 0;
 }
 .kta-secours-groupe-nom:focus {
   outline: none;

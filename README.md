@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.6` (26/05/2026) — PATCH « Mode Secours : réglage de la pause par point accessible depuis le module » — cohérence cross-feature avec l'itinéraire principal
-**📦 Précédentes shipped main** : `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver)
+**📦 Version courante** : `v1.23.7` (26/05/2026) — PATCH fix CSS « header card équipe M-LVL : bouton 🗑️ sortait du cadre » — flex-wrap + min-width:0 + flex-shrink:0
+**📦 Précédentes shipped main** : `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,55 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-6" open>
+<details id="v1-23-7" open>
+<summary><strong>🗓️ 26/05/2026 — 🐛 v1.23.7 : Release PATCH fix CSS — Header card équipe M-LVL : bouton 🗑️ sortait du cadre</strong></summary>
+
+Release PATCH (bump Z : 1.23.6 → 1.23.7). Bug remonté KARMA terrain : « bug affichage du modal secour en mode M-LVL la poubelle pour supprimer sors du cadre a cause de l'icone M-LVL ».
+
+### 🐛 Root cause
+
+Le header de la card équipe (`.kta-secours-groupe-header`) était en `display: flex; align-items: center` SANS `flex-wrap`. L'input nom (`flex: 1`) n'avait pas `min-width: 0` (donc refusait de se compresser sous sa taille intrinsèque). Le bouton 🗑️ supprimer n'avait pas de `flex-shrink: 0` explicite. Conséquence sur mobile portrait étroit avec le chip M-LVL `🏗️ RDC` (depuis v1.23.3) :
+
+```
+[swatch] [input nom flex:1] [chip 🏗️ RDC] [🗑️]   ← largeur somme > viewport
+```
+
+→ overflow visible → le bouton supprimer 🗑️ sortait du cadre de la card.
+
+### ✅ Fix 3 axes en CSS pur
+
+```css
+.kta-secours-groupe-header {
+  flex-wrap: wrap;        /* autorise wrap si manque de place */
+}
+.kta-secours-groupe-nom {
+  flex: 1 1 120px;        /* flex-basis 120px = compromis lisibilité */
+  min-width: 0;           /* indispensable pour permettre la compression flex */
+}
+.kta-secours-groupe-header > button[data-action="del-groupe"] {
+  flex-shrink: 0;         /* le bouton garde sa taille intrinsèque, jamais compressé */
+}
+```
+
+### 💡 Leçon pour futures cards à header flex multi-items
+
+Pattern réutilisable : **toujours combiner** `flex-wrap: wrap` + `min-width: 0` sur l'item flexible + `flex-shrink: 0` sur les items critiques (boutons d'action). À garder en tête pour toutes les futures cards équipes/équipements/items où on a swatch + nom + chips + actions.
+
+### 📦 Sources de vérité v1.23.7
+
+- `version.json` → `v1.23.7`
+- `js/copyright.js > __MKM__.build` → `v1.23.7`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.7`
+
+Aucun nouveau fichier, aucun changement JS. Modifs : `css/style.css` uniquement (+~15 lignes au bloc `.kta-secours-groupe-header` existant).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.23.6 (pur fix CSS additif). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-23-6">
 <summary><strong>🗓️ 26/05/2026 — 🛑 v1.23.6 : Release PATCH — Réglage pause par point accessible depuis Mode Secours</strong></summary>
 
 Release PATCH (bump Z : 1.23.5 → 1.23.6). Demande KARMA terrain : « rend la possibilité de regler le temps de pause par point, que on a fait dans itineraire, depuis le module secour ».
