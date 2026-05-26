@@ -5715,6 +5715,44 @@ Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Pr
 
 À l'entrée de `exporterKMZ` : `Promise.allSettled(groupesACalc.map(_recalculerItineraireGroupeAsync))` avant `await fetch image plan` puis `KmzExport.genererKmz`. Toast cascade `⏳ Calcul auto de N itinéraires → ⏳ Génération KMZ → ✓ KMZ exporté`.
 
+#### 66.13 v1.23.1 — 2 fixes UX post-Phase 2
+
+Release PATCH (bump Z : 1.23.0 → 1.23.1). 2 régressions UX corrigées suite tests terrain KARMA.
+
+**Fix 1 — `.kta-emergency-overlay` modale coupée mobile portrait** :
+
+`css/style.css` ~ligne 5973 — remplacer `align-items: center` par `align-items: safe center`.
+
+Root cause : la combo `display: flex; align-items: center; overflow-y: auto` ne permet PAS de scroller au-dessus de l'origine flex. Si le contenu dépasse le viewport (cas mobile portrait avec safe-area-inset-top + minimap 320px + 4 blocs heading/pos/stats/hint + bouton sortir ≈ 800-900px), `align-items: center` positionne la boîte en débordement par le HAUT autant que par le bas → le titre et le bouton thème en haut sont inaccessibles.
+
+`safe center` (CSS Box Alignment Level 3) : centre si rentre, sinon bascule à `flex-start`. Chrome 93+ / Safari 16+ / Firefox 88+. Fallback gracieux `center` sur browsers plus anciens (le mot-clé `safe` est ignoré silencieusement).
+
+**Règle générale** : pour tout overlay flex centré qui contient un contenu potentiellement plus grand que le viewport, utiliser `align-items: safe center` plutôt que `center` strict. Sinon piège silencieux sur mobile / petit écran.
+
+**Fix 2 — MutationObserver pour heatmap "⚙️ Régler" depuis Mode Secours** :
+
+`js/secoursMode.js > config-heatmap-secours handler` (~ligne 1907) : ajouter MutationObserver qui observe la suppression du DOM `#kta-heatmap-modal` puis restore `_modal.style.display` + re-render edit + disconnect observer.
+
+Pattern de référence pour les futures intégrations cross-modale :
+```js
+if (_modal) _modal.style.display = "none";
+window.MyKTAMapXxx.ouvrirModale();
+const targetModal = document.getElementById("kta-xxx-modal");
+if (!targetModal) { if (_modal) _modal.style.display = ""; return; }
+const obs = new MutationObserver(function() {
+  if (!document.body.contains(targetModal)) {
+    if (_modal) _modal.style.display = "";
+    if (_currentScenarioId) _switchView("edit");   // refresh si état a changé
+    obs.disconnect();
+  }
+});
+obs.observe(targetModal.parentNode || document.body, { childList: true });
+```
+
+ID du modal target stable depuis la création — vérifier dans le module concerné. Pour heatmap : `id="kta-heatmap-modal"` (`js/heatmap.js:730`).
+
+⚠️ **Anti-pattern à éviter** : NE PAS cacher la modale parent sans mécanisme de restauration. Soit on superpose (z-index plus élevé pour la sous-modale, mais risque de stack de backdrops empilés), soit on utilise le pattern MutationObserver ci-dessus.
+
 #### 66.12 À NE PAS faire
 
 - ❌ Réintroduire format NESTÉ `calib.pointA.plan` / `calib.pointA.gps` — il faut **flat** `calib.pointA.x` / `calib.pointA.lat` (cf §66.8)

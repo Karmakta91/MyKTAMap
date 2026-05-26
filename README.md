@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.0` (26/05/2026) — MINOR « Mode Secours Phase 2 — Intégrations & Cross-app » — KML cross-app complet (Google Earth) + Pathfinder avoidances cross-équipes + Lost Mode → Secours bridge + Heatmap d'activité + M-LVL auto-équipes + Favoris quick-pick + pause configurable
-**📦 Précédentes shipped main** : `v1.22.0` (Mode Secours Phase 1 MVP — non encore mergé main) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports)
+**📦 Version courante** : `v1.23.1` (26/05/2026) — PATCH « 2 fixes UX post-Phase 2 » — Emergency modale coupée (`align-items: safe center`) + Heatmap ⚙️ Régler restore Mode Secours (MutationObserver)
+**📦 Précédentes shipped main** : `v1.23.0` (Mode Secours Phase 2 cross-app, jamais shipped main séparément) ; `v1.22.0` (Mode Secours Phase 1 MVP, jamais shipped main séparément) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,41 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-0" open>
+<details id="v1-23-1" open>
+<summary><strong>🗓️ 26/05/2026 — 🩹 v1.23.1 : Release PATCH — 2 fixes UX post-Phase 2</strong></summary>
+
+Release PATCH (bump Z : 1.23.0 → 1.23.1). 2 fixes UX remontés par KARMA en tests terrain v1.23.0. Aucune nouvelle surface réseau, compat 100% v1.23.0.
+
+### 🐛 Bug 1 — Mode urgence "Panique" modale coupée
+
+Régression CSS détectée. `.kta-emergency-overlay` utilisait `display: flex; align-items: center; overflow-y: auto`. Sur mobile portrait, quand `.kta-emergency-box` dépasse le viewport (≈800-900px avec safe-area + minimap + 4 blocs), `align-items: center` positionne la boîte en débordement par le HAUT. `overflow-y: auto` ne peut scroller QU'EN-DESSOUS de l'origine flex → titre 🚨 + bouton 🔆/🌑 inaccessibles.
+
+**Fix** : `align-items: safe center` (CSS Box Alignment Level 3, Chrome 93+/Safari 16+/FF 88+). Centre si la boîte rentre, bascule auto à `flex-start` sinon → scroll du haut vers le bas accessible. Fallback gracieux `center` sur browsers plus anciens.
+
+### 🐛 Bug 2 — Heatmap ⚙️ Régler déconnecte Mode Secours
+
+Régression UX. `secoursMode.js > config-heatmap-secours` cachait la modale Mode Secours avant d'ouvrir Heatmap, mais aucun mécanisme pour la restaurer → l'user se retrouvait sans modale Mode Secours visible après fermeture de Heatmap.
+
+**Fix** : MutationObserver qui observe la suppression du DOM `#kta-heatmap-modal` (id stable depuis v1.21.2) → restore `_modal.style.display` + re-render edit (pour update label bouton 🔥 Afficher/Masquer si état changé) + disconnect observer (anti-leak). Garde-fou si getElementById retourne null après ouvrirModale.
+
+### 📦 Sources de vérité v1.23.1
+
+- `version.json` → `v1.23.1`
+- `js/copyright.js > __MKM__.build` → `v1.23.1`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.1`
+
+### 📂 Modifs
+
+- `css/style.css` (+8 lignes : align-items safe center .kta-emergency-overlay)
+- `js/secoursMode.js` (+~20 lignes : MutationObserver dans config-heatmap handler)
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. Les 2 fixes sont purement UX (CSS + DOM observer local). NETWORK_AUDIT mis à jour avec verdict ✅ aucune régression v1.23.1.
+
+</details>
+
+<details id="v1-23-0">
 <summary><strong>🗓️ 26/05/2026 — 🚨 v1.23.0 : Release MINOR — Mode Secours Phase 2 (Intégrations & Cross-app)</strong></summary>
 
 Release MINOR (bump Y : 1.22.0 → 1.23.0). 6/7 features Phase 2 livrées + 5 bonus/fixes consolidés. Le Mode Secours passe d'un outil brouillon perso (Phase 1 MVP) à un **vrai outil de coordination opérationnelle** cross-app.
