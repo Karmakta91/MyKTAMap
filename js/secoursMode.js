@@ -520,6 +520,9 @@
       try { window.map.removeLayer(_overlayLayer); } catch(e) {}
     }
     _overlayLayer = null;
+    // 🆕 v1.22.0-fix1 : cleanup floater retour modale (au cas où l'user
+    // ferme via Échap ou plan switch sans repasser par le toggle).
+    if (typeof _removeOverlayFloater === "function") _removeOverlayFloater();
   }
   function setFocus(groupeId) {
     _focusedGroupeId = groupeId || null;
@@ -1107,14 +1110,22 @@
           _switchView("list");
         });
       });
-      // Toggle overlay carte
+      // Toggle overlay carte — masque la modale pour voir le rendu Leaflet
+      // (sinon la modale plein écran z-index 99999 cache toute la carte).
+      // Floater "← Retour modale" pour réouvrir sans repasser par la sidebar.
       corps.querySelectorAll('[data-action="toggle-overlay"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (_overlayLayer) {
+            // Toggle OFF : retire overlay + restore modale + retire floater
             clearOverlay();
+            if (_modal) _modal.style.display = "";
+            _removeOverlayFloater();
             btn.textContent = "🗺️ Voir sur carte";
           } else {
+            // Toggle ON : masque modale + render overlay + affiche floater retour
             renderOverlay(_currentScenarioId);
+            if (_modal) _modal.style.display = "none";
+            _showOverlayFloater();
             btn.textContent = "🗺️ Masquer";
           }
         });
@@ -1462,6 +1473,45 @@
   // Helpers map mode UI
   // ============================================================
 
+  // ============================================================
+  // Floater "Retour modale" (depuis v1.22.0-fix1)
+  // ============================================================
+  // Quand "Voir sur carte" est actif, la modale est masquée pour voir le
+  // rendu Leaflet. Un floater compact en bas de l'écran permet de rouvrir
+  // la modale sans passer par la sidebar.
+
+  function _showOverlayFloater() {
+    _removeOverlayFloater();
+    const s = get(_currentScenarioId);
+    if (!s || !window.map) return;
+    const fl = document.createElement("div");
+    fl.id = "kta-secours-overlay-floater";
+    fl.className = "kta-secours-overlay-floater";
+    const nbGroupes = (s.groupes || []).length;
+    fl.innerHTML =
+      '<div class="kta-secours-overlay-floater-info">' +
+        '🚨 <strong>' + _escHtml(s.nom) + '</strong>' +
+        ' · ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') +
+      '</div>' +
+      '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="reopen-modal">' +
+        '↩️ Retour modale' +
+      '</button>';
+    document.body.appendChild(fl);
+    fl.querySelector('[data-action="reopen-modal"]').addEventListener("click", function() {
+      // Restore modale + retire floater + clean overlay (l'user peut le re-toggler)
+      if (_modal) _modal.style.display = "";
+      _removeOverlayFloater();
+      clearOverlay();
+      // Update bouton "Voir sur carte" dans la modale (re-render edit suffit)
+      if (_currentScenarioId) _switchView("edit");
+    });
+  }
+
+  function _removeOverlayFloater() {
+    const ex = document.getElementById("kta-secours-overlay-floater");
+    if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+  }
+
   function _planToLatLng(pt) {
     // Plan (x, y) → Leaflet [lat, lng] via CRS.Simple convention MyKTAMap
     const lat = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
@@ -1545,37 +1595,43 @@
     const s = get(scenarioId);
     if (!s) return null;
     const g = s.groupes.find(function(x) { return x.id === groupeId; });
-    if (!g) return null;
+    if (!g) {
+      _toast("⚠️ Équipe introuvable.", "error");
+      return null;
+    }
     if (!g.entree || !g.sortie) {
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast("⚠️ Définis d'abord l'entrée et la sortie de l'équipe.", "warn");
-      }
+      _toast("⚠️ Définis d'abord l'entrée ET la sortie de cette équipe via 📍 Entrée et 🚪 Sortie.", "warn");
       return null;
     }
     if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
-      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-        window.OOMGuard.showToast("⚠️ Pathfinder indisponible.", "error");
-      }
+      _toast("⚠️ Pathfinder indisponible.", "error");
       return null;
     }
+    // 🐛 v1.22.0-fix1 : vérifier que les coords sont valides (anti-NaN)
+    if (typeof g.entree.x !== "number" || typeof g.entree.y !== "number" ||
+        typeof g.sortie.x !== "number" || typeof g.sortie.y !== "number") {
+      _toast("⚠️ Coordonnées entrée/sortie corrompues. Re-définis-les via 📍/🚪.", "error");
+      return null;
+    }
+    _toast("⏳ Calcul itinéraire en cours…", "info");
     try {
       const waypoints = [
         { x: g.entree.x, y: g.entree.y, label: "Entrée " + g.nom },
         { x: g.sortie.x, y: g.sortie.y, label: "Sortie " + g.nom }
       ];
       // Pathfinder.computeRoute est async depuis v1.21.x (avoid expansion).
-      // On le résout en synchrone via Promise.then ici, en re-render à la fin.
+      // computeRoute peut throw sync (waypoints insuffisants) OU reject async
+      // (chemin introuvable, composantes disconnect). On gère les 2.
       const result = window.Pathfinder.computeRoute(waypoints, {});
       Promise.resolve(result).then(function(r) {
         if (!r || !Array.isArray(r.path) || r.path.length === 0) {
-          if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Aucun itinéraire trouvé.", "warn");
+          _toast("⚠️ Aucun itinéraire trouvé entre l'entrée et la sortie. Vérifie qu'elles sont sur le réseau de galeries.", "warn");
           return;
         }
-        // r.totalDistance est en px plan ; convertir en mètres via APP_CONFIG.scale (px/m)
         const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
-        const duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);   // minutes
+        const duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: r.path.map(function(p) {
             return { x: p.x, y: p.y, level: g.entree.level || 0 };
@@ -1583,20 +1639,29 @@
           distanceM:       distM,
           dureeEstimeeMin: duree
         });
-        if (window.OOMGuard) {
-          const fmtD = (typeof window.formatDistance === "function")
-                       ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
-          window.OOMGuard.showToast("✓ Itinéraire calculé : " + fmtD + " · ~" + duree + " min", "info");
-        }
+        const fmtD = (typeof window.formatDistance === "function")
+                     ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
+        _toast("✓ Itinéraire calculé : " + fmtD + " · ~" + duree + " min", "info");
+        // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
+        if (_overlayLayer) renderOverlay(scenarioId);
       }).catch(function(err) {
         console.warn("[SecoursMode] Pathfinder error :", err);
-        if (window.OOMGuard) {
-          window.OOMGuard.showToast("⚠️ Erreur Pathfinder : " + (err.message || err), "error");
-        }
+        const msg = (err && err.message) ? err.message : String(err);
+        _toast("⚠️ Erreur calcul itinéraire : " + msg, "error");
       });
     } catch(e) {
-      console.warn("[SecoursMode] Calcul itinéraire échoué :", e);
+      console.warn("[SecoursMode] Calcul itinéraire échoué (sync) :", e);
+      _toast("⚠️ Erreur sync : " + (e.message || e), "error");
+    }
+  }
+
+  // Helper toast unifié (évite les checks répétés)
+  function _toast(msg, type) {
+    if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+      window.OOMGuard.showToast(msg, type || "info");
+    } else {
+      console.log("[SecoursMode] " + (type || "info").toUpperCase() + " — " + msg);
     }
   }
 
