@@ -1443,10 +1443,23 @@
             '</details>';
 
     // Section 2 — Équipes (liste + add)
+    // 🆕 v1.23.0 Phase 2 / Feature E — Bouton auto-creation par niveau si M-LVL
+    const mlvlActive = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+    const availableLevels = (mlvlActive && Array.isArray(window.APP_CONFIG.availableLevels))
+                            ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
+                            : [];
+    const autoMLVLBtn = (mlvlActive && availableLevels.length > 1)
+      ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="auto-equipes-mlvl" ' +
+        'title="Crée automatiquement 1 équipe par niveau disponible (' + availableLevels.length + ' niveaux)">' +
+        '🏗️ Auto : 1 équipe par niveau (' + availableLevels.length + ')</button>'
+      : '';
     html += '<details class="kta-secours-section" open>' +
               '<summary class="kta-secours-section-titre">🚨 Équipes (' + s.groupes.length + ')</summary>' +
               '<div class="kta-secours-section-body">' +
-                '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">➕ Ajouter une équipe</button>' +
+                '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+                  '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">➕ Ajouter une équipe</button>' +
+                  autoMLVLBtn +
+                '</div>' +
                 '<div class="kta-secours-groupes-list" style="margin-top:10px;">' +
                   _renderGroupesList(s) +
                 '</div>' +
@@ -1907,6 +1920,42 @@
         btn.addEventListener("click", function() {
           addGroupe(s.id, null);   // nom auto via PALETTE
           _switchView("edit");      // re-render
+        });
+      });
+      // 🆕 v1.23.0 Phase 2 / Feature E — Auto-création 1 équipe par niveau M-LVL
+      corps.querySelectorAll('[data-action="auto-equipes-mlvl"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.APP_CONFIG || window.APP_CONFIG.multiLevel !== true) {
+            _toast("⚠️ Le mode multi-niveau (M-LVL) n'est pas actif sur ce plan.", "warn");
+            return;
+          }
+          const levels = Array.isArray(window.APP_CONFIG.availableLevels)
+                         ? window.APP_CONFIG.availableLevels.slice().sort(function(a, b) { return a - b; })
+                         : [];
+          if (levels.length < 2) {
+            _toast("⚠️ Au moins 2 niveaux requis pour cette suggestion.", "warn");
+            return;
+          }
+          // Confirme si des équipes existent déjà (anti-doublon massif)
+          if (s.groupes.length > 0) {
+            if (!window.confirm("Le scénario contient déjà " + s.groupes.length +
+                " équipe(s). Ajouter " + levels.length + " nouvelle(s) équipe(s) (1 par niveau) ?")) return;
+          }
+          // Crée 1 équipe par niveau, nom = "Niveau X" (avec convention RDC pour 0)
+          levels.forEach(function(lvl) {
+            const nom = "Niveau " + (lvl === 0 ? "RDC" : (lvl > 0 ? "+" + lvl : String(lvl)));
+            const g = addGroupe(s.id, nom);
+            // Pré-set le level de l'entrée à ce niveau (sera défini via clic carte
+            // ensuite, mais le level par défaut est posé pour cohérence Pathfinder).
+            // L'user peut overrider si besoin. On ne crée PAS de waypoint placeholder
+            // pour éviter de polluer le parcours avec des coords (0,0).
+            // Le level est juste un indice contextuel — l'user clique 📍 Entrée
+            // pour définir le vrai point qui aura son level réel via APP_CONFIG.activeLevel
+            // au moment du clic.
+            // Note dans le nom déjà suffisamment explicite.
+          });
+          _toast("✓ " + levels.length + " équipes créées (1 par niveau). Définis maintenant les zones + entrées/sorties pour chacune.", "info");
+          _switchView("edit");
         });
       });
       // Rename groupe
