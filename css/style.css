@@ -7874,6 +7874,121 @@ html.kta-theme-light .kta-secours-pick-favoris-more {
   color: var(--kta-light-text-muted, #6b6354) !important;
 }
 
+/* 🆕 v1.23.2 Phase 2 / Feature G — Bouton 📌 Assigner dans les résultats
+   de la recherche unifiée Ctrl+K, visible UNIQUEMENT si Mode Secours actif.
+   Positionné à droite de chaque .kta-search-result (point only). */
+.kta-search-result {
+  position: relative;
+}
+.kta-search-result-assign {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 70, 70, 0.18);
+  border: 1px solid rgba(255, 70, 70, 0.45);
+  color: #ff8c8c;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s;
+}
+.kta-search-result-assign:hover {
+  background: rgba(255, 70, 70, 0.35);
+  border-color: #ff4444;
+  transform: translateY(-50%) scale(1.08);
+}
+.kta-search-result-assign:active {
+  transform: translateY(-50%) scale(0.96);
+}
+/* Padding right au content pour ne pas masquer le bouton */
+.kta-search-result:has(.kta-search-result-assign) .kta-search-content {
+  padding-right: 50px;
+}
+
+/* Mini-modale assigner — réutilise pattern .kta-secours-form-* */
+.kta-secours-assign-boite {
+  max-width: 480px !important;
+  width: calc(100vw - 24px);
+  height: auto !important;
+  max-height: 80vh !important;
+}
+.kta-secours-assign-info {
+  background: rgba(140, 180, 255, 0.10);
+  border-left: 3px solid #8cb4ff;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #c8d0e0;
+  border-radius: 4px;
+  margin-bottom: 14px;
+}
+.kta-secours-assign-info strong {
+  color: #8cb4ff;
+}
+.kta-secours-assign-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kta-secours-assign-role {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  font-size: 13px;
+  color: #c8d0e0;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kta-secours-assign-role:hover {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.35);
+}
+.kta-secours-assign-role input[type="radio"] {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #f4c542;
+}
+
+body.kta-theme-light .kta-search-result-assign,
+html.kta-theme-light .kta-search-result-assign {
+  background: rgba(255, 70, 70, 0.25) !important;
+  border-color: rgba(204, 0, 0, 0.50) !important;
+  color: #cc0000 !important;
+}
+body.kta-theme-light .kta-search-result-assign:hover,
+html.kta-theme-light .kta-search-result-assign:hover {
+  background: rgba(255, 70, 70, 0.45) !important;
+  color: #fff !important;
+}
+body.kta-theme-light .kta-secours-assign-info,
+html.kta-theme-light .kta-secours-assign-info {
+  background: rgba(30, 58, 138, 0.10) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-assign-info strong,
+html.kta-theme-light .kta-secours-assign-info strong {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-assign-role,
+html.kta-theme-light .kta-secours-assign-role {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-assign-role:hover,
+html.kta-theme-light .kta-secours-assign-role:hover {
+  background: rgba(244, 197, 66, 0.20) !important;
+}
+
 /* 🆕 v1.23.0 — Section "🛑 Pause entre les arrêts" dans modale itinéraire */
 .kta-iti-pause-row {
   display: flex;

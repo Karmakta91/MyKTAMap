@@ -312,6 +312,127 @@
     return true;
   }
 
+  // 🆕 v1.23.2 Phase 2 / Feature G (KARMA roadmap §65.12 "Recherche unifiée
+  // Ctrl+K → assigner à équipe en 2 clics") : mini-modale qui ouvre depuis
+  // searchPoints.js quand l'user clique le bouton 📌 sur un résultat point.
+  // Permet d'assigner le POI à une équipe + role en 2 sélections sans
+  // perdre le focus de la recherche.
+  function ouvrirAssignerModale(point, layerLabel) {
+    if (!_currentScenarioId) {
+      _toast("⚠️ Aucun scénario Mode Secours actif.", "warn");
+      return;
+    }
+    const s = get(_currentScenarioId);
+    if (!s) return;
+    if (!Array.isArray(s.groupes) || s.groupes.length === 0) {
+      _toast("⚠️ Aucune équipe dans ce scénario. Ajoute d'abord une équipe.", "warn");
+      return;
+    }
+    if (!point || typeof point.x !== "number" || typeof point.y !== "number") {
+      _toast("⚠️ Point invalide.", "error");
+      return;
+    }
+    // Cleanup éventuelle modale précédente (idempotency)
+    const existing = document.getElementById("kta-secours-assign-modal");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    const nomPoint = point.nom || point.id || ("x=" + Math.round(point.x) + " y=" + Math.round(point.y));
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-assign-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100002";   // au-dessus de la modale Recherche (99999)
+
+    // Options équipes (avec préfixe swatch via emoji couleur)
+    const equipesOptions = s.groupes.map(function(g) {
+      const c = PALETTE[g.couleurIdx % PALETTE.length];
+      return '<option value="' + _escAttr(g.id) + '">' +
+             _escHtml(g.nom) + ' (' + _escHtml(c.nom) + ')</option>';
+    }).join('');
+
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-assign-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">📌 Assigner « ' + _escHtml(nomPoint) + ' » à une équipe</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-assign-info">' +
+            '<strong>Point :</strong> ' + _escHtml(nomPoint) +
+            (layerLabel ? ' <span style="opacity:0.7;">(' + _escHtml(layerLabel) + ')</span>' : '') +
+            '<br><small style="opacity:0.7;">x=' + Math.round(point.x) + ' y=' + Math.round(point.y) +
+            (typeof point.level === "number" ? ' · niv ' + point.level : '') + '</small>' +
+          '</div>' +
+          '<div class="kta-secours-form-row">' +
+            '<label for="kta-sec-assign-equipe">🚨 Équipe</label>' +
+            '<select id="kta-sec-assign-equipe">' + equipesOptions + '</select>' +
+          '</div>' +
+          '<div class="kta-secours-form-row">' +
+            '<label>📍 Role dans le parcours</label>' +
+            '<div class="kta-secours-assign-roles">' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="entree" checked> 📍 Entrée</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="intermediaire"> ▾ Étape intermédiaire</label>' +
+              '<label class="kta-secours-assign-role"><input type="radio" name="kta-sec-assign-role" value="sortie"> 🚪 Sortie</label>' +
+            '</div>' +
+          '</div>' +
+          '<div class="kta-secours-form-hint">' +
+            '💡 Le point sera ajouté au parcours de l\'équipe sélectionnée. Pour les étapes intermédiaires, le waypoint est ajouté à la fin de la liste existante (ordre = position dans le parcours).' +
+          '</div>' +
+          '<div class="kta-secours-form-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel">← Annuler</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm">✓ Assigner</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) {
+      b.addEventListener("click", _close);
+    });
+    overlay.querySelectorAll('[data-action="confirm"]').forEach(function(b) {
+      b.addEventListener("click", function() {
+        const equipeId = (document.getElementById("kta-sec-assign-equipe") || {}).value;
+        const roleEl = overlay.querySelector('input[name="kta-sec-assign-role"]:checked');
+        const role = roleEl ? roleEl.value : "entree";
+        if (!equipeId) { _toast("⚠️ Sélectionne une équipe.", "warn"); return; }
+        const level = (typeof point.level === "number") ? point.level
+                    : (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+                      ? window.APP_CONFIG.activeLevel : 0;
+        const wp = {
+          x:       point.x,
+          y:       point.y,
+          level:   level,
+          pointId: point.id || null,
+          label:   point.nom || point.id || null
+        };
+        // idx = null pour les 3 cas :
+        //   - entree/sortie : ignoré (1 seul slot)
+        //   - intermediaire : append à la fin de la liste (cf _appliquerWaypoint)
+        _appliquerWaypoint(equipeId, role, null, wp);
+        const equipe = s.groupes.find(function(g) { return g.id === equipeId; });
+        const equipeNom = equipe ? equipe.nom : equipeId;
+        const roleLbl = role === "entree" ? "Entrée"
+                      : role === "sortie" ? "Sortie"
+                      : "Étape intermédiaire";
+        _toast("✓ « " + nomPoint + " » assigné à " + equipeNom + " (" + roleLbl + ").", "info");
+        _close();
+        // Re-render edit si la modale Mode Secours est visible (sinon l'user
+        // est en mode overlay carte, on laisse comme c'est).
+        if (_modal && _modal.style.display !== "none" && _currentScenarioId) {
+          _switchView("edit");
+        }
+      });
+    });
+    // Focus auto sur le select pour saisie clavier rapide
+    setTimeout(function() {
+      const sel = document.getElementById("kta-sec-assign-equipe");
+      if (sel) sel.focus();
+    }, 50);
+  }
+
   // 🆕 v1.23.0 Phase 2 / Feature C (KARMA "Lost Mode → auto pre-fill context") :
   // Crée un nouveau scénario Mode Secours pré-rempli avec les infos du
   // Lost Mode en cours. Workflow : user en Lost Mode (cherche quelqu'un) →
@@ -3160,6 +3281,9 @@
     duplicate:              duplicateScenario,
     // 🆕 v1.23.0 Phase 2 / Feature C — Création depuis Lost Mode
     creerDepuisLostMode:    creerDepuisLostMode,
+    // 🆕 v1.23.2 Phase 2 / Feature G — Mini-modale assigner POI à équipe
+    // depuis la recherche unifiée Ctrl+K (searchPoints.js)
+    ouvrirAssignerModale:   ouvrirAssignerModale,
     // CRUD groupes
     addGroupe:              addGroupe,
     updateGroupe:           updateGroupe,

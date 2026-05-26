@@ -945,6 +945,20 @@
         if (it) _aller(it);
       });
     });
+    // 🆕 v1.23.2 Feature G — Bouton 📌 Assigner à équipe (clic indépendant
+    // du _aller — stopPropagation pour pas pan/zoom le map)
+    resEl.querySelectorAll(".kta-search-result-assign").forEach(function(btn) {
+      btn.addEventListener("click", function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        const idx = parseInt(btn.dataset.visibleIdx);
+        const it = _visibles[idx];
+        if (!it || it.kind !== "point") return;
+        if (window.SecoursMode && typeof window.SecoursMode.ouvrirAssignerModale === "function") {
+          window.SecoursMode.ouvrirAssignerModale(it.item, it.layerLabel || it.layerId || null);
+        }
+      });
+    });
   }
 
   // Rendu d'une ligne résultat selon le kind. Visuellement homogène, mais
@@ -1013,6 +1027,21 @@
     html += '</div>';
 
     html += '</div>';  // end content
+
+    // 🆕 v1.23.2 Phase 2 Feature G (KARMA roadmap §65.12 "Recherche unifiée
+    // Ctrl+K → étend pour assigner un point à une équipe en 2 clics") :
+    // bouton 📌 visible UNIQUEMENT si :
+    //   • le résultat est un POINT (pas road/zone/structure pour MVP)
+    //   • la modale Mode Secours est ouverte avec un scénario actif
+    // Au clic : ouvre une mini-modale de sélection équipe + role.
+    if (it.kind === "point" && window.SecoursMode
+        && typeof window.SecoursMode.isOpen === "function" && window.SecoursMode.isOpen()
+        && typeof window.SecoursMode.getCurrentScenarioId === "function"
+        && window.SecoursMode.getCurrentScenarioId()) {
+      html += '<button class="kta-search-result-assign" data-visible-idx="' + visIdx +
+              '" title="📌 Assigner ce point à une équipe Mode Secours">📌</button>';
+    }
+
     html += '</div>';  // end result
     return html;
   }
