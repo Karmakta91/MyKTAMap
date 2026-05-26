@@ -2357,10 +2357,18 @@
           return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
         }))
         .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
+      // 🆕 v1.23.0 Phase 2 / Feature B — Pathfinder avoidances cross-équipes :
+      // collecte les waypoints + zones des autres équipes du scénario pour
+      // que Pathfinder préfère un chemin qui les contourne (pas de chevauchement
+      // involontaire). avoidRadius 30 px ≈ 1 galerie de large.
+      const avoidPoints = _collecterAvoidPointsAutresEquipes(scenarioId, groupeId);
+      const pfOpts = (avoidPoints.length > 0)
+                     ? { avoidPoints: avoidPoints, avoidRadius: 30 }
+                     : {};
       // Pathfinder.computeRoute est async depuis v1.21.x (avoid expansion).
       // computeRoute peut throw sync (waypoints insuffisants) OU reject async
       // (chemin introuvable, composantes disconnect). On gère les 2.
-      const result = window.Pathfinder.computeRoute(waypoints, {});
+      const result = window.Pathfinder.computeRoute(waypoints, pfOpts);
       Promise.resolve(result).then(function(r) {
         if (!r || !Array.isArray(r.path) || r.path.length === 0) {
           _toast("⚠️ Aucun itinéraire trouvé entre l'entrée et la sortie. Vérifie qu'elles sont sur le réseau de galeries.", "warn");
@@ -2394,6 +2402,11 @@
         const fmtD = (typeof window.formatDistance === "function")
                      ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
         _toast("✓ Itinéraire calculé : " + fmtD + " · ~" + duree + " min", "info");
+        // 🆕 v1.23.0 Phase 2 / Feature B — Feedback fallback avoidances
+        if (r.usedFallback === true && Array.isArray(r.avoidedThrough) && r.avoidedThrough.length > 0) {
+          _toast("⚠️ Itinéraire traverse " + r.avoidedThrough.length +
+                 " point(s) d'autres équipes (zones non-évitables). Vérifie les chevauchements.", "warn");
+        }
         // 🐛 v1.22.0-fix1 : re-render edit pour update stats visibles + refresh overlay si actif
         if (_modal) _switchView("edit");
         if (_overlayLayer) renderOverlay(scenarioId);
@@ -2406,6 +2419,67 @@
       console.warn("[SecoursMode] Calcul itinéraire échoué (sync) :", e);
       _toast("⚠️ Erreur sync : " + (e.message || e), "error");
     }
+  }
+
+  // 🆕 v1.23.0 Phase 2 / Feature B — Collecte les waypoints des AUTRES
+  // équipes du scénario pour les passer en `avoidPoints` à Pathfinder.
+  // Évite les chevauchements involontaires : si Alpha a déjà une zone +
+  // un itinéraire, quand on calcule celui de Bravo, Pathfinder choisira un
+  // chemin qui contourne les éléments d'Alpha (soft constraint — fallback
+  // si pas d'alternative).
+  //
+  // Sources collectées par équipe autre :
+  //  • entrée + sortie + intermédiaires (waypoints explicites)
+  //  • points du polygon de zone (sommets) si zoneType="polygon"
+  //  • points de toutes les roads sélectionnées si zoneType="roads"
+  //
+  // Format Pathfinder attendu : [{x, y, label?, id?}, ...]
+  function _collecterAvoidPointsAutresEquipes(scenarioId, currentGroupeId) {
+    const s = get(scenarioId);
+    if (!s) return [];
+    const avoid = [];
+    s.groupes.forEach(function(g) {
+      if (g.id === currentGroupeId) return;  // skip l'équipe courante
+      const eqLabel = "Équipe " + (g.nom || "?");
+      // 1. Waypoints
+      if (g.entree && typeof g.entree.x === "number") {
+        avoid.push({ x: g.entree.x, y: g.entree.y, label: "Entrée " + eqLabel });
+      }
+      if (g.sortie && typeof g.sortie.x === "number"
+          && !_samePoint(g.entree, g.sortie)) {
+        avoid.push({ x: g.sortie.x, y: g.sortie.y, label: "Sortie " + eqLabel });
+      }
+      (g.intermediaires || []).forEach(function(w, i) {
+        if (w && typeof w.x === "number") {
+          avoid.push({ x: w.x, y: w.y, label: "Étape " + (i + 1) + " " + eqLabel });
+        }
+      });
+      // 2. Zone polygon — sommets du polygone (Pathfinder les évite par
+      // proximité dans le rayon avoidRadius)
+      if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon)) {
+        g.zonePolygon.forEach(function(p, i) {
+          if (typeof p.x === "number") {
+            avoid.push({ x: p.x, y: p.y, label: "Zone " + eqLabel + " #" + (i + 1) });
+          }
+        });
+      }
+      // 3. Zone roads — points de chaque road sélectionnée
+      if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+        const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                         .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+        g.zoneRoadIds.forEach(function(rid) {
+          const road = allRoads.find(function(r) { return r.id === rid; });
+          if (road && Array.isArray(road.points)) {
+            road.points.forEach(function(p) {
+              if (typeof p.x === "number") {
+                avoid.push({ x: p.x, y: p.y, label: "Tracé zone " + eqLabel });
+              }
+            });
+          }
+        });
+      }
+    });
+    return avoid;
   }
 
   // Helper toast unifié (évite les checks répétés)
@@ -2568,7 +2642,14 @@
             return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
           }))
           .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
-        Promise.resolve(window.Pathfinder.computeRoute(waypoints, {})).then(function(r) {
+        // 🆕 v1.23.0 Phase 2 / Feature B — Avoidances cross-équipes (idem
+        // _recalculerItineraireGroupe sync). Batch auto-calc à l'export prend
+        // en compte les zones des autres équipes.
+        const avoidPoints = _collecterAvoidPointsAutresEquipes(scenarioId, groupeId);
+        const pfOpts = (avoidPoints.length > 0)
+                       ? { avoidPoints: avoidPoints, avoidRadius: 30 }
+                       : {};
+        Promise.resolve(window.Pathfinder.computeRoute(waypoints, pfOpts)).then(function(r) {
           if (!r || !Array.isArray(r.path) || r.path.length === 0) { resolve(false); return; }
           const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                         ? window.APP_CONFIG.scale : 1;
