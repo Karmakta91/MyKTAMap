@@ -18839,9 +18839,13 @@ html.kta-theme-light .kta-secours-floater-msg {
    à l'user de rouvrir la modale sans passer par la sidebar. Top-right
    pour ne pas gêner les controls Leaflet bottom-left. */
 .kta-secours-overlay-floater {
+  /* 🐛 hotfix7 (KARMA "centre en haut la popup scénario retour au modal") :
+     positionné en haut-CENTRE via left:50% + translateX(-50%) au lieu de
+     top-right. Plus visible et symétrique sur tous les viewports. */
   position: fixed;
   top: calc(60px + env(safe-area-inset-top, 0px));
-  right: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1500;
   background: rgba(20, 25, 38, 0.92);
   border: 2px solid #ff4444;
@@ -18865,11 +18869,12 @@ html.kta-theme-light .kta-secours-floater-msg {
 @media (max-width: 480px) {
   .kta-secours-overlay-floater {
     top: calc(50px + env(safe-area-inset-top, 0px));
-    right: 8px;
     padding: 8px 10px;
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+    /* hotfix7 — centrage hérité du sélecteur de base, on garde
+       left:50% + transform:translateX(-50%) (pas d'override right) */
   }
   .kta-secours-overlay-floater-info { font-size: 11px; text-align: center; }
 }
