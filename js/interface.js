@@ -6810,9 +6810,43 @@ const ITI_SPEED_PRESETS = {
 const DEFAULT_ITI_SPEED       = "normale";
 const ITI_SPEED_STORAGE_KEY   = "myktamap_iti_walking_preset";
 
-// Temps de pause par point intermediaire (entre depart et arrivee).
-// 2 waypoints = 0 pauses (depart + arrivee). 3 waypoints = 1 pause. N = N-2.
-const TEMPS_PAUSE_PAR_POINT_MIN = 15;
+// 🆕 v1.23.0 (KARMA "rajoute dans le modal itineraire un temps de pause
+// définissable entre chaque point en minutes") : la pause par arrêt
+// intermédiaire est désormais CONFIGURABLE :
+//   • Checkbox "Inclure pause entre arrêts" (default ON = comportement v1.22.x)
+//   • Input minutes par pause (default 15 min)
+// Persistance : localStorage. Le Mode Secours (secoursMode.js > _recalculer-
+// ItineraireGroupe) lit les mêmes prefs pour cohérence cross-feature.
+const TEMPS_PAUSE_PAR_POINT_MIN_DEFAULT = 15;
+const ITI_PAUSE_ENABLED_STORAGE_KEY     = "myktamap_iti_pause_enabled";
+const ITI_PAUSE_MINUTES_STORAGE_KEY     = "myktamap_iti_pause_minutes";
+
+function _getItiPauseEnabled() {
+  try {
+    const v = localStorage.getItem(ITI_PAUSE_ENABLED_STORAGE_KEY);
+    if (v === null || v === undefined) return true;   // default ON
+    return v === "1" || v === "true";
+  } catch(e) { return true; }
+}
+function _setItiPauseEnabled(enabled) {
+  try { localStorage.setItem(ITI_PAUSE_ENABLED_STORAGE_KEY, enabled ? "1" : "0"); } catch(e) {}
+}
+function _getItiPauseMinutes() {
+  try {
+    const v = parseFloat(localStorage.getItem(ITI_PAUSE_MINUTES_STORAGE_KEY));
+    if (!isFinite(v) || v < 0) return TEMPS_PAUSE_PAR_POINT_MIN_DEFAULT;
+    return Math.min(120, v);   // cap dur 2h (anti-doigt qui glisse sur l'input)
+  } catch(e) { return TEMPS_PAUSE_PAR_POINT_MIN_DEFAULT; }
+}
+function _setItiPauseMinutes(min) {
+  const v = Math.max(0, Math.min(120, parseFloat(min) || 0));
+  try { localStorage.setItem(ITI_PAUSE_MINUTES_STORAGE_KEY, String(v)); } catch(e) {}
+}
+// Exposé globalement pour que js/secoursMode.js réutilise les mêmes prefs
+// (cohérence cross-feature : si l'user change la pause dans itinéraire, ça
+// s'applique aussi au calcul des durées Mode Secours).
+window.getItiPauseEnabled = _getItiPauseEnabled;
+window.getItiPauseMinutes = _getItiPauseMinutes;
 
 function _getItiSpeedPreset() {
   try {
@@ -6838,13 +6872,18 @@ function _vitesseMarcheKmh() {
 }
 
 // Retourne le temps total estime en minutes : marche + pauses intermediaires.
+// 🆕 v1.23.0 : pause configurable via _getItiPauseEnabled + _getItiPauseMinutes
 function _tempsItineraireMinutes(distanceM, nbWaypoints) {
   if (typeof distanceM !== "number" || distanceM <= 0) return 0;
   const tempsMarcheMin = distanceM / (_vitesseMarcheKmh() * 1000 / 60);  // m / (m/min)
   const nbPausesInter  = Math.max(0, (nbWaypoints || 0) - 2);
-  const tempsPauseMin  = nbPausesInter * TEMPS_PAUSE_PAR_POINT_MIN;
+  const pauseEnabled   = _getItiPauseEnabled();
+  const pauseMin       = pauseEnabled ? _getItiPauseMinutes() : 0;
+  const tempsPauseMin  = nbPausesInter * pauseMin;
   return tempsMarcheMin + tempsPauseMin;
 }
+// Exposé globalement pour cohérence cross-feature (Mode Secours utilise le même)
+window.getItiTempsMinutes = _tempsItineraireMinutes;
 
 // Formate une duree en minutes : "X min" si < 60, "Xh YY" sinon.
 function _formatTempsMinutes(totalMin) {
@@ -6900,15 +6939,18 @@ function _afficherLabelDistanceItineraire(distanceM, nbWaypoints) {
         preset.icon + ' ' + preset.label +
       '</span>';
     // Tooltip detaille pour la breakdown (vitesse + nb pauses)
+    // 🆕 v1.23.0 : pause configurable → lit la valeur dynamique
+    const pauseActive = _getItiPauseEnabled();
+    const pauseMin    = _getItiPauseMinutes();
     el.title =
       "Distance : " + distFmt + "\n" +
       "Temps estimé : " + tempsFmt +
       " (vitesse " + preset.label + " — " + preset.kmh + " km/h" +
-      (nbPausesInter > 0
+      (nbPausesInter > 0 && pauseActive && pauseMin > 0
         ? " + " + nbPausesInter + " pause" + (nbPausesInter > 1 ? "s" : "") +
-          " de " + TEMPS_PAUSE_PAR_POINT_MIN + " min"
+          " de " + pauseMin + " min"
         : "") +
-      ")\nCliquer pour ouvrir le menu Itinéraire (changer la vitesse).";
+      ")\nCliquer pour ouvrir le menu Itinéraire (vitesse, pause).";
   }
 }
 
@@ -7640,6 +7682,31 @@ window.ouvrirItinerairModal = function() {
         'Le mode actif s\'affiche dans le label bottom-left de la carte.</p>' +
     '</div>';
 
+  // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable entre chaque
+  // point en minutes... avec un par default auto cocher [système actuel]") :
+  // section dédiée Pause configurable. Default = case cochée + 15 min (=
+  // comportement v1.22.x strictement préservé).
+  const pauseEnabled   = _getItiPauseEnabled();
+  const pauseMin       = _getItiPauseMinutes();
+  const sectionPause =
+    '<div class="kta-iti-section">' +
+      '<div class="kta-iti-section-titre">🛑 Pause entre les arrêts</div>' +
+      '<label class="kta-iti-pause-row">' +
+        '<input type="checkbox" id="kta-iti-pause-cb"' + (pauseEnabled ? " checked" : "") + '>' +
+        '<span>Inclure une pause entre chaque arrêt intermédiaire</span>' +
+      '</label>' +
+      '<div class="kta-iti-pause-row" id="kta-iti-pause-min-wrap" ' +
+           'style="' + (pauseEnabled ? "" : "opacity:0.5; pointer-events:none;") + '">' +
+        '<label for="kta-iti-pause-min" style="flex-shrink:0;">Durée par pause :</label>' +
+        '<input type="number" id="kta-iti-pause-min" min="0" max="120" step="1" ' +
+               'value="' + pauseMin + '" style="width:70px;"> min' +
+      '</div>' +
+      '<p class="kta-iti-speed-hint">Augmente la précision de l\'estimation : ' +
+        'chaque arrêt intermédiaire (entre départ et arrivée) ajoute cette pause. ' +
+        '2 waypoints = 0 pause, N waypoints = N-2 pauses. ' +
+        'S\'applique aussi au Mode Secours 🚨.</p>' +
+    '</div>';
+
   const sectionAction =
     '<div class="kta-iti-section">' +
       '<div class="kta-iti-section-titre">🎯 ' + (modeNavigation ? "Itinéraire actuel" : "Action") + '</div>' +
@@ -7668,6 +7735,7 @@ window.ouvrirItinerairModal = function() {
         sectionPoints +
         sectionAvoid +
         sectionVitesse +
+        sectionPause +
         sectionAction +
       '</div>' +
     '</div>';
@@ -7690,23 +7758,60 @@ window.ouvrirItinerairModal = function() {
         wrap.querySelectorAll(".kta-iti-speed-btn").forEach(function(b) {
           b.classList.toggle("kta-iti-speed-active", b === btn);
         });
-        // Refresh in-place du bloc statusActuel (mode navigation) :
-        // on lit distM/nbwp depuis les data-* attributs et on regénère le
-        // texte du span temps + hint preset.
-        const statusBlk = document.getElementById("kta-iti-status-block");
-        if (statusBlk) {
-          const distM = parseFloat(statusBlk.dataset.distm) || 0;
-          const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
-          const tMin  = _tempsItineraireMinutes(distM, nbWp);
-          const p     = ITI_SPEED_PRESETS[key];
-          const tEl   = document.getElementById("kta-iti-temps-val");
-          const hEl   = document.getElementById("kta-iti-temps-speed-hint");
-          if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
-          if (hEl) hEl.textContent = "(" + p.icon + " " + p.label + ")";
-        }
+        _refreshItiTempsInPlace();
       });
     });
   })();
+
+  // 🆕 v1.23.0 — Bind handlers section Pause (checkbox + input minutes)
+  (function bindPauseSection() {
+    const cb     = document.getElementById("kta-iti-pause-cb");
+    const inp    = document.getElementById("kta-iti-pause-min");
+    const wrapM  = document.getElementById("kta-iti-pause-min-wrap");
+    if (cb) {
+      cb.addEventListener("change", function() {
+        _setItiPauseEnabled(cb.checked);
+        if (wrapM) {
+          wrapM.style.opacity = cb.checked ? "" : "0.5";
+          wrapM.style.pointerEvents = cb.checked ? "" : "none";
+        }
+        _refreshItiTempsInPlace();
+        if (typeof window._majLabelDistanceItineraire === "function") {
+          window._majLabelDistanceItineraire();
+        }
+      });
+    }
+    if (inp) {
+      // Change ET input (live feedback pendant la saisie au clavier)
+      const _onInput = function() {
+        const v = parseFloat(inp.value);
+        if (isFinite(v) && v >= 0) {
+          _setItiPauseMinutes(v);
+          _refreshItiTempsInPlace();
+          if (typeof window._majLabelDistanceItineraire === "function") {
+            window._majLabelDistanceItineraire();
+          }
+        }
+      };
+      inp.addEventListener("input", _onInput);
+      inp.addEventListener("change", _onInput);
+    }
+  })();
+
+  // Helper local : refresh le bloc statusActuel (mode navigation) — partagé
+  // entre vitesse + pause handlers pour cohérence.
+  function _refreshItiTempsInPlace() {
+    const statusBlk = document.getElementById("kta-iti-status-block");
+    if (!statusBlk) return;
+    const distM = parseFloat(statusBlk.dataset.distm) || 0;
+    const nbWp  = parseInt(statusBlk.dataset.nbwp, 10) || 2;
+    const tMin  = _tempsItineraireMinutes(distM, nbWp);
+    const p     = ITI_SPEED_PRESETS[_getItiSpeedPreset()];
+    const tEl   = document.getElementById("kta-iti-temps-val");
+    const hEl   = document.getElementById("kta-iti-temps-speed-hint");
+    if (tEl) tEl.textContent = _formatTempsMinutes(tMin);
+    if (hEl) hEl.textContent = "(" + p.icon + " " + p.label + ")";
+  }
 
   function fermer() {
     _desactiverModeClicCarte();

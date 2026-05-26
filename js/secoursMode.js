@@ -970,27 +970,41 @@
       if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Module KmzExport non chargé.", "error");
       return null;
     }
-    // Vérif calibrage
+    // 🐛 v1.23.0-fixB (KARMA "georef pas pris en compte dans mode secour
+    // malgré que le reglage est bien effectuée") :
+    //
+    // Le format RÉEL stocké par KmzExport.setCalibration est FLAT :
+    //   { pointA: {x, y, lat, lng}, pointB: {x, y, lat, lng} }
+    //
+    // J'utilisais à tort un format NESTÉ pointA.plan / pointA.gps qui n'a
+    // jamais existé → buildTransform recevait undefined × 4 → erreur
+    // "Calibrage incomplet" interprétée à tort comme "Calibrage corrompu".
+    //
+    // Format correct cohérent avec sessionExporter.js:2878-2883 + createConf.js
+    // + interface.js:2537. Doc §32.7 CLAUDE.md à corriger (trompeuse).
     const planId = window._currentLoadedPlanId;
     const calib = planId ? window.KmzExport.getCalibration(planId) : null;
-    if (!calib || !calib.pointA || !calib.pointB) {
-      if (window.OOMGuard) {
-        window.OOMGuard.showToast(
-          "⚠️ Plan non calibré. Ouvre d'abord la modale d'export KMZ classique (💾 Enregistrer session > 🌍 KMZ) pour définir 2 points GPS de référence.",
-          "warn"
-        );
-      }
+    if (!calib || !calib.pointA || !calib.pointB
+        || typeof calib.pointA.x !== "number" || typeof calib.pointA.y !== "number"
+        || typeof calib.pointA.lat !== "number" || typeof calib.pointA.lng !== "number"
+        || typeof calib.pointB.x !== "number" || typeof calib.pointB.y !== "number"
+        || typeof calib.pointB.lat !== "number" || typeof calib.pointB.lng !== "number") {
+      _toast(
+        "⚠️ Plan non calibré (ou calibrage incomplet). Ouvre la modale 💾 Enregistrer session > 🌍 KMZ pour définir 2 points GPS de référence.",
+        "warn"
+      );
       return null;
     }
-    // Build transform on-demand (pattern §32.7 CLAUDE.md)
     let transform;
     try {
       transform = window.KmzExport.buildTransform(
-        calib.pointA.plan, calib.pointB.plan,
-        calib.pointA.gps,  calib.pointB.gps
+        { x: calib.pointA.x, y: calib.pointA.y },
+        { x: calib.pointB.x, y: calib.pointB.y },
+        { lat: calib.pointA.lat, lng: calib.pointA.lng },
+        { lat: calib.pointB.lat, lng: calib.pointB.lng }
       );
     } catch(e) {
-      if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Calibrage corrompu : " + e.message, "error");
+      _toast("⚠️ Calibrage corrompu : " + e.message, "error");
       return null;
     }
     // On délègue à KmzExport.genererKmz avec :
@@ -2294,7 +2308,21 @@
         const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
                       ? window.APP_CONFIG.scale : 1;
         const distM = r.totalDistance / scale;
-        const duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
+        // 🆕 v1.23.0 (KARMA "rajoute un temps de pause définissable...
+        // s'applique aussi au mode secours") : on utilise le helper unifié
+        // window.getItiTempsMinutes (interface.js) qui lit la vitesse + la
+        // pause configurables. Fallback sur vitesse cataphile 0.5 m/s si
+        // helper indisponible (cas chargement modulaire alternatif).
+        let duree;
+        if (typeof window.getItiTempsMinutes === "function") {
+          // window.getItiTempsMinutes(distM, nbWaypoints) — applique vitesse
+          // + nb pauses intermédiaires selon prefs UI itinéraire.
+          const nbWp = waypoints.length;   // entrée + intermédiaires + sortie
+          duree = Math.round(window.getItiTempsMinutes(distM, nbWp));
+        } else {
+          // Fallback historique : vitesse 0.5 m/s cataphile, pas de pause
+          duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
+        }
         updateGroupe(scenarioId, groupeId, {
           itineraireSuggere: r.path.map(function(p) {
             return { x: p.x, y: p.y, level: g.entree.level || 0 };
