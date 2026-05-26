@@ -989,6 +989,14 @@
        payload.runtimeFilters au restore). -->
   <script src="js/filterPanel.js"></script>
 
+  <!-- 🚨 v1.22.0 (KARMA "définir un plan de secours") : Mode Secours —
+       outil opérationnel pour assigner méthodiquement des équipes de
+       secours à des zones de recherche. Multi-scénarios par plan,
+       persistance localStorage. Doit charger APRÈS interface.js (sidebar
+       urgences integration), pathfinder.js (pré-calcul itinéraires),
+       kmzExport.js (export géolocalisé) et pdfExport.js (export PDF). -->
+  <script src="js/secoursMode.js"></script>
+
   <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
        Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
        de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).

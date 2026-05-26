@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.21.5-filterpanel";
+const CACHE_NAME = "myktamap-cache-v1.22.0-secours";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -167,6 +167,8 @@ const ASSETS_TO_CACHE = [
   "./js/interface.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
+  // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
+  "./js/secoursMode.js",
   "./js/main.js",
 
   // Librairies

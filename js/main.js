@@ -335,6 +335,14 @@ async function lancerApplication() {
     window.SessionPersist.onPlanLoaded(window._currentLoadedPlanId || null);
   }
 
+  // 🆕 v1.22.0 (Mode Secours) : charge les scénarios de secours pour ce plan
+  // depuis localStorage. Idempotent — peut être rappelé au plan switch.
+  if (window.SecoursMode && typeof window.SecoursMode.init === "function") {
+    try { window.SecoursMode.init(); } catch(e) {
+      console.warn("[Main] SecoursMode.init échec :", e);
+    }
+  }
+
   // Second snapshot APRÈS restore (cf bloc ci-dessus).
   if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
     // Léger délai pour laisser le restore Phase 1 finir (setRoads, etc.).
@@ -569,6 +577,14 @@ function _libererRessourcesPlanPrecedent() {
   // avant le démontage de la map.
   if (window.LostMode && typeof window.LostMode._onPlanSwitch === "function") {
     try { window.LostMode._onPlanSwitch(); } catch(e) {}
+  }
+
+  // 🆕 v1.22.0 Mode Secours : ferme la modale + purge l'overlay carte +
+  // vide les scénarios in-memory. Les scénarios localStorage du plan
+  // précédent restent persistés (per-plan key) et seront re-chargés via
+  // SecoursMode.init() au boot du prochain plan si l'user y retourne.
+  if (window.SecoursMode && typeof window.SecoursMode.reset === "function") {
+    try { window.SecoursMode.reset(); } catch(e) {}
   }
 
   // 🆕 v1.11.0 Undo/Redo : reset historique au plan switch (KARMA 11:a).
