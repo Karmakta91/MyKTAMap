@@ -19216,6 +19216,30 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-size: 24px;
   flex-shrink: 0;
 }
+
+/* 🆕 hotfix3 — Badge ✓ sur markers waypoints effectués (overlay carte).
+   Affiché en haut-droite du marker (offset via iconAnchor négatif).
+   Pas d'interactivité (pointer-events: none) pour ne pas bloquer clic carte. */
+.kta-secours-overlay-check-badge {
+  pointer-events: none;
+  background: transparent !important;
+  border: none !important;
+}
+.kta-secours-overlay-check-badge-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+}
 .kta-secours-lancer-bandeau-disabled {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.10);

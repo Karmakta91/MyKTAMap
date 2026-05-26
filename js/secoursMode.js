@@ -1573,12 +1573,68 @@
     if (s.context) {
       _renderContextOverlay(s.context);
     }
+    // 🆕 hotfix3 (KARMA "si mode équipier en cours, on dit afficher sa zone
+    // de recherche en mode edit, si opérateur toutes les zone, si secours
+    // toutes les zones, avec un petit ✓ vert quand le point a été passé") :
+    // Filtrage selon le rôle d'exécution si execution active. Sinon
+    // comportement v1.25.x strict (toutes équipes + focus optionnel).
+    const execActive = _estExecutionActive(s);
+    const isEquipier = execActive && s.execution.role === "equipe" && s.execution.currentEquipeId;
     s.groupes.forEach(function(g) {
-      // Skip si mode focus actif et pas l'équipe focusée
-      if (_focusedGroupeId && g.id !== _focusedGroupeId) return;
+      // Mode équipier en cours → afficher SEULEMENT son équipe (override focus)
+      if (isEquipier && g.id !== s.execution.currentEquipeId) return;
+      // Mode focus manuel (legacy) → respecter
+      if (!isEquipier && _focusedGroupeId && g.id !== _focusedGroupeId) return;
       const couleur = PALETTE[g.couleurIdx % PALETTE.length].hex;
-      _renderGroupeOverlay(g, couleur);
+      _renderGroupeOverlay(g, couleur, s);
     });
+  }
+
+  // 🆕 hotfix3 — Helper pour récupérer l'étape execution correspondant à
+  // un waypoint d'une équipe. Retourne null si pas d'execution active OU
+  // si l'étape n'existe pas dans l'execution (cas où parcours ajusté après
+  // lancement). Mapping : entrée=idx 0, intermédiaires=idx 1..N, sortie=idx N+1.
+  function _getEtapeForWaypoint(s, equipeId, waypointType, intermIdx) {
+    if (!_estExecutionActive(s) && !(s.execution && s.execution.endedAt)) {
+      // Considère aussi execution terminée (rapport historique) pour
+      // que les ✓ verts restent visibles dans bandeau PLAN TERMINÉ
+      return null;
+    }
+    const etapes = _getEtapesEquipe(s, equipeId);
+    if (!Array.isArray(etapes) || etapes.length === 0) return null;
+    if (waypointType === "entree") {
+      return etapes.find(function(e) { return e.type === "entree"; }) || null;
+    }
+    if (waypointType === "sortie") {
+      return etapes.find(function(e) { return e.type === "sortie"; }) || null;
+    }
+    if (waypointType === "interm" && typeof intermIdx === "number") {
+      // Les intermédiaires sont indexés dans l'ordre d'apparition
+      const interms = etapes.filter(function(e) { return e.type === "interm"; });
+      return interms[intermIdx] || null;
+    }
+    return null;
+  }
+
+  // 🆕 hotfix3 — Ajoute un badge ✓ vert (L.marker divIcon) en top-right
+  // du marker d'étape si l'étape a été effectuée (completedAt set + statut
+  // non-pending). Utilise la couleur du statut pour différencier RAS (vert)
+  // vs Bloqué (gris) vs Victime (rouge) etc.
+  function _addCheckBadgeIfDone(etape, latlng) {
+    if (!etape || !etape.completedAt || etape.statut === "pending") return;
+    const info = _getStatutInfo(etape.statut);
+    // Petit badge circulaire avec l'emoji du statut (très petit)
+    const icon = L.divIcon({
+      className: "kta-secours-overlay-check-badge",
+      html:      '<span class="kta-secours-overlay-check-badge-inner" ' +
+                 'style="background:' + info.color + ';">' +
+                 (etape.statut === "ras" ? "✓" : info.emoji) +
+                 '</span>',
+      iconSize:   [20, 20],
+      iconAnchor: [-6, 16]   // décalage top-right vs le centre du marker
+    });
+    const badge = L.marker(latlng, { icon: icon, interactive: false, keyboard: false });
+    badge.addTo(_overlayLayer);
   }
 
   // 🆕 v1.23.0 Feature C — Overlay du contexte importé Lost Mode :
@@ -1627,7 +1683,10 @@
     }
   }
 
-  function _renderGroupeOverlay(g, couleur) {
+  function _renderGroupeOverlay(g, couleur, s) {
+    // 🆕 hotfix3 — Param `s` optionnel pour récupérer les étapes execution
+    // et afficher les ✓ verts sur les waypoints effectués. Si s absent
+    // (legacy callers), pas de badges (comportement v1.25.x strict).
     // Zone polygone — fillOpacity 30 % + border 3px (briefing visible)
     if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
       const latlngs = g.zonePolygon.map(_planToLatLng);
@@ -1663,7 +1722,8 @@
     }
     // Entrée — marker circle vert avec halo couleur équipe
     if (g.entree && typeof g.entree.x === "number" && typeof g.entree.y === "number") {
-      const cm = L.circleMarker(_planToLatLng(g.entree), {
+      const latlng = _planToLatLng(g.entree);
+      const cm = L.circleMarker(latlng, {
         radius:      9,
         color:       "#00cc44",
         weight:      3,
@@ -1672,13 +1732,16 @@
       });
       cm.bindTooltip("📍 Entrée " + _escHtml(g.nom), { permanent: false });
       cm.addTo(_overlayLayer);
+      // 🆕 hotfix3 — Badge ✓ si étape entrée effectuée
+      _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "entree"), latlng);
     }
     // 🆕 v1.22.0-fix2 — Intermédiaires : markers ronds plus petits couleur équipe
     // avec border blanc fin, numérotés via tooltip
     if (Array.isArray(g.intermediaires)) {
       g.intermediaires.forEach(function(w, i) {
         if (!w || typeof w.x !== "number" || typeof w.y !== "number") return;
-        const cm = L.circleMarker(_planToLatLng(w), {
+        const latlng = _planToLatLng(w);
+        const cm = L.circleMarker(latlng, {
           radius:      7,
           color:       "#fff",
           weight:      2,
@@ -1689,13 +1752,16 @@
                        (w.label ? " — " + _escHtml(w.label) : ""),
                        { permanent: false });
         cm.addTo(_overlayLayer);
+        // 🆕 hotfix3 — Badge ✓ si étape intermédiaire effectuée
+        _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "interm", i), latlng);
       });
     }
     // Sortie — marker square (via divIcon) couleur équipe avec bord rouge
     if (g.sortie && typeof g.sortie.x === "number" && typeof g.sortie.y === "number") {
+      const latlng = _planToLatLng(g.sortie);
       // Si entrée === sortie (boucle), marker double bordure (vert + rouge superposés)
       const isBoucle = _samePoint(g.entree, g.sortie);
-      const cm = L.circleMarker(_planToLatLng(g.sortie), {
+      const cm = L.circleMarker(latlng, {
         radius:      isBoucle ? 11 : 9,
         color:       isBoucle ? "#ffaa00" : "#cc0000",
         weight:      isBoucle ? 4 : 3,
@@ -1707,6 +1773,8 @@
         { permanent: false }
       );
       cm.addTo(_overlayLayer);
+      // 🆕 hotfix3 — Badge ✓ si étape sortie effectuée
+      _addCheckBadgeIfDone(_getEtapeForWaypoint(s, g.id, "sortie"), latlng);
     }
     // Itinéraire suggéré — polyline dashed couleur équipe
     if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
