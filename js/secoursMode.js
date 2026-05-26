@@ -851,12 +851,28 @@
           }
         });
       });
-      // Buttons "Définir entrée / sortie / zone / itinéraire" — stubs commits 3+4
-      corps.querySelectorAll('[data-action="def-entree"], [data-action="def-sortie"], [data-action="def-zone"], [data-action="calc-iti"]').forEach(function(btn) {
+      // Définir entrée
+      corps.querySelectorAll('[data-action="def-entree"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
-            window.OOMGuard.showToast("🚧 Outil à coder dans le commit suivant — patience !", "info");
-          }
+          _startDefiningPoint(btn.getAttribute("data-gid"), "entree");
+        });
+      });
+      // Définir sortie
+      corps.querySelectorAll('[data-action="def-sortie"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _startDefiningPoint(btn.getAttribute("data-gid"), "sortie");
+        });
+      });
+      // Définir zone (choix polygon | roads via mini-prompt)
+      corps.querySelectorAll('[data-action="def-zone"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _ouvrirChoixZoneMode(btn.getAttribute("data-gid"));
+        });
+      });
+      // Calc itinéraire (commit 4)
+      corps.querySelectorAll('[data-action="calc-iti"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _recalculerItineraireGroupe(s.id, btn.getAttribute("data-gid"));
         });
       });
       // Export PDF / KMZ — stubs commits 6+7
@@ -869,6 +885,400 @@
       });
     }
   }
+
+  // ============================================================
+  // MODES INTERACTIFS MAP (depuis v1.22.0 commit 3/9)
+  // ============================================================
+  // Pattern : (1) cache la modale (display:none), (2) ajoute floater compact
+  // en bas de l'écran avec instruction + bouton Annuler/Terminer, (3) ajoute
+  // listener map.on("click"), (4) à la complétion : restore modale + re-bind
+  // + cleanup listener. Inspiré du pattern itinéraire avoid-click mode.
+
+  let _activeMapMode = null;     // "point" | "polygon" | "roads" | null
+  let _mapModeCtx = null;        // { groupeId, role?, points?, roadIds?, layer? }
+
+  function _startDefiningPoint(groupeId, role) {
+    if (_activeMapMode) _cancelMapMode();
+    if (!window.map) return;
+    _activeMapMode = "point";
+    _mapModeCtx = { groupeId: groupeId, role: role };
+    _hideModalForMap();
+    _showFloater(
+      "📍 Clique sur la carte pour définir l'<strong>" +
+      (role === "entree" ? "ENTRÉE" : "SORTIE") + "</strong> de l'équipe",
+      [{ label: "Annuler", action: "cancel" }]
+    );
+    window.map.once("click", _onMapClickPoint);
+  }
+
+  function _onMapClickPoint(e) {
+    if (!_mapModeCtx) return;
+    const x = e.latlng.lng;
+    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+              ? window.APP_CONFIG.imageHeight - e.latlng.lat
+              : e.latlng.lat;
+    const level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+                  ? window.APP_CONFIG.activeLevel : 0;
+    const ctx = _mapModeCtx;
+    const update = {};
+    update[ctx.role] = { x: x, y: y, level: level };
+    updateGroupe(_currentScenarioId, ctx.groupeId, update);
+    _finishMapMode();
+  }
+
+  function _ouvrirChoixZoneMode(groupeId) {
+    // Petite modale de choix : polygon OU roads
+    const overlay = document.createElement("div");
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:420px;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">⬛ Définir la zone</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p style="color:#c8d0e0;">Choisis comment définir la zone à ratisser pour cette équipe :</p>' +
+          '<div style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">' +
+            '<button class="kta-btn kta-btn-primary" data-mode="polygon" style="text-align:left;">' +
+              '<strong>⬛ Polygone</strong><br>' +
+              '<small style="opacity:0.85;">Trace un polygone sur la carte (clic = sommet, double-clic = fermer).</small>' +
+            '</button>' +
+            '<button class="kta-btn kta-btn-primary" data-mode="roads" style="text-align:left;">' +
+              '<strong>🛣️ Sélection de tracés</strong><br>' +
+              '<small style="opacity:0.85;">Clique chaque tracé (route) à inclure. Re-cliquer = retirer. Précis pour les zones étroites suivant les galeries.</small>' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+    function _close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) {
+      b.addEventListener("click", _close);
+    });
+    overlay.querySelectorAll('[data-mode]').forEach(function(b) {
+      b.addEventListener("click", function() {
+        const mode = b.getAttribute("data-mode");
+        _close();
+        if (mode === "polygon") _startDefiningZonePolygon(groupeId);
+        else if (mode === "roads") _startDefiningZoneRoads(groupeId);
+      });
+    });
+  }
+
+  function _startDefiningZonePolygon(groupeId) {
+    if (_activeMapMode) _cancelMapMode();
+    if (!window.map) return;
+    _activeMapMode = "polygon";
+    _mapModeCtx = { groupeId: groupeId, points: [], previewLayer: null };
+    _hideModalForMap();
+    _showFloater(
+      '⬛ Clique pour ajouter des sommets — <strong>double-clic pour FERMER le polygone</strong><br>' +
+      '<span id="kta-sec-poly-count">0 sommet(s)</span>',
+      [
+        { label: "Annuler", action: "cancel" },
+        { label: "✓ Terminer", action: "finish" }
+      ]
+    );
+    window.map.on("click", _onMapClickPolygon);
+    window.map.on("dblclick", _onMapDblClickPolygon);
+  }
+
+  function _onMapClickPolygon(e) {
+    if (!_mapModeCtx) return;
+    const x = e.latlng.lng;
+    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+              ? window.APP_CONFIG.imageHeight - e.latlng.lat
+              : e.latlng.lat;
+    const level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+                  ? window.APP_CONFIG.activeLevel : 0;
+    _mapModeCtx.points.push({ x: x, y: y, level: level });
+    _updateFloaterCount(_mapModeCtx.points.length, "sommet");
+    _redrawPolygonPreview();
+  }
+
+  function _onMapDblClickPolygon(e) {
+    if (!_mapModeCtx || !_mapModeCtx.points || _mapModeCtx.points.length < 3) {
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast("⚠️ Minimum 3 sommets pour fermer le polygone.", "warn");
+      }
+      return;
+    }
+    L.DomEvent.stopPropagation(e);
+    L.DomEvent.preventDefault(e);
+    _finishPolygon();
+  }
+
+  function _redrawPolygonPreview() {
+    if (_mapModeCtx.previewLayer && window.map) {
+      try { window.map.removeLayer(_mapModeCtx.previewLayer); } catch(e) {}
+    }
+    if (_mapModeCtx.points.length < 2 || !window.map) return;
+    const latlngs = _mapModeCtx.points.map(_planToLatLng);
+    _mapModeCtx.previewLayer = L.polyline(latlngs, {
+      color: "#ff4444", weight: 3, opacity: 0.8, dashArray: "8 4"
+    }).addTo(window.map);
+  }
+
+  function _finishPolygon() {
+    if (!_mapModeCtx || _mapModeCtx.points.length < 3) return;
+    const ctx = _mapModeCtx;
+    updateGroupe(_currentScenarioId, ctx.groupeId, {
+      zoneType:    "polygon",
+      zonePolygon: ctx.points.slice(),
+      zoneRoadIds: null   // exclusif
+    });
+    _finishMapMode();
+  }
+
+  function _startDefiningZoneRoads(groupeId) {
+    if (_activeMapMode) _cancelMapMode();
+    if (!window.map) return;
+    _activeMapMode = "roads";
+    _mapModeCtx = { groupeId: groupeId, roadIds: new Set(), highlightLayer: null };
+    _hideModalForMap();
+    _showFloater(
+      '🛣️ Clique chaque <strong>TRACÉ</strong> à inclure (re-clic = retirer)<br>' +
+      '<span id="kta-sec-poly-count">0 tracé(s)</span>',
+      [
+        { label: "Annuler", action: "cancel" },
+        { label: "✓ Terminer", action: "finish" }
+      ]
+    );
+    _bindRoadsClickListeners();
+  }
+
+  function _bindRoadsClickListeners() {
+    // Hook sur toutes les polylines de roads présentes (session + embedded)
+    // via les registries _ktaSessionRoadLayers / _ktaDataPolylines.
+    // Approche simple : on attache un click handler à chaque polyline.
+    // Au cleanup _finishMapMode, on retire ces handlers.
+    if (!window.map) return;
+    _mapModeCtx.attachedHandlers = [];
+    // Session roads
+    const sessRoads = (typeof window.getRoads === "function") ? (window.getRoads() || []) : [];
+    sessRoads.forEach(function(road) {
+      if (road.type === "itinerary") return;  // pas de pick sur itinéraire
+      _attachRoadPickHandler(road);
+    });
+    // Embedded roads (via registry s'il existe)
+    if (Array.isArray(window._ktaDataPolylines)) {
+      window._ktaDataPolylines.forEach(function(entry) {
+        if (!entry || !entry.road || entry.road.type === "itinerary") return;
+        _attachRoadPickHandler(entry.road, entry.layer);
+      });
+    }
+  }
+
+  function _attachRoadPickHandler(road, layerHint) {
+    // road.id obligatoire pour identifier (créé par road.js si absent)
+    if (!road.id) road.id = "road_" + Math.random().toString(36).slice(2, 10);
+    // Trouve le L.polyline associé. Pattern : road.js stocke ses polylines
+    // dans _ktaSessionRoadLayers (session) ou via registry. On simplifie en
+    // attachant directement si on a la ref layerHint.
+    const layer = layerHint;
+    if (!layer || typeof layer.on !== "function") return;
+    const handler = function(e) {
+      L.DomEvent.stopPropagation(e);
+      _toggleRoadPick(road.id, layer);
+    };
+    layer.on("click", handler);
+    _mapModeCtx.attachedHandlers.push({ layer: layer, handler: handler });
+  }
+
+  function _toggleRoadPick(roadId, layer) {
+    if (!_mapModeCtx) return;
+    if (_mapModeCtx.roadIds.has(roadId)) {
+      _mapModeCtx.roadIds.delete(roadId);
+      // Restore style
+      if (layer && layer.options && layer._kta_originalStyle) {
+        try { layer.setStyle(layer._kta_originalStyle); } catch(e) {}
+        delete layer._kta_originalStyle;
+      }
+    } else {
+      _mapModeCtx.roadIds.add(roadId);
+      if (layer && typeof layer.setStyle === "function") {
+        if (!layer._kta_originalStyle) {
+          layer._kta_originalStyle = {
+            color:  layer.options.color,
+            weight: layer.options.weight,
+            opacity: layer.options.opacity
+          };
+        }
+        layer.setStyle({ color: "#ff4444", weight: 8, opacity: 0.9 });
+      }
+    }
+    _updateFloaterCount(_mapModeCtx.roadIds.size, "tracé");
+  }
+
+  function _finishRoads() {
+    if (!_mapModeCtx) return;
+    const ctx = _mapModeCtx;
+    if (ctx.roadIds.size === 0) {
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast("⚠️ Aucun tracé sélectionné.", "warn");
+      }
+      return;
+    }
+    updateGroupe(_currentScenarioId, ctx.groupeId, {
+      zoneType:    "roads",
+      zoneRoadIds: Array.from(ctx.roadIds),
+      zonePolygon: null   // exclusif
+    });
+    _finishMapMode();
+  }
+
+  // ============================================================
+  // Helpers map mode UI
+  // ============================================================
+
+  function _planToLatLng(pt) {
+    // Plan (x, y) → Leaflet [lat, lng] via CRS.Simple convention MyKTAMap
+    const lat = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+                ? window.APP_CONFIG.imageHeight - pt.y
+                : pt.y;
+    return L.latLng(lat, pt.x);
+  }
+
+  function _hideModalForMap() {
+    if (_modal) _modal.style.display = "none";
+  }
+  function _showModalAfterMap() {
+    if (_modal) _modal.style.display = "";
+    if (_currentScenarioId) _switchView("edit");
+  }
+
+  function _showFloater(html, actions) {
+    _removeFloater();
+    const fl = document.createElement("div");
+    fl.id = "kta-secours-floater";
+    fl.className = "kta-secours-floater";
+    fl.innerHTML = '<div class="kta-secours-floater-msg">' + html + '</div>' +
+                   '<div class="kta-secours-floater-actions">' +
+                     (actions || []).map(function(a) {
+                       return '<button class="kta-btn kta-btn-' + (a.action === "finish" ? "primary" : "ghost") + ' kta-btn-sm" data-action="' + a.action + '">' + a.label + '</button>';
+                     }).join('') +
+                   '</div>';
+    document.body.appendChild(fl);
+    fl.querySelectorAll('[data-action="cancel"]').forEach(function(b) {
+      b.addEventListener("click", _cancelMapMode);
+    });
+    fl.querySelectorAll('[data-action="finish"]').forEach(function(b) {
+      b.addEventListener("click", function() {
+        if (_activeMapMode === "polygon") _finishPolygon();
+        else if (_activeMapMode === "roads") _finishRoads();
+      });
+    });
+  }
+  function _removeFloater() {
+    const ex = document.getElementById("kta-secours-floater");
+    if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+  }
+  function _updateFloaterCount(n, label) {
+    const el = document.getElementById("kta-sec-poly-count");
+    if (el) el.textContent = n + " " + label + (n > 1 ? "s" : "");
+  }
+
+  function _cancelMapMode() {
+    _finishMapMode();
+  }
+  function _finishMapMode() {
+    if (window.map) {
+      window.map.off("click", _onMapClickPoint);
+      window.map.off("click", _onMapClickPolygon);
+      window.map.off("dblclick", _onMapDblClickPolygon);
+    }
+    // Cleanup preview polygon
+    if (_mapModeCtx && _mapModeCtx.previewLayer && window.map) {
+      try { window.map.removeLayer(_mapModeCtx.previewLayer); } catch(e) {}
+    }
+    // Cleanup roads handlers
+    if (_mapModeCtx && Array.isArray(_mapModeCtx.attachedHandlers)) {
+      _mapModeCtx.attachedHandlers.forEach(function(h) {
+        try { h.layer.off("click", h.handler); } catch(e) {}
+        if (h.layer && h.layer._kta_originalStyle) {
+          try { h.layer.setStyle(h.layer._kta_originalStyle); } catch(e) {}
+          delete h.layer._kta_originalStyle;
+        }
+      });
+    }
+    _activeMapMode = null;
+    _mapModeCtx = null;
+    _removeFloater();
+    _showModalAfterMap();
+  }
+
+  // ============================================================
+  // PATHFINDER intégration (depuis v1.22.0 commit 4/9)
+  // ============================================================
+  function _recalculerItineraireGroupe(scenarioId, groupeId) {
+    const s = get(scenarioId);
+    if (!s) return null;
+    const g = s.groupes.find(function(x) { return x.id === groupeId; });
+    if (!g) return null;
+    if (!g.entree || !g.sortie) {
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast("⚠️ Définis d'abord l'entrée et la sortie de l'équipe.", "warn");
+      }
+      return null;
+    }
+    if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast("⚠️ Pathfinder indisponible.", "error");
+      }
+      return null;
+    }
+    try {
+      const waypoints = [
+        { x: g.entree.x, y: g.entree.y, label: "Entrée " + g.nom },
+        { x: g.sortie.x, y: g.sortie.y, label: "Sortie " + g.nom }
+      ];
+      // Pathfinder.computeRoute est async depuis v1.21.x (avoid expansion).
+      // On le résout en synchrone via Promise.then ici, en re-render à la fin.
+      const result = window.Pathfinder.computeRoute(waypoints, {});
+      Promise.resolve(result).then(function(r) {
+        if (!r || !Array.isArray(r.path) || r.path.length === 0) {
+          if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Aucun itinéraire trouvé.", "warn");
+          return;
+        }
+        // r.totalDistance est en px plan ; convertir en mètres via APP_CONFIG.scale (px/m)
+        const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
+                      ? window.APP_CONFIG.scale : 1;
+        const distM = r.totalDistance / scale;
+        const duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);   // minutes
+        updateGroupe(scenarioId, groupeId, {
+          itineraireSuggere: r.path.map(function(p) {
+            return { x: p.x, y: p.y, level: g.entree.level || 0 };
+          }),
+          distanceM:       distM,
+          dureeEstimeeMin: duree
+        });
+        if (window.OOMGuard) {
+          const fmtD = (typeof window.formatDistance === "function")
+                       ? window.formatDistance(distM, 0) : Math.round(distM) + " m";
+          window.OOMGuard.showToast("✓ Itinéraire calculé : " + fmtD + " · ~" + duree + " min", "info");
+        }
+        if (_modal) _switchView("edit");
+      }).catch(function(err) {
+        console.warn("[SecoursMode] Pathfinder error :", err);
+        if (window.OOMGuard) {
+          window.OOMGuard.showToast("⚠️ Erreur Pathfinder : " + (err.message || err), "error");
+        }
+      });
+    } catch(e) {
+      console.warn("[SecoursMode] Calcul itinéraire échoué :", e);
+    }
+  }
+
+  // Override stub commit 1
+  recalculerItineraires = function(scenarioId) {
+    const s = get(scenarioId);
+    if (!s) return;
+    s.groupes.forEach(function(g) {
+      _recalculerItineraireGroupe(scenarioId, g.id);
+    });
+  };
 
   // Helpers HTML escape (anti-XSS sur user input)
   function _escHtml(s) {
