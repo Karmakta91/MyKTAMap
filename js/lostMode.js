@@ -1119,6 +1119,17 @@
               '<button class="kta-btn kta-btn-ghost"   id="kta-lost-copy"    type="button">📋 Copier le rapport</button>' +
               '<button class="kta-btn kta-btn-primary" id="kta-lost-confirm" type="button">✅ Supprimer la zone et sauvegarder ma position supposée</button>' +
             '</div>' +
+            // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours
+            // depuis Lost Mode. Pré-remplit le scénario avec context.lastKnownPoint
+            // + zoneIncertitude + elapsedMinutes → workflow naturel "je suis
+            // perdu (OU je cherche quelqu'un) → coordination équipes".
+            '<div style="text-align:center; margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,140,140,0.20);">' +
+              '<button class="kta-btn kta-btn-danger" id="kta-lost-launch-secours" type="button" ' +
+                'style="background:rgba(255,68,68,0.85); color:#fff; border:1px solid #ff4444;" ' +
+                'title="Pré-remplit un nouveau scénario Mode Secours avec la position connue + zone d\'incertitude">' +
+                '🚨 Lancer un plan de secours (équipes + zones)' +
+              '</button>' +
+            '</div>' +
             '<div style="text-align:center; margin-top:8px;">' +
               '<button class="kta-btn-link kta-update-link-danger" id="kta-lost-wipe" type="button" title="Retire la zone et les markers de la carte">🗑️ Effacer la zone et fermer</button>' +
             '</div>';
@@ -1159,6 +1170,27 @@
       }
     });
 
+    // 🆕 v1.23.0 Phase 2 / Feature C — Lancer un plan de secours pré-rempli
+    const launchSecoursBtn = document.getElementById("kta-lost-launch-secours");
+    if (launchSecoursBtn) {
+      launchSecoursBtn.addEventListener("click", function() {
+        if (!window.SecoursMode || typeof window.SecoursMode.creerDepuisLostMode !== "function") {
+          alert("Mode Secours indisponible.");
+          return;
+        }
+        const lostState = getState();
+        if (!lostState.lastKnownPos) {
+          alert("⚠️ Définis d'abord une dernière position connue.");
+          return;
+        }
+        // Ferme la modale Lost Mode (mais garde les layers carte pour
+        // contexte visuel pendant l'édition du scénario)
+        close({ keepLayers: true });
+        // Crée + ouvre le scénario pré-rempli
+        window.SecoursMode.creerDepuisLostMode(lostState);
+      });
+    }
+
     // 🗑️ Effacer la zone et fermer — petit lien dans la section résultats
     const wipeBtn = document.getElementById("kta-lost-wipe");
     if (wipeBtn) {
@@ -1175,11 +1207,32 @@
     close({ keepLayers: false });
   }
 
+  // 🆕 v1.23.0 Phase 2 / Feature C (KARMA Mode Secours auto pre-fill context
+  // depuis Lost Mode) : expose le state pour SecoursMode.creerDepuisLostMode.
+  // Snapshot défensif (clone des objets) pour éviter mutations cross-module.
+  function getState() {
+    return {
+      active:         _active,
+      lastKnownPos:   _lastKnownPos ? {
+        x:     _lastKnownPos.x,
+        y:     _lastKnownPos.y,
+        label: _lastKnownPos.label || null
+      } : null,
+      elapsedMinutes: _elapsedMinutes,
+      speedKmH:       _speedKmH,
+      radiusPx:       _radiusPx,
+      radiusMeters:   _radiusMeters,
+      presetKey:      _currentPreset,
+      clues:          _lastClues || ""
+    };
+  }
+
   // ===== Export global =====
   window.LostMode = {
     open: open,
     close: close,
     isActive: function() { return _active; },
+    getState: getState,
     _onPlanSwitch: _onPlanSwitch
   };
 })();

@@ -312,6 +312,72 @@
     return true;
   }
 
+  // 🆕 v1.23.0 Phase 2 / Feature C (KARMA "Lost Mode → auto pre-fill context") :
+  // Crée un nouveau scénario Mode Secours pré-rempli avec les infos du
+  // Lost Mode en cours. Workflow : user en Lost Mode (cherche quelqu'un) →
+  // clic "🚨 Lancer un plan de secours" → scénario créé direct avec :
+  //   • nom = "Recherche - <date>"
+  //   • context.incidentAt = now - lostState.elapsedMinutes
+  //   • context.lastKnownPoint = lostState.lastKnownPos (avec label si POI)
+  //   • context.zoneIncertitude = { x, y, radiusMeters } (cercle Lost)
+  //   • context.notes = preset vitesse + indices saisis dans Lost Mode
+  // Puis ouvre la modale en vue Edit pour que l'user ajoute les équipes.
+  function creerDepuisLostMode(lostState) {
+    if (!lostState || !lostState.lastKnownPos) {
+      _toast("⚠️ Aucune position connue dans Lost Mode.", "warn");
+      return null;
+    }
+    // Nom auto : "Recherche - 26/05/2026 14:32"
+    const now = new Date();
+    const nomAuto = "Recherche - " + now.toLocaleDateString("fr-FR") +
+                    " " + now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    // Timestamp d'incident = maintenant - elapsedMinutes
+    const elapsed = (typeof lostState.elapsedMinutes === "number") ? lostState.elapsedMinutes : 0;
+    const incidentTs = Date.now() - elapsed * 60 * 1000;
+    // Compose les notes contextuelles
+    const notesParts = ["Importé depuis ⛑️ Mode urgence Je suis perdu."];
+    if (elapsed > 0) {
+      const h = Math.floor(elapsed / 60);
+      const m = Math.round(elapsed - h * 60);
+      notesParts.push("Temps écoulé estimé : " + (h > 0 ? h + "h" : "") + (m > 0 ? (m < 10 && h > 0 ? "0" : "") + m + "min" : ""));
+    }
+    if (lostState.speedKmH) {
+      notesParts.push("Vitesse de marche estimée : " + lostState.speedKmH + " km/h" +
+                      (lostState.presetKey ? " (preset " + lostState.presetKey + ")" : ""));
+    }
+    if (lostState.radiusMeters) {
+      notesParts.push("Rayon d'incertitude calculé : " + Math.round(lostState.radiusMeters) + " m");
+    }
+    if (lostState.clues && lostState.clues.trim()) {
+      notesParts.push("Indices saisis : " + lostState.clues.trim());
+    }
+    // Création + remplissage du contexte
+    const scenario = createScenario(nomAuto);
+    updateScenario(scenario.id, {
+      context: {
+        incidentAt: new Date(incidentTs).toISOString(),
+        lastKnownPoint: {
+          x:     lostState.lastKnownPos.x,
+          y:     lostState.lastKnownPos.y,
+          level: (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
+                 ? window.APP_CONFIG.activeLevel : 0,
+          label: lostState.lastKnownPos.label || null
+        },
+        zoneIncertitude: lostState.radiusMeters ? {
+          x:            lostState.lastKnownPos.x,
+          y:            lostState.lastKnownPos.y,
+          radiusMeters: lostState.radiusMeters,
+          radiusPx:     lostState.radiusPx || null
+        } : null,
+        notes: notesParts.join("\n")
+      }
+    });
+    _toast("✓ Scénario créé : " + nomAuto + ". Ajoute maintenant les équipes 🚨.", "info");
+    // Ouvre la modale Mode Secours en vue Edit
+    ouvrir(scenario.id);
+    return scenario;
+  }
+
   // Duplique un scénario (= deep clone via JSON roundtrip + nouveau id).
   // Pratique pour "et si l'équipe Alpha sort par le Sud au lieu de l'Est" :
   // dupliquer puis modifier l'équipe sans perdre l'original.
@@ -445,12 +511,65 @@
     if (!s || !window.map) return;
     _currentScenarioId = s.id;
     _overlayLayer = L.layerGroup().addTo(window.map);
+    // 🆕 v1.23.0 Phase 2 / Feature C — Rendu du contexte Lost Mode si présent
+    // (lastKnownPoint marker urgence + zoneIncertitude cercle pointillé).
+    // Affiché AVANT les équipes (z-index bas) pour ne pas masquer les overlays
+    // d'assignation.
+    if (s.context) {
+      _renderContextOverlay(s.context);
+    }
     s.groupes.forEach(function(g) {
       // Skip si mode focus actif et pas l'équipe focusée
       if (_focusedGroupeId && g.id !== _focusedGroupeId) return;
       const couleur = PALETTE[g.couleurIdx % PALETTE.length].hex;
       _renderGroupeOverlay(g, couleur);
     });
+  }
+
+  // 🆕 v1.23.0 Feature C — Overlay du contexte importé Lost Mode :
+  // marker rouge ⛑️ sur lastKnownPoint + cercle pointillé rouge sur zoneIncertitude
+  function _renderContextOverlay(ctx) {
+    if (!ctx) return;
+    // Cercle zone d'incertitude (rayon en mètres → px via APP_CONFIG.scale)
+    if (ctx.zoneIncertitude && typeof ctx.zoneIncertitude.x === "number"
+        && typeof ctx.zoneIncertitude.radiusMeters === "number") {
+      const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
+                    ? window.APP_CONFIG.scale : 1;
+      const radiusPx = ctx.zoneIncertitude.radiusPx
+                       || (ctx.zoneIncertitude.radiusMeters * scale);
+      const center = _planToLatLng(ctx.zoneIncertitude);
+      // L.circle prend un rayon en mètres pour CRS standard mais en pixels
+      // pour CRS.Simple. Ici APP_CONFIG.scale est px/m → on a déjà radiusPx.
+      const circle = L.circle(center, {
+        radius:      radiusPx,
+        color:       "#ff4444",
+        weight:      2,
+        opacity:     0.85,
+        dashArray:   "8 6",
+        fillColor:   "#ff4444",
+        fillOpacity: 0.10
+      });
+      circle.bindTooltip(
+        "⛑️ Zone d'incertitude (rayon " + Math.round(ctx.zoneIncertitude.radiusMeters) + " m)",
+        { permanent: false }
+      );
+      circle.addTo(_overlayLayer);
+    }
+    // Marker dernière position connue
+    if (ctx.lastKnownPoint && typeof ctx.lastKnownPoint.x === "number") {
+      const cm = L.circleMarker(_planToLatLng(ctx.lastKnownPoint), {
+        radius:      12,
+        color:       "#ff4444",
+        weight:      4,
+        fillColor:   "#fff",
+        fillOpacity: 0.95
+      });
+      const lbl = ctx.lastKnownPoint.label
+                  ? "⛑️ Dernière position connue — " + ctx.lastKnownPoint.label
+                  : "⛑️ Dernière position connue";
+      cm.bindTooltip(lbl, { permanent: false });
+      cm.addTo(_overlayLayer);
+    }
   }
 
   function _renderGroupeOverlay(g, couleur) {
@@ -1307,6 +1426,9 @@
                   '<label for="kta-sec-edit-notes">Notes</label>' +
                   '<textarea id="kta-sec-edit-notes" rows="3" maxlength="500">' + _escHtml(s.context.notes || "") + '</textarea>' +
                 '</div>' +
+                // 🆕 v1.23.0 Phase 2 / Feature C — Affichage du lastKnownPoint
+                // + zoneIncertitude si pré-rempli depuis Lost Mode.
+                _renderContextImportedBlock(s) +
               '</div>' +
             '</details>';
 
@@ -1391,6 +1513,38 @@
                 '</div>' +
               '</div>';
     });
+    return html;
+  }
+
+  // 🆕 v1.23.0 Phase 2 / Feature C — Bloc lecture seule lastKnownPoint +
+  // zoneIncertitude si pré-rempli depuis Lost Mode. Boutons "Recentrer carte"
+  // + "✕ Retirer" si l'user veut nettoyer.
+  function _renderContextImportedBlock(s) {
+    const c = s.context || {};
+    if (!c.lastKnownPoint && !c.zoneIncertitude) return "";
+    let html = '<div class="kta-secours-context-imported">';
+    html += '<div class="kta-secours-context-imported-titre">⛑️ Données importées depuis Lost Mode</div>';
+    if (c.lastKnownPoint) {
+      const lp = c.lastKnownPoint;
+      const lbl = lp.label || ("x=" + Math.round(lp.x) + " y=" + Math.round(lp.y));
+      html += '<div class="kta-secours-context-imported-row">' +
+                '<span>📍 Dernière position connue :</span> <strong>' + _escHtml(lbl) + '</strong>' +
+                (typeof lp.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel
+                  ? ' <span class="kta-secours-parcours-lvl">(niv ' + lp.level + ')</span>'
+                  : '') +
+              '</div>';
+    }
+    if (c.zoneIncertitude) {
+      html += '<div class="kta-secours-context-imported-row">' +
+                '<span>⭕ Zone d\'incertitude :</span> <strong>rayon ' +
+                Math.round(c.zoneIncertitude.radiusMeters || 0) + ' m</strong>' +
+              '</div>';
+    }
+    html += '<div class="kta-secours-context-imported-actions">' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="recentrer-lostpos">🎯 Recentrer la carte</button>' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="clear-lostpos" title="Retire les données Lost Mode importées (le scénario reste, seules les infos contextuelles sont effacées)">✕ Retirer</button>' +
+            '</div>';
+    html += '</div>';
     return html;
   }
 
@@ -1622,6 +1776,29 @@
           updateScenario(s.id, { context: { notes: notesInput.value } });
         });
       }
+      // 🆕 v1.23.0 Feature C — Recentrer carte sur lastKnownPoint
+      corps.querySelectorAll('[data-action="recentrer-lostpos"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const lp = s.context && s.context.lastKnownPoint;
+          if (!lp || typeof lp.x !== "number" || !window.map) return;
+          if (!_overlayLayer) {
+            renderOverlay(_currentScenarioId);
+            if (_modal) _modal.style.display = "none";
+            _showOverlayFloater();
+          }
+          window.map.setView(_planToLatLng(lp), Math.max(0, window.map.getZoom()), { animate: true });
+        });
+      });
+      // 🆕 v1.23.0 Feature C — Retirer les données Lost Mode importées
+      corps.querySelectorAll('[data-action="clear-lostpos"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.confirm("Retirer la dernière position connue + zone d'incertitude du contexte ? Le scénario et ses équipes restent intacts.")) return;
+          updateScenario(s.id, {
+            context: { lastKnownPoint: null, zoneIncertitude: null }
+          });
+          _switchView("edit");
+        });
+      });
       // Ajouter équipe
       corps.querySelectorAll('[data-action="add-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -2749,6 +2926,8 @@
     delete:                 deleteScenario,
     "delete":               deleteScenario,  // alias (delete = reserved keyword)
     duplicate:              duplicateScenario,
+    // 🆕 v1.23.0 Phase 2 / Feature C — Création depuis Lost Mode
+    creerDepuisLostMode:    creerDepuisLostMode,
     // CRUD groupes
     addGroupe:              addGroupe,
     updateGroupe:           updateGroupe,
