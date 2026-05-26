@@ -1904,15 +1904,37 @@
         });
       });
       // 🆕 v1.23.0 Feature D — Ouvre la modale Heatmap classique pour réglages avancés
+      // 🐛 v1.23.0-fix1 (KARMA "si je fais regler, il ferme le modal secours
+      // et me regle le heatmap en mode normal") : MutationObserver qui détecte
+      // la disparition de la modale Heatmap du DOM (close via ✕, Escape,
+      // backdrop, ou ❌ Effacer) → restore display de la modale Mode Secours.
+      // Sans ça, la modale Mode Secours restait cachée pour de bon.
       corps.querySelectorAll('[data-action="config-heatmap-secours"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.ouvrirModale !== "function") {
             _toast("⚠️ Modale Heatmap indisponible.", "error");
             return;
           }
-          // Ferme la modale Mode Secours temporairement (sinon stack z-index)
           if (_modal) _modal.style.display = "none";
           window.MyKTAMapHeatmap.ouvrirModale();
+          // Observer la disparition de #kta-heatmap-modal pour restore Mode Secours
+          // (cf js/heatmap.js — id de la modale = "kta-heatmap-modal")
+          const hmModal = document.getElementById("kta-heatmap-modal");
+          if (!hmModal) {
+            // ouvrirModale n'a pas pu append → restaure direct
+            if (_modal) _modal.style.display = "";
+            return;
+          }
+          const obs = new MutationObserver(function() {
+            if (!document.body.contains(hmModal)) {
+              if (_modal) _modal.style.display = "";
+              // Re-render edit pour update du label bouton "🔥 Masquer/Afficher"
+              // (l'état _secoursHeatmapActive peut avoir changé)
+              if (_currentScenarioId) _switchView("edit");
+              obs.disconnect();
+            }
+          });
+          obs.observe(hmModal.parentNode || document.body, { childList: true });
         });
       });
       // Ajouter équipe

@@ -5970,7 +5970,16 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
   inset: 0;
   z-index: 100003;  /* au-dessus de tout, même de la PIN gate */
   display: flex;
-  align-items: center;
+  /* 🐛 v1.23.0-fix1 (KARMA "modale coupée") : align-items: center centre
+     verticalement, MAIS si la boîte est plus haute que le viewport (mobile
+     portrait avec safe-area + minimap + 4 blocs ≈ 800-900 px), elle
+     déborde par le haut ET le bas. overflow-y:auto ne peut pas scroller
+     AU-DESSUS de l'origine flex → le titre 🚨 + bouton thème devenaient
+     inaccessibles ("modale coupée").
+     Fix : "safe center" → centre si ça rentre, fallback flex-start sinon
+     (= scroll du haut vers le bas accessible). Compat Chrome 93+, Safari
+     16+, FF 88+. */
+  align-items: safe center;
   justify-content: center;
   padding: 16px;
   padding-top: calc(16px + env(safe-area-inset-top, 0px));
