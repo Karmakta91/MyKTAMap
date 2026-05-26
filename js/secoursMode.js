@@ -218,13 +218,17 @@
   // ISO timestamp courant
   function _nowIso() { return new Date().toISOString(); }
 
-  // Mute updatedAt + notifie les listeners + save
+  // Mute updatedAt + notifie les listeners + save + auto-refresh overlay
   function _commitMutation(scenario) {
     if (scenario && typeof scenario === "object") {
       scenario.updatedAt = _nowIso();
     }
     _saveScenarios();
     _notify();
+    // Auto-refresh overlay si on est en train d'afficher ce scénario sur la carte
+    if (_overlayLayer && scenario && scenario.id === _currentScenarioId) {
+      renderOverlay(scenario.id);
+    }
   }
 
   // Notifie tous les listeners du changement d'état
@@ -413,9 +417,103 @@
     return null;
   }
 
-  // Stub Phase 1 commit 5 — overlay carte
+  // ============================================================
+  // MAP OVERLAY (depuis v1.22.0 commit 5/9)
+  // ============================================================
+  // Rendu Leaflet des zones + entrées/sorties + itinéraires de toutes les
+  // équipes d'un scénario sur la carte. Couleurs PALETTE par équipe.
+  //
+  // KARMA validation : "Overlay par couleur d'équipe (transparent)"
+  //   → fillOpacity 0.30 pour les polygons (briefing clair sans masquer fond)
+  //
+  // Si _focusedGroupeId est set, on n'affiche QUE cette équipe (mode focus
+  // navigation terrain, masque les autres pour réduire la pollution visuelle).
   function renderOverlay(scenarioId) {
-    console.warn("[SecoursMode] renderOverlay : pas encore implémenté (commit 5/9)");
+    clearOverlay();
+    const s = get(scenarioId || _currentScenarioId);
+    if (!s || !window.map) return;
+    _currentScenarioId = s.id;
+    _overlayLayer = L.layerGroup().addTo(window.map);
+    s.groupes.forEach(function(g) {
+      // Skip si mode focus actif et pas l'équipe focusée
+      if (_focusedGroupeId && g.id !== _focusedGroupeId) return;
+      const couleur = PALETTE[g.couleurIdx % PALETTE.length].hex;
+      _renderGroupeOverlay(g, couleur);
+    });
+  }
+
+  function _renderGroupeOverlay(g, couleur) {
+    // Zone polygone — fillOpacity 30 % + border 3px (briefing visible)
+    if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+      const latlngs = g.zonePolygon.map(_planToLatLng);
+      const poly = L.polygon(latlngs, {
+        color:       couleur,
+        weight:      3,
+        opacity:     0.85,
+        fillColor:   couleur,
+        fillOpacity: 0.30,
+        interactive: true
+      });
+      poly.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+      poly.addTo(_overlayLayer);
+    }
+    // Zone roads — repère chaque road sélectionnée avec halo couleur équipe
+    if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+      const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                       .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+      g.zoneRoadIds.forEach(function(rid) {
+        const road = allRoads.find(function(r) { return r.id === rid; });
+        if (!road || !Array.isArray(road.points)) return;
+        const latlngs = road.points.map(_planToLatLng);
+        const halo = L.polyline(latlngs, {
+          color:   couleur,
+          weight:  10,
+          opacity: 0.55,
+          lineCap: "round",
+          lineJoin: "round"
+        });
+        halo.bindTooltip("🚨 " + _escHtml(g.nom), { permanent: false, direction: "center" });
+        halo.addTo(_overlayLayer);
+      });
+    }
+    // Entrée — marker circle vert avec halo couleur équipe
+    if (g.entree && typeof g.entree.x === "number" && typeof g.entree.y === "number") {
+      const cm = L.circleMarker(_planToLatLng(g.entree), {
+        radius:      9,
+        color:       "#00cc44",
+        weight:      3,
+        fillColor:   couleur,
+        fillOpacity: 0.85
+      });
+      cm.bindTooltip("📍 Entrée " + _escHtml(g.nom), { permanent: false });
+      cm.addTo(_overlayLayer);
+    }
+    // Sortie — marker square (via divIcon) couleur équipe avec bord rouge
+    if (g.sortie && typeof g.sortie.x === "number" && typeof g.sortie.y === "number") {
+      const cm = L.circleMarker(_planToLatLng(g.sortie), {
+        radius:      9,
+        color:       "#cc0000",
+        weight:      3,
+        fillColor:   couleur,
+        fillOpacity: 0.85
+      });
+      cm.bindTooltip("🚪 Sortie " + _escHtml(g.nom), { permanent: false });
+      cm.addTo(_overlayLayer);
+    }
+    // Itinéraire suggéré — polyline dashed couleur équipe
+    if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
+      const latlngs = g.itineraireSuggere.map(_planToLatLng);
+      const ligne = L.polyline(latlngs, {
+        color:     couleur,
+        weight:    5,
+        opacity:   0.90,
+        dashArray: "10 6",
+        lineCap:   "round",
+        lineJoin:  "round"
+      });
+      ligne.bindTooltip("🗺️ Itinéraire " + _escHtml(g.nom), { permanent: false });
+      ligne.addTo(_overlayLayer);
+    }
   }
   function clearOverlay() {
     if (_overlayLayer && window.map) {
@@ -621,6 +719,9 @@
     let html = '<div class="kta-secours-edit-header">' +
                  '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="back-to-list">← Liste</button>' +
                  '<input type="text" class="kta-secours-edit-titre" id="kta-sec-edit-nom" value="' + _escAttr(s.nom) + '" maxlength="80">' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="toggle-overlay" id="kta-sec-toggle-overlay" title="Afficher / masquer les zones sur la carte">' +
+                   (_overlayLayer ? '🗺️ Masquer' : '🗺️ Voir sur carte') +
+                 '</button>' +
                '</div>';
 
     // Section 1 — Contexte
@@ -786,8 +887,21 @@
       // Back to list
       corps.querySelectorAll('[data-action="back-to-list"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
+          clearOverlay();
           _currentScenarioId = null;
           _switchView("list");
+        });
+      });
+      // Toggle overlay carte
+      corps.querySelectorAll('[data-action="toggle-overlay"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (_overlayLayer) {
+            clearOverlay();
+            btn.textContent = "🗺️ Voir sur carte";
+          } else {
+            renderOverlay(_currentScenarioId);
+            btn.textContent = "🗺️ Masquer";
+          }
         });
       });
       // Rename scénario (input header) — save au blur
