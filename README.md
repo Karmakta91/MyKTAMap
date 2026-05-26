@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.25.1` (26/05/2026) — PATCH 3 fixes UX « toast controllerchange silencé en prod + bandeau CTA spacing + header sticky renforcé »
-**📦 Précédentes shipped main** : `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL)
+**📦 Version courante** : `v1.25.2` (27/05/2026) — PATCH docs « Mode Secours complètes (CLAUDE §67 + README_USER Phase 3 + AI_CONTEXT recette M + Aide intégrée) ». Aucun changement code applicatif
+**📦 Précédentes shipped main** : `v1.25.1` (3 fixes UX) ; `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,86 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-25-1" open>
+<details id="v1-25-2" open>
+<summary><strong>🗓️ 27/05/2026 — 📚 v1.25.2 : Release PATCH docs — Mode Secours complètes (Phase 3 + tous patchs v1.23.2 → v1.25.1)</strong></summary>
+
+Release PATCH docs (bump Z : 1.25.1 → 1.25.2). Demande KARMA suite à v1.25.1 : « fait un tour des doc voir si le mode secours est bien détaillé pour mode édition et 3 mode opérateur ».
+
+**Audit** lancé via agent dédié a identifié 4 fichiers avec manques critiques (sur 5 audités). Bilan : seul `README.md` était à jour, les 3 fichiers cachés (`docs/README_USER.md`, `docs/AI_CONTEXT.md`, `js/interface.js > afficherAide`) + `docs/CLAUDE.md` (libre) manquaient de la documentation Phase 3.
+
+**AUCUN changement code applicatif**. Pure release docs.
+
+### 📖 `docs/CLAUDE.md`
+
+Nouvelle section **§67 « Mode Secours — Évolutions v1.23.2 → v1.25.1 »** (~400 lignes) consolidant 11 sous-sections :
+
+- §67.1 v1.23.2 Feature G Ctrl+K → assigner POI à équipe
+- §67.2 v1.23.3 Niveau M-LVL assignable par équipe
+- §67.3 v1.23.4 Format `.mkmsec.json` + fix Heatmap Régler
+- §67.4 v1.23.5 Modale preview AVANT import + mini-légende PDF
+- §67.5 v1.23.6 Pause configurable cross-feature
+- §67.6 v1.23.7 Fix CSS card équipe M-LVL
+- §67.7 v1.24.0 **Phase 3 EXÉCUTION complète** (data model `scenario.execution` + 7+1 statuts + store IDB photos + 3 vues Live + timer pause juste)
+- §67.8 v1.24.1 Bouton « 👤 Retour Opérateur »
+- §67.9 v1.24.2 3 fixes CSS Phase 3
+- §67.10 v1.25.1 Fix renforcé header sticky + toast controllerchange gated
+- §67.11 v1.25.0 **Rapport au fil des étapes** (3 formats × 3 scopes, helpers, format `.mkmsec.report.json`)
+
+Plus nouvelle **§68 « Correction §32.7 — Format calibrage KMZ FLAT (pas NESTÉ) »** qui résout TODO depuis v1.23.0.
+
+### 📖 `docs/README_USER.md`
+
+- Correction de 2 mentions « Roadmap Phase 3 (v1.24.0) à venir » → marquées comme **LIVRÉ ✅** avec lien vers nouvelle section
+- **Nouvelle section « 🚨 Mode Secours Phase 3 — Exploitation terrain temps réel »** (~250 lignes) :
+  - Pivot architectural 2 états CRÉATION/EXÉCUTION
+  - Bouton « 🚀 Lancer » + bandeau dynamique 4 états
+  - Modale sélection rôle (3 rôles)
+  - 3 vues Live détaillées avec ASCII mockups
+  - Tableau 8 statuts d'étape
+  - Rapport au fil des étapes 3 formats × 3 scopes
+  - Cycle complet typique 5 phases
+  - Roadmap suite Phase 3 (v1.26.0 import / v1.27.0 QR code / v1.28.0 seuils stress)
+
+### 📖 `docs/AI_CONTEXT.md`
+
+- Bullet feature **« 🚨 Mode Secours »** ajouté à la liste anti-hallucination (résumé exhaustif Phases 1+2+3 + mots-clés indexation)
+- **Nouvelle section recette « M. 🚨 Mode Secours — Coordination d'équipes »** (~200 lignes) :
+  - Distinction tableau comparatif des 3 modes urgence (⛑️ / 🚨 panique / 🚨 Secours)
+  - Architecture conceptuelle 2 états
+  - Workflow type complet 5 phases
+  - Tableau 7+1 statuts
+  - Tableau persistance & stockage
+  - Distinction `.mkmsec.json` vs `.mkmsec.report.json`
+  - Recommandations « quand utiliser quel rôle » pour assister IA tierce
+
+### 📖 `js/interface.js > afficherAide`
+
+Nouvelle section **« 🚨 Mode Secours — Coordination d'équipes (depuis v1.22.0) »** dans la modale Aide intégrée à l'app (📚 Documentation). Structure 2 sous-blocs colorés :
+
+- 📝 **État 1 — CRÉATION** (12 grille-items)
+- 🚀 **État 2 — EXÉCUTION TERRAIN** (7 grille-items)
+
+Avec : mention 7+1 statuts, store IDB dédié, warning single-device, recommandation boussole physique.
+
+### 📦 Sources de vérité v1.25.2
+
+- `version.json` → `v1.25.2`
+- `js/copyright.js > __MKM__.build` → `v1.25.2`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.25.2`
+
+Aucun nouveau fichier. Modifs : `docs/CLAUDE.md` (+~400) + `docs/README_USER.md` (+~250) + `docs/AI_CONTEXT.md` (+~210) + `js/interface.js` (+~60). `README.md` était déjà complet pour les releases v1.22.0 → v1.25.1.
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission, aucun changement de code applicatif. Pure update documentation.
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.25.1 (uniquement docs). Bump justifié car 3 fichiers cachés modifiés (README_USER.md + AI_CONTEXT.md + interface.js — pas docs/CLAUDE.md qui n'est pas dans `ASSETS_TO_CACHE`). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-25-1">
 <summary><strong>🗓️ 26/05/2026 — 🩹 v1.25.1 : Release PATCH 3 fixes UX (toast controllerchange silencé + bandeau spacing + header sticky renforcé)</strong></summary>
 
 Release PATCH (bump Z : 1.25.0 → 1.25.1). 3 bugs UX remontés KARMA terrain.

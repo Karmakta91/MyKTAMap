@@ -2065,6 +2065,69 @@ function afficherAide() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🚨 Mode Secours — Coordination d'équipes (depuis v1.22.0)</div>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            Outil de coordination opérationnelle pour <strong>organiser des équipes de recherche</strong> en cas d'incident
+            souterrain (cataphile perdu, secours organisé). <strong>3 modes urgences distincts</strong> à ne pas confondre :
+            ⛑️ <em>Je suis perdu</em> = TOI tu te cherches · 🚨 <em>Mode panique</em> = TOI tu paniques · 🚨 <em>Mode Secours</em> = QUELQU'UN D'AUTRE est perdu et tu organises les secours.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">📝 État 1 — CRÉATION (vue Édition)</strong> — préparation/planning du plan de secours.
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚨</span><span>Ouvre la modale Mode Secours (multi-scénarios par plan, max 10 sauvegardés FIFO)</span>
+            <span class="kta-aide-icone">➕</span><span>Création scénario : nom + heure incident + notes contexte</span>
+            <span class="kta-aide-icone">🎨</span><span><strong>Palette OTAN 10 couleurs fixe</strong> : Alpha rouge / Bravo bleu / Charlie vert / Delta jaune / Echo magenta / Foxtrot cyan / Golf orange / Hotel violet / India brun / Juliet gris</span>
+            <span class="kta-aide-icone">📍</span><span>Équipes avec parcours : <strong>entrée + intermédiaires + sortie</strong> (autocomplete POI / saisie ID / clic carte). Boucle si entrée=sortie</span>
+            <span class="kta-aide-icone">⬛</span><span>Zone de recherche par équipe : polygone OU tracés sélectionnés. Mini-modale "POI dans zone" auto-suggère intermédiaires</span>
+            <span class="kta-aide-icone">🗺️</span><span><strong>Itinéraire auto-calc Pathfinder</strong> avec avoidances cross-équipes (anti-chevauchement). Toast warn si évitement impossible</span>
+            <span class="kta-aide-icone">🏗️</span><span><strong>Niveau M-LVL par équipe</strong> (v1.23.3) : chip RDC/+1/-1 + select éditable. Auto-création 1 équipe par niveau via bouton « 🏗️ Auto »</span>
+            <span class="kta-aide-icone">🔥</span><span>Heatmap d'activité (sources tracker/POI/tracés) pour identifier zones probables à fouiller</span>
+            <span class="kta-aide-icone">⛑️</span><span>Workflow Lost Mode → Secours : bouton dans Lost Mode auto-pre-fill lastKnownPoint + zone incertitude + heure incident</span>
+            <span class="kta-aide-icone">⭐</span><span>Favoris du plan en accès rapide dans picker waypoint (max 8 chips au-dessus de la recherche)</span>
+            <span class="kta-aide-icone">🔍</span><span><strong>Ctrl+K → assigner POI à équipe en 2 clics</strong> : bouton 📌 dans résultats recherche unifiée si Mode Secours actif</span>
+            <span class="kta-aide-icone">🛑</span><span><strong>Pause configurable cross-feature</strong> (partagée avec itinéraire principal) : 0-120 min entre arrêts intermédiaires, recalcul auto durées</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📤 3 formats d'export</strong> :
+            <strong>📄 PDF imprimable</strong> A4 1 page/équipe avec carte miniature + mini-légende intégrée +
+            cadre observations vide pour terrain papier ·
+            <strong>🌍 KMZ géolocalisé cross-app</strong> (Google Earth / OsmAnd / Avenza) avec 43 styles couleur OTAN +
+            plan en GroundOverlay 60% + folders nested toggleables par équipe ·
+            <strong>📦 .mkmsec.json autonome</strong> (v1.23.4) pour partage cross-appareil sans toute la session
+            (modale preview AVANT injection v1.23.5).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:14px 0 8px; line-height:1.5;">
+            <strong style="color:#f4c542;">🚀 État 2 — EXÉCUTION TERRAIN (vue Live temps réel, depuis v1.24.0)</strong> — l'incident est déclenché, tu suis les observations.
+          </p>
+          <div class="kta-aide-grille">
+            <span class="kta-aide-icone">🚀</span><span>Bouton <strong>Lancer le plan de secours</strong> dans la vue Édition → modale sélection rôle</span>
+            <span class="kta-aide-icone">👤</span><span><strong>Mode Opérateur surface</strong> (PC chef) : vue d'ensemble cards multi-équipes + statut + dernière obs + bouton « 🚨 Prendre la main » avec retour automatique</span>
+            <span class="kta-aide-icone">🚨</span><span><strong>Mode Équipier</strong> (sur le terrain) : stepper visuel cliquable + observations + 7 statuts rapides + photos (max 5/étape) + navigation prev/next</span>
+            <span class="kta-aide-icone">🚑</span><span><strong>Mode Secouriste libre</strong> (renfort sans équipe) : notes en vrac chronologiques DESC + 7 boutons rapides + timestamps auto</span>
+            <span class="kta-aide-icone">⏱️</span><span>Timer global avec <strong>pause juste</strong> (exclut le temps de pause cumulé)</span>
+            <span class="kta-aide-icone">📤</span><span><strong>Rapport au fil des étapes</strong> (v1.25.0) : 3 formats (PDF/JSON/Texte presse-papier) × 3 scopes (opérateur/équipier/secouriste). Réutilisable à tout moment pendant ou après l'arrêt</span>
+            <span class="kta-aide-icone">📦</span><span>Bandeau <strong>PLAN TERMINÉ</strong> dans vue Édition après arrêt : « 📤 Voir le rapport historique » + « 🚀 Relancer »</span>
+          </div>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">7+1 statuts d'étape</strong> :
+            • <em>pending</em> (en attente, défaut) · 🟢 <strong>RAS</strong> · 🟡 <strong>Suspect</strong> · ⬛ <strong>Bloqué</strong> ·
+            🔵 <strong>Indice</strong> · 🟠 <strong>Aide demandée</strong> · 🟣 <strong>Demi-tour forcé</strong> ·
+            <strong style="color:#ff5555;">🚨 Victime trouvée</strong> (urgence absolue = card rouge clignotante côté PC chef).
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#a8b3c8;">📸 Store IDB dédié</strong> <code>myktamap_secours_photos</code> (séparé du store POI photos) :
+            max 5 photos par étape, compression auto JPEG q85 max 1920px, viewer plein écran réutilisé.
+          </p>
+          <p style="font-size:12px; color:#ff8a5c; margin:8px 0 0; line-height:1.5;">
+            <strong>⚠️ Important Phase 3</strong> : single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers,
+            passe par le rapport <code>.mkmsec.report.json</code> (export sur device émetteur, import sur device récepteur — re-import natif prévu v1.26.0).
+            Le QR code share unidirectionnel pour terrain sans réseau viendra en v1.27.0+.
+            ⚠️ Comme tout : <strong>garde une boussole physique et une carte papier</strong>. Le téléphone peut tomber en panne. Le 🚨 est une aide à la coordination, PAS un substitut à la préparation.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">📐 Outils de mesure</div>
           <div class="kta-aide-grille">
             <span class="kta-aide-icone">📐</span><span>Mesure de distance — clic pour poser des points, total affiché en bas-gauche (label <code>📐 Distance: X m</code>)</span>

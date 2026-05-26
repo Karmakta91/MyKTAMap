@@ -5792,4 +5792,401 @@ ID du modal target stable depuis la création — vérifier dans le module conce
 
 ---
 
+### 67. Mode Secours — Évolutions v1.23.2 → v1.25.1 (consolidation Phases 2 finale + Phase 3 complète)
+
+Cette section consolide les ~10 releases entre v1.23.2 et v1.25.1 qui ont fait évoluer le Mode Secours depuis Phase 1 MVP (§65) + Phase 2 cross-app (§66) jusqu'à la Phase 3 « exploitation terrain temps réel » complète.
+
+#### 67.1 v1.23.2 — Feature G : Ctrl+K → assigner POI à équipe en 2 clics
+
+Dernière feature manquante Phase 2 (G/7). Bouton 📌 dans les résultats de la recherche unifiée Ctrl+K, visible UNIQUEMENT si Mode Secours actif avec scénario. Mini-modale `ouvrirAssignerModale(point, layerLabel)` exposée via `window.SecoursMode` : sélection équipe (dropdown avec swatch palette OTAN) + role (radio Entrée/Étape/Sortie) + `_appliquerWaypoint(equipeId, role, null, wp)` qui préserve `point.id` pour détection boucle `_samePoint`. z-index 100002 (au-dessus de la Recherche à 99999). **Pattern critique** : ferme la modale Recherche AVANT d'ouvrir Assigner (snapshot point + label local pour éviter perte de référence).
+
+**4 fixes UX prioritisés via audit agent dédié** : `.kta-readme-modal-overlay` → `align-items: safe center` (cascade BASE de TOUTES les modales) ; touch targets `.kta-btn-xs` mobile `min-width: 36px min-height: 36px` (WCAG 2.5.5 AA) ; cohérence boucle `[data-loop="1"]` border-left orange override variants vert/rouge ; z-index stack assign-modal close cascade.
+
+#### 67.2 v1.23.3 — Niveau M-LVL assignable par équipe
+
+Bug logique terrain : « on doit pouvoir crée une équipe et lui assigné une zone sur un niveau ». **Nouveau champ `g.level: number | null`** au modèle équipe — auto-défini depuis `APP_CONFIG.activeLevel` à la création par défaut, whitelist `updateGroupe`. Signature `addGroupe(scenarioId, nom, level?)` étendue avec 3e arg optionnel.
+
+**Mini-modale `_ouvrirCreerEquipeMlvlPrompt(scenarioId)`** sur plans M-LVL : input nom + dropdown niveau (`availableLevels` + option « Sans niveau », pré-set `activeLevel`) + boutons ✓ Créer / Annuler. Plans mono-niveau : comportement v1.22.x strict (ajout direct sans prompt).
+
+**Chip `🏗️ RDC`** dans header card équipe (style pill ambré charte) + **select éditable « 🏗️ Niveau M-LVL »** dans body card (uniquement si M-LVL actif) → handler `change-level` qui `updateGroupe(level)` + re-render. **Fix Feature E auto-création** : passe `lvl` explicite à `addGroupe(s.id, nom, lvl)` (avant : constructor lisait `activeLevel` pour TOUTES les équipes → toutes avaient le même level).
+
+#### 67.3 v1.23.4 — Format `.mkmsec.json` export/import autonome + fix Heatmap Régler
+
+Demande : partage cross-appareil sans devoir exporter toute la session (use case « opérateur chef de surface » ↔ « secouriste »). Format JSON autonome avec wrapper extensible :
+
+```js
+{
+  type:       "myktamap-secours-scenario",
+  version:    1,                              // MKMSEC_FORMAT_VERSION
+  exportedAt: ISO,
+  appVersion: __MKM__.build,
+  plan:       { id, name, version, imageWidth, imageHeight,
+                multiLevel, availableLevels, scale },
+  scenario:   deep clone (id, nom, createdAt, updatedAt,
+                          context, groupes, pointsCles)
+}
+```
+
+Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. `MKMSEC_FORMAT_VERSION = 1` constante exposée pour validation stricte.
+
+**Fonctions exposées** : `exporterScenario(scenarioId)` + `async importerScenario(input)` (File | Blob | string). Import valide type + version ≤ max + structure scenario (nom + groupes array), re-génère ids (anti-collision si re-import multiple), filtre défensif whitelist champs. Si plan.id ≠ plan courant → `confirm()` natif (sera remplacé par modale charte en v1.23.5).
+
+**Fix Heatmap « ⚙️ Régler »** : bouton TOUJOURS visible tant que `window.MyKTAMapHeatmap` chargé (avant : condition fragile `_secoursHeatmapActive && isVisible()` faisait disparaître le bouton après cycles de rendu).
+
+#### 67.4 v1.23.5 — Modale preview AVANT import + mini-légende carte PDF
+
+**Refactor `importerScenario` split en 2 fonctions internes** (pattern §35 charte Promise-based, plus de `confirm()` natif) :
+
+```js
+async function _parsePayloadMkmsec(input) {   // validation seule
+  return { ok, payload?, warning?, error? };
+}
+function _appliquerPayloadImport(payload) {    // injection seule
+  return { ok, scenario };
+}
+```
+
+`importerScenario` reste exposé en API publique combinant les 2 (rétro-compat v1.23.4 avec `confirm()` natif pour callers programmatiques sans UI). Picker UI `_ouvrirImportMkmsecPicker` utilise désormais flow split + modale preview au milieu.
+
+**Modale preview `_afficherPreviewImport(payload, warning, sourceFilename, onDone)`** : affiche nom + fichier source + date export + version app + plan source + liste équipes (max 8 + « +N autres ») avec couleur OTAN + nb membres + niveau M-LVL + indicateurs zone/parcours. Bandeau orange détaillé si plan différent. Boutons ❌ Annuler / ✓ Importer. Backdrop click + Échap = annuler.
+
+**Mini-légende intégrée carte PDF** : helper `_drawTeamLegende(ctx, canvasW, canvasH, g, hexColor)` dessine bas-droite sur canvas 2D les éléments WYSIWYG présents pour CETTE équipe (zone polygon/roads, entrée, sortie/boucle, intermédiaires count, itinéraire). Box blanc semi-opaque + border, swatch 16×14px adapté au type. Rend le brief PDF auto-explicatif pour le secouriste terrain.
+
+#### 67.5 v1.23.6 — Pause configurable cross-feature accessible depuis Mode Secours
+
+Setters globaux exposés dans `interface.js` (en plus des getters depuis v1.23.0) : `window.setItiPauseEnabled(bool)` + `window.setItiPauseMinutes(number)` (clamp [0, 120]). Permet à Mode Secours (et tout module futur) de modifier les prefs sans dupliquer logique localStorage.
+
+**Bloc UI « 🛑 Pause entre les arrêts »** dans section 📝 Contexte vue Edit Mode Secours (après bloc heatmap) : checkbox + input number 0-120 min + hint « S'applique aussi à l'itinéraire principal ». Au change → persiste localStorage + **recalcule auto les durées de toutes les équipes du scénario** via `_recalculerToutesDureesEquipes(scenarioId)` qui itère équipes avec `distanceM > 0`, calcule nb waypoints effectif, appelle `window.getItiTempsMinutes(distM, nbWp)`. Toast unique résumé.
+
+**Cohérence cross-feature** : mêmes localStorage keys (`myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes`) entre modale Itinéraire et Mode Secours → si l'user change la pause depuis Mode Secours, l'itinéraire principal recalcule sa durée au prochain affichage.
+
+#### 67.6 v1.23.7 — Fix CSS card équipe M-LVL : bouton 🗑️ hors cadre
+
+Bug mobile portrait : header card équipe `.kta-secours-groupe-header` en `display: flex; align-items: center` SANS `flex-wrap`. Input nom (`flex: 1`) SANS `min-width: 0` (refusait de se compresser). Chip M-LVL `🏗️ RDC` (v1.23.3) + bouton 🗑️ poussaient le tout en débordement → bouton supprimer hors cadre.
+
+**Fix 3 axes CSS pur** :
+```css
+.kta-secours-groupe-header { flex-wrap: wrap; }
+.kta-secours-groupe-nom { flex: 1 1 120px; min-width: 0; }
+.kta-secours-groupe-header > button[data-action="del-groupe"] {
+  flex-shrink: 0;
+}
+```
+
+**Leçon réutilisable** pour cards futures à header flex multi-items : combiner `flex-wrap: wrap` + `min-width: 0` sur item flexible + `flex-shrink: 0` sur items critiques.
+
+#### 67.7 v1.24.0 — Phase 3 EXÉCUTION TERRAIN (pack MINOR complet)
+
+Pivot architectural majeur : le scénario a maintenant 2 états : **CRÉATION** (vue Edit existante Phases 1+2) et **EXÉCUTION** (nouvelle vue Live).
+
+##### 67.7.1 Modèle de données `scenario.execution`
+
+Persisté dans le scénario localStorage existant (`myktamap_secours_v1_<planId>`). Pas de nouveau key.
+
+```js
+scenario.execution = {
+  active:          boolean,
+  startedAt:       ISO,
+  endedAt:         ISO | null,                  // null = en cours
+  pausedAt:        ISO | null,                  // si pause active, ISO du début
+  pausedTotalMs:   number,                      // cumul pauses (timer juste)
+  role:            "operateur" | "equipe" | "secouriste",
+  currentEquipeId: string | null,               // si role="equipe" ou prise main
+  // 🆕 v1.24.1 : flags optionnels mémoire prise de main
+  _previousRole:    string | null,              // pour "Retour Opérateur"
+  _previousEquipeId: string | null,
+  etapes: {
+    [equipeId]: [
+      {
+        type:          "entree" | "interm" | "sortie",
+        idx:           number,                  // 0=entrée, 1..N=interm, N+1=sortie
+        label:         string,                  // hérité du parcours
+        observations:  string,                  // user input libre (max 2000 char)
+        statut:        "pending" | "ras" | "suspect" | "bloque"
+                     | "indice" | "aide" | "demi-tour" | "victime",
+        photoIds:      [string, ...],           // ids dans MyKTAMapSecoursPhotos
+        startedAt:     ISO | null,              // quand l'équipe arrive à l'étape
+        completedAt:   ISO | null               // quand elle passe à la suivante
+      }
+    ],
+    // Mode secouriste libre (notes en vrac, pas d'étapes structurées)
+    _notes_libres: [
+      { id, ts, statut, texte, photoIds }
+    ]
+  }
+}
+```
+
+##### 67.7.2 Helpers CRUD execution (API publique `window.SecoursMode`)
+
+- `lancerExecution(scenarioId, opts)` : initialise s.execution (etapes via `_buildEtapesPourEquipe(g)` pour chaque équipe OU `_notes_libres: []` si role=secouriste). Si execution déjà active → update role/equipeId sans casser étapes.
+- `arreterExecution(scenarioId)` : active=false + endedAt = now. Si en pause, comptabilise dernier segment avant arrêt. Garde execution comme historique consultable.
+- `pauseExecution(scenarioId, paused)` : set/clear pausedAt + cumul pausedTotalMs.
+- `updateEtape(scenarioId, equipeId, etapeIdx, partial)` : whitelist observations/statut/photoIds/startedAt/completedAt. Validation statut contre TABLEAU_STATUTS.
+- `marquerEtapeStatut(scenarioId, equipeId, etapeIdx, statutId)` : raccourci avec timestamps auto (pose completedAt si non-pending + startedAt si manquant).
+- `getExecutionDureeMs(scenarioId)` : temps écoulé depuis startedAt, EXCLUANT pausedTotalMs. Si en pause, fige la valeur à l'instant pausedAt (pas de progression visuelle pendant pause).
+- `ajouterNoteLibre(scenarioId, opts)` / `updateNoteLibre(scenarioId, noteId, partial)` / `supprimerNoteLibre(scenarioId, noteId)` : CRUD mode secouriste libre.
+- `_estExecutionActive(s)` / `_getEtapesEquipe(s, equipeId)` : raccourcis lecture.
+- `_buildEtapesPourEquipe(g)` : construit array d'étapes depuis parcours équipe (entrée + intermediaires + sortie) avec statut="pending" partout.
+
+##### 67.7.3 Constante `TABLEAU_STATUTS` (7+1 statuts)
+
+Table extensible avec id (ASCII clé localStorage), emoji, label, color (charte palette OTAN-cohérente), severity 0-3 (tri/escalade), markers `isPending` (statut implicite) et `pulse` (animation Opérateur).
+
+| ID | Emoji | Label | Couleur | Severity |
+|---|---|---|---|---|
+| `pending` | • | En attente | gris | 0 |
+| `ras` | 🟢 | RAS | vert | 0 |
+| `suspect` | 🟡 | Suspect | jaune | 1 |
+| `bloque` | ⬛ | Bloqué | gris foncé | 1 |
+| `indice` | 🔵 | Indice | bleu | 1 |
+| `aide` | 🟠 | Aide demandée | orange | 2 |
+| `demi-tour` | 🟣 | Demi-tour forcé | violet | 1 |
+| `victime` | 🚨 | Victime trouvée | rouge clignotant | 3 |
+
+Helper `_getStatutInfo(statutId)` retourne entry (fallback pending). Ajouter une entry suffit (rendu UI + colors + futur PDF report suivent automatiquement).
+
+##### 67.7.4 Store IDB dédié `myktamap_secours_photos` v1
+
+Nouveau module `js/secoursPhotos.js` (~430 lignes IIFE) → `window.MyKTAMapSecoursPhotos`. Séparé du store POI photos (`myktamap_photos`, cf §42) pour cleanup/compteurs indépendants. Key composite : `scenarioId + equipeId + stepIdx`. **Sentinel `stepIdx = -1`** pour notes libres mode secouriste. 3 indexes : `by_scenario`, `by_scenario_equipe`, `by_scenario_equipe_step`. Max 5 photos par étape. Compression auto canvas JPEG q85 max 1920px.
+
+API : `addPhoto / getPhoto / getBlob / getObjectUrl / getPhotosForEtape|Equipe|Scenario / countPhotosForEtape|Scenario / deletePhoto|Etape|Scenario / clearAll / compressBlob / generateId / isAvailable`. Init eager au boot (non-bloquant, pre-warm IDB).
+
+##### 67.7.5 Bandeau « 🚀 Lancer le plan » + modale sélection rôle
+
+`_renderLancerBandeau(s)` en haut vue Edit, 3 états dynamiques :
+
+| État | Visuel | Boutons |
+|---|---|---|
+| Disabled (0 équipe) | Gris hint italique | Aucun |
+| CTA (équipes définies, pas lancé) | Jaune charte large | « 🚀 Lancer le plan de secours » |
+| Active (execution.active=true) | Vert + dot pulsant + timer | « ▶️ Reprendre la vue Live » + « ⏹️ Arrêter » + 🆕 v1.25.0 « 📤 Rapport » |
+| 🆕 v1.25.0 Terminé (execution.endedAt set) | Bleu + ts fin + durée | « 📤 Voir le rapport historique » + « 🚀 Relancer » |
+
+`_afficherModaleLancer(scenarioId, onConfirm)` : modale charte Promise-via-callback avec 3 radios cliquables (Opérateur surface / Équipe terrain + dropdown sélection / Secouriste libre). Hint « tu pourras changer de rôle plus tard sans perdre les observations ». Au confirm → `lancerExecution(scenarioId, opts)` + bascule vue Live.
+
+##### 67.7.6 Vue Live Mode ÉQUIPE (`_renderLiveViewEquipe`)
+
+Pour l'équipe sur le terrain qui suit son parcours step-by-step.
+
+- **Header sticky** : swatch couleur OTAN + nom équipe + Étape X/N + timer global ⏱️ + tag pause si applicable. Background OPAQUE (cf §67.10 v1.25.1 fix).
+- **Stepper visuel cliquable** : 1 bouton par étape (40×44 portrait / 34×38 landscape) avec emoji statut + numéro étape. Classes : `kta-secours-live-step-current` (jaune box-shadow), `-done` (vert opacity 0.85), `-pending` (opacity 0.65).
+- **Bloc étape courante** : titre type (🚪 ENTRÉE / 📍 ÉTAPE N / 🚪 SORTIE) + label POI + statut courant (bordure couleur) + textarea observations 2000 chars + **7 boutons statuts rapides** (sauf `pending`, filtré) + bouton « 📸 Photo (X/5) » + bouton « 🎯 Recentrer carte » + mini-grille photos miniatures cliquables (viewer plein écran réutilisé via `window.MyKTAMapPhotoViewer.open`).
+- **Navigation prev/next** : au passage suivant sans statut explicite → auto-marqué RAS par défaut.
+- **Footer** : Pause / 🆕 v1.25.0 « 📤 Rapport » / 🆕 v1.24.1 « 👤 Retour Opérateur » (conditionnel _previousRole) / « ⏸️ Voir l'édition » / « ⏹️ Terminer le plan ».
+
+State module-level `_liveEquipeFocusIdx` pour étape focalisée. Init via `_liveEquipeInitFocus(etapes)` : 1ère pending sinon dernière.
+
+##### 67.7.7 Vue Live Mode OPÉRATEUR SURFACE (`_renderLiveViewOperateur`)
+
+Vue d'ensemble pour le PC chef coordinateur.
+
+- **Header sticky** : titre rôle + nom scénario + compteur équipes + timer global. **z-index 100 + isolation isolate** (cf §67.10 v1.25.1 fix).
+- **Grille responsive cards par équipe** (auto-fill min 260px) via `_renderOperateurCard(s, g)` :
+  - Swatch couleur + nom + badge « ✓ TERMINÉE » si applicable
+  - Barre de progression % (0-100) coloriée à la couleur équipe
+  - Statut le + sévère parmi toutes les étapes (calculé via `severity`)
+  - Dernière obs snippet (max 80 char + « … »)
+  - Dernier timestamp modif (HH:MM)
+  - 2 boutons « 👁️ Détails » / « 🚨 Prendre la main »
+- **Cards spéciales** :
+  - 🚨 Victime trouvée → ROUGE clignotant `kta-secours-pulse-red` animation 1.2s
+  - 🟠 Aide demandée → orange + lueur box-shadow
+  - ✓ Terminée → opacity 0.75
+- **Modale détails read-only** (`_afficherModaleDetailsEquipeLive`) : liste chronologique étapes avec ts + statut + obs.
+- **Bouton « 🗺️ Voir carte globale »** : masque modale + render overlay (cf §65.7).
+- **Footer** : Pause / 🆕 v1.25.0 « 📤 Rapport global » / Voir édition / Terminer.
+
+##### 67.7.8 Vue Live Mode SECOURISTE LIBRE (`_renderLiveViewSecouriste`)
+
+Mode simple pour renfort/reconnaissance sans équipe pré-assignée.
+
+- **Header sticky** vert + timer + compteur notes
+- **Bloc « 📝 Ajouter une note »** : textarea + 7 boutons rapides (clic = note ajoutée avec statut + reset textarea)
+- **Liste chronologique DESC** des notes avec ts (HH:MM:SS) + statut emoji + texte + ✕ supprimer
+- Persistance dans `s.execution.etapes._notes_libres`
+- **Footer** : Pause / 🆕 v1.25.0 « 📤 Rapport » / Voir édition / Terminer la mission
+
+##### 67.7.9 Timer global + pause juste
+
+`getExecutionDureeMs(scenarioId)` calcul juste excluant `pausedTotalMs`. Si en pause, fige la valeur à l'instant `pausedAt` (pas de progression visuelle pendant pause). Format `Xh YYmin` / `YYmin SSs` / `Ss`.
+
+**Re-render via `data-live-timer="duree"`** toutes les 1s (interval `_liveTimerId` démarré dans `_switchView("live")` + stoppé sinon). Pattern précis : SEULEMENT le texte du timer est rafraîchi via `document.querySelectorAll('[data-live-timer="duree"]')`, PAS de re-render complet de la vue. Évite :
+- Flash visuel
+- Perte de focus dans la textarea observations en cours de saisie
+- Reset de la position scroll
+
+#### 67.8 v1.24.1 — Bouton « 👤 Retour Opérateur » après « Prendre la main »
+
+Bug terrain : « Prendre la main » bascule role de `operateur` à `equipe` SANS mémoriser le rôle précédent → user piégé en mode Équipe sans bouton retour.
+
+**Fix 3 modifs propres** :
+1. Au clic « Prendre la main » : stockage `s.execution._previousRole` + `_previousEquipeId` avant la mutation. Persisté localStorage → survit reload + plan switch + fermeture/réouverture modale.
+2. Renderer vue Live Mode Équipe : bouton conditionnel « 👤 Retour Opérateur » (ou « 🚑 Retour Secouriste ») dans footer SI `_previousRole` set.
+3. Handler `live-retour-previous-role` : restore role + currentEquipeId + `delete s.execution._previousRole` + `delete s.execution._previousEquipeId` (cleanup anti-pollution payload export) + toast + re-render live.
+
+**Pattern préservation d'état** : les flags `_previousRole` / `_previousEquipeId` survivent à reload, plan switch, fermeture/réouverture modale, bascule edit↔live. L'user peut prendre la main sur Alpha, fermer son tel, revenir 30min après, et trouver le bouton retour intact.
+
+#### 67.9 v1.24.2 — 3 fixes CSS Phase 3
+
+1. **Textarea Mode Équipe + Secouriste déborde** : `.kta-secours-live-etape-textarea` avait `width: 100%` SANS `box-sizing: border-box`. Padding 8px 10px (20px H) + bordure 1px (2px H) ajoutaient +22px d'overflow. **Fix** : `box-sizing: border-box` + `max-width: 100%`.
+2. **Scroll passe derrière header sticky Opérateur** : `background: linear-gradient(rgba(...,0.85), rgba(...,0.95))` semi-transparent laissait voir les cards en filigrane. **Fix v1.24.2** : background opaque + box-shadow + z-index 10. Mais insuffisant → fix renforcé en v1.25.1 (cf §67.10).
+
+#### 67.10 v1.25.1 — Fix renforcé header sticky + toast controllerchange gated + bandeau CTA spacing
+
+**Fix 1 — Header sticky vue Live Opérateur INSUFFISANT en v1.24.2** : stacking context conflictuel laissait passer scroll en filigrane derrière header. **Renforcement triple** :
+
+```css
+.kta-secours-live-header {
+  background: #1a1f2e;           /* SOLID, pas gradient */
+  z-index: 100;                   /* 10 → 100 */
+  isolation: isolate;             /* nouveau stacking context FORCÉ */
+  border-bottom-width: 2px;       /* démarcation visuelle */
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+}
+```
+
+**Pattern critique** : pour un header `position: sticky` qui DOIT masquer le scroll qui passe en dessous :
+- Background **SOLID** (pas gradient, pas rgba transparent — évite ambiguïté opacité Chromium mobile)
+- `z-index: 100` minimum (au-dessus de tout)
+- `isolation: isolate` force un nouveau stacking context (le plus puissant — empêche les enfants scroll de remonter visuellement)
+- Box-shadow prononcé pour démarquer
+
+**Fix 2 — Toast `controllerchange` spammait en dev** : hook `navigator.serviceWorker.addEventListener("controllerchange")` v1.20.0 affichait toast « 🔄 Mise à jour mineure appliquée » à CHAQUE bump cache → spam sur cycles dev fréquents (10+ updates/24h). KARMA « popup style log de dev ».
+
+**Fix** : toast conditionnel à `APP_CONFIG.debugMode === true` + prefix `[DEBUG]` dans message. En prod : aucun toast visible. `console.log("[PWA] 🔄 Nouveau SW...")` reste TOUJOURS actif pour traçabilité 🐛 Logs détaillés. Garde-fou `_swIsInitialControl` du 1er install préservé.
+
+**Fix 3 — Bandeau CTA touche boutons header** : `.kta-secours-lancer-bandeau` n'avait que `margin-bottom: 14px`. **Fix** : `margin-top: 14px` pour aérer.
+
+#### 67.11 v1.25.0 — Rapport au fil des étapes pour les 3 rôles
+
+Demande KARMA : « on doit pouvoir générer un rapport au fil des étapes pour chaque type Operator, Equipier, Secour ».
+
+##### 67.11.1 5 nouveaux helpers API publique `window.SecoursMode`
+
+```js
+async genererRapportData(scenarioId, scope, opts)   // → objet structuré
+genererRapportTexte(reportData)                      // sync → texte markdown-like
+genererRapportPDF(reportData)                        // sync → PDF jsPDF
+exporterRapportJSON(reportData)                      // sync → téléchargement JSON
+async copierRapportTexte(reportData)                 // → presse-papier
+```
+
+##### 67.11.2 Format `.mkmsec.report.json` (REPORT_FORMAT_VERSION = 1)
+
+```js
+{
+  type:         "myktamap-secours-report",
+  version:      1,
+  exportedAt:   ISO,
+  appVersion:   "v1.25.0",
+  scope:        "operateur" | "equipe" | "secouriste",
+  plan:         { id, name, version, ... },
+  scenario:     { id, nom, context, ... },
+  execution:    { active, startedAt, endedAt, role, dureeMs, ... },
+  equipesData: [
+    {
+      equipe:  { id, nom, couleurIdx, membres, level, ... },
+      etapes:  [ { type, idx, label, observations, statut, photoIds,
+                   startedAt, completedAt }, ... ],
+      photos:  [ { id, mime, sizeBytes, stepIdx, dataUrl? } ]
+    }
+  ],
+  notesLibres: [ { id, ts, statut, texte, photoIds, photosResolved? } ]
+}
+```
+
+Versionné pour re-import futur v1.26.0 (consolidation cross-device).
+
+##### 67.11.3 3 scopes selon rôle execution
+
+| Scope | Inclut | Cas d'usage |
+|---|---|---|
+| `operateur` | TOUTES équipes + étapes + photos | Rapport global PC chef relève / fin mission |
+| `equipe` | Une seule équipe (currentEquipeId) | Passation au PC surface au retour terrain |
+| `secouriste` | `_notes_libres` chronologiques | Passation secouriste libre au PC |
+
+##### 67.11.4 Modale unifiée `_afficherModaleRapport(scenarioId, scope)`
+
+- Aperçu compact (titre rôle + nb équipes/étapes + % progression + durée)
+- Checkbox « 📸 Inclure les photos » COCHÉE par défaut
+- Hint dynamique compteur photos (« Inclut N photos · impact taille fichier »)
+- 3 boutons format colorés (PDF primary jaune / JSON+Texte secondary) avec icône 22px + label gras + sous-titre italique
+- Toast feedback à chaque action
+- Backdrop click + Échap = annuler
+
+Bouton « 📤 Rapport » dans les 3 footers Live (data-scope adapté au rôle) + dans bandeau vue Edit (action `edit-rapport`).
+
+##### 67.11.5 Helper PDF `genererRapportPDF(reportData)`
+
+Layout : Page 1 briefing global. Pour chaque équipe : 1 page texte étapes + 1 page photos grille 2 cols ratio 4:3 (si photos). Mode secouriste : 1 page liste chronologique notes + 1 page photos. Footer crédit MyKTAMap + timestamp.
+
+⚠️ **Pas d'emoji dans `pdf.text()`** (jsPDF Helvetica latin1 → mojibake). Emojis OK pour canvas/Blob/HTML.
+
+Helpers : `_drawRapportPDFHeader / _drawRapportPDFFooter / _drawRapportPDFEquipeTextePage / _drawRapportPDFEquipePhotosPage / _drawRapportPDFNotesLibresPage`. Format `_formatRoleLabelAscii` pour labels jsPDF-safe.
+
+##### 67.11.6 Bandeau « 📦 PLAN TERMINÉ » dans vue Edit
+
+Si `s.execution` existe ET `!active && endedAt` set → bandeau bleu archive avec :
+- Durée totale + timestamp fin + rôle
+- Bouton « 📤 Voir le rapport historique » (= modale rapport scope du rôle final)
+- Bouton « 🚀 Relancer » (= modale sélection rôle, écrase l'execution actuelle)
+
+Permet de re-générer rapport à tout moment après l'arrêt, tant que le scénario n'est pas supprimé.
+
+##### 67.11.7 Confidentialité
+
+Aucune nouvelle surface réseau. Génération 100% client-side (jsPDF déjà chargé, Blob URLs locales, FileReader pour base64, `navigator.clipboard.writeText` avec fallback `execCommand("copy")`). Photos lues depuis store IDB local existant `myktamap_secours_photos`. Aucun fetch ajouté.
+
+#### 67.12 Pour ajouter une nouvelle release Mode Secours (futur)
+
+1. Bumper les 3 sources de vérité (`version.json` + `js/copyright.js > __MKM__.build` + `sw.js > CACHE_NAME`)
+2. Si nouveau format `.mkmsec.*.json` : bumper la `*_FORMAT_VERSION` correspondante + valider dans `_parsePayload*`
+3. Si nouveau statut d'étape : ajouter entry dans `TABLEAU_STATUTS` (id + emoji + label + color + severity + flags optionnels `isPending`/`pulse`)
+4. Si nouveau champ dans `scenario.execution` : whitelist dans `updateEtape` + filtre défensif dans `_appliquerPayloadImport` + propagation dans `genererRapportData`
+5. Si nouvelle vue Live : créer `_renderLiveViewXxx(s)` + dispatcher dans `_renderLiveView()` + handlers `_bindLiveXxxHandlers(corps, s)` dans `_bindViewHandlers("live")`
+6. Si nouvelle UI sticky qui DOIT masquer scroll : pattern §67.10 (background solid + z-index 100+ + `isolation: isolate` + box-shadow prononcé)
+7. Mettre à jour cette doc §67 + README.md journal + AI_CONTEXT.md + interface.js `afficherAide`
+
+---
+
+### 68. ⚠️ Correction §32.7 — Format calibrage KMZ FLAT (pas NESTÉ)
+
+**TODO résolu** (mentionné depuis v1.23.0 fix2 dans §66.8 mais §32.7 restait trompeur). Le format réel stocké par `KmzExport.setCalibration(planId, calib)` en `localStorage["myktamap_calib_<planId>"]` est **FLAT** :
+
+```js
+// ✅ Format RÉEL
+calib = {
+  pointA: { x: 1234, y: 567, lat: 48.8566, lng: 2.3522 },
+  pointB: { x: 5678, y: 9012, lat: 48.8530, lng: 2.3500 }
+}
+```
+
+PAS le format NESTÉ qui était décrit à tort dans §32.7 :
+```js
+// ❌ JAMAIS EXISTÉ
+calib = {
+  pointA: { plan: {x, y}, gps: {lat, lng} },
+  pointB: { plan: {x, y}, gps: {lat, lng} }
+}
+```
+
+Vérifié dans les 4 sites prod : `createConf.js` + `interface.js` + `sessionExporter.js` + `main.js > _propagerGeorefVersKmzExport` + `secoursMode.js > exporterKMZ`. Le pattern d'accès cohérent est :
+
+```js
+const calib = KmzExport.getCalibration(planId);
+if (!calib || !calib.pointA || !calib.pointB) return null;
+// Accès FLAT direct
+const t = KmzExport.buildTransform(
+  calib.pointA.plan = { x: calib.pointA.x, y: calib.pointA.y },
+  calib.pointB.plan = { x: calib.pointB.x, y: calib.pointB.y },
+  calib.pointA.gps  = { lat: calib.pointA.lat, lng: calib.pointA.lng },
+  calib.pointB.gps  = { lat: calib.pointB.lat, lng: calib.pointB.lng }
+);
+```
+
+**ATTENTION** : `buildTransform` accepte 4 args distincts `(planA, planB, gpsA, gpsB)` où chaque arg est `{x, y}` ou `{lat, lng}`. NE PAS passer `calib.pointA` directement (qui contient les 4 champs mélangés).
+
+---
+
 **Bon code ! 🚀**

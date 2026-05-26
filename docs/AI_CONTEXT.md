@@ -65,6 +65,7 @@ Pour **chaque** question :
   - 🚫 **Préférences d'évitement** (SOUPLE) : configurées dans la modale itinéraire (section repliable "🚫 Préférences d'évitement"). On peut éviter des **points précis** (par recherche / ID) ou des **tags entiers** (ex: tous les `pa` / Puits Aération). Marge configurable (défaut 100px). **Fallback 2 passes** : si pas de chemin en évitant, l'app tente sans les évitements et affiche un message orange "⚠️ Impossible d'éviter : X, Y" pour informer l'user. Persisté par plan via localStorage.
 - ⛑️ **Mode urgence "Je suis perdu"** (sous-action du groupe 🧭 Tracker) : estime une zone de recherche à partir de dernière position + temps écoulé + indices visuels texte ; affiche cercle orange, markers violets pour les indices in-zone ; bloc dépliable "📚 Bonnes pratiques" ; rapport copiable
 - 🚨 **Mode urgence "panique"** (depuis v1.10.1) : affichage plein écran simplifié avec position XL + boussole géante + minimap auto-focus + Wake Lock. **Depuis v1.12.0** : toggle ☑️ 🗺️ Itinéraire dans l'en-tête (persistance localStorage `myktamap_emergency_show_iti_v1`, défaut OFF pour protection anti-crash sur gros plan, rendu cyan vif + halo blanc quand activé) + bloc 🔋 ÉTAT affiche le niveau batterie en temps réel + minimap recadre correctement à la rotation paysage (3 retries invalidateSize cascade).
+- 🚨 **Mode Secours** (depuis v1.22.0, Phase 1 MVP) : outil de coordination d'équipes de recherche en cas d'incident souterrain (cataphile perdu, secours organisé). Bouton 🚨 dans le flyout 🧭 Tracker. Modale 4 vues : Liste scénarios (multi-scénarios par plan, max 10 FIFO via localStorage `myktamap_secours_v1_<planId>`) / Création (stepper léger nom + notes + heure incident) / Édition free-form (3 sections accordéon : Contexte avec Heatmap + Pause configurable + lastKnownPoint depuis Lost Mode / Équipes avec parcours entrée+intermédiaires+sortie + auto-création par niveau M-LVL / Export PDF avec carte miniature + KMZ géolocalisé cross-app Google Earth/OsmAnd + `.mkmsec.json` autonome pour partage cross-appareil). **Palette OTAN fixe 10 couleurs** (Alpha rouge / Bravo bleu / Charlie vert / Delta jaune / Echo magenta / Foxtrot cyan / Golf orange / Hotel violet / India brun / Juliet gris). **3 modes interactifs map** (POINT / POLYGON / ROADS sélectionnés). **Pathfinder integration** avec avoidances cross-équipes (anti-chevauchement). **Phase 2 (depuis v1.23.0)** ajoute : KML cross-app + Lost Mode → Secours auto pre-fill + Heatmap + auto-équipes M-LVL + Favoris picker waypoint + Ctrl+K → assigner POI + niveau M-LVL assignable par équipe + format `.mkmsec.json` autonome + modale preview AVANT injection + mini-légende intégrée carte PDF + pause cross-feature depuis Mode Secours. **Phase 3 — Exploitation terrain temps réel (depuis v1.24.0)** : pivot architectural majeur, le scénario a 2 états distincts CRÉATION (vue Édition) et EXÉCUTION (vue Live temps réel). Bouton « 🚀 Lancer le plan de secours » + bandeau dynamique 4 états (Disabled / CTA / Active vert / Terminé bleu). Modale sélection rôle : 👤 Opérateur surface (vue globale cards multi-équipes + supervision + bouton « 🚨 Prendre la main » avec retour automatique) / 🚨 Équipier (step-by-step parcours avec stepper visuel + observations + photos) / 🚑 Secouriste libre (notes en vrac chronologiques DESC). **7+1 statuts d'étape** : pending • / RAS 🟢 / Suspect 🟡 / Bloqué ⬛ / Indice 🔵 / Aide demandée 🟠 / Demi-tour forcé 🟣 / Victime trouvée 🚨 (rouge clignotant urgence absolue). **Store IDB dédié** `myktamap_secours_photos` v1 (max 5 photos/étape, compression auto JPEG q85 max 1920px, séparé du store POI photos). **Timer global** avec pause juste (exclut `pausedTotalMs`, re-render data-live-timer 1×/sec sans flash ni perte focus). **Rapport au fil des étapes (depuis v1.25.0)** : 3 formats (📄 PDF imprimable A4 / 📦 `.mkmsec.report.json` autonome avec photos en base64 / 📋 texte presse-papier markdown-like) × 3 scopes (operateur=toutes équipes / equipe=la sienne / secouriste=notes libres). Bouton « 📤 Rapport » dans 3 footers Live + bandeau vue Édition. Modale unifiée avec aperçu compact + checkbox photos cochée par défaut. **AUCUNE nouvelle surface réseau** (100% local : localStorage + IDB + Pathfinder + jsPDF déjà chargé + Blob URLs + clipboard API).
 - 🎬 **Replay tracker** (depuis v1.12.0) : bouton 🎬 dans le groupe 🧭 Tracker. Ouvre une modale plein écran avec slider timeline + play/pause/restart/end + vitesse 0.5×→10× + raccourcis clavier (Espace, ← →, Échap). Mode compact (bottom sheet) activé auto au Play. Trail multi-segments (skip téléportations sur recalage). Bouton 💾 Export CSV produit fichier 5 colonnes `timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]`. Reset au plan switch (RAM-only).
 - 🪫 **Indicateur batterie** (depuis v1.12.0) : chip ⚡/🪫 dans l'en-tête nouvelle interface (à côté compteurs session), footer modale Session active, bloc 🔋 ÉTAT mode urgence. Warnings graduels 20%/10%/5% via toast (1 fois par seuil par cycle décharge). Battery Status API — dispo Chromium uniquement (Android, PC). Si API indispo (Safari iOS, Firefox) : chip masquée sans erreur.
 - 📊 **Stats session enrichies** (depuis v1.12.0) : modale 📋 Session active affiche total annotations + breakdown par type (📍/🛣️/⬛/🏛️) + distance cumulée tracés + surface cumulée zones + photos POI + durée session. Multi-niveau (M-LVL) : breakdown additionnel par niveau. Boutons 📋 Copier + 💾 Export TXT pour partager.
@@ -924,6 +925,123 @@ Le code source n'est **pas distribué publiquement**. Il n'existe pas de dépôt
 - Le 🚨 suppose que le tracker est actif et donne une position fiable. Sur un plan où le tracker n'est pas démarré, le mode panique reste utilisable mais la "position XL" reste vide / désactivée.
 - Comme tout l'app : aucune transmission automatique vers les secours. Pour communiquer, tu lis tes coords XL et tu les envoies par SMS/radio toi-même.
 - La boussole utilise le magnétomètre, **faussée à proximité de structures métalliques** (béton armé, voies ferrées). Vérifier la cohérence en pivotant le téléphone sur place avant de se fier au cap.
+
+### M. 🚨 Mode Secours — Coordination d'équipes de recherche (depuis v1.22.0 + Phase 3 v1.24.0)
+
+> Mots-clés : "plan de secours", "équipe de recherche", "coordonner les secours", "GRIMP pompiers spéléo", "carte d'opération", "opérateur surface", "secouriste libre", "équipier terrain", "stepper d'étape", "rapport au fil de l'eau", "victime trouvée", "Demi-tour forcé", "Pending RAS Suspect Bloqué Indice Aide", "Live Mode", "mode exécution temps réel", "couleurs OTAN Alpha Bravo Charlie Delta Echo Foxtrot Golf Hotel India Juliet", ".mkmsec.json", ".mkmsec.report.json", "Lancer le plan de secours", "Prendre la main", "👤 Retour Opérateur".
+
+**Distinction des 3 modes "urgence" MyKTAMap** :
+
+| | ⛑️ Je suis perdu | 🚨 Mode panique | 🚨 Mode Secours |
+|---|---|---|---|
+| Hypothèse | Je NE SAIS PAS où je suis | Je SAIS où je suis (tracker actif) | UN AUTRE est perdu, on l'organise |
+| Cible | Moi-même | Moi-même | Équipe(s) de recherche |
+| Sortie utile | Cercle zone probable + indices | Coords XL + boussole géante | Plan multi-équipes coordonné + rapport |
+| Quand | "J'ai perdu mes repères" | "Je panique à un croisement" | "Marc est porté disparu, on organise les secours" |
+| Module | `js/lostMode.js` | `js/emergencyMode.js` | `js/secoursMode.js` + `js/secoursPhotos.js` |
+
+**Accès** : sidebar → flyout urgences (groupe 🧭 Tracker) → bouton rouge **🚨 Mode Secours**.
+
+#### Architecture conceptuelle — 2 états du scénario
+
+Un scénario Mode Secours a 2 états :
+
+1. 📝 **CRÉATION** (vue Édition) — préparation/planning. Tu définis équipes + parcours + zones + itinéraires. Phases 1+2 (v1.22.0 + v1.23.x).
+2. 🚀 **EXÉCUTION** (vue Live temps réel) — incident déclenché. Tu suis les observations terrain. Phase 3 (v1.24.0+).
+
+Bascule via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édition.
+
+#### Workflow type complet
+
+```
+1. PRÉ-INCIDENT (préparation sur table)
+   ├─ Création scénario nommé "Test - Glacière oct 2026" (calibration équipe)
+   ├─ Équipes Alpha/Bravo/Charlie (couleurs OTAN auto)
+   ├─ Parcours : entrée + intermédiaires + sortie + zone + itinéraire auto-calc
+   └─ Export PDF + KMZ pour briefing initial
+
+2. INCIDENT RÉEL → Lancement
+   ├─ Clic 🚨 Mode Secours → re-créer scénario "Recherche Marc 26/05/2026"
+   ├─ (Optionnel) clic 🚨 depuis Lost Mode → auto-pre-fill lastKnownPoint + zone d'incertitude
+   ├─ Clic « 🚀 Lancer le plan » → modale sélection rôle
+   │   ◉ 👤 Opérateur surface (PC chef)
+   │   ○ 🚨 Équipe Alpha (secouriste assigné)
+   │   ○ 🚑 Secouriste libre (renfort sans équipe)
+   └─ Bascule en vue Live selon rôle
+
+3. EXÉCUTION TEMPS RÉEL (vue Live)
+   ├─ Équipier terrain : suit parcours step-by-step, commente chaque étape,
+   │  prend photos via 📸 (max 5/étape, IDB local dédié),
+   │  clique 1 des 7 statuts rapides (RAS/Suspect/Bloqué/Indice/Aide/Demi-tour/Victime),
+   │  navigation prev/next entre étapes (auto-RAS au passage sans statut)
+   ├─ Opérateur surface : vue d'ensemble cards multi-équipes, voit en live le statut
+   │  le + sévère de chaque équipe + dernière obs snippet, peut "Prendre la main"
+   │  sur une équipe pour saisir une obs à sa place (puis bouton « 👤 Retour Opérateur »)
+   └─ Secouriste libre : notes en vrac chronologiques DESC avec timestamps
+
+4. RAPPORT AU FIL DES ÉTAPES (à tout moment)
+   ├─ Bouton « 📤 Rapport » dans chaque vue Live (scope adapté au rôle)
+   ├─ 3 formats au choix :
+   │   📄 PDF imprimable A4 → impression / archivage / passation papier
+   │   📦 .mkmsec.report.json → consolidation cross-device (v1.26.0 future)
+   │   📋 Texte presse-papier → Discord/SMS/mail rapide
+   └─ Rapport reflète l'état COURANT, réutilisable autant de fois
+
+5. ARRÊT DU PLAN
+   ├─ Clic « ⏹️ Terminer le plan »
+   ├─ Bandeau « 📦 PLAN TERMINÉ » apparaît dans vue Édition
+   ├─ Observations conservées comme historique
+   └─ « 📤 Voir le rapport historique » + « 🚀 Relancer » disponibles
+```
+
+#### 7+1 statuts d'étape (TABLEAU_STATUTS extensible)
+
+| Emoji | ID | Label | Couleur | Severity | Signal |
+|---|---|---|---|---|---|
+| • | `pending` | En attente | gris | 0 | Statut par défaut |
+| 🟢 | `ras` | RAS | vert | 0 | Rien à signaler |
+| 🟡 | `suspect` | Suspect | jaune | 1 | Traces / bruits / odeurs |
+| ⬛ | `bloque` | Bloqué | gris foncé | 1 | Passage impraticable |
+| 🔵 | `indice` | Indice | bleu | 1 | Objet / vestige trouvé |
+| 🟠 | `aide` | Aide demandée | orange | 2 | Renfort matériel / humain |
+| 🟣 | `demi-tour` | Demi-tour forcé | violet | 1 | Parcours abandonné |
+| 🚨 | `victime` | **Victime trouvée** | rouge | 3 | **URGENCE ABSOLUE** — déclenche rouge clignotant côté PC |
+
+Severity 0-3 utilisée pour tri/escalade dans la vue Opérateur (card prend la couleur du statut le + sévère parmi toutes les étapes).
+
+#### Persistance & stockage
+
+| Donnée | Stockage | Détail |
+|---|---|---|
+| Scénarios | `localStorage["myktamap_secours_v1_<planId>"]` | Multi-scénarios par plan, cap 10 FIFO |
+| Photos étapes | IDB `myktamap_secours_photos` v1 | Store dédié séparé du POI, 3 indexes scenarioId+equipeId+stepIdx |
+| Pause cross-feature | `localStorage["myktamap_iti_pause_enabled"]` + `_minutes` | Partagé avec itinéraire principal |
+| Calibration KMZ géoref | `localStorage["myktamap_calib_<planId>"]` | Format FLAT `{pointA: {x,y,lat,lng}, pointB: {x,y,lat,lng}}` (cf §32.7 corrigé en §68) |
+
+#### Quand recommander chacun des 3 rôles
+
+- L'utilisateur dit "je suis le chef de l'opération", "je coordonne depuis la surface", "je vois toutes les équipes" → **👤 Opérateur surface**
+- L'utilisateur dit "je fais partie de l'équipe X", "je descends avec Alpha", "je suis mon parcours" → **🚨 Équipier**
+- L'utilisateur dit "j'arrive en renfort", "je n'ai pas d'équipe assignée", "je fais de la reconnaissance" → **🚑 Secouriste libre**
+
+#### Limitations (pour anticiper questions user)
+
+- **Single-device pour l'instant** : chaque rôle tient son propre suivi en local. La consolidation cross-device (= opérateur surface importe les rapports des équipes au retour pour fusionner) viendra en v1.26.0.
+- **QR code share** : pas encore livré (v1.27.0+). Pour le terrain réel sans réseau, le partage entre devices passe par le rapport `.mkmsec.report.json` (export sur device émetteur → import sur device récepteur par mail/clé USB/AirDrop au retour surface).
+- **Pas de transmission automatique vers les secours externes** : c'est un outil de coordination INTERNE à ton équipe. Pour appeler les pompiers/GRIMP, tu utilises ton téléphone normal.
+- **Photos compressées localement** : max 1920px côté long + JPEG q85 → ~200-400 KB par photo (au lieu de 3-5 MB raw smartphone). Pas de fallback "qualité originale" — choix volontaire pour limiter l'IDB.
+- **Plan switch préserve l'execution active** : tu peux switcher entre plans avec un Mode Secours en cours, l'execution reste intact dans le scénario du plan source (cohérent persistance per-plan).
+
+#### Format `.mkmsec.json` vs `.mkmsec.report.json`
+
+| | `.mkmsec.json` (v1.23.4) | `.mkmsec.report.json` (v1.25.0) |
+|---|---|---|
+| Type | `myktamap-secours-scenario` | `myktamap-secours-report` |
+| Contenu | Définition du scénario (équipes, parcours, zones) | Snapshot d'exécution (observations, statuts, photos) |
+| Cas d'usage | Partage de la PRÉPARATION (avant incident) | Partage des OBSERVATIONS (pendant/après mission) |
+| Photos | Non (pas pertinent pré-incident) | Oui (en base64 si checkbox cochée) |
+| Re-import | Restaure le scénario (nouvel id, modale preview) | Pas encore, prévu v1.26.0 consolidation |
+| Format version | `MKMSEC_FORMAT_VERSION = 1` | `REPORT_FORMAT_VERSION = 1` |
 
 ### K. Recherche unifiée — 4 catégories + Ctrl+K (depuis v1.10.3)
 

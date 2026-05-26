@@ -174,10 +174,24 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.25.1</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.25.2</strong> (27 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.25.2 (Release PATCH docs Mode Secours)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun changement de code applicatif</strong>.
+    Pure update documentation suite audit KARMA :
+    §67 (~400 lignes) dans <code>docs/CLAUDE.md</code> consolide les évolutions Mode Secours
+    v1.23.2 → v1.25.1 + §68 corrige format calibrage KMZ ; nouvelle section Phase 3 (~250 lignes)
+    dans <code>docs/README_USER.md</code> (user-facing) + correction 2 mentions « roadmap Phase 3 à venir » ;
+    nouvelle section recette M. (~210 lignes) dans <code>docs/AI_CONTEXT.md</code> pour modale Aide IA ;
+    nouvelle section Mode Secours (~60 lignes) dans <code>js/interface.js > afficherAide</code>
+    pour modale Aide intégrée.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — release docs strict.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1116,6 +1130,19 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.25.2</td>
+        <td>27/05/2026</td>
+        <td>
+          <strong>Release PATCH docs Mode Secours (Phase 3 + tous patchs v1.23.2 → v1.25.1)</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission, aucun changement de code applicatif</strong>.
+          Pure update documentation : <code>docs/CLAUDE.md §67-68</code> + section Phase 3 dans
+          <code>docs/README_USER.md</code> + recette M. dans <code>docs/AI_CONTEXT.md</code> +
+          section Mode Secours dans modale Aide intégrée (<code>js/interface.js</code>).
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.25.1</td>
         <td>26/05/2026</td>

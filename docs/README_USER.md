@@ -1197,8 +1197,8 @@ Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l
 
 #### Roadmap
 
-- **Phase 2 (v1.23.0)** — Intégrations approfondies : auto pré-fill depuis Lost Mode, import auto Favoris taggés entrée/sortie, suggestion zones via Heatmap si timeline tracker du disparu disponible, sélection rapide via Ctrl+K, suggestion auto équipes par étage M-LVL, Pathfinder avoidances cross-équipes (pas de chevauchement), **KML cross-app pour Google Earth**, **carte miniature dans le PDF**.
-- **Phase 3 (v1.24.0)** — Statut temps réel par équipe (non démarré / en cours / terminé / rappelé), **QR code share** unidirectionnel PC secours → device équipe (lecture seule, robustesse réseau souterrain), timer global depuis incidentAt, observations terrain via QR scan au retour.
+- ✅ **Phase 2 (v1.23.0)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 2 — Intégrations cross-app ».
+- ✅ **Phase 3 (v1.24.0+)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 3 — Exploitation terrain ». Le statut temps réel + rapports au fil des étapes sont livrés. Le QR code share unidirectionnel reste planifié pour v1.27.0+.
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
@@ -1273,11 +1273,238 @@ Nouvelle section dans la modale 🗺️ Itinéraire :
 
 Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
 
-#### 📊 Roadmap
+#### 📊 Roadmap Phase 2
 
-**Phase 3 (v1.24.0)** : statut temps réel par équipe + QR code share unidirectionnel PC secours → device équipe + timer incident + observations terrain via QR scan retour.
+✅ Toutes les 7 features Phase 2 livrées en v1.23.x. Cf section Phase 3 ci-dessous pour la suite (exploitation terrain temps réel).
 
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
+
+### 🚨 Mode Secours Phase 3 — Exploitation terrain temps réel (depuis v1.24.0)
+
+Pivot architectural majeur : le scénario a maintenant **2 états distincts** :
+
+1. 📝 **CRÉATION** — Vue Édition que tu connais (Phases 1+2). Tu prépares tes équipes, leurs parcours, leurs zones, les itinéraires suggérés.
+2. 🚀 **EXÉCUTION** — Nouvelle vue Live temps réel. L'équipe est PARTIE, tu suis ses observations étape par étape, tu commentes en live.
+
+Tu bascules d'un état à l'autre via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édition.
+
+#### 🚀 Lancement du plan + sélection du rôle
+
+Un nouveau bandeau dynamique apparaît en haut de la vue Édition :
+
+| État du bandeau | Quand | Boutons |
+|---|---|---|
+| Gris « Ajoute au moins une équipe… » | 0 équipe définie | Aucun |
+| **Jaune CTA « 🚀 Lancer »** | Au moins 1 équipe | 🚀 Lancer le plan de secours |
+| **Vert « 🟢 PLAN ACTIF — <Rôle> »** | Plan lancé en cours | ▶️ Reprendre vue Live · 📤 Rapport · ⏹️ Arrêter |
+| **Bleu « 📦 PLAN TERMINÉ »** | Plan arrêté (historique) | 📤 Voir rapport historique · 🚀 Relancer |
+
+Au clic « 🚀 Lancer », **modale sélection rôle** avec 3 choix :
+
+```
+◉ 👤 Opérateur de surface
+   Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en
+   parallèle, tu peux éditer leurs observations en supervision.
+
+○ 🚨 Équipe sur le terrain : [Alpha ▾]
+   Tu fais partie d'une équipe assignée. Tu suis ton parcours étape
+   par étape et tu commentes en live.
+
+○ 🚑 Secouriste libre
+   Tu interviens sans équipe pré-assignée (renfort ponctuel, recon).
+   Tu prends des notes libres avec timestamps.
+```
+
+> 💡 Tu pourras changer de rôle plus tard sans perdre les observations.
+
+#### 🚨 Vue Live — Mode ÉQUIPIER (step-by-step)
+
+Pour le secouriste sur le terrain qui suit son parcours :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚨 Équipe Alpha · Étape 3/5     ⏱️ 14h 23min         │
+├─────────────────────────────────────────────────────┤
+│  ✓ ━ ✓ ━ ↻ ━ ○ ━ ○                                  │ ← stepper
+│  cliquable, couleur statut par étape                │
+├─────────────────────────────────────────────────────┤
+│ 📍 ÉTAPE 3 — Puits aération Nord                    │
+│ Statut : 🟢 RAS                                      │
+│                                                      │
+│ 📝 Observations à cette étape :                     │
+│ [galerie centrale rien à signaler]                  │
+│                                                      │
+│ ⚡ Saisie rapide :                                  │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice]       │
+│ [🟠 Aide demandée] [🟣 Demi-tour] [🚨 Victime !]    │
+│                                                      │
+│ [📸 Photo (0/5)]  [🎯 Recentrer carte]              │
+├─────────────────────────────────────────────────────┤
+│ [← Étape précédente]  [Étape suivante →]            │
+│ [⏸️ Pause] [📤 Rapport] [Voir édition] [⏹️ Terminer] │
+└─────────────────────────────────────────────────────┘
+```
+
+**8 statuts cliquables** (couleurs gravées dans la charte) :
+
+| Emoji | Label | Quand l'utiliser |
+|---|---|---|
+| • | Pending | (statut par défaut avant interaction) |
+| 🟢 | RAS | Rien à signaler |
+| 🟡 | Suspect | Traces / bruits / odeur inhabituels |
+| ⬛ | Bloqué | Passage impraticable (effondrement, eau) |
+| 🔵 | Indice | Objet / vestige trouvé |
+| 🟠 | Aide demandée | Renfort matériel / humain demandé |
+| 🟣 | Demi-tour forcé | Parcours abandonné, retour anticipé |
+| 🚨 | **Victime trouvée** | **Urgence absolue** — déclenche signal rouge clignotant côté PC |
+
+**Photos** : appui « 📸 Photo (X/5) » → caméra arrière auto sur mobile (`capture="environment"`) OU galerie. Max 5 photos par étape, compression auto JPEG q85 max 1920px. Cliquer une miniature → viewer plein écran avec swipe + zoom.
+
+**Auto-save** : observations sauvées au blur du textarea ET au changement d'étape. Pas besoin de bouton « Sauver ».
+
+**Auto-statut RAS** : passer à l'étape suivante sans avoir mis de statut explicite → marqué automatiquement « 🟢 RAS » (suppose que tu as fait l'étape sans rien à signaler). Re-clic statut possible si besoin.
+
+#### 👤 Vue Live — Mode OPÉRATEUR SURFACE (vue d'ensemble)
+
+Pour le PC chef qui coordonne plusieurs équipes en parallèle :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 👤 Opérateur surface · 3 équipes  ⏱️ 02h 14min       │
+├─────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐         │
+│  │ 🔴 Alpha    3/5  │  │ 🔵 Bravo    1/4  │         │
+│  │ ████████░░ 60%   │  │ ███░░░░░░░ 25%   │         │
+│  │ 🟢 RAS           │  │ 🟠 Aide demandée  │         │
+│  │ « RAS galerie    │  │ « Eau au sol,    │         │
+│  │ centrale »       │  │ niveau monte »   │         │
+│  │ ⏱️ 14:23         │  │ ⏱️ 14:18         │         │
+│  │ [👁️ Détails]     │  │ [👁️ Détails]     │         │
+│  │ [🚨 Prendre main]│  │ [🚨 Prendre main]│         │
+│  └──────────────────┘  └──────────────────┘         │
+│  ┌──────────────────┐                               │
+│  │ 🟢 Charlie  ✓T   │ ← équipe Terminée (grisée)    │
+│  └──────────────────┘                               │
+├─────────────────────────────────────────────────────┤
+│ [⏸️ Pause] [🗺️ Carte globale] [📤 Rapport global]   │
+│ [Voir édition] [⏹️ Terminer le plan]                │
+└─────────────────────────────────────────────────────┘
+```
+
+**Cards spéciales** avec signaux visuels forts :
+
+- 🚨 **Victime trouvée** → card **ROUGE CLIGNOTANTE** (animation 1.2s, urgence absolue, tu ne peux PAS la rater)
+- 🟠 **Aide demandée** → orange + lueur (renfort à envoyer)
+- ✓ **Terminée** → grisée opacity 0.75 (toutes étapes complétées)
+
+**Bouton « 👁️ Détails »** → mini-modale read-only avec liste chronologique des étapes de l'équipe (ts + statut emoji + obs).
+
+**Bouton « 🚨 Prendre la main »** → bascule vers la vue Équipier focalisée sur cette équipe spécifique. Tu deviens TEMPORAIREMENT l'équipier d'Alpha pour saisir une observation détaillée à sa place (cas typique : tu es au PC chef mais tu reçois un appel radio d'Alpha qui te dicte ses obs).
+
+**Retour facile** : une fois en mode Équipier après « Prendre la main », un bouton **« 👤 Retour Opérateur »** apparaît dans le footer. Au clic → retour à la vue d'ensemble Opérateur intacte (les flags `_previousRole` survivent reload + plan switch).
+
+**Bouton « 🗺️ Voir carte globale »** : masque la modale + render l'overlay carte avec toutes les zones + waypoints + itinéraires des équipes en couleurs OTAN.
+
+#### 🚑 Vue Live — Mode SECOURISTE LIBRE (notes en vrac)
+
+Pour le renfort ponctuel / la reconnaissance sans équipe pré-assignée :
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚑 Secouriste libre · 12 notes  ⏱️ 01h 47min         │
+├─────────────────────────────────────────────────────┤
+│ 📝 Ajouter une note                                  │
+│ [galerie nord rien à signaler]                      │
+│ ⚡ Statut associé :                                 │
+│ [🟢 RAS] [🟡 Suspect] [⬛ Bloqué] [🔵 Indice]       │
+│ [🟠 Aide] [🟣 Demi-tour] [🚨 Victime !]             │
+├─────────────────────────────────────────────────────┤
+│ 12. 🟢 RAS · ⏱️ 16:42:18                       [✕]  │
+│     « Croisement Est, RAS, on continue »            │
+│                                                      │
+│ 11. 🟡 Suspect · ⏱️ 16:38:05                   [✕]  │
+│     « Bruit d'eau qui coule, source ?? »            │
+│                                                      │
+│ ... (chronologique DESC)                            │
+└─────────────────────────────────────────────────────┘
+```
+
+Pas de stepper, pas d'étapes structurées. Juste un fil de notes horodatées avec statut. Pratique pour les missions où le parcours n'est pas planifié à l'avance (renfort qui arrive en cours, équipe de reconnaissance, etc.).
+
+#### 📤 Rapport au fil des étapes (depuis v1.25.0)
+
+À tout moment pendant l'exécution ET après l'arrêt du plan, tu peux générer un rapport via le bouton **« 📤 Rapport »** présent dans :
+
+- Le footer de chaque vue Live (scope adapté au rôle courant)
+- Le bandeau vue Édition (si execution active OU terminée)
+
+3 formats au choix dans la modale unifiée :
+
+| Format | Cas d'usage |
+|---|---|
+| 📄 **PDF imprimable A4** | Briefing global page 1 + page texte étapes par équipe + page photos en grille 2 cols. Idéal pour rapport papier / impression / archivage / passation papier au pompier. |
+| 📦 **`.mkmsec.report.json`** | Data structuré autonome (photos en base64 si cochée). Prévu pour re-import sur device opérateur surface en v1.26.0 (consolidation cross-device). |
+| 📋 **Texte plain** | Markdown-like copié au presse-papier. Pour partage Discord / SMS / mail rapide. |
+
+**3 scopes selon ton rôle** :
+
+- 👤 **Mode Opérateur** → « 📤 Rapport global » : TOUTES les équipes + leurs étapes + photos
+- 🚨 **Mode Équipier** → « 📤 Rapport » : SON équipe uniquement (parcours individuel)
+- 🚑 **Mode Secouriste libre** → « 📤 Rapport » : SES notes libres chronologiques
+
+**Aperçu compact** en haut de la modale : titre rôle + nombre étapes + % progression + durée. **Checkbox « 📸 Inclure les photos »** COCHÉE par défaut (avec hint dynamique compteur). Toast feedback à chaque action.
+
+**Rapport généré à l'instant** : reflète l'état COURANT du scénario. Réutilisable autant de fois que nécessaire. Idéal pour :
+- Briefing en cours de mission (snapshot intermédiaire à imprimer pour la relève)
+- Passation cross-device (export JSON → mail / clé USB → import sur PC opérateur)
+- Rapport final post-mission (PDF imprimable + archivage)
+
+#### ⏱️ Timer global avec pause juste
+
+Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le `startedAt` MOINS le temps de pause cumulé. Tu peux mettre en pause avec le bouton **« ⏸️ Pause »** (le timer fige) puis reprendre avec **« ▶️ Reprendre »** — la durée de pause n'est PAS comptabilisée.
+
+**Re-render 1×/seconde** sans flash visuel, sans perte de focus dans la textarea observations en cours de saisie. Permet de garder le rapport temps-réel précis pendant des missions longues (h+).
+
+#### 🎬 Cycle complet typique
+
+```
+1. 📝 Création scénario (vue Édition)
+   ├─ Ajout équipes Alpha/Bravo/Charlie (couleurs OTAN)
+   ├─ Pour chaque équipe : parcours entrée → étapes → sortie
+   ├─ Zones de recherche (polygone OU tracés sélectionnés)
+   ├─ Itinéraires auto-calc Pathfinder (avoidances cross-équipes)
+   └─ Export PDF / KMZ / .mkmsec.json pour briefing initial
+
+2. 🚀 Lancement (modale sélection rôle)
+   └─ Bascule en vue Live selon rôle choisi
+
+3. 🚨 Exécution (vue Live)
+   ├─ Mode Équipier : suit parcours step-by-step + observations + photos
+   ├─ Mode Opérateur : vue d'ensemble cards + supervision + prise main
+   └─ Mode Secouriste libre : notes en vrac chronologiques
+
+4. 📤 Rapport au fil des étapes (n fois)
+   ├─ PDF imprimable pour relève / passation papier
+   ├─ JSON pour consolidation cross-device (v1.26.0)
+   └─ Texte presse-papier pour Discord / mail rapide
+
+5. ⏹️ Arrêt du plan (bandeau « 📦 PLAN TERMINÉ »)
+   ├─ Observations conservées comme historique
+   ├─ Bouton « 📤 Voir le rapport historique » réutilisable
+   └─ Bouton « 🚀 Relancer » si re-mission
+```
+
+#### 📊 Roadmap Phase 3
+
+- ✅ **v1.24.0** — Pack Équipier + Opérateur surface + Secouriste libre + 7 statuts + photos IDB dédiées
+- ✅ **v1.24.1** — Bouton « 👤 Retour Opérateur » après prise de main
+- ✅ **v1.24.2 / v1.25.1** — Fixes CSS (textarea / header sticky)
+- ✅ **v1.25.0** — Rapport au fil des étapes (3 formats × 3 scopes)
+- 🛣️ **v1.26.0** — Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device, fusion observations multi-équipes)
+- 🛣️ **v1.27.0+** — QR code share unidirectionnel (PC surface → devices équipes, robustesse réseau souterrain)
+- 🛣️ **v1.28.0+** — Seuils stress visuels (timer rouge après 4h, alertes auto)
+
+> ⚠️ Important : la Phase 3 fonctionne **single-device** pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par le rapport `.mkmsec.report.json` (export sur le device émetteur, import sur le device récepteur — v1.26.0 prévue). Le QR code share viendra dans v1.27.0+ pour le terrain réel sans réseau.
 
 ---
 
