@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.3` (26/05/2026) — PATCH « Équipe Mode Secours avec level M-LVL assignable » — bug logique terrain : on doit pouvoir créer une équipe et lui assigner un niveau M-LVL en plus de l'auto-création par niveau
-**📦 Précédentes shipped main** : `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan)
+**📦 Version courante** : `v1.23.4` (26/05/2026) — PATCH « Mode Secours : export/import autonome `.mkmsec.json` + fix Heatmap Régler » — partage cross-appareil sans devoir exporter toute la session (use case « opérateur chef de surface » ↔ « secouriste »)
+**📦 Précédentes shipped main** : `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit) ; `v1.23.1` (Emergency safe center + Heatmap MutationObserver) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,73 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-3" open>
+<details id="v1-23-4" open>
+<summary><strong>🗓️ 26/05/2026 — 📤 v1.23.4 : Release PATCH — Mode Secours : export/import autonome `.mkmsec.json` + fix Heatmap Régler</strong></summary>
+
+Release PATCH (bump Z : 1.23.3 → 1.23.4). Demande KARMA terrain : « on doit pouvoir exporter un plan de secour, que on poura importer sur un autre appareil (sans a avoir a exporter une session full) ca nous servira quoi qu'il arrive pour mode 'operateur chef de surface' et 'secouriste' ».
+
+### 📤 Export `.mkmsec.json`
+
+Nouveau bouton « 📤 Export .mkmsec.json » dans la section 📦 Export d'un scénario (à côté de PDF + KMZ). Génère un JSON autonome avec wrapper extensible :
+
+```js
+{
+  type:        "myktamap-secours-scenario",
+  version:     1,
+  exportedAt:  "ISO timestamp",
+  appVersion:  "v1.23.4",
+  plan:        { id, name, version, imageWidth, imageHeight, multiLevel, availableLevels, scale },
+  scenario:    { id, nom, createdAt, updatedAt, context, groupes, pointsCles }
+}
+```
+
+Filename : `Secours_<nom_slug>_<YYYYMMDD>.mkmsec.json`. Idéal pour partager un plan de secours entre opérateur surface ↔ secouristes via email / Discord / clé USB / AirDrop, sans devoir exporter toute la session (qui peut peser plusieurs Mo avec photos + tuiles).
+
+### 📥 Import `.mkmsec.json`
+
+Nouveau bouton « 📥 Importer un plan » dans la vue LIST du Mode Secours (à côté de « ➕ Nouveau scénario »). File picker accepte `.json` + `.mkmsec` + `.mkmsec.json`. Validation stricte :
+
+- `type === "myktamap-secours-scenario"`
+- `version ≤ MKMSEC_FORMAT_VERSION` (= 1)
+- `scenario.nom` (string) + `scenario.groupes` (array) requis
+- Re-génère un nouvel `id` pour le scénario importé + tous les ids internes des groupes (évite collision si l'user importe plusieurs fois le même fichier)
+
+Si le `plan.id` du scénario importé diffère du plan courant, `confirm()` avec warning détaillé (les coords waypoints/zones n'auront pas le même sens). Filtre défensif anti-pollution : seuls les champs whitelisted du scenario sont gardés (`id, nom, createdAt, updatedAt, context, groupes, pointsCles`).
+
+### ✨ Modale feedback post-import
+
+Modale dédiée (vert succès / rouge erreur) qui affiche :
+- nom scénario importé + nombre d'équipes + filename source
+- warning éventuel (plan différent) en bandeau orange
+- bouton « ✏️ Ouvrir le scénario » qui bascule directement en vue Edit
+
+Sur erreur : message détaillé en monospace (validation, JSON malformé, etc.) + hint « le fichier doit être un .mkmsec.json valide exporté depuis MyKTAMap ».
+
+### 🐛 Fix Heatmap « ⚙️ Régler » disparaissait
+
+Bug remonté KARMA : « bug en mode secours affiche le heatmap n'affiche plus le reglage pourtant ca fonctionnait ». Root cause : condition fragile `_secoursHeatmapActive && MyKTAMapHeatmap.isVisible()` qui devenait `false` dans certains cycles de rendu (notamment après que l'user a effacé la heatmap depuis sa modale dédiée).
+
+Fix : bouton « ⚙️ Régler » TOUJOURS visible dans le bloc Heatmap Mode Secours tant que `window.MyKTAMapHeatmap` est chargé. UX cohérente — l'user n'a plus à chercher où est passé le bouton. Bonus : l'user peut Régler AVANT même d'avoir cliqué Afficher (pour configurer ses sources en amont).
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. L'export/import `.mkmsec.json` est 100 % local (Blob URL + file picker natif). Pas de fetch, pas de cloud, pas de stockage tiers. Le user qui veut partager passe par les canaux qu'il choisit (mail, Discord, USB, AirDrop, etc.).
+
+### 📦 Sources de vérité v1.23.4
+
+- `version.json` → `v1.23.4`
+- `js/copyright.js > __MKM__.build` → `v1.23.4`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.4`
+
+Aucun nouveau fichier. Modifs : `js/secoursMode.js` (+~140 lignes : `_ouvrirImportMkmsecPicker` + `_afficherResultatImport` + fix `_renderHeatmapToolBlock` + bouton export-mkmsec + bouton import-mkmsec + handlers + 2 exports API publique `window.SecoursMode.exporterScenario/importerScenario`), `css/style.css` (+~13 lignes : `.kta-secours-list-header-actions`).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.23.3 (nouveau format MKMSEC v1, ancien format inchangé). Format `.mkmsec.json` versionné via `MKMSEC_FORMAT_VERSION = 1` — futures versions peuvent étendre le wrapper sans casser la rétro-compat. Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-23-3">
 <summary><strong>🗓️ 26/05/2026 — 🏗️ v1.23.3 : Release PATCH — Équipe Mode Secours avec level M-LVL assignable</strong></summary>
 
 Release PATCH (bump Z : 1.23.2 → 1.23.3). Bug de logique remonté par KARMA terrain : « on doit pouvoir en plus de l'auto complete crée une équipe et lui assigné une zone sur un niveau ».

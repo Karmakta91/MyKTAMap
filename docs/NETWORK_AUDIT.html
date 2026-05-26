@@ -174,10 +174,26 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.23.3</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.23.4</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.23.4 (Release PATCH — Mode Secours export/import <code>.mkmsec.json</code> + fix Heatmap Régler)</strong> :
+    <strong>AUCUN impact réseau</strong>. Demande KARMA terrain : pouvoir exporter un plan de secours
+    autonome pour partage cross-appareil (use case « opérateur chef de surface » ↔ « secouriste »)
+    sans devoir exporter toute la session. (1) <strong>Export <code>.mkmsec.json</code></strong> :
+    génération d'un fichier JSON via <code>Blob</code> + <code>URL.createObjectURL</code> +
+    téléchargement client-side. Aucun fetch externe, aucune transmission cloud. L'user partage
+    le fichier via les canaux qu'il choisit (mail, Discord, USB, AirDrop).
+    (2) <strong>Import <code>.mkmsec.json</code></strong> : file picker HTML natif + lecture via
+    <code>File.text()</code> + <code>JSON.parse</code>. Validation stricte du format (type,
+    version, scénario valide). Filtre défensif anti-pollution.
+    (3) <strong>Fix Heatmap « ⚙️ Régler » disparaissait</strong> : fix UX pur DOM local.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — strictement offline-first, 100 % local.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -980,6 +996,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.23.4</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release PATCH — Mode Secours export/import <code>.mkmsec.json</code> + fix Heatmap Régler</strong> —
+          <strong>aucun impact réseau, aucune nouvelle permission</strong>.
+          Export/import scénario Mode Secours via fichier JSON autonome (Blob + file picker natif),
+          partage cross-appareil sans devoir exporter toute la session.
+          Validation stricte du format + filtre défensif anti-pollution + check plan différent.
+          Fix Heatmap « ⚙️ Régler » disparaissait : bouton toujours visible tant que module chargé.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — strictement offline-first.
+        </td>
+      </tr>
       <tr>
         <td>v1.23.3</td>
         <td>26/05/2026</td>

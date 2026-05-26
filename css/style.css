@@ -18215,6 +18215,16 @@ html.kta-theme-light .kta-fp-status {
   align-self: flex-start;
   font-size: 14px;
 }
+/* 🆕 v1.23.4 — Rangée actions LIST (Nouveau + Importer) */
+.kta-secours-list-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.kta-secours-list-header-actions .kta-btn {
+  font-size: 14px;
+}
 .kta-secours-hint {
   color: #c8d0e0;
   font-size: 13px;

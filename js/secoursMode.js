@@ -582,6 +582,282 @@
     return scenario;
   }
 
+  // ============================================================
+  // EXPORT / IMPORT SCÉNARIO STANDALONE (.mkmsec.json) v1.23.4
+  // KARMA : « on doit pouvoir exporter un plan de secour, que on poura
+  // importer sur un autre appareil (sans a avoir a exporter une session
+  // full) ca nous servira quoi qu'il arrive pour mode "operateur chef de
+  // surface" et "secouriste" »
+  // ============================================================
+  // Format JSON autonome contenant :
+  //  • metadata (type, version, exportedAt, appVersion)
+  //  • plan minimal (id, name, version, imageWidth/Height, multiLevel,
+  //    availableLevels) — pour valider que l'import correspond au plan ouvert
+  //  • scenario complet (id, nom, context, groupes, pointsCles)
+  //
+  // Base pour Phase 3 partage cross-device (chef de surface → équipe
+  // secouriste via QR code share — le contenu QR encodera ce JSON).
+  //
+  // Extension fichier : .mkmsec.json (clair = JSON MyKTAMap Secours)
+
+  const MKMSEC_FORMAT_VERSION = 1;
+
+  function exporterScenario(scenarioId) {
+    const s = get(scenarioId || _currentScenarioId);
+    if (!s) {
+      _toast("⚠️ Scénario introuvable.", "error");
+      return null;
+    }
+    const pc = window.PLAN_CONFIG;
+    const planInfo = pc && pc.plan ? {
+      id:                window._currentLoadedPlanId || null,
+      name:              pc.plan.name             || "",
+      version:           pc.plan.version          || "",
+      imageWidth:        pc.plan.imageWidth       || 0,
+      imageHeight:       pc.plan.imageHeight      || 0,
+      multiLevel:        !!pc.plan.multiLevel,
+      availableLevels:   (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.availableLevels))
+                         ? window.APP_CONFIG.availableLevels.slice() : null,
+      scale:             (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number")
+                         ? window.APP_CONFIG.scale : null
+    } : null;
+    const payload = {
+      type:         "myktamap-secours-scenario",
+      version:      MKMSEC_FORMAT_VERSION,
+      exportedAt:   new Date().toISOString(),
+      appVersion:   (window.__MKM__ && window.__MKM__.build) || "",
+      plan:         planInfo,
+      // Deep clone via JSON roundtrip pour éviter ref accidentelle
+      scenario:     JSON.parse(JSON.stringify(s))
+    };
+    try {
+      const txt = JSON.stringify(payload, null, 2);
+      const blob = new Blob([txt], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const filename = "Secours_" + _slug(s.nom) + "_" + _shortDate() + ".mkmsec.json";
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.style.display = "none";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      _toast("✓ Plan de secours exporté : " + filename, "info");
+      return filename;
+    } catch(e) {
+      console.warn("[SecoursMode] exporterScenario échec :", e);
+      _toast("⚠️ Erreur export : " + e.message, "error");
+      return null;
+    }
+  }
+
+  // Import scénario depuis fichier (File ou string JSON).
+  // Validation stricte du format avant injection. Re-génère un nouvel id
+  // pour éviter collision avec un scénario existant du même planId.
+  // Si le planId source diffère du plan courant, demande confirm() à l'user.
+  // Retourne { ok: bool, scenario?: object, warning?: string, error?: string }
+  async function importerScenario(input) {
+    let text;
+    try {
+      if (input instanceof File || input instanceof Blob) {
+        text = await input.text();
+      } else if (typeof input === "string") {
+        text = input;
+      } else {
+        return { ok: false, error: "Format input invalide (attendu File, Blob ou string)" };
+      }
+    } catch(e) {
+      return { ok: false, error: "Échec lecture fichier : " + e.message };
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch(e) {
+      return { ok: false, error: "JSON invalide : " + e.message };
+    }
+
+    // Validation stricte du format
+    if (!payload || typeof payload !== "object") {
+      return { ok: false, error: "Payload invalide (pas un objet)" };
+    }
+    if (payload.type !== "myktamap-secours-scenario") {
+      return { ok: false, error: "Type de fichier incorrect (attendu 'myktamap-secours-scenario', reçu '" + payload.type + "')" };
+    }
+    if (typeof payload.version !== "number" || payload.version < 1 || payload.version > MKMSEC_FORMAT_VERSION) {
+      return { ok: false, error: "Version de format incompatible (reçue " + payload.version + ", max supportée " + MKMSEC_FORMAT_VERSION + ")" };
+    }
+    if (!payload.scenario || typeof payload.scenario !== "object"
+        || typeof payload.scenario.nom !== "string"
+        || !Array.isArray(payload.scenario.groupes)) {
+      return { ok: false, error: "Scénario invalide (champs nom + groupes requis)" };
+    }
+
+    // Check correspondance plan
+    let warning = null;
+    const currentPlanId = window._currentLoadedPlanId;
+    const importedPlanId = payload.plan && payload.plan.id;
+    if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
+      const currentPlanName = (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "(plan courant)";
+      const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
+      const confirmMsg =
+        "⚠️ Ce scénario vient d'un PLAN DIFFÉRENT :\n\n" +
+        "  • Plan source : " + importedPlanName + " (" + importedPlanId + ")\n" +
+        "  • Plan courant : " + currentPlanName + " (" + currentPlanId + ")\n\n" +
+        "Les coordonnées des waypoints et zones n'auront pas le même sens.\n" +
+        "Importer quand même ?";
+      if (!window.confirm(confirmMsg)) {
+        return { ok: false, error: "Import annulé par l'utilisateur (plan différent)" };
+      }
+      warning = "Plan d'origine différent : " + importedPlanName;
+    }
+
+    // Re-génère un nouvel id pour éviter collision (l'user peut importer
+    // plusieurs fois le même fichier, ou le source aurait pu être créé sur
+    // un device avec la même seed temporelle)
+    const sc = payload.scenario;
+    sc.id = _genId("secours");
+    sc.updatedAt = _nowIso();
+    // Régénère aussi les IDs internes des groupes (collision potentielle)
+    if (Array.isArray(sc.groupes)) {
+      sc.groupes.forEach(function(g) { g.id = _genId("G"); });
+    }
+    // Filtre défensif : ne garde que les champs whitelisted du scenario
+    // (anti-pollution si un attaquant injecte des champs custom)
+    const cleanScenario = {
+      id:         sc.id,
+      nom:        String(sc.nom || "").slice(0, 200),
+      createdAt:  sc.createdAt || _nowIso(),
+      updatedAt:  sc.updatedAt,
+      context:    sc.context && typeof sc.context === "object" ? sc.context : {},
+      groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
+      pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : []
+    };
+
+    // Ajoute au cache + persiste
+    _scenarios.push(cleanScenario);
+    _commitMutation(cleanScenario);
+    return { ok: true, scenario: cleanScenario, warning: warning };
+  }
+
+  // 🆕 v1.23.4 — File picker pour l'import .mkmsec.json depuis la vue LIST.
+  // Crée un <input type="file"> volatile, déclenche la dialog OS, parse le
+  // fichier choisi via importerScenario (async), affiche le résultat dans
+  // une modale custom (succès avec warning éventuel OU erreur détaillée),
+  // refresh la liste si succès.
+  function _ouvrirImportMkmsecPicker() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.mkmsec,.mkmsec.json,application/json";
+    input.style.display = "none";
+    input.addEventListener("change", async function() {
+      const file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      let result;
+      try {
+        result = await importerScenario(file);
+      } catch(e) {
+        console.warn("[SecoursMode] _ouvrirImportMkmsecPicker exception :", e);
+        result = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+      }
+      _afficherResultatImport(result, file.name);
+      if (result && result.ok) {
+        // Refresh vue liste pour montrer le nouveau scénario
+        _switchView("list");
+      }
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  // 🆕 v1.23.4 — Modale de feedback post-import. Succès = vert + bouton
+  // "Ouvrir le scénario" qui bascule directement en vue Edit. Échec = rouge
+  // avec message d'erreur détaillé (validation, JSON malformé, etc.).
+  // Warning éventuel (plan différent) affiché en bandeau orange.
+  function _afficherResultatImport(result, sourceFilename) {
+    // Cleanup éventuelle modale précédente
+    const existing = document.getElementById("kta-secours-import-result");
+    if (existing) existing.remove();
+
+    const ok = !!(result && result.ok);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-import-result";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100010";
+
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite";
+    boite.style.maxWidth = "520px";
+    boite.style.height = "auto";
+    boite.style.maxHeight = "90vh";
+    boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
+
+    let inner = '<div class="kta-readme-modal-header">' +
+                  '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                    (ok ? '✓ Plan de secours importé' : '❌ Échec de l\'import') +
+                  '</h2>' +
+                  '<button class="kta-readme-modal-close" data-action="close-result" aria-label="Fermer">✕</button>' +
+                '</div>' +
+                '<div class="kta-readme-modal-corps">';
+
+    if (ok) {
+      const sc = result.scenario || {};
+      const nbGroupes = (sc.groupes || []).length;
+      inner += '<p>Le scénario <strong>' + _escHtml(sc.nom || "(sans nom)") + '</strong> a été ajouté à ce plan.</p>' +
+               '<p style="color:#8892a4; font-size:13px;">' +
+                 '📂 Source : <code>' + _escHtml(sourceFilename || "(fichier)") + '</code><br>' +
+                 '🚨 ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') + ' importée' + (nbGroupes > 1 ? 's' : '') +
+               '</p>';
+      if (result.warning) {
+        inner += '<div style="background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.5); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb380;">' +
+                   '⚠️ <strong>Avertissement :</strong> ' + _escHtml(result.warning) +
+                 '</div>';
+      }
+      inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
+                 '<button class="kta-btn kta-btn-secondary" data-action="close-result">Fermer</button>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="open-imported">✏️ Ouvrir le scénario</button>' +
+               '</div>';
+    } else {
+      const errMsg = (result && result.error) || "Erreur inconnue";
+      inner += '<p>L\'import du fichier <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a échoué.</p>' +
+               '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-family:monospace; font-size:13px; word-break:break-word;">' +
+                 _escHtml(errMsg) +
+               '</div>' +
+               '<p style="color:#8892a4; font-size:13px;">' +
+                 '💡 Le fichier doit être un <code>.mkmsec.json</code> valide exporté ' +
+                 'depuis MyKTAMap Mode Secours (bouton 📤 Export .mkmsec.json).' +
+               '</p>' +
+               '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-result">J\'ai compris</button>' +
+               '</div>';
+    }
+    inner += '</div>';
+
+    boite.innerHTML = inner;
+    overlay.appendChild(boite);
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close();
+    });
+    overlay.querySelectorAll('[data-action="close-result"]').forEach(function(btn) {
+      btn.addEventListener("click", _close);
+    });
+    overlay.querySelectorAll('[data-action="open-imported"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _close();
+        if (result && result.scenario && result.scenario.id) {
+          _currentScenarioId = result.scenario.id;
+          _switchView("edit");
+        }
+      });
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
   // Duplique un scénario (= deep clone via JSON roundtrip + nouveau id).
   // Pratique pour "et si l'équipe Alpha sort par le Sud au lieu de l'Est" :
   // dupliquer puis modifier l'équipe sans perdre l'original.
@@ -1542,9 +1818,14 @@
                    'précises, avec entrées/sorties, itinéraires suggérés et durées estimées. ' +
                    'Au retour terrain, les équipes peuvent rapporter leurs observations.' +
                  '</p>' +
-                 '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
-                   '➕ Nouveau scénario' +
-                 '</button>' +
+                 '<div class="kta-secours-list-header-actions">' +
+                   '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
+                     '➕ Nouveau scénario' +
+                   '</button>' +
+                   '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="Importer un plan de secours exporté depuis un autre appareil (.mkmsec.json)">' +
+                     '📥 Importer un plan' +
+                   '</button>' +
+                 '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
       html += '<div class="kta-secours-empty">' +
@@ -1696,6 +1977,8 @@
                 '<div class="kta-secours-export-actions">' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-pdf">📄 Export PDF (1 page/équipe)</button>' +
                   '<button class="kta-btn kta-btn-primary" data-action="export-kmz">🌍 Export KMZ géolocalisé</button>' +
+                  // 🆕 v1.23.4 — Export scénario standalone .mkmsec.json
+                  '<button class="kta-btn kta-btn-secondary" data-action="export-mkmsec" title="Format JSON autonome pour partager ce scénario sur un autre appareil (sans devoir exporter toute la session)">📤 Export .mkmsec.json</button>' +
                 '</div>' +
               '</div>' +
             '</details>';
@@ -1811,6 +2094,19 @@
     if (!window.MyKTAMapHeatmap || typeof window.MyKTAMapHeatmap.afficher !== "function") {
       return "";
     }
+    // 🐛 v1.23.4-fix (KARMA "afficher le heatmap n'affiche plus le réglage
+    // pourtant ça fonctionnait") :
+    // Avant la fix, le bouton "⚙️ Régler" était conditionnel sur la double
+    // condition `_secoursHeatmapActive && MyKTAMapHeatmap.isVisible()`.
+    // Problème : sync fragile entre state local + state global heatmap.
+    // L'user peut effacer la heatmap depuis sa modale dédiée → désync →
+    // bouton Régler disparaît alors qu'on en a besoin pour ré-activer.
+    //
+    // Fix : bouton "⚙️ Régler" TOUJOURS visible tant que le module Heatmap
+    // est chargé. Plus UX-friendly aussi : l'user peut Régler AVANT même
+    // d'avoir cliqué Afficher (pour configurer ses sources en amont).
+    //
+    // Le bouton "🔥 Afficher/Masquer" garde son toggle dynamique.
     const isActive = _secoursHeatmapActive && window.MyKTAMapHeatmap.isVisible &&
                      window.MyKTAMapHeatmap.isVisible();
     return '<div class="kta-secours-tool-block">' +
@@ -1825,12 +2121,10 @@
                  ' kta-btn-sm" data-action="toggle-heatmap-secours">' +
                  (isActive ? "🔥 Masquer la heatmap" : "🔥 Afficher la heatmap d'activité") +
                '</button>' +
-               (isActive
-                 ? '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="config-heatmap-secours" ' +
-                   'title="Ouvre la modale Heatmap classique pour ajuster sources/rayon/intensité">' +
-                   '⚙️ Régler' +
-                 '</button>'
-                 : '') +
+               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="config-heatmap-secours" ' +
+                 'title="Ouvre la modale Heatmap classique pour ajuster sources/rayon/intensité/M-LVL">' +
+                 '⚙️ Régler' +
+               '</button>' +
              '</div>' +
            '</div>';
   }
@@ -2025,6 +2319,12 @@
             deleteScenario(id);
             _switchView("list");
           }
+        });
+      });
+      // 🆕 v1.23.4 — Import .mkmsec.json (file picker + appel importerScenario)
+      corps.querySelectorAll('[data-action="import-mkmsec"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _ouvrirImportMkmsecPicker();
         });
       });
     }
@@ -2364,6 +2664,10 @@
             _toast("⚠️ Erreur KMZ : " + (e.message || e), "error");
           });
         });
+      });
+      // 🆕 v1.23.4 — Export scénario standalone (.mkmsec.json) pour partage
+      corps.querySelectorAll('[data-action="export-mkmsec"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { exporterScenario(s.id); });
       });
     }
   }
@@ -3447,6 +3751,10 @@
     // 🆕 v1.23.2 Phase 2 / Feature G — Mini-modale assigner POI à équipe
     // depuis la recherche unifiée Ctrl+K (searchPoints.js)
     ouvrirAssignerModale:   ouvrirAssignerModale,
+    // 🆕 v1.23.4 — Export/import scénario standalone (.mkmsec.json) pour
+    // partage cross-device (base Phase 3 chef de surface / secouriste)
+    exporterScenario:       exporterScenario,
+    importerScenario:       importerScenario,
     // CRUD groupes
     addGroupe:              addGroupe,
     updateGroupe:           updateGroupe,
