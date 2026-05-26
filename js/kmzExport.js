@@ -557,14 +557,27 @@
         return planToGps(t, w.x, w.y);
       }
 
-      // Pour chaque équipe → un sous-Folder
+      // 🆕 v1.23.0 (KARMA "ecrit un dossier pour les point pour pouvoir
+      // filtrer plus facilement, et rajoute les itineraire de chaque équipe") :
+      // Restructure le KML en sous-folders par CATÉGORIE dans chaque équipe :
+      //   <Folder>🚨 Équipe Alpha</Folder>
+      //     <Folder>📍 Points (5)</Folder>
+      //       └── Entrée + Étapes + Sortie
+      //     <Folder>⬛ Zone</Folder>
+      //       └── Polygon OU Tracés roads halos
+      //     <Folder>🗺️ Itinéraire</Folder>
+      //       └── LineString itinéraire complet entrée→étapes→sortie
+      //
+      // Bénéfice cross-app : dans Google Earth / OsmAnd, l'utilisateur peut
+      // cocher/décocher les sous-folders pour ne voir que certaines couches
+      // (ex: juste les points pour les briefer, ou juste les zones pour
+      // visualiser la couverture globale).
       groupes.forEach(function(g) {
         const idx = (g.couleurIdx || 0) % palette.length;
         const couleurNom = palette[idx].nom || ("Équipe " + (idx + 1));
-        const couleurHex = palette[idx].hex;
         let sub = '<Folder><name>🚨 ' + _xmlEsc(g.nom || couleurNom) + ' (' + _xmlEsc(couleurNom) + ')</name>';
 
-        // Description riche HTML
+        // Description riche HTML (affichée au clic sur le folder dans Google Earth)
         const descParts = [];
         if (Array.isArray(g.membres) && g.membres.length > 0) {
           descParts.push("Membres : " + g.membres.join(", "));
@@ -580,62 +593,40 @@
           sub += '<description>' + _emitDescriptionCdata(descParts.join("\n")) + '</description>';
         }
 
-        // 1. Zone polygon
-        if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
-          const ring = g.zonePolygon.slice();
-          ring.push(g.zonePolygon[0]);   // ferme le ring
-          const coords = ring.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
-          sub += '<Placemark>' +
-                   '<name>⬛ Zone ' + _xmlEsc(g.nom) + '</name>' +
-                   '<styleUrl>#secours_zone_' + idx + '</styleUrl>' +
-                   '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
-                   coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +
-                 '</Placemark>';
-        }
-        // 2. Zone roads (halo par road sélectionnée)
-        if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
-          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
-                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
-          g.zoneRoadIds.forEach(function(rid) {
-            const road = allRoads.find(function(r) { return r.id === rid; });
-            if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
-            const coords = road.points.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
-            sub += '<Placemark>' +
-                     '<name>🛣️ Tracé zone ' + _xmlEsc(g.nom) + '</name>' +
-                     '<styleUrl>#secours_zoneroad_' + idx + '</styleUrl>' +
-                     '<LineString><tessellate>1</tessellate><coordinates>' +
-                     coords + '</coordinates></LineString>' +
-                   '</Placemark>';
-          });
-        }
-        // 3. Entrée
+        // ───────────────────────────────────────────────────────────
+        // SOUS-FOLDER 1 : 📍 Points (Entrée + Intermédiaires + Sortie)
+        // ───────────────────────────────────────────────────────────
+        let pointsXml = "";
+        let nbPoints = 0;
+        // 1a. Entrée
         if (g.entree && typeof g.entree.x === "number") {
           const ll = _wpToGps(g.entree);
           const lbl = g.entree.label || g.entree.pointId || "";
-          sub += '<Placemark>' +
-                   '<name>📍 Entrée ' + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
-                   '<styleUrl>#secours_entree</styleUrl>' +
-                   '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
-                 '</Placemark>';
+          pointsXml += '<Placemark>' +
+                         '<name>📍 Entrée ' + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                         '<styleUrl>#secours_entree</styleUrl>' +
+                         '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                       '</Placemark>';
+          nbPoints++;
         }
-        // 4. Intermédiaires numérotés
+        // 1b. Intermédiaires numérotés
         if (Array.isArray(g.intermediaires)) {
           g.intermediaires.forEach(function(w, i) {
             if (!w || typeof w.x !== "number") return;
             const ll = _wpToGps(w);
             const lbl = w.label || w.pointId || "";
-            sub += '<Placemark>' +
-                     '<name>▾ Étape ' + (i + 1) + ' (' + _xmlEsc(g.nom) + ')' +
-                     (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
-                     '<styleUrl>#secours_etape_' + idx + '</styleUrl>' +
-                     '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
-                   '</Placemark>';
+            pointsXml += '<Placemark>' +
+                           '<name>▾ Étape ' + (i + 1) + ' (' + _xmlEsc(g.nom) + ')' +
+                           (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                           '<styleUrl>#secours_etape_' + idx + '</styleUrl>' +
+                           '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                         '</Placemark>';
+            nbPoints++;
           });
         }
-        // 5. Sortie (rouge OU orange si entrée = sortie)
+        // 1c. Sortie (rouge OU orange si entrée = sortie boucle)
         if (g.sortie && typeof g.sortie.x === "number") {
           const ll = _wpToGps(g.sortie);
-          // Détection boucle (par pointId ou coords avec tolérance 0.5 px)
           const isBoucle = g.entree && (
             (g.entree.pointId && g.sortie.pointId && g.entree.pointId === g.sortie.pointId) ||
             (Math.abs((g.entree.x || 0) - (g.sortie.x || 0)) < 0.5 &&
@@ -644,13 +635,56 @@
           const lbl = g.sortie.label || g.sortie.pointId || "";
           const styleId = isBoucle ? "secours_sortie_boucle" : "secours_sortie";
           const namePrefix = isBoucle ? "↻ Boucle " : "🚪 Sortie ";
-          sub += '<Placemark>' +
-                   '<name>' + namePrefix + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
-                   '<styleUrl>#' + styleId + '</styleUrl>' +
-                   '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
-                 '</Placemark>';
+          pointsXml += '<Placemark>' +
+                         '<name>' + namePrefix + _xmlEsc(g.nom) + (lbl ? " — " + _xmlEsc(lbl) : "") + '</name>' +
+                         '<styleUrl>#' + styleId + '</styleUrl>' +
+                         '<Point><coordinates>' + _coord(ll) + '</coordinates></Point>' +
+                       '</Placemark>';
+          nbPoints++;
         }
-        // 6. Itinéraire suggéré (LineString)
+        if (nbPoints > 0) {
+          sub += '<Folder><name>📍 Points (' + nbPoints + ')</name>' + pointsXml + '</Folder>';
+        }
+
+        // ───────────────────────────────────────────────────────────
+        // SOUS-FOLDER 2 : ⬛ Zone (Polygon OU LineStrings halo)
+        // ───────────────────────────────────────────────────────────
+        let zoneXml = "";
+        // 2a. Zone polygon
+        if (g.zoneType === "polygon" && Array.isArray(g.zonePolygon) && g.zonePolygon.length >= 3) {
+          const ring = g.zonePolygon.slice();
+          ring.push(g.zonePolygon[0]);   // ferme le ring
+          const coords = ring.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
+          zoneXml += '<Placemark>' +
+                       '<name>⬛ Polygone zone ' + _xmlEsc(g.nom) + '</name>' +
+                       '<styleUrl>#secours_zone_' + idx + '</styleUrl>' +
+                       '<Polygon><outerBoundaryIs><LinearRing><coordinates>' +
+                       coords + '</coordinates></LinearRing></outerBoundaryIs></Polygon>' +
+                     '</Placemark>';
+        }
+        // 2b. Zone roads (halo par road sélectionnée)
+        if (g.zoneType === "roads" && Array.isArray(g.zoneRoadIds)) {
+          const allRoads = ((typeof window.getRoads === "function") ? (window.getRoads() || []) : [])
+                           .concat((typeof window.getAllEmbeddedRoads === "function") ? (window.getAllEmbeddedRoads() || []) : []);
+          g.zoneRoadIds.forEach(function(rid) {
+            const road = allRoads.find(function(r) { return r.id === rid; });
+            if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
+            const coords = road.points.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
+            zoneXml += '<Placemark>' +
+                         '<name>🛣️ Tracé zone ' + _xmlEsc(g.nom) + '</name>' +
+                         '<styleUrl>#secours_zoneroad_' + idx + '</styleUrl>' +
+                         '<LineString><tessellate>1</tessellate><coordinates>' +
+                         coords + '</coordinates></LineString>' +
+                       '</Placemark>';
+          });
+        }
+        if (zoneXml) {
+          sub += '<Folder><name>⬛ Zone de recherche</name>' + zoneXml + '</Folder>';
+        }
+
+        // ───────────────────────────────────────────────────────────
+        // SOUS-FOLDER 3 : 🗺️ Itinéraire (LineString)
+        // ───────────────────────────────────────────────────────────
         if (Array.isArray(g.itineraireSuggere) && g.itineraireSuggere.length >= 2) {
           const coords = g.itineraireSuggere.map(function(p) { return _coord(_wpToGps(p)); }).join(" ");
           let itiDesc = "";
@@ -659,14 +693,17 @@
               Math.round(g.distanceM) + " m — ~" + Math.round(g.dureeEstimeeMin) + " min"
             ) + '</description>';
           }
-          sub += '<Placemark>' +
-                   '<name>🗺️ Itinéraire ' + _xmlEsc(g.nom) + '</name>' +
-                   itiDesc +
-                   '<styleUrl>#secours_iti_' + idx + '</styleUrl>' +
-                   '<LineString><tessellate>1</tessellate><coordinates>' +
-                   coords + '</coordinates></LineString>' +
-                 '</Placemark>';
+          sub += '<Folder><name>🗺️ Itinéraire</name>' +
+                   '<Placemark>' +
+                     '<name>🗺️ Itinéraire ' + _xmlEsc(g.nom) + '</name>' +
+                     itiDesc +
+                     '<styleUrl>#secours_iti_' + idx + '</styleUrl>' +
+                     '<LineString><tessellate>1</tessellate><coordinates>' +
+                     coords + '</coordinates></LineString>' +
+                   '</Placemark>' +
+                 '</Folder>';
         }
+
         sub += '</Folder>';
         folder += sub;
       });

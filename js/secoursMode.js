@@ -1011,6 +1011,29 @@
       _toast("⚠️ Calibrage corrompu : " + e.message, "error");
       return null;
     }
+    // 🆕 v1.23.0 (KARMA "rajoute les itineraire de chaque équipe") :
+    // Auto-calc des itinéraires manquants avant export. Si une équipe a
+    // entrée + sortie définies mais pas encore d'itineraireSuggere calc,
+    // on déclenche un Pathfinder en arrière-plan et on attend tous les
+    // résultats avant de générer le KMZ → export complet en 1 clic.
+    const groupesACalc = (s.groupes || []).filter(function(g) {
+      return g.entree && g.sortie && !Array.isArray(g.itineraireSuggere);
+    });
+    if (groupesACalc.length > 0) {
+      _toast("⏳ Calcul auto de " + groupesACalc.length + " itinéraire" +
+             (groupesACalc.length > 1 ? "s" : "") + " manquant" +
+             (groupesACalc.length > 1 ? "s" : "") + " avant export…", "info");
+      // Lance les calculs en parallèle + attend tous résultats
+      await Promise.allSettled(groupesACalc.map(function(g) {
+        return _recalculerItineraireGroupeAsync(s.id, g.id);
+      }));
+      // Re-fetch s pour avoir les itineraireSuggere fraîchement écrits
+      const sFrais = get(s.id);
+      if (sFrais) {
+        s.groupes = sFrais.groupes;
+      }
+    }
+
     _toast("⏳ Génération KMZ en cours (fetch image plan)…", "info");
     // 🆕 v1.23.0 (KARMA "il faudrai avoir le plan en fond a 60%") : on fetch
     // l'image plan pour la passer en GroundOverlay opacity 60 %. Donne aux
@@ -2517,6 +2540,64 @@
       _recalculerItineraireGroupe(scenarioId, g.id);
     });
   };
+
+  // 🆕 v1.23.0 (KARMA "rajoute les itineraire de chaque équipe") :
+  // Version async/await de _recalculerItineraireGroupe utilisée par
+  // l'export KMZ pour calculer les iti manquants en parallèle avant
+  // génération du KMZ. Toast simplifié (pas de spam si batch). Retourne
+  // une Promise qui résout quand le calcul est terminé (success ou échec).
+  function _recalculerItineraireGroupeAsync(scenarioId, groupeId) {
+    return new Promise(function(resolve) {
+      const s = get(scenarioId);
+      if (!s) { resolve(false); return; }
+      const g = s.groupes.find(function(x) { return x.id === groupeId; });
+      if (!g || !g.entree || !g.sortie) { resolve(false); return; }
+      if (!window.Pathfinder || typeof window.Pathfinder.computeRoute !== "function") {
+        resolve(false); return;
+      }
+      // Coords valides ?
+      if (typeof g.entree.x !== "number" || typeof g.entree.y !== "number" ||
+          typeof g.sortie.x !== "number" || typeof g.sortie.y !== "number") {
+        resolve(false); return;
+      }
+      try {
+        const intermediaires = (Array.isArray(g.intermediaires) ? g.intermediaires : [])
+          .filter(function(w) { return w && typeof w.x === "number" && typeof w.y === "number"; });
+        const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || ("Entrée " + g.nom) }]
+          .concat(intermediaires.map(function(w, i) {
+            return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
+          }))
+          .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
+        Promise.resolve(window.Pathfinder.computeRoute(waypoints, {})).then(function(r) {
+          if (!r || !Array.isArray(r.path) || r.path.length === 0) { resolve(false); return; }
+          const scale = (window.APP_CONFIG && window.APP_CONFIG.scale > 0)
+                        ? window.APP_CONFIG.scale : 1;
+          const distM = r.totalDistance / scale;
+          let duree;
+          if (typeof window.getItiTempsMinutes === "function") {
+            const nbWp = waypoints.length;
+            duree = Math.round(window.getItiTempsMinutes(distM, nbWp));
+          } else {
+            duree = Math.round(distM / VITESSE_MPS_DEFAUT / 60);
+          }
+          updateGroupe(scenarioId, groupeId, {
+            itineraireSuggere: r.path.map(function(p) {
+              return { x: p.x, y: p.y, level: g.entree.level || 0 };
+            }),
+            distanceM:       distM,
+            dureeEstimeeMin: duree
+          });
+          resolve(true);
+        }).catch(function(err) {
+          console.warn("[SecoursMode] Auto-calc iti " + g.nom + " échec :", err);
+          resolve(false);
+        });
+      } catch(e) {
+        console.warn("[SecoursMode] Auto-calc iti sync error :", e);
+        resolve(false);
+      }
+    });
+  }
 
   // Helpers HTML escape (anti-XSS sur user input)
   function _escHtml(s) {
