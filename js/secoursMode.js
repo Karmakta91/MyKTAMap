@@ -349,9 +349,17 @@
       nom:               safeName,
       couleurIdx:        s.groupes.length % PALETTE.length,
       membres:           [],
+      // 🆕 v1.22.0-fix2 (KARMA "je dois pouvoir entrer par le même point de
+      // sortie et balayer la zone, avoir des points intermédiaires") :
+      // parcours = entree + intermediaires[] + sortie. Pathfinder itère
+      // [entree, ...intermediaires, sortie] pour calc itinéraire complet
+      // qui ratisse la zone méthodiquement. Boucle = entree = sortie (même
+      // POI choisi 2 fois). Tous les waypoints partagent le format
+      // {x, y, level, pointId?, label?}.
       entree:            null,
+      intermediaires:    [],
       sortie:            null,
-      zoneType:          null,     // null = pas encore défini
+      zoneType:          null,
       zonePolygon:       null,
       zoneRoadIds:       null,
       itineraireSuggere: null,
@@ -379,8 +387,11 @@
     if ("membres" in partial && Array.isArray(partial.membres)) {
       g.membres = partial.membres.slice();
     }
-    if ("entree" in partial) g.entree = partial.entree;       // {x,y,level?,pointId?} | null
+    if ("entree" in partial) g.entree = partial.entree;       // {x,y,level?,pointId?,label?} | null
     if ("sortie" in partial) g.sortie = partial.sortie;
+    if ("intermediaires" in partial && Array.isArray(partial.intermediaires)) {
+      g.intermediaires = partial.intermediaires.slice();
+    }
     if ("zoneType" in partial) g.zoneType = partial.zoneType;  // "polygon"|"roads"|null
     if ("zonePolygon" in partial) g.zonePolygon = partial.zonePolygon;
     if ("zoneRoadIds" in partial) g.zoneRoadIds = partial.zoneRoadIds;
@@ -488,16 +499,39 @@
       cm.bindTooltip("📍 Entrée " + _escHtml(g.nom), { permanent: false });
       cm.addTo(_overlayLayer);
     }
+    // 🆕 v1.22.0-fix2 — Intermédiaires : markers ronds plus petits couleur équipe
+    // avec border blanc fin, numérotés via tooltip
+    if (Array.isArray(g.intermediaires)) {
+      g.intermediaires.forEach(function(w, i) {
+        if (!w || typeof w.x !== "number" || typeof w.y !== "number") return;
+        const cm = L.circleMarker(_planToLatLng(w), {
+          radius:      7,
+          color:       "#fff",
+          weight:      2,
+          fillColor:   couleur,
+          fillOpacity: 0.85
+        });
+        cm.bindTooltip("▾ Étape " + (i + 1) + " (" + _escHtml(g.nom) + ")" +
+                       (w.label ? " — " + _escHtml(w.label) : ""),
+                       { permanent: false });
+        cm.addTo(_overlayLayer);
+      });
+    }
     // Sortie — marker square (via divIcon) couleur équipe avec bord rouge
     if (g.sortie && typeof g.sortie.x === "number" && typeof g.sortie.y === "number") {
+      // Si entrée === sortie (boucle), marker double bordure (vert + rouge superposés)
+      const isBoucle = _samePoint(g.entree, g.sortie);
       const cm = L.circleMarker(_planToLatLng(g.sortie), {
-        radius:      9,
-        color:       "#cc0000",
-        weight:      3,
+        radius:      isBoucle ? 11 : 9,
+        color:       isBoucle ? "#ffaa00" : "#cc0000",
+        weight:      isBoucle ? 4 : 3,
         fillColor:   couleur,
         fillOpacity: 0.85
       });
-      cm.bindTooltip("🚪 Sortie " + _escHtml(g.nom), { permanent: false });
+      cm.bindTooltip(
+        (isBoucle ? "↻ Boucle (entrée/sortie) " : "🚪 Sortie ") + _escHtml(g.nom),
+        { permanent: false }
+      );
       cm.addTo(_overlayLayer);
     }
     // Itinéraire suggéré — polyline dashed couleur équipe
@@ -1025,9 +1059,9 @@
                     '<span>📏 Distance : <strong>' + distFmt + '</strong></span>' +
                     '<span>⏱️ Durée estimée : <strong>' + dureeFmt + '</strong></span>' +
                   '</div>' +
+                  // 🆕 v1.22.0-fix2 : section Parcours avec entrée + intermédiaires[] + sortie
+                  _renderParcoursSection(g) +
                   '<div class="kta-secours-groupe-actions">' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-entree" data-gid="' + _escAttr(g.id) + '">📍 Entrée' + (g.entree ? ' ✓' : '') + '</button>' +
-                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-sortie" data-gid="' + _escAttr(g.id) + '">🚪 Sortie' + (g.sortie ? ' ✓' : '') + '</button>' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">⬛ Définir zone</button>' +
                     '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">🗺️ Calc. itinéraire</button>' +
                   '</div>' +
@@ -1035,6 +1069,72 @@
               '</div>';
     });
     return html;
+  }
+
+  // 🆕 v1.22.0-fix2 — Section Parcours d'une équipe (entree + intermediaires + sortie)
+  function _renderParcoursSection(g) {
+    let html = '<div class="kta-secours-parcours">';
+    html += '<div class="kta-secours-parcours-titre">🗺️ Parcours :</div>';
+    html += '<div class="kta-secours-parcours-list">';
+    // Entrée
+    html += _renderWaypointRow(g, "entree", g.entree, null, "📍", "Entrée");
+    // Intermédiaires
+    (g.intermediaires || []).forEach(function(w, i) {
+      html += _renderWaypointRow(g, "intermediaire", w, i, "▾", "Étape " + (i + 1));
+    });
+    // Bouton "Ajouter étape intermédiaire"
+    html += '<button class="kta-btn kta-btn-ghost kta-btn-sm kta-secours-parcours-add"' +
+            ' data-action="add-intermediaire" data-gid="' + _escAttr(g.id) + '">' +
+            '➕ Ajouter une étape intermédiaire</button>';
+    // Sortie
+    html += _renderWaypointRow(g, "sortie", g.sortie, null, "🚪", "Sortie");
+    // Hint si entrée === sortie (boucle)
+    if (g.entree && g.sortie && _samePoint(g.entree, g.sortie)) {
+      html += '<div class="kta-secours-parcours-hint">↻ <em>Boucle détectée — l\'équipe entre et sort par le même point.</em></div>';
+    }
+    html += '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function _renderWaypointRow(g, role, w, idx, emoji, defaultLabel) {
+    const gid = _escAttr(g.id);
+    const isInter = (role === "intermediaire");
+    const idxAttr = isInter ? ' data-idx="' + idx + '"' : '';
+    let label = "";
+    if (w) {
+      label = w.label || ("x=" + Math.round(w.x) + " y=" + Math.round(w.y));
+      if (typeof w.level === "number" && window.APP_CONFIG && window.APP_CONFIG.multiLevel) {
+        label += " <span class='kta-secours-parcours-lvl'>(niv " + w.level + ")</span>";
+      }
+    } else {
+      label = '<em class="kta-secours-parcours-todo">non défini</em>';
+    }
+    let html = '<div class="kta-secours-parcours-row" data-role="' + role + '"' + idxAttr + '>' +
+                 '<span class="kta-secours-parcours-emoji">' + emoji + '</span>' +
+                 '<span class="kta-secours-parcours-label">' +
+                   '<strong>' + defaultLabel + '</strong> : ' + label +
+                 '</span>' +
+                 '<span class="kta-secours-parcours-btns">' +
+                   '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="pick-waypoint"' +
+                   ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
+                   ' title="Choisir un point (recherche ou clic carte)">' +
+                   (w ? '✏️' : '📍') + '</button>';
+    if (isInter || w) {
+      html += '<button class="kta-btn kta-btn-ghost kta-btn-xs" data-action="clear-waypoint"' +
+              ' data-gid="' + gid + '" data-role="' + role + '"' + idxAttr +
+              ' title="' + (isInter ? "Retirer cette étape" : "Effacer") + '">🗑️</button>';
+    }
+    html += '</span></div>';
+    return html;
+  }
+
+  function _samePoint(a, b) {
+    if (!a || !b) return false;
+    // Match par pointId si présent, sinon par coords avec tolérance 0.5 px
+    if (a.pointId && b.pointId) return a.pointId === b.pointId;
+    return Math.abs((a.x || 0) - (b.x || 0)) < 0.5
+        && Math.abs((a.y || 0) - (b.y || 0)) < 0.5;
   }
 
   // ============================================================
@@ -1191,16 +1291,36 @@
           }
         });
       });
-      // Définir entrée
-      corps.querySelectorAll('[data-action="def-entree"]').forEach(function(btn) {
+      // 🆕 v1.22.0-fix2 : pick waypoint (entrée / intermédiaire / sortie)
+      // via mini-modale Recherche autocomplete + clic carte
+      corps.querySelectorAll('[data-action="pick-waypoint"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          _startDefiningPoint(btn.getAttribute("data-gid"), "entree");
+          const gid = btn.getAttribute("data-gid");
+          const role = btn.getAttribute("data-role");
+          const idxAttr = btn.getAttribute("data-idx");
+          const idx = (idxAttr !== null && idxAttr !== "") ? parseInt(idxAttr, 10) : null;
+          _ouvrirChoixWaypoint(gid, role, idx);
         });
       });
-      // Définir sortie
-      corps.querySelectorAll('[data-action="def-sortie"]').forEach(function(btn) {
+      // Add intermédiaire (à la fin de la liste)
+      corps.querySelectorAll('[data-action="add-intermediaire"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
-          _startDefiningPoint(btn.getAttribute("data-gid"), "sortie");
+          const gid = btn.getAttribute("data-gid");
+          const grp = s.groupes.find(function(x) { return x.id === gid; });
+          if (!grp) return;
+          const newIdx = (grp.intermediaires || []).length;
+          // Ouvre direct le picker pour le nouveau slot
+          _ouvrirChoixWaypoint(gid, "intermediaire", newIdx);
+        });
+      });
+      // Clear waypoint
+      corps.querySelectorAll('[data-action="clear-waypoint"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const gid = btn.getAttribute("data-gid");
+          const role = btn.getAttribute("data-role");
+          const idxAttr = btn.getAttribute("data-idx");
+          const idx = (idxAttr !== null && idxAttr !== "") ? parseInt(idxAttr, 10) : null;
+          _clearWaypoint(gid, role, idx);
         });
       });
       // Définir zone (choix polygon | roads via mini-prompt)
@@ -1237,15 +1357,21 @@
   let _activeMapMode = null;     // "point" | "polygon" | "roads" | null
   let _mapModeCtx = null;        // { groupeId, role?, points?, roadIds?, layer? }
 
-  function _startDefiningPoint(groupeId, role) {
+  // 🆕 v1.22.0-fix2 — étendu pour supporter waypoints intermédiaires
+  // role ∈ "entree" | "sortie" | "intermediaire"
+  // idx = index si role === "intermediaire" (null pour entree/sortie)
+  function _startDefiningPoint(groupeId, role, idx) {
     if (_activeMapMode) _cancelMapMode();
     if (!window.map) return;
     _activeMapMode = "point";
-    _mapModeCtx = { groupeId: groupeId, role: role };
+    _mapModeCtx = { groupeId: groupeId, role: role, idx: idx };
     _hideModalForMap();
+    const lbl = role === "entree" ? "ENTRÉE"
+              : role === "sortie" ? "SORTIE"
+              : "ÉTAPE " + ((idx == null ? 0 : idx) + 1);
     _showFloater(
-      "📍 Clique sur la carte pour définir l'<strong>" +
-      (role === "entree" ? "ENTRÉE" : "SORTIE") + "</strong> de l'équipe",
+      "📍 Clique sur la carte pour définir <strong>" + lbl + "</strong> de l'équipe" +
+      "<br><span style=\"font-size:11px; opacity:0.85;\">💡 Astuce : snap auto au POI le plus proche dans un rayon de 30 px.</span>",
       [{ label: "Annuler", action: "cancel" }]
     );
     window.map.once("click", _onMapClickPoint);
@@ -1253,17 +1379,206 @@
 
   function _onMapClickPoint(e) {
     if (!_mapModeCtx) return;
-    const x = e.latlng.lng;
-    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
-              ? window.APP_CONFIG.imageHeight - e.latlng.lat
-              : e.latlng.lat;
+    let x = e.latlng.lng;
+    let y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight)
+            ? window.APP_CONFIG.imageHeight - e.latlng.lat
+            : e.latlng.lat;
     const level = (window.APP_CONFIG && typeof window.APP_CONFIG.activeLevel === "number")
                   ? window.APP_CONFIG.activeLevel : 0;
-    const ctx = _mapModeCtx;
-    const update = {};
-    update[ctx.role] = { x: x, y: y, level: level };
-    updateGroupe(_currentScenarioId, ctx.groupeId, update);
+    // 🆕 v1.22.0-fix2 — snap auto sur POI le plus proche dans un rayon de 30 px
+    // (cohérent avec le mode "Cliquer sur la carte" de l'itinéraire existant).
+    // Réutilise SearchPoints.getAllPoints si dispo.
+    let pointId = null;
+    let label = null;
+    const snap = _trouverPoiProche(x, y, 30);
+    if (snap) {
+      x = snap.x;
+      y = snap.y;
+      pointId = snap.pointId || null;
+      label = snap.nom || snap.label || null;
+      _toast("✓ Snap sur « " + (label || pointId || "POI") + " »", "info");
+    }
+    _appliquerWaypoint(_mapModeCtx.groupeId, _mapModeCtx.role, _mapModeCtx.idx,
+                       { x: x, y: y, level: level, pointId: pointId, label: label });
     _finishMapMode();
+  }
+
+  // Helper : cherche le POI le plus proche (x, y) en pixels plan, rayon en px.
+  // Retourne {x, y, pointId, nom} ou null.
+  function _trouverPoiProche(x, y, radiusPx) {
+    if (!window.SearchPoints || typeof window.SearchPoints.getAllPoints !== "function") return null;
+    try {
+      const all = window.SearchPoints.getAllPoints() || [];
+      let best = null, bestD = Infinity;
+      all.forEach(function(entry) {
+        const p = entry.point || entry;
+        if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+        const dx = p.x - x, dy = p.y - y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < bestD && d <= radiusPx) {
+          bestD = d;
+          best = { x: p.x, y: p.y, pointId: p.id, nom: p.nom };
+        }
+      });
+      return best;
+    } catch(e) {
+      return null;
+    }
+  }
+
+  // 🆕 v1.22.0-fix2 — applique un waypoint sélectionné (depuis search OU clic)
+  // au bon endroit dans le groupe (entree, sortie ou intermediaires[idx]).
+  function _appliquerWaypoint(groupeId, role, idx, wp) {
+    const s = get(_currentScenarioId);
+    if (!s) return;
+    const g = s.groupes.find(function(x) { return x.id === groupeId; });
+    if (!g) return;
+    if (role === "entree") {
+      updateGroupe(_currentScenarioId, groupeId, { entree: wp });
+    } else if (role === "sortie") {
+      updateGroupe(_currentScenarioId, groupeId, { sortie: wp });
+    } else if (role === "intermediaire") {
+      const arr = Array.isArray(g.intermediaires) ? g.intermediaires.slice() : [];
+      if (idx == null || idx < 0 || idx > arr.length) {
+        arr.push(wp);            // append si idx invalide
+      } else {
+        arr[idx] = wp;           // update à l'index
+      }
+      updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
+    }
+  }
+
+  // 🆕 v1.22.0-fix2 — clear un waypoint (entree, sortie → null ; intermediaire → splice)
+  function _clearWaypoint(groupeId, role, idx) {
+    const s = get(_currentScenarioId);
+    if (!s) return;
+    const g = s.groupes.find(function(x) { return x.id === groupeId; });
+    if (!g) return;
+    if (role === "entree") {
+      updateGroupe(_currentScenarioId, groupeId, { entree: null });
+    } else if (role === "sortie") {
+      updateGroupe(_currentScenarioId, groupeId, { sortie: null });
+    } else if (role === "intermediaire" && idx != null) {
+      const arr = Array.isArray(g.intermediaires) ? g.intermediaires.slice() : [];
+      if (idx >= 0 && idx < arr.length) {
+        arr.splice(idx, 1);
+        updateGroupe(_currentScenarioId, groupeId, { intermediaires: arr });
+      }
+    }
+    _switchView("edit");
+  }
+
+  // 🆕 v1.22.0-fix2 — mini-modale "Choisir un point" avec autocomplete +
+  // bouton clic carte. Pattern hérité de la modale itinéraire (cf §14 CLAUDE.md).
+  function _ouvrirChoixWaypoint(groupeId, role, idx) {
+    // Cleanup éventuelle modale précédente (idempotency)
+    const existing = document.getElementById("kta-secours-pick-modal");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    const lblRole = role === "entree" ? "Entrée"
+                  : role === "sortie" ? "Sortie"
+                  : "Étape " + ((idx == null ? 0 : idx) + 1);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-pick-modal";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100001";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-pick-boite">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">📍 Choisir un point — ' + _escHtml(lblRole) + '</span>' +
+          '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<div class="kta-secours-pick-search-wrap">' +
+            '<input type="text" id="kta-secours-pick-search" placeholder="🔍 Rechercher un point (nom, id, tag)..." autocomplete="off">' +
+            '<div class="kta-secours-pick-results" id="kta-secours-pick-results"></div>' +
+          '</div>' +
+          '<div class="kta-secours-pick-or">— OU —</div>' +
+          '<button class="kta-btn kta-btn-primary kta-secours-pick-clic" data-action="clic-carte">' +
+            '📍 Cliquer sur la carte<br>' +
+            '<small style="opacity:0.85; font-weight:normal;">Snap auto au POI le plus proche dans 30 px</small>' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(overlay);
+
+    const input   = overlay.querySelector("#kta-secours-pick-search");
+    const results = overlay.querySelector("#kta-secours-pick-results");
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
+    // Clic carte
+    overlay.querySelectorAll('[data-action="clic-carte"]').forEach(function(b) {
+      b.addEventListener("click", function() {
+        _close();
+        _startDefiningPoint(groupeId, role, idx);
+      });
+    });
+
+    // Autocomplete debounce 150ms
+    let _searchTimer = null;
+    function _doSearch() {
+      const q = input.value.trim();
+      if (!q || q.length < 1) {
+        results.innerHTML = '<div class="kta-secours-pick-hint">Tape au moins 1 caractère pour rechercher…</div>';
+        return;
+      }
+      if (!window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
+        results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Module Recherche indisponible.</div>';
+        return;
+      }
+      try {
+        const found = window.SearchPoints.findByQuery(q) || [];
+        if (found.length === 0) {
+          results.innerHTML = '<div class="kta-secours-pick-hint">Aucun résultat pour « ' + _escHtml(q) + ' ».</div>';
+          return;
+        }
+        let html = '';
+        found.slice(0, 20).forEach(function(entry) {
+          const p = entry.point || entry;
+          if (!p) return;
+          const nom = p.nom || p.id || "(sans nom)";
+          const tag = (Array.isArray(p.tags) && p.tags[0]) || "default";
+          const layerInfo = entry.layerLabel || entry.layerId || "";
+          html += '<button class="kta-secours-pick-result" data-pid="' + _escAttr(p.id || "") +
+                  '" data-x="' + p.x + '" data-y="' + p.y +
+                  '" data-lvl="' + (typeof p.level === "number" ? p.level : "") +
+                  '" data-nom="' + _escAttr(nom) + '">' +
+                  '<strong>' + _escHtml(nom) + '</strong>' +
+                  '<span class="kta-secours-pick-meta">' + _escHtml(tag) +
+                  (layerInfo ? ' · ' + _escHtml(layerInfo) : '') +
+                  ' · x=' + Math.round(p.x) + ' y=' + Math.round(p.y) +
+                  (typeof p.level === "number" ? ' · niv ' + p.level : '') +
+                  '</span>' +
+                  '</button>';
+        });
+        results.innerHTML = html;
+        results.querySelectorAll('.kta-secours-pick-result').forEach(function(btn) {
+          btn.addEventListener("click", function() {
+            const wp = {
+              x:       parseFloat(btn.getAttribute("data-x")),
+              y:       parseFloat(btn.getAttribute("data-y")),
+              level:   btn.getAttribute("data-lvl") !== "" ? parseInt(btn.getAttribute("data-lvl"), 10) : 0,
+              pointId: btn.getAttribute("data-pid") || null,
+              label:   btn.getAttribute("data-nom") || null
+            };
+            _close();
+            _appliquerWaypoint(groupeId, role, idx, wp);
+          });
+        });
+      } catch(e) {
+        results.innerHTML = '<div class="kta-secours-pick-hint">⚠️ Erreur recherche : ' + _escHtml(e.message || String(e)) + '</div>';
+      }
+    }
+    input.addEventListener("input", function() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(_doSearch, 150);
+    });
+    // Focus auto sur l'input
+    setTimeout(function() { input.focus(); }, 50);
+    _doSearch();
   }
 
   function _ouvrirChoixZoneMode(groupeId) {
@@ -1613,12 +1928,25 @@
       _toast("⚠️ Coordonnées entrée/sortie corrompues. Re-définis-les via 📍/🚪.", "error");
       return null;
     }
-    _toast("⏳ Calcul itinéraire en cours…", "info");
+    // 🆕 v1.22.0-fix2 : valider aussi les intermédiaires + filtrer les invalides
+    const intermediaires = (Array.isArray(g.intermediaires) ? g.intermediaires : [])
+      .filter(function(w) {
+        return w && typeof w.x === "number" && typeof w.y === "number";
+      });
+    _toast("⏳ Calcul itinéraire " +
+           (intermediaires.length > 0 ? "(via " + intermediaires.length + " waypoint" + (intermediaires.length > 1 ? "s" : "") + ")" : "") +
+           " en cours…", "info");
     try {
-      const waypoints = [
-        { x: g.entree.x, y: g.entree.y, label: "Entrée " + g.nom },
-        { x: g.sortie.x, y: g.sortie.y, label: "Sortie " + g.nom }
-      ];
+      // 🆕 v1.22.0-fix2 : Pathfinder accepte [entree, ...intermediaires, sortie]
+      // (multi-waypoints natif depuis v1.5.x). Chaque pair de waypoints
+      // consécutifs déclenche un Dijkstra séparé puis les paths sont
+      // concaténés (cf §14 CLAUDE.md). Boucle entree=sortie → Pathfinder
+      // calcule le tour complet via les intermédiaires (sinon retour direct).
+      const waypoints = [{ x: g.entree.x, y: g.entree.y, label: g.entree.label || ("Entrée " + g.nom) }]
+        .concat(intermediaires.map(function(w, i) {
+          return { x: w.x, y: w.y, label: w.label || ("Étape " + (i + 1)) };
+        }))
+        .concat([{ x: g.sortie.x, y: g.sortie.y, label: g.sortie.label || ("Sortie " + g.nom) }]);
       // Pathfinder.computeRoute est async depuis v1.21.x (avoid expansion).
       // computeRoute peut throw sync (waypoints insuffisants) OU reject async
       // (chemin introuvable, composantes disconnect). On gère les 2.

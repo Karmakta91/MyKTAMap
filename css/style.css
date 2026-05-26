@@ -18350,3 +18350,214 @@ body.kta-theme-light .kta-secours-overlay-floater-info strong,
 html.kta-theme-light .kta-secours-overlay-floater-info strong {
   color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🆕 v1.22.0-fix2 — Section Parcours (entrée + intermédiaires + sortie)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.kta-secours-parcours {
+  margin: 8px 0 4px 0;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(244, 197, 66, 0.15);
+}
+.kta-secours-parcours-titre {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8892a4;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.kta-secours-parcours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-secours-parcours-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 5px;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-secours-parcours-row[data-role="entree"] {
+  border-left: 3px solid #00cc44;
+}
+.kta-secours-parcours-row[data-role="sortie"] {
+  border-left: 3px solid #cc0000;
+}
+.kta-secours-parcours-row[data-role="intermediaire"] {
+  border-left: 3px solid rgba(255, 255, 255, 0.30);
+  margin-left: 8px;
+}
+.kta-secours-parcours-emoji {
+  flex-shrink: 0;
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+.kta-secours-parcours-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-secours-parcours-label strong { color: #e8eaf0; }
+.kta-secours-parcours-lvl { color: #f4c542; font-size: 10px; }
+.kta-secours-parcours-todo { color: #8892a4; font-style: italic; }
+.kta-secours-parcours-btns {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.kta-btn-xs {
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+  min-width: 24px;
+}
+.kta-secours-parcours-add {
+  align-self: flex-start;
+  margin-left: 8px;
+  font-size: 11px !important;
+}
+.kta-secours-parcours-hint {
+  margin-top: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 170, 0, 0.10);
+  border-left: 3px solid #ffaa00;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #ffaa00;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🆕 v1.22.0-fix2 — Mini-modale "Choisir un point" (autocomplete + clic carte)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.kta-secours-pick-boite {
+  max-width: 520px !important;
+  width: calc(100vw - 24px);
+  height: auto !important;
+  max-height: 80vh !important;
+}
+.kta-secours-pick-search-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#kta-secours-pick-search {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.25);
+  border-radius: 6px;
+  padding: 9px 12px;
+  color: #e8eaf0;
+  font-family: inherit;
+  font-size: 13px;
+}
+#kta-secours-pick-search:focus {
+  outline: none;
+  border-color: #f4c542;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20);
+}
+.kta-secours-pick-results {
+  max-height: 280px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+.kta-secours-pick-result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  color: #c8d0e0;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kta-secours-pick-result:hover {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.35);
+}
+.kta-secours-pick-result strong {
+  color: #f4c542;
+  font-size: 13px;
+}
+.kta-secours-pick-meta {
+  font-size: 10px;
+  color: #8892a4;
+}
+.kta-secours-pick-hint {
+  padding: 12px;
+  text-align: center;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12px;
+}
+.kta-secours-pick-or {
+  text-align: center;
+  margin: 14px 0 10px 0;
+  color: #8892a4;
+  font-size: 11px;
+  letter-spacing: 1px;
+}
+.kta-secours-pick-clic {
+  width: 100%;
+  text-align: center;
+  padding: 12px !important;
+}
+
+/* Thème clair */
+body.kta-theme-light .kta-secours-parcours,
+html.kta-theme-light .kta-secours-parcours {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light .kta-secours-parcours-titre,
+html.kta-theme-light .kta-secours-parcours-titre {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-parcours-row,
+html.kta-theme-light .kta-secours-parcours-row {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-parcours-label strong,
+html.kta-theme-light .kta-secours-parcours-label strong {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-parcours-todo,
+html.kta-theme-light .kta-secours-parcours-todo,
+body.kta-theme-light .kta-secours-pick-meta,
+html.kta-theme-light .kta-secours-pick-meta,
+body.kta-theme-light .kta-secours-pick-hint,
+html.kta-theme-light .kta-secours-pick-hint,
+body.kta-theme-light .kta-secours-pick-or,
+html.kta-theme-light .kta-secours-pick-or {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light #kta-secours-pick-search,
+html.kta-theme-light #kta-secours-pick-search,
+body.kta-theme-light .kta-secours-pick-result,
+html.kta-theme-light .kta-secours-pick-result {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-pick-result strong,
+html.kta-theme-light .kta-secours-pick-result strong {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
