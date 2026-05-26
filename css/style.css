@@ -19293,12 +19293,21 @@ html.kta-theme-light .kta-secours-pick-result strong {
   justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
-  background: linear-gradient(135deg, rgba(26, 31, 46, 0.85), rgba(10, 13, 24, 0.95));
+  /* 🐛 v1.24.2 (KARMA "bug du modal opérateur tout défile derrière l'entête
+     Operateur surface : scénario") : background OPAQUE pour que le contenu
+     qui scroll en-dessous ne se voit pas à travers le header sticky.
+     Avant : rgba(...,0.85) → les cards opérateur passaient en filigrane
+     derrière le header → illisible. Box-shadow + bordure pour démarquer
+     visuellement du contenu sous-jacent. z-index 10 pour passer au-dessus
+     des cards (qui n'ont pas de z-index spécifique = z-index auto). */
+  background: linear-gradient(135deg, #1f2740, #0e1424);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45);
   border-radius: 6px;
   margin-bottom: 10px;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
   flex-wrap: wrap;
 }
 .kta-secours-live-header-titre {
@@ -19418,7 +19427,13 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-weight: 600;
 }
 .kta-secours-live-etape-textarea {
+  /* 🐛 v1.24.2 (KARMA "tape ici pour observation à cette étape sort du
+     cadre") : box-sizing: border-box indispensable car width:100% + padding
+     10px × 2 + border 1px × 2 = +22px d'overflow horizontal sans ça.
+     Pattern à appliquer partout sur input/textarea fluides. */
+  box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(244, 197, 66, 0.30);
@@ -19818,8 +19833,11 @@ html.kta-theme-light .kta-secours-lancer-equipe-select {
 }
 body.kta-theme-light .kta-secours-live-header,
 html.kta-theme-light .kta-secours-live-header {
+  /* 🐛 v1.24.2 — Background opaque pour masquer le scroll qui passe en
+     dessous (cf bug Mode Opérateur "tout défile derrière l'entête") */
   background: var(--kta-light-bg-elevated, #fdf8eb) !important;
-  border: 1px solid var(--kta-light-border, rgba(0, 0, 0, 0.12)) !important;
+  border: 1px solid var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
+  box-shadow: 0 4px 8px rgba(80, 60, 30, 0.20) !important;
 }
 body.kta-theme-light .kta-secours-live-header-titre,
 html.kta-theme-light .kta-secours-live-header-titre {

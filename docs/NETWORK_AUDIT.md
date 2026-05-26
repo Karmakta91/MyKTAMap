@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.24.1** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.24.2** (26 mai 2026).
+>
+> **v1.24.2 (Release PATCH 3 fixes CSS Phase 3 — textarea overflow + header sticky transparent)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement JS**. Fix purement CSS Phase 3 vues Live : (1+2) `box-sizing: border-box` + `max-width: 100%` sur `.kta-secours-live-etape-textarea` pour fix débordement textarea observations Mode Équipe + Mode Secouriste. (3) Background OPAQUE `linear-gradient(#1f2740, #0e1424)` + box-shadow + z-index 10 sur `.kta-secours-live-header` pour fix scroll en filigrane derrière header sticky en Mode Opérateur. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — fix purement CSS additif.
 >
 > **v1.24.1 (Release PATCH fix UX Phase 3 — Bouton « 👤 Retour Opérateur » après « Prendre la main »)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement de modèle de données structurel**. Fix UX terrain : ajout de 2 flags `s.execution._previousRole` + `s.execution._previousEquipeId` (préfixe `_` = convention interne) pour mémoriser le rôle d'origine au clic « Prendre la main » + bouton conditionnel « 👤 Retour Opérateur » dans le footer vue Live Mode Équipe + handler de retour qui restore + clean les flags. Persistance localStorage existante (`myktamap_secours_v1_<planId>` étendu). Pas de nouveau localStorage key, pas de nouveau IDB store. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — fix UX strict, pas d'impact sécurité.
 >

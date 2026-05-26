@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.24.1` (26/05/2026) — PATCH fix UX Phase 3 « bouton 👤 Retour Opérateur après Prendre la main » — l'user n'était plus bloqué en mode Équipe
-**📦 Précédentes shipped main** : `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json)
+**📦 Version courante** : `v1.24.2` (26/05/2026) — PATCH 3 fixes CSS Phase 3 « textarea overflow Mode Équipe/Secouriste + header sticky transparent Mode Opérateur »
+**📦 Précédentes shipped main** : `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,67 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-24-1" open>
+<details id="v1-24-2" open>
+<summary><strong>🗓️ 26/05/2026 — 🩹 v1.24.2 : Release PATCH 3 fixes CSS Phase 3 (textarea overflow + header sticky transparent)</strong></summary>
+
+Release PATCH (bump Z : 1.24.1 → 1.24.2). 3 bugs CSS Phase 3 remontés KARMA terrain :
+
+1. « bug affichage en mode équipe, le tape ici pour observation à cette étape sort du cadre »
+2. « pareil pour secouriste »
+3. « bug du modal opérateur tout défile derrière l'entête Opérateur surface : scénario »
+
+### 🐛 Bugs 1+2 — Textarea observations déborde
+
+**Root cause** : la classe `.kta-secours-live-etape-textarea` (utilisée dans la vue Live Mode Équipe ET Mode Secouriste) avait `width: 100%` SANS `box-sizing: border-box`. Le padding `8px 10px` (20px horizontal total) + bordure `1px` (2px horizontal total) ajoutaient **+22px** à la largeur intrinsèque → débordement horizontal.
+
+**Fix** :
+
+```css
+.kta-secours-live-etape-textarea {
+  box-sizing: border-box;   /* indispensable */
+  width: 100%;
+  max-width: 100%;          /* garde-fou double protection */
+  ...
+}
+```
+
+Pattern à appliquer **partout** sur inputs/textareas fluides en `width: 100%`. Documenté dans le commentaire CSS.
+
+### 🐛 Bug 3 — Scroll derrière header sticky Opérateur
+
+**Root cause** : `.kta-secours-live-header` avait `background: linear-gradient(rgba(...,0.85), rgba(...,0.95))` semi-transparent. En vue Opérateur (grille verticale cards qui scroll), les cards passaient en filigrane derrière le header sticky → texte « Opérateur surface · scénario · N équipes » illisible quand l'user scrollait.
+
+**Fix** : background **OPAQUE** + bordure + box-shadow pour démarquer + `z-index: 10` (au lieu de 2) pour passer au-dessus des cards sans z-index spécifique :
+
+```css
+.kta-secours-live-header {
+  background: linear-gradient(135deg, #1f2740, #0e1424);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+  ...
+}
+```
+
+### 🌞 Variant thème clair
+
+Le variant `body.kta-theme-light .kta-secours-live-header` reçoit aussi le fix : `box-shadow: 0 4px 8px rgba(80, 60, 30, 0.20)` (ocre clair) + `border-color: var(--kta-light-border-strong)` pour cohérence visuelle avec le thème sombre.
+
+### 📦 Sources de vérité v1.24.2
+
+- `version.json` → `v1.24.2`
+- `js/copyright.js > __MKM__.build` → `v1.24.2`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.24.2`
+
+Aucun nouveau fichier, aucun changement JS. Modifs : `css/style.css` uniquement (~15 lignes).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.24.1 (pur fix CSS additif). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-24-1">
 <summary><strong>🗓️ 26/05/2026 — 🩹 v1.24.1 : Release PATCH fix UX Phase 3 — Bouton « 👤 Retour Opérateur » après « Prendre la main »</strong></summary>
 
 Release PATCH (bump Z : 1.24.0 → 1.24.1). Bug remonté KARMA terrain immédiatement après v1.24.0 : « premier bug en mode opérateur je rentre sur le tableau alpha et rentre des informations. sauf que je peux pas revenir en arriére pour continuer ».
