@@ -1202,6 +1202,81 @@ Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
+### 🚨 Mode Secours Phase 2 — Intégrations cross-app (depuis v1.23.0)
+
+La Phase 2 transforme le Mode Secours en outil de coordination opérationnelle complet. 6 nouvelles fonctionnalités intégrées.
+
+#### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
+
+Le KMZ exporté contient désormais un Folder racine `🚨 Secours` parfaitement structuré pour les apps tierces :
+
+```
+📁 Secours — Recherche Marc 26/05
+   ├── 📁 🚨 Équipe Alpha
+   │   ├── 📁 📍 Points (5)           ← toggle ON/OFF dans Google Earth
+   │   ├── 📁 ⬛ Zone de recherche
+   │   └── 📁 🗺️ Itinéraire
+   └── 📁 🚨 Équipe Bravo (idem)
+```
+
+- Plan d'arrière-plan en GroundOverlay 60% opacity (lecture simultanée plan + zones)
+- Auto-calc des itinéraires manquants AVANT l'export (1 clic = KMZ complet)
+- 43 styles couleur OTAN (10 équipes × 4 catégories + 3 styles fixes entrée/sortie/boucle)
+
+#### ⛑️→🚨 Workflow Lost Mode → Secours
+
+Dans la modale ⛑️ Mode urgence "Je suis perdu", nouveau bouton :
+
+```
+🚨 Lancer un plan de secours (équipes + zones)
+```
+
+Au clic, l'app **crée automatiquement un scénario Mode Secours** avec :
+- Nom auto `Recherche - 26/05/2026 14:32`
+- Heure d'incident calculée depuis le temps écoulé du Lost Mode
+- Dernière position connue + zone d'incertitude (rayon + cercle pointillé sur la carte)
+- Notes auto avec vitesse de marche, rayon, indices saisis
+
+→ Workflow naturel : tu cherches quelqu'un → tu lances Lost Mode → tu cliques 🚨 → tu coordonnes les équipes.
+
+#### 🚫 Anti-chevauchement entre équipes
+
+Quand tu calcules l'itinéraire d'une équipe, les **waypoints + zones des autres équipes** deviennent automatiquement des "préférences éviter" pour Pathfinder. Résultat : les itinéraires se contournent au lieu de se croiser, pas de relais involontaire.
+
+Si vraiment pas le choix (passage unique partagé), toast warn `⚠️ Itinéraire traverse N point(s) d'autres équipes — vérifie les chevauchements`.
+
+#### 🔥 Heatmap d'activité dans Mode Secours
+
+Nouveau bloc orange "🔍 Outils d'analyse" dans la section Contexte avec bouton **🔥 Afficher la heatmap d'activité**. Visualise les zones où le tracker a enregistré du passage → utile pour identifier les zones probables à fouiller en priorité.
+
+Si le disparu utilisait MyKTAMap et a exporté sa session avec timeline tracker, la heatmap montre directement où il a passé du temps.
+
+#### 🏗️ Auto-création 1 équipe par niveau (M-LVL)
+
+Sur les plans multi-niveau, bouton conditionnel **🏗️ Auto : 1 équipe par niveau (N)** dans la section Équipes. Crée auto N équipes nommées `Niveau RDC / +1 / -1...` avec couleurs auto-cyclées. Tu poses ensuite zones + waypoints sur chaque niveau séparément en changeant le niveau actif via la pastille M-LVL topleft.
+
+#### ⭐ Favoris en accès rapide
+
+Dans la mini-modale "📍 Choisir un point", tes favoris du plan apparaissent désormais en chips cliquables (max 8) AU-DESSUS de la recherche autocomplete. 1 clic = waypoint appliqué (skip search + clic carte).
+
+Particulièrement utile pour les scénarios urgence où tu veux créer rapidement plusieurs équipes avec les mêmes 3-4 puits d'accès connus.
+
+#### 🛑 Pause configurable cross-feature
+
+Nouvelle section dans la modale 🗺️ Itinéraire :
+
+```
+🛑 Pause entre les arrêts
+☑️ Inclure une pause entre chaque arrêt intermédiaire
+   Durée par pause : [15] min
+```
+
+Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
+
+#### 📊 Roadmap
+
+**Phase 3 (v1.24.0)** : statut temps réel par équipe + QR code share unidirectionnel PC secours → device équipe + timer incident + observations terrain via QR scan retour.
+
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
 ---

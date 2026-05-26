@@ -5608,6 +5608,120 @@ Pré-condition : plan calibré KMZ. Transform reconstruit on-demand via `KmzExpo
 3. Sync via QR code → mini-modale "Scanner pour mettre à jour"
 4. Timer global depuis `incidentAt` visible en permanence
 
+### 66. v1.23.0 — Mode Secours Phase 2 (Intégrations + Cross-app)
+
+Phase 2 livre 6/7 features de la roadmap §65.12 + 5 bonus/fixes. Le Mode Secours passe d'un brouillon perso à un outil de coordination opérationnelle cross-app.
+
+#### 66.1 Feature A — KML cross-app complet (kmzExport.js)
+
+Helper `_emitSecoursFolder(opts, secoursPlan, palette)` génère un Folder racine `🚨 Secours — <nom>` visible dans Google Earth / OsmAnd / Avenza / Locus. Architecture nested 3 sous-folders par équipe :
+
+```
+🚨 Équipe Alpha (Folder)
+  ├── 📁 📍 Points (5)
+  │   ├── 📍 Entrée Alpha — Puits PA1 (grn-circle)
+  │   ├── ▾ Étape 1 (Alpha) (wht-circle teint)
+  │   ├── ▾ Étape 2
+  │   ├── ▾ Étape 3
+  │   └── 🚪 Sortie Alpha — Puits PA1 (red-circle OU orange-circle si boucle)
+  ├── 📁 ⬛ Zone de recherche
+  │   └── ⬛ Polygone Alpha (Polygon 30% fill)
+  │       OU 🛣️ Tracé zone Alpha (LineString halo) × N
+  └── 📁 🗺️ Itinéraire
+      └── 🗺️ Itinéraire Alpha (LineString 5px, desc "234m — 8min")
+```
+
+**43 styles KML** : 3 fixes (entrée/sortie/boucle) + 4×10 palette (zone polygon / halo roads / itinéraire / intermédiaires). Icônes natives Google Maps tintées via `<color>`. Détection boucle via `_samePoint` (pointId OU coords tolérance 0.5px) → marker orange + label "↻ Boucle".
+
+#### 66.2 Feature B — Pathfinder avoidances cross-équipes
+
+Helper `_collecterAvoidPointsAutresEquipes(scenarioId, currentGroupeId)` itère les autres groupes du scénario et collecte :
+- entrée + sortie (skip si entrée=sortie pour la boucle)
+- intermédiaires
+- sommets polygon (zoneType="polygon")
+- points roads (zoneType="roads")
+
+Passé à `Pathfinder.computeRoute` via `opts.avoidPoints` + `opts.avoidRadius: 30`. Soft constraint = Pathfinder 2 passes natif (cf §31.2). Si `result.usedFallback === true` → toast warn `⚠️ Itinéraire traverse N point(s) d'autres équipes`.
+
+Limitations connues : auto-calc batch parallèle à l'export ne propage pas les iti fraîchement calc des autres équipes (seulement waypoints + zones).
+
+#### 66.3 Feature C — Lost Mode → Mode Secours pre-fill
+
+`LostMode.getState()` nouveau API expose `{lastKnownPos, elapsedMinutes, speedKmH, radiusMeters, radiusPx, presetKey, clues}` (snapshot défensif).
+
+`SecoursMode.creerDepuisLostMode(lostState)` :
+- Crée un scénario `nom = "Recherche - <date>"`
+- `context.incidentAt = now - elapsedMinutes × 60000`
+- `context.lastKnownPoint = {x, y, level, label}` (level depuis APP_CONFIG.activeLevel)
+- `context.zoneIncertitude = {x, y, radiusMeters, radiusPx}`
+- `context.notes` auto-composé (temps écoulé + vitesse + rayon + indices)
+- Ouvre la modale Mode Secours en vue Edit
+
+Bouton `🚨 Lancer un plan de secours` dans la modale Lost Mode (`_emitMatchesUI`). Au clic : `close({keepLayers: true})` Lost Mode (préserve overlay carte pour contexte visuel) + `SecoursMode.creerDepuisLostMode(state)`.
+
+Affichage dans modale Edit : bloc rouge `_renderContextImportedBlock` avec data read-only + boutons 🎯 Recentrer / ✕ Retirer. Overlay carte : `_renderContextOverlay` ajoute L.circle pointillé rouge (rayon px = radiusMeters × APP_CONFIG.scale) + L.circleMarker rouge fill blanc pour lastKnownPoint.
+
+#### 66.4 Feature D — Heatmap d'activité dans Mode Secours
+
+Bloc orange `_renderHeatmapToolBlock()` dans section 📝 Contexte. Toggle handler appelle `MyKTAMapHeatmap.afficher({srcTracker, srcEditor, srcRoads, radius:40, intensity:1.0})`. Si overlay équipes pas actif, l'active aussi (masque modale + floater "↩️ Retour modale").
+
+Bouton ⚙️ Régler bascule vers `MyKTAMapHeatmap.ouvrirModale()` pour ajustements avancés (sources, M-LVL filter, radius, intensity).
+
+Cleanup dans `fermer()` Mode Secours : si `_secoursHeatmapActive` → `MyKTAMapHeatmap.effacer()`.
+
+Skip silencieux si `window.MyKTAMapHeatmap` pas chargé.
+
+#### 66.5 Feature E — Auto-création 1 équipe par niveau M-LVL
+
+Bouton conditionnel `🏗️ Auto : 1 équipe par niveau (N)` visible si `multiLevel === true` ET `availableLevels.length >= 2`. Au clic, itère `availableLevels` triés croissant et crée une équipe par niveau via `addGroupe(s.id, "Niveau RDC/+1/-1...")`. Confirm() si équipes existantes (anti-doublon).
+
+#### 66.6 Feature F — Favoris en accès rapide picker waypoint
+
+`_renderFavorisBlock()` dans `_ouvrirChoixWaypoint`. Affiche jusqu'à 8 favoris du plan en chips ambrés cliquables au-dessus de la recherche autocomplete. Clic = `_appliquerWaypoint(groupeId, role, idx, wp)` + close modale.
+
+#### 66.7 Bonus — Pause configurable cross-feature
+
+Refactor `TEMPS_PAUSE_PAR_POINT_MIN` (hardcoded 15 min interface.js) en localStorage configurable :
+- `myktamap_iti_pause_enabled` (bool, default true)
+- `myktamap_iti_pause_minutes` (number, cap [0, 120], default 15)
+
+Helpers `_getItiPauseEnabled / _setItiPauseEnabled / _getItiPauseMinutes / _setItiPauseMinutes` exposés globalement via `window.getItiPauseEnabled / window.getItiPauseMinutes / window.getItiTempsMinutes`.
+
+`_tempsItineraireMinutes` lit dynamiquement. Section "🛑 Pause entre les arrêts" dans modale Itinéraire avec checkbox + input + hint "S'applique aussi au Mode Secours 🚨".
+
+`secoursMode.js > _recalculerItineraireGroupe` + `_recalculerItineraireGroupeAsync` utilisent `window.getItiTempsMinutes(distM, nbWp)` au lieu de fallback historique `distM / 0.5 / 60`.
+
+#### 66.8 Bonus — Fix georef format mismatch
+
+**Format réel stocké par `KmzExport.setCalibration`** : FLAT `{pointA: {x, y, lat, lng}, pointB: {x, y, lat, lng}}` (cf 4 sites prod : createConf.js / interface.js / sessionExporter.js / main.js `_propagerGeorefVersKmzExport`).
+
+§32.7 CLAUDE.md décrivait à tort un format NESTÉ `pointA.plan / pointA.gps` — JAMAIS EXISTÉ. Mon code Phase 1 utilisait ce faux format → `buildTransform(undefined × 4)` → "Calibrage corrompu" trompeur.
+
+Fix : accès FLAT cohérent + check strict des 8 champs avant buildTransform.
+
+⚠️ **TODO doc** : la §32.7 reste trompeuse — à corriger en commit doc suivant.
+
+#### 66.9 Bonus — Plan en fond 60% KMZ Mode Secours
+
+`exporterKMZ` async. Fetch image plan via RUNTIME_ASSETS (cas ZIP local) OU fetch HTTP (cas plan serveur), pattern identique sessionExporter.js. Passe à `genererKmz` avec `imageOpacity: 60` + `include.image: true`. GroundOverlay 60% opacity = lecture simultanée plan + overlays.
+
+#### 66.10 Bonus — KMZ nested folders par catégorie
+
+Le Folder Secours d'origine listait tous les Placemarks à plat dans le folder équipe. Restructure en 3 sous-folders (Points / Zone / Itinéraire) → toggle facile dans Google Earth (briefing initial = décocher tous les itinéraires, navigation équipe = décocher autres équipes).
+
+#### 66.11 Bonus — Auto-calc itinéraires avant export KMZ
+
+Helper async `_recalculerItineraireGroupeAsync(scenarioId, groupeId)` version Promise-based qui réutilise `window.getItiTempsMinutes` + résout silencieusement `true`/`false`.
+
+À l'entrée de `exporterKMZ` : `Promise.allSettled(groupesACalc.map(_recalculerItineraireGroupeAsync))` avant `await fetch image plan` puis `KmzExport.genererKmz`. Toast cascade `⏳ Calcul auto de N itinéraires → ⏳ Génération KMZ → ✓ KMZ exporté`.
+
+#### 66.12 À NE PAS faire
+
+- ❌ Réintroduire format NESTÉ `calib.pointA.plan` / `calib.pointA.gps` — il faut **flat** `calib.pointA.x` / `calib.pointA.lat` (cf §66.8)
+- ❌ Mute `LostMode.getState()` retour — c'est un snapshot défensif, l'appelant ne doit pas écrire dedans
+- ❌ Hardcoder TEMPS_PAUSE_PAR_POINT_MIN à 15 ailleurs — utiliser `window.getItiPauseMinutes` ou `window.getItiTempsMinutes`
+- ❌ Ajouter une feature G qui modifie `searchPoints.js > findByQuery` sans vérifier que les autres consumers (Pathfinder, modale itinéraire) restent fonctionnels — la recherche autocomplete intégrée dans picker waypoint suffit pour MVP
+
 #### 65.12 Roadmap phases suivantes (validées KARMA)
 
 **Phase 2 — Intégrations** (v1.23.0) :

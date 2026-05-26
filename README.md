@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.22.0` (26/05/2026) — MINOR « Mode Secours Phase 1 MVP » — outil opérationnel pour assigner des équipes de recherche à des zones du plan (multi-scénarios, export PDF + KMZ)
-**📦 Précédentes shipped main** : `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports) ; v1.21.2 = pack Karma_dev intégré dans v1.21.3
+**📦 Version courante** : `v1.23.0` (26/05/2026) — MINOR « Mode Secours Phase 2 — Intégrations & Cross-app » — KML cross-app complet (Google Earth) + Pathfinder avoidances cross-équipes + Lost Mode → Secours bridge + Heatmap d'activité + M-LVL auto-équipes + Favoris quick-pick + pause configurable
+**📦 Précédentes shipped main** : `v1.22.0` (Mode Secours Phase 1 MVP — non encore mergé main) ; `v1.21.5` (refonte filtre Leaflet ≡) ; `v1.21.4` (Profil enrichi + Stats cross-plan) ; `v1.21.3` (anti-crash 10 P0) ; `v1.21.1` (audit imports/exports)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,49 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-22-0" open>
+<details id="v1-23-0" open>
+<summary><strong>🗓️ 26/05/2026 — 🚨 v1.23.0 : Release MINOR — Mode Secours Phase 2 (Intégrations & Cross-app)</strong></summary>
+
+Release MINOR (bump Y : 1.22.0 → 1.23.0). 6/7 features Phase 2 livrées + 5 bonus/fixes consolidés. Le Mode Secours passe d'un outil brouillon perso (Phase 1 MVP) à un **vrai outil de coordination opérationnelle** cross-app.
+
+### 6 Features Phase 2 livrées
+
+| # | Feature | Détail |
+|---|---|---|
+| **A** | 🌍 **KML cross-app complet** | Folder racine 🚨 Secours visible dans Google Earth / OsmAnd / Avenza / Locus. 3 sous-folders nested par équipe (Points / Zone / Itinéraire). Couleurs cohérentes palette OTAN via 43 styles KML. Description riche par folder (membres, distance, durée, statut). |
+| **B** | 🚫 **Pathfinder avoidances cross-équipes** | `_collecterAvoidPointsAutresEquipes` passe les waypoints + zones des autres équipes à Pathfinder comme soft constraint. `avoidRadius: 30 px`. Fallback gracieux 2 passes natif + toast warn si chevauchement inévitable. |
+| **C** | ⛑️→🚨 **Lost Mode → Secours pre-fill** | Bouton 🚨 dans la modale Lost Mode. Crée auto un scénario avec context.lastKnownPoint + zoneIncertitude + incidentAt + notes auto-composées. Bloc rouge dans la modale Edit avec 🎯 Recentrer + ✕ Retirer. Overlay carte enrichi (cercle pointillé + marker). |
+| **D** | 🔥 **Heatmap d'activité Mode Secours** | Bloc orange 🔍 Outils d'analyse avec toggle. Active overlay + appelle `MyKTAMapHeatmap.afficher`. Cas d'usage : visualiser zones probables où le disparu a passé du temps (via timeline tracker importée). |
+| **E** | 🏗️ **Auto-création 1 équipe par niveau M-LVL** | Bouton conditionnel "🏗️ Auto : 1 équipe par niveau (N)" visible si M-LVL actif. Crée N équipes nommées "Niveau RDC / +1 / -1" avec couleurs auto-cyclées. |
+| **F** | ⭐ **Favoris en accès rapide picker waypoint** | Section ambre dans la mini-modale "📍 Choisir un point" avec chips cliquables (max 8). Clic = applique le waypoint direct (skip search + clic carte). |
+| ~~G~~ | ~~Ctrl+K → assigner à équipe~~ | Reportée — la recherche autocomplete est déjà intégrée dans le picker waypoint. |
+
+### 5 Bonus / Fixes
+
+- 🛑 **Pause configurable cross-feature** : `myktamap_iti_pause_enabled` + `myktamap_iti_pause_minutes` localStorage. Section "🛑 Pause entre les arrêts" dans modale Itinéraire avec checkbox + input min. Helper `window.getItiTempsMinutes` partagé entre Itinéraire et Mode Secours.
+- 🐛 **Fix georef format mismatch** : accès `pointA.x/y/lat/lng` flat au lieu du faux nested `pointA.plan/pointA.gps` documenté à tort. Aligné avec sessionExporter.js.
+- 🗺️ **Plan en fond 60% dans KMZ Mode Secours** : `exporterKMZ` fetch l'image plan via RUNTIME_ASSETS ou HTTP + passe à genererKmz avec imageOpacity:60. GroundOverlay visible dans Google Earth.
+- 📁 **KMZ nested folders par catégorie** : restructure du Folder Secours en sous-folders 📍 Points / ⬛ Zone / 🗺️ Itinéraire pour toggle facile dans les apps tierces.
+- 🗺️ **Auto-calc itinéraires avant export KMZ** : `Promise.allSettled` sur les équipes sans iti calculé → KMZ complet en 1 clic. Helper async `_recalculerItineraireGroupeAsync`.
+
+### 📦 Sources de vérité v1.23.0
+
+- `version.json` → `v1.23.0`
+- `js/copyright.js > __MKM__.build` → `v1.23.0`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.23.0-secoursP2`
+- Aucun nouveau fichier. Modifs : `js/secoursMode.js` (+~1200), `js/kmzExport.js` (+~250 _emitSecoursFolder), `js/lostMode.js` (+~30 getState + bouton), `js/interface.js` (+~70 pause configurable), `css/style.css` (+~400 Phase 2).
+
+### 🛡️ Confidentialité
+
+**Aucune nouvelle surface réseau, aucune nouvelle permission**. Tout local. Avoidances Pathfinder en RAM, KML cross-app embarqué dans le ZIP, Heatmap canvas pur, Favoris localStorage existant. NETWORK_AUDIT mis à jour avec verdict ✅ aucune régression.
+
+### 📊 Roadmap Phase 3 (v1.24.0)
+
+Statut par équipe + QR code share unidirectionnel + timer incident + observations terrain. Reportée à validation Phase 2 KARMA.
+
+</details>
+
+<details id="v1-22-0">
 <summary><strong>🗓️ 26/05/2026 — 🚨 v1.22.0 : Release MINOR — Mode Secours Phase 1 MVP (équipes + zones + exports PDF/KMZ)</strong></summary>
 
 Release MINOR (bump Y : 1.21.5 → 1.22.0). Nouveau module `js/secoursMode.js` (~1500 lignes IIFE) : outil opérationnel pour assigner méthodiquement des équipes de recherche à des zones d'un plan cataphile. **Cas d'usage terrain** : une personne portée disparue, plusieurs équipes arrivent en surface, le PC secours assigne chaque équipe à une portion du réseau avec point d'entrée/sortie, itinéraire suggéré et durée estimée.
