@@ -3120,10 +3120,22 @@
             '</div>';
 
     // ─── Actions bas : Pause + Terminer + Retour édition ───
+    // 🆕 v1.24.1 — Bouton « 👤 Retour Opérateur » si on est arrivé ici via
+    // "Prendre la main" depuis la vue Opérateur (_previousRole stocké).
+    // Cohérent persistance : survit au reload car _previousRole est dans
+    // s.execution (localStorage).
+    const previousRole = s.execution._previousRole;
+    const retourPreviousBtn = previousRole
+      ? '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-retour-previous-role" ' +
+        'title="Retour à la vue ' + (previousRole === "operateur" ? "Opérateur surface" : "Secouriste") + '">' +
+          (previousRole === "operateur" ? "👤 Retour Opérateur" : "🚑 Retour Secouriste") +
+        '</button>'
+      : '';
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
                 (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
               '</button>' +
+              retourPreviousBtn +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -4244,6 +4256,26 @@
       });
     });
 
+    // 🆕 v1.24.1 (KARMA "je peux pas revenir en arrière pour continuer") —
+    // Retour au rôle précédent (vue Opérateur ou Secouriste) après une
+    // « Prendre la main » sur cette équipe. Restore role + currentEquipeId,
+    // clear les flags _previousRole/_previousEquipeId, re-render live.
+    corps.querySelectorAll('[data-action="live-retour-previous-role"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const prevRole = s.execution._previousRole;
+        if (!prevRole) return;
+        s.execution.role = prevRole;
+        s.execution.currentEquipeId = s.execution._previousEquipeId || null;
+        // Clean : retire les marqueurs internes (anti-pollution payload export)
+        delete s.execution._previousRole;
+        delete s.execution._previousEquipeId;
+        _commitMutation(s);
+        const label = (prevRole === "operateur") ? "👤 Opérateur surface" : "🚑 Secouriste libre";
+        _toast("↩️ Retour : " + label, "info");
+        _switchView("live");
+      });
+    });
+
     // Recentrer carte sur l'étape
     corps.querySelectorAll('[data-action="live-recentrer"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
@@ -4399,16 +4431,23 @@
       });
     });
     // "Prendre la main" → bascule en mode Équipe pour cette équipe
+    // 🆕 v1.24.1 (KARMA "je rentre sur le tableau alpha [...] je peux pas
+    // revenir en arrière pour continuer") : mémorise le rôle d'origine
+    // dans s.execution._previousRole pour permettre le retour. Persisté
+    // dans le scénario localStorage → survit au reload.
     corps.querySelectorAll('[data-action="live-op-prendre-main"]').forEach(function(btn) {
       btn.addEventListener("click", function() {
         const equipeId = btn.getAttribute("data-equipe-id");
         if (!equipeId) return;
         const g = s.groupes.find(function(gr) { return gr.id === equipeId; });
         if (!g) return;
+        // Stocke le rôle d'origine pour permettre le retour ultérieur
+        s.execution._previousRole = s.execution.role;          // "operateur" ou "secouriste"
+        s.execution._previousEquipeId = s.execution.currentEquipeId;  // null normalement
         s.execution.role = "equipe";
         s.execution.currentEquipeId = equipeId;
         _commitMutation(s);
-        _toast("🚨 Mode Équipe : " + g.nom, "info");
+        _toast("🚨 Mode Équipe : " + g.nom + " (bouton « 👤 Retour Opérateur » pour revenir)", "info");
         _switchView("live");
       });
     });

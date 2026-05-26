@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.24.0` (26/05/2026) — MINOR « Mode Secours Phase 3 : exploitation terrain » — Bouton 🚀 Lancer + 3 vues Live (Opérateur surface / Équipe / Secouriste libre) + 7 statuts d'étape + store IDB photos dédié
-**📦 Précédentes shipped main** : `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json) ; `v1.23.3` (Équipe M-LVL assignable)
+**📦 Version courante** : `v1.24.1` (26/05/2026) — PATCH fix UX Phase 3 « bouton 👤 Retour Opérateur après Prendre la main » — l'user n'était plus bloqué en mode Équipe
+**📦 Précédentes shipped main** : `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,65 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-24-0" open>
+<details id="v1-24-1" open>
+<summary><strong>🗓️ 26/05/2026 — 🩹 v1.24.1 : Release PATCH fix UX Phase 3 — Bouton « 👤 Retour Opérateur » après « Prendre la main »</strong></summary>
+
+Release PATCH (bump Z : 1.24.0 → 1.24.1). Bug remonté KARMA terrain immédiatement après v1.24.0 : « premier bug en mode opérateur je rentre sur le tableau alpha et rentre des informations. sauf que je peux pas revenir en arriére pour continuer ».
+
+### 🐛 Root cause
+
+Le bouton « 🚨 Prendre la main » dans la vue Live Mode Opérateur bascule `execution.role` de `"operateur"` à `"equipe"` + set `currentEquipeId`, mais **sans mémoriser le rôle précédent**. Une fois en mode Équipe, AUCUN bouton ne permettait de revenir vers la vue Opérateur surface pour superviser les autres équipes. L'user était piégé :
+- soit faire « ⏸️ Voir l'édition » + relancer (qui aurait réinitialisé)
+- soit pire, terminer le plan
+
+### ✅ Fix — 2 modifs minimales et propres
+
+```js
+// (1) Au clic "Prendre la main", stockage du rôle d'origine
+s.execution._previousRole = s.execution.role;          // "operateur" ou "secouriste"
+s.execution._previousEquipeId = s.execution.currentEquipeId;
+s.execution.role = "equipe";
+s.execution.currentEquipeId = equipeId;
+
+// (2) Bouton conditionnel dans le footer vue Live Mode Équipe
+const retourBtn = previousRole
+  ? '<button data-action="live-retour-previous-role">👤 Retour Opérateur</button>'
+  : '';
+
+// (3) Handler retour : restore role + clean flags
+s.execution.role = prevRole;
+s.execution.currentEquipeId = s.execution._previousEquipeId || null;
+delete s.execution._previousRole;
+delete s.execution._previousEquipeId;
+```
+
+### 💡 Toast amélioré
+
+Au moment de « Prendre la main » : `🚨 Mode Équipe : Alpha (bouton « 👤 Retour Opérateur » pour revenir)` → guide l'user vers l'action de retour dès la transition.
+
+### 🛡️ Préservation de l'état
+
+Les flags `_previousRole` / `_previousEquipeId` sont stockés dans `s.execution` → persistent à travers **reload, plan switch, fermeture/réouverture modale Mode Secours, bascule edit ↔ live**. L'user peut prendre la main sur Alpha, fermer son téléphone, revenir 30min après, et trouver le bouton retour Opérateur intact.
+
+### 🧹 Cleanup au retour
+
+`delete s.execution._previousRole` + `delete s.execution._previousEquipeId` au moment du retour explicite, pour éviter d'avoir le bouton « Retour » qui reste affiché à tort si l'user repasse plus tard par cette équipe via une nouvelle « Prendre la main ».
+
+### 📦 Sources de vérité v1.24.1
+
+- `version.json` → `v1.24.1`
+- `js/copyright.js > __MKM__.build` → `v1.24.1`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.24.1`
+
+Aucun nouveau fichier. Modifs : `js/secoursMode.js` uniquement (+~30 lignes : stockage flags dans handler `live-op-prendre-main` + bouton conditionnel dans footer vue Équipe + handler `live-retour-previous-role`).
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.24.0 (flags optionnels — absent = bouton retour invisible = comportement v1.24.0 strict). Si tu étais bloqué en mode Équipe après « Prendre la main » sur v1.24.0, le bouton retour apparaîtra automatiquement APRÈS un nouveau « Prendre la main » suivant le reload v1.24.1. Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-24-0">
 <summary><strong>🗓️ 26/05/2026 — 🚀 v1.24.0 : Release MINOR — Mode Secours Phase 3 (exploitation terrain : bouton Lancer + 3 vues Live)</strong></summary>
 
 Release MINOR (bump Y : 1.23.x → 1.24.0). Demande KARMA : « maintenant on doit pouvoir Lancer le plan de secour et dire en gros, je suis dans l'Equipe X, je suis opérateur de surface ... ca charge le plan, etape par etape, ou on peux commenter au fil du suivi de partout etape 1 : RAS, Etape 2 : passage récent ... ».
