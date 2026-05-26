@@ -174,10 +174,31 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.23.7</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.24.0</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.24.0 (Release MINOR — Mode Secours Phase 3 : exploitation terrain)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission</strong>.
+    Pivot architectural majeur : le Mode Secours acquiert une vue d'exécution temps réel.
+    (1) Bouton « 🚀 Lancer le plan » + modale charte sélection rôle — pure UI locale.
+    (2) Modèle <code>scenario.execution</code> persisté dans le scénario <code>localStorage</code>
+    existant (pas de nouveau key).
+    (3) <strong>3 vues Live</strong> (Équipe step-by-step, Opérateur cards multi-équipes,
+    Secouriste notes libres) — pure UI charte + manipulation DOM locale +
+    render Leaflet existant.
+    (4) <strong>Nouveau store IDB local <code>myktamap_secours_photos</code> v1</strong>
+    (module <code>js/secoursPhotos.js</code>) — séparé du store POI pour cleanup/compteurs
+    indépendants. Lecture/écriture client uniquement, jamais transmis. Compression
+    auto canvas JPEG q85 max 1920px côté client. Max 5 photos/étape.
+    (5) Timer global temps réel = <code>setInterval</code> 1s qui rafraîchit le DOM
+    <code>data-live-timer</code> — pas de I/O réseau.
+    <strong>Aucune nouvelle CSP <code>connect-src</code> requise</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — strictement offline-first, 100 % local.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1038,6 +1059,21 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.24.0</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release MINOR — Mode Secours Phase 3 (exploitation terrain : bouton Lancer + 3 vues Live)</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission</strong>.
+          Pivot architectural : scénario passe d'état CRÉATION à état EXÉCUTION temps réel.
+          3 vues Live (Équipe step-by-step, Opérateur surface multi-équipes, Secouriste libre notes).
+          Nouveau store IDB local <code>myktamap_secours_photos</code> v1 (séparé du store POI).
+          7 statuts d'étape (RAS, Suspect, Bloqué, Indice, Aide, Demi-tour, Victime).
+          Timer global temps réel <code>setInterval</code> 1s sur DOM <code>data-live-timer</code>.
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression — strictement offline-first.
+        </td>
+      </tr>
       <tr>
         <td>v1.23.7</td>
         <td>26/05/2026</td>

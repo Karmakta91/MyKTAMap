@@ -106,9 +106,86 @@
   // Vitesse moyenne cataphile pour estimation durée = mètres / sec.
   // Valeur conservatrice basée sur retours terrain (cataphile en groupe avec
   // équipement, progression méthodique en cartographie = ~1 m/s en moyenne,
-  // mais avec arrêts, vérifs, obstacles, on retombe vers 0.5 m/s).
+  // mais arrêts, vérifs, obstacles, on retombe vers 0.5 m/s).
   // Pas configurable en Phase 1 — pourra le devenir en Phase 2.
   const VITESSE_MPS_DEFAUT = 0.5;
+
+  // 🆕 v1.24.0 Phase 3 — TABLEAU_STATUTS pour la vue EXÉCUTION terrain.
+  // Statuts rapides cliquables à chaque étape d'un parcours équipe.
+  // Validation KARMA terrain : 4 statuts de base + 3 critiques (pompiers/spéléo).
+  // Extensibilité : ajouter une entry ici suffit (rendu UI + colors + export
+  // PDF + report JSON suivent automatiquement via cette table).
+  //
+  // Convention : id = ASCII lowercase sans accent (clé localStorage), emoji
+  // pour rendu visuel, label pour UI, color pour swatch/border, severity
+  // pour tri/escalade dans la vue Opérateur surface (0=neutre, 1=warning,
+  // 2=alerte, 3=urgence absolue).
+  const TABLEAU_STATUTS = [
+    {
+      id: "pending",
+      emoji: "•",
+      label: "En attente",
+      color: "#8892a4",
+      severity: 0,
+      isPending: true   // marqueur : statut implicite avant interaction user
+    },
+    {
+      id: "ras",
+      emoji: "🟢",
+      label: "RAS",
+      color: "#6ee287",
+      severity: 0
+    },
+    {
+      id: "suspect",
+      emoji: "🟡",
+      label: "Suspect",
+      color: "#f4c542",
+      severity: 1
+    },
+    {
+      id: "bloque",
+      emoji: "⬛",
+      label: "Bloqué",
+      color: "#404040",
+      severity: 1
+    },
+    {
+      id: "indice",
+      emoji: "🔵",
+      label: "Indice",
+      color: "#4488ff",
+      severity: 1
+    },
+    {
+      id: "aide",
+      emoji: "🟠",
+      label: "Aide demandée",
+      color: "#ff8c00",
+      severity: 2
+    },
+    {
+      id: "demi-tour",
+      emoji: "🟣",
+      label: "Demi-tour forcé",
+      color: "#9d44ff",
+      severity: 1
+    },
+    {
+      id: "victime",
+      emoji: "🚨",
+      label: "Victime trouvée",
+      color: "#ff4444",
+      severity: 3,
+      pulse: true   // marqueur : déclenche animation pulse dans vue Opérateur
+    }
+  ];
+
+  // Helper d'accès — retourne l'entry du tableau par id (fallback pending).
+  function _getStatutInfo(statutId) {
+    return TABLEAU_STATUTS.find(function(st) { return st.id === statutId; })
+        || TABLEAU_STATUTS[0];   // fallback pending
+  }
 
   // ============================================================
   // STATE MODULE-LEVEL
@@ -309,6 +386,299 @@
     }
     _saveScenarios();
     _notify();
+    return true;
+  }
+
+  // ============================================================
+  // 🆕 v1.24.0 Phase 3 — CRUD EXECUTION (mode terrain)
+  // ============================================================
+  //
+  // Modèle de données scenario.execution :
+  //   {
+  //     active:          boolean,             // true tant que le plan est lancé
+  //     startedAt:       ISO,                 // début du déclenchement
+  //     endedAt:         ISO | null,          // null = en cours
+  //     pausedAt:        ISO | null,          // si pause, ISO du début de pause
+  //     pausedTotalMs:   number,              // cumul des pauses (pour timer juste)
+  //     role:            "operateur" | "equipe" | "secouriste",
+  //     currentEquipeId: string | null,       // équipe focus si role="equipe"
+  //     etapes: {
+  //       [equipeId]: [
+  //         {
+  //           type:          "entree" | "interm" | "sortie",
+  //           idx:           number,           // 0=entrée, 1..N=intermédiaires, N+1=sortie
+  //           label:         string,           // hérité du parcours (POI name ou coords)
+  //           observations:  string,           // user input libre
+  //           statut:        "pending" | "ras" | "suspect" | ... (cf TABLEAU_STATUTS),
+  //           photoIds:      [string, ...],    // ids dans MyKTAMapSecoursPhotos (IDB)
+  //           startedAt:     ISO | null,       // quand l'équipe arrive à cette étape
+  //           completedAt:   ISO | null        // quand elle passe à la suivante
+  //         },
+  //         ...
+  //       ],
+  //       // Pour role="secouriste" : tableau de notes libres avec timestamps
+  //       _notes_libres: [
+  //         { id, ts, statut, texte, photoIds }
+  //       ]
+  //     }
+  //   }
+  //
+  // Persistance dans le scénario localStorage existant (myktamap_secours_v1_<planId>).
+  // Pas de nouvelle DB. Le plan switch ne ferme PAS l'execution active.
+
+  // Helper interne — construit le tableau d'étapes pour une équipe depuis son
+  // parcours actuel (entree + intermediaires + sortie). À appeler au lancement.
+  // Crée des étapes avec statut "pending" partout. Ne touche pas aux étapes
+  // déjà existantes si l'execution a été relancée (préserve observations).
+  function _buildEtapesPourEquipe(g) {
+    const etapes = [];
+    let idx = 0;
+    if (g.entree) {
+      etapes.push({
+        type:         "entree",
+        idx:          idx++,
+        label:        g.entree.label || _fmtPoint(g.entree),
+        observations: "",
+        statut:       "pending",
+        photoIds:     [],
+        startedAt:    null,
+        completedAt:  null
+      });
+    }
+    if (Array.isArray(g.intermediaires)) {
+      g.intermediaires.forEach(function(wp) {
+        etapes.push({
+          type:         "interm",
+          idx:          idx++,
+          label:        wp.label || _fmtPoint(wp),
+          observations: "",
+          statut:       "pending",
+          photoIds:     [],
+          startedAt:    null,
+          completedAt:  null
+        });
+      });
+    }
+    if (g.sortie) {
+      etapes.push({
+        type:         "sortie",
+        idx:          idx++,
+        label:        g.sortie.label || _fmtPoint(g.sortie),
+        observations: "",
+        statut:       "pending",
+        photoIds:     [],
+        startedAt:    null,
+        completedAt:  null
+      });
+    }
+    return etapes;
+  }
+
+  // Lance l'exécution d'un scénario. Initialise s.execution avec étapes
+  // par équipe construites depuis les parcours. Marque active=true +
+  // startedAt = now. Cas particulier role="secouriste" : pas d'équipes
+  // utilisées, juste un tableau _notes_libres pour les notes en vrac.
+  // Retourne le scénario muté ou null si introuvable.
+  function lancerExecution(scenarioId, opts) {
+    const s = get(scenarioId);
+    if (!s) return null;
+    opts = opts || {};
+    const role = opts.role || "operateur";
+    const currentEquipeId = opts.currentEquipeId || null;
+
+    // Si une execution existe déjà et est active → ne pas écraser (l'user
+    // doit l'arrêter explicitement avant de relancer). Permettre reprise
+    // via setRole/setCurrentEquipe au lieu de relance.
+    if (s.execution && s.execution.active === true) {
+      // Update du rôle/équipe sans casser les étapes existantes
+      s.execution.role = role;
+      s.execution.currentEquipeId = currentEquipeId;
+      _commitMutation(s);
+      return s;
+    }
+
+    // Construction initiale ou réinitialisation
+    const etapes = {};
+    if (role !== "secouriste") {
+      // Mode équipe/opérateur : 1 array d'étapes par équipe
+      (s.groupes || []).forEach(function(g) {
+        etapes[g.id] = _buildEtapesPourEquipe(g);
+      });
+    } else {
+      // Mode secouriste libre : pas d'équipes structurées
+      etapes._notes_libres = [];
+    }
+
+    s.execution = {
+      active:          true,
+      startedAt:       _nowIso(),
+      endedAt:         null,
+      pausedAt:        null,
+      pausedTotalMs:   0,
+      role:            role,
+      currentEquipeId: currentEquipeId,
+      etapes:          etapes
+    };
+    _commitMutation(s);
+    return s;
+  }
+
+  // Arrête l'exécution d'un scénario. Garde execution comme historique
+  // (active=false + endedAt set). Permet le re-affichage du rapport final
+  // ultérieurement sans perdre les observations.
+  function arreterExecution(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.active) return null;
+    // Si on était en pause, comptabilise le dernier segment avant d'arrêter
+    if (s.execution.pausedAt) {
+      const pauseDur = Date.now() - Date.parse(s.execution.pausedAt);
+      if (pauseDur > 0) s.execution.pausedTotalMs += pauseDur;
+      s.execution.pausedAt = null;
+    }
+    s.execution.active = false;
+    s.execution.endedAt = _nowIso();
+    _commitMutation(s);
+    return s;
+  }
+
+  // Met en pause OU reprend l'exécution. Calcule pausedTotalMs pour que
+  // le timer affiché reste juste (= temps écoulé - temps de pause cumulé).
+  function pauseExecution(scenarioId, paused) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.active) return null;
+    if (paused && !s.execution.pausedAt) {
+      // Démarre une pause
+      s.execution.pausedAt = _nowIso();
+    } else if (!paused && s.execution.pausedAt) {
+      // Reprend
+      const pauseDur = Date.now() - Date.parse(s.execution.pausedAt);
+      if (pauseDur > 0) s.execution.pausedTotalMs += pauseDur;
+      s.execution.pausedAt = null;
+    }
+    _commitMutation(s);
+    return s;
+  }
+
+  // Update partiel d'une étape d'équipe (whitelist anti-pollution).
+  // Champs mutables : observations, statut, photoIds, startedAt, completedAt.
+  function updateEtape(scenarioId, equipeId, etapeIdx, partial) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.etapes) return null;
+    const arr = s.execution.etapes[equipeId];
+    if (!Array.isArray(arr) || etapeIdx < 0 || etapeIdx >= arr.length) return null;
+    const et = arr[etapeIdx];
+    if (!partial || typeof partial !== "object") return et;
+    if ("observations" in partial && typeof partial.observations === "string") {
+      et.observations = partial.observations.slice(0, 2000);
+    }
+    if ("statut" in partial && typeof partial.statut === "string") {
+      // Valide contre TABLEAU_STATUTS
+      const info = TABLEAU_STATUTS.find(function(st) { return st.id === partial.statut; });
+      if (info) et.statut = info.id;
+    }
+    if ("photoIds" in partial && Array.isArray(partial.photoIds)) {
+      et.photoIds = partial.photoIds.slice();
+    }
+    if ("startedAt" in partial) {
+      et.startedAt = partial.startedAt;   // string ISO ou null accepté
+    }
+    if ("completedAt" in partial) {
+      et.completedAt = partial.completedAt;
+    }
+    _commitMutation(s);
+    return et;
+  }
+
+  // Raccourci avec timestamps auto : marque le statut d'une étape +
+  // pose completedAt = now si non-pending (= étape effectivement traitée).
+  // Si l'étape précédente n'avait pas de completedAt, on lui en pose un aussi
+  // (l'équipe a logiquement passé l'étape précédente avant de marquer celle-ci).
+  function marquerEtapeStatut(scenarioId, equipeId, etapeIdx, statutId) {
+    const partial = { statut: statutId };
+    const info = TABLEAU_STATUTS.find(function(st) { return st.id === statutId; });
+    if (info && !info.isPending) {
+      partial.completedAt = _nowIso();
+    }
+    const updated = updateEtape(scenarioId, equipeId, etapeIdx, partial);
+    // Auto-fix : pose startedAt sur l'étape courante si elle n'en avait pas
+    if (updated && !updated.startedAt) {
+      updateEtape(scenarioId, equipeId, etapeIdx, { startedAt: _nowIso() });
+    }
+    return updated;
+  }
+
+  // Retourne le temps écoulé depuis le lancement (en ms), en excluant le
+  // temps de pause cumulé. Si l'execution est en pause, fige la valeur à
+  // l'instant du début de pause (pas de progression visuelle pendant pause).
+  function getExecutionDureeMs(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.startedAt) return 0;
+    const start = Date.parse(s.execution.startedAt);
+    const end = s.execution.endedAt
+                ? Date.parse(s.execution.endedAt)
+                : (s.execution.pausedAt ? Date.parse(s.execution.pausedAt) : Date.now());
+    const grossMs = end - start;
+    return Math.max(0, grossMs - (s.execution.pausedTotalMs || 0));
+  }
+
+  // Raccourcis lecture
+  function _estExecutionActive(s) {
+    return !!(s && s.execution && s.execution.active === true);
+  }
+  function _getEtapesEquipe(s, equipeId) {
+    if (!s || !s.execution || !s.execution.etapes) return [];
+    const arr = s.execution.etapes[equipeId];
+    return Array.isArray(arr) ? arr : [];
+  }
+
+  // Mode secouriste libre — ajoute une note en vrac dans _notes_libres.
+  // Pas d'étape structurée. Note = { id, ts, statut, texte, photoIds }.
+  function ajouterNoteLibre(scenarioId, opts) {
+    const s = get(scenarioId);
+    if (!s || !s.execution) return null;
+    if (!s.execution.etapes._notes_libres) s.execution.etapes._notes_libres = [];
+    opts = opts || {};
+    const note = {
+      id:       _genId("note"),
+      ts:       _nowIso(),
+      statut:   typeof opts.statut === "string" ? opts.statut : "ras",
+      texte:    typeof opts.texte === "string" ? opts.texte.slice(0, 2000) : "",
+      photoIds: Array.isArray(opts.photoIds) ? opts.photoIds.slice() : []
+    };
+    s.execution.etapes._notes_libres.push(note);
+    _commitMutation(s);
+    return note;
+  }
+
+  // Update une note libre par id (whitelist : statut, texte, photoIds).
+  function updateNoteLibre(scenarioId, noteId, partial) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.etapes._notes_libres) return null;
+    const note = s.execution.etapes._notes_libres.find(function(n) { return n.id === noteId; });
+    if (!note || !partial) return null;
+    if ("statut" in partial && typeof partial.statut === "string") {
+      const info = TABLEAU_STATUTS.find(function(st) { return st.id === partial.statut; });
+      if (info) note.statut = info.id;
+    }
+    if ("texte" in partial && typeof partial.texte === "string") {
+      note.texte = partial.texte.slice(0, 2000);
+    }
+    if ("photoIds" in partial && Array.isArray(partial.photoIds)) {
+      note.photoIds = partial.photoIds.slice();
+    }
+    _commitMutation(s);
+    return note;
+  }
+
+  // Supprime une note libre par id.
+  function supprimerNoteLibre(scenarioId, noteId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.etapes._notes_libres) return false;
+    const arr = s.execution.etapes._notes_libres;
+    const idx = arr.findIndex(function(n) { return n.id === noteId; });
+    if (idx < 0) return false;
+    arr.splice(idx, 1);
+    _commitMutation(s);
     return true;
   }
 
@@ -2087,14 +2457,44 @@
     });
   }
 
-  // Bascule entre les 3 vues : "list" (scénarios) | "create" (stepper) | "edit" (free-form)
+  // Bascule entre les 4 vues : "list" (scénarios) | "create" (stepper) |
+  // "edit" (free-form) | "live" (mode terrain v1.24.0 Phase 3)
   function _switchView(view) {
     const corps = document.getElementById("kta-secours-corps");
     if (!corps) return;
     if (view === "list")   corps.innerHTML = _renderListView();
     if (view === "create") corps.innerHTML = _renderCreateView();
     if (view === "edit")   corps.innerHTML = _renderEditView();
+    if (view === "live")   corps.innerHTML = _renderLiveView();   // 🆕 v1.24.0 Phase 3
     _bindViewHandlers(view);
+    // 🆕 v1.24.0 Phase 3 — Démarre/arrête le timer global selon la vue
+    if (view === "live") _startLiveTimer();
+    else                 _stopLiveTimer();
+  }
+
+  // 🆕 v1.24.0 Phase 3 — Timer global pour rafraîchir l'affichage des durées
+  // dans la vue Live (header timer + dernière obs). 1 tick/sec.
+  let _liveTimerId = null;
+  function _startLiveTimer() {
+    _stopLiveTimer();
+    _liveTimerId = setInterval(_majLiveTimers, 1000);
+  }
+  function _stopLiveTimer() {
+    if (_liveTimerId) {
+      clearInterval(_liveTimerId);
+      _liveTimerId = null;
+    }
+  }
+  // Met à jour uniquement les nœuds DOM marqués data-live-timer (sans
+  // re-render complet de la vue, évite les flash + perte focus dans
+  // textarea observations en cours de saisie).
+  function _majLiveTimers() {
+    if (!_currentScenarioId) return;
+    const dureeMs = getExecutionDureeMs(_currentScenarioId);
+    const dureeStr = _formatDureeMs(dureeMs);
+    document.querySelectorAll('[data-live-timer="duree"]').forEach(function(el) {
+      el.textContent = dureeStr;
+    });
   }
 
   // ============================================================
@@ -2213,6 +2613,12 @@
                    (_overlayLayer ? '🗺️ Masquer' : '🗺️ Voir sur carte') +
                  '</button>' +
                '</div>';
+
+    // 🆕 v1.24.0 Phase 3 — Bandeau "Lancer le plan" / "Plan actif".
+    // Si execution active → bandeau vert avec bouton "Reprendre la vue Live"
+    //                       + bouton "Arrêter le plan"
+    // Sinon                → bouton CTA jaune "🚀 Lancer le plan de secours"
+    html += _renderLancerBandeau(s);
 
     // Section 1 — Contexte
     html += '<details class="kta-secours-section" open>' +
@@ -2383,6 +2789,615 @@
   // le réseau (tracker actif lors de ses sorties précédentes) → la heatmap
   // montre les zones bien connues vs les zones blanches (sous-explorées).
   let _secoursHeatmapActive = false;
+
+  // ============================================================
+  // 🆕 v1.24.0 Phase 3 — BANDEAU "LANCER LE PLAN" + MODALE SÉLECTION RÔLE
+  // ============================================================
+
+  // Affiche le bandeau d'état d'exécution. 2 modes :
+  //   • execution active → bandeau vert "🟢 PLAN ACTIF" + boutons Reprendre/Arrêter
+  //   • sinon            → bouton CTA "🚀 Lancer le plan de secours"
+  // Skip silencieux si pas d'équipes (= rien à lancer).
+  function _renderLancerBandeau(s) {
+    if (!s || !Array.isArray(s.groupes) || s.groupes.length === 0) {
+      return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-disabled">' +
+               '<span class="kta-secours-lancer-bandeau-icon">🚀</span>' +
+               '<span>Ajoute au moins une équipe pour pouvoir lancer le plan de secours.</span>' +
+             '</div>';
+    }
+    if (_estExecutionActive(s)) {
+      const exec = s.execution;
+      const roleLabel = (exec.role === "operateur") ? "👤 Opérateur surface"
+                      : (exec.role === "secouriste") ? "🚑 Secouriste libre"
+                      : "🚨 Équipe terrain";
+      const dureeMs = getExecutionDureeMs(s.id);
+      const dureeStr = _formatDureeMs(dureeMs);
+      return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-active">' +
+               '<div class="kta-secours-lancer-bandeau-info">' +
+                 '<div class="kta-secours-lancer-bandeau-titre">' +
+                   '<span class="kta-secours-lancer-bandeau-dot"></span>' +
+                   ' PLAN ACTIF — ' + _escHtml(roleLabel) +
+                 '</div>' +
+                 '<div class="kta-secours-lancer-bandeau-sub">' +
+                   '⏱️ Lancé depuis ' + dureeStr +
+                   (exec.pausedAt ? ' · ⏸️ En pause' : '') +
+                 '</div>' +
+               '</div>' +
+               '<div class="kta-secours-lancer-bandeau-actions">' +
+                 '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
+                   '▶️ Reprendre la vue Live' +
+                 '</button>' +
+                 '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan" title="Termine le plan et conserve les observations comme rapport">' +
+                   '⏹️ Arrêter' +
+                 '</button>' +
+               '</div>' +
+             '</div>';
+    }
+    return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-cta">' +
+             '<div class="kta-secours-lancer-bandeau-info">' +
+               '<div class="kta-secours-lancer-bandeau-titre">🚀 Prêt à déclencher le plan de secours ?</div>' +
+               '<div class="kta-secours-lancer-bandeau-sub">' +
+                 'Lance le mode terrain step-by-step pour suivre les équipes en temps réel.' +
+               '</div>' +
+             '</div>' +
+             '<button class="kta-btn kta-btn-primary kta-btn-lg" data-action="ouvrir-lancer-modale">' +
+               '🚀 Lancer le plan de secours' +
+             '</button>' +
+           '</div>';
+  }
+
+  // Formate une durée en ms en "Xh YYmin" ou "YYmin" ou "Ss".
+  function _formatDureeMs(ms) {
+    if (!ms || ms < 0) ms = 0;
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    if (h > 0) return h + "h " + String(m).padStart(2, "0") + "min";
+    if (m > 0) return m + "min " + String(s).padStart(2, "0") + "s";
+    return s + "s";
+  }
+
+  // Modale de sélection rôle + équipe avant lancement.
+  // onConfirm({role, currentEquipeId}) appelé si user valide ; sinon noop au cancel.
+  function _afficherModaleLancer(scenarioId, onConfirm) {
+    const s = get(scenarioId);
+    if (!s) return;
+    const existing = document.getElementById("kta-secours-lancer-modale");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    const groupesOpts = (s.groupes || []).map(function(g) {
+      const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+      return '<option value="' + _escAttr(g.id) + '">' +
+               _escHtml(g.nom) + ' (' + _escHtml(couleur.nom) + ')' +
+             '</option>';
+    }).join('');
+    const defaultEquipeId = (s.groupes && s.groupes.length > 0) ? s.groupes[0].id : "";
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-lancer-modale";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100012";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:90vh; border-left:6px solid #f4c542;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0; color:#f4c542;">🚀 Lancer le plan de secours</h2>' +
+          '<button class="kta-readme-modal-close" data-action="cancel-lancer" aria-label="Annuler">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p style="margin:0 0 14px 0;">Avant de démarrer, indique ton rôle dans cette mission :</p>' +
+          '<div class="kta-secours-lancer-roles">' +
+            '<label class="kta-secours-lancer-role-row">' +
+              '<input type="radio" name="kta-lancer-role" value="operateur" checked>' +
+              '<div class="kta-secours-lancer-role-info">' +
+                '<div class="kta-secours-lancer-role-titre">👤 Opérateur de surface</div>' +
+                '<div class="kta-secours-lancer-role-desc">' +
+                  'Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en parallèle, ' +
+                  'tu peux éditer leurs observations en supervision.' +
+                '</div>' +
+              '</div>' +
+            '</label>' +
+            '<label class="kta-secours-lancer-role-row">' +
+              '<input type="radio" name="kta-lancer-role" value="equipe">' +
+              '<div class="kta-secours-lancer-role-info">' +
+                '<div class="kta-secours-lancer-role-titre">🚨 Équipe sur le terrain</div>' +
+                '<div class="kta-secours-lancer-role-desc">' +
+                  'Tu fais partie d\'une équipe assignée. Tu suis ton parcours étape par étape ' +
+                  'et tu commentes en live.' +
+                '</div>' +
+                '<select id="kta-lancer-equipe-select" class="kta-secours-lancer-equipe-select" disabled>' +
+                  groupesOpts +
+                '</select>' +
+              '</div>' +
+            '</label>' +
+            '<label class="kta-secours-lancer-role-row">' +
+              '<input type="radio" name="kta-lancer-role" value="secouriste">' +
+              '<div class="kta-secours-lancer-role-info">' +
+                '<div class="kta-secours-lancer-role-titre">🚑 Secouriste libre</div>' +
+                '<div class="kta-secours-lancer-role-desc">' +
+                  'Tu interviens sans équipe pré-assignée (renfort ponctuel, reconnaissance). ' +
+                  'Tu prends des notes libres avec timestamps.' +
+                '</div>' +
+              '</div>' +
+            '</label>' +
+          '</div>' +
+          '<p style="margin-top:14px; color:#8892a4; font-size:13px; font-style:italic;">' +
+            '💡 Tu pourras changer de rôle plus tard sans perdre les observations déjà enregistrées.' +
+          '</p>' +
+          '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel-lancer">❌ Annuler</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="confirm-lancer">✓ Démarrer maintenant</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+
+    overlay.querySelectorAll('[data-action="cancel-lancer"]').forEach(function(btn) {
+      btn.addEventListener("click", _close);
+    });
+    // Toggle activation du select équipe selon role
+    const selectEquipe = overlay.querySelector('#kta-lancer-equipe-select');
+    overlay.querySelectorAll('input[name="kta-lancer-role"]').forEach(function(r) {
+      r.addEventListener("change", function() {
+        const isEquipe = (overlay.querySelector('input[name="kta-lancer-role"]:checked').value === "equipe");
+        if (selectEquipe) selectEquipe.disabled = !isEquipe;
+      });
+    });
+    overlay.querySelectorAll('[data-action="confirm-lancer"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const role = overlay.querySelector('input[name="kta-lancer-role"]:checked').value;
+        const equipeId = (role === "equipe" && selectEquipe) ? selectEquipe.value : null;
+        if (role === "equipe" && !equipeId) {
+          _toast("⚠️ Sélectionne une équipe.", "warn");
+          return;
+        }
+        _close();
+        try { onConfirm({ role: role, currentEquipeId: equipeId }); } catch(e) {
+          console.warn("[SecoursMode] onConfirm exception :", e);
+        }
+      });
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // ============================================================
+  // 🆕 v1.24.0 Phase 3 — VUE LIVE (mode exécution terrain)
+  // ============================================================
+  //
+  // Dispatcher principal selon le rôle de l'execution.active. Si pas
+  // d'execution active (cas impossible normalement car le bandeau pousse
+  // l'user vers la vue edit), fallback explicite vers la vue edit avec
+  // toast d'erreur.
+  function _renderLiveView() {
+    const s = get(_currentScenarioId);
+    if (!s || !_estExecutionActive(s)) {
+      // Cas dégénéré : on est arrivé sur la vue live sans execution active
+      setTimeout(function() { _switchView("edit"); }, 100);
+      return '<div class="kta-secours-live-error">' +
+               '<p>⚠️ Aucun plan de secours actif. Retour à l\'édition…</p>' +
+             '</div>';
+    }
+    const role = s.execution.role;
+    if (role === "equipe")     return _renderLiveViewEquipe(s);
+    if (role === "operateur")  return _renderLiveViewOperateur(s);
+    if (role === "secouriste") return _renderLiveViewSecouriste(s);
+    return '<div class="kta-secours-live-error"><p>⚠️ Rôle inconnu : ' + _escHtml(role) + '</p></div>';
+  }
+
+  // 🆕 v1.24.0 Phase 3 — State module-level pour vue Live Équipe
+  // Stocke l'étape courante focalisée (par défaut : 1ère étape pending).
+  // Réinitialisé à chaque _switchView("live") via _liveEquipeInitFocus.
+  let _liveEquipeFocusIdx = 0;
+
+  function _renderLiveViewEquipe(s) {
+    const equipeId = s.execution.currentEquipeId;
+    const g = (s.groupes || []).find(function(gr) { return gr.id === equipeId; });
+    if (!g) {
+      return '<div class="kta-secours-live-error">' +
+               '<p>⚠️ Équipe introuvable. Retour à l\'édition…</p>' +
+             '</div>';
+    }
+    const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+    const etapes = _getEtapesEquipe(s, equipeId);
+    if (etapes.length === 0) {
+      return '<div class="kta-secours-live-error">' +
+               '<p>⚠️ Aucune étape définie pour cette équipe (entrée/sortie manquantes). Retour à l\'édition pour compléter le parcours.</p>' +
+               '<button class="kta-btn kta-btn-primary" data-action="back-to-edit">← Retour édition</button>' +
+             '</div>';
+    }
+    // Init focus : 1ère étape pending sinon dernière
+    _liveEquipeInitFocus(etapes);
+    const idx = _liveEquipeFocusIdx;
+    const etape = etapes[idx];
+    const statutInfo = _getStatutInfo(etape.statut);
+    const photosCount = Array.isArray(etape.photoIds) ? etape.photoIds.length : 0;
+    const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
+
+    let html = '';
+
+    // ─── Header sticky avec timer + équipe ───
+    html += '<div class="kta-secours-live-header" style="border-left:6px solid ' + couleur.hex + ';">' +
+              '<div class="kta-secours-live-header-titre">' +
+                '<span class="kta-secours-live-header-swatch" style="background:' + couleur.hex + ';"></span>' +
+                '<strong>' + _escHtml(g.nom) + '</strong>' +
+                '<span class="kta-secours-live-header-meta">' +
+                  ' · Étape ' + (idx + 1) + '/' + etapes.length +
+                '</span>' +
+              '</div>' +
+              '<div class="kta-secours-live-header-timer">' +
+                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+              '</div>' +
+            '</div>';
+
+    // ─── Stepper visuel cliquable ───
+    html += '<div class="kta-secours-live-stepper">';
+    etapes.forEach(function(et, i) {
+      const isCurrent = (i === idx);
+      const stInfo = _getStatutInfo(et.statut);
+      const cls = isCurrent ? 'kta-secours-live-step kta-secours-live-step-current'
+                : (et.completedAt ? 'kta-secours-live-step kta-secours-live-step-done'
+                                  : 'kta-secours-live-step kta-secours-live-step-pending');
+      const labelType = (et.type === "entree") ? "🚪 Entrée"
+                      : (et.type === "sortie") ? "🚪 Sortie"
+                      : ("📍 " + (i));
+      html += '<button class="' + cls + '" data-action="live-goto-step" data-step="' + i + '" ' +
+                'title="' + _escAttr(labelType + " — " + et.label) + '" ' +
+                'style="--kta-step-color:' + stInfo.color + ';">' +
+                '<span class="kta-secours-live-step-emoji">' + stInfo.emoji + '</span>' +
+                '<span class="kta-secours-live-step-idx">' + (i + 1) + '</span>' +
+              '</button>';
+    });
+    html += '</div>';
+
+    // ─── Bloc étape courante ───
+    const typeLabel = (etape.type === "entree") ? "🚪 ENTRÉE"
+                    : (etape.type === "sortie") ? "🚪 SORTIE"
+                    : "📍 ÉTAPE " + idx;
+    html += '<div class="kta-secours-live-etape">' +
+              '<div class="kta-secours-live-etape-titre">' +
+                typeLabel +
+                ' — ' + _escHtml(etape.label || "(sans label)") +
+              '</div>' +
+              '<div class="kta-secours-live-etape-statut" style="border-color:' + statutInfo.color + ';">' +
+                '<span style="font-size:14px;">Statut actuel :</span> ' +
+                '<strong style="color:' + statutInfo.color + ';">' +
+                  statutInfo.emoji + ' ' + _escHtml(statutInfo.label) +
+                '</strong>' +
+              '</div>' +
+              '<div class="kta-secours-live-etape-textarea-wrap">' +
+                '<label for="kta-live-obs-' + idx + '">📝 Observations à cette étape :</label>' +
+                '<textarea id="kta-live-obs-' + idx + '" class="kta-secours-live-etape-textarea" ' +
+                  'rows="3" maxlength="2000" placeholder="Tape ici (ou utilise les boutons ci-dessous)…">' +
+                  _escHtml(etape.observations || "") +
+                '</textarea>' +
+              '</div>' +
+
+              '<div class="kta-secours-live-etape-statuts-rapides">' +
+                '<div class="kta-secours-live-etape-statuts-titre">⚡ Saisie rapide :</div>' +
+                '<div class="kta-secours-live-etape-statuts-row">' +
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                    const isSel = (st.id === etape.statut);
+                    return '<button class="kta-secours-live-statut-btn' + (isSel ? ' kta-secours-live-statut-btn-sel' : '') + '" ' +
+                           'data-action="live-set-statut" data-statut="' + _escAttr(st.id) + '" ' +
+                           'style="--kta-statut-color:' + st.color + ';" ' +
+                           'title="' + _escAttr(st.label) + '">' +
+                             st.emoji + ' ' + _escHtml(st.label) +
+                           '</button>';
+                  }).join('') +
+                '</div>' +
+              '</div>' +
+
+              '<div class="kta-secours-live-etape-actions-row">' +
+                '<button class="kta-btn kta-btn-secondary" data-action="live-photo" ' +
+                  'title="Prendre une photo ou en ajouter une depuis la galerie">' +
+                  '📸 Photo (' + photosCount + '/5)' +
+                '</button>' +
+                '<button class="kta-btn kta-btn-secondary" data-action="live-recentrer">' +
+                  '🎯 Recentrer carte' +
+                '</button>' +
+              '</div>' +
+
+              // Mini-grille des photos déjà attachées
+              _renderLiveEtapePhotos(s, equipeId, idx) +
+
+            '</div>';
+
+    // ─── Navigation prev/next ───
+    html += '<div class="kta-secours-live-nav">' +
+              '<button class="kta-btn kta-btn-ghost" data-action="live-prev"' +
+                (idx === 0 ? ' disabled' : '') + '>← Étape précédente</button>' +
+              '<button class="kta-btn kta-btn-primary" data-action="live-next"' +
+                (idx === etapes.length - 1 ? ' disabled' : '') + '>Étape suivante →</button>' +
+            '</div>';
+
+    // ─── Actions bas : Pause + Terminer + Retour édition ───
+    html += '<div class="kta-secours-live-footer">' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
+                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
+                '⏸️ Voir l\'édition' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
+                '⏹️ Terminer le plan' +
+              '</button>' +
+            '</div>';
+
+    return html;
+  }
+
+  // Init le focus sur la 1ère étape pending (sinon dernière étape).
+  function _liveEquipeInitFocus(etapes) {
+    if (!Array.isArray(etapes) || etapes.length === 0) {
+      _liveEquipeFocusIdx = 0;
+      return;
+    }
+    // Reset à 0 si focus actuel hors range
+    if (_liveEquipeFocusIdx < 0 || _liveEquipeFocusIdx >= etapes.length) {
+      _liveEquipeFocusIdx = 0;
+    }
+    // Si l'étape actuelle est déjà complétée → avance à la prochaine pending
+    if (etapes[_liveEquipeFocusIdx] && etapes[_liveEquipeFocusIdx].completedAt) {
+      const nextPending = etapes.findIndex(function(et, i) {
+        return i > _liveEquipeFocusIdx && !et.completedAt;
+      });
+      if (nextPending >= 0) _liveEquipeFocusIdx = nextPending;
+    }
+  }
+
+  // ─── Vue Live Mode Opérateur surface ──────────────────────────
+  // Affiche une grille de cards par équipe avec : couleur OTAN + statut
+  // courant + dernière obs snippet + dernière modif timestamp.
+  // Card victime trouvée = rouge clignotant. Card aide = orange.
+  // Card terminée = grise. Cliquable pour détails read-only.
+  function _renderLiveViewOperateur(s) {
+    const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
+    const groupes = s.groupes || [];
+
+    let html = '';
+    // Header
+    html += '<div class="kta-secours-live-header kta-secours-live-header-op">' +
+              '<div class="kta-secours-live-header-titre">' +
+                '<strong>👤 Opérateur surface</strong>' +
+                '<span class="kta-secours-live-header-meta">' +
+                  ' · ' + _escHtml(s.nom) +
+                  ' · ' + groupes.length + ' équipe' + (groupes.length > 1 ? 's' : '') +
+                '</span>' +
+              '</div>' +
+              '<div class="kta-secours-live-header-timer">' +
+                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+              '</div>' +
+            '</div>';
+
+    // Grille cards équipes
+    if (groupes.length === 0) {
+      html += '<div class="kta-secours-empty"><div class="kta-secours-empty-icon">🚨</div>' +
+                '<p>Aucune équipe dans ce scénario.</p></div>';
+    } else {
+      html += '<div class="kta-secours-live-op-grid">';
+      groupes.forEach(function(g) {
+        html += _renderOperateurCard(s, g);
+      });
+      html += '</div>';
+    }
+
+    // Actions footer
+    html += '<div class="kta-secours-live-footer">' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
+                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
+                '🗺️ Voir carte globale' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
+                '⏸️ Voir l\'édition' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
+                '⏹️ Terminer le plan' +
+              '</button>' +
+            '</div>';
+    return html;
+  }
+
+  // Rendu d'une card équipe pour la vue Opérateur.
+  // Détermine : étape courante (max idx avec startedAt), statut le + sévère
+  // (parmi toutes les étapes), dernière obs non-vide, % progression.
+  function _renderOperateurCard(s, g) {
+    const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+    const etapes = _getEtapesEquipe(s, g.id);
+    const nbEtapes = etapes.length;
+    if (nbEtapes === 0) {
+      return '<div class="kta-secours-op-card kta-secours-op-card-empty" style="border-left:4px solid ' + couleur.hex + ';">' +
+               '<div class="kta-secours-op-card-titre">' +
+                 '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
+                 _escHtml(g.nom) +
+               '</div>' +
+               '<div class="kta-secours-op-card-meta">⚠️ Parcours non défini</div>' +
+             '</div>';
+    }
+
+    // Détermine étape courante = max idx avec startedAt (sinon 0)
+    let currentIdx = 0;
+    for (let i = etapes.length - 1; i >= 0; i--) {
+      if (etapes[i].startedAt || etapes[i].completedAt) { currentIdx = i; break; }
+    }
+    const nbDone = etapes.filter(function(e) { return !!e.completedAt; }).length;
+    const isTerminee = (nbDone === nbEtapes);
+    const pctDone = Math.round((nbDone / nbEtapes) * 100);
+
+    // Statut le + sévère parmi toutes les étapes
+    let highestStatut = TABLEAU_STATUTS[0];   // pending
+    etapes.forEach(function(et) {
+      const info = _getStatutInfo(et.statut);
+      if (info.severity > highestStatut.severity) highestStatut = info;
+    });
+
+    // Dernière obs non-vide
+    let lastObs = "";
+    for (let i = etapes.length - 1; i >= 0; i--) {
+      if (etapes[i].observations && etapes[i].observations.trim()) {
+        lastObs = etapes[i].observations.trim();
+        break;
+      }
+    }
+    const obsSnippet = lastObs.length > 80 ? lastObs.slice(0, 77) + "…" : lastObs;
+
+    // Classes selon état
+    let cls = "kta-secours-op-card";
+    if (isTerminee) cls += " kta-secours-op-card-terminee";
+    if (highestStatut.id === "victime") cls += " kta-secours-op-card-victime";
+    if (highestStatut.id === "aide")    cls += " kta-secours-op-card-aide";
+
+    // Last modif timestamp (= max completedAt OU startedAt)
+    let lastTs = null;
+    etapes.forEach(function(et) {
+      if (et.completedAt && (!lastTs || Date.parse(et.completedAt) > Date.parse(lastTs))) lastTs = et.completedAt;
+      else if (et.startedAt && (!lastTs || Date.parse(et.startedAt) > Date.parse(lastTs))) lastTs = et.startedAt;
+    });
+    const lastTsStr = lastTs ? new Date(lastTs).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
+
+    let html = '<div class="' + cls + '" data-equipe-id="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
+                 '<div class="kta-secours-op-card-titre">' +
+                   '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
+                   _escHtml(g.nom) +
+                   (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">✓ TERMINÉE</span>' : '') +
+                 '</div>' +
+                 '<div class="kta-secours-op-card-progress">' +
+                   '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
+                   '<span class="kta-secours-op-card-progress-label">' +
+                     'Étape ' + (currentIdx + 1) + '/' + nbEtapes +
+                     ' · ' + pctDone + '%' +
+                   '</span>' +
+                 '</div>' +
+                 '<div class="kta-secours-op-card-statut" style="color:' + highestStatut.color + ';">' +
+                   highestStatut.emoji + ' ' + _escHtml(highestStatut.label) +
+                 '</div>' +
+                 (obsSnippet
+                   ? '<div class="kta-secours-op-card-obs">« ' + _escHtml(obsSnippet) + ' »</div>'
+                   : '<div class="kta-secours-op-card-obs kta-secours-op-card-obs-empty">(aucune observation)</div>') +
+                 '<div class="kta-secours-op-card-meta">⏱️ ' + lastTsStr + '</div>' +
+                 '<div class="kta-secours-op-card-actions">' +
+                   '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-details" data-equipe-id="' + _escAttr(g.id) + '">' +
+                     '👁️ Détails' +
+                   '</button>' +
+                   '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-op-prendre-main" data-equipe-id="' + _escAttr(g.id) + '" title="Bascule en mode Équipe sur cette équipe">' +
+                     '🚨 Prendre la main' +
+                   '</button>' +
+                 '</div>' +
+               '</div>';
+    return html;
+  }
+
+  // ─── Vue Live Mode Secouriste libre ──────────────────────────
+  // Notes en vrac avec timestamps + statuts rapides. Pas d'équipe assignée,
+  // pas d'étapes structurées. Utile pour renforts/reconnaissance.
+  function _renderLiveViewSecouriste(s) {
+    const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
+    const notes = (s.execution.etapes && s.execution.etapes._notes_libres) || [];
+
+    let html = '';
+    // Header
+    html += '<div class="kta-secours-live-header kta-secours-live-header-sec">' +
+              '<div class="kta-secours-live-header-titre">' +
+                '<strong>🚑 Secouriste libre</strong>' +
+                '<span class="kta-secours-live-header-meta">' +
+                  ' · ' + notes.length + ' note' + (notes.length > 1 ? 's' : '') +
+                '</span>' +
+              '</div>' +
+              '<div class="kta-secours-live-header-timer">' +
+                '<span class="kta-secours-live-header-timer-icon">⏱️</span>' +
+                ' <span data-live-timer="duree">' + _escHtml(dureeStr) + '</span>' +
+                (s.execution.pausedAt ? ' <span class="kta-secours-live-pause-tag">⏸️ PAUSE</span>' : '') +
+              '</div>' +
+            '</div>';
+
+    // Bloc création nouvelle note
+    html += '<div class="kta-secours-live-etape">' +
+              '<div class="kta-secours-live-etape-titre">📝 Ajouter une note</div>' +
+              '<div class="kta-secours-live-etape-textarea-wrap">' +
+                '<textarea id="kta-sec-newnote-texte" class="kta-secours-live-etape-textarea" rows="3" maxlength="2000" placeholder="Tape ta note ici (ex: « Galerie Nord exploré, RAS jusqu\'au 1er croisement »)…"></textarea>' +
+              '</div>' +
+              '<div class="kta-secours-live-etape-statuts-rapides">' +
+                '<div class="kta-secours-live-etape-statuts-titre">⚡ Statut associé :</div>' +
+                '<div class="kta-secours-live-etape-statuts-row">' +
+                  TABLEAU_STATUTS.filter(function(st) { return !st.isPending; }).map(function(st) {
+                    return '<button class="kta-secours-live-statut-btn" ' +
+                           'data-action="sec-add-note" data-statut="' + _escAttr(st.id) + '" ' +
+                           'style="--kta-statut-color:' + st.color + ';" ' +
+                           'title="Ajouter note avec statut : ' + _escAttr(st.label) + '">' +
+                             st.emoji + ' ' + _escHtml(st.label) +
+                           '</button>';
+                  }).join('') +
+                '</div>' +
+              '</div>' +
+            '</div>';
+
+    // Liste chronologique des notes (DESC = la + récente en haut)
+    html += '<div class="kta-secours-live-notes-list">';
+    if (notes.length === 0) {
+      html += '<div class="kta-secours-empty-small">Aucune note pour l\'instant. Utilise les boutons rapides ci-dessus pour en créer.</div>';
+    } else {
+      const sorted = notes.slice().sort(function(a, b) {
+        return Date.parse(b.ts) - Date.parse(a.ts);
+      });
+      sorted.forEach(function(note) {
+        const info = _getStatutInfo(note.statut);
+        const tsStr = new Date(note.ts).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        html += '<div class="kta-secours-live-note" style="border-left:4px solid ' + info.color + ';">' +
+                  '<div class="kta-secours-live-note-header">' +
+                    '<span style="color:' + info.color + ';"><strong>' + info.emoji + ' ' + _escHtml(info.label) + '</strong></span>' +
+                    '<span class="kta-secours-live-note-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
+                    '<button class="kta-secours-live-note-del" data-action="sec-del-note" data-note-id="' + _escAttr(note.id) + '" title="Supprimer">✕</button>' +
+                  '</div>' +
+                  (note.texte ? '<div class="kta-secours-live-note-texte">' + _escHtml(note.texte) + '</div>' : '') +
+                '</div>';
+      });
+    }
+    html += '</div>';
+
+    // Footer
+    html += '<div class="kta-secours-live-footer">' +
+              '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
+                (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+              '</button>' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
+                '⏸️ Voir l\'édition' +
+              '</button>' +
+              '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan-live">' +
+                '⏹️ Terminer la mission' +
+              '</button>' +
+            '</div>';
+    return html;
+  }
+
+  // Rendu mini-grille des photos d'une étape (miniatures cliquables ouvrant
+  // le viewer plein écran existant + bouton ✕ pour supprimer).
+  function _renderLiveEtapePhotos(s, equipeId, etapeIdx) {
+    const etape = (_getEtapesEquipe(s, equipeId) || [])[etapeIdx];
+    if (!etape || !Array.isArray(etape.photoIds) || etape.photoIds.length === 0) {
+      return '';
+    }
+    let html = '<div class="kta-secours-live-photos-grid">';
+    etape.photoIds.forEach(function(pid) {
+      html += '<div class="kta-secours-live-photo-slot" data-photo-id="' + _escAttr(pid) + '">' +
+                '<div class="kta-secours-live-photo-placeholder" data-photo-id="' + _escAttr(pid) + '">📸</div>' +
+                '<button class="kta-secours-live-photo-del" data-action="live-photo-del" data-photo-id="' + _escAttr(pid) + '" title="Supprimer cette photo">✕</button>' +
+              '</div>';
+    });
+    html += '</div>';
+    return html;
+  }
 
   function _renderHeatmapToolBlock() {
     // Skip si le module Heatmap n'est pas chargé (rétro-compat)
@@ -2729,6 +3744,27 @@
           _switchView("list");
         });
       });
+      // 🆕 v1.24.0 Phase 3 — Handlers du bandeau "Lancer le plan"
+      corps.querySelectorAll('[data-action="ouvrir-lancer-modale"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _afficherModaleLancer(s.id, function(opts) {
+            lancerExecution(s.id, opts);
+            _toast("🚀 Plan de secours lancé !", "info");
+            _switchView("live");
+          });
+        });
+      });
+      corps.querySelectorAll('[data-action="reprendre-live"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { _switchView("live"); });
+      });
+      corps.querySelectorAll('[data-action="arreter-plan"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.confirm("Arrêter le plan de secours ?\n\nLes observations sont conservées (consultables ultérieurement comme rapport). Tu pourras relancer un nouveau plan si nécessaire.")) return;
+          arreterExecution(s.id);
+          _toast("⏹️ Plan de secours arrêté. Observations sauvegardées.", "info");
+          _switchView("edit");
+        });
+      });
       // Toggle overlay carte — masque la modale pour voir le rendu Leaflet
       // (sinon la modale plein écran z-index 99999 cache toute la carte).
       // Floater "← Retour modale" pour réouvrir sans repasser par la sidebar.
@@ -3073,7 +4109,417 @@
         btn.addEventListener("click", function() { exporterScenario(s.id); });
       });
     }
+
+    // 🆕 v1.24.0 Phase 3 — Handlers de la vue Live (3 sous-modes)
+    if (view === "live") {
+      const s = get(_currentScenarioId);
+      if (!s || !_estExecutionActive(s)) {
+        // Fallback : pas d'execution → retour edit (déjà géré dans _renderLiveView)
+        return;
+      }
+      const role = s.execution.role;
+
+      // Handlers communs aux 3 sous-vues
+      _bindLiveCommonHandlers(corps, s);
+
+      // Handlers spécifiques au sous-rôle
+      if (role === "equipe")     _bindLiveEquipeHandlers(corps, s);
+      if (role === "operateur")  _bindLiveOperateurHandlers(corps, s);
+      if (role === "secouriste") _bindLiveSecouristeHandlers(corps, s);
+    }
   }
+
+  // Handlers communs aux 3 sous-vues Live
+  function _bindLiveCommonHandlers(corps, s) {
+    // Retour à la vue Edit (préserve l'execution active)
+    corps.querySelectorAll('[data-action="back-to-edit"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _switchView("edit"); });
+    });
+    // Arrêter le plan depuis la vue Live
+    corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!window.confirm("Terminer le plan de secours ?\n\nLes observations sont conservées comme rapport consultable.")) return;
+        arreterExecution(s.id);
+        _toast("⏹️ Plan de secours terminé. Observations sauvegardées.", "info");
+        _switchView("edit");
+      });
+    });
+    // Toggle pause
+    corps.querySelectorAll('[data-action="live-toggle-pause"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const isPaused = !!s.execution.pausedAt;
+        pauseExecution(s.id, !isPaused);
+        _toast(isPaused ? "▶️ Reprise du plan" : "⏸️ Plan mis en pause", "info");
+        _switchView("live");
+      });
+    });
+  }
+
+  // Handlers vue Live Mode Équipe
+  function _bindLiveEquipeHandlers(corps, s) {
+    const equipeId = s.execution.currentEquipeId;
+    const etapes = _getEtapesEquipe(s, equipeId);
+    if (etapes.length === 0) return;
+    const idx = _liveEquipeFocusIdx;
+
+    // Navigation entre étapes via boutons prev/next
+    corps.querySelectorAll('[data-action="live-prev"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (_liveEquipeFocusIdx > 0) {
+          _autoCompletePreviousIfNeeded(s, equipeId, _liveEquipeFocusIdx - 1);
+          _liveEquipeFocusIdx--;
+          _switchView("live");
+        }
+      });
+    });
+    corps.querySelectorAll('[data-action="live-next"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (_liveEquipeFocusIdx < etapes.length - 1) {
+          // En passant à l'étape suivante, marque l'étape actuelle comme
+          // "passée" si elle est encore pending (= l'user n'a pas explicitement
+          // mis un statut). Pose un statut RAS par défaut + completedAt.
+          const cur = etapes[_liveEquipeFocusIdx];
+          if (cur && (!cur.statut || cur.statut === "pending")) {
+            marquerEtapeStatut(s.id, equipeId, _liveEquipeFocusIdx, "ras");
+          } else if (cur && !cur.completedAt) {
+            updateEtape(s.id, equipeId, _liveEquipeFocusIdx, { completedAt: _nowIso() });
+          }
+          _liveEquipeFocusIdx++;
+          _switchView("live");
+        }
+      });
+    });
+
+    // Clic sur un step du stepper
+    corps.querySelectorAll('[data-action="live-goto-step"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const targetIdx = parseInt(btn.getAttribute("data-step"), 10);
+        if (isFinite(targetIdx) && targetIdx >= 0 && targetIdx < etapes.length) {
+          _liveEquipeFocusIdx = targetIdx;
+          _switchView("live");
+        }
+      });
+    });
+
+    // Save observations au blur (évite re-render entre chaque keystroke)
+    const obsInput = corps.querySelector('#kta-live-obs-' + idx);
+    if (obsInput) {
+      obsInput.addEventListener("blur", function() {
+        updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
+        // Pose startedAt si pas encore set (= 1ère interaction sur l'étape)
+        const etape = etapes[idx];
+        if (etape && !etape.startedAt) {
+          updateEtape(s.id, equipeId, idx, { startedAt: _nowIso() });
+        }
+      });
+    }
+
+    // Boutons de saisie rapide statut
+    corps.querySelectorAll('[data-action="live-set-statut"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const statutId = btn.getAttribute("data-statut");
+        // Save aussi le textarea actuel avant le re-render
+        if (obsInput) {
+          updateEtape(s.id, equipeId, idx, { observations: obsInput.value });
+        }
+        marquerEtapeStatut(s.id, equipeId, idx, statutId);
+        const info = _getStatutInfo(statutId);
+        _toast(info.emoji + " Étape " + (idx + 1) + " → " + info.label, "info");
+        _switchView("live");
+      });
+    });
+
+    // Photo
+    corps.querySelectorAll('[data-action="live-photo"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _ajouterPhotoEtape(s.id, equipeId, idx);
+      });
+    });
+    corps.querySelectorAll('[data-action="live-photo-del"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const pid = btn.getAttribute("data-photo-id");
+        if (!pid) return;
+        if (!window.confirm("Supprimer cette photo ?")) return;
+        _supprimerPhotoEtape(s.id, equipeId, idx, pid);
+      });
+    });
+
+    // Recentrer carte sur l'étape
+    corps.querySelectorAll('[data-action="live-recentrer"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const etape = etapes[idx];
+        if (!etape) return;
+        // L'étape stocke le label mais pas les coords (héritées du parcours).
+        // Récupère les coords depuis le groupe original
+        const g = s.groupes.find(function(gr) { return gr.id === equipeId; });
+        if (!g) return;
+        let pos = null;
+        if (etape.type === "entree") pos = g.entree;
+        else if (etape.type === "sortie") pos = g.sortie;
+        else {
+          // intermédiaire idx-1 (car entree = idx 0)
+          const intermIdx = idx - (g.entree ? 1 : 0);
+          if (Array.isArray(g.intermediaires) && intermIdx >= 0) {
+            pos = g.intermediaires[intermIdx];
+          }
+        }
+        if (!pos || typeof pos.x !== "number" || !window.map) {
+          _toast("⚠️ Position introuvable pour cette étape.", "warn");
+          return;
+        }
+        // Masque modale + centre carte
+        if (_modal) _modal.style.display = "none";
+        if (!_overlayLayer) renderOverlay(_currentScenarioId);
+        _showOverlayFloater();
+        window.map.setView(_planToLatLng(pos), Math.max(0, window.map.getZoom()), { animate: true });
+      });
+    });
+
+    // Hydrate les miniatures photos en async
+    _hydraterPhotosLive(corps, s.id, equipeId, idx);
+  }
+
+  // Auto-complete une étape si l'user navigue vers une plus ancienne
+  // sans avoir marqué de statut (= il revient en arrière, on ne touche pas).
+  // Pas d'effet pour l'instant — placeholder pour future amélioration UX.
+  function _autoCompletePreviousIfNeeded(/* s, equipeId, prevIdx */) {
+    // Volontairement vide : retour en arrière préserve l'état tel quel
+  }
+
+  // Helper photo : ouvre file picker + compress + add + refresh
+  function _ajouterPhotoEtape(scenarioId, equipeId, etapeIdx) {
+    if (!window.MyKTAMapSecoursPhotos || !window.MyKTAMapSecoursPhotos.isAvailable()) {
+      _toast("⚠️ Module Photos Secours indisponible.", "error");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    // capture="environment" → ouvre la caméra arrière sur mobile (la galerie reste accessible via UI native)
+    input.setAttribute("capture", "environment");
+    input.style.display = "none";
+    input.addEventListener("change", function() {
+      const file = input.files && input.files[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      _toast("⏳ Ajout photo en cours…", "info");
+      window.MyKTAMapSecoursPhotos.addPhoto(scenarioId, equipeId, etapeIdx, file).then(function(photoId) {
+        // Update etape.photoIds dans le scenario
+        const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
+        const etape = etapes[etapeIdx];
+        if (!etape) return;
+        const newPhotoIds = (etape.photoIds || []).concat([photoId]);
+        updateEtape(scenarioId, equipeId, etapeIdx, { photoIds: newPhotoIds });
+        _toast("✓ Photo ajoutée à l'étape", "info");
+        _switchView("live");
+      }).catch(function(e) {
+        console.warn("[SecoursMode] _ajouterPhotoEtape échec :", e);
+        const msg = e && e.code === "QUOTA_PER_ETAPE"
+                    ? "⚠️ Max 5 photos par étape atteint."
+                    : "⚠️ Erreur ajout photo : " + (e && e.message ? e.message : "");
+        _toast(msg, "error");
+      });
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
+  function _supprimerPhotoEtape(scenarioId, equipeId, etapeIdx, photoId) {
+    if (!window.MyKTAMapSecoursPhotos) return;
+    window.MyKTAMapSecoursPhotos.deletePhoto(photoId).then(function() {
+      const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
+      const etape = etapes[etapeIdx];
+      if (!etape) return;
+      const newPhotoIds = (etape.photoIds || []).filter(function(pid) { return pid !== photoId; });
+      updateEtape(scenarioId, equipeId, etapeIdx, { photoIds: newPhotoIds });
+      _toast("✓ Photo supprimée", "info");
+      _switchView("live");
+    }).catch(function(e) {
+      console.warn("[SecoursMode] _supprimerPhotoEtape échec :", e);
+      _toast("⚠️ Erreur suppression photo", "error");
+    });
+  }
+
+  // Hydrate les placeholders photo avec les vraies miniatures (ObjectURL async).
+  // Pattern v1.10.0 §42 (popup POI photos) adapté ici.
+  function _hydraterPhotosLive(corps, scenarioId, equipeId, etapeIdx) {
+    if (!window.MyKTAMapSecoursPhotos) return;
+    const placeholders = corps.querySelectorAll('.kta-secours-live-photo-placeholder[data-photo-id]');
+    placeholders.forEach(function(ph) {
+      const pid = ph.getAttribute("data-photo-id");
+      if (!pid) return;
+      window.MyKTAMapSecoursPhotos.getObjectUrl(pid).then(function(url) {
+        if (!url || !ph.parentNode) return;
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "Photo étape";
+        img.className = "kta-secours-live-photo-img";
+        // Click → ouvre viewer plein écran réutilisant MyKTAMapPhotoViewer si dispo
+        img.addEventListener("click", function() {
+          if (window.MyKTAMapPhotoViewer && typeof window.MyKTAMapPhotoViewer.open === "function") {
+            // Construit la liste des photos de l'étape pour navigation
+            const etapes = _getEtapesEquipe(get(scenarioId), equipeId);
+            const etape = etapes[etapeIdx];
+            const ids = (etape && etape.photoIds) || [pid];
+            const idx = ids.indexOf(pid);
+            // Doit fournir des objets avec {id, getUrl: () => Promise<string>}
+            const photosForViewer = ids.map(function(id) {
+              return {
+                id: id,
+                getUrl: function() {
+                  return window.MyKTAMapSecoursPhotos.getObjectUrl(id);
+                }
+              };
+            });
+            try {
+              window.MyKTAMapPhotoViewer.open(photosForViewer, Math.max(0, idx));
+            } catch(e) {
+              // Fallback : ouvre dans nouvel onglet
+              window.open(url, "_blank", "noopener,noreferrer");
+            }
+          } else {
+            window.open(url, "_blank", "noopener,noreferrer");
+          }
+        });
+        ph.innerHTML = "";
+        ph.appendChild(img);
+      }).catch(function(e) {
+        console.warn("[SecoursMode] _hydraterPhotosLive échec photo " + pid + " :", e);
+      });
+    });
+  }
+
+  // Handlers vue Live Mode Opérateur surface
+  function _bindLiveOperateurHandlers(corps, s) {
+    // "Détails équipe" → ouvre une mini-modale read-only sur l'équipe
+    corps.querySelectorAll('[data-action="live-op-details"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const equipeId = btn.getAttribute("data-equipe-id");
+        _afficherModaleDetailsEquipeLive(s.id, equipeId);
+      });
+    });
+    // "Prendre la main" → bascule en mode Équipe pour cette équipe
+    corps.querySelectorAll('[data-action="live-op-prendre-main"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const equipeId = btn.getAttribute("data-equipe-id");
+        if (!equipeId) return;
+        const g = s.groupes.find(function(gr) { return gr.id === equipeId; });
+        if (!g) return;
+        s.execution.role = "equipe";
+        s.execution.currentEquipeId = equipeId;
+        _commitMutation(s);
+        _toast("🚨 Mode Équipe : " + g.nom, "info");
+        _switchView("live");
+      });
+    });
+    // "Voir carte globale" → masque modale + render overlay
+    corps.querySelectorAll('[data-action="live-op-carte-globale"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (_modal) _modal.style.display = "none";
+        if (!_overlayLayer) renderOverlay(_currentScenarioId);
+        _showOverlayFloater();
+      });
+    });
+  }
+
+  // Mini-modale read-only détails équipe pour mode Opérateur
+  function _afficherModaleDetailsEquipeLive(scenarioId, equipeId) {
+    const s = get(scenarioId);
+    if (!s) return;
+    const g = (s.groupes || []).find(function(gr) { return gr.id === equipeId; });
+    if (!g) return;
+    const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+    const etapes = _getEtapesEquipe(s, equipeId);
+
+    const existing = document.getElementById("kta-secours-op-details-modale");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    let etapesHtml = '';
+    if (etapes.length === 0) {
+      etapesHtml = '<p style="color:#8892a4; font-style:italic;">Aucune étape définie.</p>';
+    } else {
+      etapesHtml = '<ol class="kta-secours-op-details-etapes">';
+      etapes.forEach(function(et) {
+        const info = _getStatutInfo(et.statut);
+        const tsStr = et.completedAt ? new Date(et.completedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+                    : et.startedAt   ? new Date(et.startedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) + " (en cours)"
+                    : "—";
+        const obsHtml = et.observations
+                        ? '<div class="kta-secours-op-details-obs">« ' + _escHtml(et.observations) + ' »</div>'
+                        : '';
+        etapesHtml += '<li>' +
+                        '<div class="kta-secours-op-details-row">' +
+                          '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(info.label) + '</strong></span>' +
+                          ' · ' + _escHtml(et.label || "(?)") +
+                          ' · <span class="kta-secours-op-details-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
+                        '</div>' +
+                        obsHtml +
+                      '</li>';
+      });
+      etapesHtml += '</ol>';
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-op-details-modale";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100013";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:600px; height:auto; max-height:90vh; border-left:6px solid ' + couleur.hex + ';">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0;">👁️ ' + _escHtml(g.nom) + ' (' + _escHtml(couleur.nom) + ')</h2>' +
+          '<button class="kta-readme-modal-close" data-action="close-op-details" aria-label="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p style="margin:0 0 12px 0; color:#8892a4; font-size:13px;">Vue détaillée des étapes (lecture seule).</p>' +
+          etapesHtml +
+          '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
+            '<button class="kta-btn kta-btn-secondary" data-action="close-op-details">Fermer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="close-op-details"]').forEach(function(btn) {
+      btn.addEventListener("click", _close);
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // Handlers vue Live Mode Secouriste libre
+  function _bindLiveSecouristeHandlers(corps, s) {
+    // Ajout d'une note via un des 7 boutons statut
+    corps.querySelectorAll('[data-action="sec-add-note"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const statutId = btn.getAttribute("data-statut");
+        const texteInput = corps.querySelector('#kta-sec-newnote-texte');
+        const texte = texteInput ? texteInput.value : "";
+        ajouterNoteLibre(s.id, { statut: statutId, texte: texte });
+        // Vide le textarea
+        if (texteInput) texteInput.value = "";
+        const info = _getStatutInfo(statutId);
+        _toast("✓ Note ajoutée : " + info.emoji + " " + info.label, "info");
+        _switchView("live");
+      });
+    });
+    // Suppression d'une note
+    corps.querySelectorAll('[data-action="sec-del-note"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const noteId = btn.getAttribute("data-note-id");
+        if (!noteId) return;
+        if (!window.confirm("Supprimer cette note ?")) return;
+        supprimerNoteLibre(s.id, noteId);
+        _toast("✓ Note supprimée", "info");
+        _switchView("live");
+      });
+    });
+  }
+
 
   // ============================================================
   // MODES INTERACTIFS MAP (depuis v1.22.0 commit 3/9)

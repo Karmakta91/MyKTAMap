@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.23.7` (26/05/2026) — PATCH fix CSS « header card équipe M-LVL : bouton 🗑️ sortait du cadre » — flex-wrap + min-width:0 + flex-shrink:0
-**📦 Précédentes shipped main** : `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json + fix Heatmap Régler) ; `v1.23.3` (Équipe M-LVL assignable) ; `v1.23.2` (Feature G Ctrl+K assigner + 4 fixes UX audit)
+**📦 Version courante** : `v1.24.0` (26/05/2026) — MINOR « Mode Secours Phase 3 : exploitation terrain » — Bouton 🚀 Lancer + 3 vues Live (Opérateur surface / Équipe / Secouriste libre) + 7 statuts d'étape + store IDB photos dédié
+**📦 Précédentes shipped main** : `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF) ; `v1.23.4` (export/import .mkmsec.json) ; `v1.23.3` (Équipe M-LVL assignable)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,159 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-23-7" open>
+<details id="v1-24-0" open>
+<summary><strong>🗓️ 26/05/2026 — 🚀 v1.24.0 : Release MINOR — Mode Secours Phase 3 (exploitation terrain : bouton Lancer + 3 vues Live)</strong></summary>
+
+Release MINOR (bump Y : 1.23.x → 1.24.0). Demande KARMA : « maintenant on doit pouvoir Lancer le plan de secour et dire en gros, je suis dans l'Equipe X, je suis opérateur de surface ... ca charge le plan, etape par etape, ou on peux commenter au fil du suivi de partout etape 1 : RAS, Etape 2 : passage récent ... ».
+
+Pivot architectural majeur : le Mode Secours passe d'un outil de planning (Phases 1+2 = création/édition + cross-app) à un outil de **coordination opérationnelle temps réel**. Un scénario a maintenant 2 états : CRÉATION (vue Edit existante) et EXÉCUTION (nouvelle vue Live).
+
+### 📊 Modèle de données `scenario.execution`
+
+Persisté dans le scénario localStorage existant (`myktamap_secours_v1_<planId>`). Pas de nouvelle clé. Structure :
+
+```js
+scenario.execution = {
+  active:          boolean,
+  startedAt:       ISO,
+  endedAt:         ISO | null,
+  pausedAt:        ISO | null,
+  pausedTotalMs:   number,
+  role:            "operateur" | "equipe" | "secouriste",
+  currentEquipeId: string | null,
+  etapes: {
+    [equipeId]: [
+      {
+        type:          "entree" | "interm" | "sortie",
+        idx:           number,
+        label:         string,
+        observations:  string,
+        statut:        "pending" | "ras" | "suspect" | "bloque"
+                     | "indice" | "aide" | "demi-tour" | "victime",
+        photoIds:      [string, ...],
+        startedAt:     ISO | null,
+        completedAt:   ISO | null
+      }
+    ],
+    _notes_libres: [
+      { id, ts, statut, texte, photoIds }
+    ]
+  }
+}
+```
+
+Helpers CRUD : `lancerExecution / arreterExecution / pauseExecution / updateEtape / marquerEtapeStatut / getExecutionDureeMs / ajouterNoteLibre / updateNoteLibre / supprimerNoteLibre / _buildEtapesPourEquipe / _estExecutionActive / _getEtapesEquipe`.
+
+### ⚡ TABLEAU_STATUTS (7+1 statuts)
+
+| ID | Emoji | Label | Couleur | Severity |
+|---|---|---|---|---|
+| `pending` | • | En attente | gris | 0 |
+| `ras` | 🟢 | RAS | vert | 0 |
+| `suspect` | 🟡 | Suspect | jaune | 1 |
+| `bloque` | ⬛ | Bloqué | gris foncé | 1 |
+| `indice` | 🔵 | Indice | bleu | 1 |
+| `aide` | 🟠 | Aide demandée | orange | 2 |
+| `demi-tour` | 🟣 | Demi-tour forcé | violet | 1 |
+| `victime` | 🚨 | Victime trouvée | rouge clignotant | 3 |
+
+Constante extensible — ajouter une entry suffit (rendu UI + colors + futur PDF report suivent automatiquement).
+
+### 📸 Store IDB dédié `myktamap_secours_photos`
+
+Nouveau module `js/secoursPhotos.js` (~430 lignes IIFE) → `window.MyKTAMapSecoursPhotos`. Séparé du store POI photos (`myktamap_photos`, cf §42) pour cleanup/compteurs indépendants. Architecture :
+
+- **DB** : `myktamap_secours_photos` v1
+- **Store** : `photos` (keyPath `id`)
+- **3 indexes** : `by_scenario` / `by_scenario_equipe` / `by_scenario_equipe_step`
+- **Key composite** : scenarioId + equipeId + stepIdx
+- **Sentinel** : `stepIdx = -1` pour notes libres (mode secouriste)
+- **Limites** : max 5 photos par étape, compression auto canvas JPEG q85 max 1920px
+
+API : `addPhoto / getPhoto / getBlob / getObjectUrl / getPhotosForEtape|Equipe|Scenario / countPhotosForEtape|Scenario / deletePhoto|Etape|Scenario / clearAll / compressBlob / generateId`. Init eager au boot (non-bloquant, pre-warm IDB).
+
+### 🚀 Bandeau « Lancer le plan »
+
+Nouveau bandeau en haut de la vue Edit, 3 états dynamiques :
+
+- **Disabled** (aucune équipe) : hint « Ajoute au moins une équipe pour pouvoir lancer le plan »
+- **CTA jaune** : « 🚀 Prêt à déclencher le plan de secours ? » + gros bouton « 🚀 Lancer le plan de secours »
+- **Active vert** : dot pulsant `kta-secours-pulse-green` + « 🟢 PLAN ACTIF — `<Rôle>` · ⏱️ Lancé depuis Xh YYmin » + boutons « ▶️ Reprendre la vue Live » / « ⏹️ Arrêter »
+
+### 🎬 Modale sélection rôle
+
+Au clic « 🚀 Lancer », modale charte Promise-based avec 3 rôles cliquables (radio + description) :
+
+- **👤 Opérateur de surface** : « Tu coordonnes depuis le PC chef. Tu vois toutes les équipes en parallèle, tu peux éditer leurs observations en supervision. »
+- **🚨 Équipe sur le terrain** : « Tu fais partie d'une équipe assignée. Tu suis ton parcours étape par étape et tu commentes en live. » + dropdown sélection équipe (activé si radio sélectionné)
+- **🚑 Secouriste libre** : « Tu interviens sans équipe pré-assignée (renfort ponctuel, reconnaissance). Tu prends des notes libres avec timestamps. »
+
+Hint : « 💡 Tu pourras changer de rôle plus tard sans perdre les observations déjà enregistrées. » Boutons « ❌ Annuler » / « ✓ Démarrer maintenant ». Backdrop click + Échap = annuler.
+
+### 🚨 Vue Live — Mode Équipe (step-by-step)
+
+Pour l'équipe sur le terrain qui suit son parcours :
+
+- **Header sticky** : swatch couleur OTAN + nom équipe + Étape X/N + timer global ⏱️
+- **Stepper visuel cliquable** : emoji statut + numéro (badge current jaune, done vert, pending gris)
+- **Bloc étape courante** : titre type (🚪 ENTRÉE / 📍 ÉTAPE N / 🚪 SORTIE) + label POI + statut courant (bordure couleur) + textarea observations 2000 chars + 7 boutons statuts rapides + bouton 📸 Photo (X/5) + bouton 🎯 Recentrer carte + mini-grille photos miniatures cliquables (viewer plein écran réutilisé)
+- **Navigation prev/next** : au passage suivant sans statut explicite → auto-marqué RAS par défaut
+- **Footer** : Pause / Voir édition / Terminer le plan
+
+### 👤 Vue Live — Mode Opérateur surface
+
+Vue d'ensemble pour le PC chef :
+
+- **Header** : timer global + compteur équipes
+- **Grille responsive cards par équipe** (260px min, auto-fill) : swatch couleur + nom + badge « ✓ TERMINÉE » si applicable + barre de progression % (0-100) + statut le + sévère + dernière obs snippet (80 chars) + dernier timestamp + 2 boutons « 👁️ Détails » / « 🚨 Prendre la main »
+- **Cards spéciales** :
+  - 🚨 Victime trouvée = ROUGE PULSANT (animation 1.2s `kta-secours-pulse-red`)
+  - 🟠 Aide demandée = orange + lueur box-shadow
+  - ✓ Terminée = opacity 0.75
+- **Modale détails read-only** = liste chronologique des étapes avec ts + statut + obs
+- **Bouton 🗺️ Voir carte globale** = masque modale + render overlay
+
+### 🚑 Vue Live — Mode Secouriste libre
+
+Mode simple pour renfort/reconnaissance sans équipe pré-assignée :
+
+- **Header vert** : timer + compteur notes
+- **Bloc « 📝 Ajouter une note »** : textarea + 7 boutons rapides (clic = note ajoutée + reset textarea)
+- **Liste chronologique DESC** : ts + statut emoji + texte + ✕ supprimer
+- Persistance dans `s.execution.etapes._notes_libres`
+
+### ⏸️ Timer global + pause
+
+Calcul juste excluant les temps de pause cumulés (`pausedTotalMs`). Au pause/reprise, calcul du segment écoulé + addition. Format `Xh YYmin` / `YYmin SSs` / `Ss`. Re-render timer toutes les 1s via `data-live-timer="duree"` (pas de re-render complet de la vue → évite flash + perte focus textarea en cours de saisie).
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau. 1 nouvelle DB IDB locale `myktamap_secours_photos` (lecture/écriture client uniquement, pas de fetch externe). Pas de nouveau localStorage key (réutilise `myktamap_secours_v1_<planId>` existant). Photos compressées localement via canvas (pas de transmission cloud).
+
+### 📦 Sources de vérité v1.24.0
+
+- `version.json` → `v1.24.0`
+- `js/copyright.js > __MKM__.build` → `v1.24.0`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.24.0`
+
+1 nouveau fichier `js/secoursPhotos.js` ajouté à `ASSETS_TO_CACHE` + balise script dans `index.html` après `secoursMode.js`. Modifs :
+- `js/secoursMode.js` (+~900 lignes : data model + 7 statuts + bandeau + modale lancer + 3 vues Live + handlers)
+- `css/style.css` (+~470 lignes : Phase 3 complète + variants thème clair + responsive mobile portrait)
+
+### 🛣️ Roadmap suite Phase 3
+
+- **v1.25.0** : Rapport final PDF complet (avec photos en annexe) + export `.mkmsec.report.json`
+- **v1.26.0** : Import rapport sur device opérateur (consolidation cross-device)
+- **v1.27.0+** : QR code share unidirectionnel (terrain sans réseau)
+- **v1.28.0+** : Seuils stress visuels (timer rouge après 4h, alertes auto)
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.23.7 (champ `scenario.execution` optionnel — absent = mode CRÉATION seul, comportement v1.23.x strict). Tous les helpers et vues sont additifs. Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-23-7">
 <summary><strong>🗓️ 26/05/2026 — 🐛 v1.23.7 : Release PATCH fix CSS — Header card équipe M-LVL : bouton 🗑️ sortait du cadre</strong></summary>
 
 Release PATCH (bump Z : 1.23.6 → 1.23.7). Bug remonté KARMA terrain : « bug affichage du modal secour en mode M-LVL la poubelle pour supprimer sors du cadre a cause de l'icone M-LVL ».

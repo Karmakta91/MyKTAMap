@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.23.7";
+const CACHE_NAME = "myktamap-cache-v1.24.0";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -169,6 +169,8 @@ const ASSETS_TO_CACHE = [
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
   "./js/secoursMode.js",
+  // 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
+  "./js/secoursPhotos.js",
   "./js/main.js",
 
   // Librairies

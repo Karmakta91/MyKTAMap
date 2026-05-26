@@ -997,6 +997,11 @@
        kmzExport.js (export géolocalisé) et pdfExport.js (export PDF). -->
   <script src="js/secoursMode.js"></script>
 
+  <!-- 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live).
+       Doit être chargé APRÈS secoursMode.js mais avant main.js. Réfère à
+       __MKM__ pour le watermark + utilise navigator.indexedDB direct. -->
+  <script src="js/secoursPhotos.js"></script>
+
   <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
        Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
        de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).

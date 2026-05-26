@@ -19149,3 +19149,728 @@ body.kta-theme-light .kta-secours-pick-result strong,
 html.kta-theme-light .kta-secours-pick-result strong {
   color: var(--kta-light-accent-hover, #d9a82e) !important;
 }
+
+/* ============================================================
+   🆕 v1.24.0 Phase 3 — Mode EXÉCUTION (vue Live + 3 sous-vues)
+   ============================================================ */
+
+/* ─── Bandeau "Lancer le plan" / "Plan actif" ─── */
+.kta-secours-lancer-bandeau {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.kta-secours-lancer-bandeau-info {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.kta-secours-lancer-bandeau-titre {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.kta-secours-lancer-bandeau-sub {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.4;
+}
+.kta-secours-lancer-bandeau-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.kta-secours-lancer-bandeau-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+.kta-secours-lancer-bandeau-disabled {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #8892a4;
+  font-style: italic;
+  font-size: 13px;
+}
+.kta-secours-lancer-bandeau-cta {
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.15), rgba(244, 197, 66, 0.05));
+  border: 1px solid rgba(244, 197, 66, 0.50);
+}
+.kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre {
+  color: #f4c542;
+}
+.kta-secours-lancer-bandeau-active {
+  background: linear-gradient(135deg, rgba(110, 226, 135, 0.15), rgba(110, 226, 135, 0.05));
+  border: 1px solid rgba(110, 226, 135, 0.50);
+}
+.kta-secours-lancer-bandeau-active .kta-secours-lancer-bandeau-titre {
+  color: #6ee287;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kta-secours-lancer-bandeau-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #6ee287;
+  box-shadow: 0 0 6px rgba(110, 226, 135, 0.80);
+  animation: kta-secours-pulse-green 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes kta-secours-pulse-green {
+  0%, 100% { transform: scale(1);   opacity: 1; }
+  50%      { transform: scale(1.35); opacity: 0.55; }
+}
+
+/* ─── Modale "Lancer le plan" (sélection rôle) ─── */
+.kta-secours-lancer-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kta-secours-lancer-role-row {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kta-secours-lancer-role-row:hover {
+  background: rgba(140, 180, 255, 0.06);
+  border-color: rgba(140, 180, 255, 0.30);
+}
+.kta-secours-lancer-role-row input[type="radio"] {
+  margin-top: 4px;
+  accent-color: #f4c542;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.kta-secours-lancer-role-info {
+  flex: 1;
+  min-width: 0;
+}
+.kta-secours-lancer-role-titre {
+  font-weight: 600;
+  font-size: 14px;
+  color: #e8eaf0;
+  margin-bottom: 4px;
+}
+.kta-secours-lancer-role-desc {
+  font-size: 12px;
+  color: #c8d0e0;
+  line-height: 1.45;
+  margin-bottom: 6px;
+}
+.kta-secours-lancer-equipe-select {
+  margin-top: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.40);
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 13px;
+}
+.kta-secours-lancer-equipe-select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ─── Vue Live (commun aux 3 sous-modes) ─── */
+.kta-secours-live-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(26, 31, 46, 0.85), rgba(10, 13, 24, 0.95));
+  border-radius: 6px;
+  margin-bottom: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-wrap: wrap;
+}
+.kta-secours-live-header-titre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #e8eaf0;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.kta-secours-live-header-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+}
+.kta-secours-live-header-meta {
+  color: #8892a4;
+  font-size: 13px;
+}
+.kta-secours-live-header-timer {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f4c542;
+  font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
+  flex-shrink: 0;
+}
+.kta-secours-live-header-timer-icon {
+  margin-right: 2px;
+}
+.kta-secours-live-pause-tag {
+  margin-left: 6px;
+  padding: 2px 6px;
+  background: rgba(255, 140, 0, 0.20);
+  color: #ffb380;
+  border: 1px solid rgba(255, 140, 0, 0.50);
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* ─── Stepper visuel (vue Équipe) ─── */
+.kta-secours-live-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 6px 0;
+}
+.kta-secours-live-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 44px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 2px solid var(--kta-step-color, rgba(255, 255, 255, 0.20));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.10s;
+  color: #e8eaf0;
+  font-size: 11px;
+}
+.kta-secours-live-step:hover { transform: translateY(-1px); }
+.kta-secours-live-step-emoji { font-size: 14px; line-height: 1; }
+.kta-secours-live-step-idx   { font-size: 10px; font-weight: 700; margin-top: 2px; }
+.kta-secours-live-step-current {
+  background: rgba(244, 197, 66, 0.20);
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.50);
+  border-width: 3px;
+}
+.kta-secours-live-step-done {
+  background: rgba(110, 226, 135, 0.10);
+  opacity: 0.85;
+}
+.kta-secours-live-step-pending {
+  opacity: 0.65;
+}
+
+/* ─── Bloc étape courante ─── */
+.kta-secours-live-etape {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+.kta-secours-live-etape-titre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+}
+.kta-secours-live-etape-statut {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+.kta-secours-live-etape-textarea-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.kta-secours-live-etape-textarea-wrap label {
+  font-size: 12px;
+  color: #c8d0e0;
+  font-weight: 600;
+}
+.kta-secours-live-etape-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 60px;
+}
+.kta-secours-live-etape-textarea:focus {
+  outline: none;
+  border-color: #f4c542;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20);
+}
+
+/* ─── Statuts rapides (7 boutons) ─── */
+.kta-secours-live-etape-statuts-rapides {
+  margin-bottom: 10px;
+}
+.kta-secours-live-etape-statuts-titre {
+  font-size: 12px;
+  color: #c8d0e0;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.kta-secours-live-etape-statuts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kta-secours-live-statut-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid var(--kta-statut-color, rgba(255, 255, 255, 0.30));
+  border-radius: 4px;
+  color: #e8eaf0;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+  min-height: 36px;   /* WCAG touch target */
+}
+.kta-secours-live-statut-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  transform: translateY(-1px);
+}
+.kta-secours-live-statut-btn-sel {
+  background: var(--kta-statut-color, rgba(244, 197, 66, 0.30));
+  color: #1a1f2e;
+  font-weight: 700;
+}
+
+/* ─── Actions étape (photo + recentrer) ─── */
+.kta-secours-live-etape-actions-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* ─── Mini-grille photos ─── */
+.kta-secours-live-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+.kta-secours-live-photo-slot {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.kta-secours-live-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 24px;
+  color: #8892a4;
+}
+.kta-secours-live-photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: pointer;
+  display: block;
+}
+.kta-secours-live-photo-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.kta-secours-live-photo-del:hover {
+  background: rgba(255, 78, 78, 0.85);
+}
+
+/* ─── Navigation prev/next ─── */
+.kta-secours-live-nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.kta-secours-live-nav .kta-btn { flex: 1 1 140px; }
+
+/* ─── Footer commun (pause / back / arrêter) ─── */
+.kta-secours-live-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+/* ─── Vue Live Mode Opérateur ─── */
+.kta-secours-live-header-op {
+  background: linear-gradient(135deg, rgba(140, 180, 255, 0.12), rgba(140, 180, 255, 0.04));
+  border: 1px solid rgba(140, 180, 255, 0.30);
+}
+.kta-secours-live-op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.kta-secours-op-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kta-secours-op-card-empty {
+  opacity: 0.6;
+  font-style: italic;
+}
+.kta-secours-op-card-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #e8eaf0;
+  flex-wrap: wrap;
+}
+.kta-secours-op-card-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+}
+.kta-secours-op-card-badge-terminee {
+  background: rgba(110, 226, 135, 0.25);
+  color: #6ee287;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.kta-secours-op-card-progress {
+  position: relative;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  overflow: hidden;
+}
+.kta-secours-op-card-progress-bar {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: #6ee287;
+  transition: width 0.3s;
+}
+.kta-secours-op-card-progress-label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 18px;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.50);
+}
+.kta-secours-op-card-statut {
+  font-size: 13px;
+  font-weight: 600;
+}
+.kta-secours-op-card-obs {
+  font-size: 12px;
+  color: #c8d0e0;
+  font-style: italic;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.kta-secours-op-card-obs-empty { opacity: 0.5; }
+.kta-secours-op-card-meta {
+  font-size: 11px;
+  color: #8892a4;
+}
+.kta-secours-op-card-actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.kta-secours-op-card-actions .kta-btn {
+  flex: 1 1 auto;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+/* Card terminée — opacité réduite */
+.kta-secours-op-card-terminee {
+  opacity: 0.75;
+}
+/* Card aide demandée — bordure orange + lueur */
+.kta-secours-op-card-aide {
+  background: rgba(255, 140, 0, 0.10);
+  border-color: rgba(255, 140, 0, 0.50);
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.25);
+}
+/* Card victime trouvée — ROUGE PULSANT (urgence absolue) */
+.kta-secours-op-card-victime {
+  background: rgba(255, 68, 68, 0.18);
+  border: 2px solid rgba(255, 68, 68, 0.80);
+  animation: kta-secours-pulse-red 1.2s ease-in-out infinite;
+}
+@keyframes kta-secours-pulse-red {
+  0%, 100% { box-shadow: 0 0 8px rgba(255, 68, 68, 0.50);  }
+  50%      { box-shadow: 0 0 20px rgba(255, 68, 68, 0.95); }
+}
+
+/* ─── Vue Live Mode Secouriste libre ─── */
+.kta-secours-live-header-sec {
+  background: linear-gradient(135deg, rgba(76, 200, 100, 0.12), rgba(76, 200, 100, 0.04));
+  border: 1px solid rgba(76, 200, 100, 0.30);
+}
+.kta-secours-live-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.kta-secours-live-note {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.kta-secours-live-note-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.kta-secours-live-note-ts {
+  margin-left: auto;
+  font-size: 11px;
+  color: #8892a4;
+  font-family: ui-monospace, monospace;
+}
+.kta-secours-live-note-del {
+  background: transparent;
+  border: none;
+  color: #ff8c8c;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.kta-secours-live-note-del:hover {
+  background: rgba(255, 78, 78, 0.20);
+}
+.kta-secours-live-note-texte {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ─── Modale détails équipe (mode Opérateur) ─── */
+.kta-secours-op-details-etapes {
+  margin: 0;
+  padding-left: 20px;
+  color: #c8d0e0;
+}
+.kta-secours-op-details-etapes li {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.kta-secours-op-details-etapes li:last-child { border-bottom: none; }
+.kta-secours-op-details-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 13px;
+}
+.kta-secours-op-details-ts {
+  color: #8892a4;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+}
+.kta-secours-op-details-obs {
+  margin-top: 4px;
+  margin-left: 0;
+  font-size: 12px;
+  color: #c8d0e0;
+  font-style: italic;
+  padding-left: 10px;
+  border-left: 2px solid rgba(255, 255, 255, 0.10);
+}
+
+/* ─── Vue Live erreur (cas dégénéré) ─── */
+.kta-secours-live-error {
+  padding: 20px;
+  text-align: center;
+  color: #c8d0e0;
+}
+.kta-secours-live-error p {
+  margin-bottom: 12px;
+}
+
+/* ─── Responsive mobile portrait ─── */
+@media (max-width: 480px) {
+  .kta-secours-live-stepper { gap: 3px; }
+  .kta-secours-live-step    { width: 34px; height: 38px; padding: 3px; }
+  .kta-secours-live-step-emoji { font-size: 13px; }
+  .kta-secours-live-step-idx   { font-size: 9px; }
+  .kta-secours-live-op-grid { grid-template-columns: 1fr; }
+  .kta-secours-live-nav .kta-btn { flex: 1 1 100%; }
+}
+
+/* ─── Thème clair (variants) ─── */
+body.kta-theme-light .kta-secours-lancer-bandeau-disabled,
+html.kta-theme-light .kta-secours-lancer-bandeau-disabled {
+  background: rgba(0, 0, 0, 0.03) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-lancer-bandeau-cta,
+html.kta-theme-light .kta-secours-lancer-bandeau-cta {
+  background: rgba(244, 197, 66, 0.30) !important;
+}
+body.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre,
+html.kta-theme-light .kta-secours-lancer-bandeau-cta .kta-secours-lancer-bandeau-titre {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-lancer-bandeau-sub,
+html.kta-theme-light .kta-secours-lancer-bandeau-sub {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-lancer-role-row,
+html.kta-theme-light .kta-secours-lancer-role-row {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: var(--kta-light-border, rgba(0, 0, 0, 0.12)) !important;
+}
+body.kta-theme-light .kta-secours-lancer-role-titre,
+html.kta-theme-light .kta-secours-lancer-role-titre,
+body.kta-theme-light .kta-secours-lancer-role-desc,
+html.kta-theme-light .kta-secours-lancer-role-desc {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-lancer-equipe-select,
+html.kta-theme-light .kta-secours-lancer-equipe-select {
+  background: #fff !important;
+  border-color: var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-live-header,
+html.kta-theme-light .kta-secours-live-header {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border: 1px solid var(--kta-light-border, rgba(0, 0, 0, 0.12)) !important;
+}
+body.kta-theme-light .kta-secours-live-header-titre,
+html.kta-theme-light .kta-secours-live-header-titre {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-live-header-meta,
+html.kta-theme-light .kta-secours-live-header-meta {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-live-header-timer,
+html.kta-theme-light .kta-secours-live-header-timer {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-live-etape,
+html.kta-theme-light .kta-secours-live-etape,
+body.kta-theme-light .kta-secours-live-note,
+html.kta-theme-light .kta-secours-live-note,
+body.kta-theme-light .kta-secours-op-card,
+html.kta-theme-light .kta-secours-op-card {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: var(--kta-light-border, rgba(0, 0, 0, 0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-live-etape-titre,
+html.kta-theme-light .kta-secours-live-etape-titre {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-live-etape-textarea,
+html.kta-theme-light .kta-secours-live-etape-textarea {
+  background: #fff !important;
+  border-color: var(--kta-light-border-strong, rgba(0, 0, 0, 0.22)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-live-statut-btn,
+html.kta-theme-light .kta-secours-live-statut-btn {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-live-statut-btn-sel,
+html.kta-theme-light .kta-secours-live-statut-btn-sel {
+  color: #1a1f2e !important;
+}
+body.kta-theme-light .kta-secours-op-card-obs,
+html.kta-theme-light .kta-secours-op-card-obs,
+body.kta-theme-light .kta-secours-live-note-texte,
+html.kta-theme-light .kta-secours-live-note-texte {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-op-card-meta,
+html.kta-theme-light .kta-secours-op-card-meta,
+body.kta-theme-light .kta-secours-live-note-ts,
+html.kta-theme-light .kta-secours-live-note-ts {
+  color: var(--kta-light-text-dim, #8a8270) !important;
+}
