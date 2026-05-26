@@ -174,10 +174,25 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.24.2</strong> (26 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.25.0</strong> (26 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.25.0 (Release MINOR — Rapport au fil des étapes pour les 3 rôles)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store</strong>.
+    Génération de rapports d'exécution Mode Secours dans 3 formats (PDF via jsPDF déjà chargé /
+    JSON <code>.mkmsec.report.json</code> autonome / texte presse-papier) pour 3 scopes
+    (Opérateur global / Équipier individuel / Secouriste notes libres).
+    100 % client-side : jsPDF (lib locale <code>lib/jspdf.umd.min.js</code>),
+    Blob URLs locales avec téléchargement natif <code>&lt;a download&gt;</code>,
+    FileReader pour base64 photos (lecture IDB locale <code>myktamap_secours_photos</code>
+    déjà documenté v1.24.0), <code>navigator.clipboard.writeText</code> avec fallback
+    <code>execCommand("copy")</code>. Aucun fetch ajouté, aucune transmission cloud.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+    Verdict : ✅ aucune régression — rapports strictement offline-first et 100 % local.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1087,6 +1102,20 @@
       <tr><th>Version</th><th>Date</th><th>Changement</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>v1.25.0</td>
+        <td>26/05/2026</td>
+        <td>
+          <strong>Release MINOR — Rapport au fil des étapes pour les 3 rôles (Opérateur / Équipier / Secouriste)</strong> —
+          <strong>aucune nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store</strong>.
+          3 formats (PDF / JSON / Texte presse-papier) pour 3 scopes (global / équipier / notes libres).
+          100% client-side : jsPDF déjà chargé, Blob URLs locales, FileReader pour base64,
+          clipboard API + fallback. Photos lues depuis IDB local <code>myktamap_secours_photos</code>
+          (depuis v1.24.0).
+          <strong>Liste blanche <code>connect-src</code> inchangée</strong>.
+          Verdict audit : ✅ aucune régression.
+        </td>
+      </tr>
       <tr>
         <td>v1.24.2</td>
         <td>26/05/2026</td>

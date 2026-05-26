@@ -1741,6 +1741,855 @@
   }
 
   // ============================================================
+  // 🆕 v1.25.0 Phase 3 — RAPPORT AU FIL DES ÉTAPES
+  // ============================================================
+  //
+  // 3 formats : 📄 PDF (jsPDF) + 📦 .mkmsec.report.json + 📋 Texte presse-papier
+  // 3 scopes : "operateur" (toutes équipes) | "equipe" (currentEquipeId seul)
+  //          | "secouriste" (notes libres uniquement)
+  //
+  // Disponible à tout moment pendant l'exécution + après l'arrêt du plan
+  // (rapport final consultable tant que le scénario existe). Indisponible
+  // si le scénario n'a JAMAIS été lancé (pas d'execution).
+
+  const REPORT_FORMAT_VERSION = 1;
+
+  // Génère l'objet structuré commun aux 3 formats. Async car les photos
+  // sont résolues en data:base64 si includePhotos=true.
+  // Retourne : { type, version, exportedAt, appVersion, scope, plan, scenario,
+  //              execution, equipesData: [...], notesLibres: [...] }
+  async function genererRapportData(scenarioId, scope, opts) {
+    opts = opts || {};
+    const s = get(scenarioId);
+    if (!s) return null;
+    if (!s.execution) return null;  // pas lancé → pas de rapport
+    const includePhotos = (opts.includePhotos !== false);   // true par défaut
+
+    // Métadonnées plan source
+    const pc = window.PLAN_CONFIG;
+    const planInfo = pc && pc.plan ? {
+      id:          window._currentLoadedPlanId || null,
+      name:        pc.plan.name    || "",
+      version:     pc.plan.version || "",
+      imageWidth:  pc.plan.imageWidth  || 0,
+      imageHeight: pc.plan.imageHeight || 0,
+      multiLevel:  !!pc.plan.multiLevel,
+      scale:       (window.APP_CONFIG && typeof window.APP_CONFIG.scale === "number")
+                   ? window.APP_CONFIG.scale : null
+    } : null;
+
+    // Snapshot execution clean (retire les flags internes _previous*)
+    const executionClean = {
+      active:        !!s.execution.active,
+      startedAt:     s.execution.startedAt,
+      endedAt:       s.execution.endedAt,
+      pausedAt:      s.execution.pausedAt,
+      pausedTotalMs: s.execution.pausedTotalMs || 0,
+      role:          s.execution.role,
+      currentEquipeId: s.execution.currentEquipeId,
+      dureeMs:       getExecutionDureeMs(scenarioId)
+    };
+
+    // Sélection des équipes selon scope
+    let equipesACibler = [];
+    if (scope === "operateur") {
+      equipesACibler = (s.groupes || []).slice();
+    } else if (scope === "equipe") {
+      const eqId = s.execution.currentEquipeId;
+      const g = (s.groupes || []).find(function(gr) { return gr.id === eqId; });
+      if (g) equipesACibler = [g];
+    } else if (scope === "secouriste") {
+      equipesACibler = [];  // mode notes libres uniquement
+    }
+
+    // Construction equipesData : équipe + étapes + photos résolues
+    const equipesData = [];
+    for (const g of equipesACibler) {
+      const etapes = _getEtapesEquipe(s, g.id);
+      const equipeClean = {
+        id:         g.id,
+        nom:        g.nom,
+        couleurIdx: g.couleurIdx,
+        membres:    (g.membres || []).slice(),
+        level:      (typeof g.level === "number") ? g.level : null,
+        statut:     g.statut || null,
+        observations: g.observations || ""
+      };
+      // Résolution photos
+      let photosResolved = [];
+      if (includePhotos) {
+        photosResolved = await _resolverPhotosEquipe(scenarioId, g.id);
+      } else {
+        // Juste les IDs (compact, pas autonome)
+        photosResolved = await _listerPhotoIdsEquipe(scenarioId, g.id);
+      }
+      equipesData.push({
+        equipe: equipeClean,
+        etapes: etapes.slice(),    // shallow copy (étapes déjà clean)
+        photos: photosResolved
+      });
+    }
+
+    // Notes libres (mode secouriste)
+    let notesLibres = [];
+    if (scope === "secouriste"
+        && s.execution.etapes
+        && Array.isArray(s.execution.etapes._notes_libres)) {
+      notesLibres = s.execution.etapes._notes_libres.slice();
+      // Résolution photos des notes libres (stockées avec equipeId="_notes_libres", stepIdx=-1)
+      if (includePhotos && notesLibres.length > 0) {
+        try {
+          const photosNotes = await _resolverPhotosEquipe(scenarioId, "_notes_libres");
+          // Ajouter au rapport sous une clé dédiée pour distinction
+          notesLibres = notesLibres.map(function(note) {
+            const noteWithPhotos = Object.assign({}, note);
+            noteWithPhotos.photosResolved = photosNotes.filter(function(p) {
+              return Array.isArray(note.photoIds) && note.photoIds.indexOf(p.id) >= 0;
+            });
+            return noteWithPhotos;
+          });
+        } catch(e) {
+          console.warn("[SecoursMode] Résolution photos notes libres échec :", e);
+        }
+      }
+    }
+
+    return {
+      type:         "myktamap-secours-report",
+      version:      REPORT_FORMAT_VERSION,
+      exportedAt:   _nowIso(),
+      appVersion:   (window.__MKM__ && window.__MKM__.build) || "",
+      scope:        scope,
+      plan:         planInfo,
+      scenario: {
+        id:         s.id,
+        nom:        s.nom,
+        createdAt:  s.createdAt,
+        updatedAt:  s.updatedAt,
+        context:    s.context || {}
+      },
+      execution:    executionClean,
+      equipesData:  equipesData,
+      notesLibres:  notesLibres
+    };
+  }
+
+  // Helper interne — résout toutes les photos d'une équipe en data:base64.
+  // Retourne [{id, mime, sizeBytes, dataUrl, stepIdx}, ...].
+  async function _resolverPhotosEquipe(scenarioId, equipeId) {
+    if (!window.MyKTAMapSecoursPhotos
+        || !window.MyKTAMapSecoursPhotos.isAvailable()) return [];
+    try {
+      const records = await window.MyKTAMapSecoursPhotos.getPhotosForEquipe(scenarioId, equipeId);
+      if (!Array.isArray(records) || records.length === 0) return [];
+      // Convertir chaque blob en data URL (séquentiel pour économiser RAM mobile)
+      const out = [];
+      for (const rec of records) {
+        try {
+          const dataUrl = await _blobToDataUrl(rec.blob);
+          out.push({
+            id:        rec.id,
+            mime:      rec.mime,
+            sizeBytes: rec.size,
+            stepIdx:   rec.stepIdx,
+            dataUrl:   dataUrl
+          });
+        } catch(e) {
+          console.warn("[SecoursMode] _resolverPhotosEquipe : skip photo " + rec.id, e);
+        }
+      }
+      return out;
+    } catch(e) {
+      console.warn("[SecoursMode] _resolverPhotosEquipe échec :", e);
+      return [];
+    }
+  }
+
+  // Helper interne — liste juste les IDs des photos d'une équipe (compact).
+  async function _listerPhotoIdsEquipe(scenarioId, equipeId) {
+    if (!window.MyKTAMapSecoursPhotos
+        || !window.MyKTAMapSecoursPhotos.isAvailable()) return [];
+    try {
+      const records = await window.MyKTAMapSecoursPhotos.getPhotosForEquipe(scenarioId, equipeId);
+      if (!Array.isArray(records)) return [];
+      return records.map(function(rec) {
+        return {
+          id:        rec.id,
+          mime:      rec.mime,
+          sizeBytes: rec.size,
+          stepIdx:   rec.stepIdx
+          // pas de dataUrl → non autonome (référence seule)
+        };
+      });
+    } catch(e) {
+      return [];
+    }
+  }
+
+  // Helper interne — convertit un Blob en data URL (base64) via FileReader.
+  function _blobToDataUrl(blob) {
+    return new Promise(function(resolve, reject) {
+      if (!blob || !(blob instanceof Blob)) {
+        reject(new Error("blob invalide"));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload  = function() { resolve(reader.result); };
+      reader.onerror = function() { reject(new Error("FileReader error")); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Helper interne — format texte plain markdown-like d'un rapport.
+  // Utilisé pour le bouton "📋 Copier texte" + comme base du PDF.
+  function genererRapportTexte(reportData) {
+    if (!reportData) return "";
+    const r = reportData;
+    const sep = "─".repeat(60);
+    let out = "";
+
+    // ─── Header ───
+    out += "🚨 RAPPORT MODE SECOURS — MyKTAMap " + (r.appVersion || "") + "\n";
+    out += sep + "\n";
+    out += "Scénario : " + (r.scenario.nom || "(sans nom)") + "\n";
+    out += "Plan     : " + (r.plan ? r.plan.name : "(?)") + "\n";
+    out += "Rôle     : " + _formatRoleLabel(r.scope) + "\n";
+    out += "Exporté  : " + new Date(r.exportedAt).toLocaleString("fr-FR") + "\n";
+    out += "Lancé    : " + (r.execution.startedAt
+                            ? new Date(r.execution.startedAt).toLocaleString("fr-FR")
+                            : "(?)") + "\n";
+    if (r.execution.endedAt) {
+      out += "Terminé  : " + new Date(r.execution.endedAt).toLocaleString("fr-FR") + "\n";
+    } else if (r.execution.active) {
+      out += "Statut   : ⏱️ EN COURS (depuis " + _formatDureeMs(r.execution.dureeMs) + ")\n";
+    }
+
+    if (r.scenario.context && r.scenario.context.incidentAt) {
+      out += "Incident : " + new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR") + "\n";
+    }
+    if (r.scenario.context && r.scenario.context.notes) {
+      out += "Notes    : " + r.scenario.context.notes + "\n";
+    }
+    out += sep + "\n\n";
+
+    // ─── Équipes (mode opérateur OU équipe) ───
+    if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
+      r.equipesData.forEach(function(ed, idx) {
+        const g = ed.equipe;
+        const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
+        out += "🚨 ÉQUIPE " + (idx + 1) + "/" + r.equipesData.length +
+                " — " + g.nom + " (" + couleur.nom + ")\n";
+        out += sep + "\n";
+        if (g.membres && g.membres.length > 0) {
+          out += "Membres : " + g.membres.join(", ") + "\n";
+        }
+        if (typeof g.level === "number") {
+          out += "Niveau M-LVL : " + _formatLevelShort(g.level) + "\n";
+        }
+        // Étapes
+        if (Array.isArray(ed.etapes) && ed.etapes.length > 0) {
+          out += "\nÉtapes :\n";
+          ed.etapes.forEach(function(et, i) {
+            const info = _getStatutInfo(et.statut);
+            const typeLabel = (et.type === "entree") ? "🚪 ENTRÉE"
+                            : (et.type === "sortie") ? "🚪 SORTIE"
+                            : "📍 Étape " + i;
+            const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
+                     : et.startedAt   ? new Date(et.startedAt).toLocaleString("fr-FR") + " (en cours)"
+                     : "—";
+            out += "  " + (i + 1) + ". " + typeLabel + " — " + (et.label || "(?)") + "\n";
+            out += "     " + info.emoji + " " + info.label + " · ⏱️ " + ts + "\n";
+            if (et.observations && et.observations.trim()) {
+              out += "     📝 « " + et.observations.trim() + " »\n";
+            }
+            if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
+              out += "     📸 " + et.photoIds.length + " photo" + (et.photoIds.length > 1 ? "s" : "") + " attachée" + (et.photoIds.length > 1 ? "s" : "") + "\n";
+            }
+          });
+        } else {
+          out += "(aucune étape définie)\n";
+        }
+        out += "\n";
+      });
+    }
+
+    // ─── Notes libres (mode secouriste) ───
+    if (Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
+      out += "🚑 NOTES LIBRES (" + r.notesLibres.length + ")\n";
+      out += sep + "\n";
+      const sorted = r.notesLibres.slice().sort(function(a, b) {
+        return Date.parse(a.ts) - Date.parse(b.ts);   // chronologique ASC dans le rapport
+      });
+      sorted.forEach(function(note, i) {
+        const info = _getStatutInfo(note.statut);
+        const ts = new Date(note.ts).toLocaleString("fr-FR");
+        out += "  " + (i + 1) + ". " + info.emoji + " " + info.label + " · ⏱️ " + ts + "\n";
+        if (note.texte) {
+          out += "     📝 « " + note.texte + " »\n";
+        }
+        if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
+          out += "     📸 " + note.photoIds.length + " photo" + (note.photoIds.length > 1 ? "s" : "") + "\n";
+        }
+      });
+      out += "\n";
+    } else if (r.scope === "secouriste") {
+      out += "(aucune note libre prise)\n\n";
+    }
+
+    out += sep + "\n";
+    out += "Généré par MyKTAMap " + (r.appVersion || "") + " — myktamap.fr\n";
+    out += "© 2026 Flavien VIDAL · CC BY-NC-SA 4.0\n";
+    return out;
+  }
+
+  // Helper interne — label lisible du rôle.
+  function _formatRoleLabel(scope) {
+    if (scope === "operateur")  return "👤 Opérateur surface (vue globale)";
+    if (scope === "equipe")     return "🚨 Équipier (parcours individuel)";
+    if (scope === "secouriste") return "🚑 Secouriste libre (notes en vrac)";
+    return "(?)";
+  }
+
+  // Génère le fichier JSON .mkmsec.report.json + télécharge.
+  // Si includePhotos était true dans genererRapportData, les photos sont
+  // incluses en base64 dans le JSON → autonome mais volumineux.
+  // Retourne le filename généré OU null si échec.
+  function exporterRapportJSON(reportData) {
+    if (!reportData) return null;
+    try {
+      const txt = JSON.stringify(reportData, null, 2);
+      const blob = new Blob([txt], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const slug = _slug(reportData.scenario.nom || "rapport");
+      const filename = "Rapport_" + slug + "_" + reportData.scope + "_" + _shortDate() + ".mkmsec.report.json";
+      const a = document.createElement("a");
+      a.href = url; a.download = filename; a.style.display = "none";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+      return filename;
+    } catch(e) {
+      console.warn("[SecoursMode] exporterRapportJSON échec :", e);
+      return null;
+    }
+  }
+
+  // Copie le rapport texte au presse-papier. Async (navigator.clipboard).
+  // Fallback execCommand pour browsers non-HTTPS / vieux contexte.
+  // Retourne Promise<boolean>.
+  function copierRapportTexte(reportData) {
+    const text = genererRapportTexte(reportData);
+    if (!text) return Promise.resolve(false);
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(text)
+        .then(function() { return true; })
+        .catch(function(e) {
+          console.warn("[SecoursMode] clipboard.writeText échec, fallback execCommand :", e);
+          return _copyFallback(text);
+        });
+    }
+    return Promise.resolve(_copyFallback(text));
+  }
+  // Fallback : textarea hors écran + execCommand("copy")
+  function _copyFallback(text) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.top = "-9999px";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch(e) {
+      console.warn("[SecoursMode] _copyFallback échec :", e);
+      return false;
+    }
+  }
+
+  // ─── Modale UI rapport ──────────────────────────────────────
+  // Ouvre la modale "Rapport au fil des étapes" avec aperçu compact + 3
+  // formats au choix. Scope passé par l'appelant (vue Live ou bandeau Edit).
+  function _afficherModaleRapport(scenarioId, scope) {
+    const s = get(scenarioId);
+    if (!s) return;
+    if (!s.execution) {
+      _toast("⚠️ Aucun plan lancé — impossible de générer un rapport.", "warn");
+      return;
+    }
+    // Cleanup éventuelle modale précédente
+    const existing = document.getElementById("kta-secours-rapport-modale");
+    if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+
+    // Calcul aperçu compact selon scope
+    const exec = s.execution;
+    const dureeStr = _formatDureeMs(getExecutionDureeMs(scenarioId));
+    let apercuTitre, apercuLines;
+    if (scope === "operateur") {
+      const nbEquipes = (s.groupes || []).length;
+      let nbDone = 0, nbTotal = 0;
+      (s.groupes || []).forEach(function(g) {
+        const etapes = _getEtapesEquipe(s, g.id);
+        nbTotal += etapes.length;
+        etapes.forEach(function(et) { if (et.completedAt) nbDone++; });
+      });
+      const pct = nbTotal > 0 ? Math.round((nbDone / nbTotal) * 100) : 0;
+      apercuTitre = "👤 Rapport Opérateur surface";
+      apercuLines = [
+        "🚨 " + nbEquipes + " équipe" + (nbEquipes > 1 ? "s" : ""),
+        "✓ " + nbDone + "/" + nbTotal + " étapes complétées (" + pct + "%)",
+        "⏱️ Durée : " + dureeStr
+      ];
+    } else if (scope === "equipe") {
+      const g = (s.groupes || []).find(function(gr) { return gr.id === exec.currentEquipeId; });
+      const eqNom = g ? g.nom : "(équipe inconnue)";
+      const etapes = g ? _getEtapesEquipe(s, g.id) : [];
+      const nbDone = etapes.filter(function(et) { return !!et.completedAt; }).length;
+      apercuTitre = "🚨 Rapport Équipier — " + _escHtml(eqNom);
+      apercuLines = [
+        "📍 " + nbDone + "/" + etapes.length + " étapes complétées",
+        "⏱️ Durée : " + dureeStr
+      ];
+    } else if (scope === "secouriste") {
+      const notes = (exec.etapes && exec.etapes._notes_libres) || [];
+      apercuTitre = "🚑 Rapport Secouriste libre";
+      apercuLines = [
+        "📝 " + notes.length + " note" + (notes.length > 1 ? "s" : "") + " prise" + (notes.length > 1 ? "s" : ""),
+        "⏱️ Durée : " + dureeStr
+      ];
+    } else {
+      apercuTitre = "📤 Rapport";
+      apercuLines = ["⏱️ Durée : " + dureeStr];
+    }
+
+    // Détection présence photos pour info checkbox
+    let totalPhotosInfo = null;
+    if (window.MyKTAMapSecoursPhotos && window.MyKTAMapSecoursPhotos.isAvailable()) {
+      window.MyKTAMapSecoursPhotos.countPhotosForScenario(scenarioId).then(function(n) {
+        const hint = document.getElementById("kta-rapport-photos-hint");
+        if (hint) {
+          hint.textContent = n > 0
+            ? "Inclut " + n + " photo" + (n > 1 ? "s" : "") + " (impact taille fichier)"
+            : "Aucune photo attachée à ce plan de secours";
+        }
+      }).catch(function() {});
+    }
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-rapport-modale";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100014";
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-rapport-boite" style="max-width:540px; height:auto; max-height:90vh; border-left:6px solid #8cb4ff;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0; color:#8cb4ff;">📤 ' + _escHtml(apercuTitre) + '</h2>' +
+          '<button class="kta-readme-modal-close" data-action="cancel-rapport" aria-label="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+
+          '<div class="kta-secours-rapport-apercu">' +
+            '<div class="kta-secours-rapport-apercu-titre">Aperçu du contenu</div>' +
+            '<ul class="kta-secours-rapport-apercu-lines">' +
+              apercuLines.map(function(l) { return '<li>' + _escHtml(l) + '</li>'; }).join('') +
+            '</ul>' +
+          '</div>' +
+
+          '<label class="kta-secours-rapport-checkbox">' +
+            '<input type="checkbox" id="kta-rapport-include-photos" checked>' +
+            ' <span><strong>📸 Inclure les photos</strong></span>' +
+            '<div id="kta-rapport-photos-hint" class="kta-secours-rapport-photos-hint">Comptage des photos…</div>' +
+          '</label>' +
+
+          '<div class="kta-secours-rapport-formats">' +
+            '<button class="kta-btn kta-btn-primary kta-secours-rapport-fmt-btn" data-action="rapport-export-pdf">' +
+              '<span class="kta-secours-rapport-fmt-icon">📄</span>' +
+              '<span class="kta-secours-rapport-fmt-label">PDF imprimable</span>' +
+              '<span class="kta-secours-rapport-fmt-sub">A4 portrait, photos en annexe</span>' +
+            '</button>' +
+            '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-export-json">' +
+              '<span class="kta-secours-rapport-fmt-icon">📦</span>' +
+              '<span class="kta-secours-rapport-fmt-label">.mkmsec.report.json</span>' +
+              '<span class="kta-secours-rapport-fmt-sub">Data structuré (autonome avec photos en base64)</span>' +
+            '</button>' +
+            '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-copy-text">' +
+              '<span class="kta-secours-rapport-fmt-icon">📋</span>' +
+              '<span class="kta-secours-rapport-fmt-label">Copier texte</span>' +
+              '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
+            '</button>' +
+          '</div>' +
+
+          '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
+            '💡 Le rapport est généré à l\'instant — il reflète l\'état actuel ' +
+            'du scénario (observations + statuts + photos). Tu peux le re-générer ' +
+            'à tout moment pendant ou après l\'exécution.' +
+          '</p>' +
+
+          '<div style="margin-top:14px; display:flex; justify-content:flex-end;">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport">Fermer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelectorAll('[data-action="cancel-rapport"]').forEach(function(btn) {
+      btn.addEventListener("click", _close);
+    });
+
+    // Handler factorisé : génère data + appelle la fonction de format demandée
+    function _handleExport(formatType) {
+      const cb = document.getElementById("kta-rapport-include-photos");
+      const includePhotos = !!(cb && cb.checked);
+      _toast("⏳ Génération du rapport en cours…", "info");
+      genererRapportData(scenarioId, scope, { includePhotos: includePhotos }).then(function(data) {
+        if (!data) {
+          _toast("⚠️ Aucune donnée à exporter.", "error");
+          return;
+        }
+        if (formatType === "pdf") {
+          const fn = genererRapportPDF(data);
+          if (fn) _toast("✓ Rapport PDF généré : " + fn, "info");
+        } else if (formatType === "json") {
+          const fn = exporterRapportJSON(data);
+          if (fn) _toast("✓ Rapport JSON exporté : " + fn, "info");
+        } else if (formatType === "text") {
+          copierRapportTexte(data).then(function(ok) {
+            _toast(ok ? "✓ Rapport copié au presse-papier !" : "⚠️ Copie échouée.", ok ? "info" : "error");
+          });
+        }
+        _close();
+      }).catch(function(e) {
+        console.warn("[SecoursMode] genererRapportData échec :", e);
+        _toast("⚠️ Erreur génération rapport : " + (e && e.message ? e.message : ""), "error");
+      });
+    }
+
+    overlay.querySelectorAll('[data-action="rapport-export-pdf"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _handleExport("pdf"); });
+    });
+    overlay.querySelectorAll('[data-action="rapport-export-json"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _handleExport("json"); });
+    });
+    overlay.querySelectorAll('[data-action="rapport-copy-text"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _handleExport("text"); });
+    });
+
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // Génère le PDF rapport via jsPDF. Sync (pas async — toutes les data
+  // sont déjà résolues par genererRapportData). Retourne le filename
+  // généré OU null si échec.
+  //
+  // Layout :
+  //   • Page 1 : briefing (en-tête + scénario + plan + role + dureeMs + dates)
+  //   • Pour chaque équipe (modes opérateur/équipier) :
+  //       - 1 page texte : étapes avec statuts/obs/ts
+  //       - 1 page photos si applicable (grille jpeg compressées)
+  //   • Pour mode secouriste : 1 page liste chronologique des notes libres
+  //                            + 1 page photos si applicable
+  //
+  // ⚠️ Pas d'emoji dans pdf.text() (jsPDF Helvetica latin1 → mojibake).
+  // Les emojis sont gardés UNIQUEMENT pour les chaînes texte canvas/Blob.
+  function genererRapportPDF(reportData) {
+    if (!reportData) return null;
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      _toast("⚠️ jsPDF non chargé.", "error");
+      return null;
+    }
+    try {
+      const pdf = new window.jspdf.jsPDF({ format: "a4", orientation: "portrait", unit: "mm" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 14;
+      const r = reportData;
+
+      // ─── PAGE 1 : Briefing global ───
+      _drawRapportPDFHeader(pdf, r, pageW, margin);
+      let y = margin + 30;
+
+      pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+      pdf.text("CONTEXTE", margin, y); y += 6;
+      pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      pdf.text("Scenario : " + (r.scenario.nom || "(sans nom)"), margin, y); y += 4;
+      pdf.text("Plan     : " + (r.plan ? r.plan.name : "(?)"), margin, y); y += 4;
+      pdf.text("Role     : " + _formatRoleLabelAscii(r.scope), margin, y); y += 4;
+      if (r.execution.startedAt) {
+        pdf.text("Lance    : " + new Date(r.execution.startedAt).toLocaleString("fr-FR"), margin, y); y += 4;
+      }
+      if (r.execution.endedAt) {
+        pdf.text("Termine  : " + new Date(r.execution.endedAt).toLocaleString("fr-FR"), margin, y); y += 4;
+      } else if (r.execution.active) {
+        pdf.text("Statut   : EN COURS (depuis " + _formatDureeMs(r.execution.dureeMs) + ")", margin, y); y += 4;
+      }
+      if (r.scenario.context && r.scenario.context.incidentAt) {
+        pdf.text("Incident : " + new Date(r.scenario.context.incidentAt).toLocaleString("fr-FR"), margin, y); y += 4;
+      }
+      if (r.scenario.context && r.scenario.context.notes) {
+        y += 2;
+        pdf.setFont(undefined, "bold"); pdf.text("Notes :", margin, y); y += 5;
+        pdf.setFont(undefined, "normal");
+        y = _pdfWrapText(pdf, r.scenario.context.notes, margin, y, pageW - 2 * margin, 4);
+      }
+
+      _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+
+      // ─── Pages équipes ou notes libres ───
+      if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
+        r.equipesData.forEach(function(ed) {
+          // Page texte étapes
+          pdf.addPage();
+          _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin);
+          // Page photos si applicable
+          if (Array.isArray(ed.photos) && ed.photos.length > 0 && ed.photos[0].dataUrl) {
+            pdf.addPage();
+            _drawRapportPDFEquipePhotosPage(pdf, ed, r, pageW, pageH, margin);
+          }
+        });
+      }
+      if (r.scope === "secouriste" && Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
+        pdf.addPage();
+        _drawRapportPDFNotesLibresPage(pdf, r, pageW, pageH, margin);
+      }
+
+      const slug = _slug(r.scenario.nom || "rapport");
+      const filename = "Rapport_" + slug + "_" + r.scope + "_" + _shortDate() + ".pdf";
+      pdf.save(filename);
+      return filename;
+    } catch(e) {
+      console.warn("[SecoursMode] genererRapportPDF échec :", e);
+      _toast("⚠️ Erreur génération PDF : " + e.message, "error");
+      return null;
+    }
+  }
+
+  // Helpers PDF rapport — header commun à toutes les pages
+  function _drawRapportPDFHeader(pdf, r, pageW, margin) {
+    pdf.setFontSize(16); pdf.setFont(undefined, "bold");
+    pdf.text("RAPPORT MODE SECOURS", margin, margin + 6);
+    pdf.setFontSize(9); pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
+    pdf.text("MyKTAMap " + (r.appVersion || "") +
+             " - Exporte le " + new Date(r.exportedAt).toLocaleString("fr-FR"),
+             margin, margin + 11);
+    pdf.setTextColor(0); pdf.setFont(undefined, "normal");
+    // Bandeau jaune décoratif sous l'en-tête
+    pdf.setFillColor(244, 197, 66);   // #f4c542
+    pdf.rect(margin, margin + 14, pageW - 2 * margin, 1.5, "F");
+  }
+
+  function _drawRapportPDFFooter(pdf, r, pageW, pageH, margin) {
+    pdf.setFontSize(7); pdf.setTextColor(120);
+    const txt = "MyKTAMap " + (r.appVersion || "") +
+                " - " + (r.scenario.nom || "") +
+                " - " + new Date().toLocaleString("fr-FR");
+    pdf.text(txt, margin, pageH - 6);
+    pdf.setTextColor(0);
+  }
+
+  // Page texte étapes d'une équipe
+  function _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin) {
+    _drawRapportPDFHeader(pdf, r, pageW, margin);
+    const g = ed.equipe;
+    const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
+    let y = margin + 22;
+
+    // Titre équipe
+    pdf.setFontSize(14); pdf.setFont(undefined, "bold");
+    pdf.text("EQUIPE - " + g.nom, margin, y); y += 4;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal"); pdf.setTextColor(100);
+    pdf.text("(Couleur OTAN : " + couleur.nom +
+             (typeof g.level === "number" ? " - Niveau " + _formatLevelShort(g.level) : "") + ")",
+             margin, y); y += 6;
+    pdf.setTextColor(0);
+
+    // Bandeau couleur équipe
+    const rgb = _hexToRgb(couleur.hex);
+    pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+    pdf.rect(margin, y, pageW - 2 * margin, 5, "F");
+    y += 9;
+
+    // Membres
+    if (Array.isArray(g.membres) && g.membres.length > 0) {
+      pdf.setFontSize(10); pdf.setFont(undefined, "bold");
+      pdf.text("Membres :", margin, y); y += 4;
+      pdf.setFont(undefined, "normal");
+      y = _pdfWrapText(pdf, g.membres.join(", "), margin, y, pageW - 2 * margin, 4);
+      y += 3;
+    }
+
+    // Étapes
+    pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+    pdf.text("ETAPES (" + (ed.etapes || []).length + ")", margin, y); y += 6;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+
+    if (!Array.isArray(ed.etapes) || ed.etapes.length === 0) {
+      pdf.setFont(undefined, "italic");
+      pdf.text("(aucune etape definie)", margin, y);
+      _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+      return;
+    }
+
+    ed.etapes.forEach(function(et, i) {
+      // Saut de page si on dépasse le bas
+      if (y > pageH - 30) {
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+        pdf.addPage();
+        _drawRapportPDFHeader(pdf, r, pageW, margin);
+        y = margin + 22;
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("EQUIPE - " + g.nom + " (suite)", margin, y); y += 6;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      }
+      const info = _getStatutInfo(et.statut);
+      const typeLabel = (et.type === "entree") ? "ENTREE"
+                      : (et.type === "sortie") ? "SORTIE"
+                      : "Etape " + i;
+      const ts = et.completedAt ? new Date(et.completedAt).toLocaleString("fr-FR")
+               : et.startedAt   ? new Date(et.startedAt).toLocaleString("fr-FR") + " (en cours)"
+               : "—";
+      // Encadré statut couleur
+      const statutRgb = _hexToRgb(info.color);
+      pdf.setDrawColor(statutRgb.r, statutRgb.g, statutRgb.b);
+      pdf.setLineWidth(0.6);
+      pdf.line(margin, y - 3, margin, y + 6);
+      pdf.setLineWidth(0.2);
+      pdf.setDrawColor(0);
+
+      pdf.setFont(undefined, "bold");
+      pdf.text("  " + (i + 1) + ". " + typeLabel + " - " + (et.label || "(?)"), margin, y); y += 4;
+      pdf.setFont(undefined, "normal");
+      pdf.text("     Statut : " + info.label + "  |  " + ts, margin, y); y += 4;
+      if (et.observations && et.observations.trim()) {
+        y = _pdfWrapText(pdf, "     Obs : " + et.observations.trim(), margin, y, pageW - 2 * margin, 4);
+      }
+      if (Array.isArray(et.photoIds) && et.photoIds.length > 0) {
+        pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
+        pdf.text("     " + et.photoIds.length + " photo(s) attachee(s) (voir page suivante)", margin, y);
+        pdf.setTextColor(0); pdf.setFont(undefined, "normal");
+        y += 4;
+      }
+      y += 3;
+    });
+    _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+  }
+
+  // Page photos d'une équipe (grille)
+  function _drawRapportPDFEquipePhotosPage(pdf, ed, r, pageW, pageH, margin) {
+    _drawRapportPDFHeader(pdf, r, pageW, margin);
+    const g = ed.equipe;
+    let y = margin + 22;
+
+    pdf.setFontSize(12); pdf.setFont(undefined, "bold");
+    pdf.text("PHOTOS - " + g.nom + " (" + ed.photos.length + ")", margin, y); y += 8;
+    pdf.setFontSize(8); pdf.setFont(undefined, "normal");
+
+    // Grille 2 colonnes, hauteur fixe par cellule
+    const cols = 2;
+    const gapMm = 4;
+    const cellW = (pageW - 2 * margin - gapMm) / cols;
+    const cellH = cellW * 3 / 4;  // ratio 4:3
+    let col = 0;
+
+    ed.photos.forEach(function(p, idx) {
+      if (!p.dataUrl) return;
+      // Saut de page si dépasse
+      if (y + cellH + 8 > pageH - 12) {
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+        pdf.addPage();
+        _drawRapportPDFHeader(pdf, r, pageW, margin);
+        y = margin + 22;
+        col = 0;
+      }
+      const x = margin + col * (cellW + gapMm);
+      try {
+        pdf.addImage(p.dataUrl, "JPEG", x, y, cellW, cellH, undefined, "FAST");
+        pdf.setDrawColor(150);
+        pdf.rect(x, y, cellW, cellH);
+        // Label sous photo
+        pdf.setFontSize(7); pdf.setTextColor(80);
+        const stepLabel = (p.stepIdx === -1) ? "Note libre" : "Etape " + (p.stepIdx + 1);
+        pdf.text(stepLabel + " - " + _formatKB(p.sizeBytes), x, y + cellH + 4);
+        pdf.setTextColor(0);
+      } catch(e) {
+        console.warn("[SecoursMode] addImage photo " + p.id + " échec :", e);
+        pdf.setDrawColor(200);
+        pdf.rect(x, y, cellW, cellH);
+        pdf.setFontSize(8);
+        pdf.text("(photo " + p.id + " : erreur)", x + 2, y + cellH / 2, { align: "left" });
+      }
+      col++;
+      if (col >= cols) {
+        col = 0;
+        y += cellH + 8;
+      }
+    });
+    _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+  }
+
+  // Page notes libres (mode secouriste)
+  function _drawRapportPDFNotesLibresPage(pdf, r, pageW, pageH, margin) {
+    _drawRapportPDFHeader(pdf, r, pageW, margin);
+    let y = margin + 22;
+
+    pdf.setFontSize(14); pdf.setFont(undefined, "bold");
+    pdf.text("NOTES LIBRES (" + r.notesLibres.length + ")", margin, y); y += 8;
+    pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+
+    const sorted = r.notesLibres.slice().sort(function(a, b) {
+      return Date.parse(a.ts) - Date.parse(b.ts);   // chronologique ASC
+    });
+    sorted.forEach(function(note, i) {
+      if (y > pageH - 25) {
+        _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+        pdf.addPage();
+        _drawRapportPDFHeader(pdf, r, pageW, margin);
+        y = margin + 22;
+        pdf.setFontSize(11); pdf.setFont(undefined, "bold");
+        pdf.text("NOTES LIBRES (suite)", margin, y); y += 6;
+        pdf.setFontSize(9); pdf.setFont(undefined, "normal");
+      }
+      const info = _getStatutInfo(note.statut);
+      const ts = new Date(note.ts).toLocaleString("fr-FR");
+      pdf.setFont(undefined, "bold");
+      pdf.text("  " + (i + 1) + ". " + info.label + "  |  " + ts, margin, y); y += 4;
+      pdf.setFont(undefined, "normal");
+      if (note.texte) {
+        y = _pdfWrapText(pdf, "     " + note.texte, margin, y, pageW - 2 * margin, 4);
+      }
+      if (Array.isArray(note.photoIds) && note.photoIds.length > 0) {
+        pdf.setFont(undefined, "italic"); pdf.setTextColor(120);
+        pdf.text("     " + note.photoIds.length + " photo(s) attachee(s)", margin, y);
+        pdf.setTextColor(0); pdf.setFont(undefined, "normal");
+        y += 4;
+      }
+      y += 3;
+    });
+    _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+  }
+
+  // Helper local — label rôle en ASCII (pour pdf.text qui supporte mal les emojis)
+  function _formatRoleLabelAscii(scope) {
+    if (scope === "operateur")  return "Operateur surface (vue globale)";
+    if (scope === "equipe")     return "Equipier (parcours individuel)";
+    if (scope === "secouriste") return "Secouriste libre (notes en vrac)";
+    return "(?)";
+  }
+
+  // Helper local — format taille bytes en KB/MB
+  function _formatKB(bytes) {
+    if (!bytes || bytes < 0) return "0 KB";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  // ============================================================
   // EXPORT PDF (depuis v1.22.0 commit 6/9)
   // ============================================================
   // 1 page A4 par équipe avec briefing texte. La carte miniature avec
@@ -2827,8 +3676,38 @@
                  '<button class="kta-btn kta-btn-primary" data-action="reprendre-live">' +
                    '▶️ Reprendre la vue Live' +
                  '</button>' +
+                 // 🆕 v1.25.0 — Bouton Rapport accessible depuis vue Edit
+                 // tant que execution active. Scope choisi = rôle courant.
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="edit-rapport" data-scope="' + _escAttr(exec.role) + '" title="Voir ou exporter le rapport actuel">' +
+                   '📤 Rapport' +
+                 '</button>' +
                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="arreter-plan" title="Termine le plan et conserve les observations comme rapport">' +
                    '⏹️ Arrêter' +
+                 '</button>' +
+               '</div>' +
+             '</div>';
+    }
+    // 🆕 v1.25.0 — Si execution existe mais inactive (= plan TERMINÉ),
+    // bandeau gris avec bouton "📤 Voir le rapport historique" + relance possible.
+    if (s.execution && !s.execution.active && s.execution.endedAt) {
+      const dureeStr = _formatDureeMs(getExecutionDureeMs(s.id));
+      const finStr = new Date(s.execution.endedAt).toLocaleString("fr-FR");
+      const roleLabel = (s.execution.role === "operateur") ? "👤 Opérateur surface"
+                      : (s.execution.role === "secouriste") ? "🚑 Secouriste libre"
+                      : "🚨 Équipe terrain";
+      return '<div class="kta-secours-lancer-bandeau kta-secours-lancer-bandeau-archived">' +
+               '<div class="kta-secours-lancer-bandeau-info">' +
+                 '<div class="kta-secours-lancer-bandeau-titre">📦 PLAN TERMINÉ — ' + _escHtml(roleLabel) + '</div>' +
+                 '<div class="kta-secours-lancer-bandeau-sub">' +
+                   '⏱️ Durée : ' + dureeStr + ' · 📅 Terminé le ' + _escHtml(finStr) +
+                 '</div>' +
+               '</div>' +
+               '<div class="kta-secours-lancer-bandeau-actions">' +
+                 '<button class="kta-btn kta-btn-primary" data-action="edit-rapport" data-scope="' + _escAttr(s.execution.role) + '">' +
+                   '📤 Voir le rapport historique' +
+                 '</button>' +
+                 '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="ouvrir-lancer-modale" title="Relancer un nouveau plan (les observations actuelles seront écrasées)">' +
+                   '🚀 Relancer' +
                  '</button>' +
                '</div>' +
              '</div>';
@@ -3136,6 +4015,10 @@
                 (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
               '</button>' +
               retourPreviousBtn +
+              // 🆕 v1.25.0 — Bouton Rapport (mode Équipe : scope = "equipe")
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="Générer un rapport de mon parcours (PDF, JSON ou texte)">' +
+                '📤 Rapport' +
+              '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -3211,6 +4094,10 @@
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-carte-globale">' +
                 '🗺️ Voir carte globale' +
+              '</button>' +
+              // 🆕 v1.25.0 — Bouton Rapport (mode Opérateur : scope = "operateur" → toutes équipes)
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="Générer un rapport global de toutes les équipes (PDF, JSON ou texte)">' +
+                '📤 Rapport global' +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
@@ -3382,6 +4269,10 @@
     html += '<div class="kta-secours-live-footer">' +
               '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="live-toggle-pause">' +
                 (s.execution.pausedAt ? '▶️ Reprendre' : '⏸️ Pause') +
+              '</button>' +
+              // 🆕 v1.25.0 — Bouton Rapport (mode Secouriste : scope = "secouriste" → notes libres)
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="secouriste" title="Générer un rapport de mes notes (PDF, JSON ou texte)">' +
+                '📤 Rapport' +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
@@ -3777,6 +4668,15 @@
           _switchView("edit");
         });
       });
+      // 🆕 v1.25.0 — Bouton "📤 Rapport" depuis le bandeau vue Edit
+      // (accessible si execution active OU terminée). Le scope est lu depuis
+      // data-scope (= rôle de l'execution = "operateur" | "equipe" | "secouriste").
+      corps.querySelectorAll('[data-action="edit-rapport"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const scope = btn.getAttribute("data-scope") || (s.execution && s.execution.role) || "operateur";
+          _afficherModaleRapport(s.id, scope);
+        });
+      });
       // Toggle overlay carte — masque la modale pour voir le rendu Leaflet
       // (sinon la modale plein écran z-index 99999 cache toute la carte).
       // Floater "← Retour modale" pour réouvrir sans repasser par la sidebar.
@@ -4163,6 +5063,15 @@
         pauseExecution(s.id, !isPaused);
         _toast(isPaused ? "▶️ Reprise du plan" : "⏸️ Plan mis en pause", "info");
         _switchView("live");
+      });
+    });
+    // 🆕 v1.25.0 — Bouton "📤 Rapport" (commun aux 3 vues Live)
+    // Le scope est lu depuis data-scope sur le bouton (= "equipe" |
+    // "operateur" | "secouriste" selon le footer qui l'a posé).
+    corps.querySelectorAll('[data-action="live-rapport"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const scope = btn.getAttribute("data-scope") || s.execution.role;
+        _afficherModaleRapport(s.id, scope);
       });
     });
   }

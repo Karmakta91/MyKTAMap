@@ -1,6 +1,8 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.24.2** (26 mai 2026).
+> Page de transparence technique. À jour pour la version **v1.25.0** (26 mai 2026).
+>
+> **v1.25.0 (Release MINOR — Rapport au fil des étapes pour les 3 rôles)** : **AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store**. Génération de rapports d'exécution Mode Secours dans 3 formats (PDF via jsPDF déjà chargé / JSON `.mkmsec.report.json` autonome / texte presse-papier) pour 3 scopes (Opérateur global / Équipier individuel / Secouriste notes libres). 100 % client-side : jsPDF (lib locale chargée depuis lib/jspdf.umd.min.js), Blob URLs locales avec téléchargement natif `<a download>`, FileReader pour base64 photos (lecture IDB locale `myktamap_secours_photos` déjà documenté v1.24.0), `navigator.clipboard.writeText` avec fallback `execCommand("copy")`. Aucun fetch ajouté, aucune transmission cloud. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — rapports strictement offline-first et 100 % local.
 >
 > **v1.24.2 (Release PATCH 3 fixes CSS Phase 3 — textarea overflow + header sticky transparent)** : **AUCUN impact réseau, aucune nouvelle permission, aucun changement JS**. Fix purement CSS Phase 3 vues Live : (1+2) `box-sizing: border-box` + `max-width: 100%` sur `.kta-secours-live-etape-textarea` pour fix débordement textarea observations Mode Équipe + Mode Secouriste. (3) Background OPAQUE `linear-gradient(#1f2740, #0e1424)` + box-shadow + z-index 10 sur `.kta-secours-live-header` pour fix scroll en filigrane derrière header sticky en Mode Opérateur. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com` (ping). Verdict : ✅ aucune régression — fix purement CSS additif.
 >

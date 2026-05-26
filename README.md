@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.24.2` (26/05/2026) — PATCH 3 fixes CSS Phase 3 « textarea overflow Mode Équipe/Secouriste + header sticky transparent Mode Opérateur »
-**📦 Précédentes shipped main** : `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours) ; `v1.23.5` (modale preview import + mini-légende carte PDF)
+**📦 Version courante** : `v1.25.0` (26/05/2026) — MINOR « Rapport au fil des étapes » — 3 formats (📄 PDF / 📦 JSON / 📋 Texte) pour chaque rôle (Opérateur / Équipier / Secouriste). Disponible en cours d'exécution + après arrêt
+**📦 Précédentes shipped main** : `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain) ; `v1.23.7` (fix CSS card équipe M-LVL) ; `v1.23.6` (pause configurable depuis Mode Secours)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---
@@ -923,7 +923,93 @@ Le mode `debugMode` (activable depuis Configuration home ou ⚙️ Réglages mod
 
 > Seules les **3 dernières releases** (≤ 1 semaine) sont conservées dans le README. Pour l'historique complet, consulter le repo Git.
 
-<details id="v1-24-2" open>
+<details id="v1-25-0" open>
+<summary><strong>🗓️ 26/05/2026 — 📤 v1.25.0 : Release MINOR — Rapport au fil des étapes pour les 3 rôles (Opérateur / Équipier / Secouriste)</strong></summary>
+
+Release MINOR (bump Y : 1.24.x → 1.25.0). Demande KARMA : « on doit pouvoir générer un rapport au fil des étapes pour chaque type Operator, Equipier, Secour ».
+
+### 📤 3 formats disponibles
+
+Modale unifiée `_afficherModaleRapport(scenarioId, scope)` avec choix :
+
+| Format | Description |
+|---|---|
+| 📄 **PDF imprimable** | A4 portrait via jsPDF — briefing global page 1 + page texte étapes par équipe + page photos en annexe (grille 2 cols, ratio 4:3) |
+| 📦 **`.mkmsec.report.json`** | Data structuré autonome avec photos en base64 (si cochée) — prévu pour re-import device opérateur en v1.26.0 |
+| 📋 **Texte plain** | Markdown-like copié au presse-papier (navigator.clipboard + fallback execCommand) — pour partage Discord/SMS/mail rapide |
+
+### 🎯 3 scopes selon le rôle
+
+Bouton « 📤 Rapport » dans le footer de chaque vue Live avec scope adapté :
+
+- **👤 Mode Opérateur surface** → « 📤 Rapport global » : TOUTES les équipes + leurs étapes + photos
+- **🚨 Mode Équipier** → « 📤 Rapport » : SON équipe uniquement (parcours individuel)
+- **🚑 Mode Secouriste libre** → « 📤 Rapport » : SES notes libres chronologiques
+
+### 📂 Bouton depuis vue Edit aussi
+
+Bandeau « 📤 Rapport » accessible depuis la vue Édition tant que l'exécution existe (active OU terminée). Nouveau bandeau bleu **« 📦 PLAN TERMINÉ »** qui apparaît dans la vue Edit quand le plan a été arrêté, avec boutons « 📤 Voir le rapport historique » + « 🚀 Relancer ». Permet de re-générer le rapport à tout moment après l'arrêt.
+
+### 🕐 Rapport en cours d'exécution
+
+Le rapport est **généré à l'instant**, reflète l'état COURANT du scénario (observations + statuts + photos + timestamps). Permet rapport intermédiaire pour relève PC chef, briefing en cours de mission, passation cross-device. Réutilisable autant de fois que nécessaire.
+
+### 📸 Photos incluses par défaut
+
+Checkbox « 📸 Inclure les photos » COCHÉE par défaut dans la modale. Affichage live du nombre de photos attachées au scénario. Décochable pour rapport compact.
+
+- **PDF** : page dédiée par équipe avec grille 2 cols (cellule 4:3 ratio + label « Étape N · 234 KB » sous chaque photo)
+- **JSON** : `dataUrl` base64 pour autonomie complète (gros mais portable)
+- **Texte** : juste compteur « 📸 N photos attachées »
+
+### 🆕 4 nouveaux helpers API publique `window.SecoursMode`
+
+```js
+genererRapportData(scenarioId, scope, opts)   // async → objet structuré
+genererRapportTexte(reportData)                // sync → texte markdown-like
+genererRapportPDF(reportData)                  // sync → PDF via jsPDF
+exporterRapportJSON(reportData)                // sync → téléchargement JSON
+copierRapportTexte(reportData)                 // async → presse-papier
+```
+
+Format `.mkmsec.report.json` versionné (`version: 1`) prêt pour re-import futur en v1.26.0 (consolidation cross-device).
+
+### 🎨 Modale UI charte
+
+- Boîte 540px max + bordure gauche bleu `#8cb4ff`
+- Aperçu compact en haut (titre rôle + nombre étapes + % progression + durée)
+- Checkbox photos avec hint dynamique
+- 3 boutons format colorés (PDF primary jaune / JSON+Texte secondary) avec icône 22px + label gras + sous-titre italique
+- Toast feedback à chaque action
+- Backdrop click + Échap = annuler
+
+### 🛡️ Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. Génération PDF/JSON/texte **100 % client-side** (jsPDF déjà chargé, Blob URLs locales, FileReader pour base64 photos, `navigator.clipboard` avec fallback `execCommand`). Photos lues depuis le store IDB local existant `myktamap_secours_photos` (depuis v1.24.0). Aucun fetch ajouté.
+
+### 📦 Sources de vérité v1.25.0
+
+- `version.json` → `v1.25.0`
+- `js/copyright.js > __MKM__.build` → `v1.25.0`
+- `sw.js > CACHE_NAME` → `myktamap-cache-v1.25.0`
+
+Aucun nouveau fichier. Modifs :
+- `js/secoursMode.js` (+~660 lignes : helpers data/texte/JSON + helper PDF + modale UI + 4 boutons UI + 2 handlers)
+- `css/style.css` (+~135 lignes : bandeau archive + modale rapport + variants thème clair)
+
+### 🛣️ Roadmap suite Phase 3
+
+- **v1.26.0** : Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device — opérateur surface importe les rapports de chaque équipe au retour pour fusionner les observations dans un rapport global unique)
+- **v1.27.0+** : QR code share unidirectionnel terrain sans réseau
+- **v1.28.0+** : Seuils stress visuels (timer rouge après 4h)
+
+### ⚠️ Action terrain
+
+Ne nécessite PAS de ré-import. Compat 100 % v1.24.2 (helpers et UI additifs, format `.mkmsec.report.json` v1 nouveau, ancien format `.mkmsec.json` v1.23.4 inchangé). Reload pour récupérer via service worker (cache bump auto).
+
+</details>
+
+<details id="v1-24-2">
 <summary><strong>🗓️ 26/05/2026 — 🩹 v1.24.2 : Release PATCH 3 fixes CSS Phase 3 (textarea overflow + header sticky transparent)</strong></summary>
 
 Release PATCH (bump Z : 1.24.1 → 1.24.2). 3 bugs CSS Phase 3 remontés KARMA terrain :
