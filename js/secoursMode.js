@@ -2197,6 +2197,41 @@
     _switchView("edit");
   }
 
+  // 🆕 v1.23.0 Phase 2 / Feature F — Rendu du bloc Favoris dans la modale
+  // picker waypoint. Affiche les favoris du plan en accès rapide (chips
+  // cliquables) au-dessus de la recherche autocomplete. Skip si pas de
+  // favoris OU module Favoris pas chargé (rétro-compat).
+  function _renderFavorisBlock() {
+    if (!window.Favoris || typeof window.Favoris.getAll !== "function") return "";
+    let favs = [];
+    try { favs = window.Favoris.getAll() || []; } catch(e) { return ""; }
+    if (!Array.isArray(favs) || favs.length === 0) return "";
+    let html = '<div class="kta-secours-pick-favoris">';
+    html += '<div class="kta-secours-pick-favoris-titre">⭐ Favoris du plan (' + favs.length + ')</div>';
+    html += '<div class="kta-secours-pick-favoris-grid">';
+    // Max 8 favoris affichés (sinon l'UI s'allonge trop — l'user peut
+    // toujours utiliser la recherche pour les autres)
+    favs.slice(0, 8).forEach(function(f) {
+      // f a la forme { pointId, nom, x, y, level?, tag?, layerId?, ... }
+      if (!f || typeof f.x !== "number" || typeof f.y !== "number") return;
+      const nom = f.nom || f.pointId || "Favori";
+      html += '<button class="kta-secours-pick-favori" ' +
+                'data-pid="' + _escAttr(f.pointId || "") + '" ' +
+                'data-x="' + f.x + '" data-y="' + f.y + '" ' +
+                'data-lvl="' + (typeof f.level === "number" ? f.level : "") + '" ' +
+                'data-nom="' + _escAttr(nom) + '" ' +
+                'title="' + _escAttr(nom + " (x=" + Math.round(f.x) + " y=" + Math.round(f.y) + ")") + '">' +
+                '⭐ ' + _escHtml(nom) +
+              '</button>';
+    });
+    html += '</div>';
+    if (favs.length > 8) {
+      html += '<div class="kta-secours-pick-favoris-more">+' + (favs.length - 8) + ' autres dans la recherche ci-dessous</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
   // 🆕 v1.22.0-fix2 — mini-modale "Choisir un point" avec autocomplete +
   // bouton clic carte. Pattern hérité de la modale itinéraire (cf §14 CLAUDE.md).
   function _ouvrirChoixWaypoint(groupeId, role, idx) {
@@ -2210,6 +2245,13 @@
     overlay.id = "kta-secours-pick-modal";
     overlay.className = "kta-readme-modal-overlay";
     overlay.style.zIndex = "100001";
+    // 🆕 v1.23.0 Phase 2 / Feature F (KARMA roadmap §65.12 "Favoris →
+    // import auto des favoris taggés entrée/sortie") : section ⭐ favoris
+    // en accès rapide AU-DESSUS de la recherche autocomplete. Les favoris
+    // sont par essence les points cliché du plan (accès, escaliers, POI
+    // marquants) → candidats naturels pour les waypoints d'équipes secours.
+    const favorisHtml = _renderFavorisBlock();
+
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite kta-secours-pick-boite">' +
         '<div class="kta-readme-modal-header">' +
@@ -2217,6 +2259,7 @@
           '<button class="kta-panneau-close" data-action="cancel" type="button">&times;</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps">' +
+          favorisHtml +
           '<div class="kta-secours-pick-search-wrap">' +
             '<input type="text" id="kta-secours-pick-search" placeholder="🔍 Rechercher un point (nom, id, tag)..." autocomplete="off">' +
             '<div class="kta-secours-pick-results" id="kta-secours-pick-results"></div>' +
@@ -2238,6 +2281,21 @@
     }
     overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
     overlay.querySelectorAll('[data-action="cancel"]').forEach(function(b) { b.addEventListener("click", _close); });
+    // 🆕 v1.23.0 Feature F — Click sur un favori = applique en waypoint direct
+    overlay.querySelectorAll('.kta-secours-pick-favori').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        const wp = {
+          x:       parseFloat(btn.getAttribute("data-x")),
+          y:       parseFloat(btn.getAttribute("data-y")),
+          level:   btn.getAttribute("data-lvl") !== "" ? parseInt(btn.getAttribute("data-lvl"), 10) : 0,
+          pointId: btn.getAttribute("data-pid") || null,
+          label:   btn.getAttribute("data-nom") || null
+        };
+        _close();
+        _appliquerWaypoint(groupeId, role, idx, wp);
+      });
+    });
+
     // Clic carte
     overlay.querySelectorAll('[data-action="clic-carte"]').forEach(function(b) {
       b.addEventListener("click", function() {
