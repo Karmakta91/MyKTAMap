@@ -5269,6 +5269,22 @@ _setGroupeModeActif("tracker", isTracking, null);
             alert("Mode urgence indisponible (EmergencyMode non chargé).");
           }
         }
+      },
+      // 🆕 v1.22.0 — 🚨 Mode Secours : outil opérationnel pour assigner
+      // des équipes de recherche à des zones du plan. Multi-scénarios,
+      // export PDF/KMZ. KARMA : "définir un plan de secours / lire un
+      // plan de secours". Placé en FIN du flyout, fond rouge urgence.
+      {
+        icone: "🚨",
+        titre: "Mode Secours — Plans de recherche (équipes + zones)",
+        cssClass: "kta-sous-action-urgence",
+        onClick: function() {
+          if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
+            window.SecoursMode.ouvrir();
+          } else {
+            alert("Mode Secours indisponible (SecoursMode non chargé).");
+          }
+        }
       }
     ]
   });

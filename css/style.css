@@ -17842,3 +17842,407 @@ body.kta-theme-light .kta-fp-status,
 html.kta-theme-light .kta-fp-status {
   color: var(--kta-light-text-muted, #6b6354) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🆕 v1.22.0 — Mode Secours : modale UI (liste + create + edit free-form)
+   ───────────────────────────────────────────────────────────────────────────
+   3 vues dans la modale 🚨 Mode Secours :
+     • LIST   : table des scénarios sauvegardés + bouton "Nouveau"
+     • CREATE : stepper léger (nom + notes + heure incident)
+     • EDIT   : free-form 3 sections (Contexte / Équipes / Export)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Boîte principale (cohérent KMZ / Aide / Stats Globales) */
+.kta-secours-modal-boite {
+  max-width: 560px !important;
+  width: calc(100vw - 24px);
+  height: auto !important;
+  max-height: 92vh !important;
+}
+@media (min-width: 1024px) {
+  .kta-secours-modal-boite { max-width: 760px !important; }
+}
+@media (min-width: 1440px) {
+  .kta-secours-modal-boite { max-width: 900px !important; }
+}
+
+.kta-secours-corps {
+  padding: 14px 18px !important;
+}
+
+/* ─── VUE LISTE ─── */
+.kta-secours-list-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+}
+.kta-secours-list-header .kta-btn-primary {
+  align-self: flex-start;
+  font-size: 14px;
+}
+.kta-secours-hint {
+  color: #c8d0e0;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+.kta-secours-hint strong {
+  color: #f4c542;
+}
+.kta-secours-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: #8892a4;
+}
+.kta-secours-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+.kta-secours-empty-hint {
+  font-size: 12px;
+  font-style: italic;
+  margin-top: 6px;
+}
+.kta-secours-empty-small {
+  color: #8892a4;
+  font-size: 12px;
+  font-style: italic;
+  padding: 6px 0;
+}
+.kta-secours-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kta-secours-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 70, 70, 0.05);
+  border: 1px solid rgba(255, 70, 70, 0.20);
+  border-left: 4px solid #ff4444;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+.kta-secours-list-row:hover {
+  background: rgba(255, 70, 70, 0.10);
+}
+.kta-secours-list-info { flex: 1; min-width: 0; }
+.kta-secours-list-nom {
+  font-weight: 600;
+  color: #f4c542;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-secours-list-meta {
+  font-size: 11px;
+  color: #8892a4;
+  margin-top: 3px;
+}
+.kta-secours-list-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* ─── VUE CRÉATION (stepper léger) ─── */
+.kta-secours-create-form,
+.kta-secours-edit-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.kta-secours-form-titre {
+  color: #f4c542;
+  font-size: 16px;
+  margin: 0;
+}
+.kta-secours-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.kta-secours-form-row label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #c8d0e0;
+}
+.kta-secours-form-row input[type="text"],
+.kta-secours-form-row input[type="datetime-local"],
+.kta-secours-form-row textarea,
+.kta-secours-form-row select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.25);
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: #e8eaf0;
+  font-family: inherit;
+  font-size: 13px;
+}
+.kta-secours-form-row input:focus,
+.kta-secours-form-row textarea:focus,
+.kta-secours-form-row select:focus {
+  outline: none;
+  border-color: #f4c542;
+  box-shadow: 0 0 0 2px rgba(244, 197, 66, 0.20);
+}
+.kta-secours-form-hint {
+  background: rgba(140, 180, 255, 0.08);
+  border-left: 3px solid #8cb4ff;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #c8d0e0;
+  border-radius: 4px;
+}
+.kta-secours-form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(244, 197, 66, 0.18);
+}
+
+/* ─── VUE ÉDITION (free-form) ─── */
+.kta-secours-edit-header {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+.kta-secours-edit-titre {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(244, 197, 66, 0.35);
+  color: #f4c542;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 0;
+  font-family: inherit;
+}
+.kta-secours-edit-titre:focus {
+  outline: none;
+  border-bottom-color: #f4c542;
+}
+
+/* Sections accordéon dans l'edit */
+.kta-secours-section {
+  margin: 12px 0;
+  background: rgba(244, 197, 66, 0.04);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 8px;
+}
+.kta-secours-section[open] {
+  background: rgba(244, 197, 66, 0.07);
+}
+.kta-secours-section-titre {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+  user-select: none;
+  list-style: none;
+  border-radius: 8px 8px 0 0;
+}
+.kta-secours-section-titre::-webkit-details-marker { display: none; }
+.kta-secours-section-titre::before {
+  content: "▸";
+  display: inline-block;
+  width: 14px;
+  color: #8892a4;
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+.kta-secours-section[open] > .kta-secours-section-titre::before {
+  transform: rotate(90deg);
+}
+.kta-secours-section-body {
+  padding: 12px;
+}
+
+/* Carte d'une équipe (groupe) dans l'edit */
+.kta-secours-groupes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.kta-secours-groupe-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 10px;
+}
+.kta-secours-groupe-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.kta-secours-groupe-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+}
+.kta-secours-groupe-nom {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(244, 197, 66, 0.30);
+  color: #e8eaf0;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 4px 2px;
+}
+.kta-secours-groupe-nom:focus {
+  outline: none;
+  border-bottom-color: #f4c542;
+}
+.kta-secours-groupe-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kta-secours-groupe-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kta-secours-groupe-row label {
+  flex-shrink: 0;
+  width: 90px;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-secours-groupe-row input[type="text"],
+.kta-secours-groupe-row select {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.20);
+  border-radius: 4px;
+  padding: 5px 8px;
+  color: #e8eaf0;
+  font-family: inherit;
+  font-size: 12px;
+}
+.kta-secours-groupe-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 11px;
+  color: #8892a4;
+}
+.kta-secours-groupe-stats strong {
+  color: #c8d0e0;
+}
+.kta-secours-groupe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.kta-secours-groupe-actions .kta-btn {
+  font-size: 11px;
+}
+
+/* Boutons export */
+.kta-secours-export-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* kta-btn-sm (taille compacte) — utilisé partout */
+.kta-btn-sm {
+  font-size: 11px !important;
+  padding: 4px 9px !important;
+}
+
+/* Bouton sidebar 🚨 Mode Secours — fond rouge cohérent urgences */
+.kta-leaflet-emergency-btn,
+.leaflet-bar a.kta-secours-sub {
+  background: rgba(255, 70, 70, 0.85) !important;
+  color: #fff !important;
+  border-color: rgba(255, 70, 70, 0.95) !important;
+}
+.leaflet-bar a.kta-secours-sub:hover {
+  background: rgba(255, 70, 70, 1) !important;
+  box-shadow: 0 0 8px rgba(255, 70, 70, 0.6);
+}
+
+/* ─── Thème clair ─── */
+body.kta-theme-light .kta-secours-list-row,
+html.kta-theme-light .kta-secours-list-row {
+  background: rgba(255, 70, 70, 0.06) !important;
+  border-color: rgba(255, 70, 70, 0.25) !important;
+}
+body.kta-theme-light .kta-secours-list-nom,
+html.kta-theme-light .kta-secours-list-nom {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-list-meta,
+html.kta-theme-light .kta-secours-list-meta,
+body.kta-theme-light .kta-secours-empty,
+html.kta-theme-light .kta-secours-empty,
+body.kta-theme-light .kta-secours-empty-small,
+html.kta-theme-light .kta-secours-empty-small,
+body.kta-theme-light .kta-secours-groupe-stats,
+html.kta-theme-light .kta-secours-groupe-stats {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-hint,
+html.kta-theme-light .kta-secours-hint,
+body.kta-theme-light .kta-secours-form-hint,
+html.kta-theme-light .kta-secours-form-hint {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-form-row input,
+html.kta-theme-light .kta-secours-form-row input,
+body.kta-theme-light .kta-secours-form-row textarea,
+html.kta-theme-light .kta-secours-form-row textarea,
+body.kta-theme-light .kta-secours-form-row select,
+html.kta-theme-light .kta-secours-form-row select,
+body.kta-theme-light .kta-secours-groupe-row input,
+html.kta-theme-light .kta-secours-groupe-row input,
+body.kta-theme-light .kta-secours-groupe-row select,
+html.kta-theme-light .kta-secours-groupe-row select {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-section,
+html.kta-theme-light .kta-secours-section {
+  background: rgba(244, 197, 66, 0.08) !important;
+  border-color: rgba(154, 135, 84, 0.35) !important;
+}
+body.kta-theme-light .kta-secours-section-titre,
+html.kta-theme-light .kta-secours-section-titre {
+  background: rgba(244, 197, 66, 0.20) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-secours-groupe-card,
+html.kta-theme-light .kta-secours-groupe-card {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light .kta-secours-groupe-stats strong,
+html.kta-theme-light .kta-secours-groupe-stats strong {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-edit-titre,
+html.kta-theme-light .kta-secours-edit-titre,
+body.kta-theme-light .kta-secours-groupe-nom,
+html.kta-theme-light .kta-secours-groupe-nom {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}

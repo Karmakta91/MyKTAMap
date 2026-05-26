@@ -443,15 +443,441 @@
     return null;
   }
 
-  // Stub Phase 1 commit 2 — modale UI
+  // ============================================================
+  // UI — MODALE (depuis v1.22.0 commit 2/9)
+  // ============================================================
+
+  // Ouvre la modale. Si scenarioId fourni → mode édition direct.
+  // Sinon → vue liste (avec bouton "Nouveau scénario").
   function ouvrir(scenarioId) {
-    console.warn("[SecoursMode] ouvrir : modale UI à coder (commit 2/9)");
-    if (scenarioId) _currentScenarioId = scenarioId;
+    if (_modal) { fermer(); }
+    // Reload depuis storage au cas où d'autres tabs auraient modifié
+    _loadScenarios();
+    if (scenarioId && get(scenarioId)) {
+      _currentScenarioId = scenarioId;
+    }
+    _modal = document.createElement("div");
+    _modal.id = "kta-secours-modal";
+    _modal.className = "kta-readme-modal-overlay";
+    _modal.innerHTML = _renderModalHTML();
+    document.documentElement.appendChild(_modal);
+    _bindModalHandlers();
+    // Si scenarioId fourni, render direct l'éditeur. Sinon liste.
+    if (_currentScenarioId) {
+      _switchView("edit");
+    } else {
+      _switchView("list");
+    }
   }
+
   function fermer() {
+    document.removeEventListener("keydown", _onKeyDown);
     if (_modal && _modal.parentNode) _modal.parentNode.removeChild(_modal);
     _modal = null;
     clearOverlay();
+    _currentScenarioId = null;
+  }
+
+  function _onKeyDown(e) {
+    if (e.key === "Escape" && _modal) fermer();
+  }
+
+  // Squelette HTML — header + corps (rempli dynamiquement par _switchView)
+  function _renderModalHTML() {
+    return '<div class="kta-readme-modal-boite kta-secours-modal-boite">' +
+             '<div class="kta-readme-modal-header">' +
+               '<span class="kta-readme-modal-titre">🚨 Mode Secours — Plans de recherche</span>' +
+               '<button class="kta-panneau-close" id="kta-secours-close" type="button" aria-label="Fermer">&times;</button>' +
+             '</div>' +
+             '<div class="kta-readme-modal-corps kta-secours-corps" id="kta-secours-corps">' +
+               '<!-- rempli dynamiquement par _switchView -->' +
+             '</div>' +
+           '</div>';
+  }
+
+  function _bindModalHandlers() {
+    document.addEventListener("keydown", _onKeyDown);
+    const closeBtn = document.getElementById("kta-secours-close");
+    if (closeBtn) closeBtn.addEventListener("click", fermer);
+    _modal.addEventListener("click", function(e) {
+      if (e.target === _modal) fermer();
+    });
+  }
+
+  // Bascule entre les 3 vues : "list" (scénarios) | "create" (stepper) | "edit" (free-form)
+  function _switchView(view) {
+    const corps = document.getElementById("kta-secours-corps");
+    if (!corps) return;
+    if (view === "list")   corps.innerHTML = _renderListView();
+    if (view === "create") corps.innerHTML = _renderCreateView();
+    if (view === "edit")   corps.innerHTML = _renderEditView();
+    _bindViewHandlers(view);
+  }
+
+  // ============================================================
+  // VUE LISTE — scénarios existants + bouton "Nouveau"
+  // ============================================================
+  function _renderListView() {
+    let html = '<div class="kta-secours-list-header">' +
+                 '<p class="kta-secours-hint">' +
+                   'Définis et partage des <strong>plans de secours</strong> pour ce plan : ' +
+                   'assigne des <strong>équipes</strong> à des <strong>zones de recherche</strong> ' +
+                   'précises, avec entrées/sorties, itinéraires suggérés et durées estimées. ' +
+                   'Au retour terrain, les équipes peuvent rapporter leurs observations.' +
+                 '</p>' +
+                 '<button class="kta-btn kta-btn-primary" data-action="new-scenario">' +
+                   '➕ Nouveau scénario' +
+                 '</button>' +
+               '</div>';
+    if (_scenarios.length === 0) {
+      html += '<div class="kta-secours-empty">' +
+                '<div class="kta-secours-empty-icon">🚨</div>' +
+                '<p>Aucun scénario de secours sauvegardé pour ce plan.</p>' +
+                '<p class="kta-secours-empty-hint">Crée ton premier scénario via le bouton ci-dessus.</p>' +
+              '</div>';
+    } else {
+      html += '<div class="kta-secours-list">';
+      // Tri par updatedAt DESC (le plus récent en haut)
+      const sorted = _scenarios.slice().sort(function(a, b) {
+        return (Date.parse(b.updatedAt || 0) || 0) - (Date.parse(a.updatedAt || 0) || 0);
+      });
+      sorted.forEach(function(s) {
+        const nbGroupes = (s.groupes || []).length;
+        const date = s.createdAt ? new Date(s.createdAt).toLocaleDateString("fr-FR") : "?";
+        html += '<div class="kta-secours-list-row" data-id="' + _escAttr(s.id) + '">' +
+                  '<div class="kta-secours-list-info">' +
+                    '<div class="kta-secours-list-nom">' + _escHtml(s.nom) + '</div>' +
+                    '<div class="kta-secours-list-meta">' +
+                      '🚨 ' + nbGroupes + ' équipe' + (nbGroupes > 1 ? 's' : '') +
+                      ' · 📅 ' + date +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="kta-secours-list-actions">' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="open-scenario" data-id="' + _escAttr(s.id) + '" title="Ouvrir">✏️ Ouvrir</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="dup-scenario" data-id="' + _escAttr(s.id) + '" title="Dupliquer">🗐</button>' +
+                    '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-scenario" data-id="' + _escAttr(s.id) + '" title="Supprimer">🗑️</button>' +
+                  '</div>' +
+                '</div>';
+      });
+      html += '</div>';
+      if (_scenarios.length >= MAX_SCENARIOS) {
+        html += '<p class="kta-secours-hint" style="margin-top:12px; color:#ff8c00;">' +
+                  '⚠️ Limite atteinte (' + MAX_SCENARIOS + ' scénarios max par plan). ' +
+                  'Le prochain "Nouveau" supprimera automatiquement le plus ancien.' +
+                '</p>';
+      }
+    }
+    return html;
+  }
+
+  // ============================================================
+  // VUE CRÉATION — stepper léger "Nom + premières équipes"
+  // ============================================================
+  // Pour le MVP Phase 1, le stepper est volontairement SIMPLIFIÉ :
+  // étape 1 = nom + notes contexte + ajouter N équipes minimales (nom seul).
+  // Les zones / entrées-sorties / itinéraires sont définis ensuite dans la
+  // vue Edit (mode free-form). Ça évite un stepper trop lourd qui demande
+  // l'interaction map (zones polygon/roads) — ces interactions sont mieux
+  // placées dans l'éditeur libre.
+  function _renderCreateView() {
+    return '<div class="kta-secours-create-form">' +
+             '<h3 class="kta-secours-form-titre">🚨 Nouveau scénario de secours</h3>' +
+             '<div class="kta-secours-form-row">' +
+               '<label for="kta-sec-create-nom">Nom du scénario *</label>' +
+               '<input type="text" id="kta-sec-create-nom" placeholder="ex: Recherche Marc — 15/06/2026" maxlength="80">' +
+             '</div>' +
+             '<div class="kta-secours-form-row">' +
+               '<label for="kta-sec-create-notes">Notes de contexte (optionnel)</label>' +
+               '<textarea id="kta-sec-create-notes" rows="3" maxlength="500" placeholder="ex: Marc parti vers 14h pour vérifier galerie Est, équipé d&apos;une lampe + casque, dernière nouvelle 15h30 SMS &quot;arrive&quot;…"></textarea>' +
+             '</div>' +
+             '<div class="kta-secours-form-row">' +
+               '<label for="kta-sec-create-incident">Heure d\'incident (optionnel)</label>' +
+               '<input type="datetime-local" id="kta-sec-create-incident">' +
+             '</div>' +
+             '<div class="kta-secours-form-hint">' +
+               '💡 Tu pourras ensuite ajouter les équipes, définir leurs zones de recherche, ' +
+               'leurs points d\'entrée/sortie, et exporter le plan en PDF ou KMZ.' +
+             '</div>' +
+             '<div class="kta-secours-form-actions">' +
+               '<button class="kta-btn kta-btn-ghost" data-action="cancel-create">← Annuler</button>' +
+               '<button class="kta-btn kta-btn-primary" data-action="confirm-create">✓ Créer et continuer</button>' +
+             '</div>' +
+           '</div>';
+  }
+
+  // ============================================================
+  // VUE ÉDITION — free-form editor (3 sections : Contexte / Équipes / Export)
+  // ============================================================
+  function _renderEditView() {
+    const s = get(_currentScenarioId);
+    if (!s) {
+      return '<div class="kta-secours-error">' +
+               '<p>Scénario introuvable. Retour à la liste…</p>' +
+             '</div>';
+    }
+    const incidentStr = s.context && s.context.incidentAt
+                        ? new Date(s.context.incidentAt).toISOString().slice(0, 16)
+                        : "";
+    let html = '<div class="kta-secours-edit-header">' +
+                 '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="back-to-list">← Liste</button>' +
+                 '<input type="text" class="kta-secours-edit-titre" id="kta-sec-edit-nom" value="' + _escAttr(s.nom) + '" maxlength="80">' +
+               '</div>';
+
+    // Section 1 — Contexte
+    html += '<details class="kta-secours-section" open>' +
+              '<summary class="kta-secours-section-titre">📝 Contexte de l\'incident</summary>' +
+              '<div class="kta-secours-section-body">' +
+                '<div class="kta-secours-form-row">' +
+                  '<label for="kta-sec-edit-incident">Heure d\'incident</label>' +
+                  '<input type="datetime-local" id="kta-sec-edit-incident" value="' + _escAttr(incidentStr) + '">' +
+                '</div>' +
+                '<div class="kta-secours-form-row">' +
+                  '<label for="kta-sec-edit-notes">Notes</label>' +
+                  '<textarea id="kta-sec-edit-notes" rows="3" maxlength="500">' + _escHtml(s.context.notes || "") + '</textarea>' +
+                '</div>' +
+              '</div>' +
+            '</details>';
+
+    // Section 2 — Équipes (liste + add)
+    html += '<details class="kta-secours-section" open>' +
+              '<summary class="kta-secours-section-titre">🚨 Équipes (' + s.groupes.length + ')</summary>' +
+              '<div class="kta-secours-section-body">' +
+                '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-groupe">➕ Ajouter une équipe</button>' +
+                '<div class="kta-secours-groupes-list" style="margin-top:10px;">' +
+                  _renderGroupesList(s) +
+                '</div>' +
+              '</div>' +
+            '</details>';
+
+    // Section 3 — Export
+    html += '<details class="kta-secours-section">' +
+              '<summary class="kta-secours-section-titre">📤 Exporter ce scénario</summary>' +
+              '<div class="kta-secours-section-body">' +
+                '<p class="kta-secours-hint">Partage le plan de secours avec les équipes externes (GRIMP, Pompiers, etc.).</p>' +
+                '<div class="kta-secours-export-actions">' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-pdf">📄 Export PDF (1 page/équipe)</button>' +
+                  '<button class="kta-btn kta-btn-primary" data-action="export-kmz">🌍 Export KMZ géolocalisé</button>' +
+                '</div>' +
+              '</div>' +
+            '</details>';
+
+    return html;
+  }
+
+  // Rendu de la liste des équipes (utilisé par _renderEditView)
+  function _renderGroupesList(scenario) {
+    if (!scenario.groupes || scenario.groupes.length === 0) {
+      return '<div class="kta-secours-empty-small">Aucune équipe pour ce scénario. Clique "Ajouter une équipe" ci-dessus.</div>';
+    }
+    let html = '';
+    scenario.groupes.forEach(function(g) {
+      const couleur = PALETTE[g.couleurIdx % PALETTE.length];
+      const distFmt = g.distanceM
+                      ? (typeof window.formatDistance === "function"
+                         ? window.formatDistance(g.distanceM, 0)
+                         : Math.round(g.distanceM) + " m")
+                      : "—";
+      const dureeFmt = g.dureeEstimeeMin ? Math.round(g.dureeEstimeeMin) + " min" : "—";
+      const zoneFmt = g.zoneType === "polygon" ? "⬛ Polygone (" + (g.zonePolygon ? g.zonePolygon.length : 0) + " sommets)"
+                    : g.zoneType === "roads"   ? "🛣️ " + (g.zoneRoadIds ? g.zoneRoadIds.length : 0) + " tracés"
+                    : "Non définie";
+      html += '<div class="kta-secours-groupe-card" data-gid="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
+                '<div class="kta-secours-groupe-header">' +
+                  '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
+                  '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
+                  '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="Supprimer">🗑️</button>' +
+                '</div>' +
+                '<div class="kta-secours-groupe-body">' +
+                  '<div class="kta-secours-groupe-row">' +
+                    '<label>👥 Membres</label>' +
+                    '<input type="text" data-action="edit-membres" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr((g.membres || []).join(", ")) + '" placeholder="ex: Léa, Tom (séparés par virgule)" maxlength="200">' +
+                  '</div>' +
+                  '<div class="kta-secours-groupe-row">' +
+                    '<label>🎨 Couleur</label>' +
+                    '<select data-action="change-couleur" data-gid="' + _escAttr(g.id) + '">' +
+                      PALETTE.map(function(c, i) {
+                        return '<option value="' + i + '"' + (i === g.couleurIdx ? ' selected' : '') + '>' +
+                               c.nom + ' (' + c.hex + ')</option>';
+                      }).join('') +
+                    '</select>' +
+                  '</div>' +
+                  '<div class="kta-secours-groupe-stats">' +
+                    '<span>📍 Zone : <strong>' + zoneFmt + '</strong></span>' +
+                    '<span>📏 Distance : <strong>' + distFmt + '</strong></span>' +
+                    '<span>⏱️ Durée estimée : <strong>' + dureeFmt + '</strong></span>' +
+                  '</div>' +
+                  '<div class="kta-secours-groupe-actions">' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-entree" data-gid="' + _escAttr(g.id) + '">📍 Entrée' + (g.entree ? ' ✓' : '') + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-sortie" data-gid="' + _escAttr(g.id) + '">🚪 Sortie' + (g.sortie ? ' ✓' : '') + '</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="def-zone" data-gid="' + _escAttr(g.id) + '">⬛ Définir zone</button>' +
+                    '<button class="kta-btn kta-btn-ghost kta-btn-sm" data-action="calc-iti" data-gid="' + _escAttr(g.id) + '">🗺️ Calc. itinéraire</button>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+    });
+    return html;
+  }
+
+  // ============================================================
+  // HANDLERS PAR VUE
+  // ============================================================
+  function _bindViewHandlers(view) {
+    const corps = document.getElementById("kta-secours-corps");
+    if (!corps) return;
+
+    if (view === "list") {
+      // Bouton "Nouveau scénario"
+      corps.querySelectorAll('[data-action="new-scenario"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { _switchView("create"); });
+      });
+      // Ouvrir un scénario
+      corps.querySelectorAll('[data-action="open-scenario"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _currentScenarioId = btn.getAttribute("data-id");
+          _switchView("edit");
+        });
+      });
+      // Dupliquer
+      corps.querySelectorAll('[data-action="dup-scenario"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const newS = duplicateScenario(btn.getAttribute("data-id"));
+          if (newS) _switchView("list");
+        });
+      });
+      // Supprimer
+      corps.querySelectorAll('[data-action="del-scenario"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const id = btn.getAttribute("data-id");
+          const s = get(id);
+          if (!s) return;
+          if (window.confirm("Supprimer le scénario « " + s.nom + " » ? Cette action est irréversible.")) {
+            deleteScenario(id);
+            _switchView("list");
+          }
+        });
+      });
+    }
+
+    if (view === "create") {
+      corps.querySelectorAll('[data-action="cancel-create"]').forEach(function(btn) {
+        btn.addEventListener("click", function() { _switchView("list"); });
+      });
+      corps.querySelectorAll('[data-action="confirm-create"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const nom = (document.getElementById("kta-sec-create-nom") || {}).value || "";
+          const notes = (document.getElementById("kta-sec-create-notes") || {}).value || "";
+          const incident = (document.getElementById("kta-sec-create-incident") || {}).value || "";
+          const s = createScenario(nom);
+          updateScenario(s.id, {
+            context: {
+              notes:      notes,
+              incidentAt: incident ? new Date(incident).toISOString() : null
+            }
+          });
+          _currentScenarioId = s.id;
+          _switchView("edit");
+        });
+      });
+    }
+
+    if (view === "edit") {
+      const s = get(_currentScenarioId);
+      if (!s) { _switchView("list"); return; }
+      // Back to list
+      corps.querySelectorAll('[data-action="back-to-list"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _currentScenarioId = null;
+          _switchView("list");
+        });
+      });
+      // Rename scénario (input header) — save au blur
+      const nomInput = document.getElementById("kta-sec-edit-nom");
+      if (nomInput) {
+        nomInput.addEventListener("blur", function() {
+          updateScenario(s.id, { nom: nomInput.value });
+        });
+      }
+      // Context fields — save au change
+      const incidentInput = document.getElementById("kta-sec-edit-incident");
+      if (incidentInput) {
+        incidentInput.addEventListener("change", function() {
+          updateScenario(s.id, {
+            context: { incidentAt: incidentInput.value ? new Date(incidentInput.value).toISOString() : null }
+          });
+        });
+      }
+      const notesInput = document.getElementById("kta-sec-edit-notes");
+      if (notesInput) {
+        notesInput.addEventListener("blur", function() {
+          updateScenario(s.id, { context: { notes: notesInput.value } });
+        });
+      }
+      // Ajouter équipe
+      corps.querySelectorAll('[data-action="add-groupe"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          addGroupe(s.id, null);   // nom auto via PALETTE
+          _switchView("edit");      // re-render
+        });
+      });
+      // Rename groupe
+      corps.querySelectorAll('[data-action="rename-groupe"]').forEach(function(inp) {
+        inp.addEventListener("blur", function() {
+          updateGroupe(s.id, inp.getAttribute("data-gid"), { nom: inp.value });
+        });
+      });
+      // Edit membres
+      corps.querySelectorAll('[data-action="edit-membres"]').forEach(function(inp) {
+        inp.addEventListener("blur", function() {
+          const arr = inp.value.split(",").map(function(x) { return x.trim(); }).filter(Boolean);
+          updateGroupe(s.id, inp.getAttribute("data-gid"), { membres: arr });
+        });
+      });
+      // Change couleur
+      corps.querySelectorAll('[data-action="change-couleur"]').forEach(function(sel) {
+        sel.addEventListener("change", function() {
+          updateGroupe(s.id, sel.getAttribute("data-gid"), { couleurIdx: parseInt(sel.value, 10) });
+          _switchView("edit");      // re-render pour update du swatch
+        });
+      });
+      // Delete groupe
+      corps.querySelectorAll('[data-action="del-groupe"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const gid = btn.getAttribute("data-gid");
+          const g = s.groupes.find(function(x) { return x.id === gid; });
+          if (!g) return;
+          if (window.confirm("Supprimer l'équipe « " + g.nom + " » ?")) {
+            removeGroupe(s.id, gid);
+            _switchView("edit");
+          }
+        });
+      });
+      // Buttons "Définir entrée / sortie / zone / itinéraire" — stubs commits 3+4
+      corps.querySelectorAll('[data-action="def-entree"], [data-action="def-sortie"], [data-action="def-zone"], [data-action="calc-iti"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast("🚧 Outil à coder dans le commit suivant — patience !", "info");
+          }
+        });
+      });
+      // Export PDF / KMZ — stubs commits 6+7
+      corps.querySelectorAll('[data-action="export-pdf"], [data-action="export-kmz"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+            window.OOMGuard.showToast("🚧 Export à coder dans le commit suivant — patience !", "info");
+          }
+        });
+      });
+    }
+  }
+
+  // Helpers HTML escape (anti-XSS sur user input)
+  function _escHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function _escAttr(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/"/g, "&quot;");
   }
   function isOpen() { return _modal !== null; }
   function getCurrentScenarioId() { return _currentScenarioId; }
