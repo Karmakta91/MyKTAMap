@@ -391,21 +391,132 @@
    *   nl: [ { i, ts, s, t } ]               // notes libres (si role=secouriste)
    * }
    */
+  /**
+   * Sérialise les observations terrain pour renvoi Équipier→Op.
+   *
+   * Format (clés courtes pour rester sous QR v40) :
+   * {
+   *   t:  "obs",
+   *   v:  1,
+   *   ts: Date.now(),
+   *   si: scenarioId,          // matching côté Op (= même plan, même scénario)
+   *   ei: equipeId,            // matching équipe précis
+   *   en: equipeNom,           // fallback humain si scenarioId ≠
+   *   r:  "equipe"|"secouriste",
+   *   o:  [ { i, s, o, st, ct } ],  // observations par étape (texte tronqué 200ch)
+   *   nl: [ { i, ts, s, t } ]       // notes libres (mode secouriste, texte ≤ 150ch)
+   * }
+   *
+   * Pas de photos dans le QR (cf KARMA 9:a). Les photos restent côté
+   * Équipier et seront partagées via le rapport PDF/JSON exporté.
+   */
   function _serializerObservations(scenario, equipeId) {
-    // TODO C4 : implémentation complète
+    if (!scenario) throw new Error("_serializerObservations : scenario requis");
+    if (!scenario.execution) throw new Error("Aucune exécution active pour ce scénario");
+
+    const role = scenario.execution.role;
+    const equipe = (scenario.groupes || []).find(function(g) { return g.id === equipeId; });
+
+    // Mode secouriste : pas d'équipe focalisée, on extrait _notes_libres
+    if (role === "secouriste" || !equipe) {
+      const notes = (scenario.execution.etapes && scenario.execution.etapes._notes_libres) || [];
+      return {
+        t:  PAYLOAD_TYPE_OBSERVATIONS,
+        v:  QR_FORMAT_VERSION,
+        ts: Date.now(),
+        si: scenario.id,
+        r:  "secouriste",
+        nl: notes.slice(0, 30).map(function(n) {
+          return {
+            i:  n.id,
+            ts: n.ts,
+            s:  n.statut,
+            t:  (n.texte || "").substring(0, 150)
+          };
+        })
+      };
+    }
+
+    // Mode équipe : extrait les étapes de l'équipe focalisée
+    const etapes = (scenario.execution.etapes && scenario.execution.etapes[equipeId]) || [];
+    const obsArr = etapes.map(function(e) {
+      const out = { i: e.idx };
+      if (e.statut)        out.s  = e.statut;
+      if (e.observations)  out.o  = e.observations.substring(0, 200);
+      if (e.startedAt)     out.st = e.startedAt;
+      if (e.completedAt)   out.ct = e.completedAt;
+      return out;
+    });
+
     return {
       t:  PAYLOAD_TYPE_OBSERVATIONS,
       v:  QR_FORMAT_VERSION,
-      ts: Date.now()
+      ts: Date.now(),
+      si: scenario.id,
+      ei: equipeId,
+      en: (equipe.nom || "").substring(0, 40),
+      r:  "equipe",
+      o:  obsArr
     };
   }
 
+  /**
+   * Désérialise un payload observations décodé depuis un QR.
+   *
+   * @param {object} payload
+   * @returns {object} {ok, error?, scenarioId, equipeId?, equipeNom?, role,
+   *                    observations?, notesLibres?}
+   */
   function _deserializerObservations(payload) {
-    // TODO C4 : implémentation complète
-    if (!payload || payload.t !== PAYLOAD_TYPE_OBSERVATIONS) {
-      return { ok: false, error: "Type de payload incompatible (attendu '" + PAYLOAD_TYPE_OBSERVATIONS + "')" };
+    if (!payload || typeof payload !== "object") {
+      return { ok: false, error: "Payload absent ou invalide." };
     }
-    return { ok: false, error: "Désérialisation non implémentée (C4 à venir)" };
+    if (payload.t !== PAYLOAD_TYPE_OBSERVATIONS) {
+      return { ok: false, error: "Type incompatible (attendu '" + PAYLOAD_TYPE_OBSERVATIONS + "', lu '" + payload.t + "')" };
+    }
+    if (payload.v !== QR_FORMAT_VERSION) {
+      return { ok: false, error: "Version incompatible (lu " + payload.v + ", attendu " + QR_FORMAT_VERSION + ")" };
+    }
+    if (!payload.si || typeof payload.si !== "string") {
+      return { ok: false, error: "scenarioId manquant" };
+    }
+
+    const out = {
+      ok:         true,
+      scenarioId: payload.si,
+      role:       payload.r || "equipe",
+      payload:    payload
+    };
+
+    if (out.role === "secouriste") {
+      // Mode secouriste : notes libres
+      out.notesLibres = Array.isArray(payload.nl) ? payload.nl.map(function(n) {
+        return {
+          id:     n.i,
+          ts:     n.ts,
+          statut: n.s,
+          texte:  n.t || ""
+        };
+      }) : [];
+    } else {
+      // Mode équipe : observations par étape
+      if (!payload.ei || typeof payload.ei !== "string") {
+        return { ok: false, error: "equipeId manquant (mode équipe)" };
+      }
+      out.equipeId  = payload.ei;
+      out.equipeNom = payload.en || "";
+      out.observations = Array.isArray(payload.o) ? payload.o.map(function(o) {
+        return {
+          idx:          o.i,
+          statut:       o.s,
+          observations: o.o || "",
+          startedAt:    o.st,
+          completedAt:  o.ct
+        };
+      }) : [];
+    }
+
+    return out;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -881,14 +992,36 @@
       };
     }
 
-    // 5) Validation type + version + structure via _deserializerBriefing
+    // 5) Validation + détection type (hotfix12) :
+    //    - "brf" → briefing → _deserializerBriefing
+    //    - "obs" → observations → _deserializerObservations
+    //    Routing automatique côté caller via le champ `kind` retourné.
+    if (payload && payload.t === PAYLOAD_TYPE_OBSERVATIONS) {
+      const resObs = _deserializerObservations(payload);
+      if (!resObs.ok) {
+        return { ok: false, error: resObs.error || "Payload observations invalide." };
+      }
+      return {
+        ok:           true,
+        kind:         "obs",
+        payload:      payload,
+        scenarioId:   resObs.scenarioId,
+        equipeId:     resObs.equipeId,
+        equipeNom:    resObs.equipeNom,
+        role:         resObs.role,
+        observations: resObs.observations,
+        notesLibres:  resObs.notesLibres
+      };
+    }
+
+    // Default = briefing
     const result = _deserializerBriefing(payload);
     if (!result.ok) {
       return { ok: false, error: result.error || "Payload non reconnu." };
     }
-
     return {
       ok:        true,
+      kind:      "brf",
       payload:   payload,
       scenario:  result.scenario,
       equipe:    result.equipe,
@@ -1017,8 +1150,9 @@
         '</div>' +
         '<div class="kta-readme-modal-corps kta-secours-qr-scan-corps">' +
           '<div class="kta-secours-qr-scan-hint">' +
-            'L\'opérateur de surface t\'a partagé un <strong>briefing QR</strong> ?<br>' +
-            'Photographie-le ou charge l\'image reçue pour l\'importer dans ton plan.' +
+            'Scanne un QR <strong>MyKTAMap Mode Secours</strong> :<br>' +
+            '• <strong>QR briefing</strong> reçu de l\'opérateur → importe l\'équipe dans ton plan<br>' +
+            '• <strong>QR observations</strong> reçu d\'un équipier → fusion dans le scénario actif' +
           '</div>' +
           '<div class="kta-secours-qr-scan-buttons">' +
             '<label class="kta-btn kta-btn-primary kta-secours-qr-scan-btn">' +
@@ -1071,9 +1205,33 @@
         return;
       }
 
-      // Succès : ferme la modale scan + ouvre preview
+      // Routing hotfix12 : selon le type détecté
+      if (result.kind === "obs") {
+        // Observations Équipier→Op : merge direct dans le scénario actif
+        statusEl.className = "kta-secours-qr-scan-status kta-status-ok";
+        statusEl.innerHTML = '✅ QR observations détecté — fusion en cours…';
+        setTimeout(function() {
+          const mergeRes = _mergerObservationsDansScenario(result);
+          _close();
+          if (!mergeRes.ok) {
+            _toast("❌ Fusion échouée : " + mergeRes.error, "error");
+            return;
+          }
+          const msg = mergeRes.role === "secouriste"
+            ? "✅ " + mergeRes.notesCount + " note(s) secouriste fusionnée(s)"
+            : "✅ " + mergeRes.count + " observation(s) d'étape fusionnée(s)";
+          _toast(msg, "info");
+          // Ouvre Mode Secours sur le scénario mis à jour
+          if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
+            setTimeout(function() { window.SecoursMode.ouvrir(mergeRes.scenarioId); }, 250);
+          }
+        }, 350);
+        return;
+      }
+
+      // Briefing Op→Équipier : ouvre preview pour confirmation avant import
       statusEl.className = "kta-secours-qr-scan-status kta-status-ok";
-      statusEl.innerHTML = '✅ QR décodé — ouverture de l\'aperçu…';
+      statusEl.innerHTML = '✅ QR briefing décodé — ouverture de l\'aperçu…';
       setTimeout(function() {
         _close();
         _afficherModalePreviewImport(result);
@@ -1243,17 +1401,245 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // Stubs C4 (à venir : aller-retour observations Équipe→Op)
+  // C4 — Aller-retour observations Équipe→Op
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function ouvrirPartageQrObservations(scenarioId, equipeId) {
-    _warn("ouvrirPartageQrObservations — implémentation C4 à venir");
-    _toast("⚠️ QR observations : implémentation en cours (C4)", "info");
+  /**
+   * Merge des observations décodées dans le scénario actif côté Op.
+   *
+   * Stratégie de matching :
+   *   1. scenarioId match (= même plan, même scénario chez Op) → update direct
+   *   2. fallback equipeNom : cherche un scénario actif chez Op contenant
+   *      une équipe avec le même nom
+   *   3. échec → erreur user-friendly
+   *
+   * @param {object} decoded - retour _deserializerObservations
+   * @returns {object} {ok, error?, scenarioId?, equipeId?, count?, notesCount?}
+   */
+  function _mergerObservationsDansScenario(decoded) {
+    const SM = window.SecoursMode;
+    if (!SM) return { ok: false, error: "Module SecoursMode indispo." };
+
+    const allScenarios = SM.list ? SM.list() : [];
+    if (!allScenarios || allScenarios.length === 0) {
+      return { ok: false, error: "Aucun scénario dans ce plan — l'opérateur doit créer/charger le scénario avant de recevoir les observations." };
+    }
+
+    // 1) Match strict par scenarioId
+    let target = allScenarios.find(function(s) { return s.id === decoded.scenarioId; });
+
+    // 2) Fallback : équipe avec même nom dans un scénario actif
+    if (!target && decoded.equipeNom) {
+      target = allScenarios.find(function(s) {
+        return s.execution && s.execution.active &&
+               (s.groupes || []).some(function(g) { return g.nom === decoded.equipeNom; });
+      });
+    }
+
+    if (!target) {
+      return {
+        ok:    false,
+        error: "Aucun scénario correspondant trouvé. " +
+               "L'opérateur doit avoir le scénario source (id: " + decoded.scenarioId.substring(0, 8) + "…) " +
+               "ou une équipe nommée « " + (decoded.equipeNom || "?") + " » dans un scénario actif."
+      };
+    }
+
+    try {
+      // Mode secouriste : pas d'équipe ciblée, on remplace _notes_libres
+      if (decoded.role === "secouriste") {
+        if (!target.execution) {
+          return { ok: false, error: "Le scénario cible n'a pas d'exécution active." };
+        }
+        if (!target.execution.etapes) target.execution.etapes = {};
+        target.execution.etapes._notes_libres = (decoded.notesLibres || []).map(function(n) {
+          return { id: n.id, ts: n.ts, statut: n.statut, texte: n.texte, photoIds: [] };
+        });
+        // Force commit via update (passe par le pipeline standard pour notif onChange)
+        SM.update(target.id, { context: target.context || {} });
+        return {
+          ok:         true,
+          scenarioId: target.id,
+          notesCount: (decoded.notesLibres || []).length,
+          role:       "secouriste"
+        };
+      }
+
+      // Mode équipe : trouve l'équipe ciblée
+      let equipe = (target.groupes || []).find(function(g) { return g.id === decoded.equipeId; });
+      if (!equipe && decoded.equipeNom) {
+        equipe = (target.groupes || []).find(function(g) { return g.nom === decoded.equipeNom; });
+      }
+      if (!equipe) {
+        return { ok: false, error: "Équipe « " + (decoded.equipeNom || decoded.equipeId) + " » non trouvée dans le scénario cible." };
+      }
+
+      // Merge observations par étape via SM.updateEtape (whitelist auto)
+      let count = 0;
+      (decoded.observations || []).forEach(function(obs) {
+        if (typeof obs.idx !== "number") return;
+        const partial = {};
+        if (obs.statut)       partial.statut       = obs.statut;
+        if (obs.observations) partial.observations = obs.observations;
+        if (obs.startedAt)    partial.startedAt    = obs.startedAt;
+        if (obs.completedAt)  partial.completedAt  = obs.completedAt;
+        if (Object.keys(partial).length > 0) {
+          try {
+            SM.updateEtape(target.id, equipe.id, obs.idx, partial);
+            count++;
+          } catch (e) {
+            _warn("updateEtape échouée pour étape " + obs.idx + " : " + (e && e.message));
+          }
+        }
+      });
+
+      return { ok: true, scenarioId: target.id, equipeId: equipe.id, count: count, role: "equipe" };
+    } catch (e) {
+      _err("Merge observations : " + (e && e.message));
+      return { ok: false, error: "Erreur lors du merge : " + (e && e.message) };
+    }
   }
 
+  /**
+   * Ouvre la modale "📲 Renvoyer observations" côté Équipier en mode Live.
+   * Génère un QR avec uniquement les observations terrain (statuts + textes
+   * + timestamps), sans photos (cf §66.12 + KARMA 9:a).
+   *
+   * @param {string} scenarioId
+   * @param {string} equipeId - optionnel, sinon lu depuis execution.currentEquipeId
+   */
+  function ouvrirPartageQrObservations(scenarioId, equipeId) {
+    if (!_checkLibsDispo()) {
+      _toast("⚠️ Libs QR non chargées (cache PWA ?). Re-actualise.", "error");
+      return;
+    }
+    const SM = window.SecoursMode;
+    if (!SM) {
+      _toast("⚠️ Module SecoursMode indispo.", "error");
+      return;
+    }
+    const scenario = SM.get(scenarioId);
+    if (!scenario || !scenario.execution) {
+      _toast("⚠️ Scénario ou exécution introuvable.", "error");
+      return;
+    }
+
+    // Si equipeId pas fourni, utilise currentEquipeId
+    const effectiveEquipeId = equipeId || scenario.execution.currentEquipeId;
+    const role = scenario.execution.role;
+
+    // 1) Sérialisation + génération QR
+    let qrInfo, payload;
+    try {
+      payload = _serializerObservations(scenario, effectiveEquipeId);
+      qrInfo  = _genererQrFromPayload(payload);
+    } catch (e) {
+      _err("Génération QR obs échouée : " + (e && e.message));
+      _toast("❌ Impossible de générer le QR : " + (e && e.message), "error");
+      return;
+    }
+
+    // 2) Cleanup éventuelle modale existante
+    _fermerModaleQr();
+
+    // 3) Stats payload
+    const stats = "QR v" + qrInfo.typeNumber + " · " + qrInfo.cellCount + "×" + qrInfo.cellCount +
+                  " cells · payload " + qrInfo.payloadBytes + " bytes · ECC " +
+                  (qrInfo.eccUsed || QR_ERROR_CORRECTION_LEVEL) +
+                  (qrInfo.eccUsed === "L" ? " (auto-réduit)" : "");
+
+    // 4) Construction DOM — réutilise les classes .kta-secours-qr-share-* C2
+    const PALETTE = SM.PALETTE || [];
+    const equipe  = (scenario.groupes || []).find(function(g) { return g.id === effectiveEquipeId; });
+    const couleur = equipe && PALETTE[equipe.couleurIdx % PALETTE.length] || { hex: "#8cb4ff", nom: "" };
+    const titreContexte = role === "secouriste"
+      ? "Mode secouriste — " + ((payload.nl && payload.nl.length) || 0) + " note(s)"
+      : "Équipe " + (equipe ? equipe.nom : "?") + " — " + ((payload.o && payload.o.length) || 0) + " étape(s)";
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-qr-share-overlay";
+    overlay.className = "kta-readme-modal-overlay kta-secours-qr-share-overlay";
+
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-qr-share-boite" style="max-width:540px;width:100%;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0;">📲 Renvoyer mes observations</h2>' +
+          '<button class="kta-modal-close" data-action="qr-close" title="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-secours-qr-share-corps">' +
+          '<div class="kta-secours-qr-share-info">' +
+            '<span class="kta-secours-qr-share-swatch" style="background:' + couleur.hex + ';"></span>' +
+            '<div class="kta-secours-qr-share-info-text">' +
+              '<strong>' + _escHtml(titreContexte) + '</strong>' +
+              '<span class="kta-secours-qr-share-meta">' +
+                '🚫 Pas de photos dans le QR · 📸 Les photos restent sur ton appareil' +
+              '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="kta-secours-qr-share-canvas-wrap">' +
+            _qrToSvg(qrInfo) +
+          '</div>' +
+          '<div class="kta-secours-qr-share-hint">' +
+            '👁️ Demande à l\'<strong>opérateur de surface</strong> de scanner ce code via ' +
+            '<strong>Mode Secours → 📲 Scanner un QR</strong>. Les statuts + observations ' +
+            'seront fusionnés dans son scénario, prêts pour le rapport final.' +
+          '</div>' +
+          '<div class="kta-secours-qr-share-stats">' + _escHtml(stats) + '</div>' +
+          '<div class="kta-secours-qr-share-actions">' +
+            '<button class="kta-btn kta-btn-secondary" data-action="qr-download" title="Télécharger le PNG">💾 Sauvegarder PNG</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="qr-share" title="Partager via WhatsApp / mail / etc.">📤 Partager</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(overlay);
+
+    function _close() { _fermerModaleQr(); }
+    overlay.addEventListener("click", function(e) { if (e.target === overlay) _close(); });
+    overlay.querySelector('[data-action="qr-close"]').addEventListener("click", _close);
+    function _onEsc(e) {
+      if (e.key === "Escape") { _close(); document.removeEventListener("keydown", _onEsc); }
+    }
+    document.addEventListener("keydown", _onEsc);
+
+    const filename = "observations-" + (equipe ? _slugify(equipe.nom) : "secouriste") +
+                     "-" + (new Date().toISOString().substring(0, 10)) + ".png";
+
+    overlay.querySelector('[data-action="qr-download"]').addEventListener("click", async function() {
+      try {
+        const canvas = _qrToCanvas(qrInfo, QR_PNG_TARGET_SIZE);
+        const blob   = await _canvasToPngBlob(canvas);
+        _downloadPngBlob(blob, filename);
+        _toast("💾 PNG sauvegardé : " + filename, "info");
+      } catch (e) {
+        _toast("❌ Génération PNG échouée : " + (e && e.message), "error");
+      }
+    });
+
+    overlay.querySelector('[data-action="qr-share"]').addEventListener("click", async function() {
+      try {
+        const canvas = _qrToCanvas(qrInfo, QR_PNG_TARGET_SIZE);
+        const blob   = await _canvasToPngBlob(canvas);
+        const ok     = await _partagerPngBlob(blob, filename, "Observations terrain",
+                                               "Observations de l'équipe à scanner par l'opérateur de surface (MyKTAMap).");
+        if (!ok) {
+          _downloadPngBlob(blob, filename);
+          _toast("📤 Partage natif indispo — PNG téléchargé, partage-le manuellement", "info");
+        }
+      } catch (e) {
+        _toast("❌ Partage échoué : " + (e && e.message), "error");
+      }
+    });
+  }
+
+  /**
+   * Wrapper : ouvre le même scanner que pour les briefings.
+   * Le décode auto détecte le type (brf/obs) et route vers le bon flow.
+   * Exposé pour compat API mais redirige vers ouvrirImportQrBriefing
+   * (refactor scan unifié hotfix12).
+   */
   function ouvrirImportQrObservations() {
-    _warn("ouvrirImportQrObservations — implémentation C4 à venir");
-    _toast("⚠️ Scan QR observations : implémentation en cours (C4)", "info");
+    return ouvrirImportQrBriefing();
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1297,9 +1683,10 @@
     _genererQrFromPayload:       _genererQrFromPayload,
     _qrToCanvas:                 _qrToCanvas,
     _canvasToPngBlob:            _canvasToPngBlob,
-    _decodeQrFromFile:           _decodeQrFromFile,
-    _importerBriefingDansPlan:   _importerBriefingDansPlan,
-    _checkLibsDispo:             _checkLibsDispo,
+    _decodeQrFromFile:                _decodeQrFromFile,
+    _importerBriefingDansPlan:        _importerBriefingDansPlan,
+    _mergerObservationsDansScenario:  _mergerObservationsDansScenario,
+    _checkLibsDispo:                  _checkLibsDispo,
     _fermerModaleQr:             _fermerModaleQr,
     _fermerModaleScan:           _fermerModaleScan,
     _fermerModalePreview:        _fermerModalePreview

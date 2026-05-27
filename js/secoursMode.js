@@ -4184,6 +4184,13 @@
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="Générer un rapport de mon parcours (PDF, JSON ou texte)">' +
                 '📤 Rapport' +
               '</button>' +
+              /* 🆕 v1.26.0 Phase 4 C4 — QR observations équipe→Op
+                 (KARMA "aller-retour observations Équipe→Op"). Renvoie au
+                 PC surface les statuts + textes via QR, sans photos
+                 (les photos restent locales sur l'appareil équipier). */
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-share-obs-qr" title="Renvoyer mes observations à l\'opérateur de surface via QR (offline)">' +
+                '📲 Renvoyer obs' +
+              '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -5269,6 +5276,24 @@
       btn.addEventListener("click", function() {
         const scope = btn.getAttribute("data-scope") || s.execution.role;
         _afficherModaleRapport(s.id, scope);
+      });
+    });
+    // 🆕 v1.26.0 Phase 4 C4 — QR observations équipe→Op
+    // Bouton "📲 Renvoyer obs" dans le footer vue Live Équipe (+ futur
+    // Secouriste si on l'ajoute). Génère un QR avec les statuts +
+    // observations sans photos (cf KARMA 9:a).
+    corps.querySelectorAll('[data-action="live-share-obs-qr"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!window.MyKTAMapSecoursQrShare) {
+          _toast("⚠️ Module QR Share indispo.", "error");
+          return;
+        }
+        const eqId = s.execution && s.execution.currentEquipeId;
+        if (!eqId) {
+          _toast("⚠️ Aucune équipe en cours pour partager.", "warn");
+          return;
+        }
+        window.MyKTAMapSecoursQrShare.ouvrirPartageQrObservations(s.id, eqId);
       });
     });
   }
