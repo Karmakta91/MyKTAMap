@@ -926,73 +926,138 @@
       return { ok: false, error: "Fichier vide." };
     }
 
-    // 1) Load image
-    let img;
+    // 🐛 hotfix15 (KARMA "QR toujours KO") — Refonte robuste multi-stratégie.
+    //
+    // Pourquoi le scan échouait :
+    //   - WhatsApp / partage messagerie compressent en JPEG 70% → artefacts
+    //     sur les bords des cells QR.
+    //   - PNG QR natif (600×600) après compression → cells floues.
+    //   - Screenshot d'écran (300-500px) → résolution insuffisante.
+    //   - Photo iPhone potentiellement en HEIC → Image() ne charge pas.
+    //
+    // Stratégie : on tente jusqu'à 4 décodages successifs avec des params
+    // différents jusqu'à succès. Cascade depuis la stratégie la plus rapide
+    // vers la plus tolérante (binarize). Diagnostic détaillé en cas d'échec.
+
+    // 1) Load image — preference createImageBitmap (meilleur support format,
+    //    notamment HEIC sur Safari iOS récent) avec fallback Image()
+    let bitmap;
     try {
-      img = await _loadImageFromFile(file);
+      if (typeof window.createImageBitmap === "function") {
+        bitmap = await window.createImageBitmap(file);
+      } else {
+        bitmap = await _loadImageFromFile(file);
+      }
     } catch (e) {
-      return { ok: false, error: e.message || "Échec lecture image." };
-    }
-
-    // 2) Canvas + downscale si nécessaire
-    // 🐛 hotfix14 (KARMA "aucun QR code detecter quand j'envois l'image du QR")
-    // — Augmenté à 2500px (était 2000). Un QR v40 fait 177×177 cells. À
-    // MAX_SIDE 2000 + quiet zone, on tombe à ~10 px/cell, marginal pour la
-    // détection sur des QR denses (briefings complets). 2500 = ~13 px/cell,
-    // plus robuste, surcoût RAM négligeable.
-    const MAX_SIDE = 2500;
-    let w = img.naturalWidth  || img.width;
-    let h = img.naturalHeight || img.height;
-    if (w <= 0 || h <= 0) {
-      return { ok: false, error: "Dimensions image invalides." };
-    }
-    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
-    w = Math.round(w * scale);
-    h = Math.round(h * scale);
-
-    const canvas = document.createElement("canvas");
-    canvas.width  = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    try {
-      ctx.drawImage(img, 0, 0, w, h);
-    } catch (e) {
-      return { ok: false, error: "Impossible de dessiner l'image : " + (e && e.message) };
-    }
-
-    // 3) Extraction pixels + jsQR
-    let imageData;
-    try {
-      imageData = ctx.getImageData(0, 0, w, h);
-    } catch (e) {
-      // Cas rarissime : tainted canvas (cross-origin image). Ne devrait jamais
-      // arriver avec un File local mais on protège quand même.
-      return { ok: false, error: "Canvas non lisible : " + (e && e.message) };
-    }
-
-    let qrResult;
-    try {
-      // 🐛 hotfix14 (KARMA "aucun QR code detecter quand j'envois l'image
-      // du QR") — Passage de "dontInvert" à "attemptBoth" :
-      //   - "dontInvert" essayait UNIQUEMENT les QR clairs sur fond sombre
-      //     standard, ce qui rate les QR partagés via WhatsApp/screenshot
-      //     dont les couleurs peuvent être inversées par compression JPEG
-      //     ou rendu écran (capture sombre du PNG blanc d'origine, etc.).
-      //   - "attemptBoth" tente normal PUIS inversé → +50% du temps de
-      //     décodage (négligeable, ~50-100ms) mais beaucoup plus robuste.
-      // (Bonus : c'est le default jsQR — on avait optimisé prématurément.)
-      qrResult = window.jsQR(imageData.data, w, h, { inversionAttempts: "attemptBoth" });
-    } catch (e) {
-      return { ok: false, error: "Erreur de décodage jsQR : " + (e && e.message) };
-    }
-
-    if (!qrResult || !qrResult.data) {
       return {
         ok:    false,
-        error: "Aucun QR détecté dans l'image. " +
-               "Vérifie que le QR est bien centré, net et bien éclairé."
+        error: "Image illisible (format non supporté ?) : " + (e && e.message) +
+               "\nFormat fichier : " + (file.type || "inconnu") +
+               "\nTaille fichier : " + Math.round(file.size / 1024) + " KB"
       };
     }
+
+    const naturalW = bitmap.width  || bitmap.naturalWidth  || 0;
+    const naturalH = bitmap.height || bitmap.naturalHeight || 0;
+    if (naturalW <= 0 || naturalH <= 0) {
+      return { ok: false, error: "Dimensions image invalides : " + naturalW + "×" + naturalH };
+    }
+
+    _log("Scan QR — image source " + naturalW + "×" + naturalH +
+         " · " + (file.type || "?") + " · " + Math.round(file.size / 1024) + " KB");
+
+    // 2) Cascade de stratégies — on s'arrête au premier succès
+    const strategies = [
+      { name: "STD",   maxSide: 2500, binarize: false },  // standard moderne
+      { name: "HIRES", maxSide: 5000, binarize: false },  // peu de downscale (QR petit ?)
+      { name: "LORES", maxSide: 1200, binarize: false },  // downscale agressif (lisse JPEG)
+      { name: "BIN",   maxSide: 2500, binarize: true  }   // binarize N&B (anti-artefacts)
+    ];
+
+    const tried = [];
+    let qrData = null;
+
+    for (let i = 0; i < strategies.length; i++) {
+      const strat = strategies[i];
+      const scale = Math.min(1, strat.maxSide / Math.max(naturalW, naturalH));
+      const w     = Math.max(1, Math.round(naturalW * scale));
+      const h     = Math.max(1, Math.round(naturalH * scale));
+
+      // Canvas + drawImage
+      const canvas = document.createElement("canvas");
+      canvas.width  = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      try {
+        ctx.drawImage(bitmap, 0, 0, w, h);
+      } catch (e) {
+        tried.push(strat.name + " drawImage fail");
+        continue;
+      }
+
+      // getImageData
+      let imageData;
+      try {
+        imageData = ctx.getImageData(0, 0, w, h);
+      } catch (e) {
+        tried.push(strat.name + " getImageData fail (tainted ?)");
+        continue;
+      }
+
+      // Optional binarize : moyenne RGB > 128 → blanc, sinon noir
+      if (strat.binarize) {
+        const data = imageData.data;
+        for (let j = 0; j < data.length; j += 4) {
+          const avg = (data[j] + data[j + 1] + data[j + 2]) / 3;
+          const val = avg > 128 ? 255 : 0;
+          data[j] = data[j + 1] = data[j + 2] = val;
+        }
+      }
+
+      // jsQR avec attemptBoth (inversion)
+      let qrResult;
+      try {
+        qrResult = window.jsQR(imageData.data, w, h, { inversionAttempts: "attemptBoth" });
+      } catch (e) {
+        tried.push(strat.name + " jsQR throw : " + (e && e.message));
+        continue;
+      }
+
+      if (qrResult && qrResult.data) {
+        _log("Scan QR — succès stratégie " + strat.name + " à " + w + "×" + h +
+             " (payload " + qrResult.data.length + " bytes)");
+        qrData = qrResult.data;
+        break;
+      }
+      tried.push(strat.name + " " + w + "×" + h + " : KO");
+    }
+
+    // Cleanup ImageBitmap (libère RAM GPU)
+    if (bitmap && typeof bitmap.close === "function") {
+      try { bitmap.close(); } catch (e) {}
+    }
+
+    if (!qrData) {
+      return {
+        ok:    false,
+        error: "❌ Aucun QR détecté après " + strategies.length + " tentatives.\n" +
+               "\n" +
+               "📷 Image : " + naturalW + "×" + naturalH + " · " +
+               (file.type || "type inconnu") + " · " +
+               Math.round(file.size / 1024) + " KB\n" +
+               "\n" +
+               "🔍 Tentatives : " + tried.join(" | ") + "\n" +
+               "\n" +
+               "💡 Astuce : assure-toi que le QR est net (sans flou), bien " +
+               "éclairé, centré dans l'image, et que les 4 coins sont visibles. " +
+               "Si tu as fait un screenshot très petit, ré-essaie avec une " +
+               "photo de meilleure qualité ou demande à l'opérateur de te " +
+               "RE-générer un QR (la version actuelle est peut-être trop dense)."
+      };
+    }
+
+    // 3) Parse JSON (substitut au qrResult.data)
+    const qrResult = { data: qrData };
 
     // 4) Parse JSON
     let payload;
