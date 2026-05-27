@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.25.3-hotfix19";
+const CACHE_NAME = "myktamap-cache-v1.25.3-hotfix20";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -370,6 +370,24 @@ function _scheduleEviction() {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // 🆘 hotfix20 — Bypass cache TOTAL pour /killsw.html (page de reset
+  // d'urgence). Si on cachait cette page, le SW coincé servirait
+  // l'ancienne version qui ne ferait pas le bon kill switch. Toujours
+  // récupérer la dernière version depuis le serveur, JAMAIS cacher.
+  // Le `network-only + no-store` garantit qu'elle est toujours fraîche
+  // même si le SW est zombie ailleurs.
+  const reqUrl = event.request.url || "";
+  if (/\/killsw\.html(\?|$)/.test(reqUrl)) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .catch(() => new Response("<!doctype html><h1>killsw.html indispo offline</h1>", {
+          status: 503,
+          headers: { "Content-Type": "text/html" }
+        }))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

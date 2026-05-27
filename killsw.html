@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>🆘 Reset MyKTAMap</title>
+  <style>
+    /* CSS inline volontaire — pas de dépendance à css/style.css au cas où
+       celui-ci est cassé / pas servi correctement par le SW coincé. */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0;
+      min-height: 100vh; min-height: 100dvh;
+      background: #0a0d18;
+      color: #e8eaf0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px; line-height: 1.5;
+    }
+    .wrap {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: calc(24px + env(safe-area-inset-top, 0px)) 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    h1 {
+      font-size: 24px;
+      color: #f4c542;
+      margin: 0 0 8px;
+      text-align: center;
+    }
+    .intro {
+      font-size: 14px;
+      color: #c8d0e0;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .step {
+      padding: 12px 14px;
+      margin: 10px 0;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-left: 3px solid #6b7488;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #c8d0e0;
+      display: flex; align-items: center; gap: 10px;
+      transition: border-color 0.25s, background 0.25s;
+    }
+    .step .icon { font-size: 20px; flex-shrink: 0; }
+    .step .label { flex: 1; }
+    .step.done {
+      border-left-color: #6ee287;
+      background: rgba(110, 226, 138, 0.06);
+    }
+    .step.fail {
+      border-left-color: #ff8c8c;
+      background: rgba(255, 140, 140, 0.06);
+    }
+    .step.running { border-left-color: #f4c542; }
+    .step.running .icon { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .summary {
+      margin-top: 24px;
+      padding: 16px 18px;
+      background: rgba(244, 197, 66, 0.06);
+      border: 1px solid rgba(244, 197, 66, 0.2);
+      border-radius: 6px;
+      text-align: center;
+    }
+    .summary h2 { margin: 0 0 8px; color: #f4c542; font-size: 18px; }
+    .summary p { margin: 8px 0; font-size: 14px; }
+    .btn {
+      display: inline-block;
+      padding: 12px 24px;
+      margin-top: 12px;
+      background: #f4c542;
+      color: #1a1f2e;
+      font-weight: 700;
+      text-decoration: none;
+      border: none; border-radius: 6px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .btn:active { transform: scale(0.97); }
+    .preserved {
+      margin-top: 20px;
+      padding: 12px 14px;
+      background: rgba(140, 180, 255, 0.06);
+      border-left: 3px solid #8cb4ff;
+      border-radius: 0 4px 4px 0;
+      font-size: 12px;
+      color: #c8d0e0;
+    }
+    .preserved strong { color: #8cb4ff; }
+    .log {
+      margin-top: 16px;
+      padding: 10px 12px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 4px;
+      font-family: ui-monospace, "SF Mono", Consolas, monospace;
+      font-size: 11px;
+      color: #8892a4;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🆘 Reset MyKTAMap</h1>
+    <p class="intro">
+      Cette page <strong>purge le Service Worker + les caches HTTP/PWA</strong>
+      sans toucher à tes données (plans, sessions, photos).<br>
+      Utilise-la si l'app reste bloquée après une mise à jour douce.
+    </p>
+
+    <div class="step" id="step-sw">
+      <span class="icon">⏳</span>
+      <span class="label">Désenregistrement Service Worker…</span>
+    </div>
+    <div class="step" id="step-cache">
+      <span class="icon">⏳</span>
+      <span class="label">Suppression des caches HTTP/PWA…</span>
+    </div>
+    <div class="step" id="step-done">
+      <span class="icon">⏳</span>
+      <span class="label">Finalisation…</span>
+    </div>
+
+    <div class="preserved">
+      <strong>✓ Données préservées :</strong> plans mémorisés, sessions per-plan,
+      photos POI, photos Mode Secours, backups, préférences globales (thème,
+      debug, etc.). Seul le SW + les caches HTTP/PWA sont purgés.
+    </div>
+
+    <div class="summary" id="summary" style="display:none;">
+      <h2 id="summary-title">✓ Reset terminé</h2>
+      <p id="summary-msg">Tu peux maintenant rouvrir l'app proprement.</p>
+      <a href="/" class="btn" id="btn-reload">🚀 Recharger l'app</a>
+    </div>
+
+    <details style="margin-top:18px;">
+      <summary style="cursor:pointer; color:#8cb4ff; font-size:13px;">🔍 Détails techniques (log)</summary>
+      <div class="log" id="log">[demarrage]</div>
+    </details>
+  </div>
+
+  <script>
+    // Page standalone — aucune dépendance externe. JS inline garanti
+    // exécutable même si tout le reste de l'app est cassé.
+    "use strict";
+
+    var $log = document.getElementById("log");
+    function log(msg) {
+      try {
+        var ts = new Date().toISOString().substring(11, 19);
+        $log.textContent += "\n[" + ts + "] " + msg;
+        $log.scrollTop = $log.scrollHeight;
+      } catch(e) {}
+    }
+    function setStep(id, state, label) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.classList.remove("running", "done", "fail");
+      if (state) el.classList.add(state);
+      var ic = el.querySelector(".icon");
+      var lb = el.querySelector(".label");
+      if (ic) {
+        ic.textContent =
+          state === "done" ? "✓" :
+          state === "fail" ? "✗" :
+          state === "running" ? "⟳" : "⏳";
+      }
+      if (lb && label) lb.textContent = label;
+    }
+
+    function killSw() {
+      setStep("step-sw", "running");
+      if (!("serviceWorker" in navigator) || !navigator.serviceWorker.getRegistrations) {
+        log("ServiceWorker API absente — skip");
+        setStep("step-sw", "done", "Service Worker absent — rien à purger");
+        return Promise.resolve();
+      }
+      return navigator.serviceWorker.getRegistrations().then(function(regs) {
+        log("getRegistrations: " + regs.length + " SW trouvé(s)");
+        if (regs.length === 0) {
+          setStep("step-sw", "done", "Aucun SW à désinscrire");
+          return;
+        }
+        return Promise.all(regs.map(function(r) {
+          log("  unregister: " + r.scope);
+          return r.unregister().then(function(ok) {
+            log("    → " + (ok ? "OK" : "déjà détaché"));
+          });
+        })).then(function() {
+          setStep("step-sw", "done", regs.length + " Service Worker désinscrit(s)");
+        });
+      }).catch(function(e) {
+        log("ERR unregister: " + (e && e.message));
+        setStep("step-sw", "fail", "Erreur unregister : " + (e && e.message));
+      });
+    }
+
+    function killCaches() {
+      setStep("step-cache", "running");
+      if (!window.caches || !caches.keys) {
+        log("Cache API absente — skip");
+        setStep("step-cache", "done", "Cache API absente — rien à purger");
+        return Promise.resolve();
+      }
+      return caches.keys().then(function(keys) {
+        log("caches.keys: " + keys.length + " cache(s) → " + (keys.join(", ") || "(vide)"));
+        if (keys.length === 0) {
+          setStep("step-cache", "done", "Aucun cache à purger");
+          return;
+        }
+        return Promise.all(keys.map(function(k) {
+          log("  delete: " + k);
+          return caches.delete(k).then(function(ok) {
+            log("    → " + (ok ? "OK" : "FAIL"));
+          });
+        })).then(function() {
+          setStep("step-cache", "done", keys.length + " cache(s) supprimé(s)");
+        });
+      }).catch(function(e) {
+        log("ERR caches: " + (e && e.message));
+        setStep("step-cache", "fail", "Erreur caches : " + (e && e.message));
+      });
+    }
+
+    log("Page killsw chargée");
+    log("UA: " + navigator.userAgent);
+
+    Promise.all([killSw(), killCaches()]).then(function() {
+      setStep("step-done", "done", "Reset terminé — prêt à recharger");
+      var summary = document.getElementById("summary");
+      if (summary) summary.style.display = "block";
+      log("✓ Tout est purgé. L'app peut être rechargée.");
+    });
+
+    // Bouton "Recharger l'app" → reload propre sans le param ni cache
+    document.getElementById("btn-reload").addEventListener("click", function(e) {
+      e.preventDefault();
+      log("Recharge en cours…");
+      // Force reload sans cache (location.replace + ts pour bypasser tout cache HTTP)
+      try {
+        window.location.replace("/?_=" + Date.now());
+      } catch (err) {
+        window.location.href = "/";
+      }
+    });
+  </script>
+</body>
+</html>
