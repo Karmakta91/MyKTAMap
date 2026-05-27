@@ -18897,6 +18897,31 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
    Polish complet en C6 ; ci-dessous le baseline UX C2.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* 🐛 fix C3 — Couleur header dark theme pour les 3 modales Phase 4.
+   Les modales étant ajoutées via document.documentElement.appendChild
+   (sibling de body), elles n'héritent PAS du color: #e8eaf0 du body en
+   dark theme → le browser default NOIR s'applique au <h2>.
+   Cf §"Couleurs de texte dans les modales" CLAUDE.md.
+   Le pattern catch-all html.kta-theme-light couvre le mode clair, mais
+   on doit forcer explicitement la couleur claire en mode dark (default). */
+.kta-secours-qr-share-overlay .kta-readme-modal-header,
+.kta-secours-qr-scan-overlay  .kta-readme-modal-header,
+.kta-secours-qr-preview-overlay .kta-readme-modal-header {
+  color: #e8eaf0;
+}
+.kta-secours-qr-share-overlay .kta-readme-modal-header h2,
+.kta-secours-qr-scan-overlay  .kta-readme-modal-header h2,
+.kta-secours-qr-preview-overlay .kta-readme-modal-header h2 {
+  color: #f4c542;                                 /* accent doré charte */
+  font-size: 18px;
+  line-height: 1.3;
+}
+.kta-secours-qr-share-corps,
+.kta-secours-qr-scan-corps,
+.kta-secours-qr-preview-corps {
+  color: #c8d0e0;                                 /* charte dark texte principal */
+}
+
 .kta-secours-qr-share-overlay {
   z-index: 100002;                                  /* au-dessus de Mode Secours (100000) */
 }
