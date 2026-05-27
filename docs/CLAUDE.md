@@ -6189,4 +6189,176 @@ const t = KmzExport.buildTransform(
 
 ---
 
+### 69. Mode Secours Phase 4 — QR Share + mini-carte PDF (depuis hotfix8→hotfix14)
+
+Phase 4 livrée en hotfix continu sur v1.25.3 (sans bump version visible — KARMA déploie en dev tant que pas de push main). Ajoute la coordination terrain via QR code (offline cataphile, anti-réseau souterrain) + carte miniature par équipe dans le PDF rapport.
+
+#### 69.1 Architecture & libs
+
+3 nouveaux assets dans `ASSETS_TO_CACHE` :
+
+| Fichier | Taille | Rôle |
+|---|---|---|
+| `lib/qrcode-generator.min.js` | 20 KB MIT | Génération QR (kazuhikoarase) |
+| `lib/jsqr.min.js` | 130 KB Apache 2.0 | Décode QR (cozmo/jsQR, jsdelivr min auto) |
+| `js/secoursQrShare.js` | ~1700 lignes IIFE | Module métier complet |
+
+API publique `window.MyKTAMapSecoursQrShare = { ouvrirPartageQrBriefing, ouvrirImportQrBriefing, ouvrirPartageQrObservations, ouvrirImportQrObservations, QR_FORMAT_VERSION, PAYLOAD_TYPE_BRIEFING, PAYLOAD_TYPE_OBSERVATIONS, ... helpers internes _ }`.
+
+#### 69.2 Format payloads QR (clés courtes pour rester < 2.9 KB)
+
+`QR_FORMAT_VERSION = 1`. Encodage mode "Byte" (UTF-8 direct, pas de base64 — économie ~33%).
+
+**Briefing Op→Équipier** (`PAYLOAD_TYPE_BRIEFING = "brf"`) :
+```js
+{
+  t:  "brf", v: 1, ts: Date.now(),
+  p:  { i, n, w, h, m?, l? },                    // plan : id/nom/imgW/imgH/multiLevel/availableLevels
+  s:  { i, n, ia?, lkx?, lky?, lkl?, rm?, no? }, // scénario : id/nom + context essentiel
+  e:  { i, n, c, m?, l?, en?, so?, in?,          // équipe : id/nom/couleurIdx/membres/level/entrée/sortie/intermediaires
+        zt?, zp?, zr?,                            // zoneType/zonePolygon/zoneRoadIds
+        dm?, du?, st? }                           // distanceM/dureeEstimeeMin/statut
+}
+```
+
+⚠️ **`itineraireSuggere` VOLONTAIREMENT NON EMBARQUÉ** (hotfix10) : trop gros (50-200 points = 1.5-6 KB) et entièrement dérivable côté équipier via Pathfinder. À l'import, `_importerBriefingDansPlan` déclenche `SecoursMode.recalculerItineraires(scenarioId)` async fire-and-forget 100ms après création → l'iti apparaît dans la seconde.
+
+**Observations Équipier→Op** (`PAYLOAD_TYPE_OBSERVATIONS = "obs"`) :
+```js
+{
+  t:  "obs", v: 1, ts: ...,
+  si: scenarioId,                   // matching strict côté Op
+  ei: equipeId,                     // mode équipe
+  en: equipeNom,                    // fallback humain si scenarioId ≠
+  r:  "equipe"|"secouriste",
+  o:  [ { i, s, o, st, ct }, ... ], // observations par étape, texte ≤200ch
+  nl: [ { i, ts, s, t }, ... ]      // notes libres (mode secouriste, texte ≤150ch)
+}
+```
+
+⚠️ **PHOTOS NON EMBARQUÉES dans le QR** (cf KARMA 9:a) — les photos restent côté Équipier dans IDB `myktamap_secours_photos` (§67.7.4). Pour les transférer à l'Op, l'équipier passe par export rapport PDF (page photos grille) ou JSON (base64).
+
+#### 69.3 Cap payload + retry ECC L (hotfix10)
+
+`_genererQrFromPayload(payload)` :
+- Tentative ECC niveau **M** (15% correction, fiable au scan)
+- Si throw (payload > 2.9 KB) → retry ECC **L** (7%, +30% capacité)
+- Si retry L échoue → throw user-friendly avec conseils actionnables
+
+Tronquages cumulatifs au `_serializerBriefing` :
+- Labels waypoints : 20 chars (hotfix10, était 30)
+- Notes contexte : 200 chars (hotfix10, était 500)
+- Observations texte : 200 chars
+- Notes libres texte : 150 chars
+- Cap 30 notes libres / 20 membres
+
+Estimation typique payload briefing : ~600-900 bytes → QR v15-v20 (scan fluide).
+
+#### 69.4 Scan QR — pattern `<input capture>` ZÉRO modif CSP
+
+**Choix critique** validé KARMA suite audit CSP (cf message « la camera a été autorisé, vue que je peux prendre des photo non ? »).
+
+Pattern : `<input type="file" accept="image/*" capture="environment">` (= attribut HTML standard qui handover à l'app caméra native OS, identique au système photos POI §42).
+
+```html
+📷 Photographier le QR  → <input capture="environment">  // app caméra OS native
+🖼️ Charger une image    → <input>                        // file picker classique
+```
+
+Les 2 inputs partagent le MÊME handler qui :
+1. `_loadImageFromFile(file)` via URL.createObjectURL + Image.onload
+2. Canvas draw avec downscale MAX_SIDE=**2500** (hotfix14, était 2000)
+3. `ctx.getImageData()` + `jsQR(data, w, h, {inversionAttempts: "attemptBoth"})` (hotfix14 — était "dontInvert" qui ratait les QR avec inversion couleur post-compression JPEG/screenshot)
+4. `JSON.parse(qrResult.data)` + validation type + version
+5. **Routing auto par `payload.t`** :
+   - `"brf"` → `_deserializerBriefing` → modale preview → `_importerBriefingDansPlan`
+   - `"obs"` → `_deserializerObservations` → `_mergerObservationsDansScenario` direct
+
+⚠️ **NE PAS basculer vers `navigator.mediaDevices.getUserMedia` (= scan caméra live continu)** — nécessiterait modification CSP `Permissions-Policy: camera=(self)` (actuellement `camera=()`). Le pattern `<input capture>` couvre 100% des besoins MVP avec zéro modif sécu.
+
+#### 69.5 Merger observations — matching cross-device
+
+`_mergerObservationsDansScenario(decoded)` côté Op :
+1. **Match strict par scenarioId** (= équipier a reçu briefing via QR, scenarioId préservé dans le clone)
+2. **Fallback equipeNom** : cherche scénario actif chez Op contenant une équipe avec le même nom (cas équipier ayant reçu briefing via `.mkmsec.json` avec id régénéré)
+3. **Échec** → erreur user-friendly listant les 2 critères
+
+Pour mode équipe : itère `decoded.observations` + `SM.updateEtape(target.id, equipe.id, idx, partial)` whitelist statut/observations/startedAt/completedAt.
+
+Pour mode secouriste : remplace `s.execution.etapes._notes_libres` en bloc.
+
+#### 69.6 UI — points d'entrée
+
+| Site | Action | Acteur |
+|---|---|---|
+| Vue Edit > card équipe header > bouton **📲** (entre 🏗️ M-LVL et 🗑️) | Génération QR briefing Op→Équipe | Opérateur |
+| Vue list Mode Secours > bouton **📲 Scanner un QR** | Scan QR (auto-detect brf vs obs) | Équipier OU Op |
+| Modale Rapport > 4e bouton **📲 QR briefing** (scope=equipe uniquement) | Génération QR briefing depuis Live | Équipier sur site |
+| Vue Live Équipe > footer > bouton **📲 Renvoyer obs** | Génération QR observations Équipe→Op | Équipier |
+
+#### 69.7 Mini-carte PDF page A4 paysage (C5)
+
+`genererRapportPDF` désormais **async** pour permettre await sur la mini-carte.
+
+Pour chaque équipe (scope=operateur ou equipe), le PDF intercale 3 pages :
+1. Page texte étapes (synchrone)
+2. **🆕 Page A4 PAYSAGE dédiée mini-carte** (async, optionnelle)
+3. Page photos grille (si photos)
+
+Pipeline mini-carte :
+1. `_calculerBoundsEquipe(eq)` → rectangle englobant waypoints+zone+iti (padding 15% + plancher 60px)
+2. `MyKTAMapExporterGenererCanvas({scale: 0.5, bg: "image", ann: tout off})` → canvas plan complet
+3. Crop drawImage sur canvas final 1800×1273 (ratio A4 paysage, letterbox blanc)
+4. `_drawEquipeOverlayOnCanvas` — zone teintée 22% + iti dashed + entrée verte "E" + sortie rouge "S" (orange si boucle) + intermédiaires numérotés
+5. `pdf.addPage("a4", "landscape")` + addImage JPEG q82 + header (pastille couleur + titre ASCII) + footer (distance/durée/zone/waypoints)
+
+**Skip silencieux** (PDF reste valide) si : équipe vide, exporter indispo, canvas throw, bounds hors plan.
+
+⚠️ **ASCII strict** dans `pdf.text()` — NFD normalize + strip diacritics + filtre Latin-1, cf §44.6 jsPDF Helvetica latin1 mojibake.
+
+#### 69.8 Cycle de vie hotfixes Phase 4 (sur v1.25.3)
+
+| Hotfix | CACHE_NAME | Sujet principal |
+|---|---|---|
+| 8 | -hotfix8 | C1 (libs + skeleton) + C2 (génération QR Op→Équipier) + C3 (scan QR pattern input capture) |
+| 9 | -hotfix9 | Fix titre noir dark theme sur 3 modales QR |
+| 10 | -hotfix10 | Payload trop volumineux : drop iti + ECC fallback "L" + truncate labels/notes |
+| 11 | -hotfix11 | Bug "étape précédente" cassé (flag `_liveEquipeFreshSession`) + QR briefing dans modale Rapport |
+| 12 | -hotfix12 | C4 boucle complète Équipe→Op + scan unifié routing brf/obs |
+| 13 | -hotfix13 | C5 mini-carte PDF page A4 paysage par équipe |
+| 14 | -hotfix14 | Fix scan QR : inversionAttempts "attemptBoth" + MAX_SIDE 2500 |
+
+**Pas de bump version.json / copyright.js** pendant Phase 4 — KARMA déploie en dev tant que pas de push main. La consolidation v1.26.0 finale sera faite lors du futur merge main.
+
+#### 69.9 À NE PAS faire (Phase 4)
+
+- ❌ Réintroduire `inversionAttempts: "dontInvert"` dans `_decodeQrFromFile` — rate les QR avec inversion couleur après compression JPEG/screenshot
+- ❌ Embarquer `itineraireSuggere` dans le payload briefing — explose la taille (gain -1.5 à -6 KB en le retirant, recalculable via Pathfinder)
+- ❌ Embarquer des photos (base64 ou autre) dans le QR observations — KARMA 9:a explicite
+- ❌ Réintroduire `navigator.mediaDevices.getUserMedia` pour scan live — nécessiterait `Permissions-Policy: camera=(self)` (actuellement `camera=()` interdit)
+- ❌ Coder le QR generation à la main / Reed-Solomon — utiliser qrcode-generator (lib MIT cachée SW)
+- ❌ Bumper version.json sans consentement explicite « oui je le veux » de KARMA
+- ❌ Émojis dans `pdf.text()` mini-carte — Helvetica latin1 → mojibake. Toujours ASCII via NFD normalize
+- ❌ Faire `pdf.save()` sans await sur les mini-cartes — la boucle for+await garantit l'ordre d'insertion
+- ❌ Cacher la modale parent sans MutationObserver pour la restaurer (pattern §66.13)
+- ❌ Smart-skip dans `_liveEquipeInitFocus` sans le flag `_liveEquipeFreshSession` (re-bug hotfix11)
+
+#### 69.10 Pour étendre (futur)
+
+**Phase 5 candidates** :
+- Scan caméra live continu (= migration vers getUserMedia + bump CSP camera=(self)) — utile pour multi-QR rapide
+- Multi-QR séquentiel (= 1 QR par section, l'app reconstruit) — utile si on remet `itineraireSuggere` dans le payload
+- Chiffrement end-to-end du payload (mdp partagé hors-bande) — cohérent avec UnlockGate §36
+- Compression gzip via pako (~50 KB lib) avant base64 — gain ~60-70% sur JSON
+
+**Pour ajouter un nouveau type de payload** (genre `"sit"` = situation report) :
+1. Ajouter `PAYLOAD_TYPE_SITUATION = "sit"` aux constantes
+2. Implémenter `_serializerSituation` + `_deserializerSituation`
+3. Implémenter `_mergerSituationDansScenario` ou équivalent
+4. Ajouter le routing dans `_decodeQrFromFile` après `t === "obs"` (avant default `brf`)
+5. UI : implémenter `ouvrirPartageQrSituation` + modale
+6. Exposer dans `window.MyKTAMapSecoursQrShare`
+
+---
+
 **Bon code ! 🚀**

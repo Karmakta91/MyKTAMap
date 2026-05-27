@@ -935,7 +935,12 @@
     }
 
     // 2) Canvas + downscale si nécessaire
-    const MAX_SIDE = 2000;
+    // 🐛 hotfix14 (KARMA "aucun QR code detecter quand j'envois l'image du QR")
+    // — Augmenté à 2500px (était 2000). Un QR v40 fait 177×177 cells. À
+    // MAX_SIDE 2000 + quiet zone, on tombe à ~10 px/cell, marginal pour la
+    // détection sur des QR denses (briefings complets). 2500 = ~13 px/cell,
+    // plus robuste, surcoût RAM négligeable.
+    const MAX_SIDE = 2500;
     let w = img.naturalWidth  || img.width;
     let h = img.naturalHeight || img.height;
     if (w <= 0 || h <= 0) {
@@ -967,7 +972,16 @@
 
     let qrResult;
     try {
-      qrResult = window.jsQR(imageData.data, w, h, { inversionAttempts: "dontInvert" });
+      // 🐛 hotfix14 (KARMA "aucun QR code detecter quand j'envois l'image
+      // du QR") — Passage de "dontInvert" à "attemptBoth" :
+      //   - "dontInvert" essayait UNIQUEMENT les QR clairs sur fond sombre
+      //     standard, ce qui rate les QR partagés via WhatsApp/screenshot
+      //     dont les couleurs peuvent être inversées par compression JPEG
+      //     ou rendu écran (capture sombre du PNG blanc d'origine, etc.).
+      //   - "attemptBoth" tente normal PUIS inversé → +50% du temps de
+      //     décodage (négligeable, ~50-100ms) mais beaucoup plus robuste.
+      // (Bonus : c'est le default jsQR — on avait optimisé prématurément.)
+      qrResult = window.jsQR(imageData.data, w, h, { inversionAttempts: "attemptBoth" });
     } catch (e) {
       return { ok: false, error: "Erreur de décodage jsQR : " + (e && e.message) };
     }
