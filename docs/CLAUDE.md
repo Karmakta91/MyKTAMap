@@ -6252,9 +6252,10 @@ Pipeline mini-carte :
 | 15 | -hotfix15 | Multi-stratégie + diagnostic détaillé (insuffisant) |
 | 16 | -hotfix16 | MIN_CELL_PX 8 côté génération (insuffisant) |
 | **17** | **-hotfix17** | **⛔ ROLLBACK QR complet — conserve C5 mini-carte PDF + hotfix11 étape précédente** |
+| **18** | **-hotfix18** | **🌐 Recherche GPS lat,lng + format Maps cross-app** (cf §70 nouvelle section dédiée) |
 
-À venir :
-| 18 | -hotfix18 | Format `.mkmsec.observations.json` + bouton "📥 Importer" en haut vue Live + bouton "💾 Exporter mes obs" footer |
+À venir (sujet "Import/Export Live" mis en pause par KARMA pour la feature GPS) :
+| 19 | -hotfix19 | Format `.mkmsec.observations.json` + bouton "📥 Importer" en haut vue Live + bouton "💾 Exporter mes obs" footer |
 
 #### 69.4 À NE PAS faire
 
@@ -6262,7 +6263,7 @@ Pipeline mini-carte :
 - ❌ Importer la mini-carte PDF C5 dans un autre module — elle dépend de `MyKTAMapExporterGenererCanvas` côté exporter.js + de la PALETTE OTAN module-level secoursMode.js
 - ❌ Toucher au flag `_liveEquipeFreshSession` (hotfix11) — c'est le fix critique du bug "étape précédente" et il doit subsister même après rollback Phase 4
 
-#### 69.5 Format `.mkmsec.observations.json` (à venir hotfix18)
+#### 69.5 Format `.mkmsec.observations.json` (à venir hotfix19, après pause feature GPS hotfix18)
 
 Format prévu (équivalent fichier de l'ancien payload QR observations) :
 ```js
@@ -6282,9 +6283,9 @@ Format prévu (équivalent fichier de l'ancien payload QR observations) :
 }
 ```
 
-UI prévue :
-- **Bouton "📥 Importer" en HAUT de la vue Live** (Mode Équipe / Op / Secouriste) → file picker accepte `.mkmsec.json` ET `.mkmsec.observations.json` (détection auto via `type` JSON)
-- **Bouton "💾 Exporter mes obs" footer Live Équipe** → download `.mkmsec.observations.json`
+UI prévue (cf KARMA 3:b 4:c) :
+- **Mini-toolbar dédiée entre header et stepper/cards** des 3 vues Live (Équipe / Op / Secouriste) avec bouton "📥 Importer un fichier" → file picker accepte `.mkmsec.json` ET `.mkmsec.observations.json` (détection auto via `type` JSON)
+- **Bouton "💾 Exporter mes obs"** : à 2 endroits (a) footer Live Équipe + Secouriste, (b) modale Rapport (5e format à côté de PDF/JSON/Texte)
 
 Pas de photos (cf KARMA 9:a) — les photos restent locales sur device Équipier, partagées via rapport PDF (page photos grille).
 
@@ -6461,6 +6462,126 @@ Pipeline mini-carte :
 4. Ajouter le routing dans `_decodeQrFromFile` après `t === "obs"` (avant default `brf`)
 5. UI : implémenter `ouvrirPartageQrSituation` + modale
 6. Exposer dans `window.MyKTAMapSecoursQrShare`
+
+---
+
+### 70. Recherche par coordonnées GPS + format Maps cross-app (depuis hotfix18 — 2026-05-27)
+
+Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte désormais des **coordonnées GPS au format Google Maps** (`48.680831, 2.158843`) et localise la position sur le plan.
+
+KARMA quote :
+> « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.680831, 2.158843 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
+
+#### 70.1 Architecture (Sujet A + Sujet B)
+
+**Sujet A — Recherche par GPS** (modale Ctrl+K) :
+- `js/utils.js > parseGpsCoords(str)` détecte le format strict avec validation plage `[-90, 90] × [-180, 180]`
+- `js/searchPoints.js > _renderResultats` : si parseGpsCoords match, bascule sur `_renderResultatsGps(query, gps)` qui orchestre la cascade :
+  1. Plan calibré ? → sinon card orange "Calibrer ce plan"
+  2. `KmzExport.buildTransform` + `gpsToPlan` (pattern §32.7 rebuild on-demand)
+  3. Bounds check `[0..imgW × 0..imgH]` → sinon card rouge "Coordonnée hors plan"
+  4. Cherche POI le plus proche dans rayon **50 px** :
+     - POI trouvé → card verte avec bouton "🎯 Aller au point"
+     - Sans POI → card bleue avec bouton "➕ Créer un point ici" → appelle `window.afficherFormulaire(x, y)` (= équivalent mode édition POI)
+
+**Sujet B — Format `lat, lng` collable** :
+- `js/utils.js > attacherGpsPasteSplit(latInput, lngInput)` exposé global, idempotent
+- Quand l'user colle `48.680831, 2.158843` dans le champ **lat OU lng**, le helper auto-split
+- Re-dispatch event "input" pour live preview / validation en aval
+- Tag `dataset.gpsPasteAttached="1"` pour éviter duplication listeners
+
+#### 70.2 API publique nouvelle
+
+```js
+window.parseGpsCoords(str)
+  → { lat, lng } | null
+  // Regex stricte + validation plage géographique
+  // "48.680831, 2.158843" → {lat: 48.680831, lng: 2.158843}
+  // "200, 2.15"           → null (lat hors plage)
+  // "abc, 2.15"           → null
+
+window.attacherGpsPasteSplit(latInput, lngInput)
+  → void
+  // Attache les listeners "input" + "paste" aux 2 inputs
+  // Idempotent (re-call no-op si déjà attaché)
+```
+
+#### 70.3 Sites équipés (Sujet B)
+
+| Module | Inputs | Site d'appel |
+|---|---|---|
+| `js/createConf.js` | `pl_geo_A_lat/lng` + `pl_geo_B_lat/lng` | À l'ouverture de `afficherPlanner` (mode nouveau, inputs vides) + dans `_preRemplirFormulaire` (mode modifier, après restore valeurs) |
+| `js/sessionExporter.js` | `kmz_A_lat/lng` + `kmz_B_lat/lng` | Dans `_bindKmzHandlers` après les listeners "input" existants |
+| `js/gpxIO.js` | — | **Skip** — GPX réutilise calib KMZ existante, pas de champs saisie propres |
+
+#### 70.4 UI Cards GPS dans modale recherche
+
+4 variantes CSS (`.kta-search-gps-card-warn`/`error`/`ok`/`create`) :
+
+| Variant | Couleur | Cas |
+|---|---|---|
+| **warn** | orange | Plan non géoréférencé → bouton "⚙️ Calibrer ce plan" |
+| **error** | rouge | Coords hors plan (`x > imgW` ou `y > imgH`) → message explicite + détails px |
+| **ok** | vert | POI proche détecté (≤ 50 px) → card avec nom POI + distance + bouton "🎯 Aller" |
+| **create** | bleu | Aucun POI dans 50 px → bouton "➕ Créer un point ici" |
+
+Hint visible UNIQUEMENT si plan calibré :
+```html
+<div class="kta-search-gps-hint" id="kta-search-gps-hint" style="display:none;">
+  🌐 Tu peux coller des coordonnées GPS au format
+  <code>48.680831, 2.158843</code> (depuis Google Maps)...
+</div>
+```
+
+Activation au boot de la modale via IIFE qui check `KmzExport.getCalibration(planId)`.
+
+Placeholder input enrichi :
+> "🔍 Point, tracé, zone, structure… ou GPS « 48.68, 2.15 »"
+
+#### 70.5 Bouton "➕ Créer un point ici"
+
+Quand aucun POI dans 50 px, le bouton :
+1. Ferme la modale recherche (`_modal.remove()`)
+2. Centre la carte via `map.setView([imageHeight - planY, planX], zoom, {animate: true})`
+3. Appelle `window.afficherFormulaire(planX, planY)` (= mode édition POI standard d'`editor.js > afficherFormulaire`, ligne 130)
+
+L'user a ainsi 3 saisies seulement après scan GPS d'une coord depuis Maps :
+1. Ctrl+K
+2. Coller `48.680831, 2.158843`
+3. Clic "➕ Créer un point ici" → formulaire de saisie POI s'ouvre
+
+#### 70.6 Rétrocompatibilité plans existants
+
+- Si plan calibré avec ancien format → **rien à changer** (la détection lit `KmzExport.getCalibration` qui marche pareil)
+- Si plan non calibré → bandeau orange explicite (au lieu de comportement silencieux)
+- Si plan jamais ouvert → comportement texte standard (parseGpsCoords renvoie null si non-format-GPS)
+
+Aucune migration nécessaire. Aucune modif du format `plan-config.json > plan.georef`.
+
+#### 70.7 À NE PAS faire
+
+- ❌ Étendre `parseGpsCoords` au format DMS (`48°40'51"N 2°09'31"E`) — KARMA a explicitement choisi le format décimal Maps natif. Le DMS demanderait une regex 10× plus complexe + cas d'erreur multiplexés
+- ❌ Court-circuiter la validation plage géographique — `"200, 2.15"` doit retourner null, sinon faux positifs sur des IDs de points genre `"200, 2.15-zone"` du data layer
+- ❌ Ouvrir le formulaire de création SANS centrer la carte d'abord — l'user doit voir où il crée le point (cohérent avec mode édition POI classique qui ouvre toujours le formulaire après un clic visible carte)
+- ❌ Réutiliser le pattern QR ROLLBACK (= libs externes) pour ce sujet GPS — tout est natif (regex + buildTransform existant), zéro dep ajoutée
+- ❌ Hard-coder le rayon 50 px ailleurs sans constante — actuellement `const _GPS_RADIUS_PX = 50;` dans searchPoints.js. Si on a besoin de le changer, juste 1 endroit
+
+#### 70.8 Pour étendre
+
+**Si on veut accepter des coords depuis d'autres formats** (DMS, UTM, MGRS, etc.) à terme :
+1. Ajouter dans `parseGpsCoords` une cascade de regex pour tester chaque format avant le fallback `return null`
+2. Convertir tous les formats en `{lat, lng}` décimal interne
+3. Le reste du pipeline (cards GPS, search, etc.) reste inchangé
+
+**Si on veut ajouter d'autres sites où coller le format Maps** (genre KML import de fond, GPX import, autre) :
+1. Identifier les 2 inputs lat/lng concernés
+2. Appeler `window.attacherGpsPasteSplit(latEl, lngEl)` au moment où ils sont créés dans le DOM
+3. Le helper est idempotent → safe même si appelé plusieurs fois
+
+**Si on veut un mode "Naviguer en GPS continu"** (= flèche d'orientation comme Waze) :
+- Pas faisable sans accès au GPS du device (Permissions-Policy + getCurrentPosition)
+- Cohérent avec le contexte cataphile : pas de GPS souterrain de toute façon
+- Ce sujet est **explicitement hors scope** MyKTAMap (cf §40 NetworkAudit + philo offline)
 
 ---
 
