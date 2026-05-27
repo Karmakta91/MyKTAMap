@@ -133,9 +133,10 @@
     if (!pt || typeof pt.x !== "number" || typeof pt.y !== "number") return null;
     const out = { x: pt.x, y: pt.y };
     if (typeof pt.level === "number") out.l = pt.level;
-    // Label : on tronque à 30 chars pour éviter d'exploser le payload
+    // Label : tronqué à 20 chars (était 30 avant hotfix10) pour limiter la
+    // taille payload. L'équipier peut renommer après import si besoin.
     if (pt.label && typeof pt.label === "string" && pt.label.trim()) {
-      out.lb = pt.label.trim().substring(0, 30);
+      out.lb = pt.label.trim().substring(0, 20);
     }
     if (pt.pointId && typeof pt.pointId === "string") out.pi = pt.pointId;
     return out;
@@ -223,7 +224,8 @@
       s.rm = ctx.zoneIncertitude.radiusMeters;
     }
     if (ctx.notes && typeof ctx.notes === "string") {
-      s.no = ctx.notes.substring(0, 500);
+      // hotfix10 : notes tronquées à 200 chars (était 500) pour réduire payload
+      s.no = ctx.notes.substring(0, 200);
     }
 
     // Équipe focalisée — tous les champs essentiels pour l'exécution
@@ -257,10 +259,17 @@
       e.zr = equipe.zoneRoadIds.slice();
     }
 
-    // Itinéraire pré-calculé (compact)
-    if (Array.isArray(equipe.itineraireSuggere) && equipe.itineraireSuggere.length > 0) {
-      e.is = equipe.itineraireSuggere.map(_pointCompact).filter(Boolean);
-    }
+    // Itinéraire pré-calculé : VOLONTAIREMENT NON EMBARQUÉ dans le QR
+    // (hotfix10). Raisons :
+    //   1. Pathfinder peut générer 50-200 points = 1.5-6 KB → dépasse
+    //      régulièrement la limite QR v40 niveau M (~2.9 KB).
+    //   2. L'itinéraire est entièrement DÉRIVABLE depuis entrée + sortie +
+    //      intermediaires + zone : l'équipier peut le recalculer en 1 clic
+    //      via "🔄 Recalculer iti" dans la vue Edit, ou auto à l'import.
+    //   3. Gain typique payload : -1.5 à -6 KB → tient dans QR v15-v25
+    //      (lisible même sur petit écran téléphone).
+    // → on garde seulement la distance + durée estimées (~10 bytes) qui
+    // sont utiles pour l'aperçu avant import même sans iti recalculé.
     if (typeof equipe.distanceM       === "number") e.dm = Math.round(equipe.distanceM);
     if (typeof equipe.dureeEstimeeMin === "number") e.du = Math.round(equipe.dureeEstimeeMin);
     if (equipe.statut) e.st = equipe.statut;
@@ -419,32 +428,48 @@
     const payloadStr = JSON.stringify(payload);
     if (!payloadStr) throw new Error("Payload vide");
 
-    // Auto-fit : type 0 = la lib choisit la version min qui rentre
-    const qr = window.qrcode(0, QR_ERROR_CORRECTION_LEVEL);
-    qr.addData(payloadStr, "Byte");
-
-    // Tentative make() — peut throw si payload trop gros pour ECC niveau M
-    // à n'importe quelle version ≤ 40
-    try {
+    // Stratégie cascade (hotfix10) : tente d'abord ECC niveau "M" (15%, plus
+    // fiable au scan), puis fallback "L" (7%, +30% de capacité) si payload
+    // dépasse. Le scan reste fiable en "L" tant que le QR est net et bien
+    // éclairé — c'est un compromis acceptable pour faire passer des
+    // briefings volumineux (équipe avec polygon de 30+ sommets, etc.).
+    function _try(eccLevel) {
+      const qr = window.qrcode(0, eccLevel);
+      qr.addData(payloadStr, "Byte");
       qr.make();
-    } catch (e) {
-      throw new Error("Payload trop volumineux pour un QR v40 niveau M (" + payloadStr.length + " bytes JSON). " +
-                      "Réduire le contexte ou les intermédiaires.");
+      const cellCount  = qr.getModuleCount();
+      const typeNumber = Math.round((cellCount - 17) / 4);
+      if (typeNumber > QR_MAX_TYPE_NUMBER) {
+        throw new Error("QR dépasse cap v" + QR_MAX_TYPE_NUMBER + " (atteint v" + typeNumber + ")");
+      }
+      return { qr: qr, cellCount: cellCount, typeNumber: typeNumber, eccUsed: eccLevel };
     }
 
-    const cellCount = qr.getModuleCount();
-    // Approximation type number depuis cellCount : v1=21, v2=25, ..., vN=17+4N
-    const typeNumber = Math.round((cellCount - 17) / 4);
-    if (typeNumber > QR_MAX_TYPE_NUMBER) {
-      throw new Error("QR généré dépasse le cap v" + QR_MAX_TYPE_NUMBER + " (atteint v" + typeNumber + ")");
+    let qrInfo;
+    try {
+      qrInfo = _try(QR_ERROR_CORRECTION_LEVEL);   // tentative niveau M
+    } catch (eM) {
+      // Retry ECC niveau L (7%) — moins robuste au scan mais +30% capacité
+      try {
+        qrInfo = _try("L");
+        _warn("Payload " + payloadStr.length + " bytes — fallback ECC L (7%) appliqué.");
+      } catch (eL) {
+        // Vraiment trop gros même en L → throw user-friendly avec conseils
+        throw new Error(
+          "Payload trop volumineux même en ECC L (" + payloadStr.length + " bytes JSON). " +
+          "Réduire la zone (polygon avec moins de sommets), " +
+          "limiter les intermédiaires (max 5-7), ou raccourcir les notes contexte."
+        );
+      }
     }
 
     return {
-      qr:           qr,
+      qr:           qrInfo.qr,
       payloadStr:   payloadStr,
       payloadBytes: payloadStr.length,
-      typeNumber:   typeNumber,
-      cellCount:    cellCount
+      typeNumber:   qrInfo.typeNumber,
+      cellCount:    qrInfo.cellCount,
+      eccUsed:      qrInfo.eccUsed
     };
   }
 
@@ -635,8 +660,13 @@
                + (equipe.entree ? 1 : 0)
                + (equipe.sortie ? 1 : 0)
                + (Array.isArray(equipe.intermediaires) ? equipe.intermediaires.length : 0);
+    // hotfix10 : l'itinéraire pré-calculé n'est pas embarqué dans le QR
+    // (trop volumineux). Il sera recalculé auto à l'import via Pathfinder.
+    const hasIti = Array.isArray(equipe.itineraireSuggere) && equipe.itineraireSuggere.length > 0;
     const stats = "QR v" + qrInfo.typeNumber + " · " + qrInfo.cellCount + "×" + qrInfo.cellCount +
-                  " cells · payload " + qrInfo.payloadBytes + " bytes · ECC " + QR_ERROR_CORRECTION_LEVEL;
+                  " cells · payload " + qrInfo.payloadBytes + " bytes · ECC " +
+                  (qrInfo.eccUsed || QR_ERROR_CORRECTION_LEVEL) +
+                  (qrInfo.eccUsed === "L" ? " (auto-réduit)" : "");
 
     const overlay = document.createElement("div");
     overlay.id = "kta-secours-qr-share-overlay";
@@ -656,7 +686,7 @@
               '<span class="kta-secours-qr-share-meta">' +
                 nbWp + ' waypoint(s) · ' +
                 (equipe.zoneType ? '✓ zone' : '○ pas de zone') + ' · ' +
-                (equipe.itineraireSuggere ? '✓ itinéraire' : '○ pas d\'iti') +
+                (hasIti ? '🔄 iti recalculé à l\'import' : '○ pas d\'iti') +
               '</span>' +
             '</div>' +
           '</div>' +
@@ -916,6 +946,9 @@
       }
 
       // 4) Update équipe avec les détails reçus (whitelist updateGroupe)
+      // Note : itineraireSuggere est volontairement absent du payload QR
+      // depuis hotfix10 (cf _serializerBriefing). On garde distanceM/dureeEstimeeMin
+      // comme indicateurs pré-calculés pour l'aperçu.
       SM.updateGroupe(newScenario.id, newGroupe.id, {
         couleurIdx:        equipe.couleurIdx,
         membres:           equipe.membres,
@@ -925,11 +958,23 @@
         zoneType:          equipe.zoneType,
         zonePolygon:       equipe.zonePolygon,
         zoneRoadIds:       equipe.zoneRoadIds,
-        itineraireSuggere: equipe.itineraireSuggere,
+        // itineraireSuggere: pas dans payload QR — sera recalculé async ci-dessous
         distanceM:         equipe.distanceM,
         dureeEstimeeMin:   equipe.dureeEstimeeMin,
         statut:            equipe.statut
       });
+
+      // 5) Auto-recalcul itinéraire (async, best-effort). Pathfinder peut
+      // recréer l'iti depuis entrée + sortie + intermédiaires + zone.
+      // On déclenche en fire-and-forget — pas bloquant pour l'utilisateur,
+      // l'iti sera visible dès que recalcul terminé (typique 100-500ms).
+      if (equipe.entree && equipe.sortie && typeof SM.recalculerItineraires === "function") {
+        setTimeout(function() {
+          try { SM.recalculerItineraires(newScenario.id); } catch(e) {
+            _warn("Auto-recalc iti après import : " + (e && e.message));
+          }
+        }, 100);
+      }
 
       return { ok: true, scenarioId: newScenario.id, equipeId: newGroupe.id };
     } catch (e) {
