@@ -519,6 +519,11 @@
       currentEquipeId: currentEquipeId,
       etapes:          etapes
     };
+    // 🐛 hotfix11 — Reset focus + fresh session flag pour le nouveau lancement.
+    // Permet le smart-skip initial vers la 1ère étape pending au boot,
+    // tout en laissant ensuite la nav user (prev/next/stepper) prendre le relai.
+    _liveEquipeFocusIdx     = 0;
+    _liveEquipeFreshSession = true;
     _commitMutation(s);
     return s;
   }
@@ -2298,6 +2303,22 @@
                 '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
               '</span>' +
             '</button>' +
+            /* 🆕 v1.26.0 Phase 4 C3-bis (KARMA "je veux rajouter le bouton
+               générer un QR code, en mode live, je suis sur Equipe Alpha
+               et on le rajoute dans le modal rapport") :
+               4e bouton QR briefing UNIQUEMENT pour scope=equipe.
+               Les scopes operateur (toutes équipes) et secouriste (notes
+               libres) ne sont pas concernés par le QR briefing (qui cible
+               UNE équipe focalisée). */
+            ((scope === "equipe" && s.execution && s.execution.currentEquipeId)
+             ? '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-share-qr">' +
+                 '<span class="kta-secours-rapport-fmt-icon">📲</span>' +
+                 '<span class="kta-secours-rapport-fmt-content">' +
+                   '<span class="kta-secours-rapport-fmt-label">QR briefing</span>' +
+                   '<span class="kta-secours-rapport-fmt-sub">Partage l\'équipe à un autre équipier (offline)</span>' +
+                 '</span>' +
+               '</button>'
+             : '') +
           '</div>' +
 
           '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
@@ -2358,6 +2379,28 @@
     });
     overlay.querySelectorAll('[data-action="rapport-copy-text"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _handleExport("text"); });
+    });
+    // 🆕 v1.26.0 Phase 4 C3-bis — QR briefing depuis la modale Rapport
+    // (scope=equipe uniquement, équipe focalisée = currentEquipeId).
+    // Le bouton n'est rendu dans le HTML que si scope === "equipe" &&
+    // currentEquipeId set, donc le querySelectorAll renvoie 0 résultats
+    // pour les autres scopes (= no-op sécurisé).
+    overlay.querySelectorAll('[data-action="rapport-share-qr"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        if (!window.MyKTAMapSecoursQrShare) {
+          _toast("⚠️ Module QR Share indispo.", "error");
+          return;
+        }
+        const eqId = s.execution && s.execution.currentEquipeId;
+        if (!eqId) {
+          _toast("⚠️ Aucune équipe focalisée pour partager.", "warn");
+          return;
+        }
+        // Ferme la modale Rapport AVANT d'ouvrir le QR (sinon empilement
+        // de 2 modales = stack visuel et z-index parfois trompeur)
+        _close();
+        window.MyKTAMapSecoursQrShare.ouvrirPartageQrBriefing(s.id, eqId);
+      });
     });
 
     document.addEventListener("keydown", _onKey);
@@ -3985,6 +4028,18 @@
   // Réinitialisé à chaque _switchView("live") via _liveEquipeInitFocus.
   let _liveEquipeFocusIdx = 0;
 
+  // 🐛 hotfix11 (KARMA "le bouton étape précédente ne marche pas") —
+  // Flag pour distinguer "boot de la vue Live" (= smart-skip vers prochaine
+  // pending autorisé) de "navigation manuelle user" (= respect strict du
+  // focus défini par le clic prev/next/stepper).
+  // Sans ce flag, après chaque clic "← Étape précédente", le re-render
+  // appelait _liveEquipeInitFocus qui voyait l'étape comme déjà complétée
+  // → smart-skip avant à la prochaine pending → retour impossible.
+  // Reset à true uniquement au lancerExecution (= 1ère entrée dans la vue
+  // Live pour une exécution donnée), pour préserver le comportement initial
+  // "reprendre à la bonne étape au reload".
+  let _liveEquipeFreshSession = true;
+
   function _renderLiveViewEquipe(s) {
     const equipeId = s.execution.currentEquipeId;
     const g = (s.groupes || []).find(function(gr) { return gr.id === equipeId; });
@@ -4141,6 +4196,10 @@
   }
 
   // Init le focus sur la 1ère étape pending (sinon dernière étape).
+  // 🐛 hotfix11 : smart-skip vers prochaine pending UNIQUEMENT en fresh session
+  // (= 1ère entrée dans la vue Live pour cette exécution). Après navigation
+  // manuelle user (clic prev/next/stepper), le flag passe à false → respect
+  // strict du focus user, ce qui permet le retour en arrière fonctionnel.
   function _liveEquipeInitFocus(etapes) {
     if (!Array.isArray(etapes) || etapes.length === 0) {
       _liveEquipeFocusIdx = 0;
@@ -4150,13 +4209,18 @@
     if (_liveEquipeFocusIdx < 0 || _liveEquipeFocusIdx >= etapes.length) {
       _liveEquipeFocusIdx = 0;
     }
-    // Si l'étape actuelle est déjà complétée → avance à la prochaine pending
-    if (etapes[_liveEquipeFocusIdx] && etapes[_liveEquipeFocusIdx].completedAt) {
+    // Smart-skip vers prochaine pending UNIQUEMENT en fresh session
+    // (Sans ce garde-fou, après chaque clic "← Étape précédente",
+    // le re-render avancerait auto à la prochaine pending → retour impossible.)
+    if (_liveEquipeFreshSession &&
+        etapes[_liveEquipeFocusIdx] && etapes[_liveEquipeFocusIdx].completedAt) {
       const nextPending = etapes.findIndex(function(et, i) {
         return i > _liveEquipeFocusIdx && !et.completedAt;
       });
       if (nextPending >= 0) _liveEquipeFocusIdx = nextPending;
     }
+    // L'init initial a fait son boulot — désormais la nav user prend le relai
+    _liveEquipeFreshSession = false;
   }
 
   // ─── Vue Live Mode Opérateur surface ──────────────────────────
