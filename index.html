@@ -5053,6 +5053,66 @@
       }
     });
 
+    // 🆘 hotfix19 — Kill switch d'urgence pour les users avec SW/cache coincés.
+    // Usage : taper "https://<domaine>/?killsw=1" dans la barre d'adresse.
+    // Au load, le script détecte le param, unregister TOUS les SW + caches.delete()
+    // TOUS les caches, puis affiche un alert + reload propre vers la même URL
+    // sans le param. Équivalent fonctionnel du "💥 Tout réinitialiser" loader
+    // mais sans devoir charger l'app (utile quand l'app elle-même refuse de
+    // boot à cause d'un SW coincé qui sert un cache cassé).
+    //
+    // KARMA quote : "bon rien a faire sur mobile [...] j'ai supprimer l'icone
+    // du PWA, rester cache depuis chrome, restart de l'appareil, utilisation
+    // de la wifi plutot que 4g, j'ai meme tout roalback ce qui fonctionne
+    // aujourd'hui en prod et pareil"
+    //
+    // localStorage / IndexedDB SONT PRÉSERVÉS — ce kill switch ne supprime
+    // QUE le SW et les caches HTTP/PWA. Les plans mémorisés, sessions,
+    // photos, etc. restent intacts.
+    (function _killSwIfRequested() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("killsw")) return;
+      } catch (e) { return; }
+      console.warn("[PWA] 🆘 Kill switch SW + caches activé via ?killsw=1");
+      const tasks = [];
+      if ("serviceWorker" in navigator && navigator.serviceWorker.getRegistrations) {
+        tasks.push(
+          navigator.serviceWorker.getRegistrations()
+            .then(function(regs) {
+              return Promise.all(regs.map(function(r) {
+                console.log("[PWA] Unregister SW :", r.scope);
+                return r.unregister();
+              }));
+            })
+            .catch(function(e) { console.warn("[PWA] unregister SW :", e); })
+        );
+      }
+      if (window.caches && caches.keys) {
+        tasks.push(
+          caches.keys()
+            .then(function(keys) {
+              return Promise.all(keys.map(function(k) {
+                console.log("[PWA] Delete cache :", k);
+                return caches.delete(k);
+              }));
+            })
+            .catch(function(e) { console.warn("[PWA] delete caches :", e); })
+        );
+      }
+      Promise.all(tasks).then(function() {
+        try { alert("✓ SW + caches HTTP/PWA purgés.\n\nlocalStorage / IndexedDB préservés (plans, sessions, photos).\n\nClic OK pour recharger l'app neuve."); } catch (e) {}
+        // Reload vers la même URL SANS le param killsw, force = true pour bypass
+        // tout cache HTTP résiduel.
+        const cleanUrl = window.location.pathname +
+                         (window.location.hash || "");
+        window.location.replace(cleanUrl);
+      });
+      // Court-circuit l'enregistrement SW normal (le reload va le re-registrer
+      // proprement via le code ci-dessous)
+      throw new Error("[PWA] kill switch — short-circuit normal load");
+    })();
+
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js")
         .then(function (reg) {
