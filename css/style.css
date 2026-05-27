@@ -20523,9 +20523,35 @@ html.kta-theme-light .kta-secours-imported-chip {
   color: #ff6060;
   text-shadow: 0 0 8px rgba(255, 48, 48, 0.35);
 }
+/* 🆕 v1.26.1-fix — Force lisibilité sur fond noir critical (le default
+   color #c8d0e0 / #a8b3c8 / #8892a4 du base banner devenait illisible
+   sur le fond très sombre #0d0d10). */
+.kta-scale-coherence-critical p {
+  color: #e8eaf0 !important;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-table td {
+  color: #e8eaf0;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-table td:first-child {
+  color: #c8d0e0;
+}
 .kta-scale-coherence-critical .kta-scale-coherence-table code {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.10);
   color: #ffd060;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-hint {
+  color: #c8d0e0;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-hint strong {
+  color: #ffb060;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-copy-btn {
+  background: rgba(140, 180, 255, 0.18);
+  border-color: rgba(140, 180, 255, 0.60);
+  color: #b8d0ff;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-copy-btn:hover {
+  background: rgba(140, 180, 255, 0.30);
 }
 
 /* === Variants thème clair === */
@@ -20581,4 +20607,29 @@ html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
 body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
   color: #ffa0a0;
+}
+/* 🆕 v1.26.1-fix — Le critical garde une palette claire-sur-sombre MÊME en
+   thème clair (le fond #2a1010 reste sombre/dramatique par design). Sans ces
+   overrides, les textes theme-light par défaut (#2a2620 sombre) sur fond
+   #2a1010 étaient illisibles. */
+body.kta-theme-light .kta-scale-coherence-critical p,
+html.kta-theme-light .kta-scale-coherence-critical p {
+  color: #e8eaf0 !important;
+}
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td {
+  color: #e8eaf0 !important;
+}
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td:first-child,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td:first-child {
+  color: #c8d0e0 !important;
+}
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table code,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table code {
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #ffd060 !important;
+}
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-hint,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-hint {
+  color: #c8d0e0 !important;
 }
