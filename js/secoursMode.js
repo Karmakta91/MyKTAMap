@@ -1420,6 +1420,585 @@
     document.body.appendChild(overlay);
   }
 
+  // ==========================================================================
+  // 🆕 v1.26.0 — Import rapport équipier .mkmsec.report.json (consolidation cross-device)
+  // ==========================================================================
+  // Permet à l'opérateur surface d'importer le rapport d'un équipier (export
+  // .mkmsec.report.json scope=equipe généré v1.25.0) pour FUSIONNER ses
+  // observations + statuts + photos dans le scenario.execution opérateur.
+  //
+  // Cas d'usage : équipier au retour surface partage son rapport via fichier
+  // (mail, AirDrop, USB, Discord…), l'opérateur l'importe et son tableau de
+  // supervision est mis à jour avec les obs terrain. Remplace fonctionnellement
+  // la voie QR Share Phase 4 (rollback hotfix17).
+  //
+  // Politique de fusion (validée KARMA v1.26.0) :
+  //   - obs : concaténation `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé`
+  //   - statut : prendre le PLUS SÉVÈRE via TABLEAU_STATUTS.severity
+  //   - photos : push avec dédup par id (collision rare via genId aléatoire)
+  //   - timestamps : préserve le plus ancien startedAt + plus récent completedAt
+  //   - flag `_importedFrom` sur chaque étape mutée (traçabilité + chip UI)
+  //   - audit log dans `s.execution._importLog: []`
+  //   - snapshot SessionBackups AVANT (= undo via restauration backup)
+  //
+  // Refus :
+  //   - scope !== "equipe" (operateur = doublon, secouriste = scope différent)
+  //   - scenario.id différent de l'actif (force la cohérence opérateur ↔ équipier)
+  //   - equipe.id absent du scénario actif (équipe inconnue, anti-doublon)
+  //   - pas d'exécution active côté op (lancer le plan d'abord)
+  //
+  // Plan différent → warning (pas erreur) — décision finale dans modale preview.
+
+  const REPORT_FORMAT_VERSION_MAX = 1; // version max supportée à l'import
+
+  // Helper : retourne le statut le plus sévère entre 2 codes via TABLEAU_STATUTS.severity.
+  // Si égalité, conserve s1 (statut côté Op, principe "ne pas écraser l'existant"
+  // sauf si l'équipier remonte une info plus grave).
+  function _severitéMaxStatut(s1, s2) {
+    const i1 = _getStatutInfo(s1);
+    const i2 = _getStatutInfo(s2);
+    return (i2.severity > i1.severity) ? s2 : s1;
+  }
+
+  // Parse + validation seule (pas d'injection). Symétrique à _parsePayloadMkmsec.
+  // Retourne : { ok, payload?, equipeId?, conflits?, warning?, error? }
+  // `conflits` est un array d'étapes côté op déjà renseignées (statut !== pending
+  // OU observations non-vides) qui seront fusionnées (info pour modale preview).
+  async function _parsePayloadReport(input) {
+    let text;
+    try {
+      if (input instanceof File || input instanceof Blob) {
+        text = await input.text();
+      } else if (typeof input === "string") {
+        text = input;
+      } else {
+        return { ok: false, error: "Format input invalide (attendu File, Blob ou string)" };
+      }
+    } catch(e) {
+      return { ok: false, error: "Échec lecture fichier : " + e.message };
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch(e) {
+      return { ok: false, error: "JSON invalide : " + e.message };
+    }
+
+    // Validation type/version
+    if (!payload || typeof payload !== "object") {
+      return { ok: false, error: "Payload invalide (pas un objet)" };
+    }
+    if (payload.type !== "myktamap-secours-report") {
+      return { ok: false, error: "Type incorrect (attendu 'myktamap-secours-report', reçu '" + (payload.type || "(absent)") + "')" };
+    }
+    if (typeof payload.version !== "number" || payload.version < 1 || payload.version > REPORT_FORMAT_VERSION_MAX) {
+      return { ok: false, error: "Version incompatible (reçue " + payload.version + ", max supportée " + REPORT_FORMAT_VERSION_MAX + ")" };
+    }
+
+    // Validation scope = equipe (MVP v1.26.0 : seuls les rapports équipiers fusionnables)
+    if (payload.scope !== "equipe") {
+      if (payload.scope === "operateur") {
+        return { ok: false, error: "Ce fichier est un RAPPORT OPÉRATEUR GLOBAL (snapshot complet de toutes les équipes) — non fusionnable. L'import ne supporte que les rapports ÉQUIPIERS (scope=\"equipe\") qui apportent les obs d'une équipe terrain spécifique." };
+      }
+      if (payload.scope === "secouriste") {
+        return { ok: false, error: "Ce fichier est un RAPPORT SECOURISTE LIBRE (notes parallèles) — non fusionnable dans le tableau Opérateur. Le secouriste libre tient ses notes en parallèle des équipes." };
+      }
+      return { ok: false, error: "Scope inconnu : '" + payload.scope + "' (attendu 'equipe')" };
+    }
+
+    // Validation equipesData (doit contenir 1 équipe)
+    if (!Array.isArray(payload.equipesData) || payload.equipesData.length !== 1) {
+      return { ok: false, error: "equipesData doit contenir exactement 1 équipe (reçu " + (Array.isArray(payload.equipesData) ? payload.equipesData.length : "non-array") + ")" };
+    }
+    const ed = payload.equipesData[0];
+    if (!ed.equipe || typeof ed.equipe !== "object" || typeof ed.equipe.id !== "string") {
+      return { ok: false, error: "Données équipe invalides (equipe.id manquant)" };
+    }
+
+    // Validation scénario actif côté op
+    const currentScenario = get(_currentScenarioId);
+    if (!currentScenario) {
+      return { ok: false, error: "Aucun scénario actif côté Opérateur. Ouvre le scénario où tu veux importer ce rapport." };
+    }
+    if (!currentScenario.execution || !currentScenario.execution.active) {
+      return { ok: false, error: "Le scénario actif n'est pas en cours d'exécution. Lance le plan (🚀) avant d'importer un rapport équipier." };
+    }
+
+    // Validation scenario.id correspond
+    if (payload.scenario && payload.scenario.id && payload.scenario.id !== currentScenario.id) {
+      return { ok: false, error: "Scénario d'origine différent — ce rapport vient de '" + (payload.scenario.nom || "(sans nom)") + "' (id " + payload.scenario.id.slice(0, 8) + "…), pas du scénario actif '" + currentScenario.nom + "'." };
+    }
+
+    // Validation equipe.id existe côté op
+    const equipeOp = currentScenario.groupes.find(function(g) { return g.id === ed.equipe.id; });
+    if (!equipeOp) {
+      return { ok: false, error: "Équipe '" + (ed.equipe.nom || "(sans nom)") + "' (id " + ed.equipe.id.slice(0, 8) + "…) absente du scénario actif. L'équipier doit être enregistré côté Opérateur AVANT le lancement du plan (pas de création silencieuse à l'import)." };
+    }
+
+    // Détection des conflits (info pour preview, pas une erreur)
+    const etapesOp = (currentScenario.execution.etapes && currentScenario.execution.etapes[ed.equipe.id]) || [];
+    const conflits = [];
+    const etapesImp = Array.isArray(ed.etapes) ? ed.etapes : [];
+    etapesImp.forEach(function(etImp) {
+      const etOp = etapesOp.find(function(e) { return e.idx === etImp.idx; });
+      if (!etOp) return; // sera signalé comme skipped, pas conflit
+      const opHasObs = etOp.observations && String(etOp.observations).trim().length > 0;
+      const opHasStatus = etOp.statut && etOp.statut !== "pending";
+      if (opHasObs || opHasStatus) {
+        conflits.push({
+          idx: etImp.idx,
+          label: etImp.label || etOp.label || ("étape " + etImp.idx),
+          opStatut: etOp.statut || "pending",
+          impStatut: etImp.statut || "pending"
+        });
+      }
+    });
+
+    // Plan différent → warning (pas erreur)
+    let warning = null;
+    const currentPlanId = window._currentLoadedPlanId;
+    const importedPlanId = payload.plan && payload.plan.id;
+    if (currentPlanId && importedPlanId && currentPlanId !== importedPlanId) {
+      const importedPlanName = (payload.plan && payload.plan.name) || "(plan inconnu)";
+      warning = "Plan d'origine différent : " + importedPlanName + " (côté équipier). Les obs textuelles sont conservées, mais vérifie que les étapes coïncident.";
+    }
+
+    return {
+      ok: true,
+      payload: payload,
+      equipeId: ed.equipe.id,
+      equipeNom: ed.equipe.nom || "(sans nom)",
+      nbEtapes: etapesImp.length,
+      nbPhotos: Array.isArray(ed.photos) ? ed.photos.length : 0,
+      conflits: conflits,
+      warning: warning
+    };
+  }
+
+  // Injection seule depuis payload déjà validé. Mute s.execution.etapes[equipeId][...]
+  // avec fusion + flag _importedFrom + audit log. Async (écriture photos IDB).
+  // Retourne : { ok, stats: { etapesFusionnees, etapesSkipped, photosImportees,
+  //                           photosSkipped, warnings: [string] } }
+  async function _appliquerImportRapportEquipe(payload) {
+    const s = get(_currentScenarioId);
+    if (!s) return { ok: false, error: "Scénario actif disparu entre parse et apply" };
+
+    const ed = payload.equipesData[0];
+    const equipeId = ed.equipe.id;
+    const importedAt = _nowIso();
+    const sourceScenarioId = (payload.scenario && payload.scenario.id) || null;
+    const sourceAppVersion = payload.appVersion || null;
+
+    // Snapshot AVANT pour undo (cf SessionBackups v1.16.0 step 4).
+    // Si le module n'est pas dispo, on continue quand même (best-effort).
+    try {
+      if (window.SessionBackups && typeof window.SessionBackups.snapshot === "function") {
+        window.SessionBackups.snapshot("Avant import rapport équipier " + (ed.equipe.nom || "(sans nom)"));
+      }
+    } catch(e) {
+      console.warn("[SecoursMode] snapshot avant import :", e);
+    }
+
+    // Init etapes côté op si absent (défensif)
+    s.execution.etapes = s.execution.etapes || {};
+    s.execution.etapes[equipeId] = s.execution.etapes[equipeId] || [];
+    const etapesOp = s.execution.etapes[equipeId];
+
+    const etapesImportees = Array.isArray(ed.etapes) ? ed.etapes : [];
+    const photosImportees = Array.isArray(ed.photos) ? ed.photos : [];
+
+    const stats = {
+      etapesFusionnees: 0,
+      etapesSkipped: 0,
+      photosImportees: 0,
+      photosSkipped: 0,
+      photosDejaPresentes: 0,
+      warnings: []
+    };
+
+    // Index photos importées par stepIdx pour rattachement
+    const photosByStep = {};
+    photosImportees.forEach(function(p) {
+      if (typeof p.stepIdx !== "number") return;
+      if (!photosByStep[p.stepIdx]) photosByStep[p.stepIdx] = [];
+      photosByStep[p.stepIdx].push(p);
+    });
+
+    // Timestamp formaté pour le séparateur de concat
+    const tsLabel = new Date(payload.exportedAt || importedAt).toLocaleString("fr-FR", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+
+    // Fusion étape par étape (sequential car écritures IDB photos)
+    for (let i = 0; i < etapesImportees.length; i++) {
+      const etImp = etapesImportees[i];
+      const etapeOp = etapesOp.find(function(e) { return e.idx === etImp.idx; });
+      if (!etapeOp) {
+        stats.etapesSkipped++;
+        stats.warnings.push("Étape idx " + etImp.idx + " (" + (etImp.label || "?") + ") absente côté Opérateur — ignorée.");
+        continue;
+      }
+
+      // Concaténation observations (sauf si import vide)
+      const importedObs = String(etImp.observations || "").trim();
+      if (importedObs.length > 0) {
+        const existingObs = String(etapeOp.observations || "").trim();
+        const separator = "\n\n--- 📥 Import Équipier " + tsLabel + " ---\n";
+        etapeOp.observations = existingObs.length > 0
+          ? (existingObs + separator + importedObs)
+          : importedObs;
+      }
+
+      // Statut : plus sévère (sauf si import = pending, qui n'écrase jamais)
+      if (etImp.statut && etImp.statut !== "pending") {
+        etapeOp.statut = _severitéMaxStatut(etapeOp.statut || "pending", etImp.statut);
+      }
+
+      // Timestamps : préserver le plus ancien startedAt + le plus récent completedAt
+      if (etImp.startedAt) {
+        if (!etapeOp.startedAt || new Date(etImp.startedAt) < new Date(etapeOp.startedAt)) {
+          etapeOp.startedAt = etImp.startedAt;
+        }
+      }
+      if (etImp.completedAt) {
+        if (!etapeOp.completedAt || new Date(etImp.completedAt) > new Date(etapeOp.completedAt)) {
+          etapeOp.completedAt = etImp.completedAt;
+        }
+      }
+
+      // Photos rattachées à cette étape
+      const photosCetteEtape = photosByStep[etImp.idx] || [];
+      etapeOp.photoIds = etapeOp.photoIds || [];
+      for (let j = 0; j < photosCetteEtape.length; j++) {
+        const photo = photosCetteEtape[j];
+        // Dédup par id (très rare collision via generateId aléatoire mais safety)
+        if (etapeOp.photoIds.indexOf(photo.id) >= 0) {
+          stats.photosDejaPresentes++;
+          continue;
+        }
+        // Vérif autonome (dataUrl présent) sinon skip
+        if (!photo.dataUrl) {
+          stats.photosSkipped++;
+          stats.warnings.push("Photo " + photo.id + " sans dataUrl — non importée (rapport généré avec includePhotos:false).");
+          continue;
+        }
+        // Écriture IDB via secoursPhotos
+        try {
+          if (window.MyKTAMapSecoursPhotos
+              && typeof window.MyKTAMapSecoursPhotos.importPhotoFromDataUrl === "function") {
+            const res = await window.MyKTAMapSecoursPhotos.importPhotoFromDataUrl({
+              id:               photo.id,
+              scenarioId:       s.id,
+              equipeId:         equipeId,
+              stepIdx:          etImp.idx,
+              mime:             photo.mime || "image/jpeg",
+              dataUrl:          photo.dataUrl,
+              sourceScenarioId: sourceScenarioId
+            });
+            etapeOp.photoIds.push(photo.id);
+            if (res && res.status === "already-present") {
+              stats.photosDejaPresentes++;
+            } else {
+              stats.photosImportees++;
+            }
+          } else {
+            stats.photosSkipped++;
+            stats.warnings.push("Module SecoursPhotos indisponible — photo " + photo.id + " non importée.");
+          }
+        } catch(e) {
+          stats.photosSkipped++;
+          stats.warnings.push("Erreur écriture photo " + (photo.id || "?") + " : " + (e && e.message ? e.message : String(e)));
+        }
+      }
+
+      // Flag traçabilité (UI chip + audit)
+      etapeOp._importedFrom = {
+        sourceScenarioId: sourceScenarioId,
+        sourceAppVersion: sourceAppVersion,
+        importedAt:       importedAt
+      };
+
+      stats.etapesFusionnees++;
+    }
+
+    // Audit log scenario-level
+    s.execution._importLog = s.execution._importLog || [];
+    s.execution._importLog.push({
+      at:                  importedAt,
+      sourceScenarioId:    sourceScenarioId,
+      sourceAppVersion:    sourceAppVersion,
+      sourceExportedAt:    payload.exportedAt || null,
+      equipeId:            equipeId,
+      equipeNom:           ed.equipe.nom || "(sans nom)",
+      etapesFusionnees:    stats.etapesFusionnees,
+      etapesSkipped:       stats.etapesSkipped,
+      photosImportees:     stats.photosImportees,
+      photosSkipped:       stats.photosSkipped,
+      photosDejaPresentes: stats.photosDejaPresentes,
+      warningsCount:       stats.warnings.length
+    });
+
+    _commitMutation(s);
+    return { ok: true, stats: stats };
+  }
+
+  // Modale preview AVANT injection. Symétrique à _afficherPreviewImport mais
+  // pour rapports équipiers (highlight équipe cible + n étapes + n photos +
+  // n conflits si applicable).
+  function _afficherPreviewImportRapport(parseResult, sourceFilename, onDone) {
+    // Cleanup éventuelle modale précédente
+    const existing = document.getElementById("kta-secours-import-rapport-preview");
+    if (existing) existing.remove();
+
+    const payload = parseResult.payload;
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-import-rapport-preview";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100010";
+
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite";
+    boite.style.maxWidth = "580px";
+    boite.style.height = "auto";
+    boite.style.maxHeight = "92vh";
+    boite.style.borderLeft = "6px solid #6ee287"; // vert = action de fusion
+
+    const dateExport = payload.exportedAt
+                       ? new Date(payload.exportedAt).toLocaleString("fr-FR")
+                       : "(date inconnue)";
+    const appVer = payload.appVersion || "(version inconnue)";
+    const planSrc = payload.plan || {};
+    const equipeNom = parseResult.equipeNom;
+    const nbEtapes = parseResult.nbEtapes;
+    const nbPhotos = parseResult.nbPhotos;
+    const conflits = parseResult.conflits || [];
+    const warning = parseResult.warning;
+
+    let conflitsBlock = "";
+    if (conflits.length > 0) {
+      const lignes = conflits.slice(0, 6).map(function(c) {
+        const opInfo = _getStatutInfo(c.opStatut);
+        const impInfo = _getStatutInfo(c.impStatut);
+        return '<li>' +
+                 '<strong>' + _escHtml(c.label) + '</strong> · ' +
+                 '<span style="color:' + opInfo.color + ';">' + opInfo.emoji + ' ' + _escHtml(opInfo.label) + '</span>' +
+                 ' (Op) → ' +
+                 '<span style="color:' + impInfo.color + ';">' + impInfo.emoji + ' ' + _escHtml(impInfo.label) + '</span>' +
+                 ' (Import)' +
+               '</li>';
+      }).join("");
+      const extra = conflits.length > 6 ? '<li style="color:#8892a4; font-style:italic;">+ ' + (conflits.length - 6) + ' autre(s)…</li>' : "";
+      conflitsBlock =
+        '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.45); border-radius:6px; padding:10px 12px; margin:14px 0; color:#e8eaf0;">' +
+          '<strong style="color:#f4c542;">⚠️ ' + conflits.length + ' conflit(s) détecté(s)</strong> — ces étapes ont déjà des données côté Opérateur :' +
+          '<ul style="margin:8px 0 4px 18px; padding:0; font-size:13px; line-height:1.6;">' + lignes + extra + '</ul>' +
+          '<div style="font-size:12px; color:#a8b3c8; margin-top:6px;">' +
+            'Politique de fusion : <strong>obs concaténées</strong> (avec séparateur daté), <strong>statut le plus sévère retenu</strong>, photos ajoutées sans doublon. Aucune perte d\'info.' +
+          '</div>' +
+        '</div>';
+    }
+
+    let warningBlock = "";
+    if (warning) {
+      warningBlock =
+        '<div style="background:rgba(255,140,0,0.10); border:1px solid rgba(255,140,0,0.55); border-radius:6px; padding:10px 12px; margin:14px 0; color:#ffb380;">' +
+          '⚠️ <strong>' + _escHtml(warning) + '</strong>' +
+        '</div>';
+    }
+
+    const inner =
+      '<div class="kta-readme-modal-header">' +
+        '<h2 style="margin:0; color:#6ee287;">📥 Importer rapport équipier</h2>' +
+        '<button class="kta-readme-modal-close" data-action="cancel-rapport-preview" aria-label="Annuler">✕</button>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps">' +
+        '<p style="margin:0 0 14px 0;">Vérifie le contenu de ce rapport avant fusion dans le scénario actif.</p>' +
+
+        '<div class="kta-secours-import-preview-card">' +
+          '<div class="kta-secours-import-preview-titre">🚨 ' + _escHtml(equipeNom) + '</div>' +
+          '<div class="kta-secours-import-preview-grid">' +
+            '<div><span class="kta-secours-import-preview-label">📂 Fichier source</span>' +
+              '<code>' + _escHtml(sourceFilename || "(fichier)") + '</code></div>' +
+            '<div><span class="kta-secours-import-preview-label">📅 Date d\'export</span>' +
+              _escHtml(dateExport) + '</div>' +
+            '<div><span class="kta-secours-import-preview-label">🏷️ Version app source</span>' +
+              '<code>' + _escHtml(appVer) + '</code></div>' +
+            '<div><span class="kta-secours-import-preview-label">🗺️ Plan source</span>' +
+              _escHtml(planSrc.name || "(plan inconnu)") +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="kta-secours-import-preview-section">' +
+          '<h3 style="margin:14px 0 6px 0; color:#f4c542;">📊 Contenu à fusionner</h3>' +
+          '<ul style="margin:0; padding-left:20px; line-height:1.7;">' +
+            '<li><strong>' + nbEtapes + '</strong> étape' + (nbEtapes > 1 ? 's' : '') + ' avec observations + statuts</li>' +
+            '<li><strong>' + nbPhotos + '</strong> photo' + (nbPhotos > 1 ? 's' : '') + ' associée' + (nbPhotos > 1 ? 's' : '') + ' aux étapes</li>' +
+          '</ul>' +
+        '</div>' +
+
+        conflitsBlock +
+        warningBlock +
+
+        '<div style="background:rgba(140, 180, 255, 0.06); border-left:3px solid #8cb4ff; padding:10px 12px; margin:14px 0 0; border-radius:0 4px 4px 0; font-size:12px; color:#c8d0e0;">' +
+          '💡 Un <strong>snapshot de session</strong> sera automatiquement créé AVANT l\'import. Tu peux y revenir via ' +
+          '<strong>📊 Détails de session → Backups récents</strong> si besoin d\'annuler.' +
+        '</div>' +
+
+        '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">' +
+          '<button class="kta-btn kta-btn-ghost" data-action="cancel-rapport-preview">❌ Annuler</button>' +
+          '<button class="kta-btn kta-btn-primary" data-action="confirm-rapport-preview">✓ Importer et fusionner</button>' +
+        '</div>' +
+      '</div>';
+
+    boite.innerHTML = inner;
+    overlay.appendChild(boite);
+
+    function _close(confirmer) {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+      try { onDone(!!confirmer); } catch(e) {}
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(false); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close(false);
+    });
+    overlay.querySelectorAll('[data-action="cancel-rapport-preview"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _close(false); });
+    });
+    overlay.querySelectorAll('[data-action="confirm-rapport-preview"]').forEach(function(btn) {
+      btn.addEventListener("click", function() { _close(true); });
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // Modale résultat post-import (succès = stats détaillées, échec = error).
+  function _afficherResultatImportRapport(result, sourceFilename) {
+    const existing = document.getElementById("kta-secours-import-rapport-result");
+    if (existing) existing.remove();
+
+    const ok = !!(result && result.ok);
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-import-rapport-result";
+    overlay.className = "kta-readme-modal-overlay";
+    overlay.style.zIndex = "100010";
+
+    const boite = document.createElement("div");
+    boite.className = "kta-readme-modal-boite";
+    boite.style.maxWidth = "520px";
+    boite.style.height = "auto";
+    boite.style.maxHeight = "90vh";
+    boite.style.borderLeft = ok ? "6px solid #6ee287" : "6px solid #ff8c8c";
+
+    let inner = '<div class="kta-readme-modal-header">' +
+                  '<h2 style="margin:0; color:' + (ok ? '#6ee287' : '#ff8c8c') + ';">' +
+                    (ok ? '✓ Rapport fusionné' : '❌ Échec de l\'import') +
+                  '</h2>' +
+                  '<button class="kta-readme-modal-close" data-action="close-rapport-result" aria-label="Fermer">✕</button>' +
+                '</div>' +
+                '<div class="kta-readme-modal-corps">';
+
+    if (ok) {
+      const stats = result.stats || {};
+      inner += '<p>Le rapport <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a été fusionné dans le scénario actif.</p>' +
+               '<div style="background:rgba(110, 226, 138, 0.08); border:1px solid rgba(110, 226, 138, 0.35); border-radius:6px; padding:12px 14px; margin:12px 0; font-size:14px; line-height:1.7;">' +
+                 '✅ <strong>' + (stats.etapesFusionnees || 0) + '</strong> étape' + ((stats.etapesFusionnees || 0) > 1 ? 's' : '') + ' fusionnée' + ((stats.etapesFusionnees || 0) > 1 ? 's' : '') + '<br>' +
+                 '📷 <strong>' + (stats.photosImportees || 0) + '</strong> photo' + ((stats.photosImportees || 0) > 1 ? 's' : '') + ' importée' + ((stats.photosImportees || 0) > 1 ? 's' : '') +
+                 ((stats.photosDejaPresentes || 0) > 0 ? ' <span style="color:#8892a4;">(+ ' + stats.photosDejaPresentes + ' déjà présente' + (stats.photosDejaPresentes > 1 ? 's' : '') + ', déduplication)</span>' : '') + '<br>' +
+                 ((stats.etapesSkipped || 0) > 0 ? '⏭️ <strong>' + stats.etapesSkipped + '</strong> étape' + (stats.etapesSkipped > 1 ? 's' : '') + ' ignorée' + (stats.etapesSkipped > 1 ? 's' : '') + ' (idx inconnu côté Opérateur)<br>' : '') +
+                 ((stats.photosSkipped || 0) > 0 ? '⚠️ <strong>' + stats.photosSkipped + '</strong> photo' + (stats.photosSkipped > 1 ? 's' : '') + ' échec' + (stats.photosSkipped > 1 ? 's' : '') + '<br>' : '') +
+               '</div>';
+      // Warnings détaillés en dépliable
+      if (Array.isArray(stats.warnings) && stats.warnings.length > 0) {
+        const lis = stats.warnings.map(function(w) { return '<li>' + _escHtml(w) + '</li>'; }).join("");
+        inner += '<details style="margin:10px 0; font-size:13px;">' +
+                   '<summary style="cursor:pointer; color:#f4c542;">🔍 ' + stats.warnings.length + ' avertissement(s) détaillé(s)</summary>' +
+                   '<ul style="margin:8px 0 0 20px; padding:0; color:#c8d0e0; line-height:1.6;">' + lis + '</ul>' +
+                 '</details>';
+      }
+      inner += '<div style="margin-top:18px; display:flex; gap:10px; justify-content:flex-end;">' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">✓ OK</button>' +
+               '</div>';
+    } else {
+      const errMsg = (result && result.error) || "Erreur inconnue";
+      inner += '<p>L\'import du fichier <code>' + _escHtml(sourceFilename || "(fichier)") + '</code> a échoué.</p>' +
+               '<div style="background:rgba(255,140,140,0.10); border:1px solid rgba(255,140,140,0.45); border-radius:6px; padding:10px 12px; margin:12px 0; color:#ffb3b3; font-size:13px; line-height:1.5; word-break:break-word;">' +
+                 _escHtml(errMsg) +
+               '</div>' +
+               '<p style="color:#8892a4; font-size:13px;">' +
+                 '💡 Le fichier doit être un <code>.mkmsec.report.json</code> valide scope=<code>equipe</code>, exporté depuis l\'app de l\'équipier (vue Live Équipe → 📤 Rapport).' +
+               '</p>' +
+               '<div style="margin-top:18px; display:flex; justify-content:flex-end;">' +
+                 '<button class="kta-btn kta-btn-primary" data-action="close-rapport-result">J\'ai compris</button>' +
+               '</div>';
+    }
+    inner += '</div>';
+
+    boite.innerHTML = inner;
+    overlay.appendChild(boite);
+
+    function _close() {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      document.removeEventListener("keydown", _onKey);
+    }
+    function _onKey(e) { if (e.key === "Escape") _close(); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close();
+    });
+    overlay.querySelectorAll('[data-action="close-rapport-result"]').forEach(function(btn) {
+      btn.addEventListener("click", _close);
+    });
+    document.addEventListener("keydown", _onKey);
+    document.body.appendChild(overlay);
+  }
+
+  // File picker pour l'import .mkmsec.report.json depuis la vue Live Opérateur.
+  // Symétrique à _ouvrirImportMkmsecPicker mais ciblé rapport équipier.
+  function _ouvrirImportRapportEquipePicker() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.mkmsec.report.json,application/json";
+    input.style.display = "none";
+    input.addEventListener("change", async function() {
+      const file = input.files && input.files[0];
+      if (input.parentNode) input.parentNode.removeChild(input);
+      if (!file) return;
+
+      let parsed;
+      try {
+        parsed = await _parsePayloadReport(file);
+      } catch(e) {
+        console.warn("[SecoursMode] _ouvrirImportRapportEquipePicker exception :", e);
+        parsed = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+      }
+      if (!parsed.ok) {
+        _afficherResultatImportRapport({ ok: false, error: parsed.error }, file.name);
+        return;
+      }
+      // Modale preview avec callback de confirmation
+      _afficherPreviewImportRapport(parsed, file.name, async function(confirmer) {
+        if (!confirmer) return;
+        let applied;
+        try {
+          applied = await _appliquerImportRapportEquipe(parsed.payload);
+        } catch(e) {
+          console.warn("[SecoursMode] _appliquerImportRapportEquipe exception :", e);
+          applied = { ok: false, error: "Exception : " + (e && e.message ? e.message : String(e)) };
+        }
+        _afficherResultatImportRapport(applied, file.name);
+        // Refresh vue live op pour afficher les chips _importedFrom
+        try {
+          if (typeof _renderInline === "function") _renderInline();
+        } catch(e) { console.warn("[SecoursMode] re-render post-import :", e); }
+      });
+    });
+    document.body.appendChild(input);
+    input.click();
+  }
+
   // Duplique un scénario (= deep clone via JSON roundtrip + nouveau id).
   // Pratique pour "et si l'équipe Alpha sort par le Sud au lieu de l'Est" :
   // dupliquer puis modifier l'équipe sans perdre l'original.
@@ -4600,6 +5179,10 @@
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="operateur" title="Générer un rapport global de toutes les équipes (PDF, JSON ou texte)">' +
                 '📤 Rapport global' +
               '</button>' +
+              // 🆕 v1.26.0 — Bouton Import rapport équipier (consolidation cross-device)
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="Importer le rapport d\'un équipier (.mkmsec.report.json) pour fusionner ses observations dans le tableau de supervision">' +
+                '📥 Importer rapport équipier' +
+              '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -4667,11 +5250,15 @@
     });
     const lastTsStr = lastTs ? new Date(lastTs).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
+    // 🆕 v1.26.0 — détection import : au moins une étape avec _importedFrom
+    const hasImported = etapes.some(function(et) { return et && et._importedFrom; });
+
     let html = '<div class="' + cls + '" data-equipe-id="' + _escAttr(g.id) + '" style="border-left:4px solid ' + couleur.hex + ';">' +
                  '<div class="kta-secours-op-card-titre">' +
                    '<span class="kta-secours-op-card-swatch" style="background:' + couleur.hex + ';"></span>' +
                    _escHtml(g.nom) +
                    (isTerminee ? ' <span class="kta-secours-op-card-badge-terminee">✓ TERMINÉE</span>' : '') +
+                   (hasImported ? ' <span class="kta-secours-imported-chip" title="Au moins une étape contient des observations importées d\'un rapport équipier">📥 importé</span>' : '') +
                  '</div>' +
                  '<div class="kta-secours-op-card-progress">' +
                    '<div class="kta-secours-op-card-progress-bar" style="width:' + pctDone + '%; background:' + couleur.hex + ';"></div>' +
@@ -5873,6 +6460,12 @@
         _showOverlayFloater();
       });
     });
+    // 🆕 v1.26.0 — "📥 Importer rapport équipier" → file picker + preview + fusion
+    corps.querySelectorAll('[data-action="live-op-import-rapport"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _ouvrirImportRapportEquipePicker();
+      });
+    });
   }
 
   // Mini-modale read-only détails équipe pour mode Opérateur
@@ -5900,11 +6493,23 @@
         const obsHtml = et.observations
                         ? '<div class="kta-secours-op-details-obs">« ' + _escHtml(et.observations) + ' »</div>'
                         : '';
+        // 🆕 v1.26.0 — Chip "📥 importé" si l'étape contient des obs venues
+        // d'un rapport équipier (fusion via _appliquerImportRapportEquipe).
+        // Tooltip avec date d'import + version app source pour traçabilité.
+        let importedChip = '';
+        if (et._importedFrom) {
+          const impDate = et._importedFrom.importedAt
+                          ? new Date(et._importedFrom.importedAt).toLocaleString("fr-FR")
+                          : "(date inconnue)";
+          const impVer = et._importedFrom.sourceAppVersion || "(version inconnue)";
+          importedChip = ' <span class="kta-secours-imported-chip" title="Étape fusionnée depuis un rapport équipier le ' + _escAttr(impDate) + ' (app source : ' + _escAttr(impVer) + ')">📥 importé</span>';
+        }
         etapesHtml += '<li>' +
                         '<div class="kta-secours-op-details-row">' +
                           '<span style="color:' + info.color + ';">' + info.emoji + ' <strong>' + _escHtml(info.label) + '</strong></span>' +
                           ' · ' + _escHtml(et.label || "(?)") +
                           ' · <span class="kta-secours-op-details-ts">⏱️ ' + _escHtml(tsStr) + '</span>' +
+                          importedChip +
                         '</div>' +
                         obsHtml +
                       '</li>';

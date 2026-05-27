@@ -20365,3 +20365,34 @@ html.kta-theme-light .kta-gps-coords-error {
   background: rgba(176, 48, 48, 0.08);
   border-left-color: #c14545;
 }
+
+/* =================================================================
+   🆕 v1.26.0 — Chip "📥 importé" pour étapes fusionnées (Mode Secours)
+   =================================================================
+   Apparaît :
+   - sur la card équipe Op si AU MOINS UNE étape a `_importedFrom`
+   - sur chaque étape dans la modale "Détails équipe" (read-only) qui a `_importedFrom`
+   Tooltip avec date import + version app source pour traçabilité.
+*/
+.kta-secours-imported-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 4px;
+  background: rgba(140, 180, 255, 0.16);
+  border: 1px solid rgba(140, 180, 255, 0.50);
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8cb4ff;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  white-space: nowrap;
+  cursor: help; /* hint au survol pour le tooltip natif */
+}
+/* Variant thème clair */
+body.kta-theme-light .kta-secours-imported-chip,
+html.kta-theme-light .kta-secours-imported-chip {
+  background: rgba(70, 110, 200, 0.12) !important;
+  border-color: rgba(70, 110, 200, 0.45) !important;
+  color: #3856a8 !important;
+}

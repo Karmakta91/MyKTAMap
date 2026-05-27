@@ -1509,10 +1509,45 @@ Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le `star
 - ✅ **v1.24.2 / v1.25.1** — Fixes CSS (textarea / header sticky)
 - ✅ **v1.25.0** — Rapport au fil des étapes (3 formats × 3 scopes)
 - ⛔ **v1.25.3-hotfix8→16** — QR code share testé puis **rollbacked** (scan post-compression WhatsApp trop fragile sur payloads denses). Le partage cross-device reste sur fichier `.mkmsec.report.json` classique.
-- 🛣️ **v1.26.0** — Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device, fusion observations multi-équipes)
+- ✅ **v1.26.0** — Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device, fusion observations multi-équipes) — **LIVRÉ**
 - 🛣️ **v1.27.0+** — Seuils stress visuels (timer rouge après 4h, alertes auto)
 
-> ⚠️ Important : la Phase 3 fonctionne **single-device** pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par le rapport `.mkmsec.report.json` (export sur le device émetteur, import sur le device récepteur — v1.26.0 prévue).
+#### 📥 Consolidation cross-device (depuis v1.26.0)
+
+Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérateur surface qui l'**importe et fusionne** ses observations dans le tableau de supervision. Remplace fonctionnellement la voie QR Share Phase 4 (rollbacked).
+
+**Workflow type — opération avec 3 équipes** :
+
+1. **Côté Opérateur (surface, AVANT incident)** :
+   - Prépare le scénario (équipes Alpha / Bravo / Charlie + parcours + zones)
+   - Lance le plan (🚀) → vue Live Opérateur surface
+   - Transmet le scénario aux équipiers via export `.mkmsec.json` classique (mail / clé USB / AirDrop)
+
+2. **Côté chaque Équipier (terrain)** :
+   - Importe le `.mkmsec.json` de l'opérateur (cohérence IDs équipe)
+   - Lance le plan → vue Live Équipe → renseigne obs + statuts + photos par étape
+   - **Au retour surface** : génère son rapport via « 📤 Rapport » dans le footer Live Équipe → format **`.mkmsec.report.json`** → exporte le fichier (download local)
+
+3. **Côté Opérateur (retour terrain)** :
+   - Récupère les 3 rapports `.mkmsec.report.json` (un par équipe) via le canal de son choix (AirDrop, mail, clé USB, Discord)
+   - Dans la vue Live Opérateur → bouton **« 📥 Importer rapport équipier »** dans le footer
+   - File picker → sélectionne le fichier → modale preview qui montre : nom équipe ciblée, nombre d'étapes à fusionner, photos, et **conflits détectés** (étapes côté op déjà renseignées qui vont être fusionnées)
+   - Confirme l'import → l'app fait un **snapshot AVANT** (backup d'urgence) puis fusionne :
+     - Observations **concaténées avec séparateur daté** (aucune perte)
+     - Statut **le plus sévère retenu**
+     - Photos **importées avec déduplication**
+   - Modale résultat avec stats détaillées (X étapes fusionnées, Y photos importées, Z avertissements éventuels)
+   - Répète pour les 2 autres équipes
+
+4. **Visualisation post-fusion** :
+   - Sur la card de chaque équipe Op : chip bleu « 📥 importé » apparaît si au moins une étape a reçu de la consolidation
+   - Dans la modale « Détails équipe » (read-only) : chip « 📥 importé » sur chaque étape concernée + tooltip avec date import + version app source
+
+**Sécurité de l'import** : refuse si scope ≠ équipier (les rapports opérateur global ou secouriste libre ne sont pas fusionnables), si le scénario d'origine est différent, si l'équipe est absente du scénario actif, ou si aucune exécution n'est en cours côté op. **Plan différent côté équipier** → warning (pas erreur, on conserve les obs textuelles).
+
+**Undo** : un snapshot SessionBackups est créé **automatiquement AVANT** chaque import. En cas d'erreur, restaure depuis **📊 Détails de session → Backups récents** (titre : « Avant import rapport équipier <nom> »).
+
+> ⚠️ Important : **les équipes doivent être enregistrées côté Opérateur AVANT le lancement** du plan (pas de création silencieuse à l'import). Si tu prépares ton scénario avec Alpha / Bravo / Charlie mais qu'un équipier exporte sous le nom « Delta » créé localement, l'import sera rejeté — il fallait recevoir Delta dans le scénario initial.
 
 ---
 

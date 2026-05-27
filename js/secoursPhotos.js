@@ -420,6 +420,56 @@
   }
 
   // ============================================================
+  // 🆕 v1.26.0 — IMPORT PHOTO depuis dataUrl (consolidation cross-device)
+  // ============================================================
+  // Différences avec addPhoto :
+  //   - Préserve l'id source (pour dédup à l'import par id)
+  //   - Skip la compression (photo déjà compressée à l'export par genererRapportData)
+  //   - Skip la quota check MAX_PHOTOS_PER_ETAPE (l'opérateur consolide ce que
+  //     l'équipier a saisi sur le terrain — limite déjà respectée à la source)
+  //   - Si une photo avec le même id existe déjà → no-op idempotent
+  //
+  // Utilisé par js/secoursMode.js > _appliquerImportRapportEquipe pour réintégrer
+  // les photos d'un rapport .mkmsec.report.json scope=equipe.
+  //
+  // opts = { id, scenarioId, equipeId, stepIdx, mime, dataUrl }
+  function importPhotoFromDataUrl(opts) {
+    if (!opts || !opts.id || !opts.scenarioId || !opts.equipeId
+        || typeof opts.stepIdx !== "number" || !opts.dataUrl) {
+      return Promise.reject(new Error("importPhotoFromDataUrl : id, scenarioId, equipeId, stepIdx, dataUrl tous requis"));
+    }
+    // Check si déjà présent (idempotence)
+    return getPhoto(opts.id).then(function(existing) {
+      if (existing) {
+        // Photo déjà en base avec cet id → no-op idempotent
+        return { id: opts.id, status: "already-present" };
+      }
+      // Convertit dataUrl → Blob via fetch local (pattern standard navigateur)
+      return fetch(opts.dataUrl).then(function(resp) {
+        if (!resp.ok) throw new Error("dataUrl invalide (fetch local échoué)");
+        return resp.blob();
+      }).then(function(blob) {
+        const record = {
+          id:         opts.id,
+          scenarioId: opts.scenarioId,
+          equipeId:   opts.equipeId,
+          stepIdx:    opts.stepIdx,
+          blob:       blob,
+          mime:       opts.mime || blob.type || "image/jpeg",
+          size:       blob.size,
+          createdAt:  Date.now(),
+          meta:       { imported: true, sourceScenarioId: opts.sourceScenarioId || null }
+        };
+        return _tx("readwrite", function(store) {
+          return _reqPromise(store.put(record)).then(function() {
+            return { id: opts.id, status: "imported" };
+          });
+        });
+      });
+    });
+  }
+
+  // ============================================================
   // EXPORT API PUBLIQUE
   // ============================================================
   window.MyKTAMapSecoursPhotos = {
@@ -428,6 +478,7 @@
     generateId:                 generateId,
     compressBlob:               compressBlob,
     addPhoto:                   addPhoto,
+    importPhotoFromDataUrl:     importPhotoFromDataUrl,  // 🆕 v1.26.0
     getPhoto:                   getPhoto,
     getBlob:                    getBlob,
     getObjectUrl:               getObjectUrl,

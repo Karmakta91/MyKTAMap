@@ -1125,6 +1125,44 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 
 **Mise à jour douce optimisée** (hotfix21) : `mettreAJourCodeSeul()` réécrit dans `js/interface.js`. Au lieu de `await reg.update()` qui bloquait 30s-2min pendant l'install du nouveau SW, on lance update() en fire-and-forget + on demande le `CACHE_NAME` courant au SW via `MessageChannel` + on purge SEULEMENT les anciens caches (préserve le cache courant pré-rempli). Au reload, le SW retrouve ses assets en cache → pas de re-download de ~100 fichiers. Gain : 45s-3min → 3-10s typique. Cf §71 CLAUDE.md pour le pattern complet.
 
+### P. Import `.mkmsec.report.json` — Consolidation cross-device (v1.26.0)
+
+> Mots-clés : "fusionner observations équipiers", "import rapport équipier", "consolidation cross-device", "partager observations entre devices", "récupérer données équipe sur PC chef", "remplacement QR rollbacked", ".mkmsec.report.json", "tableau supervision opérateur".
+
+**Avant v1.26.0** : la Phase 3 fonctionnait **single-device** — chaque rôle tenait son propre suivi en local. Aucun moyen natif de fusionner les obs des équipiers retour terrain dans le tableau opérateur (la voie QR Share Phase 4 avait été testée puis rollbacked en v1.25.3-hotfix17).
+
+**Depuis v1.26.0** : l'opérateur surface peut **importer le `.mkmsec.report.json`** d'un équipier (généré par la vue Live Équipe → bouton 📤 Rapport scope=équipier depuis v1.25.0) et **fusionner ses obs / statuts / photos** dans le tableau de supervision.
+
+**Workflow type** :
+1. Op prépare scénario + lance plan → distribue `.mkmsec.json` aux équipiers
+2. Chaque équipier renseigne ses étapes côté terrain (single-device)
+3. Au retour surface : équipier exporte son rapport `.mkmsec.report.json` (transmission via AirDrop / mail / clé USB / Discord — peu importe le canal)
+4. Op ouvre vue Live → bouton **« 📥 Importer rapport équipier »** → file picker → modale preview → fusion
+
+**Politique de fusion** :
+- Observations : concaténation datée `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` (aucune perte d'info)
+- Statut : plus sévère via `TABLEAU_STATUTS.severity`
+- Photos : push avec dédup par id (idempotent)
+- Flag `_importedFrom` sur chaque étape mutée (chip UI + traçabilité)
+- Audit log dans `s.execution._importLog: []`
+- Snapshot SessionBackups AVANT (= undo)
+
+**Refus à l'import** : scope ≠ "equipe" / scenario.id différent / equipe.id absent côté op / pas d'exécution active. Plan différent → warning (pas erreur).
+
+**Limites connues** :
+- 1 équipier à la fois (pas de batch import multi-fichiers en v1.26.0 — extensible cf §72.7 CLAUDE.md)
+- Scope "secouriste" (notes libres) non supporté (extensible)
+- Pas d'inverse formel de la fusion (undo via restauration snapshot SessionBackups uniquement)
+
+**API JS publique nouvelle** : `window.MyKTAMapSecoursPhotos.importPhotoFromDataUrl({ id, scenarioId, equipeId, stepIdx, mime, dataUrl, sourceScenarioId }) → Promise<{ id, status: "imported"|"already-present" }>`. Préserve l'id source pour dédup, skip compression (déjà compressée à l'export), idempotent.
+
+**Pour étendre** (cf §72.7 CLAUDE.md) :
+- Batch import → `<input multiple>` + loop séquentiel
+- Scope secouriste → append-only dans `_notes_libres` avec dédup par id
+- Preview-only mode (read-only sans fusion) → toggle dans modale preview
+
+---
+
 ### O. Versionning courant — v1.25.3 + hotfixes
 
 | Hotfix | Sujet |
@@ -1136,6 +1174,13 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 | **19** | **🆘 Kill switch URL `?killsw=1`** (IIFE inline index.html) |
 | **20** | **🆘 Page `killsw.html`** standalone + bypass SW fetch |
 | **21** | **🌐 Input GPS combiné** (3 modales) + **🔄 Soft update optimisé** (postMessage SW + fire-and-forget reg.update) |
+
+**Releases stables MAIN** (suivent les hotfix sur Karma_dev) :
+| Tag | Sujet |
+|---|---|
+| v1.25.3 | Tutoriel onboarding (carte Mode Secours) |
+| v1.25.4 | Consolide hotfix17→21 + soft update optimisé + audit sécu (PUSH 2026-05-27) |
+| **v1.26.0** | **📥 Import `.mkmsec.report.json` consolidation cross-device** (cf §P + §72 CLAUDE.md) |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 

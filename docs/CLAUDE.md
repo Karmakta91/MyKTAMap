@@ -6696,4 +6696,108 @@ Si le SW ne répond pas en 2s (très rare — SW shut down par le navigateur, pr
 
 ---
 
+### 72. Import `.mkmsec.report.json` — Consolidation cross-device (v1.26.0 — 2026-05-27)
+
+Permet à l'opérateur surface d'**importer le rapport d'un équipier au retour terrain** (format `.mkmsec.report.json` exporté v1.25.0+ par la vue Live Équipe avec scope=`equipe`) et de **fusionner ses observations / statuts / photos** dans son tableau de supervision. Remplace fonctionnellement la voie QR Share Phase 4 (rollbacked v1.25.3-hotfix17).
+
+KARMA quote :
+> « go pour 1.26 » (= v1.26.0 import consolidation cross-device, suite naturelle de la roadmap, alternative au QR rollbacked)
+
+#### 72.1 Workflow terrain
+
+1. **Opérateur** prépare le scénario + lance le plan AVANT incident (3 rôles disponibles : op surface / équipier / secouriste libre)
+2. **Équipiers** reçoivent le scénario via `.mkmsec.json` classique (Phase 2) OU mêmes IDs équipe (importés à la création du scénario)
+3. Sur le terrain, chaque **équipier renseigne** obs / statuts / photos via vue Live Équipe (Phase 3)
+4. **Au retour surface**, équipier exporte son rapport via « 📤 Rapport » → scope=équipier → format `.mkmsec.report.json` (avec ou sans photos base64 inline)
+5. Équipier **transmet le fichier** à l'opérateur (AirDrop / mail / clé USB / Discord / WhatsApp — peu importe le canal, c'est un fichier statique)
+6. **Opérateur ouvre vue Live Op** → bouton « 📥 Importer rapport équipier » → file picker → modale preview → confirmation → fusion
+
+#### 72.2 Politique de fusion (validée KARMA v1.26.0)
+
+| Champ étape | Politique | Détail |
+|---|---|---|
+| `observations` | Concaténation datée | `existant + "\n\n--- 📥 Import Équipier <ts> ---\n" + importé` — **aucune perte d'info** |
+| `statut` | Plus sévère | `_severitéMaxStatut(opStatut, impStatut)` via `TABLEAU_STATUTS.severity` (sauf si import=pending qui n'écrase jamais) |
+| `photoIds[]` | Push avec dédup | Dédup par `photo.id` (genId aléatoire = collision rare). Idempotent via `MyKTAMapSecoursPhotos.importPhotoFromDataUrl` qui détecte déjà-présent |
+| `startedAt` | Min (plus ancien) | `Math.min(opStartedAt, impStartedAt)` — préserve la première activation |
+| `completedAt` | Max (plus récent) | `Math.max(opCompletedAt, impCompletedAt)` — préserve la dernière update |
+| `_importedFrom` | Flag ajouté | `{ sourceScenarioId, sourceAppVersion, importedAt }` (traçabilité + chip UI) |
+
+**Scenario-level** : audit log dans `s.execution._importLog: [{ at, sourceScenarioId, sourceAppVersion, equipeId, equipeNom, etapesFusionnees, etapesSkipped, photosImportees, photosSkipped, photosDejaPresentes, warningsCount }, ...]`.
+
+**Snapshot AVANT** : `SessionBackups.snapshot("Avant import rapport équipier <nom>")` → undo possible via 📊 Détails de session → Backups récents.
+
+#### 72.3 Refus à l'import (sécu)
+
+| Cause | Message |
+|---|---|
+| `scope !== "equipe"` | "scope='operateur' (snapshot complet, non fusionnable)" OU "scope='secouriste' (notes parallèles)" |
+| `scenario.id !== s.id` | "Scénario d'origine différent — vient de '<nom_source>'" |
+| `equipe.id` absent côté op | "Équipe '<nom>' absente du scénario actif — enregistrer avant lancement" |
+| Pas d'exécution active | "Lancer le plan (🚀) avant d'importer un rapport équipier" |
+| Type/version incorrect | Erreurs standard parse JSON |
+
+Plan différent côté équipier → **warning** (pas erreur). Décision finale dans la modale preview.
+
+#### 72.4 API JS
+
+```js
+// js/secoursMode.js
+window.SecoursMode (par IIFE wrapper) — pas de nouvelle API publique côté
+secoursMode (les helpers _parsePayloadReport, _appliquerImportRapportEquipe,
+etc. restent internes IIFE). Le bouton UI dispatch tout en interne.
+
+// js/secoursPhotos.js — nouvelle API publique
+window.MyKTAMapSecoursPhotos.importPhotoFromDataUrl({
+  id:                string,    // ID source de la photo (préservé pour dédup)
+  scenarioId:        string,
+  equipeId:          string,
+  stepIdx:           number,    // -1 pour notes libres
+  mime:              string,    // ex "image/jpeg"
+  dataUrl:           string,    // data URL base64 complet
+  sourceScenarioId?: string|null
+}) → Promise<{ id, status: "imported" | "already-present" }>
+// Différences avec addPhoto :
+// - Préserve l'id source (pour dédup à l'import par id)
+// - Skip la compression (déjà compressée à l'export par genererRapportData)
+// - Skip la quota check (la limite était respectée à la source)
+// - Idempotent si une photo avec le même id existe déjà
+```
+
+#### 72.5 UI Chip "📥 importé"
+
+2 emplacements :
+- **Card équipe Op** (vue Live Op) : chip à droite du nom si AU MOINS UNE étape a `_importedFrom` (= signal global "cette équipe a reçu de la consolidation")
+- **Modale "Détails équipe"** (read-only) : chip à droite de chaque étape qui a `_importedFrom` (= granularité par étape)
+
+CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). Tooltip natif HTML avec date import + version app source.
+
+#### 72.6 À NE PAS faire
+
+- ❌ Activer l'import sans avoir lancé le plan d'abord — la validation refuse, mais ne pas tenter de bypass (l'exécution active fournit le contexte de fusion)
+- ❌ Tenter d'importer un rapport `scope="operateur"` — ce serait écraser le tableau Op avec un autre snapshot global, casse la sémantique
+- ❌ Supprimer le snapshot SessionBackups AVANT — c'est la SEULE voie d'undo (pas d'inverse de la fusion)
+- ❌ Stocker les photos sans dédup id — risque d'explosion du store IDB si l'équipier importe son rapport plusieurs fois (idempotence garantie par `importPhotoFromDataUrl`)
+- ❌ Bypass la quota `MAX_PHOTOS_PER_ETAPE` côté import — actuellement bypass volontaire (limite déjà respectée à la source), mais si on étend (autre rôle) il faudra revérifier
+
+#### 72.7 Pour étendre
+
+**Si on veut supporter l'import de `.mkmsec.report.json` scope="secouriste"** (notes libres) :
+1. Modifier `_parsePayloadReport` pour accepter `scope === "secouriste"`
+2. Étendre `_appliquerImportRapportEquipe` (ou créer `_appliquerImportNotesLibres`) pour push dans `s.execution.etapes._notes_libres`
+3. Politique de fusion : append-only (les notes libres sont datées, pas de matching par idx)
+4. Refus si une note importée a déjà le même `id` (dédup)
+
+**Si on veut supporter le batch import** (plusieurs équipiers d'un coup) :
+1. Modifier `_ouvrirImportRapportEquipePicker` avec `<input multiple>`
+2. Loop séquentiel sur les fichiers (await chaque parse + preview + apply)
+3. Modale résultat consolidée (somme des stats)
+
+**Si on veut un mode "rejouer un rapport" (= preview SANS fusion)** :
+1. Ajouter un toggle dans la modale preview "🔍 Aperçu seul (ne pas fusionner)"
+2. Si coché, skip `_appliquerImportRapportEquipe`, ouvrir une vue read-only des étapes du rapport
+3. Utile pour debug ou audit terrain a posteriori
+
+---
+
 **Bon code ! 🚀**

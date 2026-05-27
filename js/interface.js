@@ -2126,9 +2126,11 @@ function afficherAide() {
             <strong style="color:#a8b3c8;">📸 Store IDB dédié</strong> <code>myktamap_secours_photos</code> (séparé du store POI photos) :
             max 5 photos par étape, compression auto JPEG q85 max 1920px, viewer plein écran réutilisé.
           </p>
-          <p style="font-size:12px; color:#ff8a5c; margin:8px 0 0; line-height:1.5;">
-            <strong>⚠️ Important Phase 3</strong> : single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers,
-            passe par le rapport <code>.mkmsec.report.json</code> (export sur device émetteur, import sur device récepteur — re-import natif prévu v1.26.0).
+          <p style="font-size:12px; color:#8cb4ff; margin:8px 0 0; line-height:1.5;">
+            <strong style="color:#8cb4ff;">📥 Consolidation cross-device (v1.26.0)</strong> : au retour terrain, chaque équipier exporte son rapport via
+            <strong>📤 Rapport</strong> (scope=équipier, format <code>.mkmsec.report.json</code>). L'opérateur l'importe dans la vue Live Op via le bouton
+            <strong>📥 Importer rapport équipier</strong> du footer → modale preview avec détection conflits → fusion (obs concaténées datées, statut le plus
+            sévère retenu, photos dédupliquées par id). Snapshot SessionBackups AVANT pour undo. Chip « 📥 importé » sur les cards d'équipe fusionnées.
             <span style="color:#a8b3c8;">La voie QR code (Phase 4) a été testée puis abandonnée — scan post-compression WhatsApp trop fragile sur payloads denses.</span>
             ⚠️ Comme tout : <strong>garde une boussole physique et une carte papier</strong>. Le téléphone peut tomber en panne. Le 🚨 est une aide à la coordination, PAS un substitut à la préparation.
           </p>
