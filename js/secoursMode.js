@@ -2354,8 +2354,14 @@
           return;
         }
         if (formatType === "pdf") {
-          const fn = genererRapportPDF(data);
-          if (fn) _toast("✓ Rapport PDF généré : " + fn, "info");
+          // 🆕 v1.26.0 Phase 4 C5 — genererRapportPDF est désormais async
+          // (await sur la mini-carte par équipe). Gère la Promise.
+          genererRapportPDF(data).then(function(fn) {
+            if (fn) _toast("✓ Rapport PDF généré : " + fn, "info");
+          }).catch(function(err) {
+            console.warn("[SecoursMode] genererRapportPDF échec :", err);
+            _toast("⚠️ Erreur PDF : " + (err && err.message), "error");
+          });
         } else if (formatType === "json") {
           const fn = exporterRapportJSON(data);
           if (fn) _toast("✓ Rapport JSON exporté : " + fn, "info");
@@ -2421,7 +2427,11 @@
   //
   // ⚠️ Pas d'emoji dans pdf.text() (jsPDF Helvetica latin1 → mojibake).
   // Les emojis sont gardés UNIQUEMENT pour les chaînes texte canvas/Blob.
-  function genererRapportPDF(reportData) {
+  // 🆕 v1.26.0 Phase 4 C5 — Devenu ASYNC pour permettre l'await sur
+  // _drawRapportPDFEquipeMiniaturePage qui appelle l'helper exporter
+  // (génération canvas du plan, async via Image() onload + toDataURL).
+  // Caller `_handleExport` adapté pour gérer la Promise.
+  async function genererRapportPDF(reportData) {
     if (!reportData) return null;
     if (!window.jspdf || !window.jspdf.jsPDF) {
       _toast("⚠️ jsPDF non chargé.", "error");
@@ -2466,16 +2476,27 @@
 
       // ─── Pages équipes ou notes libres ───
       if (Array.isArray(r.equipesData) && r.equipesData.length > 0) {
-        r.equipesData.forEach(function(ed) {
-          // Page texte étapes
+        // 🆕 v1.26.0 Phase 4 C5 — Boucle async pour permettre l'await
+        // sur la mini-carte par équipe (génération canvas exporter).
+        for (let i = 0; i < r.equipesData.length; i++) {
+          const ed = r.equipesData[i];
+          // 1. Page texte étapes (synchrone, inchangé)
           pdf.addPage();
           _drawRapportPDFEquipeTextePage(pdf, ed, r, pageW, pageH, margin);
-          // Page photos si applicable
+          // 2. 🆕 Mini-carte page paysage A4 (uniquement si l'équipe a des
+          //    waypoints/zone/iti à afficher). Async = peut échouer
+          //    silencieusement et passer à la suite (PDF reste valide).
+          try {
+            await _drawRapportPDFEquipeMiniaturePage(pdf, ed, r);
+          } catch (e) {
+            console.warn("[Rapport] Mini-carte équipe " + (ed.equipe && ed.equipe.nom) + " échouée : " + (e && e.message));
+          }
+          // 3. Page photos si applicable (synchrone, inchangé)
           if (Array.isArray(ed.photos) && ed.photos.length > 0 && ed.photos[0].dataUrl) {
             pdf.addPage();
             _drawRapportPDFEquipePhotosPage(pdf, ed, r, pageW, pageH, margin);
           }
-        });
+        }
       }
       if (r.scope === "secouriste" && Array.isArray(r.notesLibres) && r.notesLibres.length > 0) {
         pdf.addPage();
@@ -2601,6 +2622,348 @@
       y += 3;
     });
     _drawRapportPDFFooter(pdf, r, pageW, pageH, margin);
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 🆕 v1.26.0 Phase 4 C5 — Mini-carte par équipe (page A4 paysage dédiée)
+  // ════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Calcule le rectangle englobant de tous les waypoints / zone / itinéraire
+   * d'une équipe. Padding 15% pour respiration visuelle.
+   *
+   * @param {object} eq - équipe SecoursMode
+   * @returns {object|null} {x, y, w, h} en coord plan, ou null si rien à dessiner
+   */
+  function _calculerBoundsEquipe(eq) {
+    if (!eq) return null;
+    const pts = [];
+    if (eq.entree) pts.push(eq.entree);
+    if (eq.sortie) pts.push(eq.sortie);
+    if (Array.isArray(eq.intermediaires)) {
+      eq.intermediaires.forEach(function(p) { if (p) pts.push(p); });
+    }
+    if (eq.zoneType === "polygon" && Array.isArray(eq.zonePolygon)) {
+      eq.zonePolygon.forEach(function(p) { if (p) pts.push(p); });
+    }
+    if (Array.isArray(eq.itineraireSuggere)) {
+      eq.itineraireSuggere.forEach(function(p) { if (p) pts.push(p); });
+    }
+    if (pts.length === 0) return null;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    pts.forEach(function(p) {
+      if (typeof p.x === "number" && typeof p.y === "number") {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
+      }
+    });
+    if (!isFinite(minX)) return null;
+
+    // Padding 15% du grand côté (= zone + entrée + sortie + iti restent dans la vue)
+    // Plancher de 60 px pour les zones très petites (1-2 waypoints proches)
+    const pad = Math.max(60, Math.max(maxX - minX, maxY - minY) * 0.15);
+    return {
+      x: minX - pad,
+      y: minY - pad,
+      w: (maxX - minX) + 2 * pad,
+      h: (maxY - minY) + 2 * pad
+    };
+  }
+
+  /**
+   * Convertit un hex "#RRGGBB" en string "rgba(R,G,B,alpha)".
+   * Fallback couleur ambre charte si hex invalide.
+   */
+  function _hexToRgbaCss(hex, alpha) {
+    const m = /^#?([a-fA-F0-9]{6})$/.exec(hex || "");
+    if (!m) return "rgba(244, 197, 66, " + alpha + ")";
+    const h = m[1];
+    return "rgba(" + parseInt(h.substring(0, 2), 16) +
+           "," + parseInt(h.substring(2, 4), 16) +
+           "," + parseInt(h.substring(4, 6), 16) +
+           "," + alpha + ")";
+  }
+
+  /**
+   * Dessine l'overlay équipe sur le canvas final de la mini-carte.
+   * Tracé : zone polygon (fond teinté + bord), itinéraire (dashed),
+   * entrée (cercle bord vert), sortie (cercle bord rouge), intermédiaires
+   * (cercles numérotés).
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {object} eq - équipe
+   * @param {Function} planToCanvas - (x, y) → {x, y} en coords canvas final
+   * @param {object} couleur - {hex} palette OTAN
+   */
+  function _drawEquipeOverlayOnCanvas(ctx, eq, planToCanvas, couleur) {
+    const hex = (couleur && couleur.hex) || "#f4c542";
+
+    // 1) Zone polygon : fond teinté + bordure
+    if (eq.zoneType === "polygon" && Array.isArray(eq.zonePolygon) && eq.zonePolygon.length >= 3) {
+      ctx.beginPath();
+      eq.zonePolygon.forEach(function(p, i) {
+        if (typeof p.x !== "number") return;
+        const c = planToCanvas(p.x, p.y);
+        if (i === 0) ctx.moveTo(c.x, c.y);
+        else         ctx.lineTo(c.x, c.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle   = _hexToRgbaCss(hex, 0.22);
+      ctx.fill();
+      ctx.strokeStyle = hex;
+      ctx.lineWidth   = 4;
+      ctx.stroke();
+    }
+
+    // 2) Itinéraire : polyline dashed
+    if (Array.isArray(eq.itineraireSuggere) && eq.itineraireSuggere.length >= 2) {
+      ctx.beginPath();
+      eq.itineraireSuggere.forEach(function(p, i) {
+        if (typeof p.x !== "number") return;
+        const c = planToCanvas(p.x, p.y);
+        if (i === 0) ctx.moveTo(c.x, c.y);
+        else         ctx.lineTo(c.x, c.y);
+      });
+      ctx.strokeStyle = hex;
+      ctx.lineWidth   = 6;
+      ctx.lineCap     = "round";
+      ctx.lineJoin    = "round";
+      ctx.setLineDash([14, 8]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 3) Intermédiaires : cercles numérotés (avant entrée/sortie pour z-order)
+    if (Array.isArray(eq.intermediaires)) {
+      eq.intermediaires.forEach(function(p, i) {
+        if (typeof p.x !== "number") return;
+        const c = planToCanvas(p.x, p.y);
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, 14, 0, 2 * Math.PI);
+        ctx.fillStyle   = hex;
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth   = 3;
+        ctx.stroke();
+        ctx.fillStyle   = "#1a1f2e";
+        ctx.font        = "bold 14px Arial, sans-serif";
+        ctx.textAlign   = "center";
+        ctx.textBaseline= "middle";
+        ctx.fillText(String(i + 1), c.x, c.y);
+      });
+    }
+
+    // 4) Entrée : cercle border vert + "E"
+    if (eq.entree && typeof eq.entree.x === "number") {
+      const c = planToCanvas(eq.entree.x, eq.entree.y);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 18, 0, 2 * Math.PI);
+      ctx.fillStyle   = hex;
+      ctx.fill();
+      ctx.strokeStyle = "#00cc44";
+      ctx.lineWidth   = 5;
+      ctx.stroke();
+      ctx.fillStyle   = "#ffffff";
+      ctx.font        = "bold 16px Arial, sans-serif";
+      ctx.textAlign   = "center";
+      ctx.textBaseline= "middle";
+      ctx.fillText("E", c.x, c.y);
+    }
+
+    // 5) Sortie : cercle border rouge + "S" (orange si boucle entrée=sortie)
+    if (eq.sortie && typeof eq.sortie.x === "number") {
+      // Détection boucle : sortie = entrée (même pointId ou coords ~)
+      const isLoop = eq.entree && eq.sortie.pointId && eq.entree.pointId &&
+                     eq.sortie.pointId === eq.entree.pointId;
+      const c = planToCanvas(eq.sortie.x, eq.sortie.y);
+      // Si boucle, on décale visuellement de 6px pour ne pas écraser l'entrée
+      const cx = isLoop ? c.x + 22 : c.x;
+      const cy = c.y;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, 2 * Math.PI);
+      ctx.fillStyle   = hex;
+      ctx.fill();
+      ctx.strokeStyle = isLoop ? "#ff8c00" : "#cc0000";
+      ctx.lineWidth   = 5;
+      ctx.stroke();
+      ctx.fillStyle   = "#ffffff";
+      ctx.font        = "bold 16px Arial, sans-serif";
+      ctx.textAlign   = "center";
+      ctx.textBaseline= "middle";
+      ctx.fillText("S", cx, cy);
+    }
+  }
+
+  /**
+   * Ajoute une page A4 paysage avec mini-carte de l'équipe.
+   * Pipeline :
+   *   1. Bounds englobants équipe (waypoints + zone + iti)
+   *   2. Canvas plan complet via MyKTAMapExporterGenererCanvas (scale 0.5)
+   *   3. Crop sur les bounds → canvas final (ratio A4 paysage)
+   *   4. Dessin overlay équipe par-dessus (zone, iti, entrée, sortie, interms)
+   *   5. addPage paysage + addImage du canvas final + header/footer texte
+   *
+   * Skip silencieux si :
+   *   - équipe sans waypoints/zone/iti
+   *   - MyKTAMapExporterGenererCanvas indispo (plan pas chargé ?)
+   *   - PLAN_CONFIG absent
+   *
+   * Async (canvas exporter est async).
+   *
+   * @param {jsPDF} pdf
+   * @param {object} ed - reportData.equipesData[i] = {equipe, etapes, photos}
+   * @param {object} r  - reportData complet (pour metadata)
+   */
+  async function _drawRapportPDFEquipeMiniaturePage(pdf, ed, r) {
+    if (!ed || !ed.equipe) return false;
+    const eq = ed.equipe;
+
+    // 1) Bounds englobants
+    const bounds = _calculerBoundsEquipe(eq);
+    if (!bounds) return false; // Pas d'éléments dessinables — skip silent
+
+    if (!window.MyKTAMapExporterGenererCanvas) {
+      console.warn("[Rapport] MyKTAMapExporterGenererCanvas indispo — mini-carte skip");
+      return false;
+    }
+
+    // 2) Canvas plan complet (scale 0.5 pour limiter la RAM mobile)
+    let planCanvas;
+    try {
+      planCanvas = await window.MyKTAMapExporterGenererCanvas({
+        scale: 0.5,
+        bg:    "image",
+        // Annotations session désactivées (mini-carte = juste plan + data
+        // layers + icones permanentes ; les overlays équipe sont dessinés
+        // par-dessus en Canvas 2D natif via _drawEquipeOverlayOnCanvas)
+        ann: {
+          points:     false,
+          roads:      false,
+          zones:      false,
+          structures: false,
+          pointsTags: { tagsCoches: new Set(), untaggedCoche: false, tousActifs: false }
+        }
+      });
+    } catch (e) {
+      console.warn("[Rapport] Génération canvas plan échouée : " + (e && e.message));
+      return false;
+    }
+    if (!planCanvas || !planCanvas.width) return false;
+
+    // 3) Nouveau canvas final paysage A4 ratio (297/210 = 1.414)
+    // Cible 1800×1273 px (= ~150 dpi A4 paysage utile, bon compromis qualité/RAM)
+    const TARGET_W = 1800;
+    const TARGET_H = Math.round(TARGET_W * 210 / 297);
+    const finalCanvas = document.createElement("canvas");
+    finalCanvas.width  = TARGET_W;
+    finalCanvas.height = TARGET_H;
+    const ctx = finalCanvas.getContext("2d");
+
+    // Mapping bounds plan → coords canvas plan (scale 0.5)
+    const SCALE_PLAN = 0.5;
+    let sx = bounds.x * SCALE_PLAN;
+    let sy = bounds.y * SCALE_PLAN;
+    let sw = bounds.w * SCALE_PLAN;
+    let sh = bounds.h * SCALE_PLAN;
+
+    // Clamp source au canvas plan (anti-overflow si bounds dépasse)
+    if (sx < 0) { sw += sx; sx = 0; }
+    if (sy < 0) { sh += sy; sy = 0; }
+    if (sx + sw > planCanvas.width)  sw = planCanvas.width  - sx;
+    if (sy + sh > planCanvas.height) sh = planCanvas.height - sy;
+    if (sw <= 0 || sh <= 0) {
+      console.warn("[Rapport] Bounds équipe hors du plan — mini-carte skip");
+      return false;
+    }
+
+    // Ratio src/dst : letterbox (bandes blanches) pour préserver la forme
+    const srcRatio = sw / sh;
+    const dstRatio = TARGET_W / TARGET_H;
+    let dx, dy, dw, dh;
+    if (srcRatio > dstRatio) {
+      // src plus large → bandes haut/bas
+      dw = TARGET_W;
+      dh = dw / srcRatio;
+      dx = 0;
+      dy = (TARGET_H - dh) / 2;
+    } else {
+      // src plus haute → bandes gauche/droite
+      dh = TARGET_H;
+      dw = dh * srcRatio;
+      dy = 0;
+      dx = (TARGET_W - dw) / 2;
+    }
+
+    // Fond blanc + drawImage croppé
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, TARGET_W, TARGET_H);
+    ctx.drawImage(planCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+
+    // 4) Overlay équipe : helper coord plan → coord canvas final
+    function _planToFinal(x, y) {
+      const ratioX = (x - bounds.x) / bounds.w;
+      const ratioY = (y - bounds.y) / bounds.h;
+      return {
+        x: dx + ratioX * dw,
+        y: dy + ratioY * dh
+      };
+    }
+    const couleur = PALETTE[(eq.couleurIdx || 0) % PALETTE.length] || { hex: "#f4c542" };
+    _drawEquipeOverlayOnCanvas(ctx, eq, _planToFinal, couleur);
+
+    // 5) Ajout page PDF paysage + addImage + header/footer texte (ASCII only
+    //    pour pdf.text — cf §44.6 jsPDF Helvetica latin1)
+    pdf.addPage("a4", "landscape");
+    const pageW = pdf.internal.pageSize.getWidth();   // 297 mm
+    const pageH = pdf.internal.pageSize.getHeight();  // 210 mm
+    const m     = 12;
+
+    // Header : pastille couleur + titre équipe (ASCII)
+    const rgb = (function() {
+      const mh = /^#?([a-fA-F0-9]{6})$/.exec(couleur.hex);
+      if (!mh) return [244, 197, 66];
+      const h = mh[1];
+      return [parseInt(h.substring(0,2),16), parseInt(h.substring(2,4),16), parseInt(h.substring(4,6),16)];
+    })();
+    pdf.setFillColor(rgb[0], rgb[1], rgb[2]);
+    pdf.rect(m, 8, 8, 8, "F");
+    pdf.setTextColor(40);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    // ASCII-normalize le nom : retire accents (NFD + diacritics) + non-Latin-1
+    // (jsPDF Helvetica latin1 = mojibake sur emojis/Unicode)
+    const nomAscii = String(eq.nom || "Equipe")
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")    // diacritics
+      .replace(/[^\x20-\x7E]/g, "");       // non-Latin1 (emojis, etc.)
+    pdf.text("CARTE - " + nomAscii.toUpperCase(), m + 12, 14);
+
+    // Image canvas — couvre la zone disponible
+    const availW = pageW - 2 * m;
+    const availH = pageH - 22 - 12;  // - header (22) - footer (12)
+    const imgX = m;
+    const imgY = 18;
+    const dataUrl = finalCanvas.toDataURL("image/jpeg", 0.82);
+    pdf.addImage(dataUrl, "JPEG", imgX, imgY, availW, availH);
+
+    // Footer : info distance + durée + zone type (ASCII)
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(90);
+    const lines = [];
+    if (typeof eq.distanceM === "number")       lines.push("Distance: " + Math.round(eq.distanceM) + " m");
+    if (typeof eq.dureeEstimeeMin === "number") lines.push("Duree: " + Math.round(eq.dureeEstimeeMin) + " min");
+    if (eq.zoneType === "polygon")              lines.push("Zone: polygone (" + (eq.zonePolygon ? eq.zonePolygon.length : 0) + " sommets)");
+    else if (eq.zoneType === "roads")           lines.push("Zone: traces (" + (eq.zoneRoadIds ? eq.zoneRoadIds.length : 0) + " segments)");
+    const nbWp = (eq.entree ? 1 : 0) + (eq.sortie ? 1 : 0) +
+                 (Array.isArray(eq.intermediaires) ? eq.intermediaires.length : 0);
+    lines.push("Waypoints: " + nbWp);
+    pdf.text(lines.join("  -  "), m, pageH - 6);
+
+    return true;
   }
 
   // Page photos d'une équipe (grille)
