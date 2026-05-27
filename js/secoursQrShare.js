@@ -613,8 +613,24 @@
     const cells     = qrInfo.cellCount;
     const margin    = QR_SVG_MARGIN_CELLS;
     const totalCells = cells + 2 * margin;
-    // Cell size en px (round down pour éviter overflow)
-    const cellPx = Math.max(1, Math.floor(targetSize / totalCells));
+    // 🐛 hotfix16 (KARMA "aucun QR code detecter, via enrengister/import PNG"
+    // + diagnostic "Image : 495×495") — Garantir AU MOINS 8 px/cell.
+    //
+    // Avant : cellPx = floor(targetSize / totalCells) → pour des QR denses
+    // (v35+ = ~157 cells), on tombait à 3 px/cell, INFÉRIEUR au seuil de
+    // détection jsQR (~4 px/cell min, 8+ recommandé). Le QR PNG sauvegardé
+    // était techniquement valide mais ILLISIBLE par n'importe quel scanner.
+    //
+    // Après : cellPx = max(8, floor(...)) → le QR PNG peut DÉPASSER targetSize
+    // si le payload est dense. Exemple v35 : 165 totalCells × 8 = 1320 px
+    // (au lieu de 495 px). PNG ~30-60 KB au lieu de ~10 KB — surcoût mineur,
+    // gain de scannabilité essentiel.
+    //
+    // Note : le SVG affichage UI utilise déjà QR_SVG_CELL_SIZE_PX = 8 hardcoded
+    // (cf _qrToSvg), donc lui est OK depuis le début. Seul le PNG download/share
+    // était trop petit.
+    const MIN_CELL_PX = 8;
+    const cellPx = Math.max(MIN_CELL_PX, Math.floor(targetSize / totalCells));
     const realSize = cellPx * totalCells;
 
     const canvas = document.createElement("canvas");
