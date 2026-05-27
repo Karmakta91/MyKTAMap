@@ -2303,22 +2303,9 @@
                 '<span class="kta-secours-rapport-fmt-sub">Pour Discord / SMS / mail rapide</span>' +
               '</span>' +
             '</button>' +
-            /* 🆕 v1.26.0 Phase 4 C3-bis (KARMA "je veux rajouter le bouton
-               générer un QR code, en mode live, je suis sur Equipe Alpha
-               et on le rajoute dans le modal rapport") :
-               4e bouton QR briefing UNIQUEMENT pour scope=equipe.
-               Les scopes operateur (toutes équipes) et secouriste (notes
-               libres) ne sont pas concernés par le QR briefing (qui cible
-               UNE équipe focalisée). */
-            ((scope === "equipe" && s.execution && s.execution.currentEquipeId)
-             ? '<button class="kta-btn kta-btn-secondary kta-secours-rapport-fmt-btn" data-action="rapport-share-qr">' +
-                 '<span class="kta-secours-rapport-fmt-icon">📲</span>' +
-                 '<span class="kta-secours-rapport-fmt-content">' +
-                   '<span class="kta-secours-rapport-fmt-label">QR briefing</span>' +
-                   '<span class="kta-secours-rapport-fmt-sub">Partage l\'équipe à un autre équipier (offline)</span>' +
-                 '</span>' +
-               '</button>'
-             : '') +
+            /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton rapport-share-qr retiré.
+               Le partage briefing depuis Live se fera via "💾 Exporter mes obs"
+               (hotfix18) au format .mkmsec.observations.json. */
           '</div>' +
 
           '<p style="margin-top:14px; color:#8892a4; font-size:12px; font-style:italic;">' +
@@ -2386,28 +2373,7 @@
     overlay.querySelectorAll('[data-action="rapport-copy-text"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _handleExport("text"); });
     });
-    // 🆕 v1.26.0 Phase 4 C3-bis — QR briefing depuis la modale Rapport
-    // (scope=equipe uniquement, équipe focalisée = currentEquipeId).
-    // Le bouton n'est rendu dans le HTML que si scope === "equipe" &&
-    // currentEquipeId set, donc le querySelectorAll renvoie 0 résultats
-    // pour les autres scopes (= no-op sécurisé).
-    overlay.querySelectorAll('[data-action="rapport-share-qr"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        if (!window.MyKTAMapSecoursQrShare) {
-          _toast("⚠️ Module QR Share indispo.", "error");
-          return;
-        }
-        const eqId = s.execution && s.execution.currentEquipeId;
-        if (!eqId) {
-          _toast("⚠️ Aucune équipe focalisée pour partager.", "warn");
-          return;
-        }
-        // Ferme la modale Rapport AVANT d'ouvrir le QR (sinon empilement
-        // de 2 modales = stack visuel et z-index parfois trompeur)
-        _close();
-        window.MyKTAMapSecoursQrShare.ouvrirPartageQrBriefing(s.id, eqId);
-      });
-    });
+    /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler rapport-share-qr retiré. */
 
     document.addEventListener("keydown", _onKey);
     document.body.appendChild(overlay);
@@ -3862,12 +3828,9 @@
                    '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="Importer un plan de secours exporté depuis un autre appareil (.mkmsec.json)">' +
                      '📥 Importer un plan' +
                    '</button>' +
-                   /* 🆕 v1.26.0 Phase 4 C3 — Scan QR briefing reçu par un équipier.
-                      Crée un scénario clone "📲 Briefing — <nom>" avec l'équipe
-                      focalisée prête à lancer en Mode Équipe terrain. */
-                   '<button class="kta-btn kta-btn-secondary" data-action="scan-qr-briefing" title="Scanner un briefing QR partagé par l\'opérateur de surface">' +
-                     '📲 Scanner un QR' +
-                   '</button>' +
+                   /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
+                      Le partage briefings se fait désormais 100% via .mkmsec.json
+                      (cf bouton "📥 Importer un plan" ci-dessus). */
                  '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
@@ -4091,12 +4054,9 @@
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
-                  /* 🆕 v1.26.0 Phase 4 — Bouton 📲 partage briefing via QR.
-                     Visible toujours (même équipe vide → l'op verra un QR
-                     "briefing minimal" qui rappellera de compléter). Pour
-                     un partage vraiment utile, l'op doit avoir défini
-                     au moins entrée + sortie ou zone. */
-                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="share-qr" data-gid="' + _escAttr(g.id) + '" title="Partager le briefing via QR code">📲</button>' +
+                  /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton 📲 retiré.
+                     Le partage briefing se fait via "📥 Importer un plan"
+                     (vue list) qui consomme le .mkmsec.json complet. */
                   '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="Supprimer">🗑️</button>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
@@ -4547,13 +4507,10 @@
               '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="live-rapport" data-scope="equipe" title="Générer un rapport de mon parcours (PDF, JSON ou texte)">' +
                 '📤 Rapport' +
               '</button>' +
-              /* 🆕 v1.26.0 Phase 4 C4 — QR observations équipe→Op
-                 (KARMA "aller-retour observations Équipe→Op"). Renvoie au
-                 PC surface les statuts + textes via QR, sans photos
-                 (les photos restent locales sur l'appareil équipier). */
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-share-obs-qr" title="Renvoyer mes observations à l\'opérateur de surface via QR (offline)">' +
-                '📲 Renvoyer obs' +
-              '</button>' +
+              /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — bouton retiré.
+                 Sera remplacé hotfix18 par "💾 Exporter mes obs (.json)"
+                 + import via le bouton "📥 Importer" en haut vue Live
+                 (équivalent fichier classique sans QR). */
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -5156,18 +5113,7 @@
           _ouvrirImportMkmsecPicker();
         });
       });
-      // 🆕 v1.26.0 Phase 4 C3 — Scan QR briefing (équipier qui importe un briefing partagé)
-      corps.querySelectorAll('[data-action="scan-qr-briefing"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          if (!window.MyKTAMapSecoursQrShare) {
-            if (window.OOMGuard) {
-              window.OOMGuard.showToast("⚠️ Module QR Share indispo", "error");
-            }
-            return;
-          }
-          window.MyKTAMapSecoursQrShare.ouvrirImportQrBriefing();
-        });
-      });
+      /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler scan-qr-briefing retiré. */
     }
 
     if (view === "create") {
@@ -5491,17 +5437,7 @@
           _switchView("edit");      // re-render pour update du chip
         });
       });
-      // 🆕 v1.26.0 Phase 4 — Partage briefing via QR
-      corps.querySelectorAll('[data-action="share-qr"]').forEach(function(btn) {
-        btn.addEventListener("click", function() {
-          const gid = btn.getAttribute("data-gid");
-          if (!window.MyKTAMapSecoursQrShare) {
-            if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Module QR Share indispo", "error");
-            return;
-          }
-          window.MyKTAMapSecoursQrShare.ouvrirPartageQrBriefing(s.id, gid);
-        });
-      });
+      /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler share-qr retiré. */
       // Delete groupe
       corps.querySelectorAll('[data-action="del-groupe"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
@@ -5641,24 +5577,8 @@
         _afficherModaleRapport(s.id, scope);
       });
     });
-    // 🆕 v1.26.0 Phase 4 C4 — QR observations équipe→Op
-    // Bouton "📲 Renvoyer obs" dans le footer vue Live Équipe (+ futur
-    // Secouriste si on l'ajoute). Génère un QR avec les statuts +
-    // observations sans photos (cf KARMA 9:a).
-    corps.querySelectorAll('[data-action="live-share-obs-qr"]').forEach(function(btn) {
-      btn.addEventListener("click", function() {
-        if (!window.MyKTAMapSecoursQrShare) {
-          _toast("⚠️ Module QR Share indispo.", "error");
-          return;
-        }
-        const eqId = s.execution && s.execution.currentEquipeId;
-        if (!eqId) {
-          _toast("⚠️ Aucune équipe en cours pour partager.", "warn");
-          return;
-        }
-        window.MyKTAMapSecoursQrShare.ouvrirPartageQrObservations(s.id, eqId);
-      });
-    });
+    /* ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — handler live-share-obs-qr retiré.
+       Le remplaçant fichier (`💾 Exporter mes obs`) sera ajouté hotfix18. */
   }
 
   // Handlers vue Live Mode Équipe

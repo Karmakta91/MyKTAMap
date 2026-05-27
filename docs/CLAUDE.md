@@ -6189,7 +6189,110 @@ const t = KmzExport.buildTransform(
 
 ---
 
-### 69. Mode Secours Phase 4 — QR Share + mini-carte PDF (depuis hotfix8→hotfix14)
+### 69. Mode Secours Phase 4 — ⛔ ROLLBACK QR + Mini-carte PDF conservée
+
+**Statut depuis hotfix17 (2026-05-27)** : la voie QR (générer/scanner des codes QR pour partager briefings + observations entre Op et équipiers) est **ROLLBACK** suite à un bug structurel de densité QR v35+ rendant les codes générés illisibles par tout scanner standard.
+
+**Conservé** depuis Phase 4 :
+- ✅ **C5 — Mini-carte PDF page A4 paysage par équipe** (indépendant, super utile)
+- ✅ **hotfix11 #1 — Flag `_liveEquipeFreshSession`** (fix bug "étape précédente" en vue Live Équipe)
+
+**Supprimé** :
+- ❌ `lib/qrcode-generator.min.js` (20 KB)
+- ❌ `lib/jsqr.min.js` (130 KB)
+- ❌ `js/secoursQrShare.js` (~1700 lignes)
+- ❌ ~380 lignes CSS `.kta-secours-qr-*`
+- ❌ 4 boutons UI dans secoursMode.js (header card équipe / vue list / modale Rapport / footer Live)
+- ❌ 4 handlers correspondants
+
+**Voie de partage retenue** : `.mkmsec.json` classique (briefing complet, depuis v1.23.4-5) + le nouveau `.mkmsec.observations.json` (à venir hotfix18 — observations terrain Équipe→Op via fichier).
+
+#### 69.1 Root cause du rollback
+
+QR v35 = 157 cells × 8 margin = 165 totalCells. Mon code `_qrToCanvas` faisait :
+```
+cellPx = floor(600 / 165) = 3 px/cell
+realSize = 3 × 165 = 495 px
+```
+
+**jsQR demande min 4 px/cell** pour décoder, idéal 8+ px/cell. À 3 px/cell, scan IMPOSSIBLE par tout scanner (app native iOS/Android + MyKTAMap).
+
+**Hotfix16 tentait de fixer** via `MIN_CELL_PX = 8` → mais ça générait des PNG 1320×1320 px très lourds et toujours fragiles via compression WhatsApp. La fiabilité scan post-partage messagerie restait incertaine.
+
+**Décision KARMA** : revenir à la voie `.mkmsec.json` qui est :
+- 100% fiable (texte JSON, aucune contrainte de pixels)
+- Partage via WhatsApp/mail/AirDrop comme n'importe quel fichier
+- Format extensible (déjà préservé `customLegend`, peut accueillir `observations`, etc.)
+- Debug facile (lisible humain)
+
+#### 69.2 Mini-carte PDF page A4 paysage (C5 — CONSERVÉ)
+
+`genererRapportPDF` reste async pour permettre await sur la mini-carte. Pour chaque équipe (scope=operateur ou equipe), le PDF intercale 3 pages :
+1. Page texte étapes (synchrone)
+2. **Page A4 PAYSAGE dédiée mini-carte** (async, optionnelle)
+3. Page photos grille (si photos)
+
+Pipeline mini-carte :
+1. `_calculerBoundsEquipe(eq)` → rectangle englobant waypoints+zone+iti (padding 15% + plancher 60px)
+2. `MyKTAMapExporterGenererCanvas({scale: 0.5, bg: "image", ann: tout off})` → canvas plan complet
+3. Crop drawImage sur canvas final 1800×1273 (ratio A4 paysage, letterbox blanc)
+4. `_drawEquipeOverlayOnCanvas` — zone teintée 22% + iti dashed + entrée verte "E" + sortie rouge "S" (orange si boucle) + intermédiaires numérotés
+5. `pdf.addPage("a4", "landscape")` + addImage JPEG q82 + header (pastille couleur + titre ASCII) + footer
+
+**Skip silencieux** (PDF reste valide) si équipe vide, exporter indispo, canvas throw, bounds hors plan.
+
+⚠️ **ASCII strict** dans `pdf.text()` — NFD normalize + strip diacritics + filtre Latin-1, cf §44.6 jsPDF Helvetica latin1 mojibake.
+
+#### 69.3 Cycle hotfixes Phase 4 (sur v1.25.3)
+
+| Hotfix | CACHE_NAME | Sujet |
+|---|---|---|
+| 8-13 | -hotfix8 à -hotfix13 | C1+C2+C3+hotfix9+hotfix10+hotfix11+C4+C5 (voie QR) |
+| 14 | -hotfix14 | Fix scan : attemptBoth + MAX_SIDE 2500 (insuffisant) |
+| 15 | -hotfix15 | Multi-stratégie + diagnostic détaillé (insuffisant) |
+| 16 | -hotfix16 | MIN_CELL_PX 8 côté génération (insuffisant) |
+| **17** | **-hotfix17** | **⛔ ROLLBACK QR complet — conserve C5 mini-carte PDF + hotfix11 étape précédente** |
+
+À venir :
+| 18 | -hotfix18 | Format `.mkmsec.observations.json` + bouton "📥 Importer" en haut vue Live + bouton "💾 Exporter mes obs" footer |
+
+#### 69.4 À NE PAS faire
+
+- ❌ Réactiver la voie QR sans avoir résolu structurellement la densité v35+ ET la fiabilité post-compression WhatsApp
+- ❌ Importer la mini-carte PDF C5 dans un autre module — elle dépend de `MyKTAMapExporterGenererCanvas` côté exporter.js + de la PALETTE OTAN module-level secoursMode.js
+- ❌ Toucher au flag `_liveEquipeFreshSession` (hotfix11) — c'est le fix critique du bug "étape précédente" et il doit subsister même après rollback Phase 4
+
+#### 69.5 Format `.mkmsec.observations.json` (à venir hotfix18)
+
+Format prévu (équivalent fichier de l'ancien payload QR observations) :
+```js
+{
+  type:       "myktamap-secours-observations",
+  version:    1,
+  exportedAt: ISO,
+  appVersion: __MKM__.build,
+  plan:       { id, name },
+  scenario:   { id, nom },                     // matching strict côté Op
+  equipe:     { id, nom, couleurIdx, level },  // mode équipe (ou absent si secouriste)
+  role:       "equipe"|"secouriste",
+  observations: [
+    { idx, statut, observations, startedAt, completedAt }
+  ],
+  notesLibres: [ { id, ts, statut, texte } ]   // si role=secouriste
+}
+```
+
+UI prévue :
+- **Bouton "📥 Importer" en HAUT de la vue Live** (Mode Équipe / Op / Secouriste) → file picker accepte `.mkmsec.json` ET `.mkmsec.observations.json` (détection auto via `type` JSON)
+- **Bouton "💾 Exporter mes obs" footer Live Équipe** → download `.mkmsec.observations.json`
+
+Pas de photos (cf KARMA 9:a) — les photos restent locales sur device Équipier, partagées via rapport PDF (page photos grille).
+
+---
+
+### 69bis. Mode Secours Phase 4 (ANCIENNE doc QR — préservée pour référence historique)
+
+Ce qui suit est l'ancienne §69 décrivant la voie QR Share, avant rollback hotfix17. À titre historique uniquement — **NE PAS CONSULTER pour le code actuel**.
 
 Phase 4 livrée en hotfix continu sur v1.25.3 (sans bump version visible — KARMA déploie en dev tant que pas de push main). Ajoute la coordination terrain via QR code (offline cataphile, anti-réseau souterrain) + carte miniature par équipe dans le PDF rapport.
 
