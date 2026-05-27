@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.25.3-hotfix7";
+const CACHE_NAME = "myktamap-cache-v1.25.3-hotfix8";
 
 const ASSETS_TO_CACHE = [
   "./",
@@ -171,12 +171,19 @@ const ASSETS_TO_CACHE = [
   "./js/secoursMode.js",
   // 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
   "./js/secoursPhotos.js",
+  // 🆕 v1.26.0 Phase 4 : QR Share briefing équipes (offline cataphile)
+  "./js/secoursQrShare.js",
   "./js/main.js",
 
   // Librairies
   "./lib/jszip.min.js",
   // 🆕 v1.10.3 : jsPDF UMD pour l'export PDF imprimable.
   "./lib/jspdf.umd.min.js",
+  // 🆕 v1.26.0 Phase 4 : QR codes briefing équipes Mode Secours.
+  // qrcode-generator (20KB) MIT + jsQR (130KB minifié) Apache 2.0,
+  // les deux vanilla JS sans dep. Voir js/secoursQrShare.js.
+  "./lib/qrcode-generator.min.js",
+  "./lib/jsqr.min.js",
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",
