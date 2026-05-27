@@ -2907,6 +2907,10 @@ function afficherConfig() {
       </div>
       <div class="kta-readme-modal-corps kta-cfg-corps">
 
+        ${(typeof window.renderBannerCoherenceEchelle === "function")
+            ? window.renderBannerCoherenceEchelle(window._currentLoadedPlanId, { context: "settings" })
+            : ""}
+
         <!-- 🆕 v1.21.0-fix3 (KARMA "met le mode présentation tout en haut") :
              Bouton "🎬 Activer le mode présentation" en TÊTE de la modale
              (mobile-friendly + accessible en 1 vue). Avant : enfoui dans la
@@ -3049,6 +3053,11 @@ function afficherConfig() {
   document.documentElement.appendChild(modal);
   document.getElementById("kta-cfg-close").addEventListener("click", function () { modal.remove(); });
   modal.addEventListener("click", function (e) { if (e.target === modal) modal.remove(); });
+
+  // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
+  if (typeof window.attacherBoutonCopierEchelleGps === "function") {
+    window.attacherBoutonCopierEchelleGps(modal);
+  }
 
   // 🚀 PerfUltra : bind les change events sur les toggles de la section Perf Ultra
   _bindPerfUltraToggles();

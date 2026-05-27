@@ -1180,7 +1180,8 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 |---|---|
 | v1.25.3 | Tutoriel onboarding (carte Mode Secours) |
 | v1.25.4 | Consolide hotfix17→21 + soft update optimisé + audit sécu (PUSH 2026-05-27) |
-| **v1.26.0** | **📥 Import `.mkmsec.report.json` consolidation cross-device** (cf §P + §72 CLAUDE.md) |
+| v1.26.0 | 📥 Import `.mkmsec.report.json` consolidation cross-device (cf §P + §72 CLAUDE.md) |
+| **v1.26.1** | **📐 Banner cohérence échelle px/m ↔ géoréférencement GPS** (cf §73 CLAUDE.md) |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 

@@ -6800,4 +6800,86 @@ CSS : `.kta-secours-imported-chip` (badge bleu clair + variants thème clair). T
 
 ---
 
+### 73. Banner cohérence échelle px/m ↔ géoréférencement GPS (v1.26.1 — 2026-05-27)
+
+Si un plan a **À LA FOIS** un calibrage GPS 2 points (`KmzExport.getCalibration(planId)` non-null) **ET** une échelle px/m saisie (`APP_CONFIG.scale > 0`), l'app détecte automatiquement les incohérences entre les deux et **affiche un banner diagnostic** dans les 2 modales pertinentes. **AUCUNE correction automatique** n'est appliquée — l'app indique juste qu'une des deux valeurs est probablement fausse.
+
+KARMA quote :
+> « si plan georef on peut, controler la logique avec l'echelle rentrer dans l'application. et rajouter un petit message... aucune modification applicable on dit juste que il y a soit le georef de faux soit le calibrage en px »
+
+#### 73.1 Architecture du calcul
+
+```
+scaleUser  = APP_CONFIG.scale                                          (px/m, saisi user)
+scaleGps   = 1 / KmzExport.buildTransform(pA, pB, gpsA, gpsB).metresParPixel  (px/m, déduit du géoréf)
+deltaPct   = |scaleGps - scaleUser| / scaleUser × 100
+
+level = "ok"       si deltaPct < 5
+     | "warn"      si 5 ≤ deltaPct < 10
+     | "alert"     si 10 ≤ deltaPct < 15
+     | "critical"  si deltaPct ≥ 15
+```
+
+`KmzExport.buildTransform` (`js/kmzExport.js:62-106`) utilise déjà la projection equirectangulaire locale (`dxGps = dlngDeg * 111320 * cos(latMoy)`, `dyGps = dlatDeg * 110540`) → math pré-existante, aucune formule haversine à ré-implémenter.
+
+#### 73.2 API publique (js/utils.js)
+
+```js
+window.calculerCoherenceEchelleGeoref(planId)
+  → { hasCalibration: false }                                            (rien à comparer)
+  → { hasCalibration: true, scaleUser, scaleGps, deltaPercent, level }   (cas normal)
+  → { hasCalibration: false, error }                                     (erreur build transform)
+
+window.renderBannerCoherenceEchelle(planId, opts)
+  → string (HTML inline) ou ""
+  // opts.context : "settings" | "export" (adapte le texte d'intro)
+  // Retourne "" si hasCalibration=false OU level="ok" (silence si cohérent)
+
+window.attacherBoutonCopierEchelleGps(container)
+  → void
+  // Bind les listeners click sur les boutons [data-action="copy-scale-gps"]
+  // Fallback navigator.clipboard.writeText → execCommand("copy") si HTTP non-secure
+  // Idempotent (dataset.scaleGpsBound)
+```
+
+#### 73.3 Emplacements UI
+
+| Endroit | Fichier:ligne | Insertion |
+|---|---|---|
+| Modale ⚙️ Réglages | `interface.js:2908` (juste après ouverture du `<div class="kta-readme-modal-corps kta-cfg-corps">`) | Template literal `${renderBannerCoherenceEchelle(...)}` + appel `attacherBoutonCopierEchelleGps(modal)` après `documentElement.appendChild` |
+| Modale 💾 → 📡 Export externe KMZ/GPX | `sessionExporter.js:2414` (début de `_renderExtern`, après `.kta-ses-intro`) | Concat string `+ window.renderBannerCoherenceEchelle(...)` + appel `attacherBoutonCopierEchelleGps(modal)` dans `_bindKmzHandlers` |
+
+#### 73.4 Politique d'affichage
+
+- **< 5%** : **silence** (rien affiché). Choix UX KARMA : pas de visual pollution quand tout va bien.
+- **Non dismissable** : pas de croix pour masquer. C'est de l'info diagnostic permanente. Si on permet de cacher, l'user oublie le problème.
+- **Pas d'animation pulse** sur le niveau critical : reste lisible en réunion / contexte cataphile silencieux.
+- **Bouton « 📋 Copier la valeur GPS »** : facilite l'alignement quand l'user fait confiance au géoréf. L'application reste manuelle (pas d'auto-mutation `APP_CONFIG.scale`).
+
+#### 73.5 À NE PAS faire
+
+- ❌ Auto-corriger `APP_CONFIG.scale = scaleGps` au-delà d'un seuil — KARMA a explicitement refusé, les 2 sources sont valides indépendamment
+- ❌ Ajouter un toggle "masquer ce banner" — perte de la valeur diagnostic
+- ❌ Animer le critical avec pulse/strobe — irrite en usage prolongé
+- ❌ Afficher le banner si **seul un des deux** (géoréf OU scale) est défini — pas de comparaison possible, on ne montre rien
+- ❌ Catch le throw de `buildTransform` (points colinéaires) silencieusement → on retourne `{ hasCalibration: false, error }` pour permettre au caller de logger
+- ❌ Cacher le bouton 📋 Copier sur HTTP non-secure — fallback `execCommand("copy")` géré dans `attacherBoutonCopierEchelleGps`
+
+#### 73.6 Pour étendre
+
+**Si on veut afficher le banner ailleurs** (modale Créer/Modifier plan §70 georef, modale Aide IA, etc.) :
+1. Importer `window.renderBannerCoherenceEchelle(planId, { context: "..." })` au point d'injection HTML
+2. Appeler `window.attacherBoutonCopierEchelleGps(container)` après mise en place du DOM
+3. Idempotent — pas de bug si appelé plusieurs fois
+
+**Si on veut un mode "validation stricte"** (bloquer l'export KMZ si critical) :
+1. Dans `sessionExporter.js > genererKmz`, ajouter pré-check : si `calculerCoherenceEchelleGeoref` retourne `level === "critical"`, refuser l'export avec modale d'erreur explicite
+2. Pattern OK pour KMZ (export = engagement de précision). Pas OK pour PNG/PDF (engagement visuel uniquement)
+
+**Si on veut un seuil custom par user** (genre "je tolère 20% en zone urbaine") :
+1. Ajouter `localStorage["myktamap_scale_coherence_thresholds_v1"]` JSON `{ warn, alert, critical }`
+2. Lire dans `calculerCoherenceEchelleGeoref` avec fallback defaults `{ warn: 5, alert: 10, critical: 15 }`
+
+---
+
 **Bon code ! 🚀**

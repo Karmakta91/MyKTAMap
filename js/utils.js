@@ -391,6 +391,211 @@ function attacherGpsValidationCombo(input, opts) {
 window.attacherGpsValidationCombo = attacherGpsValidationCombo;
 
 // =========================
+// 🆕 v1.26.1 — Vérification cohérence échelle px/m ↔ géoréférencement GPS
+// =========================
+// Si un plan a À LA FOIS un calibrage GPS 2 points (via KmzExport.getCalibration)
+// ET une échelle px/m saisie côté APP_CONFIG.scale, on peut DÉTECTER une
+// incohérence entre les deux valeurs. C'est un signal diagnostic puissant :
+//   - Échelle px/m est calibrée par un pas humain ou un mesurage IRL côté user
+//   - Échelle GPS est déduite mathématiquement du géoréf (distance haversine
+//     entre points GPS / distance plan en pixels)
+// → Si les 2 divergent, soit le calibrage px/m est faux, soit le géoréf est
+//   faux (mauvaises coords GPS, points mal placés, etc.).
+//
+// L'app NE CORRIGE PAS automatiquement (les deux sources sont valides
+// indépendamment) — elle se contente d'AFFICHER un banner d'avertissement
+// dans 2 emplacements stratégiques :
+//   1. Modale ⚙️ Réglages (en haut, sous le titre)
+//   2. Modale 💾 Enregistrer → 📡 Export externe KMZ/GPX (début onglet)
+//
+// 4 niveaux d'écart visuels :
+//   < 5%   : silence (cohérent, rien affiché)
+//   5-10%  : 🟡 warning jaune
+//   10-15% : 🔴 alerte rouge
+//   > 15%  : ⬛ critique noir (bordure rouge)
+//
+// Retour de calculerCoherenceEchelleGeoref :
+//   { hasCalibration: false }                                            (rien à comparer)
+//   { hasCalibration: true, scaleUser, scaleGps, deltaPercent, level }   (cas normal)
+//   { hasCalibration: false, error }                                     (erreur calcul)
+//
+// level ∈ "ok" | "warn" | "alert" | "critical"
+function calculerCoherenceEchelleGeoref(planId) {
+  // Échelle user (px/m) : APP_CONFIG.scale
+  const scaleUser = (window.APP_CONFIG && Number.isFinite(window.APP_CONFIG.scale))
+                    ? window.APP_CONFIG.scale
+                    : null;
+  if (!Number.isFinite(scaleUser) || scaleUser <= 0) {
+    return { hasCalibration: false };
+  }
+
+  // Calibrage GPS via KmzExport.getCalibration
+  if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") {
+    return { hasCalibration: false };
+  }
+  const effectivePlanId = planId || window._currentLoadedPlanId || "default";
+  const saved = window.KmzExport.getCalibration(effectivePlanId);
+  if (!saved || !saved.pointA || !saved.pointB) {
+    return { hasCalibration: false };
+  }
+  const pA = saved.pointA, pB = saved.pointB;
+  if (!Number.isFinite(pA.x) || !Number.isFinite(pA.y)
+      || !Number.isFinite(pA.lat) || !Number.isFinite(pA.lng)
+      || !Number.isFinite(pB.x) || !Number.isFinite(pB.y)
+      || !Number.isFinite(pB.lat) || !Number.isFinite(pB.lng)) {
+    return { hasCalibration: false };
+  }
+
+  // Build transform pour récupérer metresParPixel (m/px)
+  let transform;
+  try {
+    transform = window.KmzExport.buildTransform(
+      { x: pA.x, y: pA.y },
+      { x: pB.x, y: pB.y },
+      { lat: pA.lat, lng: pA.lng },
+      { lat: pB.lat, lng: pB.lng }
+    );
+  } catch(e) {
+    return { hasCalibration: false, error: "Calcul transform impossible : " + (e && e.message ? e.message : String(e)) };
+  }
+  if (!transform || !Number.isFinite(transform.metresParPixel) || transform.metresParPixel <= 0) {
+    return { hasCalibration: false, error: "Transform invalide (metresParPixel manquant ou nul)" };
+  }
+
+  // Comparaison : scaleUser (px/m) vs (1 / metresParPixel) (px/m)
+  const scaleGps = 1 / transform.metresParPixel; // px/m
+  const deltaPercent = Math.abs(scaleGps - scaleUser) / scaleUser * 100;
+
+  let level;
+  if (deltaPercent < 5)      level = "ok";
+  else if (deltaPercent < 10) level = "warn";
+  else if (deltaPercent < 15) level = "alert";
+  else                        level = "critical";
+
+  return {
+    hasCalibration: true,
+    scaleUser:      scaleUser,
+    scaleGps:       scaleGps,
+    deltaPercent:   deltaPercent,
+    level:          level
+  };
+}
+window.calculerCoherenceEchelleGeoref = calculerCoherenceEchelleGeoref;
+
+// Helper : retourne le HTML d'un banner d'avertissement à insérer dans une
+// modale. Retourne "" si rien à afficher (= pas de calibration OU level=ok).
+// Le caller insère ce HTML brut puis appelle attacherBoutonCopierEchelleGps
+// pour binder le clic sur le bouton "📋 Copier".
+//
+// opts = { context: "settings" | "export" } — pour adapter légèrement le ton
+function renderBannerCoherenceEchelle(planId, opts) {
+  const r = calculerCoherenceEchelleGeoref(planId);
+  if (!r.hasCalibration) return "";        // pas de georef → rien
+  if (r.level === "ok") return "";         // cohérent → rien (cf décision KARMA v1.26.1)
+
+  opts = opts || {};
+  const context = opts.context || "settings";
+
+  // Format compact des deux valeurs (3 décimales = précision raisonnable)
+  const userStr = r.scaleUser.toFixed(3);
+  const gpsStr  = r.scaleGps.toFixed(3);
+  const deltaStr = r.deltaPercent.toFixed(1);
+
+  // Texte + icône par niveau
+  const niveaux = {
+    warn:     { icon: "🟡", titre: "Incohérence échelle modérée",          cls: "kta-scale-coherence-warn" },
+    alert:    { icon: "🔴", titre: "Incohérence échelle élevée",           cls: "kta-scale-coherence-alert" },
+    critical: { icon: "⬛", titre: "Incohérence échelle critique",         cls: "kta-scale-coherence-critical" }
+  };
+  const n = niveaux[r.level] || niveaux.warn;
+
+  const intro = (context === "export")
+    ? "L'export KMZ/GPX géolocalisé utilise le géoréférencement GPS. Si l'écart avec l'échelle calibrée est important, les distances rendues dans Google Earth / OsmAnd ne correspondront PAS aux mesures faites dans MyKTAMap."
+    : "L'échelle (px/m) saisie dans cette modale ne correspond pas à l'échelle déduite du géoréférencement GPS. <strong>Une des deux valeurs est probablement fausse.</strong>";
+
+  return '' +
+    '<div class="kta-scale-coherence-banner ' + n.cls + '">' +
+      '<div class="kta-scale-coherence-titre">' +
+        '<span class="kta-scale-coherence-icon">' + n.icon + '</span>' +
+        '<strong>' + n.titre + '</strong>' +
+        ' · ' +
+        '<span class="kta-scale-coherence-delta">+' + deltaStr + '% d\'écart</span>' +
+      '</div>' +
+      '<div class="kta-scale-coherence-corps">' +
+        '<p>' + intro + '</p>' +
+        '<table class="kta-scale-coherence-table">' +
+          '<tr>' +
+            '<td>📐 Échelle calibrée (saisie)</td>' +
+            '<td><code>' + userStr + '</code> px/m</td>' +
+          '</tr>' +
+          '<tr>' +
+            '<td>🌐 Échelle déduite du géoréf GPS</td>' +
+            '<td><code>' + gpsStr + '</code> px/m ' +
+              '<button class="kta-scale-coherence-copy-btn" data-action="copy-scale-gps" data-value="' + gpsStr + '" type="button" title="Copier la valeur GPS dans le presse-papier">📋 Copier</button>' +
+            '</td>' +
+          '</tr>' +
+        '</table>' +
+        '<p class="kta-scale-coherence-hint">' +
+          '<strong>Aucune correction automatique appliquée.</strong> ' +
+          'Vérifie soit le géoréférencement (2 points GPS bien placés ?), soit le calibrage d\'échelle (✏️ Réglages → 🎯 Calibrer l\'échelle). ' +
+          'Si tu fais confiance au géoréf, tu peux copier la valeur GPS et la coller dans le champ Échelle.' +
+        '</p>' +
+      '</div>' +
+    '</div>';
+}
+window.renderBannerCoherenceEchelle = renderBannerCoherenceEchelle;
+
+// Helper : attache les listeners click sur les boutons "📋 Copier" rendus
+// par renderBannerCoherenceEchelle. Idempotent (peut être appelé plusieurs
+// fois sur le même container). À appeler APRÈS insertion du HTML dans le DOM.
+function attacherBoutonCopierEchelleGps(container) {
+  if (!container || !container.querySelectorAll) return;
+  const btns = container.querySelectorAll('[data-action="copy-scale-gps"]');
+  btns.forEach(function(btn) {
+    if (btn.dataset.scaleGpsBound === "1") return; // idempotent
+    btn.dataset.scaleGpsBound = "1";
+    btn.addEventListener("click", function() {
+      const val = btn.getAttribute("data-value") || "";
+      if (!val) return;
+      const txt = btn.textContent;
+      const apply = function() {
+        btn.textContent = "✓ Copié !";
+        setTimeout(function() { btn.textContent = txt; }, 1500);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(val).then(apply, function() {
+            // Fallback execCommand si writeText refusé (HTTP non secure, etc.)
+            const ta = document.createElement("textarea");
+            ta.value = val;
+            ta.style.position = "fixed";
+            ta.style.left = "-9999px";
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand("copy"); } catch(e) {}
+            document.body.removeChild(ta);
+            apply();
+          });
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = val;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand("copy"); } catch(e) {}
+          document.body.removeChild(ta);
+          apply();
+        }
+      } catch(e) {
+        console.warn("[ScaleCoherence] copy échec :", e);
+      }
+    });
+  });
+}
+window.attacherBoutonCopierEchelleGps = attacherBoutonCopierEchelleGps;
+
+// =========================
 // 📝 NOTE POPUP — helper commun (zones / roads / structures, v1.16.0 step 1)
 // =========================
 // Attache un popup Leaflet à un layer (polygon/polyline/circle) avec un

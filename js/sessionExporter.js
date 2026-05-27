@@ -2419,6 +2419,11 @@
         'partagé entre KMZ et GPX.' +
       '</div>' +
 
+      // 🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréf GPS (si applicable)
+      ((typeof window.renderBannerCoherenceEchelle === "function")
+        ? window.renderBannerCoherenceEchelle(_kmzCurrentPlanId(), { context: "export" })
+        : "") +
+
       // ===== Calibrage GPS commun =====
       _renderCalibrageCommun() +
 
@@ -2619,6 +2624,12 @@
         document.getElementById("kmz_B_coords"),
         { errorEl: document.getElementById("kmz_B_err") }
       );
+    }
+
+    // 🆕 v1.26.1 — Bind bouton "📋 Copier" du banner cohérence échelle (si affiché)
+    if (typeof window.attacherBoutonCopierEchelleGps === "function") {
+      const modal = document.getElementById("kta-ses-modal") || document;
+      window.attacherBoutonCopierEchelleGps(modal);
     }
 
     // Boutons "🔍 Chercher un point" → autocomplete

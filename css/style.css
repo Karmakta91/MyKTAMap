@@ -20396,3 +20396,189 @@ html.kta-theme-light .kta-secours-imported-chip {
   border-color: rgba(70, 110, 200, 0.45) !important;
   color: #3856a8 !important;
 }
+
+/* =================================================================
+   🆕 v1.26.1 — Banner cohérence échelle px/m ↔ géoréférencement GPS
+   =================================================================
+   Affiché dans 2 emplacements (en haut) :
+   - Modale ⚙️ Réglages (interface.js > afficherConfig)
+   - Modale 💾 Enregistrer → 📡 Export externe (sessionExporter.js > _renderExtern)
+
+   4 niveaux d'écart visuels (rendu helper renderBannerCoherenceEchelle) :
+     warn     : 🟡 5-10%   (jaune ambré)
+     alert    : 🔴 10-15%  (rouge clair)
+     critical : ⬛ > 15%    (noir + bordure rouge marquée)
+   < 5% : silence (rien affiché — cohérent, pas besoin de bruit visuel).
+*/
+.kta-scale-coherence-banner {
+  margin: 0 0 14px 0;
+  padding: 10px 14px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  border-left: 4px solid transparent;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-titre {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-delta {
+  font-weight: 700;
+  margin-left: 4px;
+}
+.kta-scale-coherence-banner p {
+  margin: 6px 0;
+  color: #c8d0e0;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-table td {
+  padding: 4px 6px;
+  border: none;
+  vertical-align: middle;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-table td:first-child {
+  color: #a8b3c8;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-table code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f4c542;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-copy-btn {
+  margin-left: 8px;
+  background: rgba(140, 180, 255, 0.14);
+  border: 1px solid rgba(140, 180, 255, 0.45);
+  color: #8cb4ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.kta-scale-coherence-banner .kta-scale-coherence-copy-btn:hover {
+  background: rgba(140, 180, 255, 0.25);
+  border-color: rgba(140, 180, 255, 0.70);
+}
+.kta-scale-coherence-banner .kta-scale-coherence-copy-btn:active {
+  transform: scale(0.96);
+}
+.kta-scale-coherence-banner .kta-scale-coherence-hint {
+  font-size: 12px;
+  color: #8892a4;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* === Niveau WARN (jaune ambré 5-10%) === */
+.kta-scale-coherence-warn {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.40);
+  border-left-color: #f4c542;
+}
+.kta-scale-coherence-warn .kta-scale-coherence-titre,
+.kta-scale-coherence-warn .kta-scale-coherence-delta {
+  color: #f4c542;
+}
+
+/* === Niveau ALERT (rouge 10-15%) === */
+.kta-scale-coherence-alert {
+  background: rgba(255, 140, 140, 0.10);
+  border-color: rgba(255, 140, 140, 0.45);
+  border-left-color: #ff5c5c;
+}
+.kta-scale-coherence-alert .kta-scale-coherence-titre,
+.kta-scale-coherence-alert .kta-scale-coherence-delta {
+  color: #ff5c5c;
+}
+
+/* === Niveau CRITICAL (noir + bordure rouge marquée > 15%) === */
+.kta-scale-coherence-critical {
+  background: #0d0d10;
+  border-color: #ff3030;
+  border-left-color: #ff0000;
+  border-width: 2px;
+  border-left-width: 6px;
+  box-shadow: 0 0 0 1px rgba(255, 48, 48, 0.30) inset;
+}
+.kta-scale-coherence-critical .kta-scale-coherence-titre,
+.kta-scale-coherence-critical .kta-scale-coherence-delta {
+  color: #ff6060;
+  text-shadow: 0 0 8px rgba(255, 48, 48, 0.35);
+}
+.kta-scale-coherence-critical .kta-scale-coherence-table code {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffd060;
+}
+
+/* === Variants thème clair === */
+body.kta-theme-light .kta-scale-coherence-banner p,
+html.kta-theme-light .kta-scale-coherence-banner p {
+  color: #2a2620;
+}
+body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table td:first-child,
+html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table td:first-child {
+  color: #6b6354;
+}
+body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table code,
+html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-table code {
+  background: rgba(0, 0, 0, 0.08);
+  color: #c8801a;
+}
+body.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-hint,
+html.kta-theme-light .kta-scale-coherence-banner .kta-scale-coherence-hint {
+  color: #6b6354;
+}
+body.kta-theme-light .kta-scale-coherence-warn,
+html.kta-theme-light .kta-scale-coherence-warn {
+  background: rgba(200, 140, 30, 0.10);
+  border-color: rgba(200, 140, 30, 0.40);
+  border-left-color: #c88c1e;
+}
+body.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-titre,
+html.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-titre,
+body.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-delta,
+html.kta-theme-light .kta-scale-coherence-warn .kta-scale-coherence-delta {
+  color: #b07000;
+}
+body.kta-theme-light .kta-scale-coherence-alert,
+html.kta-theme-light .kta-scale-coherence-alert {
+  background: rgba(193, 69, 69, 0.10);
+  border-color: rgba(193, 69, 69, 0.45);
+  border-left-color: #c14545;
+}
+body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-titre,
+html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-titre,
+body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta,
+html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta {
+  color: #a32020;
+}
+body.kta-theme-light .kta-scale-coherence-critical,
+html.kta-theme-light .kta-scale-coherence-critical {
+  background: #2a1010;
+  border-color: #c01010;
+  border-left-color: #ff0000;
+}
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
+body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta,
+html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
+  color: #ffa0a0;
+}
