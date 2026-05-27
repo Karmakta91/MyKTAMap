@@ -736,13 +736,470 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // API publique restante — stubs pour C3/C4
+  // Décode QR depuis un fichier image (caméra OS ou galerie) via jsQR
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function ouvrirImportQrBriefing() {
-    _warn("ouvrirImportQrBriefing — implémentation C3 à venir");
-    _toast("⚠️ Scan QR briefing : implémentation en cours (C3)", "info");
+  /**
+   * Charge une image depuis un File/Blob via Object URL + Image().
+   * Cleanup ObjectURL automatique au load OU à l'erreur.
+   *
+   * @param {File|Blob} file
+   * @returns {Promise<HTMLImageElement>}
+   */
+  function _loadImageFromFile(file) {
+    return new Promise(function(resolve, reject) {
+      if (!file) return reject(new Error("Fichier vide"));
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = function() {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = function() {
+        URL.revokeObjectURL(url);
+        reject(new Error("Image illisible (format non supporté ?)"));
+      };
+      img.src = url;
+    });
   }
+
+  /**
+   * Décode un QR depuis un File image (photo OS ou galerie).
+   *
+   * Pipeline :
+   * 1. Load image via Image() (= passe par GPU decoder du navigateur)
+   * 2. Draw sur canvas (cap à 2000px côté max pour limiter la RAM sur mobile —
+   *    une photo 12 MP = 4032×3024 = 49 MB en RGBA, on tire ça vers ~2000px = 6 MB)
+   * 3. ctx.getImageData → ImageData (RGBA pixel array)
+   * 4. jsQR(imageData.data, w, h, {inversionAttempts: "dontInvert"}) → {data, location} | null
+   * 5. JSON.parse + _deserializerBriefing pour valider le payload
+   *
+   * @param {File|Blob} file
+   * @returns {Promise<{ok, error?, payload?, scenario?, equipe?, planMeta?}>}
+   */
+  async function _decodeQrFromFile(file) {
+    if (typeof window.jsQR !== "function") {
+      return { ok: false, error: "Lib jsQR non chargée — recharge l'app." };
+    }
+    if (!file) {
+      return { ok: false, error: "Fichier vide." };
+    }
+
+    // 1) Load image
+    let img;
+    try {
+      img = await _loadImageFromFile(file);
+    } catch (e) {
+      return { ok: false, error: e.message || "Échec lecture image." };
+    }
+
+    // 2) Canvas + downscale si nécessaire
+    const MAX_SIDE = 2000;
+    let w = img.naturalWidth  || img.width;
+    let h = img.naturalHeight || img.height;
+    if (w <= 0 || h <= 0) {
+      return { ok: false, error: "Dimensions image invalides." };
+    }
+    const scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+    w = Math.round(w * scale);
+    h = Math.round(h * scale);
+
+    const canvas = document.createElement("canvas");
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    try {
+      ctx.drawImage(img, 0, 0, w, h);
+    } catch (e) {
+      return { ok: false, error: "Impossible de dessiner l'image : " + (e && e.message) };
+    }
+
+    // 3) Extraction pixels + jsQR
+    let imageData;
+    try {
+      imageData = ctx.getImageData(0, 0, w, h);
+    } catch (e) {
+      // Cas rarissime : tainted canvas (cross-origin image). Ne devrait jamais
+      // arriver avec un File local mais on protège quand même.
+      return { ok: false, error: "Canvas non lisible : " + (e && e.message) };
+    }
+
+    let qrResult;
+    try {
+      qrResult = window.jsQR(imageData.data, w, h, { inversionAttempts: "dontInvert" });
+    } catch (e) {
+      return { ok: false, error: "Erreur de décodage jsQR : " + (e && e.message) };
+    }
+
+    if (!qrResult || !qrResult.data) {
+      return {
+        ok:    false,
+        error: "Aucun QR détecté dans l'image. " +
+               "Vérifie que le QR est bien centré, net et bien éclairé."
+      };
+    }
+
+    // 4) Parse JSON
+    let payload;
+    try {
+      payload = JSON.parse(qrResult.data);
+    } catch (e) {
+      return {
+        ok:    false,
+        error: "QR détecté mais contenu invalide (JSON corrompu). " +
+               "Ce n'est probablement pas un QR briefing MyKTAMap."
+      };
+    }
+
+    // 5) Validation type + version + structure via _deserializerBriefing
+    const result = _deserializerBriefing(payload);
+    if (!result.ok) {
+      return { ok: false, error: result.error || "Payload non reconnu." };
+    }
+
+    return {
+      ok:        true,
+      payload:   payload,
+      scenario:  result.scenario,
+      equipe:    result.equipe,
+      planMeta:  result.planMeta
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Import scénario depuis briefing décodé
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Importe un briefing décodé : crée un nouveau scénario dans le plan
+   * courant avec le contexte + l'équipe focalisée du QR.
+   *
+   * Le scénario est nommé "Briefing — <nom scénario source>" pour bien
+   * marquer qu'il provient d'un partage. L'user pourra ensuite lancer
+   * l'exécution Mode Équipe sur cette équipe (cf §67.7).
+   *
+   * @param {object} scenario - reconstruit depuis _deserializerBriefing
+   * @param {object} equipe   - idem
+   * @param {object} planMeta - {id, name, multiLevel, availableLevels, ...}
+   * @returns {object} {ok, error?, scenarioId?, equipeId?}
+   */
+  function _importerBriefingDansPlan(scenario, equipe, planMeta) {
+    const SM = window.SecoursMode;
+    if (!SM) {
+      return { ok: false, error: "Module SecoursMode indispo." };
+    }
+
+    try {
+      // 1) Création scénario avec contexte importé
+      const sNom = "📲 Briefing — " + (scenario.nom || "Scénario partagé");
+      const newScenario = SM.create(sNom);
+      if (!newScenario) {
+        return { ok: false, error: "Échec création scénario." };
+      }
+
+      // 2) Injection contexte (incidentAt + lastKnownPoint + zoneIncertitude + notes)
+      const ctxNotes = (scenario.context && scenario.context.notes) || "";
+      const importedNote = "📲 Importé via QR le " + new Date().toLocaleString("fr-FR") +
+                           (planMeta && planMeta.name && planMeta.id !== (window._currentLoadedPlanId || "")
+                            ? "\n⚠️ Plan source : " + planMeta.name + " (≠ plan courant)"
+                            : "");
+      const fullContext = Object.assign({}, scenario.context || {}, {
+        notes: importedNote + (ctxNotes ? "\n\n---\n" + ctxNotes : "")
+      });
+
+      SM.update(newScenario.id, { context: fullContext });
+
+      // 3) Ajout de l'équipe importée
+      const newGroupe = SM.addGroupe(newScenario.id, equipe.nom, equipe.level);
+      if (!newGroupe) {
+        return { ok: false, error: "Échec création équipe importée." };
+      }
+
+      // 4) Update équipe avec les détails reçus (whitelist updateGroupe)
+      SM.updateGroupe(newScenario.id, newGroupe.id, {
+        couleurIdx:        equipe.couleurIdx,
+        membres:           equipe.membres,
+        entree:            equipe.entree,
+        sortie:            equipe.sortie,
+        intermediaires:    equipe.intermediaires,
+        zoneType:          equipe.zoneType,
+        zonePolygon:       equipe.zonePolygon,
+        zoneRoadIds:       equipe.zoneRoadIds,
+        itineraireSuggere: equipe.itineraireSuggere,
+        distanceM:         equipe.distanceM,
+        dureeEstimeeMin:   equipe.dureeEstimeeMin,
+        statut:            equipe.statut
+      });
+
+      return { ok: true, scenarioId: newScenario.id, equipeId: newGroupe.id };
+    } catch (e) {
+      _err("Import briefing : " + (e && e.message));
+      return { ok: false, error: "Erreur lors de l'import : " + (e && e.message) };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UI — Modale Scan QR Briefing (côté Équipe terrain qui importe)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Ouvre la modale d'import via QR :
+   * - 2 boutons d'entrée : 📷 photographier le QR / 🖼️ charger une image
+   * - Décode + affiche preview
+   * - Bouton ✓ Importer → crée scénario + ouvre Mode Secours
+   *
+   * Pattern `<input type="file" capture="environment">` réutilise les permissions
+   * caméra natives de l'OS (cohérent §42 photos POI). Aucune modif CSP requise.
+   */
+  function ouvrirImportQrBriefing() {
+    if (typeof window.jsQR !== "function") {
+      _toast("⚠️ Lib jsQR non chargée (cache PWA ?). Re-actualise.", "error");
+      return;
+    }
+
+    // Cleanup éventuelle modale existante
+    _fermerModaleScan();
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-qr-scan-overlay";
+    overlay.className = "kta-readme-modal-overlay kta-secours-qr-scan-overlay";
+
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-qr-scan-boite" style="max-width:520px;width:100%;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0;">📲 Importer un briefing QR</h2>' +
+          '<button class="kta-modal-close" data-action="scan-close" title="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-secours-qr-scan-corps">' +
+          '<div class="kta-secours-qr-scan-hint">' +
+            'L\'opérateur de surface t\'a partagé un <strong>briefing QR</strong> ?<br>' +
+            'Photographie-le ou charge l\'image reçue pour l\'importer dans ton plan.' +
+          '</div>' +
+          '<div class="kta-secours-qr-scan-buttons">' +
+            '<label class="kta-btn kta-btn-primary kta-secours-qr-scan-btn">' +
+              '📷 Photographier le QR' +
+              '<input type="file" accept="image/*" capture="environment" data-action="scan-camera" style="display:none;">' +
+            '</label>' +
+            '<label class="kta-btn kta-btn-secondary kta-secours-qr-scan-btn">' +
+              '🖼️ Charger une image' +
+              '<input type="file" accept="image/*" data-action="scan-gallery" style="display:none;">' +
+            '</label>' +
+          '</div>' +
+          '<div class="kta-secours-qr-scan-status" id="kta-secours-qr-scan-status"></div>' +
+          '<div class="kta-secours-qr-scan-info">' +
+            '💡 <strong>Astuce</strong> : assure-toi que le QR est <strong>net, bien éclairé et centré</strong>. ' +
+            'Le scan marche sans réseau — tout reste local sur ton appareil.' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(overlay);
+
+    function _close() { _fermerModaleScan(); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close();
+    });
+    overlay.querySelector('[data-action="scan-close"]').addEventListener("click", _close);
+
+    function _onEsc(e) {
+      if (e.key === "Escape") { _close(); document.removeEventListener("keydown", _onEsc); }
+    }
+    document.addEventListener("keydown", _onEsc);
+
+    // Handler unique pour les 2 inputs file (caméra et galerie)
+    const statusEl = overlay.querySelector("#kta-secours-qr-scan-status");
+    async function _onFileChosen(input, isCamera) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+
+      statusEl.className = "kta-secours-qr-scan-status kta-status-loading";
+      statusEl.innerHTML = '<span class="kta-spinner-mini"></span> Décodage en cours…';
+
+      const result = await _decodeQrFromFile(file);
+
+      // Reset input pour permettre re-sélection du MÊME fichier après une erreur
+      input.value = "";
+
+      if (!result.ok) {
+        statusEl.className = "kta-secours-qr-scan-status kta-status-error";
+        statusEl.innerHTML = '❌ <strong>Échec du scan</strong><br>' + _escHtml(result.error);
+        return;
+      }
+
+      // Succès : ferme la modale scan + ouvre preview
+      statusEl.className = "kta-secours-qr-scan-status kta-status-ok";
+      statusEl.innerHTML = '✅ QR décodé — ouverture de l\'aperçu…';
+      setTimeout(function() {
+        _close();
+        _afficherModalePreviewImport(result);
+      }, 350);
+    }
+
+    overlay.querySelector('[data-action="scan-camera"]').addEventListener("change", function() {
+      _onFileChosen(this, true);
+    });
+    overlay.querySelector('[data-action="scan-gallery"]').addEventListener("change", function() {
+      _onFileChosen(this, false);
+    });
+  }
+
+  function _fermerModaleScan() {
+    const existing = document.getElementById("kta-secours-qr-scan-overlay");
+    if (existing) existing.remove();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UI — Modale Preview Import (avant validation finale)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Affiche un aperçu détaillé du briefing décodé avant import définitif.
+   * L'user voit nom équipe, parcours, contexte, plan source → valide ou annule.
+   *
+   * @param {object} decoded - retour de _decodeQrFromFile : {scenario, equipe, planMeta, payload}
+   */
+  function _afficherModalePreviewImport(decoded) {
+    _fermerModalePreview();
+    const sc = decoded.scenario;
+    const eq = decoded.equipe;
+    const pm = decoded.planMeta;
+    const SM = window.SecoursMode;
+    const PALETTE = (SM && SM.PALETTE) || [];
+    const couleur = PALETTE[eq.couleurIdx % PALETTE.length] || { hex: "#f4c542", nom: "" };
+
+    // Détection plan différent
+    const currentPlanId = window._currentLoadedPlanId || "";
+    const planMismatch  = pm && pm.id && currentPlanId && pm.id !== currentPlanId;
+
+    // Composition résumé parcours
+    const nbInterm = Array.isArray(eq.intermediaires) ? eq.intermediaires.length : 0;
+    const nbWp     = (eq.entree ? 1 : 0) + nbInterm + (eq.sortie ? 1 : 0);
+    const distance = (typeof eq.distanceM === "number") ? (eq.distanceM + " m") : "—";
+    const duree    = (typeof eq.dureeEstimeeMin === "number") ? (eq.dureeEstimeeMin + " min") : "—";
+
+    const overlay = document.createElement("div");
+    overlay.id = "kta-secours-qr-preview-overlay";
+    overlay.className = "kta-readme-modal-overlay kta-secours-qr-preview-overlay";
+
+    const mismatchHtml = planMismatch
+      ? '<div class="kta-secours-qr-preview-warn">' +
+          '⚠️ <strong>Plan différent détecté</strong><br>' +
+          'Plan source du QR : <strong>' + _escHtml(pm.name || pm.id) + '</strong><br>' +
+          'Plan courant : <em>' + _escHtml((window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.name) || "?") + '</em><br>' +
+          '<em>Les coordonnées du briefing ne correspondront probablement pas à ton plan. ' +
+          'À utiliser uniquement si tu sais ce que tu fais.</em>' +
+        '</div>'
+      : '';
+
+    const ctxHtml = (sc.context && (sc.context.incidentAt || sc.context.notes))
+      ? '<div class="kta-secours-qr-preview-section">' +
+          '<h3 style="margin:8px 0 6px 0;">📝 Contexte importé</h3>' +
+          (sc.context.incidentAt
+            ? '<div class="kta-secours-qr-preview-row">⏰ Incident : ' + _escHtml(new Date(sc.context.incidentAt).toLocaleString("fr-FR")) + '</div>'
+            : '') +
+          (sc.context.notes
+            ? '<div class="kta-secours-qr-preview-row kta-secours-qr-preview-notes">📌 ' + _escHtml(sc.context.notes) + '</div>'
+            : '') +
+        '</div>'
+      : '';
+
+    overlay.innerHTML =
+      '<div class="kta-readme-modal-boite kta-secours-qr-preview-boite" style="max-width:560px;width:100%;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<h2 style="margin:0;">📲 Aperçu du briefing</h2>' +
+          '<button class="kta-modal-close" data-action="preview-close" title="Fermer">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps kta-secours-qr-preview-corps">' +
+          mismatchHtml +
+          '<div class="kta-secours-qr-preview-section">' +
+            '<h3 style="margin:0 0 6px 0;">🗂️ Scénario source</h3>' +
+            '<div class="kta-secours-qr-preview-row"><strong>' + _escHtml(sc.nom || "—") + '</strong></div>' +
+          '</div>' +
+          '<div class="kta-secours-qr-preview-section">' +
+            '<h3 style="margin:8px 0 6px 0;">🚨 Équipe à importer</h3>' +
+            '<div class="kta-secours-qr-preview-equipe">' +
+              '<span class="kta-secours-qr-preview-swatch" style="background:' + couleur.hex + ';"></span>' +
+              '<div class="kta-secours-qr-preview-equipe-info">' +
+                '<strong>' + _escHtml(eq.nom) + '</strong>' +
+                (eq.membres && eq.membres.length > 0
+                  ? '<span class="kta-secours-qr-preview-meta">👥 ' + _escHtml(eq.membres.join(", ")) + '</span>'
+                  : '') +
+                (typeof eq.level === "number"
+                  ? '<span class="kta-secours-qr-preview-meta">🏗️ Niveau ' + eq.level + '</span>'
+                  : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="kta-secours-qr-preview-section">' +
+            '<h3 style="margin:8px 0 6px 0;">🗺️ Parcours</h3>' +
+            '<div class="kta-secours-qr-preview-row">📍 ' + nbWp + ' waypoint(s)' +
+              (eq.entree ? ' · 🚪 Entrée définie' : '') +
+              (eq.sortie ? ' · 🚪 Sortie définie' : '') +
+              (nbInterm > 0 ? ' · ▾ ' + nbInterm + ' étape(s)' : '') +
+            '</div>' +
+            '<div class="kta-secours-qr-preview-row">' +
+              (eq.zoneType === "polygon" ? '⬛ Zone polygonale (' + (eq.zonePolygon ? eq.zonePolygon.length : 0) + ' sommets)' :
+               eq.zoneType === "roads"   ? '🛣️ Zone tracés (' + (eq.zoneRoadIds ? eq.zoneRoadIds.length : 0) + ' segments)' :
+               '○ Pas de zone définie') +
+            '</div>' +
+            '<div class="kta-secours-qr-preview-row">' +
+              '📏 Distance : ' + distance + ' · ⏱️ Durée estimée : ' + duree +
+            '</div>' +
+          '</div>' +
+          ctxHtml +
+          '<div class="kta-secours-qr-preview-actions">' +
+            '<button class="kta-btn kta-btn-ghost" data-action="preview-cancel">❌ Annuler</button>' +
+            '<button class="kta-btn kta-btn-primary" data-action="preview-confirm">' +
+              '✓ Importer dans mon plan' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    document.documentElement.appendChild(overlay);
+
+    function _close() { _fermerModalePreview(); }
+    overlay.addEventListener("click", function(e) {
+      if (e.target === overlay) _close();
+    });
+    overlay.querySelector('[data-action="preview-close"]').addEventListener("click", _close);
+    overlay.querySelector('[data-action="preview-cancel"]').addEventListener("click", _close);
+
+    function _onEsc(e) {
+      if (e.key === "Escape") { _close(); document.removeEventListener("keydown", _onEsc); }
+    }
+    document.addEventListener("keydown", _onEsc);
+
+    overlay.querySelector('[data-action="preview-confirm"]').addEventListener("click", function() {
+      const importRes = _importerBriefingDansPlan(decoded.scenario, decoded.equipe, decoded.planMeta);
+      if (!importRes.ok) {
+        _toast("❌ Import échoué : " + importRes.error, "error");
+        return;
+      }
+      _close();
+      _toast("✅ Briefing importé : équipe « " + decoded.equipe.nom + " » prête", "info");
+
+      // Ouvre Mode Secours en vue Edit sur le scénario fraîchement créé
+      if (window.SecoursMode) {
+        // Petit délai pour laisser le toast s'afficher
+        setTimeout(function() {
+          if (typeof window.SecoursMode.ouvrir === "function") {
+            // ouvrir(scenarioId) attend une string id directe (cf secoursMode.js > ouvrir)
+            window.SecoursMode.ouvrir(importRes.scenarioId);
+          }
+        }, 250);
+      }
+    });
+  }
+
+  function _fermerModalePreview() {
+    const existing = document.getElementById("kta-secours-qr-preview-overlay");
+    if (existing) existing.remove();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Stubs C4 (à venir : aller-retour observations Équipe→Op)
+  // ═══════════════════════════════════════════════════════════════════════════
 
   function ouvrirPartageQrObservations(scenarioId, equipeId) {
     _warn("ouvrirPartageQrObservations — implémentation C4 à venir");
@@ -795,8 +1252,12 @@
     _genererQrFromPayload:       _genererQrFromPayload,
     _qrToCanvas:                 _qrToCanvas,
     _canvasToPngBlob:            _canvasToPngBlob,
+    _decodeQrFromFile:           _decodeQrFromFile,
+    _importerBriefingDansPlan:   _importerBriefingDansPlan,
     _checkLibsDispo:             _checkLibsDispo,
-    _fermerModaleQr:             _fermerModaleQr
+    _fermerModaleQr:             _fermerModaleQr,
+    _fermerModaleScan:           _fermerModaleScan,
+    _fermerModalePreview:        _fermerModalePreview
   };
 
 })();

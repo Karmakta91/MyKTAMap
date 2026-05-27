@@ -3456,6 +3456,12 @@
                    '<button class="kta-btn kta-btn-secondary" data-action="import-mkmsec" title="Importer un plan de secours exporté depuis un autre appareil (.mkmsec.json)">' +
                      '📥 Importer un plan' +
                    '</button>' +
+                   /* 🆕 v1.26.0 Phase 4 C3 — Scan QR briefing reçu par un équipier.
+                      Crée un scénario clone "📲 Briefing — <nom>" avec l'équipe
+                      focalisée prête à lancer en Mode Équipe terrain. */
+                   '<button class="kta-btn kta-btn-secondary" data-action="scan-qr-briefing" title="Scanner un briefing QR partagé par l\'opérateur de surface">' +
+                     '📲 Scanner un QR' +
+                   '</button>' +
                  '</div>' +
                '</div>';
     if (_scenarios.length === 0) {
@@ -4714,6 +4720,18 @@
       corps.querySelectorAll('[data-action="import-mkmsec"]').forEach(function(btn) {
         btn.addEventListener("click", function() {
           _ouvrirImportMkmsecPicker();
+        });
+      });
+      // 🆕 v1.26.0 Phase 4 C3 — Scan QR briefing (équipier qui importe un briefing partagé)
+      corps.querySelectorAll('[data-action="scan-qr-briefing"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (!window.MyKTAMapSecoursQrShare) {
+            if (window.OOMGuard) {
+              window.OOMGuard.showToast("⚠️ Module QR Share indispo", "error");
+            }
+            return;
+          }
+          window.MyKTAMapSecoursQrShare.ouvrirImportQrBriefing();
         });
       });
     }
