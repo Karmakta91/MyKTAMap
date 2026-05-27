@@ -2597,6 +2597,20 @@
       });
     });
 
+    // 🆕 hotfix18 — UX copier-coller Google Maps : permettre à l'user de
+    // coller "48.680831, 2.158843" dans le champ lat (ou lng) → auto-split.
+    // Le helper idempotent ne dupliquera pas les listeners si déjà attachés.
+    if (typeof window.attacherGpsPasteSplit === "function") {
+      window.attacherGpsPasteSplit(
+        document.getElementById("kmz_A_lat"),
+        document.getElementById("kmz_A_lng")
+      );
+      window.attacherGpsPasteSplit(
+        document.getElementById("kmz_B_lat"),
+        document.getElementById("kmz_B_lng")
+      );
+    }
+
     // Boutons "🔍 Chercher un point" → autocomplete
     ["A", "B"].forEach(function(letter) {
       const btn = document.getElementById("kmz_" + letter + "_search");

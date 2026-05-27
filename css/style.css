@@ -18893,6 +18893,176 @@ html.kta-theme-light .kta-secours-overlay-floater-info strong {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   🆕 hotfix18 — Recherche par coordonnées GPS (plans georef)
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Hint format GPS sous l'input recherche (visible si plan calibré) */
+.kta-search-gps-hint {
+  font-size: 12px;
+  color: #8892a4;
+  line-height: 1.5;
+  padding: 8px 10px;
+  margin: 6px 0 0 0;
+  background: rgba(140, 180, 255, 0.06);
+  border-left: 3px solid #8cb4ff;
+  border-radius: 0 4px 4px 0;
+}
+.kta-search-gps-hint code {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #f4c542;
+}
+.kta-search-gps-hint strong {
+  color: #c8d0e0;
+}
+
+/* Card résultat GPS (single card au lieu de la liste de résultats classique) */
+.kta-search-gps-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  margin: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid;
+  background: rgba(255, 255, 255, 0.02);
+}
+.kta-search-gps-card-icon {
+  font-size: 32px;
+  line-height: 1;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.kta-search-gps-card-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.kta-search-gps-card-titre {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f4c542;
+}
+.kta-search-gps-card-subtitle {
+  font-size: 12px;
+  color: #8892a4;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.kta-search-gps-card-subtitle code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: #c8d0e0;
+}
+.kta-search-gps-card-msg {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+.kta-search-gps-card-msg code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #f4c542;
+}
+.kta-search-gps-card-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.kta-search-gps-card-hint {
+  font-size: 11px;
+  color: #8892a4;
+  font-style: italic;
+}
+.kta-search-gps-poi-info {
+  padding: 8px 10px;
+  background: rgba(244, 197, 66, 0.06);
+  border-radius: 4px;
+  border-left: 3px solid #f4c542;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+.kta-search-gps-poi-info strong {
+  color: #f4c542;
+  font-size: 14px;
+}
+.kta-search-gps-poi-tags {
+  color: #8892a4;
+}
+.kta-search-gps-poi-dist {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6ee287;
+}
+
+/* Variantes selon état (warning / error / ok / create) */
+.kta-search-gps-card-warn {
+  border-color: rgba(255, 179, 128, 0.30);
+  background: rgba(255, 179, 128, 0.06);
+}
+.kta-search-gps-card-warn .kta-search-gps-card-titre {
+  color: #ffb380;
+}
+.kta-search-gps-card-error {
+  border-color: rgba(255, 140, 140, 0.30);
+  background: rgba(255, 140, 140, 0.06);
+}
+.kta-search-gps-card-error .kta-search-gps-card-titre {
+  color: #ff8c8c;
+}
+.kta-search-gps-card-ok {
+  border-color: rgba(110, 226, 138, 0.30);
+  background: rgba(110, 226, 138, 0.06);
+}
+.kta-search-gps-card-ok .kta-search-gps-card-titre {
+  color: #6ee287;
+}
+.kta-search-gps-card-create {
+  border-color: rgba(140, 180, 255, 0.30);
+  background: rgba(140, 180, 255, 0.06);
+}
+.kta-search-gps-card-create .kta-search-gps-card-titre {
+  color: #8cb4ff;
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-search-gps-hint,
+html.kta-theme-light .kta-search-gps-hint {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+  background: rgba(140, 180, 255, 0.10) !important;
+}
+body.kta-theme-light .kta-search-gps-hint strong,
+html.kta-theme-light .kta-search-gps-hint strong {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-search-gps-hint code,
+html.kta-theme-light .kta-search-gps-hint code {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-search-gps-card-msg,
+html.kta-theme-light .kta-search-gps-card-msg {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-search-gps-card-subtitle,
+html.kta-theme-light .kta-search-gps-card-subtitle {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-search-gps-poi-info,
+html.kta-theme-light .kta-search-gps-poi-info {
+  background: var(--kta-light-accent-bg, rgba(244, 197, 66, 0.18)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ⛔ Phase 4 (QR Share) ROLLBACK hotfix17
    ─────────────────────────────────────────────────────────────────────────── */
 /* Toutes les règles .kta-secours-qr-share-* / qr-scan-* / qr-preview-* /

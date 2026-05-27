@@ -202,6 +202,95 @@ function polygonAreaM2(points) {
 window.polygonAreaM2 = polygonAreaM2;
 
 // =========================
+// 🆕 hotfix18 — Helper GPS paste-split pour UX copier-coller Google Maps
+// =========================
+// Quand un user copie une coordonnée depuis Google Maps, le format natif
+// est "48.680831, 2.158843" (lat, lng séparés par ", "). Ce helper attache
+// des listeners aux 2 inputs lat / lng qui :
+//   1. Détectent si l'user colle un couple complet "lat, lng" dans l'un
+//      ou l'autre des 2 champs
+//   2. Auto-split le couple → latInput.value = lat, lngInput.value = lng
+//   3. Re-dispatch les events "input" pour que les listeners en aval
+//      (aperçu calibrage, validation, etc.) se mettent à jour
+//
+// Usage typique (interface.js / createConf.js / sessionExporter.js) :
+//   const latEl = document.getElementById("kmz_A_lat");
+//   const lngEl = document.getElementById("kmz_A_lng");
+//   window.attacherGpsPasteSplit(latEl, lngEl);
+//
+// Le helper est idempotent (peut être appelé plusieurs fois sur les mêmes
+// inputs sans dupliquer les listeners — on tag les inputs via dataset).
+function attacherGpsPasteSplit(latInput, lngInput) {
+  if (!latInput || !lngInput) return;
+  if (latInput.dataset.gpsPasteAttached === "1" && lngInput.dataset.gpsPasteAttached === "1") {
+    return; // Déjà attaché — no-op idempotent
+  }
+  latInput.dataset.gpsPasteAttached = "1";
+  lngInput.dataset.gpsPasteAttached = "1";
+
+  function _tryParseAndSplit(input) {
+    const val = String(input.value || "");
+    // Format strict "lat, lng" — 2 nombres décimaux séparés par virgule
+    // (avec ou sans espace autour). Signe optionnel pour les latitudes
+    // sud / longitudes ouest.
+    const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(val);
+    if (!m) return false;
+    latInput.value = m[1].trim();
+    lngInput.value = m[2].trim();
+    // Re-dispatch les events pour les listeners en aval (live preview, etc.)
+    latInput.dispatchEvent(new Event("input", { bubbles: true }));
+    lngInput.dispatchEvent(new Event("input", { bubbles: true }));
+    return true;
+  }
+
+  // Listener "input" couvre la majorité des cas (paste + saisie clavier)
+  latInput.addEventListener("input", function() { _tryParseAndSplit(latInput); });
+  lngInput.addEventListener("input", function() { _tryParseAndSplit(lngInput); });
+
+  // Listener "paste" en complément pour le cas où le paste insère dans un
+  // input type="number" qui rejette la chaîne entière mais accepte le
+  // split — setTimeout 0 pour laisser le navigateur appliquer le paste
+  // avant de tester la valeur.
+  latInput.addEventListener("paste", function() {
+    setTimeout(function() { _tryParseAndSplit(latInput); }, 0);
+  });
+  lngInput.addEventListener("paste", function() {
+    setTimeout(function() { _tryParseAndSplit(lngInput); }, 0);
+  });
+}
+window.attacherGpsPasteSplit = attacherGpsPasteSplit;
+
+// =========================
+// 🆕 hotfix18 — Parser GPS pour barre de recherche unifiée
+// =========================
+// Détecte le format "lat, lng" (= copier-coller Google Maps natif).
+// Valide la plage géographique pour éviter les faux positifs.
+// Retourne {lat, lng} ou null si pas un format GPS.
+//
+// Exemples de matches :
+//   "48.680831, 2.158843"   → {lat: 48.680831, lng: 2.158843}
+//   "-33.5, 18.42"          → {lat: -33.5,    lng: 18.42}
+//   "48.6, 2"               → {lat: 48.6,     lng: 2}
+//
+// Refusés :
+//   "48.680831"             → null (pas de virgule)
+//   "abc, 2.15"             → null (pas un nombre)
+//   "200, 2.15"             → null (lat hors plage [-90, 90])
+function parseGpsCoords(str) {
+  if (typeof str !== "string") return null;
+  const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(str);
+  if (!m) return null;
+  const lat = parseFloat(m[1]);
+  const lng = parseFloat(m[2]);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  // Validation plage géographique stricte (refuse les faux positifs genre
+  // "48.68, 2.15" qui pourrait être un id de point arbitraire).
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat: lat, lng: lng };
+}
+window.parseGpsCoords = parseGpsCoords;
+
+// =========================
 // 📝 NOTE POPUP — helper commun (zones / roads / structures, v1.16.0 step 1)
 // =========================
 // Attache un popup Leaflet à un layer (polygon/polyline/circle) avec un

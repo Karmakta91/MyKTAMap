@@ -546,6 +546,21 @@ function afficherPlanner() {
 
   document.documentElement.appendChild(modal);
 
+  // 🆕 hotfix18 — UX copier-coller Google Maps pour les champs lat/lng
+  // de la section Géoréférencement (mode nouveau OU modifier). Le helper
+  // est idempotent → ré-appelé dans _preRemplirFormulaire pour mode modifier
+  // n'est pas un problème.
+  if (typeof window.attacherGpsPasteSplit === "function") {
+    window.attacherGpsPasteSplit(
+      document.getElementById("pl_geo_A_lat"),
+      document.getElementById("pl_geo_A_lng")
+    );
+    window.attacherGpsPasteSplit(
+      document.getElementById("pl_geo_B_lat"),
+      document.getElementById("pl_geo_B_lng")
+    );
+  }
+
   _imageLayerCount   = 0;
   _dataLayerCount    = 0;
   _iconRowCount      = 0;
@@ -1016,6 +1031,20 @@ function _preRemplirFormulaire(config) {
     sv("pl_geo_B_y",   gB.y   ?? "");
     sv("pl_geo_B_lat", gB.lat ?? "");
     sv("pl_geo_B_lng", gB.lng ?? "");
+  }
+
+  // 🆕 hotfix18 — UX copier-coller Google Maps : un user qui colle
+  // "48.680831, 2.158843" dans le champ lat (ou lng) → auto-split en lat/lng.
+  // Helper idempotent (peut être appelé hors mode modifier aussi sans bug).
+  if (typeof window.attacherGpsPasteSplit === "function") {
+    window.attacherGpsPasteSplit(
+      document.getElementById("pl_geo_A_lat"),
+      document.getElementById("pl_geo_A_lng")
+    );
+    window.attacherGpsPasteSplit(
+      document.getElementById("pl_geo_B_lat"),
+      document.getElementById("pl_geo_B_lng")
+    );
   }
 
   // 🧱 Tiling V2 : checkbox visible selon le contexte (cf _majVisibiliteCheckboxV2)

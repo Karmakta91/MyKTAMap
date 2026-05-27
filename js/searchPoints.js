@@ -398,8 +398,14 @@
 
           <div class="kta-search-input-wrap">
             <input type="text" id="kta-search-input"
-              placeholder="🔍 Cherche un point, tracé, zone, structure..."
+              placeholder="🔍 Point, tracé, zone, structure… ou GPS « 48.68, 2.15 »"
               autocomplete="off">
+          </div>
+          <!-- 🆕 hotfix18 — hint format GPS (visible uniquement si plan georef) -->
+          <div class="kta-search-gps-hint" id="kta-search-gps-hint" style="display:none;">
+            🌐 Tu peux coller des coordonnées <strong>GPS</strong> au format
+            <code>48.680831, 2.158843</code> (depuis Google Maps) pour
+            atterrir au point exact ou créer un nouveau point.
           </div>
 
           <div class="kta-search-filters" id="kta-search-filters"></div>
@@ -421,6 +427,22 @@
     const infoEl   = document.getElementById("kta-search-info");
     const resEl    = document.getElementById("kta-search-results");
     const btnClose = document.getElementById("kta-search-close");
+
+    // 🆕 hotfix18 — Affiche le hint GPS UNIQUEMENT si le plan est calibré
+    // (sinon le format "lat, lng" ne servira à rien — autant ne pas
+    // afficher de hint trompeur).
+    (function _checkGpsHint() {
+      const hintEl = document.getElementById("kta-search-gps-hint");
+      if (!hintEl) return;
+      const planId = window._currentLoadedPlanId || "";
+      if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") return;
+      const calib = window.KmzExport.getCalibration(planId);
+      if (calib && calib.pointA && calib.pointB &&
+          typeof calib.pointA.x === "number" && typeof calib.pointA.lat === "number" &&
+          typeof calib.pointB.x === "number" && typeof calib.pointB.lat === "number") {
+        hintEl.style.display = "block";
+      }
+    })();
 
     function fermer() {
       if (_modal) _modal.remove();
@@ -860,6 +882,19 @@
     const infoEl = document.getElementById("kta-search-info");
     if (!resEl) return;
 
+    // 🆕 hotfix18 — Détection auto format GPS "lat, lng" (copier-coller Maps)
+    // Si la query match le format strict (2 décimaux séparés par virgule,
+    // dans les plages géographiques valides), on bascule sur un rendu
+    // spécial GPS au lieu du flow texte standard. Le helper
+    // window.parseGpsCoords est défini dans utils.js.
+    if (typeof window.parseGpsCoords === "function") {
+      const gpsCoords = window.parseGpsCoords(query);
+      if (gpsCoords) {
+        _renderResultatsGps(query, gpsCoords);
+        return;
+      }
+    }
+
     const filtered = _filtrer(query);
     const LIMITE = 50;
     const visibles = filtered.slice(0, LIMITE);
@@ -1069,6 +1104,223 @@
       }
     }
     return config.icons.default || null;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // 🆕 hotfix18 — Recherche par coordonnées GPS (plans georef)
+  // ════════════════════════════════════════════════════════════════════════
+  // L'user colle "48.680831, 2.158843" depuis Google Maps → on convertit
+  // GPS → plan via KmzExport.buildTransform + gpsToPlan, puis on bascule
+  // sur l'un des 4 comportements :
+  //   1. Plan non géoréférencé        → bandeau d'info + lien Paramètres
+  //   2. Coords hors plan             → message "coordonée hors plan"
+  //   3. POI proche détecté (≤ 50px)  → card POI + comportement classique
+  //   4. Pas de POI dans 50px         → bouton "Créer un point ici"
+  // ════════════════════════════════════════════════════════════════════════
+
+  const _GPS_RADIUS_PX = 50;
+
+  function _renderResultatsGps(query, gps) {
+    const resEl  = document.getElementById("kta-search-results");
+    const infoEl = document.getElementById("kta-search-info");
+    if (!resEl) return;
+
+    infoEl.textContent = "🌐 Recherche GPS : " + gps.lat.toFixed(6) + ", " + gps.lng.toFixed(6);
+
+    // 1) Plan calibré ?
+    const planId = window._currentLoadedPlanId || "";
+    if (!window.KmzExport || typeof window.KmzExport.getCalibration !== "function") {
+      _renderGpsCardNoCalib(resEl, gps);
+      return;
+    }
+    const calib = window.KmzExport.getCalibration(planId);
+    if (!calib || !calib.pointA || !calib.pointB ||
+        typeof calib.pointA.x   !== "number" || typeof calib.pointA.y   !== "number" ||
+        typeof calib.pointA.lat !== "number" || typeof calib.pointA.lng !== "number" ||
+        typeof calib.pointB.x   !== "number" || typeof calib.pointB.y   !== "number" ||
+        typeof calib.pointB.lat !== "number" || typeof calib.pointB.lng !== "number") {
+      _renderGpsCardNoCalib(resEl, gps);
+      return;
+    }
+
+    // 2) Conversion GPS → plan (pattern §32.7 transform rebuild on-demand)
+    let transform, planCoords;
+    try {
+      transform = window.KmzExport.buildTransform(
+        { x: calib.pointA.x,   y: calib.pointA.y   },
+        { x: calib.pointB.x,   y: calib.pointB.y   },
+        { lat: calib.pointA.lat, lng: calib.pointA.lng },
+        { lat: calib.pointB.lat, lng: calib.pointB.lng }
+      );
+      planCoords = window.KmzExport.gpsToPlan(transform, gps.lat, gps.lng);
+    } catch (e) {
+      _renderGpsCardErreur(resEl, gps, "Calibrage invalide : " + (e && e.message));
+      return;
+    }
+    if (!planCoords || typeof planCoords.x !== "number" || typeof planCoords.y !== "number") {
+      _renderGpsCardErreur(resEl, gps, "Conversion GPS échouée");
+      return;
+    }
+
+    // 3) Bounds check (= validation "coordonée hors plan")
+    const pc = window.PLAN_CONFIG;
+    const imgW = (pc && pc.plan && pc.plan.imageWidth)  || 0;
+    const imgH = (pc && pc.plan && pc.plan.imageHeight) || 0;
+    if (planCoords.x < 0 || planCoords.x > imgW || planCoords.y < 0 || planCoords.y > imgH) {
+      _renderGpsCardHorsPlan(resEl, gps, planCoords, imgW, imgH);
+      return;
+    }
+
+    // 4) Cherche POI proche dans rayon _GPS_RADIUS_PX (50)
+    const pointsItems = _tousLesItems().filter(function(it) { return it.kind === "point"; });
+    let closest = null;
+    let minDist = Infinity;
+    pointsItems.forEach(function(it) {
+      const p = it.item;
+      if (!p || typeof p.x !== "number" || typeof p.y !== "number") return;
+      const dx = p.x - planCoords.x;
+      const dy = p.y - planCoords.y;
+      const d  = Math.sqrt(dx * dx + dy * dy);
+      if (d < minDist) {
+        minDist = d;
+        closest = it;
+      }
+    });
+
+    if (closest && minDist <= _GPS_RADIUS_PX) {
+      _renderGpsCardPoiProche(resEl, gps, planCoords, closest, minDist);
+    } else {
+      _renderGpsCardSansPoi(resEl, gps, planCoords);
+    }
+  }
+
+  function _renderGpsCardNoCalib(resEl, gps) {
+    resEl.innerHTML =
+      '<div class="kta-search-gps-card kta-search-gps-card-warn">' +
+        '<div class="kta-search-gps-card-icon">🌐</div>' +
+        '<div class="kta-search-gps-card-content">' +
+          '<div class="kta-search-gps-card-titre">Format GPS détecté</div>' +
+          '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
+          '<div class="kta-search-gps-card-msg">' +
+            'Ce plan n\'est pas <strong>géoréférencé</strong> — pas de correspondance GPS ↔ coordonnées plan possible.' +
+          '</div>' +
+          '<div class="kta-search-gps-card-action">' +
+            '<button class="kta-btn kta-btn-secondary kta-btn-sm" id="kta-search-gps-go-config">' +
+              '⚙️ Calibrer ce plan' +
+            '</button>' +
+            '<span class="kta-search-gps-card-hint">Paramètres → 🌐 Géoréférencement</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    const cfgBtn = resEl.querySelector("#kta-search-gps-go-config");
+    if (cfgBtn) {
+      cfgBtn.addEventListener("click", function() {
+        if (_modal) _modal.remove();
+        if (typeof window.afficherConfig === "function") {
+          window.afficherConfig();
+        } else if (window.OOMGuard) {
+          window.OOMGuard.showToast("⚙️ Ouvre Paramètres → Géoréférencement", "info");
+        }
+      });
+    }
+  }
+
+  function _renderGpsCardErreur(resEl, gps, msg) {
+    resEl.innerHTML =
+      '<div class="kta-search-gps-card kta-search-gps-card-error">' +
+        '<div class="kta-search-gps-card-icon">⚠️</div>' +
+        '<div class="kta-search-gps-card-content">' +
+          '<div class="kta-search-gps-card-titre">Erreur de conversion GPS</div>' +
+          '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
+          '<div class="kta-search-gps-card-msg">' + _escapeHtml(msg || "Erreur inconnue") + '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function _renderGpsCardHorsPlan(resEl, gps, planCoords, imgW, imgH) {
+    resEl.innerHTML =
+      '<div class="kta-search-gps-card kta-search-gps-card-error">' +
+        '<div class="kta-search-gps-card-icon">🚫</div>' +
+        '<div class="kta-search-gps-card-content">' +
+          '<div class="kta-search-gps-card-titre">Coordonnée hors plan</div>' +
+          '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) + '</div>' +
+          '<div class="kta-search-gps-card-msg">' +
+            'Cette position GPS se projette en <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code> sur le plan, ' +
+            'mais le plan ne couvre que <code>0..' + imgW + ' × 0..' + imgH + '</code> px.<br>' +
+            '<em>Vérifie le calibrage du plan ou la coordonnée saisie.</em>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function _renderGpsCardPoiProche(resEl, gps, planCoords, item, distPx) {
+    const p = item.item;
+    const nom = p.nom || p.id || "Point";
+    const tags = (p.tags && p.tags.length) ? p.tags.join(", ") : "";
+    resEl.innerHTML =
+      '<div class="kta-search-gps-card kta-search-gps-card-ok">' +
+        '<div class="kta-search-gps-card-icon">📍</div>' +
+        '<div class="kta-search-gps-card-content">' +
+          '<div class="kta-search-gps-card-titre">POI trouvé à proximité</div>' +
+          '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
+            ' → plan <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code>' +
+          '</div>' +
+          '<div class="kta-search-gps-poi-info">' +
+            '<strong>' + _escapeHtml(nom) + '</strong>' +
+            (tags ? '<span class="kta-search-gps-poi-tags"> · ' + _escapeHtml(tags) + '</span>' : '') +
+            '<div class="kta-search-gps-poi-dist">📏 ' + Math.round(distPx) + ' px de la coordonnée recherchée</div>' +
+          '</div>' +
+          '<div class="kta-search-gps-card-action">' +
+            '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-go-poi">' +
+              '🎯 Aller au point' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    const goBtn = resEl.querySelector("#kta-search-gps-go-poi");
+    if (goBtn) {
+      goBtn.addEventListener("click", function() { _aller(item); });
+    }
+  }
+
+  function _renderGpsCardSansPoi(resEl, gps, planCoords) {
+    resEl.innerHTML =
+      '<div class="kta-search-gps-card kta-search-gps-card-create">' +
+        '<div class="kta-search-gps-card-icon">📍</div>' +
+        '<div class="kta-search-gps-card-content">' +
+          '<div class="kta-search-gps-card-titre">Aucun POI à proximité</div>' +
+          '<div class="kta-search-gps-card-subtitle">' + gps.lat.toFixed(6) + ', ' + gps.lng.toFixed(6) +
+            ' → plan <code>(' + Math.round(planCoords.x) + ', ' + Math.round(planCoords.y) + ')</code>' +
+          '</div>' +
+          '<div class="kta-search-gps-card-msg">' +
+            'Aucun point existant dans un rayon de <strong>' + _GPS_RADIUS_PX + ' px</strong>. ' +
+            'Tu peux créer un nouveau point à cette position.' +
+          '</div>' +
+          '<div class="kta-search-gps-card-action">' +
+            '<button class="kta-btn kta-btn-primary kta-btn-sm" id="kta-search-gps-create-point">' +
+              '➕ Créer un point ici' +
+            '</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    const createBtn = resEl.querySelector("#kta-search-gps-create-point");
+    if (createBtn) {
+      createBtn.addEventListener("click", function() {
+        // Centre la carte + ouvre le formulaire de création (= mode édition POI)
+        if (_modal) _modal.remove();
+        if (window.map && window.APP_CONFIG) {
+          const latlng = [window.APP_CONFIG.imageHeight - planCoords.y, planCoords.x];
+          try {
+            window.map.setView(latlng, Math.max(0, window.map.getZoom()), { animate: true });
+          } catch (e) {}
+        }
+        if (typeof window.afficherFormulaire === "function") {
+          window.afficherFormulaire(planCoords.x, planCoords.y);
+        } else if (window.OOMGuard) {
+          window.OOMGuard.showToast("⚠️ Module Editor indispo — création point impossible", "error");
+        }
+      });
+    }
   }
 
   // ========== ALLER À UN POINT/ROAD/ZONE/STRUCTURE (v1.10.3-search-unified) ==========
