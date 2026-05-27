@@ -3679,6 +3679,12 @@
                   '<span class="kta-secours-groupe-swatch" style="background:' + couleur.hex + ';"></span>' +
                   '<input type="text" class="kta-secours-groupe-nom" data-action="rename-groupe" data-gid="' + _escAttr(g.id) + '" value="' + _escAttr(g.nom) + '" maxlength="40">' +
                   lvlChip +
+                  /* 🆕 v1.26.0 Phase 4 — Bouton 📲 partage briefing via QR.
+                     Visible toujours (même équipe vide → l'op verra un QR
+                     "briefing minimal" qui rappellera de compléter). Pour
+                     un partage vraiment utile, l'op doit avoir défini
+                     au moins entrée + sortie ou zone. */
+                  '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="share-qr" data-gid="' + _escAttr(g.id) + '" title="Partager le briefing via QR code">📲</button>' +
                   '<button class="kta-btn kta-btn-danger kta-btn-sm" data-action="del-groupe" data-gid="' + _escAttr(g.id) + '" title="Supprimer">🗑️</button>' +
                 '</div>' +
                 '<div class="kta-secours-groupe-body">' +
@@ -5031,6 +5037,17 @@
           const level = (v === "" || v == null) ? null : parseInt(v, 10);
           updateGroupe(s.id, sel.getAttribute("data-gid"), { level: level });
           _switchView("edit");      // re-render pour update du chip
+        });
+      });
+      // 🆕 v1.26.0 Phase 4 — Partage briefing via QR
+      corps.querySelectorAll('[data-action="share-qr"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const gid = btn.getAttribute("data-gid");
+          if (!window.MyKTAMapSecoursQrShare) {
+            if (window.OOMGuard) window.OOMGuard.showToast("⚠️ Module QR Share indispo", "error");
+            return;
+          }
+          window.MyKTAMapSecoursQrShare.ouvrirPartageQrBriefing(s.id, gid);
         });
       });
       // Delete groupe
