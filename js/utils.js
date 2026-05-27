@@ -213,10 +213,11 @@ window.polygonAreaM2 = polygonAreaM2;
 //   3. Re-dispatch les events "input" pour que les listeners en aval
 //      (aperçu calibrage, validation, etc.) se mettent à jour
 //
-// Usage typique (interface.js / createConf.js / sessionExporter.js) :
-//   const latEl = document.getElementById("kmz_A_lat");
-//   const lngEl = document.getElementById("kmz_A_lng");
-//   window.attacherGpsPasteSplit(latEl, lngEl);
+// ⚠️ hotfix21 : ce helper reste exporté pour compat tierce (modules externes
+// éventuels) mais N'EST PLUS UTILISÉ par Settings / KMZ Export / KMZ Settings,
+// qui sont passés sur un input combiné unique (cf. attacherGpsValidationCombo
+// ci-dessous). À supprimer dans une release de nettoyage future si confirmé
+// qu'aucun consommateur ne l'utilise.
 //
 // Le helper est idempotent (peut être appelé plusieurs fois sur les mêmes
 // inputs sans dupliquer les listeners — on tag les inputs via dataset).
@@ -289,6 +290,105 @@ function parseGpsCoords(str) {
   return { lat: lat, lng: lng };
 }
 window.parseGpsCoords = parseGpsCoords;
+
+// =========================
+// 🆕 hotfix21 — formatGpsCoords : helper d'affichage pour les inputs combinés
+// =========================
+// Inverse de parseGpsCoords. Prend des lat/lng numériques (ou null/undefined)
+// et retourne la chaîne "lat, lng" prête à être affichée dans un input.
+// Retourne "" si l'un des deux n'est pas un nombre fini → permet le pré-fill
+// silencieux d'anciennes confs partielles sans afficher "NaN, NaN".
+//
+// Exemples :
+//   formatGpsCoords(48.680831, 2.158843)  → "48.680831, 2.158843"
+//   formatGpsCoords(48, 2)                → "48, 2"
+//   formatGpsCoords(null, 2.15)           → ""
+//   formatGpsCoords("48.6", "2.1")        → ""  (Number.isFinite refuse les strings)
+function formatGpsCoords(lat, lng) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  return lat + ", " + lng;
+}
+window.formatGpsCoords = formatGpsCoords;
+
+// =========================
+// 🆕 hotfix21 — attacherGpsValidationCombo : validation live d'un input combiné
+// =========================
+// Pour les inputs unifiés "lat, lng" (Settings plan, KMZ Export, KMZ paramétrage).
+// Attache des listeners qui valident en temps réel le format saisi :
+//   - Vide → état neutre (le caller décidera si c'est OK ou bloquant)
+//   - Format valide → retire .kta-gps-invalid + clear errorEl
+//   - Format invalide → ajoute .kta-gps-invalid + affiche message dans errorEl
+//
+// Le helper est idempotent (tag via dataset.gpsComboAttached) et retourne
+// un objet { validate(), parse() } pour usage au submit :
+//   - validate() : applique la classe d'erreur + message si invalide,
+//                  retourne true/false (true si vide OU valide).
+//   - parse()    : retourne {lat, lng} si valide, null sinon (sans toucher
+//                  l'UI — pour les lectures silencieuses).
+//
+// Usage :
+//   const v = attacherGpsValidationCombo(
+//     document.getElementById("pl_geo_A_coords"),
+//     { errorEl: document.getElementById("pl_geo_A_err") }
+//   );
+//   // ... au submit :
+//   if (!v.validate()) { /* abort */ }
+//   const coords = v.parse();
+function attacherGpsValidationCombo(input, opts) {
+  if (!input) return { validate: function() { return false; }, parse: function() { return null; } };
+  opts = opts || {};
+  const errorEl = opts.errorEl || null;
+
+  function _setInvalid(msg) {
+    input.classList.add("kta-gps-invalid");
+    if (errorEl) {
+      errorEl.textContent = msg || "Format attendu : 48.6808, 2.1588";
+      errorEl.style.display = "";
+    }
+  }
+  function _setValid() {
+    input.classList.remove("kta-gps-invalid");
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.style.display = "none";
+    }
+  }
+  function _check(showError) {
+    const val = String(input.value || "").trim();
+    if (val === "") {
+      _setValid();
+      return { ok: true, empty: true, lat: null, lng: null };
+    }
+    const parsed = parseGpsCoords(val);
+    if (!parsed) {
+      if (showError) _setInvalid();
+      return { ok: false, empty: false, lat: null, lng: null };
+    }
+    _setValid();
+    return { ok: true, empty: false, lat: parsed.lat, lng: parsed.lng };
+  }
+
+  if (input.dataset.gpsComboAttached !== "1") {
+    input.dataset.gpsComboAttached = "1";
+    // Validation à la saisie : on n'affiche l'erreur qu'au blur ou submit
+    // pour ne pas harceler l'user pendant qu'il tape.
+    input.addEventListener("input", function() { _check(false); });
+    input.addEventListener("blur",  function() { _check(true); });
+  }
+
+  return {
+    validate: function() {
+      const r = _check(true);
+      return r.ok;
+    },
+    parse: function() {
+      const r = _check(false);
+      if (!r.ok || r.empty) return null;
+      return { lat: r.lat, lng: r.lng };
+    }
+  };
+}
+window.attacherGpsValidationCombo = attacherGpsValidationCombo;
 
 // =========================
 // 📝 NOTE POPUP — helper commun (zones / roads / structures, v1.16.0 step 1)

@@ -32,8 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.25.3-hotfix20";
-
+const CACHE_NAME = "myktamap-cache-v1.25.4";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -317,6 +316,51 @@ self.addEventListener("activate", (event) => {
   );
 
   self.clients.claim();
+});
+
+// =========================
+// MESSAGE (hotfix21)
+// =========================
+// Handler de messages client → SW. Permet au client de :
+//   1. Récupérer le CACHE_NAME courant (via MessageChannel) — utilisé par
+//      mettreAJourCodeSeul() pour ne PAS purger le cache qu'on vient juste
+//      de remplir au cours de reg.update(). Avant hotfix21, la soft update
+//      téléchargeait ~100 assets via install puis les supprimait juste
+//      après, forçant un re-download au reload = double latence inutile.
+//   2. Déclencher skipWaiting explicitement si une nouvelle version attend.
+//      Notre install fait déjà self.skipWaiting() mais on garde le handler
+//      pour future flexibilité (rollout staged, etc.).
+//
+// Pattern MessageChannel : le client crée un channel, envoie port2 au SW,
+// le SW répond via event.ports[0] (= port2). Garantit que la réponse
+// arrive au bon client même si plusieurs onglets ouverts.
+self.addEventListener("message", (event) => {
+  // 🆕 v1.25.4 audit sécu point C — Defense-in-depth : reject les messages
+  // d'une origine différente. Standard SW garantit déjà l'isolation par
+  // origine (un SW ne reçoit que les postMessage de clients dans son scope),
+  // mais on ajoute le check explicite par paranoia/lecture audit. Coût zéro,
+  // protège contre une éventuelle régression du browser ou un bug futur où
+  // un mécanisme indirect (BroadcastChannel mal scopé, etc.) ferait passer
+  // un message cross-origin.
+  if (event.origin && event.origin !== self.origin) {
+    console.warn("[SW] message reject : origine étrangère " + event.origin);
+    return;
+  }
+
+  const data = event.data || {};
+  if (data.type === "GET_CACHE_NAME") {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ type: "CACHE_NAME", name: CACHE_NAME });
+    }
+    return;
+  }
+  if (data.type === "SKIP_WAITING") {
+    // No-op pratique aujourd'hui car install fait déjà skipWaiting(),
+    // mais permet un déclenchement explicite si jamais on retirait
+    // skipWaiting() de install (rollout progressif futur).
+    self.skipWaiting();
+    return;
+  }
 });
 
 // =========================

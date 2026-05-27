@@ -2329,6 +2329,16 @@
     const pA     = (saved && saved.pointA) || { x: "", y: "", lat: "", lng: "" };
     const pB     = (saved && saved.pointB) || { x: "", y: "", lat: "", lng: "" };
 
+    // 🆕 hotfix21 — Recompose "lat, lng" pour input combiné. Rétrocompat :
+    // une ancienne calibration sauvée avec lat/lng séparés → on les concatène
+    // pour affichage, mais le stockage interne (KmzExport.setCalibration)
+    // reste FLAT {x, y, lat, lng}.
+    const _fmtCoords = (typeof window.formatGpsCoords === "function")
+                        ? window.formatGpsCoords
+                        : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
+    const pAcoords = _fmtCoords(pA.lat, pA.lng);
+    const pBcoords = _fmtCoords(pB.lat, pB.lng);
+
     return '' +
       // ===== Calibrage Point A =====
       '<div class="kta-kmz-section">' +
@@ -2338,11 +2348,10 @@
           '<input type="number" id="kmz_A_x" value="' + pA.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">Plan y :</label>' +
           '<input type="number" id="kmz_A_y" value="' + pA.y + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS lat :</label>' +
-          '<input type="number" id="kmz_A_lat" value="' + pA.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8580">' +
-          '<label class="kta-kmz-lbl">GPS lng :</label>' +
-          '<input type="number" id="kmz_A_lng" value="' + pA.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.2945">' +
+          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<input type="text" id="kmz_A_coords" value="' + pAcoords + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">' +
         '</div>' +
+        '<div class="kta-gps-coords-error" id="kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_search" type="button">🔍 Chercher un point</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_A_click" type="button">📍 Cliquer carte</button>' +
@@ -2358,11 +2367,10 @@
           '<input type="number" id="kmz_B_x" value="' + pB.x + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">Plan y :</label>' +
           '<input type="number" id="kmz_B_y" value="' + pB.y + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS lat :</label>' +
-          '<input type="number" id="kmz_B_lat" value="' + pB.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8520">' +
-          '<label class="kta-kmz-lbl">GPS lng :</label>' +
-          '<input type="number" id="kmz_B_lng" value="' + pB.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.3050">' +
+          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          '<input type="text" id="kmz_B_coords" value="' + pBcoords + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">' +
         '</div>' +
+        '<div class="kta-gps-coords-error" id="kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_search" type="button">🔍 Chercher un point</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="kmz_B_click" type="button">📍 Cliquer carte</button>' +
@@ -2590,24 +2598,26 @@
   // ---------- BIND HANDLERS ----------
   function _bindKmzHandlers() {
     // Validation + aperçu coins à chaque changement de champ
-    ["x", "y", "lat", "lng"].forEach(function(field) {
+    // 🆕 hotfix21 — lat/lng fusionnés dans "coords" → on listen aussi sur
+    // l'input combiné pour rafraîchir l'aperçu en live.
+    ["x", "y", "coords"].forEach(function(field) {
       ["A", "B"].forEach(function(letter) {
         const el = document.getElementById("kmz_" + letter + "_" + field);
         if (el) el.addEventListener("input", _kmzRafraichirApercu);
       });
     });
 
-    // 🆕 hotfix18 — UX copier-coller Google Maps : permettre à l'user de
-    // coller "48.680831, 2.158843" dans le champ lat (ou lng) → auto-split.
-    // Le helper idempotent ne dupliquera pas les listeners si déjà attachés.
-    if (typeof window.attacherGpsPasteSplit === "function") {
-      window.attacherGpsPasteSplit(
-        document.getElementById("kmz_A_lat"),
-        document.getElementById("kmz_A_lng")
+    // 🆕 hotfix21 — Validation live des inputs GPS combinés (border rouge +
+    // message inline si format invalide). Idempotent : pas de duplication de
+    // listeners si déjà attachés.
+    if (typeof window.attacherGpsValidationCombo === "function") {
+      window.attacherGpsValidationCombo(
+        document.getElementById("kmz_A_coords"),
+        { errorEl: document.getElementById("kmz_A_err") }
       );
-      window.attacherGpsPasteSplit(
-        document.getElementById("kmz_B_lat"),
-        document.getElementById("kmz_B_lng")
+      window.attacherGpsValidationCombo(
+        document.getElementById("kmz_B_coords"),
+        { errorEl: document.getElementById("kmz_B_err") }
       );
     }
 
@@ -2669,14 +2679,29 @@
       const n = parseFloat(v.value);
       return Number.isFinite(n) ? n : null;
     };
+    // 🆕 hotfix21 — Lecture lat/lng depuis input combiné "lat, lng".
+    // Si format invalide, retourne {lat:null, lng:null} (l'aperçu et la
+    // validation au submit s'occupent du feedback utilisateur).
+    const getCoords = function(id) {
+      const el = document.getElementById(id);
+      if (!el) return { lat: null, lng: null };
+      const v = String(el.value || "").trim();
+      if (v === "") return { lat: null, lng: null };
+      const parsed = (typeof window.parseGpsCoords === "function")
+                      ? window.parseGpsCoords(v) : null;
+      if (!parsed) return { lat: null, lng: null };
+      return { lat: parsed.lat, lng: parsed.lng };
+    };
+    const cA = getCoords("kmz_A_coords");
+    const cB = getCoords("kmz_B_coords");
     return {
       pointA: {
         x:   get("kmz_A_x"),   y:   get("kmz_A_y"),
-        lat: get("kmz_A_lat"), lng: get("kmz_A_lng")
+        lat: cA.lat,           lng: cA.lng
       },
       pointB: {
         x:   get("kmz_B_x"),   y:   get("kmz_B_y"),
-        lat: get("kmz_B_lat"), lng: get("kmz_B_lng")
+        lat: cB.lat,           lng: cB.lng
       }
     };
   }

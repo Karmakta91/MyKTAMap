@@ -1029,7 +1029,7 @@ Severity 0-3 utilisée pour tri/escalade dans la vue Opérateur (card prend la c
 #### Limitations (pour anticiper questions user)
 
 - **Single-device pour l'instant** : chaque rôle tient son propre suivi en local. La consolidation cross-device (= opérateur surface importe les rapports des équipes au retour pour fusionner) viendra en v1.26.0.
-- **QR code share** : pas encore livré (v1.27.0+). Pour le terrain réel sans réseau, le partage entre devices passe par le rapport `.mkmsec.report.json` (export sur device émetteur → import sur device récepteur par mail/clé USB/AirDrop au retour surface).
+- **QR code share — ABANDONNÉ** (v1.25.3-hotfix17, Phase 4 rollback) : la voie QR Code testée en hotfix8→16 a été abandonnée. Le scan post-compression WhatsApp / Telegram s'avérait trop fragile sur les payloads denses (briefing 2-3 KB en QR v25+, MIN_CELL_PX 8 demandé par jsQR). Le partage entre devices passe par le rapport `.mkmsec.report.json` (export sur device émetteur → import sur device récepteur par mail/clé USB/AirDrop au retour surface).
 - **Pas de transmission automatique vers les secours externes** : c'est un outil de coordination INTERNE à ton équipe. Pour appeler les pompiers/GRIMP, tu utilises ton téléphone normal.
 - **Photos compressées localement** : max 1920px côté long + JPEG q85 → ~200-400 KB par photo (au lieu de 3-5 MB raw smartphone). Pas de fallback "qualité originale" — choix volontaire pour limiter l'IDB.
 - **Plan switch préserve l'execution active** : tu peux switcher entre plans avec un Mode Secours en cours, l'execution reste intact dans le scénario du plan source (cohérent persistance per-plan).
@@ -1084,6 +1084,60 @@ Severity 0-3 utilisée pour tri/escalade dans la vue Opérateur (card prend la c
 **Limitations connues** :
 - Le filtre "Calque" et "Tag" ne s'applique QUE aux points (les tracés/zones/structures n'ont pas de structure équivalente).
 - API publique `SearchPoints.getAllPoints()` et `findByQuery()` continuent de retourner du format point-only (pour préserver Pathfinder + Itinéraire). Le format unifié 4-cat est strictement interne au module.
+
+---
+
+### L. Recherche par coordonnées GPS (depuis v1.25.3-hotfix18)
+
+> Mots-clés : "rechercher par GPS", "coller des coordonnées", "format Google Maps", "lat lng", "48.6 2.1", "créer un point GPS", "où est cette coordonnée", "navigation Maps vers plan".
+
+**Format accepté** : `48.680831, 2.158843` (= format natif Google Maps quand on clique droit "copier les coordonnées"). Plages valides : `[-90, 90] × [-180, 180]`. Le code refuse les formats DMS (`48°40'51"N`), UTM, MGRS (cf §70.7 CLAUDE.md — décision KARMA pour MVP).
+
+**Conditions d'utilisation** :
+- Le **plan doit être géoréférencé** (calibrage 2 points GPS configuré dans ⚙️ Paramètres → Géoréférencement ou via Settings KMZ ou à la création du plan)
+- L'app détecte le format dans la barre Ctrl+K via regex stricte + validation plage
+
+**4 cas gérés** (cards UI distinctes) :
+1. **Plan non calibré** → card orange "⚠️ Plan non géoréférencé" avec lien "⚙️ Calibrer"
+2. **Format invalide** (lat hors plage, etc.) → recherche texte standard (parseGpsCoords renvoie null)
+3. **Coordonnées hors plan** (en dehors du rectangle calibré) → card rouge "🚫 Hors plan" avec détails px
+4. **POI dans 50 px** → card verte "🎯 Aller au point" avec nom POI + distance
+5. **Aucun POI proche** → card bleue "➕ Créer un point ici" → ouvre formulaire de saisie pré-rempli
+
+### M. Input GPS combiné (depuis v1.25.3-hotfix21)
+
+> Mots-clés : "champ GPS combiné", "coller coords GPS dans Settings", "format lat,lng partout", "input unique géoréférencement".
+
+**Avant hotfix21** : 2 champs séparés `GPS lat` + `GPS lng` (type number) dans 3 modales (Settings création/modif plan, Modale KMZ Export, Settings KMZ paramétrage). User devait coller à 2 endroits différents.
+
+**Depuis hotfix21** : 1 seul champ `GPS (lat, lng)` (type text) qui accepte le format Google Maps directement. Validation live (border rouge + message si format invalide au blur). Stockage interne **inchangé** : toujours FLAT `pointA: {x, y, lat, lng}`.
+
+API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) → string` + `window.attacherGpsValidationCombo(input, { errorEl }) → { validate(), parse() }`. Cf §70 CLAUDE.md.
+
+### N. Kill switch d'urgence + soft update optimisé (v1.25.3-hotfix19/20/21)
+
+> Mots-clés : "PWA bloquée", "iOS coincée", "killsw", "reset SW", "purge cache app", "mise à jour douce lente".
+
+**Outils ajoutés pour récupération app coincée après MAJ douce** :
+- **`?killsw=1`** (hotfix19) : query param URL qui déclenche une IIFE inline dans `index.html` AVANT tout autre script — désinscrit SW + purge tous les caches `caches.delete()` + alert succès + reload. Préserve localStorage / IDB / sessionStorage / cookies.
+- **`/killsw.html`** (hotfix20) : page standalone à la racine, CSS+JS 100 % inline, zéro dépendance. Le SW a un bypass `network-only + no-store` pour `/killsw.html` (cf sw.js fetch handler) → toujours servie fraîche depuis le réseau. 3 étapes UI (SW unregister, caches delete, ready to reload).
+- **Cause root identifiée par KARMA (mai 2026)** : un long marathon de debug iOS PWA bloqué après MAJ douce a finalement été tracé à un **VPN actif aux US** qui faisait servir le contenu depuis un edge CDN GitHub Pages pourri (mauvais MIME / asset tronqué). Premier réflexe à recommander avant toute investigation SW/iOS : **désactiver VPN + changer de réseau (4G ↔ Wi-Fi)** pour basculer d'edge CDN. Le kill switch ne sert qu'en backup si le changement réseau ne suffit pas.
+
+**Mise à jour douce optimisée** (hotfix21) : `mettreAJourCodeSeul()` réécrit dans `js/interface.js`. Au lieu de `await reg.update()` qui bloquait 30s-2min pendant l'install du nouveau SW, on lance update() en fire-and-forget + on demande le `CACHE_NAME` courant au SW via `MessageChannel` + on purge SEULEMENT les anciens caches (préserve le cache courant pré-rempli). Au reload, le SW retrouve ses assets en cache → pas de re-download de ~100 fichiers. Gain : 45s-3min → 3-10s typique. Cf §71 CLAUDE.md pour le pattern complet.
+
+### O. Versionning courant — v1.25.3 + hotfixes
+
+| Hotfix | Sujet |
+|---|---|
+| 1-7 | Hotfixes Phase 3 (Mode Secours) — timer / bandeau / overlay / etc. |
+| 8-16 | Phase 4 QR Share (testé, fragile au scan post-compression) |
+| **17** | **⛔ ROLLBACK QR complet** — conserve mini-carte PDF C5 + flag _liveEquipeFreshSession |
+| **18** | **🌐 Recherche GPS Ctrl+K** (format `48.6, 2.1`) + helper paste-split (déprécié hotfix21) |
+| **19** | **🆘 Kill switch URL `?killsw=1`** (IIFE inline index.html) |
+| **20** | **🆘 Page `killsw.html`** standalone + bypass SW fetch |
+| **21** | **🌐 Input GPS combiné** (3 modales) + **🔄 Soft update optimisé** (postMessage SW + fire-and-forget reg.update) |
+
+KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 
 ---
 

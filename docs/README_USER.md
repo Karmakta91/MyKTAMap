@@ -703,6 +703,13 @@ Le bouton **🔍** dans la barre latérale **OU** le raccourci clavier **Ctrl+K*
 - Le **type** en français (`Principal`, `Eau`, `Pilier 1ère masse`...)
 - Le **niveau** (en mode multi-niveau)
 
+**🌐 Coordonnées GPS** *(depuis hotfix18 — uniquement si le plan est géoréférencé)* :
+- Colle directement un couple de coordonnées au **format Google Maps** : `48.680831, 2.158843`
+- L'app convertit en position sur le plan via le calibrage GPS du plan
+- Si un **POI existe dans 50 px autour** → carte verte "🎯 Aller au point" avec distance affichée
+- Sinon → carte bleue "➕ Créer un point ici" → ouvre le formulaire de saisie pré-rempli sur cette position (= 3 clics au total depuis Maps : Ctrl+K · Coller · Créer)
+- Hors plan ou plan non calibré → message d'erreur explicite (orange / rouge)
+
 La recherche est **insensible aux accents et à la casse** — taper "aeration" trouvera aussi "Aération".
 
 ### ⚙️ Comment ça marche
@@ -1198,7 +1205,8 @@ Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l
 #### Roadmap
 
 - ✅ **Phase 2 (v1.23.0)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 2 — Intégrations cross-app ».
-- ✅ **Phase 3 (v1.24.0+)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 3 — Exploitation terrain ». Le statut temps réel + rapports au fil des étapes sont livrés. Le QR code share unidirectionnel reste planifié pour v1.27.0+.
+- ✅ **Phase 3 (v1.24.0+)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 3 — Exploitation terrain ». Le statut temps réel + rapports au fil des étapes sont livrés.
+- ⛔ **Phase 4 QR Share (testée v1.25.3-hotfix8 → hotfix16, rollback hotfix17)** — **abandonnée** après tests terrain : la lecture QR post-compression WhatsApp / Telegram s'avérait trop fragile sur les payloads denses (briefing 2-3 KB en QR v25+). Le partage opérateur ↔ équipes passe par le **rapport `.mkmsec.report.json`** classique (échange fichier device-à-device).
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
@@ -1500,11 +1508,11 @@ Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le `star
 - ✅ **v1.24.1** — Bouton « 👤 Retour Opérateur » après prise de main
 - ✅ **v1.24.2 / v1.25.1** — Fixes CSS (textarea / header sticky)
 - ✅ **v1.25.0** — Rapport au fil des étapes (3 formats × 3 scopes)
+- ⛔ **v1.25.3-hotfix8→16** — QR code share testé puis **rollbacked** (scan post-compression WhatsApp trop fragile sur payloads denses). Le partage cross-device reste sur fichier `.mkmsec.report.json` classique.
 - 🛣️ **v1.26.0** — Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device, fusion observations multi-équipes)
-- 🛣️ **v1.27.0+** — QR code share unidirectionnel (PC surface → devices équipes, robustesse réseau souterrain)
-- 🛣️ **v1.28.0+** — Seuils stress visuels (timer rouge après 4h, alertes auto)
+- 🛣️ **v1.27.0+** — Seuils stress visuels (timer rouge après 4h, alertes auto)
 
-> ⚠️ Important : la Phase 3 fonctionne **single-device** pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par le rapport `.mkmsec.report.json` (export sur le device émetteur, import sur le device récepteur — v1.26.0 prévue). Le QR code share viendra dans v1.27.0+ pour le terrain réel sans réseau.
+> ⚠️ Important : la Phase 3 fonctionne **single-device** pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par le rapport `.mkmsec.report.json` (export sur le device émetteur, import sur le device récepteur — v1.26.0 prévue).
 
 ---
 
@@ -2183,9 +2191,11 @@ Cas d'usage typiques :
 Le KMZ a besoin de savoir **où ton plan se trouve sur le globe**. Tu lui donnes 2 couples (point sur ton plan ↔ coordonnées GPS réelles), l'app calcule la transformation rotation+échelle+translation et positionne tout correctement.
 
 Pour chaque point (A et B), 3 méthodes au choix :
-- **🔍 Chercher un point** : tape un nom dans la barre, clique le résultat → les coords plan x/y sont auto-remplies. Tu n'as plus qu'à renseigner les lat/lng GPS correspondantes (que tu connais via Google Maps, GPS de terrain, plaque IGC visible en Street View…).
-- **📍 Cliquer carte** : la modale se réduit, tu cliques sur la carte là où tu connais les coords GPS → x/y plan auto-remplies. Renseigne lat/lng GPS.
-- **Saisie manuelle** des 4 champs directement (x, y, lat, lng).
+- **🔍 Chercher un point** : tape un nom dans la barre, clique le résultat → les coords plan x/y sont auto-remplies. Tu n'as plus qu'à renseigner les coordonnées GPS correspondantes.
+- **📍 Cliquer carte** : la modale se réduit, tu cliques sur la carte là où tu connais les coords GPS → x/y plan auto-remplies. Renseigne les coords GPS.
+- **Saisie manuelle** des 3 champs (Plan x, Plan y, **GPS (lat, lng)**).
+
+> 🌐 **Format GPS depuis hotfix21** : le champ `GPS (lat, lng)` accepte directement le **format Google Maps natif** (`48.680831, 2.158843`). Tu peux copier les coords depuis Google Maps (clic droit → copier les coordonnées) et coller le tout dans le champ — pas besoin de séparer en 2 champs lat / lng. Si le format est invalide, le champ devient rouge avec un message explicite. Le même format est accepté **partout** dans l'app (recherche Ctrl+K · Settings KMZ · création de plan géoréférencé).
 
 > 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
 
@@ -2741,7 +2751,27 @@ Choisissez **⚡ Performance** dans le sélecteur Mode performance avant de char
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
 
 **L'application ne se met pas à jour après une nouvelle version**
-Utilisez **⚙️ → 🗑️ Réinitialiser** avec une connexion Internet pour forcer le rechargement complet.
+Utilisez **⚙️ → 🔄 Forcer la mise à jour** (mise à jour douce, conserve toutes vos données). Si insuffisant : **⚙️ → 🗑️ Réinitialiser** (purge totale, dernière option). Depuis hotfix21, la mise à jour douce est ~10× plus rapide grâce à un pré-téléchargement en arrière-plan.
+
+**📡 App bloquée après une mise à jour douce** *(hotfix19/20/21)*
+Si après une mise à jour l'app reste coincée (loader sans CSS, page blanche, assets mal chargés), la cause la plus fréquente est un **edge CDN GitHub Pages qui sert un contenu corrompu** (mauvais MIME, asset tronqué) pour la zone géographique courante. Premier réflexe avant tout reset : **désactive ton VPN s'il est actif et change de réseau** (4G ↔ Wi-Fi ↔ autre Wi-Fi). Le simple fait de basculer d'IP/edge CDN suffit souvent à débloquer.
+
+**🆘 Reset d'urgence sans toucher aux données**
+Si l'app est totalement coincée même après changement de réseau, deux options préservant tes plans / sessions / photos / prefs :
+
+1. **Kill switch URL** : ouvre dans un **onglet privé** Chrome/Safari (PAS la PWA) :
+   ```
+   https://myktamap.fr/?killsw=1
+   ```
+   → désinscrit le Service Worker + vide tous les caches HTTP/PWA → message succès → reload normal.
+
+2. **Page de reset autonome** : si l'URL ne suffit pas (cache HTML coincé) :
+   ```
+   https://myktamap.fr/killsw.html
+   ```
+   → page standalone 100 % inline (CSS/JS), zéro dépendance, fonctionne même si tout le reste de l'app est cassé. Affiche 3 étapes (SW désinscrit, caches purgés, prêt à recharger) + bouton "🚀 Recharger l'app".
+
+> ⚠️ Ces deux outils **ne suppriment AUCUNE donnée utilisateur** (plans mémorisés, sessions per-plan, photos POI, photos Mode Secours, backups, préférences). Ils ne purgent que le cache des fichiers de l'app (HTML / CSS / JS / icônes). En cas de doute, **📤 Exporter le profil** AVANT pour avoir un backup.
 
 **Problème non résolu**
 Ouvrez **⚙️ → 🐛 Logs**, copiez les journaux et transmettez-les à l'équipe technique.

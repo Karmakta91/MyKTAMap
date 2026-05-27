@@ -512,11 +512,10 @@ function afficherPlanner() {
               <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_x"   type="number" step="any">
               <label class="kta-kmz-lbl">Plan y :</label>
               <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_y"   type="number" step="any">
-              <label class="kta-kmz-lbl">GPS lat :</label>
-              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_lat" type="number" step="any" placeholder="48.8580">
-              <label class="kta-kmz-lbl">GPS lng :</label>
-              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_A_lng" type="number" step="any" placeholder="2.2945">
+              <label class="kta-kmz-lbl">GPS (lat, lng) :</label>
+              <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_A_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">
             </div>
+            <div class="kta-gps-coords-error" id="pl_geo_A_err" style="display:none;"></div>
           </div>
           <div class="kta-kmz-section" style="margin:8px 0;">
             <div class="kta-kmz-section-titre">📍 Point B</div>
@@ -525,11 +524,10 @@ function afficherPlanner() {
               <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_x"   type="number" step="any">
               <label class="kta-kmz-lbl">Plan y :</label>
               <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_y"   type="number" step="any">
-              <label class="kta-kmz-lbl">GPS lat :</label>
-              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_lat" type="number" step="any" placeholder="48.8520">
-              <label class="kta-kmz-lbl">GPS lng :</label>
-              <input class="kta-cfg-input kta-kmz-input" id="pl_geo_B_lng" type="number" step="any" placeholder="2.3050">
+              <label class="kta-kmz-lbl">GPS (lat, lng) :</label>
+              <input class="kta-cfg-input kta-kmz-input kta-gps-coords-input" id="pl_geo_B_coords" type="text" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">
             </div>
+            <div class="kta-gps-coords-error" id="pl_geo_B_err" style="display:none;"></div>
           </div>
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
@@ -546,18 +544,18 @@ function afficherPlanner() {
 
   document.documentElement.appendChild(modal);
 
-  // 🆕 hotfix18 — UX copier-coller Google Maps pour les champs lat/lng
-  // de la section Géoréférencement (mode nouveau OU modifier). Le helper
-  // est idempotent → ré-appelé dans _preRemplirFormulaire pour mode modifier
-  // n'est pas un problème.
-  if (typeof window.attacherGpsPasteSplit === "function") {
-    window.attacherGpsPasteSplit(
-      document.getElementById("pl_geo_A_lat"),
-      document.getElementById("pl_geo_A_lng")
+  // 🆕 hotfix21 — Inputs GPS combinés "lat, lng" (Google Maps natif). Le
+  // helper est idempotent → ré-appelé dans _preRemplirFormulaire pour mode
+  // modifier sans bug. On stocke les retours sur la modale via dataset pour
+  // les récupérer au submit (cf. _readGeo).
+  if (typeof window.attacherGpsValidationCombo === "function") {
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_A_coords"),
+      { errorEl: document.getElementById("pl_geo_A_err") }
     );
-    window.attacherGpsPasteSplit(
-      document.getElementById("pl_geo_B_lat"),
-      document.getElementById("pl_geo_B_lng")
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_B_coords"),
+      { errorEl: document.getElementById("pl_geo_B_err") }
     );
   }
 
@@ -1018,32 +1016,38 @@ function _preRemplirFormulaire(config) {
   if (typeof _appliquerPlannerMode === "function") _appliquerPlannerMode("avance");
 
   // 🌐 v1.14.20 — Géoréférencement GPS : si le plan-config.json importé
-  // contient `plan.georef = { pointA, pointB }`, on pré-remplit les 8
-  // inputs. Sinon les inputs restent vides (le champ est optionnel).
+  // contient `plan.georef = { pointA, pointB }`, on pré-remplit les inputs.
+  // Sinon les inputs restent vides (le champ est optionnel).
+  // 🆕 hotfix21 — Stockage interne reste FLAT {x, y, lat, lng} mais affichage
+  // unifié dans pl_geo_A_coords (lat + lng concaténés). Rétrocompat : si une
+  // ancienne conf n'a que lat/lng → on les recompose pour affichage.
   if (plan.georef && plan.georef.pointA && plan.georef.pointB) {
     const gA = plan.georef.pointA;
     const gB = plan.georef.pointB;
-    sv("pl_geo_A_x",   gA.x   ?? "");
-    sv("pl_geo_A_y",   gA.y   ?? "");
-    sv("pl_geo_A_lat", gA.lat ?? "");
-    sv("pl_geo_A_lng", gA.lng ?? "");
-    sv("pl_geo_B_x",   gB.x   ?? "");
-    sv("pl_geo_B_y",   gB.y   ?? "");
-    sv("pl_geo_B_lat", gB.lat ?? "");
-    sv("pl_geo_B_lng", gB.lng ?? "");
+    sv("pl_geo_A_x", gA.x ?? "");
+    sv("pl_geo_A_y", gA.y ?? "");
+    sv("pl_geo_B_x", gB.x ?? "");
+    sv("pl_geo_B_y", gB.y ?? "");
+    // Recomposition lat/lng → "lat, lng" pour affichage dans input combiné.
+    // formatGpsCoords retourne "" si l'un des deux n'est pas un nombre fini.
+    const fmt = (typeof window.formatGpsCoords === "function")
+                ? window.formatGpsCoords
+                : function(a, b) { return (Number.isFinite(a) && Number.isFinite(b)) ? (a + ", " + b) : ""; };
+    sv("pl_geo_A_coords", fmt(gA.lat, gA.lng));
+    sv("pl_geo_B_coords", fmt(gB.lat, gB.lng));
   }
 
-  // 🆕 hotfix18 — UX copier-coller Google Maps : un user qui colle
-  // "48.680831, 2.158843" dans le champ lat (ou lng) → auto-split en lat/lng.
-  // Helper idempotent (peut être appelé hors mode modifier aussi sans bug).
-  if (typeof window.attacherGpsPasteSplit === "function") {
-    window.attacherGpsPasteSplit(
-      document.getElementById("pl_geo_A_lat"),
-      document.getElementById("pl_geo_A_lng")
+  // 🆕 hotfix21 — Validation live des inputs GPS combinés (idempotent).
+  // Ré-attache le helper après pré-remplissage (au cas où le DOM a été
+  // reconstruit — sécurité, _afficherPlanner l'attache déjà au boot).
+  if (typeof window.attacherGpsValidationCombo === "function") {
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_A_coords"),
+      { errorEl: document.getElementById("pl_geo_A_err") }
     );
-    window.attacherGpsPasteSplit(
-      document.getElementById("pl_geo_B_lat"),
-      document.getElementById("pl_geo_B_lng")
+    window.attacherGpsValidationCombo(
+      document.getElementById("pl_geo_B_coords"),
+      { errorEl: document.getElementById("pl_geo_B_err") }
     );
   }
 
@@ -2690,11 +2694,13 @@ async function _genererZip() {
     // l'éditeur sans rien modifier).
     if (_plannerPlanLegend) planObj.customLegend = _plannerPlanLegend;
 
-    // 🌐 v1.14.20 — Géoréférencement GPS optionnel. Si TOUS les 8 champs
-    // sont remplis ET que le calibrage est valide (transform construisible),
-    // on embarque `plan.georef = { pointA, pointB }`. Sinon : champ totalement
+    // 🌐 v1.14.20 — Géoréférencement GPS optionnel. Si TOUS les champs sont
+    // remplis ET que le calibrage est valide (transform construisible), on
+    // embarque `plan.georef = { pointA, pointB }`. Sinon : champ totalement
     // absent → rétro-compat absolue (les vieilles versions ignorent un champ
     // inconnu sans broncher, cf. pattern multiLevel).
+    // 🆕 hotfix21 — Lat/lng lus depuis l'input combiné via parseGpsCoords.
+    // Si saisi mais format invalide → abort avec message d'erreur explicite.
     function _readGeo(id) {
       const el = document.getElementById(id);
       if (!el) return null;
@@ -2703,10 +2709,32 @@ async function _genererZip() {
       const n = parseFloat(v);
       return Number.isFinite(n) ? n : null;
     }
+    function _readGeoCoords(id, errId, label) {
+      const el = document.getElementById(id);
+      if (!el) return { empty: true, lat: null, lng: null };
+      const v = String(el.value || "").trim();
+      if (v === "") return { empty: true, lat: null, lng: null };
+      const parsed = (typeof window.parseGpsCoords === "function")
+                      ? window.parseGpsCoords(v) : null;
+      if (!parsed) {
+        // Format invalide → marque l'input en erreur + abort.
+        el.classList.add("kta-gps-invalid");
+        const errEl = errId ? document.getElementById(errId) : null;
+        if (errEl) {
+          errEl.textContent = "Format attendu : 48.6808, 2.1588";
+          errEl.style.display = "";
+        }
+        _plannerErreur("Coordonnées GPS " + label + " : format invalide (attendu « lat, lng » entre [-90,90] et [-180,180])");
+        throw new Error("abort");
+      }
+      return { empty: false, lat: parsed.lat, lng: parsed.lng };
+    }
+    const _coordsA = _readGeoCoords("pl_geo_A_coords", "pl_geo_A_err", "Point A");
+    const _coordsB = _readGeoCoords("pl_geo_B_coords", "pl_geo_B_err", "Point B");
     const _geoA = { x: _readGeo("pl_geo_A_x"), y: _readGeo("pl_geo_A_y"),
-                    lat: _readGeo("pl_geo_A_lat"), lng: _readGeo("pl_geo_A_lng") };
+                    lat: _coordsA.lat, lng: _coordsA.lng };
     const _geoB = { x: _readGeo("pl_geo_B_x"), y: _readGeo("pl_geo_B_y"),
-                    lat: _readGeo("pl_geo_B_lat"), lng: _readGeo("pl_geo_B_lng") };
+                    lat: _coordsB.lat, lng: _coordsB.lng };
     const _allGeoFilled =
       _geoA.x != null && _geoA.y != null && _geoA.lat != null && _geoA.lng != null &&
       _geoB.x != null && _geoB.y != null && _geoB.lat != null && _geoB.lng != null;

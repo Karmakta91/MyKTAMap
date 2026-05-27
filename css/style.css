@@ -20311,3 +20311,57 @@ body.kta-theme-light .kta-secours-rapport-checkbox > span,
 html.kta-theme-light .kta-secours-rapport-checkbox > span {
   color: var(--kta-light-text, #2a2620) !important;
 }
+
+/* =================================================================
+   🆕 hotfix21 — Input GPS combiné "lat, lng" (Settings + KMZ Export)
+   =================================================================
+   3 emplacements concernés :
+   - Settings création/modif plan (pl_geo_A_coords / pl_geo_B_coords)
+   - Modale KMZ Export (kmz_A_coords / kmz_B_coords)
+   - Settings KMZ paramétrage (cfg_kmz_A_coords / cfg_kmz_B_coords)
+
+   L'input combiné remplace les 2 champs lat + lng séparés. Il accepte
+   le format Google Maps natif "48.680831, 2.158843" via parseGpsCoords.
+   Border rouge + message inline si format invalide (validation au blur
+   + submit). Le helper attacherGpsValidationCombo gère la classe
+   .kta-gps-invalid en temps réel.
+*/
+.kta-gps-coords-input {
+  /* Hérite déjà de .kta-cfg-input + .kta-kmz-input (width: 100% +
+     box-sizing border-box). On force les chiffres en tabular pour
+     que "48.680831, 2.158843" reste aligné même en saisie. */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+.kta-gps-coords-input.kta-gps-invalid {
+  border-color: #ff8c8c !important;
+  background-color: rgba(255, 140, 140, 0.06) !important;
+  box-shadow: 0 0 0 1px rgba(255, 140, 140, 0.18) !important;
+}
+.kta-gps-coords-input.kta-gps-invalid:focus {
+  outline-color: #ff8c8c !important;
+}
+.kta-gps-coords-error {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ff8c8c;
+  padding: 6px 10px;
+  margin: 6px 0 0;
+  background: rgba(255, 140, 140, 0.06);
+  border-left: 3px solid #ff8c8c;
+  border-radius: 0 4px 4px 0;
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-gps-coords-input.kta-gps-invalid,
+html.kta-theme-light .kta-gps-coords-input.kta-gps-invalid {
+  border-color: #c14545 !important;
+  background-color: rgba(193, 69, 69, 0.08) !important;
+  box-shadow: 0 0 0 1px rgba(193, 69, 69, 0.25) !important;
+}
+body.kta-theme-light .kta-gps-coords-error,
+html.kta-theme-light .kta-gps-coords-error {
+  color: #b03030;
+  background: rgba(176, 48, 48, 0.08);
+  border-left-color: #c14545;
+}

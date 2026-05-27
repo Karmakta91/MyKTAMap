@@ -6252,10 +6252,13 @@ Pipeline mini-carte :
 | 15 | -hotfix15 | Multi-stratégie + diagnostic détaillé (insuffisant) |
 | 16 | -hotfix16 | MIN_CELL_PX 8 côté génération (insuffisant) |
 | **17** | **-hotfix17** | **⛔ ROLLBACK QR complet — conserve C5 mini-carte PDF + hotfix11 étape précédente** |
-| **18** | **-hotfix18** | **🌐 Recherche GPS lat,lng + format Maps cross-app** (cf §70 nouvelle section dédiée) |
+| **18** | **-hotfix18** | **🌐 Recherche GPS lat,lng (Ctrl+K) + format Maps paste-split helper** (cf §70) |
+| **19** | **-hotfix19** | **🆘 Kill switch SW via `?killsw=1` (IIFE inline dans index.html)** — escape route iOS PWA |
+| **20** | **-hotfix20** | **🆘 Page standalone `killsw.html` à la racine** (HTML/CSS/JS 100% inline, zéro dep) + bypass fetch SW |
+| **21** | **-hotfix21** | **🌐 Input GPS combiné** unique (3 modales) + **🔄 Soft update optimisé** (postMessage SW + fire-and-forget reg.update) (cf §70 hotfix21 + §71) |
 
-À venir (sujet "Import/Export Live" mis en pause par KARMA pour la feature GPS) :
-| 19 | -hotfix19 | Format `.mkmsec.observations.json` + bouton "📥 Importer" en haut vue Live + bouton "💾 Exporter mes obs" footer |
+**Pause indéfinie — sujet "Import/Export Live"** (alternative au QR rollbacked) :
+| ~~19~~ ~~hotfixN~~ | Format `.mkmsec.observations.json` + bouton "📥 Importer" en haut vue Live + bouton "💾 Exporter mes obs" footer — **non démarré**, KARMA a priorisé d'autres sujets (GPS combo, kill switch, soft update) |
 
 #### 69.4 À NE PAS faire
 
@@ -6465,12 +6468,17 @@ Pipeline mini-carte :
 
 ---
 
-### 70. Recherche par coordonnées GPS + format Maps cross-app (depuis hotfix18 — 2026-05-27)
+### 70. Recherche par coordonnées GPS + input combiné Maps cross-app (depuis hotfix18, refactor input combiné hotfix21 — 2026-05-27)
 
-Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte désormais des **coordonnées GPS au format Google Maps** (`48.680831, 2.158843`) et localise la position sur le plan.
+Sur les plans **géoréférencés** (= calibrage GPS configuré via ⚙️ Paramètres → 🌐 Géoréférencement), la barre de recherche unifiée Ctrl+K (§46) accepte des **coordonnées GPS au format Google Maps** (`48.680831, 2.158843`) et localise la position sur le plan.
 
-KARMA quote :
+En complément (hotfix21), les **3 modales de saisie de géoréférencement** ont leur ancien duo `lat / lng` (2 champs séparés) fusionné en un seul input combiné `GPS (lat, lng)`. Le format collable est identique à celui de Ctrl+K, donc copier-coller depuis Google Maps marche partout uniformément.
+
+KARMA quote (hotfix18) :
 > « si plan georef (si et uniquement si) en mode recherche, dans la meme mais on rajoute une petite description on peut entrée des coordonnée au format 48.680831, 2.158843 (dailleur adapte comme ca le georef coté parametre et KMZ/GPX export plus simple pour un user un copier coller depuis maps) si ces coordonnée ne corresponde a aucun point (marge d'errreur d'admetons 50px) ca nous, localise a l'endroit et ouvre un forumaire de creation de point »
+
+KARMA quote (hotfix21) :
+> « modifie l'interface parametre et kmz pour saisir les coordonée d'un coup comme on a fait pour recherche »
 
 #### 70.1 Architecture (Sujet A + Sujet B)
 
@@ -6484,11 +6492,17 @@ KARMA quote :
      - POI trouvé → card verte avec bouton "🎯 Aller au point"
      - Sans POI → card bleue avec bouton "➕ Créer un point ici" → appelle `window.afficherFormulaire(x, y)` (= équivalent mode édition POI)
 
-**Sujet B — Format `lat, lng` collable** :
-- `js/utils.js > attacherGpsPasteSplit(latInput, lngInput)` exposé global, idempotent
-- Quand l'user colle `48.680831, 2.158843` dans le champ **lat OU lng**, le helper auto-split
-- Re-dispatch event "input" pour live preview / validation en aval
-- Tag `dataset.gpsPasteAttached="1"` pour éviter duplication listeners
+**Sujet B — Input combiné `lat, lng` (hotfix21)** :
+- 1 seul input texte (au lieu de 2 inputs number lat + lng) dans les 3 modales de calibrage
+- Accepte le format Google Maps natif `48.680831, 2.158843`
+- Validation live (au blur) : border rouge + message inline `.kta-gps-coords-error` si format invalide
+- Au submit/save : parse via `parseGpsCoords`, abort avec message d'erreur si invalide
+- Pré-remplissage : `formatGpsCoords(lat, lng)` recompose `"lat, lng"` depuis les valeurs FLAT stockées (rétrocompat absolue — le format de stockage `pointA: {x, y, lat, lng}` n'a PAS changé)
+
+**Sujet B' — Ancien helper paste-split (hotfix18, déprécié hotfix21)** :
+- `attacherGpsPasteSplit(latInput, lngInput)` existait pour les anciens duos 2-inputs
+- N'est plus utilisé nulle part dans le code, conservé dans `utils.js` pour compat tierce
+- Marqué deprecated dans le commentaire d'en-tête, à retirer dans un futur cleanup
 
 #### 70.2 API publique nouvelle
 
@@ -6500,19 +6514,37 @@ window.parseGpsCoords(str)
   // "200, 2.15"           → null (lat hors plage)
   // "abc, 2.15"           → null
 
-window.attacherGpsPasteSplit(latInput, lngInput)
+window.formatGpsCoords(lat, lng)               // 🆕 hotfix21
+  → string
+  // Inverse de parseGpsCoords. Retourne "lat, lng" formaté
+  // ou "" si l'un des deux n'est pas un nombre fini.
+  // formatGpsCoords(48.6, 2.1)   → "48.6, 2.1"
+  // formatGpsCoords(null, 2.1)   → ""
+
+window.attacherGpsValidationCombo(input, opts) // 🆕 hotfix21
+  → { validate(), parse() }
+  // opts = { errorEl: HTMLElement | null }
+  // Attache validation live (input + blur) + retourne 2 méthodes :
+  //   - validate() → true si vide ou valide ; sinon affiche erreur + return false
+  //   - parse()    → {lat, lng} si valide non vide ; null sinon (sans toucher UI)
+  // Idempotent (re-call no-op si déjà attaché via dataset.gpsComboAttached)
+
+window.attacherGpsPasteSplit(latInput, lngInput)  // ⚠️ hotfix18, déprécié hotfix21
   → void
-  // Attache les listeners "input" + "paste" aux 2 inputs
-  // Idempotent (re-call no-op si déjà attaché)
+  // Conservé pour compat tierce. NE PLUS UTILISER pour les nouveaux sites.
+  // Préférer attacherGpsValidationCombo + 1 input combiné.
 ```
 
-#### 70.3 Sites équipés (Sujet B)
+#### 70.3 Sites équipés (Sujet B — hotfix21)
 
-| Module | Inputs | Site d'appel |
-|---|---|---|
-| `js/createConf.js` | `pl_geo_A_lat/lng` + `pl_geo_B_lat/lng` | À l'ouverture de `afficherPlanner` (mode nouveau, inputs vides) + dans `_preRemplirFormulaire` (mode modifier, après restore valeurs) |
-| `js/sessionExporter.js` | `kmz_A_lat/lng` + `kmz_B_lat/lng` | Dans `_bindKmzHandlers` après les listeners "input" existants |
+| Module | Inputs (combiné) | Site d'appel | Validation au submit |
+|---|---|---|---|
+| `js/createConf.js` | `pl_geo_A_coords` + `pl_geo_B_coords` | `afficherPlanner` (mode nouveau) + `_preRemplirFormulaire` (mode modifier après restore) | `_readGeoCoords(id, errId, label)` parse + throw `"abort"` si format invalide |
+| `js/sessionExporter.js` | `kmz_A_coords` + `kmz_B_coords` | `_bindKmzHandlers` + listeners "input" sur `_kmzRafraichirApercu` | `_kmzLireCalib` parse (silent fallback `{lat:null, lng:null}`) — l'aperçu et le buildTransform en aval détectent l'invalidité |
+| `js/interface.js` | `cfg_kmz_A_coords` + `cfg_kmz_B_coords` (Settings KMZ paramétrage) | `_bindCfgGeorefHandlers` au début | `_readCoordsCombo(id, errId)` parse + abort silencieux si invalide (statut rouge inline) |
 | `js/gpxIO.js` | — | **Skip** — GPX réutilise calib KMZ existante, pas de champs saisie propres |
+
+Stockage interne **inchangé** : toujours FLAT `pointA: {x, y, lat, lng}` (cf. §32.5 KARMA "stored FLAT"). Seul l'affichage UI a changé.
 
 #### 70.4 UI Cards GPS dans modale recherche
 
@@ -6573,15 +6605,94 @@ Aucune migration nécessaire. Aucune modif du format `plan-config.json > plan.ge
 2. Convertir tous les formats en `{lat, lng}` décimal interne
 3. Le reste du pipeline (cards GPS, search, etc.) reste inchangé
 
-**Si on veut ajouter d'autres sites où coller le format Maps** (genre KML import de fond, GPX import, autre) :
-1. Identifier les 2 inputs lat/lng concernés
-2. Appeler `window.attacherGpsPasteSplit(latEl, lngEl)` au moment où ils sont créés dans le DOM
-3. Le helper est idempotent → safe même si appelé plusieurs fois
+**Si on veut ajouter d'autres sites où coller le format Maps** (genre KML import de fond, GPX import, autre) — pattern hotfix21 :
+1. Mettre **1 input texte combiné** dans le HTML avec `class="kta-cfg-input kta-kmz-input kta-gps-coords-input"` + `inputmode="decimal"` + `placeholder="48.8580, 2.2945"`
+2. Mettre un `<div class="kta-gps-coords-error" id="…_err" style="display:none;"></div>` juste en dessous
+3. Appeler `window.attacherGpsValidationCombo(input, { errorEl })` après création DOM (idempotent)
+4. Au submit : appeler `combo.validate()` puis `combo.parse()` pour récupérer `{lat, lng}`
+5. Au pré-remplissage : `input.value = window.formatGpsCoords(savedLat, savedLng)` (renvoie "" si valeurs absentes)
 
 **Si on veut un mode "Naviguer en GPS continu"** (= flèche d'orientation comme Waze) :
 - Pas faisable sans accès au GPS du device (Permissions-Policy + getCurrentPosition)
 - Cohérent avec le contexte cataphile : pas de GPS souterrain de toute façon
 - Ce sujet est **explicitement hors scope** MyKTAMap (cf §40 NetworkAudit + philo offline)
+
+---
+
+### 71. Mise à jour douce — flow optimisé (hotfix21 — 2026-05-27)
+
+KARMA quote :
+> « ca bloque a "Rechargement..." pareil bloque la sur vérification de la version du SW puit ca pase mais long »
+
+#### 71.1 Diagnostic du blocage avant hotfix21
+
+Avant hotfix21, `interface.js > mettreAJourCodeSeul()` bloquait à 2 endroits :
+
+1. **"Vérification de la version du Service Worker…"** : `await reg.update()` lance l'INSTALL du nouveau SW en synchrone — l'install fait `cache.add(asset, { cache: "reload" })` × **~100 assets** avec bypass du cache HTTP → 30s-2min sur réseau lent.
+2. **"Rechargement…"** : après purge totale des caches (étape 3), `location.reload()` force le SW à re-fetch + re-cache TOUS les assets (~100 fichiers séquentiels) → 10-60s supplémentaires.
+
+Le pire : ces deux blocages faisaient le **même travail deux fois** (l'install pré-remplissait le cache, qu'on supprimait juste après, qu'on re-remplissait au reload).
+
+#### 71.2 Fix appliqué hotfix21
+
+**Côté SW (`sw.js`)** : ajout d'un handler `message` (entre ACTIVATE et FETCH) qui répond aux 2 types `GET_CACHE_NAME` (via MessageChannel) et `SKIP_WAITING`.
+
+**Côté client (`interface.js`)** :
+- Nouveau helper `_getCacheNameFromSW()` (timeout 2s, retourne null si SW pas joignable)
+- `mettreAJourCodeSeul()` réécrit avec ces 4 changements :
+  1. Récupère le `CACHE_NAME` courant via postMessage AVANT toute purge
+  2. `reg.update()` devient **fire-and-forget** (pas de await) — l'install se fait en background pendant que la suite tourne
+  3. Purge **filtrée** : on supprime seulement les caches `!== currentCacheName` (= les ANCIENS hotfix), pas le courant ni le tout nouveau qui se crée
+  4. Reload avec setTimeout 200ms (au lieu de 400ms — postMessage est arrivé)
+
+```js
+// sw.js — handler ajouté
+self.addEventListener("message", (event) => {
+  const data = event.data || {};
+  if (data.type === "GET_CACHE_NAME") {
+    if (event.ports && event.ports[0]) {
+      event.ports[0].postMessage({ type: "CACHE_NAME", name: CACHE_NAME });
+    }
+  } else if (data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+```
+
+#### 71.3 Pattern MessageChannel
+
+Pour le `GET_CACHE_NAME`, on utilise un `MessageChannel` plutôt que `serviceWorker.addEventListener("message")` global pour garantir que la réponse arrive au bon onglet (cas multi-onglets). Pattern :
+
+```js
+const channel = new MessageChannel();
+channel.port1.onmessage = (e) => { /* ... */ };  // côté client
+navigator.serviceWorker.controller.postMessage(
+  { type: "GET_CACHE_NAME" },
+  [channel.port2]                                 // transfer du port2 au SW
+);
+// SW reçoit event.ports[0] === port2, répond via postMessage
+```
+
+#### 71.4 Garde-fou
+
+Si le SW ne répond pas en 2s (très rare — SW shut down par le navigateur, premier load avant activate, etc.), `_getCacheNameFromSW()` retourne null → la purge devient **totale** (ancien comportement). Pas de régression, juste le retour à la latence d'avant hotfix21.
+
+#### 71.5 Gain attendu
+
+| Étape | Avant | Après hotfix21 |
+|---|---|---|
+| Vérification SW | 30s-2min (await update) | < 100ms (fire-and-forget) |
+| Purge caches | < 1s | < 1s (mais on garde le current) |
+| Rechargement | 10-60s (re-download ~100 assets) | rapide (cache courant préservé, SW reprend ses assets) |
+
+**Total user-perceived** : de l'ordre de **45s-180s → 3-10s** selon le réseau.
+
+#### 71.6 À NE PAS faire
+
+- ❌ Re-ajouter `await reg.update()` quelque part — ça réintroduit le blocage 30s+
+- ❌ Hardcoder `CACHE_NAME` dans `interface.js` — il y a déjà 3 sources de vérité version/cache (cf. §69 KARMA contract), pas 4. Le postMessage est la source canonique pour le client.
+- ❌ Supprimer le fallback `currentCacheName ? filter : all` — si le SW est down, on doit toujours pouvoir faire une mise à jour douce.
+- ❌ Réduire le timeout 2s à 500ms — si le SW est en train de s'installer, il peut mettre 1-2s à répondre. Le timeout protège contre les SW totalement morts, pas contre les SW occupés.
 
 ---
 

@@ -1800,13 +1800,20 @@ function afficherAide() {
             <span class="kta-aide-icone">🛣️</span><span>Tracés (label, type, niveau M-LVL)</span>
             <span class="kta-aide-icone">⬛</span><span>Zones (type, niveau)</span>
             <span class="kta-aide-icone">🏛️</span><span>Structures (piliers, murs, fronts)</span>
+            <span class="kta-aide-icone">🌐</span><span><strong>Coordonnées GPS</strong> (hotfix18) — colle <code>48.6808, 2.1588</code> directement (format Google Maps). Si plan géoréférencé : POI proche dans 50 px → "Aller au point" ; sinon → "Créer un point ici" → ouvre le formulaire pré-rempli sur la position</span>
           </div>
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
-            <strong>Depuis v1.10.3 :</strong> la recherche couvre désormais 4 catégories.
+            <strong>Depuis v1.10.3 :</strong> la recherche couvre désormais 4 catégories + GPS.
             <strong>Raccourci clavier Ctrl+K</strong> (Cmd+K sur Mac) pour ouvrir/fermer instantanément.
             Résultats groupés par catégorie avec compteurs. Au clic : centre + flash visuel
             (cercle pour les points, polyline dashed pour les tracés, polygon transparent pour zones / piliers).
             Filtre par catégorie + calque + tag.
+          </p>
+          <p style="font-size:12px; color:#8cb4ff; margin:6px 0 0; line-height:1.5;">
+            <strong>🌐 Format GPS (hotfix21) :</strong> ce même format <code>lat, lng</code> est accepté dans
+            <strong>⚙️ Paramètres → Géoréférencement</strong>, dans la <strong>modale 📡 Export externe (KMZ/GPX)</strong>
+            et lors de la <strong>création d'un plan géoréférencé</strong> — colle depuis Google Maps, l'app split
+            automatiquement les 2 valeurs.
           </p>
         </div>
 
@@ -2122,7 +2129,7 @@ function afficherAide() {
           <p style="font-size:12px; color:#ff8a5c; margin:8px 0 0; line-height:1.5;">
             <strong>⚠️ Important Phase 3</strong> : single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers,
             passe par le rapport <code>.mkmsec.report.json</code> (export sur device émetteur, import sur device récepteur — re-import natif prévu v1.26.0).
-            Le QR code share unidirectionnel pour terrain sans réseau viendra en v1.27.0+.
+            <span style="color:#a8b3c8;">La voie QR code (Phase 4) a été testée puis abandonnée — scan post-compression WhatsApp trop fragile sur payloads denses.</span>
             ⚠️ Comme tout : <strong>garde une boussole physique et une carte papier</strong>. Le téléphone peut tomber en panne. Le 🚨 est une aide à la coordination, PAS un substitut à la préparation.
           </p>
         </div>
@@ -2274,6 +2281,40 @@ function afficherAide() {
           <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.5;">
             <strong>Icône qui change</strong> : l'icône principale du groupe reflète le mode actif (par exemple
             🟩 sur le bouton Tracés quand un tracé principal est en cours, ou 📍 sur le Tracker pendant le recalage).
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🆘 Dépannage <span style="font-size:10px; color:#8892a4; font-weight:400;">(hotfix19/20/21)</span></div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📡 App bloquée après une mise à jour douce</strong> (loader sans CSS, page coincée, assets mal chargés) :
+            la cause la plus fréquente est un <strong style="color:#f4c542;">edge CDN qui sert un contenu corrompu</strong>
+            (mauvais MIME, asset tronqué, etc.). Premier réflexe :
+            <strong>désactive ton VPN, change de réseau (4G ↔ Wi-Fi)</strong>, et retente. Le CDN GitHub Pages a parfois
+            des edges régionaux pourris — basculer d'IP/zone géo suffit souvent à débloquer.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🆘 Kill switch d'urgence</strong> : si l'app reste coincée même après changement de réseau, ouvre
+            <code>https://&lt;domaine&gt;/?killsw=1</code> dans un onglet privé (Chrome/Safari, PAS la PWA) — ça
+            désinscrit le Service Worker + vide tous les caches HTTP/PWA <strong>sans toucher à tes données</strong>
+            (plans, sessions, photos, prefs préservés). Puis reload normal.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🆘 Reset manuel par page dédiée</strong> : si le param URL ne suffit pas (cache HTML coincé),
+            navigue vers <code>https://&lt;domaine&gt;/killsw.html</code> — page standalone 100 % inline (CSS+JS),
+            zéro dépendance, fonctionne même si tout le reste de l'app est cassé. Trois étapes affichées : SW
+            désinscrit, caches purgés, prêt à recharger.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🔄 Mise à jour douce optimisée (hotfix21)</strong> : depuis hotfix21, le flow
+            <strong>⚙️ Configuration → 🔄 Forcer la mise à jour</strong> a été repensé pour être 10× plus rapide
+            (de ~45s-3min à ~3-10s selon réseau). Le SW pré-télécharge les nouveaux assets en background pendant
+            la purge ; au reload, le cache courant est préservé donc pas de double-download.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            ⚠️ <strong>Ces outils ne suppriment AUCUNE donnée utilisateur</strong> (plans, sessions, photos, prefs, backups).
+            Ils ne purgent que le cache des fichiers de l'app (HTML / CSS / JS / icônes). En cas de doute,
+            <strong>📤 Exporter le profil</strong> AVANT pour avoir un backup complet à portée de main.
           </p>
         </div>
 
@@ -2525,11 +2566,11 @@ function _renderCfgGeorefSection() {
           '<input type="number" id="cfg_kmz_A_x"   value="' + pA.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">Plan y :</label>' +
           '<input type="number" id="cfg_kmz_A_y"   value="' + pA.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS lat :</label>' +
-          '<input type="number" id="cfg_kmz_A_lat" value="' + pA.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8580">' +
-          '<label class="kta-kmz-lbl">GPS lng :</label>' +
-          '<input type="number" id="cfg_kmz_A_lng" value="' + pA.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.2945">' +
+          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
+          '<input type="text" id="cfg_kmz_A_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pA.lat, pA.lng) : (Number.isFinite(pA.lat) && Number.isFinite(pA.lng) ? pA.lat + ", " + pA.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8580, 2.2945">' +
         '</div>' +
+        '<div class="kta-gps-coords-error" id="cfg_kmz_A_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_search" type="button">🔍 Chercher un point</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_A_click" type="button">📍 Cliquer carte</button>' +
@@ -2545,11 +2586,11 @@ function _renderCfgGeorefSection() {
           '<input type="number" id="cfg_kmz_B_x"   value="' + pB.x   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
           '<label class="kta-kmz-lbl">Plan y :</label>' +
           '<input type="number" id="cfg_kmz_B_y"   value="' + pB.y   + '" class="kta-cfg-input kta-kmz-input" step="any">' +
-          '<label class="kta-kmz-lbl">GPS lat :</label>' +
-          '<input type="number" id="cfg_kmz_B_lat" value="' + pB.lat + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="48.8520">' +
-          '<label class="kta-kmz-lbl">GPS lng :</label>' +
-          '<input type="number" id="cfg_kmz_B_lng" value="' + pB.lng + '" class="kta-cfg-input kta-kmz-input" step="any" placeholder="2.3050">' +
+          '<label class="kta-kmz-lbl">GPS (lat, lng) :</label>' +
+          // 🆕 hotfix21 — Input combiné lat/lng (format Google Maps natif).
+          '<input type="text" id="cfg_kmz_B_coords" value="' + ((typeof window.formatGpsCoords === "function") ? window.formatGpsCoords(pB.lat, pB.lng) : (Number.isFinite(pB.lat) && Number.isFinite(pB.lng) ? pB.lat + ", " + pB.lng : "")) + '" class="kta-cfg-input kta-kmz-input kta-gps-coords-input" inputmode="decimal" autocomplete="off" placeholder="48.8520, 2.3050">' +
         '</div>' +
+        '<div class="kta-gps-coords-error" id="cfg_kmz_B_err" style="display:none;"></div>' +
         '<div class="kta-kmz-pt-actions">' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_search" type="button">🔍 Chercher un point</button>' +
           '<button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_kmz_B_click" type="button">📍 Cliquer carte</button>' +
@@ -2592,21 +2633,69 @@ function _bindCfgGeorefHandlers() {
     return Number.isFinite(n) ? n : null;
   }
 
+  // 🆕 hotfix21 — Bind validation live des inputs GPS combinés cfg_kmz_*_coords.
+  // Idempotent : ré-attaches sans risque si déjà bindé (cf. utils.js).
+  if (typeof window.attacherGpsValidationCombo === "function") {
+    window.attacherGpsValidationCombo(
+      document.getElementById("cfg_kmz_A_coords"),
+      { errorEl: document.getElementById("cfg_kmz_A_err") }
+    );
+    window.attacherGpsValidationCombo(
+      document.getElementById("cfg_kmz_B_coords"),
+      { errorEl: document.getElementById("cfg_kmz_B_err") }
+    );
+  }
+
+  // 🆕 hotfix21 — Helper : lit l'input combiné "lat, lng", parse + applique
+  // border rouge + message inline si format invalide. Retourne {lat, lng}
+  // ou null (vide ou invalide). Le caller distingue via 2e param `errKey`.
+  function _readCoordsCombo(id, errId) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    const v = String(el.value || "").trim();
+    if (v === "") return null;
+    const parsed = (typeof window.parseGpsCoords === "function")
+                    ? window.parseGpsCoords(v) : null;
+    if (!parsed) {
+      el.classList.add("kta-gps-invalid");
+      const errEl = errId ? document.getElementById(errId) : null;
+      if (errEl) {
+        errEl.textContent = "Format attendu : 48.6808, 2.1588";
+        errEl.style.display = "";
+      }
+      return { invalid: true };
+    }
+    el.classList.remove("kta-gps-invalid");
+    const errEl = errId ? document.getElementById(errId) : null;
+    if (errEl) { errEl.textContent = ""; errEl.style.display = "none"; }
+    return { lat: parsed.lat, lng: parsed.lng };
+  }
+
   btnSave.addEventListener("click", function() {
     if (!window.KmzExport) {
       _setStatus("Module KmzExport indisponible.", "err");
       return;
     }
+    // 🆕 hotfix21 — Lecture lat/lng via input combiné. Format invalide
+    // → border rouge + message + abort silencieux (la combo bloque le save).
+    const coordsA = _readCoordsCombo("cfg_kmz_A_coords", "cfg_kmz_A_err");
+    const coordsB = _readCoordsCombo("cfg_kmz_B_coords", "cfg_kmz_B_err");
+    if ((coordsA && coordsA.invalid) || (coordsB && coordsB.invalid)) {
+      _setStatus("Coordonnées GPS invalides — corrige les champs en rouge.", "err");
+      return;
+    }
     const c = {
       pointA: { x: _readVal("cfg_kmz_A_x"), y: _readVal("cfg_kmz_A_y"),
-                lat: _readVal("cfg_kmz_A_lat"), lng: _readVal("cfg_kmz_A_lng") },
+                lat: coordsA ? coordsA.lat : null,
+                lng: coordsA ? coordsA.lng : null },
       pointB: { x: _readVal("cfg_kmz_B_x"), y: _readVal("cfg_kmz_B_y"),
-                lat: _readVal("cfg_kmz_B_lat"), lng: _readVal("cfg_kmz_B_lng") }
+                lat: coordsB ? coordsB.lat : null,
+                lng: coordsB ? coordsB.lng : null }
     };
-    // Validation : tous les 8 champs requis
+    // Validation : tous les champs requis (x, y, lat, lng pour A et B)
     if (c.pointA.x == null || c.pointA.y == null || c.pointA.lat == null || c.pointA.lng == null ||
         c.pointB.x == null || c.pointB.y == null || c.pointB.lat == null || c.pointB.lng == null) {
-      _setStatus("Les 8 champs sont obligatoires (4 par point).", "err");
+      _setStatus("Tous les champs sont obligatoires (Plan x/y + GPS pour A et B).", "err");
       return;
     }
     // Validation transform (lève si points colinéaires ou distance nulle)
@@ -2631,9 +2720,18 @@ function _bindCfgGeorefHandlers() {
   });
 
   btnClear.addEventListener("click", function() {
-    ["A_x","A_y","A_lat","A_lng","B_x","B_y","B_lat","B_lng"].forEach(function(k) {
+    // 🆕 hotfix21 — Wipe x/y + coords combinés (au lieu des 4 inputs séparés).
+    ["A_x","A_y","A_coords","B_x","B_y","B_coords"].forEach(function(k) {
       const el = document.getElementById("cfg_kmz_" + k);
-      if (el) el.value = "";
+      if (el) {
+        el.value = "";
+        el.classList.remove("kta-gps-invalid");
+      }
+    });
+    // Cache aussi les éventuels messages d'erreur restants
+    ["cfg_kmz_A_err", "cfg_kmz_B_err"].forEach(function(id) {
+      const e = document.getElementById(id);
+      if (e) { e.textContent = ""; e.style.display = "none"; }
     });
     // Efface aussi la version persistée (préfixe identique à
     // KMZ_CALIB_LS_PREFIX dans js/kmzExport.js).
@@ -3293,6 +3391,42 @@ window._pingInternetUrl = PING_URL;
 // Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
 // sessionStorage, cookies, données utilisateur.
 // =========================
+// 🆕 hotfix21 — Helper : demande au SW courant son CACHE_NAME via MessageChannel.
+// Utilisé par mettreAJourCodeSeul() pour ne PAS supprimer le cache qu'on
+// vient juste de remplir au cours de reg.update() — évite un double-download.
+// Retourne null si pas de SW actif ou timeout (2s). Pattern :
+//   1. Client crée MessageChannel
+//   2. Client envoie port2 au SW via postMessage avec [transferList]
+//   3. SW répond via event.ports[0] (qui est port2 côté SW)
+//   4. Client écoute port1 (linké à port2)
+function _getCacheNameFromSW() {
+  return new Promise(function(resolve) {
+    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+      return resolve(null);
+    }
+    const channel = new MessageChannel();
+    const timeout = setTimeout(function() {
+      console.warn("[Soft update] _getCacheNameFromSW timeout");
+      resolve(null);
+    }, 2000);
+    channel.port1.onmessage = function(event) {
+      clearTimeout(timeout);
+      const data = event.data || {};
+      resolve(data.name || null);
+    };
+    try {
+      navigator.serviceWorker.controller.postMessage(
+        { type: "GET_CACHE_NAME" },
+        [channel.port2]
+      );
+    } catch(e) {
+      clearTimeout(timeout);
+      console.warn("[Soft update] postMessage GET_CACHE_NAME :", e);
+      resolve(null);
+    }
+  });
+}
+
 async function mettreAJourCodeSeul() {
   // Affiche un overlay pendant l'opération pour que l'utilisateur voie
   // qu'il se passe quelque chose. Cette phase peut prendre 1-3s.
@@ -3319,17 +3453,37 @@ async function mettreAJourCodeSeul() {
       return;
     }
 
-    // 2. Force le check + skipWaiting du SW
-    _statusUpdate("Vérification de la version du Service Worker…");
+    // 🆕 hotfix21 — Récupère le CACHE_NAME courant via le SW. Permet ensuite
+    // de NE PAS le supprimer à l'étape 3 (évite double-download au reload).
+    // Si SW pas joignable ou timeout : currentCacheName reste null, on
+    // fallback sur l'ancien comportement (purge totale).
+    const currentCacheName = await _getCacheNameFromSW();
+    if (currentCacheName) {
+      console.log("[Soft update] CACHE_NAME courant :", currentCacheName);
+    }
+
+    // 2. 🆕 hotfix21 — SW update FIRE-AND-FORGET (au lieu de await). Avant,
+    // `await reg.update()` bloquait 30s-2min en téléchargeant ~100 assets
+    // via l'install event SYNCHRONE (cache.add x 100 avec cache:'reload').
+    // Maintenant : on lance update() en background, le téléchargement se
+    // fait pendant que l'user voit "Préparation…" + "Rechargement…", et
+    // au reload le nouveau SW est déjà prêt avec son cache populé.
+    _statusUpdate("Préparation du Service Worker…");
     if (navigator.serviceWorker) {
       try {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg) {
-          try { await reg.update(); } catch(e) { console.warn("[Soft update] reg.update() :", e); }
+          // Fire-and-forget : pas de await, le téléchargement des assets se
+          // fait en background. Si reg.update() trouve un nouveau sw.js, il
+          // déclenche INSTALL en arrière-plan (cache.add x 100). On laisse
+          // tourner, on n'attend pas.
+          reg.update().catch(function(e) {
+            console.warn("[Soft update] reg.update() :", e);
+          });
           if (reg.waiting) {
-            // Demande au SW en attente de prendre le relais sans attendre que tous
-            // les clients soient fermés (notre sw.js fait déjà skipWaiting() au install,
-            // mais on renforce ici en cas de SW custom dans le futur)
+            // Le SW en attente est déjà prêt → on le pousse à prendre le relais.
+            // Notre sw.js fait déjà self.skipWaiting() au install, mais on
+            // renforce ici via postMessage explicit (cf. handler hotfix21).
             reg.waiting.postMessage({ type: "SKIP_WAITING" });
           }
         }
@@ -3338,25 +3492,35 @@ async function mettreAJourCodeSeul() {
       }
     }
 
-    // 3. Purge des caches HTTP / PWA UNIQUEMENT (pas localStorage / IDB)
-    _statusUpdate("Purge du cache des assets PWA…");
+    // 3. 🆕 hotfix21 — Purge des SEULS anciens caches HTTP/PWA (préserve le
+    // cache courant si on a réussi à le récupérer du SW). Avant : on
+    // purgait TOUT y compris le cache qu'on venait de remplir via update()
+    // → re-download de ~100 assets au reload. Maintenant : on garde le
+    // cache courant intact, donc le reload retrouve son cache pré-rempli.
+    _statusUpdate("Nettoyage des anciens caches…");
     if (window.caches) {
       try {
         const keys = await caches.keys();
-        await Promise.all(keys.map(function(k) {
+        const toDelete = currentCacheName
+          ? keys.filter(function(k) { return k !== currentCacheName; })
+          : keys; // Fallback : si pas de currentCacheName, on purge tout (ancien comportement)
+        await Promise.all(toDelete.map(function(k) {
           console.log("[Soft update] suppression cache :", k);
           return caches.delete(k);
         }));
+        console.log("[Soft update] " + toDelete.length + "/" + keys.length + " cache(s) supprimé(s) (préservé : " + (currentCacheName || "aucun") + ")");
       } catch(e) {
         console.warn("[Soft update] purge caches :", e);
       }
     }
 
-    // 4. Reload : le SW re-cache tout depuis le réseau au prochain démarrage
+    // 4. Reload : le SW (potentiellement nouveau, son install tourne en bg)
+    // prend le relais avec son cache pré-rempli — pas de re-download
+    // séquentiel des 100 assets au reload.
     _statusUpdate("Rechargement…");
     setTimeout(function() {
       window.location.reload();
-    }, 400);
+    }, 200); // 200ms (au lieu de 400) — postMessage SKIP_WAITING est arrivé
 
   } catch(err) {
     overlay.remove();
