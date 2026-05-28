@@ -19063,19 +19063,6 @@ html.kta-theme-light .kta-search-gps-poi-info {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ⛔ Phase 4 (QR Share) ROLLBACK hotfix17
-   ─────────────────────────────────────────────────────────────────────────── */
-/* Toutes les règles .kta-secours-qr-share-* / qr-scan-* / qr-preview-* /
-   kta-spinner-mini (~380 lignes) ont été retirées en même temps que le
-   module js/secoursQrShare.js + les libs qrcode-generator / jsQR.
-   Raison : densité QR v35+ trop élevée (3 px/cell sous seuil scan).
-   Le partage Op↔Équipe se fait désormais via .mkmsec.json classique
-   (briefing complet) et .mkmsec.observations.json (à venir hotfix18).
-   ─────────────────────────────────────────────────────────────────────────── */
-
-/* (Bloc CSS QR ~380 lignes supprimé — voir git history pour récupération éventuelle.) */
-
-/* ═══════════════════════════════════════════════════════════════════════════
    🆕 v1.22.0-fix2 — Section Parcours (entrée + intermédiaires + sortie)
    ─────────────────────────────────────────────────────────────────────────── */
 

@@ -177,9 +177,6 @@ const ASSETS_TO_CACHE = [
   "./lib/jszip.min.js",
   // 🆕 v1.10.3 : jsPDF UMD pour l'export PDF imprimable.
   "./lib/jspdf.umd.min.js",
-  // ⛔ Phase 4 (QR Share) ROLLBACK hotfix17 — libs retirées :
-  //    qrcode-generator (20KB) + jsQR (130KB) supprimées du cache.
-  //    Le partage Op↔Équipe utilise désormais .mkmsec.json classique.
   "./lib/leaflet/leaflet.css",
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",

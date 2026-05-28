@@ -1002,13 +1002,6 @@
        __MKM__ pour le watermark + utilise navigator.indexedDB direct. -->
   <script src="js/secoursPhotos.js"></script>
 
-  <!-- ⛔ Phase 4 (QR Share) ROLLBACK en hotfix17 — densité QR v35+ posait
-       un bug structurel de scannabilité (3 px/cell sous le seuil jsQR).
-       Le partage Op↔Équipe se fait désormais 100% via le format JSON
-       `.mkmsec.json` (briefings) et `.mkmsec.observations.json` (obs) :
-       transit fichier classique via WhatsApp / mail / AirDrop / NFC.
-       Aucune dépendance lib externe, format extensible, debug facile. -->
-
   <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
        Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
        de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).
