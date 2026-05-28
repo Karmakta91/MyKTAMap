@@ -8,6 +8,13 @@ let roadsData = [];
 let currentRoad = null;
 let roadLayers = [];
 
+// 🆕 v1.26.4-perf : cercles d'intersection dans un tableau SÉPARÉ de roadLayers.
+// Permet de débouncer leur recompute pendant le dessin actif (chemin chaud
+// O(N²×P²)) : les polylines se reconstruisent à chaque point, mais les cercles
+// survivent au teardown (cf _renderIntersections / _scheduleIntersectionRender).
+let intersectionLayers = [];
+let _interRenderTimer = null;
+
 // Routes embarquées dans les calques de données (chargées par utils.js > ajouterPointsDepuisJSON).
 // Elles ne sont pas éditables MAIS doivent participer au calcul des intersections
 // pour afficher des cercles aux croisements avec les routes éditables.
@@ -84,6 +91,10 @@ function initRoad() {
   // roadLayers : la map précédente est détruite avant lancerApplication,
   // donc removeLayer n'a rien à faire — on vide juste la liste de références.
   roadLayers = [];
+  // 🆕 v1.26.4-perf : idem pour les cercles d'intersection + annulation d'un
+  // éventuel débounce en vol (sinon il tirerait dans le contexte du nouveau plan).
+  if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
+  intersectionLayers = [];
 
   if (window.roadInitialized) return;
   window.roadInitialized = true;
@@ -162,11 +173,12 @@ function initRoad() {
         }
       }
       roadsData.push(currentRoad);
-      console.log("[Road] nouveau tracé", currentRoad);
+      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+        console.log("[Road] nouveau tracé", currentRoad.type);
+      }
     }
 
     currentRoad.points.push({ x, y });
-    console.log("[Road] point ajouté", x, y);
 
     renderRoads();
 
@@ -505,8 +517,90 @@ function _targetLayerForRoad(roadType) {
   return window.layerEditor || window.map;
 }
 
+// =========================
+// RENDU DES CERCLES D'INTERSECTION (extrait de renderRoads, v1.26.4-perf)
+// =========================
+// Cercles aux croisements du réseau. Combine routes éditables (roadsData) +
+// routes embarquées VISIBLES, exclut "itinerary" (suit le réseau → redondant)
+// et "jonction" (bridges multi-niveau), filtre par niveaux visibles.
+// Vit dans intersectionLayers (séparé de roadLayers) → survit au teardown des
+// polylines à chaque point, ce qui permet de débouncer ce calcul O(N²×P²)
+// pendant le dessin sans faire clignoter les cercles.
+// NB : le filtre multi-niveau ci-dessous est un miroir de _passeFiltreNiveau
+// (closure interne à renderRoads) — gardé local pour ne pas toucher au chemin
+// des polylines (zéro régression). À mutualiser si la logique diverge.
+function _renderIntersections() {
+  // Up-to-date → on annule un éventuel débounce en attente (évite un 2e rendu).
+  if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
+
+  // Purge des cercles précédents (indépendante de roadLayers).
+  intersectionLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
+  intersectionLayers = [];
+
+  // 🆕 v1.9.2 : APP_CONFIG.showRoadIntersections (default true) — l'user peut
+  // désactiver l'affichage. Le calcul reste accessible via
+  // window.computeRoadIntersections pour les exports (KMZ) indépendamment.
+  if (!(window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false)) return;
+
+  const _mlOn = !!(window.APP_CONFIG && window.APP_CONFIG.multiLevel === true);
+  const _vis  = (window.APP_CONFIG && Array.isArray(window.APP_CONFIG.visibleLevels))
+                  ? window.APP_CONFIG.visibleLevels : [0];
+  function _passe(road) {
+    if (!_mlOn) return true;
+    if (road.type === "itinerary") return true;
+    if (road === currentRoad) return true;
+    if (road.type === "jonction") {
+      const fromL = Number.isInteger(road.fromLevel) ? road.fromLevel : 0;
+      const toL   = Number.isInteger(road.toLevel)   ? road.toLevel   : 0;
+      return _vis.indexOf(fromL) >= 0 || _vis.indexOf(toL) >= 0;
+    }
+    const lvl = Number.isInteger(road.level) ? road.level : 0;
+    return _vis.indexOf(lvl) >= 0;
+  }
+
+  const intersectionsTarget = window.layerEditor || window.map;
+  const allRoads = roadsData.concat(_embeddedRoadsVisibles())
+    .filter(function(r) {
+      if (r.type === "itinerary" || r.type === "jonction") return false;
+      return _passe(r);
+    });
+  const intersections = _calculerIntersectionsRoads(allRoads);
+  intersections.forEach(({ point, color }) => {
+    const latlng = convertCoord(point.x, point.y);
+    // Cercles d'intersection : canvas par defaut (preferCanvas) pour perf.
+    const cercle = L.circleMarker(latlng, {
+      radius:      ROAD_INTERSECTION_RADIUS,
+      color:       color,
+      fillColor:   color,
+      fillOpacity: 1,
+      weight:      0,
+      stroke:      false,
+      interactive: false
+    }).addTo(intersectionsTarget);
+    intersectionLayers.push(cercle);
+  });
+}
+
+// Throttle trailing du rendu d'intersections pendant le dessin actif : au plus
+// 1 recompute par INTERVAL ms quel que soit le rythme de clics. Le 1er point
+// d'une rafale arme le timer ; les suivants dans la fenêtre sont coalescés
+// (return early) ; au tir, _renderIntersections rend l'état le PLUS RÉCENT.
+function _scheduleIntersectionRender() {
+  if (_interRenderTimer) return;
+  _interRenderTimer = setTimeout(function() {
+    _interRenderTimer = null;
+    _renderIntersections();
+  }, 350);
+}
+
 function renderRoads() {
-  console.log("[Road] renderRoads — roadsData :", roadsData);
+  // ⚠️ Chemin chaud : appelé à CHAQUE point pendant le dessin. Logger le
+  // tableau roadsData complet ici (a) coûte une sérialisation sur les gros
+  // plans et (b) retient les références (pas de GC tant que la console les
+  // garde — critique en debug distant mobile). Gated debugMode uniquement.
+  if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+    console.log("[Road] renderRoads — roadsData :", roadsData.length, "tracés");
+  }
 
   // .remove() détache le layer où qu'il soit (map directe ou via layerGroup).
   // Plus portable que window.map.removeLayer(...) maintenant que les layers
@@ -752,46 +846,19 @@ function renderRoads() {
     console.log("[Road] 🚀 viewport-culling : " + _culled + "/" + roadsData.length + " roads skip (hors viewport)");
   }
 
-  // Cercles d'intersection : on combine routes éditables (roadsData) + routes embarquées
-  // VISIBLES (filtrées par visibilité du calque Leaflet) — pour que les croisements
-  // disparaissent quand l'utilisateur masque un calque dans le contrôle des couches.
-  // ⚠️ On exclut le type "itinerary" (calculé par Pathfinder) : il suit le réseau existant
-  // donc traverserait des routes à chaque nœud → cercles redondants. Les intersections
-  // RÉELLES du réseau sous-jacent restent affichées via le filtrage des autres types.
-  // ⚠️ Multi-niveau (v148) : on exclut aussi "jonction" — ce sont des bridges
-  // pointillés magenta qui croisent visuellement les routes des 2 niveaux qu'ils
-  // relient, mais physiquement c'est un escalier/pente, pas une intersection
-  // de surface. Et on filtre par activeLevel quand le filtre multi-niveau est
-  // actif → seules les intersections du niveau affiché apparaissent.
-  // Cercles → layerEditor (meme cible que les polylines roads session).
-  //
-  // 🆕 v1.9.2 : check APP_CONFIG.showRoadIntersections (default true) — l'user
-  // peut désactiver l'affichage via toggle dans ⚙️ Réglages ou Configuration.
-  // On garde le calcul (`_calculerIntersectionsRoads`) accessible via
-  // `window.getRoadIntersections` pour les exports (KMZ) qui en ont besoin
-  // indépendamment de la préférence d'affichage.
-  if (window.APP_CONFIG && window.APP_CONFIG.showRoadIntersections !== false) {
-    const intersectionsTarget = window.layerEditor || window.map;
-    const allRoads = roadsData.concat(_embeddedRoadsVisibles())
-      .filter(function(r) {
-        if (r.type === "itinerary" || r.type === "jonction") return false;
-        return _passeFiltreNiveau(r);
-      });
-    const intersections = _calculerIntersectionsRoads(allRoads);
-    intersections.forEach(({ point, color }) => {
-      const latlng = convertCoord(point.x, point.y);
-      // Cercles d'intersection : canvas par defaut (preferCanvas) pour perf.
-      const cercle = L.circleMarker(latlng, {
-        radius:      ROAD_INTERSECTION_RADIUS,
-        color:       color,
-        fillColor:   color,
-        fillOpacity: 1,
-        weight:      0,
-        stroke:      false,
-        interactive: false
-      }).addTo(intersectionsTarget);
-      roadLayers.push(cercle);
-    });
+  // Cercles d'intersection — extraits dans _renderIntersections() (v1.26.4-perf)
+  // pour pouvoir DÉBOUNCER ce calcul pendant le dessin actif : c'est le chemin
+  // chaud O(N²×P²) + recréation de N circleMarker, déclenché à chaque point.
+  //   • Hors dessin (modeRoad falsy) : rendu immédiat → parité v147.
+  //   • Dessin en cours : on diffère via _scheduleIntersectionRender — les
+  //     cercles existants restent affichés (légèrement en retard) le temps que
+  //     le débounce se déclenche (~350 ms), ce qui supprime le recompute par
+  //     point. La fin de dessin (toggleRoadMode → modeRoad = null → renderRoads)
+  //     repasse par la branche immédiate et produit le rendu final correct.
+  if (window.modeRoad) {
+    _scheduleIntersectionRender();
+  } else {
+    _renderIntersections();
   }
 
   // Hook : si le panneau "Distance totale des tracés" est ouvert, on
@@ -826,6 +893,13 @@ function resetRoads() {
 
   roadLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
   roadLayers = [];
+
+  // 🆕 v1.26.4-perf : cercles d'intersection dans leur tableau séparé + timer
+  // de débounce — purge explicite (sinon des cercles orphelins survivraient au
+  // reset, et un débounce en vol re-rendrait sur un état déjà effacé).
+  if (_interRenderTimer) { clearTimeout(_interRenderTimer); _interRenderTimer = null; }
+  intersectionLayers.forEach(layer => { try { layer.remove(); } catch(e) {} });
+  intersectionLayers = [];
 
   // 🆕 v1.8.1 : déclencher les hooks de fin de render pour synchroniser
   // les UI dépendantes (panneau Distance totale + label distance itinéraire
