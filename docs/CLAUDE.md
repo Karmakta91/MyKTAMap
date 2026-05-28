@@ -1905,7 +1905,7 @@ Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au re
 - Tentatives 1-4 : message rouge "❌ Code incorrect. Tentatives restantes : N"
 - Tentative 5+ : LOCKOUT permanent
   - Champ saisie masqué
-  - Message "🚫 Trop de tentatives" + sous-texte italique "Le brute force c'est mal, m'voyez." (clin d'œil validé KARMA)
+  - Message "🚫 Trop de tentatives" + sous-texte "Accès verrouillé par sécurité." (ton pro depuis v1.26.3)
   - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
   - Lien externe vers `myktamap.fr` pour contacter l'auteur si l'user a légitimement perdu son accès
 
@@ -2788,7 +2788,7 @@ Module `js/pinLock.js` (~450 lignes IIFE) → `window.MyKTAMapPinLock`.
 **UI Lockout** (`_afficherLockoutUI()`) — screen rouge dramatique :
 - Pas de bouton de sortie (force l'user à reset via la home)
 - Message "🚫 Trop de tentatives" + explication "Comment sortir ?" → ⚙️ Configuration → 💥 Tout réinitialiser
-- Phrase en italique "Le brute force c'est mal, m'voyez." (clin d'œil KARMA validé)
+- Phrase en italique "Verrouillage de sécurité actif après plusieurs tentatives échouées." (ton pro depuis v1.26.3)
 
 **UI activation/modification/désactivation** — `index.html` modale ⚙️ Configuration loader (choix 7:b "loader uniquement") :
 - Pas de section dans ⚙️ Réglages map mode (par design — cohérent avec la philo "réglages critiques dans le loader")
@@ -6871,7 +6871,59 @@ window.attacherBoutonCopierEchelleGps(container)
 
 **Si on veut un seuil custom par user** (genre "je tolère 20% en zone urbaine") :
 1. Ajouter `localStorage["myktamap_scale_coherence_thresholds_v1"]` JSON `{ warn, alert, critical }`
-2. Lire dans `calculerCoherenceEchelleGeoref` avec fallback defaults `{ warn: 5, alert: 10, critical: 15 }`
+2. Lire dans `calculerCoherenceEchelleGeoref` avec fallback defaults `{ warn: 3, alert: 6, critical: 10 }`
+
+---
+
+### 74. Professionnalisation + nettoyage code mort (v1.26.2 + v1.26.3 — 2026-05-27)
+
+Le projet prenant de l'ampleur, KARMA a lancé une passe de professionnalisation + nettoyage. Deux axes : (A) retrait du code mort accumulé, (B) montée en sérieux du ton/vocabulaire face utilisateur.
+
+KARMA quote :
+> « gros coup de propre code mort, typiquement l'ancienne interface » — puis — « rendre le truc plus PRO, c'était rigolo au début le mode Bourré mais vu que le projet prend de l'ampleur on remplace »
+
+#### 74.1 Renommage mode « Bourré 🍺 » → « Blessé 🤕 » (v1.26.3)
+
+Le preset de vitesse le plus lent (2 km/h) de l'échelle partagée Itinéraire + Mode perdu. Renommé pour un ton pro adapté à un outil de secours.
+
+| | Avant | Après |
+|---|---|---|
+| Clé technique | `bourre` | `blesse` |
+| Label | Bourré | Blessé |
+| Emoji | 🍺 | 🤕 |
+| Hint | « Très lent, confus, désorienté » | « Progression entravée, très lent, terrain accidenté » |
+
+**Échelle complète inchangée** : `blesse` (2) / `lente` (3) / `normale` (5, défaut) / `rapide` (7).
+
+**⚠️ Migration localStorage** : la clé `bourre` était persistée dans 2 slots (`myktamap_lost_preset` + `myktamap_iti_walking_preset`). Micro-migration au boot dans `lostMode.js > _initialPreset` et `interface.js > _getItiSpeedPreset` : `if (v === "bourre") { v = "blesse"; localStorage.setItem(...) }`. Pattern transparent — l'user garde son réglage. À ne PAS retirer avant plusieurs versions (sinon les vieux clients perdent le preset → fallback `normale`).
+
+**Sites modifiés** : `js/lostMode.js`, `js/interface.js` (preset iti + aide intégrée ×2), `js/tutorial.js` (carte onboarding), `docs/README_USER.md` (×2 tables), `docs/AI_CONTEXT.md` (×2).
+
+#### 74.2 Ton pro — messages lockout sécurité
+
+`js/unlockGate.js` + `js/pinLock.js` : la phrase argotique « Le brute force c'est mal, m'voyez. » sur les écrans de lockout (5 tentatives échouées) → remplacée par des formulations factuelles (« Accès verrouillé par sécurité. » / « Verrouillage de sécurité actif après plusieurs tentatives échouées. »). Un écran de sécurité doit être sobre.
+
+#### 74.3 Nettoyage code mort (v1.26.2, ~395 lignes)
+
+4 lots, du plus sûr au plus risqué, prouvés inatteignables (cf cartographie complète) :
+
+| Lot | Quoi | ~Lignes |
+|---|---|---|
+| 1 | Commentaires QR Phase 4 rollback (sw.js, css, index.html) | -23 |
+| 2 | `attacherGpsPasteSplit` (utils.js, déprécié hotfix21) + `_dessinerFooterLegende` (pdfExport.js, DEAD CODE) | -260 |
+| 3 | Branches mortes interface.js : `_ouvrirPlanSwitcherLegacy` + 2 `if(_refonteInterfaceActive !== true)` | -100 |
+| 4 | Bloc legacy early-return `if(!_refonteInterfaceActive){return}` dans refonteInterface.js | -12 |
+
+**Contexte clé** : depuis v1.14.19, `refonteInterface.js > _readFlag()` retourne **toujours `true`** (l'ancienne interface a été supprimée). Toute branche `_refonteInterfaceActive !== true` est donc du code mort.
+
+**🟡 Restant (non touché, à nettoyer plus tard si confirmé)** : `_setActive` + `_afficherConfirmInterfaceChange` + `_writeFlag` (refonteInterface.js, ~84 lignes) — interdépendants, conservés car le toggle d'interface pourrait théoriquement revenir. À retirer dans un futur cleanup si abandon définitif confirmé.
+
+#### 74.4 À NE PAS faire
+
+- ❌ Retirer les micro-migrations `bourre → blesse` avant plusieurs versions (vieux clients perdraient leur preset)
+- ❌ Ré-introduire de l'argot/humour dans les STRINGS UI face utilisateur (les commentaires de dev internes peuvent rester décontractés, c'est la façade qui doit être pro)
+- ❌ Supprimer les 🟡 restants sans re-confirmer qu'aucun toggle d'interface ne reviendra
+- ❌ Toucher aux `legacy` de migration DONNÉES (sessionPersist, kmzImport, profileExportImport, etc.) — c'est de la rétro-compat vivante, pas du code mort
 
 ---
 

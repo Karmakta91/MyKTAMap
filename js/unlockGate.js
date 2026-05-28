@@ -137,14 +137,12 @@
     const fb   = overlay.querySelector("#kta-unlock-feedback");
     if (form) form.style.display = "none";
     if (fb) {
-      // Message demandé par KARMA — clin d'œil communautaire
       fb.innerHTML =
         '<div class="kta-unlock-lockout">' +
           '<div class="kta-unlock-lockout-titre">🚫 Trop de tentatives</div>' +
-          '<div class="kta-unlock-lockout-msg">Le brute force c\'est mal, m\'voyez.</div>' +
+          '<div class="kta-unlock-lockout-msg">Accès verrouillé par sécurité.</div>' +
           '<div class="kta-unlock-lockout-hint">' +
-            'L\'accès est verrouillé. Si tu connais légitimement le code, ' +
-            'contacte l\'auteur.' +
+            'Si tu connais légitimement le code, contacte l\'auteur.' +
           '</div>' +
         '</div>';
     }

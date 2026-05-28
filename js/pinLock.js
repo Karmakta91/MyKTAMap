@@ -720,7 +720,7 @@
               '⚠️ il ne pourra pas récupérer ton code (aucune donnée stockée côté serveur).</li>' +
           '</ol>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
-          'Le brute force c\'est mal, m\'voyez.</p>' +
+          'Verrouillage de sécurité actif après plusieurs tentatives échouées.</p>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);

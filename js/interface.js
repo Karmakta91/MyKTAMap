@@ -1988,7 +1988,7 @@ function afficherAide() {
             d'un point existant, clic sur la carte ou position tracker), <strong>depuis combien de temps</strong>, et
             l'app dessine un <strong>cercle de recherche</strong> orange autour (rayon = <strong>vitesse × temps</strong>, sans marge).
             La vitesse se choisit via <strong>4 presets</strong> (segmented control) — <strong>mêmes valeurs que le mode
-            itinéraire</strong> pour la cohérence : <strong>🍺 Bourré</strong> (2 km/h), <strong>🐌 Lente</strong>
+            itinéraire</strong> pour la cohérence : <strong>🤕 Blessé</strong> (2 km/h), <strong>🐌 Lente</strong>
             (3 km/h), <strong>🚶 Normale</strong> (5 km/h, défaut), <strong>🏃 Rapide</strong> (7 km/h).
             Temps écoulé max <strong>1h30</strong> (au-delà la zone devient immense et non pertinente).
             Tu peux ajouter des <strong>indices visuels</strong> ("bidon eau", "épure bélier"...) — l'app cherche ces mots
@@ -2087,7 +2087,7 @@ function afficherAide() {
           <p style="font-size:12px; color:#8892a4; margin:6px 0 0; line-height:1.5;">
             <strong style="color:#a8b3c8;">🗺️ Itinéraire :</strong> ajoute des waypoints (clic sur la carte, recherche par nom/id/tag, ou bouton <strong>🧭 Ma position</strong> qui prend ta position tracker actuelle),
             l'app calcule le trajet le plus court en empruntant les routes existantes (session + calques de données, <strong>même les calques masqués</strong> — utile si les routes sont dessinées en dur sur le PNG et que tu veux gagner en perf).
-            Le label en bas-gauche affiche la <strong>distance</strong>, le <strong>⏱️ temps estimé</strong> et le <strong>mode de vitesse actif</strong> (🍺 Bourré 2 km/h / 🐌 Lente 3 km/h / 🚶 Normale 5 km/h défaut / 🏃 Rapide 7 km/h, + 15 min de pause par point intermédiaire). Le mode se change via un segmented control dans la modale itinéraire et est persisté entre sessions.
+            Le label en bas-gauche affiche la <strong>distance</strong>, le <strong>⏱️ temps estimé</strong> et le <strong>mode de vitesse actif</strong> (🤕 Blessé 2 km/h / 🐌 Lente 3 km/h / 🚶 Normale 5 km/h défaut / 🏃 Rapide 7 km/h, + 15 min de pause par point intermédiaire). Le mode se change via un segmented control dans la modale itinéraire et est persisté entre sessions.
             Le tracé apparaît en cyan néon avec un label de distance en bas-gauche. Au re-clic, la modale s'ouvre en
             <strong>mode navigation</strong> : boutons <strong>⏮️ Début</strong>, <strong>⏭️ Fin</strong>,
             <strong>🔁 Tour complet</strong>, et 🎯 par waypoint pour centrer la carte dessus.
@@ -6957,7 +6957,7 @@ let _itiDistanceCtrl = null;
 // Itinéraire. Le mode courant est affiché dans le label bottomleft (icône +
 // nom) et persisté en localStorage pour conserver le réglage entre sessions.
 const ITI_SPEED_PRESETS = {
-  bourre:  { kmh: 2, label: "Bourré",  icon: "🍺", hint: "Très lent, hésitant, terrain accidenté" },
+  blesse:  { kmh: 2, label: "Blessé",  icon: "🤕", hint: "Progression entravée, très lent, terrain accidenté" },
   lente:   { kmh: 3, label: "Lente",   icon: "🐌", hint: "Prudent, étroitures, exploration" },
   normale: { kmh: 5, label: "Normale", icon: "🚶", hint: "Allure standard (défaut)" },
   rapide:  { kmh: 7, label: "Rapide",  icon: "🏃", hint: "Allure soutenue, parcours connu" }
@@ -7013,7 +7013,13 @@ window.setItiPauseMinutes = _setItiPauseMinutes;
 
 function _getItiSpeedPreset() {
   try {
-    const stored = localStorage.getItem(ITI_SPEED_STORAGE_KEY);
+    let stored = localStorage.getItem(ITI_SPEED_STORAGE_KEY);
+    // 🆕 v1.26.3 — Micro-migration : ancien preset "bourre" renommé "blesse"
+    // (professionnalisation). Réécrit la valeur pour garder le réglage user.
+    if (stored === "bourre") {
+      stored = "blesse";
+      try { localStorage.setItem(ITI_SPEED_STORAGE_KEY, stored); } catch(e) {}
+    }
     if (stored && ITI_SPEED_PRESETS[stored]) return stored;
   } catch(e) {}
   return DEFAULT_ITI_SPEED;

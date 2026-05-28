@@ -1015,7 +1015,7 @@ Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéra
 
 | Mode | Vitesse | Quand l'utiliser |
 |---|---|---|
-| 🍺 **Bourré** | 2 km/h | Très lent, hésitant, terrain accidenté, fin de soirée |
+| 🤕 **Blessé** | 2 km/h | Progression entravée, très lent, terrain accidenté |
 | 🐌 **Lente** | 3 km/h | Prudente, étroitures, exploration, transport de matos |
 | 🚶 **Normale** | 5 km/h | Défaut, allure standard de marche cataphile |
 | 🏃 **Rapide** | 7 km/h | Allure soutenue, parcours connu, retour rapide |
@@ -1073,7 +1073,7 @@ Le bouton **⛑️** orange dans le groupe **🧭 Tracker** ouvre le mode urgenc
 
    | Preset | Vitesse | Rayon pour 10 min | Quand l'utiliser |
    |---|---|---|---|
-   | 🍺 **Bourré** | 2 km/h | ~333 m | Très lent, confus, désorienté, marche hésitante |
+   | 🤕 **Blessé** | 2 km/h | ~333 m | Progression entravée, très lent, marche hésitante |
    | 🐌 **Lente** | 3 km/h | ~500 m | Marche prudente, étroitures, exploration |
    | 🚶 **Normale** *(défaut)* | 5 km/h | ~833 m | Allure standard de marche |
    | 🏃 **Rapide** | 7 km/h | ~1167 m | Parcours connu, marche soutenue |

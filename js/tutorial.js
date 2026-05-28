@@ -511,7 +511,7 @@
         "<p>⛔ Les <strong>zones inaccessibles</strong> sont automatiquement contournées (contrainte dure). " +
         "Les évitements points/tags sont des contraintes <strong>souples</strong> — si aucun chemin n'existe " +
         "sans eux, le pathfinder calcule quand même un chemin et signale qu'il a dû passer dedans.</p>" +
-        "<p>⚙️ <strong>Modes de vitesse</strong> (impactent le temps estimé) : 🍺 Bourré 2 km/h / 🐌 Lente " +
+        "<p>⚙️ <strong>Modes de vitesse</strong> (impactent le temps estimé) : 🤕 Blessé 2 km/h / 🐌 Lente " +
         "3 km/h / 🚶 Normale 5 km/h / 🏃 Rapide 7 km/h. +15 min de pause par waypoint intermédiaire.</p>" +
         "<p>📊 Label <strong>distance + temps estimé</strong> en bas-gauche de la carte. Tracé cyan néon " +
         "avec halo SVG drop-shadow.</p>"

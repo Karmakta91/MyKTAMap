@@ -44,7 +44,7 @@
   // exactement `vitesse × temps`. La spécificité urgence vient des hints
   // (contexte "état présumé de la personne perdue") et de l'icône.
   const LOST_MODE_PRESETS = {
-    bourre:  { kmh: 2, label: "Bourré",  icon: "🍺", hint: "Très lent, confus, désorienté." },
+    blesse:  { kmh: 2, label: "Blessé",  icon: "🤕", hint: "Progression entravée, très lent, terrain accidenté." },
     lente:   { kmh: 3, label: "Lente",   icon: "🐌", hint: "Marche prudente, étroitures, exploration." },
     normale: { kmh: 5, label: "Normale", icon: "🚶", hint: "Allure standard de marche (défaut)." },
     rapide:  { kmh: 7, label: "Rapide",  icon: "🏃", hint: "Marche soutenue, parcours connu." }
@@ -55,7 +55,14 @@
   // Preset initial dérivé du localStorage
   const _initialPreset = (function() {
     try {
-      const v = localStorage.getItem(LOST_PRESET_STORAGE_KEY);
+      let v = localStorage.getItem(LOST_PRESET_STORAGE_KEY);
+      // 🆕 v1.26.3 — Micro-migration : l'ancien preset "bourre" a été
+      // renommé "blesse" (professionnalisation). Réécrit la valeur stockée
+      // pour préserver le réglage des users qui avaient ce preset actif.
+      if (v === "bourre") {
+        v = "blesse";
+        try { localStorage.setItem(LOST_PRESET_STORAGE_KEY, v); } catch(e) {}
+      }
       if (v && LOST_MODE_PRESETS[v]) return v;
     } catch(e) {}
     return DEFAULT_LOST_PRESET;
@@ -81,7 +88,7 @@
   let _refinedLoc       = null;   // {x, y}
   let _zoneOverflow     = false;  // true si le rayon dépasse la taille du plan
   let _lastClues        = "";     // texte des indices saisis (pour restauration)
-  let _currentPreset    = _initialPreset;  // clé du preset actif (bourre/lente/normale/rapide)
+  let _currentPreset    = _initialPreset;  // clé du preset actif (blesse/lente/normale/rapide)
 
   function _getLostPreset() {
     return _currentPreset;

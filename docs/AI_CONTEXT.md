@@ -370,7 +370,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 4. Quand tu as ≥ 2 waypoints, clique **🎯 Calculer**.
 5. Le trajet apparaît en cyan néon. Distance + temps estimé + mode de vitesse actif sont affichés en bas à gauche.
 6. **Vitesse de marche** : segmented control dans la modale, 4 presets :
-   - 🍺 **Bourré** (2 km/h) — très lent, hésitant
+   - 🤕 **Blessé** (2 km/h) — progression entravée, très lent
    - 🐌 **Lente** (3 km/h) — prudente, étroitures
    - 🚶 **Normale** (5 km/h, défaut) — allure standard
    - 🏃 **Rapide** (7 km/h) — parcours connu
@@ -571,7 +571,7 @@ La zone apparaît avec un **motif hachures rouge sombre / noir** à 45°. Tout i
      - **🧭 Position tracker** → utilise la position du tracker si il est actif.
    - **⏱️ Temps écoulé** depuis cette position (slider 1-480 min, défaut 30 min).
    - **🏃 Vitesse de marche présumée** — segmented control 4 presets, **mêmes valeurs que le mode itinéraire** (cohérence UX entre les deux modules). Rayon final = `vitesse × temps`, pas de marge de sécurité. Choix persisté en localStorage (`myktamap_lost_preset`).
-     - 🍺 **Bourré** : 2 km/h — très lent, confus, désorienté
+     - 🤕 **Blessé** : 2 km/h — progression entravée, très lent, marche hésitante
      - 🐌 **Lente** : 3 km/h — prudente, étroitures, exploration
      - 🚶 **Normale** *(défaut)* : 5 km/h — allure standard de marche
      - 🏃 **Rapide** : 7 km/h — parcours connu, marche soutenue
@@ -1182,7 +1182,8 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 | v1.25.4 | Consolide hotfix17→21 + soft update optimisé + audit sécu (PUSH 2026-05-27) |
 | v1.26.0 | 📥 Import `.mkmsec.report.json` consolidation cross-device (cf §P + §72 CLAUDE.md) — *commit intermédiaire, intégré dans v1.26.2* |
 | v1.26.1 | 📐 Banner cohérence échelle px/m ↔ géoréférencement GPS (cf §73 CLAUDE.md) — *commit intermédiaire, intégré dans v1.26.2* |
-| **v1.26.2** | **🎯 Release stable consolidant v1.26.0 + v1.26.1 + fix CSS critical lisibilité** (banner alerte noir) |
+| v1.26.2 | 🎯 Release stable consolidant v1.26.0 + v1.26.1 + fix CSS critical lisibilité (banner alerte noir) + 🧹 nettoyage code mort ancienne interface (~395 lignes, cf §74 CLAUDE.md) |
+| **v1.26.3** | **🤕 Professionnalisation : mode « Bourré 🍺 » → « Blessé 🤕 » (+ migration localStorage) + ton lockout factuel + docs approfondies** (cf §74 CLAUDE.md) |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 
