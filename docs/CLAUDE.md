@@ -6499,10 +6499,7 @@ KARMA quote (hotfix21) :
 - Au submit/save : parse via `parseGpsCoords`, abort avec message d'erreur si invalide
 - Pré-remplissage : `formatGpsCoords(lat, lng)` recompose `"lat, lng"` depuis les valeurs FLAT stockées (rétrocompat absolue — le format de stockage `pointA: {x, y, lat, lng}` n'a PAS changé)
 
-**Sujet B' — Ancien helper paste-split (hotfix18, déprécié hotfix21)** :
-- `attacherGpsPasteSplit(latInput, lngInput)` existait pour les anciens duos 2-inputs
-- N'est plus utilisé nulle part dans le code, conservé dans `utils.js` pour compat tierce
-- Marqué deprecated dans le commentaire d'en-tête, à retirer dans un futur cleanup
+> ℹ️ L'ancien helper `attacherGpsPasteSplit` (hotfix18, pour les duos 2-inputs lat/lng) a été **supprimé** lors du cleanup code mort (v1.26.2). Il était déprécié depuis hotfix21 (passage à l'input combiné) et n'avait plus aucun call site.
 
 #### 70.2 API publique nouvelle
 
@@ -6528,11 +6525,6 @@ window.attacherGpsValidationCombo(input, opts) // 🆕 hotfix21
   //   - validate() → true si vide ou valide ; sinon affiche erreur + return false
   //   - parse()    → {lat, lng} si valide non vide ; null sinon (sans toucher UI)
   // Idempotent (re-call no-op si déjà attaché via dataset.gpsComboAttached)
-
-window.attacherGpsPasteSplit(latInput, lngInput)  // ⚠️ hotfix18, déprécié hotfix21
-  → void
-  // Conservé pour compat tierce. NE PLUS UTILISER pour les nouveaux sites.
-  // Préférer attacherGpsValidationCombo + 1 input combiné.
 ```
 
 #### 70.3 Sites équipés (Sujet B — hotfix21)

@@ -202,66 +202,6 @@ function polygonAreaM2(points) {
 window.polygonAreaM2 = polygonAreaM2;
 
 // =========================
-// 🆕 hotfix18 — Helper GPS paste-split pour UX copier-coller Google Maps
-// =========================
-// Quand un user copie une coordonnée depuis Google Maps, le format natif
-// est "48.680831, 2.158843" (lat, lng séparés par ", "). Ce helper attache
-// des listeners aux 2 inputs lat / lng qui :
-//   1. Détectent si l'user colle un couple complet "lat, lng" dans l'un
-//      ou l'autre des 2 champs
-//   2. Auto-split le couple → latInput.value = lat, lngInput.value = lng
-//   3. Re-dispatch les events "input" pour que les listeners en aval
-//      (aperçu calibrage, validation, etc.) se mettent à jour
-//
-// ⚠️ hotfix21 : ce helper reste exporté pour compat tierce (modules externes
-// éventuels) mais N'EST PLUS UTILISÉ par Settings / KMZ Export / KMZ Settings,
-// qui sont passés sur un input combiné unique (cf. attacherGpsValidationCombo
-// ci-dessous). À supprimer dans une release de nettoyage future si confirmé
-// qu'aucun consommateur ne l'utilise.
-//
-// Le helper est idempotent (peut être appelé plusieurs fois sur les mêmes
-// inputs sans dupliquer les listeners — on tag les inputs via dataset).
-function attacherGpsPasteSplit(latInput, lngInput) {
-  if (!latInput || !lngInput) return;
-  if (latInput.dataset.gpsPasteAttached === "1" && lngInput.dataset.gpsPasteAttached === "1") {
-    return; // Déjà attaché — no-op idempotent
-  }
-  latInput.dataset.gpsPasteAttached = "1";
-  lngInput.dataset.gpsPasteAttached = "1";
-
-  function _tryParseAndSplit(input) {
-    const val = String(input.value || "");
-    // Format strict "lat, lng" — 2 nombres décimaux séparés par virgule
-    // (avec ou sans espace autour). Signe optionnel pour les latitudes
-    // sud / longitudes ouest.
-    const m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(val);
-    if (!m) return false;
-    latInput.value = m[1].trim();
-    lngInput.value = m[2].trim();
-    // Re-dispatch les events pour les listeners en aval (live preview, etc.)
-    latInput.dispatchEvent(new Event("input", { bubbles: true }));
-    lngInput.dispatchEvent(new Event("input", { bubbles: true }));
-    return true;
-  }
-
-  // Listener "input" couvre la majorité des cas (paste + saisie clavier)
-  latInput.addEventListener("input", function() { _tryParseAndSplit(latInput); });
-  lngInput.addEventListener("input", function() { _tryParseAndSplit(lngInput); });
-
-  // Listener "paste" en complément pour le cas où le paste insère dans un
-  // input type="number" qui rejette la chaîne entière mais accepte le
-  // split — setTimeout 0 pour laisser le navigateur appliquer le paste
-  // avant de tester la valeur.
-  latInput.addEventListener("paste", function() {
-    setTimeout(function() { _tryParseAndSplit(latInput); }, 0);
-  });
-  lngInput.addEventListener("paste", function() {
-    setTimeout(function() { _tryParseAndSplit(lngInput); }, 0);
-  });
-}
-window.attacherGpsPasteSplit = attacherGpsPasteSplit;
-
-// =========================
 // 🆕 hotfix18 — Parser GPS pour barre de recherche unifiée
 // =========================
 // Détecte le format "lat, lng" (= copier-coller Google Maps natif).
