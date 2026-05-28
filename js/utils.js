@@ -466,10 +466,17 @@ function calculerCoherenceEchelleGeoref(planId) {
   const scaleGps = 1 / transform.metresParPixel; // px/m
   const deltaPercent = Math.abs(scaleGps - scaleUser) / scaleUser * 100;
 
+  // 🆕 v1.26.2-hotfix1 — Seuils RESSERRÉS (KARMA : « on n'est pas géologues »).
+  // Pour de la nav cataphile, savoir qu'un trajet fait ~1 km avec une marge
+  // raisonnable suffit. 10% = 100 m d'erreur sur 1 km = DÉJÀ énorme → critique.
+  //   < 3%   silence  (< 30 m/km — tolérance normale du calibrage au pas humain)
+  //   3-6%   warning  (30-60 m/km — léger décalage à surveiller)
+  //   6-10%  alerte   (60-100 m/km — décalage significatif)
+  //   > 10%  critique (> 100 m/km — un des deux calibrages est franchement faux)
   let level;
-  if (deltaPercent < 5)      level = "ok";
-  else if (deltaPercent < 10) level = "warn";
-  else if (deltaPercent < 15) level = "alert";
+  if (deltaPercent < 3)      level = "ok";
+  else if (deltaPercent < 6) level = "warn";
+  else if (deltaPercent < 10) level = "alert";
   else                        level = "critical";
 
   return {

@@ -6814,11 +6814,13 @@ scaleUser  = APP_CONFIG.scale                                          (px/m, sa
 scaleGps   = 1 / KmzExport.buildTransform(pA, pB, gpsA, gpsB).metresParPixel  (px/m, déduit du géoréf)
 deltaPct   = |scaleGps - scaleUser| / scaleUser × 100
 
-level = "ok"       si deltaPct < 5
-     | "warn"      si 5 ≤ deltaPct < 10
-     | "alert"     si 10 ≤ deltaPct < 15
-     | "critical"  si deltaPct ≥ 15
+level = "ok"       si deltaPct < 3
+     | "warn"      si 3 ≤ deltaPct < 6
+     | "alert"     si 6 ≤ deltaPct < 10
+     | "critical"  si deltaPct ≥ 10
 ```
+
+**Seuils resserrés v1.26.2-hotfix1** (KARMA : « on n'est pas géologues »). Pour de la nav cataphile, 10% = 100 m d'erreur sur 1 km = déjà énorme → critique. Le silence < 3% = tolérance normale du calibrage au pas humain (foulée variable). Repères : 3% = 30 m/km, 6% = 60 m/km, 10% = 100 m/km.
 
 `KmzExport.buildTransform` (`js/kmzExport.js:62-106`) utilise déjà la projection equirectangulaire locale (`dxGps = dlngDeg * 111320 * cos(latMoy)`, `dyGps = dlatDeg * 110540`) → math pré-existante, aucune formule haversine à ré-implémenter.
 
@@ -6851,9 +6853,10 @@ window.attacherBoutonCopierEchelleGps(container)
 
 #### 73.4 Politique d'affichage
 
-- **< 5%** : **silence** (rien affiché). Choix UX KARMA : pas de visual pollution quand tout va bien.
+- **< 3%** : **silence** (rien affiché). Choix UX KARMA : pas de visual pollution quand tout va bien.
 - **Non dismissable** : pas de croix pour masquer. C'est de l'info diagnostic permanente. Si on permet de cacher, l'user oublie le problème.
 - **Pas d'animation pulse** sur le niveau critical : reste lisible en réunion / contexte cataphile silencieux.
+- **Fond critical = bordeaux-noir charte** (v1.26.2-hotfix1) : `linear-gradient(135deg, #24090f, #1a0a14)` (et non noir pur #0d0d10 qui jurait avec le thème sombre bleuté). Reste dramatique mais s'harmonise.
 - **Bouton « 📋 Copier la valeur GPS »** : facilite l'alignement quand l'user fait confiance au géoréf. L'application reste manuelle (pas d'auto-mutation `APP_CONFIG.scale`).
 
 #### 73.5 À NE PAS faire

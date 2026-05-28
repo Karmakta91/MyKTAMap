@@ -20509,14 +20509,19 @@ html.kta-theme-light .kta-secours-imported-chip {
   color: #ff5c5c;
 }
 
-/* === Niveau CRITICAL (noir + bordure rouge marquée > 15%) === */
+/* === Niveau CRITICAL (rouge-noir charte + bordure rouge marquée > 10%) === */
+/* 🆕 v1.26.2-hotfix1 — KARMA : « le noir pur jure avec la charte ». Remplace
+   #0d0d10 (noir pur tranché) par un bordeaux-noir profond qui s'harmonise
+   avec le thème sombre bleuté (#0a0d18 / #1a1f2e) tout en restant dramatique.
+   Dégradé subtil pour la profondeur. */
 .kta-scale-coherence-critical {
-  background: #0d0d10;
+  background: linear-gradient(135deg, #24090f 0%, #1a0a14 100%);
   border-color: #ff3030;
-  border-left-color: #ff0000;
+  border-left-color: #ff2020;
   border-width: 2px;
   border-left-width: 6px;
-  box-shadow: 0 0 0 1px rgba(255, 48, 48, 0.30) inset;
+  box-shadow: 0 0 0 1px rgba(255, 48, 48, 0.25) inset,
+              0 2px 12px rgba(255, 32, 32, 0.12);
 }
 .kta-scale-coherence-critical .kta-scale-coherence-titre,
 .kta-scale-coherence-critical .kta-scale-coherence-delta {
@@ -20598,9 +20603,9 @@ html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta {
 }
 body.kta-theme-light .kta-scale-coherence-critical,
 html.kta-theme-light .kta-scale-coherence-critical {
-  background: #2a1010;
-  border-color: #c01010;
-  border-left-color: #ff0000;
+  background: linear-gradient(135deg, #2a0c12 0%, #1f0a16 100%);
+  border-color: #d01818;
+  border-left-color: #ff2020;
 }
 body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
