@@ -2507,11 +2507,9 @@ Structure DOM :
             └── .kta-plan-switcher-cta (gros bouton bleu "📚 Voir tous mes plans")
 ```
 
-JS dans `interface.js` : `_ouvrirPlanSwitcher()` branche sur le flag :
-- `_ouvrirPlanSwitcherRefonte(recents, current)` → modale style refonte
-- `_ouvrirPlanSwitcherLegacy(recents)` → dropdown style v1.8.x (mode legacy préservé)
+JS dans `interface.js` : `_ouvrirPlanSwitcher()` appelle directement `_ouvrirPlanSwitcherRefonte(recents, current)` → modale style refonte. *(L'ancien `_ouvrirPlanSwitcherLegacy` dropdown style v1.8.x a été supprimé au cleanup code mort v1.26.2 — la refonte est imposée depuis v1.14.19.)*
 
-`_fermerPlanSwitcher()` détecte le mode via la présence de `#kta-plan-switcher-overlay` (refonte) vs `#kta-plan-switcher` seul (legacy).
+`_fermerPlanSwitcher()` retire `#kta-plan-switcher-overlay` (+ ancien `#kta-plan-switcher` par sécurité).
 
 #### 41.11 CSS scoping
 

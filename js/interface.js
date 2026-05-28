@@ -134,17 +134,11 @@ function _ouvrirPlanSwitcher() {
     .sort(function(a, b) { return (b.lastOpened || "").localeCompare(a.lastOpened || ""); })
     .slice(0, 3);
 
-  // 🆕 v1.8.1-refonte-15 : 2 modes de rendu selon flag refonte.
-  // - Refonte ON  → modale centrée avec overlay (charte refonte)
-  // - Legacy mode → dropdown ancré sous le titre fixe (comportement v1.8.x)
-  const refonte = window._refonteInterfaceActive === true;
-  if (refonte) {
-    _ouvrirPlanSwitcherRefonte(recents, current);
-  } else {
-    _ouvrirPlanSwitcherLegacy(recents);
-  }
+  // Modale centrée avec overlay (charte refonte). L'ancienne interface
+  // (dropdown legacy v1.8.x) a été retirée en v1.14.19 — cf cleanup v1.26.2.
+  _ouvrirPlanSwitcherRefonte(recents, current);
 
-  // Listeners de fermeture communs aux 2 modes
+  // Listeners de fermeture
   setTimeout(function() {
     document.addEventListener("click", _onClicAilleursPanneau, true);
     document.addEventListener("keydown", _onEscapePanneau, true);
@@ -260,66 +254,6 @@ function _ouvrirPlanSwitcherRefonte(recents, current) {
 
   // CTA "Voir tous mes plans"
   const btnTous = overlay.querySelector("#kta-switcher-tous");
-  if (btnTous) {
-    btnTous.addEventListener("click", function(e) {
-      e.stopPropagation();
-      _fermerPlanSwitcher();
-      _retourLoaderAvecConfirm();
-    });
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// Rendu LEGACY — dropdown ancré sous le titre (comportement v1.8.x)
-// ─────────────────────────────────────────────────────────────────
-function _ouvrirPlanSwitcherLegacy(recents) {
-  const panneau = document.createElement("div");
-  panneau.id = "kta-plan-switcher";
-
-  let html = "";
-  if (recents.length > 0) {
-    html += '<div class="kta-switcher-head">📚 Plans récents</div>';
-    html += '<div class="kta-switcher-list">';
-    recents.forEach(function(p) {
-      const icon = p.type === "server" ? "🌐" : "💾";
-      const sub  = _fmtDateRel(p.lastOpened) || "";
-      const ver  = p.version ? ' <span class="kta-switcher-ver">' + escapeHtmlSwitcher(p.version) + '</span>' : '';
-      html +=
-        '<div class="kta-switcher-row" data-plan-id="' + p.id + '">' +
-          '<span class="kta-switcher-icon">' + icon + '</span>' +
-          '<div class="kta-switcher-info">' +
-            '<div class="kta-switcher-name">' + escapeHtmlSwitcher(p.name || p.id) + ver + '</div>' +
-            (sub ? '<div class="kta-switcher-sub">' + sub + '</div>' : '') +
-          '</div>' +
-        '</div>';
-    });
-    html += '</div>';
-  } else {
-    html += '<div class="kta-switcher-empty">Aucun autre plan dans votre liste</div>';
-  }
-
-  html += '<div class="kta-switcher-divider"></div>';
-  html += '<div class="kta-switcher-link" id="kta-switcher-tous">📚 Tous mes plans…</div>';
-
-  panneau.innerHTML = html;
-  document.body.appendChild(panneau);
-
-  // Marquer le titre comme "ouvert"
-  const titre = document.getElementById("kta-titre-fixe");
-  if (titre) titre.classList.add("ouvert");
-
-  // Listeners — clic sur une ligne plan
-  panneau.querySelectorAll(".kta-switcher-row").forEach(function(row) {
-    row.addEventListener("click", function(e) {
-      e.stopPropagation();
-      const id = row.dataset.planId;
-      _fermerPlanSwitcher();
-      _confirmEtChargerPlan(id);
-    });
-  });
-
-  // Listener — "Tous mes plans..."
-  const btnTous = panneau.querySelector("#kta-switcher-tous");
   if (btnTous) {
     btnTous.addEventListener("click", function(e) {
       e.stopPropagation();
@@ -5176,21 +5110,11 @@ function initInterface() {
     ]
   });
 
-  // 4. CRÉER / MODIFIER PLAN (solo)
-  // 🆕 Refonte UI v1 : ce groupe est RETIRÉ du mode carte si le flag est
-  // actif. Le Générateur reste accessible UNIQUEMENT depuis le loader/home
-  // via le bouton "🏗️ Générer un plan". Cohérent avec la philosophie
-  // "actions de création hors du mode carte" (cf. choix KARMA).
-  if (window._refonteInterfaceActive !== true) {
-    _creerGroupeAccordeon({
-      id: "planner",
-      iconePrincipale: "🏗️",
-      titre: "Créer ou modifier un plan",
-      soloAction: function() {
-        if (typeof afficherPlanner === "function") afficherPlanner();
-      }
-    });
-  }
+  // 4. CRÉER / MODIFIER PLAN — RETIRÉ du mode carte (refonte UI imposée
+  // depuis v1.14.19). Le Générateur reste accessible UNIQUEMENT depuis le
+  // loader/home via le bouton "🏗️ Générer un plan" (philosophie "actions
+  // de création hors du mode carte", choix KARMA). Branche legacy supprimée
+  // au cleanup v1.26.2.
 
   // 5. ENREGISTRER
   _creerGroupeAccordeon({
@@ -6372,17 +6296,10 @@ _setGroupeModeActif("tracker", isTracking, null);
   // Initialiser le clic extérieur (une seule fois)
   _initClickExterieur();
 
-  // 🏗️ Multi-niveau : si actif pour ce plan, créer le bouton flottant
-  // top-left (sous les boutons de zoom Leaflet) pour ouvrir la modale niveau.
-  // Si OFF → rien n'est crée → comportement v147 strict.
-  // 🆕 Refonte UI v1 : si mode refonte actif, le bouton a déjà été créé
-  // au DÉBUT de initInterface (cf. fix ordre — Niveau doit être 3e après
-  // Zoom, pas en queue après les groupes accordéon topleft). On skip
-  // l'appel ici pour éviter la double création (qui serait nettoyée par
-  // la garde interne mais reste inutile).
-  if (window._refonteInterfaceActive !== true) {
-    _initLevelFilterControl();
-  }
+  // 🏗️ Multi-niveau : le bouton flottant top-left (sous les boutons de zoom)
+  // est déjà créé au DÉBUT de initInterface (fix ordre — Niveau doit être 3e
+  // après Zoom, pas en queue après les groupes accordéon topleft). L'ancien
+  // appel legacy ici (double création) a été supprimé au cleanup v1.26.2.
 }
 
 // =========================
