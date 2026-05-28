@@ -20509,54 +20509,25 @@ html.kta-theme-light .kta-secours-imported-chip {
   color: #ff5c5c;
 }
 
-/* === Niveau CRITICAL (rouge-noir charte + bordure rouge marquée > 10%) === */
-/* 🆕 v1.26.2-hotfix1 — KARMA : « le noir pur jure avec la charte ». Remplace
-   #0d0d10 (noir pur tranché) par un bordeaux-noir profond qui s'harmonise
-   avec le thème sombre bleuté (#0a0d18 / #1a1f2e) tout en restant dramatique.
-   Dégradé subtil pour la profondeur. */
+/* === Niveau CRITICAL (rouge clair translucide marqué > 10%) === */
+/* 🆕 v1.26.2-hotfix2 — KARMA : « le noir jure avec la charte, met un fond
+   rouge clair ». Abandon du fond sombre/noir : on passe à un rouge clair
+   TRANSLUCIDE (même principe que warn/alert mais plus saturé + bordure
+   rouge vive épaisse). Avantage : les textes de base du banner (clair en
+   thème sombre, sombre en thème clair) restent lisibles SANS override
+   spécial. La distinction avec "alert" se fait par la saturation + la
+   bordure gauche épaisse + l'ombre rouge. */
 .kta-scale-coherence-critical {
-  background: linear-gradient(135deg, #24090f 0%, #1a0a14 100%);
+  background: rgba(255, 60, 60, 0.16);
   border-color: #ff3030;
-  border-left-color: #ff2020;
-  border-width: 2px;
+  border-left-color: #ff0000;
+  border-width: 1px;
   border-left-width: 6px;
-  box-shadow: 0 0 0 1px rgba(255, 48, 48, 0.25) inset,
-              0 2px 12px rgba(255, 32, 32, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 48, 48, 0.22) inset;
 }
 .kta-scale-coherence-critical .kta-scale-coherence-titre,
 .kta-scale-coherence-critical .kta-scale-coherence-delta {
-  color: #ff6060;
-  text-shadow: 0 0 8px rgba(255, 48, 48, 0.35);
-}
-/* 🆕 v1.26.1-fix — Force lisibilité sur fond noir critical (le default
-   color #c8d0e0 / #a8b3c8 / #8892a4 du base banner devenait illisible
-   sur le fond très sombre #0d0d10). */
-.kta-scale-coherence-critical p {
-  color: #e8eaf0 !important;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-table td {
-  color: #e8eaf0;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-table td:first-child {
-  color: #c8d0e0;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-table code {
-  background: rgba(255, 255, 255, 0.10);
-  color: #ffd060;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-hint {
-  color: #c8d0e0;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-hint strong {
-  color: #ffb060;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-copy-btn {
-  background: rgba(140, 180, 255, 0.18);
-  border-color: rgba(140, 180, 255, 0.60);
-  color: #b8d0ff;
-}
-.kta-scale-coherence-critical .kta-scale-coherence-copy-btn:hover {
-  background: rgba(140, 180, 255, 0.30);
+  color: #ff4040;
 }
 
 /* === Variants thème clair === */
@@ -20601,40 +20572,18 @@ body.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-alert .kta-scale-coherence-delta {
   color: #a32020;
 }
+/* 🆕 v1.26.2-hotfix2 — Critical thème clair = rouge clair translucide
+   (cohérent avec mode sombre). Plus de fond bordeaux-noir, donc les textes
+   de base theme-light (sombres) restent lisibles SANS override. */
 body.kta-theme-light .kta-scale-coherence-critical,
 html.kta-theme-light .kta-scale-coherence-critical {
-  background: linear-gradient(135deg, #2a0c12 0%, #1f0a16 100%);
+  background: rgba(220, 30, 30, 0.13);
   border-color: #d01818;
-  border-left-color: #ff2020;
+  border-left-color: #ff0000;
 }
 body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-titre,
 body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
-  color: #ffa0a0;
-}
-/* 🆕 v1.26.1-fix — Le critical garde une palette claire-sur-sombre MÊME en
-   thème clair (le fond #2a1010 reste sombre/dramatique par design). Sans ces
-   overrides, les textes theme-light par défaut (#2a2620 sombre) sur fond
-   #2a1010 étaient illisibles. */
-body.kta-theme-light .kta-scale-coherence-critical p,
-html.kta-theme-light .kta-scale-coherence-critical p {
-  color: #e8eaf0 !important;
-}
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td,
-html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td {
-  color: #e8eaf0 !important;
-}
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td:first-child,
-html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table td:first-child {
-  color: #c8d0e0 !important;
-}
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table code,
-html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-table code {
-  background: rgba(255, 255, 255, 0.10) !important;
-  color: #ffd060 !important;
-}
-body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-hint,
-html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-hint {
-  color: #c8d0e0 !important;
+  color: #b01010;
 }

@@ -6856,7 +6856,7 @@ window.attacherBoutonCopierEchelleGps(container)
 - **< 3%** : **silence** (rien affiché). Choix UX KARMA : pas de visual pollution quand tout va bien.
 - **Non dismissable** : pas de croix pour masquer. C'est de l'info diagnostic permanente. Si on permet de cacher, l'user oublie le problème.
 - **Pas d'animation pulse** sur le niveau critical : reste lisible en réunion / contexte cataphile silencieux.
-- **Fond critical = bordeaux-noir charte** (v1.26.2-hotfix1) : `linear-gradient(135deg, #24090f, #1a0a14)` (et non noir pur #0d0d10 qui jurait avec le thème sombre bleuté). Reste dramatique mais s'harmonise.
+- **Fond critical = rouge clair translucide** (v1.26.2-hotfix2) : `rgba(255, 60, 60, 0.16)` (mode sombre) / `rgba(220, 30, 30, 0.13)` (thème clair) + bordure gauche rouge vive 6px + ombre inset rouge. KARMA a refusé le noir pur (#0d0d10, jurait) PUIS le bordeaux-noir (#24090f, encore trop sombre/illisible en thème clair). Le rouge clair translucide garde les textes de base lisibles (clair en thème sombre, sombre en thème clair) SANS override forcé. Distinction avec "alert" = saturation + bordure gauche épaisse + ombre rouge.
 - **Bouton « 📋 Copier la valeur GPS »** : facilite l'alignement quand l'user fait confiance au géoréf. L'application reste manuelle (pas d'auto-mutation `APP_CONFIG.scale`).
 
 #### 73.5 À NE PAS faire
