@@ -897,6 +897,30 @@ window.setRoads = function(roads) {
   renderRoads();
 };
 
+// 🆕 v1.26.3-hotfix3 — Préservation de currentRoad à travers undo/redo.
+// BUG corrigé : un Ctrl-Z pendant le dessin d'un tracé passait par
+// setRoads() qui force currentRoad = null. Le point suivant créait alors
+// un NOUVEAU tracé déconnecté (« lien suivant cassé »), alors que le
+// bouton « supprimer dernier point » (qui préserve currentRoad) n'avait
+// pas ce souci. HistoryManager capture désormais l'index du tracé en
+// cours dans le snapshot et le restaure après _applyState.
+//
+// getCurrentRoadIndex() → index de currentRoad dans roadsData, ou -1 si
+//                         aucun tracé en cours (ou tracé introuvable).
+// setCurrentRoadByIndex(idx) → ré-établit currentRoad au tracé d'index idx
+//                         (null si idx invalide / hors limites / -1).
+window.getCurrentRoadIndex = function() {
+  if (!currentRoad) return -1;
+  return roadsData.indexOf(currentRoad);
+};
+window.setCurrentRoadByIndex = function(idx) {
+  if (typeof idx === "number" && idx >= 0 && idx < roadsData.length) {
+    currentRoad = roadsData[idx];
+  } else {
+    currentRoad = null;
+  }
+};
+
 // Lecture seule : retourne la road en cours de tracé (ou null si aucun
 // tracé actif). Utilisé par interface.js pour décider de fermer le mode
 // quand une suppression vient d'effacer la road en cours (sinon l'icône

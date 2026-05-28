@@ -11,6 +11,7 @@
     "📚 DOCS APPROFONDIES — docs/CLAUDE.md §74 nouvelle (professionnalisation + récap cleanup code mort) + refs lockout/Bourré mises à jour. docs/README_USER.md : 2 tables vitesse de marche (itinéraire + mode perdu) actualisées Blessé. docs/AI_CONTEXT.md : presets Blessé + tableau versionning. docs/NETWORK_AUDIT.md : entrée v1.26.3. js/interface.js + js/tutorial.js : aide intégrée + carte onboarding actualisées.",
     "🏷️ Sources de vérité v1.26.3 : version.json → 'v1.26.3', js/copyright.js > __MKM__.build → 'v1.26.3', sw.js > CACHE_NAME → 'myktamap-cache-v1.26.3'.",
     "🛡️ Confidentialité — AUCUNE nouvelle surface réseau, AUCUNE nouvelle permission. Renommage + nettoyage purement cosmétiques/structurels. Les micro-migrations sont des réécritures localStorage locales (pas de réseau). Liste blanche `connect-src` inchangée : 'self' + https://www.gstatic.com (ping).",
+    "🐛 FIX Ctrl-Z tracé — annuler l'ajout d'un point pendant le dessin d'un tracé (Ctrl-Z) cassait le « lien suivant » : le point dessiné ensuite créait un nouveau tracé déconnecté au lieu de continuer le tracé en cours. Cause : la restauration undo remettait le tracé actif à zéro. Corrigé : l'index du tracé en cours est désormais préservé à travers undo/redo. Le bouton « supprimer dernier point » n'était pas affecté.",
     "⚠️ Action terrain — ne nécessite PAS de ré-import. Compat 100 % v1.26.2. Si tu avais sélectionné le preset de vitesse le plus lent (ancien « Bourré »), il s'affiche désormais « 🤕 Blessé » avec ton réglage préservé automatiquement. Aucune action requise."
   ]
 }

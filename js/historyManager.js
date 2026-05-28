@@ -75,7 +75,11 @@
       editorPoints: _deepCloneArray(window.getEditorPoints ? window.getEditorPoints() : []),
       roads:        _deepCloneArray(window.getRoads        ? window.getRoads()        : []),
       zones:        _deepCloneArray(window.getZones        ? window.getZones()        : []),
-      structures:   _deepCloneArray(window.getStructures   ? window.getStructures()   : [])
+      structures:   _deepCloneArray(window.getStructures   ? window.getStructures()   : []),
+      // 🆕 v1.26.3-hotfix3 — index du tracé en cours de dessin (ou -1).
+      // Permet de restaurer currentRoad après undo/redo pour que le point
+      // suivant continue le bon tracé au lieu d'en créer un orphelin.
+      currentRoadIndex: (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1)
     };
   }
 
@@ -99,6 +103,12 @@
       if (window.resetStructures) window.resetStructures();
       if (window.setStructures && Array.isArray(s.structures)) {
         window.setStructures(s.structures);
+      }
+      // 🆕 v1.26.3-hotfix3 — Restaure le tracé en cours APRÈS setRoads
+      // (qui a remis currentRoad = null). Sans ça, un undo/redo pendant le
+      // dessin cassait le « lien suivant » (point suivant = tracé orphelin).
+      if (window.setCurrentRoadByIndex && typeof s.currentRoadIndex === "number") {
+        window.setCurrentRoadByIndex(s.currentRoadIndex);
       }
     } catch(e) {
       console.warn("[HistoryManager] _applyState échoué :", e);
