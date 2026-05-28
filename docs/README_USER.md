@@ -64,7 +64,7 @@ L'application supporte un système d'**alertes publiques** diffusées par l'aute
 - **Acquittement** : cliquer **"J'ai compris"** stocke la confirmation dans votre navigateur. La modale ne ré-apparaîtra plus tant que l'alerte reste la même.
 - **Si une nouvelle alerte est publiée** (ou la même est ré-éditée par l'auteur), elle ré-apparaîtra automatiquement au prochain reload.
 
-**Multi-alertes (depuis v163)** : plusieurs alertes peuvent coexister (ex: alerte migration domaine + alerte incendie ponctuelle). Elles s'affichent en cascade au lancement (priorité : emergency → warning → info, plus récente d'abord). Chacune s'acquitte individuellement avec son propre bouton "J'ai compris".
+**Multi-alertes** : plusieurs alertes peuvent coexister (ex: alerte migration domaine + alerte incendie ponctuelle). Elles s'affichent en cascade au lancement (priorité : emergency → warning → info, plus récente d'abord). Chacune s'acquitte individuellement avec son propre bouton "J'ai compris".
 
 **Bouton 🚨 dans le loader** (à gauche du 📖 Documentation) — **couleur dynamique selon le niveau max actif** :
 
@@ -91,7 +91,7 @@ Au clic, le bouton 🚨 force le re-affichage de TOUTES les alertes actives en c
 
 ---
 
-### 🌐 Migration vers `myktamap.fr` (depuis v163)
+### 🌐 Migration vers `myktamap.fr`
 
 L'application change de domaine officiel. À partir du **15 juillet 2026**, la nouvelle adresse sera **`myktamap.fr`** (au lieu de l'actuelle `myktamap.fr`).
 
@@ -117,7 +117,7 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 
 ## 🚀 Premiers pas
 
-### 🗝️ Accès restreint — Code communautaire (depuis v173)
+### 🗝️ Accès restreint — Code communautaire
 
 L'application est protégée par un **mot de passe unique commun** à tous les utilisateurs autorisés. Le code te sera communiqué par l'auteur (forum, message direct, etc.).
 
@@ -182,7 +182,7 @@ Au démarrage, l'application affiche un **écran d'accueil** qui regroupe :
 2. **Cliquer sur un plan déjà connu** — dans **📚 Mes plans**, un clic relance directement un plan déjà ouvert (serveur 🌐 ou local 💾).
 3. **🏗️ Générer un plan** — bouton dédié dans la home pour créer un plan from scratch.
 
-### 👤 Profil utilisateur *(depuis v1.21.0, enrichi v1.21.4)*
+### 👤 Profil utilisateur
 
 Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le header. Il regroupe ton identité visuelle et des statistiques configurables sur ton usage de l'app.
 
@@ -192,9 +192,9 @@ Un **bandeau profil** s'affiche en haut de l'écran d'accueil, juste sous le hea
 - **Surnom** : ton pseudo (modifiable). Par défaut "Cataphile" au premier lancement.
 - **Stats compactes** *(visibles dès que l'écran fait ≥ 380 px de large)* — désormais **configurables** depuis la modale Profil (voir plus bas). Par défaut :
   - ⏱️ **Temps de session** : durée écoulée depuis le démarrage de l'app sur cette session
-  - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (depuis v1.21.4 — fiabilisée, voir plus bas)
+  - 💾 **Sauvegarde** : taille réelle des données MyKTAMap stockées localement (voir plus bas)
 
-> 💡 **Charte light theme (depuis v1.21.1)** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
+> 💡 **Charte light theme** : en mode clair, le fond du bandeau profil s'aligne sur les cards "Mes plans" pour une intégration visuelle propre.
 
 **Modifier ton profil** :
 
@@ -204,9 +204,9 @@ Clic sur le bandeau profil → modale **👤 Mon profil** :
 - **📷 Photo** : choisis une image depuis ta galerie. L'app la **compresse automatiquement** (512 px côté long max, JPEG qualité 88 %) avant stockage IndexedDB pour ne pas saturer ton quota navigateur.
 - **🗑️ Reset profil** : bouton de remise à zéro (modale de confirmation charte — pas de `confirm()` natif système). Vide le surnom + photo + compteurs.
 
-#### 📊 Grid stats *(enrichie en v1.21.4)*
+#### 📊 Grid stats
 
-La modale Profil affiche désormais **6 cells de stats globales** (au lieu de 5) :
+La modale Profil affiche **6 cells de stats globales** :
 
 | Cell | Description |
 |---|---|
@@ -215,9 +215,9 @@ La modale Profil affiche désormais **6 cells de stats globales** (au lieu de 5)
 | ⭐ **N favoris** | Nombre cumulé de points marqués favoris, tous plans confondus |
 | 📦 **N snapshots** | Nombre de snapshots de session backups en IndexedDB (max 10 FIFO) |
 | 📸 **N photos POI** | Nombre de photos attachées à des points + taille totale |
-| 💾 **N MB sauvegarde** *(nouveau v1.21.4)* | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
+| 💾 **N MB sauvegarde** | **Taille réelle des données MyKTAMap** (localStorage avec préfixe MyKTAMap + 6 stores IndexedDB connus). Hors Cache PWA volatile (qui n'est pas une donnée user). |
 
-#### 📊 Mes plans *(nouveau v1.21.4)*
+#### 📊 Mes plans
 
 Section **"📊 Mes plans"** sous la grid : **table progressive** qui liste chaque plan de ton registre avec :
 
@@ -230,7 +230,7 @@ Section **"📊 Mes plans"** sous la grid : **table progressive** qui liste chaq
 
 La table se construit **séquentiellement** (un plan à la fois) pour ne pas saturer la mémoire — comportement anti-crash sur mobile pour les utilisateurs avec 20+ plans en registre.
 
-#### 📊 Répartition par catégorie *(nouveau v1.21.4)*
+#### 📊 Répartition par catégorie
 
 Section **"📊 Répartition par catégorie"** : **4 camemberts SVG** agrégés cross-plan qui donnent une vision globale de ta cartographie :
 
@@ -243,13 +243,13 @@ Section **"📊 Répartition par catégorie"** : **4 camemberts SVG** agrégés 
 
 Le rendu visuel est **identique** à celui du camembert de la page **Stats Globales** d'un plan ouvert — même palette de couleurs, **mais avec une différence importante** :
 
-> 💡 **Labels par défaut TOUJOURS** (depuis v1.21.5-fix1) : sur cette section cross-plan home, on affiche les libellés **génériques built-in** (`Principal`, `Secondaire`, `Chemin`, `Jonction` pour les tracés ; `Eau`, `Remblais`, `Effondrement`, `Inaccessible` pour les zones). Si tu as renommé un type dans la légende d'un plan spécifique (par exemple « principal » → « route de surface » sur ton plan A), ce renommage **n'apparaît PAS ici** — c'est volontaire pour garder une vision cohérente cross-plan. Le renommage local reste visible normalement dans la modale Stats Globales **in-plan** du plan A.
+> 💡 **Labels par défaut TOUJOURS** : sur cette section cross-plan home, on affiche les libellés **génériques built-in** (`Principal`, `Secondaire`, `Chemin`, `Jonction` pour les tracés ; `Eau`, `Remblais`, `Effondrement`, `Inaccessible` pour les zones). Si tu as renommé un type dans la légende d'un plan spécifique (par exemple « principal » → « route de surface » sur ton plan A), ce renommage **n'apparaît PAS ici** — c'est volontaire pour garder une vision cohérente cross-plan. Le renommage local reste visible normalement dans la modale Stats Globales **in-plan** du plan A.
 
-> 📌 **Limitation cache** : pour les plans **jamais rouvert depuis v1.21.4**, seules les annotations de **session** (`SessionPersist` localStorage) sont contribuées aux camemberts — pas les data layers embedded du ZIP (les `data/*.json`). Si tu vois des "secondaire" / "level -1" qui te paraissent manquants, **rouvre le plan une fois** : le cache complet (incluant les data layers embedded) sera regénéré automatiquement après ~800 ms. Au prochain retour à la home, les camemberts seront à jour.
+> 📌 **Limitation cache** : pour les plans **jamais rouverts récemment**, seules les annotations de **session** (stockées localement) sont contribuées aux camemberts — pas les data layers embarqués du ZIP (les `data/*.json`). Si tu vois des "secondaire" / "level -1" qui te paraissent manquants, **rouvre le plan une fois** : le cache complet (incluant les data layers embarqués) sera regénéré automatiquement après ~800 ms. Au prochain retour à la home, les camemberts seront à jour.
 
 Au fur et à mesure que tu ouvres tes plans et que leurs data layers se chargent, les camemberts s'enrichissent automatiquement avec les breakdowns réels.
 
-#### 🎨 Stats du bandeau accueil *(nouveau v1.21.4)*
+#### 🎨 Stats du bandeau accueil
 
 Section **"🎨 Stats du bandeau accueil"** : **choisis quelles stats apparaissent** dans le bandeau profil de la home (1 à 3 stats max).
 
@@ -265,14 +265,13 @@ Section **"🎨 Stats du bandeau accueil"** : **choisis quelles stats apparaisse
 
 **Mise à jour instantanée** : le bandeau home se re-render **live** dès que tu coches/décoches sans avoir besoin de recharger la page.
 
-#### 💾 Stat sauvegarde fiabilisée *(v1.21.4)*
+#### 💾 Stat sauvegarde
 
-**Problème résolu** : avant v1.21.4, la stat "Sauvegarde" (visible dans le bandeau home + dans la grid de la modale Profil) **fluctuait de façon erratique** selon l'état du Cache PWA. Tu pouvais voir 80 Mo, puis 320 Mo, puis 50 Mo selon les phases de purge automatique du navigateur — alors que tes données réelles n'avaient pas bougé.
+La stat "Sauvegarde" (visible dans le bandeau home + dans la grid de la modale Profil) reflète la **taille réelle de tes données MyKTAMap** :
 
-**Depuis v1.21.4** :
-- **Calcul ciblé MyKTAMap** : on additionne uniquement les entrées localStorage avec préfixe `myktamap_*` + les 6 stores IndexedDB connus de l'app (handles, blobs, backups, photos, etc.). Le Cache PWA volatile (qui contient le code JS/CSS de l'app et n'est PAS une donnée user) est désormais **exclu** du calcul.
-- **Cache 30 s** : le calcul est cumulé puis cached 30 secondes pour ne pas réinterroger IndexedDB en boucle quand tu ouvres/fermes des modales rapidement.
-- **Tooltip mis à jour** : "Taille des données MyKTAMap (LS + IDB)" + précision "hors Cache PWA".
+- **Calcul ciblé MyKTAMap** : on additionne uniquement les entrées localStorage avec préfixe `myktamap_*` + les 6 stores IndexedDB connus de l'app (handles, blobs, backups, photos, etc.). Le Cache PWA volatile (qui contient le code JS/CSS de l'app et n'est PAS une donnée user) est **exclu** du calcul.
+- **Cache 30 s** : le calcul est cumulé puis mis en cache 30 secondes pour ne pas réinterroger IndexedDB en boucle quand tu ouvres/fermes des modales rapidement.
+- **Tooltip** : "Taille des données MyKTAMap (LS + IDB)" + précision "hors Cache PWA".
 
 Résultat : la valeur est **stable, prévisible, et reflète vraiment ce que tu as cartographié**.
 
@@ -283,14 +282,6 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 - Un toast modal te suggère un **reload** de la page pour que l'avatar et le surnom soient correctement mis à jour partout dans l'UI (header, sidebar, etc.)
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
-
-#### Workflow utilisateur typique à la mise à jour v1.21.3 → v1.21.4
-
-1. Au reload, tes N plans dans le registre s'affichent dans la table **📊 Mes plans** avec un badge ⚠️ `partial` (les data layers ne sont pas encore en cache pour cette release).
-2. À mesure que tu **ouvres chaque plan**, le cache stats se remplit automatiquement → la row redevient complète au prochain ouverture de la modale Profil.
-3. **Les camemberts s'enrichissent progressivement** avec les vrais breakdowns dès que les data layers de chaque plan ont été chargés au moins une fois.
-
-> 💡 Si tu veux que TOUT soit complet d'un coup, ouvre chaque plan une fois (clic sur la ligne du plan dans 📚 Mes plans → splash → home → suivant). La modale Profil reflétera l'intégralité dès la prochaine ouverture.
 
 ### 📚 Gestion de votre liste de plans
 
@@ -306,7 +297,7 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 | 🔐 | Plan local avec **accès permanent autorisé** (Chrome/Edge desktop) |
 | 📁 | Plan local sans persistance — re-sélection requise au chargement |
 
-**Actions disponibles** sur chaque ligne (depuis v171, 3 boutons) :
+**Actions disponibles** sur chaque ligne (3 boutons) :
 
 - **ℹ️** — ouvre une fenêtre **Infos détaillées** sur cette archive (id interne, nom, version, auteur, type, fichier source, taille, persistance, mode V1/V2/multi-niveau, préset performance, dates d'ajout et d'ouverture). Pratique pour vérifier ce que l'app sait du plan sans le charger.
 - **▶️** — charge le plan
@@ -317,7 +308,7 @@ L'application mémorise tous les plans que vous chargez, qu'ils viennent du serv
 - **💾 Exporter ma liste** — télécharge un fichier `myktamap_plans_AAAAMMJJ.config` que vous pouvez sauvegarder ou partager.
 - **📂 Charger une liste** — importe un fichier de liste précédemment exporté. Trois choix : Remplacer, Fusionner, ou Annuler.
 
-**Filtre d'affichage** (depuis v171) :
+**Filtre d'affichage** :
 
 - **🌐 Afficher les plans serveur** — cochez/décochez ce toggle au-dessus de la liste pour masquer les plans serveur découverts automatiquement (test1, test2, démos…) et ne voir que vos plans persos. **Préservé** entre les sessions (localStorage). Décocher ne supprime rien — recocher → les plans réapparaissent intacts.
 
@@ -333,7 +324,7 @@ Cliquez sur **🔐 Autoriser l'accès permanent au fichier**. Le navigateur reti
 
 #### Sur mobile, Firefox, Safari
 
-L'option **💾 Mémoriser ce plan dans l'app** est **cochée par défaut depuis v171** (avant : décochée, ce qui obligeait à re-sélectionner le ZIP à chaque chargement si on oubliait). Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
+L'option **💾 Mémoriser ce plan dans l'app** est **cochée par défaut**. Le ZIP est copié dans l'espace local du navigateur. Aux prochaines ouvertures :
 
 - **0 clic**, le plan se charge directement
 - Fonctionne **hors-ligne** (le ZIP est dans le navigateur, pas besoin de retrouver le fichier)
@@ -370,9 +361,9 @@ Si l'application est hébergée sur un serveur avec plusieurs plans dans `data/`
 
 Au démarrage, ces plans apparaissent dans **Mes plans** marqués comme « découvert » et peuvent être chargés d'un clic.
 
-### ⚙️ Modale "Configuration" (chargeur, depuis v1.7.3)
+### ⚙️ Modale "Configuration" (chargeur)
 
-Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe **tout ce qui était auparavant éparpillé** (drawer de perf, bouton de debug, bouton de reset) :
+Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du loader (à côté de 📖 Documentation et 🚨 Alertes) ouvre une modale unique qui regroupe tous les réglages du chargeur (tiling, performance, debug, mise à jour, reset) :
 
 > **Ordre des sections dans la modale (de haut en bas, identique au UI)** :
 
@@ -380,16 +371,15 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
 2. **🚀 Mode Performance ULTRA (tracés / markers)** — 7 toggles d'optimisation qui ne touchent **PAS** à l'image (déjà couvert par le Tiling ci-dessus) mais à tout le reste (polylines, popups, intersections, auto-save, viewport culling, limite dézoom mobile). Préférence **globale**, conservée entre sessions. Voir section "🚀 Optimiser ton plan" plus bas pour le détail.
 
-3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** *(depuis v1.7.3)* qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
+3. **🛠️ Debug** — toggle **🐛 Logs détaillés** (verbose mode) **+ bouton 📋 Afficher les logs** qui ouvre directement la modale buffer des logs capturés. Utile pour consulter les logs sans avoir à charger un plan d'abord (ex : si tu cherches à diagnostiquer un bug bloquant au chargement).
 
-4. **🔒 Confidentialité & Audit** *(depuis v1.8.0)* — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
+4. **🔒 Confidentialité & Audit** — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
 5. **🎨 Affichage** — toggles d'interface :
-   - **📜 Utiliser l'ancienne interface (classique v1.8.x)** — bascule entre la nouvelle interface (refonte v1.9.x, par défaut) et l'ancienne. Reload requis. Voir section **🎨 Nouvelle interface** plus bas pour les détails.
    - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
-   - **🔆 Garder l'écran allumé** *(depuis v1.21.1)* — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
+   - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
 
-6. **📚 Plans serveur** *(nouveau v1.21.4)* — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
+6. **📚 Plans serveur** — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
    - **Désactive l'auto-discovery** du fichier `data/index.json` au boot de l'app — l'app ne va plus interroger le serveur pour lister les plans de démo ou les plans publics hébergés.
    - **Masque le toggle "🌐 Afficher plans serveur"** du home (devient inutile puisqu'il n'y a plus rien à afficher).
    - **Exclut les plans `type === "server"` des stats agrégées** de la modale Profil → ne fausse plus le count "Plans visités" avec des plans que tu n'utilises jamais.
@@ -398,13 +388,13 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 
    > 💡 **Cas d'usage** : tu utilises MyKTAMap uniquement avec tes propres plans locaux et tu ne veux pas voir les plans de démo / tests du serveur qui polluent ta liste. Coche cette case → reload → ta liste 📚 Mes plans ne contient plus que TES plans.
 
-7. **🔐 Code d'accès local (PIN / Face ID)** *(depuis v1.10.0)* — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
+7. **🔐 Code d'accès local (PIN / Face ID)** — verrouille l'app à chaque démarrage par un code 4-6 chiffres + Face ID / Touch ID si l'appareil le supporte. 100 % local (jamais envoyé sur Internet). 5 tentatives ratées = lockout définitif. Aucune recovery en cas d'oubli. Voir section dédiée **🔐 Code d'accès local (PIN / Face ID)** plus bas pour le détail complet (activation, modification, désactivation, lockout).
 
 8. **🔄 Mise à jour — Forcer la mise à jour douce** — re-télécharge la dernière version du code (purge du cache PWA, garde tes données et tes plans). Utile si tu suspectes que ton app reste sur une vieille version après une release. Ne touche **jamais** à tes plans, ta session active, ton code communautaire ni ton PIN local. **Confirmation obligatoire avant déclenchement** (modale bleue qui détaille ce qui est préservé + besoin d'une connexion Internet active).
 
 9. **💥 Tout réinitialiser (reset complet)** — purge totale (cache + localStorage + IndexedDB + plans). Reset le code d'accès communautaire **ET** le PIN local si configuré. **Double confirmation requise.** Action irréversible.
 
-**Pourquoi cette refonte** : avant v1.7.3, le bouton de reset et le bouton 🐛 Logs étaient dans une section "Plus d'options" séparée, et le bloc Perf était un drawer à part. C'était confus. Désormais : **tout dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
+**Organisation** : **tout est regroupé dans une seule modale ⚙️ Configuration**, accessible depuis le header du loader. Le bouton 🏗️ Générer un plan reste visible directement dans la home (pas dans la modale Configuration) car c'est une action de création, pas un réglage.
 
 ### 🎚️ Mode performance — 5 presets
 
@@ -422,13 +412,11 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
 
 **Le réglage est mémorisé pour chaque plan** : si vous chargez un plan en "Performance", la prochaine fois que vous l'ouvrirez via 📚 Mes plans, il s'ouvrira directement en "Performance". Pour changer le réglage d'un plan déjà mémorisé, ré-importez son ZIP en sélectionnant un autre mode dans le sélecteur.
 
-### 🎨 Nouvelle interface (depuis v1.9.1, polish v1.9.2)
+### 🎨 L'interface en mode carte
 
-> MyKTAMap utilise une **nouvelle interface en mode carte** activée par défaut depuis v1.9.1. Plus claire, plus tactile, mieux adaptée mobile-first. L'ancienne reste accessible en un clic.
->
-> **Polish v1.9.2** (22/05/2026) : page d'accueil PC plein écran sans bordure noire, toutes les modales agrandies sur grand écran (Doc, Aide, ⚙️ Configuration, Légende multi-colonnes, Enregistrer session, Éditeur tableau, Export images), nouveau toggle « ⚪ Afficher les ronds aux intersections de tracés » dans ⚙️ Configuration, rotation tracker continue sans saut au franchissement du Nord, splash refondu avec signature KARMA animée + crédits libs (🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra).
+> MyKTAMap utilise une interface en mode carte **claire, tactile et adaptée mobile-first**. La page d'accueil PC est en plein écran, les modales s'agrandissent sur grand écran, et le splash affiche la signature KARMA animée + les crédits des librairies (🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra).
 
-**Ce qui change visuellement** :
+**Présentation visuelle** :
 
 - **🌟 Header bar persistant en haut** (44px sticky) :
   - Rose des vents cliquable à gauche — retour à la home (avec garde-fou si session modifiée)
@@ -456,14 +444,6 @@ Cliquez sur un bouton avant de charger — la description sous le sélecteur cha
   - Mesures actives (📐 mesure simple, 🗺️ itinéraire avec waypoints, 🧭 tracker)
 - **Modale "Changer de plan" refondue** : carte highlight du plan en cours avec badge `● ACTIF`, liste des plans récents avec animation au survol, gros bouton bleu "📚 Voir tous mes plans" en bas
 - **Générateur de plan retiré du mode carte** : reste accessible **uniquement depuis la home** via 🏗️ Générer un plan (création hors du mode carte)
-
-**Revenir à l'ancienne interface (classique v1.8.x)** :
-
-Si tu préfères l'interface précédente (icônes empilées sans header, pas de status bar), tu peux y revenir en un clic :
-- Depuis la home : **⚙️ Configuration** → section **🎨 Affichage** → coche **"📜 Utiliser l'ancienne interface"**
-- Depuis le mode carte : **⚙️ Réglages** → section **🎨 Affichage** → coche la même case
-
-Reload de la page requis pour appliquer. Le choix est mémorisé entre sessions et entre plans.
 
 ### 💾 Sauvegarde automatique de votre session
 
@@ -550,7 +530,7 @@ L'application demande **deux confirmations** avant d'exécuter le reset, et vous
 
 > Utile en cas de souci persistant, ou pour tester l'application "comme un nouvel utilisateur" lorsque vous publiez ou partagez votre travail.
 
-### 🔒 Confidentialité & Audit réseau (depuis v1.8.0)
+### 🔒 Confidentialité & Audit réseau
 
 **MyKTAMap est une application 100 % client-side. Aucune de tes annotations, sessions, plans ou données personnelles n'est jamais envoyée à un serveur, ni à un service tiers.** Et tu peux le vérifier toi-même.
 
@@ -604,13 +584,13 @@ Une fois le plan chargé :
 - **Pincer / zoomer** pour agrandir ou réduire la vue
 - **Glisser** pour se déplacer sur le plan
 - **Cliquer** sur une icône pour afficher les informations du point
-- **Double-cliquer** sur une icône (depuis v1.7.1) pour zoomer rapidement dessus avec une animation smooth (= raccourci équivalent au bouton "Y aller" du popup)
+- **Double-cliquer** sur une icône pour zoomer rapidement dessus avec une animation smooth (= raccourci équivalent au bouton "Y aller" du popup)
 
 Les boutons **+** et **−** en haut à gauche permettent de zoomer. Le contrôle de calques en haut à droite permet d'afficher ou masquer des couches d'informations.
 
-> 📐 **Depuis v1.7.1** : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille proportionnelle au plan (avant : elles paraissaient énormes et voilaient la carte). Tu peux désactiver ce comportement dans ⚙️ Réglages → 🔍 Affichage → "📐 Adapter la taille des icônes au zoom" si tu préfères le comportement Leaflet par défaut (icônes taille écran fixe).
+> 📐 **Taille des icônes adaptative** : la taille des icônes s'adapte automatiquement au niveau de zoom. Au dézoom, elles rétrécissent pour garder leur taille proportionnelle au plan. Tu peux désactiver ce comportement dans ⚙️ Réglages → 🔍 Affichage → "📐 Adapter la taille des icônes au zoom" si tu préfères le comportement Leaflet par défaut (icônes taille écran fixe).
 
-### 🌐 Coordonnées GPS dans les popups *(depuis v1.21.2)*
+### 🌐 Coordonnées GPS dans les popups
 
 Si ton plan est **calibré GPS** (cf. section "Exporter en KMZ géolocalisé" pour le calibrage 2 points), un nouvel élément apparaît dans les popups des points :
 
@@ -648,7 +628,7 @@ Tous les outils sont accessibles depuis la **barre latérale droite**, organisé
 | **Édition de points** | ✏️ | Ajouter tes propres points, effacer |
 | **Tracés** | 🛣️ | Tracer routes principales, secondaires, chemins, **calculer la distance totale** |
 
-> 💡 **Calque "Mes annotations"** dans la modale ≡ Filtres (en haut à droite de la carte, bouton trois barres horizontales — *depuis v1.21.5 c'est notre modale unifiée custom, pas le Leaflet natif*) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
+> 💡 **Calque "Mes annotations"** dans la modale ≡ Filtres (en haut à droite de la carte, bouton trois barres horizontales — modale unifiée custom MyKTAMap) : ce calque regroupe tes points ajoutés et zones tracées en session. Décocher la case les masque, recocher les réaffiche. **L'itinéraire, la mesure, le tracker** ne sont pas affectés (cycle de vie propre).
 | **Zones** | ⬛ | Tracer des zones de remblais, effondrement ou eau |
 
 **Comment ça marche :**
@@ -687,7 +667,7 @@ Au clic sur un plan dans le menu :
 
 Le bouton **🔍** dans la barre latérale **OU** le raccourci clavier **Ctrl+K** (`Cmd+K` sur Mac) ouvre la fenêtre de recherche.
 
-> 🆕 **Depuis v1.10.3** : la recherche couvre désormais **4 catégories** : 📍 Points · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures (piliers / mur / fronts). Avant, seuls les points étaient cherchables.
+> 🔍 La recherche couvre **4 catégories** : 📍 Points · 🛣️ Tracés · ⬛ Zones · 🏛️ Structures (piliers / mur / fronts).
 
 ### 🔎 Ce qu'on peut chercher
 
@@ -703,7 +683,7 @@ Le bouton **🔍** dans la barre latérale **OU** le raccourci clavier **Ctrl+K*
 - Le **type** en français (`Principal`, `Eau`, `Pilier 1ère masse`...)
 - Le **niveau** (en mode multi-niveau)
 
-**🌐 Coordonnées GPS** *(depuis hotfix18 — uniquement si le plan est géoréférencé)* :
+**🌐 Coordonnées GPS** *(uniquement si le plan est géoréférencé)* :
 - Colle directement un couple de coordonnées au **format Google Maps** : `48.680831, 2.158843`
 - L'app convertit en position sur le plan via le calibrage GPS du plan
 - Si un **POI existe dans 50 px autour** → carte verte "🎯 Aller au point" avec distance affichée
@@ -730,7 +710,7 @@ La recherche est **insensible aux accents et à la casse** — taper "aeration" 
 
 Sous le champ de recherche, jusqu'à trois lignes de chips :
 
-- 🆕 **Catégorie** : 4 chips `📍 Points (N)` · `🛣️ Tracés (M)` · `⬛ Zones (K)` · `🏛️ Structures (L)` avec compteur par catégorie. Cliquez pour activer (jaune) ou désactiver. Aucun chip actif = toutes les catégories visibles. Cette ligne n'apparaît que si **au moins 2 catégories ont du contenu** sur le plan.
+- **Catégorie** : 4 chips `📍 Points (N)` · `🛣️ Tracés (M)` · `⬛ Zones (K)` · `🏛️ Structures (L)` avec compteur par catégorie. Cliquez pour activer (jaune) ou désactiver. Aucun chip actif = toutes les catégories visibles. Cette ligne n'apparaît que si **au moins 2 catégories ont du contenu** sur le plan.
 - **Calques** : un chip par calque (Puits, Carrière, Mes ajouts, etc.) — **uniquement pour les points** (les autres catégories n'ont pas de notion "calque").
 - **Tags** : un chip par tag rencontré dans les points (pa, ouvert, fermé, aeration, etc.) — **uniquement pour les points**.
 
@@ -781,9 +761,9 @@ La recherche couvre :
 
 > Tous les boutons du tracker se trouvent dans le groupe **🧭 Tracker** de la barre latérale.
 
-### 🆕 Panneau latéral Tracker *(depuis v1.21.2)*
+### 🧭 Panneau latéral Tracker
 
-Le bouton **🧭 Tracker** ouvre désormais un **panneau latéral (flyout)** adjacent au bouton principal, plutôt qu'une cascade verticale en colonne qui débordait souvent du viewport mobile. C'est plus lisible, plus stable visuellement, et toutes les sous-actions sont accessibles sans scroll.
+Le bouton **🧭 Tracker** ouvre un **panneau latéral (flyout)** adjacent au bouton principal. C'est lisible, stable visuellement, et toutes les sous-actions sont accessibles sans scroll, même sur mobile.
 
 **Sous-actions disponibles dans le flyout** (ordre fixe) :
 
@@ -793,8 +773,8 @@ Le bouton **🧭 Tracker** ouvre désormais un **panneau latéral (flyout)** adj
 | **🧭** | Boussole (widget rose des vents) |
 | **📍** | Recalage position |
 | **🗺️** | Calculer un itinéraire |
-| **🎬** | Replay de session tracker *(depuis v1.12.0)* |
-| **🔥** | Heatmap *(réactivée v1.21.2)* — voir section dédiée |
+| **🎬** | Replay de session tracker |
+| **🔥** | Heatmap — voir section dédiée |
 | **⛑️** | Je suis perdu — **bouton à fond ROUGE** (signal danger) |
 | **🚨** | Mode urgence XL — **bouton à fond ROUGE** (signal danger) |
 
@@ -808,7 +788,7 @@ Appuyez sur **▶️** pour démarrer.
 
 Une icône apparaît sur le plan à votre position de départ. Elle se déplace au fur et à mesure de votre marche, et un tracé enregistre votre chemin parcouru.
 
-> 🧭 **Icône directionnelle (depuis v158)** : pendant le tracking actif, l'icône (cône bleu + dot blanc, style GPS) **tourne en temps réel pour pointer dans la direction de marche** — calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracker arrêté ou recalage seul), l'icône pointe Nord (pose neutre). Smoothing intégré pour éviter le tremblement.
+> 🧭 **Icône directionnelle** : pendant le tracking actif, l'icône (cône bleu + dot blanc, style GPS) **tourne en temps réel pour pointer dans la direction de marche** — calculée depuis le heading du téléphone (même source que la boussole 🧭). Au repos (tracker arrêté ou recalage seul), l'icône pointe Nord (pose neutre). Smoothing intégré pour éviter le tremblement.
 
 Appuyez sur **⏹️** pour arrêter.
 
@@ -818,7 +798,7 @@ Appuyez sur **⏹️** pour arrêter.
 
 Le bouton **🧭** dans le groupe **🧭 Tracker** affiche une **rose des vents flottante** en haut à gauche de la carte (sous les boutons de zoom). La rose contre-tourne en temps réel pour que le **N pointe toujours vers le vrai Nord**.
 
-> 🆕 **Depuis v157** : nouvelle rose dédiée à la boussole avec **N/S/E/W marqués clairement** + flèche rouge sur le Nord. Beaucoup plus lisible à l'usage que l'ancienne version qui utilisait le logo MyKTAMap (rose stylée charte). Le logo d'origine reste utilisé pour le splash/loader (identité visuelle).
+> 🧭 La rose dédiée à la boussole affiche **N/S/E/W marqués clairement** + une flèche rouge sur le Nord, pour une lecture facile. Le logo MyKTAMap reste utilisé pour le splash/loader (identité visuelle).
 
 **Comment vérifier que tout est cohérent ?**
 
@@ -833,7 +813,7 @@ Tenez le téléphone à plat dans la main, écran face à vous, **bord supérieu
 
 Si l'orientation est cohérente, le tracker enregistre correctement vos déplacements. Sinon, suspectez une perturbation magnétique (armatures, ferraille, sol) — recalez via 📍 dès que possible et limitez la confiance dans le tracé.
 
-> 🆕 **Depuis v172** : la boussole et la rotation de l'icône tracker fonctionnent correctement en **mode landscape** (téléphone tenu à l'horizontale) et en **portrait inversé**. Avant : décalage de ±90° en landscape, qui pouvait laisser penser que la boussole était cassée. Maintenant : recalage instantané dès que vous tournez votre téléphone, le N reste en haut visuel quelle que soit l'orientation. Les 4 orientations sont couvertes.
+> 🧭 La boussole et la rotation de l'icône tracker fonctionnent correctement en **mode landscape** (téléphone tenu à l'horizontale) et en **portrait inversé** : recalage instantané dès que vous tournez votre téléphone, le N reste en haut visuel quelle que soit l'orientation. Les 4 orientations sont couvertes.
 
 **Cliquez sur le widget** pour ouvrir un **affichage agrandi** plein écran (rose 240px + cardinal en gros + angle exact). Pratique pour valider de loin ou faire une démo. Refermer via ✕, Échap ou en cliquant à côté.
 
@@ -846,11 +826,11 @@ La position calculée dérive inévitablement. Dès que vous reconnaissez un rep
 1. Appuyez sur **📍** — le bouton s'allume en vert
 2. Appuyez sur le point du plan correspondant à votre position réelle
 3. L'icône se déplace à l'emplacement choisi et le tracé repart de zéro
-4. *(depuis v1.12.0)* Le mode recalage se referme automatiquement après le clic et l'icône directionnelle (cône bleu) reprend la main — plus besoin de re-cliquer sur 📍 pour désactiver le mode
+4. Le mode recalage se referme automatiquement après le clic et l'icône directionnelle (cône bleu) reprend la main — plus besoin de re-cliquer sur 📍 pour désactiver le mode
 
 > Un seul mode peut être actif à la fois : mesure, ajout de point, tracé de route ou recalage.
 
-### 🎬 Replay de session tracker *(depuis v1.12.0)*
+### 🎬 Replay de session tracker
 
 Le bouton **🎬** dans le groupe **🧭 Tracker** ouvre la modale **Replay**. Elle te permet de **rejouer ta session de tracking** depuis le début, avec une timeline interactive et l'export en CSV.
 
@@ -887,11 +867,11 @@ timestamp_ms_epoch,delta_ms_since_start,x_plan,y_plan,type[,level]
 
 **Reset** : la timeline est remise à zéro au changement de plan ou au reload (RAM-only).
 
-### 🔥 Heatmap — densité de passage *(réactivée v1.21.2)*
+### 🔥 Heatmap — densité de passage
 
 Le bouton **🔥 Heatmap** dans le flyout **🧭 Tracker** ouvre une modale qui dessine une **carte de densité** par-dessus ton plan. Pratique pour visualiser d'un coup d'œil les **zones les plus fréquentées** (passages clés) vs celles peu utilisées.
 
-> 📌 **Historique** : la heatmap avait été désactivée en v1.12.0 (pas d'utilité concrète démontrée à l'époque). Elle est de retour en v1.21.2 avec une **refonte complète de la pertinence** : interpolation le long des segments + normalisation par histogramme + filtres timeline tracker.
+> 📌 **Pertinence** : la heatmap s'appuie sur une interpolation le long des segments + une normalisation par histogramme + des filtres sur la timeline tracker, pour un rendu fidèle de la fréquentation réelle.
 
 #### 🗂️ 6 sources cochables (combinables)
 
@@ -915,7 +895,7 @@ Deux sliders en bas de la modale, mise à jour temps réel :
 | **Rayon** | 10 - 120 px | Étalement du "blob" autour de chaque point. Petit = précis local, grand = vision macro |
 | **Intensité** | 0.2× - 3.0× | Multiplicateur global. Si tout est trop pâle → augmente. Si tout est saturé rouge → baisse |
 
-#### 🏗️ Filtre par niveau M-LVL *(nouveau v1.21.4)*
+#### 🏗️ Filtre par niveau M-LVL
 
 Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous-sol, mezzanine, etc.), une nouvelle section **"🏗️ Niveaux à inclure"** apparaît dans la modale Heatmap.
 
@@ -926,7 +906,7 @@ Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous
 
 > 💡 **Cas d'usage** : tu veux comparer la fréquentation du RDC vs le sous-sol → 2 heatmaps successives avec filtre dédié → screenshot de chaque → tu vois immédiatement l'asymétrie.
 
-> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout (comportement v1.21.3 strict préservé).
+> 📌 Si ton plan n'est **pas** multi-niveau, cette section n'apparaît pas du tout.
 
 #### 🎯 Algorithmes (pourquoi c'est pertinent maintenant)
 
@@ -942,19 +922,19 @@ Si ton plan est **multi-niveau** (carrière avec plusieurs étages — RDC, sous
 
 > ⚠️ La heatmap est **purement visuelle** (overlay canvas). Elle n'altère ni le plan, ni les annotations, ni les exports. Ferme la modale pour la masquer.
 
-### ≡ Modale Filtres unifiée *(refonte v1.21.5)*
+### ≡ Modale Filtres unifiée
 
-Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre la **modale Filtres unifiée**. Elle remplace le contrôle des couches Leaflet natif (qui ne gérait que les images et les calques de données) par une fenêtre qui regroupe **7 sections** de filtrage :
+Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre la **modale Filtres unifiée**, une fenêtre qui regroupe **7 sections** de filtrage :
 
 | Section | Filtre quoi |
 |---|---|
 | 🖼️ **Calques d'image** | Image de base + calques additionnels (légende, signalétique, etc.) |
 | 📊 **Calques de données** | Les calques `puits`, `vehicule`, `cataphile`, `editor` (= Mes annotations), etc. |
 | 🏗️ **Niveaux M-LVL** *(si plan multi-niveau)* | Niveau actif (dessin) + niveaux visibles (multi-sélection) — **synchronisé** avec la modale Niveaux classique |
-| 🏷️ **Tags des points** *(nouveau v1.21.5)* | Filtre par tag (puits aération, salle, chatière...). Liste auto = tags **réellement présents** dans le plan avec compteur. |
-| 🛣️ **Types de tracés** *(nouveau v1.21.5)* | Principal / Secondaire / Chemin / Jonction + customs |
-| ⬛ **Types de zones** *(nouveau v1.21.5)* | Eau / Remblais / Effondrement / Inaccessible + customs |
-| 🏛️ **Types de structures** *(nouveau v1.21.5)* | Pilier 1ère masse / Pilier 2è masse / Mur / Front 1 / Front 2 + customs |
+| 🏷️ **Tags des points** | Filtre par tag (puits aération, salle, chatière...). Liste auto = tags **réellement présents** dans le plan avec compteur. |
+| 🛣️ **Types de tracés** | Principal / Secondaire / Chemin / Jonction + customs |
+| ⬛ **Types de zones** | Eau / Remblais / Effondrement / Inaccessible + customs |
+| 🏛️ **Types de structures** | Pilier 1ère masse / Pilier 2è masse / Mur / Front 1 / Front 2 + customs |
 
 **Comment ça marche :**
 
@@ -964,11 +944,11 @@ Le bouton **≡ trois barres horizontales** en haut à droite de la carte ouvre 
 - **Bouton 🔄 Tout afficher** (footer) : reset tous les filtres runtime (tags + types) à leur état neutre (= tout visible). Ne touche PAS aux toggles M-LVL ni aux calques image/data — chacun gardé indépendant.
 - **Status footer** : compte les filtres actifs en bas (`Filtres actifs : tags, tracés`) en jaune si au moins un actif, gris si tout neutre.
 
-**Persistance par plan** *(nouveau v1.21.5)* :
+**Persistance par plan** :
 
 Les filtres tags + types sont **sauvegardés dans la session du plan** (`SessionPersist`). Si tu actives "masquer les puits" sur le plan A, puis tu changes pour le plan B, puis tu reviens sur A → tes filtres sont **automatiquement restaurés**. Chaque plan a ses propres filtres.
 
-**Synchronisation M-LVL bidirectionnelle** *(nouveau v1.21.5)* :
+**Synchronisation M-LVL bidirectionnelle** :
 
 La section 🏗️ M-LVL de la modale Filtres **cohabite** avec la pastille M-LVL et la modale Niveaux classique. Toute action d'un côté est répercutée de l'autre :
 
@@ -977,7 +957,7 @@ La section 🏗️ M-LVL de la modale Filtres **cohabite** avec la pastille M-LV
 
 > 💡 **Cas d'usage typique** : tu travailles sur une grande carrière avec beaucoup de tags. Tu n'es intéressé que par les puits ouverts (tags `peo` et `cao`) pour planifier un parcours d'aération. Ouvre ≡ Filtres → section 🏷️ Tags → clique 🚫 Aucun puis recoche `peo` + `cao`. La carte affiche seulement ces 2 catégories. Sauvegardé automatiquement pour ce plan.
 
-> 📌 **Compatibilité** : les anciennes sessions (v1.21.4 et antérieures) sont restaurées sans filtre actif (= tout visible, comportement strict v1.21.4). La première interaction avec la modale crée l'état et le persiste à la prochaine sauvegarde automatique (≤ 1.5 s).
+> 📌 **Compatibilité** : les sessions enregistrées avant l'arrivée de cette fonctionnalité sont restaurées sans filtre actif (= tout visible). La première interaction avec la modale crée l'état et le persiste à la prochaine sauvegarde automatique (≤ 1.5 s).
 
 > ⚠️ **Le tracé en cours est toujours visible** : si tu es en train de tracer une route et que tu décoches son type dans le filtre, **le tracé courant reste visible** pour ne pas te perdre. Les autres tracés du même type sont masqués comme prévu. Idem pour zones et structures en cours.
 
@@ -1033,7 +1013,7 @@ Le mode actif est affiché à côté du temps estimé dans le label bottomleft. 
 
 > 💡 **Astuce** : si vous voulez voir uniquement le tracé sans le label distance, fermez la modale puis ré-ouvrez-la en mode navigation pour utiliser les boutons de pilotage.
 
-#### 🚫 Préférences d'évitement (depuis v169)
+#### 🚫 Préférences d'évitement
 
 Dans la modale itinéraire, une section repliable **🚫 Préférences d'évitement (optionnel)** permet de définir des contraintes **souples** que le pathfinder essaiera de respecter :
 
@@ -1124,7 +1104,7 @@ Le mode ⛑️ inclut un **bloc dépliable "📚 Bonnes pratiques"** en haut de 
 
 > ⚠️ Ces conseils sont des **principes généraux** issus de la pratique cataphile. Ils ne remplacent pas la formation, l'équipement et le bon sens. La règle d'or reste : prévenir quelqu'un en surface AVANT la sortie, avec heure de retour estimée.
 
-### 🚨 Mode urgence "panique" — depuis v1.10.1
+### 🚨 Mode urgence "panique"
 
 > 💡 **Ne pas confondre avec ⛑️ "Je suis perdu"** : le ⛑️ calcule une zone théorique (où tu peux être à partir d'une dernière position connue + temps écoulé). Le 🚨, lui, suppose que **tu SAIS où tu es** (le tracker l'affiche), mais que **tu paniques et tu as besoin d'infos vitales en gros pour réagir vite**.
 
@@ -1133,11 +1113,11 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 - 📍 **Position XL** : coordonnées plan affichées en énorme caractères (lisible à un mètre du téléphone)
 - 🧭 **Boussole géante** : cap (sens de marche) avec aiguille tournée en temps réel, mise à jour live via les capteurs d'orientation du téléphone
 - 🗺️ **Minimap auto-focus** : zoom serré (~20-50 m d'horizon) centré en permanence sur ta position. Affiche en arrière-plan les **roads / zones / structures du plan** — utile pour repérer chemins, sorties, dangers à proximité immédiate
-- ☑️ **Toggle 🗺️ Itinéraire** *(depuis v1.12.0)* : checkbox dans l'en-tête. Par défaut **décochée** (protection anti-crash sur très gros plans). Coche-la pour réafficher ton itinéraire actif dans la minimap — rendu en **cyan vif + halo blanc** pour rester visible sur le fond zoomé serré. Préférence persistée entre 2 ouvertures du mode urgence.
-- 🔋 **Batterie** *(depuis v1.12.0)* : le bloc 🔋 ÉTAT affiche désormais le niveau de batterie en temps réel quand l'API est dispo (Chromium uniquement). Critique en mode panique — tu sais immédiatement combien de temps il te reste avant que le tel ne s'éteigne.
+- ☑️ **Toggle 🗺️ Itinéraire** : checkbox dans l'en-tête. Par défaut **décochée** (protection anti-crash sur très gros plans). Coche-la pour réafficher ton itinéraire actif dans la minimap — rendu en **cyan vif + halo blanc** pour rester visible sur le fond zoomé serré. Préférence persistée entre 2 ouvertures du mode urgence.
+- 🔋 **Batterie** : le bloc 🔋 ÉTAT affiche le niveau de batterie en temps réel quand l'API est dispo (Chromium uniquement). Critique en mode panique — tu sais immédiatement combien de temps il te reste avant que le tel ne s'éteigne.
 - 🌗 **Thèmes** : sombre par défaut, clair en option (selon l'environnement extérieur — pénombre vs lumière vive)
 - 🔋 **Wake Lock** : l'écran ne s'éteint pas automatiquement tant que le mode est actif (pas besoin de toucher le téléphone toutes les 30 sec pour le réveiller)
-- 📱 **Paysage** *(depuis v1.12.0)* : la minimap se recadre correctement quand tu tournes le téléphone à l'horizontale ou inverses le portrait — fini les décalages au passage rotation.
+- 📱 **Paysage** : la minimap se recadre correctement quand tu tournes le téléphone à l'horizontale ou inverses le portrait — fini les décalages au passage rotation.
 
 **Quand l'utiliser ?**
 - Tu paniques à un croisement et tu as besoin de te re-orienter rapidement
@@ -1149,7 +1129,7 @@ Le bouton **🚨** rouge dans le groupe **🧭 Tracker** ouvre un mode "panique"
 
 **Sortie** : appuie sur le ✕ en haut à droite pour fermer le mode.
 
-### 🚨 Mode Secours — depuis v1.22.0 (Phase 1 MVP)
+### 🚨 Mode Secours
 
 Outil opérationnel pour **assigner méthodiquement des équipes de secours** à des zones de recherche d'un plan cataphile. Cas d'usage : une personne est portée disparue dans un réseau dense, plusieurs équipes arrivent en surface, le PC secours doit coordonner « qui ratisse quoi » avec un briefing clair et imprimable.
 
@@ -1197,22 +1177,15 @@ Tu peux préparer **plusieurs hypothèses** simultanées (« si Marc parti par l
 
 **🌍 KMZ géolocalisé** : embarque le scénario complet dans un fichier annexe du KMZ (`myktamap-extras.json > secoursPlan`). Pré-requis : plan déjà calibré KMZ (cf modale Export sessions onglet 🌍 KMZ). MyKTAMap peut re-importer le KMZ et recharger le scénario tel quel. Filename `Secours_<nom_scénario>_<date>.kmz`.
 
-> ⚠️ **Limitations MVP Phase 1** :
-> - Le PDF ne contient pas encore de carte miniature (briefing 100 % texte). Tu peux juxtaposer un plan papier classique.
-> - Le KMZ ne contient pas encore les zones visualisables dans Google Earth / OsmAnd (uniquement re-importable dans MyKTAMap).
-> - Ces 2 limitations seront levées en Phase 2 (v1.23.0).
+Les sections ci-dessous détaillent les fonctionnalités avancées : intégrations cross-app (KML, Lost Mode, heatmap, etc.), exploitation terrain temps réel (vues Live par rôle, statuts, rapports), et consolidation cross-device (import de rapports d'équipiers).
 
-#### Roadmap
-
-- ✅ **Phase 2 (v1.23.0)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 2 — Intégrations cross-app ».
-- ✅ **Phase 3 (v1.24.0+)** — LIVRÉ. Cf section ci-dessous « Mode Secours Phase 3 — Exploitation terrain ». Le statut temps réel + rapports au fil des étapes sont livrés.
-- ⛔ **Phase 4 QR Share (testée v1.25.3-hotfix8 → hotfix16, rollback hotfix17)** — **abandonnée** après tests terrain : la lecture QR post-compression WhatsApp / Telegram s'avérait trop fragile sur les payloads denses (briefing 2-3 KB en QR v25+). Le partage opérateur ↔ équipes passe par le **rapport `.mkmsec.report.json`** classique (échange fichier device-à-device).
+> 💡 **Le partage opérateur ↔ équipes** passe par le **rapport `.mkmsec.report.json`** classique (échange de fichier device-à-device).
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
-### 🚨 Mode Secours Phase 2 — Intégrations cross-app (depuis v1.23.0)
+### 🚨 Mode Secours — Intégrations cross-app
 
-La Phase 2 transforme le Mode Secours en outil de coordination opérationnelle complet. 6 nouvelles fonctionnalités intégrées.
+Ces intégrations font du Mode Secours un outil de coordination opérationnelle complet :
 
 #### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
 
@@ -1281,18 +1254,14 @@ Nouvelle section dans la modale 🗺️ Itinéraire :
 
 Default checked + 15 min (= comportement préservé). Modifiable → s'applique aussi au calc des durées Mode Secours (cross-feature).
 
-#### 📊 Roadmap Phase 2
-
-✅ Toutes les 7 features Phase 2 livrées en v1.23.x. Cf section Phase 3 ci-dessous pour la suite (exploitation terrain temps réel).
-
 > ⚠️ Comme tous les outils numériques en sous-sol : **garde une boussole physique** et une carte papier dans ta poche. Le téléphone peut tomber en panne, le magnétomètre peut être faussé par du métal local, le tracker peut dériver. Le 🚨 est une aide à la lecture rapide d'infos, pas un substitut à la préparation.
 
-### 🚨 Mode Secours Phase 3 — Exploitation terrain temps réel (depuis v1.24.0)
+### 🚨 Mode Secours — Exploitation terrain temps réel
 
-Pivot architectural majeur : le scénario a maintenant **2 états distincts** :
+Le scénario a **2 états distincts** :
 
-1. 📝 **CRÉATION** — Vue Édition que tu connais (Phases 1+2). Tu prépares tes équipes, leurs parcours, leurs zones, les itinéraires suggérés.
-2. 🚀 **EXÉCUTION** — Nouvelle vue Live temps réel. L'équipe est PARTIE, tu suis ses observations étape par étape, tu commentes en live.
+1. 📝 **CRÉATION** — Vue Édition. Tu prépares tes équipes, leurs parcours, leurs zones, les itinéraires suggérés.
+2. 🚀 **EXÉCUTION** — Vue Live temps réel. L'équipe est PARTIE, tu suis ses observations étape par étape, tu commentes en live.
 
 Tu bascules d'un état à l'autre via le **bouton « 🚀 Lancer le plan de secours »** dans la vue Édition.
 
@@ -1439,7 +1408,7 @@ Pour le renfort ponctuel / la reconnaissance sans équipe pré-assignée :
 
 Pas de stepper, pas d'étapes structurées. Juste un fil de notes horodatées avec statut. Pratique pour les missions où le parcours n'est pas planifié à l'avance (renfort qui arrive en cours, équipe de reconnaissance, etc.).
 
-#### 📤 Rapport au fil des étapes (depuis v1.25.0)
+#### 📤 Rapport au fil des étapes
 
 À tout moment pendant l'exécution ET après l'arrêt du plan, tu peux générer un rapport via le bouton **« 📤 Rapport »** présent dans :
 
@@ -1451,7 +1420,7 @@ Pas de stepper, pas d'étapes structurées. Juste un fil de notes horodatées av
 | Format | Cas d'usage |
 |---|---|
 | 📄 **PDF imprimable A4** | Briefing global page 1 + page texte étapes par équipe + page photos en grille 2 cols. Idéal pour rapport papier / impression / archivage / passation papier au pompier. |
-| 📦 **`.mkmsec.report.json`** | Data structuré autonome (photos en base64 si cochée). Prévu pour re-import sur device opérateur surface en v1.26.0 (consolidation cross-device). |
+| 📦 **`.mkmsec.report.json`** | Data structuré autonome (photos en base64 si cochée). Re-importable sur le device opérateur surface (consolidation cross-device, voir section dédiée). |
 | 📋 **Texte plain** | Markdown-like copié au presse-papier. Pour partage Discord / SMS / mail rapide. |
 
 **3 scopes selon ton rôle** :
@@ -1493,7 +1462,7 @@ Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le `star
 
 4. 📤 Rapport au fil des étapes (n fois)
    ├─ PDF imprimable pour relève / passation papier
-   ├─ JSON pour consolidation cross-device (v1.26.0)
+   ├─ JSON pour consolidation cross-device
    └─ Texte presse-papier pour Discord / mail rapide
 
 5. ⏹️ Arrêt du plan (bandeau « 📦 PLAN TERMINÉ »)
@@ -1502,19 +1471,9 @@ Le timer ⏱️ affiché en haut de chaque vue Live est calculé depuis le `star
    └─ Bouton « 🚀 Relancer » si re-mission
 ```
 
-#### 📊 Roadmap Phase 3
+#### 📥 Consolidation cross-device
 
-- ✅ **v1.24.0** — Pack Équipier + Opérateur surface + Secouriste libre + 7 statuts + photos IDB dédiées
-- ✅ **v1.24.1** — Bouton « 👤 Retour Opérateur » après prise de main
-- ✅ **v1.24.2 / v1.25.1** — Fixes CSS (textarea / header sticky)
-- ✅ **v1.25.0** — Rapport au fil des étapes (3 formats × 3 scopes)
-- ⛔ **v1.25.3-hotfix8→16** — QR code share testé puis **rollbacked** (scan post-compression WhatsApp trop fragile sur payloads denses). Le partage cross-device reste sur fichier `.mkmsec.report.json` classique.
-- ✅ **v1.26.0** — Import `.mkmsec.report.json` sur device opérateur (consolidation cross-device, fusion observations multi-équipes) — **LIVRÉ**
-- 🛣️ **v1.27.0+** — Seuils stress visuels (timer rouge après 4h, alertes auto)
-
-#### 📥 Consolidation cross-device (depuis v1.26.0)
-
-Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérateur surface qui l'**importe et fusionne** ses observations dans le tableau de supervision. Remplace fonctionnellement la voie QR Share Phase 4 (rollbacked).
+Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérateur surface qui l'**importe et fusionne** ses observations dans le tableau de supervision.
 
 **Workflow type — opération avec 3 équipes** :
 
@@ -1551,7 +1510,7 @@ Au retour terrain, chaque équipier peut **partager son rapport** avec l'opérat
 
 ---
 
-## ⏪ Undo / Redo *(depuis v1.11.0)*
+## ⏪ Undo / Redo
 
 Tu peux **annuler** et **rétablir** tes actions sur le plan, jusqu'à **50 actions en arrière**.
 
@@ -1598,13 +1557,13 @@ Chaque action déclenche un **toast discret** en bas : `↩ Annulé : Pose du po
 
 ---
 
-## 🪫 Indicateur de batterie *(depuis v1.12.0)*
+## 🪫 Indicateur de batterie
 
 L'app surveille en temps réel le niveau de batterie du téléphone (quand le navigateur expose cette info) et affiche un indicateur compact à 3 endroits :
 
 | Endroit | Apparence |
 |---|---|
-| **En-tête** de la nouvelle interface (à côté des compteurs session) | Chip compact `⚡ 78%` (en charge, vert) ou `🪫 23%` (en décharge, couleur selon niveau) |
+| **En-tête** de l'interface (à côté des compteurs session) | Chip compact `⚡ 78%` (en charge, vert) ou `🪫 23%` (en décharge, couleur selon niveau) |
 | **Footer** de la modale 📋 Session active | Ligne `🔋 État · 🪫 23% · Discharging` |
 | **Bloc 🔋 ÉTAT** du mode urgence 🚨 | Label long `🪫 23% · décharge` |
 
@@ -1636,9 +1595,9 @@ L'app utilise l'**API Battery Status** standard du navigateur. Cette API n'est *
 
 ---
 
-## 📊 Statistiques de session *(depuis v1.12.0)*
+## 📊 Statistiques de session
 
-La modale **📋 Session active** (accessible depuis l'en-tête nouvelle interface, chip 📊 sur mobile) affiche désormais un bloc de statistiques en tête de modale.
+La modale **📋 Session active** (accessible depuis l'en-tête, chip 📊 sur mobile) affiche un bloc de statistiques en tête de modale.
 
 ### Ce que tu vois
 
@@ -1664,7 +1623,7 @@ Pratique pour faire un point de session avec ton binôme à la sortie, ou pour a
 
 ---
 
-## 📐 Mesure de distance et ⬛ Mesure de surface *(depuis v1.12.0)*
+## 📐 Mesure de distance et ⬛ Mesure de surface
 
 > Tous les boutons de mesure se trouvent dans le groupe **📐 Mesure** de la barre latérale.
 
@@ -1674,7 +1633,7 @@ Pratique pour faire un point de session avec ton binôme à la sortie, ou pour a
 2. Cliquez sur le plan pour poser des points
 3. La distance totale s'affiche en bas à gauche, en mètres (`📐 Distance: X m`)
 
-### ⬛ Mode Surface *(depuis v1.12.0)*
+### ⬛ Mode Surface
 
 1. Dans le groupe **📐 Mesure**, appuyez sur le toggle **📏/⬛** pour basculer en mode surface
 2. Cliquez sur le plan pour dessiner un **polygone** (au moins 3 points)
@@ -1701,7 +1660,7 @@ Appuyez sur **❌**. Une fenêtre s'ouvre avec deux options :
 
 ## ✏️ Ajouter des points
 
-> Le bouton **✏️ Édition** de la barre latérale est désormais un **clic direct** (depuis v1.21.3). Plus de menu déroulant : 1 clic = toggle ON/OFF du mode ajout. En ON (icône surlignée), chaque clic sur la carte pose un nouveau point.
+> Le bouton **✏️ Édition** de la barre latérale est un **clic direct** : 1 clic = toggle ON/OFF du mode ajout. En ON (icône surlignée), chaque clic sur la carte pose un nouveau point.
 >
 > Pour **supprimer un point** : clic sur le marker → popup → bouton **🗑️ Supprimer ce point**. Pour annuler : <code>Ctrl+Z</code>.
 
@@ -1751,7 +1710,7 @@ Cliquez sur un marker que vous avez ajouté → la popup affiche le bouton **✏
 
 Tu peux changer ce que tu veux puis **💾 Enregistrer**. Si tu renommes le point ET qu'il a des photos, les photos suivent automatiquement (migration interne transparente).
 
-### 📸 Photos attachées aux points (depuis v1.10.0)
+### 📸 Photos attachées aux points
 
 Tu peux attacher jusqu'à **5 photos par point** (limite anti-saturation stockage navigateur). 100 % local — aucune photo n'est envoyée sur Internet.
 
@@ -1895,7 +1854,7 @@ Appuyez sur **🧹**. Une fenêtre s'ouvre avec ces options :
 
 ---
 
-## 🏛️ Structures (piliers, murs, fronts de taille) — depuis v1.9.3
+## 🏛️ Structures (piliers, murs, fronts de taille)
 
 Spécifique aux **carrières souterraines** : les structures permettent de cartographier les éléments physiques porteurs (piliers de soutènement, murs) et l'avancement du front d'exploitation (fronts de taille). Indépendant des tracés et des zones — c'est une 4ème couche d'annotation.
 
@@ -1950,19 +1909,19 @@ Appuyez sur **🧹** dans le groupe Structures :
 
 Certaines carrières / galeries ont **plusieurs niveaux empilés physiquement** (Glacière, Capucins, sites avec étages). Le mode multi-niveau permet de gérer ces plans correctement : chaque tracé/zone/point appartient à un niveau, et le pathfinder ne traverse pas magiquement d'un niveau à l'autre par les croisements visuels 2D.
 
-> 📚 **Cohérence visuelle des niveaux (depuis v169)** : quand le mode multi-niveau est activé, les tracés sont automatiquement empilés selon leur niveau — une galerie au Niveau 0 apparaît toujours **AU-DESSUS** d'une galerie au Niveau -1, et celle au Niveau +1 au-dessus du Niveau 0. Au sein du même niveau : Chemin (en arrière) < Secondaire < Principal (au-dessus). L'itinéraire calculé et les zones inaccessibles ⛔ passent toujours au-dessus de tout pour rester visibles.
+> 📚 **Cohérence visuelle des niveaux** : quand le mode multi-niveau est activé, les tracés sont automatiquement empilés selon leur niveau — une galerie au Niveau 0 apparaît toujours **AU-DESSUS** d'une galerie au Niveau -1, et celle au Niveau +1 au-dessus du Niveau 0. Au sein du même niveau : Chemin (en arrière) < Secondaire < Principal (au-dessus). L'itinéraire calculé et les zones inaccessibles ⛔ passent toujours au-dessus de tout pour rester visibles.
 
 > ⚠️ **Mode optionnel** — désactivé par défaut. La plupart des carrières sont mono-niveau, le mode classique suffit. Active-le **uniquement** pour les vraies carrières multi-étages.
 
 ### Activer le mode pour un plan
 
-**2 façons** (depuis v1.7.3) :
+**2 façons** :
 
 1. **À la création/modification d'un plan** (via 📦 Créer un plan ou ✏️ Modifier un plan existant) : coche la case **🏗️ Plan multi-niveau (avancé)** dans la section "Informations du plan". Le ZIP généré contient le flag → à l'import, le mode s'active automatiquement.
 
 2. **Manuellement dans plan-config.json** : ajoute `"multiLevel": true` dans la section `plan`, sauvegarde, recharge le plan.
 
-> 🔧 **Changement v1.7.3** : le toggle ⚙️ Réglages pour activer/désactiver le multi-niveau sur un plan déjà chargé a été retiré. Pour activer le mode sur un plan existant, **passe par le générateur** : 🏗️ Modifier un plan existant → coche **🏗️ Plan multi-niveau** → 📦 Génère le ZIP mis à jour → recharge-le. Ça force une déclaration explicite et évite les incohérences entre état runtime et `plan-config.json`.
+> 🔧 **Activation par le générateur** : pour activer le mode multi-niveau sur un plan existant, **passe par le générateur** : 🏗️ Modifier un plan existant → coche **🏗️ Plan multi-niveau** → 📦 Génère le ZIP mis à jour → recharge-le. Ça force une déclaration explicite et évite les incohérences entre état runtime et `plan-config.json`.
 
 > 💡 Si tu veux désactiver le mode multi-niveau d'un plan, passe aussi par le générateur (décoche la case et re-génère). Les tracés existants gardent leur info de niveau dans le JSON (cachée si la feature est OFF) — réactiver plus tard sans rien perdre.
 
@@ -1981,7 +1940,7 @@ Deux sections :
 Boutons radio `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 niveaux par défaut, symétriques autour de 0). Le niveau cliqué devient le **niveau actif** : tous les nouveaux tracés, zones, points éditeur que tu vas dessiner seront tagués avec ce niveau.
 
 **Convention numérique** :
-- **`0`** = niveau de référence (= les éléments sans niveau taggué — typiquement les anciens plans v147 et avant). C'est ton RDC / la galerie principale.
+- **`0`** = niveau de référence (= les éléments sans niveau taggué — typiquement les plans créés avant l'arrivée du multi-niveau). C'est ton RDC / la galerie principale.
 - **`1, 2, 3...`** = étages supérieurs / niveaux au-dessus du RDC
 - **`-1, -2, -3...`** = sous-sols / niveaux en-dessous du RDC
 
@@ -2033,7 +1992,7 @@ Les jonctions s'effacent **exactement comme les autres tracés** via la sous-act
 - **✂️ Dernier tracé entier** → si la jonction est le dernier tracé fait, elle est supprimée
 - **🗑️ Tous les tracés** → efface absolument tout (routes + jonctions)
 
-### Ajouter du niveau aux calques image (depuis v162)
+### Ajouter du niveau aux calques image
 
 Dans le **🏗️ Générateur de plan**, chaque calque image (légende, hachures, etc.) a un champ **🏗️ Niveau** (visible uniquement quand `🏗️ Plan multi-niveau` est cochée). Indique-y le niveau auquel le calque appartient (entier, défaut `0`).
 
@@ -2069,7 +2028,7 @@ Items sans `level` → traités comme `level: 0` (rétro-compat avec tes JSON ex
 
 ### Plans existants (rétro-compat)
 
-Si tu charges un plan v147 ou avant qui **n'a pas** activé le mode multi-niveau :
+Si tu charges un plan qui **n'a pas** activé le mode multi-niveau :
 - Aucun bouton niveau, aucune sous-action 🪜, comportement strictement identique
 - Tes anciennes sessions / exports continuent de fonctionner sans modification
 
@@ -2093,7 +2052,7 @@ Pratique pour sauvegarder ta session et la reprendre plus tard.
 
 > 📌 La mesure de distance n'est pas incluse en mode Full.
 
-> 🆕 **Tracker inclus en Full (depuis v1.21.2)** : si le tracker est actif (ou a été utilisé pendant cette session), sa **position actuelle + chemin parcouru + timeline complète + timestamp de démarrage** sont embarqués dans le payload sous `session.tracker`. À la ré-importation, ta session de tracking est **fidèlement restaurée** (timeline + replay possible). Si le tracker n'a jamais été activé, le champ est simplement absent (rétro-compat).
+> 🧭 **Tracker inclus en Full** : si le tracker est actif (ou a été utilisé pendant cette session), sa **position actuelle + chemin parcouru + timeline complète + timestamp de démarrage** sont embarqués dans le payload sous `session.tracker`. À la ré-importation, ta session de tracking est **fidèlement restaurée** (timeline + replay possible). Si le tracker n'a jamais été activé, le champ est simplement absent (rétro-compat).
 
 #### 🎨 Avancé
 Sélection précise de ce que tu veux exporter :
@@ -2102,8 +2061,8 @@ Sélection précise de ce que tu veux exporter :
 - 🛣️ **Tracés** + cases par type (principaux, secondaires, chemins)
 - ⬛ **Zones** + cases par type (eau, remblais, effondrement, inaccessible)
 - 🏛️ **Structures** + cases par type (piliers / mur / fronts)
-- 🧭 **Tracker** *(en option, depuis v1.21.2 enrichi)* — si coché, la case affiche en temps réel un compteur : *« timeline N évt · tracé M pts »*. À l'export inclut : position actuelle + chemin parcouru + timeline complète + timestamp de démarrage. Re-import restaure tout via `setTrackingTimeline` → ton replay 🎬 est fonctionnel après ré-import.
-- 👤 **Identité user** *(depuis v1.21.0)* — case dédiée pour inclure ton **profil** (surnom + photo + compteurs). Utile pour migrer ton identité visuelle vers un autre appareil. À l'import, un toast modal suggère un reload pour que le bandeau profil soit mis à jour partout dans l'UI.
+- 🧭 **Tracker** *(en option)* — si coché, la case affiche en temps réel un compteur : *« timeline N évt · tracé M pts »*. À l'export inclut : position actuelle + chemin parcouru + timeline complète + timestamp de démarrage. Re-import restaure tout via `setTrackingTimeline` → ton replay 🎬 est fonctionnel après ré-import.
+- 👤 **Identité user** — case dédiée pour inclure ton **profil** (surnom + photo + compteurs). Utile pour migrer ton identité visuelle vers un autre appareil. À l'import, un toast modal suggère un reload pour que le bandeau profil soit mis à jour partout dans l'UI.
 
 **Format de sortie** au choix :
 - 📄 **Un seul fichier session** (.json — réimportable comme une sauvegarde classique)
@@ -2114,7 +2073,7 @@ Convertit ta session en **calque de données** prêt à intégrer dans un plan d
 
 Cases à cocher : Points / Tracés / Zones / Structures (avec **filtrage par tag** pour les points, comme en Avancé).
 
-> 📌 **Le tracker est volontairement IGNORÉ en mode Conversion** (depuis v1.21.2). Le tracker est par nature **éphémère et expérimental** (PDR sujet à dérive) — le figer en data layer permanent serait trompeur pour les futurs utilisateurs du plan. Si tu veux archiver une session de tracking, utilise le mode **Full** ou **Avancé** (= ré-importable comme session, pas figé dans le plan).
+> 📌 **Le tracker est volontairement IGNORÉ en mode Conversion**. Le tracker est par nature **éphémère et expérimental** (PDR sujet à dérive) — le figer en data layer permanent serait trompeur pour les futurs utilisateurs du plan. Si tu veux archiver une session de tracking, utilise le mode **Full** ou **Avancé** (= ré-importable comme session, pas figé dans le plan).
 
 **Granularité** au choix :
 - 📄 **Basique** : 1 fichier par catégorie (`points.json`, `roads.json`, `zones.json`)
@@ -2125,8 +2084,6 @@ Téléchargement direct si 1 seul fichier, ZIP sinon.
 > 💡 La conversion est utile pour figer une partie de ton travail dans un plan permanent. Une fois converties en data layer, ces données ne sont plus modifiables depuis l'application.
 
 ### 🖼️ Exporter en PNG/JPG
-
-> 🆕 **v1.10.3** : la modale s'appelait avant « Exporter le plan », renommée en « **Exporter en PNG/JPG** » pour clairement distinguer du nouveau « **Exporter en PDF imprimable** » (voir section suivante).
 
 Appuyez sur **⬆️ → 🖼️ Plan en image**. Une modale s'ouvre avec deux modes :
 
@@ -2150,7 +2107,7 @@ Pour un contrôle précis sur tout ce que tu exportes :
 
 > ⚠️ Avant de partager cette image, vérifiez qu'elle ne révèle pas d'informations sensibles.
 
-### 📤 Exporter en PDF imprimable *(depuis v1.10.3)*
+### 📤 Exporter en PDF imprimable
 
 Appuyez sur **⬆️ → 📤 PDF imprimable**. Génère un PDF prêt à imprimer avec header (titre + métadonnées) et légende positionnable.
 
@@ -2191,7 +2148,7 @@ Au lieu d'un footer dédié, la légende est posée comme un overlay sur le plan
 - **📍 Position** : 4 radios — ↖ Haut-gauche · ↗ Haut-droite · ↙ Bas-gauche *(défaut)* · ↘ Bas-droite
 - **📏 Taille** : Compact (icônes 16px) · Standard (22px) · Large (30px)
 - **🎨 Style** :
-  - 🆕 **Pro fond blanc** *(défaut)* — adapté impression papier (texte foncé, accent bleu marine)
+  - **Pro fond blanc** *(défaut)* — adapté impression papier (texte foncé, accent bleu marine)
   - **Sombre opaque** — fond charte dark, accent jaune
   - **Sombre semi-transp.** — laisse voir le plan en transparence sous la légende
   - **Filigrane discret** — version la plus discrète
@@ -2200,7 +2157,7 @@ La légende contient automatiquement :
 - 🕳️ Puits + 🪜 Accès + ⚠️ Signalétique (icônes des points effectivement présents sur le plan)
 - 🛣️ Tracés (par type)
 - ⬛ Zones (par type)
-- 🏛️ Structures (piliers / mur / fronts, depuis v1.10.3)
+- 🏛️ Structures (piliers / mur / fronts)
 
 > 🎯 **Filtre par usage réel** : un icône / type n'apparaît dans la légende QUE s'il est présent au moins une fois sur le plan exporté. Tu n'auras pas un type « Pilier 2e masse » affiché si tu n'en as dessiné aucun.
 
@@ -2230,7 +2187,7 @@ Pour chaque point (A et B), 3 méthodes au choix :
 - **📍 Cliquer carte** : la modale se réduit, tu cliques sur la carte là où tu connais les coords GPS → x/y plan auto-remplies. Renseigne les coords GPS.
 - **Saisie manuelle** des 3 champs (Plan x, Plan y, **GPS (lat, lng)**).
 
-> 🌐 **Format GPS depuis hotfix21** : le champ `GPS (lat, lng)` accepte directement le **format Google Maps natif** (`48.680831, 2.158843`). Tu peux copier les coords depuis Google Maps (clic droit → copier les coordonnées) et coller le tout dans le champ — pas besoin de séparer en 2 champs lat / lng. Si le format est invalide, le champ devient rouge avec un message explicite. Le même format est accepté **partout** dans l'app (recherche Ctrl+K · Settings KMZ · création de plan géoréférencé).
+> 🌐 **Format GPS** : le champ `GPS (lat, lng)` accepte directement le **format Google Maps natif** (`48.680831, 2.158843`). Tu peux copier les coords depuis Google Maps (clic droit → copier les coordonnées) et coller le tout dans le champ — pas besoin de séparer en 2 champs lat / lng. Si le format est invalide, le champ devient rouge avec un message explicite. Le même format est accepté **partout** dans l'app (recherche Ctrl+K · Settings KMZ · création de plan géoréférencé).
 
 > 💡 **Conseil** : choisis 2 points **éloignés** sur le plan (idéalement aux extrémités opposées) — plus la distance AB est grande, meilleure est la précision de la transformation. L'app refuse si AB fait moins de 50 px sur le plan ou moins de 1 mètre IRL.
 
@@ -2373,7 +2330,7 @@ Importez un ZIP existant — le formulaire se pré-remplit automatiquement avec 
 
 > Pratique pour ajouter de nouvelles icônes à un plan déjà en circulation, ou pour ajuster la position initiale du tracker.
 
-### 🎨 Image vierge (depuis v1.9.3)
+### 🎨 Image vierge
 
 Si tu veux créer un plan **from scratch** sans image source (par exemple pour dessiner uniquement des piliers / fronts de taille / tracés sur un canvas vide), tu peux générer une **image vierge**.
 
@@ -2398,7 +2355,7 @@ Tu peux ensuite ajouter tes calques de données (vides), tracking, icônes et **
 
 > 💡 **Cas typique** : un cartographe qui visite une carrière à explorer, sans plan papier existant, peut générer un plan vierge 4000×4000 noir à son arrivée, puis dessiner au fur et à mesure (avec le tracker comme repère). À la fin, le ZIP est partageable.
 
-### 📦 Importer un datalayer ZIP en un clic (depuis v1.10.0)
+### 📦 Importer un datalayer ZIP en un clic
 
 Dans la section **📊 Calques de données** du générateur, un encadré jaune doré propose **📦 Choisir un ZIP datalayer…**. Il sert à **récupérer en un coup** les calques + photos d'un autre plan, exportés via **💾 Enregistrer la session → 🔄 Conversion → ✏️→🗂️ Session vers data layer** (avec la case 📸 Photos cochée pour les inclure).
 
@@ -2417,7 +2374,7 @@ Dans la section **📊 Calques de données** du générateur, un encadré jaune 
 
 > 📸 **Format du ZIP datalayer** attendu : c'est exactement ce que produit la **Conversion session → data layer** quand tu coches "📸 Inclure les photos attachées" (granularité Basique ou Fine peu importe). Contient `points.json` + `roads.json` + `zones.json` + `structure.json` (selon ce qui était présent dans la session source) + `photos/_index.json` + `photos/<photoId>.jpg`.
 
-### 📸 Inclure les photos attachées au plan (depuis v1.10.0)
+### 📸 Inclure les photos attachées au plan
 
 En mode **Modifier existant**, si le plan que tu charges a déjà des **photos attachées à ses points** (stockées en IndexedDB locale via l'éditeur), une case **📸 Inclure les photos attachées (N · X Mo)** apparaît dans la section "🖼️ Images principales" du formulaire.
 
@@ -2432,9 +2389,9 @@ Au chargement de ce ZIP plan par n'importe quel autre utilisateur : les photos s
 
 Si ton plan est lourd (image > 50 Mo, dimensions > 8000 px), tu peux le convertir en **plan tuilé V2** pour réduire massivement la conso mémoire au runtime. Le système découpe l'image en tuiles 512×512 sur 4 niveaux de zoom (Google Maps-like) — à tout moment, seules les tuiles du niveau de zoom courant sont chargées en RAM.
 
-**Workflow (depuis v151)** :
+**Workflow** :
 
-La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploadé une image principale**, que tu sois en mode **Nouveau plan** OU en **Modifier existant**. Plus besoin de passer par un ZIP V1 source.
+La case 🧱 Convertir en V2 apparaît dans le formulaire dès que tu as **uploadé une image principale**, que tu sois en mode **Nouveau plan** OU en **Modifier existant** (pas besoin de passer par un ZIP V1 source).
 
 1. **Nouveau plan** : choisir une image principale → la case 🧱 apparaît<br>
    OU **Modifier existant** : uploader ton ZIP V1 (la case 🧱 est dispo)
@@ -2644,7 +2601,7 @@ Affiche la légende complète des icônes et tracés, regroupés par catégorie 
 
 > Accessible directement via le bouton **⚙️** de la barre latérale (clic direct, pas de sous-menu).
 >
-> Cette modale est focus **par plan** (réglages liés à ce plan ouvert). Pour les **réglages globaux** (interface, PIN, reset, etc.), passe par **⚙️ Configuration** sur la page d'accueil — cf section dédiée plus haut. La séparation est volontaire (depuis v1.7.3) : Réglages = ce qui concerne CE plan, Configuration = ce qui concerne l'app.
+> Cette modale est focus **par plan** (réglages liés à ce plan ouvert). Pour les **réglages globaux** (interface, PIN, reset, etc.), passe par **⚙️ Configuration** sur la page d'accueil — cf section dédiée plus haut. La séparation est volontaire : Réglages = ce qui concerne CE plan, Configuration = ce qui concerne l'app.
 
 Accédez aux paramètres en cliquant sur **⚙️** :
 
@@ -2654,19 +2611,18 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
 
 ### 🔍 Affichage (préférence globale, partagée entre tous les plans)
-- **Icônes adaptatives au zoom** (`scaledMarkers`, depuis v1.7.1) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
-- **Afficher les ronds aux intersections de tracés** (depuis v1.9.2) : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
-- **📜 Utiliser l'ancienne interface (classique v1.8.x)** : bascule entre la nouvelle interface (refonte v1.9.x, défaut) et l'ancienne. Reload requis. Mêmes effet que le toggle dans ⚙️ Configuration du loader.
-- **🔆 Garder l'écran allumé** *(depuis v1.21.1)* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
+- **Icônes adaptatives au zoom** (`scaledMarkers`) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
+- **Afficher les ronds aux intersections de tracés** : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
+- **🔆 Garder l'écran allumé** : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
 
-### 🎬 Mode présentation *(depuis v1.21.0)*
+### 🎬 Mode présentation
 
-- **🎬 Lancer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection). Avant v1.21.0, ce mode n'était accessible que via la touche **F** au clavier — inaccessible sur mobile. Maintenant, un seul bouton tactile suffit.
-- La touche **F** reste disponible comme raccourci PC pour les habitués.
+- **🎬 Lancer le mode présentation** : bouton en **haut** de la modale Réglages. Active un mode plein écran sans UI (pour démos / projection), accessible d'un seul bouton tactile.
+- La touche **F** est disponible comme raccourci PC.
 
-### 🎯 Pickers géoréférencement *(depuis v1.21.0)*
+### 🎯 Pickers géoréférencement
 
-Avant v1.21.0, les pickers 2-points (calibrage GPS pour KMZ / GPX) n'étaient accessibles que dans la modale **Enregistrer session → 🌍 KMZ**. Désormais ils sont aussi disponibles dans **⚙️ Réglages → onglet Géoréférencement** :
+Les pickers 2-points (calibrage GPS pour KMZ / GPX) sont disponibles dans **⚙️ Réglages → onglet Géoréférencement** (en plus de la modale **Enregistrer session → 🌍 KMZ**) :
 
 - **🔍 Recherche d'un point** sur le plan pour auto-remplir x/y
 - **📍 Clic carte** pour pointer une position directement
@@ -2704,14 +2660,14 @@ Si l'appli te donne une distance différente de la réalité (par exemple 100 m 
 
 ## 🏷️ Badge version dans le footer (chargeur)
 
-Au bas du chargeur, à côté de la mention de licence, un petit **badge version** affiche la version actuelle de l'application installée (ex: `v143`).
+Au bas du chargeur, à côté de la mention de licence, un petit **badge version** affiche la version actuelle de l'application installée.
 
 **Deux états visuels** :
 
 | État | Affichage | Action au clic |
 |---|---|---|
-| **Vous êtes à jour** | `v143` en gris discret | Modale "✅ Déjà à jour" — affiche la version installée + date de publication + **notes de cette version** (changelog) |
-| **Mise à jour disponible** | `v141 → v143` en **bleu clignotant** | Modale "🔔 Mise à jour disponible" — propose une mise à jour douce (préserve plans et sessions) ou un reset complet |
+| **Vous êtes à jour** | numéro de version en gris discret | Modale "✅ Déjà à jour" — affiche la version installée + date de publication + **notes de cette version** (changelog) |
+| **Mise à jour disponible** | `version installée → nouvelle version` en **bleu clignotant** | Modale "🔔 Mise à jour disponible" — propose une mise à jour douce (préserve plans et sessions) ou un reset complet |
 
 Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer l'attention sans agresser visuellement. Au clic, vous pouvez choisir d'agir immédiatement (mise à jour douce ou reset complet) ou de remettre à plus tard (snooze 24h).
 
@@ -2721,7 +2677,7 @@ Quand une nouvelle version est dispo, le badge **clignote en bleu** pour attirer
 
 ---
 
-## 🔐 Code d'accès local (PIN / Face ID) — depuis v1.10.0
+## 🔐 Code d'accès local (PIN / Face ID)
 
 Verrouille l'app à chaque démarrage avec un PIN 4-6 chiffres, **Face ID** ou **Touch ID** si ton appareil le supporte. 100 % local — aucun mot de passe n'est envoyé sur Internet, aucune récupération possible en cas d'oubli.
 
@@ -2786,9 +2742,9 @@ Choisissez **⚡ Performance** dans le sélecteur Mode performance avant de char
 Appuyez à nouveau sur le bouton actif (en vert) pour le désactiver.
 
 **L'application ne se met pas à jour après une nouvelle version**
-Utilisez **⚙️ → 🔄 Forcer la mise à jour** (mise à jour douce, conserve toutes vos données). Si insuffisant : **⚙️ → 🗑️ Réinitialiser** (purge totale, dernière option). Depuis hotfix21, la mise à jour douce est ~10× plus rapide grâce à un pré-téléchargement en arrière-plan.
+Utilisez **⚙️ → 🔄 Forcer la mise à jour** (mise à jour douce, conserve toutes vos données). Si insuffisant : **⚙️ → 🗑️ Réinitialiser** (purge totale, dernière option). La mise à jour douce est rapide grâce à un pré-téléchargement en arrière-plan.
 
-**📡 App bloquée après une mise à jour douce** *(hotfix19/20/21)*
+**📡 App bloquée après une mise à jour douce**
 Si après une mise à jour l'app reste coincée (loader sans CSS, page blanche, assets mal chargés), la cause la plus fréquente est un **edge CDN GitHub Pages qui sert un contenu corrompu** (mauvais MIME, asset tronqué) pour la zone géographique courante. Premier réflexe avant tout reset : **désactive ton VPN s'il est actif et change de réseau** (4G ↔ Wi-Fi ↔ autre Wi-Fi). Le simple fait de basculer d'IP/edge CDN suffit souvent à débloquer.
 
 **🆘 Reset d'urgence sans toucher aux données**
