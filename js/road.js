@@ -138,7 +138,7 @@ function initRoad() {
     // de currentRoad OU ajout d'un sommet à l'existant). Label adapté
     // selon que c'est le 1er point d'une nouvelle road ou un sommet
     // additionnel.
-    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("roads") : null;
     const _isNewRoad = !currentRoad;
 
     if (!currentRoad) {
@@ -186,7 +186,7 @@ function initRoad() {
       const lbl = _isNewRoad
         ? "Nouveau tracé " + typeLabel
         : "Sommet sur tracé " + typeLabel;
-      window.HistoryManager.record(lbl, _historyBefore);
+      window.HistoryManager.record(lbl, _historyBefore, "roads");
     }
   });
 }
@@ -851,13 +851,13 @@ function resetRoads() {
 function removeLastRoad() {
   if (roadsData.length === 0) return false;
   // 🆕 v1.11.0 Undo/Redo : snapshot before
-  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("roads") : null;
   const removed = roadsData.pop();
   if (currentRoad === removed) currentRoad = null;
   renderRoads();
   if (window.HistoryManager && _historyBefore) {
     const typeLabel = removed && removed.type ? removed.type : "tracé";
-    window.HistoryManager.record("Supprimer dernier tracé (" + typeLabel + ")", _historyBefore);
+    window.HistoryManager.record("Supprimer dernier tracé (" + typeLabel + ")", _historyBefore, "roads");
   }
   return true;
 }

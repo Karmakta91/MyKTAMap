@@ -140,7 +140,7 @@ function initZones() {
 
     // 🆕 v1.11.0 Undo/Redo : snapshot avant toute mutation (création de
     // currentZone, ajout d'un sommet, fermeture par retour au 1er point).
-    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
     const _isNewZone = !currentZone;
     // 🐛 v1.16.0 step2-drawable-fix2 : label custom = user-defined
     let _typeLabel;
@@ -177,7 +177,7 @@ function initZones() {
       if (dist <= CLOSE_TOLERANCE) {
         fermerZoneEnCours();
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Fermer zone " + _typeLabel, _historyBefore);
+          window.HistoryManager.record("Fermer zone " + _typeLabel, _historyBefore, "zones");
         }
         return;
       }
@@ -189,7 +189,7 @@ function initZones() {
       const lbl = _isNewZone
         ? "Nouvelle zone " + _typeLabel
         : "Sommet sur zone " + _typeLabel;
-      window.HistoryManager.record(lbl, _historyBefore);
+      window.HistoryManager.record(lbl, _historyBefore, "zones");
     }
   });
 }
@@ -408,14 +408,14 @@ function removeLastZone() {
   // que last zone fermé actuellement") : priorité à la zone EN COURS si elle
   // existe, sinon la dernière zone fermée.
   // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
-  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("zones") : null;
   if (currentZone) {
     const idx = zonesData.indexOf(currentZone);
     if (idx >= 0) zonesData.splice(idx, 1);
     currentZone = null;
     renderZones();
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer zone en cours", _historyBefore);
+      window.HistoryManager.record("Supprimer zone en cours", _historyBefore, "zones");
     }
     return true;
   }
@@ -425,7 +425,7 @@ function removeLastZone() {
   renderZones();
   if (window.HistoryManager && _historyBefore) {
     const typeLabel = removed && removed.type ? removed.type : "zone";
-    window.HistoryManager.record("Supprimer dernière zone (" + typeLabel + ")", _historyBefore);
+    window.HistoryManager.record("Supprimer dernière zone (" + typeLabel + ")", _historyBefore, "zones");
   }
   return true;
 }

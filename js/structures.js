@@ -208,7 +208,7 @@ function initStructures() {
     // 🆕 v1.11.0 Undo/Redo : snapshot before. Le label se construit
     // ensuite selon que c'est une nouvelle structure, un sommet de plus
     // ou une fermeture (cas polygon).
-    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+    const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
     const _isNewStruct = !currentStructure;
     const _typeKey = window.modeStructure;
     // 🆕 v1.16.0 step2-drawable : pour les types CUSTOM, le label vient de
@@ -268,7 +268,7 @@ function initStructures() {
       renderStructures();
       if (window.HistoryManager && _historyBefore) {
         const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
-        window.HistoryManager.record(lbl, _historyBefore);
+        window.HistoryManager.record(lbl, _historyBefore, "structures");
       }
       return;
     }
@@ -282,7 +282,7 @@ function initStructures() {
       if (dist <= STRUCT_CLOSE_TOLERANCE) {
         fermerStructureEnCours();
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Fermer " + _typeLabel, _historyBefore);
+          window.HistoryManager.record("Fermer " + _typeLabel, _historyBefore, "structures");
         }
         return;
       }
@@ -292,7 +292,7 @@ function initStructures() {
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
       const lbl = _isNewStruct ? "Nouveau " + _typeLabel : "Sommet sur " + _typeLabel;
-      window.HistoryManager.record(lbl, _historyBefore);
+      window.HistoryManager.record(lbl, _historyBefore, "structures");
     }
   });
 }
@@ -628,14 +628,14 @@ function removeLastStructure() {
   // priorité à la structure EN COURS si elle existe, sinon la dernière
   // fermée. Cohérent avec removeLastRoad et removeLastZone (depuis v1.9.4).
   // 🆕 v1.11.0 Undo/Redo : snapshot before (couvre les 2 branches).
-  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("structures") : null;
   if (currentStructure) {
     const idx = structuresData.indexOf(currentStructure);
     if (idx >= 0) structuresData.splice(idx, 1);
     currentStructure = null;
     renderStructures();
     if (window.HistoryManager && _historyBefore) {
-      window.HistoryManager.record("Supprimer structure en cours", _historyBefore);
+      window.HistoryManager.record("Supprimer structure en cours", _historyBefore, "structures");
     }
     return true;
   }
@@ -645,7 +645,7 @@ function removeLastStructure() {
   renderStructures();
   if (window.HistoryManager && _historyBefore) {
     const typeLabel = removed && removed.type ? removed.type : "structure";
-    window.HistoryManager.record("Supprimer dernière structure (" + typeLabel + ")", _historyBefore);
+    window.HistoryManager.record("Supprimer dernière structure (" + typeLabel + ")", _historyBefore, "structures");
   }
   return true;
 }

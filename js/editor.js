@@ -589,7 +589,7 @@ function afficherFormulaire(x, y, existingPoint) {
       // (cf. historyManager.js), donc on enregistre uniquement le state
       // points/roads/zones/structures. Si l'user undo après save, les
       // ops photos (delete IDB / rename) ne seront PAS rollback.
-      const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+      const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
 
       // Phase 2 : commit du point (création ou update)
       if (isEdit) {
@@ -606,7 +606,7 @@ function afficherFormulaire(x, y, existingPoint) {
         if (window.renderEditorPoints) window.renderEditorPoints();
         console.log("[Editor] Point modifié :", nom, "à", x, y);
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Modifier le point " + nom, _historyBefore);
+          window.HistoryManager.record("Modifier le point " + nom, _historyBefore, "editorPoints");
         }
       } else {
         const point = {
@@ -631,7 +631,7 @@ function afficherFormulaire(x, y, existingPoint) {
         listePoints.push(point);
         _ajouterMarker(point);
         if (window.HistoryManager && _historyBefore) {
-          window.HistoryManager.record("Ajouter le point " + nom, _historyBefore);
+          window.HistoryManager.record("Ajouter le point " + nom, _historyBefore, "editorPoints");
         }
       }
       fermer();
@@ -783,13 +783,13 @@ window._applyLevelFilterToEditorPoints = function() {
 function removeLastEditorPoint() {
   if (listePoints.length === 0) return false;
   // 🆕 v1.11.0 Undo/Redo : snapshot before mutation
-  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState() : null;
+  const _historyBefore = window.HistoryManager ? window.HistoryManager.captureState("editorPoints") : null;
   const removed = listePoints[listePoints.length - 1];
   listePoints.pop();
   if (window.renderEditorPoints) window.renderEditorPoints();
   if (window.HistoryManager && _historyBefore) {
     const label = "Supprimer dernier point" + (removed && removed.nom ? " (" + removed.nom + ")" : "");
-    window.HistoryManager.record(label, _historyBefore);
+    window.HistoryManager.record(label, _historyBefore, "editorPoints");
   }
   return true;
 }

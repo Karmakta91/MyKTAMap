@@ -70,44 +70,69 @@
     try { return JSON.parse(JSON.stringify(arr)); } catch(e) { return []; }
   }
 
-  function _captureState() {
-    return {
-      editorPoints: _deepCloneArray(window.getEditorPoints ? window.getEditorPoints() : []),
-      roads:        _deepCloneArray(window.getRoads        ? window.getRoads()        : []),
-      zones:        _deepCloneArray(window.getZones        ? window.getZones()        : []),
-      structures:   _deepCloneArray(window.getStructures   ? window.getStructures()   : []),
-      // 🆕 v1.26.3-hotfix3 — index du tracé en cours de dessin (ou -1).
-      // Permet de restaurer currentRoad après undo/redo pour que le point
-      // suivant continue le bon tracé au lieu d'en créer un orphelin.
+  // 🆕 v1.26.4 (P0-1 RAM) — Capture CIBLÉE par catégorie.
+  // `category` ∈ "editorPoints" | "roads" | "zones" | "structures" → ne clone
+  // QUE cette catégorie (économie RAM ~4× sur les snapshots d'édition mono-
+  // catégorie, qui sont les plus fréquents : chaque point/sommet dessiné =
+  // 1 snapshot). null/undefined → clone TOUT (cas multi-catégories : import
+  // GPX, reset global, note popup cross-type).
+  //
+  // currentRoadIndex est toujours inclus (juste un number, négligeable) mais
+  // n'est restauré au undo QUE si le snapshot contient aussi `roads` (cf
+  // _applyState) — sinon un undo "zones" ne doit pas toucher au tracé en cours.
+  function _captureState(category) {
+    const snap = {
       currentRoadIndex: (window.getCurrentRoadIndex ? window.getCurrentRoadIndex() : -1)
     };
+    const all = !category;
+    if (all || category === "editorPoints") {
+      snap.editorPoints = _deepCloneArray(window.getEditorPoints ? window.getEditorPoints() : []);
+    }
+    if (all || category === "roads") {
+      snap.roads = _deepCloneArray(window.getRoads ? window.getRoads() : []);
+    }
+    if (all || category === "zones") {
+      snap.zones = _deepCloneArray(window.getZones ? window.getZones() : []);
+    }
+    if (all || category === "structures") {
+      snap.structures = _deepCloneArray(window.getStructures ? window.getStructures() : []);
+    }
+    return snap;
   }
 
   // Applique un snapshot complet via les setters publics existants.
   // Pour roads/zones/structures, on passe par reset() + set() pour
   // remplacer atomiquement le contenu (le `set` seul ajoute au lieu de
   // remplacer dans certaines implémentations).
+  // 🆕 v1.26.4 (P0-1 RAM) — Applique SEULEMENT les catégories PRÉSENTES dans
+  // le snapshot. Crucial : on conditionne resetRoads/resetZones/resetStructures
+  // à la présence de la catégorie. Avant, resetRoads() était appelé
+  // INCONDITIONNELLEMENT → un snapshot ciblé "zones" aurait vidé les roads
+  // (bug de perte de données). Une catégorie absente du snapshot = inchangée
+  // par cette action = on ne la touche pas.
   function _applyState(s) {
     try {
       if (window.setEditorPoints && Array.isArray(s.editorPoints)) {
         window.setEditorPoints(s.editorPoints);
       }
-      if (window.resetRoads) window.resetRoads();
-      if (window.setRoads && Array.isArray(s.roads)) {
-        window.setRoads(s.roads);
+      if (Array.isArray(s.roads)) {
+        if (window.resetRoads) window.resetRoads();
+        if (window.setRoads) window.setRoads(s.roads);
       }
-      if (window.resetZones) window.resetZones();
-      if (window.setZones && Array.isArray(s.zones)) {
-        window.setZones(s.zones);
+      if (Array.isArray(s.zones)) {
+        if (window.resetZones) window.resetZones();
+        if (window.setZones) window.setZones(s.zones);
       }
-      if (window.resetStructures) window.resetStructures();
-      if (window.setStructures && Array.isArray(s.structures)) {
-        window.setStructures(s.structures);
+      if (Array.isArray(s.structures)) {
+        if (window.resetStructures) window.resetStructures();
+        if (window.setStructures) window.setStructures(s.structures);
       }
       // 🆕 v1.26.3-hotfix3 — Restaure le tracé en cours APRÈS setRoads
-      // (qui a remis currentRoad = null). Sans ça, un undo/redo pendant le
-      // dessin cassait le « lien suivant » (point suivant = tracé orphelin).
-      if (window.setCurrentRoadByIndex && typeof s.currentRoadIndex === "number") {
+      // (qui a remis currentRoad = null). Uniquement si le snapshot contient
+      // `roads` : un undo "zones"/"structures" ne doit PAS toucher au tracé
+      // en cours de dessin.
+      if (Array.isArray(s.roads) && window.setCurrentRoadByIndex
+          && typeof s.currentRoadIndex === "number") {
         window.setCurrentRoadByIndex(s.currentRoadIndex);
       }
     } catch(e) {
@@ -118,14 +143,19 @@
   // ============================================================
   // RECORD / UNDO / REDO
   // ============================================================
-  // record(label, beforeState?) — push une entrée d'historique.
+  // record(label, beforeState?, category?) — push une entrée d'historique.
   //   beforeState : snapshot AVANT la mutation. Si omis, on capture
   //                 l'état COURANT (utile si on appelle record() après
   //                 la mutation et que l'appelant ne veut pas garder
   //                 le snapshot avant manuellement).
-  function record(label, beforeState) {
-    const snap = beforeState || _captureState();
-    undoStack.push({ label: String(label || "Action"), snapshot: snap, ts: Date.now() });
+  //   category    : 🆕 v1.26.4 — "editorPoints"|"roads"|"zones"|"structures"
+  //                 pour un snapshot ciblé (économie RAM). null/absent = tout.
+  //                 ⚠️ DOIT correspondre à la catégorie réellement mutée par
+  //                 l'action, ET au category passé à captureState() pour le
+  //                 beforeState. Sinon l'undo ne restaurera pas la bonne data.
+  function record(label, beforeState, category) {
+    const snap = beforeState || _captureState(category);
+    undoStack.push({ label: String(label || "Action"), category: category || null, snapshot: snap, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) {
       undoStack.shift(); // FIFO sur dépassement
     }
@@ -134,9 +164,9 @@
     _notify();
   }
 
-  // recordAction(label, mutationFn) — helper qui capture avant + run + record
-  function recordAction(label, mutationFn) {
-    const before = _captureState();
+  // recordAction(label, mutationFn, category?) — capture avant + run + record
+  function recordAction(label, mutationFn, category) {
+    const before = _captureState(category);
     let result;
     try {
       result = mutationFn();
@@ -146,19 +176,20 @@
       console.warn("[HistoryManager] mutation échouée, skip record :", e);
       throw e;
     }
-    record(label, before);
+    record(label, before, category);
     return result;
   }
 
   function undo() {
     if (undoStack.length === 0) return false;
     const entry = undoStack.pop();
-    const currentState = _captureState();
+    // Capture ciblée sur la MÊME catégorie que l'entrée (cohérence pour redo).
+    const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);
     // Push l'état COURANT (= post-mutation pré-undo) sur redo, avec le
-    // même label : le user verra "↩ Annulé : <label>" et pourra redo
-    // pour rétablir l'état.
-    redoStack.push({ label: entry.label, snapshot: currentState, ts: Date.now() });
+    // même label + catégorie : le user verra "↩ Annulé : <label>" et pourra
+    // redo pour rétablir l'état.
+    redoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (redoStack.length > MAX_HISTORY) redoStack.shift();
     _showToast("↩ Annulé : " + entry.label);
     _notify();
@@ -169,9 +200,9 @@
   function redo() {
     if (redoStack.length === 0) return false;
     const entry = redoStack.pop();
-    const currentState = _captureState();
+    const currentState = _captureState(entry.category);
     _applyState(entry.snapshot);
-    undoStack.push({ label: entry.label, snapshot: currentState, ts: Date.now() });
+    undoStack.push({ label: entry.label, category: entry.category, snapshot: currentState, ts: Date.now() });
     if (undoStack.length > MAX_HISTORY) undoStack.shift();
     _showToast("↪ Refait : " + entry.label);
     _notify();
