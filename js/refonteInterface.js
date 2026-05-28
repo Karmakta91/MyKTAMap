@@ -98,21 +98,11 @@
     try { localStorage.removeItem(LS_LEGACY); } catch(e) {}
   }
 
-  // Exposer l'état tôt pour que interface.js puisse le lire avant init
+  // Exposer l'état tôt pour que interface.js puisse le lire avant init.
+  // _readFlag() retourne toujours true depuis v1.14.19 (refonte imposée,
+  // ancienne interface supprimée). Le bloc legacy "early return si OFF" a
+  // été retiré au cleanup code mort v1.26.2 (inatteignable).
   window._refonteInterfaceActive = _readFlag();
-
-  // Si nouvelle interface OFF (= legacy actif), on s'arrête là : aucun
-  // DOM créé, aucun CSS ajouté → l'app fonctionne en v1.8.x strict.
-  if (!window._refonteInterfaceActive) {
-    // On expose juste l'API pour pouvoir activer plus tard sans reload
-    window.RefonteInterface = {
-      isActive:        function() { return false; },
-      setActive:       _setActive,
-      updateCompteurs: function() {},
-      refreshStatusBar:function() {}
-    };
-    return;
-  }
 
   // ============================================================
   // FLAG ACTIF — on injecte la couche refonte
