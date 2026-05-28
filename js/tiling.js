@@ -174,14 +174,31 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
 
   // État du runtime V2 — exposé en window pour cleanup côté main.js plan switch
   const state = {
-    currentLevel: null,   // z courant
-    activeOverlays: [],   // [L.imageOverlay] actuellement affichés
-    blobUrlsCreated: []   // [string] pour revoke au cleanup
+    currentLevel: null,        // z courant
+    activeOverlays: [],        // [L.imageOverlay] actuellement affichés
+    blobUrlsCreated: [],       // [string] pour revoke au cleanup global (plan switch)
+    // 🆕 v1.26.4 (P0-2 RAM) — LRU des tuiles décodées PAR NIVEAU de zoom.
+    // Avant, chaque niveau visité gardait ses bitmaps décodés vivants toute
+    // la session (asset.url jamais révoqué intra-session) → la RAM croissait
+    // au fil de la navigation zoom/pan. On ne garde plus que les MAX_CACHED
+    // niveaux les plus récents ; les autres sont révoqués (bitmap GC), quitte
+    // à re-décoder au retour (coût CPU acceptable vs fuite RAM).
+    blobAssetsByLevel: {},     // { z: [asset, ...] } — assets décodés par niveau
+    levelLRU: []               // ordre d'accès des niveaux (MRU en fin de tableau)
   };
   window._tilingV2State = state;
 
+  // Nombre de niveaux dont on garde les bitmaps décodés en RAM. Courant + 1
+  // adjacent suffit pour un zoom/dézoom fluide. Sur device riche, on peut se
+  // permettre un de plus pour limiter les re-décodages.
+  const _lowMem = (typeof navigator !== "undefined"
+                   && ((navigator.deviceMemory && navigator.deviceMemory < 6)
+                       || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "")));
+  const MAX_CACHED_LEVELS = _lowMem ? 2 : 4;
+
   // Helper : résout l'URL d'une tuile (z, col, k=-row). Lazy → crée la blob URL
-  // au premier appel et la réutilise ensuite (asset.url cached).
+  // au premier appel et la réutilise ensuite (asset.url cached). Range l'asset
+  // dans le bucket du niveau z pour le LRU.
   function _resoudreUrlTuile(z, col, k) {
     const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
@@ -189,8 +206,31 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
     if (!asset.url && asset.file) {
       asset.url = URL.createObjectURL(asset.file);
       state.blobUrlsCreated.push(asset.url);
+      if (!state.blobAssetsByLevel[z]) state.blobAssetsByLevel[z] = [];
+      state.blobAssetsByLevel[z].push(asset);
     }
     return asset.url || path;  // fallback path (mode serveur HTTP, futur)
+  }
+
+  // 🆕 v1.26.4 (P0-2 RAM) — Marque z comme niveau le plus récent et révoque
+  // les bitmaps des niveaux au-delà du cap LRU (libère la RAM décodée).
+  function _trimLevelsLRU(currentZ) {
+    const i = state.levelLRU.indexOf(currentZ);
+    if (i >= 0) state.levelLRU.splice(i, 1);
+    state.levelLRU.push(currentZ);  // MRU
+    while (state.levelLRU.length > MAX_CACHED_LEVELS) {
+      const oldZ = state.levelLRU.shift();  // LRU
+      const assets = state.blobAssetsByLevel[oldZ];
+      if (!assets) continue;
+      assets.forEach(function(a) {
+        if (a && a.url) {
+          try { URL.revokeObjectURL(a.url); } catch(e) {}
+          a.url = null;  // force re-création lazy au prochain accès → bitmap GC
+        }
+      });
+      delete state.blobAssetsByLevel[oldZ];
+      console.log("[Tiling V2] LRU : niveau z=" + oldZ + " révoqué (" + assets.length + " tuiles libérées)");
+    }
   }
 
   // Helper : choix du niveau z à afficher selon le zoom courant de la map.
@@ -242,6 +282,9 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
       }
     }
     state.currentLevel = z;
+    // 🆕 v1.26.4 (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
+    // niveaux les moins récents au-delà du cap (libère la RAM décodée).
+    _trimLevelsLRU(z);
     console.log("[Tiling V2] Niveau z=" + z + " — " + added + " tuiles affichées" +
                 (missing > 0 ? " (" + missing + " manquantes)" : ""));
   }
@@ -280,6 +323,10 @@ window._libererTuilesV2 = function() {
     try { URL.revokeObjectURL(u); } catch(e) {}
   });
   state.blobUrlsCreated = [];
+  // 🆕 v1.26.4 (P0-2 RAM) — reset des structures LRU (les URLs déjà révoquées
+  // ci-dessus, double-revoke inoffensif ; on vide juste les buckets).
+  state.blobAssetsByLevel = {};
+  state.levelLRU = [];
   // Reset asset.url pour les tuiles qui pourraient être rechargées plus tard
   // (au plan switch, RUNTIME_ASSETS est wipé donc pas nécessaire — safety net)
   if (window.RUNTIME_ASSETS) {
