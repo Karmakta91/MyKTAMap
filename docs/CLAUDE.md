@@ -6918,7 +6918,18 @@ Le preset de vitesse le plus lent (2 km/h) de l'échelle partagée Itinéraire +
 
 **🟡 Restant (non touché, à nettoyer plus tard si confirmé)** : `_setActive` + `_afficherConfirmInterfaceChange` + `_writeFlag` (refonteInterface.js, ~84 lignes) — interdépendants, conservés car le toggle d'interface pourrait théoriquement revenir. À retirer dans un futur cleanup si abandon définitif confirmé.
 
-#### 74.4 À NE PAS faire
+#### 74.5 Nettoyage jargon dev dans l'aide utilisateur (v1.26.3)
+
+L'aide intégrée (`interface.js > afficherAide`) était truffée de technique destinée aux devs. Nettoyage :
+- **~38 mentions de version internes retirées** (`(v1.14.19)`, `(hotfix21)`, `Depuis v1.10.3`, `(depuis Karma_dev / v169)`, `§67`…) — l'historique reste dans `version.json` + CLAUDE.md, pas besoin en façade user
+- **~30 termes vulgarisés** : `localStorage` → « sur cet appareil », `IDB dédiée` → « stockage local dédié », `data layer` → « calque du plan », `RAM-only` → « repart à zéro au rechargement », `Battery Status API` → « fonction batterie du navigateur », `Service Worker`/`caches PWA` → « cache de l'app », `viewport culling`, `cross-device`, `segmented control`, `FIFO`, `barycentre`, etc.
+- **8 messages d'erreur user-facing reformulés** : « jsPDF non chargé (lib/jspdf.umd.min.js) » → « Module d'export PDF indisponible. Recharge l'application. » (idem JSZip, IDB, fetch) dans pdfExport.js, secoursMode.js, sessionExporter.js, interface.js, refonteInterface.js
+
+**Assumé volontairement technique** (non touché) : la section **Inspecteur mémoire** (`localStorage`/`IndexedDB`/`Cache PWA`/`Runtime`) — c'est un outil de transparence/debug où le jargon est légitime.
+
+**Commentaires de code** : AUCUN nettoyage (audit conclut que le code est très bien commenté, les commentaires expliquent le *pourquoi* = valeur à préserver).
+
+#### 74.6 À NE PAS faire
 
 - ❌ Retirer les micro-migrations `bourre → blesse` avant plusieurs versions (vieux clients perdraient leur preset)
 - ❌ Ré-introduire de l'argot/humour dans les STRINGS UI face utilisateur (les commentaires de dev internes peuvent rester décontractés, c'est la façade qui doit être pro)

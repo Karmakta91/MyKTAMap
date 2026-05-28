@@ -1488,7 +1488,7 @@
   // et change des ids. Le restore IDB lit l'index en priorité.
   function _packerZipSession(payload, photos, filename) {
     if (typeof JSZip === "undefined") {
-      alert("JSZip n'est pas chargé — impossible de créer le ZIP avec photos.");
+      alert("Module de compression indisponible. Recharge l'application et réessaie.");
       return Promise.reject(new Error("JSZip indisponible"));
     }
     const zip = new JSZip();
@@ -1785,7 +1785,7 @@
 
   function _genererZipAdvanced(points, roads, zones, structures, mesurePts, mesureSurfPts, tracker, photos) {
     if (typeof JSZip === "undefined") {
-      alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
+      alert("Module de compression indisponible. Recharge l'application et réessaie.");
       return;
     }
     const zip = new JSZip();
@@ -2100,7 +2100,7 @@
 
     // Sinon (>1 fichier OU avec photos) → ZIP
     if (typeof JSZip === "undefined") {
-      alert("JSZip n'est pas chargé — impossible de créer le ZIP.");
+      alert("Module de compression indisponible. Recharge l'application et réessaie.");
       return;
     }
     const zip = new JSZip();

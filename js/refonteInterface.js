@@ -1984,7 +1984,7 @@
 
     if (!window.MyKTAMapPhotos) {
       badge.textContent = "0";
-      body.textContent = "Module photos indisponible (IndexedDB ?).";
+      body.textContent = "Stockage photo indisponible.";
       return;
     }
 
@@ -2039,7 +2039,7 @@
     }).catch(function(e) {
       console.warn("[RefonteInterface] _hydraterPhotosModaleSession :", e);
       badge.textContent = "?";
-      body.textContent = "Erreur de lecture IDB : " + (e.message || e);
+      body.textContent = "Erreur de lecture du stockage local.";
     });
   }
 

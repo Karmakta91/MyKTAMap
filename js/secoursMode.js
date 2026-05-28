@@ -2979,7 +2979,7 @@
   async function genererRapportPDF(reportData) {
     if (!reportData) return null;
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      _toast("⚠️ jsPDF non chargé.", "error");
+      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
       return null;
     }
     try {
@@ -3637,7 +3637,7 @@
       return null;
     }
     if (!window.jspdf || !window.jspdf.jsPDF) {
-      _toast("⚠️ jsPDF non chargé.", "error");
+      _toast("⚠️ Export PDF indisponible. Recharge l'application.", "error");
       return null;
     }
     if (!s.groupes || s.groupes.length === 0) {

@@ -130,7 +130,7 @@
     if (existing) { existing.remove(); return; }
 
     if (!_checkJsPDF()) {
-      alert("📤 jsPDF non chargé.\n\nLa lib jsPDF (lib/jspdf.umd.min.js) doit être déployée sur le serveur. Contacte l'auteur si le problème persiste.");
+      alert("📤 Module d'export PDF indisponible.\n\nRecharge l'application et réessaie.");
       return;
     }
 
