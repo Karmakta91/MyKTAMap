@@ -3016,6 +3016,22 @@ function afficherConfig() {
         </div>
 
         <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧭 Navigation intelligente</div>
+          <label class="kta-perf-ultra-row" style="margin-top:0;">
+            <input type="checkbox" id="cfg_smartNav" ${c.smartNav === true ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">🧭 Caler la position sur les tracés</span>
+              <span class="kta-perf-ultra-hint">
+                Décoché par défaut. Quand le plan possède un <strong>réseau de tracés</strong>,
+                la position estimée est <strong>recalée sur la galerie la plus proche</strong> pour
+                compenser la dérive des capteurs (boussole / pas). Hors réseau, retour automatique
+                au comportement actuel. Sans tracés sur le plan, l'option reste sans effet.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🔍 Affichage</div>
           <label class="kta-perf-ultra-row kta-perf-ultra-row-danger" style="margin-top:0;">
             <input type="checkbox" id="cfg_scaledMarkers" ${c.scaledMarkers !== false ? "checked" : ""}>
@@ -3209,6 +3225,11 @@ function appliquerConfig() {
   // 🔍 v174 : scaledMarkers (lu une fois à creerIcones + au hook zoom, reload requis)
   const cbScaled = document.getElementById("cfg_scaledMarkers");
   if (cbScaled) APP_CONFIG.scaledMarkers = !!cbScaled.checked;
+
+  // 🧭 Nav Intelligente C2 : toggle smartNav (pref globale, défaut OFF). Lu à
+  // chaud par tracking.js > avancer() — pas de reload requis.
+  const cbSmartNav = document.getElementById("cfg_smartNav");
+  if (cbSmartNav) APP_CONFIG.smartNav = !!cbSmartNav.checked;
 
   // 🆕 v1.9.2 : le handler de showRoadIntersections en mode carte a été retiré
   // (toggle exclusivement dans le ⚙️ Configuration du loader/home désormais).

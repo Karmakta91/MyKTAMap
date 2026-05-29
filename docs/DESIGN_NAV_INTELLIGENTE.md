@@ -116,8 +116,13 @@ le(la) plus proche** du graphe, dans la limite d'un rayon de sécurité. Au-del�
 
 ## 5. Contrat de réversibilité (décision verrouillée : **HYBRIDE**)
 
-- **Toggle** : `APP_CONFIG.smartNav` (booléen), **persisté par plan** via SessionPersist, **défaut OFF**
-  (rétrocompat stricte — les plans existants se comportent comme avant).
+- **Toggle** : `APP_CONFIG.smartNav` (booléen), **défaut OFF** (rétrocompat stricte).
+  - ⚙️ **Décision d'implémentation (C2)** : persistance **GLOBALE** via `localStorage["app_user_prefs"]`
+    (même mécanisme que `showRoadIntersections` / `scaledMarkers`), et **non per-plan** comme esquissé
+    initialement. Raisons : (1) cohérence avec le pattern existant + zéro plomberie SessionPersist,
+    (2) c'est une préférence de comportement (« utilise la nav intelligente quand un réseau est dispo »),
+    (3) le garde-fou runtime `RoadGraph.isReady()` gère déjà le cas « plan sans réseau » indépendamment
+    de la portée de persistance. Un plan sans tracés → toggle sans effet, quel que soit l'état mémorisé.
 - **Branche unique** dans `avancer()` :
   ```
   if (smartNav && grapheDisponible && onNetwork) avancerSurGraphe();

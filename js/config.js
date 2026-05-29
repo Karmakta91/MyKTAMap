@@ -70,6 +70,12 @@ let DEFAULT_CONFIG = {
   // pour faire disparaître / réapparaître les cercles à chaud.
   showRoadIntersections: true,
 
+  // 🧭 Nav Intelligente (C2) : caler la position tracker sur le réseau de
+  // tracés (map-matching). Pref GLOBALE, défaut OFF (rétrocompat stricte).
+  // Lue à chaud par tracking.js > avancer(). Sans effet si le plan n'a pas de
+  // réseau (garde-fou runtime via RoadGraph.isReady()).
+  smartNav: false,
+
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
   // false (defaut), l'UI multi-niveau est masquee et le comportement est
@@ -100,6 +106,8 @@ try {
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
   // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne
   if ("showRoadIntersections" in saved) APP_CONFIG.showRoadIntersections = !!saved.showRoadIntersections;
+  // 🧭 Nav Intelligente (C2) : restaurer smartNav (pref globale, défaut OFF)
+  if ("smartNav" in saved) APP_CONFIG.smartNav = !!saved.smartNav;
 } catch(e) {}
 
 // =========================
@@ -246,6 +254,7 @@ function buildAppConfigFromPlan(planConfig) {
     if ("debugMode"             in saved) cfg.debugMode             = !!saved.debugMode;
     if ("scaledMarkers"         in saved) cfg.scaledMarkers         = !!saved.scaledMarkers;
     if ("showRoadIntersections" in saved) cfg.showRoadIntersections = !!saved.showRoadIntersections;
+    if ("smartNav"              in saved) cfg.smartNav              = !!saved.smartNav;
   } catch(e) {}
 
   // Fallback aux valeurs par défaut si absentes des prefs (= user a jamais
@@ -254,6 +263,7 @@ function buildAppConfigFromPlan(planConfig) {
   // truthy — fonctionnel mais moins explicite.
   if (cfg.scaledMarkers === undefined)         cfg.scaledMarkers         = DEFAULT_CONFIG.scaledMarkers !== false;
   if (cfg.showRoadIntersections === undefined) cfg.showRoadIntersections = DEFAULT_CONFIG.showRoadIntersections !== false;
+  if (cfg.smartNav === undefined)              cfg.smartNav              = DEFAULT_CONFIG.smartNav === true;  // défaut OFF
 
   return cfg;
 }
@@ -333,6 +343,7 @@ function sauvegarderPrefsUtilisateur() {
     existing.debugMode             = !!APP_CONFIG.debugMode;
     existing.scaledMarkers         = APP_CONFIG.scaledMarkers !== false;          // v174 : default true
     existing.showRoadIntersections = APP_CONFIG.showRoadIntersections !== false;  // 🆕 v1.9.2 : default true
+    existing.smartNav              = APP_CONFIG.smartNav === true;                 // 🧭 Nav C2 : default false
     localStorage.setItem("app_user_prefs", JSON.stringify(existing));
   } catch(e) {}
 }

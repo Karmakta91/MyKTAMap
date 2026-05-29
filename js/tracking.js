@@ -606,7 +606,26 @@ function initMotion() {
 // =========================
 // DEPLACEMENT
 // =========================
+// 🧭 Nav Intelligente C2 — DISPATCHER. Appelé à chaque pas détecté.
+//   • smartNav OFF (ou pas de réseau de tracés prêt) → _avancerRaster() =
+//     comportement HISTORIQUE strictement inchangé (PDR + raster collision).
+//   • smartNav ON + réseau prêt → _avancerSurGraphe() = map-matching.
+// Réversible : le toggle smartNav (⚙️ Configuration, défaut OFF) bascule.
+// ⚠️ C2 = plomberie : _avancerSurGraphe() délègue encore au raster (le
+// map-matching réel arrive en C3). Donc comportement identique pour l'instant.
 function avancer() {
+  if (APP_CONFIG.smartNav === true &&
+      window.RoadGraph && typeof window.RoadGraph.isReady === "function" &&
+      window.RoadGraph.isReady()) {
+    _avancerSurGraphe();
+  } else {
+    _avancerRaster();
+  }
+}
+
+// Comportement HISTORIQUE : dead-reckoning piéton (PDR) pur, contraint par le
+// raster de collision (estAccessible). = « GPS Intelligent OFF ». Inchangé.
+function _avancerRaster() {
   const scale = APP_CONFIG.scale;
   const pasMetre = APP_CONFIG.stepLength;
 
@@ -634,6 +653,16 @@ function avancer() {
   if (_stepApplied) {
     _pushTimelinePoint("pdr");
   }
+}
+
+// 🚧 Nav Intelligente C3 (à venir) : map-matching de la position estimée sur
+// le réseau de tracés (RoadGraph). Pour l'instant (C2 = plomberie réversible),
+// délègue au raster → comportement strictement identique.
+function _avancerSurGraphe() {
+  if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+    console.log("[Tracking] 🧭 smartNav ON — map-matching pas encore implémenté (C3), fallback raster");
+  }
+  _avancerRaster();
 }
 
 // =========================
