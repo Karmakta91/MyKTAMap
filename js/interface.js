@@ -2253,20 +2253,6 @@ function afficherAide() {
           </p>
         </div>
 
-        <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">💼 Usage professionnel & contact</div>
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.6;">
-            MyKTAMap est <strong>gratuit pour un usage non commercial</strong> (cataphiles, spéléo, perso),
-            sous licence <strong>CC BY-NC-SA 4.0</strong>. Pour un <strong>usage professionnel ou commercial</strong>
-            — secours organisé, géotechnique / industrie (espaces confinés), gestion d'infrastructures
-            souterraines, formation / sécurité — une <strong>licence commerciale</strong> est disponible.
-          </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0; line-height:1.7;">
-            📷 Communauté / questions : <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">Instagram @karma_kta</a><br>
-            💼 Usage pro / licence : <a href="mailto:contact@myktamap.fr?subject=MyKTAMap%20%E2%80%94%20Usage%20professionnel%20%2F%20licence">contact@myktamap.fr</a>
-          </p>
-        </div>
-
       </div>
     </div>
   `;
