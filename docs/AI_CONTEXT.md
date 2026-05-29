@@ -14,7 +14,7 @@
   - Usage non commercial autorisé avec attribution + partage à l'identique
   - **Usage commercial strictement interdit** sans accord écrit préalable de l'auteur
 - **Code source** : **non distribué publiquement** (pas de dépôt ouvert). Toute personne consultant ce document n'a accès qu'à la documentation utilisateur — pas au code, pas à l'app live, pas aux données.
-- **Collaboration** : **ouverte sur demande** (contributions, ports, intégrations, retours terrain). Contact via le site officiel.
+- **Collaboration** : **ouverte sur demande** (contributions, ports, intégrations, retours terrain). Contact via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial).
 
 > ⚠️ Toute reproduction, modification, redistribution ou utilisation commerciale de cette documentation ou de l'application sans accord écrit préalable de l'auteur expose à des poursuites pour contrefaçon (art. L.335-2 du Code de la propriété intellectuelle).
 
@@ -278,7 +278,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 ### 💬 Modèles de réponse à utiliser
 
 **Quand l'utilisateur demande une fonctionnalité qui n'existe pas** :
-> *"Non, MyKTAMap ne propose pas de [X]. Les seules [zones/types/modes] disponibles sont [liste exacte d'après la doc]. Si tu veux suggérer cette fonctionnalité, contacte l'auteur via le site officiel."*
+> *"Non, MyKTAMap ne propose pas de [X]. Les seules [zones/types/modes] disponibles sont [liste exacte d'après la doc]. Si tu veux suggérer cette fonctionnalité, contacte l'auteur via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial)."*
 
 **Quand tu n'es pas sûr** :
 > *"Je ne trouve pas d'information claire à ce sujet dans la documentation fournie. Pour confirmation, vérifie directement dans l'app ou contacte l'auteur."*
@@ -805,15 +805,15 @@ La modale t'indique la **cause exacte** (avec les coordonnées de la tuile qui a
 
 ### Je veux utiliser MyKTAMap commercialement (entreprise, prestation payante)
 
-L'usage commercial est **interdit par défaut** (licence CC BY-NC-SA 4.0). Une licence commerciale séparée est nécessaire. Contacte l'auteur via le site officiel pour discuter.
+L'usage commercial est **interdit par défaut** (licence CC BY-NC-SA 4.0). Une licence commerciale séparée est nécessaire. Contacte l'auteur via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial) pour discuter.
 
 ### Je voudrais contribuer au projet (code, traduction, retour terrain)
 
-La collaboration est **ouverte sur demande**. Contacte l'auteur via le site officiel en décrivant ce que tu veux apporter — chaque contribution nécessite un accord écrit préalable (cohérence du projet, respect de la licence).
+La collaboration est **ouverte sur demande**. Contacte l'auteur via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial) en décrivant ce que tu veux apporter — chaque contribution nécessite un accord écrit préalable (cohérence du projet, respect de la licence).
 
 ### Puis-je consulter le code source ?
 
-Le code source n'est **pas distribué publiquement**. Il n'existe pas de dépôt Git ouvert. Pour toute question technique précise, l'auteur reste joignable via le site officiel.
+Le code source n'est **pas distribué publiquement**. Il n'existe pas de dépôt Git ouvert. Pour toute question technique précise, l'auteur reste joignable via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial).
 
 ### J. Exporter en PDF imprimable (depuis v1.10.3)
 

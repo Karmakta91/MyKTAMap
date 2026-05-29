@@ -545,7 +545,7 @@ Tu peux :
 - **📥 Exporter** le journal en fichier `.json` (à partager / archiver / faire auditer)
 - **🗑️ Vider** le buffer
 
-**À surveiller** : si tu vois apparaître une requête `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` ou `EventSource`, ou une URL externe (catégorie en rouge) autre que le ping de connectivité Google → **contacte l'auteur immédiatement** : ça contredirait la promesse de cette page.
+**À surveiller** : si tu vois apparaître une requête `POST`, `PUT`, `PATCH`, `DELETE`, `sendBeacon`, `WebSocket` ou `EventSource`, ou une URL externe (catégorie en rouge) autre que le ping de connectivité Google → **contacte l'auteur immédiatement** (Instagram **@karma_kta** ou **contact@myktamap.fr**) : ça contredirait la promesse de cette page.
 
 #### 📖 Que fait l'app sur le réseau ?
 
