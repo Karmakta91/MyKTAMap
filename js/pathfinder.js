@@ -1110,11 +1110,73 @@
   }
 
   // =========================
+  // API GRAPHE RÉSEAU — réutilisable hors pathfinding (Nav Intelligente C1)
+  // =========================
+  // Expose le moteur de graphe DÉJÀ ÉPROUVÉ (_buildGraph + enrichissement) pour
+  // réutilisation par la navigation intelligente (map-matching). Le cache et
+  // l'invalidation sont gérés par js/roadGraph.js — ici on fournit juste le
+  // constructeur + un snap LECTURE SEULE. Aucune modification de computeRoute /
+  // computeReachable (qui gardent leur propre build par-requête avec avoidances).
+
+  // Collecte session + embedded (même logique que computeRoute/computeReachable).
+  function _collecterToutesLesRoads() {
+    const sessionRoads = (typeof window.getRoads === "function" ? window.getRoads() : []) || [];
+    let embeddedRoads;
+    if (typeof window.getAllEmbeddedRoads === "function") {
+      embeddedRoads = window.getAllEmbeddedRoads();
+    } else if (typeof window.getEmbeddedRoads === "function") {
+      embeddedRoads = window.getEmbeddedRoads();
+    } else {
+      embeddedRoads = [];
+    }
+    return sessionRoads.concat(embeddedRoads || []);
+  }
+
+  // Construit le graphe réseau complet (build + enrichissement croisements),
+  // SANS évitements (propres à l'itinéraire). Zones inaccessibles exclues par
+  // défaut : la nav indique où l'utilisateur EST physiquement, une zone "inacc"
+  // ne change pas la géométrie des galeries. opts.includeZones = true pour les
+  // respecter quand même.
+  function buildNetworkGraph(opts) {
+    opts = opts || {};
+    const allowedTypes = opts.allowedTypes || ["principal", "secondaire", "chemin"];
+    const allRoads = _collecterToutesLesRoads();
+    if (allRoads.length === 0) return _newGraph();
+    const zonesInacc = opts.includeZones ? _collecterZonesInaccessibles() : [];
+    const graph = _buildGraph(allRoads, allowedTypes, zonesInacc, [], 0);
+    _enrichirGrapheAvecCroisements(graph);
+    return graph;
+  }
+
+  // Snap LECTURE SEULE d'un point sur le graphe (NE MUTE PAS le graphe, par
+  // opposition à _insertVirtualNode qui insère un nœud). Pour le map-matching
+  // par pas : on veut juste le segment le plus proche + la projection.
+  // Retourne { segIdx, seg, projection:{x,y}, t, dist } | null.
+  function snapPointToGraph(graph, p) {
+    if (!graph || !Array.isArray(graph.segments) || graph.segments.length === 0) return null;
+    if (!p || typeof p.x !== "number" || typeof p.y !== "number") return null;
+    let best = null;
+    for (let i = 0; i < graph.segments.length; i++) {
+      const seg = graph.segments[i];
+      const a = graph.nodes[seg.a];
+      const b = graph.nodes[seg.b];
+      const proj = _projectOnSegment(p, a, b);
+      if (!best || proj.dist < best.dist) {
+        best = { segIdx: i, seg: seg, projection: { x: proj.x, y: proj.y }, t: proj.t, dist: proj.dist };
+      }
+    }
+    return best;
+  }
+
+  // =========================
   // EXPORT
   // =========================
   window.Pathfinder = {
-    computeRoute:     computeRoute,
-    computeReachable: computeReachable,
-    resolvePointById: resolvePointById
+    computeRoute:      computeRoute,
+    computeReachable:  computeReachable,
+    resolvePointById:  resolvePointById,
+    // 🆕 Nav Intelligente C1 — graphe réseau réutilisable (cf js/roadGraph.js)
+    buildNetworkGraph: buildNetworkGraph,
+    snapPointToGraph:  snapPointToGraph
   };
 })();
