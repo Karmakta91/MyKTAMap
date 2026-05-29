@@ -123,11 +123,87 @@
     };
   }
 
+  // =========================
+  // MAP-MATCHING (Nav Intelligente C3)
+  // =========================
+  // Cale une position BRUTE (issue du dead-reckoning PDR) sur le réseau de
+  // tracés. Greedy + « stickiness » (hystérésis) :
+  //   1. On PRÉFÈRE rester sur le segment courant tant que la position brute
+  //      reste dans rayon × STICKY_FACTOR → anti-saut entre galeries parallèles
+  //      + anti-jitter aux croisements.
+  //   2. Sinon, on bascule sur le segment le plus proche s'il est dans le rayon.
+  //   3. Au-delà → off-network : le caller (tracking.js) bascule en repli PDR
+  //      raster (mode HYBRIDE).
+  //
+  // ⚠️ Paramètres TERRAIN-SENSIBLES (premier jet, à affiner après test réel) :
+  //   • rayon = max(MATCH_RADIUS_MIN_PX, échelle_px_par_m × MATCH_RADIUS_M)
+  //   • STICKY_FACTOR : le segment courant est toléré jusqu'à rayon × ce facteur
+  // Surchageables à chaud via APP_CONFIG.smartNavRadiusM (sinon défaut 6 m).
+  const MATCH_RADIUS_M      = 6;    // ~6 m de tolérance latérale par défaut
+  const MATCH_RADIUS_MIN_PX = 25;   // plancher si l'échelle est petite
+  const STICKY_FACTOR       = 2.5;  // hystérésis : on colle au segment courant
+
+  function _projectOnSeg(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) {
+      return { x: a.x, y: a.y, t: 0, dist: Math.hypot(p.x - a.x, p.y - a.y) };
+    }
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
+    if (t < 0) t = 0; else if (t > 1) t = 1;
+    const px = a.x + t * dx, py = a.y + t * dy;
+    return { x: px, y: py, t: t, dist: Math.hypot(p.x - px, p.y - py) };
+  }
+
+  function _matchRadiusPx() {
+    const scale = (window.APP_CONFIG && Number.isFinite(window.APP_CONFIG.scale))
+      ? window.APP_CONFIG.scale : 4.9;
+    const m = (window.APP_CONFIG && Number.isFinite(window.APP_CONFIG.smartNavRadiusM) &&
+               window.APP_CONFIG.smartNavRadiusM > 0)
+      ? window.APP_CONFIG.smartNavRadiusM : MATCH_RADIUS_M;
+    return Math.max(MATCH_RADIUS_MIN_PX, scale * m);
+  }
+
+  // matchPosition(rawX, rawY, prevSegIdx)
+  //   → { onNetwork:bool, matched:{x,y}, segIdx:int, dist:number }
+  function matchPosition(rawX, rawY, prevSegIdx) {
+    const off = { onNetwork: false, matched: { x: rawX, y: rawY }, segIdx: -1, dist: Infinity };
+    const g = getGraph();
+    if (!g || !Array.isArray(g.segments) || g.segments.length === 0) return off;
+
+    const raw = { x: rawX, y: rawY };
+    const R = _matchRadiusPx();
+
+    // 1) Stickiness : on tente de rester sur le segment courant.
+    if (Number.isInteger(prevSegIdx) && prevSegIdx >= 0 && prevSegIdx < g.segments.length) {
+      const seg = g.segments[prevSegIdx];
+      const a = g.nodes[seg.a], b = g.nodes[seg.b];
+      if (a && b) {
+        const pc = _projectOnSeg(raw, a, b);
+        if (pc.dist <= R * STICKY_FACTOR) {
+          return { onNetwork: true, matched: { x: pc.x, y: pc.y }, segIdx: prevSegIdx, dist: pc.dist };
+        }
+      }
+    }
+
+    // 2) Sinon : segment le plus proche (snap lecture seule du pathfinder).
+    const near = (window.Pathfinder && typeof window.Pathfinder.snapPointToGraph === "function")
+      ? window.Pathfinder.snapPointToGraph(g, raw)
+      : null;
+    if (near && near.dist <= R) {
+      return { onNetwork: true, matched: { x: near.projection.x, y: near.projection.y }, segIdx: near.segIdx, dist: near.dist };
+    }
+
+    // 3) Trop loin de tout → off-network (repli PDR raster côté caller).
+    return off;
+  }
+
   window.RoadGraph = {
-    getGraph:   getGraph,
-    snap:       snap,
-    invalidate: invalidate,
-    isReady:    isReady,
-    stats:      stats
+    getGraph:      getGraph,
+    snap:          snap,
+    matchPosition: matchPosition,
+    invalidate:    invalidate,
+    isReady:       isReady,
+    stats:         stats
   };
 })();

@@ -11,6 +11,12 @@ let position = {
 
 let direction = 0;
 
+// 🧭 Nav Intelligente (C3) : index du segment de tracé sur lequel la position
+// est actuellement calée (-1 = aucun / off-network). Sert à la « stickiness »
+// du map-matching (préférer rester sur le segment courant). Réinitialisé à -1
+// à chaque recalage / (re)démarrage du tracking.
+let _navSegIdx = -1;
+
 let markerPosition;
 let polyline;
 let lastStepTime = 0;
@@ -66,6 +72,7 @@ function initTracking() {
 
     position.x = x;
     position.y = y;
+    _navSegIdx = -1;  // 🧭 nav : recalage manuel → re-snapping neuf
 
     // 🏗️ Multi-niveau (v148) : recalage clic carte → tracker passe au niveau actif
     // ("pouvoir se relocaliser selon le niveau" — request user). Si multiLevel
@@ -615,8 +622,7 @@ function initMotion() {
 // map-matching réel arrive en C3). Donc comportement identique pour l'instant.
 function avancer() {
   if (APP_CONFIG.smartNav === true &&
-      window.RoadGraph && typeof window.RoadGraph.isReady === "function" &&
-      window.RoadGraph.isReady()) {
+      window.RoadGraph && typeof window.RoadGraph.matchPosition === "function") {
     _avancerSurGraphe();
   } else {
     _avancerRaster();
@@ -655,14 +661,34 @@ function _avancerRaster() {
   }
 }
 
-// 🚧 Nav Intelligente C3 (à venir) : map-matching de la position estimée sur
-// le réseau de tracés (RoadGraph). Pour l'instant (C2 = plomberie réversible),
-// délègue au raster → comportement strictement identique.
+// 🧭 Nav Intelligente C3 : map-matching. On calcule la position brute PDR
+// (identique au raster), puis on la CALE sur le réseau de tracés via RoadGraph.
+//   • ON network  → position = projection sur la galerie (dérive latérale
+//     annulée), on mémorise le segment courant pour la stickiness.
+//   • OFF network → repli HYBRIDE sur le PDR raster habituel (collision). Comme
+//     position n'a pas été modifiée, _avancerRaster() recalcule la MÊME brute.
 function _avancerSurGraphe() {
-  if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-    console.log("[Tracking] 🧭 smartNav ON — map-matching pas encore implémenté (C3), fallback raster");
+  // 1) PDR brut (même calcul que _avancerRaster).
+  const scale    = APP_CONFIG.scale;
+  const distance = APP_CONFIG.stepLength * scale;
+  const rad      = direction * Math.PI / 180;
+  const rawX = position.x + distance * Math.sin(rad);
+  const rawY = position.y - distance * Math.cos(rad);
+
+  // 2) Map-matching sur le réseau.
+  const m = window.RoadGraph.matchPosition(rawX, rawY, _navSegIdx);
+
+  if (m && m.onNetwork) {
+    position.x = m.matched.x;
+    position.y = m.matched.y;
+    _navSegIdx = m.segIdx;
+    updateMap();
+    _pushTimelinePoint("pdr");
+  } else {
+    // OFF network : repli raster (recalcule la même brute + collision + timeline).
+    _navSegIdx = -1;
+    _avancerRaster();
   }
-  _avancerRaster();
 }
 
 // =========================
@@ -750,6 +776,14 @@ function _pushTimelinePoint(type) {
 
 function startTracking() {
   tracking = true;
+  _navSegIdx = -1;  // 🧭 nav : repart d'un snapping neuf à chaque démarrage
+  // 🧭 Nav Intelligente : pré-construit le graphe réseau HORS du chemin chaud
+  // (l'enrichissement des croisements est O(N²) → évite un hitch au 1er pas).
+  // Sans effet si smartNav OFF, pas de réseau, ou RoadGraph absent.
+  if (APP_CONFIG.smartNav === true && window.RoadGraph &&
+      typeof window.RoadGraph.getGraph === "function") {
+    try { window.RoadGraph.getGraph(); } catch(e) {}
+  }
   // 🆕 v1.11.3 V2.3 : init de la timeline au démarrage. Reset = nouveau
   // cycle de tracking. Push un point initial "start" pour marquer l'origine
   // temporelle.
@@ -773,6 +807,7 @@ function startTracking() {
 
 function stopTracking() {
   tracking = false;
+  _navSegIdx = -1;  // 🧭 nav : oublie le segment courant à l'arrêt
   // 🧭 v158 : reset rotation a 0° (icone pointe Nord = pose neutre).
   _resetRotationTrackerMarker();
   console.log("[Tracking] OFF");
@@ -801,6 +836,7 @@ function requestPermission() {
 function resetTrackingPosition() {
   position.x = APP_CONFIG.startX;
   position.y = APP_CONFIG.startY;
+  _navSegIdx = -1;  // 🧭 nav : re-snapping neuf après reset de position
   stepCount = 0;
 
   if (polyline) {
@@ -967,6 +1003,7 @@ window.recalerTrackerSurPoint = function(x, y, level) {
   if (typeof x !== "number" || typeof y !== "number") return;
   position.x = x;
   position.y = y;
+  _navSegIdx = -1;  // 🧭 nav : recalage sur point → re-snapping neuf
   if (polyline) polyline.setLatLngs([]);
   stepCount = 0;
 
