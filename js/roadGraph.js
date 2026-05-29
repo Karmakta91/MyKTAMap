@@ -139,9 +139,19 @@
   //   • rayon = max(MATCH_RADIUS_MIN_PX, échelle_px_par_m × MATCH_RADIUS_M)
   //   • STICKY_FACTOR : le segment courant est toléré jusqu'à rayon × ce facteur
   // Surchageables à chaud via APP_CONFIG.smartNavRadiusM (sinon défaut 6 m).
-  const MATCH_RADIUS_M      = 6;    // ~6 m de tolérance latérale par défaut
-  const MATCH_RADIUS_MIN_PX = 25;   // plancher si l'échelle est petite
-  const STICKY_FACTOR       = 2.5;  // hystérésis : on colle au segment courant
+  const MATCH_RADIUS_M       = 6;    // ~6 m de tolérance latérale par défaut
+  const MATCH_RADIUS_MIN_PX  = 25;   // plancher si l'échelle est petite
+  const STICKY_FACTOR        = 2.5;  // hystérésis : on colle au segment courant
+  // 🆕 C4 : marge « intérieur de segment ». Tant que la projection sur le
+  // segment courant est strictement à l'intérieur (T_EDGE < t < 1-T_EDGE), on
+  // applique la stickiness. Dès qu'elle se clampe sur une extrémité (= on a
+  // dépassé un NŒUD), on relâche → l'étape 2 choisit la bonne branche. C'est
+  // ce qui corrige le « blocage aux intersections / virages ».
+  const T_EDGE               = 0.02;
+  // 🆕 C4 : poids du désalignement de cap (px équivalents par degré). Sert à
+  // départager les branches à un croisement, où les distances au nœud sont
+  // similaires → c'est le cap boussole qui tranche.
+  const W_HEADING_PX_PER_DEG = 0.7;
 
   function _projectOnSeg(p, a, b) {
     const dx = b.x - a.x, dy = b.y - a.y;
@@ -164,34 +174,82 @@
     return Math.max(MATCH_RADIUS_MIN_PX, scale * m);
   }
 
-  // matchPosition(rawX, rawY, prevSegIdx)
+  // Cap (compass) du vecteur a→b, MÊME convention que le déplacement PDR
+  // (cap 0 = -y = nord/haut, 90 = +x = est) : newX=sin(cap), newY=-cos(cap).
+  function _bearingDeg(a, b) {
+    const h = Math.atan2(b.x - a.x, -(b.y - a.y)) * 180 / Math.PI;
+    return (h + 360) % 360;
+  }
+
+  // Écart angulaire entre 2 caps, ramené à [0,90] : une galerie est parcourable
+  // dans les 2 sens (segment = ligne non orientée), donc 0° et 180° d'écart
+  // sont tous deux « parfaitement alignés ».
+  function _angleDiffMod180(h1, h2) {
+    let d = Math.abs(h1 - h2) % 360;
+    if (d > 180) d = 360 - d;   // → [0,180]
+    if (d > 90)  d = 180 - d;   // ligne non orientée → [0,90]
+    return d;
+  }
+
+  // matchPosition(rawX, rawY, prevSegIdx, headingDeg)
   //   → { onNetwork:bool, matched:{x,y}, segIdx:int, dist:number }
-  function matchPosition(rawX, rawY, prevSegIdx) {
+  // headingDeg : cap VISUEL courant (= _getCorrectedHeading côté tracking).
+  function matchPosition(rawX, rawY, prevSegIdx, headingDeg) {
     const off = { onNetwork: false, matched: { x: rawX, y: rawY }, segIdx: -1, dist: Infinity };
     const g = getGraph();
     if (!g || !Array.isArray(g.segments) || g.segments.length === 0) return off;
 
     const raw = { x: rawX, y: rawY };
     const R = _matchRadiusPx();
+    const headingValid = Number.isFinite(headingDeg);
+    const connectBonus = R * 0.4;
 
-    // 1) Stickiness : on tente de rester sur le segment courant.
+    let prevSeg = null;
     if (Number.isInteger(prevSegIdx) && prevSegIdx >= 0 && prevSegIdx < g.segments.length) {
-      const seg = g.segments[prevSegIdx];
-      const a = g.nodes[seg.a], b = g.nodes[seg.b];
+      prevSeg = g.segments[prevSegIdx];
+    }
+
+    // 1) Stickiness MID-SEGMENT uniquement : on reste sur le segment courant
+    //    tant que la projection est à l'INTÉRIEUR (pas clampée à une extrémité)
+    //    et proche. Dès qu'on dépasse un nœud (t clampé à 0/1), on relâche →
+    //    l'étape 2 choisit la bonne branche au croisement/virage. (= fix blocage)
+    if (prevSeg) {
+      const a = g.nodes[prevSeg.a], b = g.nodes[prevSeg.b];
       if (a && b) {
         const pc = _projectOnSeg(raw, a, b);
-        if (pc.dist <= R * STICKY_FACTOR) {
+        if (pc.dist <= R * STICKY_FACTOR && pc.t > T_EDGE && pc.t < 1 - T_EDGE) {
           return { onNetwork: true, matched: { x: pc.x, y: pc.y }, segIdx: prevSegIdx, dist: pc.dist };
         }
       }
     }
 
-    // 2) Sinon : segment le plus proche (snap lecture seule du pathfinder).
-    const near = (window.Pathfinder && typeof window.Pathfinder.snapPointToGraph === "function")
-      ? window.Pathfinder.snapPointToGraph(g, raw)
-      : null;
-    if (near && near.dist <= R) {
-      return { onNetwork: true, matched: { x: near.projection.x, y: near.projection.y }, segIdx: near.segIdx, dist: near.dist };
+    // 2) Meilleure branche parmi les segments dans le rayon :
+    //    score = distance + désalignement_de_cap × poids − bonus_continuité.
+    //    • Le CAP départage les branches d'un croisement (distances au nœud
+    //      similaires → c'est l'orientation qui tranche un virage).
+    //    • Le bonus de continuité (segment connecté au segment courant par un
+    //      nœud partagé) limite le saut vers une galerie parallèle alignée.
+    let best = null;
+    for (let i = 0; i < g.segments.length; i++) {
+      const seg = g.segments[i];
+      const a = g.nodes[seg.a], b = g.nodes[seg.b];
+      if (!a || !b) continue;
+      const proj = _projectOnSeg(raw, a, b);
+      if (proj.dist > R) continue;  // hors rayon → pas candidat
+      let score = proj.dist;
+      if (headingValid) {
+        score += W_HEADING_PX_PER_DEG * _angleDiffMod180(headingDeg, _bearingDeg(a, b));
+      }
+      if (prevSeg && (seg.a === prevSeg.a || seg.a === prevSeg.b ||
+                      seg.b === prevSeg.a || seg.b === prevSeg.b)) {
+        score -= connectBonus;
+      }
+      if (!best || score < best.score) {
+        best = { segIdx: i, x: proj.x, y: proj.y, dist: proj.dist, score: score };
+      }
+    }
+    if (best) {
+      return { onNetwork: true, matched: { x: best.x, y: best.y }, segIdx: best.segIdx, dist: best.dist };
     }
 
     // 3) Trop loin de tout → off-network (repli PDR raster côté caller).

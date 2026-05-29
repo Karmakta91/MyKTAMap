@@ -674,14 +674,15 @@ function _avancerRaster() {
 //     position n'a pas été modifiée, _avancerRaster() recalcule la MÊME brute.
 function _avancerSurGraphe() {
   // 1) PDR brut (même calcul que _avancerRaster).
-  const scale    = APP_CONFIG.scale;
-  const distance = APP_CONFIG.stepLength * scale;
-  const rad      = _getCorrectedHeading() * Math.PI / 180;  // cap VISUEL (cf _avancerRaster)
+  const scale      = APP_CONFIG.scale;
+  const distance   = APP_CONFIG.stepLength * scale;
+  const headingDeg = _getCorrectedHeading();              // cap VISUEL (cf _avancerRaster)
+  const rad        = headingDeg * Math.PI / 180;
   const rawX = position.x + distance * Math.sin(rad);
   const rawY = position.y - distance * Math.cos(rad);
 
-  // 2) Map-matching sur le réseau.
-  const m = window.RoadGraph.matchPosition(rawX, rawY, _navSegIdx);
+  // 2) Map-matching sur le réseau (le cap départage les branches aux croisements).
+  const m = window.RoadGraph.matchPosition(rawX, rawY, _navSegIdx, headingDeg);
 
   if (m && m.onNetwork) {
     position.x = m.matched.x;
