@@ -2809,6 +2809,121 @@ function _cfgDesactiverModeClicGeoref() {
   if (fl) fl.remove();
 }
 
+// ───────── 🧭 POSITION INITIALE TRACKER — pickers assistés ─────────
+// Parité UX stricte avec les pickers Géoréf ci-dessus, ciblant cfg_startX/Y :
+//   - 🔍 Choisir via un point : autocomplete POI → remplit startX/Y
+//   - 📍 Cliquer sur la carte : mode pick → clic plan → remplit startX/Y
+// startX/Y sont des entiers (parseInt au save) → on arrondit à l'entier.
+// Bindés par _bindCfgTrackerStartHandlers() après le rendu de la modale.
+function _cfgOuvrirRechercheStart() {
+  const res = document.getElementById("cfg_start_search_results");
+  if (!res) return;
+  res.style.display = "block";
+  res.innerHTML =
+    '<input type="text" id="cfg_start_search_q" class="kta-cfg-input" ' +
+      'placeholder="Tape un nom / id / tag..." style="width:100%; margin-bottom:6px;">' +
+    '<div id="cfg_start_search_list"></div>';
+  const input = document.getElementById("cfg_start_search_q");
+  const list  = document.getElementById("cfg_start_search_list");
+  if (!input || !list) return;
+  input.focus();
+  let debTimer = null;
+  input.addEventListener("input", function() {
+    const q = input.value.trim();
+    if (debTimer) clearTimeout(debTimer);
+    if (!q || !window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
+      list.innerHTML = "";
+      return;
+    }
+    debTimer = setTimeout(async function() {
+      let results = [];
+      try { results = await window.SearchPoints.findByQuery(q) || []; } catch(e) {}
+      if (input.value.trim() !== q) return;
+      if (results.length === 0) {
+        list.innerHTML = '<div class="kta-kmz-search-empty">Aucun résultat pour « ' + q + ' »</div>';
+        return;
+      }
+      list.innerHTML = results.slice(0, 10).map(function(it, i) {
+        const p = it.point;
+        const nom = p.nom || p.id || "(point)";
+        const metaParts = [];
+        if (p.id && p.id !== nom) metaParts.push(p.id);
+        if (Number.isFinite(p.x) && Number.isFinite(p.y)) metaParts.push("x=" + p.x + ", y=" + p.y);
+        const meta = metaParts.length > 0
+          ? '<span class="kta-kmz-search-meta">(' + metaParts.join(" · ") + ')</span>'
+          : '';
+        return '<div class="kta-kmz-search-item" data-idx="' + i + '"><strong>' + nom + '</strong>' + meta + '</div>';
+      }).join("");
+      list.querySelectorAll(".kta-kmz-search-item").forEach(function(row, i) {
+        row.addEventListener("click", function() {
+          const p = results[i].point;
+          const xEl = document.getElementById("cfg_startX");
+          const yEl = document.getElementById("cfg_startY");
+          if (xEl && Number.isFinite(p.x)) xEl.value = Math.round(p.x);
+          if (yEl && Number.isFinite(p.y)) yEl.value = Math.round(p.y);
+          res.style.display = "none";
+        });
+      });
+    }, 150);
+  });
+}
+
+let _cfgStartClickActive  = false;
+let _cfgStartClickHandler = null;
+
+function _cfgActiverModeClicStart() {
+  if (!window.map) return;
+  _cfgDesactiverModeClicStart();  // annule un mode précédent éventuel
+  _cfgStartClickActive = true;
+  _cfgStartClickHandler = function(e) {
+    const x = e.latlng.lng;
+    const y = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) ? (window.APP_CONFIG.imageHeight - e.latlng.lat) : e.latlng.lat;
+    const xEl = document.getElementById("cfg_startX");
+    const yEl = document.getElementById("cfg_startY");
+    if (xEl) xEl.value = Math.round(x);
+    if (yEl) yEl.value = Math.round(y);
+    _cfgDesactiverModeClicStart();
+    const cfgModal = document.getElementById("kta-cfg-modal");
+    if (cfgModal) cfgModal.style.display = "";
+  };
+  window.map.on("click", _cfgStartClickHandler);
+  const cfgModal = document.getElementById("kta-cfg-modal");
+  if (cfgModal) cfgModal.style.display = "none";
+  const fl = document.createElement("div");
+  fl.id = "kta-cfg-start-click-floater";
+  fl.className = "kta-iti-floater";
+  fl.innerHTML =
+    '<span class="kta-iti-floater-icon">🧭</span>' +
+    '<span class="kta-iti-floater-msg">Clique sur la carte pour la position initiale du tracker</span>' +
+    '<button class="kta-btn kta-btn-ghost" id="cfg_start_click_cancel" type="button">Annuler</button>';
+  document.body.appendChild(fl);
+  const cancelBtn = document.getElementById("cfg_start_click_cancel");
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", function() {
+      _cfgDesactiverModeClicStart();
+      const m = document.getElementById("kta-cfg-modal");
+      if (m) m.style.display = "";
+    });
+  }
+}
+
+function _cfgDesactiverModeClicStart() {
+  if (!_cfgStartClickActive) return;
+  _cfgStartClickActive = false;
+  if (window.map && _cfgStartClickHandler) window.map.off("click", _cfgStartClickHandler);
+  _cfgStartClickHandler = null;
+  const fl = document.getElementById("kta-cfg-start-click-floater");
+  if (fl) fl.remove();
+}
+
+// Bind des 2 boutons de la section 🧭 Position initiale du tracker.
+function _bindCfgTrackerStartHandlers() {
+  const btnSearch = document.getElementById("cfg_start_search");
+  const btnClick  = document.getElementById("cfg_start_click");
+  if (btnSearch) btnSearch.addEventListener("click", _cfgOuvrirRechercheStart);
+  if (btnClick)  btnClick.addEventListener("click",  _cfgActiverModeClicStart);
+}
+
 // =========================
 // CONFIG — modale plein écran
 // =========================
@@ -2870,6 +2985,14 @@ function afficherConfig() {
             <label class="kta-cfg-label">Position Y</label>
             <input class="kta-cfg-input" id="cfg_startY" type="number" value="${c.startY}">
           </div>
+          <!-- 🆕 Saisie assistée de la position de départ (parité UX géoréf) :
+               🔍 via un point existant, 📍 au clic sur la carte. Évite la saisie
+               manuelle des coordonnées (gros gain de temps). -->
+          <div class="kta-kmz-pt-actions" style="margin-top:8px;">
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_search" type="button">🔍 Choisir via un point</button>
+            <button class="kta-btn kta-btn-ghost kta-btn-small" id="cfg_start_click" type="button">📍 Cliquer sur la carte</button>
+          </div>
+          <div id="cfg_start_search_results" class="kta-kmz-search-results" style="display:none;"></div>
         </div>
 
         <div class="kta-aide-section">
@@ -3002,6 +3125,9 @@ function afficherConfig() {
   // → pré-rempli automatiquement à l'ouverture de la modale 📡 Export externe
   // (sessionExporter > _renderCalibrageCommun lit KmzExport.getCalibration).
   _bindCfgGeorefHandlers();
+
+  // 🧭 Position initiale du tracker : boutons 🔍 via un point / 📍 cliquer carte.
+  _bindCfgTrackerStartHandlers();
 
   // 🎬 v1.21.0-fix2 (KARMA mobile-friendly) : bouton "Activer le mode
   // présentation" dans la section 🔍 Affichage. Sur mobile, la touche F
