@@ -243,6 +243,11 @@
         // verrait son état considéré "vide" → localStorage purgé → perte
         // au reload. Surface compte aussi comme contenu.
         && (state.measureSurface || []).length === 0
+        // 🐛 v1.28.0-fix : une session tracker-SEULE (timeline/tracé sans aucun
+        // point/tracé/zone/mesure) ne doit PAS être jugée "vide" — sinon le slot
+        // localStorage est purgé (save > _isEmptyState → removeItem) et le tracé
+        // est perdu au reload. Le tracker compte comme contenu.
+        && (state.trackerTimeline || []).length === 0
         && lcEmpty;
   }
 
@@ -329,7 +334,14 @@
       customLegend:   state.customLegend   || null,
       // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : filtres runtime
       // FilterPanel (tags + types road/zone/struct) persistés per-plan.
-      runtimeFilters:  state.runtimeFilters  || null
+      runtimeFilters:  state.runtimeFilters  || null,
+      // 🐛 v1.28.0-fix : trackerTimeline/trackerStartTs étaient présents dans
+      // _gatherState() mais OMIS de ce payload final → jamais écrits en
+      // localStorage → le tracé du tracker ne survivait PAS au reload (« l'auto
+      // save du tracé ne fonctionne pas »). EXACTEMENT le même bug que
+      // measureSurface en v1.12.0 (cf commentaire plus haut). On les écrit.
+      trackerTimeline: state.trackerTimeline || [],
+      trackerStartTs:  (typeof state.trackerStartTs === "number") ? state.trackerStartTs : null
     };
     // 🆕 v1.16.1 : écriture dans le slot par-plan. Si pas de planId set
     // (cas dégénéré, pré-onPlanLoaded), skip — on ne peut pas savoir
