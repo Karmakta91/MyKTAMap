@@ -108,7 +108,9 @@
         '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
           '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
           ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
-          ' &middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a>' +
+          // 🆕 v1.28.2 : lien "Licence pro" wrappé en .kta-licence-community
+          // pour être masqué sur instance pro (où c'est déjà le cas, lien inutile).
+          ' <span class="kta-licence-community">&middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a></span>' +
         '</div>' +
         '<form id="kta-unlock-form" autocomplete="off">' +
           '<input type="password" id="kta-unlock-input" placeholder="Code d\'accès" ' +
@@ -177,7 +179,9 @@
           '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
             '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
             ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
-            ' &middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a>' +
+            // 🆕 v1.28.2 : lien "Licence pro" wrappé en .kta-licence-community
+          // pour être masqué sur instance pro (où c'est déjà le cas, lien inutile).
+          ' <span class="kta-licence-community">&middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a></span>' +
           '</div>' +
           // 🆕 v1.28.1 — Accès doc utilisateur même en lockout : si l'user est
           // bloqué et veut comprendre ce qu'est l'app avant de réinstaller

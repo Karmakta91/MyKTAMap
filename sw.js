@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.28.1";
+const CACHE_NAME = "myktamap-cache-v1.28.2";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -63,6 +63,10 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  // 🆕 v1.28.2 : détecteur de licence pro via présence de /Licence-pro.json.
+  // 100% transparent côté community (fichier absent → 404 silencieux → mode
+  // community par défaut). Module sans effet visible si pas de Licence-pro.json.
+  "./js/proLicense.js",
   // 🆕 v1.13.0 : ThemeManager — toggle thème clair/sombre limité mode carte
   "./js/themeManager.js",
   "./js/networkAudit.js",
@@ -426,6 +430,25 @@ self.addEventListener("fetch", (event) => {
         .catch(() => new Response("<!doctype html><h1>killsw.html indispo offline</h1>", {
           status: 503,
           headers: { "Content-Type": "text/html" }
+        }))
+    );
+    return;
+  }
+
+  // 🏷️ v1.28.2 — Bypass cache TOTAL pour /Licence-pro.json (signal
+  // d'instance pro). Doit être TOUJOURS fetched live depuis le serveur :
+  //  - Sur community (myktamap.fr) : 404 attendu → mode community
+  //  - Sur instance pro : 200 attendu → mode pro activé côté client
+  //  - Si un déployeur retire le fichier, le mode pro doit s'éteindre
+  //    instantanément au prochain check (pas de cache LRU qui le maintient).
+  // Le `cache: "no-store"` force la requête vers le réseau, le `catch` retourne
+  // un 404 explicite si offline (= revient en mode community gracieusement).
+  if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
+    event.respondWith(
+      fetch(event.request, { cache: "no-store" })
+        .catch(() => new Response("", {
+          status: 404,
+          headers: { "Content-Type": "application/json" }
         }))
     );
     return;

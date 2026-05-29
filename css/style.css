@@ -8558,6 +8558,58 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
   font-weight: 500;
 }
 
+/* =========================
+   🏷️ v1.28.2 — Bascule community ↔ pro (footer + modales)
+   =========================
+   Le détecteur js/proLicense.js ajoute la classe .kta-instance-pro sur
+   <html> et <body> quand /Licence-pro.json est présent côté serveur.
+
+   - .kta-licence-community : visible par défaut, masqué en mode pro
+   - .kta-licence-pro       : masqué par défaut, visible en mode pro
+
+   Cas community (myktamap.fr, default) : aucun changement visuel
+   (le sélecteur .kta-instance-pro ne matche jamais → règles inertes).
+
+   100% transparent côté community = respecté. */
+.kta-licence-pro {
+  display: none;
+}
+html.kta-instance-pro .kta-licence-community,
+body.kta-instance-pro .kta-licence-community {
+  display: none;
+}
+html.kta-instance-pro .kta-licence-pro,
+body.kta-instance-pro .kta-licence-pro {
+  display: inline;
+}
+
+/* Badge "✓ Licence professionnelle active" — vert sobre (cohérent avec
+   les autres badges status verts du projet, cf. §67.7.6 secours LED). */
+.kta-loader-copyright-pro-badge {
+  color: #6ee287;
+  font-weight: 600;
+}
+
+/* Titre copyright édition pro (remplace "© 2026 + image karma" en mode pro).
+   Couleur ambre charte, italique pour démarquer du community. */
+.kta-loader-copyright-edition-title {
+  color: #f4c542;
+  font-style: italic;
+}
+
+/* Variants thème clair (cohérence palette claire §53) */
+html.kta-theme-light .kta-loader-copyright-pro-badge,
+body.kta-theme-light .kta-loader-copyright-pro-badge {
+  color: #1d8a3a;
+}
+html.kta-theme-light .kta-loader-copyright-edition-title,
+body.kta-theme-light .kta-loader-copyright-edition-title {
+  color: #b8860b;
+}
+/* =========================
+   FIN — v1.28.2 bascule community ↔ pro
+   ========================= */
+
 /* 🆕 v1.9.2-fix17 — Ligne crédits libs/algos dans le footer du home.
    Plus discrète que la ligne copyright (couleur plus pâle, taille
    légèrement réduite). Reprise cohérente avec le crédit du splash. */

@@ -140,6 +140,14 @@
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
   <script src="js/copyright.js"></script>
 
+  <!-- 🏷️ v1.28.2 : PRO LICENSE DETECTOR — détecte la présence de
+       /Licence-pro.json à la racine du serveur. Si présent : active le
+       mode pro (footer sans CC BY-NC-SA). 100% transparent côté community
+       (myktamap.fr) où le fichier n'existe pas (404 silencieux). Chargé
+       tôt + cache localStorage pour éviter tout flash visuel au boot 2+
+       sur une instance pro. Cf js/proLicense.js pour le détail. -->
+  <script src="js/proLicense.js"></script>
+
   <!-- 🎨 v1.13.0 : THEME MANAGER — toggle clair/sombre LIMITÉ au mode carte.
        Chargé très tôt pour que le body.kta-theme-light soit appliqué avant
        même le splash si l'user avait choisi clair (évite un FOUC dark→light).
@@ -409,13 +417,28 @@
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
       <div class="kta-loader-copyright">
-        <span>&copy; 2026</span>
-        <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
+        <!-- 🏷️ v1.28.2 : copyright dual community ↔ pro.
+             - Bloc .kta-licence-community : visible par défaut (community)
+             - Bloc .kta-licence-pro : visible UNIQUEMENT si <html> ou <body>
+               porte la classe .kta-instance-pro (posée par proLicense.js
+               après détection de /Licence-pro.json).
+             - Version + libs (citations légales) restent visibles dans les
+               deux modes (obligation open source). -->
+        <span class="kta-licence-community"><span>&copy; 2026</span>
+          <img class="kta-loader-copyright-sig" src="icon/karma.png" alt="KARMA" title="KARMA — signature">
+        </span>
+        <span class="kta-licence-pro kta-loader-copyright-edition-title">© 2026 MyKTAMap — édition pro · Tous droits réservés</span>
         <span class="kta-loader-copyright-line2">
-          <span class="kta-loader-copyright-sep">·</span>
-          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
-          <span class="kta-loader-copyright-sep">·</span>
-          <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+          <span class="kta-licence-community">
+            <span class="kta-loader-copyright-sep">·</span>
+            <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener noreferrer" title="Creative Commons Attribution - NonCommercial - ShareAlike 4.0">CC BY-NC-SA 4.0</a>
+            <span class="kta-loader-copyright-sep">·</span>
+            <span class="kta-loader-copyright-warn">Usage commercial interdit</span>
+          </span>
+          <span class="kta-licence-pro">
+            <span class="kta-loader-copyright-sep">·</span>
+            <span class="kta-loader-copyright-pro-badge">✓ Licence professionnelle active</span>
+          </span>
           <span class="kta-loader-copyright-sep">·</span>
           <span class="kta-loader-copyright-version" id="loaderCopyrightVersion" title="Version de l'app">v?</span>
         </span>
@@ -428,11 +451,14 @@
              d'embed) → aucune requête réseau ajoutée par l'app. Corrige le
              manque de canal de contact réel (le site n'en proposait aucun).
              Placé AVANT les citations libs (KARMA) pour mettre le contact
-             plus visible et garder les crédits en clôture du footer. -->
+             plus visible et garder les crédits en clôture du footer.
+             🆕 v1.28.2 — Lien "💼 Licence pro" wrappé en .kta-licence-community
+             (masqué sur instance pro où ce n'est plus pertinent — déjà sous
+             licence). -->
         <div class="kta-loader-credits kta-loader-contact">
           📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer">@karma_kta</a>
           · ✉️ <a href="mailto:contact@myktamap.fr">contact@myktamap.fr</a>
-          · 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer">Licence pro</a>
+          <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer">Licence pro</a></span>
         </div>
         <div class="kta-loader-credits">
           🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra

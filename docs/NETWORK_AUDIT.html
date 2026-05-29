@@ -1795,8 +1795,53 @@
 
   <div class="footer">
     Dernière mise à jour : 25 mai 2026 — <strong>v1.21.4</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0, aucune nouvelle whitelist en v1.13.0 → v1.21.3 (cf. tableau historique). <strong>Aucune nouvelle whitelist en v1.21.4</strong> — 7 sujets 100 % locaux + 3 nouvelles localStorage keys toutes strictement locales (calcul/agrégation client-side pur). <strong>Bonus côté réseau v1.21.4</strong> : nouvelle pref <code>myktamap_skip_server_plans_v1</code> qui SUPPRIME le <code>fetch("data/index.json")</code> au boot si activée (-1 fetch par boot, default OFF = comportement v1.21.3 strict). C'est le <strong>premier opt-in qui RÉDUIT la surface réseau</strong> depuis l'introduction de l'audit en v1.8.0.<br>
-    © 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit
+    <!-- 🆕 v1.28.2 : copyright dual community ↔ pro (cf js/proLicense.js). -->
+    <span class="kta-licence-community">© 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit</span>
+    <span class="kta-licence-pro">© 2026 MyKTAMap — édition pro · Tous droits réservés · ✓ Licence professionnelle active</span>
   </div>
+
+  <!-- 🆕 v1.28.2 : détection pro inline (la page audit est statique et
+       peut être ouverte hors du contexte de l'app principale, donc le
+       module js/proLicense.js n'est pas chargé ici — on duplique la
+       logique minimum pour cohérence visuelle du footer). -->
+  <style>
+    .kta-licence-pro { display: none; }
+    html.kta-instance-pro .kta-licence-community,
+    body.kta-instance-pro .kta-licence-community { display: none; }
+    html.kta-instance-pro .kta-licence-pro,
+    body.kta-instance-pro .kta-licence-pro { display: inline; }
+  </style>
+  <script>
+    (function() {
+      "use strict";
+      // Lecture cache localStorage synchrone (évite flash)
+      try {
+        var raw = localStorage.getItem("__mktm_pro_license__");
+        if (raw) {
+          var data = JSON.parse(raw);
+          if (data && data.instance === "pro") {
+            document.documentElement.classList.add("kta-instance-pro");
+          }
+        }
+      } catch(e) {}
+      // Fetch async pour confirmer
+      if (typeof fetch === "function") {
+        fetch("/Licence-pro.json?_=" + Date.now(), {
+          cache: "no-store",
+          credentials: "omit"
+        })
+          .then(function(r) { return r.ok ? r.json() : null; })
+          .then(function(data) {
+            if (data && data.instance === "pro") {
+              document.documentElement.classList.add("kta-instance-pro");
+            } else {
+              document.documentElement.classList.remove("kta-instance-pro");
+            }
+          })
+          .catch(function() { /* offline ou erreur : on garde le cache */ });
+      }
+    })();
+  </script>
 
 </div>
 
