@@ -101,8 +101,15 @@
         '<div class="kta-unlock-titre">Accès restreint</div>' +
         '<p class="kta-unlock-info">' +
           'Cette application est privée. Saisis le code d\'accès qui t\'a été ' +
-          'communiqué. Si tu n\'as pas le code, contacte l\'auteur.' +
+          'communiqué. Si tu n\'as pas le code, contacte l\'auteur via :' +
         '</p>' +
+        // 🆕 v1.28.0 — Vrais canaux de contact (avant : « contacte l'auteur »
+        // sans aucun canal). Liens sortants uniquement → aucun impact CSP.
+        '<div class="kta-unlock-contact" style="margin:0 0 14px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
+          '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
+          ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
+          ' &middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a>' +
+        '</div>' +
         '<form id="kta-unlock-form" autocomplete="off">' +
           '<input type="password" id="kta-unlock-input" placeholder="Code d\'accès" ' +
                  'autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">' +
@@ -142,7 +149,13 @@
           '<div class="kta-unlock-lockout-titre">🚫 Trop de tentatives</div>' +
           '<div class="kta-unlock-lockout-msg">Accès verrouillé par sécurité.</div>' +
           '<div class="kta-unlock-lockout-hint">' +
-            'Si tu connais légitimement le code, contacte l\'auteur.' +
+            'Si tu connais légitimement le code, contacte l\'auteur :' +
+          '</div>' +
+          // 🆕 v1.28.0 — Canaux explicites (avant : « contacte l'auteur » sans canal).
+          '<div class="kta-unlock-lockout-contact" style="margin-top:10px; font-size:12px; color:#a8b3c8; line-height:1.7;">' +
+            '📷 <a href="https://instagram.com/karma_kta" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">@karma_kta</a>' +
+            ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
+            ' &middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a>' +
           '</div>' +
         '</div>';
     }
