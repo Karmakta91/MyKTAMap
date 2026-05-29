@@ -1,8 +1,8 @@
 # MyKTAMap — Conception : Navigation Intelligente (GPS road-aware)
 
-> **Statut** : 🟡 *Conception validée — non implémenté.* Document de référence pré-développement.
+> **Statut** : 🟢 *C1→C4 livrés en v1.28.0* (testés terrain OK) · **C5 (magnétisme edit-time) + C6 (multi-niveau) restent à faire.**
 > **Date** : 2026-05-29 · **Auteur** : Flavien VIDAL (alias KARMA) · **Rédaction technique** : assistant IA
-> **Cible pressentie** : prochaine release mineure (v1.27.0) — feature, pas un hotfix.
+> **Livrée dans** : v1.28.0 (cf §76 CLAUDE.md). Implémentation : `js/roadGraph.js` (C1), `APP_CONFIG.smartNav` + `tracking.js > avancer()` dispatcher (C2), `RoadGraph.matchPosition` greedy + repli hybride (C3), choix d'arête au cap (C4).
 > **Périmètre** : ajoute un mode de navigation qui *cale la position estimée sur le réseau de tracés (ROAD)*,
 > en **complément réversible** du dead-reckoning actuel (PDR + raster collision). 100 % offline, aucune
 > nouvelle surface réseau, aucune nouvelle permission.

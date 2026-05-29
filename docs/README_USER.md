@@ -977,6 +977,21 @@ Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latéral
 >
 > Même logique de saisie que le géoréférencement. Pensez à **💾 Sauvegarder** pour conserver le réglage.
 
+### 🧭 Navigation intelligente (caler la position sur les tracés)
+
+Sous terre, le GPS satellite ne fonctionne pas : le tracker estime votre position avec **vos pas + la boussole**, ce qui **dérive** avec le temps. Si votre plan contient un **réseau de tracés**, la **navigation intelligente** recale en continu votre position estimée **sur la galerie la plus proche** pour compenser cette imprécision.
+
+**Activation** : ⚙️ Configuration → **« 🧭 Navigation intelligente »** → cochez « Caler la position sur les tracés ». **Désactivée par défaut**, réversible à tout moment.
+
+- Quand vous **avancez**, la position suit la galerie ; aux **intersections**, la branche qui correspond à votre **cap** (direction de marche) est choisie.
+- Si vous **sortez des galeries tracées** (zone pas encore cartographiée), retour **automatique** au mode classique, puis recalage dès que vous revenez près d'un tracé.
+- **Sans réseau de tracés** sur le plan, l'option est **sans effet**.
+- Réglage fin possible (tolérance de calage) — demandez si vous voulez l'ajuster.
+
+> 💡 Le **recalage manuel (📍)** reste votre meilleur ami : dès que vous reconnaissez un repère, recalez — la navigation intelligente repart alors d'une base saine.
+
+> 🧭 **Votre tracé est conservé** : il est **redessiné au rechargement** de l'application (reconstruit depuis l'historique de la session), et le récap **📊 Statistiques** affiche votre **distance parcourue + nombre de pas**.
+
 ### 🗺️ Calculer un itinéraire
 
 Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéraire. Elle calcule le **chemin le plus court** entre 2 ou plusieurs points en empruntant les **routes existantes** du plan (à la fois celles que vous avez tracées et celles présentes dans les calques de données).

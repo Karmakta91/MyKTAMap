@@ -1163,7 +1163,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 
 ---
 
-### O. Versionning courant — v1.27.0
+### O. Versionning courant — v1.28.0
 
 | Hotfix | Sujet |
 |---|---|
@@ -1186,6 +1186,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 | **v1.26.3** | **🤕 Professionnalisation : mode « Bourré 🍺 » → « Blessé 🤕 » (+ migration localStorage) + ton lockout factuel + docs approfondies** (cf §74 CLAUDE.md) |
 | v1.26.3-hotfix4 | ⚡ Perf RAM (push main) : P0-1 snapshots undo/redo ciblés par catégorie + P0-2 LRU tuiles V2 par niveau + P0-3 débounce intersections pendant le dessin (cf §75 CLAUDE.md). Release inchangée (hotfix). |
 | **v1.27.0** | **🧭 Position initiale tracker assistée (picking au clic / via un point, parité géoréf) + consolidation du hotfix4 perf + conception nav intelligente (`docs/DESIGN_NAV_INTELLIGENTE.md`, non implémenté)** (cf §75 CLAUDE.md) |
+| **v1.28.0** | **🧭 NAVIGATION INTELLIGENTE (map-matching, défaut OFF) — cale la position tracker sur le réseau de tracés via `js/roadGraph.js` (C1→C4) ; + fix déplacement paysage ; + tracé tracker persistant au reload ; + carte stats « 🧭 parcourus » (distance + pas)** (cf §76 CLAUDE.md + `docs/DESIGN_NAV_INTELLIGENTE.md`) |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 

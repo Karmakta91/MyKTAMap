@@ -174,10 +174,21 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.27.0</strong> (29 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.28.0</strong> (29 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.28.0 (Release MINEURE — 🧭 navigation intelligente + tracé tracker persistant + stats)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store</strong>.
+    (1) <strong>Navigation intelligente</strong> (<code>js/roadGraph.js</code> + <code>js/pathfinder.js</code> + <code>js/tracking.js</code>, désactivée par défaut) : quand le plan a un réseau de tracés, la position estimée du tracker est recalée sur la galerie la plus proche (map-matching). 100 % local — le graphe est construit <strong>en mémoire</strong> à partir des tracés du plan (réutilise le moteur du pathfinder déjà audité), le calage est un <strong>calcul géométrique pur</strong>, et les capteurs lus (boussole/accéléromètre via <code>deviceorientation</code>/<code>devicemotion</code>) sont ceux <strong>déjà utilisés</strong> par le tracker — aucune nouvelle API capteur, aucun fetch. Le réglage <code>smartNav</code> est une préférence locale (<code>localStorage</code>).
+    (2) <strong>Fix déplacement en paysage</strong> : pur calcul d'orientation, aucun impact réseau.
+    (3) <strong>Tracé persistant au reload</strong> : reconstruit depuis la timeline déjà persistée localement (SessionPersist) — rien de plus n'est transmis.
+    (4) <strong>Stats parcours</strong> (distance/pas) : calcul local depuis la timeline.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping). Nouveau fichier <code>js/roadGraph.js</code> ajouté au cache (asset local).
+    Verdict : ✅ aucune régression — strictement local (graphe mémoire, géométrie, capteurs existants, timeline locale).
   </p>
 
   <p class="meta" style="margin-top:6px;">

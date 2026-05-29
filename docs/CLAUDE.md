@@ -6997,4 +6997,65 @@ les clics carte existants (100 % offline). `connect-src` inchangé.
 
 ---
 
+### 76. v1.28.0 — 🧭 Navigation Intelligente (map-matching) + tracé persistant + stats (2026-05-29)
+
+Release **mineure**. Grosse évolution user : la nav intelligente compense l'imprécision des capteurs
+(boussole/pas) sous terre. Conception complète : `docs/DESIGN_NAV_INTELLIGENTE.md`.
+
+#### 76.1 Principe
+
+Sous terre, pas de GPS satellite → le tracker fait du **dead-reckoning piéton (PDR)** : pas (accéléromètre)
++ cap (boussole), borné par un **raster de collision**. La dérive s'accumule. Quand le plan a un **réseau de
+tracés**, la nav intelligente **cale la position sur la galerie la plus proche** (map-matching) → la dérive
+latérale est annulée et on tourne correctement aux croisements. **Réversible** (toggle `smartNav`, défaut OFF).
+
+#### 76.2 Découpage livré (C1→C4)
+
+- **C1 — `js/roadGraph.js` (NEW)** : cache du graphe réseau. Plutôt que déplacer ~500 lignes du pathfinder
+  (safety-critical, pas de runner de tests), `pathfinder.js` **expose** son moteur déjà éprouvé :
+  `buildNetworkGraph(opts)` (build + enrichissement croisements de tout le réseau, sans avoidances) et
+  `snapPointToGraph(graph, p)` (snap lecture seule). `RoadGraph` = cache avec **rebuild paresseux piloté par
+  signature de contenu** (compte roads session + total points + compte embedded) — pas de timer ni de hook
+  fragile. API : `getGraph / snap / matchPosition / invalidate / isReady / stats`.
+- **C2 — toggle `smartNav`** : `APP_CONFIG.smartNav` (défaut OFF), persistance **GLOBALE** (`app_user_prefs`,
+  comme `showRoadIntersections`). UI : ⚙️ Configuration > « 🧭 Navigation intelligente ». `tracking.js >
+  avancer()` devient un **dispatcher** : le corps historique est extrait dans `_avancerRaster()` (inchangé),
+  branche ON → `_avancerSurGraphe()`.
+- **C3 — map-matching greedy** : `RoadGraph.matchPosition(rawX, rawY, prevSegIdx, headingDeg)`. Stickiness
+  (hystérésis) pour éviter les sauts entre galeries parallèles + repli **off-network HYBRIDE** (retour PDR
+  raster quand on s'éloigne du réseau, re-snapping au retour). Rayon = `max(25px, échelle × smartNavRadiusM)`,
+  `smartNavRadiusM` réglable à chaud (défaut 6 m).
+- **C4 — choix d'arête au cap** : la stickiness ne s'applique que MID-SEGMENT (`T_EDGE < t < 1-T_EDGE`) ;
+  dès qu'on dépasse un nœud, on relâche → scan scoré `distance + désalignement_cap×poids − bonus_continuité`.
+  Le **cap boussole** départage les branches d'un croisement (fix du « blocage aux intersections/virages »).
+  Helpers `_bearingDeg` (même convention que le déplacement) + `_angleDiffMod180` (galerie non orientée).
+  Paramètres terrain : `W_HEADING_PX_PER_DEG=0.7`, `STICKY_FACTOR=2.5`, `T_EDGE=0.02`.
+
+> Reste à faire (non livré) : **C5** magnétisme edit-time, **C6** multi-niveau (jonctions = changement de
+> niveau). Voir design doc.
+
+#### 76.3 Fix connexe — déplacement en paysage
+
+Bug pré-existant (depuis la correction d'orientation v172) révélé au test : l'icône tracker tournait selon le
+cap VISUEL (`_getCorrectedHeading` = cap brut + angle écran) mais le **déplacement** utilisait le cap **brut**
+→ en paysage le pas partait de travers. Fix : `_avancerRaster()` ET `_avancerSurGraphe()` utilisent
+`_getCorrectedHeading()` pour le vecteur de déplacement. Corrige aussi le tracker historique (hors nav).
+
+#### 76.4 Tracé persistant + stats
+
+- **Tracé au reload** (`tracking.js > _rebuildTrailFromTimeline`) : SessionPersist sauvait la timeline mais ne
+  redessinait pas le tracé. On reconstruit la polyline + repositionne le marqueur depuis la timeline restaurée
+  (appelé en fin de `setTrackingTimeline`, qui tourne APRÈS `initTracking` — cf `main.js`). Seul le segment
+  depuis la dernière ancre recalage/start est redessiné (cohérent avec le live, pas de ligne de téléportation).
+- **Stats** (`statsGlobales.js`) : carte « 🧭 parcourus » = `getTrackingDistanceM()` (skip recalages) + nb de
+  pas PDR.
+
+#### 76.5 Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. Graphe construit en mémoire depuis les tracés,
+map-matching = calcul géométrique pur, capteurs déjà utilisés par le tracker, tracé/stats depuis la timeline
+locale. `connect-src` inchangé. Nouveau fichier `js/roadGraph.js` ajouté à `ASSETS_TO_CACHE`.
+
+---
+
 **Bon code ! 🚀**
