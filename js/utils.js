@@ -606,7 +606,16 @@ window._aucunModeEditionActif = function() {
 window._modeClicCarteActif = function() {
   if (window.modeRoad || window.modeZone || window.modeStructure) return true;
   if (window.modeMesure || window.modeRecalage) return true;
-  try { if (document.querySelector(".kta-iti-floater")) return true; } catch(_) {}
+  try {
+    // Pickers à floater commun : géoréf / départ tracker / itinéraire / évitement / KMZ.
+    if (document.querySelector(".kta-iti-floater")) return true;
+    // 🆕 v1.28.0 (#2) : mode « clic carte » du Mode perdu (classe posée sur <body>).
+    if (document.body && document.body.classList.contains("kta-lost-click-mode")) return true;
+    // 🆕 v1.28.0 (#2) : sélection de position légende dans 📡 Export externe (banner dédié).
+    if (document.getElementById("kta-export-pick-banner")) return true;
+    // NB : le tracé de polygone du Mode Secours gère DÉJÀ son propre
+    // stopPropagation + overlay plein écran → pas besoin de le couvrir ici.
+  } catch(_) {}
   return false;
 };
 

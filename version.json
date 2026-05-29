@@ -1,5 +1,5 @@
 {
-  "version": "v1.28.0",
+  "version": "v1.28.0-fix",
   "released": "2026-05-29",
   "notes": [
     "🎯 RELEASE MINEURE v1.28.0 — 🧭 NAVIGATION INTELLIGENTE (map-matching) + persistance du tracé tracker + stats parcours. Aucune nouvelle surface réseau, aucune nouvelle permission (tout est local : graphe issu des tracés, calage géométrique, lecture capteurs déjà existants).",

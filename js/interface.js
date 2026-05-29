@@ -3231,8 +3231,13 @@ function appliquerConfig() {
 
   APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
   APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
-  APP_CONFIG.startX        = parseInt(document.getElementById("cfg_startX").value, 10);
-  APP_CONFIG.startY        = parseInt(document.getElementById("cfg_startY").value, 10);
+  // 🐛 v1.28.0 (#3) : ne pas écraser startX/startY avec NaN si le champ est
+  // vidé (sinon le reset conditionnel placerait le tracker à NaN). On conserve
+  // l'ancienne valeur si la saisie est invalide.
+  const _sx = parseInt(document.getElementById("cfg_startX").value, 10);
+  const _sy = parseInt(document.getElementById("cfg_startY").value, 10);
+  if (Number.isFinite(_sx)) APP_CONFIG.startX = _sx;
+  if (Number.isFinite(_sy)) APP_CONFIG.startY = _sy;
   APP_CONFIG.stepThreshold = parseFloat(document.getElementById("cfg_stepThreshold").value);
   APP_CONFIG.stepCooldown  = parseInt(document.getElementById("cfg_stepCooldown").value, 10);
   // ⚠️ Passer par setDebugMode() au lieu d'ecrire directement APP_CONFIG.debugMode :
