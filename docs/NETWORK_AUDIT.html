@@ -174,10 +174,23 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.25.3</strong> (27 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.27.0</strong> (29 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.26.0 → v1.27.0 (résumé consolidé)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store</strong> sur l'ensemble de ces releases.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping de connectivité).
+    Détail par release :
+    <strong>(v1.26.0)</strong> import <code>.mkmsec.report.json</code> côté Opérateur — fichier local (<code>&lt;input type="file"&gt;</code> + <code>JSON.parse</code>), photos écrites dans l'IDB <code>myktamap_secours_photos</code> déjà existante ; <code>fetch(dataUrl)</code> est un fetch LOCAL same-origin (data URL inline, jamais de hit réseau).
+    <strong>(v1.26.1)</strong> banner cohérence échelle px/m ↔ géoréf — calcul 100 % client-side (lecture <code>APP_CONFIG.scale</code> + calibrage localStorage existant), bouton « 📋 Copier » via Clipboard API (permission silencieuse HTTPS).
+    <strong>(v1.26.2 / v1.26.3)</strong> consolidation + professionnalisation (renommage « Bourré » → « Blessé » avec micro-migration localStorage locale, ton lockout factuel) + nettoyage de ~395 lignes de code mort — purement cosmétique/structurel, réduit même la taille des assets cachés.
+    <strong>(v1.26.3-hotfix4)</strong> 3 optimisations RAM (snapshots undo/redo ciblés, LRU des tuiles décodées via <code>URL.revokeObjectURL</code> local, débounce du calcul d'intersections) — purement intra-runtime, aucun réseau.
+    <strong>(v1.27.0)</strong> saisie assistée de la position initiale du tracker (boutons « 🔍 Choisir via un point » et « 📍 Cliquer sur la carte ») — réutilise la recherche de POI locale (<code>SearchPoints.findByQuery</code>) et le clic carte Leaflet local, aucun fetch ajouté ; + document de conception navigation intelligente (<code>docs/DESIGN_NAV_INTELLIGENTE.md</code>, aucun code applicatif).
+    Verdict : ✅ aucune régression réseau sur tout le cycle — fonctionnalités strictement locales (fichiers, calculs, recherche POI, clic carte), perf intra-runtime, conception sans code.
   </p>
 
   <p class="meta" style="margin-top:6px;">
