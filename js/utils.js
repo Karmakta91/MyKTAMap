@@ -594,6 +594,22 @@ window._aucunModeEditionActif = function() {
   return !window.modeRoad && !window.modeZone && !window.modeStructure;
 };
 
+// 🐛 v1.28.0 : true si un mode « clic carte » CONSOMMATEUR de clics est actif.
+// Couvre le dessin (tracé / zone / structure), la mesure, le recalage tracker,
+// et TOUS les pickers de position (itinéraire, géoréf, départ tracker,
+// évitement, KMZ) — reconnaissables au floater commun `.kta-iti-floater`.
+// Utilisé par le garde `popupopen` (map.js) pour NE PAS afficher de popup
+// d'annotation (point / tracé / zone / structure) pendant ces modes : le clic
+// doit être consommé par le mode actif, pas ouvrir une popup.
+// NB : on EXCLUT volontairement window.modeEdition (ajout de point) — y ajouter
+// un point peut ouvrir une popup de nommage légitime qu'il ne faut pas fermer.
+window._modeClicCarteActif = function() {
+  if (window.modeRoad || window.modeZone || window.modeStructure) return true;
+  if (window.modeMesure || window.modeRecalage) return true;
+  try { if (document.querySelector(".kta-iti-floater")) return true; } catch(_) {}
+  return false;
+};
+
 // Registre des ghost polylines installées sur le DATA LAYER (lectures
 // seules KMZ). Un data layer est rendu UNE seule fois à l'import — on
 // peut pas re-render comme renderRoads/Structures. Donc on garde la

@@ -293,6 +293,18 @@ async function initMapFromConfig() {
   window.map    = map;
   window.bounds = bounds;
 
+  // 🐛 v1.28.0 : pas de popup d'annotation (point / tracé / zone / structure)
+  // quand un mode « clic carte » est actif (dessin, mesure, recalage, ou un
+  // picker de position : itinéraire / géoréf / départ tracker / évitement /
+  // KMZ). Leaflet ouvre la popup au clic sur le layer (bindPopup) ; on la
+  // referme aussitôt dans `popupopen` → le clic reste consommé par le mode
+  // actif, sans flash perceptible (fermeture synchrone avant le paint).
+  map.on("popupopen", function(e) {
+    if (window._modeClicCarteActif && window._modeClicCarteActif()) {
+      try { map.closePopup(e.popup); } catch(_) {}
+    }
+  });
+
   // 🔍 v174 : hook zoom pour adapter la taille visuelle des icônes.
   // Variable CSS --kta-marker-scale appliquée aux <img> des markers divIcon
   // (cf style.css > .kta-marker-img). Clamp min 0.25 (choix 4b validé KARMA)
