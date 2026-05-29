@@ -1307,12 +1307,21 @@ function _choixSuppression(titre, texte, options) {
 // =========================
 // README — modale plein écran
 // =========================
-function afficherReadme() {
+// 🆕 v1.28.1 : opts.hideOnboarding et opts.overLocker permettent d'afficher
+// la doc depuis les écrans de verrouillage (UnlockGate communautaire au boot
+// + PinLock local). Dans ce contexte :
+//   - hideOnboarding masque le bouton 🎓 Tutoriel (l'user lockout ne peut pas
+//     interagir avec l'app de toute façon — l'onboarding n'aurait aucun sens).
+//   - overLocker boost le z-index du modal à 100200 pour passer au-dessus
+//     des deux gates (UnlockGate=100100, PinLock=100002). Sans ça la modale
+//     apparaît derrière et l'user voit son fond mais ne peut pas interagir.
+function afficherReadme(opts) {
+  opts = opts || {};
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
   // Chargement direct de la doc utilisateur
-  _chargerReadme("docs/README_USER.md");
+  _chargerReadme("docs/README_USER.md", opts);
 }
 
 // Construit le sommaire latéral (sidebar desktop / haut sur mobile) avec H2 + sous-H3 collapsibles
@@ -1447,8 +1456,9 @@ function _setupReadmeNavigation() {
   }
 }
 
-function _chargerReadme(fichier) {
-  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>");
+function _chargerReadme(fichier, opts) {
+  opts = opts || {};
+  _ouvrirReadmeModal("<p style='color:#8892a4; text-align:center; padding:20px;'>⏳ Chargement…</p>", opts);
   fetch(fichier)
     .then(function(res) { if (!res.ok) throw new Error("HTTP " + res.status + " — " + fichier); return res.text(); })
     .then(function(md) {
@@ -1571,25 +1581,34 @@ function _renderMarkdown(md) {
   return md;
 }
 
-function _ouvrirReadmeModal(html) {
+function _ouvrirReadmeModal(html, opts) {
+  opts = opts || {};
   const modal = document.createElement("div");
   modal.id = "kta-readme-modal";
   modal.className = "kta-readme-modal-overlay";
+  // 🆕 v1.28.1 : si la modale est ouverte depuis un écran de verrouillage
+  // (UnlockGate communautaire au boot ou PinLock local), classe additionnelle
+  // qui boost le z-index à 100200 (au-dessus de UnlockGate=100100 et
+  // PinLock=100002). Sans ça, la modale Doc apparaîtrait DERRIÈRE la gate
+  // et serait inaccessible.
+  if (opts.overLocker) modal.classList.add("kta-readme-over-locker");
   // Structure : header / [sidebar | corps scrollable] / footer
   // - sidebar : sommaire desktop fixe / inline en haut sur mobile (CSS @media)
   // - corps : contenu rendu, scroll-behavior: smooth, contient aussi le bouton retour-en-haut
   // - footer : crédit Leaflet (cohérence avec le splash)
+  // 🆕 v1.28.1 : bouton 🎓 Onboarding masqué quand hideOnboarding=true
+  // (cas d'ouverture depuis un lockeur — l'user lockout ne peut pas lancer
+  // le tutoriel de toute façon, et KARMA a explicitement demandé "sans
+  // l'icone Onboarding").
+  const btnOnboarding = opts.hideOnboarding
+    ? ''
+    : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d\'onboarding" title="🎓 (Re)voir le tutoriel d\'onboarding">🎓</button>';
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="Afficher ou masquer le sommaire" title="Afficher ou masquer le sommaire">📚</button>
         <span class="kta-readme-modal-titre">📖 Documentation</span>
-        <!-- 🆕 v1.21.3 (KARMA "le bouton Onboarding on peux le mettre tout en
-             haut de la doc README a coté tu titre Documentation") : bouton
-             d'accès au tutoriel directement dans le header de la modale doc,
-             juste à gauche du ✕. Remplace la sous-action 🎓 retirée du menu
-             📚 Aide pour rendre l'onboarding plus découvrable. -->
-        <button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d'onboarding" title="🎓 (Re)voir le tutoriel d'onboarding">🎓</button>
+        ${btnOnboarding}
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
       <div class="kta-readme-modal-layout" id="kta-readme-layout">

@@ -95,7 +95,7 @@
         "danger"
       ],
       "etat": "Non inspectée",
-      "description": "Mauvaise Odeur de poisson pourrie, pas du H2S juste un cataphile perdu, (Donner lui une bière)",
+      "description": "poche de gaz",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
@@ -109,7 +109,7 @@
         "epure"
       ],
       "etat": "Non inspectée",
-      "description": "Tag d'un FDP qui respect rien",
+      "description": "Tag a la bombe",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
@@ -123,7 +123,7 @@
         "elec"
       ],
       "etat": "Non inspectée",
-      "description": "400KVa/20KVa",
+      "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
@@ -137,7 +137,7 @@
         "vehicule"
       ],
       "etat": "Non inspectée",
-      "description": "La fourgonnette à ta cousine",
+      "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
@@ -179,7 +179,7 @@
         "salle"
       ],
       "etat": "Non inspectée",
-      "description": "Chaine accroché au mur et sur la table. (Un rapport avec la voiture a coté ?)",
+      "description": "Belle salle",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
@@ -193,21 +193,21 @@
         "epure"
       ],
       "etat": "Non inspectée",
-      "description": "Tu dors tu es mort",
+      "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"
     },
     {
-      "id": "Grand puit sans fond",
-      "nom": "Grand puit sans fond",
+      "id": "Grand puit",
+      "nom": "Grand puit",
       "x": 1290,
       "y": 1343,
       "tags": [
         "pe"
       ],
       "etat": "Non inspectée",
-      "description": "accès vers la terre creuse ?",
+      "description": "",
       "profondeur": null,
       "date_update": "2026-05-04",
       "source": "editor"

@@ -118,12 +118,34 @@
           '</button>' +
         '</form>' +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
+        // 🆕 v1.28.1 — Bouton 📖 Documentation accessible depuis l'écran de
+        // verrouillage. Permet à un user qui doute (« c'est quoi ce projet ? »,
+        // « pourquoi un code ? ») de lire le README utilisateur sans devoir
+        // entrer. L'onboarding (🎓) est volontairement masqué : sans accès à
+        // l'app, le tutoriel n'a pas de sens.
+        '<button type="button" id="kta-unlock-readme-btn" class="kta-gate-readme-btn" title="Consulter la documentation utilisateur">' +
+          '📖 Lire la documentation' +
+        '</button>' +
         '<div class="kta-unlock-signature">' +
           '© 2026 Flavien VIDAL (alias KARMA) — CC BY-NC-SA 4.0' +
         '</div>' +
       '</div>';
     document.body.appendChild(o);
     return o;
+  }
+
+  // 🆕 v1.28.1 — Helper d'ouverture de la modale Doc README au-dessus du
+  // lockeur. opts.hideOnboarding masque le bouton 🎓 (incohérent dans un
+  // contexte verrouillé) et opts.overLocker boost le z-index de la modale
+  // à 100200 pour passer au-dessus de l'overlay UnlockGate (z-index 100100).
+  // Si interface.js n'est pas encore chargé (cas très tôt au boot), no-op
+  // gracieux — le bouton ne fera rien plutôt que de crasher.
+  function _ouvrirDocReadme() {
+    if (typeof window.afficherReadme === "function") {
+      window.afficherReadme({ hideOnboarding: true, overLocker: true });
+    } else {
+      console.warn("[UnlockGate] afficherReadme indisponible (interface.js pas encore chargé)");
+    }
   }
 
   // Bloque l'app dans l'état "lockout" : champ caché, message permanent.
@@ -157,7 +179,17 @@
             ' &middot; ✉️ <a href="mailto:contact@myktamap.fr" style="color:#f4c542;">contact@myktamap.fr</a>' +
             ' &middot; 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" style="color:#f4c542;">Licence pro</a>' +
           '</div>' +
+          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout : si l'user est
+          // bloqué et veut comprendre ce qu'est l'app avant de réinstaller
+          // OU contacter l'auteur, il peut lire le README. Ne touche en rien
+          // au verrouillage : ouvre juste un modal info par-dessus.
+          '<button type="button" id="kta-unlock-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="Consulter la documentation utilisateur">' +
+            '📖 Lire la documentation' +
+          '</button>' +
         '</div>';
+      // Bind du bouton 📖 doc (le HTML vient juste d'être injecté).
+      const btnDocLockout = overlay.querySelector("#kta-unlock-readme-btn-lockout");
+      if (btnDocLockout) btnDocLockout.addEventListener("click", _ouvrirDocReadme);
     }
   }
 
@@ -251,6 +283,10 @@
         e.preventDefault();
         _onSubmit(overlay, input, fb);
       });
+
+      // 🆕 v1.28.1 — Bouton 📖 Documentation (mode gate normale, pas lockout).
+      const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
+      if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
 
       // Si l'user avait déjà des tentatives ratées avant ce boot, on l'informe
       const ap = _getAttempts();

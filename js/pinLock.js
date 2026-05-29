@@ -511,6 +511,13 @@
           _keypadKey("0") +
           '<button class="kta-pin-gate-key kta-pin-gate-key-validate" id="kta-pin-validate" title="Valider" disabled>✓</button>' +
         '</div>' +
+        // 🆕 v1.28.1 — Accès doc utilisateur depuis l'écran PIN. Cas d'usage :
+        // un user qui hésite à activer le PIN, l'a activé puis oublié à quoi
+        // ça sert, ou qui veut se renseigner avant de saisir. L'onboarding
+        // (🎓) est masqué côté modale doc — sans accès à l'app, pas de sens.
+        '<button type="button" id="kta-pin-readme-btn" class="kta-gate-readme-btn" title="Consulter la documentation utilisateur">' +
+          '📖 Lire la documentation' +
+        '</button>' +
       '</div>';
     document.documentElement.appendChild(overlay);
 
@@ -651,6 +658,19 @@
     // 🆕 v1.10.0-hotfix3 : bouton ✓ Valider explicite (activé dès PIN_MIN chiffres)
     const validateBtn = document.getElementById("kta-pin-validate");
     if (validateBtn) validateBtn.addEventListener("click", _tryUnlock);
+    // 🆕 v1.28.1 : bouton 📖 Documentation. Ouvre la modale Doc README
+    // (sans bouton Tutoriel — incohérent en contexte verrouillé) au-dessus
+    // de la gate via z-index 100200 (cf css kta-readme-over-locker).
+    const docBtn = document.getElementById("kta-pin-readme-btn");
+    if (docBtn) {
+      docBtn.addEventListener("click", function() {
+        if (typeof window.afficherReadme === "function") {
+          window.afficherReadme({ hideOnboarding: true, overLocker: true });
+        } else {
+          console.warn("[PinLock] afficherReadme indisponible (interface.js pas encore chargé)");
+        }
+      });
+    }
 
     // Clavier physique (PC + clavier Bluetooth mobile)
     function _onKeyDown(e) {
@@ -722,9 +742,25 @@
           '</ol>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
           'Verrouillage de sécurité actif après plusieurs tentatives échouées.</p>' +
+          // 🆕 v1.28.1 — Accès doc utilisateur même en lockout. Aide l'user
+          // perdu à comprendre ce qu'est l'app avant de réinstaller / contacter.
+          // Ouverture par-dessus le lockeur via z-index 100200 (cf css
+          // .kta-readme-over-locker). Ne change rien au verrouillage.
+          '<button type="button" id="kta-pin-readme-btn-lockout" class="kta-gate-readme-btn" style="margin-top:14px;" title="Consulter la documentation utilisateur">' +
+            '📖 Lire la documentation' +
+          '</button>' +
         '</div>' +
       '</div>';
     document.documentElement.appendChild(overlay);
+    // Bind du bouton 📖 (HTML vient d'être injecté).
+    const docBtnLockout = document.getElementById("kta-pin-readme-btn-lockout");
+    if (docBtnLockout) {
+      docBtnLockout.addEventListener("click", function() {
+        if (typeof window.afficherReadme === "function") {
+          window.afficherReadme({ hideOnboarding: true, overLocker: true });
+        }
+      });
+    }
     console.warn("[PinLock] LOCKOUT activé (5 tentatives échouées)");
   }
 

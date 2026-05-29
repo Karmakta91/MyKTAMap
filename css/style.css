@@ -5737,6 +5737,44 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
 /* =====================================================================
    GATE PLEIN ÉCRAN — modale au boot quand PIN activé
    ===================================================================== */
+/* 🆕 v1.28.1 : modale Doc README ouverte depuis un écran de verrouillage
+   (UnlockGate communautaire au boot OU PinLock local). Doit passer
+   AU-DESSUS des 2 gates (UnlockGate=100100, PinLock=100002) — sinon
+   inaccessible. Classe additionnelle posée par afficherReadme({overLocker:true}).
+   Le footer crédit et le sommaire suivent naturellement (z-index hérité). */
+.kta-readme-modal-overlay.kta-readme-over-locker {
+  z-index: 100200 !important;
+}
+
+/* 🆕 v1.28.1 : bouton "📖 Documentation" injecté dans UnlockGate + PinLock.
+   Style discret façon link-button — accessible mais sans détourner de la
+   saisie active du code. Une seule classe utilisée dans les 2 gates et leurs
+   variants lockout pour cohérence visuelle. */
+.kta-gate-readme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: rgba(140, 180, 255, 0.08);
+  color: #8cb4ff;
+  border: 1px solid rgba(140, 180, 255, 0.28);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.12s ease;
+  text-decoration: none;
+}
+.kta-gate-readme-btn:hover {
+  background: rgba(140, 180, 255, 0.18);
+  border-color: rgba(140, 180, 255, 0.55);
+}
+.kta-gate-readme-btn:active {
+  transform: scale(0.97);
+}
+
 .kta-pin-gate-overlay {
   position: fixed;
   inset: 0;

@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.28.0</strong> (29 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.28.1</strong> (29 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.28.1 (Release PATCH — 📖 doc accessible depuis les écrans de verrouillage + fix lien mailto footer)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau store, aucun nouveau fichier dans le cache</strong>.
+    (1) <strong>Bouton « 📖 Lire la documentation »</strong> ajouté sur les 4 écrans de verrouillage : UnlockGate (gate normale + lockout) et PinLock (gate normale + lockout). Au clic, ouverture de la modale Doc existante via <code>window.afficherReadme({ hideOnboarding: true, overLocker: true })</code> — qui lit <code>docs/README_USER.md</code>, fichier <strong>déjà</strong> dans <code>ASSETS_TO_CACHE</code> du Service Worker depuis v1.8.0 (cf. <code>sw.js</code> ligne 42, point déjà audité). <strong>Aucun nouveau fetch ajouté</strong> : le SW sert le fichier depuis le cache local en priorité, et si offline + cache vide, le bouton ouvre une modale d'erreur côté UI mais ne tente AUCUN fetch externe. La modale doc s'affiche par-dessus la gate via z-index 100200 (<code>.kta-readme-over-locker</code>) — la gate reste active, le code n'est pas bypassable depuis la modale. Le bouton 🎓 Tutoriel est volontairement masqué dans ce contexte (<code>opts.hideOnboarding: true</code>).
+    (2) <strong>Fix lien mailto footer accueil</strong> : <code>index.html</code> footer du loader ajoute <code>mailto:contact@myktamap.fr</code> (rattrape un oubli des notes v1.28.0). C'est un <strong>lien sortant</strong> <code>&lt;a href="mailto:..."&gt;</code> — au clic, le navigateur de l'utilisateur ouvre son client mail. <strong>Pas une requête réseau de l'app</strong> : aucun <code>fetch</code>, aucun embed, aucune image ou script chargé depuis cette URL. <strong>Aucune directive CSP n'est impactée</strong> (il n'existe pas de <code>link-src</code> ; les schemes <code>mailto:</code> ne sont pas non plus contrôlés par <code>form-action</code> ni <code>default-src</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+    Verdict : ✅ aucune régression — l'accès doc réutilise un fichier déjà caché, le mailto est un lien externe sortant.
   </p>
 
   <p class="meta" style="margin-top:6px;">
