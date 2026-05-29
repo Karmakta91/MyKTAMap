@@ -187,8 +187,9 @@
     (2) <strong>Fix déplacement en paysage</strong> : pur calcul d'orientation, aucun impact réseau.
     (3) <strong>Tracé persistant au reload</strong> : reconstruit depuis la timeline déjà persistée localement (SessionPersist) — rien de plus n'est transmis.
     (4) <strong>Stats parcours</strong> (distance/pas) : calcul local depuis la timeline.
+    (5) <strong>Liens sortants</strong> ajoutés dans le footer de l'accueil : Instagram <code>@karma_kta</code> + page de présentation <code>https://pro.myktamap.fr</code> (sous-domaine séparé hébergeant l'offre licence professionnelle). Ce sont des <strong>liens de navigation</strong> (<code>&lt;a target="_blank"&gt;</code>) — PAS des requêtes réseau de l'app : aucun <code>fetch</code>, aucun embed (iframe), aucune image / script / style chargé depuis ces URLs ; au clic, l'utilisateur QUITTE l'app vers son navigateur / son client mail. <strong>Aucune directive CSP n'est impactée</strong> (il n'existe pas de <code>link-src</code> ; <code>connect-src</code>/<code>frame-src</code>/<code>img-src</code>/<code>script-src</code>/<code>style-src</code> ne contrôlent pas les liens sortants).
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping). Nouveau fichier <code>js/roadGraph.js</code> ajouté au cache (asset local).
-    Verdict : ✅ aucune régression — strictement local (graphe mémoire, géométrie, capteurs existants, timeline locale).
+    Verdict : ✅ aucune régression — strictement local (graphe mémoire, géométrie, capteurs existants, timeline locale) ; les liens sortants ne sont pas des requêtes réseau de l'app.
   </p>
 
   <p class="meta" style="margin-top:6px;">
