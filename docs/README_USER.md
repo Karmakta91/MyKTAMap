@@ -971,6 +971,12 @@ Accédez aux réglages via le bouton **⚙️ Paramètres** de la barre latéral
 - **Cooldown (ms)** : délai minimum entre deux pas
 - **Position initiale X / Y** : point de départ de l'icône au chargement
 
+> 🧭 **Saisie assistée de la position de départ** — plus besoin de taper les coordonnées à la main. Sous les champs X / Y, deux boutons :
+> - **🔍 Choisir via un point** : recherche un point existant (par nom, identifiant ou tag) et le sélectionne comme position de départ.
+> - **📍 Cliquer sur la carte** : la fenêtre de réglages se masque, vous cliquez l'endroit voulu sur le plan, et les coordonnées se remplissent automatiquement (bouton **Annuler** pour ressortir sans choisir).
+>
+> Même logique de saisie que le géoréférencement. Pensez à **💾 Sauvegarder** pour conserver le réglage.
+
 ### 🗺️ Calculer un itinéraire
 
 Le bouton **🗺️** dans le groupe **🧭 Tracker** ouvre la modale d'itinéraire. Elle calcule le **chemin le plus court** entre 2 ou plusieurs points en empruntant les **routes existantes** du plan (à la fois celles que vous avez tracées et celles présentes dans les calques de données).

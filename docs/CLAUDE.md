@@ -6938,4 +6938,63 @@ L'aide intégrée (`interface.js > afficherAide`) était truffée de technique d
 
 ---
 
+### 75. v1.27.0 — Position initiale tracker assistée + consolidation perf + conception nav (2026-05-29)
+
+Release **mineure** (1.26.3 → 1.27.0). Trois volets.
+
+#### 75.1 🧭 Position initiale du tracker — saisie assistée (feature user)
+
+**Besoin KARMA** : « dans les paramètres en mode plan, pour la position initiale tracker, pouvoir la
+sélectionner au clic, ou via un point (un peu comme géoref) ». Objectif : éviter la saisie manuelle de
+`startX`/`startY`, gros gain de temps.
+
+**Où** : `interface.js`, modale ⚙️ Configuration, section « 🧭 Position initiale du tracker » (juste avant la
+géoréf). 2 boutons ajoutés sous les inputs `cfg_startX`/`cfg_startY` :
+- **🔍 Choisir via un point** → `_cfgOuvrirRechercheStart()` : autocomplete POI via
+  `SearchPoints.findByQuery`, le clic sur un résultat remplit X/Y.
+- **📍 Cliquer sur la carte** → `_cfgActiverModeClicStart()` : masque la modale, floater
+  `.kta-iti-floater`, `map.on("click")` remplit X/Y puis restaure la modale (bouton Annuler).
+
+**Implémentation** : fonctions **parallèles** aux pickers géoréf (`_cfgActiverModeClicGeoref` /
+`_cfgOuvrirRechercheGeoref`), ciblant `cfg_startX/Y` au lieu de `cfg_kmz_{letter}_x/y`. Choix délibéré :
+**ne pas refactorer le code géoréf** (zéro régression sur une feature qui marche). `startX/Y` sont des
+entiers (`parseInt` au save, l. ~3069-3070) → arrondi `Math.round`. Binding via
+`_bindCfgTrackerStartHandlers()` appelé après `_bindCfgGeorefHandlers()`. Réutilise les classes CSS géoréf
+(`.kta-kmz-pt-actions`, `.kta-kmz-search-results`, etc.).
+
+> ⚠️ Dette assumée : duplication de ~2 fonctions avec les pickers géoréf. Candidat à mutualisation
+> (`_cfgActiverModeClicCible(xId, yId, label)`) si une 3e cible apparaît.
+
+#### 75.2 ⚡ Consolidation performance (déjà en hotfix v1.26.3-hotfix4)
+
+Les 3 optimisations RAM livrées en hotfix sur main sont intégrées dans la mineure :
+- **P0-1** (`historyManager.js`) — snapshots undo/redo **ciblés par catégorie** (`editorPoints`/`roads`/
+  `zones`/`structures`) : `_captureState(category)` clone une seule pile, `_applyState` n'applique que les
+  catégories présentes. Call sites : `road.js`, `editor.js`, `structures.js`, `zones.js`.
+- **P0-2** (`tiling.js`) — **LRU des tuiles V2 décodées par niveau** (`blobAssetsByLevel` + `levelLRU` +
+  `MAX_CACHED_LEVELS` 2/4), `_trimLevelsLRU` révoque les blob URLs au-delà du cap.
+- **P0-3** (`road.js`) — **débounce des intersections pendant le dessin** : `_renderIntersections()` extrait
+  dans un tableau séparé `intersectionLayers`, throttle trailing `_scheduleIntersectionRender` (~350 ms)
+  quand `modeRoad` actif → plus de recompute O(N²×P²) + recréation de N cercles à chaque point. Logs du
+  chemin chaud gated `debugMode`.
+
+Cause racine du crash thermique terrain (couverture dense type GRS) : **densité du réseau**, pas durée de
+session — chaque clic de point re-rendait tout l'univers. Cf. fil RAM (historyManager clones + tiling blobs).
+
+#### 75.3 📐 Conception navigation intelligente (non implémenté)
+
+Doc `docs/DESIGN_NAV_INTELLIGENTE.md` ajoutée : future nav qui calera la position estimée sur le réseau de
+tracés (**map-matching**), en complément **réversible** du PDR + raster collision actuel (toggle `smartNav`,
+défaut OFF). Découverte clé : le **graphe topologique existe déjà** dans `pathfinder.js > _buildGraph`
+(nodes/edges/buckets + enrichissement aux croisements), construit à la volée → à rendre réutilisable/caché.
+Décisions verrouillées : off-network **hybride**, magnétisme edit-time **inclus** (lot C5). Découpage C1→C6.
+**Aucun code applicatif** à ce stade.
+
+#### 75.4 Confidentialité
+
+Aucune nouvelle surface réseau, aucune nouvelle permission. Le picking réutilise la recherche POI locale +
+les clics carte existants (100 % offline). `connect-src` inchangé.
+
+---
+
 **Bon code ! 🚀**
