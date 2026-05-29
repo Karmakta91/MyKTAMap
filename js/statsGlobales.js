@@ -444,7 +444,17 @@
         count: photosCount,
         bytes: photosBytes
       },
-      georef: georef
+      georef: georef,
+      // 🆕 v1.28.0 (KARMA "le tracé + stat") : récap tracker depuis la timeline
+      // persistée. distM = distance physique parcourue (skip téléportations de
+      // recalage, cf getTrackingDistanceM) ; steps = nb de pas PDR appliqués.
+      tracker: {
+        distM: (typeof window.getTrackingDistanceM === "function")
+                 ? (window.getTrackingDistanceM() || 0) : 0,
+        steps: (typeof window.getTrackingTimeline === "function")
+                 ? (window.getTrackingTimeline() || []).filter(function(e) { return e.type === "pdr"; }).length
+                 : 0
+      }
     };
   }
 
@@ -480,6 +490,13 @@
       html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + t.photos + '</div>' +
               '<div class="kta-stats-glob-card-label">📸 photo' + (t.photos > 1 ? "s" : "") + '</div>' +
               (sz ? '<div class="kta-stats-glob-card-sub">' + sz + '</div>' : '') +
+              '</div>';
+    }
+    // 🆕 v1.28.0 : carte tracker (distance parcourue + nb de pas) si historique présent.
+    if (rep.tracker && (rep.tracker.distM > 0 || rep.tracker.steps > 0)) {
+      html += '<div class="kta-stats-glob-card"><div class="kta-stats-glob-card-num">' + _formatDist(rep.tracker.distM) + '</div>' +
+              '<div class="kta-stats-glob-card-label">🧭 parcourus</div>' +
+              '<div class="kta-stats-glob-card-sub">' + rep.tracker.steps + ' pas</div>' +
               '</div>';
     }
     html += '</div>';

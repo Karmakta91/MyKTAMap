@@ -997,7 +997,46 @@ window.setTrackingTimeline = function(timeline, startTs) {
     console.warn("[Tracking] Restore timeline trop grande :", _trackingTimeline.length, "→ décimation");
     _decimateTimeline();
   }
+  // 🆕 v1.28.0 (KARMA "garder le tracé du tracker au reload") : reconstruit le
+  // tracé VISIBLE + replace le marqueur depuis la timeline restaurée. Appelé
+  // ici (restore SessionPersist) qui tourne APRÈS initTracking (cf main.js) →
+  // polyline + markerPosition existent.
+  _rebuildTrailFromTimeline();
 };
+
+// 🆕 v1.28.0 : reconstruit le tracé visible (polyline) + repositionne le
+// marqueur d'après la timeline restaurée. Le tracé live se VIDE à chaque
+// recalage → pour rester cohérent on ne reconstruit que le segment courant
+// (points depuis la dernière ancre recalage/start), ce qui évite aussi de
+// tracer une ligne de téléportation à travers un recalage. Les segments
+// antérieurs restent dans la timeline (heatmap/replay) sans être re-dessinés.
+function _rebuildTrailFromTimeline() {
+  if (!_trackingTimeline || _trackingTimeline.length === 0) return;
+  // Départ = dernière ancre recalage/start (incluse comme origine du tracé).
+  let startIdx = 0;
+  for (let i = _trackingTimeline.length - 1; i >= 0; i--) {
+    const t = _trackingTimeline[i].type;
+    if (t === "recalage" || t === "start") { startIdx = i; break; }
+  }
+  const seg = _trackingTimeline.slice(startIdx);
+  if (seg.length === 0) return;
+  const last = seg[seg.length - 1];
+  position.x = last.x;
+  position.y = last.y;
+  try {
+    if (polyline) {
+      polyline.setLatLngs(seg.map(function(p) { return convertCoord(p.x, p.y); }));
+    }
+    if (markerPosition) {
+      markerPosition.setLatLng(convertCoord(position.x, position.y));
+    }
+    if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+      console.log("[Tracking] Tracé restauré :", seg.length, "pts (depuis ancre #" + startIdx + ")");
+    }
+  } catch(e) {
+    console.warn("[Tracking] Reconstruction tracé échouée :", e);
+  }
+}
 
 // Recale la position du tracker sur des coords plan precises (typiquement
 // utilise depuis le bouton "📍 Je suis ici" d'une popup point — voir
