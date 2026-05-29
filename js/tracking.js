@@ -708,7 +708,16 @@ function updateMap() {
   markerPosition.setLatLng(latlng);
 
   if (polyline) {
-    polyline.addLatLng(latlng);
+    // 🆕 v1.28.0 : le tracé peut être MULTI-SEGMENT (historique restauré/cumulé,
+    // cf _rebuildTrailFromTimeline). addLatLng() ajoute au PREMIER anneau par
+    // défaut → on cible explicitement le DERNIER segment pour prolonger le tracé
+    // courant. Mono-segment (tracé frais) → addLatLng simple.
+    const rings = polyline.getLatLngs();
+    if (rings.length > 0 && Array.isArray(rings[0])) {
+      polyline.addLatLng(latlng, rings[rings.length - 1]);
+    } else {
+      polyline.addLatLng(latlng);
+    }
   }
 }
 
@@ -790,11 +799,14 @@ function startTracking() {
       typeof window.RoadGraph.getGraph === "function") {
     try { window.RoadGraph.getGraph(); } catch(e) {}
   }
-  // 🆕 v1.11.3 V2.3 : init de la timeline au démarrage. Reset = nouveau
-  // cycle de tracking. Push un point initial "start" pour marquer l'origine
-  // temporelle.
-  _trackingStartTs  = Date.now();
-  _trackingTimeline = [];
+  // 🆕 v1.28.0 : on NE WIPE PLUS la timeline au Play — elle est désormais
+  // CUMULATIVE (le tracé doit survivre au reload ET aux cycles Play/Stop ;
+  // c'est aussi l'intention v1.21.2 « heatmap multi-sessions »). On marque la
+  // reprise par une ancre "start" (= rupture de segment au rendu, comme un
+  // recalage) au point courant. _trackingStartTs n'est (ré)initialisé que s'il
+  // n'y a pas d'origine connue (vrai démarrage). Pour repartir d'un tracé
+  // VIERGE, l'utilisateur dispose du reset position / « effacer l'historique ».
+  if (_trackingStartTs == null) _trackingStartTs = Date.now();
   _pushTimelinePoint("start");
 
   // 🏗️ Multi-niveau : snapshot du niveau actif au moment du Play. Le tracker
@@ -1004,34 +1016,41 @@ window.setTrackingTimeline = function(timeline, startTs) {
   _rebuildTrailFromTimeline();
 };
 
-// 🆕 v1.28.0 : reconstruit le tracé visible (polyline) + repositionne le
-// marqueur d'après la timeline restaurée. Le tracé live se VIDE à chaque
-// recalage → pour rester cohérent on ne reconstruit que le segment courant
-// (points depuis la dernière ancre recalage/start), ce qui évite aussi de
-// tracer une ligne de téléportation à travers un recalage. Les segments
-// antérieurs restent dans la timeline (heatmap/replay) sans être re-dessinés.
+// 🆕 v1.28.0 : reconstruit TOUT le tracé visible + repositionne le marqueur
+// d'après la timeline restaurée. On redessine l'historique COMPLET en segments
+// MULTIPLES, coupés à chaque ancre "recalage"/"start" (= rupture/téléportation)
+// pour ne PAS tracer de ligne fantôme entre deux segments. Le marqueur reprend
+// au dernier point connu.
+// 🐛 fix : la version initiale ne reconstruisait que le dernier segment (depuis
+// la dernière ancre) → « on perd tout le tracé historique ». Désormais : tout.
 function _rebuildTrailFromTimeline() {
   if (!_trackingTimeline || _trackingTimeline.length === 0) return;
-  // Départ = dernière ancre recalage/start (incluse comme origine du tracé).
-  let startIdx = 0;
-  for (let i = _trackingTimeline.length - 1; i >= 0; i--) {
-    const t = _trackingTimeline[i].type;
-    if (t === "recalage" || t === "start") { startIdx = i; break; }
+  const segments = [];
+  let cur = [];
+  for (let i = 0; i < _trackingTimeline.length; i++) {
+    const e = _trackingTimeline[i];
+    if (e.type === "recalage" || e.type === "start") {
+      // Rupture : on clôt le segment courant (s'il a ≥ 2 points = une ligne) et
+      // on en démarre un nouveau À PARTIR de l'ancre (pas de ligne de
+      // téléportation entre l'ancien et le nouveau segment).
+      if (cur.length >= 2) segments.push(cur);
+      cur = [convertCoord(e.x, e.y)];
+    } else {
+      cur.push(convertCoord(e.x, e.y));
+    }
   }
-  const seg = _trackingTimeline.slice(startIdx);
-  if (seg.length === 0) return;
-  const last = seg[seg.length - 1];
+  if (cur.length >= 2) segments.push(cur);
+
+  const last = _trackingTimeline[_trackingTimeline.length - 1];
   position.x = last.x;
   position.y = last.y;
   try {
-    if (polyline) {
-      polyline.setLatLngs(seg.map(function(p) { return convertCoord(p.x, p.y); }));
-    }
-    if (markerPosition) {
-      markerPosition.setLatLng(convertCoord(position.x, position.y));
-    }
+    // Leaflet accepte un tableau de tableaux de latlngs = polyline multi-segment.
+    if (polyline) polyline.setLatLngs(segments);
+    if (markerPosition) markerPosition.setLatLng(convertCoord(position.x, position.y));
     if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
-      console.log("[Tracking] Tracé restauré :", seg.length, "pts (depuis ancre #" + startIdx + ")");
+      console.log("[Tracking] Tracé restauré :", _trackingTimeline.length, "pts /",
+                  segments.length, "segment(s)");
     }
   } catch(e) {
     console.warn("[Tracking] Reconstruction tracé échouée :", e);
