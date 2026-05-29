@@ -1,1 +1,6 @@
 .claude/
+
+# 🔒 Zone PRIVÉE — site pro.myktamap.fr (présentation entreprise, stratégie,
+# documents internes). NE JAMAIS livrer dans ce repo (public/open community).
+# Tout le contenu reste local au checkout principal, jamais versionné ici.
+/pro/
