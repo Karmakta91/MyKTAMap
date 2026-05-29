@@ -305,6 +305,32 @@ async function initMapFromConfig() {
     }
   });
 
+  // 🐛 v1.28.0 : en mode « clic carte » actif (picker de position : géoréf /
+  // départ tracker / itinéraire / évitement / KMZ), un clic SUR un élément
+  // interactif (marqueur, tracé, zone…) était « mangé » par cet élément → il
+  // n'atteignait pas le handler map.on("click") du picker (« le clic ne prend
+  // pas »). On intercepte donc le clic en phase CAPTURE sur le conteneur, AVANT
+  // les layers : on stoppe la propagation (ni popup ni interaction layer) puis
+  // on re-émet un click MAP à la bonne position → le picker le reçoit, où qu'on
+  // ait cliqué. On n'intercepte QUE le click (pas le mousedown) → le pan reste
+  // intact. Les contrôles Leaflet (zoom…) et les floaters (hors conteneur) sont
+  // épargnés. Sans mode actif : pass-through immédiat.
+  map.getContainer().addEventListener("click", function(domEvt) {
+    if (!(window._modeClicCarteActif && window._modeClicCarteActif())) return;
+    if (domEvt.target && domEvt.target.closest &&
+        domEvt.target.closest(".leaflet-control")) return;  // garder zoom & co
+    let latlng;
+    try { latlng = map.mouseEventToLatLng(domEvt); } catch(_) { return; }
+    domEvt.stopPropagation();
+    domEvt.preventDefault();
+    map.fire("click", {
+      latlng:         latlng,
+      originalEvent:  domEvt,
+      containerPoint: map.mouseEventToContainerPoint(domEvt),
+      layerPoint:     map.mouseEventToLayerPoint(domEvt)
+    });
+  }, true);  // true = phase capture (avant les handlers des layers)
+
   // 🔍 v174 : hook zoom pour adapter la taille visuelle des icônes.
   // Variable CSS --kta-marker-scale appliquée aux <img> des markers divIcon
   // (cf style.css > .kta-marker-img). Clamp min 0.25 (choix 4b validé KARMA)

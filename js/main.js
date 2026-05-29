@@ -1042,6 +1042,11 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 // AFFICHER LE LOADER (avec rafraîchissement de la liste)
 // =========================
 function afficherLoader() {
+  // 🐛 v1.28.0 : annule tout mode « cliquer sur la carte » resté actif (floater
+  // + modale config masquée + handler orphelin) avant de revenir au home.
+  if (typeof window._ktaAnnulerModesClicCarte === "function") {
+    try { window._ktaAnnulerModesClicCarte(); } catch(e) {}
+  }
   const overlay = document.getElementById("planLoaderOverlay");
   if (overlay) {
     overlay.style.display = "flex";

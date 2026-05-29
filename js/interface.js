@@ -2916,6 +2916,22 @@ function _cfgDesactiverModeClicStart() {
   if (fl) fl.remove();
 }
 
+// 🐛 v1.28.0 : annule TOUS les modes « cliquer sur la carte » en cours (géoréf,
+// départ tracker, itinéraire, + tout floater pick résiduel) et retire la modale
+// config si elle avait été masquée par un picker. Appelé par afficherLoader()
+// (retour home) — sinon le floater et/ou la modale masquée restaient « ouverts »
+// par-dessus l'accueil, avec un handler map.on("click") orphelin.
+window._ktaAnnulerModesClicCarte = function() {
+  try { _cfgDesactiverModeClicGeoref(); } catch(_) {}
+  try { _cfgDesactiverModeClicStart(); } catch(_) {}
+  try { if (typeof _desactiverModeClicCarte === "function") _desactiverModeClicCarte(); } catch(_) {}
+  // Filet de sécurité : retire tout floater pick résiduel (évitement, KMZ…).
+  try { document.querySelectorAll(".kta-iti-floater").forEach(function(f) { f.remove(); }); } catch(_) {}
+  // La modale config a pu être masquée (display:none) par un picker → on la
+  // retire pour ne pas la laisser fantôme au retour home.
+  try { var m = document.getElementById("kta-cfg-modal"); if (m) m.remove(); } catch(_) {}
+};
+
 // Bind des 2 boutons de la section 🧭 Position initiale du tracker.
 function _bindCfgTrackerStartHandlers() {
   const btnSearch = document.getElementById("cfg_start_search");
