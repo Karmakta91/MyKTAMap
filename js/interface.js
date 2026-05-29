@@ -3222,6 +3222,13 @@ function afficherConfig() {
 }
 
 function appliquerConfig() {
+  // 🐛 v1.28.0 : on mémorise la position initiale AVANT écrasement pour ne
+  // réinitialiser la position du tracker QUE si startX/startY a réellement
+  // changé (cf plus bas). Sinon un simple toggle (smartNav…) ou un changement
+  // d'échelle replaçait le tracker au départ → perte de la position courante.
+  const _oldStartX = APP_CONFIG.startX;
+  const _oldStartY = APP_CONFIG.startY;
+
   APP_CONFIG.scale         = parseFloat(document.getElementById("cfg_scale").value);
   APP_CONFIG.stepLength    = parseFloat(document.getElementById("cfg_stepLength").value);
   APP_CONFIG.startX        = parseInt(document.getElementById("cfg_startX").value, 10);
@@ -3253,7 +3260,12 @@ function appliquerConfig() {
   // peu importe d'où elle a été modifiée.
 
   if (window.sauvegarderPrefsUtilisateur) sauvegarderPrefsUtilisateur();
-  if (window.resetTrackingPosition) window.resetTrackingPosition();
+  // 🐛 v1.28.0 : ne replacer le tracker au départ QUE si la position initiale
+  // (startX/startY) a explicitement changé. Pour tout autre réglage (toggle
+  // smartNav, échelle, seuil de pas…), on PRÉSERVE la position courante + le
+  // tracé. (Avant : reset systématique → le tracker sautait à l'origine.)
+  const _startChanged = (APP_CONFIG.startX !== _oldStartX) || (APP_CONFIG.startY !== _oldStartY);
+  if (window.resetTrackingPosition && _startChanged) window.resetTrackingPosition();
   const modal = document.getElementById("kta-cfg-modal");
   if (modal) modal.remove();
   if (window.fermerPanneau) window.fermerPanneau();
