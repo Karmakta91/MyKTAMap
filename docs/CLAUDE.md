@@ -22,6 +22,33 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 
 ---
 
+## 🔒 Frontière community ↔ pro
+
+Tout ce qui relève de la **déclinaison professionnelle / commerciale** de
+MyKTAMap (synchronisation cloud multi-device, multi-tenant, white-label,
+intégrations spécialisées BIM / CAD, hébergement on-premise, support SLA,
+pack formation certifiant, etc.) vit dans le **repo privé `MyKTAMap-pro`**
+auquel **KARMA a accès**. Ce repo a sa propre gouvernance (`CHARTE.md`
+v1.0 en vigueur), sa propre licence commerciale et sa propre roadmap.
+
+**Règle pour les agents IA** : si une demande te semble relever de la
+sphère pro / commerciale, **demande explicitement à KARMA avant de coder
+en community**. En particulier :
+
+- ❌ Ne JAMAIS proposer en community une feature qui pourrait être pro
+  sans avoir clarifié
+- ❌ Ne JAMAIS faire de référence dans le code/doc community à du code
+  ou à des features du repo pro (pas de `// TODO pro:`, pas de pointeur
+  vers des fichiers pro)
+- ✅ Demander avant, par défaut tout est community
+
+Le community reste **100 % offline, gratuit et sans bridage déguisé** —
+c'est une promesse intangible. La page de présentation publique de
+l'offre pro est sur [`pro.myktamap.fr`](https://pro.myktamap.fr)
+(sous-domaine séparé, hébergement statique distinct du PWA).
+
+---
+
 ## 📁 Structure du dépôt
 
 ```
