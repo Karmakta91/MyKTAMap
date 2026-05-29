@@ -638,7 +638,12 @@ function _avancerRaster() {
   // on garde ton comportement actuel
   let distance = pasMetre * scale;
 
-  let rad = direction * Math.PI / 180;
+  // 🐛 Fix orientation écran : le DÉPLACEMENT doit suivre le cap VISUEL
+  // (_getCorrectedHeading = direction brute + angle écran), exactement comme la
+  // rotation de l'icône (cf _applyRotationToTrackerMarker). Avant on utilisait
+  // `direction` brut → en PAYSAGE l'icône pointait bien mais le pas partait de
+  // travers (décalé de l'angle écran). Invisible en portrait (_screenAngle=0).
+  let rad = _getCorrectedHeading() * Math.PI / 180;
 
   let newX = position.x + distance * Math.sin(rad);
   let newY = position.y - distance * Math.cos(rad);
@@ -671,7 +676,7 @@ function _avancerSurGraphe() {
   // 1) PDR brut (même calcul que _avancerRaster).
   const scale    = APP_CONFIG.scale;
   const distance = APP_CONFIG.stepLength * scale;
-  const rad      = direction * Math.PI / 180;
+  const rad      = _getCorrectedHeading() * Math.PI / 180;  // cap VISUEL (cf _avancerRaster)
   const rawX = position.x + distance * Math.sin(rad);
   const rawY = position.y - distance * Math.cos(rad);
 
