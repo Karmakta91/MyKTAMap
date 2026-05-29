@@ -18,7 +18,7 @@ conçue pour visualiser, annoter et exploiter des **plans à partir d'images hau
 - **Dev** : https://devmap.is-underground.fr
 - **Auteur** : Flavien VIDAL (alias KARMA)
 - **Licence** : **CC BY-NC-SA 4.0** — usage non commercial, partage à l'identique, attribution requise. Usage commercial **strictement interdit** sans accord écrit préalable.
-- **Collaboration** : ouverte **sur demande** (contributions, ports, intégrations, retours terrain). Aucune contribution acceptée sans accord écrit préalable de l'auteur — contact via le site officiel.
+- **Collaboration** : ouverte **sur demande** (contributions, ports, intégrations, retours terrain). Aucune contribution acceptée sans accord écrit préalable de l'auteur — contact via Instagram @karma_kta ou par email à contact@myktamap.fr (usage pro / licence : https://pro.myktamap.fr).
 
 ---
 
@@ -1907,7 +1907,7 @@ Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au re
   - Champ saisie masqué
   - Message "🚫 Trop de tentatives" + sous-texte "Accès verrouillé par sécurité." (ton pro depuis v1.26.3)
   - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
-  - Lien externe vers `myktamap.fr` pour contacter l'auteur si l'user a légitimement perdu son accès
+  - Liens externes pour contacter l'auteur si l'user a légitimement perdu son accès : Instagram `@karma_kta` + `mailto:contact@myktamap.fr` (le simple lien vers `myktamap.fr` était trompeur — le site n'offre aucun canal de contact)
 
 #### 36.4 Position dans le flow `main.js > initApp`
 
@@ -4025,7 +4025,7 @@ Voir `exporter.js > _dessinerLegende`. La répartition est automatique (algorith
 - **Production** : https://myktamap.fr
 - **Dev** : https://devmap.is-underground.fr
 - **Licence** : CC BY-NC-SA 4.0 — voir `LICENSE` à la racine
-- **Collaboration** : ouverte sur demande, contact via le site officiel
+- **Collaboration** : ouverte sur demande, contact via Instagram @karma_kta ou par email à contact@myktamap.fr (usage pro / licence : https://pro.myktamap.fr)
 - **Leaflet docs** : https://leafletjs.com/reference.html
 - **Doc dev complète** : `README.md` (à la racine du projet)
 - **Doc utilisateur** : `README_USER.md` (intégrée à l'app via 📖)

@@ -33,7 +33,7 @@
 > - Supposer qu'une fonctionnalité existe parce qu'elle "devrait" exister ou parce que c'est "courant".
 > - Reformuler le périmètre de l'app au-delà de ce que la doc décrit.
 >
-> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via https://myktamap.fr."*
+> Si l'utilisateur te demande quelque chose qui n'est pas dans le document, **dis-le explicitement** : *"Cette fonctionnalité n'est pas décrite dans la documentation que j'ai. Vérifie directement dans l'app ou contacte l'auteur via Instagram **@karma_kta** ou par email **contact@myktamap.fr** (usage pro / licence : **pro.myktamap.fr**)."*
 
 ---
 
@@ -224,7 +224,7 @@ Pour **chaque** question :
 - Hash `SHA-256(salt + pin)` via `crypto.subtle.digest`, salt random 16 bytes (`crypto.getRandomValues`). Stocké en `localStorage["myktamap_pin_v1"]`. **Jamais envoyé sur Internet**
 - WebAuthn : `authenticatorAttachment: "platform"` (Face ID / Touch ID / Windows Hello — pas de clé USB roaming), challenge random côté client (no backend = compromis assumé)
 - Activation/modification/désactivation **uniquement dans ⚙️ Configuration de la home** (cohérent avec la philo "réglages critiques loader-only" de v1.7.3). PAS de section dans ⚙️ Réglages map mode
-- 5 tentatives PIN ratées consécutives = **lockout définitif**. Pour sortir : réinstaller l'app OU contacter l'auteur (qui ne pourra rien faire — aucune donnée serveur). Biométrie ratée n'incrémente PAS le compteur
+- 5 tentatives PIN ratées consécutives = **lockout définitif**. Pour sortir : réinstaller l'app OU contacter l'auteur via Instagram **@karma_kta** ou **contact@myktamap.fr** (il ne pourra rien faire — aucune donnée serveur — mais le canal existe). Biométrie ratée n'incrémente PAS le compteur
 - **Proposition d'activation one-shot** au 1er lancement post-update v1.10.0 : modale qui invite à activer. Refus → flag `myktamap_pin_proposal_done_v1` set, plus jamais re-proposé (l'user doit aller dans ⚙️ Configuration manuellement)
 - Aucune recovery en cas d'oubli (= cohérent UnlockGate, philosophie no-backend)
 - Boot : `main.js > initApp` ouvre la gate APRÈS UnlockGate (séquentiel), avant tout chargement de plan
@@ -281,7 +281,7 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 > *"Non, MyKTAMap ne propose pas de [X]. Les seules [zones/types/modes] disponibles sont [liste exacte d'après la doc]. Si tu veux suggérer cette fonctionnalité, contacte l'auteur via Instagram **@karma_kta** — ou par email **contact@myktamap.fr** (notamment pour tout usage professionnel / commercial)."*
 
 **Quand tu n'es pas sûr** :
-> *"Je ne trouve pas d'information claire à ce sujet dans la documentation fournie. Pour confirmation, vérifie directement dans l'app ou contacte l'auteur."*
+> *"Je ne trouve pas d'information claire à ce sujet dans la documentation fournie. Pour confirmation, vérifie directement dans l'app ou contacte l'auteur via Instagram **@karma_kta** ou **contact@myktamap.fr**."*
 
 **Quand on te demande d'accéder à une source externe** :
 > *"Je n'ai accès qu'à la documentation utilisateur fournie ici. Je ne peux ni lire le code source (non distribué publiquement), ni naviguer sur le site, ni voir ton app."*

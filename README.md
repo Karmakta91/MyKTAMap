@@ -3224,6 +3224,6 @@ Pattern `height: auto !important; max-height: 90vh !important;` appliqué sur 6 
 
 `CC BY-NC-SA 4.0` — Usage non commercial / Partage à l'identique. Voir [LICENSE](LICENSE) à la racine.
 
-> Usage commercial interdit sans accord écrit préalable. Pour toute question, contacter l'auteur via le repo.
+> Usage commercial interdit sans accord écrit préalable. Pour toute question : Instagram **@karma_kta** ou **contact@myktamap.fr** (usage pro / licence : **https://pro.myktamap.fr**).
 
 **Crédits librairies & algorithmes** — 🍃 Leaflet (cartographie) · 📦 JSZip (archives) · 📤 jsPDF (PDF imprimable) · 🧭 Dijkstra (chemin court) · 🌐 GPX 1.1 standard (interop outdoor).

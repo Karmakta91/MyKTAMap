@@ -438,8 +438,9 @@ retrouver sans cache hors-ligne).
 > a tout simplement aucun endroit côté serveur où tes données
 > pourraient atterrir, parce qu'il n'y a aucun code applicatif côté
 > serveur. Tout est conçu pour être vérifiable. Si tu trouves quoi que
-> ce soit qui contredit ce document, contacte-moi directement via le
-> site officiel — je corrigerai immédiatement.*
+> ce soit qui contredit ce document, contacte-moi directement —
+> Instagram **@karma_kta** ou **contact@myktamap.fr** — je corrigerai
+> immédiatement.*
 >
 > — **KARMA**, auteur de MyKTAMap
 
@@ -469,7 +470,8 @@ retrouver sans cache hors-ligne).
 
 Si tu observes **n'importe quelle requête réseau** émise par MyKTAMap
 qui ne figure pas dans la liste blanche ci-dessus, contacte l'auteur
-immédiatement via [myktamap.fr](https://myktamap.fr).
+immédiatement : Instagram **[@karma_kta](https://instagram.com/karma_kta)**
+ou **[contact@myktamap.fr](mailto:contact@myktamap.fr)**.
 Le document sera corrigé et le code patché en priorité absolue.
 
 ---

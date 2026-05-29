@@ -697,8 +697,9 @@
     overlay.id        = "kta-pin-gate-overlay";
     overlay.className = "kta-pin-gate-overlay kta-pin-gate-overlay-lockout";
     // 🆕 v1.10.0-hotfix4 (KARMA "que la procédure soit bien plus bref :
-    // réinstaller complètement l'app, ou contacter l'auteur qui ne pourra
-    // rien faire ne connaissant pas la clef côté serveur non stocké") :
+    // réinstaller complètement l'app, ou contacter l'auteur — Instagram
+    // @karma_kta / contact@myktamap.fr — qui ne pourra rien faire ne
+    // connaissant pas la clef côté serveur non stocké") :
     // message simplifié au strict nécessaire. Pas d'instructions par
     // device — l'user qui en arrive là sait probablement réinstaller
     // une app, ou demande à l'auteur autrement.
@@ -715,9 +716,9 @@
             '<li><strong>Réinstaller complètement l\'app</strong> (supprime ' +
               'le PIN + la session + les plans non mémorisés).</li>' +
             '<li><strong>Contacter l\'auteur</strong> via ' +
-              '<a href="https://myktamap.fr" target="_blank" rel="noopener" ' +
-              'style="color:#8cb4ff;">myktamap.fr</a> — ' +
-              '⚠️ il ne pourra pas récupérer ton code (aucune donnée stockée côté serveur).</li>' +
+              '<a href="https://instagram.com/karma_kta" target="_blank" rel="noopener" style="color:#8cb4ff;">Instagram @karma_kta</a>' +
+              ' ou <a href="mailto:contact@myktamap.fr" style="color:#8cb4ff;">contact@myktamap.fr</a>' +
+              ' — ⚠️ il ne pourra pas récupérer ton code (aucune donnée stockée côté serveur).</li>' +
           '</ol>' +
           '<p style="font-style:italic; color:#8892a4; margin-top:10px;">' +
           'Verrouillage de sécurité actif après plusieurs tentatives échouées.</p>' +
