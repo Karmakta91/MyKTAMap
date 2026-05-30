@@ -19976,6 +19976,15 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-weight: 700;
 }
 
+/* 🆕 v1.29.0-fix1 — Modales secondaires Mode Secours (Phase / Debrief /
+   LaunchNext) qui s'ouvrent par-dessus la modale Mode Secours principale.
+   Z-index 100050 (au-dessus du 99999 standard) pour passer au-dessus
+   de la modale parente. Sans ça, elles disparaissent derrière à cause
+   de l'ordre DOM (modale parente attachée à <html>, sibling de <body>). */
+.kta-secours-sub-modal {
+  z-index: 100050 !important;
+}
+
 /* 🆕 v1.29.0 C3 — Bouton "✓ Phase terminée" en footer Live Op. Style
    ambré sobre pour différencier des actions destructives (rouge) et des
    actions de navigation (gris/bleu). Liseré vert pulsant si l'auto-

@@ -5098,11 +5098,13 @@
 
     const titre = isEdit ? "✏️ Éditer la phase" : "➕ Créer une phase";
 
-    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-phase-modal">' +
+    // 🐛 v1.29.0-fix1 — Classe kta-secours-sub-modal pour z-index 100050
+    // (au-dessus de la modale Mode Secours principale à 99999).
+    let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-phase-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:520px;height:auto;max-height:90vh;">' +
-                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(244,197,66,0.4);">' +
-                     '<h2>' + titre + '</h2>' +
-                     '<button class="kta-readme-modal-close" data-action="close-phase-modal">✕</button>' +
+                   '<div class="kta-readme-modal-header">' +
+                     '<span class="kta-readme-modal-titre">' + titre + '</span>' +
+                     '<button class="kta-panneau-close" data-action="close-phase-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<div class="kta-secours-form-row">' +
@@ -5143,7 +5145,11 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    document.body.insertAdjacentHTML("beforeend", html);
+    // 🐛 v1.29.0-fix1 — attache à <html> (pas à <body>) pour passer AU-DESSUS
+    // de la modale Mode Secours principale (qui est sibling de body, attachée
+    // ligne 4800 via documentElement.appendChild). Sinon mes modales secondaires
+    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-phase-modal");
     if (!modal) return;
 
@@ -5238,11 +5244,11 @@
 
     const existingDebrief = phase.debrief || "";
 
-    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-debrief-modal">' +
+    let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-debrief-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:600px;height:auto;max-height:90vh;">' +
-                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(140,180,255,0.40);">' +
-                     '<h2>📝 Terminer la phase « ' + _escHtml(phase.nom) + ' »</h2>' +
-                     '<button class="kta-readme-modal-close" data-action="close-debrief-modal">✕</button>' +
+                   '<div class="kta-readme-modal-header">' +
+                     '<span class="kta-readme-modal-titre">📝 Terminer la phase « ' + _escHtml(phase.nom) + ' »</span>' +
+                     '<button class="kta-panneau-close" data-action="close-debrief-modal">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<p class="kta-secours-hint" style="margin-top:0;">' +
@@ -5293,7 +5299,11 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    document.body.insertAdjacentHTML("beforeend", html);
+    // 🐛 v1.29.0-fix1 — attache à <html> (pas à <body>) pour passer AU-DESSUS
+    // de la modale Mode Secours principale (qui est sibling de body, attachée
+    // ligne 4800 via documentElement.appendChild). Sinon mes modales secondaires
+    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-debrief-modal");
     if (!modal) return;
     const textArea = modal.querySelector("#kta-sec-debrief-text");
@@ -5350,11 +5360,11 @@
     const oldModal = document.getElementById("kta-secours-launchnext-modal");
     if (oldModal) oldModal.remove();
 
-    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-launchnext-modal">' +
+    let html = '<div class="kta-readme-modal-overlay kta-secours-sub-modal" id="kta-secours-launchnext-modal">' +
                  '<div class="kta-readme-modal-boite" style="max-width:480px;height:auto;max-height:90vh;">' +
-                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(110,226,135,0.40);">' +
-                     '<h2>🚀 Lancer la phase suivante ?</h2>' +
-                     '<button class="kta-readme-modal-close" data-action="close-launchnext">✕</button>' +
+                   '<div class="kta-readme-modal-header">' +
+                     '<span class="kta-readme-modal-titre">🚀 Lancer la phase suivante ?</span>' +
+                     '<button class="kta-panneau-close" data-action="close-launchnext">✕</button>' +
                    '</div>' +
                    '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
                      '<div style="margin-bottom:12px;">' +
@@ -5396,7 +5406,11 @@
                    '</div>' +
                  '</div>' +
                '</div>';
-    document.body.insertAdjacentHTML("beforeend", html);
+    // 🐛 v1.29.0-fix1 — attache à <html> (pas à <body>) pour passer AU-DESSUS
+    // de la modale Mode Secours principale (qui est sibling de body, attachée
+    // ligne 4800 via documentElement.appendChild). Sinon mes modales secondaires
+    // sont dans body donc rendues AVANT la modale Secours principale → cachées.
+    document.documentElement.insertAdjacentHTML("beforeend", html);
     const modal = document.getElementById("kta-secours-launchnext-modal");
     if (!modal) return;
 
