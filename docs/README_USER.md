@@ -283,6 +283,22 @@ Ton profil est inclus dans l'**Export Avancé** des sessions (onglet 🎨 Avanc�
 
 > 🔒 **100 % local** : ton surnom et ta photo restent dans ton navigateur (IndexedDB). Rien n'est envoyé à un serveur. L'export profil est explicite et contrôlé par toi.
 
+#### 💼 Édition pro — importer une licence
+
+Si l'auteur t'a remis un fichier **`Licence-pro.json`** (par mail, canal privé, etc.) suite à une demande de licence professionnelle, tu peux l'**importer directement** dans ton navigateur depuis la modale profil pour activer l'édition pro **sur cet appareil uniquement**.
+
+**Section dédiée dans la modale Mon profil** :
+
+- **Si tu es en mode communautaire** (état par défaut) : un bouton **📂 Importer une licence pro** apparaît. Au clic, file picker `.json` → tu sélectionnes ton fichier → validation immédiate → toast de confirmation. Le mode pro est activé : le footer du loader bascule (✓ Licence pro active), le splash affiche « Édition professionnelle », les écrans gates retirent le lien « Licence pro » (redondant désormais).
+- **Si une licence locale est active** : un bouton **🗑️ Retirer la licence locale** permet de revenir au mode communautaire. La licence reste disponible dans le fichier original si tu veux la ré-importer plus tard.
+- **Si une licence serveur est active** (instance déployée par un admin avec `Licence-pro.json` à la racine du serveur) : badge ✓ seul, pas de bouton — c'est l'administrateur du serveur qui décide.
+
+**Format du fichier** : JSON minimum `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si le hash est manquant ou mal formé (regex stricte `MKTM-LIC-` + 32 caractères hexadécimaux), le fichier est refusé avec message d'erreur.
+
+> 🔒 **100 % local** : le fichier de licence est lu par le navigateur via `FileReader` puis persisté dans `localStorage`. Il n'est **jamais envoyé à un serveur**, jamais transmis. Aucune connexion réseau n'est ajoutée.
+
+> ⚖️ **Valeur juridique** : le hash `MKTM-LIC-...` qui figure dans le fichier est **nominatif** — lié à un contrat précis entre l'auteur et le titulaire de la licence. **Sa reproduction ou son partage à un tiers non autorisé constitue une infraction contractuelle** (l'auteur peut faire valoir ses droits). Le mécanisme côté navigateur reste cosmétique : il ne vérifie pas cryptographiquement le hash, c'est la signature du contrat qui fait foi.
+
 ### 📚 Gestion de votre liste de plans
 
 L'application mémorise tous les plans que vous chargez, qu'ils viennent du serveur ou de votre disque local.

@@ -7085,4 +7085,150 @@ locale. `connect-src` inchangé. Nouveau fichier `js/roadGraph.js` ajouté à `A
 
 ---
 
+### 77. Mécanisme de licence pro — Licence-pro.json + import manuel (v1.28.2 → v1.28.4 — 2026-05-30)
+
+3 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
+sans casser la philo offline-first ni l'audit réseau.
+
+#### 77.1 Architecture
+
+**Module unique** : `js/proLicense.js` (~280 lignes IIFE) → `window.MyKTAMapProLicense = { isPro, getData, getSource, importFile, removeLocal, forceRecheck }`.
+
+Au boot très tôt (chargé juste après `js/copyright.js`, avant `themeManager.js`), le module :
+1. Lit deux clés `localStorage` distinctes :
+   - `__mktm_pro_license__` : cache du fetch serveur `/Licence-pro.json`
+   - `__mktm_pro_license_local__` : licence importée manuellement via UI
+2. Applique synchronement la classe `kta-instance-pro` sur `<html>` si l'une OU l'autre porte `instance: "pro"`
+3. Lance un fetch async `GET /Licence-pro.json?_=<ts>` (cache-bust) pour confirmer/invalider le cache serveur
+4. Le fetch serveur n'affecte **jamais** le cache local (sources strictement indépendantes)
+5. Si les 2 sources sont actives, **serveur prime** (annonce officielle du déployeur > import perso)
+
+**Pattern CSS de bascule** (cf §53 ThemeManager, même approche) : `.kta-licence-community` vs `.kta-licence-pro`.
+
+- `.kta-licence-pro` : `display: none` par défaut
+- `html.kta-instance-pro .kta-licence-community` : `display: none`
+- `html.kta-instance-pro .kta-licence-pro` : `display: inline`
+
+Tous les éléments à basculer sont wrappés dans l'un ou l'autre. Pas de changement DOM dynamique, juste CSS.
+
+#### 77.2 Surfaces basculées en mode pro
+
+| Surface | Community | Pro |
+|---|---|---|
+| Footer copyright loader (ligne 1) | © 2026 [karma.png] | © 2026 MyKTAMap — édition pro · Tous droits réservés |
+| Footer copyright loader (ligne 2) | · CC BY-NC-SA 4.0 · Usage commercial interdit | · ✓ Licence professionnelle active |
+| Footer contact loader | Instagram · mailto · 💼 Licence pro | Instagram · mailto (sans Licence pro) |
+| Splash `#splashLicense` | Licence libre — usage non commercial | ✓ Édition professionnelle · Tous droits réservés |
+| UnlockGate (gate + lockout) | Instagram · mailto · 💼 Licence pro | Instagram · mailto |
+| NETWORK_AUDIT.html footer | © KARMA · CC BY-NC-SA 4.0 | © MyKTAMap — édition pro |
+
+NETWORK_AUDIT.html embarque sa propre logique de détection inline (mini-script qui lit la classe sur `html`)
+car la page est statique et peut être ouverte hors contexte de l'app principale.
+
+#### 77.3 Format `Licence-pro.json`
+
+```json
+{
+  "instance":     "pro",                              // REQUIS
+  "license_hash": "MKTM-LIC-<32 hex chars>",          // REQUIS pour import manuel
+  "client":       "Acme SpeleSecours",                // optionnel — futur affichage
+  "license_id":   "MKTM-2026-001",                    // optionnel — traçabilité interne
+  "license_type": "annual" | "perpetual" | "free-grimp", // optionnel
+  "issued_at":    "2026-05-30",                       // optionnel
+  "valid_until":  "2027-05-30"                        // optionnel
+}
+```
+
+**Validation hash** : regex stricte `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`. Génération côté KARMA :
+`echo "MKTM-LIC-$(openssl rand -hex 16)"`. Le hash est nominatif (lié à 1 client/contrat).
+
+**Backward compat** : les fichiers servis côté serveur SANS `license_hash` (déploiements legacy v1.28.2/3
+faits avant l'introduction du hash) sont acceptés avec warning console seulement. L'import manuel en
+revanche **exige** un hash bien formé (= toute licence livrée aux clients à partir de v1.28.4 doit en
+contenir un).
+
+#### 77.4 Service Worker — bypass cache total
+
+`sw.js > fetch handler` ajoute un bypass network-only pour `/Licence-pro.json` :
+
+```js
+if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
+  event.respondWith(
+    fetch(event.request, { cache: "no-store" })
+      .catch(() => new Response("", { status: 404,
+        headers: { "Content-Type": "application/json" } }))
+  );
+  return;
+}
+```
+
+Pourquoi : l'état doit refléter la réalité serveur en temps réel. Si un déployeur retire son
+`Licence-pro.json`, le mode pro doit s'éteindre au prochain check du PWA — pas être maintenu artificiellement
+par un cache LRU stale.
+
+#### 77.5 Import manuel via UI profil (v1.28.4)
+
+Nouvelle section **« 💼 Édition professionnelle »** dans la modale **« 👤 Mon profil »** du loader (cf. §61
+Profile UI). 3 états rendu dynamiquement par `_refreshProfileProSection()` dans `index.html` :
+
+| État | Rendu |
+|---|---|
+| Community | Hint texte + bouton « 📂 Importer une licence pro » qui ouvre file picker `.json` |
+| Pro via serveur | Badge ✓ + hint « instance pro déployée — aucune action requise » (pas de bouton) |
+| Pro via local | Badge ✓ + hint + bouton « 🗑️ Retirer la licence locale » |
+
+**Pipeline import** :
+1. File picker accept `.json,application/json` → `FileReader.readAsText(file)`
+2. Cap taille 50 KB (anti-spam)
+3. `JSON.parse` (refus si erreur)
+4. `_validateData(data, strictHash=true)` (refus si `instance !== "pro"` ou hash absent/mal formé)
+5. `localStorage.setItem("__mktm_pro_license_local__", JSON.stringify(data))`
+6. `_recomputeActive()` → re-render section + toast OOMGuard
+
+Retrait : `localStorage.removeItem` + `_recomputeActive()`. La confirmation passe par un `confirm()` natif
+(volontaire — cas marginal, format custom non justifié).
+
+**Helpers internes** dans `index.html` (associés au modal profil) :
+- `_proHashShort(hash)` : tronque pour affichage (`MKTM-LIC-abc123…3456`) — **non utilisé en v1.28.4** mais
+  laissé en place pour usage futur (diagnostic, export profil, etc.)
+- `_proSourceLabel(source)` : libellé humain — idem
+- `_proSourceHint(source)` : phrase d'explication contextuelle (utilisée)
+
+#### 77.6 Sécurité juridique
+
+Mécanisme **purement cosmétique** côté technique. La validité juridique vient du **contrat signé** entre
+MyKTAMap et le client :
+- Hash nominatif → reproduction = infraction contractuelle
+- Pas de vérification cryptographique (signature HMAC future possible si demande client institutionnel)
+- Cohérent avec la doctrine §36 UnlockGate « barrière sociale, pas pseudo-crypto »
+- Le copyright légal reste dans `LICENSE` (CC BY-NC-SA) + `LICENSE_PRO.md` (côté repo pro privé)
+
+#### 77.7 Confidentialité
+
+AUCUNE nouvelle surface réseau côté community :
+- Le fetch `/Licence-pro.json` est **same-origin** (déjà couvert par `connect-src 'self'`)
+- Sur `myktamap.fr` (community pur) : le serveur retourne 404 → mode community préservé
+- L'import manuel utilise `FileReader` (lecture locale du disque) — le fichier n'est **jamais envoyé** au serveur
+- Pas de directive CSP ajoutée, pas de nouveau service tiers
+- `connect-src` reste `'self'` + `https://www.gstatic.com` (ping)
+
+Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail audit.
+
+#### 77.8 À ne PAS faire
+
+- ❌ Mélanger les 2 caches localStorage (server / local) — sources strictement indépendantes
+- ❌ Modifier la doctrine "serveur prime sur local" sans accord (cohérent avec "annonce officielle du déployeur")
+- ❌ Réintroduire la mention "💼 Licence pro" en mode pro (redondant — on est déjà pro)
+- ❌ Logger ou exposer publiquement le `license_hash` (nominatif, à traiter comme un secret modéré)
+- ❌ Casser la backward compat fetch serveur (les premiers déploiements v1.28.2/3 sont sans hash)
+
+#### 77.9 Pour ajouter une nouvelle surface qui doit basculer
+
+1. Identifier l'élément DOM à wrapper
+2. L'envelopper soit dans `.kta-licence-community` (visible community, masqué pro) soit dans `.kta-licence-pro` (masqué community, visible pro)
+3. Vérifier visuellement les 2 états en testant avec un `Licence-pro.json` posé localement ou importé via UI profil
+4. Documenter dans la matrice §77.2 ci-dessus
+
+---
+
 **Bon code ! 🚀**

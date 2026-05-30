@@ -174,10 +174,22 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.28.1</strong> (29 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.28.4</strong> (30 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.28.2 → v1.28.4 (Mécanisme de licence pro complet — 3 patchs consécutifs)</strong> :
+    <strong>AUCUNE nouvelle surface réseau côté community</strong>, AUCUNE nouvelle permission, AUCUN nouveau service tiers contacté.
+    Nouveau module <code>js/proLicense.js</code> qui détecte si l'instance MyKTAMap tourne sous licence pro et bascule certains éléments d'affichage (footer copyright, mention splash, écrans UnlockGate, page audit) en mode édition pro.
+    (1) <strong>Détection serveur (v1.28.2)</strong> : fetch <code>GET /Licence-pro.json</code> au boot. La cible est <strong>same-origin</strong> (déjà couvert par <code>connect-src 'self'</code>) — sur <code>myktamap.fr</code> (community pur), le serveur retourne 404 et le mode community est strictement préservé, aucun effet visible. Le Service Worker configure un <strong>bypass cache TOTAL</strong> pour cette URL (cache:"no-store") afin que l'état reflète toujours la réalité serveur (pas de cache LRU stale qui maintiendrait un état incorrect).
+    (2) <strong>Mention splash (v1.28.3)</strong> : bascule du bloc <code>#splashLicense</code> (« Licence libre — usage non commercial » → « ✓ Édition professionnelle ») via classe CSS <code>.kta-instance-pro</code> posée par le détecteur. Pure cosmétique HTML/CSS, aucun fetch.
+    (3) <strong>Import manuel (v1.28.4)</strong> : l'utilisateur peut importer un fichier <code>Licence-pro.json</code> reçu par mail/canal privé depuis sa modale « Mon profil » du loader. <strong>Fichier lu LOCALEMENT</strong> par <code>FileReader</code>, validé par regex (<code>MKTM-LIC-&lt;32 hex&gt;</code>), persisté dans <code>localStorage</code> du navigateur — <strong>JAMAIS envoyé au serveur</strong>, JAMAIS transmis. 2 sources de licence désormais : cache fetch serveur (<code>__mktm_pro_license__</code>) et import manuel (<code>__mktm_pro_license_local__</code>), strictement indépendants.
+    <strong>Sécurité juridique</strong> : le hash <code>MKTM-LIC-&lt;32 hex&gt;</code> est nominatif (lié à 1 client/contrat). Sa reproduction ou son usage par un tiers constitue une infraction contractuelle. Le mécanisme reste cosmétique (cohérent avec UnlockGate § « barrière sociale »).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+    Verdict : ✅ aucune régression — détection same-origin, import purement local, aucun fetch externe ajouté, aucune donnée transmise.
   </p>
 
   <p class="meta" style="margin-top:6px;">

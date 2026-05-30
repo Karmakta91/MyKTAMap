@@ -1163,7 +1163,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 
 ---
 
-### O. Versionning courant — v1.28.0
+### O. Versionning courant — v1.28.4
 
 | Hotfix | Sujet |
 |---|---|
@@ -1187,6 +1187,10 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 | v1.26.3-hotfix4 | ⚡ Perf RAM (push main) : P0-1 snapshots undo/redo ciblés par catégorie + P0-2 LRU tuiles V2 par niveau + P0-3 débounce intersections pendant le dessin (cf §75 CLAUDE.md). Release inchangée (hotfix). |
 | **v1.27.0** | **🧭 Position initiale tracker assistée (picking au clic / via un point, parité géoréf) + consolidation du hotfix4 perf + conception nav intelligente (`docs/DESIGN_NAV_INTELLIGENTE.md`, non implémenté)** (cf §75 CLAUDE.md) |
 | **v1.28.0** | **🧭 NAVIGATION INTELLIGENTE (map-matching, défaut OFF) — cale la position tracker sur le réseau de tracés via `js/roadGraph.js` (C1→C4) ; + fix déplacement paysage ; + tracé tracker persistant au reload ; + carte stats « 🧭 parcourus » (distance + pas)** (cf §76 CLAUDE.md + `docs/DESIGN_NAV_INTELLIGENTE.md`) |
+| v1.28.1 | 📖 Doc utilisateur accessible depuis les 4 écrans de verrouillage (UnlockGate gate+lockout + PinLock gate+lockout) via `afficherReadme({hideOnboarding:true, overLocker:true})` — réutilise `docs/README_USER.md` déjà caché par le SW + fix mailto footer accueil (lien sortant, aucun fetch ajouté) |
+| v1.28.2 | 🏷️ **Détecteur licence pro** — `js/proLicense.js` : fetch `/Licence-pro.json` same-origin, bascule footer/UnlockGate via classe `.kta-instance-pro` posée sur `<html>`. Bypass cache total dans SW (cf §77 CLAUDE.md) |
+| v1.28.3 | 🌟 Mention licence pro propagée au **splash de chargement** (rose des vents) — `#splashLicense` bascule community↔pro selon classe `.kta-instance-pro` |
+| **v1.28.4** | 📂 **Import manuel d'une licence pro depuis le profil** — nouvelle section « 💼 Édition pro » dans modale « 👤 Mon profil » du loader. 2 sources désormais : cache fetch serveur + cache import manuel (`__mktm_pro_license_local__`) strictement indépendants. Validation hash `MKTM-LIC-<32 hex>` stricte côté import, permissive côté fetch (backward compat). Aucune nouvelle surface réseau — `FileReader` purement local. Cf §77 CLAUDE.md + entrée groupée v1.28.2→v1.28.4 dans NETWORK_AUDIT |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 
