@@ -451,6 +451,151 @@
     return true;
   }
 
+  // 🆕 v1.29.0 C3 — Helpers transitions / debrief / auto-détection.
+  // ───────────────────────────────────────────────────────────────────
+
+  // Détecte si la phase active est "prête à clore" (KARMA C3.2:a) :
+  // toutes les équipes participantes ont leur étape SORTIE avec completedAt.
+  // Si une équipe n'a pas de parcours (pas d'étape sortie) on l'IGNORE
+  // (pas de critère bloquant — l'Op décide quand même).
+  // Retourne true uniquement si AU MOINS UNE équipe a une sortie ET
+  // toutes les équipes avec sortie l'ont complétée.
+  function _phaseEstPretAClore(s) {
+    if (!s || !s.execution || !s.execution.active) return false;
+    if (!s.execution.etapes) return false;
+    const phaseIdx = s.execution.currentPhaseIdx || 0;
+    const equipes = _listerEquipesPhase(s, phaseIdx);
+    if (!equipes.length) return false;
+    let auMoinsUneSortie = false;
+    for (let i = 0; i < equipes.length; i++) {
+      const g = equipes[i];
+      const arr = s.execution.etapes[g.id];
+      if (!Array.isArray(arr)) continue;
+      // Cherche l'étape de type "sortie"
+      const sortie = arr.find(function(e) { return e && e.type === "sortie"; });
+      if (!sortie) continue;
+      auMoinsUneSortie = true;
+      if (!sortie.completedAt) return false;
+    }
+    return auMoinsUneSortie;
+  }
+
+  // Archive les étapes de la phase courante avant un passage de phase.
+  // Stocke dans s.execution.etapesArchive[phaseIdx] = deep clone de
+  // s.execution.etapes. Permet aux rapports (C5) de remonter l'historique
+  // par phase sans avoir à tagger chaque étape avec _phaseIdx.
+  function _archivePhaseEtapes(s, phaseIdx) {
+    if (!s || !s.execution) return;
+    if (!s.execution.etapesArchive) s.execution.etapesArchive = {};
+    // Deep clone via JSON pour figer l'état (les étapes ne doivent plus
+    // évoluer après archivage, c'est le contrat de l'historique).
+    try {
+      s.execution.etapesArchive[String(phaseIdx)] =
+        JSON.parse(JSON.stringify(s.execution.etapes || {}));
+    } catch(e) {
+      console.warn("[SecoursMode] _archivePhaseEtapes échec :", e);
+    }
+  }
+
+  // Lecture : retourne les étapes archivées d'une équipe pour une phase
+  // donnée. Si la phase est encore active OU absente d'archive, retourne
+  // null (le caller doit fallback sur s.execution.etapes pour la phase
+  // courante via _getEtapesEquipe).
+  function _getArchivedEtapes(s, phaseIdx, equipeId) {
+    if (!s || !s.execution || !s.execution.etapesArchive) return null;
+    const archive = s.execution.etapesArchive[String(phaseIdx)];
+    if (!archive || !Array.isArray(archive[equipeId])) return null;
+    return archive[equipeId];
+  }
+
+  // Termine la phase active. Archive les étapes courantes + set endedAt.
+  // **Ne lance PAS automatiquement la phase suivante** (KARMA C3.2:c flow
+  // hybride : auto-détection assiste mais ne décide pas — le debrief +
+  // lancerPhaseSuivante sont des étapes utilisateur explicites).
+  // Si opts.debrief (string) fourni → enregistre dans phase.debrief +
+  // phase.debriefAt = now.
+  // Retourne le scénario muté ou null si erreur.
+  function terminerPhase(scenarioId, opts) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.active) return null;
+    if (!Array.isArray(s.phases)) return null;
+    const phaseIdx = s.execution.currentPhaseIdx || 0;
+    const phase = s.phases[phaseIdx];
+    if (!phase) return null;
+    if (phase.endedAt) {
+      console.warn("[SecoursMode] terminerPhase : phase déjà terminée.");
+      return s;
+    }
+    // 1. Archive les étapes courantes (deep clone)
+    _archivePhaseEtapes(s, phaseIdx);
+    // 2. Marque la phase comme terminée
+    phase.endedAt = _nowIso();
+    if (opts && typeof opts.debrief === "string") {
+      phase.debrief = opts.debrief.slice(0, 5000);
+      phase.debriefAt = _nowIso();
+    }
+    _commitMutation(s);
+    return s;
+  }
+
+  // Lance la phase suivante (phaseIdx + 1). Pré-conditions :
+  //   - L'execution doit être active
+  //   - La phase actuelle DOIT être terminée (endedAt set, via terminerPhase)
+  //   - Il doit exister une phase d'index supérieur
+  // Pour chaque équipe participant à la nouvelle phase, reconstruit les
+  // étapes depuis le parcours ACTUEL du groupe (KARMA C3.1:b — Op peut
+  // avoir modifié entree/sortie/intermediaires entre les phases).
+  // Les équipes ne participant PAS à la nouvelle phase voient leur entry
+  // dans s.execution.etapes supprimée (= la vue Live Op n'affiche plus
+  // que les équipes pertinentes). Leurs étapes archivées restent dans
+  // s.execution.etapesArchive pour les rapports.
+  // Retourne la phase suivante mutée OU null si erreur.
+  function lancerPhaseSuivante(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.active) return null;
+    if (!Array.isArray(s.phases)) return null;
+    const currentIdx = s.execution.currentPhaseIdx || 0;
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= s.phases.length) {
+      console.warn("[SecoursMode] lancerPhaseSuivante : pas de phase suivante.");
+      return null;
+    }
+    const currentPhase = s.phases[currentIdx];
+    if (!currentPhase || !currentPhase.endedAt) {
+      console.warn("[SecoursMode] lancerPhaseSuivante : phase actuelle non terminée. Appeler terminerPhase d'abord.");
+      return null;
+    }
+    const nextPhase = s.phases[nextIdx];
+    if (!nextPhase) return null;
+    // 1. Pour chaque équipe participant à la nouvelle phase, rebuild les
+    //    étapes depuis le parcours ACTUEL. KARMA C3.1:b — les modifs de
+    //    parcours faites par l'Op entre P1 et P2 sont prises en compte.
+    const newEtapes = {};
+    const participants = _listerEquipesPhase(s, nextIdx);
+    participants.forEach(function(g) {
+      newEtapes[g.id] = _buildEtapesPourEquipe(g);
+    });
+    // Préserve _notes_libres si présent (mode secouriste libre, indépendant
+    // des équipes)
+    if (s.execution.etapes && s.execution.etapes._notes_libres) {
+      newEtapes._notes_libres = s.execution.etapes._notes_libres;
+    }
+    s.execution.etapes = newEtapes;
+    // 2. Met à jour l'index de phase active + startedAt nouvelle phase
+    s.execution.currentPhaseIdx = nextIdx;
+    nextPhase.startedAt = _nowIso();
+    // 3. Reset flag d'auto-détection pour permettre un nouveau toast quand
+    //    la nouvelle phase sera prête à clore
+    if (s.execution._phaseReadyToastShownForIdx === currentIdx) {
+      delete s.execution._phaseReadyToastShownForIdx;
+    }
+    // 4. Reset focus stepper Live (cohérent avec lancerExecution hotfix11)
+    _liveEquipeFocusIdx     = 0;
+    _liveEquipeFreshSession = true;
+    _commitMutation(s);
+    return nextPhase;
+  }
+
   // Toggle de participation d'une équipe à une phase (modèle hybride 1:c).
   // participe=true → ajoute si absent · participe=false → retire si présent.
   // Idempotent. Retourne true si la phase a été modifiée, false sinon.
@@ -870,6 +1015,28 @@
       et.completedAt = partial.completedAt;
     }
     _commitMutation(s);
+    // 🆕 v1.29.0 C3 — Watcher auto-détection (KARMA C3.2:a + C3.2:c hybride) :
+    // si la mutation vient de compléter une étape sortie ET que toutes les
+    // équipes participantes de la phase active ont leur sortie completée,
+    // déclenche un toast Op "Phase prête à clore" (qu'une seule fois par
+    // phase pour ne pas spammer).
+    // Conditions d'affichage du toast :
+    //   - role Operateur (les équipiers ne peuvent pas terminer une phase)
+    //   - Multi-phases (phases.length >= 2) — pas de pollution mono-phase
+    //   - Pas déjà affiché pour cette phase (flag _phaseReadyToastShownForIdx)
+    try {
+      const phaseIdx = s.execution.currentPhaseIdx || 0;
+      const isOp = (s.execution.role === "operateur");
+      const isMulti = Array.isArray(s.phases) && s.phases.length >= 2;
+      const alreadyShown = (s.execution._phaseReadyToastShownForIdx === phaseIdx);
+      if (isOp && isMulti && !alreadyShown && _phaseEstPretAClore(s)) {
+        s.execution._phaseReadyToastShownForIdx = phaseIdx;
+        _commitMutation(s);
+        // Toast assistant non bloquant — l'Op clique pour ouvrir le debrief.
+        // Ne ferme PAS auto, important : l'Op doit volontairement confirmer.
+        _toast("✅ Toutes les équipes sont sorties — la phase est prête à clore. Ouvre la vue Live Opérateur pour passer au debrief.", "info");
+      }
+    } catch(e) { /* swallow watcher errors */ }
     return et;
   }
 
@@ -5042,6 +5209,226 @@
     });
   }
 
+  // 🆕 v1.29.0 C3 — Modale "📝 Debrief de la phase". Affichée depuis
+  // (a) le bouton "✓ Phase terminée" du footer Live Op
+  // (b) le toast auto-détection "phase prête à clore" (KARMA C3.2:c)
+  //
+  // Flow :
+  //  1. Textarea pour debrief libre (5000 chars max)
+  //  2. Boutons : Annuler / "✓ Terminer la phase"
+  //  3. Si terminer + il existe une phase suivante → enchaîne sur modale
+  //     "🚀 Lancer la phase suivante ?"
+  //  4. Si terminer + pas de phase suivante → confirme arrêt complet ?
+  function _afficherModaleDebrief(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution || !s.execution.active) return;
+    if (!Array.isArray(s.phases)) return;
+    const phaseIdx = s.execution.currentPhaseIdx || 0;
+    const phase = s.phases[phaseIdx];
+    if (!phase) return;
+
+    // Cleanup d'une modale précédente
+    const oldModal = document.getElementById("kta-secours-debrief-modal");
+    if (oldModal) oldModal.remove();
+
+    const aSuivante = (phaseIdx + 1 < s.phases.length);
+    const nextPhase = aSuivante ? s.phases[phaseIdx + 1] : null;
+    const equipesActuelles = _listerEquipesPhase(s, phaseIdx);
+    const equipesSuivantes = nextPhase ? _listerEquipesPhase(s, phaseIdx + 1) : [];
+
+    const existingDebrief = phase.debrief || "";
+
+    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-debrief-modal">' +
+                 '<div class="kta-readme-modal-boite" style="max-width:600px;height:auto;max-height:90vh;">' +
+                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(140,180,255,0.40);">' +
+                     '<h2>📝 Terminer la phase « ' + _escHtml(phase.nom) + ' »</h2>' +
+                     '<button class="kta-readme-modal-close" data-action="close-debrief-modal">✕</button>' +
+                   '</div>' +
+                   '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
+                     '<p class="kta-secours-hint" style="margin-top:0;">' +
+                       'Capture ici les enseignements de la phase : équipes rentrées, ' +
+                       'points trouvés, zones à explorer en priorité, contraintes apparues. ' +
+                       'Ce debrief sera intercalé dans le rapport final entre les sections ' +
+                       'de chaque phase.' +
+                     '</p>' +
+                     '<div class="kta-secours-form-row">' +
+                       '<label for="kta-sec-debrief-text"><strong>Notes de debrief</strong>' +
+                         ' <span class="kta-secours-hint" style="font-weight:normal;">(facultatif — 5000 caractères max)</span>' +
+                       '</label>' +
+                       '<textarea id="kta-sec-debrief-text" rows="8" maxlength="5000" style="width:100%;box-sizing:border-box;" placeholder="Ex : Toutes les équipes sont rentrées, zone Nord-Est inexplorée, points P3 et P7 bloqués...">' + _escHtml(existingDebrief) + '</textarea>' +
+                     '</div>' +
+                     '<div class="kta-secours-debrief-equipes" style="margin-top:14px;">' +
+                       '<div style="font-size:13px;color:#8892a4;margin-bottom:6px;">' +
+                         '<strong>Équipes de la phase actuelle (' + equipesActuelles.length + ')</strong>' +
+                       '</div>' +
+                       '<div style="font-size:12px;color:#a8b3c8;">' +
+                         (equipesActuelles.length > 0
+                           ? equipesActuelles.map(function(g) { return _escHtml(g.nom); }).join(" · ")
+                           : '<em>Aucune équipe</em>') +
+                       '</div>';
+    if (aSuivante) {
+      html += '<div style="margin-top:10px;padding:10px;background:rgba(140,180,255,0.10);border-left:3px solid rgba(140,180,255,0.55);border-radius:4px;">' +
+                '<div style="font-size:13px;color:#8cb4ff;margin-bottom:4px;">' +
+                  '➡️ <strong>Phase suivante :</strong> ' + _escHtml(nextPhase.nom) +
+                '</div>' +
+                '<div style="font-size:12px;color:#a8b3c8;">' +
+                  equipesSuivantes.length + ' équipe' + (equipesSuivantes.length > 1 ? 's' : '') + ' assignée' + (equipesSuivantes.length > 1 ? 's' : '') + ' : ' +
+                  (equipesSuivantes.length > 0
+                    ? equipesSuivantes.map(function(g) { return _escHtml(g.nom); }).join(" · ")
+                    : '<em>aucune équipe encore — utilise « ✏️ Éditer » sur la phase pour en assigner</em>') +
+                '</div>' +
+              '</div>';
+    } else {
+      html += '<div style="margin-top:10px;padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
+                '⚠️ Aucune phase suivante n\'existe. Terminer cette phase clôt l\'ensemble du plan ' +
+                '(équivalent « ⏹️ Terminer le plan »).' +
+              '</div>';
+    }
+    html += '</div></div>' +
+                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-debrief-modal">Annuler</button>' +
+                     '<button class="kta-btn kta-btn-primary" data-action="confirm-debrief-modal">' +
+                       (aSuivante ? '✓ Terminer la phase' : '⏹️ Terminer le plan') +
+                     '</button>' +
+                   '</div>' +
+                 '</div>' +
+               '</div>';
+    document.body.insertAdjacentHTML("beforeend", html);
+    const modal = document.getElementById("kta-secours-debrief-modal");
+    if (!modal) return;
+    const textArea = modal.querySelector("#kta-sec-debrief-text");
+    if (textArea) textArea.focus();
+
+    function _closeModal() {
+      if (modal && modal.parentNode) modal.remove();
+      document.removeEventListener("keydown", _onEsc);
+    }
+    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
+    document.addEventListener("keydown", _onEsc);
+    modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
+
+    modal.addEventListener("click", function(e) {
+      const action = e.target.getAttribute && e.target.getAttribute("data-action");
+      if (!action) return;
+      if (action === "close-debrief-modal" || action === "cancel-debrief-modal") {
+        _closeModal();
+      } else if (action === "confirm-debrief-modal") {
+        const debriefText = textArea ? textArea.value : "";
+        // 1. Termine la phase actuelle (archive + endedAt + debrief)
+        terminerPhase(scenarioId, { debrief: debriefText });
+        _closeModal();
+        if (aSuivante) {
+          // 2a. Enchaîne sur "Lancer phase suivante ?" via une 2e modale courte
+          _afficherModaleLancerPhaseSuivante(scenarioId);
+        } else {
+          // 2b. Pas de phase suivante → propose d'arrêter complètement
+          if (window.confirm("Phase « " + phase.nom + " » terminée.\n\nAucune phase suivante n'existe.\n\nArrêter complètement le plan de secours ?\n\n(Tu peux aussi créer une nouvelle phase depuis la vue Live avant d'arrêter.)")) {
+            arreterExecution(scenarioId);
+            _toast("⏹️ Plan de secours terminé.", "info");
+          } else {
+            _toast("✓ Phase « " + phase.nom + " » terminée. Crée une phase suivante ou arrête manuellement.", "info");
+          }
+          if (_activeView) _switchView(_activeView);
+        }
+      }
+    });
+  }
+
+  // 🆕 v1.29.0 C3 — Mini-modale "🚀 Lancer la phase suivante ?" enchaînée
+  // après le debrief. Affiche un récap de la phase qui va démarrer + 2
+  // boutons (Plus tard / Démarrer).
+  function _afficherModaleLancerPhaseSuivante(scenarioId) {
+    const s = get(scenarioId);
+    if (!s || !s.execution) return;
+    const currentIdx = s.execution.currentPhaseIdx || 0;
+    const nextIdx = currentIdx + 1;
+    if (nextIdx >= s.phases.length) return;
+    const nextPhase = s.phases[nextIdx];
+    if (!nextPhase) return;
+    const equipes = _listerEquipesPhase(s, nextIdx);
+
+    const oldModal = document.getElementById("kta-secours-launchnext-modal");
+    if (oldModal) oldModal.remove();
+
+    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-launchnext-modal">' +
+                 '<div class="kta-readme-modal-boite" style="max-width:480px;height:auto;max-height:90vh;">' +
+                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(110,226,135,0.40);">' +
+                     '<h2>🚀 Lancer la phase suivante ?</h2>' +
+                     '<button class="kta-readme-modal-close" data-action="close-launchnext">✕</button>' +
+                   '</div>' +
+                   '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
+                     '<div style="margin-bottom:12px;">' +
+                       '<div style="font-size:15px;color:#e8eaf0;margin-bottom:6px;">' +
+                         '<strong>' + _escHtml(nextPhase.nom) + '</strong>' +
+                       '</div>' +
+                       '<div style="font-size:13px;color:#8892a4;">' +
+                         equipes.length + ' équipe' + (equipes.length > 1 ? 's' : '') + ' participante' + (equipes.length > 1 ? 's' : '') +
+                       '</div>' +
+                     '</div>';
+    if (equipes.length === 0) {
+      html += '<div style="padding:10px;background:rgba(244,197,66,0.10);border-left:3px solid rgba(244,197,66,0.55);border-radius:4px;font-size:12px;color:#f4c542;">' +
+                '⚠️ Aucune équipe n\'est assignée à cette phase. La vue Live sera vide. ' +
+                'Utilise « Plus tard » et passe par « ✏️ Éditer » sur la phase pour assigner des équipes avant.' +
+              '</div>';
+    } else {
+      html += '<div style="font-size:12px;color:#a8b3c8;margin-bottom:6px;">Équipes :</div>' +
+              '<div style="font-size:13px;color:#e8eaf0;">' +
+                equipes.map(function(g) {
+                  const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
+                  return '<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px;">' +
+                           '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + couleur.hex + ';"></span>' +
+                           _escHtml(g.nom) +
+                         '</span>';
+                }).join("") +
+              '</div>' +
+              '<p class="kta-secours-hint" style="margin-top:10px;">' +
+                'Les étapes seront reconstruites à partir du parcours <strong>actuel</strong> de ' +
+                'chaque équipe (entrée + intermédiaires + sortie). Si tu as modifié les parcours ' +
+                'entre les phases, les nouvelles étapes en tiennent compte.' +
+              '</p>';
+    }
+    html += '</div>' +
+                   '<div class="kta-readme-modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid rgba(255,255,255,0.08);">' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-launchnext">Plus tard</button>' +
+                     '<button class="kta-btn kta-btn-primary" data-action="confirm-launchnext"' + (equipes.length === 0 ? ' disabled' : '') + '>' +
+                       '🚀 Démarrer ' + _escHtml(nextPhase.nom) +
+                     '</button>' +
+                   '</div>' +
+                 '</div>' +
+               '</div>';
+    document.body.insertAdjacentHTML("beforeend", html);
+    const modal = document.getElementById("kta-secours-launchnext-modal");
+    if (!modal) return;
+
+    function _closeModal() {
+      if (modal && modal.parentNode) modal.remove();
+      document.removeEventListener("keydown", _onEsc);
+      // Quoi qu'il arrive, re-render la vue pour refléter la nouvelle phase
+      // (si lancée) ou l'état "phase terminée" en attente.
+      if (_activeView) _switchView(_activeView);
+    }
+    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
+    document.addEventListener("keydown", _onEsc);
+    modal.addEventListener("click", function(e) { if (e.target === modal) _closeModal(); });
+
+    modal.addEventListener("click", function(e) {
+      const action = e.target.getAttribute && e.target.getAttribute("data-action");
+      if (!action) return;
+      if (action === "close-launchnext" || action === "cancel-launchnext") {
+        _toast("✓ Phase terminée. Lancera la phase suivante quand tu seras prêt.", "info");
+        _closeModal();
+      } else if (action === "confirm-launchnext") {
+        const launched = lancerPhaseSuivante(scenarioId);
+        if (launched) {
+          _toast("🚀 « " + launched.nom + " » démarrée.", "info");
+        } else {
+          _toast("⚠️ Échec du lancement de la phase suivante.", "error");
+        }
+        _closeModal();
+      }
+    });
+  }
+
   function _renderEditView() {
     const s = get(_currentScenarioId);
     if (!s) {
@@ -5768,9 +6155,21 @@
               // 🆕 v1.29.0 C2 — Ajout phase à chaud (KARMA C2.2:c). Permet à
               // l'Op de planifier la phase suivante pendant que la phase courante
               // tourne, sans passer par la vue Edit.
-              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="Créer une nouvelle phase. Tu choisiras les équipes qui y participent ; la transition entre phases se fera depuis le bouton « ✓ Phase terminée » (C3, à venir).">' +
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="Créer une nouvelle phase. Tu choisiras les équipes qui y participent ; la transition se fait via « ✓ Phase terminée » + debrief.">' +
                 '➕ Ajouter une phase' +
               '</button>' +
+              // 🆕 v1.29.0 C3 — "✓ Phase terminée" : ouvre la modale debrief.
+              // Visible UNIQUEMENT si multi-phase (KARMA C2.1:a — pas de
+              // pollution UI si scénario mono-phase) et UNIQUEMENT en vue Op
+              // (KARMA 7:a — prérogative PC). Liseré vert discret si la phase
+              // est détectée prête à clore (auto-détection KARMA C3.2:a).
+              (Array.isArray(s.phases) && s.phases.length >= 2
+                ? '<button class="kta-btn kta-btn-phase-end kta-btn-sm' +
+                  (_phaseEstPretAClore(s) ? ' kta-btn-phase-end-ready' : '') +
+                  '" data-action="terminer-phase" title="Archiver la phase courante + saisir le debrief + (optionnel) enchaîner sur la phase suivante.">' +
+                    '✓ Phase terminée' +
+                  '</button>'
+                : '') +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
               '</button>' +
@@ -7095,6 +7494,13 @@
         _ouvrirImportRapportEquipePicker();
       });
     });
+    // 🆕 v1.29.0 C3 — "✓ Phase terminée" : ouvre la modale debrief, puis
+    // si OK + phase suivante existante → enchaîne sur lancerPhaseSuivante.
+    corps.querySelectorAll('[data-action="terminer-phase"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _afficherModaleDebrief(s.id);
+      });
+    });
   }
 
   // Mini-modale read-only détails équipe pour mode Opérateur
@@ -8343,12 +8749,20 @@
     groupeParticipeAPhase:  function(scenarioId, equipeId, phaseIdx) {
       return _groupeParticipeAPhase(get(scenarioId), equipeId, phaseIdx);
     },
-    // Mutations (C2) — les transitions (terminerPhase, lancerPhaseSuivante,
-    // debrief) viendront en C3.
+    // Mutations (C2) :
     creerPhase:             creerPhase,
     renommerPhase:          renommerPhase,
     supprimerPhase:         supprimerPhase,
     affecterEquipeAPhase:   affecterEquipeAPhase,
+    // 🆕 v1.29.0 C3 — Transitions + debrief + lecture archive
+    terminerPhase:          terminerPhase,
+    lancerPhaseSuivante:    lancerPhaseSuivante,
+    getArchivedEtapes:      function(scenarioId, phaseIdx, equipeId) {
+      return _getArchivedEtapes(get(scenarioId), phaseIdx, equipeId);
+    },
+    isPhasePretAClore:      function(scenarioId) {
+      return _phaseEstPretAClore(get(scenarioId));
+    },
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,
     MAX_SCENARIOS:          MAX_SCENARIOS,

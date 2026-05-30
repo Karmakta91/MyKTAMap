@@ -19976,6 +19976,53 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-weight: 700;
 }
 
+/* 🆕 v1.29.0 C3 — Bouton "✓ Phase terminée" en footer Live Op. Style
+   ambré sobre pour différencier des actions destructives (rouge) et des
+   actions de navigation (gris/bleu). Liseré vert pulsant si l'auto-
+   détection KARMA C3.2:a a marqué la phase comme prête à clore (toutes
+   les équipes ont leur étape sortie completée). */
+.kta-btn-phase-end {
+  background: rgba(244, 197, 66, 0.14);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.45);
+  font-weight: 600;
+}
+.kta-btn-phase-end:hover {
+  background: rgba(244, 197, 66, 0.26);
+  border-color: rgba(244, 197, 66, 0.75);
+}
+.kta-btn-phase-end-ready {
+  background: rgba(110, 226, 135, 0.18);
+  color: #6ee287;
+  border-color: rgba(110, 226, 135, 0.65);
+  box-shadow: 0 0 0 0 rgba(110, 226, 135, 0.55);
+  animation: kta-phase-end-pulse 1.8s ease-in-out infinite;
+}
+@keyframes kta-phase-end-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(110, 226, 135, 0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(110, 226, 135, 0); }
+}
+.kta-btn-phase-end-ready:hover {
+  background: rgba(110, 226, 135, 0.28);
+  border-color: rgba(110, 226, 135, 0.85);
+}
+body.kta-theme-light .kta-btn-phase-end,
+html.kta-theme-light .kta-btn-phase-end {
+  background: rgba(217, 168, 46, 0.16) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  border-color: rgba(217, 168, 46, 0.60) !important;
+}
+body.kta-theme-light .kta-btn-phase-end:hover,
+html.kta-theme-light .kta-btn-phase-end:hover {
+  background: rgba(217, 168, 46, 0.30) !important;
+}
+body.kta-theme-light .kta-btn-phase-end-ready,
+html.kta-theme-light .kta-btn-phase-end-ready {
+  background: rgba(46, 125, 64, 0.18) !important;
+  color: #2e7d40 !important;
+  border-color: rgba(46, 125, 64, 0.70) !important;
+}
+
 /* 🆕 v1.29.0 C2 — Badge "Phase X/N" dans les headers Live (KARMA C2.1:a :
    masqué si phases.length === 1, sinon discret accent ambré charte). */
 .kta-secours-live-phase-badge {
