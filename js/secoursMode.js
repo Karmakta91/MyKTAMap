@@ -69,9 +69,31 @@
 //         observations:     ""
 //       }
 //     ],
+//     // 🆕 v1.29.0 C1 — Multi-phases (Phase 1 balayage axes principaux,
+//     // Phase 2 chambres d'exploitation, etc.). Rétro-compat stricte :
+//     // un scénario v1 sans phases[] est migré au load vers 1 phase
+//     // implicite "Phase 1" qui couvre tous ses groupes.
+//     phases: [
+//       {
+//         id:        "P_<timestamp>_<rand>",
+//         idx:       0,                   // position dans phases[]
+//         nom:       "Phase 1",           // libellé custom user
+//         groupeIds: ["G_..." , ...],     // équipes assignées à CETTE phase
+//                                         // (hybride 1:c — checkbox "participe à
+//                                         //  cette phase" par équipe et par phase)
+//         startedAt: ISO | null,          // set par lancerExecution + phaseSuivante
+//         endedAt:   ISO | null,          // set par terminerPhase (C3) / arret exec
+//         debrief:   "",                  // texte libre (rempli en C3)
+//         debriefAt: ISO | null           // timestamp debrief (C3)
+//       }
+//     ],
 //     pointsCles: [
 //       { pointId | x, y, level, role, label }
-//     ]
+//     ],
+//     execution?: {
+//       // ... champs existants Phase 3 ...
+//       currentPhaseIdx: 0   // 🆕 v1.29.0 C1 — index de la phase active dans phases[]
+//     }
 //   }
 // =========================
 
@@ -228,8 +250,128 @@
     return "myktamap_secours_v1_" + planId;
   }
 
+  // ============================================================
+  // 🆕 v1.29.0 C1 — MULTI-PHASES (data model + migration v1)
+  // ============================================================
+  // KARMA validation : "Phase 1 balaye axes principaux, retour, debrief PC,
+  // Phase 2 X équipes vont en chambres d'exploitation". Choix design tranchés :
+  //   1:c → Équipes hybrides : définies au scénario, checkbox "participe à
+  //         cette phase" par phase (phase.groupeIds[]).
+  //   2:c → Transition hybride : auto-détection + toast confirmation Op (C3).
+  //   3:c → Édition de parcours équipe autorisée entre phases (C3).
+  //   4:a → Réutilise les 7+1 statuts existants (pas de pollution TABLEAU_STATUTS).
+  //   5:b → Forwarding obs équipe→PC via relai reporté à release ultérieure.
+  //   6:a → PDF global avec sections par phase + debriefs intercalés (C5).
+  //   7:a → Bouton "Terminer phase" visible Op uniquement (C3).
+  //
+  // RÉTRO-COMPAT STRICTE : un scénario v1 (pas de phases[]) est migré au load
+  // vers 1 phase implicite couvrant tous ses groupes. Pas de bump de format.
+
+  // Libellé par défaut de la phase implicite créée à la migration.
+  const PHASE_DEFAULT_NOM = "Phase 1";
+
+  // Construit une phase vide avec un id unique + idx + libellé + équipes.
+  // Utilisé par la migration ET par createScenario ET (futur C2/C3) par
+  // l'ajout de phases successives.
+  function _construirePhase(idx, nom, groupeIds) {
+    return {
+      id:        _genId("P"),
+      idx:       (typeof idx === "number" && idx >= 0) ? idx : 0,
+      nom:       (typeof nom === "string" && nom.trim()) ? nom.trim() : PHASE_DEFAULT_NOM,
+      groupeIds: Array.isArray(groupeIds) ? groupeIds.slice() : [],
+      startedAt: null,
+      endedAt:   null,
+      debrief:   "",
+      debriefAt: null
+    };
+  }
+
+  // Migration v1 → multi-phases. Idempotente — peut tourner 100 fois sans
+  // dégât : si phases[] existe déjà et est valide, on ne fait rien.
+  // Cas couverts :
+  //   - Scénario v1 sans phases[] : crée 1 phase implicite couvrant tous les
+  //     groupes. Si execution existe (Phase 3 lancée), reporte startedAt/endedAt
+  //     sur cette phase implicite (pour cohérence rapport historique).
+  //   - Scénario v1.29 avec phases[] mais sans currentPhaseIdx dans execution :
+  //     ajoute currentPhaseIdx=0 (phase active = première).
+  //   - Phases sans groupeIds ou avec groupeIds invalides : repush tous les
+  //     groupes du scénario dans phases[0] (filet de sécurité).
+  function _migrateScenarioV1ToPhases(s) {
+    if (!s || typeof s !== "object") return;
+    // Cas 1 : phases[] absente ou pas un array → crée phase implicite
+    if (!Array.isArray(s.phases) || s.phases.length === 0) {
+      const allGroupeIds = (Array.isArray(s.groupes) ? s.groupes : [])
+        .map(function(g) { return g && g.id; })
+        .filter(function(id) { return typeof id === "string"; });
+      const phase0 = _construirePhase(0, PHASE_DEFAULT_NOM, allGroupeIds);
+      // Si une execution existe déjà (scénario v1 lancé en Phase 3 historique),
+      // reporte ses timestamps sur la phase implicite. Permet aux rapports
+      // futurs (C5 PDF avec sections) d'afficher la durée correcte.
+      if (s.execution && typeof s.execution === "object") {
+        if (typeof s.execution.startedAt === "string") {
+          phase0.startedAt = s.execution.startedAt;
+        }
+        if (typeof s.execution.endedAt === "string") {
+          phase0.endedAt = s.execution.endedAt;
+        }
+      }
+      s.phases = [phase0];
+    }
+    // Cas 2 : execution existe mais currentPhaseIdx absent → set à 0
+    if (s.execution && typeof s.execution === "object"
+        && typeof s.execution.currentPhaseIdx !== "number") {
+      s.execution.currentPhaseIdx = 0;
+    }
+    // Cas 3 : filet de sécurité — si phase[0].groupeIds est vide alors qu'il
+    // y a des groupes dans le scénario, on repush (cohérence avec doctrine
+    // "1 phase implicite couvre tout v1").
+    if (s.phases.length === 1
+        && (!Array.isArray(s.phases[0].groupeIds) || s.phases[0].groupeIds.length === 0)
+        && Array.isArray(s.groupes) && s.groupes.length > 0) {
+      s.phases[0].groupeIds = s.groupes
+        .map(function(g) { return g && g.id; })
+        .filter(function(id) { return typeof id === "string"; });
+    }
+  }
+
+  // Retourne la phase active du scénario (= celle d'index execution.currentPhaseIdx).
+  // Si execution absente OU phases[] absente → retourne phases[0] (= phase implicite
+  // après migration). Si tout est cassé → null.
+  function _getCurrentPhase(s) {
+    if (!s || !Array.isArray(s.phases) || s.phases.length === 0) return null;
+    const idx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
+                ? s.execution.currentPhaseIdx
+                : 0;
+    return s.phases[idx] || s.phases[0] || null;
+  }
+
+  // Retourne la liste des objets groupes ASSIGNÉS à une phase donnée.
+  // Si phase invalide → array vide. Filtre les groupeIds qui ne matchent plus
+  // (équipe supprimée du scénario depuis = à virer du groupeIds, voir C2/C3).
+  function _listerEquipesPhase(s, phaseIdx) {
+    if (!s || !Array.isArray(s.phases) || !Array.isArray(s.groupes)) return [];
+    const phase = s.phases[phaseIdx];
+    if (!phase || !Array.isArray(phase.groupeIds)) return [];
+    return phase.groupeIds
+      .map(function(gid) {
+        return s.groupes.find(function(g) { return g.id === gid; });
+      })
+      .filter(function(g) { return g != null; });
+  }
+
+  // True si l'équipe equipeId est listée dans phases[phaseIdx].groupeIds.
+  // Tolère phase ou equipeId invalides → false.
+  function _groupeParticipeAPhase(s, equipeId, phaseIdx) {
+    if (!s || !Array.isArray(s.phases) || typeof equipeId !== "string") return false;
+    const phase = s.phases[phaseIdx];
+    if (!phase || !Array.isArray(phase.groupeIds)) return false;
+    return phase.groupeIds.indexOf(equipeId) !== -1;
+  }
+
   // Charge les scénarios depuis localStorage pour le plan courant.
   // Tolère absence (= array vide) et corruption (= reset + warn).
+  // 🆕 v1.29.0 C1 — applique la migration multi-phases à chaque scénario
+  // chargé (idempotent — pas de cycle si déjà migré).
   function _loadScenarios() {
     const key = _storageKey();
     if (!key) { _scenarios = []; return; }
@@ -246,6 +388,8 @@
       _scenarios = parsed.filter(function(s) {
         return s && typeof s === "object" && typeof s.id === "string" && typeof s.nom === "string";
       });
+      // Migration silencieuse multi-phases (rétro-compat v1 stricte)
+      _scenarios.forEach(_migrateScenarioV1ToPhases);
     } catch(e) {
       console.warn("[SecoursMode] Échec parse storage :", e);
       _scenarios = [];
@@ -347,7 +491,12 @@
         notes:           ""
       },
       groupes:    [],
-      pointsCles: []
+      pointsCles: [],
+      // 🆕 v1.29.0 C1 — Init avec 1 phase vide. Les équipes ajoutées via
+      // addGroupe seront poussées par défaut dans phases[0].groupeIds.
+      // C2 permettra de créer phases[1], phases[2], etc. avec leur propre
+      // selection d'équipes (modèle hybride 1:c).
+      phases: [_construirePhase(0, PHASE_DEFAULT_NOM, [])]
     };
     _scenarios.push(scenario);
     _commitMutation(scenario);
@@ -517,8 +666,18 @@
       pausedTotalMs:   0,
       role:            role,
       currentEquipeId: currentEquipeId,
-      etapes:          etapes
+      etapes:          etapes,
+      // 🆕 v1.29.0 C1 — Index de la phase active. C2 ajoutera l'UI pour
+      // créer phases[1+] et naviguer entre elles. C3 ajoutera transition
+      // automatique avec confirmation Op (modèle hybride 2:c).
+      currentPhaseIdx: 0
     };
+    // 🆕 v1.29.0 C1 — Set startedAt de la phase 0 au lancement initial.
+    // Si re-lancement ultérieur (cas marginal Phase 3 hotfix11), on ne touche
+    // PAS startedAt si déjà set (= préserver l'historique de la mission).
+    if (Array.isArray(s.phases) && s.phases[0] && !s.phases[0].startedAt) {
+      s.phases[0].startedAt = s.execution.startedAt;
+    }
     // 🐛 hotfix11 — Reset focus + fresh session flag pour le nouveau lancement.
     // Permet le smart-skip initial vers la 1ère étape pending au boot,
     // tout en laissant ensuite la nav user (prev/next/stepper) prendre le relai.
@@ -542,6 +701,18 @@
     }
     s.execution.active = false;
     s.execution.endedAt = _nowIso();
+    // 🆕 v1.29.0 C1 — Set endedAt sur la phase active (filet pour le cas où
+    // l'utilisateur arrête sans passer par "Terminer phase" de C3). Idempotent :
+    // si déjà set par C3, on ne touche pas.
+    if (Array.isArray(s.phases)) {
+      const idx = (typeof s.execution.currentPhaseIdx === "number")
+                  ? s.execution.currentPhaseIdx
+                  : 0;
+      const phase = s.phases[idx];
+      if (phase && !phase.endedAt) {
+        phase.endedAt = s.execution.endedAt;
+      }
+    }
     _commitMutation(s);
     return s;
   }
@@ -1089,8 +1260,39 @@
     const sc = payload.scenario;
     sc.id = _genId("secours");
     sc.updatedAt = _nowIso();
+    // 🆕 v1.29.0 C1 — Re-génération des IDs équipes + remapping cross-phases.
+    // Si le payload est multi-phases, ses phase.groupeIds[] pointent vers les
+    // anciens g.id ; on doit les ré-écrire vers les nouveaux pour préserver
+    // l'assignation équipe ↔ phase au re-import.
+    const idMap = {};   // oldId → newId
     if (Array.isArray(sc.groupes)) {
-      sc.groupes.forEach(function(g) { g.id = _genId("G"); });
+      sc.groupes.forEach(function(g) {
+        const oldId = g.id;
+        g.id = _genId("G");
+        if (typeof oldId === "string") idMap[oldId] = g.id;
+      });
+    }
+    // Remap phase.groupeIds[] avec les nouveaux IDs (sécurise re-import v1.29+)
+    let importedPhases = null;
+    if (Array.isArray(sc.phases) && sc.phases.length > 0) {
+      importedPhases = sc.phases.map(function(p, i) {
+        const mapped = (Array.isArray(p.groupeIds) ? p.groupeIds : [])
+          .map(function(oldGid) { return idMap[oldGid] || oldGid; })
+          .filter(function(id) {
+            // Garde seulement les IDs qui matchent une équipe importée
+            return sc.groupes.some(function(g) { return g.id === id; });
+          });
+        return {
+          id:        _genId("P"),
+          idx:       (typeof p.idx === "number" && p.idx >= 0) ? p.idx : i,
+          nom:       (typeof p.nom === "string" && p.nom.trim()) ? p.nom.trim() : (PHASE_DEFAULT_NOM + " " + (i + 1)),
+          groupeIds: mapped,
+          startedAt: (typeof p.startedAt === "string") ? p.startedAt : null,
+          endedAt:   (typeof p.endedAt === "string") ? p.endedAt : null,
+          debrief:   (typeof p.debrief === "string") ? p.debrief.slice(0, 5000) : "",
+          debriefAt: (typeof p.debriefAt === "string") ? p.debriefAt : null
+        };
+      });
     }
     const cleanScenario = {
       id:         sc.id,
@@ -1100,7 +1302,13 @@
       context:    sc.context && typeof sc.context === "object" ? sc.context : {},
       groupes:    Array.isArray(sc.groupes) ? sc.groupes : [],
       pointsCles: Array.isArray(sc.pointsCles) ? sc.pointsCles : []
+      // phases ajouté juste après si présent (sinon migration le créera)
     };
+    if (importedPhases) cleanScenario.phases = importedPhases;
+    // 🆕 v1.29.0 C1 — Migration explicite après push : si le payload était v1
+    // sans phases[], une phase implicite est créée couvrant toutes les équipes.
+    // Si déjà multi-phases, idempotent.
+    _migrateScenarioV1ToPhases(cleanScenario);
     _scenarios.push(cleanScenario);
     _commitMutation(cleanScenario);
     return { ok: true, scenario: cleanScenario };
@@ -2069,6 +2277,23 @@
       observations:      ""
     };
     s.groupes.push(groupe);
+    // 🆕 v1.29.0 C1 — Affecte automatiquement le nouvel équipage à la phase
+    // courante (ou phase 0 si pas d'exécution lancée). Modèle hybride 1:c :
+    // l'utilisateur pourra décocher cette équipe d'une phase ultérieure via
+    // l'UI C2 si elle n'y participe pas. Garde-fou idempotent : pas de doublon
+    // si l'ID y est déjà.
+    if (Array.isArray(s.phases) && s.phases.length > 0) {
+      const targetIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
+                        ? s.execution.currentPhaseIdx
+                        : 0;
+      const targetPhase = s.phases[targetIdx] || s.phases[0];
+      if (targetPhase) {
+        if (!Array.isArray(targetPhase.groupeIds)) targetPhase.groupeIds = [];
+        if (targetPhase.groupeIds.indexOf(groupe.id) === -1) {
+          targetPhase.groupeIds.push(groupe.id);
+        }
+      }
+    }
     _commitMutation(s);
     return groupe;
   }
@@ -2119,6 +2344,16 @@
     if (idx < 0) return false;
     s.groupes.splice(idx, 1);
     if (_focusedGroupeId === groupeId) _focusedGroupeId = null;
+    // 🆕 v1.29.0 C1 — Nettoyage cross-phases : retire l'id de tous les
+    // groupeIds[] de toutes les phases (sinon affichage de phantôme dans
+    // l'UI C2). Idempotent — splice ne fait rien si pas trouvé.
+    if (Array.isArray(s.phases)) {
+      s.phases.forEach(function(phase) {
+        if (!phase || !Array.isArray(phase.groupeIds)) return;
+        const phaseIdx = phase.groupeIds.indexOf(groupeId);
+        if (phaseIdx >= 0) phase.groupeIds.splice(phaseIdx, 1);
+      });
+    }
     _commitMutation(s);
     return true;
   }
@@ -7705,10 +7940,22 @@
     setFocus:               setFocus,
     // Events
     onChange:               onChange,
+    // 🆕 v1.29.0 C1 — Multi-phases : helpers lecture seule pour l'UI C2/C3.
+    // Les mutations (créer une phase, terminer une phase, debrief) viendront
+    // en C3 sous forme de méthodes dédiées (terminerPhase, lancerPhaseSuivante,
+    // ...) plutôt que via updateScenario direct, pour garantir les invariants.
+    getCurrentPhase:        function(scenarioId) { return _getCurrentPhase(get(scenarioId)); },
+    listerEquipesPhase:     function(scenarioId, phaseIdx) {
+      return _listerEquipesPhase(get(scenarioId), phaseIdx);
+    },
+    groupeParticipeAPhase:  function(scenarioId, equipeId, phaseIdx) {
+      return _groupeParticipeAPhase(get(scenarioId), equipeId, phaseIdx);
+    },
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,
     MAX_SCENARIOS:          MAX_SCENARIOS,
-    VITESSE_MPS_DEFAUT:     VITESSE_MPS_DEFAUT
+    VITESSE_MPS_DEFAUT:     VITESSE_MPS_DEFAUT,
+    PHASE_DEFAULT_NOM:      PHASE_DEFAULT_NOM
   };
 
   console.log("[SecoursMode] Module chargé.");
