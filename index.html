@@ -3180,13 +3180,30 @@
       async function _refreshProfileDetailsStats() {
         const statsEl = document.getElementById("kta-profile-details-stats");
         if (!statsEl) return;
+        // 🆕 v1.29.0-fix2 (KARMA "si je relance, mes plans srv disparaissent
+        // mais ils restent dans les stats profil — 2 plans en trop") :
+        // helper qui retourne la liste des plans filtrée selon la pref
+        // skipServerPlans. Utilisé pour les 2 compteurs ci-dessous (nbPlans
+        // + boucle photos POI) qui lisaient le localStorage brut sans
+        // appliquer le filtre — divergence avec _hydrateProfileBarStats et
+        // la table détaillée plus bas qui filtraient déjà.
+        function _getPlansFiltered() {
+          let plans = [];
+          try {
+            const raw = localStorage.getItem("myktamap_plans");
+            const parsed = raw ? JSON.parse(raw) : null;
+            if (parsed && Array.isArray(parsed.plans)) plans = parsed.plans;
+          } catch(e) {}
+          if (typeof window._loaderSkipServerPlans === "function"
+              && window._loaderSkipServerPlans()) {
+            plans = plans.filter(function(p) { return p.type !== "server"; });
+          }
+          return plans;
+        }
         // Compteurs simples sync
         let nbPlans = 0, nbFavoris = 0, nbSessions = 0, nbBackups = 0;
-        try {
-          const raw = localStorage.getItem("myktamap_plans");
-          const parsed = raw ? JSON.parse(raw) : null;
-          if (parsed && Array.isArray(parsed.plans)) nbPlans = parsed.plans.length;
-        } catch(e) {}
+        const _plansForCount = _getPlansFiltered();
+        nbPlans = _plansForCount.length;
         try {
           const favRaw = localStorage.getItem("myktamap_favoris_v1");
           if (favRaw) {
@@ -3207,20 +3224,17 @@
         if (window.SessionBackups && window.SessionBackups.listAll) {
           try { const arr = await window.SessionBackups.listAll(); nbBackups = arr.length; } catch(e) {}
         }
-        // Photos POI (count + bytes total)
+        // Photos POI (count + bytes total) — utilise la liste FILTRÉE
+        // (cohérence avec le compteur nbPlans ci-dessus). Cf v1.29.0-fix2.
         let nbPhotos = 0, photosBytes = 0;
         if (window.MyKTAMapPhotos && window.MyKTAMapPhotos.getAllPhotosForPlan) {
           try {
-            const raw = localStorage.getItem("myktamap_plans");
-            const parsed = raw ? JSON.parse(raw) : null;
-            if (parsed && Array.isArray(parsed.plans)) {
-              for (const p of parsed.plans) {
-                if (!p.id) continue;
-                const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
-                if (Array.isArray(photos)) {
-                  nbPhotos += photos.length;
-                  photos.forEach(function(ph) { photosBytes += (ph.size || 0); });
-                }
+            for (const p of _plansForCount) {
+              if (!p.id) continue;
+              const photos = await window.MyKTAMapPhotos.getAllPhotosForPlan(p.id);
+              if (Array.isArray(photos)) {
+                nbPhotos += photos.length;
+                photos.forEach(function(ph) { photosBytes += (ph.size || 0); });
               }
             }
           } catch(e) {}
