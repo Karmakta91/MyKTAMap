@@ -398,7 +398,33 @@ Le fichier `index.json` doit ressembler à :
 
 ## 5. Configuration Nginx
 
-### 5.1 Création du fichier de site
+### 5.1 Template prêt à l'emploi (recommandé)
+
+Le repo contient déjà **`docs/nginx-myktamap.conf`** — un template
+complet et commenté que vous pouvez copier tel quel, puis adapter via
+les `MKTM_TODO` à l'intérieur :
+
+```bash
+# Copie du template
+sudo cp /var/www/myktamap/docs/nginx-myktamap.conf \
+        /etc/nginx/sites-available/myktamap.conf
+
+# Édition — cherchez "MKTM_TODO" pour lister tous les points à remplacer
+sudo nano /etc/nginx/sites-available/myktamap.conf
+sudo grep MKTM_TODO /etc/nginx/sites-available/myktamap.conf
+```
+
+Les `MKTM_TODO` couvrent : nom DNS (`server_name`), chemin de l'app
+(`root`), chemins des certificats (selon votre choix A ou B), restrictions
+IP éventuelles. Le template choisit par défaut l'**option B (auto-signé
+local)** — pour l'option A Let's Encrypt, décommentez le bloc concerné
+et commentez le bloc B.
+
+Puis sautez directement à §5.2.
+
+### 5.2 OU configuration manuelle (sans le template)
+
+Si vous préférez tout écrire vous-même :
 
 ```bash
 sudo nano /etc/nginx/sites-available/myktamap.conf
@@ -653,7 +679,8 @@ chargement (badge clignotant en bas de la home).
 
 - **Repo GitHub** : https://github.com/Karmakta91/MyKTAMap
 - **Page de transparence réseau** : `docs/NETWORK_AUDIT.html` (servie par votre instance)
-- **Conf Nginx CSP commentée** : `docs/nginx-csp-config.conf`
+- **Template Nginx prêt à l'emploi** : `docs/nginx-myktamap.conf` (cf. §5.1)
+- **Conf Nginx CSP commentée** (incluse par le template) : `docs/nginx-csp-config.conf`
 - **Doc utilisateur** : `docs/README_USER.md` (accessible aussi depuis l'app via 📖)
 - **Contact pro** : `contact@myktamap.fr` — pour usage commercial, demande de licence, intégration spécifique, ou ouverture de prestation d'installation
 
