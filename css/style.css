@@ -19941,6 +19941,165 @@ html.kta-theme-light .kta-secours-pick-result strong {
   font-weight: 700;
 }
 
+/* 🆕 v1.29.0 C2 — Badge "Phase X/N" dans les headers Live (KARMA C2.1:a :
+   masqué si phases.length === 1, sinon discret accent ambré charte). */
+.kta-secours-live-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  padding: 2px 8px;
+  background: rgba(244, 197, 66, 0.14);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.40);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: help;
+}
+.kta-secours-live-phase-badge-icon {
+  font-size: 11px;
+  opacity: 0.85;
+}
+.kta-secours-live-phase-badge-label {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+}
+.kta-secours-live-phase-badge-pos {
+  opacity: 0.78;
+  font-size: 11px;
+  font-family: ui-monospace, "Cascadia Mono", "Source Code Pro", monospace;
+}
+
+/* 🆕 v1.29.0 C2 — Section "📋 Phases (N)" en vue Edit : liste éditable
+   des phases avec statut + nb équipes + boutons ✏️ Éditer / 🗑️. */
+.kta-secours-phases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.kta-secours-phase-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "head    actions"
+    "meta    actions";
+  gap: 4px 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 6px;
+}
+.kta-secours-phase-row-head {
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #e8eaf0;
+}
+.kta-secours-phase-row-icon {
+  opacity: 0.7;
+  font-size: 13px;
+}
+.kta-secours-phase-row-nom {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-secours-phase-row-meta {
+  grid-area: meta;
+  font-size: 12px;
+  color: #8892a4;
+}
+.kta-secours-phase-row-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.kta-secours-phase-status-active {
+  color: #6ee287;
+  font-weight: 600;
+  font-size: 12px;
+}
+.kta-secours-phase-status-end {
+  color: #8cb4ff;
+  font-weight: 600;
+  font-size: 12px;
+}
+.kta-secours-phase-status-paused {
+  color: #ffb380;
+  font-weight: 600;
+  font-size: 12px;
+}
+.kta-secours-phase-status-pending {
+  color: #8892a4;
+  font-size: 12px;
+}
+
+/* 🆕 v1.29.0 C2 — Modale création / édition phase : liste de checkboxes
+   pour assigner les équipes participantes. */
+.kta-secours-phase-equipes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+.kta-secours-phase-equipe-cb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+.kta-secours-phase-equipe-cb:hover {
+  background: rgba(244, 197, 66, 0.08);
+}
+.kta-secours-phase-equipe-cb input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+}
+.kta-secours-phase-equipe-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.30);
+}
+.kta-secours-phase-equipe-nom {
+  font-size: 13px;
+  color: #e8eaf0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.kta-secours-phase-equipe-level {
+  font-size: 11px;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.12);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, "Cascadia Mono", monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ─── Stepper visuel (vue Équipe) ─── */
 .kta-secours-live-stepper {
   display: flex;
@@ -20442,6 +20601,65 @@ html.kta-theme-light .kta-secours-live-header-meta {
 body.kta-theme-light .kta-secours-live-header-timer,
 html.kta-theme-light .kta-secours-live-header-timer {
   color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+
+/* 🆕 v1.29.0 C2 — Thème clair pour les nouveaux éléments multi-phases */
+body.kta-theme-light .kta-secours-live-phase-badge,
+html.kta-theme-light .kta-secours-live-phase-badge {
+  background: rgba(217, 168, 46, 0.16) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  border-color: rgba(217, 168, 46, 0.55) !important;
+}
+body.kta-theme-light .kta-secours-phase-row,
+html.kta-theme-light .kta-secours-phase-row {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: rgba(217, 168, 46, 0.35) !important;
+}
+body.kta-theme-light .kta-secours-phase-row-head,
+html.kta-theme-light .kta-secours-phase-row-head {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-phase-row-meta,
+html.kta-theme-light .kta-secours-phase-row-meta {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-phase-status-active,
+html.kta-theme-light .kta-secours-phase-status-active {
+  color: #2e7d40 !important;
+}
+body.kta-theme-light .kta-secours-phase-status-end,
+html.kta-theme-light .kta-secours-phase-status-end {
+  color: #1e5f99 !important;
+}
+body.kta-theme-light .kta-secours-phase-status-paused,
+html.kta-theme-light .kta-secours-phase-status-paused {
+  color: #b8651a !important;
+}
+body.kta-theme-light .kta-secours-phase-status-pending,
+html.kta-theme-light .kta-secours-phase-status-pending {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-secours-phase-equipes-list,
+html.kta-theme-light .kta-secours-phase-equipes-list {
+  background: var(--kta-light-bg-deep, #e5dcc5) !important;
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+body.kta-theme-light .kta-secours-phase-equipe-cb,
+html.kta-theme-light .kta-secours-phase-equipe-cb {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+}
+body.kta-theme-light .kta-secours-phase-equipe-cb:hover,
+html.kta-theme-light .kta-secours-phase-equipe-cb:hover {
+  background: rgba(217, 168, 46, 0.18) !important;
+}
+body.kta-theme-light .kta-secours-phase-equipe-nom,
+html.kta-theme-light .kta-secours-phase-equipe-nom {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-secours-phase-equipe-level,
+html.kta-theme-light .kta-secours-phase-equipe-level {
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+  background: rgba(217, 168, 46, 0.18) !important;
 }
 body.kta-theme-light .kta-secours-live-etape,
 html.kta-theme-light .kta-secours-live-etape,

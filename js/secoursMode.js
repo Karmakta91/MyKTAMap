@@ -224,6 +224,10 @@
   // Modale DOM root (= null si fermée). Idempotency : ouvrir() ferme l'ex avant
   // de créer la nouvelle.
   let _modal = null;
+  // 🆕 v1.29.0 C2 — Tracker de la vue active. Mis à jour par _switchView.
+  // Utilisé par _afficherModalePhase pour re-render la bonne vue après une
+  // mutation (le bouton "➕ Ajouter une phase" est présent en Edit ET en Live).
+  let _activeView = null;
 
   // Layer Leaflet qui contient l'overlay des zones d'équipes sur la carte.
   // Créé à renderOverlay, nettoyé à clearOverlay (et au plan switch).
@@ -366,6 +370,110 @@
     const phase = s.phases[phaseIdx];
     if (!phase || !Array.isArray(phase.groupeIds)) return false;
     return phase.groupeIds.indexOf(equipeId) !== -1;
+  }
+
+  // 🆕 v1.29.0 C2 — Mutations phases (encapsulées pour garantir invariants).
+  // ───────────────────────────────────────────────────────────────────
+
+  // Crée une nouvelle phase à la fin du tableau (idx auto). Retourne la phase
+  // créée OU null si scénario introuvable. nom par défaut = "Phase N+1".
+  // groupeIds = équipes assignées (peut être vide, l'Op peut cocher ensuite).
+  function creerPhase(scenarioId, nom, groupeIds) {
+    const s = get(scenarioId);
+    if (!s) return null;
+    if (!Array.isArray(s.phases)) s.phases = [];
+    const nextIdx = s.phases.length;
+    const safeName = (typeof nom === "string" && nom.trim())
+                     ? nom.trim().slice(0, 80)
+                     : "Phase " + (nextIdx + 1);
+    // Filtre : ne garde que les groupeIds qui matchent des équipes existantes
+    const safeGroupeIds = (Array.isArray(groupeIds) ? groupeIds : [])
+      .filter(function(gid) {
+        return typeof gid === "string"
+            && s.groupes.some(function(g) { return g.id === gid; });
+      });
+    const phase = _construirePhase(nextIdx, safeName, safeGroupeIds);
+    s.phases.push(phase);
+    _commitMutation(s);
+    return phase;
+  }
+
+  // Renomme une phase (whitelist). Retourne true si OK, false sinon.
+  function renommerPhase(scenarioId, phaseIdx, nouveauNom) {
+    const s = get(scenarioId);
+    if (!s || !Array.isArray(s.phases)) return false;
+    const phase = s.phases[phaseIdx];
+    if (!phase) return false;
+    if (typeof nouveauNom !== "string") return false;
+    const safe = nouveauNom.trim().slice(0, 80);
+    if (!safe) return false;
+    phase.nom = safe;
+    _commitMutation(s);
+    return true;
+  }
+
+  // Supprime une phase. Garde-fous :
+  //   - Refuse si c'est la dernière phase (au moins 1 phase doit exister).
+  //   - Refuse si la phase est ACTIVE dans l'exécution (passer par
+  //     terminerPhase/lancerPhaseSuivante de C3 plutôt).
+  //   - Refuse si la phase a startedAt set (historique préservé).
+  // Re-numérote les idx des phases restantes.
+  function supprimerPhase(scenarioId, phaseIdx) {
+    const s = get(scenarioId);
+    if (!s || !Array.isArray(s.phases)) return false;
+    if (s.phases.length <= 1) {
+      console.warn("[SecoursMode] Refus suppression : au moins 1 phase doit exister.");
+      return false;
+    }
+    const phase = s.phases[phaseIdx];
+    if (!phase) return false;
+    // Refus si phase active dans l'exécution
+    if (s.execution && s.execution.active === true
+        && s.execution.currentPhaseIdx === phaseIdx) {
+      console.warn("[SecoursMode] Refus suppression : phase active. Utiliser terminerPhase (C3).");
+      return false;
+    }
+    // Refus si phase a déjà été démarrée (historique)
+    if (phase.startedAt) {
+      console.warn("[SecoursMode] Refus suppression : phase déjà démarrée (historique préservé).");
+      return false;
+    }
+    s.phases.splice(phaseIdx, 1);
+    // Re-numérote les idx
+    s.phases.forEach(function(p, i) { p.idx = i; });
+    // Ajuste execution.currentPhaseIdx si nécessaire (la suppression d'une
+    // phase située AVANT la phase active décale d'un cran)
+    if (s.execution && typeof s.execution.currentPhaseIdx === "number"
+        && s.execution.currentPhaseIdx > phaseIdx) {
+      s.execution.currentPhaseIdx--;
+    }
+    _commitMutation(s);
+    return true;
+  }
+
+  // Toggle de participation d'une équipe à une phase (modèle hybride 1:c).
+  // participe=true → ajoute si absent · participe=false → retire si présent.
+  // Idempotent. Retourne true si la phase a été modifiée, false sinon.
+  function affecterEquipeAPhase(scenarioId, equipeId, phaseIdx, participe) {
+    const s = get(scenarioId);
+    if (!s || !Array.isArray(s.phases) || typeof equipeId !== "string") return false;
+    const phase = s.phases[phaseIdx];
+    if (!phase) return false;
+    if (!Array.isArray(phase.groupeIds)) phase.groupeIds = [];
+    const pos = phase.groupeIds.indexOf(equipeId);
+    let changed = false;
+    if (participe && pos === -1) {
+      // Vérifie que l'équipe existe
+      if (s.groupes.some(function(g) { return g.id === equipeId; })) {
+        phase.groupeIds.push(equipeId);
+        changed = true;
+      }
+    } else if (!participe && pos !== -1) {
+      phase.groupeIds.splice(pos, 1);
+      changed = true;
+    }
+    if (changed) _commitMutation(s);
+    return changed;
   }
 
   // Charge les scénarios depuis localStorage pour le plan courant.
@@ -4582,6 +4690,7 @@
   function _switchView(view) {
     const corps = document.getElementById("kta-secours-corps");
     if (!corps) return;
+    _activeView = view;  // 🆕 v1.29.0 C2 — tracker pour re-render après mutation phase
     if (view === "list")   corps.innerHTML = _renderListView();
     if (view === "create") corps.innerHTML = _renderCreateView();
     if (view === "edit")   corps.innerHTML = _renderEditView();
@@ -4726,6 +4835,213 @@
   // ============================================================
   // VUE ÉDITION — free-form editor (3 sections : Contexte / Équipes / Export)
   // ============================================================
+  // 🆕 v1.29.0 C2 — Section "📋 Phases" pour la vue Edit.
+  // KARMA C2.2:c — bouton "➕ Ajouter une phase" toujours présent en Edit.
+  // Si 1 seule phase → hint + bouton. Si 2+ phases → liste éditable.
+  // La phase 0 n'est jamais supprimable depuis l'UI (filet vs _migration).
+  function _renderPhasesSection(s) {
+    if (!s || !Array.isArray(s.phases)) return "";
+    const nbPhases = s.phases.length;
+    const execActive = !!(s.execution && s.execution.active === true);
+    const currentIdx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
+                       ? s.execution.currentPhaseIdx : 0;
+    let html = '<details class="kta-secours-section"' + (nbPhases >= 2 ? ' open' : '') + '>' +
+                 '<summary class="kta-secours-section-titre">📋 Phases (' + nbPhases + ')</summary>' +
+                 '<div class="kta-secours-section-body">';
+    if (nbPhases <= 1) {
+      // 1 phase → juste un hint + bouton
+      html += '<p class="kta-secours-hint">' +
+                'Un scénario contient au minimum <strong>1 phase</strong>. ' +
+                'Ajoute une phase pour séquencer ton plan (ex : Phase 1 = ' +
+                'balayage des axes principaux, Phase 2 = chambres ' +
+                'd\'exploitation).' +
+              '</p>' +
+              '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
+                '➕ Ajouter une phase' +
+              '</button>';
+    } else {
+      // 2+ phases → liste éditable
+      html += '<div class="kta-secours-phases-list">';
+      s.phases.forEach(function(p, i) {
+        const isActive = (execActive && i === currentIdx);
+        const isStarted = !!p.startedAt;
+        const isEnded = !!p.endedAt;
+        const nbEquipes = (Array.isArray(p.groupeIds) ? p.groupeIds.length : 0);
+        let statutLabel = '';
+        if (isEnded) statutLabel = '<span class="kta-secours-phase-status-end">✓ Terminée</span>';
+        else if (isActive) statutLabel = '<span class="kta-secours-phase-status-active">● Active</span>';
+        else if (isStarted) statutLabel = '<span class="kta-secours-phase-status-paused">⏸ Démarrée</span>';
+        else statutLabel = '<span class="kta-secours-phase-status-pending">○ Non démarrée</span>';
+        // Bouton supprimer désactivé si phase active, démarrée, ou si c'est la seule
+        const canDelete = !isActive && !isStarted;
+        const delTitle = isActive ? 'Phase active — impossible de supprimer'
+                       : isStarted ? 'Phase déjà démarrée — historique préservé'
+                       : 'Supprimer cette phase';
+        html += '<div class="kta-secours-phase-row" data-phase-idx="' + i + '">' +
+                  '<div class="kta-secours-phase-row-head">' +
+                    '<span class="kta-secours-phase-row-icon">📋</span>' +
+                    '<span class="kta-secours-phase-row-nom"><strong>' + _escHtml(p.nom) + '</strong></span>' +
+                    statutLabel +
+                  '</div>' +
+                  '<div class="kta-secours-phase-row-meta">' +
+                    nbEquipes + ' équipe' + (nbEquipes > 1 ? 's' : '') + ' assignée' + (nbEquipes > 1 ? 's' : '') +
+                  '</div>' +
+                  '<div class="kta-secours-phase-row-actions">' +
+                    '<button class="kta-btn kta-btn-secondary kta-btn-xs" data-action="edit-phase" data-phase-idx="' + i + '" title="Renommer + assigner des équipes">' +
+                      '✏️ Éditer' +
+                    '</button>' +
+                    '<button class="kta-btn kta-btn-danger kta-btn-xs" data-action="delete-phase" data-phase-idx="' + i + '"' +
+                      (canDelete ? '' : ' disabled') + ' title="' + _escAttr(delTitle) + '">' +
+                      '🗑️' +
+                    '</button>' +
+                  '</div>' +
+                '</div>';
+      });
+      html += '</div>' +
+              '<div style="margin-top:10px;">' +
+                '<button class="kta-btn kta-btn-primary kta-btn-sm" data-action="add-phase">' +
+                  '➕ Ajouter une phase' +
+                '</button>' +
+              '</div>';
+    }
+    html += '</div></details>';
+    return html;
+  }
+
+  // 🆕 v1.29.0 C2 — Modale création / édition d'une phase. Format :
+  //   - Input texte pour le nom (par défaut "Phase N+1")
+  //   - Liste de checkboxes pour les équipes participantes (modèle hybride 1:c)
+  //   - 2 boutons : Annuler / ✓ Valider
+  // editPhaseIdx = null → création · = number → édition
+  function _afficherModalePhase(scenarioId, editPhaseIdx) {
+    const s = get(scenarioId);
+    if (!s) return;
+    const isEdit = (typeof editPhaseIdx === "number");
+    const existingPhase = isEdit ? s.phases[editPhaseIdx] : null;
+    if (isEdit && !existingPhase) {
+      _toast("⚠️ Phase introuvable.", "error");
+      return;
+    }
+    // Cleanup d'une modale précédente
+    const oldModal = document.getElementById("kta-secours-phase-modal");
+    if (oldModal) oldModal.remove();
+
+    const defaultNom = isEdit ? existingPhase.nom : ("Phase " + (s.phases.length + 1));
+    const initialGroupeIds = isEdit ? (existingPhase.groupeIds || []).slice() : [];
+
+    const titre = isEdit ? "✏️ Éditer la phase" : "➕ Créer une phase";
+
+    let html = '<div class="kta-readme-modal-overlay" id="kta-secours-phase-modal">' +
+                 '<div class="kta-readme-modal-boite" style="max-width:520px;height:auto;max-height:90vh;">' +
+                   '<div class="kta-readme-modal-header" style="border-bottom:1px solid rgba(244,197,66,0.4);">' +
+                     '<h2>' + titre + '</h2>' +
+                     '<button class="kta-readme-modal-close" data-action="close-phase-modal">✕</button>' +
+                   '</div>' +
+                   '<div class="kta-readme-modal-corps" style="padding:14px 18px;">' +
+                     '<div class="kta-secours-form-row">' +
+                       '<label for="kta-sec-phase-nom"><strong>Nom de la phase</strong></label>' +
+                       '<input type="text" id="kta-sec-phase-nom" maxlength="80" value="' + _escAttr(defaultNom) + '" placeholder="Phase 1, Reco zone Est, Évacuation, ..." style="width:100%;">' +
+                     '</div>' +
+                     '<div style="margin-top:14px;">' +
+                       '<label><strong>🚨 Équipes participantes</strong></label>' +
+                       '<p class="kta-secours-hint" style="margin:4px 0 8px;">' +
+                         'Coche les équipes qui interviennent dans cette phase. ' +
+                         'Tu pourras modifier cette sélection plus tard. Les équipes ' +
+                         'non cochées restent dans le scénario mais n\'apparaîtront pas ' +
+                         'dans la vue Live de cette phase.' +
+                       '</p>';
+    if (s.groupes.length === 0) {
+      html += '<p class="kta-secours-hint" style="color:#f4c542;">⚠️ Aucune équipe dans ce scénario. Crée des équipes via la section "🚨 Équipes" avant de pouvoir les assigner à une phase.</p>';
+    } else {
+      html += '<div class="kta-secours-phase-equipes-list">';
+      s.groupes.forEach(function(g) {
+        const checked = initialGroupeIds.indexOf(g.id) !== -1;
+        const couleur = PALETTE[g.couleurIdx % PALETTE.length] || PALETTE[0];
+        html += '<label class="kta-secours-phase-equipe-cb">' +
+                  '<input type="checkbox" data-equipe-id="' + g.id + '"' + (checked ? ' checked' : '') + '>' +
+                  '<span class="kta-secours-phase-equipe-swatch" style="background:' + couleur.hex + ';"></span>' +
+                  '<span class="kta-secours-phase-equipe-nom">' + _escHtml(g.nom) + '</span>' +
+                  (typeof g.level === "number" ? ' <span class="kta-secours-phase-equipe-level">🏗️ Niv ' + g.level + '</span>' : '') +
+                '</label>';
+      });
+      html += '</div>';
+    }
+    html += '</div>' +
+                   '</div>' +
+                   '<div class="kta-readme-modal-footer" style="display:flex; gap:8px; justify-content:flex-end; padding:12px 18px; border-top:1px solid rgba(255,255,255,0.08);">' +
+                     '<button class="kta-btn kta-btn-ghost" data-action="cancel-phase-modal">Annuler</button>' +
+                     '<button class="kta-btn kta-btn-primary" data-action="confirm-phase-modal" data-edit-idx="' + (isEdit ? editPhaseIdx : "") + '">' +
+                       (isEdit ? '✓ Enregistrer' : '✓ Créer la phase') +
+                     '</button>' +
+                   '</div>' +
+                 '</div>' +
+               '</div>';
+    document.body.insertAdjacentHTML("beforeend", html);
+    const modal = document.getElementById("kta-secours-phase-modal");
+    if (!modal) return;
+
+    // Focus auto sur le champ nom
+    const nomInput = modal.querySelector("#kta-sec-phase-nom");
+    if (nomInput) {
+      nomInput.focus();
+      nomInput.select();
+    }
+
+    function _closeModal() {
+      if (modal && modal.parentNode) modal.remove();
+      document.removeEventListener("keydown", _onEsc);
+    }
+    function _onEsc(e) { if (e.key === "Escape") _closeModal(); }
+    document.addEventListener("keydown", _onEsc);
+
+    // Backdrop click = annuler
+    modal.addEventListener("click", function(e) {
+      if (e.target === modal) _closeModal();
+    });
+
+    // Handlers boutons
+    modal.addEventListener("click", function(e) {
+      const action = e.target.getAttribute && e.target.getAttribute("data-action");
+      if (!action) return;
+      if (action === "close-phase-modal" || action === "cancel-phase-modal") {
+        _closeModal();
+      } else if (action === "confirm-phase-modal") {
+        const nom = nomInput ? nomInput.value.trim() : "";
+        if (!nom) {
+          _toast("⚠️ Le nom de la phase est obligatoire.", "error");
+          if (nomInput) nomInput.focus();
+          return;
+        }
+        // Récupère les équipes cochées
+        const cbs = modal.querySelectorAll('input[type="checkbox"][data-equipe-id]');
+        const selectedIds = [];
+        cbs.forEach(function(cb) {
+          if (cb.checked) selectedIds.push(cb.getAttribute("data-equipe-id"));
+        });
+        if (isEdit) {
+          renommerPhase(scenarioId, editPhaseIdx, nom);
+          // Sync participation : on parcourt TOUTES les équipes du scénario
+          // et on aligne avec les checkboxes.
+          s.groupes.forEach(function(g) {
+            const wantParticipate = selectedIds.indexOf(g.id) !== -1;
+            affecterEquipeAPhase(scenarioId, g.id, editPhaseIdx, wantParticipate);
+          });
+          _toast("✓ Phase « " + nom + " » mise à jour.", "info");
+        } else {
+          const created = creerPhase(scenarioId, nom, selectedIds);
+          if (created) {
+            _toast("✓ Phase « " + nom + " » créée.", "info");
+          } else {
+            _toast("⚠️ Échec création de la phase.", "error");
+          }
+        }
+        _closeModal();
+        // Re-render la vue active pour refléter la nouvelle phase
+        if (_modal && _activeView) _switchView(_activeView);
+      }
+    });
+  }
+
   function _renderEditView() {
     const s = get(_currentScenarioId);
     if (!s) {
@@ -4799,6 +5115,13 @@
                 '</div>' +
               '</div>' +
             '</details>';
+
+    // 🆕 v1.29.0 C2 — Section Phases. Toujours présente, mais le contenu
+    // s'adapte : 1 seule phase = juste le bouton "➕ Ajouter une phase" en hint
+    // (pas de liste à afficher). 2+ phases = liste avec ✏️ / 🗑️.
+    // KARMA C2.2:c — bouton "➕" présent en vue Edit (planification) ET en
+    // vue Live Op (création à chaud, ajouté dans _renderLiveViewOperateur).
+    html += _renderPhasesSection(s);
 
     // Section 3 — Export
     html += '<details class="kta-secours-section">' +
@@ -5177,6 +5500,28 @@
   // "reprendre à la bonne étape au reload".
   let _liveEquipeFreshSession = true;
 
+  // 🆕 v1.29.0 C2 — Badge "Phase X/N" pour les 3 headers Live.
+  // KARMA C2.1:a : MASQUÉ si scénario a 1 seule phase (préserve UX v1.28.5).
+  // Le badge apparaît dès la création de phases[1+] via le bouton "➕".
+  function _renderPhaseBadgeHTML(s) {
+    if (!s || !Array.isArray(s.phases) || s.phases.length < 2) return "";
+    const total = s.phases.length;
+    const idx = (s.execution && typeof s.execution.currentPhaseIdx === "number")
+                ? s.execution.currentPhaseIdx
+                : 0;
+    const phase = s.phases[idx];
+    const nomPhase = phase ? phase.nom : ("Phase " + (idx + 1));
+    return '<span class="kta-secours-live-phase-badge" title="' +
+             _escAttr(nomPhase + " — " + (idx + 1) + " sur " + total) + '">' +
+             '<span class="kta-secours-live-phase-badge-icon">📋</span>' +
+             '<span class="kta-secours-live-phase-badge-label">' +
+               _escHtml(nomPhase) + ' <span class="kta-secours-live-phase-badge-pos">' +
+                 (idx + 1) + '/' + total +
+               '</span>' +
+             '</span>' +
+           '</span>';
+  }
+
   function _renderLiveViewEquipe(s) {
     const equipeId = s.execution.currentEquipeId;
     const g = (s.groupes || []).find(function(gr) { return gr.id === equipeId; });
@@ -5208,6 +5553,7 @@
               '<div class="kta-secours-live-header-titre">' +
                 '<span class="kta-secours-live-header-swatch" style="background:' + couleur.hex + ';"></span>' +
                 '<strong>' + _escHtml(g.nom) + '</strong>' +
+                _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · Étape ' + (idx + 1) + '/' + etapes.length +
                 '</span>' +
@@ -5378,6 +5724,7 @@
     html += '<div class="kta-secours-live-header kta-secours-live-header-op">' +
               '<div class="kta-secours-live-header-titre">' +
                 '<strong>👤 Opérateur surface</strong>' +
+                _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · ' + _escHtml(s.nom) +
                   ' · ' + groupes.length + ' équipe' + (groupes.length > 1 ? 's' : '') +
@@ -5417,6 +5764,12 @@
               // 🆕 v1.26.0 — Bouton Import rapport équipier (consolidation cross-device)
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="live-op-import-rapport" title="Importer le rapport d\'un équipier (.mkmsec.report.json) pour fusionner ses observations dans le tableau de supervision">' +
                 '📥 Importer rapport équipier' +
+              '</button>' +
+              // 🆕 v1.29.0 C2 — Ajout phase à chaud (KARMA C2.2:c). Permet à
+              // l'Op de planifier la phase suivante pendant que la phase courante
+              // tourne, sans passer par la vue Edit.
+              '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="add-phase" title="Créer une nouvelle phase. Tu choisiras les équipes qui y participent ; la transition entre phases se fera depuis le bouton « ✓ Phase terminée » (C3, à venir).">' +
+                '➕ Ajouter une phase' +
               '</button>' +
               '<button class="kta-btn kta-btn-secondary kta-btn-sm" data-action="back-to-edit">' +
                 '⏸️ Voir l\'édition' +
@@ -5533,6 +5886,7 @@
     html += '<div class="kta-secours-live-header kta-secours-live-header-sec">' +
               '<div class="kta-secours-live-header-titre">' +
                 '<strong>🚑 Secouriste libre</strong>' +
+                _renderPhaseBadgeHTML(s) +
                 '<span class="kta-secours-live-header-meta">' +
                   ' · ' + notes.length + ' note' + (notes.length > 1 ? 's' : '') +
                 '</span>' +
@@ -6230,6 +6584,39 @@
           _switchView("edit");
         });
       });
+      // 🆕 v1.29.0 C2 — Multi-phases : handlers add-phase / edit-phase / delete-phase.
+      // Présents en vue Edit (section "📋 Phases") ET en vue Live Op (footer ➕).
+      corps.querySelectorAll('[data-action="add-phase"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          _afficherModalePhase(s.id, null);
+        });
+      });
+      corps.querySelectorAll('[data-action="edit-phase"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          const idxAttr = btn.getAttribute("data-phase-idx");
+          const idx = parseInt(idxAttr, 10);
+          if (Number.isInteger(idx)) _afficherModalePhase(s.id, idx);
+        });
+      });
+      corps.querySelectorAll('[data-action="delete-phase"]').forEach(function(btn) {
+        btn.addEventListener("click", function() {
+          if (btn.hasAttribute("disabled")) return;
+          const idxAttr = btn.getAttribute("data-phase-idx");
+          const idx = parseInt(idxAttr, 10);
+          if (!Number.isInteger(idx)) return;
+          const phase = s.phases[idx];
+          if (!phase) return;
+          const confirmMsg = "Supprimer la phase « " + phase.nom + " » ? Les équipes restent dans le scénario.";
+          if (!window.confirm(confirmMsg)) return;
+          const ok = supprimerPhase(s.id, idx);
+          if (ok) {
+            _toast("✓ Phase supprimée.", "info");
+            _switchView(_activeView || "edit");
+          } else {
+            _toast("⚠️ Suppression impossible (phase active ou démarrée).", "error");
+          }
+        });
+      });
       // Rename groupe
       corps.querySelectorAll('[data-action="rename-groupe"]').forEach(function(inp) {
         inp.addEventListener("blur", function() {
@@ -6371,6 +6758,13 @@
     // Retour à la vue Edit (préserve l'execution active)
     corps.querySelectorAll('[data-action="back-to-edit"]').forEach(function(btn) {
       btn.addEventListener("click", function() { _switchView("edit"); });
+    });
+    // 🆕 v1.29.0 C2 — Bouton "➕ Ajouter une phase" dans le footer Live Op
+    // (KARMA C2.2:c — création à chaud pendant l'exécution).
+    corps.querySelectorAll('[data-action="add-phase"]').forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        _afficherModalePhase(s.id, null);
+      });
     });
     // Arrêter le plan depuis la vue Live
     corps.querySelectorAll('[data-action="arreter-plan-live"]').forEach(function(btn) {
@@ -7940,10 +8334,8 @@
     setFocus:               setFocus,
     // Events
     onChange:               onChange,
-    // 🆕 v1.29.0 C1 — Multi-phases : helpers lecture seule pour l'UI C2/C3.
-    // Les mutations (créer une phase, terminer une phase, debrief) viendront
-    // en C3 sous forme de méthodes dédiées (terminerPhase, lancerPhaseSuivante,
-    // ...) plutôt que via updateScenario direct, pour garantir les invariants.
+    // 🆕 v1.29.0 C1 + C2 — Multi-phases.
+    // Lecture seule (helpers C1) :
     getCurrentPhase:        function(scenarioId) { return _getCurrentPhase(get(scenarioId)); },
     listerEquipesPhase:     function(scenarioId, phaseIdx) {
       return _listerEquipesPhase(get(scenarioId), phaseIdx);
@@ -7951,6 +8343,12 @@
     groupeParticipeAPhase:  function(scenarioId, equipeId, phaseIdx) {
       return _groupeParticipeAPhase(get(scenarioId), equipeId, phaseIdx);
     },
+    // Mutations (C2) — les transitions (terminerPhase, lancerPhaseSuivante,
+    // debrief) viendront en C3.
+    creerPhase:             creerPhase,
+    renommerPhase:          renommerPhase,
+    supprimerPhase:         supprimerPhase,
+    affecterEquipeAPhase:   affecterEquipeAPhase,
     // Constantes (lecture seule, exposées pour UI)
     PALETTE:                PALETTE,
     MAX_SCENARIOS:          MAX_SCENARIOS,
