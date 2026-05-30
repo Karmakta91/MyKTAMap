@@ -2447,29 +2447,186 @@ Allows you to modify the **current plan** without going through ZIP regeneration
 > 💡 **Cross-app consistency** : the GPS coordinates entry in georeferencing uses the **same combined `lat, lng` format** as Ctrl+K search and KMZ export. Direct paste from Google Maps (`48.680831, 2.158843`) works everywhere uniformly.
 
 > 💡 **Time saved on the initial tracker position** (since v1.27.0) : no more need to read X/Y coordinates manually in the plan. Click on the desired position or pick an existing POI — done.
-## Self-hosted installation (community edition)
 
-If you want to deploy **MyKTAMap on your own infrastructure** (server, hosting, on-premise…), the
-file [`docs/INSTALL_SELFHOST.md`](INSTALL_SELFHOST.md) details the procedure step-by-step :
+## 🏷️ Version badge in the footer (loader)
 
-- Prerequisites (any web server with static hosting + HTTPS)
-- File upload (preserve the structure with `/icon/`, `/lib/`, `/js/`, etc.)
-- MIME types and HTTP headers (CSP, no-cache on `Licence-pro.json`, etc.)
-- Verification (network audit, Service Worker, version badge)
-- Specific cases (Apache `.htaccess` style, Nginx, GitHub Pages…)
+At the bottom of the loader, next to the license mention, a small **version badge** shows the current installed version of the app.
 
-The Nginx template ready to use is in [`docs/nginx-myktamap.conf`](nginx-myktamap.conf).
+**Two visual states:**
 
-> Step 1 manual : it's a guide, not an automated installer. The objective is to keep the
-> community edition self-hostable by anyone with basic web hosting (FTP / SSH / CDN…), without
-> dependency on a third-party platform.
+| State | Display | Action on click |
+|---|---|---|
+| **You are up to date** | version number in subtle grey | "✅ Already up to date" modal — shows the installed version + release date + **release notes** (changelog) |
+| **Update available** | `installed version → new version` in **flashing blue** | "🔔 Update available" modal — offers a soft update (preserves maps and sessions) or a full reset |
+
+When a new version is available, the badge **flashes blue** to catch your attention without being visually aggressive. On click, you can choose to act immediately (soft update or full reset) or postpone it (24h snooze).
+
+> 💡 The badge bypasses the 24h snooze: if you clicked "Later" a few minutes ago but change your mind, click the badge to relaunch the update modal.
+
+> 💡 If you are already up to date, clicking the badge still shows the notes of the latest version — handy to re-read what changed in the update you installed.
 
 ---
 
-## 🎉 You're ready!
+## 🔐 Local access code (PIN / Face ID)
 
-The community edition of MyKTAMap is **free, open-source, and 100% local**.
+Lock the app at every startup with a 4-6 digit PIN, **Face ID** or **Touch ID** if your device supports it. 100% local — no password is sent over the Internet, no recovery possible if forgotten.
 
-Have a great mapping session, and **be safe down there**! 🕳️🚶‍♂️🔦
+> ⚠️ **This is a usage barrier, not data encryption.** The lock prevents normal opening of the app, but a motivated attacker can bypass it via DevTools. Photos and sessions remain stored in clear in the browser. This is exactly the same security level as the existing community access code — honestly assumed.
 
-> *— KARMA (Flavien VIDAL)*
+### Enable the PIN
+
+1. From the home page (loader) → **⚙️ Configuration** button in the top right
+2. Scroll down to the **🔐 Local access code** section
+3. Click **🔐 Enable access code**
+4. Choose your code (4 to 6 digits) then confirm it a second time
+5. If your device supports biometrics (iPhone Face ID, iPad Touch ID, Android fingerprint, Windows Hello…) a "Also enable biometrics?" prompt appears. Accepting = at the next startup you unlock at a glance or with one finger (without entering the code)
+
+> 📝 **Note your code carefully** somewhere safe. No recovery is possible if forgotten — you would be forced to reset everything (loss of session + unsaved maps).
+
+### At the next app startup
+
+The lock screen appears automatically after the splash:
+
+- **With biometrics**: the Face ID / Touch ID prompt appears immediately. You can also cancel and enter your PIN instead.
+- **Without biometrics**: you enter your PIN directly via the numeric keypad. The last digit entered is visible for 0.5s then replaced by ● (iOS pattern).
+
+### Change the PIN
+
+⚙️ Configuration → 🔐 Local access code → **✏️ Change the code**. Validation by biometrics OR current code, then enter the new PIN twice.
+
+### Disable the PIN
+
+⚙️ Configuration → 🔐 Local access code → **🔓 Disable**. Confirmation by biometrics OR current code. The app no longer asks for a code at the next startup.
+
+### Lockout: 5 failed attempts
+
+For security reasons, after **5 incorrect codes in a row**, the app is locked **permanently** on a red screen with no exit button. The only way to recover access is to **💥 Reset everything** from the home screen (loss of the current session and unsaved maps).
+
+> Failed biometric attempts do **not** count toward the 5 attempts — the WebAuthn spec manages its own native lockout on the device side. You can cancel a Face ID by mistake without worrying about exhausting your tries.
+
+---
+
+## 🔧 Reset
+
+In case of a problem or to force an update, use **⚙️ → 🗑️ Reset**. This action unregisters the Service Worker, clears the cache and reloads the application.
+
+> ⚠️ Only perform this action with an Internet connection available. Without a network, the application will be unusable until the next full reload.
+
+---
+
+## 🆘 Troubleshooting
+
+**The map does not load**
+Check that `plan-config.json` is at the root of your ZIP archive, and that all referenced files are present.
+
+**The map image is blurry**
+Depending on the chosen preset, the working resolution is reduced (`Performance` more than `Balanced`, which is more than `Quality`). If your device has enough memory, switch to **🌟 Quality** at the next loading for a sharper image.
+
+**The tracker drifts too fast**
+Recalibrate your position frequently. Adjust the scale and step size in the settings.
+
+**The application crashes on Mobile with a large JPEG**
+Choose **⚡ Performance** in the Performance mode selector before loading the map.
+
+**A mode stays active without intent**
+Press the active button (in green) again to deactivate it.
+
+**The application does not update after a new version**
+Use **⚙️ → 🔄 Force update** (soft update, keeps all your data). If insufficient: **⚙️ → 🗑️ Reset** (full purge, last resort). The soft update is fast thanks to a background pre-download.
+
+**📡 App stuck after a soft update**
+If after an update the app remains stuck (loader without CSS, blank page, badly loaded assets), the most frequent cause is a **GitHub Pages edge CDN serving corrupted content** (bad MIME, truncated asset) for the current geographic area. First reflex before any reset: **disable your VPN if active and change networks** (4G ↔ Wi-Fi ↔ another Wi-Fi). Just switching IP/edge CDN is often enough to unblock.
+
+**🆘 Emergency reset without touching the data**
+If the app is completely stuck even after changing networks, two options that preserve your maps / sessions / photos / prefs:
+
+1. **URL kill switch**: open in a **private tab** in Chrome/Safari (NOT the PWA):
+   ```
+   https://myktamap.fr/?killsw=1
+   ```
+   → unregisters the Service Worker + clears all HTTP/PWA caches → success message → normal reload.
+
+2. **Standalone reset page**: if the URL is not enough (HTML cache stuck):
+   ```
+   https://myktamap.fr/killsw.html
+   ```
+   → standalone page 100% inline (CSS/JS), zero dependency, works even if the rest of the app is broken. Shows 3 steps (SW unregistered, caches purged, ready to reload) + "🚀 Reload the app" button.
+
+> ⚠️ These two tools **do NOT delete ANY user data** (saved maps, per-map sessions, POI photos, Rescue Mode photos, backups, preferences). They only purge the cache of the app files (HTML / CSS / JS / icons). When in doubt, **📤 Export your profile** BEFORE to have a backup.
+
+**Unresolved problem**
+Open **⚙️ → 🐛 Logs**, copy the journals and pass them on to the technical team.
+
+---
+
+## 📖 The story
+
+> *A map has never replaced going out. It just helps you not get lost.*
+
+### Where it comes from
+
+MyKTAMap was born from a simple need: having, **in your pocket**, a cataphile map that is **reliable, offline, and doesn't leak**. Not an app store that asks for access to your contacts to display a map. Not a website that tracks you the moment you click. Not a cloud that decides tomorrow to send you a newsletter or resell your traces.
+
+Just a `.zip` file containing the map, opened in a browser tab, that works **without a network**, and that gives you **full control** over what you do with it.
+
+### Who it's for
+
+For those who go down. Parisian cataphiles, amateur cavers, prudent urban explorers, rescuers trained for underground environments, heritage researchers — in short, anyone with a **legitimate and respectful** use of these places who wants a tool that doesn't put anyone in danger (neither people nor places).
+
+The app has **no ambition to replace** old annotated paper maps, outings guided by elders, oral transmission, collective memory. It comes **as a complement**, like a digital layer superimposed on this knowledge — not a substitute.
+
+### The philosophy
+
+- 🌐 **100% offline by default** — the app works without a network once the map is loaded. You can launch it on a plane, in the metro, or 30 m underground.
+- 🔒 **Zero telemetry** — no third-party service is called to track you. The only possible external fetch is the update of the app code (and you can disable it). The auditor can verify in `🔒 Network audit`.
+- 📦 **Data ownership** — your annotations, your photos, your measurements are stored **locally**, in the browser. No one else has access to them. You can export everything at any time (`💾 Save session`) and erase everything in 2 clicks (`💥 Reset everything`).
+- 🤝 **Open code** — the license is `CC BY-NC-SA 4.0`. You can read the code, audit it. No black box, no marketing.
+- ⚖️ **Discretion = respect** — a map shared carelessly is a weakened place. The app contains no maps by default; it is up to each user to load their own, and **not to distribute them** beyond the circle of trust.
+
+### What the app is not
+
+- ❌ **Not an underground GPS** — native geolocation doesn't work under rock. The app's "tracker" is a **pedometer + heading** that drifts quickly; you need to recalibrate regularly.
+- ❌ **Not a safety guarantee** — the map gives the path, not the oxygen. You remain the sole judge of the risks (collapses, water, gas, fatigue).
+- ❌ **Not a directory** — the app does not reference places. It displays what you give it, period.
+- ❌ **Not a social network** — no account, no profile, no one-click sharing. You choose who you send your `.zip` to, and how.
+
+> If you're looking for a turnkey consumer app with reviews and stars, this isn't it. If you're looking for a tool that keeps you in control of your data and your anonymity underground, **welcome**.
+
+---
+
+## 🙏 Acknowledgements
+
+MyKTAMap would not exist without the work, knowledge and patience of many people. This project is carried by **one person** on the development side (KARMA), but it relies on **communities**, **open-source tools**, and **people** who took the time to pass things on.
+
+### To the cataphile community
+
+To the elders who surveyed the galleries with a pencil, map in hand, generation after generation. To the enthusiasts who compiled, digitized, cross-checked, verified. To those who pass it on — on outings, during initiations, whispering to a beginner "no, this way, not that way". MyKTAMap is just **one more tool** in this long chain. Without your maps, without your stories, without your vigilance, this app would have nothing to display.
+
+### To the beta-testers in the field
+
+To those who agreed to go down with an unstable `1.x.y-beta` version, to come back up with screenshots of bugs, to report UX friction, to propose features impossible to imagine from a desk. To the few comrades who tested every release underground, in the dark, in the cold, and who took the trouble to tell what was wrong. Your feedback shaped every hotfix — without you, the app would have remained a comfortable prototype from a couch.
+
+### To the open-source tools
+
+MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
+
+- 🍃 **[Leaflet](https://leafletjs.com/)** — interactive map engine. Heart of the map display.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** — reading and writing of `.zip` archives on the browser side (maps, sessions, exports).
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** — generation of printable PDFs (A0 → A4, portrait/landscape).
+- 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries.
+- 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API. Maintained by thousands of people we will never meet and to whom we owe enormously.
+
+### To the PWA ecosystem
+
+To the browsers (Chromium, Firefox, Safari, their mobile forks) that implement modern web standards and allow a simple page to function like a native app without depending on a store.
+
+### To the development assistant
+
+A good part of the code in this version was co-written with **Claude (Anthropic)**, an AI assistant that accompanied development over dozens of sessions. It's a tool just like Leaflet or JSZip — useful, honestly documented, and one that does not replace the vision or the final decisions (always on the human side).
+
+### To you reading this guide
+
+For taking 10 minutes to read instead of clicking blindly. This is exactly the state of mind these places require — **taking the time, understanding before acting, respecting what we don't yet master**.
+
+> If you want to contribute — a bug report, a suggestion, a hand with the docs — go through the repo issue tracker or the usual community channels.
