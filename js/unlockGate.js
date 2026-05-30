@@ -120,6 +120,30 @@
           '</button>' +
         '</form>' +
         '<div class="kta-unlock-feedback" id="kta-unlock-feedback"></div>' +
+        // 🆕 v1.28.5 — Voie alternative d'accès via licence pro. Un user
+        // qui détient une licence pro valide n'a pas à connaître le code
+        // d'accès communautaire (qui sert juste à filtrer les passants).
+        // L'import d'une licence locale activée le mode pro ET débloque
+        // simultanément l'UnlockGate (équivalent à un unlock réussi),
+        // car détenir une licence émise par MyKTAMap = canal légitime.
+        // Bloc wrappé en .kta-licence-community → masqué côté instance pro
+        // (cohérent : si déjà pro côté serveur, pas besoin de proposer l'import).
+        '<div class="kta-unlock-separator kta-licence-community" aria-hidden="true">' +
+          '<span class="kta-unlock-separator-line"></span>' +
+          '<span class="kta-unlock-separator-text">ou</span>' +
+          '<span class="kta-unlock-separator-line"></span>' +
+        '</div>' +
+        '<div class="kta-unlock-licence-block kta-licence-community">' +
+          '<p class="kta-unlock-licence-info">' +
+            'Tu as reçu un fichier de <strong>licence professionnelle</strong>&nbsp;? ' +
+            'Importe-le ci-dessous pour activer l\'édition pro sur cet appareil&nbsp;: ' +
+            'aucun code requis.' +
+          '</p>' +
+          '<button type="button" id="kta-unlock-licence-btn" class="kta-btn kta-btn-secondary kta-unlock-licence-btn">' +
+            '📂 Importer ma licence pro' +
+          '</button>' +
+          '<input type="file" id="kta-unlock-licence-input" accept=".json,application/json" style="display:none;">' +
+        '</div>' +
         // 🆕 v1.28.1 — Bouton 📖 Documentation accessible depuis l'écran de
         // verrouillage. Permet à un user qui doute (« c'est quoi ce projet ? »,
         // « pourquoi un code ? ») de lire le README utilisateur sans devoir
@@ -291,6 +315,66 @@
       // 🆕 v1.28.1 — Bouton 📖 Documentation (mode gate normale, pas lockout).
       const btnDoc = overlay.querySelector("#kta-unlock-readme-btn");
       if (btnDoc) btnDoc.addEventListener("click", _ouvrirDocReadme);
+
+      // 🆕 v1.28.5 — Voie alternative "Ou importer ma licence pro".
+      // L'user clique sur le bouton → file picker .json → import via
+      // MyKTAMapProLicense.importFile() (réutilise tout le pipeline de
+      // validation hash + storage local + bascule mode pro).
+      // Si import OK : on set le flag unlock communautaire (= bypass définitif
+      // pour les boots suivants) ET on résout la Promise de la gate
+      // (équivalent à un unlock réussi via code).
+      const btnLicence = overlay.querySelector("#kta-unlock-licence-btn");
+      const inputLicence = overlay.querySelector("#kta-unlock-licence-input");
+      if (btnLicence && inputLicence) {
+        btnLicence.addEventListener("click", function() {
+          inputLicence.value = ""; // permet de re-picker le même fichier
+          inputLicence.click();
+        });
+        inputLicence.addEventListener("change", function() {
+          const file = inputLicence.files && inputLicence.files[0];
+          if (!file) return;
+          if (!window.MyKTAMapProLicense || typeof window.MyKTAMapProLicense.importFile !== "function") {
+            fb.innerHTML =
+              '<div class="kta-unlock-error">' +
+                '❌ Module de gestion des licences indisponible. Recharge la page.' +
+              '</div>';
+            return;
+          }
+          window.MyKTAMapProLicense.importFile(file).then(function(result) {
+            if (result && result.ok) {
+              // Set le flag unlock (= bypass définitif pour les boots suivants).
+              // Cohérent : détenir une licence pro = canal légitime, pas besoin
+              // de re-saisir le code partagé à chaque reload.
+              try {
+                localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+                localStorage.removeItem(LS_ATTEMPTS);
+              } catch(e) {}
+              fb.innerHTML =
+                '<div class="kta-unlock-success">' +
+                  '✓ Licence pro acceptée — accès accordé' +
+                '</div>';
+              // Même flow de fade-out + résolve que l'unlock par code.
+              setTimeout(function() {
+                overlay.classList.add("kta-unlock-fading");
+                setTimeout(function() {
+                  if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                  if (_resolveGate) {
+                    const r = _resolveGate;
+                    _resolveGate = null;
+                    r(true);
+                  }
+                }, 250);
+              }, 600);
+            } else {
+              const msg = (result && result.error) ? result.error : "Erreur inconnue.";
+              fb.innerHTML =
+                '<div class="kta-unlock-error">' +
+                  '❌ Licence refusée : ' + msg.replace(/</g, "&lt;") +
+                '</div>';
+            }
+          });
+        });
+      }
 
       // Si l'user avait déjà des tentatives ratées avant ce boot, on l'informe
       const ap = _getAttempts();
