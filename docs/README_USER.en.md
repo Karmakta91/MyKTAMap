@@ -1096,6 +1096,46 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 ---
 
+### 🚨 Rescue Mode — Multi-phases (since v1.29.0)
+
+A scenario can now **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
+
+> 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to v1.28.x. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
+
+**🔧 Create and manage phases (scenario Edit view)**:
+
+- **📋 Phases (N)** section below the Teams section
+- **➕ Add a phase** button → creation modal:
+  - Enter a name (e.g.: *"Phase 2 — East Chambers"*)
+  - Check the **participating teams** for this phase (hybrid model: your teams are defined only once at the scenario level, then you check box by box "participates in this phase")
+- ✏️ button to rename a phase or modify the team selection
+- 🗑️ button to delete (refused if it's the last phase, if it's active in the execution, or if it has already been started → history is preserved)
+
+**🏷️ Sticky badge in the 3 Live views**: an amber badge "**📋 Phase 1 1/N**" appears in the header of the Team / Operator / Free Rescuer views as soon as there are 2+ phases. Displays the name of the active phase + its position.
+
+**✓ End a phase + debrief (Operator only)**:
+
+1. During the active phase, the Op Live footer displays a new **"✓ Phase ended"** amber button (visible only if multi-phase)
+2. **Auto-detection**: as soon as **all participating teams have marked their Exit step as `completedAt`**, the button turns **pulsing green** + an assistant toast informs you ("✅ All teams are out — the phase is ready to close"). The Op keeps the final decision.
+3. **Click "✓ Phase ended"** → debrief modal: free textarea (5000 chars max) to capture the lessons from the phase (teams returned, points found, priority zones to explore, constraints encountered). This debrief will be intercalated in the final report between each phase section.
+4. **Validate "✓ End the phase"** → the current phase is **archived** (deep clone, never overwritten, history preserved) + `phase.endedAt` is set
+5. **If a next phase exists** → automatic chaining to **"🚀 Start phase X+1?"** modal with summary of participating teams
+6. **You confirm** → the new phase starts, the steps of participating teams are **rebuilt from their CURRENT route** (so if you modified `entry/exit/intermediate` of a team between P1 and P2, the new steps take this into account)
+7. **If no next phase** → native `confirm()` "Stop the plan completely?" (equivalent to ⏹️ End the plan)
+
+**🔍 History safeguards**:
+
+- `terminerPhase` **NEVER** deletes steps — it archives them in `s.execution.etapesArchive[phaseIdx]` as deep clone
+- A phase already started can no longer be deleted from the UI (safety net)
+- An active phase in the execution cannot be deleted (go through "✓ Phase ended" first)
+- The auto-detection toast does not repeat (single display per phase)
+
+> 💡 **Hybrid teams ↔ phases model**: your teams are defined **only once** at the scenario level (with members, NATO color, route). Participation in each phase is managed by checkbox in the phase modal. The same team can participate in several successive phases — at the phase transition, its steps are reset based on its current route (so you can modify the route between P1 and P2 to adapt to what was discovered).
+
+> 💡 **"➕ Add a phase" button also available on-the-fly** from the Op Live footer (during execution), not just from the Edit view. Useful when the P1 debrief reveals the need for an unplanned P3.
+
+---
+
 ## ⏪ Undo / Redo *(since v1.11.0)*
 
 You can **undo** and **redo** your actions on the map, up to **50 actions back**.

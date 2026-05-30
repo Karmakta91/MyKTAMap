@@ -1222,6 +1222,44 @@ Les sections ci-dessous détaillent les fonctionnalités avancées : intégratio
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
+### 🚨 Mode Secours — Multi-phases (depuis v1.29.0)
+
+Un scénario peut désormais **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
+
+> 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique à v1.28.x. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
+
+**🔧 Créer et gérer les phases (vue Edit du scénario)** :
+
+- Section **📋 Phases (N)** sous la section Équipes
+- Bouton **➕ Ajouter une phase** → modale création :
+  - Saisis un nom (ex : *« Phase 2 — Chambres Est »*)
+  - Coche les **équipes participantes** à cette phase (modèle hybride : tes équipes sont définies une seule fois au scénario, puis tu coches case par case "participe à cette phase")
+- Bouton ✏️ pour renommer une phase ou modifier la sélection d'équipes
+- Bouton 🗑️ pour supprimer (refusé si c'est la dernière phase, si elle est active dans l'exécution, ou si elle a déjà été démarrée → l'historique est préservé)
+
+**🏷️ Badge sticky dans les 3 vues Live** : un badge ambré « **📋 Phase 1 1/N** » apparaît dans le header des vues Équipe / Opérateur / Secouriste libre dès qu'il y a 2 phases ou plus. Affiche le nom de la phase active + sa position.
+
+**✓ Terminer une phase + debrief (Opérateur uniquement)** :
+
+1. Pendant la phase active, le footer Live Op affiche un nouveau bouton **« ✓ Phase terminée »** ambré (visible seulement si multi-phase)
+2. **Auto-détection** : dès que **toutes les équipes participantes ont marqué leur étape Sortie comme `completedAt`**, le bouton passe en **vert pulsant** + un toast assistant t'avertit (« ✅ Toutes les équipes sont sorties — la phase est prête à clore »). L'Op garde la décision finale.
+3. **Clic « ✓ Phase terminée »** → modale debrief : textarea libre (5000 caractères max) pour saisir les enseignements de la phase (équipes rentrées, points trouvés, zones à explorer en priorité, contraintes apparues). Ce debrief sera intercalé dans le rapport final entre les sections de chaque phase.
+4. **Valide « ✓ Terminer la phase »** → la phase actuelle est **archivée** (deep clone, jamais d'écrasement, historique préservé) + `phase.endedAt` posé
+5. **Si une phase suivante existe** → enchaînement automatique sur modale **« 🚀 Démarrer phase X+1 ? »** avec récap des équipes participantes
+6. **Tu confirmes** → la nouvelle phase démarre, les étapes des équipes participantes sont **reconstruites depuis leur parcours ACTUEL** (donc si tu as modifié `entrée/sortie/intermédiaires` d'une équipe entre P1 et P2, les nouvelles étapes en tiennent compte)
+7. **Si aucune phase suivante** → `confirm()` natif « Arrêter complètement le plan ? » (équivalent ⏹️ Terminer le plan)
+
+**🔍 Garde-fous historique** :
+
+- `terminerPhase` ne supprime **JAMAIS** d'étapes — elle les archive dans `s.execution.etapesArchive[phaseIdx]` en deep clone
+- Une phase déjà démarrée ne peut plus être supprimée depuis l'UI (filet de sécurité)
+- Une phase active dans l'exécution ne peut pas être supprimée (passe par « ✓ Phase terminée » d'abord)
+- Le toast d'auto-détection ne se répète pas (un seul affichage par phase)
+
+> 💡 **Modèle hybride équipes ↔ phases** : tes équipes sont définies **une seule fois** au scénario (avec membres, couleur OTAN, parcours). La participation à chaque phase est gérée par checkbox dans la modale phase. Une même équipe peut participer à plusieurs phases successives — au passage de phase, ses étapes sont reset selon son parcours actuel (donc tu peux modifier le parcours entre P1 et P2 pour adapter à ce qui a été découvert).
+
+> 💡 **Bouton « ➕ Ajouter une phase » aussi disponible à chaud** depuis le footer Live Op (pendant l'exécution), pas seulement depuis la vue Edit. Pratique quand le debrief de P1 fait apparaître le besoin d'une P3 imprévue.
+
 ### 🚨 Mode Secours — Intégrations cross-app
 
 Ces intégrations font du Mode Secours un outil de coordination opérationnelle complet :

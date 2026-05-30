@@ -7303,4 +7303,296 @@ Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeM
 
 ---
 
+### 78. Mode Secours **multi-phases** — séquencement P1 → debrief → P2 (v1.29.0 — 2026-05-30)
+
+Évolution majeure de Mode Secours : un scénario peut désormais séquencer plusieurs phases avec
+debrief intercalé. Cas d'usage terrain : *"Phase 1 = une équipe balaye TOUS les roulages principaux
+SANS entrer dans les chambres d'exploitation, retour de l'équipe, debrief PC, Phase 2 = X équipes
+vont en chambres d'exploitation avec les infos remontées"*.
+
+Découpage en 3 commits C1 → C3 (C4 rôle Relai et C5 rapports enrichis prévus en v1.29.x).
+Décisions design tranchées avec KARMA via workflow d'analyse (Run `wpgul0942`) : `1:c 2:c 3:c 4:a
+5:b 6:a 7:a` puis `C3.1:b C3.2:a`.
+
+#### 78.1 Architecture — `scenario.phases[]` embedded + archive séparée
+
+**Pourquoi pas un tag `_phaseIdx` in-place sur chaque étape** :
+- ✅ Aucune modification à `updateEtape` / `marquerEtapeStatut` / renderers Live
+- ✅ Rétro-compat stricte : scénario v1 mono-phase = comportement strictement identique à v1.28.5
+- ✅ `_getEtapesEquipe` retourne toujours la phase active (= UX inchangée)
+- ❌ Le tag in-place aurait nécessité de refactorer tous les `data-step="N"` (= conversion local ↔ global)
+  et tous les renderers (filtre par phase active partout)
+
+**Format scénario** (cf JSDoc en tête de `js/secoursMode.js`) :
+
+```js
+scenario.phases = [
+  {
+    id:        "P_<ts>_<rand>",       // unique
+    idx:       0,                      // position dans phases[]
+    nom:       "Phase 1",              // libellé custom
+    groupeIds: [equipeId1, equipeId2], // équipes assignées (hybride 1:c)
+    startedAt: ISO | null,             // set par lancerExecution OU lancerPhaseSuivante
+    endedAt:   ISO | null,             // set par terminerPhase (C3) OU arreterExecution (filet)
+    debrief:   "",                     // texte libre 5000 char (C3)
+    debriefAt: ISO | null              // timestamp debrief
+  }
+]
+scenario.execution = {
+  ...
+  currentPhaseIdx: 0,                  // index dans phases[]
+  etapes: { equipeId: [...] },         // SEULEMENT la phase active
+  etapesArchive: {                     // 🆕 v1.29.0 C3 — phases précédentes figées
+    "0": { equipeId: [étapes phase 0] }
+  },
+  _phaseReadyToastShownForIdx: N       // 🆕 flag interne pour éviter spam toast
+}
+```
+
+#### 78.2 Migration silencieuse v1.28.x → multi-phases
+
+`_migrateScenarioV1ToPhases(s)` est **idempotente** — peut tourner 100 fois sans dégât. 3 cas
+couverts :
+
+1. **`phases[]` absente** (scénario v1) → crée 1 phase implicite `"Phase 1"` couvrant tous les
+   groupes. Si `execution` existe déjà (scénario v1 lancé en Phase 3 historique), reporte
+   `execution.startedAt/endedAt` sur cette phase implicite (pour cohérence rapports futurs).
+2. **`execution` sans `currentPhaseIdx`** → set à 0.
+3. **`phases[0].groupeIds` vide alors qu'il y a des groupes** → filet de sécurité, repush tous les
+   groupes (cohérence avec doctrine "1 phase implicite couvre tout v1").
+
+Appelée par :
+- `_loadScenarios()` au boot (sur tous les scénarios localStorage)
+- `_appliquerPayloadImport(payload)` à chaque import `.mkmsec.json` (couvre v1 re-importés ET
+  v1.29+ avec phases[] explicites — remap `phase.groupeIds[]` avec les nouveaux g.id régénérés
+  via `idMap[oldGid]`)
+
+Format `.mkmsec.json` reste à **`version: 1`** (champ `phases` optionnel ignoré par anciens
+parsers — **pas de cassure rétro-compat**).
+
+#### 78.3 Cycle de vie C3 — terminerPhase + lancerPhaseSuivante
+
+**Helpers internes** :
+- `_phaseEstPretAClore(s)` — true SSI toutes les équipes participantes de la phase active ont
+  leur étape `type: "sortie"` avec `completedAt` set. Garde-fou : au moins une équipe doit avoir
+  une étape sortie (= phase pas vide).
+- `_archivePhaseEtapes(s, phaseIdx)` — deep clone JSON de `s.execution.etapes` vers
+  `s.execution.etapesArchive[String(phaseIdx)]`. Le contrat est : **les étapes archivées ne
+  doivent plus évoluer**.
+- `_getArchivedEtapes(s, phaseIdx, equipeId)` — lecture pour rapports/historique. Retourne null
+  si pas trouvé (caller doit fallback sur `s.execution.etapes` pour phase courante).
+
+**API publique** :
+
+```js
+SM.terminerPhase(scenarioId, { debrief: "..." })  // archive + endedAt + debrief
+                                                   // NE lance PAS la phase suivante
+SM.lancerPhaseSuivante(scenarioId)                 // increment currentPhaseIdx
+                                                   // rebuild etapes pour participants
+                                                   // depuis parcours ACTUEL (KARMA C3.1:b)
+SM.isPhasePretAClore(scenarioId)                   // → bool
+SM.getArchivedEtapes(scenarioId, phaseIdx, equipeId)  // pour rapports C5
+```
+
+**Pré-conditions strictes de `lancerPhaseSuivante`** :
+- Execution active
+- Phase actuelle a `endedAt` set (= `terminerPhase` appelé d'abord)
+- Une phase d'index `currentPhaseIdx + 1` doit exister
+- Si une équipe ne participe PAS à la nouvelle phase → son entry dans `s.execution.etapes` est
+  **supprimée** (vue Live Op n'affiche plus que les pertinentes). Ses étapes archivées restent
+  dans `etapesArchive` pour les rapports.
+- Préserve `_notes_libres` (mode secouriste libre, indépendant des équipes)
+
+#### 78.4 Watcher auto-détection (KARMA C3.2:a + 2:c hybride)
+
+Dans `updateEtape(scenarioId, equipeId, etapeIdx, partial)`, après le `_commitMutation(s)`,
+bloc `try/catch` :
+
+```js
+const phaseIdx = s.execution.currentPhaseIdx || 0;
+const isOp = (s.execution.role === "operateur");
+const isMulti = Array.isArray(s.phases) && s.phases.length >= 2;
+const alreadyShown = (s.execution._phaseReadyToastShownForIdx === phaseIdx);
+if (isOp && isMulti && !alreadyShown && _phaseEstPretAClore(s)) {
+  s.execution._phaseReadyToastShownForIdx = phaseIdx;
+  _commitMutation(s);
+  _toast("✅ Toutes les équipes sont sorties — la phase est prête à clore. " +
+         "Ouvre la vue Live Opérateur pour passer au debrief.", "info");
+}
+```
+
+Le flag `_phaseReadyToastShownForIdx` est reset par `lancerPhaseSuivante` (cleanup pour permettre
+le toast à la phase suivante quand elle sera prête).
+
+#### 78.5 UI — Bouton "✓ Phase terminée" + bandeau badge + section Phases
+
+**Footer vue Live Op** :
+- Bouton `data-action="terminer-phase"` visible UNIQUEMENT si `phases.length >= 2` (mono-phase =
+  comportement v1.28.5 strict, zéro pollution UI)
+- Couleur ambre charte par défaut (`.kta-btn-phase-end`)
+- Si `_phaseEstPretAClore(s)` retourne true → classe additionnelle
+  `.kta-btn-phase-end-ready` qui ajoute :
+  - Couleur verte (`#6ee287`)
+  - Animation `kta-phase-end-pulse` 1.8s ease-in-out infinite (box-shadow pulsante)
+  - Signal visuel **non bloquant** que la phase est prête à clore (KARMA C3.2:a)
+- Au clic → ouvre `_afficherModaleDebrief(scenarioId)`
+
+**Header sticky (3 vues Live)** : badge `📋 Phase 1 1/2` ambré + tooltip "Nom phase — N sur M".
+Visible UNIQUEMENT si `phases.length >= 2` (KARMA C2.1:a).
+
+**Section "📋 Phases (N)" en vue Edit** : toujours présente. Si 1 phase → hint + bouton "➕".
+Si 2+ phases → liste éditable avec statut (Active / Terminée / Démarrée / Non démarrée) + nb
+équipes + boutons ✏️ Éditer / 🗑️ Supprimer (avec 3 garde-fous : refus si dernière phase, si
+phase active, si phase déjà démarrée).
+
+#### 78.6 Modales transitions C3
+
+`_afficherModaleDebrief(scenarioId)` — pattern modale charte :
+- Header "📝 Terminer la phase « Nom »" liseré bleu charte
+- Textarea libre 5000 chars max (focus auto)
+- Récap équipes actuelles + bloc info phase suivante si existe
+- Si aucune phase suivante : bloc warning ambre "clôt l'ensemble du plan"
+- Bouton "✓ Terminer la phase" → `terminerPhase(scenarioId, { debrief })` puis :
+  - Si phase suivante → enchaîne sur `_afficherModaleLancerPhaseSuivante`
+  - Sinon → `confirm()` natif "arrêter le plan complètement ?"
+
+`_afficherModaleLancerPhaseSuivante(scenarioId)` :
+- Récap phase à démarrer + liste équipes avec swatchs couleur OTAN
+- Disabled si 0 équipe assignée (warning explicite)
+- Boutons "Plus tard" / "🚀 Démarrer phase X"
+- Au launch → `lancerPhaseSuivante(scenarioId)` + toast + re-render vue active
+
+#### 78.7 À NE PAS faire
+
+- ❌ **Bumper `MKMSEC_FORMAT_VERSION`** sans nécessité absolue. Garder à 1 + champ `phases` optionnel.
+- ❌ **Écraser `s.execution`** au passage de phase. `terminerPhase` archive sans détruire.
+- ❌ **Tagger `etape._phaseIdx` in-place** — l'archive séparée est délibérément plus simple.
+- ❌ **Lancer auto la phase suivante** sans confirmation Op (KARMA 2:c hybride explicite).
+- ❌ **Spammer le toast d'auto-détection** — toujours utiliser le flag `_phaseReadyToastShownForIdx`.
+- ❌ **Casser le cap `MAX_SCENARIOS=10`** — FIFO inchangé.
+- ❌ **Supprimer une phase active OU démarrée** — `supprimerPhase` refuse explicitement.
+- ❌ **Permettre `lancerPhaseSuivante` sans `terminerPhase` préalable** — chaînage strict.
+
+#### 78.8 Roadmap suite v1.29.x
+
+- **C4 — Rôle Relai** (KARMA Option A retenue) : équipe avec flag `g.estRelai: true` + parcours
+  "axe principal" + badge 🛣️ RELAI sur card Op + tri prioritaire dans grille. Hérite gratuitement
+  de tout (PDF/KMZ/IDB photos/rapports/itinéraire Pathfinder/couleur OTAN). Estimation : M.
+- **C5 — Rapports enrichis** : `genererRapportPDF` + `genererRapportData` avec sections par phase
+  + debriefs intercalés. Lecture `s.execution.etapesArchive[phaseIdx]` pour phases archivées +
+  `s.execution.etapes` pour phase courante. KARMA 6:a = 1 PDF global, pas N PDF. Estimation : L.
+- **C6 — Polish + docs** : tests terrain + AI_CONTEXT enrichi + éventuels hotfixes UI. S.
+- **Forwarding obs équipe→PC via Relai** : reporté à v1.29.x ou v1.30.x selon retours terrain
+  (KARMA 5:b — feature standalone à valider d'abord).
+
+---
+
+### 79. i18n palier P0 — README EN + toggle 🇫🇷/🇬🇧 (v1.29.0 — 2026-05-30)
+
+Premier palier d'internationalisation. Scope **strictement limité** à la modale Documentation —
+le reste de l'app reste en français. Quand le système global arrivera (palier P1+), ce toggle
+sera remplacé par un sélecteur global de langue.
+
+Décisions design KARMA validées (workflow `wcg11rqll`) : `1:a 2:c 3:a 4:a 5:c` → toggle drapeaux,
+détection auto navigator.language au 1er affichage avec persistance sticky, traduction agent,
+scope strictement README, décision archi palier P1+ reportée.
+
+#### 79.1 Architecture
+
+3 helpers privés dans `js/interface.js` (juste avant `afficherReadme`) :
+
+```js
+const README_LANG_STORAGE_KEY = "myktamap_readme_lang";  // "fr" | "en"
+
+function _getReadmeLang() {
+  // 1. Lit localStorage
+  // 2. Sinon : navigator.language.toLowerCase().startsWith("en") → "en" sinon "fr"
+  // 3. Persiste la détection au 1er boot (stabilité aux relances)
+}
+function _setReadmeLang(lang) { /* valide + persiste */ }
+function _readmePathForLang(lang) {
+  return (lang === "en") ? "docs/README_USER.en.md" : "docs/README_USER.md";
+}
+```
+
+`afficherReadme(opts)` appelle `_chargerReadme(_readmePathForLang(_getReadmeLang()), opts)`.
+
+#### 79.2 Toggle UI dans le header modale
+
+Bouton drapeau ajouté entre le titre "📖 Documentation" et le bouton 🎓 Tutoriel :
+
+```html
+<button class="kta-readme-lang-btn" id="kta-readme-lang-btn"
+        data-target-lang="en" title="Read in English">🇬🇧</button>
+```
+
+**Convention UX** : le bouton **affiche le drapeau de la langue ALTERNATIVE** (= "clique pour
+basculer vers ça"), pas la courante. Tooltip bilingue contextuel ("Read in English" / "Lire en
+français").
+
+Au clic : `_setReadmeLang(target)` + `modal.remove()` + `afficherReadme({overLocker, hideOnboarding})`
+(préserve les opts via détection DOM courante — pas de re-passage de paramètres compliqué).
+
+#### 79.3 Fichier `docs/README_USER.en.md`
+
+Traduction du `docs/README_USER.md` (2888 lignes, ~200 KB) en EN. Résultat : **2633 lignes /
+~161 KB** (ratio attendu — l'anglais est plus compact).
+
+**Workflow de traduction** : 12 chunks parallèles de ~240 lignes via Workflow `wcg11rqll`.
+Temps wall-time : 165 s. Consignes strictes au prompt agent :
+- Préserve EXACTEMENT le markdown (headers, code blocks, tables, listes, liens, bold, italic)
+- NE TRADUIT PAS : chemins fichiers, noms JS, modules MyKTAMap (KMZ, GPX, PWA, M-LVL, IDB),
+  versions (v1.x.y), URLs, émojis, noms propres (KARMA, GRIMP, SSF)
+- Terminologie cohérente : plan→map, tracé→path, équipe→team, Mode Secours→Rescue Mode,
+  carrière→underground quarry, chambres d'exploitation→extraction chambers, etc.
+- Tutoiement FR → "you" neutre EN
+- Marqueurs `[REVIEW: ...]` pour les ambiguïtés (1 seul marqueur dans le résultat final)
+
+**⚠️ Piège connu** : le chunk 12 du premier essai avait **halluciné** 2 sections inventées
+(`## Self-hosted installation` + `## 🎉 You're ready!`) au lieu de traduire les 6 vraies sections
+finales (Badge version, PIN, Reset, Troubleshooting, Topo, Remerciements). Fix : re-traduction
+manuelle via Agent dédié avec prompt **ZÉRO-INVENTION** strict + lecture explicite du source.
+Cf commit `691520d` pour le détail. Pour les futurs workflows de traduction par chunks :
+ajouter validation post-traduction (nb de `^## ` source vs résultat).
+
+#### 79.4 Service Worker
+
+`docs/README_USER.en.md` ajouté à `ASSETS_TO_CACHE` (cohérent avec le `.md` français déjà servi
+depuis v1.8.0). Aucun nouveau bypass cache nécessaire (cached SW, pas de bumper sur chaque
+édition de doc).
+
+#### 79.5 CSS dédié
+
+`.kta-readme-lang-btn` — style miroir du bouton 🎓 Tutoriel (même dimensions 36×32, même border
+radius 6px, même padding) avec **accent bleu** (vs ambre charte du 🎓) pour différencier
+visuellement. Variants thème clair complets.
+
+#### 79.6 À NE PAS faire
+
+- ❌ **Bibliothèque externe i18n** (i18next, polyglot, ICU) — surface réseau + bundle inutiles.
+  200 lignes maison suffisent.
+- ❌ **Traduction temps réel** (Google Translate, DeepL API) — viole offline-first et
+  `connect-src 'self'`.
+- ❌ **Mélanger FR et EN** dans la même fenêtre d'aide — toggle global au header, jamais inline.
+- ❌ **Forcer EN selon le navigateur sans override** — un utilisateur FR avec VPN US se sent piégé.
+- ❌ **Toucher au reste de l'app pour P0** — scope strictement limité à la doc README.
+- ❌ **Externaliser les strings du Mode Secours en cours de v1.29.x** — refactor i18n APRÈS les
+  cycles fonctionnels stabilisés (C4 + C5 + C6).
+
+#### 79.7 Roadmap palier P1+ (futur, non engagé)
+
+- **P1** : extraction strings critiques (sidebar + headers + 3 vues Live Mode Secours,
+  ~200 strings). Estimation 20-30h. Décision à confirmer avec KARMA selon retours terrain
+  utilisateurs EN.
+- **P2** : aide intégrée + tutoriel onboarding (~300 strings). 15-20h.
+- **P3** : reste de l'UI (modales, formulaires, hints, toasts). 60-80h.
+- **P4** : 2ᵉ langue (ES / IT / DE) selon demande terrain cataphilie internationale.
+
+Pour quand on y arrivera : préférer `i18n/<lang>.json` racine **no-cache HTTP** (cohérent avec
+`version.json` / `alert.json` / `Licence-pro.json`) avec helper unique
+`window.MyKTAMapI18n = { t(key, params), getLang, setLang, onChange }` et pattern de migration
+progressive `t(key, fallbackFR)` (= si la clé n'existe pas en EN, retombe sur le texte FR).
+
+---
+
 **Bon code ! 🚀**

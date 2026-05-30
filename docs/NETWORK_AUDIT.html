@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.28.5</strong> (30 mai 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.29.0</strong> (30 mai 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.29.0 (Release MINOR — Mode Secours multi-phases + i18n palier 0 documentation EN)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau service tiers contacté.</strong>
+    (1) <strong>Multi-phases Mode Secours</strong> (C1+C2+C3) : un scénario peut séquencer plusieurs phases avec debrief intercalé. Architecture archive séparée — <code>s.execution.etapes</code> ne contient QUE la phase active, <code>s.execution.etapesArchive[phaseIdx]</code> archive les phases précédentes (deep clone JSON). 100% local, aucun fetch ajouté. Migration silencieuse v1.28.x → multi-phases idempotente au load via <code>_migrateScenarioV1ToPhases</code>. Format <code>.mkmsec.json</code> reste <code>version: 1</code> (champ <code>phases</code> optionnel ignoré par anciens parsers — pas de cassure rétro-compat). Watcher auto-détection "phase prête à clore" 100% client-side (parcours du tableau d'étapes en mémoire, aucun appel réseau).
+    (2) <strong>i18n P0</strong> (<code>js/interface.js</code> + <code>docs/README_USER.en.md</code> nouveau) : toggle 🇫🇷/🇬🇧 dans la modale 📖 Documentation. Détection automatique <code>navigator.language</code> au premier affichage, persistance <code>localStorage["myktamap_readme_lang"]</code>. Le fichier EN (2633 lignes, ~161 KB) est servi same-origin via le SW (ajouté à <code>ASSETS_TO_CACHE</code>), aucun fetch externe. Scope strictement limité à la doc README — le reste de l'app reste en français pour ce palier.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité — désormais le ping cible <code>&lt;origin&gt;/ping.html</code> same-origin).
+    Verdict : ✅ aucune régression — release purement fonctionnelle, infrastructure offline-first préservée.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1807,7 +1816,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 30 mai 2026 — <strong>v1.28.5</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. <strong>Aucune nouvelle whitelist `connect-src`</strong> entre v1.13.0 et v1.28.5 — l'app reste à <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité) sur toute la série. <strong>v1.28.2 → v1.28.5</strong> : mécanisme de licence pro complet (4 patchs consécutifs) — détection serveur same-origin, mention splash CSS pure, import manuel depuis le profil (v1.28.4) et import depuis l'UnlockGate (v1.28.5) strictement locaux via <code>FileReader</code> + validation regex <code>MKTM-LIC-&lt;32 hex&gt;</code>, écriture dans <code>localStorage["__mktm_pro_license_local__"]</code>, <strong>jamais transmis au serveur</strong>. Cf. tableau historique pour le détail cumulatif v1.13.0 → v1.28.5.<br>
+    Dernière mise à jour : 30 mai 2026 — <strong>v1.29.0</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. <strong>Aucune nouvelle whitelist `connect-src`</strong> entre v1.13.0 et v1.28.5 — l'app reste à <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité) sur toute la série. <strong>v1.28.2 → v1.28.5</strong> : mécanisme de licence pro complet (4 patchs consécutifs) — détection serveur same-origin, mention splash CSS pure, import manuel depuis le profil (v1.28.4) et import depuis l'UnlockGate (v1.28.5) strictement locaux via <code>FileReader</code> + validation regex <code>MKTM-LIC-&lt;32 hex&gt;</code>, écriture dans <code>localStorage["__mktm_pro_license_local__"]</code>, <strong>jamais transmis au serveur</strong>. Cf. tableau historique pour le détail cumulatif v1.13.0 → v1.28.5.<br>
     <!-- 🆕 v1.28.2 : copyright dual community ↔ pro (cf js/proLicense.js). -->
     <span class="kta-licence-community">© 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit</span>
     <span class="kta-licence-pro">© 2026 MyKTAMap — édition pro · Tous droits réservés · ✓ Licence professionnelle active</span>
