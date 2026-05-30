@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.28.5-c2-phases-ui";
+const CACHE_NAME = "myktamap-cache-v1.28.5-p0-i18n";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -40,6 +40,7 @@ const ASSETS_TO_CACHE = [
 
   // Doc utilisateur (consommée par le modal Documentation)
   "./docs/README_USER.md",
+  "./docs/README_USER.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)

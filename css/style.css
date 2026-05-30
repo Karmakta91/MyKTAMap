@@ -2249,6 +2249,41 @@ html.kta-theme-light .kta-readme-tutorial-btn:hover {
   background: rgba(161, 110, 16, 0.22) !important;
 }
 
+/* 🆕 v1.29.0 P0 i18n — Toggle FR/EN dans header modale Doc. Style miroir
+   du bouton 🎓 (tutorial) avec accent bleu pour bien différencier. */
+.kta-readme-lang-btn {
+  background: rgba(140, 180, 255, 0.10);
+  border: 1px solid rgba(140, 180, 255, 0.40);
+  color: #e8eaf0;
+  border-radius: 6px;
+  width: 36px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  margin-right: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+.kta-readme-lang-btn:hover {
+  background: rgba(140, 180, 255, 0.25);
+  border-color: rgba(140, 180, 255, 0.70);
+  transform: scale(1.05);
+}
+body.kta-theme-light .kta-readme-lang-btn,
+html.kta-theme-light .kta-readme-lang-btn {
+  background: rgba(30, 95, 153, 0.10) !important;
+  border-color: rgba(30, 95, 153, 0.45) !important;
+  color: #1e5f99 !important;
+}
+body.kta-theme-light .kta-readme-lang-btn:hover,
+html.kta-theme-light .kta-readme-lang-btn:hover {
+  background: rgba(30, 95, 153, 0.22) !important;
+}
+
 /* Layout principal : sidebar + corps (+ bouton retour-haut absolute) */
 .kta-readme-modal-layout {
   flex: 1;

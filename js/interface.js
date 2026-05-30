@@ -1315,13 +1315,50 @@ function _choixSuppression(titre, texte, options) {
 //   - overLocker boost le z-index du modal à 100200 pour passer au-dessus
 //     des deux gates (UnlockGate=100100, PinLock=100002). Sans ça la modale
 //     apparaît derrière et l'user voit son fond mais ne peut pas interagir.
+// 🆕 v1.29.0 P0 i18n — Langue de la doc utilisateur (FR / EN).
+// Décisions design KARMA 1:a 2:c 3:a 4:a 5:c :
+//   - Toggle drapeaux 🇫🇷 / 🇬🇧 dans header modale Doc UNIQUEMENT (cas particulier
+//     isolé, palier 0 — le reste de l'app reste FR jusqu'au palier P1+).
+//   - Détection auto navigator.language au 1er affichage, sticky après.
+//   - Persistance localStorage["myktamap_readme_lang"] = "fr" | "en".
+//   - Fallback FR si fichier EN absent (catch fetch).
+//
+// Ce mécanisme est INTENTIONNELLEMENT LIMITÉ à la doc README pour le P0.
+// Quand on aura un vrai système i18n (P1+), ce toggle sera remplacé par
+// un sélecteur global de langue.
+const README_LANG_STORAGE_KEY = "myktamap_readme_lang";
+
+function _getReadmeLang() {
+  try {
+    const saved = localStorage.getItem(README_LANG_STORAGE_KEY);
+    if (saved === "fr" || saved === "en") return saved;
+  } catch(e) {}
+  // 1er boot : auto-détection navigator.language. EN si commence par "en",
+  // FR sinon (par défaut). Persiste pour stabilité aux relances.
+  const navLang = (navigator.language || navigator.userLanguage || "").toLowerCase();
+  const detected = navLang.startsWith("en") ? "en" : "fr";
+  try { localStorage.setItem(README_LANG_STORAGE_KEY, detected); } catch(e) {}
+  return detected;
+}
+
+function _setReadmeLang(lang) {
+  if (lang !== "fr" && lang !== "en") return;
+  try { localStorage.setItem(README_LANG_STORAGE_KEY, lang); } catch(e) {}
+}
+
+// Retourne le chemin du fichier README selon la langue active.
+function _readmePathForLang(lang) {
+  return (lang === "en") ? "docs/README_USER.en.md" : "docs/README_USER.md";
+}
+
 function afficherReadme(opts) {
   opts = opts || {};
   const existing = document.getElementById("kta-readme-modal");
   if (existing) { existing.remove(); return; }
 
-  // Chargement direct de la doc utilisateur
-  _chargerReadme("docs/README_USER.md", opts);
+  // 🆕 P0 i18n — détermine la langue à charger
+  const lang = _getReadmeLang();
+  _chargerReadme(_readmePathForLang(lang), opts);
 }
 
 // Construit le sommaire latéral (sidebar desktop / haut sur mobile) avec H2 + sous-H3 collapsibles
@@ -1603,11 +1640,22 @@ function _ouvrirReadmeModal(html, opts) {
   const btnOnboarding = opts.hideOnboarding
     ? ''
     : '<button class="kta-readme-tutorial-btn" id="kta-readme-tutorial-btn" type="button" aria-label="(Re)voir le tutoriel d\'onboarding" title="🎓 (Re)voir le tutoriel d\'onboarding">🎓</button>';
+  // 🆕 v1.29.0 P0 i18n — Toggle FR/EN dans le header (drapeaux uniquement, KARMA 1:a).
+  // Le bouton montre le drapeau de la langue ALTERNATIVE (pas de celle courante) pour
+  // indiquer "clique pour basculer vers ça". Convention UX classique.
+  const currentLang = _getReadmeLang();
+  const altLang     = (currentLang === "fr") ? "en" : "fr";
+  const altFlag     = (altLang === "fr") ? "🇫🇷" : "🇬🇧";
+  const altTitle    = (altLang === "fr") ? "Lire en français" : "Read in English";
+  const btnLang     = '<button class="kta-readme-lang-btn" id="kta-readme-lang-btn" type="button" ' +
+                        'aria-label="' + altTitle + '" title="' + altTitle + '" ' +
+                        'data-target-lang="' + altLang + '">' + altFlag + '</button>';
   modal.innerHTML = `
     <div class="kta-readme-modal-boite">
       <div class="kta-readme-modal-header">
         <button class="kta-readme-toc-toggle-btn" id="kta-readme-toc-toggle" type="button" aria-label="Afficher ou masquer le sommaire" title="Afficher ou masquer le sommaire">📚</button>
         <span class="kta-readme-modal-titre">📖 Documentation</span>
+        ${btnLang}
         ${btnOnboarding}
         <button class="kta-panneau-close" id="kta-readme-close">✕</button>
       </div>
@@ -1671,6 +1719,28 @@ function _ouvrirReadmeModal(html, opts) {
       if (window.Tutorial && typeof window.Tutorial.ouvrir === "function") {
         window.Tutorial.ouvrir();
       }
+    });
+  }
+
+  // 🆕 v1.29.0 P0 i18n — Handler du toggle FR/EN. Persiste + ferme + ré-ouvre.
+  // KARMA 4:a — scope strictement limité à la doc README. La modale est
+  // détruite puis re-créée pour conserver toute la logique du bandeau Doc
+  // (TOC dépliable, smooth scroll, etc.) sans avoir à dupliquer le rendu.
+  const _readmeLangBtn = document.getElementById("kta-readme-lang-btn");
+  if (_readmeLangBtn) {
+    _readmeLangBtn.addEventListener("click", function() {
+      const target = _readmeLangBtn.getAttribute("data-target-lang");
+      if (target !== "fr" && target !== "en") return;
+      _setReadmeLang(target);
+      // Préserve les opts (overLocker, hideOnboarding) — sont déjà reflétées
+      // dans le DOM courant via les classes de la modale.
+      const wasOverLocker   = modal.classList.contains("kta-readme-over-locker");
+      const wasHideOnboard  = !document.getElementById("kta-readme-tutorial-btn");
+      modal.remove();
+      afficherReadme({
+        overLocker:     wasOverLocker,
+        hideOnboarding: wasHideOnboard
+      });
     });
   }
 }
