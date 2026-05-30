@@ -295,6 +295,8 @@ Si l'auteur t'a remis un fichier **`Licence-pro.json`** (par mail, canal privé,
 
 **Format du fichier** : JSON minimum `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si le hash est manquant ou mal formé (regex stricte `MKTM-LIC-` + 32 caractères hexadécimaux), le fichier est refusé avec message d'erreur.
 
+**🆕 Depuis v1.28.5 — Voie d'accès au premier chargement** : si tu installes MyKTAMap pour la première fois sur un nouvel appareil (= écran de saisie du **code communautaire** au boot), sous le formulaire du code tu trouveras désormais un second bloc séparé par « ou » avec un bouton **📂 Importer ma licence pro**. Au clic, file picker `.json` → tu sélectionnes ton fichier → si OK l'app entre **direct en mode pro** (pas besoin de saisir le code communautaire). Pratique pour les utilisateurs pro qui découvrent l'app : pas besoin de demander le code communautaire à un tiers, la licence pro est un canal d'accès légitime en soi.
+
 > 🔒 **100 % local** : le fichier de licence est lu par le navigateur via `FileReader` puis persisté dans `localStorage`. Il n'est **jamais envoyé à un serveur**, jamais transmis. Aucune connexion réseau n'est ajoutée.
 
 > ⚖️ **Valeur juridique** : le hash `MKTM-LIC-...` qui figure dans le fichier est **nominatif** — lié à un contrat précis entre l'auteur et le titulaire de la licence. **Sa reproduction ou son partage à un tiers non autorisé constitue une infraction contractuelle** (l'auteur peut faire valoir ses droits). Le mécanisme côté navigateur reste cosmétique : il ne vérifie pas cryptographiquement le hash, c'est la signature du contrat qui fait foi.

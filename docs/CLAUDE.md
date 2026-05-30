@@ -7085,9 +7085,9 @@ locale. `connect-src` inchangé. Nouveau fichier `js/roadGraph.js` ajouté à `A
 
 ---
 
-### 77. Mécanisme de licence pro — Licence-pro.json + import manuel (v1.28.2 → v1.28.4 — 2026-05-30)
+### 77. Mécanisme de licence pro — Licence-pro.json + import manuel (v1.28.2 → v1.28.5 — 2026-05-30)
 
-3 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
+4 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
 sans casser la philo offline-first ni l'audit réseau.
 
 #### 77.1 Architecture
@@ -7228,6 +7228,78 @@ Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail
 2. L'envelopper soit dans `.kta-licence-community` (visible community, masqué pro) soit dans `.kta-licence-pro` (masqué community, visible pro)
 3. Vérifier visuellement les 2 états en testant avec un `Licence-pro.json` posé localement ou importé via UI profil
 4. Documenter dans la matrice §77.2 ci-dessus
+
+#### 77.10 Voie d'accès UnlockGate via import de licence (v1.28.5)
+
+Au premier chargement de l'app (= UnlockGate active, code communautaire requis), un **second canal
+d'entrée** est désormais proposé : importer un fichier `Licence-pro.json` reçu par mail/canal privé.
+Le mode pro est activé directement et la gate se ferme — pas besoin de saisir le code communautaire.
+
+**Implémentation** (`js/unlockGate.js`, ~70 lignes ajoutées) :
+
+- Dans `_creerOverlay()`, **sous** le formulaire historique du code (inchangé), ajout de 2 blocs :
+  - Séparateur `<div class="kta-unlock-separator kta-licence-community">` avec libellé « ou »
+  - Bloc `<div class="kta-unlock-licence-block kta-licence-community">` contenant un hint italique
+    + bouton ambré « 📂 Importer ma licence pro » + `<input type="file" accept=".json">` masqué
+- Dans `ouvrirGate()`, handler du bouton : ouvre le file picker, appelle
+  `window.MyKTAMapProLicense.importFile(file)` (= **même API que §77.5 import profil**, validation
+  stricte avec hash bien formé requis). Si OK :
+  ```js
+  localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+  localStorage.removeItem(LS_ATTEMPTS);
+  // fondu overlay + resolve(true)
+  ```
+- Si rejeté : message d'erreur inline `❌ Licence refusée : <error>` (sans incrémenter le compteur
+  de tentatives échouées — l'import licence n'est PAS un essai de code communautaire raté)
+
+**Doctrine** : « détenir une licence pro = canal légitime d'accès, pas besoin de re-saisir le code
+communautaire à chaque reload ». Une fois la licence importée, le flag `LS_UNLOCK` est posé comme
+si l'user avait tapé le code → la gate ne réapparaît pas au prochain boot. Si l'user retire ensuite
+sa licence locale depuis le profil (§77.5), le flag `LS_UNLOCK` reste posé : pas de re-prompt
+(« déjà passé une fois par un canal légitime »).
+
+**Bascule auto** : les 2 blocs (séparateur + import) sont wrappés dans `.kta-licence-community`. Sur
+instance pro serveur (`Licence-pro.json` détecté), ils sont masqués automatiquement via la cascade
+CSS de §77.1 (`html.kta-instance-pro .kta-licence-community { display: none }`). Aucune action
+spéciale dans le JS — réutilise le pattern existant.
+
+**CSS dédié** (`css/style.css`, ~60 lignes mode dark + ~22 lignes variant thème clair) :
+
+| Classe | Rôle |
+|---|---|
+| `.kta-unlock-separator` | Flex row avec 2 lignes + libellé « ou » |
+| `.kta-unlock-separator-line` | Ligne horizontale subtile `rgba(255,255,255,0.10)` |
+| `.kta-unlock-separator-text` | Libellé uppercase letter-spaced, gris muted |
+| `.kta-unlock-licence-block` | Wrapper text-align center |
+| `.kta-unlock-licence-info` | Hint italique gris-bleu |
+| `.kta-unlock-licence-btn` | Bouton ambré `rgba(244,197,66,...)` border + hover saturé |
+
+Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeManager).
+
+**À NE PAS faire** :
+
+- ❌ Incrémenter `LS_ATTEMPTS` si l'import est rejeté — un essai d'import RATÉ n'est PAS un essai de code
+  communautaire RATÉ. Sinon, un user qui essaie 5 fois d'importer un fichier invalide se retrouve en
+  lockout sans avoir tapé le code une seule fois.
+- ❌ Bypass `MyKTAMapProLicense.importFile(file)` — il assure la validation regex hash, le cap taille,
+  l'écriture localStorage + le dispatch d'événement `mktm:license-changed`. Tout pipeline parallèle
+  serait du code mort + risque de désynchronisation.
+- ❌ Ouvrir le file picker sans masquer le compteur de tentatives au-dessus — UX confuse (« 5/5 tentatives
+  utilisées » pendant qu'on essaie d'importer une licence n'a aucun sens). Solution actuelle : le hint
+  italique du bloc précise le contexte différent.
+- ❌ Permettre l'import depuis l'écran lockout — au-delà de 5 tentatives ratées du code communautaire,
+  la gate refuse tout (cohérent avec §36.3 doctrine lockout définitif). L'import est dispo UNIQUEMENT
+  sur la gate normale avant lockout. Volontaire : sinon bypass trivial du lockout.
+
+#### 77.11 Pour étendre
+
+**Si on veut ajouter une 3e voie d'accès** (genre code QR à scanner, signature WebAuthn, etc.) :
+
+1. Ajouter le bloc HTML sous le bouton import dans `_creerOverlay()`, wrappé dans `.kta-licence-community`
+2. Ajouter le handler dans `ouvrirGate()` — pattern identique : succès → set `LS_UNLOCK` + fade + resolve
+3. **Ne pas** incrémenter `LS_ATTEMPTS` en cas d'échec (cohérent avec import)
+4. Ajouter le bloc dans la matrice §77.2 des surfaces basculées
+5. Documenter le canal dans `docs/NETWORK_AUDIT.md` si nouvelle surface réseau impliquée
 
 ---
 

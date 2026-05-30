@@ -1163,7 +1163,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 
 ---
 
-### O. Versionning courant — v1.28.4
+### O. Versionning courant — v1.28.5
 
 | Hotfix | Sujet |
 |---|---|
@@ -1190,7 +1190,8 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 | v1.28.1 | 📖 Doc utilisateur accessible depuis les 4 écrans de verrouillage (UnlockGate gate+lockout + PinLock gate+lockout) via `afficherReadme({hideOnboarding:true, overLocker:true})` — réutilise `docs/README_USER.md` déjà caché par le SW + fix mailto footer accueil (lien sortant, aucun fetch ajouté) |
 | v1.28.2 | 🏷️ **Détecteur licence pro** — `js/proLicense.js` : fetch `/Licence-pro.json` same-origin, bascule footer/UnlockGate via classe `.kta-instance-pro` posée sur `<html>`. Bypass cache total dans SW (cf §77 CLAUDE.md) |
 | v1.28.3 | 🌟 Mention licence pro propagée au **splash de chargement** (rose des vents) — `#splashLicense` bascule community↔pro selon classe `.kta-instance-pro` |
-| **v1.28.4** | 📂 **Import manuel d'une licence pro depuis le profil** — nouvelle section « 💼 Édition pro » dans modale « 👤 Mon profil » du loader. 2 sources désormais : cache fetch serveur + cache import manuel (`__mktm_pro_license_local__`) strictement indépendants. Validation hash `MKTM-LIC-<32 hex>` stricte côté import, permissive côté fetch (backward compat). Aucune nouvelle surface réseau — `FileReader` purement local. Cf §77 CLAUDE.md + entrée groupée v1.28.2→v1.28.4 dans NETWORK_AUDIT |
+| v1.28.4 | 📂 **Import manuel d'une licence pro depuis le profil** — nouvelle section « 💼 Édition pro » dans modale « 👤 Mon profil » du loader. 2 sources désormais : cache fetch serveur + cache import manuel (`__mktm_pro_license_local__`) strictement indépendants. Validation hash `MKTM-LIC-<32 hex>` stricte côté import, permissive côté fetch (backward compat). Aucune nouvelle surface réseau — `FileReader` purement local. Cf §77 CLAUDE.md + entrée groupée v1.28.2→v1.28.5 dans NETWORK_AUDIT |
+| **v1.28.5** | 🔓 **Voie d'accès UnlockGate via import de licence pro** — au premier chargement, sous le formulaire du code communautaire, bouton « 📂 Importer ma licence pro » qui ouvre un file picker `.json`. Si OK, l'overlay se ferme avec fondu et l'app entre en mode pro (= flag `LS_UNLOCK` posé). Doctrine : « détenir une licence pro = canal légitime d'accès ». Bascule auto via `.kta-licence-community` : bloc masqué sur instance pro serveur. Pipeline identique à v1.28.4 (FileReader local, regex strict, écriture `__mktm_pro_license_local__`). Aucune nouvelle surface réseau. Cf §77.10 CLAUDE.md |
 
 KARMA pratique le **bump CACHE_NAME suffix `-hotfixN`** pendant le dev (pas de bump `version.json`). Le bump version.json + tag git + push main se font seulement quand KARMA valide explicitement ("oui je le veux" cf MEMORY.md).
 
