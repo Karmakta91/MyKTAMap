@@ -73,13 +73,12 @@ function _ecrirePlannerMode(mode) {
   try { localStorage.setItem(PLANNER_MODE_LS_KEY, mode); } catch(e) {}
 }
 
-// 🌍 v173 : feature flag pour l'UI Import KMZ.
-// v1.14.20-hotfix4 : ACTIVÉ (KARMA validation finale du flow — icônes
-// désormais préservées par genererZipMyktamap > opts.assets, plus de
-// raison de cacher l'entrée). En complément, le drop zone classique
-// « Charger un ZIP existant » accepte aussi maintenant les fichiers .kmz
-// et route automatiquement vers le flow KMZ.
-const KTA_KMZ_IMPORT_UI_ENABLED = true;
+// 🧹 v1.29.0-fix3 (KARMA "doublon") — Feature flag KTA_KMZ_IMPORT_UI_ENABLED
+// retiré. Les boutons « Importer KMZ » / « Importer GPX » du planner
+// faisaient doublon avec la drop zone ZIP qui accepte déjà ces extensions
+// via _routerFichierImport. Les modales sous-jacentes (_afficherImporterKmz
+// / _afficherImporterGpx) restent exposées via window.afficherImporterKmz
+// et window.afficherImporterGpx pour usage programmatique.
 
 // =========================
 // MODALE PRINCIPALE
@@ -114,42 +113,13 @@ function afficherPlanner() {
         </div>
         <p class="kta-planner-mode-hint" id="kta-planner-mode-hint"></p>
 
-        ${KTA_KMZ_IMPORT_UI_ENABLED ? `
-        <!-- 🌍 IMPORT KMZ (depuis v173) : entrée alternative au planner classique.
-             Ouvre une modale dédiée qui parse un KMZ MyKTAMap (round-trip) et
-             génère un ZIP MyKTAMap utilisable. Cohérent avec la position A
-             validée (= dans le Générateur). Conditionnel via le feature flag
-             KTA_KMZ_IMPORT_UI_ENABLED en tête de createConf.js. -->
-        <div class="kta-aide-section kta-pl-col-full">
-          <div class="kta-aide-section-titre">🌍 Importer depuis un KMZ <span class="kta-planner-hint">(MyKTAMap round-trip)</span></div>
-          <p class="kta-planner-info">
-            Tu as un fichier <strong>.kmz</strong> exporté depuis MyKTAMap ?
-            L'app peut le ré-importer en ZIP MyKTAMap utilisable.
-          </p>
-          <button class="kta-btn kta-btn-primary" id="kta-planner-open-kmz-import" type="button" style="width:100%; padding:12px;">
-            🌍 Ouvrir l'import KMZ
-          </button>
-        </div>
-
-        <!-- 📤 IMPORT GPX (v1.21.0-fix6) : parité avec l'import KMZ ci-dessus.
-             KARMA : "il faut ajouter au meme titre que import KMZ import GPX
-             dans le générateur avancé". Ouvre _afficherImporterGpx() qui
-             génère un canvas vierge auto-calibré sur les bounds GPS du GPX
-             puis reconstruit un ZIP MyKTAMap utilisable (cf §55 CLAUDE.md). -->
-        <div class="kta-aide-section kta-pl-col-full">
-          <div class="kta-aide-section-titre">📤 Importer depuis un GPX <span class="kta-planner-hint">(canvas vierge auto-calibré)</span></div>
-          <p class="kta-planner-info">
-            Tu as un fichier <strong>.gpx</strong> exporté depuis MyKTAMap ou une app tierce
-            (TopoDroid, OsmAnd, Strava, etc.) ?
-            L'app génère un canvas vierge dimensionné automatiquement sur les bounds GPS
-            des points/tracés, et reconstruit un ZIP MyKTAMap utilisable.
-            <br><span class="kta-planner-hint">⚠️ Idéalement exporté depuis MyKTAMap pour roundtrip complet (tags, niveaux M-LVL, descriptions).</span>
-          </p>
-          <button class="kta-btn kta-btn-primary" id="kta-planner-open-gpx-import" type="button" style="width:100%; padding:12px;">
-            📤 Ouvrir l'import GPX
-          </button>
-        </div>
-        ` : ``}
+        <!-- 🧹 v1.29.0-fix3 (KARMA "doublon") — Boutons "Importer depuis KMZ"
+             et "Importer depuis GPX" RETIRÉS. La drop zone ZIP ci-dessous
+             accepte déjà les .kmz et .gpx via _routerFichierImport (ligne
+             ~730) qui ouvre automatiquement la bonne modale (_afficherImporterKmz
+             ou _afficherImporterGpx) selon l'extension. Les fonctions restent
+             exposées (window.afficherImporterKmz / window.afficherImporterGpx)
+             pour usage programmatique ou futur rebranchement. -->
 
         <!-- ZIP OPTIONNEL -->
         <div class="kta-aide-section kta-pl-col-full">
@@ -583,32 +553,9 @@ function afficherPlanner() {
   document.getElementById("kta-planner-annuler").addEventListener("click", function() { modal.remove(); });
   modal.addEventListener("click", function(e) { if (e.target === modal) modal.remove(); });
 
-  // 🌍 v173 : bouton d'entrée vers la modale d'import KMZ (Phase 1 MVP).
-  // Lance le pipeline KMZ → ZIP MyKTAMap dans une modale dédiée (pas
-  // d'interaction avec le formulaire planner classique pour rester clair).
-  const btnKmzImport = document.getElementById("kta-planner-open-kmz-import");
-  if (btnKmzImport) {
-    btnKmzImport.addEventListener("click", function() {
-      _afficherImporterKmz();
-    });
-  }
-
-  // 📤 v1.21.0-fix6 (KARMA "ajouter au meme titre que import KMZ import GPX
-  // dans le générateur avancé") : bouton parallèle pour le pipeline GPX →
-  // ZIP MyKTAMap (canvas vierge auto-calibré sur bounds GPS du GPX).
-  // Pattern identique au bouton KMZ ci-dessus.
-  const btnGpxImport = document.getElementById("kta-planner-open-gpx-import");
-  if (btnGpxImport) {
-    btnGpxImport.addEventListener("click", function() {
-      if (typeof _afficherImporterGpx === "function") {
-        _afficherImporterGpx();
-      } else if (typeof window.afficherImporterGpx === "function") {
-        window.afficherImporterGpx();
-      } else {
-        alert("Module d'import GPX indisponible (js/gpxImport.js non chargé).");
-      }
-    });
-  }
+  // 🧹 v1.29.0-fix3 (KARMA "doublon") — Handlers des boutons KMZ/GPX
+  // import RETIRÉS. La drop zone ZIP ouvre automatiquement la modale
+  // appropriée via _routerFichierImport (extensions .kmz / .gpx).
 
   // 📥 v1.7.3 : bouton "Conf exemple" déplacé depuis la home loader.
   // Télécharge `data/myktamap.zip` (ZIP d'exemple inclus dans le repo)
