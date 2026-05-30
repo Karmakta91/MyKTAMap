@@ -112,10 +112,18 @@
 
     <!-- Licence affichée en bas du splash, JUSTE AU-DESSUS de la signature
          KARMA + crédits libs. Position absolute pour décoreller du flux
-         vertical du #splashBox centré. -->
+         vertical du #splashBox centré.
+         🏷️ v1.28.3 : 2 variantes selon mode (community / pro) basculées
+         par la classe .kta-instance-pro posée par js/proLicense.js. -->
     <div id="splashLicense">
-      Licence libre — usage non commercial<br>
-      <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
+      <span class="kta-licence-community">
+        Licence libre — usage non commercial<br>
+        <span class="splash-license-detail">Pas de revente, pas de service payant, pas de monétisation</span>
+      </span>
+      <span class="kta-licence-pro">
+        ✓ Édition professionnelle<br>
+        <span class="splash-license-detail splash-license-detail-pro">Licence active · Tous droits réservés</span>
+      </span>
     </div>
 
     <!-- 🆕 v1.9.2-fix15 (KARMA) : signature KARMA en bas à droite, plus
@@ -416,35 +424,6 @@
            · CC BY-NC-SA 4.0 · Usage commercial interdit · vX.Y.Z".
            Le span .kta-loader-copyright-line2 wrappe la partie licence
            pour permettre un line-break sur mobile (CSS @media). -->
-
-      <!-- 🏷️ v1.28.3 : Encart "Édition professionnelle" intégré au loader.
-           Wrappé dans .kta-licence-community → masqué automatiquement côté
-           pro (cohérent : pas de pub vers pro sur une instance déjà sous
-           licence pro). Lien sortant target=_blank, aucun fetch réseau
-           ajouté.
-           Mention GRIMP/SSF/Clubs spéléo intégrée pour cohérence avec
-           pro.myktamap.fr et clarté de l'offre gratuite. -->
-      <aside class="kta-loader-pro-card kta-licence-community" role="complementary" aria-label="Édition professionnelle MyKTAMap">
-        <div class="kta-loader-pro-card-inner">
-          <div class="kta-loader-pro-card-icon" aria-hidden="true">💼</div>
-          <div class="kta-loader-pro-card-body">
-            <div class="kta-loader-pro-card-title">Édition professionnelle disponible</div>
-            <p class="kta-loader-pro-card-desc">
-              Pour les organisations qui veulent dépasser l'usage solo :
-              <strong>secours organisé</strong>, <strong>formation</strong>,
-              <strong>géotechnique</strong>, infrastructures souterraines.
-              Auto-hébergement, support, licence sur demande.
-            </p>
-            <p class="kta-loader-pro-card-free">
-              🆘 <strong>GRIMP / SSF / Clubs de spéléologie</strong> : licence gratuite sur demande motivée.
-            </p>
-          </div>
-          <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer" class="kta-loader-pro-card-cta">
-            Découvrir l'offre pro <span aria-hidden="true">→</span>
-          </a>
-        </div>
-      </aside>
-
       <div class="kta-loader-copyright">
         <!-- 🏷️ v1.28.2 : copyright dual community ↔ pro.
              - Bloc .kta-licence-community : visible par défaut (community)
