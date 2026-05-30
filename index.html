@@ -3099,16 +3099,14 @@
 
         let html = "";
         if (isPro) {
-          const hash = data && data.license_hash ? _proHashShort(data.license_hash) : "(pas de hash)";
-          const client = data && data.client ? String(data.client) : null;
+          // 🆕 v1.28.4 (post-feedback KARMA) : suppression du bloc méta
+          // (Source / Client / Hash). Le badge + le hint suffisent pour
+          // donner le contexte sans saturer la modale.
+          // Les helpers _proHashShort / _proSourceLabel restent disponibles
+          // si un usage futur (export profil, diagnostic, etc.) en a besoin.
           html +=
             '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
               '<span class="kta-profile-pro-badge">✓ Édition pro active</span>' +
-              '<div class="kta-profile-pro-meta">' +
-                '<div><span class="kta-profile-pro-meta-label">Source :</span> ' + _proSourceLabel(source) + '</div>' +
-                (client ? '<div><span class="kta-profile-pro-meta-label">Client :</span> ' + client.replace(/</g, "&lt;") + '</div>' : '') +
-                '<div><span class="kta-profile-pro-meta-label">Hash :</span> <code class="kta-profile-pro-hash">' + hash + '</code></div>' +
-              '</div>' +
             '</div>';
           html += '<p class="kta-profile-pro-hint">' + _proSourceHint(source) + '</p>';
           if (source === "local") {
