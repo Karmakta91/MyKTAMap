@@ -8642,6 +8642,153 @@ body.kta-theme-light .kta-loader-copyright-edition-title {
    FIN — v1.28.2 bascule community ↔ pro
    ========================= */
 
+/* =========================
+   🆕 v1.28.4 — Section "💼 Édition pro" dans la modale "Mon profil"
+   =========================
+   Permet à l'user d'importer manuellement un fichier Licence-pro.json
+   reçu par mail/canal privé pour activer le mode pro localement.
+   Design sobre charte ambre, cohérent avec le badge .kta-licence-pro
+   du footer v1.28.2. */
+
+.kta-profile-pro-section {
+  margin-top: 22px;
+  padding: 16px 18px;
+  background: rgba(244, 197, 66, 0.05);
+  border: 1px solid rgba(244, 197, 66, 0.22);
+  border-radius: 10px;
+}
+.kta-profile-pro-header {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 12px;
+  letter-spacing: 0.02em;
+}
+.kta-profile-pro-body {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.55;
+}
+.kta-profile-pro-loading {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+}
+.kta-profile-pro-error {
+  margin: 0;
+  color: #ff8c8c;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* État actif — bloc avec badge vert + métadonnées */
+.kta-profile-pro-status {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: rgba(110, 226, 135, 0.06);
+  border: 1px solid rgba(110, 226, 135, 0.28);
+  border-radius: 6px;
+}
+.kta-profile-pro-badge {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: #6ee287;
+  background: rgba(110, 226, 135, 0.14);
+  border: 1px solid rgba(110, 226, 135, 0.38);
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+.kta-profile-pro-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #c8d0e0;
+  line-height: 1.6;
+}
+.kta-profile-pro-meta-label {
+  color: #8892a4;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.kta-profile-pro-hash {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.08);
+  border: 1px solid rgba(244, 197, 66, 0.22);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.kta-profile-pro-hint {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: #a8b3c8;
+  line-height: 1.6;
+}
+.kta-profile-pro-hint code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  background: rgba(140, 180, 255, 0.10);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #c8d0e0;
+}
+
+.kta-profile-pro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* Variants thème clair (cohérence §53) */
+html.kta-theme-light .kta-profile-pro-section,
+body.kta-theme-light .kta-profile-pro-section {
+  background: rgba(184, 134, 11, 0.08);
+  border-color: rgba(184, 134, 11, 0.32);
+}
+html.kta-theme-light .kta-profile-pro-header,
+body.kta-theme-light .kta-profile-pro-header {
+  color: #b8860b;
+}
+html.kta-theme-light .kta-profile-pro-body,
+body.kta-theme-light .kta-profile-pro-body {
+  color: #2a2620;
+}
+html.kta-theme-light .kta-profile-pro-meta-label,
+body.kta-theme-light .kta-profile-pro-meta-label {
+  color: #6b6354;
+}
+html.kta-theme-light .kta-profile-pro-hash,
+body.kta-theme-light .kta-profile-pro-hash {
+  color: #b8860b;
+  background: rgba(184, 134, 11, 0.10);
+  border-color: rgba(184, 134, 11, 0.30);
+}
+html.kta-theme-light .kta-profile-pro-status,
+body.kta-theme-light .kta-profile-pro-status {
+  background: rgba(29, 138, 58, 0.08);
+  border-color: rgba(29, 138, 58, 0.32);
+}
+html.kta-theme-light .kta-profile-pro-badge,
+body.kta-theme-light .kta-profile-pro-badge {
+  color: #1d8a3a;
+  background: rgba(29, 138, 58, 0.12);
+  border-color: rgba(29, 138, 58, 0.38);
+}
+html.kta-theme-light .kta-profile-pro-hint,
+body.kta-theme-light .kta-profile-pro-hint {
+  color: #6b6354;
+}
+/* =========================
+   FIN — v1.28.4 section pro profil
+   ========================= */
+
 
 /* 🆕 v1.9.2-fix17 — Ligne crédits libs/algos dans le footer du home.
    Plus discrète que la ligne copyright (couleur plus pâle, taille

@@ -2763,6 +2763,17 @@
                 '</div>' +
               '</div>' +
 
+              // 🆕 v1.28.4 : section Édition pro — statut + import/retrait
+              // licence locale. Le contenu dynamique (statut, source, hash
+              // tronqué, boutons) est rendu par _refreshProfileProSection().
+              '<div class="kta-profile-pro-section" id="kta-profile-pro-section">' +
+                '<div class="kta-profile-pro-header">💼 Édition professionnelle</div>' +
+                '<div class="kta-profile-pro-body" id="kta-profile-pro-body">' +
+                  '<div class="kta-profile-pro-loading">⏳…</div>' +
+                '</div>' +
+                '<input type="file" id="kta-profile-pro-input" accept=".json,application/json" style="display:none;">' +
+              '</div>' +
+
               // — Actions profil —
               '<div class="kta-profile-details-actions">' +
                 '<button type="button" class="kta-btn kta-btn-primary" id="kta-profile-details-export">📤 Exporter mon profil</button>' +
@@ -2784,6 +2795,10 @@
 
         // Calcul stats async
         _refreshProfileDetailsStats();
+
+        // 🆕 v1.28.4 : Render initial + bind handlers de la section Édition pro.
+        _refreshProfileProSection();
+        _bindProfileProHandlers();
 
         // Fermeture
         const closeFn = function() {
@@ -3034,6 +3049,134 @@
           avatarEl.innerHTML =
             '<div class="kta-profile-details-avatar-initial kta-profile-details-avatar-empty">👤</div>';
         }
+      }
+
+      // ============================================================
+      // 🆕 v1.28.4 — Section "💼 Édition pro" dans la modale profil
+      // ============================================================
+      // Permet à un user d'importer un fichier Licence-pro.json reçu
+      // par mail/canal privé pour activer le mode pro localement
+      // (cf. js/proLicense.js doctrine 2 sources serveur + local).
+
+      // Helper : tronque un hash pour affichage compact (ex:
+      // "MKTM-LIC-abc123..." → "MKTM-LIC-abc1…3456").
+      function _proHashShort(hash) {
+        if (typeof hash !== "string") return "";
+        if (hash.length <= 18) return hash;
+        return hash.slice(0, 13) + "…" + hash.slice(-4);
+      }
+
+      // Helper : libellés humains selon source.
+      function _proSourceLabel(source) {
+        if (source === "server") return "Serveur (instance pro déployée)";
+        if (source === "local")  return "Licence importée sur cet appareil";
+        return "—";
+      }
+      function _proSourceHint(source) {
+        if (source === "server") {
+          return "Cette instance est servie en mode pro par son administrateur. Aucune action requise.";
+        }
+        if (source === "local") {
+          return "Mode pro activé pour CE navigateur uniquement, via une licence importée par toi. " +
+                 "Retire-la si tu veux revenir au mode communautaire.";
+        }
+        return "Mode communautaire actuel. Si tu as reçu une licence pro (fichier <code>Licence-pro.json</code>), " +
+               "importe-la ici pour activer l'édition pro sur cet appareil.";
+      }
+
+      // Rend la section selon l'état actuel de la licence pro.
+      function _refreshProfileProSection() {
+        const body = document.getElementById("kta-profile-pro-body");
+        if (!body) return;
+        if (!window.MyKTAMapProLicense) {
+          body.innerHTML = '<p class="kta-profile-pro-error">Module pro license indisponible.</p>';
+          return;
+        }
+        const lic = window.MyKTAMapProLicense;
+        const isPro = lic.isPro();
+        const source = lic.getSource();
+        const data = lic.getData();
+
+        let html = "";
+        if (isPro) {
+          const hash = data && data.license_hash ? _proHashShort(data.license_hash) : "(pas de hash)";
+          const client = data && data.client ? String(data.client) : null;
+          html +=
+            '<div class="kta-profile-pro-status kta-profile-pro-status-active">' +
+              '<span class="kta-profile-pro-badge">✓ Édition pro active</span>' +
+              '<div class="kta-profile-pro-meta">' +
+                '<div><span class="kta-profile-pro-meta-label">Source :</span> ' + _proSourceLabel(source) + '</div>' +
+                (client ? '<div><span class="kta-profile-pro-meta-label">Client :</span> ' + client.replace(/</g, "&lt;") + '</div>' : '') +
+                '<div><span class="kta-profile-pro-meta-label">Hash :</span> <code class="kta-profile-pro-hash">' + hash + '</code></div>' +
+              '</div>' +
+            '</div>';
+          html += '<p class="kta-profile-pro-hint">' + _proSourceHint(source) + '</p>';
+          if (source === "local") {
+            html +=
+              '<div class="kta-profile-pro-actions">' +
+                '<button type="button" class="kta-btn kta-btn-danger kta-btn-mini" id="kta-profile-pro-remove">🗑️ Retirer la licence locale</button>' +
+              '</div>';
+          }
+        } else {
+          html += '<p class="kta-profile-pro-hint">' + _proSourceHint(null) + '</p>';
+          html +=
+            '<div class="kta-profile-pro-actions">' +
+              '<button type="button" class="kta-btn kta-btn-primary kta-btn-mini" id="kta-profile-pro-import">📂 Importer une licence pro</button>' +
+            '</div>';
+        }
+        body.innerHTML = html;
+      }
+
+      // Bind handlers (boutons import / retrait + input file).
+      // Idempotent : un seul binding global via délégation sur le body
+      // de la section (qui est re-renduré à chaque change d'état).
+      function _bindProfileProHandlers() {
+        const section = document.getElementById("kta-profile-pro-section");
+        const fileInput = document.getElementById("kta-profile-pro-input");
+        if (!section || !fileInput) return;
+
+        // Délégation sur la section (les boutons sont à l'intérieur du body
+        // qui se re-rendre, donc on délègue plutôt que bind direct).
+        section.addEventListener("click", function(e) {
+          const target = e.target;
+          if (!(target instanceof HTMLElement)) return;
+          if (target.id === "kta-profile-pro-import" || target.closest("#kta-profile-pro-import")) {
+            fileInput.value = ""; // reset pour permettre re-pick du même fichier
+            fileInput.click();
+            return;
+          }
+          if (target.id === "kta-profile-pro-remove" || target.closest("#kta-profile-pro-remove")) {
+            if (!window.MyKTAMapProLicense) return;
+            const ok = window.confirm(
+              "Retirer la licence pro locale ?\n\nL'application reviendra en mode communautaire " +
+              "sur cet appareil. Tu pourras la re-importer plus tard tant que tu gardes le " +
+              "fichier Licence-pro.json reçu."
+            );
+            if (!ok) return;
+            window.MyKTAMapProLicense.removeLocal();
+            _refreshProfileProSection();
+            if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+              window.OOMGuard.showToast("Licence pro locale retirée", "info");
+            }
+          }
+        });
+
+        fileInput.addEventListener("change", function() {
+          const file = fileInput.files && fileInput.files[0];
+          if (!file) return;
+          if (!window.MyKTAMapProLicense) return;
+          window.MyKTAMapProLicense.importFile(file).then(function(result) {
+            if (result && result.ok) {
+              _refreshProfileProSection();
+              if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+                window.OOMGuard.showToast("✓ Licence pro importée — édition pro activée sur cet appareil", "info");
+              }
+            } else {
+              const msg = (result && result.error) ? result.error : "Erreur inconnue.";
+              window.alert("Import refusé : " + msg);
+            }
+          });
+        });
       }
 
       async function _refreshProfileDetailsStats() {

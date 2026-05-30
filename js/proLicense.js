@@ -6,158 +6,212 @@
  */
 
 // =========================
-// PRO LICENSE DETECTOR — js/proLicense.js (depuis v1.28.2)
+// PRO LICENSE DETECTOR — js/proLicense.js
 // =========================
 //
-// 🎯 Rôle : détecter si l'instance MyKTAMap déployée tourne sous licence pro
-// (= une instance d'un client mode A auto-hébergé OU mode B managé) par la
-// PRÉSENCE d'un fichier `Licence-pro.json` à la racine du serveur.
+// 🎯 Rôle : détecter si l'instance MyKTAMap tourne sous licence pro.
+// 2 sources possibles (depuis v1.28.4) :
 //
-// 🛡️ Côté communautaire : 100 % transparent. Le fichier `Licence-pro.json`
-// n'existe pas sur myktamap.fr (community) → fetch 404 → mode community par
-// défaut → aucun changement visible pour l'utilisateur.
+//   1. SERVEUR : présence d'un fichier `/Licence-pro.json` à la racine
+//      du serveur web (= déployeur a mis en place le mode pro pour
+//      tous les visiteurs de l'instance).
 //
-// 🏷️ Côté pro : le déployeur (client mode A ou KARMA mode B) pose le fichier
-// `Licence-pro.json` à la racine du serveur web, avec un contenu JSON minimal :
+//   2. LOCAL (🆕 v1.28.4) : l'utilisateur importe un fichier
+//      Licence-pro.json depuis SON profil dans le home loader →
+//      mode pro activé sur SON appareil uniquement, persistant dans
+//      localStorage. Permet d'activer une licence reçue par mail/canal
+//      privé sans dépendre d'un déploiement serveur pro.
 //
-//   { "instance": "pro" }
+// 🛡️ Côté community : 100 % transparent. Pas de Licence-pro.json sur
+// myktamap.fr, pas de licence importée → mode community par défaut →
+// aucun changement visible pour l'utilisateur.
 //
-// ou enrichi (extensible pour le futur) :
+// 🔐 Sécurité : ce mécanisme reste PUREMENT COSMÉTIQUE. La licence
+// (côté serveur ou local) est stockée en clair. La validité juridique
+// vient du contrat signé avec MyKTAMap, pas du contenu du fichier.
+// Cohérent avec UnlockGate (cf §36 CLAUDE.md "barrière sociale").
+//
+// 🆔 Hash de licence (depuis v1.28.4) : chaque licence émise par KARMA
+// porte un `license_hash` unique au format `MKTM-LIC-<32 hex>`. Ce hash
+// est nominatif (lié à 1 client/contrat). Sa reproduction ou son
+// utilisation par un tiers est une infraction contractuelle.
+//
+//   Backward compat : les fichiers serveur posés avant v1.28.4 (sans
+//   hash) sont toujours acceptés en source serveur (warning console
+//   seulement). L'IMPORT MANUEL en revanche EXIGE un hash valide
+//   (= toute licence livrée à un user à partir de maintenant doit
+//   en contenir un).
+//
+// 📦 Format Licence-pro.json :
 //
 //   {
-//     "instance":    "pro",
-//     "client":      "Acme SpéléoSecours",
-//     "license_id":  "MKTM-2026-001",
-//     "valid_until": "2027-05-30"
+//     "instance":     "pro",                                  // REQUIS
+//     "license_hash": "MKTM-LIC-<32 hex>",                    // REQUIS pour import manuel, optionnel pour fetch serveur
+//     "client":       "Acme SpeleSecours",                    // optionnel — futur affichage
+//     "license_id":   "MKTM-2026-001",                        // optionnel — traçabilité interne
+//     "license_type": "annual" | "perpetual" | "free-grimp",  // optionnel
+//     "issued_at":    "2026-05-30",                           // optionnel
+//     "valid_until":  "2027-05-30"                            // optionnel
 //   }
 //
-// 📌 Mécanisme :
-//   1. Au chargement très tôt, lecture du cache localStorage
-//      `__mktm_pro_license__` : si `pro` → on applique IMMÉDIATEMENT la classe
-//      `kta-instance-pro` sur <html>, évitant tout flash visuel au boot 2+.
-//   2. En parallèle, fetch async `Licence-pro.json?_=<ts>` (cache-bust) pour
-//      confirmer/invalider le cache local.
-//   3. Si fetch succès + JSON valide avec `instance: "pro"` → mode pro activé
-//      (classe appliquée + flag global + cache localStorage maj).
-//   4. Si fetch échoue (404 community, network down, parse error) → cache
-//      localStorage purgé + classe retirée si présente → mode community.
+// API publique exposée :
+//   window.__MKTM_PRO_LICENSE__         : objet JSON parsé OU null
+//   window.MyKTAMapProLicense.isPro()   : boolean
+//   window.MyKTAMapProLicense.getData() : objet ou null
+//   window.MyKTAMapProLicense.getSource() : "server" | "local" | null  🆕
+//   window.MyKTAMapProLicense.importFile(file) : Promise<result>       🆕
+//   window.MyKTAMapProLicense.removeLocal()    : void                  🆕
+//   window.MyKTAMapProLicense.forceRecheck()   : void
 //
-// 🚧 Sécurité : ce mécanisme est PUREMENT COSMÉTIQUE. Un user community qui
-// pose un faux `Licence-pro.json` chez lui peut afficher le mode pro mais
-// n'a pas la licence réelle. Le copyright légal reste dans LICENSE (racine).
-// Pas pire que UnlockGate (cf §36 CLAUDE.md "barrière sociale").
-//
-// API exposée :
-//   - window.__MKTM_PRO_LICENSE__ : objet JSON parsé OU null si community
-//   - window.MyKTAMapProLicense.isPro() : boolean
-//   - window.MyKTAMapProLicense.getData() : objet ou null
+// Event émis sur window au changement de licence :
+//   "mktm:license-changed" → detail = { isPro, source, data }
 //
 // =========================
 
 (function() {
   "use strict";
 
-  var LS_KEY = "__mktm_pro_license__";
+  // Clés localStorage distinctes pour les 2 sources.
+  var LS_KEY_SERVER = "__mktm_pro_license__";       // cache du fetch /Licence-pro.json
+  var LS_KEY_LOCAL  = "__mktm_pro_license_local__"; // licence importée manuellement
+
   var FETCH_PATH = "/Licence-pro.json";
-  var FETCH_TIMEOUT_MS = 1500;  // si pas de réponse en 1.5s → fallback community
+  var FETCH_TIMEOUT_MS = 1500;
+
+  // Pattern de validation du hash de licence.
+  // Format : MKTM-LIC- suivi de 32 caractères hexadécimaux (insensible à la casse).
+  // Génération côté KARMA : `openssl rand -hex 16` → "MKTM-LIC-" + result.
+  var HASH_PATTERN = /^MKTM-LIC-[A-Fa-f0-9]{32}$/;
 
   // -------------------------------------------------------------------------
-  // 0. Bootstrap synchrone depuis le cache localStorage
+  // Helpers internes
   // -------------------------------------------------------------------------
-  // Évite le flash visuel au boot 2+ d'une instance pro. Le cache contient
-  // soit le JSON sérialisé d'une session pro précédente, soit rien (community).
-  //
-  // ⚠️ On applique la classe sur `<html>` (document.documentElement), pas sur
-  // body, car body n'existe pas encore à ce stade (script chargé en <head>).
 
-  var _cachedRaw = null;
-  try {
-    _cachedRaw = localStorage.getItem(LS_KEY);
-  } catch(e) {
-    // localStorage indispo (incognito strict, désactivé, etc.) → tant pis,
-    // le mécanisme fonctionne en dégradé (flash au boot 1, comme une 1ère
-    // visite).
+  function _safeReadLS(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (data && data.instance === "pro") return data;
+    } catch(e) {
+      // Cache corrompu → on l'ignore (laissera la suite purger)
+    }
+    return null;
   }
 
-  var _cachedData = null;
-  if (_cachedRaw) {
-    try {
-      _cachedData = JSON.parse(_cachedRaw);
-    } catch(e) {
-      // Cache corrompu → on l'ignore
-      _cachedData = null;
+  function _safeWriteLS(key, data) {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+  }
+
+  function _safeRemoveLS(key) {
+    try { localStorage.removeItem(key); } catch(e) {}
+  }
+
+  function _validateData(data, strictHash) {
+    if (!data || typeof data !== "object") {
+      return { ok: false, error: "Fichier vide ou format invalide." };
+    }
+    if (data.instance !== "pro") {
+      return { ok: false, error: "Champ \"instance\" doit valoir \"pro\"." };
+    }
+    if (strictHash) {
+      if (typeof data.license_hash !== "string") {
+        return { ok: false, error: "Champ \"license_hash\" manquant. Format attendu : MKTM-LIC-<32 hex>." };
+      }
+      if (!HASH_PATTERN.test(data.license_hash)) {
+        return { ok: false, error: "Format de license_hash invalide. Attendu : MKTM-LIC-<32 hex>." };
+      }
+    } else if (typeof data.license_hash === "string" && !HASH_PATTERN.test(data.license_hash)) {
+      console.warn("[ProLicense] license_hash présent mais format inattendu — accepté en mode dégradé.");
+    } else if (typeof data.license_hash !== "string") {
+      console.warn("[ProLicense] licence sans license_hash — backward compat fetch serveur (déploiement legacy ?).");
+    }
+    return { ok: true, data: data };
+  }
+
+  // -------------------------------------------------------------------------
+  // Lecture initiale synchrone (cache localStorage) — évite tout flash
+  // -------------------------------------------------------------------------
+  // Priorité : serveur > local (le serveur prime — c'est l'annonce du
+  // déployeur, plus "officielle" que l'import individuel).
+
+  var _activeData = null;
+  var _activeSource = null;
+
+  var serverCached = _safeReadLS(LS_KEY_SERVER);
+  if (serverCached) {
+    _activeData = serverCached;
+    _activeSource = "server";
+  } else {
+    var localCached = _safeReadLS(LS_KEY_LOCAL);
+    if (localCached) {
+      _activeData = localCached;
+      _activeSource = "local";
     }
   }
 
-  // Application synchrone (cache hit pro)
-  if (_cachedData && _cachedData.instance === "pro") {
-    window.__MKTM_PRO_LICENSE__ = _cachedData;
+  window.__MKTM_PRO_LICENSE__ = _activeData;
+  if (_activeData) {
     if (document.documentElement) {
       document.documentElement.classList.add("kta-instance-pro");
     }
-  } else {
-    window.__MKTM_PRO_LICENSE__ = null;
   }
 
   // -------------------------------------------------------------------------
-  // 1. Vérification async via fetch
+  // Application d'état + notification
   // -------------------------------------------------------------------------
-  // Confirme ou invalide le cache. Permet aussi de capter le passage
-  // community → pro (1ère installation de la licence sur le serveur).
-  //
-  // Important : `cache: "no-store"` + cache-bust ?_= pour bypasser tout
-  // cache navigateur. Le SW community est conçu pour servir ce fichier
-  // depuis le réseau uniquement (cf sw.js : bypass dans fetch handler).
 
-  function _appliquerEtat(data) {
-    var prevIsPro = !!(window.__MKTM_PRO_LICENSE__ &&
-                        window.__MKTM_PRO_LICENSE__.instance === "pro");
-    var nowIsPro = !!(data && data.instance === "pro");
+  function _applyClasses(isPro) {
+    if (document.documentElement) {
+      document.documentElement.classList.toggle("kta-instance-pro", isPro);
+    }
+    if (document.body) {
+      document.body.classList.toggle("kta-instance-pro", isPro);
+    }
+  }
 
-    if (nowIsPro) {
-      // Activation pro
-      window.__MKTM_PRO_LICENSE__ = data;
-      try {
-        localStorage.setItem(LS_KEY, JSON.stringify(data));
-      } catch(e) {}
-      if (document.documentElement) {
-        document.documentElement.classList.add("kta-instance-pro");
-      }
-      if (document.body) {
-        document.body.classList.add("kta-instance-pro");
-      }
+  function _notifyChange(prevIsPro, prevSource, nextIsPro, nextSource, data) {
+    if (prevIsPro === nextIsPro && prevSource === nextSource) return;
+    if (typeof window.CustomEvent !== "function") return;
+    try {
+      window.dispatchEvent(new CustomEvent("mktm:license-changed", {
+        detail: { isPro: nextIsPro, source: nextSource, data: data || null }
+      }));
+    } catch(e) {}
+  }
+
+  function _recomputeActive() {
+    var prevIsPro = !!_activeData;
+    var prevSource = _activeSource;
+
+    // Re-lecture : serveur > local (serveur prime sur local si les 2
+    // sont actifs en même temps — annonce du déployeur > import perso).
+    var srv = _safeReadLS(LS_KEY_SERVER);
+    var loc = _safeReadLS(LS_KEY_LOCAL);
+
+    if (srv) {
+      _activeData = srv;
+      _activeSource = "server";
+    } else if (loc) {
+      _activeData = loc;
+      _activeSource = "local";
     } else {
-      // Retour ou maintien community
-      window.__MKTM_PRO_LICENSE__ = null;
-      try {
-        localStorage.removeItem(LS_KEY);
-      } catch(e) {}
-      if (document.documentElement) {
-        document.documentElement.classList.remove("kta-instance-pro");
-      }
-      if (document.body) {
-        document.body.classList.remove("kta-instance-pro");
-      }
+      _activeData = null;
+      _activeSource = null;
     }
 
-    // Notifier les éventuels listeners (futurs widgets dynamiques)
-    if (prevIsPro !== nowIsPro && typeof window.CustomEvent === "function") {
-      try {
-        window.dispatchEvent(new CustomEvent("mktm:license-changed", {
-          detail: { isPro: nowIsPro, data: data || null }
-        }));
-      } catch(e) {}
-    }
+    window.__MKTM_PRO_LICENSE__ = _activeData;
+    _applyClasses(!!_activeData);
+    _notifyChange(prevIsPro, prevSource, !!_activeData, _activeSource, _activeData);
   }
 
-  function _checkLicensePro() {
-    if (typeof fetch !== "function") {
-      // Browser très ancien sans fetch → fallback community (zéro impact
-      // négatif si on était en community via cache)
-      return;
-    }
+  // -------------------------------------------------------------------------
+  // Vérification async côté serveur
+  // -------------------------------------------------------------------------
 
-    // Timeout via AbortController si dispo (sinon on laisse couler)
+  function _checkServerLicense() {
+    if (typeof fetch !== "function") return;
+
     var ctrl = null;
     var timeoutId = null;
     if (typeof AbortController === "function") {
@@ -180,58 +234,123 @@
       .then(function(resp) {
         if (timeoutId) clearTimeout(timeoutId);
         if (!resp.ok) {
-          // 404 (community), 5xx (serveur down) → community
-          _appliquerEtat(null);
+          // 404 community OU 5xx → on purge le cache SERVEUR
+          // (mais on TOUCHE PAS au cache LOCAL, qui reste indépendant).
+          _safeRemoveLS(LS_KEY_SERVER);
+          _recomputeActive();
           return null;
         }
         return resp.json().catch(function() { return null; });
       })
       .then(function(data) {
         if (data === undefined) return;
-        _appliquerEtat(data);
+        var v = _validateData(data, /* strictHash */ false);
+        if (v.ok) {
+          _safeWriteLS(LS_KEY_SERVER, v.data);
+        } else {
+          _safeRemoveLS(LS_KEY_SERVER);
+        }
+        _recomputeActive();
       })
       .catch(function() {
-        // Network error, abort timeout, etc. → on maintient l'état cache
-        // (si on avait pro en cache, on garde, on ne purge pas — l'instance
-        // peut être offline temporairement).
+        // Network error / timeout → maintenir l'état cache (offline temporaire).
         if (timeoutId) clearTimeout(timeoutId);
       });
   }
 
   // -------------------------------------------------------------------------
-  // 2. API publique
+  // Import manuel d'un fichier (UI dans Mon profil — depuis v1.28.4)
+  // -------------------------------------------------------------------------
+
+  function _importFile(file) {
+    return new Promise(function(resolve) {
+      if (!file || typeof file !== "object") {
+        resolve({ ok: false, error: "Aucun fichier fourni." });
+        return;
+      }
+      var maxBytes = 50 * 1024; // 50 KB suffit largement pour un JSON de licence
+      if (typeof file.size === "number" && file.size > maxBytes) {
+        resolve({ ok: false, error: "Fichier trop volumineux (max 50 Ko)." });
+        return;
+      }
+
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var text = ev && ev.target && typeof ev.target.result === "string"
+          ? ev.target.result
+          : null;
+        if (!text) {
+          resolve({ ok: false, error: "Lecture du fichier impossible." });
+          return;
+        }
+        var data;
+        try {
+          data = JSON.parse(text);
+        } catch(e) {
+          resolve({ ok: false, error: "JSON invalide : " + (e.message || e) });
+          return;
+        }
+        // ⚠️ Strict pour l'import manuel : hash obligatoire et bien formé.
+        var v = _validateData(data, /* strictHash */ true);
+        if (!v.ok) {
+          resolve(v);
+          return;
+        }
+        _safeWriteLS(LS_KEY_LOCAL, v.data);
+        _recomputeActive();
+        resolve({ ok: true, data: v.data });
+      };
+      reader.onerror = function() {
+        resolve({ ok: false, error: "Erreur de lecture du fichier." });
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  function _removeLocal() {
+    _safeRemoveLS(LS_KEY_LOCAL);
+    _recomputeActive();
+  }
+
+  // -------------------------------------------------------------------------
+  // API publique
   // -------------------------------------------------------------------------
   window.MyKTAMapProLicense = {
     isPro: function() {
-      return !!(window.__MKTM_PRO_LICENSE__ &&
-                window.__MKTM_PRO_LICENSE__.instance === "pro");
+      return !!_activeData;
     },
     getData: function() {
-      return window.__MKTM_PRO_LICENSE__ || null;
+      return _activeData;
+    },
+    getSource: function() {
+      return _activeSource;
+    },
+    importFile: function(file) {
+      return _importFile(file);
+    },
+    removeLocal: function() {
+      _removeLocal();
     },
     forceRecheck: function() {
-      _checkLicensePro();
-    }
+      _checkServerLicense();
+    },
+    // Helpers diagnostic
+    _LS_KEY_SERVER: LS_KEY_SERVER,
+    _LS_KEY_LOCAL: LS_KEY_LOCAL,
+    HASH_PATTERN: HASH_PATTERN
   };
 
   // -------------------------------------------------------------------------
-  // 3. Lancement de la vérification async
+  // Lancement de la vérification async côté serveur
   // -------------------------------------------------------------------------
-  // On lance immédiatement le fetch (pas besoin d'attendre DOMContentLoaded).
-  // Si body pas encore là, _appliquerEtat() utilise documentElement seul,
-  // puis re-applique à body au prochain check (mais pas urgent — le CSS sur
-  // <html> couvre la propagation aux descendants).
 
-  _checkLicensePro();
+  _checkServerLicense();
 
-  // Au cas où body arrive après notre check initial (peu probable mais
-  // safety), on re-applique l'état actuel quand DOMContentLoaded fire.
+  // Au cas où body arrive après le check initial (script chargé dans <head>),
+  // re-applique l'état à DOMContentLoaded.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function() {
-      var data = window.__MKTM_PRO_LICENSE__;
-      if (data && data.instance === "pro" && document.body) {
-        document.body.classList.add("kta-instance-pro");
-      }
+      _applyClasses(!!_activeData);
     });
   }
 
