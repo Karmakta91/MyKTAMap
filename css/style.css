@@ -8694,8 +8694,21 @@ html.kta-theme-light .kta-iti-pause-row input[type="number"] {
 .kta-licence-pro {
   display: none;
 }
-html.kta-instance-pro .kta-licence-community,
-body.kta-instance-pro .kta-licence-community {
+/* 🆕 v1.29.0-fix4 — Sélecteur précisé : on cible uniquement le <span>
+   du lien d'achat (la classe .kta-licence-community est aussi posée
+   sur le séparateur <div> et le bloc <div> "Importer ma licence pro").
+   En conservant ces 2 <div> visibles côté pro, on permet aux utilisateurs
+   d'une instance pro de remplacer/renouveler leur licence depuis l'UI
+   (re-license après upgrade plan, renouvellement annuel, multi-tenant
+   sur même instance, etc.).
+   Comportement COMMUNITY INCHANGÉ : la classe .kta-instance-pro n'est
+   jamais ajoutée par js/proLicense.js côté community (pas de
+   Licence-pro.json fetché) → ces règles sont totalement inertes.
+   Cette précision est donc purement préventive côté community, pour
+   éviter de masquer du contenu utile le jour où ces classes seraient
+   réutilisées dans d'autres contextes. */
+html.kta-instance-pro span.kta-licence-community,
+body.kta-instance-pro span.kta-licence-community {
   display: none;
 }
 html.kta-instance-pro .kta-licence-pro,
