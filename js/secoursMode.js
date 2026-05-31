@@ -703,6 +703,30 @@
     if (_overlayLayer && scenario && scenario.id === _currentScenarioId) {
       renderOverlay(scenario.id);
     }
+    // 🆕 v1.29.0-fix5 — Event générique sur window pour permettre à des
+    // modules extérieurs (intégrations tierces, plugins, déclinaisons
+    // commerciales, extensions navigateur, etc.) de réagir aux mutations
+    // sans avoir à passer par _changeListeners (qui transmet la liste
+    // COMPLÈTE des scénarios). Ici on émet une info CIBLÉE — scenarioId,
+    // planExternalId, updatedAt — suffisant pour qu'un listener fasse
+    // un traitement différentiel (re-render partiel, persistance ailleurs,
+    // notification, etc.).
+    //
+    // Aucun listener n'est attaché côté community → no-op total côté UX.
+    // Convention de nommage `mktm:*` cohérente avec `mktm:license-changed`
+    // émis par js/proLicense.js.
+    try {
+      window.dispatchEvent(new CustomEvent("mktm:secours-scenario-mutated", {
+        detail: {
+          scenarioId:     (scenario && scenario.id) || null,
+          planExternalId: (typeof window !== "undefined" && window._currentLoadedPlanId) || null,
+          updatedAt:      (scenario && scenario.updatedAt) || null,
+          ts:             _nowIso()
+        }
+      }));
+    } catch(e) {
+      // Anciens browsers sans CustomEvent constructor → swallow silencieux
+    }
   }
 
   // Notifie tous les listeners du changement d'état

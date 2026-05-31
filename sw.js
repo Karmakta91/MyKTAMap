@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.29.0-fix4";
+const CACHE_NAME = "myktamap-cache-v1.29.0-fix5";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
