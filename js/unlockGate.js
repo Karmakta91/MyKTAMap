@@ -396,11 +396,25 @@
     } catch(e) {}
   }
 
+  // 🆕 v1.29.1-fix1 — Pose le flag LS_UNLOCK car une licence pro a été
+  // détectée (serveur via fetch /Licence-pro.json OU import local). Une
+  // licence pro valide est un canal d'accès légitime équivalent au code
+  // communautaire (= même doctrine que le bouton « 📂 Importer ma licence
+  // pro » de l'UnlockGate depuis v1.28.5). Appelé par main.js juste après
+  // la résolution async de proLicense.isPro().
+  function markUnlockedViaLicensePro() {
+    try {
+      localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+      localStorage.removeItem(LS_ATTEMPTS);
+    } catch(e) {}
+  }
+
   window.UnlockGate = {
     isUnlocked:  isUnlocked,
     isLockedOut: isLockedOut,
     ouvrirGate:  ouvrirGate,
-    lock:        lock
+    lock:        lock,
+    markUnlockedViaLicensePro: markUnlockedViaLicensePro
   };
 
   console.log("[UnlockGate] Module chargé — unlock state :", isUnlocked());

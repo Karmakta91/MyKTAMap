@@ -1194,9 +1194,69 @@ async function _splashEnd() {
     // = 2e boot+), on saute complètement cette étape sans même montrer
     // l'overlay → tu ne le vois qu'à la 1ère installation et au reset.
     await _splashEnd();
-    console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
-    await window.UnlockGate.ouvrirGate();
-    console.log("[Main] Gate auth franchie → init normale");
+
+    // 🆕 v1.29.1-fix1 — Bypass gate si licence pro active.
+    // Cas d'usage : instance pro (Licence-pro.json fetché côté serveur OU
+    // importé localement). Sans ce bypass, l'user voyait la gate
+    // communautaire au 1er boot ET le bouton « 📂 Importer ma licence
+    // pro » en dessous → friction inutile + risque de double-import
+    // (cache local en plus du serveur, masqué par la priorité server>local).
+    //
+    // Logique :
+    //   1. Si MyKTAMapProLicense.isPro() est déjà true au moment du check
+    //      (cache localStorage déjà rempli par un précédent fetch ou import)
+    //      → bypass immédiat, aucune attente.
+    //   2. Sinon on attend brièvement (max 2s) un éventuel event
+    //      "mktm:license-changed" émis par js/proLicense.js quand son
+    //      fetch /Licence-pro.json async résout (timeout fetch 1.5s + marge).
+    //   3. Si toujours pas pro après ce délai → gate normale.
+    //
+    // Cohérent avec v1.28.5 (import licence depuis la gate = bypass via
+    // set LS_UNLOCK) : ici aussi on pose le flag pour ne plus jamais
+    // redemander la gate tant que l'app reste dans son contexte pro.
+    const _proLicenseReady = async function(maxMs) {
+      if (!window.MyKTAMapProLicense) return false;
+      if (window.MyKTAMapProLicense.isPro()) return true;
+      return new Promise(function(resolve) {
+        const timer = setTimeout(function() {
+          window.removeEventListener("mktm:license-changed", onChange);
+          resolve(!!(window.MyKTAMapProLicense && window.MyKTAMapProLicense.isPro()));
+        }, maxMs || 2000);
+        function onChange(e) {
+          if (e && e.detail && e.detail.isPro) {
+            clearTimeout(timer);
+            window.removeEventListener("mktm:license-changed", onChange);
+            resolve(true);
+          }
+        }
+        window.addEventListener("mktm:license-changed", onChange);
+      });
+    };
+
+    const _proActive = await _proLicenseReady(2000);
+    if (_proActive) {
+      console.log("[Main] Licence pro active (source=" +
+                  window.MyKTAMapProLicense.getSource() +
+                  ") → bypass UnlockGate community");
+      // Pose le flag unlock pour cohérence avec le pattern v1.28.5
+      // (= une licence pro est un canal d'accès légitime, équivalent
+      // au code communautaire validé). Évite la gate au prochain boot.
+      try {
+        // Hash community attendu par UnlockGate.isUnlocked()
+        // (cf js/unlockGate.js > HASH_VALIDE). On ne hardcode pas
+        // le hash ici — on appelle l'API publique si dispo, sinon
+        // on skip silencieusement (la gate sera juste réaffichée au
+        // prochain reload, ce qui restera correct vu que le bypass
+        // se ré-applique).
+        if (typeof window.UnlockGate.markUnlockedViaLicensePro === "function") {
+          window.UnlockGate.markUnlockedViaLicensePro();
+        }
+      } catch(e) { /* swallow */ }
+    } else {
+      console.log("[Main] Gate auth ouverte (pas encore déverrouillé)…");
+      await window.UnlockGate.ouvrirGate();
+      console.log("[Main] Gate auth franchie → init normale");
+    }
   }
 
   // 🆕 v1.9.4 (KARMA 2:a "PIN après UnlockGate") : couche perso PIN/biométrie
