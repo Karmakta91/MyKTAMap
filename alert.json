@@ -1,22 +1,4 @@
 {
-"active": true,
-"alerts": [
-{
-"id": "incendie-V2-idf-2026-05-update-maitrise",
-"level": "emergency",
-"title": "🚨 INCENDIE MAÎTRISÉ — DANGER TOUJOURS PRÉSENT — Carrière V2 (Île-de-France)",
-"message": "Le feu dans la carrière V2 (Île-de-France) est désormais maîtrisé. Cependant, la descente reste STRICTEMENT DÉCONSEILLÉE tant que les puits n'ont pas totalement évacué les résidus de combustion et que les niveaux d’oxygène ne sont pas revenus à la normale.",
-"details": [
-"🔥 Situation : incendie maîtrisé mais atmosphère encore dangereuse",
-"⛔ NE DESCENDS PAS dans la V2 tant que l’alerte est active",
-"☠️ Risque CO (monoxyde de carbone) toujours présent après combustion — gaz invisible, inodore et mortel",
-"💨 Risque déficit O₂ — certaines zones peuvent rester fortement appauvries en oxygène",
-"🚒 Présence renforcée de pompiers et gendarmerie sur place",
-"🏥 3 personnes ont été secourues vivantes et sont actuellement en observation à l’hôpital",
-"⚖️ La piste criminelle concernant l’origine de l’incendie ne fait désormais plus de doute au vu des récidives multiples sur une courte période",
-"🚫 Toute présence sur zone gêne les opérations de secours et de sécurisation en cours"
-],
-"released": "2026-05-24T12:00:00Z"
-}
-]
+  "active": false,
+  "alerts": []
 }
