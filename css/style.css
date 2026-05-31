@@ -8716,6 +8716,21 @@ body.kta-instance-pro .kta-licence-pro {
   display: inline;
 }
 
+/* 🆕 v1.29.0-fix6 — Suffixe "-pro" stylé pour les titres MyKTAMap.
+   La classe .kta-titre-suffix-pro est portée par un <span> ajouté
+   dans index.html juste après le mot "MyKTAMap" dans :
+     - #splashTitle (splash de boot)
+     - .loader-titre-nom (header du home)
+   Combinée avec .kta-licence-pro : invisible côté community (display:none
+   par défaut), apparait côté pro avec un accent jaune cohérent avec la
+   charte (couleur splash KARMA). Aucun impact community. */
+.kta-titre-suffix-pro {
+  color: #f4c542;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-left: 1px;
+}
+
 /* Badge "✓ Licence professionnelle active" — vert sobre (cohérent avec
    les autres badges status verts du projet, cf. §67.7.6 secours LED). */
 .kta-loader-copyright-pro-badge {
