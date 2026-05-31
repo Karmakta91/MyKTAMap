@@ -47,6 +47,33 @@ c'est une promesse intangible. La page de présentation publique de
 l'offre pro est sur [`pro.myktamap.fr`](https://pro.myktamap.fr)
 (sous-domaine séparé, hébergement statique distinct du PWA).
 
+### 🛡️ Garde-fou pre-commit anti-fuite pro
+
+Un script `scripts/check-no-pro-leak.js` + un hook `.githooks/pre-commit`
+bloquent automatiquement tout commit qui contiendrait du code ou des
+fichiers appartenant au repo privé. Catégories couvertes :
+
+- **Fichiers interdits** : tous les modules JS de sync cloud côté pro,
+  toute l'arborescence backend (Fastify/Prisma), tous les docs propriétaires
+  (charte gouvernance, drifts, licences commerciales, roadmap pro), et les
+  fichiers de licence nominatifs des clients.
+- **Patterns interdits** : noms des modules pro globaux (`window.*` cloud),
+  flag de configuration opt-in, préfixes des clés localStorage pro,
+  identifiants du format wire (échange réseau), headers d'authentification
+  spécifiques au backend pro, et chemins d'endpoints backend versionnés.
+
+La liste exhaustive avec regex est dans `scripts/check-no-pro-leak.js`
+(à éditer là pour ajouter / retirer / exempter).
+
+**Activation locale (une seule fois après clone)** :
+```bash
+git config core.hooksPath .githooks
+```
+
+En cas de déclenchement, message clair en console avec fichier + ligne +
+pattern. Bypass d'urgence possible via `git commit --no-verify` (à
+justifier en commit message).
+
 ---
 
 ## 📁 Structure du dépôt

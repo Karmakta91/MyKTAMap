@@ -1,0 +1,24 @@
+#!/bin/sh
+# ============================================================
+# 🛡️ Pre-commit hook MyKTAMap community
+# ============================================================
+# Bloque tout commit qui contiendrait du code appartenant au
+# repo MyKTAMap-pro (privé). Voir scripts/check-no-pro-leak.js
+# pour la liste des patterns / fichiers interdits.
+#
+# Pour activer ce hook :
+#   git config core.hooksPath .githooks
+#
+# Pour bypass en urgence :
+#   git commit --no-verify
+# ============================================================
+
+# Vérifie que Node.js est disponible (cross-platform)
+if ! command -v node >/dev/null 2>&1; then
+  echo "⚠️  [pre-commit] Node.js introuvable — check anti-fuite pro skippé."
+  echo "    Installer Node depuis https://nodejs.org pour activer le hook."
+  exit 0
+fi
+
+# Lance le checker
+node scripts/check-no-pro-leak.js
