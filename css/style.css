@@ -8731,6 +8731,17 @@ body.kta-instance-pro .kta-licence-pro {
   margin-left: 1px;
 }
 
+/* 🆕 v1.29.1-fix2 — Variant thème clair pour le suffixe « -pro » :
+   le jaune accent #f4c542 (lisible sur fond noir mode sombre) passe mal
+   sur le fond beige cataphile du mode clair. On bascule sur l'orange
+   charte #b8860b (= cohérent avec .kta-loader-copyright-edition-title
+   et .kta-profile-pro-header en mode clair). Garantit la même lecture
+   et la même hiérarchie visuelle quelle que soit la palette active. */
+html.kta-theme-light .kta-titre-suffix-pro,
+body.kta-theme-light .kta-titre-suffix-pro {
+  color: #b8860b;
+}
+
 /* Badge "✓ Licence professionnelle active" — vert sobre (cohérent avec
    les autres badges status verts du projet, cf. §67.7.6 secours LED). */
 .kta-loader-copyright-pro-badge {
