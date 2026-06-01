@@ -8731,15 +8731,17 @@ body.kta-instance-pro .kta-licence-pro {
   margin-left: 1px;
 }
 
-/* 🆕 v1.29.1-fix2 — Variant thème clair pour le suffixe « -pro » :
-   le jaune accent #f4c542 (lisible sur fond noir mode sombre) passe mal
-   sur le fond beige cataphile du mode clair. On bascule sur l'orange
-   charte #b8860b (= cohérent avec .kta-loader-copyright-edition-title
-   et .kta-profile-pro-header en mode clair). Garantit la même lecture
-   et la même hiérarchie visuelle quelle que soit la palette active. */
+/* 🆕 v1.29.2-fix1 — Variant thème clair pour le suffixe « -pro » :
+   KARMA a validé qu'on garde le MÊME jaune accent #f4c542 qu'en mode
+   sombre (= cohérent avec le reste de l'identité loader/splash, tagline
+   "Cartographie souterraine" est aussi en #f4c542). La présence d'une
+   règle dédiée clair est nécessaire pour battre l'override
+   `body.kta-theme-light #planLoaderBox *` qui sinon écrase la couleur
+   pour le header (cf section juste plus bas qui cible le header
+   spécifiquement avec specificity 0,2,1). */
 html.kta-theme-light .kta-titre-suffix-pro,
 body.kta-theme-light .kta-titre-suffix-pro {
-  color: #b8860b;
+  color: #f4c542;
 }
 
 /* Badge "✓ Licence professionnelle active" — vert sobre (cohérent avec
@@ -13391,17 +13393,20 @@ body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
 }
 
-/* 🆕 v1.29.2 — Restaure la couleur orange charte clair pour le suffixe
+/* 🆕 v1.29.2-fix1 — Restaure le jaune accent #f4c542 pour le suffixe
    « -pro » du HEADER du home (.loader-titre-nom). Sans cette règle, le
    sélecteur `body.kta-theme-light #planLoaderBox *` (ligne ~13334)
    force tous les descendants du home en `var(--kta-light-text)` (noir
-   muté), ce qui écrasait le orange #b8860b défini en §8731+ pour
+   muté), ce qui écrasait le jaune #f4c542 défini en §8731+ pour
    .kta-titre-suffix-pro.
    Specificity 0,2,1 (body+id+class) bat la règle générique `*` 0,1,1.
    Le suffixe du SPLASH (#splashTitle) n'est pas dans #planLoaderBox →
-   sa règle de §8731 reste prise en compte sans override. */
+   sa règle de §8731 reste prise en compte sans override.
+   KARMA a validé : MÊME jaune accent qu'en mode sombre (cohérence
+   identité loader/splash, tagline "Cartographie souterraine" est aussi
+   en #f4c542). */
 body.kta-theme-light #planLoaderBox .kta-titre-suffix-pro {
-  color: #b8860b;
+  color: #f4c542;
 }
 
 /* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP ===
