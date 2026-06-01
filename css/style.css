@@ -13391,21 +13391,17 @@ body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
 }
 
-/* 🆕 v1.29.1-fix3 — Restaure les couleurs charte clair pour les éléments
-   pro du footer copyright. Sans ces règles, le `*` qui force tous les
-   descendants en `--kta-light-text-muted !important` (voir plus haut)
-   écrasait :
-     - le badge vert « ✓ Licence professionnelle active »
-     - le titre orange « © 2026 MyKTAMap — édition pro »
-   Specificity 0,2,1 + !important pour battre la règle 0,2,0 + !important
-   du sélecteur `*`. Reprend les couleurs définies en §8760+ et §8764+. */
-body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge,
-html.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge {
-  color: #1d8a3a !important;
-}
-body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-edition-title,
-html.kta-theme-light .kta-loader-copyright .kta-loader-copyright-edition-title {
-  color: #b8860b !important;
+/* 🆕 v1.29.2 — Restaure la couleur orange charte clair pour le suffixe
+   « -pro » du HEADER du home (.loader-titre-nom). Sans cette règle, le
+   sélecteur `body.kta-theme-light #planLoaderBox *` (ligne ~13334)
+   force tous les descendants du home en `var(--kta-light-text)` (noir
+   muté), ce qui écrasait le orange #b8860b défini en §8731+ pour
+   .kta-titre-suffix-pro.
+   Specificity 0,2,1 (body+id+class) bat la règle générique `*` 0,1,1.
+   Le suffixe du SPLASH (#splashTitle) n'est pas dans #planLoaderBox →
+   sa règle de §8731 reste prise en compte sans override. */
+body.kta-theme-light #planLoaderBox .kta-titre-suffix-pro {
+  color: #b8860b;
 }
 
 /* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP ===
