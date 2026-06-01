@@ -174,10 +174,21 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.29.2</strong> (1er juin 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.29.3</strong> (1er juin 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.29.3 (Release PATCH — Réorganisation des docs lues par l'application)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN changement de comportement utilisateur.</strong>
+    Pure réorganisation de fichiers pour clarté arborescence. À la RACINE désormais : <code>README.md</code> (GitHub) + <code>CLAUDE.md</code> (agents IA) uniquement.
+    Nouveau sous-dossier <code>docs/applications/</code> qui regroupe TOUTES les docs lues par l'app : <code>README_USER.md</code> + <code>.en.md</code> (modale Documentation), <code>AI_CONTEXT.md</code> (modale Aide IA), <code>NETWORK_AUDIT.md</code> + <code>.html</code> (modale Audit + page transparence — ce fichier).
+    Code mis à jour : <code>sw.js</code> (5 entries <code>ASSETS_TO_CACHE</code> repointées), <code>js/interface.js</code> (5 fetch paths : helper toggle langue + modale Doc + modale Aide IA), <code>index.html</code> (<code>window.open("docs/applications/NETWORK_AUDIT.html")</code>).
+    <strong>Les mêmes fichiers continuent d'être fetchés same-origin via le SW</strong> — juste depuis un nouveau chemin URL (<code>&lt;origin&gt;/docs/applications/README_USER.md</code> au lieu de <code>&lt;origin&gt;/docs/README_USER.md</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité).
+    Verdict : ✅ aucune régression — refactor structurel transparent côté UX, plus propre côté arborescence du repo.
   </p>
 
   <p class="meta" style="margin-top:6px;">
@@ -1841,7 +1852,7 @@
   Le document sera corrigé et le code patché en priorité absolue.</p>
 
   <div class="footer">
-    Dernière mise à jour : 1er juin 2026 — <strong>v1.29.2</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. <strong>Aucune nouvelle whitelist `connect-src`</strong> entre v1.13.0 et v1.29.2 — l'app reste à <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité) sur toute la série. <strong>v1.28.2 → v1.28.5</strong> : mécanisme de licence pro complet (4 patchs consécutifs) — détection serveur same-origin, mention splash CSS pure, import manuel depuis le profil (v1.28.4) et import depuis l'UnlockGate (v1.28.5) strictement locaux via <code>FileReader</code> + validation regex <code>MKTM-LIC-&lt;32 hex&gt;</code>, écriture dans <code>localStorage["__mktm_pro_license_local__"]</code>, <strong>jamais transmis au serveur</strong>. <strong>v1.29.0</strong> Mode Secours multi-phases (C1+C2+C3) + i18n P0 README EN — 100 % local, archive séparée des étapes par phase, fichier <code>docs/README_USER.en.md</code> same-origin via SW. <strong>v1.29.1</strong> consolidation 4 hotfix : CSS sélecteur affiné (refactor préventif), event sortant générique <code>mktm:secours-scenario-mutated</code> (no-op sans listener), suffixe visuel « -pro » sur splash/header (HTML/CSS additif, cosmétique pure) + pre-commit hook anti-fuite code propriétaire (tooling dev local, aucun impact runtime utilisateur). <strong>v1.29.2</strong> consolidation 3 hotfix UX licence pro : bypass gate communautaire si licence pro détectée (cohérent doctrine v1.28.5, aucun fetch ajouté), variants CSS thème clair pour le suffixe « -pro » (splash + header, orange charte #b8860b au lieu du jaune sombre peu lisible sur fond beige). Cf. tableau historique pour le détail cumulatif v1.13.0 → v1.29.2.<br>
+    Dernière mise à jour : 1er juin 2026 — <strong>v1.29.3</strong> (Privacy &amp; Audit inchangé depuis v1.8.1, header Permissions-Policy `battery=(self)` ajouté en v1.12.0. <strong>Aucune nouvelle whitelist `connect-src`</strong> entre v1.13.0 et v1.29.3 — l'app reste à <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité) sur toute la série. <strong>v1.28.2 → v1.28.5</strong> : mécanisme de licence pro complet (4 patchs consécutifs) — détection serveur same-origin, mention splash CSS pure, import manuel depuis le profil (v1.28.4) et import depuis l'UnlockGate (v1.28.5) strictement locaux via <code>FileReader</code> + validation regex <code>MKTM-LIC-&lt;32 hex&gt;</code>, écriture dans <code>localStorage["__mktm_pro_license_local__"]</code>, <strong>jamais transmis au serveur</strong>. <strong>v1.29.0</strong> Mode Secours multi-phases (C1+C2+C3) + i18n P0 README EN — 100 % local, archive séparée des étapes par phase, fichier <code>docs/README_USER.en.md</code> same-origin via SW. <strong>v1.29.1</strong> consolidation 4 hotfix : CSS sélecteur affiné (refactor préventif), event sortant générique <code>mktm:secours-scenario-mutated</code> (no-op sans listener), suffixe visuel « -pro » sur splash/header (HTML/CSS additif, cosmétique pure) + pre-commit hook anti-fuite code propriétaire (tooling dev local, aucun impact runtime utilisateur). <strong>v1.29.2</strong> consolidation 3 hotfix UX licence pro : bypass gate communautaire si licence pro détectée (cohérent doctrine v1.28.5, aucun fetch ajouté), variants CSS thème clair pour le suffixe « -pro » (splash + header, orange charte #b8860b au lieu du jaune sombre peu lisible sur fond beige). Cf. tableau historique pour le détail cumulatif v1.13.0 → v1.29.2.<br>
     <!-- 🆕 v1.28.2 : copyright dual community ↔ pro (cf js/proLicense.js). -->
     <span class="kta-licence-community">© 2026 KARMA · CC BY-NC-SA 4.0 · Usage commercial interdit</span>
     <span class="kta-licence-pro">© 2026 MyKTAMap — édition pro · Tous droits réservés · ✓ Licence professionnelle active</span>

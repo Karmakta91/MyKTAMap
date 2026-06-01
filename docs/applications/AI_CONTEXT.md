@@ -1163,7 +1163,7 @@ API JS pour étendre à d'autres modales : `window.formatGpsCoords(lat, lng) →
 
 ---
 
-### O. Versionning courant — v1.29.2
+### O. Versionning courant — v1.29.3
 
 | Hotfix | Sujet |
 |---|---|

@@ -1347,8 +1347,11 @@ function _setReadmeLang(lang) {
 }
 
 // Retourne le chemin du fichier README selon la langue active.
+// 🆕 v1.29.3 — README_USER.md + .en.md regroupés sous docs/applications/
+// avec les autres docs lues par l'app (AI_CONTEXT, NETWORK_AUDIT). À la
+// racine : README.md (GitHub) + CLAUDE.md (agents IA) uniquement.
 function _readmePathForLang(lang) {
-  return (lang === "en") ? "docs/README_USER.en.md" : "docs/README_USER.md";
+  return (lang === "en") ? "docs/applications/README_USER.en.md" : "docs/applications/README_USER.md";
 }
 
 function afficherReadme(opts) {
@@ -9298,7 +9301,7 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
         /\{\{README_USER\}\}/g,
         readmeUserText && readmeUserText.trim().length > 0
           ? readmeUserText
-          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch docs/README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
+          : "_⚠️ Documentation utilisateur indisponible au moment de la génération (échec du fetch docs/applications/README_USER.md). Réessaye depuis l'app avec une connexion active ou après que le service worker ait mis le fichier en cache._"
       );
   }
 
@@ -9823,24 +9826,25 @@ window.afficherModaleAideIA = function() {
     btn.textContent = "⏳ Génération en cours...";
     statusEl.textContent = "Fetch de la documentation...";
 
-    // Fetch en parallèle : docs/AI_CONTEXT.md (template) + docs/README_USER.md (doc utilisateur)
-    // v1.8.0 : déplacés dans le sous-dossier docs/ (sauf README.md qui reste racine).
+    // Fetch en parallèle : docs/applications/AI_CONTEXT.md + README_USER.md
+    // 🆕 v1.29.3 : regroupés sous docs/applications/ avec les autres docs
+    // lues par l'app (NETWORK_AUDIT). À la racine : README.md + CLAUDE.md.
     let aiContextTpl = "";
     let readmeText = "";
     try {
       const [respCtx, respDoc] = await Promise.all([
-        fetch("docs/AI_CONTEXT.md", { cache: "no-cache" }),
-        fetch("docs/README_USER.md", { cache: "no-cache" })
+        fetch("docs/applications/AI_CONTEXT.md", { cache: "no-cache" }),
+        fetch("docs/applications/README_USER.md", { cache: "no-cache" })
       ]);
       if (respCtx.ok) {
         aiContextTpl = await respCtx.text();
       } else {
-        console.warn("[AideIA] docs/AI_CONTEXT.md HTTP " + respCtx.status);
+        console.warn("[AideIA] docs/applications/AI_CONTEXT.md HTTP " + respCtx.status);
       }
       if (respDoc.ok) {
         readmeText = await respDoc.text();
       } else {
-        console.warn("[AideIA] docs/README_USER.md HTTP " + respDoc.status);
+        console.warn("[AideIA] docs/applications/README_USER.md HTTP " + respDoc.status);
       }
       const tplKo = Math.round(aiContextTpl.length / 1024);
       const docKo = Math.round(readmeText.length / 1024);

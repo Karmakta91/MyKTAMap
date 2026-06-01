@@ -32,17 +32,20 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.29.2-fix1";
+const CACHE_NAME = "myktamap-cache-v1.29.3";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
   "./manifest.json",
 
   // Doc utilisateur (consommée par le modal Documentation)
-  "./docs/README_USER.md",
-  "./docs/README_USER.en.md",
+  // 🆕 v1.29.3 — Toutes les docs lues par l'app (modale Documentation,
+  // Aide IA, Audit) regroupées sous docs/applications/. À la racine :
+  // README.md (GitHub) + CLAUDE.md (agents IA). Le reste dans docs/.
+  "./docs/applications/README_USER.md",
+  "./docs/applications/README_USER.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
-  "./docs/AI_CONTEXT.md",
+  "./docs/applications/AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)
   "./LICENSE",
   // 🆕 v1.8.0 : page de transparence détaillée pour l'audit réseau, en 2
@@ -55,8 +58,8 @@ const ASSETS_TO_CACHE = [
   //   - .md : version source markdown, gardée pour audit de code (GitHub
   //     web view, lecture par IA, etc.). Pas exposée directement à l'UI mais
   //     cachée par cohérence.
-  "./docs/NETWORK_AUDIT.html",
-  "./docs/NETWORK_AUDIT.md",
+  "./docs/applications/NETWORK_AUDIT.html",
+  "./docs/applications/NETWORK_AUDIT.md",
 
   // CSS
   "./css/style.css",

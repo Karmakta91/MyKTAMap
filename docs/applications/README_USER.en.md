@@ -10,7 +10,7 @@
 
 MyKTAMap is a field mapping tool that may contain sensitive information: **precise location of entrances, shafts, passages, underground structures.**
 
-If this data were made public, it could:
+If these data were made public, it could:
 
 - Make it easier for unprepared people to access dangerous places
 - Cause overcrowding that damages these fragile spaces
