@@ -194,3 +194,82 @@ jobs:
             --target main \
             --latest
           echo "[release] ✅ Release $VERSION créée avec succès"
+
+      # ----------------------------------------------------------------
+      # 6. Construit un package ZIP autonome (selfhosting)
+      # ----------------------------------------------------------------
+      # Le PWA est 100 % statique → un user peut déposer le contenu du ZIP
+      # sur n'importe quel serveur web (Nginx, Apache, Caddy, http-server)
+      # et c'est utilisable immédiatement, sans build.
+      #
+      # Stratégie : on copie le repo dans un dossier `MyKTAMap-<version>/`
+      # via rsync avec exclusions explicites (= plus lisible qu'un .gitignore
+      # complexe et indépendant des règles git). Puis on zippe.
+      #
+      # Le `--clobber` à l'upload écrase un éventuel asset déjà uploadé pour
+      # cette version (cas d'un retry workflow_dispatch après échec).
+      - name: Construire le package selfhost
+        id: package
+        if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          PKG_NAME="MyKTAMap-${VERSION}"
+          PKG_DIR="${{ runner.temp }}/${PKG_NAME}"
+
+          mkdir -p "$PKG_DIR"
+
+          # rsync avec exclusions :
+          #  - .git, .github, .githooks, .gitignore       → git internals
+          #  - .claude/                                    → Claude Code worktrees + sessions
+          #  - CLAUDE.md                                   → instructions agent dev only
+          #  - scripts/                                    → scripts dev local (check-no-pro-leak.js…)
+          #  - Licence-pro.json                            → garde-fou (jamais en community mais au cas où)
+          #  - .DS_Store, Thumbs.db                        → cosmétique OS
+          rsync -a \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.githooks' \
+            --exclude='.gitignore' \
+            --exclude='.claude' \
+            --exclude='.claude/**' \
+            --exclude='CLAUDE.md' \
+            --exclude='scripts/' \
+            --exclude='Licence-pro.json' \
+            --exclude='.DS_Store' \
+            --exclude='Thumbs.db' \
+            ./ "$PKG_DIR/"
+
+          # Récap pour le log (visible dans le run UI GitHub Actions)
+          echo "[package] Contenu du package $PKG_NAME :"
+          (cd "$PKG_DIR" && find . -maxdepth 2 -type d | sort)
+          echo "[package] Taille totale (avant zip) :"
+          du -sh "$PKG_DIR" | awk '{print $1}'
+
+          # ZIP final
+          cd "${{ runner.temp }}"
+          zip -rq "${PKG_NAME}.zip" "$PKG_NAME"
+
+          PKG_PATH="${{ runner.temp }}/${PKG_NAME}.zip"
+          PKG_SIZE=$(du -h "$PKG_PATH" | awk '{print $1}')
+
+          echo "pkg_path=$PKG_PATH" >> "$GITHUB_OUTPUT"
+          echo "pkg_name=${PKG_NAME}.zip" >> "$GITHUB_OUTPUT"
+          echo "pkg_size=$PKG_SIZE" >> "$GITHUB_OUTPUT"
+          echo "[package] ✅ ZIP créé : $PKG_PATH ($PKG_SIZE)"
+
+      - name: Upload du package vers la release
+        if: steps.check.outputs.skip == 'false' && steps.tag_check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.current.outputs.version }}"
+          PKG_PATH="${{ steps.package.outputs.pkg_path }}"
+          PKG_NAME="${{ steps.package.outputs.pkg_name }}"
+          PKG_SIZE="${{ steps.package.outputs.pkg_size }}"
+
+          # --clobber : écrase un asset existant (utile pour les retry via
+          # workflow_dispatch après échec du premier essai).
+          gh release upload "$VERSION" "$PKG_PATH" --clobber
+
+          echo "[release] ✅ Package uploadé : $PKG_NAME ($PKG_SIZE)"
+          echo "[release] 🔗 Disponible sur : https://github.com/${{ github.repository }}/releases/tag/$VERSION"
