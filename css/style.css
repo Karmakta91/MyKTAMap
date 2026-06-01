@@ -13391,6 +13391,23 @@ body.kta-theme-light .kta-loader-copyright-warn {
   color: #8b3a00 !important;
 }
 
+/* 🆕 v1.29.1-fix3 — Restaure les couleurs charte clair pour les éléments
+   pro du footer copyright. Sans ces règles, le `*` qui force tous les
+   descendants en `--kta-light-text-muted !important` (voir plus haut)
+   écrasait :
+     - le badge vert « ✓ Licence professionnelle active »
+     - le titre orange « © 2026 MyKTAMap — édition pro »
+   Specificity 0,2,1 + !important pour battre la règle 0,2,0 + !important
+   du sélecteur `*`. Reprend les couleurs définies en §8760+ et §8764+. */
+body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge,
+html.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge {
+  color: #1d8a3a !important;
+}
+body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-edition-title,
+html.kta-theme-light .kta-loader-copyright .kta-loader-copyright-edition-title {
+  color: #b8860b !important;
+}
+
 /* === Cards "Mes plans" / "Récents" / Reprendre / Panel ZIP ===
    🔧 v1.13.0-fix7 : sur fond brun-beige #c9b88f, les cards ressortent
    désormais en blanc-clair #fdf8eb avec bordure plus marquée pour
