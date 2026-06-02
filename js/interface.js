@@ -2437,8 +2437,8 @@ function _renderPerfUltraSection() {
             "Plus de popup au clic sur les markers des calques de données. Les points session restent interactifs. Utilise 🔍 pour interagir.")}
       ${row("cfg_perf_slowSave", "🐢 Auto-save lent (30s)", s.slowSave,
             "Sauvegarde automatique toutes les 30s au lieu de 1.5s. Risque de perdre ~30s de modifs si crash.")}
-      ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les tracés visibles", s.viewportCull,
-            "Saute les routes hors viewport. Pop-in léger au pan mais énorme gain sur plans denses.")}
+      ${row("cfg_perf_viewportCull", "👁️ Ne rendre que les éléments visibles", s.viewportCull,
+            "Saute les routes <strong>ET les markers POI</strong> hors viewport. Pop-in léger au pan mais énorme gain sur plans denses (100+ POI).")}
       ${row("cfg_perf_mobileZoomLimit", "🛡️ Limiter le dézoom sur mobile (anti-crash mémoire)", s.mobileZoomLimit,
             "<strong>Coché par défaut</strong>. Sur smartphone, plafonne le dézoom max pour éviter le crash OOM quand Leaflet tente de rendre l'image entière au minZoom. <strong>Décocher</strong> = autorise le même dézoom max que sur PC (utile pour vue d'ensemble), mais risque de crash sur gros plans. <strong>Reload requis</strong> après changement.", true)}
     </div>`;
