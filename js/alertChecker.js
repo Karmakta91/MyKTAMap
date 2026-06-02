@@ -266,14 +266,43 @@
     });
   }
 
+  // 🚀 v1.30.0 (P6.A boot fetch timeout) : timeout 1500ms aligné avec
+  // proLicense.js + updateChecker.js. Évite qu'un réseau lent (ou un
+  // serveur lent à répondre sur /alert.json) laisse le fetch traîner
+  // jusqu'au timeout browser (~30 s) et retarde le flush des modales
+  // différées. 1500 ms = compromis offline-fail-fast / online-success.
+  const FETCH_TIMEOUT_MS = 1500;
+
+  // Helper interne : fetch avec AbortController + cache-bust. Throw
+  // standard si timeout ou erreur HTTP, comme un fetch normal.
+  async function _fetchAlertJson() {
+    const url = ALERT_URL + "?_=" + Date.now();
+    const opts = { cache: "no-store" };
+    let timeoutId = null;
+    if (typeof AbortController === "function") {
+      const ctrl = new AbortController();
+      timeoutId = setTimeout(function() {
+        try { ctrl.abort(); } catch(e) {}
+      }, FETCH_TIMEOUT_MS);
+      opts.signal = ctrl.signal;
+    }
+    try {
+      const resp = await fetch(url, opts);
+      if (timeoutId) clearTimeout(timeoutId);
+      return resp;
+    } catch(e) {
+      if (timeoutId) clearTimeout(timeoutId);
+      throw e;
+    }
+  }
+
   // =========================
   // CHECK AU BOOT
   // =========================
   async function check() {
     let raw;
     try {
-      const url = ALERT_URL + "?_=" + Date.now();
-      const resp = await fetch(url, { cache: "no-store" });
+      const resp = await _fetchAlertJson();
       if (!resp.ok) {
         _activeAlertsCache = [];
         _notifyChange();
@@ -316,8 +345,7 @@
     let raw;
     let status = "ok";
     try {
-      const url = ALERT_URL + "?_=" + Date.now();
-      const resp = await fetch(url, { cache: "no-store" });
+      const resp = await _fetchAlertJson();
       if (resp.status === 404 || !resp.ok) {
         status = "no-alert";
       } else {

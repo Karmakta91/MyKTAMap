@@ -70,13 +70,36 @@
     }
   }
 
+  // 🚀 v1.30.0 (P6.A boot fetch timeout) : timeout 1500ms aligné avec
+  // proLicense.js > FETCH_TIMEOUT_MS. Sans AbortController, un réseau
+  // mobile lent pouvait laisser le fetch traîner jusqu'au timeout browser
+  // (~30 s), retardant inutilement la flush des modales différées au
+  // splash. 1500 ms suffit largement en réseau LAN/4G normal, et en
+  // offline on échoue rapidement (silencieux côté UX).
+  const FETCH_TIMEOUT_MS = 1500;
+
   async function _fetchRemote() {
     // Cache-bust pour contourner le SW (qui aurait servi la vieille version).
     // `cache: "no-store"` côté HTTP pour éviter aussi le cache HTTP standard.
     const url = VERSION_URL + "?_=" + Date.now();
-    const resp = await fetch(url, { cache: "no-store" });
-    if (!resp.ok) throw new Error("HTTP " + resp.status);
-    return await resp.json();
+    const opts = { cache: "no-store" };
+    let timeoutId = null;
+    if (typeof AbortController === "function") {
+      const ctrl = new AbortController();
+      timeoutId = setTimeout(function() {
+        try { ctrl.abort(); } catch(e) {}
+      }, FETCH_TIMEOUT_MS);
+      opts.signal = ctrl.signal;
+    }
+    try {
+      const resp = await fetch(url, opts);
+      if (timeoutId) clearTimeout(timeoutId);
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      return await resp.json();
+    } catch(e) {
+      if (timeoutId) clearTimeout(timeoutId);
+      throw e;
+    }
   }
 
   function _getKnownVersion() {
