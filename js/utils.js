@@ -1387,8 +1387,111 @@ window.getAllEmbeddedStructures = function() {
 // `_libererRessourcesPlanPrecedent` dans main.js.
 window._ktaDataLayerLoadToken = window._ktaDataLayerLoadToken || 0;
 
+// 🚀 v1.30.0 (P5 viewport culling markers POI) — Étend le toggle ULTRA
+// existant `viewportCull` (déjà actif sur les polylines via road.js)
+// aux markers des data layers (puits, salles, etc.).
+//
+// Sur les plans denses (100+ POI multi-niveaux), tous les markers étaient
+// ajoutés au DOM Leaflet en permanence, même hors viewport. Pénalité GPU
+// constante au pan/zoom.
+//
+// Stratégie miroir de `road.js > _viewportCull` :
+//   - 10% de padding autour des bounds pour éviter le pop-in au pan
+//   - À la création : skip `marker.addTo(layer)` si hors viewport (flag
+//     `marker._ktaVpHidden = true`), mais marker conservé dans
+//     `_ktaDataMarkers` pour pouvoir être réintégré au moveend
+//   - Au moveend/zoomend : `_refreshDataMarkersViewport()` parcourt
+//     `_ktaDataMarkers` et ajuste add/remove selon bounds
+//   - Toggle OFF → tout est réintégré (graceful degradation user)
+//
+// Skip explicite :
+//   - Tracker icon → marker singleton dans son layer dédié, pas concerné
+//   - Marker en cours de création (mode édition) → géré par editor.js
+//
+// ⚠️ Le helper est exposé via `window` pour que editor.js, lostMode.js,
+//    et secoursMode.js puissent l'utiliser sur LEURS markers spécifiques.
+
+/**
+ * Retourne true si le marker (L.marker) est dans le viewport courant
+ * de window.map, élargi de `padFraction` (défaut 0.1 = 10%).
+ * Safe-by-default : retourne true si window.map est indisponible
+ * (évite de cacher des markers par erreur au boot).
+ */
+function _markerInViewportPadded(marker, padFraction) {
+  if (!window.map || !marker) return true;
+  try {
+    const pad = (padFraction != null) ? padFraction : 0.1;
+    const b = window.map.getBounds().pad(pad);
+    return b.contains(marker.getLatLng());
+  } catch(e) { return true; }
+}
+window._markerInViewportPadded = _markerInViewportPadded;
+
+/**
+ * Re-render le set de markers data layer selon le viewport courant.
+ * Appelé au moveend/zoomend via hook posé par `_bindMarkerViewportHook`.
+ *  - Toggle OFF (viewportCull = false) : tous les markers cachés sont
+ *    réintégrés (graceful degradation)
+ *  - Toggle ON  : add/remove selon position dans viewport padded
+ * Idempotent (rappels successifs sans changement = no-op).
+ */
+window._refreshDataMarkersViewport = function() {
+  if (!Array.isArray(window._ktaDataMarkers) || window._ktaDataMarkers.length === 0) return;
+  const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
+
+  if (!_vpcOn) {
+    // Toggle OFF → réintègre tous les markers cachés (user a peut-être
+    // désactivé ULTRA en cours de session, on doit revenir à l'état normal).
+    window._ktaDataMarkers.forEach(function(m) {
+      if (m && m._ktaVpHidden && m._ktaLayer) {
+        try { m.addTo(m._ktaLayer); } catch(e) {}
+        m._ktaVpHidden = false;
+      }
+    });
+    return;
+  }
+
+  // Toggle ON → check viewport pour chaque marker, ajuste add/remove.
+  window._ktaDataMarkers.forEach(function(m) {
+    if (!m || !m._ktaLayer) return;
+    const inside = _markerInViewportPadded(m, 0.1);
+    if (inside && m._ktaVpHidden) {
+      try { m.addTo(m._ktaLayer); } catch(e) {}
+      m._ktaVpHidden = false;
+    } else if (!inside && !m._ktaVpHidden) {
+      try { m.remove(); } catch(e) {}
+      m._ktaVpHidden = true;
+    }
+  });
+};
+
+/**
+ * Pose le hook moveend/zoomend sur window.map pour appeler
+ * `_refreshDataMarkersViewport` automatiquement. Idempotent via flag
+ * `map._mkmMarkerHookBound` — un nouveau plan = nouvelle map = nouveau bind.
+ * Retourne true si bound (ou déjà bound), false si window.map indispo.
+ */
+window._bindMarkerViewportHook = function() {
+  if (!window.map) return false;
+  if (window.map._mkmMarkerHookBound) return true;
+  try {
+    window.map.on("moveend zoomend", window._refreshDataMarkersViewport);
+    window.map._mkmMarkerHookBound = true;
+    return true;
+  } catch(e) { return false; }
+};
+
 function ajouterPointsDepuisJSON(url, layer) {
   const _loadToken = window._ktaDataLayerLoadToken;
+
+  // 🚀 v1.30.0 (P5 viewport culling) : pose le hook moveend/zoomend sur
+  // window.map si pas déjà fait pour cette map. Idempotent via flag
+  // map._mkmMarkerHookBound. Au plan switch → nouvelle map → nouveau bind.
+  // Sans ce hook, les markers cachés au boot ne réapparaîtraient jamais.
+  if (typeof window._bindMarkerViewportHook === "function") {
+    window._bindMarkerViewportHook();
+  }
+
   // 🆕 v1.16.0 step 3 : reverse-lookup pour identifier le calque de
   // data layer auquel appartient ce JSON. Sert au bouton ⭐ Favori
   // pour stocker le bon layerId/layerLabel dans le snapshot. Pas de
@@ -1473,7 +1576,19 @@ function ajouterPointsDepuisJSON(url, layer) {
           // 🔍 v174 : double-clic sur le marker → zoom flyTo dessus
           attachMarkerDblClickZoom(marker);
 
-          marker.addTo(layer);
+          // 🚀 v1.30.0 (P5 viewport culling) : skip le addTo si hors viewport
+          // et toggle viewportCull actif. Le marker reste référencé dans
+          // _ktaDataMarkers et sera réintégré au moveend/zoomend via
+          // _refreshDataMarkersViewport(). Trace le layer cible pour
+          // pouvoir réintégrer plus tard.
+          marker._ktaLayer = layer;
+          const _vpcMk = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
+          if (_vpcMk && !_markerInViewportPadded(marker, 0.1)) {
+            marker._ktaVpHidden = true;
+          } else {
+            marker._ktaVpHidden = false;
+            marker.addTo(layer);
+          }
         }
         index = fin;
         if (index < points.length) {
