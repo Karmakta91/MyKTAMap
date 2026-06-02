@@ -1,0 +1,369 @@
+# Architecture MyKTAMap — Multi-niveau, pathfinding, itinéraire
+
+> Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
+> Sections : §14, §15, §26, §31
+
+---
+
+### 14. Itinéraire / Pathfinding (`pathfinder.js` + `interface.js`, depuis 09/05/2026)
+
+Calcul d'un trajet le plus court entre N waypoints en suivant le réseau de polylines existantes (session `getRoads()` + calques `getEmbeddedRoads()`).
+
+**Algorithme** (`js/pathfinder.js`, module IIFE) :
+1. **Construction du graphe** (`_buildGraph`) — chaque point d'une polyline = nœud, connecté à son voisin par une arête euclidienne. Spatial-bucketing 1.5 px pour fusionner les points coïncidents.
+2. **Enrichissement** (`_enrichirGrapheAvecCroisements`) — gère 3 cas de jonction entre polylines distinctes :
+   - Croisement strict segment-segment (intersection paramétrique)
+   - T-junction (extrémité d'un segment à ≤ 15 px de l'intérieur d'un autre, avec projection orthogonale)
+   - Endpoint↔endpoint (2 extrémités distinctes à 1.5 < d < 15 px)
+   → ajout de nœuds virtuels et arêtes ad-hoc. Sans ça, les roads tracés à la main qui se croisent sans partager de point exact restent dans des composantes graphe disjointes.
+3. **Snap des waypoints** (`_insertVirtualNode`) — projection orthogonale du waypoint sur le segment le plus proche, insertion d'un nœud virtuel à la projection (split du segment d'origine).
+4. **Dijkstra** entre paires consécutives, concaténation des chemins.
+
+**API publique** :
+- `Pathfinder.computeRoute(waypoints, opts)` → `{ path, totalDistance (px), segmentCount, snappedPoints }`. Throw avec message lisible si waypoints insuffisants, graphe vide, ou pair de waypoints isolée dans une composante.
+- `SearchPoints.getAllPoints()` / `findByQuery(q)` (ajoutées dans `searchPoints.js`) — utilisées par la modale itinéraire pour l'autocomplete.
+
+**UI** (modale `kta-itinerary-modal` dans `interface.js`) :
+- Entrée : sous-action **🗺️ Calculer un itinéraire** dans le groupe Tracker (cohérent avec ▶️ tracking + 📍 recalage).
+- 2 modes selon état :
+  - **Calcul** (pas d'itinéraire actif) : input recherche autocomplete + toggle mode clic carte (avec floater compact en bas pour ne pas bloquer la carte) + liste de waypoints avec ✕ par ligne + bouton 🎯 Calculer.
+  - **Navigation** (itinéraire actif détecté) : titre "Itinéraire actif", quick-nav `⏮️ Début / ⏭️ Fin / 🔁 Tour complet`, liste des waypoints avec 🎯 (pan + flash style search) et ✕, boutons 🔄 Recalculer / ❌ Effacer.
+
+**Persistance des waypoints** : la road de type `"itinerary"` porte une propriété `waypoints: [{x, y, label, source}, ...]` en plus de `points`. SessionPersist sauve la road comme n'importe quelle autre, donc les waypoints survivent au reload du plan. Au reopen de la modale, on bascule en mode navigation si `road.waypoints` est présent.
+
+**Style du tracé** :
+- `road.js > ROAD_STYLES.itinerary` : cyan `#00d4ff`, weight 7, dashArray "12 6", opacity 0.9.
+- `renderer: L.svg()` forcé sur la polyline (sinon canvas → pas de filter CSS).
+- CSS `.kta-itinerary-polyline` : `filter: drop-shadow(...)` × 2 → effet halo néon cyan.
+- Filtré du calcul des cercles d'intersection (`renderRoads`) pour éviter les cercles redondants.
+
+**Label de distance** : `L.control` au coin `bottomleft` (`.kta-iti-distance`, fond `#1a1f2e` + accent cyan), s'affiche dès qu'une road de type `"itinerary"` existe, masqué sinon. Empilé au-dessus du label measure naturellement (Leaflet stack DOM order).
+
+**Helper `_majLabelDistanceItineraire`** exposé sur `window`, appelé après chaque setRoads (save/discard/erase) et après `lancerApplication` pour gérer le restore session.
+
+**Sémantique** : un seul itinéraire actif à la fois. Recalculer remplace le précédent (filter sur `r.type !== "itinerary"`). Effacer le retire. Switch de plan le perd (reset normal de la session).
+
+---
+
+### 15. Distance totale des tracés (`interface.js`, depuis 2026-05-09)
+
+Outil de mesure agrégée : somme des longueurs de tous les tracés Principal / Secondaire / Chemin présents (session `getRoads()` + calques `getAllEmbeddedRoads()` — TOUTES, masquées comprises depuis v146), avec filtrage par type via cases à cocher et surlignage magenta des tronçons inclus.
+
+**⚠️ Depuis v146 (2026-05-14)** : `_rdRoadsExploitables()` utilise `getAllEmbeddedRoads()` (et plus `getEmbeddedRoads()` qui filtrait par visibilité). Cohérence avec Pathfinder + Search : l'utilisateur peut masquer le calque routes (dessinées en dur sur le PNG) pour gagner en perf rendu, tout en gardant un total fiable. Le surlignage magenta est aussi appliqué sur les roads masquées (layer séparé qui se voit indépendamment du calque sous-jacent).
+
+**Entrée UI** : sous-action **📏 Distance totale (filtres)** dans le groupe accordéon **🛣️ Tracés / Routes** (`interface.js > _creerGroupeAccordeon({id:"traces"})`). Toggle ON/OFF — re-cliquer ferme la modale.
+
+**Modale plein écran** (`#kta-rd-modal`, shell `.kta-readme-modal-overlay` + `.kta-rd-modal-boite`) — pattern identique aux autres modales du projet (itinéraire, légende, config) :
+- Boîte centrée 480px max, `max-height: 90vh`.
+- Header : titre "📏 Distance totale des tracés" + ✕.
+- Corps :
+  - Phrase d'aide (avec mention "magenta" colorée et explication de la persistance après fermeture).
+  - 3 lignes checkbox stylées en boîtes (`background: rgba(...,0.03)`, hover magenta) avec swatch coloré + label + compteur live `nb — distM m`.
+  - Bloc total mis en avant (fond magenta 6%, bordure 22%), valeur 20px gras `#ff4ecb`.
+- Footer actions :
+  - `❌ Effacer le surlignage` (`.kta-btn-danger`) — retire le highlight ET ferme.
+  - `✓ Fermer (garder le surlignage)` (`.kta-btn-primary`) — ferme uniquement la modale.
+- Toggle checkbox → `_rdRedessinerHighlight()` + `_rdRafraichirAffichage()` instantané.
+
+**Sémantique de persistance** :
+- ✕ / clic backdrop / ✓ Fermer → ferme la modale, **garde le surlignage actif sur la carte**. L'utilisateur peut explorer la carte avec les tronçons toujours surlignés.
+- Re-clic 📏 → rouvre la modale en restaurant les filtres précédents (détecté via `_rdHighlightLayer !== null`). Si pas de surlignage actif, reset à "tous cochés".
+- ❌ Effacer → retire le surlignage ET ferme la modale.
+- Plan switch → cleanup automatique via `main.js > _libererRessourcesPlanPrecedent()`.
+
+---
+
+### 26. Mode multi-niveau (depuis v148 — 15/05/2026)
+
+Feature opt-in **par plan** pour gérer les carrières/galeries à plusieurs étages (Glacière, Capucins…). Quand désactivé → comportement strictement identique à v147 (rétro-compat absolue).
+
+#### 26.1 Opt-in (cascade de priorité)
+
+```
+APP_CONFIG.multiLevel ←
+  PlanRegistry[id].multiLevel       (legacy ≤ v1.7.2 — UI Réglages retirée v1.7.3
+                                     mais lecture conservée pour rétro-compat)
+  ↓ sinon
+  PLAN_CONFIG.plan.multiLevel       (depuis plan-config.json — SOURCE UNIQUE
+                                     depuis v1.7.3, déclaré via le 📦 Générateur)
+  ↓ sinon
+  false                              (retro-compat plans v147)
+```
+
+**2 voies pour activer** (depuis v1.7.3) :
+- Au moment de la création/modification d'un plan via 📦 Générateur → case `🏗️ Plan multi-niveau` → ajoute `plan.multiLevel: true` dans `plan-config.json`
+- Édition manuelle de `plan-config.json` (champ `plan.multiLevel: true`)
+
+> 🔧 **Changement v1.7.3** (KARMA, 19/05/2026) : retrait du toggle ⚙️ Réglages
+> qui permettait d'activer/désactiver le multi-niveau pour un plan déjà chargé.
+> Raison : forcer une déclaration explicite au moment du plan (générateur ou
+> plan-config.json édité), évite les états incohérents où un plan "non
+> multi-niveau" est activé runtime puis réinitialisé au reload. Les fonctions
+> `_renderMultiLevelSection` et `_bindMultiLevelToggle` (`interface.js`) restent
+> définies dans le code (dead code propre) mais ne sont plus appelées dans
+> `afficherConfig`. La cascade `PlanRegistry[id].multiLevel` reste lue pour les
+> users qui avaient toggle via l'ancien UI avant v1.7.3 (leur préférence est
+> persistée et continue de marcher).
+
+#### 26.2 Data model
+
+**APP_CONFIG (runtime)** — défini dans `js/config.js` :
+- `multiLevel: boolean` — feature active pour ce plan ?
+- `activeLevel: number` — niveau utilisé pour dessiner de nouveaux items (default 0). **Peut être négatif** depuis v154 (sous-sols).
+- `visibleLevels: number[]` — filtre d'affichage (multi-select, default `[0]`)
+- `availableLevels: number[]` — niveaux disponibles dans le sélecteur (**default `[-2, -1, 0, 1, 2]` depuis v154**, symétrique autour de 0). Extensible via boutons `+` (max+1) et `−` (min−1) dans la modale. Auto-étendu au boot par `window._etendreAvailableLevelsSiBesoin()` si les data layers contiennent des niveaux hors range.
+
+**Données persistées** :
+- Roads : `road.level: number` (création) OU `{ type: "jonction", fromLevel, toLevel }`
+- Zones : `zone.level: number`
+- Editor points : `point.level: number`
+- Data layer items : `level: number` optionnel dans le JSON (`puits.json`, etc.)
+- Roads embarquées dans data layers : `road.level: number` optionnel
+- Zones embarquées dans data layers : `zone.level: number` optionnel
+- **Image layers (depuis v162)** : `plan-config.json > imageLayers[i].level: number` optionnel. Filtré au runtime via `_applyLevelFilterToImageLayers()`. Modale Niveaux = authority → force `addLayer`/`removeLayer` selon `visibleLevels` (override le checkbox Leaflet). Le générateur expose un champ "Niveau" à côté de chaque image layer, visible **uniquement** si la case 🏗️ Plan multi-niveau est cochée.
+
+**Rétro-compat absolue** : si un item n'a PAS de `level`, il est traité comme `level: 0`. Tous les plans v147 et avant fonctionnent identiquement quand le toggle est OFF (jamais de champ `level` ajouté).
+
+#### 26.3 UI
+
+- **Bouton "Niveau actif"** : `L.control({position: "topleft"})` sous les boutons de zoom Leaflet. Pastille jaune avec chiffre du niveau actif. Click → ouvre la modale niveau.
+- **Modale niveau** (`#kta-niv-modal`) : 2 sections
+  - 🎯 Niveau actif (segmented, single-select) — utilisé pour dessiner. Affichage **trié croissant** (gauche=négatif, droite=positif, comme un axe numérique).
+  - 👁️ Niveaux visibles (checkboxes, multi-select) — filtre d'affichage
+  - Quick actions : `Tous` / `Actif seul`
+  - **2 boutons d'extension (v154+)** : `−` à gauche (ajoute `min-1`, sous-sols) + `+` à droite (ajoute `max+1`, étages supérieurs). Format pastille = "pill" extensible (cf. `.kta-niv-pastille` CSS) pour accepter `-1`/`-2` sans débordement dans le bouton Leaflet 30×30.
+- **Sous-action 🪜 Jonction interniveau** : ajoutée au groupe Tracés quand multiLevel ON. Click → modale `from/to level` → mode tracé activé.
+- **Boussole repositionnée** : si `body.kta-multilevel-active`, le widget boussole passe de `top:80px` à `top:130px` pour libérer la place au bouton niveau.
+
+#### 26.4 Rendu et filtrage
+
+`window.appliquerFiltreNiveau()` orchestre le re-render/filtrage de TOUS les modules level-aware :
+- `renderRoads()` (road.js) — filtre via `_passeFiltreNiveau` (inclut `currentRoad` toujours visible pendant le tracé)
+- `renderZones()` (zones.js) — filtre via `_zonePasseFiltre` (inclut `currentZone` toujours visible)
+- `_applyLevelFilterToEditorPoints()` (editor.js) — opacity/pointer-events sur markers session
+- `_applyLevelFilterToDataPoints()` (utils.js) — opacity sur markers data layers
+- `_applyLevelFilterToDataRoads()` (utils.js) — setStyle opacity sur polylines data layers
+- `_applyLevelFilterToDataZones()` (utils.js) — setStyle opacity sur polygones data layers
+- `_applyLevelFilterToTracker()` (tracking.js) — opacity du marker tracker + polyline parcouru
+- `_applyLevelFilterToImageLayers()` (map.js, **depuis v162**) — `map.addLayer`/`removeLayer` sur les `L.imageOverlay` selon le niveau. Sémantique différente des points/zones : on retire l'overlay du Leaflet layer control (pas juste de l'opacity à 0). La modale Niveaux fait autorité — force coché/décoché selon visibleLevels (override le toggle manuel du checkbox Leaflet).
+
+Chaque module garde un registre de ses objets Leaflet (`_ktaDataMarkers`, `_ktaDataPolylines`, `_ktaDataPolygons`, `_ktaImageOverlays`). Reset au plan switch via `main.js > lancerApplication`.
+
+#### 26.5 Jonctions interniveau
+
+Type spécial `"jonction"` :
+- `fromLevel`/`toLevel` : niveaux des 2 extrémités. **Sémantique symétrique** : Pathfinder traverse dans les 2 sens, l'ordre from/to n'affecte rien d'autre que l'étiquetage UI dans la modale de création. Une jonction `{from:0, to:1}` est strictement équivalente à `{from:1, to:0}` du point de vue du graph.
+- N points (comme une polyline normale)
+- Style : magenta `#ff4ecb` weight 5 dashArray "10 6"
+- Marqueurs aux endpoints : `L.circleMarker` ∅14 (radius 7) bord magenta + intérieur blanc weight 3
+- Toujours visible si **au moins un** de `fromLevel`/`toLevel` ∈ `visibleLevels` (sinon cachée)
+- Exclue du calcul des cercles d'intersection (les middle points sont en transit vertical, pas des croisements physiques)
+- **Effacement** : aucun comportement spécial, traitée comme un tracé normal par tous les modes de 🧹 (sélection au clic, dernier tracé, tous les tracés). `resetRoads()` purge aussi les jonctions car même structure de données.
+
+#### 26.6 Pathfinder niveau-aware (`pathfinder.js`)
+
+- Chaque **segment** porte `level: number | "transit"` (transit = segment de jonction)
+- Chaque **node** porte `nodeLevels[idx]: Set<level>` (niveaux des segments qu'il touche)
+- Enrichissement (intersection, T-junction, endpoint-endpoint) : **skip** les pairs avec niveaux numériques différents OU impliquant `"transit"` (sauf pour la jonction's first/last point qui porte fromLevel/toLevel en plus de transit, permettant T-junction propre)
+- `_insertVirtualNode` (waypoint snap) : le node virtuel hérite du `level` du segment snapped — Dijkstra reste contraint au bon niveau
+- Multi-level OFF → tous les helpers compatibilité retournent `true` → comportement strictement v147
+
+#### 26.7 Exports
+
+| Export | Filtre niveau |
+|---|---|
+| `utils.js > telechargerPlan` (rapide) | **WYSIWYG** : `window.passeFiltreNiveau(item)` lit `visibleLevels` du runtime |
+| `exporter.js > _genererCanvasExport` (avancé) | Section dédiée `🏗️ Niveaux à exporter` (multi-select), lecture via `opts.ann.levels: Set<number>` → helper local `_itemPasseLevels`. **Découplé** du filtre runtime : tu peux filtrer la map sur [Niv 0] et exporter [Niv 0+1+2]. |
+| `sessionExporter.js` (Full / Avancé / Conversion) | Aucun filtre — sérialise TOUS les items via `JSON.stringify` (préserve `level`/`fromLevel`/`toLevel` automatiquement) |
+| `sessionPersist.js` (auto-save) | Idem — sérialisation JSON transparente |
+
+#### 26.8 Helper global `window.passeFiltreNiveau(item)`
+
+Exposé par `road.js`. Utilisé par l'export rapide et par toutes les fonctions level-aware qui ne sont pas dans le contexte d'une modale (modale Avancé = filtre dédié via `opts.ann.levels`).
+
+```js
+window.passeFiltreNiveau = function(item) {
+  if (!APP_CONFIG.multiLevel) return true;            // off → tout visible
+  const visibles = APP_CONFIG.visibleLevels || [0];
+  if (item.type === "jonction") {
+    return visibles.includes(item.fromLevel||0) ||
+           visibles.includes(item.toLevel||0);
+  }
+  return visibles.includes(item.level||0);
+};
+```
+
+#### 26.9 Pièges et conventions
+
+⚠️ **Currents always visible during draw** : `currentRoad` (road.js) et `currentZone` (zones.js) bypass le filtre pendant le tracé. Sinon clic carte → road créée au niveau actif → cachée si pas dans visibleLevels → user voit rien. Re-rendu normal une fois le mode désactivé.
+
+⚠️ **Mode jonction = exclusif** : `_activerJonctionMode` appelle `_desactiverTousLesModes()` avant d'activer (sinon ✏️ + 🪜 actifs en même temps).
+
+⚠️ **Pastille = chiffre seul** : `<span class="kta-niv-pastille">1</span>` (pas `Niv 1`). Le préfixe "Niv " débordait du bouton sub-action.
+
+⚠️ **Body class `kta-multilevel-active`** : ajouté/retiré sur `document.body` dans `lancerApplication` ET dans `_bindMultiLevelToggle`. Permet à la boussole de se repositionner via CSS sans reload.
+
+⚠️ **Switch d'activeLevel reset visibleLevels** : `_changerNiveauActif(N)` fait `visibleLevels = [N]` (mode focalisé par défaut). Si l'user veut voir plusieurs niveaux à la fois, il utilise les checkboxes ou le bouton `Tous`.
+
+⚠️ **Itineraire = bypass total** : `road.type === "itinerary"` toujours visible peu importe le filtre (calculé par Pathfinder, doit rester affiché pendant la navigation).
+
+⚠️ **Reset au plan switch** : `lancerApplication` reset `activeLevel = 0`, `visibleLevels = [0]`, vide les registres `_ktaDataMarkers/Polylines/Polygons` (ils seront re-remplis par `ajouterPointsDepuisJSON`).
+
+---
+
+### 31. Zone "Inaccessible" + Préférences d'évitement itinéraire (depuis v169 / Karma_dev)
+
+2 features complémentaires pour contraindre les itinéraires calculés par Pathfinder. Toutes deux travaillent au niveau du graphe (filtrage des arêtes avant Dijkstra), pas en post-traitement.
+
+#### 31.1 Zone "Inaccessible" (contrainte DURE)
+
+**Type de zone** : `"inaccessible"` (4ème type, après `eau`/`remblais`/`effondrement`). Tracé via le groupe ⬛ Zones de la sidebar, bouton ⛔.
+
+**Visuel** : hachures rouge sombre / noir à 45° via un `<pattern>` SVG défini dans `index.html` (`id="kta-pattern-inaccessible"`). Renderer SVG forcé (singleton `_inaccessibleRenderer` dans `zones.js` pour session, `_inaccessibleDataRenderer` dans `utils.js` pour data layers) car canvas ignore les patterns SVG.
+
+**Effet pathfinder** : dans `_buildGraph`, pour chaque segment de road, on teste `_segmentBloqueParZoneInaccess(prevP, p, segLevel, zonesInacc)`. Si traversée détectée → on n'ajoute PAS l'arête ni le segment dans `graph.segments` → enrichment (intersection/T-junction) ne verra pas ce segment → Dijkstra ne peut pas emprunter ce tronçon.
+
+**Algorithme de détection** (`pathfinder.js`) :
+- `_pointInPolygon(p, poly)` — ray-casting standard O(n)
+- `_segmentTraversePolygon(p1, p2, poly)` — true si un endpoint dedans OU si le segment intersecte une arête du polygone
+- `_segmentBloqueParZoneInaccess(p1, p2, segLevel, zonesInacc)` — applique la règle niveau-aware (segments "transit" jamais bloqués)
+
+**Collecte des zones** : `_collecterZonesInaccessibles()` lit :
+- Session zones via `window.getZones()` (filtre `type === "inaccessible"`)
+- Data layer zones via `window._ktaDataPolygons` (entries portant `type` et `points` depuis v169, cf. `utils.js > ajouterPointsDepuisJSON`)
+
+**Multi-niveau** : zone bloque uniquement les segments du **même niveau**. Sauf `multiLevel: false` (comparaison à plat). Segments `"transit"` (middle de jonction interniveau) jamais bloqués (points "en l'air").
+
+**Indépendant de la visibilité** : pathfinder utilise toujours la zone même si le calque zones est toggle off (cohérence demandée — sinon l'user pourrait toggler sans s'en rendre compte). Toutes les modifs d'export (PNG, session) respectent toujours le type comme une vraie zone.
+
+#### 31.2 Préférences d'évitement (contrainte SOUPLE)
+
+**Configurées dans la modale itinéraire**, section repliable "🚫 Préférences d'évitement (optionnel)". Persisté en localStorage par plan : `localStorage["myktamap_route_avoid_<planId>"] = { points: [{x,y,label,id?}], tags: [...], radius: 100 }`.
+
+**3 types de contraintes** :
+1. **Points explicites** : `avoidPoints: [{x, y, label?, id?}, ...]`. **3 méthodes d'ajout** côté UI :
+   - **Autocomplete** : `SearchPoints.findByQuery` (recherche par nom/id/tag)
+   - **Saisie ID exact** : `Pathfinder.resolvePointById` (input texte + bouton Ajouter)
+   - **Clic carte** : bouton "📍 Cliquer sur la carte" → mode flottant orange (`_itiAvoidClickActive`, handler isolé du mode clic waypoints), chaque clic ajoute un point d'évitement aux prefs (label "📍 Clic carte (x, y)"). Cf. `_activerModeClicAvoid` / `_desactiverModeClicAvoid` dans interface.js.
+2. **Tags** : `avoidTags: ["pa", "danger", ...]` → expansion auto en tous les points du plan portant ces tags (via `SearchPoints.getAllPoints`, **async**)
+3. **Marge** : `avoidRadius` px (défaut 100, configurable 0-500)
+
+**Algo 2 passes** (clé du fallback) :
+1. **Passe 1** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, allAvoidPts, avoidRadius)` — graphe avec dur+souple, tentative Dijkstra
+2. Si échec ET `hasAvoidances` → **Passe 2** : `_computeRouteInterne(waypoints, allRoads, allowedTypes, zonesInacc, [], 0)` — graphe avec dur uniquement
+3. Si Passe 2 OK → marqué `usedFallback: true` + détection des points évités traversés via `_pathPassesNearPoint(path, ap, radius)` → renvoyé dans `avoidedThrough`. UI affiche "⚠️ Impossible d'éviter : ..." en bloc orange.
+4. Si Passe 2 échoue aussi → erreur relancée (vraie absence de chemin, zone inaccessible bloquante ou réseau disconnect).
+
+**API publique** : `Pathfinder.computeRoute(waypoints, opts)` est désormais **async** (await `_expandAvoidTagsEnPoints` qui utilise `SearchPoints.getAllPoints` async). Les 2 appelants dans `interface.js` ont été mis à jour avec `await`.
+
+**Structure retournée** :
+```js
+{
+  path:           [{x, y}, ...],     // chemin final
+  totalDistance:  number,             // px image
+  segmentCount:   number,
+  snappedPoints:  [...],
+  usedFallback:   boolean,            // v169 : true si fallback passe 2 utilisé
+  avoidedThrough: [{x, y, label}, ...], // v169 : points évités traversés
+  avoidRadius:    number              // v169 : marge appliquée
+}
+```
+
+#### 31.3 UI (interface.js, ~370 lignes)
+
+**Helpers localStorage** : `_getItiAvoidPrefs`, `_setItiAvoidPrefs`, `_itiAvoidLsKey` (clé par planId pour ne pas mélanger entre plans)
+
+**HTML section** : `_htmlSectionAvoidItineraire(prefs)` génère le `<details>` repliable avec 3 sous-blocs (Points / Tags / Marge) + reset
+
+**Rendu** :
+- `_rafraichirListeAvoidPoints` (sync) : chips orange pour chaque point évité avec ✕
+- `_rafraichirChipsAvoidTags` (async, await `_itiAvoidGetAvailableTags`) : chips toggleables pour les tags du plan
+
+**Bind handlers** : `_bindAvoidSectionHandlers` :
+- Autocomplete avec debounce 150ms (réutilise `SearchPoints.findByQuery`)
+- Saisie ID + Enter (réutilise `Pathfinder.resolvePointById`)
+- Change handler sur radius input
+- Reset avec `confirm()`
+
+**Styles** : `.kta-iti-avoid-*` dans `style.css` — couleur thématique orange (cohérent semantic "warning"), chips arrondis, etat actif/inactif sur tags
+
+#### 31.4 Audit exports — Fixes intégration Feature 1/2 (depuis v169 / Karma_dev)
+
+Audit complet des 4 fonctions d'export pour vérifier la cohérence des 2 features. Problèmes trouvés + corrections appliquées :
+
+**Sites corrigés** (post-audit) :
+
+1. **`sessionExporter.js > _genererPayloadAvanc + _genererFichiersConversion`** : les filtres `roadTypes` / `roadTypesActifs` listent `["principal", "secondaire", "chemin"]` → drop silencieux des jonctions. Fix : bypass explicite `if (r.type === "jonction") return true;` avant le filtre. Idem dans la granularité fine où on liste les types pour générer les fichiers : `["principal", "secondaire", "chemin", "jonction"]`.
+
+2. **`exporter.js > _dessinerLegende`** : la légende PNG (mode avancé) listait uniquement Eau/Remblais/Effondrement et Principal/Secondaire/Chemin. Ajouts :
+   - Section Zones : `"Inaccessible"` avec fillColor `#7a0000` (= couleur uni canvas, pas hachures SVG car non portable au canvas). Label épuré pour rester sobre : la sémantique "bloque l'itinéraire" est portée par le visuel (rouge sombre + icône ⛔ dans la sidebar).
+   - Section Tracés : `"Jonction interniveau"` avec lineColor `#ff4ecb`
+
+3. **`tableEditor.js > _detecterColonnes.ordreCourant`** : la liste d'ordre privilégié `["id","nom","x","y","tags","etat","description",...]` n'incluait pas `level` → colonne en queue de tableau. Ajout : `level` inséré entre `y` et `tags` pour cohérence visuelle des coords (`x/y/level` contigus).
+
+**Choix volontaires documentés** (P2 audit non corrigé) :
+
+- **Préférences d'évitement** (`localStorage["myktamap_route_avoid_<planId>"]`) ne sont **PAS sérialisées** dans les exports session/conversion. Volontaire : les préférences sont **locales** (= configurées pour la session de l'user, pas pour le plan). Un user peut avoir des évitements différents d'un user qui partage le même plan. Si besoin de partage, à ajouter explicitement dans une release future via une checkbox "inclure préfs d'évitement" dans Export Session Full.
+
+**Mode clic carte pour avoidances** (depuis Karma_dev audit) : ajout d'un bouton **📍 Cliquer sur la carte** dans la section avoid (à côté de l'autocomplete et de la saisie ID). État `_itiAvoidClickActive` + handler `_itiAvoidClickHandler` séparés des waypoints (pas de conflit possible avec le mode clic waypoints existant). Floater orange `kta-iti-avoid-floater` au lieu du floater cyan des waypoints. Compteur live `_majPanneauFloaterAvoidCount`. Pattern identique aux waypoints (`_activerModeClicCarte`/`_desactiverModeClicCarte`).
+
+#### 31.5 Tri Z-index des roads en mode multi-niveau (depuis v169)
+
+Bug remonté KARMA : en mode multi-niveau, l'ordre d'affichage des routes ne reflétait pas la hiérarchie physique. Une galerie au Niv 0 pouvait apparaître **en-dessous** d'une galerie au Niv -1 si elle avait été tracée avant — c'était l'ordre d'insertion plat.
+
+**Règle implémentée** (uniquement quand `multiLevel === true`) :
+- **Tri primaire** : `level` **ascendant** — niveau bas en arrière, niveau haut au-dessus (LVL -∞ → -2 → -1 → 0 → +1 → +∞)
+- **Tri secondaire** : type au sein du même niveau — `chemin (0) < secondaire (1) < principal (2) < jonction (3)`. Principal au-dessus de chemin/secondaire = hiérarchie visuelle naturelle.
+- **Itinéraire** : toujours en dernier (au-dessus de tout, c'est la navigation active).
+- **Jonctions** : tri par `max(fromLevel, toLevel)` — le pont apparaît au-dessus du niveau inférieur, cohérent avec l'analogie "escalier qui monte au-dessus du sol bas".
+
+**Sites d'application** (4 endroits) :
+1. `js/road.js > renderRoads` — affichage Leaflet on-map des routes de session
+2. `js/utils.js > ajouterPointsDepuisJSON` — création initiale des polylines data layer
+3. `js/utils.js > telechargerPlan` — export PNG rapide (session + embedded)
+4. `js/exporter.js > _genererCanvasExport` — export PNG avancé (session + embedded)
+
+**Pattern** : copie triée (`[...arr].sort(...)`) pour ne pas muter l'array source. Sort prédicat composé level → type.
+
+**Rétro-compat** : si `multiLevel === false`, ordre d'insertion conservé (= comportement v147 strict). Pas de régression sur les plans single-level.
+
+#### 31.6 Audit aide intégrée + légende in-app + label épuré (depuis v169 / Karma_dev)
+
+Audit demandé KARMA pour vérifier que les modales "aide" (📖) et "légende" (🗺️) intègrent les 2 features. Corrections appliquées :
+
+**Modale Légende in-app** (`interface.js > afficherLegende`) :
+- Section 🛣️ Tracés : ajout `"Jonction interniveau"` (trait magenta `#ff4ecb`)
+- Section ⬛ Zones : ajout `"⛔ Inaccessible"` (swatch en hachures CSS via `repeating-linear-gradient(45deg, #5a0a0a 0 6px, #1a1f2e 6px 10px)`)
+
+**Modale Aide intégrée** (`interface.js > afficherAide`) :
+- Section 🛣️ Tracés & Routes : ajout `🪜` Jonction interniveau (mention "sous-action conditionnelle multi-niveau")
+- Section 🗺️ Itinéraire : nouveau paragraphe `🚫 Contraintes d'évitement` qui distingue clairement dur (⛔) vs souple (🚫), mentionne les 3 méthodes d'ajout et la persistance localStorage par plan
+
+**Suppression au clic** (`interface.js`, 2 sites) :
+- `_choixSuppression "Tracés"` et `activerModeSuppressionTraceClic` : filtre étendu à `["principal", "secondaire", "chemin", "jonction"]`. Avant : impossible de supprimer une jonction au clic, fallback obligatoire via "Tous les tracés". Après : cohérent avec les autres tracés.
+
+**Épuration des labels de légende** (cohérence cross-doc, 2 commits) :
+- Légende in-app : `"⛔ Inaccessible — bloque l'itinéraire (hachures)"` → `"⛔ Inaccessible"` (commit `0419752`)
+- Légende in-app : `"🪜 Jonction interniveau (escalier / pente — multi-niveau)"` → `"Jonction interniveau"` (commit `d2b4898`)
+- Légende PNG : `"Inaccessible (bloque l'itinéraire)"` → `"Inaccessible"` (commit `0419752`)
+- **Principe** : sémantique portée par le **visuel** (couleur unique magenta pour jonction, hachures rouge/noir pour inaccessible) + icône dans la sidebar (⛔, 🪜) → pas besoin de doubler en texte. Labels sobres alignés avec le reste du projet.
+
+#### 31.7 Pour ajouter une 5ème type de zone (futur)
+
+**À NE PAS OUBLIER** quand on ajoute un nouveau type de zone (au-delà des 4 actuels eau/remblais/effondrement/inaccessible) :
+
+1. `js/zones.js > ZONE_STYLES` — style visuel (color/fillColor/fillOpacity)
+2. `js/zones.js > ordreType` — position d'affichage dans la pile (ordre = z-index logique)
+3. `js/interface.js > _creerGroupeAccordeon zones` — bouton sous-action
+4. `js/interface.js > Aide intégrée` — ligne descriptive
+5. `js/utils.js > ZONE_STYLES_DATA + ZONE_STYLES_EMBED + ZONE_STYLES_EXPORT` — styles pour data layers + export rapide
+6. `js/utils.js > ajouterPointsDepuisJSON > zonesTriees ordre` — ordre embedded zones
+7. `js/utils.js > telechargerPlan > ordre` — tri zones session
+8. `js/exporter.js > _compterTypes / hasZones / zoneLabels / ordre / filtreZ + checkboxes ann_zones_*` (×~10 sites)
+9. `js/sessionExporter.js > _trierParType (×3 sites) / syncParent (×2) / zoneTypes filter / zoneTypesActifs + checkboxes adv_zones_* / conv_zones_*` (~8 sites)
+10. `index.html` — pattern SVG si nécessaire pour le rendu visuel
+11. `css/style.css` — styles spécifiques si besoin
+12. Pathfinder si bloquant : helper de détection dans `pathfinder.js`
+13. Doc : CLAUDE.md (cette section), AI_CONTEXT.md (liste anti-hallucination), README_USER.md, README.md (journal)
+
+C'est ~13 endroits à toucher. Un grep large `"effondrement"` est utile pour ne pas en oublier.

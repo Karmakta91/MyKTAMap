@@ -1,0 +1,576 @@
+# Architecture MyKTAMap — Sécurité : gates, PIN, audit réseau, légal, licence
+
+> Référence détaillée extraite de l'ancien CLAUDE.md. Lue à la demande (pas auto-chargée).
+> Sections : §18, §36, §40, §43, §77
+
+---
+
+### 18. Protection juridique du code (Phase 1 légale, depuis 09/05/2026)
+
+**Auteur** : Flavien VIDAL (vrai nom civil, pour la force probante légale) — alias KARMA pour la continuité de marque visible.
+
+**Licence** : CC BY-NC-SA 4.0 — usage commercial interdit sans accord écrit préalable. Fichier `LICENSE` à la racine.
+
+**Module `js/copyright.js`** chargé EN PREMIER dans `index.html` :
+- `window.__MKM__` watermark (frozen object avec author/copyright/license/build) — preuve d'origine en cas de copie.
+- Console banner stylé au boot (visible à F12). Bypass volontaire du proxy `debug.js` (chargé après) → reste visible même en `debugMode = false`.
+- **Détection DevTools conditionnée à `APP_CONFIG.debugMode === true`** : si debug ON, polling 2s heuristique outer/inner > 280px → toast `.kta-devtools-warn` (badge "DEBUG" pour signaler la nature outil-dev). Si debug OFF, aucune polling, zéro overhead. Toggle live du mode debug fonctionne (pas besoin de reload). Skip si une modale charte est ouverte (anti faux positif sur transitions viewport).
+- Toujours dans `ASSETS_TO_CACHE` du SW.
+
+**Headers copyright** dans les fichiers JS critiques : `main.js`, `utils.js`, `interface.js`, `pathfinder.js`, `planRegistry.js`, `sessionPersist.js`, `oomGuard.js`. Format `/*! MyKTAMap (c) 2026 Flavien VIDAL ... */`. Si quelqu'un copie un fichier isolé, le copyright le suit.
+
+**Mentions visibles utilisateur** :
+- Footer loader : `© 2026 Flavien VIDAL · CC BY-NC-SA 4.0 · Usage commercial interdit`
+- Splash : signature `karma.png` (pseudo artistique, déjà en place)
+- Meta tags `<head>` : `author`, `copyright`, `license`
+
+**Pour ajouter un nouveau fichier JS** : ajouter le header copyright en tête (8 lignes max). Utile surtout pour les algorithmes métier (genre pathfinder).
+
+**Phase 2.1 (build pipeline)** non encore en place — projet en vanilla JS sans bundler. À mettre en place via esbuild minification + bundle pour la version prod (le repo privé garde le source lisible). Attention : SW à mettre à jour pour pointer sur le bundle minifié au lieu de la liste `js/*.js`.
+
+---
+
+### 36. Unlock Gate — barrière communautaire d'accès (depuis v173)
+
+Module `js/unlockGate.js` qui intercale un écran de saisie de mot de passe entre la fin du splash et le démarrage normal de l'app. Vérification 1 fois à la 1ère installation, mémorisé en localStorage ensuite, re-demandé après reset complet.
+
+#### 36.1 ⚠️ Niveau de sécurité — barrière SOCIALE, pas une vraie auth
+
+MyKTAMap est une PWA 100% client → tout le code HTML/JS/CSS est servi en clair par Nginx ET disponible publiquement sur GitHub (`Karmakta91/MyKTAMap`). Cette gate est efficace pour :
+- ✅ Décourager les passants / robots d'indexation
+- ✅ Cadrer "communauté" → "il faut connaître le code"
+- ❌ NE PAS empêcher un attaquant motivé (hash dans le code → brute force offline trivial ; bypass `localStorage.setItem("myktamap_unlock_v1", "<hash>")` en F12 → 5 secondes)
+
+**KARMA explicitement informé et a validé.** Le mdp est communiqué hors-bande aux utilisateurs (forum, message direct).
+
+#### 36.2 Hash hardcodé (SHA-256)
+
+Le mdp en clair n'apparaît PAS dans `unlockGate.js` — juste son hash SHA-256 calculé via `crypto.subtle.digest`. Pour bumper le mdp :
+```bash
+echo -n "<nouveau-mdp>" | openssl dgst -sha256
+```
+Mettre le résultat dans la const `HASH_VALIDE` de `unlockGate.js`. Au prochain boot, les users qui avaient l'ancien hash en localStorage seront re-demandés (le hash en LS ne matchera plus le nouveau).
+
+⚠️ **Si on change le mdp** : il faut aussi changer la const `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair affiché dans la modale Reset). Ces 2 valeurs doivent rester synchronisées.
+
+#### 36.3 5 tentatives + lockout permanent
+
+Compteur persisté en `localStorage["myktamap_unlock_attempts"]` (résiste au reload).
+- Tentatives 1-4 : message rouge "❌ Code incorrect. Tentatives restantes : N"
+- Tentative 5+ : LOCKOUT permanent
+  - Champ saisie masqué
+  - Message "🚫 Trop de tentatives" + sous-texte "Accès verrouillé par sécurité." (ton pro depuis v1.26.3)
+  - **PAS de bouton reset** depuis le lockout — sinon bypass trivial (reset → modale Reset affiche le mdp → l'user note → re-saisit → contourne le lockout). L'user qui ne connaît pas le code DOIT désinstaller l'app manuellement (long-press icône / vider cache navigateur / `localStorage.clear()` en F12).
+  - Liens externes pour contacter l'auteur si l'user a légitimement perdu son accès : Instagram `@karma_kta` + `mailto:contact@myktamap.fr` (le simple lien vers `myktamap.fr` était trompeur — le site n'offre aucun canal de contact)
+
+#### 36.4 Position dans le flow `main.js > initApp`
+
+APRÈS `_splashEnd()`, AVANT `PlanRegistry.init()` et tout le reste :
+```js
+if (window.UnlockGate && !window.UnlockGate.isUnlocked()) {
+  await _splashEnd();
+  await window.UnlockGate.ouvrirGate();  // bloque jusqu'à unlock
+}
+```
+- User authentifié (cas le plus fréquent = 2e boot+) : gate skip silencieusement, comportement v172 strictement préservé
+- 1ère installation : splash 4s → gate → saisie → unlock → loader
+- Lockout : `ouvrirGate()` ne résout JAMAIS la Promise → `await` reste bloqué pour toujours → l'app reste sur l'écran lockout
+
+#### 36.5 Affichage du mdp dans la modale Reset
+
+Constante `KTA_UNLOCK_PASSWORD_DISPLAY` dans `interface.js` (mdp en clair). Affichée dans la 1ère modale de confirmation de reset via un bloc jaune accent :
+```
+🗝️ Code d'accès requis au redémarrage
+Après reset, l'app redemandera le code d'accès communautaire :
+[F!sYs44!h4z!3J]   ← code en monospace, fond noir, user-select:all
+Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer !
+```
+
+Permet à un user **déjà authentifié** de reset proprement sans perdre l'accès. C'est le SEUL endroit du code où le mdp apparaît en clair (volontaire — sinon impossible à afficher).
+
+`localStorage.clear()` de `viderCacheAppli` purge naturellement le flag `myktamap_unlock_v1` → la gate redemande au prochain boot. Pas besoin d'appeler `UnlockGate.lock()` explicitement.
+
+#### 36.6 API publique `window.UnlockGate`
+
+- `isUnlocked()` → bool — lit `localStorage["myktamap_unlock_v1"]`
+- `isLockedOut()` → bool — true si attempts ≥ 5
+- `ouvrirGate()` → Promise — résout `true` à l'unlock, NE RÉSOUT JAMAIS en lockout
+- `lock()` → void — retire les flags (utilitaire, pas appelé par défaut)
+
+#### 36.7 Workflow release / bump du mdp
+
+À chaque release qui touche au mdp, **impératif** : afficher le nouveau mdp dans `version.json > notes` (en première puce, avec warning explicite) pour que les users qui mettent à jour le voient AVANT l'update. Sinon : update → cache PWA purgé → nouveau code chargé → gate apparaît → user bloqué car n'a pas noté le mdp.
+
+Format suggéré pour la 1ère puce de v173+ :
+```
+🔐 IMPORTANT — Accès restreint communautaire activé. Si tu mets à jour,
+l'app te demandera un code d'accès au prochain démarrage. Le code est :
+F!sYs44!h4z!3J — note-le avant de mettre à jour !
+```
+
+#### 36.8 À NE PAS faire
+
+- **Ne JAMAIS** réintroduire un bouton reset depuis le lockout (bypass trivial). Si un user perd son accès → désinstaller manuellement (= friction délibérée).
+- **Ne PAS** exposer le mdp en clair via `window.UnlockGate.getPassword()` ou similaire (rendrait inutile le hash dans le code).
+- **Ne PAS** bumper le mdp sans synchroniser HASH_VALIDE (unlockGate.js) ET KTA_UNLOCK_PASSWORD_DISPLAY (interface.js) ET la première puce de version.json.
+
+---
+
+### 40. Privacy & Audit — Module `networkAudit.js` (depuis v1.8.0, ajustements CSP en v1.8.1)
+
+Module de transparence + vérifiabilité construit pour répondre à la méfiance légitime du milieu cataphile vis-à-vis des "backdoors" qui exfiltreraient les plans. **L'app étant 100% client-side, la collecte est techniquement impossible ; ce module rend ça vérifiable par l'utilisateur sans qu'il ait à nous croire sur parole.**
+
+#### 40.1 Architecture
+
+Module IIFE `js/networkAudit.js` (~350 lignes) chargé **EN DEUXIÈME** dans l'ordre des scripts (juste après `copyright.js` qui ne fait que `console.log`, et **avant tout module qui fait du fetch**). Ordre critique : si on inverse avec `debug.js` ou plus, les premiers `fetch()` passent sous le radar.
+
+Mécanisme : monkey-patch des 5 API réseau du navigateur AVANT que tout autre code ne puisse les appeler :
+- `window.fetch`
+- `XMLHttpRequest.prototype.open` + `.send`
+- `navigator.sendBeacon`
+- `WebSocket` (constructor wrapper)
+- `EventSource` (constructor wrapper)
+
+Chaque appel est :
+1. Loggué dans un **buffer circulaire de 500 entries** (RAM uniquement, pas localStorage)
+2. Vérifié contre une **whitelist hardcodée**
+3. Si paranoia ON + non-whitelisté → **bloqué AVANT d'atteindre le réseau** (Promise reject pour fetch, throw pour XHR/WS/SSE, return false pour sendBeacon)
+
+#### 40.2 Whitelist (visible côté UI)
+
+2 entrées hardcodées dans `WHITELIST_PATTERNS` (array de fonctions `(url) => boolean`) :
+
+1. **Same-origin** : `new URL(url, location.origin).origin === location.origin` → autorise toute requête vers le domaine de l'app (asset HTTP, version.json, alert.json, data/*, docs/*, …)
+2. **`https://www.gstatic.com/generate_204`** (literal exact) → ping connectivité no-cors, aucune donnée envoyée
+
+`WHITELIST_HUMAN` exposé en string-array lisible affiché dans la modale 📖 Doc audit pour l'user.
+
+#### 40.3 API publique `window.NetworkAudit`
+
+- `getLog()` → `Array<Entry>` (copie immutable du buffer)
+- `clear()` → vide le buffer
+- `setParanoia(boolean)` → toggle + persistance `localStorage["myktamap_network_paranoia_v1"]` + hook `window._kta_majBadgeParanoia` pour le badge footer
+- `isParanoia()` → état actuel
+- `onLog(callback)` → subscribe live, retourne unsubscribe (utilisé par la modale 📋 Journal)
+- `WHITELIST_HUMAN` → array readonly de descriptions
+- `exportJson()` → string JSON formaté (utilisé par bouton 📥 Exporter)
+
+**Structure `Entry`** :
+```js
+{
+  timestamp: 1747923456789,  // Date.now()
+  kind:      "fetch",         // ou "xhr", "beacon", "websocket", "eventsource"
+  url:       "...",
+  method:    "GET",           // ou POST, WS, SSE, etc.
+  hasBody:   false,           // true si payload envoyé
+  category:  "plan-data",     // ou app-script, ping, external, etc. (cf. _classify)
+  status:    200,             // HTTP status OU "BLOCKED", "FAIL", "OPEN", "SENT"
+  blocked:   false            // true si bloqué par paranoia
+}
+```
+
+#### 40.4 UI (uniquement dans la modale ⚙️ Configuration du loader)
+
+Section "🔒 Confidentialité & Audit" dans `#loaderConfigModal` avec :
+- Bouton 📋 Voir le journal réseau → modale `#loaderNetLogModal` (tableau live + sticky header + scroll body + boutons 📋 Copier / 📥 Exporter / 🗑️ Vider)
+- Bouton 📖 Que fait l'app sur le réseau ? → modale `#loaderNetDocModal` (lead + whitelist + comment vérifier + CSP + bouton 📄 Ouvrir doc complète → `docs/NETWORK_AUDIT.md`)
+- Toggle 🔒 Mode hors-ligne strict (`label.kta-net-paranoia-toggle` avec accent orange)
+
+**Badge `kta-net-paranoia-badge`** dans le footer du loader (`#loaderParanoiaBadge`) : visible uniquement quand paranoia ON, animation pulse douce, cliquable → ouvre la modale Configuration. Helper `window._kta_majBadgeParanoia()` sync le badge + la checkbox depuis l'état NetworkAudit.
+
+⚠️ **Pas de section dans la modale ⚙️ Réglages in-app (map mode)** — décision KARMA : tout réglage sensible reste dans le loader. Cohérent avec la refonte v1.7.3 (cf. §39).
+
+#### 40.5 Catégorisation visuelle dans le journal (UI)
+
+`_classify(url)` retourne un label affiché en couleur :
+
+| Catégorie | Pattern URL | Couleur |
+|---|---|---|
+| `app-page` | `/`, `.html` | bleu |
+| `app-script` | `.js` | bleu |
+| `app-style` | `.css` | bleu |
+| `image` | `.png`, `.jpg`, `.jpeg`, `.webp`, `.svg`, `.gif` | vert |
+| `data` | `.json` (générique) | violet |
+| `plan-data` | `/data/...` | violet |
+| `version-check` | `/version.json` | jaune |
+| `alert-check` | `/alert.json` | orange |
+| `doc` | `.md` | gris clair |
+| `ping` | `gstatic.com/generate_204` | gris |
+| `external` | autre origine | rouge |
+| `same-origin` | autre same-origin | bleu clair |
+| `unknown` | erreur de parsing URL | gris |
+
+Aide visuelle pour repérer rapidement les anomalies dans le journal (toute catégorie `external` autre que `ping` devrait alarmer).
+
+#### 40.6 Mode paranoia — comportements précis
+
+- **fetch** : reject avec `Error("[NetworkAudit] Bloqué par le mode hors-ligne strict : <url>")`
+- **XHR** : throw même erreur dans `.send()` (le caller reçoit une exception synchrone)
+- **sendBeacon** : retourne `false` (compat API native)
+- **WebSocket** : throw dans le constructor wrapper
+- **EventSource** : throw dans le constructor wrapper
+
+Persistance : `localStorage["myktamap_network_paranoia_v1"] = "1"` quand actif. Pas de fallback si localStorage indisponible (incognito strict) → paranoia OFF par défaut.
+
+⚠️ Si on ajoute un nouveau type d'API réseau (genre WebTransport, RTCPeerConnection) **il faut l'instrumenter** dans `networkAudit.js`, sinon il passe sous le radar.
+
+#### 40.7 CSP côté serveur (docs/nginx-csp-config.conf)
+
+Double protection : en plus du module JS, le serveur Nginx envoie un header `Content-Security-Policy` strict. Directives clés :
+```
+connect-src 'self' https://www.gstatic.com    ← LA garantie anti-exfiltration
+script-src 'self' 'unsafe-inline'             ← compromis assumé (cf. ci-dessous)
+style-src 'self' 'unsafe-inline'              ← idem (style="..." inline partout)
+img-src 'self' data: blob:                    ← blob: nécessaire pour tuiles V2 ZIP
+worker-src 'self' blob:                       ← Service Worker
+frame-ancestors 'none'                        ← anti-clickjacking
+```
+
+Même si un attaquant injectait du JS malveillant, le **navigateur lui-même** refuserait l'envoi vers un domaine non-whitelisté. Vérifiable côté user via F12 → Network → Headers → `Content-Security-Policy`.
+
+⚠️ **À déployer côté Nginx prod/dev** (toi-même, manuellement) — le fichier `docs/nginx-csp-config.conf` documente la directive complète + les autres headers de sécurité (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+
+⚠️ Pas de `report-uri` / `report-to` : cohérent avec la promesse "aucune donnée n'est envoyée à un serveur tiers". Les violations CSP restent visibles côté user uniquement (DevTools).
+
+#### 40.7.1 ⚠️ `'unsafe-inline'` sur script-src — compromis assumé
+
+L'app utilise depuis toujours :
+- Des blocs `<script>...</script>` inline dans `index.html` (handlers du loader, modales de confirmation, modales audit…)
+- Des `onclick="..."` dans le HTML généré par `interface.js` (modales config, modales d'aide, etc.)
+
+Une CSP `script-src 'self'` strict refuse tout ça. 3 options pour résoudre :
+
+| Option | Effort | Sécurité gagnée |
+|---|---|---|
+| `'unsafe-inline'` ajouté | Aucun | -0 (garantie reste sur `connect-src`) |
+| Hashes SHA-256 par bloc | Très haut (cauchemar maintenance, change à chaque tweak) | Marginal |
+| Externalisation totale + suppression de tous les `onclick` | Refonte massive (~50+ sites) | Marginal |
+
+**Décision** : on assume `'unsafe-inline'` sur `script-src` ET `style-src`. La garantie anti-exfiltration **ne vient pas de `script-src`**, elle vient de `connect-src 'self' https://www.gstatic.com` qui interdit physiquement au navigateur d'envoyer des données ailleurs, même si un attaquant injectait du JS.
+
+Conditions qui rendent ce compromis safe pour CE projet :
+- Aucun input user n'est jamais placé en `innerHTML` directement (tout passe par `textContent` ou `_escapeHtml`)
+- Aucun contenu tiers / aucun iframe / pas de CDN externe
+- Le HTML servi par Nginx est statique (pas de templating server-side qui pourrait injecter de l'input user)
+
+⚠️ Si un jour on ajoute une feature qui fait `innerHTML = userInput`, **revoir cette décision** : on devra soit purifier strict (DOMPurify), soit basculer sur du nonce dynamique généré par Nginx.
+
+⚠️ Pour les futurs développeurs : **ne JAMAIS faire `el.innerHTML = userInput` sans échappement**. Toujours `el.textContent = userInput` ou `el.innerHTML = _escapeHtml(userInput)`.
+
+#### 40.8 Documentation utilisateur (docs/NETWORK_AUDIT.md)
+
+Page de transparence détaillée (~300 lignes) servie en static depuis le SW (ajoutée à `ASSETS_TO_CACHE`). Contenu :
+- Promesse en 1 ligne
+- Modèle technique (PWA pure)
+- Liste blanche commentée
+- Comment vérifier toi-même (3 méthodes : journal interne / F12 / lecture source)
+- Mode paranoia détaillé
+- CSP expliqué
+- Position de l'auteur
+
+Accessible via le bouton 📄 dans la modale 📖 Doc audit (s'ouvre dans un nouvel onglet `noopener,noreferrer`, path same-origin donc OK même en mode paranoia).
+
+#### 40.9 Pour ajouter une nouvelle URL à la whitelist (futur)
+
+Si on doit ajouter un endpoint tiers légitime (ex : un CDN pour les polices Inter, un service de tuiles cartographiques) :
+
+1. Ajouter le pattern dans `WHITELIST_PATTERNS` (tableau de fonctions)
+2. Ajouter une ligne dans `WHITELIST_HUMAN` (description lisible)
+3. Ajouter dans `docs/NETWORK_AUDIT.md` (tableau de la liste blanche complète)
+4. Ajouter dans `docs/nginx-csp-config.conf` (directive `connect-src`)
+5. **Bumper la version** (transparence : un changement de liste blanche = changement de surface réseau, l'user doit pouvoir comparer avant/après)
+
+⚠️ **NE JAMAIS** ajouter un endpoint qui reçoit des données utilisateur (POST/PUT). Si nécessaire un jour, refonte du modèle de transparence requise (peut-être avec opt-in explicite par feature).
+
+---
+
+### 43. Code d'accès local PIN/Face ID optionnel (depuis v1.10.0)
+
+Couche perso optionnelle par-dessus `UnlockGate` (§36) qui reste la barrière communautaire avec mdp partagé. Différent : le PIN est propre à chaque user, choisi par lui.
+
+Module `js/pinLock.js` (~450 lignes IIFE) → `window.MyKTAMapPinLock`.
+
+**Modèle de sécurité honnête** :
+- Hash `SHA-256(salt + pin)` via `crypto.subtle.digest`
+- Salt random 16 bytes (`crypto.getRandomValues`) en b64
+- Stockage `localStorage["myktamap_pin_v1"]` = `{hashedPin, salt, attempts, hasBiometric, credentialId}`
+- **Barrière UX, PAS pseudo-crypto** : l'app étant 100% client-side, un attaquant motivé bypass via F12 (= `localStorage.clear()` en 5s). Cohérent UnlockGate.
+- Les données IDB (photos, sessions) ne sont **PAS** chiffrées (choix volontaire KARMA 6:a)
+- Aucune recovery en cas d'oubli → reset complet requis
+
+**API publique** :
+- `isEnabled() / isUnlocked() / isLockedOut() / getRemainingAttempts()` — état
+- `hasBiometric() / isBiometricSupported()` — biométrie
+- `enable(pin, useBiometric) / disable(pin) / unlock(pin) / unlockWithBiometric() / changePin(newPin) / reset()` — actions
+- `ouvrirGate()` — affiche la gate UI, résout au unlock (jamais en lockout)
+
+**Lockout** : 5 tentatives PIN ratées consécutives → lockout définitif (compteur persisté). Pour sortir : reset complet (`localStorage.clear()` via 💥 Tout réinitialiser efface aussi `myktamap_pin_v1`). Une biométrie ratée n'incrémente PAS `attempts` (WebAuthn gère son propre lockout natif device).
+
+**Biométrie WebAuthn** (Face ID / Touch ID / Windows Hello) :
+- Détection via `PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()`
+- Enregistrement : `navigator.credentials.create({publicKey: {challenge: random, rp: {name: "MyKTAMap"}, user: {...}, pubKeyCredParams: [-7, -257], authenticatorSelection: {authenticatorAttachment: "platform", userVerification: "required"}, attestation: "none"}})`
+- Vérification : `navigator.credentials.get({publicKey: {challenge: random, allowCredentials: [{id, type: "public-key", transports: ["internal"]}], userVerification: "required"}})`
+- Challenge random **client-side** (no backend) — compromis assumé, niveau "barrière UX"
+- Si l'enregistrement biométrie échoue à l'activation → PIN activé sans biométrie (fallback graceful, error.pinActivatedWithoutBiometric = true signale au caller)
+
+**UI Gate plein écran** (`_afficherGateUI(onUnlock)`) :
+- Overlay z-index 100002 (au-dessus de tout)
+- Boîte 360px charte dorée avec icône 🔐 + titre + dots `●●●●` 6 emplacements
+- Pattern iOS 8:b : dernier chiffre saisi visible 0.5s puis remplacé par ●
+- Keypad numérique 3×4 custom (1-9 / biométrie ou empty / 0 / ⌫)
+- Auto-prompt biométrique 400ms après ouverture si configurée
+- Auto-submit dès 6 chiffres OU touche Enter pour 4-6
+- Clavier physique : chiffres + Backspace + Enter (Échap **bloqué** — l'user doit unlock)
+- Affichage "N tentative(s) restante(s)" avec classe `kta-pin-gate-attempts-warn` si ≤ 2
+
+**UI Lockout** (`_afficherLockoutUI()`) — screen rouge dramatique :
+- Pas de bouton de sortie (force l'user à reset via la home)
+- Message "🚫 Trop de tentatives" + explication "Comment sortir ?" → ⚙️ Configuration → 💥 Tout réinitialiser
+- Phrase en italique "Verrouillage de sécurité actif après plusieurs tentatives échouées." (ton pro depuis v1.26.3)
+
+**UI activation/modification/désactivation** — `index.html` modale ⚙️ Configuration loader (choix 7:b "loader uniquement") :
+- Pas de section dans ⚙️ Réglages map mode (par design — cohérent avec la philo "réglages critiques dans le loader")
+- Status `✅ Activé · 🤳 biométrie configurée` ou `○ Désactivé`
+- Boutons contextuels via flow Promise-based `_demanderPin(titre, message, label)`
+- Activation : saisie PIN x2 + `confirm()` natif pour la biométrie (le `confirm()` natif est OK ici, cas marginal one-shot)
+- Modification (9:b) : biométrie OU ancien PIN d'abord, puis nouveau PIN x2
+- Désactivation : `confirm()` puis biométrie OU PIN
+
+**Intégration boot** — `main.js > initApp` après `UnlockGate.ouvrirGate()` :
+```js
+if (window.MyKTAMapPinLock && window.MyKTAMapPinLock.isEnabled()
+    && !window.MyKTAMapPinLock.isUnlocked()) {
+  await _splashEnd();
+  await window.MyKTAMapPinLock.ouvrirGate();
+}
+```
+
+**Pour bumper le `MAX_ATTEMPTS`** (= 5) : changer la constante en tête de pinLock.js. ⚠️ **Ne PAS exposer un bouton "Reset PIN" depuis le screen lockout** — bypass trivial. L'user qui oublie son PIN DOIT passer par le reset complet de l'app (= friction délibérée).
+
+**Pour bumper le PIN format** (= 4-6 chiffres) : modifier `PIN_MIN` et `PIN_MAX` en tête de pinLock.js + adapter le validateur `_validatePinInput` + le keypad UI (max chiffres affichés en dots).
+
+**À NE PAS faire** :
+- ❌ Réintroduire un bouton "Reset PIN" depuis le lockout (bypass trivial)
+- ❌ Stocker le PIN en clair (toujours `hashedPin` via SHA-256 + salt)
+- ❌ Ajouter une recovery email (no backend, cohérent avec UnlockGate)
+- ❌ Promettre que les données sont chiffrées (elles ne le sont pas — c'est explicite dans la doc et l'UI)
+
+---
+
+### 77. Mécanisme de licence pro — Licence-pro.json + import manuel (v1.28.2 → v1.28.5 — 2026-05-30)
+
+4 patchs consécutifs qui construisent un mécanisme complet de **bascule community ↔ pro** côté community,
+sans casser la philo offline-first ni l'audit réseau.
+
+#### 77.1 Architecture
+
+**Module unique** : `js/proLicense.js` (~280 lignes IIFE) → `window.MyKTAMapProLicense = { isPro, getData, getSource, importFile, removeLocal, forceRecheck }`.
+
+Au boot très tôt (chargé juste après `js/copyright.js`, avant `themeManager.js`), le module :
+1. Lit deux clés `localStorage` distinctes :
+   - `__mktm_pro_license__` : cache du fetch serveur `/Licence-pro.json`
+   - `__mktm_pro_license_local__` : licence importée manuellement via UI
+2. Applique synchronement la classe `kta-instance-pro` sur `<html>` si l'une OU l'autre porte `instance: "pro"`
+3. Lance un fetch async `GET /Licence-pro.json?_=<ts>` (cache-bust) pour confirmer/invalider le cache serveur
+4. Le fetch serveur n'affecte **jamais** le cache local (sources strictement indépendantes)
+5. Si les 2 sources sont actives, **serveur prime** (annonce officielle du déployeur > import perso)
+
+**Pattern CSS de bascule** (cf §53 ThemeManager, même approche) : `.kta-licence-community` vs `.kta-licence-pro`.
+
+- `.kta-licence-pro` : `display: none` par défaut
+- `html.kta-instance-pro .kta-licence-community` : `display: none`
+- `html.kta-instance-pro .kta-licence-pro` : `display: inline`
+
+Tous les éléments à basculer sont wrappés dans l'un ou l'autre. Pas de changement DOM dynamique, juste CSS.
+
+#### 77.2 Surfaces basculées en mode pro
+
+| Surface | Community | Pro |
+|---|---|---|
+| Footer copyright loader (ligne 1) | © 2026 [karma.png] | © 2026 MyKTAMap — édition pro · Tous droits réservés |
+| Footer copyright loader (ligne 2) | · CC BY-NC-SA 4.0 · Usage commercial interdit | · ✓ Licence professionnelle active |
+| Footer contact loader | Instagram · mailto · 💼 Licence pro | Instagram · mailto (sans Licence pro) |
+| Splash `#splashLicense` | Licence libre — usage non commercial | ✓ Édition professionnelle · Tous droits réservés |
+| UnlockGate (gate + lockout) | Instagram · mailto · 💼 Licence pro | Instagram · mailto |
+| NETWORK_AUDIT.html footer | © KARMA · CC BY-NC-SA 4.0 | © MyKTAMap — édition pro |
+
+NETWORK_AUDIT.html embarque sa propre logique de détection inline (mini-script qui lit la classe sur `html`)
+car la page est statique et peut être ouverte hors contexte de l'app principale.
+
+#### 77.3 Format `Licence-pro.json`
+
+```json
+{
+  "instance":     "pro",                              // REQUIS
+  "license_hash": "MKTM-LIC-<32 hex chars>",          // REQUIS pour import manuel
+  "client":       "Acme SpeleSecours",                // optionnel — futur affichage
+  "license_id":   "MKTM-2026-001",                    // optionnel — traçabilité interne
+  "license_type": "annual" | "perpetual" | "free-grimp", // optionnel
+  "issued_at":    "2026-05-30",                       // optionnel
+  "valid_until":  "2027-05-30"                        // optionnel
+}
+```
+
+**Validation hash** : regex stricte `/^MKTM-LIC-[A-Fa-f0-9]{32}$/`. Génération côté KARMA :
+`echo "MKTM-LIC-$(openssl rand -hex 16)"`. Le hash est nominatif (lié à 1 client/contrat).
+
+**Backward compat** : les fichiers servis côté serveur SANS `license_hash` (déploiements legacy v1.28.2/3
+faits avant l'introduction du hash) sont acceptés avec warning console seulement. L'import manuel en
+revanche **exige** un hash bien formé (= toute licence livrée aux clients à partir de v1.28.4 doit en
+contenir un).
+
+#### 77.4 Service Worker — bypass cache total
+
+`sw.js > fetch handler` ajoute un bypass network-only pour `/Licence-pro.json` :
+
+```js
+if (/\/Licence-pro\.json(\?|$)/.test(reqUrl)) {
+  event.respondWith(
+    fetch(event.request, { cache: "no-store" })
+      .catch(() => new Response("", { status: 404,
+        headers: { "Content-Type": "application/json" } }))
+  );
+  return;
+}
+```
+
+Pourquoi : l'état doit refléter la réalité serveur en temps réel. Si un déployeur retire son
+`Licence-pro.json`, le mode pro doit s'éteindre au prochain check du PWA — pas être maintenu artificiellement
+par un cache LRU stale.
+
+#### 77.5 Import manuel via UI profil (v1.28.4)
+
+Nouvelle section **« 💼 Édition professionnelle »** dans la modale **« 👤 Mon profil »** du loader (cf. §61
+Profile UI). 3 états rendu dynamiquement par `_refreshProfileProSection()` dans `index.html` :
+
+| État | Rendu |
+|---|---|
+| Community | Hint texte + bouton « 📂 Importer une licence pro » qui ouvre file picker `.json` |
+| Pro via serveur | Badge ✓ + hint « instance pro déployée — aucune action requise » (pas de bouton) |
+| Pro via local | Badge ✓ + hint + bouton « 🗑️ Retirer la licence locale » |
+
+**Pipeline import** :
+1. File picker accept `.json,application/json` → `FileReader.readAsText(file)`
+2. Cap taille 50 KB (anti-spam)
+3. `JSON.parse` (refus si erreur)
+4. `_validateData(data, strictHash=true)` (refus si `instance !== "pro"` ou hash absent/mal formé)
+5. `localStorage.setItem("__mktm_pro_license_local__", JSON.stringify(data))`
+6. `_recomputeActive()` → re-render section + toast OOMGuard
+
+Retrait : `localStorage.removeItem` + `_recomputeActive()`. La confirmation passe par un `confirm()` natif
+(volontaire — cas marginal, format custom non justifié).
+
+**Helpers internes** dans `index.html` (associés au modal profil) :
+- `_proHashShort(hash)` : tronque pour affichage (`MKTM-LIC-abc123…3456`) — **non utilisé en v1.28.4** mais
+  laissé en place pour usage futur (diagnostic, export profil, etc.)
+- `_proSourceLabel(source)` : libellé humain — idem
+- `_proSourceHint(source)` : phrase d'explication contextuelle (utilisée)
+
+#### 77.6 Sécurité juridique
+
+Mécanisme **purement cosmétique** côté technique. La validité juridique vient du **contrat signé** entre
+MyKTAMap et le client :
+- Hash nominatif → reproduction = infraction contractuelle
+- Pas de vérification cryptographique (signature HMAC future possible si demande client institutionnel)
+- Cohérent avec la doctrine §36 UnlockGate « barrière sociale, pas pseudo-crypto »
+- Le copyright légal reste dans `LICENSE` (CC BY-NC-SA) + `LICENSE_PRO.md` (côté repo pro privé)
+
+#### 77.7 Confidentialité
+
+AUCUNE nouvelle surface réseau côté community :
+- Le fetch `/Licence-pro.json` est **same-origin** (déjà couvert par `connect-src 'self'`)
+- Sur `myktamap.fr` (community pur) : le serveur retourne 404 → mode community préservé
+- L'import manuel utilise `FileReader` (lecture locale du disque) — le fichier n'est **jamais envoyé** au serveur
+- Pas de directive CSP ajoutée, pas de nouveau service tiers
+- `connect-src` reste `'self'` + `https://www.gstatic.com` (ping)
+
+Cf. `docs/NETWORK_AUDIT.md` entrée groupée v1.28.2 → v1.28.4 pour le détail audit.
+
+#### 77.8 À ne PAS faire
+
+- ❌ Mélanger les 2 caches localStorage (server / local) — sources strictement indépendantes
+- ❌ Modifier la doctrine "serveur prime sur local" sans accord (cohérent avec "annonce officielle du déployeur")
+- ❌ Réintroduire la mention "💼 Licence pro" en mode pro (redondant — on est déjà pro)
+- ❌ Logger ou exposer publiquement le `license_hash` (nominatif, à traiter comme un secret modéré)
+- ❌ Casser la backward compat fetch serveur (les premiers déploiements v1.28.2/3 sont sans hash)
+
+#### 77.9 Pour ajouter une nouvelle surface qui doit basculer
+
+1. Identifier l'élément DOM à wrapper
+2. L'envelopper soit dans `.kta-licence-community` (visible community, masqué pro) soit dans `.kta-licence-pro` (masqué community, visible pro)
+3. Vérifier visuellement les 2 états en testant avec un `Licence-pro.json` posé localement ou importé via UI profil
+4. Documenter dans la matrice §77.2 ci-dessus
+
+#### 77.10 Voie d'accès UnlockGate via import de licence (v1.28.5)
+
+Au premier chargement de l'app (= UnlockGate active, code communautaire requis), un **second canal
+d'entrée** est désormais proposé : importer un fichier `Licence-pro.json` reçu par mail/canal privé.
+Le mode pro est activé directement et la gate se ferme — pas besoin de saisir le code communautaire.
+
+**Implémentation** (`js/unlockGate.js`, ~70 lignes ajoutées) :
+
+- Dans `_creerOverlay()`, **sous** le formulaire historique du code (inchangé), ajout de 2 blocs :
+  - Séparateur `<div class="kta-unlock-separator kta-licence-community">` avec libellé « ou »
+  - Bloc `<div class="kta-unlock-licence-block kta-licence-community">` contenant un hint italique
+    + bouton ambré « 📂 Importer ma licence pro » + `<input type="file" accept=".json">` masqué
+- Dans `ouvrirGate()`, handler du bouton : ouvre le file picker, appelle
+  `window.MyKTAMapProLicense.importFile(file)` (= **même API que §77.5 import profil**, validation
+  stricte avec hash bien formé requis). Si OK :
+  ```js
+  localStorage.setItem(LS_UNLOCK, HASH_VALIDE);
+  localStorage.removeItem(LS_ATTEMPTS);
+  // fondu overlay + resolve(true)
+  ```
+- Si rejeté : message d'erreur inline `❌ Licence refusée : <error>` (sans incrémenter le compteur
+  de tentatives échouées — l'import licence n'est PAS un essai de code communautaire raté)
+
+**Doctrine** : « détenir une licence pro = canal légitime d'accès, pas besoin de re-saisir le code
+communautaire à chaque reload ». Une fois la licence importée, le flag `LS_UNLOCK` est posé comme
+si l'user avait tapé le code → la gate ne réapparaît pas au prochain boot. Si l'user retire ensuite
+sa licence locale depuis le profil (§77.5), le flag `LS_UNLOCK` reste posé : pas de re-prompt
+(« déjà passé une fois par un canal légitime »).
+
+**Bascule auto** : les 2 blocs (séparateur + import) sont wrappés dans `.kta-licence-community`. Sur
+instance pro serveur (`Licence-pro.json` détecté), ils sont masqués automatiquement via la cascade
+CSS de §77.1 (`html.kta-instance-pro .kta-licence-community { display: none }`). Aucune action
+spéciale dans le JS — réutilise le pattern existant.
+
+**CSS dédié** (`css/style.css`, ~60 lignes mode dark + ~22 lignes variant thème clair) :
+
+| Classe | Rôle |
+|---|---|
+| `.kta-unlock-separator` | Flex row avec 2 lignes + libellé « ou » |
+| `.kta-unlock-separator-line` | Ligne horizontale subtile `rgba(255,255,255,0.10)` |
+| `.kta-unlock-separator-text` | Libellé uppercase letter-spaced, gris muted |
+| `.kta-unlock-licence-block` | Wrapper text-align center |
+| `.kta-unlock-licence-info` | Hint italique gris-bleu |
+| `.kta-unlock-licence-btn` | Bouton ambré `rgba(244,197,66,...)` border + hover saturé |
+
+Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeManager).
+
+**À NE PAS faire** :
+
+- ❌ Incrémenter `LS_ATTEMPTS` si l'import est rejeté — un essai d'import RATÉ n'est PAS un essai de code
+  communautaire RATÉ. Sinon, un user qui essaie 5 fois d'importer un fichier invalide se retrouve en
+  lockout sans avoir tapé le code une seule fois.
+- ❌ Bypass `MyKTAMapProLicense.importFile(file)` — il assure la validation regex hash, le cap taille,
+  l'écriture localStorage + le dispatch d'événement `mktm:license-changed`. Tout pipeline parallèle
+  serait du code mort + risque de désynchronisation.
+- ❌ Ouvrir le file picker sans masquer le compteur de tentatives au-dessus — UX confuse (« 5/5 tentatives
+  utilisées » pendant qu'on essaie d'importer une licence n'a aucun sens). Solution actuelle : le hint
+  italique du bloc précise le contexte différent.
+- ❌ Permettre l'import depuis l'écran lockout — au-delà de 5 tentatives ratées du code communautaire,
+  la gate refuse tout (cohérent avec §36.3 doctrine lockout définitif). L'import est dispo UNIQUEMENT
+  sur la gate normale avant lockout. Volontaire : sinon bypass trivial du lockout.
+
+#### 77.11 Pour étendre
+
+**Si on veut ajouter une 3e voie d'accès** (genre code QR à scanner, signature WebAuthn, etc.) :
+
+1. Ajouter le bloc HTML sous le bouton import dans `_creerOverlay()`, wrappé dans `.kta-licence-community`
+2. Ajouter le handler dans `ouvrirGate()` — pattern identique : succès → set `LS_UNLOCK` + fade + resolve
+3. **Ne pas** incrémenter `LS_ATTEMPTS` en cas d'échec (cohérent avec import)
+4. Ajouter le bloc dans la matrice §77.2 des surfaces basculées
+5. Documenter le canal dans `docs/NETWORK_AUDIT.md` si nouvelle surface réseau impliquée
+
+---

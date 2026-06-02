@@ -1,4 +1,9 @@
-.claude/
+# Config Claude Code : on TRACKE settings.json, hooks/, skills/ (partageables, sans secret).
+# On n'ignore que le volatile / local :
+.claude/worktrees/
+.claude/settings.local.json
+.claude/_*
+.claude/**/_*
 
 # 🔒 Zone PRIVÉE — site pro.myktamap.fr (présentation entreprise, stratégie,
 # documents internes). NE JAMAIS livrer dans ce repo (public/open community).
