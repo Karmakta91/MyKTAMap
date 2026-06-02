@@ -176,6 +176,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 1) : Module extrait de interface.js — modales
   // alertes publiques + sélecteur multi-alertes + modale update dispo
   "./js/interfaceAlerts.js",
+  // 🆕 v1.30.2 (P3 Lot 2) : Module extrait de interface.js — panneau
+  // Distance totale des tracés (filtres + surlignage magenta)
+  "./js/interfaceDistanceTotale.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
