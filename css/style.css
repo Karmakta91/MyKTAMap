@@ -8729,6 +8729,32 @@ body.kta-instance-pro .kta-licence-pro {
   font-weight: 600;
   letter-spacing: 0.5px;
   margin-left: 1px;
+  /* 🆕 v1.30.0 — Apparition animée du suffixe "-pro" : révélation
+     progressive de gauche à droite, miroir esthétique de la signature
+     karma du splash (cf kta-splash-karma-reveal). Souligne discrètement
+     l'identité "édition pro" sans imposer. Pattern clip-path identique
+     à karma → cohérence visuelle. Display: inline-block requis pour
+     que clip-path s'applique correctement à un span. */
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-suffix-pro-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.4s forwards;
+}
+
+/* Variant splash : délai 1.4s (après l'apparition du titre principal à
+   0.45s + 0.95s de "respiration" pour laisser l'œil se poser sur
+   "MyKTAMap" avant de découvrir le suffixe).
+   Variant header home : délai plus court car pas de séquence splash —
+   le -pro doit apparaître peu après le 1er paint pour rester perceptible. */
+.loader-titre-nom .kta-titre-suffix-pro {
+  animation-delay: 0.4s;
+}
+
+@keyframes kta-titre-suffix-pro-reveal {
+  0%   { clip-path: inset(0 100% 0 0); }   /* tout caché */
+  25%  { clip-path: inset(0 75%  0 0); }   /* - visible */
+  50%  { clip-path: inset(0 50%  0 0); }   /* + p */
+  75%  { clip-path: inset(0 25%  0 0); }   /* + r */
+  100% { clip-path: inset(0 0    0 0); }   /* + o finale */
 }
 
 /* 🆕 v1.29.2-fix1 — Variant thème clair pour le suffixe « -pro » :
