@@ -174,10 +174,20 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.30.0</strong> (2 juin 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.30.1</strong> (2 juin 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.30.1 (HOTFIX — fix1 visibilité suffixe -pro côté community)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté.</strong>
+    1 ligne de CSS modifiée.
+    Cause racine du bug v1.30.0 : la propriété <code>display: inline-block</code> posée directement sur <code>.kta-titre-suffix-pro</code> (requise pour le clip-path de l'animation reveal) écrasait par cascade le <code>display: none</code> par défaut de <code>.kta-licence-pro</code> (spécificité égale 0,1,0 — dernier déclaré gagne). Conséquence : côté community sans <code>Licence-pro.json</code>, le suffixe « -pro » devenait visible par erreur dans le splash + header home — violation de la frontière community/pro qui veut que ce suffixe soit STRICTEMENT invisible en community pur.
+    Fix : déplacer <code>display: inline-block</code> sous un sélecteur scope pro (<code>html.kta-instance-pro .kta-titre-suffix-pro</code> + <code>body.kta-instance-pro …</code>) — spécificité 0,2,0 qui override le <code>display: inline</code> de <code>.kta-instance-pro .kta-licence-pro</code>. Côté community pur : <code>.kta-instance-pro</code> jamais posée par <code>js/proLicense.js</code> (pas de <code>Licence-pro.json</code> fetché ou importé) → ces 2 sélecteurs ne matchent jamais → <code>display</code> reste à <code>none</code> (.kta-licence-pro par défaut) → suffixe redevient INVISIBLE comme en v1.29.x strict.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump CACHE_NAME <code>v1.30.1</code>).
+    Verdict : ✅ aucune régression — hotfix CSS strictement neutre côté réseau, restauration immédiate du comportement community v1.29.x strict.
   </p>
 
   <p class="meta" style="margin-top:6px;">
