@@ -915,117 +915,136 @@
   <!-- CARTE -->
   <div id="map" style="display:none;"></div>
 
+  <!-- ============================================================ -->
+  <!-- 🚀 v1.30.0 (P6.B boot perf) — Bloc DEFER (51 scripts) -->
+  <!-- ============================================================ -->
+  <!-- Tous les scripts ci-dessous sont marqués `defer` : ils sont
+       téléchargés en parallèle pendant que le browser continue à parser
+       le HTML, et exécutés (dans l'ordre du DOM) APRÈS le parsing complet
+       mais AVANT DOMContentLoaded.
+       Bénéfices :
+        - Page visible plus vite (parsing HTML non bloqué)
+        - Téléchargements // en arrière-plan
+        - Ordre d'exécution préservé → aucune régression métier
+       Les 14 scripts SYNC en haut du body (copyright, proLicense,
+       themeManager, networkAudit, crashReports, memInspector,
+       statsGlobales, tutorial, userProfile, profileExportImport, debug,
+       perfUltra, unlockGate, pinLock) restent en chargement bloquant car
+       ils doivent setup le DOM / monkey-patcher fetch / poser des classes
+       CSS pré-render. main.js boucle via DOMContentLoaded donc le defer
+       respecte la séquence v1.29.x sans risque. -->
+
   <!-- Leaflet -->
-  <script src="lib/leaflet/leaflet.js"></script>
+  <script src="lib/leaflet/leaflet.js" defer></script>
 
   <!-- JSZip -->
-  <script src="lib/jszip.min.js"></script>
+  <script src="lib/jszip.min.js" defer></script>
 
   <!-- APP JS -->
-  <script src="js/config.js"></script>
-  <script src="js/utils.js"></script>
-  <script src="js/measure.js"></script>
-  <script src="js/tiling.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/tracking.js"></script>
-  <script src="js/editor.js"></script>
-  <script src="js/road.js"></script>
-  <script src="js/zones.js"></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/measure.js" defer></script>
+  <script src="js/tiling.js" defer></script>
+  <script src="js/map.js" defer></script>
+  <script src="js/tracking.js" defer></script>
+  <script src="js/editor.js" defer></script>
+  <script src="js/road.js" defer></script>
+  <script src="js/zones.js" defer></script>
   <!-- 🆕 v1.9.3-A1.a : structures (piliers + murs). Chargé APRÈS zones.js
        car certaines fonctions partagent des helpers Leaflet et l'ordre
        de définition n'est pas strict mais reste lisible (cohérence avec
        le DOM dans la sidebar : Zones puis Structures). -->
-  <script src="js/structures.js"></script>
+  <script src="js/structures.js" defer></script>
   <!-- 🆕 v1.9.3-B1 : module photos (backend IndexedDB pour les photos
        attachées aux POI). Self-contained, exposé via window.MyKTAMapPhotos.
        Init paresseuse (= IDB ouverte à la 1ère opération, pas au load). -->
-  <script src="js/photos.js"></script>
+  <script src="js/photos.js" defer></script>
   <!-- 🆕 v1.9.3-B1c : viewer photo plein écran (pinch-zoom + pan + swipe).
        Self-contained, exposé via window.MyKTAMapPhotoViewer. Doit charger
        APRÈS photos.js (pas de dep stricte mais cohérence d'ordre). -->
-  <script src="js/photoViewer.js"></script>
+  <script src="js/photoViewer.js" defer></script>
   <!-- 🆕 v1.11.0 : HistoryManager (Undo/Redo). Doit charger APRÈS les
        modules de mutation (editor/road/zones/structures) pour que les
        getters/setters globaux soient déjà définis au moment de
        _captureState() / _applyState(). Et AVANT interface.js qui s'abonne
        via HistoryManager.onChange pour griser les boutons ⏪/⏩. -->
-  <script src="js/historyManager.js"></script>
+  <script src="js/historyManager.js" defer></script>
   <!-- 🆕 v1.11.1 V2 : BatteryGuard — indicateur batterie + warnings
        graduels via Battery Status API native. Init au load du module.
        Module léger (~250 lignes), no-op gracieux si l'API n'est pas
        dispo (Safari iOS). Chargé tôt pour que les chips header/footer
        puissent s'abonner via refonteInterface.js > _setupBatteryHook. -->
-  <script src="js/batteryGuard.js"></script>
+  <script src="js/batteryGuard.js" defer></script>
   <!-- 🆕 v1.11.3 V2.3 : Replay du parcours tracker. Modale plein écran
        avec slider timeline + play/pause + vitesse + export CSV. Doit charger
        APRÈS tracking.js (qui expose getTrackingTimeline) et AVANT interface.js
        (qui ajoute le bouton 🎬 dans la sidebar). -->
-  <script src="js/trackerReplay.js"></script>
+  <script src="js/trackerReplay.js" defer></script>
   <!-- 🆕 v1.21.2 (KARMA "on reactive [la heatmap]") : Heatmap densité
        RÉACTIVÉE après que la timeline tracker GPS est maintenant persistée
        (cf v1.21.2 SessionPersist trackerTimeline). Désactivée v1.12.0 →
        v1.21.2. Le cas d'usage initial "cumul multi-session" qui justifiait
        son existence est maintenant viable car la timeline survit aux
        reloads. Doit charger APRÈS tracking.js (timeline) et trackerReplay.js. -->
-  <script src="js/heatmap.js"></script>
+  <script src="js/heatmap.js" defer></script>
   <!-- 🆕 v1.16.0 step 2 : module de personnalisation de la légende
        (cascade session > plan > default ; libellés + visibilité +
        entrées custom). Doit charger AVANT exporter.js (qui lit le
        resolver dans _dessinerLegende) et AVANT sessionPersist.js
        (qui sérialise / restaure l'état session). -->
-  <script src="js/legendCustomization.js"></script>
+  <script src="js/legendCustomization.js" defer></script>
   <!-- 🆕 v1.16.0 step 3 : module Favoris (points POI). Doit charger
        AVANT utils.js (qui injecte le bouton ⭐ dans buildPointPopupHtml)
        — en pratique utils.js est déjà chargé donc on met juste avant
        exporter.js, et utils.js > buildPointPopupHtml fait un guard
        `window.Favoris && window.Favoris.isFav(...)` qui no-op si pas
        encore chargé. -->
-  <script src="js/favoris.js"></script>
+  <script src="js/favoris.js" defer></script>
   <!-- 🆕 v1.16.0 step 4 : module SessionBackups (10 snapshots FIFO en
        IDB). Doit charger AVANT sessionPersist.js (qui appelle
        SessionBackups.snapshot avant de wipe) — sessionPersist.js fait
        un guard `window.SessionBackups && ...` donc ordre flexible. -->
-  <script src="js/sessionBackups.js"></script>
-  <script src="js/exporter.js"></script>
+  <script src="js/sessionBackups.js" defer></script>
+  <script src="js/exporter.js" defer></script>
   <!-- 🆕 v1.10.3 : Export PDF imprimable via jsPDF. La lib UMD doit être
        chargée AVANT pdfExport.js (sinon window.jspdf n'existe pas et le
        module log un warn de disponibilité). -->
-  <script src="lib/jspdf.umd.min.js"></script>
-  <script src="js/pdfExport.js"></script>
-  <script src="js/tableEditor.js"></script>
-  <script src="js/searchPoints.js"></script>
-  <script src="js/sessionExporter.js"></script>
-  <script src="js/kmzExport.js"></script>
-  <script src="js/kmzImport.js"></script>
+  <script src="lib/jspdf.umd.min.js" defer></script>
+  <script src="js/pdfExport.js" defer></script>
+  <script src="js/tableEditor.js" defer></script>
+  <script src="js/searchPoints.js" defer></script>
+  <script src="js/sessionExporter.js" defer></script>
+  <script src="js/kmzExport.js" defer></script>
+  <script src="js/kmzImport.js" defer></script>
   <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
        via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
        kmzExport.js. -->
-  <script src="js/gpxIO.js"></script>
+  <script src="js/gpxIO.js" defer></script>
   <!-- 🆕 v1.15.0 : GPX → ZIP MyKTAMap (canvas vierge auto-calibré + annotations
        restaurées). Doit charger APRÈS gpxIO.js et kmzExport.js. -->
-  <script src="js/gpxImport.js"></script>
-  <script src="js/createConf.js"></script>
-  <script src="js/planRegistry.js"></script>
-  <script src="js/sessionPersist.js"></script>
-  <script src="js/oomGuard.js"></script>
-  <script src="js/pathfinder.js"></script>
-  <script src="js/roadGraph.js"></script>
-  <script src="js/updateChecker.js"></script>
-  <script src="js/alertChecker.js"></script>
-  <script src="js/lostMode.js"></script>
+  <script src="js/gpxImport.js" defer></script>
+  <script src="js/createConf.js" defer></script>
+  <script src="js/planRegistry.js" defer></script>
+  <script src="js/sessionPersist.js" defer></script>
+  <script src="js/oomGuard.js" defer></script>
+  <script src="js/pathfinder.js" defer></script>
+  <script src="js/roadGraph.js" defer></script>
+  <script src="js/updateChecker.js" defer></script>
+  <script src="js/alertChecker.js" defer></script>
+  <script src="js/lostMode.js" defer></script>
   <!-- 🆕 v1.10.1 : Mode urgence (panique) — affichage XL position + cap
        boussole + thèmes clair/sombre. Différent du LostMode (calcul de
        zone). Self-contained, exposé via window.EmergencyMode. -->
-  <script src="js/emergencyMode.js"></script>
-  <script src="js/compass.js"></script>
+  <script src="js/emergencyMode.js" defer></script>
+  <script src="js/compass.js" defer></script>
 
   <!-- 🎨 REFONTE UI v1 (branche Refonte_interface) — chargé AVANT
        interface.js pour que window._refonteInterfaceActive soit défini
        quand _creerGroupeAccordeon est appelé (option `position`). No-op
        si flag OFF (localStorage["myktamap_refonte_v1"] absent). -->
-  <script src="js/refonteInterface.js"></script>
+  <script src="js/refonteInterface.js" defer></script>
 
-  <script src="js/interface.js"></script>
+  <script src="js/interface.js" defer></script>
 
   <!-- 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : modale FilterPanel
        unifiée qui remplace L.control.layers natif (≡). Filtre Image +
@@ -1033,7 +1052,7 @@
        Doit charger APRÈS interface.js (utilise appliquerFiltreNiveau /
        appliquerFiltreRuntime) et APRÈS sessionPersist.js (lecture
        payload.runtimeFilters au restore). -->
-  <script src="js/filterPanel.js"></script>
+  <script src="js/filterPanel.js" defer></script>
 
   <!-- 🚨 v1.22.0 (KARMA "définir un plan de secours") : Mode Secours —
        outil opérationnel pour assigner méthodiquement des équipes de
@@ -1041,32 +1060,32 @@
        persistance localStorage. Doit charger APRÈS interface.js (sidebar
        urgences integration), pathfinder.js (pré-calcul itinéraires),
        kmzExport.js (export géolocalisé) et pdfExport.js (export PDF). -->
-  <script src="js/secoursMode.js"></script>
+  <script src="js/secoursMode.js" defer></script>
 
   <!-- 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live).
        Doit être chargé APRÈS secoursMode.js mais avant main.js. Réfère à
        __MKM__ pour le watermark + utilise navigator.indexedDB direct. -->
-  <script src="js/secoursPhotos.js"></script>
+  <script src="js/secoursPhotos.js" defer></script>
 
   <!-- 🆕 v1.21.0 (U4) : Raccourcis clavier globaux (E M Z S T L B R).
        Chargé APRÈS interface.js qui définit window._groupes (les raccourcis
        de groupe E/M/Z/S/T trigger un click sur _groupes[id].btnPrincipal).
        Anti-vol focus + skip si modale ouverte. -->
-  <script src="js/shortcuts.js"></script>
+  <script src="js/shortcuts.js" defer></script>
 
   <!-- 🆕 v1.21.0 (U1) : Mode présentation (touche F). Cache header +
        sidebars + footer, garde zoom Leaflet + boussole. Toggle via touche
        F ou window.PresentationMode.toggle(). Désactive les raccourcis U4
        pendant qu'il est actif (anti-trigger accidentel pendant démo). -->
-  <script src="js/presentationMode.js"></script>
+  <script src="js/presentationMode.js" defer></script>
 
   <!-- 🆕 v1.21.1+ (KARMA) : Wake Lock API — empêche l'écran de s'éteindre
        tant que l'app est ouverte (toggle dans ⚙️ Réglages > 🔍 Affichage).
        Compatibilité : Chrome/Edge 84+, Safari iOS 16.4+, PAS Firefox.
        Boot auto-init lit la pref localStorage et acquire si activée. -->
-  <script src="js/wakeLock.js"></script>
+  <script src="js/wakeLock.js" defer></script>
 
-  <script src="js/main.js"></script>
+  <script src="js/main.js" defer></script>
 
   <!-- LOADER SCRIPT -->
   <script>
