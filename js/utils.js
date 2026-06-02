@@ -1436,6 +1436,15 @@ window._markerInViewportPadded = _markerInViewportPadded;
  * Idempotent (rappels successifs sans changement = no-op).
  */
 window._refreshDataMarkersViewport = function() {
+  // 🚀 v1.30.0 (P5) — Chaîne vers le refresh des markers session éditeur.
+  // editor.js expose `window._refreshEditorMarkersViewport` qui suit le
+  // même pattern (toggle OFF = graceful reintegration). On chaîne ici pour
+  // qu'un seul hook moveend/zoomend serve les 2 registres de markers,
+  // évitant de poser 2 listeners séparés (économie compositing GPU).
+  if (typeof window._refreshEditorMarkersViewport === "function") {
+    window._refreshEditorMarkersViewport();
+  }
+
   if (!Array.isArray(window._ktaDataMarkers) || window._ktaDataMarkers.length === 0) return;
   const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
 

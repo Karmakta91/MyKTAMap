@@ -703,7 +703,10 @@ function _ajouterMarker(point) {
     icone = new L.Icon.Default();
   }
 
-  const marker = L.marker(convertCoord(point.x, point.y), { icon: icone }).addTo(window.layerEditor);
+  // 🚀 v1.30.0 (P5 viewport culling) : détache l'addTo du constructeur pour
+  // pouvoir conditionner l'ajout selon le toggle viewportCull. Cohérent avec
+  // le pattern data layers (cf utils.js > ajouterPointsDepuisJSON).
+  const marker = L.marker(convertCoord(point.x, point.y), { icon: icone });
   // Popup avec boutons "Y aller" / "Itinéraire" / "Supprimer" — helper commun.
   // 2e argument true → c'est un point de la session courante (listePoints) →
   // bouton "🗑️ Supprimer" affiche dans la popup.
@@ -738,12 +741,61 @@ function _ajouterMarker(point) {
   // qui efface aussi roads/zones partageant le meme layerEditor).
   _markersEditor.push(marker);
 
+  // 🚀 v1.30.0 (P5 viewport culling) : skip addTo si hors viewport ET toggle
+  // viewportCull actif. Le marker reste dans _markersEditor pour pouvoir
+  // être réintégré via _refreshEditorMarkersViewport() au moveend/zoomend.
+  // _ktaLayer = window.layerEditor : tracé pour la réintégration.
+  marker._ktaLayer = window.layerEditor;
+  const _vpcEd = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
+  if (_vpcEd && typeof window._markerInViewportPadded === "function"
+      && !window._markerInViewportPadded(marker, 0.1)) {
+    marker._ktaVpHidden = true;
+  } else {
+    marker._ktaVpHidden = false;
+    marker.addTo(window.layerEditor);
+  }
+
   // Applique le filtre niveau immediat sur ce nouveau marker (utile quand le
   // user ajoute un point sur un niveau qui n'est pas dans visibleLevels —
   // ex: il a filtre Niv 1 mais ajoute via le mode edition sans changer le
   // niveau actif). Le marker se cache si pas visible.
   _appliquerFiltreNiveauSurMarker(marker);
 }
+
+// 🚀 v1.30.0 (P5 viewport culling) — Re-render les markers de la session
+// éditeur (_markersEditor) selon le viewport courant. Appelé par utils.js
+// > _refreshDataMarkersViewport au moveend/zoomend (chaînage cross-module).
+// Pattern strictement identique à _refreshDataMarkersViewport (mêmes
+// garanties idempotentes + toggle OFF = graceful reintegration).
+window._refreshEditorMarkersViewport = function() {
+  if (!Array.isArray(_markersEditor) || _markersEditor.length === 0) return;
+  const _vpcOn = !!(window.PerfUltra && window.PerfUltra.get("viewportCull"));
+
+  if (!_vpcOn) {
+    // Toggle OFF → réintégrer tous les markers cachés
+    _markersEditor.forEach(function(m) {
+      if (m && m._ktaVpHidden && m._ktaLayer) {
+        try { m.addTo(m._ktaLayer); } catch(e) {}
+        m._ktaVpHidden = false;
+      }
+    });
+    return;
+  }
+
+  // Toggle ON → check viewport pour chaque marker
+  _markersEditor.forEach(function(m) {
+    if (!m || !m._ktaLayer) return;
+    const inside = (typeof window._markerInViewportPadded === "function")
+      ? window._markerInViewportPadded(m, 0.1) : true;
+    if (inside && m._ktaVpHidden) {
+      try { m.addTo(m._ktaLayer); } catch(e) {}
+      m._ktaVpHidden = false;
+    } else if (!inside && !m._ktaVpHidden) {
+      try { m.remove(); } catch(e) {}
+      m._ktaVpHidden = true;
+    }
+  });
+};
 
 // 🏗️ Multi-niveau : helper de filtrage visuel d'un marker editor selon
 // APP_CONFIG.visibleLevels. Utilise setOpacity + pointer-events plutot
