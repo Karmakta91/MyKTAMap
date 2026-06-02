@@ -1046,6 +1046,13 @@
 
   <script src="js/interface.js" defer></script>
 
+  <!-- 🆕 v1.30.2 (P3 Lot 1) : Module extrait de interface.js — 4 modales
+       globales (alertes publiques + sélecteur multi-alertes + détail
+       alerte + mise à jour disponible). Cohabite avec interface.js en
+       parallèle (ordre indifférent vu que les fonctions sont appelées
+       au runtime après DOMContentLoaded). -->
+  <script src="js/interfaceAlerts.js" defer></script>
+
   <!-- 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : modale FilterPanel
        unifiée qui remplace L.control.layers natif (≡). Filtre Image +
        Data layers + M-LVL + Tags + Types Road/Zone/Struct en live.
