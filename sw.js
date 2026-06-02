@@ -179,6 +179,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 2) : Module extrait de interface.js — panneau
   // Distance totale des tracés (filtres + surlignage magenta)
   "./js/interfaceDistanceTotale.js",
+  // 🆕 v1.30.2 (P3 Lot 3) : Module extrait de interface.js — modale
+  // Légende plein écran (4 sections + cascade LegendCustomization)
+  "./js/interfaceLegende.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
