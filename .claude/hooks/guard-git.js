@@ -27,6 +27,28 @@ function currentBranch() {
   }
 }
 
+// Détecte si le repo CWD est bien le community public MyKTAMap.
+// On lit l'URL de l'origin et on rejette tout suffixe `-pro` (ou autre fork).
+// Utilité : quand Claude est ancré côté community mais qu'on opère ponctuellement
+// dans le repo pro depuis le même process (ex: `cd ../MyKTAMap-pro && git push origin main`),
+// on évite que la règle "push main interdit" community bloque le pro — qui a
+// son propre hook local pour ses propres règles.
+// Safe-by-default : en cas d'erreur (origin absent, etc.) on considère community.
+function originIsCommunity() {
+  try {
+    const url = execSync("git config --get remote.origin.url", { encoding: "utf8" })
+      .trim()
+      .toLowerCase();
+    // Match l'URL community SANS suffixe -pro :
+    //   ✓ https://github.com/Karmakta91/MyKTAMap.git
+    //   ✓ git@github.com:Karmakta91/MyKTAMap
+    //   ✗ https://github.com/Karmakta91/MyKTAMap-pro.git  (suffixe -pro → pas community)
+    return /myktamap(\.git)?$/.test(url);
+  } catch (_) {
+    return true; // safe-by-default : on suppose community
+  }
+}
+
 function block(message) {
   process.stderr.write("⛔ [guard-git] " + message + "\n");
   process.exit(2);
@@ -80,10 +102,17 @@ process.stdin.on("end", () => {
     const nuSurMain = !aRefspecExplicite && currentBranch() === "main";
 
     if (mentionneMain || nuSurMain) {
-      block(
-        "Push vers 'main' interdit. Le déploiement prod est manuel (FTP par KARMA). " +
-        "Travaille sur une branche dédiée et laisse KARMA merger/déployer."
-      );
+      // Le bloc push main ne s'applique QU'AU community : c'est lui qui est
+      // déployé en FTP manuel par KARMA. Les autres repos (notamment
+      // MyKTAMap-pro) ont leurs propres règles via leur propre guard-git.
+      if (originIsCommunity()) {
+        block(
+          "Push vers 'main' interdit sur le repo community. Le déploiement prod est manuel (FTP par KARMA). " +
+          "Travaille sur une branche dédiée et laisse KARMA merger/déployer."
+        );
+      }
+      // Sinon (repo pro / fork) : on laisse passer. Si on est ancré dans pro,
+      // son propre hook .claude/hooks/guard-git.js prend le relais.
     }
   }
 
