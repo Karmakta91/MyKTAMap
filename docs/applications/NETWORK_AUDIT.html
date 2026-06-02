@@ -174,10 +174,33 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.29.3</strong> (1er juin 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.30.0</strong> (2 juin 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.30.0 (Release MINOR — Perf boot + viewport culling markers POI + animation reveal titre)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté.</strong>
+    Release purement de perf/UX, opt-in côté user.
+    (1) <strong>Viewport culling markers POI</strong> (<code>js/utils.js</code>, <code>js/editor.js</code>, <code>js/interface.js</code>) : extension du toggle PerfUltra <code>viewportCull</code> (déjà actif sur polylines roads depuis v1.7.x) aux markers POI des data layers + session éditeur. Pattern miroir de <code>road.js</code> : AABB check vs <code>map.getBounds().pad(0.1)</code> + add/remove sur moveend/zoomend. <strong>100% client-side</strong>, aucun fetch ajouté, aucune persistance nouvelle. Toggle opt-in OFF par défaut → comportement v1.29.x strict pour les users qui ne l'activent pas.
+    (2) <strong>Timeout 1500ms sur les fetches au boot</strong> (<code>js/updateChecker.js</code>, <code>js/alertChecker.js</code>) : ajout d'<code>AbortController</code> + <code>setTimeout(abort, 1500)</code> aligné avec <code>js/proLicense.js</code> (déjà en place depuis v1.28.2). <strong>RÉDUIT le temps d'attente sur des fetches déjà existants</strong> (ils étaient déjà dans la whitelist same-origin), aucune nouvelle URL contactée. Offline ou réseau saturé → fail en 1500ms au lieu de ~30s (timeout browser par défaut).
+    (3) <strong>Defer sur 51 scripts non-bloquants</strong> (<code>index.html</code>) : ajout de l'attribut <code>defer</code> sur tous les <code>&lt;script src&gt;</code> à partir de <code>lib/leaflet/leaflet.js</code>. Le browser parse le HTML pendant que les scripts téléchargent en parallèle. <strong>Aucun changement de comportement runtime</strong> — ordre d'exécution v1.29.x strictement préservé (defer respecte l'ordre du DOM). Les 14 scripts SYNC en haut (copyright, proLicense, themeManager, networkAudit, crashReports, memInspector, statsGlobales, tutorial, userProfile, profileExportImport, debug, perfUltra, unlockGate, pinLock) restent bloquants car ils setup le DOM/CSS ou monkey-patchent les API browser.
+    (4) <strong>Animation reveal séquentielle du titre</strong> (<code>index.html</code>, <code>css/style.css</code>) : pur CSS additif (<code>@keyframes kta-titre-base-reveal</code> + <code>kta-titre-suffix-pro-reveal</code>). Wrap <code>MyKTAMap</code> dans un <code>&lt;span class="kta-titre-base"&gt;</code> pour permettre l'animation indépendante du suffixe <code>-pro</code>. <strong>Aucun JS modifié pour l'animation</strong>, aucun fetch, aucune persistance. Côté community sans licence pro : seul « MyKTAMap » se révèle (<code>-pro</code> reste <code>display: none</code>).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump CACHE_NAME <code>v1.30.0</code>).
+    Verdict : ✅ aucune régression — release de perf/UX strictement neutre côté réseau, gains user-visibles uniquement (mobile cold cache plus rapide, moins de markers DOM sur plans denses, splash plus immersif).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.29.4 (Release PATCH — Infra/DX : ZIP selfhost auto + contexte AI slim + hook git affiné)</strong> :
+    <strong>AUCUN impact runtime utilisateur.</strong>
+    Release purement infrastructure / developer experience.
+    (1) Le workflow GitHub Actions <code>.github/workflows/release.yml</code> génère et attache désormais un fichier <code>MyKTAMap-vX.Y.Z.zip</code> à chaque release publiée (inclut tout le nécessaire pour héberger MyKTAMap sur un serveur web statique, exclut les fichiers internes de développement).
+    (2) Restructuration de <code>CLAUDE.md</code> (contexte pour les agents IA) — passage de ~7700 lignes à ~60 + détail dans 13 fichiers <code>docs/architecture/</code>. Aucune incidence sur l'application.
+    (3) Hook git développement local affiné pour distinguer les repos community/pro.
+    <strong>Aucun changement runtime côté utilisateur final</strong>, aucun fetch ajouté, aucune permission, aucune persistance nouvelle.
+    Verdict : ✅ aucun impact réseau — release strictement orientée DX.
   </p>
 
   <p class="meta" style="margin-top:6px;">
