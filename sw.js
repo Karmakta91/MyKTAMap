@@ -182,6 +182,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 3) : Module extrait de interface.js — modale
   // Légende plein écran (4 sections + cascade LegendCustomization)
   "./js/interfaceLegende.js",
+  // 🆕 v1.30.2 (P3 Lot 4) : Module extrait de interface.js — modales
+  // documentation (README + Aide intégrée + Aide IA téléchargement)
+  "./js/interfaceDocs.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
