@@ -1,0 +1,716 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
+// =========================
+// INTERFACE MAINTENANCE — Calibrage + Reset + Mise à jour douce
+// =========================
+// 🆕 v1.30.2 (P3 Lot 7 — découpe interface.js) : module extrait de
+// js/interface.js (lignes 1671-2326 avant extraction) pour réduire le
+// volume du fichier principal.
+//
+// Aucun changement de comportement runtime. Les 3 fonctions publiques
+// + 2 helpers ping exposés via `window.*` sont strictement identiques
+// à v1.30.1.
+//
+// 📋 API publique :
+//   - window.ouvrirCalibrageEchelle()
+//        Modale "Calibrage d'échelle" — produit en croix entre une
+//        distance pixel mesurée et une distance réelle saisie par l'user.
+//        Met à jour APP_CONFIG.scale + persiste dans plan-config local.
+//   - window.viderCacheAppli()
+//        Reset complet : pré-check Internet (ping no-cors gstatic.com)
+//        + double confirmation (3 si offline) + purge SW + caches HTTP/
+//        PWA + localStorage + sessionStorage + TOUTES les bases IDB +
+//        location.reload(true).
+//   - window.mettreAJourCodeSeul()
+//        Mise à jour douce : purge SW cache uniquement, préserve
+//        localStorage + IDB + UnlockGate. Réutilisée par le badge
+//        version footer et par le bouton dans Configuration.
+//   - window._pingInternet() / window._pingInternetUrl
+//        Helpers ping connectivité (fetch no-cors gstatic.com + timeout
+//        5s + navigator.onLine). Exposés pour réutilisation par d'autres
+//        modules qui veulent tester l'état réseau avant action destructive.
+//
+// 🔌 Dépendances externes (toutes via window.*) :
+//   - navigator.serviceWorker.unregister      [browser API]
+//   - caches.delete / caches.keys             [browser API]
+//   - localStorage / sessionStorage           [browser API]
+//   - indexedDB.databases / .deleteDatabase   [browser API + fallback]
+//   - window.UnlockGate (depuis v1.7.x)       [unlockGate.js]
+//   - window.PinLock                          [pinLock.js]
+//   - window.afficherToast                    [refonteInterface.js]
+//
+// 📍 Ordre de chargement (cf index.html) :
+//   - Doit charger APRÈS interface.js (cohérence ordre découpe).
+//     L'ordre est cosmétique car les fonctions sont appelées au runtime
+//     (clic user, badge version, etc.).
+
+// =========================
+// CALIBRAGE D'ÉCHELLE — produit en croix
+// =========================
+function ouvrirCalibrageEchelle() {
+  const existing = document.getElementById("kta-calib-modal");
+  if (existing) { existing.remove(); return; }
+
+  // Lire la valeur actuelle du champ (pas APP_CONFIG, au cas où on l'a modifiée sans appliquer)
+  const champScale = document.getElementById("cfg_scale");
+  const scaleActuel = champScale ? parseFloat(champScale.value) : APP_CONFIG.scale;
+
+  const modal = document.createElement("div");
+  modal.id = "kta-calib-modal";
+  modal.className = "kta-readme-modal-overlay";
+  modal.innerHTML = `
+    <div class="kta-readme-modal-boite" style="max-width:420px; height:auto; max-height:90vh;">
+      <div class="kta-readme-modal-header">
+        <span class="kta-readme-modal-titre">🎯 Calibrer l'échelle</span>
+        <button class="kta-panneau-close" id="kta-calib-close">✕</button>
+      </div>
+      <div class="kta-readme-modal-corps">
+
+        <p style="font-size:13px; color:#8892a4; margin:0 0 14px; line-height:1.5;">
+          Mesure une distance connue avec <strong>📐</strong>, puis renseigne ici la distance
+          <strong>réelle</strong> (mesurée au sol). L'échelle sera recalculée automatiquement.
+        </p>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">📐 Valeurs</div>
+          <div class="kta-cfg-grille">
+            <label class="kta-cfg-label">Échelle actuelle (px/m)</label>
+            <input class="kta-cfg-input" id="calib_actuel" type="number" step="0.01" value="${scaleActuel}" readonly style="opacity:0.6;">
+
+            <label class="kta-cfg-label">Distance affichée (m)</label>
+            <input class="kta-cfg-input" id="calib_affichee" type="number" step="0.1" placeholder="ex: 100">
+
+            <label class="kta-cfg-label">Distance réelle (m)</label>
+            <input class="kta-cfg-input" id="calib_reelle" type="number" step="0.1" placeholder="ex: 150">
+          </div>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🧮 Résultat</div>
+          <div style="background:rgba(255,255,255,0.04); border-radius:6px; padding:10px 12px; font-family:'Courier New',monospace; font-size:13px;">
+            <div style="color:#8892a4;">Nouvelle échelle :</div>
+            <div id="calib_resultat" style="font-size:22px; color:#8cb4ff; font-weight:600; margin-top:4px;">—</div>
+            <div id="calib_formule" style="font-size:11px; color:#6a7488; margin-top:6px;"></div>
+          </div>
+        </div>
+
+        <div id="calib_erreur" class="kta-conv-erreur" style="display:none;"></div>
+
+        <div class="kta-conv-actions" style="margin-top:14px;">
+          <button class="kta-btn kta-btn-ghost"   id="calib_annuler">Annuler</button>
+          <button class="kta-btn kta-btn-primary"  id="calib_appliquer" disabled>Appliquer</button>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.documentElement.appendChild(modal);
+
+  const inputAffichee = document.getElementById("calib_affichee");
+  const inputReelle   = document.getElementById("calib_reelle");
+  const resultatEl    = document.getElementById("calib_resultat");
+  const formuleEl     = document.getElementById("calib_formule");
+  const erreurEl      = document.getElementById("calib_erreur");
+  const btnAppliquer  = document.getElementById("calib_appliquer");
+  const btnAnnuler    = document.getElementById("calib_annuler");
+  const btnClose      = document.getElementById("kta-calib-close");
+
+  function fermer() { modal.remove(); }
+
+  let nouveauScale = null;
+
+  function recalculer() {
+    erreurEl.style.display = "none";
+    const aff = parseFloat(inputAffichee.value);
+    const reel = parseFloat(inputReelle.value);
+
+    if (!aff || !reel || aff <= 0 || reel <= 0) {
+      resultatEl.textContent = "—";
+      formuleEl.textContent  = "";
+      btnAppliquer.disabled  = true;
+      nouveauScale = null;
+      return;
+    }
+
+    nouveauScale = scaleActuel * ( aff / reel );
+    resultatEl.textContent = nouveauScale.toFixed(3) + " px/m";
+    formuleEl.textContent  = scaleActuel + " × (" + aff + " / " + reel + ") = " + nouveauScale.toFixed(3);
+    btnAppliquer.disabled  = false;
+  }
+
+  inputAffichee.addEventListener("input", recalculer);
+  inputReelle.addEventListener("input", recalculer);
+
+  btnClose.addEventListener("click", fermer);
+  btnAnnuler.addEventListener("click", fermer);
+  modal.addEventListener("click", function(e) { if (e.target === modal) fermer(); });
+
+  btnAppliquer.addEventListener("click", function() {
+    if (nouveauScale === null || nouveauScale <= 0) {
+      erreurEl.textContent = "Valeur invalide";
+      erreurEl.style.display = "block";
+      return;
+    }
+    if (champScale) champScale.value = nouveauScale.toFixed(3);
+    fermer();
+  });
+
+  setTimeout(function() { inputAffichee.focus(); }, 50);
+}
+
+// =========================
+// VIDER LE CACHE APPLICATIF
+// =========================
+// 🆕 v1.9.3-B-side (KARMA "on modifie le test internet, doit être vers
+// origin/ping.html, plus aucun appel externe vers Google. On assure le
+// serveur dispo, SSL, Nginx avant Force update. On attend retour 'OK'").
+//
+// 🆕 v1.9.3-B-side-fix (KARMA "j'ai dit myktamap.fr dans le cadre de prod,
+// mais ca doit etre origin, pour devmap ca doit attaquer l'url de dev") :
+// PING_URL utilise location.origin DYNAMIQUEMENT au lieu d'un hardcode :
+//   - Prod (myktamap.fr) → https://myktamap.fr/ping.html
+//   - Dev  (devmap.is-underground.fr)   → https://devmap.is-underground.fr/ping.html
+//   - Prod future (myktamap.fr)         → https://myktamap.fr/ping.html
+//   - Local (localhost:8080)            → http://localhost:8080/ping.html
+//
+// Avantage same-origin : plus besoin de header CORS côté Nginx (le fetch
+// est same-origin → la SOP autorise). On peut même retirer le mode "cors"
+// explicite (default same-origin). Simplification déploiement : KARMA crée
+// /ping.html UNE fois sur chaque serveur, ça marche partout.
+//
+// Vérification connexion Internet + disponibilité serveur MyKTAMap :
+//   - timeout 5s, retourne Promise<boolean>
+//   - navigator.onLine (rapide) en court-circuit si false
+//   - fetch GET sur PING_URL same-origin
+//   - body attendu : exactement "OK" (texte brut)
+//
+// Avantages vs ancien ping Google :
+//   ✅ Plus AUCUN appel externe (cohérent avec privacy)
+//   ✅ Si OK → on garantit DNS + SSL + Nginx + PWA peut pull
+//   ❌ "Internet OK mais serveur down" est traité comme offline (voulu —
+//      pas la peine d'updater si le serveur source du nouveau code est down)
+const PING_URL = (typeof location !== "undefined" && location.origin)
+  ? (location.origin + "/ping.html")
+  : "/ping.html";  // fallback chemin relatif (très improbable)
+const PING_EXPECTED_BODY = "OK";  // body attendu trim-comparé (case-insensitive)
+
+function _pingInternet() {
+  return new Promise(function(resolve) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      // Le navigateur est sûr d'être offline → on évite même le fetch
+      resolve(false);
+      return;
+    }
+    let done = false;
+    const timer = setTimeout(function() {
+      if (done) return;
+      done = true;
+      try { ctrl.abort(); } catch(e) {}
+      resolve(false);
+    }, 5000);
+    const ctrl = new AbortController();
+    // Same-origin par défaut (PING_URL = location.origin + "/ping.html").
+    // Pas besoin de mode "cors" explicite → moins de friction Nginx.
+    // credentials: "omit" pour ne pas envoyer de cookies (le ping n'a
+    // pas besoin de session, garde la requête neutre).
+    //
+    // 🆕 Cache-bust ?_=Date.now() : même pattern que version.json /
+    // alert.json (cf. CLAUDE.md §20). Garantit que le SW ne sert pas
+    // une réponse cachée d'un précédent ping (= false positive si le
+    // serveur est down maintenant mais OK avant). Chaque appel a une
+    // URL unique → cache miss → fetch réseau forcé.
+    const pingUrlCb = PING_URL + "?_=" + Date.now();
+    fetch(pingUrlCb, {
+      method: "GET",
+      cache:  "no-store",
+      signal: ctrl.signal,
+      credentials: "omit"
+    }).then(function(res) {
+      if (!res.ok) {
+        // Status HTTP non-2xx (404 si fichier absent, 5xx Nginx down, etc.)
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(false);
+        return;
+      }
+      return res.text();
+    }).then(function(body) {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      // Body "OK" attendu (trim + uppercase pour tolérer "ok\n" ou " Ok ")
+      const trimmed = (body || "").trim().toUpperCase();
+      resolve(trimmed === PING_EXPECTED_BODY);
+    }).catch(function() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve(false);
+    });
+  });
+}
+// Expose globalement (consommé par d'autres modules, ex: sessionExporter
+// onglet KMZ qui vérifie la connexion avant d'ouvrir un lien externe).
+window._pingInternet = _pingInternet;
+// Expose aussi l'URL résolue pour les messages d'erreur user-friendly.
+window._pingInternetUrl = PING_URL;
+
+// =========================
+// 🔄 MISE À JOUR DOUCE — purge SW cache uniquement, préserve toutes les données
+// =========================
+// Différent de viderCacheAppli() qui fait table rase. Ici on ne touche QUE
+// au cache PWA (assets HTTP) — la session, le registre de plans, l'IndexedDB
+// et le localStorage restent intacts.
+//
+// Flow :
+//   1. Quick ping Internet (5s) — sinon erreur claire avant de tout purger.
+//   2. Demande au SW de skipWaiting si une nouvelle version attend.
+//   3. Force reg.update() pour que le navigateur check sw.js sur le réseau.
+//   4. Purge caches.keys() (cache PWA uniquement).
+//   5. Reload — les nouveaux assets sont re-fetchés depuis le réseau.
+//
+// Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
+// sessionStorage, cookies, données utilisateur.
+// =========================
+// 🆕 hotfix21 — Helper : demande au SW courant son CACHE_NAME via MessageChannel.
+// Utilisé par mettreAJourCodeSeul() pour ne PAS supprimer le cache qu'on
+// vient juste de remplir au cours de reg.update() — évite un double-download.
+// Retourne null si pas de SW actif ou timeout (2s). Pattern :
+//   1. Client crée MessageChannel
+//   2. Client envoie port2 au SW via postMessage avec [transferList]
+//   3. SW répond via event.ports[0] (qui est port2 côté SW)
+//   4. Client écoute port1 (linké à port2)
+function _getCacheNameFromSW() {
+  return new Promise(function(resolve) {
+    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
+      return resolve(null);
+    }
+    const channel = new MessageChannel();
+    const timeout = setTimeout(function() {
+      console.warn("[Soft update] _getCacheNameFromSW timeout");
+      resolve(null);
+    }, 2000);
+    channel.port1.onmessage = function(event) {
+      clearTimeout(timeout);
+      const data = event.data || {};
+      resolve(data.name || null);
+    };
+    try {
+      navigator.serviceWorker.controller.postMessage(
+        { type: "GET_CACHE_NAME" },
+        [channel.port2]
+      );
+    } catch(e) {
+      clearTimeout(timeout);
+      console.warn("[Soft update] postMessage GET_CACHE_NAME :", e);
+      resolve(null);
+    }
+  });
+}
+
+async function mettreAJourCodeSeul() {
+  // Affiche un overlay pendant l'opération pour que l'utilisateur voie
+  // qu'il se passe quelque chose. Cette phase peut prendre 1-3s.
+  const overlay = document.createElement("div");
+  overlay.className = "kta-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-modal">' +
+      '<div class="kta-modal-icon">⏳</div>' +
+      '<div class="kta-modal-titre">Mise à jour en cours…</div>' +
+      '<div class="kta-modal-texte" id="kta-soft-update-status">Vérification de la connexion…</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  const status = document.getElementById("kta-soft-update-status");
+
+  function _statusUpdate(txt) { if (status) status.innerHTML = txt; }
+
+  try {
+    // 1. Ping Internet — sans réseau le re-fetch va échouer après la purge
+    _statusUpdate("Vérification de la connexion…");
+    const online = await _pingInternet();
+    if (!online) {
+      overlay.remove();
+      _softUpdateOfflineWarning();
+      return;
+    }
+
+    // 🆕 hotfix21 — Récupère le CACHE_NAME courant via le SW. Permet ensuite
+    // de NE PAS le supprimer à l'étape 3 (évite double-download au reload).
+    // Si SW pas joignable ou timeout : currentCacheName reste null, on
+    // fallback sur l'ancien comportement (purge totale).
+    const currentCacheName = await _getCacheNameFromSW();
+    if (currentCacheName) {
+      console.log("[Soft update] CACHE_NAME courant :", currentCacheName);
+    }
+
+    // 2. 🆕 hotfix21 — SW update FIRE-AND-FORGET (au lieu de await). Avant,
+    // `await reg.update()` bloquait 30s-2min en téléchargeant ~100 assets
+    // via l'install event SYNCHRONE (cache.add x 100 avec cache:'reload').
+    // Maintenant : on lance update() en background, le téléchargement se
+    // fait pendant que l'user voit "Préparation…" + "Rechargement…", et
+    // au reload le nouveau SW est déjà prêt avec son cache populé.
+    _statusUpdate("Préparation du Service Worker…");
+    if (navigator.serviceWorker) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          // Fire-and-forget : pas de await, le téléchargement des assets se
+          // fait en background. Si reg.update() trouve un nouveau sw.js, il
+          // déclenche INSTALL en arrière-plan (cache.add x 100). On laisse
+          // tourner, on n'attend pas.
+          reg.update().catch(function(e) {
+            console.warn("[Soft update] reg.update() :", e);
+          });
+          if (reg.waiting) {
+            // Le SW en attente est déjà prêt → on le pousse à prendre le relais.
+            // Notre sw.js fait déjà self.skipWaiting() au install, mais on
+            // renforce ici via postMessage explicit (cf. handler hotfix21).
+            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          }
+        }
+      } catch(e) {
+        console.warn("[Soft update] erreur SW :", e);
+      }
+    }
+
+    // 3. 🆕 hotfix21 — Purge des SEULS anciens caches HTTP/PWA (préserve le
+    // cache courant si on a réussi à le récupérer du SW). Avant : on
+    // purgait TOUT y compris le cache qu'on venait de remplir via update()
+    // → re-download de ~100 assets au reload. Maintenant : on garde le
+    // cache courant intact, donc le reload retrouve son cache pré-rempli.
+    _statusUpdate("Nettoyage des anciens caches…");
+    if (window.caches) {
+      try {
+        const keys = await caches.keys();
+        const toDelete = currentCacheName
+          ? keys.filter(function(k) { return k !== currentCacheName; })
+          : keys; // Fallback : si pas de currentCacheName, on purge tout (ancien comportement)
+        await Promise.all(toDelete.map(function(k) {
+          console.log("[Soft update] suppression cache :", k);
+          return caches.delete(k);
+        }));
+        console.log("[Soft update] " + toDelete.length + "/" + keys.length + " cache(s) supprimé(s) (préservé : " + (currentCacheName || "aucun") + ")");
+      } catch(e) {
+        console.warn("[Soft update] purge caches :", e);
+      }
+    }
+
+    // 4. Reload : le SW (potentiellement nouveau, son install tourne en bg)
+    // prend le relais avec son cache pré-rempli — pas de re-download
+    // séquentiel des 100 assets au reload.
+    _statusUpdate("Rechargement…");
+    setTimeout(function() {
+      window.location.reload();
+    }, 200); // 200ms (au lieu de 400) — postMessage SKIP_WAITING est arrivé
+
+  } catch(err) {
+    overlay.remove();
+    console.error("[Soft update] erreur :", err);
+    alert("Erreur pendant la mise à jour douce :\n" + (err.message || err) + "\n\nTu peux essayer le reset complet à la place.");
+  }
+}
+
+// Avertissement spécifique offline pour la mise à jour douce.
+// 🆕 v1.9.3-B-side (KARMA "rend le modal plus jolie pour l'erreur") :
+// upgrade visuel — passage du style basique kta-modal (icône + titre + texte
+// + un bouton OK) au style élaboré kta-oom-modal-boite (header big avec
+// ⚠️ qui pulsent, sections 🔍 Causes / ⛔ Conséquence / ✅ Recommandation),
+// strictement symétrique avec _resetFlowOfflineWarning. Sémantique adaptée :
+//   - action ANNULÉE automatiquement (pas de bouton "Continuer quand même")
+//     car relancer le soft update offline ferait le même crash
+//   - ton rassurant ("aucune donnée perdue, app continue de fonctionner")
+//     car contrairement au reset, on n'a touché à rien
+function _softUpdateOfflineWarning() {
+  const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
+  const overlay = document.createElement("div");
+  overlay.id = "kta-soft-update-offline";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
+      '<div class="kta-readme-modal-header kta-oom-header">' +
+        '<span class="kta-oom-titre-big">' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+        '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-oom-corps">' +
+        '<div class="kta-oom-intro">' +
+          'La <strong>mise à jour douce</strong> a besoin de joindre le serveur ' +
+          '<code>' + origin + '</code> pour télécharger les nouveaux fichiers (HTML, JS, CSS, icônes). ' +
+          'Le ping de vérification a échoué — l\'opération est <strong>annulée</strong>.' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
+            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
+            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">✅ Bonne nouvelle</div>' +
+          '<p>' +
+            '<strong>Aucune donnée n\'a été supprimée.</strong> Le cache PWA, tes plans mémorisés, ' +
+            'ta session en cours et tes préférences sont <strong>intacts</strong>. ' +
+            'Tu peux continuer à utiliser l\'app normalement avec la version actuelle.' +
+          '</p>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔄 Recommandation</div>' +
+          '<p>' +
+            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que ' +
+            '<code>' + origin + '</code> répond bien, puis relance la mise à jour depuis ' +
+            '<strong>⚙️ Configuration → 🔄 Forcer la mise à jour</strong>.' +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kta-oom-actions" style="justify-content:center;">' +
+        '<button class="kta-btn kta-btn-primary" id="kta-soft-update-offline-ok" type="button">✓ J\'ai compris</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+  document.getElementById("kta-soft-update-offline-ok").addEventListener("click", function() {
+    overlay.remove();
+  });
+  // Cohérent avec _resetFlowOfflineWarning : clic backdrop ferme aussi
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function viderCacheAppli() {
+  const cfgModal = document.getElementById("kta-cfg-modal");
+  if (cfgModal) cfgModal.remove();
+
+  // 1ère étape : check connexion Internet AVANT toute confirmation.
+  // Affichage bref d'un "Vérification connexion…" pour pas avoir un
+  // freeze silencieux de 5s si le réseau ne répond pas.
+  const overlayPing = document.createElement("div");
+  overlayPing.className = "kta-modal-overlay";
+  overlayPing.innerHTML = '<div class="kta-modal"><div class="kta-modal-icon">📶</div><div class="kta-modal-titre">Vérification de la connexion…</div><div class="kta-modal-texte">Test de la connexion Internet (max 5s).</div></div>';
+  document.documentElement.appendChild(overlayPing);
+
+  _pingInternet().then(function(online) {
+    overlayPing.remove();
+    if (online) {
+      _resetFlowConfirmation();
+    } else {
+      _resetFlowOfflineWarning();
+    }
+  });
+}
+
+// Affiche d'abord le warning insistant "PAS INTERNET OU SERVEUR INDISPO" en
+// rouge (style cohérent avec la modale OOM), puis bascule sur le flow de
+// double confirmation classique si l'utilisateur veut quand même continuer.
+//
+// 🆕 v1.9.3-B-side (KARMA "ca fonctionne en mise jours mais pas en mode tout
+// reset, il devrait nous dire serveur indispo ou pas internet") : message
+// aligné avec _softUpdateOfflineWarning car le ping cible désormais le serveur
+// MyKTAMap (<origin>/ping.html), pas Google. Un échec peut signifier "pas
+// d'internet" OU "serveur MyKTAMap indispo (DNS, SSL, Nginx, hébergeur)".
+// Pour le reset, c'est encore plus critique : sans serveur joignable, le SW
+// ne peut PAS re-cacher les assets → app inutilisable post-wipe.
+function _resetFlowOfflineWarning() {
+  const origin = (window._pingInternetUrl || "").replace(/\/ping\.html.*$/, "") || "https://myktamap.fr";
+  const overlay = document.createElement("div");
+  overlay.id = "kta-reset-offline";
+  overlay.className = "kta-readme-modal-overlay";
+  overlay.innerHTML =
+    '<div class="kta-readme-modal-boite kta-oom-modal-boite">' +
+      '<div class="kta-readme-modal-header kta-oom-header">' +
+        '<span class="kta-oom-titre-big">' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+          '<span class="kta-oom-titre-text">PAS INTERNET OU SERVEUR INDISPO</span>' +
+          '<span class="kta-oom-warn-side">⚠️</span>' +
+        '</span>' +
+      '</div>' +
+      '<div class="kta-readme-modal-corps kta-oom-corps">' +
+        '<div class="kta-oom-intro">' +
+          'Tu es sur le point de <strong>tout réinitialiser</strong> alors que le serveur ' +
+          '<code>' + origin + '</code> est <strong>injoignable</strong>. ' +
+          'L\'application a besoin de ce serveur pour redescendre ses fichiers (HTML, JS, CSS, icônes) après le wipe.' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">🔍 Causes possibles</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li>Pas de connexion Internet (Wi-Fi / 4G / 5G)</li>' +
+            '<li>Serveur <code>' + origin + '</code> indisponible (maintenance, panne hébergeur)</li>' +
+            '<li>Certificat SSL invalide ou DNS qui ne résout pas</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">⛔ Conséquence si tu continues maintenant</div>' +
+          '<ul class="kta-oom-list">' +
+            '<li><strong>L\'app sera inutilisable</strong> tant que le serveur ne sera pas joignable à nouveau.</li>' +
+            '<li>Le splash et le loader ne s\'afficheront même pas — le navigateur cherchera les fichiers, ne les trouvera plus en cache, et restera bloqué.</li>' +
+            '<li>Tous tes plans mémorisés, ta session en cours et tes préférences seront <strong>perdus définitivement</strong>.</li>' +
+          '</ul>' +
+        '</div>' +
+        '<div class="kta-oom-section">' +
+          '<div class="kta-oom-section-titre">✅ Recommandation</div>' +
+          '<p>' +
+            '<strong>Vérifie ta connexion Internet</strong> (Wi-Fi, 4G/5G) et que <code>' + origin + '</code> ' +
+            'répond bien, puis relance la réinitialisation. L\'app aura ainsi une chance de se recharger ' +
+            'correctement après le wipe.' +
+          '</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="kta-oom-actions" style="justify-content:space-between;">' +
+        '<button class="kta-btn kta-btn-ghost"   id="kta-reset-offline-annuler" type="button">Annuler</button>' +
+        '<button class="kta-btn kta-btn-danger"  id="kta-reset-offline-forcer"  type="button">Continuer quand même</button>' +
+      '</div>' +
+    '</div>';
+  document.documentElement.appendChild(overlay);
+
+  document.getElementById("kta-reset-offline-annuler").addEventListener("click", function() {
+    overlay.remove();
+  });
+  document.getElementById("kta-reset-offline-forcer").addEventListener("click", function() {
+    overlay.remove();
+    _resetFlowConfirmation();
+  });
+  overlay.addEventListener("click", function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+// 🗝️ v173 : mot de passe en clair affiché à l'écran de reset pour que
+// l'user le retrouve avant de tout effacer (choix 6=a validé KARMA).
+// ⚠️ Volontairement en clair ici (sinon impossible d'afficher à l'user).
+// Le hash SHA-256 dans unlockGate.js reste la source de vérité pour la
+// comparaison. Si on bumpe le mdp un jour : changer les 2 endroits ensemble.
+const KTA_UNLOCK_PASSWORD_DISPLAY = "F!sYs44!h4z!3J";
+
+function _resetFlowConfirmation() {
+  const overlay1 = document.createElement("div");
+  overlay1.className = "kta-modal-overlay";
+  overlay1.innerHTML = `
+    <div class="kta-modal">
+      <div class="kta-modal-icon">⚠️</div>
+      <div class="kta-modal-titre">Tout réinitialiser ?</div>
+      <div class="kta-modal-texte">
+        Cette action efface <strong>l'intégralité des données locales</strong> de l'application :
+        <ul style="text-align:left; margin:10px 0; padding-left:20px;">
+          <li>Cache PWA (assets, Service Worker)</li>
+          <li>Liste de plans mémorisés (registre + ZIPs locaux)</li>
+          <li>Session en cours (points / tracés / zones / structures / mesures)</li>
+          <li>Préférences (mode performance, logs détaillés…)</li>
+        </ul>
+        <strong>Si vous utilisez l'app hors connexion, elle sera inutilisable jusqu'à la prochaine synchronisation.</strong>
+
+        <div style="margin-top:14px; padding:10px 12px; background:rgba(244,197,66,0.08); border:1px solid rgba(244,197,66,0.30); border-radius:6px; text-align:left; font-size:13px;">
+          🗝️ <strong style="color:#f4c542;">Code d'accès requis au redémarrage</strong><br>
+          <span style="color:#c8d0e0;">Après reset, l'app redemandera le code d'accès communautaire :</span><br>
+          <code style="display:inline-block; margin-top:6px; padding:4px 10px; background:#0a0d18; border:1px solid rgba(244,197,66,0.30); border-radius:4px; color:#f4c542; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:14px; user-select:all;">${KTA_UNLOCK_PASSWORD_DISPLAY}</code>
+          <br><span style="color:#8892a4; font-size:11.5px; font-style:italic;">Note-le ou copie-le avant de reset, sinon tu ne pourras plus rentrer dans l'app !</span>
+        </div>
+      </div>
+      <div class="kta-modal-actions">
+        <button class="kta-btn kta-btn-ghost" id="cache-annuler-1">Annuler</button>
+        <button class="kta-btn kta-btn-danger" id="cache-continuer-1">Continuer →</button>
+      </div>
+    </div>
+  `;
+  document.documentElement.appendChild(overlay1);
+
+  document.getElementById("cache-annuler-1").addEventListener("click", function () { overlay1.remove(); });
+  document.getElementById("cache-continuer-1").addEventListener("click", function () {
+    overlay1.remove();
+
+    const overlay2 = document.createElement("div");
+    overlay2.className = "kta-modal-overlay";
+    overlay2.innerHTML = `
+      <div class="kta-modal kta-modal-danger">
+        <div class="kta-modal-icon">🚨</div>
+        <div class="kta-modal-titre">Confirmation finale</div>
+        <div class="kta-modal-texte">
+          ⚠️ <strong>ATTENTION</strong> ⚠️<br><br>
+          Cette action vide intégralement le cache du navigateur pour cette application.<br><br>
+          <strong>Hors connexion → l'application sera hors service.</strong><br><br>
+          Confirmez uniquement si vous êtes connecté à Internet.
+        </div>
+        <div class="kta-modal-actions">
+          <button class="kta-btn kta-btn-ghost" id="cache-annuler-2">Annuler</button>
+          <button class="kta-btn kta-btn-danger" id="cache-confirmer-2">🗑️ Vider maintenant</button>
+        </div>
+      </div>
+    `;
+    document.documentElement.appendChild(overlay2);
+
+    document.getElementById("cache-annuler-2").addEventListener("click", function () { overlay2.remove(); });
+    document.getElementById("cache-confirmer-2").addEventListener("click", async function () {
+      overlay2.remove();
+      const overlayWait = document.createElement("div");
+      overlayWait.className = "kta-modal-overlay";
+      overlayWait.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">⏳</div><div class="kta-modal-titre">Nettoyage en cours…</div><div class="kta-modal-texte">Suppression de tout le stockage local + désinscription du Service Worker.</div></div>`;
+      document.documentElement.appendChild(overlayWait);
+
+      try {
+        // 1) Service Worker
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(function(r) { return r.unregister(); }));
+        }
+
+        // 2) Caches HTTP / PWA
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(function(name) { return caches.delete(name); }));
+        }
+
+        // 3) localStorage — wipe complet (tous les préfixes connus + clés inattendues)
+        try { localStorage.clear(); } catch(e) { console.warn("[Reset] localStorage.clear :", e); }
+
+        // 4) sessionStorage
+        try { sessionStorage.clear(); } catch(e) { console.warn("[Reset] sessionStorage.clear :", e); }
+
+        // 5) IndexedDB — toutes les bases (avec fallback Safari/Firefox qui n'a pas indexedDB.databases())
+        try {
+          if (indexedDB.databases) {
+            const dbs = await indexedDB.databases();
+            await Promise.all((dbs || []).map(function(db) {
+              return new Promise(function(resolve) {
+                if (!db.name) return resolve();
+                const req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+              });
+            }));
+          } else {
+            // Safari/Firefox : on ne peut pas lister, on supprime au moins les bases connues
+            const knownDbs = ["myktamap_handles"];
+            await Promise.all(knownDbs.map(function(name) {
+              return new Promise(function(resolve) {
+                const req = indexedDB.deleteDatabase(name);
+                req.onsuccess = req.onerror = req.onblocked = function() { resolve(); };
+              });
+            }));
+          }
+        } catch(e) { console.warn("[Reset] IndexedDB :", e); }
+
+        overlayWait.remove();
+        window.location.reload(true);
+      } catch (err) {
+        overlayWait.remove();
+        const overlayErr = document.createElement("div");
+        overlayErr.className = "kta-modal-overlay";
+        overlayErr.innerHTML = `<div class="kta-modal"><div class="kta-modal-icon">❌</div><div class="kta-modal-titre">Erreur</div><div class="kta-modal-texte">Impossible de vider le cache :<br>${err.message || err}</div><div class="kta-modal-actions"><button class="kta-btn kta-btn-primary" id="cache-err-ok">OK</button></div></div>`;
+        document.documentElement.appendChild(overlayErr);
+        document.getElementById("cache-err-ok").addEventListener("click", function () { overlayErr.remove(); });
+      }
+    });
+  });
+}
+
+// ==========================================
+// EXPORTS WINDOW (v1.30.2 P3 Lot 7)
+// ==========================================
+// ouvrirCalibrageEchelle, viderCacheAppli, mettreAJourCodeSeul
+// étaient exposés depuis interface.js > EXPORT GLOBAL (lignes 5364-5366
+// avant ce lot). Post-extraction : on les expose ici.
+window.ouvrirCalibrageEchelle = ouvrirCalibrageEchelle;
+window.viderCacheAppli        = viderCacheAppli;
+window.mettreAJourCodeSeul    = mettreAJourCodeSeul;
