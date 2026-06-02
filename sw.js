@@ -185,6 +185,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 4) : Module extrait de interface.js — modales
   // documentation (README + Aide intégrée + Aide IA téléchargement)
   "./js/interfaceDocs.js",
+  // 🆕 v1.30.2 (P3 Lot 5) : Module extrait de interface.js — export
+  // session JSON + import (JSON/GPX/KMZ) + modale de choix d'import
+  "./js/interfaceImportExport.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
