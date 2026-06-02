@@ -8733,13 +8733,29 @@ body.kta-instance-pro .kta-licence-pro {
      progressive de gauche à droite, miroir esthétique de la signature
      karma du splash (cf kta-splash-karma-reveal). Souligne discrètement
      l'identité "édition pro" sans imposer. Pattern clip-path identique
-     à karma → cohérence visuelle. Display: inline-block requis pour
-     que clip-path s'applique correctement à un span.
+     à karma → cohérence visuelle.
      v1.30.0+ : enchaînement séquentiel avec .kta-titre-base — le mot
-     "MyKTAMap" se révèle d'abord, courte pause (~0.3s), puis le "-pro". */
-  display: inline-block;
+     "MyKTAMap" se révèle d'abord, courte pause (~0.3s), puis le "-pro".
+     ⚠️ v1.30.0-fix : on NE pose PAS display: inline-block ici (sinon
+     ça écrase le `display: none` par défaut de .kta-licence-pro côté
+     community — spécificité égale, dernier déclaré gagne). Le display
+     est pris en charge par la règle scopée html.kta-instance-pro plus
+     bas, qui n'est posée QUE si .kta-instance-pro est portée par
+     html/body (= proLicense.js a détecté une licence pro). */
   clip-path: inset(0 100% 0 0);
   animation: kta-titre-suffix-pro-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.75s forwards;
+}
+
+/* Scope pro uniquement : override le `display: inline` posé par la
+   règle .kta-instance-pro .kta-licence-pro (plus haut ligne ~8714) en
+   `display: inline-block` requis pour que clip-path s'applique sur un
+   span. Côté community : ces 2 sélecteurs ne matchent jamais (la
+   classe .kta-instance-pro n'est jamais posée par js/proLicense.js
+   sans Licence-pro.json) → display reste à `none` (.kta-licence-pro
+   par défaut), -pro invisible et animation invisible (= no-op visuel). */
+html.kta-instance-pro .kta-titre-suffix-pro,
+body.kta-instance-pro .kta-titre-suffix-pro {
+  display: inline-block;
 }
 
 /* Variants délai selon contexte :
