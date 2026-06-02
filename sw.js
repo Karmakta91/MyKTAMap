@@ -188,6 +188,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 5) : Module extrait de interface.js — export
   // session JSON + import (JSON/GPX/KMZ) + modale de choix d'import
   "./js/interfaceImportExport.js",
+  // 🆕 v1.30.2 (P3 Lot 6) : Module extrait de interface.js — modale
+  // Itinéraire + POPUP POI + LABEL DISTANCE + Presets + Évitements
+  "./js/interfaceItineraire.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
