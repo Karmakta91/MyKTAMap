@@ -8734,19 +8734,25 @@ body.kta-instance-pro .kta-licence-pro {
      karma du splash (cf kta-splash-karma-reveal). Souligne discrètement
      l'identité "édition pro" sans imposer. Pattern clip-path identique
      à karma → cohérence visuelle. Display: inline-block requis pour
-     que clip-path s'applique correctement à un span. */
+     que clip-path s'applique correctement à un span.
+     v1.30.0+ : enchaînement séquentiel avec .kta-titre-base — le mot
+     "MyKTAMap" se révèle d'abord, courte pause (~0.3s), puis le "-pro". */
   display: inline-block;
   clip-path: inset(0 100% 0 0);
-  animation: kta-titre-suffix-pro-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.4s forwards;
+  animation: kta-titre-suffix-pro-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 1.75s forwards;
 }
 
-/* Variant splash : délai 1.4s (après l'apparition du titre principal à
-   0.45s + 0.95s de "respiration" pour laisser l'œil se poser sur
-   "MyKTAMap" avant de découvrir le suffixe).
-   Variant header home : délai plus court car pas de séquence splash —
-   le -pro doit apparaître peu après le 1er paint pour rester perceptible. */
+/* Variants délai selon contexte :
+   - Splash : 1.75s
+       = 0.45s (start splashTextIn) + 1.0s (durée MyKTAMap reveal)
+       + 0.3s (pause respiration entre MyKTAMap et -pro)
+       Le -pro arrive après le mot principal s'est entièrement révélé.
+   - Header home : 1.4s
+       = 0.1s (start MyKTAMap reveal) + 1.0s (durée)
+       + 0.3s (pause respiration)
+       Délai plus court car pas de séquence splash, mais même pause. */
 .loader-titre-nom .kta-titre-suffix-pro {
-  animation-delay: 0.4s;
+  animation-delay: 1.4s;
 }
 
 @keyframes kta-titre-suffix-pro-reveal {
@@ -8755,6 +8761,38 @@ body.kta-instance-pro .kta-licence-pro {
   50%  { clip-path: inset(0 50%  0 0); }   /* + p */
   75%  { clip-path: inset(0 25%  0 0); }   /* + r */
   100% { clip-path: inset(0 0    0 0); }   /* + o finale */
+}
+
+/* 🆕 v1.30.0 — Apparition animée du mot "MyKTAMap" : même pattern
+   clip-path reveal que le suffixe -pro, joué AVANT. Le HTML wrap le
+   texte "MyKTAMap" dans <span class="kta-titre-base">…</span> pour
+   permettre l'animation indépendante du suffixe.
+   Comportement scope (community ET pro) :
+   - Community SANS -pro : seul "MyKTAMap" se révèle (pas de -pro
+     car .kta-titre-suffix-pro reste display: none sans .kta-instance-pro)
+   - Pro AVEC -pro : "MyKTAMap" se révèle, pause 0.3s, "-pro" se révèle
+   La même animation est utilisée partout, seul le délai change selon
+   le contexte (splash vs header home). */
+.kta-titre-base {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-base-reveal 1.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) 0.1s forwards;
+}
+
+/* Variant splash : délai 0.45s (synchro avec splashTextIn du #splashTitle
+   qui fait glisser le titre vers le haut au même instant — les 2 effets
+   s'additionnent harmoniquement : translation Y + révélation X). */
+#splashTitle .kta-titre-base {
+  animation-delay: 0.45s;
+}
+
+@keyframes kta-titre-base-reveal {
+  0%   { clip-path: inset(0 100% 0 0); }   /* tout caché */
+  20%  { clip-path: inset(0 80%  0 0); }   /* M */
+  40%  { clip-path: inset(0 60%  0 0); }   /* + yK */
+  60%  { clip-path: inset(0 40%  0 0); }   /* + TA */
+  80%  { clip-path: inset(0 20%  0 0); }   /* + Ma */
+  100% { clip-path: inset(0 0    0 0); }   /* + p finale */
 }
 
 /* 🆕 v1.29.2-fix1 — Variant thème clair pour le suffixe « -pro » :
