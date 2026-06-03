@@ -150,6 +150,14 @@
   // API : ÉTAT
   // ============================================================
   function isEnabled() {
+    // 🕵️ v1.31.9-fix1 — Skip PIN/biométrie en mode incognito. KARMA :
+    // "en mode incognito, on ne doit pas avoir la popup auth renforcé".
+    // Cohérent avec le pattern : la session incognito est éphémère,
+    // pas de hash PIN écrit en disque possible → le re-saisir à chaque
+    // ouverture incognito n'apporte rien (pas d'auth = pas de protection
+    // d'une session qui se vide au close). L'user peut toujours configurer
+    // un PIN depuis la fenêtre principale qui restera actif là-bas.
+    if (window.IncognitoMode && window.IncognitoMode.active) return false;
     const state = _getState();
     return !!(state && state.hashedPin && state.salt);
   }

@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.9",
+  "version": "v1.31.9-fix1",
   "released": "2026-06-03",
   "notes": [
-    "🕵️ v1.31.9 — Le bouton « Mode incognito » est maintenant disponible aussi depuis la modale ⚙️ Configuration du Home (loader), avant même de charger un plan. Et nouveau : si tu es déjà en mode incognito, le bouton devient rouge « ✕ Quitter le mode incognito » pour fermer l'onglet incognito d'un clic (avec confirmation pour éviter les pertes de données accidentelles)."
+    "🩹 v1.31.9-fix1 — Trois ajustements du mode incognito : (1) la popup d'authentification renforcée (PIN/biométrie) n'apparaît plus en mode incognito (cohérent avec le pattern « rien n'est sauvegardé »). (2) Le tutoriel d'onboarding ne s'affiche plus automatiquement non plus (tu peux toujours l'ouvrir manuellement via 📖 Documentation). (3) La bordure violette est désormais plus marquée (5px + double couche) pour bien rappeler que tu es en mode privé."
   ]
 }

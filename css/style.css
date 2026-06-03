@@ -17007,9 +17007,15 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
    surcouches visuelles pour ne pas casser la lisibilité ni la responsive.
 */
 html.kta-incognito body {
-  /* Bordure 3px lavande visible mais discrète sur fond sombre.
-     box-shadow inset plutôt que border pour ne pas pousser le layout. */
-  box-shadow: inset 0 0 0 3px #a78bfa;
+  /* 🩹 v1.31.9-fix1 : bordure passée de 3px à 5px + double couche
+     (lavande extérieur + violet plus saturé intérieur) pour mieux
+     marquer le contexte. KARMA : "marque un peu plus les bordures".
+     box-shadow inset plutôt que border pour ne pas pousser le layout.
+     Double inset via virgule = 2 ombres empilées du plus extérieur
+     au plus intérieur (l'ordre est important : la 1ère couvre la 2e). */
+  box-shadow:
+    inset 0 0 0 5px #a78bfa,
+    inset 0 0 0 8px rgba(124, 58, 237, 0.5);
 }
 
 /* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js SOUS le subtitle/tagline.
@@ -17050,11 +17056,14 @@ html.kta-incognito #kta-build-version {
   color: #a78bfa !important;
 }
 
-/* Variante thème clair : violet légèrement plus saturé pour contraste */
+/* Variante thème clair : violet plus saturé pour contraste sur fond blanc.
+   🩹 v1.31.9-fix1 : épaisseur passée à 5px (idem dark) + double couche. */
 html.kta-incognito.kta-theme-light body,
 body.kta-theme-light.kta-incognito,
 html.kta-theme-light body.kta-incognito {
-  box-shadow: inset 0 0 0 3px #7c3aed;
+  box-shadow:
+    inset 0 0 0 5px #7c3aed,
+    inset 0 0 0 8px rgba(91, 33, 182, 0.4);
 }
 
 html.kta-incognito.kta-theme-light .kta-incognito-badge,

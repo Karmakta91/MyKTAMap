@@ -750,6 +750,12 @@
   // ────────── HELPERS ──────────
 
   function isFirstLaunch() {
+    // 🕵️ v1.31.9-fix1 — Skip onboarding en mode incognito. Cohérent avec
+    // le pattern "no traces" : pas d'auto-trigger du tutoriel (l'user peut
+    // toujours l'ouvrir manuellement via le menu Aide s'il veut). Sans ce
+    // guard, le shim Storage retourne null → isFirstLaunch retourne true →
+    // tutoriel s'affiche à CHAQUE boot incognito → bruit UX.
+    if (window.IncognitoMode && window.IncognitoMode.active) return false;
     try { return !localStorage.getItem(LS_KEY); } catch(e) { return false; }
   }
 
