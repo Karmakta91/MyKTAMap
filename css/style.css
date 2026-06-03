@@ -1763,7 +1763,10 @@ img.kta-popup-photo-mini:focus-visible {
 .kta-supp-trace-floater {
   position: fixed;
   left: 50%;
-  bottom: 20px;
+  /* 🆕 v1.32.0 — viewport-fit=cover : ajoute safe-area-inset-bottom
+     au 20px de base pour rester au-dessus du home indicator iPhone.
+     Fallback 0px → identique sur autres devices. */
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 107, 107, 0.5);
@@ -7615,7 +7618,9 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
 .kta-iti-floater {
   position: fixed;
   left: 50%;
-  bottom: 20px;
+  /* 🆕 v1.32.0 — viewport-fit=cover : safe-area-inset-bottom ajouté au
+     20px de base, pour rester au-dessus du home indicator iPhone. */
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -10048,9 +10053,14 @@ body.kta-loader-active .kta-refonte-statusbar {
 
 body.kta-refonte-v1 .kta-refonte-header {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  /* 🆕 v1.32.0 — viewport-fit=cover activé : on respecte la safe-area
+     top (notch / Dynamic Island iPhone) sinon le header passe DESSOUS
+     la barre d'état iOS et la 1ère ligne d'icônes disparait. Fallback
+     0px → comportement identique sur device sans notch (Android, PC,
+     iPhone SE / 8). */
+  top: env(safe-area-inset-top, 0px);
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
   height: 44px;
   z-index: 1200;  /* au-dessus de Leaflet (1000) et du contrôle layers, sous les modales (99999) */
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
@@ -11032,9 +11042,12 @@ body.kta-refonte-v1 {
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  /* 🆕 v1.32.0 — viewport-fit=cover activé : safe-area-inset-bottom
+     pour ne pas être recouvert par le home indicator iPhone. Fallback
+     0px → identique sur devices sans home indicator. */
+  bottom: env(safe-area-inset-bottom, 0px);
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
   z-index: 1200;
   background: linear-gradient(0deg, #1a1f2e 0%, #161b28 100%);
   border-top: 1px solid rgba(140, 180, 255, 0.18);
@@ -17023,10 +17036,15 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
 html.kta-incognito body::before {
   content: "";
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  /* 🆕 v1.32.0 — viewport-fit=cover activé : la bordure incognito doit
+     respecter la safe-area sinon les 4 côtés sont mangés par notch +
+     home indicator + bezels arrondis iPhone. Pas une "bordure" full-
+     screen mais une "bordure safe-area" = ressort à l'intérieur de
+     la zone exploitable, esthétique cohérente. */
+  top: env(safe-area-inset-top, 0px);
+  left: env(safe-area-inset-left, 0px);
+  right: env(safe-area-inset-right, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
   pointer-events: none;
   border: 5px solid #a78bfa;
   /* Couche intérieure plus saturée pour effet "double bordure" */

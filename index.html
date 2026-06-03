@@ -25,16 +25,31 @@
        plus de problèmes que de bénéfice"). Multiples tentatives cover +
        black-translucent ont créé soit une bande sombre en bas, soit la
        status bar iOS qui hide/show de façon imprévisible. On reste sur
-       le comportement stable v1.9.1 : pas de cover, status bar opaque
-       noire, on perd ~47px en haut sur iPhone notché mais comportement
-       PRÉVISIBLE. -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+       🆕 v1.32.0 — Nouvelle tentative fullscreen perçu iPhone PWA.
+       Avant : `viewport-fit` non défini + `status-bar-style: black` →
+       bande noire opaque iOS qui bouffait ~47px en haut sur iPhone notché.
+       Maintenant : `viewport-fit=cover` + `status-bar-style: black-translucent`
+       → le contenu s'étend SOUS la status bar iOS (heure/batterie deviennent
+       semi-transparentes posées sur le contenu sombre derrière) → effet
+       "Apple Maps fullscreen". L'heure iOS reste techniquement visible
+       (limitation Apple PWA, pas hideable) mais visuellement noyée si le
+       contenu de fond est sombre. PRÉ-REQUIS : tous les éléments UI fixes
+       qui touchaient `top: 0` / `bottom: 0` ont été adaptés avec
+       `env(safe-area-inset-top/bottom)` pour ne plus se cacher sous notch
+       / home indicator. Cf. CSS §incognito + .kta-refonte-header/statusbar
+       + .kta-supp-trace-floater + .kta-iti-floater + .leaflet-top/bottom.
+       Si KARMA remonte un bug visuel sur iPhone : revert ce commit (les
+       4 blockers identifiés sont documentés dans le commit message). -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
   <!-- PWA -->
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- "black" : bande noire OPAQUE iOS au-dessus de l'app, indépendante
-       du contenu. Stable, l'heure iOS reste visible en permanence. -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <!-- 🆕 v1.32.0 : "black-translucent" — la status bar iOS devient
+       TRANSPARENTE et le contenu s'étend dessous. Heure/batterie/signal
+       restent visibles (limitation Apple) mais en blanc semi-transparent
+       posé sur le contenu sombre → effet "fullscreen perçu". Combiné avec
+       viewport-fit=cover sur le viewport meta. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MyKTAMap">
   <meta name="mobile-web-app-capable" content="yes">
 

@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.10-fix1",
+  "version": "v1.32.0",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.10-fix1 — Deux correctifs du mode incognito : (1) la popup « Authentification renforcée disponible » ne s'affiche plus du tout en incognito (KARMA avait raison, c'était une modale différente du gate PIN). (2) La bordure violette reste maintenant visible en permanence, y compris quand un plan est chargé (avant elle disparaissait derrière la carte)."
+    "📱 v1.32.0 — Nouvel essai d'expérience plein écran sur iPhone : la bande noire iOS au-dessus de l'app a été remplacée par un mode « transparent » qui laisse l'app s'étendre sous la barre d'état. L'heure et la batterie iPhone restent visibles (limite Apple) mais en surimpression sur le contenu sombre, comme dans Apple Maps. Tu gagnes ~47px d'espace utile en haut sur iPhone notché. Si tu remontes un bug visuel, dis-moi : on peut rollback en un commit."
   ]
 }
