@@ -576,74 +576,34 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
-
-    <strong>v1.31.2 (PATCH — Optimisation perf P9 : refresh viewport incrémental pour polylines roads)</strong> :
-    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur visible</strong> (gain perceptible sur la fluidité du pan/zoom en mode PerfUltra ULTRA viewportCull sur plans denses).
-    Modif strictement interne au module <code>js/road.js</code>. Avant v1.31.2 : à chaque <code>moveend</code>/<code>zoomend</code>, <code>renderRoads()</code> détachait TOUTES les polylines puis recréait depuis zéro toutes les <code>L.polyline</code> visibles — coût O(N) avec N = nombre de tracés. Sur plans denses (100+ tracés) : latence visible au pan/zoom même avec le throttle 250 ms existant. Depuis v1.31.2 : nouveau cache <code>_roadRenderState</code> populé au <code>renderRoads()</code> complet et nouvelle fonction <code>_refreshRoadsViewportOnly()</code> qui itère ce cache au moveend/zoomend, recalcule la visibilité via test AABB, et fait juste <code>addTo(target)</code> ou <code>.remove()</code> ciblé selon le diff. Pattern aligné avec P5 markers POI (v1.30.0).
-    <strong>Cas non-cullables préservés</strong> : itinéraire (toujours visible), <code>currentRoad</code> en cours de tracé. Décimation Ramer-Douglas-Peucker active = repart sur full re-render car dépend du zoom.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump <code>CACHE_NAME</code> à <code>v1.31.2</code>).
-    Verdict : ✅ aucune régression — patch perf strictement neutre côté réseau, gain user-perceptible uniquement sur la fluidité du pan/zoom en mode PerfUltra viewportCull.
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.2-fix1 / v1.31.2 (PATCH — Perf P9 + nettoyage notes de version)</strong> : optimisation interne du pan/zoom sur les plans denses en mode 🚀 Performance ULTRA + nettoyage des notes de version (user-friendly côté <code>version.json</code>, réorganisation de cette page pour mettre la promesse en haut). <strong>AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté</strong>. Modif strictement interne au rendu Leaflet local.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — patch perf + docs strict.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.31.1 (PATCH — Optimisation perf P7 : OOMGuard pause sur visibilitychange)</strong> :
-    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur visible.</strong>
-    Modif strictement interne au module <code>js/oomGuard.js</code> (détection des kills mémoire OOM mobile via marker localStorage refreshé toutes les 5 s). Avant v1.31.1 : le heartbeat tournait en continu, y compris quand l'onglet passait en arrière-plan (verrouillage écran, autre app au premier plan). Conséquence : écritures <code>localStorage</code> inutiles + drain batterie léger constant. Depuis v1.31.1 : ajout d'un listener <code>document.addEventListener("visibilitychange", ...)</code> qui suspend le <code>setInterval</code> quand <code>document.hidden === true</code> et le reprend + rafraîchit le marker au retour (<code>visibilityState === "visible"</code>). Pattern aligné avec <code>js/sessionPersist.js</code> et <code>js/wakeLock.js</code> (déjà visibility-aware depuis leur création).
-    <strong>Détection des kills brutaux préservée</strong> : le marker reste posé en l'état pendant le BG (juste plus rafraîchi) — un crash mobile pendant l'onglet hidden sera bien détecté au boot suivant via la fenêtre de fraîcheur <code>KILL_FRESHNESS_MS = 1 h</code>.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump <code>CACHE_NAME</code> à <code>v1.31.1</code>).
-    Verdict : ✅ aucune régression — patch perf strictement neutre côté réseau, gain user-perceptible uniquement sur l'autonomie batterie en sessions longues mobile.
+    <strong>v1.31.1 (PATCH — Perf P7 : OOMGuard pause en arrière-plan)</strong> : un peu de batterie économisée sur mobile quand l'app reste ouverte en arrière-plan (verrouillage écran, autre app au premier plan). <strong>AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté</strong>. Modif interne au module de détection des crashes mémoire.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.31.0 (Release MINOR — Refactoring interne <code>js/interface.js</code> en 8 modules)</strong> :
-    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur.</strong>
-    Pure réorganisation de code interne. Le fichier <code>js/interface.js</code> (qui avait grossi à ~9 900 lignes monolithiques au fil des versions v1.5 → v1.30.x) a été découpé en 8 modules thématiques pour améliorer la maintenabilité — sans toucher au comportement runtime.
-    <strong>7 nouveaux fichiers JS</strong> créés et ajoutés à <code>ASSETS_TO_CACHE</code> du Service Worker (servis same-origin via le SW, couvert par la règle <code>connect-src 'self'</code> déjà en place) :
-    <code>js/interfaceAlerts.js</code> (modales alertes/update),
-    <code>js/interfaceDistanceTotale.js</code> (panneau magenta),
-    <code>js/interfaceLegende.js</code> (modale Légende),
-    <code>js/interfaceDocs.js</code> (README + Aide + Aide IA),
-    <code>js/interfaceImportExport.js</code> (export session + import JSON/GPX/KMZ),
-    <code>js/interfaceItineraire.js</code> (modale Itinéraire + évitements + presets vitesse),
-    <code>js/interfaceMaintenance.js</code> (calibrage + reset + mise à jour douce),
-    <code>js/interfaceConfig.js</code> (modale Réglages + Perf ULTRA + M-LVL + Géoref).
-    <code>js/interface.js</code> passe de 9 894 lignes à 3 326 lignes (-66.4 %, ~6 568 lignes déplacées).
-    <strong>Aucune nouvelle dépendance externe</strong>, <strong>aucun nouveau fetch</strong>, <strong>aucune nouvelle API browser instrumentée</strong>. Les modules sont chargés via <code>&lt;script src defer&gt;</code> dans <code>index.html</code> (ordre cosmétique préservé). L'historique des appels réseau (cf. <code>window.NetworkAudit.getLog()</code> côté UI) est strictement identique à v1.30.1.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>8 nouveaux entries dans <code>ASSETS_TO_CACHE</code></strong> + bump <code>CACHE_NAME</code> à <code>v1.31.0</code>.
-    Verdict : ✅ aucune régression — release de refactor interne strictement neutre côté réseau, gain DX (developer experience) uniquement.
+    <strong>v1.31.0 (MINOR — Refactor interne <code>js/interface.js</code> en 9 modules thématiques)</strong> : aucun changement visible côté user. Pure réorganisation interne du code pour faciliter les évolutions futures. <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun fetch ajouté</strong>. 8 nouveaux fichiers JS servis same-origin via le Service Worker (couvert par <code>connect-src 'self'</code> déjà en place).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — refactor strictement neutre côté réseau.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.30.1 (HOTFIX — fix1 visibilité suffixe -pro côté community)</strong> :
-    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté.</strong>
-    1 ligne de CSS modifiée.
-    Cause racine du bug v1.30.0 : la propriété <code>display: inline-block</code> posée directement sur <code>.kta-titre-suffix-pro</code> (requise pour le clip-path de l'animation reveal) écrasait par cascade le <code>display: none</code> par défaut de <code>.kta-licence-pro</code> (spécificité égale 0,1,0 — dernier déclaré gagne). Conséquence : côté community sans <code>Licence-pro.json</code>, le suffixe « -pro » devenait visible par erreur dans le splash + header home — violation de la frontière community/pro qui veut que ce suffixe soit STRICTEMENT invisible en community pur.
-    Fix : déplacer <code>display: inline-block</code> sous un sélecteur scope pro (<code>html.kta-instance-pro .kta-titre-suffix-pro</code> + <code>body.kta-instance-pro …</code>) — spécificité 0,2,0 qui override le <code>display: inline</code> de <code>.kta-instance-pro .kta-licence-pro</code>. Côté community pur : <code>.kta-instance-pro</code> jamais posée par <code>js/proLicense.js</code> (pas de <code>Licence-pro.json</code> fetché ou importé) → ces 2 sélecteurs ne matchent jamais → <code>display</code> reste à <code>none</code> (.kta-licence-pro par défaut) → suffixe redevient INVISIBLE comme en v1.29.x strict.
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump CACHE_NAME <code>v1.30.1</code>).
-    Verdict : ✅ aucune régression — hotfix CSS strictement neutre côté réseau, restauration immédiate du comportement community v1.29.x strict.
+    <strong>v1.30.1 (HOTFIX — suffixe « -pro » du titre visible par erreur en mode gratuit)</strong> : retour au comportement v1.29.x. <strong>AUCUN impact réseau, aucune nouvelle permission</strong>. 1 ligne de CSS corrigée.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.30.0 (Release MINOR — Perf boot + viewport culling markers POI + animation reveal titre)</strong> :
-    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté.</strong>
-    Release purement de perf/UX, opt-in côté user.
-    (1) <strong>Viewport culling markers POI</strong> (<code>js/utils.js</code>, <code>js/editor.js</code>, <code>js/interface.js</code>) : extension du toggle PerfUltra <code>viewportCull</code> (déjà actif sur polylines roads depuis v1.7.x) aux markers POI des data layers + session éditeur. Pattern miroir de <code>road.js</code> : AABB check vs <code>map.getBounds().pad(0.1)</code> + add/remove sur moveend/zoomend. <strong>100% client-side</strong>, aucun fetch ajouté, aucune persistance nouvelle. Toggle opt-in OFF par défaut → comportement v1.29.x strict pour les users qui ne l'activent pas.
-    (2) <strong>Timeout 1500ms sur les fetches au boot</strong> (<code>js/updateChecker.js</code>, <code>js/alertChecker.js</code>) : ajout d'<code>AbortController</code> + <code>setTimeout(abort, 1500)</code> aligné avec <code>js/proLicense.js</code> (déjà en place depuis v1.28.2). <strong>RÉDUIT le temps d'attente sur des fetches déjà existants</strong> (ils étaient déjà dans la whitelist same-origin), aucune nouvelle URL contactée. Offline ou réseau saturé → fail en 1500ms au lieu de ~30s (timeout browser par défaut).
-    (3) <strong>Defer sur 51 scripts non-bloquants</strong> (<code>index.html</code>) : ajout de l'attribut <code>defer</code> sur tous les <code>&lt;script src&gt;</code> à partir de <code>lib/leaflet/leaflet.js</code>. Le browser parse le HTML pendant que les scripts téléchargent en parallèle. <strong>Aucun changement de comportement runtime</strong> — ordre d'exécution v1.29.x strictement préservé (defer respecte l'ordre du DOM). Les 14 scripts SYNC en haut (copyright, proLicense, themeManager, networkAudit, crashReports, memInspector, statsGlobales, tutorial, userProfile, profileExportImport, debug, perfUltra, unlockGate, pinLock) restent bloquants car ils setup le DOM/CSS ou monkey-patchent les API browser.
-    (4) <strong>Animation reveal séquentielle du titre</strong> (<code>index.html</code>, <code>css/style.css</code>) : pur CSS additif (<code>@keyframes kta-titre-base-reveal</code> + <code>kta-titre-suffix-pro-reveal</code>). Wrap <code>MyKTAMap</code> dans un <code>&lt;span class="kta-titre-base"&gt;</code> pour permettre l'animation indépendante du suffixe <code>-pro</code>. <strong>Aucun JS modifié pour l'animation</strong>, aucun fetch, aucune persistance. Côté community sans licence pro : seul « MyKTAMap » se révèle (<code>-pro</code> reste <code>display: none</code>).
-    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump CACHE_NAME <code>v1.30.0</code>).
-    Verdict : ✅ aucune régression — release de perf/UX strictement neutre côté réseau, gains user-visibles uniquement (mobile cold cache plus rapide, moins de markers DOM sur plans denses, splash plus immersif).
+    <strong>v1.30.0 (MINOR — Démarrage plus rapide + carte plus fluide + animation titre)</strong> : 4 améliorations user-visibles purement client-side. <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau fetch ajouté</strong>. (1) Viewport culling étendu aux markers POI en mode 🚀 Performance ULTRA (opt-in, OFF par défaut). (2) Timeout 1500 ms sur les fetches <code>version.json</code> + <code>alert.json</code> au boot — fail rapide hors-ligne, ne contacte AUCUNE nouvelle URL. (3) Attribut <code>defer</code> sur 51 scripts non-bloquants — boot HTML plus rapide, aucun changement d'ordre d'exécution. (4) Animation reveal CSS du titre au splash.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — release perf/UX strictement neutre côté réseau.
   </p>
 
   <p class="meta" style="margin-top:6px;">
-    <strong>v1.29.4 (Release PATCH — Infra/DX : ZIP selfhost auto + contexte AI slim + hook git affiné)</strong> :
-    <strong>AUCUN impact runtime utilisateur.</strong>
-    Release purement infrastructure / developer experience.
-    (1) Le workflow GitHub Actions <code>.github/workflows/release.yml</code> génère et attache désormais un fichier <code>MyKTAMap-vX.Y.Z.zip</code> à chaque release publiée (inclut tout le nécessaire pour héberger MyKTAMap sur un serveur web statique, exclut les fichiers internes de développement).
-    (2) Restructuration de <code>CLAUDE.md</code> (contexte pour les agents IA) — passage de ~7700 lignes à ~60 + détail dans 13 fichiers <code>docs/architecture/</code>. Aucune incidence sur l'application.
-    (3) Hook git développement local affiné pour distinguer les repos community/pro.
-    <strong>Aucun changement runtime côté utilisateur final</strong>, aucun fetch ajouté, aucune permission, aucune persistance nouvelle.
-    Verdict : ✅ aucun impact réseau — release strictement orientée DX.
+    <strong>v1.29.4 (PATCH — Infra/DX : ZIP selfhost auto + doc IA slim + hook git affiné)</strong> : aucun changement runtime côté user. <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau fetch ajouté</strong>. (1) Archive ZIP <code>MyKTAMap-vX.Y.Z.zip</code> désormais jointe automatiquement à chaque GitHub Release (pour héberger MyKTAMap sur ton propre serveur). (2) Restructuration de la doc IA développeur (interne au repo). (3) Hook git local développeur affiné.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucun impact réseau — release DX/infra strict.
   </p>
 
   <p class="meta" style="margin-top:6px;">
