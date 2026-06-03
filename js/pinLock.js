@@ -801,6 +801,16 @@
   }
 
   function proposerActivation() {
+    // 🕵️ v1.31.10-fix1 — Skip aussi la PROPOSITION d'activation en
+    // incognito (modale "🔐 Authentification renforcée disponible").
+    // KARMA bug : "J'ai toujours la popup authentification renforcé au
+    // chargement de incognito". L'écran que KARMA voyait n'était pas le
+    // gate PinLock (déjà skippé par isEnabled() en v1.31.9-fix1), mais
+    // la PROPOSITION qui est appelée au boot quand PIN pas encore activé.
+    // En incognito, isProposalDone() lit la clé PROPOSAL_FLAG qui n'est
+    // PAS dans la whitelist → retourne null → considère "pas encore
+    // proposé" → modale s'affichait à chaque boot incognito.
+    if (window.IncognitoMode && window.IncognitoMode.active) return;
     // Skip si PIN déjà activé OU déjà proposé une fois
     if (isEnabled()) return;
     if (isProposalDone()) return;

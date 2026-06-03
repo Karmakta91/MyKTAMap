@@ -17006,16 +17006,32 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
    Pas d'override forcé du `display`/positionnement existant — uniquement des
    surcouches visuelles pour ne pas casser la lisibilité ni la responsive.
 */
-html.kta-incognito body {
-  /* 🩹 v1.31.9-fix1 : bordure passée de 3px à 5px + double couche
-     (lavande extérieur + violet plus saturé intérieur) pour mieux
-     marquer le contexte. KARMA : "marque un peu plus les bordures".
-     box-shadow inset plutôt que border pour ne pas pousser le layout.
-     Double inset via virgule = 2 ombres empilées du plus extérieur
-     au plus intérieur (l'ordre est important : la 1ère couvre la 2e). */
-  box-shadow:
-    inset 0 0 0 5px #a78bfa,
-    inset 0 0 0 8px rgba(124, 58, 237, 0.5);
+/* 🩹 v1.31.10-fix1 — Refactor de l'approche bordure incognito. AVANT :
+   box-shadow inset sur <body>. PROBLÈME : sur la vue carte, Leaflet pose
+   un container `#map` en position absolute full-viewport avec background
+   solide qui MASQUE complètement le box-shadow du body en arrière-plan.
+   Résultat : la bordure flashait au boot (loader visible) puis disparaissait
+   au moment où la carte se chargeait.
+   APRÈS : pseudo-élément ::before sur <body> en position: fixed full-viewport
+   avec border solid violette + pointer-events: none (laisse passer les clics)
+   + z-index élevé (au-dessus de tout, incluant modales).
+   Z-index choisi 999999 : au-dessus de tout pour être un rappel permanent.
+   La bordure est juste un cadre 5px épais qui ne bloque aucune interaction
+   (pointer-events: none). Cohérent avec le pattern "watermark" type
+   navigation privée Chrome / Firefox.
+*/
+html.kta-incognito body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  border: 5px solid #a78bfa;
+  /* Couche intérieure plus saturée pour effet "double bordure" */
+  box-shadow: inset 0 0 0 3px rgba(124, 58, 237, 0.5);
+  z-index: 999999;
 }
 
 /* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js SOUS le subtitle/tagline.
@@ -17057,13 +17073,14 @@ html.kta-incognito #kta-build-version {
 }
 
 /* Variante thème clair : violet plus saturé pour contraste sur fond blanc.
-   🩹 v1.31.9-fix1 : épaisseur passée à 5px (idem dark) + double couche. */
-html.kta-incognito.kta-theme-light body,
-body.kta-theme-light.kta-incognito,
-html.kta-theme-light body.kta-incognito {
-  box-shadow:
-    inset 0 0 0 5px #7c3aed,
-    inset 0 0 0 8px rgba(91, 33, 182, 0.4);
+   🩹 v1.31.10-fix1 : applique le même pattern ::before que la version
+   sombre. Cibles : html.kta-incognito.kta-theme-light + html.kta-theme-light
+   body.kta-incognito (selon où la classe theme atterrit). */
+html.kta-incognito.kta-theme-light body::before,
+html.kta-theme-light body.kta-incognito::before,
+body.kta-theme-light.kta-incognito::before {
+  border-color: #7c3aed;
+  box-shadow: inset 0 0 0 3px rgba(91, 33, 182, 0.4);
 }
 
 html.kta-incognito.kta-theme-light .kta-incognito-badge,

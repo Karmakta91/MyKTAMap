@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.10",
+  "version": "v1.31.10-fix1",
   "released": "2026-06-03",
   "notes": [
-    "🛡️ v1.31.10 — Garde-fou avant activation du mode incognito : une modale claire s'affiche maintenant quand tu cliques le bouton « Démarrer en mode incognito ». Elle explique ce qui change, les risques (modifs perdues à la fermeture du tab), et les cas d'usage idéaux (démo publique, prêt de session, etc.). Tu peux Annuler ou Activer. Évite les activations accidentelles."
+    "🩹 v1.31.10-fix1 — Deux correctifs du mode incognito : (1) la popup « Authentification renforcée disponible » ne s'affiche plus du tout en incognito (KARMA avait raison, c'était une modale différente du gate PIN). (2) La bordure violette reste maintenant visible en permanence, y compris quand un plan est chargé (avant elle disparaissait derrière la carte)."
   ]
 }
