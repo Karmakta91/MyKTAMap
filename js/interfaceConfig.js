@@ -980,7 +980,10 @@ function afficherConfig() {
           window.IncognitoMode.quit();
         }
       } else {
-        window.IncognitoMode.launch();
+        // 🆕 v1.31.10 : passe par confirmAndLaunch() qui affiche la
+        // modale charte de garde-fou (description + risques + buttons).
+        // L'user peut Annuler dans la modale → no launch.
+        window.IncognitoMode.confirmAndLaunch();
       }
     });
   }

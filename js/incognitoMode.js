@@ -88,6 +88,103 @@
         window.open(window.location.pathname + window.location.search + sep + URL_PARAM + "=1", "_blank", "noopener");
       }
     },
+    // 🆕 v1.31.10 : garde-fou de confirmation AVANT launch. Affiche une
+    // modale charte (pattern modale "Mise à jour disponible") avec
+    // description + risques + boutons Annuler/Activer. Si confirmé →
+    // appelle launch() (qui flush SessionPersist + ouvre nouvelle fenêtre).
+    // Si annulé → no-op.
+    //
+    // En mode incognito DÉJÀ actif : on bypass la modale et on relance
+    // direct (cas légitime : tester depuis un état "frais", l'user sait
+    // déjà ce qu'est le mode incognito).
+    confirmAndLaunch: function() {
+      if (ACTIVE) {
+        // Déjà en incognito → bypass confirm (cas légitime)
+        window.IncognitoMode.launch();
+        return;
+      }
+      // Évite double-injection si déjà ouverte
+      if (document.getElementById("kta-incognito-confirm-modal")) return;
+
+      var modal = document.createElement("div");
+      modal.id = "kta-incognito-confirm-modal";
+      modal.className = "kta-readme-modal-overlay";
+      // HTML inspiré de afficherModaleUpdateDispo (interfaceAlerts.js)
+      // pour cohérence visuelle. Couleurs adaptées : violet/lavande pour
+      // l'incognito (vs ambre pour update).
+      modal.innerHTML =
+        '<div class="kta-readme-modal-boite" style="max-width:520px; height:auto; max-height:85vh;">' +
+          '<div class="kta-readme-modal-header">' +
+            '<span class="kta-readme-modal-titre">🕵️ Activer le mode incognito ?</span>' +
+            '<button class="kta-panneau-close" id="kta-incog-confirm-close" type="button">✕</button>' +
+          '</div>' +
+          '<div class="kta-readme-modal-corps">' +
+
+            '<div class="kta-aide-section">' +
+              '<div class="kta-aide-section-titre">📋 Ce qui change</div>' +
+              '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
+                '<li><strong>Aucune donnée n\'est sauvegardée</strong> sur ton appareil (points, tracés, zones, photos, tracker, préférences thème/langue…).</li>' +
+                '<li>Une <strong>nouvelle fenêtre</strong> s\'ouvre avec le paramètre <code>?incognito=1</code>.</li>' +
+                '<li>Bordure violette + badge <code>🕵️ INCOGNITO</code> dans le titre rappellent le contexte en permanence.</li>' +
+                '<li>Le mot de passe community et le tutoriel d\'onboarding sont <strong>skippés</strong>.</li>' +
+              '</ul>' +
+            '</div>' +
+
+            '<div class="kta-aide-section">' +
+              '<div class="kta-aide-section-titre">⚠️ À savoir avant d\'activer</div>' +
+              '<div style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.25); border-radius:8px; padding:10px 12px;">' +
+                '<div style="color:#c8d0e0; font-size:12.5px; line-height:1.55;">' +
+                  'Toutes les <strong>modifs faites en incognito disparaissent</strong> à la fermeture de l\'onglet. ' +
+                  'Si tu ajoutes un POI, un tracé, une photo dans la fenêtre incognito et que tu fermes l\'onglet, ' +
+                  'tout est perdu. La <strong>fenêtre principale n\'est pas affectée</strong> — ' +
+                  'ta session courante est même sauvegardée juste avant l\'ouverture incognito (sécurité).' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="kta-aide-section">' +
+              '<div class="kta-aide-section-titre">✅ Idéal pour</div>' +
+              '<ul style="margin:8px 0 0 0; padding-left:22px; color:#c8d0e0; font-size:13px; line-height:1.7;">' +
+                '<li>Présenter un plan en <strong>démo publique</strong> sans exposer tes repérages</li>' +
+                '<li><strong>Prêter ta session</strong> à un tiers temporairement</li>' +
+                '<li><strong>Explorer un plan sensible</strong> sans polluer ton historique local</li>' +
+                '<li><strong>Tester</strong> une fonctionnalité depuis un état frais</li>' +
+              '</ul>' +
+            '</div>' +
+
+            '<div style="display:flex; gap:10px; margin-top:14px;">' +
+              '<button class="kta-btn kta-btn-ghost"   id="kta-incog-confirm-cancel" type="button" style="flex:1;">Annuler</button>' +
+              '<button class="kta-cfg-incognito-btn"   id="kta-incog-confirm-accept" type="button" style="flex:2; margin:0;">' +
+                '<span style="font-size:16px;">🕵️</span>' +
+                '<span><strong>Activer le mode incognito</strong></span>' +
+              '</button>' +
+            '</div>' +
+
+          '</div>' +
+        '</div>';
+      document.documentElement.appendChild(modal);
+
+      function _fermer() { modal.remove(); }
+      document.getElementById("kta-incog-confirm-close").addEventListener("click", _fermer);
+      document.getElementById("kta-incog-confirm-cancel").addEventListener("click", _fermer);
+      document.getElementById("kta-incog-confirm-accept").addEventListener("click", function() {
+        _fermer();
+        // Appelle launch() qui flush SessionPersist + ouvre nouvelle fenêtre
+        window.IncognitoMode.launch();
+      });
+      // Clic backdrop = cancel (équivalent Annuler)
+      modal.addEventListener("click", function(e) {
+        if (e.target === modal) _fermer();
+      });
+      // Escape ferme la modale (cohérent autres modales projet)
+      document.addEventListener("keydown", function _onEsc(e) {
+        if (e.key === "Escape" && document.getElementById("kta-incognito-confirm-modal")) {
+          _fermer();
+          document.removeEventListener("keydown", _onEsc);
+        }
+      });
+    },
+
     // 🆕 v1.31.9 : quitter le mode incognito DEPUIS UN ONGLET INCOGNITO.
     // Stratégie en cascade :
     //   1. window.close() — marche uniquement si l'onglet a été ouvert par
