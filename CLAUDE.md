@@ -18,6 +18,11 @@
 - **Syntaxe** : `node -c fichier.js` (seul filet — pas de tests auto, pas de linter).
 - **Pas de build** : `<script src="js/…">` chargés dans l'ordre par `index.html` (= source de vérité des modules).
 - **Release** : bumper ENSEMBLE `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json > version`. Détails : `docs/architecture/infra-versioning.md`.
+- **Bump = sync docs sur 4 axes** (sans MAJ = dette immédiate, à vérifier AVANT de considérer la release faite) :
+  - 📱 **In-app** : `docs/applications/README_USER.md` + `README_USER.en.md` (modale Documentation) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA)
+  - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
+  - 📖 **Dev** : `README.md` (journal des versions)
+  - 🤖 **Archi IA** : `CLAUDE.md` (si archi/règle changée) + `docs/architecture/<sujet>.md` (selon sujets impactés)
 - **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
 
 ## 🚨 Garde-fous — NE JAMAIS

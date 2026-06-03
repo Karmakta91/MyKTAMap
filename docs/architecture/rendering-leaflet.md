@@ -78,6 +78,10 @@ Ne **PAS** cacher : `README.md` (doc dev), `CLAUDE.md` (contexte IA), `js/sw.js`
 - `_splashStart()` au début de `initApp()`, `_splashEnd()` en parallèle de `lancerApplication()`.
 - **Une seule fois par session** (un changement de plan via 🗂️ ne ré-affiche PAS le splash).
 - Assets : `icon/mkm-full.png` (logo) + `icon/karma.png` (signature).
+- 🆕 **Animation reveal du titre depuis v1.30.0** : « MyKTAMap » se révèle progressivement
+  (`clip-path` 700 ms) → pause ~600 ms → « -pro » se révèle (pro uniquement, 500 ms). Même
+  easing `cubic-bezier(0.45, 0.05, 0.55, 0.95)` que la signature KARMA. Détails complets +
+  pièges de spécificité CSS : cf `ui.md §83` et `security-legal.md §84`.
 
 ---
 
@@ -103,6 +107,13 @@ Le calque `editor` dans le contrôle des couches Leaflet (label hardcoded **"Mes
 **⚠️ Bug Leaflet observé non résolu** : sur certaines configurations, le toggle off du LayerGroup ne propage PAS aux polylines roads (zones + markers OK). Une tentative de calque séparé "Mes tracés" pour les roads a été rollback car ne résolvait pas le bug. À investiguer plus tard si critique pour un user.
 
 **Label dans le contrôle des couches** : forcé hardcoded "Mes annotations" pour le calque `id: "editor"` (override le `layerConfig.label` du plan-config). Plans existants avec "Ajouts" affichent automatiquement "Mes annotations" sans regénération.
+
+🆕 **Depuis v1.30.0 (P5 viewport culling)** : sur les plans denses, les markers POI session +
+data layers ne sont plus tous `.addTo(map)` en permanence — seuls ceux dans le viewport
+agrandi de 10 % sont attachés au DOM Leaflet. Les markers restent **instanciés en RAM**
+(cache `_markersByPointId`) et sont rebind à chaque `moveend` / `zoomend`. Les markers
+d'itinéraire, Mode Secours, GPS tracker et mesure en cours ne sont **PAS cullés**.
+Cf `perf-memory.md §81` (pattern AABB complet + helpers `utils.js`/`editor.js`).
 
 ---
 

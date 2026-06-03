@@ -88,6 +88,54 @@ L'origine GIMP/image (haut-gauche) doit être convertie pour Leaflet (bas-gauche
 
 ---
 
+## 🆕 Pièges récents (v1.30+)
+
+5 pièges détectés / documentés pendant le cycle v1.29.4 → v1.31.0. Renvois vers les docs détaillées pour le contexte complet.
+
+### CSS spécificité frontière community/pro
+
+⚠️ Un `display: ...` (ou autre override) sur une classe partagée avec `.kta-licence-community` / `.kta-licence-pro` SANS scoping `html.kta-instance-pro` → **bug de spécificité garanti**. Les 2 règles ayant la même spécificité (1 classe chacune), la cascade applique la "latest declared" → côté community, le suffixe pro peut s'afficher (bug v1.30.0 corrigé en v1.30.1).
+
+✅ **Toujours scoper** sous `html.kta-instance-pro .ma-classe` les overrides côté pro qui touchent à la frontière. Cf `security-legal.md §84` (lesson learned complète).
+
+### Références directes cross-module après P3
+
+⚠️ Depuis le refactor P3 v1.31.0 (`interface.js` → 9 modules `interface*.js`), les appels directs `afficherConfig()`, `ouvrirImportSession()`, `_ouvrirCreationJonction()` sans préfixe `window.` peuvent lever `ReferenceError` au runtime si la fonction a été extraite dans un autre module.
+
+✅ **Pattern à respecter** : `if (typeof window.afficherConfig === "function") window.afficherConfig()`. Cf `ui.md §85.3` (pièges détaillés P3) + `§85.7` (À NE PAS faire).
+
+### Markers à NE PAS culler (viewport culling P5)
+
+⚠️ Depuis v1.30.0 (viewport culling markers POI), tous les markers ne sont plus attachés au DOM Leaflet en permanence. **Certaines catégories DOIVENT rester visibles** quel que soit le viewport :
+
+- Markers d'itinéraire (départ + arrivée + waypoints)
+- Markers Mode Secours (équipes, statuts)
+- Marker GPS tracker (position user)
+- Markers temporaires de mesure (workflow utilisateur en cours)
+- Markers d'éditeur en cours de placement
+
+✅ Ces markers passent par un autre pipeline que `_refreshDataMarkersViewport` ou sont marqués `_neverCull = true`. Cf `perf-memory.md §81.5` (liste complète + raisons).
+
+### Linter qui modifie un fichier entre Read et Edit (workflow Claude Code)
+
+⚠️ Sur les fichiers volumineux (`interface.js`, `secoursMode.js`, `style.css`, etc.), le linter Claude Code peut toucher le fichier juste après une `Read` mais avant l'`Edit` suivant. Résultat : `File modified since read` côté outil → l'`Edit` échoue.
+
+✅ **Solution** : re-`Read` systématiquement juste avant un `Edit` critique sur un fichier qui peut avoir été linté/modifié. Détecté pendant P3 v1.31.0 sur plusieurs lots d'extraction.
+
+### Checklist "ajouter un module JS" (3-4 sites à toucher)
+
+⚠️ Ajouter un nouveau fichier `js/xxx.js` SANS toucher aux fichiers liés = le module ne sera pas servi offline ni vu par les clients existants.
+
+✅ **Checklist obligatoire** à chaque ajout :
+
+1. **Créer** `js/xxx.js` (IIFE + API `window.MyKTAMapXxx = {...}`, cf conventions JS du CLAUDE.md racine)
+2. **Charger** dans `index.html` avec `<script src="js/xxx.js" defer></script>` à la BONNE position (= avant les modules qui le consomment ; après ses dépendances). Cf `perf-memory.md §82` sur defer
+3. **Cacher offline** dans `sw.js > ASSETS_TO_CACHE` (ajouter `"./js/xxx.js"`)
+4. **Bumper** `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build` + `version.json` (3 sources de vérité ENSEMBLE — cf CLAUDE.md racine § Release)
+5. **Sync docs sur 4 axes** : in-app + audit + dev + archi IA (cf CLAUDE.md racine § Bump = sync docs)
+
+Cf `ui.md §85.6` ("Pour ajouter une nouvelle modale") pour le pattern complet.
+
 ---
 
 ## 🛠️ Workflow de modification typique
