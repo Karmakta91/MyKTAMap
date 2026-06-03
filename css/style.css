@@ -10053,15 +10053,26 @@ body.kta-loader-active .kta-refonte-statusbar {
 
 body.kta-refonte-v1 .kta-refonte-header {
   position: fixed;
-  /* 🆕 v1.32.0 — viewport-fit=cover activé : on respecte la safe-area
-     top (notch / Dynamic Island iPhone) sinon le header passe DESSOUS
-     la barre d'état iOS et la 1ère ligne d'icônes disparait. Fallback
-     0px → comportement identique sur device sans notch (Android, PC,
-     iPhone SE / 8). */
-  top: env(safe-area-inset-top, 0px);
-  left: env(safe-area-inset-left, 0px);
-  right: env(safe-area-inset-right, 0px);
-  height: 44px;
+  /* 🩹 v1.32.0-fix1 — KARMA bug landscape : pattern précédent
+     (left: env(safe-area-inset-left), right: env(...)) créait un GAP
+     VISUEL en landscape iPhone car le background du header ne couvrait
+     plus toute la largeur écran → bandes vides à gauche du notch et à
+     droite du home indicator.
+     Nouveau pattern : background full-width (left:0, right:0, top:0) +
+     contenu positionné via padding (padding-top safe-top, padding-left
+     safe-left, padding-right safe-right). Height augmentée pour inclure
+     safe-area-inset-top (couvre la zone notch en portrait pour
+     continuité visuelle, hidden derrière le notch physique).
+     Le map en mode refonte est déjà à top: calc(44px + safe-top) → ça
+     matche pile la nouvelle hauteur header. */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(44px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;  /* height inclut padding-top */
   z-index: 1200;  /* au-dessus de Leaflet (1000) et du contrôle layers, sous les modales (99999) */
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
   border-bottom: 1px solid rgba(244, 197, 66, 0.18);
@@ -11042,12 +11053,20 @@ body.kta-refonte-v1 {
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
   position: fixed;
-  /* 🆕 v1.32.0 — viewport-fit=cover activé : safe-area-inset-bottom
-     pour ne pas être recouvert par le home indicator iPhone. Fallback
-     0px → identique sur devices sans home indicator. */
-  bottom: env(safe-area-inset-bottom, 0px);
-  left: env(safe-area-inset-left, 0px);
-  right: env(safe-area-inset-right, 0px);
+  /* 🩹 v1.32.0-fix1 — Même pattern correctif que .kta-refonte-header :
+     background full-width (bottom:0, left:0, right:0) + contenu inset
+     via padding. Pour la statusbar, padding-bottom: safe-bottom suffit
+     car la hauteur est dynamique (offsetHeight lu par JS pour mettre
+     à jour --kta-statusbar-h utilisé par #map { bottom: var(...) }).
+     Donc padding-bottom GROSSIT la statusbar de safe-bottom, --kta-statusbar-h
+     suit automatiquement, map remonte de safe-bottom → pas de gap. */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  box-sizing: border-box;
   z-index: 1200;
   background: linear-gradient(0deg, #1a1f2e 0%, #161b28 100%);
   border-top: 1px solid rgba(140, 180, 255, 0.18);

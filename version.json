@@ -1,7 +1,7 @@
 {
-  "version": "v1.32.0",
+  "version": "v1.32.0-fix1",
   "released": "2026-06-03",
   "notes": [
-    "📱 v1.32.0 — Nouvel essai d'expérience plein écran sur iPhone : la bande noire iOS au-dessus de l'app a été remplacée par un mode « transparent » qui laisse l'app s'étendre sous la barre d'état. L'heure et la batterie iPhone restent visibles (limite Apple) mais en surimpression sur le contenu sombre, comme dans Apple Maps. Tu gagnes ~47px d'espace utile en haut sur iPhone notché. Si tu remontes un bug visuel, dis-moi : on peut rollback en un commit."
+    "🩹 v1.32.0-fix1 — Correction de l'intégration header + footer sur iPhone en mode paysage (landscape). Avant le fix, ils étaient mal intégrés (le notch et le home indicator créaient des bandes vides sur les côtés). Maintenant le background couvre toute la largeur de l'écran et le contenu se positionne automatiquement à l'écart du notch et du home indicator. Note : aucun changement visible en mode portrait — c'est normal, le bénéfice de v1.32.0 est invisible en portrait car le contenu garde la même position qu'avant ; seule la nature de la barre iOS au-dessus a changé (translucide vs opaque)."
   ]
 }
