@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.31.2** (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.31.3** (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -368,6 +368,8 @@ retrouver sans cache hors-ligne).
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
 
+> **v1.31.3 (PATCH — Polish docs et aide intégrée)** : retrait des mentions de version dans la documentation utilisateur (Aide intégrée, tutoriel onboarding, README modale FR + EN). On parle désormais des fonctionnalités à l'instant T. **AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté**. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — polish docs strict.
+>
 > **v1.31.2-fix1 / v1.31.2 (PATCH — Perf P9 + nettoyage notes de version)** : optimisation interne du pan/zoom sur les plans denses en mode 🚀 Performance ULTRA + nettoyage des notes de version (user-friendly côté `version.json`, réorganisation de cette page pour mettre la promesse en haut). **AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté**. Modif strictement interne au rendu Leaflet local. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — patch perf + docs strict.
 >
 > **v1.31.1 (PATCH — Perf P7 : OOMGuard pause en arrière-plan)** : un peu de batterie économisée sur mobile quand l'app reste ouverte en arrière-plan (verrouillage écran, autre app au premier plan). **AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté**. Modif interne au module de détection des crashes mémoire. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.

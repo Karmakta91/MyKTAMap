@@ -295,7 +295,7 @@ Si l'auteur t'a remis un fichier **`Licence-pro.json`** (par mail, canal privé,
 
 **Format du fichier** : JSON minimum `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. Si le hash est manquant ou mal formé (regex stricte `MKTM-LIC-` + 32 caractères hexadécimaux), le fichier est refusé avec message d'erreur.
 
-**🆕 Depuis v1.28.5 — Voie d'accès au premier chargement** : si tu installes MyKTAMap pour la première fois sur un nouvel appareil (= écran de saisie du **code communautaire** au boot), sous le formulaire du code tu trouveras désormais un second bloc séparé par « ou » avec un bouton **📂 Importer ma licence pro**. Au clic, file picker `.json` → tu sélectionnes ton fichier → si OK l'app entre **direct en mode pro** (pas besoin de saisir le code communautaire). Pratique pour les utilisateurs pro qui découvrent l'app : pas besoin de demander le code communautaire à un tiers, la licence pro est un canal d'accès légitime en soi.
+**🆕 Voie d'accès au premier chargement** : si tu installes MyKTAMap pour la première fois sur un nouvel appareil (= écran de saisie du **code communautaire** au boot), sous le formulaire du code tu trouveras désormais un second bloc séparé par « ou » avec un bouton **📂 Importer ma licence pro**. Au clic, file picker `.json` → tu sélectionnes ton fichier → si OK l'app entre **direct en mode pro** (pas besoin de saisir le code communautaire). Pratique pour les utilisateurs pro qui découvrent l'app : pas besoin de demander le code communautaire à un tiers, la licence pro est un canal d'accès légitime en soi.
 
 > 🔒 **100 % local** : le fichier de licence est lu par le navigateur via `FileReader` puis persisté dans `localStorage`. Il n'est **jamais envoyé à un serveur**, jamais transmis. Aucune connexion réseau n'est ajoutée.
 
@@ -1222,11 +1222,11 @@ Les sections ci-dessous détaillent les fonctionnalités avancées : intégratio
 
 > 💡 **Recommandation terrain** : prépare un ou deux scénarios **AVANT** incident sur tes plans favoris pour identifier les frictions du workflow (où sont les accès, comment découper le réseau, quels niveaux par équipe). Pendant un vrai incident, tu seras en mode urgence et l'app doit être prête à dégainer en 30 secondes.
 
-### 🚨 Mode Secours — Multi-phases (depuis v1.29.0)
+### 🚨 Mode Secours — Multi-phases
 
 Un scénario peut désormais **séquencer plusieurs phases** avec debrief intercalé entre chaque. Cas d'usage terrain typique : *Phase 1 = une équipe balaye TOUS les roulages principaux sans entrer dans les chambres d'exploitation → retour de l'équipe → debrief au PC → Phase 2 = X équipes ciblent les chambres d'exploitation avec les infos remontées de Phase 1.*
 
-> 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique à v1.28.x. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
+> 💡 **Si tu n'utilises pas le multi-phases**, ne change rien : ton scénario reste avec **1 seule phase implicite** et le comportement est strictement identique au comportement précédent. Aucune pollution visuelle (badges et boutons multi-phases n'apparaissent QUE si tu crées effectivement 2+ phases).
 
 **🔧 Créer et gérer les phases (vue Edit du scénario)** :
 

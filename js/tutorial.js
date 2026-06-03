@@ -421,7 +421,7 @@
         "<p>📤 <strong>Rapport au fil des étapes</strong> à tout moment (bouton dans chaque vue Live) : " +
         "PDF imprimable / <code>.mkmsec.report.json</code> autonome / texte presse-papier. " +
         "3 scopes selon ton rôle (global opérateur / équipier seul / notes secouriste).</p>",
-      hint: "Phase 3 single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par .mkmsec.report.json (mail / clé USB / AirDrop). QR code share viendra en v1.27.0+."
+      hint: "Phase 3 single-device pour l'instant. Pour partager observations entre opérateur surface et équipiers terrain, passe par .mkmsec.report.json (mail / clé USB / AirDrop)."
     },
 
     // ═══════════════════════════════════════════════════════════════════════

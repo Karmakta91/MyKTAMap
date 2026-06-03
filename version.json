@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.2-fix1",
+  "version": "v1.31.3",
   "released": "2026-06-03",
   "notes": [
-    "🚀 v1.31.2 — Pan/zoom plus fluide sur les plans denses (100+ tracés) en mode 🚀 Performance ULTRA. Tes plans, tes tracés et tes annotations restent identiques. Aucun téléchargement supplémentaire."
+    "🧹 v1.31.3 — Polish docs et aide intégrée : retrait des mentions de version dans la documentation utilisateur (Aide, tutoriel, README modale). On parle désormais des fonctionnalités à l'instant T, sans accumuler d'historique technique. Aucun changement fonctionnel."
   ]
 }

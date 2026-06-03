@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.2</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.3</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.3 (PATCH — Polish docs et aide intégrée)</strong> : retrait des mentions de version dans la documentation utilisateur (Aide intégrée, tutoriel onboarding, README modale FR + EN). On parle désormais des fonctionnalités à l'instant T. <strong>AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — polish docs strict.
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.31.2-fix1 / v1.31.2 (PATCH — Perf P9 + nettoyage notes de version)</strong> : optimisation interne du pan/zoom sur les plans denses en mode 🚀 Performance ULTRA + nettoyage des notes de version (user-friendly côté <code>version.json</code>, réorganisation de cette page pour mettre la promesse en haut). <strong>AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté</strong>. Modif strictement interne au rendu Leaflet local.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — patch perf + docs strict.

@@ -296,7 +296,7 @@ If the author has provided you with a **`Licence-pro.json`** file (by mail, priv
 
 **File format**: minimum JSON `{"instance":"pro","license_hash":"MKTM-LIC-..."}`. If the hash is missing or malformed (strict regex `MKTM-LIC-` + 32 hexadecimal characters), the file is refused with an error message.
 
-**🆕 Since v1.28.5 — Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
+**🆕 Access route on first load**: if you install MyKTAMap for the first time on a new device (= **community code** entry screen at boot), under the code form you will now find a second block separated by "or" with a **📂 Import my pro license** button. On click, `.json` file picker → you select your file → if OK the app enters **directly into pro mode** (no need to enter the community code). Useful for pro users discovering the app: no need to ask a third party for the community code, the pro license is a legitimate access channel in itself.
 
 > 🔒 **100% local**: the license file is read by the browser via `FileReader` then persisted in `localStorage`. It is **never sent to a server**, never transmitted. No network connection is added.
 
@@ -976,7 +976,7 @@ The active mode is displayed next to the estimated time in the bottomleft label.
 
 > 💡 **Tip**: if you want to see only the path without the distance label, close the modal then reopen it in navigation mode to use the piloting buttons.
 
-#### 🚫 Avoidance preferences (since v169)
+#### 🚫 Avoidance preferences
 
 In the route modal, a collapsible section **🚫 Avoidance preferences (optional)** lets you set **soft** constraints that the pathfinder will try to respect:
 
@@ -1067,7 +1067,7 @@ The ⛑️ mode includes a **collapsible block "📚 Good practices"** at the to
 
 > ⚠️ These tips are **general principles** drawn from cataphile practice. They do not replace training, equipment and common sense. The golden rule remains: notify someone on the surface BEFORE going out, with estimated return time.
 
-### 🚨 "Panic" Emergency Mode — since v1.10.1
+### 🚨 "Panic" Emergency Mode
 
 > 💡 **Do not confuse with ⛑️ "I'm lost"**: ⛑️ calculates a theoretical area (where you may be based on a last known position + elapsed time). 🚨, on the other hand, assumes that **you KNOW where you are** (the tracker shows it), but that **you are panicking and you need vital info in large size to react quickly**.
 
@@ -1076,11 +1076,11 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 - 📍 **XL Position**: map coordinates displayed in huge characters (readable from a meter away from the phone)
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
-- ☑️ **🗺️ Route toggle** *(since v1.12.0)*: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
-- 🔋 **Battery** *(since v1.12.0)*: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
+- ☑️ **🗺️ Route toggle** **: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
+- 🔋 **Battery** **: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
 - 🌗 **Themes**: dark by default, light optional (depending on the outside environment — dim vs bright light)
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
-- 📱 **Landscape** *(since v1.12.0)*: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
+- 📱 **Landscape** **: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
 
 **When to use it?**
 - You panic at an intersection and need to re-orient yourself quickly
@@ -1096,11 +1096,11 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 
 ---
 
-### 🚨 Rescue Mode — Multi-phases (since v1.29.0)
+### 🚨 Rescue Mode — Multi-phases
 
 A scenario can now **sequence several phases** with a debrief intercalated between each. Typical field use case: *Phase 1 = one team sweeps ALL main passages without entering extraction chambers → team returns → debrief at command post → Phase 2 = X teams target the extraction chambers with the information brought back from Phase 1.*
 
-> 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to v1.28.x. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
+> 💡 **If you don't use multi-phases**, change nothing: your scenario stays with **1 single implicit phase** and the behavior is strictly identical to previous behavior. No visual pollution (multi-phase badges and buttons only appear if you actually create 2+ phases).
 
 **🔧 Create and manage phases (scenario Edit view)**:
 
@@ -1136,7 +1136,7 @@ A scenario can now **sequence several phases** with a debrief intercalated betwe
 
 ---
 
-## ⏪ Undo / Redo *(since v1.11.0)*
+## ⏪ Undo / Redo **
 
 You can **undo** and **redo** your actions on the map, up to **50 actions back**.
 
@@ -1183,7 +1183,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 ---
 
-## 🪫 Battery indicator *(since v1.12.0)*
+## 🪫 Battery indicator **
 
 The app monitors in real time the phone's battery level (when the browser exposes this info) and displays a compact indicator in 3 places:
 
@@ -1221,7 +1221,7 @@ The app uses the standard browser **Battery Status API**. This API is **no longe
 
 ---
 
-## 📊 Session statistics *(since v1.12.0)*
+## 📊 Session statistics **
 
 The **📋 Active session** modal (accessible from the new interface header, 📊 chip on mobile) now displays a statistics block at the top of the modal.
 
@@ -1249,7 +1249,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 
 ---
 
-## 📐 Distance measurement and ⬛ Area measurement *(since v1.12.0)*
+## 📐 Distance measurement and ⬛ Area measurement **
 
 > All measurement buttons are in the **📐 Measurement** group of the side bar.
 
@@ -1259,7 +1259,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 2. Click on the map to place points
 3. The total distance is displayed at the bottom left, in meters (`📐 Distance: X m`)
 
-### ⬛ Area Mode *(since v1.12.0)*
+### ⬛ Area Mode **
 
 1. In the **📐 Measurement** group, press the **📏/⬛** toggle to switch to area mode
 2. Click on the map to draw a **polygon** (at least 3 points)
@@ -1334,7 +1334,7 @@ Click on a marker you have added → the popup displays the **✏️ Edit** butt
 
 You can change whatever you want then **💾 Save**. If you rename the point AND it has photos, the photos follow automatically (transparent internal migration).
 
-### 📸 Photos attached to points (since v1.10.0)
+### 📸 Photos attached to points
 
 You can attach up to **5 photos per point** (anti-saturation limit for browser storage). 100% local — no photo is sent over the Internet.
 
@@ -1478,7 +1478,7 @@ Press **🧹**. A window opens with these options:
 
 ---
 
-## 🏛️ Structures (pillars, walls, quarry faces) — since v1.9.3
+## 🏛️ Structures (pillars, walls, quarry faces)
 
 Specific to **underground quarries**: structures let you map the load-bearing physical elements (support pillars, walls) and the progress of the working face (quarry faces). Independent from paths and areas — it's a 4th annotation layer.
 
@@ -1533,19 +1533,19 @@ Press **🧹** in the Structures group:
 
 Some quarries / galleries have **several physically stacked levels** (Glacière, Capucins, sites with stories). Multi-level mode lets you manage these maps correctly: each path/area/point belongs to a level, and the pathfinder doesn't magically traverse from one level to another through 2D visual intersections.
 
-> 📚 **Visual coherence of levels (since v169)**: when multi-level mode is enabled, paths are automatically stacked according to their level — a gallery at Level 0 always appears **ABOVE** a gallery at Level -1, and the one at Level +1 above Level 0. Within the same level: Trail (in the back) < Secondary < Main (on top). The computed route and ⛔ inaccessible areas always pass above everything to remain visible.
+> 📚 **Visual coherence of levels**: when multi-level mode is enabled, paths are automatically stacked according to their level — a gallery at Level 0 always appears **ABOVE** a gallery at Level -1, and the one at Level +1 above Level 0. Within the same level: Trail (in the back) < Secondary < Main (on top). The computed route and ⛔ inaccessible areas always pass above everything to remain visible.
 
 > ⚠️ **Optional mode** — disabled by default. Most quarries are single-level, classic mode is enough. Enable it **only** for genuinely multi-story quarries.
 
 ### Enable the mode for a map
 
-**2 ways** (since v1.7.3):
+**2 ways**:
 
 1. **When creating/modifying a map** (via 📦 Create a map or ✏️ Modify an existing map): tick the **🏗️ Multi-level map (advanced)** box in the "Map information" section. The generated ZIP contains the flag → on import, the mode is enabled automatically.
 
 2. **Manually in plan-config.json**: add `"multiLevel": true` in the `plan` section, save, reload the map.
 
-> 🔧 **Change in v1.7.3**: the ⚙️ Settings toggle to enable/disable multi-level on an already-loaded map has been removed. To enable the mode on an existing map, **go through the generator**: 🏗️ Modify an existing map → tick **🏗️ Multi-level map** → 📦 Generate the updated ZIP → reload it. This forces an explicit declaration and avoids inconsistencies between runtime state and `plan-config.json`.
+> 🔧 **Note**: the ⚙️ Settings toggle to enable/disable multi-level on an already-loaded map has been removed. To enable the mode on an existing map, **go through the generator**: 🏗️ Modify an existing map → tick **🏗️ Multi-level map** → 📦 Generate the updated ZIP → reload it. This forces an explicit declaration and avoids inconsistencies between runtime state and `plan-config.json`.
 
 > 💡 If you want to disable multi-level mode on a map, also go through the generator (untick the box and re-generate). Existing paths keep their level info in the JSON (hidden if the feature is OFF) — re-enable later without losing anything.
 
@@ -1616,7 +1616,7 @@ Junctions are erased **exactly like other paths** via the 🧹 sub-action:
 - **✂️ Last entire path** → if the junction is the last path made, it is deleted
 - **🗑️ All paths** → erases absolutely everything (routes + junctions)
 
-### Adding level info to image layers (since v162)
+### Adding level info to image layers
 
 In the **🏗️ Map generator**, each image layer (legend, hatching, etc.) has a **🏗️ Level** field (visible only when `🏗️ Multi-level map` is ticked). Enter the level the layer belongs to (integer, default `0`).
 
@@ -1701,7 +1701,7 @@ Direct download if a single file, ZIP otherwise.
 
 ### 🖼️ Export as PNG/JPG
 
-> 🆕 **v1.10.3**: the modal was previously called "Export the map", renamed to "**Export as PNG/JPG**" to clearly distinguish from the new "**Export as printable PDF**" (see next section).
+> 🆕 **Renaming notice**: the modal was previously called "Export the map", renamed to "**Export as PNG/JPG**" to clearly distinguish from the new "**Export as printable PDF**" (see next section).
 
 Press **⬆️ → 🖼️ Map as image**. A modal opens with two modes:
 
@@ -2455,7 +2455,7 @@ Enables capture of all console logs (debug + info + warnings + errors) for diagn
 - **All IndexedDB databases** (memorized handles + ZIP blobs stored on mobile + multi-rotation backups + photos POI + secours photos + your local PRO LICENSE if imported manually)
 - **Unlock Gate access code** — the app will ask for the access code at next boot
 
-**Internet pre-check (since v1.6.1)** : before the double confirmation, the app tests your Internet connection. If you're offline, a red modal warns you explicitly that the app will be unusable after the reset (no SW + empty caches → nothing to download to restart). You can force "Continue anyway" if you really want to.
+**Internet pre-check** : before the double confirmation, the app tests your Internet connection. If you're offline, a red modal warns you explicitly that the app will be unusable after the reset (no SW + empty caches → nothing to download to restart). You can force "Continue anyway" if you really want to.
 
 **Two confirmations** when online (three when offline) are then requested before execution to avoid any accidental click. Useful when:
 - The app behaves strangely (last resort)
@@ -2479,14 +2479,14 @@ Allows you to modify the **current plan** without going through ZIP regeneration
 - **🎨 Display** — Light/dark theme, marker scaling at zoom, intersection circles
 - **🐛 Debug** — Detailed logs (same as loader)
 - **🌐 KMZ Georeferencing** — Configure GPS calibration of the plan via 2 reference points (see [section 🌐 KMZ Georeferencing](#-kmz-georeferencing-calibration-2-points))
-- **🧭 Initial tracker position** — Define tracker start coordinates (X/Y) **assisted** (since v1.27.0) :
+- **🧭 Initial tracker position** — Define tracker start coordinates (X/Y) **assisted** :
   - **🔍 Choose via a point** : opens unified search to select an existing POI, auto-fills X/Y
   - **📍 Click on the map** : temporarily masks the modal, a floater appears, you click the position on the map → auto-fills X/Y + restores the modal
   - Manual entry remains possible in the X/Y fields
 
 > 💡 **Cross-app consistency** : the GPS coordinates entry in georeferencing uses the **same combined `lat, lng` format** as Ctrl+K search and KMZ export. Direct paste from Google Maps (`48.680831, 2.158843`) works everywhere uniformly.
 
-> 💡 **Time saved on the initial tracker position** (since v1.27.0) : no more need to read X/Y coordinates manually in the plan. Click on the desired position or pick an existing POI — done.
+> 💡 **Time saved on the initial tracker position** : no more need to read X/Y coordinates manually in the plan. Click on the desired position or pick an existing POI — done.
 
 ## 🏷️ Version badge in the footer (loader)
 
