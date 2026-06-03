@@ -194,6 +194,9 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.30.2 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
+  // 🆕 v1.30.2 (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
+  // — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
+  "./js/interfaceConfig.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
