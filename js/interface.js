@@ -513,7 +513,7 @@ const _origAppliquerConfig_wrap = window.appliquerConfig;
 const _origResetConfig_wrap = window.resetConfig;
 
 // =========================
-// 📤 IMPORT / EXPORT SESSION — DÉPLACÉ (v1.30.2 P3 Lot 5)
+// 📤 IMPORT / EXPORT SESSION — DÉPLACÉ (v1.31.0 P3 Lot 5)
 // =========================
 // `window.telechargerSessionJSON`, `window.importerSessionJSON`,
 // `window.ouvrirImportChoix`, `window.ouvrirImportSession` + leurs helpers
@@ -687,7 +687,7 @@ function afficherPopupChangerPlan() {
 }
 
 // =========================
-// ⚙️ CONFIG (Réglages + Perf ULTRA + Multi-niveau + Géoref) — DÉPLACÉ (v1.30.2 P3 Lot 9)
+// ⚙️ CONFIG (Réglages + Perf ULTRA + Multi-niveau + Géoref) — DÉPLACÉ (v1.31.0 P3 Lot 9)
 // =========================
 // `window.afficherConfig`, `window.appliquerConfig`, `window.resetConfig`,
 // `window.appliquerFiltreNiveau`, `window.appliquerFiltreRuntime`,
@@ -700,7 +700,7 @@ function afficherPopupChangerPlan() {
 // interface.js). Comportement runtime strictement identique à v1.30.1.
 
 // =========================
-// 🔧 MAINTENANCE — DÉPLACÉ (v1.30.2 P3 Lot 7)
+// 🔧 MAINTENANCE — DÉPLACÉ (v1.31.0 P3 Lot 7)
 // =========================
 // `window.ouvrirCalibrageEchelle`, `window.viderCacheAppli`,
 // `window.mettreAJourCodeSeul` + helpers ping connectivité
@@ -1509,7 +1509,7 @@ function initInterface() {
       window._refonteInterfaceCreerBoutonReductionRight();
     }
     // Bouton Niveau (avant les groupes accordéon topleft)
-    // 🆕 v1.30.2 P3 Lot 9 : _initLevelFilterControl extraite vers
+    // 🆕 v1.31.0 P3 Lot 9 : _initLevelFilterControl extraite vers
     // js/interfaceConfig.js → fallback via window.X.
     if (typeof window._initLevelFilterControl === "function") {
       window._initLevelFilterControl();
@@ -1583,7 +1583,7 @@ function initInterface() {
     titre: "Aide / Documentation / Légende",
     position: "topleft",
     sousActions: [
-      // 🆕 v1.30.2 P3 Lot 4 : afficherAide / afficherReadme extraites vers
+      // 🆕 v1.31.0 P3 Lot 4 : afficherAide / afficherReadme extraites vers
       // js/interfaceDocs.js et exposées via window.* — référence indirecte
       // via window.X car les identifiers locaux n'existent plus dans le
       // scope de interface.js après extraction.
@@ -1653,7 +1653,7 @@ function initInterface() {
       // v1.14.7 : retour à l'icône 📥 (l'icône classique d'import) — KARMA :
       // « plus de soucis de doublon » maintenant qu'il n'y a qu'une seule
       // entrée dans le menu, l'icône folder neutre 📂 n'était plus nécessaire.
-      // 🆕 v1.30.2 P3 Lot 5 : ouvrirImportSession extraite vers
+      // 🆕 v1.31.0 P3 Lot 5 : ouvrirImportSession extraite vers
       // js/interfaceImportExport.js → fallback via window.X.
       { icone: "📥", titre: "Importer (session MyKTAMap ou GPX externe)", onClick: function() {
           if (typeof window.ouvrirImportChoix === "function") window.ouvrirImportChoix();
@@ -2251,7 +2251,7 @@ _setGroupeModeActif("tracker", isTracking, null);
           _fermerModeRoad();
           return;
         }
-        // 🆕 v1.30.2 P3 Lot 9 : _ouvrirCreationJonction extraite vers
+        // 🆕 v1.31.0 P3 Lot 9 : _ouvrirCreationJonction extraite vers
         // js/interfaceConfig.js → fallback via window.X.
         if (typeof window._ouvrirCreationJonction === "function") {
           window._ouvrirCreationJonction(btn);
@@ -2864,7 +2864,7 @@ _setGroupeModeActif("tracker", isTracking, null);
 
 
 // =========================
-// 🗺️ ITINÉRAIRE + ÉVITEMENTS — DÉPLACÉ (v1.30.2 P3 Lot 6)
+// 🗺️ ITINÉRAIRE + ÉVITEMENTS — DÉPLACÉ (v1.31.0 P3 Lot 6)
 // =========================
 // `window.ouvrirItinerairModal` + helpers PAN+FLASH + POPUP POI +
 // LABEL DISTANCE + Presets vitesse + Évitements (points/tags/zones)
@@ -3289,7 +3289,7 @@ window.activerModeSuppressionStructureClic = function() {
 
 
 // =========================
-// 📏 DISTANCE TOTALE DES TRACÉS — DÉPLACÉ (v1.30.2 P3 Lot 2)
+// 📏 DISTANCE TOTALE DES TRACÉS — DÉPLACÉ (v1.31.0 P3 Lot 2)
 // =========================
 // Les 4 fonctions globales `window.ouvrirRoadsDistanceFloater`,
 // `window._rdEffacerHighlight`, `window.getDistanceTotaleStatus`,
@@ -3299,7 +3299,7 @@ window.activerModeSuppressionStructureClic = function() {
 // Comportement runtime strictement identique à v1.30.1.
 
 // =========================
-// 🗺️ LÉGENDE — DÉPLACÉ (v1.30.2 P3 Lot 3)
+// 🗺️ LÉGENDE — DÉPLACÉ (v1.31.0 P3 Lot 3)
 // =========================
 // `window.afficherLegende` + LEGENDE_LABELS + helpers de génération HTML
 // (4 sections : Icônes / Tracés / Zones / Structures) ont été extraits
@@ -3311,16 +3311,16 @@ window.activerModeSuppressionStructureClic = function() {
 // =========================
 // EXPORT GLOBAL
 // =========================
-// window.afficherConfig        exposée dans js/interfaceConfig.js (v1.30.2 P3 Lot 9)
-// window.appliquerConfig       exposée dans js/interfaceConfig.js (v1.30.2 P3 Lot 9)
-// window.resetConfig           exposée dans js/interfaceConfig.js (v1.30.2 P3 Lot 9)
-// window.ouvrirCalibrageEchelle exposée dans js/interfaceMaintenance.js (v1.30.2 P3 Lot 7)
-// window.viderCacheAppli       exposée dans js/interfaceMaintenance.js (v1.30.2 P3 Lot 7)
-// window.mettreAJourCodeSeul   exposée dans js/interfaceMaintenance.js (v1.30.2 P3 Lot 7)
-// window.afficherReadme exposée dans js/interfaceDocs.js (v1.30.2 P3 Lot 4)
-// window.afficherAide        exposée dans js/interfaceDocs.js (v1.30.2 P3 Lot 4)
-// window.afficherModaleAideIA exposée dans js/interfaceDocs.js (v1.30.2 P3 Lot 4)
-// window.afficherLegende     exposée dans js/interfaceLegende.js (v1.30.2 P3 Lot 3)
+// window.afficherConfig        exposée dans js/interfaceConfig.js (v1.31.0 P3 Lot 9)
+// window.appliquerConfig       exposée dans js/interfaceConfig.js (v1.31.0 P3 Lot 9)
+// window.resetConfig           exposée dans js/interfaceConfig.js (v1.31.0 P3 Lot 9)
+// window.ouvrirCalibrageEchelle exposée dans js/interfaceMaintenance.js (v1.31.0 P3 Lot 7)
+// window.viderCacheAppli       exposée dans js/interfaceMaintenance.js (v1.31.0 P3 Lot 7)
+// window.mettreAJourCodeSeul   exposée dans js/interfaceMaintenance.js (v1.31.0 P3 Lot 7)
+// window.afficherReadme exposée dans js/interfaceDocs.js (v1.31.0 P3 Lot 4)
+// window.afficherAide        exposée dans js/interfaceDocs.js (v1.31.0 P3 Lot 4)
+// window.afficherModaleAideIA exposée dans js/interfaceDocs.js (v1.31.0 P3 Lot 4)
+// window.afficherLegende     exposée dans js/interfaceLegende.js (v1.31.0 P3 Lot 3)
 // window.afficherConvertisseur retiré le 08/05/2026 — la conversion est maintenant
 // dans le modal "💾 Enregistrer la session" → onglet "🔄 Conversion" (sessionExporter.js)
 window.initInterface         = initInterface;

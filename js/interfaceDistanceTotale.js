@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE DISTANCE TOTALE — Panneau flottant + surlignage magenta
 // =========================
-// 🆕 v1.30.2 (P3 Lot 2 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 2 — découpe interface.js) : module extrait de
 // js/interface.js (lignes 8551-8824 avant extraction) pour réduire le
 // volume du fichier principal et améliorer la maintenabilité.
 //

@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.30.1";
+const CACHE_NAME = "myktamap-cache-v1.31.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -173,28 +173,28 @@ const ASSETS_TO_CACHE = [
   "./js/emergencyMode.js",
   "./js/compass.js",
   "./js/interface.js",
-  // 🆕 v1.30.2 (P3 Lot 1) : Module extrait de interface.js — modales
+  // 🆕 v1.31.0 (P3 Lot 1) : Module extrait de interface.js — modales
   // alertes publiques + sélecteur multi-alertes + modale update dispo
   "./js/interfaceAlerts.js",
-  // 🆕 v1.30.2 (P3 Lot 2) : Module extrait de interface.js — panneau
+  // 🆕 v1.31.0 (P3 Lot 2) : Module extrait de interface.js — panneau
   // Distance totale des tracés (filtres + surlignage magenta)
   "./js/interfaceDistanceTotale.js",
-  // 🆕 v1.30.2 (P3 Lot 3) : Module extrait de interface.js — modale
+  // 🆕 v1.31.0 (P3 Lot 3) : Module extrait de interface.js — modale
   // Légende plein écran (4 sections + cascade LegendCustomization)
   "./js/interfaceLegende.js",
-  // 🆕 v1.30.2 (P3 Lot 4) : Module extrait de interface.js — modales
+  // 🆕 v1.31.0 (P3 Lot 4) : Module extrait de interface.js — modales
   // documentation (README + Aide intégrée + Aide IA téléchargement)
   "./js/interfaceDocs.js",
-  // 🆕 v1.30.2 (P3 Lot 5) : Module extrait de interface.js — export
+  // 🆕 v1.31.0 (P3 Lot 5) : Module extrait de interface.js — export
   // session JSON + import (JSON/GPX/KMZ) + modale de choix d'import
   "./js/interfaceImportExport.js",
-  // 🆕 v1.30.2 (P3 Lot 6) : Module extrait de interface.js — modale
+  // 🆕 v1.31.0 (P3 Lot 6) : Module extrait de interface.js — modale
   // Itinéraire + POPUP POI + LABEL DISTANCE + Presets + Évitements
   "./js/interfaceItineraire.js",
-  // 🆕 v1.30.2 (P3 Lot 7) : Module extrait de interface.js — calibrage
+  // 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
-  // 🆕 v1.30.2 (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
+  // 🆕 v1.31.0 (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
   // — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
   "./js/interfaceConfig.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)

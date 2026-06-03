@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE DOCS — Modales doc README + AIDE + AIDE IA
 // =========================
-// 🆕 v1.30.2 (P3 Lot 4 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 4 — découpe interface.js) : module extrait de
 // js/interface.js (3 blocs : 1308-1751, 1752-2356, 8570-8806 avant
 // extraction) pour réduire le volume du fichier principal.
 //
@@ -1145,7 +1145,7 @@ function _genererContenuContexteIA(aiContextTemplate, readmeUserText) {
 
 
 // =========================
-// 🚨 MODALES ALERTES + MISE À JOUR — DÉPLACÉES (v1.30.2 P3 Lot 1)
+// 🚨 MODALES ALERTES + MISE À JOUR — DÉPLACÉES (v1.31.0 P3 Lot 1)
 // =========================
 // Les 4 fonctions globales `window.afficherModaleAlerteAbsente`,
 // `window.afficherSelecteurAlertes`, `window.afficherModaleAlerte`,
@@ -1335,7 +1335,7 @@ window.afficherModaleAideIA = function() {
 };
 
 // ==========================================
-// EXPORTS WINDOW (v1.30.2 P3 Lot 4)
+// EXPORTS WINDOW (v1.31.0 P3 Lot 4)
 // ==========================================
 // afficherReadme et afficherAide étaient référencés depuis interface.js
 // via leur identifier non-qualifié (function declarations top-level).

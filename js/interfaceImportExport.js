@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE IMPORT / EXPORT SESSION — JSON + GPX
 // =========================
-// 🆕 v1.30.2 (P3 Lot 5 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 5 — découpe interface.js) : module extrait de
 // js/interface.js (lignes 515-1184 avant extraction) pour réduire le
 // volume du fichier principal.
 //
@@ -718,7 +718,7 @@ function ouvrirImportSession() {
 
 
 // ==========================================
-// EXPORTS WINDOW (v1.30.2 P3 Lot 5)
+// EXPORTS WINDOW (v1.31.0 P3 Lot 5)
 // ==========================================
 // telechargerSessionJSON, importerSessionJSON, ouvrirImportSession
 // étaient référencés depuis interface.js via leur identifier local

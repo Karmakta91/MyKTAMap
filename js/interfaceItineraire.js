@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE ITINÉRAIRE — Pathfinder UI + Évitements + Presets vitesse
 // =========================
-// 🆕 v1.30.2 (P3 Lot 6 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 6 — découpe interface.js) : module extrait de
 // js/interface.js (2 plages : 4913-5105 + 5516-6846 avant extraction)
 // pour réduire le volume du fichier principal. Lot 6 + Lot 8 du plan
 // initial ont été fusionnés ici car l'itinéraire et les évitements
@@ -251,7 +251,7 @@ window.itineraireAjouterWaypoint = function(x, y, nom) {
 
 
 // ==========================================
-// 🆕 v1.30.2 P3 Lot 6 — coupure plage 5106-5515 (SUPPRESSION clic)
+// 🆕 v1.31.0 P3 Lot 6 — coupure plage 5106-5515 (SUPPRESSION clic)
 //      reste dans interface.js — pas de dep partagée avec l'itinéraire
 // ==========================================
 

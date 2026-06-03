@@ -174,10 +174,29 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.30.1</strong> (2 juin 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.0</strong> (3 juin 2026).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.0 (Release MINOR — Refactoring interne <code>js/interface.js</code> en 8 modules)</strong> :
+    <strong>AUCUNE nouvelle surface réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur.</strong>
+    Pure réorganisation de code interne. Le fichier <code>js/interface.js</code> (qui avait grossi à ~9 900 lignes monolithiques au fil des versions v1.5 → v1.30.x) a été découpé en 8 modules thématiques pour améliorer la maintenabilité — sans toucher au comportement runtime.
+    <strong>7 nouveaux fichiers JS</strong> créés et ajoutés à <code>ASSETS_TO_CACHE</code> du Service Worker (servis same-origin via le SW, couvert par la règle <code>connect-src 'self'</code> déjà en place) :
+    <code>js/interfaceAlerts.js</code> (modales alertes/update),
+    <code>js/interfaceDistanceTotale.js</code> (panneau magenta),
+    <code>js/interfaceLegende.js</code> (modale Légende),
+    <code>js/interfaceDocs.js</code> (README + Aide + Aide IA),
+    <code>js/interfaceImportExport.js</code> (export session + import JSON/GPX/KMZ),
+    <code>js/interfaceItineraire.js</code> (modale Itinéraire + évitements + presets vitesse),
+    <code>js/interfaceMaintenance.js</code> (calibrage + reset + mise à jour douce),
+    <code>js/interfaceConfig.js</code> (modale Réglages + Perf ULTRA + M-LVL + Géoref).
+    <code>js/interface.js</code> passe de 9 894 lignes à 3 326 lignes (-66.4 %, ~6 568 lignes déplacées).
+    <strong>Aucune nouvelle dépendance externe</strong>, <strong>aucun nouveau fetch</strong>, <strong>aucune nouvelle API browser instrumentée</strong>. Les modules sont chargés via <code>&lt;script src defer&gt;</code> dans <code>index.html</code> (ordre cosmétique préservé). L'historique des appels réseau (cf. <code>window.NetworkAudit.getLog()</code> côté UI) est strictement identique à v1.30.1.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>8 nouveaux entries dans <code>ASSETS_TO_CACHE</code></strong> + bump <code>CACHE_NAME</code> à <code>v1.31.0</code>.
+    Verdict : ✅ aucune régression — release de refactor interne strictement neutre côté réseau, gain DX (developer experience) uniquement.
   </p>
 
   <p class="meta" style="margin-top:6px;">

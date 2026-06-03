@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE LÉGENDE — Modale plein écran avec sections groupées
 // =========================
-// 🆕 v1.30.2 (P3 Lot 3 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 3 — découpe interface.js) : module extrait de
 // js/interface.js (lignes 8561-9009 avant extraction) pour réduire
 // le volume du fichier principal.
 //

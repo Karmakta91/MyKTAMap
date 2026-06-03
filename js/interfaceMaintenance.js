@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE MAINTENANCE — Calibrage + Reset + Mise à jour douce
 // =========================
-// 🆕 v1.30.2 (P3 Lot 7 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 7 — découpe interface.js) : module extrait de
 // js/interface.js (lignes 1671-2326 avant extraction) pour réduire le
 // volume du fichier principal.
 //
@@ -706,7 +706,7 @@ function _resetFlowConfirmation() {
 }
 
 // ==========================================
-// EXPORTS WINDOW (v1.30.2 P3 Lot 7)
+// EXPORTS WINDOW (v1.31.0 P3 Lot 7)
 // ==========================================
 // ouvrirCalibrageEchelle, viderCacheAppli, mettreAJourCodeSeul
 // étaient exposés depuis interface.js > EXPORT GLOBAL (lignes 5364-5366

@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE ALERTS — Modales d'alertes publiques + mise à jour
 // =========================
-// 🆕 v1.30.2 (P3 Lot 1 — découpe interface.js) : module extrait de
+// 🆕 v1.31.0 (P3 Lot 1 — découpe interface.js) : module extrait de
 // js/interface.js (lignes 9324-9701 avant extraction) pour réduire le
 // volume du fichier principal et améliorer la maintenabilité.
 //

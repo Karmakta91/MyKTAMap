@@ -7,7 +7,7 @@
 // =========================
 // INTERFACE CONFIG — Modale Réglages + Perf ULTRA + Multi-niveau + Géoref
 // =========================
-// 🆕 v1.30.2 (P3 Lot 9 — découpe interface.js, DERNIER LOT) : module
+// 🆕 v1.31.0 (P3 Lot 9 — découpe interface.js, DERNIER LOT) : module
 // extrait de js/interface.js (4 plages contiguës avant extraction)
 // pour réduire le volume du fichier principal.
 //
@@ -1470,7 +1470,7 @@ function _initLevelFilterControl() {
 }
 
 // ==========================================
-// EXPORTS WINDOW (v1.30.2 P3 Lot 9)
+// EXPORTS WINDOW (v1.31.0 P3 Lot 9)
 // ==========================================
 // 3 fonctions publiques classiques (étaient dans le bloc EXPORT
 // GLOBAL de interface.js, lignes 3294-3296 avant ce lot) :
