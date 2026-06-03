@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.10-fix1",
+  "version": "v1.31.10-fix2",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.10-fix1 — Deux correctifs du mode incognito : (1) la popup « Authentification renforcée disponible » ne s'affiche plus du tout en incognito (KARMA avait raison, c'était une modale différente du gate PIN). (2) La bordure violette reste maintenant visible en permanence, y compris quand un plan est chargé (avant elle disparaissait derrière la carte)."
+    "🩹 v1.31.10-fix2 — La bordure violette du mode incognito a maintenant des coins arrondis (40px) pour épouser les coins de l'écran iPhone. Avant, sur iPhone, les coins de la bordure étaient visuellement tronqués par les coins arrondis de l'écran. Effet aussi plus doux sur desktop."
   ]
 }
