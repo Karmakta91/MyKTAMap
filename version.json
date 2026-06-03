@@ -1,7 +1,7 @@
 {
-  "version": "v1.32.0-fix2",
+  "version": "v1.31.10-fix1",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.32.0-fix2 — La bordure violette du mode incognito repart edge-to-edge du viewport iPhone (revert de l'inset safe-area appliqué en v1.32.0). En paysage, ça enlève les marges visibles autour de la bordure. Les parties de bordure qui passent derrière le notch ou le home indicator sont physiquement hors de l'écran rendu (zone « trou ») donc invisibles — résultat visuel : bordure continue, plus joli."
+    "🩹 v1.31.10-fix1 — Deux correctifs du mode incognito : (1) la popup « Authentification renforcée disponible » ne s'affiche plus du tout en incognito (KARMA avait raison, c'était une modale différente du gate PIN). (2) La bordure violette reste maintenant visible en permanence, y compris quand un plan est chargé (avant elle disparaissait derrière la carte)."
   ]
 }

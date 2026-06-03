@@ -1763,10 +1763,7 @@ img.kta-popup-photo-mini:focus-visible {
 .kta-supp-trace-floater {
   position: fixed;
   left: 50%;
-  /* 🆕 v1.32.0 — viewport-fit=cover : ajoute safe-area-inset-bottom
-     au 20px de base pour rester au-dessus du home indicator iPhone.
-     Fallback 0px → identique sur autres devices. */
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 107, 107, 0.5);
@@ -7618,9 +7615,7 @@ html.kta-theme-light .loader-btn-help.loader-btn-lock:active {
 .kta-iti-floater {
   position: fixed;
   left: 50%;
-  /* 🆕 v1.32.0 — viewport-fit=cover : safe-area-inset-bottom ajouté au
-     20px de base, pour rester au-dessus du home indicator iPhone. */
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  bottom: 20px;
   transform: translateX(-50%);
   background: #1a1f2e;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -10053,26 +10048,10 @@ body.kta-loader-active .kta-refonte-statusbar {
 
 body.kta-refonte-v1 .kta-refonte-header {
   position: fixed;
-  /* 🩹 v1.32.0-fix1 — KARMA bug landscape : pattern précédent
-     (left: env(safe-area-inset-left), right: env(...)) créait un GAP
-     VISUEL en landscape iPhone car le background du header ne couvrait
-     plus toute la largeur écran → bandes vides à gauche du notch et à
-     droite du home indicator.
-     Nouveau pattern : background full-width (left:0, right:0, top:0) +
-     contenu positionné via padding (padding-top safe-top, padding-left
-     safe-left, padding-right safe-right). Height augmentée pour inclure
-     safe-area-inset-top (couvre la zone notch en portrait pour
-     continuité visuelle, hidden derrière le notch physique).
-     Le map en mode refonte est déjà à top: calc(44px + safe-top) → ça
-     matche pile la nouvelle hauteur header. */
   top: 0;
   left: 0;
   right: 0;
-  height: calc(44px + env(safe-area-inset-top, 0px));
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  box-sizing: border-box;  /* height inclut padding-top */
+  height: 44px;
   z-index: 1200;  /* au-dessus de Leaflet (1000) et du contrôle layers, sous les modales (99999) */
   background: linear-gradient(180deg, #1a1f2e 0%, #161b28 100%);
   border-bottom: 1px solid rgba(244, 197, 66, 0.18);
@@ -11053,20 +11032,9 @@ body.kta-refonte-v1 {
 
 body.kta-refonte-v1 .kta-refonte-statusbar {
   position: fixed;
-  /* 🩹 v1.32.0-fix1 — Même pattern correctif que .kta-refonte-header :
-     background full-width (bottom:0, left:0, right:0) + contenu inset
-     via padding. Pour la statusbar, padding-bottom: safe-bottom suffit
-     car la hauteur est dynamique (offsetHeight lu par JS pour mettre
-     à jour --kta-statusbar-h utilisé par #map { bottom: var(...) }).
-     Donc padding-bottom GROSSIT la statusbar de safe-bottom, --kta-statusbar-h
-     suit automatiquement, map remonte de safe-bottom → pas de gap. */
   bottom: 0;
   left: 0;
   right: 0;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  box-sizing: border-box;
   z-index: 1200;
   background: linear-gradient(0deg, #1a1f2e 0%, #161b28 100%);
   border-top: 1px solid rgba(140, 180, 255, 0.18);
@@ -17055,14 +17023,6 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
 html.kta-incognito body::before {
   content: "";
   position: fixed;
-  /* 🩹 v1.32.0-fix2 — KARMA bug : en landscape la safe-area-inset-bottom
-     (~21px home indicator) créait une MARGE visible au bas de la bordure.
-     Revert au pattern v1.31.10-fix1 : edge-to-edge du viewport.
-     Raisonnement : les parties qui passent derrière le notch + home
-     indicator sont physiquement HORS de l'écran rendu (zone "trou"),
-     donc invisibles. Pas un problème visuel d'avoir top:0/bottom:0,
-     au contraire la bordure parait continue. Mieux que d'avoir une
-     marge visible inset. */
   top: 0;
   left: 0;
   right: 0;
