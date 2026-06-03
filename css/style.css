@@ -17031,15 +17031,6 @@ html.kta-incognito body::before {
   border: 5px solid #a78bfa;
   /* Couche intérieure plus saturée pour effet "double bordure" */
   box-shadow: inset 0 0 0 3px rgba(124, 58, 237, 0.5);
-  /* 🩹 v1.31.10-fix2 — KARMA : coins arrondis pour iPhone.
-     Les écrans iPhone modernes (X+) ont des coins arrondis ~38-44px.
-     Une bordure rectangulaire est visuellement tronquée derrière ces
-     coins → effet "coins coupés" peu esthétique. border-radius: 40px
-     suit ces coins → bordure harmonieuse sur iPhone. Sur desktop /
-     Android à écran carré, ça donne juste des coins légèrement
-     arrondis → également plus doux à l'œil que des angles à 90°.
-     Le box-shadow inset suit automatiquement le border-radius. */
-  border-radius: 40px;
   z-index: 999999;
 }
 
