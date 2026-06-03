@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.5-fix1",
+  "version": "v1.31.6",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.5-fix1 — Correction critique du mode hors-ligne : l'app ne plantait plus partiellement quand un fichier nouvellement ajouté à la version (ex: un chunk CSS) n'était pas encore présent dans le cache local. Le Service Worker renvoie désormais une réponse propre dans tous les cas. Aucun changement fonctionnel volontaire."
+    "♿ v1.31.6 — Petites améliorations d'accessibilité : si tu as activé « Réduire les animations » dans les réglages de ton système, l'app les réduit aussi. Sur PC, la touche Échap ferme désormais les modales, et la navigation au clavier (Tab) montre clairement quel bouton est sélectionné. Aucun changement fonctionnel."
   ]
 }

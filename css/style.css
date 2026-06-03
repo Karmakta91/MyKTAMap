@@ -16924,3 +16924,68 @@ body.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta,
 html.kta-theme-light .kta-scale-coherence-critical .kta-scale-coherence-delta {
   color: #b01010;
 }
+
+/* =========================================================================
+   🆕 v1.31.6 — UX2 a11y : prefers-reduced-motion (cf ui.md §88.1)
+   =========================================================================
+   Désactive (raccourcit à 0.01ms = effectivement instantané) toutes les
+   animations CSS quand l'utilisateur a activé la préférence système
+   "Réduire les animations" (Settings macOS, iOS, Android, Windows).
+   Public : sensibilité épileptique, vertiges, vestibulaire, autisme, ou
+   simple préférence. Pattern WCAG 2.1 SC 2.3.3 (Animation from Interactions).
+   ========================================================================= */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* =========================================================================
+   🆕 v1.31.6 — UX5 a11y : focus-visible sur boutons charte (cf ui.md §88.2)
+   =========================================================================
+   Outline ambre (charte) visible uniquement en navigation clavier
+   (Tab/Shift+Tab), pas au clic souris — `:focus-visible` natif.
+   Variant thème clair : orange charte plus saturé (#b8860b).
+   ========================================================================= */
+.kta-btn:focus-visible,
+.kta-btn-action:focus-visible,
+.kta-btn-primary:focus-visible,
+.kta-btn-secondary:focus-visible,
+.kta-btn-danger:focus-visible,
+.kta-readme-modal-close:focus-visible,
+.kta-panneau-close:focus-visible,
+.kta-config-toggle-row:focus-visible,
+.kta-toast-close:focus-visible,
+.kta-cfg-actions-bar button:focus-visible {
+  outline: 2px solid #f4c542;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+body.kta-theme-light .kta-btn:focus-visible,
+html.kta-theme-light .kta-btn:focus-visible,
+body.kta-theme-light .kta-btn-action:focus-visible,
+html.kta-theme-light .kta-btn-action:focus-visible,
+body.kta-theme-light .kta-btn-primary:focus-visible,
+html.kta-theme-light .kta-btn-primary:focus-visible,
+body.kta-theme-light .kta-btn-secondary:focus-visible,
+html.kta-theme-light .kta-btn-secondary:focus-visible,
+body.kta-theme-light .kta-btn-danger:focus-visible,
+html.kta-theme-light .kta-btn-danger:focus-visible,
+body.kta-theme-light .kta-readme-modal-close:focus-visible,
+html.kta-theme-light .kta-readme-modal-close:focus-visible,
+body.kta-theme-light .kta-panneau-close:focus-visible,
+html.kta-theme-light .kta-panneau-close:focus-visible,
+body.kta-theme-light .kta-config-toggle-row:focus-visible,
+html.kta-theme-light .kta-config-toggle-row:focus-visible,
+body.kta-theme-light .kta-toast-close:focus-visible,
+html.kta-theme-light .kta-toast-close:focus-visible,
+body.kta-theme-light .kta-cfg-actions-bar button:focus-visible,
+html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
+  outline-color: #b8860b;
+}

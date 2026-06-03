@@ -1386,10 +1386,10 @@ par défaut.
 
 #### 88.5 Décisions prises au fil des releases
 
-| Release | Pain points adressés |
-|---|---|
-| **v1.31.6** (à venir) | UX2 reduced-motion, UX4 Escape, UX5 focus-visible (= « quick wins a11y/keyboard ») |
-| Plus tard, à voir | UX1 alert/confirm cleanup, UX6 toasts unifiés, UX7 découpe secoursMode, UX3 CSS refactor (massif) |
+| Release | Pain points adressés | Statut |
+|---|---|---|
+| **v1.31.6** | UX2 reduced-motion (CSS), UX4 Escape (utils.js global handler avec whitelist), UX5 focus-visible (CSS ambre charte) | ✅ Done |
+| Plus tard, à voir | UX1 alert/confirm cleanup, UX6 toasts unifiés, UX7 découpe secoursMode, UX3 CSS refactor (massif), UX8 aria-* enrichi | 📋 Reporté |
 
 #### 88.6 Méthodologie de re-validation (futur)
 

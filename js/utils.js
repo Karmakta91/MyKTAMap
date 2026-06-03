@@ -2511,3 +2511,105 @@ async function telechargerPlan() {
 }
 
 window.telechargerPlan = telechargerPlan;
+
+// =========================================================================
+// 🆕 v1.31.6 — UX4 a11y : gestion globale Escape pour les modales
+// =========================================================================
+// Listener unique au document. Pattern :
+//   1. Trouve l'overlay modal le PLUS HAUT (z-index max) parmi une liste
+//      blanche d'overlays connus (modales fonctionnelles, PAS les gates).
+//   2. Tente de cliquer son bouton de fermeture (sélecteurs charte).
+//   3. Sinon dispatch un clic sur l'overlay lui-même (pattern "clic dehors"
+//      déjà géré par de nombreuses modales).
+//
+// 10 modules concernés (cf ui.md §88.2) : batteryGuard, debug, editor,
+// interfaceDistanceTotale, interfaceDocs, interfaceItineraire,
+// interfaceLegende, interfaceMaintenance, legendCustomization, copyright.
+//
+// ⚠️ Liste blanche STRICTE : on EXCLUT les gates de sécurité (UnlockGate,
+// PinLock) et le splash boot. Sinon Escape bypasserait une protection ou
+// interromprait un boot critique.
+//
+// Pattern défensif : try/catch sur chaque opération. Un Escape qui plante
+// NE doit JAMAIS casser l'application. C'est de l'a11y, pas du contrôle
+// de flux métier.
+// =========================================================================
+(function() {
+  "use strict";
+
+  var ESCAPABLE_OVERLAYS = [
+    ".kta-readme-modal-overlay",  // modales charte communes (Doc, Aide, Aide IA, Inspecteur, Stats globales, Légende, Itinéraire, Calibrage, Maintenance, Update, Alertes, Mode Secours sub-modales, Export sessions, etc.)
+    ".kta-cfg-modal-overlay",     // modale Réglages (config)
+    ".kta-secours-modal-overlay", // modale Mode Secours principale
+    ".kta-fp-overlay",            // modale Filtres ≡
+    ".kta-emergency-overlay",     // Mode urgence / Lost Mode
+    ".kta-toast"                  // toast actif (le close revient à le dismiss)
+  ];
+
+  var CLOSE_BUTTON_SELECTORS = [
+    ".kta-readme-modal-close",    // X charte standard
+    ".kta-panneau-close",         // X panneau variant
+    ".kta-modal-close",           // X générique
+    "[data-kta-close-modal]",     // marqueur explicite (futur)
+    ".kta-toast-close",           // X toast
+    ".kta-btn-close"              // X bouton générique
+  ];
+
+  function _findTopEscapableOverlay() {
+    try {
+      var overlays = document.querySelectorAll(ESCAPABLE_OVERLAYS.join(","));
+      var top = null;
+      var topZ = -1;
+      for (var i = 0; i < overlays.length; i++) {
+        var el = overlays[i];
+        var cs = getComputedStyle(el);
+        if (cs.display === "none" || cs.visibility === "hidden") continue;
+        var z = parseInt(cs.zIndex, 10);
+        if (isNaN(z)) z = 0;
+        if (z > topZ) {
+          topZ = z;
+          top = el;
+        }
+      }
+      return top;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function _findCloseButton(overlay) {
+    try {
+      for (var i = 0; i < CLOSE_BUTTON_SELECTORS.length; i++) {
+        var btn = overlay.querySelector(CLOSE_BUTTON_SELECTORS[i]);
+        if (btn) return btn;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function _onKeydown(e) {
+    if (e.key !== "Escape" && e.key !== "Esc") return;
+
+    var overlay = _findTopEscapableOverlay();
+    if (!overlay) return;
+
+    // 1. Bouton close prioritaire
+    var btn = _findCloseButton(overlay);
+    if (btn) {
+      try {
+        btn.click();
+        e.preventDefault();
+        return;
+      } catch (err) { /* fall-through */ }
+    }
+
+    // 2. Sinon clic dispatché sur l'overlay (pattern "clic dehors")
+    try {
+      var clickEvent = new MouseEvent("click", { bubbles: true, cancelable: true });
+      overlay.dispatchEvent(clickEvent);
+      e.preventDefault();
+    } catch (err) { /* swallow — a11y ne doit pas casser l'app */ }
+  }
+
+  document.addEventListener("keydown", _onKeydown);
+})();

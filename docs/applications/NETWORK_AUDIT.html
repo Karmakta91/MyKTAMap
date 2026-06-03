@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.5-fix1</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.6</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.6 (PATCH — Quick wins a11y/keyboard issus de l'audit UX C1)</strong> : 3 améliorations d'accessibilité issues de l'audit UX C1 (cf <code>docs/architecture/ui.md §88</code>). <strong>UX2</strong> : support <code>prefers-reduced-motion</code> — toutes les animations CSS de l'app (splash, anim reveal titre, fade-in modales) sont réduites à 0,01 ms si l'utilisateur a activé la préférence système (macOS / iOS / Android / Windows). <strong>UX4</strong> : gestion globale de la touche Escape — un listener unique au document détecte la modale active (z-index max parmi une liste blanche stricte qui EXCLUT volontairement UnlockGate / PinLock / splash) et tente son bouton de fermeture, sinon dispatch un clic sur l'overlay. <strong>UX5</strong> : <code>:focus-visible</code> ambre sur les boutons charte (<code>.kta-btn-*</code>, <code>.kta-readme-modal-close</code>, etc.) — outline 2px de couleur charte visible uniquement en navigation clavier. <strong>AUCUN impact réseau</strong> (3 changements strictement CSS + 1 listener clavier interne), <strong>aucune nouvelle permission, aucun nouveau fetch ajouté, aucun nouveau fichier</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — patch a11y/keyboard strictement neutre côté réseau, gain user-perceptible uniquement pour la navigation clavier et l'a11y motion-sensitive.
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.31.5-fix1 (HOTFIX — Service Worker offline <code>respondWith</code> null)</strong> : correction d'un bug critique du mode hors-ligne révélé par l'extension des chunks lazy CSS (v1.31.4 + v1.31.5). Avant le fix : le <code>.catch()</code> du fetch handler du Service Worker retournait <code>undefined</code> quand la requête échouait ET n'était pas un document HTML → <code>event.respondWith(undefined)</code> → erreur browser « fetch Event respondWith received an error, returned response is null » → rendu partiel cassé. Conditions de déclenchement : asset demandé non présent dans le cache (typiquement un chunk CSS v1.31.4+ pas encore caché) + requête réseau en échec (offline). Après le fix : le <code>.catch()</code> retourne TOUJOURS une <code>Response</code> valide (504 pour les assets non-document, fallback <code>./index.html</code> ou 504 inline pour les documents). <strong>AUCUN impact réseau</strong> (correction strictement interne au Service Worker), <strong>aucune nouvelle permission, aucun nouveau fetch ajouté</strong>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — hotfix défensif strictement neutre côté réseau, restaure le comportement attendu en hors-ligne pour tous les assets.
