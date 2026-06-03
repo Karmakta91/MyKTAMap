@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.10-fix1",
+  "version": "v1.32.1",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.10-fix1 — Deux correctifs du mode incognito : (1) la popup « Authentification renforcée disponible » ne s'affiche plus du tout en incognito (KARMA avait raison, c'était une modale différente du gate PIN). (2) La bordure violette reste maintenant visible en permanence, y compris quand un plan est chargé (avant elle disparaissait derrière la carte)."
+    "📱 v1.32.1 — Nouvel essai mode plein écran via le manifest PWA : passage de display:standalone à display:fullscreen avec fallback automatique vers standalone si non supporté. Sur Android Chrome, ça active un vrai mode plein écran (la barre système Android disparaît). Sur iPhone, Apple ignore display:fullscreen et reste en standalone (barre iOS toujours visible — c'est une limitation Apple PWA non contournable). Si bug : revert facile."
   ]
 }

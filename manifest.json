@@ -3,7 +3,8 @@
   "short_name": "MyKTAMap",
   "start_url": "./index.html",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
   "background_color": "#111827",
   "theme_color": "#111827",
   "icons": [
