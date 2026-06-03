@@ -23,7 +23,11 @@
   - 🔒 **Audit** : `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html`
   - 📖 **Dev** : `README.md` (journal des versions)
   - 🤖 **Archi IA** : `CLAUDE.md` (si archi/règle changée) + `docs/architecture/<sujet>.md` (selon sujets impactés)
-- **`version.json > notes` = USER-FRIENDLY** (lues par l'user via modale « Mise à jour disponible » et badge version footer) : **1-2 phrases courtes**, zéro jargon technique (pas de noms de fichier `js/...`, pas de constantes `LIKE_THIS`, pas de termes algorithmiques, pas de mention `O(N)`/`AbortController`/`viewportcull`/etc.). Ne mentionne **QUE** ce que l'user voit ou doit savoir. La doc technique détaillée vit dans `docs/architecture/<sujet>.md` (+ commit message + `NETWORK_AUDIT` pour le réseau), **PAS** dans `version.json`. Pas de ligne « Sources de vérité v1.X.Y » (= dette technique inutile à l'user).
+- **`version.json > notes` = USER-FRIENDLY + UNIQUEMENT LE DERNIER BUMP** (lues par l'user via modale « Mise à jour disponible » et badge version footer) :
+  - **Scope** : UNIQUEMENT les notes de la version courante (1-2 entrées max). Les notes des versions précédentes sont **supprimées** à chaque bump — l'historique vit dans `README.md` (journal), les commits Git, et `NETWORK_AUDIT.md`. Pas de cumul.
+  - **Style** : **1-2 phrases courtes**, zéro jargon technique (pas de noms de fichier `js/...`, pas de constantes `LIKE_THIS`, pas de termes algorithmiques, pas de mention `O(N)`/`AbortController`/`viewportcull`/etc.). Ne mentionne **QUE** ce que l'user voit ou doit savoir.
+  - **Pas de ligne « Sources de vérité v1.X.Y »** (= dette technique inutile à l'user).
+  - La doc technique détaillée vit dans `docs/architecture/<sujet>.md` + commit message + `NETWORK_AUDIT` pour le réseau, **PAS** dans `version.json`.
 - **Déploiement** : prod = **FTP manuel par KARMA**. Claude ne déploie/push-main JAMAIS.
 
 ## 🚨 Garde-fous — NE JAMAIS
