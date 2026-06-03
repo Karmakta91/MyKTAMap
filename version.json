@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.3",
+  "version": "v1.31.4",
   "released": "2026-06-03",
   "notes": [
-    "🧹 v1.31.3 — Polish docs et aide intégrée : retrait des mentions de version dans la documentation utilisateur (Aide, tutoriel, README modale). On parle désormais des fonctionnalités à l'instant T, sans accumuler d'historique technique. Aucun changement fonctionnel."
+    "🎨 v1.31.4 — Démarrage plus rapide : les styles du Mode Secours (~13 % du CSS de l'app) sont désormais chargés à la demande, pas au boot. Aucun changement visible côté utilisateur."
   ]
 }

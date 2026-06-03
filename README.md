@@ -8,7 +8,7 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.31.3` (03/06/2026) — PATCH **polish docs** : retrait des mentions de version dans la documentation utilisateur (Aide intégrée, tutoriel onboarding, README modale FR + EN). On parle désormais des fonctionnalités à l'instant T, sans accumuler d'historique. Aucun changement fonctionnel.
+**📦 Version courante** : `v1.31.4` (03/06/2026) — PATCH **perf P2** : progressive lazy CSS — feuille `style-secours.css` (~2 750 LOC) extraite de `style.css` principal (-12,9 %) et chargée à la demande au boot du module Mode Secours via nouveau helper `window._loadCssOnce`. Allège le parse CSS bloquant au boot. Aucun changement UX visible.
 **📦 Précédentes shipped main** : `v1.31.1` (perf P7 OOMGuard pause sur visibilitychange) ; `v1.31.0` (Refactor MINOR : `interface.js` → 9 modules thématiques, -66 % LOC) ; `v1.30.1` (HOTFIX CSS frontière community/pro) ; `v1.30.0` (Perf boot : `defer` 51 scripts + timeout 1500 ms fetches + viewport culling markers POI + animation reveal titre) ; `v1.29.4` (Infra/DX : selfhost ZIP auto + CLAUDE.md slim + guard-git affiné) ; `v1.29.0+fix3` (i18n P0 README EN + Mode Secours multi-phases) ; `v1.25.3` (Carte tutoriel Mode Secours)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 

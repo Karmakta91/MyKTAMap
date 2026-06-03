@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.31.3** (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.31.4** (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -368,6 +368,8 @@ retrouver sans cache hors-ligne).
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
 
+> **v1.31.4 (PATCH — Perf P2 : progressive lazy CSS pour Mode Secours)** : démarrage plus rapide grâce au chargement à la demande des styles du Mode Secours. La feuille `css/style-secours.css` (~2 750 lignes, ~13 % du CSS de l'app) est désormais extraite de `css/style.css` principal et chargée à la demande au boot du module `secoursMode.js` via un nouveau helper `window._loadCssOnce`. **AUCUN impact réseau** (1 fichier CSS local de plus servi same-origin via le Service Worker, couvert par `connect-src 'self'` déjà en place), **aucune nouvelle permission, aucun changement de comportement runtime utilisateur**. 2 nouveaux fichiers (`./css/style-secours.css` + `./js/cssLazy.js`) ajoutés à `ASSETS_TO_CACHE`. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — perf boot strictement neutre côté réseau, gain user-perceptible uniquement sur mobile cold cache (parse CSS allégé de ~13 %).
+>
 > **v1.31.3 (PATCH — Polish docs et aide intégrée)** : retrait des mentions de version dans la documentation utilisateur (Aide intégrée, tutoriel onboarding, README modale FR + EN). On parle désormais des fonctionnalités à l'instant T. **AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté**. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — polish docs strict.
 >
 > **v1.31.2-fix1 / v1.31.2 (PATCH — Perf P9 + nettoyage notes de version)** : optimisation interne du pan/zoom sur les plans denses en mode 🚀 Performance ULTRA + nettoyage des notes de version (user-friendly côté `version.json`, réorganisation de cette page pour mettre la promesse en haut). **AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté**. Modif strictement interne au rendu Leaflet local. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — patch perf + docs strict.

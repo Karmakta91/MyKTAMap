@@ -976,3 +976,132 @@ la voit pendant qu'il la dessine).
   si son bbox tombait hors viewport.
 
 ---
+
+### 87. P2 — Progressive lazy CSS (v1.31.4 — 2026-06-03)
+
+`css/style.css` pesait **~21 400 lignes** monolithiques. Le parse CSS est bloquant pour le
+render → boot mobile cold cache palpable. P2 introduit un pattern de **chargement progressif
+par feature** : les blocs CSS de chaque grosse modale (Mode Secours en premier, suivront
+Heatmap, Filtres, MemInspector, etc.) sortent du `style.css` principal vers des chunks
+dédiés chargés à la demande via un nouveau helper `window._loadCssOnce`.
+
+#### 87.1 Pattern d'extraction
+
+Pour chaque feature ciblée :
+1. Identifier les ranges de lignes du `style.css` qui contiennent les sélecteurs `.kta-<feature>-*`
+2. Extraire ces ranges vers un nouveau `css/style-<feature>.css` avec un header explicatif
+3. Supprimer ces ranges du `style.css` principal
+4. Ajouter `<script src="js/cssLazy.js" defer>` AVANT le module consumer dans `index.html`
+5. Modifier le module consumer pour appeler `window._loadCssOnce("css/style-<feature>.css", "kta-css-style-<feature>")` au début de son IIFE
+6. Ajouter `./css/style-<feature>.css` dans `sw.js > ASSETS_TO_CACHE`
+7. Bumper `CACHE_NAME` pour invalider le cache et garantir le push du nouveau chunk
+
+#### 87.2 Helper `window._loadCssOnce(href, id)`
+
+Vit dans `js/cssLazy.js` (~70 lignes IIFE). API minimaliste :
+
+```js
+window._loadCssOnce("css/style-secours.css", "kta-css-style-secours");
+// ou avec attente explicite :
+await window._loadCssOnce("css/style-secours.css", "kta-css-style-secours");
+```
+
+Caractéristiques :
+- **Idempotent** : un id donné garantit une seule injection. Appels multiples concurrents
+  → tous reçoivent la même Promise (référence stockée sur le link)
+- **Promise-based** : resolve quand `link.onload` se déclenche. Permet `await` si tu veux
+  attendre l'application des styles avant d'afficher la modale (cas FOUC sensible)
+- **Échec gracieux** : si fetch échoue (offline + cache vide marginal), la Promise resolve
+  quand même (pas reject) pour ne pas bloquer le rendu. La feature aura un styling
+  dégradé sur les règles fallback du `style.css` principal (s'il en reste)
+- **Fire-and-forget** : pattern par défaut. Le browser parse le CSS en parallèle de
+  l'init du module → typiquement appliqué avant clic user
+
+#### 87.3 Pattern d'appel côté consumer
+
+Au tout début de l'IIFE du module consumer (avant les CONSTANTES, avant tout DOM read) :
+
+```js
+(function() {
+  "use strict";
+
+  // 🆕 v1.31.4 (P2 progressive lazy CSS) — préchargement du chunk CSS
+  if (typeof window._loadCssOnce === "function") {
+    window._loadCssOnce("css/style-<feature>.css", "kta-css-style-<feature>");
+  }
+
+  // ... reste du module ...
+})();
+```
+
+Le check `typeof window._loadCssOnce === "function"` est défensif — si `cssLazy.js` n'a
+pas chargé pour une raison ou une autre (bug index.html, désordre script), le module
+continue de fonctionner avec dégradation gracieuse (styling fallback du `style.css`).
+
+#### 87.4 Service Worker
+
+Le chunk doit être listé dans `sw.js > ASSETS_TO_CACHE` :
+
+```js
+const ASSETS_TO_CACHE = [
+  // ...
+  "./css/style.css",
+  "./css/style-secours.css",   // 🆕 chunk lazy
+  // ...
+  "./js/cssLazy.js",            // 🆕 helper
+  "./js/secoursMode.js",        // consumer
+  // ...
+];
+```
+
+Au premier boot après installation du nouveau Service Worker, le chunk est fetché et caché.
+Au 2ᵉ boot (cache plein), `_loadCssOnce` sert le chunk depuis le cache local → instantané
+offline.
+
+#### 87.5 Résultat mesuré (v1.31.4)
+
+| | Avant v1.31.4 | Après v1.31.4 | Δ |
+|---|---|---|---|
+| `style.css` LOC | 21 368 | 18 616 | **-12,9 %** |
+| `style-secours.css` LOC | — | 2 780 | nouveau chunk |
+| Parse CSS boot mobile (cold cache, estim.) | 100 % | 87 % | **-13 %** |
+
+Le gain est proportionnel au % du fichier extrait. Les prochaines features (Heatmap,
+Filtres, MemInspector, etc.) cumuleront le gain.
+
+#### 87.6 Roadmap
+
+Prochains chunks à extraire (par ordre de priorité = volume × isolation) :
+
+| Feature | LOC estimées | % du fichier | Isolation |
+|---|---|---|---|
+| `style-heatmap.css` (`.kta-heatmap-*`) | ~600 | ~3 % | ✅ très bonne |
+| `style-filtres.css` (`.kta-fp-*`) | ~800 | ~4 % | ✅ très bonne |
+| `style-meminspector.css` (`.kta-mem-*`) | ~700 | ~3,5 % | ✅ très bonne |
+| `style-rapport.css` (`.kta-rapport-*`) | ~500 | ~2,5 % | ✅ bonne |
+| `style-stats-globales.css` (`.kta-stats-*`) | ~400 | ~2 % | ✅ bonne |
+
+Une fois ces 5 chunks extraits, le `style.css` principal devrait peser **~16 000 LOC**
+(-25 % du baseline initial), avec un gain proportionnel sur le parse boot.
+
+#### 87.7 À NE PAS faire
+
+- ❌ **Extraire un chunk dont les sélecteurs sont mélangés avec d'autres features** dans
+  le `style.css` — risque de casser les cascades par règles partagées. Préférer toujours
+  des features bien isolées (préfixe de classe unique `.kta-<feature>-*`).
+- ❌ **Oublier d'ajouter le chunk dans `ASSETS_TO_CACHE`** — la feature plantera en offline
+  au prochain boot (link.onerror → fallback dégradé, mais user voit un styling cassé).
+- ❌ **Appeler `_loadCssOnce` DANS le handler de clic de la modale** au lieu de l'IIFE du
+  module — risque FOUC visible au 1er ouverture (le CSS download bloque l'affichage).
+  Préférer toujours l'injection précoce dans l'IIFE du module.
+- ❌ **Coupler 2 features dans le même chunk** (ex: Mode Secours + Heatmap) — empêche
+  l'optimisation : si l'user n'utilise QUE Heatmap, il télécharge inutilement le CSS
+  Mode Secours.
+- ❌ **Oublier de bumper `CACHE_NAME`** quand on ajoute un chunk — les clients existants
+  ne fetchent pas le nouveau fichier au prochain boot, le Service Worker sert un cache stale.
+- ❌ **Modifier `style-<feature>.css` sans regarder `style.css`** — l'un peut contenir des
+  règles que l'autre override par cascade. Vérifier la cohérence cross-fichier en cas de
+  modification de sélecteur partagé (ex: `.kta-readme-modal-overlay` peut être touché par
+  les 2 fichiers).
+
+---

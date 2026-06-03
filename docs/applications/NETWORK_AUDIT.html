@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.3</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.4</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.4 (PATCH — Perf P2 : progressive lazy CSS pour Mode Secours)</strong> : démarrage plus rapide grâce au chargement à la demande des styles du Mode Secours. La feuille <code>css/style-secours.css</code> (~2 750 lignes, ~13 % du CSS de l'app) est désormais extraite de <code>css/style.css</code> principal et chargée à la demande au boot du module <code>secoursMode.js</code> via un nouveau helper <code>window._loadCssOnce</code>. <strong>AUCUN impact réseau</strong> (1 fichier CSS local de plus servi same-origin via le Service Worker, couvert par <code>connect-src 'self'</code> déjà en place), <strong>aucune nouvelle permission, aucun changement de comportement runtime utilisateur</strong>. 2 nouveaux fichiers (<code>./css/style-secours.css</code> + <code>./js/cssLazy.js</code>) ajoutés à <code>ASSETS_TO_CACHE</code>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — perf boot strictement neutre côté réseau, gain user-perceptible uniquement sur mobile cold cache (parse CSS allégé de ~13 %).
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.31.3 (PATCH — Polish docs et aide intégrée)</strong> : retrait des mentions de version dans la documentation utilisateur (Aide intégrée, tutoriel onboarding, README modale FR + EN). On parle désormais des fonctionnalités à l'instant T. <strong>AUCUN impact réseau, aucune nouvelle permission, aucun fetch ajouté</strong>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — polish docs strict.

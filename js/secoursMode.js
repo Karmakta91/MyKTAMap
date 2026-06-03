@@ -101,6 +101,28 @@
   "use strict";
 
   // ============================================================
+  // 🆕 v1.31.4 (P2 progressive lazy CSS) — préchargement du chunk
+  // CSS dédié Mode Secours dès l'init du module. Le CSS spécifique
+  // (.kta-secours-* + .kta-mkmsec-*) est extrait de `css/style.css`
+  // principal vers `css/style-secours.css` pour alléger le boot
+  // (parse CSS bloquant le rendu sur mobile cold cache).
+  //
+  // Pattern fire-and-forget : on n'attend pas la Promise. Le browser
+  // parse le CSS en parallèle de l'init du module, et il est
+  // typiquement appliqué AVANT que l'user ait ouvert une modale
+  // Mode Secours (clic après onboarding, exploration, etc.).
+  //
+  // Échec gracieux côté _loadCssOnce : si fetch échoue (offline +
+  // cache vide cas marginal), la modale s'affiche avec un styling
+  // dégradé sur les règles de style.css principal. Pas de blocage.
+  //
+  // Idempotence garantie : appels multiples no-op si déjà loaded.
+  // ============================================================
+  if (typeof window._loadCssOnce === "function") {
+    window._loadCssOnce("css/style-secours.css", "kta-css-style-secours");
+  }
+
+  // ============================================================
   // CONSTANTES
   // ============================================================
 

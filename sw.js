@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.31.3";
+const CACHE_NAME = "myktamap-cache-v1.31.4";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -63,6 +63,10 @@ const ASSETS_TO_CACHE = [
 
   // CSS
   "./css/style.css",
+  // 🆕 v1.31.4 (P2 progressive lazy CSS) — feuille CSS dédiée Mode Secours,
+  // chargée à la demande au boot du module secoursMode.js via _loadCssOnce.
+  // ~2750 lignes extraites de style.css principal (allègement parse boot).
+  "./css/style-secours.css",
 
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
@@ -199,6 +203,9 @@ const ASSETS_TO_CACHE = [
   "./js/interfaceConfig.js",
   // 🆕 v1.21.5 : FilterPanel (modale unifiée Filtres ≡)
   "./js/filterPanel.js",
+  // 🆕 v1.31.4 (P2 progressive lazy CSS) : helper window._loadCssOnce(href, id).
+  // Chargé AVANT secoursMode.js dans index.html (consommateur).
+  "./js/cssLazy.js",
   // 🆕 v1.22.0 : Mode Secours (assignment équipes de recherche)
   "./js/secoursMode.js",
   // 🆕 v1.24.0 Phase 3 : Store IDB dédié photos Mode Secours (vue Live)
