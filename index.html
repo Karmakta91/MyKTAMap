@@ -170,6 +170,13 @@
        de requête réseau, donc l'ordre est OK. Cf. docs/NETWORK_AUDIT.md -->
   <script src="js/networkAudit.js"></script>
 
+  <!-- 🆕 v1.31.4+ (P2 progressive lazy CSS) : helper window._loadCssOnce
+       chargé SYNC très tôt pour que les modules suivants (memInspector,
+       statsGlobales, filterPanel, secoursMode) puissent appeler l'API
+       au début de leur IIFE. Aucun effet de bord (pose juste un global
+       window._loadCssOnce + zéro réseau). Cf perf-memory §87. -->
+  <script src="js/cssLazy.js"></script>
+
   <!-- 📋 CRASH REPORTS — Archive auto des kills mémoire détectés par OOMGuard.
        DOIT être chargé AVANT oomGuard.js (qui l'appelle dans _checkPreviousKill).
        API : window.CrashReports = { saveCrash, listAll, remove, clearAll,
@@ -1103,12 +1110,11 @@
        payload.runtimeFilters au restore). -->
   <script src="js/filterPanel.js" defer></script>
 
-  <!-- 🆕 v1.31.4 (P2 progressive lazy CSS) : helper de chargement à la demande
-       de feuilles CSS par feature. Expose `window._loadCssOnce(href, id)`.
-       Utilisé par secoursMode.js pour précharger `css/style-secours.css`
-       (~2750 lignes extraites de `css/style.css` principal au boot).
-       Doit charger AVANT secoursMode.js (qui appelle l'API tôt dans son IIFE). -->
-  <script src="js/cssLazy.js" defer></script>
+  <!-- 🆕 v1.31.4 (P2 progressive lazy CSS) : helper `window._loadCssOnce`
+       chargé SYNC très tôt (~ligne 178, juste après networkAudit.js)
+       pour que tous les modules consumers puissent appeler l'API au
+       début de leur IIFE — y compris ceux chargés SYNC en haut comme
+       memInspector.js et statsGlobales.js. Cf perf-memory §87. -->
 
   <!-- 🚨 v1.22.0 (KARMA "définir un plan de secours") : Mode Secours —
        outil opérationnel pour assigner méthodiquement des équipes de

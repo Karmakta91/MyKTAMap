@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.31.4";
+const CACHE_NAME = "myktamap-cache-v1.31.5";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -67,6 +67,14 @@ const ASSETS_TO_CACHE = [
   // chargée à la demande au boot du module secoursMode.js via _loadCssOnce.
   // ~2750 lignes extraites de style.css principal (allègement parse boot).
   "./css/style-secours.css",
+  // 🆕 v1.31.5 (P2 step 2) — 3 chunks lazy supplémentaires extraits du style.css :
+  //   - style-meminspector.css : modale 📊 Inspecteur + section Crash Reports
+  //   - style-stats-globales.css : modale 📈 Stats globales du plan
+  //   - style-filtres.css : modale Filtres unifiée ≡
+  // Chargés au boot de leur module consumer respectif via _loadCssOnce.
+  "./css/style-meminspector.css",
+  "./css/style-stats-globales.css",
+  "./css/style-filtres.css",
 
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html

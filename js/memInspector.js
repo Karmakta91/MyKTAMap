@@ -25,6 +25,12 @@
 (function() {
   "use strict";
 
+  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
+  // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
+  if (typeof window._loadCssOnce === "function") {
+    window._loadCssOnce("css/style-meminspector.css", "kta-css-style-meminspector");
+  }
+
   const MODAL_ID = "kta-mem-inspector-modal";
 
   // ========== HELPER : FORMAT BYTES ==========

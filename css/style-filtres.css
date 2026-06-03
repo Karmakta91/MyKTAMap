@@ -1,0 +1,407 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
+/* =================================================================
+   STYLE-FILTRES.CSS — Modale Filtres unifiée ≡ (lazy)
+   =================================================================
+   Pattern P2 (progressive lazy CSS) — chargé à la demande au boot du
+   module `js/filterPanel.js` via `window._loadCssOnce`.
+
+   Contient TOUS les sélecteurs `.kta-fp-*` extraits de `style.css`
+   principal : modale Filtres (tags, types tracés, zones, structures)
+   ouverte via le bouton ≡ + variants thème clair.
+   ================================================================= */
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   🆕 v1.21.5 — FilterPanel : modale Filtres unifiée (≡)
+   ───────────────────────────────────────────────────────────────────────────
+   Remplace le L.control.layers natif Leaflet. 7 sections accordéon : Images
+   + Data layers + M-LVL + Tags + Types Road/Zone/Struct. Layout chips compact
+   pour les listes énumérées (tags + types) avec checkbox + icône + label +
+   compteur. Voir js/filterPanel.js et docs/CLAUDE.md §64.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Boîte de la modale */
+.kta-fp-boite {
+  max-width: 560px !important;
+  width: calc(100vw - 24px);
+  height: auto !important;
+  max-height: 90vh !important;
+}
+@media (min-width: 1024px) {
+  .kta-fp-boite { max-width: 720px !important; }
+}
+
+/* Corps scrollable */
+.kta-fp-corps {
+  padding: 12px 16px !important;
+}
+
+/* Section accordéon <details> */
+.kta-fp-section {
+  margin-bottom: 10px;
+  background: rgba(244, 197, 66, 0.04);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.kta-fp-section[open] {
+  background: rgba(244, 197, 66, 0.06);
+}
+.kta-fp-section-titre {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+  user-select: none;
+  list-style: none;
+}
+.kta-fp-section-titre::-webkit-details-marker { display: none; }
+.kta-fp-section-titre::before {
+  content: "▸";
+  display: inline-block;
+  width: 14px;
+  color: #8892a4;
+  font-size: 10px;
+  transition: transform 0.15s ease;
+}
+.kta-fp-section[open] > .kta-fp-section-titre::before {
+  transform: rotate(90deg);
+}
+.kta-fp-section-titre:hover {
+  background: rgba(244, 197, 66, 0.18);
+}
+.kta-fp-section-body {
+  padding: 10px 12px;
+  background: rgba(10, 13, 24, 0.35);
+}
+.kta-fp-section-empty {
+  color: #8892a4;
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+/* Boutons rapides Tout / Aucun (par section) */
+.kta-fp-row-actions {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.kta-fp-mini-btn {
+  background: rgba(140, 180, 255, 0.10);
+  color: #c8d0e0;
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s, border-color 0.12s;
+}
+.kta-fp-mini-btn:hover {
+  background: rgba(140, 180, 255, 0.22);
+  border-color: rgba(140, 180, 255, 0.45);
+}
+
+/* Grid de chips (tags + types) */
+.kta-fp-chips-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+}
+@media (max-width: 480px) {
+  .kta-fp-chips-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Chip individuel = label cliquable contenant checkbox + icône + texte + count */
+.kta-fp-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  color: #c8d0e0;
+  transition: background 0.12s, border-color 0.12s, opacity 0.12s;
+  min-height: 32px;
+}
+.kta-fp-chip:hover {
+  background: rgba(244, 197, 66, 0.10);
+  border-color: rgba(244, 197, 66, 0.30);
+}
+.kta-fp-chip input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #f4c542;
+}
+.kta-fp-chip-ico {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  display: block;
+}
+.kta-fp-chip-ico-emoji {
+  flex-shrink: 0;
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+  display: inline-block;
+}
+.kta-fp-chip-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kta-fp-chip-count {
+  flex-shrink: 0;
+  background: rgba(244, 197, 66, 0.18);
+  color: #f4c542;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+/* État "masqué" : opacity + label barré pour signal visuel */
+.kta-fp-chip.kta-fp-chip-off {
+  opacity: 0.5;
+  background: rgba(255, 255, 255, 0.015);
+}
+.kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label {
+  text-decoration: line-through;
+  color: #8892a4;
+}
+.kta-fp-chip.kta-fp-chip-off .kta-fp-chip-count {
+  background: rgba(255, 255, 255, 0.06);
+  color: #8892a4;
+}
+
+/* Liste simple (Image layers + Data layers) — pas de grid, juste empilées */
+.kta-fp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.kta-fp-row-cb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 12px;
+  color: #c8d0e0;
+  transition: background 0.12s;
+}
+.kta-fp-row-cb:hover {
+  background: rgba(244, 197, 66, 0.08);
+}
+.kta-fp-row-cb input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #f4c542;
+}
+
+/* Section M-LVL : sous-blocs "Actif" + "Visibles" */
+.kta-fp-lvl-active,
+.kta-fp-lvl-visible {
+  margin-bottom: 10px;
+}
+.kta-fp-lvl-active:last-child,
+.kta-fp-lvl-visible:last-child {
+  margin-bottom: 0;
+}
+.kta-fp-sublabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8892a4;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.kta-fp-lvl-segmented {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.kta-fp-lvl-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #c8d0e0;
+  padding: 5px 11px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  font-family: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  min-width: 38px;
+  text-align: center;
+}
+.kta-fp-lvl-btn:hover {
+  background: rgba(244, 197, 66, 0.12);
+  border-color: rgba(244, 197, 66, 0.30);
+}
+.kta-fp-lvl-btn.kta-fp-lvl-btn-active {
+  background: #f4c542;
+  color: #1a1f2e;
+  border-color: #f4c542;
+  font-weight: 600;
+}
+
+/* Footer : Tout afficher + status */
+.kta-fp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-top: 1px solid rgba(244, 197, 66, 0.18);
+  background: rgba(10, 13, 24, 0.4);
+  border-radius: 0 0 12px 12px;
+}
+.kta-fp-status {
+  font-size: 11px;
+  color: #8892a4;
+  font-style: italic;
+}
+
+/* Bouton custom L.Control ≡ — sizing only.
+   🐛 v1.21.5-fix2 (KARMA "en mode sombre, je fond de l'icone filtre est blanc
+   au lieu du fond habituel en mode sombre") : on NE force PAS color/background
+   ici. Le thème vient de la cascade :
+     • Leaflet base (lib/leaflet/leaflet.css > .leaflet-bar a)
+     • body.kta-refonte-v1 .leaflet-bar a (override dark MyKTAMap)
+     • html.kta-theme-light .leaflet-bar a (override light MyKTAMap)
+   → match automatique du thème courant comme les autres boutons sidebar
+   (zoom, niveau M-LVL, groupes accordéon, etc.). */
+.kta-filter-ctrl a {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* ─── Thème clair ─── */
+body.kta-theme-light .kta-fp-section,
+html.kta-theme-light .kta-fp-section {
+  background: rgba(244, 197, 66, 0.08) !important;
+  border-color: rgba(154, 135, 84, 0.35) !important;
+}
+body.kta-theme-light .kta-fp-section-titre,
+html.kta-theme-light .kta-fp-section-titre {
+  background: rgba(244, 197, 66, 0.18) !important;
+  color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-fp-section-titre:hover,
+html.kta-theme-light .kta-fp-section-titre:hover {
+  background: rgba(244, 197, 66, 0.30) !important;
+}
+body.kta-theme-light .kta-fp-section-body,
+html.kta-theme-light .kta-fp-section-body {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+}
+body.kta-theme-light .kta-fp-section-empty,
+html.kta-theme-light .kta-fp-section-empty {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-fp-chip,
+html.kta-theme-light .kta-fp-chip {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-fp-chip:hover,
+html.kta-theme-light .kta-fp-chip:hover {
+  background: rgba(244, 197, 66, 0.18) !important;
+  border-color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-fp-chip.kta-fp-chip-off,
+html.kta-theme-light .kta-fp-chip.kta-fp-chip-off {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+body.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label,
+html.kta-theme-light .kta-fp-chip.kta-fp-chip-off .kta-fp-chip-label {
+  color: var(--kta-light-text-dim, #8a8270) !important;
+}
+body.kta-theme-light .kta-fp-row-cb,
+html.kta-theme-light .kta-fp-row-cb {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-fp-row-cb:hover,
+html.kta-theme-light .kta-fp-row-cb:hover {
+  background: rgba(244, 197, 66, 0.20) !important;
+}
+body.kta-theme-light .kta-fp-mini-btn,
+html.kta-theme-light .kta-fp-mini-btn {
+  background: rgba(30, 58, 138, 0.10) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border-color: rgba(30, 58, 138, 0.30) !important;
+}
+body.kta-theme-light .kta-fp-mini-btn:hover,
+html.kta-theme-light .kta-fp-mini-btn:hover {
+  background: rgba(30, 58, 138, 0.20) !important;
+}
+body.kta-theme-light .kta-fp-sublabel,
+html.kta-theme-light .kta-fp-sublabel {
+  color: var(--kta-light-text-muted, #6b6354) !important;
+}
+body.kta-theme-light .kta-fp-lvl-btn,
+html.kta-theme-light .kta-fp-lvl-btn {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-fp-lvl-btn:hover,
+html.kta-theme-light .kta-fp-lvl-btn:hover {
+  background: rgba(244, 197, 66, 0.22) !important;
+  border-color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active,
+html.kta-theme-light .kta-fp-lvl-btn.kta-fp-lvl-btn-active {
+  background: var(--kta-light-accent, #f4c542) !important;
+  color: #1a1f2e !important;
+  border-color: var(--kta-light-accent-hover, #d9a82e) !important;
+}
+body.kta-theme-light .kta-fp-footer,
+html.kta-theme-light .kta-fp-footer {
+  background: var(--kta-light-bg-deep, #e5dcc5) !important;
+  border-top-color: rgba(154, 135, 84, 0.35) !important;
+}
+body.kta-theme-light .kta-fp-status,
+html.kta-theme-light .kta-fp-status {

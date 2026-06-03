@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.4</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.5</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.5 (PATCH — Perf P2 step 2 : 3 chunks lazy CSS supplémentaires)</strong> : démarrage encore plus rapide. 3 nouveaux chunks CSS extraits de <code>style.css</code> principal et chargés à la demande au boot de leur module consumer respectif : <code>style-meminspector.css</code> (1 016 LOC), <code>style-stats-globales.css</code> (318 LOC), <code>style-filtres.css</code> (407 LOC). Cumul depuis baseline : <code>style.css</code> 21 368 → 16 926 LOC (<strong>-20,8 %</strong>). <strong>AUCUN impact réseau</strong> (3 fichiers CSS locaux ajoutés au Service Worker, servis same-origin), <strong>aucune nouvelle permission, aucun changement de comportement runtime utilisateur</strong>. Helper <code>window._loadCssOnce</code> déplacé en SYNC tout en haut du chargement (juste après <code>networkAudit.js</code>) pour être disponible aux modules SYNC comme <code>memInspector.js</code> + <code>statsGlobales.js</code>. Cleanup bonus : commentaire orphelin Mode Secours (résidu d'extraction v1.31.4) retiré.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — perf boot strictement neutre côté réseau, gain user-perceptible uniquement sur mobile cold cache.
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.31.4 (PATCH — Perf P2 : progressive lazy CSS pour Mode Secours)</strong> : démarrage plus rapide grâce au chargement à la demande des styles du Mode Secours. La feuille <code>css/style-secours.css</code> (~2 750 lignes, ~13 % du CSS de l'app) est désormais extraite de <code>css/style.css</code> principal et chargée à la demande au boot du module <code>secoursMode.js</code> via un nouveau helper <code>window._loadCssOnce</code>. <strong>AUCUN impact réseau</strong> (1 fichier CSS local de plus servi same-origin via le Service Worker, couvert par <code>connect-src 'self'</code> déjà en place), <strong>aucune nouvelle permission, aucun changement de comportement runtime utilisateur</strong>. 2 nouveaux fichiers (<code>./css/style-secours.css</code> + <code>./js/cssLazy.js</code>) ajoutés à <code>ASSETS_TO_CACHE</code>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — perf boot strictement neutre côté réseau, gain user-perceptible uniquement sur mobile cold cache (parse CSS allégé de ~13 %).

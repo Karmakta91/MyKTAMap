@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.4",
+  "version": "v1.31.5",
   "released": "2026-06-03",
   "notes": [
-    "🎨 v1.31.4 — Démarrage plus rapide : les styles du Mode Secours (~13 % du CSS de l'app) sont désormais chargés à la demande, pas au boot. Aucun changement visible côté utilisateur."
+    "🎨 v1.31.5 — Démarrage encore plus rapide : les styles de l'Inspecteur, des Stats globales et de la modale Filtres (~1 700 lignes supplémentaires) sont désormais chargés à la demande. Au total, ~21 % du CSS de l'app est devenu lazy. Aucun changement visible côté utilisateur."
   ]
 }

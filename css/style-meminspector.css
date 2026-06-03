@@ -1,0 +1,1016 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * https://myktamap.fr — Licence CC BY-NC-SA 4.0
+ * Usage commercial interdit sans accord ecrit prealable. Voir LICENSE.
+ */
+
+/* =================================================================
+   STYLE-MEMINSPECTOR.CSS — Memory Inspector + Crash Reports (lazy)
+   =================================================================
+   Pattern P2 (progressive lazy CSS) — chargé à la demande au boot du
+   module `js/memInspector.js` via `window._loadCssOnce`.
+
+   Contient TOUS les sélecteurs `.kta-mem-*` extraits de `style.css`
+   principal :
+     - Bloc 1 : modale Inspecteur (localStorage / IndexedDB / Cache PWA /
+       Runtime / Storage estimate)
+     - Bloc 2 : sous-section « 📋 Derniers crashs » (CrashReports v1.20.0)
+
+   À NE PAS modifier sans mettre à jour `js/memInspector.js` (selectors).
+   ================================================================= */
+
+
+/* ===========================================================
+   🆕 v1.19.0 — Memory Inspector
+   Modale topo lisible de ce qui est chargé en mémoire
+   =========================================================== */
+
+.kta-mem-inspector-boite {
+  max-width:  720px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 88vh !important;
+  display:    flex;
+  flex-direction: column;
+  /* Filet de sécurité mobile : si un contenu très long arrive à passer
+     les autres protections (word-break, overflow-wrap), on coupe net
+     pour éviter le scroll horizontal de toute la modale. Le corps
+     interne (.kta-readme-modal-corps) garde son scroll vertical natif. */
+  overflow-x: hidden;
+}
+.kta-mem-inspector-boite .kta-readme-modal-corps {
+  /* Idem : pas de scroll horizontal au niveau corps */
+  overflow-x: hidden;
+  /* min-width:0 nécessaire pour que les flex children respectent les
+     contraintes width (sinon flex-shrink:1 ne s'applique pas sur le
+     contenu intrinsique = comportement par défaut flex). */
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .kta-mem-inspector-boite { max-width: 920px; }
+}
+@media (min-width: 1440px) {
+  .kta-mem-inspector-boite { max-width: 1100px; }
+}
+
+.kta-mem-loading {
+  padding: 32px 16px;
+  text-align: center;
+  color: #8892a4;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.kta-mem-header-stamp {
+  font-size: 12px;
+  color: #8892a4;
+  text-align: center;
+  margin: 4px 0 12px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+
+.kta-mem-section {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  /* Filet anti-débordement mobile : si un contenu très long passe les
+     autres protections (word-break, overflow-wrap), on coupe net pour
+     éviter le scroll horizontal de la modale. min-width:0 nécessaire
+     pour que les flex children respectent les contraintes width. Fix
+     v1.19.0-fix1 (KARMA "le tableau sort du cadre sur mobile"). */
+  min-width: 0;
+  overflow-x: hidden;
+}
+.kta-mem-section-titre {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kta-mem-total {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #c8d0e0;
+  padding: 2px 8px;
+  background: rgba(140, 180, 255, 0.10);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 10px;
+}
+
+.kta-mem-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+}
+.kta-mem-row:last-child { border-bottom: none; }
+.kta-mem-lbl {
+  flex: 0 0 auto;
+  min-width: 110px;
+  font-weight: 600;
+  color: #8892a4;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.kta-mem-val {
+  flex: 1 1 auto;
+  color: #e8eaf0;
+  word-break: break-word;
+}
+.kta-mem-dim    { color: #8892a4; font-size: 11.5px; }
+.kta-mem-num    { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; color: #c8d0e0; text-align: right; white-space: nowrap; }
+.kta-mem-warn   { color: #ff8c8c; font-size: 12px; font-weight: 500; }
+
+.kta-mem-flags { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.kta-mem-tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(244, 197, 66, 0.14);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.30);
+  white-space: nowrap;
+}
+.kta-mem-tag-dim {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #8892a4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+.kta-mem-tag-on {
+  background: rgba(110, 226, 138, 0.16);
+  color: #6ee28a;
+  border-color: rgba(110, 226, 138, 0.35);
+}
+.kta-mem-tag-warn {
+  background: rgba(255, 140, 140, 0.16);
+  color: #ff8c8c;
+  border-color: rgba(255, 140, 140, 0.35);
+}
+
+/* Table localStorage */
+.kta-mem-table {
+  width: 100%;
+  max-width: 100%;
+  /* table-layout: fixed → force le respect des widths colonnes, sinon
+     les <code> avec longues clés (myktamap_session_v1_<planId>, hashs)
+     forcent la cellule à prendre la largeur du mot → débordement mobile.
+     Fix v1.19.0-fix1 (KARMA "le tableau sort du cadre sur mobile"). */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.kta-mem-table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+}
+.kta-mem-table thead th.kta-mem-num {
+  text-align: right;
+  /* Colonne Taille : width fixe pour libérer un max à la colonne Clé.
+     90 px suffit pour "1023.5 KB" et "999.99 MB" sans wrap. */
+  width: 90px;
+}
+.kta-mem-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+  /* Force le wrap des contenus longs (urls, clés monospace) au lieu de
+     déborder horizontalement. word-break: break-word est plus doux que
+     break-all : préserve les coupures naturelles quand possible. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.kta-mem-table tbody tr:last-child td { border-bottom: none; }
+.kta-mem-table code {
+  font-size: 11.5px;
+  color: #c8d0e0;
+  background: rgba(140, 180, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  /* Critique pour mobile : sans ces 2 props, les longues clés monospace
+     (myktamap_session_v1_<long-planId>) forcent un overflow horizontal
+     de toute la modale. inline-block + max-width: 100% borne la largeur. */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.kta-mem-bar-wrap {
+  margin-top: 3px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.kta-mem-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f4c542, #d9a82e);
+  transition: width 0.3s ease;
+}
+
+/* IDB database blocks */
+.kta-mem-db {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(140, 180, 255, 0.04);
+  border: 1px solid rgba(140, 180, 255, 0.12);
+  border-radius: 6px;
+}
+.kta-mem-db-titre {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #c8d0e0;
+  margin-bottom: 4px;
+}
+.kta-mem-db-titre code {
+  font-size: 12px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  /* Wrap si nom de base très long sur petit écran */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.kta-mem-store {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0 3px 14px;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-mem-store-name {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #c8d0e0;
+}
+
+/* Cache PWA list */
+.kta-mem-cache-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #c8d0e0;
+}
+.kta-mem-cache-row code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  color: #c8d0e0;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 3px;
+  /* Wrap des longs cache names sur mobile (myktamap-cache-vX.Y.Z) */
+  display: inline-block;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+/* Container du cache row : forcer le wrap aussi */
+.kta-mem-cache-row {
+  flex-wrap: wrap;
+}
+.kta-mem-cache-active {
+  background: rgba(244, 197, 66, 0.06);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.kta-mem-cache-active code {
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+}
+.kta-mem-cache-star {
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+  color: #f4c542;
+}
+.kta-mem-cache-sample {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+.kta-mem-sample-titre {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8892a4;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.kta-mem-asset {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #8cb4ff;
+  padding: 2px 0;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+/* Storage estimate bar */
+.kta-mem-quota-bar {
+  display: inline-block;
+  width: 160px;
+  max-width: 60%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.kta-mem-quota-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ee28a 0%, #f4c542 70%, #ff8c8c 100%);
+  transition: width 0.3s ease;
+}
+
+.kta-mem-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ===========================================================
+   🆕 v1.19.0 — Variants thème clair (Memory Inspector)
+   =========================================================== */
+body.kta-theme-light .kta-mem-header-stamp,
+html.kta-theme-light .kta-mem-header-stamp,
+body.kta-theme-light .kta-mem-section,
+html.kta-theme-light .kta-mem-section {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-section-titre,
+html.kta-theme-light .kta-mem-section-titre {
+  color: var(--kta-light-accent-hover) !important;
+  border-bottom-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-mem-total,
+html.kta-theme-light .kta-mem-total {
+  background: rgba(140, 180, 255, 0.15) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-row,
+html.kta-theme-light .kta-mem-row {
+  border-bottom-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-lbl,
+html.kta-theme-light .kta-mem-lbl,
+body.kta-theme-light .kta-mem-dim,
+html.kta-theme-light .kta-mem-dim {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-mem-val,
+html.kta-theme-light .kta-mem-val,
+body.kta-theme-light .kta-mem-num,
+html.kta-theme-light .kta-mem-num {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-tag,
+html.kta-theme-light .kta-mem-tag {
+  background: var(--kta-light-accent-bg) !important;
+  color: var(--kta-light-accent-hover) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-mem-tag-dim,
+html.kta-theme-light .kta-mem-tag-dim {
+  background: rgba(0, 0, 0, 0.04) !important;
+  color: var(--kta-light-text-muted) !important;
+  border-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-mem-table code,
+html.kta-theme-light .kta-mem-table code,
+body.kta-theme-light .kta-mem-cache-row code,
+html.kta-theme-light .kta-mem-cache-row code {
+  background: rgba(140, 180, 255, 0.10) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-db,
+html.kta-theme-light .kta-mem-db {
+  background: rgba(140, 180, 255, 0.06) !important;
+  border-color: rgba(140, 180, 255, 0.20) !important;
+}
+body.kta-theme-light .kta-mem-db-titre code,
+html.kta-theme-light .kta-mem-db-titre code {
+  color: #1e3a8a !important;
+  background: rgba(140, 180, 255, 0.12) !important;
+}
+body.kta-theme-light .kta-mem-bar-wrap,
+html.kta-theme-light .kta-mem-bar-wrap,
+body.kta-theme-light .kta-mem-quota-bar,
+html.kta-theme-light .kta-mem-quota-bar {
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+body.kta-theme-light .kta-mem-cache-active,
+html.kta-theme-light .kta-mem-cache-active {
+  background: var(--kta-light-accent-bg) !important;
+}
+body.kta-theme-light .kta-mem-asset,
+html.kta-theme-light .kta-mem-asset {
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-mem-footer,
+html.kta-theme-light .kta-mem-footer {
+  border-top-color: var(--kta-light-border) !important;
+}
+
+/* ===========================================================
+   🆕 v1.22.0 — Profil Export/Import (modales Export + Import)
+   =========================================================== */
+
+.kta-profile-boite {
+  max-width:  720px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 88vh !important;
+  display:    flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) { .kta-profile-boite { max-width: 820px; } }
+
+.kta-profile-intro {
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.55;
+  margin: 0 0 12px;
+}
+.kta-profile-intro strong { color: #f4c542; font-weight: 600; }
+
+.kta-profile-fileinfo {
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #c8d0e0;
+  line-height: 1.7;
+}
+.kta-profile-fileinfo code {
+  font-size: 11.5px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.10);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.kta-profile-banner {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.kta-profile-banner-ok {
+  background: rgba(110, 226, 138, 0.10);
+  border: 1px solid rgba(110, 226, 138, 0.30);
+  color: #6ee28a;
+}
+.kta-profile-banner-legacy {
+  background: rgba(255, 180, 100, 0.10);
+  border: 1px solid rgba(255, 180, 100, 0.30);
+  color: #ffae80;
+}
+.kta-profile-banner strong { color: inherit; font-weight: 700; }
+
+.kta-profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.kta-profile-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.kta-profile-row:hover {
+  background: rgba(244, 197, 66, 0.05);
+  border-color: rgba(244, 197, 66, 0.20);
+}
+.kta-profile-row.kta-profile-row-empty {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.kta-profile-row.kta-profile-row-empty:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.kta-profile-row input[type="checkbox"] {
+  width: 18px; height: 18px;
+  accent-color: #f4c542;
+  margin: 1px 0 0;
+  flex: 0 0 auto;
+}
+.kta-profile-row-emoji {
+  font-size: 18px;
+  flex: 0 0 auto;
+  margin-top: -2px;
+}
+.kta-profile-row-label {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+.kta-profile-row-label strong { color: #e8eaf0; font-weight: 600; }
+.kta-profile-row-meta {
+  font-size: 11.5px;
+  color: #f4c542;
+  background: rgba(244, 197, 66, 0.10);
+  border: 1px solid rgba(244, 197, 66, 0.25);
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+.kta-profile-row-hint {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: #8892a4;
+  font-style: italic;
+  line-height: 1.5;
+}
+.kta-profile-row-hint strong { color: #c8d0e0; font-style: normal; }
+
+.kta-profile-total {
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 6px;
+  font-size: 13px;
+  color: #c8d0e0;
+  text-align: center;
+}
+.kta-profile-total strong { color: #f4c542; }
+.kta-profile-total span { color: #6ee28a; font-weight: 600; font-family: ui-monospace, monospace; }
+
+.kta-profile-mode {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+.kta-profile-mode-titre {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f4c542;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+.kta-profile-mode-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 4px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+.kta-profile-mode-row:hover { color: #e8eaf0; }
+.kta-profile-mode-row input[type="radio"] {
+  margin: 2px 0 0;
+  accent-color: #f4c542;
+}
+.kta-profile-mode-row strong { color: #f4c542; font-weight: 600; }
+
+.kta-profile-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-profile-intro,
+html.kta-theme-light .kta-profile-intro {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-intro strong,
+html.kta-theme-light .kta-profile-intro strong {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-profile-fileinfo,
+html.kta-theme-light .kta-profile-fileinfo,
+body.kta-theme-light .kta-profile-row,
+html.kta-theme-light .kta-profile-row,
+body.kta-theme-light .kta-profile-mode,
+html.kta-theme-light .kta-profile-mode {
+  background: var(--kta-light-bg-deep) !important;
+  border-color: var(--kta-light-border) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-fileinfo code,
+html.kta-theme-light .kta-profile-fileinfo code {
+  background: rgba(140, 180, 255, 0.15) !important;
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-profile-row:hover,
+html.kta-theme-light .kta-profile-row:hover {
+  background: var(--kta-light-accent-bg) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-profile-row-label,
+html.kta-theme-light .kta-profile-row-label {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-row-label strong,
+html.kta-theme-light .kta-profile-row-label strong {
+  color: var(--kta-light-text) !important;
+  font-weight: 700;
+}
+body.kta-theme-light .kta-profile-row-meta,
+html.kta-theme-light .kta-profile-row-meta {
+  background: var(--kta-light-accent-bg) !important;
+  color: var(--kta-light-accent-hover) !important;
+  border-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-profile-row-hint,
+html.kta-theme-light .kta-profile-row-hint {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-profile-total,
+html.kta-theme-light .kta-profile-total {
+  background: rgba(140, 180, 255, 0.12) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-profile-total strong,
+html.kta-theme-light .kta-profile-total strong,
+body.kta-theme-light .kta-profile-mode strong,
+html.kta-theme-light .kta-profile-mode strong,
+body.kta-theme-light .kta-profile-mode-titre,
+html.kta-theme-light .kta-profile-mode-titre {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-profile-banner-ok,
+html.kta-theme-light .kta-profile-banner-ok {
+  background: rgba(34, 139, 34, 0.08) !important;
+  border-color: rgba(34, 139, 34, 0.30) !important;
+  color: #228b22 !important;
+}
+body.kta-theme-light .kta-profile-banner-legacy,
+html.kta-theme-light .kta-profile-banner-legacy {
+  background: rgba(180, 80, 30, 0.08) !important;
+  border-color: rgba(180, 80, 30, 0.30) !important;
+  color: #b45309 !important;
+}
+body.kta-theme-light .kta-profile-footer,
+html.kta-theme-light .kta-profile-footer {
+  border-top-color: var(--kta-light-border) !important;
+}
+
+/* ===========================================================
+   🆕 v1.21.0 — Tutoriel premier-lancement (modale onboarding)
+   =========================================================== */
+
+.kta-tutorial-boite {
+  max-width:  560px;
+  width:      94vw;
+  height:     auto !important;
+  max-height: 86vh !important;
+  display:    flex;
+  flex-direction: column;
+}
+@media (min-width: 1024px) {
+  .kta-tutorial-boite { max-width: 640px; }
+}
+
+.kta-tutorial-header {
+  border-bottom: 1px solid rgba(244, 197, 66, 0.20);
+}
+
+.kta-tutorial-corps {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 320px;
+}
+
+.kta-tutorial-card {
+  padding: 8px 4px;
+  animation: kta-tutorial-fade-in 0.25s ease-out;
+}
+@keyframes kta-tutorial-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.kta-tutorial-card-emoji {
+  font-size: 52px;
+  text-align: center;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+.kta-tutorial-card-titre {
+  font-size: 18px;
+  font-weight: 700;
+  color: #f4c542;
+  text-align: center;
+  margin-bottom: 14px;
+}
+.kta-tutorial-card-texte {
+  font-size: 14px;
+  color: #c8d0e0;
+  line-height: 1.6;
+}
+.kta-tutorial-card-texte p { margin: 0 0 10px; }
+.kta-tutorial-card-texte p:last-child { margin-bottom: 0; }
+.kta-tutorial-card-texte ul {
+  margin: 8px 0 10px;
+  padding-left: 22px;
+  line-height: 1.7;
+}
+.kta-tutorial-card-texte ul li { margin-bottom: 3px; }
+.kta-tutorial-card-texte strong { color: #f4c542; font-weight: 600; }
+.kta-tutorial-card-texte code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  color: #8cb4ff;
+  background: rgba(140, 180, 255, 0.10);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.kta-tutorial-card-hint {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.22);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #8cb4ff;
+  font-style: italic;
+}
+
+.kta-tutorial-footer {
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kta-tutorial-progress {
+  display: flex;
+  justify-content: center;
+  /* 🆕 v1.21.3 : wrap pour les 22 cartes (avant 8 → 22). Sans wrap, sur mobile
+     les dots débordaient (22 × 10px + 21 × 8px = 388px > 360-400px viewport). */
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  max-width: 100%;
+  padding: 0 4px;
+}
+.kta-tutorial-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.kta-tutorial-dot:hover {
+  background: rgba(244, 197, 66, 0.40);
+  transform: scale(1.15);
+}
+.kta-tutorial-dot.kta-tutorial-dot-active {
+  background: #f4c542;
+  border-color: rgba(244, 197, 66, 0.50);
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.50);
+  transform: scale(1.20);
+}
+/* 🆕 v1.21.3 : dots compacts sur viewport étroit (mobile portrait) — évite le
+   wrap multi-ligne disgracieux + garde la barre lisible. */
+@media (max-width: 480px) {
+  .kta-tutorial-progress {
+    gap: 4px 5px;
+  }
+  .kta-tutorial-dot {
+    width: 7px;
+    height: 7px;
+  }
+}
+
+.kta-tutorial-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kta-tutorial-actions .kta-btn {
+  flex: 0 1 auto;
+}
+@media (max-width: 480px) {
+  .kta-tutorial-actions .kta-btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-tutorial-header,
+html.kta-theme-light .kta-tutorial-header {
+  border-bottom-color: var(--kta-light-accent) !important;
+}
+body.kta-theme-light .kta-tutorial-card-titre,
+html.kta-theme-light .kta-tutorial-card-titre {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte,
+html.kta-theme-light .kta-tutorial-card-texte {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte strong,
+html.kta-theme-light .kta-tutorial-card-texte strong {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-tutorial-card-texte code,
+html.kta-theme-light .kta-tutorial-card-texte code {
+  background: rgba(140, 180, 255, 0.15) !important;
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-tutorial-card-hint,
+html.kta-theme-light .kta-tutorial-card-hint {
+  background: rgba(140, 180, 255, 0.12) !important;
+  border-color: rgba(140, 180, 255, 0.30) !important;
+  color: #1e3a8a !important;
+}
+body.kta-theme-light .kta-tutorial-footer,
+html.kta-theme-light .kta-tutorial-footer {
+  border-top-color: var(--kta-light-border) !important;
+}
+body.kta-theme-light .kta-tutorial-dot,
+html.kta-theme-light .kta-tutorial-dot {
+  background: rgba(0, 0, 0, 0.15) !important;
+  border-color: rgba(0, 0, 0, 0.10) !important;
+}
+body.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active,
+html.kta-theme-light .kta-tutorial-dot.kta-tutorial-dot-active {
+  background: var(--kta-light-accent) !important;
+  border-color: var(--kta-light-accent-hover) !important;
+  box-shadow: 0 0 6px rgba(244, 197, 66, 0.60) !important;
+}
+
+/* ===========================================================
+   🆕 v1.20.0 — CTA Stats globales depuis modale Détails session
+   =========================================================== */
+
+.kta-refonte-session-cta-stats-glob {
+  margin: 8px 0 14px;
+  padding: 12px 14px;
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  border-radius: 8px;
+  text-align: center;
+}
+.kta-refonte-session-cta-stats-glob .kta-btn {
+  width: 100%;
+  max-width: 100%;
+  white-space: normal;
+  font-size: 13px;
+  padding: 10px 14px;
+}
+body.kta-theme-light .kta-refonte-session-cta-stats-glob,
+html.kta-theme-light .kta-refonte-session-cta-stats-glob {
+  background: rgba(140, 180, 255, 0.10) !important;
+  border-color: rgba(140, 180, 255, 0.35) !important;
+}
+
+}
+
+/* ===========================================================
+   🆕 v1.20.0 — Memory Inspector : Section Crash Reports
+   =========================================================== */
+
+.kta-mem-crash-row {
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 140, 140, 0.06);
+  border: 1px solid rgba(255, 140, 140, 0.22);
+  border-radius: 6px;
+}
+.kta-mem-crash-row:first-of-type { margin-top: 4px; }
+.kta-mem-crash-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #c8d0e0;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.kta-mem-crash-icon { font-size: 14px; }
+.kta-mem-crash-date {
+  font-weight: 600;
+  color: #ff8c8c;
+}
+.kta-mem-crash-meta {
+  font-size: 11.5px;
+  color: #8892a4;
+  margin-bottom: 8px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+.kta-mem-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.kta-mem-crash-actions .kta-btn {
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+}
+
+/* Détail crash report — modale modale avec <pre> scrollable */
+.kta-mem-crash-detail-pre {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #c8d0e0;
+  background: #0d1117;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  max-height: calc(88vh - 100px);
+  overflow-y: auto;
+}
+
+/* Variants thème clair */
+body.kta-theme-light .kta-mem-crash-row,
+html.kta-theme-light .kta-mem-crash-row {
+  background: rgba(255, 140, 140, 0.10) !important;
+  border-color: rgba(255, 140, 140, 0.35) !important;
+}
+body.kta-theme-light .kta-mem-crash-head,
+html.kta-theme-light .kta-mem-crash-head {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-mem-crash-date,
+html.kta-theme-light .kta-mem-crash-date {
+  color: #b91c1c !important;
+}
+body.kta-theme-light .kta-mem-crash-meta,
+html.kta-theme-light .kta-mem-crash-meta {
+  color: var(--kta-light-text-muted) !important;
+}
+body.kta-theme-light .kta-mem-crash-detail-pre,
+html.kta-theme-light .kta-mem-crash-detail-pre {
+  background: var(--kta-light-bg-deep) !important;
+  color: var(--kta-light-text) !important;
+}
+

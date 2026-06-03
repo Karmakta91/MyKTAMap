@@ -33,6 +33,12 @@
 (function() {
   "use strict";
 
+  // 🆕 v1.31.5 (P2 progressive lazy CSS) — préchargement du chunk CSS dédié.
+  // Cf perf-memory §87 (helper window._loadCssOnce posé par js/cssLazy.js).
+  if (typeof window._loadCssOnce === "function") {
+    window._loadCssOnce("css/style-stats-globales.css", "kta-css-style-stats-globales");
+  }
+
   const MODAL_ID = "kta-stats-globales-modal";
 
   // ───────── HELPERS ─────────
