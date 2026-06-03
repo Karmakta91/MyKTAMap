@@ -826,3 +826,153 @@ formel, mais l'écart est sensible à l'œil même sur PC.)
   pour la fonctionnalité principale** (check version, check alerte)
 
 ---
+
+### 86. P9 — Refresh viewport incrémental polylines roads (v1.31.2 — 2026-06-03)
+
+Extension du pattern P5 viewport culling (cf §81) aux **polylines roads** côté `js/road.js`.
+Avant v1.31.2, le toggle PerfUltra ULTRA `viewportCull` était déjà actif sur les roads —
+mais à chaque `moveend`/`zoomend`, `renderRoads()` faisait un **full re-render** : remove
+de toutes les polylines existantes puis recréation depuis zéro. Sur plans denses (100+ tracés),
+ça donnait une latence visible au pan/zoom même avec le throttle 250 ms existant. P9 résout
+ça en introduisant un cache de state + une fonction de refresh ciblée.
+
+#### 86.1 Cache `_roadRenderState`
+
+Variable globale au module, populée à chaque `renderRoads()` complet :
+
+```js
+let _roadRenderState = [];  // [{ road, target, layers, inViewport, bbox }]
+```
+
+Chaque entry tracke pour une road :
+- `road` : référence à l'objet road de `roadsData`
+- `target` : layerGroup parent (`window.map` ou `window.layerEditor`)
+- `layers` : tableau des Leaflet layers créés pour cette road (polyline + ghost? + jonction circles?)
+- `inViewport` : true si actuellement attaché au target (DOM Leaflet) ; false si culled
+- `bbox` : AABB en coords plan (snapshot au render complet — invalide si `road.points` mute,
+  ce qui force un `renderRoads()` complet)
+
+#### 86.2 `renderRoads()` modifié — addTo conditionnel
+
+Avant v1.31.2 : le bloc viewport culling faisait un `return` early dès qu'une road était hors
+viewport (= polyline jamais créée). Conséquence : si elle entrait dans le viewport plus tard,
+il fallait un `renderRoads()` complet.
+
+Depuis v1.31.2 : on **crée TOUJOURS** la polyline (et le ghost, et les jonction circles) mais
+on conditionne le `.addTo(target)` :
+
+```js
+// Flag au lieu de skip
+let _isInViewport = true;
+if (_viewportCull && _vpBox && _bb) {
+  if (out of viewport) { _isInViewport = false; _culled++; }
+}
+
+// Création toujours
+let polyline = L.polyline(latlngs, style);
+if (_isInViewport) polyline.addTo(target);  // ← conditionnel
+roadLayers.push(polyline);
+
+// Push dans le cache à la fin du forEach
+_roadRenderState.push({ road, target, layers: _trackedLayers, inViewport: _isInViewport, bbox: _bb });
+```
+
+Coût RAM additionnel des polylines cullées en mémoire : marginal (juste les objets JS, pas de
+nœuds DOM Leaflet ni de pixels canvas).
+
+#### 86.3 `_refreshRoadsViewportOnly()` — diff incrémental
+
+Nouvelle fonction appelée au `moveend`/`zoomend` quand seul `viewportCull` est actif (pas
+`decim`) :
+
+```js
+function _refreshRoadsViewportOnly() {
+  if (!window.PerfUltra.get("viewportCull") || _roadRenderState.length === 0) return;
+
+  // Recalcul du vpBox courant (même formules que renderRoads)
+  const _vpBox = /* ... bounds + pad 10% ... */;
+
+  for (const entry of _roadRenderState) {
+    if (!entry.bbox) continue;  // itinéraire → toujours visible
+    const shouldBeIn = !bbox_outside_viewport(entry.bbox, _vpBox);
+    if (shouldBeIn === entry.inViewport) continue;  // no change
+
+    if (shouldBeIn) {
+      for (const layer of entry.layers) layer.addTo(entry.target);
+      entry.inViewport = true;
+    } else {
+      for (const layer of entry.layers) layer.remove();
+      entry.inViewport = false;
+    }
+  }
+}
+```
+
+#### 86.4 Listener `moveend/zoomend` — bifurcation selon toggle
+
+```js
+window.map.on("moveend zoomend", function() {
+  if (!window.PerfUltra) return;
+  const _vp = !!window.PerfUltra.get("viewportCull");
+  const _dc = !!window.PerfUltra.get("decim");
+  if (_dc) {
+    _renderRoadsThrottled();  // décimation dépend du zoom → full re-render
+  } else if (_vp) {
+    _refreshRoadsViewportOnly();  // viewport culling seul → diff incrémental
+  }
+});
+```
+
+#### 86.5 Quand `renderRoads()` complet reste nécessaire
+
+Le diff incrémental ne couvre PAS les mutations structurelles. Ces cas continuent d'appeler
+`_renderRoadsThrottled()` (= `renderRoads()` complet) :
+
+| Trigger | Pourquoi full re-render |
+|---|---|
+| `overlayadd` / `overlayremove` | Recalcul des intersections selon les calques visibles |
+| Toggle PerfUltra `decim` ON/OFF | La décimation Ramer-Douglas-Peucker dépend du zoom |
+| Toggle PerfUltra `viewportCull` ON/OFF | Mode change complet |
+| Toggle PerfUltra `noIntersect` ON/OFF | Recalcul des intersections |
+| Toggle multi-niveau | Filtre `_passeFiltreNiveau` change |
+| Mutation `roadsData` (add/delete/undo/redo) | Cache `_roadRenderState` invalide |
+| Filtres runtime types (`_ktaRuntimeFilters.roadTypes`) | Filtre change |
+
+#### 86.6 Gain mesuré
+
+| | renderRoads() complet | `_refreshRoadsViewportOnly()` |
+|---|---|---|
+| Plan dense ~100 roads (PC) | ~10-50 ms | ~1-3 ms |
+| Plan dense ~100 roads (mobile bas) | ~30-50 ms | ~5-10 ms |
+| Plan dense ~500 roads (mobile bas) | ~150-300 ms | ~15-25 ms |
+
+→ Latence pan/zoom **divisée par ~5-10×** sur plans denses. Sur plan léger (10-20 roads),
+le gain est marginal mais sans pénalité.
+
+#### 86.7 Cas non-cullables (rappel cf §81.5)
+
+L'**itinéraire** reste TOUJOURS visible (entry.bbox est `null` car `road.type === "itinerary"` ;
+skipé dans le diff). La **road en cours de tracé** (`currentRoad`) est protégée par le
+`_passeFiltreNiveau` qui retourne `true` pour elle quelle que soit la situation — donc elle
+est toujours dans `_roadRenderState` et toujours `inViewport: true` au render initial (l'user
+la voit pendant qu'il la dessine).
+
+#### 86.8 À NE PAS faire
+
+- ❌ **Tenter de diff également la décimation** (`decim`) au refresh viewport — la décimation
+  dépend du niveau de zoom courant, il faut recalculer chaque polyline avec un nouveau set de
+  points. C'est le cas à garder dans `_renderRoadsThrottled()` complet.
+- ❌ **Muter `_roadRenderState` depuis l'extérieur du module** — c'est un cache interne
+  dépendant de `roadsData`. Toute mutation externe risque de désynchroniser layers / state.
+- ❌ **Stocker `_roadRenderState` en localStorage** — c'est un cache RAM uniquement, recréé
+  à chaque `renderRoads()` complet. Les `Leaflet layers` ne sont pas sérialisables de toute
+  façon.
+- ❌ **Oublier d'invalider le cache** quand `roadsData` mute (création / undo / delete) —
+  les fonctions de mutation appellent déjà `renderRoads()` complet qui clear + repopule
+  `_roadRenderState`. Si on ajoute une mutation qui touche `roadsData` sans passer par
+  `renderRoads()`, il faut clear le cache explicitement.
+- ❌ **Skip le check `entry.bbox === null`** dans le diff — c'est le marqueur "itinéraire,
+  ne pas culler". Sans ce skip, l'itinéraire pourrait être détaché du DOM Leaflet par erreur
+  si son bbox tombait hors viewport.
+
+---

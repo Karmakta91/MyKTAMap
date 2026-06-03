@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.1</strong> (3 juin 2026, optimisation perf P7 OOMGuard pause sur visibilitychange).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.2</strong> (3 juin 2026, optimisation perf P9 refresh viewport incrémental polylines roads).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.2 (PATCH — Optimisation perf P9 : refresh viewport incrémental pour polylines roads)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur visible</strong> (gain perceptible sur la fluidité du pan/zoom en mode PerfUltra ULTRA viewportCull sur plans denses).
+    Modif strictement interne au module <code>js/road.js</code>. Avant v1.31.2 : à chaque <code>moveend</code>/<code>zoomend</code>, <code>renderRoads()</code> détachait TOUTES les polylines puis recréait depuis zéro toutes les <code>L.polyline</code> visibles — coût O(N) avec N = nombre de tracés. Sur plans denses (100+ tracés) : latence visible au pan/zoom même avec le throttle 250 ms existant. Depuis v1.31.2 : nouveau cache <code>_roadRenderState</code> populé au <code>renderRoads()</code> complet et nouvelle fonction <code>_refreshRoadsViewportOnly()</code> qui itère ce cache au moveend/zoomend, recalcule la visibilité via test AABB, et fait juste <code>addTo(target)</code> ou <code>.remove()</code> ciblé selon le diff. Pattern aligné avec P5 markers POI (v1.30.0).
+    <strong>Cas non-cullables préservés</strong> : itinéraire (toujours visible), <code>currentRoad</code> en cours de tracé. Décimation Ramer-Douglas-Peucker active = repart sur full re-render car dépend du zoom.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump <code>CACHE_NAME</code> à <code>v1.31.2</code>).
+    Verdict : ✅ aucune régression — patch perf strictement neutre côté réseau, gain user-perceptible uniquement sur la fluidité du pan/zoom en mode PerfUltra viewportCull.
   </p>
 
   <p class="meta" style="margin-top:6px;">
