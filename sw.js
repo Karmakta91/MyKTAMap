@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.31.6";
+const CACHE_NAME = "myktamap-cache-v1.31.6-fix1";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -524,30 +524,47 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
-          // 🆕 v1.31.5-fix1 (hotfix offline) — le .catch() DOIT toujours
-          // retourner une Response, jamais undefined. Sinon le browser
-          // remonte « fetch Event respondWith received an error, returned
-          // response is null » et le rendu de la page casse partiellement
-          // (typique quand un asset nouveau — ex: chunk CSS lazy v1.31.4+
-          // — est demandé en offline alors qu'il n'a jamais été caché,
-          // soit parce que l'install du SW n'a pas eu lieu en ligne, soit
-          // parce que ce chunk a été ajouté APRÈS l'installation du cache).
+          // 🆕 v1.31.6-fix1 (hotfix offline robustesse) — le .catch() doit
+          // TOUJOURS retourner une Response valide.
           //
-          // Stratégie :
-          //  - Document HTML (navigation) → fallback `./index.html` du cache.
-          //    Si index.html lui-même est absent du cache (cas extrême du
-          //    1er boot offline), on retombe sur une 504 inline.
-          //  - Autre asset (CSS/JS/img/json/…) → 504 explicite. Côté
-          //    consumer, le browser traite ça comme un fetch échoué
-          //    normal — c'est exactement le comportement attendu côté
-          //    `link.onerror` de _loadCssOnce (fallback dégradé sur le
-          //    `style.css` principal) ou côté fetch métier (.catch()
-          //    classique). Pas de crash de la page.
+          // Pour les navigations document (HTML), on essaie PLUSIEURS clés
+          // de cache car index.html peut être stocké sous différentes URL
+          // selon comment il a été demandé à l'install :
+          //   - "./" → résolu à <origin>/
+          //   - "./index.html" → résolu à <origin>/index.html
+          //   - et leurs variantes absolues
+          // L'install met les DEUX (cf ASSETS_TO_CACHE), mais en cas de
+          // bug install partiel (un seul des deux cachés), on tente
+          // chaque clé jusqu'à trouver. Sinon page d'erreur claire avec
+          // bouton recovery vers killsw.html.
+          //
+          // Pour les assets non-document (CSS/JS/img/json/…) → 504
+          // explicite. Côté consumer, le browser traite ça comme un fetch
+          // échoué normal — c'est ce qu'attend le link.onerror de
+          // _loadCssOnce (fallback dégradé) et les fetch métier .catch().
           if (event.request.destination === "document") {
-            return caches.match("./index.html").then((r) => r || new Response(
-              "<!doctype html><h1>Offline — index.html absent du cache</h1>",
-              { status: 504, headers: { "Content-Type": "text/html" } }
-            ));
+            return caches.match("./index.html")
+              .then((r) => r || caches.match("./"))
+              .then((r) => r || caches.match("/index.html"))
+              .then((r) => r || caches.match("/"))
+              .then((r) => r || new Response(
+                "<!doctype html><html lang=fr><head><meta charset=utf-8>" +
+                "<title>MyKTAMap — Hors-ligne</title>" +
+                "<style>body{font-family:system-ui,sans-serif;background:#0a0d18;color:#e8eaf0;padding:24px;line-height:1.6;max-width:640px;margin:0 auto}" +
+                "h1{color:#f4c542}code{background:#1a1f2e;padding:2px 6px;border-radius:4px;color:#8cb4ff}" +
+                "a{color:#8cb4ff;text-decoration:underline}a:hover{color:#f4c542}" +
+                "button{background:#f4c542;color:#1a1f2e;border:0;padding:10px 20px;border-radius:6px;font-weight:700;cursor:pointer;margin-top:16px}</style></head><body>" +
+                "<h1>⚠️ Hors-ligne</h1>" +
+                "<p>L'application n'a pas pu se charger en mode hors-ligne. Le Service Worker n'a pas trouvé <code>index.html</code> dans son cache local.</p>" +
+                "<p><strong>Solutions :</strong></p>" +
+                "<ol>" +
+                "<li>Reconnecte-toi à Internet puis rafraîchis la page (F5 ou Ctrl+R).</li>" +
+                "<li>Si le problème persiste, va sur <a href='/killsw.html'>/killsw.html</a> pour réinitialiser le Service Worker (tes données locales sont conservées).</li>" +
+                "</ol>" +
+                "<button onclick='location.reload()'>↻ Recharger la page</button>" +
+                "</body></html>",
+                { status: 504, headers: { "Content-Type": "text/html; charset=utf-8" } }
+              ));
           }
           return new Response("", {
             status: 504,

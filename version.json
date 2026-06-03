@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.6",
+  "version": "v1.31.6-fix1",
   "released": "2026-06-03",
   "notes": [
-    "♿ v1.31.6 — Petites améliorations d'accessibilité : si tu as activé « Réduire les animations » dans les réglages de ton système, l'app les réduit aussi. Sur PC, la touche Échap ferme désormais les modales, et la navigation au clavier (Tab) montre clairement quel bouton est sélectionné. Aucun changement fonctionnel."
+    "🩹 v1.31.6-fix1 — Correction du mode hors-ligne (suite) : si l'application ne peut pas se charger en mode hors-ligne (cache local incomplet), l'écran d'erreur explique clairement le problème et propose deux solutions : rafraîchir, ou aller sur la page de réinitialisation du Service Worker (tes données locales sont conservées). Aucun changement fonctionnel volontaire."
   ]
 }

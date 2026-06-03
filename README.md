@@ -8,7 +8,7 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.31.6` (03/06/2026) — PATCH **a11y/keyboard** : quick wins UX issus de l'audit C1 (cf `docs/architecture/ui.md §88`). **UX2** `prefers-reduced-motion` (animations désactivées si OS demande reduce). **UX4** gestion globale touche Échap (ferme la modale active, liste blanche stricte qui EXCLUT les gates UnlockGate/PinLock/splash). **UX5** `:focus-visible` ambre sur les boutons charte (Tab navigation). Aucun changement fonctionnel.
+**📦 Version courante** : `v1.31.6-fix1` (03/06/2026) — HOTFIX **mode hors-ligne (suite)** : la page d'erreur hors-ligne (cas où le SW n'a pas `index.html` en cache) tente désormais 4 clés alternatives (`./`, `./index.html`, `/`, `/index.html`) avant de tomber sur le fallback. Le fallback affiche une page d'erreur charte avec un bouton « Recharger » et un lien vers `/killsw.html` pour réinitialiser le Service Worker.
 **📦 Précédentes shipped main** : `v1.31.1` (perf P7 OOMGuard pause sur visibilitychange) ; `v1.31.0` (Refactor MINOR : `interface.js` → 9 modules thématiques, -66 % LOC) ; `v1.30.1` (HOTFIX CSS frontière community/pro) ; `v1.30.0` (Perf boot : `defer` 51 scripts + timeout 1500 ms fetches + viewport culling markers POI + animation reveal titre) ; `v1.29.4` (Infra/DX : selfhost ZIP auto + CLAUDE.md slim + guard-git affiné) ; `v1.29.0+fix3` (i18n P0 README EN + Mode Secours multi-phases) ; `v1.25.3` (Carte tutoriel Mode Secours)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
