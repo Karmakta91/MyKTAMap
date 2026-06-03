@@ -65,7 +65,19 @@
     active: ACTIVE,
     // Ouvre une nouvelle fenêtre dans le même origin avec ?incognito=1.
     // Conserve les autres params (ex: ?selfhost=…) pour le workflow combiné.
+    //
+    // 🩹 v1.31.8-fix1 : flush SessionPersist AVANT le launch pour que la
+    // session courante de la fenêtre principale soit garantie persistée
+    // sur disque. Cas piégeux : l'user travaille, clique "Démarrer
+    // incognito", la fenêtre principale crash/se ferme avant le prochain
+    // tick auto-save → perte de la dernière modif. Le force:true bypass
+    // le throttle "main thread busy".
     launch: function() {
+      try {
+        if (window.SessionPersist && typeof window.SessionPersist.save === "function") {
+          window.SessionPersist.save({ force: true });
+        }
+      } catch (e) { /* defensive — pas bloquant */ }
       try {
         var url = new URL(window.location.href);
         url.searchParams.set(URL_PARAM, "1");
@@ -122,10 +134,31 @@
       // PAS d'appel à _origStorage.setItem → bypass écriture disque.
     };
 
+    // 🩹 v1.31.8-fix1 : whitelist clés autorisées en READ disque (writes
+    // restent shimés en in-memory). Pour KARMA : on veut que la barrière
+    // UnlockGate community continue de "valider quand même le mdp" sans
+    // forcer l'user à re-saisir à chaque ouverture incognito. Le compteur
+    // de tentatives échouées est aussi whitelisté pour ne pas casser
+    // l'anti-bruteforce cross-fenêtre (sinon attaque par boucle de tabs).
+    var READ_DISK_WHITELIST = {
+      "myktamap_unlock_v1":       1, // UnlockGate — hash mdp community validé
+      "myktamap_unlock_attempts": 1  // UnlockGate — compteur tentatives échouées
+      // (extensible : ajouter ici si une autre clé n'a pas de sens à oublier
+      //  en incognito — ex: préf thème/langue. À garder MINIMAL pour ne pas
+      //  diluer la promesse "aucune trace pré-incognito lue".)
+    };
+
     Storage.prototype.getItem = function(k) {
-      // 1. Si on a écrit en in-memory, retourne la valeur in-memory
-      if (_memStorage.has(String(k))) return _memStorage.get(String(k));
-      // 2. Sinon, retourne null. On NE LIT PAS l'existant disque pour ne pas
+      var key = String(k);
+      // 1. Si on a écrit en in-memory, retourne la valeur in-memory (priorité)
+      if (_memStorage.has(key)) return _memStorage.get(key);
+      // 2. Si clé whitelistée → on lit le disque réel (UX critique)
+      if (READ_DISK_WHITELIST[key]) {
+        try {
+          return _origStorage.getItem.call(this, key);
+        } catch (e) { return null; }
+      }
+      // 3. Sinon : null. On NE LIT PAS l'existant disque pour ne pas
       //    permettre à un module de "récupérer" des données pré-incognito
       //    (sinon l'incognito devient un demi-mesure : on lit l'historique).
       //    Conséquence : les préférences thème / langue se résettent au boot
@@ -218,13 +251,19 @@
     console.warn("🕵️ [IncognitoMode] Impossible de shim IDBObjectStore :", e);
   }
 
-  // 4️⃣ Inject un badge "INCOGNITO" dans les titres visibles + préfixe le
-  //    <title> du tab pour que l'onglet reflète l'état même quand l'user
-  //    est sur la carte (où aucun titre app n'est visible).
+  // 4️⃣ Inject un badge "INCOGNITO" SOUS le sous-titre des conteneurs
+  //    pour ne pas faire déborder le header / le titre sur mobile.
+  //    Préfixe aussi le <title> du tab pour que l'onglet reflète l'état
+  //    même quand l'user est sur la carte (où aucun titre app n'est visible).
+  //
+  //    🩹 v1.31.8-fix1 : avant on appendait le badge au #splashTitle et
+  //    .loader-titre-nom (inline) → débordait du cadre sur mobile (badge =
+  //    +90px de largeur en plus du nom MyKTAMap). Maintenant on inject
+  //    APRÈS le subtitle/tagline dans le parent, sur sa propre ligne.
   //
   //    Cibles :
-  //    - #splashTitle (splash de démarrage très bref)
-  //    - .loader-titre-nom (vue loader / sélection plan — long séjour)
+  //    - #splashBox > inject après #splashSubtitle (sa propre ligne)
+  //    - .loader-titre-textes > inject après .loader-titre-tagline (sa propre ligne)
   //    - document.title (tab navigateur — permanent)
   function _injecterBadgeTitre() {
     try {
@@ -232,16 +271,30 @@
       if (document.title && document.title.indexOf("🕵️") !== 0) {
         document.title = "🕵️ " + document.title;
       }
-      // Inject le badge dans tous les titres visibles trouvés
-      var cibles = document.querySelectorAll("#splashTitle, .loader-titre-nom");
-      cibles.forEach(function(titre) {
-        // Évite double-inject
-        if (titre.querySelector(".kta-incognito-badge")) return;
-        var badge = document.createElement("span");
+      // Helper : crée le badge avec classe block (CSS-driven layout)
+      function _makeBadge() {
+        var badge = document.createElement("div");
         badge.className = "kta-incognito-badge";
         badge.textContent = "🕵️ INCOGNITO";
         badge.title = "Mode incognito actif — aucune donnée n'est sauvegardée";
-        titre.appendChild(badge);
+        return badge;
+      }
+      // 1) Splash : inject dans #splashBox APRÈS #splashSubtitle
+      var splashBox     = document.getElementById("splashBox");
+      var splashSubtitle = document.getElementById("splashSubtitle");
+      if (splashBox && splashSubtitle && !splashBox.querySelector(".kta-incognito-badge")) {
+        splashSubtitle.insertAdjacentElement("afterend", _makeBadge());
+      }
+      // 2) Loader : inject dans .loader-titre-textes APRÈS .loader-titre-tagline
+      document.querySelectorAll(".loader-titre-textes").forEach(function(container) {
+        if (container.querySelector(".kta-incognito-badge")) return;
+        var tagline = container.querySelector(".loader-titre-tagline");
+        if (tagline) {
+          tagline.insertAdjacentElement("afterend", _makeBadge());
+        } else {
+          // Fallback : pas de tagline → append en fin
+          container.appendChild(_makeBadge());
+        }
       });
     } catch (e) {
       console.warn("🕵️ [IncognitoMode] Badge titre KO :", e);

@@ -872,7 +872,7 @@ et `return` — zéro effet de bord en mode normal.
 
 | Surface | Stratégie | Pourquoi |
 |---|---|---|
-| `localStorage` | Shim `Storage.prototype.setItem/getItem/removeItem/clear/key/length` → `Map` in-memory partagée | Reads bornés à la Map (pas l'historique disque) pour ne PAS fuir les préférences pré-incognito |
+| `localStorage` | Shim `Storage.prototype.setItem/getItem/removeItem/clear/key/length` → `Map` in-memory partagée. **🩹 v1.31.8-fix1** : `getItem` whitelist `myktamap_unlock_v1` + `myktamap_unlock_attempts` pour read disque (UnlockGate UX + anti-bruteforce préservés). Writes restent shimés. | Reads bornés à la Map + whitelist (pas l'historique général disque) pour ne PAS fuir les préférences pré-incognito |
 | `sessionStorage` | Idem (même prototype `Storage`) | Cohérent avec localStorage |
 | IDB **writes** (`put`/`add`/`delete`/`clear`) | Shim `IDBObjectStore.prototype.*` → faux `IDBRequest` qui `onsuccess` immédiat | Modules qui attendent un callback success ne crashent pas |
 | IDB **reads** (`get`/`getAll`/`openCursor`/`count`) | **Intacts** | `planRegistry` lit `myktamap_handles` (handles selfhost), `MyKTAMapPhotos` lit les photos déjà existantes — sinon l'app devient inutilisable |
@@ -899,12 +899,18 @@ et `return` — zéro effet de bord en mode normal.
 | Voie | Mécanisme |
 |---|---|
 | URL directe `?incognito=1` | Boot incognito (équivalent : lien partageable) |
-| Bouton `🕵️ Démarrer en mode incognito` dans ⚙️ Réglages | Appelle `window.IncognitoMode.launch()` → `window.open(url + '?incognito=1', '_blank', 'noopener')` |
+| Bouton `🕵️ Démarrer en mode incognito` dans ⚙️ Réglages | Appelle `window.IncognitoMode.launch()` qui : (1) **🩹 v1.31.8-fix1** flush `SessionPersist.save({force:true})` pour persister la fenêtre principale ; (2) `window.open(url + '?incognito=1', '_blank', 'noopener')` |
 | Test auto | Setter `window._kta_incognito = true` AVANT le chargement du module |
 
 **Pas de toggle sur la fenêtre courante** — l'incognito doit démarrer DÈS le
 boot pour shim avant que les modules n'écrivent. Toggler après coup serait
 incohérent (les données déjà écrites resteraient).
+
+**🩹 v1.31.8-fix1 — Flush défensif** : `launch()` force la sauvegarde de la
+fenêtre principale AVANT d'ouvrir la nouvelle fenêtre incognito. Cas piégeux
+sans le flush : l'user travaille, clique « Démarrer incognito », la fenêtre
+principale a une modif non-saved (throttle main-thread-busy), il ferme la
+fenêtre principale par mégarde → perte. Le `force:true` bypass le throttle.
 
 #### 86.5 Cycle de vie
 
@@ -950,11 +956,20 @@ intercepte de toute façon les écritures.
   un module qui charge AVANT `incognitoMode.js` échapperait au shim. C'est
   pourquoi l'ordre dans `index.html` est CRITIQUE. Aujourd'hui seul
   `copyright.js` est avant — il ne touche pas storage.
-- ❌ **Reads disque pré-incognito = bloqués**. Les préférences thème / langue /
-  hash unlock pré-existantes ne sont pas lues → l'app boot en thème par défaut,
-  UnlockGate redemande le mdp. C'est cohérent avec le pattern (= comme onglet
-  privé). Si KARMA veut une exception (ex: thème lu mais pas écrit), faudra une
-  whitelist explicite dans le shim `getItem`.
+- ❌ **Reads disque pré-incognito = bloqués SAUF whitelist**.
+  - 🩹 v1.31.8-fix1 : whitelist explicite `READ_DISK_WHITELIST` dans le shim
+    `getItem` pour 2 clés UnlockGate uniquement :
+    - `myktamap_unlock_v1` (hash mdp community déjà validé)
+    - `myktamap_unlock_attempts` (compteur anti-bruteforce)
+  - Reads autres clés (thème, langue, prefs, sessions persistées, etc.) →
+    toujours `null`. L'app boot en thème par défaut. Cohérent avec pattern
+    onglet privé.
+  - **Writes pour TOUTES les clés (whitelist incluses)** = toujours shimés.
+    Un nouveau hash unlock entré en incognito n'écrira PAS sur disque (la
+    fenêtre incognito le mémorise via Map in-memory pour le reload, mais
+    rien ne persiste cross-tab).
+  - Whitelist à garder MINIMALE — chaque ajout dilue la promesse "aucune
+    trace pré-incognito lue". Pas de whitelist défensive "au cas où".
 - ❌ **Service Worker fetch handler** n'est pas affecté. Les assets statiques
   cachés sont servis depuis le cache → c'est OK, pas des données utilisateur.
   Mais si un mode "Hors-ligne strict paranoia" était combiné avec incognito, il

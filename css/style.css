@@ -17012,21 +17012,30 @@ html.kta-incognito body {
   box-shadow: inset 0 0 0 3px #a78bfa;
 }
 
-/* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js dans le titre principal */
+/* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js SOUS le subtitle/tagline.
+   🩹 v1.31.8-fix1 : passé d'inline (à côté du titre, débordait sur mobile)
+   à block sur sa propre ligne, centré sous le sous-titre. width: fit-content
+   pour ne prendre que la place du texte (pas full-width). */
 .kta-incognito-badge {
-  display: inline-block;
-  margin-left: 10px;
-  padding: 2px 8px;
+  display: block;
+  width: fit-content;
+  margin: 8px auto 0;
+  padding: 3px 10px;
   background: #a78bfa;
   color: #1a1f2e;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  border-radius: 3px;
-  vertical-align: middle;
+  letter-spacing: 0.6px;
+  border-radius: 4px;
   text-transform: uppercase;
+  text-align: center;
   /* Animation discrète pour attirer l'attention au boot, puis stable */
   animation: kta-incognito-badge-pulse 2.4s ease-in-out 0s 3 normal;
+}
+/* Variant loader : aligné à gauche (sous tagline qui est aussi à gauche). */
+.loader-titre-textes .kta-incognito-badge {
+  margin-left: 0;
+  margin-top: 6px;
 }
 
 @keyframes kta-incognito-badge-pulse {
