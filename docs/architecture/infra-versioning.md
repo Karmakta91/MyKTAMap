@@ -401,3 +401,149 @@ function blockPushMain(cmd) {
   on n'éteint pas le fusible
 
 ---
+
+### 81. Règles DX émergées pendant le perf sweep v1.31.1 → v1.31.5 (2026-06-03)
+
+3 règles de doctrine DX ont émergé organiquement pendant le sprint perf v1.31.x
+(8 bumps en moins de 24h : v1.31.1 P7 OOMGuard, v1.31.2 P9 polylines, v1.31.2-fix1
+nettoyage notes, v1.31.3 polish docs/aide, v1.31.4 P2 lazy CSS step 1, v1.31.5 step 2,
+v1.31.5-fix1 SW offline). Ces règles vivent dans `CLAUDE.md` racine pour l'opérationnel
+mais méritent une trace ici comme partie de la doctrine **versioning + release** du projet.
+
+#### 81.1 Règle A — `Bump = sync docs sur 4 axes`
+
+**Énoncé** : tout bump de version (PATCH/MINOR/MAJOR) doit déclencher une vérification
++ MAJ obligatoire sur **4 axes documentaires distincts**. Considérer la release faite
+sans ces 4 syncs = dette technique immédiate.
+
+| Axe | Cible | Quand sync ? |
+|---|---|---|
+| 📱 **In-app** | `docs/applications/README_USER.md` + `README_USER.en.md` (modale Documentation) · `js/interfaceDocs.js` (Aide intégrée) · `docs/applications/AI_CONTEXT.md` (modale Aide IA) | Si UX user touchée OU nouvelle fonctionnalité |
+| 🔒 **Audit** | `docs/applications/NETWORK_AUDIT.md` + `NETWORK_AUDIT.html` | À chaque release (verdict réseau attendu par les users qui auditent) |
+| 📖 **Dev** | `README.md` racine (journal des versions, "Version courante" + précédentes shipped) | À chaque release |
+| 🤖 **Archi IA** | `CLAUDE.md` racine (si règle/archi change) + `docs/architecture/<sujet>.md` (selon sujets impactés) | Si pattern technique nouveau, refactor structurel, lesson learned |
+
+**Pattern de commit** observé : chaque release de v1.31.x avait une section
+"Sync 4 axes docs" dans le commit message qui listait explicitement ce qui était fait
+ou SKIPé sur chacun des 4. Format type :
+
+```
+Sync 4 axes docs (4)
+  📱 In-app   : SKIP justifié (perf interne, aucun changement UX)
+  🔒 Audit    : NETWORK_AUDIT.md + .html — entrée v1.X.Y
+  📖 Dev      : README.md — MAJ "Version courante"
+  🤖 Archi IA : perf-memory.md §X (pattern + gain + À NE PAS faire)
+```
+
+Le **SKIP** est OK et même utile (explicite que la non-modif est intentionnelle), mais
+ne JAMAIS oublier UN des 4 axes silencieusement.
+
+#### 81.2 Règle B — `version.json > notes` USER-FRIENDLY
+
+**Énoncé** : les entrées dans `version.json > notes` sont lues par l'user final via :
+- La modale "Mise à jour disponible" (consommée par `updateChecker.js`)
+- Le badge version en footer
+
+→ Donc **ZÉRO jargon technique**. **1-2 phrases courtes** par entrée.
+
+❌ **À éviter** :
+- Noms de fichier (`js/foo.js`, `css/style.css`)
+- Constantes en CAPS (`AUTO_SAVE_INTERVAL_MS`, `KILL_FRESHNESS_MS`)
+- Noms d'algorithmes (`Ramer-Douglas-Peucker`, `AABB`, `LRU`)
+- Mesures de perf en ms ou %
+- Codes de version internes (`P7`, `P9`, `B2`, `step 2`)
+- Lignes "Sources de vérité v1.X.Y" — dette technique inutile à l'user, déjà tracée
+  par `sw.js > CACHE_NAME` + `js/copyright.js > __MKM__.build`
+
+✅ **À faire** :
+- Décrire **ce que l'user voit ou doit savoir** en langage clair
+- Bénéfice perceptible ("démarrage plus rapide", "batterie économisée", "pan/zoom plus fluide")
+- Réassurance si pas de changement visible ("aucun changement fonctionnel", "tes plans et tes
+  annotations restent identiques")
+
+**Exemple avant/après** (extrait v1.31.2 réel) :
+
+```
+❌ AVANT (~360 mots) :
+"🚀 PATCH v1.31.2 — **Optimisation perf P9** : refresh viewport
+incrémental pour les polylines roads (mode PerfUltra ULTRA).
+**Aucun changement fonctionnel côté utilisateur**. Avant v1.31.2 :
+à chaque pan/zoom, `js/road.js > renderRoads()` détachait TOUTES
+les polylines puis les recréait depuis zéro — coûteux O(N) sur
+plans denses (100+ tracés)..."
+
+✅ APRÈS (~30 mots) :
+"🚀 v1.31.2 — Pan/zoom plus fluide sur les plans denses (100+ tracés)
+en mode 🚀 Performance ULTRA. Tes plans, tes tracés et tes
+annotations restent identiques. Aucun téléchargement supplémentaire."
+```
+
+**Où vit la doc technique détaillée** : `docs/architecture/<sujet>.md` (pour les agents IA
++ les devs) + commit message (pour bisect Git) + `NETWORK_AUDIT.md` (pour la transparence
+réseau spécifique). **PAS** dans `version.json`.
+
+#### 81.3 Règle C — `version.json > notes` = UNIQUEMENT le dernier bump
+
+**Énoncé** : le tableau `notes` de `version.json` ne contient QUE la note de la
+version courante (1-2 entrées max). Les notes des versions précédentes sont
+**supprimées** à chaque bump — pas de cumul.
+
+**Pourquoi** : l'user qui clique "Mettre à jour" voit la modale "Mise à jour disponible"
+qui affiche `version.json > notes`. Si on cumule l'historique de 5+ versions, l'user est
+noyé sous l'info. Il veut juste savoir "qu'est-ce qui change MAINTENANT".
+
+**Où vit l'historique** :
+- 📖 `README.md` racine (journal des versions, "Version courante" + "Précédentes shipped main")
+- 🔄 Commits Git (1 commit par release avec message détaillé, bisectable)
+- 🔒 `NETWORK_AUDIT.md` (verdict réseau cumulatif depuis v1.7.x, ne s'efface jamais)
+
+**Exemple correct** d'un `version.json` après bump :
+
+```json
+{
+  "version": "v1.31.4",
+  "released": "2026-06-03",
+  "notes": [
+    "🎨 v1.31.4 — Démarrage plus rapide : les styles du Mode Secours (~13 % du CSS de l'app) sont désormais chargés à la demande, pas au boot. Aucun changement visible côté utilisateur."
+  ]
+}
+```
+
+**Une seule entrée**, sur la version courante, dans le style §81.2.
+
+#### 81.4 Application des 3 règles dans le sprint v1.31.x
+
+| Bump | Sync 4 axes ? | Notes user-friendly ? | Notes = dernier bump uniquement ? |
+|---|---|---|---|
+| v1.31.1 (P7 OOMGuard) | ✅ | ❌ → corrigé en v1.31.2-fix1 | ❌ → corrigé en v1.31.2-fix1 |
+| v1.31.2 (P9 polylines) | ✅ | ❌ → corrigé en v1.31.2-fix1 | ❌ → corrigé en v1.31.2-fix1 |
+| **v1.31.2-fix1 (nettoyage notes)** | ✅ | ✅ posé | ❌ → corrigé en v1.31.3 |
+| **v1.31.3 (polish docs user)** | ✅ | ✅ | ✅ posé |
+| v1.31.4 (P2 lazy CSS step 1) | ✅ | ✅ | ✅ |
+| v1.31.5 (P2 lazy CSS step 2) | ✅ | ✅ | ✅ |
+| v1.31.5-fix1 (SW offline) | ✅ | ✅ | ✅ |
+
+→ Les 3 règles sont arrivées **organiquement** au fil du sprint, validées par leur
+application répétée sur 7 bumps consécutifs. Elles sont maintenant codifiées dans
+`CLAUDE.md` racine (section "Commandes & validation") pour l'opérationnel et
+documentées ici pour la doctrine.
+
+#### 81.5 À NE PAS faire
+
+- ❌ **Bumper sans toucher aux 4 axes** sans même un SKIP explicite — l'absence de mention
+  est ambigüe (oubli ou choix ?). Toujours indiquer le SKIP dans le commit pour traçabilité.
+- ❌ **Réintroduire du jargon technique dans `version.json > notes`** pour faciliter le
+  bisect dev — c'est exactement ce que les 3 niveaux d'historique (README, commits,
+  NETWORK_AUDIT) servent. La modale user a son propre rôle.
+- ❌ **Cumuler les notes** dans `version.json` "au cas où" pour les users qui auraient
+  raté plusieurs releases — la modale "Mise à jour disponible" est volumineuse côté UI,
+  l'user doit voir 1-2 phrases max, pas un changelog.
+- ❌ **Garder une ligne "Sources de vérité v1.X.Y"** dans les notes — c'est de la doc
+  d'ingénierie inutile à l'user et déjà tracée par le couple `sw.js > CACHE_NAME` +
+  `js/copyright.js > __MKM__.build` (consommés par les checks d'intégrité côté SW et
+  par `_compareVersions` d'updateChecker).
+- ❌ **Sync SEULEMENT l'audit ou SEULEMENT le README** — c'est l'erreur classique des
+  hotfix rapides. Tous les axes doivent être à jour ensemble pour éviter les déphasages
+  (= un user qui lit le README à jour mais l'audit obsolète, ou inverse).
+
+---
