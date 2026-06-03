@@ -742,6 +742,11 @@
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-refresh">🔄 Rafraîchir</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-csv">📊 Export CSV</button>' +
           '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-pdf">📤 Export PDF</button>' +
+          // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" — ouvre la modale dédiée
+          // js/sessionReport.js (3 formats : PDF/JSON/Texte + période + 8 toggles
+          // + note libre + carte miniature + heatmap zones explorées).
+          // Naturellement placé ici car les stats sont la "vitrine" de la session.
+          '<button type="button" class="kta-btn kta-btn-ghost"   id="kta-stats-glob-rapport">📋 Rapport de sortie</button>' +
           '<button type="button" class="kta-btn kta-btn-primary" id="kta-stats-glob-copy">📋 Copier le rapport</button>' +
         '</div>' +
       '</div>';
@@ -751,6 +756,23 @@
     overlay.addEventListener("click", function(e) { if (e.target === overlay) fermer(); });
     document.addEventListener("keydown", _onEscape);
     document.getElementById("kta-stats-glob-refresh").addEventListener("click", _refreshAndRender);
+
+    // 🆕 v1.33.0 D1 : bouton "Rapport de sortie" → ouvre la modale dédiée
+    // de js/sessionReport.js. Pas de prérequis particulier sur _lastReport
+    // car SessionReport collecte ses propres données via window.getEditorPoints
+    // etc. — il duplique légèrement la collecte mais reste plus simple que
+    // de partager un state global.
+    const btnRapport = document.getElementById("kta-stats-glob-rapport");
+    if (btnRapport) {
+      btnRapport.addEventListener("click", function() {
+        if (window.SessionReport && typeof window.SessionReport.ouvrirModal === "function") {
+          window.SessionReport.ouvrirModal();
+        } else {
+          alert("Module SessionReport indisponible. Recharge la page.");
+        }
+      });
+    }
+
     document.getElementById("kta-stats-glob-copy").addEventListener("click", function() {
       if (!_lastReport) return;
       const txt = getReportText(_lastReport);

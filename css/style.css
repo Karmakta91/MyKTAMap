@@ -17127,3 +17127,163 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
+/* =========================================================================
+   📋 v1.33.0 D1 — RAPPORT DE SORTIE (sessionReport.js)
+   =========================================================================
+   Modale du module js/sessionReport.js. Réutilise les classes charte
+   existantes (.kta-readme-modal-overlay, .kta-aide-section, .kta-btn) +
+   quelques classes dédiées pour les éléments spécifiques (date pickers,
+   preview, checkbox rows, action bar). */
+
+.kta-report-boite {
+  max-width: 580px;
+}
+
+.kta-report-period {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 6px;
+}
+.kta-report-period label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #c8d0e0;
+}
+.kta-report-date {
+  flex: 1;
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e8eaf0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+}
+.kta-report-date:focus {
+  outline: 2px solid #f4c542;
+  outline-offset: 1px;
+}
+
+.kta-report-hint {
+  font-size: 11.5px;
+  color: #8892a4;
+  font-style: italic;
+  margin: 8px 0 0 0;
+  line-height: 1.5;
+}
+
+.kta-report-preview {
+  background: rgba(140, 180, 255, 0.06);
+  border: 1px solid rgba(140, 180, 255, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.7;
+}
+.kta-report-preview-row + .kta-report-preview-row {
+  margin-top: 4px;
+}
+.kta-report-preview-dim {
+  color: #8892a4;
+  font-style: italic;
+}
+
+.kta-report-cb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #c8d0e0;
+  cursor: pointer;
+  user-select: none;
+}
+.kta-report-cb-row input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.kta-report-cb-row:hover {
+  color: #e8eaf0;
+}
+
+.kta-report-note {
+  width: 100%;
+  background: #1a1f2e;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e8eaf0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+.kta-report-note:focus {
+  outline: 2px solid #f4c542;
+  outline-offset: 1px;
+}
+
+.kta-report-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.kta-report-actions .kta-btn {
+  flex: 1;
+  font-size: 13px;
+  padding: 9px 10px;
+}
+
+.kta-report-status {
+  font-size: 12px;
+  color: #8cb4ff;
+  margin-top: 10px;
+  text-align: center;
+  min-height: 14px;
+  line-height: 1.5;
+}
+
+/* Variante thème clair */
+body.kta-theme-light .kta-report-date,
+html.kta-theme-light .kta-report-date,
+body.kta-theme-light .kta-report-note,
+html.kta-theme-light .kta-report-note {
+  background: #ffffff;
+  color: #1a1f2e;
+  border-color: rgba(0, 0, 0, 0.18);
+}
+body.kta-theme-light .kta-report-preview,
+html.kta-theme-light .kta-report-preview {
+  background: rgba(140, 180, 255, 0.10);
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-report-cb-row,
+html.kta-theme-light .kta-report-cb-row {
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-report-hint,
+html.kta-theme-light .kta-report-hint {
+  color: #555;
+}
+
+/* Mobile : actions wrappent en 2 lignes si écran étroit */
+@media (max-width: 480px) {
+  .kta-report-actions {
+    flex-wrap: wrap;
+  }
+  .kta-report-actions .kta-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+  .kta-report-period {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

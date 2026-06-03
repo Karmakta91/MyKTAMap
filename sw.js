@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.32.1";
+const CACHE_NAME = "myktamap-cache-v1.33.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -167,6 +167,8 @@ const ASSETS_TO_CACHE = [
   // Doit être caché pour fonctionner offline.
   "./js/pdfExport.js",
   "./js/sessionExporter.js",
+  // 🆕 v1.33.0 D1 : SessionReport — rapport post-mission PDF/JSON/Texte
+  "./js/sessionReport.js",
   "./js/kmzExport.js",
   "./js/kmzImport.js",
   // 🆕 v1.14.0 : GPX import + export (réutilise calibrage KMZ)
