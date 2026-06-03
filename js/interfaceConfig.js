@@ -736,13 +736,26 @@ function afficherConfig() {
           </div>
         </div>
 
-        <!-- 🕵️ v1.31.8 F2 : Mode incognito — bouton qui ouvre une NOUVELLE
-             fenêtre dans le même origin avec ?incognito=1, ce qui déclenche
-             le shim Storage + IDB writes (in-memory) de js/incognitoMode.js
-             avant tout autre module. Pas un toggle sur la fenêtre courante :
-             l'incognito doit démarrer DÈS le boot (sinon les modules ont
-             déjà écrit). Ouvrir un nouvel onglet est sémantiquement clair
-             (= comme un onglet privé navigateur). -->
+        <!-- 🕵️ v1.31.8 F2 + 🆕 v1.31.9 : Mode incognito — bouton qui
+             ouvre une NOUVELLE fenêtre dans le même origin avec ?incognito=1
+             (activate) OU close la fenêtre courante si déjà incognito (quit).
+             Pas un toggle sur la fenêtre courante : l'incognito doit démarrer
+             DÈS le boot (sinon les modules ont déjà écrit). Ouvrir un nouvel
+             onglet est sémantiquement clair (= comme un onglet privé navigateur). -->
+        ${(window.IncognitoMode && window.IncognitoMode.active) ? `
+        <div class="kta-aide-section">
+          <button class="kta-cfg-incognito-btn kta-cfg-incognito-btn-quit" type="button" id="cfg_incognito_btn">
+            <span style="font-size:18px;">✕</span>
+            <span><strong>Quitter le mode incognito</strong></span>
+          </button>
+          <div style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong>
+            (points, tracker, notes) <strong>seront perdues</strong>. Ta session principale
+            reste intacte dans son onglet.
+            <br><span style="color:#a78bfa;">Si le navigateur bloque la fermeture,
+            l'onglet recharge automatiquement en mode normal.</span>
+          </div>
+        </div>` : `
         <div class="kta-aide-section">
           <button class="kta-cfg-incognito-btn" type="button" id="cfg_incognito_btn">
             <span style="font-size:18px;">🕵️</span>
@@ -755,7 +768,7 @@ function afficherConfig() {
             local. Bordure violette visible + badge dans le titre rappellent le contexte.
             <br><span style="color:#a78bfa;">Au reload : tout disparaît.</span>
           </div>
-        </div>
+        </div>`}
 
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">🧭 Position initiale du tracker</div>
@@ -948,23 +961,26 @@ function afficherConfig() {
     });
   }
 
-  // 🕵️ v1.31.8 F2 — Bouton "Démarrer en mode incognito".
-  // Ouvre une NOUVELLE fenêtre avec ?incognito=1 (ne mute pas la fenêtre
-  // courante : l'incognito doit démarrer DÈS le boot pour shim Storage +
-  // IDB avant que tout autre module n'écrive). Pattern sémantiquement
-  // équivalent à "Nouvel onglet privé" du navigateur.
-  // En mode incognito DÉJÀ actif (l'utilisateur clique le bouton depuis
-  // une fenêtre déjà incognito) : ouvre quand même une nouvelle fenêtre
-  // incognito (cas légitime : tester depuis un état "frais").
+  // 🕵️ v1.31.8 F2 + 🆕 v1.31.9 — Bouton dynamique "Démarrer / Quitter
+  // le mode incognito" selon l'état IncognitoMode.active.
+  //   • Pas incognito → "Démarrer" → IncognitoMode.launch() ouvre nouvelle
+  //     fenêtre ?incognito=1 (ne mute pas la fenêtre courante).
+  //   • Incognito → "Quitter" → IncognitoMode.quit() tente window.close()
+  //     puis fallback navigate sans ?incognito=1.
   const btnIncognito = document.getElementById("cfg_incognito_btn");
   if (btnIncognito) {
     btnIncognito.addEventListener("click", function() {
-      if (window.IncognitoMode && typeof window.IncognitoMode.launch === "function") {
-        window.IncognitoMode.launch();
-      } else {
-        // Fallback de secours si le module n'a pas été chargé pour une raison
-        // quelconque (jamais en prod, défensif pour les forks tiers).
+      if (!window.IncognitoMode) {
         alert("Module IncognitoMode indisponible. Recharge la page.");
+        return;
+      }
+      if (window.IncognitoMode.active) {
+        // Confirm avant quit (perte de données potentielle)
+        if (confirm("Quitter le mode incognito ?\n\nTous les points/notes/tracker accumulés dans cette fenêtre seront perdus.")) {
+          window.IncognitoMode.quit();
+        }
+      } else {
+        window.IncognitoMode.launch();
       }
     });
   }

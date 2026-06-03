@@ -87,6 +87,38 @@
         var sep = window.location.search ? "&" : "?";
         window.open(window.location.pathname + window.location.search + sep + URL_PARAM + "=1", "_blank", "noopener");
       }
+    },
+    // 🆕 v1.31.9 : quitter le mode incognito DEPUIS UN ONGLET INCOGNITO.
+    // Stratégie en cascade :
+    //   1. window.close() — marche uniquement si l'onglet a été ouvert par
+    //      script (launch() ci-dessus). Le browser BLOQUE silencieusement
+    //      les close() sur onglets ouverts manuellement par l'user.
+    //   2. Fallback : navigate vers la même URL SANS ?incognito=1. Reload
+    //      dans le tab courant en mode normal. L'user retrouve son contexte
+    //      mais perd les données in-memory de la session incognito.
+    // Si appelé hors d'un onglet incognito (= !ACTIVE), c'est un no-op
+    // (cas défensif : un module qui appellerait quit() par erreur).
+    quit: function() {
+      if (!ACTIVE) return;
+      // Tentative 1 : close
+      try {
+        window.close();
+      } catch (_) {}
+      // Tentative 2 (après court délai pour laisser close() prendre effet) :
+      // si l'onglet est toujours là, on navigue en mode normal. Le browser
+      // n'a pas bloqué close → ce setTimeout ne fera juste rien (le contexte
+      // JS est déjà détruit).
+      setTimeout(function() {
+        try {
+          var url = new URL(window.location.href);
+          url.searchParams["delete"](URL_PARAM);
+          // location.assign (pas replace) pour que le back permette retour à incognito
+          window.location.assign(url.toString());
+        } catch (e) {
+          // Fallback ultra-vieux browser
+          window.location.href = window.location.pathname;
+        }
+      }, 100);
     }
   };
 

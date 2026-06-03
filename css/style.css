@@ -17090,3 +17090,14 @@ html.kta-theme-light.kta-incognito .kta-incognito-badge {
   outline-offset: 2px;
 }
 
+/* 🆕 v1.31.9 — Variant "Quitter le mode incognito" : rouge/orange
+   (sortir = action destructive : perte des données accumulées). Gardé
+   sur le même container .kta-cfg-incognito-btn pour réutiliser layout
+   + focus + transitions. */
+.kta-cfg-incognito-btn-quit {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+.kta-cfg-incognito-btn-quit:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+

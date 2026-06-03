@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.8-fix1",
+  "version": "v1.31.9",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.8-fix1 — Trois corrections du mode incognito : (1) le badge « INCOGNITO » est désormais affiché sous le sous-titre « Cartographie souterraine » (avant il débordait du cadre sur mobile). (2) Quand tu démarres en mode incognito, ta session principale est sauvegardée juste avant pour ne rien perdre. (3) Le mot de passe d'accès community continue d'être validé même en mode incognito (la barrière de protection reste active)."
+    "🕵️ v1.31.9 — Le bouton « Mode incognito » est maintenant disponible aussi depuis la modale ⚙️ Configuration du Home (loader), avant même de charger un plan. Et nouveau : si tu es déjà en mode incognito, le bouton devient rouge « ✕ Quitter le mode incognito » pour fermer l'onglet incognito d'un clic (avec confirmation pour éviter les pertes de données accidentelles)."
   ]
 }

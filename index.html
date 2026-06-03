@@ -507,6 +507,24 @@
       </div>
       <div class="kta-readme-modal-corps kta-loader-config-corps">
 
+        <!-- 🕵️ v1.31.9 : Mode incognito — bouton accessible AVANT chargement
+             plan (home/loader) pour tester un import en mode privé directement.
+             Le label / l'action sont remplis dynamiquement par le script inline
+             plus bas selon l'état de window.IncognitoMode.active : "Démarrer"
+             si pas actif, "Quitter" si actif. Section .kta-aide-section
+             cohérente avec le pattern des autres groupes (Perf, Debug, etc.).
+             Le texte est injecté en JS pour rester DRY avec la modale Réglages
+             carte (interfaceConfig.js). -->
+        <div class="kta-aide-section" id="loaderIncognitoSection">
+          <button class="kta-cfg-incognito-btn" type="button" id="loaderIncognitoBtn">
+            <span style="font-size:18px;" id="loaderIncognitoIcon">🕵️</span>
+            <span><strong id="loaderIncognitoLabel">Démarrer en mode incognito</strong></span>
+          </button>
+          <div id="loaderIncognitoHint" style="font-size:11.5px; color:#8892a4; margin-top:8px; line-height:1.5; padding:0 4px;">
+            <!-- Rempli dynamiquement par le script bind plus bas. -->
+          </div>
+        </div>
+
         <!-- 🎚️ Réglages de performance (drawer ouvert par défaut dans la modale) -->
         <div class="kta-aide-section">
 
@@ -3934,6 +3952,70 @@
           }
         });
       }
+
+      // === 🕵️ v1.31.9 BOUTON MODE INCOGNITO (home) ===
+      // Section #loaderIncognitoSection dans la modale Configuration. Le
+      // bouton est dynamique selon window.IncognitoMode.active :
+      //   • Pas actif → "Démarrer en mode incognito" → IncognitoMode.launch()
+      //   • Actif    → "Quitter le mode incognito"  → IncognitoMode.quit()
+      // Le label + l'icône + le hint + la classe sont mis à jour à chaque
+      // ouverture de la modale (au cas où l'état change pendant la session,
+      // bien que ce soit en théorie impossible — l'état est figé au boot).
+      (function _bindLoaderIncognito() {
+        var btn   = document.getElementById("loaderIncognitoBtn");
+        var icon  = document.getElementById("loaderIncognitoIcon");
+        var label = document.getElementById("loaderIncognitoLabel");
+        var hint  = document.getElementById("loaderIncognitoHint");
+        if (!btn || !icon || !label || !hint) return;
+        function _refresh() {
+          var actif = !!(window.IncognitoMode && window.IncognitoMode.active);
+          if (actif) {
+            btn.classList.add("kta-cfg-incognito-btn-quit");
+            icon.textContent  = "✕";
+            label.textContent = "Quitter le mode incognito";
+            hint.innerHTML    =
+              "Ferme cette fenêtre incognito. <strong>Toutes les données accumulées</strong> " +
+              "(points, tracker, notes) <strong>seront perdues</strong>. Ta session principale " +
+              "reste intacte dans son onglet.<br>" +
+              "<span style=\"color:#a78bfa;\">Si le navigateur bloque la fermeture, " +
+              "l'onglet recharge automatiquement en mode normal.</span>";
+          } else {
+            btn.classList.remove("kta-cfg-incognito-btn-quit");
+            icon.textContent  = "🕵️";
+            label.textContent = "Démarrer en mode incognito";
+            hint.innerHTML    =
+              "Ouvre une nouvelle fenêtre où <strong>aucune donnée n'est sauvegardée</strong> " +
+              "(ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo " +
+              "publique, prêter ta session à un tiers ou tester sans polluer ton historique " +
+              "local. Bordure violette + badge dans le titre rappellent le contexte.<br>" +
+              "<span style=\"color:#a78bfa;\">Au reload : tout disparaît.</span>";
+          }
+        }
+        _refresh();
+        // Re-refresh à chaque ouverture de la modale Configuration (Hook
+        // sur le helper exposé sur window pour rester DRY avec configBtn).
+        var _origOuvrir = window._ouvrirLoaderConfig;
+        if (typeof _origOuvrir === "function") {
+          window._ouvrirLoaderConfig = function() {
+            _origOuvrir.apply(this, arguments);
+            _refresh();
+          };
+        }
+        btn.addEventListener("click", function() {
+          if (!window.IncognitoMode) {
+            alert("Module IncognitoMode indisponible. Recharge la page.");
+            return;
+          }
+          if (window.IncognitoMode.active) {
+            if (confirm("Quitter le mode incognito ?\n\nTous les points/notes/tracker accumulés dans cette fenêtre seront perdus.")) {
+              window.IncognitoMode.quit();
+            }
+          } else {
+            window.IncognitoMode.launch();
+            _fermerLoaderConfig();
+          }
+        });
+      })();
 
       // === BOUTON 🔒 VERROUILLER L'APPLICATION (v1.14.11) ===
       // KARMA : « plutôt que éteindre qui sert à rien, on fait verrouiller
