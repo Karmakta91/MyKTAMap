@@ -16989,3 +16989,95 @@ body.kta-theme-light .kta-cfg-actions-bar button:focus-visible,
 html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
   outline-color: #b8860b;
 }
+
+/* =========================================================================
+   🕵️ v1.31.8 F2 — INCOGNITO MODE
+   ========================================================================= */
+/* Quand window.IncognitoMode est actif (URL ?incognito=1), js/incognitoMode.js
+   pose la classe `.kta-incognito` sur <html>. Cette section ajoute :
+   - une bordure violette permanente sur le viewport pour rappeler le contexte
+   - un badge "🕵️ INCOGNITO" injecté à côté du titre principal
+   - une couleur d'accent violet (#a78bfa) sur les éléments clés (build version
+     dans le footer) pour signaler que la session est éphémère.
+
+   Pattern visuel inspiré des modes de navigation privée (Chrome / Firefox) :
+   teinte violet/lavande pour distinguer du jaune ambre standard MyKTAMap.
+
+   Pas d'override forcé du `display`/positionnement existant — uniquement des
+   surcouches visuelles pour ne pas casser la lisibilité ni la responsive.
+*/
+html.kta-incognito body {
+  /* Bordure 3px lavande visible mais discrète sur fond sombre.
+     box-shadow inset plutôt que border pour ne pas pousser le layout. */
+  box-shadow: inset 0 0 0 3px #a78bfa;
+}
+
+/* Badge "🕵️ INCOGNITO" injecté par incognitoMode.js dans le titre principal */
+.kta-incognito-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  background: #a78bfa;
+  color: #1a1f2e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  text-transform: uppercase;
+  /* Animation discrète pour attirer l'attention au boot, puis stable */
+  animation: kta-incognito-badge-pulse 2.4s ease-in-out 0s 3 normal;
+}
+
+@keyframes kta-incognito-badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0.7); }
+  50%      { box-shadow: 0 0 0 6px rgba(167, 139, 250, 0); }
+}
+
+/* Build version dans le footer en violet quand incognito (signal supplémentaire
+   sans imposer un bandeau qui mangerait de l'espace écran). */
+html.kta-incognito .kta-build-version,
+html.kta-incognito #kta-build-version {
+  color: #a78bfa !important;
+}
+
+/* Variante thème clair : violet légèrement plus saturé pour contraste */
+html.kta-incognito.kta-theme-light body,
+body.kta-theme-light.kta-incognito,
+html.kta-theme-light body.kta-incognito {
+  box-shadow: inset 0 0 0 3px #7c3aed;
+}
+
+html.kta-incognito.kta-theme-light .kta-incognito-badge,
+html.kta-theme-light.kta-incognito .kta-incognito-badge {
+  background: #7c3aed;
+  color: #fff;
+}
+
+/* Bouton "🕵️ Démarrer en mode incognito" dans la modale Réglages —
+   accent lavande sur fond sombre, lisible sur thème clair. */
+.kta-cfg-incognito-btn {
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  font-size: 13px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.kta-cfg-incognito-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.35);
+}
+.kta-cfg-incognito-btn:focus-visible {
+  outline: 2px solid #f4c542;
+  outline-offset: 2px;
+}
+

@@ -148,6 +148,15 @@
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
   <script src="js/copyright.js"></script>
 
+  <!-- 🕵️ v1.31.8 F2 : INCOGNITO MODE — détecte ?incognito=1 au boot et shim
+       Storage.prototype + IDBObjectStore.prototype writes en in-memory avant
+       que TOUT autre module ne puisse écrire. DOIT être SYNC + très haut
+       (juste après copyright.js qui n'écrit rien). networkAudit + themeManager
+       + proLicense viennent APRÈS pour qu'ils utilisent les shims.
+       En mode normal (URL sans flag) : ne fait que poser window.IncognitoMode
+       = { active: false, launch: fn } et return. Zéro effet de bord. -->
+  <script src="js/incognitoMode.js"></script>
+
   <!-- 🏷️ v1.28.2 : PRO LICENSE DETECTOR — détecte la présence de
        /Licence-pro.json à la racine du serveur. Si présent : active le
        mode pro (footer sans CC BY-NC-SA). 100% transparent côté community

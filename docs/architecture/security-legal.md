@@ -839,3 +839,170 @@ Table `EMOJI_PAR_TAG` dans `_anonymiserSession` :
   `_anonymiserSession`.
 
 ---
+
+### 86. F2 — Mode incognito (v1.31.8 — 2026-06-03)
+
+> **Motivation** : KARMA voulait pouvoir explorer un plan en garantie qu'**aucune trace
+> ne reste localement** au close du tab — pour démo publique, prêt de session à un tiers,
+> exploration d'un plan sensible qu'on ne veut pas voir réapparaître au boot suivant.
+> Pattern : équivalent du "Nouvel onglet privé" du navigateur, mais limité à MyKTAMap.
+
+#### 86.1 Architecture
+
+Module unique `js/incognitoMode.js` chargé **SYNC tout en haut** d'`index.html`
+(juste après `copyright.js`, AVANT `networkAudit.js` et tout autre module qui
+pourrait écrire en `Storage` ou IDB). Sans cet ordre, des modules tournent et
+écrivent leur état avant que le shim soit en place → fuite garantie.
+
+```html
+<script src="js/copyright.js"></script>
+<script src="js/incognitoMode.js"></script>  <!-- doit être ici -->
+<script src="js/proLicense.js"></script>
+<script src="js/themeManager.js"></script>
+<script src="js/networkAudit.js"></script>
+...
+```
+
+Détection : `new URLSearchParams(window.location.search).get("incognito") === "1"`,
+ou override `window._kta_incognito === true` (pour tests automatisés). Si pas
+actif → le module pose juste `window.IncognitoMode = { active: false, launch }`
+et `return` — zéro effet de bord en mode normal.
+
+#### 86.2 Périmètre du blocage
+
+| Surface | Stratégie | Pourquoi |
+|---|---|---|
+| `localStorage` | Shim `Storage.prototype.setItem/getItem/removeItem/clear/key/length` → `Map` in-memory partagée | Reads bornés à la Map (pas l'historique disque) pour ne PAS fuir les préférences pré-incognito |
+| `sessionStorage` | Idem (même prototype `Storage`) | Cohérent avec localStorage |
+| IDB **writes** (`put`/`add`/`delete`/`clear`) | Shim `IDBObjectStore.prototype.*` → faux `IDBRequest` qui `onsuccess` immédiat | Modules qui attendent un callback success ne crashent pas |
+| IDB **reads** (`get`/`getAll`/`openCursor`/`count`) | **Intacts** | `planRegistry` lit `myktamap_handles` (handles selfhost), `MyKTAMapPhotos` lit les photos déjà existantes — sinon l'app devient inutilisable |
+| Cache Service Worker (assets statiques) | **Intact** | Ce sont les fichiers app, pas des données utilisateur |
+| Cookies | N/A | MyKTAMap.fr n'en pose pas |
+
+#### 86.3 Visuel — rappel permanent du contexte
+
+3 signaux cumulés, sans bouffer d'espace écran :
+
+1. **Bordure violette 3px** sur `<body>` via `box-shadow: inset 0 0 0 3px #a78bfa`.
+   Pas de `border` qui pousserait le layout. Variante thème clair : `#7c3aed`
+   (plus saturé pour contraste sur fond blanc).
+2. **Badge `🕵️ INCOGNITO`** injecté par JS dans `#splashTitle` (splash de boot)
+   ET `.loader-titre-nom` (vue loader / sélection plan — long séjour). Animation
+   de pulse 3× au boot puis stable.
+3. **Préfixe `🕵️ ` du `document.title`** du tab → reflet permanent même quand
+   l'user est sur la carte (où aucun titre app n'est visible).
+4. **Build version footer en lavande** (`color: #a78bfa`) au lieu du gris standard
+   → signal supplémentaire que la session est éphémère.
+
+#### 86.4 Activation
+
+| Voie | Mécanisme |
+|---|---|
+| URL directe `?incognito=1` | Boot incognito (équivalent : lien partageable) |
+| Bouton `🕵️ Démarrer en mode incognito` dans ⚙️ Réglages | Appelle `window.IncognitoMode.launch()` → `window.open(url + '?incognito=1', '_blank', 'noopener')` |
+| Test auto | Setter `window._kta_incognito = true` AVANT le chargement du module |
+
+**Pas de toggle sur la fenêtre courante** — l'incognito doit démarrer DÈS le
+boot pour shim avant que les modules n'écrivent. Toggler après coup serait
+incohérent (les données déjà écrites resteraient).
+
+#### 86.5 Cycle de vie
+
+```
+Boot incognito :
+  1. URL ?incognito=1 → ACTIVE = true
+  2. window.IncognitoMode = { active: true, launch, _memStorage, _origStorage, _origIdbStore }
+  3. Shim Storage + IDB writes installé
+  4. document.documentElement.classList.add("kta-incognito") → CSS bordure
+  5. document.title = "🕵️ " + document.title
+  6. Inject badge dans #splashTitle + .loader-titre-nom (après DOMContentLoaded + retry tardif 1500ms)
+  7. App continue son boot normal → tous les writes sont in-memory ou no-op
+
+Pendant la session :
+  - setItem("k", "v") → Map.set("k", "v") (in-memory)
+  - getItem("k") → Map.get("k") || null (jamais le disque)
+  - IDB put(obj) → faux IDBRequest avec onsuccess immédiat
+  - IDB get(k) → vrai retour disque (lecture OK)
+
+Close du tab :
+  - JS context disparaît → Map garbage-collectée → tout évanoui
+  - Aucune persistance, aucune trace, aucune purge à faire
+```
+
+#### 86.6 API publique
+
+```js
+window.IncognitoMode = {
+  active: boolean,           // état lecture-seule au boot
+  launch: function() { ... } // ouvre nouvelle fenêtre ?incognito=1
+};
+// + en mode actif : _memStorage, _origStorage, _origIdbStore (debug)
+```
+
+**Convention** : les autres modules peuvent VOLONTAIREMENT consulter
+`window.IncognitoMode.active` pour adapter leur UX (ex: masquer un bouton
+"sauvegarder favori" qui n'a pas de sens). Pas obligatoire — le shim
+intercepte de toute façon les écritures.
+
+#### 86.7 Limites assumées
+
+- ❌ **Une référence capturée tôt à `localStorage` ou `Storage.prototype`** par
+  un module qui charge AVANT `incognitoMode.js` échapperait au shim. C'est
+  pourquoi l'ordre dans `index.html` est CRITIQUE. Aujourd'hui seul
+  `copyright.js` est avant — il ne touche pas storage.
+- ❌ **Reads disque pré-incognito = bloqués**. Les préférences thème / langue /
+  hash unlock pré-existantes ne sont pas lues → l'app boot en thème par défaut,
+  UnlockGate redemande le mdp. C'est cohérent avec le pattern (= comme onglet
+  privé). Si KARMA veut une exception (ex: thème lu mais pas écrit), faudra une
+  whitelist explicite dans le shim `getItem`.
+- ❌ **Service Worker fetch handler** n'est pas affecté. Les assets statiques
+  cachés sont servis depuis le cache → c'est OK, pas des données utilisateur.
+  Mais si un mode "Hors-ligne strict paranoia" était combiné avec incognito, il
+  faudrait vérifier l'interaction.
+- ❌ **Crashes IDB silencieux** : un module qui attend une vraie écriture (ex:
+  Mode Secours qui sauvegarde une photo opérationnelle) verra l'opération
+  "réussir" mais la photo aura disparu au reload. UX potentiellement piégeuse →
+  les modules sensibles devraient consulter `IncognitoMode.active` pour avertir
+  l'utilisateur.
+
+#### 86.8 À NE PAS faire
+
+- ❌ **Ne pas changer l'ordre dans `index.html`** — `incognitoMode.js` DOIT
+  rester juste après `copyright.js`. Bouger plus bas casse le contrat de
+  base (shim avant écriture).
+- ❌ **Ne pas appeler `_origStorage.setItem` depuis le shim** — ça écrirait
+  pour de vrai. Le shim ne stocke QUE dans `_memStorage`.
+- ❌ **Ne pas lire l'historique disque dans `getItem`** — `localStorage` avant
+  incognito contient les vrais préférences user. Y accéder = fuite. La règle
+  actuelle (`Map only`) est intentionnelle.
+- ❌ **Ne pas suspendre les reads IDB** — `planRegistry` et `MyKTAMapPhotos`
+  en dépendent pour le boot et l'affichage. Si on les bloque, l'app devient
+  inutilisable et incognito perd son sens (l'user ne voit même pas son plan).
+- ❌ **Ne pas ajouter un `Object.defineProperty(window, "localStorage", ...)`** —
+  dans certains browsers le descriptor original est `[[Configurable]]: false`
+  → throw. Patcher `Storage.prototype` (qui est partagé entre `localStorage`
+  et `sessionStorage`) est la voie portable.
+- ❌ **Ne pas implémenter un cleanup `beforeunload`** — la `Map` JS est GC'd
+  au close du tab, c'est suffisant. Un cleanup explicite ouvrirait la porte
+  à des bugs (lecture après nettoyage, race au unload).
+
+#### 86.9 Périmètre v1.31.8 / hors périmètre
+
+✅ Couvert :
+- Boot via `?incognito=1` URL ou bouton dans Réglages
+- Shim `Storage.prototype` (in-memory `Map`)
+- Shim `IDBObjectStore.prototype` writes (no-op + faux IDBRequest)
+- Visuel bordure + badge + titre + footer
+- Variante thème clair
+
+❌ Non couvert (extensible) :
+- Whitelist `getItem` pour préférences UX read-only (thème, langue) — pour
+  un boot incognito plus "agréable" qui hérite quand même de quelques préfs.
+- Bandeau permanent en haut de l'app (jugé trop intrusif en MVP).
+- Integration `IncognitoMode.active` dans modules sensibles (Mode Secours
+  photos, sessionExporter avec avertissement) — devrait être ajoutée si KARMA
+  veut un signal explicite côté UX.
+- Persistence "soft" (memory survival entre reloads via `BroadcastChannel`) —
+  pas dans le pattern incognito, à débattre.
+
+---

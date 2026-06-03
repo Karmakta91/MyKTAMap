@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.7",
+  "version": "v1.31.8",
   "released": "2026-06-03",
   "notes": [
-    "🛡️ v1.31.7 — Nouveau bouton « Anonymiser pour partage public » dans la modale Enregistrer la session (onglet Full). Quand actif, les noms de tes POI / tracés / zones / structures sont remplacés par des codes neutres (💎 POI #1, 🛣️ Tracé #1…), tes notes/descriptions sont vidées, l'historique GPS et ton profil sont retirés. Coordonnées et tags conservés : le plan reste exploitable par qui connaît la zone, sans exposer tes repérages personnels."
+    "🕵️ v1.31.8 — Nouveau bouton « Démarrer en mode incognito » dans la modale ⚙️ Réglages. Ouvre une nouvelle fenêtre où aucune donnée n'est sauvegardée (ni photos, ni tracker, ni préférences). Idéal pour explorer un plan en démo publique, prêter ta session à un tiers ou tester sans polluer ton historique local. Bordure violette + badge dans le titre rappellent le contexte. Au reload : tout disparaît."
   ]
 }

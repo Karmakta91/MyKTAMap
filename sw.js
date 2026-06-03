@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.31.7";
+const CACHE_NAME = "myktamap-cache-v1.31.8";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -79,6 +79,10 @@ const ASSETS_TO_CACHE = [
   // JS principaux
   // Copyright + watermark + détection DevTools — chargé EN PREMIER dans index.html
   "./js/copyright.js",
+  // 🕵️ v1.31.8 F2 : Incognito Mode — shim Storage + IDB en in-memory si
+  // ?incognito=1. Chargé SYNC juste après copyright pour intercepter avant
+  // tout autre module. Mode normal : pose juste window.IncognitoMode = {...}.
+  "./js/incognitoMode.js",
   // 🆕 v1.28.2 : détecteur de licence pro via présence de /Licence-pro.json.
   // 100% transparent côté community (fichier absent → 404 silencieux → mode
   // community par défaut). Module sans effet visible si pas de Licence-pro.json.
