@@ -1337,4 +1337,70 @@ module thématique :
 
 ---
 
+### 88. Audit UX C1 — Liste des pain points priorisée (2026-06-03)
+
+Audit lecture seule des modules UI/UX du projet, équivalent UX du sweep perf P1-P10. Tour
+des 70+ modules JS + audit CSS + heuristiques a11y + audit modales. Sortie : **liste P1-Pn
+UX priorisée** par impact terrain × effort.
+
+Méthodologie : `grep` ciblé sur signaux (z-index, `!important`, `confirm()`, `alert()`,
+`prefers-reduced-motion`, `aria-*`, `focus-visible`, gestion `Escape`, etc.) + `git log`
+sur les modules avec le plus de hotfix récents (= UX historiquement chaude).
+
+#### 88.1 Tableau Sévère
+
+| # | Sujet | Impact | Coût fix |
+|---|---|---|---|
+| **UX1** | **101 `alert()` + 29 `confirm()` natifs** dans le code → dialogues système moche/non-charte, surtout disruptifs sur mobile (varient par OS, blocants UI). Incohérence visuelle vs charte dark/ambre. | UX mobile dégradée, cohérence visuelle cassée à plusieurs endroits | 🟡 Moyen (incrémental, remplacer par toasts/modales charte) |
+| **UX2** | **0 occurrence `prefers-reduced-motion`** dans `style.css` : animations forcées (splash KARMA animé, anim reveal titre v1.30.0, slide-in modales) même quand l'user a demandé reduced motion (mac / iOS / Android a11y). = anti-WCAG. | a11y user sensible (épilepsie, vertiges, autisme, vestibulaire) — public spéléo inclusif | 🟢 Petit (un `@media` wrapper qui disable les transforms) |
+| **UX3** | **1 543 `!important` + 2 826 sélecteurs + z-index anarchique** (20 valeurs hors-scale CLAUDE.md). Cascades CSS combatives → bugs UX subtils au moindre changement HTML, friction maintenance massive (équivalent UX du `style.css` monolithique adressé par P2 perf). | Friction dev + bugs UX cascades récurrents (cf historique hotfix z-index sur modales superposées) | 🔴 Gros (refactor incrémental possible : par section CSS) |
+
+#### 88.2 Tableau Modéré
+
+| # | Sujet | Détail |
+|---|---|---|
+| **UX4** | **10 modules créent des modales sans gérer la touche `Escape`** : `batteryGuard.js`, `debug.js`, `editor.js`, `interfaceDistanceTotale.js`, `interfaceDocs.js`, `interfaceItineraire.js`, `interfaceLegende.js`, `interfaceMaintenance.js`, `legendCustomization.js`, `copyright.js` (toast devtools) | Friction clavier PC (l'user attend Escape pour fermer une modale rapidement). Moins critique mobile mais bug PC bien réel. |
+| **UX5** | **`focus-visible` / `:focus` minoritaire** (50 occurrences sur 2 826 sélecteurs = **1,7 %**) | Friction a11y keyboard navigation — boutons custom souvent sans outline focus visible quand on tabule sur PC |
+| **UX6** | **Toasts/notifications incohérents** : `OOMGuard.showToast` existe (113 usages globaux) mais coexiste avec `alert()` (101 cas) et certaines features ont leur propre feedback inline | UX fragmentation — l'user voit 3 styles différents de feedback selon le contexte. Cohérent avec UX1. |
+| **UX7** | **`secoursMode.js` 8 834 LOC + `interface.js` 193 hotfix historiques** = modules très chauds | Long terme. Pourrait continuer la dynamique P3 perf (découpe `interface.js` → 9 modules) sur `secoursMode.js` aussi (= "P3 step 2"). |
+| **UX8** | **`aria-*` limité** (53 occurrences globalement sur 70+ modules) | a11y lecteur d'écran — niche mais existe (cataphilie peut inclure usage en duo avec un autre user qui regarde) |
+
+#### 88.3 Reporté pour usage différé
+
+| # | Sujet |
+|---|---|
+| **UX9** | **z-index scale documentée dans `CLAUDE.md`** (1100 titre / 5000 loader / 9999 splash / 99999 modales / 100001 sous-modales) mais le code utilise aussi `1050`, `1099`, `1200`, `1250`, `2000`, `9000`, `100000`, `100002`, `100100`, `100200` = **hors-scale**. À aligner OU à étendre la doc selon l'usage réel. Sera traité naturellement si on attaque UX3. |
+
+#### 88.4 Recommandations quick wins (priorité impact ÷ effort)
+
+| Rang | Cible | Effort | Gain |
+|---|---|---|---|
+| 1 | **UX2** reduced-motion | 30 min | a11y inclusive immédiat, gros impact pour effort minimal |
+| 2 | **UX1** triage alert/confirm : identifier les ~30 cas user-facing critiques (vs erreurs dev) → remplacer par toasts charte | 2-3 h | Cohérence visuelle nette, UX mobile largement améliorée |
+| 3 | **UX4** Escape sur les 10 modules listés | 1-2 h | Friction clavier PC corrigée, faible risque |
+| 4 | **UX5** focus-visible : 1 règle CSS générale `:focus-visible` sur `.kta-btn-*` + variants | 1 h | a11y keyboard + indication visible des éléments focus |
+
+UX3 (CSS combative) = **gros chantier** équivalent UX du P2 perf — à envisager dans un
+sweep dédié si KARMA veut, mais c'est l'équivalent UX du "refonte massive" qu'on évite
+par défaut.
+
+#### 88.5 Décisions prises au fil des releases
+
+| Release | Pain points adressés |
+|---|---|
+| **v1.31.6** (à venir) | UX2 reduced-motion, UX4 Escape, UX5 focus-visible (= « quick wins a11y/keyboard ») |
+| Plus tard, à voir | UX1 alert/confirm cleanup, UX6 toasts unifiés, UX7 découpe secoursMode, UX3 CSS refactor (massif) |
+
+#### 88.6 Méthodologie de re-validation (futur)
+
+Pour ne pas perdre l'audit, mettre à jour ce tableau à chaque release qui touche un UX.
+Si une nouvelle pain point apparaît : ajouter ligne UX(n+1) dans la section appropriée
+(Sévère / Modéré / Reporté). Si une pain point est traitée : marquer ✅ + release dans
+§88.5.
+
+Re-faire un audit complet (heuristiques + grep) tous les ~6 mois ou après une vague de
+hotfix UX, pour détecter les nouveaux signaux émergents.
+
+---
+
 **Bon code ! 🚀**
