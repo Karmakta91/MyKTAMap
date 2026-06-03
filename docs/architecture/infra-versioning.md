@@ -276,3 +276,128 @@ L'aide intégrée (`interface.js > afficherAide`) était truffée de technique d
 - ❌ Toucher aux `legacy` de migration DONNÉES (sessionPersist, kmzImport, profileExportImport, etc.) — c'est de la rétro-compat vivante, pas du code mort
 
 ---
+
+### 80. Infra & DX — Selfhost ZIP auto + CLAUDE.md slim + guard-git affiné (v1.29.4 — 2026-06-02)
+
+3 améliorations d'infrastructure et de Developer eXperience livrées dans une même PATCH.
+Aucun impact runtime utilisateur, 100 % côté outillage repo / dev / IA.
+
+#### 80.1 Selfhost ZIP auto attaché aux GitHub Releases
+
+`.github/workflows/release.yml` complété : à chaque GitHub Release publiée, un **ZIP
+selfhost** est généré automatiquement et attaché en asset téléchargeable. Permet à un user
+de récupérer une copie figée et déployable de l'app (sur son propre serveur, NAS, RPI, etc.)
+sans devoir cloner le repo.
+
+**Pattern** (extrait `release.yml`) :
+
+```yaml
+- name: Package selfhost ZIP
+  run: |
+    mkdir -p _release
+    zip -r "_release/myktamap-selfhost-${{ github.event.release.tag_name }}.zip" . \
+      -x ".git/*" -x ".github/*" -x ".claude/*" -x "_release/*" \
+      -x "*.md" -x ".gitignore" -x "docs/architecture/*"
+    # On garde uniquement l'app runnable : HTML/CSS/JS/icônes/libs + README user
+
+- name: Attach ZIP to release
+  uses: softprops/action-gh-release@v2
+  with:
+    files: _release/myktamap-selfhost-${{ github.event.release.tag_name }}.zip
+```
+
+**Volontairement exclus du ZIP** :
+
+| Exclusion | Pourquoi |
+|---|---|
+| `.git/`, `.github/`, `.claude/` | Métadonnées repo / CI / IA — inutiles côté déploiement |
+| `docs/architecture/` | Docs internes — inutiles côté user final |
+| `*.md` (top-level) | README dev/repo — inutiles côté user (sauf docs/applications/README_USER qu'on garde via le subpath, lui CACHÉ par SW pour la modale Documentation) |
+| `_release/` | Le dossier de sortie lui-même (évite la récursion) |
+
+**Cible** : urbexers / spéléos qui veulent déployer une copie statique sur leur infra
+(NAS Synology, RPI, hébergement perso). Servir l'app c'est juste `nginx -s /chemin/`,
+pas besoin de Node ni de build.
+
+#### 80.2 CLAUDE.md slim contextuel + docs/architecture/
+
+Le `CLAUDE.md` racine était devenu un mur de ~1500 lignes avec absolument tout (archi, conventions,
+modes secours, perf, debug, etc.). Conséquence : trop lourd à charger à chaque session IA + risque
+de noyer les règles critiques dans la masse. KARMA a déclenché un **scindage en 14 docs thématiques**
+chargés à la demande :
+
+```
+docs/architecture/
+├── data-formats.md            (formats JSON: plan-config, point, session)
+├── exports.md                 (PNG/PDF/KMZ/GPX + légende)
+├── gotchas.md                 (pièges connus & renommages)
+├── infra-versioning.md        (versioning, live-config, releases, logs)
+├── multilevel-pathfinding.md  (M-LVL, Dijkstra, itinéraire)
+├── perf-memory.md             (perf, mémoire, OOM, tiling V2, ULTRA)
+├── plans-loader.md            (registre, loader, générateur de plans)
+├── rendering-leaflet.md       (icônes, calques, splash)
+├── secours.md                 (Mode Secours toutes phases)
+├── security-legal.md          (gates, PIN, audit, légal, licence)
+├── session-data.md            (session, photos, undo, recherche, stats, favoris)
+├── tracking.md                (tracker, boussole, heading, navigation)
+└── ui.md                      (refonte UI, thème, modales, filtres, i18n)
+```
+
+`CLAUDE.md` racine devient un **index** + règles critiques (frontière community ↔ pro, garde-fous,
+conventions JS/CSS/coords/distances, style KARMA) + une **table « Où chercher »** qui pointe vers
+le bon doc selon le sujet.
+
+**Bénéfices mesurés** :
+
+| | Avant slim | Après slim |
+|---|---|---|
+| `CLAUDE.md` racine (lignes) | ~1500 | ~70 |
+| Charge contextuelle session IA | Lourde (tout en mémoire) | Légère (index + chargement à la demande) |
+| Temps de lecture humain | « hostile » | « digérable » |
+| Risque de noyer les règles critiques | HIGH | LOW |
+
+#### 80.3 `guard-git.js` affiné — fonction `originIsCommunity()`
+
+`.claude/hooks/guard-git.js` bloque les opérations Git dangereuses (`push main`, `push --force`,
+`reset --hard`, etc.) côté community via un hook pré-bash de Claude Code (cf §settings.json).
+
+**Problème détecté** quand on a commencé à bosser côté repo `MyKTAMap-pro` : le hook bloquait
+AUSSI le push main dans le pro alors que le pro a son propre cycle (rebase + push --force-with-lease
+pour absorber les drifts community).
+
+**Fix** : ajout d'une fonction `originIsCommunity()` qui distingue les 2 repos selon l'URL
+de `git config --get remote.origin.url` :
+
+```js
+function originIsCommunity() {
+  const out = execSync("git config --get remote.origin.url", { encoding: "utf8" }).trim();
+  // Match strict: l'URL contient "MyKTAMap" mais PAS "MyKTAMap-pro"
+  return /MyKTAMap(\.git)?$/.test(out) && !/MyKTAMap-pro/.test(out);
+}
+
+function blockPushMain(cmd) {
+  if (!originIsCommunity()) return null;  // hook inactif côté pro
+  if (/git\s+push.*\bmain\b/.test(cmd)) return "🚫 push main bloqué (community)";
+  // ... autres règles community-only
+}
+```
+
+→ **Hook actif** uniquement côté community. Côté pro, on garde toutes les autres protections
+(check syntaxe, etc.) mais le `push main` est autorisé.
+
+#### 80.4 À NE PAS faire
+
+- ❌ Re-fusionner les 14 docs dans `CLAUDE.md` — annule le bénéfice du slim contextuel
+- ❌ Ajouter du contenu volumineux directement dans `CLAUDE.md` racine — il doit rester un
+  index/règles critiques. Tout détail métier va dans `docs/architecture/<sujet>.md`
+- ❌ Inclure `docs/architecture/` dans le ZIP selfhost — c'est interne, le user final n'en a
+  pas l'usage et ça ajoute du poids
+- ❌ Modifier `originIsCommunity()` pour matcher d'autres patterns d'URL sans tester les 2 repos
+  (le hook DOIT bloquer côté community ET laisser passer côté pro)
+- ❌ Ré-introduire un `git push main` autorisé côté community sans accord explicite KARMA
+  ("oui je le veux" — cf MEMORY.md feedback `feedback_push_main_explicit_consent`)
+- ❌ Désactiver le hook `guard-git.js` "temporairement" — c'est exactement le filet qui empêche
+  les opérations destructrices. À traiter comme un fusible : on diagnostique POURQUOI il bloque,
+  on n'éteint pas le fusible
+
+---

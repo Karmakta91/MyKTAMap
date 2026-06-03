@@ -1137,4 +1137,204 @@ progressive `t(key, fallbackFR)` (= si la clé n'existe pas en EN, retombe sur l
 
 ---
 
+### 83. Animation reveal titre — « MyKTAMap → -pro » (v1.30.0 — 2026-06-02)
+
+Animation de boot du titre dans le splash + l'écran d'accueil. Le mot **« MyKTAMap »** apparaît
+progressivement (clip-path animation), puis une **micro-pause** avant que le suffixe **« -pro »**
+ne se révèle (uniquement en mode pro). Inspiré de la signature KARMA — même easing
+`cubic-bezier(0.45, 0.05, 0.55, 0.95)`.
+
+#### 83.1 Pattern HTML
+
+```html
+<span class="kta-titre-base">MyKTAMap</span><span class="kta-licence-pro kta-titre-suffix-pro">-pro</span>
+```
+
+- `.kta-titre-base` : toujours animé (community ET pro)
+- `.kta-titre-suffix-pro` : combine 2 classes — la bascule community/pro (`.kta-licence-pro`,
+  cf §77.1) **ET** l'animation reveal du suffixe.
+
+#### 83.2 CSS animations
+
+```css
+.kta-titre-base {
+  display: inline-block;
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-reveal 700ms cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
+}
+@keyframes kta-titre-reveal {
+  to { clip-path: inset(0 0 0 0); }
+}
+
+html.kta-instance-pro .kta-titre-suffix-pro {
+  display: inline-block;          /* override de .kta-licence-pro { display: none } */
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-reveal 500ms cubic-bezier(0.45, 0.05, 0.55, 0.95) forwards;
+  animation-delay: 1300ms;        /* = 700ms (base) + ~600ms de pause */
+}
+```
+
+**Décompositiontime** :
+- 0 → 700ms : « MyKTAMap » se révèle de gauche à droite
+- 700 → 1300ms : pause volontaire (~600ms) — le mot reste visible
+- 1300 → 1800ms : « -pro » se révèle (pro uniquement)
+
+#### 83.3 Pourquoi `clip-path` plutôt qu'`opacity` ou `width`
+
+| Approche | Pourquoi NON |
+|---|---|
+| `opacity: 0 → 1` | Fade global, pas de sensation gauche-à-droite ; impression « apparition magique » au lieu de « tracé » |
+| `width: 0 → auto` | Casse le baseline du texte pendant l'animation ; impossible si la largeur cible est `auto` |
+| `transform: scaleX` | Anime la transformation visuelle mais distord les glyphes ; pas adapté à du texte |
+| `clip-path: inset` | ✅ Tracé progressif sans toucher au layout, glyphes intacts, support universel (Chrome/Safari/Firefox modernes) |
+
+#### 83.4 Bascule community/pro (lien §77 + §84)
+
+Le suffixe `-pro` est **invisible côté community** grâce à `.kta-licence-pro { display: none }`
+(cf §77.1 cascade CSS). Côté pro, la classe `html.kta-instance-pro` est posée par
+`proLicense.js` au boot très tôt → l'override `display: inline-block` prend effet → l'animation
+se déclenche.
+
+⚠️ **Piège de spécificité** : à la v1.30.0 initiale, `.kta-titre-suffix-pro { display: inline-block }`
+avait été écrit SANS scoping `html.kta-instance-pro` → spécificité égale à `.kta-licence-pro`,
+« latest wins » en cascade → le `-pro` apparaissait côté community. Hotfix v1.30.1 (§84). À retenir :
+**toujours scoper sous `html.kta-instance-pro` les overrides côté pro** quand on touche à un
+élément frontière.
+
+#### 83.5 À NE PAS faire
+
+- ❌ Animer le splash en plus du titre — le boot doit rester rapide et lisible, surcharger
+  d'animations rend l'app perçue comme lente
+- ❌ Pousser le `animation-delay` au-delà de ~1500ms — la pause devient gênante pour les users
+  qui attendent l'app fonctionnelle
+- ❌ Réutiliser `.kta-titre-base` / `.kta-titre-suffix-pro` ailleurs que sur le titre — ce sont
+  des classes très ciblées avec un easing spécifique signature
+- ❌ Toucher au `cubic-bezier(0.45, 0.05, 0.55, 0.95)` sans validation KARMA — c'est la
+  courbe « signature » identique à celle du splash KARMA (§51 perf-memory pour rappel)
+- ❌ Ajouter `display: inline-block` à `.kta-titre-suffix-pro` sans scoping `html.kta-instance-pro`
+  — bug de spécificité documenté §84
+
+---
+
+### 85. P3 — Découpe `interface.js` en 9 modules thématiques (v1.31.0 — 2026-06-03)
+
+`js/interface.js` avait grossi à **9 894 lignes** au fil des releases v1.x → ingérable :
+navigation difficile, modifs anxiogènes (risque de casser un côté en touchant l'autre),
+revues de code longues. KARMA a déclenché un refactor **GROS** avec contrainte « zéro régression ».
+Résultat : **9 modules cohérents** + interface.js qui retombe à **3 326 lignes** (**-66,4 %**).
+
+KARMA quote :
+> « on fait 'GROS' mais avec un plan bien établie, s'assure de aucune régréssion »
+
+#### 85.1 Découpe en 9 lots thématiques
+
+| Lot | Module | LOC | Sujet |
+|---|---|---|---|
+| 1 | `js/interfaceAlerts.js` | 367 | Modales alertes + Update douce |
+| 2 | `js/interfaceDistanceTotale.js` | 330 | Panneau magenta distance cumulée |
+| 3 | `js/interfaceLegende.js` | 492 | Modale Légende plein écran |
+| 4 | `js/interfaceDocs.js` | 1 348 | README + Aide intégrée + Aide IA |
+| 5 | `js/interfaceImportExport.js` | 732 | Export JSON + import multi-format |
+| 6 | `js/interfaceItineraire.js` | 1 588 | Itinéraire + Évitements (Lots 6+8 fusionnés) |
+| 7 | `js/interfaceMaintenance.js` | 716 | Calibrage + Reset + Mise à jour douce |
+| 9 | `js/interfaceConfig.js` | 1 485 | Modale Réglages + Perf ULTRA + M-LVL + Géoref |
+
+(Le « Lot 8 » d'origine — Évitements — a été fusionné dans le Lot 6 car la cohérence
+fonctionnelle s'imposait : itinéraire et évitements partagent l'API `window.PathAvoidances`.)
+
+#### 85.2 Pattern d'extraction
+
+Chaque lot suit la même méthodo, du plus sûr au plus risqué :
+
+1. **Identifier les frontières** dans `interface.js` : trouver les `// ============= SECTION X =============`
+   ou les commentaires de section qui encadrent un bloc fonctionnellement cohérent
+2. **Extraire** via `awk` ciblé sur les lignes du bloc → nouveau fichier `interfaceXxx.js`
+3. **Wrapper en IIFE** + exposer les API publiques via `window.MyKTAMapXxx = { ... }` ou
+   `window.fonctionPublique = ...` selon le pattern existant côté community (cohérent avec
+   le style vanilla — pas d'`import/export`)
+4. **Adapter les références directes** dans `interface.js` (et autres modules) : les appels
+   directs `afficherConfig()`, `ouvrirImportSession()`, `_ouvrirCreationJonction()` →
+   passer par `window.X` + `typeof` check pour gracieuse dégradation
+5. **Vérifier syntaxe** : `node -c js/interfaceXxx.js` (= filet seul, pas de tests auto cf CLAUDE.md)
+6. **Tester boot + smoke test** des fonctionnalités du lot dans l'app
+7. **Bumper `sw.js > CACHE_NAME`** + ajouter `"./js/interfaceXxx.js"` dans `ASSETS_TO_CACHE`
+8. **Ajouter `<script src="js/interfaceXxx.js" defer></script>`** dans `index.html` AVANT
+   `js/interface.js` (les modules sont consommés par interface.js, donc chargés avant)
+9. **Commit séparé par lot** → bisect facile si régression détectée plus tard
+
+#### 85.3 Pièges rencontrés (lesson learned)
+
+⚠️ **Références directes cross-module** : certaines fonctions extraites étaient appelées via
+leur nom court (`afficherConfig()`, `ouvrirImportSession()`, `_ouvrirCreationJonction()`)
+depuis d'autres parties d'interface.js. Après extraction, ces noms ne sont plus dans le scope
+global → erreur `ReferenceError`. **Fix** : remplacer par `window.X()` + `if (typeof window.X
+=== "function") window.X()`.
+
+⚠️ **Linter qui modifie un fichier entre Read et Edit** : sur les fichiers volumineux,
+le linter intermédiaire pouvait toucher le fichier juste après une Read mais avant le
+Edit suivant → `File modified since read` côté outil. Solution : re-Read systématiquement
+juste avant un Edit critique.
+
+⚠️ **Artefact XML accidentel** : un `</parameter></invoke>` s'est retrouvé collé à la fin
+de `interfaceDistanceTotale.js` à cause d'une mauvaise copie. Détecté tout de suite par le
+hook `check-syntax.js` (cf §80.3) → fix immédiat par Edit. La leçon : **les hooks pre-commit
+syntaxiques ont sauvé un commit pourri**.
+
+#### 85.4 Résultats mesurés
+
+| | Avant P3 (v1.30.1) | Après P3 (v1.31.0) | Δ |
+|---|---|---|---|
+| `interface.js` LOC | 9 894 | 3 326 | **-66,4 %** |
+| Nb modules dans dossier `js/` | ~75 | ~84 | +9 |
+| Temps de navigation moyen estimé | « cherchait pendant 30s » | « ouvre le bon fichier directement » | UX dev |
+| Régressions détectées en test | — | **0** | ✅ |
+
+#### 85.5 Impact sur l'ordre de chargement
+
+`index.html` charge les modules dans l'ordre suivant (extrait) :
+
+```html
+<script src="js/interfaceAlerts.js" defer></script>
+<script src="js/interfaceDistanceTotale.js" defer></script>
+<script src="js/interfaceLegende.js" defer></script>
+<script src="js/interfaceDocs.js" defer></script>
+<script src="js/interfaceImportExport.js" defer></script>
+<script src="js/interfaceItineraire.js" defer></script>
+<script src="js/interfaceMaintenance.js" defer></script>
+<script src="js/interfaceConfig.js" defer></script>
+<script src="js/interface.js" defer></script>   <!-- ← le « chef d'orchestre » consomme les autres -->
+```
+
+L'attribut `defer` (cf §82 P6.B) garantit l'ordre d'exécution selon le DOM. interface.js peut
+appeler les API exposées par les modules précédents.
+
+#### 85.6 Pour ajouter une nouvelle modale / un nouveau panneau
+
+Plutôt que d'ajouter du code à `interface.js` (qui doit rester maigre), créer un nouveau
+module thématique :
+
+1. Identifier le scope cohérent (ex: nouvelle modale « 📦 Backups » → `interfaceBackups.js`)
+2. Créer `js/interfaceBackups.js` en IIFE avec `window.MyKTAMapInterfaceBackups = { ouvrir, fermer }`
+3. Ajouter `<script src="js/interfaceBackups.js" defer></script>` AVANT `js/interface.js`
+4. Ajouter `"./js/interfaceBackups.js"` dans `sw.js > ASSETS_TO_CACHE`
+5. Depuis interface.js (ou ailleurs), appeler `window.MyKTAMapInterfaceBackups?.ouvrir()`
+6. Bumper `CACHE_NAME` (cf §75.x) + `__MKM__.build` + `version.json`
+
+#### 85.7 À NE PAS faire
+
+- ❌ **Refusionner les modules** dans `interface.js` — annule le bénéfice du refactor + bloque
+  les futures évolutions
+- ❌ Créer des **dépendances cycliques** entre les modules `interface*.js` (ex: A appelle B
+  qui appelle A) — si nécessaire, extraire la logique partagée dans un 3ᵉ module
+- ❌ Oublier l'attribut **`defer`** sur les nouveaux scripts (cf §82) — casse l'ordering avec
+  les autres scripts defer
+- ❌ Oublier d'ajouter dans **`sw.js > ASSETS_TO_CACHE`** + bump `CACHE_NAME` — le module ne
+  sera pas servi offline + les clients existants ne verront pas la mise à jour
+- ❌ Réintroduire des **références directes cross-module** (sans `window.X`) — risque de
+  `ReferenceError` au runtime si l'ordre de chargement change ou si un module est mocké
+- ❌ **Mettre du logique data dans `interface*.js`** — ces modules sont strictement UI/présentation.
+  La logique data (CRUD, IDB, etc.) reste dans `editor.js`, `secoursMode.js`, etc.
+
+---
+
 **Bon code ! 🚀**

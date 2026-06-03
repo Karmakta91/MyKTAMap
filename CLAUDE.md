@@ -48,7 +48,7 @@
 | Session, photos, undo, recherche, stats, favoris | `docs/architecture/session-data.md` |
 | Sécurité : gates, PIN, audit, légal, licence | `docs/architecture/security-legal.md` |
 | Mode Secours (toutes phases) + urgence | `docs/architecture/secours.md` |
-| Versioning, live-config, releases, logs | `docs/architecture/infra-versioning.md` |
+| Versioning, live-config, releases, DX (selfhost, hooks), logs | `docs/architecture/infra-versioning.md` |
 | Formats JSON (plan-config, point, session) | `docs/architecture/data-formats.md` |
 | Pièges connus & renommages | `docs/architecture/gotchas.md` |
 

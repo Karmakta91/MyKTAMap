@@ -574,3 +574,117 @@ Variant thème clair : passage sur les variables `--kta-light-*` (cf §53 ThemeM
 5. Documenter le canal dans `docs/NETWORK_AUDIT.md` si nouvelle surface réseau impliquée
 
 ---
+
+### 84. Hotfix CSS — Spécificité frontière community/pro (v1.30.1 — 2026-06-02)
+
+**Lesson learned** sur la cascade CSS qui gère la bascule community ↔ pro (§77). Cas concret :
+un bug v1.30.0 où le suffixe `-pro` du titre s'affichait côté community **alors qu'on est en
+mode gratuit**. Documenté ici à la fois comme bug fix ET comme règle générale à respecter
+dorénavant.
+
+KARMA quote (signalement) :
+> « je suis en -pro alors que je suis en mode gratuit »
+
+#### 84.1 Le bug
+
+L'animation reveal du titre (v1.30.0 / §83) avait posé cette CSS :
+
+```css
+.kta-titre-suffix-pro {
+  display: inline-block;          /* ❌ Bug ici — spécificité = 0,0,1,0 */
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-reveal 500ms cubic-bezier(...) forwards;
+  animation-delay: 1300ms;
+}
+```
+
+Et le HTML utilisait les 2 classes ensemble :
+
+```html
+<span class="kta-licence-pro kta-titre-suffix-pro">-pro</span>
+```
+
+Sachant que §77 pose :
+
+```css
+.kta-licence-pro {
+  display: none;                  /* Spécificité = 0,0,1,0 */
+}
+```
+
+**Résultat** : les 2 règles `display: ...` ont la **même spécificité** (1 classe chacune).
+La cascade CSS applique alors la **dernière déclarée** = celle qui vient après dans la
+feuille de styles. Comme `.kta-titre-suffix-pro` était déclarée plus bas dans `style.css` que
+`.kta-licence-pro`, c'est `display: inline-block` qui gagnait → le suffixe `-pro` apparaissait
+côté community.
+
+#### 84.2 Le fix
+
+Scoper l'override `display: inline-block` sous `html.kta-instance-pro` → spécificité **0,0,2,0**
+> spécificité de `.kta-licence-pro` (0,0,1,0) → côté community, l'override n'est PAS appliqué :
+
+```css
+.kta-titre-suffix-pro {
+  clip-path: inset(0 100% 0 0);
+  animation: kta-titre-reveal 500ms cubic-bezier(...) forwards;
+  animation-delay: 1300ms;
+  /* PAS de display: inline-block ici → reste display: none côté community */
+}
+
+html.kta-instance-pro .kta-titre-suffix-pro {
+  display: inline-block;          /* ✅ Override scopé pro uniquement, spécificité 0,0,2,0 */
+}
+```
+
+#### 84.3 Comportement avant/après
+
+| | Community v1.30.0 (buggué) | Community v1.30.1 (fixé) | Pro (inchangé) |
+|---|---|---|---|
+| Affichage du `-pro` | ❌ Visible | ✅ Masqué | ✅ Visible animé |
+| Frontière respectée | ❌ Violation | ✅ Respectée | ✅ Respectée |
+
+#### 84.4 Lesson learned — Règle générale
+
+**TOUJOURS scoper sous `html.kta-instance-pro`** (ou `body.kta-instance-pro` selon contexte)
+les overrides côté pro quand on touche à un élément qui porte une classe `.kta-licence-*`
+ou qui est concerné par la cascade frontière community ↔ pro.
+
+#### 84.5 Pattern à respecter dorénavant
+
+❌ **À éviter** :
+
+```css
+/* Spécificité égale à .kta-licence-pro → "latest wins" = comportement aléatoire selon ordre */
+.kta-titre-suffix-pro { display: inline-block; }
+```
+
+✅ **À faire** :
+
+```css
+/* Spécificité supérieure → override sûr côté pro uniquement */
+html.kta-instance-pro .kta-titre-suffix-pro { display: inline-block; }
+```
+
+**Cas équivalents à scoper** (liste indicative, pas exhaustive) :
+
+| Override | Spécificité requise |
+|---|---|
+| `display`, `visibility` sur un élément `.kta-licence-*` | `html.kta-instance-pro .ma-classe` minimum |
+| Background/border d'un élément qui peut être masqué/montré selon mode | Idem |
+| Contenu via `::before` / `::after` qui change entre community et pro | Idem |
+
+#### 84.6 À NE PAS faire
+
+- ❌ **Ré-introduire un `display: ...` sans scoping** sur une classe partagée avec
+  `.kta-licence-community` / `.kta-licence-pro` — bug de spécificité garanti
+- ❌ **Compter sur l'ordre de déclaration** dans `style.css` pour résoudre une cascade —
+  c'est fragile, n'importe quel refactor CSS futur peut casser
+- ❌ **Utiliser `!important`** pour forcer un override pro — anti-pattern, complique
+  l'override inverse. Préférer la spécificité scopée
+- ❌ **Réutiliser les classes `.kta-licence-community` / `.kta-licence-pro`** pour autre
+  chose que la bascule community/pro — elles ont une sémantique stricte et un comportement
+  CSS partagé
+- ❌ **Tester uniquement côté pro** quand on ajoute un élément frontière — toujours vérifier
+  les 2 modes (community pur + pro local via `Licence-pro.json`)
+
+---

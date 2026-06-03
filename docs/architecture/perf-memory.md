@@ -585,3 +585,223 @@ Feedback visuel : bouton "📋 Copier le rapport" → "✅ Copié !" pendant 180
 **Exemples de futures sections candidates** : Service Worker state (`navigator.serviceWorker.getRegistration()` → scope, controlling/installing/waiting), History stack (`HistoryManager.canUndo/canRedo` + nb d'entries en pile), Backups recents details (lecture des 3 derniers backups via `SessionBackups.listAll`).
 
 ---
+
+### 81. P5 — Viewport culling markers POI (v1.30.0 — 2026-06-02)
+
+Sur les plans denses (500+ POI), tous les markers étaient instanciés ET ajoutés à la map
+dès le chargement → DOM Leaflet alourdi de plusieurs centaines de `<img>` invisibles à
+l'écran, lag perceptible en pan/zoom sur mobile bas/milieu de gamme. P5 introduit du
+**viewport culling** : seuls les markers visibles (ou proches) sont effectivement attachés
+à la map. Pattern AABB classique, padding 10 % pour pré-charger les markers en bordure.
+
+#### 81.1 Pattern AABB + padding
+
+Le test repose sur Leaflet `map.getBounds().pad(0.1)` qui retourne un rectangle agrandi
+de 10 % autour de la zone visible :
+
+```js
+function _markerInViewportPadded(marker, padFraction) {
+  if (!window.map || !marker || typeof marker.getLatLng !== "function") return true;
+  const bounds = window.map.getBounds();
+  if (!bounds) return true;
+  const paddedBounds = bounds.pad(typeof padFraction === "number" ? padFraction : 0.1);
+  return paddedBounds.contains(marker.getLatLng());
+}
+```
+
+Le padding 10 % donne ~30 px de marge à un viewport mobile classique → l'utilisateur ne voit
+JAMAIS un marker apparaître subitement en bordure lors d'un pan. Lors d'un swipe rapide,
+le rebind se fait au prochain tick `moveend`.
+
+#### 81.2 Helpers exposés sur `window`
+
+```js
+window._refreshDataMarkersViewport = function() { ... }
+window._bindMarkerViewportHook = function() { ... }
+```
+
+- `_bindMarkerViewportHook()` : bind l'event `map.on("moveend zoomend", _refreshDataMarkersViewport)`
+  une seule fois au boot
+- `_refreshDataMarkersViewport()` : itère sur tous les markers POI session + data layers,
+  appelle `_markerInViewportPadded`, et fait `addTo(map)` / `removeFrom(map)` selon
+- Pattern **idempotent** : appeler 10 fois `_refreshDataMarkersViewport` ne change rien
+  si rien n'a bougé (= safe pour les events redondants)
+
+#### 81.3 editor.js — skip `addTo` initial si hors viewport
+
+`_ajouterMarker(point)` (créateur de markers POI) skip directement le `marker.addTo(map)` si
+le point est hors viewport :
+
+```js
+const inViewport = _markerInViewportPadded(marker, 0.1);
+if (inViewport) {
+  marker.addTo(window.map);
+}
+// Stockage du marker dans _markersByPointId dans tous les cas (= cache RAM,
+// récupérable au prochain refreshViewport sans recréer).
+_markersByPointId[point.id] = marker;
+```
+
+Le marker reste **instancié** en RAM (créé une fois, gardé pour le LWR), mais pas attaché
+au DOM Leaflet → coût rendu nul. Au prochain `moveend`, si le marker rentre dans le viewport
+agrandi, `_refreshDataMarkersViewport` fait l'`addTo`.
+
+#### 81.4 Toggle UI dans Réglages > 🔧 Performance
+
+Le toggle `viewportCull` existait déjà depuis v1.21.x pour le clustering, étendu en v1.30.0 aux
+markers POI. Label/hint adaptés dans la modale Réglages :
+
+| | Avant v1.30.0 | Après v1.30.0 |
+|---|---|---|
+| Label | Cull clusters hors viewport | Cull clusters + markers POI hors viewport |
+| Hint | « Évite de rendre les clusters invisibles » | « Évite de rendre les clusters et markers POI hors écran (+ rapide sur plans denses) » |
+| Default | ON | ON (inchangé) |
+
+L'utilisateur peut désactiver si besoin (debug, plan extra-large où il veut tout voir d'un coup,
+etc.).
+
+#### 81.5 Cas qui ne sont PAS cullés
+
+Certains markers DOIVENT rester visibles indépendamment du viewport :
+
+| Catégorie | Pourquoi pas cull |
+|---|---|
+| Markers d'itinéraire (départ/arrivée + waypoints) | Toujours pertinents — la modale Iti affiche la liste, on doit pouvoir cliquer dessus pour recentrer |
+| Markers temporaires de mesure | Workflow utilisateur en cours (clic-1 puis clic-2) — disparaître entre les clics serait confus |
+| Markers d'éditeur en cours de placement | Idem — workflow actif |
+| Marker GPS tracker | Position user — toujours utile, même si hors écran (indique qu'il faut paner) |
+| Markers Mode Secours (équipes, statuts) | Critique — un opérateur ne doit JAMAIS rater un changement de statut équipe |
+
+Solution : ces markers sont créés avec un flag `_neverCull = true` ou passent par un autre
+pipeline que `_refreshDataMarkersViewport`.
+
+#### 81.6 À NE PAS faire
+
+- ❌ Culler les markers d'itinéraire / Mode Secours / GPS tracker (cf §81.5) — perte de
+  contexte critique pour l'utilisateur
+- ❌ Réduire le padding sous 5 % — les markers apparaissent à l'œil en bordure lors du pan
+- ❌ Augmenter le padding au-delà de 25 % — annule le bénéfice perf (la majorité des markers
+  reste attachée au DOM)
+- ❌ Re-instancier les markers à chaque `moveend` — gaspille RAM + CPU, garde le pattern
+  cache RAM `_markersByPointId`
+- ❌ Bind `_refreshDataMarkersViewport` plusieurs fois au boot — fait le rebind 2x, 3x… à
+  chaque event. `_bindMarkerViewportHook` doit être appelé une SEULE fois, idéalement après
+  l'init de la map
+
+---
+
+### 82. P6 — Boot perf : timeouts fetch + `defer` sur 51 scripts (v1.30.0 — 2026-06-02)
+
+2 sous-axes complémentaires pour débloquer le boot HTML :
+
+- **P6.A** : `AbortController` + `setTimeout(1500ms)` sur les fetches `/version.json` et
+  `/alert.json` (= un serveur lent ne bloque plus le boot indéfiniment)
+- **P6.B** : attribut `defer` ajouté à **51 scripts** dans `index.html` (download parallèle
+  pendant parsing HTML + exécution dans l'ordre du DOM)
+
+Décision KARMA prise après audit boot perf complet.
+
+#### 82.1 P6.A — Timeout 1500 ms sur version.json / alert.json
+
+`updateChecker.js` et `alertChecker.js` faisaient un `fetch(url, { cache: "no-store" })` sans
+timeout. Conséquence : si le serveur répond en 30 s (ou jamais), le boot attend → le splash
+reste figé sur "Vérification de mise à jour…" alors que l'app pourrait démarrer.
+
+**Pattern appliqué** (utils générique réutilisé dans les 2 modules) :
+
+```js
+function _fetchAlertJson() {
+  const url = "alert.json?_=" + Date.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(function() { ctrl.abort(); }, 1500);
+
+  return fetch(url, { cache: "no-store", signal: ctrl.signal })
+    .then(function(r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    })
+    .catch(function(e) {
+      clearTimeout(timer);
+      // AbortError = timeout dépassé, autres = erreur réseau / serveur
+      console.log("[Alert] Fetch échoué (" + (e.name || "?") + ") — pas d'alerte ce boot");
+      return null;
+    });
+}
+```
+
+**1500 ms = compromis** :
+- Trop court (< 800 ms) → ratés systématiques sur 3G dégradée
+- Trop long (> 3000 ms) → user perçoit le boot lent
+- 1500 ms = ~95 % des fetches passent côté réseau standard, et les 5 % de ratés sont
+  acceptables (l'alerte/maj sera vue au prochain boot)
+
+#### 82.2 P6.B — `defer` sur 51 scripts dans index.html
+
+Avant v1.30.0 : tous les scripts étaient déclarés sans `defer` ni `async` → **bloquants** :
+chaque `<script>` arrêtait le parsing HTML jusqu'à download + exécution. Sur 70+ scripts,
+cumul énorme.
+
+Solution : ajouter `defer` à **51 scripts** non-bloquants :
+
+```html
+<!-- Avant -->
+<script src="js/proLicense.js"></script>
+
+<!-- Après -->
+<script src="js/proLicense.js" defer></script>
+```
+
+**Effet** :
+- Download : parallèle, en arrière-plan pendant le parsing HTML
+- Exécution : à la fin du parsing, dans l'ordre du DOM (= ordre garanti)
+- Boot HTML débloqué — le splash apparaît plus tôt, l'app perçue comme plus rapide
+
+#### 82.3 `defer` vs `async`
+
+| | `defer` | `async` |
+|---|---|---|
+| Download | Parallèle au parsing HTML | Parallèle au parsing HTML |
+| Exécution | À la fin du parsing, **dans l'ordre du DOM** | Dès que le download finit, **ordre non garanti** |
+| Usage MyKTAMap | ✅ Choisi — on a besoin de l'ordre (ex: `proLicense.js` AVANT `themeManager.js`) | ❌ Non utilisable — un module qui charge plus vite s'exécuterait avant ses dépendances |
+| Compatibilité | IE 10+ universel | IE 10+ universel |
+
+#### 82.4 Scripts NON-déférés (volontairement)
+
+22 scripts sur 73 NE prennent PAS `defer` :
+
+| Type | Raison |
+|---|---|
+| `js/copyright.js` | Doit s'exécuter EN PREMIER pour poser `window.__MKM__` (watermark global lu par d'autres modules au boot) |
+| Scripts inline `<script>...</script>` | Pas concernés par `defer` (s'exécutent sync au parsing) |
+| Libs Leaflet (`lib/leaflet/leaflet.js`, `lib/leaflet-easyprint/...`) | Conservateur — chargées en tout début, on ne veut pas risquer une race condition avec les wrappers MyKTAMap |
+| `js/main.js` | Doit s'exécuter EN DERNIER pour démarrer l'app après tous les modules — bouge entre `defer` ou pas selon refactor |
+
+#### 82.5 Gains mesurés (estimation utilisateur final)
+
+| Métrique | Avant v1.30.0 | Après v1.30.0 | Δ |
+|---|---|---|---|
+| Time-to-Splash (4G stable) | ~1200 ms | ~700 ms | **-42 %** |
+| Time-to-App-Usable (4G stable) | ~2800 ms | ~2100 ms | **-25 %** |
+| Boot bloqué si version.json down | ∞ (jusqu'au timeout browser ~30 s) | 1500 ms max | ✅ Borne dure |
+
+(Mesures indicatives au DevTools Performance + audit user — pas un benchmark instrumenté
+formel, mais l'écart est sensible à l'œil même sur PC.)
+
+#### 82.6 À NE PAS faire
+
+- ❌ Ajouter `defer` à `copyright.js` — casse le watermark `window.__MKM__` qui doit être
+  posé synchrone au boot très tôt
+- ❌ Ajouter `async` à un quelconque script `.js` MyKTAMap — l'ordre n'est plus garanti,
+  risque de `ReferenceError` au runtime selon la vitesse de download de chaque module
+- ❌ Supprimer le `clearTimeout(timer)` dans le pattern fetch §82.1 — laisse traîner un timer
+  zombi qui peut faire un `AbortError` tardif (sur une autre requête en cours si le ctrl est
+  réutilisé par erreur)
+- ❌ Baisser le timeout sous 1000 ms — sur 3G dégradée, les requêtes prennent légitimement
+  1200-1400 ms même si le serveur est en bonne santé
+- ❌ Étendre le pattern timeout à TOUS les fetches MyKTAMap sans réfléchir — sur un fetch
+  CRITIQUE (ex: chargement plan-config.json d'un plan), un timeout silencieux serait pire
+  qu'un échec visible. Le pattern §82.1 est réservé aux fetches **best-effort, non-bloquants
+  pour la fonctionnalité principale** (check version, check alerte)
+
+---
