@@ -767,6 +767,20 @@
           Si décoché OU 0 photo : export <code>.json</code> classique.
         </p>
       </div>
+
+      <!-- 🆕 v1.31.7 F1 : toggle anonymisation pour partage public -->
+      <div class="kta-ses-anonymize-section" style="margin-top:14px; padding-top:10px; border-top:1px solid #2a3144;">
+        <label class="kta-ses-cb-row">
+          <input type="checkbox" id="full_anonymize">
+          <span>🛡️ Anonymiser pour partage public</span>
+        </label>
+        <p style="font-size:11.5px; color:#8892a4; font-style:italic; margin:6px 0 0 26px; line-height:1.4;">
+          Remplace les noms par des codes (<code>💎 POI #1</code>, <code>🛣️ Tracé #1</code>, <code>⬛ Zone #1</code>…),
+          vide les descriptions/notes, retire l'historique GPS et le profil.
+          Coordonnées, tags et structure du plan préservés — exploitable pour qui connaît la zone.
+          <br>⚠️ Force un export <code>.json</code> sans photos (EXIF non strippé).
+        </p>
+      </div>
     `;
   }
 
@@ -1540,6 +1554,145 @@
     });
   }
 
+  // ========================================================
+  // 🛡️ v1.31.7 F1 — ANONYMISATION POUR PARTAGE PUBLIC
+  // ========================================================
+  // Substitue les noms POI / roads / zones / structures par des codes
+  // séquentiels (emoji + #N) et vide les notes/descriptions, retire le
+  // tracker GPS et le profil user.
+  //
+  // Objectif : permettre à un cataphile/spéléo de partager un plan utile
+  // (structure + coords + tags) sans exposer ses repérages personnels (nom
+  // de POI sensibles, notes opérationnelles, historique de présence).
+  //
+  // Le destinataire qui connaît la zone peut toujours coordonner ("celui
+  // qu'on appelle 💎 POI #3") — la traçabilité humaine reste possible mais
+  // ne fuite plus dans l'archive numérique.
+  //
+  // 1:1 préservé : x, y, level, tags, type. Reconstructibles par le ré-import.
+  // Strippé : id, nom, label, description, profondeur, date_update,
+  //           tracker, photos (= EXIF), user/author.
+  // Marqué : session.anonymized = true + session.anonymizedAt = ISO.
+  function _anonymiserSession(session) {
+    // Mapping emoji par tag (built-in connus + fallback "🎯")
+    // ⚠️ Synchroniser avec TAGS_BUILTIN si nouveau tag ajouté.
+    const EMOJI_PAR_TAG = {
+      aeration: "💨", pa: "🕳️", siphon: "💧",
+      effondrement: "⚠️", incertain: "❓",
+      chaufferette: "🔥", baffle: "🚧",
+      eau: "💧", lampe: "🔦", echelle: "🪜",
+      fissure: "💔", entree: "🚪", sortie: "🚪",
+      explosif: "💥", chantier: "🏗️",
+      gem: "💎", graff: "🎨", photo: "📷"
+    };
+    function _emojiPour(tag) {
+      const t = String(tag || "").toLowerCase();
+      return EMOJI_PAR_TAG[t] || "🎯";
+    }
+
+    // 1. editorPoints — séquence par tag (cohérent avec coordination terrain)
+    if (Array.isArray(session.editorPoints)) {
+      const counterByTag = {};
+      session.editorPoints = session.editorPoints.map(function(p) {
+        const firstTag = (Array.isArray(p.tags) && p.tags.length) ? p.tags[0] : "";
+        const emoji   = _emojiPour(firstTag);
+        const key     = firstTag || "_notag";
+        counterByTag[key] = (counterByTag[key] || 0) + 1;
+        const code = emoji + " POI #" + counterByTag[key];
+        const out  = {
+          id:    code,
+          nom:   code,
+          x:     p.x,
+          y:     p.y,
+          tags:  Array.isArray(p.tags) ? p.tags.slice() : [],
+          etat:  "Non inspectée",  // valeur neutre par défaut
+          description: "",
+          profondeur:  null,
+          source:      "editor"
+        };
+        if (typeof p.level === "number") out.level = p.level;
+        // photos pointer non préservé (forcé sans photos quand anonymize ON)
+        return out;
+      });
+    }
+
+    // 2. roads — séquence globale
+    if (Array.isArray(session.roads)) {
+      let n = 0;
+      session.roads = session.roads.map(function(r) {
+        n++;
+        const code = "🛣️ Tracé #" + n;
+        const out = {
+          id:     code,
+          type:   r.type,                       // type préservé (principal/secondaire/etc.)
+          points: r.points,                     // géométrie préservée
+          label:  code,                         // standardise sur label
+          description: ""
+        };
+        if (typeof r.level === "number") out.level = r.level;
+        // jonction : préserve fromLevel/toLevel (= graphe pathfinder, anonyme)
+        if (Number.isInteger(r.fromLevel)) out.fromLevel = r.fromLevel;
+        if (Number.isInteger(r.toLevel))   out.toLevel   = r.toLevel;
+        return out;
+      });
+    }
+
+    // 3. zones — séquence globale
+    if (Array.isArray(session.zones)) {
+      let n = 0;
+      session.zones = session.zones.map(function(z) {
+        n++;
+        const code = "⬛ Zone #" + n;
+        const out = {
+          id:     code,
+          type:   z.type,
+          points: z.points,
+          nom:    code,
+          description: ""
+        };
+        if (typeof z.level === "number") out.level = z.level;
+        return out;
+      });
+    }
+
+    // 4. structures — séquence globale
+    if (Array.isArray(session.structures)) {
+      let n = 0;
+      session.structures = session.structures.map(function(s) {
+        n++;
+        const code = "🏛️ Struct #" + n;
+        const out = {
+          id:     code,
+          type:   s.type,
+          points: s.points,
+          nom:    code,
+          description: ""
+        };
+        if (typeof s.level === "number") out.level = s.level;
+        return out;
+      });
+    }
+
+    // 5. tracker → retiré entièrement (geo-historique daté = très révélateur)
+    delete session.tracker;
+
+    // 6. profil user / author (rarement présent dans export session, mais
+    //    on nettoie défensivement au cas où un futur champ serait ajouté)
+    delete session.user;
+    delete session.userProfile;
+    delete session.author;
+
+    // 7. compteurs photos (info récap) — retirés car forcés à 0
+    delete session.photosCount;
+    delete session.photosTotalKB;
+
+    // 8. marqueur d'anonymisation pour audit côté destinataire
+    session.anonymized   = true;
+    session.anonymizedAt = new Date().toISOString();
+
+    return session;
+  }
+
   // ---------- FULL ----------
   function _exportFull() {
     const d = _compter();
@@ -1559,8 +1712,14 @@
     const inclurePhotosCb = document.getElementById("full_photos");
     const inclurePhotos   = inclurePhotosCb ? inclurePhotosCb.checked : false;
 
+    // 🆕 v1.31.7 F1 : toggle anonymisation pour partage public.
+    // Si actif → force exclusion des photos (EXIF non strippé en MVP) et
+    // applique la substitution des labels sur le payload session.
+    const anonymizeCb = document.getElementById("full_anonymize");
+    const anonymize   = !!(anonymizeCb && anonymizeCb.checked);
+
     // Collecte des photos (async — on encapsule tout dans la chaîne Promise).
-    const photosPromise = inclurePhotos
+    const photosPromise = (inclurePhotos && !anonymize)
       ? _collecterPhotosPlan(null)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
@@ -1615,9 +1774,22 @@
         session.photosTotalKB  = Math.round(pack.totalSize / 1024);
       }
 
+      // 🆕 v1.31.7 F1 : applique l'anonymisation APRÈS construction du
+      // payload — comme ça la logique d'inclusion (tracker, photos…)
+      // reste identique, on mute juste le résultat avant download.
+      if (anonymize) {
+        _anonymiserSession(session);
+      }
+
+      // Préfixe du nom de fichier : "session-anon-…" quand anonymisé
+      // pour rappeler au destinataire que le payload est anonymisé.
+      const fnPrefix = anonymize ? "session-anon" : "session";
+
       if (photos.length > 0) {
         // Bundle ZIP : session.json + photos/
-        _packerZipSession(session, photos, _filename("session", "zip"))
+        // NB : ce chemin ne peut PAS être pris quand anonymize ON
+        // (photos forcées à 0 plus haut), donc pas de risque de fuite EXIF.
+        _packerZipSession(session, photos, _filename(fnPrefix, "zip"))
           .then(function() { _fermer(); })
           .catch(function(err) {
             console.error("[SessionExport] _packerZipSession :", err);
@@ -1625,7 +1797,7 @@
           });
       } else {
         // Pas de photos → JSON pur (rétro-compat absolue)
-        _telechargerJSON(session, _filename("session"));
+        _telechargerJSON(session, _filename(fnPrefix));
         _fermer();
       }
     });

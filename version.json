@@ -1,7 +1,7 @@
 {
-  "version": "v1.31.6-fix1",
+  "version": "v1.31.7",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.31.6-fix1 — Correction du mode hors-ligne (suite) : si l'application ne peut pas se charger en mode hors-ligne (cache local incomplet), l'écran d'erreur explique clairement le problème et propose deux solutions : rafraîchir, ou aller sur la page de réinitialisation du Service Worker (tes données locales sont conservées). Aucun changement fonctionnel volontaire."
+    "🛡️ v1.31.7 — Nouveau bouton « Anonymiser pour partage public » dans la modale Enregistrer la session (onglet Full). Quand actif, les noms de tes POI / tracés / zones / structures sont remplacés par des codes neutres (💎 POI #1, 🛣️ Tracé #1…), tes notes/descriptions sont vidées, l'historique GPS et ton profil sont retirés. Coordonnées et tags conservés : le plan reste exploitable par qui connaît la zone, sans exposer tes repérages personnels."
   ]
 }

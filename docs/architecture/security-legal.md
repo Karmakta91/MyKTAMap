@@ -688,3 +688,154 @@ html.kta-instance-pro .kta-titre-suffix-pro { display: inline-block; }
   les 2 modes (community pur + pro local via `Licence-pro.json`)
 
 ---
+
+### 85. F1 — Export session anonymisé pour partage public (v1.31.7 — 2026-06-03)
+
+> **Motivation** : KARMA voulait pouvoir partager un plan utile (structure + coordonnées
+> + tags) à un tiers (collaborateur, plateforme externe, archive publique) **sans
+> exposer les repérages personnels** — noms de POI sensibles ("entrée plombier rue X"),
+> notes opérationnelles ("rdv 18h avec Jean"), historique de présence GPS daté, profil
+> auteur. Sans anonymisation, exporter une session = transférer un dossier complet de
+> PII gravées en JSON.
+
+#### 85.1 Architecture
+
+Helper unique `_anonymiserSession(session)` dans `js/sessionExporter.js` (juste avant
+`_exportFull()`). Mute le payload **APRÈS** construction → la logique d'inclusion
+(tracker, photos, structures, mesure) reste identique au mode normal, l'anonymisation
+est une couche défensive optionnelle appliquée en dernier.
+
+```js
+// Toggle UI dans _renderFull() — onglet "Full" uniquement
+<input type="checkbox" id="full_anonymize">
+
+// Dans _exportFull(), après construction du `session` :
+if (anonymize) {
+  _anonymiserSession(session);
+}
+```
+
+#### 85.2 Champs transformés
+
+| Champ source | Transformation | Préservé pour |
+|---|---|---|
+| `editorPoints[].id` / `.nom` | `<emoji par tag> POI #N` (compteur par premier tag) | Coordination terrain ("celui qu'on appelle 💎 POI #3") |
+| `editorPoints[].description` | `""` | — |
+| `editorPoints[].etat` | `"Non inspectée"` (valeur neutre par défaut) | — |
+| `editorPoints[].profondeur` | `null` | — |
+| `editorPoints[].date_update` | retiré | — |
+| `roads[].id` / `.label` | `🛣️ Tracé #N` (compteur global) | Coordination |
+| `roads[].description` | `""` | — |
+| `zones[].id` / `.nom` | `⬛ Zone #N` (compteur global) | Coordination |
+| `zones[].description` | `""` | — |
+| `structures[].id` / `.nom` | `🏛️ Struct #N` (compteur global) | Coordination |
+| `structures[].description` | `""` | — |
+
+#### 85.3 Champs supprimés intégralement
+
+- `session.tracker` (timeline GPS datée + path + position + startTs) — geo-historique
+  daté = champ le plus révélateur. Retire la possibilité de recouper "qui était où à
+  quelle heure".
+- `session.user` / `session.userProfile` / `session.author` — nettoyage défensif au
+  cas où un futur champ profil serait ajouté (aujourd'hui absent du format
+  `devmap-session` v1.0 mais on prépare).
+- `session.photosCount` / `session.photosTotalKB` — forcés à 0 car photos exclues
+  (EXIF non strippé en MVP).
+- **Photos elles-mêmes** : la checkbox `📸 Inclure les photos` est by-passée quand
+  anonymize ON. Le chemin ZIP n'est pas pris → uniquement JSON pur. Raison : strip
+  EXIF demande canvas re-encoding (lossy + complexe), reportable plus tard si KARMA
+  veut une variante "anonyme avec photos".
+
+#### 85.4 Champs préservés (utiles + non identifiants)
+
+- `editorPoints[].x` / `.y` / `.tags` / `.level` / `.source`
+- `roads[].type` / `.points` / `.level` / `.fromLevel` / `.toLevel` (graphe pathfinder anonyme)
+- `zones[].type` / `.points` / `.level`
+- `structures[].type` / `.points` / `.level`
+- `session.measure` / `session.measureSurface` (mesures géométriques sans label)
+- `session.type` / `.version` / `.date_export` (entête format)
+
+#### 85.5 Marqueurs d'audit
+
+```json
+{
+  "type": "devmap-session",
+  "version": "1.0",
+  "anonymized": true,
+  "anonymizedAt": "2026-06-03T14:23:51.000Z",
+  ...
+}
+```
+
+→ Le destinataire peut détecter en re-import qu'il s'agit d'un payload anonymisé
+(utile pour UX : afficher un bandeau "session importée en mode anonymisé" plutôt
+qu'un onboarding standard). Pas encore exploité côté import en v1.31.7, mais le
+marqueur est posé pour usage futur.
+
+#### 85.6 Nom de fichier
+
+Préfixe `session-anon-…` au lieu de `session-…` → quand le fichier traîne sur un
+disque ou est forwardé par mail, le nom rappelle qu'il s'agit d'un payload
+anonymisé (pas confondre avec un export complet de coordination équipe par ex).
+
+#### 85.7 Périmètre v1.31.7 / hors périmètre
+
+✅ Couvert : onglet **Full** uniquement de la modale Enregistrer la session, JSON pur.
+
+❌ Non couvert (par choix MVP — extensible) :
+- Onglet **Avancé** (`_exportAdvanced`) — pas de toggle équivalent. À ajouter si KARMA
+  veut un usage massif.
+- Onglet **Conversion** (`_exportConversion`) — vise la production de data layers
+  internes, pas de partage public.
+- Onglet **Export externe** (KMZ + GPX) — un KMZ anonymisé serait une feature
+  distincte (toucherait `kmzExport.js` + `gpxExport.js`).
+- **Strip EXIF photos** — canvas re-encoding nécessaire. Pour l'instant : photos
+  forcées exclues quand anonymize ON.
+- **Anonymisation côté import** — pas de validation que le payload reçu est bien
+  anonymisé (le marqueur `anonymized: true` n'est pas vérifié). Le ré-import d'un
+  payload anonymisé fonctionne normalement, juste les noms sont les codes.
+
+#### 85.8 Mapping emoji → tag
+
+Table `EMOJI_PAR_TAG` dans `_anonymiserSession` :
+
+| Tag | Emoji |
+|---|---|
+| `aeration` | 💨 |
+| `pa` | 🕳️ |
+| `siphon` / `eau` | 💧 |
+| `effondrement` | ⚠️ |
+| `incertain` | ❓ |
+| `chaufferette` | 🔥 |
+| `baffle` | 🚧 |
+| `lampe` | 🔦 |
+| `echelle` | 🪜 |
+| `fissure` | 💔 |
+| `entree` / `sortie` | 🚪 |
+| `explosif` | 💥 |
+| `chantier` | 🏗️ |
+| `gem` | 💎 |
+| `graff` | 🎨 |
+| `photo` | 📷 |
+| (fallback / inconnu / sans tag) | 🎯 |
+
+⚠️ Synchroniser avec `TAGS_BUILTIN` si nouveau tag ajouté. Pas de catastrophe si oublié
+— le fallback 🎯 marche, juste moins explicite.
+
+#### 85.9 À NE PAS faire
+
+- ❌ **Ne pas appliquer l'anonymisation AVANT la construction du payload** — la logique
+  d'inclusion (tracker, photos, structures, mesure) reste un seul code path qui
+  marche pour les 2 modes. L'anonymizer est une transformation post-construction
+  pure, idempotente sur ses propres sorties.
+- ❌ **Ne pas tenter de strip EXIF en synchrone** — re-encoder une image via canvas
+  est asynchrone (toBlob), lossy (JPEG re-compression), peut crasher en OOM mobile.
+  Pour MVP : exclusion totale des photos quand anonymize ON.
+- ❌ **Ne pas préserver `date_update`** — c'est un champ qui paraît anodin mais qui
+  permet de recouper "quand l'utilisateur a édité tel point" → fuite d'activité.
+- ❌ **Ne pas oublier de supprimer `tracker`** — c'est le champ le PLUS révélateur
+  (geo-historique daté seconde par seconde). Toute extension future qui ajoute un
+  sous-objet équivalent (ex: `lastSeen`, `activity`) doit ajouter son `delete` dans
+  `_anonymiserSession`.
+
+---
