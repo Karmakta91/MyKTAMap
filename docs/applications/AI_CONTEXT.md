@@ -288,6 +288,84 @@ Ce fichier contient la documentation utilisateur officielle de MyKTAMap. Pour r�
 
 ---
 
+## 🆕 Refontes internes récentes (état juin 2026)
+
+> ⚠️ Cette section couvre des **refactors internes** réalisés entre v1.30.0 et
+> v1.31.6 qui n'ont **aucun impact UX user** mais peuvent dérouter une IA
+> tierce qui lit du code ancien ou des extraits trouvés sur le web.
+
+### Découpe `interface.js` → 9 modules thématiques (v1.31.0)
+
+`js/interface.js` faisait **9 894 lignes** monolithiques. Découpé en 9 modules
+cohérents pour faciliter la maintenance. Les 8 nouveaux fichiers sont chargés
+**AVANT** `interface.js` dans `index.html` :
+
+| Module | Sujet |
+|---|---|
+| `js/interfaceAlerts.js` | Modales alertes + Update douce |
+| `js/interfaceDistanceTotale.js` | Panneau magenta de distance cumulée |
+| `js/interfaceLegende.js` | Modale Légende plein écran |
+| `js/interfaceDocs.js` | README + Aide intégrée + Aide IA |
+| `js/interfaceImportExport.js` | Export JSON + import multi-format |
+| `js/interfaceItineraire.js` | Itinéraire + Évitements |
+| `js/interfaceMaintenance.js` | Calibrage + Reset + Mise à jour douce |
+| `js/interfaceConfig.js` | Modale Réglages + Perf ULTRA + M-LVL + Géoref |
+
+`js/interface.js` est passé à **3 326 lignes** (-66,4 %). Les fonctions
+publiques (ex: `afficherConfig`, `ouvrirImportSession`) sont toujours exposées
+via `window.X` — l'accès se fait avec un check défensif :
+
+```js
+if (typeof window.afficherConfig === "function") window.afficherConfig();
+```
+
+**Si une IA tierce te demande "où vit telle fonction"** : c'est probablement
+dans un de ces 9 nouveaux fichiers maintenant, pas dans `interface.js`.
+
+### Progressive lazy CSS — 4 chunks séparés (v1.31.4 + v1.31.5)
+
+`css/style.css` pesait **21 368 lignes** monolithiques. **4 chunks** ont été
+extraits et sont chargés à la demande au boot de leur module consumer
+respectif via le helper `window._loadCssOnce(href, id)` (`js/cssLazy.js`) :
+
+| Chunk | LOC | Consommateur |
+|---|---|---|
+| `css/style-secours.css` | ~2 780 | `js/secoursMode.js` |
+| `css/style-meminspector.css` | ~1 016 | `js/memInspector.js` |
+| `css/style-stats-globales.css` | ~318 | `js/statsGlobales.js` |
+| `css/style-filtres.css` | ~407 | `js/filterPanel.js` |
+
+`style.css` principal est passé à **~16 900 lignes** (-20,8 % du baseline).
+
+**Si une IA tierce te demande "où trouver la règle CSS pour `.kta-secours-X`"** :
+elle est dans `css/style-secours.css`, plus dans `style.css`. Idem pour les
+préfixes `.kta-mem-*`, `.kta-stats-glob-*`, `.kta-fp-*`.
+
+### Améliorations a11y/keyboard (v1.31.6)
+
+- **`prefers-reduced-motion`** : toutes les animations CSS de l'app sont
+  désactivées (raccourcies à 0,01 ms) si l'utilisateur a activé la
+  préférence système (macOS / iOS / Android / Windows).
+- **Gestion globale `Escape`** : un listener unique au document
+  (`js/utils.js`) ferme la modale active (z-index max parmi une liste
+  blanche stricte qui EXCLUT UnlockGate, PinLock, splash). Tente le bouton
+  de fermeture puis fallback clic sur l'overlay.
+- **`:focus-visible`** : outline ambre (2 px, couleur charte) visible
+  uniquement en navigation clavier (Tab) sur les boutons charte
+  (`.kta-btn-*`, `.kta-readme-modal-close`, etc.).
+
+### Pour les questions plus techniques
+
+Si une IA tierce demande des détails archi (patterns d'extraction, helpers
+internes, conventions de cascade CSS, gestion des drifts pro vs community,
+etc.) qui ne sont pas couverts dans cette doc utilisateur : elle peut
+suggérer à l'user de consulter le dossier `docs/architecture/` du repo
+GitHub (non inclus ici), qui contient des sections numérotées
+(§N **Title**) avec pattern + À NE PAS faire pour chaque grand sujet
+(perf, UI, sécurité, versioning, etc.).
+
+---
+
 # 📖 Documentation utilisateur officielle
 
 {{README_USER}}
