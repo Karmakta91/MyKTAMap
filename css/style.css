@@ -17055,15 +17055,18 @@ html.kta-theme-light .kta-cfg-actions-bar button:focus-visible {
 html.kta-incognito body::before {
   content: "";
   position: fixed;
-  /* 🆕 v1.32.0 — viewport-fit=cover activé : la bordure incognito doit
-     respecter la safe-area sinon les 4 côtés sont mangés par notch +
-     home indicator + bezels arrondis iPhone. Pas une "bordure" full-
-     screen mais une "bordure safe-area" = ressort à l'intérieur de
-     la zone exploitable, esthétique cohérente. */
-  top: env(safe-area-inset-top, 0px);
-  left: env(safe-area-inset-left, 0px);
-  right: env(safe-area-inset-right, 0px);
-  bottom: env(safe-area-inset-bottom, 0px);
+  /* 🩹 v1.32.0-fix2 — KARMA bug : en landscape la safe-area-inset-bottom
+     (~21px home indicator) créait une MARGE visible au bas de la bordure.
+     Revert au pattern v1.31.10-fix1 : edge-to-edge du viewport.
+     Raisonnement : les parties qui passent derrière le notch + home
+     indicator sont physiquement HORS de l'écran rendu (zone "trou"),
+     donc invisibles. Pas un problème visuel d'avoir top:0/bottom:0,
+     au contraire la bordure parait continue. Mieux que d'avoir une
+     marge visible inset. */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
   border: 5px solid #a78bfa;
   /* Couche intérieure plus saturée pour effet "double bordure" */

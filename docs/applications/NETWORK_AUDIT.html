@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.32.0-fix1</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.32.0-fix2</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.32.0-fix2 (HOTFIX — Bordure incognito edge-to-edge iPhone landscape)</strong> : KARMA bug remonté en test : "les border du mode incognito, même en horizontal sont comme avant avec les marges du haut et bas". Cause : v1.32.0 avait inset les 4 côtés de <code>html.kta-incognito body::before</code> avec <code>env(safe-area-inset-*)</code>. En landscape iPhone notché, <code>env(safe-area-inset-bottom) ≈ 21px</code> (home indicator) créait une marge visible au bas de la bordure. Fix : revert au pattern v1.31.10-fix1 — <code>top: 0; left: 0; right: 0; bottom: 0</code> edge-to-edge du viewport. Raisonnement : les parties qui passent derrière le notch / Dynamic Island / home indicator sont physiquement HORS de l'écran rendu (zone "trou" iPhone), donc invisibles. Pas un problème visuel d'avoir 4 côtés à 0, au contraire la bordure parait CONTINUE. <strong>AUCUN impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.32.0-fix1 (HOTFIX — Header/statusbar refonte landscape iPhone)</strong> : KARMA en test de v1.32.0 : "en horizontal Leaflet ne s'adapte pas, on a le footer mal intégré pareil en head". Cause : v1.32.0 utilisait le pattern <code>top/left/right/bottom: env(safe-area-inset-*)</code> sur les 4 côtés de <code>.kta-refonte-header</code> + <code>.kta-refonte-statusbar</code>. En landscape iPhone notché (safe-area-inset-left = ~44px, safe-area-inset-right = ~34px), ça INSET le <code>position: fixed</code> lui-même → le background de l'élément ne couvre plus toute la largeur écran → bandes visibles à gauche (notch) et à droite (home indicator) où apparaît le body root. Fix : refactor au pattern correct <strong>background full-width + content via padding</strong>. Header : <code>top:0, left:0, right:0, height: calc(44px + env(safe-area-inset-top, 0px))</code> + <code>padding-top + padding-left/right: env(safe-area-inset-*)</code>. Le <code>#map</code> en mode refonte est DÉJÀ à <code>top: calc(44px + env(safe-area-inset-top, 0px))</code> → matche pile. Statusbar : <code>bottom:0, left:0, right:0</code> + <code>padding-bottom/left/right: env(...)</code>. La hauteur est dynamique (offsetHeight JS) donc <code>--kta-statusbar-h</code> suit auto. <strong>AUCUN impact réseau</strong>.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — hotfix UX iPhone landscape qui RÉTABLIT l'intégration visuelle header/footer. Portrait : aucun changement (contenu reste à la même position visible — c'est une limite de l'approche fullscreen perçu sans redesign du header refonte).

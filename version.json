@@ -1,7 +1,7 @@
 {
-  "version": "v1.32.0-fix1",
+  "version": "v1.32.0-fix2",
   "released": "2026-06-03",
   "notes": [
-    "🩹 v1.32.0-fix1 — Correction de l'intégration header + footer sur iPhone en mode paysage (landscape). Avant le fix, ils étaient mal intégrés (le notch et le home indicator créaient des bandes vides sur les côtés). Maintenant le background couvre toute la largeur de l'écran et le contenu se positionne automatiquement à l'écart du notch et du home indicator. Note : aucun changement visible en mode portrait — c'est normal, le bénéfice de v1.32.0 est invisible en portrait car le contenu garde la même position qu'avant ; seule la nature de la barre iOS au-dessus a changé (translucide vs opaque)."
+    "🩹 v1.32.0-fix2 — La bordure violette du mode incognito repart edge-to-edge du viewport iPhone (revert de l'inset safe-area appliqué en v1.32.0). En paysage, ça enlève les marges visibles autour de la bordure. Les parties de bordure qui passent derrière le notch ou le home indicator sont physiquement hors de l'écran rendu (zone « trou ») donc invisibles — résultat visuel : bordure continue, plus joli."
   ]
 }
