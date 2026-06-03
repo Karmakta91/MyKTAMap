@@ -138,6 +138,71 @@ Cf `ui.md §85.6` ("Pour ajouter une nouvelle modale") pour le pattern complet.
 
 ---
 
+## 🚨 Pièges du sweep perf v1.31.x (P2 progressive lazy CSS)
+
+2 pièges spécifiques au pattern P2 (cf `perf-memory.md §87`) détectés pendant le sweep
+v1.31.4 → v1.31.5.
+
+### `cssLazy.js` doit être SYNC (pas defer) pour servir les modules consumer SYNC
+
+⚠️ Si on extrait du CSS pour une feature dont le module JS est chargé **SYNC en haut de
+`index.html`** (typiquement `memInspector.js`, `statsGlobales.js`, etc.), il faut que le
+helper `window._loadCssOnce` posé par `js/cssLazy.js` soit DÉJÀ disponible au moment où
+l'IIFE du module s'exécute. Donc `cssLazy.js` lui-même DOIT être SYNC, posé tôt (juste
+après `networkAudit.js`), PAS en `defer`.
+
+Si `cssLazy.js` est en `defer`, le check défensif `typeof window._loadCssOnce ===
+"function"` retourne `false` dans les modules SYNC qui s'exécutent avant lui → le chunk
+n'est **JAMAIS préchargé** → FOUC garanti au 1er ouverture de la modale, voire styling
+dégradé permanent si le chunk n'a pas non plus été appelé ailleurs.
+
+✅ **Pattern correct** : `cssLazy.js` est SYNC dès l'init de la page. Aucun effet de bord
+(pose juste un global, zéro réseau) → safe à charger très tôt. Détecté + corrigé en v1.31.5
+quand on a étendu P2 aux modules SYNC (Inspecteur, Stats globales).
+
+### Extraction de blocs CSS par sed : off-by-one entre fin extrait et début queue
+
+⚠️ Quand on extrait un bloc `M → N` du `style.css` avec une reconstruction du style :
+
+```bash
+sed -n '1,(M-1)p' style.css > new.css
+sed -n 'M,Np' style.css > extracted.css
+sed -n '(N+1),$p' style.css >> new.css
+```
+
+Il est facile de se tromper d'1 ligne sur le `<after>` de la queue :
+- Si on garde à partir de **`N`** au lieu de **`N+1`** → duplication de la ligne `N`
+- Si on garde à partir de **`N+2`** au lieu de **`N+1`** → trou d'1 ligne (le `*/` fermant
+  d'un commentaire de section peut disparaître, créant un commentaire orphelin)
+
+**Cas concret v1.31.4** : extraction d'un bloc qui finissait par un séparateur en
+commentaire multi-ligne :
+```css
+/* ═══════════════════════════════════════════════════════════════════════════
+   🆕 v1.22.0 — Mode Secours : modale UI (liste + create + edit free-form)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kta-secours-modal-boite { ... }
+```
+
+L'extraction a coupé après la 3ᵉ ligne (`═══ */`), mais la queue a démarré à `<after>+1`
+sur `🆕 v1.22.0` au lieu de sur `═══ */` → l'`*/` fermant disparaît de `style.css`. Le CSS
+restait **techniquement valide** (le browser cherche le `*/` suivant, qui se trouvait dans
+le commentaire de la section voisine), mais ça crée un **commentaire orphelin moche** dans
+le fichier principal qui consomme tout le CSS suivant comme s'il était commenté jusqu'à
+ce `*/` trouvé.
+
+✅ **Mitigation** systématique après chaque extraction :
+1. `grep -c "<préfixe extrait>" style.css` → doit retourner `0`
+2. `grep -nE "🆕 v.*<feature>" style.css` → détecte les commentaires orphelins d'une
+   section qui aurait été coupée en plein milieu
+3. Inspection visuelle des **10 lignes avant + 10 lignes après** la zone d'extraction
+4. Validation Coverage CSS dans DevTools (la feature non ouverte = 0 % utilisé du chunk)
+
+Cleanup v1.31.5 a retiré l'orphelin via `sed -i '/<motif>/d'`. Doc complète : cf
+`perf-memory.md §87.7` dernier item.
+
+---
+
 ## 🛠️ Workflow de modification typique
 
 ### Pour ajouter une fonctionnalité

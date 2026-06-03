@@ -8,7 +8,7 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.31.5` (03/06/2026) — PATCH **perf P2 step 2** : 3 chunks lazy CSS supplémentaires (`style-meminspector.css` 1016 LOC + `style-stats-globales.css` 318 LOC + `style-filtres.css` 407 LOC) extraits de `style.css` principal. Cumul depuis baseline : 21 368 → 16 926 LOC (-20,8 %). Aucun changement UX visible.
+**📦 Version courante** : `v1.31.5-fix1` (03/06/2026) — HOTFIX **mode hors-ligne** : le Service Worker plantait partiellement (`fetch Event respondWith received an error, returned response is null`) quand un asset nouvellement ajouté (typiquement un chunk CSS v1.31.4+) n'était pas en cache ET la requête échouait. Le `.catch()` du fetch handler retourne désormais TOUJOURS une Response (504 Offline si asset manquant). Aucun changement UX volontaire.
 **📦 Précédentes shipped main** : `v1.31.1` (perf P7 OOMGuard pause sur visibilitychange) ; `v1.31.0` (Refactor MINOR : `interface.js` → 9 modules thématiques, -66 % LOC) ; `v1.30.1` (HOTFIX CSS frontière community/pro) ; `v1.30.0` (Perf boot : `defer` 51 scripts + timeout 1500 ms fetches + viewport culling markers POI + animation reveal titre) ; `v1.29.4` (Infra/DX : selfhost ZIP auto + CLAUDE.md slim + guard-git affiné) ; `v1.29.0+fix3` (i18n P0 README EN + Mode Secours multi-phases) ; `v1.25.3` (Carte tutoriel Mode Secours)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 

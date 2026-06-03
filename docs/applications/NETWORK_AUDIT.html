@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.5</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.5-fix1</strong> (3 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.5-fix1 (HOTFIX — Service Worker offline <code>respondWith</code> null)</strong> : correction d'un bug critique du mode hors-ligne révélé par l'extension des chunks lazy CSS (v1.31.4 + v1.31.5). Avant le fix : le <code>.catch()</code> du fetch handler du Service Worker retournait <code>undefined</code> quand la requête échouait ET n'était pas un document HTML → <code>event.respondWith(undefined)</code> → erreur browser « fetch Event respondWith received an error, returned response is null » → rendu partiel cassé. Conditions de déclenchement : asset demandé non présent dans le cache (typiquement un chunk CSS v1.31.4+ pas encore caché) + requête réseau en échec (offline). Après le fix : le <code>.catch()</code> retourne TOUJOURS une <code>Response</code> valide (504 pour les assets non-document, fallback <code>./index.html</code> ou 504 inline pour les documents). <strong>AUCUN impact réseau</strong> (correction strictement interne au Service Worker), <strong>aucune nouvelle permission, aucun nouveau fetch ajouté</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — hotfix défensif strictement neutre côté réseau, restaure le comportement attendu en hors-ligne pour tous les assets.
+  </p>
+
   <p class="meta" style="margin-top:6px;">
     <strong>v1.31.5 (PATCH — Perf P2 step 2 : 3 chunks lazy CSS supplémentaires)</strong> : démarrage encore plus rapide. 3 nouveaux chunks CSS extraits de <code>style.css</code> principal et chargés à la demande au boot de leur module consumer respectif : <code>style-meminspector.css</code> (1 016 LOC), <code>style-stats-globales.css</code> (318 LOC), <code>style-filtres.css</code> (407 LOC). Cumul depuis baseline : <code>style.css</code> 21 368 → 16 926 LOC (<strong>-20,8 %</strong>). <strong>AUCUN impact réseau</strong> (3 fichiers CSS locaux ajoutés au Service Worker, servis same-origin), <strong>aucune nouvelle permission, aucun changement de comportement runtime utilisateur</strong>. Helper <code>window._loadCssOnce</code> déplacé en SYNC tout en haut du chargement (juste après <code>networkAudit.js</code>) pour être disponible aux modules SYNC comme <code>memInspector.js</code> + <code>statsGlobales.js</code>. Cleanup bonus : commentaire orphelin Mode Secours (résidu d'extraction v1.31.4) retiré.
     <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — perf boot strictement neutre côté réseau, gain user-perceptible uniquement sur mobile cold cache.

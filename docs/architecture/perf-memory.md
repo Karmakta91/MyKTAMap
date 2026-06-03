@@ -1038,6 +1038,18 @@ Le check `typeof window._loadCssOnce === "function"` est défensif — si `cssLa
 pas chargé pour une raison ou une autre (bug index.html, désordre script), le module
 continue de fonctionner avec dégradation gracieuse (styling fallback du `style.css`).
 
+⚠️ **`cssLazy.js` DOIT être chargé SYNC en haut de `index.html`** (juste après
+`networkAudit.js`), PAS en `defer`. Raison : certains consumers (`memInspector.js`,
+`statsGlobales.js`, etc.) sont chargés SYNC tôt dans le head — au moment où leur IIFE
+s'exécute, `window._loadCssOnce` doit déjà exister. Si `cssLazy.js` était `defer`, il ne
+serait disponible qu'après le parsing complet du HTML → les modules SYNC tomberaient sur
+le check défensif `typeof !== "function"` et le fallback dégradé serait actif → pas de
+préchargement, FOUC potentiel au 1er ouverture.
+
+`cssLazy.js` n'a aucun effet de bord (pose juste un global `window._loadCssOnce` + zéro
+réseau), donc le passer SYNC en haut est safe. Ce changement structurel a été fait en
+v1.31.5 lors de l'extraction de Stats globales / Inspecteur (modules SYNC).
+
 #### 87.4 Service Worker
 
 Le chunk doit être listé dans `sw.js > ASSETS_TO_CACHE` :
@@ -1058,31 +1070,49 @@ Au premier boot après installation du nouveau Service Worker, le chunk est fetc
 Au 2ᵉ boot (cache plein), `_loadCssOnce` sert le chunk depuis le cache local → instantané
 offline.
 
-#### 87.5 Résultat mesuré (v1.31.4)
+#### 87.5 Résultat mesuré (v1.31.4 → v1.31.5)
 
-| | Avant v1.31.4 | Après v1.31.4 | Δ |
+| | Baseline (v1.31.3) | v1.31.4 (step 1) | v1.31.5 (step 2) |
 |---|---|---|---|
-| `style.css` LOC | 21 368 | 18 616 | **-12,9 %** |
-| `style-secours.css` LOC | — | 2 780 | nouveau chunk |
-| Parse CSS boot mobile (cold cache, estim.) | 100 % | 87 % | **-13 %** |
+| `style.css` LOC | 21 368 | 18 616 | **16 926** |
+| Δ depuis baseline | — | -12,9 % | **-20,8 %** |
+| `style-secours.css` LOC | — | 2 780 | 2 780 |
+| `style-meminspector.css` LOC | — | — | 1 016 |
+| `style-stats-globales.css` LOC | — | — | 318 |
+| `style-filtres.css` LOC | — | — | 407 |
+| **LOC lazy cumulées** | 0 | 2 780 | **4 521** |
+| Parse CSS boot mobile (cold cache, estim.) | 100 % | 87 % | **79 %** |
 
-Le gain est proportionnel au % du fichier extrait. Les prochaines features (Heatmap,
-Filtres, MemInspector, etc.) cumuleront le gain.
+Le gain est proportionnel au % du fichier extrait. À ce stade, **~21 % du CSS de l'app est
+lazy**, chargé uniquement quand l'user ouvre une feature concernée. La majeure partie des
+users n'ouvre PAS toutes les modales en boot → gain réel encore plus important.
 
-#### 87.6 Roadmap
+#### 87.6 Roadmap — état au sprint v1.31.5
 
-Prochains chunks à extraire (par ordre de priorité = volume × isolation) :
-
-| Feature | LOC estimées | % du fichier | Isolation |
+| Feature | LOC réelles | Statut | Release |
 |---|---|---|---|
-| `style-heatmap.css` (`.kta-heatmap-*`) | ~600 | ~3 % | ✅ très bonne |
-| `style-filtres.css` (`.kta-fp-*`) | ~800 | ~4 % | ✅ très bonne |
-| `style-meminspector.css` (`.kta-mem-*`) | ~700 | ~3,5 % | ✅ très bonne |
-| `style-rapport.css` (`.kta-rapport-*`) | ~500 | ~2,5 % | ✅ bonne |
-| `style-stats-globales.css` (`.kta-stats-*`) | ~400 | ~2 % | ✅ bonne |
+| `style-secours.css` (`.kta-secours-*` + `.kta-mkmsec-*`) | 2 780 | ✅ Done | v1.31.4 |
+| `style-meminspector.css` (`.kta-mem-*`) | 1 016 | ✅ Done | v1.31.5 |
+| `style-stats-globales.css` (`.kta-stats-glob-*`) | 318 | ✅ Done | v1.31.5 |
+| `style-filtres.css` (`.kta-fp-*`) | 407 | ✅ Done | v1.31.5 |
+| `style-heatmap.css` (`.kta-heatmap-*`) | — | ⏸️ N/A | — |
+| `style-rapport.css` (`.kta-rapport-*`) | — | ⏸️ N/A | — |
 
-Une fois ces 5 chunks extraits, le `style.css` principal devrait peser **~16 000 LOC**
-(-25 % du baseline initial), avec un gain proportionnel sur le parse boot.
+⏸️ **N/A pour Heatmap** : le module n'a pas de CSS dédié (pur canvas + `L.imageOverlay`,
+pas de modale UI). Vérifié à l'audit v1.31.5 — `0` occurrence de `.kta-heatmap-*` dans
+`style.css`.
+
+⏸️ **N/A pour Rapport** : la modale Rapport vit sous le préfixe `.kta-secours-rapport-*`
+(c'est une sous-modale du Mode Secours), donc elle a déjà été extraite avec
+`style-secours.css` en v1.31.4. Pas de chunk séparé nécessaire.
+
+**Bilan** : 4 chunks extraits (au lieu de 5 prévus initialement) totalisant **4 521 LOC
+lazy**. Le `style.css` principal est passé de 21 368 → 16 926 LOC (**-20,8 %**), au-delà
+de la prédiction initiale (~16 000 LOC = -25 %, écart de ~5 % dû à des sélecteurs partagés
+qu'on n'a pas voulu disloquer pour rester safe). **Sweep CSS terminé** pour le tour
+v1.31.x — prochain candidat à envisager si besoin : sous-features marginales (`.kta-debug-*`,
+`.kta-trackerReplay-*`, etc.) mais leur volume individuel reste < 200 LOC, donc gain
+marginal et complexité d'orchestration disproportionnée.
 
 #### 87.7 À NE PAS faire
 
@@ -1103,5 +1133,23 @@ Une fois ces 5 chunks extraits, le `style.css` principal devrait peser **~16 000
   règles que l'autre override par cascade. Vérifier la cohérence cross-fichier en cas de
   modification de sélecteur partagé (ex: `.kta-readme-modal-overlay` peut être touché par
   les 2 fichiers).
+- ❌ **Sed -n '<after>,$p' sans valider le off-by-one** — quand on extrait un bloc en
+  reconstruisant le fichier avec `sed -n '1,Np' + extract + sed -n '<after>,$p'`, il faut
+  que `<after>` = ligne suivant la dernière ligne du bloc extrait, **inclusivement**.
+  Erreur classique : extraire `M → N` puis garder à partir de `N` au lieu de `N+1` →
+  duplication d'une ligne. Inverse : garder à partir de `N+2` → trou d'1 ligne (le `*/`
+  fermant d'un commentaire ou un `}` de bloc CSS peut disparaître).
+  
+  Cas concret v1.31.4 : extraction d'un bloc qui finissait par `/* ═══ titre commentaire`
+  + `🆕 v1.22.0 — Mode Secours : modale UI` + `   ═══ */` (fermeture sur ligne suivante).
+  Le `sed -n '<after>,$p'` a démarré la queue à `<after>` au lieu de `<after>+1`, gardant
+  le commentaire **ouvert sans fermeture explicite** dans le `style.css`. Effet : CSS
+  encore valide (le `*/` est cherché dans le commentaire suivant), mais commentaire
+  orphelin moche. Cleanup v1.31.5 a retiré l'orphelin via `sed -i '/<motif>/d'`.
+  
+  **Mitigation** : toujours faire un `grep -c "<préfixe extrait>" style.css` après une
+  extraction pour valider 0 occurrence résiduelle. Et un `grep -E "🆕 v.*<feature>"`
+  pour détecter les commentaires orphelins de la section qui aurait été coupée en plein
+  milieu.
 
 ---

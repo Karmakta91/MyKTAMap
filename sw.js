@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.31.5";
+const CACHE_NAME = "myktamap-cache-v1.31.5-fix1";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -524,9 +524,35 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(() => {
+          // 🆕 v1.31.5-fix1 (hotfix offline) — le .catch() DOIT toujours
+          // retourner une Response, jamais undefined. Sinon le browser
+          // remonte « fetch Event respondWith received an error, returned
+          // response is null » et le rendu de la page casse partiellement
+          // (typique quand un asset nouveau — ex: chunk CSS lazy v1.31.4+
+          // — est demandé en offline alors qu'il n'a jamais été caché,
+          // soit parce que l'install du SW n'a pas eu lieu en ligne, soit
+          // parce que ce chunk a été ajouté APRÈS l'installation du cache).
+          //
+          // Stratégie :
+          //  - Document HTML (navigation) → fallback `./index.html` du cache.
+          //    Si index.html lui-même est absent du cache (cas extrême du
+          //    1er boot offline), on retombe sur une 504 inline.
+          //  - Autre asset (CSS/JS/img/json/…) → 504 explicite. Côté
+          //    consumer, le browser traite ça comme un fetch échoué
+          //    normal — c'est exactement le comportement attendu côté
+          //    `link.onerror` de _loadCssOnce (fallback dégradé sur le
+          //    `style.css` principal) ou côté fetch métier (.catch()
+          //    classique). Pas de crash de la page.
           if (event.request.destination === "document") {
-            return caches.match("./index.html");
+            return caches.match("./index.html").then((r) => r || new Response(
+              "<!doctype html><h1>Offline — index.html absent du cache</h1>",
+              { status: 504, headers: { "Content-Type": "text/html" } }
+            ));
           }
+          return new Response("", {
+            status: 504,
+            statusText: "Offline (asset not cached)"
+          });
         });
     })
   );
