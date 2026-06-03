@@ -30,6 +30,8 @@
 
   let _heartbeatTimer = null;
   let _heartbeatStart = null;
+  let _heartbeatPaused        = false;               // 🆕 v1.31.1 (P7) — true quand l'onglet est en BG → tick pausé
+  let _visibilityHandlerBound = false;               // 🆕 v1.31.1 (P7) — idempotent : pas de double-listener si start() rappelé
   let _splashGone     = false;                       // passe à true quand _splashEnd a fini
   const _toastQueue   = [];                          // toasts en attente tant que le splash bloque l'écran
   let _pendingKillInfo    = null;                    // payload kill détecté → modale après splash
@@ -279,6 +281,56 @@
   }
 
   // =========================
+  // 🆕 v1.31.1 (P7) — VISIBILITY-AWARE HEARTBEAT
+  // =========================
+  // Le heartbeat 5s écrivait dans localStorage en continu, même onglet en
+  // arrière-plan (mobile lockscreen, autre app au premier plan, etc.). Sur
+  // mobile, ça représentait des dizaines d'écritures inutiles par minute en
+  // BG → drain batterie léger constant.
+  //
+  // Fix : pause complète du tick quand document.hidden, reprise + tick
+  // immédiat au reveal pour rafraîchir le timestamp marker (= éviter un
+  // faux positif "kill détecté" si l'app a passé 30 min en BG).
+  //
+  // ⚠️ On ne se base PAS sur le fait que le browser peut suspendre tout le
+  // JS en BG (iOS Safari le fait agressivement, Android Doze aussi). Pourquoi :
+  // on ne contrôle pas ce comportement, il varie selon mobile/version/état
+  // batterie. Notre pause explicite garantit l'économie quel que soit le
+  // comportement browser.
+  function _onVisibilityChange() {
+    // Si pas démarré (start() pas encore appelé), rien à faire
+    if (_heartbeatStart === null) return;
+
+    if (document.hidden) {
+      // Onglet en arrière-plan → on suspend le tick. Le marker reste posé en
+      // l'état : si l'app est killée pendant ce temps (mobile aggressif), le
+      // boot suivant détectera bien le crash via la fenêtre KILL_FRESHNESS_MS.
+      if (_heartbeatTimer) {
+        clearInterval(_heartbeatTimer);
+        _heartbeatTimer = null;
+        _heartbeatPaused = true;
+      }
+    } else {
+      // Onglet revenu au premier plan → tick immédiat + reprise du polling.
+      // Le _setMarker() au reveal rafraîchit le timestamp pour éviter qu'un
+      // long séjour en BG (ex: 30 min en lockscreen) déclenche à tort la
+      // modale "kill détecté" au prochain reload (KILL_FRESHNESS_MS = 1h).
+      if (_heartbeatPaused) {
+        _heartbeatPaused = false;
+        _setMarker();
+        _heartbeatTimer = setInterval(_setMarker, HEARTBEAT_MS);
+      }
+    }
+  }
+
+  function _bindVisibilityHandlerOnce() {
+    // Idempotent : protège contre un double-bind si start() est rappelé
+    if (_visibilityHandlerBound) return;
+    _visibilityHandlerBound = true;
+    document.addEventListener("visibilitychange", _onVisibilityChange);
+  }
+
+  // =========================
   // CONTRÔLE
   // =========================
   function start() {
@@ -286,6 +338,12 @@
     _setMarker();
     if (_heartbeatTimer) clearInterval(_heartbeatTimer);
     _heartbeatTimer = setInterval(_setMarker, HEARTBEAT_MS);
+
+    // 🆕 v1.31.1 (P7) — bind du handler visibilitychange + check immédiat
+    // si l'onglet est DÉJÀ en BG au moment du démarrage (cas marginal mais
+    // possible : user lance l'app puis bascule très vite sur une autre).
+    _bindVisibilityHandlerOnce();
+    if (document.hidden) _onVisibilityChange();
   }
 
   // Vérification au chargement du module (avant tout app code)

@@ -8,8 +8,8 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.25.3` (27/05/2026) — PATCH onboarding « Carte 13/23 Mode Secours ajoutée au tutoriel premier-lancement (22 → 23 cards) »
-**📦 Précédentes shipped main** : `v1.25.2` (docs Mode Secours complètes) ; `v1.25.1` (3 fixes UX) ; `v1.25.0` (Rapport au fil des étapes 3 formats × 3 rôles) ; `v1.24.2` (3 fixes CSS Phase 3) ; `v1.24.1` (bouton 👤 Retour Opérateur) ; `v1.24.0` (Phase 3 exploitation terrain)
+**📦 Version courante** : `v1.31.1` (03/06/2026) — PATCH **perf P7** : OOMGuard pause sur visibilitychange (suspend les écritures `localStorage` en arrière-plan → un peu de drain batterie en moins sur sessions longues mobile). Aucun changement UX visible.
+**📦 Précédentes shipped main** : `v1.31.0` (Refactor MINOR : `interface.js` → 9 modules thématiques, -66 % LOC) ; `v1.30.1` (HOTFIX CSS frontière community/pro) ; `v1.30.0` (Perf boot : `defer` 51 scripts + timeout 1500 ms fetches + viewport culling markers POI + animation reveal titre) ; `v1.29.4` (Infra/DX : selfhost ZIP auto + CLAUDE.md slim + guard-git affiné) ; `v1.29.0+fix3` (i18n P0 README EN + Mode Secours multi-phases) ; `v1.25.3` (Carte tutoriel Mode Secours)
 **📜 Licence** : `CC BY-NC-SA 4.0` (usage commercial interdit sans accord écrit)
 
 ---

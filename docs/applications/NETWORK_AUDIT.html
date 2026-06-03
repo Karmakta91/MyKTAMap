@@ -174,10 +174,19 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.31.0</strong> (3 juin 2026).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.31.1</strong> (3 juin 2026, optimisation perf P7 OOMGuard pause sur visibilitychange).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.31.1 (PATCH — Optimisation perf P7 : OOMGuard pause sur visibilitychange)</strong> :
+    <strong>AUCUN impact réseau, aucune nouvelle permission, aucun nouveau service tiers contacté, AUCUN nouveau fetch ajouté, AUCUN changement de comportement runtime utilisateur visible.</strong>
+    Modif strictement interne au module <code>js/oomGuard.js</code> (détection des kills mémoire OOM mobile via marker localStorage refreshé toutes les 5 s). Avant v1.31.1 : le heartbeat tournait en continu, y compris quand l'onglet passait en arrière-plan (verrouillage écran, autre app au premier plan). Conséquence : écritures <code>localStorage</code> inutiles + drain batterie léger constant. Depuis v1.31.1 : ajout d'un listener <code>document.addEventListener("visibilitychange", ...)</code> qui suspend le <code>setInterval</code> quand <code>document.hidden === true</code> et le reprend + rafraîchit le marker au retour (<code>visibilityState === "visible"</code>). Pattern aligné avec <code>js/sessionPersist.js</code> et <code>js/wakeLock.js</code> (déjà visibility-aware depuis leur création).
+    <strong>Détection des kills brutaux préservée</strong> : le marker reste posé en l'état pendant le BG (juste plus rafraîchi) — un crash mobile pendant l'onglet hidden sera bien détecté au boot suivant via la fenêtre de fraîcheur <code>KILL_FRESHNESS_MS = 1 h</code>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (ping connectivité). <strong>Aucun nouveau fichier ajouté à <code>ASSETS_TO_CACHE</code></strong> (sw.js inchangé hors bump <code>CACHE_NAME</code> à <code>v1.31.1</code>).
+    Verdict : ✅ aucune régression — patch perf strictement neutre côté réseau, gain user-perceptible uniquement sur l'autonomie batterie en sessions longues mobile.
   </p>
 
   <p class="meta" style="margin-top:6px;">

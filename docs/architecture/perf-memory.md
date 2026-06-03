@@ -91,6 +91,27 @@ iOS Safari et Android Chrome tuent silencieusement les PWA qui dépassent leur b
 
 **Toast quota** : `sessionPersist.js` détecte `QuotaExceededError` au save et appelle `OOMGuard.showToast(...)` pour avertir l'utilisateur d'exporter manuellement (anti-spam : 1 fois max tant que le quota dure).
 
+🆕 **v1.31.1 (P7) — Pause sur `visibilitychange`** : avant v1.31.1, le heartbeat 5 s écrivait
+dans `localStorage` en continu même onglet en arrière-plan (mobile lockscreen, autre app au
+premier plan), ce qui drainait inutilement la batterie. Depuis v1.31.1, `start()` bind un
+listener `document.addEventListener("visibilitychange", ...)` qui :
+
+- `document.hidden === true` → `clearInterval(_heartbeatTimer)` + flag `_heartbeatPaused = true`
+- `visibilityState === "visible"` → si `_heartbeatPaused`, un `_setMarker()` immédiat (rafraîchit
+  le timestamp pour éviter un faux positif kill détecté au prochain reload après un long séjour
+  en BG, ex: 30 min en lockscreen) + `setInterval` reprend
+
+Le listener est idempotent (`_visibilityHandlerBound`) pour résister à un éventuel double-call
+de `start()`. Si l'onglet est déjà `hidden` au moment du `start()` (cas marginal : user lance
+l'app puis bascule très vite sur une autre), le `_onVisibilityChange()` est appelé immédiatement
+pour déclencher la pause sans attendre le prochain event.
+
+**Détection des kills brutaux toujours active** : le marker reste posé en l'état pendant le BG
+(juste plus rafraîchi). Si l'app est killée par le système pendant que l'onglet est hidden, le
+boot suivant détectera bien le crash via la fenêtre de fraîcheur `KILL_FRESHNESS_MS = 1 h`.
+Le pattern est aligné avec `sessionPersist.js` et `wakeLock.js` qui sont déjà visibility-aware
+depuis leur création.
+
 ---
 
 ### 13. Perf hardening mobile (depuis 09/05/2026)
