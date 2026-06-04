@@ -1,7 +1,9 @@
 {
-  "version": "v1.34.0-fix3",
+  "version": "v1.34.1",
   "released": "2026-06-04",
   "notes": [
-    "🩹 v1.34.0-fix3 — Le bouton 🎤 sur mobile est maintenant plus haut (ne chevauche plus le footer/statusbar) et collé au bord droit de l'écran."
+    "🎤 v1.34.1 — Commandes vocales (BETA) consolidées. Nouvelles formulations « aller à <POI> » qui calculent un itinéraire depuis ta position tracker actuelle (ex : « aller à puits 25 », « va à PA12 », « emmène-moi à siphon », « guide-moi vers chaufferette »). Si plusieurs POI matchent, le premier est utilisé. Tracker GPS requis — sinon un message t'invite à l'activer d'abord.",
+    "🗣️ Beaucoup plus de variations naturelles pour chaque commande : « allume / éteins le tracker », « ouvre l'aide », « mode nuit / jour », « lance l'urgence », « sos », « ferme ça »… Compte ~12 à 23 variantes par commande maintenant.",
+    "🩹 Bugs corrigés : la modale « aide » s'ouvre correctement (avant elle était cachée par l'overlay de transcription). Sur mobile, le bouton 🎤 est positionné plus haut (ne chevauche plus le footer) et collé au bord droit de l'écran."
   ]
 }
