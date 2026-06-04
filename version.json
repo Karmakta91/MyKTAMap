@@ -1,7 +1,7 @@
 {
-  "version": "v1.33.0",
+  "version": "v1.33.0-fix1",
   "released": "2026-06-04",
   "notes": [
-    "📋 v1.33.0 — Nouveau bouton « Rapport de sortie » dans la modale 📊 Statistiques du plan. Génère un rapport complet de ta sortie sur la période de ton choix, dans 3 formats : 📑 PDF (avec carte miniature + heatmap des zones explorées), 📦 JSON (machine-readable), 📝 Texte (copié direct dans le presse-papiers pour WhatsApp/Discord). Tu choisis ce que tu inclus : POI, tracés, zones, structures, tracker GPS, photos. Plus une note libre pour le contexte. Idéal pour archiver une mission cataphile/spéléo ou partager un récap avec ton groupe."
+    "🩹 v1.33.0-fix1 — Correction du Rapport de sortie en PDF : la carte miniature affiche désormais correctement l'image principale du plan (avant elle restait sur un fond sombre uni). Le rendu utilise maintenant le même moteur de génération canvas que les autres exports PDF de l'app (Mode Secours, PDF imprimable), qui gère proprement tous les modes (selfhost, serveur, ZIP)."
   ]
 }

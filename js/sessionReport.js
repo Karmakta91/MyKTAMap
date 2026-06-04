@@ -353,61 +353,102 @@
   // Génère une PNG miniature du plan avec overlay POI/tracés/heatmap.
   // Retourne Promise<dataURL> ou null si pas possible.
   // Cible : largeur max 800px (downscaled), pour intégration PDF.
+  //
+  // 🩹 v1.33.0-fix1 — KARMA bug : "en pdf, la carte exposé n'affiche pas
+  // l'image principal". Cause : la tentative custom de charger
+  // "data/<planId>/<baseImage>" ne marchait pas pour les plans selfhost,
+  // les plans ZIP-loaded, ou avec des chemins relatifs différents.
+  // Fix : on utilise window.MyKTAMapExporterGenererCanvas (helper global
+  // exposé par js/exporter.js depuis v1.10.3) qui gère DÉJÀ correctement
+  // tous les cas : selfhost, server, ZIP, multi-layer, etc. C'est le même
+  // helper que Mode Secours utilise pour ses cartes miniatures PDF
+  // (cf js/secoursMode.js ligne 4208+).
+  // Stratégie :
+  //   1. Préférence : exporter.generCanvas → canvas full résolution
+  //      avec image + data layers, SANS annotations
+  //   2. Downscale à 800px max
+  //   3. Overlay session filtrée (heatmap, tracker, roads, zones, POI)
+  //      par-dessus
   function _genererCarteMiniature(data, opts) {
     const W = data.plan.imageW;
     const H = data.plan.imageH;
     if (!W || !H) return Promise.resolve(null);
 
-    return new Promise(function(resolve) {
-      const MAX_W = 800;
-      const ratio = Math.min(1, MAX_W / W);
-      const cw = Math.round(W * ratio);
-      const ch = Math.round(H * ratio);
+    const MAX_W = 800;
+    const ratio = Math.min(1, MAX_W / W);
+    const cw = Math.round(W * ratio);
+    const ch = Math.round(H * ratio);
 
+    return new Promise(function(resolve) {
       const canvas = document.createElement("canvas");
       canvas.width = cw;
       canvas.height = ch;
       const ctx = canvas.getContext("2d");
 
-      // Fond
+      // Fond sombre (fallback ultime + visible dans les zones transparentes du plan)
       ctx.fillStyle = "#1a1f2e";
       ctx.fillRect(0, 0, cw, ch);
 
-      function _drawOverlayAndResolve() {
-        _dessinerOverlay(ctx, data, opts, ratio);
+      function _finishWithOverlay() {
         try {
+          _dessinerOverlay(ctx, data, opts, ratio);
           resolve(canvas.toDataURL("image/jpeg", 0.85));
         } catch (e) {
-          // Si tainted (CORS), résolu null
           console.warn("[SessionReport] toDataURL KO :", e);
           resolve(null);
         }
       }
 
-      // Tentative chargement image plan (best-effort, pas bloquant)
+      // ─── Préférence : helper exporter ──────────────────
+      if (typeof window.MyKTAMapExporterGenererCanvas === "function") {
+        window.MyKTAMapExporterGenererCanvas({
+          scale:             1,
+          bg:                "image",
+          includeImgLayers:  true,
+          includeDataLayers: true,
+          // PAS d'annotations exporter → on dessine notre overlay filtré par-dessus
+          ann: {
+            points: false, roads: false, zones: false, structures: false,
+            jonctions: false, itineraire: false
+          }
+        }).then(function(fullCanvas) {
+          if (fullCanvas && fullCanvas.width > 0 && fullCanvas.height > 0) {
+            // Downscale full → mini (800px max width)
+            ctx.drawImage(fullCanvas, 0, 0, cw, ch);
+          } else {
+            console.warn("[SessionReport] exporter canvas vide, fallback fond sombre");
+          }
+          _finishWithOverlay();
+        }).catch(function(e) {
+          console.warn("[SessionReport] exporter canvas KO :", e);
+          _finishWithOverlay();
+        });
+        return;
+      }
+
+      // ─── Fallback : image base directe (cas exporter indispo) ─
+      // Note : ce path n'est pratiquement jamais pris en prod car
+      // exporter.js est en cache PWA depuis v1.10.3.
       if (data.plan.baseImage) {
         const planUrl = "data/" + data.plan.planId + "/" + data.plan.baseImage;
         const img = new Image();
-        img.crossOrigin = "anonymous";  // pour ne pas tainter le canvas
         img.onload = function() {
           ctx.drawImage(img, 0, 0, cw, ch);
-          _drawOverlayAndResolve();
+          _finishWithOverlay();
         };
         img.onerror = function() {
           console.warn("[SessionReport] Image plan non chargeable, fallback fond sombre");
-          _drawOverlayAndResolve();
+          _finishWithOverlay();
         };
         img.src = planUrl;
-        // Timeout 3s si l'image ne charge pas
         setTimeout(function() {
           if (!img.complete) {
             console.warn("[SessionReport] Image plan timeout, fallback");
-            img.src = "";  // cancel
-            _drawOverlayAndResolve();
+            _finishWithOverlay();
           }
         }, 3000);
       } else {
-        _drawOverlayAndResolve();
+        _finishWithOverlay();
       }
     });
   }
