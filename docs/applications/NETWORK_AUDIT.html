@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.3</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.35.0</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.0 (MINOR — Pack RAM : fixe cause #1 du crash mémoire iPhone PWA 2 min)</strong> : KARMA bug "j'ai de plus en plus de crash, je veux voir comment on récupère la mémoire, c'est comme si on ne vidait jamais rien au fil de l'utilisation". Audit RAM complet via agent ressort 6 leaks. <strong>Fix #1 (CRITIQUE)</strong> : tous les Blobs JPEG des tuiles V2 étaient pinnés en RAM permanente dans <code>RUNTIME_ASSETS[path].file</code> (150-600 MB sur gros plan tuilé) → iOS Safari kill → crash 2 min. <strong>Fix architectural</strong> : <code>extraireZip</code> skip <code>entry.async("blob")</code> upfront pour tuiles, push des stubs légers + garde <code>window._lazyZipRef = JSZip</code> ; <code>registerAsset(opts.lazy)</code> stocke <code>{ file: null, zipPath }</code> au lieu du Blob ; nouveau helper <code>window._extractLazyAsset(zipPath)</code> extrait depuis JSZip à la demande ; <code>tiling.js _resoudreUrlTuile</code> + <code>_renderNiveau</code> deviennent async avec Promise.all ; <code>emergencyMode._resolveTileUrl</code> + <code>_refresh</code> adoptent le même pattern. <strong>+5 fixes RAM</strong> : (2) <code>secoursMode._hydraterPhotosLive</code> Set + revoke ; (3) <code>tracking._decimateTimeline</code> sync polyline Leaflet ; (4) <code>lostMode L.svg()</code> ref module-level + removeLayer ; (5) <code>resetRuntimeAssets</code> libère <code>_lazyZipRef</code> ; (6) commentaire <code>_libererTuilesV2</code> maj. <strong>AUCUN impact réseau</strong> (refactor interne RAM).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression fonctionnelle attendue — refactor RAM critique qui RÉDUIT la consommation de 150-500 MB sur iPhone PWA.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.3 (PATCH — Push-to-talk strict : stop explicite après commande)</strong> : KARMA bug : "si je dis aller a drapeau, il me trouve l'itineraire, mais reste en ecoute (j'ai la télé allumé, mais sous terre on peut avoir des gens qui parle a coté) donc si recherche effectuer (point trouvé, aide ouverte) on coupe le micro". Cause : malgré <code>recognition.continuous = false</code>, iOS Safari garde le micro warm et peut capturer du bruit ambiant avant que <code>onend</code> ne fire. Fix : appel explicite <code>stopListening()</code> à la fin de <code>_onFinalTranscript()</code>, qu'il y ait match ou non. Pour les handlers async (ex: "aller à POI"), la Promise a déjà été dispatchée — arrêter la recognition ne les affecte pas, ils continuent en background. Push-to-talk strict : 1 click 🎤 → 1 phrase → stop net. <strong>Renforce le respect de la vie privée</strong> : aucune capture audio au-delà de la phrase prononcée. <strong>AUCUN nouveau impact réseau</strong>.
