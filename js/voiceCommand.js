@@ -260,9 +260,22 @@
 
   function _afficherAideModale() {
     if (document.getElementById("kta-voice-aide-modal")) return;
+    // 🩹 v1.34.0-fix1 — KARMA bug : "si je dis aide, j'ai pas erreur
+    // comme quoi il ne pige pas la commande mais ca s'ouvre pas".
+    // Cause : l'overlay voice-live (top-center) reste affiché 1.5s
+    // après "✅ Aide commandes", et il chevauche visuellement la
+    // modale qui s'ouvre dessous. L'user voit l'overlay disparaître
+    // mais ne réalise pas que la modale est ouverte.
+    // Fix : on hide le voice-live IMMÉDIATEMENT avant d'ouvrir la
+    // modale d'aide (les autres handlers gardent le 1.5s auto-dismiss).
+    _hideLiveOverlay();
+
     const m = document.createElement("div");
     m.id        = "kta-voice-aide-modal";
     m.className = "kta-readme-modal-overlay";
+    // 🩹 v1.34.0-fix1 — display: flex explicite pour garantir l'affichage
+    // (certains résiduels CSS pourraient appliquer display:none par défaut).
+    m.style.display = "flex";
 
     function _patternsToHtml(patterns) {
       return patterns.slice(0, 3).map(function(p) {
@@ -341,20 +354,39 @@
   // Si le handler ne peut pas exécuter, il log un warn console mais ne
   // crash pas — l'user voit "Commande exécutée" mais rien ne se passe.
 
+  // 🩹 v1.34.0-fix1 — KARMA : "rajoute des formulations en plus différente
+  // telle que aide, ouvre aide ou tracker on, allume tracker...". Expansion
+  // massive des patterns pour chaque commande, couvrant les formulations
+  // naturelles FR + impératif + indicatif + variantes synonymiques.
+  // Note : substring match (text.indexOf(p) !== -1), donc des patterns
+  // courts ("aide") matchent dans phrases longues ("dis-moi aide stp").
   function _registerBuiltins() {
     // ─── 📐 Navigation ──────────────────────────────
     registerCommand({
-      patterns: ["zoom plus", "zoom avant", "zoomer", "agrandir"],
+      patterns: [
+        "zoom plus", "zoom avant", "zoomer", "agrandir",
+        "rapproche", "rapprocher", "plus près", "approcher",
+        "augmente le zoom", "augmenter le zoom", "monte le zoom"
+      ],
       label:    "Zoom avant",
       handler:  function() { if (window.map) window.map.zoomIn(); }
     });
     registerCommand({
-      patterns: ["zoom moins", "zoom arrière", "dézoomer", "réduire", "diminuer"],
+      patterns: [
+        "zoom moins", "zoom arrière", "dézoomer", "réduire le zoom",
+        "diminuer", "diminue le zoom", "éloigne", "éloigner",
+        "plus loin", "moins de zoom", "baisse le zoom", "baisser le zoom"
+      ],
       label:    "Zoom arrière",
       handler:  function() { if (window.map) window.map.zoomOut(); }
     });
     registerCommand({
-      patterns: ["centrer", "vue d'ensemble", "tout voir", "vue globale", "recadrer"],
+      patterns: [
+        "centrer", "vue d'ensemble", "tout voir", "vue globale",
+        "recadrer", "ajuster vue", "ajuster la vue", "tout afficher",
+        "vue large", "vue complète", "ramène la vue", "centre la carte",
+        "centrer la carte"
+      ],
       label:    "Centrer la vue",
       handler:  function() {
         if (window.map && window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.convertCoord) {
@@ -369,7 +401,12 @@
       }
     });
     registerCommand({
-      patterns: ["recherche", "rechercher", "trouver", "cherche", "ouvre la recherche", "recherche unifiée"],
+      patterns: [
+        "recherche", "rechercher", "ouvre la recherche", "ouvrir recherche",
+        "recherche unifiée", "trouver", "trouve", "cherche", "chercher",
+        "où est", "où sont", "find", "ouvre la barre de recherche",
+        "lance la recherche", "lancer la recherche"
+      ],
       label:    "Ouvrir recherche",
       handler:  function() {
         if (typeof window.ouvrirRecherche === "function") window.ouvrirRecherche();
@@ -378,16 +415,18 @@
 
     // ─── ✏️ Actions session ─────────────────────────
     registerCommand({
-      patterns: ["ajouter point", "nouveau point", "ajoute un point", "nouveau poi"],
+      patterns: [
+        "ajouter point", "ajoute point", "ajoute un point", "nouveau point",
+        "nouveau poi", "crée point", "crée un point", "créer point",
+        "place point", "place un point", "marquer point", "marquer ici",
+        "ajouter un point", "mets un point", "met un point", "pose un point"
+      ],
       label:    "Ajouter point au centre",
       handler:  function() {
         if (typeof window.ajouterPointEditor === "function" && window.map) {
-          // Centre du viewport courant → point candidat
           const center = window.map.getCenter();
-          // Tente conversion lat/lng → x/y plan
           if (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) {
             const H = window.PLAN_CONFIG.plan.imageHeight;
-            // convertCoord(x,y) = [H-y, x] → inverse : x=lng, y=H-lat
             const x = center.lng;
             const y = H - center.lat;
             window.ajouterPointEditor({ x: x, y: y });
@@ -396,24 +435,44 @@
       }
     });
     registerCommand({
-      patterns: ["tracker démarrer", "démarrer tracker", "commencer suivi", "tracker on",
-                "tracker marche", "démarre le tracker", "démarre tracker"],
+      patterns: [
+        "tracker démarrer", "démarrer tracker", "démarrer le tracker",
+        "démarre tracker", "démarre le tracker", "tracker on", "tracker marche",
+        "allume tracker", "allume le tracker", "allumer tracker", "allumer le tracker",
+        "active tracker", "active le tracker", "activer tracker", "activer le tracker",
+        "commencer suivi", "commence le suivi", "commence suivi", "démarre le suivi",
+        "lance le tracker", "lance tracker", "lancer le tracker",
+        "suivi on", "suivi marche", "active le suivi"
+      ],
       label:    "Démarrer tracker",
       handler:  function() {
         if (typeof window.startTracking === "function") window.startTracking();
       }
     });
     registerCommand({
-      patterns: ["tracker arrêter", "arrêter tracker", "stop suivi", "tracker off",
-                "arrête le tracker", "arrête tracker", "stop tracker"],
+      patterns: [
+        "tracker arrêter", "arrêter tracker", "arrêter le tracker",
+        "arrête tracker", "arrête le tracker", "tracker off", "tracker pause",
+        "éteins tracker", "éteins le tracker", "éteindre tracker", "éteindre le tracker",
+        "désactive tracker", "désactive le tracker", "désactiver tracker",
+        "stop tracker", "stop le tracker", "arrêter le suivi", "arrête le suivi",
+        "stop suivi", "suivi off", "suivi stop", "couper tracker", "coupe tracker",
+        "coupe le tracker"
+      ],
       label:    "Arrêter tracker",
       handler:  function() {
         if (typeof window.stopTracking === "function") window.stopTracking();
       }
     });
     registerCommand({
-      patterns: ["mode urgence", "urgence", "alarme", "alerte", "activer urgence",
-                "lancer l'urgence"],
+      patterns: [
+        "mode urgence", "lance urgence", "lance l'urgence", "lancer urgence",
+        "lancer l'urgence", "active urgence", "active l'urgence",
+        "activer urgence", "activer l'urgence", "déclencher urgence",
+        "déclenche urgence", "déclenche l'urgence", "ouvrir urgence",
+        "ouvre l'urgence", "urgence", "alarme", "alerte", "sos",
+        "appelle à l'aide", "appel à l'aide"
+      ],
       label:    "Mode urgence",
       handler:  function() {
         if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
@@ -422,7 +481,12 @@
       }
     });
     registerCommand({
-      patterns: ["mode secours", "lancer secours", "ouvrir secours", "secours", "ouvre secours"],
+      patterns: [
+        "mode secours", "lance secours", "lancer secours", "lance le secours",
+        "lancer le secours", "ouvrir secours", "ouvre secours", "ouvre le secours",
+        "active secours", "activer secours", "active le secours", "activer le secours",
+        "secours", "secourir"
+      ],
       label:    "Mode secours",
       handler:  function() {
         if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
@@ -433,7 +497,11 @@
 
     // ─── 🌓 Réglages ────────────────────────────────
     registerCommand({
-      patterns: ["thème clair", "mode clair", "thème blanc", "clair"],
+      patterns: [
+        "thème clair", "thème blanc", "mode clair", "mode blanc",
+        "passe en clair", "passer en clair", "mode jour", "thème jour",
+        "passe en thème clair", "active mode clair", "clair"
+      ],
       label:    "Thème clair",
       handler:  function() {
         if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
@@ -442,7 +510,12 @@
       }
     });
     registerCommand({
-      patterns: ["thème sombre", "mode sombre", "thème dark", "sombre"],
+      patterns: [
+        "thème sombre", "thème dark", "thème noir", "mode sombre",
+        "mode dark", "mode noir", "passe en sombre", "passer en sombre",
+        "mode nuit", "thème nuit", "passe en thème sombre",
+        "active mode sombre", "sombre"
+      ],
       label:    "Thème sombre",
       handler:  function() {
         if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
@@ -453,22 +526,35 @@
 
     // ─── 🛑 Méta ────────────────────────────────────
     registerCommand({
-      patterns: ["aide", "liste commandes", "que puis-je dire", "commandes disponibles",
-                "help"],
+      patterns: [
+        "aide", "ouvre aide", "ouvrir aide", "ouvre l'aide", "ouvrir l'aide",
+        "affiche aide", "afficher aide", "affiche l'aide", "afficher l'aide",
+        "montre aide", "montre l'aide", "montrer l'aide",
+        "liste commandes", "liste les commandes", "quelles sont les commandes",
+        "que puis-je dire", "que peut-on dire", "commandes disponibles",
+        "show help", "help"
+      ],
       label:    "Aide commandes",
       handler:  function() { _afficherAideModale(); }
     });
     registerCommand({
-      patterns: ["stop", "arrête", "annule", "annuler"],
+      patterns: [
+        "stop", "arrête", "arrêter", "annule", "annuler", "annule tout",
+        "tais-toi", "tais toi", "chut", "silence",
+        "arrête l'écoute", "arrêter l'écoute", "stop écoute"
+      ],
       label:    "Stop écoute",
       handler:  function() { stopListening(); }
     });
     registerCommand({
-      patterns: ["fermer modale", "fermer", "ferme", "fermer popup", "fermer fenêtre"],
+      patterns: [
+        "fermer modale", "fermer", "ferme", "ferme ça", "fermer popup",
+        "ferme popup", "ferme la popup", "fermer fenêtre", "ferme la fenêtre",
+        "ferme la modale", "fermer la modale", "fermer cette fenêtre",
+        "annuler modale", "quitter modale", "quitte la modale"
+      ],
       label:    "Fermer (Escape)",
       handler:  function() {
-        // Dispatch un Escape — le handler global de utils.js le route
-        // vers la bonne modale ouverte (whitelist).
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       }
     });

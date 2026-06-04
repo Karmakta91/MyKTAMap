@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.0",
+  "version": "v1.34.0-fix1",
   "released": "2026-06-04",
   "notes": [
-    "🎤 v1.34.0 — Commandes vocales (BETA) ! Active-les dans ⚙️ Réglages → « 🎤 Commandes vocales (BETA) » puis appuie sur le bouton 🎤 en bas à droite et parle. Tu peux dire : « zoom plus », « centrer », « ajouter point », « tracker démarrer/arrêter », « mode urgence », « mode secours », « thème clair/sombre », « aide » pour la liste complète, « stop » pour arrêter d'écouter. Push-to-talk uniquement (aucune écoute continue en arrière-plan), permission micro demandée à la 1ère utilisation. Compatible Chrome / Edge / Safari iOS 14.5+ / Chrome Android. Firefox : non supporté (le toggle reste invisible)."
+    "🩹 v1.34.0-fix1 — Deux fixes pour les commandes vocales : (1) « aide » ouvre maintenant correctement la modale d'aide (avant elle ne s'affichait pas car cachée par l'overlay de transcription). (2) Beaucoup plus de variations naturelles pour chaque commande : « allume le tracker », « éteins le tracker », « ouvre l'aide », « ouvre la recherche », « lance l'urgence », « mode nuit / jour », etc. Compte ~12 à 20 variantes par commande maintenant."
   ]
 }
