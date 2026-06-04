@@ -868,6 +868,26 @@ function afficherConfig() {
               </span>
             </span>
           </label>
+
+          <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
+               Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
+               Permission micro demandée à la 1ère utilisation par le navigateur.
+               Init en post-render via setTimeout dans bindHandlers (cf script
+               plus bas). Pas de prérequis matériel exotique côté serveur. -->
+          <label class="kta-perf-ultra-row" id="cfg_voice_row" style="margin-top:8px; display:none;">
+            <input type="checkbox" id="cfg_voice">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">🎤 Commandes vocales (BETA)</span>
+              <span class="kta-perf-ultra-hint">
+                Pilote l'app à la voix : zoom, centrer, recherche, ajouter point,
+                tracker on/off, mode urgence/secours, thème clair/sombre…
+                Push-to-talk via un bouton 🎤 flottant en bas à droite.
+                <strong>Dit « aide »</strong> à voix haute pour lister les commandes disponibles.
+                Permission micro demandée à la 1ère utilisation.
+                <strong>Reload requis</strong> après changement (pour injecter/retirer le bouton).
+              </span>
+            </span>
+          </label>
         </div>
 
         <div class="kta-aide-section">
@@ -1014,6 +1034,32 @@ function afficherConfig() {
       // API pas supportée → on garde le row caché (display:none par défaut
       // dans le HTML). Pas de message UI (ne pas frustrer l'user Firefox).
     }
+  }
+
+  // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
+  // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition
+  // ou webkitSpeechRecognition). Sync UI ↔ state via window.VoiceCommand.
+  // Note : reload requis après changement (le bouton mic flottant est
+  // injecté/retiré au boot du module selon localStorage).
+  const voiceRow = document.getElementById("cfg_voice_row");
+  const voiceCb  = document.getElementById("cfg_voice");
+  if (voiceRow && voiceCb && window.VoiceCommand) {
+    if (window.VoiceCommand.isSupported()) {
+      voiceRow.style.display = "";
+      voiceCb.checked = window.VoiceCommand.isEnabled();
+      voiceCb.addEventListener("change", function() {
+        window.VoiceCommand.setEnabled(voiceCb.checked);
+        if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+          window.OOMGuard.showToast(
+            voiceCb.checked
+              ? "🎤 Commandes vocales activées. Bouton 🎤 visible en bas à droite."
+              : "🎤 Commandes vocales désactivées.",
+            "info"
+          );
+        }
+      });
+    }
+    // Si !isSupported() → row caché silencieusement (cas Firefox).
   }
 
   // 🏗️ Multi-niveau : section UI retirée v1.7.3 (KARMA) — activation

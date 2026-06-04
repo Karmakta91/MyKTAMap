@@ -17287,3 +17287,177 @@ html.kta-theme-light .kta-report-hint {
   }
 }
 
+/* =========================================================================
+   🎤 v1.34.0 E1 — COMMANDES VOCALES (voiceCommand.js)
+   ========================================================================= */
+/* Bouton mic flottant (push-to-talk) + overlay transcription live + modale
+   aide commandes. Visible UNIQUEMENT si l'user a activé "🎤 Commandes
+   vocales (BETA)" dans Réglages → opt-in conscient car la permission micro
+   est sensible. */
+
+/* Bouton mic flottant — bottom-right, au-dessus des autres floaters
+   (mais sous les modales). Cercle violet avec icône 🎤. Pulse violet
+   quand en écoute (mic actif). */
+.kta-voice-mic {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  color: #fff;
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  z-index: 1500;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.kta-voice-mic:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 18px rgba(167, 139, 250, 0.5);
+}
+.kta-voice-mic:active {
+  transform: scale(0.96);
+}
+.kta-voice-mic:focus-visible {
+  outline: 2px solid #f4c542;
+  outline-offset: 3px;
+}
+
+/* État "listening" : pulse animé violet pour signaler que le mic est actif */
+.kta-voice-mic.kta-voice-mic-listening {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  animation: kta-voice-mic-pulse 1.2s ease-in-out infinite;
+}
+@keyframes kta-voice-mic-pulse {
+  0%, 100% { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4),
+                         0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50%      { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4),
+                         0 0 0 14px rgba(239, 68, 68, 0); }
+}
+
+/* Overlay transcription live — top center, semi-opaque, dismissable */
+.kta-voice-live {
+  position: fixed;
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 280px;
+  max-width: calc(100vw - 32px);
+  background: rgba(26, 31, 46, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 99998;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  color: #e8eaf0;
+  font-size: 14px;
+  line-height: 1.4;
+  animation: kta-voice-live-slidein 0.18s ease-out;
+}
+@keyframes kta-voice-live-slidein {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+  to   { transform: translate(-50%, 0);     opacity: 1; }
+}
+.kta-voice-live-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+}
+.kta-voice-live-text {
+  flex: 1;
+  word-break: break-word;
+}
+.kta-voice-live-close {
+  background: transparent;
+  border: none;
+  color: #8892a4;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.kta-voice-live-close:hover { color: #e8eaf0; background: rgba(255, 255, 255, 0.08); }
+
+/* États visuels colorés selon état reconnaissance */
+.kta-voice-live[data-state="listening"] { border-color: rgba(167, 139, 250, 0.5); }
+.kta-voice-live[data-state="interim"]   { border-color: rgba(140, 180, 255, 0.5); }
+.kta-voice-live[data-state="final"]     { border-color: rgba(140, 180, 255, 0.7); }
+.kta-voice-live[data-state="success"]   { border-color: rgba(108, 226, 138, 0.6); }
+.kta-voice-live[data-state="unknown"]   { border-color: rgba(244, 197, 66, 0.55); }
+.kta-voice-live[data-state="error"]     { border-color: rgba(239, 68, 68, 0.55); }
+
+/* Modale aide commandes — liste des commandes registries */
+.kta-voice-aide-list {
+  margin: 12px 0 0 0;
+  padding-left: 0;
+  list-style: none;
+}
+.kta-voice-aide-list li {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(140, 180, 255, 0.06);
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #c8d0e0;
+  line-height: 1.5;
+}
+.kta-voice-aide-list li strong {
+  color: #f4c542;
+  display: block;
+  margin-bottom: 3px;
+}
+.kta-voice-aide-patterns {
+  font-size: 12px;
+  color: #8892a4;
+  font-style: italic;
+}
+
+/* Variante thème clair */
+body.kta-theme-light .kta-voice-live,
+html.kta-theme-light .kta-voice-live {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1f2e;
+  border-color: rgba(124, 58, 237, 0.4);
+}
+body.kta-theme-light .kta-voice-live-close,
+html.kta-theme-light .kta-voice-live-close {
+  color: #555;
+}
+body.kta-theme-light .kta-voice-aide-list li,
+html.kta-theme-light .kta-voice-aide-list li {
+  background: rgba(140, 180, 255, 0.12);
+  color: #1a1f2e;
+}
+body.kta-theme-light .kta-voice-aide-list li strong,
+html.kta-theme-light .kta-voice-aide-list li strong {
+  color: #b8860b;
+}
+
+/* Mobile : taille bouton mic légèrement réduite + overlay plein large */
+@media (max-width: 480px) {
+  .kta-voice-mic {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+  .kta-voice-live {
+    min-width: 0;
+    width: calc(100vw - 24px);
+    font-size: 13px;
+  }
+}
+

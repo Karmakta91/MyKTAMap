@@ -1,7 +1,7 @@
 {
-  "version": "v1.33.0-fix1",
+  "version": "v1.34.0",
   "released": "2026-06-04",
   "notes": [
-    "🩹 v1.33.0-fix1 — Correction du Rapport de sortie en PDF : la carte miniature affiche désormais correctement l'image principale du plan (avant elle restait sur un fond sombre uni). Le rendu utilise maintenant le même moteur de génération canvas que les autres exports PDF de l'app (Mode Secours, PDF imprimable), qui gère proprement tous les modes (selfhost, serveur, ZIP)."
+    "🎤 v1.34.0 — Commandes vocales (BETA) ! Active-les dans ⚙️ Réglages → « 🎤 Commandes vocales (BETA) » puis appuie sur le bouton 🎤 en bas à droite et parle. Tu peux dire : « zoom plus », « centrer », « ajouter point », « tracker démarrer/arrêter », « mode urgence », « mode secours », « thème clair/sombre », « aide » pour la liste complète, « stop » pour arrêter d'écouter. Push-to-talk uniquement (aucune écoute continue en arrière-plan), permission micro demandée à la 1ère utilisation. Compatible Chrome / Edge / Safari iOS 14.5+ / Chrome Android. Firefox : non supporté (le toggle reste invisible)."
   ]
 }

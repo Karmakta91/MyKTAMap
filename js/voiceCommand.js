@@ -1,0 +1,511 @@
+/*!
+ * MyKTAMap (c) 2026 Flavien VIDAL (alias KARMA)
+ * Site : https://myktamap.fr
+ * Licence : CC BY-NC-SA 4.0 — Usage commercial interdit sans accord ecrit prealable.
+ */
+
+// =========================
+// VOICE COMMAND — E1 v1.34.0
+// =========================
+//
+// Commandes vocales push-to-talk pour piloter MyKTAMap à la voix.
+// Idéal sous terre quand les mains sont prises (corde, sac, lampe).
+//
+// Stack :
+// - Web Speech API (`SpeechRecognition` / `webkitSpeechRecognition`)
+//   ✅ Chrome / Edge / Safari iOS 14.5+ / Chrome Android
+//   ❌ Firefox (graceful degradation : pas de bouton mic)
+// - Push-to-talk : bouton mic flottant. L'user appuie, parle, lâche.
+// - Langue : FR (langue principale du projet)
+// - Permission micro demandée à la 1ère utilisation par le navigateur.
+//
+// Activation : OPT-IN dans la modale Réglages → "🎤 Commandes vocales (BETA)".
+// La permission micro est sensible → on ne l'active jamais auto.
+//
+// Commandes MVP (~17) :
+//   📐 Navigation : zoom +/-, centrer, recherche
+//   ✏️ Actions session : ajouter point, tracker on/off, urgence, secours
+//   🌓 Réglages : thème clair/sombre
+//   🛑 Méta : stop, fermer modale, aide
+//
+// API publique :
+//   window.VoiceCommand = {
+//     isSupported():      boolean,
+//     isEnabled():        boolean,
+//     setEnabled(b):      void,    // persiste + inject/remove bouton
+//     startListening():   void,    // déclenche reconnaissance
+//     stopListening():    void,
+//     registerCommand(c): void,    // pour modules tiers
+//     afficherAide():     void     // ouvre modale aide commandes
+//   };
+
+(function() {
+  "use strict";
+
+  const LS_KEY = "myktamap_voice_enabled_v1";
+
+  // Detect SpeechRecognition (préfixe webkit pour Safari iOS)
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  // ============================================================
+  // MODULE STATE
+  // ============================================================
+  let _recognition = null;
+  let _isListening = false;
+  let _micButton   = null;
+  let _liveOverlay = null;
+  let _enabled     = false;
+
+  // Restaure l'état activation depuis localStorage
+  try {
+    _enabled = localStorage.getItem(LS_KEY) === "1";
+  } catch(e) { _enabled = false; }
+
+  // ============================================================
+  // 🔌 COMMAND REGISTRY
+  // ============================================================
+  // Chaque commande = { patterns: [string|regex], handler: fn(matches), label }
+  // Les patterns sont matchés dans l'ordre, premier hit gagne.
+  // Un pattern string match si le transcript LE CONTIENT (substring match).
+  // Un pattern regex match si test() retourne true.
+  const _commands = [];
+
+  function registerCommand(cmd) {
+    if (!cmd || !cmd.patterns || !cmd.handler) {
+      console.warn("[VoiceCommand] registerCommand : missing patterns/handler");
+      return;
+    }
+    _commands.push(cmd);
+  }
+
+  function _matchCommand(transcript) {
+    const text = String(transcript || "").toLowerCase().trim();
+    if (!text) return null;
+    for (const cmd of _commands) {
+      for (const p of cmd.patterns) {
+        if (typeof p === "string") {
+          if (text === p || text.indexOf(p) !== -1) {
+            return { cmd: cmd, matches: [text] };
+          }
+        } else if (p instanceof RegExp) {
+          const m = text.match(p);
+          if (m) return { cmd: cmd, matches: m };
+        }
+      }
+    }
+    return null;
+  }
+
+  // ============================================================
+  // 🎤 SPEECH RECOGNITION SETUP
+  // ============================================================
+
+  function _initRecognition() {
+    if (!SR) return null;
+    const r = new SR();
+    r.lang = "fr-FR";
+    r.continuous = false;       // une seule phrase puis stop (push-to-talk)
+    r.interimResults = true;    // affiche transcription live pendant qu'on parle
+    r.maxAlternatives = 1;
+
+    r.onresult = function(event) {
+      let interim = "";
+      let finalT  = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalT  += res[0].transcript;
+        else              interim += res[0].transcript;
+      }
+      // Affiche le texte interim pendant qu'on parle, final quand fini
+      _updateLive(finalT || interim, finalT ? "final" : "interim");
+      if (finalT) _onFinalTranscript(finalT);
+    };
+
+    r.onerror = function(event) {
+      console.warn("[VoiceCommand] onerror :", event.error);
+      let msg = "Erreur : " + event.error;
+      if (event.error === "no-speech") msg = "Aucune parole détectée";
+      else if (event.error === "not-allowed") msg = "Permission micro refusée";
+      else if (event.error === "audio-capture") msg = "Pas de micro disponible";
+      _updateLive(msg, "error");
+      setTimeout(_hideLiveOverlay, 2500);
+      _setListening(false);
+    };
+
+    r.onend = function() {
+      _setListening(false);
+    };
+
+    return r;
+  }
+
+  function startListening() {
+    if (!_enabled) return;
+    if (!SR) {
+      console.warn("[VoiceCommand] SpeechRecognition non supporté");
+      return;
+    }
+    if (!_recognition) _recognition = _initRecognition();
+    if (!_recognition || _isListening) return;
+    _showLiveOverlay();
+    _updateLive("🎤 À l'écoute…", "listening");
+    try {
+      _recognition.start();
+      _setListening(true);
+    } catch(e) {
+      console.warn("[VoiceCommand] start KO :", e);
+      _setListening(false);
+    }
+  }
+
+  function stopListening() {
+    if (_recognition && _isListening) {
+      try { _recognition.stop(); } catch(e) {}
+    }
+    _setListening(false);
+  }
+
+  function _setListening(b) {
+    _isListening = !!b;
+    if (_micButton) {
+      _micButton.classList.toggle("kta-voice-mic-listening", _isListening);
+      _micButton.setAttribute("aria-pressed", _isListening ? "true" : "false");
+    }
+  }
+
+  function _onFinalTranscript(text) {
+    const match = _matchCommand(text);
+    if (match) {
+      _updateLive("✅ " + (match.cmd.label || text), "success");
+      try {
+        match.cmd.handler(match.matches);
+      } catch(e) {
+        console.error("[VoiceCommand] handler error :", e);
+        _updateLive("❌ Erreur : " + (e.message || e), "error");
+        setTimeout(_hideLiveOverlay, 2500);
+        return;
+      }
+      setTimeout(_hideLiveOverlay, 1500);
+    } else {
+      _updateLive("❓ Commande inconnue : « " + text + " »", "unknown");
+      setTimeout(_hideLiveOverlay, 2500);
+    }
+  }
+
+  // ============================================================
+  // 🎨 UI — BOUTON MIC FLOTTANT
+  // ============================================================
+
+  function _injectMicButton() {
+    if (_micButton || !SR) return;
+    const btn = document.createElement("button");
+    btn.id        = "kta-voice-mic";
+    btn.className = "kta-voice-mic";
+    btn.type      = "button";
+    btn.setAttribute("aria-label", "Commandes vocales — appuyer pour parler");
+    btn.setAttribute("aria-pressed", "false");
+    btn.title     = "Commandes vocales (appuyer pour parler, « aide » pour la liste)";
+    btn.innerHTML = "🎤";
+    btn.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (_isListening) stopListening();
+      else              startListening();
+    });
+    document.body.appendChild(btn);
+    _micButton = btn;
+  }
+
+  function _removeMicButton() {
+    if (_micButton) _micButton.remove();
+    _micButton = null;
+  }
+
+  // ============================================================
+  // 🎨 UI — OVERLAY TRANSCRIPTION LIVE
+  // ============================================================
+
+  function _showLiveOverlay() {
+    if (_liveOverlay) return;
+    const o = document.createElement("div");
+    o.id        = "kta-voice-live";
+    o.className = "kta-voice-live";
+    o.innerHTML =
+      '<div class="kta-voice-live-icon">🎤</div>' +
+      '<div class="kta-voice-live-text" id="kta-voice-live-text">À l\'écoute…</div>' +
+      '<button class="kta-voice-live-close" type="button" id="kta-voice-live-close" aria-label="Fermer">✕</button>';
+    document.documentElement.appendChild(o);
+    _liveOverlay = o;
+    document.getElementById("kta-voice-live-close").addEventListener("click", function() {
+      stopListening();
+      _hideLiveOverlay();
+    });
+  }
+
+  function _hideLiveOverlay() {
+    if (_liveOverlay) _liveOverlay.remove();
+    _liveOverlay = null;
+  }
+
+  function _updateLive(text, state) {
+    if (!_liveOverlay) return;
+    const t = document.getElementById("kta-voice-live-text");
+    if (t) t.textContent = text;
+    _liveOverlay.dataset.state = state || "";
+  }
+
+  // ============================================================
+  // 🎨 UI — MODALE AIDE COMMANDES
+  // ============================================================
+
+  function _afficherAideModale() {
+    if (document.getElementById("kta-voice-aide-modal")) return;
+    const m = document.createElement("div");
+    m.id        = "kta-voice-aide-modal";
+    m.className = "kta-readme-modal-overlay";
+
+    function _patternsToHtml(patterns) {
+      return patterns.slice(0, 3).map(function(p) {
+        if (typeof p === "string") return "« " + p + " »";
+        if (p instanceof RegExp) {
+          // Simplification regex pour user-readable
+          const s = p.source
+            .replace(/\\s\+/g, " <terme>")
+            .replace(/\(\?:.*?\)/g, "")
+            .replace(/[\^\$\(\)\?:|\\b]/g, "")
+            .replace(/\\\./g, ".");
+          return "« " + s + " »";
+        }
+        return "";
+      }).join(" · ");
+    }
+
+    let listHtml = '<ul class="kta-voice-aide-list">';
+    _commands.forEach(function(c) {
+      listHtml += '<li>' +
+                    '<strong>' + (c.label || "(sans label)") + '</strong>' +
+                    '<span class="kta-voice-aide-patterns">' + _patternsToHtml(c.patterns) + '</span>' +
+                  '</li>';
+    });
+    listHtml += '</ul>';
+
+    m.innerHTML =
+      '<div class="kta-readme-modal-boite" style="max-width:560px;">' +
+        '<div class="kta-readme-modal-header">' +
+          '<span class="kta-readme-modal-titre">🎤 Commandes vocales disponibles</span>' +
+          '<button class="kta-panneau-close" id="kta-voice-aide-close" type="button">✕</button>' +
+        '</div>' +
+        '<div class="kta-readme-modal-corps">' +
+          '<p style="font-size:13px; color:#c8d0e0; line-height:1.6; margin-top:0;">' +
+            'Appuie sur le bouton 🎤 (en bas à droite) puis prononce une commande. ' +
+            'L\'app affiche en temps réel ce qu\'elle comprend.' +
+          '</p>' +
+          listHtml +
+          '<p style="font-size:11.5px; color:#8892a4; font-style:italic; margin-top:14px; line-height:1.5;">' +
+            'Astuce : les modules tiers peuvent ajouter leurs commandes via ' +
+            '<code>window.VoiceCommand.registerCommand({...})</code>.' +
+          '</p>' +
+        '</div>' +
+      '</div>';
+    document.documentElement.appendChild(m);
+    document.getElementById("kta-voice-aide-close").addEventListener("click", function() {
+      m.remove();
+    });
+    m.addEventListener("click", function(e) { if (e.target === m) m.remove(); });
+  }
+
+  // ============================================================
+  // 🔧 ENABLED STATE
+  // ============================================================
+
+  function isEnabled()   { return _enabled; }
+  function isSupported() { return !!SR; }
+
+  function setEnabled(b) {
+    _enabled = !!b;
+    try { localStorage.setItem(LS_KEY, _enabled ? "1" : "0"); } catch(e) {}
+    if (_enabled) {
+      _injectMicButton();
+    } else {
+      _removeMicButton();
+      stopListening();
+      _hideLiveOverlay();
+    }
+  }
+
+  // ============================================================
+  // 📋 BUILT-IN COMMANDS
+  // ============================================================
+  // Note : tous les handlers sont défensifs (typeof check) car les
+  // modules cible peuvent ne pas être chargés en mode offline cassé.
+  // Si le handler ne peut pas exécuter, il log un warn console mais ne
+  // crash pas — l'user voit "Commande exécutée" mais rien ne se passe.
+
+  function _registerBuiltins() {
+    // ─── 📐 Navigation ──────────────────────────────
+    registerCommand({
+      patterns: ["zoom plus", "zoom avant", "zoomer", "agrandir"],
+      label:    "Zoom avant",
+      handler:  function() { if (window.map) window.map.zoomIn(); }
+    });
+    registerCommand({
+      patterns: ["zoom moins", "zoom arrière", "dézoomer", "réduire", "diminuer"],
+      label:    "Zoom arrière",
+      handler:  function() { if (window.map) window.map.zoomOut(); }
+    });
+    registerCommand({
+      patterns: ["centrer", "vue d'ensemble", "tout voir", "vue globale", "recadrer"],
+      label:    "Centrer la vue",
+      handler:  function() {
+        if (window.map && window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.convertCoord) {
+          const W = window.PLAN_CONFIG.plan.imageWidth;
+          const H = window.PLAN_CONFIG.plan.imageHeight;
+          if (W && H) {
+            const sw = window.convertCoord(0, 0);
+            const ne = window.convertCoord(W, H);
+            window.map.fitBounds([sw, ne]);
+          }
+        }
+      }
+    });
+    registerCommand({
+      patterns: ["recherche", "rechercher", "trouver", "cherche", "ouvre la recherche", "recherche unifiée"],
+      label:    "Ouvrir recherche",
+      handler:  function() {
+        if (typeof window.ouvrirRecherche === "function") window.ouvrirRecherche();
+      }
+    });
+
+    // ─── ✏️ Actions session ─────────────────────────
+    registerCommand({
+      patterns: ["ajouter point", "nouveau point", "ajoute un point", "nouveau poi"],
+      label:    "Ajouter point au centre",
+      handler:  function() {
+        if (typeof window.ajouterPointEditor === "function" && window.map) {
+          // Centre du viewport courant → point candidat
+          const center = window.map.getCenter();
+          // Tente conversion lat/lng → x/y plan
+          if (window.PLAN_CONFIG && window.PLAN_CONFIG.plan) {
+            const H = window.PLAN_CONFIG.plan.imageHeight;
+            // convertCoord(x,y) = [H-y, x] → inverse : x=lng, y=H-lat
+            const x = center.lng;
+            const y = H - center.lat;
+            window.ajouterPointEditor({ x: x, y: y });
+          }
+        }
+      }
+    });
+    registerCommand({
+      patterns: ["tracker démarrer", "démarrer tracker", "commencer suivi", "tracker on",
+                "tracker marche", "démarre le tracker", "démarre tracker"],
+      label:    "Démarrer tracker",
+      handler:  function() {
+        if (typeof window.startTracking === "function") window.startTracking();
+      }
+    });
+    registerCommand({
+      patterns: ["tracker arrêter", "arrêter tracker", "stop suivi", "tracker off",
+                "arrête le tracker", "arrête tracker", "stop tracker"],
+      label:    "Arrêter tracker",
+      handler:  function() {
+        if (typeof window.stopTracking === "function") window.stopTracking();
+      }
+    });
+    registerCommand({
+      patterns: ["mode urgence", "urgence", "alarme", "alerte", "activer urgence",
+                "lancer l'urgence"],
+      label:    "Mode urgence",
+      handler:  function() {
+        if (window.EmergencyMode && typeof window.EmergencyMode.activer === "function") {
+          window.EmergencyMode.activer();
+        }
+      }
+    });
+    registerCommand({
+      patterns: ["mode secours", "lancer secours", "ouvrir secours", "secours", "ouvre secours"],
+      label:    "Mode secours",
+      handler:  function() {
+        if (window.SecoursMode && typeof window.SecoursMode.ouvrir === "function") {
+          window.SecoursMode.ouvrir();
+        }
+      }
+    });
+
+    // ─── 🌓 Réglages ────────────────────────────────
+    registerCommand({
+      patterns: ["thème clair", "mode clair", "thème blanc", "clair"],
+      label:    "Thème clair",
+      handler:  function() {
+        if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
+          window.ThemeManager.setTheme("light");
+        }
+      }
+    });
+    registerCommand({
+      patterns: ["thème sombre", "mode sombre", "thème dark", "sombre"],
+      label:    "Thème sombre",
+      handler:  function() {
+        if (window.ThemeManager && typeof window.ThemeManager.setTheme === "function") {
+          window.ThemeManager.setTheme("dark");
+        }
+      }
+    });
+
+    // ─── 🛑 Méta ────────────────────────────────────
+    registerCommand({
+      patterns: ["aide", "liste commandes", "que puis-je dire", "commandes disponibles",
+                "help"],
+      label:    "Aide commandes",
+      handler:  function() { _afficherAideModale(); }
+    });
+    registerCommand({
+      patterns: ["stop", "arrête", "annule", "annuler"],
+      label:    "Stop écoute",
+      handler:  function() { stopListening(); }
+    });
+    registerCommand({
+      patterns: ["fermer modale", "fermer", "ferme", "fermer popup", "fermer fenêtre"],
+      label:    "Fermer (Escape)",
+      handler:  function() {
+        // Dispatch un Escape — le handler global de utils.js le route
+        // vers la bonne modale ouverte (whitelist).
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      }
+    });
+  }
+
+  _registerBuiltins();
+
+  // ============================================================
+  // 🚀 INIT
+  // ============================================================
+  // Si activé via localStorage, injecte le bouton mic au DOMContentLoaded
+  // (ou immédiatement si on est déjà dans `interactive`/`complete`).
+
+  function _initUI() {
+    if (_enabled && isSupported()) _injectMicButton();
+  }
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    _initUI();
+  } else {
+    document.addEventListener("DOMContentLoaded", _initUI);
+  }
+
+  // ============================================================
+  // 🔌 EXPORT API
+  // ============================================================
+  window.VoiceCommand = {
+    isSupported:      isSupported,
+    isEnabled:        isEnabled,
+    setEnabled:       setEnabled,
+    startListening:   startListening,
+    stopListening:    stopListening,
+    registerCommand:  registerCommand,
+    afficherAide:     _afficherAideModale,
+    // Debug / introspection
+    _commands:        _commands
+  };
+
+  console.log("[VoiceCommand] Module chargé (E1 v1.34.0). Supporté :",
+              isSupported(), "Activé :", _enabled, "Commandes :", _commands.length);
+})();
