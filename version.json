@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.0-fix2",
+  "version": "v1.34.0-fix3",
   "released": "2026-06-04",
   "notes": [
-    "🧭 v1.34.0-fix2 — Nouvelle commande vocale « aller à <POI> » : dis par exemple « aller à puits 25 », « va à PA12 », « emmène-moi à siphon » ou « guide-moi vers chaufferette » pour calculer un itinéraire depuis ta position tracker actuelle vers le POI trouvé. Si plusieurs POI matchent ton nom, le premier (meilleur match) est utilisé. Si pas de tracker actif : message clair pour t'inviter à l'activer d'abord. Si POI introuvable : feedback explicite avec le nom recherché."
+    "🩹 v1.34.0-fix3 — Le bouton 🎤 sur mobile est maintenant plus haut (ne chevauche plus le footer/statusbar) et collé au bord droit de l'écran."
   ]
 }

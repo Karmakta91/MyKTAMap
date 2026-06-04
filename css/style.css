@@ -17446,13 +17446,20 @@ html.kta-theme-light .kta-voice-aide-list li strong {
   color: #b8860b;
 }
 
-/* Mobile : taille bouton mic légèrement réduite + overlay plein large */
+/* Mobile : taille bouton mic légèrement réduite + overlay plein large.
+   🩹 v1.34.0-fix3 — KARMA : "monte l'icone du micro legerement plus haut
+   sur mobile il chevauche un peut le footer, et coler a droite".
+   - bottom: 72 → 120px pour passer au-dessus du footer/statusbar refonte
+     (52px + safe-bottom + marge confortable)
+   - right: calc(16+safe) → env(safe-area-inset-right) seul pour coller
+     au bord droit (safe-area en landscape iPhone seulement) */
 @media (max-width: 480px) {
   .kta-voice-mic {
     width: 48px;
     height: 48px;
     font-size: 20px;
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(120px + env(safe-area-inset-bottom, 0px));
+    right: env(safe-area-inset-right, 0px);
   }
   .kta-voice-live {
     min-width: 0;
