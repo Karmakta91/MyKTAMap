@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.1</strong> (4 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.2</strong> (4 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.2 (PATCH — Fix iOS mic stream non libéré au stop)</strong> : KARMA bug iPhone : "l'arret d'enregistrement bug, il me met icone violet 'arreté' mais en haut sur mon iphone c'est toujours en écoute". Cause : sur iOS Safari, <code>recognition.stop()</code> retient le <code>MediaStream</code> sous-jacent tant que la référence <code>_recognition</code> existe → indicateur micro orange iOS persiste alors que notre UI est en idle. Fix 3 points : (1) <code>stopListening()</code> : <code>recognition.stop()</code> → <code>recognition.abort()</code> (kill immédiat) + <code>_recognition = null</code> (GC du MediaStream) + fallback <code>.stop()</code> si <code>.abort()</code> indispo ; (2) <code>recognition.onerror</code> : <code>_recognition = null</code> ajouté ; (3) <code>recognition.onend</code> : <code>_recognition = null</code> ajouté. À la prochaine <code>startListening()</code>, instance fraîche créée. <strong>AUCUN nouveau impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — hotfix UX iPhone qui RESPECTE mieux la promesse push-to-talk en libérant effectivement le micro entre 2 sessions.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.1 (MINOR — E1 Commandes vocales BETA consolidées)</strong> : consolide v1.34.0 base + 3 itérations fix. Nouvelle commande vocale <code>aller à &lt;POI&gt;</code> (~12 phrasings FR + EN : <code>aller à</code> / <code>va à</code> / <code>emmène-moi à</code> / <code>guide-moi vers</code> / <code>naviguer vers</code> / <code>itinéraire vers</code> / <code>iti vers</code> / <code>go to</code>) → handler async qui appelle <code>SearchPoints.findByQuery(name)</code> sur POI session + embedded data layers, puis <code>itineraireYAller(x, y, nom)</code> qui calcule l'itinéraire depuis la position tracker via Pathfinder. Si pas de tracker actif : message clair pour l'activer d'abord. Expansion massive des patterns : ~200 patterns FR/commande (12-23 par commande) couvrant impératif (<code>allume tracker</code>), indicatif (<code>tracker on</code>), synonymes (<code>éteins</code>/<code>coupe</code>/<code>désactive</code>), formulations naturelles (<code>ouvre l'aide</code>, <code>montre l'aide</code>). Bugfix modale aide (<code>_hideLiveOverlay()</code> avant création + <code>display: flex</code> inline). Bouton mic mobile : <code>bottom 120px + safe-bottom</code> + <code>right env(safe-area-inset-right, 0px)</code> (collé bord droit). <strong>AUCUN nouveau impact réseau</strong> par rapport à v1.34.0 — Web Speech API et ses caractéristiques inchangées.
