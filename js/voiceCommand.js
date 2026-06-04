@@ -130,10 +130,16 @@
       _updateLive(msg, "error");
       setTimeout(_hideLiveOverlay, 2500);
       _setListening(false);
+      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream (cf bug iOS
+      // indicateur micro persistant après stop dans stopListening).
+      _recognition = null;
     };
 
     r.onend = function() {
       _setListening(false);
+      // 🩹 v1.34.2 — libère la ref pour GC du MediaStream. À la prochaine
+      // startListening(), une nouvelle instance est créée via _initRecognition().
+      _recognition = null;
     };
 
     return r;
@@ -159,10 +165,27 @@
   }
 
   function stopListening() {
+    // 🩹 v1.34.2 — KARMA bug iPhone : "l'arret d'enrengistrement bug, il me
+    // met icone violet 'arreté' mais en haut sur mon iphone c'est toujours
+    // en écoute".
+    // Cause : sur iOS Safari, `recognition.stop()` est trop "doux" — il
+    // attend de retourner le SpeechRecognitionResult avec l'audio capté,
+    // et l'indicateur micro iOS (point orange en haut) reste actif tant
+    // que le MediaStream sous-jacent n'est pas libéré.
+    // Fix : utiliser `.abort()` (kill immédiat sans tenter de result) +
+    // forcer la libération de la référence _recognition à null pour que
+    // le GC release le stream audio. À la prochaine activation, on crée
+    // une nouvelle instance fraîche via _initRecognition().
     if (_recognition && _isListening) {
-      try { _recognition.stop(); } catch(e) {}
+      try { _recognition.abort(); } catch(e) {
+        // Fallback si .abort() pas dispo (très vieux browser)
+        try { _recognition.stop(); } catch(e2) {}
+      }
     }
     _setListening(false);
+    // Libère la référence → GC release MediaStream → indicateur micro iOS off.
+    // Une nouvelle instance sera créée à la prochaine startListening().
+    _recognition = null;
   }
 
   function _setListening(b) {
