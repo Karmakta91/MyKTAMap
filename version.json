@@ -1,7 +1,9 @@
 {
-  "version": "v1.34.3",
+  "version": "v1.35.0",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.3 — Push-to-talk strict : après chaque commande exécutée (point trouvé, aide ouverte, etc.) ou commande inconnue, le micro s'arrête maintenant immédiatement. Avant, iOS pouvait garder le micro warm quelques secondes et capter du bruit ambiant (TV, voix nearby). Idéal sous terre où d'autres personnes peuvent parler à côté. 1 click sur 🎤 = 1 phrase = stop net."
+    "🧠 v1.35.0 — Pack mémoire RAM : moins de crashes iPhone PWA. Cause principale identifiée par audit : tous les Blobs JPEG des tuiles d'un plan tuilé étaient gardés en RAM en permanence (150-600 MB pinnés selon la taille du plan). Maintenant : les tuiles sont extraites du ZIP à la demande quand elles s'affichent, et libérées dès qu'elles sortent du champ. Économie typique sur iPhone : -150 à -500 MB de RAM.",
+    "🩹 Plus de leaks corrigés : photos Mode Secours (vue Live) libérées au refresh + à la fermeture ; polyline tracker GPS décimée en synchronisation avec la timeline (avant elle grossissait indéfiniment) ; renderer SVG du Lost Mode propre entre recherches ; minimap d'urgence adaptée au nouveau modèle de tuiles lazy.",
+    "⚠️ Cette release modifie la mécanique interne de chargement des plans tuilés. Si tu remontes un bug visuel (tuile manquante, délai de chargement perceptible), dis-moi : on peut revert facilement."
   ]
 }

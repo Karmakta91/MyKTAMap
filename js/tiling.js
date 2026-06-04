@@ -199,12 +199,28 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   // Helper : résout l'URL d'une tuile (z, col, k=-row). Lazy → crée la blob URL
   // au premier appel et la réutilise ensuite (asset.url cached). Range l'asset
   // dans le bucket du niveau z pour le LRU.
-  function _resoudreUrlTuile(z, col, k) {
+  //
+  // 🆕 v1.35.0 (audit RAM) — devient ASYNC pour permettre l'extraction lazy
+  // via JSZip quand asset.file est null (cas tuiles enregistrées comme stub
+  // léger en v1.35.0). Si asset.file existe (cas legacy ou autre asset
+  // lazy), comportement inchangé. Sinon : extraction via window._extractLazyAsset.
+  async function _resoudreUrlTuile(z, col, k) {
     const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
     const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
     if (!asset) return null;  // tuile manquante (edge case ou erreur génération)
-    if (!asset.url && asset.file) {
-      asset.url = URL.createObjectURL(asset.file);
+    if (!asset.url) {
+      let blob = null;
+      if (asset.file) {
+        // Path legacy / non-V2 : Blob déjà en RAM, on l'utilise direct
+        blob = asset.file;
+      } else if (asset.zipPath && typeof window._extractLazyAsset === "function") {
+        // 🆕 v1.35.0 (audit RAM) — extraction à la demande via JSZip
+        blob = await window._extractLazyAsset(asset.zipPath);
+        if (!blob) return null;
+      } else {
+        return null;
+      }
+      asset.url = URL.createObjectURL(blob);
       state.blobUrlsCreated.push(asset.url);
       if (!state.blobAssetsByLevel[z]) state.blobAssetsByLevel[z] = [];
       state.blobAssetsByLevel[z].push(asset);
@@ -242,8 +258,15 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   }
 
   // Helper : génère les overlays d'un niveau z donné.
-  function _renderNiveau(z) {
-    // Cleanup overlays précédents
+  //
+  // 🆕 v1.35.0 (audit RAM) — devient ASYNC. Avant : pour chaque tuile, on
+  // résolvait l'URL en sync (toutes les tuiles déjà extraites en RAM au
+  // boot dans RUNTIME_ASSETS[path].file). Maintenant : pour les tuiles V2
+  // lazy, l'URL est résolue via JSZip à la demande → on résout en
+  // PARALLÈLE via Promise.all pour minimiser la latence (vs séquentiel
+  // qui serait perceptible sur 50+ tuiles).
+  async function _renderNiveau(z) {
+    // Cleanup overlays précédents (IMMÉDIATEMENT — pas d'await avant)
     state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
     state.activeOverlays = [];
 
@@ -253,34 +276,53 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
     const cols  = Math.ceil(lvlW / TILE_SIZE);
     const rows  = Math.ceil(lvlH / TILE_SIZE);
 
-    let added = 0, missing = 0;
+    // 🆕 v1.35.0 (audit RAM) — résolution parallèle des URLs via Promise.all.
+    // Pour les plans V2 avec extraction lazy JSZip, ça compresse la latence
+    // d'extraction (~10-20 ms par tuile JSZip → ~30 ms total vs 50×20 ms = 1s
+    // séquentiel pour 50 tuiles).
+    const tileRequests = [];
     for (let k = 1; k <= rows; k++) {
       for (let col = 0; col < cols; col++) {
-        const url = _resoudreUrlTuile(z, col, k);
-        if (!url) { missing++; continue; }
-
-        // Bounds Leaflet (CRS.Simple, lat = H_image - y_source).
-        //   lat_min (south) = (k-1) * TILE_SIZE * scale
-        //   lat_max (north) = k * TILE_SIZE * scale   (peut dépasser H si tuile partielle)
-        //   lng_min (west)  = col * TILE_SIZE * scale
-        //   lng_max (east)  = (col+1) * TILE_SIZE * scale  (peut dépasser W si dernière col partielle)
-        const latMin = (k - 1) * TILE_SIZE * scale;
-        const latMax = k       * TILE_SIZE * scale;
-        const lngMin = col       * TILE_SIZE * scale;
-        const lngMax = (col + 1) * TILE_SIZE * scale;
-
-        const tileBounds = [[latMin, lngMin], [latMax, lngMax]];
-        const overlay = L.imageOverlay(url, tileBounds, {
-          interactive: false,
-          // pane "tilePane" → s'affiche SOUS les overlays vectoriels et icons
-          // (cohérent avec le rendu Leaflet standard)
-          pane: "tilePane"
-        });
-        overlay.addTo(map);
-        state.activeOverlays.push(overlay);
-        added++;
+        tileRequests.push({ k: k, col: col });
       }
     }
+    const tileResults = await Promise.all(tileRequests.map(async function(req) {
+      const url = await _resoudreUrlTuile(z, req.col, req.k);
+      return { k: req.k, col: req.col, url: url };
+    }));
+
+    // 🆕 v1.35.0 — Guard : si pendant le await on a changé de niveau (l'user
+    // a zoomé pendant l'extraction), on n'ajoute pas les overlays obsolètes.
+    if (state.currentLevel !== null && state.currentLevel !== z) {
+      // L'utilisateur a déjà demandé un autre niveau → cancel silencieux
+      return;
+    }
+
+    let added = 0, missing = 0;
+    tileResults.forEach(function(r) {
+      if (!r.url) { missing++; return; }
+
+      // Bounds Leaflet (CRS.Simple, lat = H_image - y_source).
+      //   lat_min (south) = (k-1) * TILE_SIZE * scale
+      //   lat_max (north) = k * TILE_SIZE * scale   (peut dépasser H si tuile partielle)
+      //   lng_min (west)  = col * TILE_SIZE * scale
+      //   lng_max (east)  = (col+1) * TILE_SIZE * scale  (peut dépasser W si dernière col partielle)
+      const latMin = (r.k - 1) * TILE_SIZE * scale;
+      const latMax = r.k       * TILE_SIZE * scale;
+      const lngMin = r.col       * TILE_SIZE * scale;
+      const lngMax = (r.col + 1) * TILE_SIZE * scale;
+
+      const tileBounds = [[latMin, lngMin], [latMax, lngMax]];
+      const overlay = L.imageOverlay(r.url, tileBounds, {
+        interactive: false,
+        // pane "tilePane" → s'affiche SOUS les overlays vectoriels et icons
+        // (cohérent avec le rendu Leaflet standard)
+        pane: "tilePane"
+      });
+      overlay.addTo(map);
+      state.activeOverlays.push(overlay);
+      added++;
+    });
     state.currentLevel = z;
     // 🆕 v1.26.4 (P0-2 RAM) — marque z comme MRU + révoque les bitmaps des
     // niveaux les moins récents au-delà du cap (libère la RAM décodée).
@@ -328,7 +370,10 @@ window._libererTuilesV2 = function() {
   state.blobAssetsByLevel = {};
   state.levelLRU = [];
   // Reset asset.url pour les tuiles qui pourraient être rechargées plus tard
-  // (au plan switch, RUNTIME_ASSETS est wipé donc pas nécessaire — safety net)
+  // (au plan switch, RUNTIME_ASSETS est wipé donc pas nécessaire — safety net).
+  // 🆕 v1.35.0 (audit RAM) — comme l'asset.file est désormais null pour les
+  // tuiles V2 lazy (extraction à la demande via JSZip), on ne nulle plus
+  // que l'asset.url. La prochaine demande passe par window._extractLazyAsset.
   if (window.RUNTIME_ASSETS) {
     Object.keys(window.RUNTIME_ASSETS).forEach(function(k) {
       if (k.startsWith("data/tiles/")) {

@@ -4870,6 +4870,11 @@
       try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
       _secoursHeatmapActive = false;
     }
+    // 🆕 v1.35.0 (audit RAM) — révoque les blob URLs des photos Live
+    // restantes au close du Mode Secours. Avant, elles restaient en RAM
+    // jusqu'au plan switch (cumulatif sur plusieurs ouvertures Mode Secours
+    // dans la même session).
+    _revokeLivePhotoUrls();
   }
 
   function _onKeyDown(e) {
@@ -7462,15 +7467,37 @@
   }
 
   // Hydrate les placeholders photo avec les vraies miniatures (ObjectURL async).
+  // 🆕 v1.35.0 (audit RAM) — KARMA crash mémoire iPhone PWA. Audit a
+  // identifié _hydraterPhotosLive comme source de fuite : à chaque rebind
+  // de la vue Live Opérateur/Équipe, on créait N nouvelles blob URLs photos
+  // (via `getObjectUrl` → `URL.createObjectURL`) attachées à des `<img>`.
+  // Avec polling de mise à jour, ces URLs s'accumulent → cumulatif sur
+  // sessions Mode Secours longues.
+  // Fix : Set de tracking + revoke des URLs précédentes avant chaque hydratation.
+  const _livePhotoUrls = new Set();
+  function _revokeLivePhotoUrls() {
+    _livePhotoUrls.forEach(function(u) {
+      try { URL.revokeObjectURL(u); } catch (e) {}
+    });
+    _livePhotoUrls.clear();
+  }
+
   // Pattern v1.10.0 §42 (popup POI photos) adapté ici.
   function _hydraterPhotosLive(corps, scenarioId, equipeId, etapeIdx) {
     if (!window.MyKTAMapSecoursPhotos) return;
+    // 🆕 v1.35.0 (audit RAM) — révoque les URLs photos de l'hydratation
+    // précédente AVANT d'en créer de nouvelles. Les <img> qui les
+    // référençaient sont déjà retirés du DOM par le re-render du corps.
+    _revokeLivePhotoUrls();
     const placeholders = corps.querySelectorAll('.kta-secours-live-photo-placeholder[data-photo-id]');
     placeholders.forEach(function(ph) {
       const pid = ph.getAttribute("data-photo-id");
       if (!pid) return;
       window.MyKTAMapSecoursPhotos.getObjectUrl(pid).then(function(url) {
         if (!url || !ph.parentNode) return;
+        // 🆕 v1.35.0 (audit RAM) — track l'URL pour révocation au prochain
+        // _revokeLivePhotoUrls() (call avant prochain _hydraterPhotosLive).
+        _livePhotoUrls.add(url);
         const img = document.createElement("img");
         img.src = url;
         img.alt = "Photo étape";

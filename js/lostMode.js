@@ -106,6 +106,10 @@
   let _zoneLayer        = null;
   let _lastKnownMarker  = null;
   let _matchMarkers     = [];
+  // 🆕 v1.35.0 (audit RAM) — ref module-level pour le L.svg() renderer
+  // (avant : créé via `const svgRenderer` à chaque _renderOnMap, jamais
+  // removeLayer → 5-10 renderers SVG fantômes après plusieurs recherches).
+  let _svgRenderer      = null;
   let _refinedCircle    = null;
   // 🛣️ v173 : layers pour la portée max sur le réseau de routes
   let _reachPolyFull    = null;   // polyline multi-segments rouge (segments complets atteints)
@@ -271,6 +275,9 @@
     _reachStats = null;
     _matchMarkers.forEach(function(m) { window.map.removeLayer(m); });
     _matchMarkers = [];
+    // 🆕 v1.35.0 (audit RAM) — remove le SVG renderer pour ne pas
+    // accumuler de panes fantômes au fil des recherches.
+    if (_svgRenderer)       { window.map.removeLayer(_svgRenderer);       _svgRenderer = null; }
   }
 
   function _renderOnMap() {
@@ -305,8 +312,11 @@
     // automatiquement la nouvelle layer si elle n'est pas attachée à un
     // LayerGroup déclaré comme layer Leaflet. SVG est plus fiable pour les
     // ajouts ad-hoc en cours de session.
-    const svgRenderer = L.svg({ padding: 0.5 });
-    svgRenderer.addTo(window.map);
+    // 🆕 v1.35.0 (audit RAM) — utilise la ref module-level _svgRenderer
+    // pour permettre le cleanup dans _clearLayers (avant : `const` local
+    // → renderer jamais removeLayer → cumulatif sur plusieurs recherches).
+    _svgRenderer = L.svg({ padding: 0.5 });
+    _svgRenderer.addTo(window.map);
 
     _zoneLayer = L.polygon(polyPoints, {
       color: COLOR_ZONE,
@@ -315,7 +325,7 @@
       fillColor: COLOR_ZONE,
       fillOpacity: 0.22,
       interactive: false,
-      renderer: svgRenderer
+      renderer: _svgRenderer
     });
     try {
       _zoneLayer.addTo(window.map);

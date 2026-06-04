@@ -148,7 +148,30 @@ function resetRuntimeAssets() {
   window.RUNTIME_ASSETS  = {};
   window.RAW_PLAN_CONFIG = null;
   window.PLAN_CONFIG     = null;
+  // 🆕 v1.35.0 (audit RAM) — libère la ref JSZip globale au plan switch.
+  // C'est cette ref qui retient les bytes compressés des tuiles lazy.
+  // Sans ça, ChangePlan = ancien JSZip retenu jusqu'au prochain reset → fuite
+  // RAM cross-plan.
+  window._lazyZipRef = null;
 }
+
+// 🆕 v1.35.0 (audit RAM) — Extrait à la demande le blob d'une tuile lazy
+// depuis le JSZip gardé en mémoire (window._lazyZipRef). Async.
+// Utilisé par tiling.js > _resoudreUrlTuile quand l'asset.file est null
+// (cas tuiles V2 enregistrées en lazy stub via extraireZip v1.35.0).
+// Retourne `null` si JSZip indispo (cas chargement HTTP direct sans ZIP)
+// ou si l'entry n'existe pas dans le ZIP (cas tuile manquante).
+window._extractLazyAsset = async function(zipPath) {
+  if (!window._lazyZipRef || typeof window._lazyZipRef.file !== "function") return null;
+  const entry = window._lazyZipRef.file(zipPath);
+  if (!entry) return null;
+  try {
+    return await entry.async("blob");
+  } catch (e) {
+    console.warn("[config] _extractLazyAsset KO pour", zipPath, ":", e);
+    return null;
+  }
+};
 
 function findMatchingFile(logicalPath, files) {
   const base = getBaseName(logicalPath);
@@ -168,19 +191,37 @@ function findMatchingFile(logicalPath, files) {
 
 async function registerAsset(logicalPath, file, opts) {
   const normalized = normalizePath(logicalPath);
-  const lower = file.name.toLowerCase();
+  const lower = (file && file.name ? file.name : "").toLowerCase();
   // 🧱 Tiling V2 : option `lazy` pour les tuiles. Si lazy=true, on ne crée
   // PAS la blob URL au boot — économie d'allocations pour des plans qui
   // peuvent avoir 1000+ tuiles. La blob URL est créée à la demande par
-  // tiling.js > _resoudreUrlTuileLazy.
+  // tiling.js > _resoudreUrlTuile.
   if (lower.endsWith(".json")) {
     const text = await file.text();
     const parsed = JSON.parse(text);
     const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
     window.RUNTIME_ASSETS[normalized] = { file, url, json: parsed, type: "json" };
   } else if (opts && opts.lazy === true) {
-    // Pas de blob URL maintenant — sera créée lazy par tiling.js
-    window.RUNTIME_ASSETS[normalized] = { file, url: null, json: null, type: "binary", lazy: true };
+    // 🆕 v1.35.0 (audit RAM) — si `file` est en réalité un STUB léger
+    // (`_lazyTile === true`, créé par extraireZip), on ne stocke PAS de
+    // Blob ni de File. Juste le zipPath pour extraction à la demande
+    // via window._extractLazyAsset(). Économie 150-600 MB RAM iPhone
+    // sur gros plans V2 tuilés.
+    if (file && file._lazyTile === true) {
+      window.RUNTIME_ASSETS[normalized] = {
+        file: null,                  // pas de Blob retenu — fix RAM critique
+        url: null,
+        json: null,
+        type: "binary",
+        lazy: true,
+        zipPath: file._fullPath      // pour extraction à la demande via JSZip
+      };
+    } else {
+      // Path legacy/rétro-compat : si un autre caller passe `lazy: true`
+      // avec un vrai File (non stub), on garde le file pour création URL
+      // ultérieure (comportement v1.34.x).
+      window.RUNTIME_ASSETS[normalized] = { file, url: null, json: null, type: "binary", lazy: true };
+    }
   } else {
     const url = URL.createObjectURL(file);
     window.RUNTIME_ASSETS[normalized] = { file, url, json: null, type: "binary" };

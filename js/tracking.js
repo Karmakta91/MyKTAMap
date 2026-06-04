@@ -762,6 +762,26 @@ function _decimateTimeline() {
   const merged = anchors.concat(keptPdrs).sort(function(a, b) { return a.t - b.t; });
   _trackingTimeline = merged;
   console.log("[Tracking] Timeline décimée à", _trackingTimeline.length, "entries (cap", MAX_TIMELINE_ENTRIES, ")");
+
+  // 🆕 v1.35.0 (audit RAM) — sync la polyline Leaflet avec la timeline
+  // décimée. Avant : la polyline grandissait indéfiniment via .addLatLng()
+  // → ~10 MB de coordonnées Leaflet par tranche de 20k points sur
+  // sessions longues. Maintenant : on rebuild les latlngs depuis la
+  // timeline décimée pour rester cap à TIMELINE_TRIM_TO points.
+  // Note : multi-segments via rings non géré ici — le rebuild en-app
+  // (_rebuildTrailFromTimeline) gère ça pour la session importée. Pour
+  // la session live, on accepte que le break entre segments tracker
+  // soit perdu après décimation (rare, > 30 min de PDR dense).
+  if (polyline && typeof polyline.setLatLngs === "function") {
+    try {
+      const latlngs = merged
+        .filter(function(e) { return typeof e.x === "number" && typeof e.y === "number"; })
+        .map(function(e) { return convertCoord(e.x, e.y); });
+      polyline.setLatLngs(latlngs);
+    } catch (e) {
+      console.warn("[Tracking] polyline.setLatLngs KO après décimation :", e);
+    }
+  }
 }
 
 // Helper interne : push une entrée timeline avec timestamp + type.
