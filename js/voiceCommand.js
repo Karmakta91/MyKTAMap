@@ -177,15 +177,22 @@
     const match = _matchCommand(text);
     if (match) {
       _updateLive("✅ " + (match.cmd.label || text), "success");
+      let isAsync = false;
       try {
-        match.cmd.handler(match.matches);
+        const ret = match.cmd.handler(match.matches);
+        // 🩹 v1.34.0-fix2 — Si le handler retourne une Promise (handler async),
+        // on saute l'auto-hide 1.5s : c'est le handler qui gère son propre
+        // cycle de vie de l'overlay (recherche → résultat → hide). Cas usage
+        // typique : "aller à <POI>" qui fait un findByQuery + Pathfinder
+        // async qui peuvent prendre plusieurs secondes.
+        if (ret && typeof ret.then === "function") isAsync = true;
       } catch(e) {
         console.error("[VoiceCommand] handler error :", e);
         _updateLive("❌ Erreur : " + (e.message || e), "error");
         setTimeout(_hideLiveOverlay, 2500);
         return;
       }
-      setTimeout(_hideLiveOverlay, 1500);
+      if (!isAsync) setTimeout(_hideLiveOverlay, 1500);
     } else {
       _updateLive("❓ Commande inconnue : « " + text + " »", "unknown");
       setTimeout(_hideLiveOverlay, 2500);
@@ -432,6 +439,109 @@
             window.ajouterPointEditor({ x: x, y: y });
           }
         }
+      }
+    });
+
+    // 🆕 v1.34.0-fix2 — KARMA : "il serait super si on pouvait dire par
+    // exemple 'aller a puit 25' on fait dans le 'simple' depuis ma position".
+    // Itinéraire simple depuis la position tracker actuelle vers le POI
+    // matchant le nom prononcé. Utilise window.SearchPoints.findByQuery
+    // (substring case-insensitive sur nom + id + tags) puis
+    // window.itineraireYAller (qui gère pathfinder + Position tracker).
+    //
+    // Variations couvertes par le regex :
+    //   - "aller à puits 25" / "aller a puit 25"
+    //   - "va à PA12" / "va a pa12"
+    //   - "emmène-moi à siphon" / "emmene moi a siphon"
+    //   - "guide-moi vers chaufferette"
+    //   - "naviguer vers <nom>"
+    //   - "itinéraire vers <nom>" / "iti vers <nom>"
+    //   - "go to <nom>"
+    //
+    // Le handler est ASYNC (renvoie Promise) → _onFinalTranscript skip
+    // l'auto-hide 1.5s, le handler gère son cycle de vie de l'overlay.
+    registerCommand({
+      patterns: [
+        /(?:aller\s+(?:à|a)|va\s+(?:à|a)|vas\s+(?:à|a)|emmène[-\s]?moi\s+(?:à|a)|emmene[-\s]?moi\s+(?:à|a)|guide[-\s]?moi\s+(?:vers|à|a)|naviguer\s+vers|navigue\s+vers|itin[ée]raire\s+(?:vers|jusqu[' ]à)|iti\s+vers|go\s+to|trace\s+moi\s+vers|trace\s+itin[ée]raire\s+vers)\s+(.+)/i
+      ],
+      label:    "Itinéraire vers POI",
+      handler:  function(matches) {
+        // Le handler retourne une Promise → _onFinalTranscript skip auto-hide
+        return (async function() {
+          const rawQuery = (matches && matches[1] ? matches[1] : "").trim();
+          // Nettoie ponctuation finale ("aller à puits 25." → "puits 25")
+          const query = rawQuery.replace(/[.?!,;:]+$/, "").trim();
+          if (!query) {
+            _updateLive("❓ Précise une destination", "unknown");
+            setTimeout(_hideLiveOverlay, 2000);
+            return;
+          }
+          _updateLive("🔍 Recherche « " + query + " »…", "interim");
+
+          if (!window.SearchPoints || typeof window.SearchPoints.findByQuery !== "function") {
+            _updateLive("❌ Module recherche indisponible", "error");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+
+          let results;
+          try {
+            results = await window.SearchPoints.findByQuery(query);
+          } catch(e) {
+            console.warn("[VoiceCommand] findByQuery KO :", e);
+            _updateLive("❌ Erreur recherche : " + (e.message || e), "error");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+
+          if (!results || results.length === 0) {
+            _updateLive("❓ « " + query + " » introuvable", "unknown");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+
+          // Premier résultat = meilleur match selon le scoring SearchPoints.
+          // Note : pour "puits 25" tape, l'user attend probablement le PA25 / Puits 25,
+          // les autres puits arrivent ensuite. findByQuery cherche substring.
+          const first = results[0].point || results[0];
+          const nom = first.nom || first.id || query;
+          const x = first.x, y = first.y;
+
+          if (typeof x !== "number" || typeof y !== "number") {
+            _updateLive("❌ Coordonnées POI invalides : " + nom, "error");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+
+          // Vérifie qu'on a une position tracker (sinon itineraireYAller affiche alert)
+          const trackerPos = (typeof window.getTrackingPosition === "function")
+                             ? window.getTrackingPosition()
+                             : null;
+          if (!trackerPos || typeof trackerPos.x !== "number") {
+            _updateLive("⚠️ Active d'abord le tracker GPS pour calculer un itinéraire", "error");
+            setTimeout(_hideLiveOverlay, 3500);
+            return;
+          }
+
+          if (typeof window.itineraireYAller !== "function") {
+            _updateLive("❌ Module itinéraire indisponible", "error");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+
+          _updateLive("🧭 Itinéraire vers " + nom + " (" +
+                      results.length + " résultat" + (results.length > 1 ? "s" : "") + ")",
+                      "success");
+          try {
+            window.itineraireYAller(x, y, nom);
+          } catch(e) {
+            console.error("[VoiceCommand] itineraireYAller KO :", e);
+            _updateLive("❌ Calcul itinéraire KO : " + (e.message || e), "error");
+            setTimeout(_hideLiveOverlay, 2500);
+            return;
+          }
+          setTimeout(_hideLiveOverlay, 2000);
+        })();
       }
     });
     registerCommand({

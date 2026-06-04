@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.0-fix1",
+  "version": "v1.34.0-fix2",
   "released": "2026-06-04",
   "notes": [
-    "🩹 v1.34.0-fix1 — Deux fixes pour les commandes vocales : (1) « aide » ouvre maintenant correctement la modale d'aide (avant elle ne s'affichait pas car cachée par l'overlay de transcription). (2) Beaucoup plus de variations naturelles pour chaque commande : « allume le tracker », « éteins le tracker », « ouvre l'aide », « ouvre la recherche », « lance l'urgence », « mode nuit / jour », etc. Compte ~12 à 20 variantes par commande maintenant."
+    "🧭 v1.34.0-fix2 — Nouvelle commande vocale « aller à <POI> » : dis par exemple « aller à puits 25 », « va à PA12 », « emmène-moi à siphon » ou « guide-moi vers chaufferette » pour calculer un itinéraire depuis ta position tracker actuelle vers le POI trouvé. Si plusieurs POI matchent ton nom, le premier (meilleur match) est utilisé. Si pas de tracker actif : message clair pour t'inviter à l'activer d'abord. Si POI introuvable : feedback explicite avec le nom recherché."
   ]
 }
