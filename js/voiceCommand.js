@@ -213,6 +213,7 @@
         console.error("[VoiceCommand] handler error :", e);
         _updateLive("❌ Erreur : " + (e.message || e), "error");
         setTimeout(_hideLiveOverlay, 2500);
+        stopListening();
         return;
       }
       if (!isAsync) setTimeout(_hideLiveOverlay, 1500);
@@ -220,6 +221,18 @@
       _updateLive("❓ Commande inconnue : « " + text + " »", "unknown");
       setTimeout(_hideLiveOverlay, 2500);
     }
+    // 🩹 v1.34.3 — STOP EXPLICITE après chaque transcript final.
+    // KARMA bug : "si je dis aller a drapeau, il me trouve l'itineraire,
+    // mais reste en ecoute (j'ai la télé allumé, mais sous terre on peut
+    // avoir des gens qui parle a coté) donc si recherche effectuer (point
+    // trouvé, aide ouverte) on coupe le micro".
+    // Pourquoi : malgré `recognition.continuous = false`, iOS Safari garde
+    // le micro warm et peut continuer à capturer du bruit de fond avant
+    // que onend ne fire. Push-to-talk strict : 1 click → 1 phrase → stop
+    // immédiat. Évite la capture parasite TV / voix nearby.
+    // Pour les handlers async : ils ont déjà été dispatché (handler() s'est
+    // exécuté = Promise lancée), arrêter la recognition ne les affecte pas.
+    stopListening();
   }
 
   // ============================================================

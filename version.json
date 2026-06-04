@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.2",
-  "released": "2026-06-04",
+  "version": "v1.34.3",
+  "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.2 — Bug commandes vocales iPhone corrigé : quand tu arrêtes l'écoute (icône violet « arrêté »), l'indicateur micro orange en haut de l'iPhone s'éteint maintenant correctement. Avant, iOS gardait le micro actif en arrière-plan même après l'arrêt côté app — le stream audio n'était pas libéré. Fix : utilisation de la méthode `.abort()` plus agressive + libération immédiate de la référence pour permettre à iOS de couper le flux."
+    "🩹 v1.34.3 — Push-to-talk strict : après chaque commande exécutée (point trouvé, aide ouverte, etc.) ou commande inconnue, le micro s'arrête maintenant immédiatement. Avant, iOS pouvait garder le micro warm quelques secondes et capter du bruit ambiant (TV, voix nearby). Idéal sous terre où d'autres personnes peuvent parler à côté. 1 click sur 🎤 = 1 phrase = stop net."
   ]
 }
