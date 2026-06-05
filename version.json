@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.23",
+  "version": "v1.34.24",
   "released": "2026-06-05",
   "notes": [
-    "🎨 v1.34.23 — Fix theme clair Mode Histoire : la barre des onglets, le wrap PDF et le placeholder « Aucun PDF » s'affichent désormais correctement en thème clair (avant : ils restaient en couleurs sombres à cause d'un sélecteur CSS qui ne ciblait pas le bon élément racine de la modale). Cosmétique uniquement, aucun impact fonctionnel."
+    "🎨 v1.34.24 — Petite finition : l'icône 📖 du Mode Histoire dans la barre du haut est désormais aussi grosse visuellement que 📊 (stats) et 🔋 (batterie). Avant elle paraissait plus petite parce qu'elle n'avait pas de chiffre à côté."
   ]
 }

@@ -1523,7 +1523,7 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
    v1.34.19 — MODE HISTOIRE — Bouton 📖 status bar + modale 2 onglets
    ========================= */
 
-/* Bouton 📖 dans le header refonte (à côté de la batterie) */
+/* Bouton 📖 dans le header refonte (à gauche de la batterie depuis v1.34.21) */
 .kta-refonte-counter-histoire {
   cursor: pointer;
   user-select: none;
@@ -1533,6 +1533,17 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
 .kta-refonte-counter-histoire:focus {
   background: rgba(244, 197, 66, 0.15);
   outline: none;
+}
+/* 🆕 v1.34.24 — Agrandir l'icône 📖 pour matcher la taille perçue des autres
+   chips (📊 stats, 🔋 batterie). Sans cet override, l'emoji rendait à 12px
+   alors que les chips voisins paraissent plus gros à cause du val text
+   (12px font 700 weight) à côté de leur icône. Le 📖 seul faisait
+   visuellement plus petit. Surcharge sur .kta-refonte-counter-icon
+   uniquement INSIDE le chip histoire (pas global pour éviter régression
+   sur stats / batterie / résumé mobile). */
+body.kta-refonte-v1 .kta-refonte-counter-histoire .kta-refonte-counter-icon {
+  font-size: 16px;
+  line-height: 1;
 }
 
 /* Modale Mode Histoire — réutilise la structure kta-readme-modal-* */

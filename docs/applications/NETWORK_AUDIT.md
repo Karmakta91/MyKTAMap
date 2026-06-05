@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.23** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.24** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.24 (Mode Histoire — Agrandir icône 📖 chip status bar)** : KARMA visual feedback v1.34.23. L'icône 📖 paraissait plus petite que 📊 / 🔋 car le chip histoire n'a pas de val text à côté. Fix CSS : `font-size: 16px` (vs 12px default) sur `.kta-refonte-counter-histoire .kta-refonte-counter-icon` uniquement + `line-height: 1`. Pas de modif globale (évite régression). **Impact réseau** : ZÉRO — pure CSS cosmétique. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
 
 > **v1.34.23 (Mode Histoire — Fix theme clair sélecteur CSS dual body/html)** : KARMA screenshot v1.34.22 montre que les overrides theme clair v1.34.21 ne s'appliquent pas aux éléments INSIDE la modale Mode Histoire. Cause : modale appendée à `document.documentElement` (= `<html>`) → sibling de body, pas descendant. Mes overrides `body.kta-theme-light .X` ne matchent que descendants de body. Fix : double sélecteur `body.kta-theme-light .X, html.kta-theme-light .X` (pattern identique à `sessionExporter.js`). **Impact réseau** : ZÉRO — pure correction CSS. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix cosmétique.
 
