@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.36.0";
+const CACHE_NAME = "myktamap-cache-v1.36.1";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -44,6 +44,11 @@ const ASSETS_TO_CACHE = [
   // README.md (GitHub) + CLAUDE.md (agents IA). Le reste dans docs/.
   "./docs/applications/README_USER.md",
   "./docs/applications/README_USER.en.md",
+  // 🆕 v1.36.1 : guide installation Docker pas-à-pas (FR + EN). Consultable
+  // offline pour l'user qui veut self-host mais n'a jamais utilisé Docker.
+  // Cf section "🐳 Self-host avec Docker" du README_USER qui linke ces docs.
+  "./docs/applications/DOCKER_INSTALL.md",
+  "./docs/applications/DOCKER_INSTALL.en.md",
   // Squelette enrichi pour la fonctionnalité 🤖 Aide IA (modale Téléchargement contexte IA)
   "./docs/applications/AI_CONTEXT.md",
   // Licence (consultable offline si l'utilisateur veut verifier les conditions d'usage)

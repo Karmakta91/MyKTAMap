@@ -1,7 +1,7 @@
 {
-  "version": "v1.36.0",
+  "version": "v1.36.1",
   "released": "2026-06-06",
   "notes": [
-    "🐳 v1.36.0 — Tu peux désormais faire tourner MyKTAMap sur ton propre matériel (PC, Raspberry Pi, NAS) en une seule commande Docker. Une image officielle multi-architecture (amd64 + arm64) est publiée à chaque release, avec un certificat HTTPS auto-signé généré tout seul au démarrage. Détails : voir la doc utilisateur, section « Self-host avec Docker »."
+    "📖 v1.36.1 — Nouveau guide pas-à-pas pour installer Docker et faire tourner MyKTAMap chez toi (Windows/Mac/Linux/Raspberry Pi), avec troubleshooting des erreurs courantes (cert auto-signé, conflit de port, WSL 2…). Disponible en FR et EN, consultable hors-ligne."
   ]
 }

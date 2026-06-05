@@ -2952,6 +2952,8 @@ Tu peux aussi **pinner** une version exacte au lieu de `latest` :
 
 > 🔒 **Aucune donnée envoyée ailleurs**. L'image embarque l'app vanilla, exactement comme la version officielle, mais servie depuis ton propre matériel. C'est même un peu plus offline-friendly que la prod (pas de fetch occasionnel vers `gstatic.com` pour le ping de connectivité — le module `networkAudit.js` reste actif si tu veux vérifier).
 
+> 📖 **Tu n'as jamais utilisé Docker ?** Un guide pas-à-pas dédié existe : **[`docs/applications/DOCKER_INSTALL.md`](DOCKER_INSTALL.md)** — installation Docker Desktop (Windows/Mac/Linux), démarrage du daemon, troubleshooting des erreurs courantes (cert auto-signé, conflits de port, WSL 2), alternatives sans Docker.
+
 > 📚 **Détails techniques** : voir `docs/architecture/docker-selfhost.md` dans le dépôt GitHub.
 
 ---
