@@ -1281,9 +1281,58 @@
         const zip = await JSZip.loadAsync(zipFile);
         let planConfigFile = null;
         const assetFiles = [];
+
+        // 🐛 v1.34.10 (Pack RAM Phase 1 — dry-run logging) :
+        // Préparation à la re-attaque v1.35.0 (lazy tile extraction).
+        // v1.35.0 cassait l'image principale car le regex `^data/tiles/z-?\d+/`
+        // pouvait catcher des assets référencés par plan-config (ex. baseImage).
+        // Phase 1 = DEFENSIVE 2-PASS : on parse plan-config EN PREMIER pour
+        // construire une whitelist des paths référencés (baseImage, collisionImage,
+        // imageLayers, dataLayers). Cette whitelist sera consultée en Phase 2
+        // pour ne JAMAIS stuber un asset référencé. Phase 1 = DRY-RUN : on log
+        // ce qui serait stube mais on extrait tout eager comme avant → ZERO
+        // changement de comportement. KARMA valide les logs F12 puis on active
+        // le vrai stub en Phase 2 (v1.35.0 re-attaque).
+        let referencedPaths = new Set();
+        const planConfigEntry = zip.files["plan-config.json"];
+        if (planConfigEntry) {
+          try {
+            const planText = await planConfigEntry.async("text");
+            const planConfig = JSON.parse(planText);
+            function _addPath(p) {
+              if (p) referencedPaths.add(String(p).replace(/\\/g, "/").trim());
+            }
+            _addPath(planConfig.plan && planConfig.plan.baseImage);
+            _addPath(planConfig.plan && planConfig.plan.collisionImage);
+            (planConfig.imageLayers || []).forEach(function(l) { _addPath(l && l.file); });
+            (planConfig.dataLayers || []).forEach(function(l) { _addPath(l && l.file); });
+            console.log("[LazyTiles v1.34.10-dryrun] Whitelist des paths référencés (= NE PAS stuber en Phase 2) :", Array.from(referencedPaths));
+          } catch(e) {
+            console.warn("[LazyTiles v1.34.10-dryrun] Échec parse plan-config.json pour whitelist :", e);
+          }
+        } else {
+          console.warn("[LazyTiles v1.34.10-dryrun] plan-config.json introuvable dans le ZIP — whitelist vide");
+        }
+
+        // === Pass 2 : extraction + dry-run analyse ===
+        let wouldStubCount = 0;
+        let canariCount = 0;
         for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
           const name = entry.name.split("/").pop();
           if (!name) continue;
+
+          // 🐛 v1.34.10 — analyse dry-run : ce qui SERAIT stube en Phase 2.
+          const fullPath = String(entry.name).replace(/\\/g, "/").trim();
+          const matchesTilePath = /^data\/tiles\/z-?\d+\//i.test(fullPath);
+          const isReferenced = referencedPaths.has(fullPath);
+          if (matchesTilePath && !isReferenced) {
+            wouldStubCount++;
+          } else if (matchesTilePath && isReferenced) {
+            canariCount++;
+            console.warn("[LazyTiles v1.34.10-dryrun] ⚠️ CANARI : entrée qui matche /data/tiles/ MAIS est référencée dans plan-config — restera EAGER (correct, mais à surveiller) :", fullPath);
+          }
+
+          // === Extraction comme avant (Phase 1 = no behavior change) ===
           const blob = await entry.async("blob");
           const file = new File([blob], name, { type: guessMime(name) });
           // 🧱 Tiling V2 (v149) : on annote le File avec son chemin complet
@@ -1297,6 +1346,9 @@
           if (name === "plan-config.json") planConfigFile = file;
           else assetFiles.push(file);
         }
+
+        console.log("[LazyTiles v1.34.10-dryrun] Bilan : " + wouldStubCount + " tuile(s) seraient stube en Phase 2 (= économie RAM estimée) ; " + canariCount + " canari(s) détecté(s) (matche /data/tiles/ MAIS référencé → restera eager).");
+
         if (!planConfigFile) throw new Error("plan-config.json introuvable dans l'archive ZIP");
         return { planConfigFile, assetFiles };
       }

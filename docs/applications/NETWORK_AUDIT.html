@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.9</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.10</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.10 (Pack RAM Phase 1 — Dry-run logging)</strong> : étape interne préparatoire au re-rollout de l'optimisation RAM v1.35.0 (rollback en v1.34.4 car cassait l'image principale). Modification de <code>index.html extraireZip</code> : parsing de <code>plan-config.json</code> EN PREMIER pour construire une whitelist des paths référencés (baseImage, collisionImage, imageLayers, dataLayers). Puis dry-run analyse pour chaque entry : <code>WOULD STUB</code> si match <code>^data/tiles/z-?\d+/</code> hors whitelist, <code>CANARI</code> si match mais référencé. Phase 1 = ZÉRO changement de comportement (extraction eager comme avant). <strong>AUCUN impact réseau</strong> : modification purement frontend dans l'extraction locale du ZIP.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — version intermédiaire de diagnostic.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.9 (Fix race condition mise à jour douce)</strong> : KARMA bug "que on avait pas avant" — après "🪶 Mise à jour douce", badge footer affichait <code>vAncienne → vNouvelle</code> au lieu de <code>vNouvelle</code> ; restart manuel nécessaire. Régression hotfix21 v1.31.6 : <code>reg.update()</code> fire-and-forget + reload à 200ms = race condition (nouveau SW pas encore installed → <code>reg.waiting</code> null → <code>SKIP_WAITING</code> jamais envoyé → ancien SW sert ancien <code>copyright.js</code> au reload). Fix : polling actif sur <code>reg.waiting</code> (max 5s, 200ms x 25) APRÈS <code>reg.update()</code> et AVANT reload. Dès qu'un waiting détecté → <code>SKIP_WAITING</code> + <code>await controllerchange</code> (safety 1.5s) → nouveau SW actif → reload sert le bon cache. <strong>Impact réseau</strong> : ZÉRO. <code>reg.update()</code> reste fire-and-forget (pas de re-await 30s-2min). Polling local au browser (pas de fetch supplémentaire).

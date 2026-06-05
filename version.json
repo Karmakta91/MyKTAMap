@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.9",
+  "version": "v1.34.10",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.9 — Mise à jour douce corrigée : après une mise à jour douce, le badge de version dans le footer affiche désormais directement la nouvelle version. Plus besoin de redémarrer l'app une seconde fois pour voir le changement."
+    "🧪 v1.34.10 — Préparation interne d'une optimisation mémoire à venir (anti-crash iPhone). Aucun changement visible côté app — étape de diagnostic technique."
   ]
 }
