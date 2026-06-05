@@ -473,6 +473,14 @@ let _itineraryMarkerLayer = null;     // layer Leaflet contenant les markers num
 let _itineraryClickActive = false;
 let _itineraryClickHandler = null;
 
+// 🆕 v1.34.27 — Expose les waypoints de l'iti actif en lecture seule pour que
+// tracking.js puisse détecter quand l'user arrive à proximité (vibration
+// haptique de proximité 100px, cf tracking.js _checkWaypointProximity).
+// Retourne une COPIE pour empêcher la mutation côté caller.
+window.getItineraireWaypoints = function() {
+  return _itineraryWaypoints.slice();
+};
+
 function _ajouterWaypointVisuel(p, num) {
   if (!window.map) return;
   // Idem _afficherLabelDistanceItineraire : si l'ancien layerGroup a été détaché

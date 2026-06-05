@@ -7290,6 +7290,10 @@
           } else if (cur && !cur.completedAt) {
             updateEtape(s.id, equipeId, _liveEquipeFocusIdx, { completedAt: _nowIso() });
           }
+          // 🆕 v1.34.27 — Vibration medium pour confirmer la validation d'étape
+          // par l'équipe. Cohérent avec waypoint atteint Mode Itinéraire (même
+          // pattern). Pref + support gérés par helper.
+          if (window.kta_vibrate) window.kta_vibrate.medium();
           _liveEquipeFocusIdx++;
           _switchView("live");
         }

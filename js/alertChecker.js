@@ -202,6 +202,13 @@
       console.warn("[AlertChecker] afficherModaleAlerte absente — alerte ignorée");
       return;
     }
+    // 🆕 v1.34.27 — Vibration haptique error pour signaler l'alerte serveur.
+    // Pas pour fromManualClick (= l'user a cliqué le bouton 🚨, il sait déjà
+    // qu'il va voir des alertes). Seulement quand l'app remonte une alerte
+    // automatiquement (au boot ou sur poll). Pref + support gérés par helper.
+    if (!fromManualClick && window.kta_vibrate) {
+      window.kta_vibrate.error();
+    }
 
     // Cas simple : 1 seule alerte → modale détail direct
     if (alertsAaffich.length === 1) {

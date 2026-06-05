@@ -719,6 +719,11 @@ function updateMap() {
       polyline.addLatLng(latlng);
     }
   }
+
+  // 🆕 v1.34.27 — Détection proximité waypoint iti (100px) → vibration
+  // medium quand l'user atteint un waypoint actif de l'itinéraire. Pas
+  // d'effet si pas d'iti ou pref vibration OFF.
+  _checkWaypointProximity();
 }
 
 // =========================
@@ -1108,4 +1113,46 @@ window.recalerTrackerSurPoint = function(x, y, level) {
     } catch(e) {}
   }
   console.log("[Tracking] Recalé sur point :", x, y);
+  // 🆕 v1.34.27 — Vibration haptique discrète pour confirmer le recalage.
+  // L'user vient de toucher "📍 Je suis ici" → feedback tactile = "OK, j'ai
+  // compris". Echec silencieux si pref OFF ou iOS Safari (cf utils.js).
+  if (window.kta_vibrate) window.kta_vibrate.light();
 };
+
+// 🆕 v1.34.27 — Détection de proximité aux waypoints de l'itinéraire actif.
+// Appelée à chaque updateMap() (= à chaque pas / recalage / restore).
+// Hystérésis : vibre UNE FOIS quand on entre dans le rayon 100px d'un waypoint.
+// Si l'user sort à >200px puis y revient, vibre à nouveau. Empêche la
+// vibration en continu si on stagne près d'un waypoint.
+// Pas d'effet si pas d'iti actif, pas de support vibration, ou pref OFF
+// (gardes dans kta_vibrate).
+const _vibratedNearWaypoints = new Set();  // clés "x_y" des waypoints déjà signalés
+
+function _checkWaypointProximity() {
+  if (typeof position.x !== "number" || typeof position.y !== "number") return;
+  if (!window.kta_vibrate || typeof window.getItineraireWaypoints !== "function") return;
+  const wps = window.getItineraireWaypoints();
+  if (!wps || wps.length === 0) {
+    // Plus d'iti actif → reset les waypoints signalés pour que le prochain
+    // iti puisse re-déclencher.
+    if (_vibratedNearWaypoints.size > 0) _vibratedNearWaypoints.clear();
+    return;
+  }
+  wps.forEach(function(wp) {
+    if (typeof wp.x !== "number" || typeof wp.y !== "number") return;
+    const key = wp.x + "_" + wp.y;
+    const dx = position.x - wp.x;
+    const dy = position.y - wp.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist <= 100 && !_vibratedNearWaypoints.has(key)) {
+      _vibratedNearWaypoints.add(key);
+      window.kta_vibrate.medium();  // 100ms vibration distincte
+      if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+        console.log("[Tracking] Vibration : waypoint atteint à", Math.round(dist), "px (wp", wp.x, wp.y, ")");
+      }
+    } else if (dist > 200 && _vibratedNearWaypoints.has(key)) {
+      // Hystérésis : on est sorti du rayon → on peut re-vibrer à la prochaine entrée
+      _vibratedNearWaypoints.delete(key);
+    }
+  });
+}

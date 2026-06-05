@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.26",
+  "version": "v1.34.27",
   "released": "2026-06-05",
   "notes": [
-    "📳 v1.34.26 — Vibration haptique : l'app peut désormais te confirmer une action par une petite vibration (waypoint atteint, alerte, etc.). Toggle dans ⚙️ Configuration (home) ET ⚙️ Réglages (map) pour activer/désactiver. Visible uniquement si ton appareil supporte (Android oui, iPhone Safari non — Apple ne supporte pas cette API). Pas encore branché à des événements précis — l'infrastructure est en place, les vibrations viendront avec les prochaines features (Mode Sortie d'urgence, Notes vocales POI…)."
+    "📳 v1.34.27 — Vibration haptique branchée à 5 événements : (1) tu approches à moins de 100 px d'un waypoint d'itinéraire actif, (2) tu te recales sur un point avec « 📍 Je suis ici », (3) une étape Mode Secours est validée par l'équipe, (4) une alerte serveur arrive automatiquement, (5) une alerte mémoire critique se déclenche. Tu peux désactiver dans ⚙️ Configuration → 📳 Vibration haptique (visible uniquement si ton appareil supporte — pas sur iPhone Safari)."
   ]
 }

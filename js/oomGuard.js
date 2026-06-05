@@ -81,6 +81,12 @@
       return;
     }
     _renderToast(message, type);
+    // 🆕 v1.34.27 — Vibration haptique pour les toasts critiques (warn / error).
+    // Type "info" reste silencieux pour ne pas spammer (toasts informatifs
+    // peuvent être fréquents en debug). Pref + support gérés par kta_vibrate.
+    if (window.kta_vibrate && (type === "warn" || type === "error")) {
+      window.kta_vibrate.error();
+    }
   }
 
   function flushPendingToasts() {
