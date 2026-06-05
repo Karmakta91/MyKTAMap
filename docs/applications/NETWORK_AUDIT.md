@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.12** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.13** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.13 (Debug `renderRoads` boucle au boot)** : Instrumentation temporaire dans `js/road.js renderRoads()` pour identifier la source d'appels en boucle observée par KARMA en mode debug ON (150+ calls avec `roadsData : 0 tracés` au boot). Compteur rolling window 1s ; si ≥5 appels en <1s, log `console.warn` avec `Error().stack` (limité à 3 stacks max). Bug latent probablement depuis longtemps, masqué par `debug.js` qui silence `console.log` en mode debug OFF. **AUCUN impact réseau** : modifications purement frontend dans le module `road.js`. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — instrumentation diagnostic à retirer en v1.34.14 après identification de la source.
 
 > **v1.34.12 (Hotfix v1.34.11 — `_lazyZipRef` wipé prématurément)** : régression introduite par v1.34.11 : `extraireZip` (index.html) set `window._lazyZipRef = zip` à la fin, mais `startImportedPlan` invoque immédiatement `_libererRessourcesPlanPrecedent()` qui appelle `resetRuntimeAssets()` (config.js) — lequel nullify `_lazyZipRef`. Le cleanup du plan précédent wipait donc la ref du nouveau plan tout juste set. Conséquence : `[LazyTiles] _lazyZipRef indisponible` répété pour toutes les tuiles, aucune ne s'affiche. Fix : transmettre le `zip` via `assetFiles._lazyZip = zip` annoté dans `extraireZip`, et restaurer `window._lazyZipRef = assetFiles._lazyZip` dans `startImportedPlan` APRÈS `_libererRessourcesPlanPrecedent()`. Cleanup du plan précédent reste correct (libère le ZIP obsolète), restauration du nouveau ZIP est garantie après le reset. **Impact réseau** : ZÉRO changement. Pas de nouvelle requête, pas de modification du flux de chargement réseau. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — hotfix purement frontend qui rétablit le lazy tile loading.
 

@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.12",
+  "version": "v1.34.13",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.12 — Correction d'un bug introduit en v1.34.11 (optimisation mémoire) : les tuiles d'image des plans V2 ne s'affichaient plus correctement (erreurs de chargement répétées en console). Cause technique : la référence interne au ZIP source était perdue trop tôt lors du chargement d'un nouveau plan. Correctif appliqué."
+    "🧪 v1.34.13 — Petite étape de diagnostic technique interne (instrumentation temporaire pour identifier une source d'appels en boucle au démarrage). Aucun changement fonctionnel visible côté app."
   ]
 }

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.12</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.13</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.13 (Debug <code>renderRoads</code> boucle au boot)</strong> : Instrumentation temporaire dans <code>js/road.js renderRoads()</code> pour identifier la source d'appels en boucle observée par KARMA en mode debug ON. Compteur rolling window 1s, log <code>Error().stack</code> si ≥5 appels en <1s (limité 3 stacks). <strong>AUCUN impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — instrumentation diagnostic temporaire.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.12 (Hotfix v1.34.11 — <code>_lazyZipRef</code> wipé prématurément)</strong> : régression v1.34.11 : <code>extraireZip</code> set <code>window._lazyZipRef</code>, puis <code>startImportedPlan</code> invoquait immédiatement <code>_libererRessourcesPlanPrecedent</code> → <code>resetRuntimeAssets</code> → null <code>_lazyZipRef</code>. Conséquence : <code>[LazyTiles] _lazyZipRef indisponible</code> répété, aucune tuile lazy. <strong>Fix</strong> : annoter le ZIP sur <code>assetFiles._lazyZip</code> dans <code>extraireZip</code>, restaurer <code>window._lazyZipRef</code> dans <code>startImportedPlan</code> APRÈS le cleanup. <strong>Impact réseau</strong> : ZÉRO.
