@@ -115,6 +115,21 @@ Your data (list of maps, sessions, preferences) is **linked to the domain** (web
 
 ---
 
+<!-- v1.34.16+ : sprint anti-crash iPhone what's new section -->
+## 🆕 What's new (sprint v1.34.x — June 2026)
+
+This sprint focuses on **iPhone PWA stability** (large tiled maps in caves) and fixes a few small annoyances. Nothing new to learn on your side — it's all silent under the hood.
+
+- **🍎 Stronger iPhone stability** — crashes after a long session on a large tiled map are heavily reduced. The app now actively releases the image data of tiles you no longer look at, drops POI photos when you switch plans, and properly cleans up its image layers on exit. If you used the "close/reopen the PWA every 20 min" trick to avoid crashes, you can stop.
+- **🚀 Smoother boot on large maps** — when loading a tiled map, only the tiles needed for the current view are extracted from the archive (the others stay compressed in standby). The splash leaves quicker and RAM holds up better, especially on iPhone.
+- **🗂️ Image layers filter fix** — bug fixed: if you unchecked an image layer (legend, collisions, etc.) then switched plans or reloaded, the layer used to ghost back in. Your choice is now properly remembered. The **🔄 Show all** button in the Filters modal also correctly re-checks image layers, not just data layers.
+- **🔄 More reliable soft update** — the « Force update → app reloads itself » flow now works consistently (it used to occasionally stall halfway through and force you to refresh by hand). The new version activates automatically within 5 seconds.
+- **🐛 Cleaner console errors** — a few stray error messages (Chrome extensions, fonts) that showed up for no good reason in DevTools are now silent. No functional change, just easier to read if you open the DevTools.
+
+> ℹ️ Technical details about the « RAM Pack » operation: see the `README.md` changelog in the repo + `NETWORK_AUDIT.md`. On your side, nothing to do — reload the app, that's it.
+
+---
+
 ## 🚀 Getting started
 
 ### 🗝️ Restricted access — Community code

@@ -363,3 +363,132 @@ Reset `_plannerPlanLegend = null` au boot de chaque ouverture de modale (dans `a
 **Plan-level UI pour une autre cascade** (ex: `plan.customIcons`) : suivre le pattern de swap dans `_ouvrirEditeurLegendePlan` — sauvegarde state courant, charge état plan, ouvre éditeur standard, capture au close, restore.
 
 ---
+
+<!-- v1.34.16+ : Pack RAM Phase 2 lazy tile extraction + _lazyZipRef lifecycle -->
+### 59. Lazy tile extraction — 2-pass parsing dans `extraireZip()` (v1.34.11 → v1.34.12)
+
+Refonte du pipeline de décompression du ZIP de plan tuilé V2 pour éviter de matérialiser
+toutes les tuiles en RAM dès le boot. Motivation : crashes RAM iPhone PWA sur gros plans
+(cf `perf-memory.md §88`).
+
+#### 59.1 Pipeline avant v1.34.11
+
+```
+ZIP en entrée
+   ↓
+JSZip.loadAsync(arrayBuffer)
+   ↓
+Pour chaque entrée du ZIP :
+   ├─ plan-config.json → JSON.parse
+   ├─ image.png, layers/*.png → async("blob") → URL.createObjectURL → cache
+   └─ tiles/zN/x_y.jpg → async("blob") → URL.createObjectURL → cache
+   ↓
+Renvoie structure { config, images, tiles } prête à consommer
+```
+
+Sur un plan 1 200 tuiles, **toutes** étaient décompressées au boot même si l'utilisateur
+n'en regardait que 30-50 à un instant donné. Coût RAM : ~60-80 MB de blobs
+décompressés.
+
+#### 59.2 Pipeline depuis v1.34.11 — 2-pass parsing
+
+```
+ZIP en entrée
+   ↓
+JSZip.loadAsync(arrayBuffer) → garder la ref → _lazyZipRef
+   ↓
+PASS 1 : extraire UNIQUEMENT plan-config.json
+   ├─ JSON.parse
+   └─ Calculer la whitelist des tuiles nécessaires pour le zoom courant
+       (= tuiles qui couvrent les bounds du viewport initial)
+   ↓
+PASS 2 : décompresser sélectivement
+   ├─ image.png + layers/*.png → toujours décompressés (petits + nécessaires au render initial)
+   ├─ tiles/zN/x_y.jpg DANS whitelist → async("blob") → cache
+   └─ tiles/zN/x_y.jpg HORS whitelist → stub { path, lazy: true, blob: null } dans cache
+   ↓
+Renvoie structure { config, images, tiles, _lazyZipRef }
+```
+
+Le **JSZip reste vivant** via `_lazyZipRef`. Les tuiles hors whitelist sont
+décompressées à la demande quand le user pan/zoom vers leur zone.
+
+#### 59.3 Lazy fetch à la demande
+
+Dans `tiling.js > _getOrLoadTile(z, x, y)` :
+
+```js
+async function _getOrLoadTile(z, x, y) {
+  const key = `tiles/z${z}/x${x}_y${y}.jpg`;
+  const cached = _tilesCache[key];
+  if (cached && cached.blob) return cached.blob;        // hit
+  if (!cached || !cached.lazy) return null;             // pas dans ce plan
+  const zipRef = window._currentPlan && window._currentPlan._lazyZipRef;
+  if (!zipRef) return null;                              // ZIP libéré ou bug
+  const blob = await zipRef.file(key).async("blob");
+  _tilesCache[key] = { blob, lazy: false };
+  _lruTouch(key);
+  return blob;
+}
+```
+
+**LRU sur `File` extraits** : cap configurable (~256 tuiles par défaut) avec éviction
+des moins récemment utilisées. Une tuile évincée retourne au stub `{ lazy: true, blob:
+null }` → re-fetchée au prochain besoin via la ref `_lazyZipRef`.
+
+#### 59.4 `_lazyZipRef` lifecycle (v1.34.12 hotfix)
+
+⚠️ **Piège** : `main.js > _libererRessourcesPlanPrecedent` nullifie en masse les champs
+`_*` du plan sortant pour casser les cycles de refs cross-plan (pattern v1.21.3 P0-6
+« Plan switch leaks pack »). Au plan switch, si on n'exempte pas explicitement
+`_lazyZipRef`, le **nouveau** plan peut perdre son `_lazyZipRef` si le timing fait que
+les 2 plans coexistent transitoirement dans la closure du cleanup.
+
+**Symptôme** : pan/zoom après plan switch → lazy fetch échoue → carrés gris persistants.
+
+**Fix v1.34.12** : 2 patterns possibles, MyKTAMap utilise une **whitelist explicite**
+dans le sweep cleanup :
+
+```js
+const _LAZY_KEEP_KEYS = ["_lazyZipRef"];  // refs à préserver
+
+for (const key of Object.keys(plan)) {
+  if (key.startsWith("_") && !_LAZY_KEEP_KEYS.includes(key)) {
+    delete plan[key];
+  }
+}
+```
+
+Alternative (équivalente) : sauvegarder explicitement la ref dans une variable locale
+AVANT le sweep, puis ré-injecter APRÈS. Moins propre car couplage temporel.
+
+#### 59.5 Quand libérer `_lazyZipRef`
+
+- **Au reset complet** (`viderCacheAppli`) → automatique via reload.
+- **Au plan switch confirmé** (= l'utilisateur a vraiment quitté le plan) → seulement
+  pour le **plan sortant**, pas le plan entrant. Le sweep cleanup avec whitelist gère
+  ça correctement.
+- **Jamais libéré tant que le plan reste actif** — même si LRU évince des `File`
+  décompressés, la ref ZIP reste vivante pour pouvoir re-fetch. Surcoût RAM de la ref
+  ZIP brute : ~10-20 MB typiquement (taille du fichier ZIP), négligeable devant les
+  60-80 MB économisés sur les tuiles décompressées.
+
+#### 59.6 À NE PAS faire
+
+- ❌ **Décompresser toutes les tuiles dans une boucle de Promise.all au boot** — c'est
+  exactement le pattern abandonné en v1.34.11. RAM iPhone craque vite, surtout sur
+  plans tuilés denses.
+- ❌ **Oublier `_lazyZipRef` dans la whitelist du cleanup** — bug v1.34.12 garanti :
+  carrés gris persistants après plan switch.
+- ❌ **Garder une ref ZIP cross-plan** (réutiliser le ZIP d'un plan pour un autre plan)
+  → non, chaque plan a son propre ZIP, chaque `_lazyZipRef` est plan-scoped.
+- ❌ **Lazy fetch en mode V1** (plan non tuilé, image principale unique) — la totalité
+  de l'image principale doit être en RAM dès le render initial, sinon flash blanc.
+  L'optimisation Phase 2 ne concerne QUE les tuiles V2.
+- ❌ **Bumper le LRU cap au-delà de ~512 sans réfléchir** — plus le cap est grand, plus
+  on garde de tuiles décompressées en RAM. 256 est un sweet-spot validé sur iPhone 12
+  mini ; un cap 1024 annulerait le gain Phase 2.
+
+Cf `perf-memory.md §88` pour le contexte du sprint Pack RAM et la mesure d'impact terrain.
+
+---

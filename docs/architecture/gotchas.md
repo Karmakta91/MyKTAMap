@@ -203,6 +203,93 @@ Cleanup v1.31.5 a retiré l'orphelin via `sed -i '/<motif>/d'`. Doc complète : 
 
 ---
 
+<!-- v1.34.16+ : pièges sprint Pack RAM iPhone -->
+## 🚨 Pièges du sprint Pack RAM v1.34.x (anti-crash iPhone PWA)
+
+3 pièges supplémentaires détectés / documentés pendant le sprint v1.34.5 → v1.34.16.
+Référence détaillée dans `perf-memory.md §88`.
+
+### Helper appelé jamais défini — `_revokeAllPhotoObjectUrls` (13 versions dormantes)
+
+⚠️ **Gotcha majeur** détecté en v1.34.16. Le helper `_revokeAllPhotoObjectUrls(planId)`
+était **appelé** depuis `_libererRessourcesPlanPrecedent` (cleanup au plan switch)
+**depuis v1.21.3** mais **jamais défini nulle part** dans le code.
+
+**Pourquoi ça n'a jamais crashé** : le cleanup est enrobé d'un try/catch défensif large
+qui avale tous les `ReferenceError`. Le log existait mais seulement en debug mode (qui
+n'est jamais activé en prod).
+
+**Effet réel** : fuite mémoire silencieuse de ~22 MB par plan switch sur sessions Mode
+Secours avec photos. Visible côté RAM iPhone, invisible côté UX. Contributeur direct
+aux crashes WebKit après quelques switches.
+
+✅ **Règle absolue** : à chaque nouveau helper appelé, un grep cross-fichier obligatoire
+pour vérifier qu'il existe au moins une fois quelque part :
+
+```bash
+grep -rn "_revokeAllPhotoObjectUrls" js/
+# → doit retourner au moins 2 lignes : 1 définition + N appels
+# Si N appels et 0 définition → bug latent
+```
+
+Vaut aussi pour les méthodes posées sur des globals `window.X.method` : grep `window.X`
++ scan visuel des méthodes attachées.
+
+### `_lazyZipRef` wipé par le cleanup générique au plan switch (v1.34.12)
+
+⚠️ `main.js > _libererRessourcesPlanPrecedent` nullifie en masse tous les `_*` du plan
+sortant (pattern v1.21.3 P0-6 « Plan switch leaks pack »). Au plan switch, si les 2
+plans coexistent transitoirement dans la closure du cleanup, le `_lazyZipRef` du
+**nouveau** plan peut être supprimé à tort → lazy fetch ultérieur échoue → carrés gris
+persistants.
+
+✅ **Pattern à respecter** : whitelist explicite des clés à préserver dans le sweep :
+
+```js
+const _LAZY_KEEP_KEYS = ["_lazyZipRef"];
+for (const key of Object.keys(plan)) {
+  if (key.startsWith("_") && !_LAZY_KEEP_KEYS.includes(key)) delete plan[key];
+}
+```
+
+Toute future ref qui doit survivre au cleanup générique (ex: handle stream, blob URL
+gardé, etc.) doit être ajoutée à cette whitelist. Cf `plans-loader.md §59.4`.
+
+### WebKit bitmap pinning — `map.removeLayer()` ne libère PAS la RAM native iOS
+
+⚠️ Sur iOS Safari / PWA, retirer un `L.imageOverlay` de la carte via `map.removeLayer()`
+ne libère **pas** la texture GPU décompressée tant que `overlay._image.src` pointe vers
+un blob/data-URL. WebKit garde la texture pinnée jusqu'à GC effective de l'élément
+`<img>` — qui peut ne jamais arriver si le layer reste référencé.
+
+✅ **Pattern safe-remove** :
+
+```js
+function _safeRemoveImageOverlay(overlay) {
+  if (overlay && overlay._image) {
+    overlay._image.src = "";
+    overlay._image.removeAttribute("src");
+  }
+  if (overlay && window.map) window.map.removeLayer(overlay);
+}
+```
+
+Sites consommateurs (v1.34.16) : `libererTuiles` (tuiles V2) + boucle cleanup
+`_ktaImageOverlays` (calques image). Cf `rendering-leaflet.md §39` + `perf-memory.md
+§88.5.B/C`.
+
+### `URL.createObjectURL` sans `revoke` — fuite à chaque feature qui affiche un blob
+
+⚠️ Tout `URL.createObjectURL(blob)` doit avoir son `URL.revokeObjectURL(url)`
+correspondant au démontage de l'élément qui le consomme. Sinon le blob reste pinné en
+RAM tant que la page est ouverte.
+
+✅ **Pattern** : garder les URLs créées dans un Set module-local, appeler `revoke` sur
+chacune au démontage (plan switch, fermeture de la modale qui affichait les photos,
+etc.). Cf fuite #3 corrigée en v1.34.15 (photos Live Mode Secours, `perf-memory.md §88.4`).
+
+---
+
 ## 🛠️ Workflow de modification typique
 
 ### Pour ajouter une fonctionnalité

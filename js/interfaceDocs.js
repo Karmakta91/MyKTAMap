@@ -513,6 +513,26 @@ function afficherAide() {
           Un seul groupe peut être ouvert à la fois — cliquer sur un autre referme le précédent.
         </p>
 
+        <!-- v1.34.16+ : section nouveautés sprint anti-crash iPhone -->
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre">🆕 Quoi de neuf (sprint v1.34.x)</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🍎 Stabilité iPhone renforcée</strong> — l'app libère désormais la mémoire des tuiles que tu ne regardes plus, des photos POI au changement de plan, et nettoie ses calques d'images à la sortie. Les longues sessions sur gros plan tuilé en cavité tiennent beaucoup mieux la route.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🚀 Démarrage plus fluide sur gros plan</strong> — les tuiles d'un plan tuilé ne sont plus toutes décompressées au boot : seules celles affichées sortent de l'archive, les autres attendent leur tour. Splash plus court, RAM mieux maîtrisée.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🗂️ Filtre des calques image fiabilisé</strong> — décocher un calque image puis changer de plan / recharger respecte enfin ton choix. Le bouton <strong>🔄 Tout afficher</strong> dans la modale Filtres recoche aussi les calques images en plus des données.
+          </p>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🔄 Mise à jour douce plus fiable</strong> — l'enchaînement <em>« Forcer la mise à jour → l'app redémarre »</em> ne reste plus bloqué à mi-chemin. La nouvelle version s'active automatiquement dans les 5 secondes.
+          </p>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            ℹ️ Côté toi : rien à faire. Recharge l'app, profite. Détails techniques dans le journal des versions du dépôt.
+          </p>
+        </div>
+
         <div class="kta-aide-section">
           <div class="kta-aide-section-titre">📚 Aide / Doc / Légende</div>
           <div class="kta-aide-grille">

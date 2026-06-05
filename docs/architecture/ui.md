@@ -1403,4 +1403,52 @@ hotfix UX, pour détecter les nouveaux signaux émergents.
 
 ---
 
+<!-- v1.34.16+ : sprint UI fixes connexes au Pack RAM -->
+### 89. Sprint v1.34.5 → v1.34.16 — fixes UI connexes au Pack RAM
+
+Sprint principalement orienté RAM (cf `perf-memory.md §88`), mais 3 fixes UI méritent une
+trace ici.
+
+#### 89.1 Persistance du filtre des calques image (v1.34.5 → v1.34.7)
+
+**Symptôme** : décocher un calque image (légende, collision, etc.) puis changer de plan
+ou recharger → le calque réapparaissait coché à tort. Régression difficile à reproduire,
+identifiée et corrigée en 3 itérations.
+
+**Cause racine (v1.34.7)** : dans `initDataFromConfig`, ligne ~39, le tableau
+`_ktaImageOverlays` était re-initialisé à `[]` à chaque appel — y compris quand on
+ré-applique la config au reload du même plan. Or `filterPanel.js > _renderImageLayersSection`
+lisait l'état des calques DEPUIS ce tableau pour décider quelles checkbox cocher. Tableau
+vide → tous cochés par défaut → choix utilisateur écrasé.
+
+**Fix** : retrait du `_ktaImageOverlays = []` parasite dans `initDataFromConfig`. Le
+tableau est désormais initialisé UNE FOIS au boot et réconcilié avec le filtre persisté
+(via `SessionPersist.getFilterState`) à chaque rendu de la modale Filtres.
+
+**Itérations** :
+- v1.34.5 : tentative naïve qui ne ciblait pas la cause racine — invalidée.
+- v1.34.6 : ajout de logs debug pour tracer la séquence d'init + fix annexe du bouton
+  « 🔄 Tout afficher » qui ne recochait que les data layers (pas les image layers).
+- v1.34.7 : VRAI fix, retrait des logs debug, plus de régression observée.
+
+#### 89.2 Bouton « 🔄 Tout afficher » modale Filtres (v1.34.6)
+
+Le bouton de la modale Filtres recochait toutes les **data layers** mais oubliait les
+**image layers** — incohérent depuis l'introduction du filtre image en v1.21.5.
+
+**Fix** : ajout de la boucle sur `_ktaImageOverlays` dans le handler du bouton, après
+celle sur `_dataLayers`. Les 2 catégories sont désormais cochées d'un coup.
+
+#### 89.3 Retrait définitif du banner debug « Refonte UI v1 » (v1.34.14)
+
+Banner de migration `❗ Refonte UI v1` posé en v1.9.1-refonte-8 pour avertir l'user des
+changements, devenu invisible visuellement après le sprint v1.9.2-polish mais resté
+**dans le DOM** jusqu'à v1.34.13. Retiré définitivement en v1.34.14 (élément + CSS + JS
+qui le toggle). 0 régression observée car déjà inerte UX.
+
+> 💡 **Leçon pour le prochain banner de migration** : prévoir dès la pose le ticket
+> de retrait dans une release ultérieure, pas laisser traîner.
+
+---
+
 **Bon code ! 🚀**

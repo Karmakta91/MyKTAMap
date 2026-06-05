@@ -115,6 +115,21 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 
 ---
 
+<!-- v1.34.16+ : section nouveautés sprint anti-crash iPhone -->
+## 🆕 Nouveautés (sprint v1.34.x — juin 2026)
+
+Ce sprint cible la **stabilité sur iPhone PWA** (gros plans tuilés en cavité) et corrige plusieurs petits irritants. Rien à apprendre côté usage — tout est silencieux côté toi.
+
+- **🍎 Stabilité iPhone renforcée** — les crashes après une longue session sur un gros plan tuilé sont fortement réduits. L'app libère désormais activement les images des tuiles que tu ne regardes plus, les photos POI quand tu changes de plan, et n'oublie plus de nettoyer ses calques d'images en mémoire à la sortie. Si tu utilisais l'astuce "fermer/rouvrir la PWA toutes les 20 min" pour éviter le crash, tu peux laisser tomber.
+- **🚀 Démarrage plus fluide sur gros plan** — au chargement d'un plan tuilé, seules les tuiles nécessaires sont extraites de l'archive (les autres restent compressées en attendant). Le splash d'ouverture sort plus tôt et la RAM tient mieux la route, surtout sur iPhone.
+- **🗂️ Filtre des calques image** — bug corrigé : si tu décochais un calque image (légende, collision, etc.) puis changeais de plan ou rechargeais, le calque revenait fantômatiquement. Maintenant ton choix est bien respecté. Le bouton **🔄 Tout afficher** dans la modale Filtres recoche aussi correctement les calques images, plus seulement les données.
+- **🔄 Mise à jour douce plus fiable** — l'enchaînement « Forcer la mise à jour → redémarre tout seul » fonctionne désormais de manière régulière (avant il restait parfois bloqué à mi-chemin et il fallait rafraîchir à la main). La nouvelle version s'active automatiquement dans les 5 secondes qui suivent.
+- **🐛 Erreurs console nettoyées** — quelques messages d'erreur parasites (extensions Chrome, polices) qui apparaissaient pour rien dans la console sont silencieux. Aucun impact fonctionnel, juste plus lisible si tu ouvres les DevTools.
+
+> ℹ️ Détails techniques de l'opération « Pack RAM » : voir le journal `README.md` du dépôt + `NETWORK_AUDIT.md`. Côté toi, tu n'as rien à faire — recharge l'app, c'est tout.
+
+---
+
 ## 🚀 Premiers pas
 
 ### 🗝️ Accès restreint — Code communautaire

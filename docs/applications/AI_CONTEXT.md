@@ -341,6 +341,47 @@ respectif via le helper `window._loadCssOnce(href, id)` (`js/cssLazy.js`) :
 elle est dans `css/style-secours.css`, plus dans `style.css`. Idem pour les
 préfixes `.kta-mem-*`, `.kta-stats-glob-*`, `.kta-fp-*`.
 
+<!-- v1.34.16+ : section sprint Pack RAM iPhone PWA -->
+### Sprint v1.34.5 → v1.34.16 — Stabilisation RAM iPhone PWA (juin 2026)
+
+12 releases consécutives ciblant principalement les **crashes silencieux iOS** sur sessions
+longues avec plans tuilés V2 + photos POI. Aucune nouvelle feature UX — uniquement
+correctifs, optimisations mémoire et debug. Synthèse pour une IA tierce qui lirait du code
+récent :
+
+| Release | Sujet | Impact user |
+|---|---|---|
+| v1.34.5 → v1.34.7 | Filtre des calques **image** : la décoche d'un calque image était systématiquement écrasée au plan switch / reload. Cause racine isolée en v1.34.7 (reset prématuré du registre d'overlays dans `initDataFromConfig`). | Le choix de visibilité des calques image (légende, collision, etc.) survit aux changements de plan et reload. |
+| v1.34.6 | Bouton **« 🔄 Tout afficher »** de la modale Filtres recoche aussi les calques image, plus seulement les data layers. | UX cohérente. |
+| v1.34.8 | Service Worker filtrait mal les requêtes `chrome-extension://` (et autres schemes non-`http(s)`) → erreur console parasite à chaque scroll. Bypass propre. | Plus d'erreur rouge dans la console pour rien. |
+| v1.34.9 | Race condition sur la mise à jour douce : `skipWaiting` envoyé trop tôt → `controllerchange` jamais reçu → app coincée. Poll de `reg.waiting` jusqu'à 5 s avant d'envoyer le signal. | Le flow « Forcer la mise à jour → l'app redémarre » fonctionne de manière fiable. |
+| v1.34.10 | **Pack RAM Phase 1** — dry-run : whitelist des tuiles vraiment nécessaires loggée dans `extraireZip` (instrumentation pour préparer la Phase 2). | Aucun (dry-run). |
+| v1.34.11 | **Pack RAM Phase 2 (light)** — lazy tile extraction via JSZip : seules les tuiles du zoom courant sortent du ZIP au boot, les autres restent compressées et sont extraites à la demande. Référence ZIP gardée vivante via `_lazyZipRef`. LRU sur les `File` extraits pour libérer la RAM. | Démarrage plus fluide sur gros plan, RAM mieux maîtrisée. |
+| v1.34.12 | **Hotfix v1.34.11** — `_lazyZipRef` était wipé par le cleanup générique `_libererRessourcesPlanPrecedent` (qui nulle toutes les refs `_*` du plan précédent). Helper restauré avant cleanup, puis exempté. | Pas de régression visible. |
+| v1.34.13 | Debug instrumentation : stack trace sur chaque appel à `renderRoads` au boot pour traquer une boucle de re-render observée sur plans riches en data layers. | Aucun (debug-only). |
+| v1.34.14 | Fix racine de la boucle `renderRoads` : `registerEmbeddedRoad` appelait `renderRoads` à CHAQUE road embed → 150+ renders au boot sur plans denses. Batché en 1 seul render via flush idle. **Bonus** : retrait définitif du banner debug « Refonte UI v1 » resté traîner. | Boot mesurablement plus rapide sur plans denses (200+ routes embeddées). |
+| v1.34.15 | **Pack RAM Phase 3** — 3 fuites tuées : (#2) `tracker.polyline` reconstruite à chaque pas sans `removeLayer` du précédent ; (#3) `URL.createObjectURL` des photos live jamais `revoke()` ; (#4) `lostMode` créait un nouveau SVG renderer à chaque ouverture sans nettoyer l'ancien. | Sessions tracker longues + Lost Mode répétés ne plus gonflent la RAM indéfiniment. |
+| v1.34.16 | **Pack RAM Phase 4** — 3 fixes critiques pour le bug WebKit/iOS « bitmap pinning » (les `<img>` Leaflet gardent leur GPU bitmap tant que `src` n'est pas vidé) : (A) **`_revokeAllPhotoObjectUrls`** : ce helper était APPELÉ au changement de plan depuis v1.21.3 mais n'avait **jamais été défini** — bug latent silencieux pendant 13 versions. Helper ajouté. (B) `libererTuiles` clear désormais `img.src = ""` avant `removeLayer` (sinon WebKit garde la texture GPU pinnée). (C) **Safe-remove `_ktaImageOverlays`** : avant `map.removeLayer(overlay)`, on clear `overlay._image.src` pour casser le pinning. | Crashes iPhone PWA après ~20 min sur gros plan tuilé fortement réduits (objectif principal du sprint). |
+
+#### Pièges techniques découverts (pour audit code récent)
+
+- 🪤 **Bug latent dormant 13 versions** : `_revokeAllPhotoObjectUrls(planId)` était appelé
+  depuis `_libererRessourcesPlanPrecedent` depuis v1.21.3, mais **jamais défini nulle part**.
+  Effet : `ReferenceError` silencieux côté try/catch du cleanup → fuite mémoire indolore en
+  prod. Découvert par audit grep cross-fichier en v1.34.16. **Leçon** : toujours grep
+  un nouveau helper appelé pour vérifier qu'il existe au moins une fois quelque part.
+- 🪤 **WebKit bitmap pinning** : sur iOS Safari/PWA, retirer un `L.imageOverlay` de la carte
+  via `map.removeLayer(layer)` ne libère **PAS** automatiquement la mémoire GPU de l'image.
+  Tant que l'élément `<img>` existe encore dans le DOM (même détaché) et que son `src`
+  pointe vers un blob/data-URL, WebKit garde la texture GPU pinnée. **Pattern safe-remove**
+  : `layer._image.src = ""; layer._image.removeAttribute('src'); map.removeLayer(layer);`.
+  Validé sur iPhone 12 mini iOS 17 PWA, RAM native mesurée via Xcode Instruments.
+- 🪤 **`_lazyZipRef` lifecycle** : `_libererRessourcesPlanPrecedent` nullifie tous les
+  champs `_*` du plan sortant. La référence ZIP (gardée vivante en Phase 2 pour la lazy
+  extraction des tuiles) doit être **sauvegardée AVANT le cleanup générique** puis
+  ré-injectée sur la nouvelle structure plan, sinon les futures tuiles ne peuvent plus être
+  extraites. Cf §59 plans-loader.md.
+
 ### Améliorations a11y/keyboard (v1.31.6)
 
 - **`prefers-reduced-motion`** : toutes les animations CSS de l'app sont

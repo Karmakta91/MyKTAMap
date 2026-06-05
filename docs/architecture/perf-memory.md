@@ -1153,3 +1153,174 @@ marginal et complexité d'orchestration disproportionnée.
   milieu.
 
 ---
+
+<!-- v1.34.16+ : Pack RAM sprint anti-crash iPhone PWA -->
+### 88. Pack RAM — Phases 2 / 3 / 4 — stabilisation RAM iPhone PWA (v1.34.10 → v1.34.16)
+
+Sprint dédié aux **crashes silencieux iOS PWA** sur sessions longues avec plans tuilés V2
++ photos POI. Objectif : tenir > 1 h sur iPhone 12 mini sans kill silencieux WebKit,
+contre ~20 min avant le sprint. 12 releases (v1.34.5 → v1.34.16), dont 6 dédiées au Pack
+RAM, 6 à des fixes UX/SW connexes.
+
+#### 88.1 Phase 1 (v1.34.10) — Dry-run whitelist
+
+Instrumentation uniquement. Dans `extraireZip()`, on logge la **whitelist** des tuiles
+nécessaires au zoom courant (= ce qui sera affiché tout de suite), pour préparer le
+basculement en lazy en Phase 2. Aucun changement de comportement runtime — la totalité
+des tuiles continue d'être décompressée au boot. Permet à KARMA d'observer en console
+la couverture du futur lazy pour valider le delta avant de couper le pipeline historique.
+
+#### 88.2 Phase 2 (v1.34.11) — Lazy tile extraction via JSZip
+
+**Avant** : `extraireZip()` parsait `plan-config.json` PUIS décompressait toutes les
+tuiles `tiles/zN/x_y.jpg` en parallèle via `zip.file(path).async("blob")`. Sur un plan
+de 1 200 tuiles, la décompression occupait 60-80 MB de RAM décompressée même quand le
+viewport n'en utilisait que ~40.
+
+**Après** :
+
+1. **2-pass parsing** dans `extraireZip()` :
+   - Pass 1 : extraire UNIQUEMENT `plan-config.json` → calculer la whitelist des tuiles
+     du zoom courant (cf §88.1)
+   - Pass 2 : pour chaque entrée tuile dans la whitelist → `zip.file(path).async("blob")`
+     ; pour les autres → **stub** dans la map `{path → null, lazy: true}`
+2. **Référence ZIP gardée vivante** via `_lazyZipRef` posée sur la structure plan. Le
+   JSZip n'est plus garbage-collected en sortie de `extraireZip`.
+3. **Lazy fetch à la demande** : `tilingV2 > _getOrLoadTile(z, x, y)` checke d'abord le
+   cache → si absent et `_lazyZipRef` dispo → `_lazyZipRef.file(path).async("blob")` puis
+   stockage en cache.
+4. **LRU sur `File` extraits** : cap (~256 tuiles) avec éviction des plus anciennes pour
+   libérer la RAM décompressée. Les évincées repassent au stub `null` → re-lazy-fetch au
+   prochain besoin.
+
+Gain mesuré sur plan test 1 200 tuiles 8 niveaux : **~55 MB de RAM économisée au boot**,
+splash sort ~400 ms plus tôt, premier frame Leaflet identique.
+
+Détail loader complet : cf `plans-loader.md §59`.
+
+#### 88.3 Phase 2 — Hotfix v1.34.12 — `_lazyZipRef` wipé au plan switch
+
+**Bug** : `_libererRessourcesPlanPrecedent()` (cleanup générique du plan sortant)
+nullifie en masse tous les champs `_*` du plan précédent pour éviter les fuites de
+références cross-plan. Cela incluait `_lazyZipRef` du **nouveau** plan si le timing
+mettait les 2 plans transitoirement en collision.
+
+**Symptôme** : sur plan switch, lazy fetch ultérieur → `Cannot read property 'file' of
+null` → tuile non chargée → carrés gris persistants dans le viewport.
+
+**Fix** : dans `_libererRessourcesPlanPrecedent`, on **sauvegarde explicitement**
+`_lazyZipRef` du plan entrant AVANT le sweep `delete plan._<key>` puis on **ré-injecte**.
+Variante propre via une **liste blanche** `_LAZY_KEEP_KEYS = ["_lazyZipRef"]` consultée
+pendant le sweep.
+
+#### 88.4 Phase 3 (v1.34.15) — 3 fuites RAM additionnelles
+
+Audit de fuites complémentaire post-Phase 2 :
+
+- **Fuite #2 — `tracker.polyline` reconstruite à chaque pas PDR sans `removeLayer`** :
+  chaque step PDR recréait un `L.polyline` pour le trail tracker (multi-segments), mais
+  l'ancien restait attaché à `window.map` côté objets Leaflet (le ref JS n'avait plus de
+  pointeur dans `window.tracker._polyline` mais Leaflet le gardait dans `_layers`). Sur
+  une session 30 min × 1 step/s → 1 800 polylines fantômes. **Fix** :
+  `map.removeLayer(oldPolyline)` AVANT l'écrasement.
+
+- **Fuite #3 — `URL.createObjectURL` photos Live Secours jamais `revoke()`** : les vues
+  Live Mode Secours (Op / Équipe / Secouriste) créent un blob URL par photo affichée à
+  partir du store IDB. Avant : URLs créées au render, jamais libérées au démontage de la
+  vue → 1 photo/étape × 30 étapes × 5 photos = 150 URLs en RAM (chacune avec un blob de
+  ~150 KB → ~22 MB). **Fix** : `_revokeAllPhotoObjectUrls(planId)` appelé au démontage
+  de la vue Live + au plan switch. ⚠️ Voir §88.5.A — ce helper est aussi celui qui a
+  exposé un **bug latent dormant depuis v1.21.3**.
+
+- **Fuite #4 — `lostMode` SVG renderer non démonté** : à chaque ouverture de Lost Mode,
+  un nouveau `L.svg()` était passé à `renderer:` pour le cercle de portée + segments
+  budget. L'ancien restait dans `map._panes.overlayPane`. **Fix** : keep le renderer en
+  module-local + reuse plutôt que recréation.
+
+#### 88.5 Phase 4 (v1.34.16) — Fixes critiques RAM native iPhone
+
+**Contexte** : malgré Phases 2-3, le crash iPhone à 20-25 min persistait. Audit profil
+Xcode Instruments → la RAM **native** (côté WebKit/GPU, hors heap JS) gonflait
+linéairement même après les fixes JS. Cause identifiée : **bitmap pinning WebKit**.
+
+**Bug WebKit/iOS** : sur un `<img>` dont le `src` est un blob/data-URL, WebKit garde la
+**texture GPU décompressée** en mémoire native tant que `img.src` pointe sur le blob,
+MÊME si l'élément `<img>` est détaché du DOM. `map.removeLayer(overlay)` détache mais ne
+clear pas `src`. Sur un plan tuilé 1 200 tuiles × ~120 KB texture décompressée GPU ≈
+**140 MB de RAM native non libérée** au plan switch.
+
+3 fixes en une release :
+
+##### 88.5.A `_revokeAllPhotoObjectUrls` — helper qui n'existait pas
+
+⚠️ Découverte majeure : ce helper était **appelé** depuis `_libererRessourcesPlanPrecedent`
+**depuis v1.21.3** (cf release P0-6 « Plan switch leaks pack »), mais **jamais défini**.
+Le `ReferenceError` était silencieusement avalé par le try/catch englobant du cleanup. Le
+bug a dormi **13 versions** (v1.21.3 → v1.34.15), invisible côté UX mais cause directe
+d'une fuite ~22 MB par plan switch sur sessions Mode Secours.
+
+**Implémentation** : itère sur le store IDB `myktamap_secours_photos` filtré par
+`planId`, garde les URLs créées dans un Set module-local, appelle `URL.revokeObjectURL()`
+sur chacune, vide le Set.
+
+**Leçon** : toujours `grep -rn "_revokeAllPhotoObjectUrls"` (ou équivalent) sur tout
+nouveau helper appelé, pour vérifier qu'il a au moins une définition quelque part. Cf
+`gotchas.md` → nouveau piège "Helper appelé jamais défini".
+
+##### 88.5.B `libererTuiles` — clear `img.src` AVANT `removeLayer`
+
+```js
+function libererTuiles(layer) {
+  if (layer && layer._image) {
+    layer._image.src = "";
+    layer._image.removeAttribute("src");
+  }
+  map.removeLayer(layer);
+}
+```
+
+Le double `src = ""` + `removeAttribute("src")` est défensif : certaines versions
+WebKit gardent la texture si seulement l'un des 2 est fait. Validé sur iOS 16, 17, 18.
+
+##### 88.5.C Safe-remove `_ktaImageOverlays`
+
+Symétrique de 88.5.B mais pour les **calques image** (légende, collision, etc.) gérés
+par `_ktaImageOverlays`. Avant chaque `map.removeLayer(overlay)` dans la boucle de
+cleanup, on clear le `src` de `overlay._image`. Cf `rendering-leaflet.md §39` pour le
+pattern complet et les sites consommateurs.
+
+#### 88.6 Pièges récurrents (à NE PAS faire)
+
+- ❌ **Appeler un helper sans vérifier qu'il existe** — `_revokeAllPhotoObjectUrls` est
+  resté en `ReferenceError` 13 versions dans un try/catch silencieux. Si un cleanup est
+  enrobé d'un try/catch défensif, le log n'apparaît qu'en debug mode → audit grep
+  cross-module obligatoire.
+- ❌ **Nullifier en masse les `_*` du plan sortant sans whitelist** — `_lazyZipRef` doit
+  survivre au cleanup générique. Pattern recommandé : liste blanche explicite
+  `_LAZY_KEEP_KEYS` consultée pendant le sweep.
+- ❌ **Croire que `map.removeLayer()` libère la RAM native sur iOS** — non. Toujours
+  clear `img.src = ""` AVANT `removeLayer` sur tout `L.imageOverlay` qui pointe vers un
+  blob/data-URL. C'est le piège WebKit bitmap pinning (cf §88.5.B + §88.5.C).
+- ❌ **Recréer un `L.svg()` renderer à chaque ouverture d'une feature** (Lost Mode, mode
+  Secours, etc.) — keep en module-local, reuse. Sinon les renderers s'empilent
+  silencieusement dans `map._panes.overlayPane`.
+- ❌ **Oublier `URL.revokeObjectURL()` après `URL.createObjectURL()`** — Phase 3 a tué la
+  fuite Live photos Secours, mais à chaque nouvelle feature qui crée des blob URLs (ex:
+  futur viewer photo plein écran), penser à revoke au démontage.
+
+#### 88.7 Validation terrain
+
+Test KARMA iPhone 12 mini iOS 17 PWA, plan test 1 200 tuiles + 80 POI + 35 photos :
+
+| Métrique | Avant v1.34.10 | Après v1.34.16 |
+|---|---|---|
+| RAM native @ 5 min | ~280 MB | ~180 MB |
+| RAM native @ 20 min | crash (~500 MB) | ~240 MB |
+| RAM native @ 1 h | (jamais atteint) | ~310 MB stabilisée |
+| Splash → premier frame | ~3.2 s | ~2.7 s |
+| Plan switch RAM delta | +90 MB / switch | +12 MB / switch |
+
+Cf `NETWORK_AUDIT.md` pour le détail des changements de surface réseau (zéro nouveau
+fetch, zéro nouvelle permission).
+
+---

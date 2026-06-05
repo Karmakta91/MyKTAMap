@@ -226,3 +226,72 @@ Volontaire : on laisse Leaflet faire son travail au 1er clic (ouverture popup). 
 **Non concerné** : tracker (comportement spécifique dans `tracking.js`, position temps réel), lost mode markers (popups dédiées avec badges in-zone/hors zone).
 
 À ajouter ailleurs si nouveau type de marker est introduit, via simple appel `window.attachMarkerDblClickZoom(marker)` après bindPopup.
+
+---
+
+<!-- v1.34.16+ : pattern safe-remove imageOverlay anti bitmap pinning iOS -->
+### 39. Safe-remove `L.imageOverlay` — pattern anti bitmap pinning WebKit (depuis v1.34.16)
+
+Sur iOS Safari / PWA, `map.removeLayer(imageOverlay)` ne libère **PAS** la mémoire native
+GPU de l'image tant que l'élément `<img>` interne (`overlay._image`) garde son `src`. WebKit
+garde la texture décompressée en RAM native même après détachement DOM, jusqu'à
+garbage collection effective de l'élément (= jamais si le layer reste référencé quelque
+part, ex: dans `_ktaImageOverlays`).
+
+#### 39.1 Symptôme
+
+Sur plan switch d'un plan tuilé V2 vers un autre, la RAM native iPhone (visible via
+Xcode Instruments) garde l'empreinte de l'ancien plan. Au bout de 2-3 switches, kill
+silencieux WebKit → la PWA redémarre sans event ni erreur (cf `perf-memory.md §12`
+OOMGuard pour la détection de ce kill).
+
+#### 39.2 Pattern correct
+
+Toujours clear `src` AVANT `removeLayer` :
+
+```js
+function _safeRemoveImageOverlay(overlay) {
+  if (overlay && overlay._image) {
+    overlay._image.src = "";
+    overlay._image.removeAttribute("src");
+  }
+  if (overlay && window.map) window.map.removeLayer(overlay);
+}
+```
+
+Le double `src = ""` + `removeAttribute("src")` est défensif : selon la version iOS,
+seulement l'un des deux peut suffire à libérer la texture. Validé sur iOS 16, 17, 18.
+
+#### 39.3 Sites consommateurs (v1.34.16)
+
+- **`libererTuiles(layer)`** dans le module tiling V2 : appelé sur chaque tuile dont le
+  zoom n'est plus actif (cf §27).
+- **Boucle cleanup `_ktaImageOverlays`** dans `_libererRessourcesPlanPrecedent` (map.js
+  ou main.js selon refactor) : avant chaque `map.removeLayer(overlay)`, clear le `src`.
+- **Pattern à propager** à toute future feature qui crée des `L.imageOverlay` avec un
+  `src` blob/data-URL et les retire dynamiquement (ex: futures couches saisonnières,
+  overlays de mesure, etc.).
+
+#### 39.4 Cas non concernés
+
+- `L.tileLayer` Leaflet (vrai TMS XYZ) : Leaflet gère son propre cycle de vie d'images,
+  la lib clear bien les `src` à chaque déchargement de tuile hors viewport. Le bug
+  WebKit ne s'y manifeste pas → ne PAS modifier `lib/leaflet/leaflet.js`.
+- `<img>` de l'app hors carte (icônes UI, splash, viewer photo) : pas concernés tant
+  qu'ils restent attachés au DOM et visibles. Clear utile uniquement pour les `<img>`
+  destinés à être détachés ET dont le `src` est un blob/data-URL.
+
+#### 39.5 À NE PAS faire
+
+- ❌ `map.removeLayer(overlay)` direct sur un overlay tuile ou un calque image → fuite
+  RAM native iOS garantie sur sessions longues.
+- ❌ `overlay._image = null` sans clear `src` d'abord → garde la texture GPU pinnée même
+  si le ref `_image` est perdu (WebKit pinne sur le bitmap, pas sur le ref DOM).
+- ❌ Compter sur le garbage collector pour clear `src` automatiquement → pas garanti
+  côté WebKit, surtout si `overlay` reste référencé dans un tableau (`_ktaImageOverlays`,
+  caches LRU, etc.).
+- ❌ Appliquer ce pattern à `L.tileLayer` natif Leaflet → Leaflet gère déjà, double
+  intervention peut casser le rendu. Le pattern est réservé aux `L.imageOverlay`
+  ad-hoc créés par MyKTAMap.
+
+Cf `perf-memory.md §88.5` pour le contexte du sprint Pack RAM et la mesure d'impact terrain.
