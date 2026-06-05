@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.4** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.5** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.5 (HOTFIX — Bug imageLayers filter persistence)** : KARMA bug remonté en prod v1.34.3 (cycle test après rollback v1.35.0) : "les images layers ne fonctionne plus le plan-config.json est bon, je pence que ca vient du filtre (celui que on avait refait il y a un petit moment) si je coche le calque, revient dans le menu filtre il reste décocher (uniquement calque image layer)". Cause : mismatch d'identifiant entre le rendu UI et le registre interne `_ktaImageOverlays`. `js/filterPanel.js _renderImageLayersSection` utilisait `lc.id` tel quel pour l'attribut HTML `data-img-layer`, mais `js/map.js` ligne 423 pushe `id: layerConfig.id || layerConfig.label` (fallback `label` si `id` absent). Sur plans dont le `plan-config.json` n'a PAS le champ `id` sur les imageLayers (vieux plans / plans créés sans cet attribut), le `data-img-layer` devenait `"undefined"` côté HTML mais l'entrée du registre portait le label → `e.id === id` échouait silencieusement → le handler `change` retournait early via `if (!entry || !entry.overlay) return` → la couche n'était jamais ajoutée/retirée de la carte → la réouverture de la modale rendait le checkbox unchecked car `hasLayer(entry.overlay)` retournait `false`. Fix : appliquer le MÊME fallback `lc.id || lc.label` dans `_renderImageLayersSection` pour que l'id rendu dans `data-img-layer` matche celui pushed par `map.js`. **AUCUN impact réseau** (1 ligne JS modifiée). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — hotfix purement frontend qui rétablit la fonctionnalité filtres imageLayers pour les plans sans `id` explicite.
 
 > **v1.34.4 (ROLLBACK — v1.35.0 Pack RAM cassait l'image principale)** : KARMA bug post-v1.35.0 : "l'image principal ne s'affiche plus dutout". Cause probable : le refactor lazy extraction des tuiles V2 (commit `89fa6c3`) stubait des assets référencés par plan-config (baseImage, collisionImage, imageLayers[].file, dataLayers[].file) au lieu de les extraire eagerly. Action : revert combined des 2 commits v1.35.0 (`89fa6c3` source + `90bb6c0` docs sync). Bump v1.34.4 pour cache bust iPhone PWA. **État source = strictement identique à v1.34.3** post-rollback. Aucun impact réseau (rollback strict). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — restore propre. Prochaine étape : v1.35.1 avec approche 2-pass défensive (parser plan-config EN PREMIER pour identifier paths référencés, ne stuber que les `data/tiles/...` non-référencés).
 

@@ -396,15 +396,26 @@
     }
     let html = '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
+      // 🩹 v1.34.5 — KARMA bug prod v1.34.3 : check imageLayer → close →
+      // reopen → unchecked. Cause : mismatch d'id. Le rendu utilisait
+      // `lc.id` tel quel pour `data-img-layer`, mais map.js pushait
+      // `id: layerConfig.id || layerConfig.label` (fallback label si pas
+      // d'id). Si plan-config sans `id`, le data-img-layer devenait
+      // "undefined" mais l'entrée _ktaImageOverlays portait le label →
+      // `e.id === id` échouait silencieusement → handler retournait early
+      // sans toggler la couche → reopen rendait unchecked (hasLayer false).
+      // Fix : appliquer le MÊME fallback ici (lc.id || lc.label) pour que
+      // l'id rendu matche celui pushed par map.js.
+      const layerId = lc.id || lc.label;
       const visible = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
                       ? (function() {
-                          const entry = window._ktaImageOverlays.find(function(e) { return e.id === lc.id; });
+                          const entry = window._ktaImageOverlays.find(function(e) { return e.id === layerId; });
                           return entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
                         })()
                       : (lc.visible !== false);
       const label = lc.label || lc.id || ("Calque " + idx);
       html += '<label class="kta-fp-row-cb">' +
-                '<input type="checkbox" data-img-layer="' + _escAttr(lc.id) + '"' + (visible ? " checked" : "") + '>' +
+                '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
                 '<span>🖼️ ' + _escHtml(label) + '</span>' +
               '</label>';
     });

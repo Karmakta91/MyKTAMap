@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.4</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.5</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.5 (HOTFIX — Bug imageLayers filter persistence)</strong> : KARMA bug remonté en prod : "si je coche le calque, revient dans le menu filtre il reste décocher (uniquement calque image layer)". Cause : mismatch d'identifiant entre le rendu UI (<code>js/filterPanel.js</code> utilisait <code>lc.id</code>) et le registre interne <code>_ktaImageOverlays</code> (<code>js/map.js</code> pushait <code>id: layerConfig.id || layerConfig.label</code>). Sur plans sans champ <code>id</code> dans <code>plan-config.json &gt; imageLayers[]</code>, le <code>data-img-layer</code> devenait <code>"undefined"</code> côté HTML mais l'entrée du registre portait le label → <code>e.id === id</code> échouait → handler return early → couche jamais togglée. Fix : appliquer le MÊME fallback <code>lc.id || lc.label</code> dans <code>_renderImageLayersSection</code>. <strong>AUCUN impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — hotfix purement frontend.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.4 (ROLLBACK — v1.35.0 Pack RAM cassait l'image principale)</strong> : KARMA bug post-v1.35.0 : "l'image principal ne s'affiche plus dutout". Cause probable : le refactor lazy extraction des tuiles V2 (commit <code>89fa6c3</code>) stubait des assets référencés par plan-config (baseImage, etc.) au lieu de les extraire eagerly. Action : revert combined des 2 commits v1.35.0. Bump v1.34.4 pour cache bust iPhone PWA. État source = strictement identique à v1.34.3. <strong>AUCUN impact réseau</strong>.
