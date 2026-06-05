@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.15",
+  "version": "v1.34.16",
   "released": "2026-06-05",
   "notes": [
-    "🧠 v1.34.15 — Optimisation mémoire (anti-crash iPhone) — 3 fuites corrigées : (1) le tracé visible du tracker est désormais resynchronisé après décimation interne (sessions longues), (2) les vignettes photo du Mode Secours Live libèrent leur mémoire à chaque réouverture, (3) le mode « Je suis perdu » ne cumule plus de rendus SVG superposés à chaque recalcul de zone."
+    "🧠 v1.34.16 — Optimisation mémoire majeure (anti-crash iPhone) : libération forcée des bitmaps d'images au changement de plan ou au déchargement des tuiles (correctif important — iOS Safari gardait des dizaines à centaines de Mo en mémoire native non libérée). Aussi : helper interne de libération des photos affichées au changement de plan, qui était appelé mais jamais défini (correctif latent depuis longtemps)."
   ]
 }

@@ -631,7 +631,27 @@ function _libererRessourcesPlanPrecedent() {
     try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
   }
 
+  // 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #C) — Safe-remove des _ktaImageOverlays
+  // (calques image du plan : Légende, etc.) AVANT map.remove(). Le pattern
+  // critique : clear img.src AVANT removeLayer pour forcer iOS à libérer la
+  // bitmap décodée. Sans ça, removeLayer détache le DOM mais WebKit garde
+  // le bitmap pinned en cache GPU (sur plan multi-niveau avec 4-10 calques
+  // 4096×4096 PNG, c'est 64-160 Mo retenus).
+  // Note : map.remove() un peu plus bas détache tous les layers de toute
+  // façon — ce qu'on ajoute ici c'est UNIQUEMENT le clear img.src préalable.
+  if (Array.isArray(window._ktaImageOverlays) && window.map) {
+    window._ktaImageOverlays.forEach(function(entry) {
+      try {
+        if (entry && entry.overlay && entry.overlay._image) {
+          entry.overlay._image.src = "";
+        }
+      } catch(e) {}
+    });
+  }
+
   // Tuiles du plan : libère les overlays Leaflet + revoke les blob URLs
+  // (libererTuiles fait maintenant aussi le clear img.src — cf tiling.js
+  // v1.34.16 Phase 4 Fix #B, gain potentiel énorme sur iPhone PWA).
   if (window._baseTiles && window._baseTiles.length > 0) {
     libererTuiles(window._baseTiles, window.map);
     window._baseTiles = [];

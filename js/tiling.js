@@ -634,6 +634,20 @@ function _pause() {
 function libererTuiles(overlays, map) {
   if (!Array.isArray(overlays)) return;
   overlays.forEach(function(t) {
+    // 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #B) — Clear img.src AVANT
+    // removeLayer pour FORCER iOS Safari à libérer la bitmap décodée.
+    // Sans ce clear, removeLayer détache le DOM mais WebKit garde le
+    // bitmap décodé pinned en cache GPU/mémoire native — invisible à
+    // jsHeapSizeUsed mais bien comptée dans le budget mémoire iPhone
+    // PWA (~200-500 Mo selon device).
+    // Sur plan V1 base tile non-V2 dense (864 tuiles × 512×512×4 =
+    // jusqu'à 864 Mo de bitmaps théoriques), c'est probablement la
+    // cause majeure du crash iPhone PWA répété (cf audit autonome
+    // v1.34.16 fuite #9). Coût négligeable côté CPU (1 assignement
+    // par tuile).
+    try {
+      if (t.overlay && t.overlay._image) t.overlay._image.src = "";
+    } catch(e) {}
     try { map.removeLayer(t.overlay); } catch(e) {}
     try { URL.revokeObjectURL(t.blobUrl); } catch(e) {}
   });

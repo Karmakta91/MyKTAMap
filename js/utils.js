@@ -1029,6 +1029,29 @@ window.toggleFavoriPoint = function(pointId, x, y, nom, tag, layerId, layerLabel
 //
 // Cleanup objectURLs au popupclose (sinon memory leak si l'user ouvre/
 // ferme des popups en boucle sur des plans riches).
+// 🐛 v1.34.16 (Pack RAM Phase 4 — Fix #A) — Registre GLOBAL de TOUTES les
+// ObjectURL photos créées (par attachPopupPhotos, editor, secoursMode, etc.).
+// Utilisé par window._revokeAllPhotoObjectUrls() au plan switch pour libérer
+// systématiquement les blobs encore référencés (cas où l'user n'a pas fermé
+// les popups individuellement). Sans ce helper global, les Blob photos
+// restaient pinned tant que la page n'était pas refreshed → fuite cumulative
+// massive sur sessions longues (= cause majeure du crash iPhone PWA).
+// Le helper main.js > _libererRessourcesPlanPrecedent l698 appelait
+// _revokeAllPhotoObjectUrls() mais cette fonction n'était NULLE PART définie
+// (bug confirmé par audit autonome) → le call était un no-op silencieux.
+window._ktaAllPhotoUrls = window._ktaAllPhotoUrls || new Set();
+window._revokeAllPhotoObjectUrls = window._revokeAllPhotoObjectUrls || function() {
+  if (window._ktaAllPhotoUrls.size === 0) return;
+  const n = window._ktaAllPhotoUrls.size;
+  window._ktaAllPhotoUrls.forEach(function(u) {
+    try { URL.revokeObjectURL(u); } catch(e) {}
+  });
+  window._ktaAllPhotoUrls.clear();
+  if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+    console.log("[Photos] _revokeAllPhotoObjectUrls : " + n + " ObjectURL globales libérées");
+  }
+};
+
 function attachPopupPhotos(marker, pointId) {
   if (!marker || !pointId) return;
   if (marker._ktaPhotosAttached) return;  // idempotent
@@ -1040,6 +1063,9 @@ function attachPopupPhotos(marker, pointId) {
   function _cleanupUrls() {
     _objectUrls.forEach(function(u) {
       try { URL.revokeObjectURL(u); } catch(e) {}
+      // 🐛 v1.34.16 — Sync avec le registre global (évite double-revoke
+      // si le plan switch passe avant le popupclose).
+      if (window._ktaAllPhotoUrls) window._ktaAllPhotoUrls.delete(u);
     });
     _objectUrls.clear();
   }
@@ -1078,6 +1104,8 @@ function attachPopupPhotos(marker, pointId) {
       const photosWithUrl = arr.map(function(rec) {
         const url = URL.createObjectURL(rec.blob);
         _objectUrls.add(url);
+        // 🐛 v1.34.16 — Aussi ajouter au registre global pour cleanup au plan switch.
+        if (window._ktaAllPhotoUrls) window._ktaAllPhotoUrls.add(url);
         return {
           id:         rec.id,
           mime:       rec.mime,
