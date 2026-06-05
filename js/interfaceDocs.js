@@ -528,6 +528,10 @@ function afficherAide() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🔄 Mise à jour douce plus fiable</strong> — l'enchaînement <em>« Forcer la mise à jour → l'app redémarre »</em> ne reste plus bloqué à mi-chemin. La nouvelle version s'active automatiquement dans les 5 secondes.
           </p>
+          <!-- v1.34.18 : E2 TTS lecture vocale des notes POI -->
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>🔊 Lecture vocale des notes (NEW)</strong> — un bouton <strong>🔊</strong> apparaît à côté de chaque note dans les popups des points. Un clic et l'app lit la note à haute voix via la voix native de ton appareil. Pratique sous terre quand tu as les mains/yeux occupés. Re-clique sur 🔊 ou ⏹️ pour arrêter. 100 % offline, voix locale, aucune permission demandée. Complément de la commande vocale 🎤 "Aller à $POI".
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             ℹ️ Côté toi : rien à faire. Recharge l'app, profite. Détails techniques dans le journal des versions du dépôt.
           </p>
