@@ -938,9 +938,26 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
       '</div>';
   }
 
+  // 🆕 v1.34.18 (E2 TTS) — Bouton 🔊 inline à côté de la description si elle
+  // existe ET si la Web Speech Synthesis API est supportée par le navigateur.
+  // Click = toggle play/stop via window.VoiceTts. Aucune auto-lecture (mode
+  // strictement manuel — anti-pollution sonore).
+  // data-tts-text = la description encodée pour récupération côté handler
+  // (on ne peut pas passer safeDesc en arg JS inline car risque de bugs avec
+  // les saut de ligne et apostrophes ; data-attr est plus robuste).
+  let ttsBtnHtml = "";
+  if (safeDesc && window.VoiceTts && typeof window.VoiceTts.isSupported === "function" && window.VoiceTts.isSupported()) {
+    ttsBtnHtml = '<button class="kta-popup-tts-btn" type="button" ' +
+                   'data-tts-text="' + _escAttr(desc) + '" ' +
+                   'onclick="window.kta_lireNotePopup(this); return false;" ' +
+                   'title="Lire la note à haute voix">' +
+                   '🔊' +
+                 '</button>';
+  }
+
   return '<div class="kta-popup-point">' +
            '<b>' + safeName + '</b>' +
-           (safeDesc ? '<br><span class="kta-popup-desc">' + safeDesc + '</span>' : '') +
+           (safeDesc ? '<br><span class="kta-popup-desc">' + ttsBtnHtml + safeDesc + '</span>' : '') +
            gpsLineHtml +
            photosSlot +
            '<div class="kta-popup-actions">' +
@@ -975,6 +992,52 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
          '</div>';
 }
 window.buildPointPopupHtml = buildPointPopupHtml;
+
+// 🆕 v1.34.18 (E2 TTS) — Handler global pour le bouton 🔊 inline dans les
+// popups POI. Toggle play/stop via window.VoiceTts. Met à jour l'icône
+// pendant la lecture (🔊 → ⏹️) pour feedback visuel. Repasse à 🔊 quand la
+// lecture termine ou est canceled (via listener onStateChange).
+let _kta_currentTtsBtn = null;
+window.kta_lireNotePopup = function(btn) {
+  if (!btn || !window.VoiceTts) return;
+  const text = btn.getAttribute("data-tts-text") || "";
+  if (!text) return;
+
+  // Si on clique sur le même bouton pendant qu'il lit → toggle stop.
+  if (_kta_currentTtsBtn === btn && window.VoiceTts.isSpeaking()) {
+    window.VoiceTts.cancel();
+    btn.textContent = "🔊";
+    btn.title = "Lire la note à haute voix";
+    _kta_currentTtsBtn = null;
+    return;
+  }
+
+  // Sinon : on cancel l'éventuelle lecture en cours sur un autre bouton,
+  // on lance la nouvelle lecture, on met à jour le UI feedback.
+  if (_kta_currentTtsBtn && _kta_currentTtsBtn !== btn) {
+    _kta_currentTtsBtn.textContent = "🔊";
+    _kta_currentTtsBtn.title = "Lire la note à haute voix";
+  }
+  _kta_currentTtsBtn = btn;
+  btn.textContent = "⏹️";
+  btn.title = "Arrêter la lecture";
+  window.VoiceTts.speak(text);
+};
+
+// 🆕 v1.34.18 — Reset l'icône du bouton TTS courant quand la lecture termine
+// naturellement (onend) ou erreur. Sans ce reset, le bouton resterait sur ⏹️
+// à la fin de la note → confusion user.
+if (window.VoiceTts && typeof window.VoiceTts.onStateChange === "function") {
+  window.VoiceTts.onStateChange(function(state) {
+    if (state === "ended" || state === "error" || state === "canceled") {
+      if (_kta_currentTtsBtn) {
+        _kta_currentTtsBtn.textContent = "🔊";
+        _kta_currentTtsBtn.title = "Lire la note à haute voix";
+        _kta_currentTtsBtn = null;
+      }
+    }
+  });
+}
 
 // 🆕 v1.16.0 step 3 — Favori : toggle handler global appelé depuis le
 // bouton ⭐ inline dans la popup. Reçoit le snapshot complet (pas juste

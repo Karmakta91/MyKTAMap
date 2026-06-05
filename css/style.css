@@ -1519,6 +1519,34 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   line-height: 1.4;
 }
 
+/* 🆕 v1.34.18 (E2 TTS) — Bouton inline 🔊 dans .kta-popup-desc qui lit la note
+   à haute voix via Web Speech Synthesis. Affichage compact, marge à droite
+   pour séparer du texte, pas de bordure (style "icône cliquable"). État ⏹️
+   pendant la lecture, retour 🔊 à la fin. */
+.kta-popup-point .kta-popup-tts-btn {
+  display: inline-block;
+  margin: 0 6px 0 0;
+  padding: 0 4px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  vertical-align: baseline;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+.kta-popup-point .kta-popup-tts-btn:hover,
+.kta-popup-point .kta-popup-tts-btn:focus {
+  background: rgba(140, 180, 255, 0.20);
+  outline: none;
+}
+.kta-popup-point .kta-popup-tts-btn:active {
+  background: rgba(140, 180, 255, 0.35);
+}
+
 /* 🆕 v1.21.2 (KARMA "on rajoute juste aprés descriptions les coordonée GPS
    du point") : ligne coords GPS calculées via le calibrage. Discrète mais
    sélectionnable + bouton 📋 copier. Visible uniquement si le plan a un
