@@ -1279,48 +1279,20 @@
       async function extraireZip(zipFile) {
         if (typeof JSZip === "undefined") throw new Error("JSZip non chargé. Vérifiez lib/jszip.min.js");
         const zip = await JSZip.loadAsync(zipFile);
-        // 🆕 v1.35.0 (audit RAM) — garde une ref globale à l'instance JSZip
-        // pour permettre l'extraction LAZY des tuiles V2 à la demande dans
-        // tiling.js. Avant : on extrayait TOUS les blobs JPEG des tuiles
-        // upfront (150-600 MB de Blob pinnés en RAM sur iPhone pour gros
-        // plans) → kill iOS Safari ~200-500 MB → crash 2 min reporté
-        // par KARMA. Maintenant : les tuiles ne sont extraites qu'à la
-        // demande quand on en a besoin pour le rendu, via window._extractLazyAsset.
-        // JSZip garde les bytes compressés (~10-30 % plus petits que les
-        // Blobs décompressés, ET pas dupliqués dans des Blob/File wrappers).
-        window._lazyZipRef = zip;
         let planConfigFile = null;
         const assetFiles = [];
         for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
           const name = entry.name.split("/").pop();
           if (!name) continue;
-          // 🆕 v1.35.0 (audit RAM) — pour les tuiles V2 (`data/tiles/z*/...`),
-          // on ne fait PAS `entry.async("blob")` → pas de Blob créé, pas de
-          // File. On pousse juste un STUB léger contenant le path. La vraie
-          // extraction se fera via window._extractLazyAsset() dans tiling.js
-          // au moment où chaque tuile est rendue. Fix #1 de l'audit RAM
-          // v1.35.0 (cause #1 du crash 2 min iPhone PWA).
-          if (/^data\/tiles\/z-?\d+\//i.test(entry.name)) {
-            const stub = {
-              name: name,
-              _fullPath: entry.name,
-              _lazyTile: true,    // marqueur pour registerAsset
-              type: guessMime(name),
-              size: 0              // taille réelle inconnue tant que non extrait — OK
-            };
-            assetFiles.push(stub);
-            continue;
-          }
-          // Path non-tuile (plan-config, data layers, image overlays,
-          // collision image, base image) : extraction immédiate normale.
-          // Le nombre de ces assets est limité (~10-30) → pas de problème
-          // RAM même sur gros plan.
           const blob = await entry.async("blob");
           const file = new File([blob], name, { type: guessMime(name) });
           // 🧱 Tiling V2 (v149) : on annote le File avec son chemin complet
           // dans le ZIP via une propriété ad-hoc `_fullPath`. iOS Safari strip
           // les `/` du `File.name` (qui devient juste le basename), donc
-          // impossible de stocker `data/layers/...` dans `file.name`.
+          // impossible de stocker `data/tiles/z0/x0_y-1.jpg` dans `file.name`.
+          // Les tuiles partagent souvent le même basename (x0_y-1.jpg existe
+          // à z=0, z=-1, z=-2…) → seul le chemin complet permet de
+          // désambiguer.
           file._fullPath = entry.name;
           if (name === "plan-config.json") planConfigFile = file;
           else assetFiles.push(file);

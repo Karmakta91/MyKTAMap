@@ -749,38 +749,20 @@
       currentLevel: null
     };
 
-    // 🆕 v1.35.0 (audit RAM) — devient async pour gérer le nouveau modèle
-    // d'extraction lazy : si asset.file est null (cas tuiles V2 stub depuis
-    // extraireZip v1.35.0), on extrait à la demande via JSZip ref globale.
-    // Fast path conservé : si asset.url déjà caché, retour sync immédiat
-    // (la Promise se résout sans attendre, OK pour l'event loop).
-    async function _resolveTileUrl(z, col, k) {
+    function _resolveTileUrl(z, col, k) {
       const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
       const asset = window.RUNTIME_ASSETS && window.RUNTIME_ASSETS[path];
       if (!asset) return null;
-      if (asset.url) return asset.url;
-      let blob = null;
-      if (asset.file) {
-        blob = asset.file;
-      } else if (asset.zipPath && typeof window._extractLazyAsset === "function") {
-        // 🆕 v1.35.0 — extraction à la demande via JSZip pour tuile V2 lazy
-        blob = await window._extractLazyAsset(asset.zipPath);
-        if (!blob) return null;
-      } else {
-        return null;
+      if (!asset.url && asset.file) {
+        try {
+          asset.url = URL.createObjectURL(asset.file);
+          state.blobUrls.push(asset.url);
+        } catch(e) { return null; }
       }
-      try {
-        asset.url = URL.createObjectURL(blob);
-        state.blobUrls.push(asset.url);
-      } catch(e) { return null; }
-      return asset.url;
+      return asset.url || null;
     }
 
-    // 🆕 v1.35.0 (audit RAM) — devient async pour permettre l'extraction
-    // lazy via JSZip pour les tuiles V2 non encore extraites. Pattern
-    // identique à tiling.js _renderNiveau : Promise.all parallèle sur les
-    // tuiles visibles + guard sur changement de niveau pendant l'await.
-    async function _refresh() {
+    function _refresh() {
       if (!map._loaded) return;  // pas encore initialisé
       const mapZoom = map.getZoom();
       const z = Math.max(minNative, Math.min(maxNative, Math.round(mapZoom)));
@@ -808,7 +790,6 @@
       // Track quelles tuiles sont visibles à ce niveau pour suppression
       // des overlays out-of-viewport.
       const visibleKeys = new Set();
-      const tilesToLoad = [];
 
       for (let k = 1; k <= rows; k++) {
         for (let col = 0; col < cols; col++) {
@@ -822,34 +803,22 @@
           const key = "z" + z + "_x" + col + "_y" + (-k);
           visibleKeys.add(key);
           if (state.overlays.has(key)) continue;  // déjà chargée
-          tilesToLoad.push({ z: z, col: col, k: k, key: key, latMin, latMax, lngMin, lngMax });
+
+          const url = _resolveTileUrl(z, col, k);
+          if (!url) continue;  // tuile manquante (edge / erreur génération)
+
+          try {
+            const overlay = L.imageOverlay(url, [[latMin, lngMin], [latMax, lngMax]], {
+              interactive: false,
+              pane: "tilePane"  // SOUS les overlays vectoriels (roads/zones)
+            });
+            overlay.addTo(map);
+            state.overlays.set(key, overlay);
+          } catch(e) {
+            console.warn("[Emergency] minimap V2 tile skip :", e);
+          }
         }
       }
-
-      // 🆕 v1.35.0 — résolution parallèle des URLs (Promise.all)
-      const loaded = await Promise.all(tilesToLoad.map(async function(t) {
-        const url = await _resolveTileUrl(t.z, t.col, t.k);
-        return Object.assign({}, t, { url: url });
-      }));
-
-      // 🆕 v1.35.0 — guard : si pendant l'await on a changé de niveau,
-      // on n'ajoute pas les overlays obsolètes.
-      if (state.currentLevel !== z) return;
-
-      loaded.forEach(function(t) {
-        if (!t.url) return;  // tuile manquante
-        if (state.overlays.has(t.key)) return;  // déjà chargée entre-temps
-        try {
-          const overlay = L.imageOverlay(t.url, [[t.latMin, t.lngMin], [t.latMax, t.lngMax]], {
-            interactive: false,
-            pane: "tilePane"  // SOUS les overlays vectoriels (roads/zones)
-          });
-          overlay.addTo(map);
-          state.overlays.set(t.key, overlay);
-        } catch(e) {
-          console.warn("[Emergency] minimap V2 tile skip :", e);
-        }
-      });
 
       // Supprime les overlays hors viewport (économise RAM en suivant le tracker)
       state.overlays.forEach(function(o, key) {
