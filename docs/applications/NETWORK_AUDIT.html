@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.21</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.22</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.22 (Mode Histoire — Fix CSP iframe blob + bouton "Ouvrir dans un onglet")</strong> : KARMA test v1.34.20/21 sur devmap → violation CSP : <code>Framing 'blob:...' violates default-src 'self'</code>. Cause : header CSP nginx n'avait pas <code>frame-src</code> → fallback sur <code>default-src 'self'</code> qui bloque blob: en iframe. <strong>Fix nginx</strong> : ajout <code>frame-src 'self' blob:;</code> dans <code>docs/nginx-csp-config.conf</code>. <strong>Fix code</strong> : bouton "↗️ Ouvrir dans un onglet" en sticky sur wrap PDF (fallback si nginx pas redéployée + UX bonus plein écran). <strong>Impact réseau</strong> : ZÉRO — PDF reste 100% local. <strong>Sécurité</strong> : <code>frame-src 'self' blob:</code> restrictif, <code>frame-ancestors 'none'</code> reste intact.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — fix CSP cohérent.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.21 (Mode Histoire — finitions UX bouton + theme clair)</strong> : 2 retours KARMA. (1) Bouton 📖 déplacé à GAUCHE de la batterie. (2) Theme clair fixé pour Mode Histoire : overrides <code>body.kta-theme-light .kta-histoire-*</code> (~50 lignes CSS). <strong>Impact réseau</strong> : ZÉRO — finitions UI client-side uniquement.

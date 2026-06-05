@@ -408,8 +408,9 @@
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || "") ||
                   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
+    const safeName = String(name || "histoire.pdf").replace(/"/g, "&quot;");
+
     if (isIOS) {
-      const safeName = String(name || "histoire.pdf").replace(/"/g, "&quot;");
       wrap.insertAdjacentHTML("beforeend",
         '<div class="kta-histoire-pdf-fallback">' +
           '<p style="margin-bottom:12px;">📱 Sur iOS, le PDF s\'ouvre dans l\'app PDF de ton appareil.</p>' +
@@ -419,6 +420,21 @@
         '</div>'
       );
     } else {
+      // 🆕 v1.34.22 — En plus de l'iframe, on ajoute un petit bouton "Ouvrir"
+      // en sticky en haut du wrap. (1) Si l'iframe est bloquée par CSP
+      // (frame-src absent côté serveur), le user a au moins le bouton pour
+      // ouvrir le PDF dans un nouvel onglet. (2) Même quand l'iframe marche,
+      // certains users préfèrent ouvrir le PDF plein écran dans un onglet
+      // dédié (zoom natif, copie texte, etc.).
+      wrap.insertAdjacentHTML("beforeend",
+        '<div class="kta-histoire-pdf-actions">' +
+          '<a class="kta-btn kta-btn-ghost kta-histoire-pdf-action-open" ' +
+             'href="' + url + '" target="_blank" rel="noopener noreferrer" ' +
+             'title="Ouvrir le PDF dans un nouvel onglet (plein écran)">' +
+            '↗️ Ouvrir dans un onglet' +
+          '</a>' +
+        '</div>'
+      );
       const iframe = document.createElement("iframe");
       iframe.className = "kta-histoire-pdf-iframe";
       iframe.src = url;
