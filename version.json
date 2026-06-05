@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.5",
+  "version": "v1.34.6",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.5 — Bug remonté en prod : sur certains plans, cocher un calque d'image dans la modale Filtres ne fonctionnait pas (il restait décoché à la réouverture). Cause : mismatch d'identifiant entre le rendu de la case à cocher et le registre interne des couches si le plan-config n'avait pas le champ `id` (fallback automatique sur `label`). Fix appliqué."
+    "🩹 v1.34.6 — Le bouton « Tout afficher » de la modale Filtres remet désormais aussi les calques d'image et de données. Petits messages de debug temporaires en console pour finaliser un correctif sur l'affichage des cases à cocher des calques d'image (en cours d'investigation)."
   ]
 }

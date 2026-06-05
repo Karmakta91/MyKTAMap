@@ -407,12 +407,29 @@
       // Fix : appliquer le MÊME fallback ici (lc.id || lc.label) pour que
       // l'id rendu matche celui pushed par map.js.
       const layerId = lc.id || lc.label;
-      const visible = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
-                      ? (function() {
-                          const entry = window._ktaImageOverlays.find(function(e) { return e.id === layerId; });
-                          return entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
-                        })()
-                      : (lc.visible !== false);
+      const entry   = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
+                       ? window._ktaImageOverlays.find(function(e) { return e.id === layerId; })
+                       : null;
+      const onMap   = entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
+      const visible = (window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays))
+                       ? onMap
+                       : (lc.visible !== false);
+      // 🐛 v1.34.6-debug — logs ciblés pour comprendre pourquoi le checkbox
+      // ne reflète pas l'état de la couche / pourquoi cocher ne fait rien.
+      // À retirer après diagnostic.
+      try {
+        console.log("[FilterPanel v1.34.6-debug] render imageLayer", {
+          idx,
+          lc_id: lc.id, lc_label: lc.label, lc_visible: lc.visible,
+          layerId,
+          registry_ids: (window._ktaImageOverlays || []).map(function(e) { return e.id; }),
+          entry_found: !!entry,
+          entry_has_overlay: !!(entry && entry.overlay),
+          map_ready: !!window.map,
+          hasLayer: !!onMap,
+          will_render_checked: !!visible
+        });
+      } catch(e) {}
       const label = lc.label || lc.id || ("Calque " + idx);
       html += '<label class="kta-fp-row-cb">' +
                 '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
@@ -543,11 +560,37 @@
     overlay.querySelectorAll('[data-img-layer]').forEach(function(cb) {
       cb.addEventListener("change", function() {
         const id = cb.getAttribute("data-img-layer");
-        if (!Array.isArray(window._ktaImageOverlays) || !window.map) return;
+        // 🐛 v1.34.6-debug — log avant toute condition pour confirmer que
+        // l'event change fire bien sur les checkboxes imageLayer.
+        try {
+          console.log("[FilterPanel v1.34.6-debug] change imageLayer", {
+            id,
+            cb_checked: cb.checked,
+            registry_present: Array.isArray(window._ktaImageOverlays),
+            registry_len: (window._ktaImageOverlays || []).length,
+            registry_ids: (window._ktaImageOverlays || []).map(function(e) { return e.id; }),
+            map_ready: !!window.map
+          });
+        } catch(e) {}
+        if (!Array.isArray(window._ktaImageOverlays) || !window.map) {
+          try { console.warn("[FilterPanel v1.34.6-debug] EARLY RETURN — pas de registry ou map"); } catch(e) {}
+          return;
+        }
         const entry = window._ktaImageOverlays.find(function(e) { return e.id === id; });
-        if (!entry || !entry.overlay) return;
-        if (cb.checked) { try { window.map.addLayer(entry.overlay); } catch(e) {} }
-        else            { try { window.map.removeLayer(entry.overlay); } catch(e) {} }
+        if (!entry || !entry.overlay) {
+          try { console.warn("[FilterPanel v1.34.6-debug] EARLY RETURN — entry/overlay introuvable", { id, entry: !!entry }); } catch(e) {}
+          return;
+        }
+        try {
+          console.log("[FilterPanel v1.34.6-debug] toggling imageLayer", {
+            id,
+            checked: cb.checked,
+            hasLayerBefore: window.map.hasLayer(entry.overlay)
+          });
+        } catch(e) {}
+        if (cb.checked) { try { window.map.addLayer(entry.overlay); } catch(e) { try { console.error("[FilterPanel] addLayer threw", e); } catch(_) {} } }
+        else            { try { window.map.removeLayer(entry.overlay); } catch(e) { try { console.error("[FilterPanel] removeLayer threw", e); } catch(_) {} } }
+        try { console.log("[FilterPanel v1.34.6-debug] toggled — hasLayerAfter:", window.map.hasLayer(entry.overlay)); } catch(e) {}
       });
     });
 
@@ -654,6 +697,18 @@
         _notify();
         // Recoche toutes les checkboxes runtime
         overlay.querySelectorAll('[data-set][data-type]').forEach(function(cb) { cb.checked = true; });
+        // 🐛 v1.34.6 — Fix bug confirmé : "Tout afficher" ne touchait PAS les
+        // image layers ni les data layers. L'utilisateur attendait un reset
+        // complet (toutes les couches re-visibles) — uniquement les chips
+        // tags/types étaient remises à zéro. Maintenant on dispatch un event
+        // `change` synthétique sur chaque checkbox imageLayer/dataLayer pour
+        // déclencher le handler existant (qui appelle map.addLayer).
+        overlay.querySelectorAll('[data-img-layer]').forEach(function(cb) {
+          if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+        });
+        overlay.querySelectorAll('[data-data-layer]').forEach(function(cb) {
+          if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event("change", { bubbles: true })); }
+        });
         _refreshChipsState(overlay);
         _updateStatus();
       });
