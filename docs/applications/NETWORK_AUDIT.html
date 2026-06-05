@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.20</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.21</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.21 (Mode Histoire — finitions UX bouton + theme clair)</strong> : 2 retours KARMA. (1) Bouton 📖 déplacé à GAUCHE de la batterie. (2) Theme clair fixé pour Mode Histoire : overrides <code>body.kta-theme-light .kta-histoire-*</code> (~50 lignes CSS). <strong>Impact réseau</strong> : ZÉRO — finitions UI client-side uniquement.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.20 (Mode Histoire — Import PDF session si plan sans histoirePdf)</strong> : complète v1.34.19. Si plan n'a pas <code>histoirePdf</code> embarqué, file picker pour importer un PDF user, stocké en IDB <code>myktamap_histoire_pdfs</code> per-plan. URL revoke proprement (Pack RAM Phase 4 lesson). <strong>Impact réseau</strong> : ZÉRO. File picker = lecture locale, aucun fetch externe. PDF reste 100% local en IDB.

@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.20",
+  "version": "v1.34.21",
   "released": "2026-06-05",
   "notes": [
-    "📖 v1.34.20 — Mode Histoire évolue : si un plan n'a pas de PDF d'histoire intégré par son auteur, tu peux désormais en importer un toi-même ! Un bouton « 📥 Importer un PDF » apparaît dans l'onglet 📚 Histoire — choisis un PDF depuis ton appareil et il est sauvegardé localement pour ce plan (1 PDF par plan, remplaçable). Boutons 🔄 Remplacer et 🗑️ Retirer pour le gérer. Le PDF survit aux rechargements de l'app et n'est jamais envoyé sur internet — stocké uniquement dans le stockage local de ton navigateur."
+    "🎨 v1.34.21 — Petites finitions Mode Histoire : (1) l'icône 📖 est désormais à GAUCHE de la batterie dans la barre du haut, plus visible. (2) Le thème clair affiche correctement les onglets « Note libre / Histoire » et le placeholder « Aucun PDF » de l'onglet Histoire (avant : texte/fonds dans des couleurs incohérentes avec le thème clair)."
   ]
 }

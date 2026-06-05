@@ -185,15 +185,16 @@
       // compteurs de session. Masqué par défaut (display:none) jusqu'à ce
       // que BatteryGuard confirme que l'API est dispo (cf 8:a). La couleur
       // dynamique est appliquée via inline style depuis _refreshBatteryUi.
-      '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
-        '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
-      '</span>' +
-      // 🆕 v1.34.19 — Bouton 📖 Mode Histoire à côté de la batterie. Click
-      // ouvre la modale 2 onglets (📝 Note libre + 📚 PDF embarqué dans le
-      // plan). Toujours visible (pas de gating sur API support comme la
-      // batterie). Cf js/modeHistoire.js.
+      // 🆕 v1.34.19 (positionné v1.34.21 — à GAUCHE de la batterie selon
+      // demande KARMA) — Bouton 📖 Mode Histoire. Click ouvre la modale
+      // 2 onglets (📝 Note libre + 📚 PDF embarqué/session). Toujours
+      // visible (pas de gating sur API support comme la batterie).
+      // Cf js/modeHistoire.js.
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
+      '</span>' +
+      '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
+        '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
       '</span>';
 
     document.body.appendChild(header);

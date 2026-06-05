@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.20** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.21** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.21 (Mode Histoire — finitions UX bouton + theme clair)** : 2 retours KARMA tests v1.34.19/20. (1) Bouton 📖 déplacé à GAUCHE de la batterie dans header refonte (modif `js/refonteInterface.js` — inversion ordre d'insertion HTML). (2) Theme clair fixé pour Mode Histoire : ajout overrides `body.kta-theme-light .kta-histoire-*` dans `css/style.css` (~50 lignes) — tabs, textarea, pdf-wrap, placeholders, toolbar. Réutilise variables `--kta-light-*` existantes. **Impact réseau** : ZÉRO — modifs purement CSS + un déplacement HTML local. Aucun fetch externe, aucun changement de comportement réseau. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — finitions UI purement client-side.
 
 > **v1.34.20 (Mode Histoire — Import PDF de session si plan sans histoirePdf)** : complète v1.34.19. Si plan n'a pas `histoirePdf` embarqué, l'user peut importer son propre PDF via file picker (`<input type="file" accept="application/pdf">`), stocké en IDB `myktamap_histoire_pdfs` per-plan. Détection MIME (`application/pdf`) + fallback extension `.pdf`. URL.createObjectURL revoke proprement au close modale + au remplacement/suppression (Pack RAM Phase 4 lesson). **Impact réseau** : ZÉRO. Le file picker lit le fichier directement depuis le système de fichiers de l'user (= choix explicite click bouton import), aucune permission réseau, aucun fetch externe. Le PDF reste 100% local en IDB. Pas de nouveau domaine, pas de nouvelle requête. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — feature 100% client-side, alignée avec la philosophie offline community.
 

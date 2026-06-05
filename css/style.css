@@ -12182,6 +12182,63 @@ body.kta-theme-light .kta-readme-modal-corps code {
 body.kta-theme-light .kta-readme-modal-corps strong {
   color: var(--kta-light-text);
 }
+
+/* === v1.34.21 — Mode Histoire en theme clair === */
+/* Tabs : la barre en haut "Note libre / Histoire" */
+body.kta-theme-light .kta-histoire-tabs {
+  background: var(--kta-light-bg-deep);
+  border-bottom-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-histoire-tab {
+  color: var(--kta-light-text-soft, #555);
+}
+body.kta-theme-light .kta-histoire-tab:hover {
+  color: var(--kta-light-text);
+  background: rgba(244, 197, 66, 0.12);
+}
+body.kta-theme-light .kta-histoire-tab-active {
+  color: #8b3a00;  /* accent jaune-charte rendu sur fond clair */
+  background: var(--kta-light-bg-elevated);
+  border-color: var(--kta-light-border);
+  border-bottom-color: var(--kta-light-bg-elevated);
+}
+/* Textarea note libre */
+body.kta-theme-light .kta-histoire-textarea {
+  background: var(--kta-light-bg-deep);
+  border-color: var(--kta-light-border);
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-histoire-textarea:focus {
+  border-color: #d97706;  /* accent jaune-orange focus */
+}
+body.kta-theme-light .kta-histoire-note-status {
+  color: var(--kta-light-text-soft, #777);
+}
+/* PDF wrap + placeholders */
+body.kta-theme-light .kta-histoire-pdf-wrap {
+  background: var(--kta-light-bg-deep);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-histoire-pdf-empty,
+body.kta-theme-light .kta-histoire-pdf-fallback {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-histoire-pdf-empty p,
+body.kta-theme-light .kta-histoire-pdf-fallback p {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-histoire-pdf-empty p code {
+  background: rgba(0,0,0,0.06);
+  color: #8b3a00;
+}
+/* Toolbar Importer/Remplacer/Retirer */
+body.kta-theme-light .kta-histoire-pdf-toolbar {
+  background: rgba(244, 197, 66, 0.08);
+  border-color: var(--kta-light-border);
+}
+body.kta-theme-light .kta-histoire-pdf-meta {
+  color: var(--kta-light-text);
+}
 body.kta-theme-light .kta-panneau-close {
   background: rgba(0,0,0,0.05);
   color: var(--kta-light-text);
