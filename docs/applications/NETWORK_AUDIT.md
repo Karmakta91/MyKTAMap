@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.22** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.23** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.23 (Mode Histoire — Fix theme clair sélecteur CSS dual body/html)** : KARMA screenshot v1.34.22 montre que les overrides theme clair v1.34.21 ne s'appliquent pas aux éléments INSIDE la modale Mode Histoire. Cause : modale appendée à `document.documentElement` (= `<html>`) → sibling de body, pas descendant. Mes overrides `body.kta-theme-light .X` ne matchent que descendants de body. Fix : double sélecteur `body.kta-theme-light .X, html.kta-theme-light .X` (pattern identique à `sessionExporter.js`). **Impact réseau** : ZÉRO — pure correction CSS. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix cosmétique.
 
 > **v1.34.22 (Mode Histoire — Fix CSP iframe blob + bouton "Ouvrir dans un onglet")** : KARMA test v1.34.20/21 a remonté une violation CSP : `Framing 'blob:...' violates default-src 'self'`. Cause : le header CSP nginx n'avait pas `frame-src` défini → fallback sur `default-src 'self'` qui bloque les blob: URLs en iframe. **Fix nginx** : `docs/nginx-csp-config.conf` ligne 96 — ajout `frame-src 'self' blob:;` dans le header `Content-Security-Policy`. Cohérent avec les autres directives blob: déjà autorisées (img-src, connect-src, worker-src). `frame-ancestors 'none'` (anti-clickjacking) reste intact — c'est une directive séparée qui régit qui peut embarquer NOTRE page dans une frame, pas ce qu'on embarque nous. **Fix code** : ajout bouton "↗️ Ouvrir dans un onglet" en sticky sur le wrap PDF (toujours visible). Sert de fallback si la nginx config pas redéployée ET de UX bonus (plein écran natif, copie texte). **Impact réseau** : ZÉRO. Le PDF reste 100% local (embarqué via RUNTIME_ASSETS ou session IDB). Le bouton "Ouvrir dans un onglet" utilise target="_blank" qui ouvre un nouvel onglet sur la même origine (devmap.is-underground.fr) avec la même blob: URL — aucun fetch externe. **Sécurité CSP renforcée** : `frame-src 'self' blob:;` est restrictif — autorise UNIQUEMENT les frames de notre origine et les blob: créées par notre code. Pas de risque XSS via iframe distante. **Action KARMA** : redéployer `nginx-csp-config.conf` sur serveur (devmap + prod) + reload nginx. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix CSP cohérent avec la philosophie de l'app + UX bonus.
 

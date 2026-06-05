@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.22",
+  "version": "v1.34.23",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.22 — Mode Histoire : (1) bouton « ↗️ Ouvrir dans un onglet » ajouté en haut à droite du viewer PDF — utile pour zoomer en plein écran, copier du texte, ou si le PDF refuse de s'afficher dans la modale (cas de policy sécurité serveur). (2) Si tu héberges l'app toi-même, mets à jour ta config nginx (voir docs/nginx-csp-config.conf) pour que l'iframe PDF fonctionne dans la modale — sinon le bouton « Ouvrir dans un onglet » reste ton secours."
+    "🎨 v1.34.23 — Fix theme clair Mode Histoire : la barre des onglets, le wrap PDF et le placeholder « Aucun PDF » s'affichent désormais correctement en thème clair (avant : ils restaient en couleurs sombres à cause d'un sélecteur CSS qui ne ciblait pas le bon élément racine de la modale). Cosmétique uniquement, aucun impact fonctionnel."
   ]
 }
