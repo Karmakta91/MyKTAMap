@@ -115,27 +115,6 @@ Your data (list of maps, sessions, preferences) is **linked to the domain** (web
 
 ---
 
-<!-- v1.34.16+ : sprint anti-crash iPhone what's new section -->
-## 🆕 What's new (sprint v1.34.x — June 2026)
-
-This sprint focuses on **iPhone PWA stability** (large tiled maps in caves) and fixes a few small annoyances. Nothing new to learn on your side — it's all silent under the hood.
-
-- **🍎 Stronger iPhone stability** — crashes after a long session on a large tiled map are heavily reduced. The app now actively releases the image data of tiles you no longer look at, drops POI photos when you switch plans, and properly cleans up its image layers on exit. If you used the "close/reopen the PWA every 20 min" trick to avoid crashes, you can stop.
-- **🚀 Smoother boot on large maps** — when loading a tiled map, only the tiles needed for the current view are extracted from the archive (the others stay compressed in standby). The splash leaves quicker and RAM holds up better, especially on iPhone.
-- **🗂️ Image layers filter fix** — bug fixed: if you unchecked an image layer (legend, collisions, etc.) then switched plans or reloaded, the layer used to ghost back in. Your choice is now properly remembered. The **🔄 Show all** button in the Filters modal also correctly re-checks image layers, not just data layers.
-- **🔄 More reliable soft update** — the « Force update → app reloads itself » flow now works consistently (it used to occasionally stall halfway through and force you to refresh by hand). The new version activates automatically within 5 seconds.
-- **🐛 Cleaner console errors** — a few stray error messages (Chrome extensions, fonts) that showed up for no good reason in DevTools are now silent. No functional change, just easier to read if you open the DevTools.
-- **🔊 Voice reading of notes (NEW v1.34.18)** — a **🔊** button now appears next to each note in POI popups. One tap and the app reads the note aloud using your device's native voice (iPhone, Android, desktop). Handy underground when your hands/eyes are busy (helmet, climbing). Tap 🔊 or ⏹️ again to stop. Language follows your browser. **100% offline** — no permission asked, no data sent to Google/Apple, voice synthesis uses voices already installed on your device. Companion to the 🎤 "Go to $POI" voice command from v1.34.0 (audio in + audio out = full hands-free / eyes-free loop).
-<!-- v1.34.19+ : Story Mode (free note + PDF) -->
-- **📖 Story Mode (NEW v1.34.19+)** — a new **📖** button now appears in the top bar (right next to the battery 🔋, on its left). It opens a small two-tab modal, scoped to each plan:
-  - **📝 Free note** — a text notepad auto-saved as you type. Perfect for the site's story, anecdotes, your exploration to-do, things to double-check. One note per plan, kept across reloads and app restarts.
-  - **📚 Story** — if the plan author embedded a PDF (history, paper map, brochure, legend), it shows up directly in the tab. Otherwise you can **📥 import your own PDF** from your device (1 PDF per plan, replaceable / removable). An imported PDF survives reloads. On iPhone, an **↗️ Open in a tab** button kicks it into native fullscreen if the inline view isn't available.
-  - **100% offline** — the note and the PDF stay on your device. Nothing is sent to the internet.
-
-> ℹ️ Technical details about the « RAM Pack » operation: see the `README.md` changelog in the repo + `NETWORK_AUDIT.md`. On your side, nothing to do — reload the app, that's it.
-
----
-
 ## 🚀 Getting started
 
 ### 🗝️ Restricted access — Community code
@@ -499,7 +478,7 @@ Sur la planète, on est en équipe de souterrains.
 
 ---
 
-# 🐛 Detailed logs (debug mode)
+### 🐛 Detailed logs (debug mode)
 
 The **🐛 Detailed logs** button in the **⚙️ Configuration** modal of the loader enables verbose mode:
 - Additional console logs (tracker sensors, tiling steps)
@@ -613,6 +592,79 @@ The toggle is **persistent** (survives reloads and tab closures) until you unche
 > 3. The server's Content Security Policy asks the browser itself to refuse any unauthorized connection
 >
 > You never have to take the author's word for it: everything is verifiable.
+
+---
+
+## 📖 Story Mode — Free note + PDF for each plan
+
+The **📖** button in the top bar (left of the battery 🔋) opens a two-tab modal scoped to each plan. It's your **personal exploration notebook** for each underground site.
+
+### 📝 Free note (Markdown)
+
+A text notepad auto-saved as you type. Perfect for the site's history, anecdotes, your exploration to-do, things to double-check. **One note per plan**, kept across reloads and app restarts.
+
+The note supports **Markdown**:
+- By default you see the **rendered output** (colored headings, bold, lists, clickable links, blockquotes).
+- Tap **✏️ Edit** to modify the source ; a mini toolbar helps you insert formatting: **B**old · *I*talic · H1 · H2 · • List · 🔗 Link · `</>` code · ❝ quote.
+- Tap **👁 Preview** to switch back to the rendered view.
+- Any MD you type (`**bold**`, `# Title`, `- item`…) is interpreted on render.
+
+### 📚 Story (PDF)
+
+If the plan author embedded a PDF in the plan (historical narrative, scanned paper map, brochure, detailed legend), it shows up directly in this tab.
+
+Otherwise you can **📥 import your own PDF** from your device (1 PDF per plan, replaceable / removable). An imported PDF survives reloads. On iPhone, an **↗️ Open in a tab** button kicks it into native fullscreen if the inline view isn't available.
+
+### 📦 Bundled into session export
+
+When you 💾 Save session, both your Markdown free note AND your Story-mode PDF are automatically embedded in the `.mkmsession.zip` file. On re-import (on another device, or to share with a partner), everything is restored on the current plan. Backward-compatible (an old file without these fields still loads fine).
+
+In **anonymized** mode, note + PDF are intentionally omitted from the ZIP (may contain personal info).
+
+> 🔒 **100% offline** — the note and the PDF stay on your device. Nothing is sent to the internet.
+
+---
+
+## 🚨 Emergency Exit Mode — Find the nearest exit
+
+The **🚨** button in the top bar (between 📖 Story Mode and the battery 🔋) triggers route computation toward the **nearest exit** from your current position.
+
+**Use case**: you're underground, you want to get out **right now** with no thinking (injured, low battery, lamp failure, simply lost). You tap the button (or trigger it by voice), the app does the rest.
+
+### How it works
+
+1. Tap **🚨** in the top bar **OR** say "**exit**" / "**how do I get out**" via the 🎤 voice command.
+2. The app scans every POI on the plan with an open-exit tag:
+   - `cao` → **C**avage **A**utre **O**uvert (Open Cavage)
+   - `peo` → **P**uits à **E**chelon **O**uvert (Open Echelon Shaft)
+   - `eso` → **E**scalier de **S**ervice **O**uvert (Open Service Stairs)
+   - `entrée` → any POI marked as a known entrance
+3. For each candidate the app computes the **real navigable path** via the pathfinder (handles walls AND inter-level junctions).
+4. A compact modal shows:
+   - The nearest exit + its distance + its level if the plan is multi-floor
+   - A **🧭 Trace route** button (reuses the regular Route Mode engine)
+   - A foldable **See N other exits** sorted by distance
+
+### Closed variants intentionally ignored
+
+The codes `caf` / `pef` / `esf` (closed cavages, shafts, stairs) are **excluded** since they're not traversable in practice. If you mark a POI as closed, the app will never suggest going there.
+
+If an exit is displayed with a **≈** badge (tilde), it means the pathfinder **could not compute a path** and fell back to **straight-line distance**. Beware: that exit may actually be unreachable (walls, isolated floor).
+
+### Computation origin
+
+By default the app starts from your **current tracker position**. If the tracker isn't active (or you're free-exploring without tracking), an alternative modal offers a **click-on-the-map picker** to specify your starting point.
+
+### Multi-level native
+
+If you're on level 2 and the nearest exit is on level 0, the route **automatically crosses inter-level junctions** defined by the plan author. The result shows the target exit's level (badge "N0", "N1", "N2"…).
+
+### Haptic feedback
+
+- Exit found → short confirmation vibration (if enabled in Settings)
+- No exit identified → alert vibration + explanatory message reminding the expected tags
+
+> 🔒 **100% offline** — the computation runs on your device (POI filtering + pathfinder client-side). Zero network request.
 
 ---
 
@@ -735,8 +787,6 @@ The search is **accent and case insensitive** — typing "aeration" will also fi
 3. Type your search in the field — results display in real time
 4. Navigate with the **↑** / **↓** arrows or with the cursor
 5. Validate with **Enter** or by clicking
-## CHAPITRE 4 : SAVED INTERFACE TRACKER
-
 6. The map centers on the element:
    - **Point** → orange circle around + information popup
    - **Path** or **quarry face** → 4 sec dashed yellow polyline + info popup
@@ -971,6 +1021,75 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 **How it works:**
 
 - **Live update**: each toggle (checked/unchecked) applies the filter **immediately** on the map (200 ms anti-flicker debounce for dense maps).
+- **Accordion sections**: click on a section header to collapse/expand. All open by default.
+- **Quick buttons per section**: `👁️ All` and `🚫 None` to toggle all items at once.
+- **🔄 Show all button** (footer): resets all runtime filters (tags + types) to their neutral state (= everything visible). Does NOT touch the M-LVL toggles or the image/data layers — each kept independent.
+- **Status footer**: counts active filters at the bottom (`Active filters: tags, paths`) in yellow if at least one active, gray if everything neutral.
+
+**Per-map persistence**:
+
+The tags + types filters are **saved in the map's session** (`SessionPersist`). If you enable "hide shafts" on map A, then switch to map B, then come back to A → your filters are **automatically restored**. Each map has its own filters.
+
+**Bidirectional M-LVL synchronization**:
+
+The 🏗️ M-LVL section of the Filters modal **coexists** with the M-LVL pill and the classic Levels modal. Any action on one side is reflected on the other:
+
+- You tick `Lvl 1` in the Filters modal → the Levels modal and the map are updated.
+- You use the M-LVL pill to change active level → if the Filters modal is open, its 🏗️ section refreshes live.
+
+> 💡 **Typical use case**: you work on a large quarry with many tags. You are only interested in open shafts (tags `peo` and `cao`) to plan a ventilation tour. Open ≡ Filters → 🏷️ Tags section → click 🚫 None then re-check `peo` + `cao`. The map only displays these 2 categories. Automatically saved for this map.
+
+> 📌 **Compatibility**: sessions saved before this feature arrived are restored without active filter (= everything visible). The first interaction with the modal creates the state and persists it at the next auto-save (≤ 1.5 s).
+
+> ⚠️ **The in-progress drawing is always visible**: if you are drawing a route and you uncheck its type in the filter, **the current drawing stays visible** so you don't get lost. Other drawings of the same type are hidden as expected. Same for in-progress zones and structures.
+
+### ⚙️ Tracker settings
+
+Access the settings via the **⚙️ Settings** button in the side bar:
+
+- **Scale (px/m)**: pixel/real-meter ratio — **🎯** button next to it to calibrate
+- **Step length (m)**: estimated length of your stride (≈ 0.7 m)
+- **Detection threshold**: sensitivity of the step detector
+- **Cooldown (ms)**: minimum delay between two steps
+- **Initial X / Y position**: starting point of the icon at load
+
+> 🧭 **Assisted entry of the starting position** — no more need to type the coordinates by hand. Below the X / Y fields, two buttons:
+> - **🔍 Choose via a point**: searches for an existing point (by name, identifier or tag) and selects it as the starting position.
+> - **📍 Click on the map**: the settings window is hidden, you click the desired spot on the map, and the coordinates auto-fill (**Cancel** button to exit without choosing).
+>
+> Same input logic as georeferencing. Remember to **💾 Save** to keep the setting.
+
+### 🧭 Smart navigation (snap position onto the paths)
+
+Underground, satellite GPS doesn't work: the tracker estimates your position with **your steps + the compass**, which **drifts** over time. If your map contains a **network of paths**, **smart navigation** continuously snaps your estimated position **onto the nearest gallery** to compensate for this imprecision.
+
+**Activation**: ⚙️ Configuration → **"🧭 Smart navigation"** → check "Snap position onto paths". **Disabled by default**, reversible at any time.
+
+- When you **move forward**, the position follows the gallery; at **intersections**, the branch that matches your **heading** (walking direction) is chosen.
+- If you **leave the drawn galleries** (uncharted area), **automatic** return to classic mode, then re-snap as soon as you come back near a path.
+- **Without a network of paths** on the map, the option is **without effect**.
+- Fine tuning possible (snap tolerance) — ask if you want to adjust it.
+
+> 💡 The **manual recalibration (📍)** remains your best friend: as soon as you recognize a landmark, recalibrate — smart navigation then restarts from a clean base.
+
+> 🧭 **Your track is preserved**: it is **redrawn at app reload** (rebuilt from the session history), and the **📊 Statistics** recap shows your **distance traveled + number of steps**.
+
+### 🗺️ Calculate a route
+
+The **🗺️** button in the **🧭 Tracker** group opens the route modal. It calculates the **shortest path** between 2 or more points using the **existing roads** of the map (both those you have drawn and those present in the data layers).
+
+**To draw a route:**
+
+> 💡 **🧭 My position button** — adds your current tracker position as a waypoint (frozen snapshot). Handy if you are walking in the cata with the tracker active and you want to calculate a route starting from where you are. If you recalibrated your position at the start, it's this recalibrated position that is used.
+
+> 🚀 **Perf tip**: if your roads are already drawn solidly on the PNG of the map, you can **hide the roads layer** in the Leaflet layer control (top-right). You keep visual readability (the PNG shows the roads) AND you gain rendering perf (Leaflet doesn't draw the data polylines on top). The **🗺️ Route module continues to work**: it uses all the roads of the layer, whether displayed or not.
+
+1. Open the **🗺️ Calculate a route** modal
+2. Choose your **waypoints** in 2 ways (combinable):
+   - **📍 Map click mode**: the modal shrinks to a mini-banner "Click mode active", click on the map to place each waypoint (numbered cyan markers). **✓ Finish** button to return to the modal.
+   - **🔍 Search**: type the name, ID or tag of an existing point; click in the suggestion list to add it.
+3. You can **remove** a waypoint with the ✕ button on the right of each line.
+4. Click **🎯 Calculate the route**: a **neon cyan** path appears, the app shows you the **total distance in meters** and the number of segments crossed.
 5. **💾 Save** keeps the route in the session, **❌ Clear** removes it.
 
 **Distance label**: while a route is active, a small label **🗺️ Route: XX m · ⏱️ time · 🚶 speed mode** is displayed at the bottom left of the map, just above the classic distance measurement label.
@@ -979,7 +1098,7 @@ The **≡ three horizontal bars** button at the top right of the map opens the *
 
 | Mode | Speed | When to use |
 |---|---|---|
-| 🍺 **Drunk** | 2 km/h | Very slow, hesitant, rough terrain, end of evening |
+| 🤕 **Injured** | 2 km/h | Hampered progression, very slow, rough terrain |
 | 🐌 **Slow** | 3 km/h | Cautious, tight passages, exploration, gear hauling |
 | 🚶 **Normal** | 5 km/h | Default, standard cataphile walking pace |
 | 🏃 **Fast** | 7 km/h | Sustained pace, known route, fast return |
@@ -1097,11 +1216,11 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 - 📍 **XL Position**: map coordinates displayed in huge characters (readable from a meter away from the phone)
 - 🧭 **Giant compass**: heading (walking direction) with needle rotating in real time, updated live via the phone's orientation sensors
 - 🗺️ **Auto-focus minimap**: tight zoom (~20-50 m horizon) permanently centered on your position. Displays in the background the **roads / zones / structures of the map** — useful to spot paths, exits, dangers in the immediate vicinity
-- ☑️ **🗺️ Route toggle** **: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
-- 🔋 **Battery** **: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
+- ☑️ **🗺️ Route toggle**: checkbox in the header. **Unchecked** by default (anti-crash protection on very large maps). Check it to redisplay your active route in the minimap — rendered in **bright cyan + white halo** to remain visible on the tight zoomed background. Preference persisted between 2 openings of emergency mode.
+- 🔋 **Battery**: the 🔋 STATUS block now displays the battery level in real time when the API is available (Chromium only). Critical in panic mode — you immediately know how much time you have left before the phone shuts down.
 - 🌗 **Themes**: dark by default, light optional (depending on the outside environment — dim vs bright light)
 - 🔋 **Wake Lock**: the screen does not turn off automatically while the mode is active (no need to touch the phone every 30 sec to wake it up)
-- 📱 **Landscape** **: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
+- 📱 **Landscape**: the minimap reframes correctly when you turn the phone horizontally or flip the portrait — no more shifts on rotation transition.
 
 **When to use it?**
 - You panic at an intersection and need to re-orient yourself quickly
@@ -1114,6 +1233,60 @@ The red **🚨** button in the **🧭 Tracker** group opens a full-screen "panic
 **Exit**: press the ✕ at the top right to close the mode.
 
 > ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
+
+### 🚨 Rescue Mode
+
+Operational tool to **methodically assign rescue teams** to search areas on a cataphile map. Use case: someone is reported missing in a dense network, several teams arrive at the surface, the rescue command center must coordinate "who sweeps what" with a clear, printable briefing.
+
+> 💡 **Different from ⛑️ I'm lost**: ⛑️ is *you* who are lost, you are trying to find yourself. **🚨 Rescue Mode** is *someone else* who is lost, you organize the teams who will look for them.
+
+#### Access
+
+🚨 button in the **🧭 Tracker** group (emergency flyout), next to ⛑️ I'm lost and 🚨 Panic. Consistent red emergency background.
+
+#### Workflow
+
+1. **List of scenarios** — You see all scenarios saved for this map (max 10, FIFO).
+2. **➕ New scenario** — Lightweight stepper: Name + Context notes + Incident time.
+3. **Free-form editing** — 3 accordion sections:
+   - **📝 Context**: name, incident time, notes (e.g.: "Marc left around 2pm to check East gallery…")
+   - **🚨 Teams**: add as many teams as needed. For each team: name (auto Alpha/Bravo/Charlie...), color (fixed 10-color NATO palette), members (CSV), entry/exit (map click), zone (polygon OR path selection), suggested route (auto-calc via Pathfinder)
+   - **📤 Export**: printable PDF (1 page/team) + geolocated KMZ (cross-app)
+
+#### Interactive map modes
+
+| Button | Action |
+|---|---|
+| 📍 Entry | 1 map click = captures the team's entry position |
+| 🚪 Exit | 1 map click = captures the exit position |
+| ⬛ Define zone | Choice: (a) multi-click polygon + double-click to close, OR (b) path selection on click (re-click = remove, red highlight for selected) |
+| 🗺️ Calc. route | Automatically calculates the shortest path between entry and exit by following existing galleries (via Pathfinder), displays distance + estimated duration (methodical speed 0.5 m/s) |
+
+#### Map visualization
+
+**🗺️ View on map** button in the edit header. Displays for each team (dedicated color):
+- Polygon zone (fillOpacity 30%) OR colored halo on the selected paths
+- 📍 Entry marker (green border circle + team color fill)
+- 🚪 Exit marker (red border circle + team color fill)
+- Suggested route (dashed polyline team color)
+
+Auto-refresh on each modification. Re-click the button to hide.
+
+#### Multi-scenarios per map
+
+You can prepare **several hypotheses** simultaneously ("if Marc left via the East" vs "if via the South"). 🗐 Duplicate button to clone a scenario and test a variant without losing the original. Cap of 10 scenarios per map (beyond that, the oldest is automatically purged).
+
+#### Exports
+
+**📄 Printable PDF**: 1 A4 portrait page per team with color banner + Context/Members/Mission/Route sections + empty 60mm Observations box (to fill in with pen on field return). Filename `Rescue_<scenario_name>_<date>.pdf`.
+
+**🌍 Geolocated KMZ**: embeds the complete scenario in a KMZ annex file (`myktamap-extras.json > secoursPlan`). Prerequisite: map already KMZ-calibrated (see Export sessions modal 🌍 KMZ tab). MyKTAMap can re-import the KMZ and reload the scenario as-is. Filename `Rescue_<scenario_name>_<date>.kmz`.
+
+The sections below detail the advanced features: cross-app integrations (KML, Lost Mode, heatmap, etc.), real-time field exploitation (Live views by role, statuses, reports), and cross-device consolidation (import of teammate reports).
+
+> 💡 **Operator ↔ teams sharing** goes through the classic **`.mkmsec.report.json` report** (device-to-device file exchange).
+
+> 💡 **Field recommendation**: prepare one or two scenarios **BEFORE** an incident on your favorite maps to identify workflow frictions (where are the accesses, how to divide the network, which levels by team). During a real incident, you will be in emergency mode and the app must be ready to draw in 30 seconds.
 
 ---
 
@@ -1155,9 +1328,334 @@ A scenario can now **sequence several phases** with a debrief intercalated betwe
 
 > 💡 **"➕ Add a phase" button also available on-the-fly** from the Op Live footer (during execution), not just from the Edit view. Useful when the P1 debrief reveals the need for an unplanned P3.
 
+### 🚨 Rescue Mode — Cross-app integrations
+
+These integrations make Rescue Mode a complete operational coordination tool:
+
+#### 🌍 KML cross-app (Google Earth, OsmAnd, Avenza…)
+
+The exported KMZ now contains a root `🚨 Rescue` folder perfectly structured for third-party apps:
+
+```
+📁 Rescue — Marc search 26/05
+   ├── 📁 🚨 Alpha team
+   │   ├── 📁 📍 Points (5)           ← toggle ON/OFF in Google Earth
+   │   ├── 📁 ⬛ Search zone
+   │   └── 📁 🗺️ Route
+   └── 📁 🚨 Bravo team (idem)
+```
+
+- Background map as GroundOverlay 60% opacity (simultaneous reading of map + zones)
+- Auto-calc of missing routes BEFORE export (1 click = complete KMZ)
+- 43 NATO color styles (10 teams × 4 categories + 3 fixed entry/exit/loop styles)
+
+#### ⛑️→🚨 Lost Mode → Rescue workflow
+
+In the ⛑️ "I'm lost" emergency modal, a new button:
+
+```
+🚨 Launch a rescue plan (teams + zones)
+```
+
+On click, the app **automatically creates a Rescue Mode scenario** with:
+- Auto name `Search - 26/05/2026 14:32`
+- Incident time calculated from the elapsed time of Lost Mode
+- Last known position + uncertainty zone (radius + dashed circle on the map)
+- Auto notes with walking speed, radius, entered clues
+
+→ Natural workflow: you are searching for someone → you launch Lost Mode → you click 🚨 → you coordinate the teams.
+
+#### 🚫 Anti-overlap between teams
+
+When you calculate a team's route, the **waypoints + zones of the other teams** automatically become "avoid preferences" for Pathfinder. Result: the routes go around each other instead of crossing, no involuntary relay.
+
+If really no choice (shared unique passage), warn toast `⚠️ Route crosses N point(s) of other teams — check overlaps`.
+
+#### 🔥 Activity heatmap in Rescue Mode
+
+New orange "🔍 Analysis tools" block in the Context section with **🔥 Show activity heatmap** button. Visualizes the zones where the tracker has recorded passage → useful for identifying probable zones to search in priority.
+
+If the missing person was using MyKTAMap and exported their session with tracker timeline, the heatmap directly shows where they spent time.
+
+#### 🏗️ Auto-create 1 team per level (M-LVL)
+
+On multi-level maps, conditional button **🏗️ Auto: 1 team per level (N)** in the Teams section. Auto-creates N teams named `Level GF / +1 / -1...` with auto-cycled colors. You then place zones + waypoints on each level separately by changing the active level via the top-left M-LVL pill.
+
+#### ⭐ Favorites in quick access
+
+In the mini-modal "📍 Choose a point", your map favorites now appear as clickable chips (max 8) ABOVE the autocomplete search. 1 click = waypoint applied (skip search + map click).
+
+Especially useful for emergency scenarios where you want to quickly create several teams with the same 3-4 known access shafts.
+
+#### 🛑 Configurable cross-feature pause
+
+New section in the 🗺️ Route modal:
+
+```
+🛑 Pause between stops
+☑️ Include a pause between each intermediate stop
+   Duration per pause: [15] min
+```
+
+Default checked + 15 min (= preserved behavior). Modifiable → also applies to Rescue Mode duration calculations (cross-feature).
+
+> ⚠️ As with all digital tools underground: **keep a physical compass** and a paper map in your pocket. The phone can fail, the magnetometer can be distorted by local metal, the tracker can drift. The 🚨 is a quick info reading aid, not a substitute for preparation.
+
+### 🚨 Rescue Mode — Real-time field exploitation
+
+The scenario has **2 distinct states**:
+
+1. 📝 **CREATION** — Edit view. You prepare your teams, their routes, their zones, the suggested itineraries.
+2. 🚀 **EXECUTION** — Live real-time view. The team has LEFT, you follow their observations step by step, you comment live.
+
+You toggle from one state to another via the **"🚀 Launch the rescue plan"** button in the Edit view.
+
+#### 🚀 Launching the plan + role selection
+
+A new dynamic banner appears at the top of the Edit view:
+
+| Banner state | When | Buttons |
+|---|---|---|
+| Gray "Add at least one team…" | 0 team defined | None |
+| **Yellow CTA "🚀 Launch"** | At least 1 team | 🚀 Launch the rescue plan |
+| **Green "🟢 PLAN ACTIVE — <Role>"** | Plan launched in progress | ▶️ Resume Live view · 📤 Report · ⏹️ Stop |
+| **Blue "📦 PLAN ENDED"** | Plan stopped (history) | 📤 View historical report · 🚀 Relaunch |
+
+On click "🚀 Launch", **role selection modal** with 3 choices:
+
+```
+◉ 👤 Surface operator
+   You coordinate from the command post. You see all teams in
+   parallel, you can edit their observations in supervision.
+
+○ 🚨 Team on the field: [Alpha ▾]
+   You are part of an assigned team. You follow your route step
+   by step and comment live.
+
+○ 🚑 Free rescuer
+   You intervene without a pre-assigned team (occasional reinforcement, recon).
+   You take free notes with timestamps.
+```
+
+> 💡 You will be able to change role later without losing the observations.
+
+#### 🚨 Live view — TEAM MEMBER mode (step-by-step)
+
+For the rescuer on the field who follows their route:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚨 Alpha team · Step 3/5     ⏱️ 14h 23min            │
+├─────────────────────────────────────────────────────┤
+│  ✓ ━ ✓ ━ ↻ ━ ○ ━ ○                                  │ ← stepper
+│  clickable, status color per step                   │
+├─────────────────────────────────────────────────────┤
+│ 📍 STEP 3 — North ventilation shaft                 │
+│ Status: 🟢 NTR                                       │
+│                                                      │
+│ 📝 Observations at this step:                       │
+│ [central gallery nothing to report]                 │
+│                                                      │
+│ ⚡ Quick input:                                     │
+│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue]        │
+│ [🟠 Help requested] [🟣 U-turn] [🚨 Victim!]        │
+│                                                      │
+│ [📸 Photo (0/5)]  [🎯 Recenter map]                 │
+├─────────────────────────────────────────────────────┤
+│ [← Previous step]  [Next step →]                    │
+│ [⏸️ Pause] [📤 Report] [View edit] [⏹️ End]          │
+└─────────────────────────────────────────────────────┘
+```
+
+**8 clickable statuses** (colors engraved in the chart):
+
+| Emoji | Label | When to use |
+|---|---|---|
+| • | Pending | (default status before interaction) |
+| 🟢 | NTR | Nothing to report |
+| 🟡 | Suspect | Unusual traces / noises / smell |
+| ⬛ | Blocked | Impassable passage (collapse, water) |
+| 🔵 | Clue | Object / remains found |
+| 🟠 | Help requested | Material / human reinforcement requested |
+| 🟣 | Forced u-turn | Abandoned route, early return |
+| 🚨 | **Victim found** | **Absolute emergency** — triggers flashing red signal on the operator side |
+
+**Photos**: tap "📸 Photo (X/5)" → auto rear camera on mobile (`capture="environment"`) OR gallery. Max 5 photos per step, auto JPEG q85 compression max 1920px. Click a thumbnail → fullscreen viewer with swipe + zoom.
+
+**Auto-save**: observations saved on textarea blur AND on step change. No need for "Save" button.
+
+**Auto-status NTR**: moving to the next step without having set an explicit status → automatically marked "🟢 NTR" (assumes you did the step with nothing to report). Re-click status possible if needed.
+
+#### 👤 Live view — SURFACE OPERATOR mode (overview)
+
+For the command center coordinating several teams in parallel:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 👤 Surface operator · 3 teams  ⏱️ 02h 14min          │
+├─────────────────────────────────────────────────────┤
+│  ┌──────────────────┐  ┌──────────────────┐         │
+│  │ 🔴 Alpha    3/5  │  │ 🔵 Bravo    1/4  │         │
+│  │ ████████░░ 60%   │  │ ███░░░░░░░ 25%   │         │
+│  │ 🟢 NTR           │  │ 🟠 Help requested │         │
+│  │ « NTR central    │  │ « Water on floor,│         │
+│  │ gallery »        │  │ level rising »   │         │
+│  │ ⏱️ 14:23         │  │ ⏱️ 14:18         │         │
+│  │ [👁️ Details]     │  │ [👁️ Details]     │         │
+│  │ [🚨 Take over]   │  │ [🚨 Take over]   │         │
+│  └──────────────────┘  └──────────────────┘         │
+│  ┌──────────────────┐                               │
+│  │ 🟢 Charlie  ✓D   │ ← team Done (grayed)          │
+│  └──────────────────┘                               │
+├─────────────────────────────────────────────────────┤
+│ [⏸️ Pause] [🗺️ Global map] [📤 Global report]       │
+│ [View edit] [⏹️ End the plan]                        │
+└─────────────────────────────────────────────────────┘
+```
+
+**Special cards** with strong visual signals:
+
+- 🚨 **Victim found** → **FLASHING RED** card (1.2s animation, absolute emergency, you can't miss it)
+- 🟠 **Help requested** → orange + glow (reinforcement to send)
+- ✓ **Done** → grayed opacity 0.75 (all steps completed)
+
+**"👁️ Details" button** → read-only mini-modal with chronological list of the team's steps (ts + emoji status + obs).
+
+**"🚨 Take over" button** → switches to the Team Member view focused on this specific team. You become TEMPORARILY Alpha's team member to enter a detailed observation on their behalf (typical case: you are at the command post but you receive a radio call from Alpha who dictates their obs to you).
+
+**Easy return**: once in Team Member mode after "Take over", a **"👤 Back to Operator"** button appears in the footer. On click → return to the intact Operator overview (the `_previousRole` flags survive reload + plan switch).
+
+**"🗺️ View global map" button**: hides the modal + renders the map overlay with all the zones + waypoints + routes of the teams in NATO colors.
+
+#### 🚑 Live view — FREE RESCUER mode (loose notes)
+
+For the occasional reinforcement / reconnaissance without a pre-assigned team:
+
+```
+┌─────────────────────────────────────────────────────┐
+│ 🚑 Free rescuer · 12 notes  ⏱️ 01h 47min             │
+├─────────────────────────────────────────────────────┤
+│ 📝 Add a note                                        │
+│ [north gallery nothing to report]                   │
+│ ⚡ Associated status:                                │
+│ [🟢 NTR] [🟡 Suspect] [⬛ Blocked] [🔵 Clue]        │
+│ [🟠 Help] [🟣 U-turn] [🚨 Victim!]                  │
+├─────────────────────────────────────────────────────┤
+│ 12. 🟢 NTR · ⏱️ 16:42:18                       [✕]  │
+│     « East crossing, NTR, we continue »             │
+│                                                      │
+│ 11. 🟡 Suspect · ⏱️ 16:38:05                   [✕]  │
+│     « Sound of running water, source?? »            │
+│                                                      │
+│ ... (chronological DESC)                            │
+└─────────────────────────────────────────────────────┘
+```
+
+No stepper, no structured steps. Just a timestamped notes feed with status. Handy for missions where the route isn't planned in advance (reinforcement arriving mid-mission, reconnaissance team, etc.).
+
+#### 📤 Reports along the steps
+
+At any time during execution AND after the plan stops, you can generate a report via the **"📤 Report"** button present in:
+
+- The footer of each Live view (scope adapted to the current role)
+- The Edit view banner (if execution active OR ended)
+
+3 formats to choose from in the unified modal:
+
+| Format | Use case |
+|---|---|
+| 📄 **Printable A4 PDF** | Global briefing page 1 + steps text page per team + photos page in 2-col grid. Ideal for paper report / printing / archiving / paper handover to firefighters. |
+| 📦 **`.mkmsec.report.json`** | Autonomous structured data (photos in base64 if checked). Re-importable on the surface operator device (cross-device consolidation, see dedicated section). |
+| 📋 **Plain text** | Markdown-like copied to clipboard. For Discord / SMS / quick mail sharing. |
+
+**3 scopes depending on your role**:
+
+- 👤 **Operator mode** → "📤 Global report": ALL teams + their steps + photos
+- 🚨 **Team Member mode** → "📤 Report": HIS team only (individual route)
+- 🚑 **Free Rescuer mode** → "📤 Report": HIS chronological free notes
+
+**Compact preview** at the top of the modal: role title + step count + progress % + duration. **"📸 Include photos" checkbox** CHECKED by default (with dynamic hint counter). Toast feedback on each action.
+
+**Report generated on the fly**: reflects the CURRENT state of the scenario. Reusable as many times as needed. Ideal for:
+- Briefing during mission (intermediate snapshot to print for the relief)
+- Cross-device handover (JSON export → mail / USB stick → import on operator PC)
+- Post-mission final report (printable PDF + archiving)
+
+#### ⏱️ Global timer with fair pause
+
+The ⏱️ timer displayed at the top of each Live view is calculated from `startedAt` MINUS the cumulative pause time. You can pause with the **"⏸️ Pause"** button (the timer freezes) then resume with **"▶️ Resume"** — the pause duration is NOT counted.
+
+**Re-render 1×/second** without visual flash, without focus loss in the textarea observations during input. Allows keeping the real-time report accurate during long missions (h+).
+
+#### 🎬 Typical complete cycle
+
+```
+1. 📝 Scenario creation (Edit view)
+   ├─ Add Alpha/Bravo/Charlie teams (NATO colors)
+   ├─ For each team: route entry → steps → exit
+   ├─ Search zones (polygon OR selected paths)
+   ├─ Pathfinder auto-calc routes (cross-team avoidances)
+   └─ Export PDF / KMZ / .mkmsec.json for initial briefing
+
+2. 🚀 Launch (role selection modal)
+   └─ Switch to Live view according to chosen role
+
+3. 🚨 Execution (Live view)
+   ├─ Team Member mode: follows route step-by-step + observations + photos
+   ├─ Operator mode: cards overview + supervision + take over
+   └─ Free Rescuer mode: chronological loose notes
+
+4. 📤 Reports along the steps (n times)
+   ├─ Printable PDF for relief / paper handover
+   ├─ JSON for cross-device consolidation
+   └─ Clipboard text for Discord / quick mail
+
+5. ⏹️ Plan stop (banner "📦 PLAN ENDED")
+   ├─ Observations kept as history
+   ├─ "📤 View historical report" button reusable
+   └─ "🚀 Relaunch" button if re-mission
+```
+
+#### 📥 Cross-device consolidation
+
+On field return, each team member can **share their report** with the surface operator who **imports and merges** their observations in the supervision dashboard.
+
+**Typical workflow — operation with 3 teams**:
+
+1. **Operator side (surface, BEFORE incident)**:
+   - Prepares the scenario (Alpha / Bravo / Charlie teams + routes + zones)
+   - Launches the plan (🚀) → Surface Operator Live view
+   - Transmits the scenario to team members via classic `.mkmsec.json` export (mail / USB stick / AirDrop)
+
+2. **Each Team Member side (field)**:
+   - Imports the operator's `.mkmsec.json` (team ID consistency)
+   - Launches the plan → Team Live view → fills in obs + statuses + photos per step
+   - **On surface return**: generates their report via "📤 Report" in the Team Live footer → **`.mkmsec.report.json`** format → exports the file (local download)
+
+3. **Operator side (field return)**:
+   - Retrieves the 3 `.mkmsec.report.json` reports (one per team) via the channel of their choice (AirDrop, mail, USB stick, Discord)
+   - In the Operator Live view → **"📥 Import team member report"** button in the footer
+   - File picker → selects the file → preview modal showing: targeted team name, number of steps to merge, photos, and **detected conflicts** (steps on the op side already filled that will be merged)
+   - Confirms the import → the app does a **snapshot BEFORE** (emergency backup) then merges:
+     - Observations **concatenated with dated separator** (no loss)
+     - **Most severe status retained**
+     - Photos **imported with deduplication**
+   - Result modal with detailed stats (X steps merged, Y photos imported, Z possible warnings)
+   - Repeat for the 2 other teams
+
+4. **Post-merge visualization**:
+   - On each Op team card: blue "📥 imported" chip appears if at least one step received consolidation
+   - In the "Team details" modal (read-only): "📥 imported" chip on each step concerned + tooltip with import date + source app version
+
+**Import safety**: refuses if scope ≠ team member (global operator reports or free rescuer reports are not mergeable), if the source scenario is different, if the team is absent from the active scenario, or if no execution is in progress on the op side. **Different plan on the team member side** → warning (not error, we keep the text obs).
+
+**Undo**: a SessionBackups snapshot is automatically created **BEFORE** each import. In case of error, restore from **📊 Session details → Recent backups** (title: "Before team member report import <name>").
+
+> ⚠️ Important: **teams must be registered on the Operator side BEFORE the plan launch** (no silent creation on import). If you prepare your scenario with Alpha / Bravo / Charlie but a team member exports under a "Delta" name created locally, the import will be rejected — Delta should have been received in the initial scenario.
+
 ---
 
-## ⏪ Undo / Redo **
+## ⏪ Undo / Redo
 
 You can **undo** and **redo** your actions on the map, up to **50 actions back**.
 
@@ -1204,7 +1702,7 @@ Each action triggers a **discreet toast** at the bottom: `↩ Undone: Placement 
 
 ---
 
-## 🪫 Battery indicator **
+## 🪫 Battery indicator
 
 The app monitors in real time the phone's battery level (when the browser exposes this info) and displays a compact indicator in 3 places:
 
@@ -1242,7 +1740,7 @@ The app uses the standard browser **Battery Status API**. This API is **no longe
 
 ---
 
-## 📊 Session statistics **
+## 📊 Session statistics
 
 The **📋 Active session** modal (accessible from the new interface header, 📊 chip on mobile) now displays a statistics block at the top of the modal.
 
@@ -1270,7 +1768,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 
 ---
 
-## 📐 Distance measurement and ⬛ Area measurement **
+## 📐 Distance measurement and ⬛ Area measurement
 
 > All measurement buttons are in the **📐 Measurement** group of the side bar.
 
@@ -1280,7 +1778,7 @@ Handy for doing a session check-in with your partner at the exit, or for archivi
 2. Click on the map to place points
 3. The total distance is displayed at the bottom left, in meters (`📐 Distance: X m`)
 
-### ⬛ Area Mode **
+### ⬛ Area Mode
 
 1. In the **📐 Measurement** group, press the **📏/⬛** toggle to switch to area mode
 2. Click on the map to draw a **polygon** (at least 3 points)
@@ -1300,449 +1798,6 @@ Press **❌**. A window opens with two options:
 | Cancel | Closes the window without deleting anything |
 
 > You can remove multiple points one by one by successively clicking **❌ → ↩️ Last point**.
-
-> 💾 The mode (distance/area) and the points are persisted in the session save — on reload or session import, your ongoing measurement is restored identically.
-
----
-
-## ✏️ Add points
-
-> All editing buttons are in the **✏️ Editing** group of the side bar.
-
-1. Press **✏️** — add mode activates (green button)
-2. Click on the map at the desired location
-3. A window opens. Fill in:
-   - **Name** (required)
-   - **Type** : choose from existing tags, **— No tag —** (default icon), or **➕ Create a new tag…**
-   - **Description** (optional)
-4. Confirm with **✅ Add**
-
-### 🎨 Available icon types
-
-The application provides a default icon set, grouped by category:
-
-| Category | Available types |
-|---|---|
-| 🕳️ **Shafts** | Ventilation, Blocked, Filled, At ground level / Basin, Extraction |
-| 🪜 **Access** | Ladder shaft (open / closed), Service stairs (open / closed), Adit (open / closed) |
-| ⚠️ **Signage** | Room, Crawlway, Passage, Danger, Information, Electricity, Survey sketch, Vehicle |
-
-> 💡 The **Access** icons follow an intuitive color code: **green = open**, **red = closed**. Handy for spotting usable passages at a glance.
-
-### 🏷️ Create a new tag
-
-If the type you want does not exist yet, select **➕ Create a new tag…**. Enter a short name (letters, digits, underscore or dash only) — for example `fountain`, `arch` or `ruin_2`.
-
-The new tag is added to your session and will use the default icon. To customize its icon permanently, edit the map via **🏗️ Create / Edit map**.
-
-### 🗑️ Delete points
-
-Press **🗑️** (next to ✏️). A window opens with two options:
-
-| Option | Effect |
-|---|---|
-| **↩️ Last point** | Deletes the most recently added point |
-| **🗑️ All points** | Clears all manually added points (irreversible) |
-| Cancel | Closes the window without deleting anything |
-
-> You can remove multiple points one by one by successively clicking **🗑️ → ↩️ Last point**.
-
-> ⚠️ **All points** only deletes the points that **you** have added — the original map's points stay intact.
-
-### ✏️ Edit an existing point
-
-Click on a marker you have added → the popup displays the **✏️ Edit** button (blue). It opens the same window as for adding, **pre-filled** with the name, type, description and photos already attached (if applicable).
-
-You can change whatever you want then **💾 Save**. If you rename the point AND it has photos, the photos follow automatically (transparent internal migration).
-
-### 📸 Photos attached to points
-
-You can attach up to **5 photos per point** (anti-saturation limit for browser storage). 100% local — no photo is sent over the Internet.
-
-**When adding or editing** a point, the **📸 Photos (N/5)** section offers 2 buttons:
-
-| Button | Effect |
-|---|---|
-| **📷 Take photo** | Directly opens the camera (on mobile) to shoot a new photo |
-| **🖼️ From gallery** | Opens the file picker (mobile and PC), you can choose several photos at once |
-
-**Auto compression** : photos are compressed before storage (1920 px long side max, JPEG quality 85%). A raw 5-10 MB photo drops to ~200-500 KB. For 5 photos = ~2 MB per point.
-
-**Remove a photo** : click the red ✕ cross at the top right of the thumbnail → it appears grayed out with red hatching (marked for deletion). If you change your mind, click the green ↺ arrow to undo. Actual deletion only happens when you **💾 Save**.
-
-**If you cancel** the editing window instead of saving, **the photos you just added are deleted** (auto cleanup). Deletion markings are on the contrary **undone** — the photo remains.
-
-**Visualization** :
-
-1. In the **popup** of the marker (map click) : a row of 44×44 thumbnails appears, with the "📸 N photos" counter. Tap on a thumbnail → opens the **fullscreen viewer**.
-2. In the **fullscreen viewer** :
-   - **Mobile** : 2-finger pinch to zoom (1× to 4×), drag to move, horizontal swipe to go to the previous / next photo
-   - **PC** : mouse wheel to zoom, mouse drag to move, `← →` arrows or `◂ ▸` overlay buttons to navigate, `Esc` to close
-3. In the app: a **📸 N** counter appears in the top bar (alongside the other counters 📍 / 🛣 / ⬛ / 🏛️). Click on it → "📊 Session details" modal with breakdown by point.
-
-**Sharing / saving** : photos are **included** in:
-- 💾 Save session → 📦 Full / 🎨 Advanced / 🔄 Conversion tab → tick "📸 Include photos"
-- Re-import session ZIP → photos automatically restored
-- 📦 Map ZIP generator (Edit mode) → "📸 Include attached photos" option
-- When creating a new map via the generator, "📦 Import a datalayer ZIP in one click" button → you can retrieve points + photos exported from another map
-
-**Technical limits** :
-- Browser local storage (IndexedDB) — quota ~50-200 MB depending on the device. A warning toast notifies you if you approach the quota
-- On **iOS Safari standalone PWA**, the browser may purge the IDB in case of lack of space or uninstall — regularly export your maps + photos to secure them
-- In case of a full app reset (💥 Reset everything), **all photos are erased** (consistent with the full wipe)
-
----
-
-## 🛣️ Draw routes
-
-> All path buttons are in the **🛣️ Paths** group of the side bar.
-
-- **🟩 Main route** — bright green
-- **🟪 Secondary route** — purple
-- **🟨 Path** — yellow
-- **🪜 Inter-level junction** — dashed magenta (with white circles at the ends). **Appears only if the map is in multi-level mode** — used to connect two levels (staircase, steep slope, internal shaft). See the **🏗️ Multi-level mode** section below for details.
-
-To draw: press the corresponding button → click on the map to place points → press again to stop.
-
-### 📏 Total path distance
-
-The **📏 Total distance** button in the **🛣️ Paths** group opens a window that calculates the **sum of the lengths** of all your visible paths, with a filter by type.
-
-**How it works:**
-
-1. Press **📏** — the window opens with 3 boxes checked (Main, Secondary, Path)
-2. Uncheck the types you want to exclude from the calculation
-3. The **total in meters** updates instantly, and the included paths are **highlighted in magenta** on the map (bright halo to see them clearly)
-4. For each type, the window displays the **number of paths** and their **cumulative length**
-5. Two output options:
-   - **✓ Close (keep highlight)** — the window closes but the **magenta highlight stays displayed** on the map. You can explore the map with the segments still visible, and re-click **📏** to reopen the window (the previous filters are kept).
-   - **❌ Clear highlight** — removes the magenta halo from the map AND closes the window.
-
-> 💡 The calculation includes **all** visible routes: those you have drawn in the session AND those present in the activated **data layers**. If you hide a layer in the layer control, its routes automatically drop out of the calculation.
->
-> ℹ️ This measurement is **on-screen only** — it does not appear in the PNG image export legend.
-
-### 🧹 Clear a path
-
-Press **🧹**. A window opens with three options:
-
-| Option | Effect |
-|---|---|
-| **↩️ Last path point** | Undoes only the last clicked point on the ongoing path (ideal for correcting a misplaced point) |
-| **✂️ Last entire path** | Deletes the last complete path (useful if you want to redo a path without touching the previous ones) |
-| **🗑️ All paths** | Erases absolutely all paths (irreversible) |
-| Cancel | Closes the window without deleting anything |
-
-> Example use case: you draw a main route, you make a mistake on the last turn. Click **🧹 → ↩️ Last path point** to back up one point, then continue your path normally.
-
-> 💡 **Inter-level junctions (multi-level mode)** : 🪜 junctions are treated as normal paths by 🧹. **Last entire path** deletes the last junction if it is the most recent; **All paths** clears routes AND junctions; **Click selection** also works on a junction.
-
----
-
-## ⬛ Draw zones
-
-> All zone buttons are in the **⬛ Zones** group of the side bar.
-
-Lets you draw **closed surfaces** to annotate particular areas of the map: backfill, collapsed zones, bodies of water, or inaccessible zones that block route calculation.
-
-| Type | Icon | Color | Pathfinder effect |
-|---|---|---|---|
-| **Backfill** | ⬛ | Dark gray | None |
-| **Collapse** | 🟥 | Red | None |
-| **Water** | 🟦 | Blue | None |
-| **Inaccessible** | ⛔ | Dark red / black hatching | 🚫 **BLOCKS** — the route will never pass through this zone |
-
-### ✏️ How to draw a zone
-
-1. Press the icon of the desired type (⬛, 🟥, 🟦 or ⛔) — the mode activates
-2. Click on the map to place the points (at least 3)
-3. To close the zone, **two options** :
-   - **Re-click on the first point** (a circle appears on it as soon as 3 points are placed)
-   - **Press ✅** — closes the zone at the location of the last point
-4. The zone automatically fills with its color
-
-> During drawing, segments appear as a dashed line. Once closed, the zone becomes solid.
-
-### ⛔ "Inaccessible" zone — blocks the route
-
-Draw a zone of type **⛔ Inaccessible** on a part of the map you want to **forbid to the pathfinder** (recent collapse making the passage dangerous, deep water, unmarked passage, etc.).
-
-**Effect** : any calculated route that would have crossed this zone will now go through another path. If no other path exists, the calculation fails with a clear message.
-
-It is a **hard constraint** — never relaxed. If you want a **soft constraint** (avoid if possible, otherwise go through anyway with a message), use the **🚫 Avoidance preferences** in the route modal instead (see dedicated section below).
-
-**Multi-level** : the ⛔ zone only blocks segments at the **same level** (consistent with the level filter). An inaccessible zone at Level 0 does not affect the route at Level -1.
-
-**Independent of the layer toggle** : even if you uncheck the zones layer in the layer control, the zone remains taken into account by the pathfinder.
-
-### 🧱 Display order
-
-Zones overlay in this order, regardless of drawing order:
-
-1. **Water** (in the background)
-2. **Backfill** (above water)
-3. **Collapse** (above)
-4. **Inaccessible** (above everything — to clearly see blocking zones)
-
-This allows, for example, drawing a collapse on top of a backfill without it being masked.
-
-### 🧹 Clear a zone
-
-Press **🧹**. A window opens with these options:
-
-| Option | Effect |
-|---|---|
-| **↩️ Undo the last point** | On the current area, or on the last closed area |
-| **✂️ Last area (in progress OR closed)** | Deletes the area you are currently drawing if it exists, otherwise the last closed one |
-| **🎯 Select an area to delete** | Activates a mode where you click on an area on the map to delete it |
-| **🗑️ All areas** | Erases absolutely everything (irreversible) |
-
----
-
-## 🏛️ Structures (pillars, walls, quarry faces)
-
-Specific to **underground quarries**: structures let you map the load-bearing physical elements (support pillars, walls) and the progress of the working face (quarry faces). Independent from paths and areas — it's a 4th annotation layer.
-
-> All buttons are in the **🏛️ Structures** group of the sidebar.
-
-### 5 sub-types available
-
-| Type | Icon | Shape | Color | Typical use |
-|---|---|---|---|---|
-| 🟡 **1st mass pillar** | polygon | yellow | Load-bearing pillar of the upper level (1st mass limestone) |
-| 🟠 **2nd mass pillar** | polygon | orange | Pillar of the lower level (2nd mass limestone). In multi-level mode, auto-tagged at level -1 |
-| 🔵 **Wall** | polygon | blue | Dry stone wall, breeze block, masonry retaining wall |
-| 🟨 **1st mass quarry face** | polyline | yellow (line) | Upper level working face — this is a LINE, not a closed polygon |
-| 🟧 **2nd mass quarry face** | polyline | orange (line) | Lower level working face. In multi-level mode, auto-tagged at level -1 |
-
-### Drawing a structure
-
-1. Click the desired sub-type (🟡 / 🟠 / 🔵 / 🟧 / 🟨) — it becomes active (lit up)
-2. Click successively on the map to add the points
-3. **Pillars + Walls (polygons)**: minimum 3 points. To finish, re-click on the lit icon → automatically closes the polygon (connects the last point to the first)
-4. **Quarry faces (polylines)**: minimum 2 points. To finish, re-click on the lit icon → validates the line without closing it
-
-While drawing, the preview updates in real time. The color and transparency are fixed per type.
-
-### 🧹 Erase structures
-
-Press **🧹** in the Structures group:
-
-| Option | Effect |
-|---|---|
-| **↩️ Undo the last point** | On the current structure, or on the last structure |
-| **✂️ Last structure (in progress OR closed)** | Deletes the one being drawn if present, otherwise the last validated one |
-| **🎯 Select a structure to delete** | Map click mode — select the one to erase by clicking on it or near its edge |
-| **🗑️ All structures** | Erases absolutely everything (irreversible) |
-
-> 💡 The "🎯 Select" mode is handy for erasing a specific structure in the middle of a rich map, without having to count the "last added".
-
-### Difference with areas
-
-| | Areas (⬛) | Structures (🏛️) |
-|---|---|---|
-| Shape | Closed polygon only | Polygon OR polyline depending on type |
-| Colors | Water / Backfill / Collapse / Inaccessible | Pillar 1/2 / Wall / Face 1/2 |
-| Pathfinder effect | ⛔ Inaccessible **blocks** the route | None (read-only) |
-| Typical use | Delimit terrain areas (stagnant water, etc.) | Map the underground architecture (pillars, walls, progress) |
-
-> 🏗️ **Multi-level mode**: 2nd mass Pillars and 2nd mass Quarry faces are **automatically tagged at level -1** upon creation (the app considers that the 2nd mass is below). The other types take the current active level. You can modify the levels afterwards via the JSON editor.
-
----
-
-## 🏗️ Multi-level mode (multi-story quarries)
-
-Some quarries / galleries have **several physically stacked levels** (Glacière, Capucins, sites with stories). Multi-level mode lets you manage these maps correctly: each path/area/point belongs to a level, and the pathfinder doesn't magically traverse from one level to another through 2D visual intersections.
-
-> 📚 **Visual coherence of levels**: when multi-level mode is enabled, paths are automatically stacked according to their level — a gallery at Level 0 always appears **ABOVE** a gallery at Level -1, and the one at Level +1 above Level 0. Within the same level: Trail (in the back) < Secondary < Main (on top). The computed route and ⛔ inaccessible areas always pass above everything to remain visible.
-
-> ⚠️ **Optional mode** — disabled by default. Most quarries are single-level, classic mode is enough. Enable it **only** for genuinely multi-story quarries.
-
-### Enable the mode for a map
-
-**2 ways**:
-
-1. **When creating/modifying a map** (via 📦 Create a map or ✏️ Modify an existing map): tick the **🏗️ Multi-level map (advanced)** box in the "Map information" section. The generated ZIP contains the flag → on import, the mode is enabled automatically.
-
-2. **Manually in plan-config.json**: add `"multiLevel": true` in the `plan` section, save, reload the map.
-
-> 🔧 **Note**: the ⚙️ Settings toggle to enable/disable multi-level on an already-loaded map has been removed. To enable the mode on an existing map, **go through the generator**: 🏗️ Modify an existing map → tick **🏗️ Multi-level map** → 📦 Generate the updated ZIP → reload it. This forces an explicit declaration and avoids inconsistencies between runtime state and `plan-config.json`.
-
-> 💡 If you want to disable multi-level mode on a map, also go through the generator (untick the box and re-generate). Existing paths keep their level info in the JSON (hidden if the feature is OFF) — re-enable later without losing anything.
-
-### The "Active level" badge
-
-When the mode is enabled, a **yellow badge** displaying the active level number (`0` at startup, e.g. `[0]`) appears **below the Leaflet zoom buttons** (top-left of the map, right below the `+` `-`). Click it to open the **Levels modal**.
-
-> 💡 If you later enable the 🧭 Compass widget while multi-level mode is active, the compass automatically positions itself **below the badge** so as not to overlap.
-
-### The Levels modal
-
-Two sections:
-
-#### 🎯 Active level (for drawing)
-
-Radio buttons `[ − ] [-2] [-1] [0] [1] [2] [ + ]` (5 levels by default, symmetric around 0). The clicked level becomes the **active level**: all new paths, areas, editor points you will draw will be tagged with this level.
-
-**Numeric convention**:
-- **`0`** = reference level (= elements without a tagged level — typically old v147-and-before maps). This is your ground floor / the main gallery.
-- **`1, 2, 3...`** = upper floors / levels above the ground floor
-- **`-1, -2, -3...`** = basements / levels below the ground floor
-
-⚠️ **Changing the active level cancels any path in progress** (if you had started a main path at Level 0 and you switch to Level -1, the in-progress path disappears). This is on purpose to prevent a path from straddling 2 levels.
-
-⚠️ **Visible reset**: changing the active level ticks **only this level** in the "Visible levels" section below (focused mode by default).
-
-**2 extension buttons**:
-- **[ + ]** (right): adds an upper level (max + 1). Useful for floors above.
-- **[ − ]** (left): adds a lower level (min − 1). Useful for additional basements.
-
-💡 **Auto-extension**: if you load a map whose data layers already contain elements at levels outside the default range (e.g. a shaft tagged `level: 4`), the app automatically extends the list of available levels so you can select/filter them.
-
-#### 👁️ Visible levels (filter)
-
-Checkboxes per level. Paths/areas/points of **unticked** levels are hidden on the map (opacity 0). Inter-level junctions remain visible if **at least one** of their endpoints touches a ticked level.
-
-Quick buttons:
-- **All**: ticks all available levels
-- **Active only**: ticks only the active level
-
-### 🪜 Drawing an inter-level junction
-
-To physically connect two levels (stairs, steep slope, internal shaft, ladder between floors), you use the **🪜 Inter-level junction** sub-action in the **🛣️ Paths** group.
-
-> ⚠️ **Conditional visibility**: the 🪜 button only appears **if multi-level mode is enabled** on the current map. If you don't see it, first check that the yellow `[N]` badge is indeed visible at the top-left.
-
-**Step-by-step procedure**:
-
-1. Open the **🛣️ Paths** accordion group in the sidebar.
-2. Click on the **🪜 Inter-level junction** sub-action.
-3. A **modal opens** with 2 selectors: `Start level` and `End level`. By default, "start" = your active level. Choose the second level, then click **OK**.
-4. Path drawing mode starts. **Click on the map** to place as many points as you want (like a normal polyline). You can follow the exact shape of the staircase or draw a simple diagonal.
-5. **Press 🪜 again** to validate and exit path drawing mode.
-6. The junction appears in **dashed magenta** with a **white+magenta circle** at each of the 2 endpoints.
-
-**Semantics of the 2 levels**: *start* and *end* are **symmetric** on the pathfinder side — it doesn't matter which one you put first, the route crosses the junction in both directions. Choose the order that seems natural (e.g. a staircase going down from Level 1 to Level 0 → `start: 1, end: 0`; a shaft going down from Level 0 to Level -1 → `start: 0, end: -1`).
-
-**Visibility of a junction**: remains displayed if **at least one** of its 2 levels is in the list of visible levels. Example: junction `0 ↔ 1`, filter `[0]` active → junction visible (since 0 is in the filter). Filter `[2]` → junction hidden.
-
-**Special case: one junction = one logical passage**. If in reality there are 2 staircases between the same levels, draw **2 distinct junctions** at the 2 physical locations. The pathfinder will automatically choose the shortest one according to the requested route.
-
-> 💡 **Important for the pathfinder**: junctions are the **only bridges** between levels. If you want a route to go from Level 0 to Level 1, you **MUST** draw a junction between these 2 levels at the physical location of the passage (real staircase). Without a junction, the pathfinder refuses to cross even if visually 2 paths cross on the screen.
-
-### 🧹 Erasing a junction
-
-Junctions are erased **exactly like other paths** via the 🧹 sub-action:
-- **🎯 Click selection** → click on the junction → confirm the deletion
-- **✂️ Last entire path** → if the junction is the last path made, it is deleted
-- **🗑️ All paths** → erases absolutely everything (routes + junctions)
-
-### Adding level info to image layers
-
-In the **🏗️ Map generator**, each image layer (legend, hatching, etc.) has a **🏗️ Level** field (visible only when `🏗️ Multi-level map` is ticked). Enter the level the layer belongs to (integer, default `0`).
-
-**At runtime**: the layer is automatically shown/hidden according to your "Visible levels" filter in the Levels modal. The modal has **authority** over the Leaflet layer control checkbox → if you manually untick a layer, a level change re-applies the correct state.
-
-**Backwards compat**: if you modify an existing ZIP that didn't have a `level` on its image layers, they display at `0` in the generator — modify them to distribute them by level if needed.
-
-### Adding level info to data layers
-
-Existing data layers (`puits.json`, `cataphile.json`, etc.) can also have items tagged by level. Manually add `"level": N` in the JSON:
-
-```json
-{
-  "data": [
-    { "id": "PA1", "nom": "Puits Aération Niv 1", "x": 100, "y": 200, "tags": ["pa"], "level": 1 }
-  ],
-  "roads": [
-    { "type": "principal", "level": 0, "points": [{"x":1,"y":2}, ...] }
-  ],
-  "zones": [
-    { "type": "eau", "level": 0, "points": [...] }
-  ]
-}
-Items without `level` → treated as `level: 0` (backwards compat with your existing JSON).
-
-### Exporting with level selection
-
-**Quick mode** (🖼️ → ⚡ Quick mode): exports what is currently visible (WYSIWYG, follows your filter).
-
-**Advanced mode** (🖼️ → 🎨 Advanced mode): new **🏗️ Levels to export** section with checkboxes per level. **Independent** from the map filter → you can filter the map on [Level 0] but export [Level 0+1+2] by ticking the 3 boxes. Pre-ticked on what is currently visible to avoid surprises.
-
-### Existing maps (backwards compat)
-
-If you load a v147 or earlier map that **has not** enabled multi-level mode:
-- No level buttons, no 🪜 sub-action, strictly identical behavior
-- Your old sessions / exports continue to work without modification
-
-If you enable the mode on an existing map:
-- All paths/areas/points without level are considered as **Level 0**
-- You can start adding Level 1, 2… paths that coexist with the old ones (at Level 0)
-
----
-
-## ⬆️ Save and share
-
-> All export buttons are in the **⬆️ Save** group of the sidebar.
-
-### 💾 Save a session
-
-Press **⬆️ → 💾**. A modal opens with **3 tabs** to choose from:
-
-#### 🚀 Full
-Exports everything in a single `devmap-session` file (added points, paths, areas).
-Useful for saving your session and resuming it later.
-
-> 📌 Distance measurement and tracker position are **not** included in Full mode.
-
-#### 🎨 Advanced
-Precise selection of what you want to export:
-
-- ✏️ **Added points** + checkboxes per tag (with miniature icon) + a special `(no tag)` category for points without tags. So you can for example export only points with the `pa` or `danger` tag.
-- 🛣️ **Paths** + checkboxes per type (main, secondary, trails)
-- ⬛ **Areas** + checkboxes per type (water, backfill, collapse)
-- 🧭 **Tracker position** *(optional)* — also includes the traveled path if it exists
-
-**Output format** to choose from:
-- 📄 **Single session file** (.json — re-importable like a classic backup)
-- 📦 **Multi-file ZIP** (one file per category: `session_points.json`, `session_roads.json`, etc.)
-
-#### 🔄 Conversion
-Converts your session into a **data layer** ready to integrate into a definitive map via the `plan-config.json` file.
-
-Checkboxes: Points / Paths / Areas (with **tag filtering** for points, like in Advanced). No tracker in conversion.
-
-**Granularity** to choose from:
-- 📄 **Basic**: 1 file per category (`points.json`, `roads.json`, `zones.json`)
-- 🔬 **Fine**: 1 file per type (`zones_eau.json`, `zones_remblais.json`, `roads_principal.json`, etc.)
-
-Direct download if a single file, ZIP otherwise.
-
-> 💡 Conversion is useful for freezing part of your work into a permanent map. Once converted into a data layer, this data is no longer modifiable from the application.
-
-### 🖼️ Export as PNG/JPG
-
-> 🆕 **Renaming notice**: the modal was previously called "Export the map", renamed to "**Export as PNG/JPG**" to clearly distinguish from the new "**Export as printable PDF**" (see next section).
-
-Press **⬆️ → 🖼️ Map as image**. A modal opens with two modes:
-
-#### ⚡ Quick export
-Everything is included automatically: complete map, all visible layers, points, paths, areas, tracker position and path. PNG format at original resolution. A single click on **Download**.
-4. Beyond 10,000 m², the app automatically displays in hectares (ha)
-
-> **How it works**: the app applies the Shoelace formula to the map coordinates and converts to m² via the calibrated scale of the map (`APP_CONFIG.scale` in px/m). Accuracy therefore depends on the initial calibration of the map (`📏 SCALE` in ⚙️ Settings).
-
-### ❌ Clear the measurement
-
-Press **❌**. A window opens with two options:
-
-| Option | Effect |
-|---|---|
-| **↩️ Last point** | Undoes only the last clicked point (ideal in case of a wrong click) |
-| **🗑️ All the measurement** | Clears all points and resets the distance/area to zero |
-| Cancel | Closes the window without deleting anything |
-
-> You can remove several points one by one by successively clicking **❌ → ↩️ Last point**.
 
 > 💾 The mode (distance/area) and the points are persisted in the session save — on reload or session import, your ongoing measurement is restored identically.
 
@@ -1968,10 +2023,8 @@ Specific to **underground quarries**: structures allow mapping the load-bearing 
 4. **Quarry faces (polylines)**: minimum 2 points. To finish, re-click on the lit icon → validates the line without closing it
 
 During drawing, the preview updates in real time. The color and transparency are fixed by type.
-Karma_dev
-You are powered by the model named Opus 4.7 (1M context). The exact model ID is claude-opus-4-7[1m].
 
-### Cleaning the Trail of Magenta Highlights
+### 🧹 Erase structures
 
 Press **🧹** in the Structures group:
 
@@ -2447,67 +2500,305 @@ You can then add your data layers (empty), tracking, icons and **📦 Generate Z
 ### 📦 Import a datalayer ZIP in one click
 
 In the **📊 Data layers** section of the generator, a golden yellow box offers **📦 Choose a datalayer ZIP…**. It serves to **retrieve in one go** the layers + photos from another map, exported via **💾 Save session → 🔄 Conversion → ✏️→🗂️ Session to data layer** (with the 📸 Photos checkbox checked to include them).
-# 11/12 — Configuration > 📥 Conf example
-[REVIEW: original heading "Configuration > 📥 Conf exemple" — likely refers to a downloadable example config file]
 
-Downloads a `plan-config.json` annotated with explanatory comments. Useful for:
-- Understanding the structure
-- Manually creating a plan with a text editor
-- Reusing as a base for a custom plan
+**Typical use case**:
+1. KARMA sees a friend who has annotated a map (points + paths + zones + structures + photos) and who exports a `data_<map>.zip` via Conversion
+2. You copy this ZIP onto your device (Drive, AirDrop, USB…)
+3. In the generator, **Modify existing** OR **New map** mode, you click the 📦 Choose a datalayer ZIP button
+4. The ZIP is parsed → **data layers are automatically created**: `points` (the friend's points), `roads` (paths), `zones` (zones), `structure` (pillars/faces). If the ZIP contained photos, they are **kept in memory** to be embedded at generation time.
+5. Green message "✅ N layer(s) created: points (X), roads (Y), zones (Z), structure (W) · 📸 M photos"
+6. You **📦 Generate the ZIP** as usual → the final map contains your original layers (if Modify) + the imported layers + the `data/photos/` folder with the blobs
+7. When this map is loaded by any user, the photos are automatically restored in IndexedDB and appear in the marker popups
 
-> 💡 Open this file with a code editor (VSCode, Notepad++, Sublime Text…) — the comments help understand each field.
+**Behavior**:
+- **New mode**: the imported layers become the map's data layers (the UI list is emptied and filled with the ZIP's layers)
+- **Modify mode**: the existing layers of the source map are **preserved**; the imported ZIP's layers are added with **`_imported_<N>` suffix** if there's an id conflict (= never overwrites the original layers). Current map's IDB photos **merge** with the ZIP's photos (deduplication by photoId).
 
-### 🐛 Detailed logs
+> 📸 **Expected datalayer ZIP format**: it's exactly what the **session → data layer Conversion** produces when you check "📸 Include attached photos" (Basic or Fine granularity doesn't matter). Contains `points.json` + `roads.json` + `zones.json` + `structure.json` (depending on what was present in the source session) + `photos/_index.json` + `photos/<photoId>.jpg`.
 
-Enables capture of all console logs (debug + info + warnings + errors) for diagnosis. Once enabled:
-1. Reproduce the issue
-2. Open ⚙️ Configuration → 📋 Show logs
-3. Copy / export logs to send them to the author or attach them to a feedback report
+### 📸 Include photos attached to the map
 
-> ⚠️ Costs some performance (logs accumulate in RAM). Disable when no longer needed.
+In **Modify existing** mode, if the map you load already has **photos attached to its points** (stored in local IndexedDB via the editor), a **📸 Include attached photos (N · X MB)** checkbox appears in the "🖼️ Main images" section of the form.
 
-### 💥 Reset everything
+- **Checked by default**: the map's IDB photos are embedded in the generated map ZIP under `data/photos/<photoId>.jpg`. You can thus share the complete map (annotations + photos) to another device.
+- **Unchecked**: the generated map ZIP does not contain the photos. Lighter in size, but the user who imports the ZIP will not retrieve the photos.
 
-⚠️ **DESTRUCTIVE ACTION**. Erases:
-- Service Worker (forces fresh re-download at next boot)
-- HTTP / PWA caches
-- All localStorage (preferences, plan list, autosaved session, etc.)
-- sessionStorage
-- **All IndexedDB databases** (memorized handles + ZIP blobs stored on mobile + multi-rotation backups + photos POI + secours photos + your local PRO LICENSE if imported manually)
-- **Unlock Gate access code** — the app will ask for the access code at next boot
+When loading this map ZIP by any other user: the photos are **automatically restored** in IndexedDB under the local planId + a discreet toast "📸 N photos restored from the map" confirms.
 
-**Internet pre-check** : before the double confirmation, the app tests your Internet connection. If you're offline, a red modal warns you explicitly that the app will be unusable after the reset (no SW + empty caches → nothing to download to restart). You can force "Continue anyway" if you really want to.
+> ⚠️ If you uncheck **AND** you have also imported a datalayer ZIP with photos (see previous section), only the imported datalayer's photos will be embedded. The 📸 checkbox controls ONLY the current map's IDB photos.
 
-**Two confirmations** when online (three when offline) are then requested before execution to avoid any accidental click. Useful when:
-- The app behaves strangely (last resort)
-- You want to test a fresh install
-- You want to free up space and start clean
+### 🧱 Convert to V2 tile (performance)
 
-> 🗝️ **Communautary access code required at restart** : after reset, the app will ask for the communautary access code at next boot. The first confirmation modal shows you the current code so you can note it/copy it before reset — otherwise impossible to log back in! If you have a pro license, you can also import it via "📂 Import my pro license" to log back in.
+If your map is heavy (image > 50 MB, dimensions > 8000 px), you can convert it to a **V2 tiled map** to massively reduce runtime memory consumption. The system splits the image into 512×512 tiles over 4 zoom levels (Google Maps-like) — at any time, only the tiles of the current zoom level are loaded in RAM.
 
-> 💡 Your plans on the server (in `data/`) are NOT affected — only your local data is erased.
+**Workflow**:
+
+The 🧱 Convert to V2 checkbox appears in the form as soon as you have **uploaded a main image**, whether you are in **New map** OR **Modify existing** mode (no need to go through a V1 source ZIP).
+
+1. **New map**: choose a main image → the 🧱 checkbox appears<br>
+   OR **Modify existing**: upload your V1 ZIP (the 🧱 checkbox is available)
+2. Check the **☑️ 🧱 Convert to V2 tile (performance)** box (purple frame)
+3. **Warning modal**: the conversion is heavy (CPU + RAM). Read the message, click **I understand — Continue** (or **Cancel (uncheck)** if you want to think about it). See "PC vs mobile" section below.
+4. Fill in the rest of the form (name, version, layers, tracking, etc.)
+5. Click **📦 Generate the ZIP** → progress overlay "Level z=−N · X / Y tiles (Z%)"
+6. ZIP downloaded with `_v2` suffix (e.g.: `plan_xxx_v2.zip`)
+7. **Re-import this ZIP via the loader** → V2 mode activates automatically (purple `V2` badge on the map plan)
+
+**Built-in auto-crop**: if your source image has lots of white margins (typical of scanned paper plans), the generator automatically detects the bbox of useful content and only tiles this area. You gain ZIP size + sharpness at max zoom. If the image is already well framed, no crop.
+
+**Trade-offs**:
+
+| ✅ Gains | ⚠️ Costs |
+|---|---|
+| Memory consumption massively reduced (~16 MB max instead of the entire image in RAM) | Slow conversion (1-5 min depending on image size) |
+| Ideal for mobile (Safari iOS, large maps that crash in V1) | The final ZIP contains more files (the tiles) but ~same total weight as a single PNG/JPEG |
+| Smoother navigation on pan/zoom | Light visual flash on zoom level change (tile swap) |
+| Auto-crop of white margins | Black border visible when you zoom out very very far (beyond the edges) |
+
+**Modify an already-V2 map**: the box is **pre-checked** by default → the tiles will be regenerated with the new modifications. If you uncheck, explicit V2 → V1 downgrade (the tiles are not carried over into the new ZIP).
+
+#### 💻 PC vs 📱 Mobile for conversion
+
+> ⚠️ **Important** — this is the topic of the warning modal that appears when you check the box.
+
+| Platform | Source image decoding | Recommendation |
+|---|---|---|
+| 💻 **Computer** (Windows / macOS / Linux) | No memory limit in practice. Conversion 1-5 min depending on size. | ✅ **Recommended** for generation |
+| 📱 **Mobile** (iOS / Android) | Capped at **~500 MB of RAM** for the PWA. Crash almost guaranteed on image >50 MB or >8K px. | ❌ Avoid — **but** the V2 ZIP generated on PC imports without cost on mobile (that's the whole point of V2) |
+
+> 💡 **Recommended workflow**: generate the V2 ZIP once and for all on your PC, then share it on your phone (Drive, AirDrop, etc.). The phone imports it in a few seconds and you enjoy the tiled runtime without memory cost at boot.
+
+#### 🎛️ Disable tiling on read (V2 → V1 raw)
+
+When loading a V2 map, you can choose **Performance mode: Disabled** in the loader's **⚙️ Configuration** modal. In this case, the runtime ignores the tiles and directly loads the **source image** (`baseImage` of the ZIP, kept intact) as a classic V1 map.
+
+Use cases:
+- Compare V2 vs V1 rendering on the same map
+- Temporary bypass if you see weird behavior of the tile system (debug)
+
+⚠️ This mode loads the entire image in RAM → may crash on mobile for large maps (this is what V2 normally avoids).
+
+> 💡 **To test in priority** on your largest map that crashes on mobile, or before sharing a heavy map with someone with a modest phone.
+
+---
+
+## 🚀 Optimize your map for performance
+
+A lightweight map loads faster, navigates more smoothly, and **strongly reduces the risk of memory crash on mobile**. Here are the best practices in order of impact.
+
+### 1. 🖼️ Main image — limit the dimensions
+
+The base image is the **biggest memory consumer**. On mobile, the browser allocates a canvas the size of the entire image.
+
+| Dimensions | Behavior | Recommendation |
+|---|---|---|
+| ≤ 4 000 × 4 000 px | OK everywhere | ✅ Ideal |
+| 4 000 - 8 000 px | OK desktop, limited zoom-out on mobile | ⚠️ Acceptable |
+| 8 000 - 16 000 px | Risk of crash on low/mid-range mobile | ⚠️ Forces tiling (Performance mode) |
+| > 16 000 px | Crash almost guaranteed on mobile | ❌ To avoid |
+
+**Tip**: if your source map is gigantic, resize to 6 000-8 000 px side max with an image editor (GIMP, Photoshop, [Squoosh](https://squoosh.app/) online). You lose a bit of detail at max zoom but you gain a lot in stability.
+
+### 2. 📦 Image format — JPEG vs PNG
+
+| Format | When to use | Typical weight (8000×6000 px) |
+|---|---|---|
+| **JPEG** (quality 80-90%) | Photos, scans, plans with gradients | ~3-8 MB ✅ |
+| **PNG** | Plans with transparency or sharp flat colors | ~15-50 MB ⚠️ |
+| **WebP** | Quality/weight compromise (modern Chrome/Firefox/Safari) | ~2-5 MB ✅✅ |
+
+> 💡 For a classic quarry map with roads drawn over a solid color, **JPEG quality 85** divides the weight by 5 to 10 without perceptible visual loss.
+
+### 3. 🗂️ Image layers — limit the number
+
+Each additional image layer (legend, annotations, etc.) **multiplies the memory used**. The visitor loads all layers even if they hide some.
+
+| Number of image layers | Recommendation |
+|---|---|
+| 1 (base image only) | ✅ Optimal |
+| 2-3 | ⚠️ Acceptable if each is ≤ 2 MB |
+| 4+ | ❌ To avoid — merge into the base PNG |
+
+**Alternative**: if you have decorative elements (legend, markers), **integrate them directly into the base image** rather than making them separate layers. You lose the ability to hide them but you gain in perf.
+
+### 4. 🛣️ Routes — integrate into the PNG if numerous
+
+JSON routes (Main/Secondary/Trail) are rendered by Leaflet as a vector overlay. Beyond **~50 routes**, the browser may lag on pan/zoom.
+
+**Strategy for large maps**:
+1. Trace the routes in your image editor (GIMP/Photoshop) **directly on the PNG**
+2. Keep a minimal JSON layer with invisible routes visually but usable by the **🗺️ Route module** (the pathfinder uses all the layer's routes, **even hidden**)
+3. In the Leaflet layer control, **uncheck the JSON routes layer** → you see the routes via the PNG, the app doesn't draw the vector polylines → big perf gain
+4. The route module continues to work
+
+> 🎯 This technique allows having **hundreds of segments** on the map without any perf impact on pan/zoom.
+
+### 5. 📍 Points — limit dense data layers
+
+Each JSON layer of points (`puits.json`, `chatieres.json`, etc.) creates Leaflet markers. Beyond **~500 markers simultaneously visible**, it can slow down rendering on mobile.
+
+| Number of markers | Recommendation |
+|---|---|
+| ≤ 200 | ✅ OK |
+| 200-500 | ⚠️ OK desktop, caution mobile |
+| 500-2000 | ⚠️ Separate into several toggleable data layers |
+| > 2000 | ❌ Consider a "grouping" mode (clustering, future feature) |
+
+**Tip**: separate your points into several data layers (e.g.: `puits.json`, `passages.json`, `electricite.json`) so the user can hide those that interest them less.
+
+### 6. ⚡ Performance mode — choose the right preset
+
+When loading a map, you can choose from 5 presets in the loader:
+
+| Preset | For which case |
+|---|---|
+| **💤 Disabled** | Small map ≤ 4 000 px, powerful desktop. **Risk of crash on Safari iOS beyond 8 000 px** |
+| **🔄 Auto** (default) | Smart behavior — tiles if file > 60 MB. ✅ Good default choice |
+| **🌟 Quality** | High-definition images, full perf (desktop/laptop) |
+| **🎯 Balanced** | Good quality/perf compromise, recommended on most modern mobiles |
+| **⚡ Performance** | Old mobile, very large map, absolute priority to stability |
+
+> 💡 The preset is memorized **per map**: you can have one map in Performance mode for your old phone and another in Quality for your iPad.
+
+### 6 bis. 🚀 Performance ULTRA mode — for the really big maps that crash
+
+If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pixel maps with many paths), open **⚙️ Settings → "🚀 Performance ULTRA mode" section** and enable the **🚀 ULTRA master toggle**. It enables 6 aggressive optimizations simultaneously.
+
+> ⚠️ These optims do **NOT** touch the image (already managed by the performance mode above). They target vector elements (paths, points, calculations).
+
+**The 6 individual toggles** (activable separately if you want to refine):
+
+| Toggle | Effect | Trade-off |
+|---|---|---|
+| 🪜 **Decimate paths on zoom-out** | Simplifies polylines on zoom out | Less smooth paths on zoom-out |
+| ⚡ **Disable zoom/pan animations** | Instant transitions instead of animated | More abrupt visual — **reload required** |
+| 🎯 **Disable intersection circles** | No more circles at crossings beyond 50 roads (vs 200) | Crossings less visible |
+| 🚫 **Disable popups on data layers** | No popup on click on layer markers (puits, etc.) | Use 🔍 Search to interact |
+| 🐢 **Slow auto-save (30s)** | Save every 30s instead of 1.5s | Risk of losing 30s of edits if crash |
+| 👁️ **Only render visible paths** | Skip off-screen roads | Light pop-in on pan |
+
+**How to use it**:
+
+- **If the app still crashes** → check **🚀 ULTRA** (enables everything). Immediate effect (except "animations" which requires a reload).
+- **If you want to refine** → keep ULTRA unchecked and manually enable the toggles according to what you want to sacrifice. For example: you can enable just **🐢 Slow auto-save** and **👁️ Viewport culling** to gain quite a bit without losing anything visually.
+- **To return to normal behavior** → uncheck **🚀 ULTRA** (this unchecks everything) or uncheck individually.
+
+**Persistence**: the toggles are memorized in your browser (global preference, not per map). They remain enabled between sessions.
+
+> 💡 Recommended combo for very large maps: 🚀 ULTRA + ⚡ Performance mode at load + source image ≤ 8000 px / JPEG q85.
+
+### 7. 📱 Mobile-specific
+
+- **iPhone PWA** (installed on home screen) handles large maps better than direct iPhone Safari
+- **Android Chrome** is generally more tolerant than iOS for memory
+- In case of crash: ⚙️ Settings → **🐛 Detailed logs** → ON to diagnose
+
+### 8. 💾 Regular saving
+
+Very large maps can cause **silent memory kills** on iOS — the OS kills the tab without warning to reclaim RAM. The app detects this kill at reboot and shows you a warning toast.
+
+> 📌 **Reflex**: export your session (💾 Save session) every 10-15 minutes of intensive work. Local auto-save already protects against most cases, but an external export is the safest.
+
+### Quick recap
+
+✅ **For an optimal map**:
+- Base image **JPEG quality 85** ≤ 8 000 px on a side
+- 1 or 2 image layers max
+- Routes **drawn in the PNG** + hidden JSON layer for the pathfinder
+- Points distributed across 2-3 toggleable data layers
+- **🎯 Balanced** preset by default, **⚡ Performance** for old mobiles
+
+---
+
+## 🤖 AI Help
+
+> Accessible via the **📚 Help / Doc / Legend → 🤖 AI Help** group.
+
+Downloads a `.md` file that summarizes everything the app allows you to do (this doc + a FAQ + instructions for the AI). Give it to **any conversational AI** (ChatGPT, Claude, Gemini, Perplexity, Le Chat, Copilot, etc.) — it will be able to answer all your questions about MyKTAMap with precise context.
+
+**How to use**:
+
+1. Click on 🤖 AI Help → **📥 Download context (.md)** button
+2. The `MyKTAMap-AI-Context-YYYY-MM-DD.md` file arrives in your downloads
+3. Open the AI of your choice → paste the file at the start of the conversation
+4. Ask your questions normally: *"How to add a point?"*, *"My map crashes, why?"*, etc.
+
+> 🔒 **Confidentiality**: the file contains ONLY the documentation — no personal data (none of your maps, points, sessions, etc.). You can share it without risk.
+
+> 💰 **Note**: the AI used may be paid or have quotas depending on the service. MyKTAMap remains free — AI help is just a way to leverage an external AI.
+
+---
+
+## 🗺️ Legend
+
+> Accessible via the **📚 Help / Doc / Legend → 🗺️ Legend** group.
+
+Displays the complete legend of icons and paths, grouped by category: **🕳️ Shafts**, **🪜 Access** (ladder shafts, stairs, cavages), **⚠️ Signage**, **🛣️ Paths** and **⬛ Zones**.
+
+> 💡 The legend displays **all the icons the application can recognize**, even if your current map doesn't use them. It's handy for discovering the available types before adding your points.
 
 ---
 
 ## ⚙️ Settings (in map mode, per plan)
 
-> Accessible via the **⚙️ Settings** group at the top right of the map.
+> Accessible directly via the **⚙️** button in the side bar (direct click, no sub-menu).
+>
+> This modal is focused **per map** (settings related to the currently opened map). For **global settings** (interface, PIN, reset, etc.), go through **⚙️ Configuration** on the home page — see the dedicated section above. The separation is intentional: Settings = what concerns THIS map, Configuration = what concerns the app.
 
-Allows you to modify the **current plan** without going through ZIP regeneration. Changes are saved in localStorage and apply instantly (some need an app reload).
+Access the settings by clicking **⚙️**:
 
-### Available sections
+### 🧭 Tracking (map-specific)
+- **Initial tracker position**: X/Y start coordinates
+- **Step detection**: sensitivity (`stepThreshold`), step size (`stepLength`), anti-bounce cooldown
+- **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
 
-- **🎨 Display** — Light/dark theme, marker scaling at zoom, intersection circles
-- **🐛 Debug** — Detailed logs (same as loader)
-- **🌐 KMZ Georeferencing** — Configure GPS calibration of the plan via 2 reference points (see [section 🌐 KMZ Georeferencing](#-kmz-georeferencing-calibration-2-points))
-- **🧭 Initial tracker position** — Define tracker start coordinates (X/Y) **assisted** :
-  - **🔍 Choose via a point** : opens unified search to select an existing POI, auto-fills X/Y
-  - **📍 Click on the map** : temporarily masks the modal, a floater appears, you click the position on the map → auto-fills X/Y + restores the modal
-  - Manual entry remains possible in the X/Y fields
+### 🔍 Display (global preference, shared between all maps)
+- **Zoom-adaptive icons** (`scaledMarkers`): the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
+- **Show circles at path intersections**: solid colored circle at the crossing of 2 paths. Uncheck to visually clear very dense maps. Immediate effect (no reload).
+- **🔆 Keep screen on**: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
 
-> 💡 **Cross-app consistency** : the GPS coordinates entry in georeferencing uses the **same combined `lat, lng` format** as Ctrl+K search and KMZ export. Direct paste from Google Maps (`48.680831, 2.158843`) works everywhere uniformly.
+### 🎬 Presentation mode
 
-> 💡 **Time saved on the initial tracker position** : no more need to read X/Y coordinates manually in the plan. Click on the desired position or pick an existing POI — done.
+- **🎬 Launch presentation mode**: button at the **top** of the Settings modal. Activates a full-screen mode without UI (for demos / projection), accessible with a single touch button.
+- The **F** key is available as a PC shortcut.
+
+### 🎯 Georeferencing pickers
+
+The 2-point pickers (GPS calibration for KMZ / GPX) are available in **⚙️ Settings → Georeferencing tab** (in addition to the **Save session → 🌍 KMZ** modal):
+
+- **🔍 Search a point** on the map to auto-fill x/y
+- **📍 Map click** to directly point to a position
+- Manual lat/lng GPS entry to finalize the calibration
+
+The calibration entered here is shared with the KMZ / GPX exports of the same map (per-map persistence via localStorage). Handy for validating your calibration **outside the export flow** (for example at the start of a field session).
+
+### 🛠️ Debug
+- **🐛 Detailed logs**: enables verbose mode (tracker sensor + tiling + detection logs). Useful for diagnosing a problem.
+- Display of the **performance mode** of the current map (💤 Disabled / 🔄 Auto / 🌟 Quality / 🎯 Balanced / ⚡ Performance) — read-only here, modifiable at the next map load via the loader selector.
+
+### Actions
+- **Apply**: saves the changes
+- **🐛 Logs**: displays the captured debug logs
+- **Reset**: restores default values for THIS map (does not delete anything — different from **💥 Reset everything** in ⚙️ Configuration loader, which purges everything)
+
+> 💡 **Performance mode is only modified at map load** (5-preset selector in the loader → ⚙️ Configuration → 🖼️ Tiling). Settings just displays the current one.
+
+> ⚠️ **To enable / modify the local access code (PIN / Face ID)**, you must go through **⚙️ Configuration on the home page** — the 🔐 Local access code section is NOT in ⚙️ Settings (by design — global critical setting, not per map).
+
+### 🎯 Calibrate the scale
+
+If the app gives you a distance different from reality (for example 100 m displayed when you know there are 150 m on the field):
+
+1. Measure the distance in the app with **📐**
+2. Open **⚙️ → 🎯 Calibrate**
+3. Enter the **displayed distance** (100) and the **real distance** (150)
+4. The new scale displays in real time
+5. Click **Apply** → the value is injected into the Scale field
+6. Click **Apply** in the Settings modal to validate
+
+> The longer the distance you calibrate on, the more accurate the result will be.
+
+---
 
 ## 🏷️ Version badge in the footer (loader)
 

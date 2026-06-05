@@ -193,6 +193,12 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
+      // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
+      // qui identifie la sortie la plus proche (pathfinder + tags
+      // Puits/Escalier/Cavage ouvert ou tag "entrée"). Cf js/sortieUrgence.js.
+      '<span class="kta-refonte-counter kta-refonte-counter-sortie" id="kta-refonte-counter-sortie" title="Sortie d\'urgence — trouver la plus proche" role="button" tabindex="0">' +
+        '<span class="kta-refonte-counter-icon">🚨</span>' +
+      '</span>' +
       '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
         '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
       '</span>';
@@ -246,6 +252,26 @@
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           _openHistoire();
+        }
+      });
+    }
+
+    // 🆕 v1.35.0 — Bouton 🚨 Sortie d'urgence : click déclenche la recherche
+    // de la sortie la plus proche via pathfinder.
+    const sortieBtn = document.getElementById("kta-refonte-counter-sortie");
+    if (sortieBtn) {
+      function _openSortie() {
+        if (window.SortieUrgence && typeof window.SortieUrgence.declencher === "function") {
+          window.SortieUrgence.declencher();
+        } else {
+          console.warn("[Refonte] SortieUrgence indisponible");
+        }
+      }
+      sortieBtn.addEventListener("click", _openSortie);
+      sortieBtn.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          _openSortie();
         }
       });
     }

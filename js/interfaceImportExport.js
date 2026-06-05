@@ -455,6 +455,9 @@ function ouvrirImportSession() {
   // _pendingPhotosToRestore stocke les photos extraites du ZIP entre la parse
   // et la validation. Format : [{id, pointId, mime, size, blob}, ...]
   let _pendingPhotosToRestore = null;
+  // 🆕 v1.34.29 — PDF Mode Histoire embarqué dans le ZIP (chemin
+  // `mode-histoire/<name>`). Format : { blob, name } ou null si absent.
+  let _pendingHistoirePdfToRestore = null;
 
   function _renderApercu(data) {
     const nbPoints     = (data.editorPoints || []).length;
@@ -478,6 +481,18 @@ function ouvrirImportSession() {
       ? '<span><strong style="color:#7fd1a2;">📡 tracker</strong> (' + trkPathN + ' pt, ' + trkTimeN + ' évt)</span>'
       : '';
 
+    // 🆕 v1.34.29 : Mode Histoire (note libre + PDF de session)
+    const hasNoteLibre = typeof data.noteLibre === "string" && data.noteLibre.length > 0;
+    const hasHistPdf   = !!(_pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.blob);
+    let histoireBadge = "";
+    if (hasNoteLibre || hasHistPdf) {
+      const parts = [];
+      if (hasNoteLibre) parts.push("note libre");
+      if (hasHistPdf)   parts.push("PDF");
+      histoireBadge = '<span><strong style="color:#d4a3ff;">📖 Histoire</strong> (' + parts.join(" + ") + ')</span>';
+    }
+
+
     apercuEl.innerHTML = `
       <div style="display:flex; gap:14px; flex-wrap:wrap;">
         <span><strong style="color:#8cb4ff;">${nbPoints}</strong> point(s) ajouté(s)</span>
@@ -487,6 +502,7 @@ function ouvrirImportSession() {
         <span><strong style="color:#8cb4ff;">${nbMesure}</strong> point(s) de mesure</span>
         ${trackerBadge}
         ${photosBadge}
+        ${histoireBadge}
       </div>
     `;
     apercuWrap.style.display = "block";
@@ -514,10 +530,41 @@ function ouvrirImportSession() {
       if (!sessionFile) throw new Error("ZIP invalide : session.json manquant à la racine.");
       return sessionFile.async("string").then(function(jsonText) {
         const data = _parseSessionJson(jsonText);
+        // 🆕 v1.34.29 — Extraction PDF Mode Histoire si présent. Le payload
+        // session.json référence le fichier via `historeSessionPdf.file`
+        // (ex. "mode-histoire/histoire.pdf"). On stocke le blob en pending
+        // pour restauration au moment du clic Valider. Si le fichier référencé
+        // est absent dans le ZIP → log warn, on ignore (pas d'erreur fatale).
+        _pendingHistoirePdfToRestore = null;
+        if (data && data.historeSessionPdf && data.historeSessionPdf.file) {
+          const histFile = zip.file(data.historeSessionPdf.file);
+          if (histFile) {
+            // On schedule l'extraction blob en parallèle des photos.
+            // (Géré comme une Promise dans le pipeline ci-dessous.)
+            data._pendingHistPromise = histFile.async("blob").then(function(blob) {
+              _pendingHistoirePdfToRestore = {
+                blob: blob,
+                name: data.historeSessionPdf.name || "histoire.pdf"
+              };
+            });
+          } else {
+            console.warn("[Import session ZIP] PDF Histoire référencé mais absent :",
+                         data.historeSessionPdf.file);
+          }
+        }
+
         // Cherche le sous-dossier photos/ + l'index. Si absent → pas de photos.
         const indexFile = zip.file("photos/_index.json");
         if (!indexFile) {
           _pendingPhotosToRestore = [];
+          // 🆕 v1.34.29 — Si l'on attend juste le PDF Histoire (pas de photos),
+          // on attend sa résolution avant de retourner les données.
+          if (data._pendingHistPromise) {
+            return data._pendingHistPromise.then(function() {
+              delete data._pendingHistPromise;
+              return data;
+            });
+          }
           return data;
         }
         return indexFile.async("string").then(function(idxText) {
@@ -528,6 +575,15 @@ function ouvrirImportSession() {
           const photoIds = Object.keys(idxMap);
           if (photoIds.length === 0) {
             _pendingPhotosToRestore = [];
+            // 🆕 v1.34.29 — Attendre le PDF Histoire si en cours (cas où
+            // l'index photos existe mais vide, et il n'y a qu'un PDF Histoire).
+            // 🆕 v1.34.29 — Attend la promise PDF Mode Histoire si présente
+            if (data._pendingHistPromise) {
+              return data._pendingHistPromise.then(function() {
+                delete data._pendingHistPromise;
+                return data;
+              });
+            }
             return data;
           }
           // Charge chaque blob photo en parallèle
@@ -551,6 +607,16 @@ function ouvrirImportSession() {
           });
           return Promise.all(promises).then(function(arr) {
             _pendingPhotosToRestore = arr.filter(function(p) { return p !== null; });
+            // 🆕 v1.34.29 — Si une promesse PDF Histoire est en cours, attend-la
+            // aussi pour synchroniser le _pendingHistoirePdfToRestore avant de
+            // rendre le preview.
+            // 🆕 v1.34.29 — Attend la promise PDF Mode Histoire si présente
+            if (data._pendingHistPromise) {
+              return data._pendingHistPromise.then(function() {
+                delete data._pendingHistPromise;
+                return data;
+              });
+            }
             return data;
           });
         });
@@ -563,6 +629,7 @@ function ouvrirImportSession() {
     dropLabel.textContent = "✅ " + file.name;
     setErr("");
     _pendingPhotosToRestore = null;
+    _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
 
     const isZip = /\.zip$/i.test(file.name) || file.type === "application/zip"
                   || file.type === "application/x-zip-compressed";
@@ -577,6 +644,7 @@ function ouvrirImportSession() {
         setErr("❌ ZIP invalide : " + (err.message || err));
         dataParsee = null;
         _pendingPhotosToRestore = null;
+        _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
         apercuWrap.style.display = "none";
         warnEl.style.display = "none";
         btnValider.disabled = true;
@@ -703,7 +771,33 @@ function ouvrirImportSession() {
           }
         }
 
+        // 🆕 v1.34.29 — Restauration Mode Histoire (note libre + PDF session).
+        // - noteLibre est inline dans le payload (string) → écrit localStorage.
+        // - PDF session a été extrait dans `_pendingHistoirePdfToRestore` au
+        //   parse (blob). On délègue à ModeHistoire.importSessionData() pour
+        //   centraliser la logique IDB et garantir la cohérence du schéma.
+        // Rétrocompat : si dataParsee.noteLibre et historeSessionPdf absents
+        // (anciens exports), on ne touche RIEN — la note du plan courant reste.
+        const _noteToImport = (typeof dataParsee.noteLibre === "string") ? dataParsee.noteLibre : null;
+        const _pdfBlob = _pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.blob || null;
+        const _pdfName = _pendingHistoirePdfToRestore && _pendingHistoirePdfToRestore.name || null;
+        if ((_noteToImport && _noteToImport.length > 0) || _pdfBlob) {
+          if (window.ModeHistoire && typeof window.ModeHistoire.importSessionData === "function") {
+            window.ModeHistoire.importSessionData(_noteToImport, _pdfBlob, _pdfName)
+              .then(function(ok) {
+                console.log("[Import session] Mode Histoire restauré :",
+                            { note: !!_noteToImport, pdf: !!_pdfBlob, ok: ok });
+              })
+              .catch(function(err) {
+                console.warn("[Import session] Mode Histoire restore err :", err);
+              });
+          } else {
+            console.warn("[Import session] ModeHistoire.importSessionData indispo (module pas chargé ?)");
+          }
+        }
+
         _pendingPhotosToRestore = null;  // cleanup
+        _pendingHistoirePdfToRestore = null;  // 🆕 v1.34.29
         fermer();
       } catch(err) {
         console.error(err);

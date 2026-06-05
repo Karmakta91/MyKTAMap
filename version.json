@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.28",
+  "version": "v1.35.6",
   "released": "2026-06-05",
   "notes": [
-    "🎨 v1.34.28 — Fix theme clair : la liste déroulante de résultats quand tu cherches un point dans la modale Itinéraire s'affiche désormais correctement en thème clair (avant : fond sombre + texte clair, incohérent avec le reste de la modale)."
+    "🇬🇧 v1.35.6 — Grosse remise à niveau de la documentation utilisateur en anglais : nettoyage de doublons historiques + traduction des sections jusqu'ici manquantes (Optimiser ton plan, Aide IA, Légende, Réglages en mode carte, détails Mode Secours, etc.). Les deux versions FR et EN sont maintenant symétriques."
   ]
 }

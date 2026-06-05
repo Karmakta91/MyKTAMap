@@ -218,12 +218,36 @@
           '<button class="kta-histoire-tab" id="kta-histoire-tab-pdf" role="tab" type="button" data-mode="pdf">📚 Histoire</button>' +
         '</div>' +
         '<div class="kta-readme-modal-corps kta-histoire-corps">' +
-          // === ONGLET NOTE LIBRE ===
+          // === ONGLET NOTE LIBRE (v1.34.30 — MD editor inline) ===
+          // Deux modes : VIEW (rendu MD par défaut) + EDIT (textarea + toolbar).
+          // L'user voit le rendu en arrivant ; clic ✏️ pour éditer la source MD.
           '<div class="kta-histoire-pane" id="kta-histoire-pane-note">' +
-            '<textarea id="kta-histoire-note" class="kta-histoire-textarea" ' +
-              'placeholder="Tes notes libres sur ce plan… Sauvegarde automatique."' +
-              'autocomplete="off" spellcheck="true"></textarea>' +
-            '<div class="kta-histoire-note-status" id="kta-histoire-note-status">Sauvé.</div>' +
+            // Header avec switch view/edit + status sauvegarde
+            '<div class="kta-histoire-note-header">' +
+              '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
+                'id="kta-histoire-note-edit-btn" title="Éditer la note (Markdown)">✏️ Éditer</button>' +
+              '<button class="kta-btn kta-btn-ghost kta-histoire-note-mode-btn" type="button" ' +
+                'id="kta-histoire-note-view-btn" title="Aperçu rendu" style="display:none;">👁 Aperçu</button>' +
+              '<span class="kta-histoire-note-status" id="kta-histoire-note-status">Sauvé.</span>' +
+            '</div>' +
+            // Mode VIEW : div avec MD rendu (par défaut visible)
+            '<div id="kta-histoire-note-view" class="kta-histoire-note-rendered"></div>' +
+            // Mode EDIT : toolbar + textarea (caché par défaut)
+            '<div id="kta-histoire-note-edit" class="kta-histoire-note-edit-wrap" style="display:none;">' +
+              '<div class="kta-histoire-md-toolbar" role="toolbar" aria-label="Mise en forme Markdown">' +
+                '<button type="button" class="kta-md-tb-btn" data-md="bold" title="Gras (**texte**)"><strong>B</strong></button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="italic" title="Italique (*texte*)"><em>I</em></button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="h1" title="Titre (# H1)">H1</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="h2" title="Sous-titre (## H2)">H2</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="ul" title="Liste à puces (- item)">• Liste</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="link" title="Lien [txt](url)">🔗 Lien</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="code" title="Code (`code`)">&lt;/&gt;</button>' +
+                '<button type="button" class="kta-md-tb-btn" data-md="quote" title="Citation (> txt)">❝</button>' +
+              '</div>' +
+              '<textarea id="kta-histoire-note" class="kta-histoire-textarea" ' +
+                'placeholder="Tes notes libres sur ce plan (Markdown supporté : **gras**, *italique*, # titres, - listes, [liens](url)…). Sauvegarde automatique."' +
+                'autocomplete="off" spellcheck="true"></textarea>' +
+            '</div>' +
           '</div>' +
           // === ONGLET HISTOIRE (PDF) ===
           '<div class="kta-histoire-pane" id="kta-histoire-pane-pdf" style="display:none;">' +
@@ -262,11 +286,28 @@
       });
     });
 
-    // Wire note auto-save
-    const ta = document.getElementById("kta-histoire-note");
-    ta.value = _loadNote();
+    // Wire note auto-save + view/edit toggle + toolbar MD (v1.34.30)
+    const ta       = document.getElementById("kta-histoire-note");
+    const viewDiv  = document.getElementById("kta-histoire-note-view");
+    const editWrap = document.getElementById("kta-histoire-note-edit");
+    const btnEdit  = document.getElementById("kta-histoire-note-edit-btn");
+    const btnView  = document.getElementById("kta-histoire-note-view-btn");
+    const status   = document.getElementById("kta-histoire-note-status");
+
+    // Charge la note depuis localStorage + render initial.
+    // Si la note est vide → on bascule directement en mode EDIT (sinon
+    // l'user voit un vide qui ne suggère pas qu'on peut écrire).
+    const initialNote = _loadNote();
+    ta.value = initialNote;
+    _refreshNoteView();
+    if (!initialNote || initialNote.length === 0) {
+      _setNoteMode("edit");
+    } else {
+      _setNoteMode("view");
+    }
+
+    // Auto-save sur input + re-render preview (à la prochaine bascule view).
     ta.addEventListener("input", function() {
-      const status = document.getElementById("kta-histoire-note-status");
       if (status) status.textContent = "Modifié…";
       if (_saveTimer) clearTimeout(_saveTimer);
       _saveTimer = setTimeout(function() {
@@ -274,6 +315,38 @@
         if (status) status.textContent = "Sauvé.";
       }, 500);
     });
+
+    // Bouton "✏️ Éditer" → bascule en mode EDIT, focus textarea
+    if (btnEdit) {
+      btnEdit.addEventListener("click", function() {
+        _setNoteMode("edit");
+        // Focus avec léger délai pour iOS (clavier virtuel)
+        setTimeout(function() { try { ta.focus(); } catch(e) {} }, 50);
+      });
+    }
+    // Bouton "👁 Aperçu" → re-render + bascule en mode VIEW
+    if (btnView) {
+      btnView.addEventListener("click", function() {
+        // Force sauvegarde immédiate avant aperçu (sinon le debounce 500ms
+        // pourrait afficher un rendu en retard d'1 keystroke).
+        if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+        _saveNote(ta.value);
+        if (status) status.textContent = "Sauvé.";
+        _refreshNoteView();
+        _setNoteMode("view");
+      });
+    }
+
+    // Toolbar MD : insère un marqueur autour de la sélection (ou au curseur)
+    const toolbar = _modal.querySelector(".kta-histoire-md-toolbar");
+    if (toolbar) {
+      toolbar.addEventListener("click", function(e) {
+        const btn = e.target.closest(".kta-md-tb-btn");
+        if (!btn) return;
+        const kind = btn.getAttribute("data-md");
+        _applyMdToolbar(ta, kind);
+      });
+    }
 
     // Wire PDF import/replace/remove (v1.34.20)
     const fileInput = document.getElementById("kta-histoire-pdf-input");
@@ -319,6 +392,112 @@
         });
       });
     }
+  }
+
+  // ========== HELPERS MODE NOTE (v1.34.30 — MD editor inline) ==========
+
+  // Bascule entre VIEW (aperçu MD rendu) et EDIT (textarea source + toolbar).
+  function _setNoteMode(mode) {
+    const viewDiv  = document.getElementById("kta-histoire-note-view");
+    const editWrap = document.getElementById("kta-histoire-note-edit");
+    const btnEdit  = document.getElementById("kta-histoire-note-edit-btn");
+    const btnView  = document.getElementById("kta-histoire-note-view-btn");
+    if (!viewDiv || !editWrap || !btnEdit || !btnView) return;
+    if (mode === "edit") {
+      viewDiv.style.display  = "none";
+      editWrap.style.display = "";
+      btnEdit.style.display  = "none";
+      btnView.style.display  = "";
+    } else {
+      viewDiv.style.display  = "";
+      editWrap.style.display = "none";
+      btnEdit.style.display  = "";
+      btnView.style.display  = "none";
+    }
+  }
+
+  // Re-rend l'aperçu MD depuis la valeur courante de la textarea (ou note LS
+  // si textarea pas encore présente — fallback au cas où).
+  function _refreshNoteView() {
+    const viewDiv = document.getElementById("kta-histoire-note-view");
+    const ta      = document.getElementById("kta-histoire-note");
+    if (!viewDiv) return;
+    const src = ta ? ta.value : _loadNote();
+    if (!src || src.trim() === "") {
+      // Note vide → placeholder doux (suggère le bouton Éditer).
+      viewDiv.innerHTML = '<p class="kta-histoire-note-empty">' +
+        '<em>Aucune note libre pour ce plan. Clique sur <strong>✏️ Éditer</strong> pour en ajouter.</em>' +
+        '</p>';
+      return;
+    }
+    if (typeof window.kta_renderMd === "function") {
+      viewDiv.innerHTML = window.kta_renderMd(src);
+    } else {
+      // Fallback panique-safe : si mdParser pas chargé, on affiche le source
+      // brut (escape automatique via textContent).
+      viewDiv.textContent = src;
+    }
+  }
+
+  // Toolbar MD : applique un marqueur autour de la sélection courante. Si
+  // pas de sélection, insère un placeholder éditable (curseur sélectionne
+  // le placeholder → user tape par-dessus). Conserve focus, déclenche input
+  // pour l'auto-save. Gère 2 catégories de marqueurs :
+  //   - Inline (bold, italic, code, link) : entoure la sélection
+  //   - Préfixe de ligne (h1, h2, ul, quote) : insère en début de ligne
+  //     (multi-ligne : préfixe chaque ligne sélectionnée)
+  function _applyMdToolbar(ta, kind) {
+    if (!ta) return;
+    const start = ta.selectionStart || 0;
+    const end   = ta.selectionEnd   || 0;
+    const sel   = ta.value.substring(start, end);
+    let before = "", after = "", placeholder = sel;
+    let prefixLine = false;
+
+    switch (kind) {
+      case "bold":   before = "**"; after = "**"; if (!sel) placeholder = "texte"; break;
+      case "italic": before = "*";  after = "*";  if (!sel) placeholder = "texte"; break;
+      case "code":   before = "`";  after = "`";  if (!sel) placeholder = "code";  break;
+      case "h1":     prefixLine = true; before = "# ";   if (!sel) placeholder = "Titre"; break;
+      case "h2":     prefixLine = true; before = "## ";  if (!sel) placeholder = "Sous-titre"; break;
+      case "ul":     prefixLine = true; before = "- ";   if (!sel) placeholder = "élément"; break;
+      case "quote":  prefixLine = true; before = "> ";   if (!sel) placeholder = "citation"; break;
+      case "link":
+        before = "[";
+        after  = "](https://)";
+        if (!sel) placeholder = "texte du lien";
+        break;
+      default: return;
+    }
+
+    let inserted, newStart, newEnd;
+    if (prefixLine) {
+      const lineStart = ta.value.lastIndexOf("\n", start - 1) + 1;
+      if (sel.indexOf("\n") >= 0) {
+        // Sélection multi-ligne : préfixe chaque ligne
+        const lines = sel.split("\n").map(function(l) { return before + l; }).join("\n");
+        inserted = ta.value.substring(0, start) + lines + ta.value.substring(end);
+        newStart = start + before.length;
+        newEnd   = start + lines.length;
+      } else {
+        // Insère marqueur en début de la ligne courante + placeholder
+        const headPart = ta.value.substring(0, lineStart);
+        const tailPart = ta.value.substring(lineStart);
+        inserted = headPart + before + (sel || placeholder) + tailPart.substring(end - lineStart);
+        newStart = lineStart + before.length;
+        newEnd   = newStart + (sel || placeholder).length;
+      }
+    } else {
+      inserted = ta.value.substring(0, start) + before + (sel || placeholder) + after +
+                 ta.value.substring(end);
+      newStart = start + before.length;
+      newEnd   = newStart + (sel || placeholder).length;
+    }
+
+    ta.value = inserted;
+    try { ta.focus(); ta.setSelectionRange(newStart, newEnd); } catch(e) {}
+    // Déclenche input → auto-save via le listener existant
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   function _onKey(e) {
@@ -494,12 +673,46 @@
     close();
   }
 
+  // 🆕 v1.34.29 — Helper d'import session (utilisé par interfaceImportExport.js
+  // pour restaurer le Mode Histoire embarqué dans un .mkmsession.zip).
+  // Pose la note libre + (éventuellement) le PDF de session sur le plan
+  // courant. Cohérent avec la sémantique d'import des autres champs : on
+  // remplace les données du plan courant par celles du fichier importé.
+  //   - noteText : string (vide ou null = pas de note → on n'écrase rien)
+  //   - pdfBlob  : Blob PDF ou null = pas de PDF (on ne supprime rien)
+  //   - pdfName  : string suggéré pour le fichier
+  // Renvoie Promise qui résout quand IDB est OK (note est sync).
+  function importSessionData(noteText, pdfBlob, pdfName) {
+    return new Promise(function(resolve) {
+      try {
+        // Note libre : si présente, on écrase la note courante du plan.
+        if (typeof noteText === "string" && noteText.length > 0) {
+          _saveNote(noteText);
+        }
+      } catch(e) {
+        console.warn("[ModeHistoire] importSessionData note échec :", e);
+      }
+      // PDF : si présent, persist en IDB pour le plan courant.
+      if (pdfBlob && pdfBlob.size > 0) {
+        _idbSet(_currentPlanId(), pdfBlob, pdfName || "histoire.pdf")
+          .then(function() { resolve(true); })
+          .catch(function(err) {
+            console.warn("[ModeHistoire] importSessionData PDF IDB échec :", err);
+            resolve(false);
+          });
+      } else {
+        resolve(true);
+      }
+    });
+  }
+
   // ========== EXPORT ==========
-  MH.open          = open;
-  MH.openTab       = openTab;
-  MH.close         = close;
-  MH.isOpen        = isOpen;
-  MH._onPlanSwitch = _onPlanSwitch;
+  MH.open               = open;
+  MH.openTab            = openTab;
+  MH.close              = close;
+  MH.isOpen             = isOpen;
+  MH._onPlanSwitch      = _onPlanSwitch;
+  MH.importSessionData  = importSessionData;  // 🆕 v1.34.29
 
   window.ModeHistoire = MH;
 

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.28</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.35.6</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,56 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.6 (Phase 2 doc EN — cleanup doublons + traduction sections manquantes)</strong> : Refonte massive de <code>README_USER.en.md</code> : suppression de 443 lignes de doublons historiques (séquence Add points → Save and share dupliquée), nettoyage de 9 artifacts parasites, traduction de 3 sections H2 complètes (Optimize map, AI Help, Legend) + enrichissement de 10+ sous-sections H3/H4 (Rescue Mode complet, Settings, Filtres, etc.). Symétrie FR/EN parfaite : 30 H2 dans l'ordre identique. <strong>Impact réseau</strong> : ZÉRO — refonte purement éditoriale de la doc.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.5 (Réorg doc + sections dédiées Mode Histoire + Sortie d'urgence)</strong> : Refonte éditoriale de la doc utilisateur. Suppression du bloc "🆕 Nouveautés" + 2 sections H2 dédiées (Mode Histoire, Mode Sortie d'urgence) intégrées dans la structure. FR + EN symétriques. <strong>Impact réseau</strong> : ZÉRO — pure refonte doc.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.4 (Fix bouton 🎤 chevauche sidebar droit en mobile paysage)</strong> : KARMA feedback. Media query landscape ajoutée pour décaler à `right: calc(64px + safe-area-inset-right)`. <strong>Impact réseau</strong> : ZÉRO — pure CSS responsive.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.3 (Fix espacement 📊→📖 inégal dans status bar)</strong> : Override padding du wrapper `<button>` parent du 📊 stats. <strong>Impact réseau</strong> : ZÉRO — pure CSS.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.2 (UX hotfix modale Sortie urgence + harmonisation chips header)</strong> : Modale compacte (max-width 420px, height auto) + chips alignés (min-width 36px, gap 8px). <strong>Impact réseau</strong> : ZÉRO — pure CSS.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.1 (Hotfix Mode Sortie d'urgence — codes courts)</strong> : v1.35.0 cherchait les libellés humains, fix avec codes courts (cao/peo/eso) confirmés par KARMA. <strong>Impact réseau</strong> : ZÉRO — fix logique pure côté frontend.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.35.0 (Mode Sortie d'urgence — POIs sortie + pathfinder)</strong> : Nouveau module <code>js/sortieUrgence.js</code> + bouton 🚨 status bar + commande vocale "sortie". Filtre POIs (tags cao/peo/eso ou entrée) → pathfinder (existant) → modale résultats. Mode picker carte si tracker inactif. <strong>Impact réseau</strong> : ZÉRO — tout in-memory côté device, POIs déjà chargés, pathfinder déjà côté client.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — feature 100% client-side cohérente avec philosophie offline community.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.34 (Rollback notes vocales POI v1.34.31-33)</strong> : feature MediaRecorder + IDB <code>myktamap_voicenotes</code> retirée après tests iPhone PWA — design natif imprévisible. Cleanup systématique : suppression <code>js/voiceNote.js</code> + tous appels + CSS + asset SW. <strong>Impact réseau</strong> : ZÉRO (feature pas réseau, rollback pas réseau). <strong>Permissions</strong> : <code>getUserMedia({audio: true})</code> disparait du code (n'était demandée qu'au 1er REC manuel).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression réseau — feature retirée proprement.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.30 (MD editor inline pour note libre Mode Histoire)</strong> : Nouveau <code>js/mdParser.js</code> (~200 lignes autonome XSS-safe, sans dépendance). Parser MD → HTML avec escape complet d'abord puis pattern matching. URLs liens whitelist schémas (http/https/mailto/tel/ancres). Refus autres schémas (anti javascript:/data:/file:). Refactor modale onglet Note libre : VIEW (rendu MD) + EDIT (textarea + toolbar). <strong>Impact réseau</strong> : ZÉRO — pas de lib externe, pas de fetch, pas de nouveau domaine. <strong>Sécurité XSS</strong> : escape de 5 chars AVANT toute transformation MD → HTML safe par construction.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — feature 100% client-side, parser XSS-safe.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.29 (Export MKMSESSION étendu — note libre + PDF Histoire)</strong> : Extension format <code>.mkmsession.zip</code> pour transporter Mode Histoire. Nouveaux helpers IDB ad-hoc safe-create + localStorage lookup. <code>_packerZipSession</code> accepte PDF Histoire. Anonymize ON force skip note + PDF. <strong>Impact réseau</strong> : ZÉRO — export/import déjà 100% local (JSZip côté client, Blob URL download, file input re-import). Extension transparente côté réseau.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — feature 100% client-side.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.28 (Fix theme clair dropdown recherche Mode Itinéraire)</strong> : KARMA screenshot → dropdown résultats recherche POI restait sombre en theme clair. Fix CSS double sélecteur. <strong>Impact réseau</strong> : ZÉRO.

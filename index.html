@@ -1060,9 +1060,20 @@
        Synthesis API. Aucune permission demandée, mode strictement manuel (bouton
        🔊 dans popup POI quand description existe). Cf docs/architecture/ui.md. -->
   <script src="js/voiceTts.js" defer></script>
+  <!-- 🆕 v1.35.0 : SortieUrgence — Mode Sortie d'urgence. Identifie les POIs
+       avec tags {Puits/Escalier/Cavage ouvert} OU tag "entrée", calcule la
+       distance pathfinder vers chaque depuis la position tracker, trie et
+       propose la plus proche + alternatives. Bouton 🚨 dans status bar +
+       commande vocale "sortie". Cf js/sortieUrgence.js. -->
+  <script src="js/sortieUrgence.js" defer></script>
+  <!-- 🆕 v1.34.30 : mdParser — parser MD inline minimaliste, XSS-safe, sans
+       dépendance. Utilisé par modeHistoire.js (note libre rendu MD). Doit
+       charger AVANT modeHistoire.js. -->
+  <script src="js/mdParser.js" defer></script>
   <!-- 🆕 v1.34.19 : ModeHistoire — bouton 📖 dans status bar, modale 2 onglets
-       (📝 note libre per-plan localStorage + 📚 PDF embarqué dans le ZIP via
-       plan-config.json > histoirePdf). Cf js/modeHistoire.js. -->
+       (📝 note libre per-plan localStorage [MD-rendered v1.34.30] + 📚 PDF
+       embarqué dans le ZIP via plan-config.json > histoirePdf). Cf
+       js/modeHistoire.js. -->
   <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
   <script src="js/kmzImport.js" defer></script>

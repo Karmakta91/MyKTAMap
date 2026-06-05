@@ -1289,6 +1289,11 @@ function attachPopupPhotos(marker, pointId) {
 }
 window.attachPopupPhotos = attachPopupPhotos;
 
+// ROLLBACK v1.34.34 — Feature notes vocales POI (v1.34.31-33) retirée.
+// Cause : design natif <audio controls> + <button> iOS imprévisibles
+// cross-platform. Re-design différé (custom player). KARMA décide quand
+// remettre la feature avec une UX repensée.
+
 function normaliserPoints(json) {
   if (Array.isArray(json.data))          return json.data;
   if (Array.isArray(json.editorPoints))  return json.editorPoints;

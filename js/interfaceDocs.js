@@ -513,31 +513,36 @@ function afficherAide() {
           Un seul groupe peut être ouvert à la fois — cliquer sur un autre referme le précédent.
         </p>
 
-        <!-- v1.34.16+ : section nouveautés sprint anti-crash iPhone -->
+        <!-- v1.35.5 — sections dédiées en remplacement du bloc Nouveautés
+             (feedback KARMA : "intégrer dans une section cohérente ou
+             dédiée, pas en bloc Nouveautés à part"). Mode Histoire et
+             Mode Sortie d'urgence ont chacune leur section identifiable. -->
         <div class="kta-aide-section">
-          <div class="kta-aide-section-titre">🆕 Quoi de neuf (sprint v1.34.x)</div>
+          <div class="kta-aide-section-titre">📖 Mode Histoire — Note + PDF du plan</div>
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🍎 Stabilité iPhone renforcée</strong> — l'app libère désormais la mémoire des tuiles que tu ne regardes plus, des photos POI au changement de plan, et nettoie ses calques d'images à la sortie. Les longues sessions sur gros plan tuilé en cavité tiennent beaucoup mieux la route.
+            Bouton <strong>📖</strong> à gauche de la batterie 🔋 → modale 2 onglets, <strong>propre à chaque plan</strong> :
           </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🚀 Démarrage plus fluide sur gros plan</strong> — les tuiles d'un plan tuilé ne sont plus toutes décompressées au boot : seules celles affichées sortent de l'archive, les autres attendent leur tour. Splash plus court, RAM mieux maîtrisée.
-          </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🗂️ Filtre des calques image fiabilisé</strong> — décocher un calque image puis changer de plan / recharger respecte enfin ton choix. Le bouton <strong>🔄 Tout afficher</strong> dans la modale Filtres recoche aussi les calques images en plus des données.
-          </p>
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🔄 Mise à jour douce plus fiable</strong> — l'enchaînement <em>« Forcer la mise à jour → l'app redémarre »</em> ne reste plus bloqué à mi-chemin. La nouvelle version s'active automatiquement dans les 5 secondes.
-          </p>
-          <!-- v1.34.18 : E2 TTS lecture vocale des notes POI -->
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>🔊 Lecture vocale des notes (NEW)</strong> — un bouton <strong>🔊</strong> apparaît à côté de chaque note dans les popups des points. Un clic et l'app lit la note à haute voix via la voix native de ton appareil. Pratique sous terre quand tu as les mains/yeux occupés. Re-clique sur 🔊 ou ⏹️ pour arrêter. 100 % offline, voix locale, aucune permission demandée. Complément de la commande vocale 🎤 "Aller à $POI".
-          </p>
-          <!-- v1.34.19+ : Mode Histoire (note libre + PDF embarqué/importé) -->
-          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
-            <strong>📖 Mode Histoire (NEW)</strong> — un bouton <strong>📖</strong> à gauche de la batterie 🔋 ouvre une modale 2 onglets, propre à chaque plan : (1) <strong>📝 Note libre</strong> texte auto-sauvegardée pendant que tu tapes (récit du site, anecdotes, to-do d'explo, points à vérifier) ; (2) <strong>📚 Histoire</strong> qui affiche le PDF embarqué par l'auteur du plan, ou te laisse <strong>📥 importer ton propre PDF</strong> si rien n'est embarqué (1 PDF par plan, remplaçable / retirable). Sur iPhone, un bouton <strong>↗️ Ouvrir dans un onglet</strong> bascule le PDF en plein écran natif. Tout reste sur ton appareil — 100 % offline.
-          </p>
+          <ul style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
+            <li><strong>📝 Note libre</strong> — carnet de notes <strong>Markdown</strong> auto-sauvegardé (titres, gras, listes, liens, citations). Mode <strong>Aperçu</strong> pour lire / <strong>✏️ Éditer</strong> pour modifier la source.</li>
+            <li><strong>📚 Histoire</strong> — affiche le PDF embarqué par l'auteur du plan, ou laisse <strong>📥 importer ton propre PDF</strong> (1 par plan, remplaçable). Sur iPhone : bouton <strong>↗️ Ouvrir dans un onglet</strong> pour le plein écran natif.</li>
+          </ul>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
-            ℹ️ Côté toi : rien à faire. Recharge l'app, profite. Détails techniques dans le journal des versions du dépôt.
+            Note libre + PDF sont <strong>inclus automatiquement dans l'export de session</strong> (.mkmsession.zip) → tout voyage avec ta session pour partage ou transfert. 100 % offline.
+          </p>
+        </div>
+
+        <div class="kta-aide-section">
+          <div class="kta-aide-section-titre" style="color:#ff8a5c;">🚨 Mode Sortie d'urgence — La sortie la plus proche</div>
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            Bouton <strong>🚨</strong> entre 📖 Mode Histoire et la batterie 🔋. Tape (ou dis « <em>sortie</em> » à la voix 🎤) et l'app :
+          </p>
+          <ol style="font-size:13px; color:#c0c8d8; margin:0 0 8px 16px; padding:0; line-height:1.5;">
+            <li>Scanne les POIs avec tag de sortie <strong>ouverte</strong> (<code>cao</code>, <code>peo</code>, <code>eso</code>) ou <code>entrée</code>.</li>
+            <li>Calcule le vrai chemin navigable via pathfinder (gère les murs et les jonctions inter-niveaux).</li>
+            <li>Affiche la plus proche + bouton <strong>🧭 Tracer l'itinéraire</strong> + dépliable <strong>Voir les N autres sorties</strong>.</li>
+          </ol>
+          <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
+            Si pas de tracker actif → mode picker (clique sur ta position). Multi-niveau OK. Vibration de confirmation. Versions fermées (<code>caf</code>/<code>pef</code>/<code>esf</code>) ignorées. 100 % offline.
           </p>
         </div>
 

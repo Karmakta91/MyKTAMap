@@ -704,6 +704,26 @@
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
       }
     });
+
+    // 🆕 v1.35.0 — Sortie d'urgence : trouve la sortie la plus proche
+    // (puits/escalier/cavage ouvert ou tag "entrée") via pathfinder.
+    // Patterns volontairement larges (urgence = user stressé).
+    registerCommand({
+      patterns: [
+        "sortie", "sortie urgence", "sortie d'urgence", "trouve la sortie",
+        "trouver la sortie", "ressortir", "je dois sortir", "comment sortir",
+        "où est la sortie", "ou est la sortie", "sors", "sortir d'ici",
+        "urgence", "au secours sortie", "issue", "issue de secours"
+      ],
+      label:    "Mode Sortie d'urgence",
+      handler:  function() {
+        if (window.SortieUrgence && typeof window.SortieUrgence.declencher === "function") {
+          window.SortieUrgence.declencher();
+        } else {
+          console.warn("[VoiceCommand] SortieUrgence indisponible");
+        }
+      }
+    });
   }
 
   _registerBuiltins();

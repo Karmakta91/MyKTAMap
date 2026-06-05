@@ -1500,7 +1500,7 @@
   // de editorPoints (cf. _enrichirPointsAvecPhotos), mais le garde séparé
   // permet un restore robuste même si l'user édite session.json à la main
   // et change des ids. Le restore IDB lit l'index en priorité.
-  function _packerZipSession(payload, photos, filename) {
+  function _packerZipSession(payload, photos, filename, historePdf) {
     if (typeof JSZip === "undefined") {
       alert("Module de compression indisponible. Recharge l'application et réessaie.");
       return Promise.reject(new Error("JSZip indisponible"));
@@ -1526,6 +1526,15 @@
         version: 1,
         photos:  idx
       }, null, 2));
+    }
+
+    // 🆕 v1.34.29 — PDF Mode Histoire de session (importé par l'user via la
+    // modale 📖). On le pose dans `mode-histoire/<name>` du ZIP. La référence
+    // est déjà inscrite dans `payload.historeSessionPdf` côté _exportFull.
+    if (historePdf && historePdf.blob) {
+      const histoireFolder = zip.folder("mode-histoire");
+      const pdfName = historePdf.name || "histoire.pdf";
+      histoireFolder.file(pdfName, historePdf.blob);
     }
 
     return zip.generateAsync({ type: "blob" }).then(function(blob) {
@@ -1686,6 +1695,10 @@
     delete session.photosCount;
     delete session.photosTotalKB;
 
+    // 🆕 v1.34.29 : Mode Histoire (note libre + PDF session)
+    delete session.noteLibre;
+    delete session.historeSessionPdf;
+
     // 8. marqueur d'anonymisation pour audit côté destinataire
     session.anonymized   = true;
     session.anonymizedAt = new Date().toISOString();
@@ -1694,6 +1707,69 @@
   }
 
   // ---------- FULL ----------
+  // 🆕 v1.34.29 — Helper async pour lire le PDF Histoire de session depuis
+  // IDB `myktamap_histoire_pdfs` (cf js/modeHistoire.js v1.34.20+). Retourne
+  // { blob, name } ou null si absent. Ouverture/fermeture IDB ad-hoc — pas
+  // d'optimisation cache car export est un one-shot.
+  function _lirePdfHistoireSession() {
+    if (!window.indexedDB) return Promise.resolve(null);
+    const planId = window._currentLoadedPlanId || "default";
+    return new Promise(function(resolve) {
+      try {
+        const req = indexedDB.open("myktamap_histoire_pdfs", 1);
+        req.onsuccess = function() {
+          const db = req.result;
+          if (!db.objectStoreNames.contains("pdfs")) {
+            try { db.close(); } catch(e) {}
+            resolve(null);
+            return;
+          }
+          const tx = db.transaction("pdfs", "readonly");
+          const st = tx.objectStore("pdfs");
+          const getReq = st.get(planId);
+          getReq.onsuccess = function() {
+            const rec = getReq.result;
+            try { db.close(); } catch(e) {}
+            if (rec && rec.blob) resolve({ blob: rec.blob, name: rec.name || "histoire.pdf" });
+            else resolve(null);
+          };
+          getReq.onerror = function() {
+            try { db.close(); } catch(e) {}
+            resolve(null);
+          };
+        };
+        req.onerror = function() { resolve(null); };
+        // ⚠️ Création store ICI pour compat modeHistoire.js : si l'user n'a
+        // jamais ouvert Mode Histoire et tente un export, on ne veut PAS que
+        // notre `indexedDB.open` crée la DB vide sans store — ça empêcherait
+        // modeHistoire de créer le store plus tard (DB déjà en v1, onupgrade
+        // ne se redéclencherait pas). Donc on s'aligne sur le schéma v1 de
+        // modeHistoire : { keyPath: "planId" } sur store "pdfs".
+        req.onupgradeneeded = function(e) {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("pdfs")) {
+            db.createObjectStore("pdfs", { keyPath: "planId" });
+          }
+        };
+      } catch(e) {
+        resolve(null);
+      }
+    });
+  }
+
+  // 🆕 v1.34.29 — Helper pour lire la note libre Mode Histoire depuis
+  // localStorage `myktamap_note_libre_<planId>` (cf js/modeHistoire.js).
+  // Retourne la chaîne (potentiellement vide) ou null si jamais sauvée.
+  function _lireNoteLibreSession() {
+    try {
+      const planId = window._currentLoadedPlanId || "default";
+      const v = localStorage.getItem("myktamap_note_libre_" + planId);
+      return (v && v.length > 0) ? v : null;
+    } catch(e) {
+      return null;
+    }
+  }
+
   function _exportFull() {
     const d = _compter();
     // 🆕 v1.9.3-A1.a + A1.b.2.5 : structures + mesure comptent aussi
@@ -1702,8 +1778,17 @@
     const mesureLen     = (d.mesure        || []).length;
     // 🆕 v1.12.0-fix : surface aussi prise en compte pour le test "session vide"
     const mesureSurfLen = (d.mesureSurface || []).length;
+    // 🆕 v1.34.29 — Mode Histoire (note libre + PDF session) compte aussi
+    // pour le test "session vide" : si l'user n'a QUE pris des notes ou
+    // importé un PDF Histoire, c'est légitime à exporter.
+    const noteLibre = _lireNoteLibreSession();
+    const hasNoteLibre = !!(noteLibre && noteLibre.length > 0);
     if (d.points.length === 0 && d.roads.length === 0 && d.zones.length === 0
-        && (d.structures || []).length === 0 && mesureLen === 0 && mesureSurfLen === 0) {
+        && (d.structures || []).length === 0 && mesureLen === 0 && mesureSurfLen === 0
+        && !hasNoteLibre) {
+      // Note : on ne peut pas check le PDF Histoire ici (async). On accepte
+      // un cas edge : user qui n'aurait QUE un PDF Histoire (rien d'autre)
+      // verrait "session vide". OK pour MVP (cas marginal).
       alert("Rien à exporter — la session est vide.");
       return;
     }
@@ -1723,7 +1808,18 @@
       ? _collecterPhotosPlan(null)
       : Promise.resolve({ photos: [], totalSize: 0 });
 
-    photosPromise.then(function(pack) {
+    // 🆕 v1.34.29 — Collecte Mode Histoire (note libre localStorage + PDF
+    // session IDB) en parallèle des photos. Si anonymize ON, on skip tout
+    // (la note libre peut contenir des infos perso, le PDF aussi).
+    const histoirePromise = anonymize
+      ? Promise.resolve({ note: null, pdf: null })
+      : _lirePdfHistoireSession().then(function(pdf) {
+          return { note: _lireNoteLibreSession(), pdf: pdf };
+        });
+
+    Promise.all([photosPromise, histoirePromise]).then(function(results) {
+      const pack = results[0];
+      const histoire = results[1];
       const photos = pack.photos;
       // Enrichit les points avec leur liste de photoIds (pour viewer rapide
       // et debug à la main du JSON par l'user).
@@ -1774,6 +1870,25 @@
         session.photosTotalKB  = Math.round(pack.totalSize / 1024);
       }
 
+      // 🆕 v1.34.29 — Mode Histoire embarqué dans la session.
+      // `noteLibre` est inline dans session.json (texte simple, généralement
+      // < quelques KB). `historeSessionPdf` pointe vers un fichier dans le
+      // ZIP (chemin `mode-histoire/<name>`) car les PDFs sont des binaires
+      // qu'on ne veut pas base64-encoder dans le JSON.
+      // À l'import, sessionImporter.js (v1.34.30+) restaure :
+      //   - note libre → localStorage `myktamap_note_libre_<currentPlanId>`
+      //   - PDF        → IDB `myktamap_histoire_pdfs.put({planId, blob, name})`
+      // Si anonymize ON, `histoire.note` et `histoire.pdf` sont null (skip plus haut).
+      if (histoire.note && histoire.note.length > 0) {
+        session.noteLibre = histoire.note;
+      }
+      if (histoire.pdf && histoire.pdf.blob) {
+        session.historeSessionPdf = {
+          name: histoire.pdf.name || "histoire.pdf",
+          file: "mode-histoire/" + (histoire.pdf.name || "histoire.pdf")
+        };
+      }
+
       // 🆕 v1.31.7 F1 : applique l'anonymisation APRÈS construction du
       // payload — comme ça la logique d'inclusion (tracker, photos…)
       // reste identique, on mute juste le résultat avant download.
@@ -1785,18 +1900,25 @@
       // pour rappeler au destinataire que le payload est anonymisé.
       const fnPrefix = anonymize ? "session-anon" : "session";
 
-      if (photos.length > 0) {
-        // Bundle ZIP : session.json + photos/
+      // 🆕 v1.34.29 — Force ZIP si PDF Histoire présent (le blob ne tient pas
+      // dans un JSON pur). La note libre seule reste compatible JSON pur car
+      // c'est du texte inline.
+      const hasHistoirePdf = !!(histoire.pdf && histoire.pdf.blob);
+
+      if (photos.length > 0 || hasHistoirePdf) {
+        // Bundle ZIP : session.json + photos/ + mode-histoire/<pdf>
         // NB : ce chemin ne peut PAS être pris quand anonymize ON
-        // (photos forcées à 0 plus haut), donc pas de risque de fuite EXIF.
-        _packerZipSession(session, photos, _filename(fnPrefix, "zip"))
+        // (photos + PDF Histoire forcés à 0/null plus haut), donc pas de
+        // risque de fuite EXIF ni de notes perso.
+        _packerZipSession(session, photos, _filename(fnPrefix, "zip"), histoire.pdf)
           .then(function() { _fermer(); })
           .catch(function(err) {
             console.error("[SessionExport] _packerZipSession :", err);
             alert("Erreur lors de la création du ZIP : " + (err.message || err));
           });
       } else {
-        // Pas de photos → JSON pur (rétro-compat absolue)
+        // Pas de photos ni PDF → JSON pur (rétro-compat absolue).
+        // La note libre, si présente, reste inline dans session.json.
         _telechargerJSON(session, _filename(fnPrefix));
         _fermer();
       }

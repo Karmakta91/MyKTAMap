@@ -115,27 +115,6 @@ Tes données (liste de plans, sessions, préférences) sont **liées au domaine*
 
 ---
 
-<!-- v1.34.16+ : section nouveautés sprint anti-crash iPhone -->
-## 🆕 Nouveautés (sprint v1.34.x — juin 2026)
-
-Ce sprint cible la **stabilité sur iPhone PWA** (gros plans tuilés en cavité) et corrige plusieurs petits irritants. Rien à apprendre côté usage — tout est silencieux côté toi.
-
-- **🍎 Stabilité iPhone renforcée** — les crashes après une longue session sur un gros plan tuilé sont fortement réduits. L'app libère désormais activement les images des tuiles que tu ne regardes plus, les photos POI quand tu changes de plan, et n'oublie plus de nettoyer ses calques d'images en mémoire à la sortie. Si tu utilisais l'astuce "fermer/rouvrir la PWA toutes les 20 min" pour éviter le crash, tu peux laisser tomber.
-- **🚀 Démarrage plus fluide sur gros plan** — au chargement d'un plan tuilé, seules les tuiles nécessaires sont extraites de l'archive (les autres restent compressées en attendant). Le splash d'ouverture sort plus tôt et la RAM tient mieux la route, surtout sur iPhone.
-- **🗂️ Filtre des calques image** — bug corrigé : si tu décochais un calque image (légende, collision, etc.) puis changeais de plan ou rechargeais, le calque revenait fantômatiquement. Maintenant ton choix est bien respecté. Le bouton **🔄 Tout afficher** dans la modale Filtres recoche aussi correctement les calques images, plus seulement les données.
-- **🔄 Mise à jour douce plus fiable** — l'enchaînement « Forcer la mise à jour → redémarre tout seul » fonctionne désormais de manière régulière (avant il restait parfois bloqué à mi-chemin et il fallait rafraîchir à la main). La nouvelle version s'active automatiquement dans les 5 secondes qui suivent.
-- **🐛 Erreurs console nettoyées** — quelques messages d'erreur parasites (extensions Chrome, polices) qui apparaissaient pour rien dans la console sont silencieux. Aucun impact fonctionnel, juste plus lisible si tu ouvres les DevTools.
-- **🔊 Lecture vocale des notes (NEW v1.34.18)** — un bouton **🔊** apparaît à côté de chaque note dans les popups des points (POI). Un clic et l'app lit la note à haute voix via la voix native de ton appareil (iPhone, Android, ordi). Pratique sous terre quand tu as les mains/yeux occupés (casque, escalade). Clique à nouveau sur 🔊 ou ⏹️ pour arrêter. La langue suit ton navigateur. **100 % offline** — aucune permission demandée, aucune donnée envoyée vers Google/Apple, la synthèse vocale utilise les voix déjà installées sur ton device. Complément de la commande vocale 🎤 « Aller à $POI » de v1.34.0 (entrée + sortie audio = boucle complète mains/yeux libres).
-<!-- v1.34.19+ : Mode Histoire (note libre + PDF) -->
-- **📖 Mode Histoire (NEW v1.34.19+)** — un nouveau bouton **📖** apparaît dans la barre du haut (juste à gauche de la batterie 🔋). Il ouvre une petite modale à deux onglets, propre à chaque plan :
-  - **📝 Note libre** — un carnet de notes texte sauvegardé tout seul pendant que tu tapes. Idéal pour écrire l'histoire du site, des anecdotes, ta to-do d'exploration, des points à vérifier. Une note par plan, conservée même après reload ou fermeture de l'app.
-  - **📚 Histoire** — si l'auteur du plan a embarqué un PDF (récit, plan papier, brochure, légende), il s'affiche directement dans l'onglet. Sinon tu peux **📥 importer ton propre PDF** depuis ton appareil (1 PDF par plan, remplaçable / retirable). Le PDF importé survit aux reloads. Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** te le sort en plein écran natif si l'affichage intégré n'est pas dispo.
-  - **100 % offline** — la note et le PDF restent sur ton appareil. Rien n'est envoyé sur Internet.
-
-> ℹ️ Détails techniques de l'opération « Pack RAM » : voir le journal `README.md` du dépôt + `NETWORK_AUDIT.md`. Côté toi, tu n'as rien à faire — recharge l'app, c'est tout.
-
----
-
 ## 🚀 Premiers pas
 
 ### 🗝️ Accès restreint — Code communautaire
@@ -613,6 +592,79 @@ Le toggle est **persistant** (survit aux reloads et fermetures d'onglet) jusqu'�
 > 3. La Content Security Policy du serveur demande au navigateur lui-même de refuser toute connexion non autorisée
 >
 > Tu n'es jamais obligé de croire l'auteur sur parole : tout est vérifiable.
+
+---
+
+## 📖 Mode Histoire — Note libre + PDF du plan
+
+Le bouton **📖** dans la barre du haut (à gauche de la batterie 🔋) ouvre une modale à deux onglets propre à chaque plan. C'est ton **carnet d'exploration personnel** pour chaque site souterrain.
+
+### 📝 Note libre (Markdown)
+
+Un carnet de notes texte sauvegardé tout seul pendant que tu tapes. Idéal pour écrire l'histoire du site, des anecdotes, ta to-do d'exploration, des points à vérifier. **Une note par plan**, conservée même après reload ou fermeture de l'app.
+
+La note supporte le **Markdown** :
+- Par défaut tu vois le **rendu propre** (titres en couleur, gras, listes, liens cliquables, citations).
+- Clique sur **✏️ Éditer** pour modifier la source ; une mini barre d'outils t'aide à insérer la mise en forme : **B**old · *I*talic · H1 · H2 · • Liste · 🔗 Lien · `</>` code · ❝ citation.
+- Clique sur **👁 Aperçu** pour revoir le rendu.
+- Tout MD que tu tapes (`**gras**`, `# Titre`, `- item`…) est interprété au rendu.
+
+### 📚 Histoire (PDF)
+
+Si l'auteur du plan a embarqué un PDF dans le plan (récit historique, plan papier scanné, brochure, légende détaillée), il s'affiche directement dans cet onglet.
+
+Sinon tu peux **📥 importer ton propre PDF** depuis ton appareil (1 PDF par plan, remplaçable / retirable). Le PDF importé survit aux reloads de l'app. Sur iPhone, un bouton **↗️ Ouvrir dans un onglet** te le sort en plein écran natif si l'affichage intégré n'est pas dispo.
+
+### 📦 Inclus dans l'export de session
+
+Quand tu fais 💾 Enregistrer session, ta note libre Markdown ET ton PDF Mode Histoire sont automatiquement embarqués dans le fichier `.mkmsession.zip`. À la ré-importation (sur un autre appareil, ou pour partager avec un binôme), tout est restauré au plan courant. Compatible rétrocompat (un vieux fichier sans ces champs reste lisible).
+
+En mode **anonymisé**, note + PDF sont volontairement omis du ZIP (peuvent contenir des infos perso).
+
+> 🔒 **100 % offline** — la note et le PDF restent sur ton appareil. Rien n'est envoyé sur Internet.
+
+---
+
+## 🚨 Mode Sortie d'urgence — Trouver la sortie la plus proche
+
+Le bouton **🚨** dans la barre du haut (entre 📖 Mode Histoire et la batterie 🔋) déclenche un calcul d'itinéraire vers la **sortie la plus proche** depuis ta position actuelle.
+
+**Cas d'usage** : tu es sous terre, tu veux ressortir **maintenant**, sans réfléchir (blessé·e, batterie qui tombe, panne d'éclairage, simplement perdu·e). Tu tapes sur le bouton (ou tu le déclenches à la voix), l'app fait le reste.
+
+### Comment ça marche
+
+1. Tape sur **🚨** dans la barre du haut **OU** dis « **sortie** » / « **comment sortir** » via la commande vocale 🎤.
+2. L'app scanne tous les POIs du plan ayant un tag de sortie ouverte :
+   - `cao` → **C**avage **O**uvert
+   - `peo` → **P**uits à **É**chelon **O**uvert
+   - `eso` → **E**scalier de **S**ervice **O**uvert
+   - `entrée` → tout POI marqué comme entrée connue
+3. Pour chaque candidate, l'app calcule le **vrai chemin navigable** via le pathfinder (gère les murs ET les jonctions inter-niveaux).
+4. Une modale compacte s'affiche avec :
+   - La sortie la plus proche + sa distance + son niveau si multi-étages
+   - Un bouton **🧭 Tracer l'itinéraire** (réutilise le moteur Mode Itinéraire classique)
+   - Un dépliable **Voir les N autres sorties** trié par distance
+
+### Versions fermées volontairement ignorées
+
+Les codes `caf` / `pef` / `esf` (cavages, puits, escaliers **fermés**) sont **exclus** car non-traversables en pratique. Si tu marques un POI comme fermé, l'app ne te suggérera jamais d'aller dedans.
+
+Si une sortie est affichée avec un badge **≈** (tilde), ça veut dire que le pathfinder **n'a pas pu calculer un chemin** et qu'on a fallback sur la **distance à vol d'oiseau**. Méfie-toi : cette sortie peut être inaccessible en pratique (murs, étage isolé).
+
+### Origine du calcul
+
+Par défaut, l'app part de ta **position tracker actuelle**. Si le tracker n'est pas actif (ou si tu es en exploration libre sans tracking), une modale alternative te propose de **cliquer sur la carte** pour indiquer ta position de départ.
+
+### Multi-niveau natif
+
+Si tu es au niveau 2 et que la sortie la plus proche est au niveau 0, l'itinéraire **traverse automatiquement les jonctions inter-niveaux** définies par l'auteur du plan. Le résultat affiche le niveau de la sortie cible (badge "N0", "N1", "N2"…).
+
+### Feedback haptique
+
+- Sortie trouvée → vibration discrète de confirmation (si activée dans Configuration)
+- Aucune sortie identifiée → vibration d'alerte + message explicatif rappelant les tags attendus
+
+> 🔒 **100 % offline** — le calcul se fait sur ton appareil (filtrage POIs + pathfinder côté client). Aucune requête réseau.
 
 ---
 
