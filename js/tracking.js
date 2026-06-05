@@ -762,6 +762,16 @@ function _decimateTimeline() {
   const merged = anchors.concat(keptPdrs).sort(function(a, b) { return a.t - b.t; });
   _trackingTimeline = merged;
   console.log("[Tracking] Timeline décimée à", _trackingTimeline.length, "entries (cap", MAX_TIMELINE_ENTRIES, ")");
+  // 🐛 v1.34.15 (Pack RAM #2) — Synchronise le polyline visible avec la
+  // timeline décimée. Sans ce rebuild, le polyline continuait d'accumuler
+  // toutes les positions via addLatLng() (cf updateMap l719) même après
+  // décimation de _trackingTimeline → fuite RAM linéaire (chaque pas =
+  // 1 LatLng object × ~32 bytes + 1 SVG path command). Sur session 6h
+  // dense (1 pas / 600ms = 36k pas), c'était 36k LatLng × 32 = ~1.2 Mo
+  // garde indéfiniment dans le polyline._latlngs. Maintenant : à chaque
+  // décimation, on reconstruit le polyline depuis la timeline (multi-segment
+  // via _rebuildTrailFromTimeline, cohérent avec les ancres recalage/start).
+  _rebuildTrailFromTimeline();
 }
 
 // Helper interne : push une entrée timeline avec timestamp + type.

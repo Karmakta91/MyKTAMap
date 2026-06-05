@@ -4870,6 +4870,11 @@
       try { window.MyKTAMapHeatmap.effacer(); } catch(e) {}
       _secoursHeatmapActive = false;
     }
+    // 🐛 v1.34.15 (Pack RAM #3) — Revoke des ObjectURL des photos Live
+    // créées par _hydraterPhotosLive. Sans ce revoke, sortie de la modale
+    // sans libérer les Blob backings → fuite RAM cumulative à chaque
+    // ouverture/fermeture du Live.
+    _revokeLivePhotoUrls();
   }
 
   function _onKeyDown(e) {
@@ -7461,16 +7466,42 @@
     });
   }
 
+  // 🐛 v1.34.15 (Pack RAM #3) — Set des ObjectURL créées par _hydraterPhotosLive.
+  // Sans ce registre, chaque appel à _hydraterPhotosLive créait N nouvelles
+  // ObjectURL via getObjectUrl() sans revoke des précédentes → fuite mémoire à
+  // chaque ouverture de la vue Live (1-10 Mo par hydrate selon nb photos).
+  // Sur iPhone PWA, ça contribuait au crash après quelques minutes d'usage.
+  // _revokeLivePhotoUrls() est appelé AVANT chaque _hydraterPhotosLive (= au
+  // moment où on remplace les anciens placeholders) et au fermer() du module
+  // (= sortie définitive). Le Set est partagé entre appels via la closure du
+  // module IIFE.
+  const _livePhotoUrls = new Set();
+  function _revokeLivePhotoUrls() {
+    if (_livePhotoUrls.size === 0) return;
+    _livePhotoUrls.forEach(function(u) {
+      try { URL.revokeObjectURL(u); } catch(e) {}
+    });
+    if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+      console.log("[SecoursMode] _revokeLivePhotoUrls : " + _livePhotoUrls.size + " ObjectURL libérées");
+    }
+    _livePhotoUrls.clear();
+  }
+
   // Hydrate les placeholders photo avec les vraies miniatures (ObjectURL async).
   // Pattern v1.10.0 §42 (popup POI photos) adapté ici.
+  // 🐛 v1.34.15 (Pack RAM #3) — Revoke des URLs précédentes AVANT de créer les
+  // nouvelles. Évite fuite à chaque réouverture de la vue Live.
   function _hydraterPhotosLive(corps, scenarioId, equipeId, etapeIdx) {
     if (!window.MyKTAMapSecoursPhotos) return;
+    _revokeLivePhotoUrls();
     const placeholders = corps.querySelectorAll('.kta-secours-live-photo-placeholder[data-photo-id]');
     placeholders.forEach(function(ph) {
       const pid = ph.getAttribute("data-photo-id");
       if (!pid) return;
       window.MyKTAMapSecoursPhotos.getObjectUrl(pid).then(function(url) {
         if (!url || !ph.parentNode) return;
+        // 🐛 v1.34.15 — Track la nouvelle URL pour revoke ultérieur.
+        _livePhotoUrls.add(url);
         const img = document.createElement("img");
         img.src = url;
         img.alt = "Photo étape";

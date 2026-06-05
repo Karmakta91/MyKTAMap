@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.14",
+  "version": "v1.34.15",
   "released": "2026-06-05",
   "notes": [
-    "⚡ v1.34.14 — Optimisation perf au démarrage : pour les plans avec beaucoup de tracés embarqués dans les calques de données, l'app évite désormais des centaines de re-rendus inutiles au chargement (un seul rendu groupé en fin de chargement). Petit nettoyage console (suppression d'un message d'info historique)."
+    "🧠 v1.34.15 — Optimisation mémoire (anti-crash iPhone) — 3 fuites corrigées : (1) le tracé visible du tracker est désormais resynchronisé après décimation interne (sessions longues), (2) les vignettes photo du Mode Secours Live libèrent leur mémoire à chaque réouverture, (3) le mode « Je suis perdu » ne cumule plus de rendus SVG superposés à chaque recalcul de zone."
   ]
 }

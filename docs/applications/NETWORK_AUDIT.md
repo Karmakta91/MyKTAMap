@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.14** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.15** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.15 (Pack RAM Phase 3 — Fuites #2/#3/#4)** : 3 fuites RAM indépendantes du lazy tile, corrigées. **#2** `js/tracking.js _decimateTimeline` : la décimation réduisait `_trackingTimeline` (data) mais ne synchronisait pas le polyline Leaflet visible. Fix : appel à `_rebuildTrailFromTimeline()` qui reconstruit le polyline multi-segment depuis la timeline décimée. **#3** `js/secoursMode.js _hydraterPhotosLive` : URLs photo Live (ObjectURL via getObjectUrl) non revoke entre 2 ouvertures de la vue Live. Fix : Set module-level `_livePhotoUrls` + `_revokeLivePhotoUrls()` appelé avant chaque hydrate ET au `fermer()`. **#4** `js/lostMode.js _renderOnMap` : `svgRenderer` recréé à chaque calcul de zone Lost (const dans le scope local) sans libérer le précédent. Fix : promote au scope module `_svgRenderer = null`, ajout `removeLayer` dans `_clearLayers`. Gain RAM estimé ~5-20 Mo selon usage. **Impact réseau** : ZÉRO. 3 modifications purement frontend qui libèrent des objets en RAM. Pas de fetch additionnel, pas de modification du flux réseau. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — optimisations défensives purement frontend.
 
 > **v1.34.14 (Fix `registerEmbeddedRoad` batch + retrait debug `Refonte UI v1`)** : KARMA stack trace v1.34.13 a identifié la source des 150+ appels `renderRoads` au boot : `ajouterPointsDepuisJSON` (utils.js l1703) itère sur les roads embarquées d'un dataLayer et appelle `registerEmbeddedRoad` pour chacune, qui appelle `renderRoads()` à chaque fois. Fix : ajout du paramètre `skipRender` à `registerEmbeddedRoad`, et trigger UN SEUL `renderRoads` à la fin du batch dans `ajouterPointsDepuisJSON`. Gain perf important au boot des plans avec dataLayer roads denses. Bonus : retrait du banner `console.info("[Refonte UI v1] Nouvelle interface active...")` demandé par KARMA + retrait de l'instrumentation diagnostic v1.34.13. **AUCUN impact réseau** : optimisation purement frontend (réduction des appels JS internes). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — fix propre d'une perf au boot, identifiée via debug instrumenté.
 

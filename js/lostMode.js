@@ -106,6 +106,15 @@
   let _zoneLayer        = null;
   let _lastKnownMarker  = null;
   let _matchMarkers     = [];
+  // 🐛 v1.34.15 (Pack RAM #4) — Promote svgRenderer du scope local de
+  // _renderOnMap (était `const svgRenderer = L.svg(...)`) au scope module.
+  // Sans ça, à chaque appel de _renderOnMap, un NOUVEAU L.svg() était créé
+  // et addTo(map), mais l'ancien restait attaché dans map._layers (jamais
+  // retiré). Sur plusieurs calculs de zone successifs (= user qui ajuste
+  // les critères de recherche), accumulation linéaire de SVG renderers
+  // dans le DOM Leaflet → fuite mémoire + ralentissement du re-render.
+  // Fix : on garde une seule instance, on l'enlève dans _clearLayers.
+  let _svgRenderer      = null;
   let _refinedCircle    = null;
   // 🛣️ v173 : layers pour la portée max sur le réseau de routes
   let _reachPolyFull    = null;   // polyline multi-segments rouge (segments complets atteints)
@@ -271,6 +280,9 @@
     _reachStats = null;
     _matchMarkers.forEach(function(m) { window.map.removeLayer(m); });
     _matchMarkers = [];
+    // 🐛 v1.34.15 (Pack RAM #4) — Libère le SVG renderer (sinon il reste
+    // attaché à window.map._layers et accumule à chaque _renderOnMap).
+    if (_svgRenderer)       { window.map.removeLayer(_svgRenderer);       _svgRenderer = null; }
   }
 
   function _renderOnMap() {
@@ -305,8 +317,12 @@
     // automatiquement la nouvelle layer si elle n'est pas attachée à un
     // LayerGroup déclaré comme layer Leaflet. SVG est plus fiable pour les
     // ajouts ad-hoc en cours de session.
-    const svgRenderer = L.svg({ padding: 0.5 });
-    svgRenderer.addTo(window.map);
+    // 🐛 v1.34.15 (Pack RAM #4) — Réutilise _svgRenderer module-level si déjà
+    // créé (cf _clearLayers qui le revoke). Évite d'accumuler des SVG renderers
+    // attachés à map._layers à chaque appel de _renderOnMap.
+    _svgRenderer = L.svg({ padding: 0.5 });
+    _svgRenderer.addTo(window.map);
+    const svgRenderer = _svgRenderer;  // alias pour rétro-compat des lignes suivantes
 
     _zoneLayer = L.polygon(polyPoints, {
       color: COLOR_ZONE,

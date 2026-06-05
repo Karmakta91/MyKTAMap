@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.14</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.15</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.15 (Pack RAM Phase 3 — Fuites #2/#3/#4)</strong> : 3 fuites RAM indépendantes du lazy tile. <strong>#2</strong> <code>tracking.js _decimateTimeline</code> : sync polyline visible via <code>_rebuildTrailFromTimeline</code> après décimation. <strong>#3</strong> <code>secoursMode.js _hydraterPhotosLive</code> : Set <code>_livePhotoUrls</code> + revoke avant hydrate et au fermer. <strong>#4</strong> <code>lostMode.js _renderOnMap</code> : promote <code>svgRenderer</code> au scope module + remove dans <code>_clearLayers</code>. Gain RAM ~5-20 Mo selon usage. <strong>Impact réseau</strong> : ZÉRO.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression réseau — optimisations défensives purement frontend.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.14 (Fix <code>registerEmbeddedRoad</code> batch + retrait debug <code>Refonte UI v1</code>)</strong> : KARMA stack trace v1.34.13 a identifié 150+ appels <code>renderRoads</code> au boot causés par <code>ajouterPointsDepuisJSON</code> (utils.js l1703) qui appelle <code>registerEmbeddedRoad</code> par road, qui appelle <code>renderRoads()</code> à chaque fois. Fix : ajout paramètre <code>skipRender</code> à <code>registerEmbeddedRoad</code>, UN SEUL render à la fin du batch. Bonus : retrait banner <code>[Refonte UI v1]</code> + retrait instrumentation v1.34.13. <strong>AUCUN impact réseau</strong>.
