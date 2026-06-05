@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.19",
+  "version": "v1.34.20",
   "released": "2026-06-05",
   "notes": [
-    "📖 v1.34.19 — Nouveau Mode Histoire ! Un bouton 📖 apparaît dans la barre du haut, à côté de la batterie. Click → modale avec 2 onglets : (1) 📝 Note libre où tu peux écrire ce que tu veux (auto-sauvée par plan), et (2) 📚 Histoire qui affiche un PDF si l'auteur du plan en a embarqué un dans le ZIP (champ histoirePdf de plan-config.json). Sur iPhone, le PDF s'ouvre via un bouton télécharger pour respecter le comportement natif iOS."
+    "📖 v1.34.20 — Mode Histoire évolue : si un plan n'a pas de PDF d'histoire intégré par son auteur, tu peux désormais en importer un toi-même ! Un bouton « 📥 Importer un PDF » apparaît dans l'onglet 📚 Histoire — choisis un PDF depuis ton appareil et il est sauvegardé localement pour ce plan (1 PDF par plan, remplaçable). Boutons 🔄 Remplacer et 🗑️ Retirer pour le gérer. Le PDF survit aux rechargements de l'app et n'est jamais envoyé sur internet — stocké uniquement dans le stockage local de ton navigateur."
   ]
 }

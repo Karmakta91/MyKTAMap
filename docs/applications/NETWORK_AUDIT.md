@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.19** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.20** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.20 (Mode Histoire — Import PDF de session si plan sans histoirePdf)** : complète v1.34.19. Si plan n'a pas `histoirePdf` embarqué, l'user peut importer son propre PDF via file picker (`<input type="file" accept="application/pdf">`), stocké en IDB `myktamap_histoire_pdfs` per-plan. Détection MIME (`application/pdf`) + fallback extension `.pdf`. URL.createObjectURL revoke proprement au close modale + au remplacement/suppression (Pack RAM Phase 4 lesson). **Impact réseau** : ZÉRO. Le file picker lit le fichier directement depuis le système de fichiers de l'user (= choix explicite click bouton import), aucune permission réseau, aucun fetch externe. Le PDF reste 100% local en IDB. Pas de nouveau domaine, pas de nouvelle requête. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — feature 100% client-side, alignée avec la philosophie offline community.
 
 > **v1.34.19 (Mode Histoire — note libre + PDF embarqué dans le plan)** : nouvelle feature. Bouton 📖 dans status bar, modale 2 onglets : note libre éditable persistée localStorage per-plan (auto-save 500ms) + viewer PDF embarqué via `plan-config.json > histoirePdf`. Affichage iframe natif sur desktop/Android, fallback bouton télécharger sur iOS (iframe PDF peu fiable). PDF résolu via `RUNTIME_ASSETS` (extraction eager dans la whitelist 2-pass `extraireZip`). **Impact réseau** : ZÉRO. Le PDF est embarqué dans le ZIP du plan importé localement par l'utilisateur (drag-and-drop ou file picker) — aucun fetch externe, aucun téléchargement réseau pour le PDF. La note libre vit en `localStorage` du navigateur, jamais transmise hors du device. Pas de nouveau domaine, pas de nouvelle requête. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — feature 100% client-side, alignée avec la philosophie offline community.
 
