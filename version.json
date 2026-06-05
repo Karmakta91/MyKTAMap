@@ -1,7 +1,7 @@
 {
-  "version": "v1.35.6",
-  "released": "2026-06-05",
+  "version": "v1.36.0",
+  "released": "2026-06-06",
   "notes": [
-    "🇬🇧 v1.35.6 — Grosse remise à niveau de la documentation utilisateur en anglais : nettoyage de doublons historiques + traduction des sections jusqu'ici manquantes (Optimiser ton plan, Aide IA, Légende, Réglages en mode carte, détails Mode Secours, etc.). Les deux versions FR et EN sont maintenant symétriques."
+    "🐳 v1.36.0 — Tu peux désormais faire tourner MyKTAMap sur ton propre matériel (PC, Raspberry Pi, NAS) en une seule commande Docker. Une image officielle multi-architecture (amd64 + arm64) est publiée à chaque release, avec un certificat HTTPS auto-signé généré tout seul au démarrage. Détails : voir la doc utilisateur, section « Self-host avec Docker »."
   ]
 }

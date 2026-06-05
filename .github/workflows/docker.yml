@@ -1,0 +1,168 @@
+# =====================================================================
+# MyKTAMap — Workflow Docker image (v1.36.0)
+# =====================================================================
+# Build + push une image OCI vers ghcr.io quand un tag `v*` est créé
+# par le workflow Auto Release (release.yml).
+#
+# Stratégie :
+#   - Trigger sur tag `v*` (ne pas trigger sur chaque commit main)
+#   - Build multi-arch (amd64 + arm64) via buildx — supporte
+#     un Raspberry Pi, un serveur Synology ARM, etc.
+#   - Push avec 4 tags : latest, vX.Y.Z, X.Y, X
+#   - Auth via GITHUB_TOKEN (pas de secret externe à gérer)
+#
+# Usage côté utilisateur :
+#   docker pull ghcr.io/karmakta91/myktamap:latest
+#   docker run -d -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
+#
+# Pour rendre les images PUBLIQUES (par défaut ghcr.io rend privé) :
+#   Settings → Packages → myktamap → Change visibility → Public
+#   (à faire une seule fois après le premier push)
+# =====================================================================
+
+name: Build Docker image
+
+on:
+  # Déclenché par le tag v* (créé automatiquement par release.yml).
+  # Le filtre exclut les pre-releases (-alpha, -beta, etc.) qui ne sont
+  # pas distribuées en image officielle.
+  push:
+    tags:
+      - 'v*.*.*'
+      - '!v*-alpha*'
+      - '!v*-beta*'
+      - '!v*-rc*'
+
+  # Trigger manuel via UI GitHub Actions → "Run workflow"
+  # (utile pour rebuild une image existante sans rebumper la version)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag à builder (ex: v1.36.0). Laisser vide = HEAD courant.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write   # nécessaire pour push sur ghcr.io
+
+jobs:
+  build-and-push:
+    name: Build + push ghcr.io
+    runs-on: ubuntu-latest
+
+    steps:
+      # ----------------------------------------------------------------
+      # 1. Checkout du repo au tag/HEAD
+      # ----------------------------------------------------------------
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Si trigger manuel avec un tag spécifié, on checkout ce tag.
+          # Sinon, le checkout par défaut (HEAD du tag qui a déclenché).
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      # ----------------------------------------------------------------
+      # 2. Détermine les tags Docker à pousser
+      # ----------------------------------------------------------------
+      # Pour le tag v1.35.6 on pousse :
+      #   - ghcr.io/karmakta91/myktamap:latest
+      #   - ghcr.io/karmakta91/myktamap:v1.35.6
+      #   - ghcr.io/karmakta91/myktamap:1.35
+      #   - ghcr.io/karmakta91/myktamap:1
+      # Permet aux utilisateurs de "pinner" au niveau de stabilité voulu.
+      - name: Calcule les tags Docker
+        id: tags
+        run: |
+          # Récupère la version depuis version.json (source de vérité)
+          VERSION=$(jq -r '.version' version.json)
+          # Strip le préfixe "v" pour les tags semver-strict
+          STRIPPED="${VERSION#v}"
+          # MAJOR.MINOR (ex: 1.35)
+          MINOR=$(echo "$STRIPPED" | awk -F. '{print $1"."$2}')
+          # MAJOR (ex: 1)
+          MAJOR=$(echo "$STRIPPED" | awk -F. '{print $1}')
+
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          REGISTRY_IMAGE="ghcr.io/${REPO_LOWER}"
+
+          # Composition de la liste de tags pour metadata-action
+          TAGS="${REGISTRY_IMAGE}:latest"
+          TAGS="${TAGS},${REGISTRY_IMAGE}:${VERSION}"
+          TAGS="${TAGS},${REGISTRY_IMAGE}:${MINOR}"
+          TAGS="${TAGS},${REGISTRY_IMAGE}:${MAJOR}"
+
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          echo "registry_image=$REGISTRY_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "[docker] Image cible : $REGISTRY_IMAGE"
+          echo "[docker] Tags qui seront poussés :"
+          echo "$TAGS" | tr ',' '\n' | sed 's/^/  - /'
+
+      # ----------------------------------------------------------------
+      # 3. Setup Buildx (multi-arch)
+      # ----------------------------------------------------------------
+      - name: Set up QEMU (cross-compile arm64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ----------------------------------------------------------------
+      # 4. Login ghcr.io via GITHUB_TOKEN (pas de secret à créer)
+      # ----------------------------------------------------------------
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ----------------------------------------------------------------
+      # 5. Build + push multi-arch
+      # ----------------------------------------------------------------
+      # Plateformes :
+      #   linux/amd64  → PC x86_64 (Intel/AMD desktop & serveur)
+      #   linux/arm64  → Raspberry Pi 4/5, Synology ARM, Apple Silicon
+      # Pas de armv7 (Pi 2/3) — coût build x2, demande utilisateur basse.
+      - name: Build et push image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          # Cache via le registry pour accélérer les builds successifs.
+          cache-from: type=registry,ref=${{ steps.tags.outputs.registry_image }}:buildcache
+          cache-to: type=registry,ref=${{ steps.tags.outputs.registry_image }}:buildcache,mode=max
+          # Labels OCI complémentaires injectés au build (versionning + date)
+          labels: |
+            org.opencontainers.image.version=${{ steps.tags.outputs.version }}
+            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      # ----------------------------------------------------------------
+      # 6. Recap dans le summary du workflow
+      # ----------------------------------------------------------------
+      - name: Récap dans le summary
+        run: |
+          VERSION="${{ steps.tags.outputs.version }}"
+          REGISTRY_IMAGE="${{ steps.tags.outputs.registry_image }}"
+          {
+            echo "## 🐳 Image Docker poussée"
+            echo ""
+            echo "**Version** : \`$VERSION\`"
+            echo ""
+            echo "### Tags"
+            echo "$(echo '${{ steps.tags.outputs.tags }}' | tr ',' '\n' | sed 's/^/- `/' | sed 's/$/`/')"
+            echo ""
+            echo "### Utilisation"
+            echo '```bash'
+            echo "docker pull $REGISTRY_IMAGE:$VERSION"
+            echo "docker run -d --name myktamap -p 8443:8443 $REGISTRY_IMAGE:$VERSION"
+            echo '```'
+            echo ""
+            echo "Puis ouvre https://localhost:8443/ (accepte le cert auto-signé)."
+          } >> "$GITHUB_STEP_SUMMARY"

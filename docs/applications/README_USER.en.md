@@ -2866,6 +2866,88 @@ In case of a problem or to force an update, use **⚙️ → 🗑️ Reset**. Th
 
 ---
 
+## 🐳 Self-host with Docker (NEW v1.36.0)
+
+If you want to run MyKTAMap **on your own hardware** (PC, Raspberry Pi, NAS, dedicated server) — to have it available on your local network, guarantee 100% offline operation, or just out of curiosity — a **ready-to-run Docker image** is now available.
+
+### In one command
+
+```bash
+docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
+```
+
+Then open **`https://localhost:8443/`** in your browser. On the first access, your browser will warn about an **untrusted certificate** (this is normal, the image generates a self-signed certificate at startup). Click **"Advanced" → "Continue to localhost"** to accept, and the app appears.
+
+### Multi-platform
+
+The image is built for 2 architectures:
+- **amd64** (Intel/AMD desktop or server PC)
+- **arm64** (Raspberry Pi 4/5 in 64-bit, Synology ARM, Apple Silicon)
+
+Docker automatically detects the correct version on `pull`.
+
+### Bonus: your own maps
+
+To persist your maps across container restarts:
+
+```bash
+docker run -d --name myktamap \
+  -p 8443:8443 \
+  -v /path/to/your/maps:/usr/share/nginx/html/data/plans \
+  ghcr.io/karmakta91/myktamap:latest
+```
+
+### Bonus: your own TLS certificate
+
+If you have a valid certificate (Let's Encrypt with a local domain, internal CA, etc.), you can mount it as a volume instead of using the self-signed one:
+
+```bash
+docker run -d --name myktamap \
+  -p 8443:8443 \
+  -v /path/to/your/certs:/etc/nginx/certs \
+  ghcr.io/karmakta91/myktamap:latest
+```
+
+The volume must contain `server.crt` + `server.key`.
+
+### Bonus: access via local hostname
+
+```bash
+docker run -d --name myktamap \
+  -p 8443:8443 \
+  -e MKM_HOSTNAME=myktamap.local \
+  ghcr.io/karmakta91/myktamap:latest
+```
+
+The self-signed certificate will include `myktamap.local` in the allowed names. Handy if you have a local DNS (Pi-hole, AdGuard Home) resolving that name to your host.
+
+### Updates
+
+To upgrade to a new version:
+
+```bash
+docker pull ghcr.io/karmakta91/myktamap:latest
+docker stop myktamap && docker rm myktamap
+docker run -d --name myktamap -p 8443:8443 ghcr.io/karmakta91/myktamap:latest
+```
+
+You can also **pin** a specific version instead of `latest`:
+- `ghcr.io/karmakta91/myktamap:v1.36.0` — this exact version, immutable
+- `ghcr.io/karmakta91/myktamap:1.36` — latest patch in 1.36.x
+- `ghcr.io/karmakta91/myktamap:1` — latest minor in 1.x
+
+### Limits
+
+- **Service Worker + self-signed certificate**: some browsers (Chromium, Safari) refuse to install the Service Worker if the certificate isn't trusted. If the app works but seems "not to cache" for offline mode, accept the security warning first, then reload.
+- **Port conflict**: if you already have another service on `8443` on the host, change the mapping: `-p 9443:8443` for example.
+- **No automatic updates**: you decide when to `docker pull`. For auto-update, check [Watchtower](https://github.com/containrrr/watchtower).
+
+> 🔒 **No data sent elsewhere**. The image bundles the vanilla app exactly as the official version, but served from your own hardware. It's even slightly more offline-friendly than production (no occasional fetch to `gstatic.com` for the connectivity ping — the `networkAudit.js` module stays active if you want to verify).
+
+> 📚 **Technical details**: see `docs/architecture/docker-selfhost.md` in the GitHub repo.
+
+---
+
 ## 🆘 Troubleshooting
 
 **The map does not load**

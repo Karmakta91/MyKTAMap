@@ -1,0 +1,46 @@
+# =====================================================================
+# MyKTAMap — .dockerignore (v1.36.0)
+# =====================================================================
+# Fichiers exclus du contexte envoyé au Docker daemon au build.
+# Réduit la taille de l'image + protège des fichiers internes/pro.
+# =====================================================================
+
+# Git internals
+.git
+.gitignore
+.gitattributes
+.github
+.githooks
+
+# Claude Code workspace (sessions, worktrees, agents)
+.claude
+.claude.json
+
+# Instructions agent dev only (pas dans l'image runtime)
+CLAUDE.md
+
+# Scripts internes (check no-pro-leak, etc.)
+scripts/
+
+# Licence pro garde-fou (jamais en community mais au cas où)
+Licence-pro.json
+
+# Cosmétique OS
+.DS_Store
+Thumbs.db
+
+# Node modules au cas où (l'app vanilla n'en a pas, mais defensive)
+node_modules
+
+# Documentation interne archi (lue par l'IA, pas par l'utilisateur)
+docs/architecture/
+
+# Builds locaux
+dist/
+build/
+*.zip
+*.tar.gz
+
+# Logs et tmp
+*.log
+.tmp/

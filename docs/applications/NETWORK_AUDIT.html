@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.35.6</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.36.0</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.36.0 (Package Docker self-host — image OCI ghcr.io)</strong> : Nouvelle image Docker auto-suffisante publiée sur <code>ghcr.io/karmakta91/myktamap</code> à chaque tag. Multi-arch amd64+arm64. Base nginx:alpine + cert TLS auto-signé généré au boot. Config Nginx réutilise la CSP stricte de prod. Ports non-privilégiés 8080 (redirect HTTPS) + 8443. Workflow CI automatique sur tag. <strong>Impact réseau</strong> : ZÉRO côté code (image embarque exactement le même JS/CSS que la prod). Distribution alternative au ZIP selfhost. Sécurité renforcée : Permissions-Policy strict, X-Frame-Options DENY, pas de HSTS (cert auto-signé).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> (désactivable via mode hors-ligne strict opt-in). <strong>Verdict</strong> : ✅ aucune régression, philosophie 100% offline renforcée.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.35.6 (Phase 2 doc EN — cleanup doublons + traduction sections manquantes)</strong> : Refonte massive de <code>README_USER.en.md</code> : suppression de 443 lignes de doublons historiques (séquence Add points → Save and share dupliquée), nettoyage de 9 artifacts parasites, traduction de 3 sections H2 complètes (Optimize map, AI Help, Legend) + enrichissement de 10+ sous-sections H3/H4 (Rescue Mode complet, Settings, Filtres, etc.). Symétrie FR/EN parfaite : 30 H2 dans l'ordre identique. <strong>Impact réseau</strong> : ZÉRO — refonte purement éditoriale de la doc.
