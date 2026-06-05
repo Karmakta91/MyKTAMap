@@ -1314,25 +1314,44 @@
           console.warn("[LazyTiles v1.34.10-dryrun] plan-config.json introuvable dans le ZIP — whitelist vide");
         }
 
-        // === Pass 2 : extraction + dry-run analyse ===
-        let wouldStubCount = 0;
+        // === Pass 2 : extraction (eager pour assets référencés + stub pour tuiles) ===
+        // 🐛 v1.34.11 (Phase 2) : activation du VRAI lazy tile.
+        // Les tuiles dans /data/tiles/ qui ne sont PAS dans la whitelist sont
+        // poussées comme STUBS (sans blob extrait) → grosse économie RAM au boot.
+        // Le blob sera extrait à la demande par _extractLazyAsset (config.js) au
+        // moment du rendu via _renderNiveau (tiling.js).
+        let stubCount = 0;
+        let eagerCount = 0;
         let canariCount = 0;
         for (const entry of Object.values(zip.files).filter(function(f) { return !f.dir; })) {
           const name = entry.name.split("/").pop();
           if (!name) continue;
 
-          // 🐛 v1.34.10 — analyse dry-run : ce qui SERAIT stube en Phase 2.
           const fullPath = String(entry.name).replace(/\\/g, "/").trim();
           const matchesTilePath = /^data\/tiles\/z-?\d+\//i.test(fullPath);
           const isReferenced = referencedPaths.has(fullPath);
+
+          // === DÉCISION : stub vs eager ===
           if (matchesTilePath && !isReferenced) {
-            wouldStubCount++;
-          } else if (matchesTilePath && isReferenced) {
+            // 🐛 v1.34.11 — STUB : objet plain avec _lazyTile flag (pas un File).
+            // Le blob sera extrait à la demande via window._lazyZipRef.
+            // Note : on garde `name` (basename) + `_fullPath` (path complet ZIP)
+            // pour compatibilité avec findMatchingFile / startImportedPlan.
+            assetFiles.push({
+              name: name,
+              _fullPath: entry.name,
+              _lazyTile: true,
+              _zipPath: entry.name
+            });
+            stubCount++;
+            continue;
+          }
+          if (matchesTilePath && isReferenced) {
             canariCount++;
-            console.warn("[LazyTiles v1.34.10-dryrun] ⚠️ CANARI : entrée qui matche /data/tiles/ MAIS est référencée dans plan-config — restera EAGER (correct, mais à surveiller) :", fullPath);
+            console.warn("[LazyTiles v1.34.11] ⚠️ CANARI : entrée qui matche /data/tiles/ MAIS est référencée dans plan-config — extraction EAGER (correct, mais à surveiller) :", fullPath);
           }
 
-          // === Extraction comme avant (Phase 1 = no behavior change) ===
+          // === EAGER : extraction immédiate du blob (comportement avant v1.34.11) ===
           const blob = await entry.async("blob");
           const file = new File([blob], name, { type: guessMime(name) });
           // 🧱 Tiling V2 (v149) : on annote le File avec son chemin complet
@@ -1344,10 +1363,23 @@
           // désambiguer.
           file._fullPath = entry.name;
           if (name === "plan-config.json") planConfigFile = file;
-          else assetFiles.push(file);
+          else {
+            eagerCount++;
+            assetFiles.push(file);
+          }
         }
 
-        console.log("[LazyTiles v1.34.10-dryrun] Bilan : " + wouldStubCount + " tuile(s) seraient stube en Phase 2 (= économie RAM estimée) ; " + canariCount + " canari(s) détecté(s) (matche /data/tiles/ MAIS référencé → restera eager).");
+        console.log("[LazyTiles v1.34.11] Bilan : " + stubCount + " tuile(s) stube (lazy) + " + eagerCount + " asset(s) extrait eager + " + canariCount + " canari(s) détecté(s).");
+
+        // 🐛 v1.34.11 — Garde la référence au ZIP source pour extraction lazy
+        // ultérieure. Sera nullified par resetRuntimeAssets() au plan switch
+        // (cf js/config.js).
+        if (stubCount > 0) {
+          window._lazyZipRef = zip;
+          console.log("[LazyTiles v1.34.11] window._lazyZipRef sauvegardé (taille ZIP : ~" + Math.round(zipFile.size / 1024) + " Ko)");
+        } else {
+          window._lazyZipRef = null;
+        }
 
         if (!planConfigFile) throw new Error("plan-config.json introuvable dans l'archive ZIP");
         return { planConfigFile, assetFiles };

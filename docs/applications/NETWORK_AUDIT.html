@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.10</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.11</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.11 (Pack RAM Phase 2 light — Lazy tile + LRU file release)</strong> : activation de l'optimisation RAM préparée par la Phase 1 v1.34.10. Tuiles V2 hors whitelist plan-config désormais stubs au boot (pas d'extraction blob), <code>window._lazyZipRef</code> garde le ZIP source pour extraction à la demande via <code>_extractLazyAsset(path)</code>. <code>_renderNiveau</code> async + pré-extract <code>Promise.all()</code> + level guard token monotone. <code>_trimLevelsLRU</code> libère AUSSI <code>asset.file = null</code> pour les assets avec <code>_zipPath</code> (vraie économie RAM). <strong>Impact réseau</strong> : ZÉRO. Toutes les opérations sont locales (JSZip in-memory). Aucun nouveau fetch, aucun nouveau domaine.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression réseau. Régressions UX potentielles : léger délai 200-500 ms au 1er zoom sur un nouveau niveau ; tuiles minimap urgence éventuellement manquantes (skip gracieux).
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.10 (Pack RAM Phase 1 — Dry-run logging)</strong> : étape interne préparatoire au re-rollout de l'optimisation RAM v1.35.0 (rollback en v1.34.4 car cassait l'image principale). Modification de <code>index.html extraireZip</code> : parsing de <code>plan-config.json</code> EN PREMIER pour construire une whitelist des paths référencés (baseImage, collisionImage, imageLayers, dataLayers). Puis dry-run analyse pour chaque entry : <code>WOULD STUB</code> si match <code>^data/tiles/z-?\d+/</code> hors whitelist, <code>CANARI</code> si match mais référencé. Phase 1 = ZÉRO changement de comportement (extraction eager comme avant). <strong>AUCUN impact réseau</strong> : modification purement frontend dans l'extraction locale du ZIP.

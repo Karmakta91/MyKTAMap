@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.10",
+  "version": "v1.34.11",
   "released": "2026-06-05",
   "notes": [
-    "🧪 v1.34.10 — Préparation interne d'une optimisation mémoire à venir (anti-crash iPhone). Aucun changement visible côté app — étape de diagnostic technique."
+    "🧠 v1.34.11 — Optimisation mémoire (anti-crash iPhone) : les tuiles d'image des plans V2 sont désormais chargées à la demande au lieu d'être toutes extraites en mémoire au démarrage. Les niveaux de zoom non utilisés sont libérés automatiquement. Un léger délai (200-500 ms) peut apparaître la première fois que tu zoomes sur un nouveau niveau, c'est normal."
   ]
 }

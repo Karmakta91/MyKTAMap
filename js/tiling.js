@@ -214,6 +214,12 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
 
   // 🆕 v1.26.4 (P0-2 RAM) — Marque z comme niveau le plus récent et révoque
   // les bitmaps des niveaux au-delà du cap LRU (libère la RAM décodée).
+  // 🐛 v1.34.11 (Pack RAM Phase 2) — Libère AUSSI asset.file pour les assets
+  // qui ont un _zipPath (= stubs lazy). Au prochain accès, _extractLazyAsset
+  // re-créera le File depuis window._lazyZipRef. C'est ce nullify-of-file qui
+  // apporte le vrai gain RAM (sinon, le File JPEG restait pinned éternellement).
+  // Pour les assets eager (sans _zipPath), on ne libère PAS le file (pas de
+  // source de re-extraction → on perdrait la tuile).
   function _trimLevelsLRU(currentZ) {
     const i = state.levelLRU.indexOf(currentZ);
     if (i >= 0) state.levelLRU.splice(i, 1);
@@ -222,14 +228,21 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
       const oldZ = state.levelLRU.shift();  // LRU
       const assets = state.blobAssetsByLevel[oldZ];
       if (!assets) continue;
+      let urlsLib = 0, filesLib = 0;
       assets.forEach(function(a) {
         if (a && a.url) {
           try { URL.revokeObjectURL(a.url); } catch(e) {}
           a.url = null;  // force re-création lazy au prochain accès → bitmap GC
+          urlsLib++;
+        }
+        // 🐛 v1.34.11 — Libère le File si l'asset peut être re-extrait via _zipPath.
+        if (a && a.file && a._zipPath) {
+          a.file = null;
+          filesLib++;
         }
       });
       delete state.blobAssetsByLevel[oldZ];
-      console.log("[Tiling V2] LRU : niveau z=" + oldZ + " révoqué (" + assets.length + " tuiles libérées)");
+      console.log("[Tiling V2] LRU : niveau z=" + oldZ + " révoqué (" + urlsLib + " URLs + " + filesLib + " fichiers libérés sur " + assets.length + " tuiles)");
     }
   }
 
@@ -242,16 +255,64 @@ function _chargerImageV2OptionB(bounds, map, tilingManifest) {
   }
 
   // Helper : génère les overlays d'un niveau z donné.
-  function _renderNiveau(z) {
-    // Cleanup overlays précédents
-    state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
-    state.activeOverlays = [];
+  // 🐛 v1.34.11 (Pack RAM Phase 2) — Devient ASYNC. Pré-extract Promise.all
+  // sur toutes les tuiles du niveau AVANT le render loop. Pour les tuiles
+  // déjà extraites (asset.file présent), no-op. Pour les stubs lazy ou les
+  // tuiles évincées par LRU (file = null + _zipPath), _extractLazyAsset les
+  // re-extrait depuis window._lazyZipRef.
+  // Level guard via token monotone : si user zoom rapidement, un appel ultérieur
+  // invalide le rendu en cours (avoid wasted work + ne pas afficher un niveau
+  // obsolète après un zoom plus récent).
+  async function _renderNiveau(z) {
+    // 🐛 v1.34.11 — Token monotone pour level guard.
+    state.renderToken = (state.renderToken || 0) + 1;
+    const myToken = state.renderToken;
 
     const scale = Math.pow(2, -z);       // z=0 → 1, z=-1 → 2, z=-2 → 4, z=-3 → 8
     const lvlW  = Math.ceil(W / scale);
     const lvlH  = Math.ceil(H / scale);
     const cols  = Math.ceil(lvlW / TILE_SIZE);
     const rows  = Math.ceil(lvlH / TILE_SIZE);
+
+    // 🐛 v1.34.11 — Pré-extract async des tuiles lazy du niveau AVANT le cleanup
+    // des anciens overlays. Tant que le pre-extract est en cours, les anciens
+    // overlays restent affichés (Leaflet auto-rescale visuellement) → pas de
+    // flash blanc à l'utilisateur. On collecte tous les paths, filtre ceux qui
+    // ont besoin d'extraction (lazy + no file + has _zipPath), puis Promise.all().
+    if (typeof window._extractLazyAsset === "function" && window.RUNTIME_ASSETS) {
+      const aExtraire = [];
+      for (let k = 1; k <= rows; k++) {
+        for (let col = 0; col < cols; col++) {
+          const path = "data/tiles/z" + z + "/x" + col + "_y" + (-k) + ".jpg";
+          const asset = window.RUNTIME_ASSETS[path];
+          if (asset && !asset.file && asset._zipPath) {
+            aExtraire.push(path);
+          }
+        }
+      }
+      if (aExtraire.length > 0) {
+        const tDebut = Date.now();
+        await Promise.all(aExtraire.map(function(p) {
+          return window._extractLazyAsset(p).catch(function(e) {
+            console.warn("[Tiling V2] Pre-extract failed for", p, e);
+            return null;
+          });
+        }));
+        console.log("[Tiling V2] Lazy : " + aExtraire.length + " tuile(s) extraite(s) pour z=" + z + " en " + (Date.now() - tDebut) + " ms");
+      }
+    }
+
+    // 🐛 v1.34.11 — Level guard : si un autre _renderNiveau a été lancé pendant
+    // notre pre-extract (zoom rapide user), on abandonne pour éviter d'afficher
+    // un niveau obsolète après un zoom plus récent.
+    if (myToken !== state.renderToken) {
+      console.log("[Tiling V2] z=" + z + " obsolète (token " + myToken + " != " + state.renderToken + ") — render annulé");
+      return;
+    }
+
+    // Cleanup overlays précédents (juste avant le render pour éviter le flash blanc)
+    state.activeOverlays.forEach(function(o) { try { o.remove(); } catch(e) {} });
+    state.activeOverlays = [];
 
     let added = 0, missing = 0;
     for (let k = 1; k <= rows; k++) {

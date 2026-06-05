@@ -148,6 +148,11 @@ function resetRuntimeAssets() {
   window.RUNTIME_ASSETS  = {};
   window.RAW_PLAN_CONFIG = null;
   window.PLAN_CONFIG     = null;
+  // 🐛 v1.34.11 (Pack RAM Phase 2) — Libère la référence au ZIP source du
+  // plan précédent. Sans ça, le JSZip + ses entrées compressées resteraient
+  // en RAM jusqu'à la fin de la session. Sur un plan V2 avec 100 Mo de
+  // tuiles, c'est 100 Mo qui ne sont JAMAIS libérés au plan switch.
+  window._lazyZipRef = null;
 }
 
 function findMatchingFile(logicalPath, files) {
@@ -168,6 +173,22 @@ function findMatchingFile(logicalPath, files) {
 
 async function registerAsset(logicalPath, file, opts) {
   const normalized = normalizePath(logicalPath);
+  // 🐛 v1.34.11 (Pack RAM Phase 2) — Support pour stubs lazy tile (objet plain
+  // avec `_lazyTile: true`, pas un File). Émis par extraireZip pour les tuiles
+  // hors whitelist. Le blob n'est PAS extrait au boot, économie RAM importante.
+  // Le blob sera extrait à la demande par _extractLazyAsset(path) au moment du
+  // rendu via tiling.js > _renderNiveau.
+  if (file && file._lazyTile === true) {
+    window.RUNTIME_ASSETS[normalized] = {
+      file: null,
+      url: null,
+      json: null,
+      type: "binary",
+      lazy: true,
+      _zipPath: file._zipPath || file._fullPath || normalized
+    };
+    return;
+  }
   const lower = file.name.toLowerCase();
   // 🧱 Tiling V2 : option `lazy` pour les tuiles. Si lazy=true, on ne crée
   // PAS la blob URL au boot — économie d'allocations pour des plans qui
@@ -186,6 +207,43 @@ async function registerAsset(logicalPath, file, opts) {
     window.RUNTIME_ASSETS[normalized] = { file, url, json: null, type: "binary" };
   }
 }
+
+// 🐛 v1.34.11 (Pack RAM Phase 2) — Extrait à la demande une tuile depuis
+// window._lazyZipRef. Appelée par tiling.js > _renderNiveau (avant le render
+// loop, en pré-extract Promise.all parallèle sur toutes les tuiles du niveau).
+// Met à jour RUNTIME_ASSETS[path].file = <new File>. Idempotent : si déjà
+// extrait (file != null), retourne directement.
+// Retourne le File extrait, ou null en cas d'erreur (zip manquant, entrée
+// absente, etc.). En cas d'erreur, le caller doit gérer null gracieusement
+// (= tuile manquante, comme avant v1.34.11).
+async function _extractLazyAsset(logicalPath) {
+  const normalized = normalizePath(logicalPath);
+  const entry = window.RUNTIME_ASSETS[normalized];
+  if (!entry) return null;                       // path inconnu
+  if (entry.file) return entry.file;             // déjà extrait (cache hit)
+  if (!entry._zipPath) return null;              // pas un stub lazy
+  if (!window._lazyZipRef) {
+    console.warn("[LazyTiles] _lazyZipRef indisponible — extraction impossible pour", logicalPath);
+    return null;
+  }
+  const zipEntry = window._lazyZipRef.files[entry._zipPath];
+  if (!zipEntry) {
+    console.warn("[LazyTiles] Entrée ZIP introuvable :", entry._zipPath);
+    return null;
+  }
+  try {
+    const blob = await zipEntry.async("blob");
+    const fileName = entry._zipPath.split("/").pop();
+    const file = new File([blob], fileName, { type: "image/jpeg" });
+    file._fullPath = entry._zipPath;
+    entry.file = file;
+    return file;
+  } catch(e) {
+    console.warn("[LazyTiles] Échec extraction :", entry._zipPath, e);
+    return null;
+  }
+}
+window._extractLazyAsset = _extractLazyAsset;
 
 function cloneAndResolvePlanConfig(rawConfig) {
   const resolved = JSON.parse(JSON.stringify(rawConfig));
