@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.24** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.25** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.25 (Fix modale "Déjà à jour" affiche notes stale d'une version rollback)** : KARMA screenshot iPhone PWA → modale "Déjà à jour" affichait `v1.34.24` en header mais notes v1.35.0 (rollback) dans le bloc `📝 Notes de cette version`. Cause : `js/interfaceAlerts.js` lisait `lastVersionData.notes` depuis localStorage sans vérifier que `lastVersionData.version === installed`. Fix : check `cacheMatchInstalled` avant affichage notes. Si cache stale → omettre les notes (titre + version installée seuls). Le prochain `UpdateChecker.check()` re-fetch `/version.json` et met à jour le cache. **Impact réseau** : ZÉRO — fix purement frontend (1 condition ajoutée). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — correction cosmétique d'un cache LS désynchronisé.
 
 > **v1.34.24 (Mode Histoire — Agrandir icône 📖 chip status bar)** : KARMA visual feedback v1.34.23. L'icône 📖 paraissait plus petite que 📊 / 🔋 car le chip histoire n'a pas de val text à côté. Fix CSS : `font-size: 16px` (vs 12px default) sur `.kta-refonte-counter-histoire .kta-refonte-counter-icon` uniquement + `line-height: 1`. Pas de modif globale (évite régression). **Impact réseau** : ZÉRO — pure CSS cosmétique. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
 

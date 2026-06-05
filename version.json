@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.24",
+  "version": "v1.34.25",
   "released": "2026-06-05",
   "notes": [
-    "🎨 v1.34.24 — Petite finition : l'icône 📖 du Mode Histoire dans la barre du haut est désormais aussi grosse visuellement que 📊 (stats) et 🔋 (batterie). Avant elle paraissait plus petite parce qu'elle n'avait pas de chiffre à côté."
+    "🩹 v1.34.25 — Correctif : la modale « Déjà à jour » affichait parfois des notes d'une version qui n'existait plus (cas typique après un rollback côté serveur). Désormais les notes affichées correspondent toujours exactement à la version installée sur ton appareil."
   ]
 }

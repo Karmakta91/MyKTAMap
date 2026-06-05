@@ -94,8 +94,16 @@ window.afficherModaleAlerteAbsente = function(status) {
     title = "Déjà à jour";
     const installed = (window.__MKM__ && window.__MKM__.build) || (lastVersionData && lastVersionData.version) || "?";
     msg = "Tu utilises la dernière version : <strong>" + _esc(installed) + "</strong>.";
-    // Bloc "📝 Dernière mise à jour" si on a les données
-    if (lastVersionData && (lastVersionData.released || (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length))) {
+    // 🐛 v1.34.25 — On affiche les notes UNIQUEMENT si la version cachée
+    // dans localStorage correspond exactement à la version installée. Sinon
+    // le cache est stale (cas typique : update douce v1.34.X → v1.35.0 →
+    // rollback v1.34.4 — le LS gardait les notes de v1.35.0 alors que
+    // __MKM__.build était v1.34.X, et la modale "Déjà à jour" affichait
+    // des notes obsolètes/fausses). Si cache stale → on n'affiche pas les
+    // notes (juste le titre + version installée). Le prochain check
+    // version.json mettra à jour le cache LS avec les vraies notes.
+    const cacheMatchInstalled = lastVersionData && lastVersionData.version === installed;
+    if (cacheMatchInstalled && (lastVersionData.released || (Array.isArray(lastVersionData.notes) && lastVersionData.notes.length))) {
       extraHtml += '<div class="kta-alert-absent-version-block">';
       if (lastVersionData.released) {
         extraHtml += '<div class="kta-alert-absent-version-released">Publiée le <strong>' + _esc(lastVersionData.released) + '</strong></div>';
