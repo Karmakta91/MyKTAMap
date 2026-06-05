@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.7",
+  "version": "v1.34.8",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.7 — Correctif du bug remonté en prod : les cases à cocher des calques d'image dans la modale Filtres reflètent à nouveau correctement l'état de visibilité du calque, et cocher/décocher fonctionne. Cause technique : un reset interne du registre des calques s'effectuait juste après son initialisation au chargement du plan. Le bouton « Tout afficher » continue d'agir correctement sur tous les calques (image + données)."
+    "🩹 v1.34.8 — Petit nettoyage : les erreurs console produites par certaines extensions de ton navigateur (adblockers, gestionnaires de mots de passe…) ne polluent plus l'historique des messages. Aucun changement fonctionnel."
   ]
 }

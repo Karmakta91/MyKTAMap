@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.34.7";
+const CACHE_NAME = "myktamap-cache-v1.34.8";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -467,6 +467,20 @@ function _scheduleEviction() {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+
+  // 🐛 v1.34.8 — Ignore les schemes non-http(s) (chrome-extension://,
+  // moz-extension://, safari-web-extension://, etc.). Les extensions
+  // installées par l'user (adblocker, password manager, etc.) peuvent
+  // émettre des fetch vers leurs propres ressources via la page MyKTAMap.
+  // Le SW intercepte ces requêtes, mais le Cache API REFUSE les schemes
+  // ≠ http/https → TypeError "Failed to execute 'put' on 'Cache': Request
+  // scheme 'chrome-extension' is unsupported" (cf sw.js l527 ancien).
+  // Bénin (l'extension reçoit sa réponse réseau normale) mais pollue la
+  // console avec un error répété → confusion avec un vrai bug.
+  // Fix : early-return sans event.respondWith → le SW n'intervient pas,
+  // le navigateur résout la requête directement.
+  const reqProtocol = (event.request.url || "").split(":")[0];
+  if (reqProtocol !== "http" && reqProtocol !== "https") return;
 
   // 🆘 hotfix20 — Bypass cache TOTAL pour /killsw.html (page de reset
   // d'urgence). Si on cachait cette page, le SW coincé servirait

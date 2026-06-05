@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.7</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.8</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.8 (Fix erreur SW provoquée par extensions navigateur)</strong> : KARMA console montrait <code>sw.js:527 Uncaught (in promise) TypeError: Failed to execute 'put' on 'Cache': Request scheme 'chrome-extension' is unsupported</code>. Cause : le handler <code>fetch</code> du Service Worker interceptait toutes les requêtes GET, y compris celles d'extensions navigateur (adblockers, password managers, etc.) vers <code>chrome-extension://</code> / <code>moz-extension://</code>. Le Cache API refuse ces schemes → TypeError répété. <strong>Fix</strong> : early-return dans le handler <code>fetch</code> si l'URL ne commence pas par <code>http:</code> ou <code>https:</code>. Le SW ne tente plus de cacher ces requêtes, le navigateur les résout directement. <strong>Impact réseau</strong> : ZÉRO. Les requêtes d'extensions ne sont pas observées ni manipulées par MyKTAMap (le <code>cache.put</code> échouait juste avant) ; on les ignore à la source.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — fix purement défensif.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.7 (VRAI FIX imageLayers filter — cause racine identifiée)</strong> : Diagnostic complété via les logs F12 v1.34.6. Snippet console retournait <code>Registry: []</code> malgré <code>PLAN_CONFIG.imageLayers</code> populé avec l'entrée <code>Legende</code> ET l'image visible. <strong>Cause racine</strong> : <code>js/main.js initDataFromConfig</code> ligne 39 (ajoutée en v162) faisait <code>window._ktaImageOverlays = []</code> JUSTE APRÈS que <code>initMapFromConfig</code> venait de populer le registre via push à <code>js/map.js:420</code>. Les overlays Leaflet restaient attachés à la map (référence interne) → image visible, mais le registre était vidé → <code>filterPanel.js</code> ne trouvait plus d'entry → handler <code>change</code> return early. Fix : retrait de la ligne 39. Régression latente depuis v162, exposée par la refonte FilterPanel v1.21.5. Retrait également des <code>console.log</code> debug v1.34.6 (mission accomplie). Conservation du fix "Tout afficher" v1.34.6. <strong>AUCUN impact réseau</strong>.
