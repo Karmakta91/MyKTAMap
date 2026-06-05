@@ -1451,4 +1451,108 @@ qui le toggle). 0 régression observée car déjà inerte UX.
 
 ---
 
+<!-- v1.34.19+ : Mode Histoire (note libre + PDF embarqué/importé) -->
+### 90. Sprint v1.34.19 → v1.34.23 — Mode Histoire (note libre + PDF)
+
+Sprint 5 releases qui introduit un nouvel onglet UX per-plan : **📖 Mode Histoire**.
+Module dédié `js/modeHistoire.js`, bouton 📖 dans la status bar (à gauche de 🔋), modale
+2 onglets per-plan. Patterns clés à connaître pour toute évolution.
+
+#### 90.1 Structure modale 2 onglets per-plan (v1.34.19)
+
+- **Onglet 1 — 📝 Note libre** : `<textarea>` persistée `localStorage` clé
+  `myktamap_note_libre_<planId>`. Auto-save **debounce 500 ms** sur `input`. Une note
+  par plan, restorée à l'ouverture de la modale. Pas de quota géré explicitement (LS
+  global est plafonné par navigateur, sufficient pour du texte libre).
+- **Onglet 2 — 📚 Histoire** : 2 sources possibles, priorité absolue à l'embarqué :
+  1. **PDF embarqué** via champ `plan-config.json > plan.histoirePdf: "data/histoire.pdf"`.
+     Whitelist 2-pass `index.html extraireZip` + résolution dans
+     `js/config.js cloneAndResolvePlanConfig` + `js/main.js startImportedPlan
+     allLogicalPaths` pour le re-zip / réimport. **Toolbar import cachée** si embarqué
+     présent (le plan-author force le contenu).
+  2. **PDF importé en session** via file picker `accept="application/pdf,.pdf"` +
+     check MIME, stocké dans store IDB **`myktamap_histoire_pdfs`** (1 PDF max par
+     plan, replaceable / removable). Survit aux reloads (IDB persistant). Boutons
+     **🔄 Remplacer** / **🗑️ Retirer** avec confirmation `window.confirm` minimaliste.
+
+> ⚠️ **Pattern d'append modale** : `document.documentElement.appendChild(overlay)`
+> (cohérence avec `filterPanel.js` + `secoursMode.js`). NE PAS append à `document.body`
+> (le bouton 📖 est dans la status bar qui peut elle-même être détachée selon contexte).
+> Conséquence directe sur le CSS theme clair — cf §90.4.
+
+#### 90.2 Affichage PDF — iframe + fallback iOS (v1.34.19, v1.34.22)
+
+- **Desktop / Android** : `<iframe src="blob:..." class="kta-histoire-pdf-wrap">`
+  natif. Fonctionne out-of-the-box, plein-écran via le viewer PDF du navigateur.
+- **iOS (Safari + PWA)** : iframe PDF est notoirement peu fiable (page blanche
+  silencieuse selon iOS version). Détection `/iPhone|iPad|iPod/i.test(navigator.userAgent)`
+  → fallback bouton **📥 Ouvrir le PDF** (= `<a href="blob:..." target="_blank"
+  download="...">`) qui sort le PDF dans un nouvel onglet / Files.app.
+- **Bouton ↗️ Ouvrir dans un onglet** (v1.34.22) : ajouté en sticky position absolute
+  top-right sur le wrap PDF même desktop, double bénéfice — fallback si CSP nginx pas
+  encore redéployée + UX plein écran natif pour les longs PDF.
+
+#### 90.3 CSP `frame-src 'self' blob:` — action manuelle KARMA (v1.34.22)
+
+**Symptôme** : iframe PDF affichait page blanche en prod (mais OK en dev). Cause
+racine : le header CSP de nginx prod incluait `default-src 'self'` mais **pas** de
+directive `frame-src` explicite → `default-src` fallback qui bloque `blob:` URLs dans
+les iframes (Chrome / Safari / Firefox conformes spec depuis 2022).
+
+**Fix** : ajout `frame-src 'self' blob:;` dans `docs/nginx-csp-config.conf`.
+**Action manuelle KARMA** : redéployer le `.conf` sur le serveur prod + `nginx -s reload`.
+Le bouton sticky ↗️ §90.2 reste utile comme fallback **en attendant** le redéploiement
+et comme UX bonus permanente.
+
+> 🪤 **À NE PAS faire** : ajouter `data:` dans `frame-src` aussi — risque XSS via
+> data-URLs dans une iframe. Seul `blob:` est nécessaire (l'app crée des
+> `URL.createObjectURL(pdfBlob)` côté JS, jamais de `data:application/pdf;base64,...`).
+
+#### 90.4 Theme clair — sélecteur CSS dual `body, html` (v1.34.21 → v1.34.23)
+
+**Symptôme v1.34.21** : passage en theme clair → fond de la modale Mode Histoire reste
+sombre (onglets, textarea, pdf-wrap, placeholder, toolbar). v1.34.21 utilisait des
+overrides `body.kta-theme-light .kta-histoire-*` qui **ne matchaient pas** car la
+modale est appendée à `document.documentElement` (= sibling de body), pas dans body.
+
+**Fix racine (v1.34.23)** : sélecteur dual obligatoire pour TOUT élément hors-body :
+
+```css
+body.kta-theme-light .kta-histoire-tab,
+html.kta-theme-light .kta-histoire-tab { background: #fff; color: #1a1f2e; }
+```
+
+`js/themeManager.js` pose la classe `kta-theme-light` sur **les deux** (`<html>`
+ligne ~99 ET `<body>` ligne ~103) précisément pour cette raison. Le double sélecteur
+exploite les deux ancrages. **Pattern identique à `sessionExporter.js`** (modale
+appendée hors-body également).
+
+> 🪤 **À NE PAS faire** : append la modale à `document.body` pour « simplifier » le
+> CSS. Le pattern `documentElement.appendChild` est intentionnel (z-index propre +
+> isolation contre les fixes de positioning du body). Mieux vaut écrire le sélecteur
+> dual.
+
+#### 90.5 Hook plan switch — `_libererRessourcesPlanPrecedent` (v1.34.19, leçon Pack RAM Phase 4)
+
+Au changement de plan :
+- Le `URL.createObjectURL(pdfBlob)` actif est `URL.revokeObjectURL()` pour éviter la
+  rétention bitmap (cf §88 perf-memory.md leçon WebKit bitmap pinning).
+- L'iframe `src` est clear (`iframe.src = ""`) avant `removeChild` (même raison).
+- La textarea + le textContent du `_pdfBlob` courant sont nullifiés.
+- Le store IDB `myktamap_histoire_pdfs` **n'est PAS** purgé — les PDFs importés
+  doivent survivre aux plan-switch et reload (= attente explicite user).
+
+Pattern d'enregistrement : `window.ModeHistoire.cleanupOnPlanSwitch(planId)` est
+appelé depuis le helper de cleanup générique. NE PAS hooker via un event listener
+custom — la séquence d'appel est sensible (avant clear de `_lazyZipRef`, après
+fermeture des modales actives).
+
+> 💡 **Leçon générale (déjà vue en Pack RAM Phase 4)** : tout module qui crée des
+> `URL.createObjectURL()` côté plan-courant doit s'enregistrer dans le helper de
+> cleanup générique avec un nom auto-documenté (`_revokeAllPhotoObjectUrls`,
+> `cleanupOnPlanSwitch`, etc.) ET être grep-able cross-fichier pour vérifier que la
+> fonction existe (cf bug latent 13 versions §88).
+
+---
+
 **Bon code ! 🚀**

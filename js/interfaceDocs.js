@@ -532,6 +532,10 @@ function afficherAide() {
           <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
             <strong>🔊 Lecture vocale des notes (NEW)</strong> — un bouton <strong>🔊</strong> apparaît à côté de chaque note dans les popups des points. Un clic et l'app lit la note à haute voix via la voix native de ton appareil. Pratique sous terre quand tu as les mains/yeux occupés. Re-clique sur 🔊 ou ⏹️ pour arrêter. 100 % offline, voix locale, aucune permission demandée. Complément de la commande vocale 🎤 "Aller à $POI".
           </p>
+          <!-- v1.34.19+ : Mode Histoire (note libre + PDF embarqué/importé) -->
+          <p style="font-size:13px; color:#c0c8d8; margin:0 0 8px; line-height:1.5;">
+            <strong>📖 Mode Histoire (NEW)</strong> — un bouton <strong>📖</strong> à gauche de la batterie 🔋 ouvre une modale 2 onglets, propre à chaque plan : (1) <strong>📝 Note libre</strong> texte auto-sauvegardée pendant que tu tapes (récit du site, anecdotes, to-do d'explo, points à vérifier) ; (2) <strong>📚 Histoire</strong> qui affiche le PDF embarqué par l'auteur du plan, ou te laisse <strong>📥 importer ton propre PDF</strong> si rien n'est embarqué (1 PDF par plan, remplaçable / retirable). Sur iPhone, un bouton <strong>↗️ Ouvrir dans un onglet</strong> bascule le PDF en plein écran natif. Tout reste sur ton appareil — 100 % offline.
+          </p>
           <p style="font-size:12px; color:#8892a4; margin:0; line-height:1.5;">
             ℹ️ Côté toi : rien à faire. Recharge l'app, profite. Détails techniques dans le journal des versions du dépôt.
           </p>

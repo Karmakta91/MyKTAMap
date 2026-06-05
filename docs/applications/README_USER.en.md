@@ -126,6 +126,11 @@ This sprint focuses on **iPhone PWA stability** (large tiled maps in caves) and 
 - **🔄 More reliable soft update** — the « Force update → app reloads itself » flow now works consistently (it used to occasionally stall halfway through and force you to refresh by hand). The new version activates automatically within 5 seconds.
 - **🐛 Cleaner console errors** — a few stray error messages (Chrome extensions, fonts) that showed up for no good reason in DevTools are now silent. No functional change, just easier to read if you open the DevTools.
 - **🔊 Voice reading of notes (NEW v1.34.18)** — a **🔊** button now appears next to each note in POI popups. One tap and the app reads the note aloud using your device's native voice (iPhone, Android, desktop). Handy underground when your hands/eyes are busy (helmet, climbing). Tap 🔊 or ⏹️ again to stop. Language follows your browser. **100% offline** — no permission asked, no data sent to Google/Apple, voice synthesis uses voices already installed on your device. Companion to the 🎤 "Go to $POI" voice command from v1.34.0 (audio in + audio out = full hands-free / eyes-free loop).
+<!-- v1.34.19+ : Story Mode (free note + PDF) -->
+- **📖 Story Mode (NEW v1.34.19+)** — a new **📖** button now appears in the top bar (right next to the battery 🔋, on its left). It opens a small two-tab modal, scoped to each plan:
+  - **📝 Free note** — a text notepad auto-saved as you type. Perfect for the site's story, anecdotes, your exploration to-do, things to double-check. One note per plan, kept across reloads and app restarts.
+  - **📚 Story** — if the plan author embedded a PDF (history, paper map, brochure, legend), it shows up directly in the tab. Otherwise you can **📥 import your own PDF** from your device (1 PDF per plan, replaceable / removable). An imported PDF survives reloads. On iPhone, an **↗️ Open in a tab** button kicks it into native fullscreen if the inline view isn't available.
+  - **100% offline** — the note and the PDF stay on your device. Nothing is sent to the internet.
 
 > ℹ️ Technical details about the « RAM Pack » operation: see the `README.md` changelog in the repo + `NETWORK_AUDIT.md`. On your side, nothing to do — reload the app, that's it.
 
