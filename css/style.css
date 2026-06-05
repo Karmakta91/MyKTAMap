@@ -12231,6 +12231,41 @@ body.kta-theme-light .kta-readme-modal-corps strong {
   color: var(--kta-light-text);
 }
 
+/* === v1.34.28 — Dropdown recherche Mode Itinéraire en theme clair ===
+   Bug remonté KARMA : en theme clair, le dropdown de résultats de recherche
+   d'un POI dans la modale Itinéraire restait en couleurs sombres (background
+   #232838, text #e8eaf0). Double sélecteur body/html safe car la modale
+   itinéraire peut être appendée à document.documentElement (pattern habituel
+   des modales du projet). */
+body.kta-theme-light .kta-iti-search-results,
+html.kta-theme-light .kta-iti-search-results {
+  background: var(--kta-light-bg-elevated);
+  border-color: var(--kta-light-border);
+  box-shadow: 0 8px 24px var(--kta-light-shadow);
+}
+body.kta-theme-light .kta-iti-search-item,
+html.kta-theme-light .kta-iti-search-item {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+body.kta-theme-light .kta-iti-search-item:hover,
+html.kta-theme-light .kta-iti-search-item:hover {
+  background: rgba(244, 197, 66, 0.12);
+}
+body.kta-theme-light .kta-iti-search-name,
+html.kta-theme-light .kta-iti-search-name {
+  color: var(--kta-light-text);
+}
+body.kta-theme-light .kta-iti-search-meta,
+html.kta-theme-light .kta-iti-search-meta {
+  color: var(--kta-light-text-muted, #6b6354);
+}
+body.kta-theme-light .kta-iti-search-empty,
+html.kta-theme-light .kta-iti-search-empty,
+body.kta-theme-light .kta-iti-search-more,
+html.kta-theme-light .kta-iti-search-more {
+  color: var(--kta-light-text-muted, #6b6354);
+}
+
 /* === v1.34.21 (corrigé v1.34.23) — Mode Histoire en theme clair ===
    ⚠️ Double sélecteur OBLIGATOIRE : la modale est appendée à
    document.documentElement (= <html>), pas à <body>. Avec un sélecteur

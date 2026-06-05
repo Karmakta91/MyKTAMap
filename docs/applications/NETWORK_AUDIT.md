@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.27** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.28** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.28 (Fix theme clair dropdown recherche Mode Itinéraire)** : KARMA screenshot → dropdown résultats recherche POI dans modale Itinéraire restait sombre en theme clair. Cause : pas d'overrides `body.kta-theme-light .kta-iti-search-*` (oubli historique). Fix : double sélecteur `body/html.kta-theme-light` pour `.kta-iti-search-results/item/name/meta/empty/more`. Cosmétique. **Impact réseau** : ZÉRO — pure CSS. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
 
 > **v1.34.27 (Vibration haptique branchée à 5 events critiques)** : suite logique de v1.34.26 (infrastructure). Branchage : (1) waypoint Mode Itinéraire à ≤100 px (hystérésis 200 px) via nouveau `window.getItineraireWaypoints()` exposé + `_checkWaypointProximity()` dans `js/tracking.js updateMap()`. (2) recalage tracker via "📍 Je suis ici". (3) étape Mode Secours validée. (4) alerte serveur auto (pas si click bouton). (5) toast OOM warn/error. Tous gardés par `if (window.kta_vibrate)` + helper interne check `APP_CONFIG.vibrationEnabled` + `navigator.vibrate`. **Impact réseau** : ZÉRO. Web Vibration API 100% côté device, aucun fetch, aucune permission. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — branchage transparent côté user, comportement identique si pref OFF ou device non supporté (iPhone Safari).
 

@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.27",
+  "version": "v1.34.28",
   "released": "2026-06-05",
   "notes": [
-    "📳 v1.34.27 — Vibration haptique branchée à 5 événements : (1) tu approches à moins de 100 px d'un waypoint d'itinéraire actif, (2) tu te recales sur un point avec « 📍 Je suis ici », (3) une étape Mode Secours est validée par l'équipe, (4) une alerte serveur arrive automatiquement, (5) une alerte mémoire critique se déclenche. Tu peux désactiver dans ⚙️ Configuration → 📳 Vibration haptique (visible uniquement si ton appareil supporte — pas sur iPhone Safari)."
+    "🎨 v1.34.28 — Fix theme clair : la liste déroulante de résultats quand tu cherches un point dans la modale Itinéraire s'affiche désormais correctement en thème clair (avant : fond sombre + texte clair, incohérent avec le reste de la modale)."
   ]
 }

@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.27</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.28</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.28 (Fix theme clair dropdown recherche Mode Itinéraire)</strong> : KARMA screenshot → dropdown résultats recherche POI restait sombre en theme clair. Fix CSS double sélecteur. <strong>Impact réseau</strong> : ZÉRO.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.27 (Vibration haptique branchée à 5 events critiques)</strong> : Branchage des events vibration choisis par KARMA (suite v1.34.26 infrastructure) : waypoint Mode Itinéraire ≤100 px (hystérésis 200 px), recalage "📍 Je suis ici", étape Mode Secours validée, alerte serveur auto, toast OOM warn/error. Tous gardés par checks pref + support. <strong>Impact réseau</strong> : ZÉRO — Web Vibration API 100% device-side.
