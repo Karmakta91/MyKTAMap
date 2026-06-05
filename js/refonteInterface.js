@@ -2291,12 +2291,8 @@
     refreshStatusBar: refreshStatusBar
   };
 
-  // Banner console
-  console.info(
-    "%c[Refonte UI v1]%c Nouvelle interface active (défaut depuis v1.8.1-refonte-8). " +
-    "Pour revenir à l'ancienne : ⚙️ Configuration (home) ou ⚙️ Réglages (map) → 🎨 Affichage.",
-    "background:#f4c542;color:#1a1f2e;font-weight:bold;padding:2px 6px;border-radius:3px;",
-    "color:#f4c542;"
-  );
+  // 🐛 v1.34.14 — Retrait demande KARMA du banner console "Refonte UI v1
+  // Nouvelle interface active...". La refonte est active depuis v1.8.1, plus
+  // besoin de le rappeler en console à chaque boot.
 
 })();

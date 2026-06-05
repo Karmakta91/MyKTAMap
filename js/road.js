@@ -621,18 +621,6 @@ function _scheduleIntersectionRender() {
   }, 350);
 }
 
-// 🐛 v1.34.13-debug — Instrumentation pour identifier qui appelle renderRoads
-// en boucle au boot (KARMA logs montrent 150+ appels successifs avec
-// roadsData : 0 tracés). On compte les calls dans une rolling window 1s.
-// Au-delà du seuil, on log Error().stack pour voir l'appelant. Limit 3 stacks
-// loggées max pour ne pas spammer. À retirer une fois la source identifiée.
-let _rrCallCount = 0;
-let _rrWindowStart = 0;
-let _rrStacksLogged = 0;
-const _RR_WINDOW_MS = 1000;
-const _RR_BURST_THRESHOLD = 5;
-const _RR_MAX_STACKS_LOGGED = 3;
-
 function renderRoads() {
   // ⚠️ Chemin chaud : appelé à CHAQUE point pendant le dessin. Logger le
   // tableau roadsData complet ici (a) coûte une sérialisation sur les gros
@@ -641,22 +629,6 @@ function renderRoads() {
   if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
     console.log("[Road] renderRoads — roadsData :", roadsData.length, "tracés");
   }
-
-  // 🐛 v1.34.13-debug — Détection d'appels en burst.
-  try {
-    const now = Date.now();
-    if (now - _rrWindowStart > _RR_WINDOW_MS) {
-      // Nouvelle fenêtre : reset compteur
-      _rrWindowStart = now;
-      _rrCallCount = 1;
-    } else {
-      _rrCallCount++;
-      if (_rrCallCount >= _RR_BURST_THRESHOLD && _rrStacksLogged < _RR_MAX_STACKS_LOGGED) {
-        _rrStacksLogged++;
-        console.warn("[Road v1.34.13-debug] renderRoads BURST détecté (#" + _rrCallCount + " en <1s, roadsData=" + roadsData.length + ", stack #" + _rrStacksLogged + "/" + _RR_MAX_STACKS_LOGGED + ") :\n" + (new Error("renderRoads burst trace")).stack);
-      }
-    }
-  } catch(e) {}
 
   // .remove() détache le layer où qu'il soit (map directe ou via layerGroup).
   // Plus portable que window.map.removeLayer(...) maintenant que les layers
@@ -1200,11 +1172,18 @@ window.passeFiltreNiveau = function(item) {
 // =========================
 // Permet à utils.js > ajouterPointsDepuisJSON d'enregistrer les routes lues
 // dans un calque de données, afin qu'elles participent au calcul des intersections.
-window.registerEmbeddedRoad = function(road, layer) {
+// 🐛 v1.34.14 — Ajout du paramètre `skipRender` (optionnel, défaut false).
+// Quand un caller batch beaucoup d'appels (cf utils.js ajouterPointsDepuisJSON
+// qui itère sur toutes les roads d'un datalayer), il doit passer skipRender=true
+// pour éviter N renderRoads complets en boucle. Le caller doit alors appeler
+// `renderRoads()` UNE SEULE FOIS à la fin du batch.
+// Backward compat : sans skipRender, le comportement est inchangé (render auto).
+// Diagnostic KARMA v1.34.13 : 150+ renderRoads au boot venaient de cette boucle.
+window.registerEmbeddedRoad = function(road, layer, skipRender) {
   if (!road || !Array.isArray(road.points) || road.points.length < 2) return;
   _embeddedRoads.push({ road: road, layer: layer || null });
   // Re-render pour ajouter / mettre à jour les cercles d'intersection
-  if (window.map && window.roadInitialized) renderRoads();
+  if (skipRender !== true && window.map && window.roadInitialized) renderRoads();
 };
 
 // À appeler avant le chargement d'un nouveau plan, pour vider le registre des routes

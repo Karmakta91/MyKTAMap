@@ -1626,6 +1626,12 @@ function ajouterPointsDepuisJSON(url, layer) {
                    (TYPE_ORDER[b.type] != null ? TYPE_ORDER[b.type] : 99);
           });
         }
+        // 🐛 v1.34.14 — Track si on a register au moins une road embedded.
+        // À la fin du forEach, si oui, on trigger UN SEUL renderRoads (au lieu
+        // de N renderRoads via registerEmbeddedRoad pour chaque road, ce qui
+        // causait 150+ renderRoads en boucle au boot pour des plans avec
+        // beaucoup de roads embarquées).
+        let _ktaEmbeddedRoadRegistered = false;
         roadsToRender.forEach(function(road) {
           if (!road.points || road.points.length < 2) return;
           const style = ROAD_STYLES_DATA[road.type] || { color: "#ffffff", weight: 5, opacity: 1 };
@@ -1699,8 +1705,12 @@ function ajouterPointsDepuisJSON(url, layer) {
           _filtreNiveauSurPolylineData(entry);  // applique le filtre courant
           // Enregistrer dans road.js avec la référence au layerGroup du calque,
           // pour que les intersections se filtrent par visibilité (toggle calques).
+          // 🐛 v1.34.14 — skipRender=true : on évite N renderRoads en boucle
+          // pendant le batch. Un seul renderRoads est trigger à la fin de la
+          // boucle (via _renderRoadsThrottled ou window.appliquerFiltreNiveau).
           if (typeof window.registerEmbeddedRoad === "function") {
-            window.registerEmbeddedRoad(road, layer);
+            window.registerEmbeddedRoad(road, layer, true);
+            _ktaEmbeddedRoadRegistered = true;
           }
 
           // 🪜 v1.7.1 fix : ronds magenta aux extrémités des jonctions embedded
@@ -1730,6 +1740,15 @@ function ajouterPointsDepuisJSON(url, layer) {
             });
           }
         });
+        // 🐛 v1.34.14 — Render UNE FOIS à la fin du batch (au lieu de N fois
+        // dans la boucle via registerEmbeddedRoad). Skip si pas de road
+        // registered. Le check `window.roadInitialized` reste safe : si
+        // road.js n'est pas encore prêt, on no-op (cohérent avec le check
+        // dans registerEmbeddedRoad lui-même).
+        if (_ktaEmbeddedRoadRegistered && window.map && window.roadInitialized &&
+            typeof window.renderRoads === "function") {
+          window.renderRoads();
+        }
       }
 
       // 🆕 v1.9.3-A1.a : Structures embarquées (piliers + murs) en lecture

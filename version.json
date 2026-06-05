@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.13",
+  "version": "v1.34.14",
   "released": "2026-06-05",
   "notes": [
-    "🧪 v1.34.13 — Petite étape de diagnostic technique interne (instrumentation temporaire pour identifier une source d'appels en boucle au démarrage). Aucun changement fonctionnel visible côté app."
+    "⚡ v1.34.14 — Optimisation perf au démarrage : pour les plans avec beaucoup de tracés embarqués dans les calques de données, l'app évite désormais des centaines de re-rendus inutiles au chargement (un seul rendu groupé en fin de chargement). Petit nettoyage console (suppression d'un message d'info historique)."
   ]
 }
