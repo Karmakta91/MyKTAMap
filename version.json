@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.6",
+  "version": "v1.34.7",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.6 — Le bouton « Tout afficher » de la modale Filtres remet désormais aussi les calques d'image et de données. Petits messages de debug temporaires en console pour finaliser un correctif sur l'affichage des cases à cocher des calques d'image (en cours d'investigation)."
+    "🩹 v1.34.7 — Correctif du bug remonté en prod : les cases à cocher des calques d'image dans la modale Filtres reflètent à nouveau correctement l'état de visibilité du calque, et cocher/décocher fonctionne. Cause technique : un reset interne du registre des calques s'effectuait juste après son initialisation au chargement du plan. Le bouton « Tout afficher » continue d'agir correctement sur tous les calques (image + données)."
   ]
 }

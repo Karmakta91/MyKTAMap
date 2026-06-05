@@ -397,39 +397,21 @@
     let html = '<div class="kta-fp-list">';
     pc.imageLayers.forEach(function(lc, idx) {
       // 🩹 v1.34.5 — KARMA bug prod v1.34.3 : check imageLayer → close →
-      // reopen → unchecked. Cause : mismatch d'id. Le rendu utilisait
-      // `lc.id` tel quel pour `data-img-layer`, mais map.js pushait
-      // `id: layerConfig.id || layerConfig.label` (fallback label si pas
-      // d'id). Si plan-config sans `id`, le data-img-layer devenait
-      // "undefined" mais l'entrée _ktaImageOverlays portait le label →
-      // `e.id === id` échouait silencieusement → handler retournait early
-      // sans toggler la couche → reopen rendait unchecked (hasLayer false).
-      // Fix : appliquer le MÊME fallback ici (lc.id || lc.label) pour que
-      // l'id rendu matche celui pushed par map.js.
+      // reopen → unchecked. Cause initiale supposée : mismatch d'id si
+      // plan-config sans `id`. Fallback `lc.id || lc.label` aligné avec
+      // map.js l423. Bénéfice : couvre quand même le cas des vieux plans
+      // sans champ `id` (défense en profondeur).
+      // 🐛 v1.34.7 — Le vrai bug racine était ailleurs : initDataFromConfig
+      // (main.js l39, ancien) vidait `_ktaImageOverlays` JUSTE APRÈS que
+      // initMapFromConfig venait de le populer. Fix : retrait du reset
+      // dupliqué dans main.js. Le check `hasLayer` ici fonctionne désormais.
       const layerId = lc.id || lc.label;
-      const entry   = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
-                       ? window._ktaImageOverlays.find(function(e) { return e.id === layerId; })
-                       : null;
-      const onMap   = entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
-      const visible = (window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays))
-                       ? onMap
-                       : (lc.visible !== false);
-      // 🐛 v1.34.6-debug — logs ciblés pour comprendre pourquoi le checkbox
-      // ne reflète pas l'état de la couche / pourquoi cocher ne fait rien.
-      // À retirer après diagnostic.
-      try {
-        console.log("[FilterPanel v1.34.6-debug] render imageLayer", {
-          idx,
-          lc_id: lc.id, lc_label: lc.label, lc_visible: lc.visible,
-          layerId,
-          registry_ids: (window._ktaImageOverlays || []).map(function(e) { return e.id; }),
-          entry_found: !!entry,
-          entry_has_overlay: !!(entry && entry.overlay),
-          map_ready: !!window.map,
-          hasLayer: !!onMap,
-          will_render_checked: !!visible
-        });
-      } catch(e) {}
+      const visible = window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays)
+                      ? (function() {
+                          const entry = window._ktaImageOverlays.find(function(e) { return e.id === layerId; });
+                          return entry && entry.overlay && window.map && window.map.hasLayer(entry.overlay);
+                        })()
+                      : (lc.visible !== false);
       const label = lc.label || lc.id || ("Calque " + idx);
       html += '<label class="kta-fp-row-cb">' +
                 '<input type="checkbox" data-img-layer="' + _escAttr(layerId) + '"' + (visible ? " checked" : "") + '>' +
@@ -560,37 +542,11 @@
     overlay.querySelectorAll('[data-img-layer]').forEach(function(cb) {
       cb.addEventListener("change", function() {
         const id = cb.getAttribute("data-img-layer");
-        // 🐛 v1.34.6-debug — log avant toute condition pour confirmer que
-        // l'event change fire bien sur les checkboxes imageLayer.
-        try {
-          console.log("[FilterPanel v1.34.6-debug] change imageLayer", {
-            id,
-            cb_checked: cb.checked,
-            registry_present: Array.isArray(window._ktaImageOverlays),
-            registry_len: (window._ktaImageOverlays || []).length,
-            registry_ids: (window._ktaImageOverlays || []).map(function(e) { return e.id; }),
-            map_ready: !!window.map
-          });
-        } catch(e) {}
-        if (!Array.isArray(window._ktaImageOverlays) || !window.map) {
-          try { console.warn("[FilterPanel v1.34.6-debug] EARLY RETURN — pas de registry ou map"); } catch(e) {}
-          return;
-        }
+        if (!Array.isArray(window._ktaImageOverlays) || !window.map) return;
         const entry = window._ktaImageOverlays.find(function(e) { return e.id === id; });
-        if (!entry || !entry.overlay) {
-          try { console.warn("[FilterPanel v1.34.6-debug] EARLY RETURN — entry/overlay introuvable", { id, entry: !!entry }); } catch(e) {}
-          return;
-        }
-        try {
-          console.log("[FilterPanel v1.34.6-debug] toggling imageLayer", {
-            id,
-            checked: cb.checked,
-            hasLayerBefore: window.map.hasLayer(entry.overlay)
-          });
-        } catch(e) {}
-        if (cb.checked) { try { window.map.addLayer(entry.overlay); } catch(e) { try { console.error("[FilterPanel] addLayer threw", e); } catch(_) {} } }
-        else            { try { window.map.removeLayer(entry.overlay); } catch(e) { try { console.error("[FilterPanel] removeLayer threw", e); } catch(_) {} } }
-        try { console.log("[FilterPanel v1.34.6-debug] toggled — hasLayerAfter:", window.map.hasLayer(entry.overlay)); } catch(e) {}
+        if (!entry || !entry.overlay) return;
+        if (cb.checked) { try { window.map.addLayer(entry.overlay); } catch(e) {} }
+        else            { try { window.map.removeLayer(entry.overlay); } catch(e) {} }
       });
     });
 

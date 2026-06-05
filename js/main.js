@@ -36,7 +36,17 @@ async function initDataFromConfig() {
   // Vidé au plan switch pour éviter que des structures du plan précédent
   // restent référencées et soient ciblées par le filtre niveau actif.
   window._ktaDataStructurePolygons = [];
-  window._ktaImageOverlays = [];  // v162 : registre des image layers level-aware
+  // 🐛 v1.34.7 — RETIRÉ : `window._ktaImageOverlays = [];` (était ici en
+  // v162). Bug racine de "checkbox imageLayer décoché alors que calque
+  // visible / cocher ne fait rien" : initDataFromConfig était appelée
+  // APRÈS initMapFromConfig (cf lancerApplication l293-294). Le reset
+  // ici vidait le registre que initMapFromConfig venait de populer
+  // (push à map.js:420). Les overlays restaient attachés à la map (Leaflet
+  // a sa propre référence interne dans `_layers`), mais le registre était
+  // vide → filterPanel ne trouvait plus aucune entry → handler change
+  // retournait early. Le reset est déjà fait dans `map.js:403` JUSTE
+  // AVANT les push, ce qui suffit (et c'est le bon endroit puisque c'est
+  // la même fonction qui pousse).
   // v1.16.0 step 1d : registre des ghosts note du data layer KMZ. Vidé
   // au switch de plan pour éviter d'accumuler des références mortes
   // référant aux layerGroups du plan précédent (cf utils.js).
