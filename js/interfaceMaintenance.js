@@ -355,6 +355,21 @@ async function mettreAJourCodeSeul() {
     // Maintenant : on lance update() en background, le téléchargement se
     // fait pendant que l'user voit "Préparation…" + "Rechargement…", et
     // au reload le nouveau SW est déjà prêt avec son cache populé.
+    //
+    // 🐛 v1.34.9 — Polling reg.waiting (max 5s) avant le reload. Sans ça,
+    // race condition : reload 200ms après reg.update() = nouveau SW pas
+    // encore installed → reg.waiting = null → SKIP_WAITING jamais envoyé
+    // → ancien SW sert encore l'ancien copyright.js au reload →
+    // __MKM__.build = ancienne version → badge footer affiche
+    // "ancienne → nouvelle" alors qu'on vient juste de mettre à jour.
+    // L'user devait restart 1 fois manuellement pour avoir la nouvelle
+    // version active (régression hotfix21).
+    // Fix : polling de reg.waiting (200ms x 25 = max 5s). Dès qu'on voit
+    // un waiting, on lui envoie SKIP_WAITING puis on await controllerchange
+    // (avec safety timeout 1.5s) → le nouveau SW est actif, son cache
+    // contient le nouveau copyright.js → reload sert la bonne version.
+    // Si timeout 5s atteint sans waiting (= install vraiment lent) →
+    // fallback reload anyway (= comportement v1.34.8 dégradé, pas pire).
     _statusUpdate("Préparation du Service Worker…");
     if (navigator.serviceWorker) {
       try {
@@ -367,11 +382,37 @@ async function mettreAJourCodeSeul() {
           reg.update().catch(function(e) {
             console.warn("[Soft update] reg.update() :", e);
           });
-          if (reg.waiting) {
-            // Le SW en attente est déjà prêt → on le pousse à prendre le relais.
-            // Notre sw.js fait déjà self.skipWaiting() au install, mais on
-            // renforce ici via postMessage explicit (cf. handler hotfix21).
-            reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          // 🐛 v1.34.9 — Polling actif sur reg.waiting (max 5s).
+          const DEADLINE_MS = Date.now() + 5000;
+          let nouveauSwActive = false;
+          while (Date.now() < DEADLINE_MS) {
+            const reg2 = await navigator.serviceWorker.getRegistration();
+            if (reg2 && reg2.waiting) {
+              _statusUpdate("Activation du nouveau Service Worker…");
+              reg2.waiting.postMessage({ type: "SKIP_WAITING" });
+              // Attendre controllerchange (= nouveau SW pris le contrôle)
+              // ou safety timeout 1.5s (si le browser tarde).
+              await new Promise(function(resolve) {
+                let done = false;
+                function _onChange() { if (!done) { done = true; resolve(); } }
+                navigator.serviceWorker.addEventListener("controllerchange", _onChange, { once: true });
+                setTimeout(function() {
+                  if (!done) {
+                    done = true;
+                    navigator.serviceWorker.removeEventListener("controllerchange", _onChange);
+                    resolve();
+                  }
+                }, 1500);
+              });
+              nouveauSwActive = true;
+              console.log("[Soft update] Nouveau SW actif via SKIP_WAITING");
+              break;
+            }
+            // Petit sleep avant prochain check (200ms = 25 checks max sur 5s)
+            await new Promise(function(r) { setTimeout(r, 200); });
+          }
+          if (!nouveauSwActive) {
+            console.warn("[Soft update] Timeout 5s : pas de reg.waiting détecté, reload sans skip waiting (l'install se finira en background, l'user verra peut-être l'ancienne version au reload — 1 restart manuel nécessaire dans ce cas).");
           }
         }
       } catch(e) {

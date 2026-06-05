@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.8",
+  "version": "v1.34.9",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.8 — Petit nettoyage : les erreurs console produites par certaines extensions de ton navigateur (adblockers, gestionnaires de mots de passe…) ne polluent plus l'historique des messages. Aucun changement fonctionnel."
+    "🩹 v1.34.9 — Mise à jour douce corrigée : après une mise à jour douce, le badge de version dans le footer affiche désormais directement la nouvelle version. Plus besoin de redémarrer l'app une seconde fois pour voir le changement."
   ]
 }
