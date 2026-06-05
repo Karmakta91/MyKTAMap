@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.34.18";
+const CACHE_NAME = "myktamap-cache-v1.34.19";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -172,6 +172,7 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.34.0 E1 : VoiceCommand — commandes vocales push-to-talk Web Speech API
   "./js/voiceCommand.js",
   "./js/voiceTts.js",
+  "./js/modeHistoire.js",
   "./js/kmzExport.js",
   "./js/kmzImport.js",
   // 🆕 v1.14.0 : GPX import + export (réutilise calibrage KMZ)

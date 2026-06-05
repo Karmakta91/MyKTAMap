@@ -719,6 +719,13 @@ function _libererRessourcesPlanPrecedent() {
     try { window._revokeAllPhotoObjectUrls(); } catch(e) {}
   }
 
+  // 🆕 v1.34.19 — Mode Histoire : ferme la modale au plan switch (la note
+  // libre du plan précédent est déjà saved en localStorage, on ne perd
+  // rien). La note du nouveau plan sera chargée à la prochaine ouverture.
+  if (window.ModeHistoire && typeof window.ModeHistoire._onPlanSwitch === "function") {
+    try { window.ModeHistoire._onPlanSwitch(); } catch(e) {}
+  }
+
   // 🐛 v1.21.3 (audit P0-10) : désactive le mode urgence XL si actif —
   // emergencyMode.js retient un _orientationListener sur window qui resterait
   // sinon attaché jusqu'à la fermeture du tab.
@@ -860,6 +867,8 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
   const allLogicalPaths = [];
   if (rawConfig.plan?.baseImage)      allLogicalPaths.push(rawConfig.plan.baseImage);
   if (rawConfig.plan?.collisionImage) allLogicalPaths.push(rawConfig.plan.collisionImage);
+  // v1.34.19 — Champ `histoirePdf` (PDF embarqué pour Mode Histoire).
+  if (rawConfig.plan?.histoirePdf)    allLogicalPaths.push(rawConfig.plan.histoirePdf);
   (rawConfig.imageLayers || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
   (rawConfig.dataLayers  || []).forEach(function(l) { if (l.file) allLogicalPaths.push(l.file); });
 

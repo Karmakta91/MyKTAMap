@@ -1060,6 +1060,10 @@
        Synthesis API. Aucune permission demandée, mode strictement manuel (bouton
        🔊 dans popup POI quand description existe). Cf docs/architecture/ui.md. -->
   <script src="js/voiceTts.js" defer></script>
+  <!-- 🆕 v1.34.19 : ModeHistoire — bouton 📖 dans status bar, modale 2 onglets
+       (📝 note libre per-plan localStorage + 📚 PDF embarqué dans le ZIP via
+       plan-config.json > histoirePdf). Cf js/modeHistoire.js. -->
+  <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
   <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
@@ -1308,6 +1312,11 @@
             }
             _addPath(planConfig.plan && planConfig.plan.baseImage);
             _addPath(planConfig.plan && planConfig.plan.collisionImage);
+            // 🆕 v1.34.19 — Champ `histoirePdf` (PDF embarqué pour Mode Histoire).
+            // À garder eager : c'est typiquement un PDF de taille modérée
+            // (1-10 Mo) consulté à la demande user, lazy n'apporte rien et
+            // simplifie le rendu iframe (qui veut une URL stable).
+            _addPath(planConfig.plan && planConfig.plan.histoirePdf);
             (planConfig.imageLayers || []).forEach(function(l) { _addPath(l && l.file); });
             (planConfig.dataLayers || []).forEach(function(l) { _addPath(l && l.file); });
             console.log("[LazyTiles v1.34.10-dryrun] Whitelist des paths référencés (= NE PAS stuber en Phase 2) :", Array.from(referencedPaths));

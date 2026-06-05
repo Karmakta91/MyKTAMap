@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.18",
+  "version": "v1.34.19",
   "released": "2026-06-05",
   "notes": [
-    "🔊 v1.34.18 — Nouvelle fonctionnalité : lecture vocale des notes ! Un bouton 🔊 apparaît à côté de chaque note dans les popups des points (POI) — un clic et l'app lit la note à haute voix. Pratique sous terre quand tu as les mains/yeux occupés. Clique à nouveau pour arrêter. Compatible iPhone, Android, ordi. La langue suit celle de ton navigateur. Aucune permission demandée, aucune donnée envoyée — la synthèse vocale utilise les voix natives de ton appareil."
+    "📖 v1.34.19 — Nouveau Mode Histoire ! Un bouton 📖 apparaît dans la barre du haut, à côté de la batterie. Click → modale avec 2 onglets : (1) 📝 Note libre où tu peux écrire ce que tu veux (auto-sauvée par plan), et (2) 📚 Histoire qui affiche un PDF si l'auteur du plan en a embarqué un dans le ZIP (champ histoirePdf de plan-config.json). Sur iPhone, le PDF s'ouvre via un bouton télécharger pour respecter le comportement natif iOS."
   ]
 }

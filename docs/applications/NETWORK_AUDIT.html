@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.18</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.19</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.19 (Mode Histoire — note libre + PDF embarqué)</strong> : nouvelle feature. Bouton 📖 dans status bar, modale 2 onglets : note libre éditable persistée localStorage per-plan (auto-save 500ms) + viewer PDF embarqué via <code>plan-config.json > histoirePdf</code>. Affichage iframe natif sur desktop/Android, fallback bouton télécharger sur iOS. PDF résolu via <code>RUNTIME_ASSETS</code> (whitelist 2-pass <code>extraireZip</code>). <strong>Impact réseau</strong> : ZÉRO. PDF embarqué dans le ZIP local, aucun fetch externe. Note libre dans localStorage, jamais transmise.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression réseau — feature 100% client-side.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.18 (E2 TTS — Lecture vocale des notes POI)</strong> : nouvelle feature complément de E1 (commande vocale v1.34.0). E1 = entrée audio, E2 = sortie audio. Nouveau module <code>js/voiceTts.js</code> qui wrap <code>speechSynthesis</code> (Web Speech Synthesis API native). Bouton 🔊 inline dans popup POI si description existe, click = lecture à haute voix. <strong>Impact réseau</strong> : ZÉRO. Voix natives du device (iOS/Android/desktop), AUCUN fetch externe, AUCUNE permission demandée, fonctionne offline.

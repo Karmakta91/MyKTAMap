@@ -187,6 +187,13 @@
       // dynamique est appliquée via inline style depuis _refreshBatteryUi.
       '<span class="kta-refonte-counter kta-refonte-counter-battery kta-refonte-header-battery" id="kta-refonte-counter-battery" title="Batterie" style="display:none;">' +
         '<span class="kta-refonte-counter-icon" id="kta-refonte-battery-emoji">🔋</span><span class="kta-refonte-counter-val" id="kta-refonte-battery-val">—</span>' +
+      '</span>' +
+      // 🆕 v1.34.19 — Bouton 📖 Mode Histoire à côté de la batterie. Click
+      // ouvre la modale 2 onglets (📝 Note libre + 📚 PDF embarqué dans le
+      // plan). Toujours visible (pas de gating sur API support comme la
+      // batterie). Cf js/modeHistoire.js.
+      '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
+        '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>';
 
     document.body.appendChild(header);
@@ -217,6 +224,27 @@
       titleBtn.addEventListener("click", function() {
         if (typeof window.togglePlanSwitcher === "function") {
           window.togglePlanSwitcher();
+        }
+      });
+    }
+
+    // 🆕 v1.34.19 — Bouton 📖 Mode Histoire : click ouvre la modale.
+    // Support clavier (Enter/Space) pour accessibilité car le span a
+    // role="button" tabindex="0".
+    const histoireBtn = document.getElementById("kta-refonte-counter-histoire");
+    if (histoireBtn) {
+      function _openHistoire() {
+        if (window.ModeHistoire && typeof window.ModeHistoire.open === "function") {
+          window.ModeHistoire.open();
+        } else {
+          console.warn("[Refonte] ModeHistoire indisponible");
+        }
+      }
+      histoireBtn.addEventListener("click", _openHistoire);
+      histoireBtn.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          _openHistoire();
         }
       });
     }

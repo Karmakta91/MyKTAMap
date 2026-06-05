@@ -251,6 +251,12 @@ function cloneAndResolvePlanConfig(rawConfig) {
     resolved.plan.baseImage = getRuntimeAssetUrl(resolved.plan.baseImage) || resolved.plan.baseImage;
   if (resolved.plan?.collisionImage)
     resolved.plan.collisionImage = getRuntimeAssetUrl(resolved.plan.collisionImage) || resolved.plan.collisionImage;
+  // 🆕 v1.34.19 — Champ optionnel `plan.histoirePdf` : chemin relatif vers
+  // un PDF embarqué dans le ZIP (ex: "data/histoire.pdf"). Résolu en blob
+  // URL via RUNTIME_ASSETS pour l'affichage iframe dans la modale Mode
+  // Histoire (cf js/modeHistoire.js). Pas d'erreur si absent.
+  if (resolved.plan?.histoirePdf)
+    resolved.plan.histoirePdf = getRuntimeAssetUrl(resolved.plan.histoirePdf) || resolved.plan.histoirePdf;
   if (Array.isArray(resolved.imageLayers))
     resolved.imageLayers = resolved.imageLayers.map(function(l) {
       return { ...l, file: getRuntimeAssetUrl(l.file) || l.file };

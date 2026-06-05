@@ -1519,6 +1519,124 @@ body.kta-lost-click-mode .leaflet-container { cursor: crosshair !important; }
   line-height: 1.4;
 }
 
+/* =========================
+   v1.34.19 — MODE HISTOIRE — Bouton 📖 status bar + modale 2 onglets
+   ========================= */
+
+/* Bouton 📖 dans le header refonte (à côté de la batterie) */
+.kta-refonte-counter-histoire {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.kta-refonte-counter-histoire:hover,
+.kta-refonte-counter-histoire:focus {
+  background: rgba(244, 197, 66, 0.15);
+  outline: none;
+}
+
+/* Modale Mode Histoire — réutilise la structure kta-readme-modal-* */
+.kta-histoire-boite {
+  max-width: 900px;
+  width: 95vw;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
+.kta-histoire-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid #2a3142;
+  background: #1a1f2e;
+}
+.kta-histoire-tab {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  color: #8892a4;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.kta-histoire-tab:hover {
+  color: #c8d0e0;
+  background: rgba(140, 180, 255, 0.08);
+}
+.kta-histoire-tab-active {
+  color: #f4c542;
+  border-color: #2a3142;
+  background: #0a0d18;
+  border-bottom: 1px solid #0a0d18;
+  margin-bottom: -1px;
+  font-weight: 600;
+}
+.kta-histoire-corps {
+  flex: 1;
+  overflow: hidden;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.kta-histoire-pane {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+/* Onglet note libre */
+.kta-histoire-textarea {
+  flex: 1;
+  width: 100%;
+  background: #0a0d18;
+  border: 1px solid #2a3142;
+  border-radius: 6px;
+  color: #c8d0e0;
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px;
+  resize: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+.kta-histoire-textarea:focus {
+  outline: none;
+  border-color: #8cb4ff;
+}
+.kta-histoire-note-status {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #8892a4;
+  text-align: right;
+}
+/* Onglet PDF */
+.kta-histoire-pdf-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #0a0d18;
+  border: 1px solid #2a3142;
+  border-radius: 6px;
+}
+.kta-histoire-pdf-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+}
+.kta-histoire-pdf-empty,
+.kta-histoire-pdf-fallback {
+  padding: 24px;
+  text-align: center;
+  color: #c8d0e0;
+}
+.kta-histoire-pdf-empty p,
+.kta-histoire-pdf-fallback p {
+  margin: 8px 0;
+}
+
 /* 🆕 v1.34.18 (E2 TTS) — Bouton inline 🔊 dans .kta-popup-desc qui lit la note
    à haute voix via Web Speech Synthesis. Affichage compact, marge à droite
    pour séparer du texte, pas de bordure (style "icône cliquable"). État ⏹️

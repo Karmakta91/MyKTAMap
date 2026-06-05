@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.18** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.19** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.19 (Mode Histoire — note libre + PDF embarqué dans le plan)** : nouvelle feature. Bouton 📖 dans status bar, modale 2 onglets : note libre éditable persistée localStorage per-plan (auto-save 500ms) + viewer PDF embarqué via `plan-config.json > histoirePdf`. Affichage iframe natif sur desktop/Android, fallback bouton télécharger sur iOS (iframe PDF peu fiable). PDF résolu via `RUNTIME_ASSETS` (extraction eager dans la whitelist 2-pass `extraireZip`). **Impact réseau** : ZÉRO. Le PDF est embarqué dans le ZIP du plan importé localement par l'utilisateur (drag-and-drop ou file picker) — aucun fetch externe, aucun téléchargement réseau pour le PDF. La note libre vit en `localStorage` du navigateur, jamais transmise hors du device. Pas de nouveau domaine, pas de nouvelle requête. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — feature 100% client-side, alignée avec la philosophie offline community.
 
 > **v1.34.18 (E2 TTS — Lecture vocale des notes POI)** : nouvelle feature complément de E1 (commande vocale v1.34.0). E1 = entrée audio, E2 = sortie audio. Nouveau module `js/voiceTts.js` qui wrap `speechSynthesis` (Web Speech Synthesis API native du navigateur). Bouton 🔊 inline dans popup POI si description existe, click = lecture à haute voix via voix natives du device. **Impact réseau** : ZÉRO. La Web Speech Synthesis API utilise EXCLUSIVEMENT les voix natives installées sur le device de l'user (iOS/Android/desktop). AUCUN fetch externe vers Google/Apple/Amazon TTS services. AUCUNE permission demandée (contrairement à E1 qui demande micro pour la reconnaissance). La synthèse vocale fonctionne offline. Le texte à lire reste local, jamais transmis hors du device. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression réseau — feature 100% client-side avec voix locales, parfaitement aligné avec la philosophie offline de l'app.
 
