@@ -993,6 +993,47 @@ function buildPointPopupHtml(point, isEditorSession, layerInfo) {
 }
 window.buildPointPopupHtml = buildPointPopupHtml;
 
+// 🆕 v1.34.26 — Helper global vibration haptique (Web Vibration API).
+// Point d'entrée UNIQUE pour tous les modules qui veulent faire vibrer le
+// device (waypoint atteint, confirmation action, alerte erreur, etc.).
+// Check : (1) APP_CONFIG.vibrationEnabled === true (pref user), (2) API
+// dispo (iOS Safari ne supporte PAS — comportement délibéré d'Apple, ne
+// pas tenter de polyfill). Pattern : nombre = durée ms simple OU tableau
+// = pattern alterné [vib, pause, vib, pause...]. Ex : `kta_vibrate(50)` =
+// petit tap, `kta_vibrate([100, 50, 100])` = double pulse. Échec silencieux
+// si pas supporté ou pref OFF.
+//
+// Helpers raccourcis pour les patterns standardisés :
+//   _vibrate.light()      = 50ms (confirmation discrète)
+//   _vibrate.medium()     = 100ms (waypoint atteint)
+//   _vibrate.double()     = [100, 50, 100] (action importante)
+//   _vibrate.error()      = [200, 100, 200, 100, 200] (alerte)
+window.kta_vibrate = function(pattern) {
+  if (!window.APP_CONFIG || window.APP_CONFIG.vibrationEnabled !== true) return false;
+  if (typeof navigator === "undefined" || typeof navigator.vibrate !== "function") return false;
+  try {
+    return navigator.vibrate(pattern);
+  } catch(e) {
+    if (window.APP_CONFIG && window.APP_CONFIG.debugMode) {
+      console.warn("[Haptics] kta_vibrate échec :", e);
+    }
+    return false;
+  }
+};
+// Patterns standardisés exposés sur le helper (sucre syntaxique pour les
+// modules qui n'ont pas à se souvenir des durées exactes).
+window.kta_vibrate.light  = function() { return window.kta_vibrate(50); };
+window.kta_vibrate.medium = function() { return window.kta_vibrate(100); };
+window.kta_vibrate.double = function() { return window.kta_vibrate([100, 50, 100]); };
+window.kta_vibrate.error  = function() { return window.kta_vibrate([200, 100, 200, 100, 200]); };
+
+// Détection de support pour conditionner l'UI (afficher le toggle ou non).
+// Note : présence de la méthode ≠ vibration physique réelle. Sur Mac avec
+// trackpad force-touch, navigator.vibrate existe mais ne fait rien.
+window.kta_vibrate.isSupported = function() {
+  return typeof navigator !== "undefined" && typeof navigator.vibrate === "function";
+};
+
 // 🆕 v1.34.18 (E2 TTS) — Handler global pour le bouton 🔊 inline dans les
 // popups POI. Toggle play/stop via window.VoiceTts. Met à jour l'icône
 // pendant la lecture (🔊 → ⏹️) pour feedback visuel. Repasse à 🔊 quand la

@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.34.25** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.34.26** (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.34.26 (Vibration haptique infrastructure + toggle Configuration)** : 1ère release du sprint "évolutions fonctionnelles" (menu KARMA : vibration → export MKMSESSION → MD editor → notes vocales POI → Mode Sortie d'urgence → import tag/icône live). Cette release = infrastructure haptique seule. Ajout `APP_CONFIG.vibrationEnabled: true` (default ON) + helper global `window.kta_vibrate(pattern)` qui check pref + support `navigator.vibrate` avant d'appeler. Toggle "📳 Vibration haptique" dans `js/interfaceConfig.js` section "🔍 Affichage" (auto-masqué si pas supporté — iPhone Safari notamment). **Impact réseau** : ZÉRO. Web Vibration API est 100% côté device, aucun fetch externe, aucune permission demandée. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — infrastructure passive (pas encore d'events branchés). Les futures features (waypoint atteint, alerte, etc.) feront `kta_vibrate.medium()` etc. en transparent côté user.
 
 > **v1.34.25 (Fix modale "Déjà à jour" affiche notes stale d'une version rollback)** : KARMA screenshot iPhone PWA → modale "Déjà à jour" affichait `v1.34.24` en header mais notes v1.35.0 (rollback) dans le bloc `📝 Notes de cette version`. Cause : `js/interfaceAlerts.js` lisait `lastVersionData.notes` depuis localStorage sans vérifier que `lastVersionData.version === installed`. Fix : check `cacheMatchInstalled` avant affichage notes. Si cache stale → omettre les notes (titre + version installée seuls). Le prochain `UpdateChecker.check()` re-fetch `/version.json` et met à jour le cache. **Impact réseau** : ZÉRO — fix purement frontend (1 condition ajoutée). **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression — correction cosmétique d'un cache LS désynchronisé.
 

@@ -869,6 +869,26 @@ function afficherConfig() {
             </span>
           </label>
 
+          <!-- 🆕 v1.34.26 — Toggle vibration haptique. Visible UNIQUEMENT si
+               navigator.vibrate supporté (Android oui, iOS Safari NON par
+               choix d'Apple). Init en post-render via bindHandlers (auto-
+               masqué si pas supporté). Pref persistée dans app_user_prefs
+               (config.js l~104). Le helper window.kta_vibrate() check
+               APP_CONFIG.vibrationEnabled avant de vibrer. -->
+          <label class="kta-perf-ultra-row" id="cfg_vibration_row" style="margin-top:8px; display:none;">
+            <input type="checkbox" id="cfg_vibration" ${c.vibrationEnabled !== false ? "checked" : ""}>
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">📳 Vibration haptique</span>
+              <span class="kta-perf-ultra-hint">
+                Petite vibration pour les confirmations (waypoint atteint, action
+                validée, alerte). <strong>Décocher</strong> = silence total (utile en
+                cavité avec d'autres personnes, ou pour méditation). <strong>iOS Safari
+                ne supporte pas</strong> la Web Vibration API — sur iPhone, ce toggle
+                reste masqué. Pref globale, conservée entre les sessions.
+              </span>
+            </span>
+          </label>
+
           <!-- 🆕 v1.34.0 E1 : toggle commandes vocales. Visible UNIQUEMENT si
                Web Speech API supportée (SpeechRecognition / webkitSpeechRecognition).
                Permission micro demandée à la 1ère utilisation par le navigateur.
@@ -1035,6 +1055,44 @@ function afficherConfig() {
       // dans le HTML). Pas de message UI (ne pas frustrer l'user Firefox).
     }
   }
+
+  // 🆕 v1.34.26 : toggle "📳 Vibration haptique".
+  // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,
+  // iOS Safari NON par choix d'Apple). Sync UI ↔ APP_CONFIG.vibrationEnabled
+  // + persistence app_user_prefs.
+  const vibRow = document.getElementById("cfg_vibration_row");
+  const vibCb  = document.getElementById("cfg_vibration");
+  if (vibRow && vibCb && window.kta_vibrate && window.kta_vibrate.isSupported()) {
+    vibRow.style.display = "";
+    vibCb.checked = (window.APP_CONFIG && window.APP_CONFIG.vibrationEnabled !== false);
+    vibCb.addEventListener("change", function() {
+      if (!window.APP_CONFIG) window.APP_CONFIG = {};
+      window.APP_CONFIG.vibrationEnabled = !!vibCb.checked;
+      // Persiste dans app_user_prefs (lu au boot par config.js l~104)
+      try {
+        const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
+        saved.vibrationEnabled = !!vibCb.checked;
+        localStorage.setItem("app_user_prefs", JSON.stringify(saved));
+      } catch(e) {
+        console.warn("[Vibration] save pref échec :", e);
+      }
+      // Si activé, petite vibration de confirmation pour que l'user sente
+      // que ça marche.
+      if (vibCb.checked) {
+        window.kta_vibrate.light();
+      }
+      if (window.OOMGuard && typeof window.OOMGuard.showToast === "function") {
+        window.OOMGuard.showToast(
+          vibCb.checked
+            ? "📳 Vibration activée"
+            : "🔇 Vibration désactivée",
+          "info"
+        );
+      }
+    });
+  }
+  // Si !isSupported() (iPhone Safari notamment) → row caché silencieusement,
+  // pas de message frustrant à l'user.
 
   // 🆕 v1.34.0 E1 : toggle "🎤 Commandes vocales (BETA)".
   // Visible UNIQUEMENT si Web Speech API supportée (SpeechRecognition

@@ -76,6 +76,18 @@ let DEFAULT_CONFIG = {
   // réseau (garde-fou runtime via RoadGraph.isReady()).
   smartNav: false,
 
+  // 🆕 v1.34.26 — Vibration haptique (Web Vibration API).
+  // Pref GLOBALE, défaut ON. Lue à chaud par window.kta_vibrate(pattern) qui
+  // est le point d'entrée unique pour tous les modules qui veulent vibrer
+  // (waypoint atteint Mode Itinéraire, confirmation Mode Secours, etc.).
+  // Toggle exposé dans ⚙️ Configuration (home) ET ⚙️ Réglages (map).
+  // Auto-masqué si navigator.vibrate non supporté (iOS Safari notamment —
+  // iOS ne supporte PAS Web Vibration API, c'est délibéré d'Apple).
+  // L'user reste maître : même sur device supporté, peut décocher s'il
+  // ne veut pas de vibration sous terre (anti-bruit pour méditation /
+  // discrétion en cavité avec d'autres personnes).
+  vibrationEnabled: true,
+
   // ========== MULTI-NIVEAU (depuis v148) ==========
   // Opt-in par plan (PlanRegistry[planId].multiLevel). Quand `multiLevel` est
   // false (defaut), l'UI multi-niveau est masquee et le comportement est
@@ -102,6 +114,8 @@ let APP_CONFIG = { ...DEFAULT_CONFIG };
 try {
   const saved = JSON.parse(localStorage.getItem("app_user_prefs") || "{}");
   if ("debugMode" in saved) APP_CONFIG.debugMode = !!saved.debugMode;
+  // 🆕 v1.34.26 — Restaure la pref vibration au boot
+  if ("vibrationEnabled" in saved) APP_CONFIG.vibrationEnabled = !!saved.vibrationEnabled;
   // 🔍 v174 : restaurer scaledMarkers avant que creerIcones tourne
   if ("scaledMarkers" in saved) APP_CONFIG.scaledMarkers = !!saved.scaledMarkers;
   // 🆕 v1.9.2 : restaurer showRoadIntersections avant que renderRoads tourne

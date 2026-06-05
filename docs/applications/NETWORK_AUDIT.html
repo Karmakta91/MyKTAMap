@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.25</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.26</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.26 (Vibration haptique infrastructure + toggle Configuration)</strong> : 1ère release sprint "évolutions fonctionnelles". Infrastructure haptique seule : helper <code>window.kta_vibrate(pattern)</code>, toggle 📳 dans Configuration (auto-masqué si pas supporté — iPhone Safari). <strong>Impact réseau</strong> : ZÉRO — Web Vibration API 100% device-side.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.25 (Fix modale "Déjà à jour" affiche notes stale d'une version rollback)</strong> : KARMA screenshot iPhone PWA → modale affichait v1.34.24 en header mais notes v1.35.0 (rollback) en bloc. Cause : <code>js/interfaceAlerts.js</code> lisait <code>lastVersionData.notes</code> du localStorage sans vérifier que <code>lastVersionData.version === installed</code>. Fix : check <code>cacheMatchInstalled</code> avant affichage. <strong>Impact réseau</strong> : ZÉRO.

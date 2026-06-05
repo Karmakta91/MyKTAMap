@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.25",
+  "version": "v1.34.26",
   "released": "2026-06-05",
   "notes": [
-    "🩹 v1.34.25 — Correctif : la modale « Déjà à jour » affichait parfois des notes d'une version qui n'existait plus (cas typique après un rollback côté serveur). Désormais les notes affichées correspondent toujours exactement à la version installée sur ton appareil."
+    "📳 v1.34.26 — Vibration haptique : l'app peut désormais te confirmer une action par une petite vibration (waypoint atteint, alerte, etc.). Toggle dans ⚙️ Configuration (home) ET ⚙️ Réglages (map) pour activer/désactiver. Visible uniquement si ton appareil supporte (Android oui, iPhone Safari non — Apple ne supporte pas cette API). Pas encore branché à des événements précis — l'infrastructure est en place, les vibrations viendront avec les prochaines features (Mode Sortie d'urgence, Notes vocales POI…)."
   ]
 }
