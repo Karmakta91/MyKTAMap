@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.5</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.6</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.6 (DEBUG imageLayers + Fix bouton Tout afficher)</strong> : Le fix v1.34.5 (hypothèse <code>id mismatch</code>) n'a PAS résolu le bug en retest KARMA — "pas mieu, si je clique sur 'tout afficher' ca ne coche pas le calque IMAGES. et si je le coche moi meme ca ne fait rien". Réanalyse : <code>js/createConf.js</code> ligne 2310-2351 montre que les plans générés via le créateur ont TOUJOURS les 2 champs <code>id</code> ET <code>label</code> → l'hypothèse était fausse pour ce cas. v1.34.6 ajoute des <code>console.log</code> temporaires préfixés <code>[FilterPanel v1.34.6-debug]</code> dans <code>_renderImageLayersSection</code> + le handler <code>change</code> pour diagnostiquer ce qui foire (registre vide ? handler pas appelé ? <code>addLayer</code> qui throw ?). <strong>Bonus</strong> : fix bug confirmé indépendant — le bouton "🔄 Tout afficher" ne recochait pas les image layers / data layers (uniquement les chips tags/types). Désormais il dispatch un event <code>change</code> synthétique sur chaque checkbox <code>data-img-layer</code> / <code>data-data-layer</code> décochée. <strong>AUCUN impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — version intermédiaire de diagnostic, logs à retirer en v1.34.7.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.5 (HOTFIX — Bug imageLayers filter persistence)</strong> : KARMA bug remonté en prod : "si je coche le calque, revient dans le menu filtre il reste décocher (uniquement calque image layer)". Cause : mismatch d'identifiant entre le rendu UI (<code>js/filterPanel.js</code> utilisait <code>lc.id</code>) et le registre interne <code>_ktaImageOverlays</code> (<code>js/map.js</code> pushait <code>id: layerConfig.id || layerConfig.label</code>). Sur plans sans champ <code>id</code> dans <code>plan-config.json &gt; imageLayers[]</code>, le <code>data-img-layer</code> devenait <code>"undefined"</code> côté HTML mais l'entrée du registre portait le label → <code>e.id === id</code> échouait → handler return early → couche jamais togglée. Fix : appliquer le MÊME fallback <code>lc.id || lc.label</code> dans <code>_renderImageLayersSection</code>. <strong>AUCUN impact réseau</strong>.
