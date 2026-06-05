@@ -1,7 +1,7 @@
 {
-  "version": "v1.34.11",
+  "version": "v1.34.12",
   "released": "2026-06-05",
   "notes": [
-    "🧠 v1.34.11 — Optimisation mémoire (anti-crash iPhone) : les tuiles d'image des plans V2 sont désormais chargées à la demande au lieu d'être toutes extraites en mémoire au démarrage. Les niveaux de zoom non utilisés sont libérés automatiquement. Un léger délai (200-500 ms) peut apparaître la première fois que tu zoomes sur un nouveau niveau, c'est normal."
+    "🩹 v1.34.12 — Correction d'un bug introduit en v1.34.11 (optimisation mémoire) : les tuiles d'image des plans V2 ne s'affichaient plus correctement (erreurs de chargement répétées en console). Cause technique : la référence interne au ZIP source était perdue trop tôt lors du chargement d'un nouveau plan. Correctif appliqué."
   ]
 }

@@ -1371,14 +1371,16 @@
 
         console.log("[LazyTiles v1.34.11] Bilan : " + stubCount + " tuile(s) stube (lazy) + " + eagerCount + " asset(s) extrait eager + " + canariCount + " canari(s) détecté(s).");
 
-        // 🐛 v1.34.11 — Garde la référence au ZIP source pour extraction lazy
-        // ultérieure. Sera nullified par resetRuntimeAssets() au plan switch
-        // (cf js/config.js).
+        // 🐛 v1.34.11 (corrigé v1.34.12) — Garde la référence au ZIP source pour
+        // extraction lazy ultérieure. ATTENTION : on N'ASSIGNE PAS directement à
+        // window._lazyZipRef ici car startImportedPlan invoque immédiatement
+        // _libererRessourcesPlanPrecedent → resetRuntimeAssets qui nullify
+        // _lazyZipRef. À la place, on ANNOTE le tableau assetFiles avec _lazyZip,
+        // et startImportedPlan (main.js) set window._lazyZipRef APRÈS le cleanup
+        // du plan précédent.
         if (stubCount > 0) {
-          window._lazyZipRef = zip;
-          console.log("[LazyTiles v1.34.11] window._lazyZipRef sauvegardé (taille ZIP : ~" + Math.round(zipFile.size / 1024) + " Ko)");
-        } else {
-          window._lazyZipRef = null;
+          assetFiles._lazyZip = zip;
+          console.log("[LazyTiles v1.34.12] zip annoté sur assetFiles._lazyZip (sera set sur window après cleanup plan précédent ; taille ZIP : ~" + Math.round(zipFile.size / 1024) + " Ko)");
         }
 
         if (!planConfigFile) throw new Error("plan-config.json introuvable dans l'archive ZIP");

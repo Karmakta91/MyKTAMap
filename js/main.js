@@ -817,6 +817,17 @@ async function startImportedPlan(planConfigFile, assetFiles, presetChoisi, meta)
 
   _libererRessourcesPlanPrecedent();
 
+  // 🐛 v1.34.12 — Set window._lazyZipRef APRÈS _libererRessourcesPlanPrecedent
+  // pour qu'il survive au cleanup (resetRuntimeAssets nullify _lazyZipRef du
+  // plan précédent — légitime — mais on doit ensuite restaurer la ref du nouveau
+  // plan annotée par extraireZip sur assetFiles._lazyZip).
+  // Si pas de stub (plan sans tuiles V2 hors whitelist), assetFiles._lazyZip
+  // est undefined → on laisse _lazyZipRef = null (cohérent avec le reset).
+  if (assetFiles && assetFiles._lazyZip) {
+    window._lazyZipRef = assetFiles._lazyZip;
+    console.log("[LazyTiles v1.34.12] window._lazyZipRef restauré post-cleanup");
+  }
+
   const planText  = await planConfigFile.text();
   const rawConfig = JSON.parse(planText);
 
