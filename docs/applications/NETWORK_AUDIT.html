@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.34.3</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.34.4</strong> (5 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.34.4 (ROLLBACK — v1.35.0 Pack RAM cassait l'image principale)</strong> : KARMA bug post-v1.35.0 : "l'image principal ne s'affiche plus dutout". Cause probable : le refactor lazy extraction des tuiles V2 (commit <code>89fa6c3</code>) stubait des assets référencés par plan-config (baseImage, etc.) au lieu de les extraire eagerly. Action : revert combined des 2 commits v1.35.0. Bump v1.34.4 pour cache bust iPhone PWA. État source = strictement identique à v1.34.3. <strong>AUCUN impact réseau</strong>.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression — restore propre. Prochaine étape : v1.35.1 approche 2-pass défensive.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.34.3 (PATCH — Push-to-talk strict : stop explicite après commande)</strong> : KARMA bug : "si je dis aller a drapeau, il me trouve l'itineraire, mais reste en ecoute (j'ai la télé allumé, mais sous terre on peut avoir des gens qui parle a coté) donc si recherche effectuer (point trouvé, aide ouverte) on coupe le micro". Cause : malgré <code>recognition.continuous = false</code>, iOS Safari garde le micro warm et peut capturer du bruit ambiant avant que <code>onend</code> ne fire. Fix : appel explicite <code>stopListening()</code> à la fin de <code>_onFinalTranscript()</code>, qu'il y ait match ou non. Pour les handlers async (ex: "aller à POI"), la Promise a déjà été dispatchée — arrêter la recognition ne les affecte pas, ils continuent en background. Push-to-talk strict : 1 click 🎤 → 1 phrase → stop net. <strong>Renforce le respect de la vie privée</strong> : aucune capture audio au-delà de la phrase prononcée. <strong>AUCUN nouveau impact réseau</strong>.
