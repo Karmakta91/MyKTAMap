@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.5",
+  "version": "v1.39.6",
   "released": "2026-06-07",
   "notes": [
-    "🔌 v1.39.5 — Vue OSM : vérification réseau fiable au clic du bouton 🗺️ (même mécanisme que la mise à jour douce). Si le serveur ne répond pas, modale 'Internet ne répond pas' au lieu d'une vue OSM vide. Une petite fenêtre ⏳ s'affiche pendant le test (jusqu'à 5 s)."
+    "🐛 v1.39.6 — Hotfix Vue OSM : quand tu zoomais (in/out), les images calibrées (plan, calques) restaient à leur ancienne position et il fallait cliquer pour qu'elles se replacent. Maintenant elles suivent le zoom correctement."
   ]
 }
