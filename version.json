@@ -1,7 +1,7 @@
 {
-  "version": "v1.37.1",
+  "version": "v1.37.2",
   "released": "2026-06-06",
   "notes": [
-    "🔧 v1.37.1 — Fix du bug récurrent « badge footer reste sur ancienne → nouvelle après mise à jour douce ». Le mécanisme préservait par erreur l'ancien cache, ce qui empêchait la nouvelle version de prendre le relais au reload. La mise à jour douce purge maintenant complètement les caches (comportement identique au bouton Kill SW), garantie de servir la dernière version. Léger temps de boot supplémentaire au prochain reload (re-téléchargement des assets, environ 3-8 sec sur fibre)."
+    "🔧 v1.37.2 — Fix bug Ctrl+Z qui cassait la suite d'un tracé. Quand tu faisais Ctrl+Z pendant le dessin d'un tracé, le clic suivant n'ajoutait plus de point (silencieusement ignoré) et donnait l'impression que le tracé était cassé. Le mode tracé est maintenant correctement préservé à travers les annulations — tu peux continuer ton tracé après Ctrl+Z sans avoir à ré-activer le mode."
   ]
 }

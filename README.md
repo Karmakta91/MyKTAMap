@@ -8,7 +8,17 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.37.1` (06/06/2026) — **Fix bug récurrent mise à jour douce + bouton Kill SW Configuration home** :
+**📦 Version courante** : `v1.37.2` (06/06/2026) — **Fix bug Ctrl+Z casse la suite d'un tracé** :
+
+Bug remonté KARMA terrain : *« le control Z casse toujours la suite d'un tracé »*. Confirmé via logs F12 — après Ctrl+Z, `currentRoadIndex` était bien restauré (fix v1.26.3-hotfix3 OK) mais le clic suivant n'ajoutait aucun point (`total roads` et `road points` stagnaient).
+
+**Cause racine** : `resetRoads()` (cf `js/road.js` l.1046) fait `window.modeRoad = null`. Or `HistoryManager > _applyState()` appelle `resetRoads()` AVANT `setRoads()` pour restaurer atomiquement l'array. Conséquence : après chaque undo, `window.modeRoad` est wipé. Le mousedown handler de `road.js` l.171 check `if (!window.modeRoad) return;` → tout clic post-undo est avorté en silence → l'user voit son tracé restauré mais ne peut plus le continuer (« lien suivant cassé »). Le fix v1.26.3-hotfix3 avait pensé à restaurer `currentRoad` via index mais oublié le mode road. Régression latente depuis 11 versions.
+
+**Fix v1.37.2** (`js/historyManager.js > _applyState()`) : snapshot de `window.modeRoad` AVANT le `resetRoads()`, restauration APRÈS le `setCurrentRoadByIndex()`. **Conditionnel** : on ne restaure que si un tracé en cours doit être restauré (snapshot.currentRoadIndex ≥ 0 ET snapshot.roads présent) — sinon (annulation de la création même d'une nouvelle road = currentRoadIndex == -1 dans le snapshot pré-création), on laisse `modeRoad` à `null` posé par `resetRoads()` : cohérent avec l'annulation totale. Patch chirurgical de ~10 lignes, sans toucher à `resetRoads` ni au schéma de snapshot (état UI runtime, pas une donnée historique à versionner).
+
+**Bump** : sw.js v1.37.1 → v1.37.2 + `__MKM__.build` + `version.json` + notes user-friendly.
+
+**📦 v1.37.1** : Fix bug récurrent mise à jour douce + bouton Kill SW Configuration home.
 
 **Bug récurrent identifié via audit indépendant** : après clic « 🔄 Forcer la mise à jour » + reload, le badge footer restait sur « ancienne → nouvelle ». 2 hotfixes historiques (v1.34.9 polling reg.waiting + v1.34.25 stale cache LS) avaient patché des symptômes sans corriger la cause racine.
 

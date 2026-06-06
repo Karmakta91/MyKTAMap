@@ -115,6 +115,19 @@
       if (window.setEditorPoints && Array.isArray(s.editorPoints)) {
         window.setEditorPoints(s.editorPoints);
       }
+      // 🐛 v1.37.2 — Préservation de window.modeRoad à travers undo/redo.
+      // KARMA bug "Ctrl+Z casse toujours la suite d'un tracé" :
+      // resetRoads() wipe window.modeRoad → null (cf road.js l.1046). Sans
+      // restauration, le mousedown handler check `if (!window.modeRoad) return`
+      // → le clic suivant après undo est avorté en silence → l'user voit son
+      // tracé restauré mais ne peut pas le continuer ("lien suivant cassé"
+      // perçu). v1.26.3-hotfix3 avait restauré currentRoad via index mais
+      // oublié modeRoad. Fix : on snapshot modeRoad AVANT le reset, on le
+      // restaure après seulement si on avait un tracé en cours à restaurer
+      // (sinon ressortir du mode est cohérent avec l'annulation d'une création).
+      const _savedModeRoad = (Array.isArray(s.roads) && typeof s.currentRoadIndex === "number" && s.currentRoadIndex >= 0)
+        ? window.modeRoad
+        : null;
       if (Array.isArray(s.roads)) {
         if (window.resetRoads) window.resetRoads();
         if (window.setRoads) window.setRoads(s.roads);
@@ -134,6 +147,13 @@
       if (Array.isArray(s.roads) && window.setCurrentRoadByIndex
           && typeof s.currentRoadIndex === "number") {
         window.setCurrentRoadByIndex(s.currentRoadIndex);
+      }
+      // 🐛 v1.37.2 — Restaure le mode road pour permettre la continuation
+      // du tracé après undo. Skip si on annulait la création même d'une
+      // nouvelle road (currentRoadIndex == -1 ou pas de roads dans snap) :
+      // dans ce cas garder modeRoad = null est cohérent (sortir du mode).
+      if (_savedModeRoad) {
+        window.modeRoad = _savedModeRoad;
       }
     } catch(e) {
       console.warn("[HistoryManager] _applyState échoué :", e);

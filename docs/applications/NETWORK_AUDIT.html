@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.37.1</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.37.2</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.37.2 (Fix bug Ctrl+Z casse la suite d'un tracé)</strong> : Changement 100% client-side de <code>js/historyManager.js &gt; _applyState()</code>. KARMA bug terrain : après Ctrl+Z pendant un dessin de tracé, le clic suivant était avorté en silence (<code>window.modeRoad</code> wipé par <code>resetRoads()</code>). Fix chirurgical : snapshot/restore de <code>modeRoad</code> autour de <code>resetRoads()/setRoads()</code>. <strong>Impact réseau</strong> : ZÉRO — aucun nouvel appel, aucune ressource externe.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression, fix d'un bug UX terrain.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.37.1 (Fix bug récurrent mise à jour douce — purge totale caches)</strong> : Changement 100% client-side de <code>mettreAJourCodeSeul()</code> dans <code>js/interfaceMaintenance.js</code>. Audit indépendant : la cause racine du bug "badge footer reste sur ancienne→nouvelle" était dans le hotfix21 <code>_getCacheNameFromSW()</code> qui interrogeait le SW courant (= l'ancien) → préservait l'ancien cache à la purge → reload servait toujours l'ancienne version. Fix : purge TOTALE <code>caches.keys().map(caches.delete)</code> sans filter (pattern identique à killsw.html qui marche systématiquement). <strong>Impact réseau</strong> : 1 re-DL des ~100 assets PWA UNIQUEMENT au clic "Forcer la mise à jour" (~3-8 sec sur fibre). Pas de changement sur l'usage normal. Ping internet garde-fou (5s) conservé.

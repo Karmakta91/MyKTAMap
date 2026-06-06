@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.37.1** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.37.2** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.37.2 (Fix bug Ctrl+Z casse la suite d'un tracé)** : changement 100% client-side de `js/historyManager.js > _applyState()`. KARMA bug terrain : après Ctrl+Z pendant un dessin de tracé, le clic suivant était avorté en silence (`window.modeRoad` wipé par `resetRoads()`). Fix chirurgical : snapshot/restore de `modeRoad` autour de `resetRoads()/setRoads()`. **Impact réseau** : ZÉRO — aucun nouvel appel, aucune ressource externe, aucune modif de la liste blanche `connect-src`. Pure logique runtime client. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'un bug UX terrain (latent depuis 11 versions, masqué par le fix v1.26.3-hotfix3 partiel).
 
 > **v1.37.1 (Fix bug récurrent mise à jour douce — purge totale caches)** : changement 100% client-side de la fonction `mettreAJourCodeSeul()` de `js/interfaceMaintenance.js`. Audit indépendant : la cause racine du bug "badge footer reste sur ancienne→nouvelle après reload" était dans `_getCacheNameFromSW()` (hotfix21) qui interrogeait le SW COURANT (= l'ancien) → préservait l'ancien cache à la purge → reload servait toujours l'ancienne version. Fix : purge TOTALE `caches.keys().map(caches.delete)` sans filter (pattern identique à killsw.html qui marche systématiquement). Le nouveau SW re-populera ses assets au reload via son install handler. **Impact réseau** : très léger surcoût ponctuel — 1 re-DL des ~100 assets PWA au reload (~3-8 sec sur fibre, qq sec de plus en mobile) UNIQUEMENT au moment du clic "Forcer la mise à jour". Pas de changement sur l'usage normal. Ping internet (5s avant action) conservé en garde-fou. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. Aucune nouvelle URL contactée, aucune ressource externe ajoutée. **Verdict** : ✅ aucune régression, fiabilité de la mise à jour douce sécurisée (élimine la cause racine du bug récurrent), philosophie 100% offline préservée.
 
