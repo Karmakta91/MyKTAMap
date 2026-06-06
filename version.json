@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.4",
-  "released": "2026-06-06",
+  "version": "v1.39.5",
+  "released": "2026-06-07",
   "notes": [
-    "📴 v1.39.4 — Le bouton 🗺️ Vue OSM se masque automatiquement quand tu es hors-ligne (Wi-Fi/4G coupés). Réapparaît dès que le réseau revient. Évite de cliquer pour rien quand OSM ne peut pas charger ses tiles."
+    "🔌 v1.39.5 — Vue OSM : vérification réseau fiable au clic du bouton 🗺️ (même mécanisme que la mise à jour douce). Si le serveur ne répond pas, modale 'Internet ne répond pas' au lieu d'une vue OSM vide. Une petite fenêtre ⏳ s'affiche pendant le test (jusqu'à 5 s)."
   ]
 }

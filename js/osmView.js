@@ -372,9 +372,52 @@
       if (!yes) return;
       setOptedIn(true);
     }
-    if (_modalEl) close();
-    _modalEl = _buildModal();
-    setTimeout(_renderMap, 50);
+    // 🆕 v1.39.5 — Ping fiable AVANT ouverture modale (pattern aligné sur
+    // la mise à jour douce). navigator.onLine est rapide mais false-negative
+    // possible (Wi-Fi connecté mais ISP down). Le ping fait un vrai fetch
+    // HTTPS vers /ping.html same-origin avec timeout 5s → resultat fiable.
+    // Si KO → toast + abort (évite d'ouvrir une modale OSM avec tiles vides).
+    _pingThenOpen();
+  }
+
+  function _pingThenOpen() {
+    // Overlay d'attente visible pendant le ping (jusqu'à 5s)
+    const waitOverlay = document.createElement("div");
+    waitOverlay.className = "kta-modal-overlay";
+    waitOverlay.style.cssText = "z-index:100050;";
+    waitOverlay.innerHTML =
+      '<div class="kta-modal" style="max-width:340px;">' +
+        '<div class="kta-modal-icon" style="font-size:32px;">⏳</div>' +
+        '<div class="kta-modal-titre">Vérification de la connexion…</div>' +
+        '<div class="kta-modal-texte" style="font-size:13px; color:#8892a4;">Test du serveur (jusqu\'à 5 s) avant d\'ouvrir la Vue OSM.</div>' +
+      '</div>';
+    document.documentElement.appendChild(waitOverlay);
+
+    const pingFn = (typeof window._pingInternet === "function") ? window._pingInternet : null;
+    const pingPromise = pingFn
+      ? pingFn()
+      : Promise.resolve(navigator.onLine !== false);  // fallback si helper pas chargé
+
+    pingPromise.then(function(online) {
+      try { waitOverlay.remove(); } catch(e) {}
+      if (!online) {
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast("📴 Internet ne répond pas — Vue OSM impossible. Vérifie ta connexion.", "warn");
+        } else {
+          alert("Internet ne répond pas — Vue OSM impossible. Vérifie ta connexion.");
+        }
+        return;
+      }
+      if (_modalEl) close();
+      _modalEl = _buildModal();
+      setTimeout(_renderMap, 50);
+    }).catch(function(e) {
+      try { waitOverlay.remove(); } catch(_) {}
+      console.warn("[OsmView] ping failed :", e);
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast("⚠️ Échec vérification réseau — Vue OSM annulée.", "warn");
+      }
+    });
   }
 
   function close() {
