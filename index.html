@@ -704,6 +704,14 @@
             <input type="checkbox" id="loaderNetParanoiaCb">
             <span><strong>🔒 Mode hors-ligne strict</strong> — bloque activement toute requête sortante non-whitelistée (l'app reste 100% fonctionnelle offline). Préférence persistée.</span>
           </label>
+          <!-- 🆕 v1.39.0 — Toggle opt-in "Vue OSM" (autorise tile.openstreetmap.org).
+               Par défaut OFF (philosophie 100% offline préservée). Si activé,
+               un bouton "🗺️ Vue OSM" apparaît dans la status bar des plans
+               georef-calibrés (cf js/osmView.js). -->
+          <label class="kta-net-paranoia-toggle" style="margin-top:8px;">
+            <input type="checkbox" id="loaderOsmOptInCb">
+            <span><strong>🗺️ Autoriser la Vue OSM (OpenStreetMap)</strong> — permet le mode "plan au-dessus d'OSM" pour les plans calibrés GPS. Contacte <code>tile.openstreetmap.org</code> quand la modale Vue OSM est ouverte. Préférence persistée (default OFF).</span>
+          </label>
         </div>
 
         <!-- 🎨 Affichage : choix interface (depuis v1.8.1-refonte-8)
@@ -1110,6 +1118,10 @@
        js/modeHistoire.js. -->
   <script src="js/modeHistoire.js" defer></script>
   <script src="js/kmzExport.js" defer></script>
+  <!-- 🆕 v1.39.0 — Mode Vue OSM (plan au-dessus d'OpenStreetMap). Chargé
+       APRÈS kmzExport (dépend de KmzExport.buildTransform/planToGps) et
+       APRÈS imageLayerCalibration (utilise compute3CornersFromAnchorsPx). -->
+  <script src="js/osmView.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
   <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
        via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS
@@ -5147,6 +5159,15 @@
           if (window.NetworkAudit) {
             window.NetworkAudit.setParanoia(paranoiaCb.checked);
           }
+        });
+      }
+
+      // 🆕 v1.39.0 — Toggle "🗺️ Autoriser la Vue OSM"
+      const osmOptInCb = document.getElementById("loaderOsmOptInCb");
+      if (osmOptInCb && window.OsmView) {
+        osmOptInCb.checked = window.OsmView.isOptedIn();
+        osmOptInCb.addEventListener("change", function() {
+          window.OsmView.setOptedIn(osmOptInCb.checked);
         });
       }
 

@@ -8,7 +8,30 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.38.3` (06/06/2026) — **Fix effet de bord : exports image respectent la calibration des calques** :
+**📦 Version courante** : `v1.39.0` (06/06/2026) — **Vue OSM (plan calibré GPS au-dessus d'OpenStreetMap)** :
+
+Feature roadmap KARMA — *« on aurait notre image principal (et ses layer) au dessus de OSM »*. Nouvelle modale dédiée qui superpose le plan MyKTAMap (baseImage + calques image actifs) sur OpenStreetMap, projeté précisément via le georef GPS (`plan.georef`). Cas d'usage : visualiser comment un plan souterrain (carrière, galerie) s'aligne avec la surface — rues, accès, bâtiments.
+
+**Périmètre v1.39.0** :
+
+- **Lot R — Runtime** : nouveau module `js/osmView.js` (~310 lignes) avec API `window.OsmView = { open, close, isAvailable, isOptedIn, setOptedIn }`. Map Leaflet EPSG:3857 (Web Mercator standard) avec tile layer `https://tile.openstreetmap.org/{z}/{x}/{y}.png` (attribution OSM). Projection plan → OSM via `KmzExport.buildTransform(planA, planB, gpsA, gpsB)` + `KmzExport.planToGps(t, x, y)` existants (réutilise toute l'infra georef GPS du KMZ). Pour chaque image (baseImage + image layers calibrés), calcul des 3 coins en pixels plan puis projection lat/lng via planToGps → `L.imageOverlay.rotated(url, tl, tr, bl)` du plugin Leaflet.ImageOverlay.Rotated v1.38.0. Image layers SANS calibration utilisent les 4 coins du plan principal. Image layers AVEC calibration utilisent `ImageLayerCalibration.compute3CornersFromAnchorsPx` pour récupérer leurs 3 coins en pixels plan, puis projetés indépendamment.
+
+- **Lot U — UI** : 
+  - Bouton 🗺️ dans status bar (à côté de 📖 Mode Histoire) via `js/refonteInterface.js`. **Visible uniquement** si `OsmView.isAvailable()` = `_hasGeoref() AND isOptedIn() AND !strictOffline AND !incognito`. Refresh sur events `kta:osmOptInChange`, `kta:planConfigReady` + polling boot.
+  - Modale plein écran : header + bandeau contrôles (slider opacité 0-100% + bouton "🎯 Centrer sur le plan" + mention "🔒 Tiles : tile.openstreetmap.org (HTTPS)") + map prenant le reste.
+
+- **Lot N — Privacy & opt-in** :
+  - Toggle "🗺️ Autoriser la Vue OSM (OpenStreetMap)" dans ⚙️ Configuration home, juste sous Mode hors-ligne strict. Persisté en LS `myktamap_osm_view_opt_in` (default OFF). Handler dans `index.html` câblé à `OsmView.setOptedIn()`.
+  - **3 garde-fous strict** avant ouverture modale : (1) plan a un `georef` valide (sinon alert avec instruction "Ajoute-en une via générateur avancé"), (2) `NetworkAudit.isStrictOfflineEnabled()` false (sinon toast warn), (3) `IncognitoMode.isActive()` false (sinon toast warn).
+  - **Première activation** : `confirm()` natif explicite avec mention du domaine contacté et instructions pour révoquer. Setter LS après acceptation.
+
+- **Lot D — Docs + NETWORK_AUDIT** : section dédiée + ajout de `https://tile.openstreetmap.org` à la liste blanche `connect-src` et `img-src` (mais **uniquement effective si l'user opt-in**). Note pour KARMA côté nginx : mettre à jour la CSP du serveur prod/dev pour autoriser ces domaines OSM (le client ne peut pas changer la CSP serveur côté browser).
+
+**Rétro-compat stricte** : sans opt-in OU sans georef, AUCUN appel sortant vers OSM. Le bouton est masqué (display:none) → l'user qui n'active jamais l'opt-in n'a aucune trace réseau OSM, philosophie 100% offline préservée. La CSP serveur prod sera mise à jour avant le déploiement v1.39.0 pour autoriser tile.openstreetmap.org.
+
+**Bump** : sw.js v1.38.3 → v1.39.0 + `__MKM__.build` + `version.json` + notes user-friendly. Nouveau module `osmView.js` ajouté à `ASSETS_TO_CACHE` SW PWA + chargé dans `index.html` APRÈS `kmzExport.js` (dépendance).
+
+**📦 v1.38.3** : Fix effet de bord exports image vs calibration calques.
 
 KARMA contrôle terrain : *« assure toi que ca n'a pas créé effet de bord sur ; export image (simple/avancé) export KMZ/GPX »*. Audit effectué, **bug confirmé** sur les exports image, **OK** sur KMZ/GPX.
 

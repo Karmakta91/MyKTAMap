@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.38.3** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.39.0** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.39.0 (Vue OSM — opt-in strict, plan calibré GPS au-dessus d'OpenStreetMap)** : nouvelle modale Leaflet EPSG:3857 avec tile layer OSM (`tile.openstreetmap.org`) + plan MyKTAMap projeté via georef GPS. **Premier appel sortant volontaire vers tile.openstreetmap.org dans l'app** — opt-in STRICT (3 garde-fous) : (1) toggle "Autoriser la Vue OSM" dans ⚙️ Configuration home (default OFF, persisté LS `myktamap_osm_view_opt_in`), (2) `confirm()` natif au premier lancement avec mention explicite du domaine contacté, (3) bouton masqué si plan sans georef OU si Mode hors-ligne strict OU si Mode incognito actifs. **Aucun appel sortant tant que la modale n'est pas ouverte ET le toggle activé**. **Liste blanche `connect-src` ÉTENDUE** : `'self'` + `https://www.gstatic.com` + `https://tile.openstreetmap.org` (uniquement effective côté serveur si l'auteur déploie la nouvelle CSP). **Liste blanche `img-src`** : ajout `https://tile.openstreetmap.org` (tiles OSM). **Verdict** : ✅ extension volontaire et opt-in du périmètre réseau, philosophie 100% offline préservée pour les users qui n'activent jamais le toggle.
 
 > **v1.38.3 (Fix effet de bord exports image vs calibration)** : KARMA contrôle terrain — bug détecté sur exports image (PNG simple/avancé + PDF + miniature Mode Secours) qui ignoraient la calibration 2 ancres et stretchaient les calques à pleine taille du plan. Fix : 2 nouveaux helpers `compute3CornersFromAnchorsPx` et `drawCalibratedImageLayer` dans `js/imageLayerCalibration.js`, branchés dans `js/utils.js > telechargerPlan` et `js/exporter.js > _genererCanvasExport` via canvas `ctx.transform()`. **KMZ/GPX n'étaient pas affectés** (kmzExport.js utilise seulement le baseImage en GroundOverlay, pas les calques ; gpxIO.js = coords uniquement). **Impact réseau** : ZÉRO — math pure côté canvas, pas de call sortant. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'une régression silencieuse v1.38.0 sur le pipeline export.
 

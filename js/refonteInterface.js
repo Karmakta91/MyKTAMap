@@ -193,6 +193,14 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
+      // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM. Visible UNIQUEMENT si le plan a un
+      // georef GPS valide ET que l'user a opt-in dans Configuration home.
+      // Cliquer ouvre la modale OSM (plan calibré projeté sur OpenStreetMap).
+      // Le bouton montre/cache se fait via _refreshOsmButtonVisibility au boot
+      // et sur kta:osmOptInChange. Cf js/osmView.js.
+      '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="Vue OSM — plan au-dessus d\'OpenStreetMap" role="button" tabindex="0" style="display:none;">' +
+        '<span class="kta-refonte-counter-icon">🗺️</span>' +
+      '</span>' +
       // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
       // qui identifie la sortie la plus proche (pathfinder + tags
       // Puits/Escalier/Cavage ouvert ou tag "entrée"). Cf js/sortieUrgence.js.
@@ -254,6 +262,38 @@
           _openHistoire();
         }
       });
+    }
+
+    // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM : visible UNIQUEMENT si plan georef
+    // ET user opt-in dans Configuration home. Click ouvre la modale (carte
+    // EPSG:3857 + tile OSM + plan projeté). Cf js/osmView.js.
+    const osmBtn = document.getElementById("kta-refonte-counter-osm");
+    if (osmBtn) {
+      function _refreshOsmVisibility() {
+        const show = !!(window.OsmView && window.OsmView.isAvailable && window.OsmView.isAvailable());
+        osmBtn.style.display = show ? "" : "none";
+      }
+      function _openOsm() {
+        if (window.OsmView && typeof window.OsmView.open === "function") {
+          window.OsmView.open();
+        } else {
+          console.warn("[Refonte] OsmView indisponible");
+        }
+      }
+      osmBtn.addEventListener("click", _openOsm);
+      osmBtn.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          _openOsm();
+        }
+      });
+      // Init visibility + listeners pour la re-check
+      _refreshOsmVisibility();
+      window.addEventListener("kta:osmOptInChange",  _refreshOsmVisibility);
+      window.addEventListener("kta:planConfigReady", _refreshOsmVisibility);
+      // Petit polling au boot (cas où le plan se charge après init du header)
+      setTimeout(_refreshOsmVisibility, 1000);
+      setTimeout(_refreshOsmVisibility, 3000);
     }
 
     // 🆕 v1.35.0 — Bouton 🚨 Sortie d'urgence : click déclenche la recherche

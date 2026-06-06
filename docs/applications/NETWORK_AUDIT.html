@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.38.3</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.39.0</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.39.0 (Vue OSM — opt-in strict, plan calibré GPS au-dessus d'OpenStreetMap)</strong> : Modale dédiée Leaflet EPSG:3857 avec tile layer OSM + plan projeté via georef GPS. <strong>Premier appel sortant volontaire vers tile.openstreetmap.org dans l'app</strong> — opt-in STRICT (3 garde-fous) : toggle Configuration home (default OFF, LS <code>myktamap_osm_view_opt_in</code>), confirm() premier lancement, bouton masqué sans georef OU Mode hors-ligne strict OU Mode incognito actifs. Aucun appel sortant tant que toggle pas activé ET modale pas ouverte. <strong>Liste blanche <code>connect-src</code> ÉTENDUE</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code> + <code>https://tile.openstreetmap.org</code>. <strong>img-src</strong> : ajout <code>https://tile.openstreetmap.org</code>.
+    <strong>Verdict</strong> : ✅ extension volontaire et opt-in du périmètre réseau, philosophie 100% offline préservée pour les users qui n'activent jamais le toggle.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.38.3 (Fix effet de bord exports image vs calibration)</strong> : KARMA contrôle terrain — bug sur exports image (PNG simple/avancé + PDF + miniature Mode Secours) qui ignoraient la calibration 2 ancres. Fix : 2 nouveaux helpers <code>compute3CornersFromAnchorsPx</code> et <code>drawCalibratedImageLayer</code> dans <code>js/imageLayerCalibration.js</code>, branchés dans <code>js/utils.js</code> et <code>js/exporter.js</code> via <code>ctx.transform()</code>. <strong>KMZ/GPX non affectés</strong>. <strong>Impact réseau</strong> : ZÉRO — math pure côté canvas.
