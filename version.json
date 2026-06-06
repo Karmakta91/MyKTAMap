@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.6",
+  "version": "v1.39.7",
   "released": "2026-06-07",
   "notes": [
-    "🐛 v1.39.6 — Hotfix Vue OSM : quand tu zoomais (in/out), les images calibrées (plan, calques) restaient à leur ancienne position et il fallait cliquer pour qu'elles se replacent. Maintenant elles suivent le zoom correctement."
+    "📋 v1.39.7 — Doc Audit Réseau enrichi : ajout de tile.openstreetmap.org à la liste blanche principale + nouvelle section dédiée qui détaille les 3 conditions strictes d'activation (georef + opt-in + clic modale) et les garanties privacy. Aucun changement de comportement, juste de la transparence sur ce qui a été fait en v1.39.0."
   ]
 }

@@ -89,7 +89,8 @@ envoyé** (réponse : rien, jamais).
 | `<origin>/alert.json` | `GET` | Au boot | Diffusion d'alertes publiques (incendie, fermeture site, etc.) | **Aucune** |
 | `<origin>/data/<plan>/*` | `GET` | Charge d'un plan serveur | Lecture des fichiers d'un plan (image + JSON) | **Aucune** |
 | `<origin>/docs/applications/README_USER.md`, `<origin>/docs/applications/AI_CONTEXT.md`, `<origin>/docs/NETWORK_AUDIT.*` | `GET` | Ouverture des modales Documentation / Aide IA / Audit | Affichage du contenu | **Aucune** |
-| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
+| `<origin>/ping.html` | `GET` (same-origin, body lu) | Avant un reset complet, avant un Force update, avant ouverture Vue OSM | Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu `"OK"`) | **Aucune** (GET sans paramètres, pas de cookies via `credentials: "omit"`, same-origin) |
+| `https://tile.openstreetmap.org/{z}/{x}/{y}.png` | `GET` | **Uniquement** quand la modale **Vue OSM** est ouverte (cf v1.39.0, opt-in strict requis) | Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS | **Aucune** (cookies omis, juste les coordonnées géographiques `{z}/{x}/{y}` de la tuile, anonymisé par CDN OSM) |
 | `blob:<origin>/<uuid>` | `GET` | Chargement des tuiles V2 d'un plan tuilé | Déréférencer une tuile JPEG depuis le ZIP **déjà en mémoire** dans le navigateur | **Aucune** (blob URL = référence locale au navigateur, ne sort pas) |
 | `data:<mime>;base64,...` | `GET` | Icônes SVG inline, certains exports | Déréférencer une donnée encodée en base64 **dans le code de l'app** | **Aucune** (data URL = pas de fetch réseau réel) |
 
@@ -135,6 +136,52 @@ tenter la mise à jour douce.
 Si tu préfères ne pas faire ce ping du tout, **active le mode hors-ligne
 strict** (cf. plus bas) : il sera bloqué comme tout autre appel non
 local.
+
+### À propos des tuiles OSM `tile.openstreetmap.org` (depuis v1.39.0)
+
+**Avant v1.39.0** : l'app n'avait **aucun** appel sortant vers un domaine tiers,
+strictement same-origin + ping `/ping.html`. Depuis v1.39.0, l'app peut
+contacter `tile.openstreetmap.org` pour afficher la carte OSM **uniquement
+sous 3 conditions strictes simultanément réunies** :
+
+1. **Le plan a un georef GPS** (saisi via générateur avancé OU via Réglages
+   map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
+   masqué côté UI et l'appel n'a aucun moyen de se déclencher.
+2. **L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »** dans
+   ⚙️ Configuration home. **Default OFF**, persisté en `localStorage`
+   sous la clé `myktamap_osm_view_opt_in`. L'utilisateur peut le
+   désactiver à tout moment.
+3. **L'utilisateur ouvre activement la modale Vue OSM** (clic sur le bouton
+   🗺️ dans la status bar du mode carte). Sans cette action manuelle,
+   aucune tuile n'est requêtée.
+
+**Garanties supplémentaires** :
+- Le bouton est aussi masqué si « Mode hors-ligne strict » OU « Mode
+  incognito » sont actifs (extension automatique de ces deux modes).
+- Le bouton est masqué si `navigator.onLine === false` (hors-ligne détecté
+  par le navigateur).
+- Un ping `/ping.html` est effectué juste avant l'ouverture de la modale
+  Vue OSM : si Internet ne répond pas, la modale est annulée AVANT le
+  premier appel à OSM.
+- Les requêtes vers OSM sont faites en mode `cors` standard avec
+  `crossOrigin: true` côté Leaflet (cookies omis par défaut). **Aucune
+  donnée utilisateur n'est envoyée** : juste les coordonnées géographiques
+  `{z}/{x}/{y}` de la tuile, c'est-à-dire un quadrillage Web Mercator
+  standard partagé par tous les utilisateurs OSM.
+- **Cache PWA** : les tuiles OSM ne sont **PAS** mises en cache par le
+  Service Worker — elles ne survivent pas au plan switch ni au refresh.
+  Pas de stockage local persistant côté MyKTAMap.
+
+**Politique de privacy OSM** : OpenStreetMap est une fondation
+non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées
+sous licence ODbL. Leur politique de logs CDN est publiée publiquement
+(`https://wiki.osmfoundation.org/wiki/Privacy_Policy`). Pas de tracking
+publicitaire, pas de monétisation, juste un référant HTTP standard et
+l'IP de la requête (comme toute requête web).
+
+Si tu préfères ne contacter aucun service tiers, **laisse le toggle OSM
+désactivé** : c'est le comportement par défaut et l'app reste 100% offline
+comme avant v1.39.0.
 
 ---
 

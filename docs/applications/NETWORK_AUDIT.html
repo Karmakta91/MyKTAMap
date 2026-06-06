@@ -315,9 +315,16 @@
       <tr>
         <td><code>&lt;origin&gt;/ping.html</code></td>
         <td><code>GET</code> (same-origin, body lu)</td>
-        <td>Avant un reset complet, avant un Force update</td>
+        <td>Avant un reset complet, avant un Force update, avant ouverture Vue OSM</td>
         <td>Tester Internet + santé serveur MyKTAMap (DNS / SSL / Nginx, body attendu &quot;OK&quot;)</td>
         <td><strong>Aucune</strong> (GET sans paramètres, pas de cookies via <code>credentials: &quot;omit&quot;</code>, same-origin)</td>
+      </tr>
+      <tr>
+        <td><code>https://tile.openstreetmap.org/{z}/{x}/{y}.png</code></td>
+        <td><code>GET</code></td>
+        <td><strong>Uniquement</strong> quand la modale <strong>Vue OSM</strong> est ouverte (v1.39.0+, opt-in strict requis)</td>
+        <td>Afficher les tuiles d'OpenStreetMap en fond du plan calibré GPS</td>
+        <td><strong>Aucune</strong> (cookies omis, juste les coordonnées géographiques <code>{z}/{x}/{y}</code> de la tuile, anonymisé par CDN OSM)</td>
       </tr>
       <tr>
         <td><code>blob:&lt;origin&gt;/&lt;uuid&gt;</code></td>
@@ -381,6 +388,56 @@
 
   <p>Si tu préfères ne pas faire ce ping du tout, <strong>active le mode hors-ligne
   strict</strong> (cf. plus bas) : il sera bloqué comme tout autre appel non local.</p>
+
+  <h3>À propos des tuiles OSM <code>tile.openstreetmap.org</code> (depuis v1.39.0)</h3>
+
+  <p><strong>Avant v1.39.0</strong> : l'app n'avait <strong>aucun</strong> appel sortant vers
+  un domaine tiers, strictement same-origin + ping <code>/ping.html</code>. Depuis v1.39.0,
+  l'app peut contacter <code>tile.openstreetmap.org</code> pour afficher la carte OSM
+  <strong>uniquement sous 3 conditions strictes simultanément réunies</strong> :</p>
+
+  <ol>
+    <li><strong>Le plan a un georef GPS</strong> (saisi via générateur avancé OU via
+    Réglages map mode → Géoréférencement). Sans georef, le bouton 🗺️ Vue OSM est
+    masqué côté UI et l'appel n'a aucun moyen de se déclencher.</li>
+    <li><strong>L'utilisateur a activé le toggle « 🗺️ Autoriser la Vue OSM »</strong>
+    dans ⚙️ Configuration home. <strong>Default OFF</strong>, persisté en
+    <code>localStorage</code> sous la clé <code>myktamap_osm_view_opt_in</code>.
+    L'utilisateur peut le désactiver à tout moment.</li>
+    <li><strong>L'utilisateur ouvre activement la modale Vue OSM</strong> (clic sur le
+    bouton 🗺️ dans la status bar du mode carte). Sans cette action manuelle, aucune
+    tuile n'est requêtée.</li>
+  </ol>
+
+  <p><strong>Garanties supplémentaires</strong> :</p>
+  <ul>
+    <li>Le bouton est aussi masqué si « Mode hors-ligne strict » OU « Mode incognito »
+    sont actifs (extension automatique de ces deux modes).</li>
+    <li>Le bouton est masqué si <code>navigator.onLine === false</code> (hors-ligne
+    détecté par le navigateur).</li>
+    <li>Un ping <code>/ping.html</code> est effectué juste avant l'ouverture de la modale
+    Vue OSM : si Internet ne répond pas, la modale est annulée AVANT le premier appel
+    à OSM.</li>
+    <li>Les requêtes vers OSM sont faites en mode <code>cors</code> standard avec
+    <code>crossOrigin: true</code> côté Leaflet (cookies omis par défaut).
+    <strong>Aucune donnée utilisateur n'est envoyée</strong> : juste les coordonnées
+    géographiques <code>{z}/{x}/{y}</code> de la tuile, c'est-à-dire un quadrillage Web
+    Mercator standard partagé par tous les utilisateurs OSM.</li>
+    <li><strong>Cache PWA</strong> : les tuiles OSM ne sont <strong>PAS</strong> mises en
+    cache par le Service Worker — elles ne survivent pas au plan switch ni au refresh.
+    Pas de stockage local persistant côté MyKTAMap.</li>
+  </ul>
+
+  <p><strong>Politique de privacy OSM</strong> : OpenStreetMap est une fondation
+  non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées sous licence
+  ODbL. Leur politique de logs CDN est publiée publiquement
+  (<a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">wiki.osmfoundation.org/wiki/Privacy_Policy</a>).
+  Pas de tracking publicitaire, pas de monétisation, juste un référant HTTP standard et
+  l'IP de la requête (comme toute requête web).</p>
+
+  <p>Si tu préfères ne contacter aucun service tiers, <strong>laisse le toggle OSM
+  désactivé</strong> : c'est le comportement par défaut et l'app reste 100% offline
+  comme avant v1.39.0.</p>
 
   <h2>🔍 Comment vérifier toi-même (3 méthodes)</h2>
 
