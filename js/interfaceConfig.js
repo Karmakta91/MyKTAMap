@@ -890,6 +890,26 @@ function afficherConfig() {
             <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
           </div>
 
+          <!-- 🖼️ v1.38.0 — Calibration des calques image (per-plan, override session).
+               Liste les image layers du plan courant + bouton picker 2 ancres par layer.
+               Persistance LS myktamap_plan_prefs_PLANID.imageLayerCalibrations.
+               Auteur de plan : utilise le générateur avancé pour embarquer durablement
+               dans plan-config.json > imageLayers[i].calibration. -->
+          <div id="cfg_imglayer_calib_block" class="kta-perf-ultra-row" style="margin-top:10px; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
+            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
+              <span class="kta-perf-ultra-label">🖼️ Calibration calques image (ce plan)</span>
+              <span class="kta-perf-ultra-hint" style="display:block;">
+                Si un calque image n'a pas les <strong>mêmes dimensions</strong> que le plan principal,
+                calibre-le avec 2 ancres (points reconnaissables présents sur les deux). L'image sera
+                rotée + scalée pour s'aligner précisément. <strong>Sauvegardé par plan</strong> (override
+                session). Auteur de plan : passe par le générateur avancé pour un embarquement durable.
+              </span>
+            </div>
+            <div id="cfg_imglayer_calib_list" style="display:flex; flex-direction:column; gap:6px;">
+              <p style="color:#8892a4; font-size:12px; font-style:italic; margin:0;">Aucun calque image dans ce plan.</p>
+            </div>
+          </div>
+
           <!-- 📖 v1.37.0 — Note : l'import PDF Histoire côté session reste
                accessible depuis la modale Mode Histoire (📖 du status bar,
                feature v1.34.20). Pas de doublon dans Réglages — l'embarquement
@@ -1215,6 +1235,120 @@ function afficherConfig() {
 
     // Re-render à chaud quand un autre composant change le Nord
     window.addEventListener("kta:northOffsetChange", _refreshStatus);
+  })();
+
+  // 🖼️ v1.38.0 — Calibration calques image (cascade per-plan).
+  // Liste les image layers du plan courant et propose un bouton picker
+  // "Calibrer (2 ancres)" pour chacun. Persiste via ImageLayerCalibration
+  // .setSessionCalibration(layerId, calib) → LS prefs-plan. Reload du
+  // plan requis pour voir la nouvelle calibration appliquée (V1).
+  (function _initImageLayerCalibUI() {
+    const listEl = document.getElementById("cfg_imglayer_calib_list");
+    if (!listEl) return;
+    const overlays = (window._ktaImageOverlays && Array.isArray(window._ktaImageOverlays))
+      ? window._ktaImageOverlays
+      : [];
+    if (overlays.length === 0) return;  // Aucun image layer → laisse l'empty state
+
+    function _hasCalib(layerId) {
+      if (!window.ImageLayerCalibration) return false;
+      const c = window.ImageLayerCalibration.getCalibration(layerId);
+      return !!c;
+    }
+
+    function _renderList() {
+      listEl.innerHTML = "";
+      overlays.forEach(function(item) {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; gap:6px; align-items:center; padding:6px 8px; background:rgba(255,255,255,0.03); border-radius:6px;";
+        const hasCal = _hasCalib(item.id);
+        const calIcon = hasCal ? "✅" : "🖼️";
+        row.innerHTML =
+          '<span style="flex:1 1 auto; font-size:13px; color:#e8eaf0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
+            calIcon + ' ' + (item.label || item.id) +
+            (hasCal ? ' <span style="color:#7dd87d; font-size:11px;">(calibré)</span>' : '') +
+          '</span>' +
+          '<button type="button" class="kta-btn" data-action="calibrate" data-layer-id="' + item.id + '" style="font-size:12px; padding:5px 10px;">📐 Calibrer</button>' +
+          (hasCal ? '<button type="button" class="kta-btn kta-btn-ghost" data-action="reset" data-layer-id="' + item.id + '" style="font-size:12px; padding:5px 10px;" title="Retirer la calibration session">↺</button>' : '');
+        listEl.appendChild(row);
+      });
+    }
+    _renderList();
+
+    listEl.addEventListener("click", function(e) {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+      const action  = btn.dataset.action;
+      const layerId = btn.dataset.layerId;
+      if (!layerId) return;
+      if (action === "reset") {
+        if (!confirm("Retirer la calibration session de ce calque ?\n(L'embarquement durable dans plan-config.json est conservé.)")) return;
+        if (window.ImageLayerCalibration) {
+          window.ImageLayerCalibration.resetSessionCalibration(layerId);
+        }
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast("↺ Calibration session retirée. Recharge le plan pour voir l'effet.", "info");
+        }
+        _renderList();
+        return;
+      }
+      if (action === "calibrate") {
+        // Récupère le layerConfig pour avoir sourceUrl
+        const overlay = (overlays.find(function(o) { return o.id === layerId; }) || {}).overlay;
+        if (!overlay) return;
+        // sourceUrl : on lit l'attribut src de l'image rendue par L.imageOverlay
+        // (qu'elle soit rotée ou non). Fallback : URL d'origine via PLAN_CONFIG.
+        let sourceUrl = null;
+        try {
+          if (overlay._url) sourceUrl = overlay._url;
+          else if (overlay._image && overlay._image.src) sourceUrl = overlay._image.src;
+        } catch(e) {}
+        if (!sourceUrl && window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.imageLayers)) {
+          const f = window.PLAN_CONFIG.imageLayers.find(function(l) {
+            return l && (l.id === layerId || l.label === layerId);
+          });
+          if (f) sourceUrl = f.file;
+        }
+        const planUrl    = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.baseImage;
+        const planWidth  = window.APP_CONFIG && window.APP_CONFIG.imageWidth;
+        const planHeight = window.APP_CONFIG && window.APP_CONFIG.imageHeight;
+        if (!sourceUrl || !planUrl || !planWidth || !planHeight) {
+          alert("Impossible d'ouvrir le picker — image source, plan principal ou dimensions manquantes.");
+          return;
+        }
+        if (!window.ImageLayerCalibrationPicker) {
+          alert("Module ImageLayerCalibrationPicker indisponible.");
+          return;
+        }
+        const existing = (window.ImageLayerCalibration && window.ImageLayerCalibration.getCalibration(layerId)) || null;
+        // Cache la modale Réglages le temps du picker (pattern Nord picker)
+        const cfgModal = document.getElementById("kta-cfg-modal");
+        if (cfgModal) cfgModal.style.display = "none";
+        window.ImageLayerCalibrationPicker.open({
+          sourceUrl: sourceUrl,
+          planUrl: planUrl,
+          planWidth: planWidth,
+          planHeight: planHeight,
+          existing: existing
+        }).then(function(calib) {
+          if (cfgModal) cfgModal.style.display = "";
+          if (!calib) return;
+          if (window.ImageLayerCalibration) {
+            window.ImageLayerCalibration.setSessionCalibration(layerId, calib);
+          }
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast("✅ Calibration sauvegardée. Recharge le plan pour appliquer.", "info");
+          }
+          _renderList();
+        }).catch(function(e) {
+          if (cfgModal) cfgModal.style.display = "";
+          console.warn("[ImgLayerCalibPicker] échec :", e);
+          if (window.OOMGuard && window.OOMGuard.showToast) {
+            window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : "Picker indisponible"), "warn");
+          }
+        });
+      }
+    });
   })();
 
   // 📖 v1.37.0 — Pas de bouton d'import PDF Histoire dans Réglages : le

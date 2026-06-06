@@ -1,7 +1,7 @@
 {
-  "version": "v1.37.2",
+  "version": "v1.38.0",
   "released": "2026-06-06",
   "notes": [
-    "🔧 v1.37.2 — Fix bug Ctrl+Z qui cassait la suite d'un tracé. Quand tu faisais Ctrl+Z pendant le dessin d'un tracé, le clic suivant n'ajoutait plus de point (silencieusement ignoré) et donnait l'impression que le tracé était cassé. Le mode tracé est maintenant correctement préservé à travers les annulations — tu peux continuer ton tracé après Ctrl+Z sans avoir à ré-activer le mode."
+    "🖼️ v1.38.0 — Calage des calques image. Si un calque image n'a pas les mêmes dimensions que le plan principal (légende, plan d'archive partiel, scan tordu…), tu peux maintenant le caler précisément avec 2 ancres (points reconnaissables). ⚙️ Réglages map mode → section « Calibration calques image » → bouton « 📐 Calibrer » par calque. Sauvegardé par plan, supporte rotation + scale + translation."
   ]
 }

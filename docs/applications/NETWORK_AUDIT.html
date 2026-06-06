@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.37.2</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.38.0</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.38.0 (Calage calques image avec 2 ancres + rotation)</strong> : Feature 100% client-side. Plugin Leaflet vendoré (<code>lib/leaflet-imageoverlay-rotated.js</code>, BSD 2-clause) + 2 modules clients (<code>imageLayerCalibration.js</code> math+cascade, <code>imageLayerCalibrationPicker.js</code> UI picker). UI dans Réglages map mode : mini-cartes Leaflet split-screen + workflow 4 clics. Persistance LS <code>myktamap_plan_prefs_PLANID.imageLayerCalibrations</code> avec cascade vers plan-config.json. <strong>Impact réseau</strong> : ZÉRO — plugin vendoré, aucun nouveau call sortant, aucune ressource externe.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression, rétrocompat plans v1.37.x stricte.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.37.2 (Fix bug Ctrl+Z casse la suite d'un tracé)</strong> : Changement 100% client-side de <code>js/historyManager.js &gt; _applyState()</code>. KARMA bug terrain : après Ctrl+Z pendant un dessin de tracé, le clic suivant était avorté en silence (<code>window.modeRoad</code> wipé par <code>resetRoads()</code>). Fix chirurgical : snapshot/restore de <code>modeRoad</code> autour de <code>resetRoads()/setRoads()</code>. <strong>Impact réseau</strong> : ZÉRO — aucun nouvel appel, aucune ressource externe.

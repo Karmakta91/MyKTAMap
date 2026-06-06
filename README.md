@@ -8,7 +8,27 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.37.2` (06/06/2026) — **Fix bug Ctrl+Z casse la suite d'un tracé** :
+**📦 Version courante** : `v1.38.0` (06/06/2026) — **Calage des calques image avec 2 ancres (rotation + scale + translation)** :
+
+**Cas d'usage** : avant v1.38.0, tous les image layers étaient étirés sur les bounds du plan principal (`L.imageOverlay(layerConfig.file, bounds)` dans `js/map.js` l.414). Si l'image layer n'avait pas les mêmes dimensions que le plan, elle était déformée. Cette release permet de la caler précisément via 2 points reconnaissables communs aux 2 images (légende décalée, plan d'archive partiel, scan importé tordu).
+
+**Architecture** (lots A→C+E livrés, Lot D générateur différé en v1.38.1) :
+
+- **Lot A — Plugin vendoré** `lib/leaflet-imageoverlay-rotated.js` (~150 lignes, BSD 2-clause). Permet de rendre une image en parallélogramme via 3 coins (rotation + scale 2D natif). API : `L.imageOverlay.rotated(url, topleft, topright, bottomleft, opts)`. Math : CSS transform `matrix(a,b,c,d,e,f)` calculé depuis les 3 latlng à chaque `zoomend/resetview`. Reuse maximal du `L.ImageOverlay` parent pour les events / pane / cleanup.
+
+- **Lot B — Runtime + helpers** : nouveau module `js/imageLayerCalibration.js` (~200 lignes). API publique `window.ImageLayerCalibration` avec `compute3CornersFromAnchors(calib, sourceW, sourceH) → {tl, tr, bl}` (math 2 ancres → 3 coins par similitude directe : a=(sdx·tdx+sdy·tdy)/sLen², b=(sdx·tdy−sdy·tdx)/sLen², d=a, c=−b + translation), `getCalibration(layerId)` (cascade), `setSessionCalibration` / `resetSessionCalibration`, `loadImageDimensions(url) → Promise<{width,height}>`. Conversion pixels plan → latlng Leaflet CRS.Simple via `window.convertCoord` standard projet. `js/map.js` ligne 413+ refactoré : si calibration présente ET plugin Rotated chargé → load async dims puis `L.imageOverlay.rotated(file, tl, tr, bl)` ; sinon → `L.imageOverlay(file, bounds)` (rétrocompat stricte).
+
+- **Lot C — Cascade per-plan** : pref LS `myktamap_plan_prefs_<planId>.imageLayerCalibrations` (objet `{layerId: calibration}`) → plan-config.json > `imageLayers[i].calibration` → null. Event `kta:imgLayerCalibChange` pour notifications externes futures.
+
+- **Lot E — UI Picker minimap (Réglages map mode)** : nouveau module `js/imageLayerCalibrationPicker.js` (~280 lignes). Modale split-screen avec 2 mini-cartes Leaflet (CRS.Simple) côte à côte : GAUCHE = image source isolée sur ses propres dims, DROITE = plan principal. Workflow 4 étapes (clique A gauche → A droite → B gauche → B droite) → preview overlay calibré en transparence 55% sur la mini droite → boutons Valider / Recommencer / Annuler. API `ImageLayerCalibrationPicker.open(opts) → Promise<calibration|null>`. Le picker est branché côté `js/interfaceConfig.js` : section "🖼️ Calibration calques image (ce plan)" dans la modale Réglages map mode → liste auto-générée des image layers du plan courant (via `window._ktaImageOverlays`) → bouton "📐 Calibrer" par layer + icône ✅ si déjà calibré + bouton ↺ Reset. Cache la modale Réglages le temps du picker (pattern Géoref existant) puis restaure.
+
+- **Lot F — Bump + docs** : sw.js v1.37.2 → v1.38.0, copyright build, version.json + notes user-friendly. Nouveaux assets ajoutés à `ASSETS_TO_CACHE` (lib/plugin + 2 modules JS) et chargés dans `index.html` dans le bon ordre (plugin après Leaflet, helpers avant map.js, picker avant interfaceConfig).
+
+**Différé en v1.38.1 (Lot D)** : section générateur avancé pour saisir la calibration durablement embedée dans plan-config.json (cross-utilisateurs). L'embarquement manuel reste possible en éditant directement le JSON dans le ZIP source. La cascade runtime supporte déjà ce champ embarqué (lecture).
+
+**Rétro-compat stricte** : champ `imageLayers[i].calibration` absent → fallback bounds plan principal = comportement v1.37.x intact. Plan v1.38.0 avec calibration chargé sur app v1.37.x → champ ignoré silencieusement → fallback v1.37.x. LS prefs corrompu/vide → ignoré gracieusement (try/catch).
+
+**📦 v1.37.2** : Fix bug Ctrl+Z casse la suite d'un tracé.
 
 Bug remonté KARMA terrain : *« le control Z casse toujours la suite d'un tracé »*. Confirmé via logs F12 — après Ctrl+Z, `currentRoadIndex` était bien restauré (fix v1.26.3-hotfix3 OK) mais le clic suivant n'ajoutait aucun point (`total roads` et `road points` stagnaient).
 

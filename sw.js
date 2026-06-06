@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.37.2";
+const CACHE_NAME = "myktamap-cache-v1.38.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -128,6 +128,10 @@ const ASSETS_TO_CACHE = [
   "./js/utils.js",
   "./js/measure.js",
   "./js/tiling.js",
+  // 🆕 v1.38.0 — Helpers calage image layers (cascade per-plan, math 2 ancres → 3 coins)
+  "./js/imageLayerCalibration.js",
+  // 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps)
+  "./js/imageLayerCalibrationPicker.js",
   "./js/map.js",
   "./js/tracking.js",
   "./js/editor.js",
@@ -250,6 +254,8 @@ const ASSETS_TO_CACHE = [
   "./lib/leaflet/leaflet.js",
   "./lib/leaflet/leaflet-src.js",
   "./lib/leaflet/leaflet-src.esm.js",
+  // 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored)
+  "./lib/leaflet-imageoverlay-rotated.js",
 
   // Images Leaflet
   "./lib/leaflet/images/layers.png",

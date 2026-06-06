@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.37.2** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.38.0** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.38.0 (Calage calques image avec 2 ancres + rotation)** : feature 100% client-side ajoutant un mécanisme de calibration des image layers. Nouveau plugin Leaflet vendoré (`lib/leaflet-imageoverlay-rotated.js`, BSD 2-clause, ~5 KB) + 2 modules clients (`js/imageLayerCalibration.js` ~200l math + cascade ; `js/imageLayerCalibrationPicker.js` ~280l UI picker modale split-screen). UI dans Réglages map mode : 2 mini-cartes Leaflet temporaires (CRS.Simple), workflow 4 clics (A gauche, A droite, B gauche, B droite) + preview. Persistance LS `myktamap_plan_prefs_<planId>.imageLayerCalibrations` (cascade > plan-config.json) — 100% client-side, jamais transmis. **Impact réseau** : ZÉRO nouveau call sortant, ZÉRO ressource externe (plugin vendoré dans `/lib`, déjà dans ASSETS_TO_CACHE PWA). Aucune modification de la liste blanche `connect-src`. Le picker utilise des `L.map` temporaires qui ne font que des `URL.createObjectURL`/local fetch des images déjà chargées dans le contexte plan. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, philosophie 100% offline préservée, rétrocompat plans v1.37.x stricte (champ `calibration` absent → fallback bounds plan principal).
 
 > **v1.37.2 (Fix bug Ctrl+Z casse la suite d'un tracé)** : changement 100% client-side de `js/historyManager.js > _applyState()`. KARMA bug terrain : après Ctrl+Z pendant un dessin de tracé, le clic suivant était avorté en silence (`window.modeRoad` wipé par `resetRoads()`). Fix chirurgical : snapshot/restore de `modeRoad` autour de `resetRoads()/setRoads()`. **Impact réseau** : ZÉRO — aucun nouvel appel, aucune ressource externe, aucune modif de la liste blanche `connect-src`. Pure logique runtime client. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'un bug UX terrain (latent depuis 11 versions, masqué par le fix v1.26.3-hotfix3 partiel).
 

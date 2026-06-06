@@ -994,6 +994,12 @@
   <!-- Leaflet -->
   <script src="lib/leaflet/leaflet.js" defer></script>
 
+  <!-- 🆕 v1.38.0 — Plugin Leaflet.ImageOverlay.Rotated (vendored, BSD 2-clause).
+       Permet de rendre une image en parallélogramme via 3 coins (rotation +
+       scale 2D). Utilisé par js/imageLayerCalibration.js pour les image
+       layers calibrés via 2 ancres source/target. -->
+  <script src="lib/leaflet-imageoverlay-rotated.js" defer></script>
+
   <!-- JSZip -->
   <script src="lib/jszip.min.js" defer></script>
 
@@ -1002,6 +1008,11 @@
   <script src="js/utils.js" defer></script>
   <script src="js/measure.js" defer></script>
   <script src="js/tiling.js" defer></script>
+  <!-- 🆕 v1.38.0 — Helpers calage image layers (cascade per-plan, math 2 ancres
+       → 3 coins). Chargé AVANT js/map.js qui en dépend. -->
+  <script src="js/imageLayerCalibration.js" defer></script>
+  <!-- 🆕 v1.38.0 — UI Picker calage image layers (modale split-screen 2 minimaps Leaflet) -->
+  <script src="js/imageLayerCalibrationPicker.js" defer></script>
   <script src="js/map.js" defer></script>
   <script src="js/tracking.js" defer></script>
   <script src="js/editor.js" defer></script>

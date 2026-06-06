@@ -411,20 +411,69 @@ async function initMapFromConfig() {
                     ? window.APP_CONFIG.visibleLevels : [0];
 
   sortedImageLayers.forEach(function(layerConfig) {
-    const overlay = L.imageOverlay(layerConfig.file, bounds);
     const lvl = Number.isInteger(layerConfig.level) ? layerConfig.level : 0;
-    overlay._ktaLevel = lvl;  // stocke pour le filtre runtime
     const niveauVisible = !_mlActif || _visibles.indexOf(lvl) >= 0;
-    if (layerConfig.visible && niveauVisible) overlay.addTo(map);
-    overlays[layerConfig.label] = overlay;
-    window._ktaImageOverlays.push({
-      // 🆕 v1.21.5 (FilterPanel) : id ajouté pour permettre le match
-      // par identifiant stable (le label peut contenir des espaces / accents).
-      id:      layerConfig.id || layerConfig.label,
-      overlay: overlay,
-      label:   layerConfig.label,
-      level:   lvl
-    });
+    const layerId = layerConfig.id || layerConfig.label;
+
+    // 🆕 v1.38.0 — Cascade calibration : LS prefs-plan > plan-config > null.
+    // Si calibration présente ET le plugin Rotated chargé → on rend l'image en
+    // parallélogramme via 3 coins calculés à partir des 2 ancres saisies par
+    // l'user. Sinon → fallback bounds plan principal (= comportement v1.37.x).
+    // Le chargement est ASYNC le temps de récupérer les dimensions naturelles
+    // de l'image source — léger délai d'apparition acceptable.
+    const calib = (window.ImageLayerCalibration && typeof window.ImageLayerCalibration.getCalibration === "function")
+      ? window.ImageLayerCalibration.getCalibration(layerId)
+      : null;
+    const hasRotated = !!(L.imageOverlay && L.imageOverlay.rotated);
+
+    function _addStandardOverlay() {
+      const overlay = L.imageOverlay(layerConfig.file, bounds);
+      _registerOverlay(overlay);
+    }
+    function _addRotatedOverlay(corners) {
+      const overlay = L.imageOverlay.rotated(
+        layerConfig.file,
+        corners.tl, corners.tr, corners.bl,
+        { interactive: false }
+      );
+      overlay._ktaCalibrated = true;
+      _registerOverlay(overlay);
+    }
+    function _registerOverlay(overlay) {
+      overlay._ktaLevel = lvl;  // stocke pour le filtre runtime
+      if (layerConfig.visible && niveauVisible) overlay.addTo(map);
+      overlays[layerConfig.label] = overlay;
+      window._ktaImageOverlays.push({
+        // 🆕 v1.21.5 (FilterPanel) : id ajouté pour permettre le match
+        // par identifiant stable (le label peut contenir des espaces / accents).
+        id:      layerId,
+        overlay: overlay,
+        label:   layerConfig.label,
+        level:   lvl
+      });
+    }
+
+    if (calib && hasRotated) {
+      // Chargement async des dims de l'image source pour calculer les 3 coins
+      window.ImageLayerCalibration.loadImageDimensions(layerConfig.file)
+        .then(function(dims) {
+          const corners = window.ImageLayerCalibration.compute3CornersFromAnchors(
+            calib, dims.width, dims.height
+          );
+          if (!corners) {
+            console.warn("[Map] Calibration invalide (ancres colinéaires) pour", layerId, "→ fallback bounds plan");
+            _addStandardOverlay();
+            return;
+          }
+          _addRotatedOverlay(corners);
+        })
+        .catch(function(e) {
+          console.warn("[Map] Échec chargement dims image layer", layerId, "→ fallback bounds plan :", e);
+          _addStandardOverlay();
+        });
+    } else {
+      _addStandardOverlay();
+    }
   });
 
   // 🆕 v1.21.5 (KARMA "refonte filtre Leaflet") : on remplace le L.control.layers
