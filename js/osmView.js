@@ -74,9 +74,41 @@
     try { window.dispatchEvent(new CustomEvent("kta:osmOptInChange", { detail: { optedIn: !!value } })); } catch(e) {}
   }
 
+  // 🐛 v1.39.2 (KARMA "je vois pas l'icone") — Cascade lecture georef :
+  //   1. PLAN_CONFIG.plan.georef (embarqué dans le ZIP via générateur)
+  //   2. KmzExport.getCalibration(planId) (LS session via Réglages map mode)
+  // Format identique : {pointA: {x, y, lat, lng}, pointB: {x, y, lat, lng}}.
+  // Avant ce fix, on ne lisait QUE la source 1 → les users ayant saisi le
+  // georef via Réglages map mode (= la grande majorité, plus simple que
+  // de regénérer un ZIP) n'avaient pas le bouton OSM.
+  function _getEffectiveGeoref() {
+    // Source 1 : embarqué plan-config.json
+    if (window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef) {
+      const g = window.PLAN_CONFIG.plan.georef;
+      if (g.pointA && g.pointB
+          && Number.isFinite(g.pointA.lat) && Number.isFinite(g.pointA.lng)
+          && Number.isFinite(g.pointB.lat) && Number.isFinite(g.pointB.lng)
+          && Number.isFinite(g.pointA.x)   && Number.isFinite(g.pointA.y)
+          && Number.isFinite(g.pointB.x)   && Number.isFinite(g.pointB.y)) {
+        return g;
+      }
+    }
+    // Source 2 : LS session via KmzExport.getCalibration
+    if (window.KmzExport && typeof window.KmzExport.getCalibration === "function") {
+      const planId = window._currentLoadedPlanId || "default";
+      const g = window.KmzExport.getCalibration(planId);
+      if (g && g.pointA && g.pointB
+          && Number.isFinite(g.pointA.lat) && Number.isFinite(g.pointA.lng)
+          && Number.isFinite(g.pointB.lat) && Number.isFinite(g.pointB.lng)
+          && Number.isFinite(g.pointA.x)   && Number.isFinite(g.pointA.y)
+          && Number.isFinite(g.pointB.x)   && Number.isFinite(g.pointB.y)) {
+        return g;
+      }
+    }
+    return null;
+  }
   function _hasGeoref() {
-    return !!(window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.georef
-              && window.PLAN_CONFIG.plan.georef.pointA && window.PLAN_CONFIG.plan.georef.pointB);
+    return !!_getEffectiveGeoref();
   }
   function _isStrictOfflineOn() {
     try {
@@ -98,14 +130,10 @@
   // =========================
   // Retourne un objet { transform, planToLatLng(x, y) → L.latLng } ou null.
   function _buildProjection() {
-    if (!_hasGeoref()) return null;
+    const g = _getEffectiveGeoref();
+    if (!g) return null;
     if (typeof window.KmzExport !== "object" || typeof window.KmzExport.buildTransform !== "function") return null;
-    const g = window.PLAN_CONFIG.plan.georef;
     const pA = g.pointA, pB = g.pointB;
-    if (!pA || !pB || !Number.isFinite(pA.lat) || !Number.isFinite(pA.lng)
-        || !Number.isFinite(pB.lat) || !Number.isFinite(pB.lng)
-        || !Number.isFinite(pA.x)   || !Number.isFinite(pA.y)
-        || !Number.isFinite(pB.x)   || !Number.isFinite(pB.y)) return null;
     let t;
     try {
       t = window.KmzExport.buildTransform(

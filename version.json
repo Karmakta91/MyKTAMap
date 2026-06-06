@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.1",
+  "version": "v1.39.2",
   "released": "2026-06-06",
   "notes": [
-    "🐛 v1.39.1 — Hotfix Vue OSM : le bouton 🗺️ n'apparaissait pas dans la status bar même avec l'autorisation OSM activée et un plan georef. Le timing de détection était trop court. Maintenant le bouton apparaît dès que les conditions sont remplies."
+    "🐛 v1.39.2 — Hotfix Vue OSM #2 : le bouton 🗺️ n'apparaissait pas si le georef GPS avait été saisi via ⚙️ Réglages map mode (stockage session) au lieu du générateur avancé (embarqué). Désormais les 2 sources de calibration GPS sont reconnues — peu importe où tu l'as saisie, ça marche."
   ]
 }
