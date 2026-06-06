@@ -1916,7 +1916,18 @@
         if (!opts.imageLayers[layerCfg.id]) continue;
         try {
           const img = await loadImage(layerCfg.file);
-          ctx.drawImage(img, 0, 0, W, H);
+          // 🆕 v1.38.3 — Si l'image layer a une calibration 2 ancres (embed
+          // plan-config.json depuis v1.38.1), on la dessine avec la transform
+          // affine équivalente (rotation + scale + translation) via canvas
+          // ctx.transform → l'export reflète exactement ce que l'user voit
+          // sur la map. Sinon : drawImage stretching plan principal (v1.37.x).
+          const calibrated = (layerCfg.calibration && window.ImageLayerCalibration
+                              && typeof window.ImageLayerCalibration.drawCalibratedImageLayer === "function")
+            ? window.ImageLayerCalibration.drawCalibratedImageLayer(ctx, img, layerCfg.calibration, W, H)
+            : false;
+          if (!calibrated) {
+            ctx.drawImage(img, 0, 0, W, H);
+          }
         } catch(e) { console.warn("[Export] calque image :", layerCfg.file, e); }
       }
     }

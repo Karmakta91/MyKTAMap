@@ -126,6 +126,81 @@
   }
 
   // =========================
+  // MATH BIS — compute3CornersFromAnchorsPx (v1.38.3)
+  // =========================
+  // Variante de compute3CornersFromAnchors qui retourne les 3 coins en
+  // PIXELS PLAN target (au lieu de latlng Leaflet). Pratique pour les
+  // exports canvas qui travaillent directement en pixels (pas en latlng).
+  // Math strictement identique — on saute juste la conversion finale via
+  // window.convertCoord. Retourne null si calibration invalide.
+  function compute3CornersFromAnchorsPx(calibration, sourceW, sourceH) {
+    if (!calibration) return null;
+    if (!Number.isFinite(sourceW) || !Number.isFinite(sourceH) || sourceW <= 0 || sourceH <= 0) return null;
+    const sA = calibration.sourceA, tA = calibration.targetA;
+    const sB = calibration.sourceB, tB = calibration.targetB;
+    if (!sA || !tA || !sB || !tB) return null;
+    const sdx = sB.sx - sA.sx, sdy = sB.sy - sA.sy;
+    const tdx = tB.x  - tA.x,  tdy = tB.y  - tA.y;
+    const sLen2 = sdx*sdx + sdy*sdy;
+    const tLen2 = tdx*tdx + tdy*tdy;
+    if (sLen2 < 4 || tLen2 < 4) return null;
+    const a = (sdx*tdx + sdy*tdy) / sLen2;
+    const b = (sdx*tdy - sdy*tdx) / sLen2;
+    const c = -b, d = a;
+    const e = tA.x - (a*sA.sx + c*sA.sy);
+    const f = tA.y - (b*sA.sx + d*sA.sy);
+    function _xform(cx, cy) {
+      return { x: a*cx + c*cy + e, y: b*cx + d*cy + f };
+    }
+    return {
+      tl: _xform(0,        0),
+      tr: _xform(sourceW,  0),
+      bl: _xform(0,        sourceH)
+    };
+  }
+
+  // =========================
+  // CANVAS — drawCalibratedImageLayer (v1.38.3)
+  // =========================
+  // Dessine une image source sur un canvas en respectant la calibration
+  // 2 ancres. Utilisé par les exports image (utils.js > telechargerPlan,
+  // exporter.js > _genererCanvasExport, Mode Secours PDF miniature) pour
+  // que les image layers calibrés apparaissent correctement positionnés/
+  // scalés/rotés dans les exports (et pas étirés sur W×H comme avant).
+  //
+  // Retourne true si rendu calibré effectué, false si fallback nécessaire
+  // (calibration invalide / dims source indispo) — le caller doit alors
+  // faire le drawImage classique en fallback.
+  function drawCalibratedImageLayer(ctx, img, calibration, planW, planH) {
+    if (!ctx || !img || !calibration) return false;
+    const sourceW = img.naturalWidth  || img.width  || 0;
+    const sourceH = img.naturalHeight || img.height || 0;
+    if (sourceW <= 0 || sourceH <= 0) return false;
+    const corners = compute3CornersFromAnchorsPx(calibration, sourceW, sourceH);
+    if (!corners) return false;
+    // Calcule la matrice affine canvas qui mappe le rectangle source
+    // (0,0)-(sourceW,0)-(0,sourceH) vers le parallélogramme target
+    // (tl, tr, bl). Le 4e coin est déduit géométriquement.
+    const a = (corners.tr.x - corners.tl.x) / sourceW;
+    const b = (corners.tr.y - corners.tl.y) / sourceW;
+    const c = (corners.bl.x - corners.tl.x) / sourceH;
+    const d = (corners.bl.y - corners.tl.y) / sourceH;
+    const e = corners.tl.x;
+    const f = corners.tl.y;
+    ctx.save();
+    try {
+      ctx.transform(a, b, c, d, e, f);
+      ctx.drawImage(img, 0, 0);
+    } catch(err) {
+      ctx.restore();
+      console.warn("[ImageLayerCalibration] drawCalibratedImageLayer failed:", err);
+      return false;
+    }
+    ctx.restore();
+    return true;
+  }
+
+  // =========================
   // CASCADE — getCalibration
   // =========================
   // Lecture cascade pour un image layer donné :
@@ -224,11 +299,13 @@
   // API publique
   // =========================
   window.ImageLayerCalibration = {
-    compute3CornersFromAnchors: compute3CornersFromAnchors,
-    getCalibration:             getCalibration,
-    setSessionCalibration:      setSessionCalibration,
-    resetSessionCalibration:    resetSessionCalibration,
-    loadImageDimensions:        loadImageDimensions
+    compute3CornersFromAnchors:   compute3CornersFromAnchors,
+    compute3CornersFromAnchorsPx: compute3CornersFromAnchorsPx,
+    drawCalibratedImageLayer:     drawCalibratedImageLayer,
+    getCalibration:               getCalibration,
+    setSessionCalibration:        setSessionCalibration,
+    resetSessionCalibration:      resetSessionCalibration,
+    loadImageDimensions:          loadImageDimensions
   };
 
   console.log("[ImageLayerCalibration] Module chargé (v1.38.0).");

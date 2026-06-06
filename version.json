@@ -1,7 +1,7 @@
 {
-  "version": "v1.38.2",
+  "version": "v1.38.3",
   "released": "2026-06-06",
   "notes": [
-    "🧹 v1.38.2 — Simplification UI : la calibration des calques image se fait désormais uniquement depuis le générateur avancé (auteur de plan). La section dans ⚙️ Réglages map mode a été retirée pour éviter le doublon — un calque mal calé doit être corrigé à la source par l'auteur, c'est plus durable et plus simple pour tout le monde."
+    "🔧 v1.38.3 — Fix effet de bord : les exports image (PNG/PDF simple et avancé + miniature PDF Mode Secours) respectent maintenant la calibration des calques image. Avant ce fix, les calques calibrés s'affichaient correctement sur la carte mais étaient étirés à pleine taille du plan dans les exports — désormais ils sont rendus avec la bonne rotation/scale. KMZ/GPX n'étaient pas affectés (n'utilisent pas les calques image)."
   ]
 }

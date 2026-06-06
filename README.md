@@ -8,7 +8,45 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.38.2` (06/06/2026) — **Simplification UI : calibration calques image uniquement depuis le générateur** :
+**📦 Version courante** : `v1.38.3` (06/06/2026) — **Fix effet de bord : exports image respectent la calibration des calques** :
+
+KARMA contrôle terrain : *« assure toi que ca n'a pas créé effet de bord sur ; export image (simple/avancé) export KMZ/GPX »*. Audit effectué, **bug confirmé** sur les exports image, **OK** sur KMZ/GPX.
+
+**Bug identifié** : les exports image (`js/utils.js > telechargerPlan` l.2213 et `js/exporter.js > _genererCanvasExport` l.1919) faisaient `ctx.drawImage(img, 0, 0, W, H)` pour chaque calque image visible — la calibration 2 ancres (introduite en v1.38.0/1) était **complètement ignorée**. Résultat visible : un calque calibré apparaissait correctement sur la carte (via le plugin Leaflet.ImageOverlay.Rotated qui applique un CSS transform au DOM) mais était **stretché à pleine taille du plan principal** dans les PNG/PDF exportés (= comportement pré-v1.38.0 alors que le user voyait calibré).
+
+**Cascade des exports impactés** :
+- ✅ **PNG simple** (`utils.js > telechargerPlan`) — patché
+- ✅ **PNG avancé** (`exporter.js > _genererCanvasExport`) — patché
+- ✅ **PDF imprimable** (`pdfExport.js`) — délégué à `_genererCanvasExport` donc patché par effet de bord du fix exporter.js
+- ✅ **Miniature PDF Mode Secours** (`secoursMode.js`) — délégué à `_genererCanvasExport` aussi
+
+**Exports SAINS confirmés** :
+- ✅ **KMZ** (`kmzExport.js`) : génère un GroundOverlay pour le baseImage UNIQUEMENT, pas les calques image. Pas d'impact.
+- ✅ **GPX** (`gpxIO.js`) : POIs/roads/zones uniquement (coords lat/lng), pas d'image. Pas d'impact.
+
+**Fix `js/imageLayerCalibration.js`** — 2 nouveaux helpers exposés :
+- `compute3CornersFromAnchorsPx(calib, sourceW, sourceH) → {tl, tr, bl}` : variante de la fonction compute3CornersFromAnchors mais qui retourne les 3 coins en **pixels plan target** au lieu de latlng Leaflet (pratique pour canvas qui travaille en pixels).
+- `drawCalibratedImageLayer(ctx, img, calibration, planW, planH) → boolean` : dessine l'image source sur le canvas en respectant la calibration via `ctx.save() / ctx.transform(a,b,c,d,e,f) / ctx.drawImage(img, 0, 0) / ctx.restore()`. Calcule la matrice affine canvas à partir des 3 coins target. Retourne `true` si rendu calibré effectué, `false` si fallback nécessaire (calibration invalide / dims source indispo) — le caller gère le fallback `drawImage(img, 0, 0, W, H)` classique.
+
+**Modifs des call sites** :
+- `js/utils.js > telechargerPlan` (l.2213) : si `layerConfig.calibration` ET helper dispo → tentative `drawCalibratedImageLayer`, fallback drawImage si retour false.
+- `js/exporter.js > _genererCanvasExport` (l.1919) : idem avec `layerCfg`.
+
+**Math** : la matrice affine canvas est déduite des 3 coins target via :
+```
+a = (tr.x - tl.x) / sourceW
+b = (tr.y - tl.y) / sourceW
+c = (bl.x - tl.x) / sourceH
+d = (bl.y - tl.y) / sourceH
+e = tl.x, f = tl.y
+```
+Equivalent à la transform CSS `matrix(a,b,c,d,e,f)` que le plugin Leaflet.ImageOverlay.Rotated applique au DOM en runtime. Cohérence visuelle parfaite entre carte et export.
+
+**Rétro-compat stricte** : si calibration absente OU helper indispo (modules pas encore chargés à l'export) → fallback `drawImage(img, 0, 0, W, H)` = comportement v1.37.x.
+
+**Bump** : sw.js v1.38.2 → v1.38.3 + `__MKM__.build` + `version.json` + notes user-friendly.
+
+**📦 v1.38.2** : Simplification UI — calibration calques image uniquement depuis le générateur.
 
 Feedback KARMA terrain après test v1.38.1 : *« enlève du menu plan la possibilité de calibrer l'image layer, on le fait que depuis générateur »*.
 

@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.38.2** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.38.3** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.38.3 (Fix effet de bord exports image vs calibration)** : KARMA contrôle terrain — bug détecté sur exports image (PNG simple/avancé + PDF + miniature Mode Secours) qui ignoraient la calibration 2 ancres et stretchaient les calques à pleine taille du plan. Fix : 2 nouveaux helpers `compute3CornersFromAnchorsPx` et `drawCalibratedImageLayer` dans `js/imageLayerCalibration.js`, branchés dans `js/utils.js > telechargerPlan` et `js/exporter.js > _genererCanvasExport` via canvas `ctx.transform()`. **KMZ/GPX n'étaient pas affectés** (kmzExport.js utilise seulement le baseImage en GroundOverlay, pas les calques ; gpxIO.js = coords uniquement). **Impact réseau** : ZÉRO — math pure côté canvas, pas de call sortant. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, fix d'une régression silencieuse v1.38.0 sur le pipeline export.
 
 > **v1.38.2 (Simplification UI calibration calques image)** : KARMA feedback "on le fait que depuis générateur". Retrait du point d'entrée UI de la calibration calques image dans Réglages map mode (~175 lignes HTML + IIFE supprimées dans `js/interfaceConfig.js`). La calibration durable embedée dans plan-config.json (via générateur avancé) reste la source de vérité unique. Helpers + cascade runtime conservés pour rétrocompat des users qui auraient déjà calibré en session v1.38.0. **Impact réseau** : ZÉRO — retrait de UI, aucune logique réseau touchée. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, simplification UX validée terrain.
 
