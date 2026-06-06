@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.0",
+  "version": "v1.39.1",
   "released": "2026-06-06",
   "notes": [
-    "🗺️ v1.39.0 — Vue OSM : superpose ton plan calibré GPS sur OpenStreetMap (réseau routier, bâtiments…) pour voir comment ton souterrain s'aligne avec la surface. Bouton 🗺️ à côté du Mode Histoire dans la status bar, visible uniquement si ton plan a un georef GPS ET si tu as activé l'autorisation OSM dans ⚙️ Configuration home (opt-in strict, default OFF — philosophie 100% offline préservée). Slider d'opacité pour ajuster la transparence du plan, tous les calques image actifs sont projetés aussi."
+    "🐛 v1.39.1 — Hotfix Vue OSM : le bouton 🗺️ n'apparaissait pas dans la status bar même avec l'autorisation OSM activée et un plan georef. Le timing de détection était trop court. Maintenant le bouton apparaît dès que les conditions sont remplies."
   ]
 }

@@ -267,6 +267,12 @@
     // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM : visible UNIQUEMENT si plan georef
     // ET user opt-in dans Configuration home. Click ouvre la modale (carte
     // EPSG:3857 + tile OSM + plan projeté). Cf js/osmView.js.
+    // 🐛 v1.39.0-fix1 (KARMA "pas icone en haut") : remplace les 2 setTimeout
+    // ponctuels par un polling permanent 2s (le check isAvailable est très
+    // léger ~0.3ms). Cause racine : `kta:planConfigReady` que j'écoutais
+    // n'est PAS dispatché par MyKTAMap (event fantôme). Sur mobile / gros
+    // plan, le chargement peut prendre > 3s → mes timeouts ratent. Polling
+    // permanent catch aussi le switch de plan + toggle opt-in sans event.
     const osmBtn = document.getElementById("kta-refonte-counter-osm");
     if (osmBtn) {
       function _refreshOsmVisibility() {
@@ -287,13 +293,10 @@
           _openOsm();
         }
       });
-      // Init visibility + listeners pour la re-check
+      // Init + listeners + polling permanent (2s) qui catch tout
       _refreshOsmVisibility();
-      window.addEventListener("kta:osmOptInChange",  _refreshOsmVisibility);
-      window.addEventListener("kta:planConfigReady", _refreshOsmVisibility);
-      // Petit polling au boot (cas où le plan se charge après init du header)
-      setTimeout(_refreshOsmVisibility, 1000);
-      setTimeout(_refreshOsmVisibility, 3000);
+      window.addEventListener("kta:osmOptInChange", _refreshOsmVisibility);
+      setInterval(_refreshOsmVisibility, 2000);
     }
 
     // 🆕 v1.35.0 — Bouton 🚨 Sortie d'urgence : click déclenche la recherche
