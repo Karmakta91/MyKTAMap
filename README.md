@@ -8,7 +8,25 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.38.1` (06/06/2026) — **Lot D générateur avancé + hint dims auto** :
+**📦 Version courante** : `v1.38.2` (06/06/2026) — **Simplification UI : calibration calques image uniquement depuis le générateur** :
+
+Feedback KARMA terrain après test v1.38.1 : *« enlève du menu plan la possibilité de calibrer l'image layer, on le fait que depuis générateur »*.
+
+**Rationale UX** : la calibration durable cross-utilisateurs (générateur → `plan-config.json > imageLayers[i].calibration`) est suffisante. L'override session per-navigateur via Réglages map mode ajoutait un point d'entrée concurrent sans valeur ajoutée — si un plan a un calque mal calé, l'auteur corrige à la source et republie le ZIP. Ça reste cohérent avec le pattern Géoref GPS et PDF Histoire (modifs durables au générateur, pas d'override session).
+
+**Changements `js/interfaceConfig.js`** :
+- Retrait complet du bloc HTML `cfg_imglayer_calib_block` (note + liste + boutons) dans la modale Réglages map mode
+- Retrait complet de l'IIFE `_initImageLayerCalibUI` (~175 lignes) qui populait la liste, gérait le hint dims auto et branchait le picker
+- Commentaire de remplacement qui documente le retrait + la nouvelle source de vérité (générateur exclusivement)
+
+**Conservé** (rétrocompat) :
+- Tous les helpers `window.ImageLayerCalibration.*` (compute3Corners, getCalibration, loadImageDimensions, setSessionCalibration, resetSessionCalibration) restent exposés
+- La cascade runtime côté `js/map.js` continue de lire les clés LS `myktamap_plan_prefs_<planId>.imageLayerCalibrations` qui auraient été créées en v1.38.0 → les users qui auraient calibré en session ne perdent pas leur état. Mais ils ne peuvent plus créer de nouvelles entrées side-session via UI (seul le générateur écrit dans plan-config.json).
+- Le module `js/imageLayerCalibrationPicker.js` reste en place (utilisé par le générateur avancé)
+
+**Bump** : sw.js v1.38.1 → v1.38.2 + `__MKM__.build` + `version.json` + notes user-friendly.
+
+**📦 v1.38.1** : Lot D générateur avancé + hint dims auto.
 
 Suite de v1.38.0 — complète le périmètre initial du sprint A→F avec le Lot D (différé en v1.38.0) + ajoute le hint dims auto remonté KARMA UX (*« pour pas que un user calibre pour rien ou soit perdu »*).
 

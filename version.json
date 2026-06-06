@@ -1,7 +1,7 @@
 {
-  "version": "v1.38.1",
+  "version": "v1.38.2",
   "released": "2026-06-06",
   "notes": [
-    "🖼️ v1.38.1 — Calage des calques image disponible aussi dans le générateur avancé (auteur de plan : embarque la calibration durablement dans plan-config.json, partagée avec tous les utilisateurs). Hint auto-affiché ✅/⚠️ par calque selon les dimensions vs plan principal — tu vois en un coup d'œil si la calibration est utile ou non, pas de manip pour rien."
+    "🧹 v1.38.2 — Simplification UI : la calibration des calques image se fait désormais uniquement depuis le générateur avancé (auteur de plan). La section dans ⚙️ Réglages map mode a été retirée pour éviter le doublon — un calque mal calé doit être corrigé à la source par l'auteur, c'est plus durable et plus simple pour tout le monde."
   ]
 }

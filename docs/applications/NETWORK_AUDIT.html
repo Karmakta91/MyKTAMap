@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.38.1</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.38.2</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.38.2 (Simplification UI calibration calques image)</strong> : Retrait du point d'entrée UI dans Réglages map mode (HTML + IIFE supprimés dans <code>js/interfaceConfig.js</code>). La calibration vit désormais exclusivement dans le générateur avancé (durable, cross-utilisateurs). Helpers + cascade runtime conservés pour rétrocompat. <strong>Impact réseau</strong> : ZÉRO.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.38.1 (Lot D générateur avancé + hint dims auto)</strong> : Extension client-side de v1.38.0. Picker accessible depuis la section image layers du générateur avancé (embed durable dans plan-config.json). Hint auto ✅/⚠️ comparant les dims natives vs plan principal (générateur ET Réglages). <strong>Impact réseau</strong> : ZÉRO — chargement local des dims via new Image() sur blob URLs.

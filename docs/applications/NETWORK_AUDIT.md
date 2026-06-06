@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.38.1** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.38.2** (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -367,6 +367,8 @@ retrouver sans cache hors-ligne).
 ## 📋 Historique des changements de ce document
 
 ### 🆕 Notes détaillées par version (du plus récent au plus ancien)
+
+> **v1.38.2 (Simplification UI calibration calques image)** : KARMA feedback "on le fait que depuis générateur". Retrait du point d'entrée UI de la calibration calques image dans Réglages map mode (~175 lignes HTML + IIFE supprimées dans `js/interfaceConfig.js`). La calibration durable embedée dans plan-config.json (via générateur avancé) reste la source de vérité unique. Helpers + cascade runtime conservés pour rétrocompat des users qui auraient déjà calibré en session v1.38.0. **Impact réseau** : ZÉRO — retrait de UI, aucune logique réseau touchée. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression, simplification UX validée terrain.
 
 > **v1.38.1 (Lot D générateur avancé + hint dims auto)** : extension client-side de v1.38.0. Le picker calibration est maintenant accessible aussi depuis la section image layers du générateur avancé (`js/createConf.js > _ajouterImageLayer`) — auteur de plan peut embarquer durablement la calibration dans `plan-config.json > imageLayers[i].calibration`. Hint auto-actualisé ✅/⚠️ comparant les dims natives du calque vs plan principal (générateur ET Réglages map mode) pour éviter les calibrations inutiles. **Impact réseau** : ZÉRO — chargement local des dims via `new Image()` sur blob URLs, aucun call sortant. **Liste blanche `connect-src` inchangée** : `'self'` + `https://www.gstatic.com`. **Verdict** : ✅ aucune régression.
 
