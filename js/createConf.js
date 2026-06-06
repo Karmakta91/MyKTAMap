@@ -1410,6 +1410,20 @@ function _ajouterImageLayer(prefill) {
         ${p.file ? "📄 " + p.file.split("/").pop() : "Aucun fichier"}
       </span>
     </div>
+    <!-- 🆕 v1.38.1 — Section calibration 2 ancres (embarquée durablement dans plan-config.json).
+         Hint auto-affiché : dims layer vs dims plan → ✅ inutile / ⚠️ utile. Stocké dans item._calibration. -->
+    <div class="kta-planner-calib-section" style="margin-top:8px; padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:6px; border:1px dashed rgba(255,255,255,0.1);">
+      <div style="font-size:11.5px; color:#8892a4; margin-bottom:4px;">
+        📐 <strong>Calibration 2 ancres</strong>
+        <span style="color:#f4c542;">⚠️ Calibre UNIQUEMENT si les dimensions du calque diffèrent du plan principal — sinon tu fausserais l'alignement.</span>
+      </div>
+      <div id="${id}_calib_hint" style="font-size:11px; color:#8892a4; margin-bottom:4px; min-height:14px;">⏳ Choisis un fichier image pour analyser les dimensions…</div>
+      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <button type="button" class="kta-planner-add-btn" id="${id}_calib_btn" disabled>📐 Calibrer (2 ancres)</button>
+        <button type="button" class="kta-planner-add-btn" id="${id}_calib_reset_btn" style="display:none;">↺ Reset</button>
+        <span id="${id}_calib_status" style="font-size:11.5px; color:#7dd87d; flex:1 1 100%;"></span>
+      </div>
+    </div>
   `;
 
   list.appendChild(item);
@@ -1418,6 +1432,152 @@ function _ajouterImageLayer(prefill) {
     item.remove();
     if (!list.querySelector(".kta-planner-layer-item"))
       list.innerHTML = '<p class="kta-planner-empty">Aucun calque image</p>';
+  });
+
+  // 🆕 v1.38.1 — Calibration state stocké sur l'item DOM
+  item._calibration = p.calibration || null;
+
+  const hintEl   = item.querySelector("#" + id + "_calib_hint");
+  const calibBtn = item.querySelector("#" + id + "_calib_btn");
+  const resetBtn = item.querySelector("#" + id + "_calib_reset_btn");
+  const statusEl = item.querySelector("#" + id + "_calib_status");
+
+  function _refreshCalibUI() {
+    if (item._calibration) {
+      statusEl.innerHTML = "✅ Calibration enregistrée (sera embedée dans le ZIP)";
+      resetBtn.style.display = "";
+    } else {
+      statusEl.innerHTML = "";
+      resetBtn.style.display = "none";
+    }
+  }
+  _refreshCalibUI();
+
+  // Helpers pour récupérer l'URL et les dims de l'image layer (mode Nouveau =
+  // File via input ; mode Modifier = File depuis _plannerOrigAssets via nom).
+  function _getLayerSourceInfo() {
+    return new Promise(function(resolve) {
+      const fileInput = document.getElementById(id + "_file");
+      const file = (fileInput && fileInput.files && fileInput.files[0]) ? fileInput.files[0] : null;
+      let url = null, fileForDims = null;
+      if (file) {
+        url = URL.createObjectURL(file);
+        fileForDims = file;
+      } else {
+        // Mode Modifier : chercher le nom existant dans _plannerOrigAssets
+        const nomTxt = (document.getElementById(id + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "").trim();
+        if (nomTxt && _plannerOrigAssets[nomTxt]) {
+          fileForDims = _plannerOrigAssets[nomTxt];
+          url = URL.createObjectURL(fileForDims);
+        }
+      }
+      if (!url) { resolve(null); return; }
+      // Charger l'image pour récupérer les dims naturelles
+      const tmpImg = new Image();
+      tmpImg.onload = function() {
+        resolve({ url: url, width: tmpImg.naturalWidth, height: tmpImg.naturalHeight, blobUrl: url });
+      };
+      tmpImg.onerror = function() {
+        try { URL.revokeObjectURL(url); } catch(e) {}
+        resolve(null);
+      };
+      tmpImg.src = url;
+    });
+  }
+
+  function _refreshDimsHint() {
+    const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
+    const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
+    if (!planW || !planH) {
+      hintEl.innerHTML = '<span style="color:#8892a4;">⏳ Plan principal pas encore chargé (charge d\'abord l\'image principale).</span>';
+      calibBtn.disabled = true;
+      return;
+    }
+    _getLayerSourceInfo().then(function(info) {
+      if (!info) {
+        hintEl.innerHTML = '<span style="color:#8892a4;">⏳ Choisis un fichier image pour analyser les dimensions…</span>';
+        calibBtn.disabled = true;
+        return;
+      }
+      const sameDims = Math.abs(info.width - planW) <= 2 && Math.abs(info.height - planH) <= 2;
+      if (sameDims) {
+        hintEl.innerHTML = '<span style="color:#7dd87d;">✅ <strong>' + info.width + '×' + info.height + ' = plan principal</strong> — calibration <strong>inutile</strong>, laisse vide.</span>';
+        calibBtn.disabled = false;  // on autorise quand même au cas où
+      } else {
+        hintEl.innerHTML = '<span style="color:#f4c542;">⚠️ <strong>' + info.width + '×' + info.height + ' ≠ plan ' + planW + '×' + planH + '</strong> — calibration <strong>recommandée</strong>.</span>';
+        calibBtn.disabled = false;
+      }
+      // Libère le blob URL après usage (pas besoin de le garder, on en recréera un au picker)
+      try { URL.revokeObjectURL(info.url); } catch(e) {}
+    });
+  }
+
+  // Re-check dims quand l'user change l'image OU au boot si déjà uploadée
+  const fileInputEl = document.getElementById(id + "_file");
+  if (fileInputEl) fileInputEl.addEventListener("change", function() { _refreshDimsHint(); });
+  // Re-check aussi quand l'user change le plan principal (input pl_baseImage)
+  const baseImgEl = document.getElementById("pl_baseImage");
+  if (baseImgEl) baseImgEl.addEventListener("change", function() { _refreshDimsHint(); });
+  // Init immédiat (mode Modifier : on a déjà un fichier)
+  setTimeout(_refreshDimsHint, 50);
+
+  // Bouton "📐 Calibrer (2 ancres)" → ouvre le picker
+  calibBtn.addEventListener("click", function() {
+    if (!window.ImageLayerCalibrationPicker) {
+      alert("Module Picker indisponible.");
+      return;
+    }
+    const planW = parseInt(document.getElementById("pl_width")?.value || "0", 10);
+    const planH = parseInt(document.getElementById("pl_height")?.value || "0", 10);
+    if (!planW || !planH) {
+      alert("Charge d'abord une image principale (pour avoir les dimensions du plan).");
+      return;
+    }
+    // URL du plan principal (file uploadé OU mode Modifier via assets originaux)
+    let planUrl = null, planBlob = null;
+    const baseFile = (baseImgEl && baseImgEl.files && baseImgEl.files[0]) ? baseImgEl.files[0] : null;
+    if (baseFile) {
+      planUrl = URL.createObjectURL(baseFile);
+      planBlob = planUrl;
+    } else if (_plannerMode === "modifier") {
+      // Cherche la 1ère image dans _plannerOrigAssets qui n'est pas la collision
+      const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const imgKey = Object.keys(_plannerOrigAssets).find(function(k) {
+        return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNomMod;
+      });
+      if (imgKey) {
+        planUrl = URL.createObjectURL(_plannerOrigAssets[imgKey]);
+        planBlob = planUrl;
+      }
+    }
+    if (!planUrl) { alert("Image du plan principal indisponible."); return; }
+
+    _getLayerSourceInfo().then(function(info) {
+      if (!info) { alert("Image du calque indisponible."); try { URL.revokeObjectURL(planUrl); } catch(e) {} return; }
+      window.ImageLayerCalibrationPicker.open({
+        sourceUrl: info.url,
+        planUrl: planUrl,
+        planWidth: planW,
+        planHeight: planH,
+        existing: item._calibration
+      }).then(function(calib) {
+        try { URL.revokeObjectURL(info.url); } catch(e) {}
+        try { URL.revokeObjectURL(planUrl); } catch(e) {}
+        if (!calib) return;
+        item._calibration = calib;
+        _refreshCalibUI();
+      }).catch(function(e) {
+        try { URL.revokeObjectURL(info.url); } catch(e) {}
+        try { URL.revokeObjectURL(planUrl); } catch(e) {}
+        console.warn("[Planner calib] échec :", e);
+        alert("Picker indisponible : " + (e && e.message ? e.message : "erreur inconnue"));
+      });
+    });
+  });
+
+  resetBtn.addEventListener("click", function() {
+    item._calibration = null;
+    _refreshCalibUI();
   });
 }
 
@@ -2443,7 +2603,15 @@ async function _genererZip() {
         _plannerErreur("Fichier manquant pour le calque \"" + ilId + "\"."); throw new Error("abort");
       }
 
-      imageLayers.push({ id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel });
+      const imageLayerObj = { id: ilId, label: ilLabel, file: filePath, visible: ilVis, order: ilOrder, level: ilLevel };
+      // 🆕 v1.38.1 — Embed la calibration 2 ancres dans plan-config.json si présente.
+      // Stockée sur le DOM element par _ajouterImageLayer (item._calibration), saisie via picker.
+      // Rétro-compat absolue : champ absent si pas calibré → comportement v1.37.x.
+      if (item._calibration && item._calibration.sourceA && item._calibration.targetA
+          && item._calibration.sourceB && item._calibration.targetB) {
+        imageLayerObj.calibration = item._calibration;
+      }
+      imageLayers.push(imageLayerObj);
     }
 
     // ── Calques données ──

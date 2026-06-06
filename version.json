@@ -1,7 +1,7 @@
 {
-  "version": "v1.38.0",
+  "version": "v1.38.1",
   "released": "2026-06-06",
   "notes": [
-    "🖼️ v1.38.0 — Calage des calques image. Si un calque image n'a pas les mêmes dimensions que le plan principal (légende, plan d'archive partiel, scan tordu…), tu peux maintenant le caler précisément avec 2 ancres (points reconnaissables). ⚙️ Réglages map mode → section « Calibration calques image » → bouton « 📐 Calibrer » par calque. Sauvegardé par plan, supporte rotation + scale + translation."
+    "🖼️ v1.38.1 — Calage des calques image disponible aussi dans le générateur avancé (auteur de plan : embarque la calibration durablement dans plan-config.json, partagée avec tous les utilisateurs). Hint auto-affiché ✅/⚠️ par calque selon les dimensions vs plan principal — tu vois en un coup d'œil si la calibration est utile ou non, pas de manip pour rien."
   ]
 }

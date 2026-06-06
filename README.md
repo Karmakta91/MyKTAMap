@@ -8,7 +8,28 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.38.0` (06/06/2026) — **Calage des calques image avec 2 ancres (rotation + scale + translation)** :
+**📦 Version courante** : `v1.38.1` (06/06/2026) — **Lot D générateur avancé + hint dims auto** :
+
+Suite de v1.38.0 — complète le périmètre initial du sprint A→F avec le Lot D (différé en v1.38.0) + ajoute le hint dims auto remonté KARMA UX (*« pour pas que un user calibre pour rien ou soit perdu »*).
+
+**Lot D — Générateur avancé** (`js/createConf.js > _ajouterImageLayer`) :
+- Section dédiée par image layer dans la liste du générateur : note d'avertissement ⚠️ ("calibre UNIQUEMENT si dims ≠ plan principal sinon tu fausserais l'alignement") + hint auto-actualisé ✅/⚠️ avec dimensions comparées (tolérance ±2 px) + bouton "📐 Calibrer (2 ancres)" + bouton "↺ Reset" + status "Calibration enregistrée".
+- État stocké sur le DOM element (`item._calibration`), sérialisé dans le ZIP via `_genererZip` (l.2606+) qui pousse `imageLayers[i].calibration` dans plan-config.json UNIQUEMENT si les 4 ancres sont présentes (rétrocompat stricte : champ absent si pas calibré).
+- Picker réutilise `ImageLayerCalibrationPicker.open()` existant (v1.38.0). URL source : `URL.createObjectURL(File)` du upload OU récupération depuis `_plannerOrigAssets` en mode Modifier. URL plan : idem (upload pl_baseImage OU 1ère image non-collision des assets originaux).
+- Mode Modifier : pré-rempli depuis `p.calibration` du JSON source (un plan déjà calibré reste calibré au re-export).
+- Hint auto déclenché à chaque `change` sur le file input layer ET sur `pl_baseImage` (re-check les dims dès qu'un des deux change).
+
+**Hint dims auto dans Réglages map mode** (`js/interfaceConfig.js > _initImageLayerCalibUI`) :
+- Pour chaque image layer du plan courant, charge async les dims natives via `ImageLayerCalibration.loadImageDimensions()` + compare avec `APP_CONFIG.imageWidth/Height` (tolérance ±2 px). Affiche :
+  - ✅ "Mêmes dimensions — calibration inutile" (vert) si égales
+  - ⚠️ "1234×567 ≠ plan 4000×4000 — calibration utile" (jaune) sinon
+  - ⏳ "vérification dims…" pendant le chargement
+- Cache en mémoire (`_dimsCache` par layerId) pour ne pas re-charger à chaque re-render.
+- Note explicative renforcée en tête de section avec avertissement explicite.
+
+**Bump** : sw.js v1.38.0 → v1.38.1 + `__MKM__.build` + `version.json` + notes user-friendly.
+
+**📦 v1.38.0** : Calage des calques image avec 2 ancres (rotation + scale + translation).
 
 **Cas d'usage** : avant v1.38.0, tous les image layers étaient étirés sur les bounds du plan principal (`L.imageOverlay(layerConfig.file, bounds)` dans `js/map.js` l.414). Si l'image layer n'avait pas les mêmes dimensions que le plan, elle était déformée. Cette release permet de la caler précisément via 2 points reconnaissables communs aux 2 images (légende décalée, plan d'archive partiel, scan importé tordu).
 

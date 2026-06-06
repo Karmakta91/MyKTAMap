@@ -899,10 +899,18 @@ function afficherConfig() {
             <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
               <span class="kta-perf-ultra-label">🖼️ Calibration calques image (ce plan)</span>
               <span class="kta-perf-ultra-hint" style="display:block;">
-                Si un calque image n'a pas les <strong>mêmes dimensions</strong> que le plan principal,
-                calibre-le avec 2 ancres (points reconnaissables présents sur les deux). L'image sera
-                rotée + scalée pour s'aligner précisément. <strong>Sauvegardé par plan</strong> (override
-                session). Auteur de plan : passe par le générateur avancé pour un embarquement durable.
+                ⚠️ <strong>Calibre UNIQUEMENT</strong> si un calque image a des
+                <strong>dimensions différentes</strong> du plan principal (taille en pixels) et
+                qu'il apparaît mal positionné/scalé. Si les dimensions sont identiques,
+                l'image est déjà alignée correctement sans calibration —
+                inutile de toucher (et tu risquerais de fausser l'alignement).
+                Un indicateur ⚠️/✅ est affiché sous chaque calque selon le besoin réel.
+              </span>
+              <span class="kta-perf-ultra-hint" style="display:block; margin-top:4px;">
+                Workflow : 2 ancres (points reconnaissables présents sur les deux images),
+                l'app calcule rotation + scale + translation. <strong>Sauvegardé par plan</strong>
+                (override session). Auteur de plan : pour un embarquement durable cross-utilisateurs,
+                passe par le générateur avancé (v1.38.1).
               </span>
             </div>
             <div id="cfg_imglayer_calib_list" style="display:flex; flex-direction:column; gap:6px;">
@@ -1256,21 +1264,84 @@ function afficherConfig() {
       return !!c;
     }
 
+    // 🆕 v1.38.1 — Détection auto des dims de chaque image layer pour
+    // afficher un hint ⚠️/✅ : "Mêmes dims" = pas besoin de calibrer,
+    // "Dims différentes" = calibration potentiellement utile. Cache les
+    // dims en mémoire pour ne pas les recharger à chaque _renderList.
+    const _dimsCache = {};  // layerId → {w, h} | {error: true}
+    const planW = (window.APP_CONFIG && window.APP_CONFIG.imageWidth)  || null;
+    const planH = (window.APP_CONFIG && window.APP_CONFIG.imageHeight) || null;
+
+    function _loadDimsIfNeeded(item) {
+      if (_dimsCache[item.id] !== undefined) return Promise.resolve(_dimsCache[item.id]);
+      let sourceUrl = null;
+      try {
+        if (item.overlay && item.overlay._url) sourceUrl = item.overlay._url;
+        else if (item.overlay && item.overlay._image && item.overlay._image.src) sourceUrl = item.overlay._image.src;
+      } catch(e) {}
+      if (!sourceUrl && window.PLAN_CONFIG && Array.isArray(window.PLAN_CONFIG.imageLayers)) {
+        const f = window.PLAN_CONFIG.imageLayers.find(function(l) {
+          return l && (l.id === item.id || l.label === item.id);
+        });
+        if (f) sourceUrl = f.file;
+      }
+      if (!sourceUrl || !window.ImageLayerCalibration) {
+        _dimsCache[item.id] = { error: true };
+        return Promise.resolve(_dimsCache[item.id]);
+      }
+      return window.ImageLayerCalibration.loadImageDimensions(sourceUrl)
+        .then(function(d) {
+          _dimsCache[item.id] = { w: d.width, h: d.height };
+          return _dimsCache[item.id];
+        })
+        .catch(function() {
+          _dimsCache[item.id] = { error: true };
+          return _dimsCache[item.id];
+        });
+    }
+
+    function _formatDimHint(dims) {
+      if (!dims || dims.error) return '<span style="color:#8892a4; font-size:11px;">(dims indispo)</span>';
+      if (!planW || !planH) return '<span style="color:#8892a4; font-size:11px;">(plan dims indispo)</span>';
+      // Tolérance ±2px sur des plans potentiellement encodés différemment
+      const sameDims = Math.abs(dims.w - planW) <= 2 && Math.abs(dims.h - planH) <= 2;
+      if (sameDims) {
+        return '<span style="color:#7dd87d; font-size:11px;" title="' + dims.w + '×' + dims.h + ' = plan principal">✅ Mêmes dimensions — calibration inutile</span>';
+      } else {
+        return '<span style="color:#f4c542; font-size:11px;" title="image ' + dims.w + '×' + dims.h + ' vs plan ' + planW + '×' + planH + '">⚠️ ' + dims.w + '×' + dims.h + ' ≠ plan ' + planW + '×' + planH + ' — calibration utile</span>';
+      }
+    }
+
     function _renderList() {
       listEl.innerHTML = "";
       overlays.forEach(function(item) {
         const row = document.createElement("div");
-        row.style.cssText = "display:flex; gap:6px; align-items:center; padding:6px 8px; background:rgba(255,255,255,0.03); border-radius:6px;";
+        row.dataset.layerId = item.id;
+        row.style.cssText = "display:flex; gap:6px; align-items:center; padding:6px 8px; background:rgba(255,255,255,0.03); border-radius:6px; flex-wrap:wrap;";
         const hasCal = _hasCalib(item.id);
         const calIcon = hasCal ? "✅" : "🖼️";
+        const dimsHintHtml = (_dimsCache[item.id] !== undefined)
+          ? _formatDimHint(_dimsCache[item.id])
+          : '<span class="kta-imglayer-dim-hint" style="color:#8892a4; font-size:11px;">⏳ vérification dims…</span>';
         row.innerHTML =
-          '<span style="flex:1 1 auto; font-size:13px; color:#e8eaf0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
-            calIcon + ' ' + (item.label || item.id) +
-            (hasCal ? ' <span style="color:#7dd87d; font-size:11px;">(calibré)</span>' : '') +
-          '</span>' +
+          '<div style="flex:1 1 auto; min-width:0;">' +
+            '<div style="font-size:13px; color:#e8eaf0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
+              calIcon + ' ' + (item.label || item.id) +
+              (hasCal ? ' <span style="color:#7dd87d; font-size:11px;">(calibré session)</span>' : '') +
+            '</div>' +
+            '<div class="kta-imglayer-dim-slot" style="margin-top:2px;">' + dimsHintHtml + '</div>' +
+          '</div>' +
           '<button type="button" class="kta-btn" data-action="calibrate" data-layer-id="' + item.id + '" style="font-size:12px; padding:5px 10px;">📐 Calibrer</button>' +
           (hasCal ? '<button type="button" class="kta-btn kta-btn-ghost" data-action="reset" data-layer-id="' + item.id + '" style="font-size:12px; padding:5px 10px;" title="Retirer la calibration session">↺</button>' : '');
         listEl.appendChild(row);
+
+        // Charge les dims en arrière-plan et update la rangée à la résolution
+        if (_dimsCache[item.id] === undefined) {
+          _loadDimsIfNeeded(item).then(function(dims) {
+            const slot = row.querySelector(".kta-imglayer-dim-slot");
+            if (slot) slot.innerHTML = _formatDimHint(dims);
+          });
+        }
       });
     }
     _renderList();
