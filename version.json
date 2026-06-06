@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.2",
+  "version": "v1.39.3",
   "released": "2026-06-06",
   "notes": [
-    "🐛 v1.39.2 — Hotfix Vue OSM #2 : le bouton 🗺️ n'apparaissait pas si le georef GPS avait été saisi via ⚙️ Réglages map mode (stockage session) au lieu du générateur avancé (embarqué). Désormais les 2 sources de calibration GPS sont reconnues — peu importe où tu l'as saisie, ça marche."
+    "🐛 v1.39.3 — Hotfix Vue OSM #3 : le bouton 'Centrer sur le plan' générait une erreur TypeError. Cause : L.layerGroup utilisé au lieu de L.featureGroup, mauvais constructeur Leaflet. Le centrage automatique au boot de la modale OSM marche maintenant."
   ]
 }

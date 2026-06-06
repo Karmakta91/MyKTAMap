@@ -274,7 +274,10 @@
       return;
     }
 
-    _planLayer = L.layerGroup().addTo(_osmMap);
+    // 🐛 v1.39.3 — L.featureGroup au lieu de L.layerGroup : LayerGroup n'a
+    // pas de méthode getBounds(), seule FeatureGroup (et sous-classes) l'a.
+    // Sans ça, _centerOnPlan crash avec "_planLayer.getBounds is not a function".
+    _planLayer = L.featureGroup().addTo(_osmMap);
 
     // 1. Plan principal
     const baseUrl = window.PLAN_CONFIG && window.PLAN_CONFIG.plan && window.PLAN_CONFIG.plan.baseImage;
