@@ -1,7 +1,7 @@
 {
-  "version": "v1.37.0",
+  "version": "v1.37.1",
   "released": "2026-06-06",
   "notes": [
-    "🧭 v1.37.0 — Tu peux calibrer le Nord de chaque plan (Réglages map mode → bouton 📐 Calibrer ou champ angle). Le tracker s'adapte quand le haut du plan n'est pas le Nord. Pour les auteurs de plan : nouveau champ Nord et import PDF Histoire dans le générateur avancé. Bonus : fix d'affichage du switch Simple/Avancé du générateur en thème clair."
+    "🔧 v1.37.1 — Fix du bug récurrent « badge footer reste sur ancienne → nouvelle après mise à jour douce ». Le mécanisme préservait par erreur l'ancien cache, ce qui empêchait la nouvelle version de prendre le relais au reload. La mise à jour douce purge maintenant complètement les caches (comportement identique au bouton Kill SW), garantie de servir la dernière version. Léger temps de boot supplémentaire au prochain reload (re-téléchargement des assets, environ 3-8 sec sur fibre)."
   ]
 }

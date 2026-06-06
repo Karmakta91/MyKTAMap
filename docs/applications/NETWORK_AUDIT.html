@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.37.0</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.37.1</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,11 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.37.1 (Fix bug récurrent mise à jour douce — purge totale caches)</strong> : Changement 100% client-side de <code>mettreAJourCodeSeul()</code> dans <code>js/interfaceMaintenance.js</code>. Audit indépendant : la cause racine du bug "badge footer reste sur ancienne→nouvelle" était dans le hotfix21 <code>_getCacheNameFromSW()</code> qui interrogeait le SW courant (= l'ancien) → préservait l'ancien cache à la purge → reload servait toujours l'ancienne version. Fix : purge TOTALE <code>caches.keys().map(caches.delete)</code> sans filter (pattern identique à killsw.html qui marche systématiquement). <strong>Impact réseau</strong> : 1 re-DL des ~100 assets PWA UNIQUEMENT au clic "Forcer la mise à jour" (~3-8 sec sur fibre). Pas de changement sur l'usage normal. Ping internet garde-fou (5s) conservé.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression, fiabilité de la mise à jour douce sécurisée.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.37.0 (Calibration Nord per-plan + PDF Histoire générateur/Réglages + fix CSS light planner-mode-btn)</strong> : Trois changements 100% client-side. <strong>(A) Nord per-plan</strong> : nouveau champ optionnel <code>plan-config.json &gt; plan.northOffsetDeg</code> (default absent = 0 = comportement v1.36.x intact). Cascade lecture LS <code>myktamap_plan_prefs_PLANID.northOffsetDeg</code> → <code>APP_CONFIG.northOffsetDeg</code> → 0. Picker 2 clics Sud→Nord dans Réglages map mode (nouveau module <code>js/northPicker.js</code> autonome) + saisie directe + bouton reset. Tracker + vecteur déplacement adaptés via nouvelle helper <code>_getPlanRelHeading()</code> ; la boussole physique continue de pointer le Nord vrai (par design). <strong>(B) PDF Histoire</strong> : section dédiée dans générateur avancé (embed <code>data/histoire.pdf</code> + écriture <code>plan.histoirePdf</code>). Pas de duplication dans Réglages map mode : le mécanisme d'import côté session existe déjà dans la modale 📖 Mode Histoire (onglet PDF, v1.34.20 → IDB locale). <strong>(C) Fix CSS</strong> : box-shadow + font-weight ajoutés à <code>.kta-planner-mode-btn.kta-actif</code> en theme light (manquait le halo accent du dark mode). <strong>Impact réseau</strong> : ZÉRO — aucun nouvel appel sortant, aucune ressource externe, aucune modification de la liste blanche <code>connect-src</code>. PDF Histoire lu localement (FileReader → IDB), jamais transmis. Toutes les prefs persistées en LS / IDB côté client uniquement.

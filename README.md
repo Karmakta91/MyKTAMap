@@ -8,7 +8,19 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.37.0` (06/06/2026) — **Calibration Nord per-plan + import PDF Histoire générateur avancé + Réglages + fix CSS light planner-mode-btn** :
+**📦 Version courante** : `v1.37.1` (06/06/2026) — **Fix bug récurrent mise à jour douce + bouton Kill SW Configuration home** :
+
+**Bug récurrent identifié via audit indépendant** : après clic « 🔄 Forcer la mise à jour » + reload, le badge footer restait sur « ancienne → nouvelle ». 2 hotfixes historiques (v1.34.9 polling reg.waiting + v1.34.25 stale cache LS) avaient patché des symptômes sans corriger la cause racine.
+
+**Cause racine** : `_getCacheNameFromSW()` (hotfix21) interrogeait le SW COURANT (= l'ancien avant `reg.update()`) → récupérait le nom de cache de l'ANCIENNE version → la purge filtrait `k !== currentCacheName` → on **préservait EXPLICITEMENT l'ancien cache** → au reload, l'ancien SW (toujours `controller`) continuait de servir son ancien `copyright.js` depuis son cache préservé → `window.__MKM__.build` figé sur l'ancienne version → badge footer affichait éternellement « ancienne → nouvelle ». Le polling v1.34.9 ne couvrait que le happy path (install < 5s) ; en cas de réseau lent ou ~100 assets `cache:'reload'` → timeout fréquent → fallback reload avec cache ancien préservé = même bug.
+
+**Fix v1.37.1** (`js/interfaceMaintenance.js > mettreAJourCodeSeul()`) : retrait du `_getCacheNameFromSW()` call + purge TOTALE des caches PWA via `caches.keys().map(caches.delete)` sans filter (pattern identique à `killsw.html` qui marche systématiquement). Le nouveau SW (install en background via `reg.update()` fire-and-forget) re-populera ses assets au reload via son install handler. Coût : 1 re-DL des assets (~100 fichiers, 3-8 sec sur fibre) — acceptable car « Force update » est une action volontaire avec ping internet validé en amont. Fonction `_getCacheNameFromSW()` supprimée (dead code après retrait du call site), handler côté SW (`GET_CACHE_NAME`) conservé pour rétrocompat éventuelle (debug F12 manuel / modules tiers).
+
+**Garde-fous conservés** : ping internet 5s avant action (refuse si offline), polling `reg.waiting` + `SKIP_WAITING` + `controllerchange` 1.5s (utile dans le happy path où l'install est rapide), overlay « ⏳ Préparation… » pendant l'opération.
+
+**Bump** : sw.js v1.37.0 → v1.37.1 + `__MKM__.build` + `version.json` + notes user-friendly.
+
+**📦 v1.37.0** : Calibration Nord per-plan + import PDF Histoire générateur avancé + Réglages + fix CSS light planner-mode-btn.
 
 **A. 🧭 Calibration Nord per-plan (runtime + générateur avancé)**
 - **Cas d'usage** : plans dont le haut n'est PAS le Nord vrai (photo aérienne avec cadrage arbitraire, plan cataphile sans rosace alignée). Le tracker pointait à côté, la rotation marker était fausse.

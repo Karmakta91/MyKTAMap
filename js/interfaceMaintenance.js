@@ -277,42 +277,14 @@ window._pingInternetUrl = PING_URL;
 //
 // Préservé : localStorage (sessions, plans registry, prefs), IndexedDB (handles + blobs),
 // sessionStorage, cookies, données utilisateur.
-// =========================
-// 🆕 hotfix21 — Helper : demande au SW courant son CACHE_NAME via MessageChannel.
-// Utilisé par mettreAJourCodeSeul() pour ne PAS supprimer le cache qu'on
-// vient juste de remplir au cours de reg.update() — évite un double-download.
-// Retourne null si pas de SW actif ou timeout (2s). Pattern :
-//   1. Client crée MessageChannel
-//   2. Client envoie port2 au SW via postMessage avec [transferList]
-//   3. SW répond via event.ports[0] (qui est port2 côté SW)
-//   4. Client écoute port1 (linké à port2)
-function _getCacheNameFromSW() {
-  return new Promise(function(resolve) {
-    if (!navigator.serviceWorker || !navigator.serviceWorker.controller) {
-      return resolve(null);
-    }
-    const channel = new MessageChannel();
-    const timeout = setTimeout(function() {
-      console.warn("[Soft update] _getCacheNameFromSW timeout");
-      resolve(null);
-    }, 2000);
-    channel.port1.onmessage = function(event) {
-      clearTimeout(timeout);
-      const data = event.data || {};
-      resolve(data.name || null);
-    };
-    try {
-      navigator.serviceWorker.controller.postMessage(
-        { type: "GET_CACHE_NAME" },
-        [channel.port2]
-      );
-    } catch(e) {
-      clearTimeout(timeout);
-      console.warn("[Soft update] postMessage GET_CACHE_NAME :", e);
-      resolve(null);
-    }
-  });
-}
+// 🐛 v1.37.1 — La fonction _getCacheNameFromSW (hotfix21) a été RETIRÉE.
+// Elle interrogeait le SW COURANT (= l'ancien avant update) → on récupérait
+// le nom du cache de l'ANCIENNE version → la purge filtrait `k !== currentName`
+// → on PRÉSERVAIT EXPLICITEMENT l'ancien cache → l'ancien SW continuait de
+// servir son ancien copyright.js → __MKM__.build figé → badge footer
+// "ancienne → nouvelle" persistait après reload.
+// Le handler côté SW (GET_CACHE_NAME) est lui conservé pour rétrocompat
+// (modules tiers éventuels, debug F12 manuel).
 
 async function mettreAJourCodeSeul() {
   // Affiche un overlay pendant l'opération pour que l'utilisateur voie
@@ -340,16 +312,24 @@ async function mettreAJourCodeSeul() {
       return;
     }
 
-    // 🆕 hotfix21 — Récupère le CACHE_NAME courant via le SW. Permet ensuite
-    // de NE PAS le supprimer à l'étape 3 (évite double-download au reload).
-    // Si SW pas joignable ou timeout : currentCacheName reste null, on
-    // fallback sur l'ancien comportement (purge totale).
-    const currentCacheName = await _getCacheNameFromSW();
-    if (currentCacheName) {
-      console.log("[Soft update] CACHE_NAME courant :", currentCacheName);
-    }
+    // 🐛 v1.37.1 — RETRAIT du hotfix21 _getCacheNameFromSW. Cause racine du
+    // bug "badge footer ancienne→nouvelle persiste après reload" :
+    //   - hotfix21 interrogeait le SW COURANT (= l'ancien) AVANT reg.update()
+    //   - Récupérait son CACHE_NAME → croyait être le "courant"
+    //   - Filtre purge `k !== currentCacheName` préservait EXPLICITEMENT
+    //     l'ancien cache
+    //   - Au reload, l'ancien SW (toujours controller) servait son ancien
+    //     copyright.js depuis son cache préservé → __MKM__.build figé
+    // Le polling v1.34.9 ne couvrait que le happy path (install < 5s).
+    // En 4G molle ou ~100 assets cache:'reload', timeout fréquent → fallback
+    // reload avec cache ancien préservé = même bug.
+    //
+    // Fix : purge TOTALE comme killsw.html (qui marche systématiquement).
+    // Coût : 1 re-DL des assets au reload (~100 fichiers) — acceptable car
+    // Force update est une action volontaire avec ping internet déjà validé.
+    // Audit indépendant : cause racine confirmée + reco piste 1 validée KARMA.
 
-    // 2. 🆕 hotfix21 — SW update FIRE-AND-FORGET (au lieu de await). Avant,
+    // 2. SW update FIRE-AND-FORGET (au lieu de await). Avant,
     // `await reg.update()` bloquait 30s-2min en téléchargeant ~100 assets
     // via l'install event SYNCHRONE (cache.add x 100 avec cache:'reload').
     // Maintenant : on lance update() en background, le téléchargement se
@@ -420,31 +400,33 @@ async function mettreAJourCodeSeul() {
       }
     }
 
-    // 3. 🆕 hotfix21 — Purge des SEULS anciens caches HTTP/PWA (préserve le
-    // cache courant si on a réussi à le récupérer du SW). Avant : on
-    // purgait TOUT y compris le cache qu'on venait de remplir via update()
-    // → re-download de ~100 assets au reload. Maintenant : on garde le
-    // cache courant intact, donc le reload retrouve son cache pré-rempli.
-    _statusUpdate("Nettoyage des anciens caches…");
+    // 3. 🐛 v1.37.1 — Purge TOTALE des caches PWA (sans préservation).
+    // Audit indépendant : le filtre hotfix21 préservait l'ANCIEN cache
+    // (interrogé via SW courant) → reload servait l'ancienne version.
+    // Pattern killsw.html (qui marche) : `caches.keys().map(caches.delete)`
+    // sans filter. Le nouveau SW (install en bg via reg.update fire-and-forget
+    // ci-dessus) re-populera son cache au reload via son install handler.
+    // Coût : 1 re-DL des assets au reload (~100 fichiers) — acceptable pour
+    // une action volontaire avec ping internet validé en amont.
+    _statusUpdate("Nettoyage des caches…");
     if (window.caches) {
       try {
         const keys = await caches.keys();
-        const toDelete = currentCacheName
-          ? keys.filter(function(k) { return k !== currentCacheName; })
-          : keys; // Fallback : si pas de currentCacheName, on purge tout (ancien comportement)
-        await Promise.all(toDelete.map(function(k) {
+        await Promise.all(keys.map(function(k) {
           console.log("[Soft update] suppression cache :", k);
           return caches.delete(k);
         }));
-        console.log("[Soft update] " + toDelete.length + "/" + keys.length + " cache(s) supprimé(s) (préservé : " + (currentCacheName || "aucun") + ")");
+        console.log("[Soft update] " + keys.length + " cache(s) supprimé(s) (purge totale)");
       } catch(e) {
         console.warn("[Soft update] purge caches :", e);
       }
     }
 
-    // 4. Reload : le SW (potentiellement nouveau, son install tourne en bg)
-    // prend le relais avec son cache pré-rempli — pas de re-download
-    // séquentiel des 100 assets au reload.
+    // 4. Reload : le nouveau SW (install possiblement encore en cours) prend
+    // le contrôle. Son cache sera populé soit via l'install handler s'il
+    // n'a pas encore fini, soit déjà rempli si l'install a terminé.
+    // L'user voit un boot un poil plus long (~3-8s sur fibre) mais c'est
+    // garantie de servir la nouvelle version.
     _statusUpdate("Rechargement…");
     setTimeout(function() {
       window.location.reload();
