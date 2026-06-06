@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.8",
+  "version": "v1.39.9",
   "released": "2026-06-07",
   "notes": [
-    "🎨 v1.39.8 — Vue OSM utilise maintenant l'icône 🌍 (globe) au lieu de 🗺️, pour éviter le conflit visuel avec les boutons Légende et Itinéraire qui gardent leur 🗺️."
+    "📋 v1.39.9 — Sync header version de la page Audit Réseau (resté figé à v1.39.0 pendant tous les hotfixes v1.39.1 à v1.39.8)."
   ]
 }
