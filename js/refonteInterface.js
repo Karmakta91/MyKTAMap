@@ -193,13 +193,14 @@
       '<span class="kta-refonte-counter kta-refonte-counter-histoire" id="kta-refonte-counter-histoire" title="Mode Histoire — note libre + PDF" role="button" tabindex="0">' +
         '<span class="kta-refonte-counter-icon">📖</span>' +
       '</span>' +
-      // 🆕 v1.39.0 — Bouton 🗺️ Vue OSM. Visible UNIQUEMENT si le plan a un
+      // 🆕 v1.39.0 — Bouton 🌍 Vue OSM. Visible UNIQUEMENT si le plan a un
       // georef GPS valide ET que l'user a opt-in dans Configuration home.
       // Cliquer ouvre la modale OSM (plan calibré projeté sur OpenStreetMap).
-      // Le bouton montre/cache se fait via _refreshOsmButtonVisibility au boot
-      // et sur kta:osmOptInChange. Cf js/osmView.js.
+      // 🎨 v1.39.8 — Emoji change de 🗺️ vers 🌍 pour éviter le conflit visuel
+      // avec les boutons Légende (sidebar gauche) et Itinéraire (groupe Iti)
+      // qui utilisent déjà 🗺️. Le globe 🌍 colle bien à OSM (surface monde).
       '<span class="kta-refonte-counter kta-refonte-counter-osm" id="kta-refonte-counter-osm" title="Vue OSM — plan au-dessus d\'OpenStreetMap" role="button" tabindex="0" style="display:none;">' +
-        '<span class="kta-refonte-counter-icon">🗺️</span>' +
+        '<span class="kta-refonte-counter-icon">🌍</span>' +
       '</span>' +
       // 🆕 v1.35.0 — Bouton 🚨 Mode Sortie d\'urgence. Click ouvre la modale
       // qui identifie la sortie la plus proche (pathfinder + tags

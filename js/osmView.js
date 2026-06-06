@@ -215,7 +215,7 @@
     overlay.innerHTML =
       '<div class="kta-readme-modal-boite" style="max-width:1200px; width:96vw; height:90vh; display:flex; flex-direction:column;">' +
         '<div class="kta-readme-modal-header">' +
-          '<span class="kta-readme-modal-titre">🗺️ Vue OSM — plan sur OpenStreetMap</span>' +
+          '<span class="kta-readme-modal-titre">🌍 Vue OSM — plan sur OpenStreetMap</span>' +
           '<button class="kta-panneau-close" type="button" id="kta-osm-close" aria-label="Fermer">&times;</button>' +
         '</div>' +
         '<div style="display:flex; gap:10px; align-items:center; padding:8px 14px; background:rgba(140,180,255,0.06); border-bottom:1px solid rgba(140,180,255,0.18); font-size:12.5px; color:#c8d0e0;">' +
@@ -364,7 +364,7 @@
     }
     if (!isOptedIn()) {
       const yes = confirm(
-        "🗺️ Vue OSM\n\n" +
+        "🌍 Vue OSM\n\n" +
         "Cette action contacte tile.openstreetmap.org pour afficher la surface (réseau routier, bâtiments…) sous ton plan calibré GPS.\n\n" +
         "Active l'autorisation OSM ?\n" +
         "(Tu peux la révoquer à tout moment depuis ⚙️ Configuration home.)"

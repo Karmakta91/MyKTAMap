@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.7",
+  "version": "v1.39.8",
   "released": "2026-06-07",
   "notes": [
-    "📋 v1.39.7 — Doc Audit Réseau enrichi : ajout de tile.openstreetmap.org à la liste blanche principale + nouvelle section dédiée qui détaille les 3 conditions strictes d'activation (georef + opt-in + clic modale) et les garanties privacy. Aucun changement de comportement, juste de la transparence sur ce qui a été fait en v1.39.0."
+    "🎨 v1.39.8 — Vue OSM utilise maintenant l'icône 🌍 (globe) au lieu de 🗺️, pour éviter le conflit visuel avec les boutons Légende et Itinéraire qui gardent leur 🗺️."
   ]
 }
