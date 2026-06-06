@@ -1,7 +1,7 @@
 {
-  "version": "v1.39.3",
+  "version": "v1.39.4",
   "released": "2026-06-06",
   "notes": [
-    "🐛 v1.39.3 — Hotfix Vue OSM #3 : le bouton 'Centrer sur le plan' générait une erreur TypeError. Cause : L.layerGroup utilisé au lieu de L.featureGroup, mauvais constructeur Leaflet. Le centrage automatique au boot de la modale OSM marche maintenant."
+    "📴 v1.39.4 — Le bouton 🗺️ Vue OSM se masque automatiquement quand tu es hors-ligne (Wi-Fi/4G coupés). Réapparaît dès que le réseau revient. Évite de cliquer pour rien quand OSM ne peut pas charger ses tiles."
   ]
 }

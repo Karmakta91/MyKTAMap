@@ -120,9 +120,17 @@
     try { return !!(window.IncognitoMode && window.IncognitoMode.isActive && window.IncognitoMode.isActive()); }
     catch(e) { return false; }
   }
+  // 🐛 v1.39.4 (KARMA "j'affiche pas le bouton si on a pas internet") —
+  // navigator.onLine est mis à false par le navigateur quand il détecte
+  // qu'on est offline (Wi-Fi coupé, 4G perdue, mode avion). Sans internet
+  // les tiles OSM ne se chargent pas, le bouton n'a aucun sens. Le polling
+  // 2s de refonteInterface.js détectera le retour online automatiquement.
+  function _isOnline() {
+    return (typeof navigator === "undefined") || navigator.onLine !== false;
+  }
 
   function isAvailable() {
-    return _hasGeoref() && isOptedIn() && !_isStrictOfflineOn() && !_isIncognitoOn();
+    return _hasGeoref() && isOptedIn() && !_isStrictOfflineOn() && !_isIncognitoOn() && _isOnline();
   }
 
   // =========================
@@ -346,6 +354,12 @@
       if (window.OOMGuard && window.OOMGuard.showToast) {
         window.OOMGuard.showToast("🥸 Mode incognito — Vue OSM désactivée (appel sortant interdit).", "warn");
       } else { alert("Mode incognito — Vue OSM désactivée."); }
+      return;
+    }
+    if (!_isOnline()) {
+      if (window.OOMGuard && window.OOMGuard.showToast) {
+        window.OOMGuard.showToast("📴 Hors-ligne détecté — Vue OSM indisponible (tiles OSM réseau requises).", "warn");
+      } else { alert("Hors-ligne — Vue OSM nécessite Internet pour charger les tiles OSM."); }
       return;
     }
     if (!isOptedIn()) {
