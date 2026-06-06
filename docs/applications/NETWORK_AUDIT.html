@@ -174,7 +174,7 @@
   <h1>🔒 MyKTAMap — Audit réseau &amp; Confidentialité</h1>
 
   <p class="meta">
-    Page de transparence technique. À jour pour la version <strong>v1.36.1</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
+    Page de transparence technique. À jour pour la version <strong>v1.37.0</strong> (6 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).<br>
     Ce document explique <strong>exactement</strong> ce que l'application fait sur le réseau,
     <strong>comment vérifier toi-même</strong> que rien ne fuit, et <strong>comment activer
     le mode hors-ligne strict</strong> si tu veux une garantie active côté navigateur.
@@ -576,6 +576,21 @@
   <h2>📋 Historique des changements de ce document</h2>
 
   <h3>🆕 Notes détaillées par version (du plus récent au plus ancien)</h3>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.37.0 (Calibration Nord per-plan + PDF Histoire générateur/Réglages + fix CSS light planner-mode-btn)</strong> : Trois changements 100% client-side. <strong>(A) Nord per-plan</strong> : nouveau champ optionnel <code>plan-config.json &gt; plan.northOffsetDeg</code> (default absent = 0 = comportement v1.36.x intact). Cascade lecture LS <code>myktamap_plan_prefs_PLANID.northOffsetDeg</code> → <code>APP_CONFIG.northOffsetDeg</code> → 0. Picker 2 clics Sud→Nord dans Réglages map mode (nouveau module <code>js/northPicker.js</code> autonome) + saisie directe + bouton reset. Tracker + vecteur déplacement adaptés via nouvelle helper <code>_getPlanRelHeading()</code> ; la boussole physique continue de pointer le Nord vrai (par design). <strong>(B) PDF Histoire</strong> : section dédiée dans générateur avancé (embed <code>data/histoire.pdf</code> + écriture <code>plan.histoirePdf</code>). Pas de duplication dans Réglages map mode : le mécanisme d'import côté session existe déjà dans la modale 📖 Mode Histoire (onglet PDF, v1.34.20 → IDB locale). <strong>(C) Fix CSS</strong> : box-shadow + font-weight ajoutés à <code>.kta-planner-mode-btn.kta-actif</code> en theme light (manquait le halo accent du dark mode). <strong>Impact réseau</strong> : ZÉRO — aucun nouvel appel sortant, aucune ressource externe, aucune modification de la liste blanche <code>connect-src</code>. PDF Histoire lu localement (FileReader → IDB), jamais transmis. Toutes les prefs persistées en LS / IDB côté client uniquement.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression, rétrocompat plans v1.36.x stricte (champs absents → comportement identique).
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.36.2 (Fix ronds intersections + déplacement option per-plan)</strong> : Deux changements 100% client-side. <strong>(1) Fix bug</strong> : sur les plans denses (> 200 tracés type Catacombes 2024+), les cercles aux intersections de tracés disparaissaient silencieusement — cause racine = seuil interne <code>ROAD_INTERSECTION_MAX_ROADS = 200</code> dans <code>js/road.js</code> qui faisait un short-circuit muet du calcul. Seuil remonté à <strong>500</strong>. <strong>(2) Déplacement UX</strong> : le toggle « ⚪ Afficher les ronds aux intersections » a été retiré de Configuration home et déplacé per-plan dans ⚙️ Réglages mode carte. Persistance via clé localStorage <code>myktamap_plan_prefs_PLANID</code> + cascade per-plan→global→default. <strong>Impact réseau</strong> : ZÉRO — aucun nouvel appel, stockage local uniquement (jamais transmis à un serveur tiers).
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
+
+  <p class="meta" style="margin-top:6px;">
+    <strong>v1.36.1 (Guide d'installation Docker pas-à-pas FR + EN)</strong> : Nouveau document <code>docs/applications/DOCKER_INSTALL.md</code> + <code>.en.md</code> (~600 lignes chacun), consultable hors-ligne. Détaille l'installation Docker Desktop sur Windows/Mac/Linux + Raspberry Pi 64-bit, le démarrage du daemon, les 3 options pour lancer MyKTAMap (image ghcr.io, build local depuis ZIP, clone repo), l'acceptation du cert auto-signé selon le navigateur, options avancées, troubleshooting complet, alternatives sans Docker. Ajouté à <code>sw.js > ASSETS_TO_CACHE</code>. <strong>Impact réseau</strong> : ZÉRO — pure refonte éditoriale + cache documentation.
+    <strong>Liste blanche <code>connect-src</code> inchangée</strong> : <code>'self'</code> + <code>https://www.gstatic.com</code>. <strong>Verdict</strong> : ✅ aucune régression.
+  </p>
 
   <p class="meta" style="margin-top:6px;">
     <strong>v1.36.0 (Package Docker self-host — image OCI ghcr.io)</strong> : Nouvelle image Docker auto-suffisante publiée sur <code>ghcr.io/karmakta91/myktamap</code> à chaque tag. Multi-arch amd64+arm64. Base nginx:alpine + cert TLS auto-signé généré au boot. Config Nginx réutilise la CSP stricte de prod. Ports non-privilégiés 8080 (redirect HTTPS) + 8443. Workflow CI automatique sur tag. <strong>Impact réseau</strong> : ZÉRO côté code (image embarque exactement le même JS/CSS que la prod). Distribution alternative au ZIP selfhost. Sécurité renforcée : Permissions-Policy strict, X-Frame-Options DENY, pas de HSTS (cert auto-signé).

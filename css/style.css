@@ -16355,11 +16355,29 @@ html.kta-theme-light .kta-planner-mode-btn:hover {
   background: var(--kta-light-accent-bg) !important;
   color: var(--kta-light-accent-hover) !important;
 }
+/* 🐛 v1.37.0 fix3 — KARMA "je parle du remplissage du mode" : le bouton
+   actif en theme clair n'a pas de fond visible. fix2 avait passé en orange
+   saturé mais le cache CSS PWA peut servir l'ancienne version. Pour ce
+   fix : sélecteur ULTRA-spécifique (#kta-planner-corps en plus) + couleur
+   orange brûlée bien marquée + valeur HEX en dur (pas de var pour éviter
+   cascade tordue) + double sélecteur body+html. Si KARMA voit toujours
+   pas le remplissage après ce fix, c'est qu'il sert encore l'ancien CSS
+   du cache PWA → hard-refresh requis (Ctrl+Shift+R) ou ré-update SW. */
+body.kta-theme-light #kta-planner-corps .kta-planner-mode-btn.kta-actif,
+html.kta-theme-light #kta-planner-corps .kta-planner-mode-btn.kta-actif,
 body.kta-theme-light .kta-planner-mode-btn.kta-actif,
 html.kta-theme-light .kta-planner-mode-btn.kta-actif {
-  background: var(--kta-light-accent) !important;
-  color: var(--kta-light-text) !important;
-  border-color: var(--kta-light-border-strong) !important;
+  background: #cc7a00 !important;            /* orange brûlé saturé, contraste max sur fond beige */
+  background-image: linear-gradient(180deg, #d9881a 0%, #b86a00 100%) !important;
+  color: #ffffff !important;
+  border: 2px solid #8a4f00 !important;      /* orange foncé pour la bordure (foncé ≠ accent) */
+  box-shadow:
+    0 0 0 2px rgba(204, 122, 0, 0.30),
+    0 2px 6px rgba(138, 79, 0, 0.50),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25)
+  !important;
+  font-weight: 700 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.30);
 }
 
 body.kta-theme-light .kta-planner-mode-hint,
@@ -18211,5 +18229,98 @@ html.kta-theme-light .kta-voice-aide-list li strong {
     /* 64 px = largeur sidebar droit (~52 px) + petite marge respiration */
     right: calc(64px + env(safe-area-inset-right, 0px));
   }
+}
+
+/* ===========================================================
+   🧭 v1.37.0 — Picker calibration Nord 2 clics (northPicker.js)
+   Overlay flottant en bas-centre + marqueur "N" sur la map.
+   Z-index 99998 (juste sous 99999 splash, au-dessus modales).
+   =========================================================== */
+.kta-north-picker-overlay {
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 99998;
+  display: none;
+  max-width: 90vw;
+  pointer-events: auto;
+}
+.kta-north-picker-card {
+  background: rgba(26, 31, 46, 0.96);
+  border: 1px solid rgba(244, 197, 66, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  color: #e8eaf0;
+  font-size: 13px;
+  min-width: 320px;
+}
+.kta-north-picker-title {
+  font-weight: 700;
+  color: #f4c542;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.kta-north-picker-step {
+  margin-bottom: 10px;
+  line-height: 1.45;
+  color: #c8d0e0;
+}
+.kta-north-picker-step strong {
+  color: #f4c542;
+}
+.kta-north-picker-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.kta-north-picker-actions .kta-btn {
+  flex: 1 1 auto;
+  min-width: 90px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+}
+.kta-north-picker-actions .kta-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* Marqueur "N" en bout de flèche pointillée */
+.kta-north-picker-n-icon {
+  background: transparent;
+  border: none;
+}
+.kta-north-picker-n-icon span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #f4c542;
+  color: #1a1f2e;
+  font-weight: 800;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(244, 197, 66, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
+  font-size: 14px;
+}
+/* Variant thème clair */
+body.kta-theme-light .kta-north-picker-card,
+html.kta-theme-light .kta-north-picker-card {
+  background: rgba(255, 252, 240, 0.97) !important;
+  color: var(--kta-light-text) !important;
+  border-color: var(--kta-light-accent-hover) !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18) !important;
+}
+body.kta-theme-light .kta-north-picker-title,
+html.kta-theme-light .kta-north-picker-title {
+  color: var(--kta-light-accent-hover) !important;
+}
+body.kta-theme-light .kta-north-picker-step,
+html.kta-theme-light .kta-north-picker-step {
+  color: var(--kta-light-text) !important;
+}
+body.kta-theme-light .kta-north-picker-step strong,
+html.kta-theme-light .kta-north-picker-step strong {
+  color: var(--kta-light-accent-hover) !important;
 }
 

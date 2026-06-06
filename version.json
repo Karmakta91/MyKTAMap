@@ -1,7 +1,7 @@
 {
-  "version": "v1.36.1",
+  "version": "v1.37.0",
   "released": "2026-06-06",
   "notes": [
-    "📖 v1.36.1 — Nouveau guide pas-à-pas pour installer Docker et faire tourner MyKTAMap chez toi (Windows/Mac/Linux/Raspberry Pi), avec troubleshooting des erreurs courantes (cert auto-signé, conflit de port, WSL 2…). Disponible en FR et EN, consultable hors-ligne."
+    "🧭 v1.37.0 — Tu peux calibrer le Nord de chaque plan (Réglages map mode → bouton 📐 Calibrer ou champ angle). Le tracker s'adapte quand le haut du plan n'est pas le Nord. Pour les auteurs de plan : nouveau champ Nord et import PDF Histoire dans le générateur avancé. Bonus : fix d'affichage du switch Simple/Avancé du générateur en thème clair."
   ]
 }

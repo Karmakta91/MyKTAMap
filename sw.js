@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.36.1";
+const CACHE_NAME = "myktamap-cache-v1.37.0";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -225,6 +225,8 @@ const ASSETS_TO_CACHE = [
   // 🆕 v1.31.0 (P3 Lot 7) : Module extrait de interface.js — calibrage
   // échelle + reset complet + mise à jour douce + helpers ping
   "./js/interfaceMaintenance.js",
+  // 🧭 v1.37.0 : Picker calibration Nord 2 clics (chargé avant interfaceConfig)
+  "./js/northPicker.js",
   // 🆕 v1.31.0 (P3 Lot 9 — DERNIER LOT) : Module extrait de interface.js
   // — modale Réglages + sections Perf ULTRA + M-LVL + Géoref + helpers
   "./js/interfaceConfig.js",

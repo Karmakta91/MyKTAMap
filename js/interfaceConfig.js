@@ -838,13 +838,63 @@ function afficherConfig() {
               </span>
             </span>
           </label>
-          <!-- 🆕 v1.9.2 : le toggle "⚪ Afficher les ronds aux intersections
-               de tracés" était initialement aussi ici, retiré sur feedback
-               KARMA "enleve du menu carte la possibilité activer ou non les
-               rond, reste uniquement sur le home". L'option reste accessible
-               UNIQUEMENT depuis ⚙️ Configuration du loader/home (cf. index.html
-               > #loaderShowIntersectionsCb). Logique : c'est une pref d'affichage
-               qui survit aux changements de plan, son toggle "à la racine" suffit. -->
+          <!-- v1.9.2 to v1.36.2 : le toggle "Afficher les ronds aux
+               intersections de tracés" REVIENT ici, mais cette fois en
+               PER-PLAN (KARMA : enleve du home, met le dans la config du plan).
+               La pref est stockée par plan dans myktamap_plan_prefs_PLANID,
+               avec fallback sur la pref globale historique. Le handler appelle
+               window.setPlanShowsIntersections() qui persiste + re-render. -->
+          <label class="kta-perf-ultra-row" id="cfg_show_intersections_row" style="margin-top:8px;">
+            <input type="checkbox" id="cfg_show_intersections">
+            <span class="kta-perf-ultra-text">
+              <span class="kta-perf-ultra-label">⚪ Afficher les ronds aux intersections (ce plan)</span>
+              <span class="kta-perf-ultra-hint">
+                Cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.).
+                <strong>Décocher</strong> pour aérer visuellement les plans très denses, ou
+                si le calcul ralentit l'affichage. <strong>Effet immédiat</strong>, sauvegardé
+                par plan (un autre plan garde son propre réglage).
+              </span>
+            </span>
+          </label>
+
+          <!-- 🧭 v1.37.0 — Calibration Nord per-plan. Utile quand le HAUT du
+               plan n'est PAS le Nord vrai (photo aérienne avec cadrage
+               arbitraire, plan cataphile sans rosace alignée). Cascade
+               lecture : LS prefs-plan > APP_CONFIG.northOffsetDeg (mappé
+               depuis plan-config.json) > 0. Setter notifie via event
+               kta:northOffsetChange → re-render tracker à chaud.
+               Convention : 0° = Nord = haut du plan, sens HORAIRE.
+               UI : champ angle toujours visible (saisie directe) + bouton
+               picker 2 clics Sud→Nord (WYSIWYG sur la map courante) + reset. -->
+          <div id="cfg_north_block" class="kta-perf-ultra-row" style="margin-top:10px; display:block; padding:8px; border:1px solid rgba(255,255,255,0.06); border-radius:8px; background:rgba(255,255,255,0.02);">
+            <div class="kta-perf-ultra-text" style="margin-bottom:6px;">
+              <span class="kta-perf-ultra-label">🧭 Calibration du Nord (ce plan)</span>
+              <span class="kta-perf-ultra-hint" style="display:block;">
+                Angle CW entre le HAUT du plan et le Nord vrai. <strong>0° = Nord en haut</strong>
+                (par défaut). Si la flèche Nord pointe vers la droite du plan → 90°. Appliqué
+                au tracker (rotation icône + sens de marche) ; la boussole continue d'afficher
+                le Nord magnétique vrai indépendamment.
+              </span>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <input type="number" id="cfg_north_offset_input" min="0" max="359" step="1" value="0"
+                     style="flex:0 0 90px; padding:6px 8px; border-radius:6px;
+                            background:rgba(255,255,255,0.06); color:#e8eaf0;
+                            border:1px solid rgba(255,255,255,0.12); font-weight:600;">
+              <span style="color:#8892a4; font-size:12px;">°</span>
+              <button type="button" id="cfg_north_picker_btn" class="kta-btn"
+                      style="flex:1 1 auto; min-width:140px;">📐 Calibrer (2 clics)</button>
+              <button type="button" id="cfg_north_reset_btn" class="kta-btn"
+                      style="flex:0 0 auto;" title="Retour au défaut (cascade plan-config / 0°)">↺ Reset</button>
+            </div>
+            <div id="cfg_north_status" style="margin-top:4px; font-size:11.5px; color:#8892a4; min-height:14px;"></div>
+          </div>
+
+          <!-- 📖 v1.37.0 — Note : l'import PDF Histoire côté session reste
+               accessible depuis la modale Mode Histoire (📖 du status bar,
+               feature v1.34.20). Pas de doublon dans Réglages — l'embarquement
+               durable cross-utilisateurs se fait depuis le générateur avancé
+               (plan-config.json > plan.histoirePdf). -->
 
           <!-- 🆕 v1.21.0-fix3 (KARMA) : bouton "🎬 Activer le mode présentation"
                DÉPLACÉ TOUT EN HAUT de la modale Réglages (avant la 1ère section)
@@ -1055,6 +1105,123 @@ function afficherConfig() {
       // dans le HTML). Pas de message UI (ne pas frustrer l'user Firefox).
     }
   }
+
+  // 🆕 v1.36.2 : toggle "⚪ Afficher les ronds aux intersections (ce plan)".
+  // L'option est PER-PLAN — déplacée de Configuration home suite feedback KARMA.
+  // Lecture initiale via getPlanShowsIntersections() (fallback global → true).
+  // Change handler : setPlanShowsIntersections() persiste LS per-plan + re-render.
+  const showIntersectCb = document.getElementById("cfg_show_intersections");
+  if (showIntersectCb) {
+    try {
+      const initialValue = (typeof window.getPlanShowsIntersections === "function")
+        ? window.getPlanShowsIntersections()
+        : true;
+      showIntersectCb.checked = !!initialValue;
+    } catch(e) { showIntersectCb.checked = true; }
+
+    showIntersectCb.addEventListener("change", function() {
+      if (typeof window.setPlanShowsIntersections === "function") {
+        window.setPlanShowsIntersections(null, showIntersectCb.checked);
+      }
+    });
+  }
+
+  // 🧭 v1.37.0 — Calibration Nord per-plan.
+  // Trois entrées d'action :
+  //   1. Champ angle numérique (saisie directe, blur → setPlanNorthOffset)
+  //   2. Bouton "📐 Calibrer (2 clics)" → ferme la modale et lance le picker
+  //      Sud → Nord sur la map. Retour de promesse = angle calculé, on
+  //      ré-ouvre la modale pour montrer la valeur (UX KARMA).
+  //   3. Bouton "↺ Reset" → resetPlanNorthOffset() retombe sur cascade.
+  // Update du status text à chaque action pour confirmation visuelle.
+  (function _initNorthCalibration() {
+    const block      = document.getElementById("cfg_north_block");
+    const input      = document.getElementById("cfg_north_offset_input");
+    const pickerBtn  = document.getElementById("cfg_north_picker_btn");
+    const resetBtn   = document.getElementById("cfg_north_reset_btn");
+    const status     = document.getElementById("cfg_north_status");
+    if (!block || !input || !pickerBtn || !resetBtn) return;
+
+    function _refreshStatus() {
+      if (!status) return;
+      let cur = 0;
+      try {
+        if (typeof window.getPlanNorthOffset === "function") {
+          cur = window.getPlanNorthOffset();
+        }
+      } catch(e) {}
+      input.value = Math.round(cur);
+      if (cur === 0) {
+        status.textContent = "ℹ️ Nord = haut du plan (configuration par défaut).";
+        status.style.color = "#8892a4";
+      } else {
+        status.textContent = "✅ Nord calibré à " + cur.toFixed(1) + "° du haut du plan (sens horaire).";
+        status.style.color = "#f4c542";
+      }
+    }
+    _refreshStatus();
+
+    input.addEventListener("change", function() {
+      const v = parseFloat(input.value);
+      if (!isFinite(v)) { _refreshStatus(); return; }
+      if (typeof window.setPlanNorthOffset === "function") {
+        window.setPlanNorthOffset(null, v);
+      }
+      _refreshStatus();
+    });
+
+    resetBtn.addEventListener("click", function() {
+      if (typeof window.resetPlanNorthOffset === "function") {
+        window.resetPlanNorthOffset(null);
+      }
+      _refreshStatus();
+    });
+
+    pickerBtn.addEventListener("click", function() {
+      if (typeof window.openNorthCalibrationPicker !== "function") {
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast("⚠️ Picker Nord indisponible (module pas chargé).", "warn");
+        }
+        return;
+      }
+      // 🐛 v1.37.0 hotfix — Au lieu d'essayer de fermer la modale (pas de
+      // fonction publique), on suit le pattern existant du picker géoref
+      // (cf l~520) : on CACHE la modale Réglages via display:none le temps
+      // du picker, puis on la remontre à la fin. Sinon la modale (z>>map)
+      // capture les clics et le picker semble ne rien faire.
+      const cfgModal = document.getElementById("kta-cfg-modal");
+      const _showCfgBack = function() {
+        if (cfgModal) cfgModal.style.display = "";
+      };
+      if (cfgModal) cfgModal.style.display = "none";
+      window.openNorthCalibrationPicker().then(function(deg) {
+        _showCfgBack();
+        if (deg == null) return;  // annulé / pas assez de distance
+        if (typeof window.setPlanNorthOffset === "function") {
+          window.setPlanNorthOffset(null, deg);
+        }
+        // _refreshStatus sera appelé via l'event kta:northOffsetChange
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast("🧭 Nord calibré à " + deg.toFixed(1) + "°", "info");
+        }
+      }).catch(function(e) {
+        _showCfgBack();
+        console.warn("[NorthPicker] échec :", e);
+        if (window.OOMGuard && window.OOMGuard.showToast) {
+          window.OOMGuard.showToast("⚠️ " + (e && e.message ? e.message : "Picker indisponible"), "warn");
+        }
+      });
+    });
+
+    // Re-render à chaud quand un autre composant change le Nord
+    window.addEventListener("kta:northOffsetChange", _refreshStatus);
+  })();
+
+  // 📖 v1.37.0 — Pas de bouton d'import PDF Histoire dans Réglages : le
+  // mécanisme existant (modale Mode Histoire 📖 → onglet PDF → bouton import,
+  // feature v1.34.20) reste l'entrée unique côté session. Éviter le doublon
+  // UX. L'embarquement durable cross-utilisateurs se fait via le générateur
+  // avancé (`plan-config.json > plan.histoirePdf`).
 
   // 🆕 v1.34.26 : toggle "📳 Vibration haptique".
   // Visible UNIQUEMENT si navigator.vibrate est supporté (Android oui,

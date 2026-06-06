@@ -391,8 +391,9 @@ On the home page, a **⚙️ Configuration button** in the loader header (next t
 4. **🔒 Privacy & Audit** — section dedicated to transparency: live network journal, "What does the app do on the network?" doc, and "Strict offline mode" toggle. See dedicated section below.
 
 5. **🎨 Display** — interface toggles:
-   - **⚪ Show circles at path intersections** — displays a colored solid circle at the crossing of 2 paths. Uncheck to visually clear very dense maps. Immediate effect.
    - **🔆 Keep screen on** — prevents your screen from auto-sleeping while MyKTAMap is open (Wake Lock API). Useful on cataphile outings to avoid having to touch the phone every 30 sec. Auto re-acquire on return from background (visibilitychange). Toggle automatically hidden on browsers that don't support the API (Firefox notably). The same toggle is also accessible in **⚙️ Settings** in map mode (see dedicated section).
+
+> 💡 **Since v1.36.2**: the "Show circles at path intersections" option is **no longer in Configuration home** but in **⚙️ Settings in map mode** (per-plan). Each map now has its own setting — handy to disable circles only on your very dense maps without touching the others.
 
 6. **📚 Server maps** — **"🚫 Do not load server maps at startup"** checkbox:
    - **Disables auto-discovery** of the `data/index.json` file at app boot — the app will no longer query the server to list demo maps or public hosted maps.
@@ -2672,7 +2673,7 @@ If despite Performance mode, your map still crashes (typically 4000+ × 2000+ pi
 |---|---|---|
 | 🪜 **Decimate paths on zoom-out** | Simplifies polylines on zoom out | Less smooth paths on zoom-out |
 | ⚡ **Disable zoom/pan animations** | Instant transitions instead of animated | More abrupt visual — **reload required** |
-| 🎯 **Disable intersection circles** | No more circles at crossings beyond 50 roads (vs 200) | Crossings less visible |
+| 🎯 **Disable intersection circles** | No more circles at crossings beyond 50 roads (vs 500) | Crossings less visible |
 | 🚫 **Disable popups on data layers** | No popup on click on layer markers (puits, etc.) | Use 🔍 Search to interact |
 | 🐢 **Slow auto-save (30s)** | Save every 30s instead of 1.5s | Risk of losing 30s of edits if crash |
 | 👁️ **Only render visible paths** | Skip off-screen roads | Light pop-in on pan |
@@ -2752,10 +2753,13 @@ Access the settings by clicking **⚙️**:
 - **Step detection**: sensitivity (`stepThreshold`), step size (`stepLength`), anti-bounce cooldown
 - **Scale (px/m)** with **🎯 Calibrate** button: computes the correct scale from a measured distance
 
-### 🔍 Display (global preference, shared between all maps)
-- **Zoom-adaptive icons** (`scaledMarkers`): the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
-- **Show circles at path intersections**: solid colored circle at the crossing of 2 paths. Uncheck to visually clear very dense maps. Immediate effect (no reload).
-- **🔆 Keep screen on**: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
+### 🔍 Display
+- **Zoom-adaptive icons** (`scaledMarkers`) — *global preference*: the point icons (shafts, accesses, signage, etc.) keep a constant size relative to the map. On zoom-out, they shrink; on zoom-in, they grow. Reload required on toggle.
+- **⚪ Show circles at path intersections (this map)** — *per-plan since v1.36.2*: solid colored circle at the crossing of 2 paths (green × purple → yellow, etc.). Uncheck to visually clear very dense maps, or if the computation slows down rendering. **Immediate effect**, saved per map (another map keeps its own setting). Before v1.36.2 this option was in Configuration home and global to all maps.
+- **🧭 North calibration (this map)** — *per-plan since v1.37.0*: useful when the TOP of the map is **not** the true North (aerial photo with arbitrary framing, cataphile map without aligned compass rose). Angle field [0,360[ in degrees or button **📐 Calibrate (2 clicks)** which opens a WYSIWYG picker: click first the SOUTH of the map, then the NORTH, a dashed Sud→Nord arrow appears and the angle is auto-computed. **Effect**: tracker icon rotation + walking direction adapt → the tracker points in the right direction RELATIVE TO THE MAP. The physical compass 🧭 keeps pointing to the real magnetic North (= expected behavior of a compass). **Saved per map**, **immediate effect** without reload. ↺ Reset button to return to default (0 = North toward top of map).
+
+> 💡 **Map author v1.37.0**: to durably embed the North OR a **History PDF** in the map ZIP (cross-users), use the **advanced generator** (field "🧭 North orientation" in Tracking + optional "📖 History PDF" section). For a History PDF loaded only in your session (your browser), keep using the import button in the **📖 History Mode** modal (status bar) — unchanged since v1.34.20.
+- **🔆 Keep screen on** — *global preference*: enables the Wake Lock API to prevent automatic screen sleep while the app is open. Auto re-acquisition on return from background. Hidden if the browser doesn't support the API. The same toggle is also available in **⚙️ Configuration** on the home page.
 
 ### 🎬 Presentation mode
 

@@ -164,7 +164,11 @@ function _applyRotationToTrackerMarker() {
   // d'orientation écran (landscape, portrait inversé). Sinon en landscape
   // l'icône pointait vers le haut DEVICE au lieu du haut VISUEL → décalage
   // de 90° perçu comme un bug par l'user.
-  const heading = _getCorrectedHeading();
+  // 🧭 v1.37.0 : passe par _getPlanRelHeading() qui ajoute en plus l'offset
+  // Nord du plan calibré (default 0 si plan Nord-haut = rétrocompat stricte).
+  // Sur plan avec Nord décalé, l'icône pointe alors dans la bonne direction
+  // RELATIVE AU PLAN (= où l'user va vu de dessus sur la carte).
+  const heading = _getPlanRelHeading();
 
   // ===== 1. SMOOTHING EXPONENTIEL =====
   // smoothed = (1 - α) * smoothed_prev + α * heading
@@ -463,9 +467,37 @@ function _getScreenAngleNormalized() {
 // bord droit (pour θ=90), l'ancien bord bas (θ=180), etc. Le heading
 // visuel = direction vers laquelle ce bord pointe en monde = direction du
 // bord court device "haut" (= heading brut) + offset angulaire de θ.
+//
+// 🧭 v1.37.0 — Ce heading reste en REPÈRE MONDE (= Nord vrai). Il est utilisé
+// par la boussole physique (compass.js) qui DOIT toujours pointer vers le
+// vrai Nord magnétique, peu importe l'orientation du plan. Pour le repère
+// PLAN (icône tracker sur la map, vecteur déplacement raster), utiliser
+// _getPlanRelHeading() qui ajoute l'offset Nord du plan calibré.
 function _getCorrectedHeading() {
   if (typeof direction !== "number" || isNaN(direction)) return 0;
   return ((direction + _screenAngle) % 360 + 360) % 360;
+}
+
+// 🧭 v1.37.0 — Heading projeté dans le REPÈRE PLAN. Ajoute l'offset Nord
+// calibré (per-plan) au heading monde. Default 0 → strictement identique
+// à _getCorrectedHeading() (rétrocompat plans v1.36.x).
+//   - offset = 0   : plan orienté Nord-haut (cas standard)
+//   - offset = 90  : Nord vrai pointe vers la DROITE du plan
+//                    → user marchant au Nord doit voir son icône tracker
+//                      pointer vers la DROITE du plan, soit rotation 90°
+// Utilisé par :
+//   - _applyRotationToTrackerMarker (rotation icône tracker dans la map)
+//   - _avancerRaster (vecteur de déplacement pas-à-pas)
+//   - roadGraph (heading map-matching côté repère plan)
+function _getPlanRelHeading() {
+  const base = _getCorrectedHeading();
+  let northOffset = 0;
+  try {
+    if (typeof window.getPlanNorthOffset === "function") {
+      northOffset = window.getPlanNorthOffset() || 0;
+    }
+  } catch(e) {}
+  return ((base + northOffset) % 360 + 360) % 360;
 }
 
 // Sync de _screenAngle au boot du module + listener pour les changements
@@ -498,6 +530,15 @@ function _initScreenOrientationListener() {
   }
   // Fallback universel : event orientationchange sur window (iOS Safari, vieux Android)
   window.addEventListener("orientationchange", _onScreenChange);
+
+  // 🧭 v1.37.0 — Re-render à chaud de l'icône tracker quand l'user calibre
+  // le Nord (modifie northOffsetDeg). Le tracker peut être à l'arrêt : sans
+  // ça l'icône resterait orientée selon l'ancien offset jusqu'au prochain
+  // event device. _applyRotationToTrackerMarker lit _getCorrectedHeading()
+  // qui prend déjà en compte le nouvel offset → suffit de re-render.
+  window.addEventListener("kta:northOffsetChange", function() {
+    try { _applyRotationToTrackerMarker(); } catch(e) {}
+  });
 }
 
 // Log throttle pour ne pas spammer la console (cf debug.js §11) : 1 log/s max
@@ -643,7 +684,10 @@ function _avancerRaster() {
   // rotation de l'icône (cf _applyRotationToTrackerMarker). Avant on utilisait
   // `direction` brut → en PAYSAGE l'icône pointait bien mais le pas partait de
   // travers (décalé de l'angle écran). Invisible en portrait (_screenAngle=0).
-  let rad = _getCorrectedHeading() * Math.PI / 180;
+  // 🧭 v1.37.0 : _getPlanRelHeading ajoute aussi l'offset Nord du plan
+  // calibré → le vecteur déplacement reste cohérent avec l'icône tracker
+  // sur les plans pas-Nord-haut.
+  let rad = _getPlanRelHeading() * Math.PI / 180;
 
   let newX = position.x + distance * Math.sin(rad);
   let newY = position.y - distance * Math.cos(rad);
@@ -676,7 +720,10 @@ function _avancerSurGraphe() {
   // 1) PDR brut (même calcul que _avancerRaster).
   const scale      = APP_CONFIG.scale;
   const distance   = APP_CONFIG.stepLength * scale;
-  const headingDeg = _getCorrectedHeading();              // cap VISUEL (cf _avancerRaster)
+  // 🧭 v1.37.0 : cap dans le repère PLAN (= avec offset Nord calibré).
+  // Cohérent avec _avancerRaster ET avec le matching RoadGraph qui travaille
+  // déjà en coord plan.
+  const headingDeg = _getPlanRelHeading();
   const rad        = headingDeg * Math.PI / 180;
   const rawX = position.x + distance * Math.sin(rad);
   const rawY = position.y - distance * Math.cos(rad);
@@ -918,7 +965,21 @@ window.getCurrentHeading = function() {
   // v172 : retourne le heading CORRIGÉ selon l'orientation écran (landscape,
   // portrait inversé). Le widget boussole et l'icône tracker passent par
   // cette fonction, donc ils restent cohérents avec le haut visuel.
+  //
+  // 🧭 v1.37.0 — Reste en REPÈRE MONDE (Nord vrai). À utiliser pour la
+  // boussole physique (compass.js) qui doit toujours pointer le Nord
+  // magnétique réel. Pour le repère PLAN (mini-map mode urgence, tracker
+  // icône principale), utiliser window.getPlanRelHeading.
   return _getCorrectedHeading();
+};
+
+// 🧭 v1.37.0 — Heading projeté dans le REPÈRE PLAN (= corrected + offset Nord
+// calibré per-plan). Exposé pour les modules qui veulent rendre la rotation
+// d'un marker ou la direction de marche dans le repère du plan (mode urgence
+// emergencyMode.js, mini-cartes, exports). Default = identique à
+// getCurrentHeading() si northOffsetDeg = 0 (= rétrocompat stricte).
+window.getPlanRelHeading = function() {
+  return _getPlanRelHeading();
 };
 
 window.getTrackingPosition = function() {

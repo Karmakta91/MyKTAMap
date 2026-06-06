@@ -398,10 +398,27 @@ function afficherPlanner() {
 
             <label class="kta-cfg-label">Cooldown (ms)</label>
             <input class="kta-cfg-input" id="pl_stepCooldown" type="number" value="400">
+
+            <!-- 🧭 v1.37.0 — Calibration Nord du plan. Embed dans
+                 plan-config.json > plan.northOffsetDeg UNIQUEMENT si ≠ 0
+                 (rétrocompat stricte : plans Nord-haut → champ absent →
+                 lecteurs v1.36.x continuent de marcher à l'identique). -->
+            <label class="kta-cfg-label">
+              🧭 Orientation Nord (°)
+              <span class="kta-planner-hint">(0 = haut = Nord, sens horaire)</span>
+            </label>
+            <input class="kta-cfg-input" id="pl_northOffset" type="number" min="0" max="359" step="1" value="0">
           </div>
           <div class="kta-planner-tracking-actions">
             <button type="button" class="kta-planner-add-btn" id="pl_resetStartCenter" title="Remet la position de départ au centre du plan (W/2 × H/2)">🎯 Recentrer la position de départ</button>
           </div>
+          <p class="kta-planner-hint" style="margin:8px 0 0; font-size:11.5px; color:#8892a4;">
+            🧭 <strong>Nord</strong> : laisse 0 si le haut du plan = Nord vrai (cas standard).
+            Pour les plans dont le Nord est ailleurs (photo aérienne décalée, plan cataphile
+            sans rosace alignée), indique l'angle CW entre le haut du plan et le Nord vrai.
+            <strong>Effet</strong> : tracker (rotation + sens de marche) + boussole.
+            L'utilisateur final pourra surcharger ce réglage per-plan via ⚙️ Réglages.
+          </p>
         </div>
 
         <!-- 6. ICÔNES & TAGS -->
@@ -502,6 +519,32 @@ function afficherPlanner() {
           <div id="pl_geo_status" style="font-size:12px; color:#8892a4; margin:6px 2px 0; min-height:18px;"></div>
         </div>
 
+        <!-- 📖 v1.37.0 — PDF Histoire (optionnel, avancé). Embed dans le ZIP
+             sous data/histoire.pdf + écrit plan-config.json > plan.histoirePdf
+             = "data/histoire.pdf". Lu au runtime par js/modeHistoire.js (modale
+             Mode Histoire avec iframe PDF). Si absent : modale Histoire propose
+             import session via IDB (compat v1.34.20 inchangée). -->
+        <div class="kta-aide-section kta-pl-col-right" data-planner-advanced="1">
+          <div class="kta-aide-section-titre">📖 PDF Histoire <span class="kta-planner-hint">(optionnel)</span></div>
+          <p class="kta-planner-info">
+            PDF qui raconte l'histoire du site (genèse, plans d'archive, anecdotes…).
+            Embarqué dans le ZIP du plan, lu par le <strong>Mode Histoire</strong> (modale
+            📖 dans le status bar). Lecture <strong>100% offline</strong>, jamais transmis
+            au serveur.
+          </p>
+          <div class="kta-planner-upload-ligne">
+            <span class="kta-cfg-label">Fichier PDF</span>
+            <label class="kta-planner-upload-btn" for="pl_histoirePdf">📂 Choisir</label>
+            <input type="file" id="pl_histoirePdf" accept="application/pdf" style="display:none">
+            <span class="kta-planner-upload-nom" id="pl_histoirePdf_nom">Aucun fichier</span>
+            <button type="button" class="kta-planner-add-btn" id="pl_histoirePdf_retirer" style="display:none;">🗑 Retirer</button>
+          </div>
+          <p class="kta-planner-hint" style="margin:6px 0 0; font-size:11.5px; color:#8892a4;">
+            En <strong>mode Modifier</strong>, l'éventuel PDF existant est conservé sauf
+            si tu choisis un nouveau fichier OU cliques 🗑 Retirer.
+          </p>
+        </div>
+
         <div id="kta-planner-erreur" class="kta-conv-erreur kta-pl-col-full" style="display:none;"></div>
 
         <div class="kta-conv-actions kta-pl-col-full" style="margin-top:16px;">
@@ -572,6 +615,30 @@ function afficherPlanner() {
 
   _bindUploadLabel("pl_baseImage", "pl_baseImage_nom");
   _bindUploadLabel("pl_collision", "pl_collision_nom");
+  // 📖 v1.37.0 — PDF Histoire (générateur avancé). Sync nom uploaded +
+  // bouton "🗑 Retirer" qui marque l'intention de retirer (data-retire=1)
+  // pour signaler à _genererZip de NE PAS conserver le PDF du ZIP source
+  // (mode Modifier). Choisir un nouveau fichier réinitialise le flag retire.
+  _bindUploadLabel("pl_histoirePdf", "pl_histoirePdf_nom");
+  (function _bindHistoirePdfControls() {
+    const inp     = document.getElementById("pl_histoirePdf");
+    const nom     = document.getElementById("pl_histoirePdf_nom");
+    const btnDel  = document.getElementById("pl_histoirePdf_retirer");
+    if (!inp || !nom || !btnDel) return;
+    inp.addEventListener("change", function() {
+      // Reset le flag "retirer" si l'user choisit un nouveau fichier
+      btnDel.dataset.retire = "";
+      btnDel.style.display = "";
+    });
+    btnDel.addEventListener("click", function() {
+      // Marque l'intention de retirer (lecture dans _genererZip)
+      btnDel.dataset.retire = "1";
+      try { inp.value = ""; } catch(e) {}
+      nom.textContent = "Aucun fichier (retiré)";
+      nom.dataset.existing = "";
+      btnDel.style.display = "none";
+    });
+  })();
 
   // Auto-détection des dimensions du plan depuis l'image principale uploadée.
   // Met à jour les champs hidden pl_width / pl_height + le display visuel
@@ -946,6 +1013,34 @@ function _preRemplirFormulaire(config) {
   sv("pl_stepLength",    t.stepLength    ?? 0.7);
   sv("pl_stepThreshold", t.stepThreshold ?? 13);
   sv("pl_stepCooldown",  t.stepCooldown  ?? 400);
+  // 🧭 v1.37.0 — Pré-remplissage Nord depuis plan.northOffsetDeg (default 0
+  // si champ absent → rétrocompat stricte plans v1.36.x).
+  sv("pl_northOffset", (plan.northOffsetDeg != null && Number.isFinite(Number(plan.northOffsetDeg))) ? plan.northOffsetDeg : 0);
+
+  // 📖 v1.37.0 — Pré-remplissage PDF Histoire depuis plan.histoirePdf
+  // (chemin relatif ZIP, type "data/<nom>.pdf"). Sauvegarde le nom dans
+  // dataset.existing pour que _genererZip puisse le ré-embarquer depuis
+  // _plannerOrigAssets si l'user n'a pas changé/retiré le PDF.
+  const histNomEl = document.getElementById("pl_histoirePdf_nom");
+  const histBtnDel = document.getElementById("pl_histoirePdf_retirer");
+  if (histNomEl) {
+    if (plan.histoirePdf) {
+      const _histBase = String(plan.histoirePdf).split("/").pop();
+      histNomEl.textContent = "📄 " + _histBase + " (depuis ZIP)";
+      histNomEl.dataset.existing = _histBase;
+      if (histBtnDel) {
+        histBtnDel.style.display = "";
+        histBtnDel.dataset.retire = "";
+      }
+    } else {
+      histNomEl.textContent = "Aucun fichier";
+      histNomEl.dataset.existing = "";
+      if (histBtnDel) {
+        histBtnDel.style.display = "none";
+        histBtnDel.dataset.retire = "";
+      }
+    }
+  }
   // 🏗️ Multi-niveau : pre-coche la case si le plan-config importé contient
   // `plan.multiLevel: true`. Sinon laisse decochee (defaut HTML). Absence
   // du champ = false implicite (retro-compat plans v147 et avant).
@@ -2630,6 +2725,38 @@ async function _genererZip() {
     };
     if (multiLevel)     planObj.multiLevel = true;
     if (tilingManifest) planObj.tiledV2    = true;
+
+    // 🧭 v1.37.0 — Calibration Nord. Embed UNIQUEMENT si ≠ 0 (rétrocompat
+    // stricte : plans v1.36.x sans champ continuent de produire un JSON
+    // équivalent). Normalisation [0, 360[ + parse robust (NaN → skip).
+    const _northRaw = parseFloat(document.getElementById("pl_northOffset")?.value || "0");
+    if (Number.isFinite(_northRaw) && _northRaw !== 0) {
+      const _northNorm = ((_northRaw % 360) + 360) % 360;
+      if (_northNorm !== 0) planObj.northOffsetDeg = _northNorm;
+    }
+
+    // 📖 v1.37.0 — PDF Histoire. 3 cas :
+    //  1. User a uploadé un nouveau PDF → embed dans data/histoire.pdf
+    //     + planObj.histoirePdf = "data/histoire.pdf"
+    //  2. Mode Modifier + PDF existant pas retiré + pas remplacé → on
+    //     conserve le nom & on re-embarque depuis _plannerOrigAssets
+    //  3. Sinon → champ absent (rétrocompat stricte)
+    const _histRetire     = (document.getElementById("pl_histoirePdf_retirer")?.dataset.retire === "1");
+    const _histNewFile    = _getFile("pl_histoirePdf", null);
+    const _histExistNom   = document.getElementById("pl_histoirePdf_nom")?.dataset.existing || "";
+    if (_histNewFile) {
+      // Cas 1 : nouveau PDF uploadé
+      const _histName = "histoire.pdf";  // nom normalisé pour le runtime
+      dataFolder.file(_histName, await _lireFichier(_histNewFile));
+      planObj.histoirePdf = "data/" + _histName;
+      console.log("[Planner] PDF Histoire embarqué :", _histName, "(taille " + _histNewFile.size + " bytes)");
+    } else if (!_histRetire && _histExistNom && _plannerOrigAssets[_histExistNom]) {
+      // Cas 2 : conservation du PDF existant (mode Modifier sans changement)
+      dataFolder.file(_histExistNom, await _lireFichier(_plannerOrigAssets[_histExistNom]));
+      planObj.histoirePdf = "data/" + _histExistNom;
+      console.log("[Planner] PDF Histoire conservé depuis ZIP source :", _histExistNom);
+    }
+    // Cas 3 : pas de PDF → planObj.histoirePdf absent (rétrocompat).
 
     // 🆕 v1.17.0 — Légende plan-level : si l'utilisateur a personnalisé
     // la légende dans le Générateur (section "🏷️ Légende du plan" en mode

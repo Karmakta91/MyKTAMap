@@ -394,8 +394,9 @@ Sur la page d'accueil, un **bouton ⚙️ Configuration** dans le header du load
 4. **🔒 Confidentialité & Audit** — section dédiée à la transparence : journal réseau live, doc « Que fait l'app sur le réseau ? », et toggle « Mode hors-ligne strict ». Voir section dédiée plus bas.
 
 5. **🎨 Affichage** — toggles d'interface :
-   - **⚪ Afficher les ronds aux intersections de tracés** — affiche un cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat.
    - **🔆 Garder l'écran allumé** — empêche la mise en veille automatique de ton écran tant que MyKTAMap est ouvert (Wake Lock API). Utile en sortie cataphile pour ne pas avoir à toucher le tel toutes les 30 sec. Re-acquisition auto au retour d'arrière-plan (visibilitychange). Toggle masqué automatiquement sur les navigateurs qui ne supportent pas l'API (Firefox notamment). Le même toggle est aussi accessible dans **⚙️ Réglages** en mode carte (cf section dédiée).
+
+> 💡 **Depuis v1.36.2** : l'option « Afficher les ronds aux intersections de tracés » n'est **plus dans Configuration home** mais dans **⚙️ Réglages en mode carte** (per-plan). Chaque plan a maintenant son propre réglage — pratique pour désactiver les cercles uniquement sur tes plans très denses sans toucher les autres.
 
 6. **📚 Plans serveur** — checkbox **"🚫 Ne pas charger les plans serveur au démarrage"** :
    - **Désactive l'auto-discovery** du fichier `data/index.json` au boot de l'app — l'app ne va plus interroger le serveur pour lister les plans de démo ou les plans publics hébergés.
@@ -2680,7 +2681,7 @@ Si malgré le mode Performance, ton plan crashe encore (typiquement plans 4000+ 
 |---|---|---|
 | 🪜 **Décimer les tracés au dézoom** | Simplifie les polylines au zoom out | Tracés moins lisses au dézoom |
 | ⚡ **Désactiver animations zoom/pan** | Transitions instantanées au lieu d'animées | Visuel plus abrupt — **reload requis** |
-| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 200) | Carrefours moins visibles |
+| 🎯 **Désactiver cercles intersections** | Plus de cercles aux carrefours au-delà de 50 routes (vs 500) | Carrefours moins visibles |
 | 🚫 **Désactiver popups sur calques de données** | Pas de popup au clic sur les markers des calques (puits, etc.) | Utilise 🔍 Recherche pour interagir |
 | 🐢 **Auto-save lent (30s)** | Sauvegarde toutes les 30s au lieu de 1.5s | Risque de perdre 30s de modifs si crash |
 | 👁️ **Ne rendre que les tracés visibles** | Skip les routes hors écran | Pop-in léger au pan |
@@ -2760,10 +2761,13 @@ Accédez aux paramètres en cliquant sur **⚙️** :
 - **Détection des pas** : sensibilité (`stepThreshold`), taille du pas (`stepLength`), cooldown anti-rebond
 - **Échelle (px/m)** avec bouton **🎯 Calibrer** : calcule l'échelle correcte à partir d'une distance mesurée
 
-### 🔍 Affichage (préférence globale, partagée entre tous les plans)
-- **Icônes adaptatives au zoom** (`scaledMarkers`) : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
-- **Afficher les ronds aux intersections de tracés** : cercle plein coloré au croisement de 2 tracés. Décocher pour aérer visuellement les plans très denses. Effet immédiat (sans reload).
-- **🔆 Garder l'écran allumé** : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
+### 🔍 Affichage
+- **Icônes adaptatives au zoom** (`scaledMarkers`) — *préférence globale* : les icônes des points (puits, accès, signalétique, etc.) gardent une taille relative au plan constante. Au dézoom, elles rétrécissent ; au zoom in, elles grossissent. Reload requis au toggle.
+- **⚪ Afficher les ronds aux intersections de tracés (ce plan)** — *per-plan depuis v1.36.2* : cercle plein coloré au croisement de 2 tracés (vert × violet → jaune, etc.). Décocher pour aérer visuellement les plans très denses, ou si le calcul ralentit l'affichage. **Effet immédiat**, sauvegardé par plan (un autre plan garde son propre réglage). Avant v1.36.2 cette option était dans Configuration home et globale à tous les plans.
+- **🧭 Calibration du Nord (ce plan)** — *per-plan depuis v1.37.0* : utile quand le HAUT du plan **n'est pas** le Nord vrai (photo aérienne au cadrage arbitraire, plan cataphile sans rosace alignée). Champ angle [0,360[ en degrés ou bouton **📐 Calibrer (2 clics)** qui ouvre un picker WYSIWYG : clique d'abord le SUD du plan, puis le NORD, une flèche pointillée Sud→Nord s'affiche, et l'angle est calculé automatiquement. **Effet** : rotation icône tracker + sens de marche s'adaptent → le tracker pointe dans la bonne direction RELATIVE AU PLAN. La boussole physique 🧭 continue de pointer le vrai Nord magnétique (= comportement attendu d'une boussole). **Sauvegardé par plan**, **effet immédiat** sans reload. Bouton ↺ Reset pour revenir au default (0 = Nord vers le haut du plan).
+
+> 💡 **Auteur de plan v1.37.0** : pour embarquer durablement le Nord ou un **PDF Histoire** dans le ZIP du plan (cross-utilisateurs), passe par le **générateur avancé** (champ "🧭 Orientation Nord" dans Tracking + section "📖 PDF Histoire" optionnelle). Pour un PDF Histoire chargé juste côté session (ton navigateur), continue d'utiliser le bouton d'import de la modale **📖 Mode Histoire** (status bar) — inchangé depuis v1.34.20.
+- **🔆 Garder l'écran allumé** — *préférence globale* : active la Wake Lock API pour empêcher la mise en veille automatique de l'écran tant que l'app est ouverte. Re-acquisition auto au retour d'arrière-plan. Masqué si le navigateur ne supporte pas l'API. Le même toggle est aussi disponible dans **⚙️ Configuration** sur la page d'accueil.
 
 ### 🎬 Mode présentation
 

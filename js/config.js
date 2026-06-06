@@ -76,6 +76,20 @@ let DEFAULT_CONFIG = {
   // réseau (garde-fou runtime via RoadGraph.isReady()).
   smartNav: false,
 
+  // 🧭 v1.37.0 — Orientation du Nord (offset en degrés vs haut du plan).
+  // Default 0 = haut du plan = Nord (comportement historique strict).
+  // Quand l'image du plan n'est pas orientée Nord-haut (photo aérienne avec
+  // cadrage arbitraire, plan cataphile sans rosace, etc.), on calibre cet
+  // offset une fois (via générateur avancé OU bouton "🧭 Calibrer le Nord"
+  // des Réglages map mode). Cascade lecture per-plan via
+  // getPlanNorthOffset() : LS `myktamap_plan_prefs_<planId>.northOffsetDeg`
+  // → APP_CONFIG.northOffsetDeg (mappé depuis `plan.northOffsetDeg` du
+  // plan-config.json) → 0. Convention : 0° = Nord vers le HAUT du plan,
+  // angle croissant dans le sens HORAIRE (= si la flèche Nord pointe vers
+  // la droite du plan, offset = 90°). Appliqué à tracker (heading marker),
+  // boussole d'orientation et rose des vents du header.
+  northOffsetDeg: 0,
+
   // 🆕 v1.34.26 — Vibration haptique (Web Vibration API).
   // Pref GLOBALE, défaut ON. Lue à chaud par window.kta_vibrate(pattern) qui
   // est le point d'entrée unique pour tous les modules qui veulent vibrer
@@ -292,6 +306,20 @@ function validateImportedPlan(rawConfig) {
 }
 
 // =========================
+// HELPER : NORMALISATION ANGLE (v1.37.0)
+// =========================
+// Ramène un angle quelconque dans [0, 360[. Tolère string, null, NaN, négatif.
+// Utilisé pour northOffsetDeg (champ saisi par user dans le générateur OU le
+// toggle de Réglages — défense en profondeur même si l'input est validé).
+function _normalizeAngleDeg(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  let a = n % 360;
+  if (a < 0) a += 360;
+  return a;
+}
+
+// =========================
 // CONSTRUCTION APP_CONFIG depuis un plan
 // =========================
 function buildAppConfigFromPlan(planConfig) {
@@ -319,7 +347,12 @@ function buildAppConfigFromPlan(planConfig) {
     multiLevel:       false,
     activeLevel:      0,
     visibleLevels:    [0],
-    availableLevels:  [-2, -1, 0, 1, 2]
+    availableLevels:  [-2, -1, 0, 1, 2],
+
+    // 🧭 v1.37.0 — Mapping plan-config.json > plan.northOffsetDeg vers APP_CONFIG.
+    // Sécurisation : clamp [0, 360[ + normalisation. Default 0 si absent
+    // (rétrocompat stricte : tout plan v1.36.x → 0 → comportement actuel).
+    northOffsetDeg:   _normalizeAngleDeg(plan.northOffsetDeg)
   };
 
   // Restaurer les préférences GLOBALES depuis localStorage
@@ -471,6 +504,130 @@ function setShowRoadIntersections(value) {
 }
 
 // =========================
+// HELPER PER-PLAN : showRoadIntersections (v1.36.2)
+// =========================
+// KARMA feedback : "enleve l'option du home, met le dans la config du plan
+// (relatif au plan)". L'option "afficher les ronds aux intersections" passe
+// de GLOBALE à PER-PLAN. Stockage : `myktamap_plan_prefs_<planId>` (JSON).
+// Fallback : la pref GLOBALE existante (`app_user_prefs.showRoadIntersections`)
+// sert de défaut si pas encore de pref per-plan saisie — préserve le choix
+// utilisateur historique sans le forcer à reconfigurer plan par plan.
+const PLAN_PREFS_KEY_PREFIX = "myktamap_plan_prefs_";
+
+function _planPrefsKey(planId) {
+  return PLAN_PREFS_KEY_PREFIX + (planId || "default");
+}
+
+function _readPlanPrefs(planId) {
+  try {
+    const raw = localStorage.getItem(_planPrefsKey(planId));
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    return (obj && typeof obj === "object") ? obj : {};
+  } catch(e) { return {}; }
+}
+
+function _writePlanPrefs(planId, prefs) {
+  try {
+    localStorage.setItem(_planPrefsKey(planId), JSON.stringify(prefs || {}));
+  } catch(e) { console.warn("[Config] writePlanPrefs failed:", e); }
+}
+
+// Lecture avec fallback en cascade :
+//   1. Pref per-plan (clé dédiée localStorage)
+//   2. Pref globale historique APP_CONFIG.showRoadIntersections
+//   3. Default true
+// Renvoie un boolean.
+function getPlanShowsIntersections(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (typeof prefs.showRoadIntersections === "boolean") {
+    return prefs.showRoadIntersections;
+  }
+  // Fallback global (rétrocompat user qui avait désactivé globalement)
+  if (window.APP_CONFIG && typeof window.APP_CONFIG.showRoadIntersections === "boolean") {
+    return window.APP_CONFIG.showRoadIntersections;
+  }
+  return true; // default
+}
+
+// Setter per-plan + re-render à chaud. Appelé par le toggle dans Réglages
+// map mode (v1.36.2).
+function setPlanShowsIntersections(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const newValue = !!value;
+  const prefs = _readPlanPrefs(pid);
+  prefs.showRoadIntersections = newValue;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] showRoadIntersections (plan " + pid + ") →", newValue);
+  if (typeof window.renderRoads === "function") {
+    try { window.renderRoads(); } catch(e) {
+      console.warn("[Config] renderRoads() failed:", e);
+    }
+  }
+}
+
+// =========================
+// HELPER PER-PLAN : northOffsetDeg (v1.37.0)
+// =========================
+// Lecture cascade pour la calibration Nord du plan courant :
+//   1. Pref per-plan LS (saisie via Réglages map mode → "🧭 Calibrer le Nord")
+//   2. APP_CONFIG.northOffsetDeg (mappé depuis plan-config.json > plan.northOffsetDeg
+//      au load, écrit par le générateur avancé)
+//   3. Default 0 (= Nord = haut du plan, comportement strict v1.36.x)
+//
+// Rétro-compat : tout plan sans `northOffsetDeg` dans plan-config.json
+// + sans pref LS → renvoie 0 → tracker/boussole/rose-des-vents inchangés.
+// Renvoie un nombre dans [0, 360[.
+function getPlanNorthOffset(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  if (typeof prefs.northOffsetDeg === "number" && Number.isFinite(prefs.northOffsetDeg)) {
+    return _normalizeAngleDeg(prefs.northOffsetDeg);
+  }
+  // Fallback plan-config.json (hardcoded par auteur plan via générateur avancé)
+  if (window.APP_CONFIG && typeof window.APP_CONFIG.northOffsetDeg === "number") {
+    return _normalizeAngleDeg(window.APP_CONFIG.northOffsetDeg);
+  }
+  return 0;
+}
+
+// Setter per-plan. Persiste en LS, notifie les modules visuels qui dépendent
+// du Nord (tracker marker, boussole, rose des vents header) via un custom
+// event `kta:northOffsetChange` pour qu'ils re-rendent sans reload.
+// `value` peut être un string ou number — normalisé via _normalizeAngleDeg.
+function setPlanNorthOffset(planId, value) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const newValue = _normalizeAngleDeg(value);
+  const prefs = _readPlanPrefs(pid);
+  prefs.northOffsetDeg = newValue;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] northOffsetDeg (plan " + pid + ") →", newValue + "°");
+  // Notif visuelle à chaud — chaque module concerné écoute cet event et
+  // re-render son indicateur Nord. Pas de reload requis.
+  try {
+    window.dispatchEvent(new CustomEvent("kta:northOffsetChange", {
+      detail: { planId: pid, northOffsetDeg: newValue }
+    }));
+  } catch(e) {}
+}
+
+// Reset per-plan (retire la pref LS → cascade retombe sur plan-config.json
+// ou default 0). Utile pour le bouton "↺ Réinitialiser" du toggle.
+function resetPlanNorthOffset(planId) {
+  const pid = planId || window._currentLoadedPlanId || "default";
+  const prefs = _readPlanPrefs(pid);
+  delete prefs.northOffsetDeg;
+  _writePlanPrefs(pid, prefs);
+  console.log("[Config] northOffsetDeg (plan " + pid + ") reset → cascade fallback");
+  try {
+    window.dispatchEvent(new CustomEvent("kta:northOffsetChange", {
+      detail: { planId: pid, northOffsetDeg: getPlanNorthOffset(pid) }
+    }));
+  } catch(e) {}
+}
+
+// =========================
 // EXPORTS GLOBAUX
 // =========================
 window.APP_CONFIG                  = APP_CONFIG;
@@ -480,6 +637,15 @@ window.buildAppConfigFromPlan      = buildAppConfigFromPlan;
 window.sauvegarderPrefsUtilisateur = sauvegarderPrefsUtilisateur;
 window.setDebugMode                = setDebugMode;
 window.setShowRoadIntersections    = setShowRoadIntersections;
+// 🆕 v1.36.2 — helpers per-plan pour showRoadIntersections (option déplacée
+// de Configuration home → Réglages map mode, persistée par plan)
+window.getPlanShowsIntersections   = getPlanShowsIntersections;
+window.setPlanShowsIntersections   = setPlanShowsIntersections;
+// 🧭 v1.37.0 — helpers per-plan pour northOffsetDeg (calibration Nord du
+// plan — appliquée au tracker, à la boussole et à la rose des vents header)
+window.getPlanNorthOffset          = getPlanNorthOffset;
+window.setPlanNorthOffset          = setPlanNorthOffset;
+window.resetPlanNorthOffset        = resetPlanNorthOffset;
 window.normalizePath               = normalizePath;
 window.getBaseName                 = getBaseName;
 window.getRuntimeAsset             = getRuntimeAsset;
