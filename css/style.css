@@ -4276,13 +4276,13 @@ body.kta-theme-light .splash-license-detail-pro {
 
   .loader-grid {
     display: grid;
-    /* ⚠️ Unités "fr" et NON "%" : avec "60% 40%" + gap, la somme
-       (60% + 40% = 100%) plus le gap (32px) deborde de la largeur
-       disponible → les colonnes se collent aux bords du conteneur.
-       Avec "3fr 2fr", le gap est distribué AVANT le calcul des
-       colonnes : ratio 60/40 respecté + marges loader respectées. */
-    grid-template-columns: 3fr 2fr;
-    gap: 0 32px;
+    /* 🆕 v1.40.0 — Passe de 2 cols (3fr 2fr) à 3 cols (2fr 3fr 2fr) pour
+       intégrer la mini-carte 🌍 Vue OSM au milieu. La colonne OSM
+       reçoit plus de poids car elle contient une carte interactive
+       (besoin d'espace) ; Plans/Actions plus compacts mais ça reste
+       lisible. Mobile (<1024px) : pile verticale comme avant. */
+    grid-template-columns: 2fr 3fr 2fr;
+    gap: 0 24px;
     align-items: start;
     margin-top: 4px;
   }
@@ -4414,7 +4414,398 @@ body.kta-theme-light .splash-license-detail-pro {
        est l'effet voulu = aération visuelle. */
     margin-top: auto;
   }
+  /* 🆕 v1.40.0 — Colonne OSM (centre) : occupe la hauteur dispo,
+     mini-carte stretch sur tout le restant. */
+  .loader-col-osm {
+    display: flex;
+    flex-direction: column;
+  }
+  .loader-col-osm .kta-osm-home-box {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .loader-col-osm .kta-osm-home-content {
+    flex: 1 1 auto;
+    min-height: 280px;
+  }
+
+  /* 🆕 v1.40.1 — Si l'user n'a pas opt-in OSM, la colonne OSM est masquée
+     (cf js/osmHomePreview.js > _setOsmColumnVisible). On rebascule alors
+     le grid PC sur les anciennes proportions 2 cols (3fr 2fr) pour ne pas
+     laisser un trou visuel ni un layout déséquilibré. Cohérent avec la
+     philo offline-first : aucune trace du widget OSM si pas autorisé. */
+  .loader-grid.kta-no-osm {
+    grid-template-columns: 3fr 2fr;
+  }
 }
+
+/* 🆕 v1.40.0 — Widget Vue OSM HOME (mini-preview entre Mes plans et Ajouter) */
+.kta-osm-home-box {
+  margin-bottom: 14px;
+}
+.kta-osm-home-content {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 8px;
+  /* 🆕 v1.40.22 — overflow: visible (était hidden) pour que les popups Leaflet
+     POI ne soient pas clippées par le container. Trade-off : si un enfant
+     déborde, il n'aura pas le coin arrondi clippé, mais c'est négligeable car
+     les coins arrondis du container restent visibles (rien ne déborde en
+     mode normal — seul le popup peut sortir, ponctuel). */
+  overflow: visible;
+  min-height: 260px;
+}
+.kta-osm-home-loading,
+.kta-osm-home-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: #8892a4;
+  flex-direction: column;
+  gap: 10px;
+}
+.kta-osm-home-empty strong { color: #e8eaf0; }
+.kta-osm-home-empty .kta-osm-home-cta {
+  margin-top: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  background: #f4c542;
+  color: #1a1f2e;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.kta-osm-home-empty .kta-osm-home-cta:hover { filter: brightness(1.1); }
+.kta-osm-home-bandeau {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(140, 180, 255, 0.06);
+  border-bottom: 1px solid rgba(140, 180, 255, 0.18);
+  font-size: 12px;
+  color: #c8d0e0;
+  flex-wrap: wrap;
+}
+.kta-osm-home-bandeau select {
+  flex: 1 1 auto;
+  min-width: 100px;
+  padding: 3px 6px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8eaf0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.kta-osm-home-bandeau select option { background: #1a1f2e; color: #e8eaf0; }
+.kta-osm-home-bandeau .kta-osm-home-fullscreen {
+  padding: 3px 8px;
+  font-size: 13px;
+  background: rgba(244, 197, 66, 0.12);
+  color: #f4c542;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.kta-osm-home-bandeau .kta-osm-home-fullscreen:hover {
+  background: #f4c542;
+  color: #1a1f2e;
+}
+.kta-osm-home-map {
+  flex: 1 1 auto;
+  min-height: 220px;
+  background: #0a0d18;
+}
+.kta-osm-home-footer {
+  padding: 4px 10px;
+  font-size: 10.5px;
+  color: #8892a4;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+/* 🆕 v1.40.12 — 2e ligne du bandeau : toggles catégorie compactés */
+.kta-osm-home-toggles {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 10px;
+  background: rgba(140, 180, 255, 0.04);
+  border-bottom: 1px solid rgba(140, 180, 255, 0.12);
+  flex-wrap: wrap;
+}
+.kta-osm-home-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+  color: #c8d0e0;
+}
+.kta-osm-home-toggle input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.kta-osm-home-toggle:hover { color: #e8eaf0; }
+/* Thème clair : toggles lisibles sur fond clair */
+body.kta-theme-light .kta-osm-home-toggles,
+html.kta-theme-light .kta-osm-home-toggles {
+  background: rgba(140, 180, 255, 0.08) !important;
+  border-bottom-color: rgba(140, 180, 255, 0.18) !important;
+}
+body.kta-theme-light .kta-osm-home-toggle,
+html.kta-theme-light .kta-osm-home-toggle {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+
+/* 🆕 v1.40.17 — 3e ligne du bandeau : filtre par tag (chips cliquables) */
+.kta-osm-home-tagrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(140, 180, 255, 0.03);
+  border-bottom: 1px solid rgba(140, 180, 255, 0.10);
+  max-height: 60px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+.kta-osm-home-tagrow-label {
+  font-size: 12px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.kta-osm-home-tagchips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.kta-osm-home-tag-chip {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid rgba(140, 180, 255, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  color: #8892a4;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.kta-osm-home-tag-chip:hover {
+  border-color: rgba(140, 180, 255, 0.5);
+  color: #e8eaf0;
+}
+.kta-osm-home-tag-chip.active {
+  background: rgba(244, 197, 66, 0.18);
+  border-color: rgba(244, 197, 66, 0.55);
+  color: #f4c542;
+}
+body.kta-theme-light .kta-osm-home-tagrow,
+html.kta-theme-light .kta-osm-home-tagrow {
+  background: rgba(140, 180, 255, 0.06) !important;
+  border-bottom-color: rgba(140, 180, 255, 0.16) !important;
+}
+body.kta-theme-light .kta-osm-home-tag-chip,
+html.kta-theme-light .kta-osm-home-tag-chip {
+  background: rgba(255, 255, 255, 0.5) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: var(--kta-light-text-secondary, #5a4f40) !important;
+}
+body.kta-theme-light .kta-osm-home-tag-chip.active,
+html.kta-theme-light .kta-osm-home-tag-chip.active {
+  background: rgba(244, 197, 66, 0.25) !important;
+  border-color: rgba(180, 130, 30, 0.6) !important;
+  color: #6b4a10 !important;
+}
+
+/* 🆕 v1.40.22 — Popup POI Vue OSM (modale + widget HOME) : charte dark cohérente.
+   Cible la classe "kta-osm-popup" passée via bindPopup({ className: "kta-osm-popup" }).
+   Override le default Leaflet (fond blanc, ombre soft) pour matcher #1a1f2e + accent jaune. */
+.leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper {
+  background: #1a1f2e;
+  color: #e8eaf0;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  padding: 2px 4px;
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-content {
+  margin: 8px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #e8eaf0;
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-content b {
+  color: #f4c542;
+  font-weight: 600;
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-content span {
+  color: #c8d0e0;
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-tip {
+  background: #1a1f2e;
+  border-left: 1px solid rgba(244, 197, 66, 0.35);
+  border-bottom: 1px solid rgba(244, 197, 66, 0.35);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-close-button {
+  color: #8892a4;
+  padding: 6px 8px;
+  font-size: 18px;
+  transition: color 0.15s;
+}
+.leaflet-popup.kta-osm-popup .leaflet-popup-close-button:hover {
+  color: #f4c542;
+  background: transparent;
+}
+/* Variant thème clair : fond beige charte, accent or sombre */
+body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper,
+html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content-wrapper {
+  background: var(--kta-light-bg-elevated, #f5ecd6) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border-color: rgba(180, 130, 30, 0.4) !important;
+}
+body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content,
+html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content b,
+html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content b {
+  color: #8b6a14 !important;
+}
+body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content span,
+html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-content span {
+  color: var(--kta-light-text-secondary, #5a4f40) !important;
+}
+body.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-tip,
+html.kta-theme-light .leaflet-popup.kta-osm-popup .leaflet-popup-tip {
+  background: var(--kta-light-bg-elevated, #f5ecd6) !important;
+  border-left-color: rgba(180, 130, 30, 0.4) !important;
+  border-bottom-color: rgba(180, 130, 30, 0.4) !important;
+}
+
+/* 🆕 v1.40.1 — Variants thème clair pour le widget Vue OSM HOME.
+   Bug KARMA v1.40.0 : le footer "🔒 Tiles : tile.openstreetmap.org · ⛶ …"
+   utilisait color:#8892a4 + border rgba(255,255,255,0.06) → quasi invisible
+   sur fond clair (texte gris muet + bordure blanche sur fond beige clair).
+   Variants exposent via les vars --kta-light-* (cf §53 pattern thème clair). */
+body.kta-theme-light .kta-osm-home-content,
+html.kta-theme-light .kta-osm-home-content {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.12)) !important;
+}
+body.kta-theme-light .kta-osm-home-bandeau,
+html.kta-theme-light .kta-osm-home-bandeau {
+  background: rgba(140, 180, 255, 0.10) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border-bottom-color: rgba(140, 180, 255, 0.30) !important;
+}
+body.kta-theme-light .kta-osm-home-bandeau select,
+html.kta-theme-light .kta-osm-home-bandeau select {
+  background: var(--kta-light-bg, #fffaee) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+  border-color: var(--kta-light-border, rgba(0,0,0,0.18)) !important;
+}
+body.kta-theme-light .kta-osm-home-bandeau select option,
+html.kta-theme-light .kta-osm-home-bandeau select option {
+  background: var(--kta-light-bg, #fffaee) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+body.kta-theme-light .kta-osm-home-bandeau .kta-osm-home-fullscreen,
+html.kta-theme-light .kta-osm-home-bandeau .kta-osm-home-fullscreen {
+  /* Le bouton ⛶ garde son look ambre (couleur d'accent kta charte),
+     fonctionne bien sur clair comme sombre — pas d'override nécessaire. */
+  background: rgba(244, 197, 66, 0.25) !important;
+  color: #8a6a14 !important; /* version assombrie du jaune charte pour lisibilité */
+  border-color: rgba(244, 197, 66, 0.55) !important;
+}
+body.kta-theme-light .kta-osm-home-footer,
+html.kta-theme-light .kta-osm-home-footer {
+  color: var(--kta-light-text, #5a4a30) !important;
+  border-top-color: var(--kta-light-border, rgba(0,0,0,0.10)) !important;
+}
+body.kta-theme-light .kta-osm-home-empty,
+html.kta-theme-light .kta-osm-home-empty,
+body.kta-theme-light .kta-osm-home-loading,
+html.kta-theme-light .kta-osm-home-loading {
+  color: var(--kta-light-text, #5a4a30) !important;
+}
+body.kta-theme-light .kta-osm-home-empty strong,
+html.kta-theme-light .kta-osm-home-empty strong {
+  color: var(--kta-light-text, #2a2620) !important;
+}
+
+/* 🆕 v1.40.2 — Plein écran inline (overlay full-viewport)
+   Toggle via classe sur #ktaOsmHomeBox depuis openFullScreen().
+   Avantages vs Fullscreen API native : marche partout (iOS Safari OK),
+   pas de permission, pas de bascule de mode, escape pour quitter. */
+.kta-osm-home-box.kta-osm-home-fullscreen-active {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  margin: 0 !important;
+  background: #0a0d18 !important;
+  border-radius: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head {
+  padding: 10px 16px !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.18) !important;
+  flex: 0 0 auto;
+}
+.kta-osm-home-box.kta-osm-home-fullscreen-active .kta-osm-home-content {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.kta-osm-home-box.kta-osm-home-fullscreen-active .kta-osm-home-map {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+/* Le bouton ⛶ devient ✕ visuellement, on le rend un peu plus visible
+   en fullscreen pour faciliter le retour. */
+.kta-osm-home-box.kta-osm-home-fullscreen-active .kta-osm-home-fullscreen {
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+/* Empêche le scroll du body pendant le fullscreen (sinon Leaflet wheel
+   peut faire défiler la page derrière). */
+body.kta-osm-home-fs-lock { overflow: hidden; }
+
+/* Thème clair adapté */
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active,
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active {
+  background: var(--kta-light-bg, #fffaee) !important;
+}
+body.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head,
+html.kta-theme-light .kta-osm-home-box.kta-osm-home-fullscreen-active .loader-section-head {
+  background: rgba(255, 255, 255, 0.65) !important;
+  color: var(--kta-light-text, #2a2620) !important;
+}
+
+/* 🆕 v1.40.3 — Fixes thème clair HOME déplacés en fin de fichier (v1.40.5)
+   pour gagner en spécificité d'ordre — voir bloc en fin de style.css. */
 
 /* 🆕 v1.9.2 — Loader PC LARGE ≥ 1440px : padding latéral plus généreux
    (la box reste full edge-to-edge). */
@@ -9038,10 +9429,21 @@ body.kta-theme-light .kta-titre-suffix-pro {
   font-style: italic;
 }
 
-/* Variants thème clair (cohérence palette claire §53) */
-html.kta-theme-light .kta-loader-copyright-pro-badge,
-body.kta-theme-light .kta-loader-copyright-pro-badge {
-  color: #1d8a3a;
+/* Variants thème clair (cohérence palette claire §53).
+   🆕 v1.40.26/27 — Override le `body.kta-theme-light .kta-loader-copyright *
+   { color: ... !important; }` ligne ~14244 qui écrasait sinon le vert en
+   gris muté. v1.40.26 avait juste ajouté `!important` mais specificity
+   égale (0,2,1) → la règle `*` plus loin dans le fichier gagnait par
+   cascade order. v1.40.27 augmente la specificity à (0,3,2) via la chaîne
+   `html.kta-theme-light body .kta-loader-copyright .kta-loader-copyright-
+   pro-badge` qui bat (0,2,1) sans dépendre de l'ordre cascade.
+   KARMA : « ✓ Licence professionnelle active doit être en vert en CLAIR
+   comme pour SOMBRE ». Vert sombre #1d8a3a lisible sur fond beige
+   (contraste WCAG AA), cohérent avec l'intention "vert status OK" du
+   mode sombre #6ee287. */
+html.kta-theme-light body .kta-loader-copyright .kta-loader-copyright-pro-badge,
+body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge {
+  color: #1d8a3a !important;
 }
 html.kta-theme-light .kta-loader-copyright-edition-title,
 body.kta-theme-light .kta-loader-copyright-edition-title {
@@ -18322,5 +18724,75 @@ html.kta-theme-light .kta-north-picker-step {
 body.kta-theme-light .kta-north-picker-step strong,
 html.kta-theme-light .kta-north-picker-step strong {
   color: var(--kta-light-accent-hover) !important;
+}
+
+/* ============================================================================
+ * 🆕 v1.40.9 — REFONTE PROPRE thème clair HOME (suite KARMA "c'est devenu
+ *              nimp la le css du home en mode clair, reprend tout ca d'un
+ *              oeil différent pour rendre ca plus armonieux").
+ *
+ * HISTORIQUE TENTATIVES (à effacer mentalement) :
+ *   v1.40.3 : passé sections HOME #fdf8eb → #e5dcc5
+ *   v1.40.5 : déplacé en fin de fichier (cascade)
+ *   v1.40.8 : ajouté wrapper + bandeau profil en #e5dcc5
+ *   → Résultat : tout aplati en #e5dcc5, plus aucune hiérarchie visuelle
+ *
+ * NOUVELLE APPROCHE — Option A KARMA validée : RESPECTER la sémantique
+ * des 3 variables CSS originales (style.css:12557-59) :
+ *   --kta-light-bg          (#f0e8d8) → fond neutre clair (body, wrapper)
+ *   --kta-light-bg-elevated (#fdf8eb) → cards en élévation (Mes plans, OSM, …)
+ *   --kta-light-bg-deep     (#e5dcc5) → header / footer (saturé = ancrage)
+ *
+ * Hiérarchie 3 niveaux :
+ *   - Wrapper #planLoaderBox = neutre clair (#f0e8d8) ← override pour
+ *     remplacer #c9b88f brun-beige original qui détonnait
+ *   - Cards (Profil, Reprendre, Mes plans, Vue OSM, Ajouter) = #fdf8eb crème,
+ *     ressortent légèrement sur le wrapper neutre via border + box-shadow
+ *     (les règles existantes lignes 14105+15206+17424 sont OK comme ça,
+ *     pas besoin d'override sur Mes plans / Reprendre / Profil / Ajouter)
+ *   - Footer copyright = #e5dcc5 beige saturé (déjà OK ligne 14068)
+ *
+ * Seuls overrides nécessaires en fin de fichier :
+ *   1. #planLoaderBox : passer #c9b88f → --kta-light-bg (#f0e8d8) pour
+ *      donner au wrapper une teinte neutre cohérente, sur laquelle les
+ *      cards #fdf8eb ressortent.
+ *   2. #ktaOsmHomeBox : ajouter la card (n'existait pas avant, pas de règle
+ *      antérieure pour elle) en --kta-light-bg-elevated (#fdf8eb) pour
+ *      matcher Mes plans / Ajouter visuellement.
+ * ============================================================================ */
+
+/* --- 1. Wrapper HOME : neutre clair (au lieu de #c9b88f brun-beige) ---
+   Donne aux interstices entre sections un fond neutre cohérent avec le
+   body, sur lequel les cards crème #fdf8eb ressortent en élévation. */
+body.kta-theme-light #planLoaderBox,
+html.kta-theme-light #planLoaderBox {
+  background: var(--kta-light-bg, #f0e8d8) !important;
+}
+
+/* --- 2. Card "🌍 Vue OSM" : crème comme Mes plans / Ajouter ---
+   Pattern identique à #myPlansBox (cf lignes 15206+). La nouvelle card
+   ressort du wrapper neutre comme les autres. */
+body.kta-theme-light #ktaOsmHomeBox,
+html.kta-theme-light #ktaOsmHomeBox {
+  background: var(--kta-light-bg-elevated, #fdf8eb) !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-radius: 14px !important;
+  padding: 14px 18px 16px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
+}
+/* Titre 🌍 Vue OSM interne transparent (card parent a son fond) +
+   bordure-bottom de séparation, pattern identique à #myPlansBox. */
+body.kta-theme-light #ktaOsmHomeBox .loader-section-head,
+html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
+  border-radius: 0 !important;
+  padding: 2px 0 10px 0 !important;
+  margin: 0 0 10px 0 !important;
+  color: #2a2620 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
 }
 

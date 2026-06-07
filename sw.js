@@ -32,7 +32,7 @@
 // v1.9.2 (22/05/2026) : consolidation des 17 fixes post-v1.9.1
 // (loader fullscreen PC, modales agrandies, tracker rotation
 // continue, splash KARMA animé + crédits Dijkstra, etc.).
-const CACHE_NAME = "myktamap-cache-v1.39.9";
+const CACHE_NAME = "myktamap-cache-v1.40.32";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -189,6 +189,7 @@ const ASSETS_TO_CACHE = [
   "./js/kmzExport.js",
   // 🆕 v1.39.0 — Vue OSM (plan au-dessus OpenStreetMap)
   "./js/osmView.js",
+  "./js/osmHomePreview.js",
   "./js/kmzImport.js",
   // 🆕 v1.14.0 : GPX import + export (réutilise calibrage KMZ)
   "./js/gpxIO.js",

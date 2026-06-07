@@ -2162,6 +2162,8 @@ Existing data layers (`puits.json`, `cataphile.json`, etc.) can also have items 
     { "type": "eau", "level": 0, "points": [...] }
   ]
 }
+```
+
 Items without `level` → treated as `level: 0` (backward compatibility with your existing JSON).
 
 ### Exporting with level selection
@@ -3050,12 +3052,16 @@ To those who agreed to go down with an unstable `1.x.y-beta` version, to come ba
 
 MyKTAMap relies entirely on **open-source bricks**. Without these projects, the app simply would not exist:
 
-- 🍃 **[Leaflet](https://leafletjs.com/)** — interactive map engine. Heart of the map display.
-- 📦 **[JSZip](https://stuk.github.io/jszip/)** — reading and writing of `.zip` archives on the browser side (maps, sessions, exports).
-- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** — generation of printable PDFs (A0 → A4, portrait/landscape).
-- 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries.
+- 🍃 **[Leaflet](https://leafletjs.com/)** *(BSD 2-Clause)* — interactive map engine. Heart of the map display. Thanks to **Vladimir Agafonkin** and the many contributors of the project.
+- 🔄 **[Leaflet.ImageOverlay.Rotated](https://github.com/IvanSanchez/Leaflet.ImageOverlay.Rotated)** *(BSD 2-Clause, vendored)* — plugin that projects an image as a parallelogram via 3 corners (CSS matrix transform). Used for the **2-anchor** calibration of image layers (v1.38+) and for the projection of MyKTAMap plans **onto the OSM View** (v1.39+). Thanks to **Iván Sánchez Ortega** for this elegant plugin.
+- 📦 **[JSZip](https://stuk.github.io/jszip/)** *(MIT/GPL dual)* — reading and writing of `.zip` archives on the browser side (maps, sessions, exports, partial extraction for the HOME mini-map). Thanks to **Stuart Knightley** and contributors.
+- 📤 **[jsPDF](https://github.com/parallax/jsPDF)** *(MIT)* — generation of printable PDFs (A0 → A4, portrait/landscape, miniature page Rescue Mode, embed Story Mode).
+- 🌍 **[OpenStreetMap](https://www.openstreetmap.org/) & its contributors** — licensed under **[ODbL](https://opendatacommons.org/licenses/odbl/)** for data and **[CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/)** for cartography. Worldwide map data displayed in the **OSM View** (modal + HOME widget, since v1.39+) **only when you enable it via the dedicated opt-in**. The app shows the `© OpenStreetMap contributors` attribution in the corner of every OSM map, **as the ODbL license requires**. Tile hosting: **[OSM Foundation](https://wiki.osmfoundation.org/wiki/Privacy_Policy)** (non-commercial foundation, public logs policy, no advertising tracking). Without this monumental common good — built since 2004 by **thousands of volunteers** mapping the world street by street — the OSM View would not exist.
+- 🧭 **Dijkstra's algorithm** (1959) — shortest path calculation for assisted itineraries. Edsger W. Dijkstra (1930-2002): thanks for this 60+ year old idea that still underpins Google Maps, OpenStreetMap routing, and every GPS in the world.
 - 🌐 **[GPX 1.1 standard](https://www.topografix.com/gpx.asp)** — exchange format with TopoDroid, OsmAnd, Strava, Garmin and the outdoor ecosystem.
-- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API. Maintained by thousands of people we will never meet and to whom we owe enormously.
+- 🛡️ **[Web standards](https://developer.mozilla.org/)** — Service Worker, IndexedDB, WebAuthn, FileSystemAccess API, Geolocation API. Maintained by thousands of people we will never meet and to whom we owe enormously.
+
+> 📜 **License compliance**: vendored files (`lib/leaflet/`, `lib/leaflet-imageoverlay-rotated.js`, `lib/jszip.min.js`, `lib/jspdf.umd.min.js`) keep their original license header. For network details (when each resource is contacted), see the **[Network Audit](./NETWORK_AUDIT.md)** (also accessible from the Audit modal in the app).
 
 ### To the PWA ecosystem
 

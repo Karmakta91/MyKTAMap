@@ -138,11 +138,12 @@
 
     <!-- Crédits librairies + algos — discret, en bas à GAUCHE pour
          libérer le bas-droit pour KARMA. Mention des libs majeures
-         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF) + de
-         l'algo Dijkstra du pathfinder (utilisé pour le calcul
-         d'itinéraires sur le réseau de tracés). KARMA s'en souvient :
-         "djakarta" était une confusion phonétique avec Dijkstra. -->
-    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra</div>
+         (Leaflet mapping, JSZip ZIP I/O, jsPDF impression PDF, OSM
+         tiles Vue OSM opt-in v1.39+) + de l'algo Dijkstra du pathfinder
+         (utilisé pour le calcul d'itinéraires sur le réseau de tracés).
+         KARMA s'en souvient : "djakarta" était une confusion phonétique
+         avec Dijkstra. 🆕 v1.40.29 — ajout 🌍 OSM. -->
+    <div id="splashLeafletCredit">🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</div>
   </div>
 
   <!-- COPYRIGHT — watermark + console banner + détection DevTools (chargé EN PREMIER) -->
@@ -352,7 +353,29 @@
 
         </div><!-- /.loader-col-plans -->
 
-        <!-- ▬▬▬ COLONNE DROITE (40% PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
+        <!-- 🆕 v1.40.0 — COLONNE MILIEU (PC ≥1024px) : 🌍 Vue OSM mini-preview.
+             Mobile : section pile entre Mes plans et Ajouter.
+             Mode léger : marker pointA + marker pointB georef sur OSM (pas
+             d'extraction ZIP, pas de tuiles plan ni data layers — kept light
+             pour boot HOME rapide). Bouton ⛶ ouvre la modale Vue OSM
+             full-screen (charge le plan complet en map mode + déclenche open).
+             Comportement adaptatif :
+              - Pas opt-in OSM → message + bouton "Autoriser OSM"
+              - Aucun plan georef → message pédagogique + lien vers Générateur
+              - Sinon → carte + dropdown sélection plan -->
+        <div class="loader-col loader-col-osm">
+          <div id="ktaOsmHomeBox" class="kta-osm-home-box">
+            <div class="loader-section-head">
+              <span>🌍 Vue OSM</span>
+            </div>
+            <div id="ktaOsmHomeContent" class="kta-osm-home-content">
+              <!-- Rempli dynamiquement par js/osmHomePreview.js -->
+              <div class="kta-osm-home-loading">⏳ Préparation…</div>
+            </div>
+          </div>
+        </div><!-- /.loader-col-osm -->
+
+        <!-- ▬▬▬ COLONNE DROITE (PC) : 📦 Ajouter + ⚙️ Plus d'options ▬▬▬ -->
         <div class="loader-col loader-col-actions">
 
           <!-- 📦 CHARGER UN NOUVEAU PLAN — bloc cohérent -->
@@ -485,7 +508,11 @@
           <span class="kta-licence-community">· 💼 <a href="https://pro.myktamap.fr" target="_blank" rel="noopener noreferrer">Licence pro</a></span>
         </div>
         <div class="kta-loader-credits">
-          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra
+          <!-- 🆕 v1.40.29 — ajout 🌍 OSM (Vue OSM v1.39+ opt-in). Affiché dans
+               le loader HOME, identique en mode community et pro (la mention
+               "💼 Licence pro" community-only est gérée par .kta-licence-community
+               au-dessus, pas ici). -->
+          🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra
         </div>
       </div>
     </div>
@@ -1122,6 +1149,7 @@
        APRÈS kmzExport (dépend de KmzExport.buildTransform/planToGps) et
        APRÈS imageLayerCalibration (utilise compute3CornersFromAnchorsPx). -->
   <script src="js/osmView.js" defer></script>
+  <script src="js/osmHomePreview.js" defer></script>
   <script src="js/kmzImport.js" defer></script>
   <!-- 🆕 v1.14.0 : GPX import + export (réutilise la calibration KMZ existante
        via window.KmzExport.planToGps / gpsToPlan). Doit charger APRÈS

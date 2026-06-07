@@ -98,7 +98,7 @@ reverse proxy en amont qui termine TLS).
 Différences vs prod :
 - Pas de HSTS (cert auto-signé : ne pas forcer HTTPS persistant côté
   navigateur user, qui empêcherait un futur switch)
-- `Permissions-Policy: microphone=(self)` autorisé (commande vocale E1)
+- `Permissions-Policy: microphone=(self), geolocation=(self)` autorisés (commande vocale E1 + bouton 📍 Ma position Vue OSM v1.40.18 — `(self)` requis depuis v1.40.20, sinon `getCurrentPosition` rejette en violation policy avant le prompt OS)
 - Cache : 1 jour pour les assets statiques, `no-store` pour `version.json`
   et `sw.js` (le SW gère l'invalidation via bump `CACHE_NAME`)
 

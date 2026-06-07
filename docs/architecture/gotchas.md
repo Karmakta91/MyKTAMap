@@ -7,6 +7,28 @@
 
 ## 🚨 Pièges connus & règles importantes
 
+### Regex JavaScript sur emojis (surrogate pairs)
+
+⚠️ **Piège récurrent** : un emoji moderne (codepoint ≥ U+10000, ex : 📄 = U+1F4C4, 📂 = U+1F4C2) est stocké en JavaScript comme une **surrogate pair UTF-16** (2 code units). Une regex character class `[📄]` SANS le flag `u` est interprétée comme `[\uD83D OR \uDCC4]` — set de 2 code units séparés, PAS le caractère composé.
+
+❌ **Buggy** :
+```js
+"📄 file.png".replace(/^[✅📄] /, "")  // ne strippe PAS le préfixe 📄 !
+// → "📄 file.png" inchangé (silencieux), causant échec de lookup downstream
+```
+
+✅ **Correct** : ajouter le flag `u` (Unicode mode) :
+```js
+"📄 file.png".replace(/^[✅📄]\s/u, "")  // → "file.png" propre
+```
+
+Alternative sans `u` (plus verbeuse mais portable older engines) :
+```js
+"📄 file.png".replace(/^(✅|📄)\s/, "")  // alternation au lieu de class
+```
+
+**Sites historiquement touchés** : `js/createConf.js` (6 lignes, fix v1.40.23, KARMA bug "📄 four_a_chaux_LEGENDE.png introuvable"). Si tu ajoutes une regex sur un emoji ≥ U+10000 ailleurs, vérifie le flag `u` AVANT commit. Idem `string.length` sur emoji renvoie 2, pas 1 — utiliser `[...string].length` si besoin du vrai count.
+
 ### Z-index et modales sur-imposées
 
 ⚠️ **Bug type récurrent** : créer une modale par-dessus une autre sans gérer le z-index relatif.

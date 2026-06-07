@@ -1465,7 +1465,7 @@ function _ajouterImageLayer(prefill) {
         fileForDims = file;
       } else {
         // Mode Modifier : chercher le nom existant dans _plannerOrigAssets
-        const nomTxt = (document.getElementById(id + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "").trim();
+        const nomTxt = (document.getElementById(id + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "").trim();
         if (nomTxt && _plannerOrigAssets[nomTxt]) {
           fileForDims = _plannerOrigAssets[nomTxt];
           url = URL.createObjectURL(fileForDims);
@@ -1541,7 +1541,7 @@ function _ajouterImageLayer(prefill) {
       planBlob = planUrl;
     } else if (_plannerMode === "modifier") {
       // Cherche la 1ère image dans _plannerOrigAssets qui n'est pas la collision
-      const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const collNomMod = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
       const imgKey = Object.keys(_plannerOrigAssets).find(function(k) {
         return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNomMod;
       });
@@ -2530,7 +2530,7 @@ async function _genererZip() {
       dataFolder.file(baseFile.name, await _lireFichier(baseFile));
     } else if (_plannerMode === "modifier") {
       // Chercher dans les assets originaux — prendre la première image non-collision
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
       const imgKey  = Object.keys(_plannerOrigAssets).find(function(k) {
         return /\.(png|jpg|jpeg|webp|gif)$/i.test(k) && k !== collNom;
       });
@@ -2551,7 +2551,7 @@ async function _genererZip() {
       collisionName = "data/" + collFile.name;
       dataFolder.file(collFile.name, await _lireFichier(collFile));
     } else if (_plannerMode === "modifier") {
-      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄] /, "") || "";
+      const collNom = document.getElementById("pl_collision_nom")?.textContent.replace(/^[✅📄]\s/u, "") || "";
       if (collNom && collNom !== "Aucun fichier" && _plannerOrigAssets[collNom]) {
         collisionName = "data/" + collNom;
         dataFolder.file(collNom, await _lireFichier(_plannerOrigAssets[collNom]));
@@ -2573,7 +2573,7 @@ async function _genererZip() {
                           ? document.getElementById(lid + "_level").value : "";
       const ilLevel = (ilLevelStr === "" || isNaN(parseInt(ilLevelStr, 10)))
                        ? 0 : parseInt(ilLevelStr, 10);
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "");
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const ilFile  = _getFile(lid + "_file", nomTxt);
 
       if (!ilId) { _plannerErreur("Identifiant manquant sur calque image."); throw new Error("abort"); }
@@ -2621,7 +2621,7 @@ async function _genererZip() {
       const dlId    = document.getElementById(lid + "_id").value.trim();
       const dlLabel = document.getElementById(lid + "_label").value.trim() || dlId;
       const dlVis   = document.getElementById(lid + "_visible").value === "true";
-      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄] /, "");
+      const nomTxt  = (document.getElementById(lid + "_file_nom")?.textContent || "").replace(/^[✅📄]\s/u, "");
       const dlFile  = _getFile(lid + "_file", dlId + ".json");
 
       if (!dlId) { _plannerErreur("Identifiant manquant sur calque données."); throw new Error("abort"); }

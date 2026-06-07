@@ -414,8 +414,10 @@ function _ouvrirReadmeModal(html, opts) {
         <!-- 🆕 v1.9.2-fix17 (KARMA "rajoute dans le footer de la doc nos
              nouvelles citations") : élargi pour citer toutes les
              dépendances/algos majeurs, en cohérence avec le splash et
-             le footer du home. -->
-        <span>— 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra</span>
+             le footer du home.
+             🆕 v1.40.29 — Rétabli 📤 jsPDF (oublié historiquement) + ajout
+             🌍 OSM. Cohérence stricte avec splash + loader HOME. -->
+        <span>— 🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra</span>
       </div>
     </div>
   `;

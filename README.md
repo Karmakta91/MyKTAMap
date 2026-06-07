@@ -8,7 +8,1985 @@
 
 > ⚠️ Les données présentes sur le site de démonstration sont fictives.
 
-**📦 Version courante** : `v1.39.0` (06/06/2026) — **Vue OSM (plan calibré GPS au-dessus d'OpenStreetMap)** :
+**📦 Version courante** : `v1.40.32` (07/06/2026) — **Enrichissement Onboarding : 2 nouvelles cartes (🌍 Vue OSM, 📖 Mode Histoire) + enrichissements (🚨 Sortie urgence, 🎤 Vocale)** :
+
+KARMA : *« On doit pouvoir enrichir le On Boarding avec la partie OSM et Histoire (peut être d'autres oublis) »*.
+
+🎯 **Audit oublis du tutoriel** (23 cartes → manquaient 4 features récentes)
+
+| # | Feature | Version | Statut avant |
+|---|---|---|---|
+| 1 | 🌍 **Vue OSM** | v1.39+ | ❌ Absent |
+| 2 | 📖 **Mode Histoire** | v1.34.19+ | ❌ Absent |
+| 3 | 🚨 **Mode Sortie d'urgence** | v1.35.0 | ❌ Absent (carte 12 ne mentionnait que "Perdu" + "Panique XL") |
+| 4 | 🎤 **Commande vocale** | v1.34.0 | ❌ Absent |
+
+🔧 **Fix v1.40.32** — **Tutoriel passe de 23 à 25 cartes** + 2 enrichissements
+
+**Nouvelles cartes complètes** :
+- **Carte 23 « 🌍 Vue OSM »** (insérée entre Sauvegardes et Config) — couvre les 2 contextes (modale plein écran + widget HOME), opt-in strict, bouton Ma position GPS, filtre par tag, attribution ODbL, gating strict offline + incognito, garde-fou bbox plan. Avec hint sur calibration GPS requise.
+- **Carte 24 « 📖 Mode Histoire »** (juste après OSM) — note libre Markdown inline + PDF embedded (IDB), accès via bouton 📖 sidebar, embarqué dans MKMSESSION, 100% local. Avec hint sur l'usage pour plans hérités.
+
+**Enrichissements cartes existantes** :
+- **Carte 12 « Modes urgence »** : titre passe de *"Perdu / Panique"* à *"Perdu / Panique / Sortie"*, ajout d'un 3e bullet décrivant le mode Sortie d'urgence (POI tag sortie + pathfinder + ETA). Réécriture du résumé "3 cas d'usage différents" pour clarifier les 3 modes.
+- **Carte 25 « Config & outils annexes »** (ex-23) : ajout mention 🎤 **Commande vocale** (Web Speech API native, "aller à [POI]", auto-stop, audio jamais transmis) + 🪫 **Vibration haptique** (toggle Configuration, 5 events critiques).
+
+**Commentaire du plan en tête** : mis à jour pour refléter le passage 23→25 + bullet des nouvelles cartes/enrichissements + référence v1.40.32.
+
+📊 **Compteur dynamique** : le compteur affiché à l'user (`23/23` etc.) utilise déjà `CARDS.length` côté code (vérifié lignes 906, 928, 933, 947, 1017) → renumérotation **automatique** : les 2 nouvelles cartes s'affichent en `23/25` et `24/25`, et l'ex-23 devient `25/25`. Aucune autre intervention requise.
+
+🧪 **Tests à faire**
+- Premier lancement (ou Reset config) → tutoriel auto-s'ouvre → naviguer avec ◂ ▸ → vérifier 25 cartes (pastilles de progression doivent compter 25)
+- Carte 12 (Modes urgence) → vérifier le 3e bullet "🚨 Sortie d'urgence" + résumé final à 3 cas
+- Carte 23 (🌍 Vue OSM) → contenu complet, hint en bas
+- Carte 24 (📖 Mode Histoire) → contenu complet, hint en bas
+- Carte 25 (⚙️ Config) → mention 🎤 Commande vocale + 🪫 Vibration en plus du contenu original
+- Bouton 🎓 dans header modale Documentation → rejoue le tutoriel
+- Mobile : pastilles de progression 25 tiennent dans la largeur, sinon scroll horizontal
+
+🛡️ **Pas de régression** — pur enrichissement éditorial JS (2 cartes ajoutées + 2 sections enrichies dans existantes + commentaire). Aucun code de logique touché. Logique de navigation (`_currentIdx`, `CARDS.length`, pastilles dynamiques) inchangée.
+
+---
+
+**📦 v1.40.31** (07/06/2026) — **Hotfix MD (le vrai) : code fence ` ```json ` jamais refermé section "Adding levels to data layers" EN** :
+
+KARMA : *« tjr casser vers : Adding levels to data layers — Existing data layers (`puits.json`, `cataphile.json`, etc.) can also have items tagged by level. Manually add `"level": N` in the JSON: ``` { "data": [ »*.
+
+🎯 **Cause racine (la vraie cette fois)**
+
+Mon fix v1.40.30 sur l'imbrication italique/bold n'était pas le bug bloquant — c'était cosmétique. Le **vrai bug** était bien plus en amont dans le fichier, ligne 2153-2164 (section "Adding levels to data layers", chapitre Multi-niveau) :
+
+```md
+` ```json `        ← ligne 2153 (ouvre fence)
+{
+  "data": [
+    ...
+  ]
+}                  ← ligne 2164 (close JSON object MAIS PAS le fence)
+Items without...   ← ligne 2165 (texte normal, mais MD le voit comme code suite)
+```
+
+**Le code fence ` ```json ` n'était jamais refermé**. Tout le contenu après la ligne 2164 jusqu'au prochain ` ``` ` quelque part plus loin était interprété comme **code monospace** par le parser MD. Pas d'erreur du parser — juste un rendu cassé visuellement : tout le reste du fichier en bloc code grisé, sections plus rendues comme titres, listes plates.
+
+Pourquoi je l'avais raté en v1.40.28-30 : je cherchais des erreurs **dans la zone que j'avais éditée** (section "To the open-source tools") sans réaliser que le bug était **en amont** dans une section que je n'avais jamais touchée.
+
+🔧 **Fix v1.40.31**
+
+Ajout du ` ``` ` fermant manquant entre le `}` final du JSON et la ligne `Items without level →...`.
+
+```diff
+    { "type": "eau", "level": 0, "points": [...] }
+  ]
+}
++ ```
++
+Items without `level` → treated as `level: 0` (backward compatibility...).
+```
+
+**Vérif globale post-fix** : comptage des markers code fence dans les 2 fichiers via `grep -c '^\`\`\`'` :
+- README_USER.en.md : **30** (= 15 paires symétriques) ✅
+- README_USER.md FR : **38** (= 19 paires symétriques) ✅
+
+Aucun fence orphelin restant.
+
+📊 **Avant / Après**
+
+| | Avant v1.40.31 | Après v1.40.31 |
+|---|---|---|
+| Rendu README_USER.en à partir ligne ~2153 | ❌ Tout en bloc code grisé jusqu'au prochain ` ``` ` qq part plus loin | ✅ Rendu normal : code block JSON propre + texte + section suivantes lisibles |
+| Sections "Save and share", "Acknowledgements", etc. | ❌ Invisibles ou monospace cassé | ✅ Toutes accessibles |
+
+🧪 **Tests à faire**
+- Hard reload (Ctrl+F5) pour bypass cache SW v1.40.30
+- Modale Documentation EN : scroll jusqu'à `🏗️ Multi-level mode > Adding levels to data layers` → code block JSON s'affiche en un bloc propre, puis texte normal `Items without level...`, puis section `Exporting with level selection` lisible
+- Continuer scroll → sections `Save and share`, `Load / Import`, `Acknowledgements` toutes accessibles et bien rendues
+- Mêmes tests en FR (rendu inchangé, juste vérif aucune régression)
+
+🎓 **Leçon pour mémoire** (à noter dans gotchas.md si tu veux)
+- **Toujours vérifier le parité des ` ``` ` markers** dans un MD après édition : `grep -c '^\`\`\`' fichier.md` — résultat impair = fence orphelin = rendu cassé après ce point.
+- Bugs MD sont souvent **silencieux** côté parser (pas d'erreur), juste rendu visuel qui dégénère → utiliser preview GitHub ou un linter MD avant commit (`markdownlint-cli` détecte ce genre de truc).
+- Quand un user reporte "ça casse à tel endroit", regarder **en amont** dans le fichier, pas au point reporté — le bug racine est souvent plus haut.
+
+🛡️ **Pas de régression code** — pur fix éditorial 1 ligne (1 fence ajouté).
+
+---
+
+**📦 v1.40.30** (07/06/2026) — **Hotfix MD : ligne OpenStreetMap des crédits cassait le rendu en EN (imbrication `*(**[...](...)**...)*` invalide)** :
+
+KARMA : *« erreur de syntaxe MD dans la doc EN qui casse à un moment l'affichage du fichier »*.
+
+🎯 **Cause racine**
+Dans v1.40.28 j'avais écrit la ligne OSM des crédits avec 3 niveaux d'imbrication Markdown :
+```md
+*(**[ODbL](url)** license for data, **[CC BY-SA 2.0](url)** for cartography)*
+```
+= italique `*( )*` + bold `** **` + lien `[...](...)`, le tout imbriqué.
+
+Le pattern `*(**` (italique-ouvert IMMÉDIATEMENT suivi de bold-ouvert sans contenu intermédiaire) **casse certains parsers CommonMark stricts** — le parser n'arrive pas à matcher les fermetures et abandonne le rendu de la suite du fichier.
+
+Pourquoi seul l'EN cassait ?
+- **EN** : `*(**[ODbL]...` — `*(**` direct, **CASSE** ❌
+- **FR** : `*(licence **[ODbL]...` — mot `licence ` intercalé entre `*(` et `**`, le parser arrive à matcher l'italique sur "licence ", **PASSE** ✅
+
+Différence subtile passée inaperçue à mon edit v1.40.28.
+
+🔧 **Fix v1.40.30** — Retirer l'italique extérieur `*(...)*` → garder juste `( )` avec bold internes (les licences gardent leur emphase). Applique aux 2 langues pour cohérence et robustesse.
+
+**Avant (EN problématique)** :
+```md
+*(**[ODbL](url)** license for data, **[CC BY-SA 2.0](url)** for cartography)*
+```
+
+**Après (EN)** :
+```md
+— licensed under **[ODbL](url)** for data and **[CC BY-SA 2.0](url)** for cartography.
+```
+
+**Avant (FR fonctionnel mais pattern fragile)** :
+```md
+*(licence **[ODbL](url)** pour les données, **[CC BY-SA 2.0](url)** pour la cartographie)*
+```
+
+**Après (FR)** :
+```md
+— sous licence **[ODbL](url)** pour les données et **[CC BY-SA 2.0](url)** pour la cartographie.
+```
+
+Vérif par grep `\*\(\*\*` dans les 2 fichiers : **0 match restant**. Aucun autre pattern fragile.
+
+📊 **Avant / Après**
+
+| | Avant v1.40.30 | Après v1.40.30 |
+|---|---|---|
+| Affichage README_USER.en.md à partir de la section "Aux outils libres" | ❌ Cassé (parser MD abandonne) | ✅ Rendu propre |
+| Affichage README_USER.md FR | ✅ OK | ✅ OK (même pattern, plus robuste) |
+| Lisibilité des licences | Bold visible (italique en bonus) | Bold visible (emphase principale préservée) |
+
+🧪 **Tests à faire**
+- Hard reload (Ctrl+F5) pour invalidate cache SW v1.40.29
+- Modale Documentation EN (toggle 🇬🇧) → scroll jusqu'à `🙏 Acknowledgements > To the open-source tools` → liste complète des 7 libs visible **jusqu'à la fin**, plus de coupure brutale.
+- Modale Documentation FR (🇫🇷) → idem, rendu inchangé visuellement (juste pattern plus robuste).
+- Vérifier que les liens **[ODbL]**, **[CC BY-SA 2.0]**, **[OSM Foundation]** s'affichent en **gras + cliquables** dans les 2 langues.
+
+🎓 **Leçon Markdown** (à noter dans gotchas.md)
+- **Imbrication italique + bold + lien** sans contenu intermédiaire = risque parser. Pattern `*(**[`  particulièrement fragile.
+- Safe : `_(**[link](url)** ...)_` ou simplifier (1 seul niveau d'emphase).
+- Si tu DOIS imbriquer, mets du texte neutre entre les ouvertures : `*(text **bold** ...)*`.
+
+🛡️ **Pas de régression** — pur fix MD éditorial 2 lignes (1 par langue).
+
+---
+
+**📦 v1.40.29** (07/06/2026) — **Cohérence crédits visuels : ajout `🌍 OSM` aux 3 footers (splash + loader HOME + modale Documentation)** :
+
+KARMA : *« super maintenant du coup il faut adapter, footer home + Modal documentation + loader (pro + COmu) »*.
+
+🎯 **Diagnostic** — 3 footers visuels affichaient des listes raccourcies différentes :
+
+| # | Emplacement | Avant v1.40.29 |
+|---|---|---|
+| 1 | Splash (#splashLeafletCredit, ligne 145 index.html) | `🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🧭 Dijkstra` |
+| 2 | Loader HOME footer (ligne 510 index.html) | Idem ↑ |
+| 3 | Modale Documentation footer (interfaceDocs.js ligne 418) | `— 🍃 Leaflet · 📦 JSZip · 🧭 Dijkstra` (jsPDF **manquant** depuis v1.9.2) |
+
+L'enrichissement v1.40.28 du README_USER ajoutait OSM et Rotated dans la doc longue, mais ces 3 listes courtes restaient bloquées sur les libs historiques pré-OSM. Incohérence visible.
+
+🔧 **Fix v1.40.29** — Cohérence stricte des 3 instances :
+
+| # | Après v1.40.29 |
+|---|---|
+| 1, 2, 3 | `🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra` |
+
+Décisions UX :
+- **`🌍 OSM`** (forme courte) plutôt que `🌍 OpenStreetMap` complet : contrainte d'espace 1 ligne sur splash et footer mobile. L'app affiche déjà l'attribution complète `© OpenStreetMap contributors` dans le coin des cartes (obligation ODbL respectée par Leaflet), et la doc longue (README_USER section "Aux outils libres") garde le nom complet + licence + lien.
+- **Rotated plugin** : **pas ajouté** aux footers courts (déjà 5 mentions, plus on charge moins c'est lisible). Reste documenté dans la doc longue v1.40.28.
+- **`📤 jsPDF` rétabli** dans interfaceDocs (oublié depuis v1.9.2-fix17, repéré au passage).
+- **Loader pro vs community** : le HTML loader est identique. La mention "💼 Licence pro" community-only est gérée par `.kta-licence-community` au-dessus, pas dans la ligne crédits. Donc **un seul fix couvre les 2 modes**.
+
+📊 **Sites enrichis (2 fichiers code)**
+
+| Fichier | Modif | Sites |
+|---|---|---|
+| `index.html` | Lignes 145 + 510 + commentaires v1.40.29 | 2 instances (splash + loader HOME) |
+| `js/interfaceDocs.js` | Ligne 418 (rétabli jsPDF + ajout OSM) | 1 instance (footer modale Documentation) |
+| `sw.js`, `js/copyright.js`, `version.json` | Bump v1.40.28 → **v1.40.29** | 3 sources de version |
+| `NETWORK_AUDIT.md` + `.html` | Header → v1.40.29 | 2 audits |
+| `README.md` | Entrée journal v1.40.29 | 1 fichier |
+
+🧪 **Tests à faire**
+- Recharger app (Ctrl+F5 pour bypass cache SW v1.40.28) → splash affiche `🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra`.
+- Footer loader HOME (en bas de la page d'accueil) : même ligne.
+- Ouvrir modale Documentation (bouton 📚 ou similaire) → scroller jusqu'au bas → footer affiche `Développé par [KARMA] — 🍃 Leaflet · 📦 JSZip · 📤 jsPDF · 🌍 OSM · 🧭 Dijkstra`.
+- Mode pro : footer loader identique (le badge `✓ Licence professionnelle active` reste au-dessus + reste vert v1.40.27).
+- Mode community : footer loader identique + mention "💼 Licence pro" visible avant la ligne crédits (inchangée).
+
+🛡️ **Pas de régression** — pur enrichissement éditorial de 3 chaînes HTML. Aucun JS/CSS de logique touché. Conformité ODbL renforcée visuellement (OSM visible dans tous les footers cohérent avec attribution dans le coin des cartes).
+
+---
+
+**📦 v1.40.28** (07/06/2026) — **Enrichissement section « Aux outils libres » : OpenStreetMap + Leaflet.ImageOverlay.Rotated** :
+
+KARMA : *« Maintenant on enrichie la doc pour les opensource remercier, OSM typiquement »* + précision : la section visée est `🙏 Remerciements > Aux outils libres` dans `README_USER.md` (FR + EN).
+
+🎯 **État avant v1.40.28** : la liste open source mentionnait Leaflet · JSZip · jsPDF · Dijkstra · GPX · Web standards. **Manquaient** :
+- **OpenStreetMap** (utilisé depuis v1.39.0 pour Vue OSM, et **obligation légale d'attribution ODbL**)
+- **Leaflet.ImageOverlay.Rotated** (plugin vendored BSD 2-clause, utilisé depuis v1.38.0 pour calage 2 ancres + projection Vue OSM)
+- Licences explicites (BSD 2-clause, MIT, MIT/GPL, ODbL) pour chaque lib
+- Crédits aux mainteneurs nommés (Vladimir Agafonkin pour Leaflet, Iván Sánchez Ortega pour Rotated, Stuart Knightley pour JSZip)
+- Pointeur vers `NETWORK_AUDIT` pour le détail réseau
+
+🔧 **Enrichissement v1.40.28**
+
+Section `## 🙏 Remerciements > ### Aux outils libres` enrichie FR + EN avec :
+
+1. **🍃 Leaflet** *(BSD 2-Clause)* — crédit Vladimir Agafonkin + contributeurs.
+2. **🔄 Leaflet.ImageOverlay.Rotated** *(BSD 2-Clause, vendored)* — **nouveau crédit** : Iván Sánchez Ortega. Plugin utilisé pour calage 2 ancres (v1.38+) et projection Vue OSM (v1.39+).
+3. **📦 JSZip** *(MIT/GPL au choix)* — crédit Stuart Knightley.
+4. **📤 jsPDF** *(MIT)* — usage détaillé.
+5. **🌍 OpenStreetMap & ses contributeurs** *(ODbL pour données, CC BY-SA 2.0 pour cartographie)* — **nouveau crédit majeur** :
+   - Attribution explicite `© OpenStreetMap contributors` (obligation ODbL respectée, déjà affichée par Leaflet dans le coin des cartes)
+   - Mention OSM Foundation (hébergement tuiles, politique privacy publique, non-commercial)
+   - Reconnaissance du bien commun "bâti depuis 2004 par des milliers de bénévoles"
+   - Précision **opt-in** : "uniquement quand tu l'actives via l'opt-in dédié" (cohérent avec philosophie offline-first)
+6. **🧭 Algorithme de Dijkstra** (1959) — crédit Edsger W. Dijkstra (1930-2002).
+7. **🌐 GPX 1.1**, **🛡️ Web standards** — inchangés (déjà bien rédigés).
+
+Note ajoutée en fin de section : **📜 Conformité licences** — les fichiers vendored conservent leur header de licence d'origine, pointeur vers `NETWORK_AUDIT` pour le détail réseau.
+
+**Footer crédits final** du README_USER (FR) enrichi pareil avec 🔄 Rotated et 🌍 OpenStreetMap. EN inchangé (pas de footer crédits équivalent).
+
+📊 **Sites enrichis (2 fichiers)**
+
+| Fichier | Section | Changement |
+|---|---|---|
+| `docs/applications/README_USER.md` | `🙏 Remerciements > Aux outils libres` | 4 entrées enrichies + 2 nouvelles (Rotated + OSM) + note licences |
+| `docs/applications/README_USER.md` | Footer "Crédits librairies & algorithmes" | +🔄 Rotated +🌍 OpenStreetMap |
+| `docs/applications/README_USER.en.md` | `🙏 Acknowledgements > To the open-source tools` | Parité stricte FR (6 entrées + note licences) |
+
+🧪 **Tests à faire**
+- Ouvrir modale Documentation in-app (🇫🇷) → scroller jusqu'à 🙏 Remerciements > Aux outils libres → voir les 7 libs + note licences + lien vers `NETWORK_AUDIT`.
+- Toggle 🇫🇷/🇬🇧 → version EN affiche les 7 mêmes libs + note + lien.
+- Vérifier que les liens externes fonctionnent (Leaflet, Rotated GitHub, OSM, etc.).
+- Si modale Documentation est cachée par le SW cache, hard reload (Ctrl+F5) requis pour voir l'enrichissement après upgrade v1.40.28.
+
+🛡️ **Pas de régression** — pur enrichissement éditorial 2 fichiers de doc. Aucun JS/CSS/audit/réseau touché. Conformité ODbL renforcée (attribution explicite documentée).
+
+---
+
+**📦 v1.40.27** (07/06/2026) — **Re-fix CSS badge licence pro thème clair (specificity vs cascade order)** :
+
+KARMA après test v1.40.26 : *« toujours pas vert en clair »* (capture footer v1.40.26 confirmée, badge encore gris muté).
+
+🎯 **Re-diagnostic** (j'avais raté le détail crucial en v1.40.26)
+
+Mon fix v1.40.26 ajoutait `!important` à la règle ligne 9442 :
+```css
+body.kta-theme-light .kta-loader-copyright-pro-badge {
+  color: #1d8a3a !important;
+}
+```
+Specificity = **(0, 2, 1)** : 0 ID, 2 classes (`.kta-theme-light` + `.kta-loader-copyright-pro-badge`), 1 type (`body`).
+
+MAIS la règle générique ligne 14244 :
+```css
+body.kta-theme-light .kta-loader-copyright * {
+  color: var(--kta-light-text-muted) !important;
+}
+```
+Specificity = **(0, 2, 1)** également : 0 ID, 2 classes (`.kta-theme-light` + `.kta-loader-copyright`), 1 type (`body`).
+
+⚖️ **Specificity égale + `!important` égal → c'est la cascade order qui tranche, et la règle ligne 14244 vient APRÈS ligne 9442 dans le fichier → elle gagne**. Mon `!important` v1.40.26 ne suffisait pas. J'avais raté ça.
+
+🔧 **Fix v1.40.27** : augmenter la specificity au-delà de (0, 2, 1) en empilant `html` + `body` + chaîne descendante :
+
+```diff
++ html.kta-theme-light body .kta-loader-copyright .kta-loader-copyright-pro-badge,
+  body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge {
+    color: #1d8a3a !important;
+  }
+```
+
+**Nouveaux selectors** :
+- `html.kta-theme-light body .kta-loader-copyright .kta-loader-copyright-pro-badge` : (0, 3, 2) — 3 classes + 2 types (html+body)
+- `body.kta-theme-light .kta-loader-copyright .kta-loader-copyright-pro-badge` : (0, 3, 1) — 3 classes + 1 type (body)
+
+Les deux **battent** (0, 2, 1) du sélecteur `*` ligne 14244 quel que soit l'ordre cascade. Le double sélecteur cible aussi bien `html.kta-theme-light` que `body.kta-theme-light` selon où l'app pose la classe theme.
+
+📊 **Avant / Après**
+
+| | v1.40.25 | v1.40.26 (raté) | v1.40.27 (correct) |
+|---|---|---|---|
+| Sélecteur thème clair badge | `body.X .badge { color: #1d8a3a }` | `body.X .badge { color: #1d8a3a !important }` | `html.X body .Y .badge, body.X .Y .badge { color: #1d8a3a !important }` |
+| Specificity | (0, 2, 1) | (0, 2, 1) + `!important` | **(0, 3, 2)** + `!important` |
+| Specificity règle `*` | (0, 2, 1) + `!important` | (0, 2, 1) + `!important` | (0, 2, 1) + `!important` |
+| Cascade tiebreak | règle `*` gagne (plus tardive) | règle `*` gagne (égalité+ordre) | **badge gagne (specificity supérieure)** |
+| Résultat badge clair | Gris muté ❌ | Gris muté ❌ | **Vert sombre `#1d8a3a`** ✅ |
+
+🧪 **Tests à faire**
+- ⚠️ **Hard reload nécessaire** (Ctrl+F5) car le SW pourrait servir l'ancien CSS depuis v1.40.26 cache.
+- Thème clair + licence pro : footer = `✓ Licence professionnelle active` en **vert sombre lisible** sur fond beige.
+- Thème sombre : inchangé (vert vif `#6ee287`).
+- Specificity peut être confirmée dans DevTools Chrome (Inspector > Styles > la règle gagnante doit être notre nouvelle ligne 9440-9442).
+
+🎓 **Leçon CSS** (pour mémoire archi)
+- **`!important` ne suffit PAS si specificity égale** : avec 2 règles `!important` à specificity égale, c'est la **cascade order** (= position dans le fichier) qui tranche. La règle plus tardive gagne.
+- Pour battre un `* !important` plus loin dans le fichier, soit augmenter specificity (chaîne descendante / html+body), soit déplacer le fix après. La specificity est plus robuste car indépendante de l'ordre.
+- Calcul rapide : compter (IDs, classes/attributs/pseudo-classes, types/pseudo-éléments). `*` compte pour 0. Le selector `html.X body .Y .Z` = (0, 3, 2) bat `body.X .Y *` = (0, 2, 1).
+
+---
+
+**📦 v1.40.26** (07/06/2026) — **Hotfix CSS thème clair : badge « ✓ Licence professionnelle active » en vert (était grisé muté)** :
+
+KARMA : *« ✓ Licence professionnelle active en footer de CLAIR doit être en vert comme pour SOMBRE »*.
+
+🎯 **Cause racine** (specificity CSS classique)
+
+Le badge `.kta-loader-copyright-pro-badge` avait bien une règle variant thème clair ligne 9434 :
+```css
+html.kta-theme-light .kta-loader-copyright-pro-badge,
+body.kta-theme-light .kta-loader-copyright-pro-badge {
+  color: #1d8a3a;
+}
+```
+
+Mais une règle générique plus loin ligne 14244 écrasait avec `!important` :
+```css
+body.kta-theme-light .kta-loader-copyright * {
+  color: var(--kta-light-text-muted) !important;
+}
+```
+
+Le sélecteur descendant `*` `!important` gagne sur la règle `.kta-loader-copyright-pro-badge` sans `!important` → en thème clair, le badge ressortait en **gris muté** au lieu du vert prévu.
+
+En thème sombre, pas de souci : la règle générique ligne 14244 ne s'applique qu'à `kta-theme-light`, donc le badge sombre `#6ee287` (ligne 9421) gardait sa couleur.
+
+🔧 **Fix v1.40.26**
+
+Ajout de `!important` au variant thème clair du badge — fix chirurgical pour battre le sélecteur générique sans avoir à toucher la règle `*` (qui est légitime pour le reste du copyright). Couleur conservée `#1d8a3a` (vert sombre lisible sur fond beige `--kta-light-bg-deep`).
+
+```diff
+  html.kta-theme-light .kta-loader-copyright-pro-badge,
+  body.kta-theme-light .kta-loader-copyright-pro-badge {
+-   color: #1d8a3a;
++   color: #1d8a3a !important;
+  }
+```
+
+📊 **Avant / Après (thème clair uniquement)**
+
+| | Avant v1.40.25 | Après v1.40.26 |
+|---|---|---|
+| Couleur badge `✓ Licence professionnelle active` | Gris muté (`--kta-light-text-muted` = `#5a4f40`) | **Vert sombre `#1d8a3a`** (visible sur beige) |
+| Thème sombre | Vert vif `#6ee287` ✅ inchangé | Vert vif `#6ee287` ✅ inchangé |
+
+🧪 **Tests à faire**
+- Thème CLAIR + licence pro active : footer affiche `✓ Licence professionnelle active` en **vert sombre lisible**.
+- Thème SOMBRE : inchangé (vert vif).
+- Mode community (sans licence pro) : badge masqué, pas de régression.
+- Contraste : `#1d8a3a` sur fond `var(--kta-light-bg-deep)` = ratio ≈ 5:1 → AA conforme.
+
+🛡️ **Pas de régression réseau / sécurité** — pur changement CSS cosmétique. Audit `NETWORK_AUDIT` headers bumpés à v1.40.26 pour alignement (contenu inchangé).
+
+---
+
+**📦 v1.40.25** (07/06/2026) — **Vue OSM popup POI : description prééminente (au lieu du tag)** :
+
+KARMA : *« petit bug, en description de POI, en OSM on affiche le tag et non la description »*.
+
+🎯 **Diagnostic**
+- **Modale OsmView** : popup affichait juste `nom + tag · niveau` — **aucune description rendue** (oubli initial v1.39.12).
+- **Widget HOME** : popup avait `description` mais en queue, même couleur que le tag, visuellement secondaire.
+
+Résultat : KARMA voit "tag" (e.g. `default`) à l'endroit où il s'attend à voir sa description rédigée. Bug UX confirmé.
+
+🔧 **Fix v1.40.25** (cohérence stricte modale + widget) :
+
+Format unifié :
+```
+[Nom POI en gras jaune]
+Description complète · niveau X        ← ligne 2 prééminente (si description)
+🏷️ tag                                 ← ligne 3 mini subtle (si description)
+```
+
+Fallback si pas de description (= ancien comportement) :
+```
+[Nom POI en gras jaune]
+tag · niveau X                          ← ligne 2 (fallback)
+```
+
+Détails techniques :
+- Modale (`js/osmView.js` ~ligne 459-470) : ajout de `const desc = (p.description || "").trim()` + bascule ligne 2 entre `desc` et `tag`. Ligne 3 mini avec `🏷️ tag` en `opacity: 0.75` + `font-size: 10.5px` + `color: #8892a4`.
+- Widget HOME (`js/osmHomePreview.js` ~ligne 796-810) : refonte identique pour cohérence stricte. Variable `lvlSfx` extraite pour lisibilité.
+- `max-width: 260px` ajouté au container popup (les descriptions longues peuvent dépasser, sinon overflow horizontal).
+- Le style CSS dark `kta-osm-popup` v1.40.22 reste appliqué : fond `#1a1f2e`, bordure or, nom POI en jaune `#f4c542`.
+
+📊 **Avant / Après**
+
+| Cas | Avant v1.40.24 modale | Avant v1.40.24 widget | Après v1.40.25 (2 contextes) |
+|---|---|---|---|
+| POI avec description "Salle des cinéastes" + tag `default` | `default · niveau 0` | `default · niveau 0` + description en queue | **`Salle des cinéastes · niveau 0`** + 🏷️ default mini |
+| POI sans description, tag `entree` | `entree · niveau 0` | `entree · niveau 0` | `entree · niveau 0` (fallback inchangé) |
+| POI multi-LVL avec description | description ignorée | description en queue | **description prééminente** + 🏷️ tag mini |
+| Largeur popup avec description longue | `min-width: 120px` (overflow possible) | `min-width: 140px` | `min-width: 140px / max-width: 260px` (overflow géré) |
+
+🧪 **Tests à faire**
+- Modale Vue OSM : cliquer un POI avec description → ligne 2 = ta description complète + suffixe niveau, ligne 3 mini avec icône 🏷️ + tag. ✅
+- Modale Vue OSM : cliquer un POI sans description (tag seulement) → ligne 2 = tag · niveau (= ancien comportement, pas de régression). ✅
+- Widget HOME : idem cohérence stricte. Description prééminente, tag mini en dessous. ✅
+- Description longue (>30 chars) : pas d'overflow horizontal, le popup wrap propre grâce à `max-width: 260px`.
+- Thème clair : couleur de la description `#c8d0e0` peut sembler peu lisible sur fond beige → vérifier (si OK rien à faire, sinon ajout variant `.kta-theme-light`).
+
+🛡️ **Pas de régression réseau / sécurité** — pur changement HTML cosmétique du popup. Audit `NETWORK_AUDIT` inchangé en contenu (juste header version bumpé).
+
+---
+
+**📦 v1.40.24** (07/06/2026) — **Vue OSM widget HOME : suppression des markers calibrage A/B + ligne pointillée jaune** :
+
+KARMA : *« en OSM on a a l'affichage le calibrage point A point B en pointillé, je ne veux pas le voir a l'écran »*.
+
+🎯 **Cause** : depuis v1.40.0, le widget HOME rendait 2 `L.circleMarker` (vert A + rouge B) avec tooltip "📍 Point A/B" + une `L.polyline` pointillée jaune (`dashArray: "6 4"`) entre les 2, dans `_renderGeorefMarkers()` (`js/osmHomePreview.js` lignes 487-503). Utile au tout début (mode léger v1.40.0 sans data layers) pour signifier "ici c'est ton plan georef", mais redondant depuis v1.40.4-6 qui ont ajouté les vrais POI / Roads / Zones / Structures + tuiles V2. KARMA confirme : chargent visuellement la mini-carte pour rien.
+
+🔧 **Fix v1.40.24** :
+- Suppression des 3 layers visuels (2 markers + 1 polyline) dans `_renderGeorefMarkers()`.
+- **Préservation du `fitBounds`** initial : remplacement de `_markerLayer.getBounds()` (qui serait désormais vide) par `L.latLngBounds([llA, llB])` calculé directement depuis les coords A/B. Résultat de cadrage initial **strictement identique**.
+- `_markerLayer` n'est **pas supprimé** (variable + featureGroup conservés vides) pour ne casser aucun call-site éventuel — futur refactor possible mais hors scope minimum.
+- **Modale OsmView** : RAS, aucun marker georef n'y était rendu (vérifié par `grep dashArray` qui ne renvoie que `ITI_DASHARRAY` pour l'itinéraire cyan, comportement attendu).
+
+📊 **Avant / Après**
+
+| Élément widget HOME | Avant v1.40.23 | Après v1.40.24 |
+|---|---|---|
+| Circle marker vert "Point A" | ✅ Affiché avec tooltip | ❌ Plus rendu |
+| Circle marker rouge "Point B" | ✅ Affiché avec tooltip | ❌ Plus rendu |
+| Polyline pointillée jaune A↔B | ✅ Affichée (dashArray "6 4") | ❌ Plus rendue |
+| Cadrage initial sur la zone du plan | ✅ Via `_markerLayer.getBounds()` | ✅ Via `L.latLngBounds([llA, llB])` (identique visuellement) |
+| Visibilité data layers (POI, Roads, Zones, Struct, tuiles V2) | ✅ Inchangé | ✅ Inchangé |
+| Modale OsmView (Vue OSM full screen) | ✅ Aucun marker georef | ✅ Aucun marker georef (rien changé) |
+
+🧪 **Tests à faire**
+- Ouvrir HOME → widget OSM → vérifier qu'on voit **uniquement** les tuiles plan + POI + Roads + Zones + Structures (selon toggles). Plus aucun marker vert/rouge ni ligne pointillée jaune.
+- Changer de plan via le dropdown → cadrage initial toujours correct sur le nouveau plan (fitBounds direct fonctionne).
+- Cliquer ⛶ fullscreen → idem, pas de markers georef visuels.
+- Cas dégénéré : plan georef sans aucune data layer → l'user voit juste les tuiles OSM cadrées sur la zone du plan (avant : il aurait vu A + B + ligne, maintenant rien d'autre que les tuiles). Cohérent avec "data layers attendues sur un plan normal".
+
+⚠️ **Si retour KARMA** : si tu veux ré-afficher les markers de calibrage en mode debug (genre cocher une case "🛠️ Mode dev"), on peut ajouter un toggle local au widget — pour l'instant supprimés totalement (KARMA "ne veut pas le voir à l'écran").
+
+---
+
+**📦 v1.40.23** (07/06/2026) — **Fix générateur : regex emoji 📄 ne strippait pas le préfixe label sur les calques image (bug surrogate pair JS)** :
+
+KARMA : *« Fichier image "📄 four_a_chaux_LEGENDE.png" introuvable dans le ZIP source. Re-uploade le fichier via le bouton 📂 Choisir du calque "Legende". (LE fameux 404 quand je renvois un zip dans générateur) source pourtant OK legende affiche bien »*.
+
+🎯 **Cause racine** (classique du regex JavaScript sur emojis)
+Dans `js/createConf.js` (6 occurrences), le code lit le nom de fichier affiché dans le DOM puis strippe le préfixe visuel ✅ ou 📄 avec :
+```js
+.replace(/^[✅📄] /, "")
+```
+
+**Le bug** : le character class `[✅📄]` en regex JS standard **ne gère pas les surrogate pairs UTF-16** :
+- ✅ = `✅` (1 code unit) → match OK ✅
+- 📄 = `📄` (**surrogate pair, 2 code units**) → `[📄]` est interprété comme `[\uD83D OR \uDCC4]`, pas comme le caractère composé.
+
+Donc :
+- `"✅ four_a_chaux_LEGENDE.png"` → replace marche → `"four_a_chaux_LEGENDE.png"` ✅
+- `"📄 four_a_chaux_LEGENDE.png"` → regex cherche `\uD83D` OU `\uDCC4` **suivi d'un espace**, mais après `\uD83D` vient `\uDCC4` (PAS d'espace) → **no match** → `nomTxt` reste `"📄 four_a_chaux_LEGENDE.png"` avec préfixe emoji intact.
+
+Ensuite ligne 2593 `_plannerOrigAssets["📄 four_a_chaux_LEGENDE.png"]` cherche une clé qui n'existe pas (les vraies clés dans `_plannerOrigAssets` sont des noms purs : `"four_a_chaux_LEGENDE.png"`) → **clé introuvable → erreur "Fichier image introuvable dans le ZIP source"** affichée.
+
+Pourquoi ça affichait `📄` et non `✅` ? Parce que le label DOM utilise `📄` quand le fichier n'a pas été re-sélectionné par l'user (= source = ZIP original), et `✅` quand l'user a re-uploadé via le bouton 📂. Donc le bug touchait pile le cas "je recharge un ZIP existant sans rien retoucher" — exactement ce que KARMA fait à chaque génération.
+
+🔧 **Fix v1.40.23** : ajout du flag `u` (Unicode mode) qui active le traitement des codepoints complets dans le character class.
+
+```diff
+- replace(/^[✅📄] /, "")
++ replace(/^[✅📄]\s/u, "")
+```
+
+Avec `u` : `[📄]` devient un set d'un seul caractère composé (le codepoint U+1F4C4 entier). `\s` au lieu de l'espace ASCII tolère aussi ` ` (nbsp) au cas où le DOM rendrait un nbsp invisible.
+
+🔍 **Sites touchés** (6 lignes dans `js/createConf.js`, fix `replace_all`) :
+- Ligne 1468 : `nomTxt` calque image dans `_genererPlanFromZip` (probablement le hot path du bug)
+- Ligne 1544, 2533, 2554 : `pl_collision_nom` (3 occurrences proximité, fonctions de validation)
+- Ligne 2576 : **LIGNE EXACTE DU BUG signalé** par KARMA (block "Calques image" du save)
+- Ligne 2624 : autre calque image
+
+Le `replace_all` garantit qu'aucun site n'est oublié — cohérence stricte.
+
+📊 **Avant / Après**
+
+| Cas | Avant v1.40.22 | Après v1.40.23 |
+|---|---|---|
+| Re-upload ZIP existant, calque préfixé `📄` | ❌ "Fichier image introuvable" + abort | ✅ Préfixe stripé, fichier trouvé via `_plannerOrigAssets` |
+| Re-upload ZIP, calque préfixé `✅` (déjà re-sélectionné) | ✅ Marchait | ✅ Marche (inchangé) |
+| ZIP avec nbsp dans le label (théorique) | ⚠️ Match probable mais imparfait | ✅ Match propre via `\s` |
+| Performance | ~0.00001ms | ~0.00001ms (identique) |
+
+🧪 **Tests à faire**
+- **Cas reproducteur** : ouvrir le générateur, charger un ZIP existant qui contient un calque image type "Legende" avec un fichier nommé `four_a_chaux_LEGENDE.png` (ou n'importe quel fichier image), **sans rien re-uploader**, cliquer "Générer" → ZIP régénéré sans erreur, et le calque "Legende" doit s'afficher correctement après chargement du nouveau ZIP. ✅
+- **Régression check** : faire pareil mais en re-uploadant manuellement via 📂 Choisir → le préfixe `✅` doit aussi être stripé proprement, comme avant. ✅
+- **Cas multi-calques** : plan avec 3+ calques image (genre LEGENDE + LEVATIONS + ANNOTATIONS) tous chargés depuis ZIP source → tous doivent passer dans le ZIP régénéré. ✅
+- **Collision detection** (lignes 1544, 2533, 2554) : tester aussi la détection de doublons de fichier (si le bouton "vérifier collisions" du générateur l'utilise) avec emoji 📄.
+
+🎓 **Leçon Unicode JavaScript** (pour archi mémoire)
+- Toute regex qui cible un emoji moderne (BMP outside, codepoint ≥ U+10000) DOIT utiliser le flag `u` ou être écrite en alternation explicite : `/^(✅|📄)\s/` (sans `u` mais plus verbeux).
+- `[emoji]` en regex non-`u` traite l'emoji comme 2 code units séparés → bugs silencieux à la lecture.
+- Idem `string.length` retourne 2 pour un emoji surrogate-pair, pas 1. Utiliser `[...string].length` ou `Array.from(string).length` si besoin du vrai nombre de caractères.
+
+🛡️ **Pas d'autre régression à craindre** : pas de changement réseau (audit `NETWORK_AUDIT` inchangé), pas de Permissions-Policy, pas de Vue OSM touché. Le fix est strictement isolé au générateur de plan + cohérent avec le pattern existant.
+
+---
+
+**📦 v1.40.22** (07/06/2026) — **Vue OSM : 3 fixes UX (POI cliquables widget HOME · modale agrandie WQHD · refonte style popup charte dark)** :
+
+KARMA après test v1.40.21 : *« deux trop bug cependant, je peux toujours pas cliquer sur des POI en home, ok en PLAN mais intégration bizarre de la note. et en mode PC surtout, le modal OSM doit pouvoir prendre plus de place flagrant dans mon cas en WQHD »*.
+
+🐛 **Bug 1 — Widget HOME : POI s'affichent mais popup invisible au clic**
+- **Cause racine** : `.kta-osm-home-content { overflow: hidden }` dans `css/style.css` ligne 4454 (héritage v1.40.0) → quand Leaflet ouvre une popup au clic, le wrapper popup est positionné absolu **au-dessus** du marker. Sur la mini-carte HOME (~260px de hauteur), le popup déborde toujours vers le haut → clippé par le container. L'user clique, le popup est créé en mémoire, mais invisible.
+- **Fix** : `overflow: hidden` → **`overflow: visible`** sur `.kta-osm-home-content`. Trade-off mineur : si un enfant (footer, bandeau) débordait, plus de clipping côtés. En pratique aucun enfant ne déborde, seul le popup ponctuel sort = OK.
+- **Bonus** : ajout `autoPan: true, autoPanPaddingTopLeft: L.point(20, 60), maxWidth: 240` au `bindPopup` widget HOME → Leaflet déplace la mini-carte pour que le popup tienne dans le viewport.
+
+🐛 **Bug 2 — Modale Vue OSM trop petite en WQHD (2560×1440) / 4K**
+- **Cause racine** : `max-width: 1200px` hard-codé dans `js/osmView.js` ligne 1028 (héritage v1.39.0) → en WQHD, la modale fait 1200/2560 ≈ 47% de l'écran. Visuel "petite fenêtre flottante perdue au centre" alors que l'user veut exploiter sa résolution.
+- **Fix** : `max-width: 1200px` → **`max-width: 1800px`** + `height: 90vh` → **`92vh`** pour un peu plus de hauteur aussi. En WQHD ça fait 1800/2560 ≈ 70% (bon compromis). En 4K (3840px) ça fait 1800/3840 ≈ 47% (toujours mieux qu'avant, et 96vw plafonne via `width:96vw`).
+
+🐛 **Bug 3 — Style popup POI "intégration bizarre" en mode PLAN (modale OsmView)**
+- KARMA confirmé via question : *"Style/CSS du popup pas joli"*. Le popup Leaflet par défaut a un fond **blanc** + ombre par défaut. Sur la map dark de la modale Vue OSM (fond `#0a0d18`), ça fait tâche.
+- **Fix** : ajout d'une classe CSS `kta-osm-popup` passée via `bindPopup(html, { className: "kta-osm-popup" })` côté modale ET widget HOME. CSS dédié dans `style.css` (~60 lignes) qui override :
+  - `.leaflet-popup-content-wrapper` : fond `#1a1f2e` (charte dark) + bordure `rgba(244, 197, 66, 0.35)` accent jaune + box-shadow soft + border-radius 8px
+  - `.leaflet-popup-content b` (nom POI) : couleur `#f4c542` accent jaune
+  - `.leaflet-popup-tip` (la flèche en bas) : matching dark + bordures cohérentes
+  - `.leaflet-popup-close-button` : couleur `#8892a4` discrète, hover `#f4c542`
+- Variant **thème clair** : fond beige `--kta-light-bg-elevated` + bordure or sombre, nom POI en `#8b6a14` (lisible sur beige).
+- Aussi : `autoPan: true` + `maxWidth: 280` côté modale aussi (pour consistance).
+
+📊 **Avant / Après**
+
+| Cas | Avant v1.40.21 | Après v1.40.22 |
+|---|---|---|
+| Clic POI widget HOME (popup visible ?) | ❌ Popup créé mais clippé par overflow:hidden | ✅ Popup s'affiche avec autoPan + overflow:visible |
+| Modale Vue OSM en WQHD 2560×1440 | ⚠️ 1200px (47% écran) | ✅ 1800px (70% écran) |
+| Style popup POI sur map dark | ⚠️ Fond blanc Leaflet default, tâche | ✅ Charte dark `#1a1f2e` + accent jaune `#f4c542` |
+| Style popup en thème clair | n/a | ✅ Variant beige `--kta-light-bg-elevated` cohérent |
+
+🧪 **Tests à faire**
+- Widget HOME : cliquer un POI → popup `kta-osm-popup` apparaît avec fond dark + nom en jaune. Si POI en haut de la mini-carte, la carte autoPan vers le bas pour que popup soit visible.
+- Modale Vue OSM en WQHD : ouvrir → modale ~70% écran (large, plus immersive). Cliquer POI → popup même style.
+- Thème clair : popup variant beige lisible (vérifier contraste nom POI `#8b6a14` sur fond `#f5ecd6`).
+- Edge case : POI au bord de la modale → autoPan limite. Vérifier pas de cropping résiduel.
+
+---
+
+**📦 v1.40.21** (07/06/2026) — **Garde-fou « GPS hors champ du plan » Vue OSM** :
+
+KARMA : *« pour ma position GPS si hors champ du plan (légère marge de ce que affiche OSM) refus et message clair »*.
+
+🎯 **Pourquoi** : éviter qu'un user à Paris voie son fix GPS s'afficher sur un plan des Catacombes de Lyon. UX + privacy (pas de marker visuel à des km du plan supposé).
+
+🔧 **Fix v1.40.21** :
+- Helpers `_getPlanGpsBbox()` (modale) / `_getPlanGpsBboxHome()` (widget) : projettent les **4 coins du plan** (`(0,0), (W,0), (W,H), (0,H)`) via `_proj.planToLatLng()` → `L.latLngBounds`. Dims plan via `APP_CONFIG.imageWidth/Height` (modale) ou `data.config.plan.imageWidth/Height` (widget, depuis le ZIP extrait).
+- Helpers `_haversineKm()` / `_haversineKmHome()` pour calculer la distance approximative au centre du plan en km (Haversine grand cercle, ~0.5% précision).
+- Dans le callback success de `getCurrentPosition`, juste après réception du fix : on étend la bbox via `bounds.pad(0.5)` (= +50% sur chaque côté = marge ×1.5 généreuse). Si `padded.contains([lat, lng])` est `false` → **early return** avec :
+  - toast warn `"📍 Position GPS hors du champ de ce plan (~X.X km du centre). Marker non affiché — vérifie que tu es bien sur le bon plan ou ailleurs."`
+  - console log diagnostic (coords + distance)
+  - bouton réinitialisé (pas de spinner ⏳ bloqué)
+  - **aucun marker affiché** (privacy : pas de trace visuelle)
+- **Fallback safe** : si bbox impossible à calculer (dims plan manquantes, `_proj` indispo, georef cassée) → on autorise comme avant (comportement v1.40.18-20 préservé, jamais de refus erroné par bug interne).
+- Marge `0.5` choisie permissive : un fix légitime en bordure de plan reste accepté (cataphile sortant par une bouche d'aération). Seul un vrai "très loin" déclenche le refus.
+- Audit `NETWORK_AUDIT.md` + `.html` + `vue-osm.md` mis à jour avec note dédiée.
+
+---
+
+**📦 v1.40.20** (07/06/2026) — **Fix header Permissions-Policy pour le bouton GPS Vue OSM** :
+
+KARMA a vu en console : `[Violation] Permissions policy violation: Geolocation access has been blocked because of a permissions policy applied to the current document. See https://crbug.com/414348233 for more detail`.
+
+🎯 **Cause racine** : le header `Permissions-Policy` côté Nginx contient `geolocation=()` (default v1.0 → v1.40.19) qui bloque l'API **avant même le prompt OS** quel que soit le contexte. Le bouton 📍 ajouté en v1.40.18 ne peut donc jamais déclencher le prompt natif. Pas un bug code client, c'est un header serveur trop restrictif.
+
+🔧 **Fix v1.40.20** :
+1. `docker/nginx-docker.conf` ligne 115 : `geolocation=()` → `geolocation=(self)` (self-host Docker).
+2. `docs/nginx-csp-config.conf` ligne 136 : idem (prod) + commentaire détaillé expliquant pourquoi `(self)`.
+3. Restriction `(self)` choisie volontairement : seule notre origine peut utiliser l'API, JAMAIS un iframe tiers (philosophie security-first même si l'app ne charge aucun iframe).
+4. Sync docs : `NETWORK_AUDIT.md` + `.html` (nouveau bullet "Header serveur requis"), `docs/architecture/vue-osm.md` (note v1.40.20), `docs/architecture/docker-selfhost.md` (mention geolocation=self).
+
+⚠️ **Déploiement prod requis (KARMA, manuel)** : le code client v1.40.20 ne fait que documenter le changement. Le header `Permissions-Policy` est envoyé par Nginx → tu dois **redéployer la config Nginx en prod** (upload `docs/nginx-csp-config.conf` puis `nginx -s reload` côté serveur) pour que le bouton 📍 fonctionne sur `myktamap.fr` et `devmap.is-underground.fr`. Sur le self-host Docker, rebuild l'image (nouvelle config embarquée).
+
+---
+
+**📦 v1.40.19** (07/06/2026) — **Vue OSM : gating Mode hors-ligne strict + Mode incognito (audit hardening)** :
+
+KARMA : *« comment on gère le cas Hors ligne ce bouton ne doit bien sûr pas être cliquable si Hors Ligne, mais déjà géré à mon avis par le modal mais faut t'en assurer »*.
+
+**Audit avant fix** :
+- Modale `osmView.js` : ✅ check `_isStrictOfflineOn()` + `_isIncognitoOn()` au `open()` (déjà bon)
+- Widget HOME `osmHomePreview.js` : ❌ **trou** (v1.40.0-18) — chargeait quand même les tuiles OSM en mode strict offline / incognito
+- Bouton 📍 GPS : ⚠️ pas de re-check runtime si toggle pendant session (edge case faible mais propre)
+
+**Fix v1.40.19** :
+1. Widget HOME : ajout helpers `_isStrictOfflineOn` + `_isIncognitoOn` (parité modale) + nouveaux renderers `_renderStrictOffline` (🛡️) + `_renderIncognito` (🕶️) appelés au `mount()` avant le check `_isOnline`.
+2. Bouton 📍 GPS (modale + widget) : early return runtime dans le handler de clic si strict/incognito au moment du clic (toast warn). Désactivé visuellement (`disabled` HTML attribute) au build modale si déjà bloqué.
+3. **Note importante** : `navigator.onLine === false` (Wi-Fi/4G coupé) ne bloque **pas** le GPS — c'est l'intérêt principal (téléphone en avion mais GPS du device parfaitement fonctionnel). Seul le mode strict offline (philosophie user) ou incognito bloque le bouton GPS, pas la perte de connexion réseau.
+4. Audit `NETWORK_AUDIT.md` + `.html` mis à jour avec nouveau bullet "Gating Mode hors-ligne strict + Mode incognito" pour la Vue OSM.
+
+---
+
+**📦 v1.40.18** (07/06/2026) — **Vue OSM : POI cliquables widget HOME + filtre tag local (modale + widget) + bouton « 📍 Ma position » GPS (modale + widget)** :
+
+Trois ajouts en deux bumps consécutifs :
+
+**v1.40.17 — POI cliquables + filtre tag** :
+- Widget HOME : POI étaient `interactive: false` → aucun feedback au clic. Désormais `interactive: true` + `bindPopup(nom + tag + niveau + description)`, parité avec la modale OSM qui avait déjà ce comportement.
+- Modale + Widget : 3ᵉ ligne du bandeau avec chips tags cliquables (toggle multi-sélection + chip « Tout »). Modale = state `_osmLocalTagFilter` AND avec `FilterPanel` global, reset au close. Widget = state `_homeTagFilter`, indépendant par design. Chips triées par fréquence (compteur en tooltip).
+
+**v1.40.18 — Bouton « 📍 Ma position » GPS** :
+- Modale + Widget : nouveau bouton dans le bandeau qui demande un **fix GPS ponctuel** via `navigator.geolocation.getCurrentPosition()` (pas de `watchPosition` continu, 0 impact batterie continue).
+- Permission OS demandée à la demande user (pas au boot). Marker bleu cyan + cercle d'incertitude si précision >20m. Re-clic = nouveau fix qui remplace l'ancien.
+- **Garanties privacy** : coordonnées **jamais** stockées (RAM only, supprimées au close modale / refresh widget), **jamais** envoyées sur le réseau (aucun fetch, aucun beacon). API browser native uniquement.
+- Audit `NETWORK_AUDIT.md` + `.html` mis à jour : section "À propos des tuiles OSM" étendue + ligne Geolocation API précisée pour mentionner ce nouvel usage user-initiated dans la Vue OSM.
+
+---
+
+**📦 v1.40.14** (07/06/2026) — **Vue OSM HOME : icônes POI — fallback paths + diagnostic** :
+
+KARMA v1.40.13 : *« road ok icone non »*. Les couleurs roads fonctionnent maintenant mais les icônes POI ne s'affichent toujours pas.
+
+**Diagnostic ajouté** (logs console) :
+
+1. Au moment de l'extraction `_extractIcons` :
+   - Log INFO : "Icons extraits : N tag(s) | tags : tag1, tag2, ..."
+   - Log WARN si paths non trouvés : "N icon path(s) absent(s) du ZIP : tag→path1 · tag→path2 ..."
+
+2. Au moment du render `_renderDataLayersOnMiniMap` :
+   - Log INFO : "POI icônes : N avec icône · M fallback cercle"
+   - Log WARN si tags POI sans icône : "Tags POI sans icône : tag1(count1) · tag2(count2) ..."
+
+Avec ces logs KARMA peut envoyer un screenshot de la console pour qu'on identifie précisément où ça coince :
+- Soit les icônes ne sont pas extraites du ZIP (paths invalides)
+- Soit les tags des POI n'existent pas dans le mapping (tags custom)
+
+**Fallback paths étendus** dans `_extractOne` :
+
+Vérification confirmée dans `createConf.js:2523` : le dossier dans le ZIP est `icon/` à la racine, paths dans `config.icons[tag]` du genre `"icon/<filename>.png"`. Mais il peut y avoir des plans avec des paths exotiques.
+
+Cascade essayée :
+1. `path` tel quel (= `"icon/<file>.png"` cas normal)
+2. `path.replace(/^\.?\//, "")` (sans leading "./" ou "/")
+3. `"data/" + path` (si certains plans utilisent cette convention)
+4. `"icon/" + path.split("/").pop()` (si path contient URL externe ou préfixe inconnu, on garde juste le filename et on cherche dans `icon/`)
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | Logs diagnostic extraction + render + 4 paths fallback |
+| Bumps habituels | sw.js, copyright.js, version.json (description inchangée) |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests à faire** :
+
+Ouvre la console F12 sur la HOME avec Catacombes sélectionné. Tu devrais voir :
+
+```
+[OsmHomePreview] Icons extraits : N tag(s) | tags : salle, pa, pc, ...
+[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct
+[OsmHomePreview] POI icônes : X avec icône · Y fallback cercle
+```
+
+Si tu as `0 avec icône` + un log warn "Tags POI sans icône : …" → envoie-moi le log, on saura précisément quels tags sont attendus. Soit on étend `TAGS_BUILTIN_HOME`, soit le format de `config.icons` est différent.
+
+Si tu as `0 tag(s) extraits` + log warn paths absents → les chemins dans le ZIP sont différents de mes hypothèses, dis-moi ce que tu vois.
+
+**📦 v1.40.13** : Vue OSM HOME — icônes POI natives + couleurs roads natives :
+
+KARMA : *« on a pas les icones quand on charge POI en home OSM »* + *« change la couleur des tracé par un vert plus epais »* (rectifié : *« récupéré la bonne couleur serait le top »*).
+
+**2 fixes** :
+
+### 1. Icônes POI natives
+
+v1.40.4 utilisait `L.circleMarker` jaune charte pour tous les POI = pas d'icônes spécifiques par tag. v1.40.13 extrait les **vraies icônes du ZIP** et crée des `L.icon` avec les images natives du plan.
+
+**Pipeline** :
+
+```
+_loadPlanDataForPreview(planId)
+  ├─ Existing : extract plan-config + dataLayers + tilesOverview
+  └─ 🆕 _extractIcons(zip, config)
+       ├─ Source 1 : config.icons (mapping user → tag → fichier ZIP)
+       └─ Source 2 : TAGS_BUILTIN_HOME fallback (salle, pa, pc, …)
+                    pour les tags standards non-overridés
+       → { tag: blobUrl, … } cache RAM
+```
+
+**Mapping `TAGS_BUILTIN_HOME`** : aligné strictement sur `map.js > TAGS_BUILTIN` (20 tags cataphile standard : salle, pa, pc, pb, pe, ps, peo, pef, eso, esf, cao, caf, vehicule, elec, epure, info, chatiere, passage, danger, plaque). Warning : si TAGS_BUILTIN change dans map.js, sync ici.
+
+**Rendu** dans `_renderDataLayersOnMiniMap` :
+
+- Cache `iconCache` local pour éviter de recréer le même `L.icon` à chaque POI partageant le même tag
+- Si tag matché → `L.marker` avec `L.icon({ iconUrl, iconSize: [24, 24], iconAnchor: [12, 12] })`
+- Si pas matché (tag exotique, no icon dans ZIP) → fallback `L.circleMarker` jaune (v1.40.4)
+
+**Tailles** : 24×24 (plus petit que les 50×50 originaux de la map principale) car la mini-carte HOME montre une zone géographique plus large.
+
+### 2. Couleurs roads natives
+
+v1.40.4 utilisait `r.color || "#8892a4"` (gris fallback). Or les data layers roads embedded n'ont **pas** de `color` dans le JSON — la couleur est **dérivée du type** via `utils.js > ROAD_STYLES_DATA`. v1.40.13 reproduit ce mapping localement.
+
+**Mapping `ROAD_STYLES_DATA_HOME`** :
+
+| Type | Couleur (alignée sur utils.js) |
+|---|---|
+| `principal` | `#00ff00` (vert) |
+| `secondaire` | `#b000ff` (violet) |
+| `chemin` | `#ffff00` (jaune) |
+| `jonction` | `#ff4ecb` (rose) |
+
+**Cascade** :
+```js
+const color = r.color || ROAD_STYLES_DATA_HOME[r.type] || "#8892a4";
+```
+Priorité : `road.color` natif (rare pour embedded) > mapping par type > fallback gris.
+
+**Weight** : 2 → 3 pour ressortir un peu, opacity 0.75 → 0.85 pour densité visuelle.
+
+### Caches RAM mis à jour
+
+`_planDataCache[planId]` étendu avec `iconUrls` :
+```js
+{ config, dataLayers, tilesOverview, iconUrls }
+```
+
+`_iconBlobUrls` array pour tracker les blob URLs créés (cleanup possible au unload). Re-sélection plan déjà vu = instant (cache préservé).
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | +ROAD_STYLES_DATA_HOME + TAGS_BUILTIN_HOME + helper `_extractIcons` + render POI avec L.icon + render roads couleur native |
+| Bumps habituels | sw.js, copyright.js, version.json (description user-friendly inchangée comme demandé) |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests** :
+
+- [ ] Plan Catacombes → POI avec **vraies icônes** (maison, PA, danger, chatière, …) au lieu de cercles jaunes
+- [ ] Log console : `Icons extraits : N tag(s)` (probablement ~20)
+- [ ] Roads colorées : principal en vert, secondaire en violet, etc. (cohérent map principale)
+- [ ] Roads un peu plus épaisses (weight 3)
+- [ ] Tags exotiques (rares) → fallback cercle jaune préservé
+- [ ] Re-sélection plan → cache RAM, instant
+- [ ] Plan v1 sans config.icons → fallback TAGS_BUILTIN_HOME suffit (icônes builtin extraites)
+- [ ] Toggle 📍 POI continue de fonctionner
+
+**Description user-friendly v1.40.13** : **inchangée** par rapport à v1.40.12 (= description feature globale demandée par KARMA, pas de mention hotfix).
+
+**📦 v1.40.12** : Vue OSM — filtres par catégorie + toggle image plan :
+
+KARMA : *« Génial, sans changer la description de version, rajoute la possibilité de filtrer comme on a fait en mode plan »* + *« rajoute aussi (pareil en mode plan), en mode OSM, la possibilité de masquer image principal »*.
+
+**2 features ajoutées** :
+
+### 1. Filtres par catégorie dans le widget HOME
+
+Refactor `_renderDataLayersOnMiniMap` pour mettre chaque catégorie dans son propre sub-layerGroup → permet add/removeLayer individuel :
+- `_poiSubLayer` → POI
+- `_roadsSubLayer` → Routes
+- `_zonesSubLayer` → Zones
+- `_structSubLayer` → Structures
+
+5 nouveaux helpers de toggle : `_toggleTiles`, `_togglePoi`, `_toggleRoads`, `_toggleZones`, `_toggleStructures`.
+
+UI : **2e ligne du bandeau** avec 5 checkboxes compactes `🖼️ Plan / 📍 POI / 🛣️ Routes / 🌐 Zones / 🏗️ Struct` (default ON).
+
+Pattern aligné sur la modale OsmView qui a déjà ces toggles (cf v1.39.0+). L'user peut maintenant masquer une catégorie spécifique pour voir le rendu OSM seul ou se concentrer sur une catégorie.
+
+### 2. Toggle "🖼️ Plan" dans la modale OsmView
+
+Ajout d'un toggle `🖼️ Plan` dans le bandeau de la modale OsmView full-screen (entre `📡 Tracker` et `📍 POI`) → masquer/afficher les **tuiles V2 du plan** (l'image principale).
+
+State `_planTilesVisible = true` + helper `_togglePlanTilesVisible(v)` qui fait add/removeLayer sur `_planLayer`.
+
+Cohérent avec l'idée du widget HOME (qui a aussi 🖼️ Plan toggle) — l'user peut décider de voir uniquement les POI/Roads/Zones sur OSM sans la photo du plan, ou inversement.
+
+**CSS ajouté** (`style.css`) :
+- `.kta-osm-home-toggles` : 2e ligne du bandeau (fond bleu discret + padding compact)
+- `.kta-osm-home-toggle` : style des checkboxes (font 11px, gap, hover)
+- Variants thème clair pour les 2 classes
+
+**Notes user-friendly enrichies** (sans changer la sémantique demandée par KARMA "sans changer la description") :
+
+> 🌍 Nouveau mode Vue OSM : un widget intégré à ta page d'accueil affiche tes plans géoréférencés projetés sur OpenStreetMap. Tu y retrouves l'image du plan en transparence, tes POI, tes tracés (routes, zones, structures), et des outils pratiques : slider d'opacité, sélecteur de plan, **filtres par catégorie** et bouton plein écran.
+
+→ Le mot "filtres par catégorie" ajouté reste cohérent avec le ton orienté feature globale demandé par KARMA v1.40.11.
+
+**📁 8 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | Sub-layers + 5 toggles + UI 2e ligne bandeau |
+| `js/osmView.js` | Toggle "🖼️ Plan" + state + helper `_togglePlanTilesVisible` |
+| `css/style.css` | Styles `.kta-osm-home-toggles` + variants thème clair |
+| Bumps habituels | sw.js, copyright.js, version.json |
+| Docs | NETWORK_AUDIT + README |
+
+**🧪 Tests** :
+
+Widget HOME :
+- [ ] 2e ligne du bandeau visible avec 5 toggles cochés par défaut
+- [ ] Décocher 🖼️ Plan → image du plan disparaît, POI/Routes/Zones restent visibles sur OSM
+- [ ] Décocher 📍 POI → POI disparaissent, image + reste OK
+- [ ] Décocher 🛣️ Routes / 🌐 Zones / 🏗️ Struct → idem indépendamment
+- [ ] Re-cocher → réapparition propre (cache RAM préservé, pas de ré-extraction)
+- [ ] Thème clair : toggles lisibles
+
+Modale OsmView :
+- [ ] Toggle 🖼️ Plan dans le bandeau (entre 📡 Tracker et 📍 POI)
+- [ ] Décocher → tuiles V2 disparaissent, POI/Roads/Zones/Structures restent
+- [ ] Re-cocher → tuiles réapparaissent
+
+Régression :
+- [ ] Re-sélection plan dans dropdown → toggles user gardent leur état pendant la session
+- [ ] Plein écran ⛶ widget HOME → toggles fonctionnent aussi en plein écran
+- [ ] Refresh page → toggles default ON (pas de persistance LS pour rester simple)
+
+**📦 v1.40.11** : Vue OSM HOME — amélioration résolution gros plans (z=-2 sur 16K) :
+
+KARMA : *« On parle d'un plan de tres grosse dimension, 16k il faut vraiment augmenter la reso car bcp trop dégradé »*. v1.40.10 utilisait `MAX_TILES_HOME = 40`, suffisant pour Catacombes 4K (z=0 natif) mais insuffisant pour les très gros plans (16K fallback à minNativeZoom = z=-3 trop dégradé).
+
+**Fix** : `MAX_TILES_HOME = 40` → **80**.
+
+**Tableau récap niveau choisi par taille plan** :
+
+| Taille plan | v1.40.10 (MAX=40) | v1.40.11 (MAX=80) | Gain résolution |
+|---|---|---|---|
+| 4K (Catacombes 4000×2251) | z=0 natif (40 tuiles) | z=0 natif (40 tuiles) | inchangé ✅ |
+| 8K (8000×4500) | z=-2 (4 tuiles) | z=-1 (40 tuiles) | ×2 |
+| 12K (12000×8000) | z=-3 (3 tuiles) | z=-2 (24 tuiles) | ×2 |
+| 16K (16000×16000) | z=-3 (16 tuiles) | z=-2 (64 tuiles) | **×2 ← FIX KARMA** |
+| 32K+ (extrême) | fallback minNative | fallback minNative | inchangé (flou résiduel accepté) |
+
+**Compromis RAM** : 80 tuiles × ~1 MB décodé = ~80 MB max. Toujours sous budget mobile (~500 MB iPhone PWA) car widget HOME isolé (pas de map principale chargée en parallèle).
+
+Pour la plupart des plans (≤ 8K), on reste à 40-50 tuiles soit ~50 MB. Le bump n'impacte que les plans > 8K.
+
+**Notes user-friendly orientées feature globale** (suite KARMA *« change la description de version. parle juste du nouveau mode OSM sans parler hotfix »*) :
+
+Les notes `version.json` ne mentionnent plus les détails techniques des hotfixes successifs (résolution +X, etc.) mais présentent le **nouveau mode Vue OSM HOME** comme feature globale. Cohérent avec l'usage de `version.json > notes` = lecture user-facing via modale "Mise à jour disponible" et badge footer.
+
+Nouvelle description :
+> 🌍 Nouveau mode Vue OSM : un widget intégré à ta page d'accueil affiche tes plans géoréférencés projetés sur OpenStreetMap. Tu y retrouves l'image du plan en transparence, tes POI, tes tracés (routes, zones, structures), et des outils pratiques : slider d'opacité, sélecteur de plan et bouton plein écran.
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | `MAX_TILES_HOME` 40 → 80 + tableau récap dans commentaire |
+| `version.json` | Notes réécrites orientées feature globale (= ce que voit l'user) |
+| Bumps habituels | sw.js, copyright.js |
+| Docs | NETWORK_AUDIT + README (journal détaillé interne) |
+
+**🧪 Tests** :
+
+- [ ] Plan Catacombes 4K → toujours z=0 natif (inchangé v1.40.10)
+- [ ] Plan 16K → log console : `Tiles V2 : 64 tuile(s) rendues à z=-2 (scale x4)` (au lieu de z=-3 x8)
+- [ ] Plan 16K visuel : nettement plus net (×2 résolution)
+- [ ] Plan 8K → monte aussi à z=-1 (×2 résolution)
+- [ ] Mobile : pas de crash sur 16K (80 MB tuiles encore largement sous budget mobile)
+- [ ] User voit dans la modale "Mise à jour disponible" la description feature globale (pas un changelog technique)
+
+**📦 v1.40.10** : Vue OSM HOME — niveau natif z=0 (résolution ×2) :
+
+KARMA : *« toujours trop flou en OSM HOME augmente legerement stp / fait comme on fait en mode map tuile adapté »*. v1.40.7 avait bumpé `MAX_TILES_HOME = 12` → z=-1 sur Catacombes (scale ×2), pas encore assez net.
+
+**Analyse "fait comme en mode map tuile adapté"** :
+
+La modale OsmView full-screen utilise `MAX_TILES_BASELINE = 20` au boot, MAIS swap dynamique vers z=0 natif quand l'user zoom (`_targetLevelForZoom` v1.39.11). C'est ce swap qui donne le rendu **net** que KARMA voit en mode map.
+
+Le widget HOME a une carte fixe (pas de zoom user) → pour avoir le même rendu net que la modale "après zoom", il faut monter direct à z=0 natif.
+
+**Fix** : `MAX_TILES_HOME = 12` → **40**. Pour Catacombes 4000×2251 :
+
+| Version | MAX_TILES | Niveau choisi | Scale | Tuiles | RAM décodée | Résolution |
+|---|---|---|---|---|---|---|
+| v1.40.6 | (minNative fixe) | z=-3 | ×8 | 1 | 1 MB | 😵 flou |
+| v1.40.7 | 12 | z=-1 | ×2 | 12 | 12 MB | OK mais flou |
+| **v1.40.10** | **40** | **z=0 natif** | **×1** | **40** | **40 MB** | **✅ max** |
+
+**Budget RAM** : 40 MB décodé, acceptable car widget HOME isolé (pas de map principale chargée en parallèle, pas de runtime Leaflet lourd). Si retour terrain remonte fuite mobile bas de gamme, on pourra ajouter guard `navigator.deviceMemory < 4` pour basculer à MAX=20.
+
+**Plans très grands** (16K×16K, etc.) : fallback `minNativeZoom` reste en place. Pour ces plans exotiques le flou résiduel est accepté.
+
+**Plans plus petits** : peuvent maintenant prendre z=0 dès que ≤ 40 tuiles.
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | `MAX_TILES_HOME` 12 → 40 + commentaire détaillé du tradeoff |
+| Bumps habituels + docs | v1.40.9 → v1.40.10 |
+
+**🧪 Tests** :
+
+- [ ] Plan Catacombes → log console : `Tiles V2 : 40 tuile(s) rendues à z=0 (scale x1)`
+- [ ] Image plan sur mini-carte → résolution native, lignes/labels parfaitement nets
+- [ ] Slider opacité → continue de fonctionner
+- [ ] Plein écran ⛶ → image plan toujours nette
+- [ ] Plan plus grand (Test Legacy V1) → reste sur skip silencieux (pas de tuiles V2)
+- [ ] Mobile : pas de crash (40 MB encore largement sous budget ~500 MB iPhone PWA)
+
+**Régression** : RAM décodée +30 MB pour les tuiles HOME (12 → 40 MB). Toujours largement sous budget mobile. Cache RAM v1.40.4-6 préservé.
+
+**📦 v1.40.9** : Thème clair HOME — refonte propre, hiérarchie 3 niveaux :
+
+KARMA : *« c'est devenu nimp la le css du home en mode clair, reprend tout ca d'un oeil différent pour rendre ca plus armonieux en fond (background) »*. Mes overrides successifs v1.40.3 → v1.40.8 ont accumulé sans cohérence : tout est devenu aplati en `#e5dcc5` uniforme, plus aucune hiérarchie visuelle entre wrapper et cards. Option A validée par KARMA.
+
+**Approche nouvelle — Respect de la sémantique CSS originale** :
+
+Le projet a 3 variables CSS définies en thème clair (cf `style.css:12557-59`) avec une intention claire :
+
+| Variable | Couleur | Rôle conçu à la base |
+|---|---|---|
+| `--kta-light-bg` | `#f0e8d8` | Body / fond neutre clair |
+| `--kta-light-bg-elevated` | `#fdf8eb` | Cards en élévation |
+| `--kta-light-bg-deep` | `#e5dcc5` | Header / footer (saturé = ancrage) |
+
+Mes overrides v1.40.3 → v1.40.8 forçaient TOUT à `--kta-light-bg-deep` → cassait cette intention sémantique.
+
+**Hiérarchie restaurée v1.40.9** :
+
+| Couche | Élément | Couleur | Variable |
+|---|---|---|---|
+| **Wrapper** | `#planLoaderBox` (loader wrapper HOME) | `#f0e8d8` neutre clair | `--kta-light-bg` (override car valeur originale `#c9b88f` détonnait) |
+| **Cards** | `.kta-loader-profile-bar` (Profil) | `#fdf8eb` crème | `--kta-light-bg-elevated` (règle existante ligne 17424) |
+| **Cards** | `#resumeBox` (Reprendre) | `#fdf8eb` crème | (règles existantes) |
+| **Cards** | `#myPlansBox` (Mes plans) | `#fdf8eb` crème | (règles existantes lignes 14105 + 15206) |
+| **Cards** | `#ktaOsmHomeBox` (Vue OSM) | `#fdf8eb` crème | **`--kta-light-bg-elevated` (nouvel override card complète)** |
+| **Cards** | `.loader-col-actions > .loader-section-head + .loader-panel` (Ajouter) | `#fdf8eb` crème | (règles existantes lignes 15230 + 15243) |
+| **Ancrage** | `.kta-loader-copyright` (footer) | `#e5dcc5` beige saturé | `--kta-light-bg-deep` (règle existante ligne 14068) |
+
+**Résultat visuel** :
+- Wrapper neutre clair (`#f0e8d8`) — couleur de fond cohérente avec body, plus saturé que doré
+- Cards qui **ressortent** légèrement en crème (`#fdf8eb`) sur le wrapper neutre, via leur border ocre + box-shadow douce
+- Footer plus saturé (`#e5dcc5`) qui ferme visuellement la page en bas
+- **Hiérarchie 3 niveaux** rétablie, harmonieuse
+
+**Implémentation** : **simplification massive** du bloc fin de `style.css` qui contenait 4 ensembles d'overrides (v1.40.3 + v1.40.5 + v1.40.8 cumulés) → réduit à **2 overrides ciblés seulement** :
+
+1. `#planLoaderBox` : passe `var(--kta-light-bg-bar)` (`#c9b88f` brun) → `var(--kta-light-bg)` (`#f0e8d8` neutre)
+2. `#ktaOsmHomeBox` : ajout card complète (border, padding, shadow, radius) avec `--kta-light-bg-elevated` (`#fdf8eb` crème) pour matcher visuellement Mes plans / Ajouter
+
+**Toutes les anciennes règles existantes pour Mes plans, Reprendre, Profil, Ajouter sont restaurées dans leur intention originale** (= cards en `#fdf8eb`) car mes overrides v1.40.3/5/8 qui forçaient `#e5dcc5` sur ces éléments ont été retirés.
+
+**Footer copyright** : aucun changement, reste sur `--kta-light-bg-deep` (`#e5dcc5`) via la règle existante ligne 14068.
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `css/style.css` | Bloc fin de fichier réduit (~80 → ~50 lignes), 4 overrides → 2 overrides ciblés |
+| Bumps habituels | sw.js, copyright.js, version.json |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests** :
+
+- [ ] Thème clair → wrapper en neutre clair (`#f0e8d8`), distinct du body environnement
+- [ ] Cards (Profil, Reprendre, Mes plans, Vue OSM, Ajouter) en crème (`#fdf8eb`) **ressortent** légèrement du wrapper
+- [ ] Footer copyright en beige (`#e5dcc5`) plus saturé, ancrage bas
+- [ ] Border ocre + box-shadow douce visibles autour des cards (effet "élévation")
+- [ ] Thème sombre → aucun changement (pas affecté)
+- [ ] Mobile : pile verticale inchangée
+
+**📦 v1.40.8** : Thème clair HOME — sync background wrapper + bandeau profil :
+
+KARMA screenshot v1.40.6 : *« pour le background home il manque des zones (en trait rouge) je veux le meme fond que footer »*. Les flèches rouges pointaient des espaces où le fond doré du wrapper transparaissait entre les sections, et le bandeau profil qui était en crème pâle au lieu du beige footer.
+
+**Diagnostic** :
+
+| Élément | Couleur avant v1.40.8 | Variable CSS | Apparence |
+|---|---|---|---|
+| `body` (mode carte) | `#f0e8d8` | `--kta-light-bg` | Doré clair |
+| `#planLoaderBox` (wrapper HOME) | `#c9b88f` | `--kta-light-bg-bar` | Brun-beige (visible aux interstices) |
+| `.kta-loader-profile-bar` | `#fdf8eb` | (hardcoded) | Crème pâle |
+| `#myPlansBox` / `#resumeBox` / `#panelZip` | `#e5dcc5` | `--kta-light-bg-deep` (v1.40.3-5) | Beige footer ✅ |
+| `.kta-loader-copyright` (footer) | `#e5dcc5` | `--kta-light-bg-deep` | Beige footer ✅ |
+| `#ktaOsmHomeBox` (v1.40.3) | `#e5dcc5` | `--kta-light-bg-deep` | Beige footer ✅ |
+
+**Fix** : étendre l'override fin de fichier `style.css` aux 2 éléments restants :
+- `#planLoaderBox` (le wrapper) → `--kta-light-bg-deep` (#e5dcc5)
+- `.kta-loader-profile-bar` (bandeau profil) → `--kta-light-bg-deep` (#e5dcc5)
+
+Résultat visuel : fond uniforme `#e5dcc5` sur TOUTE la page d'accueil, depuis le bandeau profil en haut jusqu'au footer copyright en bas. Aucune zone doré clair entre sections.
+
+**Note `#planLoaderOverlay`** : pas touché (= fond `rgba(201, 184, 143, 0.96)` semi-transparent, agit comme overlay externe au wrapper). Garde son rôle de "calque sous le wrapper" si jamais une page utilise les 2.
+
+**📁 6 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `css/style.css` | +10 lignes overrides v1.40.8 (en fin de fichier, après bloc v1.40.5) |
+| Bumps habituels | sw.js, copyright.js, version.json |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests** :
+
+- [ ] Bascule thème clair → fond uniforme `#e5dcc5` sur toute la HOME
+- [ ] Bandeau profil "Mon profil" en haut → beige footer (plus crème pâle)
+- [ ] Espaces entre sections → beige footer (plus de zones brun-beige)
+- [ ] Sections (Mes plans, Vue OSM, Ajouter) gardent leur fond beige (`#e5dcc5`) cohérent
+- [ ] Footer copyright matche tout le reste
+- [ ] Thème sombre → aucun changement
+- [ ] Mobile : pile verticale inchangée
+
+**📦 v1.40.7** : Vue OSM HOME — niveau de tuiles adaptatif (fix flou) :
+
+KARMA : *« pas mal, mais le rendu est trop flou »*. v1.40.6 utilisait `minNativeZoom` fixe (z=-3 pour Catacombes = scale ×8) pour garantir la safety RAM mobile. Résultat : 1 tuile de ~500×282 px étirée sur la mini-carte → flou.
+
+**Fix** : réplique l'heuristique `_choisirNiveauBaseline` de `osmView.js` v1.39.11 — choisit le niveau **le plus zoomé** tel que `cols × rows ≤ MAX_TILES_HOME` (12 tuiles, budget RAM mini-carte ~12 MB décodé).
+
+**Exemple plan 4000×2251 (Catacombes)** :
+
+| Niveau | Scale | Tuiles totales | RAM (1 MB/tuile RGBA décodée) | Choisi v1.40.7 ? |
+|---|---|---|---|---|
+| z=0 | ×1 | 8×5 = **40** | 40 MB | ❌ trop |
+| z=-1 | ×2 | 4×3 = **12** | 12 MB | ✅ **choisi (résolution ×4 vs v1.40.6)** |
+| z=-2 | ×4 | 2×2 = 4 | 4 MB | — |
+| z=-3 | ×8 | 1×1 = 1 | 1 MB | (v1.40.6 = flou) |
+
+**Implémentation** :
+
+Nouveau helper `_chooseTileLevelForHome(tiling, planW, planH)` dans `osmHomePreview.js` :
+
+```js
+function _chooseTileLevelForHome(tiling, planW, planH) {
+  const MAX_TILES_HOME = 12;
+  const tileSize = tiling.tileSize || 512;
+  for (let z = tiling.maxNativeZoom; z >= tiling.minNativeZoom; z--) {
+    const scale = Math.pow(2, -z);
+    const cols = Math.ceil(Math.ceil(planW / scale) / tileSize);
+    const rows = Math.ceil(Math.ceil(planH / scale) / tileSize);
+    if (cols * rows <= MAX_TILES_HOME) return z;
+  }
+  return tiling.minNativeZoom;
+}
+```
+
+Utilisé dans `_extractV2TilesOverview` à la place du `const z = config.tiling.minNativeZoom`.
+
+**Plans très grands** (16K×16K → 16 tuiles à z=-3) : le fallback `minNativeZoom` reste en place. Quelques cas exotiques garderont du flou tolérable.
+
+**Plans très petits** (≤ 1024×1024) : potentiellement z=0 natif si ça tient sous 12 tuiles → résolution max sur la mini-carte.
+
+**Auto-adaptation** : différents plans utiliseront différents niveaux selon leur taille. Cohérent avec le pattern d'OsmView modale qui fait pareil pour la vue grand écran.
+
+**Tests à faire** :
+
+- [ ] Plan Catacombes → log console : `Tiles V2 : N tuile(s) rendues à z=-1 (scale x2)` (au lieu de z=-3 x8)
+- [ ] Mini-carte → image plan **nette** (lignes/symboles cataphiles lisibles)
+- [ ] Slider opacité → continue de fonctionner
+- [ ] Plein écran ⛶ → image plan nette aussi
+- [ ] Plan plus petit (Test Legacy ou MultiLVL) → niveau auto choisi (peut-être z=0)
+- [ ] Plan 16K → reste à z=-3 (16 tuiles plafond, légèrement flou mais acceptable)
+
+**Régression** : ~12 MB décodé en RAM pour les tuiles HOME au lieu de ~1 MB. Toujours largement sous le budget mobile (~500 MB iPhone PWA). Cache RAM v1.40.4-6 préservé.
+
+**📦 v1.40.6** : Vue OSM HOME — tuiles V2 overview + slider opacité :
+
+KARMA : *« ok il manque l'image principal, mais on a tout le reste (attention tuile et opacity) »*. v1.40.5 affichait POI + Roads + Zones + Structures embedded mais PAS l'image du plan. KARMA veut les tuiles V2 + slider opacité (cohérent OsmView modale).
+
+**Implémentation** :
+
+Réutilise le pattern v1.39.10 (`osmView.js > _renderTilesV2OnOsm`) :
+- Tuiles du niveau le plus dézoomé (`minNativeZoom`, typiquement z=-3 → scale ×8)
+- 1-4 tuiles ~200 KB-1 MB max → zéro risque crash mobile
+- `L.imageOverlay.rotated` par tuile (parallélogrammes via georef)
+
+**Pipeline étendu** :
+
+```
+_loadPlanDataForPreview(planId)
+  ├─ Extract plan-config.json + dataLayers JSON (v1.40.4-5)
+  └─ 🆕 v1.40.6 : Extract tuiles z=minNativeZoom
+       → blob URL par tuile, tracké dans _tilesBlobUrls
+       → { tiles: [{col, k, url}], planW, planH, z, scale, tileSize }
+```
+
+**Rendu** :
+- `_tilesLayer` ajouté **AVANT** `_dataLayer` à `_initMiniMap` → tuiles dessous, data dessus
+- `_renderTilesOnMiniMap(tilesData, georef)` : 1 `L.imageOverlay.rotated` par tuile avec `opacity: _planOpacity`
+- Convention CRS.Simple flip Y (`pxTop = planH - k * tileSize * scale`)
+
+**Slider opacité** :
+- UI : `<input type="range">` dans le bandeau, entre le dropdown et le bouton ⛶
+- Default `_planOpacity = 0.7` (= 70% — transparent pour voir les rues OSM derrière)
+- Sur input → `_setPlanOpacity(v)` itère `_tilesLayer.eachLayer` et applique `setOpacity` ou fallback `_image.style.opacity`
+
+**Helpers ajoutés** (`osmHomePreview.js`, +130 lignes) :
+
+| Helper | Rôle |
+|---|---|
+| `_extractV2TilesOverview(zip, config)` | Extract tuiles z=minNativeZoom, crée blob URLs trackés. Skip si V1 |
+| `_renderTilesOnMiniMap(tilesData, georef)` | 1 overlay rotated par tuile avec opacité courante |
+| `_setPlanOpacity(opacity)` | Update slider → setOpacity sur chaque overlay |
+| `_revokeTilesBlobUrls()` | Cleanup au close (réservé futur — actuellement laissé pour cache RAM) |
+
+**Plans V1 (non tuilés)** : skip silencieux. Le widget reste OK avec markers georef + data layers. Pas de fallback "resize baseImage" car ça nécessite canvas resize ~50 lignes complexité moyenne — reporté.
+
+**Cache** :
+- Les blob URLs sont créés UNE FOIS et stockés dans `_planDataCache[planId].tilesOverview.tiles[i].url`
+- Re-sélection du même plan → réutilise les blob URLs existants (instant + RAM constante)
+- Switch entre plans → nouveau plan crée ses propres URLs, ancien plan garde les siennes en cache (acceptable, cleared au unload page)
+- LRU pourra être ajouté si KARMA remonte fuites RAM sur sessions HOME très longues
+
+**📁 7 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | +130 lignes (extract tuiles + render + slider opacité + state) |
+| Bumps habituels | sw.js, copyright.js, version.json |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests à faire** :
+
+- [ ] Plan Catacombes V2 → mini-carte montre l'image du plan + POI + Roads + Zones par-dessus OSM
+- [ ] Log console : `[OsmHomePreview] Tiles V2 : N tuile(s) rendues à z=-3 (scale x8)`
+- [ ] Slider 🎚️ → l'image plan devient plus/moins transparente en live
+- [ ] Plan V1 → log "(plan V1, pas de tuiles)" + widget normal sans image plan
+- [ ] Re-sélection plan déjà vu → instantané (cache RAM, pas de ré-extraction)
+- [ ] Mode plein écran ⛶ → tuiles plan visibles aussi (même `_mapInstance`)
+
+**📝 Notes** :
+- L'opacité 0.7 default est un compromis : assez visible pour voir le plan, assez transparent pour voir le réseau OSM. User peut ajuster via slider.
+- Pas de persistance du slider entre sessions (volontaire — simplicité). Si KARMA veut, on persiste en LS dans une futur v1.40.7.
+
+**📦 v1.40.5** : Vue OSM HOME — 2 hotfixes (POI à 0 + cascade CSS clair) :
+
+KARMA tests v1.40.4 : *« [OsmHomePreview] Data render : 0 POI · 0 roads · 0 zones · 0 struct »* + *« couleur ok en back OSM mais je veux la meme en mes plan, profile »*.
+
+**🐛 Bug 1 — POI à 0** :
+
+Cause racine : v1.40.4 lisait `json.points` pour le tableau POI, mais le format réel d'un data layer JSON utilise `json.data` ou `json.editorPoints` (cf `utils.js > normaliserPoints` lignes 1297-1301). Mon hypothèse était fausse → 0 POI à chaque render alors que les roads/zones/structures fonctionnaient (eux utilisent bien `json.roads`, `json.zones`, `json.structures`).
+
+Fix v1.40.5 : cascade `json.data → json.editorPoints → json.points` (fallback gardé par sécurité pour formats 3rd party) :
+
+```js
+const poiArray = Array.isArray(json.data)         ? json.data
+               : Array.isArray(json.editorPoints) ? json.editorPoints
+               : Array.isArray(json.points)       ? json.points
+               : [];
+```
+
+Pourquoi 2 formats ? `json.data` = format embedded standard (`createConf.js > _genererZip` génère `{ data: [...] }`). `json.editorPoints` = format `.mkmsession` export utilisateur (`sessionExporter.js`).
+
+Test : `[OsmHomePreview] Data render : 247 POI · 38 roads · 5 zones · 12 struct` (sur plan Catacombes typique).
+
+**🐛 Bug 2 — Override CSS thème clair pas appliqué** :
+
+Cause racine : mon override v1.40.3 était placé ligne ~4640 du fichier CSS. Les anciennes règles `background: #fdf8eb !important` se trouvaient lignes 14105 et 15206. À spécificité CSS égale + `!important` égaux, **la règle qui apparaît en DERNIER gagne** → mon override ligne 4640 était systématiquement écrasé.
+
+Symptômes constatés par KARMA :
+- ✅ Card OSM (#ktaOsmHomeBox) avait sa couleur (= mon nouveau selector, pas de conflit ailleurs)
+- ❌ Mes plans, Reprendre, Ajouter restaient en `#fdf8eb` (= les anciennes règles ligne 14105/15206 prenaient le dessus)
+
+Fix v1.40.5 : **déplacement du bloc d'overrides v1.40.3 en TOUTE FIN de fichier `style.css`** (après ~25000 lignes). Comme c'est maintenant la dernière règle, elle gagne la cascade. Ancienne position (ligne ~4640) : remplacée par un commentaire pointeur vers la nouvelle position.
+
+**📁 7 fichiers modifiés** :
+
+| Fichier | Modif |
+|---|---|
+| `js/osmHomePreview.js` | Fix `_loadPlanDataForPreview` : cascade `json.data → editorPoints → points` |
+| `css/style.css` | Déplacement bloc thème clair HOME ~4640 → fin de fichier |
+| Bumps habituels | sw.js, copyright.js, version.json |
+| Docs | NETWORK_AUDIT + README (journal détaillé) |
+
+**🧪 Tests à faire** :
+
+- [ ] Plan Catacombes → POI/Roads/Zones/Structures visibles avec compteurs > 0 dans la console
+- [ ] Bascule thème clair → toutes les sections (Mes plans + Reprendre + Vue OSM + Ajouter) en `#e5dcc5` uniforme matchant le footer
+- [ ] Thème sombre → aucun changement
+- [ ] Re-sélection plan → instantané (cache RAM préservé v1.40.4)
+
+**Notes** :
+- Cache RAM v1.40.4 préservé → re-sélection rapide même après ce fix
+- Le fix POI affecte UNIQUEMENT le widget HOME. La modale Vue OSM full-screen (osmView.js) lit directement `window._ktaDataMarkers` (= déjà parsé par le pipeline standard), pas concernée.
+
+**📦 v1.40.4** : Vue OSM HOME — data layers embedded (POI + Roads + Zones + Structures) :
+
+KARMA : *« je n'ai aucune data de catacombe layer POI, zone, afficher sur mon OSM j'ai que les deux point de calage »*. v1.40.0-3 affichaient uniquement les markers georef `pointA`/`pointB` (= mode léger documenté). KARMA veut voir les data embedded.
+
+**Refonte : extraction ZIP partielle à la sélection** :
+
+L'approche v1.40.0 documentait que l'extraction ZIP serait reportée pour garder le boot HOME léger. v1.40.4 lève ce report :
+- Extraction async **uniquement à la sélection du plan** (pas au boot HOME → boot reste léger)
+- **Cache RAM par planId** : si user re-sélectionne un plan déjà vu pendant la session HOME, pas de ré-extraction
+- **Lazy fallback** : si ZIP inaccessible (plan serveur sans cache local, blob purgé, FS handle révoqué…), le widget reste OK avec juste les markers georef (= comportement v1.40.0-3 préservé)
+
+**Pipeline d'extraction** :
+
+```
+selectPlan(planId)
+  ↓
+_loadPlanDataForPreview(planId)
+  ├─ Check cache RAM → si hit, return immédiat
+  ├─ _getPlanZipFile(planId)
+  │   ├─ Tentative FS Access handle (Chrome/Edge desktop)
+  │   │   └─ PlanRegistry.getHandle(planId) → ensureHandlePermission → getFile()
+  │   └─ Fallback IDB blob (mobile/Firefox/Safari)
+  │       └─ PlanRegistry.getBlob(planId)
+  ├─ JSZip.loadAsync(file)  ← lazy : lit juste la table centrale du ZIP, pas les contenus
+  ├─ Extract plan-config.json → parse
+  ├─ Pour chaque config.dataLayers[i] :
+  │   └─ Extract dataLayers[i].file → parse JSON
+  │       → { points, roads, zones, structures }
+  ├─ Cache RAM : _planDataCache[planId] = result
+  └─ Return { config, dataLayers: [...] }
+```
+
+**Rendu sur mini-carte** (`_renderDataLayersOnMiniMap`) :
+
+| Catégorie | Rendu | Couleur |
+|---|---|---|
+| **POI** | `L.circleMarker` 4px | jaune charte `#f4c542` fillOpacity 0.85 |
+| **Roads** | `L.polyline` weight 2 | `road.color` natif (fallback `#8892a4`) |
+| **Zones** | `L.polygon` weight 1.5 | `zone.color` + `zone.fillColor` natifs (fillOpacity ×0.7 pour mini-carte) |
+| **Structures mur/pilier** | `L.polygon` | aligné `STRUCT_STYLES_HOME` (mapping dérivé de `structures.js > STRUCTURE_STYLES`) |
+| **Structures fronts** | `L.polyline` weight 4 | jaune/orange selon front-1/2 |
+
+**Décisions de simplification** :
+
+| Aspect | Choix | Raison |
+|---|---|---|
+| POI rendu | `L.circleMarker` (pas `L.marker` avec icônes) | Évite extraction des icônes images du ZIP. Perf > cohérence visuelle stricte sur HOME (l'user va dans OSM modal pour le détail) |
+| Roads itinerary | Skip (`r.type === "itinerary"`) | Pas de session iti active en HOME, cohérent |
+| Filtre FilterPanel | Non appliqué | Pas de session active = pas de filtres tags/niveaux. Tout afficher. |
+| M-LVL filter | Non appliqué (idem) | HOME = vue d'ensemble, pas de filter par niveau |
+| Layer.visible flag | Respecté (skip si false dans plan-config) | Cohérence avec map principale |
+| Race condition | Garde anti-race dans selectPlan : skip render si planId changé pendant l'extraction | Robustesse si user clic rapide sur plusieurs plans |
+
+**Cache RAM** :
+
+- Structure : `_planDataCache[planId] = { config, dataLayers }`
+- Taille typique : ~50-200 KB par plan parsed
+- Cleared automatiquement au unload page (pas de LS pour éviter quota)
+- Pas de LRU cap (rare qu'un user ait > 10 plans georef → tolérable)
+
+**Coût performance** :
+- 1ère sélection d'un plan : ~200ms-1s (JSZip + parse + render selon taille plan)
+- Re-sélection : <50ms (cache RAM)
+- Boot HOME : aucun overhead (extraction lazy uniquement à la sélection)
+
+**Tests à faire** :
+
+- ✅ Plan Catacombes (v2 tuilé, dataLayers nombreux) → POI/Roads/Zones/Structures visibles après ~500ms
+- ✅ Plan v1 simple → idem (pipeline indépendant du tiling)
+- ✅ Plan serveur sans cache local → fallback markers georef seuls (pas de crash)
+- ✅ Plan avec blob purgé → idem
+- ✅ Re-sélection plan déjà vu → instantané (cache RAM)
+- ✅ Sélection rapide entre 2 plans → pas de race (garde anti-race dans selectPlan)
+- ✅ Mode fullscreen ⛶ → data layers visibles aussi (même `_mapInstance`)
+
+**Régression cross-module** :
+- `PlanRegistry.getHandle`/`.getBlob`/`.ensureHandlePermission` réutilisés (API stable depuis v1.7.x)
+- `JSZip` chargé en global (déjà dispo via `index.html`, utilisé par `chargerZipFichier`)
+- `KmzExport.buildTransform`/`.planToGps` réutilisés (pattern identique à `osmView.js`)
+- Aucune side-effect sur `window.PLAN_CONFIG` ou `window._currentLoadedPlanId` : extraction isolée
+- Si JSZip indispo → log warn + fallback markers georef seuls
+
+**Bumps** : v1.40.3 → v1.40.4. Module `osmHomePreview.js` passe de ~400 → ~600 lignes (+200 helpers data extraction + rendu).
+
+**📦 v1.40.3** : Thème clair HOME — fix titre Vue OSM transparent + sync couleur footer :
+
+KARMA bugs v1.40.2 (screenshot fourni) :
+1. *« on a un bug toujours sur le titre osm en fond transparant »* → le titre `🌍 Vue OSM` laissait voir le fond doré du body derrière (pas de card autour)
+2. *« en mode clair le fond des mode (Profile, mes plan, OSM...) doit avoir la meme couleur que le background du footer »* → mismatch visuel : sections en `#fdf8eb` crème clair, footer en `#e5dcc5` beige plus chaud
+
+**Analyse couleurs** :
+- `--kta-light-bg: #f0e8d8` (body mode carte + container Leaflet)
+- `--kta-light-bg-elevated: #fdf8eb` (modales, presque blanc) → utilisé par sections HOME avant v1.40.3
+- `--kta-light-bg-deep: #e5dcc5` (sidebar interne + table headers + footer copyright)
+
+**Fix 1 — Card complète pour `#ktaOsmHomeBox` en thème clair** :
+
+Le pattern existant pour `#myPlansBox` (cf `style.css:15206+`) était bien défini :
+- `background: #fdf8eb` (→ change en `#e5dcc5` au fix 2)
+- `border: 1px solid rgba(154, 135, 84, 0.35)`
+- `border-radius: 14px`, padding, margin, box-shadow
+- `.loader-section-head` interne transparent avec border-bottom
+
+J'ai dupliqué ce pattern pour `#ktaOsmHomeBox` + `#ktaOsmHomeBox .loader-section-head`. Résultat : le widget OSM HOME ressemble maintenant aux autres cards (Mes plans, Ajouter).
+
+**Fix 2 — Sync background sections HOME avec couleur footer (`#e5dcc5`)** :
+
+Override en fin de fichier CSS pour basculer toutes les sections HOME de `#fdf8eb` (`--kta-light-bg-elevated`) → `#e5dcc5` (`--kta-light-bg-deep`) = même couleur que `.kta-loader-copyright` (footer).
+
+Sections impactées :
+- `#myPlansBox` (Card Mes plans)
+- `#resumeBox` (Bandeau Reprendre)
+- `#panelZip` (Card Ajouter un plan corps)
+- `.loader-col-actions > .loader-section-head` (Card Ajouter un plan header)
+- `.loader-col-actions > .loader-panel` (Card Ajouter un plan corps, autre selector)
+- `#ktaOsmHomeBox` (Card Vue OSM — nouveau v1.40.3)
+
+Profil bandeau (`Bienvenue/Mon profil`) reste sur son style propre — probablement déjà cohérent visuellement, à vérifier si KARMA remonte.
+
+**Implémentation CSS** :
+
+~60 lignes ajoutées en fin de section thème clair OSM HOME (juste après les overrides v1.40.1 existants) :
+
+```css
+/* Card #ktaOsmHomeBox en clair */
+body.kta-theme-light #ktaOsmHomeBox,
+html.kta-theme-light #ktaOsmHomeBox {
+  background: var(--kta-light-bg-deep, #e5dcc5) !important;
+  border: 1px solid rgba(154, 135, 84, 0.35) !important;
+  border-radius: 14px !important;
+  padding: 14px 18px 16px !important;
+  margin-bottom: 14px !important;
+  box-shadow: 0 4px 14px rgba(80, 60, 30, 0.10) !important;
+}
+body.kta-theme-light #ktaOsmHomeBox .loader-section-head,
+html.kta-theme-light #ktaOsmHomeBox .loader-section-head {
+  background: transparent !important;
+  border-bottom: 1px solid rgba(154, 135, 84, 0.18) !important;
+  /* + autres reset */
+}
+
+/* Sync background sections avec couleur footer */
+body.kta-theme-light #myPlansBox,
+html.kta-theme-light #myPlansBox,
+body.kta-theme-light #resumeBox,
+html.kta-theme-light #resumeBox,
+/* … */ {
+  background: var(--kta-light-bg-deep, #e5dcc5) !important;
+}
+```
+
+`!important` nécessaire pour écraser les valeurs précédentes (lignes 14105-14108 + 15206-15251) qui codent `#fdf8eb` en dur.
+
+**Tests à faire** :
+
+- ✅ Bascule thème clair → titre `🌍 Vue OSM` maintenant dans sa card crème (pas de fond doré transparent derrière)
+- ✅ Mes plans + Ajouter + Vue OSM toutes en `#e5dcc5` (beige uniforme, matche footer)
+- ✅ Le footer copyright matche visuellement les sections (= cohérence demandée)
+- ✅ Thème sombre : aucun changement (overrides `body.kta-theme-light` ne s'appliquent pas)
+- ✅ Mobile : pile verticale inchangée
+- ✅ Plein écran ⛶ (v1.40.2) : la card est masquée en fullscreen, le background overlay reste sur ses propres styles
+
+**Régression cross-module** :
+- `!important` + spécificité `body.kta-theme-light` ne touchent QUE le thème clair
+- Autres sections du loader pas concernées (kta-loader-profile-bar, kta-loader-copyright, …)
+- Pas d'impact sur le mode map (changements isolés au loader/HOME)
+
+**📝 Note futur** : si KARMA remonte que le bandeau `Bienvenue/Mon profil` ou `Reprendre Catacombes` ne matche pas non plus, on étendra le selector en v1.40.4.
+
+**📦 v1.40.2** : Vue OSM HOME — ⛶ refonte plein écran inline :
+
+KARMA report v1.40.1 : *« quand je clique sur plein ecran ca ne fonctionne pas apres avoir cliquer sur mon plan chargement normal »* + correction stratégie : *« quand on clique sur afficher pleine ecran on agrandit juste le modal du home OSM »*.
+
+**Bug racine (v1.40.0/v1.40.1)** :
+
+L'ancien flow ⛶ tentait de :
+1. Set un flag `sessionStorage["kta_osm_home_open_after_load"]`
+2. Simuler un click sur le bouton "▶️ Charger" du plan dans la liste via `document.querySelector('[data-plan-id="..."]') > .plan-row-load-btn`
+3. Hook `kta:planConfigReady` qui détecte le flag et ouvre `OsmView.open()` après le chargement
+
+**Tout était cassé** :
+- HTML utilise `data-id="..."` (PAS `data-plan-id`)
+- Classe bouton charger : `.plan-row-btn.plan-row-load` (PAS `.plan-row-load-btn`)
+- Event `kta:planConfigReady` n'est PAS fired par le pipeline actuel (cf commentaire `refonteInterface.js:273`)
+
+Résultat : click ⛶ → fallback alert → si KARMA charge le plan manuellement, rien ne se passe à la fin (flag jamais consommé).
+
+**Refonte sémantique v1.40.2** :
+
+Plus de bascule en map mode. Le ⛶ **agrandit simplement la mini-carte HOME** en overlay plein-viewport via toggle CSS. L'user reste sur la HOME, juste le widget prend tout l'écran. Click ⛶ inverse (devient ✕) ou touche Échap pour revenir.
+
+Avantages :
+- ✅ Flow ultra-simple : 1 toggle de classe CSS, pas de hook fragile
+- ✅ Marche dans tous les cas (pas de dépendance à des sélecteurs HTML qui changent)
+- ✅ Marche sur mobile (iOS Safari Fullscreen API restrictif → on évite)
+- ✅ Pas de bascule de contexte → user moins surpris
+
+**Implémentation `osmHomePreview.js`** :
+
+- Suppression `_checkAutoOpenAfterLoad`, `_bindAutoOpenAfterLoad`, gestion sessionStorage → ~30 lignes en moins
+- Refonte `openFullScreen()` :
+  - Toggle classe `.kta-osm-home-fullscreen-active` sur `#ktaOsmHomeBox`
+  - Toggle classe `.kta-osm-home-fs-lock` sur `<body>` (empêche scroll derrière)
+  - Bind/unbind `keydown Escape` listener
+  - Update bouton ⛶ ↔ ✕ + tooltip
+  - `_mapInstance.invalidateSize()` après 100ms (laisse le DOM appliquer la transition)
+- Helper `_fsEscapeHandler` stocké pour cleanup propre
+
+**CSS `style.css`** :
+- `.kta-osm-home-box.kta-osm-home-fullscreen-active` : `position: fixed; inset: 0; z-index: 9999`, fond charte sombre
+- Header `.loader-section-head` adapté (padding + bg semi-transparent)
+- `.kta-osm-home-content` : flex stretch sur toute la hauteur
+- `.kta-osm-home-map` : flex 1, min-height 0
+- Bouton ✕ légèrement agrandi en fullscreen (font-size 14px + padding bumped)
+- `body.kta-osm-home-fs-lock { overflow: hidden; }` pour bloquer scroll background
+- Variants thème clair (background, header)
+
+**Footer du widget** mis à jour : "🔒 Tiles : tile.openstreetmap.org · ⛶ pour agrandir" (avant : "ouvre la vue complète (charge le plan)" — obsolète).
+
+**Tests à faire** :
+
+- ✅ Click ⛶ → carte passe en plein écran sur HOME, bouton devient ✕
+- ✅ Click ✕ ou Échap → retour à la mini-carte dans la colonne
+- ✅ Leaflet : tuiles OSM couvrent tout l'écran (pas de zone grise = `invalidateSize` après toggle)
+- ✅ Scroll page bloqué pendant le fullscreen (background ne défile pas si on scroll sur la carte)
+- ✅ Thème clair : fond clair + header lisible
+- ✅ Thème sombre : fond `#0a0d18` charte
+- ✅ Mobile : marche, pas de bug iOS Safari Fullscreen API
+
+**Cleanup code obsolète** :
+- ~30 lignes de gestion sessionStorage / hooks `kta:planConfigReady` / simulation clic plan row supprimées
+- Le module passe de ~430 → ~400 lignes, plus simple à maintenir
+
+**📝 Note KARMA pour bug 2 ("pas de data affichées en HOME catacombes")** : v1.40.0 documentait que le mode léger n'affiche QUE les markers pointA/pointB georef (= pas de data layers POI). Si tu veux les POI/Roads/Zones embedded sur la mini-carte HOME, ça nécessite une extraction ZIP partielle (helper `_loadPlanForPreview` mentionné dans v1.40.0 mais reporté pour garder le boot HOME léger). Si tu veux qu'on attaque ça → futur v1.40.3 ou v1.41.0.
+
+**📦 v1.40.1** : Vue OSM HOME — masquage offline-first + thème clair :
+
+KARMA hotfix v1.40.0 (2 retours):
+1. *« si on a pas cocher le OSM dans la config, on affiche pas ce pannel OSM en home »* → option (b) masquage complet validée
+2. *« probleme de CSS en mode clair, n'affiche pas la note en footer de se mode OSM »* → fix variants thème clair
+
+**Fix 1 — Masquage colonne si pas opt-in** :
+
+Avant v1.40.1, si l'user n'avait pas activé `🌐 Autoriser OSM`, le widget affichait un placeholder "🌐 Vue OSM désactivée — 🔓 Autoriser OSM" qui prenait toute la hauteur de la colonne (~260px) et déséquilibrait le grid PC. Cohérence faible avec la philo "100% offline par défaut" : un user qui n'a pas opt-in voyait quand même la promotion d'une feature externe.
+
+Fix : **masquage complet** de la colonne (`display: none`) + rebascule du grid PC `2fr 3fr 2fr` → `3fr 2fr` via classe `kta-no-osm` ajoutée dynamiquement sur `.loader-grid`. Aucune trace du widget tant que pas autorisé. Point d'entrée pour activer : ⚙️ Configuration home > 🌐 Autoriser la Vue OSM (= existant depuis v1.39.0).
+
+Implémentation `js/osmHomePreview.js` :
+- Nouveau helper `_setOsmColumnVisible(visible)` : toggle `.loader-col-osm` display + class `.kta-no-osm` sur le grid
+- `_renderOptInNeeded(container)` : remplace l'ancien rendu placeholder par `_setOsmColumnVisible(false)`
+- `mount()` : appelle `_setOsmColumnVisible(true)` au début pour restore si on rebascule en opt-in ON (refresh via listener `kta:osmOptInChange`)
+
+CSS `css/style.css` (dans `@media (min-width: 1024px)`) :
+```css
+.loader-grid.kta-no-osm {
+  grid-template-columns: 3fr 2fr;
+}
+```
+
+**Fix 2 — Variants thème clair** :
+
+Bug : le footer "🔒 Tiles : tile.openstreetmap.org · ⛶ ouvre la vue complète" et d'autres éléments du widget utilisaient les couleurs du thème sombre (`color: #8892a4`, `border: rgba(255,255,255,0.06)`, fonds sombres) → en thème clair, le texte gris muet sur fond beige clair était quasi invisible et la bordure blanche disparaissait totalement.
+
+Fix : ajout de 9 selectors `body.kta-theme-light .kta-osm-home-*` / `html.kta-theme-light .kta-osm-home-*` avec les vars `--kta-light-*` (pattern §53 thème clair). Pas de duplication de styles ailleurs — les overrides ciblent uniquement les classes problématiques :
+
+| Élément | Override clair |
+|---|---|
+| `.kta-osm-home-content` | bg `--kta-light-bg-elevated`, border `--kta-light-border` |
+| `.kta-osm-home-bandeau` | bg cyan transparent (lisible), text `--kta-light-text` |
+| `.kta-osm-home-bandeau select` | bg `--kta-light-bg`, text + border `--kta-light-*` |
+| `.kta-osm-home-bandeau select option` | bg + text variants |
+| `.kta-osm-home-bandeau .kta-osm-home-fullscreen` | ambre assombri `#8a6a14` pour contraste |
+| `.kta-osm-home-footer` | **text `--kta-light-text` ≈ `#5a4a30` (assombri) + border noire transparente** ← le fix principal demandé par KARMA |
+| `.kta-osm-home-empty` / `.kta-osm-home-loading` | text `--kta-light-text` |
+| `.kta-osm-home-empty strong` | text plein noir sombre `#2a2620` |
+
+Toutes les overrides utilisent `!important` (pattern aligné §53 thème clair pour les widgets dynamiques où la spécificité CSS est imprévisible).
+
+**Tests à faire** :
+
+Masquage :
+- ✅ HOME sans opt-in OSM → colonne OSM absente, grid PC 2 cols (3fr 2fr) comme v1.39.x
+- ✅ Activation via ⚙️ Configuration → opt-in ON → widget OSM réapparaît automatiquement (via `kta:osmOptInChange` listener)
+- ✅ Désactivation via ⚙️ Configuration → colonne se remasque automatiquement
+
+Thème clair :
+- ✅ Bascule thème clair → footer "🔒 Tiles : …" maintenant lisible (couleur sombre sur fond clair)
+- ✅ Bandeau dropdown + bouton ⛶ lisibles
+- ✅ Placeholders (loading/empty) lisibles
+- ✅ Markers OSM (Leaflet natif) : pas affectés (rendus par leaflet.css)
+
+Régression :
+- ✅ Thème sombre : aucun changement visuel (variants `body.kta-theme-light` ne s'appliquent pas)
+- ✅ Mobile : pile verticale inchangée
+
+**Bumps** : `v1.40.0 → v1.40.1` (sw.js, copyright.js, version.json, NETWORK_AUDIT md/html).
+
+**📦 v1.40.0** : Bouquet final Vue OSM — mini-preview HOME :
+
+KARMA bouquet final — Step 4 roadmap : *« en HOME j'avais penser a integrer entre Mes plan et import su / et sur PC plus comme ca. On charge le dernier plan chargé, ou sélection (jamais deux plan chargé a la fois, pour perf) »*. Choix validés `1:a 2:b 3:c 4:c+icone 5:a 6:a / Gros bump 1.40.0 tout en un`.
+
+**Concept** : nouveau widget de prévisualisation dans la page d'accueil (HOME), entre 📚 Mes plans et 📦 Ajouter un plan. Affiche les plans georef projetés sur OpenStreetMap SANS avoir à les charger en map mode complet (= boot HOME léger, pas de bascule d'écran).
+
+**Layout** :
+
+| Format | Disposition |
+|---|---|
+| Mobile (<1024px) | Pile verticale : 📚 Mes plans → **🌍 Vue OSM** → 📦 Ajouter |
+| PC (≥1024px) | Grille 3 colonnes `2fr 3fr 2fr` (Plans / OSM / Actions) |
+
+**MVP v1.40.0 — Mode léger** :
+
+Pour rester pragmatique sur ce bump (et éviter le coût d'extraction ZIP au boot HOME — JSZip + lecture binaire = lourd mobile), v1.40.0 affiche UNIQUEMENT les markers georef au lieu d'extraire tuiles plan + data layers. Le widget montre :
+
+- **Tile layer OSM** (tile.openstreetmap.org, identique au modal Vue OSM)
+- **Marker pointA** (vert) + **marker pointB** (rouge) de la georef
+- **Ligne dashed jaune** entre A et B = échelle plan (visualise les 2 ancres GPS)
+- **Tooltips** au hover : "📍 Point A" / "📍 Point B"
+- **Auto fitBounds** sur la zone du plan + padding 30px
+
+Cohérent avec la philosophie "où est ce plan dans le monde réel ?" — sans charger le plan complet.
+
+**Futur v1.40.1+** : extension possible avec tuiles plan overview minNativeZoom + POI/Roads/Zones/Structures embedded — nécessite extraction ZIP partielle (helper `_extractPlanConfig` + `_extractTilesOverview`) déjà identifiée mais reportée pour garder ce bump testable.
+
+**Module `js/osmHomePreview.js`** (~430 lignes) avec API publique :
+
+```js
+window.OsmHomePreview = {
+  mount()         → monte le widget dans #ktaOsmHomeContent (auto-call DOMContentLoaded)
+  refresh()       → recharge la liste des plans + re-render
+  selectPlan(id)  → bascule le plan affiché (= change le marker)
+  openFullScreen()→ déclenche le flow full-screen sur le plan courant
+}
+```
+
+**Helpers internes** :
+- `_isOptedIn()` / `_setOptedIn(value)` — gère le flag LS `myktamap_osm_view_opt_in` (partagé avec `osmView.js`)
+- `_listGeorefPlans()` — scan `PlanRegistry.getAll()` + check `KmzExport.getCalibration(planId)` pour chaque plan. Tri lastOpened desc.
+- `_renderOptInNeeded(container)` — placeholder "🌐 Vue OSM désactivée" avec bouton "🔓 Autoriser OSM"
+- `_renderOffline(container)` — placeholder "📴 Hors-ligne"
+- `_renderNoGeorefPlans(container)` — placeholder "📍 Aucun plan géoréférencé" avec instructions pédagogiques
+- `_renderWidget(container, plans, selectedId)` — bandeau (dropdown + ⛶) + mini-map + footer
+- `_initMiniMap(georef)` — init `L.map` mini-carte + tile layer OSM
+- `_renderGeorefMarkers(georef)` — markers + ligne + fitBounds
+- `openFullScreen()` — bascule en map mode complet via simulation clic "▶️ Charger" du plan sélectionné + flag sessionStorage `kta_osm_home_open_after_load` qui déclenche `OsmView.open()` automatiquement après `kta:planConfigReady`
+- `_checkAutoOpenAfterLoad()` / `_bindAutoOpenAfterLoad()` — hook sur événements load qui ouvre la modale au moment opportun
+
+**Persistance LS** :
+- `myktamap_osm_view_opt_in` (partagé avec `osmView.js`) — opt-in user pour les appels OSM
+- `myktamap_osm_home_last_selected_plan` (nouveau v1.40.0) — dernier plan sélectionné dans le dropdown (UX continuity entre sessions HOME)
+- `kta_osm_home_open_after_load` (sessionStorage, éphémère) — marqueur pour auto-open de la modale après bascule en map mode
+
+**Cas dégénérés gérés** :
+
+| Cas | Comportement |
+|---|---|
+| Pas opt-in OSM (default) | Placeholder + bouton "🔓 Autoriser OSM" |
+| Hors-ligne (navigator.onLine === false) | Placeholder "📴 Hors-ligne" |
+| Aucun plan georef en LS | Placeholder pédagogique avec marche à suivre |
+| Plan georef sélectionné mais pas le lastOpened | Dropdown permet de sélectionner n'importe quel plan georef |
+| Plan georef dans `plan-config.json` UNIQUEMENT (jamais saisi via Réglages) | NON visible dans le widget (limitation v1.40.0 — l'user doit charger le plan 1 fois pour propagation via `_propagerGeorefVersKmzExport`) |
+| Single-plan constraint KARMA | Respecté : jamais 2 plans chargés simultanément. Le widget HOME ne CHARGE aucun plan (juste lit les georef LS). Le bouton ⛶ charge UN plan complet et bascule en map mode. |
+
+**Pourquoi pas d'extraction ZIP au boot HOME ?** :
+
+L'alternative aurait été d'extraire `plan-config.json` de chaque ZIP (FS handle / IDB blob) au boot HOME pour avoir la georef embedded. Coût mesuré : ~200-500 ms par plan sur mobile (JSZip.loadAsync + extract du fichier). Sur 10 plans → 2-5 secondes de boot HOME, inacceptable. La cascade `KmzExport.getCalibration(LS)` est instantanée.
+
+**Tradeoff** : un user qui a généré son plan via le Générateur AVEC georef embedded mais n'a JAMAIS chargé son plan en map mode → la calibration ne sera pas en LS → plan absent du widget HOME. Au premier load du plan en map mode, `_propagerGeorefVersKmzExport` la copie en LS → plan apparaît au reload HOME suivant.
+
+**HTML modifié** (`index.html`) :
+- Nouvelle colonne `<div class="loader-col loader-col-osm">` entre `loader-col-plans` et `loader-col-actions`
+- `<div id="ktaOsmHomeBox">` avec header `🌍 Vue OSM` + container `#ktaOsmHomeContent` rempli dynamiquement
+- Script `<script src="js/osmHomePreview.js" defer></script>` après `js/osmView.js`
+
+**CSS modifié** (`css/style.css`) :
+- `loader-grid` PC : passe de `grid-template-columns: 3fr 2fr` à `2fr 3fr 2fr` (3 cols) avec `gap: 0 24px` (réduit de 32px pour faire place à la nouvelle col)
+- `.loader-col-osm` : flex column, mini-carte stretch toute la hauteur
+- `.kta-osm-home-*` : 9 classes pour bandeau, map, footer, états (loading/empty/cta)
+
+**Service Worker** : `osmHomePreview.js` ajouté à `ASSETS_TO_CACHE` pour disponibilité offline (le widget se dégrade gracieusement avec `_renderOffline` si pas d'Internet).
+
+**Bumps** :
+- `sw.js > CACHE_NAME = "myktamap-cache-v1.40.0"` (saut majeur 1.39 → 1.40 pour marquer la roadmap Step 4 complète)
+- `js/copyright.js > build = "v1.40.0"`
+- `version.json` : version + notes user-friendly
+- NETWORK_AUDIT.md/html : header v1.40.0
+
+**Tests à faire** :
+
+Cas opt-in :
+- ✅ Boot HOME avec opt-in OFF → placeholder + bouton "🔓 Autoriser OSM"
+- ✅ Click bouton → opt-in ON → widget se met à jour automatiquement (via `kta:osmOptInChange`)
+
+Cas hors-ligne :
+- ✅ Mode avion ON → placeholder "📴 Hors-ligne"
+
+Cas plans :
+- ✅ Aucun plan georef → placeholder pédagogique
+- ✅ 1+ plan georef → widget complet avec dropdown + mini-carte
+- ✅ Dropdown : sélection d'un autre plan → markers se mettent à jour
+- ✅ `lastSelected` persisté en LS entre sessions HOME
+
+Cas ⛶ full-screen :
+- ✅ Click ⛶ avec plan dans la liste "Mes plans" → trigger ▶️ Charger → bascule map mode
+- ✅ Au boot map mode, `kta:planConfigReady` détecte le flag sessionStorage → `OsmView.open()` automatique
+- ✅ Plan non listé (cas limite) → fallback `loaderResumeBtn` ou alert pédagogique
+
+Cas layout :
+- ✅ PC ≥1024px : 3 colonnes équilibrées (2fr 3fr 2fr)
+- ✅ Mobile <1024px : pile verticale, mini-carte 220px hauteur min
+
+Cas régression :
+- ✅ Modale Vue OSM full-screen existante (osmView.js) inchangée
+- ✅ Pas d'impact sur le boot map mode si jamais opt-in OSM
+- ✅ Pas d'appel sortant si opt-in OFF (cohérence philo offline)
+
+**⚠️ Régression cross-module check** :
+- `LS_OPT_IN_KEY` partagé avec `osmView.js` → SAME constant (les 2 modules le lisent/écrivent au même endroit) ✅
+- `osmHomePreview.js` chargé APRÈS `osmView.js` dans `index.html` ✅ (cas usage : `OsmHomePreview.openFullScreen` peut appeler `OsmView.open` si besoin)
+- `PlanRegistry`, `KmzExport`, `Leaflet` : dépendances normales, déjà chargées avant
+- Layout `loader-grid` modifié : risque d'impact visuel sur les vieux flows. Mobile reste pile vertical (display:flex column) — pas de regression. PC : nouvelles proportions 2-3-2 au lieu de 3-2. Si plan visible souffre, ajustement CSS futur possible
+
+**Limitations connues (v1.40.0)** :
+- **Pas de tuiles plan affichées sur OSM** dans le widget HOME (= mode léger). User voit les 2 markers georef + ligne d'échelle, pas le plan lui-même. → Future v1.40.1+ : extraction ZIP partielle pour tuiles overview
+- **Pas de POI/Roads/Zones/Structures** dans le widget (= cohérent mode léger)
+- **Cas "georef embedded uniquement"** : plan jamais chargé en map mode → georef pas propagée en LS → absent du widget. Recommandation : charger 1 fois le plan en map mode pour qu'il apparaisse
+- **Pas de cache des positions** : si user change de plan dans dropdown rapidement, chaque sélection re-render les markers (léger, pas un problème)
+
+**Step roadmap (post-v1.40.0)** :
+- v1.40.1+ (optionnel) : extension data — extraction ZIP partielle pour afficher tuiles plan overview + POI embedded dans le widget
+- Future features Vue OSM imaginables : itinéraire multi-plans, export KMZ inline depuis HOME, partage URL de prévisualisation
+
+**📦 v1.39.16** : Vue OSM Step 3b — zones + structures + multi-LVL :
+
+KARMA combo : *« ajoute la possibilité d'afficher plusieurs LVL en même temps en mode OSM et continue directe vers ZONE/STRUCTURE »*. Deux features fusionnées en 1 bump.
+
+**Sources Step 3b** :
+- `window.getZones()` + `window.getAllEmbeddedZones()` — polygones zones session + data layers
+- `window.getStructures()` + `window.getAllEmbeddedStructures()` — structures session + embedded (cataphile : piliers, murs, fronts de taille)
+- `window.isStructurePolylineType(type)` — helper pour discriminer : `"front-1"/"front-2"` → polyline, `"mur"/"pilier-1"/"pilier-2"` → polygone
+
+**Multi-LVL** :
+- State `_visibleLevels: Set<number>|null` (null = mode mono compat, Set non-vide = union de niveaux)
+- Helper `_isLevelAllowed(item)` cascade : (a) si pas M-LVL → tout passe, (b) si `_visibleLevels` Set non vide → check membership, (c) sinon → fallback `APP_CONFIG.activeLevel` (= comportement v1.39.12 strict)
+- `_initVisibleLevels()` au boot OSM : initialise au `activeLevel` mono (équivalent strict v1.39.12 par défaut, l'user peut ensuite cocher d'autres niveaux)
+- `_refreshLevelFilteredLayers()` : re-render 5 layers level-aware (POI + Roads + Iti + Zones + Structures). Tracker EXCLU (sa timeline garde son historique full)
+- UI : barre 2e ligne du bandeau, chips `N0/N1/…` (visible uniquement si `APP_CONFIG.multiLevel === true`). Click chip = toggle in/out du Set. Fallback `availableLevels` indispo : `{0, activeLevel}` par défaut
+
+**Implémentation `osmView.js`** (~280 lignes ajoutées) :
+
+| Helper | Rôle |
+|---|---|
+| `_isZoneTypeAllowed(z)` / `_isStructTypeAllowed(s)` | Filtre FilterPanel.zoneTypes / structTypes |
+| `_collectVisibleZones()` / `_collectVisibleStructures()` | Agrège session + embedded + applique filtres |
+| `_projectPoints(points)` | Helper mutualisé pour projection plan→latlng (utilisé roads + zones + structures) |
+| `_renderZones()` | 1 `L.polygon` par zone, `zone.color` natif + `fillColor` + `fillOpacity` |
+| `_renderStructures()` | Adaptatif via `isStructurePolylineType` : polyline ou polygon selon type |
+| `_toggleZoneVisible` / `_toggleStructVisible` | Add/remove layer + lazy render au premier ON |
+| `_initVisibleLevels()` | Init du Set au boot OSM (équivalent strict mode mono) |
+| `_toggleLevel(level)` | Toggle membership + appel `_refreshLevelFilteredLayers` |
+| `_refreshLevelFilteredLayers()` | Re-render 5 layers level-aware |
+| `_renderLevelsBar()` | Construit la barre de chips dans le bandeau |
+
+**Constants `STRUCTURE_STYLES_OSM`** : mapping local aligné sur `structures.js > STRUCTURE_STYLES` (v1.9+). Fronts allégés weight 10 → 6 (cohérence avec ITI_WEIGHT 7 → 5 vu zone OSM plus large). Warning sync ajouté.
+
+**UI ajoutée dans le bandeau (ligne 1)** : 2 nouveaux toggles `🌐 Zones` et `🏗️ Struct` (default ON). Maintenant 7 toggles totaux + 2 boutons centrer + slider opacité + mention CSP.
+
+**UI nouvelle ligne 2 (M-LVL only)** : barre chips `🏗️ Niveaux affichés : [N0] [N1] [N2] …` avec hint `Click pour basculer · plusieurs niveaux possible`. Fond ambre léger pour distinction.
+
+**Wire dans `_renderMap`** : étapes 1-9 séquentielles :
+1. fitBounds initial via `_planBbox`
+2. `_renderLevel(_baseLevel)` (tuiles)
+3. Bind `_onMoveEnd` (zoom/pan adaptatif)
+4. POI (si visible) — Step 1
+5. Tracker (si visible) + polling - Step 2
+6. Roads + Iti - Step 3a
+7. **🆕 `_initVisibleLevels()` + `_renderLevelsBar()` + Zones + Structures** - Step 3b + multi-LVL
+
+**`close()` étendu** : cleanup `_zoneLayer` + `_structLayer` + reset `_visibleLevels = null`.
+
+**Tests à faire** :
+
+Multi-LVL :
+- ✅ Plan M-LVL → ligne 2 bandeau visible avec chips N0/N1/…, chip `activeLevel` checked au boot
+- ✅ Plan mono → ligne 2 masquée (display: none)
+- ✅ Cocher N1 alors qu'on est sur N0 → POI + roads + zones + structures des 2 niveaux s'affichent
+- ✅ Décocher tous les chips → layers vides (Set vide ≠ fallback activeLevel — choix explicite)
+- ✅ Fermer/réouvrir modale → reset à `{activeLevel}` (pas de persistance entre sessions modale)
+
+Zones + Structures :
+- ✅ Zones session + embedded apparaissent avec leurs couleurs natives
+- ✅ Structures piliers/murs = polygones colorés (jaune/orange/bleu)
+- ✅ Fronts de taille = polylines épaisses (jaune/orange)
+- ✅ Toggle 🌐 Zones OFF/ON → zones disparaissent/réapparaissent
+- ✅ Toggle 🏗️ Struct OFF/ON → idem structures
+- ✅ Filtre FilterPanel.zoneTypes / structTypes respecté côté OSM
+- ✅ Plan sans zones/structures → toggles ON mais layers vides (pas de crash)
+
+**⚠️ Régression cross-module** :
+- `_isLevelAllowed` factorisé → utilisé par 5 helpers level-aware (POI, Roads, Iti, Zones, Structures). Cohérence garantie.
+- `_projectPoints` mutualisé entre roads/zones/structures → si 1 bug projection, tout casse cohérement (acceptable)
+- `_visibleLevels` reset à null dans `close()` → safe entre sessions modale
+- Chips levels NON persistées entre sessions modale → choix simple, peut être ajouté en v1.39.17 si demande
+- Polylines fronts épaissies (weight 6) testées visuellement OK sur OSM
+
+**Step roadmap (post-v1.39.16)** :
+- Step 4 : intégration HOME — modale "Vue OSM mondiale" qui charge TOUS les plans georef avec filtre par plan
+
+**📦 v1.39.15** : Fix critique persistance — export profil incomplet :
+
+KARMA audit : *« j'ai l'impression que le georef est mal persisté et que on le perd a un moment, update douce, export/import profile .... session...ETC »*. Audit ciblé sur les 5 flux suspects :
+
+| Flux | Résultat | Conclusion |
+|---|---|---|
+| Update douce (`mettreAJourCodeSeul`) | ✅ Préserve LS | Pas de bug, purge cache PWA seul |
+| Reset complet (`viderCacheAppli`) | ❌ Volontaire | Comportement attendu, double confirm |
+| SessionPersist (`sessionPersist.js`) | ✅ Hors scope | Calibration vit en parallèle de la session |
+| Boot d'un plan (`_propagerGeorefVersKmzExport`) | ✅ Re-propage | LS auto-remplie depuis `PLAN_CONFIG.plan.georef` |
+| **Export/Import profile** (`profileExportImport.js`) | 🔴 **TROU** | **4 catégories de clés per-plan oubliées** |
+
+**Cause racine** : `profileExportImport.js > PREF_KEYS` listait uniquement 8 clés globales (theme, paranoia, planner_mode...). Les clés **per-plan** avec préfixe + suffixe variable (`<prefix>_<planId>`) étaient ignorées :
+
+| Clé LS oubliée | Contenu | Impact si perdu |
+|---|---|---|
+| `myktamap_kmz_calib_<planId>` | **GPS georef plan** (pointA/B {x,y,lat,lng}) | KMZ/GPX/Vue OSM cassés |
+| `myktamap_plan_prefs_<planId>` | **Calibrations image layers** v1.38.0 + Nord + prefs cascade | Calques mal calés, Nord perdu |
+| `myktamap_route_avoid_<...>` | Avoidances itinéraire Pathfinder | Iti recalculé sans préférences |
+| `myktamap_note_libre_<planId>` | Note libre Mode Histoire | Note Markdown perdue |
+
+Le pattern de loop sur `localStorage.length` n'était utilisé QUE pour les sessions (`myktamap_session_v1_`). Aucun équivalent pour les autres préfixes per-plan.
+
+**Scénarios cassés (avant fix)** :
+1. Migration vers nouveau device : Export sur A, Import sur B → georef GPS perdue, calques décalibrés
+2. Reset accidentel après backup profile : l'user pense être protégé, il ne l'est pas
+3. Partage config entre équipe : impossible sans re-saisie manuelle
+
+**Fix v1.39.15** dans `js/profileExportImport.js` (~80 lignes ajoutées) :
+
+- **Nouvelle const `PER_PLAN_PREFIXES`** : liste explicite des 4 préfixes critiques avec warning de maintenance (« si tu ajoutes un nouveau préfixe per-plan dans l'app, ajoute-le ici »)
+- **Helper `_collectPerPlanLsKeys()`** : scan `localStorage.length`, filtre par préfixes, retourne `{ "<full-key>": <parsed-value> }`. Format plat conservant la full key (préfixe + planId) pour robustesse.
+- **`buildProfile()` étendu** : `profile.sections.perPlanLs = _collectPerPlanLsKeys()` (default include true)
+- **`computeSectionSizes()` étendu** : `sizes.perPlanLs = {count, bytes}`
+- **`computeImportStats()` étendu** : compteur `perPlanLs`
+- **`applyProfile()` étendu** : section dédiée avec sémantique merge/replace + **garde anti-pollution** (filtre les keys contre PER_PLAN_PREFIXES au moment de la restauration → robustesse si un profile édité à la main contient des keys arbitraires)
+- **UI export modale** : nouvelle row checkbox 📍 « Calibrations & prefs par plan » (cochée default, taille affichée)
+- **UI import modale** : row équivalente, visible si `stats.perPlanLs > 0`
+
+**Sémantique mode merge** (par défaut) : skip une clé si déjà présente localement → préserve les modifs locales faites depuis l'export (ex : user a re-saisi sa georef sur le device cible avant import).
+
+**Sémantique mode replace** : écrasement total cohérent avec les autres sections (registry, sessions, etc.).
+
+**Garde anti-pollution** : avant chaque `setItem`, on vérifie que la clé matche au moins un préfixe de `PER_PLAN_PREFIXES`. Empêche un profile bidouillé à la main d'injecter une clé arbitraire dans localStorage.
+
+**Tests à faire** :
+- ✅ Saisir georef via Réglages map mode → Export profile avec 📍 coché → vérifier taille section > 0
+- ✅ Reset complet → Re-import profile → georef restaurée (sans rechargement du ZIP)
+- ✅ Saisir calibration image layer v1.38.0 → Export → Reset → Import → calage restauré
+- ✅ Écrire note Mode Histoire → Export → Reset → Import → note restaurée
+- ✅ Mode merge : si user a déjà une georef locale différente → préservée (pas écrasée)
+- ✅ Mode replace : georef du profile écrase celle locale
+- ✅ Profile sans section perPlanLs (export pré-v1.39.15) → rétro-compat, pas de crash
+- ✅ Garde anti-pollution : profile édité avec clé `myktamap_evil_key` → ignorée
+
+**⚠️ Régression cross-module** :
+- Format profile JSON enrichi mais **rétro-compatible** : un profile pré-v1.39.15 (sans `sections.perPlanLs`) s'importe sans crash (test `if (s.perPlanLs && typeof === "object")`)
+- `localStorage.length` scan peut être lent sur browsers avec beaucoup d'apps en cohabitation → acceptable, c'est de l'export user-initiated pas du polling boot
+- Note libre Mode Histoire (`myktamap_note_libre_<planId>`) : déjà dans l'export `.mkmsession` mais maintenant AUSSI dans le profile → cohérent avec la sémantique « profile = état complet utilisateur cross-plans »
+
+**📦 v1.39.14** : Vue OSM Step 3a — roads + itinéraire :
+
+Roadmap KARMA Step 3a/4 — *« continue sur ROAD et Itineraire facilement testable »*. KARMA voulait avancer sans avoir à sortir dehors pour tester le tracker — roads + iti sont testables sur la map seule. Step 3b (zones + structures) en suivant si tout va bien.
+
+**Sources utilisées** :
+- `window.getRoads()` — roads session (incluant l'itinéraire actif `type === "itinerary"`)
+- `window.getAllEmbeddedRoads()` — roads embedded data layers (puits.json, etc.)
+
+**Implémentation `osmView.js`** (~170 lignes ajoutées) :
+- `_isRoadTypeAllowed(road)` : respect `FilterPanel.roadTypes` (Set/Array, null = pas de filtre)
+- `_isRoadLevelAllowed(road)` : respect `APP_CONFIG.activeLevel` si M-LVL (sémantique : `road.level === activeLevel`, cohérent avec §26.5 pathfinder)
+- `_collectVisibleRoads()` : agrège session + embedded, **EXCLUT `type === "itinerary"`** (rendu séparé dans `_itiLayer` pour distinguer visuellement), applique les 2 filtres
+- `_collectActiveItinerary()` : `roads.find(r => r.type === "itinerary" && r.points.length >= 2)` — il n'y en a qu'un seul par session (cf interfaceItineraire.js)
+- `_projectRoadPoints(road)` : projette les points pixels plan en latlngs OSM via `_proj`. Skip silencieux les points invalides (peut perdre 1-2 points sur erreur ponctuelle, polyline reste continue)
+- `_renderRoads()` : crée 1 `L.polyline` par road avec `color: road.color || "#8892a4"` (fallback charte). Poids 3, opacité 0.8, non interactif. Idempotent.
+- `_renderItinerary()` : 1 `L.polyline` avec style cyan dashed plus épais. **Constantes locales** `ITI_COLOR = "#00d4ff"`, `ITI_WEIGHT = 5`, `ITI_DASHARRAY = "10 6"` alignées sur `road.js:56 > ROAD_TYPES.itinerary` (weight allégé 5 vs 7 sur map principale car OSM montre zone +large)
+- `_toggleRoadVisible` / `_toggleItiVisible` : add/removeLayer + lazy render au premier ON
+
+**Perf clé : `preferCanvas: true`** ajouté à l'init `_osmMap` → toutes les polylines (roads + iti + tracé tracker) rendues sur 1 canvas, pas N éléments SVG. Cohérent avec `map.js` principale (§13 perf-memory). Les imageOverlay (tuiles V2) restent en DOM (pas affecté).
+
+**UI ajoutée dans le bandeau** :
+- Toggle `🛣️ Routes` (default ON)
+- Toggle `🧭 Iti` (default ON)
+- Les 5 toggles existants + 2 boutons centrer restent (Plan/Tracker, Opacité, POI, Tracé)
+
+**Wire dans `_renderMap`** : après les étapes POI (6) + tracker (7) → étape 8 = roads + iti.
+
+**`close()` étendu** : cleanup `_roadLayer` + `_itiLayer` (clearLayers + nullify).
+
+**Tests à faire** :
+- ✅ Plan V2 georef → roads session + embedded apparaissent avec leurs couleurs natives (cohérence visuelle map principale)
+- ✅ Type "itinerary" PAS dans le layer roads (pas de duplication avec _itiLayer)
+- ✅ Iti actif → polyline cyan dashed visible, plus épaisse que les autres routes
+- ✅ Toggle 🛣️ OFF → roads disparaissent, iti reste visible (si toggle 🧭 ON)
+- ✅ Toggle 🧭 OFF → iti disparaît, roads restent visibles
+- ✅ Filtre roadTypes actif côté FilterPanel → respecté côté OSM (les types masqués sont absents)
+- ✅ M-LVL avec `activeLevel=1` → seules les roads level 1 visibles
+- ✅ Plan dense (1000+ roads) → fluide grâce à `preferCanvas` (canvas natif)
+- ✅ Pas d'iti actif → `_itiLayer` créé mais vide (pas de crash)
+- ✅ Fermeture modale → tous les layers cleanup
+
+**⚠️ Régression cross-module** :
+- `preferCanvas: true` affecte uniquement les **vector layers** (polylines/polygons/circles) — les imageOverlay rotated (tuiles V2) restent DOM. Vérification : pas de changement de comportement attendu sur les tuiles.
+- Constantes `ITI_*` dupliquées de `road.js > ROAD_TYPES.itinerary` — **dette** : si KARMA change le style iti là-bas, sync ici. Commentaire de warning ajouté.
+- `_proj` réutilisé (mémo v1.39.11) → pas de recalcul georef par road
+- 5 layers indépendants : `_planLayer` / `_poiLayer` / `_trackerLayer` / `_roadLayer` / `_itiLayer` — chacun cleanup et toggle indépendant
+
+**Step roadmap (post-v1.39.14)** :
+- Step 3b : zones + structures (embedded + session)
+- Step 4 : intégration HOME — modale "Vue OSM mondiale" qui charge TOUS les plans georef avec filtre par plan
+
+**📦 v1.39.13** : Vue OSM Step 2 — tracker (position + tracé live) :
+
+Roadmap KARMA Step 2/4 — *« Step 2 on intègre position tracker et son tracé »*. Choix validés `1:a 2:a 3:a 4:a 5:a 6:a` = live polling 1s, sub-sample 1-sur-N au-delà de 5000 points, cap (flèche heading), couleur tracker existante, toggle bandeau + bouton recentrer.
+
+**Sources utilisées** :
+- `window.getTrackingTimeline()` — path historique `[{x, y, t, deltaMs, type, level?}, ...]` (survit aux recalages)
+- `window.getTrackingActif()` — bool état Play/Stop
+- `APP_CONFIG.trackingColor` ou `trackColor` — couleur du tracé (fallback `#8cb4ff` charte interaction)
+
+**Implémentation `osmView.js`** (~180 lignes ajoutées) :
+- `_isTrackerActif()` : guard pour le polling no-op si tracker pas en marche
+- `_getTrackerTimeline()` : copie défensive de la timeline
+- `_getTrackerColor()` : cascade APP_CONFIG → fallback charte
+- `_subsampleTimeline(points, maxN)` : 1-sur-N si > 5000 points, garde toujours le dernier (position courante). Pas RDP pour rester court (~10 lignes vs ~30). Si retour terrain "moche au pan rapide" → upgrade en RDP via `_decimatePointsRDP` (à exposer côté road.js)
+- `_computeTrackerHeading(timeline)` : `atan2(dx, -dy)` sur les 2 derniers points (convention plan : y=0 = nord). Retourne null si bougé < 0.1px (cap pas fiable)
+- `_buildTrackerIcon(color, heading)` : `L.divIcon` HTML inline = cercle coloré 14×14 + flèche cap optionnelle (border-triangle) avec `transform-origin:50% 22px` pour rotation autour du cercle. CSS class `kta-osm-tracker-marker` libre pour customisation future
+- `_renderTracker()` : pipeline complet — récupère timeline, sub-sample, projette en latlng OSM via `_proj.planToLatLng`, crée/update polyline (setLatLngs sur update vs recreate), crée/update marker (setLatLng + setIcon)
+- `_toggleTrackerVisible(bool)` : add/removeLayer + start/stop polling
+- `_startTrackerPolling()` : `setInterval(_renderTracker, 1000)`, no-op si tracker pas actif
+- `_centerOnTracker()` : `panTo` la dernière position. Bump auto au zoom 17 si on était trop dézoomé (< 16)
+
+**UI ajoutée dans le bandeau** :
+- Bouton `🎯 Plan` (renommé de "🎯 Centrer sur le plan" pour gagner de la place)
+- Nouveau bouton `📡 Tracker` (centrer sur position tracker)
+- Nouveau toggle `📡 Tracé` (default ON, masque/affiche le layer tracker)
+- POI toggle `📍 POI` inchangé
+
+**Wire dans `_renderMap`** : après le rendu POI Step 1, si `_trackerVisible` → `_renderTracker()` + `_startTrackerPolling()`.
+
+**`close()` étendu** : `_stopTrackerPolling()` + `_trackerLayer.clearLayers()` + nullify refs.
+
+**Tests à faire** :
+- ✅ Plan V2 georef + tracker actif → tracé bleu apparaît sur OSM avec marker en bout
+- ✅ Marker visible avec flèche cap selon dernière direction
+- ✅ Polling 1s : si l'user bouge sur la map principale, le marker OSM suit en live
+- ✅ Toggle 📡 Tracé OFF → trace + marker disparaissent, polling stoppé
+- ✅ Re-ON → réapparaissent, polling redémarre
+- ✅ Bouton 📡 Tracker → centre sur la position courante (zoom 17 si dézoomé)
+- ✅ Timeline > 5000 points → sub-sample appliqué, pas de lag visible
+- ✅ Tracker pas démarré → toggle ON mais aucun marker (silencieux, pas de crash)
+- ✅ Fermeture/réouverture modale → polling proprement stoppé puis redémarré
+- ✅ Cap : si timeline a < 2 points → marker sans flèche (fallback cercle simple)
+
+**⚠️ Cross-module check** :
+- `_proj` réutilisé (mémo v1.39.11) → pas de recalcul georef à chaque tick polling
+- `_trackerLayer` séparé de `_planLayer` et `_poiLayer` → 3 layers indépendants pour toggle/cleanup
+- Polling sur `setInterval` clearé dans `close()` — pas de fuite mémoire (testé via memInspector cross-modale)
+- Couleur tracker peut changer si l'user la modifie dans Réglages pendant la modale ouverte → update auto au prochain tick (vérif `_trackerTrace.options.color !== color`)
+
+**Step roadmap (post-v1.39.13)** :
+- Step 3 (conditionnel perf) : ROADS + ZONES + STRUCTURES (embedded + session)
+- Step 4 : intégration HOME — modale "Vue OSM mondiale" qui charge TOUS les plans georef avec filtre par plan
+
+**📦 v1.39.12** : Vue OSM Step 1 — POI session + data layers :
+
+Roadmap KARMA Step 1/4 sur la Vue OSM : *« on va augmenter le truc en plusieurs step pour bien cadrer. Step 1. on intègre nos POI DATA/SESSION à la map OSM »*. Choix validés `1:d 2:a 3:a 4:a 5:a` = tout (session + data + iti), respect FilterPanel, icônes L.marker cohérence map, popup minimal, respect activeLevel M-LVL.
+
+**Sources collectées (Step 1)** :
+- ✅ **Session editor** : `window.getEditorPoints()` — POI ajoutés par l'user en cours de session
+- ✅ **Data layers embedded** : `window.getAllEmbeddedPoints()` — POI des dataLayers (puits.json, etc.) déjà rendus sur la map principale
+- ⏳ **Itinéraire actif** : déporté à Step 2/3 (les waypoints iti sont des éléments de polyline → traités avec roads/zones, pas avec les POI au sens strict)
+
+**Implémentation `osmView.js`** (~150 lignes ajoutées) :
+- `_isTagAllowed(p)` : check `window._ktaRuntimeFilters.tags` (Set ou Array depuis FilterPanel v1.21.5). Si null → tout passe. Sinon → membership sur `p.tags[0] || "default"`.
+- `_isLevelAllowed(p)` : si `APP_CONFIG.multiLevel === true` et `activeLevel` défini → ne garde que `p.level === activeLevel`. Sinon → tout passe.
+- `_collectVisiblePoi()` : agrège session + data en un format unifié `{x, y, nom, tags, level, _source}`, applique les 2 filtres ci-dessus
+- `_buildPoiIcon(p)` : crée une `L.icon` via `window.getIconUrlForPoint(p)` (cohérence visuelle map principale). Taille 26×26 (plus petit que map principale 32×32 vu que l'écran OSM montre une zone plus large). Fallback : marker default si pas d'icône résolue.
+- `_renderPoi()` : crée 1 `L.marker` par POI projeté via `_proj.planToLatLng(p.x, p.y)` → addTo `_poiLayer = L.layerGroup()`. Popup minimal HTML : `<b>nom</b><br>tag · niveau N`. `_escapeHtml` anti-XSS sur les noms.
+- `_togglePoiVisible(bool)` : add/removeLayer `_poiLayer`. Si user toggle ON avec layer pas encore créé → render à la volée.
+
+**UI ajoutée dans le bandeau modale** :
+- Checkbox `📍 POI` entre 🎯 Centrer et le label 🔒 Tiles. Default checked. Change handler → `_togglePoiVisible(e.target.checked)`.
+
+**Wire dans `_renderMap`** :
+- Après `_renderLevel(_baseLevel)` et bind `_moveEndHandler` → si `_poiVisible` → `_renderPoi()`.
+- `close()` étendu : `_poiLayer.clearLayers()` + `_poiLayer = null` (les markers sont GC).
+
+**Tests à faire** :
+- ✅ Plan V2 georef opt-in → ouverture Vue OSM, POI session + data visibles avec leurs icônes natives
+- ✅ Toggle 📍 OFF → markers cachés, ON → markers réapparaissent
+- ✅ Plan multi-niveau avec activeLevel=1 → seuls les POI level 1 affichés (cohérence map)
+- ✅ Filtre tags actif côté FilterPanel → POI masqués côté OSM aussi
+- ✅ Click marker → popup avec nom + tag + niveau
+- ✅ Fermeture/réouverture modale → state propre
+- ⚠️ Plan dense 500+ POI → vérifier perf (pas de viewport culling sur POI en Step 1, à ajouter en Step 1.1 si lag)
+
+**Cross-module check** :
+- `_proj` réutilisé (mémo de `_buildProjection()` v1.39.11) — pas de re-calcul de la georef pour chaque POI
+- `_poiLayer` séparé de `_planLayer` (tuiles) — cleanup indépendant + toggle indépendant
+- Les markers L.marker utilisent du DOM standard (pas canvas) → cohérence avec map principale qui fait pareil
+- Pas de listener `FilterPanel.onChange` (le user ne peut pas changer les filtres pendant que la modale OSM est ouverte → si besoin Step 2)
+- `getIconUrlForPoint` peut retourner `undefined` → fallback L.marker default (pas de crash)
+
+**Bump** : sw.js v1.39.11 → v1.39.12 + `__MKM__.build` + `version.json` + notes user-friendly. Header NETWORK_AUDIT à v1.39.12. Modifs uniquement `osmView.js`.
+
+**Step roadmap (post-v1.39.12)** :
+- Step 2 : position tracker + tracé timeline (sur OSM)
+- Step 3 (conditionnel perf) : ROADS + ZONES + STRUCTURES embedded/session
+- Step 4 (best case) : intégration HOME — charger TOUS les plans georef dans une map OSM unique avec système de filtre par plan
+
+**📦 v1.39.11** : Vue OSM — niveau adaptatif + viewport culling :
+
+KARMA retour terrain v1.39.10 : *« les tuiles sont d'une résolution bcp trop basse on voit rien »*. Diagnostic confirmé — v1.39.10 utilisait `z = minNativeZoom` (scale ×8, 1×1 tuile pour un plan 4000×2251) pour rester safe sur mobile mais la résolution était insuffisante pour identifier les détails.
+
+**Topo & reco** : reproduction du pattern Leaflet TileLayer natif (qu'on imite déjà dans `tiling.js > _renderNiveau` pour la map principale) — niveau adaptatif au zoom + viewport culling pour charger uniquement les tuiles visibles. Plus le user zoom dans OSM, plus on monte en résolution. Plus il dézoome, plus on redescend pour économiser RAM.
+
+**Fix v1.39.11** :
+- **Heuristique baseline au boot** : `_choisirNiveauBaseline(tiling, planW, planH)` choisit le niveau le plus zoomé tel que `cols × rows ≤ MAX_TILES_BASELINE` (20 tuiles, budget RAM mobile ~20 MB décodé). Pour un plan 4000×2251 → z=-1 (scale ×2, 4×3=12 tuiles). Pour un plan 16K×16K → z=-3 (4×4=16 tuiles, reste prudent).
+- **Mapping zoom OSM ↔ niveau plan** : `_targetLevelForZoom(osmZoom, tiling)` mappe `delta = osmZoom - baselineOsmZoom` vers `targetZ = baseLevel + delta`, clamp dans `[minNativeZoom, maxNativeZoom]`. Invariant valide car OSM ET tiling V2 doublent la résolution par cran de zoom — relation 1:1.
+- **Calcul `_baselineOsmZoom`** : `_computePlanBbox(proj, planW, planH)` projette les 4 coins du plan en latlng via la georef, puis `_osmMap.getBoundsZoom(_planBbox)` donne le zoom OSM où le plan tient au fit. Stocké 1 fois au boot, sert de référence pour le delta.
+- **Viewport culling AABB** : `_tileIntersectsBounds(tl, tr, bl, mapBounds)` reconstruit le 4e coin par parallélogramme (`br = tr + bl - tl`) et teste `mapBounds.intersects(tileBbox)`. Padding 10% sur mapBounds pour pré-charger les bordures (anti-flash au pan rapide). Pattern aligné sur §81 P5 (markers POI viewport culling) et `tiling.js`.
+- **Tracker `_tilesByPath`** : map `path → {overlay, tl, tr, bl}` pour add/remove idempotent. Au render d'un niveau : skip les paths déjà présents (éviter les doublons), puis cull ceux qui ne sont plus visibles. Coût mémoire négligeable (1 entrée par tuile visible).
+- **Handler `zoomend moveend`** : `_onMoveEnd` re-évalue le niveau cible, appelle `_renderLevel(targetZ)` qui gère le switch interne (cleanup intégral si nouveau niveau, juste add+cull si même niveau). Unbind dans `close()` pour éviter les listeners orphelins.
+
+**Avant / Après** (plan 4000×2251 typique)
+
+| | v1.39.10 | v1.39.11 |
+|---|---|---|
+| Niveau au boot | z=-3 (scale ×8) | **z=-1 (scale ×2)** |
+| Tuiles initiales | 1×1 = 1 | **4×3 = 12** (visible viewport seul → ~6 réellement) |
+| Résolution | 😵 floue, illisible | **✅ nette** |
+| Au zoom OSM élevé | Reste z=-3 (flou aggravé) | **Swap progressif** z=-1 → z=0 (rés max) |
+| Au zoom OSM dézoomé | z=-3 (déjà au plafond) | **Swap** z=-1 → z=-2 → z=-3 (économe) |
+| Au pan | Toutes les tuiles chargées | **Culling** add nouvelles visibles, remove sorties |
+| RAM décodée | ~1 MB | ~6-12 MB (visible viewport, scale ×2) |
+
+**Tests à faire** :
+- ✅ Plan 4000×2251 V2 → ouverture Vue OSM, tuiles z=-1 nettes
+- ✅ Zoom OSM proche → swap auto vers z=0 (rés max native du plan)
+- ✅ Zoom OSM dézoomé → swap auto vers z=-2 puis z=-3 (overview, économe)
+- ✅ Pan rapide → tuiles cullées et re-ajoutées au pad 10%, pas de flash blanc grossier
+- ✅ Plan 16K×16K → baseline reste à z=-3 (16 tuiles max), zoom max OSM ne descend pas en dessous
+- ✅ Fermeture/réouverture modale → state propre (pas d'overlay fantôme)
+- ✅ Mobile : pas de crash, gain de qualité visible vs v1.39.10
+
+**Bump** : sw.js v1.39.10 → v1.39.11 + `__MKM__.build` + `version.json` + notes user-friendly. Header NETWORK_AUDIT.md/html à v1.39.11. Modifs uniquement `osmView.js` (~150 lignes ajoutées : 8 helpers + state).
+
+**📦 v1.39.10** : Vue OSM — fix crash mobile + restriction aux plans V2 tuilés :
+
+KARMA retour terrain v1.39.0-9 : *« ca crash sur mobile, surment psk on charge l'image complete »*. Hypothèse confirmée — `_renderMap` chargeait l'image entière du plan (`L.imageOverlay.rotated(baseImage, ...)`) dans une seconde carte Leaflet OSM, ce qui sature le GPU mobile (iPhone PWA budget ~500 MB) sur les plans ≥ 4000 px.
+
+**Topo & reco** : sur idée KARMA (*« et on peut pas afficher nos tuile par dessus ? »*), pivot architectural vers l'utilisation du **tiling V2 déjà existant**. Vérification archi via `docs/architecture/perf-memory.md §27` et `plans-loader.md §59` → confirmation que le format `data/tiles/z<N>/x<col>_y<-k>.jpg` + manifest `PLAN_CONFIG.tiling` permet de récupérer N petites tuiles à la demande au lieu de l'image entière.
+
+**Fix v1.39.10** :
+- **Gate V2 strict** : nouvelle `_isV2Plan()` check `tiledV2 === true && tiling.minNativeZoom finite && tiling.tileSize finite`. Si non-V2 → `alert()` pédagogique au clic du bouton 🌍 avec instruction "Ouvre Générateur → Modifier → coche 🧱 Convertir en V2 tuile" + abort (pas de modale, pas de ping, pas d'OSM tiles téléchargées). Préserve la philosophie 100% offline si pas opt-in.
+- **Rendu via tuiles minNativeZoom** : `_renderTilesV2OnOsm(proj, tiling)` itère sur les tuiles du niveau le plus dézoomé (`z = minNativeZoom`, typiquement `-3` → scale ×8). Exemple plan 4000×2251 : `8×5 = 40` tuiles z=0 (~12 MB) → `1×1 = 1` tuile z=-3 (~200 KB). 99% économie RAM/GPU.
+- **Convention CRS.Simple respectée** : flip Y pixel (`pxTop = planH - k * tileSize * scale`, `pxBottom = planH - (k-1) * tileSize * scale`) avant projection via `proj.planToLatLng(x, y)`. 1 `L.imageOverlay.rotated(url, tl, tr, bl)` par tuile = N parallélogrammes alignés sur la georef.
+- **Lazy fetch reproduit** : reprise fidèle du pattern `tiling.js > _renderNiveau` — pre-extract via `_extractLazyAsset(path)` Promise.all si Phase 2 Pack RAM actif (`asset.file === null && asset._zipPath`). Puis `_resolveTileUrl(path)` réplique `_resoudreUrlTuile` (création blob URL si nécessaire, asset.url réutilisé sinon).
+- **Cohérence cross-module** : `asset.url` est **partagé** avec `tiling.js` via `window.RUNTIME_ASSETS[path]`. NE PAS `URL.revokeObjectURL` au `close()` de la modale OSM → casserait l'affichage de la map principale. La création est idempotente (réutilise une URL existante si déjà créée par tiling.js).
+- **Suppression image layers du flow OSM** : les image layers (calques) étaient prévus mais n'étaient pas affichés en pratique selon retour KARMA. Code mort retiré du flow render — `_project3Corners` reste dispo pour usage futur si besoin.
+
+**Tests à faire** :
+- ✅ Plan V2 tuilé + georef + opt-in → Vue OSM s'ouvre avec 1-4 mini-tuiles projetées sur OSM, pas de crash mobile
+- ✅ Plan V1 (non tuilé) → alert pédagogique au clic, pas de modale, pas de tile OSM téléchargée
+- ✅ Plan V2 sans georef → bouton 🌍 masqué (inchangé)
+- ✅ Phase 2 Pack RAM (lazy fetch via _lazyZipRef) → tuiles z=minNativeZoom extraites avant render
+- ✅ Fermeture modale puis re-clic → map principale toujours OK (asset.url non revoked)
+
+**Bump** : sw.js v1.39.9 → v1.39.10 + `__MKM__.build` + `version.json` + notes user-friendly. Header NETWORK_AUDIT.md/html à v1.39.10. Pas de nouveau module, juste refactor `osmView.js` (~70 lignes ajoutées : helpers V2 + dispatch dans `_renderMap`).
+
+**📦 v1.39.0** : Vue OSM initiale (plan calibré GPS au-dessus d'OpenStreetMap) :
 
 Feature roadmap KARMA — *« on aurait notre image principal (et ses layer) au dessus de OSM »*. Nouvelle modale dédiée qui superpose le plan MyKTAMap (baseImage + calques image actifs) sur OpenStreetMap, projeté précisément via le georef GPS (`plan.georef`). Cas d'usage : visualiser comment un plan souterrain (carrière, galerie) s'aligne avec la surface — rues, accès, bâtiments.
 

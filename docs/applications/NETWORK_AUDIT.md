@@ -1,6 +1,6 @@
 # 🔒 MyKTAMap — Audit réseau & Confidentialité
 
-> Page de transparence technique. À jour pour la version **v1.39.8** (7 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
+> Page de transparence technique. À jour pour la version **v1.40.32** (7 juin 2026). Les notes détaillées par version sont disponibles en bas de page (section « 📋 Historique des changements de ce document »).
 >
 > Ce document explique **exactement** ce que l'application fait sur le réseau,
 > **comment vérifier toi-même** que rien ne fuit, et **comment activer le mode
@@ -151,15 +151,23 @@ sous 3 conditions strictes simultanément réunies** :
    ⚙️ Configuration home. **Default OFF**, persisté en `localStorage`
    sous la clé `myktamap_osm_view_opt_in`. L'utilisateur peut le
    désactiver à tout moment.
-3. **L'utilisateur ouvre activement la modale Vue OSM** (clic sur le bouton
-   🗺️ dans la status bar du mode carte). Sans cette action manuelle,
-   aucune tuile n'est requêtée.
+3. **L'utilisateur charge effectivement la Vue OSM**. Deux contextes
+   possibles depuis v1.40.0 (= roadmap Step 4 Vue OSM HOME) :
+   - **Modale Vue OSM full-screen** (mode carte) : clic sur le bouton 🗺️
+     dans la status bar quand un plan est chargé. Couvre les tuiles plan
+     V2 projetées + POI + Tracker + Roads + Iti + Zones + Structures.
+   - **Widget mini-preview HOME** (page d'accueil) : si l'opt-in est ON,
+     la colonne 🌍 Vue OSM apparaît entre Mes plans et Ajouter, avec un
+     plan georef sélectionné par défaut (= lastOpened). Sinon la colonne
+     est **masquée entièrement** — aucune tuile OSM n'est requêtée même
+     visuellement.
 
 **Garanties supplémentaires** :
-- Le bouton est aussi masqué si « Mode hors-ligne strict » OU « Mode
-  incognito » sont actifs (extension automatique de ces deux modes).
-- Le bouton est masqué si `navigator.onLine === false` (hors-ligne détecté
-  par le navigateur).
+- Le bouton modale et la colonne widget sont aussi masqués si « Mode
+  hors-ligne strict » OU « Mode incognito » sont actifs (extension
+  automatique de ces deux modes).
+- Modale et widget : masqués si `navigator.onLine === false` (hors-ligne
+  détecté par le navigateur).
 - Un ping `/ping.html` est effectué juste avant l'ouverture de la modale
   Vue OSM : si Internet ne répond pas, la modale est annulée AVANT le
   premier appel à OSM.
@@ -171,6 +179,53 @@ sous 3 conditions strictes simultanément réunies** :
 - **Cache PWA** : les tuiles OSM ne sont **PAS** mises en cache par le
   Service Worker — elles ne survivent pas au plan switch ni au refresh.
   Pas de stockage local persistant côté MyKTAMap.
+- **Widget HOME (depuis v1.40.0)** : extraction du ZIP du plan
+  sélectionné se fait **localement** dans le browser via JSZip (lecture
+  IDB blob ou FS handle). Aucune donnée plan n'est envoyée à OSM ou à
+  un tiers — uniquement les tuiles `{z}/{x}/{y}` sont demandées au CDN
+  OSM, identiques à celles affichées par tout client OSM standard.
+- **Bouton « 📍 Ma position » (depuis v1.40.18)** : disponible dans la
+  modale Vue OSM ET dans le widget HOME Vue OSM. **Fix GPS ponctuel à la
+  demande user** via `navigator.geolocation.getCurrentPosition()` — pas de
+  watch continu (`watchPosition`), pas d'usage batterie en continu. La
+  permission OS est demandée à la demande user (pas au boot), les
+  coordonnées sont affichées sur la carte (marker bleu cyan + cercle
+  d'incertitude) **uniquement en RAM**, ne sont **jamais** stockées en
+  localStorage / IndexedDB / cookie, ne sont **jamais** envoyées sur le
+  réseau (aucun fetch, aucun beacon). Au close de la modale / refresh
+  du widget, le marker est supprimé. Re-clic = nouveau fix, l'ancien est
+  remplacé.
+- **Garde-fou « GPS hors champ du plan » (depuis v1.40.21)** : après un fix GPS
+  reçu, si la position est **très loin** de la bbox du plan georef sélectionné
+  (>50% au-delà des bords), le marker n'est **pas affiché** + toast warn avec
+  la distance approximative au centre du plan. Garantit qu'un user à Paris ne
+  voit pas son fix s'afficher sur un plan des Catacombes de Lyon par erreur.
+  Marge ×1.5 (= `bounds.pad(0.5)`) choisie permissive pour ne pas rejeter les
+  fix légitimes en bordure de plan. Si la bbox plan n'est pas calculable (dims
+  manquantes, georef absente), fallback safe : on autorise (comportement
+  v1.40.18-20 préservé).
+- **Header serveur requis (depuis v1.40.20)** : pour que le bouton 📍 fonctionne,
+  le header `Permissions-Policy` côté Nginx doit autoriser `geolocation=(self)`.
+  Si le header est resté à `geolocation=()` (default v1.0-v1.40.19), l'API rejette
+  l'appel **avant même le prompt OS** avec une violation policy (`crbug.com/414348233`).
+  La config Nginx versionnée (`docs/nginx-csp-config.conf` et `docker/nginx-docker.conf`)
+  a été mise à jour. Restriction `(self)` choisie volontairement : seule notre origine
+  peut utiliser l'API, JAMAIS un iframe tiers (même si l'app n'en charge aucun).
+- **Gating Mode hors-ligne strict + Mode incognito (depuis v1.40.19)** :
+  la Vue OSM (modale ET widget HOME) respecte les modes vie privée :
+  - **Mode hors-ligne strict** activé → modale `osmView.js` bloquée à
+    l'ouverture (toast warn) + widget HOME affiche un message dédié
+    "🛡️ Hors-ligne strict actif" au lieu de la mini-carte (parité ajoutée
+    v1.40.19, le widget avait un trou v1.40.0-18).
+  - **Mode incognito** activé → idem (message "🕶️ Mode incognito actif"
+    dans le widget HOME, modale bloquée).
+  - **Bouton « 📍 Ma position »** : si l'user active strict offline ou
+    incognito PENDANT que la modale est ouverte (edge case toggle pendant
+    session), le bouton est désactivé visuellement (au build initial) ET
+    le clic est neutralisé runtime (toast warn + early return, jamais de
+    fix GPS). Note : `navigator.onLine === false` (Wi-Fi/4G coupé)
+    n'empêche **pas** le GPS — c'est l'intérêt principal (téléphone en
+    avion mais GPS du device parfaitement fonctionnel).
 
 **Politique de privacy OSM** : OpenStreetMap est une fondation
 non-commerciale (OpenStreetMap Foundation), les tuiles sont distribuées
@@ -316,7 +371,7 @@ navigateur. Tableau exhaustif :
 
 | API | Quand | Permission requise ? | Donnée envoyée ? |
 |---|---|---|---|
-| **Geolocation API** | Calibrage KMZ + Mode urgence si l'user le déclenche | Oui (prompt navigateur explicite) | **Aucune** (lecture pure, jamais transmise) |
+| **Geolocation API** | Calibrage KMZ + Mode urgence + bouton 📍 « Ma position » dans la modale Vue OSM et le widget HOME Vue OSM *(v1.40.18)* si l'user le déclenche | Oui (prompt navigateur explicite à la demande, jamais au boot — header `Permissions-Policy: geolocation=(self)` côté Nginx depuis v1.40.20 ; restriction `(self)` = seule notre origine autorisée, JAMAIS un iframe tiers) | **Aucune** (lecture pure, jamais transmise, jamais stockée — coordonnées affichées sur la carte uniquement en RAM le temps de la session) |
 | **DeviceMotion / DeviceOrientation** | Tracker (PDR + boussole) | Oui sur iOS (prompt explicite via user gesture) | **Aucune** (lecture pure capteurs locaux) |
 | **Wake Lock API** *(NOUVEAU v1.21.1)* | Toggle ⚙️ Réglages → "Garder l'écran allumé" | Non (politique navigateur — accordée silencieusement en HTTPS si l'onglet a le focus) | **Aucune** (lock binaire) |
 | **Clipboard API** *(usage étendu v1.21.2)* | Bouton 📋 dans popup point (coords GPS) + 📋 Copier dans modale audit, inspecteur mémoire, etc. | Non en écriture user-initiated en HTTPS (silencieuse via `writeText`) | **Aucune** (l'app écrit dans le presse-papier, ne le lit jamais) |
